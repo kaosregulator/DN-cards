@@ -94,9 +94,10 @@ export async function startBot() {
             }
             const reasonMsg =
               result.reason === "already_caught" ? "⚡ Too slow! Someone already claimed this card."
-              : result.reason === "expired" ? "⏰ That spawn has expired."
+              : result.reason === "expired" ? "✅ You've already claimed it — pick **Burn / Keep / Trade** above."
               : "❌ This button isn't active right now.";
             await interaction.reply({ content: reasonMsg, flags: MessageFlags.Ephemeral }).catch(() => { /* ignore */ });
+            setTimeout(() => { interaction.deleteReply().catch(() => { /* ignore */ }); }, 4000);
           } else {
             await interaction.reply({
               content: `🎯 You claimed it! Check the spawn message for **Burn / Keep / Trade** options.`,
