@@ -6,7 +6,8 @@ import {
 import { scheduleNextSpawn, clearSpawnTimer } from "../spawn-manager.js";
 import { RARITY_EMOJI, RARITY_WEIGHTS, type Rarity } from "../cards-data.js";
 import { startSetupWizard } from "./setup-wizard.js";
-import { startCardWizard } from "./card-wizard.js";
+import { startCardWizard, startEditWizard } from "./card-wizard.js";
+import { handleImport } from "./import.js";
 
 // ── Permission check ──────────────────────────────────────────────────────────
 async function checkAdmin(msg: Message): Promise<boolean> {
@@ -98,6 +99,24 @@ export async function handlePrefixCommand(msg: Message): Promise<void> {
     if (!ok) { await msg.reply("❌ You don't have permission to add cards."); return; }
     const kind = cmd === "addcard" ? "standard" : cmd === "addlimited" ? "limited" : "event";
     await startCardWizard(msg, kind as "standard" | "limited" | "event");
+    return;
+  }
+
+  // ── !editcard <Name> — edit any field of an existing card ──────────────────
+  if (cmd === "editcard") {
+    const ok = await checkAdmin(msg);
+    if (!ok) { await msg.reply("❌ You don't have permission to edit cards."); return; }
+    const name = args.join(" ");
+    if (!name) { await msg.reply("❌ Usage: `!editcard F-22 Raptor`"); return; }
+    await startEditWizard(msg, name);
+    return;
+  }
+
+  // ── !import — bulk import cards from JSON ──────────────────────────────────
+  if (cmd === "import") {
+    const ok = await checkAdmin(msg);
+    if (!ok) { await msg.reply("❌ You don't have permission to import cards."); return; }
+    await handleImport(msg);
     return;
   }
 

@@ -1,10 +1,11 @@
 import type { Message } from "discord.js";
-import { addCard } from "../db.js";
+import { addCard, getCardByName, updateCard } from "../db.js";
 import {
   RARITY_EMOJI, RARITY_LABELS, RARITY_WEIGHTS, RARITY_WORTH, RARITY_BURN,
   TYPE_EMOJI,
   type Rarity, type CardType,
 } from "../cards-data.js";
+import type { Card } from "@workspace/db";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 type CardKind = "standard" | "limited" | "event";
@@ -268,6 +269,222 @@ async function showConfirmation(msg: Message, session: CardWizardSession) {
     "Type **confirm** to create it, or **cancel** to abort:",
   );
 }
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// EDIT WIZARD — !editcard <Name>
+// ═══════════════════════════════════════════════════════════════════════════════
+
+type EditStep =
+  | "edit_menu"
+  | "edit_rarity"
+  | "edit_worth"
+  | "edit_burn"
+  | "edit_desc"
+  | "edit_image"
+  | "edit_ctype"
+  | "edit_name";
+
+interface EditSession {
+  step: EditStep;
+  guildId: string;
+  channelId: string;
+  lastActivity: number;
+  cardId: number;
+}
+
+const editSessions = new Map<string, EditSession>();
+function ekey(guildId: string, userId: string) { return `ce:${guildId}:${userId}`; }
+
+export async function startEditWizard(msg: Message, cardName: string): Promise<void> {
+  if (!msg.guild) return;
+  const card = await getCardByName(cardName);
+  if (!card) {
+    await msg.reply(`❌ No card named **${cardName}** found. Try \`/list\` to see all cards.`);
+    return;
+  }
+
+  editSessions.set(ekey(msg.guild.id, msg.author.id), {
+    step: "edit_menu",
+    guildId: msg.guild.id,
+    channelId: msg.channelId,
+    lastActivity: Date.now(),
+    cardId: card.id,
+  });
+
+  await showEditMenu(msg, card);
+}
+
+async function showEditMenu(msg: Message, card: Card) {
+  const r = card.rarity as Rarity;
+  await msg.reply(
+    `## ✏️ Editing: **${card.name}**\n` +
+    `**Current values:**\n` +
+    `• Rarity: ${RARITY_EMOJI[r]} ${RARITY_LABELS[r]} (drop weight ${card.dropWeight})\n` +
+    `• Worth: 💠 ${card.worthValue.toLocaleString()} · Burn: 🔥 ${card.burnValue.toLocaleString()}\n` +
+    `• Type: ${TYPE_EMOJI[card.cardType as CardType] ?? "🃏"} ${card.cardType}\n` +
+    `• Description: ${card.description || "*none*"}\n` +
+    `• Image: ${card.imageUrl ? "✅ set" : "*none*"}\n\n` +
+    `**Which field do you want to change?**\n` +
+    `**1.** Rarity   **2.** Worth   **3.** Burn value\n` +
+    `**4.** Description   **5.** Image   **6.** Card type   **7.** Name\n\n` +
+    `Type a number, or **done** to finish:`,
+  );
+}
+
+export async function handleCardEditStep(msg: Message): Promise<boolean> {
+  if (!msg.guild) return false;
+  const k = ekey(msg.guild.id, msg.author.id);
+  const session = editSessions.get(k);
+  if (!session) return false;
+  if (msg.channelId !== session.channelId) return false;
+
+  if (Date.now() - session.lastActivity > WIZARD_TIMEOUT_MS) {
+    editSessions.delete(k);
+    return false;
+  }
+  session.lastActivity = Date.now();
+
+  const input = msg.content.trim();
+  if (input.toLowerCase() === "cancel" || input.toLowerCase() === "done") {
+    editSessions.delete(k);
+    await msg.reply("✅ Done editing.");
+    return true;
+  }
+
+  return processEditStep(msg, session, k, input);
+}
+
+async function processEditStep(msg: Message, session: EditSession, k: string, input: string): Promise<boolean> {
+  const lower = input.toLowerCase();
+
+  switch (session.step) {
+    case "edit_menu": {
+      const map: Record<string, EditStep> = {
+        "1": "edit_rarity", "2": "edit_worth", "3": "edit_burn",
+        "4": "edit_desc", "5": "edit_image", "6": "edit_ctype", "7": "edit_name",
+      };
+      const next = map[input];
+      if (!next) { await msg.reply("❌ Type a number **1–7**, or **done** to finish:"); return true; }
+      session.step = next;
+      await promptForField(msg, next);
+      return true;
+    }
+
+    case "edit_rarity": {
+      const idx = parseInt(input, 10) - 1;
+      if (idx < 0 || idx >= RARITY_CHOICES.length) {
+        await msg.reply("❌ Type **1–5**:"); return true;
+      }
+      const newRarity = RARITY_CHOICES[idx];
+      await updateCard(session.cardId, { rarity: newRarity, dropWeight: RARITY_WEIGHTS[newRarity] });
+      await msg.reply(`✅ Rarity → ${RARITY_EMOJI[newRarity]} **${RARITY_LABELS[newRarity]}** (drop weight reset to ${RARITY_WEIGHTS[newRarity]}).`);
+      return await backToMenu(msg, session);
+    }
+
+    case "edit_worth": {
+      const n = parseInt(input, 10);
+      if (isNaN(n) || n < 0) { await msg.reply("❌ Enter a whole number ≥ 0:"); return true; }
+      await updateCard(session.cardId, { worthValue: n });
+      await msg.reply(`✅ Worth → 💠 **${n.toLocaleString()}** shards.`);
+      return await backToMenu(msg, session);
+    }
+
+    case "edit_burn": {
+      const n = parseInt(input, 10);
+      if (isNaN(n) || n < 0) { await msg.reply("❌ Enter a whole number ≥ 0:"); return true; }
+      await updateCard(session.cardId, { burnValue: n });
+      await msg.reply(`✅ Burn → 🔥 **${n.toLocaleString()}** shards.`);
+      return await backToMenu(msg, session);
+    }
+
+    case "edit_desc": {
+      const desc = lower === "skip" ? "" : input.slice(0, 500);
+      await updateCard(session.cardId, { description: desc });
+      await msg.reply(desc ? `✅ Description updated.` : `✅ Description cleared.`);
+      return await backToMenu(msg, session);
+    }
+
+    case "edit_image": {
+      const attachmentUrl = msg.attachments.first()?.url;
+      if (attachmentUrl) {
+        await updateCard(session.cardId, { imageUrl: attachmentUrl });
+        await msg.reply("✅ Image updated.");
+      } else if (lower === "remove" || lower === "clear") {
+        await updateCard(session.cardId, { imageUrl: null });
+        await msg.reply("✅ Image removed.");
+      } else if (/^https?:\/\/.+/i.test(input)) {
+        await updateCard(session.cardId, { imageUrl: input });
+        await msg.reply("✅ Image URL updated.");
+      } else {
+        await msg.reply("❌ Attach an image, paste an image URL, or type **remove**:");
+        return true;
+      }
+      return await backToMenu(msg, session);
+    }
+
+    case "edit_ctype": {
+      const idx = parseInt(input, 10) - 1;
+      if (idx < 0 || idx >= TYPE_CHOICES.length) {
+        await msg.reply(`❌ Type **1–${TYPE_CHOICES.length}**:`); return true;
+      }
+      const newType = TYPE_CHOICES[idx];
+      await updateCard(session.cardId, { cardType: newType });
+      await msg.reply(`✅ Type → ${TYPE_EMOJI[newType]} **${newType}**.`);
+      return await backToMenu(msg, session);
+    }
+
+    case "edit_name": {
+      const newName = input.slice(0, 64).trim();
+      if (newName.length < 2) { await msg.reply("❌ Name must be at least 2 characters:"); return true; }
+      try {
+        await updateCard(session.cardId, { name: newName });
+        await msg.reply(`✅ Renamed to **${newName}**.`);
+      } catch {
+        await msg.reply(`❌ A card named **${newName}** already exists.`);
+      }
+      return await backToMenu(msg, session);
+    }
+  }
+  return false;
+}
+
+async function promptForField(msg: Message, step: EditStep) {
+  switch (step) {
+    case "edit_rarity": {
+      const lines = RARITY_CHOICES.map((r, i) => `**${i + 1}.** ${RARITY_EMOJI[r]} ${RARITY_LABELS[r]} — 💠 ${RARITY_WORTH[r]} / 🔥 ${RARITY_BURN[r]} default`).join("\n");
+      await msg.reply(`**Choose new rarity:**\n${lines}\n\nType **1–5**:`);
+      return;
+    }
+    case "edit_worth": await msg.reply("Enter new **worth value** (whole number, 💠 shards earned when traded/collected):"); return;
+    case "edit_burn": await msg.reply("Enter new **burn value** (whole number, 🔥 shards earned when burned):"); return;
+    case "edit_desc": await msg.reply("Enter a new **description**, or type **skip** to clear:"); return;
+    case "edit_image": await msg.reply("Attach an image, paste an image URL, or type **remove** to clear:"); return;
+    case "edit_ctype": {
+      const lines = TYPE_CHOICES.map((t, i) => `**${i + 1}.** ${TYPE_EMOJI[t]} ${t}`).join("  ");
+      await msg.reply(`**Choose a card type:**\n${lines}\n\nType **1–${TYPE_CHOICES.length}**:`);
+      return;
+    }
+    case "edit_name": await msg.reply("Enter the new **card name** (must be unique):"); return;
+  }
+}
+
+async function backToMenu(msg: Message, session: EditSession): Promise<boolean> {
+  const card = await getCardByName(""); // placeholder
+  // Fetch fresh card by ID instead
+  const { getAllCards } = await import("../db.js");
+  const fresh = (await getAllCards()).find(c => c.id === session.cardId);
+  if (fresh) {
+    session.step = "edit_menu";
+    await showEditMenu(msg, fresh);
+  } else {
+    editSessions.delete(ekey(session.guildId, msg.author.id));
+  }
+  return true;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// (original create wizard continues)
+// ═══════════════════════════════════════════════════════════════════════════════
 
 async function createCard(msg: Message, session: CardWizardSession) {
   const d = session.data;

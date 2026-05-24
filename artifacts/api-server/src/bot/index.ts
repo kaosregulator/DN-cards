@@ -6,7 +6,7 @@ import { handleAdminCommand } from "./commands/admin.js";
 import { handleUserCommand } from "./commands/user.js";
 import { handlePrefixCommand } from "./commands/prefix.js";
 import { handleWizardStep } from "./commands/setup-wizard.js";
-import { handleCardWizardStep } from "./commands/card-wizard.js";
+import { handleCardWizardStep, handleCardEditStep } from "./commands/card-wizard.js";
 import { buildCommands, USER_COMMAND_NAMES, ADMIN_COMMAND_NAMES } from "./commands/register.js";
 
 export async function startBot() {
@@ -127,6 +127,10 @@ export async function startBot() {
     // Card creation wizard step responses
     const cardConsumed = await handleCardWizardStep(msg).catch(() => false);
     if (cardConsumed) return;
+
+    // Card edit wizard step responses
+    const editConsumed = await handleCardEditStep(msg).catch(() => false);
+    if (editConsumed) return;
 
     // Core card catch detection
     const caught = await handleCatchAttempt(msg.guild.id, msg.author.id, content).catch(err => {

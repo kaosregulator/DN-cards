@@ -1,0 +1,386 @@
+{
+    "set": {
+        "name": "V1",
+        "description": "DN cards"
+    },
+    "cards": [
+        {
+            "name": "Master Helstorm",
+            "description": "\ud83d\udfe1 Legendary Pull\n\ud83d\udcc8 Chance: 12.0%\n\ud83d\udd25 Burn Value: 400",
+            "rarity": "Legendary",
+            "img_url": "https://misu.nephbox.net/card_image/1363917781355069761/master_helstorm_00018108.png",
+            "local_img_url": "./data/card_images/1363917781355069761/master_helstorm_00018108.png"
+        },
+        {
+            "name": "G-Bis",
+            "description": "\ud83d\udd34 Rare\n\ud83d\udcc8 Chance: 1.2%\n\ud83d\udd25 Burn Value: 1500",
+            "rarity": "Rare",
+            "img_url": "https://misu.nephbox.net/card_image/1363917781355069761/g-bis_00018109.png",
+            "local_img_url": "./data/card_images/1363917781355069761/g-bis_00018109.png"
+        },
+        {
+            "name": "BGW",
+            "description": "\ud83d\udfe1 Legendary\n\ud83d\udcc8 Chance: 12.0%\n\ud83d\udd25 Burn Value: 400",
+            "rarity": "Legendary",
+            "img_url": "https://misu.nephbox.net/card_image/1363917781355069761/bgw_00018110.png",
+            "local_img_url": "./data/card_images/1363917781355069761/bgw_00018110.png"
+        },
+        {
+            "name": "SX59",
+            "description": "\ud83d\udfe1 Legendary Pull\n\ud83d\udcc8 Chance: 12.0%\n\ud83d\udd25 Burn Value: 400",
+            "rarity": "Legendary",
+            "img_url": "https://misu.nephbox.net/card_image/1363917781355069761/sx59_00018111.png",
+            "local_img_url": "./data/card_images/1363917781355069761/sx59_00018111.png"
+        },
+        {
+            "name": "Master Reaper",
+            "description": "\ud83d\udfe1 Legendary Pull\n\ud83d\udcc8 Chance: 12.0%\n\ud83d\udd25 Burn Value: 400",
+            "rarity": "Legendary",
+            "img_url": "https://misu.nephbox.net/card_image/1363917781355069761/master_reaper_00018112.png",
+            "local_img_url": "./data/card_images/1363917781355069761/master_reaper_00018112.png"
+        },
+        {
+            "name": "SB-12",
+            "description": "\ud83d\udd34 Rare Pull\n\ud83d\udcc8 Chance: 1.2%\n\ud83d\udd25 Burn Value: 1500",
+            "rarity": "Rare",
+            "img_url": "https://misu.nephbox.net/card_image/1363917781355069761/sb-12_00018113.png",
+            "local_img_url": "./data/card_images/1363917781355069761/sb-12_00018113.png"
+        },
+        {
+            "name": "SB21",
+            "description": "\ud83d\udd34 Rare Pull\n\ud83d\udcc8 Chance: 1.2%\n\ud83d\udd25 Burn Value: 1500",
+            "rarity": "Rare",
+            "img_url": "https://misu.nephbox.net/card_image/1363917781355069761/sb21_00018114.png",
+            "local_img_url": "./data/card_images/1363917781355069761/sb21_00018114.png"
+        },
+        {
+            "name": "Armored Jeep",
+            "description": "\u26aa Common\n\ud83d\udcc8 Chance: 50.0%\n\ud83d\udd25 Burn Value: 10",
+            "rarity": "Common",
+            "img_url": "https://misu.nephbox.net/card_image/1363917781355069761/armored_jeep_00018115.jpg",
+            "local_img_url": "./data/card_images/1363917781355069761/armored_jeep_00018115.jpg"
+        },
+        {
+            "name": "Logistics Truck",
+            "description": "\u26aa Common\n\ud83d\udcc8 Chance: 50.0%\n\ud83d\udd25 Burn Value: 10",
+            "rarity": "Common",
+            "img_url": "https://misu.nephbox.net/card_image/1363917781355069761/logistics_truck_00018116.jpg",
+            "local_img_url": "./data/card_images/1363917781355069761/logistics_truck_00018116.jpg"
+        },
+        {
+            "name": "ATV",
+            "description": "\u26aa Common\n\ud83d\udcc8 Chance: 50.0%\n\ud83d\udd25 Burn Value: 10",
+            "rarity": "common",
+            "img_url": "https://misu.nephbox.net/card_image/1363917781355069761/atv_00018117.jpg",
+            "local_img_url": "./data/card_images/1363917781355069761/atv_00018117.jpg"
+        },
+        {
+            "name": "Weiner Wagon",
+            "description": "\ud83d\udfe2 Uncommon\n\ud83d\udcc8 Chance: 25.0%\n\ud83d\udd25 Burn Value: 25",
+            "rarity": "Uncommon",
+            "img_url": "https://misu.nephbox.net/card_image/1363917781355069761/weiner_wagon_00018118.png",
+            "local_img_url": "./data/card_images/1363917781355069761/weiner_wagon_00018118.png"
+        },
+        {
+            "name": "Assault Bike",
+            "description": "\ud83d\udfe2 Uncommon\n\ud83d\udcc8 Chance: 25.0%\n\ud83d\udd25 Burn Value: 25",
+            "rarity": "Uncommon",
+            "img_url": "https://misu.nephbox.net/card_image/1363917781355069761/assault_bike_00018119.png",
+            "local_img_url": "./data/card_images/1363917781355069761/assault_bike_00018119.png"
+        },
+        {
+            "name": "Calzone Cannon",
+            "description": "\ud83d\udfe2 Uncommon\n\ud83d\udcc8 Chance: 25.0%\n\ud83d\udd25 Burn Value: 25",
+            "rarity": "Uncommon",
+            "img_url": "https://misu.nephbox.net/card_image/1363917781355069761/calzone_cannon_00018120.png",
+            "local_img_url": "./data/card_images/1363917781355069761/calzone_cannon_00018120.png"
+        },
+        {
+            "name": "Abrams X",
+            "description": "\ud83d\udfe2 Uncommon\n\ud83d\udcc8 Chance: 25.0%\n\ud83d\udd25 Burn Value: 25",
+            "rarity": "Uncommon",
+            "img_url": "https://misu.nephbox.net/card_image/1363917781355069761/abrams_x_00018121.png",
+            "local_img_url": "./data/card_images/1363917781355069761/abrams_x_00018121.png"
+        },
+        {
+            "name": "T90",
+            "description": "\ud83d\udfe2 Uncommon\n\ud83d\udcc8 Chance: 25.0%\n\ud83d\udd25 Burn Value: 25",
+            "rarity": "Uncommon",
+            "img_url": "https://misu.nephbox.net/card_image/1363917781355069761/t90_00018122.png",
+            "local_img_url": "./data/card_images/1363917781355069761/t90_00018122.png"
+        },
+        {
+            "name": "Volk",
+            "description": "\ud83d\udfe2 Uncommon\n\ud83d\udcc8 Chance: 25.0%\n\ud83d\udd25 Burn Value: 25",
+            "rarity": "Uncommon",
+            "img_url": "https://misu.nephbox.net/card_image/1363917781355069761/volk_00018123.png",
+            "local_img_url": "./data/card_images/1363917781355069761/volk_00018123.png"
+        },
+        {
+            "name": "Chinook",
+            "description": "\u26aa Common\n\ud83d\udcc8 Chance: 50.0%\n\ud83d\udd25 Burn Value: 10",
+            "rarity": "Common",
+            "img_url": "https://misu.nephbox.net/card_image/1363917781355069761/chinook_00018124.jpg",
+            "local_img_url": "./data/card_images/1363917781355069761/chinook_00018124.jpg"
+        },
+        {
+            "name": "Biplane",
+            "description": "\u26aa Common\n\ud83d\udcc8 Chance: 50.0%\n\ud83d\udd25 Burn Value: 10",
+            "rarity": "Common",
+            "img_url": "https://misu.nephbox.net/card_image/1363917781355069761/biplane_00018125.jpg",
+            "local_img_url": "./data/card_images/1363917781355069761/biplane_00018125.jpg"
+        },
+        {
+            "name": "Haunted Tank",
+            "description": "\ud83d\udd34 Rare Pull \n\ud83d\udcc8 Chance: 1.2%\n\ud83d\udd25 Burn Value: 1500",
+            "rarity": "Rare",
+            "img_url": "https://misu.nephbox.net/card_image/1363917781355069761/haunted_tank_00018126.png",
+            "local_img_url": "./data/card_images/1363917781355069761/haunted_tank_00018126.png"
+        },
+        {
+            "name": "RATTE",
+            "description": "\ud83d\udd34 Rare Pull\n\ud83d\udcc8 Chance: 1.2%\n\ud83d\udd25 Burn Value: 1500",
+            "rarity": "Rare",
+            "img_url": "https://misu.nephbox.net/card_image/1363917781355069761/ratte_00018127.png",
+            "local_img_url": "./data/card_images/1363917781355069761/ratte_00018127.png"
+        },
+        {
+            "name": "Super AN Jeep",
+            "description": "\ud83d\udfe1 Legendary Pull\n\ud83d\udcc8 Chance: 12.0%\n\ud83d\udd25 Burn Value: 400",
+            "rarity": "Legendary",
+            "img_url": "https://misu.nephbox.net/card_image/1363917781355069761/super_an_jeep_00018128.png",
+            "local_img_url": "./data/card_images/1363917781355069761/super_an_jeep_00018128.png"
+        },
+        {
+            "name": "Mother ship",
+            "description": "\ud83d\udfe1 Legendary Pull\n\ud83d\udcc8 Chance: 12.0%\n\ud83d\udd25 Burn Value: 400",
+            "rarity": "Legendary",
+            "img_url": "https://misu.nephbox.net/card_image/1363917781355069761/mother_ship_00018129.png",
+            "local_img_url": "./data/card_images/1363917781355069761/mother_ship_00018129.png"
+        },
+        {
+            "name": "BOSS Sea Tank",
+            "description": "\ud83d\udfe1 Legendary Pull\n\ud83d\udcc8 Chance: 12.0%\n\ud83d\udd25 Burn Value: 400",
+            "rarity": "Legendary",
+            "img_url": "https://misu.nephbox.net/card_image/1363917781355069761/boss_sea_tank_00018130.png",
+            "local_img_url": "./data/card_images/1363917781355069761/boss_sea_tank_00018130.png"
+        },
+        {
+            "name": "Juggernaut",
+            "description": "\u26aa Common\n\ud83d\udcc8 Chance: 50.0%\n\ud83d\udd25 Burn Value: 10",
+            "rarity": "common",
+            "img_url": "https://misu.nephbox.net/card_image/1363917781355069761/18131.png",
+            "local_img_url": "./data/card_images/1363917781355069761/18131.png"
+        },
+        {
+            "name": "Hacker Soldier",
+            "description": "\u26aa Common\n\ud83d\udcc8 Chance: 50.0%\n\ud83d\udd25 Burn Value: 10",
+            "rarity": "common",
+            "img_url": "https://misu.nephbox.net/card_image/1363917781355069761/hacker_soldier_00018132.png",
+            "local_img_url": "./data/card_images/1363917781355069761/hacker_soldier_00018132.png"
+        },
+        {
+            "name": "Elite Soldier",
+            "description": "\ud83d\udfe2 Uncommon\n\ud83d\udcc8 Chance: 25.0%\n\ud83d\udd25 Burn Value: 25",
+            "rarity": "uncommon",
+            "img_url": "https://misu.nephbox.net/card_image/1363917781355069761/elite_soldier_00018133.png",
+            "local_img_url": "./data/card_images/1363917781355069761/elite_soldier_00018133.png"
+        },
+        {
+            "name": "BOSS Soldier",
+            "description": "\ud83d\udfe2 Uncommon\n\ud83d\udcc8 Chance: 25.0%\n\ud83d\udd25 Burn Value: 25",
+            "rarity": "uncommon",
+            "img_url": "https://misu.nephbox.net/card_image/1363917781355069761/boss_soldier_00018134.png",
+            "local_img_url": "./data/card_images/1363917781355069761/boss_soldier_00018134.png"
+        },
+        {
+            "name": "Golden Soldier",
+            "description": "\ud83d\udfe2 Uncommon\n\ud83d\udcc8 Chance: 25.0%\n\ud83d\udd25 Burn Value: 25",
+            "rarity": "uncommon",
+            "img_url": "https://misu.nephbox.net/card_image/1363917781355069761/golden_soldier_00018135.png",
+            "local_img_url": "./data/card_images/1363917781355069761/golden_soldier_00018135.png"
+        },
+        {
+            "name": "Vault Raider",
+            "description": "\u26aa Common\n\ud83d\udcc8 Chance: 50.0%\n\ud83d\udd25 Burn Value: 10",
+            "rarity": "common",
+            "img_url": "https://misu.nephbox.net/card_image/1363917781355069761/vault_raider_00018136.png",
+            "local_img_url": "./data/card_images/1363917781355069761/vault_raider_00018136.png"
+        },
+        {
+            "name": "Toxic Trooper",
+            "description": "\u26aa Common\n\ud83d\udcc8 Chance: 50.0%\n\ud83d\udd25 Burn Value: 10",
+            "rarity": "common",
+            "img_url": "https://misu.nephbox.net/card_image/1363917781355069761/toxic_trooper_00018137.png",
+            "local_img_url": "./data/card_images/1363917781355069761/toxic_trooper_00018137.png"
+        },
+        {
+            "name": "Railgun Killer",
+            "description": "\ud83d\udfe2 Uncommon\n\ud83d\udcc8 Chance: 25.0%\n\ud83d\udd25 Burn Value: 25",
+            "rarity": "uncommon",
+            "img_url": "https://misu.nephbox.net/card_image/1363917781355069761/railgun_killer_00018138.png",
+            "local_img_url": "./data/card_images/1363917781355069761/railgun_killer_00018138.png"
+        },
+        {
+            "name": "RPG Soldier",
+            "description": "\u26aa Common\n\ud83d\udcc8 Chance: 50.0%\n\ud83d\udd25 Burn Value: 10",
+            "rarity": "common",
+            "img_url": "https://misu.nephbox.net/card_image/1363917781355069761/rpg_soldier_00018139.png",
+            "local_img_url": "./data/card_images/1363917781355069761/rpg_soldier_00018139.png"
+        },
+        {
+            "name": "LEBB",
+            "description": "\ud83d\udd34 Rare Pull\n\ud83d\udcc8 Chance: 1.2%\n\ud83d\udd25 Burn Value: 1500",
+            "rarity": "Rare",
+            "img_url": "https://misu.nephbox.net/card_image/1363917781355069761/fe1f2d45cb1447a2829d21d5dd694d2d.png",
+            "local_img_url": "./data/card_images/1363917781355069761/fe1f2d45cb1447a2829d21d5dd694d2d.png"
+        },
+        {
+            "name": "Gold Typhoon",
+            "description": "\ud83d\udc8e Graded\n\ud83d\udcc8 Chance: 0.6%\n\ud83d\udd25 Burn Value: 2500",
+            "rarity": "graded",
+            "img_url": "https://misu.nephbox.net/card_image/1363917781355069761/121bb44e38354e00a42f2e388b8bb412.png",
+            "local_img_url": "./data/card_images/1363917781355069761/121bb44e38354e00a42f2e388b8bb412.png"
+        },
+        {
+            "name": "The Apocalypse",
+            "description": "\ud83d\udc8e Graded\n\ud83d\udcc8 Chance: 0.6%\n\ud83d\udd25 Burn Value: 2500",
+            "rarity": "graded",
+            "img_url": "https://misu.nephbox.net/card_image/1363917781355069761/b9c1a86ef92a40f285a0fb1421a30e22.png",
+            "local_img_url": "./data/card_images/1363917781355069761/b9c1a86ef92a40f285a0fb1421a30e22.png"
+        },
+        {
+            "name": "Super Keiler",
+            "description": "\ud83d\udfe1 Legendary Pull\n\ud83d\udcc8 Chance: 12.0%\n\ud83d\udd25 Burn Value: 400",
+            "rarity": "Legendary",
+            "img_url": "https://misu.nephbox.net/card_image/1363917781355069761/e21beb1e2b1749a6b0c1a935778358a9.png",
+            "local_img_url": "./data/card_images/1363917781355069761/e21beb1e2b1749a6b0c1a935778358a9.png"
+        },
+        {
+            "name": "Naval Officer",
+            "description": "\ud83d\udfe2 Uncommon\n\ud83d\udcc8 Chance: 25.0%\n\ud83d\udd25 Burn Value: 25",
+            "rarity": "uncommon",
+            "img_url": "https://misu.nephbox.net/card_image/1363917781355069761/9f4c3ae2117d414d91794eaffda0b0b9.png",
+            "local_img_url": "./data/card_images/1363917781355069761/9f4c3ae2117d414d91794eaffda0b0b9.png"
+        },
+        {
+            "name": "Marine Soilder",
+            "description": "An amphibious infantry unit armed with an AUG and flashbang. Blinds enemies, disrupts their vision, and creates openings for teammates to attack.",
+            "rarity": "uncommon",
+            "img_url": "https://misu.nephbox.net/card_image/1363917781355069761/1fa40c3562da49398246b1f92c8d0be7.png",
+            "local_img_url": "./data/card_images/1363917781355069761/1fa40c3562da49398246b1f92c8d0be7.png"
+        },
+        {
+            "name": "Assassin",
+            "description": "\ud83d\udfe2 Uncommon\n\ud83d\udcc8 Chance: 25.0%\n\ud83d\udd25 Burn Value: 25",
+            "rarity": "uncommon",
+            "img_url": "https://misu.nephbox.net/card_image/1363917781355069761/5df0962379ae4ce9b06d2a336a7cfba3.png",
+            "local_img_url": "./data/card_images/1363917781355069761/5df0962379ae4ce9b06d2a336a7cfba3.png"
+        },
+        {
+            "name": "Nuke F35",
+            "description": "\ud83d\udfe1 Legendary Pull\n\ud83d\udcc8 Chance: 12.0%\n\ud83d\udd25 Burn Value: 400",
+            "rarity": "Legendary",
+            "img_url": "https://misu.nephbox.net/card_image/1363917781355069761/c32ede043d9849de9a9d8b07821a1ba7.png",
+            "local_img_url": "./data/card_images/1363917781355069761/c32ede043d9849de9a9d8b07821a1ba7.png"
+        },
+        {
+            "name": "Artillery Truck",
+            "description": "\u26aa Common\n\ud83d\udcc8 Chance: 50.0%\n\ud83d\udd25 Burn Value: 10",
+            "rarity": "Common",
+            "img_url": "https://misu.nephbox.net/card_image/1363917781355069761/e4d6b06b7b384831ac2d4c1542b75563.jpg",
+            "local_img_url": "./data/card_images/1363917781355069761/e4d6b06b7b384831ac2d4c1542b75563.jpg"
+        },
+        {
+            "name": "Blackhawk Trooper",
+            "description": "\ud83d\udfe2 Uncommon\n\ud83d\udcc8 Chance: 25.0%\n\ud83d\udd25 Burn Value: 25",
+            "rarity": "uncommon",
+            "img_url": "https://misu.nephbox.net/card_image/1363917781355069761/3dc888636536437293a845efd438aafe.png",
+            "local_img_url": "./data/card_images/1363917781355069761/3dc888636536437293a845efd438aafe.png"
+        },
+        {
+            "name": "SA50",
+            "description": "\ud83d\udd34 Rare Pull\n\ud83d\udcc8 Chance: 1.2%\n\ud83d\udd25 Burn Value: 1500",
+            "rarity": "Rare",
+            "img_url": "https://misu.nephbox.net/card_image/1363917781355069761/08108c02d7724998a275539f8b6e6e3d.png",
+            "local_img_url": "./data/card_images/1363917781355069761/08108c02d7724998a275539f8b6e6e3d.png"
+        },
+        {
+            "name": "NMT",
+            "description": "\ud83d\udd34 Rare Pull\n\ud83d\udcc8 Chance: 1.2%\n\ud83d\udd25 Burn Value: 1500",
+            "rarity": "Rare",
+            "img_url": "https://misu.nephbox.net/card_image/1363917781355069761/d80c273e5676436faddc017f46a83690.png",
+            "local_img_url": "./data/card_images/1363917781355069761/d80c273e5676436faddc017f46a83690.png"
+        },
+        {
+            "name": "Nuke Sniper",
+            "description": "\ud83e\ude96 LE Soldiers\n\ud83d\udcc8 Chance: 8.0%\n\ud83d\udd25 Burn Value: 740",
+            "rarity": "le soldiers",
+            "img_url": "https://misu.nephbox.net/card_image/1363917781355069761/27720dd43de44547a1024d9110d57347.png",
+            "local_img_url": "./data/card_images/1363917781355069761/27720dd43de44547a1024d9110d57347.png"
+        },
+        {
+            "name": "Puckmonster",
+            "description": "\ud83e\ude96 LE Soldiers\n\ud83d\udcc8 Chance: 8.0%\n\ud83d\udd25 Burn Value: 740",
+            "rarity": "le soldiers",
+            "img_url": "https://misu.nephbox.net/card_image/1363917781355069761/c45747e7de2049efa4d05dc1106b9056.png",
+            "local_img_url": "./data/card_images/1363917781355069761/c45747e7de2049efa4d05dc1106b9056.png"
+        },
+        {
+            "name": "Nuke Sniper Animated",
+            "description": "\ud83e\ude96 LE Soldiers\n\ud83d\udcc8 Chance: 8.0%\n\ud83d\udd25 Burn Value: 740",
+            "rarity": "le soldiers",
+            "img_url": "https://misu.nephbox.net/card_image/1363917781355069761/3a6052e7dec349e7be0ce9d5bd174e7b.gif",
+            "local_img_url": "./data/card_images/1363917781355069761/3a6052e7dec349e7be0ce9d5bd174e7b.gif"
+        },
+        {
+            "name": "Mech Walker",
+            "description": "\ud83e\udd16 Mech\n\ud83d\udcc8 Chance: 3.0%\n\ud83d\udd25 Burn Value: 1000",
+            "rarity": "Mech",
+            "img_url": "https://misu.nephbox.net/card_image/1363917781355069761/26d6264d9003474a845c9daa24e9a8dc.png",
+            "local_img_url": "./data/card_images/1363917781355069761/26d6264d9003474a845c9daa24e9a8dc.png"
+        },
+        {
+            "name": "Platinum Mech",
+            "description": "\ud83e\udd16 Mech\n\ud83d\udcc8 Chance: 3.0%\n\ud83d\udd25 Burn Value: 1000",
+            "rarity": "Mech",
+            "img_url": "https://misu.nephbox.net/card_image/1363917781355069761/785aa2867d83457aab48c235de0dcbfd.png",
+            "local_img_url": "./data/card_images/1363917781355069761/785aa2867d83457aab48c235de0dcbfd.png"
+        },
+        {
+            "name": "STM",
+            "description": "\ud83e\udd16 Mech\n\ud83d\udcc8 Chance: 3.0%\n\ud83d\udd25 Burn Value: 1000",
+            "rarity": "Mech",
+            "img_url": "https://misu.nephbox.net/card_image/1363917781355069761/07dabfbdb06d4e30b7c9ace7196cefd8.png",
+            "local_img_url": "./data/card_images/1363917781355069761/07dabfbdb06d4e30b7c9ace7196cefd8.png"
+        },
+        {
+            "name": "STT",
+            "description": "\ud83d\udd34 Rare Pull\n\ud83d\udcc8 Chance: 1.2%\n\ud83d\udd25 Burn Value: 1500",
+            "rarity": "Rare",
+            "img_url": "https://misu.nephbox.net/card_image/1363917781355069761/6337be0ec09f46c6bb58172dd5dbca4f.png",
+            "local_img_url": "./data/card_images/1363917781355069761/6337be0ec09f46c6bb58172dd5dbca4f.png"
+        },
+        {
+            "name": "Nuke Sub",
+            "description": null,
+            "rarity": "Legendary",
+            "img_url": "https://misu.nephbox.net/card_image/1363917781355069761/831c1e58287547f385523e99f4fc9bfa.png",
+            "local_img_url": "./data/card_images/1363917781355069761/831c1e58287547f385523e99f4fc9bfa.png"
+        },
+        {
+            "name": "Le Bismarck",
+            "description": "\ud83d\udfe1 Legendary Pull\n\ud83d\udcc8 Chance: 12.0%\n\ud83d\udd25 Burn Value: 400",
+            "rarity": "Legendary",
+            "img_url": "https://misu.nephbox.net/card_image/1363917781355069761/cecd41970a5e493cbd17c5a3fb1cf525.png",
+            "local_img_url": "./data/card_images/1363917781355069761/cecd41970a5e493cbd17c5a3fb1cf525.png"
+        },
+        {
+            "name": "LE A-10",
+            "description": "\ud83d\udd34 Rare\n\ud83d\udcc8 Chance: 1.2%\n\ud83d\udd25 Burn Value: 1500",
+            "rarity": "Rare",
+            "img_url": "https://misu.nephbox.net/card_image/1363917781355069761/2261f18589ec4d3fb8b151fcd303fa8b.png",
+            "local_img_url": "./data/card_images/1363917781355069761/2261f18589ec4d3fb8b151fcd303fa8b.png"
+        }
+    ]
+}
