@@ -46,6 +46,21 @@ interface ActiveSpawn {
 // "spawn expired" message to the person who just caught it.
 const POST_CATCH_LINGER_MS = 300_000;
 
+// Funny one-liners shown when a card spawn expires uncaught. Kept short so
+// the embed stays scannable.
+const ESCAPE_QUIPS: readonly string[] = [
+  "It slipped through your fingers and into the void. \ud83d\ude2d",
+  "The card looked at you, sighed, and walked away. \ud83d\udeb6",
+  "Too slow! It went AWOL. \ud83c\udfc3\u200d\u2642\ufe0f\ud83d\udca8",
+  "Mission failed. We'll get 'em next time. \ud83e\udee1",
+  "It hopped a chopper and dipped. \ud83d\ude81",
+  "Stealth mode engaged. Card is gone. \ud83e\udd77",
+  "Nobody typed fast enough \u2014 it deserted. \ud83c\udfc1",
+  "Lost contact. Card is MIA. \ud83d\udce1",
+  "It saw the chat and noped out. \ud83d\ude45",
+  "Tactical retreat. Better luck next drop. \u26f0\ufe0f",
+];
+
 // Grace window for collecting concurrent typing-mode catch attempts.
 // Anyone whose Discord-stamped message lands within this window of the first
 // matching message gets considered; lowest timestamp wins.
@@ -203,14 +218,22 @@ async function doSingleSpawn(guildId: string, forcedCardId?: number, isForced = 
       gs?.delete(spawnId);
       try {
         const rarity = cardRef.rarity as Rarity;
+        const quip = ESCAPE_QUIPS[Math.floor(Math.random() * ESCAPE_QUIPS.length)]!;
         await message.edit({
           embeds: [
             new EmbedBuilder()
-              .setTitle(`${RARITY_EMOJI[rarity]} Card escaped!`)
-              .setDescription(`**${cardRef.name}** was not caught in time and vanished.`)
+              .setTitle(`\ud83d\udca8 ${cardRef.name} escaped!`)
+              .setDescription(
+                `${quip}\n\n` +
+                `**Rarity:** ${RARITY_EMOJI[rarity]} ${RARITY_LABELS[rarity]}\n` +
+                `**Caught by:** *nobody — too slow!*`,
+              )
               .setColor(0x636e72)
+              .setFooter({ text: "Better luck on the next spawn \u2728" })
               .setTimestamp(),
           ],
+          // Clear the stale Claim button row so the message reads cleanly.
+          components: [],
         });
       } catch { /* deleted */ }
     }
