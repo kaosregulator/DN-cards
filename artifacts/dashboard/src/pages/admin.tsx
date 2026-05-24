@@ -379,6 +379,11 @@ export default function Admin() {
   if (authed && query.error instanceof ApiError && query.error.status === 401) {
     setAdminToken(null);
     setAuthed(false);
+    toast({
+      variant: "destructive",
+      title: "Admin token rejected",
+      description: "Re-paste your token. Make sure there are no extra spaces, line breaks, or quotes around it.",
+    });
   }
 
   const cards = query.data?.cards ?? [];

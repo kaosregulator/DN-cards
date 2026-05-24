@@ -6,7 +6,31 @@ import {
 } from "discord.js";
 import { getOrCreateGuildSettings, updateGuildSettings, isAdmin } from "../db.js";
 import { scheduleNextSpawn, clearSpawnTimer } from "../spawn-manager.js";
+import { RARITY_WEIGHTS, type Rarity } from "../cards-data.js";
 import type { GuildSettings } from "@workspace/db";
+
+const RARITY_ORDER: Rarity[] = ["common", "uncommon", "rare", "epic", "legendary"];
+const RARITY_EMOJI: Record<Rarity, string> = {
+  common: "⚪", uncommon: "🟢", rare: "🔵", epic: "🟣", legendary: "🟡",
+};
+// Weight options offered per rarity (preset menu). `null` = "Default" (use card's default).
+const RARITY_WEIGHT_OPTIONS: Record<Rarity, (number | null)[]> = {
+  common:    [null, 80, 60, 40, 20, 5],
+  uncommon:  [null, 40, 25, 15, 5,  1],
+  rare:      [null, 20, 10, 5,  2,  1],
+  epic:      [null, 10, 4,  2,  1,  0],
+  legendary: [null, 5,  3,  1,  0],
+};
+
+function rarityWeightKey(r: Rarity): keyof GuildSettings {
+  return (`rarityWeight${r[0]!.toUpperCase()}${r.slice(1)}` as keyof GuildSettings);
+}
+function getRarityWeight(s: GuildSettings, r: Rarity): number | null {
+  return (s[rarityWeightKey(r)] as number | null) ?? null;
+}
+function effectiveWeight(s: GuildSettings, r: Rarity): number {
+  return getRarityWeight(s, r) ?? RARITY_WEIGHTS[r];
+}
 
 // ── Public entry: /config command opens the ephemeral panel ──────────────────
 export async function handleConfigCommand(interaction: ChatInputCommandInteraction): Promise<void> {
@@ -74,9 +98,40 @@ export async function handleConfigButton(interaction: ButtonInteraction): Promis
     scheduleNextSpawn(guildId);
   } else if (action === "channel" && arg === "trade") {
     await updateGuildSettings(guildId, { tradeChannelId: interaction.channelId });
+  } else if (action === "rates") {
+    // Open the drop-rates sub-panel as a *new* ephemeral message so the
+    // main config panel stays open underneath.
+    const settings = await getOrCreateGuildSettings(guildId);
+    await interaction.reply({
+      embeds: [buildRatesEmbed(settings)],
+      components: buildRatesComponents(settings),
+      flags: MessageFlags.Ephemeral,
+    });
+    return;
   }
 
   await refreshPanel(interaction, guildId);
+}
+
+// ── Router: drop-rates sub-panel selects ─────────────────────────────────────
+export async function handleRatesSelect(interaction: StringSelectMenuInteraction): Promise<void> {
+  if (!interaction.guild) return;
+  const ok = await ensureAdmin(interaction);
+  if (!ok) return;
+
+  const guildId = interaction.guild.id;
+  const rarity = interaction.customId.slice("rates_".length) as Rarity;
+  if (!RARITY_ORDER.includes(rarity)) return;
+
+  const raw = interaction.values[0];
+  const weight: number | null = raw === "default" ? null : parseInt(raw!, 10);
+  await updateGuildSettings(guildId, { [rarityWeightKey(rarity)]: weight } as Partial<GuildSettings>);
+
+  const settings = await getOrCreateGuildSettings(guildId);
+  await interaction.update({
+    embeds: [buildRatesEmbed(settings)],
+    components: buildRatesComponents(settings),
+  });
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -141,6 +196,11 @@ function buildConfigEmbed(s: GuildSettings): EmbedBuilder {
         name: "💬 Trade Channel",
         value: s.tradeChannelId ? `<#${s.tradeChannelId}>` : "Any channel",
         inline: true,
+      },
+      {
+        name: "🎲 Drop Rates (weight, % chance)",
+        value: rarityWeightsSummary(s),
+        inline: false,
       },
       {
         name: "Toggles",
@@ -227,6 +287,10 @@ function buildConfigComponents(s: GuildSettings) {
       .setCustomId("config:channel:trade")
       .setLabel("💬 Trade here")
       .setStyle(ButtonStyle.Primary),
+    new ButtonBuilder()
+      .setCustomId("config:rates:open")
+      .setLabel("🎲 Drop Rates")
+      .setStyle(ButtonStyle.Primary),
   );
 
   return [
@@ -242,4 +306,61 @@ function formatSec(sec: number): string {
   if (sec >= 3600) return `${Math.round(sec / 3600)}h`;
   if (sec >= 60) return `${Math.round(sec / 60)}m`;
   return `${sec}s`;
+}
+
+// ── Drop rates sub-panel ─────────────────────────────────────────────────────
+function rarityWeightsSummary(s: GuildSettings): string {
+  const weights = RARITY_ORDER.map(r => effectiveWeight(s, r));
+  const total = weights.reduce((a, b) => a + b, 0) || 1;
+  return RARITY_ORDER.map((r, i) => {
+    const w = weights[i]!;
+    const pct = ((w / total) * 100).toFixed(1);
+    const override = getRarityWeight(s, r) !== null ? "" : " *(default)*";
+    return `${RARITY_EMOJI[r]} **${capitalize(r)}** — weight ${w} · **${pct}%**${override}`;
+  }).join("\n");
+}
+
+function buildRatesEmbed(s: GuildSettings): EmbedBuilder {
+  return new EmbedBuilder()
+    .setTitle("🎲 Drop Rates — Per-Rarity Weights")
+    .setColor(0xeb459e)
+    .setDescription(
+      "Pick a weight for each rarity. Higher weight = more common.\n" +
+      "**Defaults:** Common 60 · Uncommon 25 · Rare 10 · Epic 4 · Legendary 1.\n" +
+      "Percentages below are calculated relative to the totals.",
+    )
+    .addFields({ name: "Current rates", value: rarityWeightsSummary(s), inline: false })
+    .setFooter({ text: "Only you can see this. Changes save instantly." });
+}
+
+function buildRatesComponents(s: GuildSettings) {
+  const rows = RARITY_ORDER.map(r => {
+    const current = getRarityWeight(s, r);
+    const opts = RARITY_WEIGHT_OPTIONS[r].map(w => {
+      if (w === null) {
+        return {
+          label: `Default (${RARITY_WEIGHTS[r]})`,
+          value: "default",
+          description: "Use the card's default weight",
+          default: current === null,
+        };
+      }
+      return {
+        label: `Weight ${w}`,
+        value: String(w),
+        description: w === 0 ? "Disable this rarity from random drops" : undefined,
+        default: current === w,
+      };
+    });
+    const select = new StringSelectMenuBuilder()
+      .setCustomId(`rates_${r}`)
+      .setPlaceholder(`${RARITY_EMOJI[r]} ${capitalize(r)} weight`)
+      .addOptions(opts);
+    return new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(select);
+  });
+  return rows;
+}
+
+function capitalize(s: string): string {
+  return s[0]!.toUpperCase() + s.slice(1);
 }
