@@ -27,15 +27,15 @@ export const cardsTable = pgTable("cards", {
   rarity: rarityEnum("rarity").notNull(),
   cardType: cardTypeEnum("card_type").notNull().default("vehicle"),
   dropWeight: real("drop_weight").notNull().default(1.0),
-  worthValue: integer("worth_value").notNull().default(10),   // collector worth in DN Shards
-  burnValue: integer("burn_value").notNull().default(5),      // shards gained on burn
+  worthValue: integer("worth_value").notNull().default(10),
+  burnValue: integer("burn_value").notNull().default(5),
   isLimitedEdition: boolean("is_limited_edition").notNull().default(false),
   isEventExclusive: boolean("is_event_exclusive").notNull().default(false),
-  maxCopies: integer("max_copies"),                           // null = unlimited
-  totalMinted: integer("total_minted").notNull().default(0),  // total caught globally
+  maxCopies: integer("max_copies"),
+  totalMinted: integer("total_minted").notNull().default(0),
   imageUrl: text("image_url"),
-  flavor: text("flavor"),                                     // lore/flavor text
-  droppable: boolean("droppable").notNull().default(true),    // false = admin-only drops
+  flavor: text("flavor"),
+  droppable: boolean("droppable").notNull().default(true),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
@@ -81,7 +81,7 @@ export const tradesTable = pgTable("trades", {
   offeredCardId: integer("offered_card_id").notNull().references(() => cardsTable.id),
   requestedCardId: integer("requested_card_id").notNull().references(() => cardsTable.id),
   status: tradeStatusEnum("status").notNull().default("pending"),
-  messageId: text("message_id"),    // Discord message to update
+  messageId: text("message_id"),
   channelId: text("channel_id"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   resolvedAt: timestamp("resolved_at"),
@@ -94,7 +94,7 @@ export const guildSettingsTable = pgTable("guild_settings", {
   id: serial("id").primaryKey(),
   guildId: text("guild_id").notNull().unique(),
   spawnChannelId: text("spawn_channel_id"),
-  tradeChannelId: text("trade_channel_id"),    // optional dedicated trade channel
+  tradeChannelId: text("trade_channel_id"),
   spawnIntervalSeconds: integer("spawn_interval_seconds").notNull().default(3600),
   spawnIntervalMin: integer("spawn_interval_min"),
   spawnIntervalMax: integer("spawn_interval_max"),
@@ -102,6 +102,14 @@ export const guildSettingsTable = pgTable("guild_settings", {
   spawnEnabled: boolean("spawn_enabled").notNull().default(true),
   catchWindowSeconds: integer("catch_window_seconds").notNull().default(120),
   tradeEnabled: boolean("trade_enabled").notNull().default(true),
+  // Cards per spawn: 1, 3, 5, or -1 (random 1–3)
+  cardsPerSpawn: integer("cards_per_spawn").notNull().default(1),
+  // Custom rarity drop weights per card of that tier (null = use card's default)
+  rarityWeightCommon: integer("rarity_weight_common"),
+  rarityWeightUncommon: integer("rarity_weight_uncommon"),
+  rarityWeightRare: integer("rarity_weight_rare"),
+  rarityWeightEpic: integer("rarity_weight_epic"),
+  rarityWeightLegendary: integer("rarity_weight_legendary"),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 

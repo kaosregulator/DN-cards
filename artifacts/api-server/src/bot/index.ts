@@ -4,14 +4,13 @@ import { seedDefaultCards } from "./db.js";
 import { initSpawnManager, initAllGuilds, handleCatchAttempt, scheduleNextSpawn } from "./spawn-manager.js";
 import { handleAdminCommand } from "./commands/admin.js";
 import { handleUserCommand } from "./commands/user.js";
+import { handlePrefixCommand } from "./commands/prefix.js";
+import { handleWizardStep } from "./commands/setup-wizard.js";
 import { buildCommands, USER_COMMAND_NAMES, ADMIN_COMMAND_NAMES } from "./commands/register.js";
 
 export async function startBot() {
   const token = process.env["DISCORD_BOT_TOKEN"];
-  if (!token) {
-    logger.error("DISCORD_BOT_TOKEN not set — bot will not start.");
-    return;
-  }
+  if (!token) { logger.error("DISCORD_BOT_TOKEN not set — bot will not start."); return; }
 
   const client = new Client({
     intents: [
@@ -41,11 +40,10 @@ export async function startBot() {
       .catch(err => logger.error({ err, guildId: guild.id }, "Failed to register guild commands on join"));
   });
 
-  // ── Slash command dispatch ──────────────────────────────────────────────────
+  // ── Slash command dispatch ────────────────────────────────────────────────────
   client.on(Events.InteractionCreate, async (interaction: Interaction) => {
     if (!interaction.isChatInputCommand()) return;
     const cmd = interaction.commandName;
-
     try {
       if (USER_COMMAND_NAMES.has(cmd)) {
         await handleUserCommand(interaction, cmd);
@@ -56,22 +54,28 @@ export async function startBot() {
       logger.error({ err, cmd }, "Slash command error");
       try {
         const msg = "❌ Something went wrong. Please try again.";
-        if (interaction.deferred || interaction.replied) {
-          await interaction.editReply(msg);
-        } else {
-          await interaction.reply({ content: msg, ephemeral: true });
-        }
+        if (interaction.deferred || interaction.replied) await interaction.editReply(msg);
+        else await interaction.reply({ content: msg, ephemeral: true });
       } catch { /* ignore */ }
     }
   });
 
-  // ── Text catch detection (core mechanic — stays text-based) ─────────────────
+  // ── Message handler: prefix commands → wizard → catch detection ───────────────
   client.on(Events.MessageCreate, async (msg) => {
-    if (msg.author.bot) return;
-    if (!msg.guild) return;
+    if (msg.author.bot || !msg.guild) return;
     const content = msg.content.trim();
-    if (content.startsWith("/") || content.startsWith("!")) return;
 
+    // ! prefix commands (setup, config, card management)
+    if (content.startsWith("!")) {
+      await handlePrefixCommand(msg).catch(err => logger.error({ err }, "Prefix command error"));
+      return;
+    }
+
+    // Wizard step responses (for users who ran !setup)
+    const wizardConsumed = await handleWizardStep(msg).catch(() => false);
+    if (wizardConsumed) return;
+
+    // Card catch detection (core mechanic — text-based)
     const caught = await handleCatchAttempt(msg.guild.id, msg.author.id, content).catch(err => {
       logger.error({ err }, "Catch attempt error");
       return false;
@@ -86,16 +90,18 @@ export async function startBot() {
   });
 }
 
-// ── Register globally + per-guild (per-guild = instant during development) ────
+// ── Register: clear old commands then set current set ────────────────────────
 async function registerCommands(appId: string, token: string, client: Client) {
   const rest = new REST().setToken(token);
   const commands = buildCommands();
 
+  // Global — replaces everything (removes old /card command if any)
   await rest
     .put(Routes.applicationCommands(appId), { body: commands })
     .then(() => logger.info("Global slash commands registered"))
     .catch(err => logger.error({ err }, "Global command registration failed"));
 
+  // Per-guild — instant availability, overrides globals for this guild
   for (const [, guild] of client.guilds.cache) {
     await rest
       .put(Routes.applicationGuildCommands(appId, guild.id), { body: commands })

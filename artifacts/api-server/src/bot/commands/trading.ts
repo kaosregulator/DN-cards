@@ -8,7 +8,7 @@ import {
 } from "../db.js";
 import { RARITY_EMOJI, RARITY_LABELS, type Rarity } from "../cards-data.js";
 
-// ── /card trade ───────────────────────────────────────────────────────────────
+// ── /trade ────────────────────────────────────────────────────────────────────
 export async function handleTrade(interaction: ChatInputCommandInteraction): Promise<void> {
   if (!interaction.guild) return;
   const guildId = interaction.guild.id;
@@ -24,26 +24,14 @@ export async function handleTrade(interaction: ChatInputCommandInteraction): Pro
   const offeredName = opts.getString("offer", true);
   const requestedName = opts.getString("want", true);
 
-  if (target.id === interaction.user.id) {
-    await interaction.editReply("❌ You can't trade with yourself.");
-    return;
-  }
-  if (target.bot) {
-    await interaction.editReply("❌ You can't trade with a bot.");
-    return;
-  }
+  if (target.id === interaction.user.id) { await interaction.editReply("❌ You can't trade with yourself."); return; }
+  if (target.bot) { await interaction.editReply("❌ You can't trade with a bot."); return; }
 
   const offeredCard = await getCardByName(offeredName);
-  if (!offeredCard) {
-    await interaction.editReply(`❌ Card "**${offeredName}**" not found. Check the name with \`/card list\`.`);
-    return;
-  }
+  if (!offeredCard) { await interaction.editReply(`❌ Card "**${offeredName}**" not found. Check \`/list\`.`); return; }
 
   const requestedCard = await getCardByName(requestedName);
-  if (!requestedCard) {
-    await interaction.editReply(`❌ Card "**${requestedName}**" not found. Check the name with \`/card list\`.`);
-    return;
-  }
+  if (!requestedCard) { await interaction.editReply(`❌ Card "**${requestedName}**" not found. Check \`/list\`.`); return; }
 
   const initiatorEntry = await getCollectionEntry(guildId, interaction.user.id, offeredCard.id);
   if (!initiatorEntry || initiatorEntry.count < 1) {
@@ -53,14 +41,13 @@ export async function handleTrade(interaction: ChatInputCommandInteraction): Pro
 
   const targetEntry = await getCollectionEntry(guildId, target.id, requestedCard.id);
   if (!targetEntry || targetEntry.count < 1) {
-    await interaction.editReply(`❌ <@${target.id}> doesn't have **${requestedCard.name}** in their collection.`);
+    await interaction.editReply(`❌ <@${target.id}> doesn't have **${requestedCard.name}**.`);
     return;
   }
 
   const trade = await createTrade(
     guildId, interaction.user.id, target.id,
-    offeredCard.id, requestedCard.id,
-    interaction.channelId,
+    offeredCard.id, requestedCard.id, interaction.channelId,
   );
 
   const offRarity = offeredCard.rarity as Rarity;
@@ -73,93 +60,69 @@ export async function handleTrade(interaction: ChatInputCommandInteraction): Pro
       `<@${interaction.user.id}> wants to trade with <@${target.id}>\n\n` +
       `**Offering:** ${RARITY_EMOJI[offRarity]} ${offeredCard.name} *(${RARITY_LABELS[offRarity]})*\n` +
       `**Requesting:** ${RARITY_EMOJI[reqRarity]} ${requestedCard.name} *(${RARITY_LABELS[reqRarity]})*\n\n` +
-      `<@${target.id}>, respond with:\n` +
-      `✅ \`/card accept id:${trade.id}\`\n` +
-      `❌ \`/card decline id:${trade.id}\`\n\n` +
+      `<@${target.id}>, respond:\n` +
+      `✅ \`/accept id:${trade.id}\`\n` +
+      `❌ \`/decline id:${trade.id}\`\n\n` +
       `*Trade ID: \`#${trade.id}\` · Expires in 24h*`,
     );
 
   const reply = await interaction.editReply({ embeds: [embed] });
-
-  // Store message ID for future updates
   const msgId = "id" in reply ? (reply as { id: string }).id : undefined;
   if (msgId) await updateTradeMessageId(trade.id, msgId);
 
-  // Auto-expire after 24h
   setTimeout(async () => {
     const t = await getTrade(trade.id);
     if (t && t.status === "pending") await updateTradeStatus(trade.id, "expired");
   }, 24 * 60 * 60 * 1000);
 }
 
-// ── /card accept ──────────────────────────────────────────────────────────────
+// ── /accept ───────────────────────────────────────────────────────────────────
 export async function handleAccept(interaction: ChatInputCommandInteraction): Promise<void> {
   if (!interaction.guild) return;
   const tradeId = interaction.options.getInteger("id", true);
   const trade = await getTrade(tradeId);
 
-  if (!trade || trade.guildId !== interaction.guild.id) {
-    await interaction.editReply(`❌ Trade #${tradeId} not found.`);
-    return;
-  }
-  if (trade.targetId !== interaction.user.id) {
-    await interaction.editReply("❌ This trade is not addressed to you.");
-    return;
-  }
-  if (trade.status !== "pending") {
-    await interaction.editReply(`❌ Trade #${tradeId} is already **${trade.status}**.`);
-    return;
-  }
+  if (!trade || trade.guildId !== interaction.guild.id) { await interaction.editReply(`❌ Trade #${tradeId} not found.`); return; }
+  if (trade.targetId !== interaction.user.id) { await interaction.editReply("❌ This trade is not addressed to you."); return; }
+  if (trade.status !== "pending") { await interaction.editReply(`❌ Trade #${tradeId} is already **${trade.status}**.`); return; }
 
   const success = await executeTradeSwap(trade);
   if (!success) {
     await updateTradeStatus(tradeId, "declined");
-    await interaction.editReply(
-      `❌ Trade #${tradeId} failed — one of the cards is no longer available. Trade cancelled.`,
-    );
+    await interaction.editReply(`❌ Trade #${tradeId} failed — a card is no longer available. Trade cancelled.`);
     return;
   }
 
   await updateTradeStatus(tradeId, "accepted");
   await interaction.editReply(
-    `✅ Trade #${tradeId} complete! Cards have been swapped.\n` +
-    `<@${trade.initiatorId}> and <@${trade.targetId}> — check your collections with \`/card collection\`!`,
+    `✅ Trade #${tradeId} complete! Cards swapped.\n<@${trade.initiatorId}> and <@${trade.targetId}> check \`/collection\`!`,
   );
 }
 
-// ── /card decline ─────────────────────────────────────────────────────────────
+// ── /decline ──────────────────────────────────────────────────────────────────
 export async function handleDecline(interaction: ChatInputCommandInteraction): Promise<void> {
   if (!interaction.guild) return;
   const tradeId = interaction.options.getInteger("id", true);
   const trade = await getTrade(tradeId);
 
-  if (!trade || trade.guildId !== interaction.guild.id) {
-    await interaction.editReply(`❌ Trade #${tradeId} not found.`);
-    return;
-  }
+  if (!trade || trade.guildId !== interaction.guild.id) { await interaction.editReply(`❌ Trade #${tradeId} not found.`); return; }
   if (trade.targetId !== interaction.user.id && trade.initiatorId !== interaction.user.id) {
-    await interaction.editReply("❌ You are not part of this trade.");
-    return;
+    await interaction.editReply("❌ You are not part of this trade."); return;
   }
-  if (trade.status !== "pending") {
-    await interaction.editReply(`❌ Trade #${tradeId} is already **${trade.status}**.`);
-    return;
-  }
+  if (trade.status !== "pending") { await interaction.editReply(`❌ Trade #${tradeId} is already **${trade.status}**.`); return; }
 
   const newStatus = trade.initiatorId === interaction.user.id ? "cancelled" : "declined";
   await updateTradeStatus(tradeId, newStatus);
-  await interaction.editReply(`✅ Trade #${tradeId} has been **${newStatus}**.`);
+  await interaction.editReply(`✅ Trade #${tradeId} **${newStatus}**.`);
 }
 
-// ── /card trades ──────────────────────────────────────────────────────────────
+// ── /trades ───────────────────────────────────────────────────────────────────
 export async function handleListTrades(interaction: ChatInputCommandInteraction): Promise<void> {
   if (!interaction.guild) return;
   const trades = await getPendingTradesFor(interaction.guild.id, interaction.user.id);
 
   if (trades.length === 0) {
-    await interaction.editReply(
-      "You have no pending trades.\nPropose one with `/card trade user:@Member offer:<card> want:<card>`",
-    );
+    await interaction.editReply("You have no pending trades.\nPropose one with `/trade user:@Member offer:<card> want:<card>`");
     return;
   }
 
@@ -173,10 +136,7 @@ export async function handleListTrades(interaction: ChatInputCommandInteraction)
   const embed = new EmbedBuilder()
     .setTitle("🔄 Your Pending Trades")
     .setColor(0x0984e3)
-    .setDescription(
-      lines.join("\n") +
-      "\n\nUse `/card accept id:<ID>` or `/card decline id:<ID>` to respond.",
-    );
+    .setDescription(lines.join("\n") + "\n\nUse `/accept id:<ID>` or `/decline id:<ID>` to respond.");
 
   await interaction.editReply({ embeds: [embed] });
 }

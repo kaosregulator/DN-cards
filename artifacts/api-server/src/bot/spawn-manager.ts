@@ -9,7 +9,7 @@ import {
 } from "./db.js";
 import { RARITY_COLORS, RARITY_EMOJI, RARITY_LABELS, TYPE_EMOJI, type Rarity, type CardType } from "./cards-data.js";
 import { logger } from "../lib/logger.js";
-import type { Card } from "@workspace/db";
+import type { Card, GuildSettings } from "@workspace/db";
 
 interface ActiveSpawn {
   cardId: number;
@@ -20,13 +20,33 @@ interface ActiveSpawn {
   caught: boolean;
 }
 
-const activeSpawns = new Map<string, ActiveSpawn>();
+// Multiple active spawns per guild (for cardsPerSpawn > 1)
+const activeSpawns = new Map<string, Map<string, ActiveSpawn>>();
 const spawnTimers = new Map<string, ReturnType<typeof setTimeout>>();
 
 let botClient: Client | null = null;
 
 export function initSpawnManager(client: Client) {
   botClient = client;
+}
+
+// ── Extract guild rarity weight overrides ────────────────────────────────────
+function getGuildRarityWeights(settings: GuildSettings): Record<string, number> | undefined {
+  const hasCustom = [
+    settings.rarityWeightCommon,
+    settings.rarityWeightUncommon,
+    settings.rarityWeightRare,
+    settings.rarityWeightEpic,
+    settings.rarityWeightLegendary,
+  ].some(v => v !== null);
+  if (!hasCustom) return undefined;
+  return {
+    common: settings.rarityWeightCommon ?? 60,
+    uncommon: settings.rarityWeightUncommon ?? 25,
+    rare: settings.rarityWeightRare ?? 10,
+    epic: settings.rarityWeightEpic ?? 4,
+    legendary: settings.rarityWeightLegendary ?? 1,
+  };
 }
 
 // ── Schedule next spawn ───────────────────────────────────────────────────────
@@ -45,7 +65,7 @@ export async function scheduleNextSpawn(guildId: string) {
   }
 
   logger.info({ guildId, delayMs }, "Next card spawn scheduled");
-  const timer = setTimeout(() => spawnCard(guildId), delayMs);
+  const timer = setTimeout(() => doSpawnBatch(guildId), delayMs);
   spawnTimers.set(guildId, timer);
 }
 
@@ -54,102 +74,50 @@ export function clearSpawnTimer(guildId: string) {
   if (t) { clearTimeout(t); spawnTimers.delete(guildId); }
 }
 
-// ── Build spawn embed ─────────────────────────────────────────────────────────
-function buildSpawnEmbed(card: Card, windowSeconds: number): EmbedBuilder {
-  const rarity = card.rarity as Rarity;
-  const cardType = card.cardType as CardType;
-  const color = RARITY_COLORS[rarity] ?? 0x7289da;
-  const rarityEmoji = RARITY_EMOJI[rarity] ?? "🃏";
-  const typeEmoji = TYPE_EMOJI[cardType] ?? "🪖";
-  const rarityLabel = RARITY_LABELS[rarity] ?? card.rarity;
+// ── Spawn batch (timer-triggered, respects cardsPerSpawn) ─────────────────────
+async function doSpawnBatch(guildId: string) {
+  const settings = await getOrCreateGuildSettings(guildId);
+  let count = settings.cardsPerSpawn;
+  if (count === -1) count = Math.floor(Math.random() * 3) + 1;
+  if (count < 1) count = 1;
 
-  const badges: string[] = [];
-  if (card.isLimitedEdition) badges.push("💎 **LIMITED EDITION**");
-  if (card.isEventExclusive) badges.push("🎆 **EVENT EXCLUSIVE**");
-  if (card.maxCopies) badges.push(`📦 Only ${card.maxCopies - card.totalMinted} copies remaining`);
-
-  const embed = new EmbedBuilder()
-    .setTitle(`${rarityEmoji} A DN Card has appeared!`)
-    .setColor(color)
-    .addFields(
-      { name: `${typeEmoji} ${card.name}`, value: card.description, inline: false },
-      {
-        name: "Rarity",
-        value: `${rarityEmoji} ${rarityLabel}`,
-        inline: true,
-      },
-      {
-        name: "Worth",
-        value: `💠 ${card.worthValue.toLocaleString()} shards`,
-        inline: true,
-      },
-    );
-
-  if (badges.length > 0) {
-    embed.addFields({ name: "⚠️ Special", value: badges.join("\n"), inline: false });
+  for (let i = 0; i < count; i++) {
+    if (i > 0) await sleep(5000); // 5s gap between cards in a batch
+    await doSingleSpawn(guildId);
   }
 
-  if (card.flavor) {
-    embed.setFooter({ text: card.flavor });
-  }
-
-  embed
-    .setDescription(
-      `${badges.length > 0 ? "\n" : ""}Type the card name exactly to catch it:\n\`\`\`${card.name}\`\`\``,
-    )
-    .setTimestamp();
-
-  if (card.imageUrl) embed.setImage(card.imageUrl);
-
-  return embed;
+  scheduleNextSpawn(guildId);
 }
 
-// ── Spawn a card ──────────────────────────────────────────────────────────────
-export async function spawnCard(guildId: string, forcedCardId?: number, isForced = false): Promise<void> {
+// ── Core single-card spawn (no scheduling) ────────────────────────────────────
+async function doSingleSpawn(guildId: string, forcedCardId?: number, isForced = false): Promise<void> {
   if (!botClient) return;
-
   const settings = await getOrCreateGuildSettings(guildId);
-  if (!settings.spawnChannelId) {
-    if (!isForced) scheduleNextSpawn(guildId);
-    return;
-  }
-
-  const current = activeSpawns.get(guildId);
-  if (current && !current.caught) {
-    if (!isForced) scheduleNextSpawn(guildId);
-    return;
-  }
+  if (!settings.spawnChannelId) return;
 
   let card: Card | undefined;
   if (forcedCardId) {
     const cards = await getAllCards();
     card = cards.find(c => c.id === forcedCardId);
   } else {
-    card = await pickRandomCard();
+    const rarityWeights = getGuildRarityWeights(settings);
+    card = await pickRandomCard(rarityWeights);
   }
+  if (!card) return;
 
-  if (!card) {
-    if (!isForced) scheduleNextSpawn(guildId);
-    return;
-  }
-
-  // Respect maxCopies for limited edition
   if (card.maxCopies && card.totalMinted >= card.maxCopies) {
     logger.info({ cardId: card.id }, "Card max copies reached, skipping");
-    if (!isForced) scheduleNextSpawn(guildId);
     return;
   }
 
   const channel = botClient.channels.cache.get(settings.spawnChannelId) as TextChannel | undefined;
-  if (!channel) {
-    if (!isForced) scheduleNextSpawn(guildId);
-    return;
-  }
+  if (!channel) return;
 
   const embed = buildSpawnEmbed(card, settings.catchWindowSeconds);
   const spawnLog = await logSpawn(guildId, settings.spawnChannelId, card.id, isForced);
   const message = await channel.send({ embeds: [embed] });
 
+  const spawnId = `${Date.now()}-${Math.random()}`;
   const spawn: ActiveSpawn = {
     cardId: card.id,
     cardName: card.name,
@@ -158,20 +126,25 @@ export async function spawnCard(guildId: string, forcedCardId?: number, isForced
     expiresAt: new Date(Date.now() + settings.catchWindowSeconds * 1000),
     caught: false,
   };
-  activeSpawns.set(guildId, spawn);
+
+  let guildSpawns = activeSpawns.get(guildId);
+  if (!guildSpawns) { guildSpawns = new Map(); activeSpawns.set(guildId, guildSpawns); }
+  guildSpawns.set(spawnId, spawn);
 
   // Auto-expire
+  const cardRef = card;
   setTimeout(async () => {
-    const s = activeSpawns.get(guildId);
-    if (s && !s.caught && s.spawnLogId === spawn.spawnLogId) {
-      activeSpawns.delete(guildId);
+    const gs = activeSpawns.get(guildId);
+    const s = gs?.get(spawnId);
+    if (s && !s.caught) {
+      gs?.delete(spawnId);
       try {
-        const rarity = card!.rarity as Rarity;
+        const rarity = cardRef.rarity as Rarity;
         await message.edit({
           embeds: [
             new EmbedBuilder()
               .setTitle(`${RARITY_EMOJI[rarity]} Card escaped!`)
-              .setDescription(`**${card!.name}** was not caught in time and vanished.`)
+              .setDescription(`**${cardRef.name}** was not caught in time and vanished.`)
               .setColor(0x636e72)
               .setTimestamp(),
           ],
@@ -179,40 +152,52 @@ export async function spawnCard(guildId: string, forcedCardId?: number, isForced
       } catch { /* deleted */ }
     }
   }, settings.catchWindowSeconds * 1000);
+}
 
-  if (!isForced) scheduleNextSpawn(guildId);
+// ── Public API: force-drop a specific card (admin use) ────────────────────────
+export async function spawnCard(guildId: string, forcedCardId?: number, isForced = false): Promise<void> {
+  await doSingleSpawn(guildId, forcedCardId, isForced);
 }
 
 // ── Handle catch attempt ──────────────────────────────────────────────────────
 export async function handleCatchAttempt(guildId: string, userId: string, guess: string): Promise<boolean> {
-  const spawn = activeSpawns.get(guildId);
-  if (!spawn || spawn.caught) return false;
-  if (new Date() > spawn.expiresAt) { activeSpawns.delete(guildId); return false; }
-  if (guess.trim().toLowerCase() !== spawn.cardName.toLowerCase()) return false;
+  const guildSpawns = activeSpawns.get(guildId);
+  if (!guildSpawns || guildSpawns.size === 0) return false;
 
-  spawn.caught = true;
-  activeSpawns.delete(guildId);
+  const normalizedGuess = guess.trim().toLowerCase();
+  const now = new Date();
 
-  await catchCard(guildId, userId, spawn.cardId);
-  await markCaught(spawn.spawnLogId, userId);
+  for (const [spawnId, spawn] of guildSpawns) {
+    if (now > spawn.expiresAt) { guildSpawns.delete(spawnId); continue; }
+    if (normalizedGuess !== spawn.cardName.toLowerCase()) continue;
 
-  try {
-    await spawn.message.edit({
-      embeds: [
-        new EmbedBuilder()
-          .setTitle("🎉 Card caught!")
-          .setDescription(`**${spawn.cardName}** was caught by <@${userId}>!\nCheck your collection with \`!card collection\``)
-          .setColor(0x00b894)
-          .setTimestamp(),
-      ],
-    });
-  } catch { /* deleted */ }
+    // Caught!
+    spawn.caught = true;
+    guildSpawns.delete(spawnId);
 
-  return true;
+    await catchCard(guildId, userId, spawn.cardId);
+    await markCaught(spawn.spawnLogId, userId);
+
+    try {
+      await spawn.message.edit({
+        embeds: [
+          new EmbedBuilder()
+            .setTitle("🎉 Card caught!")
+            .setDescription(`**${spawn.cardName}** was caught by <@${userId}>!\nCheck your collection with \`/collection\``)
+            .setColor(0x00b894)
+            .setTimestamp(),
+        ],
+      });
+    } catch { /* deleted */ }
+
+    return true;
+  }
+  return false;
 }
 
-export function getActiveSpawn(guildId: string): ActiveSpawn | undefined {
-  return activeSpawns.get(guildId);
+export function getActiveSpawns(guildId: string): ActiveSpawn[] {
+  const gs = activeSpawns.get(guildId);
+  return gs ? [...gs.values()] : [];
 }
 
 export async function initAllGuilds(client: Client) {
@@ -223,3 +208,34 @@ export async function initAllGuilds(client: Client) {
     }
   }
 }
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function buildSpawnEmbed(card: Card, windowSeconds: number): EmbedBuilder {
+  const rarity = card.rarity as Rarity;
+  const cardType = card.cardType as CardType;
+  const color = RARITY_COLORS[rarity] ?? 0x7289da;
+  const badges: string[] = [];
+  if (card.isLimitedEdition) badges.push("💎 **LIMITED EDITION**");
+  if (card.isEventExclusive) badges.push("🎆 **EVENT EXCLUSIVE**");
+  if (card.maxCopies) badges.push(`📦 Only ${card.maxCopies - card.totalMinted} copies remaining`);
+
+  const embed = new EmbedBuilder()
+    .setTitle(`${RARITY_EMOJI[rarity]} A DN Card has appeared!`)
+    .setColor(color)
+    .setDescription(
+      `${badges.length > 0 ? badges.join("\n") + "\n\n" : ""}` +
+      `Type the card name exactly to catch it:\n\`\`\`${card.name}\`\`\``,
+    )
+    .addFields(
+      { name: `${TYPE_EMOJI[cardType]} ${card.name}`, value: card.description || "\u200b", inline: false },
+      { name: "Rarity", value: `${RARITY_EMOJI[rarity]} ${RARITY_LABELS[rarity]}`, inline: true },
+      { name: "Worth", value: `💠 ${card.worthValue.toLocaleString()} shards`, inline: true },
+    )
+    .setTimestamp();
+
+  if (card.flavor) embed.setFooter({ text: card.flavor });
+  if (card.imageUrl) embed.setImage(card.imageUrl);
+  return embed;
+}
+
+const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));

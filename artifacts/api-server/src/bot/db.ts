@@ -12,7 +12,6 @@ import { logger } from "../lib/logger.js";
 export async function seedDefaultCards() {
   const existing = await db.select({ id: cardsTable.id }).from(cardsTable).limit(1);
   if (existing.length > 0) {
-    // Upsert all defaults in case new fields were added
     for (const card of DEFAULT_CARDS) {
       await db
         .insert(cardsTable)
@@ -106,15 +105,19 @@ export async function removeCard(name: string) {
   await db.delete(cardsTable).where(eq(cardsTable.id, card.id));
 }
 
-// ── Weighted Random Card Pick ─────────────────────────────────────────────────
-export async function pickRandomCard(): Promise<Card | undefined> {
+// ── Weighted Random Card Pick (with optional guild rarity weight overrides) ────
+export async function pickRandomCard(rarityWeights?: Record<string, number>): Promise<Card | undefined> {
   const cards = (await getAllCards()).filter(c => c.droppable);
   if (cards.length === 0) return undefined;
 
-  const totalWeight = cards.reduce((sum, c) => sum + c.dropWeight, 0);
+  const getWeight = (card: Card) => rarityWeights
+    ? (rarityWeights[card.rarity] ?? card.dropWeight)
+    : card.dropWeight;
+
+  const totalWeight = cards.reduce((sum, c) => sum + getWeight(c), 0);
   let rand = Math.random() * totalWeight;
   for (const card of cards) {
-    rand -= card.dropWeight;
+    rand -= getWeight(card);
     if (rand <= 0) return card;
   }
   return cards[cards.length - 1];
@@ -138,10 +141,29 @@ export async function catchCard(guildId: string, userId: string, cardId: number)
     await db.insert(collectionsTable).values({ guildId, userId, cardId, count: 1 });
   }
 
-  // Track total minted globally
   await db.update(cardsTable)
     .set({ totalMinted: sql`${cardsTable.totalMinted} + 1` })
     .where(eq(cardsTable.id, cardId));
+}
+
+export async function removeCardFromUser(
+  guildId: string, userId: string, cardId: number,
+): Promise<{ success: boolean; remaining: number }> {
+  const [entry] = await db.select().from(collectionsTable)
+    .where(and(
+      eq(collectionsTable.guildId, guildId),
+      eq(collectionsTable.userId, userId),
+      eq(collectionsTable.cardId, cardId),
+    ));
+  if (!entry || entry.count < 1) return { success: false, remaining: 0 };
+
+  const newCount = entry.count - 1;
+  if (newCount === 0) {
+    await db.delete(collectionsTable).where(eq(collectionsTable.id, entry.id));
+  } else {
+    await db.update(collectionsTable).set({ count: newCount }).where(eq(collectionsTable.id, entry.id));
+  }
+  return { success: true, remaining: newCount };
 }
 
 export async function getUserCollection(guildId: string, userId: string) {
@@ -217,6 +239,17 @@ export async function addShards(guildId: string, userId: string, amount: number)
     .where(eq(userCurrencyTable.id, currency.id));
 }
 
+export async function deductShards(guildId: string, userId: string, amount: number): Promise<{ success: boolean; remaining: number }> {
+  const currency = await getOrCreateCurrency(guildId, userId);
+  const newBalance = Math.max(0, currency.shards - amount);
+  const actualDeducted = currency.shards - newBalance;
+  if (actualDeducted === 0) return { success: false, remaining: currency.shards };
+  await db.update(userCurrencyTable)
+    .set({ shards: newBalance, updatedAt: new Date() })
+    .where(eq(userCurrencyTable.id, currency.id));
+  return { success: true, remaining: newBalance };
+}
+
 export async function spendShards(guildId: string, userId: string, amount: number): Promise<boolean> {
   const currency = await getOrCreateCurrency(guildId, userId);
   if (currency.shards < amount) return false;
@@ -234,7 +267,6 @@ export async function burnCard(guildId: string, userId: string, cardId: number):
       eq(collectionsTable.userId, userId),
       eq(collectionsTable.cardId, cardId),
     ));
-
   if (!entry || entry.count < 1) return { success: false, shardsGained: 0, remaining: 0 };
 
   const [card] = await db.select({ burnValue: cardsTable.burnValue })
@@ -247,7 +279,6 @@ export async function burnCard(guildId: string, userId: string, cardId: number):
   } else {
     await db.update(collectionsTable).set({ count: newCount }).where(eq(collectionsTable.id, entry.id));
   }
-
   await addShards(guildId, userId, card.burnValue);
   return { success: true, shardsGained: card.burnValue, remaining: newCount };
 }
@@ -271,9 +302,9 @@ export async function getTrade(tradeId: number): Promise<Trade | undefined> {
   return row;
 }
 
-export async function updateTradeStatus(tradeId: number, status: "accepted" | "declined" | "cancelled" | "expired", messageId?: string) {
+export async function updateTradeStatus(tradeId: number, status: "accepted" | "declined" | "cancelled" | "expired") {
   await db.update(tradesTable)
-    .set({ status, resolvedAt: new Date(), ...(messageId ? { messageId } : {}) })
+    .set({ status, resolvedAt: new Date() })
     .where(eq(tradesTable.id, tradeId));
 }
 
@@ -303,30 +334,24 @@ export async function getPendingTradesFor(guildId: string, userId: string) {
 }
 
 export async function executeTradeSwap(trade: Trade): Promise<boolean> {
-  // Verify both parties still own the cards
   const initiatorEntry = await getCollectionEntry(trade.guildId, trade.initiatorId, trade.offeredCardId);
   const targetEntry = await getCollectionEntry(trade.guildId, trade.targetId, trade.requestedCardId);
-
   if (!initiatorEntry || initiatorEntry.count < 1) return false;
   if (!targetEntry || targetEntry.count < 1) return false;
 
-  // Remove from both
   if (initiatorEntry.count === 1) {
     await db.delete(collectionsTable).where(eq(collectionsTable.id, initiatorEntry.id));
   } else {
     await db.update(collectionsTable).set({ count: initiatorEntry.count - 1 }).where(eq(collectionsTable.id, initiatorEntry.id));
   }
-
   if (targetEntry.count === 1) {
     await db.delete(collectionsTable).where(eq(collectionsTable.id, targetEntry.id));
   } else {
     await db.update(collectionsTable).set({ count: targetEntry.count - 1 }).where(eq(collectionsTable.id, targetEntry.id));
   }
 
-  // Give each other's cards
   await catchCard(trade.guildId, trade.initiatorId, trade.requestedCardId);
   await catchCard(trade.guildId, trade.targetId, trade.offeredCardId);
-
   return true;
 }
 
