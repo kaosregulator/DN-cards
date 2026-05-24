@@ -85,6 +85,23 @@ export async function handleAutocomplete(interaction: AutocompleteInteraction): 
       return;
     }
 
+    // ── /trade want — only cards the TARGET user owns ───────────────────────
+    if (cmd === "trade" && focused.name === "want" && interaction.guild) {
+      const targetOpt = interaction.options.get("user", false);
+      const targetId = targetOpt?.user?.id;
+      if (targetId && targetId !== interaction.user.id) {
+        const targetOwned = await getUserCollection(interaction.guild.id, targetId);
+        if (targetOwned.length === 0) {
+          await interaction.respond([{ name: `⚠️ ${targetOpt?.user?.username ?? "They"} have no cards yet`, value: "" }]);
+          return;
+        }
+        const pool = targetOwned.map(o => ({ name: o.name, rarity: o.rarity }));
+        await interaction.respond(await suggestCardNames(query, pool));
+        return;
+      }
+      // No user picked yet → fall through to full roster so the dropdown isn't empty
+    }
+
     // ── /wishlist remove — only suggest cards already on the user's wishlist ─
     if (cmd === "wishlist" && focused.name === "name" && interaction.guild) {
       const sub = interaction.options.getSubcommand(false);
