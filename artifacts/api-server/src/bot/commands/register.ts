@@ -71,6 +71,8 @@ export function buildCommands() {
         .addUserOption(o => o.setName("user").setDescription("View another member's wishlist")))),
 
     // ── Quick Admin Slash Commands ────────────────────────────────────────────
+    cmd("config", "(Admin) Open the server config panel — visual toggles for catch mode, intervals, etc.", s => s),
+
     cmd("drop", "(Admin) Force-drop a card — for events and giveaways", s => s
       .addStringOption(o => o.setName("name").setDescription("Card name — leave empty for a random drop").setAutocomplete(true))),
 
@@ -110,7 +112,7 @@ export const USER_COMMAND_NAMES = new Set([
 ]);
 
 export const ADMIN_COMMAND_NAMES = new Set([
-  "drop", "give", "giveshards", "takeback", "takeshards",
+  "config", "drop", "give", "giveshards", "takeback", "takeshards",
 ]);
 
 export const CARDSET_COMMAND_NAMES = new Set([

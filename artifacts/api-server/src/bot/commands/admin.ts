@@ -5,6 +5,7 @@ import {
 } from "../db.js";
 import { spawnCard, scheduleNextSpawn } from "../spawn-manager.js";
 import { RARITY_EMOJI, RARITY_LABELS, type Rarity } from "../cards-data.js";
+import { handleConfigCommand } from "./config-panel.js";
 
 // ── Permission check ──────────────────────────────────────────────────────────
 async function checkAdmin(interaction: ChatInputCommandInteraction): Promise<boolean> {
@@ -21,6 +22,13 @@ export async function handleAdminCommand(
   cmd: string,
 ): Promise<void> {
   if (!interaction.guild) return;
+
+  // /config opens an ephemeral panel — it handles its own reply (no defer).
+  if (cmd === "config") {
+    await handleConfigCommand(interaction);
+    return;
+  }
+
   await interaction.deferReply();
 
   const ok = await checkAdmin(interaction);
