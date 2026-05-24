@@ -2,7 +2,7 @@ import type { ChatInputCommandInteraction } from "discord.js";
 import { EmbedBuilder, MessageFlags } from "discord.js";
 
 // Commands whose results are personal/spammy and should only be seen by the user.
-const EPHEMERAL_COMMANDS = new Set(["burn", "shards", "trades", "help"]);
+const EPHEMERAL_COMMANDS = new Set(["burn", "shards", "trades", "help", "daily", "achievements"]);
 import {
   getUserCollection, getAllCards, getLeaderboard,
   getOrCreateCurrency, burnCard, getCardByName, getUserCardCount,
@@ -13,6 +13,9 @@ import {
   type Rarity, type CardType,
 } from "../cards-data.js";
 import { handleTrade, handleAccept, handleDecline, handleListTrades } from "./trading.js";
+import { handleDaily, handleAchievementsCommand } from "./daily.js";
+import { handlePack } from "./pack.js";
+import { checkAchievements, formatUnlockLine } from "../achievements.js";
 
 export async function handleUserCommand(
   interaction: ChatInputCommandInteraction,
@@ -214,6 +217,13 @@ export async function handleUserCommand(
       `+💠 **${result.shardsGained.toLocaleString()} shards** — New balance: **${currency.shards.toLocaleString()}**\n` +
       (result.remaining > 0 ? `You still have **×${result.remaining}** copies.` : "*Last copy burned.*"),
     );
+    const newlyBurn = await checkAchievements(guildId, interaction.user.id);
+    if (newlyBurn.length > 0) {
+      await interaction.followUp({
+        content: "🏆 **Achievement unlocked!**\n" + newlyBurn.map(formatUnlockLine).join("\n"),
+        flags: MessageFlags.Ephemeral,
+      });
+    }
     return;
   }
 
@@ -222,6 +232,9 @@ export async function handleUserCommand(
   if (sub === "accept") { await handleAccept(interaction); return; }
   if (sub === "decline") { await handleDecline(interaction); return; }
   if (sub === "trades") { await handleListTrades(interaction); return; }
+  if (sub === "daily") { await handleDaily(interaction); return; }
+  if (sub === "pack") { await handlePack(interaction); return; }
+  if (sub === "achievements") { await handleAchievementsCommand(interaction); return; }
 
   // ── /help ─────────────────────────────────────────────────────────────────────
   const embed = new EmbedBuilder()
@@ -231,10 +244,13 @@ export async function handleUserCommand(
       "When a card spawns in the drop channel, **type its name exactly** to catch it!\n" +
       "Most card-name fields **autocomplete** as you type — pick from the dropdown.\n\n" +
       "**📦 Collection**\n" +
-      "`/collection` · `/rank` · `/info name:<card>` · `/list` · `/top`\n\n" +
+      "`/collection` · `/rank` · `/info name:<card>` · `/list` · `/top`\n" +
+      "`/achievements [user]` — view unlocked badges\n\n" +
       "**🔥 Economy** *(private — only you see the reply)*\n" +
       "`/burn name:<card>` — destroy a duplicate for DN Shards\n" +
-      "`/shards` — check your balance\n\n" +
+      "`/shards` — check your balance\n" +
+      "`/daily` — claim daily shards (streak bonus!)\n" +
+      "`/pack` — open a 5-card pack for 💠 250\n\n" +
       "**🔄 Trading**\n" +
       "`/trade user:@Member offer:<card> want:<card>`\n" +
       "`/trades` · `/accept id:<ID>` · `/decline id:<ID>`\n\n" +

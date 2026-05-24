@@ -2,6 +2,8 @@ import { Client, GatewayIntentBits, Partials, Events, REST, Routes, type Interac
 import { logger } from "../lib/logger.js";
 import { seedDefaultCards, burnCard, getOrCreateCurrency } from "./db.js";
 import { initSpawnManager, initAllGuilds, handleCatchAttempt, scheduleNextSpawn } from "./spawn-manager.js";
+import { checkAchievements, formatUnlockLine } from "./achievements.js";
+import type { TextChannel } from "discord.js";
 import { handleAdminCommand } from "./commands/admin.js";
 import { handleUserCommand } from "./commands/user.js";
 import { handlePrefixCommand } from "./commands/prefix.js";
@@ -94,6 +96,14 @@ export async function startBot() {
                 `New balance: **${currency.shards.toLocaleString()}** 💠 — check \`/shards\` anytime.`,
               flags: MessageFlags.Ephemeral,
             });
+            // Achievement check (e.g. Pyromaniac)
+            const burnUnlocks = await checkAchievements(guildId, userId).catch(() => []);
+            if (burnUnlocks.length > 0) {
+              await interaction.followUp({
+                content: "🏆 **Achievement unlocked!**\n" + burnUnlocks.map(formatUnlockLine).join("\n"),
+                flags: MessageFlags.Ephemeral,
+              }).catch(() => { /* ignore */ });
+            }
           } else {
             await interaction.message.edit({
               content: `💾 <@${userId}> kept the card.`,
@@ -164,6 +174,16 @@ export async function startBot() {
     });
     if (caught) {
       try { await msg.react("🎉"); } catch { /* ignore */ }
+      const unlocked = await checkAchievements(msg.guild.id, msg.author.id).catch(() => []);
+      if (unlocked.length > 0) {
+        const ch = msg.channel as TextChannel;
+        await ch.send({
+          content:
+            `🏆 <@${msg.author.id}> unlocked **${unlocked.length}** achievement` +
+            `${unlocked.length === 1 ? "" : "s"}!\n` +
+            unlocked.map(formatUnlockLine).join("\n"),
+        }).catch(() => { /* ignore */ });
+      }
     }
   });
 

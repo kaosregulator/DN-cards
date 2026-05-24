@@ -284,38 +284,69 @@ export async function getOrCreateCurrency(guildId: string, userId: string) {
   return created;
 }
 
+// Atomic: never lose increments under concurrent callers.
 export async function addShards(guildId: string, userId: string, amount: number) {
-  const currency = await getOrCreateCurrency(guildId, userId);
+  await getOrCreateCurrency(guildId, userId);
+  const earnedDelta = Math.max(0, amount);
   await db.update(userCurrencyTable)
     .set({
-      shards: currency.shards + amount,
-      totalEarned: currency.totalEarned + Math.max(0, amount),
+      shards: sql`${userCurrencyTable.shards} + ${amount}`,
+      totalEarned: sql`${userCurrencyTable.totalEarned} + ${earnedDelta}`,
       updatedAt: new Date(),
     })
-    .where(eq(userCurrencyTable.id, currency.id));
+    .where(and(eq(userCurrencyTable.guildId, guildId), eq(userCurrencyTable.userId, userId)));
 }
 
+// Atomic: never goes below 0 even under concurrency.
 export async function deductShards(guildId: string, userId: string, amount: number): Promise<{ success: boolean; remaining: number }> {
-  const currency = await getOrCreateCurrency(guildId, userId);
-  const newBalance = Math.max(0, currency.shards - amount);
-  const actualDeducted = currency.shards - newBalance;
-  if (actualDeducted === 0) return { success: false, remaining: currency.shards };
-  await db.update(userCurrencyTable)
-    .set({ shards: newBalance, updatedAt: new Date() })
-    .where(eq(userCurrencyTable.id, currency.id));
-  return { success: true, remaining: newBalance };
+  await getOrCreateCurrency(guildId, userId);
+  const [row] = await db.update(userCurrencyTable)
+    .set({
+      shards: sql`GREATEST(0, ${userCurrencyTable.shards} - ${amount})`,
+      updatedAt: new Date(),
+    })
+    .where(and(eq(userCurrencyTable.guildId, guildId), eq(userCurrencyTable.userId, userId)))
+    .returning({ shards: userCurrencyTable.shards });
+  if (!row) return { success: false, remaining: 0 };
+  return { success: row.shards >= 0, remaining: row.shards };
 }
 
+// Atomic: only deducts if balance >= amount. Returns false if insufficient.
 export async function spendShards(guildId: string, userId: string, amount: number): Promise<boolean> {
-  const currency = await getOrCreateCurrency(guildId, userId);
-  if (currency.shards < amount) return false;
+  await getOrCreateCurrency(guildId, userId);
+  const rows = await db.update(userCurrencyTable)
+    .set({
+      shards: sql`${userCurrencyTable.shards} - ${amount}`,
+      updatedAt: new Date(),
+    })
+    .where(and(
+      eq(userCurrencyTable.guildId, guildId),
+      eq(userCurrencyTable.userId, userId),
+      sql`${userCurrencyTable.shards} >= ${amount}`,
+    ))
+    .returning({ id: userCurrencyTable.id });
+  return rows.length > 0;
+}
+
+// Atomic refund — credit shards back without affecting totalEarned.
+export async function refundShards(guildId: string, userId: string, amount: number) {
+  await getOrCreateCurrency(guildId, userId);
   await db.update(userCurrencyTable)
-    .set({ shards: currency.shards - amount, updatedAt: new Date() })
-    .where(eq(userCurrencyTable.id, currency.id));
-  return true;
+    .set({
+      shards: sql`${userCurrencyTable.shards} + ${amount}`,
+      updatedAt: new Date(),
+    })
+    .where(and(eq(userCurrencyTable.guildId, guildId), eq(userCurrencyTable.userId, userId)));
 }
 
 // ── Burn a card ───────────────────────────────────────────────────────────────
+export async function incrementCardsBurned(guildId: string, userId: string, by: number = 1) {
+  await getOrCreateCurrency(guildId, userId);
+  await db.update(userCurrencyTable)
+    .set({ cardsBurned: sql`${userCurrencyTable.cardsBurned} + ${by}` })
+    .where(and(eq(userCurrencyTable.guildId, guildId), eq(userCurrencyTable.userId, userId)));
+}
+
 export async function burnCard(guildId: string, userId: string, cardId: number): Promise<{ success: boolean; shardsGained: number; remaining: number }> {
   const [entry] = await db.select().from(collectionsTable)
     .where(and(
@@ -336,6 +367,7 @@ export async function burnCard(guildId: string, userId: string, cardId: number):
     await db.update(collectionsTable).set({ count: newCount }).where(eq(collectionsTable.id, entry.id));
   }
   await addShards(guildId, userId, card.burnValue);
+  await incrementCardsBurned(guildId, userId, 1);
   return { success: true, shardsGained: card.burnValue, remaining: newCount };
 }
 

@@ -45,6 +45,13 @@ export function buildCommands() {
 
     cmd("help", "(User) Show DN Cards commands", s => s),
 
+    cmd("daily", "(User) Claim your daily DN Shards reward", s => s),
+
+    cmd("pack", "(User) Open a 5-card pack for DN Shards", s => s),
+
+    cmd("achievements", "(User) View unlocked achievements", s => s
+      .addUserOption(o => o.setName("user").setDescription("View another member's achievements"))),
+
     // ── Quick Admin Slash Commands ────────────────────────────────────────────
     cmd("drop", "(Admin) Force-drop a card — for events and giveaways", s => s
       .addStringOption(o => o.setName("name").setDescription("Card name — leave empty for a random drop").setAutocomplete(true))),
@@ -81,6 +88,7 @@ export function buildCommands() {
 export const USER_COMMAND_NAMES = new Set([
   "collection", "rank", "info", "list", "top",
   "burn", "shards", "trade", "trades", "accept", "decline", "help",
+  "daily", "pack", "achievements",
 ]);
 
 export const ADMIN_COMMAND_NAMES = new Set([

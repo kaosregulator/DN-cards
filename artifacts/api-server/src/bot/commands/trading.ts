@@ -97,6 +97,26 @@ export async function handleAccept(interaction: ChatInputCommandInteraction): Pr
   await interaction.editReply(
     `✅ Trade #${tradeId} complete! Cards swapped.\n<@${trade.initiatorId}> and <@${trade.targetId}> check \`/collection\`!`,
   );
+
+  // Achievements for both parties (e.g. Diplomat on first completed trade,
+  // plus any collection-based unlocks from receiving a new card).
+  const { checkAchievements, formatUnlockLine } = await import("../achievements.js");
+  const [initUnlocks, targUnlocks] = await Promise.all([
+    checkAchievements(trade.guildId, trade.initiatorId).catch(() => []),
+    checkAchievements(trade.guildId, trade.targetId).catch(() => []),
+  ]);
+  const parts: string[] = [];
+  if (initUnlocks.length > 0) {
+    parts.push(`<@${trade.initiatorId}>\n` + initUnlocks.map(formatUnlockLine).join("\n"));
+  }
+  if (targUnlocks.length > 0) {
+    parts.push(`<@${trade.targetId}>\n` + targUnlocks.map(formatUnlockLine).join("\n"));
+  }
+  if (parts.length > 0 && interaction.channel && "send" in interaction.channel) {
+    await interaction.channel.send({
+      content: "🏆 **Achievement unlocked!**\n" + parts.join("\n\n"),
+    }).catch(() => { /* ignore */ });
+  }
 }
 
 // ── /decline ──────────────────────────────────────────────────────────────────

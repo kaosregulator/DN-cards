@@ -1,6 +1,6 @@
 import {
   pgTable, text, serial, integer, timestamp,
-  boolean, real, pgEnum,
+  boolean, real, pgEnum, uniqueIndex,
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
@@ -68,10 +68,38 @@ export const userCurrencyTable = pgTable("user_currency", {
   userId: text("user_id").notNull(),
   shards: integer("shards").notNull().default(0),
   totalEarned: integer("total_earned").notNull().default(0),
+  packsOpened: integer("packs_opened").notNull().default(0),
+  cardsBurned: integer("cards_burned").notNull().default(0),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
 export type UserCurrency = typeof userCurrencyTable.$inferSelect;
+
+// ── Daily Claims ──────────────────────────────────────────────────────────────
+export const dailyClaimsTable = pgTable("daily_claims", {
+  id: serial("id").primaryKey(),
+  guildId: text("guild_id").notNull(),
+  userId: text("user_id").notNull(),
+  lastClaimedAt: timestamp("last_claimed_at").notNull().defaultNow(),
+  streak: integer("streak").notNull().default(0),
+}, t => ({
+  uniqGuildUser: uniqueIndex("daily_claims_guild_user_uniq").on(t.guildId, t.userId),
+}));
+
+export type DailyClaim = typeof dailyClaimsTable.$inferSelect;
+
+// ── Achievements (unlocked) ───────────────────────────────────────────────────
+export const achievementsTable = pgTable("achievements_unlocked", {
+  id: serial("id").primaryKey(),
+  guildId: text("guild_id").notNull(),
+  userId: text("user_id").notNull(),
+  achievementKey: text("achievement_key").notNull(),
+  unlockedAt: timestamp("unlocked_at").notNull().defaultNow(),
+}, t => ({
+  uniqUserAchievement: uniqueIndex("achievements_user_key_uniq").on(t.guildId, t.userId, t.achievementKey),
+}));
+
+export type AchievementUnlock = typeof achievementsTable.$inferSelect;
 
 // ── Trades ────────────────────────────────────────────────────────────────────
 export const tradesTable = pgTable("trades", {
