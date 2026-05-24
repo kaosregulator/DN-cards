@@ -1,4 +1,4 @@
-import type { ChatInputCommandInteraction, GuildMember } from "discord.js";
+import { MessageFlags, type ChatInputCommandInteraction, type GuildMember } from "discord.js";
 import {
   isAdmin, getAllCards, addShards, catchCard, getOrCreateGuildSettings,
   removeCardFromUser, deductShards,
@@ -29,7 +29,10 @@ export async function handleAdminCommand(
     return;
   }
 
-  await interaction.deferReply();
+  // All admin replies are ephemeral — only the staff member running the
+  // command sees the confirmation. The side effects (card drops, etc.)
+  // are already broadcast publicly through their own messages.
+  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
   const ok = await checkAdmin(interaction);
   if (!ok) {
