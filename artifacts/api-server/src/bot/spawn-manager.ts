@@ -294,7 +294,10 @@ async function awardSpawn(guildId: string, spawnId: string, userId: string): Pro
   setTimeout(async () => {
     try {
       const keptEmbed = await buildPostDecisionEmbed(spawn.cardId, userId, "kept");
-      if (keptEmbed) await spawn.message.edit({ embeds: [keptEmbed], components: [] });
+      if (keptEmbed) await spawn.message.edit({
+        embeds: [keptEmbed],
+        components: [buildDisabledDecisionRow(guildId, userId, spawn.cardId, spawn.burnValue, "keep")],
+      });
     } catch { /* deleted */ }
   }, 90_000);
 
@@ -337,6 +340,30 @@ function buildDecisionRow(guildId: string, userId: string, cardId: number, burnV
       .setCustomId(`catch_trade:${guildId}:${userId}:${cardId}`)
       .setLabel("🔄 Offer Trade")
       .setStyle(ButtonStyle.Primary),
+  );
+}
+
+// Disabled (greyed-out) version of the decision row, used after the catcher
+// picks one of the three options so the buttons stay visible but inert.
+export function buildDisabledDecisionRow(
+  guildId: string, userId: string, cardId: number, burnValue: number, chosen: "burn" | "keep" | "trade",
+): ActionRowBuilder<ButtonBuilder> {
+  return new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder()
+      .setCustomId(`catch_burn_done:${guildId}:${userId}:${cardId}`)
+      .setLabel(chosen === "burn" ? `🔥 Burned (+${burnValue.toLocaleString()} 💠)` : `🔥 Burn (+${burnValue.toLocaleString()} 💠)`)
+      .setStyle(ButtonStyle.Secondary)
+      .setDisabled(true),
+    new ButtonBuilder()
+      .setCustomId(`catch_keep_done:${guildId}:${userId}:${cardId}`)
+      .setLabel(chosen === "keep" ? "💾 Kept" : "💾 Keep it")
+      .setStyle(ButtonStyle.Secondary)
+      .setDisabled(true),
+    new ButtonBuilder()
+      .setCustomId(`catch_trade_done:${guildId}:${userId}:${cardId}`)
+      .setLabel(chosen === "trade" ? "🔄 Open to Trade" : "🔄 Offer Trade")
+      .setStyle(ButtonStyle.Secondary)
+      .setDisabled(true),
   );
 }
 

@@ -1,7 +1,7 @@
 import { Client, GatewayIntentBits, Partials, Events, REST, Routes, type Interaction } from "discord.js";
 import { logger } from "../lib/logger.js";
 import { seedDefaultCards, burnCard, getOrCreateCurrency } from "./db.js";
-import { initSpawnManager, initAllGuilds, handleCatchAttempt, handleClaimButtonClick, scheduleNextSpawn, buildPostDecisionEmbed } from "./spawn-manager.js";
+import { initSpawnManager, initAllGuilds, handleCatchAttempt, handleClaimButtonClick, scheduleNextSpawn, buildPostDecisionEmbed, buildDisabledDecisionRow } from "./spawn-manager.js";
 import { handleConfigButton, handleConfigSelect } from "./commands/config-panel.js";
 import { checkAchievements, formatUnlockLine } from "./achievements.js";
 import { handleAdminCommand } from "./commands/admin.js";
@@ -89,7 +89,6 @@ export async function startBot() {
                 content: "✅ You've already claimed it — pick **Burn / Keep / Trade** above.",
                 flags: MessageFlags.Ephemeral,
               }).catch(() => { /* ignore */ });
-              setTimeout(() => { interaction.deleteReply().catch(() => { /* ignore */ }); }, 4000);
               return;
             }
             const reasonMsg =
@@ -97,7 +96,6 @@ export async function startBot() {
               : result.reason === "expired" ? "✅ You've already claimed it — pick **Burn / Keep / Trade** above."
               : "❌ This button isn't active right now.";
             await interaction.reply({ content: reasonMsg, flags: MessageFlags.Ephemeral }).catch(() => { /* ignore */ });
-            setTimeout(() => { interaction.deleteReply().catch(() => { /* ignore */ }); }, 4000);
           } else {
             await interaction.reply({
               content: `🎯 You claimed it! Check the spawn message for **Burn / Keep / Trade** options.`,
@@ -146,6 +144,7 @@ export async function startBot() {
           const allCards = await getAllCards();
           const card = allCards.find(c => c.id === cardId);
           const cardName = card?.name ?? "the card";
+          const burnValue = card?.burnValue ?? 0;
 
           if (action === "catch_burn") {
             const result = await burnCard(guildId, userId, cardId);
@@ -160,7 +159,10 @@ export async function startBot() {
             // Update the spawn embed to show the burn state in-channel.
             const burnedEmbed = await buildPostDecisionEmbed(cardId, userId, "burned");
             if (burnedEmbed) {
-              await interaction.message.edit({ embeds: [burnedEmbed], components: [] }).catch(() => { /* may be deleted */ });
+              await interaction.message.edit({
+                embeds: [burnedEmbed],
+                components: [buildDisabledDecisionRow(guildId, userId, cardId, burnValue, "burn")],
+              }).catch(() => { /* may be deleted */ });
             }
             // Private confirmation with full shard balance
             await interaction.reply({
@@ -179,7 +181,10 @@ export async function startBot() {
           } else if (action === "catch_keep") {
             const keptEmbed = await buildPostDecisionEmbed(cardId, userId, "kept");
             if (keptEmbed) {
-              await interaction.message.edit({ embeds: [keptEmbed], components: [] }).catch(() => { /* may be deleted */ });
+              await interaction.message.edit({
+                embeds: [keptEmbed],
+                components: [buildDisabledDecisionRow(guildId, userId, cardId, burnValue, "keep")],
+              }).catch(() => { /* may be deleted */ });
             }
             await interaction.reply({
               content: "💾 Kept! The card is in your collection — use `/collection` to view it.",
@@ -189,7 +194,10 @@ export async function startBot() {
             // catch_trade — card stays in collection; advertise it publicly
             const tradeEmbed = await buildPostDecisionEmbed(cardId, userId, "trade");
             if (tradeEmbed) {
-              await interaction.message.edit({ embeds: [tradeEmbed], components: [] }).catch(() => { /* may be deleted */ });
+              await interaction.message.edit({
+                embeds: [tradeEmbed],
+                components: [buildDisabledDecisionRow(guildId, userId, cardId, burnValue, "trade")],
+              }).catch(() => { /* may be deleted */ });
             }
             await interaction.reply({
               content: `🔄 You're now open to trading **${cardName}**! Others can use /trade to make an offer.`,
