@@ -2,11 +2,11 @@ import type { Message, GuildMember } from "discord.js";
 import {
   isAdmin, addAdmin, removeAdmin, listAdmins,
   getOrCreateGuildSettings, updateGuildSettings,
-  addCard, removeCard, getAllCards,
 } from "../db.js";
 import { scheduleNextSpawn, clearSpawnTimer } from "../spawn-manager.js";
-import { RARITY_EMOJI, RARITY_LABELS, RARITY_WEIGHTS, RARITY_WORTH, RARITY_BURN, type Rarity } from "../cards-data.js";
+import { RARITY_EMOJI, RARITY_WEIGHTS, type Rarity } from "../cards-data.js";
 import { startSetupWizard } from "./setup-wizard.js";
+import { startCardWizard } from "./card-wizard.js";
 
 // ── Permission check ──────────────────────────────────────────────────────────
 async function checkAdmin(msg: Message): Promise<boolean> {
@@ -25,7 +25,7 @@ function resolveChannel(msg: Message, arg: string): string | null {
   return found?.id ?? null;
 }
 
-// ── Time parser ───────────────────────────────────────────────────────────────
+// ── Time parser: "30m", "1h", "90s", "2d" or plain number of seconds ─────────
 function parseTime(s: string): number | null {
   const m = s.match(/^(\d+)(s|m|h|d)$/i);
   if (!m) { const n = parseInt(s, 10); return isNaN(n) ? null : n; }
@@ -57,15 +57,7 @@ export async function handlePrefixCommand(msg: Message): Promise<void> {
   const cmd = rawCmd?.toLowerCase();
   const guildId = msg.guild.id;
 
-  // !setup — interactive wizard
-  if (cmd === "setup") {
-    const ok = await checkAdmin(msg);
-    if (!ok) { await msg.reply("❌ Only admins can run the setup wizard."); return; }
-    await startSetupWizard(msg);
-    return;
-  }
-
-  // !help — show all prefix commands
+  // ── Public ─────────────────────────────────────────────────────────────────
   if (cmd === "help") {
     await msg.reply(
       "**DN Cards — Setup & Config Commands** (admin only)\n\n" +
@@ -79,16 +71,33 @@ export async function handlePrefixCommand(msg: Message): Promise<void> {
       "`!spawnenable` / `!spawndisable` — toggle auto-spawning\n" +
       "`!tradingenable` / `!tradingdisable` — toggle trading\n" +
       "`!settradechannel #channel` — set trade channel\n" +
-      "`!addcard <rarity> <Name> | <desc>` — add a standard card\n" +
-      "`!addlimited <rarity> <maxcopies> <Name> | <desc>` — add limited edition\n" +
-      "`!addevent <rarity> <Name> | <desc>` — add event exclusive\n" +
+      "`!addcard` — card creation wizard (standard)\n" +
+      "`!addlimited` — card creation wizard (limited edition)\n" +
+      "`!addevent` — card creation wizard (event exclusive)\n" +
       "`!removecard <Name>` — remove a card\n" +
       "`!addadmin @User` — grant bot admin access\n" +
       "`!removeadmin @User` — revoke bot admin access\n" +
       "`!listadmins` — list bot admins\n" +
       "`!settings` — view current settings\n\n" +
-      "*Use slash commands for player actions: `/collection`, `/burn`, `/trade`, etc.*",
+      "*Use slash commands for player actions: `/collection`, `/burn`, `/trade`, etc.*\n" +
+      "*Admin quick actions: `/drop`, `/give`, `/takeback`, `/giveshards`, `/takeshards`*",
     );
+    return;
+  }
+
+  if (cmd === "setup") {
+    const ok = await checkAdmin(msg);
+    if (!ok) { await msg.reply("❌ Only admins can run the setup wizard."); return; }
+    await startSetupWizard(msg);
+    return;
+  }
+
+  // ── Card creation wizards ──────────────────────────────────────────────────
+  if (cmd === "addcard" || cmd === "addlimited" || cmd === "addevent") {
+    const ok = await checkAdmin(msg);
+    if (!ok) { await msg.reply("❌ You don't have permission to add cards."); return; }
+    const kind = cmd === "addcard" ? "standard" : cmd === "addlimited" ? "limited" : "event";
+    await startCardWizard(msg, kind as "standard" | "limited" | "event");
     return;
   }
 
@@ -96,7 +105,7 @@ export async function handlePrefixCommand(msg: Message): Promise<void> {
   const ok = await checkAdmin(msg);
   if (!ok) { await msg.reply("❌ You don't have permission to use admin commands."); return; }
 
-  // !setchannel [#channel]
+  // ── !setchannel [#channel] ─────────────────────────────────────────────────
   if (cmd === "setchannel") {
     const arg = args[0] ?? `<#${msg.channelId}>`;
     const channelId = resolveChannel(msg, arg);
@@ -107,7 +116,7 @@ export async function handlePrefixCommand(msg: Message): Promise<void> {
     return;
   }
 
-  // !setinterval <time> OR !setinterval random <min> <max>
+  // ── !setinterval ───────────────────────────────────────────────────────────
   if (cmd === "setinterval") {
     if (args[0]?.toLowerCase() === "random") {
       const min = parseTime(args[1] ?? "");
@@ -119,22 +128,22 @@ export async function handlePrefixCommand(msg: Message): Promise<void> {
       const seconds = parseTime(args[0] ?? "");
       if (!seconds) { await msg.reply("❌ Usage: `!setinterval 30m` or `!setinterval 1h`"); return; }
       await updateGuildSettings(guildId, { useRandomInterval: false, spawnIntervalSeconds: seconds });
-      await msg.reply(`✅ Spawn interval → fixed **${args[0]}** (${seconds}s).`);
+      await msg.reply(`✅ Spawn interval → fixed **${args[0]}** (${formatTime(seconds)}).`);
     }
     scheduleNextSpawn(guildId);
     return;
   }
 
-  // !setwindow <time>
+  // ── !setwindow ─────────────────────────────────────────────────────────────
   if (cmd === "setwindow") {
     const seconds = parseTime(args[0] ?? "");
     if (!seconds) { await msg.reply("❌ Usage: `!setwindow 2m` or `!setwindow 90s`"); return; }
     await updateGuildSettings(guildId, { catchWindowSeconds: seconds });
-    await msg.reply(`✅ Catch window → **${args[0]}** (${seconds}s).`);
+    await msg.reply(`✅ Catch window → **${args[0]}** (${formatTime(seconds)}).`);
     return;
   }
 
-  // !setdrops <1|3|5|random>
+  // ── !setdrops ──────────────────────────────────────────────────────────────
   if (cmd === "setdrops") {
     const val = args[0]?.toLowerCase();
     const map: Record<string, number> = { "1": 1, "3": 3, "5": 5, "random": -1 };
@@ -145,7 +154,7 @@ export async function handlePrefixCommand(msg: Message): Promise<void> {
     return;
   }
 
-  // !setrarity <rarity> <weight>
+  // ── !setrarity ─────────────────────────────────────────────────────────────
   if (cmd === "setrarity") {
     const rarity = args[0]?.toLowerCase();
     const weight = parseInt(args[1] ?? "", 10);
@@ -165,7 +174,7 @@ export async function handlePrefixCommand(msg: Message): Promise<void> {
     return;
   }
 
-  // !spawnenable / !spawndisable
+  // ── Spawn toggle ───────────────────────────────────────────────────────────
   if (cmd === "spawnenable") {
     await updateGuildSettings(guildId, { spawnEnabled: true });
     await msg.reply("✅ Card spawning **enabled**.");
@@ -179,7 +188,7 @@ export async function handlePrefixCommand(msg: Message): Promise<void> {
     return;
   }
 
-  // !tradingenable / !tradingdisable
+  // ── Trading toggle ─────────────────────────────────────────────────────────
   if (cmd === "tradingenable") {
     await updateGuildSettings(guildId, { tradeEnabled: true });
     await msg.reply("✅ Trading **enabled**.");
@@ -191,7 +200,7 @@ export async function handlePrefixCommand(msg: Message): Promise<void> {
     return;
   }
 
-  // !settradechannel [#channel]
+  // ── !settradechannel ───────────────────────────────────────────────────────
   if (cmd === "settradechannel") {
     const arg = args[0] ?? `<#${msg.channelId}>`;
     const channelId = resolveChannel(msg, arg);
@@ -201,104 +210,35 @@ export async function handlePrefixCommand(msg: Message): Promise<void> {
     return;
   }
 
-  // !settings
+  // ── !settings ──────────────────────────────────────────────────────────────
   if (cmd === "settings") {
     const s = await getOrCreateGuildSettings(guildId);
     const cardsPerSpawnLabel = s.cardsPerSpawn === -1 ? "Random (1–3)" : s.cardsPerSpawn.toString();
-
     const rarityLines = [
-      `⚪ Common: **${s.rarityWeightCommon ?? 60}**${s.rarityWeightCommon ? " (custom)" : ""}`,
-      `🟢 Uncommon: **${s.rarityWeightUncommon ?? 25}**${s.rarityWeightUncommon ? " (custom)" : ""}`,
-      `🔵 Rare: **${s.rarityWeightRare ?? 10}**${s.rarityWeightRare ? " (custom)" : ""}`,
-      `🟣 Epic: **${s.rarityWeightEpic ?? 4}**${s.rarityWeightEpic ? " (custom)" : ""}`,
-      `🌟 Legendary: **${s.rarityWeightLegendary ?? 1}**${s.rarityWeightLegendary ? " (custom)" : ""}`,
+      `⚪ Common: **${s.rarityWeightCommon ?? 60}**${s.rarityWeightCommon ? " ✏️" : ""}`,
+      `🟢 Uncommon: **${s.rarityWeightUncommon ?? 25}**${s.rarityWeightUncommon ? " ✏️" : ""}`,
+      `🔵 Rare: **${s.rarityWeightRare ?? 10}**${s.rarityWeightRare ? " ✏️" : ""}`,
+      `🟣 Epic: **${s.rarityWeightEpic ?? 4}**${s.rarityWeightEpic ? " ✏️" : ""}`,
+      `🌟 Legendary: **${s.rarityWeightLegendary ?? 1}**${s.rarityWeightLegendary ? " ✏️" : ""}`,
     ].join(" · ");
 
     await msg.reply(
       "**⚙️ DN Cards — Server Settings**\n" +
-      `📢 Spawn Channel: ${s.spawnChannelId ? `<#${s.spawnChannelId}>` : "Not set"}\n` +
+      `📢 Spawn Channel: ${s.spawnChannelId ? `<#${s.spawnChannelId}>` : "❌ Not set"}\n` +
       `🔄 Auto-Spawning: ${s.spawnEnabled ? "✅ Enabled" : "⏸️ Disabled"}\n` +
       `⏱️ Interval: ${s.useRandomInterval ? `Random ${formatTime(s.spawnIntervalMin ?? 0)}–${formatTime(s.spawnIntervalMax ?? 0)}` : formatTime(s.spawnIntervalSeconds)}\n` +
       `🪟 Catch Window: ${formatTime(s.catchWindowSeconds)}\n` +
       `📦 Cards per Batch: ${cardsPerSpawnLabel}\n` +
-      `🎲 Rarity Weights: ${rarityLines}\n` +
+      `🎲 Rarity Weights (✏️ = customised): ${rarityLines}\n` +
       `🔄 Trading: ${s.tradeEnabled ? "✅ Enabled" : "⏸️ Disabled"}\n` +
       `💬 Trade Channel: ${s.tradeChannelId ? `<#${s.tradeChannelId}>` : "Any channel"}`,
     );
     return;
   }
 
-  // !addcard <rarity> <Name> | <desc>
-  if (cmd === "addcard") {
-    const rarity = args[0]?.toLowerCase();
-    if (!VALID_RARITIES.has(rarity)) { await msg.reply("❌ Usage: `!addcard <rarity> <Name> | <description>`"); return; }
-    const rest = args.slice(1).join(" ");
-    const [namePart, descPart] = rest.split(" | ");
-    const name = namePart?.trim();
-    if (!name) { await msg.reply("❌ Provide a card name: `!addcard rare F-22 Raptor | The best fighter jet`"); return; }
-    const r = rarity as Rarity;
-    const card = await addCard({
-      name, description: descPart?.trim() ?? "", rarity,
-      cardType: "vehicle",
-      dropWeight: RARITY_WEIGHTS[r],
-      worthValue: RARITY_WORTH[r],
-      burnValue: RARITY_BURN[r],
-    });
-    await msg.reply(`✅ Added **${card.name}** (${RARITY_EMOJI[r]} ${RARITY_LABELS[r]}).`);
-    return;
-  }
-
-  // !addlimited <rarity> <maxcopies> <Name> | <desc>
-  if (cmd === "addlimited") {
-    const rarity = args[0]?.toLowerCase();
-    const maxCopies = parseInt(args[1] ?? "", 10);
-    if (!VALID_RARITIES.has(rarity) || isNaN(maxCopies) || maxCopies < 1) {
-      await msg.reply("❌ Usage: `!addlimited rare 10 Card Name | Description`");
-      return;
-    }
-    const rest = args.slice(2).join(" ");
-    const [namePart, descPart] = rest.split(" | ");
-    const name = namePart?.trim();
-    if (!name) { await msg.reply("❌ Provide a card name."); return; }
-    const r = rarity as Rarity;
-    const card = await addCard({
-      name, description: descPart?.trim() ?? "", rarity,
-      cardType: "limited",
-      dropWeight: RARITY_WEIGHTS[r],
-      worthValue: RARITY_WORTH[r] * 4,
-      burnValue: RARITY_BURN[r] * 4,
-      isLimitedEdition: true,
-      maxCopies,
-      droppable: false,
-    });
-    await msg.reply(`💎 Created Limited Edition: **${card.name}** — Max **${maxCopies}** copies.\nUse \`/drop name:${card.name}\` to award copies.`);
-    return;
-  }
-
-  // !addevent <rarity> <Name> | <desc>
-  if (cmd === "addevent") {
-    const rarity = args[0]?.toLowerCase();
-    if (!VALID_RARITIES.has(rarity)) { await msg.reply("❌ Usage: `!addevent <rarity> <Name> | <description>`"); return; }
-    const rest = args.slice(1).join(" ");
-    const [namePart, descPart] = rest.split(" | ");
-    const name = namePart?.trim();
-    if (!name) { await msg.reply("❌ Provide a card name."); return; }
-    const r = rarity as Rarity;
-    const card = await addCard({
-      name, description: descPart?.trim() ?? "", rarity,
-      cardType: "event",
-      dropWeight: 0,
-      worthValue: RARITY_WORTH[r] * 3,
-      burnValue: RARITY_BURN[r] * 3,
-      isEventExclusive: true,
-      droppable: false,
-    });
-    await msg.reply(`🎆 Created Event Exclusive: **${card.name}**.\nUse \`/drop name:${card.name}\` to award it.`);
-    return;
-  }
-
-  // !removecard <Name>
+  // ── !removecard ────────────────────────────────────────────────────────────
   if (cmd === "removecard") {
+    const { removeCard } = await import("../db.js");
     const name = args.join(" ");
     if (!name) { await msg.reply("❌ Usage: `!removecard F-22 Raptor`"); return; }
     await removeCard(name);
@@ -306,7 +246,7 @@ export async function handlePrefixCommand(msg: Message): Promise<void> {
     return;
   }
 
-  // !addadmin @User
+  // ── !addadmin ──────────────────────────────────────────────────────────────
   if (cmd === "addadmin") {
     const userId = msg.mentions.users.first()?.id ?? args[0]?.replace(/[<@!>]/g, "");
     if (!userId) { await msg.reply("❌ Mention a user: `!addadmin @User`"); return; }
@@ -315,7 +255,7 @@ export async function handlePrefixCommand(msg: Message): Promise<void> {
     return;
   }
 
-  // !removeadmin @User
+  // ── !removeadmin ───────────────────────────────────────────────────────────
   if (cmd === "removeadmin") {
     const userId = msg.mentions.users.first()?.id ?? args[0]?.replace(/[<@!>]/g, "");
     if (!userId) { await msg.reply("❌ Mention a user: `!removeadmin @User`"); return; }
@@ -324,7 +264,7 @@ export async function handlePrefixCommand(msg: Message): Promise<void> {
     return;
   }
 
-  // !listadmins
+  // ── !listadmins ────────────────────────────────────────────────────────────
   if (cmd === "listadmins") {
     const admins = await listAdmins(guildId);
     if (admins.length === 0) {

@@ -1,4 +1,7 @@
-import { Client, TextChannel, EmbedBuilder } from "discord.js";
+import {
+  Client, TextChannel, EmbedBuilder,
+  ActionRowBuilder, ButtonBuilder, ButtonStyle,
+} from "discord.js";
 import {
   getOrCreateGuildSettings,
   pickRandomCard,
@@ -14,6 +17,8 @@ import type { Card, GuildSettings } from "@workspace/db";
 interface ActiveSpawn {
   cardId: number;
   cardName: string;
+  burnValue: number;
+  channelId: string;
   spawnLogId: number;
   message: { edit: (opts: unknown) => Promise<unknown> };
   expiresAt: Date;
@@ -30,7 +35,7 @@ export function initSpawnManager(client: Client) {
   botClient = client;
 }
 
-// ── Extract guild rarity weight overrides ────────────────────────────────────
+// ── Extract guild rarity weight overrides ─────────────────────────────────────
 function getGuildRarityWeights(settings: GuildSettings): Record<string, number> | undefined {
   const hasCustom = [
     settings.rarityWeightCommon,
@@ -82,10 +87,9 @@ async function doSpawnBatch(guildId: string) {
   if (count < 1) count = 1;
 
   for (let i = 0; i < count; i++) {
-    if (i > 0) await sleep(5000); // 5s gap between cards in a batch
+    if (i > 0) await sleep(5000);
     await doSingleSpawn(guildId);
   }
-
   scheduleNextSpawn(guildId);
 }
 
@@ -121,6 +125,8 @@ async function doSingleSpawn(guildId: string, forcedCardId?: number, isForced = 
   const spawn: ActiveSpawn = {
     cardId: card.id,
     cardName: card.name,
+    burnValue: card.burnValue,
+    channelId: settings.spawnChannelId,
     spawnLogId: spawnLog.id,
     message,
     expiresAt: new Date(Date.now() + settings.catchWindowSeconds * 1000),
@@ -178,21 +184,65 @@ export async function handleCatchAttempt(guildId: string, userId: string, guess:
     await catchCard(guildId, userId, spawn.cardId);
     await markCaught(spawn.spawnLogId, userId);
 
+    // Update the spawn embed to show "caught"
     try {
       await spawn.message.edit({
         embeds: [
           new EmbedBuilder()
             .setTitle("🎉 Card caught!")
-            .setDescription(`**${spawn.cardName}** was caught by <@${userId}>!\nCheck your collection with \`/collection\``)
+            .setDescription(`**${spawn.cardName}** was caught by <@${userId}>!`)
             .setColor(0x00b894)
             .setTimestamp(),
         ],
       });
     } catch { /* deleted */ }
 
+    // Send Burn / Keep buttons to the catcher
+    await sendCatchButtons(guildId, userId, spawn.cardId, spawn.cardName, spawn.burnValue, spawn.channelId);
+
     return true;
   }
   return false;
+}
+
+// ── Burn / Keep buttons after catching ───────────────────────────────────────
+async function sendCatchButtons(
+  guildId: string, userId: string, cardId: number,
+  cardName: string, burnValue: number, channelId: string,
+): Promise<void> {
+  if (!botClient) return;
+  try {
+    const channel = botClient.channels.cache.get(channelId) as TextChannel | undefined;
+    if (!channel) return;
+
+    const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
+      new ButtonBuilder()
+        .setCustomId(`catch_burn:${guildId}:${userId}:${cardId}`)
+        .setLabel(`🔥 Burn (+${burnValue.toLocaleString()} 💠)`)
+        .setStyle(ButtonStyle.Danger),
+      new ButtonBuilder()
+        .setCustomId(`catch_keep:${guildId}:${userId}:${cardId}`)
+        .setLabel("💾 Keep it")
+        .setStyle(ButtonStyle.Success),
+    );
+
+    const btnMsg = await channel.send({
+      content: `<@${userId}>, you caught **${cardName}**! What would you like to do?`,
+      components: [row],
+    });
+
+    // Auto-remove buttons after 90s (default to keep — no action needed, card is already in collection)
+    setTimeout(async () => {
+      try {
+        await btnMsg.edit({
+          content: `💾 **${cardName}** was kept by <@${userId}>. Use \`/collection\` to view it.`,
+          components: [],
+        });
+      } catch { /* message deleted */ }
+    }, 90 * 1000);
+  } catch (err) {
+    logger.warn({ err }, "Failed to send catch buttons");
+  }
 }
 
 export function getActiveSpawns(guildId: string): ActiveSpawn[] {
@@ -230,6 +280,7 @@ function buildSpawnEmbed(card: Card, windowSeconds: number): EmbedBuilder {
       { name: `${TYPE_EMOJI[cardType]} ${card.name}`, value: card.description || "\u200b", inline: false },
       { name: "Rarity", value: `${RARITY_EMOJI[rarity]} ${RARITY_LABELS[rarity]}`, inline: true },
       { name: "Worth", value: `💠 ${card.worthValue.toLocaleString()} shards`, inline: true },
+      { name: "⏱️ Window", value: `${windowSeconds}s`, inline: true },
     )
     .setTimestamp();
 

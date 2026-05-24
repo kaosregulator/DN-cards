@@ -1,11 +1,12 @@
 import { Client, GatewayIntentBits, Partials, Events, REST, Routes, type Interaction } from "discord.js";
 import { logger } from "../lib/logger.js";
-import { seedDefaultCards } from "./db.js";
+import { seedDefaultCards, burnCard, getOrCreateCurrency } from "./db.js";
 import { initSpawnManager, initAllGuilds, handleCatchAttempt, scheduleNextSpawn } from "./spawn-manager.js";
 import { handleAdminCommand } from "./commands/admin.js";
 import { handleUserCommand } from "./commands/user.js";
 import { handlePrefixCommand } from "./commands/prefix.js";
 import { handleWizardStep } from "./commands/setup-wizard.js";
+import { handleCardWizardStep } from "./commands/card-wizard.js";
 import { buildCommands, USER_COMMAND_NAMES, ADMIN_COMMAND_NAMES } from "./commands/register.js";
 
 export async function startBot() {
@@ -40,42 +41,94 @@ export async function startBot() {
       .catch(err => logger.error({ err, guildId: guild.id }, "Failed to register guild commands on join"));
   });
 
-  // ── Slash command dispatch ────────────────────────────────────────────────────
+  // ── Interactions: slash commands + buttons ────────────────────────────────
   client.on(Events.InteractionCreate, async (interaction: Interaction) => {
-    if (!interaction.isChatInputCommand()) return;
-    const cmd = interaction.commandName;
     try {
+      // ── Button interactions ────────────────────────────────────────────────
+      if (interaction.isButton()) {
+        const parts = interaction.customId.split(":");
+        const action = parts[0];
+
+        if (action === "catch_burn" || action === "catch_keep") {
+          const [, guildId, userId, cardIdStr] = parts;
+          const cardId = parseInt(cardIdStr, 10);
+
+          if (interaction.user.id !== userId) {
+            await interaction.reply({
+              content: "❌ These buttons are only for the player who caught this card.",
+              ephemeral: true,
+            });
+            return;
+          }
+
+          if (action === "catch_burn") {
+            const result = await burnCard(guildId, userId, cardId);
+            if (!result.success) {
+              await interaction.update({
+                content: "❌ Couldn't burn the card — it may have already been burned.",
+                components: [],
+              });
+              return;
+            }
+            const currency = await getOrCreateCurrency(guildId, userId);
+            await interaction.update({
+              content:
+                `🔥 Card burned! You received 💠 **${result.shardsGained.toLocaleString()} shards**.\n` +
+                `New balance: **${currency.shards.toLocaleString()}** 💠 — check \`/shards\` anytime.`,
+              components: [],
+            });
+          } else {
+            await interaction.update({
+              content: "💾 Kept! The card is in your collection — use `/collection` to view it.",
+              components: [],
+            });
+          }
+        }
+        return;
+      }
+
+      // ── Slash commands ─────────────────────────────────────────────────────
+      if (!interaction.isChatInputCommand()) return;
+      const cmd = interaction.commandName;
+
       if (USER_COMMAND_NAMES.has(cmd)) {
         await handleUserCommand(interaction, cmd);
       } else if (ADMIN_COMMAND_NAMES.has(cmd)) {
         await handleAdminCommand(interaction, cmd);
       }
     } catch (err) {
-      logger.error({ err, cmd }, "Slash command error");
+      logger.error({ err }, "Interaction error");
       try {
         const msg = "❌ Something went wrong. Please try again.";
-        if (interaction.deferred || interaction.replied) await interaction.editReply(msg);
-        else await interaction.reply({ content: msg, ephemeral: true });
+        if ("deferred" in interaction && interaction.deferred) {
+          await (interaction as any).editReply(msg);
+        } else if ("replied" in interaction && !(interaction as any).replied) {
+          await (interaction as any).reply({ content: msg, ephemeral: true });
+        }
       } catch { /* ignore */ }
     }
   });
 
-  // ── Message handler: prefix commands → wizard → catch detection ───────────────
+  // ── Messages: prefix commands → setup wizard → card wizard → catch ────────
   client.on(Events.MessageCreate, async (msg) => {
     if (msg.author.bot || !msg.guild) return;
     const content = msg.content.trim();
 
-    // ! prefix commands (setup, config, card management)
+    // ! prefix commands (admin setup and config)
     if (content.startsWith("!")) {
       await handlePrefixCommand(msg).catch(err => logger.error({ err }, "Prefix command error"));
       return;
     }
 
-    // Wizard step responses (for users who ran !setup)
-    const wizardConsumed = await handleWizardStep(msg).catch(() => false);
-    if (wizardConsumed) return;
+    // Setup wizard step responses
+    const setupConsumed = await handleWizardStep(msg).catch(() => false);
+    if (setupConsumed) return;
 
-    // Card catch detection (core mechanic — text-based)
+    // Card creation wizard step responses
+    const cardConsumed = await handleCardWizardStep(msg).catch(() => false);
+    if (cardConsumed) return;
+
+    // Core card catch detection
     const caught = await handleCatchAttempt(msg.guild.id, msg.author.id, content).catch(err => {
       logger.error({ err }, "Catch attempt error");
       return false;
@@ -90,18 +143,18 @@ export async function startBot() {
   });
 }
 
-// ── Register: clear old commands then set current set ────────────────────────
+// ── Register: clear globals, register guild-only (instant, no propagation lag) ──
 async function registerCommands(appId: string, token: string, client: Client) {
   const rest = new REST().setToken(token);
   const commands = buildCommands();
 
-  // Global — replaces everything (removes old /card command if any)
+  // Wipe ALL global commands — eliminates any old /card or duplicated globals
   await rest
-    .put(Routes.applicationCommands(appId), { body: commands })
-    .then(() => logger.info("Global slash commands registered"))
-    .catch(err => logger.error({ err }, "Global command registration failed"));
+    .put(Routes.applicationCommands(appId), { body: [] })
+    .then(() => logger.info("Global slash commands cleared"))
+    .catch(err => logger.error({ err }, "Failed to clear global commands"));
 
-  // Per-guild — instant availability, overrides globals for this guild
+  // Register guild-specific only — instant effect, no 1-hour propagation
   for (const [, guild] of client.guilds.cache) {
     await rest
       .put(Routes.applicationGuildCommands(appId, guild.id), { body: commands })
