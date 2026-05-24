@@ -62,10 +62,16 @@ export async function startBot() {
         const parts = interaction.customId.split(":");
         const action = parts[0];
 
+        // ── Trade Accept/Decline buttons ───────────────────────────────────
+        if (action === "trade_accept" || action === "trade_decline") {
+          const tradeId = parseInt(parts[1], 10);
+          const { handleTradeButton } = await import("./commands/trading.js");
+          await handleTradeButton(interaction, action === "trade_accept" ? "accept" : "decline", tradeId);
+          return;
+        }
+
         if (action === "catch_burn" || action === "catch_keep" || action === "catch_trade") {
-          // customId format: action:guildId:userId:cardId[:channelId]
-          // channelId is optional for backwards-compat with pre-deploy buttons.
-          const [, guildId, userId, cardIdStr, channelId] = parts;
+          const [, guildId, userId, cardIdStr] = parts;
           const cardId = parseInt(cardIdStr, 10);
 
           if (interaction.user.id !== userId) {
@@ -76,14 +82,7 @@ export async function startBot() {
             return;
           }
 
-          // Resolve spawn channel for the public announcement (DM flow needs
-          // the encoded channelId; channel-fallback flow can use the message itself).
-          const spawnChannel = channelId
-            ? (client.channels.cache.get(channelId) as TextChannel | undefined)
-            : (interaction.channel as TextChannel | null) ?? undefined;
-          const isDM = interaction.channel?.isDMBased() ?? false;
-
-          // Look up the card name for the public announcement.
+          // Look up the card name for any public announcement.
           const { getAllCards } = await import("./db.js");
           const allCards = await getAllCards();
           const card = allCards.find(c => c.id === cardId);
@@ -99,21 +98,19 @@ export async function startBot() {
               return;
             }
             const currency = await getOrCreateCurrency(guildId, userId);
-            // Update the prompt (in DM or channel) to a private confirmation
-            await interaction.update({
-              content:
-                `🔥 You burned **${cardName}** for 💠 **${result.shardsGained.toLocaleString()} shards**.\n` +
-                `New balance: **${currency.shards.toLocaleString()}** 💠`,
+            // Public message: generic, no balance leak
+            await interaction.message.edit({
+              content: `🔥 <@${userId}> burned **${cardName}**.`,
               components: [],
+              allowedMentions: { users: [] },
             }).catch(() => { /* may be deleted */ });
-            // Public note in the spawn channel (only when DM flow — channel
-            // flow already shows it publicly).
-            if (isDM && spawnChannel) {
-              await spawnChannel.send({
-                content: `🔥 <@${userId}> burned **${cardName}**.`,
-                allowedMentions: { users: [] },
-              }).catch(() => { /* ignore */ });
-            }
+            // Private confirmation with full shard balance
+            await interaction.reply({
+              content:
+                `🔥 Card burned! You received 💠 **${result.shardsGained.toLocaleString()} shards**.\n` +
+                `New balance: **${currency.shards.toLocaleString()}** 💠 — check \`/shards\` anytime.`,
+              flags: MessageFlags.Ephemeral,
+            });
             const burnUnlocks = await checkAchievements(guildId, userId).catch(() => []);
             if (burnUnlocks.length > 0) {
               await interaction.followUp({
@@ -122,32 +119,29 @@ export async function startBot() {
               }).catch(() => { /* ignore */ });
             }
           } else if (action === "catch_keep") {
-            await interaction.update({
-              content: `💾 You kept **${cardName}** — it's in your collection (\`/collection\`).`,
+            await interaction.message.edit({
+              content: `💾 <@${userId}> kept **${cardName}**.`,
               components: [],
+              allowedMentions: { users: [] },
             }).catch(() => { /* may be deleted */ });
-            if (isDM && spawnChannel) {
-              await spawnChannel.send({
-                content: `💾 <@${userId}> added **${cardName}** to their collection.`,
-                allowedMentions: { users: [] },
-              }).catch(() => { /* ignore */ });
-            }
+            await interaction.reply({
+              content: "💾 Kept! The card is in your collection — use `/collection` to view it.",
+              flags: MessageFlags.Ephemeral,
+            });
           } else {
-            // catch_trade — card stays in collection, post a public trade invite
-            await interaction.update({
+            // catch_trade — card stays in collection; advertise it publicly
+            await interaction.message.edit({
               content:
-                `🔄 You're now open to trading **${cardName}**! Other players can use\n` +
-                `\`/trade user:@you offer:<their card> want:${cardName}\``,
+                `🔄 <@${userId}> is open to trading **${cardName}**!\n` +
+                `Use \`/trade user:@${interaction.user.username} offer:<your card> want:${cardName}\` ` +
+                `(or add \`offer_shards:<n>\` / \`want_shards:<n>\` for shard deals).`,
               components: [],
+              allowedMentions: { users: [] },
             }).catch(() => { /* may be deleted */ });
-            if (spawnChannel) {
-              await spawnChannel.send({
-                content:
-                  `🔄 <@${userId}> is open to trading **${cardName}**!\n` +
-                  `Use \`/trade user:@${interaction.user.username} offer:<your card> want:${cardName}\` to make an offer.`,
-                allowedMentions: { users: [] },
-              }).catch(() => { /* ignore */ });
-            }
+            await interaction.reply({
+              content: `🔄 You're now open to trading **${cardName}**! Others can use \`/trade\` to make an offer.`,
+              flags: MessageFlags.Ephemeral,
+            });
           }
         }
         return;

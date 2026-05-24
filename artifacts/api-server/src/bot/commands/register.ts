@@ -34,10 +34,16 @@ export function buildCommands() {
     cmd("shards", "(User) Check your DN Shards balance", s => s
       .addUserOption(o => o.setName("user").setDescription("View another member's balance"))),
 
-    cmd("trade", "(User) Propose a 1-for-1 card trade", s => s
+    cmd("trade", "(User) Propose a trade — cards, shards, or both", s => s
       .addUserOption(o => o.setName("user").setDescription("Member to trade with").setRequired(true))
-      .addStringOption(o => o.setName("offer").setDescription("Card you are offering").setRequired(true).setAutocomplete(true))
-      .addStringOption(o => o.setName("want").setDescription("Card you want in return").setRequired(true).setAutocomplete(true))),
+      .addStringOption(o => o.setName("offer").setDescription("Card you are offering").setAutocomplete(true))
+      .addStringOption(o => o.setName("want").setDescription("Card you want in return").setAutocomplete(true))
+      .addIntegerOption(o => o.setName("offer_shards").setDescription("💠 shards you offer (optional)").setMinValue(1))
+      .addIntegerOption(o => o.setName("want_shards").setDescription("💠 shards you want (optional)").setMinValue(1))),
+
+    cmd("gift", "(User) Gift DN Shards to another member", s => s
+      .addUserOption(o => o.setName("user").setDescription("Member to send shards to").setRequired(true))
+      .addIntegerOption(o => o.setName("amount").setDescription("Amount of 💠 shards to gift").setRequired(true).setMinValue(1))),
 
     cmd("trades", "(User) View your pending trade offers", s => s),
 
@@ -100,7 +106,7 @@ export function buildCommands() {
 export const USER_COMMAND_NAMES = new Set([
   "collection", "rank", "info", "list", "top",
   "burn", "shards", "trade", "trades", "accept", "decline", "help",
-  "daily", "pack", "achievements", "wishlist",
+  "daily", "pack", "achievements", "wishlist", "gift",
 ]);
 
 export const ADMIN_COMMAND_NAMES = new Set([

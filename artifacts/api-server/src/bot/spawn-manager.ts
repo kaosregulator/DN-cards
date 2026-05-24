@@ -225,53 +225,50 @@ export async function handleCatchAttempt(guildId: string, userId: string, guess:
 }
 
 // ── Burn / Keep / Offer Trade buttons after catching ─────────────────────────
-// Sent via DM so only the catcher sees them. A short public note in the
-// spawn channel announces the outcome once they pick (or stays silent on
-// timeout — the CLAIMED embed already shows who caught it).
+// Posted in-channel; everyone sees the prompt but only the catcher's clicks
+// are accepted (others get an ephemeral "not yours" reply).
 async function sendCatchButtons(
   guildId: string, userId: string, cardId: number,
   cardName: string, burnValue: number, channelId: string,
 ): Promise<void> {
   if (!botClient) return;
-
-  // Encode the spawn channel into the customId so the button handler can
-  // post the public announcement back to the right place.
-  const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
-    new ButtonBuilder()
-      .setCustomId(`catch_burn:${guildId}:${userId}:${cardId}:${channelId}`)
-      .setLabel(`🔥 Burn (+${burnValue.toLocaleString()} 💠)`)
-      .setStyle(ButtonStyle.Danger),
-    new ButtonBuilder()
-      .setCustomId(`catch_keep:${guildId}:${userId}:${cardId}:${channelId}`)
-      .setLabel("💾 Keep it")
-      .setStyle(ButtonStyle.Success),
-    new ButtonBuilder()
-      .setCustomId(`catch_trade:${guildId}:${userId}:${cardId}:${channelId}`)
-      .setLabel("🔄 Offer Trade")
-      .setStyle(ButtonStyle.Primary),
-  );
-
-  const promptContent =
-    `🎉 You caught **${cardName}**! What would you like to do?\n` +
-    `_Pick within 90s — if you do nothing, the card stays in your collection._`;
-
   try {
-    const user = await botClient.users.fetch(userId);
-    await user.send({ content: promptContent, components: [row] });
-  } catch {
-    // DMs closed — fall back to an in-channel message that only the
-    // catcher can interact with (others see it but buttons reject them).
-    try {
-      const channel = botClient.channels.cache.get(channelId) as TextChannel | undefined;
-      if (!channel) return;
-      await channel.send({
-        content: `<@${userId}>, your DMs are closed — pick here:`,
-        components: [row],
-        allowedMentions: { users: [userId] },
-      });
-    } catch (err) {
-      logger.warn({ err }, "Failed to send catch buttons");
-    }
+    const channel = botClient.channels.cache.get(channelId) as TextChannel | undefined;
+    if (!channel) return;
+
+    const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
+      new ButtonBuilder()
+        .setCustomId(`catch_burn:${guildId}:${userId}:${cardId}`)
+        .setLabel(`🔥 Burn (+${burnValue.toLocaleString()} 💠)`)
+        .setStyle(ButtonStyle.Danger),
+      new ButtonBuilder()
+        .setCustomId(`catch_keep:${guildId}:${userId}:${cardId}`)
+        .setLabel("💾 Keep it")
+        .setStyle(ButtonStyle.Success),
+      new ButtonBuilder()
+        .setCustomId(`catch_trade:${guildId}:${userId}:${cardId}`)
+        .setLabel("🔄 Offer Trade")
+        .setStyle(ButtonStyle.Primary),
+    );
+
+    const btnMsg = await channel.send({
+      content: `<@${userId}>, you caught **${cardName}**! What would you like to do?`,
+      components: [row],
+      allowedMentions: { users: [userId] },
+    });
+
+    // Auto-clean buttons after 90s — default = keep (card is already in collection)
+    setTimeout(async () => {
+      try {
+        await btnMsg.edit({
+          content: `💾 **${cardName}** was kept by <@${userId}>.`,
+          components: [],
+          allowedMentions: { users: [] },
+        });
+      } catch { /* message deleted */ }
+    }, 90 * 1000);
+  } catch (err) {
+    logger.warn({ err }, "Failed to send catch buttons");
   }
 }
 

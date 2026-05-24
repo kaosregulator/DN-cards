@@ -374,15 +374,27 @@ export async function burnCard(guildId: string, userId: string, cardId: number):
 }
 
 // ── Trades ────────────────────────────────────────────────────────────────────
-export async function createTrade(
-  guildId: string, initiatorId: string, targetId: string,
-  offeredCardId: number, requestedCardId: number,
-  channelId: string, messageId?: string,
-) {
+export async function createTrade(args: {
+  guildId: string;
+  initiatorId: string;
+  targetId: string;
+  offeredCardId?: number | null;
+  requestedCardId?: number | null;
+  offeredShards?: number;
+  requestedShards?: number;
+  channelId: string;
+  messageId?: string;
+}) {
   const [trade] = await db.insert(tradesTable).values({
-    guildId, initiatorId, targetId,
-    offeredCardId, requestedCardId,
-    channelId, messageId,
+    guildId: args.guildId,
+    initiatorId: args.initiatorId,
+    targetId: args.targetId,
+    offeredCardId: args.offeredCardId ?? null,
+    requestedCardId: args.requestedCardId ?? null,
+    offeredShards: args.offeredShards ?? 0,
+    requestedShards: args.requestedShards ?? 0,
+    channelId: args.channelId,
+    messageId: args.messageId,
   }).returning();
   return trade;
 }
@@ -407,8 +419,10 @@ export async function getPendingTradesFor(guildId: string, userId: string) {
     id: tradesTable.id,
     initiatorId: tradesTable.initiatorId,
     targetId: tradesTable.targetId,
-    offeredCardName: sql<string>`offered.name`,
-    requestedCardName: sql<string>`requested.name`,
+    offeredCardName: sql<string | null>`offered.name`,
+    requestedCardName: sql<string | null>`requested.name`,
+    offeredShards: tradesTable.offeredShards,
+    requestedShards: tradesTable.requestedShards,
     createdAt: tradesTable.createdAt,
   })
     .from(tradesTable)
@@ -423,25 +437,69 @@ export async function getPendingTradesFor(guildId: string, userId: string) {
     .limit(10);
 }
 
+// ── Gift shards (atomic transfer) ────────────────────────────────────────────
+export async function giftShards(
+  guildId: string, fromUserId: string, toUserId: string, amount: number,
+): Promise<{ success: boolean; remaining: number }> {
+  const ok = await spendShards(guildId, fromUserId, amount);
+  if (!ok) {
+    const cur = await getOrCreateCurrency(guildId, fromUserId);
+    return { success: false, remaining: cur.shards };
+  }
+  await addShards(guildId, toUserId, amount);
+  const cur = await getOrCreateCurrency(guildId, fromUserId);
+  return { success: true, remaining: cur.shards };
+}
+
 export async function executeTradeSwap(trade: Trade): Promise<boolean> {
-  const initiatorEntry = await getCollectionEntry(trade.guildId, trade.initiatorId, trade.offeredCardId);
-  const targetEntry = await getCollectionEntry(trade.guildId, trade.targetId, trade.requestedCardId);
-  if (!initiatorEntry || initiatorEntry.count < 1) return false;
-  if (!targetEntry || targetEntry.count < 1) return false;
-
-  if (initiatorEntry.count === 1) {
-    await db.delete(collectionsTable).where(eq(collectionsTable.id, initiatorEntry.id));
-  } else {
-    await db.update(collectionsTable).set({ count: initiatorEntry.count - 1 }).where(eq(collectionsTable.id, initiatorEntry.id));
+  // Validate cards (if any) — both sides must still own what they offered.
+  let initiatorEntry = null as Awaited<ReturnType<typeof getCollectionEntry>> | null;
+  let targetEntry = null as Awaited<ReturnType<typeof getCollectionEntry>> | null;
+  if (trade.offeredCardId) {
+    initiatorEntry = await getCollectionEntry(trade.guildId, trade.initiatorId, trade.offeredCardId);
+    if (!initiatorEntry || initiatorEntry.count < 1) return false;
   }
-  if (targetEntry.count === 1) {
-    await db.delete(collectionsTable).where(eq(collectionsTable.id, targetEntry.id));
-  } else {
-    await db.update(collectionsTable).set({ count: targetEntry.count - 1 }).where(eq(collectionsTable.id, targetEntry.id));
+  if (trade.requestedCardId) {
+    targetEntry = await getCollectionEntry(trade.guildId, trade.targetId, trade.requestedCardId);
+    if (!targetEntry || targetEntry.count < 1) return false;
   }
 
-  await catchCard(trade.guildId, trade.initiatorId, trade.requestedCardId);
-  await catchCard(trade.guildId, trade.targetId, trade.offeredCardId);
+  // Validate shards atomically — try to spend first, refund if anything fails.
+  if (trade.offeredShards > 0) {
+    const ok = await spendShards(trade.guildId, trade.initiatorId, trade.offeredShards);
+    if (!ok) return false;
+  }
+  if (trade.requestedShards > 0) {
+    const ok = await spendShards(trade.guildId, trade.targetId, trade.requestedShards);
+    if (!ok) {
+      // Refund initiator if we already debited them
+      if (trade.offeredShards > 0) await refundShards(trade.guildId, trade.initiatorId, trade.offeredShards);
+      return false;
+    }
+  }
+
+  // Transfer cards
+  if (initiatorEntry) {
+    if (initiatorEntry.count === 1) {
+      await db.delete(collectionsTable).where(eq(collectionsTable.id, initiatorEntry.id));
+    } else {
+      await db.update(collectionsTable).set({ count: initiatorEntry.count - 1 }).where(eq(collectionsTable.id, initiatorEntry.id));
+    }
+  }
+  if (targetEntry) {
+    if (targetEntry.count === 1) {
+      await db.delete(collectionsTable).where(eq(collectionsTable.id, targetEntry.id));
+    } else {
+      await db.update(collectionsTable).set({ count: targetEntry.count - 1 }).where(eq(collectionsTable.id, targetEntry.id));
+    }
+  }
+  if (trade.requestedCardId) await catchCard(trade.guildId, trade.initiatorId, trade.requestedCardId);
+  if (trade.offeredCardId) await catchCard(trade.guildId, trade.targetId, trade.offeredCardId);
+
+  // Credit shards
+  if (trade.requestedShards > 0) await addShards(trade.guildId, trade.initiatorId, trade.requestedShards);
+  if (trade.offeredShards > 0) await addShards(trade.guildId, trade.targetId, trade.offeredShards);
+
   return true;
 }
 

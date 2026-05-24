@@ -2,7 +2,7 @@ import type { ChatInputCommandInteraction } from "discord.js";
 import { EmbedBuilder, MessageFlags } from "discord.js";
 
 // Commands whose results are personal/spammy and should only be seen by the user.
-const EPHEMERAL_COMMANDS = new Set(["burn", "shards", "trades", "help", "daily", "achievements", "pack", "wishlist"]);
+const EPHEMERAL_COMMANDS = new Set(["burn", "shards", "trades", "help", "daily", "achievements", "pack", "wishlist", "gift"]);
 import {
   getUserCollection, getAllCards, getLeaderboard,
   getOrCreateCurrency, burnCard, getCardByName, getUserCardCount,
@@ -12,7 +12,7 @@ import {
   getCollectorRank, getNextRank,
   type Rarity, type CardType,
 } from "../cards-data.js";
-import { handleTrade, handleAccept, handleDecline, handleListTrades } from "./trading.js";
+import { handleTrade, handleAccept, handleDecline, handleListTrades, handleGift } from "./trading.js";
 import { handleDaily, handleAchievementsCommand } from "./daily.js";
 import { toAbsoluteImageUrl } from "../image-url.js";
 import { handlePack } from "./pack.js";
@@ -253,6 +253,7 @@ export async function handleUserCommand(
   if (sub === "daily") { await handleDaily(interaction); return; }
   if (sub === "pack") { await handlePack(interaction); return; }
   if (sub === "wishlist") { await handleWishlist(interaction); return; }
+  if (sub === "gift") { await handleGift(interaction); return; }
   if (sub === "achievements") { await handleAchievementsCommand(interaction); return; }
 
   // ── /help ─────────────────────────────────────────────────────────────────────
@@ -269,10 +270,12 @@ export async function handleUserCommand(
       "`/burn name:<card>` — destroy a duplicate for DN Shards\n" +
       "`/shards` — check your balance\n" +
       "`/daily` — claim daily shards (streak bonus!)\n" +
-      "`/pack` — open a 5-card pack for 💠 250\n\n" +
+      "`/pack` — open a 5-card pack for 💠 250\n" +
+      "`/gift user:@Member amount:<n>` — send shards to a friend\n\n" +
       "**🔄 Trading**\n" +
-      "`/trade user:@Member offer:<card> want:<card>`\n" +
-      "`/trades` · `/accept id:<ID>` · `/decline id:<ID>`\n\n" +
+      "`/trade user:@Member offer:<card> want:<card>` — card-for-card\n" +
+      "Add `offer_shards:<n>` or `want_shards:<n>` to swap cards ↔ shards (or pure shards)\n" +
+      "Accept/Decline buttons appear right on the trade message — `/accept` and `/decline` still work too\n\n" +
       "**⚙️ Server Setup** *(admins only — use `!` prefix)*\n" +
       "`!setup` — interactive setup wizard\n" +
       "`!setchannel` · `!setinterval` · `!setwindow` · `!setdrops` · `!setrarity`\n" +

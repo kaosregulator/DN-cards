@@ -104,13 +104,16 @@ export const achievementsTable = pgTable("achievements_unlocked", {
 export type AchievementUnlock = typeof achievementsTable.$inferSelect;
 
 // ── Trades ────────────────────────────────────────────────────────────────────
+// Card fields are nullable so a trade can be cards-only, shards-only, or mixed.
 export const tradesTable = pgTable("trades", {
   id: serial("id").primaryKey(),
   guildId: text("guild_id").notNull(),
   initiatorId: text("initiator_id").notNull(),
   targetId: text("target_id").notNull(),
-  offeredCardId: integer("offered_card_id").notNull().references(() => cardsTable.id),
-  requestedCardId: integer("requested_card_id").notNull().references(() => cardsTable.id),
+  offeredCardId: integer("offered_card_id").references(() => cardsTable.id),
+  requestedCardId: integer("requested_card_id").references(() => cardsTable.id),
+  offeredShards: integer("offered_shards").notNull().default(0),
+  requestedShards: integer("requested_shards").notNull().default(0),
   status: tradeStatusEnum("status").notNull().default("pending"),
   messageId: text("message_id"),
   channelId: text("channel_id"),
