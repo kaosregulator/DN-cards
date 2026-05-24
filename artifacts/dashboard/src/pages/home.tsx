@@ -3,7 +3,7 @@ import { useCards, Rarity } from "@/hooks/queries";
 import { CardComponent } from "@/components/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Search } from "lucide-react";
+import { Loader2, Search, ChevronDown, ChevronUp, Sparkles } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 const RARITY_ORDER: Rarity[] = ["legendary", "epic", "rare", "uncommon", "common"];
@@ -12,6 +12,16 @@ export default function Home() {
   const { data, isLoading, error } = useCards();
   const [search, setSearch] = useState("");
   const [selectedRarities, setSelectedRarities] = useState<Set<Rarity>>(new Set());
+  const [eventsOpen, setEventsOpen] = useState(true);
+
+  // Event-exclusive cards are display-only on the roster: they never spawn,
+  // they're admin-awarded during events. We surface them in their own panel
+  // above the rarity groups, with `flavor` text as the event explanation
+  // (e.g. "Awarded during DN Anniversary, May 2026").
+  const eventCards = useMemo(
+    () => (data?.cards ?? []).filter(c => c.isEventExclusive && !c.isArchived),
+    [data],
+  );
 
   const toggleRarity = (rarity: Rarity) => {
     const next = new Set(selectedRarities);
@@ -132,6 +142,80 @@ export default function Home() {
           </div>
         </div>
       </div>
+
+      {eventCards.length > 0 && (
+        <div className="mb-12 rounded-xl border border-pink-500/30 bg-gradient-to-br from-pink-500/5 via-card/40 to-purple-500/5 backdrop-blur-sm overflow-hidden">
+          <button
+            type="button"
+            onClick={() => setEventsOpen(o => !o)}
+            className="w-full flex items-center justify-between gap-4 p-4 hover:bg-pink-500/5 transition-colors"
+            data-testid="toggle-event-panel"
+            aria-expanded={eventsOpen}
+          >
+            <div className="flex items-center gap-3">
+              <Sparkles className="h-5 w-5 text-pink-400" />
+              <div className="text-left">
+                <h2 className="text-lg font-bold uppercase tracking-wider text-pink-200">Event Exclusive Cards</h2>
+                <p className="text-xs font-mono uppercase tracking-widest text-muted-foreground">
+                  Display only · Awarded during events · Never spawn randomly
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <Badge variant="outline" className="border-pink-500/40 text-pink-300 font-mono text-xs">
+                {eventCards.length} CARDS
+              </Badge>
+              {eventsOpen
+                ? <ChevronUp className="h-4 w-4 text-muted-foreground" />
+                : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
+            </div>
+          </button>
+          <AnimatePresence initial={false}>
+            {eventsOpen && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: "auto", opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.25 }}
+                className="overflow-hidden"
+              >
+                <div className="px-4 pb-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                  {eventCards.map(card => (
+                    <div
+                      key={card.id}
+                      className="flex gap-3 rounded-lg border border-border/50 bg-background/40 p-3"
+                      data-testid={`event-card-${card.id}`}
+                    >
+                      {card.imageUrl && (
+                        <img
+                          src={card.imageUrl}
+                          alt={card.name}
+                          className="h-20 w-16 rounded object-cover border border-pink-500/30 flex-shrink-0"
+                          loading="lazy"
+                        />
+                      )}
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-sm font-bold uppercase tracking-wide truncate">{card.name}</span>
+                          <Badge variant="outline" className="text-[10px] font-mono uppercase border-pink-500/40 text-pink-300 flex-shrink-0">
+                            {card.rarity}
+                          </Badge>
+                        </div>
+                        <p className="text-xs text-muted-foreground line-clamp-3">
+                          {card.flavor
+                            ? <span className="italic">"{card.flavor}"</span>
+                            : (card.description || <span className="opacity-60">No event note yet — set the card's flavor text in admin to describe when/why it was awarded.</span>)
+                          }
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+      )}
 
       <div className="space-y-16">
         {processedCards.length === 0 ? (

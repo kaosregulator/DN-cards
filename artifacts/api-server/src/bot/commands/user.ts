@@ -170,6 +170,114 @@ export async function handleUserCommand(
     return;
   }
 
+  // ── /catalog ──────────────────────────────────────────────────────────────────
+  // Browse cards by category (rarity, event, limited, all) — shows what the
+  // target owns vs what's missing. Single embed, paginated only by character
+  // count via field splitting.
+  if (sub === "catalog") {
+    const category = interaction.options.getString("category", true) as Rarity | "event" | "limited" | "all";
+    const target = interaction.options.getUser("user") ?? interaction.user;
+    const [allCards, collection] = await Promise.all([
+      getAllCards(),
+      getUserCollection(guildId, target.id),
+    ]);
+    const ownedById = new Map<number, number>();
+    for (const item of collection) ownedById.set(item.cardId, item.count);
+
+    let pool = allCards.filter(c => !c.isArchived);
+    let title = "";
+    let color = 0x5865f2;
+    let thumbnail: string | null = null;
+    if (category === "event") {
+      pool = pool.filter(c => c.isEventExclusive);
+      title = "🎆 Event Exclusive Cards";
+      color = 0xe84393;
+    } else if (category === "limited") {
+      pool = pool.filter(c => c.isLimitedEdition);
+      title = "💎 Limited Edition Cards";
+      color = 0x00d4ff;
+    } else if (category === "all") {
+      title = "🃏 Full Card Roster";
+    } else {
+      pool = pool.filter(c => c.rarity === category);
+      title = `${RARITY_EMOJI[category]} ${RARITY_LABELS[category]} Cards`;
+      color = RARITY_COLORS[category] ?? 0x5865f2;
+    }
+
+    if (pool.length === 0) {
+      await interaction.editReply(`No cards in this category yet.`);
+      return;
+    }
+
+    // Pick a thumbnail: the rarest card the user owns from this pool, else
+    // the rarest card in the pool, so the embed has a visual anchor.
+    const rarityRank: Record<Rarity, number> = { common: 0, uncommon: 1, rare: 2, epic: 3, legendary: 4 };
+    const sortedByRarity = [...pool].sort((a, b) => rarityRank[b.rarity as Rarity] - rarityRank[a.rarity as Rarity]);
+    const ownedRarest = sortedByRarity.find(c => ownedById.has(c.id));
+    const thumbSource = ownedRarest ?? sortedByRarity[0];
+    if (thumbSource) thumbnail = toAbsoluteImageUrl(thumbSource.imageUrl) ?? null;
+
+    // Group: by rarity for event/limited/all, single group otherwise.
+    const rarityOrder: Rarity[] = ["legendary", "epic", "rare", "uncommon", "common"];
+    const groups: { rarity: Rarity; cards: typeof pool }[] = [];
+    if (category === "event" || category === "limited" || category === "all") {
+      for (const r of rarityOrder) {
+        const inRarity = pool.filter(c => c.rarity === r);
+        if (inRarity.length > 0) groups.push({ rarity: r, cards: inRarity });
+      }
+    } else {
+      groups.push({ rarity: category as Rarity, cards: pool });
+    }
+
+    const ownedCount = pool.filter(c => ownedById.has(c.id)).length;
+    const totalCount = pool.length;
+    const completion = totalCount > 0 ? Math.round((ownedCount / totalCount) * 100) : 0;
+
+    // Build field per rarity group. Each line: "✅ ×3 Card Name" or "⬜ Card Name"
+    // Discord caps field value at 1024 chars; split if needed.
+    const fields: { name: string; value: string; inline: false }[] = [];
+    for (const g of groups) {
+      const lines = g.cards
+        .slice()
+        .sort((a, b) => a.name.localeCompare(b.name))
+        .map(c => {
+          const owned = ownedById.get(c.id) ?? 0;
+          const badges = [c.isLimitedEdition ? "💎" : "", c.isEventExclusive ? "🎆" : ""].filter(Boolean).join("");
+          return owned > 0
+            ? `✅ \`×${owned}\` ${badges}**${c.name}**`
+            : `⬜ ${badges}${c.name}`;
+        });
+      const groupName = `${RARITY_EMOJI[g.rarity]} ${RARITY_LABELS[g.rarity]} (${g.cards.filter(c => ownedById.has(c.id)).length}/${g.cards.length})`;
+      const chunks: string[] = [];
+      let current = "";
+      for (const line of lines) {
+        if (current.length + line.length + 1 > 1000) { chunks.push(current); current = ""; }
+        current += (current ? "\n" : "") + line;
+      }
+      if (current) chunks.push(current);
+      chunks.forEach((chunk, i) => fields.push({
+        name: i === 0 ? groupName : `${groupName} (cont.)`,
+        value: chunk,
+        inline: false,
+      }));
+    }
+
+    const isSelf = target.id === interaction.user.id;
+    const embed = new EmbedBuilder()
+      .setTitle(title)
+      .setColor(color)
+      .setDescription(
+        `${isSelf ? "**You own**" : `**${target.username} owns**`} ` +
+        `**${ownedCount} / ${totalCount}** cards in this category (${completion}%)\n` +
+        `✅ owned  ·  ⬜ missing  ·  💎 limited  ·  🎆 event`,
+      )
+      .addFields(fields.slice(0, 25))
+      .setFooter({ text: "Use /info name:<card> for full details on any card" });
+    if (thumbnail) embed.setThumbnail(thumbnail);
+    await interaction.editReply({ embeds: [embed] });
+    return;
+  }
+
   // ── /top ──────────────────────────────────────────────────────────────────────
   if (sub === "top") {
     const [byWorth, byCards] = await Promise.all([

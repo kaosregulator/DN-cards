@@ -26,6 +26,20 @@ export function buildCommands() {
 
     cmd("list", "(User) Full DN Cards roster grouped by rarity", s => s),
 
+    cmd("catalog", "(User) Browse cards by category — see what you own and what's missing", s => s
+      .addStringOption(o => o.setName("category").setDescription("Which group to view").setRequired(true)
+        .addChoices(
+          { name: "🟡 Legendary", value: "legendary" },
+          { name: "🟣 Epic", value: "epic" },
+          { name: "🔵 Rare", value: "rare" },
+          { name: "🟢 Uncommon", value: "uncommon" },
+          { name: "⚪ Common", value: "common" },
+          { name: "🎆 Event Exclusive", value: "event" },
+          { name: "💎 Limited Edition", value: "limited" },
+          { name: "🃏 All cards", value: "all" },
+        ))
+      .addUserOption(o => o.setName("user").setDescription("Check another member's ownership (default: you)"))),
+
     cmd("top", "(User) Top 10 collectors leaderboard", s => s),
 
     cmd("burn", "(User) Burn duplicate cards for DN Shards", s => s
@@ -122,7 +136,7 @@ export function buildCommands() {
 }
 
 export const USER_COMMAND_NAMES = new Set([
-  "collection", "rank", "info", "list", "top",
+  "collection", "rank", "info", "list", "catalog", "top",
   "burn", "shards", "trade", "trades", "accept", "decline", "help",
   "daily", "pack", "achievements", "wishlist", "gift", "tradein",
 ]);
