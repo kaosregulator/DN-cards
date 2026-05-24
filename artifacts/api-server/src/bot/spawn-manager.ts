@@ -31,6 +31,8 @@ const spawnTimers = new Map<string, ReturnType<typeof setTimeout>>();
 
 let botClient: Client | null = null;
 
+export function getBotClient(): Client | null { return botClient; }
+
 export function initSpawnManager(client: Client) {
   botClient = client;
 }

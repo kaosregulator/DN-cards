@@ -4,6 +4,7 @@ import { and, eq, sql, desc } from "drizzle-orm";
 import { z } from "zod/v4";
 import { ACHIEVEMENTS } from "../bot/achievements";
 import { getCollectorRank, getNextRank } from "../bot/cards-data";
+import { getBotClient } from "../bot/spawn-manager";
 
 const router: IRouter = Router();
 
@@ -46,11 +47,25 @@ router.get("/guilds/:guildId/leaderboard", async (req, res) => {
     .orderBy(desc(sql`sum(${collectionsTable.count} * ${cardsTable.worthValue})`))
     .limit(25);
 
+  // Enrich with Discord display names (best-effort; falls back to ID).
+  const client = getBotClient();
+  const guild = client?.guilds.cache.get(guildId);
+  const names = new Map<string, string>();
+  if (guild) {
+    await Promise.all(rows.map(async (r) => {
+      try {
+        const member = guild.members.cache.get(r.userId) ?? await guild.members.fetch(r.userId);
+        names.set(r.userId, member.displayName ?? member.user.username);
+      } catch { /* user left guild or fetch failed — keep ID */ }
+    }));
+  }
+
   res.json({
     guildId,
     entries: rows.map((r, i) => ({
       rank: i + 1,
       userId: r.userId,
+      username: names.get(r.userId) ?? null,
       uniqueCards: r.uniqueCards,
       totalCards: r.totalCards,
       netWorth: r.netWorth,

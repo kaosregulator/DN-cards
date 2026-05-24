@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import {
   useAdminCards,
+  useCreateCard,
   useUpdateCard,
   useDuplicateCard,
   useDeleteCard,
@@ -27,7 +28,7 @@ import {
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import {
-  Pencil, Copy, Archive, ArchiveRestore, Trash2, Power, PowerOff, Search, LogOut,
+  Pencil, Copy, Archive, ArchiveRestore, Trash2, Power, PowerOff, Search, LogOut, Plus,
 } from "lucide-react";
 
 const RARITIES: Rarity[] = ["legendary", "epic", "rare", "uncommon", "common"];
@@ -216,6 +217,7 @@ export default function Admin() {
   const [rarityFilter, setRarityFilter] = useState<Rarity | "all">("all");
   const [editing, setEditing] = useState<Card | null>(null);
   const [deleting, setDeleting] = useState<Card | null>(null);
+  const [creating, setCreating] = useState(false);
   const { toast } = useToast();
 
   const query = useAdminCards(authed);
@@ -262,9 +264,14 @@ export default function Admin() {
             {cards.length} cards · {cards.filter(c => c.isArchived).length} archived · {cards.filter(c => !c.droppable && !c.isArchived).length} deactivated
           </p>
         </div>
-        <Button variant="outline" size="sm" onClick={logout} data-testid="button-admin-logout">
-          <LogOut className="h-4 w-4 mr-1" /> Sign out
-        </Button>
+        <div className="flex gap-2">
+          <Button size="sm" onClick={() => setCreating(true)} data-testid="button-new-card">
+            <Plus className="h-4 w-4 mr-1" /> New card
+          </Button>
+          <Button variant="outline" size="sm" onClick={logout} data-testid="button-admin-logout">
+            <LogOut className="h-4 w-4 mr-1" /> Sign out
+          </Button>
+        </div>
       </div>
 
       <div className="flex flex-col gap-4 md:flex-row md:items-center bg-card/50 p-4 rounded-xl border border-border/50">
@@ -388,6 +395,7 @@ export default function Admin() {
       )}
 
       <EditDialog card={editing} open={!!editing} onOpenChange={(o) => { if (!o) setEditing(null); }} />
+      <CreateDialog open={creating} onOpenChange={setCreating} />
 
       <AlertDialog open={!!deleting} onOpenChange={(o) => { if (!o) setDeleting(null); }}>
         <AlertDialogContent>
@@ -415,6 +423,136 @@ export default function Admin() {
         </AlertDialogContent>
       </AlertDialog>
     </div>
+  );
+}
+
+// ── Create dialog ─────────────────────────────────────────────────────────────
+function CreateDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (o: boolean) => void }) {
+  const { toast } = useToast();
+  const create = useCreateCard();
+  const blank = {
+    name: "",
+    rarity: "common" as Rarity,
+    description: "",
+    dropWeight: 60,
+    worthValue: 10,
+    burnValue: 5,
+    imageUrl: "",
+    maxCopies: null as number | null,
+    isEventExclusive: false,
+    isLimitedEdition: false,
+    inPacks: true,
+  };
+  const [form, setForm] = useState(blank);
+  const [openTracked, setOpenTracked] = useState(false);
+  if (open !== openTracked) { setOpenTracked(open); if (open) setForm(blank); }
+
+  const num = (v: string) => v === "" ? 0 : Number(v);
+
+  const onSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!form.name.trim()) {
+      toast({ variant: "destructive", title: "Name required" });
+      return;
+    }
+    try {
+      await create.mutateAsync({
+        name: form.name.trim(),
+        rarity: form.rarity,
+        description: form.description,
+        dropWeight: form.dropWeight,
+        worthValue: form.worthValue,
+        burnValue: form.burnValue,
+        imageUrl: form.imageUrl.trim() || null,
+        maxCopies: form.isLimitedEdition ? form.maxCopies : null,
+        isEventExclusive: form.isEventExclusive,
+        isLimitedEdition: form.isLimitedEdition,
+        inPacks: form.inPacks,
+      });
+      toast({ title: "Card created", description: form.name.trim() });
+      onOpenChange(false);
+    } catch (err) {
+      toast({ variant: "destructive", title: "Create failed", description: err instanceof Error ? err.message : "Unknown error" });
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="font-mono uppercase tracking-widest">New Card</DialogTitle>
+          <DialogDescription>Once saved it joins the roster immediately and becomes catchable.</DialogDescription>
+        </DialogHeader>
+
+        <form onSubmit={onSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="md:col-span-2">
+            <Label htmlFor="n-name">Name</Label>
+            <Input id="n-name" autoFocus value={form.name} onChange={e => setForm(s => ({ ...s, name: e.target.value }))} data-testid="input-new-name" />
+          </div>
+
+          <div>
+            <Label htmlFor="n-rarity">Rarity</Label>
+            <Select value={form.rarity} onValueChange={v => setForm(s => ({ ...s, rarity: v as Rarity }))}>
+              <SelectTrigger id="n-rarity" data-testid="select-new-rarity"><SelectValue /></SelectTrigger>
+              <SelectContent>{RARITIES.map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}</SelectContent>
+            </Select>
+          </div>
+
+          <div>
+            <Label htmlFor="n-pull">Pull Rate</Label>
+            <Input id="n-pull" type="number" step="0.1" min={0} value={form.dropWeight} onChange={e => setForm(s => ({ ...s, dropWeight: num(e.target.value) }))} data-testid="input-new-pullrate" />
+          </div>
+
+          <div>
+            <Label htmlFor="n-worth">Worth</Label>
+            <Input id="n-worth" type="number" min={0} value={form.worthValue} onChange={e => setForm(s => ({ ...s, worthValue: num(e.target.value) }))} data-testid="input-new-worth" />
+          </div>
+
+          <div>
+            <Label htmlFor="n-burn">Burn Value</Label>
+            <Input id="n-burn" type="number" min={0} value={form.burnValue} onChange={e => setForm(s => ({ ...s, burnValue: num(e.target.value) }))} data-testid="input-new-burn" />
+          </div>
+
+          <div className="md:col-span-2">
+            <Label htmlFor="n-image">Image URL</Label>
+            <Input id="n-image" placeholder="https://..." value={form.imageUrl} onChange={e => setForm(s => ({ ...s, imageUrl: e.target.value }))} data-testid="input-new-image" />
+          </div>
+
+          <div className="md:col-span-2">
+            <Label htmlFor="n-desc">Description</Label>
+            <Textarea id="n-desc" rows={3} value={form.description} onChange={e => setForm(s => ({ ...s, description: e.target.value }))} data-testid="input-new-desc" />
+          </div>
+
+          {form.isLimitedEdition && (
+            <div>
+              <Label htmlFor="n-qty">Max copies</Label>
+              <Input
+                id="n-qty"
+                type="number"
+                min={1}
+                placeholder="e.g. 100"
+                value={form.maxCopies ?? ""}
+                onChange={e => setForm(s => ({ ...s, maxCopies: e.target.value === "" ? null : Number(e.target.value) }))}
+                data-testid="input-new-qty"
+              />
+            </div>
+          )}
+
+          <div className={`space-y-3 border border-border/40 rounded-md p-3 ${form.isLimitedEdition ? "" : "md:col-span-2"}`}>
+            <ToggleRow label="Event Exclusive" checked={form.isEventExclusive} onChange={v => setForm(s => ({ ...s, isEventExclusive: v }))} testid="toggle-new-event" />
+            <ToggleRow label="Limited Edition" checked={form.isLimitedEdition} onChange={v => setForm(s => ({ ...s, isLimitedEdition: v, maxCopies: v ? (s.maxCopies ?? 100) : null }))} testid="toggle-new-limited" />
+            <ToggleRow label="Available in Packs" checked={form.inPacks} onChange={v => setForm(s => ({ ...s, inPacks: v }))} testid="toggle-new-packs" />
+          </div>
+
+          <DialogFooter className="md:col-span-2">
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+            <Button type="submit" disabled={create.isPending} data-testid="button-new-save">
+              {create.isPending ? "Creating…" : "Create card"}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 }
 

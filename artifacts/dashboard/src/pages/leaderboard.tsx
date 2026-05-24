@@ -83,7 +83,7 @@ export default function Leaderboard() {
               <thead className="text-xs uppercase bg-muted/50 font-mono tracking-widest text-muted-foreground">
                 <tr>
                   <th className="px-6 py-4 w-20 text-center">Rank</th>
-                  <th className="px-6 py-4">Collector ID</th>
+                  <th className="px-6 py-4">Collector</th>
                   <th className="px-6 py-4 text-right">Unique</th>
                   <th className="px-6 py-4 text-right">Total</th>
                   <th className="px-6 py-4 text-right">Net Worth</th>
@@ -97,8 +97,15 @@ export default function Leaderboard() {
                          {getRankIcon(entry.rank)}
                        </div>
                     </td>
-                    <td className="px-6 py-4 font-mono font-medium text-foreground">
-                      {entry.userId}
+                    <td className="px-6 py-4 font-medium text-foreground">
+                      {entry.username ? (
+                        <div>
+                          <div>{entry.username}</div>
+                          <div className="text-xs font-mono text-muted-foreground/60">{entry.userId}</div>
+                        </div>
+                      ) : (
+                        <span className="font-mono">{entry.userId}</span>
+                      )}
                     </td>
                     <td className="px-6 py-4 text-right font-mono text-muted-foreground">
                       {entry.uniqueCards.toLocaleString()}

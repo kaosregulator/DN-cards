@@ -46,6 +46,7 @@ export type CardPatch = Partial<{
 export interface LeaderboardEntry {
   rank: number;
   userId: string;
+  username: string | null;
   uniqueCards: number;
   totalCards: number;
   netWorth: number;
@@ -137,6 +138,15 @@ export function useAdminCards(enabled: boolean) {
 function invalidateCardLists(qc: ReturnType<typeof useQueryClient>) {
   qc.invalidateQueries({ queryKey: ["admin", "cards"] });
   qc.invalidateQueries({ queryKey: ["cards"] });
+}
+
+export function useCreateCard() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: CardPatch & { name: string; rarity: Rarity }) =>
+      adminSend<{ card: Card }>("POST", "/api/admin/cards", body),
+    onSuccess: () => invalidateCardLists(qc),
+  });
 }
 
 export function useUpdateCard() {
