@@ -21,6 +21,32 @@ export class ApiError extends Error {
   }
 }
 
+/** Resolve an imageUrl that may be an absolute URL or an object-storage path (`/objects/...`). */
+export function resolveImageUrl(url: string | null | undefined): string | null {
+  if (!url) return null;
+  if (url.startsWith("/objects/")) return `/api/storage${url}`;
+  return url;
+}
+
+/** Admin-only: request a presigned PUT URL + final objectPath. */
+export async function requestUploadUrl(contentType: string): Promise<{ uploadURL: string; objectPath: string }> {
+  return adminSend("POST", "/api/admin/uploads/request-url", { contentType });
+}
+
+/** Admin: upload a File to object storage; resolves to the storage path (`/objects/...`). */
+export async function uploadImageFile(file: File): Promise<string> {
+  if (!file.type.startsWith("image/")) throw new Error("Only image files are supported.");
+  if (file.size > 8 * 1024 * 1024) throw new Error("Image must be 8 MB or smaller.");
+  const { uploadURL, objectPath } = await requestUploadUrl(file.type);
+  const put = await fetch(uploadURL, {
+    method: "PUT",
+    headers: { "Content-Type": file.type },
+    body: file,
+  });
+  if (!put.ok) throw new Error(`Upload failed (${put.status})`);
+  return objectPath;
+}
+
 async function parseError(res: Response, path: string): Promise<ApiError> {
   let body: any = null;
   try { body = await res.json(); } catch { /* ignore */ }

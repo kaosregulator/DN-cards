@@ -14,6 +14,7 @@ import {
 } from "../cards-data.js";
 import { handleTrade, handleAccept, handleDecline, handleListTrades } from "./trading.js";
 import { handleDaily, handleAchievementsCommand } from "./daily.js";
+import { toAbsoluteImageUrl } from "../image-url.js";
 import { handlePack } from "./pack.js";
 import { checkAchievements, formatUnlockLine } from "../achievements.js";
 
@@ -138,7 +139,7 @@ export async function handleUserCommand(
       );
     if (card.maxCopies) embed.addFields({ name: "📦 Copies", value: `${card.totalMinted} / ${card.maxCopies}`, inline: true });
     if (badges.length > 0) embed.addFields({ name: "Special", value: badges.join(" · "), inline: false });
-    if (card.imageUrl) embed.setImage(card.imageUrl);
+    { const img = toAbsoluteImageUrl(card.imageUrl); if (img) embed.setImage(img); }
     await interaction.editReply({ embeds: [embed] });
     return;
   }
@@ -169,19 +170,35 @@ export async function handleUserCommand(
 
   // ── /top ──────────────────────────────────────────────────────────────────────
   if (sub === "top") {
-    const rows = await getLeaderboard(guildId);
-    if (rows.length === 0) { await interaction.editReply("No one has caught any cards yet!"); return; }
+    const [byWorth, byCards] = await Promise.all([
+      getLeaderboard(guildId, "worth", 10),
+      getLeaderboard(guildId, "cards", 5),
+    ]);
+    if (byWorth.length === 0) { await interaction.editReply("No one has caught any cards yet!"); return; }
     const medals = ["🥇", "🥈", "🥉"];
-    const lines = rows.map((r, i) => {
+    const worthLines = byWorth.map((r, i) => {
       const medal = medals[i] ?? `**${i + 1}.**`;
       const rank = getCollectorRank(r.uniqueCards);
-      return `${medal} ${rank.emoji} <@${r.userId}> — 💠 ${r.netWorth.toLocaleString()} · ${r.totalCards} cards (${r.uniqueCards} unique)`;
+      return `${medal} ${rank.emoji} <@${r.userId}> — 💠 **${r.netWorth.toLocaleString()}** · ${r.totalCards} cards`;
     });
+    const cardLines = byCards.map((r, i) => {
+      const medal = medals[i] ?? `**${i + 1}.**`;
+      return `${medal} <@${r.userId}> — **${r.totalCards.toLocaleString()}** cards (${r.uniqueCards} unique)`;
+    });
+    const domain = process.env["REPLIT_DOMAINS"]?.split(",")[0];
+    const dashUrl = domain ? `https://${domain}/dashboard/leaderboard` : null;
     const embed = new EmbedBuilder()
       .setTitle("🏆 DN Cards — Collector Leaderboard")
       .setColor(0xf39c12)
-      .setDescription(lines.join("\n"))
-      .setFooter({ text: "Ranked by total collection net worth (💠 shards)" });
+      .addFields(
+        { name: "💠 Top 10 by Net Worth", value: worthLines.join("\n") },
+        { name: "🃏 Top 5 by Card Count", value: cardLines.join("\n") },
+      )
+      .setFooter({
+        text: dashUrl
+          ? `Full leaderboard on the web → ${dashUrl}`
+          : "Ranked by total collection net worth (💠 shards)",
+      });
     await interaction.editReply({ embeds: [embed] });
     return;
   }

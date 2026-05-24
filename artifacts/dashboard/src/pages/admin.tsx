@@ -9,7 +9,7 @@ import {
   type CardPatch,
   type Rarity,
 } from "@/hooks/queries";
-import { getAdminToken, setAdminToken, ApiError } from "@/lib/api";
+import { getAdminToken, setAdminToken, ApiError, uploadImageFile, resolveImageUrl } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -29,6 +29,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import {
   Pencil, Copy, Archive, ArchiveRestore, Trash2, Power, PowerOff, Search, LogOut, Plus,
+  Upload, Loader2,
 } from "lucide-react";
 
 const RARITIES: Rarity[] = ["legendary", "epic", "rare", "uncommon", "common"];
@@ -39,6 +40,134 @@ const RARITY_COLOR: Record<Rarity, string> = {
   uncommon: "text-emerald-400 border-emerald-500/40",
   common: "text-zinc-400 border-zinc-500/40",
 };
+
+// Mirrors RARITY_COLORS in bot/cards-data.ts so the preview matches Discord embeds.
+const RARITY_EMBED_HEX: Record<Rarity, string> = {
+  legendary: "#f1c40f",
+  epic: "#9b59b6",
+  rare: "#3498db",
+  uncommon: "#2ecc71",
+  common: "#95a5a6",
+};
+const RARITY_EMOJI: Record<Rarity, string> = {
+  legendary: "🟡", epic: "🟣", rare: "🔵", uncommon: "🟢", common: "⚪",
+};
+
+// ── Upload field (shared by Edit and Create dialogs) ─────────────────────────
+function ImageUploadField({
+  id, value, onChange, testidPrefix,
+}: { id: string; value: string | null; onChange: (next: string | null) => void; testidPrefix: string }) {
+  const { toast } = useToast();
+  const [uploading, setUploading] = useState(false);
+  const preview = resolveImageUrl(value);
+  return (
+    <div className="space-y-2">
+      <Label htmlFor={id}>Image</Label>
+      <div className="flex gap-3 items-start">
+        <div className="h-20 w-20 rounded-md bg-muted/50 border border-border/40 overflow-hidden flex-shrink-0 flex items-center justify-center">
+          {preview
+            ? <img src={preview} alt="" className="h-full w-full object-cover" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} />
+            : <span className="text-[10px] text-muted-foreground font-mono">no image</span>}
+        </div>
+        <div className="flex-1 space-y-2">
+          <Input
+            id={id}
+            value={value ?? ""}
+            onChange={(e) => onChange(e.target.value || null)}
+            placeholder="https://... or upload below"
+            data-testid={`${testidPrefix}-url`}
+          />
+          <div className="flex items-center gap-2">
+            <label className={`inline-flex items-center gap-2 text-xs px-3 py-1.5 rounded-md border border-border/60 cursor-pointer hover:bg-muted transition-colors ${uploading ? "opacity-60 cursor-wait" : ""}`}>
+              {uploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
+              {uploading ? "Uploading…" : "Upload image"}
+              <input
+                type="file"
+                accept="image/*"
+                className="sr-only"
+                disabled={uploading}
+                data-testid={`${testidPrefix}-file`}
+                onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  e.target.value = "";
+                  if (!file) return;
+                  setUploading(true);
+                  try {
+                    const path = await uploadImageFile(file);
+                    onChange(path);
+                    toast({ title: "Image uploaded" });
+                  } catch (err) {
+                    toast({ variant: "destructive", title: "Upload failed", description: err instanceof Error ? err.message : "Unknown error" });
+                  } finally {
+                    setUploading(false);
+                  }
+                }}
+              />
+            </label>
+            {value && (
+              <button type="button" className="text-xs text-muted-foreground hover:text-foreground underline" onClick={() => onChange(null)} data-testid={`${testidPrefix}-clear`}>
+                Remove
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Discord-style card preview ────────────────────────────────────────────────
+function CardPreview({
+  name, rarity, description, imageUrl, worthValue, burnValue, dropWeight,
+  isLimitedEdition, isEventExclusive, maxCopies,
+}: {
+  name?: string; rarity?: Rarity; description?: string; imageUrl?: string | null;
+  worthValue?: number; burnValue?: number; dropWeight?: number;
+  isLimitedEdition?: boolean; isEventExclusive?: boolean; maxCopies?: number | null;
+}) {
+  const r: Rarity = rarity ?? "common";
+  const hex = RARITY_EMBED_HEX[r];
+  const preview = resolveImageUrl(imageUrl);
+  return (
+    <div className="rounded-md overflow-hidden border border-border/40 bg-[#2b2d31] text-[#dbdee1] text-sm" style={{ borderLeftColor: hex, borderLeftWidth: 4 }}>
+      <div className="p-3 space-y-2">
+        <div className="text-xs text-[#b5bac1] font-mono uppercase tracking-wider">DN Cards Bot</div>
+        <div className="text-base font-semibold text-white flex items-center gap-2">
+          <span>{RARITY_EMOJI[r]}</span>
+          <span>{name?.trim() || "Untitled card"}</span>
+          <span className="text-xs font-mono uppercase px-1.5 py-0.5 rounded border border-white/10 text-[#b5bac1]">{r}</span>
+        </div>
+        {description?.trim() && <div className="text-sm text-[#dbdee1] whitespace-pre-wrap">{description.trim()}</div>}
+        {(isLimitedEdition || isEventExclusive) && (
+          <div className="flex flex-wrap gap-1">
+            {isEventExclusive && <span className="text-[10px] font-mono uppercase px-1.5 py-0.5 rounded bg-pink-500/15 text-pink-300 border border-pink-500/30">Event Exclusive</span>}
+            {isLimitedEdition && <span className="text-[10px] font-mono uppercase px-1.5 py-0.5 rounded bg-cyan-500/15 text-cyan-300 border border-cyan-500/30">Limited {maxCopies ? `· max ${maxCopies}` : ""}</span>}
+          </div>
+        )}
+        {preview && (
+          <div className="rounded overflow-hidden bg-black/30">
+            <img src={preview} alt="" className="w-full max-h-72 object-contain" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} />
+          </div>
+        )}
+        <div className="grid grid-cols-3 gap-2 pt-1">
+          <PreviewStat label="Worth" value={`💠 ${(worthValue ?? 0).toLocaleString()}`} />
+          <PreviewStat label="Burn" value={`💠 ${(burnValue ?? 0).toLocaleString()}`} />
+          <PreviewStat label="Pull Weight" value={`${dropWeight ?? 0}`} />
+        </div>
+        <div className="text-[10px] text-[#949ba4] pt-1">Type the card's name to catch it</div>
+      </div>
+    </div>
+  );
+}
+
+function PreviewStat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="bg-black/20 rounded px-2 py-1">
+      <div className="text-[10px] uppercase tracking-wider text-[#949ba4]">{label}</div>
+      <div className="text-sm font-mono text-white">{value}</div>
+    </div>
+  );
+}
 
 // ── Token gate ────────────────────────────────────────────────────────────────
 function TokenGate({ onAuthed }: { onAuthed: () => void }) {
@@ -122,12 +251,13 @@ function EditDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="font-mono uppercase tracking-widest">Edit Card #{card.id}</DialogTitle>
           <DialogDescription>Changes apply immediately to the dashboard, roster, packs, and future pulls.</DialogDescription>
         </DialogHeader>
 
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6">
         <form onSubmit={onSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="md:col-span-2">
             <Label htmlFor="f-name">Name</Label>
@@ -160,8 +290,12 @@ function EditDialog({
           </div>
 
           <div className="md:col-span-2">
-            <Label htmlFor="f-image">Image URL</Label>
-            <Input id="f-image" value={form.imageUrl ?? ""} onChange={e => setForm(s => ({ ...s, imageUrl: e.target.value || null }))} placeholder="https://..." data-testid="input-edit-image" />
+            <ImageUploadField
+              id="f-image"
+              value={form.imageUrl ?? null}
+              onChange={(v) => setForm(s => ({ ...s, imageUrl: v }))}
+              testidPrefix="edit-image"
+            />
           </div>
 
           <div className="md:col-span-2">
@@ -196,6 +330,22 @@ function EditDialog({
             </Button>
           </DialogFooter>
         </form>
+        <div className="space-y-2">
+          <div className="text-xs font-mono uppercase tracking-widest text-muted-foreground">Live preview</div>
+          <CardPreview
+            name={form.name ?? card.name}
+            rarity={form.rarity ?? card.rarity}
+            description={form.description ?? card.description}
+            imageUrl={form.imageUrl ?? card.imageUrl}
+            worthValue={form.worthValue ?? card.worthValue}
+            burnValue={form.burnValue ?? card.burnValue}
+            dropWeight={form.dropWeight ?? card.dropWeight}
+            isLimitedEdition={form.isLimitedEdition ?? card.isLimitedEdition}
+            isEventExclusive={form.isEventExclusive ?? card.isEventExclusive}
+            maxCopies={form.maxCopies ?? card.maxCopies}
+          />
+        </div>
+        </div>
       </DialogContent>
     </Dialog>
   );
@@ -341,9 +491,10 @@ export default function Admin() {
                     <td className="p-3">
                       <div className="flex items-center gap-3">
                         <div className="h-10 w-10 rounded-md bg-muted/50 border border-border/40 overflow-hidden flex-shrink-0">
-                          {c.imageUrl
-                            ? <img src={c.imageUrl} alt="" loading="lazy" className="h-full w-full object-cover" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} />
-                            : null}
+                          {(() => {
+                            const src = resolveImageUrl(c.imageUrl);
+                            return src ? <img src={src} alt="" loading="lazy" className="h-full w-full object-cover" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} /> : null;
+                          })()}
                         </div>
                         <div className="min-w-0">
                           <div className="font-medium truncate">{c.name}</div>
@@ -478,12 +629,13 @@ function CreateDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (o:
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="font-mono uppercase tracking-widest">New Card</DialogTitle>
           <DialogDescription>Once saved it joins the roster immediately and becomes catchable.</DialogDescription>
         </DialogHeader>
 
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6">
         <form onSubmit={onSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="md:col-span-2">
             <Label htmlFor="n-name">Name</Label>
@@ -514,8 +666,12 @@ function CreateDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (o:
           </div>
 
           <div className="md:col-span-2">
-            <Label htmlFor="n-image">Image URL</Label>
-            <Input id="n-image" placeholder="https://..." value={form.imageUrl} onChange={e => setForm(s => ({ ...s, imageUrl: e.target.value }))} data-testid="input-new-image" />
+            <ImageUploadField
+              id="n-image"
+              value={form.imageUrl || null}
+              onChange={(v) => setForm(s => ({ ...s, imageUrl: v ?? "" }))}
+              testidPrefix="new-image"
+            />
           </div>
 
           <div className="md:col-span-2">
@@ -551,6 +707,22 @@ function CreateDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (o:
             </Button>
           </DialogFooter>
         </form>
+        <div className="space-y-2">
+          <div className="text-xs font-mono uppercase tracking-widest text-muted-foreground">Live preview</div>
+          <CardPreview
+            name={form.name}
+            rarity={form.rarity}
+            description={form.description}
+            imageUrl={form.imageUrl || null}
+            worthValue={form.worthValue}
+            burnValue={form.burnValue}
+            dropWeight={form.dropWeight}
+            isLimitedEdition={form.isLimitedEdition}
+            isEventExclusive={form.isEventExclusive}
+            maxCopies={form.maxCopies}
+          />
+        </div>
+        </div>
       </DialogContent>
     </Dialog>
   );

@@ -38,7 +38,7 @@ const cardPatchSchema = z.object({
   dropWeight: z.number().min(0).max(1000).optional(),
   worthValue: z.number().int().min(0).max(1_000_000).optional(),
   burnValue: z.number().int().min(0).max(1_000_000).optional(),
-  imageUrl: z.string().url().nullable().optional(),
+  imageUrl: z.union([z.string().url(), z.string().regex(/^\/objects\/[^?#]+$/)]).nullable().optional(),
   maxCopies: z.number().int().min(1).max(100_000).nullable().optional(),
   isLimitedEdition: z.boolean().optional(),
   isEventExclusive: z.boolean().optional(),

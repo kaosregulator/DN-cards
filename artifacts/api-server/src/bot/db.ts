@@ -260,19 +260,20 @@ export async function getCollectionEntry(guildId: string, userId: string, cardId
 }
 
 // ── Leaderboard ───────────────────────────────────────────────────────────────
-export async function getLeaderboard(guildId: string) {
+export async function getLeaderboard(guildId: string, sortBy: "worth" | "cards" = "worth", limit = 10) {
+  const orderExpr = sortBy === "cards" ? sql`total_cards desc` : sql`net_worth desc`;
   return db.select({
     userId: collectionsTable.userId,
-    totalCards: sql<number>`sum(${collectionsTable.count})`.as("total_cards"),
-    uniqueCards: sql<number>`count(distinct ${collectionsTable.cardId})`.as("unique_cards"),
-    netWorth: sql<number>`sum(${collectionsTable.count} * ${cardsTable.worthValue})`.as("net_worth"),
+    totalCards: sql<number>`sum(${collectionsTable.count})::int`.as("total_cards"),
+    uniqueCards: sql<number>`count(distinct ${collectionsTable.cardId})::int`.as("unique_cards"),
+    netWorth: sql<number>`sum(${collectionsTable.count} * ${cardsTable.worthValue})::int`.as("net_worth"),
   })
     .from(collectionsTable)
     .innerJoin(cardsTable, eq(collectionsTable.cardId, cardsTable.id))
     .where(eq(collectionsTable.guildId, guildId))
     .groupBy(collectionsTable.userId)
-    .orderBy(sql`net_worth desc`)
-    .limit(10);
+    .orderBy(orderExpr)
+    .limit(limit);
 }
 
 // ── Currency (DN Shards) ──────────────────────────────────────────────────────

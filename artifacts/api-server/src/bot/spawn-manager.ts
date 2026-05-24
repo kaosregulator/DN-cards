@@ -11,6 +11,7 @@ import {
   getAllCards,
 } from "./db.js";
 import { RARITY_COLORS, RARITY_EMOJI, RARITY_LABELS, TYPE_EMOJI, type Rarity, type CardType } from "./cards-data.js";
+import { toAbsoluteImageUrl } from "./image-url.js";
 import { logger } from "../lib/logger.js";
 import type { Card, GuildSettings } from "@workspace/db";
 
@@ -278,7 +279,7 @@ async function buildClaimedEmbed(cardId: number, userId: string): Promise<EmbedB
     )
     .setTimestamp();
   if (card.flavor) embed.setFooter({ text: card.flavor });
-  if (card.imageUrl) embed.setImage(card.imageUrl);
+  { const img = toAbsoluteImageUrl(card.imageUrl); if (img) embed.setImage(img); }
   return embed;
 }
 
@@ -308,7 +309,7 @@ function buildSpawnEmbed(card: Card, windowSeconds: number): EmbedBuilder {
     .setTimestamp();
 
   if (card.flavor) embed.setFooter({ text: card.flavor });
-  if (card.imageUrl) embed.setImage(card.imageUrl);
+  { const img = toAbsoluteImageUrl(card.imageUrl); if (img) embed.setImage(img); }
   return embed;
 }
 
