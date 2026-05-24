@@ -228,10 +228,11 @@ export async function handleUserCommand(
     .setTitle("🃏 DN Cards — Command Reference")
     .setColor(0x5865f2)
     .setDescription(
-      "When a card spawns in the drop channel, **type its name exactly** to catch it!\n\n" +
+      "When a card spawns in the drop channel, **type its name exactly** to catch it!\n" +
+      "Most card-name fields **autocomplete** as you type — pick from the dropdown.\n\n" +
       "**📦 Collection**\n" +
       "`/collection` · `/rank` · `/info name:<card>` · `/list` · `/top`\n\n" +
-      "**🔥 Economy**\n" +
+      "**🔥 Economy** *(private — only you see the reply)*\n" +
       "`/burn name:<card>` — destroy a duplicate for DN Shards\n" +
       "`/shards` — check your balance\n\n" +
       "**🔄 Trading**\n" +
@@ -240,10 +241,15 @@ export async function handleUserCommand(
       "**⚙️ Server Setup** *(admins only — use `!` prefix)*\n" +
       "`!setup` — interactive setup wizard\n" +
       "`!setchannel` · `!setinterval` · `!setwindow` · `!setdrops` · `!setrarity`\n" +
-      "`!spawnenable` · `!spawndisable` · `!addcard` · `!removecard`\n" +
+      "`!spawnenable` · `!spawndisable` · `!addcard` · `!editcard` · `!removecard`\n" +
       "`!settings` — view current configuration\n\n" +
       "**⚡ Admin Quick Actions** *(slash commands)*\n" +
-      "`/drop` · `/give` · `/giveshards` · `/takeback` · `/takeshards`",
+      "`/drop` · `/give` · `/giveshards` · `/takeback` · `/takeshards`\n\n" +
+      "**🗂️ Card Sets** *(admin)*\n" +
+      "`/loadset file:<.json>` — upload a card pack\n" +
+      "`/loadset defaults:true` — re-add the built-in 27 cards\n" +
+      "`/unloadset set:<name>` — remove a whole set\n" +
+      "`/listsets` — see all loaded sets",
     );
   await interaction.editReply({ embeds: [embed] });
 }
