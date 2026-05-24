@@ -16,7 +16,13 @@ import { toAbsoluteImageUrl } from "./image-url.js";
 import { logger } from "../lib/logger.js";
 import type { Card, GuildSettings } from "@workspace/db";
 
+interface PendingCatch {
+  userId: string;
+  timestamp: number; // message createdTimestamp — lower wins
+}
+
 interface ActiveSpawn {
+  spawnId: string;
   cardId: number;
   cardName: string;
   burnValue: number;
@@ -25,7 +31,17 @@ interface ActiveSpawn {
   message: { edit: (opts: unknown) => Promise<unknown> };
   expiresAt: Date;
   caught: boolean;
+  catchMode: "type" | "button" | "both";
+  // Fair-claim buffer for typing mode: collect matches in a small grace
+  // window, then award to the message with the smallest server timestamp.
+  pending: PendingCatch[];
+  resolveTimer: ReturnType<typeof setTimeout> | null;
 }
+
+// Grace window for collecting concurrent typing-mode catch attempts.
+// Anyone whose Discord-stamped message lands within this window of the first
+// matching message gets considered; lowest timestamp wins.
+const TYPE_GRACE_MS = 500;
 
 // Multiple active spawns per guild (for cardsPerSpawn > 1)
 const activeSpawns = new Map<string, Map<string, ActiveSpawn>>();
@@ -125,9 +141,12 @@ async function doSingleSpawn(guildId: string, forcedCardId?: number, isForced = 
   const channel = botClient.channels.cache.get(settings.spawnChannelId) as TextChannel | undefined;
   if (!channel) return;
 
-  const embed = buildSpawnEmbed(card, settings.catchWindowSeconds);
+  const mode = ((settings as unknown as { catchMode?: string }).catchMode ?? "type") as "type" | "button" | "both";
+  const spawnId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  const embed = buildSpawnEmbed(card, settings.catchWindowSeconds, mode);
   const spawnLog = await logSpawn(guildId, settings.spawnChannelId, card.id, isForced);
-  const message = await channel.send({ embeds: [embed] });
+  const components = mode === "type" ? [] : [buildClaimRow(guildId, spawnId)];
+  const message = await channel.send({ embeds: [embed], components });
 
   // ── Wishlist ping: notify users who have this card on their wishlist ──────
   // Chunk into batches so a popular card doesn't blast a 100-mention message
@@ -147,8 +166,8 @@ async function doSingleSpawn(guildId: string, forcedCardId?: number, isForced = 
     logger.warn({ err }, "Wishlist ping failed");
   }
 
-  const spawnId = `${Date.now()}-${Math.random()}`;
   const spawn: ActiveSpawn = {
+    spawnId,
     cardId: card.id,
     cardName: card.name,
     burnValue: card.burnValue,
@@ -157,6 +176,9 @@ async function doSingleSpawn(guildId: string, forcedCardId?: number, isForced = 
     message,
     expiresAt: new Date(Date.now() + settings.catchWindowSeconds * 1000),
     caught: false,
+    catchMode: mode,
+    pending: [],
+    resolveTimer: null,
   };
 
   let guildSpawns = activeSpawns.get(guildId);
@@ -191,37 +213,119 @@ export async function spawnCard(guildId: string, forcedCardId?: number, isForced
   await doSingleSpawn(guildId, forcedCardId, isForced);
 }
 
-// ── Handle catch attempt ──────────────────────────────────────────────────────
-export async function handleCatchAttempt(guildId: string, userId: string, guess: string): Promise<boolean> {
+// ── Handle catch attempt (typing) ────────────────────────────────────────────
+// Lag-fair: when the first match arrives we open a short grace window and
+// collect all matching messages. Whoever has the earliest Discord-stamped
+// timestamp (msg.createdTimestamp) wins, not whoever the bot processed first.
+export async function handleCatchAttempt(
+  guildId: string, userId: string, guess: string,
+  messageTimestamp: number,
+): Promise<{ matched: boolean; awaiting: boolean }> {
   const guildSpawns = activeSpawns.get(guildId);
-  if (!guildSpawns || guildSpawns.size === 0) return false;
+  if (!guildSpawns || guildSpawns.size === 0) return { matched: false, awaiting: false };
 
   const normalizedGuess = guess.trim().toLowerCase();
   const now = new Date();
 
   for (const [spawnId, spawn] of guildSpawns) {
     if (now > spawn.expiresAt) { guildSpawns.delete(spawnId); continue; }
+    if (spawn.caught) continue;
+    if (spawn.catchMode === "button") continue; // typing disabled
     if (normalizedGuess !== spawn.cardName.toLowerCase()) continue;
 
-    // Caught!
-    spawn.caught = true;
-    guildSpawns.delete(spawnId);
-
-    await catchCard(guildId, userId, spawn.cardId);
-    await markCaught(spawn.spawnLogId, userId);
-
-    // Update the spawn embed: keep the image and card art, overlay "CLAIMED".
-    try {
-      const claimedEmbed = await buildClaimedEmbed(spawn.cardId, userId);
-      if (claimedEmbed) await spawn.message.edit({ embeds: [claimedEmbed] });
-    } catch { /* deleted */ }
-
-    // Send Burn / Keep buttons to the catcher
-    await sendCatchButtons(guildId, userId, spawn.cardId, spawn.cardName, spawn.burnValue, spawn.channelId);
-
-    return true;
+    spawn.pending.push({ userId, timestamp: messageTimestamp });
+    if (!spawn.resolveTimer) {
+      spawn.resolveTimer = setTimeout(() => { void resolveTypingSpawn(guildId, spawnId); }, TYPE_GRACE_MS);
+    }
+    return { matched: true, awaiting: true };
   }
-  return false;
+  return { matched: false, awaiting: false };
+}
+
+async function resolveTypingSpawn(guildId: string, spawnId: string): Promise<void> {
+  const guildSpawns = activeSpawns.get(guildId);
+  const spawn = guildSpawns?.get(spawnId);
+  if (!spawn || spawn.caught || spawn.pending.length === 0) return;
+
+  spawn.pending.sort((a, b) => a.timestamp - b.timestamp);
+  const winner = spawn.pending[0];
+  await awardSpawn(guildId, spawnId, winner.userId);
+}
+
+// Award a spawn to a specific user atomically (used by both typing winner and button click).
+async function awardSpawn(guildId: string, spawnId: string, userId: string): Promise<boolean> {
+  const guildSpawns = activeSpawns.get(guildId);
+  const spawn = guildSpawns?.get(spawnId);
+  if (!spawn || spawn.caught) return false;
+
+  spawn.caught = true;
+  guildSpawns!.delete(spawnId);
+  if (spawn.resolveTimer) { clearTimeout(spawn.resolveTimer); spawn.resolveTimer = null; }
+
+  await catchCard(guildId, userId, spawn.cardId);
+  await markCaught(spawn.spawnLogId, userId);
+
+  try {
+    const claimedEmbed = await buildClaimedEmbed(spawn.cardId, userId);
+    if (claimedEmbed) await spawn.message.edit({ embeds: [claimedEmbed], components: [] });
+  } catch { /* deleted */ }
+
+  await sendCatchButtons(guildId, userId, spawn.cardId, spawn.cardName, spawn.burnValue, spawn.channelId);
+
+  // Reaction + achievements (was previously done in the message handler — moved
+  // here so it works for both typing winners and button clickers).
+  try {
+    if (botClient) {
+      const channel = botClient.channels.cache.get(spawn.channelId) as TextChannel | undefined;
+      if (channel) {
+        await channel.send({
+          content: `🎉 <@${userId}> caught **${spawn.cardName}**!`,
+          allowedMentions: { users: [] },
+        }).catch(() => { /* ignore */ });
+      }
+    }
+  } catch { /* ignore */ }
+  return true;
+}
+
+// Public: button-click claim. Returns success/false.
+export async function handleClaimButtonClick(guildId: string, spawnId: string, userId: string): Promise<{
+  ok: boolean; reason?: "expired" | "wrong_mode" | "already_caught";
+}> {
+  const guildSpawns = activeSpawns.get(guildId);
+  const spawn = guildSpawns?.get(spawnId);
+  if (!spawn) return { ok: false, reason: "expired" };
+  if (spawn.catchMode === "type") return { ok: false, reason: "wrong_mode" };
+  if (spawn.caught) return { ok: false, reason: "already_caught" };
+  const awarded = await awardSpawn(guildId, spawnId, userId);
+  return awarded ? { ok: true } : { ok: false, reason: "already_caught" };
+}
+
+// Build a 5-button row with the Claim button at a random column 0–4. The
+// other 4 slots are disabled spacers — this randomizes the click target each
+// spawn so players can't camp a fixed screen position.
+function buildClaimRow(guildId: string, spawnId: string): ActionRowBuilder<ButtonBuilder> {
+  const claimPos = Math.floor(Math.random() * 5);
+  const buttons: ButtonBuilder[] = [];
+  for (let i = 0; i < 5; i++) {
+    if (i === claimPos) {
+      buttons.push(
+        new ButtonBuilder()
+          .setCustomId(`spawn_claim:${guildId}:${spawnId}`)
+          .setLabel("🎯 Claim")
+          .setStyle(ButtonStyle.Success),
+      );
+    } else {
+      buttons.push(
+        new ButtonBuilder()
+          .setCustomId(`spawn_spacer:${spawnId}:${i}`)
+          .setLabel("\u200b")
+          .setStyle(ButtonStyle.Secondary)
+          .setDisabled(true),
+      );
+    }
+  }
+  return new ActionRowBuilder<ButtonBuilder>().addComponents(buttons);
 }
 
 // ── Burn / Keep / Offer Trade buttons after catching ─────────────────────────
@@ -311,7 +415,7 @@ async function buildClaimedEmbed(cardId: number, userId: string): Promise<EmbedB
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
-function buildSpawnEmbed(card: Card, windowSeconds: number): EmbedBuilder {
+function buildSpawnEmbed(card: Card, windowSeconds: number, mode: "type" | "button" | "both" = "type"): EmbedBuilder {
   const rarity = card.rarity as Rarity;
   const cardType = card.cardType as CardType;
   const color = RARITY_COLORS[rarity] ?? 0x7289da;
@@ -320,12 +424,16 @@ function buildSpawnEmbed(card: Card, windowSeconds: number): EmbedBuilder {
   if (card.isEventExclusive) badges.push("🎆 **EVENT EXCLUSIVE**");
   if (card.maxCopies) badges.push(`📦 Only ${card.maxCopies - card.totalMinted} copies remaining`);
 
+  const howTo =
+    mode === "button" ? `Hit the **🎯 Claim** button to catch:\n\`\`\`${card.name}\`\`\``
+    : mode === "both" ? `Type the card name **or** hit **🎯 Claim**:\n\`\`\`${card.name}\`\`\``
+    : `Type the card name exactly to catch it:\n\`\`\`${card.name}\`\`\``;
+
   const embed = new EmbedBuilder()
     .setTitle(`${RARITY_EMOJI[rarity]} A DN Card has appeared!`)
     .setColor(color)
     .setDescription(
-      `${badges.length > 0 ? badges.join("\n") + "\n\n" : ""}` +
-      `Type the card name exactly to catch it:\n\`\`\`${card.name}\`\`\``,
+      `${badges.length > 0 ? badges.join("\n") + "\n\n" : ""}${howTo}`,
     )
     .addFields(
       { name: `${TYPE_EMOJI[cardType]} ${card.name}`, value: card.description || "\u200b", inline: false },

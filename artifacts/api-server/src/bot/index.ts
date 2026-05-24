@@ -1,9 +1,8 @@
 import { Client, GatewayIntentBits, Partials, Events, REST, Routes, type Interaction } from "discord.js";
 import { logger } from "../lib/logger.js";
 import { seedDefaultCards, burnCard, getOrCreateCurrency } from "./db.js";
-import { initSpawnManager, initAllGuilds, handleCatchAttempt, scheduleNextSpawn } from "./spawn-manager.js";
+import { initSpawnManager, initAllGuilds, handleCatchAttempt, handleClaimButtonClick, scheduleNextSpawn } from "./spawn-manager.js";
 import { checkAchievements, formatUnlockLine } from "./achievements.js";
-import type { TextChannel } from "discord.js";
 import { handleAdminCommand } from "./commands/admin.js";
 import { handleUserCommand } from "./commands/user.js";
 import { handlePrefixCommand } from "./commands/prefix.js";
@@ -61,6 +60,39 @@ export async function startBot() {
       if (interaction.isButton()) {
         const parts = interaction.customId.split(":");
         const action = parts[0];
+
+        // ── Spawn Claim button (button/both catch mode) ────────────────────
+        if (action === "spawn_claim") {
+          const [, guildId, spawnId] = parts;
+          const result = await handleClaimButtonClick(guildId, spawnId, interaction.user.id);
+          if (!result.ok) {
+            const reasonMsg =
+              result.reason === "already_caught" ? "⚡ Too slow! Someone already claimed this card."
+              : result.reason === "expired" ? "⏰ That spawn has expired."
+              : "❌ This button isn't active right now.";
+            await interaction.reply({ content: reasonMsg, flags: MessageFlags.Ephemeral }).catch(() => { /* ignore */ });
+          } else {
+            await interaction.reply({
+              content: `🎯 You claimed it! Check the spawn message for **Burn / Keep / Trade** options.`,
+              flags: MessageFlags.Ephemeral,
+            }).catch(() => { /* ignore */ });
+            const unlocked = await checkAchievements(guildId, interaction.user.id).catch(() => []);
+            if (unlocked.length > 0) {
+              await interaction.followUp({
+                content: "🏆 **Achievement unlocked!**\n" + unlocked.map(formatUnlockLine).join("\n"),
+                flags: MessageFlags.Ephemeral,
+              }).catch(() => { /* ignore */ });
+            }
+          }
+          return;
+        }
+
+        // Spacer buttons are disabled, but Discord may still send a click if
+        // the client gets out of sync — silently ack.
+        if (action === "spawn_spacer") {
+          await interaction.deferUpdate().catch(() => { /* ignore */ });
+          return;
+        }
 
         // ── Trade Accept/Decline buttons ───────────────────────────────────
         if (action === "trade_accept" || action === "trade_decline") {
@@ -196,23 +228,19 @@ export async function startBot() {
     const editConsumed = await handleCardEditStep(msg).catch(() => false);
     if (editConsumed) return;
 
-    // Core card catch detection
-    const caught = await handleCatchAttempt(msg.guild.id, msg.author.id, content).catch(err => {
+    // Core card catch detection — pass Discord-stamped timestamp so the
+    // spawn-manager can do lag-fair winner selection (earliest sent wins,
+    // not earliest processed).
+    const result = await handleCatchAttempt(
+      msg.guild.id, msg.author.id, content, msg.createdTimestamp,
+    ).catch(err => {
       logger.error({ err }, "Catch attempt error");
-      return false;
+      return { matched: false, awaiting: false };
     });
-    if (caught) {
-      try { await msg.react("🎉"); } catch { /* ignore */ }
-      const unlocked = await checkAchievements(msg.guild.id, msg.author.id).catch(() => []);
-      if (unlocked.length > 0) {
-        const ch = msg.channel as TextChannel;
-        await ch.send({
-          content:
-            `🏆 <@${msg.author.id}> unlocked **${unlocked.length}** achievement` +
-            `${unlocked.length === 1 ? "" : "s"}!\n` +
-            unlocked.map(formatUnlockLine).join("\n"),
-        }).catch(() => { /* ignore */ });
-      }
+    if (result.matched) {
+      try { await msg.react("🎯"); } catch { /* ignore */ }
+      // Winner is decided inside spawn-manager after a short grace window;
+      // achievements for the typing winner are checked there too.
     }
   });
 

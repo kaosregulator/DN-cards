@@ -144,6 +144,8 @@ export const guildSettingsTable = pgTable("guild_settings", {
   rarityWeightRare: integer("rarity_weight_rare"),
   rarityWeightEpic: integer("rarity_weight_epic"),
   rarityWeightLegendary: integer("rarity_weight_legendary"),
+  // Catch mode: "type" (type card name), "button" (click claim button), or "both"
+  catchMode: text("catch_mode").notNull().default("type"),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 

@@ -1,4 +1,5 @@
 import type { Message, GuildMember } from "discord.js";
+import type { GuildSettings } from "@workspace/db";
 import {
   isAdmin, addAdmin, removeAdmin, listAdmins,
   getOrCreateGuildSettings, updateGuildSettings,
@@ -69,6 +70,7 @@ export async function handlePrefixCommand(msg: Message): Promise<void> {
       "`!setinterval random <min> <max>` — random range (e.g. `10m 60m`)\n" +
       "`!setwindow <time>` — catch window duration\n" +
       "`!setdrops <1|3|5|random>` — cards per spawn batch\n" +
+      "`!setcatchmode <type|button|both>` — typing, 🎯 Claim button (randomized position), or both\n" +
       "`!setrarity <rarity> <weight>` — change drop weight for a rarity\n" +
       "`!spawnenable` / `!spawndisable` — toggle auto-spawning\n" +
       "`!tradingenable` / `!tradingdisable` — toggle trading\n" +
@@ -217,6 +219,24 @@ export async function handlePrefixCommand(msg: Message): Promise<void> {
     return;
   }
 
+  // ── !setcatchmode type|button|both ────────────────────────────────────────
+  if (cmd === "setcatchmode") {
+    const mode = args[0]?.toLowerCase();
+    if (mode !== "type" && mode !== "button" && mode !== "both") {
+      await msg.reply(
+        "❌ Usage: `!setcatchmode type` (type card name) · `!setcatchmode button` (click 🎯 Claim) · `!setcatchmode both`",
+      );
+      return;
+    }
+    await updateGuildSettings(guildId, { catchMode: mode } as Partial<GuildSettings>);
+    const label =
+      mode === "type" ? "✍️ Type the card name (with 0.5s lag-fair window — earliest sent message wins)"
+      : mode === "button" ? "🎯 Click the Claim button (position randomizes each spawn — no camping)"
+      : "✍️ + 🎯 Both — type OR click";
+    await msg.reply(`✅ Catch mode → **${mode}**.\n${label}`);
+    return;
+  }
+
   // ── Spawn toggle ───────────────────────────────────────────────────────────
   if (cmd === "spawnenable") {
     await updateGuildSettings(guildId, { spawnEnabled: true });
@@ -272,6 +292,7 @@ export async function handlePrefixCommand(msg: Message): Promise<void> {
       `⏱️ Interval: ${s.useRandomInterval ? `Random ${formatTime(s.spawnIntervalMin ?? 0)}–${formatTime(s.spawnIntervalMax ?? 0)}` : formatTime(s.spawnIntervalSeconds)}\n` +
       `🪟 Catch Window: ${formatTime(s.catchWindowSeconds)}\n` +
       `📦 Cards per Batch: ${cardsPerSpawnLabel}\n` +
+      `🎯 Catch Mode: **${(s as unknown as { catchMode?: string }).catchMode ?? "type"}** (${{type:"✍️ typing — lag-fair (earliest sent wins)",button:"🎯 click Claim — position randomized",both:"✍️ + 🎯 both"}[(s as unknown as { catchMode?: string }).catchMode ?? "type"]})\n` +
       `🎲 Rarity Weights (✏️ = customised): ${rarityLines}\n` +
       `🔄 Trading: ${s.tradeEnabled ? "✅ Enabled" : "⏸️ Disabled"}\n` +
       `💬 Trade Channel: ${s.tradeChannelId ? `<#${s.tradeChannelId}>` : "Any channel"}`,
