@@ -5,10 +5,12 @@ import { initSpawnManager, initAllGuilds, handleCatchAttempt, scheduleNextSpawn 
 import { handleAdminCommand } from "./commands/admin.js";
 import { handleUserCommand } from "./commands/user.js";
 
+// All commands that require admin auth
 const ADMIN_SUBCOMMANDS = new Set([
   "setchannel", "setinterval", "setwindow", "enable", "disable",
-  "drop", "addcard", "removecard", "addadmin", "removeadmin",
-  "listadmins", "settings",
+  "drop", "addcard", "addlimited", "addevent", "give", "giveshards",
+  "removecard", "addadmin", "removeadmin", "listadmins", "settings",
+  "tradingenable", "tradingdisable", "settradechannel",
 ]);
 
 export async function startBot() {
@@ -31,13 +33,13 @@ export async function startBot() {
   initSpawnManager(client);
 
   client.once(Events.ClientReady, async (c) => {
-    logger.info({ tag: c.user.tag }, "Discord bot ready");
+    logger.info({ tag: c.user.tag }, "DN Cards bot ready");
     await seedDefaultCards();
     await initAllGuilds(client);
   });
 
   client.on(Events.GuildCreate, async (guild) => {
-    logger.info({ guildId: guild.id, name: guild.name }, "Bot joined a new guild");
+    logger.info({ guildId: guild.id, name: guild.name }, "Bot joined guild");
     scheduleNextSpawn(guild.id);
   });
 
@@ -46,16 +48,19 @@ export async function startBot() {
     if (!msg.guild) return;
 
     const content = msg.content.trim();
+    const lower = content.toLowerCase();
 
-    // ── Bot commands (prefix: !card) ──────────────────────────────────────────
-    if (content.toLowerCase().startsWith("!card")) {
+    // ── Command handling (prefix: !card) ──────────────────────────────────────
+    if (lower.startsWith("!card")) {
       const args = content.slice("!card".length).trim().split(/\s+/).filter(Boolean);
       const sub = args[0]?.toLowerCase() ?? "";
 
+      // Support "!card admin <subcmd>" as alias
+      const effectiveArgs = sub === "admin" ? args.slice(1) : args;
+      const effectiveSub = effectiveArgs[0]?.toLowerCase() ?? "";
+
       if (ADMIN_SUBCOMMANDS.has(sub) || sub === "admin") {
-        // Strip "admin" keyword if used as a prefix e.g. "!card admin drop"
-        const adminArgs = sub === "admin" ? args.slice(1) : args;
-        await handleAdminCommand(msg, adminArgs).catch(err =>
+        await handleAdminCommand(msg, effectiveArgs).catch(err =>
           logger.error({ err }, "Admin command error"),
         );
       } else {
@@ -66,20 +71,17 @@ export async function startBot() {
       return;
     }
 
-    // ── Catch attempt — any non-command message in any channel ────────────────
-    const caught = await handleCatchAttempt(msg.guild.id, msg.author.id, content).catch(
-      (err) => { logger.error({ err }, "Catch attempt error"); return false; },
-    );
-
+    // ── Catch attempt — any non-command message ───────────────────────────────
+    const caught = await handleCatchAttempt(msg.guild.id, msg.author.id, content).catch(err => {
+      logger.error({ err }, "Catch attempt error");
+      return false;
+    });
     if (caught) {
-      // Reply handled inside spawn-manager; optionally react
       try { await msg.react("🎉"); } catch { /* ignore */ }
     }
   });
 
-  try {
-    await client.login(token);
-  } catch (err) {
-    logger.error({ err }, "Failed to log in to Discord — check DISCORD_BOT_TOKEN");
-  }
+  await client.login(token).catch(err => {
+    logger.error({ err }, "Failed to login — check DISCORD_BOT_TOKEN");
+  });
 }

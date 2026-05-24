@@ -1,0 +1,1 @@
+- [DN Cards architecture](dn-cards-arch.md) — military collectible card bot; bot runs inside Express process; enums need push-force on schema changes.
