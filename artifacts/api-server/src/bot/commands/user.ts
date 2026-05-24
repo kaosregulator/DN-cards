@@ -1,39 +1,33 @@
-import type { Message } from "discord.js";
+import type { ChatInputCommandInteraction } from "discord.js";
 import { EmbedBuilder } from "discord.js";
 import {
-  getUserCollection,
-  getAllCards,
-  getLeaderboard,
-  getOrCreateCurrency,
-  burnCard,
-  getCardByName,
-  getUserCardCount,
+  getUserCollection, getAllCards, getLeaderboard,
+  getOrCreateCurrency, burnCard, getCardByName, getUserCardCount,
 } from "../db.js";
 import {
   RARITY_COLORS, RARITY_EMOJI, RARITY_LABELS, TYPE_EMOJI,
   getCollectorRank, getNextRank,
   type Rarity, type CardType,
 } from "../cards-data.js";
-import {
-  handleTrade,
-  handleAccept,
-  handleDecline,
-  handleListTrades,
-} from "./trading.js";
+import { handleTrade, handleAccept, handleDecline, handleListTrades } from "./trading.js";
 
-export async function handleUserCommand(msg: Message, args: string[]): Promise<void> {
-  if (!msg.guild) return;
-  const sub = args[0]?.toLowerCase();
+export async function handleUserCommand(
+  interaction: ChatInputCommandInteraction,
+  sub: string,
+): Promise<void> {
+  if (!interaction.guild) return;
+  await interaction.deferReply();
+  const guildId = interaction.guild.id;
 
-  // ── Collection ──────────────────────────────────────────────────────────────
-  if (sub === "collection" || sub === "col" || sub === "inv" || sub === "inventory") {
-    const target = msg.mentions.users.first() ?? msg.author;
-    const items = await getUserCollection(msg.guild.id, target.id);
+  // ── /card collection ────────────────────────────────────────────────────────
+  if (sub === "collection") {
+    const target = interaction.options.getUser("user") ?? interaction.user;
+    const items = await getUserCollection(guildId, target.id);
 
     if (items.length === 0) {
-      await msg.reply(
-        target.id === msg.author.id
-          ? "You haven't caught any DN Cards yet! Wait for a card to spawn and type its name."
+      await interaction.editReply(
+        target.id === interaction.user.id
+          ? "You haven't caught any DN Cards yet! Watch for a card to spawn and type its name."
           : `**${target.username}** hasn't caught any cards yet.`,
       );
       return;
@@ -48,29 +42,26 @@ export async function handleUserCommand(msg: Message, args: string[]): Promise<v
 
     const totalCards = items.reduce((s, i) => s + i.count, 0);
     const netWorth = items.reduce((s, i) => s + i.worthValue * i.count, 0);
-    const { unique } = await getUserCardCount(msg.guild.id, target.id);
+    const { unique } = await getUserCardCount(guildId, target.id);
     const rank = getCollectorRank(unique);
     const nextRank = getNextRank(unique);
+    const rankProgress = nextRank
+      ? `${rank.emoji} ${rank.name} → ${nextRank.emoji} ${nextRank.name} (${unique}/${nextRank.min})`
+      : `${rank.emoji} ${rank.name} *(MAX RANK)*`;
 
     const fields = rarityOrder
       .filter(r => byRarity[r]?.length)
       .map(r => ({
         name: `${RARITY_EMOJI[r]} ${RARITY_LABELS[r]} (${byRarity[r].length} unique)`,
-        value: byRarity[r]
-          .map(i => {
-            const badges = [
-              i.isLimitedEdition ? "💎" : "",
-              i.isEventExclusive ? "🎆" : "",
-            ].filter(Boolean).join("");
-            return `${badges}**${i.name}** ×${i.count}`;
-          })
-          .join("\n"),
+        value: byRarity[r].map(i => {
+          const badges = [
+            i.isLimitedEdition ? "💎" : "",
+            i.isEventExclusive ? "🎆" : "",
+          ].filter(Boolean).join("");
+          return `${badges}**${i.name}** ×${i.count}`;
+        }).join("\n"),
         inline: false,
       }));
-
-    const rankProgress = nextRank
-      ? `${rank.emoji} ${rank.name} → ${nextRank.emoji} ${nextRank.name} (${unique}/${nextRank.min})`
-      : `${rank.emoji} ${rank.name} *(MAX RANK)*`;
 
     const embed = new EmbedBuilder()
       .setTitle(`🃏 ${target.username}'s DN Collection`)
@@ -83,30 +74,61 @@ export async function handleUserCommand(msg: Message, args: string[]): Promise<v
       .addFields(fields)
       .setThumbnail(target.displayAvatarURL());
 
-    await msg.reply({ embeds: [embed] });
+    await interaction.editReply({ embeds: [embed] });
     return;
   }
 
-  // ── Card Info ───────────────────────────────────────────────────────────────
-  if (sub === "info") {
-    const cardName = args.slice(1).join(" ");
-    if (!cardName) {
-      await msg.reply("❌ Usage: `!card info <Card Name>`");
-      return;
+  // ── /card rank ──────────────────────────────────────────────────────────────
+  if (sub === "rank") {
+    const target = interaction.options.getUser("user") ?? interaction.user;
+    const { unique, total, netWorth } = await getUserCardCount(guildId, target.id);
+    const rank = getCollectorRank(unique);
+    const nextRank = getNextRank(unique);
+
+    const embed = new EmbedBuilder()
+      .setTitle(`${rank.emoji} ${target.username}'s Collector Rank`)
+      .setColor(0x5865f2)
+      .setThumbnail(target.displayAvatarURL())
+      .addFields(
+        { name: "Rank", value: `${rank.emoji} **${rank.name}**`, inline: true },
+        { name: "Unique Cards", value: unique.toString(), inline: true },
+        { name: "Total Cards", value: total.toString(), inline: true },
+        { name: "💠 Net Worth", value: `${netWorth.toLocaleString()} shards`, inline: true },
+      );
+
+    if (nextRank) {
+      const needed = nextRank.min - unique;
+      embed.addFields({
+        name: "Next Rank",
+        value: `${nextRank.emoji} **${nextRank.name}** — catch **${needed}** more unique card${needed !== 1 ? "s" : ""}`,
+        inline: false,
+      });
+    } else {
+      embed.addFields({ name: "🏆 Max Rank", value: "You've reached the highest collector rank!", inline: false });
     }
+
+    await interaction.editReply({ embeds: [embed] });
+    return;
+  }
+
+  // ── /card info ──────────────────────────────────────────────────────────────
+  if (sub === "info") {
+    const cardName = interaction.options.getString("name", true);
     const cards = await getAllCards();
     const card = cards.find(c => c.name.toLowerCase() === cardName.toLowerCase());
+
     if (!card) {
-      await msg.reply(`❌ "**${cardName}**" not found. Try \`!card list\` to see all cards.`);
+      await interaction.editReply(`❌ "**${cardName}**" not found. Try \`/card list\` to see all cards.`);
       return;
     }
 
     const rarity = card.rarity as Rarity;
     const cardType = card.cardType as CardType;
-    const totalWeight = cards.filter(c => c.droppable).reduce((s, c) => s + c.dropWeight, 0);
-    const dropChance = card.droppable
+    const droppableCards = cards.filter(c => c.droppable);
+    const totalWeight = droppableCards.reduce((s, c) => s + c.dropWeight, 0);
+    const dropChance = card.droppable && totalWeight > 0
       ? `~${((card.dropWeight / totalWeight) * 100).toFixed(2)}%`
-      : "Admin-only / Event";
+      : "Event / Admin-drop only";
 
     const badges: string[] = [];
     if (card.isLimitedEdition) badges.push("💎 Limited Edition");
@@ -129,28 +151,21 @@ export async function handleUserCommand(msg: Message, args: string[]): Promise<v
       );
 
     if (card.maxCopies) {
-      embed.addFields({
-        name: "📦 Copies",
-        value: `${card.totalMinted} / ${card.maxCopies} exist`,
-        inline: true,
-      });
+      embed.addFields({ name: "📦 Copies", value: `${card.totalMinted} / ${card.maxCopies}`, inline: true });
     }
     if (badges.length > 0) {
       embed.addFields({ name: "Special", value: badges.join(" · "), inline: false });
     }
     if (card.imageUrl) embed.setImage(card.imageUrl);
 
-    await msg.reply({ embeds: [embed] });
+    await interaction.editReply({ embeds: [embed] });
     return;
   }
 
-  // ── Card List ───────────────────────────────────────────────────────────────
+  // ── /card list ──────────────────────────────────────────────────────────────
   if (sub === "list") {
     const cards = await getAllCards();
-    if (cards.length === 0) {
-      await msg.reply("No cards in the pool yet.");
-      return;
-    }
+    if (cards.length === 0) { await interaction.editReply("No cards in the pool yet."); return; }
 
     const rarityOrder: Rarity[] = ["legendary", "epic", "rare", "uncommon", "common"];
     const byRarity: Record<string, typeof cards> = {};
@@ -163,120 +178,32 @@ export async function handleUserCommand(msg: Message, args: string[]): Promise<v
       .filter(r => byRarity[r]?.length)
       .map(r => ({
         name: `${RARITY_EMOJI[r]} ${RARITY_LABELS[r]} (${byRarity[r].length})`,
-        value: byRarity[r]
-          .map(c => {
-            const badges = [
-              c.isLimitedEdition ? "💎" : "",
-              c.isEventExclusive ? "🎆" : "",
-              !c.droppable ? "🔒" : "",
-            ].filter(Boolean).join("");
-            return `${badges}${c.name}`;
-          })
-          .join(", "),
+        value: byRarity[r].map(c => {
+          const badges = [
+            c.isLimitedEdition ? "💎" : "",
+            c.isEventExclusive ? "🎆" : "",
+            !c.droppable ? "🔒" : "",
+          ].filter(Boolean).join("");
+          return `${badges}${c.name}`;
+        }).join(", "),
         inline: false,
       }));
 
     const embed = new EmbedBuilder()
       .setTitle("🃏 DN Cards — Full Roster")
       .setColor(0x5865f2)
-      .setDescription(`**${cards.length}** total cards\n💎 = Limited  🎆 = Event  🔒 = Event-only drop`)
+      .setDescription(`**${cards.length}** total cards\n💎 Limited  🎆 Event  🔒 Admin-drop only`)
       .addFields(fields);
 
-    await msg.reply({ embeds: [embed] });
+    await interaction.editReply({ embeds: [embed] });
     return;
   }
 
-  // ── Rank ────────────────────────────────────────────────────────────────────
-  if (sub === "rank") {
-    const target = msg.mentions.users.first() ?? msg.author;
-    const { unique, total, netWorth } = await getUserCardCount(msg.guild.id, target.id);
-    const rank = getCollectorRank(unique);
-    const nextRank = getNextRank(unique);
-
-    const embed = new EmbedBuilder()
-      .setTitle(`${rank.emoji} ${target.username}'s Collector Rank`)
-      .setColor(0x5865f2)
-      .setThumbnail(target.displayAvatarURL())
-      .addFields(
-        { name: "Rank", value: `${rank.emoji} **${rank.name}**`, inline: true },
-        { name: "Unique Cards", value: unique.toString(), inline: true },
-        { name: "Total Cards", value: total.toString(), inline: true },
-        { name: "💠 Net Worth", value: `${netWorth.toLocaleString()} shards`, inline: true },
-      );
-
-    if (nextRank) {
-      const needed = nextRank.min - unique;
-      embed.addFields({
-        name: "Next Rank",
-        value: `${nextRank.emoji} ${nextRank.name} — catch **${needed}** more unique card${needed !== 1 ? "s" : ""}`,
-        inline: false,
-      });
-    } else {
-      embed.addFields({ name: "🏆 Max Rank", value: "You've reached the highest collector rank!", inline: false });
-    }
-
-    await msg.reply({ embeds: [embed] });
-    return;
-  }
-
-  // ── Shards ──────────────────────────────────────────────────────────────────
-  if (sub === "shards" || sub === "balance" || sub === "bal") {
-    const target = msg.mentions.users.first() ?? msg.author;
-    const currency = await getOrCreateCurrency(msg.guild.id, target.id);
-
-    const embed = new EmbedBuilder()
-      .setTitle(`💠 ${target.username}'s DN Shards`)
-      .setColor(0x74b9ff)
-      .setThumbnail(target.displayAvatarURL())
-      .addFields(
-        { name: "Balance", value: `💠 **${currency.shards.toLocaleString()}** shards`, inline: true },
-        { name: "All-Time Earned", value: `💠 ${currency.totalEarned.toLocaleString()} shards`, inline: true },
-      )
-      .setFooter({ text: "Earn shards by burning duplicate cards with !card burn <name>" });
-
-    await msg.reply({ embeds: [embed] });
-    return;
-  }
-
-  // ── Burn ────────────────────────────────────────────────────────────────────
-  if (sub === "burn") {
-    const cardName = args.slice(1).join(" ");
-    if (!cardName) {
-      await msg.reply(
-        "❌ Usage: `!card burn <Card Name>`\n" +
-        "Burning a card destroys one copy and gives you its shard value.",
-      );
-      return;
-    }
-
-    const card = await getCardByName(cardName);
-    if (!card) {
-      await msg.reply(`❌ "**${cardName}**" not found. Check \`!card list\`.`);
-      return;
-    }
-
-    const result = await burnCard(msg.guild.id, msg.author.id, card.id);
-    if (!result.success) {
-      await msg.reply(`❌ You don't have **${card.name}** in your collection.`);
-      return;
-    }
-
-    const rarity = card.rarity as Rarity;
-    const currency = await getOrCreateCurrency(msg.guild.id, msg.author.id);
-
-    await msg.reply(
-      `🔥 Burned **${card.name}** (${RARITY_EMOJI[rarity]} ${RARITY_LABELS[rarity]})\n` +
-      `+💠 **${result.shardsGained.toLocaleString()} shards** — New balance: **${currency.shards.toLocaleString()}**\n` +
-      (result.remaining > 0 ? `You still have **×${result.remaining}** copies.` : "*Last copy burned.*"),
-    );
-    return;
-  }
-
-  // ── Leaderboard ─────────────────────────────────────────────────────────────
-  if (sub === "top" || sub === "leaderboard" || sub === "lb") {
-    const rows = await getLeaderboard(msg.guild.id);
+  // ── /card top ───────────────────────────────────────────────────────────────
+  if (sub === "top") {
+    const rows = await getLeaderboard(guildId);
     if (rows.length === 0) {
-      await msg.reply("No one has caught any cards yet! Waiting for the first drop...");
+      await interaction.editReply("No one has caught any cards yet! Waiting for the first drop...");
       return;
     }
 
@@ -291,53 +218,88 @@ export async function handleUserCommand(msg: Message, args: string[]): Promise<v
       .setTitle("🏆 DN Cards — Collector Leaderboard")
       .setColor(0xf39c12)
       .setDescription(lines.join("\n"))
-      .setFooter({ text: "Ranked by total collection net worth" });
+      .setFooter({ text: "Ranked by total collection net worth (💠 shards)" });
 
-    await msg.reply({ embeds: [embed] });
+    await interaction.editReply({ embeds: [embed] });
+    return;
+  }
+
+  // ── /card shards ─────────────────────────────────────────────────────────────
+  if (sub === "shards") {
+    const target = interaction.options.getUser("user") ?? interaction.user;
+    const currency = await getOrCreateCurrency(guildId, target.id);
+
+    const embed = new EmbedBuilder()
+      .setTitle(`💠 ${target.username}'s DN Shards`)
+      .setColor(0x74b9ff)
+      .setThumbnail(target.displayAvatarURL())
+      .addFields(
+        { name: "Balance", value: `💠 **${currency.shards.toLocaleString()}** shards`, inline: true },
+        { name: "All-Time Earned", value: `💠 ${currency.totalEarned.toLocaleString()} shards`, inline: true },
+      )
+      .setFooter({ text: "Earn shards by burning duplicate cards with /card burn" });
+
+    await interaction.editReply({ embeds: [embed] });
+    return;
+  }
+
+  // ── /card burn ──────────────────────────────────────────────────────────────
+  if (sub === "burn") {
+    const cardName = interaction.options.getString("name", true);
+    const card = await getCardByName(cardName);
+
+    if (!card) {
+      await interaction.editReply(`❌ "**${cardName}**" not found. Check \`/card list\`.`);
+      return;
+    }
+
+    const result = await burnCard(guildId, interaction.user.id, card.id);
+    if (!result.success) {
+      await interaction.editReply(`❌ You don't have **${card.name}** in your collection.`);
+      return;
+    }
+
+    const rarity = card.rarity as Rarity;
+    const currency = await getOrCreateCurrency(guildId, interaction.user.id);
+
+    await interaction.editReply(
+      `🔥 Burned **${card.name}** (${RARITY_EMOJI[rarity]} ${RARITY_LABELS[rarity]})\n` +
+      `+💠 **${result.shardsGained.toLocaleString()} shards** — New balance: **${currency.shards.toLocaleString()}**\n` +
+      (result.remaining > 0 ? `You still have **×${result.remaining}** copies.` : "*Last copy burned.*"),
+    );
     return;
   }
 
   // ── Trading ─────────────────────────────────────────────────────────────────
-  if (sub === "trade") {
-    await handleTrade(msg, args.slice(1));
-    return;
-  }
-  if (sub === "accept") {
-    await handleAccept(msg, args[1] ?? "");
-    return;
-  }
-  if (sub === "decline" || sub === "reject") {
-    await handleDecline(msg, args[1] ?? "");
-    return;
-  }
-  if (sub === "trades" || sub === "pending") {
-    await handleListTrades(msg);
-    return;
-  }
+  if (sub === "trade") { await handleTrade(interaction); return; }
+  if (sub === "accept") { await handleAccept(interaction); return; }
+  if (sub === "decline") { await handleDecline(interaction); return; }
+  if (sub === "trades") { await handleListTrades(interaction); return; }
 
-  // ── Help ────────────────────────────────────────────────────────────────────
+  // ── /card help ──────────────────────────────────────────────────────────────
   const embed = new EmbedBuilder()
     .setTitle("🃏 DN Cards — Command Reference")
     .setColor(0x5865f2)
     .setDescription(
-      "DN Cards is DarkNight's collectible military card game.\nWhen a card spawns, **type its name exactly** to catch it!\n\n" +
+      "DN Cards is DarkNight's collectible military card game.\n" +
+      "When a card spawns in the spawn channel, **type its name exactly** to catch it!\n\n" +
       "**📦 Collection**\n" +
-      "`!card collection [@user]` — view your (or someone's) cards\n" +
-      "`!card rank [@user]` — collector rank and progression\n" +
-      "`!card info <Name>` — card details, worth, drop chance\n" +
-      "`!card list` — full card roster by rarity\n\n" +
+      "`/card collection` — view your cards\n" +
+      "`/card rank` — collector rank and progression\n" +
+      "`/card info name:<card>` — card details, worth, drop chance\n" +
+      "`/card list` — full roster by rarity\n\n" +
       "**🔥 Economy**\n" +
-      "`!card burn <Name>` — destroy a duplicate for DN Shards\n" +
-      "`!card shards [@user]` — check shard balance\n\n" +
+      "`/card burn name:<card>` — destroy a duplicate for DN Shards\n" +
+      "`/card shards` — check your shard balance\n\n" +
       "**🔄 Trading**\n" +
-      "`!card trade @User <Your Card> for <Their Card>` — propose a trade\n" +
-      "`!card trades` — view your pending trades\n" +
-      "`!card accept <id>` — accept a trade offer\n" +
-      "`!card decline <id>` — decline or cancel a trade\n\n" +
+      "`/card trade user:@Member offer:<card> want:<card>` — propose a trade\n" +
+      "`/card trades` — view pending trades\n" +
+      "`/card accept id:<ID>` — accept a trade\n" +
+      "`/card decline id:<ID>` — decline or cancel\n\n" +
       "**🏆 Leaderboard**\n" +
-      "`!card top` — top 10 collectors by net worth\n\n" +
-      "*Admin? Use `!card admin` for admin commands.*",
+      "`/card top` — top 10 by net worth\n\n" +
+      "*Server admin? Use `/card admin` commands.*",
     );
 
-  await msg.reply({ embeds: [embed] });
+  await interaction.editReply({ embeds: [embed] });
 }

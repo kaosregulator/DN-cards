@@ -1,338 +1,251 @@
-import type { Message } from "discord.js";
+import type { ChatInputCommandInteraction, GuildMember } from "discord.js";
 import { EmbedBuilder } from "discord.js";
 import {
   isAdmin, addAdmin, removeAdmin, listAdmins,
   getOrCreateGuildSettings, updateGuildSettings,
-  addCard, removeCard, getAllCards, addShards,
+  addCard, removeCard, getAllCards, addShards, catchCard,
 } from "../db.js";
 import { spawnCard, scheduleNextSpawn, clearSpawnTimer } from "../spawn-manager.js";
 import { RARITY_EMOJI, RARITY_LABELS, RARITY_WORTH, RARITY_BURN, type Rarity } from "../cards-data.js";
 
+const RARITY_WEIGHTS: Record<Rarity, number> = {
+  common: 60, uncommon: 25, rare: 10, epic: 4, legendary: 1,
+};
+
 // ── Permission check ──────────────────────────────────────────────────────────
-async function checkAdmin(msg: Message): Promise<boolean> {
-  if (!msg.guild) return false;
-  if (msg.guild.ownerId === msg.author.id) return true;
-  if (msg.member?.permissions.has("Administrator")) return true;
-  return isAdmin(msg.guild.id, msg.author.id);
+async function checkAdmin(interaction: ChatInputCommandInteraction): Promise<boolean> {
+  if (!interaction.guild) return false;
+  if (interaction.guild.ownerId === interaction.user.id) return true;
+  const member = interaction.member as GuildMember | null;
+  if (member?.permissions.has("Administrator")) return true;
+  return isAdmin(interaction.guild.id, interaction.user.id);
 }
 
-// ── Command router ────────────────────────────────────────────────────────────
-export async function handleAdminCommand(msg: Message, args: string[]): Promise<void> {
-  if (!msg.guild) return;
+// ── Router ────────────────────────────────────────────────────────────────────
+export async function handleAdminCommand(
+  interaction: ChatInputCommandInteraction,
+  sub: string,
+): Promise<void> {
+  if (!interaction.guild) return;
+  await interaction.deferReply();
 
-  const ok = await checkAdmin(msg);
+  const ok = await checkAdmin(interaction);
   if (!ok) {
-    await msg.reply("❌ You don't have permission to use admin commands.");
+    await interaction.editReply("❌ You don't have permission to use admin commands.");
     return;
   }
 
-  const sub = args[0]?.toLowerCase();
-  const guildId = msg.guild.id;
+  const guildId = interaction.guild.id;
+  const opts = interaction.options;
 
-  // ── Spawn channel ─────────────────────────────────────────────────────────
+  // ── setchannel ──────────────────────────────────────────────────────────────
   if (sub === "setchannel") {
-    const channel = msg.mentions.channels.first() ?? msg.channel;
+    const channel = opts.getChannel("channel") ?? interaction.channel;
+    if (!channel) { await interaction.editReply("❌ Could not determine the channel."); return; }
     await updateGuildSettings(guildId, { spawnChannelId: channel.id });
-    await msg.reply(`✅ Spawn channel set to <#${channel.id}>.`);
+    await interaction.editReply(`✅ Spawn channel set to <#${channel.id}>.`);
     scheduleNextSpawn(guildId);
     return;
   }
 
-  // ── Spawn interval ────────────────────────────────────────────────────────
+  // ── setinterval ─────────────────────────────────────────────────────────────
   if (sub === "setinterval") {
-    const rest = args.slice(1);
-    if (rest[0] === "random") {
-      const min = parseTime(rest[1]);
-      const max = parseTime(rest[2]);
+    const fixedTime = opts.getString("time");
+    const minStr = opts.getString("min");
+    const maxStr = opts.getString("max");
+
+    if (minStr && maxStr) {
+      const min = parseTime(minStr);
+      const max = parseTime(maxStr);
       if (!min || !max) {
-        await msg.reply("❌ Usage: `!card setinterval random <min> <max>` e.g. `!card setinterval random 10m 60m`");
+        await interaction.editReply("❌ Invalid time format. Use `30m`, `1h`, `90s`, etc.");
         return;
       }
       await updateGuildSettings(guildId, { useRandomInterval: true, spawnIntervalMin: min, spawnIntervalMax: max });
-      await msg.reply(`✅ Spawn interval → random **${rest[1]}** – **${rest[2]}**.`);
-    } else {
-      const seconds = parseTime(rest[0]);
+      await interaction.editReply(`✅ Spawn interval → random **${minStr}** – **${maxStr}**.`);
+    } else if (fixedTime) {
+      const seconds = parseTime(fixedTime);
       if (!seconds) {
-        await msg.reply("❌ Usage: `!card setinterval <time>` e.g. `30m`, `1h`, `90s`");
+        await interaction.editReply("❌ Invalid time format. Use `30m`, `1h`, `90s`, etc.");
         return;
       }
       await updateGuildSettings(guildId, { useRandomInterval: false, spawnIntervalSeconds: seconds });
-      await msg.reply(`✅ Spawn interval → fixed **${rest[0]}** (${seconds}s).`);
+      await interaction.editReply(`✅ Spawn interval → fixed **${fixedTime}** (${seconds}s).`);
+    } else {
+      await interaction.editReply("❌ Provide either `time` for a fixed interval, or both `min` and `max` for a random range.");
+      return;
     }
     scheduleNextSpawn(guildId);
     return;
   }
 
-  // ── Catch window ──────────────────────────────────────────────────────────
+  // ── setwindow ───────────────────────────────────────────────────────────────
   if (sub === "setwindow") {
-    const seconds = parseTime(args[1]);
-    if (!seconds) {
-      await msg.reply("❌ Usage: `!card setwindow <time>` e.g. `!card setwindow 2m`");
-      return;
-    }
+    const timeStr = opts.getString("time", true);
+    const seconds = parseTime(timeStr);
+    if (!seconds) { await interaction.editReply("❌ Invalid time. Use `2m`, `90s`, `1h`, etc."); return; }
     await updateGuildSettings(guildId, { catchWindowSeconds: seconds });
-    await msg.reply(`✅ Catch window → **${args[1]}** (${seconds}s).`);
+    await interaction.editReply(`✅ Catch window → **${timeStr}** (${seconds}s).`);
     return;
   }
 
-  // ── Enable/Disable ────────────────────────────────────────────────────────
+  // ── enable / disable ────────────────────────────────────────────────────────
   if (sub === "enable") {
     await updateGuildSettings(guildId, { spawnEnabled: true });
-    await msg.reply("✅ Card spawning **enabled**.");
+    await interaction.editReply("✅ Card spawning **enabled**.");
     scheduleNextSpawn(guildId);
     return;
   }
   if (sub === "disable") {
     await updateGuildSettings(guildId, { spawnEnabled: false });
     clearSpawnTimer(guildId);
-    await msg.reply("⏸️ Card spawning **disabled**.");
+    await interaction.editReply("⏸️ Card spawning **disabled**.");
     return;
   }
 
-  // ── Force drop ────────────────────────────────────────────────────────────
+  // ── drop ────────────────────────────────────────────────────────────────────
   if (sub === "drop") {
-    const cardName = args.slice(1).join(" ");
+    const cardName = opts.getString("name");
+    const settings = await getOrCreateGuildSettings(guildId);
+    if (!settings.spawnChannelId) {
+      await interaction.editReply("❌ No spawn channel set. Run `/card admin setchannel` first.");
+      return;
+    }
     let forcedCardId: number | undefined;
     if (cardName) {
       const cards = await getAllCards();
       const found = cards.find(c => c.name.toLowerCase() === cardName.toLowerCase());
       if (!found) {
-        await msg.reply(`❌ Card "**${cardName}**" not found. Use \`!card list\` to see all cards.`);
+        await interaction.editReply(`❌ Card "**${cardName}**" not found. Try \`/card list\`.`);
         return;
       }
       forcedCardId = found.id;
     }
-    const settings = await getOrCreateGuildSettings(guildId);
-    if (!settings.spawnChannelId) {
-      await msg.reply("❌ No spawn channel set. Use `!card setchannel #channel` first.");
-      return;
-    }
     await spawnCard(guildId, forcedCardId, true);
-    await msg.reply(forcedCardId ? `✅ Force-dropped **${cardName}**!` : "✅ Force-dropped a random card!");
+    await interaction.editReply(forcedCardId ? `✅ Force-dropped **${cardName}**!` : "✅ Force-dropped a random card!");
     scheduleNextSpawn(guildId);
     return;
   }
 
-  // ── Add card ──────────────────────────────────────────────────────────────
+  // ── addcard ─────────────────────────────────────────────────────────────────
   if (sub === "addcard") {
-    const rarities = ["common", "uncommon", "rare", "epic", "legendary"];
-    const rarity = args[1]?.toLowerCase() ?? "";
-    if (!rarities.includes(rarity)) {
-      await msg.reply(
-        `❌ Usage: \`!card addcard <rarity> <Name> | <description>\`\n` +
-        `Rarities: ${rarities.join(", ")}\n` +
-        `Example: \`!card addcard epic F-117 Nighthawk | The original stealth jet.\``,
-      );
-      return;
-    }
-    const rest = args.slice(2).join(" ");
-    const pipeIdx = rest.indexOf("|");
-    const namePart = (pipeIdx >= 0 ? rest.slice(0, pipeIdx) : rest).trim();
-    const descPart = pipeIdx >= 0 ? rest.slice(pipeIdx + 1).trim() : "";
-    if (!namePart) {
-      await msg.reply("❌ Card name is required.");
-      return;
-    }
-    const r = rarity as Rarity;
+    const rarity = opts.getString("rarity", true) as Rarity;
+    const name = opts.getString("name", true);
+    const description = opts.getString("description") ?? "";
     const card = await addCard({
-      name: namePart,
-      description: descPart,
-      rarity,
+      name, description, rarity,
       cardType: "vehicle",
-      dropWeight: RARITY_WEIGHTS[r],
-      worthValue: RARITY_WORTH[r],
-      burnValue: RARITY_BURN[r],
+      dropWeight: RARITY_WEIGHTS[rarity],
+      worthValue: RARITY_WORTH[rarity],
+      burnValue: RARITY_BURN[rarity],
     });
-    await msg.reply(`✅ Added **${card.name}** (${RARITY_EMOJI[r]} ${RARITY_LABELS[r]}).`);
+    await interaction.editReply(`✅ Added **${card.name}** (${RARITY_EMOJI[rarity]} ${RARITY_LABELS[rarity]}).`);
     return;
   }
 
-  // ── Add Limited Edition card ───────────────────────────────────────────────
+  // ── addlimited ──────────────────────────────────────────────────────────────
   if (sub === "addlimited") {
-    // !card addlimited <rarity> <maxCopies> <Name> | <description>
-    const rarity = args[1]?.toLowerCase() ?? "";
-    const maxCopies = parseInt(args[2] ?? "", 10);
-    const rarities = ["common", "uncommon", "rare", "epic", "legendary"];
-    if (!rarities.includes(rarity) || isNaN(maxCopies) || maxCopies < 1) {
-      await msg.reply(
-        "❌ Usage: `!card addlimited <rarity> <maxCopies> <Name> | <description>`\n" +
-        "Example: `!card addlimited legendary 50 Season 1 Champion | Event winner exclusive.`",
-      );
-      return;
-    }
-    const rest = args.slice(3).join(" ");
-    const pipeIdx = rest.indexOf("|");
-    const namePart = (pipeIdx >= 0 ? rest.slice(0, pipeIdx) : rest).trim();
-    const descPart = pipeIdx >= 0 ? rest.slice(pipeIdx + 1).trim() : "";
-    if (!namePart) {
-      await msg.reply("❌ Card name is required.");
-      return;
-    }
-    const r = rarity as Rarity;
+    const rarity = opts.getString("rarity", true) as Rarity;
+    const maxCopies = opts.getInteger("maxcopies", true);
+    const name = opts.getString("name", true);
+    const description = opts.getString("description") ?? "";
     const card = await addCard({
-      name: namePart, description: descPart,
-      rarity, cardType: "limited",
-      dropWeight: RARITY_WEIGHTS[r],
-      worthValue: RARITY_WORTH[r] * 4, // limited editions worth 4× more
-      burnValue: RARITY_BURN[r] * 4,
-      isLimitedEdition: true, maxCopies, droppable: false,
+      name, description, rarity,
+      cardType: "limited",
+      dropWeight: RARITY_WEIGHTS[rarity],
+      worthValue: RARITY_WORTH[rarity] * 4,
+      burnValue: RARITY_BURN[rarity] * 4,
+      isLimitedEdition: true,
+      maxCopies,
+      droppable: false,
     });
-    await msg.reply(
-      `💎 Created Limited Edition: **${card.name}** (${RARITY_EMOJI[r]} ${RARITY_LABELS[r]})\n` +
-      `Max Copies: **${maxCopies}** · Use \`!card drop ${card.name}\` to award copies.`,
+    await interaction.editReply(
+      `💎 Created Limited Edition: **${card.name}** (${RARITY_EMOJI[rarity]} ${RARITY_LABELS[rarity]})\n` +
+      `Max Copies: **${maxCopies}** · Use \`/card admin drop name:${card.name}\` to award copies.`,
     );
     return;
   }
 
-  // ── Add Event Exclusive card ───────────────────────────────────────────────
+  // ── addevent ────────────────────────────────────────────────────────────────
   if (sub === "addevent") {
-    // !card addevent <rarity> <Name> | <description>
-    const rarity = args[1]?.toLowerCase() ?? "";
-    const rarities = ["common", "uncommon", "rare", "epic", "legendary"];
-    if (!rarities.includes(rarity)) {
-      await msg.reply(
-        "❌ Usage: `!card addevent <rarity> <Name> | <description>`\n" +
-        "Creates an event-exclusive card (admin-drop only).\n" +
-        "Example: `!card addevent epic Roblox Raid Winner | Won the server raid event.`",
-      );
-      return;
-    }
-    const rest = args.slice(2).join(" ");
-    const pipeIdx = rest.indexOf("|");
-    const namePart = (pipeIdx >= 0 ? rest.slice(0, pipeIdx) : rest).trim();
-    const descPart = pipeIdx >= 0 ? rest.slice(pipeIdx + 1).trim() : "";
-    if (!namePart) {
-      await msg.reply("❌ Card name is required.");
-      return;
-    }
-    const r = rarity as Rarity;
+    const rarity = opts.getString("rarity", true) as Rarity;
+    const name = opts.getString("name", true);
+    const description = opts.getString("description") ?? "";
     const card = await addCard({
-      name: namePart, description: descPart,
-      rarity, cardType: "event",
-      dropWeight: 0, // won't appear in random draws
-      worthValue: RARITY_WORTH[r] * 3,
-      burnValue: RARITY_BURN[r] * 3,
-      isEventExclusive: true, droppable: false,
+      name, description, rarity,
+      cardType: "event",
+      dropWeight: 0,
+      worthValue: RARITY_WORTH[rarity] * 3,
+      burnValue: RARITY_BURN[rarity] * 3,
+      isEventExclusive: true,
+      droppable: false,
     });
-    await msg.reply(
-      `🎆 Created Event Exclusive: **${card.name}** (${RARITY_EMOJI[r]} ${RARITY_LABELS[r]})\n` +
-      `Use \`!card drop ${card.name}\` to award it.`,
+    await interaction.editReply(
+      `🎆 Created Event Exclusive: **${card.name}** (${RARITY_EMOJI[rarity]} ${RARITY_LABELS[rarity]})\n` +
+      `Use \`/card admin drop name:${card.name}\` to award it.`,
     );
     return;
   }
 
-  // ── Give card to user ─────────────────────────────────────────────────────
+  // ── removecard ──────────────────────────────────────────────────────────────
+  if (sub === "removecard") {
+    const name = opts.getString("name", true);
+    await removeCard(name);
+    await interaction.editReply(`✅ Removed **${name}** from the card pool.`);
+    return;
+  }
+
+  // ── give ────────────────────────────────────────────────────────────────────
   if (sub === "give") {
-    // !card give @User <Card Name>
-    const target = msg.mentions.users.first();
-    if (!target) {
-      await msg.reply("❌ Usage: `!card give @User <Card Name>`");
-      return;
-    }
-    const cardName = args.slice(2).join(" ");
-    if (!cardName) {
-      await msg.reply("❌ Usage: `!card give @User <Card Name>`");
-      return;
-    }
+    const target = opts.getUser("user", true);
+    const cardName = opts.getString("name", true);
     const cards = await getAllCards();
     const card = cards.find(c => c.name.toLowerCase() === cardName.toLowerCase());
-    if (!card) {
-      await msg.reply(`❌ Card "**${cardName}**" not found.`);
-      return;
-    }
-    // Import catchCard here to award
-    const { catchCard } = await import("../db.js");
+    if (!card) { await interaction.editReply(`❌ Card "**${cardName}**" not found.`); return; }
     await catchCard(guildId, target.id, card.id);
     const r = card.rarity as Rarity;
-    await msg.reply(
-      `✅ Awarded **${card.name}** (${RARITY_EMOJI[r]} ${RARITY_LABELS[r]}) to <@${target.id}>.`,
-    );
+    await interaction.editReply(`✅ Awarded **${card.name}** (${RARITY_EMOJI[r]} ${RARITY_LABELS[r]}) to <@${target.id}>.`);
     return;
   }
 
-  // ── Give shards to user ───────────────────────────────────────────────────
+  // ── giveshards ──────────────────────────────────────────────────────────────
   if (sub === "giveshards") {
-    // !card giveshards @User <amount>
-    const target = msg.mentions.users.first();
-    const amount = parseInt(args[2] ?? "", 10);
-    if (!target || isNaN(amount) || amount < 1) {
-      await msg.reply("❌ Usage: `!card giveshards @User <amount>` e.g. `!card giveshards @John 500`");
-      return;
-    }
+    const target = opts.getUser("user", true);
+    const amount = opts.getInteger("amount", true);
     await addShards(guildId, target.id, amount);
-    await msg.reply(`✅ Gave <@${target.id}> 💠 **${amount.toLocaleString()} shards**.`);
+    await interaction.editReply(`✅ Gave <@${target.id}> 💠 **${amount.toLocaleString()} shards**.`);
     return;
   }
 
-  // ── Remove card ───────────────────────────────────────────────────────────
-  if (sub === "removecard") {
-    const cardName = args.slice(1).join(" ");
-    if (!cardName) {
-      await msg.reply("❌ Usage: `!card removecard <Card Name>`");
-      return;
-    }
-    await removeCard(cardName);
-    await msg.reply(`✅ Removed **${cardName}** from the card pool.`);
-    return;
-  }
-
-  // ── Enable/Disable trading ────────────────────────────────────────────────
-  if (sub === "tradingenable") {
-    await updateGuildSettings(guildId, { tradeEnabled: true });
-    await msg.reply("✅ Trading **enabled**.");
-    return;
-  }
-  if (sub === "tradingdisable") {
-    await updateGuildSettings(guildId, { tradeEnabled: false });
-    await msg.reply("⏸️ Trading **disabled**.");
-    return;
-  }
-
-  // ── Set trade channel ─────────────────────────────────────────────────────
-  if (sub === "settradechannel") {
-    const channel = msg.mentions.channels.first() ?? msg.channel;
-    await updateGuildSettings(guildId, { tradeChannelId: channel.id });
-    await msg.reply(`✅ Trade channel set to <#${channel.id}>.`);
-    return;
-  }
-
-  // ── Add/Remove bot admin ──────────────────────────────────────────────────
+  // ── addadmin / removeadmin / listadmins ─────────────────────────────────────
   if (sub === "addadmin") {
-    const target = msg.mentions.users.first();
-    if (!target) {
-      await msg.reply("❌ Usage: `!card addadmin @User`");
-      return;
-    }
-    await addAdmin(guildId, target.id, msg.author.id);
-    await msg.reply(`✅ **${target.tag}** added as a DN Cards admin.`);
+    const target = opts.getUser("user", true);
+    await addAdmin(guildId, target.id, interaction.user.id);
+    await interaction.editReply(`✅ **${target.tag}** added as a DN Cards admin.`);
     return;
   }
   if (sub === "removeadmin") {
-    const target = msg.mentions.users.first();
-    if (!target) {
-      await msg.reply("❌ Usage: `!card removeadmin @User`");
-      return;
-    }
+    const target = opts.getUser("user", true);
     await removeAdmin(guildId, target.id);
-    await msg.reply(`✅ **${target.tag}** removed from bot admins.`);
+    await interaction.editReply(`✅ **${target.tag}** removed from bot admins.`);
     return;
   }
   if (sub === "listadmins") {
     const admins = await listAdmins(guildId);
     if (admins.length === 0) {
-      await msg.reply("No custom bot admins. Server owner and Discord Admins always have full access.");
+      await interaction.editReply("No custom bot admins set. Server owner and Discord Admins always have access.");
       return;
     }
     const lines = admins.map(a => `<@${a.userId}> — added by <@${a.addedBy}>`);
-    await msg.reply(`**DN Cards Admins:**\n${lines.join("\n")}`);
+    await interaction.editReply(`**DN Cards Admins:**\n${lines.join("\n")}`);
     return;
   }
 
-  // ── Settings overview ─────────────────────────────────────────────────────
+  // ── settings ────────────────────────────────────────────────────────────────
   if (sub === "settings") {
     const s = await getOrCreateGuildSettings(guildId);
     const embed = new EmbedBuilder()
-      .setTitle("⚙️ DN Cards Server Settings")
+      .setTitle("⚙️ DN Cards — Server Settings")
       .setColor(0x5865f2)
       .addFields(
         { name: "Spawn Channel", value: s.spawnChannelId ? `<#${s.spawnChannelId}>` : "Not set", inline: true },
@@ -348,43 +261,36 @@ export async function handleAdminCommand(msg: Message, args: string[]): Promise<
         { name: "Trading", value: s.tradeEnabled ? "✅ Enabled" : "⏸️ Disabled", inline: true },
         { name: "Trade Channel", value: s.tradeChannelId ? `<#${s.tradeChannelId}>` : "Any channel", inline: true },
       );
-    await msg.reply({ embeds: [embed] });
+    await interaction.editReply({ embeds: [embed] });
     return;
   }
 
-  // ── Help fallthrough ──────────────────────────────────────────────────────
-  await msg.reply(
-    "**⚙️ DN Cards Admin Commands:**\n" +
-    "\n**Spawning**\n" +
-    "`!card setchannel [#channel]` — set card spawn channel\n" +
-    "`!card setinterval <time>` — fixed interval (`30m`, `1h`, `90s`)\n" +
-    "`!card setinterval random <min> <max>` — random range\n" +
-    "`!card setwindow <time>` — catch window duration\n" +
-    "`!card enable` / `!card disable` — toggle auto-spawning\n" +
-    "`!card drop [Card Name]` — force-drop a card (event drops)\n" +
-    "\n**Card Management**\n" +
-    "`!card addcard <rarity> <Name> | <desc>` — add a standard card\n" +
-    "`!card addlimited <rarity> <maxCopies> <Name> | <desc>` — limited edition\n" +
-    "`!card addevent <rarity> <Name> | <desc>` — event exclusive\n" +
-    "`!card removecard <Name>` — remove a card\n" +
-    "`!card give @User <Card Name>` — give a card to a user\n" +
-    "`!card giveshards @User <amount>` — give DN Shards to a user\n" +
-    "\n**Trading**\n" +
-    "`!card tradingenable` / `!card tradingdisable` — toggle trading\n" +
-    "`!card settradechannel [#channel]` — set trade channel\n" +
-    "\n**Access Control**\n" +
-    "`!card addadmin @User` / `!card removeadmin @User` / `!card listadmins`\n" +
-    "\n**Info**\n" +
-    "`!card settings` — view current server settings\n",
-  );
+  // ── trading enable/disable ──────────────────────────────────────────────────
+  if (sub === "tradingenable") {
+    await updateGuildSettings(guildId, { tradeEnabled: true });
+    await interaction.editReply("✅ Trading **enabled**.");
+    return;
+  }
+  if (sub === "tradingdisable") {
+    await updateGuildSettings(guildId, { tradeEnabled: false });
+    await interaction.editReply("⏸️ Trading **disabled**.");
+    return;
+  }
+
+  // ── settradechannel ─────────────────────────────────────────────────────────
+  if (sub === "settradechannel") {
+    const channel = opts.getChannel("channel") ?? interaction.channel;
+    if (!channel) { await interaction.editReply("❌ Could not determine the channel."); return; }
+    await updateGuildSettings(guildId, { tradeChannelId: channel.id });
+    await interaction.editReply(`✅ Trade channel set to <#${channel.id}>.`);
+    return;
+  }
+
+  await interaction.editReply("❌ Unknown admin command.");
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
-const RARITY_WEIGHTS: Record<Rarity, number> = {
-  common: 60, uncommon: 25, rare: 10, epic: 4, legendary: 1,
-};
-
-function parseTime(str: string | undefined): number | null {
+function parseTime(str: string | null | undefined): number | null {
   if (!str) return null;
   const match = str.match(/^(\d+)(s|m|h)$/i);
   if (!match) {
@@ -401,7 +307,11 @@ function parseTime(str: string | undefined): number | null {
 
 function formatTime(seconds: number): string {
   if (seconds < 60) return `${seconds}s`;
-  if (seconds < 3600) return `${Math.floor(seconds / 60)}m ${seconds % 60 > 0 ? `${seconds % 60}s` : ""}`.trim();
+  if (seconds < 3600) {
+    const m = Math.floor(seconds / 60);
+    const s = seconds % 60;
+    return s > 0 ? `${m}m ${s}s` : `${m}m`;
+  }
   const h = Math.floor(seconds / 3600);
   const m = Math.floor((seconds % 3600) / 60);
   return m > 0 ? `${h}h ${m}m` : `${h}h`;
