@@ -1,7 +1,7 @@
 import { Client, GatewayIntentBits, Partials, Events, REST, Routes, type Interaction } from "discord.js";
 import { logger } from "../lib/logger.js";
 import { seedDefaultCards, burnCard, getOrCreateCurrency } from "./db.js";
-import { initSpawnManager, initAllGuilds, handleCatchAttempt, handleClaimButtonClick, scheduleNextSpawn } from "./spawn-manager.js";
+import { initSpawnManager, initAllGuilds, handleCatchAttempt, handleClaimButtonClick, scheduleNextSpawn, buildPostDecisionEmbed } from "./spawn-manager.js";
 import { handleConfigButton, handleConfigSelect } from "./commands/config-panel.js";
 import { checkAchievements, formatUnlockLine } from "./achievements.js";
 import { handleAdminCommand } from "./commands/admin.js";
@@ -152,12 +152,11 @@ export async function startBot() {
               return;
             }
             const currency = await getOrCreateCurrency(guildId, userId);
-            // Public message: generic, no balance leak
-            await interaction.message.edit({
-              content: `🔥 <@${userId}> burned **${cardName}**.`,
-              components: [],
-              allowedMentions: { users: [] },
-            }).catch(() => { /* may be deleted */ });
+            // Update the spawn embed to show the burn state in-channel.
+            const burnedEmbed = await buildPostDecisionEmbed(cardId, userId, "burned");
+            if (burnedEmbed) {
+              await interaction.message.edit({ embeds: [burnedEmbed], components: [] }).catch(() => { /* may be deleted */ });
+            }
             // Private confirmation with full shard balance
             await interaction.reply({
               content:
@@ -173,27 +172,22 @@ export async function startBot() {
               }).catch(() => { /* ignore */ });
             }
           } else if (action === "catch_keep") {
-            await interaction.message.edit({
-              content: `💾 <@${userId}> kept **${cardName}**.`,
-              components: [],
-              allowedMentions: { users: [] },
-            }).catch(() => { /* may be deleted */ });
+            const keptEmbed = await buildPostDecisionEmbed(cardId, userId, "kept");
+            if (keptEmbed) {
+              await interaction.message.edit({ embeds: [keptEmbed], components: [] }).catch(() => { /* may be deleted */ });
+            }
             await interaction.reply({
               content: "💾 Kept! The card is in your collection — use `/collection` to view it.",
               flags: MessageFlags.Ephemeral,
             });
           } else {
             // catch_trade — card stays in collection; advertise it publicly
-            await interaction.message.edit({
-              content:
-                `🔄 <@${userId}> is open to trading **${cardName}**!\n` +
-                `Use \`/trade user:@${interaction.user.username} offer:<your card> want:${cardName}\` ` +
-                `(or add \`offer_shards:<n>\` / \`want_shards:<n>\` for shard deals).`,
-              components: [],
-              allowedMentions: { users: [] },
-            }).catch(() => { /* may be deleted */ });
+            const tradeEmbed = await buildPostDecisionEmbed(cardId, userId, "trade");
+            if (tradeEmbed) {
+              await interaction.message.edit({ embeds: [tradeEmbed], components: [] }).catch(() => { /* may be deleted */ });
+            }
             await interaction.reply({
-              content: `🔄 You're now open to trading **${cardName}**! Others can use \`/trade\` to make an offer.`,
+              content: `🔄 You're now open to trading **${cardName}**! Others can use /trade to make an offer.`,
               flags: MessageFlags.Ephemeral,
             });
           }

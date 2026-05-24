@@ -282,24 +282,22 @@ async function awardSpawn(guildId: string, spawnId: string, userId: string): Pro
 
   try {
     const claimedEmbed = await buildClaimedEmbed(spawn.cardId, userId);
-    if (claimedEmbed) await spawn.message.edit({ embeds: [claimedEmbed], components: [] });
+    if (claimedEmbed) {
+      await spawn.message.edit({
+        embeds: [claimedEmbed],
+        components: [buildDecisionRow(guildId, userId, spawn.cardId, spawn.burnValue)],
+      });
+    }
   } catch { /* deleted */ }
 
-  await sendCatchButtons(guildId, userId, spawn.cardId, spawn.cardName, spawn.burnValue, spawn.channelId);
+  // Auto-keep after 90s if no button pressed — edit the spawn embed in place.
+  setTimeout(async () => {
+    try {
+      const keptEmbed = await buildPostDecisionEmbed(spawn.cardId, userId, "kept");
+      if (keptEmbed) await spawn.message.edit({ embeds: [keptEmbed], components: [] });
+    } catch { /* deleted */ }
+  }, 90_000);
 
-  // Reaction + achievements (was previously done in the message handler — moved
-  // here so it works for both typing winners and button clickers).
-  try {
-    if (botClient) {
-      const channel = botClient.channels.cache.get(spawn.channelId) as TextChannel | undefined;
-      if (channel) {
-        await channel.send({
-          content: `🎉 <@${userId}> caught **${spawn.cardName}**!`,
-          allowedMentions: { users: [] },
-        }).catch(() => { /* ignore */ });
-      }
-    }
-  } catch { /* ignore */ }
   return true;
 }
 
@@ -322,6 +320,24 @@ export async function handleClaimButtonClick(guildId: string, spawnId: string, u
   const after = activeSpawns.get(guildId)?.get(spawnId);
   if (after?.winnerUserId === userId) return { ok: false, reason: "self_already" };
   return { ok: false, reason: "already_caught" };
+}
+
+// Decision buttons row for the caught card.
+function buildDecisionRow(guildId: string, userId: string, cardId: number, burnValue: number): ActionRowBuilder<ButtonBuilder> {
+  return new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder()
+      .setCustomId(`catch_burn:${guildId}:${userId}:${cardId}`)
+      .setLabel(`🔥 Burn (+${burnValue.toLocaleString()} 💠)`)
+      .setStyle(ButtonStyle.Danger),
+    new ButtonBuilder()
+      .setCustomId(`catch_keep:${guildId}:${userId}:${cardId}`)
+      .setLabel("💾 Keep it")
+      .setStyle(ButtonStyle.Success),
+    new ButtonBuilder()
+      .setCustomId(`catch_trade:${guildId}:${userId}:${cardId}`)
+      .setLabel("🔄 Offer Trade")
+      .setStyle(ButtonStyle.Primary),
+  );
 }
 
 // Build a 5-button row with the Claim button at a random column 0–4. The
@@ -354,51 +370,6 @@ function buildClaimRow(guildId: string, spawnId: string): ActionRowBuilder<Butto
 // ── Burn / Keep / Offer Trade buttons after catching ─────────────────────────
 // Posted in-channel; everyone sees the prompt but only the catcher's clicks
 // are accepted (others get an ephemeral "not yours" reply).
-async function sendCatchButtons(
-  guildId: string, userId: string, cardId: number,
-  cardName: string, burnValue: number, channelId: string,
-): Promise<void> {
-  if (!botClient) return;
-  try {
-    const channel = botClient.channels.cache.get(channelId) as TextChannel | undefined;
-    if (!channel) return;
-
-    const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
-      new ButtonBuilder()
-        .setCustomId(`catch_burn:${guildId}:${userId}:${cardId}`)
-        .setLabel(`🔥 Burn (+${burnValue.toLocaleString()} 💠)`)
-        .setStyle(ButtonStyle.Danger),
-      new ButtonBuilder()
-        .setCustomId(`catch_keep:${guildId}:${userId}:${cardId}`)
-        .setLabel("💾 Keep it")
-        .setStyle(ButtonStyle.Success),
-      new ButtonBuilder()
-        .setCustomId(`catch_trade:${guildId}:${userId}:${cardId}`)
-        .setLabel("🔄 Offer Trade")
-        .setStyle(ButtonStyle.Primary),
-    );
-
-    const btnMsg = await channel.send({
-      content: `<@${userId}>, you caught **${cardName}**! What would you like to do?`,
-      components: [row],
-      allowedMentions: { users: [userId] },
-    });
-
-    // Auto-clean buttons after 90s — default = keep (card is already in collection)
-    setTimeout(async () => {
-      try {
-        await btnMsg.edit({
-          content: `💾 **${cardName}** was kept by <@${userId}>.`,
-          components: [],
-          allowedMentions: { users: [] },
-        });
-      } catch { /* message deleted */ }
-    }, 90 * 1000);
-  } catch (err) {
-    logger.warn({ err }, "Failed to send catch buttons");
-  }
-}
-
 export function getActiveSpawns(guildId: string): ActiveSpawn[] {
   const gs = activeSpawns.get(guildId);
   return gs ? [...gs.values()] : [];
@@ -466,6 +437,47 @@ function buildSpawnEmbed(card: Card, windowSeconds: number, mode: "type" | "butt
     )
     .setTimestamp();
 
+  if (card.flavor) embed.setFooter({ text: card.flavor });
+  { const img = toAbsoluteImageUrl(card.imageUrl); if (img) embed.setImage(img); }
+  return embed;
+}
+
+export async function buildPostDecisionEmbed(
+  cardId: number, userId: string, action: "burned" | "kept" | "trade",
+): Promise<EmbedBuilder | null> {
+  const cards = await getAllCards();
+  const card = cards.find(c => c.id === cardId);
+  if (!card) return null;
+  const rarity = card.rarity as Rarity;
+  const cardType = card.cardType as CardType;
+
+  const titles = {
+    burned: `\ud83d\udd25 BURNED \u2014 ${card.name}`,
+    kept:   `\ud83d\udcbe KEPT \u2014 ${card.name}`,
+    trade:  `\ud83d\udd04 OPEN TO TRADE \u2014 ${card.name}`,
+  };
+  const descriptions = {
+    burned: `\ud83d\udd25 BURNED BY <@${userId}>\n\n\u200b`,
+    kept:   `\ud83d\udcbe KEPT BY <@${userId}>\n\n\u200b`,
+    trade:  `\ud83d\udd04 <@${userId}> is open to trading this card!\n\n\u200b`,
+  };
+  const colors = { burned: 0xe74c3c, kept: 0x00b894, trade: 0x3498db };
+
+  const embed = new EmbedBuilder()
+    .setTitle(titles[action])
+    .setColor(colors[action])
+    .setDescription(descriptions[action])
+    .addFields(
+      { name: `${TYPE_EMOJI[cardType]} ${card.name}`, value: card.description || "\u200b", inline: false },
+      { name: "Rarity", value: `${RARITY_EMOJI[rarity]} ${RARITY_LABELS[rarity]}`, inline: true },
+      { name: "Worth", value: `\ud83d\udca0 ${card.worthValue.toLocaleString()} shards`, inline: true },
+      {
+        name: action === "burned" ? "Burned by" : action === "kept" ? "Kept by" : "Offered by",
+        value: `<@${userId}>`,
+        inline: true,
+      },
+    )
+    .setTimestamp();
   if (card.flavor) embed.setFooter({ text: card.flavor });
   { const img = toAbsoluteImageUrl(card.imageUrl); if (img) embed.setImage(img); }
   return embed;
