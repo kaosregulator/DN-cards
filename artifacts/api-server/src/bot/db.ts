@@ -9,32 +9,40 @@ import { DEFAULT_CARDS } from "./cards-data.js";
 import { logger } from "../lib/logger.js";
 
 // ── Seed / resync default cards ───────────────────────────────────────────────
+// Seed defaults ONLY on a completely empty database — never re-sync or re-add
+// after unload, so admin removals are permanent.
 export async function seedDefaultCards() {
   const existing = await db.select({ id: cardsTable.id }).from(cardsTable).limit(1);
-  if (existing.length > 0) {
-    for (const card of DEFAULT_CARDS) {
-      await db
-        .insert(cardsTable)
-        .values(card)
-        .onConflictDoUpdate({
-          target: cardsTable.name,
-          set: {
-            description: card.description,
-            flavor: card.flavor,
-            rarity: card.rarity,
-            cardType: card.cardType,
-            worthValue: card.worthValue,
-            burnValue: card.burnValue,
-          },
-        });
-    }
-    return;
-  }
-  logger.info("Seeding DN Cards default roster...");
+  if (existing.length > 0) return;
+  logger.info("Seeding DN Cards default roster (DB is empty)...");
   for (const card of DEFAULT_CARDS) {
     await db.insert(cardsTable).values(card).onConflictDoNothing();
   }
   logger.info(`Seeded ${DEFAULT_CARDS.length} cards.`);
+}
+
+// Force-add default cards (used by !loaddefaults). Skips names already in DB.
+export async function loadDefaultCards(): Promise<{ added: number; skipped: number }> {
+  let added = 0, skipped = 0;
+  for (const card of DEFAULT_CARDS) {
+    const existing = await getCardByName(card.name);
+    if (existing) { skipped++; continue; }
+    await db.insert(cardsTable).values(card).onConflictDoNothing();
+    added++;
+  }
+  return { added, skipped };
+}
+
+// Remove all default-roster cards by name (used by !unloaddefaults).
+export async function unloadDefaultCards(): Promise<{ removed: number }> {
+  let removed = 0;
+  for (const card of DEFAULT_CARDS) {
+    const existing = await getCardByName(card.name);
+    if (!existing) continue;
+    await db.delete(cardsTable).where(eq(cardsTable.id, existing.id));
+    removed++;
+  }
+  return { removed };
 }
 
 // ── Guild Settings ────────────────────────────────────────────────────────────

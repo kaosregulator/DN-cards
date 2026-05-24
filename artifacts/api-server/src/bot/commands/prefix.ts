@@ -2,6 +2,7 @@ import type { Message, GuildMember } from "discord.js";
 import {
   isAdmin, addAdmin, removeAdmin, listAdmins,
   getOrCreateGuildSettings, updateGuildSettings,
+  loadDefaultCards, unloadDefaultCards,
 } from "../db.js";
 import { scheduleNextSpawn, clearSpawnTimer } from "../spawn-manager.js";
 import { RARITY_EMOJI, RARITY_WEIGHTS, type Rarity } from "../cards-data.js";
@@ -117,6 +118,31 @@ export async function handlePrefixCommand(msg: Message): Promise<void> {
     const ok = await checkAdmin(msg);
     if (!ok) { await msg.reply("❌ You don't have permission to import cards."); return; }
     await handleImport(msg);
+    return;
+  }
+
+  // ── !unloaddefaults — remove the 27 seeded default cards ──────────────────
+  if (cmd === "unloaddefaults") {
+    const ok = await checkAdmin(msg);
+    if (!ok) { await msg.reply("❌ You don't have permission."); return; }
+    const { removed } = await unloadDefaultCards();
+    await msg.reply(
+      `✅ Removed **${removed}** default cards from the roster.\n` +
+      `Your imported cards are untouched. The defaults will **not** come back on restart.\n` +
+      `Use \`!loaddefaults\` to add them back if you change your mind.`,
+    );
+    return;
+  }
+
+  // ── !loaddefaults — re-add the 27 default cards ──────────────────────────
+  if (cmd === "loaddefaults") {
+    const ok = await checkAdmin(msg);
+    if (!ok) { await msg.reply("❌ You don't have permission."); return; }
+    const { added, skipped } = await loadDefaultCards();
+    await msg.reply(
+      `✅ Added **${added}** default cards back to the roster.` +
+      (skipped > 0 ? `\n⏭️ Skipped **${skipped}** (already in roster).` : ""),
+    );
     return;
   }
 
