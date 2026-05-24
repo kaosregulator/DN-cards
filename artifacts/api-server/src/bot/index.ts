@@ -62,8 +62,10 @@ export async function startBot() {
         const parts = interaction.customId.split(":");
         const action = parts[0];
 
-        if (action === "catch_burn" || action === "catch_keep") {
-          const [, guildId, userId, cardIdStr] = parts;
+        if (action === "catch_burn" || action === "catch_keep" || action === "catch_trade") {
+          // customId format: action:guildId:userId:cardId[:channelId]
+          // channelId is optional for backwards-compat with pre-deploy buttons.
+          const [, guildId, userId, cardIdStr, channelId] = parts;
           const cardId = parseInt(cardIdStr, 10);
 
           if (interaction.user.id !== userId) {
@@ -73,6 +75,19 @@ export async function startBot() {
             });
             return;
           }
+
+          // Resolve spawn channel for the public announcement (DM flow needs
+          // the encoded channelId; channel-fallback flow can use the message itself).
+          const spawnChannel = channelId
+            ? (client.channels.cache.get(channelId) as TextChannel | undefined)
+            : (interaction.channel as TextChannel | null) ?? undefined;
+          const isDM = interaction.channel?.isDMBased() ?? false;
+
+          // Look up the card name for the public announcement.
+          const { getAllCards } = await import("./db.js");
+          const allCards = await getAllCards();
+          const card = allCards.find(c => c.id === cardId);
+          const cardName = card?.name ?? "the card";
 
           if (action === "catch_burn") {
             const result = await burnCard(guildId, userId, cardId);
@@ -84,19 +99,21 @@ export async function startBot() {
               return;
             }
             const currency = await getOrCreateCurrency(guildId, userId);
-            // Public message: generic, no balance leak
-            await interaction.message.edit({
-              content: `🔥 <@${userId}> burned the card.`,
+            // Update the prompt (in DM or channel) to a private confirmation
+            await interaction.update({
+              content:
+                `🔥 You burned **${cardName}** for 💠 **${result.shardsGained.toLocaleString()} shards**.\n` +
+                `New balance: **${currency.shards.toLocaleString()}** 💠`,
               components: [],
             }).catch(() => { /* may be deleted */ });
-            // Private confirmation with full shard balance
-            await interaction.reply({
-              content:
-                `🔥 Card burned! You received 💠 **${result.shardsGained.toLocaleString()} shards**.\n` +
-                `New balance: **${currency.shards.toLocaleString()}** 💠 — check \`/shards\` anytime.`,
-              flags: MessageFlags.Ephemeral,
-            });
-            // Achievement check (e.g. Pyromaniac)
+            // Public note in the spawn channel (only when DM flow — channel
+            // flow already shows it publicly).
+            if (isDM && spawnChannel) {
+              await spawnChannel.send({
+                content: `🔥 <@${userId}> burned **${cardName}**.`,
+                allowedMentions: { users: [] },
+              }).catch(() => { /* ignore */ });
+            }
             const burnUnlocks = await checkAchievements(guildId, userId).catch(() => []);
             if (burnUnlocks.length > 0) {
               await interaction.followUp({
@@ -104,15 +121,33 @@ export async function startBot() {
                 flags: MessageFlags.Ephemeral,
               }).catch(() => { /* ignore */ });
             }
-          } else {
-            await interaction.message.edit({
-              content: `💾 <@${userId}> kept the card.`,
+          } else if (action === "catch_keep") {
+            await interaction.update({
+              content: `💾 You kept **${cardName}** — it's in your collection (\`/collection\`).`,
               components: [],
             }).catch(() => { /* may be deleted */ });
-            await interaction.reply({
-              content: "💾 Kept! The card is in your collection — use `/collection` to view it.",
-              flags: MessageFlags.Ephemeral,
-            });
+            if (isDM && spawnChannel) {
+              await spawnChannel.send({
+                content: `💾 <@${userId}> added **${cardName}** to their collection.`,
+                allowedMentions: { users: [] },
+              }).catch(() => { /* ignore */ });
+            }
+          } else {
+            // catch_trade — card stays in collection, post a public trade invite
+            await interaction.update({
+              content:
+                `🔄 You're now open to trading **${cardName}**! Other players can use\n` +
+                `\`/trade user:@you offer:<their card> want:${cardName}\``,
+              components: [],
+            }).catch(() => { /* may be deleted */ });
+            if (spawnChannel) {
+              await spawnChannel.send({
+                content:
+                  `🔄 <@${userId}> is open to trading **${cardName}**!\n` +
+                  `Use \`/trade user:@${interaction.user.username} offer:<your card> want:${cardName}\` to make an offer.`,
+                allowedMentions: { users: [] },
+              }).catch(() => { /* ignore */ });
+            }
           }
         }
         return;
