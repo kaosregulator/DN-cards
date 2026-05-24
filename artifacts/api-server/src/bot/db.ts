@@ -404,31 +404,45 @@ export async function incrementCardsBurned(guildId: string, userId: string, by: 
     .where(and(eq(userCurrencyTable.guildId, guildId), eq(userCurrencyTable.userId, userId)));
 }
 
-export async function burnCard(guildId: string, userId: string, cardId: number): Promise<{ success: boolean; shardsGained: number; remaining: number }> {
-  // Atomic conditional decrement — only one concurrent burn can win the row,
-  // preventing button-spam shard duplication.
-  const [card] = await db.select({ burnValue: cardsTable.burnValue })
-    .from(cardsTable).where(eq(cardsTable.id, cardId));
-  if (!card) return { success: false, shardsGained: 0, remaining: 0 };
-
-  const updated = await db.update(collectionsTable)
-    .set({ count: sql`${collectionsTable.count} - 1` })
+export async function getUserOwnedCount(guildId: string, userId: string, cardId: number): Promise<number> {
+  const [row] = await db.select({ count: collectionsTable.count })
+    .from(collectionsTable)
     .where(and(
       eq(collectionsTable.guildId, guildId),
       eq(collectionsTable.userId, userId),
       eq(collectionsTable.cardId, cardId),
-      sql`${collectionsTable.count} >= 1`,
+    ));
+  return row?.count ?? 0;
+}
+
+export async function burnCard(guildId: string, userId: string, cardId: number, amount: number = 1): Promise<{ success: boolean; burned: number; shardsGained: number; remaining: number }> {
+  // Atomic conditional bulk decrement — only one concurrent burn can win the row,
+  // preventing button-spam shard duplication. `amount` is capped at current count
+  // by the WHERE clause: we only decrement if the row holds >= amount copies.
+  if (amount < 1) return { success: false, burned: 0, shardsGained: 0, remaining: 0 };
+  const [card] = await db.select({ burnValue: cardsTable.burnValue })
+    .from(cardsTable).where(eq(cardsTable.id, cardId));
+  if (!card) return { success: false, burned: 0, shardsGained: 0, remaining: 0 };
+
+  const updated = await db.update(collectionsTable)
+    .set({ count: sql`${collectionsTable.count} - ${amount}` })
+    .where(and(
+      eq(collectionsTable.guildId, guildId),
+      eq(collectionsTable.userId, userId),
+      eq(collectionsTable.cardId, cardId),
+      sql`${collectionsTable.count} >= ${amount}`,
     ))
     .returning({ id: collectionsTable.id, newCount: collectionsTable.count });
-  if (updated.length === 0) return { success: false, shardsGained: 0, remaining: 0 };
+  if (updated.length === 0) return { success: false, burned: 0, shardsGained: 0, remaining: 0 };
 
   const row = updated[0]!;
   if (row.newCount === 0) {
     await db.delete(collectionsTable).where(eq(collectionsTable.id, row.id));
   }
-  await addShards(guildId, userId, card.burnValue);
-  await incrementCardsBurned(guildId, userId, 1);
-  return { success: true, shardsGained: card.burnValue, remaining: row.newCount };
+  const shardsGained = card.burnValue * amount;
+  await addShards(guildId, userId, shardsGained);
+  await incrementCardsBurned(guildId, userId, amount);
+  return { success: true, burned: amount, shardsGained, remaining: row.newCount };
 }
 
 // ── Trades ────────────────────────────────────────────────────────────────────

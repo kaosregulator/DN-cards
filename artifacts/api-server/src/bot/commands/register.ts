@@ -28,8 +28,10 @@ export function buildCommands() {
 
     cmd("top", "(User) Top 10 collectors leaderboard", s => s),
 
-    cmd("burn", "(User) Burn a duplicate card for DN Shards", s => s
-      .addStringOption(o => o.setName("name").setDescription("Card name to burn").setRequired(true).setAutocomplete(true))),
+    cmd("burn", "(User) Burn duplicate cards for DN Shards", s => s
+      .addStringOption(o => o.setName("name").setDescription("Card name to burn").setRequired(true).setAutocomplete(true))
+      .addIntegerOption(o => o.setName("amount").setDescription("How many copies to burn (default 1)").setMinValue(1))
+      .addBooleanOption(o => o.setName("all").setDescription("Burn every copy you own of this card"))),
 
     cmd("shards", "(User) Check your DN Shards balance", s => s
       .addUserOption(o => o.setName("user").setDescription("View another member's balance"))),

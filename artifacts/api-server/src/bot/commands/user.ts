@@ -5,7 +5,7 @@ import { EmbedBuilder, MessageFlags } from "discord.js";
 const EPHEMERAL_COMMANDS = new Set(["burn", "shards", "trades", "help", "daily", "achievements", "pack", "wishlist", "gift", "tradein"]);
 import {
   getUserCollection, getAllCards, getLeaderboard,
-  getOrCreateCurrency, burnCard, getCardByName, getUserCardCount,
+  getOrCreateCurrency, burnCard, getCardByName, getUserCardCount, getUserOwnedCount,
 } from "../db.js";
 import {
   RARITY_COLORS, RARITY_EMOJI, RARITY_LABELS, TYPE_EMOJI,
@@ -225,17 +225,43 @@ export async function handleUserCommand(
   // ── /burn ─────────────────────────────────────────────────────────────────────
   if (sub === "burn") {
     const cardName = interaction.options.getString("name", true);
+    const requested = interaction.options.getInteger("amount") ?? 1;
+    const burnAll = interaction.options.getBoolean("all") ?? false;
     const card = await getCardByName(cardName);
     if (!card) { await interaction.editReply(`❌ "**${cardName}**" not found. Check \`/list\`.`); return; }
-    const result = await burnCard(guildId, interaction.user.id, card.id);
-    if (!result.success) { await interaction.editReply(`❌ You don't have **${card.name}** in your collection.`); return; }
     const rarity = card.rarity as Rarity;
+    const owned = await getUserOwnedCount(guildId, interaction.user.id, card.id);
+    if (owned < 1) {
+      await interaction.editReply(`❌ You don't have **${card.name}** in your collection.`);
+      return;
+    }
+    const toBurn = burnAll ? owned : Math.min(requested, owned);
+    if (toBurn < 1) {
+      await interaction.editReply(`❌ Nothing to burn — you only have **×${owned}** of **${card.name}**.`);
+      return;
+    }
+    if (!burnAll && requested > owned) {
+      await interaction.editReply(
+        `❌ You only have **×${owned}** of **${card.name}** — can't burn ${requested}.\n` +
+        `Try \`/burn name:${card.name} all:true\` to burn all ${owned}.`,
+      );
+      return;
+    }
+    const result = await burnCard(guildId, interaction.user.id, card.id, toBurn);
+    if (!result.success) {
+      await interaction.editReply(`❌ Burn failed — your collection changed mid-burn. Try again.`);
+      return;
+    }
     const currency = await getOrCreateCurrency(guildId, interaction.user.id);
-    await interaction.editReply(
-      `🔥 Burned **${card.name}** (${RARITY_EMOJI[rarity]} ${RARITY_LABELS[rarity]})\n` +
-      `+💠 **${result.shardsGained.toLocaleString()} shards** — New balance: **${currency.shards.toLocaleString()}**\n` +
-      (result.remaining > 0 ? `You still have **×${result.remaining}** copies.` : "*Last copy burned.*"),
-    );
+    const perCard = card.burnValue.toLocaleString();
+    const breakdown = result.burned > 1
+      ? `🔥 Burned **×${result.burned} ${card.name}** (${RARITY_EMOJI[rarity]} ${RARITY_LABELS[rarity]})\n` +
+        `+💠 **${result.shardsGained.toLocaleString()} shards** *(${perCard} × ${result.burned})* — New balance: **${currency.shards.toLocaleString()}**\n` +
+        (result.remaining > 0 ? `You still have **×${result.remaining}** ${result.remaining === 1 ? "copy" : "copies"}.` : "*All copies burned.*")
+      : `🔥 Burned **${card.name}** (${RARITY_EMOJI[rarity]} ${RARITY_LABELS[rarity]})\n` +
+        `+💠 **${result.shardsGained.toLocaleString()} shards** — New balance: **${currency.shards.toLocaleString()}**\n` +
+        (result.remaining > 0 ? `You still have **×${result.remaining}** ${result.remaining === 1 ? "copy" : "copies"}.` : "*Last copy burned.*");
+    await interaction.editReply(breakdown);
     const newlyBurn = await checkAchievements(guildId, interaction.user.id);
     if (newlyBurn.length > 0) {
       await interaction.followUp({
