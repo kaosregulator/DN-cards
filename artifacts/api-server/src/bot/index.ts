@@ -3,6 +3,7 @@ import { logger } from "../lib/logger.js";
 import { seedDefaultCards, burnCard, getOrCreateCurrency } from "./db.js";
 import { initSpawnManager, initAllGuilds, handleCatchAttempt, handleClaimButtonClick, scheduleNextSpawn, buildPostDecisionEmbed, buildDisabledDecisionRow } from "./spawn-manager.js";
 import { handleConfigButton, handleConfigSelect, handleRatesSelect } from "./commands/config-panel.js";
+import { handleAdminHubButton, handleAdminHubModal } from "./commands/admin-hub.js";
 import { checkAchievements, formatUnlockLine } from "./achievements.js";
 import { handleAdminCommand } from "./commands/admin.js";
 import { handleUserCommand } from "./commands/user.js";
@@ -67,6 +68,14 @@ export async function startBot() {
         return;
       }
 
+      // ── Modal submissions (admin hub) ─────────────────────────────────────
+      if (interaction.isModalSubmit()) {
+        if (interaction.customId.startsWith("adminhub:")) {
+          await handleAdminHubModal(interaction);
+        }
+        return;
+      }
+
       // ── Button interactions ────────────────────────────────────────────────
       if (interaction.isButton()) {
         const parts = interaction.customId.split(":");
@@ -75,6 +84,12 @@ export async function startBot() {
         // ── Config panel buttons (toggle, channel set) ─────────────────────
         if (action === "config") {
           await handleConfigButton(interaction);
+          return;
+        }
+
+        // ── Admin hub buttons ─────────────────────────────────────────────
+        if (action === "adminhub") {
+          await handleAdminHubButton(interaction);
           return;
         }
 
@@ -96,6 +111,7 @@ export async function startBot() {
             const reasonMsg =
               result.reason === "already_caught" ? "⚡ Too slow! Someone already claimed this card."
               : result.reason === "expired" ? "✅ You've already claimed it — pick **Burn / Keep / Trade** above."
+              : result.reason === "timed_out" ? `⏱️ You're timed out from catching cards until <t:${Math.floor(result.timedOutUntil!.getTime() / 1000)}:f>.`
               : "❌ This button isn't active right now.";
             await interaction.reply({ content: reasonMsg, flags: MessageFlags.Ephemeral }).catch(() => { /* ignore */ });
           } else {
@@ -266,9 +282,18 @@ export async function startBot() {
       msg.guild.id, msg.author.id, content, msg.createdTimestamp,
     ).catch(err => {
       logger.error({ err }, "Catch attempt error");
-      return { matched: false, awaiting: false };
+      return { matched: false, awaiting: false, timedOutUntil: undefined as Date | undefined };
     });
     if (result.matched) {
+      if (result.timedOutUntil) {
+        try {
+          await msg.reply({
+            content: `⏱️ <@${msg.author.id}> you're timed out from catching cards until <t:${Math.floor(result.timedOutUntil.getTime() / 1000)}:f>.`,
+            allowedMentions: { users: [msg.author.id] },
+          });
+        } catch { /* ignore */ }
+        return;
+      }
       try { await msg.react("🎯"); } catch { /* ignore */ }
       // Winner is decided inside spawn-manager after a short grace window;
       // achievements for the typing winner are checked there too.

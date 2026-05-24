@@ -132,6 +132,7 @@ Card catching is text-based — when a card spawns, type its name exactly to cat
 | `/giveshards user:@User amount:<n>` | Give DN Shards to a member |
 | `/takeback user:@User name:<Name>` | Remove a card from a member |
 | `/takeshards user:@User amount:<n>` | Deduct DN Shards from a member |
+| `/adminhub` | Ephemeral admin hub — manage bot admins & catch timeouts; shows server state |
 
 ### Setup & Config Commands (`!` prefix — admin only)
 | Command | Description |

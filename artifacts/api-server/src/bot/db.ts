@@ -2,7 +2,7 @@ import {
   db,
   cardsTable, collectionsTable, guildSettingsTable,
   adminUsersTable, spawnLogTable, userCurrencyTable, tradesTable,
-  wishlistsTable,
+  wishlistsTable, userTimeoutsTable,
 } from "@workspace/db";
 import { eq, and, sql, desc, inArray } from "drizzle-orm";
 import type { Card, GuildSettings, Trade } from "@workspace/db";
@@ -120,6 +120,45 @@ export async function removeAdmin(guildId: string, userId: string) {
 
 export async function listAdmins(guildId: string) {
   return db.select().from(adminUsersTable).where(eq(adminUsersTable.guildId, guildId));
+}
+
+// ── User Catch Timeouts ───────────────────────────────────────────────────────
+export async function setUserTimeout(
+  guildId: string, userId: string, expiresAt: Date, issuedBy: string, reason?: string,
+): Promise<void> {
+  // Clear any existing timeout for this user, then insert the new one.
+  await db.delete(userTimeoutsTable)
+    .where(and(eq(userTimeoutsTable.guildId, guildId), eq(userTimeoutsTable.userId, userId)));
+  await db.insert(userTimeoutsTable).values({
+    guildId, userId, expiresAt, issuedBy, reason: reason ?? null,
+  });
+}
+
+export async function clearUserTimeout(guildId: string, userId: string): Promise<void> {
+  await db.delete(userTimeoutsTable)
+    .where(and(eq(userTimeoutsTable.guildId, guildId), eq(userTimeoutsTable.userId, userId)));
+}
+
+/** Returns the active timeout row if the user is currently timed-out, else null. */
+export async function getUserTimeout(guildId: string, userId: string) {
+  const [row] = await db.select().from(userTimeoutsTable)
+    .where(and(
+      eq(userTimeoutsTable.guildId, guildId),
+      eq(userTimeoutsTable.userId, userId),
+      sql`${userTimeoutsTable.expiresAt} > NOW()`,
+    ))
+    .limit(1);
+  return row ?? null;
+}
+
+/** All active (non-expired) timeouts in a guild. */
+export async function listActiveTimeouts(guildId: string) {
+  return db.select().from(userTimeoutsTable)
+    .where(and(
+      eq(userTimeoutsTable.guildId, guildId),
+      sql`${userTimeoutsTable.expiresAt} > NOW()`,
+    ))
+    .orderBy(userTimeoutsTable.expiresAt);
 }
 
 // ── Cards ─────────────────────────────────────────────────────────────────────
@@ -374,27 +413,30 @@ export async function incrementCardsBurned(guildId: string, userId: string, by: 
 }
 
 export async function burnCard(guildId: string, userId: string, cardId: number): Promise<{ success: boolean; shardsGained: number; remaining: number }> {
-  const [entry] = await db.select().from(collectionsTable)
-    .where(and(
-      eq(collectionsTable.guildId, guildId),
-      eq(collectionsTable.userId, userId),
-      eq(collectionsTable.cardId, cardId),
-    ));
-  if (!entry || entry.count < 1) return { success: false, shardsGained: 0, remaining: 0 };
-
+  // Atomic conditional decrement — only one concurrent burn can win the row,
+  // preventing button-spam shard duplication.
   const [card] = await db.select({ burnValue: cardsTable.burnValue })
     .from(cardsTable).where(eq(cardsTable.id, cardId));
   if (!card) return { success: false, shardsGained: 0, remaining: 0 };
 
-  const newCount = entry.count - 1;
-  if (newCount === 0) {
-    await db.delete(collectionsTable).where(eq(collectionsTable.id, entry.id));
-  } else {
-    await db.update(collectionsTable).set({ count: newCount }).where(eq(collectionsTable.id, entry.id));
+  const updated = await db.update(collectionsTable)
+    .set({ count: sql`${collectionsTable.count} - 1` })
+    .where(and(
+      eq(collectionsTable.guildId, guildId),
+      eq(collectionsTable.userId, userId),
+      eq(collectionsTable.cardId, cardId),
+      sql`${collectionsTable.count} >= 1`,
+    ))
+    .returning({ id: collectionsTable.id, newCount: collectionsTable.count });
+  if (updated.length === 0) return { success: false, shardsGained: 0, remaining: 0 };
+
+  const row = updated[0]!;
+  if (row.newCount === 0) {
+    await db.delete(collectionsTable).where(eq(collectionsTable.id, row.id));
   }
   await addShards(guildId, userId, card.burnValue);
   await incrementCardsBurned(guildId, userId, 1);
-  return { success: true, shardsGained: card.burnValue, remaining: newCount };
+  return { success: true, shardsGained: card.burnValue, remaining: row.newCount };
 }
 
 // ── Trades ────────────────────────────────────────────────────────────────────
@@ -465,66 +507,186 @@ export async function getPendingTradesFor(guildId: string, userId: string) {
 export async function giftShards(
   guildId: string, fromUserId: string, toUserId: string, amount: number,
 ): Promise<{ success: boolean; remaining: number }> {
-  const ok = await spendShards(guildId, fromUserId, amount);
-  if (!ok) {
+  if (amount <= 0) {
     const cur = await getOrCreateCurrency(guildId, fromUserId);
     return { success: false, remaining: cur.shards };
   }
-  await addShards(guildId, toUserId, amount);
+  // Ensure both currency rows exist BEFORE entering the transaction so the
+  // upsert side-effect doesn't get rolled back on a debit failure.
+  await getOrCreateCurrency(guildId, fromUserId);
+  await getOrCreateCurrency(guildId, toUserId);
+
+  const success = await db.transaction(async (tx) => {
+    const debited = await tx.update(userCurrencyTable)
+      .set({
+        shards: sql`${userCurrencyTable.shards} - ${amount}`,
+        updatedAt: new Date(),
+      })
+      .where(and(
+        eq(userCurrencyTable.guildId, guildId),
+        eq(userCurrencyTable.userId, fromUserId),
+        sql`${userCurrencyTable.shards} >= ${amount}`,
+      ))
+      .returning({ id: userCurrencyTable.id });
+    if (debited.length === 0) {
+      // Transaction rolls back automatically — sender keeps their shards.
+      throw new Error("insufficient_shards");
+    }
+    await tx.update(userCurrencyTable)
+      .set({
+        shards: sql`${userCurrencyTable.shards} + ${amount}`,
+        totalEarned: sql`${userCurrencyTable.totalEarned} + ${amount}`,
+        updatedAt: new Date(),
+      })
+      .where(and(
+        eq(userCurrencyTable.guildId, guildId),
+        eq(userCurrencyTable.userId, toUserId),
+      ));
+    return true;
+  }).catch((err) => {
+    if (err instanceof Error && err.message === "insufficient_shards") return false;
+    throw err;
+  });
+
   const cur = await getOrCreateCurrency(guildId, fromUserId);
-  return { success: true, remaining: cur.shards };
+  return { success, remaining: cur.shards };
 }
 
 export async function executeTradeSwap(trade: Trade): Promise<boolean> {
-  // Validate cards (if any) — both sides must still own what they offered.
-  let initiatorEntry = null as Awaited<ReturnType<typeof getCollectionEntry>> | null;
-  let targetEntry = null as Awaited<ReturnType<typeof getCollectionEntry>> | null;
-  if (trade.offeredCardId) {
-    initiatorEntry = await getCollectionEntry(trade.guildId, trade.initiatorId, trade.offeredCardId);
-    if (!initiatorEntry || initiatorEntry.count < 1) return false;
-  }
-  if (trade.requestedCardId) {
-    targetEntry = await getCollectionEntry(trade.guildId, trade.targetId, trade.requestedCardId);
-    if (!targetEntry || targetEntry.count < 1) return false;
-  }
+  // Guard: trades created before validation tightening may carry negatives.
+  if (trade.offeredShards < 0 || trade.requestedShards < 0) return false;
 
-  // Validate shards atomically — try to spend first, refund if anything fails.
-  if (trade.offeredShards > 0) {
-    const ok = await spendShards(trade.guildId, trade.initiatorId, trade.offeredShards);
-    if (!ok) return false;
-  }
-  if (trade.requestedShards > 0) {
-    const ok = await spendShards(trade.guildId, trade.targetId, trade.requestedShards);
-    if (!ok) {
-      // Refund initiator if we already debited them
-      if (trade.offeredShards > 0) await refundShards(trade.guildId, trade.initiatorId, trade.offeredShards);
-      return false;
+  // Pre-create currency rows so the on-conflict upsert can't be rolled back
+  // alongside the swap. Inside the txn we use atomic conditional UPDATEs so
+  // concurrent accepts/burns can't lead to double-spend.
+  if (trade.offeredShards > 0) await getOrCreateCurrency(trade.guildId, trade.initiatorId);
+  if (trade.requestedShards > 0) await getOrCreateCurrency(trade.guildId, trade.targetId);
+  if (trade.requestedCardId) await getOrCreateCurrency(trade.guildId, trade.initiatorId);
+  if (trade.offeredCardId) await getOrCreateCurrency(trade.guildId, trade.targetId);
+
+  return await db.transaction(async (tx) => {
+    // 1) Atomic card debits — single SQL per side ensures only one concurrent
+    //    trade can claim the last copy.
+    if (trade.offeredCardId) {
+      const dec = await tx.update(collectionsTable)
+        .set({ count: sql`${collectionsTable.count} - 1` })
+        .where(and(
+          eq(collectionsTable.guildId, trade.guildId),
+          eq(collectionsTable.userId, trade.initiatorId),
+          eq(collectionsTable.cardId, trade.offeredCardId),
+          sql`${collectionsTable.count} >= 1`,
+        ))
+        .returning({ id: collectionsTable.id, newCount: collectionsTable.count });
+      if (dec.length === 0) throw new Error("initiator_lacks_card");
+      if (dec[0]!.newCount === 0) {
+        await tx.delete(collectionsTable).where(eq(collectionsTable.id, dec[0]!.id));
+      }
     }
-  }
-
-  // Transfer cards
-  if (initiatorEntry) {
-    if (initiatorEntry.count === 1) {
-      await db.delete(collectionsTable).where(eq(collectionsTable.id, initiatorEntry.id));
-    } else {
-      await db.update(collectionsTable).set({ count: initiatorEntry.count - 1 }).where(eq(collectionsTable.id, initiatorEntry.id));
+    if (trade.requestedCardId) {
+      const dec = await tx.update(collectionsTable)
+        .set({ count: sql`${collectionsTable.count} - 1` })
+        .where(and(
+          eq(collectionsTable.guildId, trade.guildId),
+          eq(collectionsTable.userId, trade.targetId),
+          eq(collectionsTable.cardId, trade.requestedCardId),
+          sql`${collectionsTable.count} >= 1`,
+        ))
+        .returning({ id: collectionsTable.id, newCount: collectionsTable.count });
+      if (dec.length === 0) throw new Error("target_lacks_card");
+      if (dec[0]!.newCount === 0) {
+        await tx.delete(collectionsTable).where(eq(collectionsTable.id, dec[0]!.id));
+      }
     }
-  }
-  if (targetEntry) {
-    if (targetEntry.count === 1) {
-      await db.delete(collectionsTable).where(eq(collectionsTable.id, targetEntry.id));
-    } else {
-      await db.update(collectionsTable).set({ count: targetEntry.count - 1 }).where(eq(collectionsTable.id, targetEntry.id));
+
+    // 2) Atomic shard debits.
+    if (trade.offeredShards > 0) {
+      const debit = await tx.update(userCurrencyTable)
+        .set({ shards: sql`${userCurrencyTable.shards} - ${trade.offeredShards}`, updatedAt: new Date() })
+        .where(and(
+          eq(userCurrencyTable.guildId, trade.guildId),
+          eq(userCurrencyTable.userId, trade.initiatorId),
+          sql`${userCurrencyTable.shards} >= ${trade.offeredShards}`,
+        ))
+        .returning({ id: userCurrencyTable.id });
+      if (debit.length === 0) throw new Error("initiator_lacks_shards");
     }
+    if (trade.requestedShards > 0) {
+      const debit = await tx.update(userCurrencyTable)
+        .set({ shards: sql`${userCurrencyTable.shards} - ${trade.requestedShards}`, updatedAt: new Date() })
+        .where(and(
+          eq(userCurrencyTable.guildId, trade.guildId),
+          eq(userCurrencyTable.userId, trade.targetId),
+          sql`${userCurrencyTable.shards} >= ${trade.requestedShards}`,
+        ))
+        .returning({ id: userCurrencyTable.id });
+      if (debit.length === 0) throw new Error("target_lacks_shards");
+    }
+
+    // 3) Card credits — trades are MOVES, not new mints, so do not bump
+    //    cardsTable.totalMinted (otherwise limited-editions would deplete
+    //    on every trade). Mirrors restoreCardToUser semantics.
+    if (trade.requestedCardId) await restoreCardToUserTx(tx, trade.guildId, trade.initiatorId, trade.requestedCardId);
+    if (trade.offeredCardId) await restoreCardToUserTx(tx, trade.guildId, trade.targetId, trade.offeredCardId);
+
+    // 4) Shard credits — bump totalEarned alongside shards so the
+    //    leaderboard / lifetime-earned stat reflects trade income.
+    if (trade.requestedShards > 0) {
+      await tx.update(userCurrencyTable)
+        .set({
+          shards: sql`${userCurrencyTable.shards} + ${trade.requestedShards}`,
+          totalEarned: sql`${userCurrencyTable.totalEarned} + ${trade.requestedShards}`,
+          updatedAt: new Date(),
+        })
+        .where(and(
+          eq(userCurrencyTable.guildId, trade.guildId),
+          eq(userCurrencyTable.userId, trade.initiatorId),
+        ));
+    }
+    if (trade.offeredShards > 0) {
+      await tx.update(userCurrencyTable)
+        .set({
+          shards: sql`${userCurrencyTable.shards} + ${trade.offeredShards}`,
+          totalEarned: sql`${userCurrencyTable.totalEarned} + ${trade.offeredShards}`,
+          updatedAt: new Date(),
+        })
+        .where(and(
+          eq(userCurrencyTable.guildId, trade.guildId),
+          eq(userCurrencyTable.userId, trade.targetId),
+        ));
+    }
+
+    return true;
+  }).catch((err) => {
+    if (err instanceof Error && [
+      "initiator_lacks_card", "target_lacks_card",
+      "initiator_lacks_shards", "target_lacks_shards",
+    ].includes(err.message)) return false;
+    logger.error({ err, tradeId: trade.id }, "executeTradeSwap failed");
+    return false;
+  });
+}
+
+// Transaction-safe variant of restoreCardToUser — credits one copy to the
+// user's collection WITHOUT touching cardsTable.totalMinted. Used by trade
+// swaps, which are moves (no new card is minted into the world).
+async function restoreCardToUserTx(
+  tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
+  guildId: string, userId: string, cardId: number,
+) {
+  const updated = await tx.update(collectionsTable)
+    .set({ count: sql`${collectionsTable.count} + 1`, lastCaughtAt: new Date() })
+    .where(and(
+      eq(collectionsTable.guildId, guildId),
+      eq(collectionsTable.userId, userId),
+      eq(collectionsTable.cardId, cardId),
+    ))
+    .returning({ id: collectionsTable.id });
+  if (updated.length === 0) {
+    // No row yet — insert. Race with another concurrent insert is the same
+    // risk catchCard has carried since launch; fixing it requires a unique
+    // index migration on (guild_id, user_id, card_id) — tracked separately.
+    await tx.insert(collectionsTable).values({ guildId, userId, cardId, count: 1 });
   }
-  if (trade.requestedCardId) await catchCard(trade.guildId, trade.initiatorId, trade.requestedCardId);
-  if (trade.offeredCardId) await catchCard(trade.guildId, trade.targetId, trade.offeredCardId);
-
-  // Credit shards
-  if (trade.requestedShards > 0) await addShards(trade.guildId, trade.initiatorId, trade.requestedShards);
-  if (trade.offeredShards > 0) await addShards(trade.guildId, trade.targetId, trade.offeredShards);
-
-  return true;
 }
 
 // ── Spawn Log ─────────────────────────────────────────────────────────────────

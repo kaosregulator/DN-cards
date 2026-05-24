@@ -82,6 +82,8 @@ export function buildCommands() {
     // ── Quick Admin Slash Commands ────────────────────────────────────────────
     cmd("config", "(Admin) Open the server config panel — visual toggles for catch mode, intervals, etc.", s => s),
 
+    cmd("adminhub", "(Admin) Quick hub — manage admins, timeouts, and see server state", s => s),
+
     cmd("drop", "(Admin) Force-drop a card — for events and giveaways", s => s
       .addStringOption(o => o.setName("name").setDescription("Card name — leave empty for a random drop").setAutocomplete(true))),
 
@@ -121,7 +123,7 @@ export const USER_COMMAND_NAMES = new Set([
 ]);
 
 export const ADMIN_COMMAND_NAMES = new Set([
-  "config", "drop", "give", "giveshards", "takeback", "takeshards",
+  "config", "adminhub", "drop", "give", "giveshards", "takeback", "takeshards",
 ]);
 
 export const CARDSET_COMMAND_NAMES = new Set([

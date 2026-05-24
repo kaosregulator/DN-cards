@@ -6,6 +6,7 @@ import {
 import { spawnCard, scheduleNextSpawn } from "../spawn-manager.js";
 import { RARITY_EMOJI, RARITY_LABELS, type Rarity } from "../cards-data.js";
 import { handleConfigCommand } from "./config-panel.js";
+import { handleAdminHubCommand } from "./admin-hub.js";
 
 // ── Permission check ──────────────────────────────────────────────────────────
 async function checkAdmin(interaction: ChatInputCommandInteraction): Promise<boolean> {
@@ -26,6 +27,10 @@ export async function handleAdminCommand(
   // /config opens an ephemeral panel — it handles its own reply (no defer).
   if (cmd === "config") {
     await handleConfigCommand(interaction);
+    return;
+  }
+  if (cmd === "adminhub") {
+    await handleAdminHubCommand(interaction);
     return;
   }
 

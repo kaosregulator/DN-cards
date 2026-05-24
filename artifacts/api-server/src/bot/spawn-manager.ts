@@ -10,6 +10,7 @@ import {
   markCaught,
   getAllCards,
   getCardWishlisters,
+  getUserTimeout,
 } from "./db.js";
 import { RARITY_COLORS, RARITY_EMOJI, RARITY_LABELS, TYPE_EMOJI, type Rarity, type CardType } from "./cards-data.js";
 import { toAbsoluteImageUrl } from "./image-url.js";
@@ -228,26 +229,35 @@ export async function spawnCard(guildId: string, forcedCardId?: number, isForced
 export async function handleCatchAttempt(
   guildId: string, userId: string, guess: string,
   messageTimestamp: number,
-): Promise<{ matched: boolean; awaiting: boolean }> {
+): Promise<{ matched: boolean; awaiting: boolean; timedOutUntil?: Date }> {
   const guildSpawns = activeSpawns.get(guildId);
   if (!guildSpawns || guildSpawns.size === 0) return { matched: false, awaiting: false };
 
   const normalizedGuess = guess.trim().toLowerCase();
   const now = new Date();
 
+  // First find a matching spawn so we don't query the DB on every random msg.
+  let matchedSpawnId: string | null = null;
   for (const [spawnId, spawn] of guildSpawns) {
     if (now > spawn.expiresAt) { guildSpawns.delete(spawnId); continue; }
     if (spawn.caught) continue;
     if (spawn.catchMode === "button") continue; // typing disabled
     if (normalizedGuess !== spawn.cardName.toLowerCase()) continue;
-
-    spawn.pending.push({ userId, timestamp: messageTimestamp });
-    if (!spawn.resolveTimer) {
-      spawn.resolveTimer = setTimeout(() => { void resolveTypingSpawn(guildId, spawnId); }, TYPE_GRACE_MS);
-    }
-    return { matched: true, awaiting: true };
+    matchedSpawnId = spawnId;
+    break;
   }
-  return { matched: false, awaiting: false };
+  if (!matchedSpawnId) return { matched: false, awaiting: false };
+
+  // Admin-imposed catch timeout — block before queuing.
+  const timeout = await getUserTimeout(guildId, userId);
+  if (timeout) return { matched: true, awaiting: false, timedOutUntil: timeout.expiresAt };
+
+  const spawn = guildSpawns.get(matchedSpawnId)!;
+  spawn.pending.push({ userId, timestamp: messageTimestamp });
+  if (!spawn.resolveTimer) {
+    spawn.resolveTimer = setTimeout(() => { void resolveTypingSpawn(guildId, matchedSpawnId!); }, TYPE_GRACE_MS);
+  }
+  return { matched: true, awaiting: true };
 }
 
 async function resolveTypingSpawn(guildId: string, spawnId: string): Promise<void> {
@@ -308,7 +318,8 @@ async function awardSpawn(guildId: string, spawnId: string, userId: string): Pro
 // `reason: "self_already"` means this user is the actual winner clicking
 // again (double-tap / both-mode race) — caller should silently swallow it.
 export async function handleClaimButtonClick(guildId: string, spawnId: string, userId: string): Promise<{
-  ok: boolean; reason?: "expired" | "wrong_mode" | "already_caught" | "self_already";
+  ok: boolean; reason?: "expired" | "wrong_mode" | "already_caught" | "self_already" | "timed_out";
+  timedOutUntil?: Date;
 }> {
   const guildSpawns = activeSpawns.get(guildId);
   const spawn = guildSpawns?.get(spawnId);
@@ -317,6 +328,8 @@ export async function handleClaimButtonClick(guildId: string, spawnId: string, u
   if (spawn.caught) {
     return { ok: false, reason: spawn.winnerUserId === userId ? "self_already" : "already_caught" };
   }
+  const timeout = await getUserTimeout(guildId, userId);
+  if (timeout) return { ok: false, reason: "timed_out", timedOutUntil: timeout.expiresAt };
   const awarded = await awardSpawn(guildId, spawnId, userId);
   if (awarded) return { ok: true };
   // Race: someone else won between our checks. If that someone is us, swallow.

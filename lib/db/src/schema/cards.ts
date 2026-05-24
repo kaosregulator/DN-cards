@@ -162,6 +162,21 @@ export const adminUsersTable = pgTable("admin_users", {
 
 export type AdminUser = typeof adminUsersTable.$inferSelect;
 
+// ── User Catch Timeouts ───────────────────────────────────────────────────────
+// Admin-imposed time-out preventing a user from catching cards (typing or
+// button) in a guild until `expiresAt`. One active row per (guild,user).
+export const userTimeoutsTable = pgTable("user_timeouts", {
+  id: serial("id").primaryKey(),
+  guildId: text("guild_id").notNull(),
+  userId: text("user_id").notNull(),
+  expiresAt: timestamp("expires_at").notNull(),
+  reason: text("reason"),
+  issuedBy: text("issued_by").notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export type UserTimeout = typeof userTimeoutsTable.$inferSelect;
+
 // ── Spawn Log ─────────────────────────────────────────────────────────────────
 export const spawnLogTable = pgTable("spawn_log", {
   id: serial("id").primaryKey(),

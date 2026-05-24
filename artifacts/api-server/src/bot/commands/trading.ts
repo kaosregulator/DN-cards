@@ -47,11 +47,15 @@ export async function handleTrade(interaction: ChatInputCommandInteraction): Pro
   const target = opts.getUser("user", true);
   const offeredName = opts.getString("offer");
   const requestedName = opts.getString("want");
-  const offeredShards = opts.getInteger("offer_shards") ?? 0;
-  const requestedShards = opts.getInteger("want_shards") ?? 0;
+  const offeredShards = Math.max(0, opts.getInteger("offer_shards") ?? 0);
+  const requestedShards = Math.max(0, opts.getInteger("want_shards") ?? 0);
 
   if (target.id === interaction.user.id) { await interaction.editReply("❌ You can't trade with yourself."); return; }
   if (target.bot) { await interaction.editReply("❌ You can't trade with a bot."); return; }
+  if ((opts.getInteger("offer_shards") ?? 0) < 0 || (opts.getInteger("want_shards") ?? 0) < 0) {
+    await interaction.editReply("❌ Shard amounts must be zero or positive.");
+    return;
+  }
 
   // Must offer something AND want something
   if (!offeredName && offeredShards === 0) {
