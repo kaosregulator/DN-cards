@@ -5,7 +5,7 @@ import {
 } from "discord.js";
 import {
   getAllCards, getUserCollection, removeCardFromUser, catchCard,
-  getOrCreateCurrency,
+  restoreCardToUser, getOrCreateCurrency,
 } from "../db.js";
 import {
   RARITY_COLORS, RARITY_EMOJI, RARITY_LABELS, type Rarity,
@@ -228,10 +228,13 @@ export async function handleTradein(interaction: ChatInputCommandInteraction): P
     // so we can refund precisely if something goes wrong mid-flight (e.g.
     // concurrent /burn or /trade).
     const removed: Array<{ cardId: number; count: number }> = [];
+    // Refund returns the exact copies we removed WITHOUT incrementing the
+    // global mint counter — these cards were never destroyed from the
+    // world's perspective, so the supply accounting must stay still.
     const refund = async () => {
       for (const r of removed) {
         for (let k = 0; k < r.count; k++) {
-          await catchCard(guildId, userId, r.cardId);
+          await restoreCardToUser(guildId, userId, r.cardId);
         }
       }
     };

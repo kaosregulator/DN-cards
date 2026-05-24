@@ -203,6 +203,30 @@ export async function catchCard(guildId: string, userId: string, cardId: number)
     .where(eq(cardsTable.id, cardId));
 }
 
+/**
+ * Restore a card copy to a user's collection WITHOUT touching the global
+ * `totalMinted` counter. Use this when refunding a card that was previously
+ * removed by `removeCardFromUser` (e.g. a failed /tradein) — the card was
+ * never destroyed from the world's perspective, so the mint count shouldn't
+ * move. For genuine new mints (drops, packs, admin gives) use `catchCard`.
+ */
+export async function restoreCardToUser(guildId: string, userId: string, cardId: number) {
+  const [existing] = await db
+    .select().from(collectionsTable)
+    .where(and(
+      eq(collectionsTable.guildId, guildId),
+      eq(collectionsTable.userId, userId),
+      eq(collectionsTable.cardId, cardId),
+    ));
+  if (existing) {
+    await db.update(collectionsTable)
+      .set({ count: existing.count + 1, lastCaughtAt: new Date() })
+      .where(eq(collectionsTable.id, existing.id));
+  } else {
+    await db.insert(collectionsTable).values({ guildId, userId, cardId, count: 1 });
+  }
+}
+
 export async function removeCardFromUser(
   guildId: string, userId: string, cardId: number,
 ): Promise<{ success: boolean; remaining: number }> {

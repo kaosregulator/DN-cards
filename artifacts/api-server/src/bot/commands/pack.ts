@@ -127,17 +127,39 @@ export async function handlePack(interaction: ChatInputCommandInteraction): Prom
     return;
   }
 
-  try {
-    for (const card of cards) {
+  // Grant cards one at a time. If a mid-loop failure happens (rare —
+  // catchCard is an upsert), we refund shards ONLY if zero cards landed.
+  // Otherwise the user keeps what was granted and pays the full pack price.
+  // This prevents the "free cards + refund" exploit.
+  let granted = 0;
+  let lastError: unknown = null;
+  for (const card of cards) {
+    try {
       await catchCard(guildId, userId, card.id);
+      granted += 1;
+    } catch (err) {
+      lastError = err;
+      break;
     }
+  }
+
+  if (granted === 0) {
+    await refundShards(guildId, userId, PACK_COST);
+    await interaction.editReply("❌ Pack opening failed — your shards were refunded. Please try again.");
+    if (lastError) throw lastError;
+    return;
+  }
+
+  // Best-effort packsOpened bump — non-fatal.
+  try {
     await db.update(userCurrencyTable)
       .set({ packsOpened: sql`${userCurrencyTable.packsOpened} + 1` })
       .where(and(eq(userCurrencyTable.guildId, guildId), eq(userCurrencyTable.userId, userId)));
-  } catch (err) {
-    await refundShards(guildId, userId, PACK_COST);
-    await interaction.editReply("❌ Pack opening failed — your shards were refunded. Please try again.");
-    throw err;
+  } catch { /* ignore — cosmetic counter only */ }
+
+  if (granted < cards.length) {
+    // Partial grant — trim summary to what actually landed; no refund.
+    cards.length = granted;
   }
 
   const balanceAfter = before.shards - PACK_COST;
