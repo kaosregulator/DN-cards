@@ -103,6 +103,10 @@ async function doSingleSpawn(guildId: string, forcedCardId?: number, isForced = 
   if (forcedCardId) {
     const cards = await getAllCards();
     card = cards.find(c => c.id === forcedCardId);
+    if (card?.isArchived) {
+      logger.info({ cardId: card.id }, "Refusing to spawn archived card");
+      return;
+    }
   } else {
     const rarityWeights = getGuildRarityWeights(settings);
     card = await pickRandomCard(rarityWeights);

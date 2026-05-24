@@ -47,7 +47,7 @@ function pickByDropWeight(pool: Card[]): Card | undefined {
 async function drawPack(): Promise<Card[]> {
   // Only droppable, non-event-exclusive cards; limited only if there's room.
   const all = (await getAllCards()).filter(c =>
-    c.droppable && !c.isEventExclusive &&
+    c.droppable && c.inPacks && !c.isArchived && !c.isEventExclusive &&
     (!c.isLimitedEdition || c.maxCopies == null || c.totalMinted < c.maxCopies),
   );
   if (all.length === 0) return [];

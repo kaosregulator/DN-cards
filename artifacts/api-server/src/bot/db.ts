@@ -163,7 +163,7 @@ export async function updateCard(cardId: number, values: Partial<{
 
 // ── Weighted Random Card Pick (with optional guild rarity weight overrides) ────
 export async function pickRandomCard(rarityWeights?: Record<string, number>): Promise<Card | undefined> {
-  const cards = (await getAllCards()).filter(c => c.droppable);
+  const cards = (await getAllCards()).filter(c => c.droppable && !c.isArchived);
   if (cards.length === 0) return undefined;
 
   const getWeight = (card: Card) => rarityWeights

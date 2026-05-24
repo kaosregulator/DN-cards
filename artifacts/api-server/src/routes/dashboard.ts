@@ -20,9 +20,11 @@ function parseParams<T extends z.ZodTypeAny>(schema: T, req: Request, res: Respo
   return result.data;
 }
 
-// ── All cards (the public roster) ─────────────────────────────────────────────
+// ── All cards (the public roster — excludes archived) ────────────────────────
 router.get("/cards", async (_req, res) => {
-  const rows = await db.select().from(cardsTable).orderBy(cardsTable.id);
+  const rows = await db.select().from(cardsTable)
+    .where(eq(cardsTable.isArchived, false))
+    .orderBy(cardsTable.id);
   res.json({ cards: rows });
 });
 
@@ -126,7 +128,7 @@ router.get("/guilds/:guildId/summary", async (req, res) => {
       collectors: sql<number>`count(distinct ${collectionsTable.userId})::int`,
       cardsHeld: sql<number>`coalesce(sum(${collectionsTable.count})::int, 0)`,
     }).from(collectionsTable).where(eq(collectionsTable.guildId, guildId)),
-    db.select({ total: sql<number>`count(*)::int` }).from(cardsTable),
+    db.select({ total: sql<number>`count(*)::int` }).from(cardsTable).where(eq(cardsTable.isArchived, false)),
     db.select({
       packs: sql<number>`coalesce(sum(${userCurrencyTable.packsOpened})::int, 0)`,
       burns: sql<number>`coalesce(sum(${userCurrencyTable.cardsBurned})::int, 0)`,

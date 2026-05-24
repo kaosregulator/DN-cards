@@ -7,6 +7,7 @@ export function Nav() {
     { href: "/", label: "Roster" },
     { href: "/leaderboard", label: "Leaderboard" },
     { href: "/profile", label: "Profile" },
+    { href: "/admin", label: "Admin" },
   ];
 
   return (

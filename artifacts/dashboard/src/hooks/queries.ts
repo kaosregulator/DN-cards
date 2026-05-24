@@ -1,5 +1,5 @@
-import { useQuery } from "@tanstack/react-query";
-import { apiGet } from "@/lib/api";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { adminGet, adminSend, apiGet } from "@/lib/api";
 
 export type Rarity = "common" | "uncommon" | "rare" | "epic" | "legendary";
 export type CardType = "tank" | "aircraft" | "ship" | "vehicle" | "infantry" | "boss" | "community" | "event" | "achievement" | "limited";
@@ -20,9 +20,28 @@ export interface Card {
   imageUrl: string | null;
   flavor: string | null;
   droppable: boolean;
+  inPacks: boolean;
+  isArchived: boolean;
   setName: string | null;
   createdAt: string;
 }
+
+export type CardPatch = Partial<{
+  name: string;
+  description: string;
+  rarity: Rarity;
+  cardType: CardType;
+  dropWeight: number;
+  worthValue: number;
+  burnValue: number;
+  imageUrl: string | null;
+  maxCopies: number | null;
+  isLimitedEdition: boolean;
+  isEventExclusive: boolean;
+  inPacks: boolean;
+  droppable: boolean;
+  isArchived: boolean;
+}>;
 
 export interface LeaderboardEntry {
   rank: number;
@@ -102,5 +121,45 @@ export function useGuildSummary(guildId: string) {
     queryKey: ["guildSummary", guildId],
     queryFn: () => apiGet<GuildSummary>(`/api/guilds/${guildId}/summary`),
     enabled: !!guildId,
+  });
+}
+
+// ── Admin ────────────────────────────────────────────────────────────────────
+export function useAdminCards(enabled: boolean) {
+  return useQuery({
+    queryKey: ["admin", "cards"],
+    queryFn: () => adminGet<{ cards: Card[] }>("/api/admin/cards"),
+    enabled,
+    staleTime: 0,
+  });
+}
+
+function invalidateCardLists(qc: ReturnType<typeof useQueryClient>) {
+  qc.invalidateQueries({ queryKey: ["admin", "cards"] });
+  qc.invalidateQueries({ queryKey: ["cards"] });
+}
+
+export function useUpdateCard() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, patch }: { id: number; patch: CardPatch }) =>
+      adminSend<{ card: Card }>("PATCH", `/api/admin/cards/${id}`, patch),
+    onSuccess: () => invalidateCardLists(qc),
+  });
+}
+
+export function useDuplicateCard() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => adminSend<{ card: Card }>("POST", `/api/admin/cards/${id}/duplicate`),
+    onSuccess: () => invalidateCardLists(qc),
+  });
+}
+
+export function useDeleteCard() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => adminSend<{ deleted: true; id: number }>("DELETE", `/api/admin/cards/${id}`),
+    onSuccess: () => invalidateCardLists(qc),
   });
 }

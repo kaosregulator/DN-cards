@@ -203,6 +203,8 @@ export default function Profile() {
                         totalMinted: 0,
                         flavor: null,
                         droppable: true,
+                        inPacks: true,
+                        isArchived: false,
                         setName: null,
                         createdAt: item.firstCaughtAt
                       }}

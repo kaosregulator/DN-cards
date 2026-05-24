@@ -1,0 +1,174 @@
+import { Router, type IRouter, type Request, type Response, type NextFunction } from "express";
+import { db, cardsTable } from "@workspace/db";
+import { eq, sql } from "drizzle-orm";
+import { z } from "zod/v4";
+import { timingSafeEqual } from "node:crypto";
+
+const router: IRouter = Router();
+
+// ── Token auth ────────────────────────────────────────────────────────────────
+function requireAdmin(req: Request, res: Response, next: NextFunction) {
+  const expected = process.env["ADMIN_TOKEN"];
+  if (!expected) {
+    res.status(503).json({ error: "ADMIN_TOKEN not configured on server" });
+    return;
+  }
+  const header = req.header("authorization") ?? "";
+  const provided = header.startsWith("Bearer ") ? header.slice(7) : req.header("x-admin-token") ?? "";
+  const expectedBuf = Buffer.from(expected, "utf8");
+  const providedBuf = Buffer.from(provided, "utf8");
+  if (providedBuf.length !== expectedBuf.length || !timingSafeEqual(providedBuf, expectedBuf)) {
+    res.status(401).json({ error: "Invalid admin token" });
+    return;
+  }
+  next();
+}
+
+router.use(requireAdmin);
+
+// ── Validation schemas ────────────────────────────────────────────────────────
+const rarityValues = ["common", "uncommon", "rare", "epic", "legendary"] as const;
+const cardTypeValues = ["tank", "aircraft", "ship", "vehicle", "infantry", "boss", "community", "event", "achievement", "limited"] as const;
+
+const cardPatchSchema = z.object({
+  name: z.string().trim().min(1).max(80).optional(),
+  description: z.string().max(500).optional(),
+  rarity: z.enum(rarityValues).optional(),
+  cardType: z.enum(cardTypeValues).optional(),
+  dropWeight: z.number().min(0).max(1000).optional(),
+  worthValue: z.number().int().min(0).max(1_000_000).optional(),
+  burnValue: z.number().int().min(0).max(1_000_000).optional(),
+  imageUrl: z.string().url().nullable().optional(),
+  maxCopies: z.number().int().min(1).max(100_000).nullable().optional(),
+  isLimitedEdition: z.boolean().optional(),
+  isEventExclusive: z.boolean().optional(),
+  inPacks: z.boolean().optional(),
+  droppable: z.boolean().optional(),
+  isArchived: z.boolean().optional(),
+});
+
+const cardCreateSchema = cardPatchSchema.extend({
+  name: z.string().trim().min(1).max(80),
+  rarity: z.enum(rarityValues),
+});
+
+const idParam = z.object({ id: z.coerce.number().int().positive() });
+
+function parse<T extends z.ZodTypeAny>(schema: T, value: unknown, res: Response): z.infer<T> | null {
+  const result = schema.safeParse(value);
+  if (!result.success) {
+    res.status(400).json({ error: "Invalid payload", details: result.error.issues });
+    return null;
+  }
+  return result.data;
+}
+
+// ── List (includes archived; admin needs full visibility) ────────────────────
+router.get("/cards", async (_req, res) => {
+  const rows = await db.select().from(cardsTable).orderBy(cardsTable.id);
+  res.json({ cards: rows });
+});
+
+// ── Create (used by duplicate too) ───────────────────────────────────────────
+router.post("/cards", async (req, res) => {
+  const body = parse(cardCreateSchema, req.body, res);
+  if (!body) return;
+  try {
+    const [created] = await db.insert(cardsTable).values({
+      ...body,
+      isLimitedEdition: body.isLimitedEdition ?? false,
+      isEventExclusive: body.isEventExclusive ?? false,
+      droppable: body.droppable ?? true,
+      inPacks: body.inPacks ?? true,
+      isArchived: body.isArchived ?? false,
+    }).returning();
+    res.status(201).json({ card: created });
+  } catch (err: any) {
+    if (err?.code === "23505") {
+      res.status(409).json({ error: "A card with that name already exists" });
+      return;
+    }
+    throw err;
+  }
+});
+
+// ── Edit ──────────────────────────────────────────────────────────────────────
+router.patch("/cards/:id", async (req, res) => {
+  const params = parse(idParam, req.params, res);
+  if (!params) return;
+  const body = parse(cardPatchSchema, req.body, res);
+  if (!body) return;
+  if (Object.keys(body).length === 0) {
+    res.status(400).json({ error: "No fields to update" });
+    return;
+  }
+  try {
+    const [updated] = await db.update(cardsTable).set(body).where(eq(cardsTable.id, params.id)).returning();
+    if (!updated) {
+      res.status(404).json({ error: "Card not found" });
+      return;
+    }
+    res.json({ card: updated });
+  } catch (err: any) {
+    if (err?.code === "23505") {
+      res.status(409).json({ error: "A card with that name already exists" });
+      return;
+    }
+    throw err;
+  }
+});
+
+// ── Duplicate ─────────────────────────────────────────────────────────────────
+router.post("/cards/:id/duplicate", async (req, res) => {
+  const params = parse(idParam, req.params, res);
+  if (!params) return;
+  const [source] = await db.select().from(cardsTable).where(eq(cardsTable.id, params.id));
+  if (!source) {
+    res.status(404).json({ error: "Card not found" });
+    return;
+  }
+
+  // Generate a unique "(copy N)" suffix. Retry on concurrent collisions (23505).
+  const { id: _id, createdAt: _c, totalMinted: _t, ...rest } = source;
+  let suffix = 1;
+  for (let attempt = 0; attempt < 25; attempt++) {
+    const newName = suffix === 1 ? `${source.name} (copy)` : `${source.name} (copy ${suffix})`;
+    const [existing] = await db.select({ id: cardsTable.id }).from(cardsTable)
+      .where(sql`lower(${cardsTable.name}) = lower(${newName})`);
+    if (existing) { suffix += 1; continue; }
+    try {
+      const [created] = await db.insert(cardsTable)
+        .values({ ...rest, name: newName, isArchived: false })
+        .returning();
+      res.status(201).json({ card: created });
+      return;
+    } catch (err: any) {
+      if (err?.code === "23505") { suffix += 1; continue; }
+      throw err;
+    }
+  }
+  res.status(409).json({ error: "Could not allocate a unique duplicate name; please rename and try again." });
+});
+
+// ── Delete (hard) ─────────────────────────────────────────────────────────────
+// Refuses if the card has been minted; client should archive instead.
+router.delete("/cards/:id", async (req, res) => {
+  const params = parse(idParam, req.params, res);
+  if (!params) return;
+  const [card] = await db.select().from(cardsTable).where(eq(cardsTable.id, params.id));
+  if (!card) {
+    res.status(404).json({ error: "Card not found" });
+    return;
+  }
+  if (card.totalMinted > 0) {
+    res.status(409).json({
+      error: "Card has been minted and cannot be hard-deleted; archive it instead.",
+      totalMinted: card.totalMinted,
+    });
+    return;
+  }
+  await db.delete(cardsTable).where(eq(cardsTable.id, params.id));
+  res.json({ deleted: true, id: params.id });
+});
+
+export default router;
