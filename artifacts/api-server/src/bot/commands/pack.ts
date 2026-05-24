@@ -1,5 +1,8 @@
-import type { ChatInputCommandInteraction } from "discord.js";
-import { EmbedBuilder, MessageFlags } from "discord.js";
+import type { ChatInputCommandInteraction, MessageComponentInteraction } from "discord.js";
+import {
+  EmbedBuilder, MessageFlags,
+  ActionRowBuilder, ButtonBuilder, ButtonStyle, ComponentType,
+} from "discord.js";
 import { db, userCurrencyTable, cardsTable } from "@workspace/db";
 import { and, eq, sql } from "drizzle-orm";
 import {
@@ -9,6 +12,7 @@ import {
   RARITY_COLORS, RARITY_EMOJI, RARITY_LABELS, type Rarity,
 } from "../cards-data.js";
 import { checkAchievements, formatUnlockLine } from "../achievements.js";
+import { toAbsoluteImageUrl } from "../image-url.js";
 import type { Card } from "@workspace/db";
 
 export const PACK_COST = 250;
@@ -45,7 +49,6 @@ function pickByDropWeight(pool: Card[]): Card | undefined {
 }
 
 async function drawPack(): Promise<Card[]> {
-  // Only droppable, non-event-exclusive cards; limited only if there's room.
   const all = (await getAllCards()).filter(c =>
     c.droppable && c.inPacks && !c.isArchived && !c.isEventExclusive &&
     (!c.isLimitedEdition || c.maxCopies == null || c.totalMinted < c.maxCopies),
@@ -60,7 +63,6 @@ async function drawPack(): Promise<Card[]> {
   const drawn: Card[] = [];
   for (let i = 0; i < PACK_SIZE; i++) {
     let rarity = rollRarity();
-    // Fall back through rarer→commoner if a tier is empty
     const fallbackOrder: Rarity[] = ["legendary", "epic", "rare", "uncommon", "common"];
     const startIdx = fallbackOrder.indexOf(rarity);
     let picked: Card | undefined;
@@ -82,25 +84,54 @@ async function drawPack(): Promise<Card[]> {
 
 const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
 
-function buildOpeningEmbed(revealed: Card[], total: number): EmbedBuilder {
-  const lines: string[] = [];
-  for (let i = 0; i < total; i++) {
-    const c = revealed[i];
-    if (c) {
-      const emoji = RARITY_EMOJI[c.rarity as Rarity] ?? "🃏";
-      lines.push(`**${i + 1}.** ${emoji} **${c.name}** — *${RARITY_LABELS[c.rarity as Rarity]}* (💠 ${c.worthValue})`);
-    } else {
-      lines.push(`**${i + 1}.** 🎴 \`???\``);
-    }
-  }
-  const last = revealed[revealed.length - 1];
-  const color = last ? (RARITY_COLORS[last.rarity as Rarity] ?? 0x5865f2) : 0x5865f2;
-  return new EmbedBuilder()
-    .setTitle("🎴 Opening Pack…")
-    .setColor(color)
-    .setDescription(lines.join("\n"));
+// ── Visuals ────────────────────────────────────────────────────────────────
+function buildRevealEmbed(card: Card, idx: number, total: number): EmbedBuilder {
+  const rarity = card.rarity as Rarity;
+  const e = new EmbedBuilder()
+    .setTitle(`🎴 Card ${idx + 1} of ${total} — ${RARITY_EMOJI[rarity]} ${RARITY_LABELS[rarity]}`)
+    .setDescription(`**${card.name}**${card.description ? `\n*${card.description}*` : ""}`)
+    .addFields(
+      { name: "💠 Worth", value: card.worthValue.toLocaleString(), inline: true },
+      { name: "🔥 Burn", value: card.burnValue.toLocaleString(), inline: true },
+      { name: "Rarity", value: `${RARITY_EMOJI[rarity]} ${RARITY_LABELS[rarity]}`, inline: true },
+    )
+    .setColor(RARITY_COLORS[rarity] ?? 0x5865f2);
+  const img = toAbsoluteImageUrl(card.imageUrl);
+  if (img) e.setImage(img);
+  return e;
 }
 
+function buildFlipFrame(idx: number, total: number, frame: string): EmbedBuilder {
+  return new EmbedBuilder()
+    .setTitle(`🎴 Card ${idx + 1} of ${total}`)
+    .setDescription(`${frame}\n\n*Get ready…*`)
+    .setColor(0x5865f2);
+}
+
+function buildSummaryEmbed(cards: Card[], spent: number, balanceAfter: number): EmbedBuilder {
+  const totalWorth = cards.reduce((s, c) => s + c.worthValue, 0);
+  const last = cards[cards.length - 1];
+  return new EmbedBuilder()
+    .setTitle(`🎴 Pack Opened — ${cards.length} cards`)
+    .setColor(RARITY_COLORS[last.rarity as Rarity] ?? 0x5865f2)
+    .setDescription(
+      cards.map((c, i) => {
+        const emoji = RARITY_EMOJI[c.rarity as Rarity] ?? "🃏";
+        return `**${i + 1}.** ${emoji} **${c.name}** — *${RARITY_LABELS[c.rarity as Rarity]}* · 💠 ${c.worthValue.toLocaleString()}`;
+      }).join("\n") +
+      `\n\n**Total worth:** 💠 ${totalWorth.toLocaleString()}\n` +
+      `Spent: 💠 ${spent.toLocaleString()} · Balance: 💠 ${balanceAfter.toLocaleString()}`,
+    )
+    .setFooter({ text: "Cards added to your collection — use /collection to view." });
+}
+
+function buttonsRow(disabled = false): ActionRowBuilder<ButtonBuilder> {
+  return new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder().setCustomId("pack_skip").setLabel("⏭️ Skip animation").setStyle(ButtonStyle.Secondary).setDisabled(disabled),
+  );
+}
+
+// ── Handler ────────────────────────────────────────────────────────────────
 export async function handlePack(interaction: ChatInputCommandInteraction): Promise<void> {
   if (!interaction.guild) return;
   const guildId = interaction.guild.id;
@@ -122,15 +153,13 @@ export async function handlePack(interaction: ChatInputCommandInteraction): Prom
     return;
   }
 
-  // ── Spend FIRST (atomic) — fails fast if balance < cost or under contention ──
+  // Spend first (atomic). Then grant. Then animate.
   const spent = await spendShards(guildId, userId, PACK_COST);
   if (!spent) {
     await interaction.editReply(`❌ Insufficient shards (need 💠 ${PACK_COST.toLocaleString()}).`);
     return;
   }
 
-  // ── Grant all cards next, BEFORE the slow animation. If any grant throws we
-  //    refund the full pack cost so a partial pack never charges the user. ──
   try {
     for (const card of cards) {
       await catchCard(guildId, userId, card.id);
@@ -144,33 +173,60 @@ export async function handlePack(interaction: ChatInputCommandInteraction): Prom
     throw err;
   }
 
-  // ── Animated reveal (visual only — grants already persisted) ─────────────
-  const revealed: Card[] = [];
-  await interaction.editReply({ embeds: [buildOpeningEmbed(revealed, cards.length)] });
-  for (const card of cards) {
-    await sleep(900);
-    revealed.push(card);
-    await interaction.editReply({ embeds: [buildOpeningEmbed(revealed, cards.length)] }).catch(() => {
-      /* animation edit can fail (deleted/rate-limited) — cards already granted, ignore */
+  const balanceAfter = before.shards - PACK_COST;
+
+  // Initial reveal frame + Skip button. Fetch the reply Message so we can
+  // attach a component collector for the Skip button.
+  await interaction.editReply({
+    embeds: [buildFlipFrame(0, cards.length, "🎴 ✨ Opening pack…")],
+    components: [buttonsRow()],
+  });
+
+  // Attach skip-button collector. fetchReply on ephemeral works in discord.js
+  // v14, but be defensive: if it fails, just skip the collector and animate
+  // through without a working Skip button.
+  let skipped = false;
+  let collector: ReturnType<typeof import("discord.js").Message.prototype.createMessageComponentCollector> | null = null;
+  try {
+    const replyMsg = await interaction.fetchReply();
+    collector = replyMsg.createMessageComponentCollector({
+      componentType: ComponentType.Button,
+      time: 60_000,
+      filter: (i: MessageComponentInteraction) => i.user.id === userId,
     });
+    collector.on("collect", async (i) => {
+      if (i.customId !== "pack_skip") return;
+      skipped = true;
+      await i.deferUpdate().catch(() => { /* ignore */ });
+      collector?.stop("skip");
+    });
+  } catch { /* no collector — animation still plays */ }
+
+  // Per-card animated reveal: flip → reveal → short pause.
+  for (let i = 0; i < cards.length; i++) {
+    if (skipped) break;
+    const card = cards[i];
+    await interaction.editReply({
+      embeds: [buildFlipFrame(i, cards.length, "🎴 ✨ Flipping…")],
+      components: [buttonsRow()],
+    }).catch(() => { skipped = true; });
+    if (skipped) break;
+    await sleep(500);
+    if (skipped) break;
+    await interaction.editReply({
+      embeds: [buildRevealEmbed(card, i, cards.length)],
+      components: i === cards.length - 1 ? [buttonsRow(true)] : [buttonsRow()],
+    }).catch(() => { skipped = true; });
+    if (skipped) break;
+    await sleep(1200);
   }
 
-  // Final summary
-  const totalWorth = cards.reduce((s, c) => s + c.worthValue, 0);
-  const finalLast = cards[cards.length - 1];
-  const finalEmbed = new EmbedBuilder()
-    .setTitle(`🎴 Pack Opened — ${cards.length} cards`)
-    .setColor(RARITY_COLORS[finalLast.rarity as Rarity] ?? 0x5865f2)
-    .setDescription(
-      cards.map((c, i) => {
-        const emoji = RARITY_EMOJI[c.rarity as Rarity] ?? "🃏";
-        return `**${i + 1}.** ${emoji} **${c.name}** — *${RARITY_LABELS[c.rarity as Rarity]}* · 💠 ${c.worthValue.toLocaleString()}`;
-      }).join("\n") +
-      `\n\n**Total worth:** 💠 ${totalWorth.toLocaleString()}\n` +
-      `Spent: 💠 ${PACK_COST.toLocaleString()} · Balance: 💠 ${(before.shards - PACK_COST).toLocaleString()}`,
-    )
-    .setFooter({ text: "Cards added to your collection — use /collection to view." });
-  await interaction.editReply({ embeds: [finalEmbed] });
+  collector?.stop("done");
+
+  await interaction.editReply({
+    embeds: [buildSummaryEmbed(cards, PACK_COST, balanceAfter)],
+    components: [],
+  }).catch(() => { /* ignore */ });
 
   // Achievements
   const newly = await checkAchievements(guildId, userId);

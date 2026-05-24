@@ -1,6 +1,10 @@
-import { SlashCommandBuilder, type SlashCommandOptionsOnlyBuilder } from "discord.js";
+import {
+  SlashCommandBuilder,
+  type SlashCommandOptionsOnlyBuilder,
+  type SlashCommandSubcommandsOnlyBuilder,
+} from "discord.js";
 
-type AnySlashBuilder = SlashCommandBuilder | SlashCommandOptionsOnlyBuilder;
+type AnySlashBuilder = SlashCommandBuilder | SlashCommandOptionsOnlyBuilder | SlashCommandSubcommandsOnlyBuilder;
 
 function cmd(name: string, desc: string, build: (s: SlashCommandBuilder) => AnySlashBuilder) {
   return build(
@@ -52,6 +56,14 @@ export function buildCommands() {
     cmd("achievements", "(User) View unlocked achievements", s => s
       .addUserOption(o => o.setName("user").setDescription("View another member's achievements"))),
 
+    cmd("wishlist", "(User) Manage your card wishlist — get pinged when wished cards spawn", s => s
+      .addSubcommand(sc => sc.setName("add").setDescription("Add a card to your wishlist")
+        .addStringOption(o => o.setName("name").setDescription("Card name").setRequired(true).setAutocomplete(true)))
+      .addSubcommand(sc => sc.setName("remove").setDescription("Remove a card from your wishlist")
+        .addStringOption(o => o.setName("name").setDescription("Card name").setRequired(true).setAutocomplete(true)))
+      .addSubcommand(sc => sc.setName("list").setDescription("View a wishlist")
+        .addUserOption(o => o.setName("user").setDescription("View another member's wishlist")))),
+
     // ── Quick Admin Slash Commands ────────────────────────────────────────────
     cmd("drop", "(Admin) Force-drop a card — for events and giveaways", s => s
       .addStringOption(o => o.setName("name").setDescription("Card name — leave empty for a random drop").setAutocomplete(true))),
@@ -88,7 +100,7 @@ export function buildCommands() {
 export const USER_COMMAND_NAMES = new Set([
   "collection", "rank", "info", "list", "top",
   "burn", "shards", "trade", "trades", "accept", "decline", "help",
-  "daily", "pack", "achievements",
+  "daily", "pack", "achievements", "wishlist",
 ]);
 
 export const ADMIN_COMMAND_NAMES = new Set([

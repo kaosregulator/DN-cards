@@ -9,6 +9,7 @@ import {
   logSpawn,
   markCaught,
   getAllCards,
+  getCardWishlisters,
 } from "./db.js";
 import { RARITY_COLORS, RARITY_EMOJI, RARITY_LABELS, TYPE_EMOJI, type Rarity, type CardType } from "./cards-data.js";
 import { toAbsoluteImageUrl } from "./image-url.js";
@@ -128,6 +129,24 @@ async function doSingleSpawn(guildId: string, forcedCardId?: number, isForced = 
   const spawnLog = await logSpawn(guildId, settings.spawnChannelId, card.id, isForced);
   const message = await channel.send({ embeds: [embed] });
 
+  // ── Wishlist ping: notify users who have this card on their wishlist ──────
+  // Chunk into batches so a popular card doesn't blast a 100-mention message
+  // (Discord rate-limits + spam filters).
+  try {
+    const wishers = await getCardWishlisters(guildId, card.id);
+    const CHUNK = 20;
+    for (let i = 0; i < wishers.length; i += CHUNK) {
+      const slice = wishers.slice(i, i + CHUNK);
+      const mentions = slice.map(u => `<@${u}>`).join(" ");
+      await channel.send({
+        content: `⭐ ${mentions} — **${card.name}** is on your wishlist! Catch it now.`,
+        allowedMentions: { users: slice },
+      }).catch(() => { /* permissions / rate limit — ignore */ });
+    }
+  } catch (err) {
+    logger.warn({ err }, "Wishlist ping failed");
+  }
+
   const spawnId = `${Date.now()}-${Math.random()}`;
   const spawn: ActiveSpawn = {
     cardId: card.id,
@@ -191,11 +210,9 @@ export async function handleCatchAttempt(guildId: string, userId: string, guess:
     await catchCard(guildId, userId, spawn.cardId);
     await markCaught(spawn.spawnLogId, userId);
 
-    // Update the spawn embed: keep the image and card art, overlay "CLAIMED"
-    try {
-      const claimedEmbed = await buildClaimedEmbed(spawn.cardId, userId);
-      if (claimedEmbed) await spawn.message.edit({ embeds: [claimedEmbed] });
-    } catch { /* deleted */ }
+    // Update the spawn embed: brief flip animation, then final CLAIMED embed.
+    // Fire-and-forget so we don't block catch detection for other spawns.
+    void runCatchAnimation(spawn.message, spawn.cardId, userId, spawn.cardName);
 
     // Send Burn / Keep buttons to the catcher
     await sendCatchButtons(guildId, userId, spawn.cardId, spawn.cardName, spawn.burnValue, spawn.channelId);
@@ -257,6 +274,33 @@ export async function initAllGuilds(client: Client) {
       scheduleNextSpawn(guildId);
     }
   }
+}
+
+// ── Catch reveal animation: 3 flip frames, then the final CLAIMED embed ─────
+const FLIP_FRAMES = ["🎴 ✨ Flipping the card…", "🃏 ✨ Almost there…", "🎉 ✨ Revealing…"];
+async function runCatchAnimation(
+  message: { edit: (opts: unknown) => Promise<unknown> },
+  cardId: number,
+  userId: string,
+  cardName: string,
+): Promise<void> {
+  for (const text of FLIP_FRAMES) {
+    try {
+      await message.edit({
+        embeds: [
+          new EmbedBuilder()
+            .setTitle(`✨ ${cardName} caught by`)
+            .setDescription(`<@${userId}>\n\n${text}`)
+            .setColor(0xfdcb6e),
+        ],
+      });
+    } catch { return; /* deleted */ }
+    await sleep(450);
+  }
+  try {
+    const claimedEmbed = await buildClaimedEmbed(cardId, userId);
+    if (claimedEmbed) await message.edit({ embeds: [claimedEmbed] });
+  } catch { /* deleted */ }
 }
 
 // Build the "CLAIMED" version of a spawn embed — keeps the image, replaces

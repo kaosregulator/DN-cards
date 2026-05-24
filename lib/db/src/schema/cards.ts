@@ -170,3 +170,17 @@ export const spawnLogTable = pgTable("spawn_log", {
 });
 
 export type SpawnLog = typeof spawnLogTable.$inferSelect;
+
+// ── Wishlists ─────────────────────────────────────────────────────────────────
+export const wishlistsTable = pgTable("wishlists", {
+  id: serial("id").primaryKey(),
+  guildId: text("guild_id").notNull(),
+  userId: text("user_id").notNull(),
+  cardId: integer("card_id").notNull().references(() => cardsTable.id, { onDelete: "cascade" }),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (t) => ({
+  uniqUserCard: uniqueIndex("wishlists_guild_user_card_uniq").on(t.guildId, t.userId, t.cardId),
+  byGuildCard: uniqueIndex("wishlists_guild_card_user_idx").on(t.guildId, t.cardId, t.userId),
+}));
+
+export type Wishlist = typeof wishlistsTable.$inferSelect;

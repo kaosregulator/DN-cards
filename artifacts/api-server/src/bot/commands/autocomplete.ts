@@ -1,5 +1,5 @@
 import type { AutocompleteInteraction } from "discord.js";
-import { getAllCards, listSets, getUserCollection } from "../db.js";
+import { getAllCards, listSets, getUserCollection, getUserWishlist } from "../db.js";
 import { RARITY_EMOJI, type Rarity } from "../cards-data.js";
 
 const MAX_CHOICES = 25;
@@ -85,8 +85,25 @@ export async function handleAutocomplete(interaction: AutocompleteInteraction): 
       return;
     }
 
+    // ── /wishlist remove — only suggest cards already on the user's wishlist ─
+    if (cmd === "wishlist" && focused.name === "name" && interaction.guild) {
+      const sub = interaction.options.getSubcommand(false);
+      if (sub === "remove") {
+        const wished = await getUserWishlist(interaction.guild.id, interaction.user.id);
+        const pool = wished.map(w => ({ name: w.name, rarity: w.rarity }));
+        const q = query.toLowerCase().trim();
+        const scored = pool
+          .map(c => ({ c, s: scoreMatch(c.name, q) }))
+          .filter(x => x.s < 3)
+          .sort((a, b) => a.s - b.s || a.c.name.localeCompare(b.c.name))
+          .slice(0, MAX_CHOICES);
+        await interaction.respond(scored.map(x => formatCardChoice(x.c)));
+        return;
+      }
+    }
+
     // ── All other card-name fields → full roster ────────────────────────────
-    // /info, /drop, /give, /takeback, /trade.want
+    // /info, /drop, /give, /takeback, /trade.want, /wishlist add
     await interaction.respond(await suggestCardNames(query));
   } catch {
     try { await interaction.respond([]); } catch { /* ignore */ }

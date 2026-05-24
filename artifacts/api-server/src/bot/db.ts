@@ -2,6 +2,7 @@ import {
   db,
   cardsTable, collectionsTable, guildSettingsTable,
   adminUsersTable, spawnLogTable, userCurrencyTable, tradesTable,
+  wishlistsTable,
 } from "@workspace/db";
 import { eq, and, sql, desc, inArray } from "drizzle-orm";
 import type { Card, GuildSettings, Trade } from "@workspace/db";
@@ -455,4 +456,47 @@ export async function markCaught(spawnId: number, userId: string) {
   await db.update(spawnLogTable)
     .set({ caughtBy: userId, caughtAt: new Date() })
     .where(eq(spawnLogTable.id, spawnId));
+}
+
+// ── Wishlists ─────────────────────────────────────────────────────────────────
+export async function addWishlist(guildId: string, userId: string, cardId: number): Promise<boolean> {
+  const inserted = await db.insert(wishlistsTable)
+    .values({ guildId, userId, cardId })
+    .onConflictDoNothing()
+    .returning({ id: wishlistsTable.id });
+  return inserted.length > 0;
+}
+
+export async function removeWishlist(guildId: string, userId: string, cardId: number): Promise<boolean> {
+  const deleted = await db.delete(wishlistsTable)
+    .where(and(
+      eq(wishlistsTable.guildId, guildId),
+      eq(wishlistsTable.userId, userId),
+      eq(wishlistsTable.cardId, cardId),
+    ))
+    .returning({ id: wishlistsTable.id });
+  return deleted.length > 0;
+}
+
+export async function getUserWishlist(
+  guildId: string, userId: string,
+): Promise<Array<{ cardId: number; name: string; rarity: string; worthValue: number }>> {
+  const rows = await db.select({
+    cardId: cardsTable.id,
+    name: cardsTable.name,
+    rarity: cardsTable.rarity,
+    worthValue: cardsTable.worthValue,
+  })
+    .from(wishlistsTable)
+    .innerJoin(cardsTable, eq(cardsTable.id, wishlistsTable.cardId))
+    .where(and(eq(wishlistsTable.guildId, guildId), eq(wishlistsTable.userId, userId)))
+    .orderBy(desc(cardsTable.worthValue));
+  return rows;
+}
+
+export async function getCardWishlisters(guildId: string, cardId: number): Promise<string[]> {
+  const rows = await db.select({ userId: wishlistsTable.userId })
+    .from(wishlistsTable)
+    .where(and(eq(wishlistsTable.guildId, guildId), eq(wishlistsTable.cardId, cardId)));
+  return rows.map(r => r.userId);
 }
