@@ -3,46 +3,83 @@ import {
   cardsTable, collectionsTable, guildSettingsTable,
   adminUsersTable, spawnLogTable, userCurrencyTable, tradesTable,
 } from "@workspace/db";
-import { eq, and, sql, desc } from "drizzle-orm";
+import { eq, and, sql, desc, inArray } from "drizzle-orm";
 import type { Card, GuildSettings, Trade } from "@workspace/db";
 import { DEFAULT_CARDS } from "./cards-data.js";
 import { logger } from "../lib/logger.js";
 
 // ── Seed / resync default cards ───────────────────────────────────────────────
+export const DEFAULTS_SET_NAME = "defaults";
+
 // Seed defaults ONLY on a completely empty database — never re-sync or re-add
 // after unload, so admin removals are permanent.
 export async function seedDefaultCards() {
+  await backfillSetNames();
   const existing = await db.select({ id: cardsTable.id }).from(cardsTable).limit(1);
   if (existing.length > 0) return;
   logger.info("Seeding DN Cards default roster (DB is empty)...");
   for (const card of DEFAULT_CARDS) {
-    await db.insert(cardsTable).values(card).onConflictDoNothing();
+    await db.insert(cardsTable).values({ ...card, setName: DEFAULTS_SET_NAME }).onConflictDoNothing();
   }
   logger.info(`Seeded ${DEFAULT_CARDS.length} cards.`);
 }
 
-// Force-add default cards (used by !loaddefaults). Skips names already in DB.
+// One-time backfill so legacy cards (added before set_name existed) get tagged.
+// Default-roster names → "defaults"; anything else → "legacy".
+async function backfillSetNames() {
+  const untagged = await db.select({ id: cardsTable.id, name: cardsTable.name })
+    .from(cardsTable).where(sql`${cardsTable.setName} IS NULL`);
+  if (untagged.length === 0) return;
+  const defaultNames = new Set(DEFAULT_CARDS.map(c => c.name));
+  for (const c of untagged) {
+    const tag = defaultNames.has(c.name) ? DEFAULTS_SET_NAME : "legacy";
+    await db.update(cardsTable).set({ setName: tag }).where(eq(cardsTable.id, c.id));
+  }
+  logger.info({ count: untagged.length }, "Backfilled set_name for legacy cards");
+}
+
+// Force-add default cards (used by /loadset defaults). Skips names already in DB.
 export async function loadDefaultCards(): Promise<{ added: number; skipped: number }> {
   let added = 0, skipped = 0;
   for (const card of DEFAULT_CARDS) {
     const existing = await getCardByName(card.name);
     if (existing) { skipped++; continue; }
-    await db.insert(cardsTable).values(card).onConflictDoNothing();
+    await db.insert(cardsTable).values({ ...card, setName: DEFAULTS_SET_NAME }).onConflictDoNothing();
     added++;
   }
   return { added, skipped };
 }
 
-// Remove all default-roster cards by name (used by !unloaddefaults).
+// Remove all default-roster cards (and their FK dependents).
 export async function unloadDefaultCards(): Promise<{ removed: number }> {
-  let removed = 0;
-  for (const card of DEFAULT_CARDS) {
-    const existing = await getCardByName(card.name);
-    if (!existing) continue;
-    await db.delete(cardsTable).where(eq(cardsTable.id, existing.id));
-    removed++;
-  }
-  return { removed };
+  return deleteSetByName(DEFAULTS_SET_NAME);
+}
+
+// ── Card Sets ─────────────────────────────────────────────────────────────────
+// List all distinct set names with card counts.
+export async function listSets(): Promise<Array<{ setName: string; cardCount: number }>> {
+  const rows = await db.select({
+    setName: sql<string>`coalesce(${cardsTable.setName}, 'untagged')`.as("set_name"),
+    cardCount: sql<number>`count(*)::int`.as("card_count"),
+  }).from(cardsTable).groupBy(cardsTable.setName);
+  return rows.map(r => ({ setName: r.setName, cardCount: Number(r.cardCount) }));
+}
+
+// Delete every card in a set, cascading through collections/spawn_log/trades.
+export async function deleteSetByName(setName: string): Promise<{ removed: number }> {
+  const cards = await db.select({ id: cardsTable.id }).from(cardsTable)
+    .where(eq(cardsTable.setName, setName));
+  if (cards.length === 0) return { removed: 0 };
+  const ids = cards.map(c => c.id);
+
+  await db.delete(collectionsTable).where(inArray(collectionsTable.cardId, ids));
+  await db.delete(spawnLogTable).where(inArray(spawnLogTable.cardId, ids));
+  await db.delete(tradesTable).where(
+    sql`${tradesTable.offeredCardId} IN ${ids} OR ${tradesTable.requestedCardId} IN ${ids}`,
+  );
+  await db.delete(cardsTable).where(inArray(cardsTable.id, ids));
+  logger.info({ setName, removed: ids.length }, "Deleted card set");
+  return { removed: ids.length };
 }
 
 // ── Guild Settings ────────────────────────────────────────────────────────────
@@ -101,6 +138,7 @@ export async function addCard(values: {
   dropWeight: number; worthValue: number; burnValue: number;
   isLimitedEdition?: boolean; isEventExclusive?: boolean;
   maxCopies?: number; imageUrl?: string; flavor?: string; droppable?: boolean;
+  setName?: string;
 }) {
   const [card] = await db.insert(cardsTable).values(values as any).returning();
   await db.update(cardsTable).set({ totalMinted: 0 }).where(eq(cardsTable.id, card.id));

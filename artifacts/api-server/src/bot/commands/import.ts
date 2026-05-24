@@ -5,6 +5,69 @@ import { addCard, getCardByName } from "../db.js";
 import { RARITY_WEIGHTS, type Rarity, type CardType } from "../cards-data.js";
 import { logger } from "../../lib/logger.js";
 
+// Reusable importer — feeds both the !import prefix command and the /loadset slash command.
+export async function importCardsFromJson(
+  jsonText: string,
+  sourceLabel: string,
+  setNameOverride?: string,
+): Promise<{ created: number; skipped: number; failed: number; errors: string[]; setName: string }> {
+  let data: ImportSet;
+  try { data = JSON.parse(jsonText); }
+  catch { throw new Error("Invalid JSON"); }
+
+  const cards = data.cards ?? [];
+  if (cards.length === 0) throw new Error("JSON contains no cards");
+
+  // Resolve set name: explicit override > set.name in JSON > filename stem
+  const rawName = setNameOverride
+    ?? data.set?.name
+    ?? sourceLabel.replace(/\.json$/i, "");
+  const setName = sanitizeSetName(rawName);
+
+  let created = 0, skipped = 0, failed = 0;
+  const errors: string[] = [];
+
+  for (const raw of cards) {
+    if (!raw.name) { failed++; continue; }
+    try {
+      const existing = await getCardByName(raw.name);
+      if (existing) { skipped++; continue; }
+
+      const rarity = mapRarity(raw.rarity);
+      const burnMatch = raw.description?.match(/burn value:\s*(\d+)/i);
+      const sourceBurn = burnMatch ? parseInt(burnMatch[1], 10) : null;
+      const burn = sourceBurn ?? defaultBurn(rarity);
+      const worth = burn * 2;
+
+      await addCard({
+        name: raw.name,
+        description: cleanDescription(raw.description),
+        rarity,
+        cardType: "vehicle" as CardType,
+        dropWeight: RARITY_WEIGHTS[rarity],
+        worthValue: worth,
+        burnValue: burn,
+        imageUrl: raw.img_url ?? undefined,
+        droppable: true,
+        setName,
+      });
+      created++;
+    } catch (err: any) {
+      failed++;
+      if (errors.length < 5) errors.push(`${raw.name}: ${err?.message ?? "unknown"}`);
+    }
+  }
+
+  return { created, skipped, failed, errors, setName };
+}
+
+function sanitizeSetName(raw: string): string {
+  return raw.toLowerCase().trim()
+    .replace(/[^a-z0-9_-]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 40) || "imported";
+}
+
 interface ImportCard {
   name?: string;
   description?: string | null;
@@ -90,47 +153,22 @@ export async function handleImport(msg: Message): Promise<void> {
 
   const status = await msg.reply(`📥 Importing **${cards.length}** cards from \`${sourceLabel}\`…`);
 
-  let created = 0, skipped = 0, failed = 0;
-  const errors: string[] = [];
-
-  for (const raw of cards) {
-    if (!raw.name) { failed++; continue; }
-    try {
-      const existing = await getCardByName(raw.name);
-      if (existing) { skipped++; continue; }
-
-      const rarity = mapRarity(raw.rarity);
-      // Use source burn value if it parses out of description, else default
-      const burnMatch = raw.description?.match(/burn value:\s*(\d+)/i);
-      const sourceBurn = burnMatch ? parseInt(burnMatch[1], 10) : null;
-      const burn = sourceBurn ?? defaultBurn(rarity);
-      const worth = burn * 2;
-
-      await addCard({
-        name: raw.name,
-        description: cleanDescription(raw.description),
-        rarity,
-        cardType: "vehicle" as CardType,
-        dropWeight: RARITY_WEIGHTS[rarity],
-        worthValue: worth,
-        burnValue: burn,
-        imageUrl: raw.img_url ?? undefined,
-        droppable: true,
-      });
-      created++;
-    } catch (err: any) {
-      failed++;
-      if (errors.length < 5) errors.push(`${raw.name}: ${err?.message ?? "unknown"}`);
-    }
+  let result;
+  try {
+    result = await importCardsFromJson(jsonText, sourceLabel);
+  } catch (err: any) {
+    await status.edit(`❌ ${err?.message ?? "Import failed"}`);
+    return;
   }
 
+  const { created, skipped, failed, errors, setName } = result;
   const summary =
-    `✅ **Import complete** — \`${sourceLabel}\`\n` +
+    `✅ **Import complete** — set: \`${setName}\`\n` +
     `➕ Created: **${created}**\n` +
     `⏭️ Skipped (already exist): **${skipped}**\n` +
     (failed > 0 ? `❌ Failed: **${failed}**\n${errors.map(e => `• ${e}`).join("\n")}\n\n` : "\n") +
-    `Use \`!editcard <Name>\` to adjust rarity, worth, burn, type, or image of any card.\n` +
-    `Use \`!list\` (slash command \`/list\`) to view your roster.`;
+    `Use \`/unloadset set:${setName}\` to remove this set later.\n` +
+    `Use \`!editcard <Name>\` to tweak any card.`;
 
   try { await status.edit(summary); } catch { await msg.reply(summary); }
 }

@@ -121,27 +121,25 @@ export async function handlePrefixCommand(msg: Message): Promise<void> {
     return;
   }
 
-  // ── !unloaddefaults — remove the 27 seeded default cards ──────────────────
+  // ── !unloaddefaults / !loaddefaults — kept as aliases; prefer /unloadset & /loadset
   if (cmd === "unloaddefaults") {
     const ok = await checkAdmin(msg);
     if (!ok) { await msg.reply("❌ You don't have permission."); return; }
     const { removed } = await unloadDefaultCards();
     await msg.reply(
-      `✅ Removed **${removed}** default cards from the roster.\n` +
-      `Your imported cards are untouched. The defaults will **not** come back on restart.\n` +
-      `Use \`!loaddefaults\` to add them back if you change your mind.`,
+      `✅ Removed **${removed}** default cards. Use \`/loadset defaults:true\` to re-add. ` +
+      `Tip: \`/unloadset set:<name>\` and \`/listsets\` are the new way to manage sets.`,
     );
     return;
   }
-
-  // ── !loaddefaults — re-add the 27 default cards ──────────────────────────
   if (cmd === "loaddefaults") {
     const ok = await checkAdmin(msg);
     if (!ok) { await msg.reply("❌ You don't have permission."); return; }
     const { added, skipped } = await loadDefaultCards();
     await msg.reply(
-      `✅ Added **${added}** default cards back to the roster.` +
-      (skipped > 0 ? `\n⏭️ Skipped **${skipped}** (already in roster).` : ""),
+      `✅ Added **${added}** default cards back.` +
+      (skipped > 0 ? ` ⏭️ Skipped **${skipped}** already in roster.` : "") +
+      ` Tip: \`/loadset\` is the new slash-command version.`,
     );
     return;
   }

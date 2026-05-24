@@ -36,6 +36,7 @@ export const cardsTable = pgTable("cards", {
   imageUrl: text("image_url"),
   flavor: text("flavor"),
   droppable: boolean("droppable").notNull().default(true),
+  setName: text("set_name"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 

@@ -184,17 +184,10 @@ export async function handleCatchAttempt(guildId: string, userId: string, guess:
     await catchCard(guildId, userId, spawn.cardId);
     await markCaught(spawn.spawnLogId, userId);
 
-    // Update the spawn embed to show "caught"
+    // Update the spawn embed: keep the image and card art, overlay "CLAIMED"
     try {
-      await spawn.message.edit({
-        embeds: [
-          new EmbedBuilder()
-            .setTitle("🎉 Card caught!")
-            .setDescription(`**${spawn.cardName}** was caught by <@${userId}>!`)
-            .setColor(0x00b894)
-            .setTimestamp(),
-        ],
-      });
+      const claimedEmbed = await buildClaimedEmbed(spawn.cardId, userId);
+      if (claimedEmbed) await spawn.message.edit({ embeds: [claimedEmbed] });
     } catch { /* deleted */ }
 
     // Send Burn / Keep buttons to the catcher
@@ -257,6 +250,30 @@ export async function initAllGuilds(client: Client) {
       scheduleNextSpawn(guildId);
     }
   }
+}
+
+// Build the "CLAIMED" version of a spawn embed — keeps the image, replaces
+// the prompt with a giant CLAIMED banner and the catcher's name.
+async function buildClaimedEmbed(cardId: number, userId: string): Promise<EmbedBuilder | null> {
+  const cards = await getAllCards();
+  const card = cards.find(c => c.id === cardId);
+  if (!card) return null;
+  const rarity = card.rarity as Rarity;
+  const cardType = card.cardType as CardType;
+  const embed = new EmbedBuilder()
+    .setTitle(`✅ CLAIMED — ${card.name}`)
+    .setColor(0x00b894)
+    .setDescription(`# 🎉 CLAIMED BY <@${userId}>\n\u200b`)
+    .addFields(
+      { name: `${TYPE_EMOJI[cardType]} ${card.name}`, value: card.description || "\u200b", inline: false },
+      { name: "Rarity", value: `${RARITY_EMOJI[rarity]} ${RARITY_LABELS[rarity]}`, inline: true },
+      { name: "Worth", value: `💠 ${card.worthValue.toLocaleString()} shards`, inline: true },
+      { name: "Caught by", value: `<@${userId}>`, inline: true },
+    )
+    .setTimestamp();
+  if (card.flavor) embed.setFooter({ text: card.flavor });
+  if (card.imageUrl) embed.setImage(card.imageUrl);
+  return embed;
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────

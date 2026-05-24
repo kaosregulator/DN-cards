@@ -7,7 +7,11 @@ import { handleUserCommand } from "./commands/user.js";
 import { handlePrefixCommand } from "./commands/prefix.js";
 import { handleWizardStep } from "./commands/setup-wizard.js";
 import { handleCardWizardStep, handleCardEditStep } from "./commands/card-wizard.js";
-import { buildCommands, USER_COMMAND_NAMES, ADMIN_COMMAND_NAMES } from "./commands/register.js";
+import { handleLoadSet, handleUnloadSet, handleListSets } from "./commands/cardset.js";
+import {
+  buildCommands, USER_COMMAND_NAMES, ADMIN_COMMAND_NAMES, CARDSET_COMMAND_NAMES,
+} from "./commands/register.js";
+import { MessageFlags } from "discord.js";
 
 export async function startBot() {
   const token = process.env["DISCORD_BOT_TOKEN"];
@@ -56,7 +60,7 @@ export async function startBot() {
           if (interaction.user.id !== userId) {
             await interaction.reply({
               content: "❌ These buttons are only for the player who caught this card.",
-              ephemeral: true,
+              flags: MessageFlags.Ephemeral,
             });
             return;
           }
@@ -64,23 +68,33 @@ export async function startBot() {
           if (action === "catch_burn") {
             const result = await burnCard(guildId, userId, cardId);
             if (!result.success) {
-              await interaction.update({
+              await interaction.reply({
                 content: "❌ Couldn't burn the card — it may have already been burned.",
-                components: [],
+                flags: MessageFlags.Ephemeral,
               });
               return;
             }
             const currency = await getOrCreateCurrency(guildId, userId);
-            await interaction.update({
+            // Public message: generic, no balance leak
+            await interaction.message.edit({
+              content: `🔥 <@${userId}> burned the card.`,
+              components: [],
+            }).catch(() => { /* may be deleted */ });
+            // Private confirmation with full shard balance
+            await interaction.reply({
               content:
                 `🔥 Card burned! You received 💠 **${result.shardsGained.toLocaleString()} shards**.\n` +
                 `New balance: **${currency.shards.toLocaleString()}** 💠 — check \`/shards\` anytime.`,
-              components: [],
+              flags: MessageFlags.Ephemeral,
             });
           } else {
-            await interaction.update({
-              content: "💾 Kept! The card is in your collection — use `/collection` to view it.",
+            await interaction.message.edit({
+              content: `💾 <@${userId}> kept the card.`,
               components: [],
+            }).catch(() => { /* may be deleted */ });
+            await interaction.reply({
+              content: "💾 Kept! The card is in your collection — use `/collection` to view it.",
+              flags: MessageFlags.Ephemeral,
             });
           }
         }
@@ -95,6 +109,10 @@ export async function startBot() {
         await handleUserCommand(interaction, cmd);
       } else if (ADMIN_COMMAND_NAMES.has(cmd)) {
         await handleAdminCommand(interaction, cmd);
+      } else if (CARDSET_COMMAND_NAMES.has(cmd)) {
+        if (cmd === "loadset") await handleLoadSet(interaction);
+        else if (cmd === "unloadset") await handleUnloadSet(interaction);
+        else if (cmd === "listsets") await handleListSets(interaction);
       }
     } catch (err) {
       logger.error({ err }, "Interaction error");
@@ -103,7 +121,7 @@ export async function startBot() {
         if ("deferred" in interaction && interaction.deferred) {
           await (interaction as any).editReply(msg);
         } else if ("replied" in interaction && !(interaction as any).replied) {
-          await (interaction as any).reply({ content: msg, ephemeral: true });
+          await (interaction as any).reply({ content: msg, flags: MessageFlags.Ephemeral });
         }
       } catch { /* ignore */ }
     }

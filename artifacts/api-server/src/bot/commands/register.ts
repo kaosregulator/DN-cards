@@ -64,6 +64,17 @@ export function buildCommands() {
     cmd("takeshards", "(Admin) Deduct DN Shards from a member", s => s
       .addUserOption(o => o.setName("user").setDescription("Member to deduct shards from").setRequired(true))
       .addIntegerOption(o => o.setName("amount").setDescription("Amount to deduct").setRequired(true).setMinValue(1))),
+
+    // ── Card Set Management ───────────────────────────────────────────────────
+    cmd("loadset", "(Admin) Upload a JSON card set or re-add the built-in defaults", s => s
+      .addAttachmentOption(o => o.setName("file").setDescription("JSON file with cards to import"))
+      .addStringOption(o => o.setName("name").setDescription("Custom set name (defaults to JSON's set.name or filename)"))
+      .addBooleanOption(o => o.setName("defaults").setDescription("Re-add the built-in 27 default cards"))),
+
+    cmd("unloadset", "(Admin) Remove a card set (cards + related collections/trades)", s => s
+      .addStringOption(o => o.setName("set").setDescription("Set name from /listsets (e.g. 'defaults', 'v1')").setRequired(true))),
+
+    cmd("listsets", "(Admin) List all loaded card sets and their sizes", s => s),
   ];
 }
 
@@ -74,4 +85,8 @@ export const USER_COMMAND_NAMES = new Set([
 
 export const ADMIN_COMMAND_NAMES = new Set([
   "drop", "give", "giveshards", "takeback", "takeshards",
+]);
+
+export const CARDSET_COMMAND_NAMES = new Set([
+  "loadset", "unloadset", "listsets",
 ]);
