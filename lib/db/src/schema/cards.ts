@@ -55,7 +55,13 @@ export const collectionsTable = pgTable("collections", {
   count: integer("count").notNull().default(1),
   firstCaughtAt: timestamp("first_caught_at").notNull().defaultNow(),
   lastCaughtAt: timestamp("last_caught_at").notNull().defaultNow(),
-});
+}, (t) => ({
+  // One row per (guild, user, card). Enables atomic upsert via ON CONFLICT,
+  // eliminating the select-then-insert race when a user catches the same
+  // card from two concurrent spawns.
+  uniqGuildUserCard: uniqueIndex("collections_guild_user_card_uniq")
+    .on(t.guildId, t.userId, t.cardId),
+}));
 
 export const insertCollectionSchema = createInsertSchema(collectionsTable).omit({
   id: true, firstCaughtAt: true, lastCaughtAt: true,

@@ -221,21 +221,18 @@ export async function pickRandomCard(rarityWeights?: Record<string, number>): Pr
 
 // ── Collections ───────────────────────────────────────────────────────────────
 export async function catchCard(guildId: string, userId: string, cardId: number) {
-  const [existing] = await db
-    .select().from(collectionsTable)
-    .where(and(
-      eq(collectionsTable.guildId, guildId),
-      eq(collectionsTable.userId, userId),
-      eq(collectionsTable.cardId, cardId),
-    ));
-
-  if (existing) {
-    await db.update(collectionsTable)
-      .set({ count: existing.count + 1, lastCaughtAt: new Date() })
-      .where(eq(collectionsTable.id, existing.id));
-  } else {
-    await db.insert(collectionsTable).values({ guildId, userId, cardId, count: 1 });
-  }
+  // Atomic upsert — the (guild_id, user_id, card_id) unique index makes this
+  // race-safe so two simultaneous catches of the same card can never create
+  // duplicate collection rows.
+  await db.insert(collectionsTable)
+    .values({ guildId, userId, cardId, count: 1 })
+    .onConflictDoUpdate({
+      target: [collectionsTable.guildId, collectionsTable.userId, collectionsTable.cardId],
+      set: {
+        count: sql`${collectionsTable.count} + 1`,
+        lastCaughtAt: new Date(),
+      },
+    });
 
   await db.update(cardsTable)
     .set({ totalMinted: sql`${cardsTable.totalMinted} + 1` })
@@ -250,20 +247,15 @@ export async function catchCard(guildId: string, userId: string, cardId: number)
  * move. For genuine new mints (drops, packs, admin gives) use `catchCard`.
  */
 export async function restoreCardToUser(guildId: string, userId: string, cardId: number) {
-  const [existing] = await db
-    .select().from(collectionsTable)
-    .where(and(
-      eq(collectionsTable.guildId, guildId),
-      eq(collectionsTable.userId, userId),
-      eq(collectionsTable.cardId, cardId),
-    ));
-  if (existing) {
-    await db.update(collectionsTable)
-      .set({ count: existing.count + 1, lastCaughtAt: new Date() })
-      .where(eq(collectionsTable.id, existing.id));
-  } else {
-    await db.insert(collectionsTable).values({ guildId, userId, cardId, count: 1 });
-  }
+  await db.insert(collectionsTable)
+    .values({ guildId, userId, cardId, count: 1 })
+    .onConflictDoUpdate({
+      target: [collectionsTable.guildId, collectionsTable.userId, collectionsTable.cardId],
+      set: {
+        count: sql`${collectionsTable.count} + 1`,
+        lastCaughtAt: new Date(),
+      },
+    });
 }
 
 export async function removeCardFromUser(
@@ -673,20 +665,15 @@ async function restoreCardToUserTx(
   tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
   guildId: string, userId: string, cardId: number,
 ) {
-  const updated = await tx.update(collectionsTable)
-    .set({ count: sql`${collectionsTable.count} + 1`, lastCaughtAt: new Date() })
-    .where(and(
-      eq(collectionsTable.guildId, guildId),
-      eq(collectionsTable.userId, userId),
-      eq(collectionsTable.cardId, cardId),
-    ))
-    .returning({ id: collectionsTable.id });
-  if (updated.length === 0) {
-    // No row yet — insert. Race with another concurrent insert is the same
-    // risk catchCard has carried since launch; fixing it requires a unique
-    // index migration on (guild_id, user_id, card_id) — tracked separately.
-    await tx.insert(collectionsTable).values({ guildId, userId, cardId, count: 1 });
-  }
+  await tx.insert(collectionsTable)
+    .values({ guildId, userId, cardId, count: 1 })
+    .onConflictDoUpdate({
+      target: [collectionsTable.guildId, collectionsTable.userId, collectionsTable.cardId],
+      set: {
+        count: sql`${collectionsTable.count} + 1`,
+        lastCaughtAt: new Date(),
+      },
+    });
 }
 
 // ── Spawn Log ─────────────────────────────────────────────────────────────────
