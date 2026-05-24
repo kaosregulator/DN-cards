@@ -43,7 +43,7 @@ interface ActiveSpawn {
 // late clicks (double-taps, mobile retries, both-mode type+click race) from
 // the actual winner can be silently swallowed instead of showing a confusing
 // "spawn expired" message to the person who just caught it.
-const POST_CATCH_LINGER_MS = 15_000;
+const POST_CATCH_LINGER_MS = 300_000;
 
 // Grace window for collecting concurrent typing-mode catch attempts.
 // Anyone whose Discord-stamped message lands within this window of the first

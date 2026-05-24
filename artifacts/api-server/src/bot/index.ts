@@ -85,7 +85,11 @@ export async function startBot() {
             // (double-tap, both-mode type+click race). Silently ack so
             // we don't tell the winner the spawn "expired".
             if (result.reason === "self_already") {
-              await interaction.deferUpdate().catch(() => { /* ignore */ });
+              await interaction.reply({
+                content: "✅ You've already claimed it — pick **Burn / Keep / Trade** above.",
+                flags: MessageFlags.Ephemeral,
+              }).catch(() => { /* ignore */ });
+              setTimeout(() => { interaction.deleteReply().catch(() => { /* ignore */ }); }, 4000);
               return;
             }
             const reasonMsg =
