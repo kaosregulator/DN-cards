@@ -1,6 +1,6 @@
 import { Client, GatewayIntentBits, Partials, Events, REST, Routes, type Interaction } from "discord.js";
 import { logger } from "../lib/logger.js";
-import { seedDefaultCards, burnCard, getOrCreateCurrency } from "./db.js";
+import { burnCard, getOrCreateCurrency } from "./db.js";
 import { initSpawnManager, initAllGuilds, handleCatchAttempt, handleClaimButtonClick, scheduleNextSpawn, buildPostDecisionEmbed, buildDisabledDecisionRow } from "./spawn-manager.js";
 import { handleConfigButton, handleConfigSelect, handleRatesSelect } from "./commands/config-panel.js";
 import { handleAdminHubButton, handleAdminHubModal } from "./commands/admin-hub.js";
@@ -8,7 +8,9 @@ import { checkAchievements, formatUnlockLine } from "./achievements.js";
 import { handleAdminCommand } from "./commands/admin.js";
 import { handleUserCommand } from "./commands/user.js";
 import { handlePrefixCommand } from "./commands/prefix.js";
-import { handleWizardStep } from "./commands/setup-wizard.js";
+import {
+  handleSetupButton, handleSetupSelect, handleSetupModalSubmit,
+} from "./commands/setup-wizard.js";
 import { handleCardWizardStep, handleCardEditStep } from "./commands/card-wizard.js";
 import { handleLoadSet, handleUnloadSet, handleListSets } from "./commands/cardset.js";
 import { handleAutocomplete } from "./commands/autocomplete.js";
@@ -35,7 +37,9 @@ export async function startBot() {
 
   client.once(Events.ClientReady, async (c) => {
     logger.info({ tag: c.user.tag }, "DN Cards bot ready");
-    await seedDefaultCards();
+    // Default 27-card roster is NOT auto-seeded — admins opt-in from `!setup`
+    // ("Load Defaults" button) or `/loadset defaults:true`. Keeps fresh
+    // servers free to load only their own custom roster.
     await initAllGuilds(client);
     await registerCommands(c.user.id, token, client);
   });
@@ -58,20 +62,24 @@ export async function startBot() {
         return;
       }
 
-      // ── String select menus (config panel) ─────────────────────────────────
+      // ── String select menus (config panel + setup panel) ──────────────────
       if (interaction.isStringSelectMenu()) {
         if (interaction.customId.startsWith("config_")) {
           await handleConfigSelect(interaction);
         } else if (interaction.customId.startsWith("rates_")) {
           await handleRatesSelect(interaction);
+        } else if (interaction.customId.startsWith("setup_")) {
+          await handleSetupSelect(interaction);
         }
         return;
       }
 
-      // ── Modal submissions (admin hub) ─────────────────────────────────────
+      // ── Modal submissions (admin hub + setup test card) ───────────────────
       if (interaction.isModalSubmit()) {
         if (interaction.customId.startsWith("adminhub:")) {
           await handleAdminHubModal(interaction);
+        } else if (interaction.customId.startsWith("setup_")) {
+          await handleSetupModalSubmit(interaction);
         }
         return;
       }
@@ -84,6 +92,12 @@ export async function startBot() {
         // ── Config panel buttons (toggle, channel set) ─────────────────────
         if (action === "config") {
           await handleConfigButton(interaction);
+          return;
+        }
+
+        // ── Setup wizard panel buttons ─────────────────────────────────────
+        if (action === "setup") {
+          await handleSetupButton(interaction);
           return;
         }
 
@@ -262,10 +276,6 @@ export async function startBot() {
       await handlePrefixCommand(msg).catch(err => logger.error({ err }, "Prefix command error"));
       return;
     }
-
-    // Setup wizard step responses
-    const setupConsumed = await handleWizardStep(msg).catch(() => false);
-    if (setupConsumed) return;
 
     // Card creation wizard step responses
     const cardConsumed = await handleCardWizardStep(msg).catch(() => false);

@@ -8,6 +8,71 @@ import { RARITY_EMOJI, RARITY_LABELS, type Rarity } from "../cards-data.js";
 import { logger } from "../../lib/logger.js";
 import { handleConfigCommand } from "./config-panel.js";
 import { handleAdminHubCommand } from "./admin-hub.js";
+import { EmbedBuilder } from "discord.js";
+
+// ── /adminhelp — admin/setup command reference ───────────────────────────────
+async function handleAdminHelp(interaction: ChatInputCommandInteraction): Promise<void> {
+  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+  if (!(await checkAdmin(interaction))) {
+    await interaction.editReply("❌ Admins only.");
+    return;
+  }
+  const embed = new EmbedBuilder()
+    .setTitle("🛠️ DN Cards — Admin Reference")
+    .setColor(0xeb459e)
+    .setDescription(
+      "All commands here are admin-gated. Player commands are in `/help`.\n" +
+      "Most actions are also reachable visually from `!setup` or `/config`.",
+    )
+    .addFields(
+      {
+        name: "⚙️ Setup & Config",
+        value:
+          "`!setup` — **interactive setup panel** (recommended)\n" +
+          "`/config` — open the config panel anytime (catch mode, intervals, toggles, rates)\n" +
+          "`/adminhub` — manage bot admins & catch timeouts\n" +
+          "`!settings` — text dump of current configuration",
+      },
+      {
+        name: "📢 Channels & Toggles *(`!` prefix)*",
+        value:
+          "`!setchannel #channel` · `!settradechannel #channel`\n" +
+          "`!setinterval <time>` · `!setinterval random <min> <max>` · `!setwindow <time>`\n" +
+          "`!setdrops <1|3|5|random>` · `!setcatchmode <type|button|both>`\n" +
+          "`!setrarity <rarity> <weight>`\n" +
+          "`!spawnenable` / `!spawndisable` · `!tradingenable` / `!tradingdisable`",
+      },
+      {
+        name: "🃏 Card Management *(`!` prefix)*",
+        value:
+          "`!addcard` · `!addlimited` · `!addevent` — guided card creation wizards\n" +
+          "`!editcard <Name>` · `!removecard <Name>`\n" +
+          "`!import` — bulk import cards from JSON attachment",
+      },
+      {
+        name: "⚡ Live Actions *(slash)*",
+        value:
+          "`/drop [name]` — force a single drop\n" +
+          "`/massdrop [amount]` — drop 10-25 cards in a batch *(event use)*\n" +
+          "`/give user:@Member name:<card>` · `/takeback user:@Member name:<card>`\n" +
+          "`/giveshards user:@Member amount:<n>` · `/takeshards user:@Member amount:<n>`",
+      },
+      {
+        name: "🗂️ Card Sets *(slash)*",
+        value:
+          "`/loadset file:<.json>` — upload a custom card pack\n" +
+          "`/listsets` — see all loaded sets · `/unloadset set:<name>` — remove a set\n" +
+          "*Built-in starter roster is opt-in via the `!setup` panel.*",
+      },
+      {
+        name: "👥 Admins *(`!` prefix)*",
+        value:
+          "`!addadmin @User` · `!removeadmin @User` · `!listadmins`\n" +
+          "Server owner + Discord Administrators are always admins.",
+      },
+    );
+  await interaction.editReply({ embeds: [embed] });
+}
 
 // ── Permission check ──────────────────────────────────────────────────────────
 async function checkAdmin(interaction: ChatInputCommandInteraction): Promise<boolean> {
@@ -32,6 +97,10 @@ export async function handleAdminCommand(
   }
   if (cmd === "adminhub") {
     await handleAdminHubCommand(interaction);
+    return;
+  }
+  if (cmd === "adminhelp") {
+    await handleAdminHelp(interaction);
     return;
   }
 

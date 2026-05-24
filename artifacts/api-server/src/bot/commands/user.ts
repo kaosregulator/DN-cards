@@ -392,38 +392,51 @@ export async function handleUserCommand(
   if (sub === "gift") { await handleGift(interaction); return; }
   if (sub === "achievements") { await handleAchievementsCommand(interaction); return; }
 
-  // ── /help ─────────────────────────────────────────────────────────────────────
+  // ── /help (player commands only — admins use /adminhelp) ─────────────────────
   const embed = new EmbedBuilder()
-    .setTitle("🃏 DN Cards — Command Reference")
+    .setTitle("🃏 DN Cards — Player Commands")
     .setColor(0x5865f2)
     .setDescription(
       "When a card spawns in the drop channel, **type its name exactly** to catch it!\n" +
       "Most card-name fields **autocomplete** as you type — pick from the dropdown.\n\n" +
-      "**📦 Collection**\n" +
-      "`/collection` · `/rank` · `/info name:<card>` · `/list` · `/top`\n" +
-      "`/achievements [user]` — view unlocked badges\n\n" +
-      "**🔥 Economy** *(private — only you see the reply)*\n" +
-      "`/burn name:<card>` — destroy a duplicate for DN Shards\n" +
-      "`/shards` — check your balance\n" +
-      "`/daily` — claim daily shards (streak bonus!)\n" +
-      "`/pack` — open a 5-card pack for 💠 250\n" +
-      "`/gift user:@Member amount:<n>` — send shards to a friend\n\n" +
-      "**🔄 Trading**\n" +
-      "`/trade user:@Member offer:<card> want:<card>` — card-for-card\n" +
-      "Add `offer_shards:<n>` or `want_shards:<n>` to swap cards ↔ shards (or pure shards)\n" +
-      "Accept/Decline buttons appear right on the trade message — `/accept` and `/decline` still work too\n\n" +
-      "**⚙️ Server Setup** *(admins only — use `!` prefix)*\n" +
-      "`!setup` — interactive setup wizard\n" +
-      "`!setchannel` · `!setinterval` · `!setwindow` · `!setdrops` · `!setrarity`\n" +
-      "`!spawnenable` · `!spawndisable` · `!addcard` · `!editcard` · `!removecard`\n" +
-      "`!settings` — view current configuration\n\n" +
-      "**⚡ Admin Quick Actions** *(slash commands)*\n" +
-      "`/drop` · `/give` · `/giveshards` · `/takeback` · `/takeshards`\n\n" +
-      "**🗂️ Card Sets** *(admin)*\n" +
-      "`/loadset file:<.json>` — upload a card pack\n" +
-      "`/loadset defaults:true` — re-add the built-in 27 cards\n" +
-      "`/unloadset set:<name>` — remove a whole set\n" +
-      "`/listsets` — see all loaded sets",
+      "Admins: use `/adminhelp` for setup, drops, and config commands.",
+    )
+    .addFields(
+      {
+        name: "📦 Collection",
+        value:
+          "`/collection [user]` — see what you've caught\n" +
+          "`/rank [user]` — your collector rank & progression\n" +
+          "`/info name:<card>` — card details, worth & drop chance\n" +
+          "`/list` — full roster grouped by rarity\n" +
+          "`/catalog category:<rarity|event|limited|all>` — browse by category\n" +
+          "`/top` — leaderboard by net worth\n" +
+          "`/achievements [user]` — your unlocked badges",
+      },
+      {
+        name: "🔥 Economy *(private replies)*",
+        value:
+          "`/burn name:<card> [amount] [all]` — destroy duplicates for 💠\n" +
+          "`/shards [user]` — check 💠 balance\n" +
+          "`/daily` — claim daily shards (streak bonus!)\n" +
+          "`/pack` — open a 5-card pack for 💠 250\n" +
+          "`/tradein rarity:<r>` — burn 5 to roll 1 from the next tier\n" +
+          "`/gift user:@Member amount:<n>` — send 💠 to a friend",
+      },
+      {
+        name: "🔄 Trading",
+        value:
+          "`/trade user:@Member offer:<card> want:<card>` — propose a trade\n" +
+          "Add `offer_shards:<n>` or `want_shards:<n>` to mix in 💠 (or trade pure shards)\n" +
+          "`/trades` · `/accept id:<n>` · `/decline id:<n>` — manage offers\n" +
+          "Accept/Decline buttons also appear right on the trade message",
+      },
+      {
+        name: "📌 Wishlist",
+        value:
+          "`/wishlist add name:<card>` — get pinged when it spawns\n" +
+          "`/wishlist remove name:<card>` · `/wishlist list [user]`",
+      },
     );
   await interaction.editReply({ embeds: [embed] });
 }

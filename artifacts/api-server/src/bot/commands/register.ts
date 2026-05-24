@@ -69,7 +69,9 @@ export function buildCommands() {
     cmd("decline", "(User) Decline or cancel a trade offer", s => s
       .addIntegerOption(o => o.setName("id").setDescription("Trade ID from /trades").setRequired(true).setMinValue(1))),
 
-    cmd("help", "(User) Show DN Cards commands", s => s),
+    cmd("help", "(User) Show DN Cards player commands", s => s),
+
+    cmd("adminhelp", "(Admin) Show admin & setup commands", s => s),
 
     cmd("daily", "(User) Claim your daily DN Shards reward", s => s),
 
@@ -123,10 +125,10 @@ export function buildCommands() {
       .addIntegerOption(o => o.setName("amount").setDescription("Amount to deduct").setRequired(true).setMinValue(1))),
 
     // ── Card Set Management ───────────────────────────────────────────────────
-    cmd("loadset", "(Admin) Upload a JSON card set or re-add the built-in defaults", s => s
+    cmd("loadset", "(Admin) Upload a JSON card set to add to your roster", s => s
       .addAttachmentOption(o => o.setName("file").setDescription("JSON file with cards to import"))
       .addStringOption(o => o.setName("name").setDescription("Custom set name (defaults to JSON's set.name or filename)"))
-      .addBooleanOption(o => o.setName("defaults").setDescription("Re-add the built-in 27 default cards"))),
+      .addBooleanOption(o => o.setName("defaults").setDescription("Testing only — load the built-in starter roster"))),
 
     cmd("unloadset", "(Admin) Remove a card set (cards + related collections/trades)", s => s
       .addStringOption(o => o.setName("set").setDescription("Set name from /listsets (e.g. 'defaults', 'v1')").setRequired(true).setAutocomplete(true))),
@@ -142,7 +144,7 @@ export const USER_COMMAND_NAMES = new Set([
 ]);
 
 export const ADMIN_COMMAND_NAMES = new Set([
-  "config", "adminhub", "drop", "massdrop", "give", "giveshards", "takeback", "takeshards",
+  "config", "adminhub", "adminhelp", "drop", "massdrop", "give", "giveshards", "takeback", "takeshards",
 ]);
 
 export const CARDSET_COMMAND_NAMES = new Set([

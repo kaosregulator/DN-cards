@@ -1,385 +1,437 @@
-import type { Message } from "discord.js";
 import {
-  updateGuildSettings, getOrCreateGuildSettings, addCard,
+  EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle,
+  StringSelectMenuBuilder, ModalBuilder, TextInputBuilder, TextInputStyle,
+  MessageFlags,
+  type Message, type ButtonInteraction, type StringSelectMenuInteraction,
+  type ModalSubmitInteraction, type GuildMember,
+} from "discord.js";
+import type { GuildSettings } from "@workspace/db";
+import {
+  isAdmin, getOrCreateGuildSettings, updateGuildSettings, addCard,
+  loadDefaultCards, unloadDefaultCards, listSets, DEFAULTS_SET_NAME,
 } from "../db.js";
-import { spawnCard, scheduleNextSpawn } from "../spawn-manager.js";
-import { RARITY_EMOJI, RARITY_WEIGHTS, type Rarity } from "../cards-data.js";
+import { spawnCard, scheduleNextSpawn, clearSpawnTimer } from "../spawn-manager.js";
+import { DEFAULT_CARDS, RARITY_WEIGHTS, type Rarity } from "../cards-data.js";
+import { buildRatesEmbed, buildRatesComponents } from "./config-panel.js";
 
-// ── Wizard session state ──────────────────────────────────────────────────────
-type WizardStep =
-  | "choose_type"
-  | "channel"
-  | "cooldown_number"
-  | "cooldown_unit"
-  | "cards_per_spawn"
-  | "rarity_choice"
-  | "rarity_common"
-  | "rarity_uncommon"
-  | "rarity_rare"
-  | "rarity_epic"
-  | "rarity_legendary"
-  | "test_card_choice"
-  | "test_card_name";
+// The setup wizard is a single ephemeral panel that mirrors the config panel
+// but adds first-run conveniences (load defaults, test drop) and bigger
+// section labels. Reuses the same data store, so changes persist immediately.
 
-interface WizardSession {
-  step: WizardStep;
-  guildId: string;
-  channelId: string;
-  lastActivity: number;
-  data: {
-    setupType?: "quick" | "custom";
-    spawnChannelId?: string;
-    cooldownNumber?: number;
-    cooldownUnit?: "minutes" | "seconds" | "hours" | "days";
-    cardsPerSpawn?: number;
-    rarityWeights?: Partial<Record<Rarity, number>>;
-  };
-}
-
-const WIZARD_TIMEOUT_MS = 5 * 60 * 1000;
-const sessions = new Map<string, WizardSession>();
-
-function key(guildId: string, userId: string) { return `${guildId}:${userId}`; }
-
-// ── Start wizard ──────────────────────────────────────────────────────────────
+// ── Entry: !setup ─────────────────────────────────────────────────────────────
 export async function startSetupWizard(msg: Message): Promise<void> {
   if (!msg.guild) return;
-
-  sessions.set(key(msg.guild.id, msg.author.id), {
-    step: "choose_type",
-    guildId: msg.guild.id,
-    channelId: msg.channelId,
-    lastActivity: Date.now(),
-    data: {},
+  const settings = await getOrCreateGuildSettings(msg.guild.id);
+  const hasDefaults = await defaultsLoaded();
+  await msg.reply({
+    embeds: [buildSetupEmbed(settings, hasDefaults)],
+    components: buildSetupComponents(settings, hasDefaults),
   });
-
-  await msg.reply(
-    "## 🃏 DN Cards Setup Wizard\n" +
-    "Welcome! Let's configure DN Cards for this server.\n\n" +
-    "**1️⃣ Quick Setup** — Just set the drop channel, use sensible defaults\n" +
-    "**2️⃣ Custom Setup** — Configure everything step-by-step\n\n" +
-    "Type **1** or **2** (or type `cancel` at any time to exit):",
-  );
 }
 
-// ── Handle wizard step ────────────────────────────────────────────────────────
-export async function handleWizardStep(msg: Message): Promise<boolean> {
-  if (!msg.guild) return false;
+// ── Button handler ────────────────────────────────────────────────────────────
+export async function handleSetupButton(interaction: ButtonInteraction): Promise<void> {
+  if (!interaction.guild) return;
+  if (!(await ensureAdmin(interaction))) return;
 
-  const sessionKey = key(msg.guild.id, msg.author.id);
-  const session = sessions.get(sessionKey);
-  if (!session) return false;
-  if (msg.channelId !== session.channelId) return false;
+  const guildId = interaction.guild.id;
+  const [, action, arg] = interaction.customId.split(":");
 
-  // Timeout
-  if (Date.now() - session.lastActivity > WIZARD_TIMEOUT_MS) {
-    sessions.delete(sessionKey);
-    return false;
-  }
-  session.lastActivity = Date.now();
-
-  const content = msg.content.trim();
-
-  if (content.toLowerCase() === "cancel") {
-    sessions.delete(sessionKey);
-    await msg.reply("❌ Setup wizard cancelled. Run `!setup` to start again.");
-    return true;
-  }
-
-  return processStep(msg, session, sessionKey, content);
-}
-
-// ── Step processor ────────────────────────────────────────────────────────────
-async function processStep(
-  msg: Message, session: WizardSession, sessionKey: string, input: string,
-): Promise<boolean> {
-  switch (session.step) {
-
-    // ── Choose type ──────────────────────────────────────────────────────────
-    case "choose_type": {
-      if (input !== "1" && input !== "2") {
-        await msg.reply("Please type **1** for Quick Setup or **2** for Custom Setup:");
-        return true;
-      }
-      session.data.setupType = input === "1" ? "quick" : "custom";
-      session.step = "channel";
-      await msg.reply(
-        "📢 **" + (session.data.setupType === "quick" ? "Step 1/2" : "Step 1/6") + " — Drop Channel**\n" +
-        "Which channel should DN Cards drop in? Tag it with **#**\n*(e.g. `#general` or `#card-drops`)*",
+  if (action === "toggle" && arg === "spawn") {
+    const s = await getOrCreateGuildSettings(guildId);
+    const next = !s.spawnEnabled;
+    await updateGuildSettings(guildId, { spawnEnabled: next });
+    if (next) scheduleNextSpawn(guildId); else clearSpawnTimer(guildId);
+  } else if (action === "toggle" && arg === "trade") {
+    const s = await getOrCreateGuildSettings(guildId);
+    await updateGuildSettings(guildId, { tradeEnabled: !s.tradeEnabled });
+  } else if (action === "channel" && arg === "spawn") {
+    await updateGuildSettings(guildId, { spawnChannelId: interaction.channelId });
+    scheduleNextSpawn(guildId);
+  } else if (action === "channel" && arg === "trade") {
+    await updateGuildSettings(guildId, { tradeChannelId: interaction.channelId });
+  } else if (action === "loaddefaults") {
+    const { added, skipped } = await loadDefaultCards();
+    // Update the panel FIRST (consumes the interaction), then followUp the toast.
+    await refreshPanel(interaction, guildId);
+    await interaction.followUp({
+      content: `📦 Loaded the built-in roster — added **${added}** cards` +
+        (skipped > 0 ? ` (skipped **${skipped}** already in your roster).` : ".") +
+        `\nRemove anytime with the **🗑️ Remove Defaults** button or \`/unloadset set:${DEFAULTS_SET_NAME}\`.`,
+      flags: MessageFlags.Ephemeral,
+    }).catch(() => { /* ignore */ });
+    return;
+  } else if (action === "cleardefaults") {
+    const { removed } = await unloadDefaultCards();
+    await refreshPanel(interaction, guildId);
+    await interaction.followUp({
+      content: `🗑️ Removed **${removed}** built-in default cards. Your custom cards are untouched.`,
+      flags: MessageFlags.Ephemeral,
+    }).catch(() => { /* ignore */ });
+    return;
+  } else if (action === "rates") {
+    // Open the rarity rates sub-panel (re-uses the config-panel helpers; the
+    // rates_<rarity> selects already route through handleRatesSelect).
+    const settings = await getOrCreateGuildSettings(guildId);
+    await interaction.reply({
+      embeds: [buildRatesEmbed(settings)],
+      components: buildRatesComponents(settings),
+      flags: MessageFlags.Ephemeral,
+    }).catch(() => { /* ignore */ });
+    return;
+  } else if (action === "testdrop") {
+    // Open a modal to collect a test-card name. Spawning happens on submit.
+    const modal = new ModalBuilder()
+      .setCustomId("setup_testcard")
+      .setTitle("🧪 Test Drop")
+      .addComponents(
+        new ActionRowBuilder<TextInputBuilder>().addComponents(
+          new TextInputBuilder()
+            .setCustomId("card_name")
+            .setLabel("Test card name (will be droppable=false)")
+            .setStyle(TextInputStyle.Short)
+            .setPlaceholder("e.g. Setup Test")
+            .setRequired(true)
+            .setMaxLength(64),
+        ),
       );
-      return true;
+    await interaction.showModal(modal).catch(() => { /* ignore */ });
+    return;
+  } else if (action === "done") {
+    const settings = await getOrCreateGuildSettings(guildId);
+    if (!settings.spawnChannelId) {
+      await interaction.reply({
+        content: "❌ Pick a spawn channel first — go to your drops channel and click **📢 Spawn here**.",
+        flags: MessageFlags.Ephemeral,
+      }).catch(() => { /* ignore */ });
+      return;
     }
-
-    // ── Channel ──────────────────────────────────────────────────────────────
-    case "channel": {
-      const channelId = resolveChannel(msg, input);
-      if (!channelId) {
-        await msg.reply("❌ Channel not found. Please tag an existing text channel like `#card-drops`:");
-        return true;
-      }
-      session.data.spawnChannelId = channelId;
-
-      if (session.data.setupType === "quick") {
-        // Quick: skip to test card
-        session.step = "test_card_choice";
-        await msg.reply(
-          "✅ Channel set to <#" + channelId + ">.\n\n" +
-          "**Default settings:** 1h interval · 1 card per drop · Standard rarity rates · Catch window 2 min\n\n" +
-          "🧪 **Step 2/2 — Test Drop**\n" +
-          "Want to make a test card and drop it to <#" + channelId + "> to verify everything works?\n\n" +
-          "**1️⃣ Yes, test it!** · **2️⃣ Skip**",
-        );
-      } else {
-        session.step = "cooldown_number";
-        await msg.reply(
-          "✅ Channel set to <#" + channelId + ">.\n\n" +
-          "⏱️ **Step 2/6 — Drop Frequency**\n" +
-          "How long between card drops? Enter a number **1–10**:",
-        );
-      }
-      return true;
-    }
-
-    // ── Cooldown number ──────────────────────────────────────────────────────
-    case "cooldown_number": {
-      const n = parseInt(input, 10);
-      if (isNaN(n) || n < 1 || n > 10) {
-        await msg.reply("❌ Please enter a whole number between **1** and **10**:");
-        return true;
-      }
-      session.data.cooldownNumber = n;
-      session.step = "cooldown_unit";
-      await msg.reply(
-        "**Step 2/6 ─ time unit**\n" +
-        "Choose the time unit for **" + n + "**:\n\n" +
-        "**1️⃣ Minutes** · **2️⃣ Seconds** · **3️⃣ Hours** · **4️⃣ Days**\n\n" +
-        "Type **1**, **2**, **3**, or **4**:",
-      );
-      return true;
-    }
-
-    // ── Cooldown unit ────────────────────────────────────────────────────────
-    case "cooldown_unit": {
-      const unitMap: Record<string, { unit: WizardSession["data"]["cooldownUnit"]; seconds: number; label: string }> = {
-        "1": { unit: "minutes", seconds: 60, label: "minute(s)" },
-        "2": { unit: "seconds", seconds: 1, label: "second(s)" },
-        "3": { unit: "hours", seconds: 3600, label: "hour(s)" },
-        "4": { unit: "days", seconds: 86400, label: "day(s)" },
-      };
-      const choice = unitMap[input];
-      if (!choice) { await msg.reply("Please type **1** (Minutes), **2** (Seconds), **3** (Hours), or **4** (Days):"); return true; }
-      session.data.cooldownUnit = choice.unit;
-      const totalSeconds = session.data.cooldownNumber! * choice.seconds;
-      await updateGuildSettings(session.guildId, { spawnIntervalSeconds: totalSeconds, useRandomInterval: false });
-
-      session.step = "cards_per_spawn";
-      await msg.reply(
-        "✅ Interval set to **" + session.data.cooldownNumber + " " + choice.label + "**.\n\n" +
-        "📦 **Step 3/6 — Cards Per Drop**\n" +
-        "How many cards appear each time the timer fires?\n\n" +
-        "**1️⃣ 1 card** (default) · **2️⃣ 3 cards** · **3️⃣ 5 cards** · **4️⃣ Random** (1–3 each time)\n\n" +
-        "Type **1**, **2**, **3**, or **4**:",
-      );
-      return true;
-    }
-
-    // ── Cards per spawn ──────────────────────────────────────────────────────
-    case "cards_per_spawn": {
-      const perSpawnMap: Record<string, { value: number; label: string }> = {
-        "1": { value: 1, label: "1 card" },
-        "2": { value: 3, label: "3 cards" },
-        "3": { value: 5, label: "5 cards" },
-        "4": { value: -1, label: "Random (1–3)" },
-      };
-      const choice = perSpawnMap[input];
-      if (!choice) { await msg.reply("Please type **1**, **2**, **3**, or **4**:"); return true; }
-      session.data.cardsPerSpawn = choice.value;
-      await updateGuildSettings(session.guildId, { cardsPerSpawn: choice.value });
-
-      const defaults = "⚪ Common: **60** · 🟢 Uncommon: **25** · 🔵 Rare: **10** · 🟣 Epic: **4** · 🌟 Legendary: **1**";
-      session.step = "rarity_choice";
-      await msg.reply(
-        "✅ Cards per drop set to **" + choice.label + "**.\n\n" +
-        "🎲 **Step 4/6 — Rarity Drop Rates**\n" +
-        "These weights control how often each rarity appears (higher = more common).\n\n" +
-        "Current defaults:\n" + defaults + "\n\n" +
-        "**1️⃣ Keep defaults** · **2️⃣ Customize rates**\n\nType **1** or **2**:",
-      );
-      return true;
-    }
-
-    // ── Rarity choice ────────────────────────────────────────────────────────
-    case "rarity_choice": {
-      if (input === "1") {
-        session.step = "test_card_choice";
-        await askTestCard(msg, session);
-        return true;
-      }
-      if (input === "2") {
-        session.data.rarityWeights = {};
-        session.step = "rarity_common";
-        await msg.reply(
-          "🎲 **Step 4/6 — Rarity Weights (1/5)**\n" +
-          `${RARITY_EMOJI.common} Enter the weight for **Common** cards *(default: ${RARITY_WEIGHTS.common}, recommended: 40–80)*:`,
-        );
-        return true;
-      }
-      await msg.reply("Please type **1** to keep defaults or **2** to customize:");
-      return true;
-    }
-
-    // ── Rarity weight inputs ─────────────────────────────────────────────────
-    case "rarity_common":
-    case "rarity_uncommon":
-    case "rarity_rare":
-    case "rarity_epic":
-    case "rarity_legendary": {
-      const w = parseInt(input, 10);
-      if (isNaN(w) || w < 0) { await msg.reply("❌ Enter a whole number ≥ 0:"); return true; }
-
-      const order: Array<{ step: WizardStep; rarity: Rarity; next: WizardStep | null; num: string; def: number }> = [
-        { step: "rarity_common",    rarity: "common",    next: "rarity_uncommon",  num: "2/5", def: 25  },
-        { step: "rarity_uncommon",  rarity: "uncommon",  next: "rarity_rare",      num: "3/5", def: 10  },
-        { step: "rarity_rare",      rarity: "rare",      next: "rarity_epic",      num: "4/5", def: 4   },
-        { step: "rarity_epic",      rarity: "epic",      next: "rarity_legendary", num: "5/5", def: 1   },
-        { step: "rarity_legendary", rarity: "legendary", next: null,               num: "",    def: 0   },
-      ];
-
-      const current = order.find(o => o.step === session.step)!;
-      session.data.rarityWeights![current.rarity] = w;
-
-      if (current.next) {
-        const nextInfo = order.find(o => o.step === current.next)!;
-        session.step = current.next;
-        await msg.reply(
-          `✅ ${RARITY_EMOJI[current.rarity]} ${current.rarity} weight → **${w}**\n\n` +
-          `🎲 **Step 4/6 — Rarity Weights (${current.num})**\n` +
-          `${RARITY_EMOJI[nextInfo.rarity]} Enter the weight for **${nextInfo.rarity}** cards *(default: ${nextInfo.def})*:`,
-        );
-      } else {
-        // All rarity weights collected — save them
-        const rw = session.data.rarityWeights!;
-        await updateGuildSettings(session.guildId, {
-          rarityWeightCommon: rw.common,
-          rarityWeightUncommon: rw.uncommon,
-          rarityWeightRare: rw.rare,
-          rarityWeightEpic: rw.epic,
-          rarityWeightLegendary: rw.legendary,
-        });
-        session.step = "test_card_choice";
-        await askTestCard(msg, session);
-      }
-      return true;
-    }
-
-    // ── Test card choice ─────────────────────────────────────────────────────
-    case "test_card_choice": {
-      if (input === "1") {
-        session.step = "test_card_name";
-        await msg.reply(
-          "🧪 **Test Drop**\nGive your test card a name *(e.g. `Alpha Test`, `DN-001`)*:",
-        );
-        return true;
-      }
-      if (input === "2") {
-        await finishWizard(msg, session, sessionKey, null);
-        return true;
-      }
-      await msg.reply("Type **1** to create a test card or **2** to skip:");
-      return true;
-    }
-
-    // ── Test card name ───────────────────────────────────────────────────────
-    case "test_card_name": {
-      const name = input.slice(0, 64);
-      await finishWizard(msg, session, sessionKey, name);
-      return true;
-    }
-
-    default:
-      sessions.delete(sessionKey);
-      return false;
-  }
-}
-
-// ── Helper: ask test card question ───────────────────────────────────────────
-async function askTestCard(msg: Message, session: WizardSession) {
-  await msg.reply(
-    "🧪 **" + (session.data.setupType === "quick" ? "Step 2/2" : "Step 5/6") + " — Test Drop**\n" +
-    "Want to create a test card and drop it to <#" + session.data.spawnChannelId + "> to verify your setup?\n\n" +
-    "**1️⃣ Yes, test it!** · **2️⃣ Skip**",
-  );
-}
-
-// ── Finish wizard ────────────────────────────────────────────────────────────
-async function finishWizard(
-  msg: Message, session: WizardSession, sessionKey: string, testCardName: string | null,
-) {
-  sessions.delete(sessionKey);
-
-  const { spawnChannelId } = session.data;
-  if (!spawnChannelId) {
-    await msg.reply("❌ Setup incomplete — no spawn channel was set. Run `!setup` again.");
+    await updateGuildSettings(guildId, { spawnEnabled: true });
+    scheduleNextSpawn(guildId);
+    await interaction.update({
+      embeds: [
+        new EmbedBuilder()
+          .setTitle("✅ DN Cards is ready!")
+          .setColor(0x57f287)
+          .setDescription(
+            `Drops are live in <#${settings.spawnChannelId}>.\n\n` +
+            `**Next steps**\n` +
+            `• Add cards: \`!addcard\` · \`!addlimited\` · \`!addevent\`\n` +
+            `• Force a drop: \`/drop\` · Mass drop: \`/massdrop\`\n` +
+            `• Re-open this panel anytime with \`!setup\` or \`/config\`\n` +
+            `• Player help: \`/help\` · Admin help: \`/adminhelp\``,
+          ),
+      ],
+      components: [],
+    }).catch(() => { /* ignore */ });
     return;
   }
 
-  await updateGuildSettings(session.guildId, {
-    spawnChannelId,
-    spawnEnabled: true,
-  });
+  await refreshPanel(interaction, guildId);
+}
 
-  let testCardResult = "";
-  if (testCardName) {
-    try {
-      const card = await addCard({
-        name: testCardName,
-        description: "A test card created during setup. Safe to remove with `!removecard " + testCardName + "`.",
-        rarity: "common",
-        cardType: "infantry",
-        dropWeight: 60,
-        worthValue: 10,
-        burnValue: 5,
-        droppable: false,
-      });
-      await spawnCard(session.guildId, card.id, true);
-      testCardResult = `\n🧪 Test card **${testCardName}** dropped in <#${spawnChannelId}>! Go catch it.\n*(Remove it later with \`!removecard ${testCardName}\`)*`;
-    } catch (err) {
-      testCardResult = "\n⚠️ Couldn't create test card — check if a card with that name already exists.";
-    }
+// ── Select handler ────────────────────────────────────────────────────────────
+export async function handleSetupSelect(interaction: StringSelectMenuInteraction): Promise<void> {
+  if (!interaction.guild) return;
+  if (!(await ensureAdmin(interaction))) return;
+
+  const guildId = interaction.guild.id;
+  const action = interaction.customId;
+  const value = interaction.values[0]!;
+
+  const patch: Partial<GuildSettings> = {};
+  if (action === "setup_mode") patch.catchMode = value;
+  else if (action === "setup_drops") patch.cardsPerSpawn = parseInt(value, 10);
+  else if (action === "setup_interval") {
+    patch.useRandomInterval = false;
+    patch.spawnIntervalSeconds = parseInt(value, 10);
+  } else if (action === "setup_window") patch.catchWindowSeconds = parseInt(value, 10);
+
+  await updateGuildSettings(guildId, patch);
+  if (action === "setup_interval") scheduleNextSpawn(guildId);
+  await refreshPanel(interaction, guildId);
+}
+
+// ── Modal handler (test card creation) ───────────────────────────────────────
+export async function handleSetupModalSubmit(interaction: ModalSubmitInteraction): Promise<void> {
+  if (!interaction.guild) return;
+  if (interaction.customId !== "setup_testcard") return;
+  if (!(await ensureAdminModal(interaction))) return;
+
+  const guildId = interaction.guild.id;
+  const settings = await getOrCreateGuildSettings(guildId);
+  if (!settings.spawnChannelId) {
+    await interaction.reply({
+      content: "❌ Pick a spawn channel first — click **📢 Spawn here** in your drops channel.",
+      flags: MessageFlags.Ephemeral,
+    }).catch(() => { /* ignore */ });
+    return;
   }
 
-  scheduleNextSpawn(session.guildId);
+  const name = interaction.fields.getTextInputValue("card_name").slice(0, 64).trim();
+  if (!name) {
+    await interaction.reply({ content: "❌ Card name was empty.", flags: MessageFlags.Ephemeral }).catch(() => { /* ignore */ });
+    return;
+  }
 
-  const settings = await getOrCreateGuildSettings(session.guildId);
-  const intervalLabel = settings.useRandomInterval
-    ? `Random interval`
-    : formatTime(settings.spawnIntervalSeconds);
-  const cardsLabel = settings.cardsPerSpawn === -1 ? "Random (1–3)" : settings.cardsPerSpawn.toString();
-
-  await msg.reply(
-    "## ✅ DN Cards Setup Complete!\n\n" +
-    `📢 **Drop channel:** <#${spawnChannelId}>\n` +
-    `⏱️ **Interval:** ${intervalLabel}\n` +
-    `📦 **Cards per drop:** ${cardsLabel}\n` +
-    `🪟 **Catch window:** ${formatTime(settings.catchWindowSeconds)}\n` +
-    testCardResult + "\n\n" +
-    "Cards are now spawning! Use `!settings` to review your config anytime.\n" +
-    "Use `/drop` to force a card drop, `/give` to award cards directly.",
-  );
+  try {
+    const card = await addCard({
+      name,
+      description: `A test card created during setup. Safe to remove with \`!removecard ${name}\`.`,
+      rarity: "common",
+      cardType: "infantry",
+      dropWeight: 60,
+      worthValue: 10,
+      burnValue: 5,
+      droppable: false,
+    });
+    await spawnCard(guildId, card.id, true);
+    await interaction.reply({
+      content: `🧪 Test card **${name}** dropped in <#${settings.spawnChannelId}>. Go catch it!\nClean up later with \`!removecard ${name}\`.`,
+      flags: MessageFlags.Ephemeral,
+    }).catch(() => { /* ignore */ });
+  } catch {
+    await interaction.reply({
+      content: "⚠️ Couldn't create the test card — a card with that name probably exists already. Try a different name.",
+      flags: MessageFlags.Ephemeral,
+    }).catch(() => { /* ignore */ });
+  }
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
-function resolveChannel(msg: Message, input: string): string | null {
-  const mentionId = input?.match(/^<#(\d+)>$/)?.[1];
-  if (mentionId) return mentionId;
-  const name = input?.replace(/^#/, "");
-  const found = msg.guild?.channels.cache.find(c => c.name === name && c.isTextBased());
-  return found?.id ?? null;
+async function defaultsLoaded(): Promise<boolean> {
+  const sets = await listSets();
+  return sets.some(s => s.setName === DEFAULTS_SET_NAME && s.cardCount > 0);
 }
 
-function formatTime(seconds: number): string {
-  if (seconds < 60) return `${seconds}s`;
-  if (seconds < 3600) { const m = Math.floor(seconds / 60); const s = seconds % 60; return s > 0 ? `${m}m ${s}s` : `${m}m`; }
-  const h = Math.floor(seconds / 3600); const m = Math.floor((seconds % 3600) / 60);
-  return m > 0 ? `${h}h ${m}m` : `${h}h`;
+async function refreshPanel(
+  interaction: ButtonInteraction | StringSelectMenuInteraction,
+  guildId: string,
+): Promise<void> {
+  const settings = await getOrCreateGuildSettings(guildId);
+  const hasDefaults = await defaultsLoaded();
+  await interaction.update({
+    embeds: [buildSetupEmbed(settings, hasDefaults)],
+    components: buildSetupComponents(settings, hasDefaults),
+  }).catch(() => { /* may already be replied/updated */ });
+}
+
+async function ensureAdmin(
+  interaction: ButtonInteraction | StringSelectMenuInteraction,
+): Promise<boolean> {
+  if (!interaction.guild) return false;
+  const member = await interaction.guild.members.fetch(interaction.user.id).catch(() => null);
+  if (!member) return false;
+  const allowed =
+    interaction.guild.ownerId === interaction.user.id ||
+    member.permissions.has("Administrator") ||
+    (await isAdmin(interaction.guild.id, interaction.user.id));
+  if (!allowed) {
+    await interaction.reply({
+      content: "❌ Only admins can use the setup panel.",
+      flags: MessageFlags.Ephemeral,
+    }).catch(() => { /* ignore */ });
+  }
+  return allowed;
+}
+
+async function ensureAdminModal(interaction: ModalSubmitInteraction): Promise<boolean> {
+  if (!interaction.guild) return false;
+  const member = (interaction.member as GuildMember | null);
+  const allowed =
+    interaction.guild.ownerId === interaction.user.id ||
+    member?.permissions.has("Administrator") ||
+    (await isAdmin(interaction.guild.id, interaction.user.id));
+  if (!allowed) {
+    await interaction.reply({
+      content: "❌ Admins only.",
+      flags: MessageFlags.Ephemeral,
+    }).catch(() => { /* ignore */ });
+  }
+  return !!allowed;
+}
+
+function formatSec(sec: number): string {
+  if (sec >= 3600) return `${Math.round(sec / 3600)}h`;
+  if (sec >= 60) return `${Math.round(sec / 60)}m`;
+  return `${sec}s`;
+}
+
+// ── Embed + components ───────────────────────────────────────────────────────
+function buildSetupEmbed(s: GuildSettings, hasDefaults: boolean): EmbedBuilder {
+  const catchMode = (s as unknown as { catchMode?: string }).catchMode ?? "type";
+  const modeLabel = ({
+    type: "✍️ Typing",
+    button: "🎯 Button (anti-camp)",
+    both: "✍️ + 🎯 Both",
+  } as Record<string, string>)[catchMode];
+
+  const dropsLabel = s.cardsPerSpawn === -1 ? "Random 1–3" : `${s.cardsPerSpawn} per batch`;
+  const intervalLabel = s.useRandomInterval
+    ? `Random ${formatSec(s.spawnIntervalMin ?? 0)}–${formatSec(s.spawnIntervalMax ?? 0)}`
+    : formatSec(s.spawnIntervalSeconds);
+
+  const defaultsLine = hasDefaults
+    ? `✅ Built-in 27-card roster is **loaded** *(use 🗑️ to remove)*`
+    : `📦 No built-in defaults loaded *(use 📜 to load all ${DEFAULT_CARDS.length} or skip — your `+
+      `\`!addcard\` cards work without them)*`;
+
+  return new EmbedBuilder()
+    .setTitle("🃏 DN Cards — Setup Panel")
+    .setColor(0x5865f2)
+    .setDescription(
+      "Configure your server below. **Every change saves instantly** — no need to confirm.\n" +
+      "When you're done, click **✅ Finish** to enable spawning and close this panel.",
+    )
+    .addFields(
+      {
+        name: "📢 Spawn Channel",
+        value: s.spawnChannelId
+          ? `<#${s.spawnChannelId}>`
+          : "❌ Not set — go to your drops channel and click **📢 Spawn here**",
+        inline: true,
+      },
+      {
+        name: "💬 Trade Channel",
+        value: s.tradeChannelId ? `<#${s.tradeChannelId}>` : "Any channel",
+        inline: true,
+      },
+      {
+        name: "🎯 Catch Mode",
+        value: modeLabel ?? "✍️ Typing",
+        inline: true,
+      },
+      { name: "📦 Cards / Drop", value: dropsLabel, inline: true },
+      { name: "⏱️ Interval", value: intervalLabel, inline: true },
+      { name: "🪟 Catch Window", value: formatSec(s.catchWindowSeconds), inline: true },
+      {
+        name: "Toggles",
+        value:
+          `${s.spawnEnabled ? "✅" : "⏸️"} Auto-Spawning · ` +
+          `${s.tradeEnabled ? "✅" : "⏸️"} Trading`,
+        inline: false,
+      },
+      { name: "📜 Card Roster", value: defaultsLine, inline: false },
+      {
+        name: "🎲 Drop Rates",
+        value: `Click **🎲 Drop Rates** to fine-tune rarity weights (defaults: ` +
+          `Common ${RARITY_WEIGHTS.common} · Uncommon ${RARITY_WEIGHTS.uncommon} · ` +
+          `Rare ${RARITY_WEIGHTS.rare} · Epic ${RARITY_WEIGHTS.epic} · ` +
+          `Legendary ${RARITY_WEIGHTS.legendary})`,
+        inline: false,
+      },
+    )
+    .setFooter({ text: "Only you can see this panel. It stays open until Discord retires it (~15 min)." });
+}
+
+function buildSetupComponents(s: GuildSettings, hasDefaults: boolean) {
+  const catchMode = (s as unknown as { catchMode?: string }).catchMode ?? "type";
+
+  const modeSelect = new StringSelectMenuBuilder()
+    .setCustomId("setup_mode")
+    .setPlaceholder("🎯 Catch Mode")
+    .addOptions(
+      { label: "Typing (lag-fair)", value: "type", emoji: "✍️", default: catchMode === "type" },
+      { label: "Button (anti-camp)", value: "button", emoji: "🎯", default: catchMode === "button" },
+      { label: "Both", value: "both", emoji: "🔀", default: catchMode === "both" },
+    );
+
+  const dropsSelect = new StringSelectMenuBuilder()
+    .setCustomId("setup_drops")
+    .setPlaceholder("📦 Cards per spawn")
+    .addOptions(
+      { label: "1 card", value: "1", default: s.cardsPerSpawn === 1 },
+      { label: "3 cards", value: "3", default: s.cardsPerSpawn === 3 },
+      { label: "5 cards", value: "5", default: s.cardsPerSpawn === 5 },
+      { label: "Random 1–3", value: "-1", default: s.cardsPerSpawn === -1 },
+    );
+
+  const intervalOpts = [
+    { label: "Every 5 minutes", sec: 5 * 60 },
+    { label: "Every 15 minutes", sec: 15 * 60 },
+    { label: "Every 30 minutes", sec: 30 * 60 },
+    { label: "Every 1 hour", sec: 60 * 60 },
+    { label: "Every 2 hours", sec: 2 * 60 * 60 },
+    { label: "Every 6 hours", sec: 6 * 60 * 60 },
+  ];
+  const intervalSelect = new StringSelectMenuBuilder()
+    .setCustomId("setup_interval")
+    .setPlaceholder("⏱️ Spawn interval")
+    .addOptions(intervalOpts.map(o => ({
+      label: o.label, value: String(o.sec),
+      default: !s.useRandomInterval && s.spawnIntervalSeconds === o.sec,
+    })));
+
+  const windowOpts = [
+    { label: "30 seconds", sec: 30 },
+    { label: "1 minute", sec: 60 },
+    { label: "2 minutes", sec: 120 },
+    { label: "5 minutes", sec: 300 },
+    { label: "10 minutes", sec: 600 },
+  ];
+  const windowSelect = new StringSelectMenuBuilder()
+    .setCustomId("setup_window")
+    .setPlaceholder("🪟 Catch window")
+    .addOptions(windowOpts.map(o => ({
+      label: o.label, value: String(o.sec),
+      default: s.catchWindowSeconds === o.sec,
+    })));
+
+  // Row of channel/toggle/utility buttons.
+  const channelRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder()
+      .setCustomId("setup:channel:spawn")
+      .setLabel("📢 Spawn here")
+      .setStyle(ButtonStyle.Primary),
+    new ButtonBuilder()
+      .setCustomId("setup:channel:trade")
+      .setLabel("💬 Trade here")
+      .setStyle(ButtonStyle.Primary),
+    new ButtonBuilder()
+      .setCustomId("setup:toggle:spawn")
+      .setLabel(s.spawnEnabled ? "⏸️ Pause Spawns" : "▶️ Enable Spawns")
+      .setStyle(s.spawnEnabled ? ButtonStyle.Secondary : ButtonStyle.Success),
+    new ButtonBuilder()
+      .setCustomId("setup:toggle:trade")
+      .setLabel(s.tradeEnabled ? "⏸️ Pause Trading" : "▶️ Enable Trading")
+      .setStyle(s.tradeEnabled ? ButtonStyle.Secondary : ButtonStyle.Success),
+    new ButtonBuilder()
+      .setCustomId("setup:rates")
+      .setLabel("🎲 Drop Rates")
+      .setStyle(ButtonStyle.Primary),
+  );
+
+  // Row of "extras" — load defaults, test, finish.
+  const extrasRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+    hasDefaults
+      ? new ButtonBuilder()
+          .setCustomId("setup:cleardefaults")
+          .setLabel("🗑️ Remove Defaults")
+          .setStyle(ButtonStyle.Danger)
+      : new ButtonBuilder()
+          .setCustomId("setup:loaddefaults")
+          .setLabel(`📜 Load ${DEFAULT_CARDS.length} Defaults`)
+          .setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder()
+      .setCustomId("setup:testdrop")
+      .setLabel("🧪 Test Drop")
+      .setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder()
+      .setCustomId("setup:done")
+      .setLabel("✅ Finish")
+      .setStyle(ButtonStyle.Success),
+  );
+
+  return [
+    new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(modeSelect),
+    new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(dropsSelect),
+    new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(intervalSelect),
+    channelRow,
+    extrasRow,
+  ];
+  // Note: 5 rows max per Discord message. We dropped the window-select row
+  // intentionally — catch window is rarely touched after first setup, and is
+  // still editable from /config which has fewer buttons.
+  // (windowSelect kept above for future use; unused vars are stripped by tsc.)
+  void windowSelect;
 }

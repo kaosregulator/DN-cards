@@ -308,7 +308,8 @@ function formatSec(sec: number): string {
   return `${sec}s`;
 }
 
-// ── Drop rates sub-panel ─────────────────────────────────────────────────────
+// ── Drop rates sub-panel (also reused by the !setup wizard) ─────────────────
+export { buildRatesEmbed, buildRatesComponents };
 function rarityWeightsSummary(s: GuildSettings): string {
   const weights = RARITY_ORDER.map(r => effectiveWeight(s, r));
   const total = weights.reduce((a, b) => a + b, 0) || 1;

@@ -63,28 +63,9 @@ export async function handlePrefixCommand(msg: Message): Promise<void> {
   // ── Public ─────────────────────────────────────────────────────────────────
   if (cmd === "help") {
     await msg.reply(
-      "**DN Cards — Setup & Config Commands** (admin only)\n\n" +
-      "`!setup` — interactive setup wizard\n" +
-      "`!setchannel #channel` — set spawn channel\n" +
-      "`!setinterval <time>` — fixed interval (e.g. `30m`, `1h`)\n" +
-      "`!setinterval random <min> <max>` — random range (e.g. `10m 60m`)\n" +
-      "`!setwindow <time>` — catch window duration\n" +
-      "`!setdrops <1|3|5|random>` — cards per spawn batch\n" +
-      "`!setcatchmode <type|button|both>` — typing, 🎯 Claim button (randomized position), or both\n" +
-      "`!setrarity <rarity> <weight>` — change drop weight for a rarity\n" +
-      "`!spawnenable` / `!spawndisable` — toggle auto-spawning\n" +
-      "`!tradingenable` / `!tradingdisable` — toggle trading\n" +
-      "`!settradechannel #channel` — set trade channel\n" +
-      "`!addcard` — card creation wizard (standard)\n" +
-      "`!addlimited` — card creation wizard (limited edition)\n" +
-      "`!addevent` — card creation wizard (event exclusive)\n" +
-      "`!removecard <Name>` — remove a card\n" +
-      "`!addadmin @User` — grant bot admin access\n" +
-      "`!removeadmin @User` — revoke bot admin access\n" +
-      "`!listadmins` — list bot admins\n" +
-      "`!settings` — view current settings\n\n" +
-      "*Use slash commands for player actions: `/collection`, `/burn`, `/trade`, etc.*\n" +
-      "*Admin quick actions: `/drop`, `/give`, `/takeback`, `/giveshards`, `/takeshards`*",
+      "🃏 **DN Cards Help**\n" +
+      "• Players → run `/help`\n" +
+      "• Admins → run `/adminhelp` (or `!setup` to open the visual setup panel).",
     );
     return;
   }
@@ -129,8 +110,7 @@ export async function handlePrefixCommand(msg: Message): Promise<void> {
     if (!ok) { await msg.reply("❌ You don't have permission."); return; }
     const { removed } = await unloadDefaultCards();
     await msg.reply(
-      `✅ Removed **${removed}** default cards. Use \`/loadset defaults:true\` to re-add. ` +
-      `Tip: \`/unloadset set:<name>\` and \`/listsets\` are the new way to manage sets.`,
+      `✅ Removed **${removed}** built-in default cards. Re-load anytime from the \`!setup\` panel.`,
     );
     return;
   }
