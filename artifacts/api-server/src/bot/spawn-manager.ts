@@ -492,16 +492,21 @@ export async function buildPostDecisionEmbed(
   const cardType = card.cardType as CardType;
 
   const titles = {
-    burned: `\ud83d\udd25 BURNED \u2014 ${card.name}`,
-    kept:   `\ud83d\udcbe KEPT \u2014 ${card.name}`,
-    trade:  `\ud83d\udd04 OPEN TO TRADE \u2014 ${card.name}`,
+    burned: `\ud83d\udd25 CAUGHT & BURNED \u2014 ${card.name}`,
+    kept:   `\ud83d\udcbe CAUGHT & KEPT \u2014 ${card.name}`,
+    trade:  `\ud83d\udd04 CAUGHT & OPEN TO TRADE \u2014 ${card.name}`,
   };
   const descriptions = {
-    burned: `\ud83d\udd25 BURNED BY <@${userId}>\n\n\u200b`,
-    kept:   `\ud83d\udcbe KEPT BY <@${userId}>\n\n\u200b`,
-    trade:  `\ud83d\udd04 <@${userId}> is open to trading this card!\n\n\u200b`,
+    burned: `\u2705 Caught by <@${userId}> \u2192 \ud83d\udd25 burned for shards\n\n\u200b`,
+    kept:   `\u2705 Caught by <@${userId}> \u2192 \ud83d\udcbe kept in collection\n\n\u200b`,
+    trade:  `\u2705 Caught by <@${userId}> \u2192 \ud83d\udd04 open to trade!\n\n\u200b`,
   };
   const colors = { burned: 0xe74c3c, kept: 0x00b894, trade: 0x3498db };
+  const statusLabels = {
+    burned: "\ud83d\udd25 Burned",
+    kept:   "\ud83d\udcbe Kept",
+    trade:  "\ud83d\udd04 Open to Trade",
+  };
 
   const embed = new EmbedBuilder()
     .setTitle(titles[action])
@@ -511,11 +516,8 @@ export async function buildPostDecisionEmbed(
       { name: `${TYPE_EMOJI[cardType]} ${card.name}`, value: card.description || "\u200b", inline: false },
       { name: "Rarity", value: `${RARITY_EMOJI[rarity]} ${RARITY_LABELS[rarity]}`, inline: true },
       { name: "Worth", value: `\ud83d\udca0 ${card.worthValue.toLocaleString()} shards`, inline: true },
-      {
-        name: action === "burned" ? "Burned by" : action === "kept" ? "Kept by" : "Offered by",
-        value: `<@${userId}>`,
-        inline: true,
-      },
+      { name: "Caught by", value: `<@${userId}>`, inline: true },
+      { name: "Status", value: statusLabels[action], inline: true },
     )
     .setTimestamp();
   if (card.flavor) embed.setFooter({ text: card.flavor });
