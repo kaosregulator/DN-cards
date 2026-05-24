@@ -31,12 +31,19 @@ interface ActiveSpawn {
   message: { edit: (opts: unknown) => Promise<unknown> };
   expiresAt: Date;
   caught: boolean;
+  winnerUserId: string | null;
   catchMode: "type" | "button" | "both";
   // Fair-claim buffer for typing mode: collect matches in a small grace
   // window, then award to the message with the smallest server timestamp.
   pending: PendingCatch[];
   resolveTimer: ReturnType<typeof setTimeout> | null;
 }
+
+// After a spawn is caught, keep its entry around for a short cooldown so
+// late clicks (double-taps, mobile retries, both-mode type+click race) from
+// the actual winner can be silently swallowed instead of showing a confusing
+// "spawn expired" message to the person who just caught it.
+const POST_CATCH_LINGER_MS = 15_000;
 
 // Grace window for collecting concurrent typing-mode catch attempts.
 // Anyone whose Discord-stamped message lands within this window of the first
@@ -176,6 +183,7 @@ async function doSingleSpawn(guildId: string, forcedCardId?: number, isForced = 
     message,
     expiresAt: new Date(Date.now() + settings.catchWindowSeconds * 1000),
     caught: false,
+    winnerUserId: null,
     catchMode: mode,
     pending: [],
     resolveTimer: null,
@@ -259,7 +267,14 @@ async function awardSpawn(guildId: string, spawnId: string, userId: string): Pro
   if (!spawn || spawn.caught) return false;
 
   spawn.caught = true;
-  guildSpawns!.delete(spawnId);
+  spawn.winnerUserId = userId;
+  // Keep the spawn entry around briefly so we can recognise late clicks from
+  // the winner (double-tap, both-mode type+click race) instead of telling
+  // them the spawn expired. It's cleaned up after POST_CATCH_LINGER_MS.
+  setTimeout(() => {
+    const gs = activeSpawns.get(guildId);
+    if (gs?.get(spawnId)?.caught) gs.delete(spawnId);
+  }, POST_CATCH_LINGER_MS);
   if (spawn.resolveTimer) { clearTimeout(spawn.resolveTimer); spawn.resolveTimer = null; }
 
   await catchCard(guildId, userId, spawn.cardId);
@@ -289,16 +304,24 @@ async function awardSpawn(guildId: string, spawnId: string, userId: string): Pro
 }
 
 // Public: button-click claim. Returns success/false.
+// `reason: "self_already"` means this user is the actual winner clicking
+// again (double-tap / both-mode race) — caller should silently swallow it.
 export async function handleClaimButtonClick(guildId: string, spawnId: string, userId: string): Promise<{
-  ok: boolean; reason?: "expired" | "wrong_mode" | "already_caught";
+  ok: boolean; reason?: "expired" | "wrong_mode" | "already_caught" | "self_already";
 }> {
   const guildSpawns = activeSpawns.get(guildId);
   const spawn = guildSpawns?.get(spawnId);
   if (!spawn) return { ok: false, reason: "expired" };
   if (spawn.catchMode === "type") return { ok: false, reason: "wrong_mode" };
-  if (spawn.caught) return { ok: false, reason: "already_caught" };
+  if (spawn.caught) {
+    return { ok: false, reason: spawn.winnerUserId === userId ? "self_already" : "already_caught" };
+  }
   const awarded = await awardSpawn(guildId, spawnId, userId);
-  return awarded ? { ok: true } : { ok: false, reason: "already_caught" };
+  if (awarded) return { ok: true };
+  // Race: someone else won between our checks. If that someone is us, swallow.
+  const after = activeSpawns.get(guildId)?.get(spawnId);
+  if (after?.winnerUserId === userId) return { ok: false, reason: "self_already" };
+  return { ok: false, reason: "already_caught" };
 }
 
 // Build a 5-button row with the Claim button at a random column 0–4. The

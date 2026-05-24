@@ -81,6 +81,13 @@ export async function startBot() {
           const [, guildId, spawnId] = parts;
           const result = await handleClaimButtonClick(guildId, spawnId, interaction.user.id);
           if (!result.ok) {
+            // self_already = the user who just won is clicking again
+            // (double-tap, both-mode type+click race). Silently ack so
+            // we don't tell the winner the spawn "expired".
+            if (result.reason === "self_already") {
+              await interaction.deferUpdate().catch(() => { /* ignore */ });
+              return;
+            }
             const reasonMsg =
               result.reason === "already_caught" ? "⚡ Too slow! Someone already claimed this card."
               : result.reason === "expired" ? "⏰ That spawn has expired."
