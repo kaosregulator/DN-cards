@@ -89,6 +89,9 @@ export function buildCommands() {
     cmd("drop", "(Admin) Force-drop a card — for events and giveaways", s => s
       .addStringOption(o => o.setName("name").setDescription("Card name — leave empty for a random drop").setAutocomplete(true))),
 
+    cmd("massdrop", "(Admin abuse) Drop a big batch of cards — mostly low tier with a few bangers", s => s
+      .addIntegerOption(o => o.setName("amount").setDescription("How many cards to drop (10-25, default 15)").setMinValue(10).setMaxValue(25))),
+
     cmd("give", "(Admin) Give a card directly to a member", s => s
       .addUserOption(o => o.setName("user").setDescription("Member to receive the card").setRequired(true))
       .addStringOption(o => o.setName("name").setDescription("Card name").setRequired(true).setAutocomplete(true))),
@@ -125,7 +128,7 @@ export const USER_COMMAND_NAMES = new Set([
 ]);
 
 export const ADMIN_COMMAND_NAMES = new Set([
-  "config", "adminhub", "drop", "give", "giveshards", "takeback", "takeshards",
+  "config", "adminhub", "drop", "massdrop", "give", "giveshards", "takeback", "takeshards",
 ]);
 
 export const CARDSET_COMMAND_NAMES = new Set([

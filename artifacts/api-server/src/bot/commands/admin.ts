@@ -5,6 +5,7 @@ import {
 } from "../db.js";
 import { spawnCard, scheduleNextSpawn } from "../spawn-manager.js";
 import { RARITY_EMOJI, RARITY_LABELS, type Rarity } from "../cards-data.js";
+import { logger } from "../../lib/logger.js";
 import { handleConfigCommand } from "./config-panel.js";
 import { handleAdminHubCommand } from "./admin-hub.js";
 
@@ -69,6 +70,78 @@ export async function handleAdminCommand(
     return;
   }
 
+  // ── /massdrop ─────────────────────────────────────────────────────────────
+  // "Admin abuse" — a chaotic event batch tilted heavily toward low rarities
+  // with guaranteed mid-tier and one legendary banger. Fires sequentially with
+  // a small gap so Discord doesn't rate-limit and so the channel reads as a
+  // dramatic event rather than a wall of embeds.
+  if (cmd === "massdrop") {
+    const amount = opts.getInteger("amount") ?? 15;
+    const settings = await getOrCreateGuildSettings(guildId);
+    if (!settings.spawnChannelId) {
+      await interaction.editReply("❌ No spawn channel set. Run `!setchannel #channel` first.");
+      return;
+    }
+    const allCards = await getAllCards();
+    const pool = allCards.filter(c => c.droppable && !c.isArchived && (!c.maxCopies || c.totalMinted < c.maxCopies));
+    const byRarity: Record<Rarity, typeof pool> = { common: [], uncommon: [], rare: [], epic: [], legendary: [] };
+    for (const c of pool) byRarity[c.rarity as Rarity].push(c);
+
+    // Distribution: 1 legendary banger, 1 epic, ~2 rare, ~30% uncommon, rest common.
+    const target = computeMassDropDistribution(amount);
+    const pick = (r: Rarity): typeof pool[number] | null => {
+      const bucket = byRarity[r];
+      if (bucket.length === 0) return null;
+      return bucket[Math.floor(Math.random() * bucket.length)] ?? null;
+    };
+    // Build the queue, falling back down the rarity ladder if a tier is empty.
+    const ladder: Rarity[] = ["legendary", "epic", "rare", "uncommon", "common"];
+    const queue: typeof pool = [];
+    for (const r of ladder) {
+      for (let i = 0; i < target[r]; i++) {
+        let picked: typeof pool[number] | null = null;
+        for (let li = ladder.indexOf(r); li < ladder.length && !picked; li++) picked = pick(ladder[li]!);
+        for (let li = ladder.indexOf(r) - 1; li >= 0 && !picked; li--) picked = pick(ladder[li]!);
+        if (picked) queue.push(picked);
+      }
+    }
+    if (queue.length === 0) {
+      await interaction.editReply("❌ No droppable cards available to mass-drop.");
+      return;
+    }
+    // Shuffle so the legendary isn't always first — keeps the chaos fresh.
+    for (let i = queue.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [queue[i], queue[j]] = [queue[j]!, queue[i]!];
+    }
+
+    const counts: Record<Rarity, number> = { common: 0, uncommon: 0, rare: 0, epic: 0, legendary: 0 };
+    for (const c of queue) counts[c.rarity as Rarity]++;
+    const summary = ladder
+      .filter(r => counts[r] > 0)
+      .map(r => `${RARITY_EMOJI[r]} ×${counts[r]}`)
+      .join(" · ");
+
+    await interaction.editReply(
+      `💥 **Admin abuse engaged.** Dropping **${queue.length}** cards over ~${Math.round(queue.length * 5)}s.\n${summary}`,
+    );
+
+    // Fire the spawns in the background — don't await, so we can return the
+    // ephemeral confirmation immediately. Errors are logged, not re-thrown.
+    void (async () => {
+      for (let i = 0; i < queue.length; i++) {
+        if (i > 0) await new Promise(r => setTimeout(r, 5000));
+        try {
+          await spawnCard(guildId, queue[i]!.id, true);
+        } catch (err) {
+          logger.warn({ err, cardId: queue[i]!.id }, "massdrop spawn failed");
+        }
+      }
+      scheduleNextSpawn(guildId);
+    })();
+    return;
+  }
+
   // ── /give ─────────────────────────────────────────────────────────────────
   if (cmd === "give") {
     const target = opts.getUser("user", true);
@@ -127,4 +200,16 @@ export async function handleAdminCommand(
   }
 
   await interaction.editReply("❌ Unknown command.");
+}
+
+// Mass-drop rarity distribution: 1 legendary banger, 1 epic, ~2 rare,
+// ~30% uncommon, the rest common. Tuned for 10-25 amounts.
+function computeMassDropDistribution(amount: number): Record<Rarity, number> {
+  const legendary = 1;
+  const epic = 1;
+  const rare = Math.max(2, Math.floor(amount * 0.13));
+  const uncommon = Math.max(2, Math.floor(amount * 0.30));
+  const used = legendary + epic + rare + uncommon;
+  const common = Math.max(0, amount - used);
+  return { common, uncommon, rare, epic, legendary };
 }
