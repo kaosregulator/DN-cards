@@ -1,8 +1,5 @@
-import type { ChatInputCommandInteraction, MessageComponentInteraction } from "discord.js";
-import {
-  EmbedBuilder, MessageFlags,
-  ActionRowBuilder, ButtonBuilder, ButtonStyle, ComponentType,
-} from "discord.js";
+import type { ChatInputCommandInteraction } from "discord.js";
+import { EmbedBuilder, MessageFlags } from "discord.js";
 import { db, userCurrencyTable, cardsTable } from "@workspace/db";
 import { and, eq, sql } from "drizzle-orm";
 import {
@@ -60,16 +57,15 @@ async function drawPack(): Promise<Card[]> {
   };
   for (const c of all) byRarity[c.rarity as Rarity]?.push(c);
 
+  const fallbackOrder: Rarity[] = ["legendary", "epic", "rare", "uncommon", "common"];
   const drawn: Card[] = [];
   for (let i = 0; i < PACK_SIZE; i++) {
-    let rarity = rollRarity();
-    const fallbackOrder: Rarity[] = ["legendary", "epic", "rare", "uncommon", "common"];
+    const rarity = rollRarity();
     const startIdx = fallbackOrder.indexOf(rarity);
     let picked: Card | undefined;
     for (let j = startIdx; j < fallbackOrder.length; j++) {
-      const tier = fallbackOrder[j];
-      picked = pickByDropWeight(byRarity[tier]);
-      if (picked) { rarity = tier; break; }
+      picked = pickByDropWeight(byRarity[fallbackOrder[j]]);
+      if (picked) break;
     }
     if (!picked) {
       for (let j = 0; j < startIdx; j++) {
@@ -82,36 +78,10 @@ async function drawPack(): Promise<Card[]> {
   return drawn;
 }
 
-const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
-
-// ── Visuals ────────────────────────────────────────────────────────────────
-function buildRevealEmbed(card: Card, idx: number, total: number): EmbedBuilder {
-  const rarity = card.rarity as Rarity;
-  const e = new EmbedBuilder()
-    .setTitle(`🎴 Card ${idx + 1} of ${total} — ${RARITY_EMOJI[rarity]} ${RARITY_LABELS[rarity]}`)
-    .setDescription(`**${card.name}**${card.description ? `\n*${card.description}*` : ""}`)
-    .addFields(
-      { name: "💠 Worth", value: card.worthValue.toLocaleString(), inline: true },
-      { name: "🔥 Burn", value: card.burnValue.toLocaleString(), inline: true },
-      { name: "Rarity", value: `${RARITY_EMOJI[rarity]} ${RARITY_LABELS[rarity]}`, inline: true },
-    )
-    .setColor(RARITY_COLORS[rarity] ?? 0x5865f2);
-  const img = toAbsoluteImageUrl(card.imageUrl);
-  if (img) e.setImage(img);
-  return e;
-}
-
-function buildFlipFrame(idx: number, total: number, frame: string): EmbedBuilder {
-  return new EmbedBuilder()
-    .setTitle(`🎴 Card ${idx + 1} of ${total}`)
-    .setDescription(`${frame}\n\n*Get ready…*`)
-    .setColor(0x5865f2);
-}
-
 function buildSummaryEmbed(cards: Card[], spent: number, balanceAfter: number): EmbedBuilder {
   const totalWorth = cards.reduce((s, c) => s + c.worthValue, 0);
   const last = cards[cards.length - 1];
-  return new EmbedBuilder()
+  const embed = new EmbedBuilder()
     .setTitle(`🎴 Pack Opened — ${cards.length} cards`)
     .setColor(RARITY_COLORS[last.rarity as Rarity] ?? 0x5865f2)
     .setDescription(
@@ -123,15 +93,12 @@ function buildSummaryEmbed(cards: Card[], spent: number, balanceAfter: number): 
       `Spent: 💠 ${spent.toLocaleString()} · Balance: 💠 ${balanceAfter.toLocaleString()}`,
     )
     .setFooter({ text: "Cards added to your collection — use /collection to view." });
+  const img = toAbsoluteImageUrl(last.imageUrl);
+  if (img) embed.setThumbnail(img);
+  return embed;
 }
 
-function buttonsRow(disabled = false): ActionRowBuilder<ButtonBuilder> {
-  return new ActionRowBuilder<ButtonBuilder>().addComponents(
-    new ButtonBuilder().setCustomId("pack_skip").setLabel("⏭️ Skip animation").setStyle(ButtonStyle.Secondary).setDisabled(disabled),
-  );
-}
-
-// ── Handler ────────────────────────────────────────────────────────────────
+// ── Handler (no animation — simple & reliable) ─────────────────────────────
 export async function handlePack(interaction: ChatInputCommandInteraction): Promise<void> {
   if (!interaction.guild) return;
   const guildId = interaction.guild.id;
@@ -153,7 +120,7 @@ export async function handlePack(interaction: ChatInputCommandInteraction): Prom
     return;
   }
 
-  // Spend first (atomic). Then grant. Then animate.
+  // Spend first (atomic). Then grant the cards.
   const spent = await spendShards(guildId, userId, PACK_COST);
   if (!spent) {
     await interaction.editReply(`❌ Insufficient shards (need 💠 ${PACK_COST.toLocaleString()}).`);
@@ -175,58 +142,10 @@ export async function handlePack(interaction: ChatInputCommandInteraction): Prom
 
   const balanceAfter = before.shards - PACK_COST;
 
-  // Initial reveal frame + Skip button. Fetch the reply Message so we can
-  // attach a component collector for the Skip button.
-  await interaction.editReply({
-    embeds: [buildFlipFrame(0, cards.length, "🎴 ✨ Opening pack…")],
-    components: [buttonsRow()],
-  });
-
-  // Attach skip-button collector. fetchReply on ephemeral works in discord.js
-  // v14, but be defensive: if it fails, just skip the collector and animate
-  // through without a working Skip button.
-  let skipped = false;
-  let collector: ReturnType<typeof import("discord.js").Message.prototype.createMessageComponentCollector> | null = null;
-  try {
-    const replyMsg = await interaction.fetchReply();
-    collector = replyMsg.createMessageComponentCollector({
-      componentType: ComponentType.Button,
-      time: 60_000,
-      filter: (i: MessageComponentInteraction) => i.user.id === userId,
-    });
-    collector.on("collect", async (i) => {
-      if (i.customId !== "pack_skip") return;
-      skipped = true;
-      await i.deferUpdate().catch(() => { /* ignore */ });
-      collector?.stop("skip");
-    });
-  } catch { /* no collector — animation still plays */ }
-
-  // Per-card animated reveal: flip → reveal → short pause.
-  for (let i = 0; i < cards.length; i++) {
-    if (skipped) break;
-    const card = cards[i];
-    await interaction.editReply({
-      embeds: [buildFlipFrame(i, cards.length, "🎴 ✨ Flipping…")],
-      components: [buttonsRow()],
-    }).catch(() => { skipped = true; });
-    if (skipped) break;
-    await sleep(500);
-    if (skipped) break;
-    await interaction.editReply({
-      embeds: [buildRevealEmbed(card, i, cards.length)],
-      components: i === cards.length - 1 ? [buttonsRow(true)] : [buttonsRow()],
-    }).catch(() => { skipped = true; });
-    if (skipped) break;
-    await sleep(1200);
-  }
-
-  collector?.stop("done");
-
   await interaction.editReply({
     embeds: [buildSummaryEmbed(cards, PACK_COST, balanceAfter)],
     components: [],
-  }).catch(() => { /* ignore */ });
+  });
 
   // Achievements
   const newly = await checkAchievements(guildId, userId);
@@ -234,6 +153,9 @@ export async function handlePack(interaction: ChatInputCommandInteraction): Prom
     await interaction.followUp({
       content: "🏆 **Achievement unlocked!**\n" + newly.map(formatUnlockLine).join("\n"),
       flags: MessageFlags.Ephemeral,
-    });
+    }).catch(() => { /* ignore */ });
   }
 }
+
+// Keep the unused import silencer for cardsTable usage (referenced via @workspace/db re-export only).
+void cardsTable;

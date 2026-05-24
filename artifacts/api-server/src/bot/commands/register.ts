@@ -59,6 +59,15 @@ export function buildCommands() {
 
     cmd("pack", "(User) Open a 5-card pack for DN Shards", s => s),
 
+    cmd("tradein", "(User) Burn 5 cards of one rarity for 1 random card of the next tier up", s => s
+      .addStringOption(o => o.setName("rarity").setDescription("Rarity of cards to trade in").setRequired(true)
+        .addChoices(
+          { name: "Common → Uncommon", value: "common" },
+          { name: "Uncommon → Rare", value: "uncommon" },
+          { name: "Rare → Epic", value: "rare" },
+          { name: "Epic → Legendary", value: "epic" },
+        ))),
+
     cmd("achievements", "(User) View unlocked achievements", s => s
       .addUserOption(o => o.setName("user").setDescription("View another member's achievements"))),
 
@@ -108,7 +117,7 @@ export function buildCommands() {
 export const USER_COMMAND_NAMES = new Set([
   "collection", "rank", "info", "list", "top",
   "burn", "shards", "trade", "trades", "accept", "decline", "help",
-  "daily", "pack", "achievements", "wishlist", "gift",
+  "daily", "pack", "achievements", "wishlist", "gift", "tradein",
 ]);
 
 export const ADMIN_COMMAND_NAMES = new Set([
