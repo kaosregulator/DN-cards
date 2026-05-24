@@ -1,0 +1,78 @@
+import { pgTable, text, serial, integer, timestamp, boolean, real } from "drizzle-orm/pg-core";
+import { createInsertSchema } from "drizzle-zod";
+import { z } from "zod/v4";
+
+// ── Cards ─────────────────────────────────────────────────────────────────────
+export const cardsTable = pgTable("cards", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull().unique(),
+  description: text("description").notNull().default(""),
+  rarity: text("rarity").notNull(), // common | uncommon | rare | epic | legendary
+  dropWeight: real("drop_weight").notNull().default(1.0),
+  imageUrl: text("image_url"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const insertCardSchema = createInsertSchema(cardsTable).omit({ id: true, createdAt: true });
+export type InsertCard = z.infer<typeof insertCardSchema>;
+export type Card = typeof cardsTable.$inferSelect;
+
+// ── User Collections ──────────────────────────────────────────────────────────
+export const collectionsTable = pgTable("collections", {
+  id: serial("id").primaryKey(),
+  guildId: text("guild_id").notNull(),
+  userId: text("user_id").notNull(),
+  cardId: integer("card_id").notNull().references(() => cardsTable.id),
+  count: integer("count").notNull().default(1),
+  firstCaughtAt: timestamp("first_caught_at").notNull().defaultNow(),
+  lastCaughtAt: timestamp("last_caught_at").notNull().defaultNow(),
+});
+
+export const insertCollectionSchema = createInsertSchema(collectionsTable).omit({ id: true, firstCaughtAt: true, lastCaughtAt: true });
+export type InsertCollection = z.infer<typeof insertCollectionSchema>;
+export type Collection = typeof collectionsTable.$inferSelect;
+
+// ── Guild Settings ────────────────────────────────────────────────────────────
+export const guildSettingsTable = pgTable("guild_settings", {
+  id: serial("id").primaryKey(),
+  guildId: text("guild_id").notNull().unique(),
+  spawnChannelId: text("spawn_channel_id"),
+  spawnIntervalSeconds: integer("spawn_interval_seconds").notNull().default(3600),
+  spawnIntervalMin: integer("spawn_interval_min"), // for random range
+  spawnIntervalMax: integer("spawn_interval_max"), // for random range
+  useRandomInterval: boolean("use_random_interval").notNull().default(false),
+  spawnEnabled: boolean("spawn_enabled").notNull().default(true),
+  catchWindowSeconds: integer("catch_window_seconds").notNull().default(120),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const insertGuildSettingsSchema = createInsertSchema(guildSettingsTable).omit({ id: true, updatedAt: true });
+export type InsertGuildSettings = z.infer<typeof insertGuildSettingsSchema>;
+export type GuildSettings = typeof guildSettingsTable.$inferSelect;
+
+// ── Admin Users ───────────────────────────────────────────────────────────────
+export const adminUsersTable = pgTable("admin_users", {
+  id: serial("id").primaryKey(),
+  guildId: text("guild_id").notNull(),
+  userId: text("user_id").notNull(),
+  addedAt: timestamp("added_at").notNull().defaultNow(),
+  addedBy: text("added_by").notNull(),
+});
+
+export const insertAdminUserSchema = createInsertSchema(adminUsersTable).omit({ id: true, addedAt: true });
+export type InsertAdminUser = z.infer<typeof insertAdminUserSchema>;
+export type AdminUser = typeof adminUsersTable.$inferSelect;
+
+// ── Spawn Log ─────────────────────────────────────────────────────────────────
+export const spawnLogTable = pgTable("spawn_log", {
+  id: serial("id").primaryKey(),
+  guildId: text("guild_id").notNull(),
+  channelId: text("channel_id").notNull(),
+  cardId: integer("card_id").notNull().references(() => cardsTable.id),
+  caughtBy: text("caught_by"),
+  isForced: boolean("is_forced").notNull().default(false),
+  spawnedAt: timestamp("spawned_at").notNull().defaultNow(),
+  caughtAt: timestamp("caught_at"),
+});
+
+export type SpawnLog = typeof spawnLogTable.$inferSelect;
