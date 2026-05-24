@@ -2,9 +2,9 @@ import type { ChatInputCommandInteraction } from "discord.js";
 import { EmbedBuilder, MessageFlags } from "discord.js";
 
 // Commands whose results are personal/spammy and should only be seen by the user.
-const EPHEMERAL_COMMANDS = new Set(["burn", "shards", "trades", "help", "daily", "achievements", "pack", "wishlist", "gift", "tradein"]);
+const EPHEMERAL_COMMANDS = new Set(["burn", "shards", "trades", "help", "daily", "achievements", "pack", "packstats", "wishlist", "gift", "tradein"]);
 import {
-  getUserCollection, getAllCards, getLeaderboard,
+  getUserCollection, getAllCards, getLeaderboard, getTopPackOpeners,
   getOrCreateCurrency, burnCard, getCardByName, getUserCardCount, getUserOwnedCount,
 } from "../db.js";
 import {
@@ -15,7 +15,7 @@ import {
 import { handleTrade, handleAccept, handleDecline, handleListTrades, handleGift } from "./trading.js";
 import { handleDaily, handleAchievementsCommand } from "./daily.js";
 import { toAbsoluteImageUrl } from "../image-url.js";
-import { handlePack } from "./pack.js";
+import { handlePack, handlePackStats } from "./pack.js";
 import { handleTradein } from "./tradein.js";
 import { handleWishlist } from "./wishlist.js";
 import { checkAchievements, formatUnlockLine } from "../achievements.js";
@@ -280,11 +280,15 @@ export async function handleUserCommand(
 
   // ── /top ──────────────────────────────────────────────────────────────────────
   if (sub === "top") {
-    const [byWorth, byCards] = await Promise.all([
+    const [byWorth, byCards, byPacks] = await Promise.all([
       getLeaderboard(guildId, "worth", 10),
       getLeaderboard(guildId, "cards", 5),
+      getTopPackOpeners(guildId, 5),
     ]);
-    if (byWorth.length === 0) { await interaction.editReply("No one has caught any cards yet!"); return; }
+    if (byWorth.length === 0 && byPacks.length === 0) {
+      await interaction.editReply("No one has caught any cards yet!");
+      return;
+    }
     const medals = ["🥇", "🥈", "🥉"];
     const worthLines = byWorth.map((r, i) => {
       const medal = medals[i] ?? `**${i + 1}.**`;
@@ -295,14 +299,21 @@ export async function handleUserCommand(
       const medal = medals[i] ?? `**${i + 1}.**`;
       return `${medal} <@${r.userId}> — **${r.totalCards.toLocaleString()}** cards (${r.uniqueCards} unique)`;
     });
+    const packLines = byPacks.length === 0
+      ? ["*No packs opened yet — be the first with `/pack`!*"]
+      : byPacks.map((r, i) => {
+          const medal = medals[i] ?? `**${i + 1}.**`;
+          return `${medal} <@${r.userId}> — **${r.packsOpened.toLocaleString()}** packs`;
+        });
     const domain = process.env["REPLIT_DOMAINS"]?.split(",")[0];
     const dashUrl = domain ? `https://${domain}/dashboard/leaderboard` : null;
     const embed = new EmbedBuilder()
       .setTitle("🏆 DN Cards — Collector Leaderboard")
       .setColor(0xf39c12)
       .addFields(
-        { name: "💠 Top 10 by Net Worth", value: worthLines.join("\n") },
-        { name: "🃏 Top 5 by Card Count", value: cardLines.join("\n") },
+        { name: "💠 Top 10 by Net Worth", value: worthLines.length ? worthLines.join("\n") : "*No collectors yet.*" },
+        { name: "🃏 Top 5 by Card Count", value: cardLines.length ? cardLines.join("\n") : "*No cards caught yet.*" },
+        { name: "📦 Top 5 Pack Openers", value: packLines.join("\n") },
       )
       .setFooter({
         text: dashUrl
@@ -387,6 +398,7 @@ export async function handleUserCommand(
   if (sub === "trades") { await handleListTrades(interaction); return; }
   if (sub === "daily") { await handleDaily(interaction); return; }
   if (sub === "pack") { await handlePack(interaction); return; }
+  if (sub === "packstats") { await handlePackStats(interaction); return; }
   if (sub === "tradein") { await handleTradein(interaction); return; }
   if (sub === "wishlist") { await handleWishlist(interaction); return; }
   if (sub === "gift") { await handleGift(interaction); return; }

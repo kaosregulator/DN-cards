@@ -78,6 +78,16 @@ export const userCurrencyTable = pgTable("user_currency", {
   totalEarned: integer("total_earned").notNull().default(0),
   packsOpened: integer("packs_opened").notNull().default(0),
   cardsBurned: integer("cards_burned").notNull().default(0),
+  // ── Pack tier counters (rolling weekly bucket) ──────────────────────────────
+  // packsWeekResetAt: when the weekly bucket flips. On `/pack`, if now > this,
+  // all 3 packs*Week counters are zeroed and the date is rolled forward to the
+  // next Monday 00:00 UTC.
+  packsBasicWeek: integer("packs_basic_week").notNull().default(0),
+  packsPremiumWeek: integer("packs_premium_week").notNull().default(0),
+  packsLegendaryWeek: integer("packs_legendary_week").notNull().default(0),
+  packsWeekResetAt: timestamp("packs_week_reset_at").notNull().defaultNow(),
+  // Shared cooldown across all tiers.
+  lastPackOpenedAt: timestamp("last_pack_opened_at"),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
@@ -152,6 +162,20 @@ export const guildSettingsTable = pgTable("guild_settings", {
   rarityWeightLegendary: integer("rarity_weight_legendary"),
   // Catch mode: "type" (type card name), "button" (click claim button), or "both"
   catchMode: text("catch_mode").notNull().default("type"),
+  // ── Pack store config ──────────────────────────────────────────────────────
+  // Shared cooldown between any two pack opens (0 = no cooldown).
+  packCooldownSeconds: integer("pack_cooldown_seconds").notNull().default(60),
+  // Per-tier: cost in shards, cards per pack, and weekly cap (0 = unlimited).
+  // Defaults are tuned to be roughly EV-fair vs. average card worth.
+  packBasicCost: integer("pack_basic_cost").notNull().default(250),
+  packBasicSize: integer("pack_basic_size").notNull().default(5),
+  packBasicWeeklyLimit: integer("pack_basic_weekly_limit").notNull().default(50),
+  packPremiumCost: integer("pack_premium_cost").notNull().default(750),
+  packPremiumSize: integer("pack_premium_size").notNull().default(5),
+  packPremiumWeeklyLimit: integer("pack_premium_weekly_limit").notNull().default(20),
+  packLegendaryCost: integer("pack_legendary_cost").notNull().default(2000),
+  packLegendarySize: integer("pack_legendary_size").notNull().default(5),
+  packLegendaryWeeklyLimit: integer("pack_legendary_weekly_limit").notNull().default(5),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 

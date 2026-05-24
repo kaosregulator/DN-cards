@@ -75,7 +75,16 @@ export function buildCommands() {
 
     cmd("daily", "(User) Claim your daily DN Shards reward", s => s),
 
-    cmd("pack", "(User) Open a 5-card pack for DN Shards", s => s),
+    cmd("pack", "(User) Open a card pack — pick a tier", s => s
+      .addStringOption(o => o.setName("tier")
+        .setDescription("Which pack to open (default: Basic)")
+        .addChoices(
+          { name: "🥉 Basic (cheapest, standard rates)",       value: "basic" },
+          { name: "🥈 Premium (better rates, costs more)",     value: "premium" },
+          { name: "🥇 Legendary (no commons, top-tier odds)",  value: "legendary" },
+        ))),
+
+    cmd("packstats", "(User) See your pack costs, weekly caps & cooldown", s => s),
 
     cmd("tradein", "(User) Burn 5 cards of one rarity for 1 random card of the next tier up", s => s
       .addStringOption(o => o.setName("rarity").setDescription("Rarity of cards to trade in").setRequired(true)
@@ -140,7 +149,7 @@ export function buildCommands() {
 export const USER_COMMAND_NAMES = new Set([
   "collection", "rank", "info", "list", "catalog", "top",
   "burn", "shards", "trade", "trades", "accept", "decline", "help",
-  "daily", "pack", "achievements", "wishlist", "gift", "tradein",
+  "daily", "pack", "packstats", "achievements", "wishlist", "gift", "tradein",
 ]);
 
 export const ADMIN_COMMAND_NAMES = new Set([

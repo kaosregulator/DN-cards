@@ -332,6 +332,18 @@ export async function getLeaderboard(guildId: string, sortBy: "worth" | "cards" 
     .limit(limit);
 }
 
+// Lifetime pack openers per guild (sorted desc). Used by /top.
+export async function getTopPackOpeners(guildId: string, limit = 5) {
+  return db.select({
+    userId: userCurrencyTable.userId,
+    packsOpened: userCurrencyTable.packsOpened,
+  })
+    .from(userCurrencyTable)
+    .where(and(eq(userCurrencyTable.guildId, guildId), sql`${userCurrencyTable.packsOpened} > 0`))
+    .orderBy(sql`${userCurrencyTable.packsOpened} desc`)
+    .limit(limit);
+}
+
 // ── Currency (DN Shards) ──────────────────────────────────────────────────────
 export async function getOrCreateCurrency(guildId: string, userId: string) {
   const [row] = await db.select().from(userCurrencyTable)

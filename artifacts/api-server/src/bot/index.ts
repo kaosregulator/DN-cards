@@ -2,7 +2,7 @@ import { Client, GatewayIntentBits, Partials, Events, REST, Routes, type Interac
 import { logger } from "../lib/logger.js";
 import { burnCard, getOrCreateCurrency } from "./db.js";
 import { initSpawnManager, initAllGuilds, handleCatchAttempt, handleClaimButtonClick, scheduleNextSpawn, buildPostDecisionEmbed, buildDisabledDecisionRow } from "./spawn-manager.js";
-import { handleConfigButton, handleConfigSelect, handleRatesSelect } from "./commands/config-panel.js";
+import { handleConfigButton, handleConfigSelect, handleRatesSelect, handlePacksSelect } from "./commands/config-panel.js";
 import { handleAdminHubButton, handleAdminHubModal } from "./commands/admin-hub.js";
 import { checkAchievements, formatUnlockLine } from "./achievements.js";
 import { handleAdminCommand } from "./commands/admin.js";
@@ -68,6 +68,8 @@ export async function startBot() {
           await handleConfigSelect(interaction);
         } else if (interaction.customId.startsWith("rates_")) {
           await handleRatesSelect(interaction);
+        } else if (interaction.customId.startsWith("packs_")) {
+          await handlePacksSelect(interaction);
         } else if (interaction.customId.startsWith("setup_")) {
           await handleSetupSelect(interaction);
         }

@@ -8,6 +8,7 @@ import { getOrCreateGuildSettings, updateGuildSettings, isAdmin } from "../db.js
 import { scheduleNextSpawn, clearSpawnTimer } from "../spawn-manager.js";
 import { RARITY_WEIGHTS, type Rarity } from "../cards-data.js";
 import type { GuildSettings } from "@workspace/db";
+import { PACK_TIERS, PACK_TIER_META, PACK_DEFAULTS, resolveTierConfig, type PackTier } from "./pack.js";
 
 const RARITY_ORDER: Rarity[] = ["common", "uncommon", "rare", "epic", "legendary"];
 const RARITY_EMOJI: Record<Rarity, string> = {
@@ -108,9 +109,84 @@ export async function handleConfigButton(interaction: ButtonInteraction): Promis
       flags: MessageFlags.Ephemeral,
     });
     return;
+  } else if (action === "packs") {
+    const settings = await getOrCreateGuildSettings(guildId);
+    if (arg === "sizes") {
+      await interaction.update({
+        embeds: [buildPacksSizesEmbed(settings)],
+        components: buildPacksSizesComponents(settings),
+      });
+    } else if (arg === "limits") {
+      await interaction.update({
+        embeds: [buildPacksLimitsEmbed(settings)],
+        components: buildPacksLimitsComponents(settings),
+      });
+    } else if (arg === "back") {
+      // Back to the main packs panel from a sub-panel.
+      await interaction.update({
+        embeds: [buildPacksEmbed(settings)],
+        components: buildPacksComponents(settings),
+      });
+    } else {
+      // arg === "open" — open the packs panel as a NEW ephemeral so the
+      // main config panel stays underneath.
+      await interaction.reply({
+        embeds: [buildPacksEmbed(settings)],
+        components: buildPacksComponents(settings),
+        flags: MessageFlags.Ephemeral,
+      });
+    }
+    return;
   }
 
   await refreshPanel(interaction, guildId);
+}
+
+// ── Router: packs sub-panel selects ──────────────────────────────────────────
+// Custom IDs: packs_cooldown, packs_cost_<tier>, packs_size_<tier>, packs_limit_<tier>
+export async function handlePacksSelect(interaction: StringSelectMenuInteraction): Promise<void> {
+  if (!interaction.guild) return;
+  const ok = await ensureAdmin(interaction);
+  if (!ok) return;
+
+  const guildId = interaction.guild.id;
+  const id = interaction.customId;
+  const value = parseInt(interaction.values[0]!, 10);
+
+  let panel: "main" | "sizes" | "limits" = "main";
+  const patch: Partial<GuildSettings> = {};
+  if (id === "packs_cooldown") {
+    patch.packCooldownSeconds = value;
+  } else if (id.startsWith("packs_cost_")) {
+    const tier = id.slice("packs_cost_".length) as PackTier;
+    if (tier === "basic")     patch.packBasicCost = value;
+    if (tier === "premium")   patch.packPremiumCost = value;
+    if (tier === "legendary") patch.packLegendaryCost = value;
+  } else if (id.startsWith("packs_size_")) {
+    panel = "sizes";
+    const tier = id.slice("packs_size_".length) as PackTier;
+    if (tier === "basic")     patch.packBasicSize = value;
+    if (tier === "premium")   patch.packPremiumSize = value;
+    if (tier === "legendary") patch.packLegendarySize = value;
+  } else if (id.startsWith("packs_limit_")) {
+    panel = "limits";
+    const tier = id.slice("packs_limit_".length) as PackTier;
+    if (tier === "basic")     patch.packBasicWeeklyLimit = value;
+    if (tier === "premium")   patch.packPremiumWeeklyLimit = value;
+    if (tier === "legendary") patch.packLegendaryWeeklyLimit = value;
+  } else {
+    return;
+  }
+
+  await updateGuildSettings(guildId, patch);
+  const settings = await getOrCreateGuildSettings(guildId);
+  if (panel === "sizes") {
+    await interaction.update({ embeds: [buildPacksSizesEmbed(settings)], components: buildPacksSizesComponents(settings) });
+  } else if (panel === "limits") {
+    await interaction.update({ embeds: [buildPacksLimitsEmbed(settings)], components: buildPacksLimitsComponents(settings) });
+  } else {
+    await interaction.update({ embeds: [buildPacksEmbed(settings)], components: buildPacksComponents(settings) });
+  }
 }
 
 // ── Router: drop-rates sub-panel selects ─────────────────────────────────────
@@ -270,7 +346,10 @@ function buildConfigComponents(s: GuildSettings) {
       })),
     );
 
-  const buttons = new ActionRowBuilder<ButtonBuilder>().addComponents(
+  // Discord caps at 5 components per row AND 5 rows per message. We have 3
+  // select rows here (mode, drops, interval) — windowSelect dropped to make
+  // room for two button rows below.
+  const toggleRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder()
       .setCustomId("config:toggle:spawn")
       .setLabel(s.spawnEnabled ? "⏸️ Pause Spawning" : "▶️ Start Spawning")
@@ -287,18 +366,26 @@ function buildConfigComponents(s: GuildSettings) {
       .setCustomId("config:channel:trade")
       .setLabel("💬 Trade here")
       .setStyle(ButtonStyle.Primary),
+  );
+  const subPanelRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder()
       .setCustomId("config:rates:open")
       .setLabel("🎲 Drop Rates")
       .setStyle(ButtonStyle.Primary),
+    new ButtonBuilder()
+      .setCustomId("config:packs:open")
+      .setLabel("🎴 Packs")
+      .setStyle(ButtonStyle.Primary),
   );
 
+  // 3 select rows + 2 button rows = 5 (Discord max).
+  void windowSelect; // catch window edited via wizard / future sub-panel
   return [
     new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(modeSelect),
     new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(dropsSelect),
     new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(intervalSelect),
-    new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(windowSelect),
-    buttons,
+    toggleRow,
+    subPanelRow,
   ];
 }
 
@@ -364,4 +451,180 @@ function buildRatesComponents(s: GuildSettings) {
 
 function capitalize(s: string): string {
   return s[0]!.toUpperCase() + s.slice(1);
+}
+
+// ── Packs sub-panel ──────────────────────────────────────────────────────────
+const COOLDOWN_OPTS: { label: string; sec: number }[] = [
+  { label: "No cooldown",      sec: 0 },
+  { label: "30 seconds",       sec: 30 },
+  { label: "1 minute (default)", sec: 60 },
+  { label: "5 minutes",        sec: 300 },
+  { label: "30 minutes",       sec: 1800 },
+  { label: "1 hour",           sec: 3600 },
+];
+
+// Per-tier cost presets. Roughly: <default>, half, double, 4×.
+const COST_OPTS: Record<PackTier, number[]> = {
+  basic:     [100, 250, 400, 600, 1000],
+  premium:   [400, 750, 1000, 1500, 2500],
+  legendary: [1000, 1500, 2000, 3000, 5000],
+};
+
+const SIZE_OPTS: number[] = [1, 3, 5, 7, 10];
+
+const LIMIT_OPTS: { label: string; n: number }[] = [
+  { label: "Unlimited", n: 0 },
+  { label: "5 / week",  n: 5 },
+  { label: "10 / week", n: 10 },
+  { label: "20 / week", n: 20 },
+  { label: "50 / week", n: 50 },
+  { label: "100 / week", n: 100 },
+];
+
+function formatLimit(n: number): string {
+  return n === 0 ? "Unlimited" : `${n} / week`;
+}
+
+function tierSummaryLine(s: GuildSettings, tier: PackTier): string {
+  const cfg = resolveTierConfig(s, tier);
+  const meta = PACK_TIER_META[tier];
+  return `${meta.emoji} **${meta.label}** — 💠 ${cfg.cost.toLocaleString()} · ${cfg.size} cards · ${formatLimit(cfg.weeklyLimit)}`;
+}
+
+export function buildPacksEmbed(s: GuildSettings): EmbedBuilder {
+  const cd = s.packCooldownSeconds;
+  return new EmbedBuilder()
+    .setTitle("🎴 Pack Store — Pricing & Limits")
+    .setColor(0xfee75c)
+    .setDescription(
+      "Tune what `/pack` charges and how often players can open. Changes apply server-wide instantly.\n" +
+      "*Weekly counters reset every Monday 00:00 UTC. Cooldown is shared across all tiers.*",
+    )
+    .addFields(
+      { name: "⏱️ Cooldown between opens", value: cd === 0 ? "No cooldown" : formatSec(cd), inline: false },
+      {
+        name: "Current tier setup",
+        value: PACK_TIERS.map(t => tierSummaryLine(s, t)).join("\n"),
+        inline: false,
+      },
+      {
+        name: "How to use this panel",
+        value:
+          "**Selects below** change each tier's cost — pick a preset.\n" +
+          "Click **📏 Cards / Pack** to adjust pack size per tier.\n" +
+          "Click **📅 Weekly Limits** to set per-tier weekly caps.\n" +
+          `**Defaults:** Basic 💠 ${PACK_DEFAULTS.basic.cost} · Premium 💠 ${PACK_DEFAULTS.premium.cost} · Legendary 💠 ${PACK_DEFAULTS.legendary.cost}`,
+        inline: false,
+      },
+    )
+    .setFooter({ text: "Only you can see this panel." });
+}
+
+export function buildPacksComponents(s: GuildSettings) {
+  const cooldownSelect = new StringSelectMenuBuilder()
+    .setCustomId("packs_cooldown")
+    .setPlaceholder("⏱️ Cooldown between opens")
+    .addOptions(COOLDOWN_OPTS.map(o => ({
+      label: o.label, value: String(o.sec), default: s.packCooldownSeconds === o.sec,
+    })));
+
+  const costSelect = (tier: PackTier, current: number) => {
+    const meta = PACK_TIER_META[tier];
+    const opts = COST_OPTS[tier].map(c => ({
+      label: `💠 ${c.toLocaleString()}`,
+      value: String(c),
+      default: current === c,
+    }));
+    return new StringSelectMenuBuilder()
+      .setCustomId(`packs_cost_${tier}`)
+      .setPlaceholder(`${meta.emoji} ${meta.label} cost`)
+      .addOptions(opts);
+  };
+
+  const buttons = new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder().setCustomId("config:packs:sizes").setLabel("📏 Cards / Pack").setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder().setCustomId("config:packs:limits").setLabel("📅 Weekly Limits").setStyle(ButtonStyle.Secondary),
+  );
+
+  return [
+    new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(cooldownSelect),
+    new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(costSelect("basic", s.packBasicCost)),
+    new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(costSelect("premium", s.packPremiumCost)),
+    new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(costSelect("legendary", s.packLegendaryCost)),
+    buttons,
+  ];
+}
+
+export function buildPacksSizesEmbed(s: GuildSettings): EmbedBuilder {
+  return new EmbedBuilder()
+    .setTitle("📏 Cards per Pack")
+    .setColor(0xfee75c)
+    .setDescription(
+      "How many cards each tier hands out per `/pack` open. Default is **5** for all tiers.\n" +
+      "*Bigger packs mean more total value — tweak cost accordingly on the previous screen.*",
+    )
+    .addFields({
+      name: "Current sizes",
+      value: PACK_TIERS.map(t => tierSummaryLine(s, t)).join("\n"),
+    });
+}
+
+export function buildPacksSizesComponents(s: GuildSettings) {
+  const sizeSelect = (tier: PackTier, current: number) => {
+    const meta = PACK_TIER_META[tier];
+    const opts = SIZE_OPTS.map(n => ({
+      label: `${n} ${n === 1 ? "card" : "cards"}`,
+      value: String(n),
+      default: current === n,
+    }));
+    return new StringSelectMenuBuilder()
+      .setCustomId(`packs_size_${tier}`)
+      .setPlaceholder(`${meta.emoji} ${meta.label} size`)
+      .addOptions(opts);
+  };
+  const back = new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder().setCustomId("config:packs:back").setLabel("← Back to Packs").setStyle(ButtonStyle.Secondary),
+  );
+  return [
+    new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(sizeSelect("basic", s.packBasicSize)),
+    new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(sizeSelect("premium", s.packPremiumSize)),
+    new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(sizeSelect("legendary", s.packLegendarySize)),
+    back,
+  ];
+}
+
+export function buildPacksLimitsEmbed(s: GuildSettings): EmbedBuilder {
+  return new EmbedBuilder()
+    .setTitle("📅 Weekly Pack Limits")
+    .setColor(0xfee75c)
+    .setDescription(
+      "Each tier has its **own** weekly cap. Hitting one tier's cap doesn't block the others — players can keep " +
+      "opening cheaper or pricier tiers.\n*Resets every Monday 00:00 UTC. Pick \"Unlimited\" to disable a cap.*",
+    )
+    .addFields({
+      name: "Current caps",
+      value: PACK_TIERS.map(t => tierSummaryLine(s, t)).join("\n"),
+    });
+}
+
+export function buildPacksLimitsComponents(s: GuildSettings) {
+  const limitSelect = (tier: PackTier, current: number) => {
+    const meta = PACK_TIER_META[tier];
+    const opts = LIMIT_OPTS.map(o => ({
+      label: o.label, value: String(o.n), default: current === o.n,
+    }));
+    return new StringSelectMenuBuilder()
+      .setCustomId(`packs_limit_${tier}`)
+      .setPlaceholder(`${meta.emoji} ${meta.label} weekly cap`)
+      .addOptions(opts);
+  };
+  const back = new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder().setCustomId("config:packs:back").setLabel("← Back to Packs").setStyle(ButtonStyle.Secondary),
+  );
+  return [
+    new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(limitSelect("basic", s.packBasicWeeklyLimit)),
+    new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(limitSelect("premium", s.packPremiumWeeklyLimit)),
+    new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(limitSelect("legendary", s.packLegendaryWeeklyLimit)),
+    back,
+  ];
 }
