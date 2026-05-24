@@ -8,6 +8,7 @@ import { handlePrefixCommand } from "./commands/prefix.js";
 import { handleWizardStep } from "./commands/setup-wizard.js";
 import { handleCardWizardStep, handleCardEditStep } from "./commands/card-wizard.js";
 import { handleLoadSet, handleUnloadSet, handleListSets } from "./commands/cardset.js";
+import { handleAutocomplete } from "./commands/autocomplete.js";
 import {
   buildCommands, USER_COMMAND_NAMES, ADMIN_COMMAND_NAMES, CARDSET_COMMAND_NAMES,
 } from "./commands/register.js";
@@ -48,6 +49,12 @@ export async function startBot() {
   // ── Interactions: slash commands + buttons ────────────────────────────────
   client.on(Events.InteractionCreate, async (interaction: Interaction) => {
     try {
+      // ── Autocomplete (card / set suggestions as user types) ───────────────
+      if (interaction.isAutocomplete()) {
+        await handleAutocomplete(interaction);
+        return;
+      }
+
       // ── Button interactions ────────────────────────────────────────────────
       if (interaction.isButton()) {
         const parts = interaction.customId.split(":");
