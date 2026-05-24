@@ -24,7 +24,7 @@ async function checkAdmin(interaction: ChatInputCommandInteraction): Promise<boo
 // ── Router ────────────────────────────────────────────────────────────────────
 export async function handleAdminCommand(
   interaction: ChatInputCommandInteraction,
-  sub: string,
+  cmd: string,
 ): Promise<void> {
   if (!interaction.guild) return;
   await interaction.deferReply();
@@ -38,8 +38,7 @@ export async function handleAdminCommand(
   const guildId = interaction.guild.id;
   const opts = interaction.options;
 
-  // ── setchannel ──────────────────────────────────────────────────────────────
-  if (sub === "setchannel") {
+  if (cmd === "setchannel") {
     const channel = opts.getChannel("channel") ?? interaction.channel;
     if (!channel) { await interaction.editReply("❌ Could not determine the channel."); return; }
     await updateGuildSettings(guildId, { spawnChannelId: channel.id });
@@ -48,8 +47,7 @@ export async function handleAdminCommand(
     return;
   }
 
-  // ── setinterval ─────────────────────────────────────────────────────────────
-  if (sub === "setinterval") {
+  if (cmd === "setinterval") {
     const fixedTime = opts.getString("time");
     const minStr = opts.getString("min");
     const maxStr = opts.getString("max");
@@ -72,15 +70,14 @@ export async function handleAdminCommand(
       await updateGuildSettings(guildId, { useRandomInterval: false, spawnIntervalSeconds: seconds });
       await interaction.editReply(`✅ Spawn interval → fixed **${fixedTime}** (${seconds}s).`);
     } else {
-      await interaction.editReply("❌ Provide either `time` for a fixed interval, or both `min` and `max` for a random range.");
+      await interaction.editReply("❌ Provide `time` for a fixed interval, or both `min` and `max` for a random range.");
       return;
     }
     scheduleNextSpawn(guildId);
     return;
   }
 
-  // ── setwindow ───────────────────────────────────────────────────────────────
-  if (sub === "setwindow") {
+  if (cmd === "setwindow") {
     const timeStr = opts.getString("time", true);
     const seconds = parseTime(timeStr);
     if (!seconds) { await interaction.editReply("❌ Invalid time. Use `2m`, `90s`, `1h`, etc."); return; }
@@ -89,26 +86,25 @@ export async function handleAdminCommand(
     return;
   }
 
-  // ── enable / disable ────────────────────────────────────────────────────────
-  if (sub === "enable") {
+  if (cmd === "spawnenable") {
     await updateGuildSettings(guildId, { spawnEnabled: true });
     await interaction.editReply("✅ Card spawning **enabled**.");
     scheduleNextSpawn(guildId);
     return;
   }
-  if (sub === "disable") {
+
+  if (cmd === "spawndisable") {
     await updateGuildSettings(guildId, { spawnEnabled: false });
     clearSpawnTimer(guildId);
     await interaction.editReply("⏸️ Card spawning **disabled**.");
     return;
   }
 
-  // ── drop ────────────────────────────────────────────────────────────────────
-  if (sub === "drop") {
+  if (cmd === "drop") {
     const cardName = opts.getString("name");
     const settings = await getOrCreateGuildSettings(guildId);
     if (!settings.spawnChannelId) {
-      await interaction.editReply("❌ No spawn channel set. Run `/card admin setchannel` first.");
+      await interaction.editReply("❌ No spawn channel set. Run `/setchannel` first.");
       return;
     }
     let forcedCardId: number | undefined;
@@ -116,7 +112,7 @@ export async function handleAdminCommand(
       const cards = await getAllCards();
       const found = cards.find(c => c.name.toLowerCase() === cardName.toLowerCase());
       if (!found) {
-        await interaction.editReply(`❌ Card "**${cardName}**" not found. Try \`/card list\`.`);
+        await interaction.editReply(`❌ Card "**${cardName}**" not found. Try \`/list\`.`);
         return;
       }
       forcedCardId = found.id;
@@ -127,28 +123,36 @@ export async function handleAdminCommand(
     return;
   }
 
-  // ── addcard ─────────────────────────────────────────────────────────────────
-  if (sub === "addcard") {
+  if (cmd === "addcard") {
     const rarity = opts.getString("rarity", true) as Rarity;
     const name = opts.getString("name", true);
     const description = opts.getString("description") ?? "";
+    const imageAttachment = opts.getAttachment("image");
+    const imageUrl = imageAttachment?.url ?? undefined;
+
     const card = await addCard({
       name, description, rarity,
       cardType: "vehicle",
       dropWeight: RARITY_WEIGHTS[rarity],
       worthValue: RARITY_WORTH[rarity],
       burnValue: RARITY_BURN[rarity],
+      imageUrl,
     });
-    await interaction.editReply(`✅ Added **${card.name}** (${RARITY_EMOJI[rarity]} ${RARITY_LABELS[rarity]}).`);
+    await interaction.editReply(
+      `✅ Added **${card.name}** (${RARITY_EMOJI[rarity]} ${RARITY_LABELS[rarity]})` +
+      (imageUrl ? " with image." : "."),
+    );
     return;
   }
 
-  // ── addlimited ──────────────────────────────────────────────────────────────
-  if (sub === "addlimited") {
+  if (cmd === "addlimited") {
     const rarity = opts.getString("rarity", true) as Rarity;
     const maxCopies = opts.getInteger("maxcopies", true);
     const name = opts.getString("name", true);
     const description = opts.getString("description") ?? "";
+    const imageAttachment = opts.getAttachment("image");
+    const imageUrl = imageAttachment?.url ?? undefined;
+
     const card = await addCard({
       name, description, rarity,
       cardType: "limited",
@@ -158,19 +162,24 @@ export async function handleAdminCommand(
       isLimitedEdition: true,
       maxCopies,
       droppable: false,
+      imageUrl,
     });
     await interaction.editReply(
       `💎 Created Limited Edition: **${card.name}** (${RARITY_EMOJI[rarity]} ${RARITY_LABELS[rarity]})\n` +
-      `Max Copies: **${maxCopies}** · Use \`/card admin drop name:${card.name}\` to award copies.`,
+      `Max Copies: **${maxCopies}**` +
+      (imageUrl ? " · Image set." : "") +
+      `\nUse \`/drop name:${card.name}\` to award copies.`,
     );
     return;
   }
 
-  // ── addevent ────────────────────────────────────────────────────────────────
-  if (sub === "addevent") {
+  if (cmd === "addevent") {
     const rarity = opts.getString("rarity", true) as Rarity;
     const name = opts.getString("name", true);
     const description = opts.getString("description") ?? "";
+    const imageAttachment = opts.getAttachment("image");
+    const imageUrl = imageAttachment?.url ?? undefined;
+
     const card = await addCard({
       name, description, rarity,
       cardType: "event",
@@ -179,24 +188,24 @@ export async function handleAdminCommand(
       burnValue: RARITY_BURN[rarity] * 3,
       isEventExclusive: true,
       droppable: false,
+      imageUrl,
     });
     await interaction.editReply(
-      `🎆 Created Event Exclusive: **${card.name}** (${RARITY_EMOJI[rarity]} ${RARITY_LABELS[rarity]})\n` +
-      `Use \`/card admin drop name:${card.name}\` to award it.`,
+      `🎆 Created Event Exclusive: **${card.name}** (${RARITY_EMOJI[rarity]} ${RARITY_LABELS[rarity]})` +
+      (imageUrl ? " · Image set." : "") +
+      `\nUse \`/drop name:${card.name}\` to award it.`,
     );
     return;
   }
 
-  // ── removecard ──────────────────────────────────────────────────────────────
-  if (sub === "removecard") {
+  if (cmd === "removecard") {
     const name = opts.getString("name", true);
     await removeCard(name);
     await interaction.editReply(`✅ Removed **${name}** from the card pool.`);
     return;
   }
 
-  // ── give ────────────────────────────────────────────────────────────────────
-  if (sub === "give") {
+  if (cmd === "give") {
     const target = opts.getUser("user", true);
     const cardName = opts.getString("name", true);
     const cards = await getAllCards();
@@ -208,8 +217,7 @@ export async function handleAdminCommand(
     return;
   }
 
-  // ── giveshards ──────────────────────────────────────────────────────────────
-  if (sub === "giveshards") {
+  if (cmd === "giveshards") {
     const target = opts.getUser("user", true);
     const amount = opts.getInteger("amount", true);
     await addShards(guildId, target.id, amount);
@@ -217,20 +225,19 @@ export async function handleAdminCommand(
     return;
   }
 
-  // ── addadmin / removeadmin / listadmins ─────────────────────────────────────
-  if (sub === "addadmin") {
+  if (cmd === "addadmin") {
     const target = opts.getUser("user", true);
     await addAdmin(guildId, target.id, interaction.user.id);
     await interaction.editReply(`✅ **${target.tag}** added as a DN Cards admin.`);
     return;
   }
-  if (sub === "removeadmin") {
+  if (cmd === "removeadmin") {
     const target = opts.getUser("user", true);
     await removeAdmin(guildId, target.id);
     await interaction.editReply(`✅ **${target.tag}** removed from bot admins.`);
     return;
   }
-  if (sub === "listadmins") {
+  if (cmd === "listadmins") {
     const admins = await listAdmins(guildId);
     if (admins.length === 0) {
       await interaction.editReply("No custom bot admins set. Server owner and Discord Admins always have access.");
@@ -241,8 +248,7 @@ export async function handleAdminCommand(
     return;
   }
 
-  // ── settings ────────────────────────────────────────────────────────────────
-  if (sub === "settings") {
+  if (cmd === "settings") {
     const s = await getOrCreateGuildSettings(guildId);
     const embed = new EmbedBuilder()
       .setTitle("⚙️ DN Cards — Server Settings")
@@ -265,20 +271,17 @@ export async function handleAdminCommand(
     return;
   }
 
-  // ── trading enable/disable ──────────────────────────────────────────────────
-  if (sub === "tradingenable") {
+  if (cmd === "tradingenable") {
     await updateGuildSettings(guildId, { tradeEnabled: true });
     await interaction.editReply("✅ Trading **enabled**.");
     return;
   }
-  if (sub === "tradingdisable") {
+  if (cmd === "tradingdisable") {
     await updateGuildSettings(guildId, { tradeEnabled: false });
     await interaction.editReply("⏸️ Trading **disabled**.");
     return;
   }
-
-  // ── settradechannel ─────────────────────────────────────────────────────────
-  if (sub === "settradechannel") {
+  if (cmd === "settradechannel") {
     const channel = opts.getChannel("channel") ?? interaction.channel;
     if (!channel) { await interaction.editReply("❌ Could not determine the channel."); return; }
     await updateGuildSettings(guildId, { tradeChannelId: channel.id });
@@ -289,7 +292,6 @@ export async function handleAdminCommand(
   await interaction.editReply("❌ Unknown admin command.");
 }
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
 function parseTime(str: string | null | undefined): number | null {
   if (!str) return null;
   const match = str.match(/^(\d+)(s|m|h)$/i);

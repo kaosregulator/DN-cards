@@ -49,9 +49,9 @@ DN Cards is DarkNight's collectible military trading card game for the Roblox + 
 
 ### Card Acquisition
 - **Random drops**: Cards spawn at configured intervals in the spawn channel
-- **Event drops**: Admin force-drops specific cards with `!card drop <Name>`
-- **Admin giveaways**: `!card give @User <Card Name>` — direct award
-- **Trading**: Members trade cards 1-for-1 with `!card trade @User ... for ...`
+- **Event drops**: Admin force-drops specific cards with `/drop name:<Name>`
+- **Admin giveaways**: `/give user:@User name:<Card Name>` — direct award
+- **Trading**: Members trade cards 1-for-1 with `/trade user:@User offer:<card> want:<card>`
 
 ### Card System
 - **5 rarities**: Common (weight 60), Uncommon (25), Rare (10), Epic (4), Legendary (1)
@@ -65,7 +65,7 @@ DN Cards is DarkNight's collectible military trading card game for the Roblox + 
 - Earned by burning duplicate cards
 - Balance tracked per user per guild
 - All-time earned tracked separately from current balance
-- Admins can award shards directly with `!card giveshards`
+- Admins can award shards directly with `/giveshards`
 
 ### Collector Progression (9 ranks)
 | Rank | Emoji | Unique Cards Needed |
@@ -93,8 +93,10 @@ Seeded on first boot. All military-themed.
 - The bot requires `MESSAGE_CONTENT` intent — enable in Discord Developer Portal (Bot → Privileged Gateway Intents).
 - The bot requires `SERVER MEMBERS` intent — also enable in the portal.
 - After changing the DB schema, always run `pnpm --filter @workspace/db run push`.
-- `!card admin` is an alias prefix — e.g. `!card admin drop` works the same as `!card drop`.
 - DB enums (rarity, card_type, trade_status) require `push-force` if enum values change.
+- Slash commands are registered globally + per-guild on every restart. Guild commands take effect instantly; global propagation can take up to 1h on first deploy.
+- Bot invite must include `applications.commands` scope so slash commands appear in the server.
+- Card images uploaded via `/addcard`, `/addlimited`, `/addevent` are stored as Discord CDN URLs. These are stable as long as the source message exists; for guaranteed permanence use an external host (Imgur, etc.) and store the URL in `imageUrl` via the DB directly.
 
 ## User preferences
 
@@ -102,43 +104,45 @@ _Populate as you build — explicit user instructions worth remembering across s
 
 ## Bot Commands Reference
 
+All commands are Discord slash commands. Card catching remains text-based — type the card name in chat when one spawns.
+
 ### User Commands
 | Command | Description |
 |---|---|
-| `!card help` | Full command reference |
-| `!card collection [@user]` | View collection with rank and net worth |
-| `!card rank [@user]` | Collector rank and progression |
-| `!card info <Name>` | Card details, worth, burn value, drop chance |
-| `!card list` | Full roster grouped by rarity |
-| `!card top` | Leaderboard by net worth |
-| `!card burn <Name>` | Burn a card for DN Shards |
-| `!card shards [@user]` | Check shard balance |
-| `!card trade @User <Your Card> for <Their Card>` | Propose a trade |
-| `!card trades` | View pending trades |
-| `!card accept <id>` | Accept a trade |
-| `!card decline <id>` | Decline or cancel a trade |
+| `/help` | Full command reference |
+| `/collection [user]` | View collection with rank and net worth |
+| `/rank [user]` | Collector rank and progression |
+| `/info name:<Name>` | Card details, worth, burn value, drop chance |
+| `/list` | Full roster grouped by rarity |
+| `/top` | Leaderboard by net worth |
+| `/burn name:<Name>` | Burn a card for DN Shards |
+| `/shards [user]` | Check shard balance |
+| `/trade user:@User offer:<card> want:<card>` | Propose a trade |
+| `/trades` | View pending trades |
+| `/accept id:<ID>` | Accept a trade |
+| `/decline id:<ID>` | Decline or cancel a trade |
 
 ### Admin Commands (Server Owner / Discord Admin / Bot Admin)
 | Command | Description |
 |---|---|
-| `!card setchannel [#channel]` | Set spawn channel |
-| `!card setinterval <time>` | Fixed interval (`30m`, `1h`, `90s`) |
-| `!card setinterval random <min> <max>` | Random interval range |
-| `!card setwindow <time>` | Catch window duration |
-| `!card enable` / `!card disable` | Toggle auto-spawning |
-| `!card drop [Card Name]` | Force-drop a card (event drops) |
-| `!card addcard <rarity> <Name> \| <desc>` | Add a standard card |
-| `!card addlimited <rarity> <maxCopies> <Name> \| <desc>` | Add limited edition |
-| `!card addevent <rarity> <Name> \| <desc>` | Add event exclusive |
-| `!card removecard <Name>` | Remove a card |
-| `!card give @User <Card Name>` | Give a card directly |
-| `!card giveshards @User <amount>` | Give DN Shards |
-| `!card tradingenable` / `!card tradingdisable` | Toggle trading |
-| `!card settradechannel [#channel]` | Set trade channel |
-| `!card addadmin @User` | Grant admin access |
-| `!card removeadmin @User` | Revoke admin access |
-| `!card listadmins` | List bot admins |
-| `!card settings` | View server settings |
+| `/setchannel [channel]` | Set spawn channel |
+| `/setinterval time:<t>` | Fixed interval (`30m`, `1h`, `90s`) |
+| `/setinterval min:<t> max:<t>` | Random interval range |
+| `/setwindow time:<t>` | Catch window duration |
+| `/spawnenable` / `/spawndisable` | Toggle auto-spawning |
+| `/drop [name:<Name>]` | Force-drop a card (event drops) |
+| `/addcard rarity:<r> name:<N> [description] [image]` | Add a standard card |
+| `/addlimited rarity:<r> maxcopies:<n> name:<N> [description] [image]` | Add limited edition |
+| `/addevent rarity:<r> name:<N> [description] [image]` | Add event exclusive |
+| `/removecard name:<Name>` | Remove a card |
+| `/give user:@User name:<Name>` | Give a card directly |
+| `/giveshards user:@User amount:<n>` | Give DN Shards |
+| `/tradingenable` / `/tradingdisable` | Toggle trading |
+| `/settradechannel [channel]` | Set trade channel |
+| `/addadmin user:@User` | Grant admin access |
+| `/removeadmin user:@User` | Revoke admin access |
+| `/listadmins` | List bot admins |
+| `/settings` | View server settings |
 
 ## Pointers
 
