@@ -32,6 +32,7 @@ async function handleAdminHelp(interaction: ChatInputCommandInteraction): Promis
         value:
           "`!setup` — **interactive setup panel** (recommended)\n" +
           "`/config` — open the config panel anytime (catch mode, intervals, toggles, rates)\n" +
+          "`/setchannels` — pick spawn/trade channels from a dropdown (no `#` typing)\n" +
           "`/adminhub` — manage bot admins & catch timeouts\n" +
           "`!settings` — text dump of current configuration",
       },

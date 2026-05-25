@@ -451,6 +451,7 @@ export async function handleUserCommand(
     .setDescription(
       "When a card spawns in the drop channel, **type its name exactly** to catch it!\n" +
       "Most card-name fields **autocomplete** as you type — pick from the dropdown.\n\n" +
+      "👋 New here? Run `/welcome` for the full game intro.\n" +
       "Admins: use `/adminhelp` for setup, drops, and config commands.",
     )
     .addFields(
