@@ -72,6 +72,8 @@ export function buildCommands() {
     cmd("decline", "(User) Decline or cancel a trade offer", s => s
       .addIntegerOption(o => o.setName("id").setDescription("Trade ID from /trades").setRequired(true).setMinValue(1))),
 
+    cmd("welcome", "(User) Welcome to DN Cards — game intro, quick start & commands", s => s),
+
     cmd("help", "(User) Show DN Cards player commands", s => s),
 
     cmd("adminhelp", "(Admin) Show admin & setup commands", s => s),
@@ -161,8 +163,8 @@ export function buildCommands() {
 
 export const USER_COMMAND_NAMES = new Set([
   "collection", "rank", "info", "list", "catalog", "top",
-  "burn", "shards", "trade", "trades", "accept", "decline", "help",
-  "daily", "pack", "packstats", "achievements", "wishlist", "gift", "tradein",
+  "burn", "shards", "trade", "trades", "accept", "decline", "help", "welcome",
+  "daily", "pack", "packstats", "achievements", "wishlist", "gift", "tradein", "tradehistory",
 ]);
 
 export const ADMIN_COMMAND_NAMES = new Set([

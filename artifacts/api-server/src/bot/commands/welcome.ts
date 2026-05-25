@@ -1,0 +1,90 @@
+import type { ChatInputCommandInteraction } from "discord.js";
+import { EmbedBuilder } from "discord.js";
+
+// Banner image — copied into the dashboard's public/ folder so it ships with
+// the static site. We reach it through the shared proxy on the first
+// REPLIT_DOMAINS host so the URL works in both dev preview and production.
+function getBannerUrl(): string | null {
+  const domain = process.env["REPLIT_DOMAINS"]?.split(",")[0]?.trim();
+  if (!domain) return null;
+  return `https://${domain}/dashboard/dn-cards-banner.png`;
+}
+
+const BRAND_COLOR = 0xe63946; // matches the red brush stroke in the banner
+
+// Split into three embeds so the banner acts as a divider between sections
+// without exceeding Discord's 4096-char description limit on any single embed.
+// Dispatcher (user.ts) already deferReply-ephemeral'd for "welcome" — we just
+// editReply here. Reply stays private so it doesn't spam public channels.
+export async function handleWelcome(interaction: ChatInputCommandInteraction): Promise<void> {
+  const banner = getBannerUrl();
+
+  // ── 1. Welcome + Quick Start ───────────────────────────────────────────────
+  const welcome = new EmbedBuilder()
+    .setColor(BRAND_COLOR)
+    .setTitle("🃏 Welcome to DN Cards")
+    .setDescription(
+      "**DN Cards** is DarkNight's collectible military trading card game.\n" +
+      "Collect cards, build your roster, trade with the squad, and climb the leaderboard.\n\n" +
+      "**🚀 Quick Start**\n" +
+      "• **Step 1** — Watch the spawn channel. When a card appears, **type its name exactly** to catch it.\n" +
+      "• **Step 2** — Run `/daily` every day for **💠 DN Shards** (streak bonus up to +200).\n" +
+      "• **Step 3** — Spend shards on `/pack tier:basic|premium|legendary` to pull more cards.\n" +
+      "• **Step 4** — Burn duplicates with `/burn` for shards, or `/trade` with friends.\n" +
+      "• **Step 5** — Check your progress with `/collection`, `/rank`, and `/top`.",
+    );
+  if (banner) welcome.setImage(banner);
+
+  // ── 2. Things to Know ──────────────────────────────────────────────────────
+  const lore = new EmbedBuilder()
+    .setColor(BRAND_COLOR)
+    .setTitle("📌 Things to Know")
+    .setDescription(
+      "**🎖️ Rarities** — Common · Uncommon · Rare · Epic · Legendary. Higher rarity = rarer drop, worth more shards.\n\n" +
+      "**✨ Shinies** — Every random catch, pack pull, and trade-in has a flat **0.5%** chance to mint a shiny. " +
+      "Shinies count at **2× worth & burn**, tracked separately, and aren't tradeable in v1. " +
+      "Use `/burn shiny:true` to torch the shiny pile specifically.\n\n" +
+      "**🎴 Pack Tiers** — 🥉 Basic (💠 250) · 🥈 Premium (💠 750) · 🥇 Legendary (💠 2,000, no commons). " +
+      "Each tier has its own weekly cap; cooldown is shared across all tiers.\n\n" +
+      "**🔄 Trading** — `/trade` is propose/accept. Trades with a value gap **>3:1** show an orange ⚠️ banner " +
+      "so the disadvantaged side can decide informed. Trades still go through if accepted.\n\n" +
+      "**🎯 Limited-Time Events** — Admins can boost any card's spawn rate for a set duration. " +
+      "Announced in the spawn channel — check `/event list` to see what's hot right now.\n\n" +
+      "**🏆 Net Worth & Rank** — `/top` ranks by net worth (sum of all card worth, shinies at 2×). " +
+      "Unique cards unlock collector ranks: 🪖 Recruit → 👑 Dark Commander.\n\n" +
+      "**🏅 Achievements** — 10 unlockables auto-trigger on milestones (first catch, 7-day streak, etc.) " +
+      "and pay shards. See yours with `/achievements`.",
+    );
+  if (banner) lore.setImage(banner);
+
+  // ── 3. Commands cheat sheet ────────────────────────────────────────────────
+  const commands = new EmbedBuilder()
+    .setColor(BRAND_COLOR)
+    .setTitle("⚡ Commands Cheat Sheet")
+    .setDescription(
+      "**📦 Collection & Progress**\n" +
+      "• `/collection [user]` — your caught cards\n" +
+      "• `/rank [user]` — collector rank & progression\n" +
+      "• `/info name:<card>` — card details & drop chance\n" +
+      "• `/list` — full roster by rarity · `/catalog category:<…>` — browse a category\n" +
+      "• `/top` — leaderboard · `/achievements [user]` — your badges\n\n" +
+      "**💠 Economy**\n" +
+      "• `/daily` — claim daily shards (streak bonus)\n" +
+      "• `/pack tier:<basic|premium|legendary>` — open a 5-card pack\n" +
+      "• `/packstats` — costs, weekly caps, cooldown\n" +
+      "• `/burn name:<card> [amount] [all] [shiny:true]` — burn for shards\n" +
+      "• `/tradein rarity:<r>` — burn 5 of one tier for 1 of the next\n" +
+      "• `/shards [user]` — check balance · `/gift user:@ amount:<n>` — send shards\n\n" +
+      "**🔄 Trading**\n" +
+      "• `/trade user:@ offer:<card> want:<card>` — propose (add `offer_shards`/`want_shards` to mix in 💠)\n" +
+      "• `/trades` — pending · `/tradehistory [user]` — recent · `/accept id:<n>` · `/decline id:<n>`\n\n" +
+      "**📌 Wishlist**\n" +
+      "• `/wishlist add|remove|list` — get pinged when wished cards spawn\n\n" +
+      "**ℹ️ Help**\n" +
+      "• `/help` — player commands · `/adminhelp` — admin commands (admins only)",
+    )
+    .setFooter({ text: "Tip: most card-name fields autocomplete as you type — pick from the dropdown." });
+  if (banner) commands.setImage(banner);
+
+  await interaction.editReply({ embeds: [welcome, lore, commands] });
+}

@@ -2,7 +2,7 @@ import type { ChatInputCommandInteraction } from "discord.js";
 import { EmbedBuilder, MessageFlags } from "discord.js";
 
 // Commands whose results are personal/spammy and should only be seen by the user.
-const EPHEMERAL_COMMANDS = new Set(["burn", "shards", "trades", "tradehistory", "help", "daily", "achievements", "pack", "packstats", "wishlist", "gift", "tradein"]);
+const EPHEMERAL_COMMANDS = new Set(["burn", "shards", "trades", "tradehistory", "help", "welcome", "daily", "achievements", "pack", "packstats", "wishlist", "gift", "tradein"]);
 import {
   getUserCollection, getAllCards, getLeaderboard, getTopPackOpeners,
   getOrCreateCurrency, burnCard, getCardByName, getUserCardCount, getUserOwnedCount,
@@ -20,6 +20,7 @@ import { toAbsoluteImageUrl } from "../image-url.js";
 import { handlePack, handlePackStats } from "./pack.js";
 import { handleTradein } from "./tradein.js";
 import { handleWishlist } from "./wishlist.js";
+import { handleWelcome } from "./welcome.js";
 import { checkAchievements, formatUnlockLine } from "../achievements.js";
 
 export async function handleUserCommand(
@@ -438,6 +439,7 @@ export async function handleUserCommand(
   if (sub === "tradein") { await handleTradein(interaction); return; }
   if (sub === "wishlist") { await handleWishlist(interaction); return; }
   if (sub === "gift") { await handleGift(interaction); return; }
+  if (sub === "welcome") { await handleWelcome(interaction); return; }
   if (sub === "achievements") { await handleAchievementsCommand(interaction); return; }
 
   // ── /help (player commands only — admins use /adminhelp) ─────────────────────
