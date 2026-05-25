@@ -312,31 +312,32 @@ function EditDialog({
             <Textarea id="f-flavor" rows={2} placeholder='e.g. "Awarded during DN Anniversary, May 2026"' value={form.flavor ?? ""} onChange={e => setForm(s => ({ ...s, flavor: e.target.value || null }))} data-testid="input-edit-flavor" />
           </div>
 
-          {form.isEventExclusive && (
-            <>
-              <div className="md:col-span-2 rounded-lg border border-border/60 bg-card/40 p-4 space-y-4">
-                <div className="flex items-center gap-2 -mb-1">
-                  <span className="text-xs font-mono uppercase tracking-widest text-purple-400">Events page customization</span>
-                </div>
+          <div className="md:col-span-2 rounded-lg border border-border/60 bg-card/40 p-4 space-y-4">
+            <div className="flex items-center gap-2 -mb-1">
+              <span className="text-xs font-mono uppercase tracking-widest text-purple-400">Card preview customization</span>
+              <span className="text-[10px] text-muted-foreground">Plays when this card is opened anywhere in the dashboard.</span>
+            </div>
 
-                <div>
-                  <Label htmlFor="f-podium">Podium placement</Label>
-                  <Select
-                    value={form.podiumPlace == null ? "none" : String(form.podiumPlace)}
-                    onValueChange={v => setForm(s => ({ ...s, podiumPlace: v === "none" ? null : Number(v) as 1 | 2 | 3 }))}
-                  >
-                    <SelectTrigger id="f-podium" data-testid="select-edit-podium"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">In the grid (default)</SelectItem>
-                      <SelectItem value="1">🥇 1st place podium</SelectItem>
-                      <SelectItem value="2">🥈 2nd place podium</SelectItem>
-                      <SelectItem value="3">🥉 3rd place podium</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <p className="text-xs text-muted-foreground mt-1">Only one card per slot — assigning here frees it from any other card.</p>
-                </div>
+            {form.isEventExclusive && (
+              <div>
+                <Label htmlFor="f-podium">Podium placement <span className="text-[10px] text-muted-foreground">(events page only)</span></Label>
+                <Select
+                  value={form.podiumPlace == null ? "none" : String(form.podiumPlace)}
+                  onValueChange={v => setForm(s => ({ ...s, podiumPlace: v === "none" ? null : Number(v) as 1 | 2 | 3 }))}
+                >
+                  <SelectTrigger id="f-podium" data-testid="select-edit-podium"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">In the grid (default)</SelectItem>
+                    <SelectItem value="1">🥇 1st place podium</SelectItem>
+                    <SelectItem value="2">🥈 2nd place podium</SelectItem>
+                    <SelectItem value="3">🥉 3rd place podium</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground mt-1">Only one card per slot — assigning here frees it from any other card.</p>
+              </div>
+            )}
 
-                <div>
+            <div>
                   <Label htmlFor="f-anim">Preview animation</Label>
                   <Select
                     value={form.previewAnimation ?? "spin"}
@@ -351,7 +352,7 @@ function EditDialog({
                       <SelectItem value="none">— None (fade only)</SelectItem>
                     </SelectContent>
                   </Select>
-                  <p className="text-xs text-muted-foreground mt-1">Plays when a player opens this card on the Events page.</p>
+                  <p className="text-xs text-muted-foreground mt-1">Plays when this card's detail dialog opens anywhere in the dashboard.</p>
                 </div>
 
                 <div>
@@ -381,11 +382,9 @@ function EditDialog({
                       </button>
                     )}
                   </div>
-                  <p className="text-xs text-muted-foreground mt-1">Blank uses the card's rarity-tinted glow.</p>
-                </div>
-              </div>
-            </>
-          )}
+              <p className="text-xs text-muted-foreground mt-1">Blank uses the card's rarity-tinted glow.</p>
+            </div>
+          </div>
 
           <div>
             <Label htmlFor="f-qty">Quantity (max copies)</Label>

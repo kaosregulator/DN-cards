@@ -31,6 +31,28 @@ const rarityBorders = {
   legendary: "border-[hsl(var(--rarity-legendary))] rarity-glow-legendary",
 };
 
+// Holo glow tints used as the default dialog stage background (when admin
+// hasn't set a custom previewBgColor). Matches the rarity colors above.
+const RARITY_STAGE_BG: Record<string, string> = {
+  legendary: "radial-gradient(ellipse at top, rgba(234,179,8,0.25), rgba(0,0,0,0) 60%)",
+  epic:      "radial-gradient(ellipse at top, rgba(168,85,247,0.25), rgba(0,0,0,0) 60%)",
+  rare:      "radial-gradient(ellipse at top, rgba(59,130,246,0.22), rgba(0,0,0,0) 60%)",
+  uncommon:  "radial-gradient(ellipse at top, rgba(34,197,94,0.18), rgba(0,0,0,0) 60%)",
+  common:    "radial-gradient(ellipse at top, rgba(148,163,184,0.15), rgba(0,0,0,0) 60%)",
+};
+
+type PreviewAnim = "spin" | "bounce" | "flip" | "pulse" | "none";
+
+// Framer-motion variants per animation. Mirror the values used in
+// pages/events.tsx so behavior is identical wherever a card is opened.
+const PREVIEW_ANIMS: Record<PreviewAnim, { initial: any; animate: any; transition: any }> = {
+  spin:   { initial: { rotateY: -180, opacity: 0, y: -10 }, animate: { rotateY: 0, opacity: 1, y: 0 }, transition: { duration: 0.9, ease: [0.22, 1, 0.36, 1] } },
+  flip:   { initial: { rotateX: -90, opacity: 0 },          animate: { rotateX: 0, opacity: 1 },       transition: { duration: 0.7, ease: [0.22, 1, 0.36, 1] } },
+  bounce: { initial: { y: -120, opacity: 0 },               animate: { y: 0, opacity: 1 },             transition: { type: "spring", stiffness: 320, damping: 14 } },
+  pulse:  { initial: { scale: 0.7, opacity: 0 },            animate: { scale: [0.7, 1.08, 1], opacity: 1 }, transition: { duration: 0.7, times: [0, 0.6, 1] } },
+  none:   { initial: { opacity: 0 },                        animate: { opacity: 1 },                    transition: { duration: 0.25 } },
+};
+
 export function CardComponent({ card, relativeDropChance, count, shinyCount = 0 }: CardComponentProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [imageError, setImageError] = useState(!card.imageUrl);
@@ -132,29 +154,48 @@ export function CardComponent({ card, relativeDropChance, count, shinyCount = 0 
       {/* Detail Dialog */}
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
         <DialogContent className="max-w-2xl overflow-hidden p-0 bg-card/95 backdrop-blur-md border-border/50">
-          <div className="flex flex-col md:flex-row">
-            {/* Left: Image */}
-            <div className="relative w-full md:w-1/2 aspect-[3/4] bg-muted">
-               {!imageError ? (
-                  <img
-                    src={card.imageUrl!}
-                    alt={card.name}
-                    className="h-full w-full object-cover"
-                  />
-                ) : (
-                  <div className={`flex h-full w-full flex-col items-center justify-center p-6 text-center ${rarityColors[card.rarity]}`}>
-                    <ImageIcon className="mb-4 h-16 w-16 opacity-50" />
-                    <span className="text-xl font-bold tracking-widest opacity-80 uppercase">{card.name}</span>
-                  </div>
-                )}
-                 {card.isLimitedEdition && (
-                  <div className="absolute top-4 left-4">
-                     <Badge className="bg-background/90 text-primary border-primary font-mono px-3 py-1 text-xs">
-                        LIMITED EDITION • {card.totalMinted}{card.maxCopies ? `/${card.maxCopies}` : ""} MINTED
-                     </Badge>
-                  </div>
-                 )}
-            </div>
+          {(() => {
+            // Per-card preview customization (admin-set in /admin) — animation
+            // + background tint. Defaults to "spin" + the rarity holo gradient.
+            const anim = PREVIEW_ANIMS[card.previewAnimation as PreviewAnim] ?? PREVIEW_ANIMS.spin;
+            const stageStyle: React.CSSProperties = card.previewBgColor
+              ? { background: card.previewBgColor }
+              : { backgroundImage: RARITY_STAGE_BG[card.rarity] ?? RARITY_STAGE_BG.common };
+            return (
+              <div className="flex flex-col md:flex-row">
+                {/* Left: animated image stage */}
+                <div
+                  className="relative w-full md:w-1/2 aspect-[3/4] overflow-hidden flex items-center justify-center [perspective:1000px]"
+                  style={stageStyle}
+                >
+                  <motion.div
+                    key={card.id /* re-trigger when card changes */}
+                    initial={anim.initial}
+                    animate={anim.animate}
+                    transition={anim.transition}
+                    className={`relative w-[85%] aspect-[3/4] rounded-lg overflow-hidden border shadow-2xl [transform-style:preserve-3d] ${rarityBorders[card.rarity]}`}
+                  >
+                    {!imageError ? (
+                      <img
+                        src={card.imageUrl!}
+                        alt={card.name}
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <div className={`flex h-full w-full flex-col items-center justify-center p-6 text-center ${rarityColors[card.rarity]}`}>
+                        <ImageIcon className="mb-4 h-16 w-16 opacity-50" />
+                        <span className="text-xl font-bold tracking-widest opacity-80 uppercase">{card.name}</span>
+                      </div>
+                    )}
+                    {card.isLimitedEdition && (
+                      <div className="absolute top-3 left-3">
+                        <Badge className="bg-background/90 text-primary border-primary font-mono px-2 py-0.5 text-[10px]">
+                          LE • {card.totalMinted}{card.maxCopies ? `/${card.maxCopies}` : ""}
+                        </Badge>
+                      </div>
+                    )}
+                  </motion.div>
+                </div>
 
             {/* Right: Info */}
             <div className="flex w-full md:w-1/2 flex-col p-6 md:p-8">
@@ -227,7 +268,9 @@ export function CardComponent({ card, relativeDropChance, count, shinyCount = 0 
                   <span>{new Date(card.createdAt).toLocaleDateString()}</span>
                </div>
             </div>
-          </div>
+              </div>
+            );
+          })()}
         </DialogContent>
       </Dialog>
     </>
