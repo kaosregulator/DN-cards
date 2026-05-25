@@ -23,3 +23,15 @@ id = "hLT25KZHOUFKhjaPox_Ch"
 uri = "file://dn-cards-backup.tar.gz"
 type = "unspecified"
 title = "DN Cards Full Project Backup"
+
+[[outputs]]
+id = "cAtihCBF9flqZKrXwXdGP"
+uri = "file://db-backup.sql.gz"
+type = "unspecified"
+title = "DN Cards Database Backup (compressed SQL)"
+
+[[outputs]]
+id = "UL67iOsHfFTGUIfo7LWf2"
+uri = "file://db-backup.txt"
+type = "text"
+title = "DN Cards Database Backup (viewable as text)"
