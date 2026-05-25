@@ -8,6 +8,7 @@ import { RARITY_EMOJI, RARITY_LABELS, type Rarity } from "../cards-data.js";
 import { logger } from "../../lib/logger.js";
 import { handleConfigCommand } from "./config-panel.js";
 import { handleAdminHubCommand } from "./admin-hub.js";
+import { handleEventCommand } from "./event.js";
 import { EmbedBuilder } from "discord.js";
 
 // ── /adminhelp — admin/setup command reference ───────────────────────────────
@@ -118,6 +119,14 @@ export async function handleAdminCommand(
   const guildId = interaction.guild.id;
   const opts = interaction.options;
 
+  // ── /event start|list|stop ────────────────────────────────────────────────
+  // Delegated to event.ts. We've already deferred + admin-checked above so
+  // it can go straight to editReply.
+  if (cmd === "event") {
+    await handleEventCommand(interaction);
+    return;
+  }
+
   // ── /drop ─────────────────────────────────────────────────────────────────
   if (cmd === "drop") {
     const cardName = opts.getString("name");
@@ -218,7 +227,9 @@ export async function handleAdminCommand(
     const cards = await getAllCards();
     const card = cards.find(c => c.name.toLowerCase() === cardName.toLowerCase());
     if (!card) { await interaction.editReply(`❌ Card "**${cardName}**" not found.`); return; }
-    await catchCard(guildId, target.id, card.id);
+    // Admin gives are deterministic — no shiny roll. Use /event or normal
+    // drops if you want shiny chances.
+    await catchCard(guildId, target.id, card.id, { noShiny: true });
     const r = card.rarity as Rarity;
     await interaction.editReply(`✅ Gave **${card.name}** (${RARITY_EMOJI[r]} ${RARITY_LABELS[r]}) to <@${target.id}>.`);
     return;

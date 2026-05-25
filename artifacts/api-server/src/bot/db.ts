@@ -2,11 +2,11 @@ import {
   db,
   cardsTable, collectionsTable, guildSettingsTable,
   adminUsersTable, spawnLogTable, userCurrencyTable, tradesTable,
-  wishlistsTable, userTimeoutsTable,
+  wishlistsTable, userTimeoutsTable, cardEventsTable,
 } from "@workspace/db";
 import { eq, and, sql, desc, inArray } from "drizzle-orm";
-import type { Card, GuildSettings, Trade } from "@workspace/db";
-import { DEFAULT_CARDS } from "./cards-data.js";
+import type { Card, CardEvent, GuildSettings, Trade } from "@workspace/db";
+import { DEFAULT_CARDS, SHINY_RATE, SHINY_MULTIPLIER } from "./cards-data.js";
 import { logger } from "../lib/logger.js";
 
 // ── Seed / resync default cards ───────────────────────────────────────────────
@@ -202,15 +202,27 @@ export async function updateCard(cardId: number, values: Partial<{
 }
 
 // ── Weighted Random Card Pick (with optional guild rarity weight overrides) ────
-export async function pickRandomCard(rarityWeights?: Record<string, number>): Promise<Card | undefined> {
+// `eventBoosts` multiplies a card's effective weight when an active event
+// targets it (see card_events). Applied AFTER the rarity-tier override so
+// admins can boost a card above its tier's baseline without bumping the
+// whole tier.
+export async function pickRandomCard(
+  rarityWeights?: Record<string, number>,
+  eventBoosts?: Map<number, number>,
+): Promise<Card | undefined> {
   const cards = (await getAllCards()).filter(c => c.droppable && !c.isArchived);
   if (cards.length === 0) return undefined;
 
-  const getWeight = (card: Card) => rarityWeights
-    ? (rarityWeights[card.rarity] ?? card.dropWeight)
-    : card.dropWeight;
+  const getWeight = (card: Card) => {
+    const base = rarityWeights
+      ? (rarityWeights[card.rarity] ?? card.dropWeight)
+      : card.dropWeight;
+    const boost = eventBoosts?.get(card.id) ?? 1;
+    return Math.max(0, base) * boost;
+  };
 
   const totalWeight = cards.reduce((sum, c) => sum + getWeight(c), 0);
+  if (totalWeight <= 0) return undefined;
   let rand = Math.random() * totalWeight;
   for (const card of cards) {
     rand -= getWeight(card);
@@ -220,23 +232,48 @@ export async function pickRandomCard(rarityWeights?: Record<string, number>): Pr
 }
 
 // ── Collections ───────────────────────────────────────────────────────────────
-export async function catchCard(guildId: string, userId: string, cardId: number) {
+// Acquisition entry point for catches, pack opens, tradein rewards, and
+// admin /give. Rolls Shiny once per copy unless `opts.noShiny` is set
+// (admin /give skips the roll for predictability). The roll is bot-side
+// before the DB write — caller sees the result and surfaces ✨ in the UI.
+export async function catchCard(
+  guildId: string, userId: string, cardId: number,
+  opts?: { noShiny?: boolean },
+): Promise<{ isShiny: boolean }> {
+  const isShiny = !opts?.noShiny && Math.random() < SHINY_RATE;
+
   // Atomic upsert — the (guild_id, user_id, card_id) unique index makes this
   // race-safe so two simultaneous catches of the same card can never create
-  // duplicate collection rows.
-  await db.insert(collectionsTable)
-    .values({ guildId, userId, cardId, count: 1 })
-    .onConflictDoUpdate({
-      target: [collectionsTable.guildId, collectionsTable.userId, collectionsTable.cardId],
-      set: {
-        count: sql`${collectionsTable.count} + 1`,
-        lastCaughtAt: new Date(),
-      },
-    });
+  // duplicate collection rows. We increment whichever counter applies; the
+  // OTHER counter is left untouched via the column-default trick on insert
+  // and an explicit set: shinyCount/count on conflict.
+  if (isShiny) {
+    await db.insert(collectionsTable)
+      .values({ guildId, userId, cardId, count: 0, shinyCount: 1 })
+      .onConflictDoUpdate({
+        target: [collectionsTable.guildId, collectionsTable.userId, collectionsTable.cardId],
+        set: {
+          shinyCount: sql`${collectionsTable.shinyCount} + 1`,
+          lastCaughtAt: new Date(),
+        },
+      });
+  } else {
+    await db.insert(collectionsTable)
+      .values({ guildId, userId, cardId, count: 1 })
+      .onConflictDoUpdate({
+        target: [collectionsTable.guildId, collectionsTable.userId, collectionsTable.cardId],
+        set: {
+          count: sql`${collectionsTable.count} + 1`,
+          lastCaughtAt: new Date(),
+        },
+      });
+  }
 
   await db.update(cardsTable)
     .set({ totalMinted: sql`${cardsTable.totalMinted} + 1` })
     .where(eq(cardsTable.id, cardId));
+
+  return { isShiny };
 }
 
 /**
@@ -270,7 +307,10 @@ export async function removeCardFromUser(
   if (!entry || entry.count < 1) return { success: false, remaining: 0 };
 
   const newCount = entry.count - 1;
-  if (newCount === 0) {
+  // Only delete the row when BOTH piles are empty — otherwise we'd silently
+  // erase the user's shinies for this card when their last normal copy goes
+  // (tradein/takeback/etc. only consume the normal pile in v1).
+  if (newCount === 0 && entry.shinyCount === 0) {
     await db.delete(collectionsTable).where(eq(collectionsTable.id, entry.id));
   } else {
     await db.update(collectionsTable).set({ count: newCount }).where(eq(collectionsTable.id, entry.id));
@@ -282,6 +322,7 @@ export async function getUserCollection(guildId: string, userId: string) {
   return db.select({
     cardId: collectionsTable.cardId,
     count: collectionsTable.count,
+    shinyCount: collectionsTable.shinyCount,
     firstCaughtAt: collectionsTable.firstCaughtAt,
     name: cardsTable.name,
     rarity: cardsTable.rarity,
@@ -293,15 +334,23 @@ export async function getUserCollection(guildId: string, userId: string) {
     isEventExclusive: cardsTable.isEventExclusive,
   }).from(collectionsTable)
     .innerJoin(cardsTable, eq(collectionsTable.cardId, cardsTable.id))
-    .where(and(eq(collectionsTable.guildId, guildId), eq(collectionsTable.userId, userId)));
+    .where(and(
+      eq(collectionsTable.guildId, guildId),
+      eq(collectionsTable.userId, userId),
+      // Hide rows that have been fully burned down to zero of both.
+      sql`(${collectionsTable.count} + ${collectionsTable.shinyCount}) > 0`,
+    ));
 }
 
 export async function getUserCardCount(guildId: string, userId: string): Promise<{ unique: number; total: number; netWorth: number }> {
   const items = await getUserCollection(guildId, userId);
   return {
     unique: items.length,
-    total: items.reduce((s, i) => s + i.count, 0),
-    netWorth: items.reduce((s, i) => s + i.worthValue * i.count, 0),
+    total: items.reduce((s, i) => s + i.count + i.shinyCount, 0),
+    netWorth: items.reduce(
+      (s, i) => s + i.worthValue * (i.count + i.shinyCount * SHINY_MULTIPLIER),
+      0,
+    ),
   };
 }
 
@@ -320,9 +369,10 @@ export async function getLeaderboard(guildId: string, sortBy: "worth" | "cards" 
   const orderExpr = sortBy === "cards" ? sql`total_cards desc` : sql`net_worth desc`;
   return db.select({
     userId: collectionsTable.userId,
-    totalCards: sql<number>`sum(${collectionsTable.count})::int`.as("total_cards"),
+    // Shinies count toward total cards 1-for-1 but at SHINY_MULTIPLIER for worth.
+    totalCards: sql<number>`sum(${collectionsTable.count} + ${collectionsTable.shinyCount})::int`.as("total_cards"),
     uniqueCards: sql<number>`count(distinct ${collectionsTable.cardId})::int`.as("unique_cards"),
-    netWorth: sql<number>`sum(${collectionsTable.count} * ${cardsTable.worthValue})::int`.as("net_worth"),
+    netWorth: sql<number>`sum((${collectionsTable.count} + ${collectionsTable.shinyCount} * ${SHINY_MULTIPLIER}) * ${cardsTable.worthValue})::int`.as("net_worth"),
   })
     .from(collectionsTable)
     .innerJoin(cardsTable, eq(collectionsTable.cardId, cardsTable.id))
@@ -416,45 +466,67 @@ export async function incrementCardsBurned(guildId: string, userId: string, by: 
     .where(and(eq(userCurrencyTable.guildId, guildId), eq(userCurrencyTable.userId, userId)));
 }
 
-export async function getUserOwnedCount(guildId: string, userId: string, cardId: number): Promise<number> {
-  const [row] = await db.select({ count: collectionsTable.count })
+export async function getUserOwnedCount(
+  guildId: string, userId: string, cardId: number,
+): Promise<{ count: number; shinyCount: number }> {
+  const [row] = await db.select({
+    count: collectionsTable.count,
+    shinyCount: collectionsTable.shinyCount,
+  })
     .from(collectionsTable)
     .where(and(
       eq(collectionsTable.guildId, guildId),
       eq(collectionsTable.userId, userId),
       eq(collectionsTable.cardId, cardId),
     ));
-  return row?.count ?? 0;
+  return { count: row?.count ?? 0, shinyCount: row?.shinyCount ?? 0 };
 }
 
-export async function burnCard(guildId: string, userId: string, cardId: number, amount: number = 1): Promise<{ success: boolean; burned: number; shardsGained: number; remaining: number }> {
-  // Atomic conditional bulk decrement — only one concurrent burn can win the row,
-  // preventing button-spam shard duplication. `amount` is capped at current count
-  // by the WHERE clause: we only decrement if the row holds >= amount copies.
-  if (amount < 1) return { success: false, burned: 0, shardsGained: 0, remaining: 0 };
+// Burns from the `count` column by default, or the `shinyCount` column when
+// `opts.shiny` is set. Atomic: one concurrent burn wins the row. Shiny burns
+// pay SHINY_MULTIPLIER × burnValue per copy. `remaining` is of the chosen
+// pile (normal or shiny).
+export async function burnCard(
+  guildId: string, userId: string, cardId: number, amount: number = 1,
+  opts?: { shiny?: boolean },
+): Promise<{ success: boolean; burned: number; shardsGained: number; remaining: number; isShiny: boolean }> {
+  if (amount < 1) return { success: false, burned: 0, shardsGained: 0, remaining: 0, isShiny: !!opts?.shiny };
   const [card] = await db.select({ burnValue: cardsTable.burnValue })
     .from(cardsTable).where(eq(cardsTable.id, cardId));
-  if (!card) return { success: false, burned: 0, shardsGained: 0, remaining: 0 };
+  if (!card) return { success: false, burned: 0, shardsGained: 0, remaining: 0, isShiny: !!opts?.shiny };
+
+  const burningShiny = !!opts?.shiny;
+  const targetCol = burningShiny ? collectionsTable.shinyCount : collectionsTable.count;
 
   const updated = await db.update(collectionsTable)
-    .set({ count: sql`${collectionsTable.count} - ${amount}` })
+    .set(burningShiny
+      ? { shinyCount: sql`${collectionsTable.shinyCount} - ${amount}` }
+      : { count: sql`${collectionsTable.count} - ${amount}` })
     .where(and(
       eq(collectionsTable.guildId, guildId),
       eq(collectionsTable.userId, userId),
       eq(collectionsTable.cardId, cardId),
-      sql`${collectionsTable.count} >= ${amount}`,
+      sql`${targetCol} >= ${amount}`,
     ))
-    .returning({ id: collectionsTable.id, newCount: collectionsTable.count });
-  if (updated.length === 0) return { success: false, burned: 0, shardsGained: 0, remaining: 0 };
+    .returning({
+      id: collectionsTable.id,
+      count: collectionsTable.count,
+      shinyCount: collectionsTable.shinyCount,
+    });
+  if (updated.length === 0) return { success: false, burned: 0, shardsGained: 0, remaining: 0, isShiny: burningShiny };
 
   const row = updated[0]!;
-  if (row.newCount === 0) {
+  // Only delete the row when BOTH counters are zero — a user may have burned
+  // their last normal copy but still own a shiny (or vice versa).
+  if (row.count === 0 && row.shinyCount === 0) {
     await db.delete(collectionsTable).where(eq(collectionsTable.id, row.id));
   }
-  const shardsGained = card.burnValue * amount;
+  const perCard = card.burnValue * (burningShiny ? SHINY_MULTIPLIER : 1);
+  const shardsGained = perCard * amount;
   await addShards(guildId, userId, shardsGained);
   await incrementCardsBurned(guildId, userId, amount);
-  return { success: true, burned: amount, shardsGained, remaining: row.newCount };
+  const remaining = burningShiny ? row.shinyCount : row.count;
+  return { success: true, burned: amount, shardsGained, remaining, isShiny: burningShiny };
 }
 
 // ── Trades ────────────────────────────────────────────────────────────────────
@@ -625,9 +697,10 @@ export async function executeTradeSwap(trade: Trade): Promise<boolean> {
           eq(collectionsTable.cardId, trade.offeredCardId),
           sql`${collectionsTable.count} >= 1`,
         ))
-        .returning({ id: collectionsTable.id, newCount: collectionsTable.count });
+        .returning({ id: collectionsTable.id, newCount: collectionsTable.count, shinyCount: collectionsTable.shinyCount });
       if (dec.length === 0) throw new Error("initiator_lacks_card");
-      if (dec[0]!.newCount === 0) {
+      // Preserve shiny inventory: only drop the row when both piles are empty.
+      if (dec[0]!.newCount === 0 && dec[0]!.shinyCount === 0) {
         await tx.delete(collectionsTable).where(eq(collectionsTable.id, dec[0]!.id));
       }
     }
@@ -640,9 +713,9 @@ export async function executeTradeSwap(trade: Trade): Promise<boolean> {
           eq(collectionsTable.cardId, trade.requestedCardId),
           sql`${collectionsTable.count} >= 1`,
         ))
-        .returning({ id: collectionsTable.id, newCount: collectionsTable.count });
+        .returning({ id: collectionsTable.id, newCount: collectionsTable.count, shinyCount: collectionsTable.shinyCount });
       if (dec.length === 0) throw new Error("target_lacks_card");
-      if (dec[0]!.newCount === 0) {
+      if (dec[0]!.newCount === 0 && dec[0]!.shinyCount === 0) {
         await tx.delete(collectionsTable).where(eq(collectionsTable.id, dec[0]!.id));
       }
     }
@@ -787,4 +860,73 @@ export async function getCardWishlisters(guildId: string, cardId: number): Promi
     .from(wishlistsTable)
     .where(and(eq(wishlistsTable.guildId, guildId), eq(wishlistsTable.cardId, cardId)));
   return rows.map(r => r.userId);
+}
+
+// ── Card Events (limited-time spawn boosts) ──────────────────────────────────
+export async function createCardEvent(args: {
+  guildId: string; cardId: number; weightMultiplier: number;
+  endsAt: Date; createdBy: string;
+}): Promise<CardEvent> {
+  const [row] = await db.insert(cardEventsTable).values({
+    guildId: args.guildId,
+    cardId: args.cardId,
+    weightMultiplier: args.weightMultiplier,
+    endsAt: args.endsAt,
+    createdBy: args.createdBy,
+  }).returning();
+  return row;
+}
+
+export async function listActiveCardEvents(guildId: string): Promise<Array<CardEvent & { cardName: string }>> {
+  const rows = await db.select({
+    id: cardEventsTable.id,
+    guildId: cardEventsTable.guildId,
+    cardId: cardEventsTable.cardId,
+    weightMultiplier: cardEventsTable.weightMultiplier,
+    startsAt: cardEventsTable.startsAt,
+    endsAt: cardEventsTable.endsAt,
+    createdBy: cardEventsTable.createdBy,
+    createdAt: cardEventsTable.createdAt,
+    cardName: cardsTable.name,
+  })
+    .from(cardEventsTable)
+    .innerJoin(cardsTable, eq(cardsTable.id, cardEventsTable.cardId))
+    .where(and(
+      eq(cardEventsTable.guildId, guildId),
+      sql`${cardEventsTable.endsAt} > NOW()`,
+      sql`${cardEventsTable.startsAt} <= NOW()`,
+    ))
+    .orderBy(cardEventsTable.endsAt);
+  return rows;
+}
+
+// Combined multiplier per card — if two events stack on the same card, the
+// effective boost is the product. Used by spawn-manager before pickRandomCard.
+export async function getActiveEventBoosts(guildId: string): Promise<Map<number, number>> {
+  const events = await listActiveCardEvents(guildId);
+  const boosts = new Map<number, number>();
+  for (const e of events) {
+    boosts.set(e.cardId, (boosts.get(e.cardId) ?? 1) * e.weightMultiplier);
+  }
+  return boosts;
+}
+
+// Stops an event by setting endsAt to NOW. Returns the row + card name if
+// the caller owns it (same guild) and it was still active, else null.
+export async function stopCardEvent(
+  guildId: string, eventId: number,
+): Promise<(CardEvent & { cardName: string }) | null> {
+  const rows = await db.update(cardEventsTable)
+    .set({ endsAt: new Date() })
+    .where(and(
+      eq(cardEventsTable.id, eventId),
+      eq(cardEventsTable.guildId, guildId),
+      sql`${cardEventsTable.endsAt} > NOW()`,
+    ))
+    .returning();
+  const row = rows[0];
+  if (!row) return null;
+  const [card] = await db.select({ name: cardsTable.name })
+    .from(cardsTable).where(eq(cardsTable.id, row.cardId));
+  return { ...row, cardName: card?.name ?? `card #${row.cardId}` };
 }

@@ -38,6 +38,16 @@ DN Cards is DarkNight's collectible military trading card game for the Roblox + 
 - DB helpers: `artifacts/api-server/src/bot/db.ts`
 - Slash command registration: `artifacts/api-server/src/bot/commands/register.ts`
 
+### Limited-Time Events
+- `/event start card:<Name> duration:<30m|2h|1d> [multiplier:<1.1–50>]` — boost a card's effective spawn weight. Max 14d duration, default 2× multiplier.
+- `/event list` — show all active events (with end time + remaining).
+- `/event stop id:<ID>` — end an event early.
+- Boost is applied AFTER the rarity-tier weight override (so admins can promote a single card above its tier baseline). Stacking events on the same card multiplies their boosts.
+- Activations and stops are announced (best-effort) in the configured spawn channel.
+
+### Trade Fairness Warning
+- When the proposing side's worth ratio vs the requesting side exceeds **3:1** (cards by `worthValue`, shards 1:1), the trade embed shows an orange ⚠️ banner naming the disadvantaged party. Trade still goes through if accepted — it's informational only.
+
 ## Architecture decisions
 
 - Bot runs inside the same Express server process (startBot() called from index.ts) — keeps infra simple, one workflow to manage.
@@ -56,6 +66,8 @@ DN Cards is DarkNight's collectible military trading card game for the Roblox + 
 - **Pack store atomic claim:** `/pack` open is a single conditional UPDATE that enforces shards ≥ cost, shared cooldown, and per-tier weekly cap (with Monday 00:00 UTC rollover applied inline via CASE). Zero rows = no state change; caller re-reads the row to explain why. Prevents TOCTOU races across concurrent opens. Failed-grant path calls `refundClaim()` to roll back shards + counters.
 - **Daily atomic claim:** `/daily` uses `INSERT … ON CONFLICT DO NOTHING` for first-time, then a cooldown-gated UPDATE for repeats. Streak resets via SQL CASE when last claim > 48h ago.
 - **Achievements** unlock check fires after catches, /burn, /pack, /trade-accept, /daily, /tradein. Stored in `achievements_unlocked` with a unique (guild, user, key) index so the insert is idempotent.
+- **Shinies** are a separate `shinyCount` column on `collections` (not a flag on individual rows) — keeps the (guild, user, card) unique index intact while letting us count shinies once at SHINY_MULTIPLIER for net worth and leaderboard. `catchCard` rolls SHINY_RATE bot-side then UPSERTs the right counter; `burnCard({shiny:true})` decrements `shinyCount` specifically so `/burn name:X all:true` can't accidentally torch rare shinies.
+- **Event boosts** are read once per spawn via `getActiveEventBoosts(guildId)` (joined-and-filtered by `endsAt > NOW()`) and passed as `Map<cardId, multiplier>` into `pickRandomCard`. Stopping an event is just `UPDATE … SET endsAt = NOW()` so expired rows stay around as history.
 
 ## Product
 
@@ -64,10 +76,12 @@ DN Cards is DarkNight's collectible military trading card game for the Roblox + 
 - **Card packs**: `/pack tier:basic|premium|legendary` — buy with DN Shards, opens 5 cards
 - **Daily reward**: `/daily` for shards with a 7-day streak bonus
 - **Event drops**: Admin force-drops specific cards with `/drop name:<Name>`
-- **Admin giveaways**: `/give user:@User name:<Card Name>` — direct award
-- **Trading**: `/trade user:@User offer:<card>|shards want:<card>|shards`
+- **Limited-time events**: `/event start|list|stop` — admin boosts any card's spawn weight for a duration
+- **Admin giveaways**: `/give user:@User name:<Card Name>` — direct award (no shiny roll)
+- **Trading**: `/trade user:@User offer:<card>|shards want:<card>|shards` (shows ⚠️ if value ratio > 3:1)
 - **Trade-in**: `/tradein <rarity>` — burn 5 of one rarity for 1 random card of the next tier up
 - **Wishlists**: `/wishlist` — get pinged when wished-for cards spawn
+- **Shinies ✨**: every random/pack/tradein acquisition has a flat 0.5% chance to mint a shiny. Shiny copies count at 2× worth/burn, are tracked separately, and are **not tradeable** in v1.
 
 ### Card System
 - **5 rarities**: Common (weight 60), Uncommon (25), Rare (10), Epic (4), Legendary (1)
@@ -166,7 +180,7 @@ Card catching is text-based — when a card spawns, type its name exactly to cat
 | `/list` | Full roster grouped by rarity |
 | `/catalog` | Browse cards by category — see what you own and what's missing |
 | `/top` | Top 10 net-worth leaderboard + top 5 pack openers |
-| `/burn name:<Name>` | Burn a card for DN Shards |
+| `/burn name:<Name> [shiny:true]` | Burn a card for DN Shards (shiny:true burns shiny pile at 2× value) |
 | `/shards [user]` | Check shard balance |
 | `/daily` | Claim daily shards (with streak bonus) |
 | `/pack tier:<basic\|premium\|legendary>` | Open a pack |
@@ -193,6 +207,9 @@ Card catching is text-based — when a card spawns, type its name exactly to cat
 | `/giveshards user:@User amount:<n>` | Give DN Shards to a member |
 | `/takeback user:@User name:<Name>` | Remove a card from a member |
 | `/takeshards user:@User amount:<n>` | Deduct DN Shards from a member |
+| `/event start card:<Name> duration:<e.g. 2h> [multiplier:<n>]` | Start a limited-time spawn boost |
+| `/event list` | Show all active events |
+| `/event stop id:<ID>` | End an event early |
 | `/loadset` | Upload a JSON card set to add to your roster |
 | `/unloadset` | Remove a card set (cards + related collections/trades) |
 | `/listsets` | List all loaded card sets and their sizes |

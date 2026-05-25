@@ -8,7 +8,8 @@ import {
   restoreCardToUser, getOrCreateCurrency,
 } from "../db.js";
 import {
-  RARITY_COLORS, RARITY_EMOJI, RARITY_LABELS, type Rarity,
+  RARITY_COLORS, RARITY_EMOJI, RARITY_LABELS, SHINY_EMOJI, SHINY_MULTIPLIER,
+  type Rarity,
 } from "../cards-data.js";
 import { checkAchievements, formatUnlockLine } from "../achievements.js";
 import { toAbsoluteImageUrl } from "../image-url.js";
@@ -279,23 +280,27 @@ export async function handleTradein(interaction: ChatInputCommandInteraction): P
       return;
     }
 
-    await catchCard(guildId, userId, reward.id);
+    const { isShiny } = await catchCard(guildId, userId, reward.id);
     const balance = (await getOrCreateCurrency(guildId, userId)).shards;
+    const shinyPrefix = isShiny ? `${SHINY_EMOJI} ` : "";
+    const rewardWorth = isShiny ? reward.worthValue * SHINY_MULTIPLIER : reward.worthValue;
+    const rewardBurn = isShiny ? reward.burnValue * SHINY_MULTIPLIER : reward.burnValue;
 
     const summary = new EmbedBuilder()
-      .setTitle(`🔄 Trade-In Complete — ${RARITY_EMOJI[toRarity]} ${RARITY_LABELS[toRarity]}!`)
-      .setColor(RARITY_COLORS[toRarity] ?? 0x5865f2)
+      .setTitle(`🔄 Trade-In Complete — ${RARITY_EMOJI[toRarity]} ${RARITY_LABELS[toRarity]}!${isShiny ? ` ${SHINY_EMOJI}` : ""}`)
+      .setColor(isShiny ? 0xf1c40f : (RARITY_COLORS[toRarity] ?? 0x5865f2))
       .setDescription(
         `You burned **${TRADEIN_COST}** ${RARITY_EMOJI[fromRarity]} ${RARITY_LABELS[fromRarity]} cards ` +
         `and received a random ${RARITY_EMOJI[toRarity]} **${RARITY_LABELS[toRarity]}**.\n\n` +
-        `**🎁 You got:** ${RARITY_EMOJI[toRarity]} **${reward.name}**` +
+        `**🎁 You got:** ${RARITY_EMOJI[toRarity]} ${shinyPrefix}**${reward.name}**` +
+        (isShiny ? `\n${SHINY_EMOJI} **SHINY!** Counts at ${SHINY_MULTIPLIER}× value.` : "") +
         (reward.description ? `\n*${reward.description}*` : "") +
         `\n\n**Consumed:**\n${plan.map(p => `• **${p.taken}× ${p.name}**`).join("\n")}` +
         `\n\n💠 Balance: **${balance.toLocaleString()}**`,
       )
       .addFields(
-        { name: "💠 Worth", value: reward.worthValue.toLocaleString(), inline: true },
-        { name: "🔥 Burn", value: reward.burnValue.toLocaleString(), inline: true },
+        { name: "💠 Worth", value: rewardWorth.toLocaleString() + (isShiny ? ` *(${SHINY_MULTIPLIER}×)*` : ""), inline: true },
+        { name: "🔥 Burn", value: rewardBurn.toLocaleString() + (isShiny ? ` *(${SHINY_MULTIPLIER}×)*` : ""), inline: true },
         { name: "Rarity", value: `${RARITY_EMOJI[toRarity]} ${RARITY_LABELS[toRarity]}`, inline: true },
       )
       .setFooter({ text: "Use /collection to view your new card." });

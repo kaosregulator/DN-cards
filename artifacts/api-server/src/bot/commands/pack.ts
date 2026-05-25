@@ -7,7 +7,8 @@ import {
   getOrCreateGuildSettings,
 } from "../db.js";
 import {
-  RARITY_COLORS, RARITY_EMOJI, RARITY_LABELS, type Rarity,
+  RARITY_COLORS, RARITY_EMOJI, RARITY_LABELS, SHINY_EMOJI, SHINY_MULTIPLIER,
+  type Rarity,
 } from "../cards-data.js";
 import { checkAchievements, formatUnlockLine } from "../achievements.js";
 import { toAbsoluteImageUrl } from "../image-url.js";
@@ -178,18 +179,25 @@ async function drawPack(tier: PackTier, size: number): Promise<Card[]> {
 
 // ── Summary embed ────────────────────────────────────────────────────────────
 function buildSummaryEmbed(
-  tier: PackTier, cards: Card[], spent: number, balanceAfter: number,
+  tier: PackTier, cards: Card[], shinies: boolean[], spent: number, balanceAfter: number,
 ): EmbedBuilder {
   const meta = PACK_TIER_META[tier];
-  const totalWorth = cards.reduce((s, c) => s + c.worthValue, 0);
+  const totalWorth = cards.reduce(
+    (s, c, i) => s + c.worthValue * (shinies[i] ? SHINY_MULTIPLIER : 1),
+    0,
+  );
+  const shinyCount = shinies.filter(Boolean).length;
   const last = cards[cards.length - 1]!;
   const embed = new EmbedBuilder()
-    .setTitle(`${meta.emoji} ${meta.label} Pack — ${cards.length} cards`)
-    .setColor(meta.color)
+    .setTitle(`${meta.emoji} ${meta.label} Pack — ${cards.length} cards${shinyCount > 0 ? ` · ${SHINY_EMOJI}×${shinyCount}` : ""}`)
+    .setColor(shinyCount > 0 ? 0xf1c40f : meta.color)
     .setDescription(
       cards.map((c, i) => {
         const emoji = RARITY_EMOJI[c.rarity as Rarity] ?? "🃏";
-        return `**${i + 1}.** ${emoji} **${c.name}** — *${RARITY_LABELS[c.rarity as Rarity]}* · 💠 ${c.worthValue.toLocaleString()}`;
+        const shiny = shinies[i];
+        const worth = c.worthValue * (shiny ? SHINY_MULTIPLIER : 1);
+        const prefix = shiny ? `${SHINY_EMOJI} ` : "";
+        return `**${i + 1}.** ${emoji} ${prefix}**${c.name}** — *${RARITY_LABELS[c.rarity as Rarity]}* · 💠 ${worth.toLocaleString()}${shiny ? ` *(${SHINY_MULTIPLIER}×)*` : ""}`;
       }).join("\n") +
       `\n\n**Total worth:** 💠 ${totalWorth.toLocaleString()}\n` +
       `Spent: 💠 ${spent.toLocaleString()} · Balance: 💠 ${balanceAfter.toLocaleString()}`,
@@ -397,11 +405,14 @@ export async function handlePack(interaction: ChatInputCommandInteraction): Prom
   }
 
   // Grant the cards. Any failure here triggers a full refund of the claim.
+  // Track shiny per-card so the summary can mark which ones rolled shiny.
   let granted = 0;
   let lastError: unknown = null;
+  const shinies: boolean[] = [];
   for (const card of cards) {
     try {
-      await catchCard(guildId, userId, card.id);
+      const { isShiny } = await catchCard(guildId, userId, card.id);
+      shinies.push(isShiny);
       granted += 1;
     } catch (err) {
       lastError = err;
@@ -419,7 +430,7 @@ export async function handlePack(interaction: ChatInputCommandInteraction): Prom
   if (granted < cards.length) cards.length = granted;
 
   await interaction.editReply({
-    embeds: [buildSummaryEmbed(tier, cards, cfg.cost, claim.shardsAfter)],
+    embeds: [buildSummaryEmbed(tier, cards, shinies, cfg.cost, claim.shardsAfter)],
     components: [],
   });
 

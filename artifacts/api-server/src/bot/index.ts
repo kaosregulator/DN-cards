@@ -162,8 +162,12 @@ export async function startBot() {
         }
 
         if (action === "catch_burn" || action === "catch_keep" || action === "catch_trade") {
-          const [, guildId, userId, cardIdStr] = parts;
+          const [, guildId, userId, cardIdStr, shinyFlag] = parts;
           const cardId = parseInt(cardIdStr, 10);
+          // 5th segment present only on burn buttons minted after the shiny
+          // rollout; pre-rollout buttons fall back to non-shiny (correct since
+          // those pre-existed the feature).
+          const isShinyCatch = shinyFlag === "1";
 
           if (interaction.user.id !== userId) {
             await interaction.reply({
@@ -181,7 +185,7 @@ export async function startBot() {
           const burnValue = card?.burnValue ?? 0;
 
           if (action === "catch_burn") {
-            const result = await burnCard(guildId, userId, cardId);
+            const result = await burnCard(guildId, userId, cardId, 1, { shiny: isShinyCatch });
             if (!result.success) {
               await interaction.reply({
                 content: "❌ Couldn't burn the card — it may have already been burned.",

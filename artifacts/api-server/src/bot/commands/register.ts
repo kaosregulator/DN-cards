@@ -45,7 +45,8 @@ export function buildCommands() {
     cmd("burn", "(User) Burn duplicate cards for DN Shards", s => s
       .addStringOption(o => o.setName("name").setDescription("Card name to burn").setRequired(true).setAutocomplete(true))
       .addIntegerOption(o => o.setName("amount").setDescription("How many copies to burn (default 1)").setMinValue(1))
-      .addBooleanOption(o => o.setName("all").setDescription("Burn every copy you own of this card"))),
+      .addBooleanOption(o => o.setName("all").setDescription("Burn every copy you own of this card"))
+      .addBooleanOption(o => o.setName("shiny").setDescription("Burn shiny copies (2× shards) instead of normal copies"))),
 
     cmd("shards", "(User) Check your DN Shards balance", s => s
       .addUserOption(o => o.setName("user").setDescription("View another member's balance"))),
@@ -135,6 +136,16 @@ export function buildCommands() {
       .addUserOption(o => o.setName("user").setDescription("Member to deduct shards from").setRequired(true))
       .addIntegerOption(o => o.setName("amount").setDescription("Amount to deduct").setRequired(true).setMinValue(1))),
 
+    // ── Card Events (limited-time spawn boosts) ──────────────────────────────
+    cmd("event", "(Admin) Run limited-time card events — boost a card's spawn rate", s => s
+      .addSubcommand(sc => sc.setName("start").setDescription("Start a limited-time card event")
+        .addStringOption(o => o.setName("card").setDescription("Card to boost").setRequired(true).setAutocomplete(true))
+        .addStringOption(o => o.setName("duration").setDescription("How long (e.g. 30m, 2h, 1d — max 14d)").setRequired(true))
+        .addNumberOption(o => o.setName("multiplier").setDescription("Weight multiplier (1.1–50, default 2)").setMinValue(1.1).setMaxValue(50)))
+      .addSubcommand(sc => sc.setName("list").setDescription("Show active card events in this server"))
+      .addSubcommand(sc => sc.setName("stop").setDescription("Stop an active event early")
+        .addIntegerOption(o => o.setName("id").setDescription("Event ID from /event list").setRequired(true).setMinValue(1)))),
+
     // ── Card Set Management ───────────────────────────────────────────────────
     cmd("loadset", "(Admin) Upload a JSON card set to add to your roster", s => s
       .addAttachmentOption(o => o.setName("file").setDescription("JSON file with cards to import"))
@@ -155,7 +166,7 @@ export const USER_COMMAND_NAMES = new Set([
 ]);
 
 export const ADMIN_COMMAND_NAMES = new Set([
-  "config", "adminhub", "adminhelp", "drop", "massdrop", "give", "giveshards", "takeback", "takeshards",
+  "config", "adminhub", "adminhelp", "drop", "massdrop", "give", "giveshards", "takeback", "takeshards", "event",
 ]);
 
 export const CARDSET_COMMAND_NAMES = new Set([

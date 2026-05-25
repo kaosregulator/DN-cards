@@ -53,6 +53,10 @@ export const collectionsTable = pgTable("collections", {
   userId: text("user_id").notNull(),
   cardId: integer("card_id").notNull().references(() => cardsTable.id),
   count: integer("count").notNull().default(1),
+  // Shiny copies are tracked separately so we can count them once at 2× value
+  // for net-worth / leaderboard, and so /burn can target them explicitly.
+  // Shinies are never moved by trades (v1).
+  shinyCount: integer("shiny_count").notNull().default(0),
   firstCaughtAt: timestamp("first_caught_at").notNull().defaultNow(),
   lastCaughtAt: timestamp("last_caught_at").notNull().defaultNow(),
 }, (t) => ({
@@ -234,3 +238,21 @@ export const wishlistsTable = pgTable("wishlists", {
 }));
 
 export type Wishlist = typeof wishlistsTable.$inferSelect;
+
+// ── Card Events (limited-time spawn boosts) ──────────────────────────────────
+// An active event multiplies a specific card's effective drop weight while
+// `startsAt <= now() < endsAt`. Created by admins via /event start; ended by
+// /event stop (which sets endsAt to NOW). Filtered by endsAt > NOW() so
+// expired rows survive as a record without affecting drops.
+export const cardEventsTable = pgTable("card_events", {
+  id: serial("id").primaryKey(),
+  guildId: text("guild_id").notNull(),
+  cardId: integer("card_id").notNull().references(() => cardsTable.id, { onDelete: "cascade" }),
+  weightMultiplier: real("weight_multiplier").notNull().default(2.0),
+  startsAt: timestamp("starts_at").notNull().defaultNow(),
+  endsAt: timestamp("ends_at").notNull(),
+  createdBy: text("created_by").notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export type CardEvent = typeof cardEventsTable.$inferSelect;

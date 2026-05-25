@@ -51,6 +51,20 @@ export const RARITY_EMOJI: Record<Rarity, string> = {
   legendary: "🌟",
 };
 
+// ── Shiny cards ──────────────────────────────────────────────────────────────
+// Fixed across all servers (not configurable): every successful acquisition
+// (catch, pack, tradein reward) has a flat 0.5% chance to be Shiny. Shiny
+// copies are tracked separately and count at 2× normal worth/burn value.
+// Admin-given cards (/give) and trades never mint shinies.
+export const SHINY_RATE = 0.005;
+export const SHINY_MULTIPLIER = 2;
+export const SHINY_EMOJI = "✨";
+
+// Trade fairness: warn when one side's total value is more than 3× the
+// other side's. Pure shards count 1:1 with shard value; cards use worthValue.
+// Shinies are not tradeable in v1 so they don't enter this calc.
+export const FAIRNESS_RATIO_THRESHOLD = 3;
+
 export const RARITY_LABELS: Record<Rarity, string> = {
   common: "Common",
   uncommon: "Uncommon",

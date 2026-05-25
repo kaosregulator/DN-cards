@@ -9,6 +9,7 @@ import {
 } from "../db.js";
 import {
   RARITY_COLORS, RARITY_EMOJI, RARITY_LABELS, TYPE_EMOJI,
+  SHINY_EMOJI, SHINY_MULTIPLIER,
   getCollectorRank, getNextRank,
   type Rarity, type CardType,
 } from "../cards-data.js";
@@ -52,8 +53,12 @@ export async function handleUserCommand(
       byRarity[item.rarity].push(item);
     }
 
-    const totalCards = items.reduce((s, i) => s + i.count, 0);
-    const netWorth = items.reduce((s, i) => s + i.worthValue * i.count, 0);
+    const totalCards = items.reduce((s, i) => s + i.count + i.shinyCount, 0);
+    const totalShinies = items.reduce((s, i) => s + i.shinyCount, 0);
+    const netWorth = items.reduce(
+      (s, i) => s + i.worthValue * (i.count + i.shinyCount * SHINY_MULTIPLIER),
+      0,
+    );
     const { unique } = await getUserCardCount(guildId, target.id);
     const rank = getCollectorRank(unique);
     const nextRank = getNextRank(unique);
@@ -79,7 +84,10 @@ export async function handleUserCommand(
         name: `${RARITY_EMOJI[r]} ${RARITY_LABELS[r]} (${byRarity[r].length} unique)`,
         value: byRarity[r].map(i => {
           const badges = [i.isLimitedEdition ? "💎" : "", i.isEventExclusive ? "🎆" : ""].filter(Boolean).join("");
-          return `${badges}**${i.name}** ×${i.count}`;
+          const shinyTag = i.shinyCount > 0 ? ` · ${SHINY_EMOJI}×${i.shinyCount}` : "";
+          // Show normal count even when 0 (rare: only shinies owned) so users
+          // can tell the difference between "1 shiny" and "1 normal".
+          return `${badges}**${i.name}** ×${i.count}${shinyTag}`;
         }).join("\n"),
         inline: false,
       }));
@@ -89,7 +97,8 @@ export async function handleUserCommand(
       .setColor(0x5865f2)
       .setDescription(
         `**Rank:** ${rankProgress}\n` +
-        `**Cards:** ${unique} unique · ${totalCards} total\n` +
+        `**Cards:** ${unique} unique · ${totalCards} total` +
+        (totalShinies > 0 ? ` · ${SHINY_EMOJI}**${totalShinies}** shiny` : "") + `\n` +
         `**Net Worth:** 💠 ${netWorth.toLocaleString()} shards\n` +
         achLine,
       )
@@ -360,40 +369,52 @@ export async function handleUserCommand(
     const cardName = interaction.options.getString("name", true);
     const requested = interaction.options.getInteger("amount") ?? 1;
     const burnAll = interaction.options.getBoolean("all") ?? false;
+    const wantShiny = interaction.options.getBoolean("shiny") ?? false;
     const card = await getCardByName(cardName);
     if (!card) { await interaction.editReply(`❌ "**${cardName}**" not found. Check \`/list\`.`); return; }
     const rarity = card.rarity as Rarity;
-    const owned = await getUserOwnedCount(guildId, interaction.user.id, card.id);
-    if (owned < 1) {
-      await interaction.editReply(`❌ You don't have **${card.name}** in your collection.`);
-      return;
-    }
-    const toBurn = burnAll ? owned : Math.min(requested, owned);
-    if (toBurn < 1) {
-      await interaction.editReply(`❌ Nothing to burn — you only have **×${owned}** of **${card.name}**.`);
-      return;
-    }
-    if (!burnAll && requested > owned) {
+    const { count, shinyCount } = await getUserOwnedCount(guildId, interaction.user.id, card.id);
+    // Burn targets the chosen pile only — shiny:true burns from shinyCount,
+    // otherwise from the normal count pile. This protects rare shinies from
+    // an accidental /burn name:X all:true.
+    const pile = wantShiny ? shinyCount : count;
+    const pileLabel = wantShiny ? `${SHINY_EMOJI} shiny ` : "";
+    if (pile < 1) {
       await interaction.editReply(
-        `❌ You only have **×${owned}** of **${card.name}** — can't burn ${requested}.\n` +
-        `Try \`/burn name:${card.name} all:true\` to burn all ${owned}.`,
+        wantShiny
+          ? `❌ You don't have any ${SHINY_EMOJI} shiny copies of **${card.name}**.`
+          : `❌ You don't have **${card.name}** in your collection.${shinyCount > 0 ? `\n*(You have ${SHINY_EMOJI}×${shinyCount} shiny — add \`shiny:true\` to burn those.)*` : ""}`,
       );
       return;
     }
-    const result = await burnCard(guildId, interaction.user.id, card.id, toBurn);
+    const toBurn = burnAll ? pile : Math.min(requested, pile);
+    if (toBurn < 1) {
+      await interaction.editReply(`❌ Nothing to burn — you only have **×${pile}** ${pileLabel}of **${card.name}**.`);
+      return;
+    }
+    if (!burnAll && requested > pile) {
+      await interaction.editReply(
+        `❌ You only have **×${pile}** ${pileLabel}of **${card.name}** — can't burn ${requested}.\n` +
+        `Try \`/burn name:${card.name}${wantShiny ? " shiny:true" : ""} all:true\` to burn all ${pile}.`,
+      );
+      return;
+    }
+    const result = await burnCard(guildId, interaction.user.id, card.id, toBurn, { shiny: wantShiny });
     if (!result.success) {
       await interaction.editReply(`❌ Burn failed — your collection changed mid-burn. Try again.`);
       return;
     }
     const currency = await getOrCreateCurrency(guildId, interaction.user.id);
-    const perCard = card.burnValue.toLocaleString();
+    const perCardVal = card.burnValue * (wantShiny ? SHINY_MULTIPLIER : 1);
+    const perCard = perCardVal.toLocaleString();
+    const nameWithShiny = wantShiny ? `${SHINY_EMOJI} ${card.name}` : card.name;
     const breakdown = result.burned > 1
-      ? `🔥 Burned **×${result.burned} ${card.name}** (${RARITY_EMOJI[rarity]} ${RARITY_LABELS[rarity]})\n` +
+      ? `🔥 Burned **×${result.burned} ${nameWithShiny}** (${RARITY_EMOJI[rarity]} ${RARITY_LABELS[rarity]}${wantShiny ? ` ${SHINY_EMOJI}` : ""})\n` +
         `+💠 **${result.shardsGained.toLocaleString()} shards** *(${perCard} × ${result.burned})* — New balance: **${currency.shards.toLocaleString()}**\n` +
-        (result.remaining > 0 ? `You still have **×${result.remaining}** ${result.remaining === 1 ? "copy" : "copies"}.` : "*All copies burned.*")
-      : `🔥 Burned **${card.name}** (${RARITY_EMOJI[rarity]} ${RARITY_LABELS[rarity]})\n` +
+        (result.remaining > 0 ? `You still have **×${result.remaining}** ${pileLabel}${result.remaining === 1 ? "copy" : "copies"}.` : `*All ${wantShiny ? "shiny " : ""}copies burned.*`)
+      : `🔥 Burned **${nameWithShiny}** (${RARITY_EMOJI[rarity]} ${RARITY_LABELS[rarity]}${wantShiny ? ` ${SHINY_EMOJI}` : ""})\n` +
         `+💠 **${result.shardsGained.toLocaleString()} shards** — New balance: **${currency.shards.toLocaleString()}**\n` +
-        (result.remaining > 0 ? `You still have **×${result.remaining}** ${result.remaining === 1 ? "copy" : "copies"}.` : "*Last copy burned.*");
+        (result.remaining > 0 ? `You still have **×${result.remaining}** ${pileLabel}${result.remaining === 1 ? "copy" : "copies"}.` : `*Last ${wantShiny ? "shiny " : ""}copy burned.*`);
     await interaction.editReply(breakdown);
     const newlyBurn = await checkAchievements(guildId, interaction.user.id);
     if (newlyBurn.length > 0) {

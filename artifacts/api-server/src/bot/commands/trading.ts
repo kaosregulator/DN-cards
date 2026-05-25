@@ -9,7 +9,28 @@ import {
   getOrCreateGuildSettings, updateTradeMessageId,
   getOrCreateCurrency, giftShards, getTradeHistoryFor,
 } from "../db.js";
-import { RARITY_EMOJI, RARITY_LABELS, type Rarity } from "../cards-data.js";
+import { RARITY_EMOJI, RARITY_LABELS, FAIRNESS_RATIO_THRESHOLD, type Rarity } from "../cards-data.js";
+
+// Computes a fairness warning when one trade side is more than FAIRNESS_RATIO_THRESHOLD×
+// the other side's worth. Returns null if both sides are roughly comparable.
+// Shards count 1:1 with shard value; cards use their static worthValue. Shinies
+// can't be traded (v1) so they don't enter the calc.
+function buildFairnessWarning(
+  offeredCardWorth: number, offeredShards: number,
+  requestedCardWorth: number, requestedShards: number,
+): string | null {
+  const offerVal = offeredCardWorth + offeredShards;
+  const wantVal = requestedCardWorth + requestedShards;
+  if (offerVal <= 0 || wantVal <= 0) return null;
+  const hi = Math.max(offerVal, wantVal);
+  const lo = Math.min(offerVal, wantVal);
+  const ratio = hi / lo;
+  if (ratio <= FAIRNESS_RATIO_THRESHOLD) return null;
+  const loser = offerVal < wantVal ? "initiator" : "recipient";
+  return `⚠️ **Lopsided trade** — one side is ~**${ratio.toFixed(1)}×** the other ` +
+    `(💠 ${offerVal.toLocaleString()} ↔ ${wantVal.toLocaleString()}). ` +
+    `The **${loser}** is getting much less value — double-check before accepting.`;
+}
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function tradeButtons(tradeId: number) {
@@ -120,10 +141,16 @@ export async function handleTrade(interaction: ChatInputCommandInteraction): Pro
     ? `${RARITY_EMOJI[requestedCard.rarity as Rarity]} **${requestedCard.name}** *(${RARITY_LABELS[requestedCard.rarity as Rarity]})*`
     : null;
 
+  const fairness = buildFairnessWarning(
+    offeredCard?.worthValue ?? 0, offeredShards,
+    requestedCard?.worthValue ?? 0, requestedShards,
+  );
+
   const embed = new EmbedBuilder()
     .setTitle("🔄 Trade Proposal")
-    .setColor(0x0984e3)
+    .setColor(fairness ? 0xe67e22 : 0x0984e3)
     .setDescription(
+      (fairness ? fairness + "\n\n" : "") +
       `<@${interaction.user.id}> → <@${target.id}>\n\n` +
       `**Offering:** ${formatSide(offLabel, offeredShards)}\n` +
       `**Requesting:** ${formatSide(reqLabel, requestedShards)}\n\n` +

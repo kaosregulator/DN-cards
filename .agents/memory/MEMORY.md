@@ -1,1 +1,2 @@
 - [DN Cards architecture](dn-cards-arch.md) — military collectible card bot; bot runs inside Express process; enums need push-force on schema changes.
+- [Collections pile deletion](collections-pile-deletion.md) — when a row tracks multiple piles (count + shinyCount), only DELETE when ALL piles are 0, else surviving piles vanish.
