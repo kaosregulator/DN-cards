@@ -212,6 +212,8 @@ export default function Profile() {
                         isArchived: false,
                         setName: null,
                         podiumPlace: null,
+                        previewAnimation: null,
+                        previewBgColor: null,
                         createdAt: item.firstCaughtAt
                       }}
                       count={item.count}

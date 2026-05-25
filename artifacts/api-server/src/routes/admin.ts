@@ -30,6 +30,9 @@ const cardPatchSchema = z.object({
   isArchived: z.boolean().optional(),
   flavor: z.string().max(500).nullable().optional(),
   podiumPlace: z.union([z.literal(1), z.literal(2), z.literal(3)]).nullable().optional(),
+  previewAnimation: z.enum(["spin", "bounce", "flip", "pulse", "none"]).nullable().optional(),
+  // Accept CSS hex like #aabbcc or #aabbccdd, or named/rgba via short max-length string.
+  previewBgColor: z.string().max(40).regex(/^(#[0-9a-fA-F]{3,8}|[a-zA-Z]+|rgba?\([\d.,\s%]+\))$/).nullable().optional(),
 });
 
 const cardCreateSchema = cardPatchSchema.extend({

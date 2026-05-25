@@ -9,6 +9,8 @@ import { pool } from "@workspace/db";
 async function runBootMigrations() {
   await pool.query(`ALTER TABLE cards ADD COLUMN IF NOT EXISTS podium_place integer`);
   await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS cards_podium_place_uniq ON cards (podium_place) WHERE podium_place IS NOT NULL`);
+  await pool.query(`ALTER TABLE cards ADD COLUMN IF NOT EXISTS preview_animation text`);
+  await pool.query(`ALTER TABLE cards ADD COLUMN IF NOT EXISTS preview_bg_color text`);
 
   // One-time backfill: if no card currently holds a podium slot, seed it from
   // the old name-based heuristic (1st/2nd/3rd in the name of an event card).

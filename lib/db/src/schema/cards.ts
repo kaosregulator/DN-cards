@@ -45,6 +45,11 @@ export const cardsTable = pgTable("cards", {
   // per slot — enforced by a partial unique index. Cleared automatically
   // when isEventExclusive flips false (the cards-router PATCH handles it).
   podiumPlace: integer("podium_place"),
+  // Per-card preview customization for the dashboard /events detail dialog.
+  // previewAnimation: 'spin' | 'bounce' | 'flip' | 'pulse' | 'none' — null = default (spin).
+  // previewBgColor: any CSS color string (hex preferred). null = rarity-tinted gradient.
+  previewAnimation: text("preview_animation"),
+  previewBgColor: text("preview_bg_color"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 }, (t) => ({
   // At most one card per podium slot. Partial index so null values (most

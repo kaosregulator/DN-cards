@@ -229,6 +229,8 @@ function EditDialog({
       inPacks: card.inPacks,
       flavor: card.flavor,
       podiumPlace: card.podiumPlace,
+      previewAnimation: card.previewAnimation,
+      previewBgColor: card.previewBgColor,
     });
   }
 
@@ -311,22 +313,78 @@ function EditDialog({
           </div>
 
           {form.isEventExclusive && (
-            <div className="md:col-span-2">
-              <Label htmlFor="f-podium">Events page placement</Label>
-              <Select
-                value={form.podiumPlace == null ? "none" : String(form.podiumPlace)}
-                onValueChange={v => setForm(s => ({ ...s, podiumPlace: v === "none" ? null : Number(v) as 1 | 2 | 3 }))}
-              >
-                <SelectTrigger id="f-podium" data-testid="select-edit-podium"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">In the grid (default)</SelectItem>
-                  <SelectItem value="1">🥇 1st place podium</SelectItem>
-                  <SelectItem value="2">🥈 2nd place podium</SelectItem>
-                  <SelectItem value="3">🥉 3rd place podium</SelectItem>
-                </SelectContent>
-              </Select>
-              <p className="text-xs text-muted-foreground mt-1">Only one card can hold each podium slot. Assigning here will free the slot from any other card.</p>
-            </div>
+            <>
+              <div className="md:col-span-2 rounded-lg border border-border/60 bg-card/40 p-4 space-y-4">
+                <div className="flex items-center gap-2 -mb-1">
+                  <span className="text-xs font-mono uppercase tracking-widest text-purple-400">Events page customization</span>
+                </div>
+
+                <div>
+                  <Label htmlFor="f-podium">Podium placement</Label>
+                  <Select
+                    value={form.podiumPlace == null ? "none" : String(form.podiumPlace)}
+                    onValueChange={v => setForm(s => ({ ...s, podiumPlace: v === "none" ? null : Number(v) as 1 | 2 | 3 }))}
+                  >
+                    <SelectTrigger id="f-podium" data-testid="select-edit-podium"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">In the grid (default)</SelectItem>
+                      <SelectItem value="1">🥇 1st place podium</SelectItem>
+                      <SelectItem value="2">🥈 2nd place podium</SelectItem>
+                      <SelectItem value="3">🥉 3rd place podium</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground mt-1">Only one card per slot — assigning here frees it from any other card.</p>
+                </div>
+
+                <div>
+                  <Label htmlFor="f-anim">Preview animation</Label>
+                  <Select
+                    value={form.previewAnimation ?? "spin"}
+                    onValueChange={v => setForm(s => ({ ...s, previewAnimation: v as "spin" | "bounce" | "flip" | "pulse" | "none" }))}
+                  >
+                    <SelectTrigger id="f-anim" data-testid="select-edit-preview-anim"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="spin">🔄 Spin (default)</SelectItem>
+                      <SelectItem value="flip">🔃 Flip</SelectItem>
+                      <SelectItem value="bounce">⤵️ Bounce in</SelectItem>
+                      <SelectItem value="pulse">💥 Pulse</SelectItem>
+                      <SelectItem value="none">— None (fade only)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground mt-1">Plays when a player opens this card on the Events page.</p>
+                </div>
+
+                <div>
+                  <Label htmlFor="f-bg">Preview background color</Label>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      id="f-bg"
+                      type="color"
+                      className="h-10 w-14 p-1 cursor-pointer"
+                      value={(form.previewBgColor && /^#[0-9a-fA-F]{6}$/.test(form.previewBgColor)) ? form.previewBgColor : "#1a1a1a"}
+                      onChange={e => setForm(s => ({ ...s, previewBgColor: e.target.value }))}
+                      data-testid="input-edit-preview-bg-color"
+                    />
+                    <Input
+                      placeholder="#1a1a1a or leave blank for rarity tint"
+                      value={form.previewBgColor ?? ""}
+                      onChange={e => setForm(s => ({ ...s, previewBgColor: e.target.value || null }))}
+                      data-testid="input-edit-preview-bg-text"
+                    />
+                    {form.previewBgColor && (
+                      <button
+                        type="button"
+                        className="text-xs font-mono uppercase tracking-widest text-muted-foreground hover:text-foreground px-2"
+                        onClick={() => setForm(s => ({ ...s, previewBgColor: null }))}
+                      >
+                        clear
+                      </button>
+                    )}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">Blank uses the card's rarity-tinted glow.</p>
+                </div>
+              </div>
+            </>
           )}
 
           <div>

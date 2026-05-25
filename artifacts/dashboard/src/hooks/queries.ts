@@ -24,6 +24,8 @@ export interface Card {
   isArchived: boolean;
   setName: string | null;
   podiumPlace: 1 | 2 | 3 | null;
+  previewAnimation: "spin" | "bounce" | "flip" | "pulse" | "none" | null;
+  previewBgColor: string | null;
   createdAt: string;
 }
 
@@ -44,6 +46,8 @@ export type CardPatch = Partial<{
   isArchived: boolean;
   flavor: string | null;
   podiumPlace: 1 | 2 | 3 | null;
+  previewAnimation: "spin" | "bounce" | "flip" | "pulse" | "none" | null;
+  previewBgColor: string | null;
 }>;
 
 export interface LeaderboardEntry {

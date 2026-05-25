@@ -44,8 +44,30 @@ const PLACE_STYLES: Record<number, { border: string; glow: string; label: string
 };
 
 
+// Rarity → tinted radial-gradient background used as the dialog stage when
+// the admin hasn't set a custom previewBgColor. Keeps the holo theme.
+const RARITY_STAGE_BG: Record<string, string> = {
+  legendary: "radial-gradient(ellipse at top, rgba(234,179,8,0.25), rgba(0,0,0,0) 60%)",
+  epic:      "radial-gradient(ellipse at top, rgba(168,85,247,0.25), rgba(0,0,0,0) 60%)",
+  rare:      "radial-gradient(ellipse at top, rgba(59,130,246,0.22), rgba(0,0,0,0) 60%)",
+  uncommon:  "radial-gradient(ellipse at top, rgba(34,197,94,0.18), rgba(0,0,0,0) 60%)",
+  common:    "radial-gradient(ellipse at top, rgba(148,163,184,0.15), rgba(0,0,0,0) 60%)",
+};
+
+type PreviewAnim = "spin" | "bounce" | "flip" | "pulse" | "none";
+
+// Framer-motion variants per animation. Each one runs once on mount (and
+// re-mounts when the card id changes — see `key={card.id}` below).
+const PREVIEW_ANIMS: Record<PreviewAnim, { initial: any; animate: any; transition: any }> = {
+  spin:   { initial: { rotateY: -180, opacity: 0, y: -10 }, animate: { rotateY: 0, opacity: 1, y: 0 }, transition: { duration: 0.9, ease: [0.22, 1, 0.36, 1] } },
+  flip:   { initial: { rotateX: -90, opacity: 0 },          animate: { rotateX: 0, opacity: 1 },       transition: { duration: 0.7, ease: [0.22, 1, 0.36, 1] } },
+  bounce: { initial: { y: -120, opacity: 0 },               animate: { y: 0, opacity: 1 },             transition: { type: "spring", stiffness: 320, damping: 14 } },
+  pulse:  { initial: { scale: 0.7, opacity: 0 },            animate: { scale: [0.7, 1.08, 1], opacity: 1 }, transition: { duration: 0.7, times: [0, 0.6, 1] } },
+  none:   { initial: { opacity: 0 },                        animate: { opacity: 1 },                    transition: { duration: 0.25 } },
+};
+
 function EventCardDetail({ card, open, onClose }: {
-  card: { id: number; name: string; description: string; rarity: string; cardType: string; imageUrl: string | null; flavor: string | null; worthValue: number; isLimitedEdition: boolean; totalMinted: number; maxCopies: number | null; podiumPlace: 1 | 2 | 3 | null } | null;
+  card: { id: number; name: string; description: string; rarity: string; cardType: string; imageUrl: string | null; flavor: string | null; worthValue: number; isLimitedEdition: boolean; totalMinted: number; maxCopies: number | null; podiumPlace: 1 | 2 | 3 | null; previewAnimation: PreviewAnim | null; previewBgColor: string | null } | null;
   open: boolean;
   onClose: () => void;
 }) {
@@ -59,19 +81,27 @@ function EventCardDetail({ card, open, onClose }: {
     3: { tier: "bg-gradient-to-b from-amber-600 to-amber-800", base: "bg-amber-900", height: "h-7" },
   };
   const stage = card.podiumPlace ? podiumStage[card.podiumPlace] : null;
+  const anim = PREVIEW_ANIMS[card.previewAnimation ?? "spin"];
+  const stageStyle: React.CSSProperties = card.previewBgColor
+    ? { background: card.previewBgColor }
+    : { backgroundImage: RARITY_STAGE_BG[card.rarity] ?? RARITY_STAGE_BG.common };
+  const glow = RARITY_GLOW[card.rarity] ?? RARITY_GLOW.common;
   return (
     <Dialog open={open} onOpenChange={v => !v && onClose()}>
       <DialogContent className="max-w-lg p-0 overflow-hidden bg-card/95 backdrop-blur-md border-border/50">
         <div className="flex flex-col">
           {img && (
-            <div className="relative w-full bg-gradient-to-b from-muted/50 to-muted overflow-hidden flex flex-col items-center justify-end pt-8 pb-0 [perspective:1000px]">
-              {/* Spinning card on a mini podium. y-axis flip then settle. */}
+            <div
+              className="relative w-full overflow-hidden flex flex-col items-center justify-end pt-8 pb-0 [perspective:1000px]"
+              style={stageStyle}
+            >
+              {/* Animated card. Animation + glow are configurable per card. */}
               <motion.div
                 key={card.id /* re-trigger on card change */}
-                initial={{ rotateY: -180, opacity: 0, y: -10 }}
-                animate={{ rotateY: 0, opacity: 1, y: 0 }}
-                transition={{ duration: 0.9, ease: [0.22, 1, 0.36, 1] }}
-                className="relative w-44 aspect-[3/4] rounded-lg overflow-hidden shadow-2xl border border-border/40 [transform-style:preserve-3d]"
+                initial={anim.initial}
+                animate={anim.animate}
+                transition={anim.transition}
+                className={`relative w-44 aspect-[3/4] rounded-lg overflow-hidden border [transform-style:preserve-3d] ${glow}`}
               >
                 <img src={img} alt={card.name} className="h-full w-full object-cover" />
                 {podium && (
@@ -343,8 +373,10 @@ function ShowcaseCard({
       initial={{ opacity: 0, y: 24 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: idx * 0.08 }}
+      whileHover={{ y: -8, rotate: -1 }}
+      whileTap={{ scale: 0.97, rotate: 0 }}
       onClick={onClick}
-      className={`group relative cursor-pointer rounded-2xl border-2 bg-card overflow-hidden transition-all duration-300 hover:-translate-y-2 ${glow}`}
+      className={`group relative cursor-pointer rounded-2xl border-2 bg-card overflow-hidden transition-shadow duration-300 ${glow}`}
     >
       {/* Card image — portrait fill */}
       <div className="relative aspect-[3/4] w-full bg-muted overflow-hidden">
