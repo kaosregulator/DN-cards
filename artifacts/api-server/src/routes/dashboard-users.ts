@@ -41,7 +41,7 @@ router.post("/", async (req, res) => {
     issuedToDiscordId: parsed.data.note ?? `web:${req.session?.username ?? "owner"}`,
     expiresAt,
   });
-  res.status(201).json({ token, expiresAt, setupPath: `/dashboard/setup/${token}` });
+  res.status(201).json({ token, expiresAt, setupPath: `/setup/${token}` });
 });
 
 // ── POST /api/dashboard/users/:id/reset — issue a reset link for a user ───────
@@ -65,7 +65,7 @@ router.post("/:id/reset", async (req, res) => {
     resetForUserId: user.id,
     expiresAt,
   });
-  res.status(201).json({ token, expiresAt, setupPath: `/dashboard/setup/${token}`, username: user.username });
+  res.status(201).json({ token, expiresAt, setupPath: `/setup/${token}`, username: user.username });
 });
 
 // ── DELETE /api/dashboard/users/:id ───────────────────────────────────────────

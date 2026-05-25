@@ -330,7 +330,7 @@ export async function handleUserCommand(
           return `${medal} <@${r.userId}> — **${r.packsOpened.toLocaleString()}** packs`;
         });
     const domain = process.env["REPLIT_DOMAINS"]?.split(",")[0];
-    const dashUrl = domain ? `https://${domain}/dashboard/leaderboard` : null;
+    const dashUrl = domain ? `https://${domain}/leaderboard` : null;
     const embed = new EmbedBuilder()
       .setTitle("🏆 DN Cards — Collector Leaderboard")
       .setColor(0xf39c12)

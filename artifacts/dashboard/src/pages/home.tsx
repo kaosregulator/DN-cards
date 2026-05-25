@@ -1,5 +1,6 @@
 import { useState, useMemo } from "react";
 import { useCards, Rarity } from "@/hooks/queries";
+import { resolveImageUrl } from "@/lib/api";
 import { CardComponent } from "@/components/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -200,9 +201,9 @@ export default function Home() {
                       className="flex gap-3 rounded-lg border border-border/50 bg-background/40 p-3"
                       data-testid={`event-card-${card.id}`}
                     >
-                      {card.imageUrl && (
+                      {resolveImageUrl(card.imageUrl) && (
                         <img
-                          src={card.imageUrl}
+                          src={resolveImageUrl(card.imageUrl)!}
                           alt={card.name}
                           className="h-20 w-16 rounded object-cover border border-pink-500/30 flex-shrink-0"
                           loading="lazy"

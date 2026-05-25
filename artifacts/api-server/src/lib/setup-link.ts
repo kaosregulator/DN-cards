@@ -20,5 +20,5 @@ export async function createSetupLink(opts: {
   });
   const domain = process.env["REPLIT_DOMAINS"]?.split(",")[0]?.trim();
   const base = domain ? `https://${domain}` : "http://localhost";
-  return { token, url: `${base}/dashboard/setup/${token}`, expiresAt };
+  return { token, url: `${base}/setup/${token}`, expiresAt };
 }

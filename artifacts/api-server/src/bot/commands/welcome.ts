@@ -4,11 +4,11 @@ import { applyEmbedOverride } from "../embed-overrides.js";
 
 // Section banners — one word per banner, used as dividers between categories.
 // Files live in the dashboard's public/ folder so they ship with the static
-// site and are reachable through the shared proxy at /dashboard/<file>.
+// site and are reachable through the shared proxy at the dashboard root.
 function bannerUrl(name: "welcome" | "rules" | "commands"): string | null {
   const domain = process.env["REPLIT_DOMAINS"]?.split(",")[0]?.trim();
   if (!domain) return null;
-  return `https://${domain}/dashboard/banner-${name}.png`;
+  return `https://${domain}/banner-${name}.png`;
 }
 
 const BRAND_COLOR = 0xe63946;
