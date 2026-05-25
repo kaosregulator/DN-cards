@@ -9,6 +9,36 @@ import { pool } from "@workspace/db";
 async function runBootMigrations() {
   await pool.query(`ALTER TABLE cards ADD COLUMN IF NOT EXISTS podium_place integer`);
   await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS cards_podium_place_uniq ON cards (podium_place) WHERE podium_place IS NOT NULL`);
+
+  // One-time backfill: if no card currently holds a podium slot, seed it from
+  // the old name-based heuristic (1st/2nd/3rd in the name of an event card).
+  // Idempotent — once any card has podium_place set, the inner NOT EXISTS
+  // guard makes this a no-op so admin picks are never overwritten. DISTINCT ON
+  // picks a single winner per slot deterministically (lowest id).
+  const { rows: existing } = await pool.query(`SELECT 1 FROM cards WHERE podium_place IS NOT NULL LIMIT 1`);
+  if (existing.length === 0) {
+    await pool.query(`
+      UPDATE cards
+      SET podium_place = sub.place
+      FROM (
+        SELECT DISTINCT ON (place) id, place FROM (
+          SELECT id,
+            CASE
+              WHEN name ~* '\\m1st\\M' THEN 1
+              WHEN name ~* '\\m2nd\\M' THEN 2
+              WHEN name ~* '\\m3rd\\M' THEN 3
+            END AS place
+          FROM cards
+          WHERE is_event_exclusive = true AND is_archived = false
+        ) ranked
+        WHERE place IS NOT NULL
+        ORDER BY place, id
+      ) sub
+      WHERE cards.id = sub.id
+    `);
+    logger.info("Podium backfill applied from card-name heuristic");
+  }
+
   logger.info("Boot migrations applied");
 }
 

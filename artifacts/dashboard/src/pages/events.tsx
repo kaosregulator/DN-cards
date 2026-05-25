@@ -45,26 +45,65 @@ const PLACE_STYLES: Record<number, { border: string; glow: string; label: string
 
 
 function EventCardDetail({ card, open, onClose }: {
-  card: { id: number; name: string; description: string; rarity: string; cardType: string; imageUrl: string | null; flavor: string | null; worthValue: number; isLimitedEdition: boolean; totalMinted: number; maxCopies: number | null } | null;
+  card: { id: number; name: string; description: string; rarity: string; cardType: string; imageUrl: string | null; flavor: string | null; worthValue: number; isLimitedEdition: boolean; totalMinted: number; maxCopies: number | null; podiumPlace: 1 | 2 | 3 | null } | null;
   open: boolean;
   onClose: () => void;
 }) {
   if (!card) return null;
   const img = resolveImageUrl(card.imageUrl);
+  const podium = card.podiumPlace ? PLACE_STYLES[card.podiumPlace] : null;
+  // Mini podium colors per place — the small stage shown under the card in the dialog.
+  const podiumStage: Record<number, { tier: string; base: string; height: string }> = {
+    1: { tier: "bg-gradient-to-b from-yellow-400 to-yellow-600", base: "bg-yellow-700", height: "h-12" },
+    2: { tier: "bg-gradient-to-b from-slate-300 to-slate-500", base: "bg-slate-600", height: "h-9" },
+    3: { tier: "bg-gradient-to-b from-amber-600 to-amber-800", base: "bg-amber-900", height: "h-7" },
+  };
+  const stage = card.podiumPlace ? podiumStage[card.podiumPlace] : null;
   return (
     <Dialog open={open} onOpenChange={v => !v && onClose()}>
       <DialogContent className="max-w-lg p-0 overflow-hidden bg-card/95 backdrop-blur-md border-border/50">
         <div className="flex flex-col">
           {img && (
-            <div className="relative w-full aspect-[3/4] max-h-[60vh] bg-muted overflow-hidden">
-              <img src={img} alt={card.name} className="h-full w-full object-contain" />
-              <div className="absolute inset-0 bg-gradient-to-t from-background/80 via-transparent to-transparent" />
-              {card.isLimitedEdition && (
-                <div className="absolute top-3 left-3">
-                  <Badge className="bg-background/90 text-primary border-primary font-mono text-xs">
-                    LIMITED · {card.totalMinted}{card.maxCopies ? `/${card.maxCopies}` : ""} MINTED
-                  </Badge>
-                </div>
+            <div className="relative w-full bg-gradient-to-b from-muted/50 to-muted overflow-hidden flex flex-col items-center justify-end pt-8 pb-0 [perspective:1000px]">
+              {/* Spinning card on a mini podium. y-axis flip then settle. */}
+              <motion.div
+                key={card.id /* re-trigger on card change */}
+                initial={{ rotateY: -180, opacity: 0, y: -10 }}
+                animate={{ rotateY: 0, opacity: 1, y: 0 }}
+                transition={{ duration: 0.9, ease: [0.22, 1, 0.36, 1] }}
+                className="relative w-44 aspect-[3/4] rounded-lg overflow-hidden shadow-2xl border border-border/40 [transform-style:preserve-3d]"
+              >
+                <img src={img} alt={card.name} className="h-full w-full object-cover" />
+                {podium && (
+                  <div className="absolute top-2 left-2 flex items-center gap-1 rounded-full bg-background/85 backdrop-blur px-2 py-0.5 border border-border/40">
+                    {podium.icon}
+                    <span className="text-[10px] font-bold font-mono uppercase tracking-wider">{podium.label}</span>
+                  </div>
+                )}
+                {card.isLimitedEdition && (
+                  <div className="absolute bottom-2 left-2">
+                    <Badge className="bg-background/90 text-primary border-primary font-mono text-[10px]">
+                      LE · {card.totalMinted}{card.maxCopies ? `/${card.maxCopies}` : ""}
+                    </Badge>
+                  </div>
+                )}
+              </motion.div>
+              {/* Mini podium stage */}
+              {stage ? (
+                <motion.div
+                  initial={{ opacity: 0, scaleY: 0 }}
+                  animate={{ opacity: 1, scaleY: 1 }}
+                  transition={{ delay: 0.6, duration: 0.4, ease: "easeOut" }}
+                  style={{ transformOrigin: "bottom" }}
+                  className="relative w-56 flex flex-col items-center mt-2"
+                >
+                  <div className={`w-48 ${stage.height} ${stage.tier} rounded-t-md flex items-center justify-center shadow-lg border-x border-t border-white/20`}>
+                    <span className="text-2xl font-black text-white/90 drop-shadow">{card.podiumPlace}</span>
+                  </div>
+                  <div className={`w-56 h-3 ${stage.base} rounded-b-sm shadow-inner`} />
+                </motion.div>
+              ) : (
+                <div className="h-6 w-full bg-gradient-to-b from-transparent to-background/40" />
               )}
             </div>
           )}
