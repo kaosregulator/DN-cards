@@ -291,7 +291,7 @@ export type DashboardUser = typeof dashboardUsersTable.$inferSelect;
 
 // ── Setup Tokens (one-time bootstrap links) ──────────────────────────────────
 // Generated when the bot joins a guild (DM'd to owner) or by /dashboard slash
-// command. The user opens /dashboard/setup/<token> to pick a username +
+// command. The user opens /setup/<token> to pick a username +
 // password. Token is consumed (`usedAt`) on success. Expired or used tokens
 // are rejected.
 export const setupTokensTable = pgTable("setup_tokens", {
