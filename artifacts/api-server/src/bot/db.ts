@@ -4,7 +4,7 @@ import {
   adminUsersTable, spawnLogTable, userCurrencyTable, tradesTable,
   wishlistsTable, userTimeoutsTable, cardEventsTable,
 } from "@workspace/db";
-import { eq, and, sql, desc, inArray } from "drizzle-orm";
+import { eq, and, sql, desc, inArray, isNull } from "drizzle-orm";
 import type { Card, CardEvent, GuildSettings, Trade } from "@workspace/db";
 import { DEFAULT_CARDS, SHINY_RATE, SHINY_MULTIPLIER } from "./cards-data.js";
 import { logger } from "../lib/logger.js";
@@ -67,9 +67,10 @@ export async function listSets(): Promise<Array<{ setName: string; cardCount: nu
 }
 
 // Delete every card in a set, cascading through collections/spawn_log/trades.
+// "untagged" is the display label for NULL setName rows; match it with IS NULL.
 export async function deleteSetByName(setName: string): Promise<{ removed: number }> {
-  const cards = await db.select({ id: cardsTable.id }).from(cardsTable)
-    .where(eq(cardsTable.setName, setName));
+  const where = setName === "untagged" ? isNull(cardsTable.setName) : eq(cardsTable.setName, setName);
+  const cards = await db.select({ id: cardsTable.id }).from(cardsTable).where(where);
   if (cards.length === 0) return { removed: 0 };
   const ids = cards.map(c => c.id);
 
