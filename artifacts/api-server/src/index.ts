@@ -12,6 +12,17 @@ async function runBootMigrations() {
   await pool.query(`ALTER TABLE cards ADD COLUMN IF NOT EXISTS preview_animation text`);
   await pool.query(`ALTER TABLE cards ADD COLUMN IF NOT EXISTS preview_bg_color text`);
 
+  // One-time data fix: when the dashboard moved from /dashboard/ to / (May 2026),
+  // seed event card images stored as "https://<host>/dashboard/<file>" stopped
+  // resolving. Convert any such absolute URL to a relative "/<file>" so they
+  // load from whichever domain the user is on. Idempotent — only matches rows
+  // that still have the old prefix.
+  await pool.query(`
+    UPDATE cards
+       SET image_url = regexp_replace(image_url, '^https?://[^/]+/dashboard/', '/')
+     WHERE image_url ~ '^https?://[^/]+/dashboard/'
+  `);
+
   // One-time backfill: if no card currently holds a podium slot, seed it from
   // the old name-based heuristic (1st/2nd/3rd in the name of an event card).
   // Idempotent — once any card has podium_place set, the inner NOT EXISTS
