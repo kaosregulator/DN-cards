@@ -256,3 +256,38 @@ export const cardEventsTable = pgTable("card_events", {
 });
 
 export type CardEvent = typeof cardEventsTable.$inferSelect;
+
+// ── Dashboard Users (per-user web admin logins) ───────────────────────────────
+// Separate from `admin_users` (which is Discord-side bot admin permission).
+// Each row is a username/password the user types into the web dashboard.
+// `isOwner` users can also manage other dashboard users.
+export const dashboardUsersTable = pgTable("dashboard_users", {
+  id: serial("id").primaryKey(),
+  username: text("username").notNull().unique(),
+  passwordHash: text("password_hash").notNull(),
+  isOwner: boolean("is_owner").notNull().default(false),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  lastLoginAt: timestamp("last_login_at"),
+});
+
+export type DashboardUser = typeof dashboardUsersTable.$inferSelect;
+
+// ── Setup Tokens (one-time bootstrap links) ──────────────────────────────────
+// Generated when the bot joins a guild (DM'd to owner) or by /dashboard slash
+// command. The user opens /dashboard/setup/<token> to pick a username +
+// password. Token is consumed (`usedAt`) on success. Expired or used tokens
+// are rejected.
+export const setupTokensTable = pgTable("setup_tokens", {
+  id: serial("id").primaryKey(),
+  token: text("token").notNull().unique(),
+  issuedToDiscordId: text("issued_to_discord_id").notNull(),
+  guildId: text("guild_id"),
+  // If set, this token resets the password for an existing user instead of
+  // creating a new one. (Owner-initiated reset flow.)
+  resetForUserId: integer("reset_for_user_id").references(() => dashboardUsersTable.id, { onDelete: "cascade" }),
+  expiresAt: timestamp("expires_at").notNull(),
+  usedAt: timestamp("used_at"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export type SetupToken = typeof setupTokensTable.$inferSelect;

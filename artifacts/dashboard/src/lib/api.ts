@@ -55,12 +55,25 @@ async function parseError(res: Response, path: string): Promise<ApiError> {
 }
 
 export async function apiGet<T>(path: string): Promise<T> {
-  const res = await fetch(path, { headers: { Accept: "application/json" } });
+  const res = await fetch(path, { headers: { Accept: "application/json" }, credentials: "include" });
+  if (!res.ok) throw await parseError(res, path);
+  return res.json() as Promise<T>;
+}
+
+export async function apiSend<T>(method: "POST" | "PATCH" | "DELETE", path: string, body?: unknown): Promise<T> {
+  const res = await fetch(path, {
+    method,
+    headers: { "Content-Type": "application/json", Accept: "application/json" },
+    credentials: "include",
+    body: body === undefined ? undefined : JSON.stringify(body),
+  });
   if (!res.ok) throw await parseError(res, path);
   return res.json() as Promise<T>;
 }
 
 function adminHeaders(): Record<string, string> {
+  // Master ADMIN_TOKEN is still supported as a legacy/break-glass header.
+  // Normal users authenticate with the session cookie set by /api/auth/login.
   const token = getAdminToken();
   const h: Record<string, string> = { "Content-Type": "application/json", Accept: "application/json" };
   if (token) h["Authorization"] = `Bearer ${token}`;
@@ -68,7 +81,7 @@ function adminHeaders(): Record<string, string> {
 }
 
 export async function adminGet<T>(path: string): Promise<T> {
-  const res = await fetch(path, { headers: adminHeaders() });
+  const res = await fetch(path, { headers: adminHeaders(), credentials: "include" });
   if (!res.ok) throw await parseError(res, path);
   return res.json() as Promise<T>;
 }
@@ -77,6 +90,7 @@ export async function adminSend<T>(method: "POST" | "PATCH" | "DELETE", path: st
   const res = await fetch(path, {
     method,
     headers: adminHeaders(),
+    credentials: "include",
     body: body === undefined ? undefined : JSON.stringify(body),
   });
   if (!res.ok) throw await parseError(res, path);

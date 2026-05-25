@@ -8,6 +8,9 @@ import Home from "@/pages/home";
 import Leaderboard from "@/pages/leaderboard";
 import Profile from "@/pages/profile";
 import Admin from "@/pages/admin";
+import Login from "@/pages/login";
+import Setup from "@/pages/setup";
+import Users from "@/pages/users";
 import NotFound from "@/pages/not-found";
 
 const queryClient = new QueryClient({
@@ -25,6 +28,9 @@ function Router() {
       <Route path="/" component={Home} />
       <Route path="/leaderboard" component={Leaderboard} />
       <Route path="/profile" component={Profile} />
+      <Route path="/login" component={Login} />
+      <Route path="/setup/:token" component={Setup} />
+      <Route path="/admin/users" component={Users} />
       <Route path="/admin" component={Admin} />
       <Route component={NotFound} />
     </Switch>

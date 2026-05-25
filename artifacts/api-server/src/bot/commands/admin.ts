@@ -10,6 +10,7 @@ import { handleConfigCommand } from "./config-panel.js";
 import { handleAdminHubCommand } from "./admin-hub.js";
 import { handleEventCommand } from "./event.js";
 import { handleSetChannels } from "./setchannels.js";
+import { handleDashboardCommand } from "./dashboard.js";
 import { EmbedBuilder } from "discord.js";
 
 // ── /adminhelp — admin/setup command reference ───────────────────────────────
@@ -128,6 +129,12 @@ export async function handleAdminCommand(
   const ok = await checkAdmin(interaction);
   if (!ok) {
     await interaction.editReply("❌ You don't have permission to use admin commands.");
+    return;
+  }
+
+  // /dashboard — admin-gated above; DM the user a one-time setup link.
+  if (cmd === "dashboard") {
+    await handleDashboardCommand(interaction);
     return;
   }
 

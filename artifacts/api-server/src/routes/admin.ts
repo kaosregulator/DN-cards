@@ -1,30 +1,13 @@
-import { Router, type IRouter, type Request, type Response, type NextFunction } from "express";
+import { Router, type IRouter, type Response } from "express";
 import { db, cardsTable } from "@workspace/db";
 import { eq, sql } from "drizzle-orm";
 import { z } from "zod/v4";
-import { timingSafeEqual } from "node:crypto";
+import { requireDashboardAuth } from "../middlewares/dashboard-auth.js";
 
 const router: IRouter = Router();
 
-// ── Token auth ────────────────────────────────────────────────────────────────
-function requireAdmin(req: Request, res: Response, next: NextFunction) {
-  const expected = process.env["ADMIN_TOKEN"];
-  if (!expected) {
-    res.status(503).json({ error: "ADMIN_TOKEN not configured on server" });
-    return;
-  }
-  const header = req.header("authorization") ?? "";
-  const provided = header.startsWith("Bearer ") ? header.slice(7) : req.header("x-admin-token") ?? "";
-  const expectedBuf = Buffer.from(expected, "utf8");
-  const providedBuf = Buffer.from(provided, "utf8");
-  if (providedBuf.length !== expectedBuf.length || !timingSafeEqual(providedBuf, expectedBuf)) {
-    res.status(401).json({ error: "Invalid admin token" });
-    return;
-  }
-  next();
-}
-
-router.use(requireAdmin);
+// Card admin endpoints accept either a session login or the master ADMIN_TOKEN.
+router.use(requireDashboardAuth);
 
 // ── Validation schemas ────────────────────────────────────────────────────────
 const rarityValues = ["common", "uncommon", "rare", "epic", "legendary"] as const;

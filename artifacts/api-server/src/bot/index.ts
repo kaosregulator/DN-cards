@@ -18,7 +18,8 @@ import { handleAutocomplete } from "./commands/autocomplete.js";
 import {
   buildCommands, USER_COMMAND_NAMES, ADMIN_COMMAND_NAMES, CARDSET_COMMAND_NAMES,
 } from "./commands/register.js";
-import { MessageFlags } from "discord.js";
+import { MessageFlags, EmbedBuilder } from "discord.js";
+import { createSetupLink } from "../lib/setup-link.js";
 
 export async function startBot() {
   const token = process.env["DISCORD_BOT_TOKEN"];
@@ -52,6 +53,32 @@ export async function startBot() {
     await rest
       .put(Routes.applicationGuildCommands(client.user!.id, guild.id), { body: buildCommands() })
       .catch(err => logger.error({ err, guildId: guild.id }, "Failed to register guild commands on join"));
+
+    // DM the server owner a one-time dashboard setup link. Best-effort —
+    // if their DMs are off, they can run /dashboard later.
+    try {
+      const owner = await guild.fetchOwner();
+      const { url, expiresAt } = await createSetupLink({
+        discordUserId: owner.id,
+        guildId: guild.id,
+        ttlHours: 72,
+      });
+      const embed = new EmbedBuilder()
+        .setColor(0x5865f2)
+        .setTitle("👋 Welcome to DN Cards!")
+        .setDescription(
+          `Thanks for adding **DN Cards** to **${guild.name}**.\n\n` +
+          `Open this link to set up your **web dashboard** login (pick a username + password). ` +
+          `You can manage card art, server settings, and message customization from there.\n\n` +
+          `🔗 ${url}\n\n` +
+          `**Expires:** <t:${Math.floor(expiresAt.getTime() / 1000)}:R>\n` +
+          `Need a fresh link later? Run \`/dashboard\` in your server.\n\n` +
+          `Quick start: run \`/welcome\` for the public intro, then \`/setup\` to configure spawning.`,
+        );
+      await owner.send({ embeds: [embed] });
+    } catch (err) {
+      logger.warn({ err, guildId: guild.id }, "Could not DM server owner with dashboard setup link");
+    }
   });
 
   // ── Interactions: slash commands + buttons ────────────────────────────────

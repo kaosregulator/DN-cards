@@ -160,6 +160,9 @@ export function buildCommands() {
       .addStringOption(o => o.setName("set").setDescription("Set name from /listsets (e.g. 'defaults', 'v1')").setRequired(true).setAutocomplete(true))),
 
     cmd("listsets", "(Admin) List all loaded card sets and their sizes", s => s),
+
+    // ── Dashboard ─────────────────────────────────────────────────────────────
+    cmd("dashboard", "(Admin) Get a one-time link to set up or reset your web dashboard login", s => s),
   ];
 }
 
@@ -170,7 +173,7 @@ export const USER_COMMAND_NAMES = new Set([
 ]);
 
 export const ADMIN_COMMAND_NAMES = new Set([
-  "config", "adminhub", "adminhelp", "drop", "massdrop", "give", "giveshards", "takeback", "takeshards", "event", "setchannels",
+  "config", "adminhub", "adminhelp", "drop", "massdrop", "give", "giveshards", "takeback", "takeshards", "event", "setchannels", "dashboard",
 ]);
 
 export const CARDSET_COMMAND_NAMES = new Set([
