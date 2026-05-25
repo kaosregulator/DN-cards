@@ -23,6 +23,7 @@ export interface Card {
   inPacks: boolean;
   isArchived: boolean;
   setName: string | null;
+  podiumPlace: 1 | 2 | 3 | null;
   createdAt: string;
 }
 
@@ -41,6 +42,8 @@ export type CardPatch = Partial<{
   inPacks: boolean;
   droppable: boolean;
   isArchived: boolean;
+  flavor: string | null;
+  podiumPlace: 1 | 2 | 3 | null;
 }>;
 
 export interface LeaderboardEntry {

@@ -227,6 +227,8 @@ function EditDialog({
       isEventExclusive: card.isEventExclusive,
       isLimitedEdition: card.isLimitedEdition,
       inPacks: card.inPacks,
+      flavor: card.flavor,
+      podiumPlace: card.podiumPlace,
     });
   }
 
@@ -302,6 +304,30 @@ function EditDialog({
             <Label htmlFor="f-desc">Description</Label>
             <Textarea id="f-desc" rows={3} value={form.description ?? ""} onChange={e => setForm(s => ({ ...s, description: e.target.value }))} data-testid="input-edit-desc" />
           </div>
+
+          <div className="md:col-span-2">
+            <Label htmlFor="f-flavor">Flavor text <span className="text-xs text-muted-foreground font-mono ml-1">(shown in italics on the Events page)</span></Label>
+            <Textarea id="f-flavor" rows={2} placeholder='e.g. "Awarded during DN Anniversary, May 2026"' value={form.flavor ?? ""} onChange={e => setForm(s => ({ ...s, flavor: e.target.value || null }))} data-testid="input-edit-flavor" />
+          </div>
+
+          {form.isEventExclusive && (
+            <div className="md:col-span-2">
+              <Label htmlFor="f-podium">Events page placement</Label>
+              <Select
+                value={form.podiumPlace == null ? "none" : String(form.podiumPlace)}
+                onValueChange={v => setForm(s => ({ ...s, podiumPlace: v === "none" ? null : Number(v) as 1 | 2 | 3 }))}
+              >
+                <SelectTrigger id="f-podium" data-testid="select-edit-podium"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">In the grid (default)</SelectItem>
+                  <SelectItem value="1">🥇 1st place podium</SelectItem>
+                  <SelectItem value="2">🥈 2nd place podium</SelectItem>
+                  <SelectItem value="3">🥉 3rd place podium</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground mt-1">Only one card can hold each podium slot. Assigning here will free the slot from any other card.</p>
+            </div>
+          )}
 
           <div>
             <Label htmlFor="f-qty">Quantity (max copies)</Label>

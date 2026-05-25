@@ -3,6 +3,7 @@ import {
   boolean, real, pgEnum, uniqueIndex, jsonb,
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
+import { sql } from "drizzle-orm";
 import { z } from "zod/v4";
 
 // ── Enums ─────────────────────────────────────────────────────────────────────
@@ -39,8 +40,19 @@ export const cardsTable = pgTable("cards", {
   inPacks: boolean("in_packs").notNull().default(true),
   isArchived: boolean("is_archived").notNull().default(false),
   setName: text("set_name"),
+  // Manual podium pick for the dashboard /events page: 1 = gold, 2 = silver,
+  // 3 = bronze, null = appears in the grid below the podium. Only one card
+  // per slot — enforced by a partial unique index. Cleared automatically
+  // when isEventExclusive flips false (the cards-router PATCH handles it).
+  podiumPlace: integer("podium_place"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
-});
+}, (t) => ({
+  // At most one card per podium slot. Partial index so null values (most
+  // cards) don't conflict.
+  podiumPlaceUniq: uniqueIndex("cards_podium_place_uniq")
+    .on(t.podiumPlace)
+    .where(sql`${t.podiumPlace} IS NOT NULL`),
+}));
 
 export const insertCardSchema = createInsertSchema(cardsTable).omit({ id: true, createdAt: true, totalMinted: true });
 export type InsertCard = z.infer<typeof insertCardSchema>;

@@ -1,6 +1,6 @@
 import { Router, type IRouter, type Response } from "express";
 import { db, cardsTable } from "@workspace/db";
-import { eq, sql } from "drizzle-orm";
+import { eq, sql, and } from "drizzle-orm";
 import { z } from "zod/v4";
 import { requireDashboardAuth } from "../middlewares/dashboard-auth.js";
 
@@ -28,6 +28,8 @@ const cardPatchSchema = z.object({
   inPacks: z.boolean().optional(),
   droppable: z.boolean().optional(),
   isArchived: z.boolean().optional(),
+  flavor: z.string().max(500).nullable().optional(),
+  podiumPlace: z.union([z.literal(1), z.literal(2), z.literal(3)]).nullable().optional(),
 });
 
 const cardCreateSchema = cardPatchSchema.extend({
@@ -85,15 +87,53 @@ router.patch("/cards/:id", async (req, res) => {
     res.status(400).json({ error: "No fields to update" });
     return;
   }
+
   try {
-    const [updated] = await db.update(cardsTable).set(body).where(eq(cardsTable.id, params.id)).returning();
-    if (!updated) {
+    const result = await db.transaction(async (tx) => {
+      // Read current state so we can compute the *effective* post-patch values
+      // for invariant enforcement (you can't set podiumPlace on a non-event card).
+      const [current] = await tx.select().from(cardsTable).where(eq(cardsTable.id, params.id));
+      if (!current) return { notFound: true as const };
+
+      const effectiveEventExclusive = body.isEventExclusive ?? current.isEventExclusive;
+      const patch: typeof body = { ...body };
+
+      // If the card is (or is becoming) non-event-exclusive, the podium slot
+      // must be null regardless of what the client sent — both for the explicit
+      // toggle-off case and to reject "set place on a regular card" requests.
+      if (!effectiveEventExclusive) {
+        patch.podiumPlace = null;
+      }
+
+      const finalPlace = patch.podiumPlace;
+
+      // Evict the prior occupant of the slot, but only when this card is
+      // actually taking it. Use the *final* patched value so a payload like
+      // { isEventExclusive:false, podiumPlace:1 } doesn't accidentally evict.
+      if (finalPlace === 1 || finalPlace === 2 || finalPlace === 3) {
+        await tx.update(cardsTable)
+          .set({ podiumPlace: null })
+          .where(and(eq(cardsTable.podiumPlace, finalPlace), sql`${cardsTable.id} <> ${params.id}`));
+      }
+
+      const [row] = await tx.update(cardsTable).set(patch).where(eq(cardsTable.id, params.id)).returning();
+      return { row };
+    });
+
+    if ("notFound" in result) {
       res.status(404).json({ error: "Card not found" });
       return;
     }
-    res.json({ card: updated });
+    res.json({ card: result.row });
   } catch (err: any) {
     if (err?.code === "23505") {
+      // Disambiguate name-unique vs podium-slot-unique conflicts so admins
+      // get a useful message when concurrent edits race for the same slot.
+      const detail = String(err?.constraint ?? err?.detail ?? "");
+      if (detail.includes("podium_place")) {
+        res.status(409).json({ error: "That podium slot was just taken by another edit. Reopen the card and try again." });
+        return;
+      }
       res.status(409).json({ error: "A card with that name already exists" });
       return;
     }

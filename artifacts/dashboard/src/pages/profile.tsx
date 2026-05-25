@@ -211,6 +211,7 @@ export default function Profile() {
                         inPacks: true,
                         isArchived: false,
                         setName: null,
+                        podiumPlace: null,
                         createdAt: item.firstCaughtAt
                       }}
                       count={item.count}

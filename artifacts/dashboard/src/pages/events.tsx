@@ -43,12 +43,6 @@ const PLACE_STYLES: Record<number, { border: string; glow: string; label: string
   },
 };
 
-function placeFromName(name: string): number | null {
-  if (/1st/i.test(name)) return 1;
-  if (/2nd/i.test(name)) return 2;
-  if (/3rd/i.test(name)) return 3;
-  return null;
-}
 
 function EventCardDetail({ card, open, onClose }: {
   card: { id: number; name: string; description: string; rarity: string; cardType: string; imageUrl: string | null; flavor: string | null; worthValue: number; isLimitedEdition: boolean; totalMinted: number; maxCopies: number | null } | null;
@@ -113,19 +107,19 @@ export default function Events() {
     [data],
   );
 
-  // Split into podium cards (1st/2nd/3rd) and general event cards
+  // Split into podium cards (admin-picked 1st/2nd/3rd via card.podiumPlace)
+  // and general event cards (shown in the grid below).
   const podiumMap = useMemo(() => {
     const map: Record<number, typeof eventCards[0]> = {};
     for (const c of eventCards) {
-      const p = placeFromName(c.name);
-      if (p) map[p] = c;
+      if (c.podiumPlace && !map[c.podiumPlace]) map[c.podiumPlace] = c;
     }
     return map;
   }, [eventCards]);
 
   const hasPodium = Object.keys(podiumMap).length > 0;
   const nonPodiumCards = useMemo(
-    () => eventCards.filter(c => placeFromName(c.name) === null),
+    () => eventCards.filter(c => !c.podiumPlace),
     [eventCards],
   );
 
