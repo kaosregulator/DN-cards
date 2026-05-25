@@ -174,6 +174,14 @@ export function buildCommands() {
 
     adminCmd("listsets", "(Admin) List all loaded card sets and their sizes", s => s),
 
+    adminCmd("addadmin", "(Admin) Grant bot admin access to a member", s => s
+      .addUserOption(o => o.setName("user").setDescription("Member to add as bot admin").setRequired(true))),
+
+    adminCmd("removeadmin", "(Admin) Revoke bot admin access from a member", s => s
+      .addUserOption(o => o.setName("user").setDescription("Member to remove from bot admins").setRequired(true))),
+
+    adminCmd("listadmins", "(Admin) List current bot admins", s => s),
+
     // ── Dashboard ─────────────────────────────────────────────────────────────
     adminCmd("dashboard", "(Admin) Get a one-time link to set up or reset your web dashboard login", s => s),
   ];
@@ -187,6 +195,7 @@ export const USER_COMMAND_NAMES = new Set([
 
 export const ADMIN_COMMAND_NAMES = new Set([
   "config", "adminhub", "adminhelp", "drop", "massdrop", "give", "giveshards", "takeback", "takeshards", "event", "setchannels", "dashboard", "setup",
+  "addadmin", "removeadmin", "listadmins",
 ]);
 
 export const CARDSET_COMMAND_NAMES = new Set([

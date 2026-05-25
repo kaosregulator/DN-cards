@@ -1,7 +1,7 @@
 import { MessageFlags, type ChatInputCommandInteraction, type GuildMember } from "discord.js";
 import {
   isAdmin, getAllCards, addShards, catchCard, getOrCreateGuildSettings,
-  removeCardFromUser, deductShards,
+  removeCardFromUser, deductShards, addAdmin, removeAdmin, listAdmins,
 } from "../db.js";
 import { spawnCard, scheduleNextSpawn } from "../spawn-manager.js";
 import { RARITY_EMOJI, RARITY_LABELS, type Rarity } from "../cards-data.js";
@@ -78,9 +78,11 @@ async function handleAdminHelp(interaction: ChatInputCommandInteraction): Promis
           "*Built-in starter roster is opt-in via the `/setup` panel.*",
       },
       {
-        name: "👥 Admins *(prefix commands)*",
+        name: "👥 Admins *(slash commands)*",
         value:
-          "`<prefix>addadmin @User` · `<prefix>removeadmin @User` · `<prefix>listadmins`\n" +
+          "`/addadmin user:@User` — grant bot admin access\n" +
+          "`/removeadmin user:@User` — revoke bot admin access\n" +
+          "`/listadmins` — show current bot admins\n" +
           "Server owner + Discord Administrators are always admins.\n" +
           "*Tip: in Discord → Server Settings → Integrations → DN Cards you can also grant admin commands to specific roles per-command.*",
       },
@@ -156,6 +158,36 @@ export async function handleAdminCommand(
 
   const guildId = interaction.guild.id;
   const opts = interaction.options;
+
+  // ── /addadmin /removeadmin /listadmins ─────────────────────────────────────────────────────
+  if (cmd === "addadmin") {
+    const target = opts.getUser("user", true);
+    await addAdmin(guildId, target.id, interaction.user.id);
+    await interaction.editReply(`✅ <@${target.id}> added as bot admin.`);
+    return;
+  }
+  if (cmd === "removeadmin") {
+    const target = opts.getUser("user", true);
+    await removeAdmin(guildId, target.id);
+    await interaction.editReply(`✅ <@${target.id}> removed from bot admins.`);
+    return;
+  }
+  if (cmd === "listadmins") {
+    const admins = await listAdmins(guildId);
+    const lines = admins.length === 0
+      ? "_No bot admins — only the server owner & Discord Administrators have access._"
+      : admins.map((a: { userId: string }) => `• <@${a.userId}>`).join("\n");
+    await interaction.editReply({
+      embeds: [
+        new EmbedBuilder()
+          .setTitle("👥 Bot Admins")
+          .setColor(0x5865f2)
+          .setDescription(lines)
+          .setFooter({ text: "Server owner & Discord Admins are always admins, even if not listed." }),
+      ],
+    });
+    return;
+  }
 
   // ── /event start|list|stop ────────────────────────────────────────────────
   // Delegated to event.ts. We've already deferred + admin-checked above so
