@@ -123,7 +123,8 @@ export async function handleImport(msg: Message): Promise<void> {
       if (!v1File) {
         await msg.reply(
           "❌ No JSON found.\n" +
-          "Either **attach a `.json` file** to your `!import` message, or place one in `attached_assets/`.",
+          "Either **attach a `.json` file** to your `!import` message, or place one in `attached_assets/`.\n" +
+          "*(Your prefix may be different — run `<prefix>setprefix` to check.)*",
         );
         return;
       }
@@ -168,7 +169,7 @@ export async function handleImport(msg: Message): Promise<void> {
     `⏭️ Skipped (already exist): **${skipped}**\n` +
     (failed > 0 ? `❌ Failed: **${failed}**\n${errors.map(e => `• ${e}`).join("\n")}\n\n` : "\n") +
     `Use \`/unloadset set:${setName}\` to remove this set later.\n` +
-    `Use \`!editcard <Name>\` to tweak any card.`;
+    `Use \`!editcard <Name>\` to tweak any card. *(Your prefix may differ — check \`<prefix>setprefix\`.)*`
 
   try { await status.edit(summary); } catch { await msg.reply(summary); }
 }

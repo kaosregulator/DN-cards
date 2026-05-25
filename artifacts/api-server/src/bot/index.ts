@@ -8,7 +8,7 @@ import { handleAdminHubButton, handleAdminHubModal } from "./commands/admin-hub.
 import { checkAchievements, formatUnlockLine } from "./achievements.js";
 import { handleAdminCommand } from "./commands/admin.js";
 import { handleUserCommand } from "./commands/user.js";
-import { handlePrefixCommand } from "./commands/prefix.js";
+import { handlePrefixCommand, getGuildPrefix } from "./commands/prefix.js";
 import {
   handleSetupButton, handleSetupSelect, handleSetupModalSubmit,
 } from "./commands/setup-wizard.js";
@@ -317,9 +317,10 @@ export async function startBot() {
     if (msg.author.bot || !msg.guild) return;
     const content = msg.content.trim();
 
-    // ! prefix commands (admin setup and config)
-    if (content.startsWith("!")) {
-      await handlePrefixCommand(msg).catch(err => logger.error({ err }, "Prefix command error"));
+    // prefix commands (admin setup and config) — prefix is configurable per-guild
+    const prefix = await getGuildPrefix(msg.guild.id);
+    if (content.startsWith(prefix)) {
+      await handlePrefixCommand(msg, prefix).catch(err => logger.error({ err }, "Prefix command error"));
       return;
     }
 

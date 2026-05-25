@@ -2,7 +2,8 @@ import {
   EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle,
   StringSelectMenuBuilder, ModalBuilder, TextInputBuilder, TextInputStyle,
   MessageFlags,
-  type Message, type ButtonInteraction, type StringSelectMenuInteraction,
+  type Message, type ChatInputCommandInteraction,
+  type ButtonInteraction, type StringSelectMenuInteraction,
   type ModalSubmitInteraction, type GuildMember,
 } from "discord.js";
 import type { GuildSettings } from "@workspace/db";
@@ -26,6 +27,20 @@ export async function startSetupWizard(msg: Message): Promise<void> {
   await msg.reply({
     embeds: [buildSetupEmbed(settings, hasDefaults)],
     components: buildSetupComponents(settings, hasDefaults),
+  });
+}
+
+// ── Entry: /setup (slash) ─────────────────────────────────────────────────────────────────────────────
+export async function handleSetupCommand(interaction: ChatInputCommandInteraction): Promise<void> {
+  if (!interaction.guild) return;
+  const ok = await ensureAdminSlash(interaction);
+  if (!ok) return;
+  const settings = await getOrCreateGuildSettings(interaction.guild.id);
+  const hasDefaults = await defaultsLoaded();
+  await interaction.reply({
+    embeds: [buildSetupEmbed(settings, hasDefaults)],
+    components: buildSetupComponents(settings, hasDefaults),
+    flags: MessageFlags.Ephemeral,
   });
 }
 
@@ -54,10 +69,11 @@ export async function handleSetupButton(interaction: ButtonInteraction): Promise
     const { added, skipped } = await loadDefaultCards();
     // Update the panel FIRST (consumes the interaction), then followUp the toast.
     await refreshPanel(interaction, guildId);
+    const settings = await getOrCreateGuildSettings(guildId);
     await interaction.followUp({
       content: `📦 Loaded the built-in roster — added **${added}** cards` +
         (skipped > 0 ? ` (skipped **${skipped}** already in your roster).` : ".") +
-        `\nRemove anytime with the **🗑️ Remove Defaults** button or \`/unloadset set:${DEFAULTS_SET_NAME}\`.`,
+        `\nRemove anytime with the **🗑️ Remove Defaults** button or \`${settings.commandPrefix}unloaddefaults\` / \`/unloadset set:${DEFAULTS_SET_NAME}\`.`,
       flags: MessageFlags.Ephemeral,
     }).catch(() => { /* ignore */ });
     return;
@@ -116,9 +132,9 @@ export async function handleSetupButton(interaction: ButtonInteraction): Promise
           .setDescription(
             `Drops are live in <#${settings.spawnChannelId}>.\n\n` +
             `**Next steps**\n` +
-            `• Add cards: \`!addcard\` · \`!addlimited\` · \`!addevent\`\n` +
+            `• Add cards: \`${s.commandPrefix}addcard\` · \`${s.commandPrefix}addlimited\` · \`${s.commandPrefix}addevent\`\n` +
             `• Force a drop: \`/drop\` · Mass drop: \`/massdrop\`\n` +
-            `• Re-open this panel anytime with \`!setup\` or \`/config\`\n` +
+            `• Re-open this panel anytime with \`${s.commandPrefix}setup\` or \`/config\`\n` +
             `• Player help: \`/help\` · Admin help: \`/adminhelp\``,
           ),
       ],
@@ -177,7 +193,7 @@ export async function handleSetupModalSubmit(interaction: ModalSubmitInteraction
   try {
     const card = await addCard({
       name,
-      description: `A test card created during setup. Safe to remove with \`!removecard ${name}\`.`,
+      description: `A test card created during setup. Safe to remove with \`${settings.commandPrefix}removecard ${name}\`.`,
       rarity: "common",
       cardType: "infantry",
       dropWeight: 60,
@@ -187,7 +203,7 @@ export async function handleSetupModalSubmit(interaction: ModalSubmitInteraction
     });
     await spawnCard(guildId, card.id, true);
     await interaction.reply({
-      content: `🧪 Test card **${name}** dropped in <#${settings.spawnChannelId}>. Go catch it!\nClean up later with \`!removecard ${name}\`.`,
+      content: `🧪 Test card **${name}** dropped in <#${settings.spawnChannelId}>. Go catch it!\nClean up later with \`${settings.commandPrefix}removecard ${name}\`.`,
       flags: MessageFlags.Ephemeral,
     }).catch(() => { /* ignore */ });
   } catch {
@@ -251,6 +267,22 @@ async function ensureAdminModal(interaction: ModalSubmitInteraction): Promise<bo
   return !!allowed;
 }
 
+async function ensureAdminSlash(interaction: ChatInputCommandInteraction): Promise<boolean> {
+  if (!interaction.guild) return false;
+  const member = interaction.member as GuildMember | null;
+  const allowed =
+    interaction.guild.ownerId === interaction.user.id ||
+    member?.permissions.has("Administrator") ||
+    (await isAdmin(interaction.guild.id, interaction.user.id));
+  if (!allowed) {
+    await interaction.reply({
+      content: "❌ Only admins can use the setup panel.",
+      flags: MessageFlags.Ephemeral,
+    }).catch(() => { /* ignore */ });
+  }
+  return allowed;
+}
+
 function formatSec(sec: number): string {
   if (sec >= 3600) return `${Math.round(sec / 3600)}h`;
   if (sec >= 60) return `${Math.round(sec / 60)}m`;
@@ -274,7 +306,7 @@ function buildSetupEmbed(s: GuildSettings, hasDefaults: boolean): EmbedBuilder {
   const defaultsLine = hasDefaults
     ? `✅ Built-in 27-card roster is **loaded** *(use 🗑️ to remove)*`
     : `📦 No built-in defaults loaded *(use 📜 to load all ${DEFAULT_CARDS.length} or skip — your `+
-      `\`!addcard\` cards work without them)*`;
+      `\`${s.commandPrefix}addcard\` cards work without them)*`;
 
   return new EmbedBuilder()
     .setTitle("🃏 DN Cards — Setup Panel")

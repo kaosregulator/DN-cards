@@ -25,33 +25,34 @@ async function handleAdminHelp(interaction: ChatInputCommandInteraction): Promis
     .setColor(0xeb459e)
     .setDescription(
       "All commands here are admin-gated. Player commands are in `/help`.\n" +
-      "Most actions are also reachable visually from `!setup` or `/config`.",
+      "Most actions are also reachable visually from `/setup` or `/config`.",
     )
     .addFields(
       {
         name: "⚙️ Setup & Config",
         value:
-          "`!setup` — **interactive setup panel** (recommended)\n" +
+          "`/setup` — **interactive setup panel** (recommended)\n" +
           "`/config` — open the config panel anytime (catch mode, intervals, toggles, rates)\n" +
           "`/setchannels` — pick spawn/trade channels from a dropdown (no `#` typing)\n" +
           "`/adminhub` — manage bot admins & catch timeouts\n" +
-          "`!settings` — text dump of current configuration",
+          "`/adminhelp` — this reference panel",
       },
       {
-        name: "📢 Channels & Toggles *(`!` prefix)*",
+        name: "📢 Channels & Toggles *(prefix commands)*",
         value:
-          "`!setchannel #channel` · `!settradechannel #channel`\n" +
-          "`!setinterval <time>` · `!setinterval random <min> <max>` · `!setwindow <time>`\n" +
-          "`!setdrops <1|3|5|random>` · `!setcatchmode <type|button|both>`\n" +
-          "`!setrarity <rarity> <weight>`\n" +
-          "`!spawnenable` / `!spawndisable` · `!tradingenable` / `!tradingdisable`",
+          "`<prefix>setchannel #channel` · `<prefix>settradechannel #channel`\n" +
+          "`<prefix>setinterval <time>` · `<prefix>setinterval random <min> <max>` · `<prefix>setwindow <time>`\n" +
+          "`<prefix>setdrops <1|3|5|random>` · `<prefix>setcatchmode <type|button|both>`\n" +
+          "`<prefix>setrarity <rarity> <weight>`\n" +
+          "`<prefix>spawnenable` / `<prefix>spawndisable` · `<prefix>tradingenable` / `<prefix>tradingdisable`\n" +
+          "*Default prefix is `!`. Change it with `<prefix>setprefix`.*",
       },
       {
-        name: "🃏 Card Management *(`!` prefix)*",
+        name: "🃏 Card Management *(prefix commands)*",
         value:
-          "`!addcard` · `!addlimited` · `!addevent` — guided card creation wizards\n" +
-          "`!editcard <Name>` · `!removecard <Name>`\n" +
-          "`!import` — bulk import cards from JSON attachment",
+          "`<prefix>addcard` · `<prefix>addlimited` · `<prefix>addevent` — guided card creation wizards\n" +
+          "`<prefix>editcard <Name>` · `<prefix>removecard <Name>`\n" +
+          "`<prefix>import` — bulk import cards from JSON attachment",
       },
       {
         name: "⚡ Live Actions *(slash)*",
@@ -74,12 +75,12 @@ async function handleAdminHelp(interaction: ChatInputCommandInteraction): Promis
         value:
           "`/loadset file:<.json>` — upload a custom card pack\n" +
           "`/listsets` — see all loaded sets · `/unloadset set:<name>` — remove a set\n" +
-          "*Built-in starter roster is opt-in via the `!setup` panel.*",
+          "*Built-in starter roster is opt-in via the `/setup` panel.*",
       },
       {
-        name: "👥 Admins *(`!` prefix)*",
+        name: "👥 Admins *(prefix commands)*",
         value:
-          "`!addadmin @User` · `!removeadmin @User` · `!listadmins`\n" +
+          "`<prefix>addadmin @User` · `<prefix>removeadmin @User` · `<prefix>listadmins`\n" +
           "Server owner + Discord Administrators are always admins.\n" +
           "*Tip: in Discord → Server Settings → Integrations → DN Cards you can also grant admin commands to specific roles per-command.*",
       },
@@ -115,6 +116,11 @@ export async function handleAdminCommand(
   // /config opens an ephemeral panel — it handles its own reply (no defer).
   if (cmd === "config") {
     await handleConfigCommand(interaction);
+    return;
+  }
+  if (cmd === "setup") {
+    const { handleSetupCommand } = await import("./setup-wizard.js");
+    await handleSetupCommand(interaction);
     return;
   }
   if (cmd === "adminhub") {
@@ -164,7 +170,8 @@ export async function handleAdminCommand(
     const cardName = opts.getString("name");
     const settings = await getOrCreateGuildSettings(guildId);
     if (!settings.spawnChannelId) {
-      await interaction.editReply("❌ No spawn channel set. Run `!setchannel #channel` first.");
+      const pfx = settings.commandPrefix;
+      await interaction.editReply(`❌ No spawn channel set. Run \`${pfx}setchannel #channel\` first.`);
       return;
     }
     let forcedCardId: number | undefined;
@@ -189,7 +196,8 @@ export async function handleAdminCommand(
     const amount = opts.getInteger("amount") ?? 15;
     const settings = await getOrCreateGuildSettings(guildId);
     if (!settings.spawnChannelId) {
-      await interaction.editReply("❌ No spawn channel set. Run `!setchannel #channel` first.");
+      const pfx = settings.commandPrefix;
+      await interaction.editReply(`❌ No spawn channel set. Run \`${pfx}setchannel #channel\` first.`);
       return;
     }
     const allCards = await getAllCards();

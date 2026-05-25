@@ -51,12 +51,18 @@ function formatTime(seconds: number): string {
 const VALID_RARITIES = new Set(["common", "uncommon", "rare", "epic", "legendary"]);
 
 // ── Main prefix command handler ───────────────────────────────────────────────
-export async function handlePrefixCommand(msg: Message): Promise<void> {
+export async function getGuildPrefix(guildId: string): Promise<string> {
+  const { getOrCreateGuildSettings } = await import("../db.js");
+  const s = await getOrCreateGuildSettings(guildId);
+  return s.commandPrefix;
+}
+
+export async function handlePrefixCommand(msg: Message, prefix: string): Promise<void> {
   if (!msg.guild) return;
   const content = msg.content.trim();
-  if (!content.startsWith("!")) return;
+  if (!content.startsWith(prefix)) return;
 
-  const [rawCmd, ...args] = content.slice(1).trim().split(/\s+/);
+  const [rawCmd, ...args] = content.slice(prefix.length).trim().split(/\s+/);
   const cmd = rawCmd?.toLowerCase();
   const guildId = msg.guild.id;
 
@@ -65,7 +71,8 @@ export async function handlePrefixCommand(msg: Message): Promise<void> {
     await msg.reply(
       "🃏 **DN Cards Help**\n" +
       "• Players → run `/help`\n" +
-      "• Admins → run `/adminhelp` (or `!setup` to open the visual setup panel).",
+      `• Admins → run \`/adminhelp\` (or \`${prefix}setup\` to open the visual setup panel).\n` +
+      `• Prefix commands use \`${prefix}\` (change with \`${prefix}setprefix\`).`,
     );
     return;
   }
@@ -110,7 +117,7 @@ export async function handlePrefixCommand(msg: Message): Promise<void> {
     if (!ok) { await msg.reply("❌ You don't have permission."); return; }
     const { removed } = await unloadDefaultCards();
     await msg.reply(
-      `✅ Removed **${removed}** built-in default cards. Re-load anytime from the \`!setup\` panel.`,
+      `✅ Removed **${removed}** built-in default cards. Re-load anytime from \`${prefix}setup\` or \`/loadset defaults:true\`.`
     );
     return;
   }
@@ -121,7 +128,7 @@ export async function handlePrefixCommand(msg: Message): Promise<void> {
     await msg.reply(
       `✅ Added **${added}** default cards back.` +
       (skipped > 0 ? ` ⏭️ Skipped **${skipped}** already in roster.` : "") +
-      ` Tip: \`/loadset\` is the new slash-command version.`,
+      ` Tip: \`/loadset\` is the slash-command version.`,
     );
     return;
   }
@@ -275,7 +282,8 @@ export async function handlePrefixCommand(msg: Message): Promise<void> {
       `🎯 Catch Mode: **${(s as unknown as { catchMode?: string }).catchMode ?? "type"}** (${{type:"✍️ typing — lag-fair (earliest sent wins)",button:"🎯 click Claim — position randomized",both:"✍️ + 🎯 both"}[(s as unknown as { catchMode?: string }).catchMode ?? "type"]})\n` +
       `🎲 Rarity Weights (✏️ = customised): ${rarityLines}\n` +
       `🔄 Trading: ${s.tradeEnabled ? "✅ Enabled" : "⏸️ Disabled"}\n` +
-      `💬 Trade Channel: ${s.tradeChannelId ? `<#${s.tradeChannelId}>` : "Any channel"}`,
+      `💬 Trade Channel: ${s.tradeChannelId ? `<#${s.tradeChannelId}>` : "Any channel"}\n` +
+      `⚖️ Command Prefix: \`${s.commandPrefix}\` (change with \`${s.commandPrefix}setprefix\`)`,
     );
     return;
   }
@@ -317,6 +325,18 @@ export async function handlePrefixCommand(msg: Message): Promise<void> {
     }
     const lines = admins.map(a => `<@${a.userId}> — added by <@${a.addedBy}>`);
     await msg.reply(`**DN Cards Admins:**\n${lines.join("\n")}`);
+    return;
+  }
+
+  // ── !setprefix ─────────────────────────────────────────────────────────────
+  if (cmd === "setprefix") {
+    const newPrefix = args[0]?.trim();
+    if (!newPrefix || newPrefix.length > 5) {
+      await msg.reply("❌ Usage: `!setprefix !` (or `>`, `$`, etc.). Max 5 characters.");
+      return;
+    }
+    await updateGuildSettings(guildId, { commandPrefix: newPrefix });
+    await msg.reply(`✅ Command prefix changed to **\`${newPrefix}\`**`);
     return;
   }
 }

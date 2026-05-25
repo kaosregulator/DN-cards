@@ -85,6 +85,8 @@ export function buildCommands() {
 
     cmd("welcome", "(User) Welcome to DN Cards — game intro, quick start & commands", s => s),
 
+    adminCmd("setup", "(Admin) Interactive server setup wizard — channels, spawns, rates, toggles", s => s),
+
     adminCmd("setchannels", "(Admin) Interactive channel configurator (spawn, trade, …)", s => s),
 
     cmd("help", "(User) Show DN Cards player commands", s => s),
@@ -184,7 +186,7 @@ export const USER_COMMAND_NAMES = new Set([
 ]);
 
 export const ADMIN_COMMAND_NAMES = new Set([
-  "config", "adminhub", "adminhelp", "drop", "massdrop", "give", "giveshards", "takeback", "takeshards", "event", "setchannels", "dashboard",
+  "config", "adminhub", "adminhelp", "drop", "massdrop", "give", "giveshards", "takeback", "takeshards", "event", "setchannels", "dashboard", "setup",
 ]);
 
 export const CARDSET_COMMAND_NAMES = new Set([

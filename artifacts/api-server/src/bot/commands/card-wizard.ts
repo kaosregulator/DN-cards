@@ -517,12 +517,12 @@ async function createCard(msg: Message, session: CardWizardSession) {
       `**${card.name}** — ${RARITY_EMOJI[r]} ${RARITY_LABELS[r]}\n` +
       `Worth: 💠 ${card.worthValue.toLocaleString()} · Burn: 🔥 ${card.burnValue.toLocaleString()}\n\n` +
       extra +
-      (session.kind !== "standard" ? `\nRemove with \`!removecard ${card.name}\` if needed.` : ""),
+      (session.kind !== "standard" ? `\nRemove with \`!removecard ${card.name}\` if needed (prefix may differ — check \`${prefix}setprefix\`).` : ""),
     );
   } catch (err: any) {
     const isDuplicate = err?.message?.includes("unique") || err?.code === "23505";
     await msg.reply(isDuplicate
-      ? `❌ A card named **${d.name}** already exists. Use \`!removecard ${d.name}\` first.`
+      ? `❌ A card named **${d.name}** already exists. Remove it first (see \`!removecard\` or use slash commands).`
       : "❌ Failed to create the card. Please try again.",
     );
   }

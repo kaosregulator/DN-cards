@@ -90,7 +90,7 @@ export async function handleUnloadSet(interaction: ChatInputCommandInteraction):
   if (setName === DEFAULTS_SET_NAME) {
     const { removed } = await unloadDefaultCards();
     await interaction.editReply(
-      `✅ Removed **${removed}** built-in default cards.\nThey will **not** come back on restart. Re-load anytime from the \`!setup\` panel.`,
+      `✅ Removed **${removed}** built-in default cards.\nThey will **not** come back on restart. Re-load anytime from the \`/setup\` panel or \`/loadset defaults:true\`.`
     );
     return;
   }
