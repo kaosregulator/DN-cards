@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Card as CardType } from "@/hooks/queries";
+import { resolveImageUrl } from "@/lib/api";
 import { AlertCircle, Target, Zap, Shield, Image as ImageIcon, Sparkles } from "lucide-react";
 
 // Must match SHINY_MULTIPLIER / SHINY_RATE in api-server/src/bot/cards-data.ts.
@@ -55,7 +56,10 @@ const PREVIEW_ANIMS: Record<PreviewAnim, { initial: any; animate: any; transitio
 
 export function CardComponent({ card, relativeDropChance, count, shinyCount = 0 }: CardComponentProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const [imageError, setImageError] = useState(!card.imageUrl);
+  // Resolve once — `/objects/...` paths need `/api/storage` prefix, absolute
+  // URLs pass through. Both <img> tags use the same resolved URL.
+  const resolvedImageUrl = resolveImageUrl(card.imageUrl);
+  const [imageError, setImageError] = useState(!resolvedImageUrl);
 
   const isLegendary = card.rarity === "legendary";
 
@@ -89,9 +93,9 @@ export function CardComponent({ card, relativeDropChance, count, shinyCount = 0 
 
         {/* Image Area */}
         <div className="relative aspect-[3/4] w-full bg-muted/50 overflow-hidden flex items-center justify-center">
-          {!imageError ? (
+          {!imageError && resolvedImageUrl ? (
             <img
-              src={card.imageUrl!}
+              src={resolvedImageUrl}
               alt={card.name}
               className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
               onError={() => setImageError(true)}
@@ -167,13 +171,14 @@ export function CardComponent({ card, relativeDropChance, count, shinyCount = 0 
                     Tank) get a 4:3 frame + object-contain so the full image is
                     visible without sideways cropping. */}
                 {(() => {
+                  // Landscape gets a wider 4:3 stage; portrait stays 3:4.
+                  // Both use object-contain so the full artwork is always
+                  // visible (no cropping), letterboxed against the stage bg.
                   const isLandscape = card.displayOrientation === "landscape";
                   const stageAspect = isLandscape ? "aspect-[4/3]" : "aspect-[3/4]";
-                  const innerAspect = isLandscape ? "aspect-[4/3]" : "aspect-[3/4]";
-                  const fit = isLandscape ? "object-contain" : "object-cover";
                   return (
                 <div
-                  className={`relative w-full md:w-1/2 ${stageAspect} overflow-hidden flex items-center justify-center [perspective:1000px]`}
+                  className={`relative w-full md:w-1/2 ${stageAspect} overflow-hidden flex items-center justify-center [perspective:1000px] p-4`}
                   style={stageStyle}
                 >
                   <motion.div
@@ -181,13 +186,13 @@ export function CardComponent({ card, relativeDropChance, count, shinyCount = 0 
                     initial={anim.initial}
                     animate={anim.animate}
                     transition={anim.transition}
-                    className={`relative w-[85%] ${innerAspect} rounded-lg overflow-hidden border shadow-2xl [transform-style:preserve-3d] ${rarityBorders[card.rarity]}`}
+                    className="relative w-full h-full flex items-center justify-center [transform-style:preserve-3d]"
                   >
-                    {!imageError ? (
+                    {!imageError && resolvedImageUrl ? (
                       <img
-                        src={card.imageUrl!}
+                        src={resolvedImageUrl}
                         alt={card.name}
-                        className={`h-full w-full ${fit}`}
+                        className="max-h-full max-w-full object-contain rounded-lg shadow-2xl"
                       />
                     ) : (
                       <div className={`flex h-full w-full flex-col items-center justify-center p-6 text-center ${rarityColors[card.rarity]}`}>
