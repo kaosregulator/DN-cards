@@ -12,6 +12,7 @@ import Login from "@/pages/login";
 import Setup from "@/pages/setup";
 import Users from "@/pages/users";
 import Embeds from "@/pages/embeds";
+import Events from "@/pages/events";
 import NotFound from "@/pages/not-found";
 
 const queryClient = new QueryClient({
@@ -28,6 +29,7 @@ function Router() {
     <Switch>
       <Route path="/" component={Home} />
       <Route path="/leaderboard" component={Leaderboard} />
+      <Route path="/events" component={Events} />
       <Route path="/profile" component={Profile} />
       <Route path="/login" component={Login} />
       <Route path="/setup/:token" component={Setup} />

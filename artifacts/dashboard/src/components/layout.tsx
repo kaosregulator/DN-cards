@@ -8,6 +8,7 @@ export function Nav() {
   const links: { href: string; label: string; show: boolean }[] = [
     { href: "/", label: "Roster", show: true },
     { href: "/leaderboard", label: "Leaderboard", show: true },
+    { href: "/events", label: "Events", show: true },
     { href: "/profile", label: "Profile", show: true },
     { href: "/admin", label: "Admin", show: !!user },
     { href: "/admin/embeds", label: "Embeds", show: !!user },
