@@ -3,12 +3,16 @@ import { motion } from "framer-motion";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Card as CardType } from "@/hooks/queries";
-import { AlertCircle, Target, Zap, Shield, Image as ImageIcon } from "lucide-react";
+import { AlertCircle, Target, Zap, Shield, Image as ImageIcon, Sparkles } from "lucide-react";
+
+// Must match SHINY_MULTIPLIER / SHINY_RATE in api-server/src/bot/cards-data.ts.
+const SHINY_MULTIPLIER = 2;
 
 interface CardComponentProps {
   card: CardType;
   relativeDropChance?: number; // percentage
   count?: number;
+  shinyCount?: number;
 }
 
 const rarityColors = {
@@ -27,7 +31,7 @@ const rarityBorders = {
   legendary: "border-[hsl(var(--rarity-legendary))] rarity-glow-legendary",
 };
 
-export function CardComponent({ card, relativeDropChance, count }: CardComponentProps) {
+export function CardComponent({ card, relativeDropChance, count, shinyCount = 0 }: CardComponentProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [imageError, setImageError] = useState(!card.imageUrl);
 
@@ -43,10 +47,21 @@ export function CardComponent({ card, relativeDropChance, count }: CardComponent
         whileHover={{ scale: 1.02 }}
         whileTap={{ scale: 0.98 }}
       >
-        {/* Count Badge */}
-        {count !== undefined && count > 1 && (
+        {/* Count Badge — totals both piles so users see their full holdings at a glance. */}
+        {count !== undefined && (count + shinyCount) > 1 && (
           <div className="absolute -right-2 -top-2 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground shadow-lg">
-            x{count}
+            x{count + shinyCount}
+          </div>
+        )}
+
+        {/* Shiny badge — own at least one shiny of this card. */}
+        {shinyCount > 0 && (
+          <div
+            className="absolute -left-2 -top-2 z-10 flex items-center gap-1 rounded-full bg-gradient-to-r from-pink-500 to-amber-400 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white shadow-lg"
+            title={`${shinyCount} shiny copies (counts at ${SHINY_MULTIPLIER}× value)`}
+          >
+            <Sparkles className="h-3 w-3" />
+            ×{shinyCount}
           </div>
         )}
 
@@ -183,6 +198,17 @@ export function CardComponent({ card, relativeDropChance, count }: CardComponent
                            <AlertCircle className="h-4 w-4" />
                            {card.burnValue}
                         </span>
+                     </div>
+
+                     {/* Shiny variant payout — same card at SHINY_MULTIPLIER. */}
+                     <div className="col-span-2 flex items-center justify-between gap-3 rounded-md border border-pink-500/30 bg-gradient-to-r from-pink-500/5 via-transparent to-amber-400/5 p-3">
+                       <span className="flex items-center gap-2 text-[10px] uppercase tracking-widest text-pink-300 font-mono">
+                         <Sparkles className="h-3 w-3" /> Shiny variant <span className="opacity-60">(0.5% roll)</span>
+                       </span>
+                       <span className="flex items-center gap-4 font-mono text-sm">
+                         <span title="Shiny worth" className="flex items-center gap-1"><Zap className="h-3 w-3 text-pink-300" /> {(card.worthValue * SHINY_MULTIPLIER).toLocaleString()}</span>
+                         <span title="Shiny burn" className="flex items-center gap-1 text-destructive/80"><AlertCircle className="h-3 w-3" /> {(card.burnValue * SHINY_MULTIPLIER).toLocaleString()}</span>
+                       </span>
                      </div>
                      {relativeDropChance !== undefined && card.droppable && (
                        <div className="flex flex-col">

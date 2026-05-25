@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { CardComponent } from "@/components/card";
-import { Loader2, Zap, PackageOpen, Flame, Lock, Unlock } from "lucide-react";
+import { Loader2, Zap, PackageOpen, Flame, Lock, Unlock, Sparkles } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 
 export default function Profile() {
@@ -92,8 +92,13 @@ export default function Profile() {
                       <h2 className="text-3xl font-bold uppercase tracking-wider text-foreground mb-1">
                         {data.stats.rank.name}
                       </h2>
-                      <div className="flex items-center gap-4 text-sm font-mono text-muted-foreground mb-4">
+                      <div className="flex items-center gap-4 text-sm font-mono text-muted-foreground mb-4 flex-wrap">
                         <span>{data.stats.uniqueCards} / {data.stats.totalCards} CARDS</span>
+                        {data.stats.shinyCards > 0 && (
+                          <span className="flex items-center gap-1 text-pink-300" title="Shiny copies owned (count at 2× value)">
+                            <Sparkles className="h-3 w-3" /> {data.stats.shinyCards} SHINY
+                          </span>
+                        )}
                         <span className="text-primary font-bold">{data.stats.netWorth.toLocaleString()} NET WORTH</span>
                       </div>
                       
@@ -193,10 +198,10 @@ export default function Profile() {
                         cardType: item.cardType,
                         imageUrl: item.imageUrl,
                         worthValue: item.worthValue,
+                        burnValue: item.burnValue,
                         // Provide defaults for missing fields needed by CardComponent
                         description: "",
                         dropWeight: 0,
-                        burnValue: 0,
                         isLimitedEdition: false,
                         isEventExclusive: false,
                         maxCopies: null,
@@ -209,6 +214,7 @@ export default function Profile() {
                         createdAt: item.firstCaughtAt
                       }}
                       count={item.count}
+                      shinyCount={item.shinyCount}
                    />
                 ))}
               </div>

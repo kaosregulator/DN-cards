@@ -464,10 +464,11 @@ export async function handleUserCommand(
       {
         name: "🔥 Economy *(private replies)*",
         value:
-          "`/burn name:<card> [amount] [all]` — destroy duplicates for 💠\n" +
+          "`/burn name:<card> [amount] [all] [shiny:true]` — destroy duplicates for 💠 (shiny burns the ✨ pile at 2×)\n" +
           "`/shards [user]` — check 💠 balance\n" +
           "`/daily` — claim daily shards (streak bonus!)\n" +
-          "`/pack` — open a 5-card pack for 💠 250\n" +
+          "`/pack tier:<basic|premium|legendary>` — open a 5-card pack (💠 250 / 750 / 2,000)\n" +
+          "`/packstats` — your costs, weekly caps, cooldown\n" +
           "`/tradein rarity:<r>` — burn 5 to roll 1 from the next tier\n" +
           "`/gift user:@Member amount:<n>` — send 💠 to a friend",
       },
@@ -476,8 +477,16 @@ export async function handleUserCommand(
         value:
           "`/trade user:@Member offer:<card> want:<card>` — propose a trade\n" +
           "Add `offer_shards:<n>` or `want_shards:<n>` to mix in 💠 (or trade pure shards)\n" +
-          "`/trades` · `/accept id:<n>` · `/decline id:<n>` — manage offers\n" +
+          "Trades with a value gap >3:1 show an orange ⚠️ warning — informational only\n" +
+          "`/trades` · `/tradehistory [user]` · `/accept id:<n>` · `/decline id:<n>` — manage offers\n" +
           "Accept/Decline buttons also appear right on the trade message",
+      },
+      {
+        name: "✨ Shinies",
+        value:
+          "Every random catch, pack pull, and trade-in has a flat **0.5%** chance to mint a shiny.\n" +
+          "Shinies are tracked separately and count at **2× worth & burn**.\n" +
+          "Not tradeable in v1 — trades only move standard copies.",
       },
       {
         name: "📌 Wishlist",

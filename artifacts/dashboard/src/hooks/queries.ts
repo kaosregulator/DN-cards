@@ -49,6 +49,7 @@ export interface LeaderboardEntry {
   username: string | null;
   uniqueCards: number;
   totalCards: number;
+  shinyCards: number;
   netWorth: number;
 }
 
@@ -58,6 +59,7 @@ export interface Profile {
   stats: {
     uniqueCards: number;
     totalCards: number;
+    shinyCards: number;
     netWorth: number;
     rank: { name: string; emoji: string; min: number };
     nextRank: { name: string; emoji: string; min: number; cardsNeeded: number } | null;
@@ -70,7 +72,9 @@ export interface Profile {
     cardType: CardType;
     imageUrl: string | null;
     worthValue: number;
+    burnValue: number;
     count: number;
+    shinyCount: number;
     firstCaughtAt: string;
   }>;
   achievements: Array<{
@@ -88,6 +92,7 @@ export interface GuildSummary {
   guildId: string;
   collectors: number;
   cardsHeld: number;
+  shinyCards: number;
   rosterSize: number;
   packsOpened: number;
   cardsBurned: number;

@@ -3,7 +3,7 @@ import { db, cardsTable, collectionsTable, userCurrencyTable, achievementsTable 
 import { and, eq, sql, desc } from "drizzle-orm";
 import { z } from "zod/v4";
 import { ACHIEVEMENTS } from "../bot/achievements";
-import { getCollectorRank, getNextRank } from "../bot/cards-data";
+import { getCollectorRank, getNextRank, SHINY_MULTIPLIER } from "../bot/cards-data";
 import { getBotClient } from "../bot/spawn-manager";
 
 const router: IRouter = Router();
@@ -34,17 +34,21 @@ router.get("/guilds/:guildId/leaderboard", async (req, res) => {
   const params = parseParams(guildParams, req, res);
   if (!params) return;
   const { guildId } = params;
+  // Net worth must count shinies at SHINY_MULTIPLIER so the dashboard
+  // leaderboard matches the in-bot leaderboard (db.ts getLeaderboard).
+  const netWorthSql = sql`sum((${collectionsTable.count} + ${collectionsTable.shinyCount} * ${SHINY_MULTIPLIER}) * ${cardsTable.worthValue})`;
   const rows = await db.select({
     userId: collectionsTable.userId,
     uniqueCards: sql<number>`count(distinct ${collectionsTable.cardId})::int`,
-    totalCards: sql<number>`sum(${collectionsTable.count})::int`,
-    netWorth: sql<number>`sum(${collectionsTable.count} * ${cardsTable.worthValue})::int`,
+    totalCards: sql<number>`sum(${collectionsTable.count} + ${collectionsTable.shinyCount})::int`,
+    shinyCards: sql<number>`coalesce(sum(${collectionsTable.shinyCount})::int, 0)`,
+    netWorth: sql<number>`${netWorthSql}::int`,
   })
     .from(collectionsTable)
     .innerJoin(cardsTable, eq(collectionsTable.cardId, cardsTable.id))
     .where(eq(collectionsTable.guildId, guildId))
     .groupBy(collectionsTable.userId)
-    .orderBy(desc(sql`sum(${collectionsTable.count} * ${cardsTable.worthValue})`))
+    .orderBy(desc(netWorthSql))
     .limit(25);
 
   // Enrich with Discord display names (best-effort; falls back to ID).
@@ -68,6 +72,7 @@ router.get("/guilds/:guildId/leaderboard", async (req, res) => {
       username: names.get(r.userId) ?? null,
       uniqueCards: r.uniqueCards,
       totalCards: r.totalCards,
+      shinyCards: r.shinyCards,
       netWorth: r.netWorth,
     })),
   });
@@ -87,7 +92,9 @@ router.get("/guilds/:guildId/users/:userId", async (req, res) => {
       cardType: cardsTable.cardType,
       imageUrl: cardsTable.imageUrl,
       worthValue: cardsTable.worthValue,
+      burnValue: cardsTable.burnValue,
       count: collectionsTable.count,
+      shinyCount: collectionsTable.shinyCount,
       firstCaughtAt: collectionsTable.firstCaughtAt,
     })
       .from(collectionsTable)
@@ -102,8 +109,13 @@ router.get("/guilds/:guildId/users/:userId", async (req, res) => {
 
   const unlockedKeys = new Set(unlockedRows.map(r => r.achievementKey));
   const unique = collectionRows.length;
-  const total = collectionRows.reduce((s, r) => s + r.count, 0);
-  const netWorth = collectionRows.reduce((s, r) => s + r.count * r.worthValue, 0);
+  // Total = normal + shiny copies; net worth counts shinies at SHINY_MULTIPLIER.
+  const total = collectionRows.reduce((s, r) => s + r.count + r.shinyCount, 0);
+  const shinyTotal = collectionRows.reduce((s, r) => s + r.shinyCount, 0);
+  const netWorth = collectionRows.reduce(
+    (s, r) => s + (r.count + r.shinyCount * SHINY_MULTIPLIER) * r.worthValue,
+    0,
+  );
   const rank = getCollectorRank(unique);
   const next = getNextRank(unique);
 
@@ -113,6 +125,7 @@ router.get("/guilds/:guildId/users/:userId", async (req, res) => {
     stats: {
       uniqueCards: unique,
       totalCards: total,
+      shinyCards: shinyTotal,
       netWorth,
       rank: { name: rank.name, emoji: rank.emoji, min: rank.min },
       nextRank: next ? { name: next.name, emoji: next.emoji, min: next.min, cardsNeeded: next.min - unique } : null,
@@ -141,7 +154,8 @@ router.get("/guilds/:guildId/summary", async (req, res) => {
   const [collectorRow, cardsRow, burnRow] = await Promise.all([
     db.select({
       collectors: sql<number>`count(distinct ${collectionsTable.userId})::int`,
-      cardsHeld: sql<number>`coalesce(sum(${collectionsTable.count})::int, 0)`,
+      cardsHeld: sql<number>`coalesce(sum(${collectionsTable.count} + ${collectionsTable.shinyCount})::int, 0)`,
+      shinyCards: sql<number>`coalesce(sum(${collectionsTable.shinyCount})::int, 0)`,
     }).from(collectionsTable).where(eq(collectionsTable.guildId, guildId)),
     db.select({ total: sql<number>`count(*)::int` }).from(cardsTable).where(eq(cardsTable.isArchived, false)),
     db.select({
@@ -155,6 +169,7 @@ router.get("/guilds/:guildId/summary", async (req, res) => {
     guildId,
     collectors: collectorRow[0]?.collectors ?? 0,
     cardsHeld: collectorRow[0]?.cardsHeld ?? 0,
+    shinyCards: collectorRow[0]?.shinyCards ?? 0,
     rosterSize: cardsRow[0]?.total ?? 0,
     packsOpened: burnRow[0]?.packs ?? 0,
     cardsBurned: burnRow[0]?.burns ?? 0,

@@ -59,6 +59,14 @@ async function handleAdminHelp(interaction: ChatInputCommandInteraction): Promis
           "`/giveshards user:@Member amount:<n>` · `/takeshards user:@Member amount:<n>`",
       },
       {
+        name: "🎯 Limited-Time Events *(slash)*",
+        value:
+          "`/event start card:<Name> duration:<30m|2h|1d> [multiplier:<1.1–50>]` — boost a card's spawn weight (default 2×, max 14d)\n" +
+          "`/event list` — show active events + remaining time\n" +
+          "`/event stop id:<n>` — end an event early\n" +
+          "*Activations/stops are announced in the spawn channel.*",
+      },
+      {
         name: "🗂️ Card Sets *(slash)*",
         value:
           "`/loadset file:<.json>` — upload a custom card pack\n" +

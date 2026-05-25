@@ -3,7 +3,7 @@ import { useCards, Rarity } from "@/hooks/queries";
 import { CardComponent } from "@/components/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Search, ChevronDown, ChevronUp, Sparkles } from "lucide-react";
+import { Loader2, Search, ChevronDown, ChevronUp, Sparkles, Sparkle } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 const RARITY_ORDER: Rarity[] = ["legendary", "epic", "rare", "uncommon", "common"];
@@ -140,6 +140,20 @@ export default function Home() {
               </button>
             )}
           </div>
+        </div>
+      </div>
+
+      {/* Shiny info banner — explains the 0.5% global roll + 2× value. */}
+      <div className="mb-8 rounded-xl border border-pink-500/30 bg-gradient-to-r from-pink-500/5 via-card/40 to-amber-400/5 backdrop-blur-sm p-4 flex items-center gap-4">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-pink-500 to-amber-400 text-white shadow-md">
+          <Sparkle className="h-5 w-5" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <h3 className="text-sm font-bold uppercase tracking-wider text-pink-200">Shiny Variants ✨</h3>
+          <p className="text-xs text-muted-foreground font-mono leading-relaxed">
+            Every random catch, pack pull, and trade-in has a flat <span className="text-pink-300 font-bold">0.5%</span> chance to mint a shiny.
+            Shinies count at <span className="text-pink-300 font-bold">2× worth & burn</span>, are tracked separately, and are not tradeable yet.
+          </p>
         </div>
       </div>
 
