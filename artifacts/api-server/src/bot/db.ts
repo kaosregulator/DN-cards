@@ -521,6 +521,37 @@ export async function getPendingTradesFor(guildId: string, userId: string) {
     .limit(10);
 }
 
+// ── Trade history (resolved trades involving a user) ────────────────────────
+// Returns the most recent `limit` trades where the user was either the
+// initiator or the target and the trade is no longer pending. Joined twice
+// against cards for offered/requested names.
+export async function getTradeHistoryFor(guildId: string, userId: string, limit = 10) {
+  return db.select({
+    id: tradesTable.id,
+    initiatorId: tradesTable.initiatorId,
+    targetId: tradesTable.targetId,
+    offeredCardName: sql<string | null>`offered.name`,
+    requestedCardName: sql<string | null>`requested.name`,
+    offeredShards: tradesTable.offeredShards,
+    requestedShards: tradesTable.requestedShards,
+    status: tradesTable.status,
+    createdAt: tradesTable.createdAt,
+    resolvedAt: tradesTable.resolvedAt,
+  })
+    .from(tradesTable)
+    .leftJoin(sql`${cardsTable} offered`, sql`offered.id = ${tradesTable.offeredCardId}`)
+    .leftJoin(sql`${cardsTable} requested`, sql`requested.id = ${tradesTable.requestedCardId}`)
+    .where(and(
+      eq(tradesTable.guildId, guildId),
+      sql`${tradesTable.status} <> 'pending'`,
+      sql`(${tradesTable.initiatorId} = ${userId} OR ${tradesTable.targetId} = ${userId})`,
+    ))
+    // NULLS LAST so legacy rows without resolvedAt don't bubble to the top
+    // of "recent resolved" history; ties fall back to createdAt.
+    .orderBy(sql`${tradesTable.resolvedAt} DESC NULLS LAST`, desc(tradesTable.createdAt))
+    .limit(limit);
+}
+
 // ── Gift shards (atomic transfer) ────────────────────────────────────────────
 export async function giftShards(
   guildId: string, fromUserId: string, toUserId: string, amount: number,

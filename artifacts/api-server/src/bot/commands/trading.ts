@@ -7,7 +7,7 @@ import {
   getPendingTradesFor, createTrade, getTrade,
   updateTradeStatus, executeTradeSwap,
   getOrCreateGuildSettings, updateTradeMessageId,
-  getOrCreateCurrency, giftShards,
+  getOrCreateCurrency, giftShards, getTradeHistoryFor,
 } from "../db.js";
 import { RARITY_EMOJI, RARITY_LABELS, type Rarity } from "../cards-data.js";
 
@@ -295,6 +295,66 @@ export async function handleListTrades(interaction: ChatInputCommandInteraction)
     .setTitle("🔄 Your Pending Trades")
     .setColor(0x0984e3)
     .setDescription(lines.join("\n") + "\n\nUse the Accept/Decline buttons on the trade message, or `/accept id:<ID>` / `/decline id:<ID>`.");
+
+  await interaction.editReply({ embeds: [embed] });
+}
+
+// ── /tradehistory ─────────────────────────────────────────────────────────────
+// Recent resolved (accepted/declined/cancelled/expired) trades involving the
+// target user. Joins the cards table twice for offered/requested names.
+export async function handleTradeHistory(interaction: ChatInputCommandInteraction): Promise<void> {
+  if (!interaction.guild) return;
+  const guildId = interaction.guild.id;
+  const target = interaction.options.getUser("user") ?? interaction.user;
+  const isSelf = target.id === interaction.user.id;
+
+  const rows = await getTradeHistoryFor(guildId, target.id, 10);
+
+  if (rows.length === 0) {
+    await interaction.editReply(
+      isSelf
+        ? "📜 You don't have any completed trades yet. Propose one with `/trade`!"
+        : `📜 **${target.username}** has no completed trades yet.`,
+    );
+    return;
+  }
+
+  const STATUS_BADGE: Record<string, string> = {
+    accepted: "✅",
+    declined: "❌",
+    cancelled: "🚫",
+    expired: "⌛",
+  };
+
+  // Discord caps embed descriptions at 4096 chars. Card names + mentions can
+  // be long; stop appending when we're getting close and tell the user.
+  const MAX_DESC = 3900;
+  const accepted = rows.filter(r => r.status === "accepted").length;
+  const header = `Showing last **${rows.length}** trades · ✅ **${accepted}** completed\n\n`;
+  const lines: string[] = [];
+  let used = header.length;
+  let shown = 0;
+  for (const t of rows) {
+    const badge = STATUS_BADGE[t.status] ?? "•";
+    const off = formatSide(t.offeredCardName ? `**${t.offeredCardName}**` : null, t.offeredShards);
+    const req = formatSide(t.requestedCardName ? `**${t.requestedCardName}**` : null, t.requestedShards);
+    const partnerId = t.initiatorId === target.id ? t.targetId : t.initiatorId;
+    const direction = t.initiatorId === target.id ? "→" : "←";
+    const when = t.resolvedAt ?? t.createdAt;
+    const line = `${badge} <t:${Math.floor(when.getTime() / 1000)}:R> · ${off} ${direction} ${req} · with <@${partnerId}>`;
+    if (used + line.length + 1 > MAX_DESC) break;
+    lines.push(line);
+    used += line.length + 1;
+    shown += 1;
+  }
+  if (shown < rows.length) lines.push(`*…and ${rows.length - shown} more (truncated to fit).*`);
+
+  const embed = new EmbedBuilder()
+    .setTitle(`📜 ${target.username}'s Trade History`)
+    .setColor(0x9b59b6)
+    .setDescription(header + lines.join("\n"))
+    .setThumbnail(target.displayAvatarURL())
+    .setFooter({ text: "Use /trades for pending offers · /trade to propose one" });
 
   await interaction.editReply({ embeds: [embed] });
 }

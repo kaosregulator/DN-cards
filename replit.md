@@ -121,6 +121,7 @@ Card catching is text-based — when a card spawns, type its name exactly to cat
 | `/shards [user]` | Check shard balance |
 | `/trade user:@User offer:<card> want:<card>` | Propose a trade |
 | `/trades` | View pending trades |
+| `/tradehistory [user]` | Recent completed trades (any status, newest first) |
 | `/accept id:<ID>` | Accept a trade |
 | `/decline id:<ID>` | Decline or cancel a trade |
 

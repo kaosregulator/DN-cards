@@ -62,6 +62,8 @@ export function buildCommands() {
       .addIntegerOption(o => o.setName("amount").setDescription("Amount of 💠 shards to gift").setRequired(true).setMinValue(1))),
 
     cmd("trades", "(User) View your pending trade offers", s => s),
+    cmd("tradehistory", "(User) View recent completed trades", s => s
+      .addUserOption(o => o.setName("user").setDescription("Whose history to view (default: you)").setRequired(false))),
 
     cmd("accept", "(User) Accept a pending trade offer", s => s
       .addIntegerOption(o => o.setName("id").setDescription("Trade ID from /trades").setRequired(true).setMinValue(1))),

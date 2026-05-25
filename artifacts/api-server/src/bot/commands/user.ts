@@ -2,7 +2,7 @@ import type { ChatInputCommandInteraction } from "discord.js";
 import { EmbedBuilder, MessageFlags } from "discord.js";
 
 // Commands whose results are personal/spammy and should only be seen by the user.
-const EPHEMERAL_COMMANDS = new Set(["burn", "shards", "trades", "help", "daily", "achievements", "pack", "packstats", "wishlist", "gift", "tradein"]);
+const EPHEMERAL_COMMANDS = new Set(["burn", "shards", "trades", "tradehistory", "help", "daily", "achievements", "pack", "packstats", "wishlist", "gift", "tradein"]);
 import {
   getUserCollection, getAllCards, getLeaderboard, getTopPackOpeners,
   getOrCreateCurrency, burnCard, getCardByName, getUserCardCount, getUserOwnedCount,
@@ -12,8 +12,9 @@ import {
   getCollectorRank, getNextRank,
   type Rarity, type CardType,
 } from "../cards-data.js";
-import { handleTrade, handleAccept, handleDecline, handleListTrades, handleGift } from "./trading.js";
+import { handleTrade, handleAccept, handleDecline, handleListTrades, handleGift, handleTradeHistory } from "./trading.js";
 import { handleDaily, handleAchievementsCommand } from "./daily.js";
+import { ACHIEVEMENTS, getAchievement, getUnlockedKeys, getRecentUnlocks } from "../achievements.js";
 import { toAbsoluteImageUrl } from "../image-url.js";
 import { handlePack, handlePackStats } from "./pack.js";
 import { handleTradein } from "./tradein.js";
@@ -60,6 +61,18 @@ export async function handleUserCommand(
       ? `${rank.emoji} ${rank.name} → ${nextRank.emoji} ${nextRank.name} (${unique}/${nextRank.min})`
       : `${rank.emoji} ${rank.name} *(MAX RANK)*`;
 
+    // Achievements summary — unlocked count + emoji strip of the most recently
+    // unlocked (newest first, by unlockedAt). Two queries (count + recents) is
+    // fine since /collection isn't hot.
+    const [unlockedKeys, recentKeys] = await Promise.all([
+      getUnlockedKeys(guildId, target.id),
+      getRecentUnlocks(guildId, target.id, 6),
+    ]);
+    const achStrip = recentKeys.length > 0
+      ? recentKeys.map(k => getAchievement(k)?.emoji ?? "•").join(" ")
+      : "_none yet_";
+    const achLine = `**🏆 Achievements:** ${unlockedKeys.size} / ${ACHIEVEMENTS.length} · ${achStrip}`;
+
     const fields = rarityOrder
       .filter(r => byRarity[r]?.length)
       .map(r => ({
@@ -77,7 +90,8 @@ export async function handleUserCommand(
       .setDescription(
         `**Rank:** ${rankProgress}\n` +
         `**Cards:** ${unique} unique · ${totalCards} total\n` +
-        `**Net Worth:** 💠 ${netWorth.toLocaleString()} shards`,
+        `**Net Worth:** 💠 ${netWorth.toLocaleString()} shards\n` +
+        achLine,
       )
       .addFields(fields)
       .setThumbnail(target.displayAvatarURL());
@@ -396,6 +410,7 @@ export async function handleUserCommand(
   if (sub === "accept") { await handleAccept(interaction); return; }
   if (sub === "decline") { await handleDecline(interaction); return; }
   if (sub === "trades") { await handleListTrades(interaction); return; }
+  if (sub === "tradehistory") { await handleTradeHistory(interaction); return; }
   if (sub === "daily") { await handleDaily(interaction); return; }
   if (sub === "pack") { await handlePack(interaction); return; }
   if (sub === "packstats") { await handlePackStats(interaction); return; }

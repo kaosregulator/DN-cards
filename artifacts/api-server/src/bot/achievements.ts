@@ -33,6 +33,17 @@ export async function getUnlockedKeys(guildId: string, userId: string): Promise<
   return new Set(rows.map(r => r.key));
 }
 
+// Most recently unlocked achievement keys, newest first. Used by /collection
+// to show a "last few unlocked" emoji strip in real chronological order.
+export async function getRecentUnlocks(guildId: string, userId: string, limit = 6): Promise<string[]> {
+  const rows = await db.select({ key: achievementsTable.achievementKey })
+    .from(achievementsTable)
+    .where(and(eq(achievementsTable.guildId, guildId), eq(achievementsTable.userId, userId)))
+    .orderBy(sql`${achievementsTable.unlockedAt} DESC`)
+    .limit(limit);
+  return rows.map(r => r.key);
+}
+
 interface UserStats {
   uniqueCards: number;
   hasLegendary: boolean;
