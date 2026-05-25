@@ -1,5 +1,5 @@
 import {
-  SlashCommandBuilder,
+  SlashCommandBuilder, PermissionFlagsBits,
   type SlashCommandOptionsOnlyBuilder,
   type SlashCommandSubcommandsOnlyBuilder,
 } from "discord.js";
@@ -9,6 +9,17 @@ type AnySlashBuilder = SlashCommandBuilder | SlashCommandOptionsOnlyBuilder | Sl
 function cmd(name: string, desc: string, build: (s: SlashCommandBuilder) => AnySlashBuilder) {
   return build(
     new SlashCommandBuilder().setName(name).setDescription(desc).setDMPermission(false),
+  ).toJSON();
+}
+
+// Admin commands hide from non-admin members in the Discord slash menu.
+// Server owners can re-grant access per-role in Server Settings → Integrations
+// → DN Cards → Command Permissions. Bot still enforces server-side regardless.
+function adminCmd(name: string, desc: string, build: (s: SlashCommandBuilder) => AnySlashBuilder) {
+  return build(
+    new SlashCommandBuilder()
+      .setName(name).setDescription(desc).setDMPermission(false)
+      .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
   ).toJSON();
 }
 
@@ -74,11 +85,11 @@ export function buildCommands() {
 
     cmd("welcome", "(User) Welcome to DN Cards — game intro, quick start & commands", s => s),
 
-    cmd("setchannels", "(Admin) Interactive channel configurator (spawn, trade, …)", s => s),
+    adminCmd("setchannels", "(Admin) Interactive channel configurator (spawn, trade, …)", s => s),
 
     cmd("help", "(User) Show DN Cards player commands", s => s),
 
-    cmd("adminhelp", "(Admin) Show admin & setup commands", s => s),
+    adminCmd("adminhelp", "(Admin) Show admin & setup commands", s => s),
 
     cmd("daily", "(User) Claim your daily DN Shards reward", s => s),
 
@@ -114,34 +125,34 @@ export function buildCommands() {
         .addUserOption(o => o.setName("user").setDescription("View another member's wishlist")))),
 
     // ── Quick Admin Slash Commands ────────────────────────────────────────────
-    cmd("config", "(Admin) Open the server config panel — visual toggles for catch mode, intervals, etc.", s => s),
+    adminCmd("config", "(Admin) Open the server config panel — visual toggles for catch mode, intervals, etc.", s => s),
 
-    cmd("adminhub", "(Admin) Quick hub — manage admins, timeouts, and see server state", s => s),
+    adminCmd("adminhub", "(Admin) Quick hub — manage admins, timeouts, and see server state", s => s),
 
-    cmd("drop", "(Admin) Force-drop a card — for events and giveaways", s => s
+    adminCmd("drop", "(Admin) Force-drop a card — for events and giveaways", s => s
       .addStringOption(o => o.setName("name").setDescription("Card name — leave empty for a random drop").setAutocomplete(true))),
 
-    cmd("massdrop", "(Admin abuse) Drop a big batch of cards — mostly low tier with a few bangers", s => s
+    adminCmd("massdrop", "(Admin abuse) Drop a big batch of cards — mostly low tier with a few bangers", s => s
       .addIntegerOption(o => o.setName("amount").setDescription("How many cards to drop (10-25, default 15)").setMinValue(10).setMaxValue(25))),
 
-    cmd("give", "(Admin) Give a card directly to a member", s => s
+    adminCmd("give", "(Admin) Give a card directly to a member", s => s
       .addUserOption(o => o.setName("user").setDescription("Member to receive the card").setRequired(true))
       .addStringOption(o => o.setName("name").setDescription("Card name").setRequired(true).setAutocomplete(true))),
 
-    cmd("giveshards", "(Admin) Give DN Shards to a member", s => s
+    adminCmd("giveshards", "(Admin) Give DN Shards to a member", s => s
       .addUserOption(o => o.setName("user").setDescription("Member to receive shards").setRequired(true))
       .addIntegerOption(o => o.setName("amount").setDescription("Amount of shards").setRequired(true).setMinValue(1))),
 
-    cmd("takeback", "(Admin) Remove a card from a member's collection", s => s
+    adminCmd("takeback", "(Admin) Remove a card from a member's collection", s => s
       .addUserOption(o => o.setName("user").setDescription("Member to take the card from").setRequired(true))
       .addStringOption(o => o.setName("name").setDescription("Card name").setRequired(true).setAutocomplete(true))),
 
-    cmd("takeshards", "(Admin) Deduct DN Shards from a member", s => s
+    adminCmd("takeshards", "(Admin) Deduct DN Shards from a member", s => s
       .addUserOption(o => o.setName("user").setDescription("Member to deduct shards from").setRequired(true))
       .addIntegerOption(o => o.setName("amount").setDescription("Amount to deduct").setRequired(true).setMinValue(1))),
 
     // ── Card Events (limited-time spawn boosts) ──────────────────────────────
-    cmd("event", "(Admin) Run limited-time card events — boost a card's spawn rate", s => s
+    adminCmd("event", "(Admin) Run limited-time card events — boost a card's spawn rate", s => s
       .addSubcommand(sc => sc.setName("start").setDescription("Start a limited-time card event")
         .addStringOption(o => o.setName("card").setDescription("Card to boost").setRequired(true).setAutocomplete(true))
         .addStringOption(o => o.setName("duration").setDescription("How long (e.g. 30m, 2h, 1d — max 14d)").setRequired(true))
@@ -151,18 +162,18 @@ export function buildCommands() {
         .addIntegerOption(o => o.setName("id").setDescription("Event ID from /event list").setRequired(true).setMinValue(1)))),
 
     // ── Card Set Management ───────────────────────────────────────────────────
-    cmd("loadset", "(Admin) Upload a JSON card set to add to your roster", s => s
+    adminCmd("loadset", "(Admin) Upload a JSON card set to add to your roster", s => s
       .addAttachmentOption(o => o.setName("file").setDescription("JSON file with cards to import"))
       .addStringOption(o => o.setName("name").setDescription("Custom set name (defaults to JSON's set.name or filename)"))
       .addBooleanOption(o => o.setName("defaults").setDescription("Testing only — load the built-in starter roster"))),
 
-    cmd("unloadset", "(Admin) Remove a card set (cards + related collections/trades)", s => s
+    adminCmd("unloadset", "(Admin) Remove a card set (cards + related collections/trades)", s => s
       .addStringOption(o => o.setName("set").setDescription("Set name from /listsets (e.g. 'defaults', 'v1')").setRequired(true).setAutocomplete(true))),
 
-    cmd("listsets", "(Admin) List all loaded card sets and their sizes", s => s),
+    adminCmd("listsets", "(Admin) List all loaded card sets and their sizes", s => s),
 
     // ── Dashboard ─────────────────────────────────────────────────────────────
-    cmd("dashboard", "(Admin) Get a one-time link to set up or reset your web dashboard login", s => s),
+    adminCmd("dashboard", "(Admin) Get a one-time link to set up or reset your web dashboard login", s => s),
   ];
 }
 

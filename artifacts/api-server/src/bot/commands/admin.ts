@@ -80,7 +80,17 @@ async function handleAdminHelp(interaction: ChatInputCommandInteraction): Promis
         name: "👥 Admins *(`!` prefix)*",
         value:
           "`!addadmin @User` · `!removeadmin @User` · `!listadmins`\n" +
-          "Server owner + Discord Administrators are always admins.",
+          "Server owner + Discord Administrators are always admins.\n" +
+          "*Tip: in Discord → Server Settings → Integrations → DN Cards you can also grant admin commands to specific roles per-command.*",
+      },
+      {
+        name: "🌐 Web Dashboard",
+        value:
+          "`/dashboard` — DMs you a one-time link to **create or reset** your dashboard login.\n" +
+          "Once logged in:\n" +
+          "• `/admin` — roster, card art uploads, server toggles\n" +
+          "• `/admin/embeds` — customize **all 8 bot embeds per server** (spawn, claimed, daily, pack, trade, welcome, rules, commands) — title, footer, color, image size, custom image, tokens like `{user}` `{card}` `{rarity}` `{worth}` `{streak}`. Live Discord-style preview.\n" +
+          "• `/admin/users` (owner only) — invite additional dashboard logins.",
       },
     );
   await interaction.editReply({ embeds: [embed] });
