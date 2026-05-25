@@ -173,6 +173,7 @@ Card catching is text-based — when a card spawns, type its name exactly to cat
 ### User Slash Commands
 | Command | Description |
 |---|---|
+| `/welcome` | Posts the public Welcome / Rules / Commands intro (3 banner-led embeds) |
 | `/help` | Full command reference |
 | `/collection [user]` | Collection with rank, net worth, achievements summary |
 | `/rank [user]` | Collector rank and progression |
@@ -199,6 +200,7 @@ Card catching is text-based — when a card spawns, type its name exactly to cat
 | Command | Description |
 |---|---|
 | `/config` | Visual config panel (toggles, intervals, rates, packs sub-panel) |
+| `/setchannels` | Interactive channel configurator — pick a slot (spawn/trade), then a channel |
 | `/adminhub` | Ephemeral admin hub — manage bot admins, catch timeouts, server state |
 | `/adminhelp` | Show admin & setup command reference |
 | `/drop [name:<Name>]` | Force-drop a card for events/giveaways |

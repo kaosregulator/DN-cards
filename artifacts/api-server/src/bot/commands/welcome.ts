@@ -1,25 +1,27 @@
 import type { ChatInputCommandInteraction } from "discord.js";
 import { EmbedBuilder } from "discord.js";
 
-// Banner image — copied into the dashboard's public/ folder so it ships with
-// the static site. We reach it through the shared proxy on the first
-// REPLIT_DOMAINS host so the URL works in both dev preview and production.
-function getBannerUrl(): string | null {
+// Section banners — one word per banner, used as dividers between categories.
+// Files live in the dashboard's public/ folder so they ship with the static
+// site and are reachable through the shared proxy at /dashboard/<file>.
+function bannerUrl(name: "welcome" | "rules" | "commands"): string | null {
   const domain = process.env["REPLIT_DOMAINS"]?.split(",")[0]?.trim();
   if (!domain) return null;
-  return `https://${domain}/dashboard/dn-cards-banner.png`;
+  return `https://${domain}/dashboard/banner-${name}.png`;
 }
 
-const BRAND_COLOR = 0xe63946; // matches the red brush stroke in the banner
+const BRAND_COLOR = 0xe63946;
 
-// Split into three embeds so the banner acts as a divider between sections
-// without exceeding Discord's 4096-char description limit on any single embed.
-// Dispatcher (user.ts) already deferReply-ephemeral'd for "welcome" — we just
-// editReply here. Reply stays private so it doesn't spam public channels.
+// Public welcome post — designed to be dropped in a #welcome or #info channel
+// as a permanent guide. Three embeds, each led by its own single-word banner.
+// Dispatcher (user.ts) does NOT add this to EPHEMERAL_COMMANDS, so the reply
+// is visible to everyone in the channel.
 export async function handleWelcome(interaction: ChatInputCommandInteraction): Promise<void> {
-  const banner = getBannerUrl();
+  const welcomeBanner = bannerUrl("welcome");
+  const rulesBanner = bannerUrl("rules");
+  const commandsBanner = bannerUrl("commands");
 
-  // ── 1. Welcome + Quick Start ───────────────────────────────────────────────
+  // ── 1. WELCOME — game intro + quick start ─────────────────────────────────
   const welcome = new EmbedBuilder()
     .setColor(BRAND_COLOR)
     .setTitle("🃏 Welcome to DN Cards")
@@ -33,19 +35,19 @@ export async function handleWelcome(interaction: ChatInputCommandInteraction): P
       "• **Step 4** — Burn duplicates with `/burn` for shards, or `/trade` with friends.\n" +
       "• **Step 5** — Check your progress with `/collection`, `/rank`, and `/top`.",
     );
-  if (banner) welcome.setImage(banner);
+  if (welcomeBanner) welcome.setImage(welcomeBanner);
 
-  // ── 2. Things to Know ──────────────────────────────────────────────────────
-  const lore = new EmbedBuilder()
+  // ── 2. RULES — things every collector should know ──────────────────────────
+  const rules = new EmbedBuilder()
     .setColor(BRAND_COLOR)
     .setTitle("📌 Things to Know")
     .setDescription(
-      "**🎖️ Rarities** — Common · Uncommon · Rare · Epic · Legendary. Higher rarity = rarer drop, worth more shards.\n\n" +
+      "**🎖️ Rarities** — Common · Uncommon · Rare · Epic · Legendary. Higher rarity = rarer drop and worth more shards.\n\n" +
       "**✨ Shinies** — Every random catch, pack pull, and trade-in has a flat **0.5%** chance to mint a shiny. " +
-      "Shinies count at **2× worth & burn**, tracked separately, and aren't tradeable in v1. " +
+      "Shinies count at **2× worth & burn**, are tracked separately, and aren't tradeable in v1. " +
       "Use `/burn shiny:true` to torch the shiny pile specifically.\n\n" +
       "**🎴 Pack Tiers** — 🥉 Basic (💠 250) · 🥈 Premium (💠 750) · 🥇 Legendary (💠 2,000, no commons). " +
-      "Each tier has its own weekly cap; cooldown is shared across all tiers.\n\n" +
+      "Each tier has its own weekly cap; cooldown is shared across all tiers (resets Monday 00:00 UTC).\n\n" +
       "**🔄 Trading** — `/trade` is propose/accept. Trades with a value gap **>3:1** show an orange ⚠️ banner " +
       "so the disadvantaged side can decide informed. Trades still go through if accepted.\n\n" +
       "**🎯 Limited-Time Events** — Admins can boost any card's spawn rate for a set duration. " +
@@ -55,9 +57,9 @@ export async function handleWelcome(interaction: ChatInputCommandInteraction): P
       "**🏅 Achievements** — 10 unlockables auto-trigger on milestones (first catch, 7-day streak, etc.) " +
       "and pay shards. See yours with `/achievements`.",
     );
-  if (banner) lore.setImage(banner);
+  if (rulesBanner) rules.setImage(rulesBanner);
 
-  // ── 3. Commands cheat sheet ────────────────────────────────────────────────
+  // ── 3. COMMANDS — full cheat sheet ─────────────────────────────────────────
   const commands = new EmbedBuilder()
     .setColor(BRAND_COLOR)
     .setTitle("⚡ Commands Cheat Sheet")
@@ -84,7 +86,7 @@ export async function handleWelcome(interaction: ChatInputCommandInteraction): P
       "• `/help` — player commands · `/adminhelp` — admin commands (admins only)",
     )
     .setFooter({ text: "Tip: most card-name fields autocomplete as you type — pick from the dropdown." });
-  if (banner) commands.setImage(banner);
+  if (commandsBanner) commands.setImage(commandsBanner);
 
-  await interaction.editReply({ embeds: [welcome, lore, commands] });
+  await interaction.editReply({ embeds: [welcome, rules, commands] });
 }

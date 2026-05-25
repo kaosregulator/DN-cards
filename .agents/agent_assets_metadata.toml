@@ -1,0 +1,20 @@
+uploads = []
+outputs = []
+
+[[generated]]
+id = "V7cJjUcB4cDu9_YPimlDw"
+uri = "file://artifacts/dashboard/public/banner-welcome.png"
+type = "image"
+title = "welcome banner"
+
+[[generated]]
+id = "Ki69g9N9HFvFyGsfUX9G-"
+uri = "file://artifacts/dashboard/public/banner-rules.png"
+type = "image"
+title = "rules banner"
+
+[[generated]]
+id = "DtqRQv04rpVO2xTNtHK6Z"
+uri = "file://artifacts/dashboard/public/banner-commands.png"
+type = "image"
+title = "commands banner"

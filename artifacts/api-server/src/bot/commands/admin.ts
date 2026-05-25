@@ -9,6 +9,7 @@ import { logger } from "../../lib/logger.js";
 import { handleConfigCommand } from "./config-panel.js";
 import { handleAdminHubCommand } from "./admin-hub.js";
 import { handleEventCommand } from "./event.js";
+import { handleSetChannels } from "./setchannels.js";
 import { EmbedBuilder } from "discord.js";
 
 // ── /adminhelp — admin/setup command reference ───────────────────────────────
@@ -110,6 +111,11 @@ export async function handleAdminCommand(
   }
   if (cmd === "adminhelp") {
     await handleAdminHelp(interaction);
+    return;
+  }
+  // /setchannels manages its own reply (interactive multi-step picker).
+  if (cmd === "setchannels") {
+    await handleSetChannels(interaction);
     return;
   }
 

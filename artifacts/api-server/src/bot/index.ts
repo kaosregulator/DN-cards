@@ -3,6 +3,7 @@ import { logger } from "../lib/logger.js";
 import { burnCard, getOrCreateCurrency } from "./db.js";
 import { initSpawnManager, initAllGuilds, handleCatchAttempt, handleClaimButtonClick, scheduleNextSpawn, buildPostDecisionEmbed, buildDisabledDecisionRow } from "./spawn-manager.js";
 import { handleConfigButton, handleConfigSelect, handleRatesSelect, handlePacksSelect } from "./commands/config-panel.js";
+import { handleSetChannelsPick, handleSetChannelsApply } from "./commands/setchannels.js";
 import { handleAdminHubButton, handleAdminHubModal } from "./commands/admin-hub.js";
 import { checkAchievements, formatUnlockLine } from "./achievements.js";
 import { handleAdminCommand } from "./commands/admin.js";
@@ -72,6 +73,16 @@ export async function startBot() {
           await handlePacksSelect(interaction);
         } else if (interaction.customId.startsWith("setup_")) {
           await handleSetupSelect(interaction);
+        } else if (interaction.customId === "setchannels:pick") {
+          await handleSetChannelsPick(interaction);
+        }
+        return;
+      }
+
+      // ── Channel select menus (/setchannels step 2) ─────────────────────────
+      if (interaction.isChannelSelectMenu()) {
+        if (interaction.customId.startsWith("setchannels:set:")) {
+          await handleSetChannelsApply(interaction);
         }
         return;
       }
