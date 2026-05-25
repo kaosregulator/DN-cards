@@ -1,5 +1,4 @@
 uploads = []
-outputs = []
 
 [[generated]]
 id = "V7cJjUcB4cDu9_YPimlDw"
@@ -18,3 +17,9 @@ id = "DtqRQv04rpVO2xTNtHK6Z"
 uri = "file://artifacts/dashboard/public/banner-commands.png"
 type = "image"
 title = "commands banner"
+
+[[outputs]]
+id = "hLT25KZHOUFKhjaPox_Ch"
+uri = "file://dn-cards-backup.tar.gz"
+type = "unspecified"
+title = "DN Cards Full Project Backup"
