@@ -1,12 +1,13 @@
 // DN Cards — DarkNight Military Card Roster
-// Themed around military vehicles, aircraft, ships, bosses, and community exclusives.
+// Your custom 60-card default roster. Auto-seeded on first server join.
+// Update via the dashboard or run `/loadset defaults:true` to re-add after `/unloadset`.
 //
 // Drop weights (higher = more common):
-//   Common:    60   worth:   10  burn:   5
-//   Uncommon:  25   worth:   50  burn:  25
-//   Rare:      10   worth:  200  burn: 100
-//   Epic:       4   worth:  750  burn: 375
-//   Legendary:  1   worth: 2500  burn: 1250
+//   Common:    60   worth:   20  burn:   10
+//   Uncommon:  25   worth:   50  burn:   25
+//   Rare:      10   worth: 3000  burn: 1500
+//   Epic:       4   worth: 1480-5000  burn: 740-2500
+//   Legendary:  1   worth:  800-10000  burn: 400-5000
 
 export type Rarity = "common" | "uncommon" | "rare" | "epic" | "legendary";
 export type CardType = string; // free-form label — any text the admin types
@@ -122,243 +123,414 @@ export function getNextRank(uniqueCards: number) {
 }
 
 // ── Default Card Roster ───────────────────────────────────────────────────────
+// Your DN Cards roster — 60 cards, all tagged as "defaults" in the DB.
 export interface DefaultCard {
   name: string;
-  description: string;
-  flavor: string;
+  description?: string;
+  flavor?: string;
   rarity: Rarity;
   cardType: CardType;
   dropWeight: number;
   worthValue: number;
   burnValue: number;
-  droppable: boolean;
+  droppable?: boolean;
+  isLimitedEdition?: boolean;
+  isEventExclusive?: boolean;
+  maxCopies?: number;
+  inPacks?: boolean;
   imageUrl?: string;
+  previewAnimation?: string;
+  previewBgColor?: string;
+  displayOrientation?: string;
 }
 
 export const DEFAULT_CARDS: DefaultCard[] = [
   // ────────── COMMON ──────────
   {
-    name: "M4 Sherman",
-    description: "WWII-era American medium tank. Mass-produced and dependable.",
-    flavor: '"Not the best, but always there."',
-    rarity: "common", cardType: "tank",
-    dropWeight: 60, worthValue: 10, burnValue: 5, imageUrl: "https://media.gettyimages.com/id/1320438797/vector/wwii-m4-sherman-tank-firing-weapons-on-omaha-beach.jpg?s=612x612&w=0&k=20&c=j7ICqItuepcVhH7unPCg6CWiROBPEyzYAT2QNXSjYsg=",
-    droppable: true,
+        name: "ATV",
+        rarity: "common", cardType: "vehicle",
+        dropWeight: 60, worthValue: 20, burnValue: 10,
+        imageUrl: "https://misu.nephbox.net/card_image/1363917781355069761/atv_00018117.jpg",
   },
   {
-    name: "Jeep Willys",
-    description: "The iconic WWII military utility vehicle. Goes anywhere, does everything.",
-    flavor: '"Every base runs on Jeeps."',
-    rarity: "common", cardType: "vehicle",
-    dropWeight: 60, worthValue: 10, burnValue: 5, imageUrl: "https://hips.hearstapps.com/mtg-prod/65c40301c378ac0008577ec6/willys-mb-wwii-jeep-wrangler-predecessor-2.jpg?w=768&width=768&q=75&format=webp",
-    droppable: true,
+        name: "Armored Jeep",
+        rarity: "common", cardType: "vehicle",
+        dropWeight: 60, worthValue: 20, burnValue: 10,
+        imageUrl: "https://misu.nephbox.net/card_image/1363917781355069761/armored_jeep_00018115.jpg",
   },
   {
-    name: "Dog Tags",
-    description: "Standard military identification tags. Every soldier carries them.",
-    flavor: '"Name, rank, serial number."',
-    rarity: "common", cardType: "infantry",
-    dropWeight: 60, worthValue: 10, burnValue: 5, imageUrl: "https://cdn11.bigcommerce.com/s-s3zvdrz9/images/stencil/500x659/products/630/2047/US_Army_Dogtags__50805.1664241006.jpg?c=2",
-    droppable: true,
+        name: "Artillery Truck",
+        rarity: "common", cardType: "vehicle",
+        dropWeight: 60, worthValue: 20, burnValue: 10,
+        imageUrl: "https://misu.nephbox.net/card_image/1363917781355069761/e4d6b06b7b384831ac2d4c1542b75563.jpg",
   },
   {
-    name: "M1 Helmet",
-    description: "Standard steel combat helmet. Basic but lifesaving.",
-    flavor: '"Simple protection, maximum respect."',
-    rarity: "common", cardType: "infantry",
-    dropWeight: 60, worthValue: 10, burnValue: 5, imageUrl: "https://www.surplusandlost.co.uk/wp-content/uploads/2024/06/image426256087.jpg",
-    droppable: true,
+        name: "Biplane",
+        rarity: "common", cardType: "vehicle",
+        dropWeight: 60, worthValue: 20, burnValue: 10,
+        imageUrl: "https://misu.nephbox.net/card_image/1363917781355069761/biplane_00018125.jpg",
   },
   {
-    name: "Radio Set AN/PRC",
-    description: "Field communication radio. The backbone of battlefield coordination.",
-    flavor: '"Comms up, troops move."',
-    rarity: "common", cardType: "infantry",
-    dropWeight: 60, worthValue: 10, burnValue: 5, imageUrl: "https://i.ebayimg.com/thumbs/images/g/Gv8AAOSw3E1lNOGX/s-l300.jpg",
-    droppable: true,
+        name: "Chinook",
+        rarity: "common", cardType: "vehicle",
+        dropWeight: 60, worthValue: 20, burnValue: 10,
+        imageUrl: "https://misu.nephbox.net/card_image/1363917781355069761/chinook_00018124.jpg",
   },
   {
-    name: "Supply Truck",
-    description: "A reliable logistics truck keeping the frontline supplied.",
-    flavor: '"Ammo, fuel, food — the silent warriors."',
-    rarity: "common", cardType: "vehicle",
-    dropWeight: 60, worthValue: 10, burnValue: 5, imageUrl: "https://m.media-amazon.com/images/I/71yDGvnccuL.jpg",
-    droppable: true,
+        name: "Hacker Soldier",
+        rarity: "common", cardType: "vehicle",
+        dropWeight: 60, worthValue: 20, burnValue: 10,
+        imageUrl: "https://misu.nephbox.net/card_image/1363917781355069761/hacker_soldier_00018132.png",
   },
   {
-    name: "Recon Drone",
-    description: "Small tactical drone for battlefield surveillance.",
-    flavor: '"Eyes in the sky."',
-    rarity: "common", cardType: "aircraft",
-    dropWeight: 60, worthValue: 10, burnValue: 5, imageUrl: "https://gagadget.com/media/post_big/1200px-RQ-11_Raven_1_3bBgn0E.jpg",
-    droppable: true,
+        name: "Juggernaut",
+        rarity: "common", cardType: "vehicle",
+        dropWeight: 60, worthValue: 20, burnValue: 10,
+        imageUrl: "https://misu.nephbox.net/card_image/1363917781355069761/18131.png",
   },
   {
-    name: "Sandbag Bunker",
-    description: "A hastily built defensive position. Saved countless lives.",
-    flavor: '"Dig in. Hold the line."',
-    rarity: "common", cardType: "infantry",
-    dropWeight: 60, worthValue: 10, burnValue: 5, imageUrl: "https://thumbs.dreamstime.com/b/wooden-house-wall-sandbags-military-fortification-place-targeted-shooting-sandbag-wall-shooting-hole-192222460.jpg",
-    droppable: true,
-  },
-
-  // ────────── UNCOMMON ──────────
-  {
-    name: "M1 Abrams",
-    description: "The United States primary main battle tank. Heavily armored and lethal.",
-    flavor: '"120mm of democracy."',
-    rarity: "uncommon", cardType: "tank",
-    dropWeight: 25, worthValue: 50, burnValue: 25, imageUrl: "https://www.militaryfactory.com/armor/imgs/lrg/m1-abrams-main-battle-tank-united-states_9.jpg",
-    droppable: true,
+        name: "Logistics Truck",
+        rarity: "common", cardType: "vehicle",
+        dropWeight: 60, worthValue: 20, burnValue: 10,
+        imageUrl: "https://misu.nephbox.net/card_image/1363917781355069761/logistics_truck_00018116.jpg",
   },
   {
-    name: "AH-64 Apache",
-    description: "American attack helicopter. The bane of armored columns worldwide.",
-    flavor: '"Hellfire and thunder."',
-    rarity: "uncommon", cardType: "aircraft",
-    dropWeight: 25, worthValue: 50, burnValue: 25, imageUrl: "https://www.armyrecognition.com/images/stories/north_america/united-states/helicopter/ah-64/AH-64_Apache_attack_helicopter_US_United_States_army_air_force_front_side_view_001.jpg",
-    droppable: true,
+        name: "RPG Soldier",
+        rarity: "common", cardType: "vehicle",
+        dropWeight: 60, worthValue: 20, burnValue: 10,
+        imageUrl: "https://misu.nephbox.net/card_image/1363917781355069761/rpg_soldier_00018139.png",
   },
   {
-    name: "USS Arleigh Burke",
-    description: "Guided-missile destroyer. One of the most capable surface combatants afloat.",
-    flavor: '"Speed, stealth, and Tomahawks."',
-    rarity: "uncommon", cardType: "ship",
-    dropWeight: 25, worthValue: 50, burnValue: 25, imageUrl: "https://seaforces.org/usnships/ddg/DDG-51_DAT/DDG-51-USS-Arleigh-Burke-098.jpg",
-    droppable: true,
+        name: "Toxic Trooper",
+        rarity: "common", cardType: "vehicle",
+        dropWeight: 60, worthValue: 20, burnValue: 10,
+        imageUrl: "https://misu.nephbox.net/card_image/1363917781355069761/toxic_trooper_00018137.png",
   },
   {
-    name: "F-16 Fighting Falcon",
-    description: "A legendary multirole fighter. Over 4,500 built across the world.",
-    flavor: '"Lightweight, lethal, everywhere."',
-    rarity: "uncommon", cardType: "aircraft",
-    dropWeight: 25, worthValue: 50, burnValue: 25, imageUrl: "https://external-preview.redd.it/f-16-fighting-falcon-fighter-jet-its-history-and-current-v0-sYPMKMuVjmvGZmF7KRKt9Dkf7r6xECn1ny5oGRrdKkw.png?width=640&crop=smart&auto=webp&s=4d3738cb3369fd8e23993866d0ba6a0fc97131db",
-    droppable: true,
+        name: "Vault Raider",
+        rarity: "common", cardType: "vehicle",
+        dropWeight: 60, worthValue: 20, burnValue: 10,
+        imageUrl: "https://misu.nephbox.net/card_image/1363917781355069761/vault_raider_00018136.png",
   },
   {
-    name: "Bradley IFV",
-    description: "M2 Bradley Infantry Fighting Vehicle. Bridges the gap between tank and transport.",
-    flavor: '"Infantry and firepower as one."',
-    rarity: "uncommon", cardType: "vehicle",
-    dropWeight: 25, worthValue: 50, burnValue: 25, imageUrl: "https://media.gettyimages.com/id/2229645777/photo/warsaw-poland-august-15-u-s-army-m2-bradley-an-american-infantry-fighting-vehicle-seen-taking.jpg?s=612x612&w=0&k=20&c=8E5hx1ibR0AUOXvor-ivP3KKIHbbAwMt98LiOWBzXCU=",
-    droppable: true,
+        name: "Abrams X",
+        rarity: "uncommon", cardType: "vehicle",
+        dropWeight: 25, worthValue: 50, burnValue: 25,
+        imageUrl: "https://misu.nephbox.net/card_image/1363917781355069761/abrams_x_00018121.png",
   },
   {
-    name: "T-80 Objekat",
-    description: "Soviet cold war MBT. Gas turbine engine, fast and fearsome.",
-    flavor: '"The Iron Curtain on treads."',
-    rarity: "uncommon", cardType: "tank",
-    dropWeight: 25, worthValue: 50, burnValue: 25, imageUrl: "https://preview.redd.it/73v0atdn6gl81.png?auto=webp&s=3bcebb735f068eff6ddf52153196dfcc07cc8b59",
-    droppable: true,
-  },
-
-  // ────────── RARE ──────────
-  {
-    name: "F-22 Raptor",
-    description: "America's premier air superiority stealth fighter. No equal in the sky.",
-    flavor: '"You never see it coming."',
-    rarity: "rare", cardType: "aircraft",
-    dropWeight: 10, worthValue: 200, burnValue: 100, imageUrl: "https://www.19fortyfive.com/wp-content/uploads/2026/03/U.S.-Air-Force-F-22-Raptor-Fighter-Stealth.jpg",
-    droppable: true,
+        name: "Assassin",
+        rarity: "uncommon", cardType: "infantry",
+        dropWeight: 25, worthValue: 50, burnValue: 25,
+        imageUrl: "https://misu.nephbox.net/card_image/1363917781355069761/5df0962379ae4ce9b06d2a336a7cfba3.png",
   },
   {
-    name: "USS Nimitz",
-    description: "Nuclear-powered supercarrier. A floating city of airpower.",
-    flavor: '"90,000 tons of American diplomacy."',
-    rarity: "rare", cardType: "ship",
-    dropWeight: 10, worthValue: 200, burnValue: 100, imageUrl: "https://www.seaforces.org/usnships/cvn/CVN-76_DAT/CVN-76-USS-Ronald-Reagan-154.jpg",
-    droppable: true,
+        name: "Assault Bike",
+        rarity: "uncommon", cardType: "vehicle",
+        dropWeight: 25, worthValue: 50, burnValue: 25,
+        imageUrl: "https://misu.nephbox.net/card_image/1363917781355069761/assault_bike_00018119.png",
   },
   {
-    name: "Leopard 2A7",
-    description: "Germany's finest MBT, upgraded for modern warfare. Precision personified.",
-    flavor: '"German engineering at 1,500 horsepower."',
-    rarity: "rare", cardType: "tank",
-    dropWeight: 10, worthValue: 200, burnValue: 100, imageUrl: "https://www.armyrecognition.com/images/stories/europe/germany/main_battle_tank/leopard_2a7/Leopard_2A7_MBT_Main_Battle_Tank_Germany_German_army_KMW_defense_industry_left_side_view_002.jpg",
-    droppable: true,
+        name: "BOSS Soldier",
+        rarity: "uncommon", cardType: "vehicle",
+        dropWeight: 25, worthValue: 50, burnValue: 25,
+        imageUrl: "https://misu.nephbox.net/card_image/1363917781355069761/boss_soldier_00018134.png",
   },
   {
-    name: "T-14 Armata",
-    description: "Russia's next-generation tank. Unmanned turret, cutting-edge systems.",
-    flavor: '"The future of tank warfare."',
-    rarity: "rare", cardType: "tank",
-    dropWeight: 10, worthValue: 200, burnValue: 100, imageUrl: "https://defensefeeds.com/wp-content/uploads/2025/05/russian-t-14-armata-tank-1024x683.webp",
-    droppable: true,
+        name: "Blackhawk Trooper",
+        rarity: "uncommon", cardType: "vehicle",
+        dropWeight: 25, worthValue: 50, burnValue: 25,
+        imageUrl: "https://misu.nephbox.net/card_image/1363917781355069761/3dc888636536437293a845efd438aafe.png",
   },
   {
-    name: "B-2 Spirit",
-    description: "Stealth strategic bomber. Invisible, intercontinental, unstoppable.",
-    flavor: '"Two billion reasons to stay hidden."',
-    rarity: "rare", cardType: "aircraft",
-    dropWeight: 10, worthValue: 200, burnValue: 100, imageUrl: "https://i.ebayimg.com/images/g/qrYAAOSwRbpcUGLu/s-l960.webp",
-    droppable: true,
+        name: "Calzone Cannon",
+        rarity: "uncommon", cardType: "vehicle",
+        dropWeight: 25, worthValue: 50, burnValue: 25,
+        imageUrl: "https://misu.nephbox.net/card_image/1363917781355069761/calzone_cannon_00018120.png",
   },
   {
-    name: "USS Virginia",
-    description: "Virginia-class nuclear attack submarine. Silent hunter of the deep.",
-    flavor: '"The sea holds no secrets from her."',
-    rarity: "rare", cardType: "ship",
-    dropWeight: 10, worthValue: 200, burnValue: 100, imageUrl: "https://www.seaforces.org/usnships/ssn/SSN-774_DAT/SSN-774-USS-Virginia-062.jpg",
-    droppable: true,
-  },
-
-  // ────────── EPIC ──────────
-  {
-    name: "SR-71 Blackbird",
-    description: "The fastest aircraft ever built. Mach 3.3 and untouchable at 85,000 feet.",
-    flavor: '"When a missile fired at it, the pilot simply accelerated."',
-    rarity: "epic", cardType: "aircraft",
-    dropWeight: 4, worthValue: 750, burnValue: 375, imageUrl: "https://render.fineartamerica.com/images/rendered/small/canvas-print/7/10/mirror/break/images-medium-5/sr-71-blackbird-reconnaissance-aircraft-us-air-forcescience-photo-library-canvas-print.jpg",
-    droppable: true,
+        name: "Elite Soldier",
+        rarity: "uncommon", cardType: "vehicle",
+        dropWeight: 25, worthValue: 50, burnValue: 25,
+        imageUrl: "https://misu.nephbox.net/card_image/1363917781355069761/elite_soldier_00018133.png",
   },
   {
-    name: "USS Gerald R. Ford",
-    description: "The most advanced aircraft carrier ever built. 13 billion dollars of raw power.",
-    flavor: '"The crown jewel of American sea power."',
-    rarity: "epic", cardType: "ship",
-    dropWeight: 4, worthValue: 750, burnValue: 375, imageUrl: "https://www.stripes.com/incoming/fzy6en-210426fordphoto01.jpg/alternates/LANDSCAPE_910/210426FORDphoto01.JPG",
-    droppable: true,
+        name: "Golden Soldier",
+        rarity: "uncommon", cardType: "vehicle",
+        dropWeight: 25, worthValue: 50, burnValue: 25,
+        imageUrl: "https://misu.nephbox.net/card_image/1363917781355069761/golden_soldier_00018135.png",
   },
   {
-    name: "F-35 Lightning II",
-    description: "Next-gen stealth multirole fighter. Sees everything, goes everywhere.",
-    flavor: '"One platform to rule them all."',
-    rarity: "epic", cardType: "aircraft",
-    dropWeight: 4, worthValue: 750, burnValue: 375, imageUrl: "https://cdn11.bigcommerce.com/s-621ae/product_images/uploaded_images/8014-action-shot-for-web.jpg",
-    droppable: true,
+        name: "Marine Soilder",
+        description: "An amphibious infantry unit armed with an AUG and flashbang. Blinds enemies, disrupts their vision, and creates openings for teammates to attack.",
+        rarity: "uncommon", cardType: "vehicle",
+        dropWeight: 25, worthValue: 50, burnValue: 25,
+        imageUrl: "https://misu.nephbox.net/card_image/1363917781355069761/1fa40c3562da49398246b1f92c8d0be7.png",
   },
   {
-    name: "Night Stalker",
-    description: "Elite special operations unit. No rank, no record, no trace.",
-    flavor: '"They were never there."',
-    rarity: "epic", cardType: "infantry",
-    dropWeight: 4, worthValue: 750, burnValue: 375, imageUrl: "https://media.gettyimages.com/id/1269772940/photo/us-special-forces-training.jpg?s=612x612&w=0&k=20&c=yr4kZU9t6nXn5r2abdIqhc9ipYHZIcC31qz1BlvyfyE=",
-    droppable: true,
-  },
-
-  // ────────── LEGENDARY ──────────
-  {
-    name: "Darknight Titan",
-    description: "The ultimate guardian of the DarkNight community. Feared and respected by all.",
-    flavor: '"Where shadow falls, the Titan rises."',
-    rarity: "legendary", cardType: "boss",
-    dropWeight: 1, worthValue: 2500, burnValue: 1250, imageUrl: "https://i.pinimg.com/originals/31/ee/87/31ee873abab882cc81dfb22f112fa824.jpg",
-    droppable: true,
+        name: "Naval Officer",
+        rarity: "uncommon", cardType: "vehicle",
+        dropWeight: 25, worthValue: 50, burnValue: 25,
+        imageUrl: "https://misu.nephbox.net/card_image/1363917781355069761/9f4c3ae2117d414d91794eaffda0b0b9.png",
   },
   {
-    name: "Operation Zero",
-    description: "Classified. Mission parameters unknown. Outcome: decisive.",
-    flavor: '"[REDACTED] — Level 5 clearance required."',
-    rarity: "legendary", cardType: "event",
-    dropWeight: 1, worthValue: 2500, burnValue: 1250, imageUrl: "https://static.3dcrystalized.com/guide_20250314-ce107560-012f-11f0-8cd2-0fe0861bfec3.jpg.webp",
-    droppable: true,
+        name: "Railgun Killer",
+        rarity: "uncommon", cardType: "vehicle",
+        dropWeight: 25, worthValue: 50, burnValue: 25,
+        imageUrl: "https://misu.nephbox.net/card_image/1363917781355069761/railgun_killer_00018138.png",
   },
   {
-    name: "The Warlord",
-    description: "A commander without a nation, a legend without a name. Commands loyalty through fear.",
-    flavor: '"Armies fall. The Warlord endures."',
-    rarity: "legendary", cardType: "boss",
-    dropWeight: 1, worthValue: 2500, burnValue: 1250, imageUrl: "https://i.etsystatic.com/59334334/r/il/1d11f7/7999631048/il_300x300.7999631048_rnms.jpg",
-    droppable: true,
+        name: "T90",
+        rarity: "uncommon", cardType: "vehicle",
+        dropWeight: 25, worthValue: 50, burnValue: 25,
+        imageUrl: "https://misu.nephbox.net/card_image/1363917781355069761/t90_00018122.png",
+  },
+  {
+        name: "Volk",
+        rarity: "uncommon", cardType: "vehicle",
+        dropWeight: 25, worthValue: 50, burnValue: 25,
+        imageUrl: "https://misu.nephbox.net/card_image/1363917781355069761/volk_00018123.png",
+  },
+  {
+        name: "Weiner Wagon",
+        rarity: "uncommon", cardType: "vehicle",
+        dropWeight: 25, worthValue: 50, burnValue: 25,
+        imageUrl: "https://misu.nephbox.net/card_image/1363917781355069761/weiner_wagon_00018118.png",
+  },
+  {
+        name: "G-Bis",
+        rarity: "rare", cardType: "vehicle",
+        dropWeight: 10, worthValue: 3000, burnValue: 1500,
+        imageUrl: "https://misu.nephbox.net/card_image/1363917781355069761/g-bis_00018109.png",
+  },
+  {
+        name: "Haunted Tank",
+        rarity: "rare", cardType: "vehicle",
+        dropWeight: 10, worthValue: 3000, burnValue: 1500,
+        imageUrl: "https://misu.nephbox.net/card_image/1363917781355069761/haunted_tank_00018126.png",
+  },
+  {
+        name: "LE A-10",
+        rarity: "rare", cardType: "vehicle",
+        dropWeight: 10, worthValue: 3000, burnValue: 1500,
+        imageUrl: "https://misu.nephbox.net/card_image/1363917781355069761/2261f18589ec4d3fb8b151fcd303fa8b.png",
+  },
+  {
+        name: "LEBB",
+        rarity: "rare", cardType: "vehicle",
+        dropWeight: 10, worthValue: 3000, burnValue: 1500,
+        imageUrl: "https://misu.nephbox.net/card_image/1363917781355069761/fe1f2d45cb1447a2829d21d5dd694d2d.png",
+  },
+  {
+        name: "NMT",
+        rarity: "rare", cardType: "vehicle",
+        dropWeight: 10, worthValue: 3000, burnValue: 1500,
+        imageUrl: "https://misu.nephbox.net/card_image/1363917781355069761/d80c273e5676436faddc017f46a83690.png",
+  },
+  {
+        name: "Patriot Event 3rd Place",
+        description: "3rd Place — ArtificiallyAbove — 21 kills. Outnumbered but never outmatched. A place on the podium was earned through persistence and skill.",
+        rarity: "rare", cardType: "event",
+        dropWeight: 0, worthValue: 3000, burnValue: 1500,
+        imageUrl: "/card-patriot-3rd.png",
+        droppable: false,
+        isEventExclusive: true,
+        inPacks: false,
+  },
+  {
+        name: "RATTE",
+        rarity: "rare", cardType: "vehicle",
+        dropWeight: 10, worthValue: 3000, burnValue: 1500,
+        imageUrl: "https://misu.nephbox.net/card_image/1363917781355069761/ratte_00018127.png",
+  },
+  {
+        name: "SA50",
+        rarity: "rare", cardType: "vehicle",
+        dropWeight: 10, worthValue: 3000, burnValue: 1500,
+        imageUrl: "https://misu.nephbox.net/card_image/1363917781355069761/08108c02d7724998a275539f8b6e6e3d.png",
+  },
+  {
+        name: "SB-12",
+        rarity: "rare", cardType: "vehicle",
+        dropWeight: 10, worthValue: 3000, burnValue: 1500,
+        imageUrl: "https://misu.nephbox.net/card_image/1363917781355069761/sb-12_00018113.png",
+  },
+  {
+        name: "SB21",
+        rarity: "rare", cardType: "vehicle",
+        dropWeight: 10, worthValue: 3000, burnValue: 1500,
+        imageUrl: "https://misu.nephbox.net/card_image/1363917781355069761/sb21_00018114.png",
+  },
+  {
+        name: "STT",
+        rarity: "rare", cardType: "vehicle",
+        dropWeight: 10, worthValue: 3000, burnValue: 1500,
+        imageUrl: "https://misu.nephbox.net/card_image/1363917781355069761/6337be0ec09f46c6bb58172dd5dbca4f.png",
+  },
+  {
+        name: "BOB",
+        description: "The Face. The Legend. The Cult. Awarded to members present during the Great Bob Awakening. Grants unlimited emotional support and questionable tactical advice.",
+        rarity: "epic", cardType: "community",
+        dropWeight: 0, worthValue: 5000, burnValue: 2500,
+        imageUrl: "/card-bob.png",
+        droppable: false,
+        isEventExclusive: true,
+        inPacks: false,
+  },
+  {
+        name: "Mech Walker",
+        rarity: "epic", cardType: "vehicle",
+        dropWeight: 4, worthValue: 2000, burnValue: 1000,
+        imageUrl: "https://misu.nephbox.net/card_image/1363917781355069761/26d6264d9003474a845c9daa24e9a8dc.png",
+  },
+  {
+        name: "Nuke Sniper",
+        rarity: "epic", cardType: "vehicle",
+        dropWeight: 4, worthValue: 1480, burnValue: 740,
+        imageUrl: "https://misu.nephbox.net/card_image/1363917781355069761/27720dd43de44547a1024d9110d57347.png",
+  },
+  {
+        name: "Nuke Sniper Animated",
+        rarity: "epic", cardType: "vehicle",
+        dropWeight: 4, worthValue: 1480, burnValue: 740,
+        imageUrl: "https://misu.nephbox.net/card_image/1363917781355069761/3a6052e7dec349e7be0ce9d5bd174e7b.gif",
+  },
+  {
+        name: "Patriot Event 2nd Place",
+        description: "2nd Place — tobiqwe123 — 35 kills. One elimination short of glory, yet feared by every opponent.",
+        rarity: "epic", cardType: "event",
+        dropWeight: 0, worthValue: 5000, burnValue: 2500,
+        imageUrl: "/card-patriot-2nd.png",
+        droppable: false,
+        isEventExclusive: true,
+        inPacks: false,
+  },
+  {
+        name: "Platinum Mech",
+        rarity: "epic", cardType: "vehicle",
+        dropWeight: 4, worthValue: 2000, burnValue: 1000,
+        imageUrl: "https://misu.nephbox.net/card_image/1363917781355069761/785aa2867d83457aab48c235de0dcbfd.png",
+  },
+  {
+        name: "Puckmonster",
+        rarity: "epic", cardType: "vehicle",
+        dropWeight: 4, worthValue: 1480, burnValue: 740,
+        imageUrl: "https://misu.nephbox.net/card_image/1363917781355069761/c45747e7de2049efa4d05dc1106b9056.png",
+  },
+  {
+        name: "STM",
+        rarity: "epic", cardType: "vehicle",
+        dropWeight: 4, worthValue: 2000, burnValue: 1000,
+        imageUrl: "https://misu.nephbox.net/card_image/1363917781355069761/07dabfbdb06d4e30b7c9ace7196cefd8.png",
+  },
+  {
+        name: "BGW",
+        rarity: "legendary", cardType: "vehicle",
+        dropWeight: 1, worthValue: 800, burnValue: 400,
+        imageUrl: "https://misu.nephbox.net/card_image/1363917781355069761/bgw_00018110.png",
+  },
+  {
+        name: "BOSS Sea Tank",
+        rarity: "legendary", cardType: "vehicle",
+        dropWeight: 1, worthValue: 800, burnValue: 400,
+        imageUrl: "https://misu.nephbox.net/card_image/1363917781355069761/boss_sea_tank_00018130.png",
+  },
+  {
+        name: "DN Owner",
+        description: "The Owner of DN. The leader who builds, creates, and leads the community to victory. Respect the Owner. Respect the Vision. — Artem_Kukuruza",
+        rarity: "legendary", cardType: "community",
+        dropWeight: 0, worthValue: 10000, burnValue: 5000,
+        imageUrl: "/card-dn-owner.png",
+        droppable: false,
+        isLimitedEdition: true,
+        isEventExclusive: true,
+        inPacks: false,
+  },
+  {
+        name: "Founding Soldier",
+        description: "Awarded to the first soldiers present during the launch of the DN Card System. Military Tycoon DN — Launch Event. The beginning of every great operation.",
+        rarity: "legendary", cardType: "event",
+        dropWeight: 0, worthValue: 7500, burnValue: 3750,
+        imageUrl: "/card-founding-soldier.png",
+        droppable: false,
+        isLimitedEdition: true,
+        isEventExclusive: true,
+        inPacks: false,
+  },
+  {
+        name: "Gold Typhoon",
+        rarity: "legendary", cardType: "vehicle",
+        dropWeight: 1, worthValue: 5000, burnValue: 2500,
+        imageUrl: "https://misu.nephbox.net/card_image/1363917781355069761/121bb44e38354e00a42f2e388b8bb412.png",
+  },
+  {
+        name: "Le Bismarck",
+        rarity: "legendary", cardType: "vehicle",
+        dropWeight: 1, worthValue: 800, burnValue: 400,
+        imageUrl: "https://misu.nephbox.net/card_image/1363917781355069761/cecd41970a5e493cbd17c5a3fb1cf525.png",
+  },
+  {
+        name: "Master Helstorm",
+        rarity: "legendary", cardType: "vehicle",
+        dropWeight: 1, worthValue: 800, burnValue: 400,
+        imageUrl: "https://misu.nephbox.net/card_image/1363917781355069761/master_helstorm_00018108.png",
+  },
+  {
+        name: "Master Reaper",
+        rarity: "legendary", cardType: "vehicle",
+        dropWeight: 1, worthValue: 800, burnValue: 400,
+        imageUrl: "https://misu.nephbox.net/card_image/1363917781355069761/master_reaper_00018112.png",
+  },
+  {
+        name: "Mother ship",
+        rarity: "legendary", cardType: "vehicle",
+        dropWeight: 1, worthValue: 800, burnValue: 400,
+        imageUrl: "https://misu.nephbox.net/card_image/1363917781355069761/mother_ship_00018129.png",
+  },
+  {
+        name: "Nuke F35",
+        rarity: "legendary", cardType: "vehicle",
+        dropWeight: 1, worthValue: 800, burnValue: 400,
+        imageUrl: "https://misu.nephbox.net/card_image/1363917781355069761/c32ede043d9849de9a9d8b07821a1ba7.png",
+  },
+  {
+        name: "Nuke Sub",
+        rarity: "legendary", cardType: "vehicle",
+        dropWeight: 1, worthValue: 2500, burnValue: 1250,
+        imageUrl: "https://misu.nephbox.net/card_image/1363917781355069761/831c1e58287547f385523e99f4fc9bfa.png",
+  },
+  {
+        name: "Patriot Event 1st Place",
+        description: "1st Place — evgeni2372006 — 36 kills. The highest kill count of the event. Every Patriot launched brought them closer to victory.",
+        rarity: "legendary", cardType: "event",
+        dropWeight: 0, worthValue: 7500, burnValue: 3750,
+        imageUrl: "/card-patriot-1st.png",
+        droppable: false,
+        isEventExclusive: true,
+        inPacks: false,
+  },
+  {
+        name: "SX59",
+        rarity: "legendary", cardType: "vehicle",
+        dropWeight: 1, worthValue: 800, burnValue: 400,
+        imageUrl: "https://misu.nephbox.net/card_image/1363917781355069761/sx59_00018111.png",
+  },
+  {
+        name: "Super AN Jeep",
+        rarity: "legendary", cardType: "vehicle",
+        dropWeight: 1, worthValue: 800, burnValue: 400,
+        imageUrl: "https://misu.nephbox.net/card_image/1363917781355069761/super_an_jeep_00018128.png",
+  },
+  {
+        name: "Super Keiler",
+        rarity: "legendary", cardType: "vehicle",
+        dropWeight: 1, worthValue: 800, burnValue: 400,
+        imageUrl: "https://misu.nephbox.net/card_image/1363917781355069761/e21beb1e2b1749a6b0c1a935778358a9.png",
+  },
+  {
+        name: "The Apocalypse",
+        rarity: "legendary", cardType: "vehicle",
+        dropWeight: 1, worthValue: 5000, burnValue: 2500,
+        imageUrl: "https://misu.nephbox.net/card_image/1363917781355069761/b9c1a86ef92a40f285a0fb1421a30e22.png",
   },
 ];

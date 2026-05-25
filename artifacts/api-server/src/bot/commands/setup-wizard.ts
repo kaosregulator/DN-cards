@@ -300,7 +300,7 @@ function buildSetupEmbed(s: GuildSettings, hasDefaults: boolean): EmbedBuilder {
   const tradeOn = s.tradeEnabled;
 
   const defaultsLine = hasDefaults
-    ? `27 built-in cards loaded`
+    ? `60 built-in cards loaded`
     : `No defaults — click **Load Defaults** or add your own cards`;
 
   return new EmbedBuilder()
