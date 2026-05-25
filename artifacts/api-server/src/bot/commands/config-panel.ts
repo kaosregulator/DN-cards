@@ -33,7 +33,7 @@ function effectiveWeight(s: GuildSettings, r: Rarity): number {
   return getRarityWeight(s, r) ?? RARITY_WEIGHTS[r];
 }
 
-// ── Public entry: /config command opens the ephemeral panel ──────────────────
+// ── Public entry: /config command opens the ephemeral panel ───────────────────────────────────────────
 export async function handleConfigCommand(interaction: ChatInputCommandInteraction): Promise<void> {
   if (!interaction.guild) return;
   const ok = await ensureAdmin(interaction);
@@ -47,36 +47,35 @@ export async function handleConfigCommand(interaction: ChatInputCommandInteracti
   });
 }
 
-// ── Router: select-menu interactions on the panel ────────────────────────────
+// ── Router: select-menu interactions on the panel ─────────────────────────────────────────────────────────────────
 export async function handleConfigSelect(interaction: StringSelectMenuInteraction): Promise<void> {
   if (!interaction.guild) return;
   const ok = await ensureAdmin(interaction);
   if (!ok) return;
 
   const guildId = interaction.guild.id;
-  const action = interaction.customId; // "config_mode" | "config_drops" | "config_interval" | "config_window"
+  const action = interaction.customId;
   const value = interaction.values[0];
 
   const patch: Partial<GuildSettings> = {};
   if (action === "config_mode") {
     patch.catchMode = value;
   } else if (action === "config_drops") {
-    patch.cardsPerSpawn = parseInt(value, 10);
+    patch.cardsPerSpawn = parseInt(value!, 10);
   } else if (action === "config_interval") {
     patch.useRandomInterval = false;
-    patch.spawnIntervalSeconds = parseInt(value, 10);
+    patch.spawnIntervalSeconds = parseInt(value!, 10);
   } else if (action === "config_window") {
-    patch.catchWindowSeconds = parseInt(value, 10);
+    patch.catchWindowSeconds = parseInt(value!, 10);
   }
 
   await updateGuildSettings(guildId, patch);
-  // Interval change → reschedule timer
   if (action === "config_interval") scheduleNextSpawn(guildId);
 
   await refreshPanel(interaction, guildId);
 }
 
-// ── Router: button interactions on the panel ─────────────────────────────────
+// ── Router: button interactions on the panel ──────────────────────────────────────────────────────────────────
 export async function handleConfigButton(interaction: ButtonInteraction): Promise<void> {
   if (!interaction.guild) return;
   const ok = await ensureAdmin(interaction);
@@ -100,8 +99,6 @@ export async function handleConfigButton(interaction: ButtonInteraction): Promis
   } else if (action === "channel" && arg === "trade") {
     await updateGuildSettings(guildId, { tradeChannelId: interaction.channelId });
   } else if (action === "rates") {
-    // Open the drop-rates sub-panel as a *new* ephemeral message so the
-    // main config panel stays open underneath.
     const settings = await getOrCreateGuildSettings(guildId);
     await interaction.reply({
       embeds: [buildRatesEmbed(settings)],
@@ -122,14 +119,11 @@ export async function handleConfigButton(interaction: ButtonInteraction): Promis
         components: buildPacksLimitsComponents(settings),
       });
     } else if (arg === "back") {
-      // Back to the main packs panel from a sub-panel.
       await interaction.update({
         embeds: [buildPacksEmbed(settings)],
         components: buildPacksComponents(settings),
       });
     } else {
-      // arg === "open" — open the packs panel as a NEW ephemeral so the
-      // main config panel stays underneath.
       await interaction.reply({
         embeds: [buildPacksEmbed(settings)],
         components: buildPacksComponents(settings),
@@ -142,8 +136,7 @@ export async function handleConfigButton(interaction: ButtonInteraction): Promis
   await refreshPanel(interaction, guildId);
 }
 
-// ── Router: packs sub-panel selects ──────────────────────────────────────────
-// Custom IDs: packs_cooldown, packs_cost_<tier>, packs_size_<tier>, packs_limit_<tier>
+// ── Router: packs sub-panel selects ──────────────────────────────────────────────────────────────────
 export async function handlePacksSelect(interaction: StringSelectMenuInteraction): Promise<void> {
   if (!interaction.guild) return;
   const ok = await ensureAdmin(interaction);
@@ -189,7 +182,7 @@ export async function handlePacksSelect(interaction: StringSelectMenuInteraction
   }
 }
 
-// ── Router: drop-rates sub-panel selects ─────────────────────────────────────
+// ── Router: drop-rates sub-panel selects ─────────────────────────────────────────────────────────────────
 export async function handleRatesSelect(interaction: StringSelectMenuInteraction): Promise<void> {
   if (!interaction.guild) return;
   const ok = await ensureAdmin(interaction);
@@ -210,7 +203,7 @@ export async function handleRatesSelect(interaction: StringSelectMenuInteraction
   });
 }
 
-// ── Helpers ──────────────────────────────────────────────────────────────────
+// ── Helpers ──────────────────────────────────────────────────────────────────────────────────────────────────────────────
 async function refreshPanel(
   interaction: ButtonInteraction | StringSelectMenuInteraction,
   guildId: string,
@@ -244,49 +237,65 @@ async function ensureAdmin(
 function buildConfigEmbed(s: GuildSettings): EmbedBuilder {
   const catchMode = (s as unknown as { catchMode?: string }).catchMode ?? "type";
   const modeLabel = ({
-    type: "✍️ **Typing** — type the card name (lag-fair, earliest sent wins)",
-    button: "🎯 **Button** — click 🎯 Claim (position randomizes each spawn)",
-    both: "✍️ + 🎯 **Both** — typing OR button, whichever lands first",
+    type: "Typing",
+    button: "Button",
+    both: "Both",
   } as Record<string, string>)[catchMode];
 
-  const dropsLabel = s.cardsPerSpawn === -1 ? "Random 1–3" : `${s.cardsPerSpawn} per batch`;
+  const dropsLabel = s.cardsPerSpawn === -1 ? "Random 1–3" : `${s.cardsPerSpawn}`;
   const intervalLabel = s.useRandomInterval
-    ? `Random ${formatSec(s.spawnIntervalMin ?? 0)}–${formatSec(s.spawnIntervalMax ?? 0)}`
+    ? `${formatSec(s.spawnIntervalMin ?? 0)}–${formatSec(s.spawnIntervalMax ?? 0)}`
     : formatSec(s.spawnIntervalSeconds);
 
+  const spawnOn = s.spawnEnabled && s.spawnChannelId;
+
   return new EmbedBuilder()
-    .setTitle("⚙️ DN Cards — Server Config")
+    .setTitle("⚙️ DN Cards — Config")
     .setColor(0x5865f2)
-    .setDescription("Pick options below — changes save instantly.")
+    .setDescription("Quick config — changes save instantly.")
     .addFields(
-      { name: "🎯 Catch Mode", value: modeLabel, inline: false },
-      { name: "📦 Cards per Spawn", value: dropsLabel, inline: true },
-      { name: "⏱️ Spawn Interval", value: intervalLabel, inline: true },
-      { name: "🪟 Catch Window", value: formatSec(s.catchWindowSeconds), inline: true },
       {
         name: "📢 Spawn Channel",
-        value: s.spawnChannelId ? `<#${s.spawnChannelId}>` : "❌ Not set — click **Set spawn here**",
+        value: s.spawnChannelId ? `<#${s.spawnChannelId}>` : "Not set — click **📢 Spawn here**",
+        inline: false,
+      },
+      {
+        name: "⏱️ Spawn Interval",
+        value: intervalLabel,
         inline: true,
       },
       {
-        name: "💬 Trade Channel",
-        value: s.tradeChannelId ? `<#${s.tradeChannelId}>` : "Any channel",
+        name: "🎯 Catch Mode",
+        value: modeLabel ?? "Typing",
         inline: true,
       },
       {
-        name: "🎲 Drop Rates (weight, % chance)",
+        name: "🛑 Catch Window",
+        value: formatSec(s.catchWindowSeconds),
+        inline: true,
+      },
+      {
+        name: "📤‍📤 Drops",
+        value: dropsLabel,
+        inline: true,
+      },
+      {
+        name: "👥 Trading",
+        value: s.tradeEnabled ? "🟢 ON" : "🔴 OFF",
+        inline: true,
+      },
+      {
+        name: "📢 Spawning",
+        value: spawnOn ? "🟢 ON" : "🔴 OFF",
+        inline: true,
+      },
+      {
+        name: "🎯 Drop Rates",
         value: rarityWeightsSummary(s),
         inline: false,
       },
-      {
-        name: "Toggles",
-        value:
-          `${s.spawnEnabled ? "✅" : "⏸️"} Auto-Spawning · ` +
-          `${s.tradeEnabled ? "✅" : "⏸️"} Trading`,
-        inline: false,
-      },
     )
-    .setFooter({ text: "Only you can see this panel. It stays open as long as Discord keeps it." });
+    .setFooter({ text: "Ephemeral — only you see this." });
 }
 
 function buildConfigComponents(s: GuildSettings) {
@@ -296,14 +305,14 @@ function buildConfigComponents(s: GuildSettings) {
     .setCustomId("config_mode")
     .setPlaceholder("🎯 Catch Mode")
     .addOptions(
-      { label: "Typing (lag-fair)", value: "type", description: "Type the card name; earliest sent wins", emoji: "✍️", default: catchMode === "type" },
-      { label: "Button (anti-camp)", value: "button", description: "Click 🎯 Claim; position randomizes", emoji: "🎯", default: catchMode === "button" },
-      { label: "Both", value: "both", description: "Type OR click — whichever first", emoji: "🔀", default: catchMode === "both" },
+      { label: "Typing", value: "type", emoji: "✍️", default: catchMode === "type" },
+      { label: "Button", value: "button", emoji: "🎯", default: catchMode === "button" },
+      { label: "Both", value: "both", emoji: "🔀", default: catchMode === "both" },
     );
 
   const dropsSelect = new StringSelectMenuBuilder()
     .setCustomId("config_drops")
-    .setPlaceholder("📦 Cards per spawn")
+    .setPlaceholder("📤‍📤 Cards per spawn")
     .addOptions(
       { label: "1 card", value: "1", default: s.cardsPerSpawn === 1 },
       { label: "3 cards", value: "3", default: s.cardsPerSpawn === 3 },
@@ -312,12 +321,14 @@ function buildConfigComponents(s: GuildSettings) {
     );
 
   const intervalOpts: { label: string; sec: number }[] = [
-    { label: "Every 15 minutes", sec: 15 * 60 },
-    { label: "Every 30 minutes", sec: 30 * 60 },
-    { label: "Every 1 hour", sec: 60 * 60 },
-    { label: "Every 2 hours", sec: 2 * 60 * 60 },
-    { label: "Every 3 hours", sec: 3 * 60 * 60 },
-    { label: "Every 6 hours", sec: 6 * 60 * 60 },
+    { label: "1 minute", sec: 1 * 60 },
+    { label: "5 minutes", sec: 5 * 60 },
+    { label: "10 minutes", sec: 10 * 60 },
+    { label: "15 minutes", sec: 15 * 60 },
+    { label: "30 minutes", sec: 30 * 60 },
+    { label: "1 hour", sec: 60 * 60 },
+    { label: "2 hours", sec: 2 * 60 * 60 },
+    { label: "6 hours", sec: 6 * 60 * 60 },
   ];
   const intervalSelect = new StringSelectMenuBuilder()
     .setCustomId("config_interval")
@@ -338,7 +349,7 @@ function buildConfigComponents(s: GuildSettings) {
   ];
   const windowSelect = new StringSelectMenuBuilder()
     .setCustomId("config_window")
-    .setPlaceholder("🪟 Catch window")
+    .setPlaceholder("🛑 Catch window")
     .addOptions(
       windowOpts.map(o => ({
         label: o.label, value: String(o.sec),
@@ -346,18 +357,15 @@ function buildConfigComponents(s: GuildSettings) {
       })),
     );
 
-  // Discord caps at 5 components per row AND 5 rows per message. We have 3
-  // select rows here (mode, drops, interval) — windowSelect dropped to make
-  // room for two button rows below.
   const toggleRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder()
       .setCustomId("config:toggle:spawn")
-      .setLabel(s.spawnEnabled ? "⏸️ Pause Spawning" : "▶️ Start Spawning")
-      .setStyle(s.spawnEnabled ? ButtonStyle.Secondary : ButtonStyle.Success),
+      .setLabel(s.spawnEnabled ? "🟢 Spawning ON" : "🔴 Spawning OFF")
+      .setStyle(ButtonStyle.Secondary),
     new ButtonBuilder()
       .setCustomId("config:toggle:trade")
-      .setLabel(s.tradeEnabled ? "⏸️ Pause Trading" : "▶️ Enable Trading")
-      .setStyle(s.tradeEnabled ? ButtonStyle.Secondary : ButtonStyle.Success),
+      .setLabel(s.tradeEnabled ? "🟢 Trading ON" : "🔴 Trading OFF")
+      .setStyle(ButtonStyle.Secondary),
     new ButtonBuilder()
       .setCustomId("config:channel:spawn")
       .setLabel("📢 Spawn here")
@@ -370,16 +378,14 @@ function buildConfigComponents(s: GuildSettings) {
   const subPanelRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder()
       .setCustomId("config:rates:open")
-      .setLabel("🎲 Drop Rates")
-      .setStyle(ButtonStyle.Primary),
+      .setLabel("🎯 Drop Rates")
+      .setStyle(ButtonStyle.Secondary),
     new ButtonBuilder()
       .setCustomId("config:packs:open")
       .setLabel("🎴 Packs")
-      .setStyle(ButtonStyle.Primary),
+      .setStyle(ButtonStyle.Secondary),
   );
 
-  // 3 select rows + 2 button rows = 5 (Discord max).
-  void windowSelect; // catch window edited via wizard / future sub-panel
   return [
     new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(modeSelect),
     new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(dropsSelect),
@@ -395,30 +401,30 @@ function formatSec(sec: number): string {
   return `${sec}s`;
 }
 
-// ── Drop rates sub-panel (also reused by the !setup wizard) ─────────────────
+// ── Drop rates sub-panel (also reused by the !setup wizard) ────────────────────────────────
 export { buildRatesEmbed, buildRatesComponents };
+
 function rarityWeightsSummary(s: GuildSettings): string {
   const weights = RARITY_ORDER.map(r => effectiveWeight(s, r));
   const total = weights.reduce((a, b) => a + b, 0) || 1;
   return RARITY_ORDER.map((r, i) => {
     const w = weights[i]!;
     const pct = ((w / total) * 100).toFixed(1);
-    const override = getRarityWeight(s, r) !== null ? "" : " *(default)*";
-    return `${RARITY_EMOJI[r]} **${capitalize(r)}** — weight ${w} · **${pct}%**${override}`;
+    const override = getRarityWeight(s, r) !== null ? "" : " (default)";
+    return `${RARITY_EMOJI[r]} **${capitalize(r)}** — ${w} · ${pct}%${override}`;
   }).join("\n");
 }
 
 function buildRatesEmbed(s: GuildSettings): EmbedBuilder {
   return new EmbedBuilder()
-    .setTitle("🎲 Drop Rates — Per-Rarity Weights")
+    .setTitle("🎯 Drop Rates — Per-Rarity Weights")
     .setColor(0xeb459e)
     .setDescription(
       "Pick a weight for each rarity. Higher weight = more common.\n" +
-      "**Defaults:** Common 60 · Uncommon 25 · Rare 10 · Epic 4 · Legendary 1.\n" +
-      "Percentages below are calculated relative to the totals.",
+      "**Defaults:** Common 60 · Uncommon 25 · Rare 10 · Epic 4 · Legendary 1.",
     )
     .addFields({ name: "Current rates", value: rarityWeightsSummary(s), inline: false })
-    .setFooter({ text: "Only you can see this. Changes save instantly." });
+    .setFooter({ text: "Changes save instantly." });
 }
 
 function buildRatesComponents(s: GuildSettings) {
@@ -429,14 +435,12 @@ function buildRatesComponents(s: GuildSettings) {
         return {
           label: `Default (${RARITY_WEIGHTS[r]})`,
           value: "default",
-          description: "Use the card's default weight",
           default: current === null,
         };
       }
       return {
         label: `Weight ${w}`,
         value: String(w),
-        description: w === 0 ? "Disable this rarity from random drops" : undefined,
         default: current === w,
       };
     });
@@ -453,7 +457,7 @@ function capitalize(s: string): string {
   return s[0]!.toUpperCase() + s.slice(1);
 }
 
-// ── Packs sub-panel ──────────────────────────────────────────────────────────
+// ── Packs sub-panel ────────────────────────────────────────────────────────────────────────────────────────
 const COOLDOWN_OPTS: { label: string; sec: number }[] = [
   { label: "No cooldown",      sec: 0 },
   { label: "30 seconds",       sec: 30 },
@@ -463,7 +467,6 @@ const COOLDOWN_OPTS: { label: string; sec: number }[] = [
   { label: "1 hour",           sec: 3600 },
 ];
 
-// Per-tier cost presets. Roughly: <default>, half, double, 4×.
 const COST_OPTS: Record<PackTier, number[]> = {
   basic:     [100, 250, 400, 600, 1000],
   premium:   [400, 750, 1000, 1500, 2500],
@@ -497,27 +500,25 @@ export function buildPacksEmbed(s: GuildSettings): EmbedBuilder {
     .setTitle("🎴 Pack Store — Pricing & Limits")
     .setColor(0xfee75c)
     .setDescription(
-      "Tune what `/pack` charges and how often players can open. Changes apply server-wide instantly.\n" +
-      "*Weekly counters reset every Monday 00:00 UTC. Cooldown is shared across all tiers.*",
+      "Tune what `/pack` charges and how often players can open.\n" +
+      "*Weekly counters reset every Monday 00:00 UTC.*",
     )
     .addFields(
-      { name: "⏱️ Cooldown between opens", value: cd === 0 ? "No cooldown" : formatSec(cd), inline: false },
+      { name: "⏱️ Cooldown", value: cd === 0 ? "No cooldown" : formatSec(cd), inline: false },
       {
-        name: "Current tier setup",
+        name: "Current setup",
         value: PACK_TIERS.map(t => tierSummaryLine(s, t)).join("\n"),
         inline: false,
       },
       {
-        name: "How to use this panel",
+        name: "Tips",
         value:
-          "**Selects below** change each tier's cost — pick a preset.\n" +
-          "Click **📏 Cards / Pack** to adjust pack size per tier.\n" +
-          "Click **📅 Weekly Limits** to set per-tier weekly caps.\n" +
-          `**Defaults:** Basic 💠 ${PACK_DEFAULTS.basic.cost} · Premium 💠 ${PACK_DEFAULTS.premium.cost} · Legendary 💠 ${PACK_DEFAULTS.legendary.cost}`,
+          `**Defaults:** Basic 💠 ${PACK_DEFAULTS.basic.cost} · Premium 💠 ${PACK_DEFAULTS.premium.cost} · Legendary 💠 ${PACK_DEFAULTS.legendary.cost}\n` +
+          "Click **📐 Cards/Pack** or **📅 Weekly Limits** for more options.",
         inline: false,
       },
     )
-    .setFooter({ text: "Only you can see this panel." });
+    .setFooter({ text: "Only you see this panel." });
 }
 
 export function buildPacksComponents(s: GuildSettings) {
@@ -542,7 +543,7 @@ export function buildPacksComponents(s: GuildSettings) {
   };
 
   const buttons = new ActionRowBuilder<ButtonBuilder>().addComponents(
-    new ButtonBuilder().setCustomId("config:packs:sizes").setLabel("📏 Cards / Pack").setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder().setCustomId("config:packs:sizes").setLabel("📐 Cards / Pack").setStyle(ButtonStyle.Secondary),
     new ButtonBuilder().setCustomId("config:packs:limits").setLabel("📅 Weekly Limits").setStyle(ButtonStyle.Secondary),
   );
 
@@ -557,11 +558,10 @@ export function buildPacksComponents(s: GuildSettings) {
 
 export function buildPacksSizesEmbed(s: GuildSettings): EmbedBuilder {
   return new EmbedBuilder()
-    .setTitle("📏 Cards per Pack")
+    .setTitle("📐 Cards per Pack")
     .setColor(0xfee75c)
     .setDescription(
-      "How many cards each tier hands out per `/pack` open. Default is **5** for all tiers.\n" +
-      "*Bigger packs mean more total value — tweak cost accordingly on the previous screen.*",
+      "How many cards each tier hands out per `/pack` open. Default is **5** for all tiers.",
     )
     .addFields({
       name: "Current sizes",
@@ -598,8 +598,8 @@ export function buildPacksLimitsEmbed(s: GuildSettings): EmbedBuilder {
     .setTitle("📅 Weekly Pack Limits")
     .setColor(0xfee75c)
     .setDescription(
-      "Each tier has its **own** weekly cap. Hitting one tier's cap doesn't block the others — players can keep " +
-      "opening cheaper or pricier tiers.\n*Resets every Monday 00:00 UTC. Pick \"Unlimited\" to disable a cap.*",
+      "Each tier has its **own** weekly cap. Hitting one doesn't block the others.\n" +
+      "*Resets every Monday 00:00 UTC. Pick \"Unlimited\" to disable.*",
     )
     .addFields({
       name: "Current caps",

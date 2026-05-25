@@ -1,6 +1,7 @@
 import {
   Client, TextChannel, EmbedBuilder,
   ActionRowBuilder, ButtonBuilder, ButtonStyle,
+  type Message,
 } from "discord.js";
 import {
   getOrCreateGuildSettings,
@@ -176,7 +177,13 @@ async function doSingleSpawn(guildId: string, forcedCardId?: number, isForced = 
   const embed = await buildSpawnEmbed(card, settings.catchWindowSeconds, mode, guildId);
   const spawnLog = await logSpawn(guildId, settings.spawnChannelId, card.id, isForced);
   const components = mode === "type" ? [] : [buildClaimRow(guildId, spawnId)];
-  const message = await channel.send({ embeds: [embed], components });
+  let message: Message;
+  try {
+    message = await channel.send({ embeds: [embed], components });
+  } catch (sendErr) {
+    logger.warn({ err: sendErr, channelId: settings.spawnChannelId, guildId }, "Failed to send spawn message — check bot permissions in the spawn channel");
+    return;
+  }
 
   // ── Wishlist ping: notify users who have this card on their wishlist ──────
   // Chunk into batches so a popular card doesn't blast a 100-mention message
