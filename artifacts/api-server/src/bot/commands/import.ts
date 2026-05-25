@@ -2,7 +2,7 @@ import type { Message } from "discord.js";
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import { addCard, getCardByName } from "../db.js";
-import { RARITY_WEIGHTS, type Rarity, type CardType } from "../cards-data.js";
+import { RARITY_WEIGHTS, type Rarity } from "../cards-data.js";
 import { logger } from "../../lib/logger.js";
 
 // Reusable importer — feeds both the !import prefix command and the /loadset slash command.
@@ -43,7 +43,7 @@ export async function importCardsFromJson(
         name: raw.name,
         description: cleanDescription(raw.description),
         rarity,
-        cardType: "vehicle" as CardType,
+        cardType: "vehicle",
         dropWeight: RARITY_WEIGHTS[rarity],
         worthValue: worth,
         burnValue: burn,

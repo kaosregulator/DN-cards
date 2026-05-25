@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { adminGet, adminSend, apiGet } from "@/lib/api";
 
 export type Rarity = "common" | "uncommon" | "rare" | "epic" | "legendary";
-export type CardType = "tank" | "aircraft" | "ship" | "vehicle" | "infantry" | "boss" | "community" | "event" | "achievement" | "limited";
+export type CardType = string; // free-form label — any text the admin types
 
 export interface Card {
   id: number;

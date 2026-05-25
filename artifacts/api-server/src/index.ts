@@ -13,6 +13,22 @@ async function runBootMigrations() {
   await pool.query(`ALTER TABLE cards ADD COLUMN IF NOT EXISTS preview_bg_color text`);
   await pool.query(`ALTER TABLE cards ADD COLUMN IF NOT EXISTS display_orientation text`);
 
+  // Convert card_type from enum → text so admins can use any free-form label.
+  // Idempotent: only runs while the column still has the enum type.
+  await pool.query(`
+    DO $$
+    BEGIN
+      IF EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'cards' AND column_name = 'card_type'
+          AND data_type = 'USER-DEFINED'
+      ) THEN
+        ALTER TABLE cards ALTER COLUMN card_type TYPE text USING card_type::text;
+        ALTER TABLE cards ALTER COLUMN card_type SET DEFAULT 'vehicle';
+      END IF;
+    END $$;
+  `);
+
   // One-time data fix: when the dashboard moved from /dashboard/ to / (May 2026),
   // seed event card images stored as "https://<host>/dashboard/<file>" stopped
   // resolving. Convert any such absolute URL to a relative "/<file>" so they

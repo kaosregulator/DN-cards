@@ -26,7 +26,9 @@ export const cardsTable = pgTable("cards", {
   name: text("name").notNull().unique(),
   description: text("description").notNull().default(""),
   rarity: rarityEnum("rarity").notNull(),
-  cardType: cardTypeEnum("card_type").notNull().default("vehicle"),
+  // cardType was a pgEnum("card_type") until May 2026; converted to plain text
+  // so admins can type any label ("Car", "Ground Vehicle", "Mech", etc.).
+  cardType: text("card_type").notNull().default("vehicle"),
   dropWeight: real("drop_weight").notNull().default(1.0),
   worthValue: integer("worth_value").notNull().default(10),
   burnValue: integer("burn_value").notNull().default(5),

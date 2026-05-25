@@ -11,13 +11,12 @@ router.use(requireDashboardAuth);
 
 // ── Validation schemas ────────────────────────────────────────────────────────
 const rarityValues = ["common", "uncommon", "rare", "epic", "legendary"] as const;
-const cardTypeValues = ["tank", "aircraft", "ship", "vehicle", "infantry", "boss", "community", "event", "achievement", "limited"] as const;
 
 const cardPatchSchema = z.object({
   name: z.string().trim().min(1).max(80).optional(),
   description: z.string().max(500).optional(),
   rarity: z.enum(rarityValues).optional(),
-  cardType: z.enum(cardTypeValues).optional(),
+  cardType: z.string().trim().min(1).max(30).optional(),
   dropWeight: z.number().min(0).max(1000).optional(),
   worthValue: z.number().int().min(0).max(1_000_000).optional(),
   burnValue: z.number().int().min(0).max(1_000_000).optional(),

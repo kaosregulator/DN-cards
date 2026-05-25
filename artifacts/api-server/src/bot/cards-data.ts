@@ -9,7 +9,7 @@
 //   Legendary:  1   worth: 2500  burn: 1250
 
 export type Rarity = "common" | "uncommon" | "rare" | "epic" | "legendary";
-export type CardType = "tank" | "aircraft" | "ship" | "vehicle" | "infantry" | "boss" | "community" | "event" | "achievement" | "limited";
+export type CardType = string; // free-form label — any text the admin types
 
 export const RARITY_WEIGHTS: Record<Rarity, number> = {
   common: 60,
@@ -73,7 +73,7 @@ export const RARITY_LABELS: Record<Rarity, string> = {
   legendary: "Legendary",
 };
 
-export const TYPE_EMOJI: Record<CardType, string> = {
+export const TYPE_EMOJI: Record<string, string> = {
   tank: "🪖",
   aircraft: "✈️",
   ship: "🚢",
@@ -85,6 +85,12 @@ export const TYPE_EMOJI: Record<CardType, string> = {
   achievement: "🏅",
   limited: "💎",
 };
+
+/** Safe emoji lookup — returns 🃏 for any unknown label so custom types don't crash. */
+export function getTypeEmoji(cardType: string | undefined | null): string {
+  if (!cardType) return "🃏";
+  return TYPE_EMOJI[cardType.toLowerCase()] ?? "🃏";
+}
 
 // ── Collector Ranks (by unique cards owned) ───────────────────────────────────
 export const COLLECTOR_RANKS = [

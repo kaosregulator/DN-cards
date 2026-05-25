@@ -2,8 +2,8 @@ import type { Message } from "discord.js";
 import { addCard, getCardByName, updateCard } from "../db.js";
 import {
   RARITY_EMOJI, RARITY_LABELS, RARITY_WEIGHTS, RARITY_WORTH, RARITY_BURN,
-  TYPE_EMOJI,
-  type Rarity, type CardType,
+  TYPE_EMOJI, getTypeEmoji,
+  type Rarity,
 } from "../cards-data.js";
 import type { Card } from "@workspace/db";
 
@@ -29,7 +29,7 @@ interface CardWizardSession {
     name?: string;
     description?: string;
     rarity?: Rarity;
-    cardType?: CardType;
+    cardType?: string;
     maxCopies?: number;
     imageUrl?: string;
   };
@@ -41,7 +41,7 @@ const sessions = new Map<string, CardWizardSession>();
 function key(guildId: string, userId: string) { return `cw:${guildId}:${userId}`; }
 
 const RARITY_CHOICES: Rarity[] = ["common", "uncommon", "rare", "epic", "legendary"];
-const TYPE_CHOICES: CardType[] = [
+const TYPE_CHOICES: string[] = [
   "tank", "aircraft", "ship", "vehicle", "infantry",
   "boss", "community", "event", "achievement", "limited",
 ];
@@ -171,7 +171,7 @@ async function processStep(
       if (session.kind === "limited") {
         session.step = "card_maxcopies";
         await msg.reply(
-          `✅ Type: ${TYPE_EMOJI[session.data.cardType]} **${session.data.cardType}**\n\n` +
+          `✅ Type: ${getTypeEmoji(session.data.cardType)} **${session.data.cardType}**\n\n` +
           "**Step 5 — Max Copies**\nHow many copies of this card can exist? Enter a number:",
         );
       } else {
@@ -257,7 +257,7 @@ async function showConfirmation(msg: Message, session: CardWizardSession) {
     `**Name:** ${d.name}`,
     `**Kind:** ${kindEmoji} ${KIND_LABEL[session.kind]}`,
     `**Rarity:** ${RARITY_EMOJI[r]} ${RARITY_LABELS[r]}`,
-    `**Type:** ${TYPE_EMOJI[d.cardType!]} ${d.cardType}`,
+    `**Type:** ${getTypeEmoji(d.cardType)} ${d.cardType}`,
     d.description ? `**Description:** ${d.description}` : "*No description*",
     `**Worth:** 💠 ${worth.toLocaleString()} · **Burn:** 🔥 ${burn.toLocaleString()}`,
     session.kind === "limited" ? `**Max Copies:** ${d.maxCopies}` : "",
@@ -321,7 +321,7 @@ async function showEditMenu(msg: Message, card: Card) {
     `**Current values:**\n` +
     `• Rarity: ${RARITY_EMOJI[r]} ${RARITY_LABELS[r]} (drop weight ${card.dropWeight})\n` +
     `• Worth: 💠 ${card.worthValue.toLocaleString()} · Burn: 🔥 ${card.burnValue.toLocaleString()}\n` +
-    `• Type: ${TYPE_EMOJI[card.cardType as CardType] ?? "🃏"} ${card.cardType}\n` +
+    `• Type: ${getTypeEmoji(card.cardType)} ${card.cardType}\n` +
     `• Description: ${card.description || "*none*"}\n` +
     `• Image: ${card.imageUrl ? "✅ set" : "*none*"}\n\n` +
     `**Which field do you want to change?**\n` +

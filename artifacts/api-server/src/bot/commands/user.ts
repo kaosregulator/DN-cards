@@ -8,10 +8,10 @@ import {
   getOrCreateCurrency, burnCard, getCardByName, getUserCardCount, getUserOwnedCount,
 } from "../db.js";
 import {
-  RARITY_COLORS, RARITY_EMOJI, RARITY_LABELS, TYPE_EMOJI,
+  RARITY_COLORS, RARITY_EMOJI, RARITY_LABELS, getTypeEmoji,
   SHINY_EMOJI, SHINY_MULTIPLIER,
   getCollectorRank, getNextRank,
-  type Rarity, type CardType,
+  type Rarity,
 } from "../cards-data.js";
 import { handleTrade, handleAccept, handleDecline, handleListTrades, handleGift, handleTradeHistory } from "./trading.js";
 import { handleDaily, handleAchievementsCommand } from "./daily.js";
@@ -142,7 +142,7 @@ export async function handleUserCommand(
     if (!card) { await interaction.editReply(`❌ "**${cardName}**" not found. Try \`/list\`.`); return; }
 
     const rarity = card.rarity as Rarity;
-    const cardType = card.cardType as CardType;
+    const cardType = card.cardType;
     const droppableCards = cards.filter(c => c.droppable);
     const totalWeight = droppableCards.reduce((s, c) => s + c.dropWeight, 0);
     const dropChance = card.droppable && totalWeight > 0 ? `~${((card.dropWeight / totalWeight) * 100).toFixed(2)}%` : "Event / Admin-drop only";
@@ -157,7 +157,7 @@ export async function handleUserCommand(
       .setDescription((card.description || "*No description.*") + (card.flavor ? `\n\n*${card.flavor}*` : ""))
       .addFields(
         { name: "Rarity", value: `${RARITY_EMOJI[rarity]} ${RARITY_LABELS[rarity]}`, inline: true },
-        { name: "Type", value: `${TYPE_EMOJI[cardType]} ${card.cardType}`, inline: true },
+        { name: "Type", value: `${getTypeEmoji(cardType)} ${card.cardType}`, inline: true },
         { name: "Drop Chance", value: dropChance, inline: true },
         { name: "💠 Worth", value: `${card.worthValue.toLocaleString()} shards`, inline: true },
         { name: "🔥 Burn Value", value: `${card.burnValue.toLocaleString()} shards`, inline: true },

@@ -14,9 +14,9 @@ import {
   getActiveEventBoosts,
 } from "./db.js";
 import {
-  RARITY_COLORS, RARITY_EMOJI, RARITY_LABELS, TYPE_EMOJI,
+  RARITY_COLORS, RARITY_EMOJI, RARITY_LABELS, TYPE_EMOJI, getTypeEmoji,
   SHINY_EMOJI, SHINY_MULTIPLIER,
-  type Rarity, type CardType,
+  type Rarity,
 } from "./cards-data.js";
 import { toAbsoluteImageUrl } from "./image-url.js";
 import { applyEmbedOverride } from "./embed-overrides.js";
@@ -468,7 +468,8 @@ async function buildClaimedEmbed(
   const card = cards.find(c => c.id === cardId);
   if (!card) return null;
   const rarity = card.rarity as Rarity;
-  const cardType = card.cardType as CardType;
+  const cardType = card.cardType;
+  const typeEmoji = getTypeEmoji(cardType);
   const shinyPrefix = isShiny ? `${SHINY_EMOJI} ` : "";
   const worth = isShiny ? card.worthValue * SHINY_MULTIPLIER : card.worthValue;
   const embed = new EmbedBuilder()
@@ -480,7 +481,7 @@ async function buildClaimedEmbed(
       `\n\u200b`,
     )
     .addFields(
-      { name: `${TYPE_EMOJI[cardType]} ${shinyPrefix}${card.name}`, value: card.description || "\u200b", inline: false },
+      { name: `${typeEmoji} ${shinyPrefix}${card.name}`, value: card.description || "\u200b", inline: false },
       { name: "Rarity", value: `${RARITY_EMOJI[rarity]} ${RARITY_LABELS[rarity]}`, inline: true },
       { name: "Worth", value: `💠 ${worth.toLocaleString()} shards${isShiny ? ` *(${SHINY_MULTIPLIER}×)*` : ""}`, inline: true },
       { name: "Caught by", value: `<@${userId}>`, inline: true },
@@ -499,7 +500,7 @@ async function buildClaimedEmbed(
 // ── Helpers ───────────────────────────────────────────────────────────────────
 async function buildSpawnEmbed(card: Card, windowSeconds: number, mode: "type" | "button" | "both" = "type", guildId: string | null = null): Promise<EmbedBuilder> {
   const rarity = card.rarity as Rarity;
-  const cardType = card.cardType as CardType;
+  const cardType = card.cardType;
   const color = RARITY_COLORS[rarity] ?? 0x7289da;
   const badges: string[] = [];
   if (card.isLimitedEdition) badges.push("💎 **LIMITED EDITION**");
@@ -518,7 +519,7 @@ async function buildSpawnEmbed(card: Card, windowSeconds: number, mode: "type" |
       `${badges.length > 0 ? badges.join("\n") + "\n\n" : ""}${howTo}`,
     )
     .addFields(
-      { name: `${TYPE_EMOJI[cardType]} ${card.name}`, value: card.description || "\u200b", inline: false },
+      { name: `${getTypeEmoji(cardType)} ${card.name}`, value: card.description || "\u200b", inline: false },
       { name: "Rarity", value: `${RARITY_EMOJI[rarity]} ${RARITY_LABELS[rarity]}`, inline: true },
       { name: "Worth", value: `💠 ${card.worthValue.toLocaleString()} shards`, inline: true },
       { name: "⏱️ Window", value: `${windowSeconds}s`, inline: true },
@@ -542,7 +543,7 @@ export async function buildPostDecisionEmbed(
   const card = cards.find(c => c.id === cardId);
   if (!card) return null;
   const rarity = card.rarity as Rarity;
-  const cardType = card.cardType as CardType;
+  const cardType = card.cardType;
 
   const titles = {
     burned: `\ud83d\udd25 CAUGHT & BURNED \u2014 ${card.name}`,
@@ -566,7 +567,7 @@ export async function buildPostDecisionEmbed(
     .setColor(colors[action])
     .setDescription(descriptions[action])
     .addFields(
-      { name: `${TYPE_EMOJI[cardType]} ${card.name}`, value: card.description || "\u200b", inline: false },
+      { name: `${getTypeEmoji(cardType)} ${card.name}`, value: card.description || "\u200b", inline: false },
       { name: "Rarity", value: `${RARITY_EMOJI[rarity]} ${RARITY_LABELS[rarity]}`, inline: true },
       { name: "Worth", value: `\ud83d\udca0 ${card.worthValue.toLocaleString()} shards`, inline: true },
       { name: "Caught by", value: `<@${userId}>`, inline: true },

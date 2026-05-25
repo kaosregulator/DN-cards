@@ -218,6 +218,7 @@ function EditDialog({
     setForm({
       name: card.name,
       rarity: card.rarity,
+      cardType: card.cardType,
       burnValue: card.burnValue,
       worthValue: card.worthValue,
       dropWeight: card.dropWeight,
@@ -277,6 +278,12 @@ function EditDialog({
                 {RARITIES.map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}
               </SelectContent>
             </Select>
+          </div>
+
+          <div>
+            <Label htmlFor="f-ctype">Type label</Label>
+            <Input id="f-ctype" value={form.cardType ?? card.cardType} onChange={e => setForm(s => ({ ...s, cardType: e.target.value }))} data-testid="input-edit-cardtype" />
+            <p className="text-xs text-muted-foreground mt-1">Free text — e.g. vehicle, aircraft, boss, car, mech...</p>
           </div>
 
           <div>
@@ -688,6 +695,7 @@ function CreateDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (o:
   const blank = {
     name: "",
     rarity: "common" as Rarity,
+    cardType: "vehicle",
     description: "",
     dropWeight: 60,
     worthValue: 10,
@@ -714,6 +722,7 @@ function CreateDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (o:
       await create.mutateAsync({
         name: form.name.trim(),
         rarity: form.rarity,
+        cardType: (form.cardType || "vehicle").trim(),
         description: form.description,
         dropWeight: form.dropWeight,
         worthValue: form.worthValue,
@@ -752,6 +761,12 @@ function CreateDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (o:
               <SelectTrigger id="n-rarity" data-testid="select-new-rarity"><SelectValue /></SelectTrigger>
               <SelectContent>{RARITIES.map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}</SelectContent>
             </Select>
+          </div>
+
+          <div>
+            <Label htmlFor="n-ctype">Type label</Label>
+            <Input id="n-ctype" value={form.cardType ?? "vehicle"} onChange={e => setForm(s => ({ ...s, cardType: e.target.value }))} data-testid="input-new-cardtype" />
+            <p className="text-xs text-muted-foreground mt-1">Free text — e.g. vehicle, aircraft, boss, car, mech...</p>
           </div>
 
           <div>
