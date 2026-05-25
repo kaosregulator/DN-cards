@@ -33,6 +33,7 @@ const cardPatchSchema = z.object({
   previewAnimation: z.enum(["spin", "bounce", "flip", "pulse", "none"]).nullable().optional(),
   // Accept CSS hex like #aabbcc or #aabbccdd, or named/rgba via short max-length string.
   previewBgColor: z.string().max(40).regex(/^(#[0-9a-fA-F]{3,8}|[a-zA-Z]+|rgba?\([\d.,\s%]+\))$/).nullable().optional(),
+  displayOrientation: z.enum(["portrait", "landscape"]).nullable().optional(),
 });
 
 const cardCreateSchema = cardPatchSchema.extend({

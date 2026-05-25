@@ -11,6 +11,7 @@ async function runBootMigrations() {
   await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS cards_podium_place_uniq ON cards (podium_place) WHERE podium_place IS NOT NULL`);
   await pool.query(`ALTER TABLE cards ADD COLUMN IF NOT EXISTS preview_animation text`);
   await pool.query(`ALTER TABLE cards ADD COLUMN IF NOT EXISTS preview_bg_color text`);
+  await pool.query(`ALTER TABLE cards ADD COLUMN IF NOT EXISTS display_orientation text`);
 
   // One-time data fix: when the dashboard moved from /dashboard/ to / (May 2026),
   // seed event card images stored as "https://<host>/dashboard/<file>" stopped

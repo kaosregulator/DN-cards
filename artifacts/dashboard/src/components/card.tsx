@@ -163,9 +163,17 @@ export function CardComponent({ card, relativeDropChance, count, shinyCount = 0 
               : { backgroundImage: RARITY_STAGE_BG[card.rarity] ?? RARITY_STAGE_BG.common };
             return (
               <div className="flex flex-col md:flex-row">
-                {/* Left: animated image stage */}
+                {/* Left: animated image stage. Landscape cards (e.g. Boss Sea
+                    Tank) get a 4:3 frame + object-contain so the full image is
+                    visible without sideways cropping. */}
+                {(() => {
+                  const isLandscape = card.displayOrientation === "landscape";
+                  const stageAspect = isLandscape ? "aspect-[4/3]" : "aspect-[3/4]";
+                  const innerAspect = isLandscape ? "aspect-[4/3]" : "aspect-[3/4]";
+                  const fit = isLandscape ? "object-contain" : "object-cover";
+                  return (
                 <div
-                  className="relative w-full md:w-1/2 aspect-[3/4] overflow-hidden flex items-center justify-center [perspective:1000px]"
+                  className={`relative w-full md:w-1/2 ${stageAspect} overflow-hidden flex items-center justify-center [perspective:1000px]`}
                   style={stageStyle}
                 >
                   <motion.div
@@ -173,13 +181,13 @@ export function CardComponent({ card, relativeDropChance, count, shinyCount = 0 
                     initial={anim.initial}
                     animate={anim.animate}
                     transition={anim.transition}
-                    className={`relative w-[85%] aspect-[3/4] rounded-lg overflow-hidden border shadow-2xl [transform-style:preserve-3d] ${rarityBorders[card.rarity]}`}
+                    className={`relative w-[85%] ${innerAspect} rounded-lg overflow-hidden border shadow-2xl [transform-style:preserve-3d] ${rarityBorders[card.rarity]}`}
                   >
                     {!imageError ? (
                       <img
                         src={card.imageUrl!}
                         alt={card.name}
-                        className="h-full w-full object-cover"
+                        className={`h-full w-full ${fit}`}
                       />
                     ) : (
                       <div className={`flex h-full w-full flex-col items-center justify-center p-6 text-center ${rarityColors[card.rarity]}`}>
@@ -196,6 +204,8 @@ export function CardComponent({ card, relativeDropChance, count, shinyCount = 0 
                     )}
                   </motion.div>
                 </div>
+                  );
+                })()}
 
             {/* Right: Info */}
             <div className="flex w-full md:w-1/2 flex-col p-6 md:p-8">

@@ -1,4 +1,4 @@
-import { Router, type IRouter, type Request, type Response, type NextFunction } from "express";
+import express, { Router, type IRouter, type Request, type Response, type NextFunction } from "express";
 import { z } from "zod/v4";
 import { timingSafeEqual } from "node:crypto";
 import { Readable } from "node:stream";
@@ -6,6 +6,9 @@ import { ObjectStorageService, ObjectNotFoundError } from "../lib/objectStorage"
 
 const router: IRouter = Router();
 const storage = new ObjectStorageService();
+
+const ALLOWED_IMAGE_MIME = /^image\/(png|jpe?g|gif|webp|avif)$/i;
+const MAX_UPLOAD_BYTES = 8 * 1024 * 1024;
 
 function requireAdmin(req: Request, res: Response, next: NextFunction) {
   const expected = process.env["ADMIN_TOKEN"];
@@ -46,6 +49,47 @@ router.post("/admin/uploads/request-url", requireAdmin, async (req, res) => {
     res.status(500).json({ error: "Failed to sign upload URL" });
   }
 });
+
+// POST /api/admin/uploads/file — admin-only; server-proxied upload.
+// Browser PUTs to storage.googleapis.com from dncards.com are blocked by GCS
+// CORS, so we accept raw image bytes here and PUT to GCS server-side. Client
+// sends the file as the request body with Content-Type: image/<format>.
+router.post(
+  "/admin/uploads/file",
+  requireAdmin,
+  express.raw({ type: "image/*", limit: MAX_UPLOAD_BYTES }),
+  async (req, res) => {
+    const contentType = (req.header("content-type") ?? "").toLowerCase();
+    if (!ALLOWED_IMAGE_MIME.test(contentType)) {
+      res.status(400).json({ error: "Unsupported image type. Use PNG, JPG, GIF, WebP, or AVIF." });
+      return;
+    }
+    if (!Buffer.isBuffer(req.body) || req.body.length === 0) {
+      res.status(400).json({ error: "Empty request body" });
+      return;
+    }
+    try {
+      const uploadURL = await storage.getObjectEntityUploadURL();
+      const put = await fetch(uploadURL, {
+        method: "PUT",
+        headers: { "Content-Type": contentType, "Content-Length": String(req.body.length) },
+        body: req.body,
+      });
+      if (!put.ok) {
+        const detail = await put.text().catch(() => "");
+        req.log?.error({ status: put.status, detail }, "GCS PUT failed");
+        res.status(502).json({ error: `Upload to storage failed (${put.status})` });
+        return;
+      }
+      const url = new URL(uploadURL);
+      const objectPath = storage.normalizeObjectEntityPath(`https://storage.googleapis.com${url.pathname}`);
+      res.json({ objectPath });
+    } catch (err) {
+      req.log?.error({ err }, "Server-side upload failed");
+      res.status(500).json({ error: "Upload failed" });
+    }
+  },
+);
 
 // GET /api/storage/objects/* — public; streams admin-uploaded card images.
 router.get("/storage/objects/*splat", async (req, res) => {

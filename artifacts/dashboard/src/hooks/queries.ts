@@ -26,6 +26,7 @@ export interface Card {
   podiumPlace: 1 | 2 | 3 | null;
   previewAnimation: "spin" | "bounce" | "flip" | "pulse" | "none" | null;
   previewBgColor: string | null;
+  displayOrientation: "portrait" | "landscape" | null;
   createdAt: string;
 }
 
@@ -48,6 +49,7 @@ export type CardPatch = Partial<{
   podiumPlace: 1 | 2 | 3 | null;
   previewAnimation: "spin" | "bounce" | "flip" | "pulse" | "none" | null;
   previewBgColor: string | null;
+  displayOrientation: "portrait" | "landscape" | null;
 }>;
 
 export interface LeaderboardEntry {

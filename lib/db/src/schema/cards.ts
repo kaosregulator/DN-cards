@@ -50,6 +50,11 @@ export const cardsTable = pgTable("cards", {
   // previewBgColor: any CSS color string (hex preferred). null = rarity-tinted gradient.
   previewAnimation: text("preview_animation"),
   previewBgColor: text("preview_bg_color"),
+  // 'portrait' (default — aspect 3/4, cropped via object-cover) or 'landscape'
+  // (aspect 4/3, letterboxed via object-contain). Use landscape for source
+  // artwork that is wider than it is tall (e.g. the Boss Sea Tank card) so the
+  // image isn't awkwardly cropped on the dashboard /events detail dialog.
+  displayOrientation: text("display_orientation"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 }, (t) => ({
   // At most one card per podium slot. Partial index so null values (most

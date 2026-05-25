@@ -231,6 +231,7 @@ function EditDialog({
       podiumPlace: card.podiumPlace,
       previewAnimation: card.previewAnimation,
       previewBgColor: card.previewBgColor,
+      displayOrientation: card.displayOrientation,
     });
   }
 
@@ -383,6 +384,21 @@ function EditDialog({
                     )}
                   </div>
               <p className="text-xs text-muted-foreground mt-1">Blank uses the card's rarity-tinted glow.</p>
+            </div>
+
+            <div>
+              <Label htmlFor="f-orient">Image orientation</Label>
+              <Select
+                value={form.displayOrientation ?? "portrait"}
+                onValueChange={v => setForm(s => ({ ...s, displayOrientation: v as "portrait" | "landscape" }))}
+              >
+                <SelectTrigger id="f-orient" data-testid="select-edit-orientation"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="portrait">📱 Portrait (default — taller than wide)</SelectItem>
+                  <SelectItem value="landscape">🖼️ Landscape (wider than tall — e.g. Boss Sea Tank)</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground mt-1">Landscape switches the detail dialog to a 4:3 frame and shows the full image without cropping.</p>
             </div>
           </div>
 
