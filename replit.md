@@ -38,6 +38,13 @@ DN Cards is DarkNight's collectible military trading card game for the Roblox + 
 - DB helpers: `artifacts/api-server/src/bot/db.ts`
 - Slash command registration: `artifacts/api-server/src/bot/commands/register.ts`
 
+### Embed Customization (Dashboard)
+- `/admin/embeds` page customizes all 8 bot embeds per guild: spawn, claimed, daily, pack, trade, welcome, rules, commands.
+- Knobs per embed: enabled toggle · title · descriptionPrefix · footer · color (or per-rarity colors for spawn/claimed) · imageMode (default/large/thumbnail/none) · customImageUrl · showWorth/showDropChance.
+- Tokens in title/footer/prefix: `{user} {username} {card} {rarity} {worth} {chance} {streak} {tier} {amount} {balance} {guild} {channel}`.
+- API: `GET/PUT/DELETE /api/embeds/:guildId[/:embedKey]`, behind `requireDashboardAuth`. 60s in-memory cache in the bot, invalidated explicitly on PUT/DELETE.
+- Storage: `embed_overrides` table — one row per `(guildId, embedKey)` with a permissive jsonb `config`. Helper `applyEmbedOverride` in `bot/embed-overrides.ts` owns the shape; safe to extend without migration.
+
 ### Limited-Time Events
 - `/event start card:<Name> duration:<30m|2h|1d> [multiplier:<1.1–50>]` — boost a card's effective spawn weight. Max 14d duration, default 2× multiplier.
 - `/event list` — show all active events (with end time + remaining).

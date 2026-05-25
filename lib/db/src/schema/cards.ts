@@ -1,6 +1,6 @@
 import {
   pgTable, text, serial, integer, timestamp,
-  boolean, real, pgEnum, uniqueIndex,
+  boolean, real, pgEnum, uniqueIndex, jsonb,
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
@@ -291,3 +291,39 @@ export const setupTokensTable = pgTable("setup_tokens", {
 });
 
 export type SetupToken = typeof setupTokensTable.$inferSelect;
+
+// ── Embed Overrides (per-guild customization of bot messages) ────────────────
+// One row per (guildId, embedKey). `config` is a permissive jsonb blob; the
+// applyEmbedOverride helper in the bot owns the shape and ignores unknown
+// fields, so we can evolve it without a migration. Keep this table small —
+// 8 embed keys × guild count.
+export type EmbedOverrideConfig = {
+  enabled?: boolean;                              // false = use bot defaults
+  title?: string;                                 // tokens: {user} {card} {rarity} {worth} {chance} {streak} {tier} {amount} {balance} {guild}
+  footer?: string;                                // same tokens
+  descriptionPrefix?: string;                     // prepended to default description
+  color?: number;                                 // 0xRRGGBB
+  rarityColors?: Partial<Record<"common" | "uncommon" | "rare" | "epic" | "legendary", number>>;
+  imageMode?: "default" | "large" | "thumbnail" | "none";
+  customImageUrl?: string;                        // overrides card / banner image
+  showWorth?: boolean;                            // default true
+  showDropChance?: boolean;                       // default true (info embed)
+};
+
+export const EMBED_KEYS = [
+  "spawn", "claimed", "daily", "pack", "trade", "welcome", "rules", "commands",
+] as const;
+export type EmbedKey = typeof EMBED_KEYS[number];
+
+export const embedOverridesTable = pgTable("embed_overrides", {
+  id: serial("id").primaryKey(),
+  guildId: text("guild_id").notNull(),
+  embedKey: text("embed_key").notNull(),
+  config: jsonb("config").$type<EmbedOverrideConfig>().notNull().default({}),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  updatedBy: text("updated_by"),
+}, (t) => ({
+  guildKeyUniq: uniqueIndex("embed_overrides_guild_key_idx").on(t.guildId, t.embedKey),
+}));
+
+export type EmbedOverride = typeof embedOverridesTable.$inferSelect;

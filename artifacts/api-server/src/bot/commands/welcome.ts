@@ -1,5 +1,6 @@
 import type { ChatInputCommandInteraction } from "discord.js";
 import { EmbedBuilder } from "discord.js";
+import { applyEmbedOverride } from "../embed-overrides.js";
 
 // Section banners — one word per banner, used as dividers between categories.
 // Files live in the dashboard's public/ folder so they ship with the static
@@ -36,6 +37,12 @@ export async function handleWelcome(interaction: ChatInputCommandInteraction): P
       "• **Step 5** — Check your progress with `/collection`, `/rank`, and `/top`.",
     );
   if (welcomeBanner) welcome.setImage(welcomeBanner);
+  const guildId = interaction.guildId;
+  const guildName = interaction.guild?.name ?? "";
+  await applyEmbedOverride(welcome, {
+    guildId, key: "welcome", defaultImageUrl: welcomeBanner,
+    ctx: { guild: guildName, username: interaction.user.username, userId: interaction.user.id },
+  });
 
   // ── 2. RULES — things every collector should know ──────────────────────────
   const rules = new EmbedBuilder()
@@ -58,6 +65,10 @@ export async function handleWelcome(interaction: ChatInputCommandInteraction): P
       "and pay shards. See yours with `/achievements`.",
     );
   if (rulesBanner) rules.setImage(rulesBanner);
+  await applyEmbedOverride(rules, {
+    guildId, key: "rules", defaultImageUrl: rulesBanner,
+    ctx: { guild: guildName },
+  });
 
   // ── 3. COMMANDS — full cheat sheet ─────────────────────────────────────────
   const commands = new EmbedBuilder()
@@ -87,6 +98,10 @@ export async function handleWelcome(interaction: ChatInputCommandInteraction): P
     )
     .setFooter({ text: "Tip: most card-name fields autocomplete as you type — pick from the dropdown." });
   if (commandsBanner) commands.setImage(commandsBanner);
+  await applyEmbedOverride(commands, {
+    guildId, key: "commands", defaultImageUrl: commandsBanner,
+    ctx: { guild: guildName },
+  });
 
   await interaction.editReply({ embeds: [welcome, rules, commands] });
 }

@@ -9,7 +9,8 @@ export function Nav() {
     { href: "/", label: "Roster", show: true },
     { href: "/leaderboard", label: "Leaderboard", show: true },
     { href: "/profile", label: "Profile", show: true },
-    { href: "/admin", label: "Admin", show: true },
+    { href: "/admin", label: "Admin", show: !!user },
+    { href: "/admin/embeds", label: "Embeds", show: !!user },
     { href: "/admin/users", label: "Users", show: isOwner },
   ];
 

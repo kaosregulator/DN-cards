@@ -10,6 +10,7 @@ import {
   getOrCreateCurrency, giftShards, getTradeHistoryFor,
 } from "../db.js";
 import { RARITY_EMOJI, RARITY_LABELS, FAIRNESS_RATIO_THRESHOLD, type Rarity } from "../cards-data.js";
+import { applyEmbedOverride } from "../embed-overrides.js";
 
 // Computes a fairness warning when one trade side is more than FAIRNESS_RATIO_THRESHOLD×
 // the other side's worth. Returns null if both sides are roughly comparable.
@@ -157,6 +158,16 @@ export async function handleTrade(interaction: ChatInputCommandInteraction): Pro
       `<@${target.id}>, hit a button below to respond.\n` +
       `*Trade ID: \`#${trade.id}\` · Expires in 24h*`,
     );
+
+  await applyEmbedOverride(embed, {
+    guildId, key: "trade",
+    ctx: {
+      userId: interaction.user.id, username: interaction.user.username,
+      card: offeredCard?.name ?? requestedCard?.name ?? "",
+      amount: offeredShards || requestedShards,
+      guild: interaction.guild.name,
+    },
+  });
 
   const reply = await interaction.editReply({
     content: `<@${target.id}> you've got a trade offer!`,

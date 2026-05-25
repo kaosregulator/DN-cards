@@ -11,6 +11,7 @@ import {
   type Rarity,
 } from "../cards-data.js";
 import { checkAchievements, formatUnlockLine } from "../achievements.js";
+import { applyEmbedOverride } from "../embed-overrides.js";
 import { toAbsoluteImageUrl } from "../image-url.js";
 import type { Card, GuildSettings } from "@workspace/db";
 
@@ -178,9 +179,10 @@ async function drawPack(tier: PackTier, size: number): Promise<Card[]> {
 }
 
 // ── Summary embed ────────────────────────────────────────────────────────────
-function buildSummaryEmbed(
+async function buildSummaryEmbed(
   tier: PackTier, cards: Card[], shinies: boolean[], spent: number, balanceAfter: number,
-): EmbedBuilder {
+  guildId: string | null = null, userId: string | null = null,
+): Promise<EmbedBuilder> {
   const meta = PACK_TIER_META[tier];
   const totalWorth = cards.reduce(
     (s, c, i) => s + c.worthValue * (shinies[i] ? SHINY_MULTIPLIER : 1),
@@ -203,8 +205,15 @@ function buildSummaryEmbed(
       `Spent: 💠 ${spent.toLocaleString()} · Balance: 💠 ${balanceAfter.toLocaleString()}`,
     )
     .setFooter({ text: "Cards added to your collection — use /collection to view. /packstats for your weekly cap." });
-  const img = toAbsoluteImageUrl(last.imageUrl);
-  if (img) embed.setThumbnail(img);
+  const defaultImg = toAbsoluteImageUrl(last.imageUrl);
+  if (defaultImg) embed.setThumbnail(defaultImg);
+  await applyEmbedOverride(embed, {
+    guildId, key: "pack", defaultImageUrl: defaultImg,
+    ctx: {
+      userId: userId ?? undefined, tier: meta.label,
+      amount: spent, balance: balanceAfter,
+    },
+  });
   return embed;
 }
 
@@ -430,7 +439,7 @@ export async function handlePack(interaction: ChatInputCommandInteraction): Prom
   if (granted < cards.length) cards.length = granted;
 
   await interaction.editReply({
-    embeds: [buildSummaryEmbed(tier, cards, shinies, cfg.cost, claim.shardsAfter)],
+    embeds: [await buildSummaryEmbed(tier, cards, shinies, cfg.cost, claim.shardsAfter, guildId, interaction.user.id)],
     components: [],
   });
 

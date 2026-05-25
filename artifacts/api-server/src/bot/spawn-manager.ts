@@ -19,6 +19,7 @@ import {
   type Rarity, type CardType,
 } from "./cards-data.js";
 import { toAbsoluteImageUrl } from "./image-url.js";
+import { applyEmbedOverride } from "./embed-overrides.js";
 import { logger } from "../lib/logger.js";
 import type { Card, GuildSettings } from "@workspace/db";
 
@@ -172,7 +173,7 @@ async function doSingleSpawn(guildId: string, forcedCardId?: number, isForced = 
 
   const mode = ((settings as unknown as { catchMode?: string }).catchMode ?? "type") as "type" | "button" | "both";
   const spawnId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-  const embed = buildSpawnEmbed(card, settings.catchWindowSeconds, mode);
+  const embed = await buildSpawnEmbed(card, settings.catchWindowSeconds, mode, guildId);
   const spawnLog = await logSpawn(guildId, settings.spawnChannelId, card.id, isForced);
   const components = mode === "type" ? [] : [buildClaimRow(guildId, spawnId)];
   const message = await channel.send({ embeds: [embed], components });
@@ -320,7 +321,7 @@ async function awardSpawn(guildId: string, spawnId: string, userId: string): Pro
   await markCaught(spawn.spawnLogId, userId);
 
   try {
-    const claimedEmbed = await buildClaimedEmbed(spawn.cardId, userId, isShiny);
+    const claimedEmbed = await buildClaimedEmbed(spawn.cardId, userId, isShiny, guildId);
     if (claimedEmbed) {
       await spawn.message.edit({
         embeds: [claimedEmbed],
@@ -332,7 +333,7 @@ async function awardSpawn(guildId: string, spawnId: string, userId: string): Pro
   // Auto-keep after 90s if no button pressed — edit the spawn embed in place.
   setTimeout(async () => {
     try {
-      const keptEmbed = await buildPostDecisionEmbed(spawn.cardId, userId, "kept");
+      const keptEmbed = await buildPostDecisionEmbed(spawn.cardId, userId, "kept", guildId);
       if (keptEmbed) await spawn.message.edit({
         embeds: [keptEmbed],
         components: [buildDisabledDecisionRow(guildId, userId, spawn.cardId, spawn.burnValue, "keep")],
@@ -461,7 +462,7 @@ export async function initAllGuilds(client: Client) {
 // Build the "CLAIMED" version of a spawn embed — keeps the image, replaces
 // the prompt with a giant CLAIMED banner and the catcher's name.
 async function buildClaimedEmbed(
-  cardId: number, userId: string, isShiny: boolean = false,
+  cardId: number, userId: string, isShiny: boolean = false, guildId: string | null = null,
 ): Promise<EmbedBuilder | null> {
   const cards = await getAllCards();
   const card = cards.find(c => c.id === cardId);
@@ -486,12 +487,17 @@ async function buildClaimedEmbed(
     )
     .setTimestamp();
   if (card.flavor) embed.setFooter({ text: card.flavor });
-  { const img = toAbsoluteImageUrl(card.imageUrl); if (img) embed.setImage(img); }
+  const defaultImg = toAbsoluteImageUrl(card.imageUrl);
+  if (defaultImg) embed.setImage(defaultImg);
+  await applyEmbedOverride(embed, {
+    guildId, key: "claimed", rarity, defaultImageUrl: defaultImg,
+    ctx: { userId, card: card.name, rarity: RARITY_LABELS[rarity], worth },
+  });
   return embed;
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
-function buildSpawnEmbed(card: Card, windowSeconds: number, mode: "type" | "button" | "both" = "type"): EmbedBuilder {
+async function buildSpawnEmbed(card: Card, windowSeconds: number, mode: "type" | "button" | "both" = "type", guildId: string | null = null): Promise<EmbedBuilder> {
   const rarity = card.rarity as Rarity;
   const cardType = card.cardType as CardType;
   const color = RARITY_COLORS[rarity] ?? 0x7289da;
@@ -520,12 +526,17 @@ function buildSpawnEmbed(card: Card, windowSeconds: number, mode: "type" | "butt
     .setTimestamp();
 
   if (card.flavor) embed.setFooter({ text: card.flavor });
-  { const img = toAbsoluteImageUrl(card.imageUrl); if (img) embed.setImage(img); }
+  const defaultImg = toAbsoluteImageUrl(card.imageUrl);
+  if (defaultImg) embed.setImage(defaultImg);
+  await applyEmbedOverride(embed, {
+    guildId, key: "spawn", rarity, defaultImageUrl: defaultImg,
+    ctx: { card: card.name, rarity: RARITY_LABELS[rarity], worth: card.worthValue },
+  });
   return embed;
 }
 
 export async function buildPostDecisionEmbed(
-  cardId: number, userId: string, action: "burned" | "kept" | "trade",
+  cardId: number, userId: string, action: "burned" | "kept" | "trade", guildId: string | null = null,
 ): Promise<EmbedBuilder | null> {
   const cards = await getAllCards();
   const card = cards.find(c => c.id === cardId);
@@ -563,7 +574,12 @@ export async function buildPostDecisionEmbed(
     )
     .setTimestamp();
   if (card.flavor) embed.setFooter({ text: card.flavor });
-  { const img = toAbsoluteImageUrl(card.imageUrl); if (img) embed.setImage(img); }
+  const defaultImg = toAbsoluteImageUrl(card.imageUrl);
+  if (defaultImg) embed.setImage(defaultImg);
+  await applyEmbedOverride(embed, {
+    guildId, key: "claimed", rarity, defaultImageUrl: defaultImg,
+    ctx: { userId, card: card.name, rarity: RARITY_LABELS[rarity], worth: card.worthValue },
+  });
   return embed;
 }
 

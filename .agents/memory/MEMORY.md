@@ -2,3 +2,4 @@
 - [One-time token races](one-time-token-races.md) — consume the token in a conditional UPDATE before doing the side effect, never SELECT-then-UPDATE.
 - [Last-owner guard coverage](last-owner-guard.md) — owner-role systems need the same lockout check on delete AND demote (and any other "reduces owner count" path).
 - [Collections pile deletion](collections-pile-deletion.md) — when a row tracks multiple piles (count + shinyCount), only DELETE when ALL piles are 0, else surviving piles vanish.
+- [Thread guildId through every embed builder + caller](guild-id-thread-through.md) — defaulting new context params to null silently no-ops at the call sites you forgot; prefer required params and grep every caller.

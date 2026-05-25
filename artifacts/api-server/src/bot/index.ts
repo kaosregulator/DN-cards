@@ -20,6 +20,7 @@ import {
 } from "./commands/register.js";
 import { MessageFlags, EmbedBuilder } from "discord.js";
 import { createSetupLink } from "../lib/setup-link.js";
+import { setBotClient } from "./client-holder.js";
 
 export async function startBot() {
   const token = process.env["DISCORD_BOT_TOKEN"];
@@ -36,6 +37,7 @@ export async function startBot() {
   });
 
   initSpawnManager(client);
+  setBotClient(client);
 
   client.once(Events.ClientReady, async (c) => {
     logger.info({ tag: c.user.tag }, "DN Cards bot ready");
@@ -233,7 +235,7 @@ export async function startBot() {
             }
             const currency = await getOrCreateCurrency(guildId, userId);
             // Update the spawn embed to show the burn state in-channel.
-            const burnedEmbed = await buildPostDecisionEmbed(cardId, userId, "burned");
+            const burnedEmbed = await buildPostDecisionEmbed(cardId, userId, "burned", guildId);
             if (burnedEmbed) {
               await interaction.message.edit({
                 embeds: [burnedEmbed],
@@ -255,7 +257,7 @@ export async function startBot() {
               }).catch(() => { /* ignore */ });
             }
           } else if (action === "catch_keep") {
-            const keptEmbed = await buildPostDecisionEmbed(cardId, userId, "kept");
+            const keptEmbed = await buildPostDecisionEmbed(cardId, userId, "kept", guildId);
             if (keptEmbed) {
               await interaction.message.edit({
                 embeds: [keptEmbed],
@@ -268,7 +270,7 @@ export async function startBot() {
             });
           } else {
             // catch_trade — card stays in collection; advertise it publicly
-            const tradeEmbed = await buildPostDecisionEmbed(cardId, userId, "trade");
+            const tradeEmbed = await buildPostDecisionEmbed(cardId, userId, "trade", guildId);
             if (tradeEmbed) {
               await interaction.message.edit({
                 embeds: [tradeEmbed],

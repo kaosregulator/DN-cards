@@ -3,6 +3,7 @@ import { EmbedBuilder, MessageFlags } from "discord.js";
 import { db, dailyClaimsTable } from "@workspace/db";
 import { and, eq, sql } from "drizzle-orm";
 import { addShards, getOrCreateCurrency } from "../db.js";
+import { applyEmbedOverride } from "../embed-overrides.js";
 import { ACHIEVEMENTS, checkAchievements, formatUnlockLine, getUnlockedKeys } from "../achievements.js";
 
 const COOLDOWN_MS = 20 * 60 * 60 * 1000;     // 20h — slight grace
@@ -85,6 +86,15 @@ export async function handleDaily(interaction: ChatInputCommandInteraction): Pro
       `Balance: 💠 **${currency.shards.toLocaleString()}**`,
     )
     .setFooter({ text: "Come back tomorrow to keep your streak alive!" });
+
+  await applyEmbedOverride(embed, {
+    guildId, key: "daily",
+    ctx: {
+      userId, username: interaction.user.username,
+      streak: newStreak, amount: reward, balance: currency.shards,
+      guild: interaction.guild.name,
+    },
+  });
 
   await interaction.editReply({ embeds: [embed] });
 
