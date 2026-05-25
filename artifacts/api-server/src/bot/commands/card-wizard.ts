@@ -517,7 +517,7 @@ async function createCard(msg: Message, session: CardWizardSession) {
       `**${card.name}** — ${RARITY_EMOJI[r]} ${RARITY_LABELS[r]}\n` +
       `Worth: 💠 ${card.worthValue.toLocaleString()} · Burn: 🔥 ${card.burnValue.toLocaleString()}\n\n` +
       extra +
-      (session.kind !== "standard" ? `\nRemove with \`!removecard ${card.name}\` if needed (prefix may differ — check \`${prefix}setprefix\`).` : ""),
+      (session.kind !== "standard" ? `\nRemove with \`!removecard ${card.name}\` if needed (your prefix may differ).` : ""),
     );
   } catch (err: any) {
     const isDuplicate = err?.message?.includes("unique") || err?.code === "23505";

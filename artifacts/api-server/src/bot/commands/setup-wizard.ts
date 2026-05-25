@@ -131,11 +131,13 @@ export async function handleSetupButton(interaction: ButtonInteraction): Promise
           .setColor(0x57f287)
           .setDescription(
             `Drops are live in <#${settings.spawnChannelId}>.\n\n` +
-            `**Next steps**\n` +
-            `• Add cards: \`${s.commandPrefix}addcard\` · \`${s.commandPrefix}addlimited\` · \`${s.commandPrefix}addevent\`\n` +
-            `• Force a drop: \`/drop\` · Mass drop: \`/massdrop\`\n` +
-            `• Re-open this panel anytime with \`${s.commandPrefix}setup\` or \`/config\`\n` +
-            `• Player help: \`/help\` · Admin help: \`/adminhelp\``,
+            `**👈 What to do next**\n` +
+            `**• Post the public welcome guide:** Go to your info channel and run \`/welcome\` — ` +
+            `it drops 3 banner-led embeds (game intro, rules, full command cheat sheet) that stay pinned as a reference.\n\n` +
+            `**• Add your own cards:** \`${settings.commandPrefix}addcard\` · \`${settings.commandPrefix}addlimited\` · \`${settings.commandPrefix}addevent\`\n` +
+            `**• Test drops:** \`/drop\` (force one) · \`/massdrop\` (event batch)\n` +
+            `**• Players need help?** \`/help\` (player commands) · \`/adminhelp\` (admin reference)\n\n` +
+            `**• Re-open this wizard anytime:** \`${settings.commandPrefix}setup\` or \`/setup\``,
           ),
       ],
       components: [],
