@@ -8,7 +8,7 @@ import {
   catchCard,
   logSpawn,
   markCaught,
-  getAllCards,
+  getAllCardsCached,
   getCardWishlisters,
   getUserTimeout,
   getActiveEventBoosts,
@@ -70,7 +70,7 @@ const ESCAPE_QUIPS: readonly string[] = [
 // Grace window for collecting concurrent typing-mode catch attempts.
 // Anyone whose Discord-stamped message lands within this window of the first
 // matching message gets considered; lowest timestamp wins.
-const TYPE_GRACE_MS = 500;
+const TYPE_GRACE_MS = 150;
 
 // Multiple active spawns per guild (for cardsPerSpawn > 1)
 const activeSpawns = new Map<string, Map<string, ActiveSpawn>>();
@@ -150,7 +150,7 @@ async function doSingleSpawn(guildId: string, forcedCardId?: number, isForced = 
 
   let card: Card | undefined;
   if (forcedCardId) {
-    const cards = await getAllCards();
+    const cards = await getAllCardsCached();
     card = cards.find(c => c.id === forcedCardId);
     if (card?.isArchived) {
       logger.info({ cardId: card.id }, "Refusing to spawn archived card");
@@ -317,8 +317,11 @@ async function awardSpawn(guildId: string, spawnId: string, userId: string): Pro
   }, POST_CATCH_LINGER_MS);
   if (spawn.resolveTimer) { clearTimeout(spawn.resolveTimer); spawn.resolveTimer = null; }
 
-  const { isShiny } = await catchCard(guildId, userId, spawn.cardId);
-  await markCaught(spawn.spawnLogId, userId);
+  // Parallel: write collection row + mark spawn log. Both independent DB calls.
+  const [{ isShiny }] = await Promise.all([
+    catchCard(guildId, userId, spawn.cardId),
+    markCaught(spawn.spawnLogId, userId),
+  ]);
 
   try {
     const claimedEmbed = await buildClaimedEmbed(spawn.cardId, userId, isShiny, guildId);
@@ -464,7 +467,7 @@ export async function initAllGuilds(client: Client) {
 async function buildClaimedEmbed(
   cardId: number, userId: string, isShiny: boolean = false, guildId: string | null = null,
 ): Promise<EmbedBuilder | null> {
-  const cards = await getAllCards();
+  const cards = await getAllCardsCached();
   const card = cards.find(c => c.id === cardId);
   if (!card) return null;
   const rarity = card.rarity as Rarity;
@@ -539,7 +542,7 @@ async function buildSpawnEmbed(card: Card, windowSeconds: number, mode: "type" |
 export async function buildPostDecisionEmbed(
   cardId: number, userId: string, action: "burned" | "kept" | "trade", guildId: string | null = null,
 ): Promise<EmbedBuilder | null> {
-  const cards = await getAllCards();
+  const cards = await getAllCardsCached();
   const card = cards.find(c => c.id === cardId);
   if (!card) return null;
   const rarity = card.rarity as Rarity;

@@ -79,6 +79,7 @@ export async function deleteSetByName(setName: string): Promise<{ removed: numbe
     sql`${tradesTable.offeredCardId} IN ${ids} OR ${tradesTable.requestedCardId} IN ${ids}`,
   );
   await db.delete(cardsTable).where(inArray(cardsTable.id, ids));
+  invalidateCardCache();
   logger.info({ setName, removed: ids.length }, "Deleted card set");
   return { removed: ids.length };
 }
@@ -162,8 +163,27 @@ export async function listActiveTimeouts(guildId: string) {
 }
 
 // ── Cards ─────────────────────────────────────────────────────────────────────
+let _allCardsCache: Card[] | null = null;
+let _allCardsAt = 0;
+const CARD_CACHE_TTL_MS = 5_000;
+
 export async function getAllCards(): Promise<Card[]> {
   return db.select().from(cardsTable);
+}
+
+// Cached variant for the hot path (spawn embeds, catch embeds, decision buttons).
+// 5s TTL keeps it fresh while eliminating repeated DB round-trips.
+export async function getAllCardsCached(): Promise<Card[]> {
+  const now = Date.now();
+  if (_allCardsCache && _allCardsAt + CARD_CACHE_TTL_MS > now) return _allCardsCache;
+  _allCardsCache = await getAllCards();
+  _allCardsAt = now;
+  return _allCardsCache;
+}
+
+export function invalidateCardCache(): void {
+  _allCardsCache = null;
+  _allCardsAt = 0;
 }
 
 export async function getCardByName(name: string): Promise<Card | undefined> {
@@ -182,6 +202,7 @@ export async function addCard(values: {
 }) {
   const [card] = await db.insert(cardsTable).values(values as any).returning();
   await db.update(cardsTable).set({ totalMinted: 0 }).where(eq(cardsTable.id, card.id));
+  invalidateCardCache();
   return card;
 }
 
@@ -189,6 +210,7 @@ export async function removeCard(name: string) {
   const card = await getCardByName(name);
   if (!card) return;
   await db.delete(cardsTable).where(eq(cardsTable.id, card.id));
+  invalidateCardCache();
 }
 
 export async function updateCard(cardId: number, values: Partial<{
@@ -198,6 +220,7 @@ export async function updateCard(cardId: number, values: Partial<{
   maxCopies: number | null; imageUrl: string | null; flavor: string | null; droppable: boolean;
 }>) {
   const [updated] = await db.update(cardsTable).set(values as any).where(eq(cardsTable.id, cardId)).returning();
+  invalidateCardCache();
   return updated;
 }
 
