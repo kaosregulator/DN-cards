@@ -14,13 +14,14 @@ const RARITY_ORDER: Rarity[] = ["common", "uncommon", "rare", "epic", "legendary
 const RARITY_EMOJI: Record<Rarity, string> = {
   common: "⚪", uncommon: "🟢", rare: "🔵", epic: "🟣", legendary: "🟡",
 };
-// Weight options offered per rarity (preset menu). `null` = "Default" (use card's default).
+// Percentage options offered per rarity (preset menu). `null` = "Default" (use card's default).
+// Stored internally as weights — when the 5 values sum to 100, weight == percent exactly.
 const RARITY_WEIGHT_OPTIONS: Record<Rarity, (number | null)[]> = {
-  common:    [null, 80, 60, 40, 20, 5],
-  uncommon:  [null, 40, 25, 15, 5,  1],
-  rare:      [null, 20, 10, 5,  2,  1],
-  epic:      [null, 10, 4,  2,  1,  0],
-  legendary: [null, 5,  3,  1,  0],
+  common:    [null, 80, 70, 60, 50, 40, 30, 20, 10, 5],
+  uncommon:  [null, 40, 30, 25, 20, 15, 10, 5,  1],
+  rare:      [null, 20, 15, 10, 8,  5,  3,  2,  1],
+  epic:      [null, 15, 10, 8,  6,  4,  3,  2,  1, 0],
+  legendary: [null, 10, 5,  3,  2,  1,  0],
 };
 
 function rarityWeightKey(r: Rarity): keyof GuildSettings {
@@ -99,6 +100,19 @@ export async function handleConfigButton(interaction: ButtonInteraction): Promis
   } else if (action === "channel" && arg === "trade") {
     await updateGuildSettings(guildId, { tradeChannelId: interaction.channelId });
   } else if (action === "rates") {
+    if (arg === "reset") {
+      const resetPatch: Partial<GuildSettings> = {};
+      for (const r of RARITY_ORDER) {
+        (resetPatch as Record<string, number | null>)[rarityWeightKey(r) as string] = null;
+      }
+      await updateGuildSettings(guildId, resetPatch);
+      const settings = await getOrCreateGuildSettings(guildId);
+      await interaction.update({
+        embeds: [buildRatesEmbed(settings)],
+        components: buildRatesComponents(settings),
+      });
+      return;
+    }
     const settings = await getOrCreateGuildSettings(guildId);
     await interaction.reply({
       embeds: [buildRatesEmbed(settings)],
@@ -291,7 +305,7 @@ function buildConfigEmbed(s: GuildSettings): EmbedBuilder {
       },
       {
         name: "🎲 Rarity Mix (chance of each rarity when a card drops)",
-        value: rarityWeightsSummary(s),
+        value: rarityRowsSummary(s),
         inline: false,
       },
     )
@@ -404,52 +418,93 @@ function formatSec(sec: number): string {
 // ── Drop rates sub-panel (also reused by the !setup wizard) ────────────────────────────────
 export { buildRatesEmbed, buildRatesComponents };
 
-function rarityWeightsSummary(s: GuildSettings): string {
+function rarityBar(s: GuildSettings): string {
+  const weights = RARITY_ORDER.map(r => effectiveWeight(s, r));
+  const total = weights.reduce((a, b) => a + b, 0) || 1;
+  const SLOTS = 20;
+  // Allocate bar slots proportional to weight; guarantee any nonzero rarity gets ≥1 slot if it fits.
+  const raw = weights.map(w => (w / total) * SLOTS);
+  const floors = raw.map(x => Math.floor(x));
+  let used = floors.reduce((a, b) => a + b, 0);
+  const remainders = raw.map((x, i) => ({ i, frac: x - Math.floor(x) }))
+    .sort((a, b) => b.frac - a.frac);
+  let k = 0;
+  while (used < SLOTS && k < remainders.length) {
+    floors[remainders[k]!.i]!++;
+    used++;
+    k++;
+  }
+  const blocks: Record<Rarity, string> = {
+    common: "⬜", uncommon: "🟩", rare: "🟦", epic: "🟪", legendary: "🟨",
+  };
+  return RARITY_ORDER.map((r, i) => blocks[r].repeat(floors[i]!)).join("");
+}
+
+function rarityRowsSummary(s: GuildSettings): string {
   const weights = RARITY_ORDER.map(r => effectiveWeight(s, r));
   const total = weights.reduce((a, b) => a + b, 0) || 1;
   return RARITY_ORDER.map((r, i) => {
     const w = weights[i]!;
     const pct = ((w / total) * 100).toFixed(1);
-    const override = getRarityWeight(s, r) !== null ? "" : " (default)";
-    return `${RARITY_EMOJI[r]} **${capitalize(r)}** — ${w} · ${pct}%${override}`;
+    const tag = getRarityWeight(s, r) === null ? " *(default)*" : "";
+    return `${RARITY_EMOJI[r]} **${capitalize(r)}** — ${pct}%${tag}`;
   }).join("\n");
 }
 
 function buildRatesEmbed(s: GuildSettings): EmbedBuilder {
+  const weights = RARITY_ORDER.map(r => effectiveWeight(s, r));
+  const total = weights.reduce((a, b) => a + b, 0);
+  const balanced = total === 100;
+  const note = balanced
+    ? "✅ Your values add up to **100%** — what you pick is exactly what players see."
+    : `ℹ️ Your values add up to **${total}** — Discord auto-balances them to **100%** below. ` +
+      "(Pick numbers that sum to 100 to keep things simple.)";
   return new EmbedBuilder()
-    .setTitle("🎲 Rarity Mix — Per-Rarity Drop Odds")
+    .setTitle("🎲 Rarity Mix — How often each rarity drops")
     .setColor(0xeb459e)
     .setDescription(
-      "Pick a weight for each rarity. Higher weight = more common.\n" +
-      "**Defaults:** Common 60 · Uncommon 25 · Rare 10 · Epic 4 · Legendary 1.",
+      "Set the **% chance** for each rarity when a card spawns.\n" +
+      "**Defaults:** Common 60 · Uncommon 25 · Rare 10 · Epic 4 · Legendary 1 (= 100%)\n\n" +
+      `${rarityBar(s)}\n\n` +
+      note,
     )
-    .addFields({ name: "Current rates", value: rarityWeightsSummary(s), inline: false })
-    .setFooter({ text: "Changes save instantly." });
+    .addFields({ name: "Current mix", value: rarityRowsSummary(s), inline: false })
+    .setFooter({ text: "Changes save instantly. Use 🔄 Reset to Defaults to start over." });
 }
 
 function buildRatesComponents(s: GuildSettings) {
-  const rows = RARITY_ORDER.map(r => {
+  const rows: (
+    ActionRowBuilder<StringSelectMenuBuilder> | ActionRowBuilder<ButtonBuilder>
+  )[] = RARITY_ORDER.map(r => {
     const current = getRarityWeight(s, r);
     const opts = RARITY_WEIGHT_OPTIONS[r].map(w => {
       if (w === null) {
         return {
-          label: `Default (${RARITY_WEIGHTS[r]})`,
+          label: `Default (${RARITY_WEIGHTS[r]}%)`,
           value: "default",
           default: current === null,
         };
       }
       return {
-        label: `Weight ${w}`,
+        label: `${w}%`,
         value: String(w),
         default: current === w,
       };
     });
     const select = new StringSelectMenuBuilder()
       .setCustomId(`rates_${r}`)
-      .setPlaceholder(`${RARITY_EMOJI[r]} ${capitalize(r)} weight`)
+      .setPlaceholder(`${RARITY_EMOJI[r]} ${capitalize(r)} — % chance`)
       .addOptions(opts);
     return new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(select);
   });
+  rows.push(
+    new ActionRowBuilder<ButtonBuilder>().addComponents(
+      new ButtonBuilder()
+        .setCustomId("config:rates:reset")
+        .setLabel("🔄 Reset to Defaults")
+        .setStyle(ButtonStyle.Danger),
+    ),
+  );
   return rows;
 }
 
