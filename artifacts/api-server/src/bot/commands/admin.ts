@@ -87,12 +87,30 @@ async function handleAdminHelp(interaction: ChatInputCommandInteraction): Promis
           "*Tip: in Discord → Server Settings → Integrations → DN Cards you can also grant admin commands to specific roles per-command.*",
       },
       {
+        name: "🎨 Embed Customization *(slash)*",
+        value:
+          "`/embed show key:<embed>` — see the current override for an embed\n" +
+          "`/embed set key:<embed> field:<field> value:<v>` — set one field (title, footer, color, image, etc.) — empty value clears\n" +
+          "`/embed reset key:<embed> [field]` — reset one field, or the whole embed if no field given\n" +
+          "Embeds: `spawn` · `claimed` · `daily` · `pack` · `trade` · `welcome` · `rules` · `commands`. Tokens like `{user} {card} {rarity} {worth} {streak} {tier}` are interpolated.",
+      },
+      {
+        name: "🎖️ Rarity Tuning *(slash)*",
+        value:
+          "`/rarity profile set rarity:<tier> [worth] [burn] [weight]` — override per-tier values for this server\n" +
+          "`/rarity profile reset rarity:<tier>` · `/rarity profile list`\n" +
+          "`/rarity custom add|edit|remove|list` — create brand-new rarity tiers beyond the 6 built-ins\n" +
+          "`/rarity card assign card:<Name> slug:<tier>` — move a card into a custom tier (replaces worth/burn/weight)\n" +
+          "`/rarity card unassign card:<Name>` — revert to its built-in rarity\n" +
+          "`/rarityname name:<Name> emoji:<🔮> [color:<#hex>] [reset:true]` — rename the Mythic tier for this server",
+      },
+      {
         name: "🌐 Web Dashboard",
         value:
           "`/dashboard` — DMs you a one-time link to **create or reset** your dashboard login.\n" +
-          "Once logged in:\n" +
-          "• `/admin` — roster, card art uploads, server toggles\n" +
-          "• `/admin/embeds` — customize **all 8 bot embeds per server** (spawn, claimed, daily, pack, trade, welcome, rules, commands) — title, footer, color, image size, custom image, tokens like `{user}` `{card}` `{rarity}` `{worth}` `{streak}`. Live Discord-style preview.\n" +
+          "The dashboard is **presentation-only** — display name, image, description, flavor, visibility, sort order. All gameplay values (rarity, worth, burn, drop weight, packs) are read-only there; change them with the Discord commands above.\n" +
+          "• `/admin` — card display overrides + website roster\n" +
+          "• `/admin/news` · `/admin/suggestions` — site content + user feedback queue\n" +
           "• `/admin/users` (owner only) — invite additional dashboard logins.",
       },
     );

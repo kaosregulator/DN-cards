@@ -49,7 +49,7 @@ export async function handleWelcome(interaction: ChatInputCommandInteraction): P
     .setColor(BRAND_COLOR)
     .setTitle("📌 Things to Know")
     .setDescription(
-      "**🎖️ Rarities** — Common · Uncommon · Rare · Epic · Legendary. Higher rarity = rarer drop and worth more shards.\n\n" +
+      "**🎖️ Rarities** — Common · Uncommon · Rare · Epic · Legendary · 🔮 Mythic. Higher rarity = rarer drop and worth more shards. Mythic is the apex tier — admin-only by default; admins can rename it per-server with `/rarityname`.\n\n" +
       "**✨ Shinies** — Every random catch, pack pull, and trade-in has a flat **0.5%** chance to mint a shiny. " +
       "Shinies count at **2× worth & burn**, are tracked separately, and aren't tradeable in v1. " +
       "Use `/burn shiny:true` to torch the shiny pile specifically.\n\n" +
