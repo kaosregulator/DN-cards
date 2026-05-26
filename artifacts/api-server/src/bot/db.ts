@@ -361,6 +361,7 @@ export async function getUserCollection(guildId: string, userId: string) {
     burnValue: cardsTable.burnValue,
     isLimitedEdition: cardsTable.isLimitedEdition,
     isEventExclusive: cardsTable.isEventExclusive,
+    imageUrl: cardsTable.imageUrl,
   }).from(collectionsTable)
     .innerJoin(cardsTable, eq(collectionsTable.cardId, cardsTable.id))
     .where(and(

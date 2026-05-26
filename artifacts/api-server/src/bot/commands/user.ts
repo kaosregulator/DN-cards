@@ -31,6 +31,22 @@ import { chunkLines } from "../components/field-chunker.js";
 // paginated /collection, /list, and /catalog views.
 const RARITY_ORDER: Rarity[] = ["mythic", "legendary", "epic", "rare", "uncommon", "common"];
 
+// Pick the most evocative image from a set of cards — highest worthValue wins,
+// ties broken by name for stability. Returns the first absolute URL we can build;
+// skips entries without a usable imageUrl. Returns null if nothing is usable.
+function pickRarestImage<T extends { worthValue: number; name: string; imageUrl: string | null }>(
+  cards: T[],
+): string | null {
+  const sorted = cards
+    .slice()
+    .sort((a, b) => b.worthValue - a.worthValue || a.name.localeCompare(b.name));
+  for (const c of sorted) {
+    const url = toAbsoluteImageUrl(c.imageUrl);
+    if (url) return url;
+  }
+  return null;
+}
+
 // Pack pre-chunked fields into multiple embed screens. Returns at least one
 // screen even when there are zero fields (so the embed header still renders).
 function buildEmbedScreens(
@@ -179,14 +195,18 @@ export async function handleUserCommand(
           const shinyTag = i.shinyCount > 0 ? ` · ${SHINY_EMOJI}×${i.shinyCount}` : "";
           return `${badges}**${i.name}** ×${i.count}${shinyTag}`;
         });
-      const baseRarity = () => new EmbedBuilder()
-        .setTitle(`${rarityEmoji(r, settings)} ${rarityLabel(r, settings)} — ${target.username}`)
-        .setColor(rarityColor(r, settings))
-        .setThumbnail(target.displayAvatarURL())
-        .setDescription(
-          `**${group.length}** unique · **${groupTotal}** total` +
-          (groupShinies > 0 ? ` · ${SHINY_EMOJI}**${groupShinies}** shiny` : ""),
-        );
+      const rarityImg = pickRarestImage(group);
+      const baseRarity = () => {
+        const e = new EmbedBuilder()
+          .setTitle(`${rarityEmoji(r, settings)} ${rarityLabel(r, settings)} — ${target.username}`)
+          .setColor(rarityColor(r, settings))
+          .setThumbnail(rarityImg ?? target.displayAvatarURL())
+          .setDescription(
+            `**${group.length}** unique · **${groupTotal}** total` +
+            (groupShinies > 0 ? ` · ${SHINY_EMOJI}**${groupShinies}** shiny` : ""),
+          );
+        return e;
+      };
       const { fields } = chunkLines(lines, { baseName: "Cards", maxFields: 1000 });
       views.push({
         key: `rarity:${r}`,
@@ -207,10 +227,11 @@ export async function handleUserCommand(
           const shinyTag = i.shinyCount > 0 ? ` · ${SHINY_EMOJI}×${i.shinyCount}` : "";
           return `${rarityEmoji(i.rarity as Rarity, settings)} **${i.name}** ×${i.count}${shinyTag}`;
         });
+      const limImg = pickRarestImage(limitedItems);
       const baseLim = () => new EmbedBuilder()
         .setTitle(`💎 ${target.username}'s Limited Edition`)
         .setColor(0x00d4ff)
-        .setThumbnail(target.displayAvatarURL())
+        .setThumbnail(limImg ?? target.displayAvatarURL())
         .setDescription(`**${limitedItems.length}** unique limited-edition card${limitedItems.length === 1 ? "" : "s"}`);
       const { fields } = chunkLines(lines, { baseName: "Limited", maxFields: 1000 });
       views.push({
@@ -232,10 +253,11 @@ export async function handleUserCommand(
           const shinyTag = i.shinyCount > 0 ? ` · ${SHINY_EMOJI}×${i.shinyCount}` : "";
           return `${rarityEmoji(i.rarity as Rarity, settings)} **${i.name}** ×${i.count}${shinyTag}`;
         });
+      const evImg = pickRarestImage(eventItems);
       const baseEv = () => new EmbedBuilder()
         .setTitle(`🎆 ${target.username}'s Event Exclusives`)
         .setColor(0xe84393)
-        .setThumbnail(target.displayAvatarURL())
+        .setThumbnail(evImg ?? target.displayAvatarURL())
         .setDescription(`**${eventItems.length}** unique event-exclusive card${eventItems.length === 1 ? "" : "s"}`);
       const { fields } = chunkLines(lines, { baseName: "Event", maxFields: 1000 });
       views.push({
@@ -447,10 +469,15 @@ export async function handleUserCommand(
           const b = [c.isLimitedEdition ? "💎" : "", c.isEventExclusive ? "🎆" : "", !c.droppable ? "🔒" : ""].filter(Boolean).join("");
           return `${b}${c.name}`;
         });
-      const baseRarity = () => new EmbedBuilder()
-        .setTitle(`${rarityEmoji(r, listSettings)} ${rarityLabel(r, listSettings)} Roster`)
-        .setColor(rarityColor(r, listSettings))
-        .setDescription(`**${group.length}** card${group.length === 1 ? "" : "s"} in this rarity`);
+      const rarityImg = pickRarestImage(group);
+      const baseRarity = () => {
+        const e = new EmbedBuilder()
+          .setTitle(`${rarityEmoji(r, listSettings)} ${rarityLabel(r, listSettings)} Roster`)
+          .setColor(rarityColor(r, listSettings))
+          .setDescription(`**${group.length}** card${group.length === 1 ? "" : "s"} in this rarity`);
+        if (rarityImg) e.setThumbnail(rarityImg);
+        return e;
+      };
       const { fields } = chunkLines(lines, { baseName: "Cards", separator: ", ", maxFields: 1000 });
       views.push({
         key: `rarity:${r}`,
@@ -466,10 +493,15 @@ export async function handleUserCommand(
         .slice()
         .sort((a, b) => a.name.localeCompare(b.name))
         .map(c => `${rarityEmoji(c.rarity as Rarity, listSettings)} ${c.name}` + (c.maxCopies ? ` *(${c.totalMinted}/${c.maxCopies})*` : ""));
-      const baseLim = () => new EmbedBuilder()
-        .setTitle("💎 Limited Edition Cards")
-        .setColor(0x00d4ff)
-        .setDescription(`**${limitedCards.length}** capped-supply card${limitedCards.length === 1 ? "" : "s"}`);
+      const limImg = pickRarestImage(limitedCards);
+      const baseLim = () => {
+        const e = new EmbedBuilder()
+          .setTitle("💎 Limited Edition Cards")
+          .setColor(0x00d4ff)
+          .setDescription(`**${limitedCards.length}** capped-supply card${limitedCards.length === 1 ? "" : "s"}`);
+        if (limImg) e.setThumbnail(limImg);
+        return e;
+      };
       const { fields } = chunkLines(lines, { baseName: "Limited", maxFields: 1000 });
       views.push({
         key: "limited",
@@ -485,10 +517,15 @@ export async function handleUserCommand(
         .slice()
         .sort((a, b) => a.name.localeCompare(b.name))
         .map(c => `${rarityEmoji(c.rarity as Rarity, listSettings)} ${c.name}`);
-      const baseEv = () => new EmbedBuilder()
-        .setTitle("🎆 Event Exclusive Cards")
-        .setColor(0xe84393)
-        .setDescription(`**${eventCards.length}** admin-drop-only event card${eventCards.length === 1 ? "" : "s"}`);
+      const evImg = pickRarestImage(eventCards);
+      const baseEv = () => {
+        const e = new EmbedBuilder()
+          .setTitle("🎆 Event Exclusive Cards")
+          .setColor(0xe84393)
+          .setDescription(`**${eventCards.length}** admin-drop-only event card${eventCards.length === 1 ? "" : "s"}`);
+        if (evImg) e.setThumbnail(evImg);
+        return e;
+      };
       const { fields } = chunkLines(lines, { baseName: "Event", maxFields: 1000 });
       views.push({
         key: "event",
@@ -586,6 +623,11 @@ export async function handleUserCommand(
       title: string,
       groupOrder: { rarity: Rarity; cards: typeof pool }[],
     ): PaginatorView => {
+      // Prefer the rarest OWNED card in this category as the thumbnail; if none
+      // owned (or none have a usable image), fall back to the rarest in pool.
+      const allInView = groupOrder.flatMap(g => g.cards);
+      const ownedInView = allInView.filter(c => ownedById.has(c.id));
+      const thumb = pickRarestImage(ownedInView) ?? pickRarestImage(allInView);
       const ownedN = groupOrder.reduce((s, g) => s + g.cards.filter(c => ownedById.has(c.id)).length, 0);
       const totalN = groupOrder.reduce((s, g) => s + g.cards.length, 0);
       const pct = totalN > 0 ? Math.round((ownedN / totalN) * 100) : 0;
@@ -606,14 +648,18 @@ export async function handleUserCommand(
         const { fields } = chunkLines(lines, { baseName: groupName, maxFields: 1000 });
         allFields.push(...fields);
       }
-      const base = () => new EmbedBuilder()
-        .setTitle(title)
-        .setColor(color)
-        .setDescription(
-          `${ownerLabel} own **${ownedN} / ${totalN}** in this category (${pct}%)\n` +
-          `✅ owned  ·  ⬜ missing  ·  💎 limited  ·  🎆 event`,
-        )
-        .setFooter({ text: "Use /info name:<card> for full details on any card" });
+      const base = () => {
+        const e = new EmbedBuilder()
+          .setTitle(title)
+          .setColor(color)
+          .setDescription(
+            `${ownerLabel} own **${ownedN} / ${totalN}** in this category (${pct}%)\n` +
+            `✅ owned  ·  ⬜ missing  ·  💎 limited  ·  🎆 event`,
+          )
+          .setFooter({ text: "Use /info name:<card> for full details on any card" });
+        if (thumb) e.setThumbnail(thumb);
+        return e;
+      };
       return {
         key,
         label,
