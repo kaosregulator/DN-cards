@@ -7,6 +7,7 @@ import {
   getUserCollection, getAllCards, getLeaderboard, getTopPackOpeners,
   getOrCreateCurrency, burnCard, getCardByName, getUserCardCount, getUserOwnedCount,
   getOrCreateGuildSettings,
+  getRarityProfile, applyRarityProfile, applyRarityProfileAll,
 } from "../db.js";
 import {
   RARITY_COLORS, RARITY_EMOJI, RARITY_LABELS, getTypeEmoji,
@@ -305,7 +306,9 @@ export async function handleUserCommand(
   // ── /info ─────────────────────────────────────────────────────────────────────
   if (sub === "info") {
     const cardName = interaction.options.getString("name", true);
-    const cards = await getAllCards();
+    const rawCards = await getAllCards();
+    const profile = await getRarityProfile(guildId);
+    const cards = applyRarityProfileAll(rawCards, profile);
     const card = cards.find(c => c.name.toLowerCase() === cardName.toLowerCase());
     if (!card) { await interaction.editReply(`❌ "**${cardName}**" not found. Try \`/list\`.`); return; }
 
@@ -343,7 +346,9 @@ export async function handleUserCommand(
   // Interactive overview → drill-down view of the full roster (no personal
   // stats). Same paginator as /collection and /catalog.
   if (sub === "list") {
-    const cards = await getAllCards();
+    const rawCards = await getAllCards();
+    const listProfile = await getRarityProfile(guildId);
+    const cards = applyRarityProfileAll(rawCards, listProfile);
     if (cards.length === 0) { await interaction.editReply("No cards in the pool yet."); return; }
     const listSettings = await getOrCreateGuildSettings(guildId);
 

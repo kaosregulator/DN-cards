@@ -13,6 +13,8 @@ import {
   getCardWishlisters,
   getUserTimeout,
   getActiveEventBoosts,
+  getRarityProfile,
+  applyRarityProfile,
 } from "./db.js";
 import {
   RARITY_COLORS, RARITY_EMOJI, RARITY_LABELS, TYPE_EMOJI, getTypeEmoji,
@@ -167,9 +169,15 @@ async function doSingleSpawn(guildId: string, forcedCardId?: number, isForced = 
   } else {
     const rarityWeights = getGuildRarityWeights(settings);
     const eventBoosts = await getActiveEventBoosts(guildId);
-    card = await pickRandomCard(rarityWeights, eventBoosts);
+    const profile = await getRarityProfile(guildId);
+    card = await pickRandomCard(rarityWeights, eventBoosts, profile);
   }
   if (!card) return;
+
+  // Apply server rarity profile so the spawn/claim embeds and the catch flow
+  // (burn payout button label, worth display) all use the overridden numbers.
+  const profileForGuild = await getRarityProfile(guildId);
+  card = applyRarityProfile(card, profileForGuild);
 
   if (card.maxCopies && card.totalMinted >= card.maxCopies) {
     logger.info({ cardId: card.id }, "Card max copies reached, skipping");
@@ -508,8 +516,10 @@ async function buildClaimedEmbed(
   cardId: number, userId: string, isShiny: boolean = false, guildId: string | null = null,
 ): Promise<EmbedBuilder | null> {
   const cards = await getAllCardsCached();
-  const card = cards.find(c => c.id === cardId);
-  if (!card) return null;
+  const rawCard = cards.find(c => c.id === cardId);
+  if (!rawCard) return null;
+  const profile = guildId ? await getRarityProfile(guildId) : null;
+  const card = profile ? applyRarityProfile(rawCard, profile) : rawCard;
   const rarity = card.rarity as Rarity;
   const cardType = card.cardType;
   const typeEmoji = getTypeEmoji(cardType);
@@ -589,8 +599,10 @@ export async function buildPostDecisionEmbed(
   cardId: number, userId: string, action: "burned" | "kept" | "trade", guildId: string | null = null,
 ): Promise<EmbedBuilder | null> {
   const cards = await getAllCardsCached();
-  const card = cards.find(c => c.id === cardId);
-  if (!card) return null;
+  const rawCard = cards.find(c => c.id === cardId);
+  if (!rawCard) return null;
+  const profileForDecision = guildId ? await getRarityProfile(guildId) : null;
+  const card = profileForDecision ? applyRarityProfile(rawCard, profileForDecision) : rawCard;
   const rarity = card.rarity as Rarity;
   const cardType = card.cardType;
 

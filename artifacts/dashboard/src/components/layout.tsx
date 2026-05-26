@@ -12,6 +12,7 @@ export function Nav() {
     { href: "/profile", label: "Profile", show: true },
     { href: "/admin", label: "Admin", show: !!user },
     { href: "/admin/embeds", label: "Embeds", show: !!user },
+    { href: "/admin/rarities", label: "Rarities", show: !!user },
     { href: "/admin/users", label: "Users", show: isOwner },
   ];
 

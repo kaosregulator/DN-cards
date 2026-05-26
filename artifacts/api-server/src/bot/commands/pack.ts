@@ -5,6 +5,7 @@ import { and, eq, sql } from "drizzle-orm";
 import {
   getAllCards, catchCard, getOrCreateCurrency,
   getOrCreateGuildSettings,
+  getRarityProfile, applyRarityProfileAll,
 } from "../db.js";
 import {
   RARITY_COLORS, RARITY_EMOJI, RARITY_LABELS, SHINY_EMOJI, SHINY_MULTIPLIER,
@@ -141,10 +142,14 @@ function pickByDropWeight(pool: Card[]): Card | undefined {
   return pool[pool.length - 1];
 }
 
-async function drawPack(tier: PackTier, size: number): Promise<Card[]> {
-  const all = (await getAllCards()).filter(c =>
-    c.droppable && c.inPacks && !c.isArchived && !c.isEventExclusive &&
-    (!c.isLimitedEdition || c.maxCopies == null || c.totalMinted < c.maxCopies),
+async function drawPack(tier: PackTier, size: number, guildId: string): Promise<Card[]> {
+  const profile = await getRarityProfile(guildId);
+  const all = applyRarityProfileAll(
+    (await getAllCards()).filter(c =>
+      c.droppable && c.inPacks && !c.isArchived && !c.isEventExclusive &&
+      (!c.isLimitedEdition || c.maxCopies == null || c.totalMinted < c.maxCopies),
+    ),
+    profile,
   );
   if (all.length === 0) return [];
 
@@ -407,7 +412,7 @@ export async function handlePack(interaction: ChatInputCommandInteraction): Prom
 
   // Draw cards BEFORE claiming so a "no droppable cards" error doesn't
   // momentarily consume the cooldown. Cheap pure-RAM operation.
-  const cards = await drawPack(tier, cfg.size);
+  const cards = await drawPack(tier, cfg.size, guildId);
   if (cards.length === 0) {
     await interaction.editReply("❌ No droppable cards available right now. Ask an admin to load a card set.");
     return;

@@ -3,11 +3,54 @@ import {
   cardsTable, collectionsTable, guildSettingsTable,
   adminUsersTable, spawnLogTable, userCurrencyTable, tradesTable,
   wishlistsTable, userTimeoutsTable, cardEventsTable,
+  rarityProfilesTable,
 } from "@workspace/db";
 import { eq, and, sql, desc, inArray, isNull } from "drizzle-orm";
-import type { Card, CardEvent, GuildSettings, Trade } from "@workspace/db";
-import { DEFAULT_CARDS, SHINY_RATE, SHINY_MULTIPLIER } from "./cards-data.js";
+import type { Card, CardEvent, GuildSettings, RarityProfile, Trade } from "@workspace/db";
+import { DEFAULT_CARDS, SHINY_RATE, SHINY_MULTIPLIER, type Rarity } from "./cards-data.js";
 import { logger } from "../lib/logger.js";
+
+// ── Per-guild rarity profile (worth/burn/dropWeight overrides) ───────────────
+// One row per (guild, rarity). Any null column means "use the card's value".
+// Tiny dataset (≤6 rows/guild) — cached for 5s like the cards cache. Caches
+// per-guild so a write for one server doesn't pollute another's view.
+export type RarityProfileMap = Map<Rarity, RarityProfile>;
+const _profileCache = new Map<string, { value: RarityProfileMap; expiresAt: number }>();
+const PROFILE_TTL_MS = 5_000;
+
+export async function getRarityProfile(guildId: string): Promise<RarityProfileMap> {
+  const cached = _profileCache.get(guildId);
+  if (cached && cached.expiresAt > Date.now()) return cached.value;
+  const rows = await db.select().from(rarityProfilesTable).where(eq(rarityProfilesTable.guildId, guildId));
+  const map: RarityProfileMap = new Map();
+  for (const r of rows) map.set(r.rarity as Rarity, r);
+  _profileCache.set(guildId, { value: map, expiresAt: Date.now() + PROFILE_TTL_MS });
+  return map;
+}
+
+export function invalidateRarityProfileCache(guildId?: string): void {
+  if (guildId) _profileCache.delete(guildId);
+  else _profileCache.clear();
+}
+
+type EconCard = { rarity: string; worthValue: number; burnValue: number; dropWeight: number };
+
+export function applyRarityProfile<T extends EconCard>(card: T, profile: RarityProfileMap): T {
+  if (profile.size === 0) return card;
+  const o = profile.get(card.rarity as Rarity);
+  if (!o) return card;
+  return {
+    ...card,
+    worthValue: o.worthValue ?? card.worthValue,
+    burnValue: o.burnValue ?? card.burnValue,
+    dropWeight: o.dropWeight ?? card.dropWeight,
+  };
+}
+
+export function applyRarityProfileAll<T extends EconCard>(cards: T[], profile: RarityProfileMap): T[] {
+  if (profile.size === 0) return cards;
+  return cards.map(c => applyRarityProfile(c, profile));
+}
 
 // ── Seed / resync default cards ───────────────────────────────────────────────
 export const DEFAULTS_SET_NAME = "defaults";
@@ -238,14 +281,21 @@ export async function updateCard(cardId: number, values: Partial<{
 export async function pickRandomCard(
   rarityWeights?: Record<string, number>,
   eventBoosts?: Map<number, number>,
+  profile?: RarityProfileMap,
 ): Promise<Card | undefined> {
   const cards = (await getAllCards()).filter(c => c.droppable && !c.isArchived);
   if (cards.length === 0) return undefined;
 
+  // Precedence: rarity_profiles.dropWeight (server-level) → guild_settings
+  // rarityWeight* (legacy per-tier) → card.dropWeight (per-card baseline).
+  // Event boost multiplies whichever base wins so admins can still spike a
+  // single card above its tier baseline.
   const getWeight = (card: Card) => {
-    const base = rarityWeights
-      ? (rarityWeights[card.rarity] ?? card.dropWeight)
-      : card.dropWeight;
+    const profileWeight = profile?.get(card.rarity as Rarity)?.dropWeight;
+    let base: number;
+    if (profileWeight != null) base = profileWeight;
+    else if (rarityWeights) base = rarityWeights[card.rarity] ?? card.dropWeight;
+    else base = card.dropWeight;
     const boost = eventBoosts?.get(card.id) ?? 1;
     return Math.max(0, base) * boost;
   };
@@ -348,7 +398,7 @@ export async function removeCardFromUser(
 }
 
 export async function getUserCollection(guildId: string, userId: string) {
-  return db.select({
+  const rows = await db.select({
     cardId: collectionsTable.cardId,
     count: collectionsTable.count,
     shinyCount: collectionsTable.shinyCount,
@@ -359,6 +409,7 @@ export async function getUserCollection(guildId: string, userId: string) {
     description: cardsTable.description,
     worthValue: cardsTable.worthValue,
     burnValue: cardsTable.burnValue,
+    dropWeight: cardsTable.dropWeight,
     isLimitedEdition: cardsTable.isLimitedEdition,
     isEventExclusive: cardsTable.isEventExclusive,
     imageUrl: cardsTable.imageUrl,
@@ -370,6 +421,10 @@ export async function getUserCollection(guildId: string, userId: string) {
       // Hide rows that have been fully burned down to zero of both.
       sql`(${collectionsTable.count} + ${collectionsTable.shinyCount}) > 0`,
     ));
+  // Apply the per-guild rarity profile so worth/burn shown in /collection,
+  // /rank, /catalog, leaderboard net worth, etc. all reflect server overrides.
+  const profile = await getRarityProfile(guildId);
+  return applyRarityProfileAll(rows, profile);
 }
 
 export async function getUserCardCount(guildId: string, userId: string): Promise<{ unique: number; total: number; netWorth: number }> {
@@ -395,21 +450,38 @@ export async function getCollectionEntry(guildId: string, userId: string, cardId
 }
 
 // ── Leaderboard ───────────────────────────────────────────────────────────────
+// Computes per-user totals with rarity-profile overrides applied. We pull
+// per-(user,card) rows and group in JS so that worth uses the profile's
+// override when present (per-rarity), falling back to the card's own value.
+// Dataset is small (one row per held card per user per guild).
 export async function getLeaderboard(guildId: string, sortBy: "worth" | "cards" = "worth", limit = 10) {
-  const orderExpr = sortBy === "cards" ? sql`total_cards desc` : sql`net_worth desc`;
-  return db.select({
+  const rows = await db.select({
     userId: collectionsTable.userId,
-    // Shinies count toward total cards 1-for-1 but at SHINY_MULTIPLIER for worth.
-    totalCards: sql<number>`sum(${collectionsTable.count} + ${collectionsTable.shinyCount})::int`.as("total_cards"),
-    uniqueCards: sql<number>`count(distinct ${collectionsTable.cardId})::int`.as("unique_cards"),
-    netWorth: sql<number>`sum((${collectionsTable.count} + ${collectionsTable.shinyCount} * ${SHINY_MULTIPLIER}) * ${cardsTable.worthValue})::int`.as("net_worth"),
+    rarity: cardsTable.rarity,
+    worthValue: cardsTable.worthValue,
+    count: collectionsTable.count,
+    shinyCount: collectionsTable.shinyCount,
+    cardId: collectionsTable.cardId,
   })
     .from(collectionsTable)
     .innerJoin(cardsTable, eq(collectionsTable.cardId, cardsTable.id))
-    .where(eq(collectionsTable.guildId, guildId))
-    .groupBy(collectionsTable.userId)
-    .orderBy(orderExpr)
-    .limit(limit);
+    .where(eq(collectionsTable.guildId, guildId));
+
+  const profile = await getRarityProfile(guildId);
+  type Agg = { userId: string; totalCards: number; uniqueCards: number; netWorth: number };
+  const byUser = new Map<string, Agg>();
+  for (const r of rows) {
+    const worth = profile.get(r.rarity as Rarity)?.worthValue ?? r.worthValue;
+    let a = byUser.get(r.userId);
+    if (!a) { a = { userId: r.userId, totalCards: 0, uniqueCards: 0, netWorth: 0 }; byUser.set(r.userId, a); }
+    a.totalCards += r.count + r.shinyCount;
+    a.uniqueCards += 1; // one row per (user,card)
+    a.netWorth += (r.count + r.shinyCount * SHINY_MULTIPLIER) * worth;
+  }
+  const sorted = [...byUser.values()].sort((a, b) =>
+    sortBy === "cards" ? b.totalCards - a.totalCards : b.netWorth - a.netWorth,
+  );
+  return sorted.slice(0, limit);
 }
 
 // Lifetime pack openers per guild (sorted desc). Used by /top.
@@ -521,9 +593,12 @@ export async function burnCard(
   opts?: { shiny?: boolean },
 ): Promise<{ success: boolean; burned: number; shardsGained: number; remaining: number; isShiny: boolean }> {
   if (amount < 1) return { success: false, burned: 0, shardsGained: 0, remaining: 0, isShiny: !!opts?.shiny };
-  const [card] = await db.select({ burnValue: cardsTable.burnValue })
+  const [card] = await db.select({ burnValue: cardsTable.burnValue, rarity: cardsTable.rarity })
     .from(cardsTable).where(eq(cardsTable.id, cardId));
   if (!card) return { success: false, burned: 0, shardsGained: 0, remaining: 0, isShiny: !!opts?.shiny };
+  // Per-guild rarity profile may override the card's burnValue.
+  const profile = await getRarityProfile(guildId);
+  const effectiveBurnValue = profile.get(card.rarity as Rarity)?.burnValue ?? card.burnValue;
 
   const burningShiny = !!opts?.shiny;
   const targetCol = burningShiny ? collectionsTable.shinyCount : collectionsTable.count;
@@ -551,7 +626,7 @@ export async function burnCard(
   if (row.count === 0 && row.shinyCount === 0) {
     await db.delete(collectionsTable).where(eq(collectionsTable.id, row.id));
   }
-  const perCard = card.burnValue * (burningShiny ? SHINY_MULTIPLIER : 1);
+  const perCard = effectiveBurnValue * (burningShiny ? SHINY_MULTIPLIER : 1);
   const shardsGained = perCard * amount;
   await addShards(guildId, userId, shardsGained);
   await incrementCardsBurned(guildId, userId, amount);

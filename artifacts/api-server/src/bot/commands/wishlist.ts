@@ -2,6 +2,7 @@ import type { ChatInputCommandInteraction } from "discord.js";
 import { EmbedBuilder } from "discord.js";
 import {
   addWishlist, removeWishlist, getUserWishlist, getCardByName,
+  getRarityProfile,
 } from "../db.js";
 import { RARITY_COLORS, RARITY_EMOJI, RARITY_LABELS, type Rarity } from "../cards-data.js";
 
@@ -40,7 +41,13 @@ export async function handleWishlist(interaction: ChatInputCommandInteraction): 
 
   if (sub === "list") {
     const target = interaction.options.getUser("user") ?? interaction.user;
-    const items = await getUserWishlist(guildId, target.id);
+    const rawItems = await getUserWishlist(guildId, target.id);
+    // Apply per-guild worth override (wishlist row only carries worthValue).
+    const profile = await getRarityProfile(guildId);
+    const items = rawItems.map(it => ({
+      ...it,
+      worthValue: profile.get(it.rarity as Rarity)?.worthValue ?? it.worthValue,
+    }));
     if (items.length === 0) {
       await interaction.editReply(
         target.id === interaction.user.id

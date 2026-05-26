@@ -6,6 +6,7 @@ import {
 import {
   getAllCards, getUserCollection, removeCardFromUser, catchCard,
   restoreCardToUser, getOrCreateCurrency, getOrCreateGuildSettings,
+  getRarityProfile, applyRarityProfile, applyRarityProfileAll,
 } from "../db.js";
 import {
   RARITY_COLORS, RARITY_EMOJI, RARITY_LABELS, SHINY_EMOJI, SHINY_MULTIPLIER,
@@ -143,7 +144,9 @@ export async function handleTradein(interaction: ChatInputCommandInteraction): P
   }
 
   // Make sure there's something to award before we ask for confirmation.
-  const allCards = await getAllCards();
+  // Apply per-guild rarity profile so the dropWeight pick honors overrides.
+  const tradeinProfile = await getRarityProfile(guildId);
+  const allCards = applyRarityProfileAll(await getAllCards(), tradeinProfile);
   const rewardPool = allCards.filter(c =>
     c.rarity === toRarity &&
     !c.isArchived &&
@@ -266,15 +269,18 @@ export async function handleTradein(interaction: ChatInputCommandInteraction): P
       }
     }
 
-    // Roll the reward (re-filter in case stock changed).
-    const freshAll = await getAllCards();
+    // Roll the reward (re-filter in case stock changed). Re-fetch profile so
+    // an admin save between confirm and resolve is respected.
+    const freshProfile = await getRarityProfile(guildId);
+    const freshAll = applyRarityProfileAll(await getAllCards(), freshProfile);
     const freshPool = freshAll.filter(c =>
       c.rarity === toRarity &&
       !c.isArchived &&
       !c.isEventExclusive &&
       (!c.isLimitedEdition || c.maxCopies == null || c.totalMinted < c.maxCopies),
     );
-    const reward = pickByDropWeight(freshPool);
+    const rawReward = pickByDropWeight(freshPool);
+    const reward = rawReward ? applyRarityProfile(rawReward, freshProfile) : undefined;
     if (!reward) {
       // Nothing to award — give the user back exactly what we removed.
       await refund();

@@ -45,6 +45,14 @@ DN Cards is DarkNight's collectible military trading card game for the Roblox + 
 - API: `GET/PUT/DELETE /api/embeds/:guildId[/:embedKey]`, behind `requireDashboardAuth`. 60s in-memory cache in the bot, invalidated explicitly on PUT/DELETE.
 - Storage: `embed_overrides` table — one row per `(guildId, embedKey)` with a permissive jsonb `config`. Helper `applyEmbedOverride` in `bot/embed-overrides.ts` owns the shape; safe to extend without migration.
 
+### Per-Server Rarity Profiles
+- `/admin/rarities` dashboard page lets admins override **worth / burn / drop weight** per-rarity per-guild — without editing individual cards.
+- Storage: `rarity_profiles` table — one row per `(guildId, rarity)` with nullable `worthValue` / `burnValue` / `dropWeight`. A null column means "use the card's value".
+- API: `GET/PUT/DELETE /api/rarity-profiles/:guildId[/:rarity]`, behind `requireDashboardAuth`. 5s per-guild in-memory cache in the bot, invalidated explicitly on PUT/DELETE.
+- Resolver: `getRarityProfile(guildId)` → `RarityProfileMap`; `applyRarityProfile(card, profile)` swaps in the overrides. Used by spawn weighting, `/info`, `/list`, `/pack` (pool + display), `/burn` (via `burnCard`), `/collection`, leaderboard net worth, and trade fairness check.
+- **Drop-weight precedence:** profile.dropWeight → guildSettings.rarityWeights → card.dropWeight. So the profile is the strongest knob.
+- Servers with no profile rows (e.g. Server 1) are completely unaffected — defaults flow through unchanged.
+
 ### Limited-Time Events
 - `/event start card:<Name> duration:<30m|2h|1d> [multiplier:<1.1–50>]` — boost a card's effective spawn weight. Max 14d duration, default 2× multiplier.
 - `/event list` — show all active events (with end time + remaining).

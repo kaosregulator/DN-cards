@@ -346,6 +346,27 @@ export const EMBED_KEYS = [
 ] as const;
 export type EmbedKey = typeof EMBED_KEYS[number];
 
+// ── Rarity Profiles (per-guild rarity-level overrides) ───────────────────────
+// Lets admins set "all Common cards in this server are worth 25 shards, burn
+// for 12, and have drop weight 70" without editing every Common card row.
+// Stored as nullable columns so a partial override (e.g. only worth) is
+// supported — the bot's resolver falls back to the card's own value when a
+// field is null. One row per (guildId, rarity); delete the row to fully revert.
+export const rarityProfilesTable = pgTable("rarity_profiles", {
+  id: serial("id").primaryKey(),
+  guildId: text("guild_id").notNull(),
+  rarity: rarityEnum("rarity").notNull(),
+  worthValue: integer("worth_value"),
+  burnValue: integer("burn_value"),
+  dropWeight: real("drop_weight"),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  updatedBy: text("updated_by"),
+}, (t) => ({
+  guildRarityUniq: uniqueIndex("rarity_profiles_guild_rarity_idx").on(t.guildId, t.rarity),
+}));
+
+export type RarityProfile = typeof rarityProfilesTable.$inferSelect;
+
 export const embedOverridesTable = pgTable("embed_overrides", {
   id: serial("id").primaryKey(),
   guildId: text("guild_id").notNull(),
