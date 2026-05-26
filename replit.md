@@ -184,7 +184,7 @@ Card catching is text-based — when a card spawns, type its name exactly to cat
 |---|---|
 | `/welcome` | Posts the public Welcome / Rules / Commands intro (3 banner-led embeds) |
 | `/help` | Full command reference |
-| `/collection [user]` | Collection with rank, net worth, achievements summary |
+| `/collection [user]` | Paginated collection with rank, net worth, achievements summary |
 | `/rank [user]` | Collector rank and progression |
 | `/info name:<Name>` | Card details, worth, burn value, drop chance |
 | `/list` | Full roster grouped by rarity |

@@ -79,7 +79,7 @@ export async function handleRarityName(interaction: ChatInputCommandInteraction)
     .setColor(view.color)
     .setDescription(
       `Your server's top rarity tier will now appear as **${view.emoji} ${view.label}** ` +
-      `(${hex(view.color)}) in spawn embeds, /info, /list, /catalog, /collection, /inventory, ` +
+      `(${hex(view.color)}) in spawn embeds, /info, /list, /catalog, /collection, ` +
       `packs and trade-ins.\n\n` +
       `Use \`/rarityname reset:true\` any time to revert to the default ${RARITY_EMOJI.mythic} **${RARITY_LABELS.mythic}**.`,
     );

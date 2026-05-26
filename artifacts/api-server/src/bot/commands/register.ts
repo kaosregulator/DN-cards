@@ -28,8 +28,6 @@ export function buildCommands() {
     // ── User Commands ─────────────────────────────────────────────────────────
     cmd("collection", "(User) View your DN Cards collection", s => s
       .addUserOption(o => o.setName("user").setDescription("View another member's collection"))),
-    cmd("inventory", "(User) Flat alphabetical list of every card you own", s => s
-      .addUserOption(o => o.setName("user").setDescription("View another member's inventory"))),
 
     cmd("rank", "(User) Your collector rank and progression", s => s
       .addUserOption(o => o.setName("user").setDescription("View another member's rank"))),
@@ -203,7 +201,7 @@ export function buildCommands() {
 }
 
 export const USER_COMMAND_NAMES = new Set([
-  "collection", "inventory", "rank", "info", "list", "catalog", "top",
+  "collection", "rank", "info", "list", "catalog", "top",
   "burn", "shards", "trade", "trades", "accept", "decline", "help", "welcome",
   "daily", "pack", "packstats", "achievements", "wishlist", "gift", "tradein", "tradehistory",
 ]);

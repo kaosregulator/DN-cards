@@ -277,69 +277,6 @@ export async function handleUserCommand(
     return;
   }
 
-  // ── /inventory ───────────────────────────────────────────────────────────────
-  // Flat alphabetical listing of every owned card. Same data source as
-  // /collection (getUserCollection) so cross-checks should always match.
-  if (sub === "inventory") {
-    const target = interaction.options.getUser("user") ?? interaction.user;
-    const items = await getUserCollection(guildId, target.id);
-
-    if (items.length === 0) {
-      await interaction.editReply(
-        target.id === interaction.user.id
-          ? "Your inventory is empty — no cards caught yet."
-          : `**${target.username}**'s inventory is empty.`,
-      );
-      return;
-    }
-
-    const sorted = [...items].sort((a, b) => a.name.localeCompare(b.name));
-    const invSettings = await getOrCreateGuildSettings(guildId);
-    const totalCards = sorted.reduce((s, i) => s + i.count + i.shinyCount, 0);
-    const totalShinies = sorted.reduce((s, i) => s + i.shinyCount, 0);
-
-    const lines = sorted.map(i => {
-      const badges = [i.isLimitedEdition ? "💎" : "", i.isEventExclusive ? "🎆" : ""].filter(Boolean).join("");
-      const shinyTag = i.shinyCount > 0 ? ` ${SHINY_EMOJI}×${i.shinyCount}` : "";
-      return `${rarityEmoji(i.rarity as Rarity, invSettings)} ${badges}**${i.name}** ×${i.count}${shinyTag}`;
-    });
-
-    // Pack lines into 1024-char fields (Discord limit). Up to 25 fields/embed.
-    const fields: { name: string; value: string; inline: false }[] = [];
-    let chunk = "";
-    let part = 1;
-    let consumed = 0;
-    for (const line of lines) {
-      if (chunk && (chunk + "\n" + line).length > 1000) {
-        fields.push({ name: part === 1 ? "📋 All Cards" : `📋 (cont. ${part})`, value: chunk, inline: false });
-        chunk = line;
-        part++;
-      } else {
-        chunk = chunk ? `${chunk}\n${line}` : line;
-      }
-      consumed++;
-      if (fields.length >= 24) break;
-    }
-    if (chunk && fields.length < 25) {
-      fields.push({ name: part === 1 ? "📋 All Cards" : `📋 (cont. ${part})`, value: chunk, inline: false });
-    }
-    const inventoryOverflow = consumed < lines.length;
-
-    const embed = new EmbedBuilder()
-      .setTitle(`📦 ${target.username}'s Inventory`)
-      .setColor(0x5865f2)
-      .setDescription(
-        `**${sorted.length}** unique · **${totalCards}** total` +
-        (totalShinies > 0 ? ` · ${SHINY_EMOJI}**${totalShinies}** shiny` : "") +
-        (inventoryOverflow ? `\n_Showing first ${consumed} of ${lines.length} — use \`/catalog\` to browse the rest._` : ""),
-      )
-      .addFields(fields)
-      .setThumbnail(target.displayAvatarURL());
-
-    await interaction.editReply({ embeds: [embed] });
-    return;
-  }
-
   // ── /rank ─────────────────────────────────────────────────────────────────────
   if (sub === "rank") {
     const target = interaction.options.getUser("user") ?? interaction.user;

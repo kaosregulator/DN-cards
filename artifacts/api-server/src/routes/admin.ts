@@ -3,6 +3,13 @@ import { db, cardsTable } from "@workspace/db";
 import { eq, sql, and } from "drizzle-orm";
 import { z } from "zod/v4";
 import { requireDashboardAuth } from "../middlewares/dashboard-auth.js";
+// The bot keeps a 5s in-memory cache of all cards (hot path for spawns,
+// catch embeds, /info, etc.). Dashboard writes go through Drizzle directly
+// and so bypass the bot's own addCard/updateCard helpers that would have
+// invalidated it — we must invalidate explicitly after every mutation here,
+// otherwise other guilds keep serving the pre-edit rarity/name/etc until
+// the TTL rolls over.
+import { invalidateCardCache } from "../bot/db.js";
 
 const router: IRouter = Router();
 
@@ -70,6 +77,7 @@ router.post("/cards", async (req, res) => {
       inPacks: body.inPacks ?? true,
       isArchived: body.isArchived ?? false,
     }).returning();
+    invalidateCardCache();
     res.status(201).json({ card: created });
   } catch (err: any) {
     if (err?.code === "23505") {
@@ -127,6 +135,7 @@ router.patch("/cards/:id", async (req, res) => {
       res.status(404).json({ error: "Card not found" });
       return;
     }
+    invalidateCardCache();
     res.json({ card: result.row });
   } catch (err: any) {
     if (err?.code === "23505") {
@@ -166,6 +175,7 @@ router.post("/cards/:id/duplicate", async (req, res) => {
       const [created] = await db.insert(cardsTable)
         .values({ ...rest, name: newName, isArchived: false })
         .returning();
+      invalidateCardCache();
       res.status(201).json({ card: created });
       return;
     } catch (err: any) {
@@ -194,6 +204,7 @@ router.delete("/cards/:id", async (req, res) => {
     return;
   }
   await db.delete(cardsTable).where(eq(cardsTable.id, params.id));
+  invalidateCardCache();
   res.json({ deleted: true, id: params.id });
 });
 
