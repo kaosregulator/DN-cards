@@ -5,22 +5,25 @@ import adminRouter from "./admin";
 import storageRouter from "./storage";
 import authRouter from "./auth";
 import dashboardUsersRouter from "./dashboard-users";
-import embedsRouter from "./embeds";
-import rarityProfilesRouter from "./rarity-profiles";
-import customRaritiesRouter from "./custom-rarities";
-import cardRarityOverridesRouter from "./card-rarity-overrides";
+import newsRouter from "./news";
+import suggestionsRouter from "./suggestions";
 
 const router: IRouter = Router();
 
 router.use(healthRouter);
 router.use("/auth", authRouter);
 router.use("/dashboard/users", dashboardUsersRouter);
-router.use("/embeds", embedsRouter);
-router.use("/rarity-profiles", rarityProfilesRouter);
-router.use("/custom-rarities", customRaritiesRouter);
-router.use("/card-rarity-overrides", cardRarityOverridesRouter);
 router.use("/admin", adminRouter);
 router.use(storageRouter);
+router.use(newsRouter);
+router.use(suggestionsRouter);
 router.use(dashboardRouter);
+
+// NOTE: The /embeds, /rarity-profiles, /custom-rarities, /card-rarity-overrides
+// routers used to live here. They were unmounted in May 2026 as part of the
+// website/Discord separation — those endpoints wrote per-guild gameplay
+// configuration that now belongs exclusively to the Discord bot. The router
+// files remain in this folder for one release in case we need a quick
+// rollback, but nothing routes to them and they are not imported.
 
 export default router;

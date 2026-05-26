@@ -22,7 +22,13 @@ DN Cards is DarkNight's collectible military trading card game for the Roblox + 
 
 ## Where things live
 
-- DB schema: `lib/db/src/schema/cards.ts`
+- DB schema: `lib/db/src/schema/cards.ts` (cards, collections, guilds, packs, daily, achievements, embeds, rarity profiles, custom rarities, dashboard users, card display overrides)
+- News schema: `lib/db/src/schema/news.ts`
+- Suggestions schema: `lib/db/src/schema/suggestions.ts`
+- Website-only admin route: `artifacts/api-server/src/routes/admin.ts` (presentation-only — `card_display_overrides` upserts)
+- Public roster route (merges overrides): `artifacts/api-server/src/routes/dashboard.ts` `GET /cards`
+- News route: `artifacts/api-server/src/routes/news.ts`
+- Suggestions route: `artifacts/api-server/src/routes/suggestions.ts`
 - Bot entry: `artifacts/api-server/src/bot/index.ts`
 - Spawn manager: `artifacts/api-server/src/bot/spawn-manager.ts`
 - Admin commands: `artifacts/api-server/src/bot/commands/admin.ts`
@@ -37,6 +43,72 @@ DN Cards is DarkNight's collectible military trading card game for the Roblox + 
 - Card/rank data: `artifacts/api-server/src/bot/cards-data.ts`
 - DB helpers: `artifacts/api-server/src/bot/db.ts`
 - Slash command registration: `artifacts/api-server/src/bot/commands/register.ts`
+
+### Website vs Discord responsibilities
+
+The website and Discord bot share **one database**, but each owns a distinct slice of it.
+
+**Discord = source of truth for ALL gameplay.** The bot owns every value that
+affects spawning, catching, packs, trades, burning, events, and economy:
+`cards` (name, rarity, worth, burn, drop weight, image, description, limited
+/event flags, max copies, packs/droppable/archived state), `rarity_profiles`,
+`custom_rarities`, `card_rarity_overrides`, `embed_overrides`, `guild_settings`,
+`card_events`, `collections`, `user_currency`, `trades`, `achievements_unlocked`,
+`packs_*`, `daily_*`. Only the bot commands mutate these. The website is
+**read-only** against `cards` and never touches the others.
+
+**Website = presentation overrides + its own content.** The website owns:
+- `card_display_overrides` — per-card display name/image/description/flavor,
+  plus `hidden_from_site`, `featured`, `sort_weight`. Discord never reads it.
+- `news_posts`, `suggestions` — website-only content. Discord never reads it.
+- `dashboard_users`, `setup_tokens` — website auth.
+
+API routes for the now Discord-owned per-guild config (`/api/embeds`,
+`/api/rarity-profiles`, `/api/custom-rarities`, `/api/card-rarity-overrides`)
+were unmounted in May 2026; the router files remain on disk for one release
+in case a quick restore is needed but are not imported.
+
+### Card Display Overrides (Website)
+- `/admin` (the "Card Manager" page) edits `card_display_overrides` **only**.
+  Gameplay values are shown read-only in a side panel with a "change this in
+  Discord" hint.
+- Public roster (`/api/cards` via `dashboard.ts`) LEFT JOINs the overrides,
+  applies them before responding, filters `hiddenFromSite`, and sorts
+  `featured` → `sortWeight` desc → `id` asc.
+- Storage: `card_display_overrides` — one row per `cardId` (PK FK→cards.id ON
+  DELETE CASCADE). All text override columns are nullable; null = fall back
+  to the card's gameplay value. Single global table (no `guildId`) because
+  the website is one public showcase.
+- API: `GET /api/admin/cards` returns base+override join, `PUT
+  /api/admin/cards/:id/display` upserts the override, `DELETE
+  /api/admin/cards/:id/display` clears it. Behind `requireDashboardAuth`.
+  The router does NOT call the bot's card-cache invalidation because nothing
+  on `cards` is mutated.
+
+### News (Website)
+- Public: `/news` list, `/news/:slug` detail. Reads `news_posts WHERE
+  published_at IS NOT NULL` ordered by `pinned DESC, published_at DESC`.
+- Admin: `/admin/news` table + editor. Routes `POST/PATCH/DELETE
+  /api/admin/news[/:id]`, `GET /api/admin/news` (includes drafts).
+- Storage: `news_posts` (slug UNIQUE, title, bodyMd, imageUrl, pinned,
+  publishedAt nullable, authorUserId FK→dashboard_users, timestamps).
+- Body is plain text + linebreaks today; markdown rendering can be added
+  without a schema change.
+
+### Suggestions (Website)
+- Public form at `/suggestions`, no auth. Categories: bug_report,
+  card_correction, card_suggestion, event_suggestion, website_feedback.
+- Submission protections: honeypot field `website` must be empty; body
+  20–4000 chars; max 3 URLs; per-ip-hash rate limit 5/10min and 20/day; 1h
+  dedupe on `(ipHash, title)`.
+- Privacy: `ipHash = sha256(ip + SESSION_SECRET)` is stored for rate limiting
+  only and is **never returned by any API response**. When `anonymous=true`
+  the submitter's Discord ID and username are also stripped from admin
+  responses. When `anonymous=false` only `submitterDiscordUsername` is
+  returned (never the ID).
+- Admin: `/admin/suggestions` queue. `GET /api/admin/suggestions[?status=]`,
+  `PATCH /api/admin/suggestions/:id` (status + adminNotes). Setting status to
+  resolved/rejected/duplicate stamps `resolvedAt` + `resolvedBy`.
 
 ### Embed Customization (Dashboard)
 - `/admin/embeds` page customizes all 8 bot embeds per guild: spawn, claimed, daily, pack, trade, welcome, rules, commands.

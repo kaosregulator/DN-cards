@@ -1,5 +1,5 @@
 import { Router, type IRouter, type Request, type Response } from "express";
-import { db, cardsTable, collectionsTable, userCurrencyTable, achievementsTable } from "@workspace/db";
+import { db, cardsTable, cardDisplayOverridesTable, collectionsTable, userCurrencyTable, achievementsTable } from "@workspace/db";
 import { and, eq, sql, desc } from "drizzle-orm";
 import { z } from "zod/v4";
 import { ACHIEVEMENTS } from "../bot/achievements";
@@ -22,11 +22,38 @@ function parseParams<T extends z.ZodTypeAny>(schema: T, req: Request, res: Respo
 }
 
 // ── All cards (the public roster — excludes archived) ────────────────────────
+// Reads `cards` LEFT JOIN `card_display_overrides`. The website applies the
+// overrides BEFORE returning so the client never sees the raw gameplay name /
+// image / description when an admin has set a display alias. Overrides also
+// control website visibility (hiddenFromSite) and ordering (featured +
+// sortWeight + id as final tiebreaker). Discord reads `cards` directly and is
+// unaffected by anything in this endpoint.
 router.get("/cards", async (_req, res) => {
-  const rows = await db.select().from(cardsTable)
+  const rows = await db
+    .select({ card: cardsTable, override: cardDisplayOverridesTable })
+    .from(cardsTable)
+    .leftJoin(cardDisplayOverridesTable, eq(cardDisplayOverridesTable.cardId, cardsTable.id))
     .where(eq(cardsTable.isArchived, false))
     .orderBy(cardsTable.id);
-  res.json({ cards: rows });
+
+  const visible = rows
+    .filter(r => !(r.override?.hiddenFromSite ?? false))
+    .map(r => ({
+      ...r.card,
+      name: r.override?.displayName ?? r.card.name,
+      description: r.override?.displayDescription ?? r.card.description,
+      imageUrl: r.override?.displayImageUrl ?? r.card.imageUrl,
+      flavor: r.override?.flavorText ?? r.card.flavor,
+      featured: r.override?.featured ?? false,
+      sortWeight: r.override?.sortWeight ?? 0,
+    }))
+    .sort((a, b) => {
+      if (a.featured !== b.featured) return a.featured ? -1 : 1;
+      if (a.sortWeight !== b.sortWeight) return b.sortWeight - a.sortWeight;
+      return a.id - b.id;
+    });
+
+  res.json({ cards: visible });
 });
 
 // ── Guild leaderboard (top 25 by net worth) ───────────────────────────────────

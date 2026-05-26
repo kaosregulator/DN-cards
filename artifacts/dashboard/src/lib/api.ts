@@ -87,7 +87,7 @@ export async function adminGet<T>(path: string): Promise<T> {
   return res.json() as Promise<T>;
 }
 
-export async function adminSend<T>(method: "POST" | "PATCH" | "DELETE", path: string, body?: unknown): Promise<T> {
+export async function adminSend<T>(method: "POST" | "PUT" | "PATCH" | "DELETE", path: string, body?: unknown): Promise<T> {
   const res = await fetch(path, {
     method,
     headers: adminHeaders(),

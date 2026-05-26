@@ -9,11 +9,12 @@ export function Nav() {
     { href: "/", label: "Roster", show: true },
     { href: "/leaderboard", label: "Leaderboard", show: true },
     { href: "/events", label: "Events", show: true },
+    { href: "/news", label: "News", show: true },
+    { href: "/suggestions", label: "Suggestions", show: true },
     { href: "/profile", label: "Profile", show: true },
     { href: "/admin", label: "Admin", show: !!user },
-    { href: "/admin/embeds", label: "Embeds", show: !!user },
-    { href: "/admin/rarities", label: "Rarities", show: !!user },
-    { href: "/admin/custom-rarities", label: "Custom Tiers", show: !!user },
+    { href: "/admin/news", label: "News Admin", show: !!user },
+    { href: "/admin/suggestions", label: "Suggestions Admin", show: !!user },
     { href: "/admin/users", label: "Users", show: isOwner },
   ];
 

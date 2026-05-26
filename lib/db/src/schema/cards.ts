@@ -433,3 +433,39 @@ export const embedOverridesTable = pgTable("embed_overrides", {
 }));
 
 export type EmbedOverride = typeof embedOverridesTable.$inferSelect;
+
+// ── Card Display Overrides (website presentation only) ───────────────────────
+// One row per card. The website (and ONLY the website) reads these to override
+// the card's roster/news/events display — without touching the `cards` row
+// that Discord uses as its source of truth. Any null column means "fall back
+// to the card's own value". `hidden_from_site` removes the card from public
+// website lists; `featured` + `sort_weight` control website ordering.
+//
+// Discord never reads this table. Admins editing here are guaranteed to NOT
+// change any gameplay value (rarity, worth, burn, dropWeight, etc.) — those
+// are not present here on purpose.
+//
+// Single global table (no guild_id): the website is one public showcase of
+// the shared card pool, not per-server.
+export const cardDisplayOverridesTable = pgTable("card_display_overrides", {
+  cardId: integer("card_id")
+    .primaryKey()
+    .references(() => cardsTable.id, { onDelete: "cascade" }),
+  displayName: text("display_name"),
+  displayImageUrl: text("display_image_url"),
+  displayDescription: text("display_description"),
+  flavorText: text("flavor_text"),
+  hiddenFromSite: boolean("hidden_from_site").notNull().default(false),
+  featured: boolean("featured").notNull().default(false),
+  sortWeight: integer("sort_weight").notNull().default(0),
+  updatedBy: integer("updated_by"),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const upsertCardDisplayOverrideSchema = createInsertSchema(cardDisplayOverridesTable).omit({
+  cardId: true,
+  updatedAt: true,
+  updatedBy: true,
+}).partial();
+export type UpsertCardDisplayOverride = z.infer<typeof upsertCardDisplayOverrideSchema>;
+export type CardDisplayOverride = typeof cardDisplayOverridesTable.$inferSelect;
