@@ -45,6 +45,9 @@ interface ActiveSpawn {
   // window, then award to the message with the smallest server timestamp.
   pending: PendingCatch[];
   resolveTimer: ReturnType<typeof setTimeout> | null;
+  // Set once the winner clicks Burn / Keep / Trade so the auto-keep timer
+  // doesn't overwrite their actual decision 90s later.
+  decisionMade: boolean;
 }
 
 // After a spawn is caught, keep its entry around for a short cooldown so
@@ -217,6 +220,7 @@ async function doSingleSpawn(guildId: string, forcedCardId?: number, isForced = 
     catchMode: mode,
     pending: [],
     resolveTimer: null,
+    decisionMade: false,
   };
 
   let guildSpawns = activeSpawns.get(guildId);
@@ -341,13 +345,19 @@ async function awardSpawn(guildId: string, spawnId: string, userId: string): Pro
   } catch { /* deleted */ }
 
   // Auto-keep after 90s if no button pressed — edit the spawn embed in place.
+  // Bail out if the winner already clicked Burn/Keep/Trade themselves, or
+  // we'd overwrite their actual decision with a misleading "KEPT" embed.
   setTimeout(async () => {
+    const gs = activeSpawns.get(guildId);
+    const current = gs?.get(spawnId);
+    if (current?.decisionMade) return;
     try {
       const keptEmbed = await buildPostDecisionEmbed(spawn.cardId, userId, "kept", guildId);
       if (keptEmbed) await spawn.message.edit({
         embeds: [keptEmbed],
         components: [buildDisabledDecisionRow(guildId, userId, spawn.cardId, spawn.burnValue, "keep")],
       });
+      if (current) current.decisionMade = true;
     } catch { /* deleted */ }
   }, 90_000);
 
@@ -458,6 +468,21 @@ function buildClaimRow(guildId: string, spawnId: string): ActionRowBuilder<Butto
 export function getActiveSpawns(guildId: string): ActiveSpawn[] {
   const gs = activeSpawns.get(guildId);
   return gs ? [...gs.values()] : [];
+}
+
+// Marks the winner's Burn/Keep/Trade decision so the auto-keep timer
+// won't overwrite the message with a stale "KEPT" embed 90s later.
+// Looks up the spawn by (guildId, cardId, userId) since the button handler
+// doesn't carry the spawnId. Safe no-op if the entry already lingered out.
+export function markDecisionMade(guildId: string, userId: string, cardId: number): void {
+  const gs = activeSpawns.get(guildId);
+  if (!gs) return;
+  for (const spawn of gs.values()) {
+    if (spawn.cardId === cardId && spawn.winnerUserId === userId) {
+      spawn.decisionMade = true;
+      return;
+    }
+  }
 }
 
 export async function initAllGuilds(client: Client) {

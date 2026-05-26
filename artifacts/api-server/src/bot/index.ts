@@ -1,7 +1,7 @@
 import { Client, GatewayIntentBits, Partials, Events, REST, Routes, type Interaction } from "discord.js";
 import { logger } from "../lib/logger.js";
 import { burnCard, getOrCreateCurrency } from "./db.js";
-import { initSpawnManager, initAllGuilds, handleCatchAttempt, handleClaimButtonClick, scheduleNextSpawn, buildPostDecisionEmbed, buildDisabledDecisionRow } from "./spawn-manager.js";
+import { initSpawnManager, initAllGuilds, handleCatchAttempt, handleClaimButtonClick, scheduleNextSpawn, buildPostDecisionEmbed, buildDisabledDecisionRow, markDecisionMade } from "./spawn-manager.js";
 import { handleConfigButton, handleConfigSelect, handleRatesSelect, handlePacksSelect } from "./commands/config-panel.js";
 import { handleSetChannelsPick, handleSetChannelsApply } from "./commands/setchannels.js";
 import { handleAdminHubButton, handleAdminHubModal } from "./commands/admin-hub.js";
@@ -223,6 +223,10 @@ export async function startBot() {
           const card = allCards.find(c => c.id === cardId);
           const cardName = card?.name ?? "the card";
           const burnValue = card?.burnValue ?? 0;
+
+          // Mark decision FIRST so the 90s auto-keep timer can't race ahead
+          // and overwrite this embed while we're still computing the reply.
+          markDecisionMade(guildId, userId, cardId);
 
           if (action === "catch_burn") {
             const result = await burnCard(guildId, userId, cardId, 1, { shiny: isShinyCatch });
