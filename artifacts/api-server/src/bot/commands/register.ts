@@ -301,7 +301,7 @@ export function buildCommands() {
             { name: "rarityColor: legendary",  value: "rarityColor.legendary" },
             { name: "rarityColor: mythic",     value: "rarityColor.mythic" },
           ))
-        .addStringOption(o => o.setName("value").setDescription("Value — hex like #ff2d92 for colors, true/false for toggles, text for title/footer (empty string clears)").setRequired(true).setMaxLength(1000)))
+        .addStringOption(o => o.setName("value").setDescription("Value — hex for colors, true/false for toggles, text for title/footer (empty clears)").setRequired(true).setMaxLength(1000)))
       .addSubcommand(sc => sc.setName("reset").setDescription("Reset one field (or the whole embed if no field given)")
         .addStringOption(o => o.setName("key").setDescription("Which embed").setRequired(true)
           .addChoices(
