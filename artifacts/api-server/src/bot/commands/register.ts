@@ -40,7 +40,7 @@ export function buildCommands() {
     cmd("list", "(User) Full DN Cards roster grouped by rarity", s => s),
 
     cmd("catalog", "(User) Browse cards by category — see what you own and what's missing", s => s
-      .addStringOption(o => o.setName("category").setDescription("Which group to view").setRequired(true)
+      .addStringOption(o => o.setName("category").setDescription("Optional: jump straight to a category (default: overview)")
         .addChoices(
           { name: "🔮 Mythic", value: "mythic" },
           { name: "🟡 Legendary", value: "legendary" },

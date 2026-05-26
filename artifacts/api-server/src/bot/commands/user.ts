@@ -24,6 +24,27 @@ import { handleTradein } from "./tradein.js";
 import { handleWishlist } from "./wishlist.js";
 import { handleWelcome } from "./welcome.js";
 import { checkAchievements, formatUnlockLine } from "../achievements.js";
+import { runPaginator, type PaginatorView } from "../components/paginator.js";
+import { chunkLines } from "../components/field-chunker.js";
+
+// Display order for rarity drill-downs (rarest → most common). Used by the
+// paginated /collection, /list, and /catalog views.
+const RARITY_ORDER: Rarity[] = ["mythic", "rare", "legendary", "epic", "uncommon", "common"];
+
+// Pack pre-chunked fields into multiple embed screens. Returns at least one
+// screen even when there are zero fields (so the embed header still renders).
+function buildEmbedScreens(
+  baseEmbed: () => EmbedBuilder,
+  fields: { name: string; value: string; inline: false }[],
+  fieldsPerScreen = 24,
+): EmbedBuilder[] {
+  if (fields.length === 0) return [baseEmbed()];
+  const screens: EmbedBuilder[] = [];
+  for (let i = 0; i < fields.length; i += fieldsPerScreen) {
+    screens.push(baseEmbed().addFields(fields.slice(i, i + fieldsPerScreen)));
+  }
+  return screens;
+}
 
 export async function handleUserCommand(
   interaction: ChatInputCommandInteraction,
@@ -36,6 +57,8 @@ export async function handleUserCommand(
   const guildId = interaction.guild.id;
 
   // ── /collection ──────────────────────────────────────────────────────────────
+  // Interactive overview → drill-down view (rarity / shinies / limited / event).
+  // Locked to the invoking user; 5-min idle timeout. See components/paginator.ts.
   if (sub === "collection") {
     const target = interaction.options.getUser("user") ?? interaction.user;
     const items = await getUserCollection(guildId, target.id);
@@ -49,13 +72,10 @@ export async function handleUserCommand(
       return;
     }
 
-    const rarityOrder: Rarity[] = ["mythic", "legendary", "epic", "rare", "uncommon", "common"];
     const settings = await getOrCreateGuildSettings(guildId);
-    const byRarity: Record<string, typeof items> = {};
-    for (const item of items) {
-      if (!byRarity[item.rarity]) byRarity[item.rarity] = [];
-      byRarity[item.rarity].push(item);
-    }
+    const byRarity = new Map<Rarity, typeof items>();
+    for (const r of RARITY_ORDER) byRarity.set(r, []);
+    for (const item of items) byRarity.get(item.rarity as Rarity)?.push(item);
 
     const totalCards = items.reduce((s, i) => s + i.count + i.shinyCount, 0);
     const totalShinies = items.reduce((s, i) => s + i.shinyCount, 0);
@@ -63,72 +83,170 @@ export async function handleUserCommand(
       (s, i) => s + i.worthValue * (i.count + i.shinyCount * SHINY_MULTIPLIER),
       0,
     );
-    const { unique } = await getUserCardCount(guildId, target.id);
+    const unique = items.length;
     const rank = getCollectorRank(unique);
     const nextRank = getNextRank(unique);
     const rankProgress = nextRank
-      ? `${rank.emoji} ${rank.name} → ${nextRank.emoji} ${nextRank.name} (${unique}/${nextRank.min})`
-      : `${rank.emoji} ${rank.name} *(MAX RANK)*`;
+      ? `${rank.emoji} **${rank.name}** → ${nextRank.emoji} ${nextRank.name}  ·  ${unique}/${nextRank.min} unique (${nextRank.min - unique} to go)`
+      : `${rank.emoji} **${rank.name}**  ·  *MAX RANK*`;
 
-    // Achievements summary — unlocked count + emoji strip of the most recently
-    // unlocked (newest first, by unlockedAt). Two queries (count + recents) is
-    // fine since /collection isn't hot.
-    const [unlockedKeys, recentKeys] = await Promise.all([
+    // Leaderboard placement (by net worth). Pull a wide slice so almost any
+    // active member finds themselves; if not present we say "unranked".
+    const [unlockedKeys, recentKeys, worthBoard] = await Promise.all([
       getUnlockedKeys(guildId, target.id),
       getRecentUnlocks(guildId, target.id, 6),
+      getLeaderboard(guildId, "worth", 1000),
     ]);
+    const lbIdx = worthBoard.findIndex(r => r.userId === target.id);
+    const lbLine = lbIdx >= 0
+      ? `**🏅 Leaderboard:** #${lbIdx + 1} of ${worthBoard.length} by net worth`
+      : `**🏅 Leaderboard:** unranked`;
     const achStrip = recentKeys.length > 0
       ? recentKeys.map(k => getAchievement(k)?.emoji ?? "•").join(" ")
       : "_none yet_";
     const achLine = `**🏆 Achievements:** ${unlockedKeys.size} / ${ACHIEVEMENTS.length} · ${achStrip}`;
 
-    // Discord caps field values at 1024 chars; large collections overflow
-    // a single per-rarity field and the embed fails to render — leaving the
-    // user thinking their collection vanished. Chunk into ≤1000-char fields.
-    const fields: { name: string; value: string; inline: false }[] = [];
-    let collectionOverflow = false;
-    for (const r of rarityOrder) {
-      const group = byRarity[r];
-      if (!group?.length) continue;
-      const baseName = `${rarityEmoji(r, settings)} ${rarityLabel(r, settings)} (${group.length} unique)`;
-      const lines = group.map(i => {
-        const badges = [i.isLimitedEdition ? "💎" : "", i.isEventExclusive ? "🎆" : ""].filter(Boolean).join("");
-        const shinyTag = i.shinyCount > 0 ? ` · ${SHINY_EMOJI}×${i.shinyCount}` : "";
-        return `${badges}**${i.name}** ×${i.count}${shinyTag}`;
-      });
-      let chunk = "";
-      let part = 0;
-      for (const line of lines) {
-        if (chunk && (chunk + "\n" + line).length > 1000) {
-          if (fields.length >= 25) { collectionOverflow = true; break; }
-          fields.push({ name: part === 0 ? baseName : `${baseName} (cont.)`, value: chunk, inline: false });
-          chunk = line; part++;
-        } else {
-          chunk = chunk ? `${chunk}\n${line}` : line;
-        }
-      }
-      if (chunk && fields.length < 25) {
-        fields.push({ name: part === 0 ? baseName : `${baseName} (cont.)`, value: chunk, inline: false });
-      } else if (chunk) {
-        collectionOverflow = true;
-      }
-      if (collectionOverflow) break;
-    }
-
-    const embed = new EmbedBuilder()
+    // ── Overview screen ──
+    const overview = new EmbedBuilder()
       .setTitle(`🃏 ${target.username}'s DN Collection`)
       .setColor(0x5865f2)
+      .setThumbnail(target.displayAvatarURL())
       .setDescription(
-        `**Rank:** ${rankProgress}\n` +
-        `**Cards:** ${unique} unique · ${totalCards} total` +
-        (totalShinies > 0 ? ` · ${SHINY_EMOJI}**${totalShinies}** shiny` : "") + `\n` +
-        `**Net Worth:** 💠 ${netWorth.toLocaleString()} shards\n` +
-        achLine +
-        (collectionOverflow ? `\n\n_Collection too large to show fully — use \`/inventory\` or \`/catalog\` to see the rest._` : ""),
+        rankProgress + "\n" +
+        `**🃏 Cards:** ${unique} unique · ${totalCards} total` +
+        (totalShinies > 0 ? ` · ${SHINY_EMOJI} **${totalShinies}** shiny` : "") + "\n" +
+        `**💠 Net Worth:** ${netWorth.toLocaleString()} shards\n` +
+        lbLine + "\n" +
+        achLine,
       )
-      .addFields(fields)
-      .setThumbnail(target.displayAvatarURL());
-    await interaction.editReply({ embeds: [embed] });
+      .setFooter({ text: "Use the menu below to drill into rarities, shinies, limited & event cards" });
+
+    const views: PaginatorView[] = [{
+      key: "overview",
+      label: "Overview",
+      emoji: "🏠",
+      description: "Rank, totals, leaderboard & achievements",
+      screens: [overview],
+    }];
+
+    // ── Shinies view ──
+    if (totalShinies > 0) {
+      const shinyItems = items.filter(i => i.shinyCount > 0);
+      const shinyLines: string[] = [];
+      for (const r of RARITY_ORDER) {
+        const inR = shinyItems.filter(i => (i.rarity as Rarity) === r);
+        if (inR.length === 0) continue;
+        shinyLines.push(`__${rarityEmoji(r, settings)} ${rarityLabel(r, settings)}__`);
+        for (const i of inR) shinyLines.push(`${SHINY_EMOJI} **${i.name}** ×${i.shinyCount}`);
+      }
+      const shinyWorth = shinyItems.reduce(
+        (s, i) => s + i.shinyCount * i.worthValue * SHINY_MULTIPLIER, 0,
+      );
+      const baseShiny = () => new EmbedBuilder()
+        .setTitle(`${SHINY_EMOJI} ${target.username}'s Shinies`)
+        .setColor(0xf5c518)
+        .setThumbnail(target.displayAvatarURL())
+        .setDescription(
+          `**${totalShinies}** shiny ${totalShinies === 1 ? "copy" : "copies"} across **${shinyItems.length}** card${shinyItems.length === 1 ? "" : "s"}\n` +
+          `Worth **💠 ${shinyWorth.toLocaleString()}** at ${SHINY_MULTIPLIER}× multiplier`,
+        );
+      const { fields } = chunkLines(shinyLines, { baseName: "Shinies", maxFields: 1000 });
+      views.push({
+        key: "shinies",
+        label: "Shinies",
+        emoji: "✨",
+        description: `${totalShinies} shiny ${totalShinies === 1 ? "copy" : "copies"}`,
+        screens: buildEmbedScreens(baseShiny, fields),
+      });
+    }
+
+    // ── Per-rarity views (only rarities user actually owns) ──
+    for (const r of RARITY_ORDER) {
+      const group = byRarity.get(r);
+      if (!group || group.length === 0) continue;
+      const groupTotal = group.reduce((s, i) => s + i.count + i.shinyCount, 0);
+      const groupShinies = group.reduce((s, i) => s + i.shinyCount, 0);
+      const lines = group
+        .slice()
+        .sort((a, b) => b.worthValue - a.worthValue || a.name.localeCompare(b.name))
+        .map(i => {
+          const badges = [i.isLimitedEdition ? "💎" : "", i.isEventExclusive ? "🎆" : ""].filter(Boolean).join("");
+          const shinyTag = i.shinyCount > 0 ? ` · ${SHINY_EMOJI}×${i.shinyCount}` : "";
+          return `${badges}**${i.name}** ×${i.count}${shinyTag}`;
+        });
+      const baseRarity = () => new EmbedBuilder()
+        .setTitle(`${rarityEmoji(r, settings)} ${rarityLabel(r, settings)} — ${target.username}`)
+        .setColor(rarityColor(r, settings))
+        .setThumbnail(target.displayAvatarURL())
+        .setDescription(
+          `**${group.length}** unique · **${groupTotal}** total` +
+          (groupShinies > 0 ? ` · ${SHINY_EMOJI}**${groupShinies}** shiny` : ""),
+        );
+      const { fields } = chunkLines(lines, { baseName: "Cards", maxFields: 1000 });
+      views.push({
+        key: `rarity:${r}`,
+        label: rarityLabel(r, settings),
+        emoji: rarityEmoji(r, settings),
+        description: `${group.length} unique · ${groupTotal} total`,
+        screens: buildEmbedScreens(baseRarity, fields),
+      });
+    }
+
+    // ── Limited view ──
+    const limitedItems = items.filter(i => i.isLimitedEdition);
+    if (limitedItems.length > 0) {
+      const lines = limitedItems
+        .slice()
+        .sort((a, b) => b.worthValue - a.worthValue || a.name.localeCompare(b.name))
+        .map(i => {
+          const shinyTag = i.shinyCount > 0 ? ` · ${SHINY_EMOJI}×${i.shinyCount}` : "";
+          return `${rarityEmoji(i.rarity as Rarity, settings)} **${i.name}** ×${i.count}${shinyTag}`;
+        });
+      const baseLim = () => new EmbedBuilder()
+        .setTitle(`💎 ${target.username}'s Limited Edition`)
+        .setColor(0x00d4ff)
+        .setThumbnail(target.displayAvatarURL())
+        .setDescription(`**${limitedItems.length}** unique limited-edition card${limitedItems.length === 1 ? "" : "s"}`);
+      const { fields } = chunkLines(lines, { baseName: "Limited", maxFields: 1000 });
+      views.push({
+        key: "limited",
+        label: "Limited",
+        emoji: "💎",
+        description: `${limitedItems.length} limited card${limitedItems.length === 1 ? "" : "s"}`,
+        screens: buildEmbedScreens(baseLim, fields),
+      });
+    }
+
+    // ── Event view ──
+    const eventItems = items.filter(i => i.isEventExclusive);
+    if (eventItems.length > 0) {
+      const lines = eventItems
+        .slice()
+        .sort((a, b) => b.worthValue - a.worthValue || a.name.localeCompare(b.name))
+        .map(i => {
+          const shinyTag = i.shinyCount > 0 ? ` · ${SHINY_EMOJI}×${i.shinyCount}` : "";
+          return `${rarityEmoji(i.rarity as Rarity, settings)} **${i.name}** ×${i.count}${shinyTag}`;
+        });
+      const baseEv = () => new EmbedBuilder()
+        .setTitle(`🎆 ${target.username}'s Event Exclusives`)
+        .setColor(0xe84393)
+        .setThumbnail(target.displayAvatarURL())
+        .setDescription(`**${eventItems.length}** unique event-exclusive card${eventItems.length === 1 ? "" : "s"}`);
+      const { fields } = chunkLines(lines, { baseName: "Event", maxFields: 1000 });
+      views.push({
+        key: "event",
+        label: "Event",
+        emoji: "🎆",
+        description: `${eventItems.length} event card${eventItems.length === 1 ? "" : "s"}`,
+        screens: buildEmbedScreens(baseEv, fields),
+      });
+    }
+
+    await runPaginator({
+      interaction,
+      views,
+      ownerId: interaction.user.id,
+    });
     return;
   }
 
@@ -258,167 +376,287 @@ export async function handleUserCommand(
   }
 
   // ── /list ─────────────────────────────────────────────────────────────────────
+  // Interactive overview → drill-down view of the full roster (no personal
+  // stats). Same paginator as /collection and /catalog.
   if (sub === "list") {
     const cards = await getAllCards();
     if (cards.length === 0) { await interaction.editReply("No cards in the pool yet."); return; }
-    const rarityOrder: Rarity[] = ["mythic", "legendary", "epic", "rare", "uncommon", "common"];
     const listSettings = await getOrCreateGuildSettings(guildId);
-    const byRarity: Record<string, typeof cards> = {};
-    for (const card of cards) { if (!byRarity[card.rarity]) byRarity[card.rarity] = []; byRarity[card.rarity].push(card); }
-    // Discord caps field values at 1024 chars; with a large roster a single
-    // rarity comma-list overflows and the whole embed fails to render.
-    // Chunk each rarity into ≤1000-char fields, then cap at 25 fields/embed.
-    const fields: { name: string; value: string; inline: false }[] = [];
-    let overflow = false;
-    for (const r of rarityOrder) {
-      const group = byRarity[r];
-      if (!group?.length) continue;
-      const baseName = `${rarityEmoji(r, listSettings)} ${rarityLabel(r, listSettings)} (${group.length})`;
-      const items = group.map(c => {
-        const b = [c.isLimitedEdition ? "💎" : "", c.isEventExclusive ? "🎆" : "", !c.droppable ? "🔒" : ""].filter(Boolean).join("");
-        return `${b}${c.name}`;
-      });
-      let chunk = "";
-      let part = 0;
-      for (const item of items) {
-        const sep = chunk ? ", " : "";
-        if (chunk && (chunk + sep + item).length > 1000) {
-          if (fields.length >= 25) { overflow = true; break; }
-          fields.push({ name: part === 0 ? baseName : `${baseName} (cont.)`, value: chunk, inline: false });
-          chunk = item; part++;
-        } else {
-          chunk += sep + item;
-        }
-      }
-      if (chunk && fields.length < 25) {
-        fields.push({ name: part === 0 ? baseName : `${baseName} (cont.)`, value: chunk, inline: false });
-      } else if (chunk) {
-        overflow = true;
-      }
-      if (overflow) break;
+
+    const byRarity = new Map<Rarity, typeof cards>();
+    for (const r of RARITY_ORDER) byRarity.set(r, []);
+    for (const c of cards) byRarity.get(c.rarity as Rarity)?.push(c);
+
+    const limitedCards = cards.filter(c => c.isLimitedEdition);
+    const eventCards = cards.filter(c => c.isEventExclusive);
+    const adminOnlyCount = cards.filter(c => !c.droppable).length;
+
+    // ── Overview ──
+    const overviewLines: string[] = [];
+    for (const r of RARITY_ORDER) {
+      const g = byRarity.get(r) ?? [];
+      if (g.length === 0) continue;
+      overviewLines.push(`${rarityEmoji(r, listSettings)} **${rarityLabel(r, listSettings)}** — ${g.length}`);
     }
-    const embed = new EmbedBuilder()
+    const overview = new EmbedBuilder()
       .setTitle("🃏 DN Cards — Full Roster")
       .setColor(0x5865f2)
       .setDescription(
-        `**${cards.length}** total cards\n💎 Limited  🎆 Event  🔒 Admin-drop only` +
-        (overflow ? `\n\n_Roster too large to show in one message — use \`/catalog\` to browse by rarity._` : ""),
+        `**${cards.length}** cards in the pool\n\n` +
+        overviewLines.join("\n") + "\n\n" +
+        (limitedCards.length > 0 ? `💎 **Limited Edition:** ${limitedCards.length}\n` : "") +
+        (eventCards.length > 0 ? `🎆 **Event Exclusive:** ${eventCards.length}\n` : "") +
+        (adminOnlyCount > 0 ? `🔒 **Admin-drop only:** ${adminOnlyCount}\n` : "") +
+        `\n_Legend:_ 💎 limited · 🎆 event · 🔒 admin-drop only`,
       )
-      .addFields(fields);
-    await interaction.editReply({ embeds: [embed] });
+      .setFooter({ text: "Use the menu below to view cards in any rarity or category" });
+
+    const views: PaginatorView[] = [{
+      key: "overview",
+      label: "Overview",
+      emoji: "🏠",
+      description: "Roster summary",
+      screens: [overview],
+    }];
+
+    for (const r of RARITY_ORDER) {
+      const group = byRarity.get(r);
+      if (!group || group.length === 0) continue;
+      const lines = group
+        .slice()
+        .sort((a, b) => a.name.localeCompare(b.name))
+        .map(c => {
+          const b = [c.isLimitedEdition ? "💎" : "", c.isEventExclusive ? "🎆" : "", !c.droppable ? "🔒" : ""].filter(Boolean).join("");
+          return `${b}${c.name}`;
+        });
+      const baseRarity = () => new EmbedBuilder()
+        .setTitle(`${rarityEmoji(r, listSettings)} ${rarityLabel(r, listSettings)} Roster`)
+        .setColor(rarityColor(r, listSettings))
+        .setDescription(`**${group.length}** card${group.length === 1 ? "" : "s"} in this rarity`);
+      const { fields } = chunkLines(lines, { baseName: "Cards", separator: ", ", maxFields: 1000 });
+      views.push({
+        key: `rarity:${r}`,
+        label: rarityLabel(r, listSettings),
+        emoji: rarityEmoji(r, listSettings),
+        description: `${group.length} card${group.length === 1 ? "" : "s"}`,
+        screens: buildEmbedScreens(baseRarity, fields),
+      });
+    }
+
+    if (limitedCards.length > 0) {
+      const lines = limitedCards
+        .slice()
+        .sort((a, b) => a.name.localeCompare(b.name))
+        .map(c => `${rarityEmoji(c.rarity as Rarity, listSettings)} ${c.name}` + (c.maxCopies ? ` *(${c.totalMinted}/${c.maxCopies})*` : ""));
+      const baseLim = () => new EmbedBuilder()
+        .setTitle("💎 Limited Edition Cards")
+        .setColor(0x00d4ff)
+        .setDescription(`**${limitedCards.length}** capped-supply card${limitedCards.length === 1 ? "" : "s"}`);
+      const { fields } = chunkLines(lines, { baseName: "Limited", maxFields: 1000 });
+      views.push({
+        key: "limited",
+        label: "Limited",
+        emoji: "💎",
+        description: `${limitedCards.length} limited card${limitedCards.length === 1 ? "" : "s"}`,
+        screens: buildEmbedScreens(baseLim, fields),
+      });
+    }
+
+    if (eventCards.length > 0) {
+      const lines = eventCards
+        .slice()
+        .sort((a, b) => a.name.localeCompare(b.name))
+        .map(c => `${rarityEmoji(c.rarity as Rarity, listSettings)} ${c.name}`);
+      const baseEv = () => new EmbedBuilder()
+        .setTitle("🎆 Event Exclusive Cards")
+        .setColor(0xe84393)
+        .setDescription(`**${eventCards.length}** admin-drop-only event card${eventCards.length === 1 ? "" : "s"}`);
+      const { fields } = chunkLines(lines, { baseName: "Event", maxFields: 1000 });
+      views.push({
+        key: "event",
+        label: "Event",
+        emoji: "🎆",
+        description: `${eventCards.length} event card${eventCards.length === 1 ? "" : "s"}`,
+        screens: buildEmbedScreens(baseEv, fields),
+      });
+    }
+
+    await runPaginator({
+      interaction,
+      views,
+      ownerId: interaction.user.id,
+    });
     return;
   }
 
   // ── /catalog ──────────────────────────────────────────────────────────────────
-  // Browse cards by category (rarity, event, limited, all) — shows what the
-  // target owns vs what's missing. Single embed, paginated only by character
-  // count via field splitting.
+  // Interactive overview → drill-down view of ownership vs the full pool.
+  // The optional `category` option deep-links straight into a specific view.
   if (sub === "catalog") {
-    const category = interaction.options.getString("category", true) as Rarity | "event" | "limited" | "all";
+    const category = interaction.options.getString("category") as Rarity | "event" | "limited" | "all" | null;
     const target = interaction.options.getUser("user") ?? interaction.user;
     const [allCards, collection] = await Promise.all([
       getAllCards(),
       getUserCollection(guildId, target.id),
     ]);
     const ownedById = new Map<number, number>();
-    for (const item of collection) ownedById.set(item.cardId, item.count);
+    for (const item of collection) ownedById.set(item.cardId, item.count + item.shinyCount);
 
     const catSettings = await getOrCreateGuildSettings(guildId);
-    let pool = allCards.filter(c => !c.isArchived);
-    let title = "";
-    let color = 0x5865f2;
-    let thumbnail: string | null = null;
-    if (category === "event") {
-      pool = pool.filter(c => c.isEventExclusive);
-      title = "🎆 Event Exclusive Cards";
-      color = 0xe84393;
-    } else if (category === "limited") {
-      pool = pool.filter(c => c.isLimitedEdition);
-      title = "💎 Limited Edition Cards";
-      color = 0x00d4ff;
-    } else if (category === "all") {
-      title = "🃏 Full Card Roster";
-    } else {
-      pool = pool.filter(c => c.rarity === category);
-      title = `${rarityEmoji(category, catSettings)} ${rarityLabel(category, catSettings)} Cards`;
-      color = rarityColor(category, catSettings) ?? 0x5865f2;
-    }
+    const pool = allCards.filter(c => !c.isArchived);
+    if (pool.length === 0) { await interaction.editReply("No cards in the pool yet."); return; }
 
-    if (pool.length === 0) {
-      await interaction.editReply(`No cards in this category yet.`);
-      return;
-    }
-
-    // Pick a thumbnail: the rarest card the user owns from this pool, else
-    // the rarest card in the pool, so the embed has a visual anchor.
-    const rarityRank: Record<Rarity, number> = { common: 0, uncommon: 1, rare: 2, epic: 3, legendary: 4, mythic: 5 };
-    const sortedByRarity = [...pool].sort((a, b) => rarityRank[b.rarity as Rarity] - rarityRank[a.rarity as Rarity]);
-    const ownedRarest = sortedByRarity.find(c => ownedById.has(c.id));
-    const thumbSource = ownedRarest ?? sortedByRarity[0];
-    if (thumbSource) thumbnail = toAbsoluteImageUrl(thumbSource.imageUrl) ?? null;
-
-    // Group: by rarity for event/limited/all, single group otherwise.
-    const rarityOrder: Rarity[] = ["mythic", "legendary", "epic", "rare", "uncommon", "common"];
-    const groups: { rarity: Rarity; cards: typeof pool }[] = [];
-    if (category === "event" || category === "limited" || category === "all") {
-      for (const r of rarityOrder) {
-        const inRarity = pool.filter(c => c.rarity === r);
-        if (inRarity.length > 0) groups.push({ rarity: r, cards: inRarity });
-      }
-    } else {
-      groups.push({ rarity: category as Rarity, cards: pool });
-    }
-
-    const ownedCount = pool.filter(c => ownedById.has(c.id)).length;
-    const totalCount = pool.length;
-    const completion = totalCount > 0 ? Math.round((ownedCount / totalCount) * 100) : 0;
-
-    // Build field per rarity group. Each line: "✅ ×3 Card Name" or "⬜ Card Name"
-    // Discord caps field value at 1024 chars; split if needed.
-    const fields: { name: string; value: string; inline: false }[] = [];
-    for (const g of groups) {
-      const lines = g.cards
-        .slice()
-        .sort((a, b) => a.name.localeCompare(b.name))
-        .map(c => {
-          const owned = ownedById.get(c.id) ?? 0;
-          const badges = [c.isLimitedEdition ? "💎" : "", c.isEventExclusive ? "🎆" : ""].filter(Boolean).join("");
-          return owned > 0
-            ? `✅ \`×${owned}\` ${badges}**${c.name}**`
-            : `⬜ ${badges}${c.name}`;
-        });
-      const groupName = `${rarityEmoji(g.rarity, catSettings)} ${rarityLabel(g.rarity, catSettings)} (${g.cards.filter(c => ownedById.has(c.id)).length}/${g.cards.length})`;
-      const chunks: string[] = [];
-      let current = "";
-      for (const line of lines) {
-        if (current && current.length + line.length + 1 > 1000) { chunks.push(current); current = ""; }
-        current += (current ? "\n" : "") + line;
-      }
-      if (current) chunks.push(current);
-      chunks.forEach((chunk, i) => fields.push({
-        name: i === 0 ? groupName : `${groupName} (cont.)`,
-        value: chunk,
-        inline: false,
-      }));
-    }
-
-    // Discord caps embeds at 25 fields — flag silent truncation so the user
-    // knows there are more cards to view via a narrower category filter.
-    const catalogOverflow = fields.length > 25;
     const isSelf = target.id === interaction.user.id;
-    const embed = new EmbedBuilder()
-      .setTitle(title)
-      .setColor(color)
+    const ownerLabel = isSelf ? "You" : `**${target.username}**`;
+    const possessive = isSelf ? "your" : `${target.username}'s`;
+
+    const byRarity = new Map<Rarity, typeof pool>();
+    for (const r of RARITY_ORDER) byRarity.set(r, []);
+    for (const c of pool) byRarity.get(c.rarity as Rarity)?.push(c);
+
+    const completion = (cards: typeof pool) => {
+      const owned = cards.filter(c => ownedById.has(c.id)).length;
+      const total = cards.length;
+      const pct = total > 0 ? Math.round((owned / total) * 100) : 0;
+      return { owned, total, pct };
+    };
+
+    // ── Overview ──
+    const overviewLines: string[] = [];
+    for (const r of RARITY_ORDER) {
+      const g = byRarity.get(r);
+      if (!g || g.length === 0) continue;
+      const { owned, total, pct } = completion(g);
+      overviewLines.push(`${rarityEmoji(r, catSettings)} **${rarityLabel(r, catSettings)}** — ${owned}/${total} (${pct}%)`);
+    }
+    const limitedCards = pool.filter(c => c.isLimitedEdition);
+    const eventCards = pool.filter(c => c.isEventExclusive);
+    if (limitedCards.length > 0) {
+      const { owned, total, pct } = completion(limitedCards);
+      overviewLines.push(`💎 **Limited** — ${owned}/${total} (${pct}%)`);
+    }
+    if (eventCards.length > 0) {
+      const { owned, total, pct } = completion(eventCards);
+      overviewLines.push(`🎆 **Event** — ${owned}/${total} (${pct}%)`);
+    }
+    const overall = completion(pool);
+
+    const overview = new EmbedBuilder()
+      .setTitle(`🃏 ${target.username}'s DN Catalog`)
+      .setColor(0x5865f2)
+      .setThumbnail(target.displayAvatarURL())
       .setDescription(
-        `${isSelf ? "**You own**" : `**${target.username} owns**`} ` +
-        `**${ownedCount} / ${totalCount}** cards in this category (${completion}%)\n` +
-        `✅ owned  ·  ⬜ missing  ·  💎 limited  ·  🎆 event` +
-        (catalogOverflow ? `\n\n_Too many cards to show — try a narrower category (e.g. \`/catalog category:rare\`)._` : ""),
+        `${ownerLabel} own **${overall.owned} / ${overall.total}** cards in the pool (${overall.pct}%)\n\n` +
+        overviewLines.join("\n") + "\n\n" +
+        `_Pick a category from the menu below to see ✅ owned vs ⬜ missing._`,
       )
-      .addFields(fields.slice(0, 25))
       .setFooter({ text: "Use /info name:<card> for full details on any card" });
-    if (thumbnail) embed.setThumbnail(thumbnail);
-    await interaction.editReply({ embeds: [embed] });
+
+    const views: PaginatorView[] = [{
+      key: "overview",
+      label: "Overview",
+      emoji: "🏠",
+      description: `${overall.pct}% complete`,
+      screens: [overview],
+    }];
+
+    const buildCatalogView = (
+      key: string,
+      label: string,
+      emoji: string,
+      color: number,
+      title: string,
+      groupOrder: { rarity: Rarity; cards: typeof pool }[],
+    ): PaginatorView => {
+      const ownedN = groupOrder.reduce((s, g) => s + g.cards.filter(c => ownedById.has(c.id)).length, 0);
+      const totalN = groupOrder.reduce((s, g) => s + g.cards.length, 0);
+      const pct = totalN > 0 ? Math.round((ownedN / totalN) * 100) : 0;
+      const allFields: { name: string; value: string; inline: false }[] = [];
+      for (const g of groupOrder) {
+        const lines = g.cards
+          .slice()
+          .sort((a, b) => a.name.localeCompare(b.name))
+          .map(c => {
+            const owned = ownedById.get(c.id) ?? 0;
+            const badges = [c.isLimitedEdition ? "💎" : "", c.isEventExclusive ? "🎆" : ""].filter(Boolean).join("");
+            return owned > 0
+              ? `✅ \`×${owned}\` ${badges}**${c.name}**`
+              : `⬜ ${badges}${c.name}`;
+          });
+        const groupOwned = g.cards.filter(c => ownedById.has(c.id)).length;
+        const groupName = `${rarityEmoji(g.rarity, catSettings)} ${rarityLabel(g.rarity, catSettings)} (${groupOwned}/${g.cards.length})`;
+        const { fields } = chunkLines(lines, { baseName: groupName, maxFields: 1000 });
+        allFields.push(...fields);
+      }
+      const base = () => new EmbedBuilder()
+        .setTitle(title)
+        .setColor(color)
+        .setDescription(
+          `${ownerLabel} own **${ownedN} / ${totalN}** in this category (${pct}%)\n` +
+          `✅ owned  ·  ⬜ missing  ·  💎 limited  ·  🎆 event`,
+        )
+        .setFooter({ text: "Use /info name:<card> for full details on any card" });
+      return {
+        key,
+        label,
+        emoji,
+        description: `${ownedN}/${totalN} owned (${pct}%)`,
+        screens: buildEmbedScreens(base, allFields),
+      };
+    };
+
+    for (const r of RARITY_ORDER) {
+      const g = byRarity.get(r);
+      if (!g || g.length === 0) continue;
+      views.push(buildCatalogView(
+        `rarity:${r}`,
+        rarityLabel(r, catSettings),
+        rarityEmoji(r, catSettings),
+        rarityColor(r, catSettings),
+        `${rarityEmoji(r, catSettings)} ${rarityLabel(r, catSettings)} — ${possessive} catalog`,
+        [{ rarity: r, cards: g }],
+      ));
+    }
+
+    if (limitedCards.length > 0) {
+      const groups: { rarity: Rarity; cards: typeof pool }[] = [];
+      for (const r of RARITY_ORDER) {
+        const inR = limitedCards.filter(c => (c.rarity as Rarity) === r);
+        if (inR.length > 0) groups.push({ rarity: r, cards: inR });
+      }
+      views.push(buildCatalogView(
+        "limited", "Limited", "💎", 0x00d4ff,
+        `💎 Limited Edition — ${possessive} catalog`,
+        groups,
+      ));
+    }
+
+    if (eventCards.length > 0) {
+      const groups: { rarity: Rarity; cards: typeof pool }[] = [];
+      for (const r of RARITY_ORDER) {
+        const inR = eventCards.filter(c => (c.rarity as Rarity) === r);
+        if (inR.length > 0) groups.push({ rarity: r, cards: inR });
+      }
+      views.push(buildCatalogView(
+        "event", "Event", "🎆", 0xe84393,
+        `🎆 Event Exclusive — ${possessive} catalog`,
+        groups,
+      ));
+    }
+
+    // Map the `category` option to an initial view key (deep-link). "all"
+    // and null both start at the overview.
+    let initialKey: string | undefined;
+    if (category && category !== "all") {
+      initialKey = (category === "event" || category === "limited") ? category : `rarity:${category}`;
+    }
+
+    await runPaginator({
+      interaction,
+      views,
+      ownerId: interaction.user.id,
+      ...(initialKey ? { initialKey } : {}),
+    });
     return;
   }
 
