@@ -296,14 +296,18 @@ export async function handleAdminCommand(
   if (cmd === "give") {
     const target = opts.getUser("user", true);
     const cardName = opts.getString("name", true);
+    const amount = opts.getInteger("amount") ?? 1;
     const cards = await getAllCards();
     const card = cards.find(c => c.name.toLowerCase() === cardName.toLowerCase());
     if (!card) { await interaction.editReply(`❌ Card "**${cardName}**" not found.`); return; }
     // Admin gives are deterministic — no shiny roll. Use /event or normal
     // drops if you want shiny chances.
-    await catchCard(guildId, target.id, card.id, { noShiny: true });
+    for (let i = 0; i < amount; i++) {
+      await catchCard(guildId, target.id, card.id, { noShiny: true });
+    }
     const r = card.rarity as Rarity;
-    await interaction.editReply(`✅ Gave **${card.name}** (${RARITY_EMOJI[r]} ${RARITY_LABELS[r]}) to <@${target.id}>.`);
+    const suffix = amount > 1 ? ` ×${amount}` : "";
+    await interaction.editReply(`✅ Gave **${card.name}**${suffix} (${RARITY_EMOJI[r]} ${RARITY_LABELS[r]}) to <@${target.id}>.`);
     return;
   }
 
@@ -320,18 +324,28 @@ export async function handleAdminCommand(
   if (cmd === "takeback") {
     const target = opts.getUser("user", true);
     const cardName = opts.getString("name", true);
+    const amount = opts.getInteger("amount") ?? 1;
     const cards = await getAllCards();
     const card = cards.find(c => c.name.toLowerCase() === cardName.toLowerCase());
     if (!card) { await interaction.editReply(`❌ Card "**${cardName}**" not found.`); return; }
-    const result = await removeCardFromUser(guildId, target.id, card.id);
-    if (!result.success) {
+    let removed = 0;
+    let remaining = 0;
+    for (let i = 0; i < amount; i++) {
+      const result = await removeCardFromUser(guildId, target.id, card.id);
+      if (!result.success) break;
+      removed++;
+      remaining = result.remaining;
+    }
+    if (removed === 0) {
       await interaction.editReply(`❌ <@${target.id}> doesn't have **${card.name}**.`);
       return;
     }
     const r = card.rarity as Rarity;
+    const suffix = removed > 1 ? ` ×${removed}` : "";
+    const shortfall = removed < amount ? ` (only had ${removed}, requested ${amount})` : "";
     await interaction.editReply(
-      `✅ Removed **${card.name}** (${RARITY_EMOJI[r]} ${RARITY_LABELS[r]}) from <@${target.id}>.` +
-      (result.remaining > 0 ? ` They still have ×${result.remaining}.` : " Last copy removed."),
+      `✅ Removed **${card.name}**${suffix} (${RARITY_EMOJI[r]} ${RARITY_LABELS[r]}) from <@${target.id}>.${shortfall}` +
+      (remaining > 0 ? ` They still have ×${remaining}.` : " Last copy removed."),
     );
     return;
   }

@@ -139,7 +139,8 @@ export function buildCommands() {
 
     adminCmd("give", "(Admin) Give a card directly to a member", s => s
       .addUserOption(o => o.setName("user").setDescription("Member to receive the card").setRequired(true))
-      .addStringOption(o => o.setName("name").setDescription("Card name").setRequired(true).setAutocomplete(true))),
+      .addStringOption(o => o.setName("name").setDescription("Card name").setRequired(true).setAutocomplete(true))
+      .addIntegerOption(o => o.setName("amount").setDescription("How many copies to give (default 1, max 100)").setMinValue(1).setMaxValue(100))),
 
     adminCmd("giveshards", "(Admin) Give DN Shards to a member", s => s
       .addUserOption(o => o.setName("user").setDescription("Member to receive shards").setRequired(true))
@@ -147,7 +148,8 @@ export function buildCommands() {
 
     adminCmd("takeback", "(Admin) Remove a card from a member's collection", s => s
       .addUserOption(o => o.setName("user").setDescription("Member to take the card from").setRequired(true))
-      .addStringOption(o => o.setName("name").setDescription("Card name").setRequired(true).setAutocomplete(true))),
+      .addStringOption(o => o.setName("name").setDescription("Card name").setRequired(true).setAutocomplete(true))
+      .addIntegerOption(o => o.setName("amount").setDescription("How many copies to remove (default 1, max 100)").setMinValue(1).setMaxValue(100))),
 
     adminCmd("takeshards", "(Admin) Deduct DN Shards from a member", s => s
       .addUserOption(o => o.setName("user").setDescription("Member to deduct shards from").setRequired(true))
