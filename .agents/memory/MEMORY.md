@@ -4,5 +4,7 @@
 - [Collections pile deletion](collections-pile-deletion.md) — when a row tracks multiple piles (count + shinyCount), only DELETE when ALL piles are 0, else surviving piles vanish.
 - [Thread guildId through every embed builder + caller](guild-id-thread-through.md) — defaulting new context params to null silently no-ops at the call sites you forgot; prefer required params and grep every caller.
 - [Discord command visibility](discord-command-visibility.md) — slash commands need BOTH defaultMemberPermissions (UI hide) AND runtime isAdmin check; one alone is not enough.
+- [Discord embed field chunking](discord-field-chunking.md) — chunk at ~1000 chars, guard empty pushes, cap at 25 fields, surface overflow note; silent truncation reads as "my data vanished".
+- [Dashboard active-guild persistence](dashboard-guild-persistence.md) — admin dashboards listing multiple guilds must persist selection; auto-picking guilds[0] on every load silently shows the wrong server's data.
 - [Discord 5-row limit](discord-row-limits.md) — max 5 ActionRows per message; overflow surfaces as a misleading "Interaction has already been acknowledged" on the next update.
 - [Trade accept atomic status flip](trade-accept-atomic.md) — gate the pending→accepted transition with a conditional UPDATE inside the swap transaction; per-row count>=1 debits alone are NOT enough when a user holds multiple copies.

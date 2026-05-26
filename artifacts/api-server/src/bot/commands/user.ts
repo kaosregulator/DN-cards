@@ -82,19 +82,38 @@ export async function handleUserCommand(
       : "_none yet_";
     const achLine = `**🏆 Achievements:** ${unlockedKeys.size} / ${ACHIEVEMENTS.length} · ${achStrip}`;
 
-    const fields = rarityOrder
-      .filter(r => byRarity[r]?.length)
-      .map(r => ({
-        name: `${rarityEmoji(r, settings)} ${rarityLabel(r, settings)} (${byRarity[r].length} unique)`,
-        value: byRarity[r].map(i => {
-          const badges = [i.isLimitedEdition ? "💎" : "", i.isEventExclusive ? "🎆" : ""].filter(Boolean).join("");
-          const shinyTag = i.shinyCount > 0 ? ` · ${SHINY_EMOJI}×${i.shinyCount}` : "";
-          // Show normal count even when 0 (rare: only shinies owned) so users
-          // can tell the difference between "1 shiny" and "1 normal".
-          return `${badges}**${i.name}** ×${i.count}${shinyTag}`;
-        }).join("\n"),
-        inline: false,
-      }));
+    // Discord caps field values at 1024 chars; large collections overflow
+    // a single per-rarity field and the embed fails to render — leaving the
+    // user thinking their collection vanished. Chunk into ≤1000-char fields.
+    const fields: { name: string; value: string; inline: false }[] = [];
+    let collectionOverflow = false;
+    for (const r of rarityOrder) {
+      const group = byRarity[r];
+      if (!group?.length) continue;
+      const baseName = `${rarityEmoji(r, settings)} ${rarityLabel(r, settings)} (${group.length} unique)`;
+      const lines = group.map(i => {
+        const badges = [i.isLimitedEdition ? "💎" : "", i.isEventExclusive ? "🎆" : ""].filter(Boolean).join("");
+        const shinyTag = i.shinyCount > 0 ? ` · ${SHINY_EMOJI}×${i.shinyCount}` : "";
+        return `${badges}**${i.name}** ×${i.count}${shinyTag}`;
+      });
+      let chunk = "";
+      let part = 0;
+      for (const line of lines) {
+        if (chunk && (chunk + "\n" + line).length > 1000) {
+          if (fields.length >= 25) { collectionOverflow = true; break; }
+          fields.push({ name: part === 0 ? baseName : `${baseName} (cont.)`, value: chunk, inline: false });
+          chunk = line; part++;
+        } else {
+          chunk = chunk ? `${chunk}\n${line}` : line;
+        }
+      }
+      if (chunk && fields.length < 25) {
+        fields.push({ name: part === 0 ? baseName : `${baseName} (cont.)`, value: chunk, inline: false });
+      } else if (chunk) {
+        collectionOverflow = true;
+      }
+      if (collectionOverflow) break;
+    }
 
     const embed = new EmbedBuilder()
       .setTitle(`🃏 ${target.username}'s DN Collection`)
@@ -104,7 +123,8 @@ export async function handleUserCommand(
         `**Cards:** ${unique} unique · ${totalCards} total` +
         (totalShinies > 0 ? ` · ${SHINY_EMOJI}**${totalShinies}** shiny` : "") + `\n` +
         `**Net Worth:** 💠 ${netWorth.toLocaleString()} shards\n` +
-        achLine,
+        achLine +
+        (collectionOverflow ? `\n\n_Collection too large to show fully — use \`/inventory\` or \`/catalog\` to see the rest._` : ""),
       )
       .addFields(fields)
       .setThumbnail(target.displayAvatarURL());
@@ -143,26 +163,30 @@ export async function handleUserCommand(
     const fields: { name: string; value: string; inline: false }[] = [];
     let chunk = "";
     let part = 1;
+    let consumed = 0;
     for (const line of lines) {
-      if ((chunk + "\n" + line).length > 1000) {
+      if (chunk && (chunk + "\n" + line).length > 1000) {
         fields.push({ name: part === 1 ? "📋 All Cards" : `📋 (cont. ${part})`, value: chunk, inline: false });
         chunk = line;
         part++;
       } else {
         chunk = chunk ? `${chunk}\n${line}` : line;
       }
+      consumed++;
       if (fields.length >= 24) break;
     }
     if (chunk && fields.length < 25) {
       fields.push({ name: part === 1 ? "📋 All Cards" : `📋 (cont. ${part})`, value: chunk, inline: false });
     }
+    const inventoryOverflow = consumed < lines.length;
 
     const embed = new EmbedBuilder()
       .setTitle(`📦 ${target.username}'s Inventory`)
       .setColor(0x5865f2)
       .setDescription(
         `**${sorted.length}** unique · **${totalCards}** total` +
-        (totalShinies > 0 ? ` · ${SHINY_EMOJI}**${totalShinies}** shiny` : ""),
+        (totalShinies > 0 ? ` · ${SHINY_EMOJI}**${totalShinies}** shiny` : "") +
+        (inventoryOverflow ? `\n_Showing first ${consumed} of ${lines.length} — use \`/catalog\` to browse the rest._` : ""),
       )
       .addFields(fields)
       .setThumbnail(target.displayAvatarURL());
@@ -241,18 +265,45 @@ export async function handleUserCommand(
     const listSettings = await getOrCreateGuildSettings(guildId);
     const byRarity: Record<string, typeof cards> = {};
     for (const card of cards) { if (!byRarity[card.rarity]) byRarity[card.rarity] = []; byRarity[card.rarity].push(card); }
-    const fields = rarityOrder.filter(r => byRarity[r]?.length).map(r => ({
-      name: `${rarityEmoji(r, listSettings)} ${rarityLabel(r, listSettings)} (${byRarity[r].length})`,
-      value: byRarity[r].map(c => {
+    // Discord caps field values at 1024 chars; with a large roster a single
+    // rarity comma-list overflows and the whole embed fails to render.
+    // Chunk each rarity into ≤1000-char fields, then cap at 25 fields/embed.
+    const fields: { name: string; value: string; inline: false }[] = [];
+    let overflow = false;
+    for (const r of rarityOrder) {
+      const group = byRarity[r];
+      if (!group?.length) continue;
+      const baseName = `${rarityEmoji(r, listSettings)} ${rarityLabel(r, listSettings)} (${group.length})`;
+      const items = group.map(c => {
         const b = [c.isLimitedEdition ? "💎" : "", c.isEventExclusive ? "🎆" : "", !c.droppable ? "🔒" : ""].filter(Boolean).join("");
         return `${b}${c.name}`;
-      }).join(", "),
-      inline: false,
-    }));
+      });
+      let chunk = "";
+      let part = 0;
+      for (const item of items) {
+        const sep = chunk ? ", " : "";
+        if (chunk && (chunk + sep + item).length > 1000) {
+          if (fields.length >= 25) { overflow = true; break; }
+          fields.push({ name: part === 0 ? baseName : `${baseName} (cont.)`, value: chunk, inline: false });
+          chunk = item; part++;
+        } else {
+          chunk += sep + item;
+        }
+      }
+      if (chunk && fields.length < 25) {
+        fields.push({ name: part === 0 ? baseName : `${baseName} (cont.)`, value: chunk, inline: false });
+      } else if (chunk) {
+        overflow = true;
+      }
+      if (overflow) break;
+    }
     const embed = new EmbedBuilder()
       .setTitle("🃏 DN Cards — Full Roster")
       .setColor(0x5865f2)
-      .setDescription(`**${cards.length}** total cards\n💎 Limited  🎆 Event  🔒 Admin-drop only`)
+      .setDescription(
+        `**${cards.length}** total cards\n💎 Limited  🎆 Event  🔒 Admin-drop only` +
+        (overflow ? `\n\n_Roster too large to show in one message — use \`/catalog\` to browse by rarity._` : ""),
+      )
       .addFields(fields);
     await interaction.editReply({ embeds: [embed] });
     return;
@@ -340,7 +391,7 @@ export async function handleUserCommand(
       const chunks: string[] = [];
       let current = "";
       for (const line of lines) {
-        if (current.length + line.length + 1 > 1000) { chunks.push(current); current = ""; }
+        if (current && current.length + line.length + 1 > 1000) { chunks.push(current); current = ""; }
         current += (current ? "\n" : "") + line;
       }
       if (current) chunks.push(current);
@@ -351,6 +402,9 @@ export async function handleUserCommand(
       }));
     }
 
+    // Discord caps embeds at 25 fields — flag silent truncation so the user
+    // knows there are more cards to view via a narrower category filter.
+    const catalogOverflow = fields.length > 25;
     const isSelf = target.id === interaction.user.id;
     const embed = new EmbedBuilder()
       .setTitle(title)
@@ -358,7 +412,8 @@ export async function handleUserCommand(
       .setDescription(
         `${isSelf ? "**You own**" : `**${target.username} owns**`} ` +
         `**${ownedCount} / ${totalCount}** cards in this category (${completion}%)\n` +
-        `✅ owned  ·  ⬜ missing  ·  💎 limited  ·  🎆 event`,
+        `✅ owned  ·  ⬜ missing  ·  💎 limited  ·  🎆 event` +
+        (catalogOverflow ? `\n\n_Too many cards to show — try a narrower category (e.g. \`/catalog category:rare\`)._` : ""),
       )
       .addFields(fields.slice(0, 25))
       .setFooter({ text: "Use /info name:<card> for full details on any card" });

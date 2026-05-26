@@ -139,7 +139,16 @@ export default function EmbedsPage() {
   const [, navigate] = useLocation();
   const { user, isLoading } = useAuth();
   const qc = useQueryClient();
-  const [guildId, setGuildId] = useState<string>("");
+  // Persist the active guild across reloads. Without this the page snaps back
+  // to guilds[0] on every refresh, which silently shows the wrong server when
+  // the admin is actually working in a different one.
+  const [guildId, setGuildIdState] = useState<string>(() => {
+    try { return localStorage.getItem("dn:activeGuildId") ?? ""; } catch { return ""; }
+  });
+  const setGuildId = (next: string) => {
+    setGuildIdState(next);
+    try { localStorage.setItem("dn:activeGuildId", next); } catch { /* private mode */ }
+  };
   const [embedKey, setEmbedKey] = useState<EmbedKey>("spawn");
   const [draft, setDraft] = useState<EmbedConfig>({});
   const [savedFlash, setSavedFlash] = useState<string>("");
@@ -152,8 +161,13 @@ export default function EmbedsPage() {
     enabled: !!user,
   });
   useEffect(() => {
-    if (guildsQ.data?.guilds.length && !guildId) {
-      setGuildId(guildsQ.data.guilds[0].id);
+    const guilds = guildsQ.data?.guilds;
+    if (!guilds?.length) return;
+    // Only auto-pick when there's no stored selection OR the stored guild is
+    // no longer in the bot (kicked, etc.). Otherwise leave the user's choice
+    // alone so reloads stay on their active server.
+    if (!guildId || !guilds.some(g => g.id === guildId)) {
+      setGuildId(guilds[0]!.id);
     }
   }, [guildsQ.data, guildId]);
 
