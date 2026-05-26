@@ -104,6 +104,9 @@ export async function startBot() {
           await handleSetupSelect(interaction);
         } else if (interaction.customId === "setchannels:pick") {
           await handleSetChannelsPick(interaction);
+        } else if (interaction.customId.startsWith("editcard:")) {
+          const { handleEditCardSelect } = await import("./commands/edit-card.js");
+          await handleEditCardSelect(interaction);
         }
         return;
       }
@@ -124,6 +127,9 @@ export async function startBot() {
           await handleSetupModalSubmit(interaction);
         } else if (interaction.customId === "rates_custom") {
           await handleRatesCustomModal(interaction);
+        } else if (interaction.customId.startsWith("editcard:modal:")) {
+          const { handleEditCardModal } = await import("./commands/edit-card.js");
+          await handleEditCardModal(interaction);
         }
         return;
       }

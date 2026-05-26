@@ -133,6 +133,17 @@ export async function handleAdminCommand(
     await handleAdminHelp(interaction);
     return;
   }
+  // /editcard opens an ephemeral interactive panel — manages its own reply
+  // (no defer) so the in-flow Modal call still works.
+  if (cmd === "editcard") {
+    if (!(await checkAdmin(interaction))) {
+      await interaction.reply({ content: "❌ Admins only.", flags: MessageFlags.Ephemeral });
+      return;
+    }
+    const { handleEditCardCommand } = await import("./edit-card.js");
+    await handleEditCardCommand(interaction);
+    return;
+  }
   // /setchannels manages its own reply (interactive multi-step picker).
   if (cmd === "setchannels") {
     await handleSetChannels(interaction);

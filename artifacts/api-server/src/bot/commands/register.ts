@@ -184,6 +184,9 @@ export function buildCommands() {
 
     adminCmd("listadmins", "(Admin) List current bot admins", s => s),
 
+    adminCmd("editcard", "(Admin) Edit any card — rarity, worth, image, name, etc.", s => s
+      .addStringOption(o => o.setName("name").setDescription("Card to edit").setRequired(true).setAutocomplete(true))),
+
     // ── Dashboard ─────────────────────────────────────────────────────────────
     adminCmd("dashboard", "(Admin) Get a one-time link to set up or reset your web dashboard login", s => s),
   ];
@@ -197,7 +200,7 @@ export const USER_COMMAND_NAMES = new Set([
 
 export const ADMIN_COMMAND_NAMES = new Set([
   "config", "adminhub", "adminhelp", "drop", "massdrop", "give", "giveshards", "takeback", "takeshards", "event", "setchannels", "dashboard", "setup",
-  "addadmin", "removeadmin", "listadmins",
+  "addadmin", "removeadmin", "listadmins", "editcard",
 ]);
 
 export const CARDSET_COMMAND_NAMES = new Set([

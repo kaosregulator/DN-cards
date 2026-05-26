@@ -194,6 +194,11 @@ export async function getCardByName(name: string): Promise<Card | undefined> {
   return card;
 }
 
+export async function getCardById(id: number): Promise<Card | undefined> {
+  const [card] = await db.select().from(cardsTable).where(eq(cardsTable.id, id));
+  return card;
+}
+
 export async function addCard(values: {
   name: string; description: string; rarity: string; cardType?: string;
   dropWeight: number; worthValue: number; burnValue: number;
@@ -217,7 +222,7 @@ export async function removeCard(name: string) {
 export async function updateCard(cardId: number, values: Partial<{
   name: string; description: string; rarity: string; cardType: string;
   dropWeight: number; worthValue: number; burnValue: number;
-  isLimitedEdition: boolean; isEventExclusive: boolean;
+  isLimitedEdition: boolean; isEventExclusive: boolean; isArchived: boolean; inPacks: boolean;
   maxCopies: number | null; imageUrl: string | null; flavor: string | null; droppable: boolean;
 }>) {
   const [updated] = await db.update(cardsTable).set(values as any).where(eq(cardsTable.id, cardId)).returning();
