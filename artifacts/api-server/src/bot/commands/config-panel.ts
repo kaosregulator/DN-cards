@@ -106,11 +106,11 @@ export async function handleConfigButton(interaction: ButtonInteraction): Promis
         (resetPatch as Record<string, number | null>)[rarityWeightKey(r) as string] = null;
       }
       await updateGuildSettings(guildId, resetPatch);
-      const settings = await getOrCreateGuildSettings(guildId);
-      await interaction.update({
-        embeds: [buildRatesEmbed(settings)],
-        components: buildRatesComponents(settings),
-      });
+      await refreshPanel(interaction, guildId);
+      await interaction.followUp({
+        content: "🔄 Rarity Mix reset to defaults — Common 60% · Uncommon 25% · Rare 10% · Epic 4% · Legendary 1%.",
+        flags: MessageFlags.Ephemeral,
+      }).catch(() => { /* ignore */ });
       return;
     }
     const settings = await getOrCreateGuildSettings(guildId);
@@ -395,6 +395,10 @@ function buildConfigComponents(s: GuildSettings) {
       .setLabel("🎲 Rarity Mix")
       .setStyle(ButtonStyle.Secondary),
     new ButtonBuilder()
+      .setCustomId("config:rates:reset")
+      .setLabel("🔄 Reset Mix")
+      .setStyle(ButtonStyle.Danger),
+    new ButtonBuilder()
       .setCustomId("config:packs:open")
       .setLabel("🎴 Packs")
       .setStyle(ButtonStyle.Secondary),
@@ -469,13 +473,13 @@ function buildRatesEmbed(s: GuildSettings): EmbedBuilder {
       note,
     )
     .addFields({ name: "Current mix", value: rarityRowsSummary(s), inline: false })
-    .setFooter({ text: "Changes save instantly. Use 🔄 Reset to Defaults to start over." });
+    .setFooter({ text: "Changes save instantly. To start over, close this and use 🔄 Reset Mix on the main config panel." });
 }
 
 function buildRatesComponents(s: GuildSettings) {
-  const rows: (
-    ActionRowBuilder<StringSelectMenuBuilder> | ActionRowBuilder<ButtonBuilder>
-  )[] = RARITY_ORDER.map(r => {
+  // Discord caps action rows at 5 — so all 5 rarities go here, no room for a button.
+  // Reset is exposed via the 🔄 Reset Mix button on the main config panel.
+  return RARITY_ORDER.map(r => {
     const current = getRarityWeight(s, r);
     const opts = RARITY_WEIGHT_OPTIONS[r].map(w => {
       if (w === null) {
@@ -497,15 +501,6 @@ function buildRatesComponents(s: GuildSettings) {
       .addOptions(opts);
     return new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(select);
   });
-  rows.push(
-    new ActionRowBuilder<ButtonBuilder>().addComponents(
-      new ButtonBuilder()
-        .setCustomId("config:rates:reset")
-        .setLabel("🔄 Reset to Defaults")
-        .setStyle(ButtonStyle.Danger),
-    ),
-  );
-  return rows;
 }
 
 function capitalize(s: string): string {
