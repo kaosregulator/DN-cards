@@ -5,6 +5,23 @@ import { and, eq, sql } from "drizzle-orm";
 import { addShards, getOrCreateCurrency } from "../db.js";
 import { applyEmbedOverride } from "../embed-overrides.js";
 import { ACHIEVEMENTS, checkAchievements, formatUnlockLine, getUnlockedKeys } from "../achievements.js";
+import { runPaginator, type PaginatorView } from "../components/paginator.js";
+import { chunkLines } from "../components/field-chunker.js";
+
+// Build one or more embed screens from a base factory plus a list of fields,
+// capping at `fieldsPerScreen` per embed (Discord allows 25).
+function buildEmbedScreens(
+  baseEmbed: () => EmbedBuilder,
+  fields: { name: string; value: string; inline: false }[],
+  fieldsPerScreen = 24,
+): EmbedBuilder[] {
+  if (fields.length === 0) return [baseEmbed()];
+  const screens: EmbedBuilder[] = [];
+  for (let i = 0; i < fields.length; i += fieldsPerScreen) {
+    screens.push(baseEmbed().addFields(fields.slice(i, i + fieldsPerScreen)));
+  }
+  return screens;
+}
 
 const COOLDOWN_MS = 20 * 60 * 60 * 1000;     // 20h — slight grace
 const STREAK_RESET_MS = 48 * 60 * 60 * 1000; // miss a day → reset
@@ -113,20 +130,79 @@ export async function handleAchievementsCommand(interaction: ChatInputCommandInt
   const target = interaction.options.getUser("user") ?? interaction.user;
   const unlocked = await getUnlockedKeys(interaction.guild.id, target.id);
 
-  const lines = ACHIEVEMENTS.map(ach => {
-    const has = unlocked.has(ach.key);
-    const status = has ? "✅" : "🔒";
-    return `${status} ${ach.emoji} **${ach.name}** — ${ach.description}` +
-           (has ? "" : `  *(+💠 ${ach.reward.toLocaleString()})*`);
-  });
+  const unlockedAchs = ACHIEVEMENTS.filter(a => unlocked.has(a.key));
+  const lockedAchs = ACHIEVEMENTS.filter(a => !unlocked.has(a.key));
+  const earnedShards = unlockedAchs.reduce((s, a) => s + a.reward, 0);
+  const lockedShards = lockedAchs.reduce((s, a) => s + a.reward, 0);
+  const totalRewards = earnedShards + lockedShards;
+  const pct = ACHIEVEMENTS.length
+    ? Math.round((unlockedAchs.length / ACHIEVEMENTS.length) * 100)
+    : 0;
 
-  const embed = new EmbedBuilder()
+  const overview = new EmbedBuilder()
     .setTitle(`🏆 ${target.username}'s Achievements`)
     .setColor(0xe67e22)
+    .setThumbnail(target.displayAvatarURL())
     .setDescription(
-      `Unlocked: **${unlocked.size}** / ${ACHIEVEMENTS.length}\n\n` +
-      lines.join("\n"),
+      `Progress: **${unlockedAchs.length}** / ${ACHIEVEMENTS.length}  ·  **${pct}%**\n` +
+      `💠 Earned from achievements: **${earnedShards.toLocaleString()}** of **${totalRewards.toLocaleString()}**\n` +
+      `🔒 Locked: **${lockedAchs.length}**  ·  💠 still available: **${lockedShards.toLocaleString()}**`,
     )
-    .setThumbnail(target.displayAvatarURL());
-  await interaction.editReply({ embeds: [embed] });
+    .setFooter({ text: "Use the menu below to view unlocked or locked achievements" });
+
+  const views: PaginatorView[] = [{
+    key: "overview",
+    label: "Overview",
+    emoji: "🏠",
+    description: `${unlockedAchs.length}/${ACHIEVEMENTS.length} unlocked`,
+    screens: [overview],
+  }];
+
+  if (unlockedAchs.length > 0) {
+    const lines = unlockedAchs.map(a =>
+      `✅ ${a.emoji} **${a.name}** — ${a.description}  *(+💠 ${a.reward.toLocaleString()})*`,
+    );
+    const baseUnlocked = () => new EmbedBuilder()
+      .setTitle(`✅ ${target.username}'s Unlocked Achievements`)
+      .setColor(0x2ecc71)
+      .setThumbnail(target.displayAvatarURL())
+      .setDescription(
+        `**${unlockedAchs.length}** of ${ACHIEVEMENTS.length} unlocked · 💠 **${earnedShards.toLocaleString()}** earned`,
+      );
+    const { fields } = chunkLines(lines, { baseName: "Unlocked", maxFields: 1000 });
+    views.push({
+      key: "unlocked",
+      label: "Unlocked",
+      emoji: "✅",
+      description: `${unlockedAchs.length} unlocked · 💠 ${earnedShards.toLocaleString()}`,
+      screens: buildEmbedScreens(baseUnlocked, fields),
+    });
+  }
+
+  if (lockedAchs.length > 0) {
+    const lines = lockedAchs.map(a =>
+      `🔒 ${a.emoji} **${a.name}** — ${a.description}  *(+💠 ${a.reward.toLocaleString()})*`,
+    );
+    const baseLocked = () => new EmbedBuilder()
+      .setTitle(`🔒 ${target.username}'s Locked Achievements`)
+      .setColor(0x95a5a6)
+      .setThumbnail(target.displayAvatarURL())
+      .setDescription(
+        `**${lockedAchs.length}** still to unlock · 💠 **${lockedShards.toLocaleString()}** in rewards available`,
+      );
+    const { fields } = chunkLines(lines, { baseName: "Locked", maxFields: 1000 });
+    views.push({
+      key: "locked",
+      label: "Locked",
+      emoji: "🔒",
+      description: `${lockedAchs.length} locked · 💠 ${lockedShards.toLocaleString()}`,
+      screens: buildEmbedScreens(baseLocked, fields),
+    });
+  }
+
+  await runPaginator({
+    interaction,
+    views,
+    ownerId: interaction.user.id,
+  });
 }

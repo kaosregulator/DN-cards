@@ -11,6 +11,23 @@ import {
 } from "../db.js";
 import { RARITY_EMOJI, RARITY_LABELS, FAIRNESS_RATIO_THRESHOLD, type Rarity } from "../cards-data.js";
 import { applyEmbedOverride } from "../embed-overrides.js";
+import { runPaginator, type PaginatorView } from "../components/paginator.js";
+import { chunkLines } from "../components/field-chunker.js";
+
+// Pack a list of pre-built fields into one or more embed screens (Discord caps
+// at 25 fields/embed; we leave room for one summary field).
+function buildEmbedScreens(
+  baseEmbed: () => EmbedBuilder,
+  fields: { name: string; value: string; inline: false }[],
+  fieldsPerScreen = 24,
+): EmbedBuilder[] {
+  if (fields.length === 0) return [baseEmbed()];
+  const screens: EmbedBuilder[] = [];
+  for (let i = 0; i < fields.length; i += fieldsPerScreen) {
+    screens.push(baseEmbed().addFields(fields.slice(i, i + fieldsPerScreen)));
+  }
+  return screens;
+}
 
 // Computes a fairness warning when one trade side is more than FAIRNESS_RATIO_THRESHOLD×
 // the other side's worth. Returns null if both sides are roughly comparable.
@@ -357,7 +374,9 @@ export async function handleTradeHistory(interaction: ChatInputCommandInteractio
   const target = interaction.options.getUser("user") ?? interaction.user;
   const isSelf = target.id === interaction.user.id;
 
-  const rows = await getTradeHistoryFor(guildId, target.id, 10);
+  // Pull a wide slice (vs. the legacy 10) so the paginator can offer a real
+  // "All" view and reliably compute partner totals + last-30-days counts.
+  const rows = await getTradeHistoryFor(guildId, target.id, 200);
 
   if (rows.length === 0) {
     await interaction.editReply(
@@ -375,37 +394,106 @@ export async function handleTradeHistory(interaction: ChatInputCommandInteractio
     expired: "⌛",
   };
 
-  // Discord caps embed descriptions at 4096 chars. Card names + mentions can
-  // be long; stop appending when we're getting close and tell the user.
-  const MAX_DESC = 3900;
-  const accepted = rows.filter(r => r.status === "accepted").length;
-  const header = `Showing last **${rows.length}** trades · ✅ **${accepted}** completed\n\n`;
-  const lines: string[] = [];
-  let used = header.length;
-  let shown = 0;
-  for (const t of rows) {
+  const formatLine = (t: typeof rows[number]): string => {
     const badge = STATUS_BADGE[t.status] ?? "•";
     const off = formatSide(t.offeredCardName ? `**${t.offeredCardName}**` : null, t.offeredShards);
     const req = formatSide(t.requestedCardName ? `**${t.requestedCardName}**` : null, t.requestedShards);
     const partnerId = t.initiatorId === target.id ? t.targetId : t.initiatorId;
     const direction = t.initiatorId === target.id ? "→" : "←";
     const when = t.resolvedAt ?? t.createdAt;
-    const line = `${badge} <t:${Math.floor(when.getTime() / 1000)}:R> · ${off} ${direction} ${req} · with <@${partnerId}>`;
-    if (used + line.length + 1 > MAX_DESC) break;
-    lines.push(line);
-    used += line.length + 1;
-    shown += 1;
-  }
-  if (shown < rows.length) lines.push(`*…and ${rows.length - shown} more (truncated to fit).*`);
+    return `${badge} <t:${Math.floor(when.getTime() / 1000)}:R> · ${off} ${direction} ${req} · with <@${partnerId}>`;
+  };
 
-  const embed = new EmbedBuilder()
+  const sent = rows.filter(r => r.initiatorId === target.id);
+  const received = rows.filter(r => r.targetId === target.id);
+  const accepted = rows.filter(r => r.status === "accepted").length;
+  const declined = rows.filter(r => r.status === "declined").length;
+  const cancelled = rows.filter(r => r.status === "cancelled").length;
+  const expired = rows.filter(r => r.status === "expired").length;
+
+  const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
+  const cutoff = Date.now() - THIRTY_DAYS_MS;
+  const last30 = rows.filter(r => (r.resolvedAt ?? r.createdAt).getTime() >= cutoff).length;
+
+  // Top partners by trade volume (any status). Cap to top 5 for the overview.
+  const partnerCounts = new Map<string, number>();
+  for (const r of rows) {
+    const partnerId = r.initiatorId === target.id ? r.targetId : r.initiatorId;
+    partnerCounts.set(partnerId, (partnerCounts.get(partnerId) ?? 0) + 1);
+  }
+  const topPartners = [...partnerCounts.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5);
+
+  const overview = new EmbedBuilder()
     .setTitle(`📜 ${target.username}'s Trade History`)
     .setColor(0x9b59b6)
-    .setDescription(header + lines.join("\n"))
     .setThumbnail(target.displayAvatarURL())
-    .setFooter({ text: "Use /trades for pending offers · /trade to propose one" });
+    .setDescription(
+      `Showing last **${rows.length}** resolved trade${rows.length === 1 ? "" : "s"}\n` +
+      `Last 30 days: **${last30}**\n\n` +
+      `✅ ${accepted} accepted · ❌ ${declined} declined · 🚫 ${cancelled} cancelled · ⌛ ${expired} expired\n` +
+      `→ Sent: **${sent.length}**  ·  ← Received: **${received.length}**`,
+    )
+    .setFooter({ text: "Use the menu below to drill into Sent / Received / All" });
 
-  await interaction.editReply({ embeds: [embed] });
+  if (topPartners.length > 0) {
+    overview.addFields({
+      name: "Top trade partners",
+      value: topPartners
+        .map(([uid, n], i) => `${i + 1}. <@${uid}> — **${n}** trade${n === 1 ? "" : "s"}`)
+        .join("\n"),
+      inline: false,
+    });
+  }
+
+  const views: PaginatorView[] = [{
+    key: "overview",
+    label: "Overview",
+    emoji: "🏠",
+    description: `${rows.length} trades · ${last30} in last 30d`,
+    screens: [overview],
+  }];
+
+  const addListView = (
+    key: string, label: string, emoji: string, description: string,
+    baseTitle: string, color: number, slice: typeof rows,
+  ) => {
+    if (slice.length === 0) return;
+    const lines = slice.map(formatLine);
+    const base = () => new EmbedBuilder()
+      .setTitle(baseTitle)
+      .setColor(color)
+      .setThumbnail(target.displayAvatarURL())
+      .setDescription(`**${slice.length}** trade${slice.length === 1 ? "" : "s"}`);
+    const { fields } = chunkLines(lines, { baseName: label, maxFields: 1000 });
+    views.push({
+      key, label, emoji, description,
+      screens: buildEmbedScreens(base, fields),
+    });
+  };
+
+  addListView(
+    "sent", "Sent", "→",
+    `${sent.length} proposed by ${isSelf ? "you" : target.username}`,
+    `→ ${target.username}'s Sent Trades`, 0x3498db, sent,
+  );
+  addListView(
+    "received", "Received", "←",
+    `${received.length} received by ${isSelf ? "you" : target.username}`,
+    `← ${target.username}'s Received Trades`, 0x16a085, received,
+  );
+  addListView(
+    "all", "All", "📜",
+    `${rows.length} total resolved`,
+    `📜 ${target.username}'s All Trades`, 0x9b59b6, rows,
+  );
+
+  await runPaginator({
+    interaction,
+    views,
+    ownerId: interaction.user.id,
+  });
 }
 
 // ── /gift ─────────────────────────────────────────────────────────────────────
