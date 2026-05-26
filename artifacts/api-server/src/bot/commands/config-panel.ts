@@ -260,8 +260,8 @@ function buildConfigEmbed(s: GuildSettings): EmbedBuilder {
         inline: false,
       },
       {
-        name: "⏱️ Spawn Interval",
-        value: intervalLabel,
+        name: "⏱️ Channel Drop Rate",
+        value: `Every ${intervalLabel}`,
         inline: true,
       },
       {
@@ -290,7 +290,7 @@ function buildConfigEmbed(s: GuildSettings): EmbedBuilder {
         inline: true,
       },
       {
-        name: "🎯 Drop Rates",
+        name: "🎲 Rarity Mix (chance of each rarity when a card drops)",
         value: rarityWeightsSummary(s),
         inline: false,
       },
@@ -332,7 +332,7 @@ function buildConfigComponents(s: GuildSettings) {
   ];
   const intervalSelect = new StringSelectMenuBuilder()
     .setCustomId("config_interval")
-    .setPlaceholder("⏱️ Spawn interval")
+    .setPlaceholder("⏱️ Channel Drop Rate — how often cards spawn")
     .addOptions(
       intervalOpts.map(o => ({
         label: o.label, value: String(o.sec),
@@ -378,7 +378,7 @@ function buildConfigComponents(s: GuildSettings) {
   const subPanelRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder()
       .setCustomId("config:rates:open")
-      .setLabel("🎯 Drop Rates")
+      .setLabel("🎲 Rarity Mix")
       .setStyle(ButtonStyle.Secondary),
     new ButtonBuilder()
       .setCustomId("config:packs:open")
@@ -417,7 +417,7 @@ function rarityWeightsSummary(s: GuildSettings): string {
 
 function buildRatesEmbed(s: GuildSettings): EmbedBuilder {
   return new EmbedBuilder()
-    .setTitle("🎯 Drop Rates — Per-Rarity Weights")
+    .setTitle("🎲 Rarity Mix — Per-Rarity Drop Odds")
     .setColor(0xeb459e)
     .setDescription(
       "Pick a weight for each rarity. Higher weight = more common.\n" +
