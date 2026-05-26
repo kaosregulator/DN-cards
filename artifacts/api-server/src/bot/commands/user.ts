@@ -29,7 +29,7 @@ import { chunkLines } from "../components/field-chunker.js";
 
 // Display order for rarity drill-downs (rarest → most common). Used by the
 // paginated /collection, /list, and /catalog views.
-const RARITY_ORDER: Rarity[] = ["mythic", "rare", "legendary", "epic", "uncommon", "common"];
+const RARITY_ORDER: Rarity[] = ["mythic", "legendary", "epic", "rare", "uncommon", "common"];
 
 // Pack pre-chunked fields into multiple embed screens. Returns at least one
 // screen even when there are zero fields (so the embed header still renders).
@@ -90,17 +90,22 @@ export async function handleUserCommand(
       ? `${rank.emoji} **${rank.name}** → ${nextRank.emoji} ${nextRank.name}  ·  ${unique}/${nextRank.min} unique (${nextRank.min - unique} to go)`
       : `${rank.emoji} **${rank.name}**  ·  *MAX RANK*`;
 
-    // Leaderboard placement (by net worth). Pull a wide slice so almost any
-    // active member finds themselves; if not present we say "unranked".
-    const [unlockedKeys, recentKeys, worthBoard] = await Promise.all([
+    // Leaderboard placement on BOTH ladders (net worth + total cards). Pull a
+    // wide slice so almost any active member finds themselves; if not present
+    // we say "unranked".
+    const [unlockedKeys, recentKeys, worthBoard, cardsBoard] = await Promise.all([
       getUnlockedKeys(guildId, target.id),
       getRecentUnlocks(guildId, target.id, 6),
       getLeaderboard(guildId, "worth", 1000),
+      getLeaderboard(guildId, "cards", 1000),
     ]);
-    const lbIdx = worthBoard.findIndex(r => r.userId === target.id);
-    const lbLine = lbIdx >= 0
-      ? `**🏅 Leaderboard:** #${lbIdx + 1} of ${worthBoard.length} by net worth`
-      : `**🏅 Leaderboard:** unranked`;
+    const worthIdx = worthBoard.findIndex(r => r.userId === target.id);
+    const cardsIdx = cardsBoard.findIndex(r => r.userId === target.id);
+    const fmtRank = (idx: number, total: number) =>
+      idx >= 0 ? `#${idx + 1} of ${total}` : "unranked";
+    const lbLine =
+      `**🏅 Leaderboard:** 💠 ${fmtRank(worthIdx, worthBoard.length)} by worth · ` +
+      `🃏 ${fmtRank(cardsIdx, cardsBoard.length)} by cards`;
     const achStrip = recentKeys.length > 0
       ? recentKeys.map(k => getAchievement(k)?.emoji ?? "•").join(" ")
       : "_none yet_";
@@ -391,12 +396,25 @@ export async function handleUserCommand(
     const eventCards = cards.filter(c => c.isEventExclusive);
     const adminOnlyCount = cards.filter(c => !c.droppable).length;
 
+    // Aggregate drop-chance share per rarity from the droppable pool. Mirrors
+    // /info's chance calc: sum the rarity's card dropWeights vs the whole
+    // droppable pool. Non-droppable cards (admin-only) contribute 0.
+    const droppable = cards.filter(c => c.droppable && c.dropWeight > 0);
+    const totalWeight = droppable.reduce((s, c) => s + c.dropWeight, 0);
+    const rarityShare = (r: Rarity) => {
+      if (totalWeight === 0) return 0;
+      const w = droppable.filter(c => (c.rarity as Rarity) === r).reduce((s, c) => s + c.dropWeight, 0);
+      return (w / totalWeight) * 100;
+    };
+
     // ── Overview ──
     const overviewLines: string[] = [];
     for (const r of RARITY_ORDER) {
       const g = byRarity.get(r) ?? [];
       if (g.length === 0) continue;
-      overviewLines.push(`${rarityEmoji(r, listSettings)} **${rarityLabel(r, listSettings)}** — ${g.length}`);
+      const share = rarityShare(r);
+      const shareLabel = share === 0 ? "_admin-drop only_" : `${share.toFixed(share < 1 ? 2 : 1)}%`;
+      overviewLines.push(`${rarityEmoji(r, listSettings)} **${rarityLabel(r, listSettings)}** — ${g.length} · 🎲 ${shareLabel}`);
     }
     const overview = new EmbedBuilder()
       .setTitle("🃏 DN Cards — Full Roster")
