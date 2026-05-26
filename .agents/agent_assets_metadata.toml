@@ -35,3 +35,9 @@ id = "UL67iOsHfFTGUIfo7LWf2"
 uri = "file://db-backup.txt"
 type = "text"
 title = "DN Cards Database Backup (viewable as text)"
+
+[[outputs]]
+id = "_2YIRcw9Gi3Ur7CnT4SUY"
+uri = "file://exports/dn-cards-backup.tar.gz"
+type = "unspecified"
+title = "DN Cards — Full Project Backup (.tar.gz)"
