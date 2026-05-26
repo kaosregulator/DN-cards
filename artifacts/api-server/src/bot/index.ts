@@ -234,9 +234,10 @@ export async function startBot() {
           if (action === "catch_burn") {
             const result = await burnCard(guildId, userId, cardId, 1, { shiny: isShinyCatch });
             if (!result.success) {
-              await interaction.editReply({
-                content: "❌ Couldn't burn the card — it may have already been burned.",
-              }).catch(() => { /* ignore */ });
+              // Silently ack — this only fires on rare double-click races
+              // after the defer fix. Showing an error message confused users
+              // more than the silent no-op does.
+              await interaction.deleteReply().catch(() => { /* ignore */ });
               return;
             }
             const currency = await getOrCreateCurrency(guildId, userId);

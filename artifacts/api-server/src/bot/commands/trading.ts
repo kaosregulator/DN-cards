@@ -186,13 +186,18 @@ export async function handleTrade(interaction: ChatInputCommandInteraction): Pro
 
 // ── Button: Accept / Decline ─────────────────────────────────────────────────
 export async function handleTradeButton(interaction: ButtonInteraction, action: "accept" | "decline", tradeId: number): Promise<void> {
+  // Defer immediately — executeTradeSwap does multiple DB writes and can
+  // exceed Discord's 3-second interaction window. deferUpdate keeps the
+  // original message intact until we call editReply with the result.
+  await interaction.deferUpdate().catch(() => { /* ignore */ });
+
   const trade = await getTrade(tradeId);
   if (!trade || trade.guildId !== interaction.guildId) {
-    await interaction.reply({ content: `❌ Trade #${tradeId} not found.`, flags: MessageFlags.Ephemeral });
+    await interaction.followUp({ content: `❌ Trade #${tradeId} not found.`, flags: MessageFlags.Ephemeral }).catch(() => { /* ignore */ });
     return;
   }
   if (trade.status !== "pending") {
-    await interaction.reply({ content: `❌ Trade #${tradeId} is already **${trade.status}**.`, flags: MessageFlags.Ephemeral });
+    await interaction.followUp({ content: `❌ Trade #${tradeId} is already **${trade.status}**.`, flags: MessageFlags.Ephemeral }).catch(() => { /* ignore */ });
     return;
   }
 
@@ -200,19 +205,19 @@ export async function handleTradeButton(interaction: ButtonInteraction, action: 
   const isInitiator = interaction.user.id === trade.initiatorId;
   const isTarget = interaction.user.id === trade.targetId;
   if (!isInitiator && !isTarget) {
-    await interaction.reply({ content: "❌ This trade isn't yours.", flags: MessageFlags.Ephemeral });
+    await interaction.followUp({ content: "❌ This trade isn't yours.", flags: MessageFlags.Ephemeral }).catch(() => { /* ignore */ });
     return;
   }
   // Initiator can only cancel (decline), not accept their own trade
   if (action === "accept" && !isTarget) {
-    await interaction.reply({ content: "❌ Only the recipient can accept this trade.", flags: MessageFlags.Ephemeral });
+    await interaction.followUp({ content: "❌ Only the recipient can accept this trade.", flags: MessageFlags.Ephemeral }).catch(() => { /* ignore */ });
     return;
   }
 
   if (action === "decline") {
     const newStatus = isInitiator ? "cancelled" : "declined";
     await updateTradeStatus(tradeId, newStatus);
-    await interaction.update({
+    await interaction.editReply({
       content: `❌ Trade **${newStatus}** by <@${interaction.user.id}>.`,
       embeds: [],
       components: [],
@@ -224,7 +229,7 @@ export async function handleTradeButton(interaction: ButtonInteraction, action: 
   const success = await executeTradeSwap(trade);
   if (!success) {
     await updateTradeStatus(tradeId, "declined");
-    await interaction.update({
+    await interaction.editReply({
       content: `❌ Trade #${tradeId} failed — a card or shard balance changed. Trade cancelled.`,
       embeds: [],
       components: [],
@@ -232,7 +237,7 @@ export async function handleTradeButton(interaction: ButtonInteraction, action: 
     return;
   }
   await updateTradeStatus(tradeId, "accepted");
-  await interaction.update({
+  await interaction.editReply({
     content: `✅ Trade **complete!** <@${trade.initiatorId}> ↔️ <@${trade.targetId}> — check \`/collection\` and \`/shards\`.`,
     embeds: [],
     components: [],
