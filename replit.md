@@ -32,6 +32,8 @@ DN Cards is DarkNight's collectible military trading card game for the Roblox + 
 - Bot entry: `artifacts/api-server/src/bot/index.ts`
 - Spawn manager: `artifacts/api-server/src/bot/spawn-manager.ts`
 - Admin commands: `artifacts/api-server/src/bot/commands/admin.ts`
+- Rarity admin (`/rarity` — profile/custom/card subcommand groups): `artifacts/api-server/src/bot/commands/rarity-admin.ts`
+- Embed admin (`/embed` — show/set/reset): `artifacts/api-server/src/bot/commands/embed-admin.ts`
 - User commands: `artifacts/api-server/src/bot/commands/user.ts`
 - Trading commands: `artifacts/api-server/src/bot/commands/trading.ts`
 - Pack store: `artifacts/api-server/src/bot/commands/pack.ts`
@@ -63,10 +65,12 @@ affects spawning, catching, packs, trades, burning, events, and economy:
 - `news_posts`, `suggestions` — website-only content. Discord never reads it.
 - `dashboard_users`, `setup_tokens` — website auth.
 
-API routes for the now Discord-owned per-guild config (`/api/embeds`,
-`/api/rarity-profiles`, `/api/custom-rarities`, `/api/card-rarity-overrides`)
-were unmounted in May 2026; the router files remain on disk for one release
-in case a quick restore is needed but are not imported.
+The old HTTP routes and dashboard pages for per-guild rarity/embed config
+(`/api/embeds`, `/api/rarity-profiles`, `/api/custom-rarities`,
+`/api/card-rarity-overrides`, and the `/admin/embeds`, `/admin/rarities`,
+`/admin/custom-rarities` dashboard pages) have been deleted. All writes to
+those tables now happen through Discord slash commands — see
+`/rarity` and `/embed` below. The website never reads or writes them.
 
 ### Card Display Overrides (Website)
 - `/admin` (the "Card Manager" page) edits `card_display_overrides` **only**.
@@ -313,6 +317,15 @@ Card catching is text-based — when a card spawns, type its name exactly to cat
 | `/event list` | Show all active events |
 | `/event stop id:<ID>` | End an event early |
 | `/rarityname name:<Name> emoji:<🔮> [color:<#hex>] [reset:true]` | Customize the Mythic tier's display name, emoji & color |
+| `/rarity profile set rarity:<tier> [worth] [burn] [weight]` | Override worth/burn/drop-weight for a built-in rarity |
+| `/rarity profile reset rarity:<tier>` | Clear all overrides for a built-in rarity |
+| `/rarity profile list` | Show current per-tier overrides |
+| `/rarity custom add\|edit\|remove\|list` | Manage brand-new rarity tiers beyond the 6 built-ins |
+| `/rarity card assign card:<Name> slug:<tier>` | Put a card into a custom tier (replaces its worth/burn/weight) |
+| `/rarity card unassign card:<Name>` | Revert a card to its built-in rarity |
+| `/embed show key:<embed>` | Show current per-guild override for an embed |
+| `/embed set key:<embed> field:<field> value:<v>` | Set one field on an embed override (color, title, footer, image, etc.) |
+| `/embed reset key:<embed> [field]` | Reset one field or the whole embed override |
 | `/loadset` | Upload a JSON card set to add to your roster |
 | `/unloadset` | Remove a card set (cards + related collections/trades) |
 | `/listsets` | List all loaded card sets and their sizes |

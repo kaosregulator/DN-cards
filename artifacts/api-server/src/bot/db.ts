@@ -1207,3 +1207,143 @@ export async function stopCardEvent(
     .from(cardsTable).where(eq(cardsTable.id, row.cardId));
   return { ...row, cardName: card?.name ?? `card #${row.cardId}` };
 }
+
+// ── Rarity admin writes (Discord = source of truth for gameplay) ─────────────
+// These helpers exist so Discord slash commands can manage rarity_profiles,
+// custom_rarities, and card_rarity_overrides. The website is intentionally
+// read-only against these tables; do NOT call these from any HTTP route.
+
+export async function upsertRarityProfile(
+  guildId: string,
+  rarity: Rarity,
+  patch: { worthValue?: number | null; burnValue?: number | null; dropWeight?: number | null; updatedBy?: string },
+): Promise<RarityProfile> {
+  const insertValues = {
+    guildId,
+    rarity,
+    worthValue: patch.worthValue ?? null,
+    burnValue: patch.burnValue ?? null,
+    dropWeight: patch.dropWeight ?? null,
+    updatedBy: patch.updatedBy ?? null,
+  };
+  const setOnConflict: Record<string, unknown> = { updatedAt: new Date() };
+  if (patch.worthValue !== undefined) setOnConflict.worthValue = patch.worthValue;
+  if (patch.burnValue !== undefined) setOnConflict.burnValue = patch.burnValue;
+  if (patch.dropWeight !== undefined) setOnConflict.dropWeight = patch.dropWeight;
+  if (patch.updatedBy !== undefined) setOnConflict.updatedBy = patch.updatedBy;
+  const [row] = await db.insert(rarityProfilesTable)
+    .values(insertValues)
+    .onConflictDoUpdate({ target: [rarityProfilesTable.guildId, rarityProfilesTable.rarity], set: setOnConflict })
+    .returning();
+  invalidateRarityProfileCache(guildId);
+  invalidateRarityContextCache(guildId);
+  invalidateCardCache();
+  return row;
+}
+
+export async function deleteRarityProfile(guildId: string, rarity: Rarity): Promise<boolean> {
+  const res = await db.delete(rarityProfilesTable)
+    .where(and(eq(rarityProfilesTable.guildId, guildId), eq(rarityProfilesTable.rarity, rarity)))
+    .returning({ id: rarityProfilesTable.id });
+  invalidateRarityProfileCache(guildId);
+  invalidateRarityContextCache(guildId);
+  invalidateCardCache();
+  return res.length > 0;
+}
+
+export async function listRarityProfiles(guildId: string): Promise<RarityProfile[]> {
+  return db.select().from(rarityProfilesTable).where(eq(rarityProfilesTable.guildId, guildId));
+}
+
+export async function createCustomRarity(
+  guildId: string,
+  data: {
+    slug: string; name: string; emoji: string; position: number;
+    worthValue: number; burnValue: number;
+    color?: number; dropWeight?: number; droppable?: boolean; inPacks?: boolean;
+    updatedBy?: string;
+  },
+): Promise<CustomRarity> {
+  const [row] = await db.insert(customRaritiesTable).values({
+    guildId,
+    slug: data.slug,
+    name: data.name,
+    emoji: data.emoji,
+    position: data.position,
+    worthValue: data.worthValue,
+    burnValue: data.burnValue,
+    color: data.color ?? 0x5865f2,
+    dropWeight: data.dropWeight ?? 1.0,
+    droppable: data.droppable ?? true,
+    inPacks: data.inPacks ?? false,
+    updatedBy: data.updatedBy ?? null,
+  }).returning();
+  invalidateRarityContextCache(guildId);
+  invalidateCardCache();
+  return row;
+}
+
+export async function updateCustomRarity(
+  guildId: string,
+  slug: string,
+  patch: Partial<{
+    name: string; emoji: string; position: number; worthValue: number; burnValue: number;
+    color: number; dropWeight: number; droppable: boolean; inPacks: boolean; updatedBy: string;
+  }>,
+): Promise<CustomRarity | null> {
+  if (Object.keys(patch).length === 0) {
+    const [existing] = await db.select().from(customRaritiesTable)
+      .where(and(eq(customRaritiesTable.guildId, guildId), eq(customRaritiesTable.slug, slug)));
+    return existing ?? null;
+  }
+  const [row] = await db.update(customRaritiesTable)
+    .set({ ...patch, updatedAt: new Date() })
+    .where(and(eq(customRaritiesTable.guildId, guildId), eq(customRaritiesTable.slug, slug)))
+    .returning();
+  invalidateRarityContextCache(guildId);
+  invalidateCardCache();
+  return row ?? null;
+}
+
+export async function deleteCustomRarity(guildId: string, slug: string): Promise<{ removed: boolean; clearedAssignments: number }> {
+  const cleared = await db.delete(cardRarityOverridesTable)
+    .where(and(eq(cardRarityOverridesTable.guildId, guildId), eq(cardRarityOverridesTable.customRaritySlug, slug)))
+    .returning({ id: cardRarityOverridesTable.id });
+  const res = await db.delete(customRaritiesTable)
+    .where(and(eq(customRaritiesTable.guildId, guildId), eq(customRaritiesTable.slug, slug)))
+    .returning({ id: customRaritiesTable.id });
+  invalidateRarityContextCache(guildId);
+  invalidateCardCache();
+  return { removed: res.length > 0, clearedAssignments: cleared.length };
+}
+
+export async function listCustomRarities(guildId: string): Promise<CustomRarity[]> {
+  const rows = await db.select().from(customRaritiesTable).where(eq(customRaritiesTable.guildId, guildId));
+  return rows.sort((a, b) => a.position - b.position);
+}
+
+export async function getCustomRarityBySlug(guildId: string, slug: string): Promise<CustomRarity | null> {
+  const [row] = await db.select().from(customRaritiesTable)
+    .where(and(eq(customRaritiesTable.guildId, guildId), eq(customRaritiesTable.slug, slug)));
+  return row ?? null;
+}
+
+export async function assignCardToCustomRarity(guildId: string, cardId: number, slug: string): Promise<void> {
+  await db.insert(cardRarityOverridesTable)
+    .values({ guildId, cardId, customRaritySlug: slug })
+    .onConflictDoUpdate({
+      target: [cardRarityOverridesTable.guildId, cardRarityOverridesTable.cardId],
+      set: { customRaritySlug: slug },
+    });
+  invalidateRarityContextCache(guildId);
+  invalidateCardCache();
+}
+
+export async function unassignCardCustomRarity(guildId: string, cardId: number): Promise<boolean> {
+  const res = await db.delete(cardRarityOverridesTable)
+    .where(and(eq(cardRarityOverridesTable.guildId, guildId), eq(cardRarityOverridesTable.cardId, cardId)))
+    .returning({ id: cardRarityOverridesTable.id });
+  invalidateRarityContextCache(guildId);
+  invalidateCardCache();
+  return res.length > 0;
+}

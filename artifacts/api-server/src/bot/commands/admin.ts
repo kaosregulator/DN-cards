@@ -207,6 +207,18 @@ export async function handleAdminCommand(
     return;
   }
 
+  if (cmd === "rarity") {
+    const { handleRarityAdminCommand } = await import("./rarity-admin.js");
+    await handleRarityAdminCommand(interaction);
+    return;
+  }
+
+  if (cmd === "embed") {
+    const { handleEmbedAdminCommand } = await import("./embed-admin.js");
+    await handleEmbedAdminCommand(interaction);
+    return;
+  }
+
   // ── /event start|list|stop ────────────────────────────────────────────────
   // Delegated to event.ts. We've already deferred + admin-checked above so
   // it can go straight to editReply.

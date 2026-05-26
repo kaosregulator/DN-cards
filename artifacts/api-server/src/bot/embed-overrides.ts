@@ -163,3 +163,41 @@ export async function shouldShow(guildId: string | null, key: EmbedKey, what: "w
 // Re-export the rarity defaults so the API & dashboard can show them as the
 // "current default" placeholder when no override is set.
 export const DEFAULT_RARITY_COLORS = RARITY_COLORS;
+
+// ── Admin writes (Discord = source of truth) ─────────────────────────────────
+// Used by /embed slash command. Website never imports these.
+import { and } from "drizzle-orm";
+
+export async function getRawEmbedOverride(guildId: string, key: EmbedKey): Promise<EmbedOverrideConfig | null> {
+  const [row] = await db.select().from(embedOverridesTable)
+    .where(and(eq(embedOverridesTable.guildId, guildId), eq(embedOverridesTable.embedKey, key)));
+  return row?.config ?? null;
+}
+
+export async function upsertEmbedOverride(
+  guildId: string,
+  key: EmbedKey,
+  config: EmbedOverrideConfig,
+  updatedBy?: string,
+): Promise<void> {
+  await db.insert(embedOverridesTable)
+    .values({ guildId, embedKey: key, config, updatedBy: updatedBy ?? null })
+    .onConflictDoUpdate({
+      target: [embedOverridesTable.guildId, embedOverridesTable.embedKey],
+      set: { config, updatedAt: new Date(), updatedBy: updatedBy ?? null },
+    });
+  invalidateEmbedCache(guildId);
+}
+
+export async function deleteEmbedOverride(guildId: string, key: EmbedKey): Promise<boolean> {
+  const res = await db.delete(embedOverridesTable)
+    .where(and(eq(embedOverridesTable.guildId, guildId), eq(embedOverridesTable.embedKey, key)))
+    .returning({ id: embedOverridesTable.id });
+  invalidateEmbedCache(guildId);
+  return res.length > 0;
+}
+
+export async function listEmbedOverrides(guildId: string): Promise<Array<{ embedKey: EmbedKey; config: EmbedOverrideConfig }>> {
+  const rows = await db.select().from(embedOverridesTable).where(eq(embedOverridesTable.guildId, guildId));
+  return rows.map(r => ({ embedKey: r.embedKey as EmbedKey, config: r.config }));
+}
