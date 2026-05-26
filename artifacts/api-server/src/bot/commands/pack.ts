@@ -5,7 +5,7 @@ import { and, eq, sql } from "drizzle-orm";
 import {
   getAllCards, catchCard, getOrCreateCurrency,
   getOrCreateGuildSettings,
-  getRarityProfile, applyRarityProfileAll,
+  getRarityContext, applyRarityContextAll,
 } from "../db.js";
 import {
   RARITY_COLORS, RARITY_EMOJI, RARITY_LABELS, SHINY_EMOJI, SHINY_MULTIPLIER,
@@ -143,13 +143,20 @@ function pickByDropWeight(pool: Card[]): Card | undefined {
 }
 
 async function drawPack(tier: PackTier, size: number, guildId: string): Promise<Card[]> {
-  const profile = await getRarityProfile(guildId);
-  const all = applyRarityProfileAll(
-    (await getAllCards()).filter(c =>
-      c.droppable && c.inPacks && !c.isArchived && !c.isEventExclusive &&
-      (!c.isLimitedEdition || c.maxCopies == null || c.totalMinted < c.maxCopies),
-    ),
-    profile,
+  const ctx = await getRarityContext(guildId);
+  // Stage-2: cards assigned to a custom tier are excluded from packs by
+  // default (and entirely whenever their tier sets `inPacks=false`). This
+  // keeps the built-in pack tiers (Basic/Premium/Legendary) focused on the
+  // built-in rarity ladder unless an admin explicitly opts a custom tier in.
+  const all = applyRarityContextAll(
+    (await getAllCards()).filter(c => {
+      if (!(c.droppable && c.inPacks && !c.isArchived && !c.isEventExclusive)) return false;
+      if (c.isLimitedEdition && c.maxCopies != null && c.totalMinted >= c.maxCopies) return false;
+      const customTier = ctx.customByCard.get(c.id);
+      if (customTier && !customTier.inPacks) return false;
+      return true;
+    }),
+    ctx,
   );
   if (all.length === 0) return [];
 

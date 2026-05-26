@@ -6,7 +6,9 @@ import {
 import {
   getAllCards, getUserCollection, removeCardFromUser, catchCard,
   restoreCardToUser, getOrCreateCurrency, getOrCreateGuildSettings,
-  getRarityProfile, applyRarityProfile, applyRarityProfileAll,
+  getRarityContext, applyRarityContext, applyRarityContextAll,
+  getDisplayRarities, effectiveRarityKey,
+  type DisplayRarity, type RarityContext,
 } from "../db.js";
 import {
   RARITY_COLORS, RARITY_EMOJI, RARITY_LABELS, SHINY_EMOJI, SHINY_MULTIPLIER,
@@ -20,12 +22,20 @@ import type { Card } from "@workspace/db";
 
 export const TRADEIN_COST = 5;
 
+// Built-in /tradein rarity choices remain on the slash command; custom tiers
+// are reachable as the destination via position-ordered ladder lookup.
 const RARITY_LADDER: Rarity[] = ["common", "uncommon", "rare", "epic", "legendary", "mythic"];
 
-function nextRarity(r: Rarity): Rarity | null {
-  const i = RARITY_LADDER.indexOf(r);
-  if (i < 0 || i === RARITY_LADDER.length - 1) return null;
-  return RARITY_LADDER[i + 1];
+// Build a position-ordered ladder (ascending) of built-in + custom tiers for
+// this guild. The "next" tier above any given tier is just the next element.
+function buildLadder(ctx: RarityContext, settings: GuildSettings | null): DisplayRarity[] {
+  return getDisplayRarities(ctx, settings, { rarestFirst: false });
+}
+
+function findNextTier(ladder: DisplayRarity[], fromKey: string): DisplayRarity | null {
+  const i = ladder.findIndex(t => t.key === fromKey);
+  if (i < 0 || i === ladder.length - 1) return null;
+  return ladder[i + 1];
 }
 
 function pickByDropWeight(pool: Card[]): Card | undefined {
@@ -77,21 +87,18 @@ function planConsumption(
 }
 
 function buildConfirmEmbed(
-  fromRarity: Rarity, toRarity: Rarity, plan: ConsumePlan, losesUnique: boolean,
-  settings: GuildSettings | null = null,
+  fromTier: DisplayRarity, toTier: DisplayRarity, plan: ConsumePlan, losesUnique: boolean,
 ): EmbedBuilder {
   const lines = plan.map(p => `• **${p.taken}× ${p.name}**`).join("\n");
   const warn = losesUnique
     ? "\n\n⚠️ **Heads up:** you'd lose a card you only own one copy of."
     : "";
-  const fE = rarityEmoji(fromRarity, settings), fL = rarityLabel(fromRarity, settings);
-  const tE = rarityEmoji(toRarity, settings),   tL = rarityLabel(toRarity, settings);
   return new EmbedBuilder()
-    .setTitle(`🔄 Trade-In — ${fE} → ${tE}`)
-    .setColor(rarityColor(toRarity, settings))
+    .setTitle(`🔄 Trade-In — ${fromTier.emoji} → ${toTier.emoji}`)
+    .setColor(toTier.color)
     .setDescription(
-      `Burn **${TRADEIN_COST}** ${fE} ${fL} cards ` +
-      `for **1 random** ${tE} **${tL}**.\n\n` +
+      `Burn **${TRADEIN_COST}** ${fromTier.emoji} ${fromTier.label} cards ` +
+      `for **1 random** ${toTier.emoji} **${toTier.label}**.\n\n` +
       `**Will be destroyed:**\n${lines}${warn}\n\n` +
       `Are you sure?`,
     )
@@ -116,46 +123,59 @@ export async function handleTradein(interaction: ChatInputCommandInteraction): P
     return;
   }
   const fromRarity = fromRarityRaw as Rarity;
-  const toRarity = nextRarity(fromRarity);
   const settings = await getOrCreateGuildSettings(guildId);
+  const ctx = await getRarityContext(guildId);
 
-  if (!toRarity) {
+  // Build the per-guild ladder (built-ins + custom tiers by position). The
+  // slash command only exposes built-in rarities as the FROM tier, but the
+  // ladder may contain custom tiers above/below them as the TO target.
+  const ladder = buildLadder(ctx, settings);
+  const fromKey = fromRarity; // built-in keys ARE the rarity string
+  const fromTier = ladder.find(t => t.key === fromKey);
+  const toTier = fromTier ? findNextTier(ladder, fromTier.key) : null;
+
+  if (!fromTier) {
+    await interaction.editReply(`❌ "${fromRarity}" isn't on this server's rarity ladder.`);
+    return;
+  }
+  if (!toTier) {
     await interaction.editReply(
-      `❌ Mythic is the top tier — there's nothing higher to trade up to.\n` +
-      `Try \`/tradein rarity:legendary\` to chase a Mythic instead.`,
+      `❌ **${fromTier.label}** is already the top tier on this server — nothing higher to trade up to.`,
     );
     return;
   }
 
-  // Snapshot the user's eligible holdings.
+  // Group user holdings by the EFFECTIVE rarity key — cards reassigned to a
+  // custom tier won't show up under their built-in rarity any more (which is
+  // what the admin wants).
   const collection = await getUserCollection(guildId, userId);
   const eligible = collection
-    .filter(c => c.rarity === fromRarity && !c.isEventExclusive)
+    .filter(c => !c.isEventExclusive && effectiveRarityKey(c, ctx) === fromKey)
     .map(c => ({ cardId: c.cardId, name: c.name, count: c.count }));
   const totalAtRarity = eligible.reduce((s, c) => s + c.count, 0);
 
   if (totalAtRarity < TRADEIN_COST) {
     await interaction.editReply(
-      `❌ You need **${TRADEIN_COST}** ${rarityEmoji(fromRarity, settings)} ${rarityLabel(fromRarity, settings)} cards to trade in. ` +
+      `❌ You need **${TRADEIN_COST}** ${fromTier.emoji} ${fromTier.label} cards to trade in. ` +
       `You have **${totalAtRarity}**.\n` +
       `Tip: \`/burn\` duplicates first if you'd rather have shards.`,
     );
     return;
   }
 
-  // Make sure there's something to award before we ask for confirmation.
-  // Apply per-guild rarity profile so the dropWeight pick honors overrides.
-  const tradeinProfile = await getRarityProfile(guildId);
-  const allCards = applyRarityProfileAll(await getAllCards(), tradeinProfile);
+  // Reward pool: cards whose effective rarity key matches the destination
+  // tier. For built-in destinations this is `c.rarity === toKey`; for custom
+  // destinations it's `customByCard.get(c.id)?.slug === <slug>`.
+  const allCards = applyRarityContextAll(await getAllCards(), ctx);
   const rewardPool = allCards.filter(c =>
-    c.rarity === toRarity &&
+    effectiveRarityKey(c, ctx) === toTier.key &&
     !c.isArchived &&
     !c.isEventExclusive &&
     (!c.isLimitedEdition || c.maxCopies == null || c.totalMinted < c.maxCopies),
   );
   if (rewardPool.length === 0) {
     await interaction.editReply(
-      `❌ No ${rarityEmoji(toRarity, settings)} ${rarityLabel(toRarity, settings)} cards are available right now. ` +
+      `❌ No ${toTier.emoji} ${toTier.label} cards are available right now. ` +
       `Ask an admin to load more cards.`,
     );
     return;
@@ -171,9 +191,8 @@ export async function handleTradein(interaction: ChatInputCommandInteraction): P
     return owned === p.taken;
   });
 
-  // Show confirm prompt.
   await interaction.editReply({
-    embeds: [buildConfirmEmbed(fromRarity, toRarity, plan, losesUnique, settings)],
+    embeds: [buildConfirmEmbed(fromTier, toTier, plan, losesUnique)],
     components: [confirmRow()],
   });
 
@@ -215,7 +234,7 @@ export async function handleTradein(interaction: ChatInputCommandInteraction): P
     // Acknowledge immediately and rebuild the preview with disabled buttons
     // so the user sees we're working.
     await i.update({
-      embeds: [buildConfirmEmbed(fromRarity, toRarity, plan, losesUnique, settings)],
+      embeds: [buildConfirmEmbed(fromTier, toTier, plan, losesUnique)],
       components: [confirmRow(true)],
     }).catch(() => { /* ignore */ });
 
@@ -269,23 +288,23 @@ export async function handleTradein(interaction: ChatInputCommandInteraction): P
       }
     }
 
-    // Roll the reward (re-filter in case stock changed). Re-fetch profile so
+    // Roll the reward (re-filter in case stock changed). Re-fetch context so
     // an admin save between confirm and resolve is respected.
-    const freshProfile = await getRarityProfile(guildId);
-    const freshAll = applyRarityProfileAll(await getAllCards(), freshProfile);
+    const freshCtx = await getRarityContext(guildId);
+    const freshAll = applyRarityContextAll(await getAllCards(), freshCtx);
     const freshPool = freshAll.filter(c =>
-      c.rarity === toRarity &&
+      effectiveRarityKey(c, freshCtx) === toTier.key &&
       !c.isArchived &&
       !c.isEventExclusive &&
       (!c.isLimitedEdition || c.maxCopies == null || c.totalMinted < c.maxCopies),
     );
     const rawReward = pickByDropWeight(freshPool);
-    const reward = rawReward ? applyRarityProfile(rawReward, freshProfile) : undefined;
+    const reward = rawReward ? applyRarityContext(rawReward, freshCtx) : undefined;
     if (!reward) {
       // Nothing to award — give the user back exactly what we removed.
       await refund();
       await interaction.editReply({
-        content: `❌ No ${rarityEmoji(toRarity, settings)} cards left to award — your cards were returned.`,
+        content: `❌ No ${toTier.emoji} ${toTier.label} cards left to award — your cards were returned.`,
         embeds: [], components: [],
       }).catch(() => { /* ignore */ });
       collector.stop("noaward");
@@ -298,11 +317,11 @@ export async function handleTradein(interaction: ChatInputCommandInteraction): P
     const rewardWorth = isShiny ? reward.worthValue * SHINY_MULTIPLIER : reward.worthValue;
     const rewardBurn = isShiny ? reward.burnValue * SHINY_MULTIPLIER : reward.burnValue;
 
-    const fE = rarityEmoji(fromRarity, settings), fL = rarityLabel(fromRarity, settings);
-    const tE = rarityEmoji(toRarity, settings),   tL = rarityLabel(toRarity, settings);
+    const fE = fromTier.emoji, fL = fromTier.label;
+    const tE = toTier.emoji,   tL = toTier.label;
     const summary = new EmbedBuilder()
       .setTitle(`🔄 Trade-In Complete — ${tE} ${tL}!${isShiny ? ` ${SHINY_EMOJI}` : ""}`)
-      .setColor(isShiny ? 0xf1c40f : rarityColor(toRarity, settings))
+      .setColor(isShiny ? 0xf1c40f : toTier.color)
       .setDescription(
         `You burned **${TRADEIN_COST}** ${fE} ${fL} cards ` +
         `and received a random ${tE} **${tL}**.\n\n` +

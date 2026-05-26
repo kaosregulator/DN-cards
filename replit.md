@@ -45,6 +45,17 @@ DN Cards is DarkNight's collectible military trading card game for the Roblox + 
 - API: `GET/PUT/DELETE /api/embeds/:guildId[/:embedKey]`, behind `requireDashboardAuth`. 60s in-memory cache in the bot, invalidated explicitly on PUT/DELETE.
 - Storage: `embed_overrides` table — one row per `(guildId, embedKey)` with a permissive jsonb `config`. Helper `applyEmbedOverride` in `bot/embed-overrides.ts` owns the shape; safe to extend without migration.
 
+### Custom Rarity Tiers (Stage 2)
+- `/admin/custom-rarities` lets admins create **brand-new rarity tiers** per guild — beyond the six built-ins — and assign any existing card to them. Server 1 has no rows here so it's completely unaffected.
+- Each tier has: slug (URL id), name, emoji, color, **position** (decimal — e.g. `5.5` slots between Epic & Legendary), worth, burn, dropWeight, droppable, inPacks (default false).
+- **Replacement, not layering:** a card assigned to a custom tier uses the **tier's** worth/burn/dropWeight — the Stage-1 rarity profile is ignored for that card. One source of truth per card per guild.
+- Storage: `custom_rarities` (`(guildId, slug)` unique) and `card_rarity_overrides` (`(guildId, cardId)` unique). Built-in `cards.rarity` is preserved untouched so removing a tier instantly reverts assigned cards.
+- API: `GET/PUT/DELETE /api/custom-rarities/:guildId[/:slug]` and `GET/PUT/DELETE /api/card-rarity-overrides/:guildId[/:cardId]`, behind `requireDashboardAuth`.
+- Resolver: `getRarityContext(guildId)` returns `{ profile, customBySlug, customByCard }` from a 5s cache. `applyRarityContext(card, ctx)` is THE chokepoint for `worth/burn/dropWeight` — custom override first, then Stage-1 profile, then card's own value. Used by spawn weighting, `/info`, `/list`, `/collection`, `/catalog`, `/burn`, `/pack` pool, `/tradein` ladder, `/trade` fairness, leaderboard.
+- `/pack` excludes custom-tier cards by default (toggle `inPacks` true to opt in). Custom tiers with `droppable=false` are skipped by `pickRandomCard`.
+- `/tradein` ladder is position-ordered: groups user holdings by **effective rarity key** (built-in OR custom slug), so a card moved into a custom tier won't be eligible for the built-in's trade-in chain. The slash command rarity option still only exposes the six built-ins as the FROM tier.
+- Deleting a tier also wipes its `card_rarity_overrides` rows (no DB-level FK on slug, done in the route).
+
 ### Per-Server Rarity Profiles
 - `/admin/rarities` dashboard page lets admins override **worth / burn / drop weight** per-rarity per-guild — without editing individual cards.
 - Storage: `rarity_profiles` table — one row per `(guildId, rarity)` with nullable `worthValue` / `burnValue` / `dropWeight`. A null column means "use the card's value".

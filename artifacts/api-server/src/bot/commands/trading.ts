@@ -8,7 +8,7 @@ import {
   updateTradeStatus, executeTradeSwap,
   getOrCreateGuildSettings, updateTradeMessageId,
   getOrCreateCurrency, giftShards, getTradeHistoryFor,
-  getRarityProfile, applyRarityProfile,
+  getRarityContext, applyRarityContext,
 } from "../db.js";
 import { RARITY_EMOJI, RARITY_LABELS, FAIRNESS_RATIO_THRESHOLD, type Rarity } from "../cards-data.js";
 import { applyEmbedOverride } from "../embed-overrides.js";
@@ -162,9 +162,9 @@ export async function handleTrade(interaction: ChatInputCommandInteraction): Pro
 
   // Apply the per-guild rarity profile so the fairness check reflects this
   // server's economy (e.g. if Rare here is worth 800 not 250).
-  const fairnessProfile = await getRarityProfile(guildId);
-  const offeredCardEcon = offeredCard ? applyRarityProfile(offeredCard, fairnessProfile) : null;
-  const requestedCardEcon = requestedCard ? applyRarityProfile(requestedCard, fairnessProfile) : null;
+  const fairnessCtx = await getRarityContext(guildId);
+  const offeredCardEcon = offeredCard ? applyRarityContext(offeredCard, fairnessCtx) : null;
+  const requestedCardEcon = requestedCard ? applyRarityContext(requestedCard, fairnessCtx) : null;
   const fairness = buildFairnessWarning(
     offeredCardEcon?.worthValue ?? 0, offeredShards,
     requestedCardEcon?.worthValue ?? 0, requestedShards,

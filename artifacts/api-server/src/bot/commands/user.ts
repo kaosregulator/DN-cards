@@ -7,7 +7,8 @@ import {
   getUserCollection, getAllCards, getLeaderboard, getTopPackOpeners,
   getOrCreateCurrency, burnCard, getCardByName, getUserCardCount, getUserOwnedCount,
   getOrCreateGuildSettings,
-  getRarityProfile, applyRarityProfile, applyRarityProfileAll,
+  getRarityContext, applyRarityContextAll,
+  effectiveRarityKey, getDisplayRarities,
 } from "../db.js";
 import {
   RARITY_COLORS, RARITY_EMOJI, RARITY_LABELS, getTypeEmoji,
@@ -307,12 +308,11 @@ export async function handleUserCommand(
   if (sub === "info") {
     const cardName = interaction.options.getString("name", true);
     const rawCards = await getAllCards();
-    const profile = await getRarityProfile(guildId);
-    const cards = applyRarityProfileAll(rawCards, profile);
+    const ctx = await getRarityContext(guildId);
+    const cards = applyRarityContextAll(rawCards, ctx);
     const card = cards.find(c => c.name.toLowerCase() === cardName.toLowerCase());
     if (!card) { await interaction.editReply(`❌ "**${cardName}**" not found. Try \`/list\`.`); return; }
 
-    const rarity = card.rarity as Rarity;
     const cardType = card.cardType;
     const droppableCards = cards.filter(c => c.droppable);
     const totalWeight = droppableCards.reduce((s, c) => s + c.dropWeight, 0);
@@ -323,12 +323,17 @@ export async function handleUserCommand(
     if (card.isEventExclusive) badges.push("🎆 Event Exclusive");
 
     const infoSettings = await getOrCreateGuildSettings(guildId);
+    // Display the EFFECTIVE tier (custom slug if assigned, else built-in).
+    const ladder = getDisplayRarities(ctx, infoSettings);
+    const effKey = effectiveRarityKey(card, ctx);
+    const tier = ladder.find(t => t.key === effKey)
+      ?? ladder.find(t => t.key === card.rarity)!;
     const embed = new EmbedBuilder()
-      .setTitle(`${rarityEmoji(rarity, infoSettings)} ${card.name}`)
-      .setColor(rarityColor(rarity, infoSettings) ?? 0x7289da)
+      .setTitle(`${tier.emoji} ${card.name}`)
+      .setColor(tier.color ?? 0x7289da)
       .setDescription((card.description || "*No description.*") + (card.flavor ? `\n\n*${card.flavor}*` : ""))
       .addFields(
-        { name: "Rarity", value: `${rarityEmoji(rarity, infoSettings)} ${rarityLabel(rarity, infoSettings)}`, inline: true },
+        { name: "Rarity", value: `${tier.emoji} ${tier.label}`, inline: true },
         { name: "Type", value: `${getTypeEmoji(cardType)} ${card.cardType}`, inline: true },
         { name: "Drop Chance", value: dropChance, inline: true },
         { name: "💠 Worth", value: `${card.worthValue.toLocaleString()} shards`, inline: true },
@@ -347,38 +352,46 @@ export async function handleUserCommand(
   // stats). Same paginator as /collection and /catalog.
   if (sub === "list") {
     const rawCards = await getAllCards();
-    const listProfile = await getRarityProfile(guildId);
-    const cards = applyRarityProfileAll(rawCards, listProfile);
+    const listCtx = await getRarityContext(guildId);
+    const cards = applyRarityContextAll(rawCards, listCtx);
     if (cards.length === 0) { await interaction.editReply("No cards in the pool yet."); return; }
     const listSettings = await getOrCreateGuildSettings(guildId);
 
-    const byRarity = new Map<Rarity, typeof cards>();
-    for (const r of RARITY_ORDER) byRarity.set(r, []);
-    for (const c of cards) byRarity.get(c.rarity as Rarity)?.push(c);
+    // Group by EFFECTIVE rarity key (built-in OR custom slug), walking the
+    // per-guild ladder so custom tiers slot in at their position.
+    const ladder = getDisplayRarities(listCtx, listSettings); // rarest first
+    const byKey = new Map<string, typeof cards>();
+    for (const t of ladder) byKey.set(t.key, []);
+    for (const c of cards) {
+      const k = effectiveRarityKey(c, listCtx);
+      const bucket = byKey.get(k) ?? [];
+      bucket.push(c);
+      byKey.set(k, bucket);
+    }
 
     const limitedCards = cards.filter(c => c.isLimitedEdition);
     const eventCards = cards.filter(c => c.isEventExclusive);
     const adminOnlyCount = cards.filter(c => !c.droppable).length;
 
-    // Aggregate drop-chance share per rarity from the droppable pool. Mirrors
-    // /info's chance calc: sum the rarity's card dropWeights vs the whole
+    // Aggregate drop-chance share per tier from the droppable pool. Mirrors
+    // /info's chance calc: sum the tier's card dropWeights vs the whole
     // droppable pool. Non-droppable cards (admin-only) contribute 0.
     const droppable = cards.filter(c => c.droppable && c.dropWeight > 0);
     const totalWeight = droppable.reduce((s, c) => s + c.dropWeight, 0);
-    const rarityShare = (r: Rarity) => {
+    const tierShare = (key: string) => {
       if (totalWeight === 0) return 0;
-      const w = droppable.filter(c => (c.rarity as Rarity) === r).reduce((s, c) => s + c.dropWeight, 0);
+      const w = droppable.filter(c => effectiveRarityKey(c, listCtx) === key).reduce((s, c) => s + c.dropWeight, 0);
       return (w / totalWeight) * 100;
     };
 
     // ── Overview ──
     const overviewLines: string[] = [];
-    for (const r of RARITY_ORDER) {
-      const g = byRarity.get(r) ?? [];
+    for (const t of ladder) {
+      const g = byKey.get(t.key) ?? [];
       if (g.length === 0) continue;
-      const share = rarityShare(r);
+      const share = tierShare(t.key);
       const shareLabel = share === 0 ? "_admin-drop only_" : `${share.toFixed(share < 1 ? 2 : 1)}%`;
-      overviewLines.push(`${rarityEmoji(r, listSettings)} **${rarityLabel(r, listSettings)}** — ${g.length} · 🎲 ${shareLabel}`);
+      overviewLines.push(`${t.emoji} **${t.label}** — ${g.length} · 🎲 ${shareLabel}`);
     }
     const overview = new EmbedBuilder()
       .setTitle("🃏 DN Cards — Full Roster")
@@ -401,8 +414,8 @@ export async function handleUserCommand(
       screens: [overview],
     }];
 
-    for (const r of RARITY_ORDER) {
-      const group = byRarity.get(r);
+    for (const t of ladder) {
+      const group = byKey.get(t.key);
       if (!group || group.length === 0) continue;
       const lines = group
         .slice()
@@ -414,17 +427,17 @@ export async function handleUserCommand(
       const rarityImg = pickRarestImage(group);
       const baseRarity = () => {
         const e = new EmbedBuilder()
-          .setTitle(`${rarityEmoji(r, listSettings)} ${rarityLabel(r, listSettings)} Roster`)
-          .setColor(rarityColor(r, listSettings))
+          .setTitle(`${t.emoji} ${t.label} Roster`)
+          .setColor(t.color)
           .setDescription(`**${group.length}** card${group.length === 1 ? "" : "s"} in this rarity`);
         if (rarityImg) e.setThumbnail(rarityImg);
         return e;
       };
       const { fields } = chunkLines(lines, { baseName: "Cards", separator: ", ", maxFields: 1000 });
       views.push({
-        key: `rarity:${r}`,
-        label: rarityLabel(r, listSettings),
-        emoji: rarityEmoji(r, listSettings),
+        key: `rarity:${t.key}`,
+        label: t.label,
+        emoji: t.emoji,
         description: `${group.length} card${group.length === 1 ? "" : "s"}`,
         screens: buildEmbedScreens(baseRarity, fields),
       });
@@ -500,6 +513,7 @@ export async function handleUserCommand(
     for (const item of collection) ownedById.set(item.cardId, item.count + item.shinyCount);
 
     const catSettings = await getOrCreateGuildSettings(guildId);
+    const catCtx = await getRarityContext(guildId);
     const pool = allCards.filter(c => !c.isArchived);
     if (pool.length === 0) { await interaction.editReply("No cards in the pool yet."); return; }
 
@@ -507,9 +521,15 @@ export async function handleUserCommand(
     const ownerLabel = isSelf ? "You" : `**${target.username}**`;
     const possessive = isSelf ? "your" : `${target.username}'s`;
 
-    const byRarity = new Map<Rarity, typeof pool>();
-    for (const r of RARITY_ORDER) byRarity.set(r, []);
-    for (const c of pool) byRarity.get(c.rarity as Rarity)?.push(c);
+    // Group by EFFECTIVE rarity key so custom-tier cards show up under their
+    // custom tier instead of their built-in rarity bucket.
+    const catLadder = getDisplayRarities(catCtx, catSettings);
+    const byKey = new Map<string, typeof pool>();
+    for (const t of catLadder) byKey.set(t.key, []);
+    for (const c of pool) {
+      const k = effectiveRarityKey(c, catCtx);
+      (byKey.get(k) ?? byKey.set(k, []).get(k)!).push(c);
+    }
 
     const completion = (cards: typeof pool) => {
       const owned = cards.filter(c => ownedById.has(c.id)).length;
@@ -520,11 +540,11 @@ export async function handleUserCommand(
 
     // ── Overview ──
     const overviewLines: string[] = [];
-    for (const r of RARITY_ORDER) {
-      const g = byRarity.get(r);
+    for (const t of catLadder) {
+      const g = byKey.get(t.key);
       if (!g || g.length === 0) continue;
       const { owned, total, pct } = completion(g);
-      overviewLines.push(`${rarityEmoji(r, catSettings)} **${rarityLabel(r, catSettings)}** — ${owned}/${total} (${pct}%)`);
+      overviewLines.push(`${t.emoji} **${t.label}** — ${owned}/${total} (${pct}%)`);
     }
     const limitedCards = pool.filter(c => c.isLimitedEdition);
     const eventCards = pool.filter(c => c.isEventExclusive);
@@ -563,7 +583,7 @@ export async function handleUserCommand(
       emoji: string,
       color: number,
       title: string,
-      groupOrder: { rarity: Rarity; cards: typeof pool }[],
+      groupOrder: { label: string; emoji: string; cards: typeof pool }[],
     ): PaginatorView => {
       // Prefer the rarest OWNED card in this category as the thumbnail; if none
       // owned (or none have a usable image), fall back to the rarest in pool.
@@ -586,7 +606,7 @@ export async function handleUserCommand(
               : `⬜ ${badges}${c.name}`;
           });
         const groupOwned = g.cards.filter(c => ownedById.has(c.id)).length;
-        const groupName = `${rarityEmoji(g.rarity, catSettings)} ${rarityLabel(g.rarity, catSettings)} (${groupOwned}/${g.cards.length})`;
+        const groupName = `${g.emoji} ${g.label} (${groupOwned}/${g.cards.length})`;
         const { fields } = chunkLines(lines, { baseName: groupName, maxFields: 1000 });
         allFields.push(...fields);
       }
@@ -611,24 +631,24 @@ export async function handleUserCommand(
       };
     };
 
-    for (const r of RARITY_ORDER) {
-      const g = byRarity.get(r);
+    for (const t of catLadder) {
+      const g = byKey.get(t.key);
       if (!g || g.length === 0) continue;
       views.push(buildCatalogView(
-        `rarity:${r}`,
-        rarityLabel(r, catSettings),
-        rarityEmoji(r, catSettings),
-        rarityColor(r, catSettings),
-        `${rarityEmoji(r, catSettings)} ${rarityLabel(r, catSettings)} — ${possessive} catalog`,
-        [{ rarity: r, cards: g }],
+        `rarity:${t.key}`,
+        t.label,
+        t.emoji,
+        t.color,
+        `${t.emoji} ${t.label} — ${possessive} catalog`,
+        [{ label: t.label, emoji: t.emoji, cards: g }],
       ));
     }
 
     if (limitedCards.length > 0) {
-      const groups: { rarity: Rarity; cards: typeof pool }[] = [];
-      for (const r of RARITY_ORDER) {
-        const inR = limitedCards.filter(c => (c.rarity as Rarity) === r);
-        if (inR.length > 0) groups.push({ rarity: r, cards: inR });
+      const groups: { label: string; emoji: string; cards: typeof pool }[] = [];
+      for (const t of catLadder) {
+        const inR = limitedCards.filter(c => effectiveRarityKey(c, catCtx) === t.key);
+        if (inR.length > 0) groups.push({ label: t.label, emoji: t.emoji, cards: inR });
       }
       views.push(buildCatalogView(
         "limited", "Limited", "💎", 0x00d4ff,
@@ -638,10 +658,10 @@ export async function handleUserCommand(
     }
 
     if (eventCards.length > 0) {
-      const groups: { rarity: Rarity; cards: typeof pool }[] = [];
-      for (const r of RARITY_ORDER) {
-        const inR = eventCards.filter(c => (c.rarity as Rarity) === r);
-        if (inR.length > 0) groups.push({ rarity: r, cards: inR });
+      const groups: { label: string; emoji: string; cards: typeof pool }[] = [];
+      for (const t of catLadder) {
+        const inR = eventCards.filter(c => effectiveRarityKey(c, catCtx) === t.key);
+        if (inR.length > 0) groups.push({ label: t.label, emoji: t.emoji, cards: inR });
       }
       views.push(buildCatalogView(
         "event", "Event", "🎆", 0xe84393,
@@ -651,7 +671,8 @@ export async function handleUserCommand(
     }
 
     // Map the `category` option to an initial view key (deep-link). "all"
-    // and null both start at the overview.
+    // and null both start at the overview. Built-in category strings map to
+    // built-in ladder keys 1:1.
     let initialKey: string | undefined;
     if (category && category !== "all") {
       initialKey = (category === "event" || category === "limited") ? category : `rarity:${category}`;

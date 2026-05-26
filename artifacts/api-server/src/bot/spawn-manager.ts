@@ -13,8 +13,8 @@ import {
   getCardWishlisters,
   getUserTimeout,
   getActiveEventBoosts,
-  getRarityProfile,
-  applyRarityProfile,
+  getRarityContext,
+  applyRarityContext,
 } from "./db.js";
 import {
   RARITY_COLORS, RARITY_EMOJI, RARITY_LABELS, TYPE_EMOJI, getTypeEmoji,
@@ -169,15 +169,16 @@ async function doSingleSpawn(guildId: string, forcedCardId?: number, isForced = 
   } else {
     const rarityWeights = getGuildRarityWeights(settings);
     const eventBoosts = await getActiveEventBoosts(guildId);
-    const profile = await getRarityProfile(guildId);
-    card = await pickRandomCard(rarityWeights, eventBoosts, profile);
+    const ctx = await getRarityContext(guildId);
+    card = await pickRandomCard(rarityWeights, eventBoosts, ctx);
   }
   if (!card) return;
 
-  // Apply server rarity profile so the spawn/claim embeds and the catch flow
-  // (burn payout button label, worth display) all use the overridden numbers.
-  const profileForGuild = await getRarityProfile(guildId);
-  card = applyRarityProfile(card, profileForGuild);
+  // Apply server rarity context (Stage-1 profile + Stage-2 custom tiers) so
+  // the spawn/claim embeds and the catch flow (burn payout button label,
+  // worth display) all use the overridden numbers.
+  const ctxForGuild = await getRarityContext(guildId);
+  card = applyRarityContext(card, ctxForGuild);
 
   if (card.maxCopies && card.totalMinted >= card.maxCopies) {
     logger.info({ cardId: card.id }, "Card max copies reached, skipping");
@@ -518,8 +519,8 @@ async function buildClaimedEmbed(
   const cards = await getAllCardsCached();
   const rawCard = cards.find(c => c.id === cardId);
   if (!rawCard) return null;
-  const profile = guildId ? await getRarityProfile(guildId) : null;
-  const card = profile ? applyRarityProfile(rawCard, profile) : rawCard;
+  const ctx = guildId ? await getRarityContext(guildId) : null;
+  const card = ctx ? applyRarityContext(rawCard, ctx) : rawCard;
   const rarity = card.rarity as Rarity;
   const cardType = card.cardType;
   const typeEmoji = getTypeEmoji(cardType);
@@ -601,8 +602,8 @@ export async function buildPostDecisionEmbed(
   const cards = await getAllCardsCached();
   const rawCard = cards.find(c => c.id === cardId);
   if (!rawCard) return null;
-  const profileForDecision = guildId ? await getRarityProfile(guildId) : null;
-  const card = profileForDecision ? applyRarityProfile(rawCard, profileForDecision) : rawCard;
+  const ctxForDecision = guildId ? await getRarityContext(guildId) : null;
+  const card = ctxForDecision ? applyRarityContext(rawCard, ctxForDecision) : rawCard;
   const rarity = card.rarity as Rarity;
   const cardType = card.cardType;
 

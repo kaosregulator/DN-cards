@@ -4,6 +4,7 @@
 - [Collections pile deletion](collections-pile-deletion.md) — when a row tracks multiple piles (count + shinyCount), only DELETE when ALL piles are 0, else surviving piles vanish.
 - [Thread guildId through every embed builder + caller](guild-id-thread-through.md) — defaulting new context params to null silently no-ops at the call sites you forgot; prefer required params and grep every caller.
 - [Discord command visibility](discord-command-visibility.md) — slash commands need BOTH defaultMemberPermissions (UI hide) AND runtime isAdmin check; one alone is not enough.
+- [Rarity context resolver](rarity-context-pattern.md) — per-guild rarity overrides (Stage-1 profiles + Stage-2 custom tiers) collapse into ONE cached ctx threaded through every read path; custom tier replaces, never layers.
 - [Per-guild rarity profile resolver](rarity-profile-resolver.md) — overrides table layered on shared cards; precedence profile→guildSettings→card; per-guild cache w/ explicit invalidation; apply on read paths only.
 - [Discord embed field chunking](discord-field-chunking.md) — chunk at ~1000 chars, guard empty pushes, cap at 25 fields, surface overflow note; silent truncation reads as "my data vanished".
 - [Dashboard active-guild persistence](dashboard-guild-persistence.md) — admin dashboards listing multiple guilds must persist selection; auto-picking guilds[0] on every load silently shows the wrong server's data.

@@ -367,6 +367,60 @@ export const rarityProfilesTable = pgTable("rarity_profiles", {
 
 export type RarityProfile = typeof rarityProfilesTable.$inferSelect;
 
+// ── Custom Rarity Tiers (per-guild new tiers beyond the 6 built-ins) ────────
+// Lets admins define NEW tiers (e.g. "Ultra", "Prismatic") that sit alongside
+// the built-in rarity enum without modifying it. `position` is a real number
+// where built-ins occupy 1..6 (common=1, uncommon=2, rare=3, epic=4,
+// legendary=5, mythic=6); a custom tier with position 5.5 sits between
+// legendary and mythic, 7+ above mythic. Used by /tradein to order the
+// ladder and by /list to group display.
+//
+// Custom-tier values fully REPLACE the card's worth/burn/dropWeight when a
+// card is overridden into the tier (see card_rarity_overrides). No layering
+// with rarity_profiles for those cards — one source of truth per card per
+// guild.
+export const customRaritiesTable = pgTable("custom_rarities", {
+  id: serial("id").primaryKey(),
+  guildId: text("guild_id").notNull(),
+  slug: text("slug").notNull(),              // short id, e.g. "ultra"
+  name: text("name").notNull(),              // display label
+  emoji: text("emoji").notNull().default("✨"),
+  color: integer("color").notNull().default(0x5865f2),
+  position: real("position").notNull(),      // ladder position
+  worthValue: integer("worth_value").notNull(),
+  burnValue: integer("burn_value").notNull(),
+  dropWeight: real("drop_weight").notNull().default(1.0),
+  droppable: boolean("droppable").notNull().default(true),
+  // Custom tiers are excluded from /pack pools by default — admin-drop /
+  // random-spawn only. Reserved for future use; resolver treats false as
+  // exclusion.
+  inPacks: boolean("in_packs").notNull().default(false),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  updatedBy: text("updated_by"),
+}, (t) => ({
+  guildSlugUniq: uniqueIndex("custom_rarities_guild_slug_idx").on(t.guildId, t.slug),
+}));
+
+export type CustomRarity = typeof customRaritiesTable.$inferSelect;
+
+// Per-(guild,card) assignment to a custom rarity tier. When present, the
+// card's effective rarity in that guild becomes the custom tier — built-in
+// rarity column is ignored for display, weighting, and economy. Server 1
+// (no override rows) sees the card at its built-in rarity, untouched.
+export const cardRarityOverridesTable = pgTable("card_rarity_overrides", {
+  id: serial("id").primaryKey(),
+  guildId: text("guild_id").notNull(),
+  cardId: integer("card_id").notNull().references(() => cardsTable.id, { onDelete: "cascade" }),
+  customRaritySlug: text("custom_rarity_slug").notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (t) => ({
+  guildCardUniq: uniqueIndex("card_rarity_overrides_guild_card_idx").on(t.guildId, t.cardId),
+  byGuildSlug: uniqueIndex("card_rarity_overrides_guild_slug_card_idx").on(t.guildId, t.customRaritySlug, t.cardId),
+}));
+
+export type CardRarityOverride = typeof cardRarityOverridesTable.$inferSelect;
+
 export const embedOverridesTable = pgTable("embed_overrides", {
   id: serial("id").primaryKey(),
   guildId: text("guild_id").notNull(),

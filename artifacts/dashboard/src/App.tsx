@@ -13,6 +13,7 @@ import Setup from "@/pages/setup";
 import Users from "@/pages/users";
 import Embeds from "@/pages/embeds";
 import Rarities from "@/pages/rarities";
+import CustomRarities from "@/pages/custom-rarities";
 import Events from "@/pages/events";
 import NotFound from "@/pages/not-found";
 
@@ -37,6 +38,7 @@ function Router() {
       <Route path="/admin/users" component={Users} />
       <Route path="/admin/embeds" component={Embeds} />
       <Route path="/admin/rarities" component={Rarities} />
+      <Route path="/admin/custom-rarities" component={CustomRarities} />
       <Route path="/admin" component={Admin} />
       <Route component={NotFound} />
     </Switch>
