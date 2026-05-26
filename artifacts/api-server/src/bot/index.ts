@@ -154,27 +154,23 @@ export async function startBot() {
           const [, guildId, spawnId] = parts;
           const result = await handleClaimButtonClick(guildId, spawnId, interaction.user.id);
           if (!result.ok) {
-            // self_already = the user who just won is clicking again
-            // (double-tap, both-mode type+click race). Silently ack so
-            // we don't tell the winner the spawn "expired".
-            if (result.reason === "self_already") {
-              await interaction.reply({
-                content: "✅ You've already claimed it — pick **Burn / Keep / Trade** above.",
-                flags: MessageFlags.Ephemeral,
-              }).catch(() => { /* ignore */ });
+            // self_already / expired = the winner is double-tapping their own
+            // claim. Silently ack — the spawn embed above already shows the
+            // Burn/Keep/Trade buttons, no need for a redundant "scroll up" nag.
+            if (result.reason === "self_already" || result.reason === "expired") {
+              await interaction.deferUpdate().catch(() => { /* ignore */ });
               return;
             }
             const reasonMsg =
               result.reason === "already_caught" ? "⚡ Too slow! Someone already claimed this card."
-              : result.reason === "expired" ? "✅ You've already claimed it — pick **Burn / Keep / Trade** above."
               : result.reason === "timed_out" ? `⏱️ You're timed out from catching cards until <t:${Math.floor(result.timedOutUntil!.getTime() / 1000)}:f>.`
               : "❌ This button isn't active right now.";
             await interaction.reply({ content: reasonMsg, flags: MessageFlags.Ephemeral }).catch(() => { /* ignore */ });
           } else {
-            await interaction.reply({
-              content: `🎯 You claimed it! Check the spawn message for **Burn / Keep / Trade** options.`,
-              flags: MessageFlags.Ephemeral,
-            }).catch(() => { /* ignore */ });
+            // Successful claim — silently ack. The spawn embed updates to
+            // "CLAIMED" with the Burn/Keep/Trade row in the same message,
+            // so a separate ephemeral confirmation is just noise.
+            await interaction.deferUpdate().catch(() => { /* ignore */ });
             const unlocked = await checkAchievements(guildId, interaction.user.id).catch(() => []);
             if (unlocked.length > 0) {
               await interaction.followUp({
