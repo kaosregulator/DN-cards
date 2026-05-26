@@ -98,12 +98,13 @@ function getGuildRarityWeights(settings: GuildSettings): Record<string, number> 
     settings.rarityWeightLegendary,
   ].some(v => v !== null);
   if (!hasCustom) return undefined;
+  // Hierarchy: Common → Uncommon → Exotic (epic) → Legendary → Rare (rarest)
   return {
     common: settings.rarityWeightCommon ?? 60,
     uncommon: settings.rarityWeightUncommon ?? 25,
-    rare: settings.rarityWeightRare ?? 10,
-    epic: settings.rarityWeightEpic ?? 4,
-    legendary: settings.rarityWeightLegendary ?? 1,
+    epic: settings.rarityWeightEpic ?? 10,
+    legendary: settings.rarityWeightLegendary ?? 4,
+    rare: settings.rarityWeightRare ?? 1,
   };
 }
 

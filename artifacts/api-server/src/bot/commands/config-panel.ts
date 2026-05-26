@@ -1,27 +1,30 @@
 import {
   EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle,
   StringSelectMenuBuilder, MessageFlags,
+  ModalBuilder, TextInputBuilder, TextInputStyle,
   type ChatInputCommandInteraction, type ButtonInteraction,
-  type StringSelectMenuInteraction,
+  type StringSelectMenuInteraction, type ModalSubmitInteraction,
 } from "discord.js";
 import { getOrCreateGuildSettings, updateGuildSettings, isAdmin } from "../db.js";
 import { scheduleNextSpawn, clearSpawnTimer } from "../spawn-manager.js";
-import { RARITY_WEIGHTS, type Rarity } from "../cards-data.js";
+import { RARITY_WEIGHTS, RARITY_LABELS, type Rarity } from "../cards-data.js";
 import type { GuildSettings } from "@workspace/db";
 import { PACK_TIERS, PACK_TIER_META, PACK_DEFAULTS, resolveTierConfig, type PackTier } from "./pack.js";
 
-const RARITY_ORDER: Rarity[] = ["common", "uncommon", "rare", "epic", "legendary"];
+// Rarity display order in the panel (least → most rare).
+// DB enum key "epic" is labelled "Exotic" via RARITY_LABELS — Rare is the rarest tier.
+const RARITY_ORDER: Rarity[] = ["common", "uncommon", "epic", "legendary", "rare"];
 const RARITY_EMOJI: Record<Rarity, string> = {
-  common: "⚪", uncommon: "🟢", rare: "🔵", epic: "🟣", legendary: "🟡",
+  common: "⚪", uncommon: "🟢", epic: "🟣", legendary: "🟡", rare: "🔴",
 };
 // Percentage options offered per rarity (preset menu). `null` = "Default" (use card's default).
 // Stored internally as weights — when the 5 values sum to 100, weight == percent exactly.
 const RARITY_WEIGHT_OPTIONS: Record<Rarity, (number | null)[]> = {
   common:    [null, 80, 70, 60, 50, 40, 30, 20, 10, 5],
   uncommon:  [null, 40, 30, 25, 20, 15, 10, 5,  1],
-  rare:      [null, 20, 15, 10, 8,  5,  3,  2,  1],
-  epic:      [null, 15, 10, 8,  6,  4,  3,  2,  1, 0],
-  legendary: [null, 10, 5,  3,  2,  1,  0],
+  epic:      [null, 20, 15, 10, 8,  5,  3,  2,  1],     // Exotic — mid tier
+  legendary: [null, 15, 10, 8,  6,  4,  3,  2,  1, 0],
+  rare:      [null, 10, 5,  3,  2,  1,  0],              // Rare — rarest tier
 };
 
 function rarityWeightKey(r: Rarity): keyof GuildSettings {
@@ -108,9 +111,14 @@ export async function handleConfigButton(interaction: ButtonInteraction): Promis
       await updateGuildSettings(guildId, resetPatch);
       await refreshPanel(interaction, guildId);
       await interaction.followUp({
-        content: "🔄 Rarity Mix reset to defaults — Common 60% · Uncommon 25% · Rare 10% · Epic 4% · Legendary 1%.",
+        content: "🔄 Rarity Mix reset to defaults — Common 60% · Uncommon 25% · Exotic 10% · Legendary 4% · Rare 1%.",
         flags: MessageFlags.Ephemeral,
       }).catch(() => { /* ignore */ });
+      return;
+    }
+    if (arg === "custom") {
+      const settings = await getOrCreateGuildSettings(guildId);
+      await interaction.showModal(buildCustomMixModal(settings));
       return;
     }
     const settings = await getOrCreateGuildSettings(guildId);
@@ -395,6 +403,10 @@ function buildConfigComponents(s: GuildSettings) {
       .setLabel("🎲 Rarity Mix")
       .setStyle(ButtonStyle.Secondary),
     new ButtonBuilder()
+      .setCustomId("config:rates:custom")
+      .setLabel("✏️ Custom Mix")
+      .setStyle(ButtonStyle.Primary),
+    new ButtonBuilder()
       .setCustomId("config:rates:reset")
       .setLabel("🔄 Reset Mix")
       .setStyle(ButtonStyle.Danger),
@@ -451,7 +463,7 @@ function rarityRowsSummary(s: GuildSettings): string {
     const w = weights[i]!;
     const pct = ((w / total) * 100).toFixed(1);
     const tag = getRarityWeight(s, r) === null ? " *(default)*" : "";
-    return `${RARITY_EMOJI[r]} **${capitalize(r)}** — ${pct}%${tag}`;
+    return `${RARITY_EMOJI[r]} **${RARITY_LABELS[r]}** — ${pct}%${tag}`;
   }).join("\n");
 }
 
@@ -468,7 +480,8 @@ function buildRatesEmbed(s: GuildSettings): EmbedBuilder {
     .setColor(0xeb459e)
     .setDescription(
       "Set the **% chance** for each rarity when a card spawns.\n" +
-      "**Defaults:** Common 60 · Uncommon 25 · Rare 10 · Epic 4 · Legendary 1 (= 100%)\n\n" +
+      "**Defaults:** Common 60 · Uncommon 25 · Exotic 10 · Legendary 4 · Rare 1 (= 100%)\n" +
+      "_Want exact numbers? Close this and tap **✏️ Custom Mix** on the main panel._\n\n" +
       `${rarityBar(s)}\n\n` +
       note,
     )
@@ -497,14 +510,83 @@ function buildRatesComponents(s: GuildSettings) {
     });
     const select = new StringSelectMenuBuilder()
       .setCustomId(`rates_${r}`)
-      .setPlaceholder(`${RARITY_EMOJI[r]} ${capitalize(r)} — % chance`)
+      .setPlaceholder(`${RARITY_EMOJI[r]} ${RARITY_LABELS[r]} — % chance`)
       .addOptions(opts);
     return new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(select);
   });
 }
 
-function capitalize(s: string): string {
-  return s[0]!.toUpperCase() + s.slice(1);
+// ── Custom Mix modal ──────────────────────────────────────────────────────────
+// Lets the admin type any % for each rarity. Values can be any non-negative
+// integer; if they don't sum to 100, Discord auto-normalises in the spawn engine
+// (same behaviour as the preset dropdowns).
+function buildCustomMixModal(s: GuildSettings): ModalBuilder {
+  const modal = new ModalBuilder()
+    .setCustomId("rates_custom")
+    .setTitle("Custom Rarity Mix (sum to 100)");
+  const inputs = RARITY_ORDER.map(r =>
+    new TextInputBuilder()
+      .setCustomId(`mix_${r}`)
+      .setLabel(`${RARITY_LABELS[r]} %`)
+      .setStyle(TextInputStyle.Short)
+      .setRequired(true)
+      .setMaxLength(3)
+      .setValue(String(effectiveWeight(s, r))),
+  );
+  modal.addComponents(
+    inputs.map(i => new ActionRowBuilder<TextInputBuilder>().addComponents(i)),
+  );
+  return modal;
+}
+
+export async function handleRatesCustomModal(interaction: ModalSubmitInteraction): Promise<void> {
+  if (!interaction.guild) return;
+  const guildId = interaction.guild.id;
+  const member = await interaction.guild.members.fetch(interaction.user.id).catch(() => null);
+  const allowed = !!member && (
+    interaction.guild.ownerId === interaction.user.id ||
+    member.permissions.has("Administrator") ||
+    (await isAdmin(guildId, interaction.user.id))
+  );
+  if (!allowed) {
+    await interaction.reply({ content: "❌ Only admins can change the rarity mix.", flags: MessageFlags.Ephemeral });
+    return;
+  }
+
+  const patch: Partial<GuildSettings> = {};
+  const parsed: { r: Rarity; v: number }[] = [];
+  for (const r of RARITY_ORDER) {
+    const raw = interaction.fields.getTextInputValue(`mix_${r}`).trim();
+    const n = parseInt(raw, 10);
+    if (!Number.isFinite(n) || n < 0 || n > 100) {
+      await interaction.reply({
+        content: `❌ **${RARITY_LABELS[r]}** must be a whole number from 0–100. You entered: \`${raw}\``,
+        flags: MessageFlags.Ephemeral,
+      });
+      return;
+    }
+    parsed.push({ r, v: n });
+    (patch as Record<string, number>)[rarityWeightKey(r) as string] = n;
+  }
+
+  const sum = parsed.reduce((a, b) => a + b.v, 0);
+  if (sum === 0) {
+    await interaction.reply({
+      content: "❌ At least one rarity must be above 0 — otherwise nothing can spawn.",
+      flags: MessageFlags.Ephemeral,
+    });
+    return;
+  }
+
+  await updateGuildSettings(guildId, patch);
+  const settings = await getOrCreateGuildSettings(guildId);
+  const summary = parsed.map(({ r, v }) => `${RARITY_EMOJI[r]} ${RARITY_LABELS[r]} **${v}**`).join(" · ");
+  const note = sum === 100 ? "✅ Sums to 100%." : `ℹ️ Sums to **${sum}** — Discord will auto-balance to 100%.`;
+  await interaction.reply({
+    embeds: [buildRatesEmbed(settings)],
+    content: `✏️ Custom Mix saved: ${summary}\n${note}`,
+    flags: MessageFlags.Ephemeral,
+  });
 }
 
 // ── Packs sub-panel ────────────────────────────────────────────────────────────────────────────────────────

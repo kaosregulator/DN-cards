@@ -2,7 +2,7 @@ import { Client, GatewayIntentBits, Partials, Events, REST, Routes, type Interac
 import { logger } from "../lib/logger.js";
 import { burnCard, getOrCreateCurrency } from "./db.js";
 import { initSpawnManager, initAllGuilds, handleCatchAttempt, handleClaimButtonClick, scheduleNextSpawn, buildPostDecisionEmbed, buildDisabledDecisionRow, markDecisionMade } from "./spawn-manager.js";
-import { handleConfigButton, handleConfigSelect, handleRatesSelect, handlePacksSelect } from "./commands/config-panel.js";
+import { handleConfigButton, handleConfigSelect, handleRatesSelect, handlePacksSelect, handleRatesCustomModal } from "./commands/config-panel.js";
 import { handleSetChannelsPick, handleSetChannelsApply } from "./commands/setchannels.js";
 import { handleAdminHubButton, handleAdminHubModal } from "./commands/admin-hub.js";
 import { checkAchievements, formatUnlockLine } from "./achievements.js";
@@ -116,12 +116,14 @@ export async function startBot() {
         return;
       }
 
-      // ── Modal submissions (admin hub + setup test card) ───────────────────
+      // ── Modal submissions (admin hub + setup test card + custom mix) ─────
       if (interaction.isModalSubmit()) {
         if (interaction.customId.startsWith("adminhub:")) {
           await handleAdminHubModal(interaction);
         } else if (interaction.customId.startsWith("setup_")) {
           await handleSetupModalSubmit(interaction);
+        } else if (interaction.customId === "rates_custom") {
+          await handleRatesCustomModal(interaction);
         }
         return;
       }

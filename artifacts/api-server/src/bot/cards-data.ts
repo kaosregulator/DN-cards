@@ -12,12 +12,15 @@
 export type Rarity = "common" | "uncommon" | "rare" | "epic" | "legendary";
 export type CardType = string; // free-form label — any text the admin types
 
+// Rarity hierarchy (least → most rare):
+//   Common → Uncommon → Exotic (epic key) → Legendary → Rare
+// The DB enum keeps "epic" but it's labelled "Exotic" for users.
 export const RARITY_WEIGHTS: Record<Rarity, number> = {
   common: 60,
   uncommon: 25,
-  rare: 10,
-  epic: 4,
-  legendary: 1,
+  epic: 10,
+  legendary: 4,
+  rare: 1,
 };
 
 export const RARITY_WORTH: Record<Rarity, number> = {
@@ -69,9 +72,9 @@ export const FAIRNESS_RATIO_THRESHOLD = 3;
 export const RARITY_LABELS: Record<Rarity, string> = {
   common: "Common",
   uncommon: "Uncommon",
-  rare: "Rare",
-  epic: "Epic",
+  epic: "Exotic",     // DB enum key stays "epic" — user-facing label is Exotic
   legendary: "Legendary",
+  rare: "Rare",       // promoted to top tier (rarest)
 };
 
 export const TYPE_EMOJI: Record<string, string> = {

@@ -4,3 +4,4 @@
 - [Collections pile deletion](collections-pile-deletion.md) — when a row tracks multiple piles (count + shinyCount), only DELETE when ALL piles are 0, else surviving piles vanish.
 - [Thread guildId through every embed builder + caller](guild-id-thread-through.md) — defaulting new context params to null silently no-ops at the call sites you forgot; prefer required params and grep every caller.
 - [Discord command visibility](discord-command-visibility.md) — slash commands need BOTH defaultMemberPermissions (UI hide) AND runtime isAdmin check; one alone is not enough.
+- [Discord 5-row limit](discord-row-limits.md) — max 5 ActionRows per message; overflow surfaces as a misleading "Interaction has already been acknowledged" on the next update.
