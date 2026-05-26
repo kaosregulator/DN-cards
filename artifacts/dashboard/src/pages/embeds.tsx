@@ -18,10 +18,10 @@ const EMBED_LABELS: Record<EmbedKey, string> = {
   rules: "📌 Rules banner",
   commands: "⚡ Commands cheat sheet",
 };
-type Rarity = "common" | "uncommon" | "rare" | "epic" | "legendary";
-const RARITIES: Rarity[] = ["common", "uncommon", "rare", "epic", "legendary"];
+type Rarity = "common" | "uncommon" | "rare" | "epic" | "legendary" | "mythic";
+const RARITIES: Rarity[] = ["common", "uncommon", "rare", "epic", "legendary", "mythic"];
 const DEFAULT_RARITY_COLORS: Record<Rarity, number> = {
-  common: 0x95a5a6, uncommon: 0x2ecc71, rare: 0x3498db, epic: 0x9b59b6, legendary: 0xf39c12,
+  common: 0x95a5a6, uncommon: 0x2ecc71, rare: 0x3498db, epic: 0x9b59b6, legendary: 0xf39c12, mythic: 0xff2d92,
 };
 
 type EmbedConfig = {

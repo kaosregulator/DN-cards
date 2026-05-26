@@ -42,6 +42,7 @@ export function buildCommands() {
     cmd("catalog", "(User) Browse cards by category — see what you own and what's missing", s => s
       .addStringOption(o => o.setName("category").setDescription("Which group to view").setRequired(true)
         .addChoices(
+          { name: "🔮 Mythic", value: "mythic" },
           { name: "🟡 Legendary", value: "legendary" },
           { name: "🟣 Epic", value: "epic" },
           { name: "🔵 Rare", value: "rare" },
@@ -115,6 +116,7 @@ export function buildCommands() {
           { name: "Uncommon → Rare", value: "uncommon" },
           { name: "Rare → Epic", value: "rare" },
           { name: "Epic → Legendary", value: "epic" },
+          { name: "Legendary → Mythic", value: "legendary" },
         ))),
 
     cmd("achievements", "(User) View unlocked achievements", s => s
@@ -189,6 +191,12 @@ export function buildCommands() {
     adminCmd("editcard", "(Admin) Edit any card — rarity, worth, image, name, etc.", s => s
       .addStringOption(o => o.setName("name").setDescription("Card to edit").setRequired(true).setAutocomplete(true))),
 
+    adminCmd("rarityname", "(Admin) Customize the Mythic tier — pick its name, emoji, and color", s => s
+      .addStringOption(o => o.setName("name").setDescription("New name for the Mythic tier (e.g. 'Prismatic', 'Apex')").setRequired(true).setMaxLength(32))
+      .addStringOption(o => o.setName("emoji").setDescription("Single emoji to represent it (e.g. 🌈 or 💎)").setRequired(true).setMaxLength(8))
+      .addStringOption(o => o.setName("color").setDescription("Hex color, e.g. #ff2d92 (optional — keeps current if blank)").setMaxLength(9))
+      .addBooleanOption(o => o.setName("reset").setDescription("Reset back to default Mythic / 🔮 / pink"))),
+
     // ── Dashboard ─────────────────────────────────────────────────────────────
     adminCmd("dashboard", "(Admin) Get a one-time link to set up or reset your web dashboard login", s => s),
   ];
@@ -202,7 +210,7 @@ export const USER_COMMAND_NAMES = new Set([
 
 export const ADMIN_COMMAND_NAMES = new Set([
   "config", "adminhub", "adminhelp", "drop", "massdrop", "give", "giveshards", "takeback", "takeshards", "event", "setchannels", "dashboard", "setup",
-  "addadmin", "removeadmin", "listadmins", "editcard",
+  "addadmin", "removeadmin", "listadmins", "editcard", "rarityname",
 ]);
 
 export const CARDSET_COMMAND_NAMES = new Set([

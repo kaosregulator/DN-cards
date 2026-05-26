@@ -91,9 +91,11 @@ DN Cards is DarkNight's collectible military trading card game for the Roblox + 
 - **Shinies ✨**: every random/pack/tradein acquisition has a flat 0.5% chance to mint a shiny. Shiny copies count at 2× worth/burn, are tracked separately, and are **not tradeable** in v1.
 
 ### Card System
-- **5 rarities**: Common (weight 60), Uncommon (25), Rare (10), Epic (4), Legendary (1)
-- **Worth values**: Common 10 → Legendary 2500 DN Shards
-- **Burn values**: Common 5 → Legendary 1250 DN Shards (50% of worth)
+- **6 rarities**: Common (weight 60), Uncommon (25), Rare (10), Epic (4), Legendary (1), **Mythic** (0 — admin-only by default)
+- **Worth values**: Common 10 → Legendary 2500 → Mythic 6000 DN Shards
+- **Burn values**: Common 5 → Legendary 1250 → Mythic 3000 DN Shards (50% of worth)
+- **Mythic tier**: the new top rarity. Default weight 0 (never drops randomly until admins set a weight or run an `/event`). Appears in **Legendary** packs at 0.5% by default. Trade-in: Legendary → Mythic (5 Legendaries for 1 Mythic).
+- **`/rarityname`** (admin) — rename the Mythic tier per-server (e.g. "Prismatic", "Apex") with a custom emoji and hex color. Use `/rarityname reset:true` to revert.
 - **Limited Edition**: Admin-created, capped at a set number of copies (4× worth/burn)
 - **Event Exclusive**: Admin-drop only, never appear in random spawns (3× worth/burn)
 - **Card Types**: tank, aircraft, ship, vehicle, infantry, boss, community, event, achievement, limited
@@ -219,6 +221,7 @@ Card catching is text-based — when a card spawns, type its name exactly to cat
 | `/event start card:<Name> duration:<e.g. 2h> [multiplier:<n>]` | Start a limited-time spawn boost |
 | `/event list` | Show all active events |
 | `/event stop id:<ID>` | End an event early |
+| `/rarityname name:<Name> emoji:<🔮> [color:<#hex>] [reset:true]` | Customize the Mythic tier's display name, emoji & color |
 | `/loadset` | Upload a JSON card set to add to your roster |
 | `/unloadset` | Remove a card set (cards + related collections/trades) |
 | `/listsets` | List all loaded card sets and their sizes |

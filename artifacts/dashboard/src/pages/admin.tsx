@@ -32,8 +32,9 @@ import {
   Upload, Loader2,
 } from "lucide-react";
 
-const RARITIES: Rarity[] = ["legendary", "epic", "rare", "uncommon", "common"];
+const RARITIES: Rarity[] = ["mythic", "legendary", "epic", "rare", "uncommon", "common"];
 const RARITY_COLOR: Record<Rarity, string> = {
+  mythic: "text-pink-400 border-pink-500/40",
   legendary: "text-yellow-400 border-yellow-500/40",
   epic: "text-violet-400 border-violet-500/40",
   rare: "text-blue-400 border-blue-500/40",
@@ -43,6 +44,7 @@ const RARITY_COLOR: Record<Rarity, string> = {
 
 // Mirrors RARITY_COLORS in bot/cards-data.ts so the preview matches Discord embeds.
 const RARITY_EMBED_HEX: Record<Rarity, string> = {
+  mythic: "#ff2d92",
   legendary: "#f1c40f",
   epic: "#9b59b6",
   rare: "#3498db",
@@ -50,7 +52,7 @@ const RARITY_EMBED_HEX: Record<Rarity, string> = {
   common: "#95a5a6",
 };
 const RARITY_EMOJI: Record<Rarity, string> = {
-  legendary: "🟡", epic: "🟣", rare: "🔵", uncommon: "🟢", common: "⚪",
+  mythic: "🔮", legendary: "🟡", epic: "🟣", rare: "🔵", uncommon: "🟢", common: "⚪",
 };
 
 // ── Upload field (shared by Edit and Create dialogs) ─────────────────────────

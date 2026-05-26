@@ -8,6 +8,7 @@ import {
 } from "../db.js";
 import {
   RARITY_COLORS, RARITY_EMOJI, RARITY_LABELS, SHINY_EMOJI, SHINY_MULTIPLIER,
+  rarityLabel, rarityEmoji,
   type Rarity,
 } from "../cards-data.js";
 import { checkAchievements, formatUnlockLine } from "../achievements.js";
@@ -37,10 +38,12 @@ export const PACK_TIER_META: Record<PackTier, {
 };
 
 // Per-tier rarity distribution. Sums to 1.0.
+// Mythic appears only in the Legendary tier (0.5%) by default — it's the new
+// top tier, so it's intentionally rarer than Legendary itself.
 const TIER_RATES: Record<PackTier, Record<Rarity, number>> = {
-  basic:     { common: 0.60, uncommon: 0.25, rare: 0.110, epic: 0.035, legendary: 0.005 },
-  premium:   { common: 0.40, uncommon: 0.25, rare: 0.220, epic: 0.100, legendary: 0.030 },
-  legendary: { common: 0.00, uncommon: 0.30, rare: 0.350, epic: 0.250, legendary: 0.100 },
+  basic:     { common: 0.60, uncommon: 0.25, rare: 0.110, epic: 0.035, legendary: 0.005, mythic: 0.000 },
+  premium:   { common: 0.40, uncommon: 0.25, rare: 0.220, epic: 0.100, legendary: 0.030, mythic: 0.000 },
+  legendary: { common: 0.00, uncommon: 0.30, rare: 0.345, epic: 0.250, legendary: 0.100, mythic: 0.005 },
 };
 
 // Hard-coded defaults — used at schema creation time too. Kept in sync with
@@ -146,13 +149,14 @@ async function drawPack(tier: PackTier, size: number): Promise<Card[]> {
   if (all.length === 0) return [];
 
   const byRarity: Record<Rarity, Card[]> = {
-    common: [], uncommon: [], rare: [], epic: [], legendary: [],
+    common: [], uncommon: [], rare: [], epic: [], legendary: [], mythic: [],
   };
   for (const c of all) byRarity[c.rarity as Rarity]?.push(c);
 
   // Fallback order tries adjacent rarities if the rolled tier has no cards.
   // For legendary-tier packs, never fall back into commons.
-  const allRarities: Rarity[] = ["legendary", "epic", "rare", "uncommon", "common"];
+  // Mythic falls back to Legendary (no empty-bucket dead rolls in legendary packs).
+  const allRarities: Rarity[] = ["mythic", "legendary", "epic", "rare", "uncommon", "common"];
   const allowed = tier === "legendary"
     ? allRarities.filter(r => r !== "common")
     : allRarities;
@@ -190,16 +194,19 @@ async function buildSummaryEmbed(
   );
   const shinyCount = shinies.filter(Boolean).length;
   const last = cards[cards.length - 1]!;
+  const settings = guildId ? await getOrCreateGuildSettings(guildId) : null;
   const embed = new EmbedBuilder()
     .setTitle(`${meta.emoji} ${meta.label} Pack — ${cards.length} cards${shinyCount > 0 ? ` · ${SHINY_EMOJI}×${shinyCount}` : ""}`)
     .setColor(shinyCount > 0 ? 0xf1c40f : meta.color)
     .setDescription(
       cards.map((c, i) => {
-        const emoji = RARITY_EMOJI[c.rarity as Rarity] ?? "🃏";
+        const r = c.rarity as Rarity;
+        const emoji = rarityEmoji(r, settings) ?? "🃏";
+        const label = rarityLabel(r, settings);
         const shiny = shinies[i];
         const worth = c.worthValue * (shiny ? SHINY_MULTIPLIER : 1);
         const prefix = shiny ? `${SHINY_EMOJI} ` : "";
-        return `**${i + 1}.** ${emoji} ${prefix}**${c.name}** — *${RARITY_LABELS[c.rarity as Rarity]}* · 💠 ${worth.toLocaleString()}${shiny ? ` *(${SHINY_MULTIPLIER}×)*` : ""}`;
+        return `**${i + 1}.** ${emoji} ${prefix}**${c.name}** — *${label}* · 💠 ${worth.toLocaleString()}${shiny ? ` *(${SHINY_MULTIPLIER}×)*` : ""}`;
       }).join("\n") +
       `\n\n**Total worth:** 💠 ${totalWorth.toLocaleString()}\n` +
       `Spent: 💠 ${spent.toLocaleString()} · Balance: 💠 ${balanceAfter.toLocaleString()}`,

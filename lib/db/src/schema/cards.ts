@@ -8,7 +8,7 @@ import { z } from "zod/v4";
 
 // ── Enums ─────────────────────────────────────────────────────────────────────
 export const rarityEnum = pgEnum("rarity", [
-  "common", "uncommon", "rare", "epic", "legendary",
+  "common", "uncommon", "rare", "epic", "legendary", "mythic",
 ]);
 
 export const cardTypeEnum = pgEnum("card_type", [
@@ -188,6 +188,12 @@ export const guildSettingsTable = pgTable("guild_settings", {
   rarityWeightRare: integer("rarity_weight_rare"),
   rarityWeightEpic: integer("rarity_weight_epic"),
   rarityWeightLegendary: integer("rarity_weight_legendary"),
+  rarityWeightMythic: integer("rarity_weight_mythic"),
+  // Per-guild customization of the Mythic tier display (name/emoji/color).
+  // Null = use bot defaults ("Mythic" / "🔮" / #ff2d92). Admins set these via /rarityname.
+  mythicLabel: text("mythic_label"),
+  mythicEmoji: text("mythic_emoji"),
+  mythicColor: integer("mythic_color"),
   // Catch mode: "type" (type card name), "button" (click claim button), or "both"
   catchMode: text("catch_mode").notNull().default("type"),
   commandPrefix: text("command_prefix").notNull().default("!"),
@@ -328,7 +334,7 @@ export type EmbedOverrideConfig = {
   footer?: string;                                // same tokens
   descriptionPrefix?: string;                     // prepended to default description
   color?: number;                                 // 0xRRGGBB
-  rarityColors?: Partial<Record<"common" | "uncommon" | "rare" | "epic" | "legendary", number>>;
+  rarityColors?: Partial<Record<"common" | "uncommon" | "rare" | "epic" | "legendary" | "mythic", number>>;
   imageMode?: "default" | "large" | "thumbnail" | "none";
   customImageUrl?: string;                        // overrides card / banner image
   showWorth?: boolean;                            // default true

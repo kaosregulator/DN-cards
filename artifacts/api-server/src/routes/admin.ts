@@ -10,7 +10,7 @@ const router: IRouter = Router();
 router.use(requireDashboardAuth);
 
 // ── Validation schemas ────────────────────────────────────────────────────────
-const rarityValues = ["common", "uncommon", "rare", "epic", "legendary"] as const;
+const rarityValues = ["common", "uncommon", "rare", "epic", "legendary", "mythic"] as const;
 
 const cardPatchSchema = z.object({
   name: z.string().trim().min(1).max(80).optional(),

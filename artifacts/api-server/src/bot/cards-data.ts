@@ -9,18 +9,20 @@
 //   Epic:       4   worth: 1480-5000  burn: 740-2500
 //   Legendary:  1   worth:  800-10000  burn: 400-5000
 
-export type Rarity = "common" | "uncommon" | "rare" | "epic" | "legendary";
+export type Rarity = "common" | "uncommon" | "rare" | "epic" | "legendary" | "mythic";
 export type CardType = string; // free-form label — any text the admin types
 
 // Rarity hierarchy (least → most rare):
-//   Common → Uncommon → Exotic (epic key) → Legendary → Rare
+//   Common → Uncommon → Exotic (epic key) → Legendary → Rare → Mythic
 // The DB enum keeps "epic" but it's labelled "Exotic" for users.
+// Mythic is the new top tier — admin-only drops by default (weight 0).
 export const RARITY_WEIGHTS: Record<Rarity, number> = {
   common: 60,
   uncommon: 25,
   epic: 10,
   legendary: 4,
   rare: 1,
+  mythic: 0,
 };
 
 export const RARITY_WORTH: Record<Rarity, number> = {
@@ -29,6 +31,7 @@ export const RARITY_WORTH: Record<Rarity, number> = {
   rare: 200,
   epic: 750,
   legendary: 2500,
+  mythic: 6000,
 };
 
 export const RARITY_BURN: Record<Rarity, number> = {
@@ -37,6 +40,7 @@ export const RARITY_BURN: Record<Rarity, number> = {
   rare: 100,
   epic: 375,
   legendary: 1250,
+  mythic: 3000,
 };
 
 export const RARITY_COLORS: Record<Rarity, number> = {
@@ -45,6 +49,7 @@ export const RARITY_COLORS: Record<Rarity, number> = {
   rare: 0x3498db,      // blue
   epic: 0x9b59b6,      // purple
   legendary: 0xf39c12, // gold
+  mythic: 0xff2d92,    // pink-magenta — admin can change via /rarityname
 };
 
 export const RARITY_EMOJI: Record<Rarity, string> = {
@@ -53,7 +58,49 @@ export const RARITY_EMOJI: Record<Rarity, string> = {
   rare: "🔵",
   epic: "🟣",
   legendary: "🌟",
+  mythic: "🔮",
 };
+
+// ── Mythic per-guild display ─────────────────────────────────────────────────
+// Admins can rename the Mythic tier per server via /rarityname. This helper
+// reads the override out of guild_settings (if loaded) and falls back to the
+// hard-coded defaults above. Call from any embed that has settings in hand.
+export function getMythicDisplay(
+  settings?: { mythicLabel?: string | null; mythicEmoji?: string | null; mythicColor?: number | null } | null,
+): { label: string; emoji: string; color: number } {
+  return {
+    label: settings?.mythicLabel?.trim() || RARITY_LABELS.mythic,
+    emoji: settings?.mythicEmoji?.trim() || RARITY_EMOJI.mythic,
+    color: settings?.mythicColor ?? RARITY_COLORS.mythic,
+  };
+}
+
+/** Resolves label for any rarity, honouring per-guild Mythic override. */
+export function rarityLabel(
+  r: Rarity,
+  settings?: { mythicLabel?: string | null } | null,
+): string {
+  if (r === "mythic" && settings?.mythicLabel?.trim()) return settings.mythicLabel.trim();
+  return RARITY_LABELS[r];
+}
+
+/** Resolves emoji for any rarity, honouring per-guild Mythic override. */
+export function rarityEmoji(
+  r: Rarity,
+  settings?: { mythicEmoji?: string | null } | null,
+): string {
+  if (r === "mythic" && settings?.mythicEmoji?.trim()) return settings.mythicEmoji.trim();
+  return RARITY_EMOJI[r];
+}
+
+/** Resolves color for any rarity, honouring per-guild Mythic override. */
+export function rarityColor(
+  r: Rarity,
+  settings?: { mythicColor?: number | null } | null,
+): number {
+  if (r === "mythic" && settings?.mythicColor != null) return settings.mythicColor;
+  return RARITY_COLORS[r] ?? 0x5865f2;
+}
 
 // ── Shiny cards ──────────────────────────────────────────────────────────────
 // Fixed across all servers (not configurable): every successful acquisition
@@ -75,6 +122,7 @@ export const RARITY_LABELS: Record<Rarity, string> = {
   epic: "Exotic",     // DB enum key stays "epic" — user-facing label is Exotic
   legendary: "Legendary",
   rare: "Rare",       // promoted to top tier (rarest)
+  mythic: "Mythic",   // new top tier — admin renameable via /rarityname
 };
 
 export const TYPE_EMOJI: Record<string, string> = {

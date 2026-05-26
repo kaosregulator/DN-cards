@@ -6,11 +6,13 @@ const EPHEMERAL_COMMANDS = new Set(["burn", "shards", "trades", "tradehistory", 
 import {
   getUserCollection, getAllCards, getLeaderboard, getTopPackOpeners,
   getOrCreateCurrency, burnCard, getCardByName, getUserCardCount, getUserOwnedCount,
+  getOrCreateGuildSettings,
 } from "../db.js";
 import {
   RARITY_COLORS, RARITY_EMOJI, RARITY_LABELS, getTypeEmoji,
   SHINY_EMOJI, SHINY_MULTIPLIER,
   getCollectorRank, getNextRank,
+  rarityLabel, rarityEmoji, rarityColor,
   type Rarity,
 } from "../cards-data.js";
 import { handleTrade, handleAccept, handleDecline, handleListTrades, handleGift, handleTradeHistory } from "./trading.js";
@@ -47,7 +49,8 @@ export async function handleUserCommand(
       return;
     }
 
-    const rarityOrder: Rarity[] = ["legendary", "epic", "rare", "uncommon", "common"];
+    const rarityOrder: Rarity[] = ["mythic", "legendary", "epic", "rare", "uncommon", "common"];
+    const settings = await getOrCreateGuildSettings(guildId);
     const byRarity: Record<string, typeof items> = {};
     for (const item of items) {
       if (!byRarity[item.rarity]) byRarity[item.rarity] = [];
@@ -82,7 +85,7 @@ export async function handleUserCommand(
     const fields = rarityOrder
       .filter(r => byRarity[r]?.length)
       .map(r => ({
-        name: `${RARITY_EMOJI[r]} ${RARITY_LABELS[r]} (${byRarity[r].length} unique)`,
+        name: `${rarityEmoji(r, settings)} ${rarityLabel(r, settings)} (${byRarity[r].length} unique)`,
         value: byRarity[r].map(i => {
           const badges = [i.isLimitedEdition ? "💎" : "", i.isEventExclusive ? "🎆" : ""].filter(Boolean).join("");
           const shinyTag = i.shinyCount > 0 ? ` · ${SHINY_EMOJI}×${i.shinyCount}` : "";
@@ -126,13 +129,14 @@ export async function handleUserCommand(
     }
 
     const sorted = [...items].sort((a, b) => a.name.localeCompare(b.name));
+    const invSettings = await getOrCreateGuildSettings(guildId);
     const totalCards = sorted.reduce((s, i) => s + i.count + i.shinyCount, 0);
     const totalShinies = sorted.reduce((s, i) => s + i.shinyCount, 0);
 
     const lines = sorted.map(i => {
       const badges = [i.isLimitedEdition ? "💎" : "", i.isEventExclusive ? "🎆" : ""].filter(Boolean).join("");
       const shinyTag = i.shinyCount > 0 ? ` ${SHINY_EMOJI}×${i.shinyCount}` : "";
-      return `${RARITY_EMOJI[i.rarity as Rarity]} ${badges}**${i.name}** ×${i.count}${shinyTag}`;
+      return `${rarityEmoji(i.rarity as Rarity, invSettings)} ${badges}**${i.name}** ×${i.count}${shinyTag}`;
     });
 
     // Pack lines into 1024-char fields (Discord limit). Up to 25 fields/embed.
@@ -209,12 +213,13 @@ export async function handleUserCommand(
     if (card.isLimitedEdition) badges.push("💎 Limited Edition");
     if (card.isEventExclusive) badges.push("🎆 Event Exclusive");
 
+    const infoSettings = await getOrCreateGuildSettings(guildId);
     const embed = new EmbedBuilder()
-      .setTitle(`${RARITY_EMOJI[rarity]} ${card.name}`)
-      .setColor(RARITY_COLORS[rarity] ?? 0x7289da)
+      .setTitle(`${rarityEmoji(rarity, infoSettings)} ${card.name}`)
+      .setColor(rarityColor(rarity, infoSettings) ?? 0x7289da)
       .setDescription((card.description || "*No description.*") + (card.flavor ? `\n\n*${card.flavor}*` : ""))
       .addFields(
-        { name: "Rarity", value: `${RARITY_EMOJI[rarity]} ${RARITY_LABELS[rarity]}`, inline: true },
+        { name: "Rarity", value: `${rarityEmoji(rarity, infoSettings)} ${rarityLabel(rarity, infoSettings)}`, inline: true },
         { name: "Type", value: `${getTypeEmoji(cardType)} ${card.cardType}`, inline: true },
         { name: "Drop Chance", value: dropChance, inline: true },
         { name: "💠 Worth", value: `${card.worthValue.toLocaleString()} shards`, inline: true },
@@ -232,11 +237,12 @@ export async function handleUserCommand(
   if (sub === "list") {
     const cards = await getAllCards();
     if (cards.length === 0) { await interaction.editReply("No cards in the pool yet."); return; }
-    const rarityOrder: Rarity[] = ["legendary", "epic", "rare", "uncommon", "common"];
+    const rarityOrder: Rarity[] = ["mythic", "legendary", "epic", "rare", "uncommon", "common"];
+    const listSettings = await getOrCreateGuildSettings(guildId);
     const byRarity: Record<string, typeof cards> = {};
     for (const card of cards) { if (!byRarity[card.rarity]) byRarity[card.rarity] = []; byRarity[card.rarity].push(card); }
     const fields = rarityOrder.filter(r => byRarity[r]?.length).map(r => ({
-      name: `${RARITY_EMOJI[r]} ${RARITY_LABELS[r]} (${byRarity[r].length})`,
+      name: `${rarityEmoji(r, listSettings)} ${rarityLabel(r, listSettings)} (${byRarity[r].length})`,
       value: byRarity[r].map(c => {
         const b = [c.isLimitedEdition ? "💎" : "", c.isEventExclusive ? "🎆" : "", !c.droppable ? "🔒" : ""].filter(Boolean).join("");
         return `${b}${c.name}`;
@@ -266,6 +272,7 @@ export async function handleUserCommand(
     const ownedById = new Map<number, number>();
     for (const item of collection) ownedById.set(item.cardId, item.count);
 
+    const catSettings = await getOrCreateGuildSettings(guildId);
     let pool = allCards.filter(c => !c.isArchived);
     let title = "";
     let color = 0x5865f2;
@@ -282,8 +289,8 @@ export async function handleUserCommand(
       title = "🃏 Full Card Roster";
     } else {
       pool = pool.filter(c => c.rarity === category);
-      title = `${RARITY_EMOJI[category]} ${RARITY_LABELS[category]} Cards`;
-      color = RARITY_COLORS[category] ?? 0x5865f2;
+      title = `${rarityEmoji(category, catSettings)} ${rarityLabel(category, catSettings)} Cards`;
+      color = rarityColor(category, catSettings) ?? 0x5865f2;
     }
 
     if (pool.length === 0) {
@@ -293,14 +300,14 @@ export async function handleUserCommand(
 
     // Pick a thumbnail: the rarest card the user owns from this pool, else
     // the rarest card in the pool, so the embed has a visual anchor.
-    const rarityRank: Record<Rarity, number> = { common: 0, uncommon: 1, rare: 2, epic: 3, legendary: 4 };
+    const rarityRank: Record<Rarity, number> = { common: 0, uncommon: 1, rare: 2, epic: 3, legendary: 4, mythic: 5 };
     const sortedByRarity = [...pool].sort((a, b) => rarityRank[b.rarity as Rarity] - rarityRank[a.rarity as Rarity]);
     const ownedRarest = sortedByRarity.find(c => ownedById.has(c.id));
     const thumbSource = ownedRarest ?? sortedByRarity[0];
     if (thumbSource) thumbnail = toAbsoluteImageUrl(thumbSource.imageUrl) ?? null;
 
     // Group: by rarity for event/limited/all, single group otherwise.
-    const rarityOrder: Rarity[] = ["legendary", "epic", "rare", "uncommon", "common"];
+    const rarityOrder: Rarity[] = ["mythic", "legendary", "epic", "rare", "uncommon", "common"];
     const groups: { rarity: Rarity; cards: typeof pool }[] = [];
     if (category === "event" || category === "limited" || category === "all") {
       for (const r of rarityOrder) {
@@ -329,7 +336,7 @@ export async function handleUserCommand(
             ? `✅ \`×${owned}\` ${badges}**${c.name}**`
             : `⬜ ${badges}${c.name}`;
         });
-      const groupName = `${RARITY_EMOJI[g.rarity]} ${RARITY_LABELS[g.rarity]} (${g.cards.filter(c => ownedById.has(c.id)).length}/${g.cards.length})`;
+      const groupName = `${rarityEmoji(g.rarity, catSettings)} ${rarityLabel(g.rarity, catSettings)} (${g.cards.filter(c => ownedById.has(c.id)).length}/${g.cards.length})`;
       const chunks: string[] = [];
       let current = "";
       for (const line of lines) {

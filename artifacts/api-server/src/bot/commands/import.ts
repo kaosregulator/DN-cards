@@ -175,5 +175,5 @@ export async function handleImport(msg: Message): Promise<void> {
 }
 
 function defaultBurn(r: Rarity): number {
-  return { common: 5, uncommon: 25, rare: 250, epic: 500, legendary: 1250 }[r];
+  return { common: 5, uncommon: 25, rare: 250, epic: 500, legendary: 1250, mythic: 3000 }[r];
 }

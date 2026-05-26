@@ -13,18 +13,24 @@ import { PACK_TIERS, PACK_TIER_META, PACK_DEFAULTS, resolveTierConfig, type Pack
 
 // Rarity display order in the panel (least → most rare).
 // DB enum key "epic" is labelled "Exotic" via RARITY_LABELS — Rare is the rarest tier.
-const RARITY_ORDER: Rarity[] = ["common", "uncommon", "epic", "legendary", "rare"];
+const RARITY_ORDER: Rarity[] = ["common", "uncommon", "epic", "legendary", "rare", "mythic"];
+// Discord caps an action-row count at 5 per message AND 5 per modal, so the
+// interactive rate-mix controls can only expose 5 rarities. Mythic is the
+// admin-only top tier (default weight 0) and is configured via the dashboard
+// or `/event` boosts instead — see replit.md > Mythic tier.
+const UI_RARITY_ORDER: Rarity[] = ["common", "uncommon", "epic", "legendary", "rare"];
 const RARITY_EMOJI: Record<Rarity, string> = {
-  common: "⚪", uncommon: "🟢", epic: "🟣", legendary: "🟡", rare: "🔴",
+  common: "⚪", uncommon: "🟢", epic: "🟣", legendary: "🟡", rare: "🔴", mythic: "🔮",
 };
 // Percentage options offered per rarity (preset menu). `null` = "Default" (use card's default).
-// Stored internally as weights — when the 5 values sum to 100, weight == percent exactly.
+// Stored internally as weights — when the values sum to 100, weight == percent exactly.
 const RARITY_WEIGHT_OPTIONS: Record<Rarity, (number | null)[]> = {
   common:    [null, 80, 70, 60, 50, 40, 30, 20, 10, 5],
   uncommon:  [null, 40, 30, 25, 20, 15, 10, 5,  1],
   epic:      [null, 20, 15, 10, 8,  5,  3,  2,  1],     // Exotic — mid tier
   legendary: [null, 15, 10, 8,  6,  4,  3,  2,  1, 0],
-  rare:      [null, 10, 5,  3,  2,  1,  0],              // Rare — rarest tier
+  rare:      [null, 10, 5,  3,  2,  1,  0],              // Rare — second-rarest
+  mythic:    [null, 5,  3,  2,  1,  0],                  // Mythic — admin-only by default (0)
 };
 
 function rarityWeightKey(r: Rarity): keyof GuildSettings {
@@ -451,7 +457,7 @@ function rarityBar(s: GuildSettings): string {
     k++;
   }
   const blocks: Record<Rarity, string> = {
-    common: "⬜", uncommon: "🟩", rare: "🟦", epic: "🟪", legendary: "🟨",
+    common: "⬜", uncommon: "🟩", rare: "🟦", epic: "🟪", legendary: "🟨", mythic: "🟥",
   };
   return RARITY_ORDER.map((r, i) => blocks[r].repeat(floors[i]!)).join("");
 }
@@ -492,7 +498,8 @@ function buildRatesEmbed(s: GuildSettings): EmbedBuilder {
 function buildRatesComponents(s: GuildSettings) {
   // Discord caps action rows at 5 — so all 5 rarities go here, no room for a button.
   // Reset is exposed via the 🔄 Reset Mix button on the main config panel.
-  return RARITY_ORDER.map(r => {
+  // Mythic is intentionally excluded; configure it from the dashboard.
+  return UI_RARITY_ORDER.map(r => {
     const current = getRarityWeight(s, r);
     const opts = RARITY_WEIGHT_OPTIONS[r].map(w => {
       if (w === null) {
@@ -524,7 +531,8 @@ function buildCustomMixModal(s: GuildSettings): ModalBuilder {
   const modal = new ModalBuilder()
     .setCustomId("rates_custom")
     .setTitle("Custom Rarity Mix (sum to 100)");
-  const inputs = RARITY_ORDER.map(r =>
+  // Modals also cap at 5 rows — mythic is configured via the dashboard.
+  const inputs = UI_RARITY_ORDER.map(r =>
     new TextInputBuilder()
       .setCustomId(`mix_${r}`)
       .setLabel(`${RARITY_LABELS[r]} %`)
@@ -555,7 +563,7 @@ export async function handleRatesCustomModal(interaction: ModalSubmitInteraction
 
   const patch: Partial<GuildSettings> = {};
   const parsed: { r: Rarity; v: number }[] = [];
-  for (const r of RARITY_ORDER) {
+  for (const r of UI_RARITY_ORDER) {
     const raw = interaction.fields.getTextInputValue(`mix_${r}`).trim();
     const n = parseInt(raw, 10);
     if (!Number.isFinite(n) || n < 0 || n > 100) {

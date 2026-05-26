@@ -22,6 +22,7 @@ const rarityColors = {
   rare: "bg-[hsl(var(--rarity-rare)_/_0.1)] text-[hsl(var(--rarity-rare))] border-[hsl(var(--rarity-rare)_/_0.3)]",
   epic: "bg-[hsl(var(--rarity-epic)_/_0.1)] text-[hsl(var(--rarity-epic))] border-[hsl(var(--rarity-epic)_/_0.3)]",
   legendary: "bg-[hsl(var(--rarity-legendary)_/_0.1)] text-[hsl(var(--rarity-legendary))] border-[hsl(var(--rarity-legendary)_/_0.3)]",
+  mythic: "bg-pink-500/10 text-pink-400 border-pink-500/30",
 };
 
 const rarityBorders = {
@@ -30,11 +31,13 @@ const rarityBorders = {
   rare: "border-[hsl(var(--rarity-rare)_/_0.5)]",
   epic: "border-[hsl(var(--rarity-epic)_/_0.5)]",
   legendary: "border-[hsl(var(--rarity-legendary))] rarity-glow-legendary",
+  mythic: "border-pink-500 rarity-glow-legendary",
 };
 
 // Holo glow tints used as the default dialog stage background (when admin
 // hasn't set a custom previewBgColor). Matches the rarity colors above.
 const RARITY_STAGE_BG: Record<string, string> = {
+  mythic:    "radial-gradient(ellipse at top, rgba(255,45,146,0.28), rgba(0,0,0,0) 60%)",
   legendary: "radial-gradient(ellipse at top, rgba(234,179,8,0.25), rgba(0,0,0,0) 60%)",
   epic:      "radial-gradient(ellipse at top, rgba(168,85,247,0.25), rgba(0,0,0,0) 60%)",
   rare:      "radial-gradient(ellipse at top, rgba(59,130,246,0.22), rgba(0,0,0,0) 60%)",

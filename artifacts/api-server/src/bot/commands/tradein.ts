@@ -5,19 +5,21 @@ import {
 } from "discord.js";
 import {
   getAllCards, getUserCollection, removeCardFromUser, catchCard,
-  restoreCardToUser, getOrCreateCurrency,
+  restoreCardToUser, getOrCreateCurrency, getOrCreateGuildSettings,
 } from "../db.js";
 import {
   RARITY_COLORS, RARITY_EMOJI, RARITY_LABELS, SHINY_EMOJI, SHINY_MULTIPLIER,
+  rarityLabel, rarityEmoji, rarityColor,
   type Rarity,
 } from "../cards-data.js";
+import type { GuildSettings } from "@workspace/db";
 import { checkAchievements, formatUnlockLine } from "../achievements.js";
 import { toAbsoluteImageUrl } from "../image-url.js";
 import type { Card } from "@workspace/db";
 
 export const TRADEIN_COST = 5;
 
-const RARITY_LADDER: Rarity[] = ["common", "uncommon", "rare", "epic", "legendary"];
+const RARITY_LADDER: Rarity[] = ["common", "uncommon", "rare", "epic", "legendary", "mythic"];
 
 function nextRarity(r: Rarity): Rarity | null {
   const i = RARITY_LADDER.indexOf(r);
@@ -75,17 +77,20 @@ function planConsumption(
 
 function buildConfirmEmbed(
   fromRarity: Rarity, toRarity: Rarity, plan: ConsumePlan, losesUnique: boolean,
+  settings: GuildSettings | null = null,
 ): EmbedBuilder {
   const lines = plan.map(p => `• **${p.taken}× ${p.name}**`).join("\n");
   const warn = losesUnique
     ? "\n\n⚠️ **Heads up:** you'd lose a card you only own one copy of."
     : "";
+  const fE = rarityEmoji(fromRarity, settings), fL = rarityLabel(fromRarity, settings);
+  const tE = rarityEmoji(toRarity, settings),   tL = rarityLabel(toRarity, settings);
   return new EmbedBuilder()
-    .setTitle(`🔄 Trade-In — ${RARITY_EMOJI[fromRarity]} → ${RARITY_EMOJI[toRarity]}`)
-    .setColor(RARITY_COLORS[toRarity] ?? 0x5865f2)
+    .setTitle(`🔄 Trade-In — ${fE} → ${tE}`)
+    .setColor(rarityColor(toRarity, settings))
     .setDescription(
-      `Burn **${TRADEIN_COST}** ${RARITY_EMOJI[fromRarity]} ${RARITY_LABELS[fromRarity]} cards ` +
-      `for **1 random** ${RARITY_EMOJI[toRarity]} **${RARITY_LABELS[toRarity]}**.\n\n` +
+      `Burn **${TRADEIN_COST}** ${fE} ${fL} cards ` +
+      `for **1 random** ${tE} **${tL}**.\n\n` +
       `**Will be destroyed:**\n${lines}${warn}\n\n` +
       `Are you sure?`,
     )
@@ -111,11 +116,12 @@ export async function handleTradein(interaction: ChatInputCommandInteraction): P
   }
   const fromRarity = fromRarityRaw as Rarity;
   const toRarity = nextRarity(fromRarity);
+  const settings = await getOrCreateGuildSettings(guildId);
 
   if (!toRarity) {
     await interaction.editReply(
-      `❌ Legendary is the top tier — there's nothing higher to trade up to.\n` +
-      `Try \`/tradein rarity:epic\` to chase a Legendary instead.`,
+      `❌ Mythic is the top tier — there's nothing higher to trade up to.\n` +
+      `Try \`/tradein rarity:legendary\` to chase a Mythic instead.`,
     );
     return;
   }
@@ -129,7 +135,7 @@ export async function handleTradein(interaction: ChatInputCommandInteraction): P
 
   if (totalAtRarity < TRADEIN_COST) {
     await interaction.editReply(
-      `❌ You need **${TRADEIN_COST}** ${RARITY_EMOJI[fromRarity]} ${RARITY_LABELS[fromRarity]} cards to trade in. ` +
+      `❌ You need **${TRADEIN_COST}** ${rarityEmoji(fromRarity, settings)} ${rarityLabel(fromRarity, settings)} cards to trade in. ` +
       `You have **${totalAtRarity}**.\n` +
       `Tip: \`/burn\` duplicates first if you'd rather have shards.`,
     );
@@ -146,7 +152,7 @@ export async function handleTradein(interaction: ChatInputCommandInteraction): P
   );
   if (rewardPool.length === 0) {
     await interaction.editReply(
-      `❌ No ${RARITY_EMOJI[toRarity]} ${RARITY_LABELS[toRarity]} cards are available right now. ` +
+      `❌ No ${rarityEmoji(toRarity, settings)} ${rarityLabel(toRarity, settings)} cards are available right now. ` +
       `Ask an admin to load more cards.`,
     );
     return;
@@ -164,7 +170,7 @@ export async function handleTradein(interaction: ChatInputCommandInteraction): P
 
   // Show confirm prompt.
   await interaction.editReply({
-    embeds: [buildConfirmEmbed(fromRarity, toRarity, plan, losesUnique)],
+    embeds: [buildConfirmEmbed(fromRarity, toRarity, plan, losesUnique, settings)],
     components: [confirmRow()],
   });
 
@@ -206,7 +212,7 @@ export async function handleTradein(interaction: ChatInputCommandInteraction): P
     // Acknowledge immediately and rebuild the preview with disabled buttons
     // so the user sees we're working.
     await i.update({
-      embeds: [buildConfirmEmbed(fromRarity, toRarity, plan, losesUnique)],
+      embeds: [buildConfirmEmbed(fromRarity, toRarity, plan, losesUnique, settings)],
       components: [confirmRow(true)],
     }).catch(() => { /* ignore */ });
 
@@ -273,7 +279,7 @@ export async function handleTradein(interaction: ChatInputCommandInteraction): P
       // Nothing to award — give the user back exactly what we removed.
       await refund();
       await interaction.editReply({
-        content: `❌ No ${RARITY_EMOJI[toRarity]} cards left to award — your cards were returned.`,
+        content: `❌ No ${rarityEmoji(toRarity, settings)} cards left to award — your cards were returned.`,
         embeds: [], components: [],
       }).catch(() => { /* ignore */ });
       collector.stop("noaward");
@@ -286,13 +292,15 @@ export async function handleTradein(interaction: ChatInputCommandInteraction): P
     const rewardWorth = isShiny ? reward.worthValue * SHINY_MULTIPLIER : reward.worthValue;
     const rewardBurn = isShiny ? reward.burnValue * SHINY_MULTIPLIER : reward.burnValue;
 
+    const fE = rarityEmoji(fromRarity, settings), fL = rarityLabel(fromRarity, settings);
+    const tE = rarityEmoji(toRarity, settings),   tL = rarityLabel(toRarity, settings);
     const summary = new EmbedBuilder()
-      .setTitle(`🔄 Trade-In Complete — ${RARITY_EMOJI[toRarity]} ${RARITY_LABELS[toRarity]}!${isShiny ? ` ${SHINY_EMOJI}` : ""}`)
-      .setColor(isShiny ? 0xf1c40f : (RARITY_COLORS[toRarity] ?? 0x5865f2))
+      .setTitle(`🔄 Trade-In Complete — ${tE} ${tL}!${isShiny ? ` ${SHINY_EMOJI}` : ""}`)
+      .setColor(isShiny ? 0xf1c40f : rarityColor(toRarity, settings))
       .setDescription(
-        `You burned **${TRADEIN_COST}** ${RARITY_EMOJI[fromRarity]} ${RARITY_LABELS[fromRarity]} cards ` +
-        `and received a random ${RARITY_EMOJI[toRarity]} **${RARITY_LABELS[toRarity]}**.\n\n` +
-        `**🎁 You got:** ${RARITY_EMOJI[toRarity]} ${shinyPrefix}**${reward.name}**` +
+        `You burned **${TRADEIN_COST}** ${fE} ${fL} cards ` +
+        `and received a random ${tE} **${tL}**.\n\n` +
+        `**🎁 You got:** ${tE} ${shinyPrefix}**${reward.name}**` +
         (isShiny ? `\n${SHINY_EMOJI} **SHINY!** Counts at ${SHINY_MULTIPLIER}× value.` : "") +
         (reward.description ? `\n*${reward.description}*` : "") +
         `\n\n**Consumed:**\n${plan.map(p => `• **${p.taken}× ${p.name}**`).join("\n")}` +
@@ -301,7 +309,7 @@ export async function handleTradein(interaction: ChatInputCommandInteraction): P
       .addFields(
         { name: "💠 Worth", value: rewardWorth.toLocaleString() + (isShiny ? ` *(${SHINY_MULTIPLIER}×)*` : ""), inline: true },
         { name: "🔥 Burn", value: rewardBurn.toLocaleString() + (isShiny ? ` *(${SHINY_MULTIPLIER}×)*` : ""), inline: true },
-        { name: "Rarity", value: `${RARITY_EMOJI[toRarity]} ${RARITY_LABELS[toRarity]}`, inline: true },
+        { name: "Rarity", value: `${tE} ${tL}`, inline: true },
       )
       .setFooter({ text: "Use /collection to view your new card." });
     const img = toAbsoluteImageUrl(reward.imageUrl);

@@ -200,6 +200,13 @@ export async function handleAdminCommand(
     return;
   }
 
+  // ── /rarityname — customize the Mythic tier name/emoji/color ───────────────
+  if (cmd === "rarityname") {
+    const { handleRarityName } = await import("./rarity-name.js");
+    await handleRarityName(interaction);
+    return;
+  }
+
   // ── /event start|list|stop ────────────────────────────────────────────────
   // Delegated to event.ts. We've already deferred + admin-checked above so
   // it can go straight to editReply.
@@ -245,10 +252,12 @@ export async function handleAdminCommand(
     }
     const allCards = await getAllCards();
     const pool = allCards.filter(c => c.droppable && !c.isArchived && (!c.maxCopies || c.totalMinted < c.maxCopies));
-    const byRarity: Record<Rarity, typeof pool> = { common: [], uncommon: [], rare: [], epic: [], legendary: [] };
+    const byRarity: Record<Rarity, typeof pool> = { common: [], uncommon: [], rare: [], epic: [], legendary: [], mythic: [] };
     for (const c of pool) byRarity[c.rarity as Rarity].push(c);
 
     // Distribution: 1 legendary banger, 1 epic, ~2 rare, ~30% uncommon, rest common.
+    // Mythic is intentionally excluded from massdrop — it's the new top tier,
+    // admins should grant it deliberately via /give or /drop.
     const target = computeMassDropDistribution(amount);
     const pick = (r: Rarity): typeof pool[number] | null => {
       const bucket = byRarity[r];
@@ -276,7 +285,7 @@ export async function handleAdminCommand(
       [queue[i], queue[j]] = [queue[j]!, queue[i]!];
     }
 
-    const counts: Record<Rarity, number> = { common: 0, uncommon: 0, rare: 0, epic: 0, legendary: 0 };
+    const counts: Record<Rarity, number> = { common: 0, uncommon: 0, rare: 0, epic: 0, legendary: 0, mythic: 0 };
     for (const c of queue) counts[c.rarity as Rarity]++;
     const summary = ladder
       .filter(r => counts[r] > 0)
@@ -388,5 +397,5 @@ function computeMassDropDistribution(amount: number): Record<Rarity, number> {
   const uncommon = Math.max(2, Math.floor(amount * 0.30));
   const used = legendary + epic + rare + uncommon;
   const common = Math.max(0, amount - used);
-  return { common, uncommon, rare, epic, legendary };
+  return { common, uncommon, rare, epic, legendary, mythic: 0 };
 }
