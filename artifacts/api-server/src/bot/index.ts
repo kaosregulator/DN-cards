@@ -26,6 +26,33 @@ export async function startBot() {
   const token = process.env["DISCORD_BOT_TOKEN"];
   if (!token) { logger.error("DISCORD_BOT_TOKEN not set — bot will not start."); return; }
 
+  // --- Multi-instance guard ---
+  // Discord allows only one gateway connection per token. If both the dev
+  // workflow and the published deployment connect with the same token they
+  // race and slash commands route to whichever is currently winning the
+  // gateway lease. Default behaviour: only the published deployment connects.
+  // Override in dev with FORCE_DISCORD_LOGIN=1 (use a separate dev token!).
+  const isDeployment = process.env["REPLIT_DEPLOYMENT"] === "1";
+  const force = process.env["FORCE_DISCORD_LOGIN"] === "1";
+  const processType = isDeployment ? "deployment" : "dev";
+  const buildId = process.env["REPLIT_DEPLOYMENT_ID"] ?? process.env["REPL_SLUG"] ?? "local";
+  const dbHost = (() => {
+    const url = process.env["DATABASE_URL"] ?? "";
+    const m = url.match(/@([^/:]+)/);
+    return m ? m[1] : "unknown";
+  })();
+  logger.info(
+    { processType, buildId, dbHost, isDeployment, willLogin: isDeployment || force },
+    "Bot startup banner",
+  );
+  if (!isDeployment && !force) {
+    logger.warn(
+      "Skipping Discord login: this is a dev process and FORCE_DISCORD_LOGIN!=1. " +
+      "The published deployment owns the bot token. Set FORCE_DISCORD_LOGIN=1 with a SEPARATE dev token to override.",
+    );
+    return;
+  }
+
   const client = new Client({
     intents: [
       GatewayIntentBits.Guilds,
@@ -40,7 +67,17 @@ export async function startBot() {
   setBotClient(client);
 
   client.once(Events.ClientReady, async (c) => {
-    logger.info({ tag: c.user.tag }, "DN Cards bot ready");
+    logger.info(
+      {
+        tag: c.user.tag,
+        guildCount: c.guilds.cache.size,
+        guildIds: [...c.guilds.cache.keys()],
+        processType: process.env["REPLIT_DEPLOYMENT"] === "1" ? "deployment" : "dev",
+        buildId: process.env["REPLIT_DEPLOYMENT_ID"] ?? "local",
+        pid: process.pid,
+      },
+      "DN Cards bot ready",
+    );
     // Default 27-card roster is NOT auto-seeded — admins opt-in from `!setup`
     // ("Load Defaults" button) or `/loadset defaults:true`. Keeps fresh
     // servers free to load only their own custom roster.
