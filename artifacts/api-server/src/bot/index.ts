@@ -151,9 +151,6 @@ export async function startBot() {
 
         // ── Spawn Claim button (button/both catch mode) ────────────────────
         if (action === "spawn_claim") {
-          // Defer immediately — Discord only gives 3s to acknowledge, and
-          // handleClaimButtonClick does DB work that can exceed that.
-          await interaction.deferReply({ flags: MessageFlags.Ephemeral }).catch(() => { /* ignore */ });
           const [, guildId, spawnId] = parts;
           const result = await handleClaimButtonClick(guildId, spawnId, interaction.user.id);
           if (!result.ok) {
@@ -161,8 +158,9 @@ export async function startBot() {
             // (double-tap, both-mode type+click race). Silently ack so
             // we don't tell the winner the spawn "expired".
             if (result.reason === "self_already") {
-              await interaction.editReply({
+              await interaction.reply({
                 content: "✅ You've already claimed it — pick **Burn / Keep / Trade** above.",
+                flags: MessageFlags.Ephemeral,
               }).catch(() => { /* ignore */ });
               return;
             }
@@ -171,10 +169,11 @@ export async function startBot() {
               : result.reason === "expired" ? "✅ You've already claimed it — pick **Burn / Keep / Trade** above."
               : result.reason === "timed_out" ? `⏱️ You're timed out from catching cards until <t:${Math.floor(result.timedOutUntil!.getTime() / 1000)}:f>.`
               : "❌ This button isn't active right now.";
-            await interaction.editReply({ content: reasonMsg }).catch(() => { /* ignore */ });
+            await interaction.reply({ content: reasonMsg, flags: MessageFlags.Ephemeral }).catch(() => { /* ignore */ });
           } else {
-            await interaction.editReply({
+            await interaction.reply({
               content: `🎯 You claimed it! Check the spawn message for **Burn / Keep / Trade** options.`,
+              flags: MessageFlags.Ephemeral,
             }).catch(() => { /* ignore */ });
             const unlocked = await checkAchievements(guildId, interaction.user.id).catch(() => []);
             if (unlocked.length > 0) {
@@ -214,15 +213,9 @@ export async function startBot() {
             await interaction.reply({
               content: "❌ These buttons are only for the player who caught this card.",
               flags: MessageFlags.Ephemeral,
-            }).catch(() => { /* ignore */ });
+            });
             return;
           }
-
-          // Defer immediately — DB work + embed rebuild + message edit can
-          // easily exceed Discord's 3-second interaction window, especially
-          // under load. Without this, burns "succeed" silently and the user
-          // re-clicks → "already burned" loop.
-          await interaction.deferReply({ flags: MessageFlags.Ephemeral }).catch(() => { /* ignore */ });
 
           // Look up the card name for any public announcement.
           const { getAllCards } = await import("./db.js");
@@ -234,10 +227,10 @@ export async function startBot() {
           if (action === "catch_burn") {
             const result = await burnCard(guildId, userId, cardId, 1, { shiny: isShinyCatch });
             if (!result.success) {
-              // Silently ack — this only fires on rare double-click races
-              // after the defer fix. Showing an error message confused users
-              // more than the silent no-op does.
-              await interaction.deleteReply().catch(() => { /* ignore */ });
+              await interaction.reply({
+                content: "❌ Couldn't burn the card — it may have already been burned.",
+                flags: MessageFlags.Ephemeral,
+              });
               return;
             }
             const currency = await getOrCreateCurrency(guildId, userId);
@@ -250,11 +243,12 @@ export async function startBot() {
               }).catch(() => { /* may be deleted */ });
             }
             // Private confirmation with full shard balance
-            await interaction.editReply({
+            await interaction.reply({
               content:
                 `🔥 Card burned! You received 💠 **${result.shardsGained.toLocaleString()} shards**.\n` +
                 `New balance: **${currency.shards.toLocaleString()}** 💠 — check \`/shards\` anytime.`,
-            }).catch(() => { /* ignore */ });
+              flags: MessageFlags.Ephemeral,
+            });
             const burnUnlocks = await checkAchievements(guildId, userId).catch(() => []);
             if (burnUnlocks.length > 0) {
               await interaction.followUp({
@@ -270,9 +264,10 @@ export async function startBot() {
                 components: [buildDisabledDecisionRow(guildId, userId, cardId, burnValue, "keep")],
               }).catch(() => { /* may be deleted */ });
             }
-            await interaction.editReply({
+            await interaction.reply({
               content: "💾 Kept! The card is in your collection — use `/collection` to view it.",
-            }).catch(() => { /* ignore */ });
+              flags: MessageFlags.Ephemeral,
+            });
           } else {
             // catch_trade — card stays in collection; advertise it publicly
             const tradeEmbed = await buildPostDecisionEmbed(cardId, userId, "trade", guildId);
@@ -282,9 +277,10 @@ export async function startBot() {
                 components: [buildDisabledDecisionRow(guildId, userId, cardId, burnValue, "trade")],
               }).catch(() => { /* may be deleted */ });
             }
-            await interaction.editReply({
+            await interaction.reply({
               content: `🔄 You're now open to trading **${cardName}**! Others can use /trade to make an offer.`,
-            }).catch(() => { /* ignore */ });
+              flags: MessageFlags.Ephemeral,
+            });
           }
         }
         return;
