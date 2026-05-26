@@ -220,9 +220,18 @@ export async function handleTradeButton(interaction: ButtonInteraction, action: 
     return;
   }
 
-  // Accept
-  const success = await executeTradeSwap(trade);
-  if (!success) {
+  // Accept — status flip happens atomically inside executeTradeSwap so two
+  // concurrent Accept clicks can't both execute the swap.
+  const result = await executeTradeSwap(trade);
+  if (result === "already_resolved") {
+    await interaction.update({
+      content: `❌ Trade #${tradeId} was already resolved.`,
+      embeds: [],
+      components: [],
+    }).catch(() => { /* may be deleted */ });
+    return;
+  }
+  if (result === "balance_failed") {
     await updateTradeStatus(tradeId, "declined");
     await interaction.update({
       content: `❌ Trade #${tradeId} failed — a card or shard balance changed. Trade cancelled.`,
@@ -231,7 +240,6 @@ export async function handleTradeButton(interaction: ButtonInteraction, action: 
     }).catch(() => { /* may be deleted */ });
     return;
   }
-  await updateTradeStatus(tradeId, "accepted");
   await interaction.update({
     content: `✅ Trade **complete!** <@${trade.initiatorId}> ↔️ <@${trade.targetId}> — check \`/collection\` and \`/shards\`.`,
     embeds: [],
@@ -266,14 +274,17 @@ export async function handleAccept(interaction: ChatInputCommandInteraction): Pr
   if (trade.targetId !== interaction.user.id) { await interaction.editReply("❌ This trade is not addressed to you."); return; }
   if (trade.status !== "pending") { await interaction.editReply(`❌ Trade #${tradeId} is already **${trade.status}**.`); return; }
 
-  const success = await executeTradeSwap(trade);
-  if (!success) {
+  const result = await executeTradeSwap(trade);
+  if (result === "already_resolved") {
+    await interaction.editReply(`❌ Trade #${tradeId} was already resolved.`);
+    return;
+  }
+  if (result === "balance_failed") {
     await updateTradeStatus(tradeId, "declined");
     await interaction.editReply(`❌ Trade #${tradeId} failed — a card or shard balance changed. Trade cancelled.`);
     return;
   }
 
-  await updateTradeStatus(tradeId, "accepted");
   await interaction.editReply(
     `✅ Trade #${tradeId} complete! <@${trade.initiatorId}> ↔️ <@${trade.targetId}> — check \`/collection\` and \`/shards\`.`,
   );

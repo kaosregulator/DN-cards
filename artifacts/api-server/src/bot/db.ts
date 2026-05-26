@@ -697,9 +697,11 @@ export async function giftShards(
   return { success, remaining: cur.shards };
 }
 
-export async function executeTradeSwap(trade: Trade): Promise<boolean> {
+export type TradeSwapResult = "ok" | "balance_failed" | "already_resolved";
+
+export async function executeTradeSwap(trade: Trade): Promise<TradeSwapResult> {
   // Guard: trades created before validation tightening may carry negatives.
-  if (trade.offeredShards < 0 || trade.requestedShards < 0) return false;
+  if (trade.offeredShards < 0 || trade.requestedShards < 0) return "balance_failed";
 
   // Pre-create currency rows so the on-conflict upsert can't be rolled back
   // alongside the swap. Inside the txn we use atomic conditional UPDATEs so
@@ -710,6 +712,16 @@ export async function executeTradeSwap(trade: Trade): Promise<boolean> {
   if (trade.offeredCardId) await getOrCreateCurrency(trade.guildId, trade.targetId);
 
   return await db.transaction(async (tx) => {
+    // 0) Atomic status claim — only one concurrent accept can transition
+    //    pending→accepted. Prevents double-execution when a user has ≥2
+    //    copies of the offered card (atomic count debits would otherwise
+    //    BOTH succeed and the recipient would receive two copies).
+    const claimed = await tx.update(tradesTable)
+      .set({ status: "accepted", resolvedAt: new Date() })
+      .where(and(eq(tradesTable.id, trade.id), eq(tradesTable.status, "pending")))
+      .returning({ id: tradesTable.id });
+    if (claimed.length === 0) throw new Error("trade_already_resolved");
+
     // 1) Atomic card debits — single SQL per side ensures only one concurrent
     //    trade can claim the last copy.
     if (trade.offeredCardId) {
@@ -801,14 +813,15 @@ export async function executeTradeSwap(trade: Trade): Promise<boolean> {
         ));
     }
 
-    return true;
-  }).catch((err) => {
+    return "ok" as const;
+  }).catch((err): TradeSwapResult => {
+    if (err instanceof Error && err.message === "trade_already_resolved") return "already_resolved";
     if (err instanceof Error && [
       "initiator_lacks_card", "target_lacks_card",
       "initiator_lacks_shards", "target_lacks_shards",
-    ].includes(err.message)) return false;
+    ].includes(err.message)) return "balance_failed";
     logger.error({ err, tradeId: trade.id }, "executeTradeSwap failed");
-    return false;
+    return "balance_failed";
   });
 }
 

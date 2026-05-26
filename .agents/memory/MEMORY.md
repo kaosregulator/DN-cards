@@ -5,3 +5,4 @@
 - [Thread guildId through every embed builder + caller](guild-id-thread-through.md) — defaulting new context params to null silently no-ops at the call sites you forgot; prefer required params and grep every caller.
 - [Discord command visibility](discord-command-visibility.md) — slash commands need BOTH defaultMemberPermissions (UI hide) AND runtime isAdmin check; one alone is not enough.
 - [Discord 5-row limit](discord-row-limits.md) — max 5 ActionRows per message; overflow surfaces as a misleading "Interaction has already been acknowledged" on the next update.
+- [Trade accept atomic status flip](trade-accept-atomic.md) — gate the pending→accepted transition with a conditional UPDATE inside the swap transaction; per-row count>=1 debits alone are NOT enough when a user holds multiple copies.

@@ -235,6 +235,7 @@ async function doSingleSpawn(guildId: string, forcedCardId?: number, isForced = 
     const s = gs?.get(spawnId);
     if (s && !s.caught) {
       gs?.delete(spawnId);
+      if (gs && gs.size === 0) activeSpawns.delete(guildId);
       try {
         const rarity = cardRef.rarity as Rarity;
         const quip = ESCAPE_QUIPS[Math.floor(Math.random() * ESCAPE_QUIPS.length)]!;
@@ -325,7 +326,10 @@ async function awardSpawn(guildId: string, spawnId: string, userId: string): Pro
   // them the spawn expired. It's cleaned up after POST_CATCH_LINGER_MS.
   setTimeout(() => {
     const gs = activeSpawns.get(guildId);
-    if (gs?.get(spawnId)?.caught) gs.delete(spawnId);
+    if (gs?.get(spawnId)?.caught) {
+      gs.delete(spawnId);
+      if (gs.size === 0) activeSpawns.delete(guildId);
+    }
   }, POST_CATCH_LINGER_MS);
   if (spawn.resolveTimer) { clearTimeout(spawn.resolveTimer); spawn.resolveTimer = null; }
 
