@@ -401,6 +401,7 @@ export async function handleSetAdminCommand(interaction: ChatInputCommandInterac
   if (sub === "assignall") {
     const setName = interaction.options.getString("set", true);
     const includeArchived = interaction.options.getBoolean("includearchived") ?? false;
+    const includeDroppableFalse = interaction.options.getBoolean("includedroppablefalse") ?? false;
     let set = await getSetByName(setName);
     let createdSet = false;
     if (!set) {
@@ -413,11 +414,13 @@ export async function handleSetAdminCommand(interaction: ChatInputCommandInterac
       }
     }
     const orphansAll = await getUnassignedCards();
-    const orphans = includeArchived ? orphansAll : orphansAll.filter(c => !c.isArchived);
+    let orphans = orphansAll;
+    if (!includeArchived) orphans = orphans.filter(c => !c.isArchived);
+    if (!includeDroppableFalse) orphans = orphans.filter(c => c.droppable);
     if (orphans.length === 0) {
       await interaction.editReply(
         `${createdSet ? `🆕 Created set \`${set.name}\`. ` : ""}` +
-        `✅ Nothing to assign — every card already belongs to at least one set.`,
+        `✅ Nothing to assign — every card already belongs to at least one set (or was filtered out).`,
       );
       return;
     }
@@ -426,10 +429,13 @@ export async function handleSetAdminCommand(interaction: ChatInputCommandInterac
       const r = await addCardToSet(set.id, card.id);
       if (r.added) added++;
     }
+    const filterNote: string[] = [];
+    if (includeArchived) filterNote.push("archived");
+    if (includeDroppableFalse) filterNote.push("non-droppable");
+    const note = filterNote.length > 0 ? ` (including ${filterNote.join(" + ")})` : "";
     await interaction.editReply(
       `${createdSet ? `🆕 Created set \`${set.name}\`.\n` : ""}` +
-      `✅ Assigned **${added}** card${added === 1 ? "" : "s"} into \`${set.name}\`` +
-      `${includeArchived ? " (including archived)" : ""}.\n` +
+      `✅ Assigned **${added}** card${added === 1 ? "" : "s"} into \`${set.name}\`${note}.\n` +
       `💡 Make it the active spawn pool with \`/setadmin active set:${set.name}\`.`,
     );
     return;

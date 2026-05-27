@@ -405,9 +405,10 @@ export function buildCommands() {
         .addStringOption(o => o.setName("sets").setDescription("Leave blank to export everything. Or type comma-separated names for a subset.").setRequired(false)))
       .addSubcommand(sc => sc.setName("exportcards").setDescription("Export EVERY card as one flat JSON list (ignores sets entirely — full backup)")
         .addBooleanOption(o => o.setName("includearchived").setDescription("Also include archived cards (default: false)").setRequired(false)))
-      .addSubcommand(sc => sc.setName("assignall").setDescription("One-click: dump every card not yet in any set into the target set (creates it if missing)")
+      .addSubcommand(sc => sc.setName("assignall").setDescription("One-click: dump every droppable unassigned card into the target set (creates it if missing)")
         .addStringOption(o => o.setName("set").setDescription("Set name (will be created if it doesn't exist)").setRequired(true))
-        .addBooleanOption(o => o.setName("includearchived").setDescription("Also include archived cards (default: false)").setRequired(false)))
+        .addBooleanOption(o => o.setName("includearchived").setDescription("Also include archived cards (default: false)").setRequired(false))
+        .addBooleanOption(o => o.setName("includedroppablefalse").setDescription("Also include non-droppable cards e.g. test cards (default: false)").setRequired(false)))
       .addSubcommand(sc => sc.setName("showcase").setDescription("Toggle whether completing this set unlocks its own dedicated achievement")
         .addStringOption(o => o.setName("set").setDescription("Set name").setRequired(true).setAutocomplete(true))
         .addBooleanOption(o => o.setName("enabled").setDescription("On = completing the set grants the showcase achievement").setRequired(true)))),
