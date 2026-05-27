@@ -2,9 +2,9 @@ import type { ChatInputCommandInteraction } from "discord.js";
 import { EmbedBuilder } from "discord.js";
 import {
   listSetsV2, getSetByName, getCardsInSet, getActiveSet,
-  getUserCollection,
+  getUserCollection, getRarityDisplayOverrides, getOrCreateGuildSettings,
 } from "../db.js";
-import { RARITY_EMOJI, type Rarity } from "../cards-data.js";
+import { RARITY_EMOJI, rarityLabel, rarityEmoji, type Rarity } from "../cards-data.js";
 
 const RARITY_ORDER: Rarity[] = ["mythic", "legendary", "epic", "rare", "uncommon", "common"];
 
@@ -58,8 +58,12 @@ export async function handleSetsUserCommand(interaction: ChatInputCommandInterac
     const setName = interaction.options.getString("name", true);
     const set = await getSetByName(setName);
     if (!set) { await interaction.editReply(`❌ No set named \`${setName}\`.`); return; }
-    const cards = await getCardsInSet(set.id);
-    const active = await getActiveSet(guildId);
+    const [cards, active, settings, displayMap] = await Promise.all([
+      getCardsInSet(set.id),
+      getActiveSet(guildId),
+      getOrCreateGuildSettings(guildId),
+      getRarityDisplayOverrides(guildId),
+    ]);
     const isActive = active?.id === set.id;
     const grouped: Partial<Record<Rarity, string[]>> = {};
     for (const c of cards) {
@@ -71,7 +75,9 @@ export async function handleSetsUserCommand(interaction: ChatInputCommandInterac
       .map(r => {
         const list = grouped[r]!.sort();
         const value = list.slice(0, 40).join(", ") + (list.length > 40 ? ` (+${list.length - 40} more)` : "");
-        return { name: `${RARITY_EMOJI[r]} ${r} (${list.length})`, value: value.slice(0, 1024) };
+        const tierLabel = rarityLabel(r, settings, displayMap);
+        const tierEmoji = rarityEmoji(r, settings, displayMap);
+        return { name: `${tierEmoji} ${tierLabel} (${list.length})`, value: value.slice(0, 1024) };
       });
     const embed = new EmbedBuilder()
       .setTitle(`📦 ${set.name}${isActive ? "  ✦ active" : ""}`)
@@ -82,7 +88,7 @@ export async function handleSetsUserCommand(interaction: ChatInputCommandInterac
       const w = set.rarityWeights;
       const line = RARITY_ORDER
         .filter(r => w[r] != null)
-        .map(r => `${RARITY_EMOJI[r]} ${r} **${w[r]}**`)
+        .map(r => `${rarityEmoji(r, settings, displayMap)} ${rarityLabel(r, settings, displayMap)} **${w[r]}**`)
         .join(" · ");
       embed.addFields({ name: "⚖️ Spawn weight overrides (when active)", value: line || "—" });
     }

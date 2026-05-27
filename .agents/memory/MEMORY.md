@@ -15,3 +15,4 @@
 - [Autoscale startup probe — listen before migrations](autoscale-listen-first.md) — awaiting DDL migrations before app.listen() blocks the health probe on Autoscale; always listen first, migrate after.
 - [Dashboard session revocation](dashboard-session-revocation.md) — cached session role bits need live revocation/version checks or deleted/demoted users stay privileged.
 - [Guild-local auth vs global data](guild-local-auth-vs-global-data.md) — per-guild admin checks are unsafe when the mutated records are shared across all tenants.
+- [Rarity display overlay threading](rarity-display-overlay.md) — cosmetic display map must be threaded to EVERY rarity-label surface; easy to miss sets-user.ts and tradein.ts which are separate files from the main user.ts handlers.

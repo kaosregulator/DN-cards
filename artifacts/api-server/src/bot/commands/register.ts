@@ -176,10 +176,10 @@ export function buildCommands() {
     adminCmd("editcard", "(Admin) Edit any card — rarity, worth, image, name, etc.", s => s
       .addStringOption(o => o.setName("name").setDescription("Card to edit").setRequired(true).setAutocomplete(true))),
 
-    adminCmd("rarityname", "(Admin) Customize the Mythic tier — pick its name, emoji, and color", s => s
-      .addStringOption(o => o.setName("name").setDescription("New name for the Mythic tier (e.g. 'Prismatic', 'Apex')").setRequired(true).setMaxLength(32))
-      .addStringOption(o => o.setName("emoji").setDescription("Single emoji to represent it (e.g. 🌈 or 💎)").setRequired(true).setMaxLength(8))
-      .addStringOption(o => o.setName("color").setDescription("Hex color, e.g. #ff2d92 (optional — keeps current if blank)").setMaxLength(9))
+    adminCmd("rarityname", "(Admin) Deprecated — redirects to /rarity edit, which covers all six tiers", s => s
+      .addStringOption(o => o.setName("name").setDescription("Ignored — use /rarity edit instead").setRequired(false).setMaxLength(32))
+      .addStringOption(o => o.setName("emoji").setDescription("Ignored — use /rarity edit instead").setRequired(false).setMaxLength(8))
+      .addStringOption(o => o.setName("color").setDescription("Ignored — use /rarity edit instead").setMaxLength(9))
       .addBooleanOption(o => o.setName("reset").setDescription("Reset back to default Mythic / 🔮 / pink"))),
 
     // ── /rarity — owns ALL writes to rarity_profiles, custom_rarities,
