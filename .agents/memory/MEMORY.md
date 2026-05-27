@@ -10,5 +10,6 @@
 - [Discord embed field chunking](discord-field-chunking.md) — chunk at ~1000 chars, guard empty pushes, cap at 25 fields, surface overflow note; silent truncation reads as "my data vanished".
 - [Dashboard active-guild persistence](dashboard-guild-persistence.md) — admin dashboards listing multiple guilds must persist selection; auto-picking guilds[0] on every load silently shows the wrong server's data.
 - [Discord 5-row limit](discord-row-limits.md) — max 5 ActionRows per message; overflow surfaces as a misleading "Interaction has already been acknowledged" on the next update.
+- [Discord 3s interaction window](discord-3s-window.md) — never do network RTT (members.fetch) before ACKing; use interaction.memberPermissions (inline payload) for admin checks.
 - [Trade accept atomic status flip](trade-accept-atomic.md) — gate the pending→accepted transition with a conditional UPDATE inside the swap transaction; per-row count>=1 debits alone are NOT enough when a user holds multiple copies.
 - [Autoscale startup probe — listen before migrations](autoscale-listen-first.md) — awaiting DDL migrations before app.listen() blocks the health probe on Autoscale; always listen first, migrate after.

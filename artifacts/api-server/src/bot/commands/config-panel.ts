@@ -246,12 +246,16 @@ async function refreshPanel(
 async function ensureAdmin(
   interaction: ChatInputCommandInteraction | ButtonInteraction | StringSelectMenuInteraction,
 ): Promise<boolean> {
+  // IMPORTANT: do NOT call interaction.guild.members.fetch() here. That's a
+  // network round-trip that under cold-start latency can push us past
+  // Discord's 3s interaction window → DiscordAPIError[10062] "Unknown
+  // interaction" → user sees "something went wrong". memberPermissions
+  // is delivered inline in the interaction payload, zero RTT.
   if (!interaction.guild) return false;
-  const member = await interaction.guild.members.fetch(interaction.user.id).catch(() => null);
-  if (!member) return false;
+  const perms = interaction.memberPermissions;
   const allowed =
     interaction.guild.ownerId === interaction.user.id ||
-    member.permissions.has("Administrator") ||
+    perms?.has("Administrator") ||
     (await isAdmin(interaction.guild.id, interaction.user.id));
   if (!allowed) {
     await interaction.reply({
@@ -259,7 +263,7 @@ async function ensureAdmin(
       flags: MessageFlags.Ephemeral,
     }).catch(() => { /* ignore */ });
   }
-  return allowed;
+  return !!allowed;
 }
 
 function buildConfigEmbed(s: GuildSettings): EmbedBuilder {
@@ -550,12 +554,13 @@ function buildCustomMixModal(s: GuildSettings): ModalBuilder {
 export async function handleRatesCustomModal(interaction: ModalSubmitInteraction): Promise<void> {
   if (!interaction.guild) return;
   const guildId = interaction.guild.id;
-  const member = await interaction.guild.members.fetch(interaction.user.id).catch(() => null);
-  const allowed = !!member && (
+  // Use interaction.memberPermissions (inline in payload) instead of members.fetch
+  // to stay inside Discord's 3s interaction window — see ensureAdmin above.
+  const perms = interaction.memberPermissions;
+  const allowed =
     interaction.guild.ownerId === interaction.user.id ||
-    member.permissions.has("Administrator") ||
-    (await isAdmin(guildId, interaction.user.id))
-  );
+    perms?.has("Administrator") ||
+    (await isAdmin(guildId, interaction.user.id));
   if (!allowed) {
     await interaction.reply({ content: "❌ Only admins can change the rarity mix.", flags: MessageFlags.Ephemeral });
     return;

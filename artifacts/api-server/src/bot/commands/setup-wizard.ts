@@ -228,12 +228,13 @@ async function refreshPanel(
 async function ensureAdmin(
   interaction: ButtonInteraction | StringSelectMenuInteraction,
 ): Promise<boolean> {
+  // Use interaction.memberPermissions (inline) — members.fetch is a network
+  // RTT that under cold start blows Discord's 3s interaction window.
   if (!interaction.guild) return false;
-  const member = await interaction.guild.members.fetch(interaction.user.id).catch(() => null);
-  if (!member) return false;
+  const perms = interaction.memberPermissions;
   const allowed =
     interaction.guild.ownerId === interaction.user.id ||
-    member.permissions.has("Administrator") ||
+    perms?.has("Administrator") ||
     (await isAdmin(interaction.guild.id, interaction.user.id));
   if (!allowed) {
     await interaction.reply({
@@ -241,7 +242,7 @@ async function ensureAdmin(
       flags: MessageFlags.Ephemeral,
     }).catch(() => { /* ignore */ });
   }
-  return allowed;
+  return !!allowed;
 }
 
 async function ensureAdminModal(interaction: ModalSubmitInteraction): Promise<boolean> {

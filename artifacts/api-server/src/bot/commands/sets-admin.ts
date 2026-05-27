@@ -10,6 +10,7 @@ import {
   listSetsV2,
   patchSetRarityWeight, setSetRarityWeights,
   setSetAwardsCompletion,
+  getUnassignedCards,
 } from "../db.js";
 import type { Card, CardSet } from "@workspace/db";
 import { RARITY_EMOJI, type Rarity } from "../cards-data.js";
@@ -366,10 +367,30 @@ export async function handleSetAdminCommand(interaction: ChatInputCommandInterac
       bundle.sets.push(buildSingleSetPayload(set, cards));
       totalCards += cards.length;
     }
+
+    // Include cards that don't belong to ANY set as a synthetic "Unsorted"
+    // bucket — only when the admin is exporting EVERYTHING (no filter).
+    // Otherwise an admin asking for "set:foo" would unexpectedly get extras.
+    let unassignedCount = 0;
+    if (!filter) {
+      const orphans = await getUnassignedCards();
+      if (orphans.length > 0) {
+        unassignedCount = orphans.length;
+        bundle.sets.push(buildSingleSetPayload(
+          { id: -1, name: "Unsorted", description: "Cards not assigned to any set at export time.", rarityWeights: null, awardsCompletion: false, createdAt: new Date(), updatedAt: new Date() } as unknown as CardSet,
+          orphans,
+        ));
+        totalCards += orphans.length;
+      }
+    }
+
     const filename = picked.length === all.length ? "all-sets.json" : "sets-bundle.json";
     const file = new AttachmentBuilder(Buffer.from(JSON.stringify(bundle, null, 2), "utf8"), { name: filename });
+    const orphanNote = unassignedCount > 0
+      ? `\n📥 Also included **${unassignedCount}** card${unassignedCount === 1 ? "" : "s"} not in any set, bundled under \`Unsorted\`.`
+      : "";
     await interaction.editReply({
-      content: `📦 Exported **${picked.length}** set${picked.length === 1 ? "" : "s"} (${totalCards} card${totalCards === 1 ? "" : "s"} total). ` +
+      content: `📦 Exported **${picked.length + (unassignedCount > 0 ? 1 : 0)}** set${picked.length === 1 && unassignedCount === 0 ? "" : "s"} (${totalCards} card${totalCards === 1 ? "" : "s"} total).${orphanNote}\n` +
         `Re-import with \`/loadset file:<this.json>\` — each set is restored under its own name with its rarity weights.`,
       files: [file],
     });

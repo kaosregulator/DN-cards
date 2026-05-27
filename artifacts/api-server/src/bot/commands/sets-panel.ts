@@ -10,10 +10,12 @@ import { buildSingleSetPayload } from "./sets-admin.js";
 
 // ── Permission guard ──────────────────────────────────────────────────────────
 async function ensureAdmin(interaction: ChatInputCommandInteraction | ButtonInteraction | StringSelectMenuInteraction | ModalSubmitInteraction): Promise<boolean> {
+  // Use interaction.memberPermissions (inline in payload) — the old
+  // GuildMember-instanceof + members.fetch path adds RTT and can blow
+  // Discord's 3s interaction window.
   if (!interaction.guild) return false;
   if (interaction.guild.ownerId === interaction.user.id) return true;
-  const { GuildMember } = await import("discord.js");
-  if (interaction.member instanceof GuildMember && interaction.member.permissions.has("Administrator")) return true;
+  if (interaction.memberPermissions?.has("Administrator")) return true;
   if (await isAdmin(interaction.guild.id, interaction.user.id)) return true;
   await interaction.reply({ content: "❌ Admins only.", flags: MessageFlags.Ephemeral }).catch(() => {});
   return false;

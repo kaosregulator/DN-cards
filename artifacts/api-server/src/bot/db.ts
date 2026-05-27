@@ -423,6 +423,31 @@ export async function getCardsInSet(setId: number): Promise<Card[]> {
     .where(eq(cardSetMembershipsTable.setId, setId));
 }
 
+/**
+ * Cards that aren't a member of ANY set. Used by `/setadmin exportall` so a
+ * single export gives admins a full backup even if some cards were never
+ * assigned to a set (common on Server 2 where the legacy roster pre-dates
+ * the sets system).
+ */
+export async function getUnassignedCards(): Promise<Card[]> {
+  return db.select({
+    id: cardsTable.id, name: cardsTable.name, description: cardsTable.description,
+    rarity: cardsTable.rarity, cardType: cardsTable.cardType, dropWeight: cardsTable.dropWeight,
+    worthValue: cardsTable.worthValue, burnValue: cardsTable.burnValue,
+    isLimitedEdition: cardsTable.isLimitedEdition, isEventExclusive: cardsTable.isEventExclusive,
+    maxCopies: cardsTable.maxCopies, totalMinted: cardsTable.totalMinted,
+    imageUrl: cardsTable.imageUrl, flavor: cardsTable.flavor,
+    droppable: cardsTable.droppable, inPacks: cardsTable.inPacks,
+    isArchived: cardsTable.isArchived,
+    podiumPlace: cardsTable.podiumPlace,
+    previewAnimation: cardsTable.previewAnimation, previewBgColor: cardsTable.previewBgColor,
+    displayOrientation: cardsTable.displayOrientation,
+    createdAt: cardsTable.createdAt,
+  }).from(cardsTable)
+    .leftJoin(cardSetMembershipsTable, eq(cardSetMembershipsTable.cardId, cardsTable.id))
+    .where(isNull(cardSetMembershipsTable.cardId));
+}
+
 /** Returns true iff a card belongs to a given set. O(1) round-trip. */
 export async function isCardInSet(setId: number, cardId: number): Promise<boolean> {
   const [row] = await db.select({ cardId: cardSetMembershipsTable.cardId })
