@@ -18,6 +18,7 @@ import { importCardsFromJson } from "./import.js";
 import { logger } from "../../lib/logger.js";
 import type { Card, CardSet } from "@workspace/db";
 import { RARITY_EMOJI, type Rarity } from "../cards-data.js";
+import { isHomeGuild, GLOBAL_ONLY_MSG } from "../home-guild.js";
 
 async function checkAdmin(interaction: ChatInputCommandInteraction): Promise<boolean> {
   if (!interaction.guild) return false;
@@ -41,6 +42,19 @@ export async function handleSetAdminCommand(interaction: ChatInputCommandInterac
   }
   const guildId = interaction.guild.id;
   const sub = interaction.options.getSubcommand(true);
+
+  // ── Tenant isolation: gate global mutations to the home guild ────────────
+  // active, deactivate, view, showweights, list, listloaded are guild-scoped
+  // (they touch guild_settings or are read-only). Everything else mutates the
+  // globally shared cards / sets / card_set_memberships tables and is
+  // restricted to the home guild's admins.
+  const GUILD_SCOPED_SUBS = new Set([
+    "active", "deactivate", "view", "showweights", "list", "listloaded",
+  ]);
+  if (!GUILD_SCOPED_SUBS.has(sub) && !isHomeGuild(guildId)) {
+    await interaction.editReply(GLOBAL_ONLY_MSG);
+    return;
+  }
 
   // ── create ───────────────────────────────────────────────────────────────
   if (sub === "create") {

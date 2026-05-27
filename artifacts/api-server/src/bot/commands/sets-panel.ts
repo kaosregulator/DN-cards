@@ -7,6 +7,7 @@ import {
 } from "discord.js";
 import { isAdmin, listSetsV2, getCardsInSet, createSet, setActiveSet, clearActiveSet, getActiveSet, setSetAwardsCompletion, invalidateActiveSetCardsCache } from "../db.js";
 import { buildSingleSetPayload } from "./sets-admin.js";
+import { isHomeGuild, GLOBAL_ONLY_MSG } from "../home-guild.js";
 
 // ── Permission guard ──────────────────────────────────────────────────────────
 // Callers must defer (deferReply or deferUpdate) before calling this so
@@ -168,10 +169,15 @@ export async function handleSetsHubButton(interaction: ButtonInteraction): Promi
   const argId = argStr ? parseInt(argStr, 10) : undefined;
 
   // ── Create: showModal() must be the first response — cannot defer first.
-  // Use fast inline check (no DB); full check happens on modal submit.
+  // Use fast inline check (no DB); full DB check + home-guild gate happen on
+  // modal submit. Home-guild gate is sync (env lookup) so safe here too.
   if (action === "create") {
     if (!ensureAdminInline(interaction)) {
       await interaction.reply({ content: "❌ Admins only.", flags: MessageFlags.Ephemeral });
+      return;
+    }
+    if (!isHomeGuild(guildId)) {
+      await interaction.reply({ content: GLOBAL_ONLY_MSG, flags: MessageFlags.Ephemeral });
       return;
     }
     const modal = new ModalBuilder()
@@ -298,7 +304,12 @@ export async function handleSetsHubButton(interaction: ButtonInteraction): Promi
   }
 
   // ── Toggle Showcase ───────────────────────────────────────────────────────
+  // sets.awards_completion is a global field — home guild only.
   if (action === "showcase") {
+    if (!isHomeGuild(guildId)) {
+      await interaction.followUp({ content: GLOBAL_ONLY_MSG, flags: MessageFlags.Ephemeral });
+      return;
+    }
     const sets = await listSetsV2();
     const entry = sets.find(s => s.set.id === argId);
     if (!entry) { await interaction.followUp({ content: "❌ Set not found.", flags: MessageFlags.Ephemeral }); return; }
@@ -321,6 +332,11 @@ export async function handleSetsHubModal(interaction: ModalSubmitInteraction): P
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
   if (!await ensureAdmin(interaction)) return;
   const guildId = interaction.guild.id;
+  // createSet writes to the global sets table — home guild only.
+  if (!isHomeGuild(guildId)) {
+    await interaction.editReply(GLOBAL_ONLY_MSG);
+    return;
+  }
   const name = interaction.fields.getTextInputValue("sets:name").trim();
   const desc = interaction.fields.getTextInputValue("sets:desc").trim() || undefined;
   if (!name) { await interaction.editReply("❌ Set name cannot be empty."); return; }

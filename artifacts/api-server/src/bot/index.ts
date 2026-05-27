@@ -26,6 +26,18 @@ export async function startBot() {
   const token = process.env["DISCORD_BOT_TOKEN"];
   if (!token) { logger.error("DISCORD_BOT_TOKEN not set — bot will not start."); return; }
 
+  const { HOME_GUILD_ID } = await import("./home-guild.js");
+  if (!HOME_GUILD_ID) {
+    logger.warn(
+      "HOME_GUILD_ID is not set. Commands that mutate globally shared data " +
+      "(addcard, editcard, removecard, import, /setadmin create|rename|delete|add|remove|…) " +
+      "will be blocked for ALL guilds until HOME_GUILD_ID is configured. " +
+      "Set it to your home server's Discord guild ID in the environment variables.",
+    );
+  } else {
+    logger.info({ homeGuildId: HOME_GUILD_ID }, "Tenant isolation active — global mutations restricted to home guild");
+  }
+
   // --- Multi-instance guard ---
   // Discord allows only one gateway connection per token. If both the dev
   // workflow and the published deployment connect with the same token they

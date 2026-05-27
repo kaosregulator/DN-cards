@@ -3,6 +3,7 @@ import {
   isAdmin, getAllCards, addShards, catchCard, getOrCreateGuildSettings,
   removeCardFromUser, deductShards, addAdmin, removeAdmin, listAdmins,
 } from "../db.js";
+import { isHomeGuild, GLOBAL_ONLY_MSG } from "../home-guild.js";
 import { spawnCard, scheduleNextSpawn } from "../spawn-manager.js";
 import { RARITY_EMOJI, RARITY_LABELS, type Rarity } from "../cards-data.js";
 import { logger } from "../../lib/logger.js";
@@ -167,6 +168,11 @@ export async function handleAdminCommand(
     await interaction.deferReply({ flags: MessageFlags.Ephemeral });
     if (!(await checkAdmin(interaction))) {
       await interaction.editReply("❌ Admins only.");
+      return;
+    }
+    // /editcard mutates the globally shared cards table — home guild only.
+    if (!isHomeGuild(interaction.guild.id)) {
+      await interaction.editReply(GLOBAL_ONLY_MSG);
       return;
     }
     const { handleEditCardCommand } = await import("./edit-card.js");
