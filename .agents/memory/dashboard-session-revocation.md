@@ -1,0 +1,3 @@
+# Dashboard session revocation
+
+If authorization state is copied into a long-lived session at login time, role changes and password resets must still be checked against current account state or existing sessions remain privileged after incident response. Revocation-sensitive dashboards should either store a revocation/version marker in the session and compare it on each request, or re-read the current user row before honoring admin/owner permissions.
