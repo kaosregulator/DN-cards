@@ -135,7 +135,7 @@ export function buildCommands() {
 
     adminCmd("sethub", "(Admin) Clickable set manager — create sets, add cards, activate spawn pool, export with one click", s => s),
 
-    adminCmd("welcomeadmin", "(Admin) Post the admin onboarding guide — covers card editing, website, commands, and setup checklist", s => s),
+    adminCmd("welcomeadmin", "(Admin) Post the admin onboarding guide — setup, card editing, website, and commands", s => s),
 
     adminCmd("drop", "(Admin) Force-drop a card — for events and giveaways", s => s
       .addStringOption(o => o.setName("name").setDescription("Card name — leave empty for a random drop").setAutocomplete(true))),
