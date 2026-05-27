@@ -234,6 +234,11 @@ export const setsTable = pgTable("sets", {
   // per-guild if that need emerges.
   name: text("name").notNull().unique(),
   description: text("description"),
+  // Optional per-tier spawn-weight override applied ONLY when this set is the
+  // guild's active set. Shape: `{ common: 60, uncommon: 25, ... }` — any keys
+  // omitted fall through to the rarity profile / guild settings. Null means
+  // the set has no opinion. Worth/burn/rarity of cards are NEVER touched.
+  rarityWeights: jsonb("rarity_weights").$type<Record<string, number>>(),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });

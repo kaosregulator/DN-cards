@@ -78,6 +78,14 @@ export async function handleSetsUserCommand(interaction: ChatInputCommandInterac
       .setColor(isActive ? 0x57f287 : 0x5865f2)
       .setDescription((set.description ? `${set.description}\n\n` : "") + `**${cards.length}** cards`)
       .addFields(fields.length > 0 ? fields : [{ name: "Empty", value: "No cards in this set yet." }]);
+    if (set.rarityWeights && Object.keys(set.rarityWeights).length > 0) {
+      const w = set.rarityWeights;
+      const line = RARITY_ORDER
+        .filter(r => w[r] != null)
+        .map(r => `${RARITY_EMOJI[r]} ${r} **${w[r]}**`)
+        .join(" · ");
+      embed.addFields({ name: "⚖️ Spawn weight overrides (when active)", value: line || "—" });
+    }
     await interaction.editReply({ embeds: [embed] });
     return;
   }

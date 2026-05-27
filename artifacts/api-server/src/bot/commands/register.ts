@@ -375,7 +375,26 @@ export function buildCommands() {
         .addStringOption(o => o.setName("set").setDescription("Set name").setRequired(true).setAutocomplete(true)))
       .addSubcommand(sc => sc.setName("deactivate").setDescription("Clear the active set (disables random spawns)"))
       .addSubcommand(sc => sc.setName("view").setDescription("View a set's full membership")
-        .addStringOption(o => o.setName("name").setDescription("Set name").setRequired(true).setAutocomplete(true)))),
+        .addStringOption(o => o.setName("name").setDescription("Set name").setRequired(true).setAutocomplete(true)))
+      .addSubcommand(sc => sc.setName("setweight").setDescription("Override the spawn weight for one rarity in this set (applies only when set is active)")
+        .addStringOption(o => o.setName("set").setDescription("Set name").setRequired(true).setAutocomplete(true))
+        .addStringOption(o => o.setName("rarity").setDescription("Built-in rarity tier").setRequired(true)
+          .addChoices(
+            { name: "Common", value: "common" }, { name: "Uncommon", value: "uncommon" },
+            { name: "Rare", value: "rare" }, { name: "Epic", value: "epic" },
+            { name: "Legendary", value: "legendary" }, { name: "Mythic", value: "mythic" },
+          ))
+        .addIntegerOption(o => o.setName("weight").setDescription("New weight (0–10000). 0 disables this tier while set is active").setRequired(true).setMinValue(0).setMaxValue(10000)))
+      .addSubcommand(sc => sc.setName("clearweight").setDescription("Clear weight override(s) on a set")
+        .addStringOption(o => o.setName("set").setDescription("Set name").setRequired(true).setAutocomplete(true))
+        .addStringOption(o => o.setName("rarity").setDescription("Specific tier to clear (omit to clear all)").setRequired(false)
+          .addChoices(
+            { name: "Common", value: "common" }, { name: "Uncommon", value: "uncommon" },
+            { name: "Rare", value: "rare" }, { name: "Epic", value: "epic" },
+            { name: "Legendary", value: "legendary" }, { name: "Mythic", value: "mythic" },
+          )))
+      .addSubcommand(sc => sc.setName("showweights").setDescription("Show this set's rarity weight overrides")
+        .addStringOption(o => o.setName("set").setDescription("Set name").setRequired(true).setAutocomplete(true)))),
   ];
 }
 

@@ -172,14 +172,16 @@ async function doSingleSpawn(guildId: string, forcedCardId?: number, isForced = 
     // from the guild's active set. No active set → no random spawns (Option B).
     // Admin `/drop name:<X>` and `/give` bypass this by setting forcedCardId.
     const spawnPool = await getActiveSetSpawnPoolCached(guildId);
-    if (spawnPool.length === 0) {
+    if (spawnPool.cards.length === 0) {
       logger.debug({ guildId }, "No active set or active set is empty — skipping random spawn");
       return;
     }
     const rarityWeights = getGuildRarityWeights(settings);
     const eventBoosts = await getActiveEventBoosts(guildId);
     const ctx = await getRarityContext(guildId);
-    card = await pickRandomCard(rarityWeights, eventBoosts, ctx, spawnPool);
+    card = await pickRandomCard(
+      rarityWeights, eventBoosts, ctx, spawnPool.cards, spawnPool.rarityWeights,
+    );
   }
   if (!card) return;
 

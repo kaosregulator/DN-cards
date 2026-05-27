@@ -142,6 +142,18 @@ those tables now happen through Discord slash commands — see
 - **Drop-weight precedence:** profile.dropWeight → guildSettings.rarityWeights → card.dropWeight. So the profile is the strongest knob.
 - Servers with no profile rows (e.g. Server 1) are completely unaffected — defaults flow through unchanged.
 
+### Per-Set Rarity Weights (Phase 4)
+- Each set has an optional `rarity_weights jsonb` column — partial map of `{ rarity: weight }`. Applies **only when the set is the guild's active set**. Cards' rarity/worth/burn/dropWeight are never touched.
+- Admin commands: `/setadmin setweight set:<s> rarity:<tier> weight:<n>`, `/setadmin clearweight set:<s> [rarity]`, `/setadmin showweights set:<s>`.
+- Precedence inside `pickRandomCard` (top wins):
+  1. custom-tier dropWeight
+  2. **active set's rarityWeights[rarity]** ← Phase 4
+  3. `rarity_profiles.dropWeight`
+  4. `guild_settings.rarityWeights*` (legacy)
+  5. `cards.dropWeight`
+- `getActiveSetSpawnPoolCached` now returns `{ cards, rarityWeights }` so the spawn path takes one DB read per 5s. Cache invalidated globally on any set-weights write (we don't know which guilds have the set active).
+- Partial: tiers the admin doesn't override fall through to the rarity profile / guild defaults. Setting weight `0` *does* disable that tier while the set is active (intentional knob).
+
 ### Card Sets (spawn rotation)
 - **First-class sets** (`sets` + `card_set_memberships` tables) drive random
   spawns. Each guild picks ONE `activeSetId` on `guild_settings`; random

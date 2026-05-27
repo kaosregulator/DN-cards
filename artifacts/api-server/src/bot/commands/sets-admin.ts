@@ -8,6 +8,7 @@ import {
   getSetByName, getCardsInSet, getCardByName,
   setActiveSet, clearActiveSet, getActiveSet,
   listSetsV2,
+  patchSetRarityWeight, setSetRarityWeights,
 } from "../db.js";
 import { RARITY_EMOJI, type Rarity } from "../cards-data.js";
 
@@ -226,6 +227,83 @@ export async function handleSetAdminCommand(interaction: ChatInputCommandInterac
         `**${total}** cards · **${droppable}** droppable`,
       )
       .addFields(fields.length > 0 ? fields : [{ name: "Empty", value: "No cards yet — use `/setadmin add` or `/setadmin bulkadd`." }]);
+    // Append a weights footer if any are configured.
+    if (set.rarityWeights && Object.keys(set.rarityWeights).length > 0) {
+      const w = set.rarityWeights;
+      const order: Rarity[] = ["common", "uncommon", "rare", "epic", "legendary", "mythic"];
+      const line = order
+        .filter(r => w[r] != null)
+        .map(r => `${RARITY_EMOJI[r]} ${r} **${w[r]}**`)
+        .join(" · ");
+      embed.addFields({ name: "⚖️ Active-set weight overrides", value: line || "—" });
+    }
+    await interaction.editReply({ embeds: [embed] });
+    return;
+  }
+
+  // ── setweight ────────────────────────────────────────────────────────────
+  if (sub === "setweight") {
+    const setName = interaction.options.getString("set", true);
+    const rarity = interaction.options.getString("rarity", true);
+    const weight = interaction.options.getInteger("weight", true);
+    const set = await getSetByName(setName);
+    if (!set) { await interaction.editReply(`❌ No set named \`${setName}\`.`); return; }
+    const updated = await patchSetRarityWeight(set.id, rarity, weight);
+    const active = await getActiveSet(guildId);
+    const isActive = active?.id === set.id;
+    const zeroNote = weight === 0
+      ? `\n⚠️ Weight **0** means **${rarity}** cards in this set will *never* spawn while \`${set.name}\` is active.`
+      : "";
+    const liveNote = isActive
+      ? "\n⚖️ This set is active — the new weight is live."
+      : `\n💡 Activate this set with \`/setadmin active set:${set.name}\` for the override to take effect.`;
+    await interaction.editReply(
+      `✅ \`${set.name}\` · ${RARITY_EMOJI[rarity as Rarity] ?? ""} **${rarity}** weight → **${weight}**.` +
+      ` Other tiers fall through to the guild rarity profile.${zeroNote}${liveNote}` +
+      (updated ? "" : " *(set lookup mismatch — please retry)*"),
+    );
+    return;
+  }
+
+  // ── clearweight ──────────────────────────────────────────────────────────
+  if (sub === "clearweight") {
+    const setName = interaction.options.getString("set", true);
+    const rarity = interaction.options.getString("rarity");
+    const set = await getSetByName(setName);
+    if (!set) { await interaction.editReply(`❌ No set named \`${setName}\`.`); return; }
+    if (rarity) {
+      await patchSetRarityWeight(set.id, rarity, null);
+      await interaction.editReply(`✅ Cleared **${rarity}** override on \`${set.name}\`. Falls back to guild rarity profile.`);
+    } else {
+      await setSetRarityWeights(set.id, null);
+      await interaction.editReply(`✅ Cleared **all** weight overrides on \`${set.name}\`. Set now uses the guild rarity profile.`);
+    }
+    return;
+  }
+
+  // ── showweights ──────────────────────────────────────────────────────────
+  if (sub === "showweights") {
+    const setName = interaction.options.getString("set", true);
+    const set = await getSetByName(setName);
+    if (!set) { await interaction.editReply(`❌ No set named \`${setName}\`.`); return; }
+    const w = set.rarityWeights ?? {};
+    const order: Rarity[] = ["common", "uncommon", "rare", "epic", "legendary", "mythic"];
+    const active = await getActiveSet(guildId);
+    const isActive = active?.id === set.id;
+    const lines = order.map(r => {
+      const v = w[r];
+      const tag = v == null ? "*(uses guild profile)*" : `**${v}**`;
+      return `${RARITY_EMOJI[r]} \`${r}\` — ${tag}`;
+    });
+    const embed = new EmbedBuilder()
+      .setTitle(`⚖️ ${set.name} · spawn weights${isActive ? "  ✦ active" : ""}`)
+      .setColor(isActive ? 0x57f287 : 0x5865f2)
+      .setDescription(
+        lines.join("\n") +
+        (isActive
+          ? "\n\n*Currently active — overrides are live.*"
+          : `\n\n*Inactive — activate with \`/setadmin active set:${set.name}\` for these to apply.*`),
+      );
     await interaction.editReply({ embeds: [embed] });
     return;
   }

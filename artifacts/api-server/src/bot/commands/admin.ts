@@ -293,7 +293,7 @@ export async function handleAdminCommand(
     // can still run the command for testing.
     const { getActiveSetSpawnPoolCached } = await import("../db.js");
     const activePool = await getActiveSetSpawnPoolCached(guildId);
-    const allCards = activePool.length > 0 ? activePool : await getAllCards();
+    const allCards = activePool.cards.length > 0 ? activePool.cards : await getAllCards();
     const pool = allCards.filter(c => c.droppable && !c.isArchived && (!c.maxCopies || c.totalMinted < c.maxCopies));
     const byRarity: Record<Rarity, typeof pool> = { common: [], uncommon: [], rare: [], epic: [], legendary: [], mythic: [] };
     for (const c of pool) byRarity[c.rarity as Rarity].push(c);

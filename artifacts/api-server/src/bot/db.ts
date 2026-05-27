@@ -499,22 +499,59 @@ export async function getActiveSet(guildId: string): Promise<CardSet | null> {
 }
 
 // Spawn-pool cache: which cards are eligible for random spawns in this guild
-// right now. 5s TTL like the cards cache. Empty array when no active set is
-// selected (Option B: nothing spawns until an admin picks one).
-const _activeSetCardsCache = new Map<string, { value: Card[]; expiresAt: number }>();
+// right now, plus the active set's per-tier weight overrides (if any). 5s
+// TTL like the cards cache. Empty pool when no active set is selected
+// (Option B: nothing spawns until an admin picks one).
+type ActiveSetSpawnPool = { cards: Card[]; rarityWeights: Record<string, number> | null };
+const _activeSetCardsCache = new Map<string, { value: ActiveSetSpawnPool; expiresAt: number }>();
 const ACTIVE_SET_CACHE_TTL_MS = 5_000;
 
-export async function getActiveSetSpawnPoolCached(guildId: string): Promise<Card[]> {
+export async function getActiveSetSpawnPoolCached(guildId: string): Promise<ActiveSetSpawnPool> {
   const cached = _activeSetCardsCache.get(guildId);
   if (cached && cached.expiresAt > Date.now()) return cached.value;
   const settings = await getOrCreateGuildSettings(guildId);
-  let pool: Card[] = [];
+  let pool: ActiveSetSpawnPool = { cards: [], rarityWeights: null };
   if (settings.activeSetId) {
-    const all = await getCardsInSet(settings.activeSetId);
-    pool = all.filter(c => c.droppable && !c.isArchived);
+    const [set, all] = await Promise.all([
+      getSetById(settings.activeSetId),
+      getCardsInSet(settings.activeSetId),
+    ]);
+    pool = {
+      cards: all.filter(c => c.droppable && !c.isArchived),
+      rarityWeights: set?.rarityWeights ?? null,
+    };
   }
   _activeSetCardsCache.set(guildId, { value: pool, expiresAt: Date.now() + ACTIVE_SET_CACHE_TTL_MS });
   return pool;
+}
+
+// Per-set rarity-weight CRUD. Only the keys present in `weights` are kept;
+// pass `null` to clear all overrides for the set. The cache is invalidated
+// globally because we don't know which guild has this set active.
+export async function setSetRarityWeights(
+  setId: number,
+  weights: Record<string, number> | null,
+): Promise<CardSet | undefined> {
+  const [row] = await db.update(setsTable)
+    .set({ rarityWeights: weights, updatedAt: new Date() })
+    .where(eq(setsTable.id, setId))
+    .returning();
+  invalidateActiveSetCardsCache();
+  return row;
+}
+
+export async function patchSetRarityWeight(
+  setId: number,
+  rarity: string,
+  weight: number | null,
+): Promise<CardSet | undefined> {
+  const existing = await getSetById(setId);
+  if (!existing) return undefined;
+  const next = { ...(existing.rarityWeights ?? {}) };
+  if (weight == null) delete next[rarity];
+  else next[rarity] = weight;
+  const cleaned = Object.keys(next).length > 0 ? next : null;
+  return setSetRarityWeights(setId, cleaned);
 }
 
 export function invalidateActiveSetCardsCache(guildId?: string): void {
@@ -710,6 +747,7 @@ export async function pickRandomCard(
   eventBoosts?: Map<number, number>,
   ctx?: RarityContext,
   availableCards?: Card[],
+  setRarityWeights?: Record<string, number> | null,
 ): Promise<Card | undefined> {
   // When the caller passes `availableCards`, trust it as-is (already filtered
   // — e.g. by guild active set). Otherwise fall back to the global droppable
@@ -729,28 +767,41 @@ export async function pickRandomCard(
 
   // Precedence:
   //   1. Stage-2 custom tier dropWeight (replaces everything for that card)
-  //   2. Stage-1 rarity_profiles.dropWeight (per built-in tier)
-  //   3. guild_settings rarityWeight* (legacy per-tier)
-  //   4. card.dropWeight (per-card baseline)
+  //   2. Active set's per-tier weight override (Phase 4, only when set)
+  //   3. Stage-1 rarity_profiles.dropWeight (per built-in tier)
+  //   4. guild_settings rarityWeight* (legacy per-tier)
+  //   5. card.dropWeight (per-card baseline)
   // Event boost multiplies whichever base wins so admins can still spike a
-  // single card above its tier baseline.
+  // single card above its tier baseline. Note: set weights are read from a
+  // PARTIAL map — keys the admin didn't override fall through.
   const getWeight = (card: Card) => {
     let base: number;
     const customTier = ctx?.customByCard.get(card.id);
     if (customTier) {
       base = customTier.dropWeight;
     } else {
-      const profileWeight = ctx?.profile.get(card.rarity as Rarity)?.dropWeight;
-      if (profileWeight != null) base = profileWeight;
-      else if (rarityWeights) base = rarityWeights[card.rarity] ?? card.dropWeight;
-      else base = card.dropWeight;
+      const setWeight = setRarityWeights ? setRarityWeights[card.rarity] : undefined;
+      if (setWeight != null) {
+        base = setWeight;
+      } else {
+        const profileWeight = ctx?.profile.get(card.rarity as Rarity)?.dropWeight;
+        if (profileWeight != null) base = profileWeight;
+        else if (rarityWeights) base = rarityWeights[card.rarity] ?? card.dropWeight;
+        else base = card.dropWeight;
+      }
     }
     const boost = eventBoosts?.get(card.id) ?? 1;
     return Math.max(0, base) * boost;
   };
 
   const totalWeight = cards.reduce((sum, c) => sum + getWeight(c), 0);
-  if (totalWeight <= 0) return undefined;
+  if (totalWeight <= 0) {
+    logger.debug(
+      { pool: cards.length, hasSetWeights: !!setRarityWeights },
+      "pickRandomCard: total effective weight is 0 — no spawn this tick",
+    );
+    return undefined;
+  }
   let rand = Math.random() * totalWeight;
   for (const card of cards) {
     rand -= getWeight(card);
