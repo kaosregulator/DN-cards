@@ -185,80 +185,96 @@ export function getDisplayRarities(
 }
 
 // ── Seed / resync default cards ───────────────────────────────────────────────
+// P7: legacy `cards.set_name` was dropped. Defaults are now tracked purely
+// via the first-class `sets` + `card_set_memberships` tables.
 export const DEFAULTS_SET_NAME = "defaults";
 
 // Seed defaults ONLY on a completely empty database — never re-sync or re-add
-// after unload, so admin removals are permanent.
+// after unload, so admin removals are permanent. Membership rows are added to
+// the "defaults" set (created if missing) so the cards are immediately
+// activatable via `/setadmin active set:defaults`.
 export async function seedDefaultCards() {
-  await backfillSetNames();
   const existing = await db.select({ id: cardsTable.id }).from(cardsTable).limit(1);
   if (existing.length > 0) return;
   logger.info("Seeding DN Cards default roster (DB is empty)...");
+  const defaultsSet = (await getSetByName(DEFAULTS_SET_NAME)) ?? (await createSet(DEFAULTS_SET_NAME));
   for (const card of DEFAULT_CARDS) {
-    await db.insert(cardsTable).values({ ...card, setName: DEFAULTS_SET_NAME }).onConflictDoNothing();
+    const [inserted] = await db.insert(cardsTable).values(card).onConflictDoNothing().returning({ id: cardsTable.id });
+    if (inserted) {
+      await db.insert(cardSetMembershipsTable)
+        .values({ setId: defaultsSet.id, cardId: inserted.id })
+        .onConflictDoNothing();
+    }
   }
+  invalidateActiveSetCardsCache();
   logger.info(`Seeded ${DEFAULT_CARDS.length} cards.`);
 }
 
-// One-time backfill so legacy cards (added before set_name existed) get tagged.
-// Default-roster names → "defaults"; anything else → "legacy".
-async function backfillSetNames() {
-  const untagged = await db.select({ id: cardsTable.id, name: cardsTable.name })
-    .from(cardsTable).where(sql`${cardsTable.setName} IS NULL`);
-  if (untagged.length === 0) return;
-  const defaultNames = new Set(DEFAULT_CARDS.map(c => c.name));
-  for (const c of untagged) {
-    const tag = defaultNames.has(c.name) ? DEFAULTS_SET_NAME : "legacy";
-    await db.update(cardsTable).set({ setName: tag }).where(eq(cardsTable.id, c.id));
-  }
-  logger.info({ count: untagged.length }, "Backfilled set_name for legacy cards");
-}
-
 // Force-add default cards (used by /loadset defaults). Skips names already in DB.
+// Each newly-added card is also joined to the "defaults" set.
 export async function loadDefaultCards(): Promise<{ added: number; skipped: number }> {
   let added = 0, skipped = 0;
+  const defaultsSet = (await getSetByName(DEFAULTS_SET_NAME)) ?? (await createSet(DEFAULTS_SET_NAME));
   for (const card of DEFAULT_CARDS) {
     const existing = await getCardByName(card.name);
-    if (existing) { skipped++; continue; }
-    await db.insert(cardsTable).values({ ...card, setName: DEFAULTS_SET_NAME }).onConflictDoNothing();
-    added++;
+    if (existing) {
+      // Ensure existing copies are still members of the defaults set.
+      await db.insert(cardSetMembershipsTable)
+        .values({ setId: defaultsSet.id, cardId: existing.id })
+        .onConflictDoNothing();
+      skipped++;
+      continue;
+    }
+    const [inserted] = await db.insert(cardsTable).values(card).onConflictDoNothing().returning({ id: cardsTable.id });
+    if (inserted) {
+      await db.insert(cardSetMembershipsTable)
+        .values({ setId: defaultsSet.id, cardId: inserted.id })
+        .onConflictDoNothing();
+      added++;
+    }
   }
+  invalidateActiveSetCardsCache();
   return { added, skipped };
 }
 
-// Remove all default-roster cards (and their FK dependents).
+// Remove all default-roster cards (and their FK dependents) — destructive.
 export async function unloadDefaultCards(): Promise<{ removed: number }> {
   return deleteSetByName(DEFAULTS_SET_NAME);
 }
 
 // ── Card Sets ─────────────────────────────────────────────────────────────────
-// List all distinct set names with card counts.
+// P7: thin wrapper around listSetsV2 so legacy callers (autocomplete,
+// setup-wizard, /listsets) keep working with their `{ setName, cardCount }`
+// shape. New code should call `listSetsV2` directly.
 export async function listSets(): Promise<Array<{ setName: string; cardCount: number }>> {
-  const rows = await db.select({
-    setName: sql<string>`coalesce(${cardsTable.setName}, 'untagged')`.as("set_name"),
-    cardCount: sql<number>`count(*)::int`.as("card_count"),
-  }).from(cardsTable).groupBy(cardsTable.setName);
-  return rows.map(r => ({ setName: r.setName, cardCount: Number(r.cardCount) }));
+  const rows = await listSetsV2();
+  return rows.map(r => ({ setName: r.set.name, cardCount: r.cardCount }));
 }
 
-// Delete every card in a set, cascading through collections/spawn_log/trades.
-// "untagged" is the display label for NULL setName rows; match it with IS NULL.
+// Delete every card in a set by NAME — destructive (used by `/unloadset` and
+// `unloadDefaultCards`). Cards are looked up via the memberships junction now
+// that `cards.set_name` is gone. Cascades through collections, spawn_log,
+// trades, and finally the set row itself.
 export async function deleteSetByName(setName: string): Promise<{ removed: number }> {
-  const where = setName === "untagged" ? isNull(cardsTable.setName) : eq(cardsTable.setName, setName);
-  const cards = await db.select({ id: cardsTable.id }).from(cardsTable).where(where);
-  if (cards.length === 0) return { removed: 0 };
-  const ids = cards.map(c => c.id);
+  const set = await getSetByName(setName);
+  if (!set) return { removed: 0 };
+  const members = await db.select({ cardId: cardSetMembershipsTable.cardId })
+    .from(cardSetMembershipsTable).where(eq(cardSetMembershipsTable.setId, set.id));
+  const ids = members.map(m => m.cardId);
 
-  await db.delete(collectionsTable).where(inArray(collectionsTable.cardId, ids));
-  await db.delete(spawnLogTable).where(inArray(spawnLogTable.cardId, ids));
-  await db.delete(tradesTable).where(
-    sql`${tradesTable.offeredCardId} IN ${ids} OR ${tradesTable.requestedCardId} IN ${ids}`,
-  );
-  await db.delete(cardsTable).where(inArray(cardsTable.id, ids));
+  if (ids.length > 0) {
+    await db.delete(collectionsTable).where(inArray(collectionsTable.cardId, ids));
+    await db.delete(spawnLogTable).where(inArray(spawnLogTable.cardId, ids));
+    await db.delete(tradesTable).where(
+      sql`${tradesTable.offeredCardId} IN ${ids} OR ${tradesTable.requestedCardId} IN ${ids}`,
+    );
+    await db.delete(cardsTable).where(inArray(cardsTable.id, ids));
+  }
+  // Memberships cascade with cards, but if the set was empty we still drop
+  // the set row to match the legacy "no traces left" semantics.
+  await db.delete(setsTable).where(eq(setsTable.id, set.id));
+
   invalidateCardCache();
-  // Legacy unloadset destructively removed cards — any guild whose active set
-  // referenced these cards (via membership) now has a stale cached pool that
-  // would point at deleted rows. Blow the cache for every guild.
   invalidateActiveSetCardsCache();
   logger.info({ setName, removed: ids.length }, "Deleted card set");
   return { removed: ids.length };
@@ -314,16 +330,6 @@ export async function renameSet(setId: number, newName: string): Promise<CardSet
     .set({ name: slug, updatedAt: new Date() })
     .where(eq(setsTable.id, setId))
     .returning();
-  // Keep legacy cards.set_name in sync for cards that belong to this set.
-  if (row) {
-    const ids = (await db.select({ cardId: cardSetMembershipsTable.cardId })
-      .from(cardSetMembershipsTable).where(eq(cardSetMembershipsTable.setId, setId)))
-      .map(r => r.cardId);
-    if (ids.length > 0) {
-      await db.update(cardsTable).set({ setName: slug }).where(inArray(cardsTable.id, ids));
-      invalidateCardCache();
-    }
-  }
   invalidateActiveSetCardsCache();
   return row;
 }
@@ -334,19 +340,6 @@ export async function deleteSetById(setId: number): Promise<{ removedMemberships
     .from(cardSetMembershipsTable).where(eq(cardSetMembershipsTable.setId, setId));
   await db.delete(setsTable).where(eq(setsTable.id, setId));
   // Cascade clears cardSetMembershipsTable rows automatically.
-  // Clear legacy cards.set_name for cards whose only set was this one — safe
-  // even when the card belonged to multiple sets (Phase 5 drops set_name).
-  const ids = memberships.map(m => m.cardId);
-  if (ids.length > 0) {
-    await db.update(cardsTable)
-      .set({ setName: null })
-      .where(and(
-        inArray(cardsTable.id, ids),
-        // Only null it out if the card no longer belongs to any other set.
-        sql`NOT EXISTS (SELECT 1 FROM ${cardSetMembershipsTable} m WHERE m.card_id = ${cardsTable.id})`,
-      ));
-    invalidateCardCache();
-  }
   invalidateActiveSetCardsCache();
   return { removedMemberships: memberships.length };
 }
@@ -358,12 +351,6 @@ export async function addCardToSet(setId: number, cardId: number): Promise<{ add
     .limit(1);
   if (existing.length > 0) return { added: false };
   await db.insert(cardSetMembershipsTable).values({ setId, cardId });
-  // Mirror to legacy set_name so /info, /list, etc. still show a label.
-  const set = await getSetById(setId);
-  if (set) {
-    await db.update(cardsTable).set({ setName: set.name }).where(eq(cardsTable.id, cardId));
-    invalidateCardCache();
-  }
   invalidateActiveSetCardsCache();
   return { added: true };
 }
@@ -373,13 +360,6 @@ export async function removeCardFromSet(setId: number, cardId: number): Promise<
     .where(and(eq(cardSetMembershipsTable.setId, setId), eq(cardSetMembershipsTable.cardId, cardId)))
     .returning({ cardId: cardSetMembershipsTable.cardId });
   if (res.length === 0) return { removed: false };
-  // If the card no longer belongs to any set, null the legacy label.
-  const [stillMember] = await db.select({ cardId: cardSetMembershipsTable.cardId })
-    .from(cardSetMembershipsTable).where(eq(cardSetMembershipsTable.cardId, cardId)).limit(1);
-  if (!stillMember) {
-    await db.update(cardsTable).set({ setName: null }).where(eq(cardsTable.id, cardId));
-    invalidateCardCache();
-  }
   invalidateActiveSetCardsCache();
   return { removed: true };
 }
@@ -388,11 +368,6 @@ export async function moveCardBetweenSets(fromSetId: number, toSetId: number, ca
   await db.delete(cardSetMembershipsTable)
     .where(and(eq(cardSetMembershipsTable.setId, fromSetId), eq(cardSetMembershipsTable.cardId, cardId)));
   await db.insert(cardSetMembershipsTable).values({ setId: toSetId, cardId }).onConflictDoNothing();
-  const set = await getSetById(toSetId);
-  if (set) {
-    await db.update(cardsTable).set({ setName: set.name }).where(eq(cardsTable.id, cardId));
-    invalidateCardCache();
-  }
   invalidateActiveSetCardsCache();
 }
 
@@ -438,7 +413,7 @@ export async function getCardsInSet(setId: number): Promise<Card[]> {
     maxCopies: cardsTable.maxCopies, totalMinted: cardsTable.totalMinted,
     imageUrl: cardsTable.imageUrl, flavor: cardsTable.flavor,
     droppable: cardsTable.droppable, inPacks: cardsTable.inPacks,
-    isArchived: cardsTable.isArchived, setName: cardsTable.setName,
+    isArchived: cardsTable.isArchived,
     podiumPlace: cardsTable.podiumPlace,
     previewAnimation: cardsTable.previewAnimation, previewBgColor: cardsTable.previewBgColor,
     displayOrientation: cardsTable.displayOrientation,
@@ -461,6 +436,7 @@ export async function isCardInSet(setId: number, cardId: number): Promise<boolea
 export async function listSetsV2(): Promise<Array<{ set: CardSet; cardCount: number }>> {
   const rows = await db.select({
     id: setsTable.id, name: setsTable.name, description: setsTable.description,
+    rarityWeights: setsTable.rarityWeights, awardsCompletion: setsTable.awardsCompletion,
     createdAt: setsTable.createdAt, updatedAt: setsTable.updatedAt,
     cardCount: sql<number>`coalesce(count(${cardSetMembershipsTable.cardId}), 0)::int`.as("card_count"),
   })
@@ -469,7 +445,11 @@ export async function listSetsV2(): Promise<Array<{ set: CardSet; cardCount: num
     .groupBy(setsTable.id);
   return rows
     .map(r => ({
-      set: { id: r.id, name: r.name, description: r.description, createdAt: r.createdAt, updatedAt: r.updatedAt } as CardSet,
+      set: {
+        id: r.id, name: r.name, description: r.description,
+        rarityWeights: r.rarityWeights, awardsCompletion: r.awardsCompletion,
+        createdAt: r.createdAt, updatedAt: r.updatedAt,
+      } satisfies CardSet,
       cardCount: Number(r.cardCount),
     }))
     .sort((a, b) => b.cardCount - a.cardCount || a.set.name.localeCompare(b.set.name));
@@ -554,37 +534,44 @@ export async function patchSetRarityWeight(
   return setSetRarityWeights(setId, cleaned);
 }
 
+// P6: showcase toggle for set-completion achievements. Off by default.
+export async function setSetAwardsCompletion(setId: number, enabled: boolean): Promise<CardSet | undefined> {
+  const [row] = await db.update(setsTable)
+    .set({ awardsCompletion: enabled, updatedAt: new Date() })
+    .where(eq(setsTable.id, setId))
+    .returning();
+  return row;
+}
+
+// P6: return IDs of every set the user has fully completed (owns every
+// membership card) in this guild. Non-empty sets only — empty sets can't be
+// "completed". Shinies don't matter here; ownership = collections row exists.
+export async function getCompletedSetIds(guildId: string, userId: string): Promise<number[]> {
+  const rows = await db.execute(sql<{ set_id: number }>`
+    SELECT m.set_id
+    FROM ${cardSetMembershipsTable} m
+    LEFT JOIN ${collectionsTable} c
+      ON c.card_id = m.card_id
+     AND c.guild_id = ${guildId}
+     AND c.user_id = ${userId}
+    GROUP BY m.set_id
+    HAVING COUNT(DISTINCT m.card_id) > 0
+       AND COUNT(DISTINCT m.card_id) = COUNT(DISTINCT c.card_id)
+  `);
+  // drizzle .execute returns { rows } for pg
+  const list = (rows as any).rows ?? rows;
+  return (list as Array<{ set_id: number }>).map(r => Number(r.set_id));
+}
+
+// P6: every set flagged with awardsCompletion = true (for dynamic showcase
+// achievement generation). Tiny table, no need to cache.
+export async function listShowcaseSets(): Promise<CardSet[]> {
+  return db.select().from(setsTable).where(eq(setsTable.awardsCompletion, true));
+}
+
 export function invalidateActiveSetCardsCache(guildId?: string): void {
   if (guildId) _activeSetCardsCache.delete(guildId);
   else _activeSetCardsCache.clear();
-}
-
-// Boot-time backfill: for every distinct legacy cards.set_name, ensure a row
-// in `sets` + membership rows for every card with that set_name. Idempotent
-// — safe to call on every boot. Runs after seedDefaultCards.
-export async function backfillSetsFromLegacy(): Promise<void> {
-  const distinct = await db.selectDistinct({ setName: cardsTable.setName })
-    .from(cardsTable).where(sql`${cardsTable.setName} IS NOT NULL`);
-  if (distinct.length === 0) return;
-  let createdSets = 0, createdMemberships = 0;
-  for (const { setName } of distinct) {
-    if (!setName) continue;
-    let set = await getSetByName(setName);
-    if (!set) { set = await createSet(setName); createdSets++; }
-    const cards = await db.select({ id: cardsTable.id })
-      .from(cardsTable).where(eq(cardsTable.setName, setName));
-    for (const c of cards) {
-      const r = await db.insert(cardSetMembershipsTable)
-        .values({ setId: set.id, cardId: c.id })
-        .onConflictDoNothing()
-        .returning({ cardId: cardSetMembershipsTable.cardId });
-      if (r.length > 0) createdMemberships++;
-    }
-  }
-  if (createdSets > 0 || createdMemberships > 0) {
-    logger.info({ createdSets, createdMemberships }, "Backfilled sets from legacy cards.set_name");
-    invalidateActiveSetCardsCache();
-  }
 }
 
 // ── Guild Settings ────────────────────────────────────────────────────────────
@@ -706,7 +693,7 @@ export async function addCard(values: {
   dropWeight: number; worthValue: number; burnValue: number;
   isLimitedEdition?: boolean; isEventExclusive?: boolean;
   maxCopies?: number; imageUrl?: string; flavor?: string; droppable?: boolean;
-  setName?: string;
+  inPacks?: boolean;
 }) {
   const [card] = await db.insert(cardsTable).values(values as any).returning();
   await db.update(cardsTable).set({ totalMinted: 0 }).where(eq(cardsTable.id, card.id));

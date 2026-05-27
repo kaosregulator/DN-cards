@@ -41,7 +41,6 @@ export const cardsTable = pgTable("cards", {
   droppable: boolean("droppable").notNull().default(true),
   inPacks: boolean("in_packs").notNull().default(true),
   isArchived: boolean("is_archived").notNull().default(false),
-  setName: text("set_name"),
   // Manual podium pick for the dashboard /events page: 1 = gold, 2 = silver,
   // 3 = bronze, null = appears in the grid below the podium. Only one card
   // per slot — enforced by a partial unique index. Cleared automatically
@@ -239,6 +238,12 @@ export const setsTable = pgTable("sets", {
   // omitted fall through to the rarity profile / guild settings. Null means
   // the set has no opinion. Worth/burn/rarity of cards are NEVER touched.
   rarityWeights: jsonb("rarity_weights").$type<Record<string, number>>(),
+  // When true, completing this set (owning every membership card) unlocks a
+  // dedicated dynamic achievement `set_complete:<setId>`. Off by default so
+  // existing/legacy sets don't suddenly create achievement noise — admins
+  // opt-in via `/setadmin showcase`. Static set achievements (first/3/5)
+  // count completions regardless of this flag.
+  awardsCompletion: boolean("awards_completion").notNull().default(false),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });

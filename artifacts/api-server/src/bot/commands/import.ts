@@ -1,74 +1,126 @@
 import type { Message } from "discord.js";
 import { promises as fs } from "node:fs";
 import path from "node:path";
-import { addCard, getCardByName, createSet, addCardToSet } from "../db.js";
+import { addCard, getCardByName, createSet, addCardToSet, setSetRarityWeights, setSetAwardsCompletion } from "../db.js";
 import { RARITY_WEIGHTS, type Rarity } from "../cards-data.js";
 import { logger } from "../../lib/logger.js";
 
-// Reusable importer — feeds both the !import prefix command and the /loadset slash command.
+export interface ImportResult {
+  created: number;
+  skipped: number;
+  failed: number;
+  errors: string[];
+  setName: string;       // last set touched (for backwards-compat with !import / /loadset summary)
+  setsImported: number;  // how many distinct sets were touched (1 for flat/single-set, N for bundle)
+}
+
+// Reusable importer — feeds the !import prefix command, /loadset, and roundtrip
+// imports from /setadmin export*. Accepts three JSON shapes (all back-compat):
+//   • Flat array      — { cards: [...] }                      (legacy)
+//   • Single-set obj  — { set: { name, description?, rarityWeights? }, cards: [...] }
+//   • Multi-set bundle — { exportedAt?, sets: [ {set, cards}, ... ] }
 export async function importCardsFromJson(
   jsonText: string,
   sourceLabel: string,
   setNameOverride?: string,
-): Promise<{ created: number; skipped: number; failed: number; errors: string[]; setName: string }> {
-  let data: ImportSet;
-  try { data = JSON.parse(jsonText); }
+): Promise<ImportResult> {
+  let parsed: unknown;
+  try { parsed = JSON.parse(jsonText); }
   catch { throw new Error("Invalid JSON"); }
 
-  const cards = data.cards ?? [];
-  if (cards.length === 0) throw new Error("JSON contains no cards");
+  // Normalize all three shapes to an array of { set?, cards } chunks.
+  const chunks = normalizeImportShape(parsed, sourceLabel);
+  if (chunks.length === 0) throw new Error("JSON contains no cards");
 
-  // Resolve set name: explicit override > set.name in JSON > filename stem
-  const rawName = setNameOverride
-    ?? data.set?.name
-    ?? sourceLabel.replace(/\.json$/i, "");
-  const setName = sanitizeSetName(rawName);
+  // setNameOverride is honored ONLY when the file is a single chunk — bundles
+  // carry their own per-set names and overriding to one name would collapse
+  // everything into a single set (almost never what the user wants).
+  if (setNameOverride && chunks.length > 1) {
+    throw new Error("`name:` override cannot be used with a multi-set bundle — let the file's own set names through.");
+  }
 
-  let created = 0, skipped = 0, failed = 0;
-  const errors: string[] = [];
+  const agg: ImportResult = { created: 0, skipped: 0, failed: 0, errors: [], setName: "", setsImported: 0 };
+  for (const chunk of chunks) {
+    const rawName = setNameOverride ?? chunk.set?.name ?? sourceLabel.replace(/\.json$/i, "");
+    const setName = sanitizeSetName(rawName);
+    const set = await createSet(setName, chunk.set?.description);
+    // Restore rarity-weight overrides if the file carries any. We only
+    // overwrite when the JSON has weights — silent files leave existing
+    // weights alone (safer for partial re-imports).
+    if (chunk.set?.rarityWeights && Object.keys(chunk.set.rarityWeights).length > 0) {
+      await setSetRarityWeights(set.id, chunk.set.rarityWeights);
+    }
+    if (typeof chunk.set?.awardsCompletion === "boolean") {
+      await setSetAwardsCompletion(set.id, chunk.set.awardsCompletion);
+    }
+    agg.setName = setName;
+    agg.setsImported++;
 
-  // Ensure a first-class set row exists (Phase 1-3). createSet is idempotent
-  // — re-importing the same JSON or running /loadset twice just yields the
-  // same set. Every card (new and existing) gets a membership row so the
-  // set's contents stay accurate even when most cards skip as duplicates.
-  const set = await createSet(setName);
-
-  for (const raw of cards) {
-    if (!raw.name) { failed++; continue; }
-    try {
-      const existing = await getCardByName(raw.name);
-      if (existing) {
-        await addCardToSet(set.id, existing.id);
-        skipped++; continue;
+    for (const raw of chunk.cards) {
+      if (!raw.name) { agg.failed++; continue; }
+      try {
+        const existing = await getCardByName(raw.name);
+        if (existing) {
+          await addCardToSet(set.id, existing.id);
+          agg.skipped++; continue;
+        }
+        const rarity = mapRarity(raw.rarity);
+        // Prefer explicit numeric fields from a roundtripped export; fall
+        // back to legacy "burn value:" parsing for hand-edited files.
+        const explicitBurn = typeof raw.burnValue === "number" ? raw.burnValue : null;
+        const explicitWorth = typeof raw.worthValue === "number" ? raw.worthValue : null;
+        const burnMatch = raw.description?.match(/burn value:\s*(\d+)/i);
+        const sourceBurn = burnMatch ? parseInt(burnMatch[1], 10) : null;
+        const burn = explicitBurn ?? sourceBurn ?? defaultBurn(rarity);
+        const worth = explicitWorth ?? burn * 2;
+        const newCard = await addCard({
+          name: raw.name,
+          description: cleanDescription(raw.description),
+          rarity,
+          cardType: raw.cardType ?? "vehicle",
+          dropWeight: typeof raw.dropWeight === "number" ? raw.dropWeight : RARITY_WEIGHTS[rarity],
+          worthValue: worth,
+          burnValue: burn,
+          imageUrl: raw.imageUrl ?? raw.img_url ?? undefined,
+          flavor: raw.flavor ?? undefined,
+          droppable: typeof raw.droppable === "boolean" ? raw.droppable : true,
+          inPacks: typeof raw.inPacks === "boolean" ? raw.inPacks : undefined,
+          isLimitedEdition: typeof raw.isLimitedEdition === "boolean" ? raw.isLimitedEdition : undefined,
+          isEventExclusive: typeof raw.isEventExclusive === "boolean" ? raw.isEventExclusive : undefined,
+          maxCopies: typeof raw.maxCopies === "number" ? raw.maxCopies : undefined,
+        });
+        if (newCard?.id) await addCardToSet(set.id, newCard.id);
+        agg.created++;
+      } catch (err: any) {
+        agg.failed++;
+        if (agg.errors.length < 5) agg.errors.push(`${raw.name}: ${err?.message ?? "unknown"}`);
       }
-
-      const rarity = mapRarity(raw.rarity);
-      const burnMatch = raw.description?.match(/burn value:\s*(\d+)/i);
-      const sourceBurn = burnMatch ? parseInt(burnMatch[1], 10) : null;
-      const burn = sourceBurn ?? defaultBurn(rarity);
-      const worth = burn * 2;
-
-      const newCard = await addCard({
-        name: raw.name,
-        description: cleanDescription(raw.description),
-        rarity,
-        cardType: "vehicle",
-        dropWeight: RARITY_WEIGHTS[rarity],
-        worthValue: worth,
-        burnValue: burn,
-        imageUrl: raw.img_url ?? undefined,
-        droppable: true,
-        setName,
-      });
-      if (newCard?.id) await addCardToSet(set.id, newCard.id);
-      created++;
-    } catch (err: any) {
-      failed++;
-      if (errors.length < 5) errors.push(`${raw.name}: ${err?.message ?? "unknown"}`);
     }
   }
 
-  return { created, skipped, failed, errors, setName };
+  return agg;
+}
+
+// Normalize the three accepted JSON shapes into a uniform iteration target.
+// Throws nothing — empty result means "nothing importable", handled by caller.
+function normalizeImportShape(parsed: unknown, sourceLabel: string): Array<{ set?: ImportSetMeta; cards: ImportCard[] }> {
+  if (!parsed || typeof parsed !== "object") return [];
+  const obj = parsed as Record<string, unknown>;
+  // Bundle: { sets: [{set, cards}, ...] }
+  if (Array.isArray(obj.sets)) {
+    return (obj.sets as any[])
+      .filter(s => s && Array.isArray(s.cards) && s.cards.length > 0)
+      .map(s => ({ set: s.set, cards: s.cards as ImportCard[] }));
+  }
+  // Single-set object: { set?, cards: [...] }
+  if (Array.isArray(obj.cards) && obj.cards.length > 0) {
+    return [{ set: obj.set as ImportSetMeta | undefined, cards: obj.cards as ImportCard[] }];
+  }
+  // Bare array (unusual but tolerate it)
+  if (Array.isArray(parsed) && parsed.length > 0) {
+    return [{ set: { name: sourceLabel.replace(/\.json$/i, "") }, cards: parsed as ImportCard[] }];
+  }
+  return [];
 }
 
 function sanitizeSetName(raw: string): string {
@@ -82,12 +134,27 @@ interface ImportCard {
   name?: string;
   description?: string | null;
   rarity?: string;
+  cardType?: string;
+  // Roundtrip-friendly numeric fields (preferred over scraping the description).
+  dropWeight?: number;
+  worthValue?: number;
+  burnValue?: number;
+  // Image: prefer canonical `imageUrl`; tolerate legacy `img_url`.
+  imageUrl?: string;
   img_url?: string;
+  flavor?: string | null;
+  droppable?: boolean;
+  inPacks?: boolean;
+  isLimitedEdition?: boolean;
+  isEventExclusive?: boolean;
+  maxCopies?: number | null;
 }
 
-interface ImportSet {
-  set?: { name?: string; description?: string };
-  cards?: ImportCard[];
+interface ImportSetMeta {
+  name?: string;
+  description?: string;
+  rarityWeights?: Record<string, number>;
+  awardsCompletion?: boolean;
 }
 
 // Map any source rarity to our 5-tier system
@@ -147,8 +214,10 @@ export async function handleImport(msg: Message): Promise<void> {
     return;
   }
 
-  // Parse
-  let data: ImportSet;
+  // Parse — only used here for an early "is it empty?" check. The real
+  // shape normalization happens inside importCardsFromJson (flat / single /
+  // bundle), so we just need a permissive view of `cards` on the top level.
+  let data: { cards?: unknown[]; sets?: unknown[] };
   try {
     data = JSON.parse(jsonText);
   } catch {
@@ -156,7 +225,11 @@ export async function handleImport(msg: Message): Promise<void> {
     return;
   }
 
-  const cards = data.cards ?? [];
+  const cards = Array.isArray(data.cards)
+    ? data.cards
+    : Array.isArray(data.sets)
+      ? data.sets.flatMap((s: any) => Array.isArray(s?.cards) ? s.cards : [])
+      : [];
   if (cards.length === 0) {
     await msg.reply("❌ JSON contains no cards.");
     return;

@@ -20,6 +20,14 @@ export const ACHIEVEMENTS: AchievementDef[] = [
   { key: "trader",           name: "Diplomat",           emoji: "🤝", description: "Complete your first trade",        reward: 200 },
   { key: "pack_addict",      name: "Pack Addict",        emoji: "🎴", description: "Open 10 card packs",               reward: 1000 },
   { key: "streak_7",         name: "Devotee",            emoji: "📅", description: "Reach a 7-day daily streak",       reward: 1000 },
+  // P6 — set-completion achievements. "Completion" = own every card in the
+  // set's membership list (shinies don't matter; ownership = collections row).
+  // Static tiers fire across ALL sets the user has finished, regardless of
+  // each set's `awardsCompletion` flag. The flag only governs the dynamic
+  // per-set achievement below.
+  { key: "set_first_complete", name: "Set Completionist", emoji: "🧩", description: "Complete your first card set",  reward: 500 },
+  { key: "set_collector",      name: "Set Collector",     emoji: "🗂️", description: "Complete 3 different card sets", reward: 1500 },
+  { key: "set_master",         name: "Set Master",        emoji: "📚", description: "Complete 5 different card sets", reward: 4000 },
 ];
 
 export function getAchievement(key: string): AchievementDef | undefined {
@@ -52,6 +60,7 @@ interface UserStats {
   packsOpened: number;
   completedTrades: number;
   dailyStreak: number;
+  completedSetIds: number[];   // P6 — every set the user has fully completed
 }
 
 async function loadStats(guildId: string, userId: string, dailyStreak: number): Promise<UserStats> {
@@ -87,6 +96,9 @@ async function loadStats(guildId: string, userId: string, dailyStreak: number): 
       sql`(${tradesTable.initiatorId} = ${userId} OR ${tradesTable.targetId} = ${userId})`,
     ));
 
+  const { getCompletedSetIds } = await import("./db.js");
+  const completedSetIds = await getCompletedSetIds(guildId, userId);
+
   return {
     uniqueCards: Number(coll?.unique ?? 0),
     hasLegendary: legendaryOwned.length > 0,
@@ -95,6 +107,7 @@ async function loadStats(guildId: string, userId: string, dailyStreak: number): 
     packsOpened: currency?.packsOpened ?? 0,
     completedTrades: Number(trades?.n ?? 0),
     dailyStreak,
+    completedSetIds,
   };
 }
 
@@ -110,6 +123,9 @@ function meets(key: string, s: UserStats): boolean {
     case "trader":           return s.completedTrades >= 1;
     case "pack_addict":      return s.packsOpened >= 10;
     case "streak_7":         return s.dailyStreak >= 7;
+    case "set_first_complete": return s.completedSetIds.length >= 1;
+    case "set_collector":      return s.completedSetIds.length >= 3;
+    case "set_master":         return s.completedSetIds.length >= 5;
     default: return false;
   }
 }
@@ -126,7 +142,9 @@ export async function checkAchievements(
   const stats = await loadStats(guildId, userId, opts?.dailyStreak ?? 0);
   const unlocked = await getUnlockedKeys(guildId, userId);
   const newly: AchievementDef[] = [];
+  const { addShards, listShowcaseSets, getSetById } = await import("./db.js");
 
+  // Static catalog — set_* keys included.
   for (const ach of ACHIEVEMENTS) {
     if (unlocked.has(ach.key)) continue;
     if (!meets(ach.key, stats)) continue;
@@ -135,12 +153,40 @@ export async function checkAchievements(
       .onConflictDoNothing()
       .returning({ id: achievementsTable.id });
     if (inserted.length === 0) continue;
-    if (ach.reward > 0) {
-      const { addShards } = await import("./db.js");
-      await addShards(guildId, userId, ach.reward);
-    }
+    if (ach.reward > 0) await addShards(guildId, userId, ach.reward);
     newly.push(ach);
   }
+
+  // P6 — dynamic per-set "showcase" achievements. Only sets whose admin has
+  // toggled `awardsCompletion` get a dedicated key (`set_complete:<setId>`).
+  // We only generate keys for sets the user has actually completed, so the
+  // hot path stays O(completed showcase sets) rather than O(all sets).
+  if (stats.completedSetIds.length > 0) {
+    const showcase = await listShowcaseSets();
+    const showcaseIds = new Set(showcase.map(s => s.id));
+    for (const setId of stats.completedSetIds) {
+      if (!showcaseIds.has(setId)) continue;
+      const key = `set_complete:${setId}`;
+      if (unlocked.has(key)) continue;
+      const set = await getSetById(setId);
+      if (!set) continue;
+      const inserted = await db.insert(achievementsTable)
+        .values({ guildId, userId, achievementKey: key })
+        .onConflictDoNothing()
+        .returning({ id: achievementsTable.id });
+      if (inserted.length === 0) continue;
+      const reward = 1000;
+      await addShards(guildId, userId, reward);
+      newly.push({
+        key,
+        name: `${set.name} — Complete`,
+        emoji: "✨",
+        description: `Collect every card in the \`${set.name}\` set`,
+        reward,
+      });
+    }
+  }
+
   return newly;
 }
 

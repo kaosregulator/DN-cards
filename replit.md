@@ -162,7 +162,7 @@ those tables now happen through Discord slash commands — see
   with an empty active set, `doSingleSpawn` returns early. Admin `/drop` and
   `/give` bypass the set check (forcedCardId path) — they always work.
 - **Command split**:
-  - `/setadmin` (admin) — `create rename delete add remove move bulkadd bulkremove active deactivate view`.
+  - `/setadmin` (admin) — `create rename delete add remove move bulkadd bulkremove active deactivate view setweight clearweight showweights export exportall showcase`.
   - `/sets` (user, read-only, ephemeral) — `list active view progress`.
 - `pickRandomCard(weights, boosts, ctx, availableCards?)` — new 4th param is
   the pre-filtered pool (active set). Old call sites without it fall back to
@@ -176,11 +176,29 @@ those tables now happen through Discord slash commands — see
   the displayed drop chance can actually fire right now.
 - `/event start` warns (doesn't block) when the boosted card isn't in the
   active set — the boost would silently no-op.
-- **Boot migration**: `backfillSetsFromLegacy()` runs on every boot,
-  idempotently promoting every distinct legacy `cards.set_name` into a
-  `sets` row + memberships. `importCardsFromJson` writes BOTH the legacy
-  `cards.set_name` and a membership row so loadset stays back-compat while
-  feeding the new system.
+- **Phase 7 — `cards.set_name` is gone.** Sets are now tracked exclusively
+  via the first-class `sets` + `card_set_memberships` tables. The legacy
+  boot-time backfill (`backfillSetsFromLegacy`) is removed. `seedDefaultCards`
+  and `loadDefaultCards` join inserted cards directly to the "defaults" set.
+  `importCardsFromJson` writes membership rows only.
+- **Phase 5 — export/import roundtrip.**
+  - `/setadmin export set:<name>` attaches a single-set JSON (cards + rarity
+    weights + `awardsCompletion` flag).
+  - `/setadmin exportall [sets:<a,b>]` attaches a bundle of every set (or a
+    subset) in one file.
+  - `importCardsFromJson` accepts three shapes: flat (`{cards:[…]}`),
+    single-set (`{set:{…}, cards:[…]}`), and bundle (`{sets:[{set,cards}…]}`).
+    It restores `rarityWeights` and `awardsCompletion` per set. Numeric
+    fields on cards (worth/burn/dropWeight) are preferred over
+    description-string scraping.
+- **Phase 6 — set-completion achievements.**
+  - Static: `set_first_complete` (1 set, +500 💠), `set_collector` (3 sets,
+    +1500 💠), `set_master` (5 sets, +4000 💠) — fire across ALL sets the
+    user has finished, regardless of any per-set flag.
+  - Dynamic: `set_complete:<setId>` (+1000 💠) — only sets whose admin
+    toggled `awardsCompletion=true` via `/setadmin showcase` award their
+    own dedicated achievement. "Completion" = own every card in the set
+    (collections row exists; shinies irrelevant).
 - Legacy `/loadset`, `/listsets`, `/unloadset` still work; `/unloadset` is
   destructive (deletes cards), `/setadmin delete` only removes memberships.
 

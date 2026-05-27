@@ -394,7 +394,14 @@ export function buildCommands() {
             { name: "Legendary", value: "legendary" }, { name: "Mythic", value: "mythic" },
           )))
       .addSubcommand(sc => sc.setName("showweights").setDescription("Show this set's rarity weight overrides")
-        .addStringOption(o => o.setName("set").setDescription("Set name").setRequired(true).setAutocomplete(true)))),
+        .addStringOption(o => o.setName("set").setDescription("Set name").setRequired(true).setAutocomplete(true)))
+      .addSubcommand(sc => sc.setName("export").setDescription("Export a single set as JSON (roundtrip-safe — includes rarity weights)")
+        .addStringOption(o => o.setName("set").setDescription("Set name").setRequired(true).setAutocomplete(true)))
+      .addSubcommand(sc => sc.setName("exportall").setDescription("Export every set as one JSON bundle")
+        .addStringOption(o => o.setName("sets").setDescription("Optional comma-separated subset of set names (default: all)").setRequired(false)))
+      .addSubcommand(sc => sc.setName("showcase").setDescription("Toggle whether completing this set unlocks its own dedicated achievement")
+        .addStringOption(o => o.setName("set").setDescription("Set name").setRequired(true).setAutocomplete(true))
+        .addBooleanOption(o => o.setName("enabled").setDescription("On = completing the set grants the showcase achievement").setRequired(true)))),
   ];
 }
 

@@ -1,5 +1,5 @@
 import type { ChatInputCommandInteraction, GuildMember } from "discord.js";
-import { MessageFlags, EmbedBuilder } from "discord.js";
+import { AttachmentBuilder, MessageFlags, EmbedBuilder } from "discord.js";
 import {
   isAdmin,
   createSet, renameSet, deleteSetById,
@@ -9,7 +9,9 @@ import {
   setActiveSet, clearActiveSet, getActiveSet,
   listSetsV2,
   patchSetRarityWeight, setSetRarityWeights,
+  setSetAwardsCompletion,
 } from "../db.js";
+import type { Card, CardSet } from "@workspace/db";
 import { RARITY_EMOJI, type Rarity } from "../cards-data.js";
 
 async function checkAdmin(interaction: ChatInputCommandInteraction): Promise<boolean> {
@@ -308,5 +310,101 @@ export async function handleSetAdminCommand(interaction: ChatInputCommandInterac
     return;
   }
 
+  // ── showcase (toggle set-completion achievement) ─────────────────────────
+  if (sub === "showcase") {
+    const setName = interaction.options.getString("set", true);
+    const enabled = interaction.options.getBoolean("enabled", true);
+    const set = await getSetByName(setName);
+    if (!set) { await interaction.editReply(`❌ No set named \`${setName}\`.`); return; }
+    await setSetAwardsCompletion(set.id, enabled);
+    const cards = await getCardsInSet(set.id);
+    await interaction.editReply(
+      enabled
+        ? `✨ \`${set.name}\` is now a **showcase set** — collectors who own all **${cards.length}** of its cards unlock a dedicated achievement. ` +
+          `Static "first set complete / 3 / 5" achievements always count completions regardless of this flag.`
+        : `✅ \`${set.name}\` is no longer a showcase set — its dedicated completion achievement is disabled. ` +
+          `Already-unlocked records stay in members' histories.`,
+    );
+    return;
+  }
+
+  // ── export (single set as JSON attachment) ───────────────────────────────
+  if (sub === "export") {
+    const setName = interaction.options.getString("set", true);
+    const set = await getSetByName(setName);
+    if (!set) { await interaction.editReply(`❌ No set named \`${setName}\`.`); return; }
+    const cards = await getCardsInSet(set.id);
+    const payload = buildSingleSetPayload(set, cards);
+    const file = new AttachmentBuilder(Buffer.from(JSON.stringify(payload, null, 2), "utf8"), {
+      name: `${set.name}.json`,
+    });
+    await interaction.editReply({
+      content: `📤 Exported set \`${set.name}\` — **${cards.length}** cards${set.rarityWeights ? " (including rarity weight overrides)" : ""}. ` +
+        `Re-import anywhere with \`/loadset file:<this.json>\`.`,
+      files: [file],
+    });
+    return;
+  }
+
+  // ── exportall (bundle) ───────────────────────────────────────────────────
+  if (sub === "exportall") {
+    const filterRaw = interaction.options.getString("sets");
+    const filter = filterRaw ? new Set(parseList(filterRaw).map(s => s.toLowerCase())) : null;
+    const all = await listSetsV2();
+    const picked = filter ? all.filter(({ set }) => filter.has(set.name.toLowerCase())) : all;
+    if (picked.length === 0) {
+      await interaction.editReply(filter ? "❌ None of those set names matched." : "❌ No sets to export yet.");
+      return;
+    }
+    const bundle: { exportedAt: string; sets: ReturnType<typeof buildSingleSetPayload>[] } = {
+      exportedAt: new Date().toISOString(),
+      sets: [],
+    };
+    let totalCards = 0;
+    for (const { set } of picked) {
+      const cards = await getCardsInSet(set.id);
+      bundle.sets.push(buildSingleSetPayload(set, cards));
+      totalCards += cards.length;
+    }
+    const filename = picked.length === all.length ? "all-sets.json" : "sets-bundle.json";
+    const file = new AttachmentBuilder(Buffer.from(JSON.stringify(bundle, null, 2), "utf8"), { name: filename });
+    await interaction.editReply({
+      content: `📦 Exported **${picked.length}** set${picked.length === 1 ? "" : "s"} (${totalCards} card${totalCards === 1 ? "" : "s"} total). ` +
+        `Re-import with \`/loadset file:<this.json>\` — each set is restored under its own name with its rarity weights.`,
+      files: [file],
+    });
+    return;
+  }
+
   await interaction.editReply(`❌ Unknown subcommand: \`${sub}\`.`);
+}
+
+// Roundtrip-safe payload — every field the importer reads, nothing it
+// doesn't. We deliberately drop runtime-derived fields (totalMinted,
+// timestamps, podiumPlace) so re-importing into a fresh DB is clean.
+function buildSingleSetPayload(set: CardSet, cards: Card[]) {
+  return {
+    set: {
+      name: set.name,
+      description: set.description ?? undefined,
+      rarityWeights: set.rarityWeights ?? undefined,
+      awardsCompletion: set.awardsCompletion || undefined,
+    },
+    cards: cards.map(c => ({
+      name: c.name,
+      description: c.description,
+      rarity: c.rarity,
+      cardType: c.cardType,
+      dropWeight: c.dropWeight,
+      worthValue: c.worthValue,
+      burnValue: c.burnValue,
+      imageUrl: c.imageUrl ?? undefined,
+      flavor: c.flavor ?? undefined,
+      droppable: c.droppable,
+      inPacks: c.inPacks,
+      isLimitedEdition: c.isLimitedEdition,
+      isEventExclusive: c.isEventExclusive,
+      maxCopies: c.maxCopies ?? undefined,
+    })),
+  };
 }
