@@ -111,13 +111,13 @@ export async function handlePrefixCommand(msg: Message, prefix: string): Promise
     return;
   }
 
-  // ── !unloaddefaults / !loaddefaults — kept as aliases; prefer /unloadset & /loadset
+  // ── !unloaddefaults / !loaddefaults — kept as aliases; prefer /setadmin load/unload
   if (cmd === "unloaddefaults") {
     const ok = await checkAdmin(msg);
     if (!ok) { await msg.reply("❌ You don't have permission."); return; }
     const { removed } = await unloadDefaultCards();
     await msg.reply(
-      `✅ Removed **${removed}** built-in default cards. Re-load anytime from \`${prefix}setup\` or \`/loadset defaults:true\`.`
+      `✅ Removed **${removed}** built-in default cards. Re-load anytime from \`${prefix}setup\` or \`/setadmin load file:<.json>\`.`
     );
     return;
   }
@@ -128,7 +128,7 @@ export async function handlePrefixCommand(msg: Message, prefix: string): Promise
     await msg.reply(
       `✅ Added **${added}** default cards back.` +
       (skipped > 0 ? ` ⏭️ Skipped **${skipped}** already in roster.` : "") +
-      ` Tip: \`/loadset\` is the slash-command version.`,
+      ` Tip: \`/setadmin load file:<.json>\` is the slash-command version.`,
     );
     return;
   }

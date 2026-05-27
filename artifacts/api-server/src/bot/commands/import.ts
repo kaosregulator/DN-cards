@@ -251,7 +251,7 @@ export async function handleImport(msg: Message): Promise<void> {
     `➕ Created: **${created}**\n` +
     `⏭️ Skipped (already exist): **${skipped}**\n` +
     (failed > 0 ? `❌ Failed: **${failed}**\n${errors.map(e => `• ${e}`).join("\n")}\n\n` : "\n") +
-    `Use \`/unloadset set:${setName}\` to remove this set later.\n` +
+    `Use \`/setadmin unload set:${setName}\` to remove this set later.\n` +
     `Use \`!editcard <Name>\` to tweak any card. *(Your prefix may differ — check \`<prefix>setprefix\`.)*`
 
   try { await status.edit(summary); } catch { await msg.reply(summary); }

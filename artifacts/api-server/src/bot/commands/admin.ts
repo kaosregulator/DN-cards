@@ -9,7 +9,6 @@ import { logger } from "../../lib/logger.js";
 import { handleConfigCommand } from "./config-panel.js";
 import { handleAdminHubCommand } from "./admin-hub.js";
 import { handleEventCommand } from "./event.js";
-import { handleSetChannels } from "./setchannels.js";
 import { handleDashboardCommand } from "./dashboard.js";
 import { EmbedBuilder } from "discord.js";
 
@@ -33,8 +32,7 @@ async function handleAdminHelp(interaction: ChatInputCommandInteraction): Promis
         value:
           "`/setup` — **interactive setup panel** (recommended)\n" +
           "`/config` — open the config panel anytime (catch mode, intervals, toggles, rates)\n" +
-          "`/setchannels` — pick spawn/trade channels from a dropdown (no `#` typing)\n" +
-          "`/adminhub` — manage bot admins & catch timeouts\n" +
+          "`/adminhub` — manage bot admins, catch timeouts, channel config\n" +
           "`/adminhelp` — this reference panel",
       },
       {
@@ -80,16 +78,17 @@ async function handleAdminHelp(interaction: ChatInputCommandInteraction): Promis
           "`/setadmin active set:<…>` — make this set the spawn pool · `/setadmin deactivate` — stop random spawns\n" +
           "`/setadmin view set:<…>` — see cards in a set · `/setadmin export set:<…>` — attach JSON file\n" +
           "`/setadmin exportall [sets:<a,b>]` — bundle all (or chosen) sets into one file\n" +
+          "`/setadmin load file:<.json>` — upload a card set from JSON\n" +
+          "`/setadmin unload set:<name>` — remove a set (destructive — deletes cards!)\n" +
+          "`/setadmin listloaded` — show all loaded sets and their sizes\n" +
           "`/setadmin setweight set:<…> rarity:<…> weight:<n>` · `/setadmin clearweight` · `/setadmin showweights`\n" +
           "`/setadmin showcase set:<…> awards:<true|false>` — toggle set-completion achievement payout\n" +
-          "*Built-in starter roster is opt-in via the `/setup` panel. Legacy `!loadset / !listsets / !unloadset` still work.*",
+          "*Built-in starter roster is opt-in via the `/setup` panel.*",
       },
       {
-        name: "👥 Admins *(slash commands)*",
+        name: "👥 Admins *(inside /adminhub)*",
         value:
-          "`/addadmin user:@User` — grant bot admin access\n" +
-          "`/removeadmin user:@User` — revoke bot admin access\n" +
-          "`/listadmins` — show current bot admins\n" +
+          "`/adminhub` — click buttons to add/remove admins, timeout users, or set channels\n" +
           "Server owner + Discord Administrators are always admins.\n" +
           "*Tip: in Discord → Server Settings → Integrations → DN Cards you can also grant admin commands to specific roles per-command.*",
       },
@@ -169,12 +168,6 @@ export async function handleAdminCommand(
     await handleEditCardCommand(interaction);
     return;
   }
-  // /setchannels manages its own reply (interactive multi-step picker).
-  if (cmd === "setchannels") {
-    await handleSetChannels(interaction);
-    return;
-  }
-
   // All admin replies are ephemeral — only the staff member running the
   // command sees the confirmation. The side effects (card drops, etc.)
   // are already broadcast publicly through their own messages.
@@ -194,36 +187,6 @@ export async function handleAdminCommand(
 
   const guildId = interaction.guild.id;
   const opts = interaction.options;
-
-  // ── /addadmin /removeadmin /listadmins ─────────────────────────────────────────────────────
-  if (cmd === "addadmin") {
-    const target = opts.getUser("user", true);
-    await addAdmin(guildId, target.id, interaction.user.id);
-    await interaction.editReply(`✅ <@${target.id}> added as bot admin.`);
-    return;
-  }
-  if (cmd === "removeadmin") {
-    const target = opts.getUser("user", true);
-    await removeAdmin(guildId, target.id);
-    await interaction.editReply(`✅ <@${target.id}> removed from bot admins.`);
-    return;
-  }
-  if (cmd === "listadmins") {
-    const admins = await listAdmins(guildId);
-    const lines = admins.length === 0
-      ? "_No bot admins — only the server owner & Discord Administrators have access._"
-      : admins.map((a: { userId: string }) => `• <@${a.userId}>`).join("\n");
-    await interaction.editReply({
-      embeds: [
-        new EmbedBuilder()
-          .setTitle("👥 Bot Admins")
-          .setColor(0x5865f2)
-          .setDescription(lines)
-          .setFooter({ text: "Server owner & Discord Admins are always admins, even if not listed." }),
-      ],
-    });
-    return;
-  }
 
   // ── /rarityname — customize the Mythic tier name/emoji/color ───────────────
   if (cmd === "rarityname") {
@@ -276,6 +239,7 @@ export async function handleAdminCommand(
   // ── /drop ─────────────────────────────────────────────────────────────────
   if (cmd === "drop") {
     const cardName = opts.getString("name");
+    const setName = opts.getString("set");
     const settings = await getOrCreateGuildSettings(guildId);
     if (!settings.spawnChannelId) {
       const pfx = settings.commandPrefix;
@@ -288,6 +252,22 @@ export async function handleAdminCommand(
       const found = cards.find(c => c.name.toLowerCase() === cardName.toLowerCase());
       if (!found) { await interaction.editReply(`❌ Card "**${cardName}**" not found. Try \`/list\`.`); return; }
       forcedCardId = found.id;
+    }
+    // Optional set override: if a set is named, we pick from that set's cards
+    // instead of the guild's active set. Forced card still bypasses everything.
+    if (setName && !forcedCardId) {
+      const { getSetByName, getCardsInSet } = await import("../db.js");
+      const set = await getSetByName(setName);
+      if (!set) { await interaction.editReply(`❌ No set named \`${setName}\`.`); return; }
+      const setCards = await getCardsInSet(set.id);
+      const pool = setCards.filter(c => c.droppable && !c.isArchived && (!c.maxCopies || c.totalMinted < c.maxCopies));
+      if (pool.length === 0) { await interaction.editReply(`❌ No droppable cards in set \`${setName}\`.`); return; }
+      const pick = pool[Math.floor(Math.random() * pool.length)];
+      forcedCardId = pick!.id;
+      await spawnCard(guildId, forcedCardId, true);
+      await interaction.editReply(`✅ Dropped **${pick!.name}** from set \`${set.name}\`!`);
+      scheduleNextSpawn(guildId);
+      return;
     }
     await spawnCard(guildId, forcedCardId, true);
     await interaction.editReply(forcedCardId ? `✅ Force-dropped **${cardName}**!` : "✅ Dropped a random card!");
@@ -302,6 +282,7 @@ export async function handleAdminCommand(
   // dramatic event rather than a wall of embeds.
   if (cmd === "massdrop") {
     const amount = opts.getInteger("amount") ?? 15;
+    const setName = opts.getString("set");
     const settings = await getOrCreateGuildSettings(guildId);
     if (!settings.spawnChannelId) {
       const pfx = settings.commandPrefix;
@@ -309,12 +290,18 @@ export async function handleAdminCommand(
       return;
     }
     // /massdrop respects the guild's active set so chaotic batches don't
-    // dump cards that aren't part of the current rotation. If no active
-    // set is selected we fall back to the global droppable pool so admins
-    // can still run the command for testing.
-    const { getActiveSetSpawnPoolCached } = await import("../db.js");
-    const activePool = await getActiveSetSpawnPoolCached(guildId);
-    const allCards = activePool.cards.length > 0 ? activePool.cards : await getAllCards();
+    // dump cards that aren't part of the current rotation. If a specific set
+    // is named we use that instead. If no active set we fall back to global.
+    const { getActiveSetSpawnPoolCached, getSetByName, getCardsInSet } = await import("../db.js");
+    let allCards: Awaited<ReturnType<typeof getAllCards>>;
+    if (setName) {
+      const set = await getSetByName(setName);
+      if (!set) { await interaction.editReply(`❌ No set named \`${setName}\`.`); return; }
+      allCards = await getCardsInSet(set.id);
+    } else {
+      const activePool = await getActiveSetSpawnPoolCached(guildId);
+      allCards = activePool.cards.length > 0 ? activePool.cards : await getAllCards();
+    }
     const pool = allCards.filter(c => c.droppable && !c.isArchived && (!c.maxCopies || c.totalMinted < c.maxCopies));
     const byRarity: Record<Rarity, typeof pool> = { common: [], uncommon: [], rare: [], epic: [], legendary: [], mythic: [] };
     for (const c of pool) byRarity[c.rarity as Rarity].push(c);

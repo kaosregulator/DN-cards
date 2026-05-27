@@ -1,6 +1,6 @@
 // DN Cards — DarkNight Military Card Roster
 // Your custom 60-card default roster. Auto-seeded on first server join.
-// Update via the dashboard or run `/loadset defaults:true` to re-add after `/unloadset`.
+// Update via the dashboard or run `/setadmin load file:<.json>` to re-add after `/setadmin unload`.
 //
 // Drop weights (higher = more common):
 //   Common:    60   worth:   20  burn:   10

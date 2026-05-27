@@ -88,8 +88,6 @@ export function buildCommands() {
 
     adminCmd("setup", "(Admin) Interactive server setup wizard — channels, spawns, rates, toggles", s => s),
 
-    adminCmd("setchannels", "(Admin) Interactive channel configurator (spawn, trade, …)", s => s),
-
     cmd("help", "(User) Show DN Cards player commands", s => s),
 
     adminCmd("adminhelp", "(Admin) Show admin & setup commands", s => s),
@@ -138,10 +136,12 @@ export function buildCommands() {
     adminCmd("welcomeadmin", "(Admin) Post the admin onboarding guide — setup, card editing, website, and commands", s => s),
 
     adminCmd("drop", "(Admin) Force-drop a card — for events and giveaways", s => s
-      .addStringOption(o => o.setName("name").setDescription("Card name — leave empty for a random drop").setAutocomplete(true))),
+      .addStringOption(o => o.setName("name").setDescription("Card name — leave empty for a random drop from active set").setAutocomplete(true))
+      .addStringOption(o => o.setName("set").setDescription("Pick a specific set to drop from (ignores active set)").setAutocomplete(true))),
 
-    adminCmd("massdrop", "(Admin abuse) Drop a big batch of cards — mostly low tier with a few bangers", s => s
-      .addIntegerOption(o => o.setName("amount").setDescription("How many cards to drop (10-25, default 15)").setMinValue(10).setMaxValue(25))),
+    adminCmd("massdrop", "(Admin) Drop a big batch of cards — mostly low tier with a few bangers", s => s
+      .addIntegerOption(o => o.setName("amount").setDescription("How many cards to drop (10-25, default 15)").setMinValue(10).setMaxValue(25))
+      .addStringOption(o => o.setName("set").setDescription("Pick a specific set to drop from (ignores active set)").setAutocomplete(true))),
 
     adminCmd("give", "(Admin) Give a card directly to a member", s => s
       .addUserOption(o => o.setName("user").setDescription("Member to receive the card").setRequired(true))
@@ -171,24 +171,7 @@ export function buildCommands() {
       .addSubcommand(sc => sc.setName("stop").setDescription("Stop an active event early")
         .addIntegerOption(o => o.setName("id").setDescription("Event ID from /event list").setRequired(true).setMinValue(1)))),
 
-    // ── Card Set Management ───────────────────────────────────────────────────
-    adminCmd("loadset", "(Admin) Upload a JSON card set to add to your roster", s => s
-      .addAttachmentOption(o => o.setName("file").setDescription("JSON file with cards to import"))
-      .addStringOption(o => o.setName("name").setDescription("Custom set name (defaults to JSON's set.name or filename)"))
-      .addBooleanOption(o => o.setName("defaults").setDescription("Testing only — load the built-in starter roster"))),
-
-    adminCmd("unloadset", "(Admin) Remove a card set (cards + related collections/trades)", s => s
-      .addStringOption(o => o.setName("set").setDescription("Set name from /listsets (e.g. 'defaults', 'v1')").setRequired(true).setAutocomplete(true))),
-
-    adminCmd("listsets", "(Admin) List all loaded card sets and their sizes", s => s),
-
-    adminCmd("addadmin", "(Admin) Grant bot admin access to a member", s => s
-      .addUserOption(o => o.setName("user").setDescription("Member to add as bot admin").setRequired(true))),
-
-    adminCmd("removeadmin", "(Admin) Revoke bot admin access from a member", s => s
-      .addUserOption(o => o.setName("user").setDescription("Member to remove from bot admins").setRequired(true))),
-
-    adminCmd("listadmins", "(Admin) List current bot admins", s => s),
+    // ── Card Set Management (consolidated under /setadmin) ────────────────────
 
     adminCmd("editcard", "(Admin) Edit any card — rarity, worth, image, name, etc.", s => s
       .addStringOption(o => o.setName("name").setDescription("Card to edit").setRequired(true).setAutocomplete(true))),
@@ -411,7 +394,13 @@ export function buildCommands() {
         .addBooleanOption(o => o.setName("includedroppablefalse").setDescription("Also include non-droppable cards e.g. test cards (default: false)").setRequired(false)))
       .addSubcommand(sc => sc.setName("showcase").setDescription("Toggle whether completing this set unlocks its own dedicated achievement")
         .addStringOption(o => o.setName("set").setDescription("Set name").setRequired(true).setAutocomplete(true))
-        .addBooleanOption(o => o.setName("enabled").setDescription("On = completing the set grants the showcase achievement").setRequired(true)))),
+        .addBooleanOption(o => o.setName("enabled").setDescription("On = completing the set grants the showcase achievement").setRequired(true)))
+      .addSubcommand(sc => sc.setName("load").setDescription("Import cards from a JSON file (legacy /loadset replacement)")
+        .addAttachmentOption(o => o.setName("file").setDescription("A `.json` export to import — attaches cards to a set").setRequired(true))
+        .addStringOption(o => o.setName("name").setDescription("Optional set name override (ignored for multi-set bundles)").setRequired(false)))
+      .addSubcommand(sc => sc.setName("unload").setDescription("Nuke every card in a set and all its memberships (destructive /unloadset replacement)")
+        .addStringOption(o => o.setName("set").setDescription("Set name to nuke").setRequired(true).setAutocomplete(true)))
+      .addSubcommand(sc => sc.setName("listloaded").setDescription("List all sets with card counts (/listsets replacement)"))),
   ];
 }
 
@@ -423,11 +412,7 @@ export const USER_COMMAND_NAMES = new Set([
 ]);
 
 export const ADMIN_COMMAND_NAMES = new Set([
-  "config", "adminhub", "sethub", "welcomeadmin", "adminhelp", "drop", "massdrop", "give", "giveshards", "takeback", "takeshards", "event", "setchannels", "dashboard", "setup",
-  "addadmin", "removeadmin", "listadmins", "editcard", "rarityname", "rarity", "embed",
+  "config", "adminhub", "sethub", "welcomeadmin", "adminhelp", "drop", "massdrop", "give", "giveshards", "takeback", "takeshards", "event", "dashboard", "setup",
+  "editcard", "rarityname", "rarity", "embed",
   "setadmin",
-]);
-
-export const CARDSET_COMMAND_NAMES = new Set([
-  "loadset", "unloadset", "listsets",
 ]);

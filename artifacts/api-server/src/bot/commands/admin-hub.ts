@@ -55,6 +55,11 @@ export async function handleAdminHubButton(interaction: ButtonInteraction): Prom
     await interaction.showModal(buildClearTimeoutModal());
     return;
   }
+  if (action === "setchannels") {
+    const { handleSetChannels } = await import("./setchannels.js");
+    await handleSetChannels(interaction);
+    return;
+  }
 }
 
 // ── Modal submit router ─────────────────────────────────────────────────────-
@@ -154,7 +159,7 @@ async function buildHubEmbed(guildId: string): Promise<EmbedBuilder> {
       "Quick admin actions for this server. Buttons below open private prompts; results show only to you.\n\n" +
       "**Spawn / drop / settings:** use `/config` (channel, interval, drop rates, catch mode, toggles).\n" +
       "**Card grants:** `/drop` `/give` `/giveshards` `/takeback` `/takeshards`.\n" +
-      "**Card sets:** `/loadset` `/unloadset` `/listsets`.",
+      "**Card sets:** `/setadmin load` `/setadmin unload` `/setadmin listloaded`.",
     )
     .addFields(
       {
@@ -187,7 +192,10 @@ function buildHubComponents() {
     new ButtonBuilder().setCustomId("adminhub:untimeout").setLabel("✅ Clear Timeout").setStyle(ButtonStyle.Success),
     new ButtonBuilder().setCustomId("adminhub:refresh").setLabel("🔄 Refresh").setStyle(ButtonStyle.Secondary),
   );
-  return [row1];
+  const row2 = new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder().setCustomId("adminhub:setchannels").setLabel("📡 Set Channels").setStyle(ButtonStyle.Primary),
+  );
+  return [row1, row2];
 }
 
 function buildAddAdminModal(): ModalBuilder {

@@ -199,8 +199,9 @@ those tables now happen through Discord slash commands — see
     toggled `awardsCompletion=true` via `/setadmin showcase` award their
     own dedicated achievement. "Completion" = own every card in the set
     (collections row exists; shinies irrelevant).
-- Legacy `/loadset`, `/listsets`, `/unloadset` still work; `/unloadset` is
-  destructive (deletes cards), `/setadmin delete` only removes memberships.
+- Legacy `/loadset`, `/listsets`, `/unloadset` have been merged into
+  `/setadmin load/unload/listloaded` for easier discovery. `/setadmin unload`
+  is destructive (deletes cards), `/setadmin delete` only removes memberships.
 
 ### Limited-Time Events
 - `/event start card:<Name> duration:<30m|2h|1d> [multiplier:<1.1–50>]` — boost a card's effective spawn weight. Max 14d duration, default 2× multiplier.
@@ -366,8 +367,7 @@ Card catching is text-based — when a card spawns, type its name exactly to cat
 | Command | Description |
 |---|---|
 | `/config` | Visual config panel (toggles, intervals, rates, packs sub-panel) |
-| `/setchannels` | Interactive channel configurator — pick a slot (spawn/trade), then a channel |
-| `/adminhub` | Ephemeral admin hub — manage bot admins, catch timeouts, server state |
+| `/adminhub` | Ephemeral admin hub — manage bot admins, catch timeouts, set channels, server state |
 | `/adminhelp` | Show admin & setup command reference |
 | `/drop [name:<Name>]` | Force-drop a card for events/giveaways |
 | `/massdrop` | Drop a big batch of cards — mostly low tier with a few bangers |
@@ -388,9 +388,9 @@ Card catching is text-based — when a card spawns, type its name exactly to cat
 | `/embed show key:<embed>` | Show current per-guild override for an embed |
 | `/embed set key:<embed> field:<field> value:<v>` | Set one field on an embed override (color, title, footer, image, etc.) |
 | `/embed reset key:<embed> [field]` | Reset one field or the whole embed override |
-| `/loadset` | Upload a JSON card set to add to your roster |
-| `/unloadset` | Remove a card set (cards + related collections/trades) |
-| `/listsets` | List all loaded card sets and their sizes |
+| `/setadmin load file:<.json> [name:<set>]` | Import cards from a JSON file (creates or appends to a set) |
+| `/setadmin unload set:<Name>` | Nuke a set and all its cards (destructive) |
+| `/setadmin listloaded` | List all sets with card counts |
 
 ### Setup & Config Commands (`!` prefix — admin only)
 | Command | Description |

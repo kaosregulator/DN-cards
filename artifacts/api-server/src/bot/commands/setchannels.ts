@@ -42,7 +42,7 @@ const SLOTS: readonly Slot[] = [
 const SLOT_BY_KEY = new Map(SLOTS.map(s => [s.key, s]));
 
 async function ensureAdmin(
-  interaction: ChatInputCommandInteraction | StringSelectMenuInteraction | ChannelSelectMenuInteraction,
+  interaction: ChatInputCommandInteraction | StringSelectMenuInteraction | ChannelSelectMenuInteraction | import("discord.js").ButtonInteraction,
 ): Promise<boolean> {
   if (!interaction.guild) return false;
   if (interaction.guild.ownerId === interaction.user.id) return true;
@@ -55,7 +55,9 @@ async function ensureAdmin(
 // Shows a picker of channel slots. User selects one → we render a channel
 // picker → user selects a channel → we persist and confirm. Whole flow is
 // ephemeral so it doesn't clutter the channel.
-export async function handleSetChannels(interaction: ChatInputCommandInteraction): Promise<void> {
+export async function handleSetChannels(
+  interaction: ChatInputCommandInteraction | import("discord.js").ButtonInteraction,
+): Promise<void> {
   if (!interaction.guild) return;
   if (!(await ensureAdmin(interaction))) {
     await interaction.reply({ content: "❌ You don't have permission to configure channels.", flags: MessageFlags.Ephemeral });
@@ -128,7 +130,7 @@ export async function handleSetChannelsApply(interaction: ChannelSelectMenuInter
   const slot = SLOT_BY_KEY.get(slotKey);
   const channel = interaction.channels.first();
   if (!slot || !channel) {
-    await interaction.reply({ content: "❌ Couldn't read your selection — try `/setchannels` again.", flags: MessageFlags.Ephemeral });
+    await interaction.reply({ content: "❌ Couldn't read your selection — try `/adminhub` then Set Channels again.", flags: MessageFlags.Ephemeral });
     return;
   }
 

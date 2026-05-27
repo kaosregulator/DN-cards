@@ -223,7 +223,7 @@ export async function handleWelcomeAdmin(interaction: ChatInputCommandInteractio
         name: "⚙️ Config & Channels",
         value:
           "`/setup` — first-time wizard · `/config` — visual config panel\n" +
-          "`/setchannels` — pick spawn/trade channel · `/adminhub` — manage admins & timeouts\n" +
+          "`/adminhub` — manage admins, timeouts, channels & server state\n" +
           "`/adminhelp` — full admin reference",
         inline: false,
       },

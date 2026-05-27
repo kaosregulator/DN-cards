@@ -1,5 +1,5 @@
 import type { AutocompleteInteraction } from "discord.js";
-import { getAllCards, listSets, listSetsV2, getUserCollection, getUserWishlist } from "../db.js";
+import { getAllCards, listSetsV2, getUserCollection, getUserWishlist } from "../db.js";
 import { RARITY_EMOJI, type Rarity } from "../cards-data.js";
 
 const MAX_CHOICES = 25;
@@ -50,24 +50,13 @@ export async function handleAutocomplete(interaction: AutocompleteInteraction): 
   const query = (focused.value ?? "").toString();
 
   try {
-    // ── Set-name autocomplete for /unloadset ────────────────────────────────
-    if (cmd === "unloadset" && focused.name === "set") {
-      const sets = await listSets();
-      const q = query.toLowerCase().trim();
-      const matches = sets
-        .filter(s => !q || s.setName.toLowerCase().includes(q))
-        .sort((a, b) => b.cardCount - a.cardCount)
-        .slice(0, MAX_CHOICES)
-        .map(s => ({ name: `${s.setName} (${s.cardCount} cards)`.slice(0, 100), value: s.setName.slice(0, 100) }));
-      await interaction.respond(matches);
-      return;
-    }
 
     // ── Set-name autocomplete for /setadmin + /sets ─────────────────────────
     // Any string option named `set`, `from`, `to`, or `name` on these two
     // commands resolves to a set picker (except /setadmin create, which takes
     // a new name — but that's not autocompleted so it won't reach here).
-    if ((cmd === "setadmin" || cmd === "sets")
+    const setNameCommands = new Set(["setadmin", "sets", "drop", "massdrop"]);
+    if (setNameCommands.has(cmd)
         && ["set", "from", "to", "name"].includes(focused.name)) {
       const sets = await listSetsV2();
       const q = query.toLowerCase().trim();

@@ -2,17 +2,20 @@ import type { ChatInputCommandInteraction, GuildMember } from "discord.js";
 import { AttachmentBuilder, MessageFlags, EmbedBuilder } from "discord.js";
 import {
   isAdmin,
-  createSet, renameSet, deleteSetById,
+  createSet, renameSet, deleteSetById, deleteSetByName,
   addCardToSet, removeCardFromSet, moveCardBetweenSets,
   bulkAddCardsToSet, bulkRemoveCardsFromSet,
   getSetByName, getCardsInSet, getCardByName,
   setActiveSet, clearActiveSet, getActiveSet,
-  listSetsV2,
+  listSets, listSetsV2,
   patchSetRarityWeight, setSetRarityWeights,
   setSetAwardsCompletion,
   getUnassignedCards,
   getAllCards,
+  loadDefaultCards, unloadDefaultCards, DEFAULTS_SET_NAME,
 } from "../db.js";
+import { importCardsFromJson } from "./import.js";
+import { logger } from "../../lib/logger.js";
 import type { Card, CardSet } from "@workspace/db";
 import { RARITY_EMOJI, type Rarity } from "../cards-data.js";
 
@@ -342,7 +345,7 @@ export async function handleSetAdminCommand(interaction: ChatInputCommandInterac
     });
     await interaction.editReply({
       content: `📤 Exported set \`${set.name}\` — **${cards.length}** cards${set.rarityWeights ? " (including rarity weight overrides)" : ""}. ` +
-        `Re-import anywhere with \`/loadset file:<this.json>\`.`,
+        `Re-import anywhere with \`/setadmin load file:<this.json>\`.`,
       files: [file],
     });
     return;
@@ -392,7 +395,7 @@ export async function handleSetAdminCommand(interaction: ChatInputCommandInterac
       : "";
     await interaction.editReply({
       content: `📦 Exported **${picked.length + (unassignedCount > 0 ? 1 : 0)}** set${picked.length === 1 && unassignedCount === 0 ? "" : "s"} (${totalCards} card${totalCards === 1 ? "" : "s"} total).${orphanNote}\n` +
-        `Re-import with \`/loadset file:<this.json>\` — each set is restored under its own name with its rarity weights.`,
+        `Re-import with \`/setadmin load file:<this.json>\` — each set is restored under its own name with its rarity weights.`,
       files: [file],
     });
     return;
@@ -475,13 +478,89 @@ export async function handleSetAdminCommand(interaction: ChatInputCommandInterac
     );
     await interaction.editReply({
       content: `📤 Exported **${cards.length}** card${cards.length === 1 ? "" : "s"}` +
-        `${includeArchived ? " (including archived)" : ""}. Re-import with \`/loadset file:<this.json>\` — they'll all land in one fresh set.`,
+        `${includeArchived ? " (including archived)" : ""}. Re-import with \`/setadmin load file:<this.json>\` — they'll all land in one fresh set.`,
       files: [file],
     });
     return;
   }
 
-  await interaction.editReply(`❌ Unknown subcommand: \`${sub}\`.`);
+  // ── load (legacy /loadset replacement) ─────────────────────────────────────
+  if (sub === "load") {
+    const file = interaction.options.getAttachment("file");
+    const nameOverride = interaction.options.getString("name") ?? undefined;
+    if (!file) {
+      await interaction.editReply("❌ Attach a `.json` file with the `file:` option.");
+      return;
+    }
+    if (!file.name?.toLowerCase().endsWith(".json")) {
+      await interaction.editReply("❌ File must be a `.json` file.");
+      return;
+    }
+    let jsonText: string;
+    try {
+      const res = await fetch(file.url);
+      if (!res.ok) throw new Error(`Fetch failed: ${res.status}`);
+      jsonText = await res.text();
+    } catch (err) {
+      logger.error({ err }, "setadmin load: fetch failed");
+      await interaction.editReply("❌ Failed to download the JSON file.");
+      return;
+    }
+    try {
+      const { created, skipped, failed, errors, setName } =
+        await importCardsFromJson(jsonText, file.name, nameOverride);
+      await interaction.editReply(
+        `✅ **Set loaded** — \`${setName}\`\n` +
+        `➕ Created: **${created}**\n` +
+        `⏭️ Skipped (already exist): **${skipped}**` +
+        (failed > 0 ? `\n❌ Failed: **${failed}**\n${errors.map(e => `• ${e}`).join("\n")}` : "") +
+        `\n\nRemove with \`/setadmin unload set:${setName}\` \u00b7 See all with \`/setadmin listloaded\`.`,
+      );
+    } catch (err: any) {
+      await interaction.editReply(`❌ ${err?.message ?? "Import failed"}`);
+    }
+    return;
+  }
+
+  // ── unload (legacy /unloadset replacement) ─────────────────────────────────
+  if (sub === "unload") {
+    const setName = interaction.options.getString("set", true).toLowerCase().trim();
+    if (setName === DEFAULTS_SET_NAME) {
+      const { removed } = await unloadDefaultCards();
+      await interaction.editReply(
+        `✅ Removed **${removed}** built-in default cards.\nThey will **not** come back on restart. Re-load anytime with \`/setadmin load file:<.json>\` or the \`/setup\` panel.`,
+      );
+      return;
+    }
+    const { removed } = await deleteSetByName(setName);
+    if (removed === 0) {
+      await interaction.editReply(`❌ No set named \`${setName}\`. Try \`/setadmin listloaded\`.`);
+      return;
+    }
+    await interaction.editReply(
+      `✅ Unloaded set \`${setName}\` — removed **${removed}** cards and cleared related collections/trades/spawn history.\n` +
+      `💡 Non-destructive alternative: \`/setadmin delete name:${setName}\` only removes memberships and keeps cards.`,
+    );
+    return;
+  }
+
+  // ── listloaded (legacy /listsets replacement) ────────────────────────────────
+  if (sub === "listloaded") {
+    const sets = await listSets();
+    if (sets.length === 0) {
+      await interaction.editReply("📦 No card sets loaded.");
+      return;
+    }
+    sets.sort((a, b) => b.cardCount - a.cardCount);
+    const lines = sets.map(s => `• \`${s.setName}\` — **${s.cardCount}** cards`);
+    await interaction.editReply(
+      `📦 **Loaded card sets** (${sets.length})\n${lines.join("\n")}\n\n` +
+      `Load: \`/setadmin load file:<.json>\` · Unload: \`/setadmin unload set:<name>\``,
+    );
+    return;
+  }
+  await interaction.editReply(`\u274c Unknown subcommand: \`${sub}\`.`);
+
 }
 
 // Roundtrip-safe payload — every field the importer reads, nothing it

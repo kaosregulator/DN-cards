@@ -14,10 +14,9 @@ import {
   handleSetupButton, handleSetupSelect, handleSetupModalSubmit,
 } from "./commands/setup-wizard.js";
 import { handleCardWizardStep, handleCardEditStep } from "./commands/card-wizard.js";
-import { handleLoadSet, handleUnloadSet, handleListSets } from "./commands/cardset.js";
 import { handleAutocomplete } from "./commands/autocomplete.js";
 import {
-  buildCommands, USER_COMMAND_NAMES, ADMIN_COMMAND_NAMES, CARDSET_COMMAND_NAMES,
+  buildCommands, USER_COMMAND_NAMES, ADMIN_COMMAND_NAMES,
 } from "./commands/register.js";
 import { MessageFlags, EmbedBuilder } from "discord.js";
 import { createSetupLink } from "../lib/setup-link.js";
@@ -80,7 +79,7 @@ export async function startBot() {
       "DN Cards bot ready",
     );
     // Default 27-card roster is NOT auto-seeded — admins opt-in from `!setup`
-    // ("Load Defaults" button) or `/loadset defaults:true`. Keeps fresh
+    // ("Load Defaults" button) or `/setadmin load file:<.json>`. Keeps fresh
     // servers free to load only their own custom roster.
     await initAllGuilds(client);
     // P7: legacy `cards.set_name` is gone. The boot-time backfill that mirrored
@@ -369,10 +368,6 @@ export async function startBot() {
         await handleUserCommand(interaction, cmd);
       } else if (ADMIN_COMMAND_NAMES.has(cmd)) {
         await handleAdminCommand(interaction, cmd);
-      } else if (CARDSET_COMMAND_NAMES.has(cmd)) {
-        if (cmd === "loadset") await handleLoadSet(interaction);
-        else if (cmd === "unloadset") await handleUnloadSet(interaction);
-        else if (cmd === "listsets") await handleListSets(interaction);
       }
     } catch (err) {
       logger.error({ err }, "Interaction error");
