@@ -398,6 +398,43 @@ export async function handleSetAdminCommand(interaction: ChatInputCommandInterac
     return;
   }
 
+  if (sub === "assignall") {
+    const setName = interaction.options.getString("set", true);
+    const includeArchived = interaction.options.getBoolean("includearchived") ?? false;
+    let set = await getSetByName(setName);
+    let createdSet = false;
+    if (!set) {
+      try {
+        set = await createSet(setName);
+        createdSet = true;
+      } catch (err: any) {
+        await interaction.editReply(`❌ Couldn't create set \`${setName}\`: ${err?.message ?? "unknown error"}`);
+        return;
+      }
+    }
+    const orphansAll = await getUnassignedCards();
+    const orphans = includeArchived ? orphansAll : orphansAll.filter(c => !c.isArchived);
+    if (orphans.length === 0) {
+      await interaction.editReply(
+        `${createdSet ? `🆕 Created set \`${set.name}\`. ` : ""}` +
+        `✅ Nothing to assign — every card already belongs to at least one set.`,
+      );
+      return;
+    }
+    let added = 0;
+    for (const card of orphans) {
+      const r = await addCardToSet(set.id, card.id);
+      if (r.added) added++;
+    }
+    await interaction.editReply(
+      `${createdSet ? `🆕 Created set \`${set.name}\`.\n` : ""}` +
+      `✅ Assigned **${added}** card${added === 1 ? "" : "s"} into \`${set.name}\`` +
+      `${includeArchived ? " (including archived)" : ""}.\n` +
+      `💡 Make it the active spawn pool with \`/setadmin active set:${set.name}\`.`,
+    );
+    return;
+  }
+
   if (sub === "exportcards") {
     const includeArchived = interaction.options.getBoolean("includearchived") ?? false;
     const all = await getAllCards();
