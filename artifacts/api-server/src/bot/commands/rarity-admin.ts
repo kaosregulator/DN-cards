@@ -394,14 +394,17 @@ function buildTierPanel(
 
   if (!hasOverride) embed.setDescription("*All fields are currently at defaults.*\n\u200b");
 
-  const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
+  const editRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder().setCustomId(`rarity_edit:name:${r}`).setLabel("📝 Set Name").setStyle(ButtonStyle.Primary),
     new ButtonBuilder().setCustomId(`rarity_edit:emoji:${r}`).setLabel("😀 Set Emoji").setStyle(ButtonStyle.Primary),
     new ButtonBuilder().setCustomId(`rarity_edit:color:${r}`).setLabel("🎨 Set Color").setStyle(ButtonStyle.Primary),
     new ButtonBuilder().setCustomId(`rarity_edit:reset:${r}`).setLabel("🔄 Reset Tier").setStyle(ButtonStyle.Danger),
     new ButtonBuilder().setCustomId("rarity_edit:back").setLabel("← Back").setStyle(ButtonStyle.Secondary),
   );
-  return { embeds: [embed], components: [row] };
+  const previewRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder().setCustomId(`rarity_edit:preview:${r}`).setLabel("👁️ Preview Tier").setStyle(ButtonStyle.Secondary),
+  );
+  return { embeds: [embed], components: [editRow, previewRow] };
 }
 
 export async function handleRarityEditButton(interaction: ButtonInteraction): Promise<void> {
@@ -430,6 +433,27 @@ export async function handleRarityEditButton(interaction: ButtonInteraction): Pr
       getOrCreateGuildSettings(guildId),
     ]);
     await interaction.editReply(buildTierPanel(rarityPart, displayMap, settings));
+    return;
+  }
+
+  if (action === "preview" && rarityPart && BUILTIN_RARITIES.includes(rarityPart)) {
+    await interaction.deferReply({ ephemeral: true });
+    const [displayMap, settings] = await Promise.all([
+      getRarityDisplayOverrides(guildId),
+      getOrCreateGuildSettings(guildId),
+    ]);
+    const { label, emoji, color } = getEffectiveDisplay(rarityPart, displayMap, settings);
+    const sampleCard = { name: "Dark Titan", dropWeight: 1.0, worthValue: 2500, burnValue: 1250 };
+    const preview = new EmbedBuilder()
+      .setTitle(`${emoji} ${label} — Preview`)
+      .setColor(color)
+      .setDescription(
+        `This is how **${label}** tier cards will appear in bot embeds for this server.\n\n` +
+        `**Sample card:** ${emoji} **${sampleCard.name}**\n` +
+        `Worth: 💠 ${sampleCard.worthValue.toLocaleString()} · Burn: 🔥 ${sampleCard.burnValue.toLocaleString()}`,
+      )
+      .setFooter({ text: "Dismiss this preview — your changes are already live" });
+    await interaction.followUp({ embeds: [preview], ephemeral: true });
     return;
   }
 

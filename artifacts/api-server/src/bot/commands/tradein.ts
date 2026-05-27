@@ -8,12 +8,13 @@ import {
   restoreCardToUser, getOrCreateCurrency, getOrCreateGuildSettings,
   getRarityContext, applyRarityContext, applyRarityContextAll,
   getDisplayRarities, effectiveRarityKey,
+  getRarityDisplayOverrides,
   type DisplayRarity, type RarityContext,
 } from "../db.js";
 import {
   RARITY_COLORS, RARITY_EMOJI, RARITY_LABELS, SHINY_EMOJI, SHINY_MULTIPLIER,
   rarityLabel, rarityEmoji, rarityColor,
-  type Rarity,
+  type Rarity, type RarityDisplayMap,
 } from "../cards-data.js";
 import type { GuildSettings } from "@workspace/db";
 import { checkAchievements, formatUnlockLine } from "../achievements.js";
@@ -28,8 +29,8 @@ const RARITY_LADDER: Rarity[] = ["common", "uncommon", "rare", "epic", "legendar
 
 // Build a position-ordered ladder (ascending) of built-in + custom tiers for
 // this guild. The "next" tier above any given tier is just the next element.
-function buildLadder(ctx: RarityContext, settings: GuildSettings | null): DisplayRarity[] {
-  return getDisplayRarities(ctx, settings, { rarestFirst: false });
+function buildLadder(ctx: RarityContext, settings: GuildSettings | null, displayMap?: RarityDisplayMap | null): DisplayRarity[] {
+  return getDisplayRarities(ctx, settings, { rarestFirst: false, displayMap: displayMap ?? undefined });
 }
 
 function findNextTier(ladder: DisplayRarity[], fromKey: string): DisplayRarity | null {
@@ -123,13 +124,16 @@ export async function handleTradein(interaction: ChatInputCommandInteraction): P
     return;
   }
   const fromRarity = fromRarityRaw as Rarity;
-  const settings = await getOrCreateGuildSettings(guildId);
-  const ctx = await getRarityContext(guildId);
+  const [settings, displayMap, ctx] = await Promise.all([
+    getOrCreateGuildSettings(guildId),
+    getRarityDisplayOverrides(guildId),
+    getRarityContext(guildId),
+  ]);
 
   // Build the per-guild ladder (built-ins + custom tiers by position). The
   // slash command only exposes built-in rarities as the FROM tier, but the
   // ladder may contain custom tiers above/below them as the TO target.
-  const ladder = buildLadder(ctx, settings);
+  const ladder = buildLadder(ctx, settings, displayMap);
   const fromKey = fromRarity; // built-in keys ARE the rarity string
   const fromTier = ladder.find(t => t.key === fromKey);
   const toTier = fromTier ? findNextTier(ladder, fromTier.key) : null;
