@@ -113,12 +113,12 @@ export async function handleEditCardSelect(interaction: StringSelectMenuInteract
   if (sub === "menu") {
     // Boolean toggle: "toggle:<field>"
     if (value.startsWith("toggle:")) {
+      await interaction.deferUpdate();
       const field = value.slice("toggle:".length) as "inPacks" | "droppable" | "isArchived";
       const card = await getCardById(cardId);
-      if (!card) { await interaction.update({ content: "❌ Card not found.", embeds: [], components: [] }); return; }
+      if (!card) { await interaction.editReply({ content: "❌ Card not found.", embeds: [], components: [] }); return; }
       const cur = (card as unknown as Record<string, boolean>)[field];
       await updateCard(card.id, { [field]: !cur } as Parameters<typeof updateCard>[1]);
-      await interaction.deferUpdate();
       await renderPanel(interaction, cardId, false);
       return;
     }
@@ -162,17 +162,17 @@ export async function handleEditCardSelect(interaction: StringSelectMenuInteract
 
   // Rarity sub-select
   if (sub === "rarity") {
+    await interaction.deferUpdate();
     if (!RARITIES.includes(value as Rarity)) return;
     await updateCard(cardId, { rarity: value });
-    await interaction.deferUpdate();
     await renderPanel(interaction, cardId, false);
     return;
   }
 
   // Type sub-select
   if (sub === "type") {
-    await updateCard(cardId, { cardType: value });
     await interaction.deferUpdate();
+    await updateCard(cardId, { cardType: value });
     await renderPanel(interaction, cardId, false);
     return;
   }

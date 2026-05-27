@@ -5,7 +5,7 @@ import {
   type ChatInputCommandInteraction, type ButtonInteraction,
   type StringSelectMenuInteraction, type ModalSubmitInteraction,
 } from "discord.js";
-import { getOrCreateGuildSettings, updateGuildSettings, isAdmin } from "../db.js";
+import { getOrCreateGuildSettings, updateGuildSettings, isAdmin, getActiveSet } from "../db.js";
 import { scheduleNextSpawn, clearSpawnTimer } from "../spawn-manager.js";
 import { RARITY_WEIGHTS, RARITY_LABELS, type Rarity } from "../cards-data.js";
 import type { GuildSettings } from "@workspace/db";
@@ -50,9 +50,13 @@ export async function handleConfigCommand(interaction: ChatInputCommandInteracti
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
   const ok = await ensureAdmin(interaction);
   if (!ok) return;
-  const settings = await getOrCreateGuildSettings(interaction.guild.id);
+  const guildId = interaction.guild.id;
+  const [settings, activeSet] = await Promise.all([
+    getOrCreateGuildSettings(guildId),
+    getActiveSet(guildId),
+  ]);
   await interaction.editReply({
-    embeds: [buildConfigEmbed(settings)],
+    embeds: [buildConfigEmbed(settings, activeSet?.name ?? null)],
     components: buildConfigComponents(settings),
   });
 }
@@ -261,8 +265,10 @@ async function refreshPanel(
   interaction: ButtonInteraction | StringSelectMenuInteraction,
   settings: GuildSettings,
 ): Promise<void> {
+  const guildId = interaction.guild!.id;
+  const activeSet = await getActiveSet(guildId);
   await interaction.editReply({
-    embeds: [buildConfigEmbed(settings)],
+    embeds: [buildConfigEmbed(settings, activeSet?.name ?? null)],
     components: buildConfigComponents(settings),
   });
 }
@@ -290,7 +296,7 @@ async function ensureAdmin(
   return !!allowed;
 }
 
-function buildConfigEmbed(s: GuildSettings): EmbedBuilder {
+function buildConfigEmbed(s: GuildSettings, activeSetName: string | null): EmbedBuilder {
   const catchMode = (s as unknown as { catchMode?: string }).catchMode ?? "type";
   const modeLabel = ({
     type: "Typing",
@@ -305,11 +311,27 @@ function buildConfigEmbed(s: GuildSettings): EmbedBuilder {
 
   const spawnOn = s.spawnEnabled && s.spawnChannelId;
 
+  // Active set status — shown prominently so admins know what's dropping
+  const hasActiveSet = !!activeSetName;
+  const setField = hasActiveSet
+    ? `🟢 **${activeSetName}** — only cards in this set will spawn`
+    : "⚠️ **None** — random spawns are disabled until a set is activated (use `/sethub`)";
+
+  // Warn if spawning is on but there's no active set — drops are silently no-ops
+  const spawnWarning = spawnOn && !hasActiveSet
+    ? "\n⚠️ **Spawning is ON but no active set is selected — no cards will drop!**"
+    : "";
+
   return new EmbedBuilder()
     .setTitle("⚙️ DN Cards — Config")
-    .setColor(0x5865f2)
-    .setDescription("Quick config — changes save instantly.")
+    .setColor(spawnOn && !hasActiveSet ? 0xff6b35 : 0x5865f2)
+    .setDescription(`Quick config — changes save instantly.${spawnWarning}`)
     .addFields(
+      {
+        name: "🗂️ Active Spawn Set",
+        value: setField,
+        inline: false,
+      },
       {
         name: "📢 Spawn Channel",
         value: s.spawnChannelId ? `<#${s.spawnChannelId}>` : "Not set — click **📢 Spawn here**",
@@ -351,7 +373,7 @@ function buildConfigEmbed(s: GuildSettings): EmbedBuilder {
         inline: false,
       },
     )
-    .setFooter({ text: "Ephemeral — only you see this." });
+    .setFooter({ text: "Ephemeral — only you see this. Use /sethub to change the active set." });
 }
 
 function buildConfigComponents(s: GuildSettings) {

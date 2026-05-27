@@ -22,7 +22,10 @@ export const HOME_GUILD_ID: string | null =
   process.env["HOME_GUILD_ID"]?.trim() || null;
 
 export function isHomeGuild(guildId: string): boolean {
-  if (!HOME_GUILD_ID) return false;
+  // When HOME_GUILD_ID is not configured, allow all guilds (fail-open).
+  // The restriction only activates once you explicitly set the env var,
+  // at which point only that one server can mutate globally shared data.
+  if (!HOME_GUILD_ID) return true;
   return guildId === HOME_GUILD_ID;
 }
 
