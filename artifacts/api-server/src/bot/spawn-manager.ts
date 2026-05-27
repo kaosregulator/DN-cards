@@ -78,7 +78,7 @@ const ESCAPE_QUIPS: readonly string[] = [
 // Grace window for collecting concurrent typing-mode catch attempts.
 // Anyone whose Discord-stamped message lands within this window of the first
 // matching message gets considered; lowest timestamp wins.
-const TYPE_GRACE_MS = 150;
+const TYPE_GRACE_MS = 600;
 
 // Multiple active spawns per guild (for cardsPerSpawn > 1)
 const activeSpawns = new Map<string, Map<string, ActiveSpawn>>();

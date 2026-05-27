@@ -243,7 +243,7 @@ export async function handleSetsHubButton(interaction: ButtonInteraction): Promi
     await interaction.deferReply({ flags: MessageFlags.Ephemeral });
     const cards = await getCardsInSet(argId);
     if (cards.length === 0) {
-      await interaction.followUp({ content: "📭 No cards in this set yet. Add some with `/setadmin add`.", flags: MessageFlags.Ephemeral });
+      await interaction.editReply({ content: "📭 No cards in this set yet. Add some with `/setadmin add`." });
       return;
     }
     const lines = cards.map(c => `• **${c.name}** — ${c.rarity}`);

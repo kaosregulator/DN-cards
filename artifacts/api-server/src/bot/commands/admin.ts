@@ -258,6 +258,13 @@ export async function handleAdminCommand(
     return;
   }
 
+  // ── /welcomeadmin (admin onboarding guide — ephemeral) ────────────────────
+  if (cmd === "welcomeadmin") {
+    const { handleWelcomeAdmin } = await import("./welcome.js");
+    await handleWelcomeAdmin(interaction);
+    return;
+  }
+
   // ── /setadmin (sets CRUD + active selection) ─────────────────────────────
   if (cmd === "setadmin") {
     const { handleSetAdminCommand } = await import("./sets-admin.js");
