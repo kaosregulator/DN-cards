@@ -1,5 +1,5 @@
 import type { AutocompleteInteraction } from "discord.js";
-import { getAllCards, listSetsV2, getUserCollection, getUserWishlist } from "../db.js";
+import { getAllCards, listSetsV2, getUserCollection, getUserWishlist, listCustomRarities } from "../db.js";
 import { RARITY_EMOJI, type Rarity } from "../cards-data.js";
 
 const MAX_CHOICES = 25;
@@ -126,6 +126,18 @@ export async function handleAutocomplete(interaction: AutocompleteInteraction): 
         await interaction.respond(scored.map(x => formatCardChoice(x.c)));
         return;
       }
+    }
+
+    // ── /rarity custom slug — show existing custom tiers by name ────────────
+    if (cmd === "rarity" && focused.name === "slug" && interaction.guild) {
+      const tiers = await listCustomRarities(interaction.guild.id);
+      const q = query.toLowerCase().trim();
+      const matches = tiers
+        .filter(t => !q || t.name.toLowerCase().includes(q) || t.slug.includes(q))
+        .slice(0, MAX_CHOICES)
+        .map(t => ({ name: `${t.emoji} ${t.name}`.slice(0, 100), value: t.slug }));
+      await interaction.respond(matches);
+      return;
     }
 
     // ── All other card-name fields → full roster ────────────────────────────
