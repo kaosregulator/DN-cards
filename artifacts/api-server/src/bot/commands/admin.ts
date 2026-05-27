@@ -161,6 +161,12 @@ export async function handleAdminCommand(
     await handleAdminHelp(interaction);
     return;
   }
+  // /set_admin opens an ephemeral hub panel — handles its own reply (no global defer).
+  if (cmd === "set_admin") {
+    const { handleSetAdminHubCommand } = await import("./set-admin-hub.js");
+    await handleSetAdminHubCommand(interaction);
+    return;
+  }
   // /editcard — defer first so checkAdmin()'s isAdmin() DB call can't blow
   // Discord's 3s window. handleEditCardCommand receives an already-deferred
   // interaction and uses editReply for its panel.
