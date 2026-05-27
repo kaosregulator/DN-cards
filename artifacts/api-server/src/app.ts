@@ -7,15 +7,22 @@ import { logger } from "./lib/logger";
 
 const app: Express = express();
 
+// Redact one-time tokens that appear in URL path segments, e.g.
+// GET /api/auth/setup/<token>/check or POST /api/auth/setup/<token>
+// The logger already strips query strings; this covers path-embedded secrets.
+const SETUP_PATH_RE = /\/setup\/[A-Za-z0-9_-]+/g;
+
 app.use(
   pinoHttp({
     logger,
     serializers: {
       req(req) {
+        const rawUrl: string = req.url?.split("?")[0] ?? "";
+        const safeUrl = rawUrl.replace(SETUP_PATH_RE, "/setup/[REDACTED]");
         return {
           id: req.id,
           method: req.method,
-          url: req.url?.split("?")[0],
+          url: safeUrl,
         };
       },
       res(res) {

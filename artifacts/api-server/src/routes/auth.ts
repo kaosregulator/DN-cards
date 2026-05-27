@@ -3,6 +3,8 @@ import { db, dashboardUsersTable, setupTokensTable } from "@workspace/db";
 import { eq, and, isNull, gt, sql } from "drizzle-orm";
 import { z } from "zod/v4";
 import bcrypt from "bcryptjs";
+import { loginRateLimiter } from "../lib/rate-limiters.js";
+import { credentialFingerprint } from "../middlewares/dashboard-auth.js";
 
 // Augment express-session with our custom fields. Declared here so anything
 // that imports this module picks up the types.
@@ -11,6 +13,10 @@ declare module "express-session" {
     userId?: number;
     username?: string;
     isOwner?: boolean;
+    // SHA-256 fingerprint of passwordHash at session-issue time. Used by
+    // requireDashboardAuth to detect password resets and invalidate stale
+    // sessions immediately.
+    sessionAuthVersion?: string;
   }
 }
 
@@ -35,8 +41,9 @@ router.get("/me", (req, res) => {
 });
 
 // ── POST /api/auth/login ──────────────────────────────────────────────────────
+// Rate-limited: 10 attempts per IP per 15 minutes.
 const loginSchema = z.object({ username: z.string().trim().min(1), password: z.string().min(1) });
-router.post("/login", async (req, res) => {
+router.post("/login", loginRateLimiter, async (req, res) => {
   const parsed = loginSchema.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: "Missing username or password" });
@@ -56,6 +63,7 @@ router.post("/login", async (req, res) => {
   req.session.userId = user.id;
   req.session.username = user.username;
   req.session.isOwner = user.isOwner;
+  req.session.sessionAuthVersion = credentialFingerprint(user.passwordHash);
   res.json({ user: { id: user.id, username: user.username, isOwner: user.isOwner } });
 });
 
@@ -69,8 +77,9 @@ router.post("/logout", (req, res) => {
 
 // ── GET /api/auth/setup/:token/check ──────────────────────────────────────────
 // Lets the setup page validate the token before rendering the form.
-router.get("/setup/:token/check", async (req, res) => {
-  const token = req.params.token;
+// Rate-limited to slow token enumeration attempts.
+router.get("/setup/:token/check", loginRateLimiter, async (req, res) => {
+  const token = String(req.params.token);
   const [row] = await db.select().from(setupTokensTable).where(eq(setupTokensTable.token, token)).limit(1);
   if (!row || row.usedAt || row.expiresAt < new Date()) {
     res.status(404).json({ valid: false, error: "Setup link is invalid or expired" });
@@ -89,8 +98,8 @@ router.get("/setup/:token/check", async (req, res) => {
 // ── POST /api/auth/setup/:token — consume a one-time setup link ───────────────
 const setupSchema = z.object({ username: usernameSchema, password: passwordSchema });
 const resetSchema = z.object({ password: passwordSchema });
-router.post("/setup/:token", async (req, res) => {
-  const token = req.params.token;
+router.post("/setup/:token", loginRateLimiter, async (req, res) => {
+  const token = String(req.params.token);
   // Atomic consume: only one concurrent request can flip usedAt from NULL to
   // NOW(). Whichever loses the race gets zero rows back and is rejected.
   // We do this BEFORE creating the user so a race can't mint two accounts
@@ -130,10 +139,13 @@ router.post("/setup/:token", async (req, res) => {
         res.status(404).json({ error: "Target user no longer exists" });
         return;
       }
-      // Auto-login after reset.
+      // Auto-login after reset. The new sessionAuthVersion reflects the new
+      // passwordHash, so any prior sessions issued with the old hash will fail
+      // fingerprint verification on their next request and be destroyed.
       req.session.userId = user.id;
       req.session.username = user.username;
       req.session.isOwner = user.isOwner;
+      req.session.sessionAuthVersion = credentialFingerprint(user.passwordHash);
       res.json({ user: { id: user.id, username: user.username, isOwner: user.isOwner } });
       return;
     }
@@ -167,6 +179,7 @@ router.post("/setup/:token", async (req, res) => {
     req.session.userId = created.id;
     req.session.username = created.username;
     req.session.isOwner = created.isOwner;
+    req.session.sessionAuthVersion = credentialFingerprint(created.passwordHash);
     res.json({ user: { id: created.id, username: created.username, isOwner: created.isOwner } });
   } catch (err) {
     // On unexpected failure, free the token so the user can retry.
