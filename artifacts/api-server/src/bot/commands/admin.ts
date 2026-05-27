@@ -48,11 +48,12 @@ async function handleAdminHelp(interaction: ChatInputCommandInteraction): Promis
           "*Default prefix is `!`. Change it with `<prefix>setprefix`.*",
       },
       {
-        name: "🃏 Card Management *(prefix commands)*",
+        name: "🃏 Card Management",
         value:
-          "`<prefix>addcard` · `<prefix>addlimited` · `<prefix>addevent` — guided card creation wizards\n" +
-          "`<prefix>editcard <Name>` · `<prefix>removecard <Name>`\n" +
-          "`<prefix>import` — bulk import cards from JSON attachment",
+          "`/editcard name:<card>` — interactive panel (autocomplete!)\n" +
+          "`/setadmin exportcards` · `/setadmin assignall set:<name>` — bulk set ops\n" +
+          "`<prefix>addcard` · `<prefix>addlimited` · `<prefix>addevent` — guided wizards\n" +
+          "`<prefix>removecard <Name>` · `<prefix>import` — bulk import from JSON",
       },
       {
         name: "⚡ Live Actions *(slash)*",
