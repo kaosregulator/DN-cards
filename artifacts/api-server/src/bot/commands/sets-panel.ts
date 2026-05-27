@@ -9,16 +9,23 @@ import { isAdmin, listSetsV2, getCardsInSet, createSet, setActiveSet, clearActiv
 import { buildSingleSetPayload } from "./sets-admin.js";
 
 // ── Permission guard ──────────────────────────────────────────────────────────
+// Callers must defer (deferReply or deferUpdate) before calling this so
+// editReply works correctly and the DB query can't blow Discord's 3s window.
 async function ensureAdmin(interaction: ChatInputCommandInteraction | ButtonInteraction | StringSelectMenuInteraction | ModalSubmitInteraction): Promise<boolean> {
-  // Use interaction.memberPermissions (inline in payload) — the old
-  // GuildMember-instanceof + members.fetch path adds RTT and can blow
-  // Discord's 3s interaction window.
   if (!interaction.guild) return false;
   if (interaction.guild.ownerId === interaction.user.id) return true;
   if (interaction.memberPermissions?.has("Administrator")) return true;
   if (await isAdmin(interaction.guild.id, interaction.user.id)) return true;
-  await interaction.reply({ content: "❌ Admins only.", flags: MessageFlags.Ephemeral }).catch(() => {});
+  await interaction.editReply({ content: "❌ Admins only." }).catch(() => {});
   return false;
+}
+
+// Fast sync check (zero RTT) — safe to call before the interaction is
+// acknowledged. Does NOT check DB-added bot admins.
+function ensureAdminInline(interaction: ButtonInteraction): boolean {
+  if (!interaction.guild) return false;
+  if (interaction.guild.ownerId === interaction.user.id) return true;
+  return !!(interaction.memberPermissions?.has("Administrator"));
 }
 
 // ── Embed builder ─────────────────────────────────────────────────────────────
@@ -144,50 +151,29 @@ export async function handleSetsHubCommand(interaction: ChatInputCommandInteract
 
 // ── Select: user picks a set from the dropdown ────────────────────────────────
 export async function handleSetsHubSelect(interaction: StringSelectMenuInteraction): Promise<void> {
-  if (!await ensureAdmin(interaction)) return;
-  const guildId = interaction.guild!.id;
-  const setId = parseInt(interaction.values[0]!, 10);
+  if (!interaction.guild) return;
   await interaction.deferUpdate();
+  if (!await ensureAdmin(interaction)) return;
+  const guildId = interaction.guild.id;
+  const setId = parseInt(interaction.values[0]!, 10);
   const payload = await buildPanelPayload(guildId, setId);
   await interaction.editReply(payload);
 }
 
 // ── Button: all sets: button actions ─────────────────────────────────────────
 export async function handleSetsHubButton(interaction: ButtonInteraction): Promise<void> {
-  if (!await ensureAdmin(interaction)) return;
-  const guildId = interaction.guild!.id;
+  if (!interaction.guild) return;
+  const guildId = interaction.guild.id;
   const [, action, argStr] = interaction.customId.split(":");
   const argId = argStr ? parseInt(argStr, 10) : undefined;
 
-  // ── Export ALL — sends a file, then refreshes the panel ───────────────────
-  if (action === "exportall") {
-    await interaction.deferUpdate();
-    const all = await listSetsV2();
-    if (all.length === 0) {
-      await interaction.followUp({ content: "❌ No sets to export yet.", flags: MessageFlags.Ephemeral });
+  // ── Create: showModal() must be the first response — cannot defer first.
+  // Use fast inline check (no DB); full check happens on modal submit.
+  if (action === "create") {
+    if (!ensureAdminInline(interaction)) {
+      await interaction.reply({ content: "❌ Admins only.", flags: MessageFlags.Ephemeral });
       return;
     }
-    const bundle: { exportedAt: string; sets: ReturnType<typeof buildSingleSetPayload>[] } = {
-      exportedAt: new Date().toISOString(),
-      sets: [],
-    };
-    let totalCards = 0;
-    for (const { set } of all) {
-      const cards = await getCardsInSet(set.id);
-      bundle.sets.push(buildSingleSetPayload(set, cards));
-      totalCards += cards.length;
-    }
-    const file = new AttachmentBuilder(Buffer.from(JSON.stringify(bundle, null, 2), "utf8"), { name: "all-sets.json" });
-    await interaction.followUp({
-      content: `📦 Exported **${all.length}** set${all.length === 1 ? "" : "s"} (${totalCards} card${totalCards === 1 ? "" : "s"} total). Re-import with \`!loadset\` and attaching the file.`,
-      files: [file],
-      flags: MessageFlags.Ephemeral,
-    });
-    return;
-  }
-
-  // ── Create — open a modal for the set name ────────────────────────────────
-  if (action === "create") {
     const modal = new ModalBuilder()
       .setCustomId("sets:modal:create")
       .setTitle("Create a New Set")
@@ -214,9 +200,38 @@ export async function handleSetsHubButton(interaction: ButtonInteraction): Promi
     return;
   }
 
+  // ── All other buttons: defer immediately, then admin-check ──────────────
+  await interaction.deferUpdate();
+  if (!await ensureAdmin(interaction)) return;
+
+  // ── Export ALL — sends a file, then refreshes the panel ───────────────────
+  if (action === "exportall") {
+    const all = await listSetsV2();
+    if (all.length === 0) {
+      await interaction.followUp({ content: "❌ No sets to export yet.", flags: MessageFlags.Ephemeral });
+      return;
+    }
+    const bundle: { exportedAt: string; sets: ReturnType<typeof buildSingleSetPayload>[] } = {
+      exportedAt: new Date().toISOString(),
+      sets: [],
+    };
+    let totalCards = 0;
+    for (const { set } of all) {
+      const cards = await getCardsInSet(set.id);
+      bundle.sets.push(buildSingleSetPayload(set, cards));
+      totalCards += cards.length;
+    }
+    const file = new AttachmentBuilder(Buffer.from(JSON.stringify(bundle, null, 2), "utf8"), { name: "all-sets.json" });
+    await interaction.followUp({
+      content: `📦 Exported **${all.length}** set${all.length === 1 ? "" : "s"} (${totalCards} card${totalCards === 1 ? "" : "s"} total). Re-import with \`!loadset\` and attaching the file.`,
+      files: [file],
+      flags: MessageFlags.Ephemeral,
+    });
+    return;
+  }
+
   // ── Deactivate ────────────────────────────────────────────────────────────
   if (action === "deactivate") {
-    await interaction.deferUpdate();
     await clearActiveSet(guildId);
     const payload = await buildPanelPayload(guildId);
     await interaction.editReply(payload);
@@ -224,11 +239,10 @@ export async function handleSetsHubButton(interaction: ButtonInteraction): Promi
     return;
   }
 
-  if (!argId) { await interaction.deferUpdate(); return; }
+  if (!argId) return;
 
   // ── Set Active ────────────────────────────────────────────────────────────
   if (action === "active") {
-    await interaction.deferUpdate();
     await setActiveSet(guildId, argId);
     const payload = await buildPanelPayload(guildId, argId);
     await interaction.editReply(payload);
@@ -241,12 +255,11 @@ export async function handleSetsHubButton(interaction: ButtonInteraction): Promi
     return;
   }
 
-  // ── View Cards ────────────────────────────────────────────────────────────
+  // ── View Cards — send as new ephemeral followUp (hub panel stays intact) ──
   if (action === "view") {
-    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
     const cards = await getCardsInSet(argId);
     if (cards.length === 0) {
-      await interaction.editReply({ content: "📭 No cards in this set yet. Add some with `/setadmin add`." });
+      await interaction.followUp({ content: "📭 No cards in this set yet. Add some with `/setadmin add`.", flags: MessageFlags.Ephemeral });
       return;
     }
     const lines = cards.map(c => `• **${c.name}** — ${c.rarity}`);
@@ -260,7 +273,7 @@ export async function handleSetsHubButton(interaction: ButtonInteraction): Promi
     const sets = await listSetsV2();
     const set = sets.find(s => s.set.id === argId);
     const title = `**${set?.set.name ?? "Set"} — ${cards.length} card${cards.length === 1 ? "" : "s"}**\n`;
-    await interaction.editReply({ content: title + (chunks[0] ?? "") });
+    await interaction.followUp({ content: title + (chunks[0] ?? ""), flags: MessageFlags.Ephemeral });
     for (const chunk of chunks.slice(1)) {
       await interaction.followUp({ content: chunk, flags: MessageFlags.Ephemeral });
     }
@@ -269,7 +282,6 @@ export async function handleSetsHubButton(interaction: ButtonInteraction): Promi
 
   // ── Export single set ─────────────────────────────────────────────────────
   if (action === "export") {
-    await interaction.deferUpdate();
     const sets = await listSetsV2();
     const entry = sets.find(s => s.set.id === argId);
     if (!entry) { await interaction.followUp({ content: "❌ Set not found.", flags: MessageFlags.Ephemeral }); return; }
@@ -287,7 +299,6 @@ export async function handleSetsHubButton(interaction: ButtonInteraction): Promi
 
   // ── Toggle Showcase ───────────────────────────────────────────────────────
   if (action === "showcase") {
-    await interaction.deferUpdate();
     const sets = await listSetsV2();
     const entry = sets.find(s => s.set.id === argId);
     if (!entry) { await interaction.followUp({ content: "❌ Set not found.", flags: MessageFlags.Ephemeral }); return; }
@@ -305,17 +316,17 @@ export async function handleSetsHubButton(interaction: ButtonInteraction): Promi
 
 // ── Modal: create set ─────────────────────────────────────────────────────────
 export async function handleSetsHubModal(interaction: ModalSubmitInteraction): Promise<void> {
+  if (!interaction.guild) return;
+  // Defer immediately — ensureAdmin() has a DB call, createSet() is a DB write.
+  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
   if (!await ensureAdmin(interaction)) return;
-  const guildId = interaction.guild!.id;
+  const guildId = interaction.guild.id;
   const name = interaction.fields.getTextInputValue("sets:name").trim();
   const desc = interaction.fields.getTextInputValue("sets:desc").trim() || undefined;
-  if (!name) { await interaction.reply({ content: "❌ Set name cannot be empty.", flags: MessageFlags.Ephemeral }); return; }
-  await interaction.deferUpdate();
+  if (!name) { await interaction.editReply("❌ Set name cannot be empty."); return; }
   const set = await createSet(name, desc);
-  const payload = await buildPanelPayload(guildId, set.id);
-  await interaction.editReply(payload);
-  await interaction.followUp({
-    content: `✅ Created set **${set.name}**. Add cards with \`/setadmin add set:${set.name} card:<Name>\`.`,
-    flags: MessageFlags.Ephemeral,
-  });
+  await interaction.editReply(
+    `✅ Created set **${set.name}**. Add cards with \`/setadmin add set:${set.name} card:<Name>\`.`,
+  );
+  await invalidateActiveSetCardsCache(guildId);
 }

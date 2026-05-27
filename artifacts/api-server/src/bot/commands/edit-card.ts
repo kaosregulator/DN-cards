@@ -90,14 +90,16 @@ async function renderPanel(interaction: RepliableInteraction, cardId: number, re
 }
 
 // ── Slash entry ─────────────────────────────────────────────────────────────
+// admin.ts already called deferReply(ephemeral) before dispatching here,
+// so we use editReply (reply=false) instead of reply.
 export async function handleEditCardCommand(interaction: ChatInputCommandInteraction): Promise<void> {
   const name = interaction.options.getString("name", true).trim();
   const card = await getCardByName(name);
   if (!card) {
-    await interaction.reply({ content: `❌ No card named **${name}**. Use autocomplete to pick one.`, flags: MessageFlags.Ephemeral });
+    await interaction.editReply(`❌ No card named **${name}**. Use autocomplete to pick one.`);
     return;
   }
-  await renderPanel(interaction, card.id, true);
+  await renderPanel(interaction, card.id, false);
 }
 
 // ── Select handler ──────────────────────────────────────────────────────────

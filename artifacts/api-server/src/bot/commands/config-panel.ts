@@ -46,14 +46,14 @@ function effectiveWeight(s: GuildSettings, r: Rarity): number {
 // ── Public entry: /config command opens the ephemeral panel ───────────────────────────────────────────
 export async function handleConfigCommand(interaction: ChatInputCommandInteraction): Promise<void> {
   if (!interaction.guild) return;
+  // Defer immediately — isAdmin() is a DB call, easily past 3s without defer.
+  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
   const ok = await ensureAdmin(interaction);
   if (!ok) return;
-
   const settings = await getOrCreateGuildSettings(interaction.guild.id);
-  await interaction.reply({
+  await interaction.editReply({
     embeds: [buildConfigEmbed(settings)],
     components: buildConfigComponents(settings),
-    flags: MessageFlags.Ephemeral,
   });
 }
 

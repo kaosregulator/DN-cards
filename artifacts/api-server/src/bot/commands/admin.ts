@@ -160,11 +160,13 @@ export async function handleAdminCommand(
     await handleAdminHelp(interaction);
     return;
   }
-  // /editcard opens an ephemeral interactive panel — manages its own reply
-  // (no defer) so the in-flow Modal call still works.
+  // /editcard — defer first so checkAdmin()'s isAdmin() DB call can't blow
+  // Discord's 3s window. handleEditCardCommand receives an already-deferred
+  // interaction and uses editReply for its panel.
   if (cmd === "editcard") {
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
     if (!(await checkAdmin(interaction))) {
-      await interaction.reply({ content: "❌ Admins only.", flags: MessageFlags.Ephemeral });
+      await interaction.editReply("❌ Admins only.");
       return;
     }
     const { handleEditCardCommand } = await import("./edit-card.js");

@@ -29,24 +29,54 @@ export async function startSetupWizard(msg: Message): Promise<void> {
 // ── Entry: /setup (slash) ────────────────────────────────────────────────────────────────────────────────────
 export async function handleSetupCommand(interaction: ChatInputCommandInteraction): Promise<void> {
   if (!interaction.guild) return;
+  // ACK immediately — isAdmin() is a DB call, easily past 3s without defer.
+  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
   const ok = await ensureAdminSlash(interaction);
   if (!ok) return;
   const settings = await getOrCreateGuildSettings(interaction.guild.id);
   const hasDefaults = await defaultsLoaded();
-  await interaction.reply({
+  await interaction.editReply({
     embeds: [buildSetupEmbed(settings, hasDefaults)],
     components: buildSetupComponents(settings, hasDefaults),
-    flags: MessageFlags.Ephemeral,
   });
 }
 
 // ── Button handler ──────────────────────────────────────────────────────────────────────────────────────────
 export async function handleSetupButton(interaction: ButtonInteraction): Promise<void> {
   if (!interaction.guild) return;
-  if (!(await ensureAdmin(interaction))) return;
-
-  const guildId = interaction.guild.id;
   const [, action, arg] = interaction.customId.split(":");
+  const guildId = interaction.guild.id;
+
+  // ── Modal path: showModal() must be the first response — cannot defer first.
+  // Fast inline check only; DB-admin check happens on modal submit.
+  if (action === "testdrop") {
+    const isOwner = interaction.guild.ownerId === interaction.user.id;
+    const isDiscordAdmin = !!(interaction.memberPermissions?.has("Administrator"));
+    if (!isOwner && !isDiscordAdmin && !(await isAdmin(guildId, interaction.user.id))) {
+      await interaction.reply({ content: "❌ Admins only.", flags: MessageFlags.Ephemeral });
+      return;
+    }
+    const modal = new ModalBuilder()
+      .setCustomId("setup_testcard")
+      .setTitle("🧪 Test Drop")
+      .addComponents(
+        new ActionRowBuilder<TextInputBuilder>().addComponents(
+          new TextInputBuilder()
+            .setCustomId("card_name")
+            .setLabel("Test card name (will be droppable=false)")
+            .setStyle(TextInputStyle.Short)
+            .setPlaceholder("e.g. Setup Test")
+            .setRequired(true)
+            .setMaxLength(64),
+        ),
+      );
+    await interaction.showModal(modal).catch(() => {});
+    return;
+  }
+
+  // ── All other buttons: defer first, then admin-check ─────────────────────
+  await interaction.deferUpdate();
+  if (!(await ensureAdmin(interaction))) return;
 
   if (action === "toggle" && arg === "spawn") {
     const s = await getOrCreateGuildSettings(guildId);
@@ -70,7 +100,7 @@ export async function handleSetupButton(interaction: ButtonInteraction): Promise
         (skipped > 0 ? ` (skipped **${skipped}** already in your roster).` : ".") +
         `\nRemove anytime with **🗑️ Remove Defaults** or \`${settings.commandPrefix}unloaddefaults\` / \`/setadmin unload set:${DEFAULTS_SET_NAME}\`.`,
       flags: MessageFlags.Ephemeral,
-    }).catch(() => { /* ignore */ });
+    }).catch(() => {});
     return;
   } else if (action === "cleardefaults") {
     const { removed } = await unloadDefaultCards();
@@ -78,45 +108,30 @@ export async function handleSetupButton(interaction: ButtonInteraction): Promise
     await interaction.followUp({
       content: `🗑️ Removed **${removed}** built-in default cards. Your custom cards are untouched.`,
       flags: MessageFlags.Ephemeral,
-    }).catch(() => { /* ignore */ });
+    }).catch(() => {});
     return;
   } else if (action === "rates") {
+    // followUp = new ephemeral message after deferUpdate (can't editReply — that would replace the panel)
     const settings = await getOrCreateGuildSettings(guildId);
-    await interaction.reply({
+    await interaction.followUp({
       embeds: [buildRatesEmbed(settings)],
       components: buildRatesComponents(settings),
       flags: MessageFlags.Ephemeral,
-    }).catch(() => { /* ignore */ });
-    return;
-  } else if (action === "testdrop") {
-    const modal = new ModalBuilder()
-      .setCustomId("setup_testcard")
-      .setTitle("🧪 Test Drop")
-      .addComponents(
-        new ActionRowBuilder<TextInputBuilder>().addComponents(
-          new TextInputBuilder()
-            .setCustomId("card_name")
-            .setLabel("Test card name (will be droppable=false)")
-            .setStyle(TextInputStyle.Short)
-            .setPlaceholder("e.g. Setup Test")
-            .setRequired(true)
-            .setMaxLength(64),
-        ),
-      );
-    await interaction.showModal(modal).catch(() => { /* ignore */ });
+    }).catch(() => {});
     return;
   } else if (action === "done") {
     const settings = await getOrCreateGuildSettings(guildId);
     if (!settings.spawnChannelId) {
-      await interaction.reply({
+      await interaction.followUp({
         content: "❌ Pick a spawn channel first — go to your drops channel and click **📢 Spawn here**.",
         flags: MessageFlags.Ephemeral,
-      }).catch(() => { /* ignore */ });
+      }).catch(() => {});
       return;
     }
     await updateGuildSettings(guildId, { spawnEnabled: true });
     scheduleNextSpawn(guildId);
-    await interaction.update({
+    // editReply replaces the setup panel with the "done" message.
+    await interaction.editReply({
       embeds: [
         new EmbedBuilder()
           .setTitle("✅ DN Cards is ready!")
@@ -132,7 +147,7 @@ export async function handleSetupButton(interaction: ButtonInteraction): Promise
           ),
       ],
       components: [],
-    }).catch(() => { /* ignore */ });
+    }).catch(() => {});
     return;
   }
 
@@ -142,6 +157,7 @@ export async function handleSetupButton(interaction: ButtonInteraction): Promise
 // ── Select handler ────────────────────────────────────────────────────────────────────────────────────────
 export async function handleSetupSelect(interaction: StringSelectMenuInteraction): Promise<void> {
   if (!interaction.guild) return;
+  await interaction.deferUpdate();
   if (!(await ensureAdmin(interaction))) return;
 
   const guildId = interaction.guild.id;
@@ -165,21 +181,20 @@ export async function handleSetupSelect(interaction: StringSelectMenuInteraction
 export async function handleSetupModalSubmit(interaction: ModalSubmitInteraction): Promise<void> {
   if (!interaction.guild) return;
   if (interaction.customId !== "setup_testcard") return;
+  // ACK immediately — DB reads happen before we can reply.
+  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
   if (!(await ensureAdminModal(interaction))) return;
 
   const guildId = interaction.guild.id;
   const settings = await getOrCreateGuildSettings(guildId);
   if (!settings.spawnChannelId) {
-    await interaction.reply({
-      content: "❌ Pick a spawn channel first — click **📢 Spawn here** in your drops channel.",
-      flags: MessageFlags.Ephemeral,
-    }).catch(() => { /* ignore */ });
+    await interaction.editReply("❌ Pick a spawn channel first — click **📢 Spawn here** in your drops channel.");
     return;
   }
 
   const name = interaction.fields.getTextInputValue("card_name").slice(0, 64).trim();
   if (!name) {
-    await interaction.reply({ content: "❌ Card name was empty.", flags: MessageFlags.Ephemeral }).catch(() => { /* ignore */ });
+    await interaction.editReply("❌ Card name was empty.");
     return;
   }
 
@@ -195,15 +210,11 @@ export async function handleSetupModalSubmit(interaction: ModalSubmitInteraction
       droppable: false,
     });
     await spawnCard(guildId, card.id, true);
-    await interaction.reply({
-      content: `🧪 Test card **${name}** dropped in <#${settings.spawnChannelId}>. Go catch it!\nClean up later with \`${settings.commandPrefix}removecard ${name}\`.`,
-      flags: MessageFlags.Ephemeral,
-    }).catch(() => { /* ignore */ });
+    await interaction.editReply(
+      `🧪 Test card **${name}** dropped in <#${settings.spawnChannelId}>. Go catch it!\nClean up later with \`${settings.commandPrefix}removecard ${name}\`.`,
+    );
   } catch {
-    await interaction.reply({
-      content: "⚠️ Couldn't create the test card — a card with that name probably exists already. Try a different name.",
-      flags: MessageFlags.Ephemeral,
-    }).catch(() => { /* ignore */ });
+    await interaction.editReply("⚠️ Couldn't create the test card — a card with that name probably exists already. Try a different name.");
   }
 }
 
@@ -213,23 +224,23 @@ async function defaultsLoaded(): Promise<boolean> {
   return sets.some(s => s.setName === DEFAULTS_SET_NAME && s.cardCount > 0);
 }
 
+// Uses editReply — all callers must defer before calling this.
 async function refreshPanel(
   interaction: ButtonInteraction | StringSelectMenuInteraction,
   guildId: string,
 ): Promise<void> {
   const settings = await getOrCreateGuildSettings(guildId);
   const hasDefaults = await defaultsLoaded();
-  await interaction.update({
+  await interaction.editReply({
     embeds: [buildSetupEmbed(settings, hasDefaults)],
     components: buildSetupComponents(settings, hasDefaults),
-  }).catch(() => { /* may already be replied/updated */ });
+  }).catch(() => {});
 }
 
+// Callers must deferUpdate first so editReply works correctly.
 async function ensureAdmin(
   interaction: ButtonInteraction | StringSelectMenuInteraction,
 ): Promise<boolean> {
-  // Use interaction.memberPermissions (inline) — members.fetch is a network
-  // RTT that under cold start blows Discord's 3s interaction window.
   if (!interaction.guild) return false;
   const perms = interaction.memberPermissions;
   const allowed =
@@ -237,14 +248,12 @@ async function ensureAdmin(
     perms?.has("Administrator") ||
     (await isAdmin(interaction.guild.id, interaction.user.id));
   if (!allowed) {
-    await interaction.reply({
-      content: "❌ Only admins can use the setup panel.",
-      flags: MessageFlags.Ephemeral,
-    }).catch(() => { /* ignore */ });
+    await interaction.editReply({ content: "❌ Only admins can use the setup panel." }).catch(() => {});
   }
   return !!allowed;
 }
 
+// Callers must deferReply first so editReply works correctly.
 async function ensureAdminModal(interaction: ModalSubmitInteraction): Promise<boolean> {
   if (!interaction.guild) return false;
   const member = (interaction.member as GuildMember | null);
@@ -253,14 +262,12 @@ async function ensureAdminModal(interaction: ModalSubmitInteraction): Promise<bo
     member?.permissions.has("Administrator") ||
     (await isAdmin(interaction.guild.id, interaction.user.id));
   if (!allowed) {
-    await interaction.reply({
-      content: "❌ Admins only.",
-      flags: MessageFlags.Ephemeral,
-    }).catch(() => { /* ignore */ });
+    await interaction.editReply("❌ Admins only.").catch(() => {});
   }
   return !!allowed;
 }
 
+// Callers must deferReply first so editReply works correctly.
 async function ensureAdminSlash(interaction: ChatInputCommandInteraction): Promise<boolean> {
   if (!interaction.guild) return false;
   const member = interaction.member as GuildMember | null;
@@ -269,12 +276,9 @@ async function ensureAdminSlash(interaction: ChatInputCommandInteraction): Promi
     member?.permissions.has("Administrator") ||
     (await isAdmin(interaction.guild.id, interaction.user.id));
   if (!allowed) {
-    await interaction.reply({
-      content: "❌ Only admins can use the setup panel.",
-      flags: MessageFlags.Ephemeral,
-    }).catch(() => { /* ignore */ });
+    await interaction.editReply("❌ Only admins can use the setup panel.").catch(() => {});
   }
-  return allowed;
+  return !!allowed;
 }
 
 function formatSec(sec: number): string {

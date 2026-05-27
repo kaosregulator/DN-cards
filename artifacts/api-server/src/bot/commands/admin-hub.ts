@@ -13,58 +13,61 @@ import {
 // ── Public entry: /adminhub command opens the ephemeral hub ──────────────────
 export async function handleAdminHubCommand(interaction: ChatInputCommandInteraction): Promise<void> {
   if (!interaction.guild) return;
+  // ACK immediately — buildHubEmbed has 3 DB calls, easily past 3s without defer.
+  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
   const ok = await ensureAdmin(interaction);
   if (!ok) return;
-
-  await interaction.reply({
+  await interaction.editReply({
     embeds: [await buildHubEmbed(interaction.guild.id)],
     components: buildHubComponents(),
-    flags: MessageFlags.Ephemeral,
   });
 }
 
 // ── Button router ───────────────────────────────────────────────────────────-
 export async function handleAdminHubButton(interaction: ButtonInteraction): Promise<void> {
   if (!interaction.guild) return;
-  const ok = await ensureAdmin(interaction);
-  if (!ok) return;
-
   const [, action] = interaction.customId.split(":"); // adminhub:<action>
 
-  if (action === "refresh") {
-    await interaction.update({
-      embeds: [await buildHubEmbed(interaction.guild.id)],
-      components: buildHubComponents(),
-    });
+  // ── Modal paths: showModal() MUST be the first response — cannot defer first.
+  // Use a fast inline check (memberPermissions, zero RTT). The modal submit
+  // handler re-validates with the full DB check.
+  if (action === "addadmin" || action === "rmadmin" || action === "timeout" || action === "untimeout") {
+    if (!ensureAdminInline(interaction)) {
+      await interaction.reply({ content: "❌ Admins only.", flags: MessageFlags.Ephemeral });
+      return;
+    }
+    if (action === "addadmin") await interaction.showModal(buildAddAdminModal());
+    if (action === "rmadmin")  await interaction.showModal(buildRemoveAdminModal());
+    if (action === "timeout")  await interaction.showModal(buildTimeoutModal());
+    if (action === "untimeout") await interaction.showModal(buildClearTimeoutModal());
     return;
   }
 
-  if (action === "addadmin") {
-    await interaction.showModal(buildAddAdminModal());
-    return;
-  }
-  if (action === "rmadmin") {
-    await interaction.showModal(buildRemoveAdminModal());
-    return;
-  }
-  if (action === "timeout") {
-    await interaction.showModal(buildTimeoutModal());
-    return;
-  }
-  if (action === "untimeout") {
-    await interaction.showModal(buildClearTimeoutModal());
-    return;
-  }
+  // ── setchannels: opens a new ephemeral channel-picker panel ──
   if (action === "setchannels") {
     const { handleSetChannels } = await import("./setchannels.js");
     await handleSetChannels(interaction);
     return;
   }
+
+  // ── refresh (and any unknown action): update the existing hub in-place ──
+  await interaction.deferUpdate();
+  const ok = await ensureAdmin(interaction);
+  if (!ok) {
+    await interaction.followUp({ content: "❌ Admins only.", flags: MessageFlags.Ephemeral });
+    return;
+  }
+  await interaction.editReply({
+    embeds: [await buildHubEmbed(interaction.guild.id)],
+    components: buildHubComponents(),
+  });
 }
 
 // ── Modal submit router ─────────────────────────────────────────────────────-
 export async function handleAdminHubModal(interaction: ModalSubmitInteraction): Promise<void> {
   if (!interaction.guild) return;
+  // Defer immediately — DB writes happen before we can reply.
+  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
   const ok = await ensureAdmin(interaction);
   if (!ok) return;
 
@@ -113,11 +116,22 @@ export async function handleAdminHubModal(interaction: ModalSubmitInteraction): 
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
+
+// Fast sync check using the inline permission payload — zero RTT, safe to call
+// before the interaction is acknowledged (for modal paths where showModal must
+// be the first response). Does NOT check DB-added bot admins.
+function ensureAdminInline(interaction: ButtonInteraction): boolean {
+  if (!interaction.guild) return false;
+  if (interaction.guild.ownerId === interaction.user.id) return true;
+  return !!(interaction.memberPermissions?.has("Administrator"));
+}
+
+// Full check (includes DB-added bot admins). ALL callers must defer first so
+// that if the DB query is slow we don't blow Discord's 3s interaction window.
+// Uses editReply (not reply) because the interaction is already acknowledged.
 async function ensureAdmin(
   interaction: ChatInputCommandInteraction | ButtonInteraction | ModalSubmitInteraction,
 ): Promise<boolean> {
-  // Use interaction.memberPermissions (inline in payload) — members.fetch is a
-  // network RTT that under cold start blows Discord's 3s interaction window.
   if (!interaction.guild) return false;
   const perms = interaction.memberPermissions;
   const allowed =
@@ -125,10 +139,7 @@ async function ensureAdmin(
     perms?.has("Administrator") ||
     (await isAdmin(interaction.guild.id, interaction.user.id));
   if (!allowed) {
-    await interaction.reply({
-      content: "❌ Only admins can use the admin hub.",
-      flags: MessageFlags.Ephemeral,
-    }).catch(() => { /* ignore */ });
+    await interaction.editReply("❌ Only admins can use the admin hub.").catch(() => {});
   }
   return !!allowed;
 }
@@ -271,13 +282,9 @@ function escapeMd(s: string): string {
 }
 
 async function replyOk(interaction: ModalSubmitInteraction, content: string) {
-  await interaction.reply({
-    content,
-    flags: MessageFlags.Ephemeral,
-    allowedMentions: { parse: [] },
-  }).catch(() => { /* ignore */ });
+  await interaction.editReply({ content, allowedMentions: { parse: [] } }).catch(() => {});
 }
 
 async function replyError(interaction: ModalSubmitInteraction, content: string) {
-  await interaction.reply({ content: `❌ ${content}`, flags: MessageFlags.Ephemeral }).catch(() => { /* ignore */ });
+  await interaction.editReply({ content: `❌ ${content}` }).catch(() => {});
 }

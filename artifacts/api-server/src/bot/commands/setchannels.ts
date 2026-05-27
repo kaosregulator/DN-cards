@@ -41,6 +41,9 @@ const SLOTS: readonly Slot[] = [
 
 const SLOT_BY_KEY = new Map(SLOTS.map(s => [s.key, s]));
 
+// Full admin check (includes DB-added bot admins). Callers must defer before
+// calling this so the DB query can't blow Discord's 3s interaction window.
+// Uses editReply (not reply) since the interaction is already acknowledged.
 async function ensureAdmin(
   interaction: ChatInputCommandInteraction | StringSelectMenuInteraction | ChannelSelectMenuInteraction | import("discord.js").ButtonInteraction,
 ): Promise<boolean> {
@@ -48,21 +51,22 @@ async function ensureAdmin(
   if (interaction.guild.ownerId === interaction.user.id) return true;
   const perms = interaction.memberPermissions;
   if (perms?.has("Administrator")) return true;
-  return isAdmin(interaction.guild.id, interaction.user.id);
+  const ok = await isAdmin(interaction.guild.id, interaction.user.id);
+  if (!ok) {
+    await interaction.editReply({ content: "❌ You don't have permission to configure channels." }).catch(() => {});
+  }
+  return ok;
 }
 
-// ── Entry: /setchannels ───────────────────────────────────────────────────────
-// Shows a picker of channel slots. User selects one → we render a channel
-// picker → user selects a channel → we persist and confirm. Whole flow is
-// ephemeral so it doesn't clutter the channel.
+// ── Entry: /setchannels (also called from adminhub button) ────────────────────
+// Opens a new ephemeral channel-picker panel.
 export async function handleSetChannels(
   interaction: ChatInputCommandInteraction | import("discord.js").ButtonInteraction,
 ): Promise<void> {
   if (!interaction.guild) return;
-  if (!(await ensureAdmin(interaction))) {
-    await interaction.reply({ content: "❌ You don't have permission to configure channels.", flags: MessageFlags.Ephemeral });
-    return;
-  }
+  // ACK immediately with a new ephemeral message — isAdmin() is a DB call.
+  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+  if (!(await ensureAdmin(interaction))) return;
 
   const settings = await getOrCreateGuildSettings(interaction.guild.id);
   const embed = buildOverviewEmbed(settings);
@@ -77,25 +81,23 @@ export async function handleSetChannels(
       emoji: s.emoji,
     })));
 
-  await interaction.reply({
+  await interaction.editReply({
     embeds: [embed],
     components: [new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(select)],
-    flags: MessageFlags.Ephemeral,
   });
 }
 
 // ── Step 2: user picked which slot — show the channel picker ──────────────────
 export async function handleSetChannelsPick(interaction: StringSelectMenuInteraction): Promise<void> {
   if (!interaction.guild) return;
-  if (!(await ensureAdmin(interaction))) {
-    await interaction.reply({ content: "❌ You don't have permission to configure channels.", flags: MessageFlags.Ephemeral });
-    return;
-  }
+  // Defer to edit the ephemeral message in place.
+  await interaction.deferUpdate();
+  if (!(await ensureAdmin(interaction))) return;
 
   const slotKey = interaction.values[0] as SlotKey;
   const slot = SLOT_BY_KEY.get(slotKey);
   if (!slot) {
-    await interaction.reply({ content: "❌ Unknown channel slot.", flags: MessageFlags.Ephemeral });
+    await interaction.editReply({ content: "❌ Unknown channel slot.", embeds: [], components: [] });
     return;
   }
 
@@ -109,9 +111,7 @@ export async function handleSetChannelsPick(interaction: StringSelectMenuInterac
     .setTitle(`${slot.emoji} Set ${slot.label}`)
     .setDescription(`${slot.description}.\n\nChoose a channel below — you can pick any text or announcement channel in this server.`);
 
-  // update() edits the original ephemeral message in place (so the user can
-  // bounce back if they cancel and pick a different slot).
-  await interaction.update({
+  await interaction.editReply({
     embeds: [embed],
     components: [new ActionRowBuilder<ChannelSelectMenuBuilder>().addComponents(picker)],
   });
@@ -120,17 +120,16 @@ export async function handleSetChannelsPick(interaction: StringSelectMenuInterac
 // ── Step 3: user picked the actual channel — persist & confirm ────────────────
 export async function handleSetChannelsApply(interaction: ChannelSelectMenuInteraction): Promise<void> {
   if (!interaction.guild) return;
-  if (!(await ensureAdmin(interaction))) {
-    await interaction.reply({ content: "❌ You don't have permission to configure channels.", flags: MessageFlags.Ephemeral });
-    return;
-  }
+  // Defer to update the ephemeral message in place.
+  await interaction.deferUpdate();
+  if (!(await ensureAdmin(interaction))) return;
 
   // customId shape: "setchannels:set:<slot>"
   const slotKey = interaction.customId.split(":")[2] as SlotKey;
   const slot = SLOT_BY_KEY.get(slotKey);
   const channel = interaction.channels.first();
   if (!slot || !channel) {
-    await interaction.reply({ content: "❌ Couldn't read your selection — try `/adminhub` then Set Channels again.", flags: MessageFlags.Ephemeral });
+    await interaction.editReply({ content: "❌ Couldn't read your selection — try `/adminhub` then Set Channels again.", embeds: [], components: [] });
     return;
   }
 
@@ -152,7 +151,7 @@ export async function handleSetChannelsApply(interaction: ChannelSelectMenuInter
       emoji: s.emoji,
     })));
 
-  await interaction.update({
+  await interaction.editReply({
     embeds: [embed],
     components: [new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(select)],
   });
