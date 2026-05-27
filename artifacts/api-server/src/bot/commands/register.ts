@@ -173,8 +173,6 @@ export function buildCommands() {
       .addSubcommand(sc => sc.setName("stop").setDescription("Stop an active event early")
         .addIntegerOption(o => o.setName("id").setDescription("Event ID from /event list").setRequired(true).setMinValue(1)))),
 
-    // ── Card Set Management (consolidated under /setadmin) ────────────────────
-
     adminCmd("editcard", "(Admin) Edit any card — rarity, worth, image, name, etc.", s => s
       .addStringOption(o => o.setName("name").setDescription("Card to edit").setRequired(true).setAutocomplete(true))),
 
@@ -335,75 +333,6 @@ export function buildCommands() {
       .addSubcommand(sc => sc.setName("progress").setDescription("Show set-by-set completion for a member")
         .addUserOption(o => o.setName("user").setDescription("Member to inspect (defaults to you)")))),
 
-    // ── /setadmin (admin mutations on sets) ───────────────────────────────────
-    adminCmd("setadmin", "(Admin/Legacy) Set management subcommands — use /set_admin for the interactive hub", s => s
-      .addSubcommand(sc => sc.setName("create").setDescription("[Legacy — use /set_admin] Create a new set")
-        .addStringOption(o => o.setName("name").setDescription("Set name (slug-safe)").setRequired(true))
-        .addStringOption(o => o.setName("description").setDescription("Optional human description")))
-      .addSubcommand(sc => sc.setName("rename").setDescription("[Legacy — use /set_admin] Rename a set")
-        .addStringOption(o => o.setName("from").setDescription("Current name").setRequired(true).setAutocomplete(true))
-        .addStringOption(o => o.setName("to").setDescription("New name").setRequired(true)))
-      .addSubcommand(sc => sc.setName("delete").setDescription("[Legacy — use /set_admin] Delete a set (cards survive — only memberships removed)")
-        .addStringOption(o => o.setName("name").setDescription("Set name").setRequired(true).setAutocomplete(true)))
-      .addSubcommand(sc => sc.setName("add").setDescription("Add a card to a set")
-        .addStringOption(o => o.setName("set").setDescription("Set name").setRequired(true).setAutocomplete(true))
-        .addStringOption(o => o.setName("card").setDescription("Card name").setRequired(true).setAutocomplete(true)))
-      .addSubcommand(sc => sc.setName("remove").setDescription("Remove a card from a set")
-        .addStringOption(o => o.setName("set").setDescription("Set name").setRequired(true).setAutocomplete(true))
-        .addStringOption(o => o.setName("card").setDescription("Card name").setRequired(true).setAutocomplete(true)))
-      .addSubcommand(sc => sc.setName("move").setDescription("Move a card between two sets")
-        .addStringOption(o => o.setName("from").setDescription("From set").setRequired(true).setAutocomplete(true))
-        .addStringOption(o => o.setName("to").setDescription("To set").setRequired(true).setAutocomplete(true))
-        .addStringOption(o => o.setName("card").setDescription("Card name").setRequired(true).setAutocomplete(true)))
-      .addSubcommand(sc => sc.setName("bulkadd").setDescription("Add many cards at once (comma-separated)")
-        .addStringOption(o => o.setName("set").setDescription("Set name").setRequired(true).setAutocomplete(true))
-        .addStringOption(o => o.setName("cards").setDescription("Comma-separated card names").setRequired(true)))
-      .addSubcommand(sc => sc.setName("bulkremove").setDescription("Remove many cards at once (comma-separated)")
-        .addStringOption(o => o.setName("set").setDescription("Set name").setRequired(true).setAutocomplete(true))
-        .addStringOption(o => o.setName("cards").setDescription("Comma-separated card names").setRequired(true)))
-      .addSubcommand(sc => sc.setName("active").setDescription("[Legacy — use /set_admin] Make this set the active spawn pool")
-        .addStringOption(o => o.setName("set").setDescription("Set name").setRequired(true).setAutocomplete(true)))
-      .addSubcommand(sc => sc.setName("deactivate").setDescription("[Legacy — use /set_admin] Clear the active set (disables random spawns)"))
-      .addSubcommand(sc => sc.setName("view").setDescription("[Legacy — use /set_admin] View a set's full membership")
-        .addStringOption(o => o.setName("name").setDescription("Set name").setRequired(true).setAutocomplete(true)))
-      .addSubcommand(sc => sc.setName("setweight").setDescription("Override spawn weight for one rarity in this set (applies only when set is active)")
-        .addStringOption(o => o.setName("set").setDescription("Set name").setRequired(true).setAutocomplete(true))
-        .addStringOption(o => o.setName("rarity").setDescription("Built-in rarity tier").setRequired(true)
-          .addChoices(
-            { name: "Common", value: "common" }, { name: "Uncommon", value: "uncommon" },
-            { name: "Rare", value: "rare" }, { name: "Epic", value: "epic" },
-            { name: "Legendary", value: "legendary" }, { name: "Mythic", value: "mythic" },
-          ))
-        .addIntegerOption(o => o.setName("weight").setDescription("New weight (0–10000). 0 disables this tier while set is active").setRequired(true).setMinValue(0).setMaxValue(10000)))
-      .addSubcommand(sc => sc.setName("clearweight").setDescription("Clear weight override(s) on a set")
-        .addStringOption(o => o.setName("set").setDescription("Set name").setRequired(true).setAutocomplete(true))
-        .addStringOption(o => o.setName("rarity").setDescription("Specific tier to clear (omit to clear all)").setRequired(false)
-          .addChoices(
-            { name: "Common", value: "common" }, { name: "Uncommon", value: "uncommon" },
-            { name: "Rare", value: "rare" }, { name: "Epic", value: "epic" },
-            { name: "Legendary", value: "legendary" }, { name: "Mythic", value: "mythic" },
-          )))
-      .addSubcommand(sc => sc.setName("showweights").setDescription("[Legacy — use /set_admin] Show this set's rarity weight overrides")
-        .addStringOption(o => o.setName("set").setDescription("Set name").setRequired(true).setAutocomplete(true)))
-      .addSubcommand(sc => sc.setName("export").setDescription("[Legacy — use /set_admin] Export a single set as JSON")
-        .addStringOption(o => o.setName("set").setDescription("Set name").setRequired(true).setAutocomplete(true)))
-      .addSubcommand(sc => sc.setName("exportall").setDescription("[Legacy — use /set_admin] Export ALL sets as one JSON bundle")
-        .addStringOption(o => o.setName("sets").setDescription("Leave blank to export everything. Or type comma-separated names for a subset.").setRequired(false)))
-      .addSubcommand(sc => sc.setName("exportcards").setDescription("Export EVERY card as one flat JSON list (ignores sets entirely — full backup)")
-        .addBooleanOption(o => o.setName("includearchived").setDescription("Also include archived cards (default: false)").setRequired(false)))
-      .addSubcommand(sc => sc.setName("assignall").setDescription("One-click: dump every droppable unassigned card into the target set (creates it if missing)")
-        .addStringOption(o => o.setName("set").setDescription("Set name (will be created if it doesn't exist)").setRequired(true))
-        .addBooleanOption(o => o.setName("includearchived").setDescription("Also include archived cards (default: false)").setRequired(false))
-        .addBooleanOption(o => o.setName("includedroppablefalse").setDescription("Also include non-droppable cards e.g. test cards (default: false)").setRequired(false)))
-      .addSubcommand(sc => sc.setName("showcase").setDescription("[Legacy — use /set_admin] Toggle whether completing this set unlocks a dedicated achievement")
-        .addStringOption(o => o.setName("set").setDescription("Set name").setRequired(true).setAutocomplete(true))
-        .addBooleanOption(o => o.setName("enabled").setDescription("On = completing the set grants the showcase achievement").setRequired(true)))
-      .addSubcommand(sc => sc.setName("load").setDescription("Import cards from a JSON file (use /set_admin Import button for URL-based import)")
-        .addAttachmentOption(o => o.setName("file").setDescription("A `.json` export to import — attaches cards to a set").setRequired(true))
-        .addStringOption(o => o.setName("name").setDescription("Optional set name override (ignored for multi-set bundles)").setRequired(false)))
-      .addSubcommand(sc => sc.setName("unload").setDescription("Nuke every card in a set and all its memberships (destructive)")
-        .addStringOption(o => o.setName("set").setDescription("Set name to nuke").setRequired(true).setAutocomplete(true)))
-      .addSubcommand(sc => sc.setName("listloaded").setDescription("[Legacy — use /set_admin] List all sets with card counts"))),
   ];
 }
 
@@ -417,5 +346,4 @@ export const USER_COMMAND_NAMES = new Set([
 export const ADMIN_COMMAND_NAMES = new Set([
   "config", "adminhub", "sethub", "set_admin", "welcomeadmin", "adminhelp", "drop", "massdrop", "give", "giveshards", "takeback", "takeshards", "event", "dashboard", "setup",
   "editcard", "rarityname", "rarity", "embed",
-  "setadmin",
 ]);

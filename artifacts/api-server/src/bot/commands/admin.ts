@@ -50,7 +50,6 @@ async function handleAdminHelp(interaction: ChatInputCommandInteraction): Promis
         name: "🃏 Card Management",
         value:
           "`/editcard name:<card>` — interactive panel (autocomplete!)\n" +
-          "`/setadmin exportcards` · `/setadmin assignall set:<name>` — bulk set ops\n" +
           "`<prefix>addcard` · `<prefix>addlimited` · `<prefix>addevent` — guided wizards\n" +
           "`<prefix>removecard <Name>` · `<prefix>import` — bulk import from JSON",
       },
@@ -71,22 +70,11 @@ async function handleAdminHelp(interaction: ChatInputCommandInteraction): Promis
           "*Activations/stops are announced in the spawn channel.*",
       },
       {
-        name: "🗂️ Card Sets — CRUD *(slash — /setadmin)*",
+        name: "🗂️ Card Sets *(slash — /set_admin)*",
         value:
-          "`/setadmin create name:<…>` · `/setadmin rename set:<…> name:<…>` · `/setadmin delete set:<…>`\n" +
-          "`/setadmin add set:<…> card:<…>` · `/setadmin remove set:<…> card:<…>` · `/setadmin move card:<…> to:<…>`\n" +
-          "`/setadmin bulkadd set:<…> cards:<a,b,…>` · `/setadmin bulkremove set:<…> cards:<a,b,…>`\n" +
-          "`/setadmin active set:<…>` — set spawn pool · `/setadmin deactivate` — stop random spawns\n" +
-          "`/setadmin view set:<…>` · `/setadmin listloaded`",
-      },
-      {
-        name: "🗂️ Card Sets — Import/Export & Weights",
-        value:
-          "`/setadmin load file:<.json>` — upload from JSON\n" +
-          "`/setadmin export set:<…>` · `/setadmin exportall [sets:<a,b>]`\n" +
-          "`/setadmin unload set:<name>` — destructive (deletes cards!)\n" +
-          "`/setadmin setweight set:<…> rarity:<…> weight:<n>` · `/setadmin clearweight` · `/setadmin showweights`\n" +
-          "`/setadmin showcase set:<…> awards:<true|false>` — toggle set-completion achievement\n" +
+          "`/set_admin` — interactive hub: create, rename, delete, set active/deactivate\n" +
+          "Add/remove cards, bulk add/remove, Assign All unassigned cards in one click\n" +
+          "Export single set or all sets · Import from URL · Rarity weights per set\n" +
           "*Built-in starter roster is opt-in via the `/setup` panel.*",
       },
       {
@@ -243,13 +231,6 @@ export async function handleAdminCommand(
   if (cmd === "welcomeadmin") {
     const { handleWelcomeAdmin } = await import("./welcome.js");
     await handleWelcomeAdmin(interaction);
-    return;
-  }
-
-  // ── /setadmin (sets CRUD + active selection) ─────────────────────────────
-  if (cmd === "setadmin") {
-    const { handleSetAdminCommand } = await import("./sets-admin.js");
-    await handleSetAdminCommand(interaction);
     return;
   }
 

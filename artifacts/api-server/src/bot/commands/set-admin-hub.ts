@@ -10,15 +10,16 @@ import {
   deleteSetById, setActiveSet, clearActiveSet, getActiveSet,
   setSetAwardsCompletion, invalidateActiveSetCardsCache,
   patchSetRarityWeight, setSetRarityWeights,
+  addCardToSet, removeCardFromSet,
+  bulkAddCardsToSet, bulkRemoveCardsFromSet,
+  getUnassignedCards,
 } from "../db.js";
 import { buildSingleSetPayload } from "./sets-admin.js";
 import { isHomeGuild, GLOBAL_ONLY_MSG } from "../home-guild.js";
 import { RARITY_EMOJI, type Rarity } from "../cards-data.js";
 
 // ── Rarity weight options for the weights sub-panel ──────────────────────────
-// Mirrors config-panel: omit legendary/mythic from the selects
-// (those can be set via `/setadmin setweight`).
-const WEIGHT_RARITIES: Rarity[] = ["common", "uncommon", "rare", "epic"];
+const WEIGHT_RARITIES: Rarity[] = ["common", "uncommon", "rare", "epic", "legendary", "mythic"];
 
 const SET_WEIGHT_OPTIONS: Record<Rarity, (number | null)[]> = {
   common:    [null, 80, 70, 60, 50, 40, 30, 20, 10, 5],
@@ -126,6 +127,36 @@ function buildContextualRow1(setId: number, showcaseOn: boolean) {
 function buildContextualRow2(setId: number) {
   return new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder()
+      .setCustomId(`setadminhub:addcard:${setId}`)
+      .setLabel("Add Card")
+      .setEmoji("➕")
+      .setStyle(ButtonStyle.Success),
+    new ButtonBuilder()
+      .setCustomId(`setadminhub:removecard:${setId}`)
+      .setLabel("Remove Card")
+      .setEmoji("➖")
+      .setStyle(ButtonStyle.Danger),
+    new ButtonBuilder()
+      .setCustomId(`setadminhub:bulkadd:${setId}`)
+      .setLabel("Bulk Add")
+      .setEmoji("📋")
+      .setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder()
+      .setCustomId(`setadminhub:bulkremove:${setId}`)
+      .setLabel("Bulk Remove")
+      .setEmoji("🗂️")
+      .setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder()
+      .setCustomId(`setadminhub:assignall:${setId}`)
+      .setLabel("Assign All")
+      .setEmoji("⚡")
+      .setStyle(ButtonStyle.Secondary),
+  );
+}
+
+function buildContextualRow3(setId: number) {
+  return new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder()
       .setCustomId(`setadminhub:export:${setId}`)
       .setLabel("Export")
       .setEmoji("📤")
@@ -177,6 +208,7 @@ async function buildPanelPayload(guildId: string, selectedSetId?: number) {
     const showcaseOn = selectedEntry?.set.awardsCompletion ?? false;
     components.push(buildContextualRow1(selectedSetId, showcaseOn));
     components.push(buildContextualRow2(selectedSetId));
+    components.push(buildContextualRow3(selectedSetId));
   }
 
   components.push(buildGlobalRow());
@@ -240,7 +272,7 @@ function buildWeightsEmbed(
     .setColor(isActive ? 0x57f287 : 0x5865f2)
     .setDescription(
       lines.join("\n") +
-      "\n\n*Legendary & Mythic can be set via `/setadmin setweight`. Changes here are instant.*" +
+      "\n\n*Changes here are instant.*" +
       (isActive
         ? "\n🟢 **This set is active — overrides are live.**"
         : "\n⚠️ Activate this set for these overrides to take effect."),
@@ -423,6 +455,54 @@ export async function handleSetAdminHubButton(interaction: ButtonInteraction): P
     return;
   }
 
+  if ((action === "addcard" || action === "removecard") && setId !== undefined) {
+    if (!isHomeGuild(guildId)) {
+      await interaction.reply({ content: GLOBAL_ONLY_MSG, flags: MessageFlags.Ephemeral });
+      return;
+    }
+    const isAdd = action === "addcard";
+    const modal = new ModalBuilder()
+      .setCustomId(`setadminhub:modal:${action}:${setId}`)
+      .setTitle(isAdd ? "Add Card to Set" : "Remove Card from Set")
+      .addComponents(
+        new ActionRowBuilder<TextInputBuilder>().addComponents(
+          new TextInputBuilder()
+            .setCustomId("setadminhub:cardname")
+            .setLabel("Card Name")
+            .setStyle(TextInputStyle.Short)
+            .setPlaceholder("Exact card name, e.g. F-22 Raptor")
+            .setRequired(true)
+            .setMaxLength(100),
+        ),
+      );
+    await interaction.showModal(modal);
+    return;
+  }
+
+  if ((action === "bulkadd" || action === "bulkremove") && setId !== undefined) {
+    if (!isHomeGuild(guildId)) {
+      await interaction.reply({ content: GLOBAL_ONLY_MSG, flags: MessageFlags.Ephemeral });
+      return;
+    }
+    const isAdd = action === "bulkadd";
+    const modal = new ModalBuilder()
+      .setCustomId(`setadminhub:modal:${action}:${setId}`)
+      .setTitle(isAdd ? "Bulk Add Cards to Set" : "Bulk Remove Cards from Set")
+      .addComponents(
+        new ActionRowBuilder<TextInputBuilder>().addComponents(
+          new TextInputBuilder()
+            .setCustomId("setadminhub:cardlist")
+            .setLabel("Card Names (comma-separated)")
+            .setStyle(TextInputStyle.Paragraph)
+            .setPlaceholder("F-22 Raptor, USS Nimitz, M1 Abrams")
+            .setRequired(true)
+            .setMaxLength(2000),
+        ),
+      );
+    await interaction.showModal(modal);
+    return;
+  }
+
   if (action === "import") {
     if (!isHomeGuild(guildId)) {
       await interaction.reply({ content: GLOBAL_ONLY_MSG, flags: MessageFlags.Ephemeral });
@@ -451,6 +531,33 @@ export async function handleSetAdminHubButton(interaction: ButtonInteraction): P
         ),
       );
     await interaction.showModal(modal);
+    return;
+  }
+
+  // ── Assign All: defer as followUp (can't editReply during deferUpdate with file) ─
+  if (action === "assignall" && setId !== undefined) {
+    if (!isHomeGuild(guildId)) {
+      await interaction.reply({ content: GLOBAL_ONLY_MSG, flags: MessageFlags.Ephemeral });
+      return;
+    }
+    await interaction.deferUpdate();
+    if (!await ensureAdmin(interaction)) return;
+    const [allUnassigned, alreadyInSet] = await Promise.all([getUnassignedCards(), getCardsInSet(setId)]);
+    const alreadyIds = new Set(alreadyInSet.map(c => c.id));
+    const droppable = allUnassigned.filter(c => !alreadyIds.has(c.id) && c.droppable && !c.isArchived);
+    if (droppable.length === 0) {
+      await interaction.followUp({ content: "✅ All droppable cards are already in this set.", flags: MessageFlags.Ephemeral });
+      return;
+    }
+    const names = droppable.map(c => c.name);
+    const { added } = await bulkAddCardsToSet(setId, names);
+    await invalidateActiveSetCardsCache(guildId);
+    const payload = await buildPanelPayload(guildId, setId);
+    await interaction.editReply(payload);
+    await interaction.followUp({
+      content: `⚡ Added **${added}** unassigned droppable card${added === 1 ? "" : "s"} to this set.`,
+      flags: MessageFlags.Ephemeral,
+    });
     return;
   }
 
@@ -508,7 +615,7 @@ export async function handleSetAdminHubButton(interaction: ButtonInteraction): P
       { name: "all-sets.json" },
     );
     await interaction.followUp({
-      content: `📦 Exported **${all.length}** set${all.length === 1 ? "" : "s"} (${totalCards} card${totalCards === 1 ? "" : "s"} total). Re-import with \`/setadmin load file:<this.json>\`.`,
+      content: `📦 Exported **${all.length}** set${all.length === 1 ? "" : "s"} (${totalCards} card${totalCards === 1 ? "" : "s"} total). Re-import with the **Import** button in /set_admin.`,
       files: [file],
       flags: MessageFlags.Ephemeral,
     });
@@ -537,7 +644,7 @@ export async function handleSetAdminHubButton(interaction: ButtonInteraction): P
     await interaction.editReply(payload);
     const entry = sets.find(s => s.set.id === setId);
     if (entry) {
-      const warn = entry.cardCount === 0 ? " ⚠️ No droppable cards in this set yet — add some with `/setadmin add`." : "";
+      const warn = entry.cardCount === 0 ? " ⚠️ No droppable cards in this set yet — use **Add Card** or **Bulk Add** in the hub." : "";
       await interaction.followUp({ content: `🟢 **${entry.set.name}** is now the active spawn pool.${warn}`, flags: MessageFlags.Ephemeral });
     }
     return;
@@ -604,7 +711,7 @@ export async function handleSetAdminHubButton(interaction: ButtonInteraction): P
     const safeName = entry.set.name.replace(/[^a-z0-9_-]/gi, "_").toLowerCase();
     const file = new AttachmentBuilder(Buffer.from(payload, "utf8"), { name: `${safeName}.json` });
     await interaction.followUp({
-      content: `📤 Exported **${entry.set.name}** (${cards.length} card${cards.length === 1 ? "" : "s"}). Re-import with \`/setadmin load file:<this.json>\`.`,
+      content: `📤 Exported **${entry.set.name}** (${cards.length} card${cards.length === 1 ? "" : "s"}). Re-import with the **Import** button in /set_admin.`,
       files: [file],
       flags: MessageFlags.Ephemeral,
     });
@@ -617,7 +724,7 @@ export async function handleSetAdminHubButton(interaction: ButtonInteraction): P
     const entry = sets.find(s => s.set.id === setId);
     if (!entry) return;
     if (cards.length === 0) {
-      await interaction.followUp({ content: "📭 No cards in this set yet. Add some with `/setadmin add`.", flags: MessageFlags.Ephemeral });
+      await interaction.followUp({ content: "📭 No cards in this set yet. Use **Add Card** or **Bulk Add** from the hub.", flags: MessageFlags.Ephemeral });
       return;
     }
     const totalPages = Math.max(1, Math.ceil(cards.length / VIEW_CARDS_PAGE_SIZE));
@@ -688,7 +795,7 @@ export async function handleSetAdminHubModal(interaction: ModalSubmitInteraction
       const payload = await buildPanelPayload(guildId, set.id);
       await interaction.editReply(payload);
       await interaction.followUp({
-        content: `✅ Created set **${set.name}**. Add cards with \`/setadmin add set:${set.name} card:<Name>\` or \`/setadmin bulkadd\`.`,
+        content: `✅ Created set **${set.name}**. Select it from the dropdown and use **Add Card** or **Bulk Add** to fill it.`,
         flags: MessageFlags.Ephemeral,
       });
     } catch (err: any) {
@@ -725,6 +832,104 @@ export async function handleSetAdminHubModal(interaction: ModalSubmitInteraction
     } catch (err: any) {
       await interaction.followUp({ content: `❌ ${err?.message ?? "Rename failed."}`, flags: MessageFlags.Ephemeral });
     }
+    return;
+  }
+
+  // ── Add Card ──────────────────────────────────────────────────────────────
+  if (action === "addcard") {
+    const setId = parseInt(parts[3]!, 10);
+    if (!isHomeGuild(guildId)) {
+      await interaction.followUp({ content: GLOBAL_ONLY_MSG, flags: MessageFlags.Ephemeral });
+      return;
+    }
+    const cardName = interaction.fields.getTextInputValue("setadminhub:cardname").trim();
+    const { getCardByName } = await import("../db.js");
+    const card = await getCardByName(cardName);
+    if (!card) {
+      await interaction.followUp({ content: `❌ No card named **${cardName}** found. Check the spelling.`, flags: MessageFlags.Ephemeral });
+      return;
+    }
+    const { added } = await addCardToSet(setId, card.id);
+    await invalidateActiveSetCardsCache(guildId);
+    const payload = await buildPanelPayload(guildId, setId);
+    await interaction.editReply(payload);
+    await interaction.followUp({
+      content: added ? `✅ Added **${card.name}** to this set.` : `ℹ️ **${card.name}** is already in this set.`,
+      flags: MessageFlags.Ephemeral,
+    });
+    return;
+  }
+
+  // ── Remove Card ───────────────────────────────────────────────────────────
+  if (action === "removecard") {
+    const setId = parseInt(parts[3]!, 10);
+    if (!isHomeGuild(guildId)) {
+      await interaction.followUp({ content: GLOBAL_ONLY_MSG, flags: MessageFlags.Ephemeral });
+      return;
+    }
+    const cardName = interaction.fields.getTextInputValue("setadminhub:cardname").trim();
+    const { getCardByName } = await import("../db.js");
+    const card = await getCardByName(cardName);
+    if (!card) {
+      await interaction.followUp({ content: `❌ No card named **${cardName}** found. Check the spelling.`, flags: MessageFlags.Ephemeral });
+      return;
+    }
+    const { removed } = await removeCardFromSet(setId, card.id);
+    await invalidateActiveSetCardsCache(guildId);
+    const payload = await buildPanelPayload(guildId, setId);
+    await interaction.editReply(payload);
+    await interaction.followUp({
+      content: removed ? `✅ Removed **${card.name}** from this set.` : `ℹ️ **${card.name}** wasn't in this set.`,
+      flags: MessageFlags.Ephemeral,
+    });
+    return;
+  }
+
+  // ── Bulk Add ──────────────────────────────────────────────────────────────
+  if (action === "bulkadd") {
+    const setId = parseInt(parts[3]!, 10);
+    if (!isHomeGuild(guildId)) {
+      await interaction.followUp({ content: GLOBAL_ONLY_MSG, flags: MessageFlags.Ephemeral });
+      return;
+    }
+    const raw = interaction.fields.getTextInputValue("setadminhub:cardlist");
+    const names = raw.split(/[,\n]+/).map(s => s.trim()).filter(s => s.length > 0);
+    if (names.length === 0) {
+      await interaction.followUp({ content: "❌ No card names provided.", flags: MessageFlags.Ephemeral });
+      return;
+    }
+    const { added, alreadyIn, notFound } = await bulkAddCardsToSet(setId, names);
+    await invalidateActiveSetCardsCache(guildId);
+    const payload = await buildPanelPayload(guildId, setId);
+    await interaction.editReply(payload);
+    const parts2: string[] = [`✅ Added **${added}** card${added === 1 ? "" : "s"}.`];
+    if (alreadyIn > 0) parts2.push(`ℹ️ **${alreadyIn}** already in set.`);
+    if (notFound.length > 0) parts2.push(`❌ Not found: ${notFound.map(n => `\`${n}\``).join(", ")}`);
+    await interaction.followUp({ content: parts2.join(" "), flags: MessageFlags.Ephemeral });
+    return;
+  }
+
+  // ── Bulk Remove ───────────────────────────────────────────────────────────
+  if (action === "bulkremove") {
+    const setId = parseInt(parts[3]!, 10);
+    if (!isHomeGuild(guildId)) {
+      await interaction.followUp({ content: GLOBAL_ONLY_MSG, flags: MessageFlags.Ephemeral });
+      return;
+    }
+    const raw = interaction.fields.getTextInputValue("setadminhub:cardlist");
+    const names = raw.split(/[,\n]+/).map(s => s.trim()).filter(s => s.length > 0);
+    if (names.length === 0) {
+      await interaction.followUp({ content: "❌ No card names provided.", flags: MessageFlags.Ephemeral });
+      return;
+    }
+    const { removed, notInSet, notFound } = await bulkRemoveCardsFromSet(setId, names);
+    await invalidateActiveSetCardsCache(guildId);
+    const payload = await buildPanelPayload(guildId, setId);
+    await interaction.editReply(payload);
+    const parts2: string[] = [`✅ Removed **${removed}** card${removed === 1 ? "" : "s"}.`];
+    if (notInSet > 0) parts2.push(`ℹ️ **${notInSet}** weren't in set.`);
+    if (notFound.length > 0) parts2.push(`❌ Not found: ${notFound.map(n => `\`${n}\``).join(", ")}`);
+    await interaction.followUp({ content: parts2.join(" "), flags: MessageFlags.Ephemeral });
     return;
   }
 
