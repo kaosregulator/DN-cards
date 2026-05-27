@@ -335,6 +335,47 @@ export function buildCommands() {
 
     // ── Dashboard ─────────────────────────────────────────────────────────────
     adminCmd("dashboard", "(Admin) Get a one-time link to set up or reset your web dashboard login", s => s),
+
+    // ── /sets (user, read-only) ───────────────────────────────────────────────
+    cmd("sets", "(User) Browse card sets and your collection progress", s => s
+      .addSubcommand(sc => sc.setName("list").setDescription("List every card set on this server"))
+      .addSubcommand(sc => sc.setName("active").setDescription("Show the set that random spawns currently pull from"))
+      .addSubcommand(sc => sc.setName("view").setDescription("Show every card in a set")
+        .addStringOption(o => o.setName("name").setDescription("Set name").setRequired(true).setAutocomplete(true)))
+      .addSubcommand(sc => sc.setName("progress").setDescription("Show set-by-set completion for a member")
+        .addUserOption(o => o.setName("user").setDescription("Member to inspect (defaults to you)")))),
+
+    // ── /setadmin (admin mutations on sets) ───────────────────────────────────
+    adminCmd("setadmin", "(Admin) Manage card sets — create, edit membership, choose the active spawn set", s => s
+      .addSubcommand(sc => sc.setName("create").setDescription("Create a new set")
+        .addStringOption(o => o.setName("name").setDescription("Set name (slug-safe)").setRequired(true))
+        .addStringOption(o => o.setName("description").setDescription("Optional human description")))
+      .addSubcommand(sc => sc.setName("rename").setDescription("Rename a set")
+        .addStringOption(o => o.setName("from").setDescription("Current name").setRequired(true).setAutocomplete(true))
+        .addStringOption(o => o.setName("to").setDescription("New name").setRequired(true)))
+      .addSubcommand(sc => sc.setName("delete").setDescription("Delete a set (cards survive — only memberships removed)")
+        .addStringOption(o => o.setName("name").setDescription("Set name").setRequired(true).setAutocomplete(true)))
+      .addSubcommand(sc => sc.setName("add").setDescription("Add a card to a set")
+        .addStringOption(o => o.setName("set").setDescription("Set name").setRequired(true).setAutocomplete(true))
+        .addStringOption(o => o.setName("card").setDescription("Card name").setRequired(true).setAutocomplete(true)))
+      .addSubcommand(sc => sc.setName("remove").setDescription("Remove a card from a set")
+        .addStringOption(o => o.setName("set").setDescription("Set name").setRequired(true).setAutocomplete(true))
+        .addStringOption(o => o.setName("card").setDescription("Card name").setRequired(true).setAutocomplete(true)))
+      .addSubcommand(sc => sc.setName("move").setDescription("Move a card between two sets")
+        .addStringOption(o => o.setName("from").setDescription("From set").setRequired(true).setAutocomplete(true))
+        .addStringOption(o => o.setName("to").setDescription("To set").setRequired(true).setAutocomplete(true))
+        .addStringOption(o => o.setName("card").setDescription("Card name").setRequired(true).setAutocomplete(true)))
+      .addSubcommand(sc => sc.setName("bulkadd").setDescription("Add many cards at once (comma-separated)")
+        .addStringOption(o => o.setName("set").setDescription("Set name").setRequired(true).setAutocomplete(true))
+        .addStringOption(o => o.setName("cards").setDescription("Comma-separated card names").setRequired(true)))
+      .addSubcommand(sc => sc.setName("bulkremove").setDescription("Remove many cards at once (comma-separated)")
+        .addStringOption(o => o.setName("set").setDescription("Set name").setRequired(true).setAutocomplete(true))
+        .addStringOption(o => o.setName("cards").setDescription("Comma-separated card names").setRequired(true)))
+      .addSubcommand(sc => sc.setName("active").setDescription("Make this set the active spawn pool for the server")
+        .addStringOption(o => o.setName("set").setDescription("Set name").setRequired(true).setAutocomplete(true)))
+      .addSubcommand(sc => sc.setName("deactivate").setDescription("Clear the active set (disables random spawns)"))
+      .addSubcommand(sc => sc.setName("view").setDescription("View a set's full membership")
+        .addStringOption(o => o.setName("name").setDescription("Set name").setRequired(true).setAutocomplete(true)))),
   ];
 }
 
@@ -342,11 +383,13 @@ export const USER_COMMAND_NAMES = new Set([
   "collection", "rank", "info", "list", "catalog", "top",
   "burn", "shards", "trade", "trades", "accept", "decline", "help", "welcome",
   "daily", "pack", "packstats", "achievements", "wishlist", "gift", "tradein", "tradehistory",
+  "sets",
 ]);
 
 export const ADMIN_COMMAND_NAMES = new Set([
   "config", "adminhub", "adminhelp", "drop", "massdrop", "give", "giveshards", "takeback", "takeshards", "event", "setchannels", "dashboard", "setup",
   "addadmin", "removeadmin", "listadmins", "editcard", "rarityname", "rarity", "embed",
+  "setadmin",
 ]);
 
 export const CARDSET_COMMAND_NAMES = new Set([

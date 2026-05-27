@@ -15,6 +15,7 @@ import {
   getActiveEventBoosts,
   getRarityContext,
   applyRarityContext,
+  getActiveSetSpawnPoolCached,
 } from "./db.js";
 import {
   RARITY_COLORS, RARITY_EMOJI, RARITY_LABELS, TYPE_EMOJI, getTypeEmoji,
@@ -167,10 +168,18 @@ async function doSingleSpawn(guildId: string, forcedCardId?: number, isForced = 
       return;
     }
   } else {
+    // Sets-driven spawn pool (Phases 1-3): random spawns now pull EXCLUSIVELY
+    // from the guild's active set. No active set → no random spawns (Option B).
+    // Admin `/drop name:<X>` and `/give` bypass this by setting forcedCardId.
+    const spawnPool = await getActiveSetSpawnPoolCached(guildId);
+    if (spawnPool.length === 0) {
+      logger.debug({ guildId }, "No active set or active set is empty — skipping random spawn");
+      return;
+    }
     const rarityWeights = getGuildRarityWeights(settings);
     const eventBoosts = await getActiveEventBoosts(guildId);
     const ctx = await getRarityContext(guildId);
-    card = await pickRandomCard(rarityWeights, eventBoosts, ctx);
+    card = await pickRandomCard(rarityWeights, eventBoosts, ctx, spawnPool);
   }
   if (!card) return;
 

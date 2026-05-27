@@ -1,5 +1,5 @@
 import type { AutocompleteInteraction } from "discord.js";
-import { getAllCards, listSets, getUserCollection, getUserWishlist } from "../db.js";
+import { getAllCards, listSets, listSetsV2, getUserCollection, getUserWishlist } from "../db.js";
 import { RARITY_EMOJI, type Rarity } from "../cards-data.js";
 
 const MAX_CHOICES = 25;
@@ -59,6 +59,26 @@ export async function handleAutocomplete(interaction: AutocompleteInteraction): 
         .sort((a, b) => b.cardCount - a.cardCount)
         .slice(0, MAX_CHOICES)
         .map(s => ({ name: `${s.setName} (${s.cardCount} cards)`.slice(0, 100), value: s.setName.slice(0, 100) }));
+      await interaction.respond(matches);
+      return;
+    }
+
+    // ── Set-name autocomplete for /setadmin + /sets ─────────────────────────
+    // Any string option named `set`, `from`, `to`, or `name` on these two
+    // commands resolves to a set picker (except /setadmin create, which takes
+    // a new name — but that's not autocompleted so it won't reach here).
+    if ((cmd === "setadmin" || cmd === "sets")
+        && ["set", "from", "to", "name"].includes(focused.name)) {
+      const sets = await listSetsV2();
+      const q = query.toLowerCase().trim();
+      const matches = sets
+        .filter(s => !q || s.set.name.toLowerCase().includes(q))
+        .sort((a, b) => b.cardCount - a.cardCount || a.set.name.localeCompare(b.set.name))
+        .slice(0, MAX_CHOICES)
+        .map(s => ({
+          name: `${s.set.name} (${s.cardCount} card${s.cardCount === 1 ? "" : "s"})`.slice(0, 100),
+          value: s.set.name.slice(0, 100),
+        }));
       await interaction.respond(matches);
       return;
     }

@@ -245,6 +245,13 @@ export async function handleAdminCommand(
     return;
   }
 
+  // ── /setadmin (sets CRUD + active selection) ─────────────────────────────
+  if (cmd === "setadmin") {
+    const { handleSetAdminCommand } = await import("./sets-admin.js");
+    await handleSetAdminCommand(interaction);
+    return;
+  }
+
   // ── /drop ─────────────────────────────────────────────────────────────────
   if (cmd === "drop") {
     const cardName = opts.getString("name");
@@ -280,7 +287,13 @@ export async function handleAdminCommand(
       await interaction.editReply(`❌ No spawn channel set. Run \`${pfx}setchannel #channel\` first.`);
       return;
     }
-    const allCards = await getAllCards();
+    // /massdrop respects the guild's active set so chaotic batches don't
+    // dump cards that aren't part of the current rotation. If no active
+    // set is selected we fall back to the global droppable pool so admins
+    // can still run the command for testing.
+    const { getActiveSetSpawnPoolCached } = await import("../db.js");
+    const activePool = await getActiveSetSpawnPoolCached(guildId);
+    const allCards = activePool.length > 0 ? activePool : await getAllCards();
     const pool = allCards.filter(c => c.droppable && !c.isArchived && (!c.maxCopies || c.totalMinted < c.maxCopies));
     const byRarity: Record<Rarity, typeof pool> = { common: [], uncommon: [], rare: [], epic: [], legendary: [], mythic: [] };
     for (const c of pool) byRarity[c.rarity as Rarity].push(c);

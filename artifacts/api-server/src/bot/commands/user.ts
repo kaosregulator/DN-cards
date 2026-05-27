@@ -2,7 +2,7 @@ import type { ChatInputCommandInteraction } from "discord.js";
 import { EmbedBuilder, MessageFlags } from "discord.js";
 
 // Commands whose results are personal/spammy and should only be seen by the user.
-const EPHEMERAL_COMMANDS = new Set(["burn", "shards", "trades", "tradehistory", "help", "daily", "achievements", "pack", "packstats", "wishlist", "gift", "tradein"]);
+const EPHEMERAL_COMMANDS = new Set(["burn", "shards", "trades", "tradehistory", "help", "daily", "achievements", "pack", "packstats", "wishlist", "gift", "tradein", "sets"]);
 import {
   getUserCollection, getAllCards, getLeaderboard, getTopPackOpeners,
   getOrCreateCurrency, burnCard, getCardByName, getUserCardCount, getUserOwnedCount,
@@ -342,6 +342,26 @@ export async function handleUserCommand(
       );
     if (card.maxCopies) embed.addFields({ name: "📦 Copies", value: `${card.totalMinted} / ${card.maxCopies}`, inline: true });
     if (badges.length > 0) embed.addFields({ name: "Special", value: badges.join(" · "), inline: false });
+
+    // Active-set badge: tell the user whether this card is currently in the
+    // rotation that random spawns pull from. If no active set is selected,
+    // surface that too so the dropChance number isn't misleading.
+    try {
+      const { getActiveSet, isCardInSet } = await import("../db.js");
+      const active = await getActiveSet(guildId);
+      if (!active) {
+        embed.addFields({ name: "📦 Active Set", value: "_None selected — random spawns are disabled._", inline: false });
+      } else {
+        const inSet = await isCardInSet(active.id, card.id);
+        embed.addFields({
+          name: "📦 Active Set",
+          value: inSet
+            ? `✅ In \`${active.name}\` — can spawn randomly.`
+            : `⚠️ Not in \`${active.name}\` — admin-drop only until added.`,
+          inline: false,
+        });
+      }
+    } catch { /* non-fatal — skip badge */ }
     { const img = toAbsoluteImageUrl(card.imageUrl); if (img) embed.setImage(img); }
     await interaction.editReply({ embeds: [embed] });
     return;
@@ -827,6 +847,13 @@ export async function handleUserCommand(
   // /welcome posts publicly (no flags) so it can be used as a server welcome
   // message — we still deferReply'd above without ephemeral flag.
   if (sub === "welcome") { await handleWelcome(interaction); return; }
+
+  // ── /sets (read-only set browser) ─────────────────────────────────────────
+  if (sub === "sets") {
+    const { handleSetsUserCommand } = await import("./sets-user.js");
+    await handleSetsUserCommand(interaction);
+    return;
+  }
   if (sub === "achievements") { await handleAchievementsCommand(interaction); return; }
 
   // ── /help (player commands only — admins use /adminhelp) ─────────────────────

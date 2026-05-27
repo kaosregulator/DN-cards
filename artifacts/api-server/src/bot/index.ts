@@ -82,6 +82,15 @@ export async function startBot() {
     // ("Load Defaults" button) or `/loadset defaults:true`. Keeps fresh
     // servers free to load only their own custom roster.
     await initAllGuilds(client);
+    // Boot-time migration: ensure every legacy `cards.set_name` exists as a
+    // first-class `sets` row + membership rows. Idempotent — safe to call
+    // every boot. Done after initAllGuilds so the cards table is settled.
+    try {
+      const { backfillSetsFromLegacy } = await import("./db.js");
+      await backfillSetsFromLegacy();
+    } catch (err) {
+      logger.warn({ err }, "backfillSetsFromLegacy failed (non-fatal)");
+    }
     await registerCommands(c.user.id, token, client);
   });
 

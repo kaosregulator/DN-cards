@@ -101,7 +101,8 @@ export async function handleUnloadSet(interaction: ChatInputCommandInteraction):
     return;
   }
   await interaction.editReply(
-    `✅ Unloaded set \`${setName}\` — removed **${removed}** cards and cleared related collections/trades/spawn history.`,
+    `✅ Unloaded set \`${setName}\` — removed **${removed}** cards and cleared related collections/trades/spawn history.\n` +
+    `_Heads-up: \`/unloadset\` is the destructive legacy version. To delete a set without nuking the cards (and just clear memberships), use \`/setadmin delete name:${setName}\`._`,
   );
 }
 

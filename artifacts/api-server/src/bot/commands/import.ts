@@ -1,7 +1,7 @@
 import type { Message } from "discord.js";
 import { promises as fs } from "node:fs";
 import path from "node:path";
-import { addCard, getCardByName } from "../db.js";
+import { addCard, getCardByName, createSet, addCardToSet } from "../db.js";
 import { RARITY_WEIGHTS, type Rarity } from "../cards-data.js";
 import { logger } from "../../lib/logger.js";
 
@@ -27,11 +27,20 @@ export async function importCardsFromJson(
   let created = 0, skipped = 0, failed = 0;
   const errors: string[] = [];
 
+  // Ensure a first-class set row exists (Phase 1-3). createSet is idempotent
+  // — re-importing the same JSON or running /loadset twice just yields the
+  // same set. Every card (new and existing) gets a membership row so the
+  // set's contents stay accurate even when most cards skip as duplicates.
+  const set = await createSet(setName);
+
   for (const raw of cards) {
     if (!raw.name) { failed++; continue; }
     try {
       const existing = await getCardByName(raw.name);
-      if (existing) { skipped++; continue; }
+      if (existing) {
+        await addCardToSet(set.id, existing.id);
+        skipped++; continue;
+      }
 
       const rarity = mapRarity(raw.rarity);
       const burnMatch = raw.description?.match(/burn value:\s*(\d+)/i);
@@ -39,7 +48,7 @@ export async function importCardsFromJson(
       const burn = sourceBurn ?? defaultBurn(rarity);
       const worth = burn * 2;
 
-      await addCard({
+      const newCard = await addCard({
         name: raw.name,
         description: cleanDescription(raw.description),
         rarity,
@@ -51,6 +60,7 @@ export async function importCardsFromJson(
         droppable: true,
         setName,
       });
+      if (newCard?.id) await addCardToSet(set.id, newCard.id);
       created++;
     } catch (err: any) {
       failed++;

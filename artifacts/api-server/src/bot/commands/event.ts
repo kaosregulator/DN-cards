@@ -92,6 +92,20 @@ export async function handleEventCommand(
       return;
     }
 
+    // Warn (but don't block) if the card isn't in the active spawn set —
+    // the boost will silently no-op because random spawns only pull from
+    // active-set members.
+    let setWarning = "";
+    try {
+      const { getActiveSet, isCardInSet } = await import("../db.js");
+      const active = await getActiveSet(guildId);
+      if (!active) {
+        setWarning = `\n⚠️ **No active set is selected**, so random spawns are disabled and this event will have no effect until you set one with \`/setadmin active\`.`;
+      } else if (!(await isCardInSet(active.id, card.id))) {
+        setWarning = `\n⚠️ **${card.name}** isn't in the active set \`${active.name}\`, so the boost won't fire on random spawns. Add it with \`/setadmin add set:${active.name} card:${card.name}\`.`;
+      }
+    } catch { /* non-fatal — skip warn */ }
+
     const endsAt = new Date(Date.now() + ms);
     const event = await createCardEvent({
       guildId, cardId: card.id, weightMultiplier: multiplier,
@@ -102,7 +116,7 @@ export async function handleEventCommand(
     await interaction.editReply(
       `✅ Started event **#${event.id}** — ${RARITY_EMOJI[r]} **${card.name}** spawns at ` +
       `**${multiplier.toFixed(1)}×** weight for **${formatRemaining(ms)}** ` +
-      `(ends <t:${Math.floor(endsAt.getTime() / 1000)}:R>).`,
+      `(ends <t:${Math.floor(endsAt.getTime() / 1000)}:R>).` + setWarning,
     );
 
     await announce(

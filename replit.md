@@ -25,6 +25,8 @@ DN Cards is DarkNight's collectible military trading card game for the Roblox + 
 - DB schema: `lib/db/src/schema/cards.ts` (cards, collections, guilds, packs, daily, achievements, embeds, rarity profiles, custom rarities, dashboard users, card display overrides)
 - News schema: `lib/db/src/schema/news.ts`
 - Suggestions schema: `lib/db/src/schema/suggestions.ts`
+- Sets admin commands: `artifacts/api-server/src/bot/commands/sets-admin.ts` (`/setadmin`)
+- Sets user commands: `artifacts/api-server/src/bot/commands/sets-user.ts` (`/sets`)
 - Website-only admin route: `artifacts/api-server/src/routes/admin.ts` (presentation-only — `card_display_overrides` upserts)
 - Public roster route (merges overrides): `artifacts/api-server/src/routes/dashboard.ts` `GET /cards`
 - News route: `artifacts/api-server/src/routes/news.ts`
@@ -139,6 +141,36 @@ those tables now happen through Discord slash commands — see
 - Resolver: `getRarityProfile(guildId)` → `RarityProfileMap`; `applyRarityProfile(card, profile)` swaps in the overrides. Used by spawn weighting, `/info`, `/list`, `/pack` (pool + display), `/burn` (via `burnCard`), `/collection`, leaderboard net worth, and trade fairness check.
 - **Drop-weight precedence:** profile.dropWeight → guildSettings.rarityWeights → card.dropWeight. So the profile is the strongest knob.
 - Servers with no profile rows (e.g. Server 1) are completely unaffected — defaults flow through unchanged.
+
+### Card Sets (spawn rotation)
+- **First-class sets** (`sets` + `card_set_memberships` tables) drive random
+  spawns. Each guild picks ONE `activeSetId` on `guild_settings`; random
+  spawns pull **exclusively** from that set's droppable cards.
+- **Option B (no active set = no random spawns)**: with no active set, or
+  with an empty active set, `doSingleSpawn` returns early. Admin `/drop` and
+  `/give` bypass the set check (forcedCardId path) — they always work.
+- **Command split**:
+  - `/setadmin` (admin) — `create rename delete add remove move bulkadd bulkremove active deactivate view`.
+  - `/sets` (user, read-only, ephemeral) — `list active view progress`.
+- `pickRandomCard(weights, boosts, ctx, availableCards?)` — new 4th param is
+  the pre-filtered pool (active set). Old call sites without it fall back to
+  the global droppable pool for back-compat.
+- Active-set spawn pool is cached 5s per guild via
+  `getActiveSetSpawnPoolCached`, invalidated on any set/membership write OR
+  `setActiveSet/clearActiveSet`.
+- `/massdrop` filters to the active set when one is selected (falls back to
+  the global pool otherwise so testing still works).
+- `/info` shows an "Active Set: ✅ / ⚠️ / none" badge so users know whether
+  the displayed drop chance can actually fire right now.
+- `/event start` warns (doesn't block) when the boosted card isn't in the
+  active set — the boost would silently no-op.
+- **Boot migration**: `backfillSetsFromLegacy()` runs on every boot,
+  idempotently promoting every distinct legacy `cards.set_name` into a
+  `sets` row + memberships. `importCardsFromJson` writes BOTH the legacy
+  `cards.set_name` and a membership row so loadset stays back-compat while
+  feeding the new system.
+- Legacy `/loadset`, `/listsets`, `/unloadset` still work; `/unloadset` is
+  destructive (deletes cards), `/setadmin delete` only removes memberships.
 
 ### Limited-Time Events
 - `/event start card:<Name> duration:<30m|2h|1d> [multiplier:<1.1–50>]` — boost a card's effective spawn weight. Max 14d duration, default 2× multiplier.

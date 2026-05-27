@@ -211,10 +211,47 @@ export const guildSettingsTable = pgTable("guild_settings", {
   packLegendaryCost: integer("pack_legendary_cost").notNull().default(2000),
   packLegendarySize: integer("pack_legendary_size").notNull().default(5),
   packLegendaryWeeklyLimit: integer("pack_legendary_weekly_limit").notNull().default(5),
+  // ── Active set (Sets-driven spawn pool) ────────────────────────────────────
+  // The single set whose cards are eligible for random autodrops in this
+  // guild. NULL = no set selected → **nothing spawns** (admins must pick a
+  // set via `/setadmin active`). `/drop` (forced card) bypasses this check.
+  activeSetId: integer("active_set_id").references(() => setsTable.id, { onDelete: "set null" }),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
 export type GuildSettings = typeof guildSettingsTable.$inferSelect;
+
+// ── Card Sets (first-class, replaces ad-hoc cards.set_name aggregation) ──────
+// A "set" groups cards into a named bucket. Cards can belong to many sets via
+// the junction table. One set per guild is "active" — only its members are
+// eligible for random spawns. Loading a JSON pack or running `/setadmin
+// create` both produce rows here. Legacy `cards.set_name` is still written
+// during the transition (Phase 5 will drop it).
+export const setsTable = pgTable("sets", {
+  id: serial("id").primaryKey(),
+  // Lowercase slug-ish identifier (e.g. "defaults", "v1", "halloween-2026").
+  // Globally unique because sets are global today — Phase 6 may scope them
+  // per-guild if that need emerges.
+  name: text("name").notNull().unique(),
+  description: text("description"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export type CardSet = typeof setsTable.$inferSelect;
+
+// Many-to-many: a card may live in 0, 1, or many sets. Both FKs cascade so
+// deleting a card or a set automatically clears its memberships.
+export const cardSetMembershipsTable = pgTable("card_set_memberships", {
+  cardId: integer("card_id").notNull().references(() => cardsTable.id, { onDelete: "cascade" }),
+  setId: integer("set_id").notNull().references(() => setsTable.id, { onDelete: "cascade" }),
+  addedAt: timestamp("added_at").notNull().defaultNow(),
+}, (t) => ({
+  pk: uniqueIndex("card_set_memberships_pk").on(t.cardId, t.setId),
+  bySet: uniqueIndex("card_set_memberships_set_card_idx").on(t.setId, t.cardId),
+}));
+
+export type CardSetMembership = typeof cardSetMembershipsTable.$inferSelect;
 
 // ── Admin Users ───────────────────────────────────────────────────────────────
 export const adminUsersTable = pgTable("admin_users", {
