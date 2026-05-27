@@ -61,10 +61,23 @@ export const RARITY_EMOJI: Record<Rarity, string> = {
   mythic: "🔮",
 };
 
+// ── Per-guild rarity display overrides ───────────────────────────────────────
+// Admins can rename any of the 6 built-in rarity tiers for their server via
+// `/rarity edit` — changing the display name, emoji, and/or embed color.
+// This map is fetched once per interaction from the `rarity_display_overrides`
+// table (5s per-guild cache) and passed as the 3rd argument to the three
+// resolver helpers below. The gameplay economy (worth/burn/dropWeight) is
+// completely unaffected.
+export type RarityDisplayMap = Map<Rarity, {
+  displayName?: string | null;
+  emoji?: string | null;
+  color?: number | null;
+}>;
+
 // ── Mythic per-guild display ─────────────────────────────────────────────────
-// Admins can rename the Mythic tier per server via /rarityname. This helper
-// reads the override out of guild_settings (if loaded) and falls back to the
-// hard-coded defaults above. Call from any embed that has settings in hand.
+// Legacy helper — kept for callers that only need the mythic override pulled
+// from GuildSettings. New code should use rarityLabel/rarityEmoji/rarityColor
+// with a RarityDisplayMap instead.
 export function getMythicDisplay(
   settings?: { mythicLabel?: string | null; mythicEmoji?: string | null; mythicColor?: number | null } | null,
 ): { label: string; emoji: string; color: number } {
@@ -75,29 +88,53 @@ export function getMythicDisplay(
   };
 }
 
-/** Resolves label for any rarity, honouring per-guild Mythic override. */
+/**
+ * Resolves the display label for a rarity, with two layers of per-guild override:
+ *   1. `displayMap` — per-rarity override from `rarity_display_overrides` (highest priority)
+ *   2. `settings.mythicLabel` — legacy Mythic-only rename from `guild_settings`
+ *   3. `RARITY_LABELS[r]` — static default
+ */
 export function rarityLabel(
   r: Rarity,
   settings?: { mythicLabel?: string | null } | null,
+  displayMap?: RarityDisplayMap | null,
 ): string {
+  const ov = displayMap?.get(r);
+  if (ov?.displayName?.trim()) return ov.displayName.trim();
   if (r === "mythic" && settings?.mythicLabel?.trim()) return settings.mythicLabel.trim();
   return RARITY_LABELS[r];
 }
 
-/** Resolves emoji for any rarity, honouring per-guild Mythic override. */
+/**
+ * Resolves the display emoji for a rarity, with two layers of per-guild override:
+ *   1. `displayMap` — per-rarity override from `rarity_display_overrides`
+ *   2. `settings.mythicEmoji` — legacy Mythic-only emoji from `guild_settings`
+ *   3. `RARITY_EMOJI[r]` — static default
+ */
 export function rarityEmoji(
   r: Rarity,
   settings?: { mythicEmoji?: string | null } | null,
+  displayMap?: RarityDisplayMap | null,
 ): string {
+  const ov = displayMap?.get(r);
+  if (ov?.emoji?.trim()) return ov.emoji.trim();
   if (r === "mythic" && settings?.mythicEmoji?.trim()) return settings.mythicEmoji.trim();
   return RARITY_EMOJI[r];
 }
 
-/** Resolves color for any rarity, honouring per-guild Mythic override. */
+/**
+ * Resolves the embed color for a rarity, with two layers of per-guild override:
+ *   1. `displayMap` — per-rarity override from `rarity_display_overrides`
+ *   2. `settings.mythicColor` — legacy Mythic-only color from `guild_settings`
+ *   3. `RARITY_COLORS[r]` — static default
+ */
 export function rarityColor(
   r: Rarity,
   settings?: { mythicColor?: number | null } | null,
+  displayMap?: RarityDisplayMap | null,
 ): number {
+  const ov = displayMap?.get(r);
+  if (ov?.color != null) return ov.color;
   if (r === "mythic" && settings?.mythicColor != null) return settings.mythicColor;
   return RARITY_COLORS[r] ?? 0x5865f2;
 }

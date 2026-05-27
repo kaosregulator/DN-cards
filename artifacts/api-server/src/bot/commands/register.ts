@@ -241,7 +241,8 @@ export function buildCommands() {
           .addStringOption(o => o.setName("card").setDescription("Card name").setRequired(true).setAutocomplete(true))
           .addStringOption(o => o.setName("slug").setDescription("Custom tier slug").setRequired(true).setMaxLength(32)))
         .addSubcommand(sc => sc.setName("unassign").setDescription("Remove the custom-tier override — card reverts to its built-in rarity")
-          .addStringOption(o => o.setName("card").setDescription("Card name").setRequired(true).setAutocomplete(true))))),
+          .addStringOption(o => o.setName("card").setDescription("Card name").setRequired(true).setAutocomplete(true))))
+      .addSubcommand(sc => sc.setName("edit").setDescription("Customise a built-in rarity tier's display name, emoji, and color for this server (cosmetic only — economy values unchanged)"))),
 
     // ── /embed — owns ALL writes to embed_overrides. Replaces the old
     //              /admin/embeds dashboard page.

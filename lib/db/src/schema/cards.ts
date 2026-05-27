@@ -516,3 +516,24 @@ export const upsertCardDisplayOverrideSchema = createInsertSchema(cardDisplayOve
 }).partial();
 export type UpsertCardDisplayOverride = z.infer<typeof upsertCardDisplayOverrideSchema>;
 export type CardDisplayOverride = typeof cardDisplayOverridesTable.$inferSelect;
+
+// ── Rarity Display Overrides (per-guild cosmetic renaming of built-in tiers) ──
+// Lets admins rename any built-in rarity tier for their server — changing the
+// display name, emoji, and/or embed color without touching the underlying
+// gameplay enum or economy values. One row per (guildId, rarity).
+// The bot reads this table to resolve display strings for spawns, collection
+// pages, pack openings, etc. The game economy (worth/burn/dropWeight) is
+// completely unaffected. Discord only; the website never reads this table.
+export const rarityDisplayOverridesTable = pgTable("rarity_display_overrides", {
+  guildId: text("guild_id").notNull(),
+  rarity: rarityEnum("rarity").notNull(),
+  displayName: text("display_name"),
+  emoji: text("emoji"),
+  color: integer("color"),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  updatedBy: text("updated_by"),
+}, (t) => ({
+  pk: uniqueIndex("rarity_display_overrides_pk").on(t.guildId, t.rarity),
+}));
+
+export type RarityDisplayOverride = typeof rarityDisplayOverridesTable.$inferSelect;

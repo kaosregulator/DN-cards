@@ -9,8 +9,12 @@ import {
   getOrCreateGuildSettings, updateTradeMessageId,
   getOrCreateCurrency, giftShards, getTradeHistoryFor,
   getRarityContext, applyRarityContext,
+  getRarityDisplayOverrides,
 } from "../db.js";
-import { RARITY_EMOJI, RARITY_LABELS, FAIRNESS_RATIO_THRESHOLD, type Rarity } from "../cards-data.js";
+import {
+  RARITY_EMOJI, RARITY_LABELS, FAIRNESS_RATIO_THRESHOLD, type Rarity,
+  rarityLabel, rarityEmoji,
+} from "../cards-data.js";
 import { applyEmbedOverride } from "../embed-overrides.js";
 import { runPaginator, type PaginatorView } from "../components/paginator.js";
 import { chunkLines } from "../components/field-chunker.js";
@@ -153,16 +157,22 @@ export async function handleTrade(interaction: ChatInputCommandInteraction): Pro
     channelId: interaction.channelId,
   });
 
+  // Fetch rarity context + display overrides + guild settings in parallel so
+  // labels use per-guild name/emoji overrides and fairness uses per-guild economy.
+  const [fairnessCtx, tradeSettings, tradeDisplayMap] = await Promise.all([
+    getRarityContext(guildId),
+    getOrCreateGuildSettings(guildId),
+    getRarityDisplayOverrides(guildId),
+  ]);
+
   const offLabel = offeredCard
-    ? `${RARITY_EMOJI[offeredCard.rarity as Rarity]} **${offeredCard.name}** *(${RARITY_LABELS[offeredCard.rarity as Rarity]})*`
+    ? `${rarityEmoji(offeredCard.rarity as Rarity, tradeSettings, tradeDisplayMap)} **${offeredCard.name}** *(${rarityLabel(offeredCard.rarity as Rarity, tradeSettings, tradeDisplayMap)})*`
     : null;
   const reqLabel = requestedCard
-    ? `${RARITY_EMOJI[requestedCard.rarity as Rarity]} **${requestedCard.name}** *(${RARITY_LABELS[requestedCard.rarity as Rarity]})*`
+    ? `${rarityEmoji(requestedCard.rarity as Rarity, tradeSettings, tradeDisplayMap)} **${requestedCard.name}** *(${rarityLabel(requestedCard.rarity as Rarity, tradeSettings, tradeDisplayMap)})*`
     : null;
 
-  // Apply the per-guild rarity profile so the fairness check reflects this
-  // server's economy (e.g. if Rare here is worth 800 not 250).
-  const fairnessCtx = await getRarityContext(guildId);
+  // fairnessCtx already fetched above
   const offeredCardEcon = offeredCard ? applyRarityContext(offeredCard, fairnessCtx) : null;
   const requestedCardEcon = requestedCard ? applyRarityContext(requestedCard, fairnessCtx) : null;
   const fairness = buildFairnessWarning(

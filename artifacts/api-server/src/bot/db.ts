@@ -5,6 +5,7 @@ import {
   wishlistsTable, userTimeoutsTable, cardEventsTable,
   rarityProfilesTable,
   customRaritiesTable, cardRarityOverridesTable,
+  rarityDisplayOverridesTable,
   setsTable, cardSetMembershipsTable,
 } from "@workspace/db";
 import { eq, and, sql, desc, inArray, isNull } from "drizzle-orm";
@@ -13,6 +14,7 @@ import {
   DEFAULT_CARDS, SHINY_RATE, SHINY_MULTIPLIER, type Rarity,
   RARITY_LABELS, RARITY_EMOJI, RARITY_COLORS,
   rarityLabel as builtinRarityLabel, rarityEmoji as builtinRarityEmoji, rarityColor as builtinRarityColor,
+  type RarityDisplayMap,
 } from "./cards-data.js";
 import { logger } from "../lib/logger.js";
 
@@ -112,6 +114,67 @@ export function invalidateRarityContextCache(guildId?: string): void {
   else _ctxCache.clear();
 }
 
+// ── Rarity Display Overrides (per-guild cosmetic rename of built-in tiers) ───
+// Cosmetic layer only — does NOT affect economy values. One row per (guild,
+// rarity). Cached for 5s per guild; invalidated on every write. Callers
+// pass the returned map as the 3rd argument to rarityLabel/rarityEmoji/
+// rarityColor in cards-data.ts, which applies it with highest priority.
+const _displayCache = new Map<string, { value: RarityDisplayMap; expiresAt: number }>();
+const DISPLAY_TTL_MS = 5_000;
+
+export async function getRarityDisplayOverrides(guildId: string): Promise<RarityDisplayMap> {
+  const cached = _displayCache.get(guildId);
+  if (cached && cached.expiresAt > Date.now()) return cached.value;
+  const rows = await db.select().from(rarityDisplayOverridesTable)
+    .where(eq(rarityDisplayOverridesTable.guildId, guildId));
+  const map: RarityDisplayMap = new Map();
+  for (const r of rows) {
+    map.set(r.rarity as Rarity, {
+      displayName: r.displayName,
+      emoji: r.emoji,
+      color: r.color,
+    });
+  }
+  _displayCache.set(guildId, { value: map, expiresAt: Date.now() + DISPLAY_TTL_MS });
+  return map;
+}
+
+export function invalidateRarityDisplayCache(guildId?: string): void {
+  if (guildId) _displayCache.delete(guildId);
+  else _displayCache.clear();
+}
+
+export async function upsertRarityDisplayOverride(
+  guildId: string,
+  rarity: Rarity,
+  patch: { displayName?: string | null; emoji?: string | null; color?: number | null },
+  updatedBy?: string,
+): Promise<void> {
+  await db.insert(rarityDisplayOverridesTable)
+    .values({ guildId, rarity, ...patch, updatedAt: new Date(), updatedBy: updatedBy ?? null })
+    .onConflictDoUpdate({
+      target: [rarityDisplayOverridesTable.guildId, rarityDisplayOverridesTable.rarity],
+      set: { ...patch, updatedAt: new Date(), updatedBy: updatedBy ?? null },
+    });
+  invalidateRarityDisplayCache(guildId);
+}
+
+export async function clearRarityDisplayOverride(guildId: string, rarity: Rarity): Promise<void> {
+  await db.delete(rarityDisplayOverridesTable).where(
+    and(
+      eq(rarityDisplayOverridesTable.guildId, guildId),
+      eq(rarityDisplayOverridesTable.rarity, rarity),
+    ),
+  );
+  invalidateRarityDisplayCache(guildId);
+}
+
+export async function clearAllRarityDisplayOverrides(guildId: string): Promise<void> {
+  await db.delete(rarityDisplayOverridesTable)
+    .where(eq(rarityDisplayOverridesTable.guildId, guildId));
+  invalidateRarityDisplayCache(guildId);
+}
+
 // Returns the effective economy values for a card under the given context.
 // If the card has a custom-tier override, its values come entirely from the
 // custom tier; otherwise we fall back to the Stage-1 rarity profile.
@@ -158,14 +221,15 @@ export type DisplayRarity = {
 export function getDisplayRarities(
   ctx: RarityContext,
   settings: GuildSettings | null,
-  opts?: { rarestFirst?: boolean },
+  opts?: { rarestFirst?: boolean; displayMap?: RarityDisplayMap | null },
 ): DisplayRarity[] {
   const rarestFirst = opts?.rarestFirst ?? true;
+  const displayMap = opts?.displayMap ?? null;
   const builtins: DisplayRarity[] = (Object.keys(BUILTIN_POSITIONS) as Rarity[]).map(r => ({
     key: r,
-    label: builtinRarityLabel(r, settings),
-    emoji: builtinRarityEmoji(r, settings),
-    color: builtinRarityColor(r, settings),
+    label: builtinRarityLabel(r, settings, displayMap),
+    emoji: builtinRarityEmoji(r, settings, displayMap),
+    color: builtinRarityColor(r, settings, displayMap),
     position: BUILTIN_POSITIONS[r],
     isCustom: false,
     rarity: r,

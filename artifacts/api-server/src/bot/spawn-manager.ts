@@ -16,6 +16,7 @@ import {
   getRarityContext,
   applyRarityContext,
   getActiveSetSpawnPoolCached,
+  getRarityDisplayOverrides,
 } from "./db.js";
 import {
   RARITY_COLORS, RARITY_EMOJI, RARITY_LABELS, TYPE_EMOJI, getTypeEmoji,
@@ -158,6 +159,7 @@ async function doSingleSpawn(guildId: string, forcedCardId?: number, isForced = 
   if (!botClient) return;
   const settings = await getOrCreateGuildSettings(guildId);
   if (!settings.spawnChannelId) return;
+  const displayMap = await getRarityDisplayOverrides(guildId);
 
   let card: Card | undefined;
   if (forcedCardId) {
@@ -268,7 +270,7 @@ async function doSingleSpawn(guildId: string, forcedCardId?: number, isForced = 
               .setTitle(`\ud83d\udca8 ${cardRef.name} escaped!`)
               .setDescription(
                 `${quip}\n\n` +
-                `**Rarity:** ${rarityEmoji(rarity, settings)} ${rarityLabel(rarity, settings)}\n` +
+                `**Rarity:** ${rarityEmoji(rarity, settings, displayMap)} ${rarityLabel(rarity, settings, displayMap)}\n` +
                 `**Caught by:** *nobody — too slow!*`,
               )
               .setColor(0x636e72)
@@ -536,8 +538,9 @@ async function buildClaimedEmbed(
   const cardType = card.cardType;
   const typeEmoji = getTypeEmoji(cardType);
   const settings = guildId ? await getOrCreateGuildSettings(guildId) : null;
-  const rEmoji = rarityEmoji(rarity, settings);
-  const rLabel = rarityLabel(rarity, settings);
+  const displayMap = guildId ? await getRarityDisplayOverrides(guildId) : null;
+  const rEmoji = rarityEmoji(rarity, settings, displayMap);
+  const rLabel = rarityLabel(rarity, settings, displayMap);
   const shinyPrefix = isShiny ? `${SHINY_EMOJI} ` : "";
   const worth = isShiny ? card.worthValue * SHINY_MULTIPLIER : card.worthValue;
   const embed = new EmbedBuilder()
@@ -570,9 +573,10 @@ async function buildSpawnEmbed(card: Card, windowSeconds: number, mode: "type" |
   const rarity = card.rarity as Rarity;
   const cardType = card.cardType;
   const settings = guildId ? await getOrCreateGuildSettings(guildId) : null;
-  const rEmoji = rarityEmoji(rarity, settings);
-  const rLabel = rarityLabel(rarity, settings);
-  const color = rarityColor(rarity, settings);
+  const displayMap = guildId ? await getRarityDisplayOverrides(guildId) : null;
+  const rEmoji = rarityEmoji(rarity, settings, displayMap);
+  const rLabel = rarityLabel(rarity, settings, displayMap);
+  const color = rarityColor(rarity, settings, displayMap);
   const badges: string[] = [];
   if (card.isLimitedEdition) badges.push("💎 **LIMITED EDITION**");
   if (card.isEventExclusive) badges.push("🎆 **EVENT EXCLUSIVE**");
@@ -636,8 +640,9 @@ export async function buildPostDecisionEmbed(
   };
 
   const settings = guildId ? await getOrCreateGuildSettings(guildId) : null;
-  const rEmoji = rarityEmoji(rarity, settings);
-  const rLabel = rarityLabel(rarity, settings);
+  const displayMap = guildId ? await getRarityDisplayOverrides(guildId) : null;
+  const rEmoji = rarityEmoji(rarity, settings, displayMap);
+  const rLabel = rarityLabel(rarity, settings, displayMap);
   const embed = new EmbedBuilder()
     .setTitle(titles[action])
     .setColor(colors[action])

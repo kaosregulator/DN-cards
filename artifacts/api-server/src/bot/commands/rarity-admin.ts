@@ -7,7 +7,10 @@
 // Discord = source of truth. The website only ever READS these tables.
 import {
   EmbedBuilder, MessageFlags,
-  type ChatInputCommandInteraction,
+  ActionRowBuilder, ButtonBuilder, ButtonStyle,
+  StringSelectMenuBuilder, ModalBuilder, TextInputBuilder, TextInputStyle,
+  type ChatInputCommandInteraction, type ButtonInteraction,
+  type StringSelectMenuInteraction, type ModalSubmitInteraction,
 } from "discord.js";
 import {
   upsertRarityProfile, deleteRarityProfile, listRarityProfiles,
@@ -15,8 +18,13 @@ import {
   listCustomRarities, getCustomRarityBySlug,
   assignCardToCustomRarity, unassignCardCustomRarity,
   getCardByName,
+  getRarityDisplayOverrides, upsertRarityDisplayOverride,
+  clearRarityDisplayOverride, clearAllRarityDisplayOverrides,
+  getOrCreateGuildSettings,
 } from "../db.js";
-import { RARITY_EMOJI, RARITY_LABELS, RARITY_COLORS, type Rarity } from "../cards-data.js";
+import {
+  RARITY_EMOJI, RARITY_LABELS, RARITY_COLORS, type Rarity, type RarityDisplayMap,
+} from "../cards-data.js";
 
 const BUILTIN_RARITIES: Rarity[] = ["common", "uncommon", "rare", "epic", "legendary", "mythic"];
 
@@ -50,6 +58,14 @@ export async function handleRarityAdminCommand(interaction: ChatInputCommandInte
   const userId = interaction.user.id;
   const group = interaction.options.getSubcommandGroup(false);
   const sub = interaction.options.getSubcommand(true);
+
+  // ── edit — cosmetic display overrides (no group) ──────────────────────────
+  if (!group && sub === "edit") {
+    const displayMap = await getRarityDisplayOverrides(guildId);
+    const settings = await getOrCreateGuildSettings(guildId);
+    await interaction.editReply(buildEditPanel(displayMap, settings));
+    return;
+  }
 
   // ── profile (built-in rarity overrides) ──────────────────────────────────
   if (group === "profile") {
@@ -282,3 +298,224 @@ export async function handleRarityAdminCommand(interaction: ChatInputCommandInte
 // shared autocomplete handler (it already routes any unrecognized card-name
 // option to the full roster).
 export { BUILTIN_RARITIES, RARITY_COLORS };
+
+// ── /rarity edit — interactive cosmetic panel ────────────────────────────────
+// Shows all 6 built-in tiers with their current display overrides. Select a
+// tier from the dropdown, then use modal-backed buttons to change name/emoji/
+// color for this server. Resets wipe back to defaults. Economy is untouched.
+
+type EditSettings = { mythicLabel?: string | null; mythicEmoji?: string | null; mythicColor?: number | null };
+
+function getEffectiveDisplay(r: Rarity, displayMap: RarityDisplayMap, settings: EditSettings | null) {
+  const ov = displayMap.get(r);
+  const label = ov?.displayName?.trim()
+    || (r === "mythic" && settings?.mythicLabel?.trim() ? settings.mythicLabel.trim() : RARITY_LABELS[r]);
+  const emoji = ov?.emoji?.trim()
+    || (r === "mythic" && settings?.mythicEmoji?.trim() ? settings.mythicEmoji.trim() : RARITY_EMOJI[r]);
+  const color = ov?.color != null
+    ? ov.color
+    : (r === "mythic" && settings?.mythicColor != null ? settings.mythicColor : RARITY_COLORS[r]);
+  return { label, emoji, color: color ?? 0x5865f2, hasOverride: !!ov };
+}
+
+function buildEditPanel(
+  displayMap: RarityDisplayMap,
+  settings: EditSettings | null,
+): { embeds: EmbedBuilder[]; components: ActionRowBuilder<StringSelectMenuBuilder | ButtonBuilder>[] } {
+  const embed = new EmbedBuilder()
+    .setTitle("🎨 Rarity Display Overrides")
+    .setColor(0x5865f2)
+    .setDescription(
+      "Rename any built-in rarity tier for this server — changes display name, emoji, and embed color " +
+      "in spawns, collections, packs, and trade-ins. Economy values (worth/burn/weight) are unaffected.\n\u200b",
+    );
+  for (const r of BUILTIN_RARITIES) {
+    const { label, emoji, color, hasOverride } = getEffectiveDisplay(r, displayMap, settings);
+    embed.addFields({
+      name: `${emoji} ${label}`,
+      value: hasOverride ? `\`${hex(color)}\` *(overrides active)*` : `\`${hex(color)}\` *(defaults)*`,
+      inline: true,
+    });
+  }
+  embed.setFooter({ text: "Select a tier below to edit it · Reset All clears every override" });
+
+  const selectRow = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
+    new StringSelectMenuBuilder()
+      .setCustomId("rarity_edit:select")
+      .setPlaceholder("Pick a rarity tier to edit…")
+      .addOptions(
+        BUILTIN_RARITIES.map(r => {
+          const { label, emoji, hasOverride } = getEffectiveDisplay(r, displayMap, settings);
+          return { label, emoji, value: r, description: hasOverride ? "Has overrides" : "Using defaults" };
+        }),
+      ),
+  );
+  const resetAllRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder()
+      .setCustomId("rarity_edit:resetall")
+      .setLabel("🗑️ Reset All Overrides")
+      .setStyle(ButtonStyle.Danger),
+  );
+  return { embeds: [embed], components: [selectRow, resetAllRow] };
+}
+
+function buildTierPanel(
+  r: Rarity,
+  displayMap: RarityDisplayMap,
+  settings: EditSettings | null,
+): { embeds: EmbedBuilder[]; components: ActionRowBuilder<ButtonBuilder>[] } {
+  const { label, emoji, color, hasOverride } = getEffectiveDisplay(r, displayMap, settings);
+  const ov = displayMap.get(r);
+  const defLabel = r === "mythic" && settings?.mythicLabel?.trim() ? settings.mythicLabel.trim() : RARITY_LABELS[r];
+  const defEmoji = r === "mythic" && settings?.mythicEmoji?.trim() ? settings.mythicEmoji.trim() : RARITY_EMOJI[r];
+  const defColor = r === "mythic" && settings?.mythicColor != null ? settings.mythicColor : (RARITY_COLORS[r] ?? 0x5865f2);
+
+  const embed = new EmbedBuilder()
+    .setTitle(`🎨 Edit: ${emoji} ${label}`)
+    .setColor(color)
+    .addFields(
+      {
+        name: "Display Name",
+        value: ov?.displayName ? `**${ov.displayName}** *(overridden)*` : `${defLabel} *(default)*`,
+        inline: true,
+      },
+      {
+        name: "Emoji",
+        value: ov?.emoji ? `${ov.emoji} *(overridden)*` : `${defEmoji} *(default)*`,
+        inline: true,
+      },
+      {
+        name: "Color",
+        value: ov?.color != null ? `\`${hex(ov.color)}\` *(overridden)*` : `\`${hex(defColor)}\` *(default)*`,
+        inline: true,
+      },
+    )
+    .setFooter({ text: "Changes apply immediately across all bot embeds for this server" });
+
+  if (!hasOverride) embed.setDescription("*All fields are currently at defaults.*\n\u200b");
+
+  const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder().setCustomId(`rarity_edit:name:${r}`).setLabel("📝 Set Name").setStyle(ButtonStyle.Primary),
+    new ButtonBuilder().setCustomId(`rarity_edit:emoji:${r}`).setLabel("😀 Set Emoji").setStyle(ButtonStyle.Primary),
+    new ButtonBuilder().setCustomId(`rarity_edit:color:${r}`).setLabel("🎨 Set Color").setStyle(ButtonStyle.Primary),
+    new ButtonBuilder().setCustomId(`rarity_edit:reset:${r}`).setLabel("🔄 Reset Tier").setStyle(ButtonStyle.Danger),
+    new ButtonBuilder().setCustomId("rarity_edit:back").setLabel("← Back").setStyle(ButtonStyle.Secondary),
+  );
+  return { embeds: [embed], components: [row] };
+}
+
+export async function handleRarityEditButton(interaction: ButtonInteraction): Promise<void> {
+  if (!interaction.guild) { await interaction.deferUpdate(); return; }
+  const guildId = interaction.guild.id;
+  const parts = interaction.customId.split(":");
+  const action = parts[1]!;
+  const rarityPart = parts[2] as Rarity | undefined;
+
+  if (action === "back" || action === "resetall") {
+    await interaction.deferUpdate();
+    if (action === "resetall") await clearAllRarityDisplayOverrides(guildId);
+    const [displayMap, settings] = await Promise.all([
+      getRarityDisplayOverrides(guildId),
+      getOrCreateGuildSettings(guildId),
+    ]);
+    await interaction.editReply(buildEditPanel(displayMap, settings));
+    return;
+  }
+
+  if (action === "reset" && rarityPart && BUILTIN_RARITIES.includes(rarityPart)) {
+    await interaction.deferUpdate();
+    await clearRarityDisplayOverride(guildId, rarityPart);
+    const [displayMap, settings] = await Promise.all([
+      getRarityDisplayOverrides(guildId),
+      getOrCreateGuildSettings(guildId),
+    ]);
+    await interaction.editReply(buildTierPanel(rarityPart, displayMap, settings));
+    return;
+  }
+
+  // name, emoji, color — show modal (MUST be first response; no deferUpdate).
+  if ((action === "name" || action === "emoji" || action === "color") && rarityPart && BUILTIN_RARITIES.includes(rarityPart)) {
+    const cfgs = {
+      name:  { label: "Display Name",  placeholder: "e.g. Cosmic, Prismatic, Ultra (1–32 chars)", max: 32 },
+      emoji: { label: "Emoji",          placeholder: "e.g. 🌈 or 💫 (leave blank to clear)", max: 8 },
+      color: { label: "Color (hex)",    placeholder: "e.g. #ff2d92 or #00d4ff (leave blank to clear)", max: 9 },
+    } as const;
+    const cfg = cfgs[action];
+    const modal = new ModalBuilder()
+      .setCustomId(`rarity_edit:modal:${action}:${rarityPart}`)
+      .setTitle(`Edit ${RARITY_LABELS[rarityPart]} — ${cfg.label}`)
+      .addComponents(
+        new ActionRowBuilder<TextInputBuilder>().addComponents(
+          new TextInputBuilder()
+            .setCustomId("value")
+            .setLabel(cfg.label)
+            .setPlaceholder(cfg.placeholder)
+            .setStyle(TextInputStyle.Short)
+            .setMaxLength(cfg.max)
+            .setRequired(false),
+        ),
+      );
+    await interaction.showModal(modal);
+    return;
+  }
+
+  await interaction.deferUpdate();
+}
+
+export async function handleRarityEditSelect(interaction: StringSelectMenuInteraction): Promise<void> {
+  if (!interaction.guild) { await interaction.deferUpdate(); return; }
+  await interaction.deferUpdate();
+  const guildId = interaction.guild.id;
+  const r = interaction.values[0] as Rarity;
+  if (!BUILTIN_RARITIES.includes(r)) return;
+  const [displayMap, settings] = await Promise.all([
+    getRarityDisplayOverrides(guildId),
+    getOrCreateGuildSettings(guildId),
+  ]);
+  await interaction.editReply(buildTierPanel(r, displayMap, settings));
+}
+
+export async function handleRarityEditModal(interaction: ModalSubmitInteraction): Promise<void> {
+  if (!interaction.guild) { await interaction.deferUpdate(); return; }
+  await interaction.deferUpdate();
+  const guildId = interaction.guild.id;
+  const userId = interaction.user.id;
+  // customId: rarity_edit:modal:<action>:<rarity>
+  const parts = interaction.customId.split(":");
+  const action = parts[2] as "name" | "emoji" | "color";
+  const r = parts[3] as Rarity;
+  if (!BUILTIN_RARITIES.includes(r)) return;
+
+  const raw = interaction.fields.getTextInputValue("value").trim();
+
+  if (action === "name") {
+    if (raw.length === 0) {
+      await upsertRarityDisplayOverride(guildId, r, { displayName: null }, userId);
+    } else {
+      await upsertRarityDisplayOverride(guildId, r, { displayName: raw }, userId);
+    }
+  } else if (action === "emoji") {
+    if (raw.length === 0) {
+      await upsertRarityDisplayOverride(guildId, r, { emoji: null }, userId);
+    } else {
+      await upsertRarityDisplayOverride(guildId, r, { emoji: raw }, userId);
+    }
+  } else if (action === "color") {
+    if (raw.length === 0) {
+      await upsertRarityDisplayOverride(guildId, r, { color: null }, userId);
+    } else {
+      const parsed = parseHexColor(raw);
+      if (parsed === null) {
+        await interaction.followUp({ content: "❌ Color must be a valid hex code like `#ff2d92`.", flags: MessageFlags.Ephemeral });
+      } else {
+        await upsertRarityDisplayOverride(guildId, r, { color: parsed }, userId);
+      }
+    }
+  }
+
+  const [displayMap, settings] = await Promise.all([
+    getRarityDisplayOverrides(guildId),
+    getOrCreateGuildSettings(guildId),
+  ]);
+  await interaction.editReply(buildTierPanel(r, displayMap, settings));
+}

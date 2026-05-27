@@ -4,6 +4,7 @@ import { burnCard, getOrCreateCurrency } from "./db.js";
 import { initSpawnManager, initAllGuilds, handleCatchAttempt, handleClaimButtonClick, scheduleNextSpawn, buildPostDecisionEmbed, buildDisabledDecisionRow, markDecisionMade } from "./spawn-manager.js";
 import { handleConfigButton, handleConfigSelect, handleRatesSelect, handlePacksSelect, handleRatesCustomModal } from "./commands/config-panel.js";
 import { handleSetsHubButton, handleSetsHubSelect, handleSetsHubModal } from "./commands/sets-panel.js";
+import { handleRarityEditButton, handleRarityEditSelect, handleRarityEditModal } from "./commands/rarity-admin.js";
 import { handleSetChannelsPick, handleSetChannelsApply } from "./commands/setchannels.js";
 import { handleAdminHubButton, handleAdminHubModal } from "./commands/admin-hub.js";
 import { checkAchievements, formatUnlockLine } from "./achievements.js";
@@ -160,6 +161,8 @@ export async function startBot() {
         } else if (interaction.customId.startsWith("editcard:")) {
           const { handleEditCardSelect } = await import("./commands/edit-card.js");
           await handleEditCardSelect(interaction);
+        } else if (interaction.customId === "rarity_edit:select") {
+          await handleRarityEditSelect(interaction);
         }
         return;
       }
@@ -185,6 +188,8 @@ export async function startBot() {
         } else if (interaction.customId.startsWith("editcard:modal:")) {
           const { handleEditCardModal } = await import("./commands/edit-card.js");
           await handleEditCardModal(interaction);
+        } else if (interaction.customId.startsWith("rarity_edit:modal:")) {
+          await handleRarityEditModal(interaction);
         }
         return;
       }
@@ -215,6 +220,12 @@ export async function startBot() {
         // ── Sets hub panel buttons ─────────────────────────────────────────
         if (action === "sets") {
           await handleSetsHubButton(interaction);
+          return;
+        }
+
+        // ── Rarity display edit panel buttons ──────────────────────────────
+        if (action === "rarity_edit") {
+          await handleRarityEditButton(interaction);
           return;
         }
 

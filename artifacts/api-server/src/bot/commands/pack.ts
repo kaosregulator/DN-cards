@@ -6,6 +6,7 @@ import {
   getAllCards, catchCard, getOrCreateCurrency,
   getOrCreateGuildSettings,
   getRarityContext, applyRarityContextAll,
+  getRarityDisplayOverrides,
 } from "../db.js";
 import {
   RARITY_COLORS, RARITY_EMOJI, RARITY_LABELS, SHINY_EMOJI, SHINY_MULTIPLIER,
@@ -206,15 +207,18 @@ async function buildSummaryEmbed(
   );
   const shinyCount = shinies.filter(Boolean).length;
   const last = cards[cards.length - 1]!;
-  const settings = guildId ? await getOrCreateGuildSettings(guildId) : null;
+  const [settings, displayMap] = await Promise.all([
+    guildId ? getOrCreateGuildSettings(guildId) : Promise.resolve(null),
+    guildId ? getRarityDisplayOverrides(guildId) : Promise.resolve(null),
+  ]);
   const embed = new EmbedBuilder()
     .setTitle(`${meta.emoji} ${meta.label} Pack — ${cards.length} cards${shinyCount > 0 ? ` · ${SHINY_EMOJI}×${shinyCount}` : ""}`)
     .setColor(shinyCount > 0 ? 0xf1c40f : meta.color)
     .setDescription(
       cards.map((c, i) => {
         const r = c.rarity as Rarity;
-        const emoji = rarityEmoji(r, settings) ?? "🃏";
-        const label = rarityLabel(r, settings);
+        const emoji = rarityEmoji(r, settings, displayMap) ?? "🃏";
+        const label = rarityLabel(r, settings, displayMap);
         const shiny = shinies[i];
         const worth = c.worthValue * (shiny ? SHINY_MULTIPLIER : 1);
         const prefix = shiny ? `${SHINY_EMOJI} ` : "";

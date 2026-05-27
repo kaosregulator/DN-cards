@@ -9,13 +9,14 @@ import {
   getOrCreateGuildSettings,
   getRarityContext, applyRarityContextAll,
   effectiveRarityKey, getDisplayRarities,
+  getRarityDisplayOverrides,
 } from "../db.js";
 import {
   RARITY_COLORS, RARITY_EMOJI, RARITY_LABELS, getTypeEmoji,
   SHINY_EMOJI, SHINY_MULTIPLIER,
   getCollectorRank, getNextRank,
   rarityLabel, rarityEmoji, rarityColor,
-  type Rarity,
+  type Rarity, type RarityDisplayMap,
 } from "../cards-data.js";
 import { handleTrade, handleAccept, handleDecline, handleListTrades, handleGift, handleTradeHistory } from "./trading.js";
 import { handleDaily, handleAchievementsCommand } from "./daily.js";
@@ -91,6 +92,7 @@ export async function handleUserCommand(
     }
 
     const settings = await getOrCreateGuildSettings(guildId);
+    const displayMap = await getRarityDisplayOverrides(guildId);
     const byRarity = new Map<Rarity, typeof items>();
     for (const r of RARITY_ORDER) byRarity.set(r, []);
     for (const item of items) byRarity.get(item.rarity as Rarity)?.push(item);
@@ -159,7 +161,7 @@ export async function handleUserCommand(
       for (const r of RARITY_ORDER) {
         const inR = shinyItems.filter(i => (i.rarity as Rarity) === r);
         if (inR.length === 0) continue;
-        shinyLines.push(`__${rarityEmoji(r, settings)} ${rarityLabel(r, settings)}__`);
+        shinyLines.push(`__${rarityEmoji(r, settings, displayMap)} ${rarityLabel(r, settings, displayMap)}__`);
         for (const i of inR) shinyLines.push(`${SHINY_EMOJI} **${i.name}** ×${i.shinyCount}`);
       }
       const shinyWorth = shinyItems.reduce(
@@ -200,8 +202,8 @@ export async function handleUserCommand(
       const rarityImg = pickRarestImage(group);
       const baseRarity = () => {
         const e = new EmbedBuilder()
-          .setTitle(`${rarityEmoji(r, settings)} ${rarityLabel(r, settings)} — ${target.username}`)
-          .setColor(rarityColor(r, settings))
+          .setTitle(`${rarityEmoji(r, settings, displayMap)} ${rarityLabel(r, settings, displayMap)} — ${target.username}`)
+          .setColor(rarityColor(r, settings, displayMap))
           .setThumbnail(rarityImg ?? target.displayAvatarURL())
           .setDescription(
             `**${group.length}** unique · **${groupTotal}** total` +
@@ -212,8 +214,8 @@ export async function handleUserCommand(
       const { fields } = chunkLines(lines, { baseName: "Cards", maxFields: 1000 });
       views.push({
         key: `rarity:${r}`,
-        label: rarityLabel(r, settings),
-        emoji: rarityEmoji(r, settings),
+        label: rarityLabel(r, settings, displayMap),
+        emoji: rarityEmoji(r, settings, displayMap),
         description: `${group.length} unique · ${groupTotal} total`,
         screens: buildEmbedScreens(baseRarity, fields),
       });
@@ -227,7 +229,7 @@ export async function handleUserCommand(
         .sort((a, b) => b.worthValue - a.worthValue || a.name.localeCompare(b.name))
         .map(i => {
           const shinyTag = i.shinyCount > 0 ? ` · ${SHINY_EMOJI}×${i.shinyCount}` : "";
-          return `${rarityEmoji(i.rarity as Rarity, settings)} **${i.name}** ×${i.count}${shinyTag}`;
+          return `${rarityEmoji(i.rarity as Rarity, settings, displayMap)} **${i.name}** ×${i.count}${shinyTag}`;
         });
       const limImg = pickRarestImage(limitedItems);
       const baseLim = () => new EmbedBuilder()
@@ -253,7 +255,7 @@ export async function handleUserCommand(
         .sort((a, b) => b.worthValue - a.worthValue || a.name.localeCompare(b.name))
         .map(i => {
           const shinyTag = i.shinyCount > 0 ? ` · ${SHINY_EMOJI}×${i.shinyCount}` : "";
-          return `${rarityEmoji(i.rarity as Rarity, settings)} **${i.name}** ×${i.count}${shinyTag}`;
+          return `${rarityEmoji(i.rarity as Rarity, settings, displayMap)} **${i.name}** ×${i.count}${shinyTag}`;
         });
       const evImg = pickRarestImage(eventItems);
       const baseEv = () => new EmbedBuilder()
@@ -322,9 +324,12 @@ export async function handleUserCommand(
     if (card.isLimitedEdition) badges.push("💎 Limited Edition");
     if (card.isEventExclusive) badges.push("🎆 Event Exclusive");
 
-    const infoSettings = await getOrCreateGuildSettings(guildId);
+    const [infoSettings, infoDisplayMap] = await Promise.all([
+      getOrCreateGuildSettings(guildId),
+      getRarityDisplayOverrides(guildId),
+    ]);
     // Display the EFFECTIVE tier (custom slug if assigned, else built-in).
-    const ladder = getDisplayRarities(ctx, infoSettings);
+    const ladder = getDisplayRarities(ctx, infoSettings, { displayMap: infoDisplayMap });
     const effKey = effectiveRarityKey(card, ctx);
     const tier = ladder.find(t => t.key === effKey)
       ?? ladder.find(t => t.key === card.rarity)!;
@@ -375,11 +380,14 @@ export async function handleUserCommand(
     const listCtx = await getRarityContext(guildId);
     const cards = applyRarityContextAll(rawCards, listCtx);
     if (cards.length === 0) { await interaction.editReply("No cards in the pool yet."); return; }
-    const listSettings = await getOrCreateGuildSettings(guildId);
+    const [listSettings, listDisplayMap] = await Promise.all([
+      getOrCreateGuildSettings(guildId),
+      getRarityDisplayOverrides(guildId),
+    ]);
 
     // Group by EFFECTIVE rarity key (built-in OR custom slug), walking the
     // per-guild ladder so custom tiers slot in at their position.
-    const ladder = getDisplayRarities(listCtx, listSettings); // rarest first
+    const ladder = getDisplayRarities(listCtx, listSettings, { displayMap: listDisplayMap }); // rarest first
     const byKey = new Map<string, typeof cards>();
     for (const t of ladder) byKey.set(t.key, []);
     for (const c of cards) {
@@ -467,7 +475,7 @@ export async function handleUserCommand(
       const lines = limitedCards
         .slice()
         .sort((a, b) => a.name.localeCompare(b.name))
-        .map(c => `${rarityEmoji(c.rarity as Rarity, listSettings)} ${c.name}` + (c.maxCopies ? ` *(${c.totalMinted}/${c.maxCopies})*` : ""));
+        .map(c => `${rarityEmoji(c.rarity as Rarity, listSettings, listDisplayMap)} ${c.name}` + (c.maxCopies ? ` *(${c.totalMinted}/${c.maxCopies})*` : ""));
       const limImg = pickRarestImage(limitedCards);
       const baseLim = () => {
         const e = new EmbedBuilder()
@@ -491,7 +499,7 @@ export async function handleUserCommand(
       const lines = eventCards
         .slice()
         .sort((a, b) => a.name.localeCompare(b.name))
-        .map(c => `${rarityEmoji(c.rarity as Rarity, listSettings)} ${c.name}`);
+        .map(c => `${rarityEmoji(c.rarity as Rarity, listSettings, listDisplayMap)} ${c.name}`);
       const evImg = pickRarestImage(eventCards);
       const baseEv = () => {
         const e = new EmbedBuilder()
@@ -532,8 +540,11 @@ export async function handleUserCommand(
     const ownedById = new Map<number, number>();
     for (const item of collection) ownedById.set(item.cardId, item.count + item.shinyCount);
 
-    const catSettings = await getOrCreateGuildSettings(guildId);
-    const catCtx = await getRarityContext(guildId);
+    const [catSettings, catDisplayMap, catCtx] = await Promise.all([
+      getOrCreateGuildSettings(guildId),
+      getRarityDisplayOverrides(guildId),
+      getRarityContext(guildId),
+    ]);
     const pool = allCards.filter(c => !c.isArchived);
     if (pool.length === 0) { await interaction.editReply("No cards in the pool yet."); return; }
 
@@ -543,7 +554,7 @@ export async function handleUserCommand(
 
     // Group by EFFECTIVE rarity key so custom-tier cards show up under their
     // custom tier instead of their built-in rarity bucket.
-    const catLadder = getDisplayRarities(catCtx, catSettings);
+    const catLadder = getDisplayRarities(catCtx, catSettings, { displayMap: catDisplayMap });
     const byKey = new Map<string, typeof pool>();
     for (const t of catLadder) byKey.set(t.key, []);
     for (const c of pool) {
@@ -814,11 +825,17 @@ export async function handleUserCommand(
     const perCardVal = card.burnValue * (wantShiny ? SHINY_MULTIPLIER : 1);
     const perCard = perCardVal.toLocaleString();
     const nameWithShiny = wantShiny ? `${SHINY_EMOJI} ${card.name}` : card.name;
+    const [burnSettings, burnDisplayMap] = await Promise.all([
+      getOrCreateGuildSettings(guildId),
+      getRarityDisplayOverrides(guildId),
+    ]);
+    const rEmoji = rarityEmoji(rarity, burnSettings, burnDisplayMap);
+    const rLabel = rarityLabel(rarity, burnSettings, burnDisplayMap);
     const breakdown = result.burned > 1
-      ? `🔥 Burned **×${result.burned} ${nameWithShiny}** (${RARITY_EMOJI[rarity]} ${RARITY_LABELS[rarity]}${wantShiny ? ` ${SHINY_EMOJI}` : ""})\n` +
+      ? `🔥 Burned **×${result.burned} ${nameWithShiny}** (${rEmoji} ${rLabel}${wantShiny ? ` ${SHINY_EMOJI}` : ""})\n` +
         `+💠 **${result.shardsGained.toLocaleString()} shards** *(${perCard} × ${result.burned})* — New balance: **${currency.shards.toLocaleString()}**\n` +
         (result.remaining > 0 ? `You still have **×${result.remaining}** ${pileLabel}${result.remaining === 1 ? "copy" : "copies"}.` : `*All ${wantShiny ? "shiny " : ""}copies burned.*`)
-      : `🔥 Burned **${nameWithShiny}** (${RARITY_EMOJI[rarity]} ${RARITY_LABELS[rarity]}${wantShiny ? ` ${SHINY_EMOJI}` : ""})\n` +
+      : `🔥 Burned **${nameWithShiny}** (${rEmoji} ${rLabel}${wantShiny ? ` ${SHINY_EMOJI}` : ""})\n` +
         `+💠 **${result.shardsGained.toLocaleString()} shards** — New balance: **${currency.shards.toLocaleString()}**\n` +
         (result.remaining > 0 ? `You still have **×${result.remaining}** ${pileLabel}${result.remaining === 1 ? "copy" : "copies"}.` : `*Last ${wantShiny ? "shiny " : ""}copy burned.*`);
     await interaction.editReply(breakdown);
