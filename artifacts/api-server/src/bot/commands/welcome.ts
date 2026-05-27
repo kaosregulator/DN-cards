@@ -16,55 +16,76 @@ const BRAND_COLOR = 0xe63946;
 
 // Public welcome post — designed to be dropped in a #welcome or #info channel
 // as a permanent guide. Three embeds, each led by its own single-word banner.
-// Dispatcher (user.ts) does NOT add this to EPHEMERAL_COMMANDS, so the reply
-// is visible to everyone in the channel.
+// Member-facing only — no admin content. Dispatcher (user.ts) does NOT add
+// this to EPHEMERAL_COMMANDS, so the reply is visible to everyone.
 export async function handleWelcome(interaction: ChatInputCommandInteraction): Promise<void> {
   const welcomeBanner = bannerUrl("welcome");
   const rulesBanner = bannerUrl("rules");
   const commandsBanner = bannerUrl("commands");
 
-  // ── 1. WELCOME — game intro + quick start ─────────────────────────────────
+  const guildId = interaction.guildId;
+  const guildName = interaction.guild?.name ?? "this server";
+
+  // ── 1. WELCOME — hype intro + quick start ─────────────────────────────────
   const welcome = new EmbedBuilder()
     .setColor(BRAND_COLOR)
-    .setTitle("🃏 Welcome to DN Cards")
+    .setTitle("🃏 Welcome to DN Cards — DarkNight's Military Collectible Game")
     .setDescription(
-      "**DN Cards** is DarkNight's collectible military trading card game.\n" +
-      "Collect cards, build your roster, trade with the squad, and climb the leaderboard.\n\n" +
-      "**🚀 Quick Start**\n" +
-      "• **Step 1** — Watch the spawn channel. When a card appears, **type its name exactly** to catch it.\n" +
-      "• **Step 2** — Run `/daily` every day for **💠 DN Shards** (streak bonus up to +200).\n" +
-      "• **Step 3** — Spend shards on `/pack tier:basic|premium|legendary` to pull more cards.\n" +
-      "• **Step 4** — Burn duplicates with `/burn` for shards, or `/trade` with friends.\n" +
-      "• **Step 5** — Check your progress with `/collection`, `/rank`, and `/top`.",
+      "You've just stepped into the **DarkNight card game** — tanks, jets, ships, bosses, " +
+      "and the occasional cursed community card. Cards drop randomly in the spawn channel. " +
+      "You catch them. You hoard them. You flex on people with a 👑 Legendary while they're still sitting on Commons. Classic.\n\n" +
+      "**🚀 Getting Started (do these first)**\n" +
+      "① **Watch the spawn channel.** When a card drops, **type its name exactly** to catch it — no commands, no buttons (unless the server uses button mode). Fast fingers win, but it's fair — see the catching section below.\n" +
+      "② **Run `/daily`** every day. Free shards, streak bonus, and after 7 days in a row you unlock an achievement worth 💠 1,000 shards. Easy money.\n" +
+      "③ **Open packs with `/pack`.** 🥉 Basic costs 250 💠, 🥈 Premium 750 💠, 🥇 Legendary 2,000 💠 (no commons, way better odds). Five cards per pack.\n" +
+      "④ **Burn your duplicates** with `/burn`. Converts them to shards so you can open more packs. The cycle of life.\n" +
+      "⑤ **Check your rank** with `/rank` and see where you stand on `/top`. 🪖 Recruit today, 👑 Dark Commander eventually.",
     );
   if (welcomeBanner) welcome.setImage(welcomeBanner);
-  const guildId = interaction.guildId;
-  const guildName = interaction.guild?.name ?? "";
   await applyEmbedOverride(welcome, {
     guildId, key: "welcome", defaultImageUrl: welcomeBanner,
     ctx: { guild: guildName, username: interaction.user.username, userId: interaction.user.id },
   });
 
-  // ── 2. RULES — things every collector should know ──────────────────────────
+  // ── 2. NEED TO KNOW — mechanics, catching, lag, sets, economy ─────────────
   const rules = new EmbedBuilder()
     .setColor(BRAND_COLOR)
-    .setTitle("📌 Things to Know")
+    .setTitle("📌 Things Every Collector Needs to Know")
     .setDescription(
-      "**🎖️ Rarities** — Common · Uncommon · Rare · Epic · Legendary · 🔮 Mythic. Higher rarity = rarer drop and worth more shards. Mythic is the apex tier — admin-only by default; admins can rename it per-server with `/rarityname`.\n\n" +
-      "**✨ Shinies** — Every random catch, pack pull, and trade-in has a flat **0.5%** chance to mint a shiny. " +
-      "Shinies count at **2× worth & burn**, are tracked separately, and aren't tradeable in v1. " +
-      "Use `/burn shiny:true` to torch the shiny pile specifically.\n\n" +
-      "**🎴 Pack Tiers** — 🥉 Basic (💠 250) · 🥈 Premium (💠 750) · 🥇 Legendary (💠 2,000, no commons). " +
-      "Each tier has its own weekly cap; cooldown is shared across all tiers (resets Monday 00:00 UTC).\n\n" +
-      "**🔄 Trading** — `/trade` is propose/accept. Trades with a value gap **>3:1** show an orange ⚠️ banner " +
-      "so the disadvantaged side can decide informed. Trades still go through if accepted.\n\n" +
-      "**🎯 Limited-Time Events** — Admins can boost any card's spawn rate for a set duration. " +
-      "Announced in the spawn channel — check `/event list` to see what's hot right now.\n\n" +
-      "**🏆 Net Worth & Rank** — `/top` ranks by net worth (sum of all card worth, shinies at 2×). " +
-      "Unique cards unlock collector ranks: 🪖 Recruit → 👑 Dark Commander.\n\n" +
-      "**🏅 Achievements** — unlockables auto-trigger on milestones (first catch, 7-day streak, collecting unique cards, etc.) " +
-      "and pay 💠 shards. Set-completion achievements unlock when you own every card in a set — static ones fire for any completed set; " +
-      "admins can flag special sets with `/setadmin showcase` to award a bonus achievement on top. See yours with `/achievements`.",
+      "**🎯 How Catching Actually Works**\n" +
+      "Type the card name exactly when it appears in the spawn channel — spelling counts, caps don't. " +
+      "When you get it right the bot reacts with 🎯. That means **your catch was registered**, not that you won. " +
+      "Here's the deal: if two people type the name within a split second of each other, both get collected and " +
+      "the winner is whoever Discord **stamped as earliest** — not whoever the bot processed first. " +
+      "So if you see 🎯 but someone else gets the card, they genuinely sent their message before you. No bugs, no lag cheating — it's fair by design.\n\n" +
+      "**⏳ Lag, Discord, and You**\n" +
+      "Discord's message delivery isn't instant — your message might arrive at the bot slightly after it left your keyboard. " +
+      "That's normal. The system uses Discord's own timestamps (not bot arrival time) so connection speed isn't an advantage. " +
+      "If spawns feel slow to appear, that's Discord's embed loading time, not the bot. " +
+      "Cards stay catchable for a configurable window (usually 60–120s), so you're not racing milliseconds on every drop.\n\n" +
+      "**🗂️ Card Sets — What's Actually Dropping**\n" +
+      "Cards come from the server's **active set** — admins rotate these to run themed seasons, events, and special collections. " +
+      "Use `/sets active` to see what's currently in rotation, `/sets list` to see all sets, and `/sets progress set:<…>` to track how close you are to completing one. " +
+      "Completing a full set can unlock special achievements (the good kind, with shards attached).\n\n" +
+      "**✨ Shinies**\n" +
+      "Every catch, pack pull, and trade-in has a **0.5% chance** to mint a shiny version. " +
+      "Shinies count at **2× worth and burn value**, show up separately in your collection, and cannot be traded yet. " +
+      "They're rare enough that getting one is an actual moment. Use `/burn shiny:true` if you ever want to cash one in.\n\n" +
+      "**💠 Shards & Economy**\n" +
+      "DN Shards are the currency. Earn them: daily claim · burning cards · achievements · trades · trade-ins. " +
+      "Spend them: packs · trading offers · gifting to friends (`/gift`). " +
+      "Packs have a shared cooldown across all tiers and a separate weekly cap per tier — hit the Legendary cap and you can still open Basics. " +
+      "Caps reset Monday 00:00 UTC. Check your usage with `/packstats`.\n\n" +
+      "**🎖️ Rarities & Worth** — Common (most drops) → Uncommon → Rare → Epic → Legendary → 🔮 Mythic (apex, nearly never random-drops). " +
+      "Higher rarity = worth more shards. Net worth = sum of all your cards' worth; shinies count at 2×. " +
+      "Admins run limited-time events that temporarily boost specific cards' drop rates — check `/event list` to see what's live.\n\n" +
+      "**🔄 Trading**\n" +
+      "Propose trades with `/trade user:@ offer:<card> want:<card>`. Mix in shards with `offer_shards` / `want_shards`. " +
+      "If the value gap is more than **3:1**, an orange ⚠️ warning shows up so the short end can make an informed choice — it's informational only, the trade still goes through if accepted. " +
+      "Use `/wishlist add name:<card>` to get pinged the moment a card you want spawns.\n\n" +
+      "**🏅 Achievements & Ranks**\n" +
+      "Achievements unlock automatically on milestones — first catch, 7-day streak, collecting X unique cards, burning 50 cards, completing a set — and each one pays shards. " +
+      "Collector ranks (🪖 Recruit → 👑 Dark Commander) are based on unique cards owned. See yours with `/achievements` and `/rank`.",
     );
   if (rulesBanner) rules.setImage(rulesBanner);
   await applyEmbedOverride(rules, {
@@ -72,36 +93,43 @@ export async function handleWelcome(interaction: ChatInputCommandInteraction): P
     ctx: { guild: guildName },
   });
 
-  // ── 3. COMMANDS — full cheat sheet ─────────────────────────────────────────
+  // ── 3. COMMANDS — member cheat sheet ──────────────────────────────────────
   const commands = new EmbedBuilder()
     .setColor(BRAND_COLOR)
-    .setTitle("⚡ Commands Cheat Sheet")
+    .setTitle("⚡ Command Cheat Sheet")
     .setDescription(
-      "**📦 Collection & Progress**\n" +
-      "• `/collection [user]` — your caught cards\n" +
-      "• `/rank [user]` — collector rank & progression\n" +
-      "• `/info name:<card>` — card details & drop chance\n" +
-      "• `/list` — full roster by rarity · `/catalog category:<…>` — browse a category\n" +
-      "• `/top` — leaderboard · `/achievements [user]` — your badges\n\n" +
+      "**📦 Your Collection**\n" +
+      "• `/collection [user]` — all your caught cards, paginated by rarity\n" +
+      "• `/rank [user]` — collector rank & how many unique cards to the next tier\n" +
+      "• `/info name:<card>` — card stats, drop chance, worth, burn value\n" +
+      "• `/list` — full card roster by rarity\n" +
+      "• `/catalog` — browse cards by category and see which ones you're missing\n" +
+      "• `/top` — net-worth leaderboard + top pack openers\n" +
+      "• `/achievements [user]` — your unlocked badges and their payout\n\n" +
       "**💠 Economy**\n" +
-      "• `/daily` — claim daily shards (streak bonus)\n" +
+      "• `/daily` — claim your daily shards (streak bonus up to +200 💠/day)\n" +
+      "• `/shards [user]` — check your balance\n" +
       "• `/pack tier:<basic|premium|legendary>` — open a 5-card pack\n" +
-      "• `/packstats` — costs, weekly caps, cooldown\n" +
-      "• `/burn name:<card> [amount] [all] [shiny:true]` — burn for shards\n" +
-      "• `/tradein rarity:<r>` — burn 5 of one tier for 1 of the next\n" +
-      "• `/shards [user]` — check balance · `/gift user:@ amount:<n>` — send shards\n\n" +
+      "• `/packstats` — your costs, weekly cap usage, cooldown remaining\n" +
+      "• `/burn name:<card> [amount:<n>] [all:true] [shiny:true]` — convert cards to shards\n" +
+      "• `/tradein rarity:<tier>` — burn 5 of one rarity for 1 random card of the next tier up\n" +
+      "• `/gift user:@ amount:<n>` — send shards to a friend\n\n" +
       "**🔄 Trading**\n" +
-      "• `/trade user:@ offer:<card> want:<card>` — propose (add `offer_shards`/`want_shards` to mix in 💠)\n" +
-      "• `/trades` — pending · `/tradehistory [user]` — recent · `/accept id:<n>` · `/decline id:<n>`\n\n" +
+      "• `/trade user:@ offer:<card> want:<card>` — propose a trade (add `offer_shards`/`want_shards` for mixed deals)\n" +
+      "• `/trades` — see your pending trade offers\n" +
+      "• `/tradehistory [user]` — recent completed trades\n" +
+      "• `/accept id:<n>` · `/decline id:<n>` — accept or cancel a trade\n\n" +
       "**📌 Wishlist**\n" +
-      "• `/wishlist add|remove|list` — get pinged when wished cards spawn\n\n" +
+      "• `/wishlist add|remove|list` — get pinged in the spawn channel when your wished cards drop\n\n" +
       "**🗂️ Card Sets**\n" +
-      "• `/sets list` — all sets · `/sets active` — current spawn pool\n" +
-      "• `/sets view set:<…>` — cards in a set · `/sets progress set:<…>` — your completion %\n\n" +
+      "• `/sets list` — all sets and their card counts\n" +
+      "• `/sets active` — what's currently in the spawn rotation\n" +
+      "• `/sets view set:<…>` — every card in a specific set\n" +
+      "• `/sets progress set:<…>` — how close you are to completing a set\n\n" +
       "**ℹ️ Help**\n" +
-      "• `/help` — player commands · `/adminhelp` — admin commands (admins only)",
+      "• `/help` — full player command reference",
     )
-    .setFooter({ text: "Tip: most card-name fields autocomplete as you type — pick from the dropdown." });
+    .setFooter({ text: "💡 Card name fields autocomplete as you type — use the dropdown, don't guess spellings." });
   if (commandsBanner) commands.setImage(commandsBanner);
   await applyEmbedOverride(commands, {
     guildId, key: "commands", defaultImageUrl: commandsBanner,
