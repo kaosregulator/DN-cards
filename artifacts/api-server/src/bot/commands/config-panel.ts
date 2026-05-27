@@ -60,8 +60,13 @@ export async function handleConfigCommand(interaction: ChatInputCommandInteracti
 // ── Router: select-menu interactions on the panel ─────────────────────────────────────────────────────────────────
 export async function handleConfigSelect(interaction: StringSelectMenuInteraction): Promise<void> {
   if (!interaction.guild) return;
+  // ACK immediately — DB work comes after, so we never hit the 3s window.
+  await interaction.deferUpdate();
   const ok = await ensureAdmin(interaction);
-  if (!ok) return;
+  if (!ok) {
+    await interaction.followUp({ content: "❌ Admins only.", flags: MessageFlags.Ephemeral });
+    return;
+  }
 
   const guildId = interaction.guild.id;
   const action = interaction.customId;
@@ -82,17 +87,32 @@ export async function handleConfigSelect(interaction: StringSelectMenuInteractio
   await updateGuildSettings(guildId, patch);
   if (action === "config_interval") scheduleNextSpawn(guildId);
 
-  await refreshPanel(interaction, guildId);
+  const settings = await getOrCreateGuildSettings(guildId);
+  await refreshPanel(interaction, settings);
 }
 
 // ── Router: button interactions on the panel ──────────────────────────────────────────────────────────────────
 export async function handleConfigButton(interaction: ButtonInteraction): Promise<void> {
   if (!interaction.guild) return;
-  const ok = await ensureAdmin(interaction);
-  if (!ok) return;
-
-  const guildId = interaction.guild.id;
   const [, action, arg] = interaction.customId.split(":"); // "config:toggle:spawn"
+  const guildId = interaction.guild.id;
+
+  // ── Modal path: showModal() MUST be the first response — cannot deferUpdate first. ──
+  if (action === "rates" && arg === "custom") {
+    const ok = await ensureAdmin(interaction);
+    if (!ok) return;
+    const settings = await getOrCreateGuildSettings(guildId);
+    await interaction.showModal(buildCustomMixModal(settings));
+    return;
+  }
+
+  // ── All other paths: ACK immediately, then do DB work. ──
+  await interaction.deferUpdate();
+  const ok = await ensureAdmin(interaction);
+  if (!ok) {
+    await interaction.followUp({ content: "❌ Admins only.", flags: MessageFlags.Ephemeral });
+    return;
+  }
 
   if (action === "toggle" && arg === "spawn") {
     const s = await getOrCreateGuildSettings(guildId);
@@ -115,60 +135,61 @@ export async function handleConfigButton(interaction: ButtonInteraction): Promis
         (resetPatch as Record<string, number | null>)[rarityWeightKey(r) as string] = null;
       }
       await updateGuildSettings(guildId, resetPatch);
-      await refreshPanel(interaction, guildId);
+      const settings = await getOrCreateGuildSettings(guildId);
+      await refreshPanel(interaction, settings);
       await interaction.followUp({
         content: "🔄 Rarity Mix reset to defaults — Common 60% · Uncommon 25% · Exotic 10% · Legendary 4% · Rare 1%.",
         flags: MessageFlags.Ephemeral,
       }).catch(() => { /* ignore */ });
       return;
     }
-    if (arg === "custom") {
-      const settings = await getOrCreateGuildSettings(guildId);
-      await interaction.showModal(buildCustomMixModal(settings));
-      return;
-    }
+    // rates:open — show rates sub-panel (replaces config panel in-place)
     const settings = await getOrCreateGuildSettings(guildId);
-    await interaction.reply({
+    await interaction.editReply({
       embeds: [buildRatesEmbed(settings)],
       components: buildRatesComponents(settings),
-      flags: MessageFlags.Ephemeral,
     });
     return;
   } else if (action === "packs") {
     const settings = await getOrCreateGuildSettings(guildId);
     if (arg === "sizes") {
-      await interaction.update({
+      await interaction.editReply({
         embeds: [buildPacksSizesEmbed(settings)],
         components: buildPacksSizesComponents(settings),
       });
     } else if (arg === "limits") {
-      await interaction.update({
+      await interaction.editReply({
         embeds: [buildPacksLimitsEmbed(settings)],
         components: buildPacksLimitsComponents(settings),
       });
     } else if (arg === "back") {
-      await interaction.update({
+      await interaction.editReply({
         embeds: [buildPacksEmbed(settings)],
         components: buildPacksComponents(settings),
       });
     } else {
-      await interaction.reply({
+      // Open packs panel (replaces config panel in-place)
+      await interaction.editReply({
         embeds: [buildPacksEmbed(settings)],
         components: buildPacksComponents(settings),
-        flags: MessageFlags.Ephemeral,
       });
     }
     return;
   }
 
-  await refreshPanel(interaction, guildId);
+  const settings = await getOrCreateGuildSettings(guildId);
+  await refreshPanel(interaction, settings);
 }
 
 // ── Router: packs sub-panel selects ──────────────────────────────────────────────────────────────────
 export async function handlePacksSelect(interaction: StringSelectMenuInteraction): Promise<void> {
   if (!interaction.guild) return;
+  await interaction.deferUpdate();
   const ok = await ensureAdmin(interaction);
-  if (!ok) return;
+  if (!ok) {
+    await interaction.followUp({ content: "❌ Admins only.", flags: MessageFlags.Ephemeral });
+    return;
+  }
 
   const guildId = interaction.guild.id;
   const id = interaction.customId;
@@ -202,19 +223,23 @@ export async function handlePacksSelect(interaction: StringSelectMenuInteraction
   await updateGuildSettings(guildId, patch);
   const settings = await getOrCreateGuildSettings(guildId);
   if (panel === "sizes") {
-    await interaction.update({ embeds: [buildPacksSizesEmbed(settings)], components: buildPacksSizesComponents(settings) });
+    await interaction.editReply({ embeds: [buildPacksSizesEmbed(settings)], components: buildPacksSizesComponents(settings) });
   } else if (panel === "limits") {
-    await interaction.update({ embeds: [buildPacksLimitsEmbed(settings)], components: buildPacksLimitsComponents(settings) });
+    await interaction.editReply({ embeds: [buildPacksLimitsEmbed(settings)], components: buildPacksLimitsComponents(settings) });
   } else {
-    await interaction.update({ embeds: [buildPacksEmbed(settings)], components: buildPacksComponents(settings) });
+    await interaction.editReply({ embeds: [buildPacksEmbed(settings)], components: buildPacksComponents(settings) });
   }
 }
 
 // ── Router: drop-rates sub-panel selects ─────────────────────────────────────────────────────────────────
 export async function handleRatesSelect(interaction: StringSelectMenuInteraction): Promise<void> {
   if (!interaction.guild) return;
+  await interaction.deferUpdate();
   const ok = await ensureAdmin(interaction);
-  if (!ok) return;
+  if (!ok) {
+    await interaction.followUp({ content: "❌ Admins only.", flags: MessageFlags.Ephemeral });
+    return;
+  }
 
   const guildId = interaction.guild.id;
   const rarity = interaction.customId.slice("rates_".length) as Rarity;
@@ -225,7 +250,7 @@ export async function handleRatesSelect(interaction: StringSelectMenuInteraction
   await updateGuildSettings(guildId, { [rarityWeightKey(rarity)]: weight } as Partial<GuildSettings>);
 
   const settings = await getOrCreateGuildSettings(guildId);
-  await interaction.update({
+  await interaction.editReply({
     embeds: [buildRatesEmbed(settings)],
     components: buildRatesComponents(settings),
   });
@@ -234,10 +259,9 @@ export async function handleRatesSelect(interaction: StringSelectMenuInteraction
 // ── Helpers ──────────────────────────────────────────────────────────────────────────────────────────────────────────────
 async function refreshPanel(
   interaction: ButtonInteraction | StringSelectMenuInteraction,
-  guildId: string,
+  settings: GuildSettings,
 ): Promise<void> {
-  const settings = await getOrCreateGuildSettings(guildId);
-  await interaction.update({
+  await interaction.editReply({
     embeds: [buildConfigEmbed(settings)],
     components: buildConfigComponents(settings),
   });
