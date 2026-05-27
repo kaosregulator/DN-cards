@@ -87,22 +87,29 @@ if (Number.isNaN(port) || port <= 0) {
 }
 
 async function main() {
-  // Fail fast on migration errors: serving with a mismatched schema causes
-  // confusing runtime failures (missing columns) or — worse for the podium
-  // feature — duplicate slot assignments if the unique index didn't apply.
-  try {
-    await runBootMigrations();
-  } catch (err) {
-    logger.error({ err }, "Boot migrations failed — refusing to start");
-    process.exit(1);
-  }
+  // Listen FIRST so the Autoscale startup probe (GET /api/healthz) can respond
+  // immediately. Migrations and bot startup happen after the server is ready.
+  // Autoscale creates the new instance while the old one is still running;
+  // awaiting DDL migrations before listen caused ALTER TABLE to block on
+  // the old instance's connections, making the probe time out.
+  await new Promise<void>((resolve, reject) => {
+    app.listen(port, (err) => {
+      if (err) {
+        logger.error({ err }, "Error listening on port");
+        reject(err);
+        return;
+      }
+      logger.info({ port }, "Server listening");
+      resolve();
+    });
+  });
 
-  app.listen(port, (err) => {
-    if (err) {
-      logger.error({ err }, "Error listening on port");
-      process.exit(1);
-    }
-    logger.info({ port }, "Server listening");
+  // Run idempotent boot migrations after the server is accepting traffic.
+  // Failures are logged but non-fatal: every statement uses IF NOT EXISTS /
+  // conditional guards, so a lock-timeout on a contested table just means the
+  // column was already added by a prior deployment.
+  runBootMigrations().catch((err) => {
+    logger.error({ err }, "Boot migrations failed — server continues");
   });
 
   // Start Discord bot alongside the API server

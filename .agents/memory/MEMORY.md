@@ -11,3 +11,4 @@
 - [Dashboard active-guild persistence](dashboard-guild-persistence.md) — admin dashboards listing multiple guilds must persist selection; auto-picking guilds[0] on every load silently shows the wrong server's data.
 - [Discord 5-row limit](discord-row-limits.md) — max 5 ActionRows per message; overflow surfaces as a misleading "Interaction has already been acknowledged" on the next update.
 - [Trade accept atomic status flip](trade-accept-atomic.md) — gate the pending→accepted transition with a conditional UPDATE inside the swap transaction; per-row count>=1 debits alone are NOT enough when a user holds multiple copies.
+- [Autoscale startup probe — listen before migrations](autoscale-listen-first.md) — awaiting DDL migrations before app.listen() blocks the health probe on Autoscale; always listen first, migrate after.
