@@ -911,6 +911,14 @@ export async function handleUserCommand(
           "`/wishlist add name:<card>` — get pinged when it spawns\n" +
           "`/wishlist remove name:<card>` · `/wishlist list [user]`",
       },
+      {
+        name: "🗂️ Card Sets",
+        value:
+          "`/sets list` — see all sets and how many cards are in each\n" +
+          "`/sets active` — which set is currently spawning cards\n" +
+          "`/sets view set:<…>` — browse cards in a set\n" +
+          "`/sets progress set:<…> [user]` — how many cards in that set you've caught",
+      },
     );
   await interaction.editReply({ embeds: [embed] });
 }

@@ -71,11 +71,17 @@ async function handleAdminHelp(interaction: ChatInputCommandInteraction): Promis
           "*Activations/stops are announced in the spawn channel.*",
       },
       {
-        name: "🗂️ Card Sets *(slash)*",
+        name: "🗂️ Card Sets *(slash — /setadmin)*",
         value:
-          "`/loadset file:<.json>` — upload a custom card pack\n" +
-          "`/listsets` — see all loaded sets · `/unloadset set:<name>` — remove a set\n" +
-          "*Built-in starter roster is opt-in via the `/setup` panel.*",
+          "`/setadmin create name:<…>` — new set · `/setadmin rename set:<…> name:<…>` · `/setadmin delete set:<…>`\n" +
+          "`/setadmin add set:<…> card:<…>` · `/setadmin remove set:<…> card:<…>` · `/setadmin move card:<…> to:<…>`\n" +
+          "`/setadmin bulkadd set:<…> cards:<a,b,…>` · `/setadmin bulkremove set:<…> cards:<a,b,…>`\n" +
+          "`/setadmin active set:<…>` — make this set the spawn pool · `/setadmin deactivate` — stop random spawns\n" +
+          "`/setadmin view set:<…>` — see cards in a set · `/setadmin export set:<…>` — attach JSON file\n" +
+          "`/setadmin exportall [sets:<a,b>]` — bundle all (or chosen) sets into one file\n" +
+          "`/setadmin setweight set:<…> rarity:<…> weight:<n>` · `/setadmin clearweight` · `/setadmin showweights`\n" +
+          "`/setadmin showcase set:<…> awards:<true|false>` — toggle set-completion achievement payout\n" +
+          "*Built-in starter roster is opt-in via the `/setup` panel. Legacy `!loadset / !listsets / !unloadset` still work.*",
       },
       {
         name: "👥 Admins *(slash commands)*",

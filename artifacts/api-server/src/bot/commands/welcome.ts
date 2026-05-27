@@ -61,8 +61,9 @@ export async function handleWelcome(interaction: ChatInputCommandInteraction): P
       "Announced in the spawn channel — check `/event list` to see what's hot right now.\n\n" +
       "**🏆 Net Worth & Rank** — `/top` ranks by net worth (sum of all card worth, shinies at 2×). " +
       "Unique cards unlock collector ranks: 🪖 Recruit → 👑 Dark Commander.\n\n" +
-      "**🏅 Achievements** — 10 unlockables auto-trigger on milestones (first catch, 7-day streak, etc.) " +
-      "and pay shards. See yours with `/achievements`.",
+      "**🏅 Achievements** — unlockables auto-trigger on milestones (first catch, 7-day streak, collecting unique cards, etc.) " +
+      "and pay 💠 shards. Set-completion achievements unlock when you own every card in a set — static ones fire for any completed set; " +
+      "admins can flag special sets with `/setadmin showcase` to award a bonus achievement on top. See yours with `/achievements`.",
     );
   if (rulesBanner) rules.setImage(rulesBanner);
   await applyEmbedOverride(rules, {
@@ -93,6 +94,9 @@ export async function handleWelcome(interaction: ChatInputCommandInteraction): P
       "• `/trades` — pending · `/tradehistory [user]` — recent · `/accept id:<n>` · `/decline id:<n>`\n\n" +
       "**📌 Wishlist**\n" +
       "• `/wishlist add|remove|list` — get pinged when wished cards spawn\n\n" +
+      "**🗂️ Card Sets**\n" +
+      "• `/sets list` — all sets · `/sets active` — current spawn pool\n" +
+      "• `/sets view set:<…>` — cards in a set · `/sets progress set:<…>` — your completion %\n\n" +
       "**ℹ️ Help**\n" +
       "• `/help` — player commands · `/adminhelp` — admin commands (admins only)",
     )
