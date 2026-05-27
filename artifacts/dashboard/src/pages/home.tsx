@@ -46,8 +46,9 @@ export default function Home() {
     });
 
     let filtered = data.cards.filter((c) => {
-      const matchesSearch = c.name.toLowerCase().includes(search.toLowerCase()) || 
-                           (c.setName?.toLowerCase() || "").includes(search.toLowerCase());
+      const setNamesStr = (c.sets ?? []).map(s => s.name).join(" ").toLowerCase();
+      const matchesSearch = c.name.toLowerCase().includes(search.toLowerCase()) ||
+                           setNamesStr.includes(search.toLowerCase());
       const matchesRarity = selectedRarities.size === 0 || selectedRarities.has(c.rarity);
       return matchesSearch && matchesRarity;
     });

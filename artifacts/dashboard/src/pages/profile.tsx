@@ -210,7 +210,7 @@ export default function Profile() {
                         droppable: true,
                         inPacks: true,
                         isArchived: false,
-                        setName: null,
+                        sets: [],
                         podiumPlace: null,
                         previewAnimation: null,
                         previewBgColor: null,

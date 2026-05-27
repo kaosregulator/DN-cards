@@ -1,5 +1,5 @@
 import { Router, type IRouter, type Request, type Response } from "express";
-import { db, cardsTable, cardDisplayOverridesTable, collectionsTable, userCurrencyTable, achievementsTable } from "@workspace/db";
+import { db, cardsTable, cardDisplayOverridesTable, collectionsTable, userCurrencyTable, achievementsTable, setsTable, cardSetMembershipsTable } from "@workspace/db";
 import { and, eq, sql, desc } from "drizzle-orm";
 import { z } from "zod/v4";
 import { ACHIEVEMENTS } from "../bot/achievements";
@@ -28,13 +28,27 @@ function parseParams<T extends z.ZodTypeAny>(schema: T, req: Request, res: Respo
 // control website visibility (hiddenFromSite) and ordering (featured +
 // sortWeight + id as final tiebreaker). Discord reads `cards` directly and is
 // unaffected by anything in this endpoint.
+// Also joins `sets` memberships so the client can display which set(s) a card
+// belongs to without ever touching the removed `cards.set_name` column.
 router.get("/cards", async (_req, res) => {
-  const rows = await db
-    .select({ card: cardsTable, override: cardDisplayOverridesTable })
-    .from(cardsTable)
-    .leftJoin(cardDisplayOverridesTable, eq(cardDisplayOverridesTable.cardId, cardsTable.id))
-    .where(eq(cardsTable.isArchived, false))
-    .orderBy(cardsTable.id);
+  const [rows, memberships] = await Promise.all([
+    db
+      .select({ card: cardsTable, override: cardDisplayOverridesTable })
+      .from(cardsTable)
+      .leftJoin(cardDisplayOverridesTable, eq(cardDisplayOverridesTable.cardId, cardsTable.id))
+      .where(eq(cardsTable.isArchived, false))
+      .orderBy(cardsTable.id),
+    db
+      .select({ cardId: cardSetMembershipsTable.cardId, setId: setsTable.id, setName: setsTable.name })
+      .from(cardSetMembershipsTable)
+      .innerJoin(setsTable, eq(setsTable.id, cardSetMembershipsTable.setId)),
+  ]);
+
+  const setsByCard = new Map<number, { id: number; name: string }[]>();
+  for (const m of memberships) {
+    if (!setsByCard.has(m.cardId)) setsByCard.set(m.cardId, []);
+    setsByCard.get(m.cardId)!.push({ id: m.setId, name: m.setName });
+  }
 
   const visible = rows
     .filter(r => !(r.override?.hiddenFromSite ?? false))
@@ -46,6 +60,7 @@ router.get("/cards", async (_req, res) => {
       flavor: r.override?.flavorText ?? r.card.flavor,
       featured: r.override?.featured ?? false,
       sortWeight: r.override?.sortWeight ?? 0,
+      sets: setsByCard.get(r.card.id) ?? [],
     }))
     .sort((a, b) => {
       if (a.featured !== b.featured) return a.featured ? -1 : 1;

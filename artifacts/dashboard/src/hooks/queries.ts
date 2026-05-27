@@ -35,7 +35,7 @@ export interface Card {
   droppable: boolean;
   inPacks: boolean;
   isArchived: boolean;
-  setName: string | null;
+  sets: { id: number; name: string }[];
   podiumPlace: 1 | 2 | 3 | null;
   previewAnimation: "spin" | "bounce" | "flip" | "pulse" | "none" | null;
   previewBgColor: string | null;

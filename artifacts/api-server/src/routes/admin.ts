@@ -1,5 +1,5 @@
 import { Router, type IRouter, type Response } from "express";
-import { db, cardsTable, cardDisplayOverridesTable, upsertCardDisplayOverrideSchema } from "@workspace/db";
+import { db, cardsTable, cardDisplayOverridesTable, upsertCardDisplayOverrideSchema, setsTable, cardSetMembershipsTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { z } from "zod/v4";
 import { requireDashboardAuth } from "../middlewares/dashboard-auth.js";
@@ -43,18 +43,32 @@ function parse<T extends z.ZodTypeAny>(schema: T, value: unknown, res: Response)
 // ── List cards with merged display overrides ─────────────────────────────────
 // Returns BOTH the base (gameplay-truth) row AND the override row so the
 // admin UI can show "Discord says X / website shows Y" side by side.
+// Also includes the card's set memberships from the first-class sets tables.
 router.get("/cards", async (_req, res) => {
-  const rows = await db
-    .select({
-      card: cardsTable,
-      override: cardDisplayOverridesTable,
-    })
-    .from(cardsTable)
-    .leftJoin(cardDisplayOverridesTable, eq(cardDisplayOverridesTable.cardId, cardsTable.id))
-    .orderBy(cardsTable.id);
+  const [rows, memberships] = await Promise.all([
+    db
+      .select({ card: cardsTable, override: cardDisplayOverridesTable })
+      .from(cardsTable)
+      .leftJoin(cardDisplayOverridesTable, eq(cardDisplayOverridesTable.cardId, cardsTable.id))
+      .orderBy(cardsTable.id),
+    db
+      .select({ cardId: cardSetMembershipsTable.cardId, setId: setsTable.id, setName: setsTable.name })
+      .from(cardSetMembershipsTable)
+      .innerJoin(setsTable, eq(setsTable.id, cardSetMembershipsTable.setId)),
+  ]);
+
+  const setsByCard = new Map<number, { id: number; name: string }[]>();
+  for (const m of memberships) {
+    if (!setsByCard.has(m.cardId)) setsByCard.set(m.cardId, []);
+    setsByCard.get(m.cardId)!.push({ id: m.setId, name: m.setName });
+  }
 
   res.json({
-    cards: rows.map(r => ({ ...r.card, displayOverride: r.override ?? null })),
+    cards: rows.map(r => ({
+      ...r.card,
+      sets: setsByCard.get(r.card.id) ?? [],
+      displayOverride: r.override ?? null,
+    })),
   });
 });
 

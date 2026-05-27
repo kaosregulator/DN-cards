@@ -227,8 +227,10 @@ export function CardComponent({ card, relativeDropChance, count, shinyCount = 0 
                     </Badge>
                   </div>
                   <DialogTitle className="text-2xl font-bold tracking-wider">{card.name}</DialogTitle>
-                  {card.setName && (
-                    <p className="text-sm font-mono text-primary tracking-widest uppercase mt-1">{card.setName}</p>
+                  {card.sets && card.sets.length > 0 && (
+                    <p className="text-sm font-mono text-primary tracking-widest uppercase mt-1">
+                      {card.sets.map(s => s.name).join(" · ")}
+                    </p>
                   )}
                </DialogHeader>
 
