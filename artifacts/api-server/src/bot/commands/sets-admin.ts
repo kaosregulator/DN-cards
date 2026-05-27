@@ -11,6 +11,7 @@ import {
   patchSetRarityWeight, setSetRarityWeights,
   setSetAwardsCompletion,
   getUnassignedCards,
+  getAllCards,
 } from "../db.js";
 import type { Card, CardSet } from "@workspace/db";
 import { RARITY_EMOJI, type Rarity } from "../cards-data.js";
@@ -392,6 +393,46 @@ export async function handleSetAdminCommand(interaction: ChatInputCommandInterac
     await interaction.editReply({
       content: `📦 Exported **${picked.length + (unassignedCount > 0 ? 1 : 0)}** set${picked.length === 1 && unassignedCount === 0 ? "" : "s"} (${totalCards} card${totalCards === 1 ? "" : "s"} total).${orphanNote}\n` +
         `Re-import with \`/loadset file:<this.json>\` — each set is restored under its own name with its rarity weights.`,
+      files: [file],
+    });
+    return;
+  }
+
+  if (sub === "exportcards") {
+    const includeArchived = interaction.options.getBoolean("includearchived") ?? false;
+    const all = await getAllCards();
+    const cards = includeArchived ? all : all.filter(c => !c.isArchived);
+    if (cards.length === 0) {
+      await interaction.editReply("❌ No cards to export.");
+      return;
+    }
+    const payload = {
+      exportedAt: new Date().toISOString(),
+      cards: cards.map(c => ({
+        name: c.name,
+        description: c.description,
+        rarity: c.rarity,
+        cardType: c.cardType,
+        dropWeight: c.dropWeight,
+        worthValue: c.worthValue,
+        burnValue: c.burnValue,
+        imageUrl: c.imageUrl ?? undefined,
+        flavor: c.flavor ?? undefined,
+        droppable: c.droppable,
+        inPacks: c.inPacks,
+        isLimitedEdition: c.isLimitedEdition,
+        isEventExclusive: c.isEventExclusive,
+        maxCopies: c.maxCopies ?? undefined,
+        isArchived: c.isArchived || undefined,
+      })),
+    };
+    const file = new AttachmentBuilder(
+      Buffer.from(JSON.stringify(payload, null, 2), "utf8"),
+      { name: "all-cards.json" },
+    );
+    await interaction.editReply({
+      content: `📤 Exported **${cards.length}** card${cards.length === 1 ? "" : "s"}` +
+        `${includeArchived ? " (including archived)" : ""}. Re-import with \`/loadset file:<this.json>\` — they'll all land in one fresh set.`,
       files: [file],
     });
     return;
