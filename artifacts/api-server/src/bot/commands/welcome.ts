@@ -122,8 +122,7 @@ export async function handleWelcome(interaction: ChatInputCommandInteraction): P
 // Three embeds: Quick-Start checklist · Card Editing guide · Command cheat-sheet.
 // ─────────────────────────────────────────────────────────────────────────────
 export async function handleWelcomeAdmin(interaction: ChatInputCommandInteraction): Promise<void> {
-  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-
+  // NOTE: admin.ts dispatcher has already called deferReply(ephemeral) — do NOT defer again here.
   if (!interaction.guild) { await interaction.editReply("❌ Must be used inside a server."); return; }
   const isOwner   = interaction.guild.ownerId === interaction.user.id;
   const member    = interaction.member;

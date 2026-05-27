@@ -133,10 +133,11 @@ async function buildPanelPayload(guildId: string, selectedSetId?: number) {
 
 // ── Entry: /sethub slash command ──────────────────────────────────────────────
 export async function handleSetsHubCommand(interaction: ChatInputCommandInteraction): Promise<void> {
+  // admin.ts dispatcher has already called deferReply(ephemeral) — use editReply, not reply.
   if (!await ensureAdmin(interaction)) return;
   const guildId = interaction.guild!.id;
   const payload = await buildPanelPayload(guildId);
-  await interaction.reply({ ...payload, flags: MessageFlags.Ephemeral });
+  await interaction.editReply(payload);
 }
 
 // ── Select: user picks a set from the dropdown ────────────────────────────────
