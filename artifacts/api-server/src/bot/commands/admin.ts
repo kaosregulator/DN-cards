@@ -251,6 +251,13 @@ export async function handleAdminCommand(
     return;
   }
 
+  // ── /sethub (clickable set manager panel) ────────────────────────────────
+  if (cmd === "sethub") {
+    const { handleSetsHubCommand } = await import("./sets-panel.js");
+    await handleSetsHubCommand(interaction);
+    return;
+  }
+
   // ── /setadmin (sets CRUD + active selection) ─────────────────────────────
   if (cmd === "setadmin") {
     const { handleSetAdminCommand } = await import("./sets-admin.js");

@@ -382,7 +382,8 @@ export async function handleSetAdminCommand(interaction: ChatInputCommandInterac
 // Roundtrip-safe payload — every field the importer reads, nothing it
 // doesn't. We deliberately drop runtime-derived fields (totalMinted,
 // timestamps, podiumPlace) so re-importing into a fresh DB is clean.
-function buildSingleSetPayload(set: CardSet, cards: Card[]) {
+// Exported so sets-panel.ts can reuse it for the one-click Export buttons.
+export function buildSingleSetPayload(set: CardSet, cards: Card[]) {
   return {
     set: {
       name: set.name,

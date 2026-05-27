@@ -133,6 +133,8 @@ export function buildCommands() {
 
     adminCmd("adminhub", "(Admin) Quick hub — manage admins, timeouts, and see server state", s => s),
 
+    adminCmd("sethub", "(Admin) Clickable set manager — create sets, add cards, activate spawn pool, export with one click", s => s),
+
     adminCmd("drop", "(Admin) Force-drop a card — for events and giveaways", s => s
       .addStringOption(o => o.setName("name").setDescription("Card name — leave empty for a random drop").setAutocomplete(true))),
 
@@ -397,8 +399,8 @@ export function buildCommands() {
         .addStringOption(o => o.setName("set").setDescription("Set name").setRequired(true).setAutocomplete(true)))
       .addSubcommand(sc => sc.setName("export").setDescription("Export a single set as JSON (roundtrip-safe — includes rarity weights)")
         .addStringOption(o => o.setName("set").setDescription("Set name").setRequired(true).setAutocomplete(true)))
-      .addSubcommand(sc => sc.setName("exportall").setDescription("Export every set as one JSON bundle")
-        .addStringOption(o => o.setName("sets").setDescription("Optional comma-separated subset of set names (default: all)").setRequired(false)))
+      .addSubcommand(sc => sc.setName("exportall").setDescription("Export ALL sets as one JSON bundle — no options needed, just run it")
+        .addStringOption(o => o.setName("sets").setDescription("Leave blank to export everything. Or type comma-separated names for a subset.").setRequired(false)))
       .addSubcommand(sc => sc.setName("showcase").setDescription("Toggle whether completing this set unlocks its own dedicated achievement")
         .addStringOption(o => o.setName("set").setDescription("Set name").setRequired(true).setAutocomplete(true))
         .addBooleanOption(o => o.setName("enabled").setDescription("On = completing the set grants the showcase achievement").setRequired(true)))),
@@ -413,7 +415,7 @@ export const USER_COMMAND_NAMES = new Set([
 ]);
 
 export const ADMIN_COMMAND_NAMES = new Set([
-  "config", "adminhub", "adminhelp", "drop", "massdrop", "give", "giveshards", "takeback", "takeshards", "event", "setchannels", "dashboard", "setup",
+  "config", "adminhub", "sethub", "adminhelp", "drop", "massdrop", "give", "giveshards", "takeback", "takeshards", "event", "setchannels", "dashboard", "setup",
   "addadmin", "removeadmin", "listadmins", "editcard", "rarityname", "rarity", "embed",
   "setadmin",
 ]);
