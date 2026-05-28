@@ -97,7 +97,7 @@ async function handleAdminHelp(interaction: ChatInputCommandInteraction): Promis
         value:
           "`/rarity` — opens the **Rarity Hub** with four sections:\n" +
           "• **🎨 Display Names** — rename/recolor/re-emoji any built-in tier\n" +
-          "• **📊 Economy Overrides** — adjust worth, burn, drop weight per tier\n" +
+          "• **📊 Economy Overrides** — adjust worth, burn, drop rate per tier\n" +
           "• **✨ Custom Tiers** — create tiers beyond Common→Mythic\n" +
           "• **🃏 Card Tiers** — assign a card into a custom tier",
       },
@@ -105,7 +105,7 @@ async function handleAdminHelp(interaction: ChatInputCommandInteraction): Promis
         name: "🌐 Web Dashboard",
         value:
           "`/dashboard` — DMs you a one-time link to **create or reset** your dashboard login.\n" +
-          "The dashboard is **presentation-only** — display name, image, description, flavor, visibility, sort order. All gameplay values (rarity, worth, burn, drop weight, packs) are read-only there; change them with the Discord commands above.\n" +
+          "The dashboard is **presentation-only** — display name, image, description, flavor, visibility, sort order. All gameplay values (rarity, worth, burn, drop rate, packs) are read-only there; change them with the Discord commands above.\n" +
           "• `/admin` — card display overrides + website roster\n" +
           "• `/admin/news` · `/admin/suggestions` — site content + user feedback queue\n" +
           "• `/admin/users` (owner only) — invite additional dashboard logins.",

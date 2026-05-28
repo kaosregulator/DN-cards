@@ -57,7 +57,7 @@ async function buildPanel(cardId: number): Promise<{ embeds: EmbedBuilder[]; com
     .addFields(
       { name: "Rarity", value: `${RARITY_EMOJI[r] ?? "🃏"} ${RARITY_LABELS[r] ?? r}`, inline: true },
       { name: "Type", value: card.cardType, inline: true },
-      { name: "Pull Weight", value: String(card.dropWeight), inline: true },
+      { name: "Drop Rate", value: String(card.dropWeight), inline: true },
       { name: "Worth", value: `💠 ${card.worthValue.toLocaleString()}`, inline: true },
       { name: "Burn", value: `💠 ${card.burnValue.toLocaleString()}`, inline: true },
       { name: "In Packs", value: card.inPacks ? "✅ Yes" : "❌ No", inline: true },
@@ -78,7 +78,7 @@ async function buildPanel(cardId: number): Promise<{ embeds: EmbedBuilder[]; com
       { label: "Type", value: "type", emoji: "🎯", description: `Currently ${card.cardType}` },
       { label: "Worth (💠)", value: "worthValue", emoji: "💰", description: `Currently ${card.worthValue}` },
       { label: "Burn value (💠)", value: "burnValue", emoji: "🔥", description: `Currently ${card.burnValue}` },
-      { label: "Pull weight", value: "dropWeight", emoji: "🎲", description: `Currently ${card.dropWeight}` },
+      { label: "Drop rate", value: "dropWeight", emoji: "🎲", description: `Currently ${card.dropWeight}` },
       { label: "Image URL", value: "imageUrl", emoji: "🖼️" },
       { label: card.inPacks ? "Toggle: remove from packs" : "Toggle: add to packs", value: "toggle:inPacks", emoji: "📦" },
       { label: card.droppable ? "Toggle: make undroppable" : "Toggle: make droppable", value: "toggle:droppable", emoji: "🎁" },
@@ -224,13 +224,13 @@ export async function handleEditCardSelect(interaction: StringSelectMenuInteract
 }
 
 // ── Modal for text/number fields ────────────────────────────────────────────
-const TEXT_FIELDS: Record<string, { label: string; style: TextInputStyle; max?: number; placeholder?: string }> = {
-  name:        { label: "Card name (1–80 chars)", style: TextInputStyle.Short, max: 80 },
-  description: { label: "Description (max 500)", style: TextInputStyle.Paragraph, max: 500 },
-  imageUrl:    { label: "Image URL (blank to clear)", style: TextInputStyle.Short, max: 500, placeholder: "https://… or leave empty" },
-  worthValue:  { label: "Worth in 💠 (0–1,000,000)", style: TextInputStyle.Short, max: 10 },
-  burnValue:   { label: "Burn value in 💠 (0–1,000,000)", style: TextInputStyle.Short, max: 10 },
-  dropWeight:  { label: "Pull weight (0–1000)", style: TextInputStyle.Short, max: 10 },
+const TEXT_FIELDS: Record<string, { title: string; label: string; style: TextInputStyle; max?: number; placeholder?: string }> = {
+  name:        { title: "Edit Name",        label: "Card name (1–80 chars)",        style: TextInputStyle.Short,     max: 80 },
+  description: { title: "Edit Description", label: "Description (max 500 chars)",   style: TextInputStyle.Paragraph, max: 500 },
+  imageUrl:    { title: "Edit Image URL",   label: "Image URL (blank to clear)",    style: TextInputStyle.Short,     max: 500, placeholder: "https://… or leave empty" },
+  worthValue:  { title: "Edit Worth",       label: "Worth in 💠 shards (0–999999)", style: TextInputStyle.Short,     max: 10 },
+  burnValue:   { title: "Edit Burn Value",  label: "Burn value in 💠 (0–999999)",   style: TextInputStyle.Short,     max: 10 },
+  dropWeight:  { title: "Edit Drop Rate",   label: "Drop rate (0–1000)",            style: TextInputStyle.Short,     max: 10 },
 };
 
 async function openFieldModal(interaction: StringSelectMenuInteraction, cardId: number, field: string): Promise<void> {
@@ -249,7 +249,7 @@ async function openFieldModal(interaction: StringSelectMenuInteraction, cardId: 
 
   const modal = new ModalBuilder()
     .setCustomId(`editcard:modal:${field}:${cardId}`)
-    .setTitle(`Edit ${field}`)
+    .setTitle(def.title)
     .addComponents(new ActionRowBuilder<TextInputBuilder>().addComponents(input));
   await interaction.showModal(modal);
 }

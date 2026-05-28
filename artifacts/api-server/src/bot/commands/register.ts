@@ -266,7 +266,7 @@ export function buildCommands() {
       .addStringOption(o => o.setName("description").setDescription("Card description (up to 500 chars)").setMaxLength(500))
       .addIntegerOption(o => o.setName("worth").setDescription("Worth in 💠 shards (blank = rarity default)").setMinValue(0))
       .addIntegerOption(o => o.setName("burn").setDescription("Burn value in 💠 (blank = rarity default)").setMinValue(0))
-      .addNumberOption(o => o.setName("weight").setDescription("Drop weight (blank = rarity default)").setMinValue(0))
+      .addNumberOption(o => o.setName("weight").setDescription("Drop rate (blank = rarity default)").setMinValue(0))
       .addBooleanOption(o => o.setName("limited").setDescription("Limited edition — capped copy count?"))
       .addIntegerOption(o => o.setName("max_copies").setDescription("Max copies if limited (default 50)").setMinValue(1))
       .addBooleanOption(o => o.setName("event_exclusive").setDescription("Event exclusive — never spawns randomly?"))),
