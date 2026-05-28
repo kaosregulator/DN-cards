@@ -48,6 +48,12 @@ export interface Card {
   // these override `rarity` for display/grouping on the public website.
   effectiveRarity?: string;
   effectiveRarityLabel?: string;
+  // Custom tier dropWeight replaces the card's base dropWeight (same rule the bot uses).
+  // Always present on the public roster endpoint.
+  effectiveDropWeight?: number;
+  // True when an active set is configured for HOME_GUILD_ID and this card is in it.
+  // False = card exists but is not in the live spawn pool (no active set, or not a member).
+  inActiveSet?: boolean;
 }
 
 export interface AdminCard extends Card {
@@ -124,7 +130,7 @@ export interface GuildSummary {
 export function useCards() {
   return useQuery({
     queryKey: ["cards"],
-    queryFn: () => apiGet<{ cards: Card[] }>("/api/cards"),
+    queryFn: () => apiGet<{ cards: Card[]; activeSetId: number | null }>("/api/cards"),
   });
 }
 

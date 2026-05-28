@@ -50,12 +50,21 @@ export default function Home() {
   const processedCards = useMemo(() => {
     if (!data?.cards) return [];
 
-    // Calculate drop chances per effective rarity bucket
+    // When an active set is configured, only cards in that set can spawn.
+    // Use inActiveSet (server-provided) as the pool filter so the denominator
+    // matches what the bot actually draws from.  If no active set is known,
+    // fall back to all droppable cards (same as the old behaviour).
+    const hasActiveSet = data.activeSetId != null;
+
+    // Calculate drop chances per effective rarity bucket using effectiveDropWeight
+    // (custom tier replaces base weight, same rule the bot uses).
     const weightsByRarity: Record<string, number> = {};
     data.cards.forEach((c) => {
-      if (c.droppable) {
+      const inPool = c.droppable && (hasActiveSet ? !!c.inActiveSet : true);
+      if (inPool) {
         const slug = c.effectiveRarity ?? c.rarity;
-        weightsByRarity[slug] = (weightsByRarity[slug] || 0) + c.dropWeight;
+        const w = c.effectiveDropWeight ?? c.dropWeight;
+        weightsByRarity[slug] = (weightsByRarity[slug] || 0) + w;
       }
     });
 
@@ -283,7 +292,13 @@ export default function Home() {
                     >
                       <CardComponent
                         card={card}
-                        relativeDropChance={card.droppable && group.totalWeight > 0 ? (card.dropWeight / group.totalWeight) * 100 : undefined}
+                        relativeDropChance={(() => {
+                          const hasActiveSet = data?.activeSetId != null;
+                          const inPool = card.droppable && (hasActiveSet ? !!card.inActiveSet : true);
+                          if (!inPool || group.totalWeight <= 0) return undefined;
+                          const w = card.effectiveDropWeight ?? card.dropWeight;
+                          return (w / group.totalWeight) * 100;
+                        })()}
                       />
                     </motion.div>
                   ))}

@@ -1,5 +1,5 @@
 import { Router, type IRouter, type Request, type Response } from "express";
-import { db, cardsTable, cardDisplayOverridesTable, collectionsTable, userCurrencyTable, achievementsTable, setsTable, cardSetMembershipsTable, cardRarityOverridesTable, customRaritiesTable, rarityDisplayOverridesTable } from "@workspace/db";
+import { db, cardsTable, cardDisplayOverridesTable, collectionsTable, userCurrencyTable, achievementsTable, setsTable, cardSetMembershipsTable, cardRarityOverridesTable, customRaritiesTable, rarityDisplayOverridesTable, guildSettingsTable } from "@workspace/db";
 import { and, eq, sql, desc } from "drizzle-orm";
 import { z } from "zod/v4";
 import { ACHIEVEMENTS } from "../bot/achievements";
@@ -33,7 +33,7 @@ function parseParams<T extends z.ZodTypeAny>(schema: T, req: Request, res: Respo
 router.get("/cards", async (_req, res) => {
   const homeGuildId = process.env["HOME_GUILD_ID"] ?? null;
 
-  const [rows, memberships, customOverrides, rarityLabels] = await Promise.all([
+  const [rows, memberships, customOverrides, rarityLabels, activeSetRows] = await Promise.all([
     db
       .select({ card: cardsTable, override: cardDisplayOverridesTable })
       .from(cardsTable)
@@ -50,6 +50,7 @@ router.get("/cards", async (_req, res) => {
             cardId: cardRarityOverridesTable.cardId,
             slug: customRaritiesTable.slug,
             name: customRaritiesTable.name,
+            dropWeight: customRaritiesTable.dropWeight,
           })
           .from(cardRarityOverridesTable)
           .innerJoin(
@@ -60,7 +61,7 @@ router.get("/cards", async (_req, res) => {
             ),
           )
           .where(eq(cardRarityOverridesTable.guildId, homeGuildId))
-      : Promise.resolve([] as { cardId: number; slug: string; name: string }[]),
+      : Promise.resolve([] as { cardId: number; slug: string; name: string; dropWeight: number }[]),
     // Built-in rarity rename overrides (e.g. "legendary" → "Exotic")
     homeGuildId
       ? db
@@ -68,6 +69,14 @@ router.get("/cards", async (_req, res) => {
           .from(rarityDisplayOverridesTable)
           .where(eq(rarityDisplayOverridesTable.guildId, homeGuildId))
       : Promise.resolve([] as { rarity: string; displayName: string | null }[]),
+    // Active set for the home guild — determines the live spawn pool
+    homeGuildId
+      ? db
+          .select({ activeSetId: guildSettingsTable.activeSetId })
+          .from(guildSettingsTable)
+          .where(eq(guildSettingsTable.guildId, homeGuildId))
+          .limit(1)
+      : Promise.resolve([] as { activeSetId: number | null }[]),
   ]);
 
   const setsByCard = new Map<number, { id: number; name: string }[]>();
@@ -76,9 +85,11 @@ router.get("/cards", async (_req, res) => {
     setsByCard.get(m.cardId)!.push({ id: m.setId, name: m.setName });
   }
 
-  const customTierByCard = new Map<number, { slug: string; name: string }>();
+  const activeSetId = activeSetRows[0]?.activeSetId ?? null;
+
+  const customTierByCard = new Map<number, { slug: string; name: string; dropWeight: number }>();
   for (const o of customOverrides) {
-    customTierByCard.set(o.cardId, { slug: o.slug, name: o.name });
+    customTierByCard.set(o.cardId, { slug: o.slug, name: o.name, dropWeight: o.dropWeight });
   }
 
   // Map of built-in rarity enum → admin-chosen display name (e.g. "legendary" → "Exotic")
@@ -94,6 +105,11 @@ router.get("/cards", async (_req, res) => {
       // Precedence: custom tier > renamed built-in > raw rarity
       const effectiveRarity = customTier?.slug ?? r.card.rarity;
       const effectiveRarityLabel = customTier?.name ?? rarityLabelMap.get(r.card.rarity) ?? r.card.rarity;
+      // Custom tier fully replaces the card's dropWeight (same rule the bot uses)
+      const effectiveDropWeight = customTier?.dropWeight ?? r.card.dropWeight;
+      const cardSets = setsByCard.get(r.card.id) ?? [];
+      // inActiveSet: true only when a set is active AND this card belongs to it
+      const inActiveSet = activeSetId !== null && cardSets.some(s => s.id === activeSetId);
       return {
         ...r.card,
         name: r.override?.displayName ?? r.card.name,
@@ -102,9 +118,11 @@ router.get("/cards", async (_req, res) => {
         flavor: r.override?.flavorText ?? r.card.flavor,
         featured: r.override?.featured ?? false,
         sortWeight: r.override?.sortWeight ?? 0,
-        sets: setsByCard.get(r.card.id) ?? [],
+        sets: cardSets,
         effectiveRarity,
         effectiveRarityLabel,
+        effectiveDropWeight,
+        inActiveSet,
       };
     })
     .sort((a, b) => {
@@ -113,7 +131,7 @@ router.get("/cards", async (_req, res) => {
       return a.id - b.id;
     });
 
-  res.json({ cards: visible });
+  res.json({ cards: visible, activeSetId });
 });
 
 // ── Guild leaderboard (top 25 by net worth) ───────────────────────────────────
