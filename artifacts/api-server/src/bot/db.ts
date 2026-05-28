@@ -793,8 +793,17 @@ export async function addCard(values: {
 export async function removeCard(name: string) {
   const card = await getCardByName(name);
   if (!card) return;
-  await db.delete(cardsTable).where(eq(cardsTable.id, card.id));
+  const id = card.id;
+  await db.transaction(async (tx) => {
+    await tx.delete(collectionsTable).where(eq(collectionsTable.cardId, id));
+    await tx.delete(spawnLogTable).where(eq(spawnLogTable.cardId, id));
+    await tx.delete(tradesTable).where(
+      sql`${tradesTable.offeredCardId} = ${id} OR ${tradesTable.requestedCardId} = ${id}`,
+    );
+    await tx.delete(cardsTable).where(eq(cardsTable.id, id));
+  });
   invalidateCardCache();
+  invalidateActiveSetCardsCache();
 }
 
 export async function updateCard(cardId: number, values: Partial<{
