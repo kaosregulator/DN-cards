@@ -56,15 +56,15 @@ export default function Home() {
     // fall back to all droppable cards (same as the old behaviour).
     const hasActiveSet = data.activeSetId != null;
 
-    // Calculate drop chances per effective rarity bucket using effectiveDropWeight
-    // (custom tier replaces base weight, same rule the bot uses).
-    const weightsByRarity: Record<string, number> = {};
+    // Total weight across the ENTIRE active pool — used as the denominator so
+    // drop % reflects the actual chance of landing on that specific card, not
+    // "chance within its rarity bucket" (which shows 100% when it's the only
+    // card in a custom tier like Gold Legendary).
+    let totalPoolWeight = 0;
     data.cards.forEach((c) => {
       const inPool = c.droppable && (hasActiveSet ? !!c.inActiveSet : true);
       if (inPool) {
-        const slug = c.effectiveRarity ?? c.rarity;
-        const w = c.effectiveDropWeight ?? c.dropWeight;
-        weightsByRarity[slug] = (weightsByRarity[slug] || 0) + w;
+        totalPoolWeight += c.effectiveDropWeight ?? c.dropWeight;
       }
     });
 
@@ -94,7 +94,7 @@ export default function Home() {
     return [...customSlugs, ...builtInSlugs].map(slug => ({
       rarity: slug,
       label: labelBySlug[slug] ?? slug,
-      totalWeight: weightsByRarity[slug] || 0,
+      totalPoolWeight,
       cards: grouped[slug] ?? [],
     }));
 
@@ -295,9 +295,9 @@ export default function Home() {
                         relativeDropChance={(() => {
                           const hasActiveSet = data?.activeSetId != null;
                           const inPool = card.droppable && (hasActiveSet ? !!card.inActiveSet : true);
-                          if (!inPool || group.totalWeight <= 0) return undefined;
+                          if (!inPool || group.totalPoolWeight <= 0) return undefined;
                           const w = card.effectiveDropWeight ?? card.dropWeight;
-                          return (w / group.totalWeight) * 100;
+                          return (w / group.totalPoolWeight) * 100;
                         })()}
                       />
                     </motion.div>
