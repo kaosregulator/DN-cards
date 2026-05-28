@@ -10,6 +10,7 @@ import {
   getRarityContext, applyRarityContextAll,
   effectiveRarityKey, getDisplayRarities,
   getRarityDisplayOverrides,
+  getGuildDropChanceRuntime,
 } from "../db.js";
 import {
   RARITY_COLORS, RARITY_EMOJI, RARITY_LABELS, getTypeEmoji,
@@ -309,25 +310,27 @@ export async function handleUserCommand(
   // ── /info ─────────────────────────────────────────────────────────────────────
   if (sub === "info") {
     const cardName = interaction.options.getString("name", true);
-    const rawCards = await getAllCards();
-    const ctx = await getRarityContext(guildId);
+    const [rawCards, runtime, infoDisplayMap] = await Promise.all([
+      getAllCards(),
+      getGuildDropChanceRuntime(guildId),
+      getRarityDisplayOverrides(guildId),
+    ]);
+    const { ctx, settings: infoSettings, spawnPool, chanceSummary } = runtime;
     const cards = applyRarityContextAll(rawCards, ctx);
     const card = cards.find(c => c.name.toLowerCase() === cardName.toLowerCase());
     if (!card) { await interaction.editReply(`❌ "**${cardName}**" not found. Try \`/list\`.`); return; }
 
     const cardType = card.cardType;
-    const droppableCards = cards.filter(c => c.droppable);
-    const totalWeight = droppableCards.reduce((s, c) => s + c.dropWeight, 0);
-    const dropChance = card.droppable && totalWeight > 0 ? `~${((card.dropWeight / totalWeight) * 100).toFixed(2)}%` : "Event / Admin-drop only";
+    const cardChance = chanceSummary.cardPercentById.get(card.id);
+    const dropChance = cardChance != null
+      ? `~${cardChance.toFixed(2)}%`
+      : spawnPool.cards.length === 0
+        ? "Random spawns disabled"
+        : "Not in active random pool";
 
     const badges: string[] = [];
     if (card.isLimitedEdition) badges.push("💎 Limited Edition");
     if (card.isEventExclusive) badges.push("🎆 Event Exclusive");
-
-    const [infoSettings, infoDisplayMap] = await Promise.all([
-      getOrCreateGuildSettings(guildId),
-      getRarityDisplayOverrides(guildId),
-    ]);
     // Display the EFFECTIVE tier (custom slug if assigned, else built-in).
     const ladder = getDisplayRarities(ctx, infoSettings, { displayMap: infoDisplayMap });
     const effKey = effectiveRarityKey(card, ctx);
@@ -376,14 +379,14 @@ export async function handleUserCommand(
   // Interactive overview → drill-down view of the full roster (no personal
   // stats). Same paginator as /collection and /catalog.
   if (sub === "list") {
-    const rawCards = await getAllCards();
-    const listCtx = await getRarityContext(guildId);
-    const cards = applyRarityContextAll(rawCards, listCtx);
-    if (cards.length === 0) { await interaction.editReply("No cards in the pool yet."); return; }
-    const [listSettings, listDisplayMap] = await Promise.all([
-      getOrCreateGuildSettings(guildId),
+    const [rawCards, runtime, listDisplayMap] = await Promise.all([
+      getAllCards(),
+      getGuildDropChanceRuntime(guildId),
       getRarityDisplayOverrides(guildId),
     ]);
+    const { ctx: listCtx, settings: listSettings, spawnPool, chanceSummary } = runtime;
+    const cards = applyRarityContextAll(rawCards, listCtx);
+    if (cards.length === 0) { await interaction.editReply("No cards in the pool yet."); return; }
 
     // Group by EFFECTIVE rarity key (built-in OR custom slug), walking the
     // per-guild ladder so custom tiers slot in at their position.
@@ -401,16 +404,10 @@ export async function handleUserCommand(
     const eventCards = cards.filter(c => c.isEventExclusive);
     const adminOnlyCount = cards.filter(c => !c.droppable).length;
 
-    // Aggregate drop-chance share per tier from the droppable pool. Mirrors
-    // /info's chance calc: sum the tier's card dropWeights vs the whole
-    // droppable pool. Non-droppable cards (admin-only) contribute 0.
-    const droppable = cards.filter(c => c.droppable && c.dropWeight > 0);
-    const totalWeight = droppable.reduce((s, c) => s + c.dropWeight, 0);
-    const tierShare = (key: string) => {
-      if (totalWeight === 0) return 0;
-      const w = droppable.filter(c => effectiveRarityKey(c, listCtx) === key).reduce((s, c) => s + c.dropWeight, 0);
-      return (w / totalWeight) * 100;
-    };
+    // Aggregate drop-chance share per tier from the active spawn pool using
+    // the same resolver as the spawn engine. No active set means no visible
+    // random-spawn percentages, matching actual bot behavior.
+    const tierShare = (key: string) => chanceSummary.rarityPercentByKey.get(key) ?? 0;
 
     // ── Overview ──
     const overviewLines: string[] = [];
@@ -418,7 +415,7 @@ export async function handleUserCommand(
       const g = byKey.get(t.key) ?? [];
       if (g.length === 0) continue;
       const share = tierShare(t.key);
-      const shareLabel = share === 0 ? "_admin-drop only_" : `${share.toFixed(share < 1 ? 2 : 1)}%`;
+      const shareLabel = share === 0 ? (spawnPool.cards.length === 0 ? "_spawns disabled_" : "_admin-drop only_") : `${share.toFixed(share < 1 ? 2 : 1)}%`;
       overviewLines.push(`${t.emoji} **${t.label}** — ${g.length} · 🎲 ${shareLabel}`);
     }
     const overview = new EmbedBuilder()

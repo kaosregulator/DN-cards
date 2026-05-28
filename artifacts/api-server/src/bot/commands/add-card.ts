@@ -10,20 +10,19 @@
 import {
   type ChatInputCommandInteraction,
 } from "discord.js";
-import { addCard, getCardByName, getCustomRarityBySlug, assignCardToCustomRarity } from "../db.js";
+import { addCard, addCardToSet, getCardByName, getCustomRarityBySlug, getSetByName, assignCardToCustomRarity } from "../db.js";
 import { renderPanel } from "./edit-card.js";
-import type { Rarity } from "../cards-data.js";
+import { RARITY_BURN, RARITY_WEIGHTS, RARITY_WORTH, type Rarity } from "../cards-data.js";
 
 const BUILTIN_RARITIES = new Set<string>(["common", "uncommon", "rare", "epic", "legendary", "mythic"]);
 
-const RARITY_DEFAULTS: Record<string, { worth: number; burn: number; weight: number }> = {
-  common:    { worth: 10,   burn: 5,    weight: 60 },
-  uncommon:  { worth: 50,   burn: 25,   weight: 25 },
-  rare:      { worth: 200,  burn: 100,  weight: 10 },
-  epic:      { worth: 750,  burn: 375,  weight: 4  },
-  legendary: { worth: 2500, burn: 1250, weight: 1  },
-  mythic:    { worth: 6000, burn: 3000, weight: 0  },
-};
+function builtInDefaults(rarity: Rarity): { worth: number; burn: number; weight: number } {
+  return {
+    worth: RARITY_WORTH[rarity],
+    burn: RARITY_BURN[rarity],
+    weight: RARITY_WEIGHTS[rarity],
+  };
+}
 
 export async function handleAddCardCommand(interaction: ChatInputCommandInteraction): Promise<void> {
   const opts        = interaction.options;
@@ -33,6 +32,7 @@ export async function handleAddCardCommand(interaction: ChatInputCommandInteract
   const type        = opts.getString("type", true);
   const imageAttachment = opts.getAttachment("image");
   const imageUrl    = imageAttachment?.url ?? opts.getString("imageurl") ?? undefined;
+  const setName     = opts.getString("set")?.trim();
   const description = opts.getString("description") ?? "";
   const limited        = opts.getBoolean("limited") ?? false;
   const maxCopies      = opts.getInteger("max_copies") ?? undefined;
@@ -47,7 +47,7 @@ export async function handleAddCardCommand(interaction: ChatInputCommandInteract
   const isCustom = !BUILTIN_RARITIES.has(rarityInput);
   let baseRarity: Rarity = "common";
   let customSlug: string | null = null;
-  let defs = RARITY_DEFAULTS.common!;
+  let defs = builtInDefaults("common");
 
   if (isCustom) {
     const tier = await getCustomRarityBySlug(guildId, rarityInput);
@@ -63,7 +63,7 @@ export async function handleAddCardCommand(interaction: ChatInputCommandInteract
     baseRarity = "common";
   } else {
     baseRarity = rarityInput as Rarity;
-    defs = RARITY_DEFAULTS[rarityInput] ?? RARITY_DEFAULTS.common!;
+    defs = builtInDefaults(baseRarity);
   }
 
   const worth  = opts.getInteger("worth")  ?? defs.worth;
@@ -100,6 +100,17 @@ export async function handleAddCardCommand(interaction: ChatInputCommandInteract
     await assignCardToCustomRarity(guildId, card.id, customSlug);
   }
 
+  let setNote = "";
+  if (setName) {
+    const set = await getSetByName(setName);
+    if (set) {
+      await addCardToSet(set.id, card.id);
+      setNote = ` and added to set \`${set.name}\``;
+    } else {
+      setNote = ` (set \`${setName}\` was not found, so no set was assigned)`;
+    }
+  }
+
   const rarityLabel = customSlug ? `custom tier \`${customSlug}\`` : `**${baseRarity}**`;
-  await renderPanel(interaction, card.id, false, `✅ Created **${card.name}** (${rarityLabel}) — tweak any field below`);
+  await renderPanel(interaction, card.id, false, `✅ Created **${card.name}** (${rarityLabel})${setNote} — tweak any field below`);
 }

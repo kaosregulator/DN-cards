@@ -12,17 +12,47 @@ import { eq, and, sql, desc, inArray, isNull } from "drizzle-orm";
 import type { Card, CardEvent, CardSet, CustomRarity, GuildSettings, RarityProfile, Trade } from "@workspace/db";
 import {
   DEFAULT_CARDS, SHINY_RATE, SHINY_MULTIPLIER, type Rarity,
-  RARITY_LABELS, RARITY_EMOJI, RARITY_COLORS,
-  rarityLabel as builtinRarityLabel, rarityEmoji as builtinRarityEmoji, rarityColor as builtinRarityColor,
   type RarityDisplayMap,
 } from "./cards-data.js";
+import {
+  applyRarityProfile,
+  applyRarityProfileAll,
+  applyRarityContext,
+  applyRarityContextAll,
+  effectiveRarityKey,
+  getDisplayRarities,
+  getGuildRarityWeights,
+  isRandomDroppable,
+  getEffectiveDropWeight,
+  buildDropChanceSummary,
+  type RarityProfileMap,
+  type RarityContext,
+} from "./rarity-runtime.js";
+export {
+  applyRarityProfile,
+  applyRarityProfileAll,
+  applyRarityContext,
+  applyRarityContextAll,
+  effectiveRarityKey,
+  getDisplayRarities,
+  getGuildRarityWeights,
+  isRandomDroppable,
+  getEffectiveDropWeight,
+  buildDropChanceSummary,
+} from "./rarity-runtime.js";
+export type {
+  RarityProfileMap,
+  RarityContext,
+  DisplayRarity,
+  DropWeightOptions,
+  DropChanceSummary,
+} from "./rarity-runtime.js";
 import { logger } from "../lib/logger.js";
 
 // ── Per-guild rarity profile (worth/burn/dropWeight overrides) ───────────────
 // One row per (guild, rarity). Any null column means "use the card's value".
 // Tiny dataset (≤6 rows/guild) — cached for 5s like the cards cache. Caches
 // per-guild so a write for one server doesn't pollute another's view.
-export type RarityProfileMap = Map<Rarity, RarityProfile>;
 const _profileCache = new Map<string, { value: RarityProfileMap; expiresAt: number }>();
 const PROFILE_TTL_MS = 5_000;
 
@@ -41,25 +71,6 @@ export function invalidateRarityProfileCache(guildId?: string): void {
   else _profileCache.clear();
 }
 
-type EconCard = { rarity: string; worthValue: number; burnValue: number; dropWeight: number };
-
-export function applyRarityProfile<T extends EconCard>(card: T, profile: RarityProfileMap): T {
-  if (profile.size === 0) return card;
-  const o = profile.get(card.rarity as Rarity);
-  if (!o) return card;
-  return {
-    ...card,
-    worthValue: o.worthValue ?? card.worthValue,
-    burnValue: o.burnValue ?? card.burnValue,
-    dropWeight: o.dropWeight ?? card.dropWeight,
-  };
-}
-
-export function applyRarityProfileAll<T extends EconCard>(cards: T[], profile: RarityProfileMap): T[] {
-  if (profile.size === 0) return cards;
-  return cards.map(c => applyRarityProfile(c, profile));
-}
-
 // ── Custom Rarity Tiers (Stage 2) ────────────────────────────────────────────
 // Per-guild context that bundles BOTH the Stage-1 rarity profile (per-tier
 // numeric overrides for built-in rarities) AND Stage-2 custom tiers + card
@@ -69,22 +80,6 @@ export function applyRarityProfileAll<T extends EconCard>(cards: T[], profile: R
 // profile still applies as before, so Server 1 (zero custom rows) is
 // unchanged.
 //
-// Built-in tier positions (used for /tradein ladder ordering): common=1,
-// uncommon=2, rare=3, epic=4, legendary=5, mythic=6. Custom tiers can
-// occupy fractional positions (e.g. 5.5 = "between legendary and mythic")
-// or anything > 6 (above mythic).
-export const BUILTIN_POSITIONS: Record<Rarity, number> = {
-  common: 1, uncommon: 2, rare: 3, epic: 4, legendary: 5, mythic: 6,
-};
-
-export type RarityContext = {
-  guildId: string;
-  profile: RarityProfileMap;
-  customByCard: Map<number, CustomRarity>;       // cardId → tier
-  customBySlug: Map<string, CustomRarity>;       // slug → tier
-  customs: CustomRarity[];                       // sorted by position asc
-};
-
 const _ctxCache = new Map<string, { value: RarityContext; expiresAt: number }>();
 const CTX_TTL_MS = 5_000;
 
@@ -175,77 +170,21 @@ export async function clearAllRarityDisplayOverrides(guildId: string): Promise<v
   invalidateRarityDisplayCache(guildId);
 }
 
-// Returns the effective economy values for a card under the given context.
-// If the card has a custom-tier override, its values come entirely from the
-// custom tier; otherwise we fall back to the Stage-1 rarity profile.
-export function applyRarityContext<T extends EconCard & { id: number }>(card: T, ctx: RarityContext): T {
-  const tier = ctx.customByCard.get(card.id);
-  if (tier) {
-    return {
-      ...card,
-      worthValue: tier.worthValue,
-      burnValue: tier.burnValue,
-      dropWeight: tier.dropWeight,
-    };
-  }
-  return applyRarityProfile(card, ctx.profile);
-}
-
-export function applyRarityContextAll<T extends EconCard & { id: number }>(cards: T[], ctx: RarityContext): T[] {
-  if (ctx.customByCard.size === 0 && ctx.profile.size === 0) return cards;
-  return cards.map(c => applyRarityContext(c, ctx));
-}
-
-// Stable grouping key per card: built-in rarity name OR `custom:<slug>` for
-// cards in custom tiers. Used by /list, /collection, /catalog, /tradein.
-export function effectiveRarityKey(card: { id: number; rarity: string }, ctx: RarityContext): string {
-  const tier = ctx.customByCard.get(card.id);
-  return tier ? `custom:${tier.slug}` : card.rarity;
-}
-
-// One ordered list of display rarities for the guild — built-ins + custom
-// tiers, sorted by ladder position. `rarestFirst` flips the order for the
-// drill-down menus that display rarest at the top (matches existing
-// RARITY_ORDER convention).
-export type DisplayRarity = {
-  key: string;             // "common"... OR "custom:<slug>"
-  label: string;
-  emoji: string;
-  color: number;
-  position: number;
-  isCustom: boolean;
-  rarity?: Rarity;         // present for built-ins
-  slug?: string;           // present for customs
-};
-
-export function getDisplayRarities(
-  ctx: RarityContext,
-  settings: GuildSettings | null,
-  opts?: { rarestFirst?: boolean; displayMap?: RarityDisplayMap | null },
-): DisplayRarity[] {
-  const rarestFirst = opts?.rarestFirst ?? true;
-  const displayMap = opts?.displayMap ?? null;
-  const builtins: DisplayRarity[] = (Object.keys(BUILTIN_POSITIONS) as Rarity[]).map(r => ({
-    key: r,
-    label: builtinRarityLabel(r, settings, displayMap),
-    emoji: builtinRarityEmoji(r, settings, displayMap),
-    color: builtinRarityColor(r, settings, displayMap),
-    position: BUILTIN_POSITIONS[r],
-    isCustom: false,
-    rarity: r,
-  }));
-  const customs: DisplayRarity[] = ctx.customs.map(c => ({
-    key: `custom:${c.slug}`,
-    label: c.name,
-    emoji: c.emoji,
-    color: c.color,
-    position: c.position,
-    isCustom: true,
-    slug: c.slug,
-  }));
-  const all = [...builtins, ...customs];
-  all.sort((a, b) => rarestFirst ? b.position - a.position : a.position - b.position);
-  return all;
+export async function getGuildDropChanceRuntime(guildId: string) {
+  const [settings, ctx, spawnPool, eventBoosts] = await Promise.all([
+    getOrCreateGuildSettings(guildId),
+    getRarityContext(guildId),
+    getActiveSetSpawnPoolCached(guildId),
+    getActiveEventBoosts(guildId),
+  ]);
+  const rarityWeights = getGuildRarityWeights(settings);
+  const chanceSummary = buildDropChanceSummary(spawnPool.cards, {
+    ctx,
+    rarityWeights,
+    setRarityWeights: spawnPool.rarityWeights,
+    eventBoosts,
+  });
+  return { settings, ctx, spawnPool, rarityWeights, eventBoosts, chanceSummary };
 }
 
 // ── Seed / resync default cards ───────────────────────────────────────────────
@@ -845,45 +784,21 @@ export async function pickRandomCard(
   // pool. Spawn-manager always provides `availableCards` so Option B (no
   // active set → no spawns) is enforced before we even get here.
   let cards = availableCards ?? (await getAllCards()).filter(c => c.droppable && !c.isArchived);
-  // Stage-2: respect each custom tier's `droppable` flag — a card assigned
-  // to a non-droppable custom tier is excluded from random spawns even if
-  // its own column says droppable=true.
-  if (ctx && ctx.customByCard.size > 0) {
-    cards = cards.filter(c => {
-      const tier = ctx.customByCard.get(c.id);
-      return tier ? tier.droppable : true;
-    });
-  }
+  // Respect each custom tier's `droppable` flag — a card assigned to a
+  // non-droppable custom tier is excluded from random spawns even if its own
+  // column says droppable=true.
+  cards = cards.filter(c => isRandomDroppable(c, ctx));
   if (cards.length === 0) return undefined;
 
-  // Precedence:
-  //   1. Stage-2 custom tier dropWeight (replaces everything for that card)
-  //   2. Active set's per-tier weight override (Phase 4, only when set)
-  //   3. Stage-1 rarity_profiles.dropWeight (per built-in tier)
-  //   4. guild_settings rarityWeight* (legacy per-tier)
-  //   5. card.dropWeight (per-card baseline)
   // Event boost multiplies whichever base wins so admins can still spike a
   // single card above its tier baseline. Note: set weights are read from a
   // PARTIAL map — keys the admin didn't override fall through.
-  const getWeight = (card: Card) => {
-    let base: number;
-    const customTier = ctx?.customByCard.get(card.id);
-    if (customTier) {
-      base = customTier.dropWeight;
-    } else {
-      const setWeight = setRarityWeights ? setRarityWeights[card.rarity] : undefined;
-      if (setWeight != null) {
-        base = setWeight;
-      } else {
-        const profileWeight = ctx?.profile.get(card.rarity as Rarity)?.dropWeight;
-        if (profileWeight != null) base = profileWeight;
-        else if (rarityWeights) base = rarityWeights[card.rarity] ?? card.dropWeight;
-        else base = card.dropWeight;
-      }
-    }
-    const boost = eventBoosts?.get(card.id) ?? 1;
-    return Math.max(0, base) * boost;
-  };
+  const getWeight = (card: Card) => getEffectiveDropWeight(card, {
+    rarityWeights,
+    eventBoosts,
+    ctx,
+    setRarityWeights,
+  });
 
   const totalWeight = cards.reduce((sum, c) => sum + getWeight(c), 0);
   if (totalWeight <= 0) {

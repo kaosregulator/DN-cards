@@ -319,7 +319,7 @@ async function showEditMenu(msg: Message, card: Card) {
   await msg.reply(
     `## ✏️ Editing: **${card.name}**\n` +
     `**Current values:**\n` +
-    `• Rarity: ${RARITY_EMOJI[r]} ${RARITY_LABELS[r]} (drop weight ${card.dropWeight})\n` +
+    `• Rarity: ${RARITY_EMOJI[r]} ${RARITY_LABELS[r]} (spawn % source ${card.dropWeight})\n` +
     `• Worth: 💠 ${card.worthValue.toLocaleString()} · Burn: 🔥 ${card.burnValue.toLocaleString()}\n` +
     `• Type: ${getTypeEmoji(card.cardType)} ${card.cardType}\n` +
     `• Description: ${card.description || "*none*"}\n` +
@@ -377,7 +377,7 @@ async function processEditStep(msg: Message, session: EditSession, k: string, in
       }
       const newRarity = RARITY_CHOICES[idx];
       await updateCard(session.cardId, { rarity: newRarity, dropWeight: RARITY_WEIGHTS[newRarity] });
-      await msg.reply(`✅ Rarity → ${RARITY_EMOJI[newRarity]} **${RARITY_LABELS[newRarity]}** (drop weight reset to ${RARITY_WEIGHTS[newRarity]}).`);
+      await msg.reply(`✅ Rarity → ${RARITY_EMOJI[newRarity]} **${RARITY_LABELS[newRarity]}** (spawn % source reset to ${RARITY_WEIGHTS[newRarity]}).`);
       return await backToMenu(msg, session);
     }
 

@@ -249,7 +249,7 @@ function EditDialog({
                 <Row k="Type" v={card.cardType} />
                 <Row k="Worth" v={`${card.worthValue.toLocaleString()} 💠`} />
                 <Row k="Burn" v={`${card.burnValue.toLocaleString()} 💠`} />
-                <Row k="Drop weight" v={String(card.dropWeight)} />
+                <Row k="Spawn % source" v={String(card.dropWeight)} />
                 <Row k="In packs" v={card.inPacks ? "yes" : "no"} />
                 <Row k="Droppable" v={card.droppable ? "yes" : "no"} />
                 <Row k="Limited" v={card.isLimitedEdition ? `yes (${card.totalMinted}/${card.maxCopies ?? "∞"})` : "no"} />
@@ -317,7 +317,7 @@ export default function Admin() {
         <strong className="text-amber-400 font-mono uppercase tracking-widest text-xs">Presentation-only</strong>
         <p className="text-muted-foreground mt-1">
           This page edits website display: name, image, description, flavor, visibility, ordering.
-          To change gameplay values (rarity, worth, burn, drop weight, pack availability, etc.) use the Discord admin commands.
+          To change gameplay values (rarity, worth, burn, spawn percentage source, pack availability, etc.) use the Discord admin commands.
           The website never modifies gameplay data.
         </p>
       </div>

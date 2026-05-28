@@ -1,5 +1,5 @@
 import type { AutocompleteInteraction } from "discord.js";
-import { getAllCards, listSetsV2, getUserCollection, getUserWishlist, listCustomRarities } from "../db.js";
+import { getAllCards, listSetsV2, getUserCollection, getUserWishlist, listCustomRarities, getRarityContext, getOrCreateGuildSettings, getRarityDisplayOverrides, getDisplayRarities } from "../db.js";
 import { RARITY_EMOJI, type Rarity } from "../cards-data.js";
 
 const MAX_CHOICES = 25;
@@ -15,6 +15,51 @@ async function getCardsCached(): Promise<Array<{ name: string; rarity: string }>
   const slim = cards.map(c => ({ name: c.name, rarity: c.rarity }));
   cardCache = { at: now, cards: slim };
   return slim;
+}
+
+let setCache: { at: number; sets: Awaited<ReturnType<typeof listSetsV2>> } | null = null;
+const SET_CACHE_MS = 5_000;
+async function getSetsCached(): Promise<Awaited<ReturnType<typeof listSetsV2>>> {
+  const now = Date.now();
+  if (setCache && now - setCache.at < SET_CACHE_MS) return setCache.sets;
+  const sets = await listSetsV2();
+  setCache = { at: now, sets };
+  return sets;
+}
+
+const customTierCache = new Map<string, { at: number; tiers: Awaited<ReturnType<typeof listCustomRarities>> }>();
+const CUSTOM_TIER_CACHE_MS = 5_000;
+async function getCustomRaritiesCached(guildId: string): Promise<Awaited<ReturnType<typeof listCustomRarities>>> {
+  const now = Date.now();
+  const cached = customTierCache.get(guildId);
+  if (cached && now - cached.at < CUSTOM_TIER_CACHE_MS) return cached.tiers;
+  const tiers = await listCustomRarities(guildId);
+  customTierCache.set(guildId, { at: now, tiers });
+  return tiers;
+}
+
+const collectionCache = new Map<string, { at: number; rows: Awaited<ReturnType<typeof getUserCollection>> }>();
+const COLLECTION_CACHE_MS = 5_000;
+async function getUserCollectionCached(guildId: string, userId: string): Promise<Awaited<ReturnType<typeof getUserCollection>>> {
+  const key = `${guildId}:${userId}`;
+  const now = Date.now();
+  const cached = collectionCache.get(key);
+  if (cached && now - cached.at < COLLECTION_CACHE_MS) return cached.rows;
+  const rows = await getUserCollection(guildId, userId);
+  collectionCache.set(key, { at: now, rows });
+  return rows;
+}
+
+const wishlistCache = new Map<string, { at: number; rows: Awaited<ReturnType<typeof getUserWishlist>> }>();
+const WISHLIST_CACHE_MS = 5_000;
+async function getUserWishlistCached(guildId: string, userId: string): Promise<Awaited<ReturnType<typeof getUserWishlist>>> {
+  const key = `${guildId}:${userId}`;
+  const now = Date.now();
+  const cached = wishlistCache.get(key);
+  if (cached && now - cached.at < WISHLIST_CACHE_MS) return cached.rows;
+  const rows = await getUserWishlist(guildId, userId);
+  wishlistCache.set(key, { at: now, rows });
+  return rows;
 }
 
 // Score: 0 = startsWith, 1 = word-boundary, 2 = contains, 3 = no match
@@ -55,10 +100,10 @@ export async function handleAutocomplete(interaction: AutocompleteInteraction): 
     // Any string option named `set`, `from`, `to`, or `name` on these two
     // commands resolves to a set picker (except /setadmin create, which takes
     // a new name — but that's not autocompleted so it won't reach here).
-    const setNameCommands = new Set(["sets", "drop", "massdrop", "setadmin"]);
+    const setNameCommands = new Set(["sets", "drop", "massdrop", "setadmin", "addcard"]);
     if (setNameCommands.has(cmd)
         && ["set", "from", "to", "name"].includes(focused.name)) {
-      const sets = await listSetsV2();
+      const sets = await getSetsCached();
       const q = query.toLowerCase().trim();
       const matches = sets
         .filter(s => !q || s.set.name.toLowerCase().includes(q))
@@ -74,7 +119,7 @@ export async function handleAutocomplete(interaction: AutocompleteInteraction): 
 
     // ── /burn — only suggest cards the user actually owns ───────────────────
     if (cmd === "burn" && focused.name === "name" && interaction.guild) {
-      const owned = await getUserCollection(interaction.guild.id, interaction.user.id);
+      const owned = await getUserCollectionCached(interaction.guild.id, interaction.user.id);
       const pool = owned.map(o => ({ name: o.name, rarity: o.rarity }));
       const q = query.toLowerCase().trim();
       const scored = pool
@@ -88,7 +133,7 @@ export async function handleAutocomplete(interaction: AutocompleteInteraction): 
 
     // ── /trade offer — only cards the user owns ─────────────────────────────
     if (cmd === "trade" && focused.name === "offer" && interaction.guild) {
-      const owned = await getUserCollection(interaction.guild.id, interaction.user.id);
+      const owned = await getUserCollectionCached(interaction.guild.id, interaction.user.id);
       const pool = owned.map(o => ({ name: o.name, rarity: o.rarity }));
       await interaction.respond(await suggestCardNames(query, pool));
       return;
@@ -99,7 +144,7 @@ export async function handleAutocomplete(interaction: AutocompleteInteraction): 
       const targetOpt = interaction.options.get("user", false);
       const targetId = targetOpt?.user?.id;
       if (targetId && targetId !== interaction.user.id) {
-        const targetOwned = await getUserCollection(interaction.guild.id, targetId);
+        const targetOwned = await getUserCollectionCached(interaction.guild.id, targetId);
         if (targetOwned.length === 0) {
           await interaction.respond([{ name: `⚠️ ${targetOpt?.user?.username ?? "They"} have no cards yet`, value: "" }]);
           return;
@@ -115,7 +160,7 @@ export async function handleAutocomplete(interaction: AutocompleteInteraction): 
     if (cmd === "wishlist" && focused.name === "name" && interaction.guild) {
       const sub = interaction.options.getSubcommand(false);
       if (sub === "remove") {
-        const wished = await getUserWishlist(interaction.guild.id, interaction.user.id);
+        const wished = await getUserWishlistCached(interaction.guild.id, interaction.user.id);
         const pool = wished.map(w => ({ name: w.name, rarity: w.rarity }));
         const q = query.toLowerCase().trim();
         const scored = pool
@@ -126,6 +171,31 @@ export async function handleAutocomplete(interaction: AutocompleteInteraction): 
         await interaction.respond(scored.map(x => formatCardChoice(x.c)));
         return;
       }
+    }
+
+
+    // ── /tradein rarity — built-ins plus custom tiers in server ladder order ──
+    if (cmd === "tradein" && focused.name === "rarity" && interaction.guild) {
+      const q = query.toLowerCase().trim();
+      const [ctx, settings, displayMap] = await Promise.all([
+        getRarityContext(interaction.guild.id),
+        getOrCreateGuildSettings(interaction.guild.id),
+        getRarityDisplayOverrides(interaction.guild.id),
+      ]);
+      const ladder = getDisplayRarities(ctx, settings, { rarestFirst: false, displayMap });
+      const options = ladder.slice(0, -1).map((tier, idx) => {
+        const next = ladder[idx + 1];
+        const value = tier.isCustom ? `custom:${tier.slug}` : tier.rarity!;
+        return {
+          name: `${tier.emoji} ${tier.label} → ${next?.emoji ?? "⬆️"} ${next?.label ?? "next"}`.slice(0, 100),
+          value: value.slice(0, 100),
+        };
+      });
+      const filtered = !q
+        ? options
+        : options.filter(o => o.name.toLowerCase().includes(q) || o.value.toLowerCase().includes(q));
+      await interaction.respond(filtered.slice(0, MAX_CHOICES));
+      return;
     }
 
     // ── /addcard rarity — built-ins + guild custom tiers ────────────────────
@@ -139,7 +209,7 @@ export async function handleAutocomplete(interaction: AutocompleteInteraction): 
         { emoji: "🟡", label: "Legendary", value: "legendary" },
         { emoji: "🔮", label: "Mythic",    value: "mythic"    },
       ];
-      const customTiers = await listCustomRarities(interaction.guild.id);
+      const customTiers = await getCustomRaritiesCached(interaction.guild.id);
       const allOptions = [
         ...BUILTIN.map(b => ({ name: `${b.emoji} ${b.label}`, value: b.value })),
         ...customTiers.map(t => ({ name: `${t.emoji} ${t.name} (custom)`, value: t.slug })),
@@ -153,7 +223,7 @@ export async function handleAutocomplete(interaction: AutocompleteInteraction): 
 
     // ── /rarity custom slug — show existing custom tiers by name ────────────
     if (cmd === "rarity" && focused.name === "slug" && interaction.guild) {
-      const tiers = await listCustomRarities(interaction.guild.id);
+      const tiers = await getCustomRaritiesCached(interaction.guild.id);
       const q = query.toLowerCase().trim();
       const matches = tiers
         .filter(t => !q || t.name.toLowerCase().includes(q) || t.slug.includes(q))
