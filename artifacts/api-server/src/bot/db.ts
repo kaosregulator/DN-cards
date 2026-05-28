@@ -249,7 +249,7 @@ export function getDisplayRarities(
 }
 
 // ── Seed / resync default cards ───────────────────────────────────────────────
-// P7: legacy `cards.set_name` was dropped. Defaults are now tracked purely
+// Defaults are now tracked purely
 // via the first-class `sets` + `card_set_memberships` tables.
 export const DEFAULTS_SET_NAME = "defaults";
 
@@ -257,23 +257,6 @@ export const DEFAULTS_SET_NAME = "defaults";
 // after unload, so admin removals are permanent. Membership rows are added to
 // the "defaults" set (created if missing) so the cards are immediately
 // activatable via `/setadmin active set:defaults`.
-export async function seedDefaultCards() {
-  const existing = await db.select({ id: cardsTable.id }).from(cardsTable).limit(1);
-  if (existing.length > 0) return;
-  logger.info("Seeding DN Cards default roster (DB is empty)...");
-  const defaultsSet = (await getSetByName(DEFAULTS_SET_NAME)) ?? (await createSet(DEFAULTS_SET_NAME));
-  for (const card of DEFAULT_CARDS) {
-    const [inserted] = await db.insert(cardsTable).values(card).onConflictDoNothing().returning({ id: cardsTable.id });
-    if (inserted) {
-      await db.insert(cardSetMembershipsTable)
-        .values({ setId: defaultsSet.id, cardId: inserted.id })
-        .onConflictDoNothing();
-    }
-  }
-  invalidateActiveSetCardsCache();
-  logger.info(`Seeded ${DEFAULT_CARDS.length} cards.`);
-}
-
 // Force-add default cards (used by /loadset defaults). Skips names already in DB.
 // Each newly-added card is also joined to the "defaults" set.
 export async function loadDefaultCards(): Promise<{ added: number; skipped: number }> {
@@ -307,18 +290,15 @@ export async function unloadDefaultCards(): Promise<{ removed: number }> {
 }
 
 // ── Card Sets ─────────────────────────────────────────────────────────────────
-// P7: thin wrapper around listSetsV2 so legacy callers (autocomplete,
-// setup-wizard, /listsets) keep working with their `{ setName, cardCount }`
-// shape. New code should call `listSetsV2` directly.
+// Thin wrapper for legacy callers that expect the old `{ setName, cardCount }` shape.
 export async function listSets(): Promise<Array<{ setName: string; cardCount: number }>> {
   const rows = await listSetsV2();
   return rows.map(r => ({ setName: r.set.name, cardCount: r.cardCount }));
 }
 
 // Delete every card in a set by NAME — destructive (used by `/unloadset` and
-// `unloadDefaultCards`). Cards are looked up via the memberships junction now
-// that `cards.set_name` is gone. Cascades through collections, spawn_log,
-// trades, and finally the set row itself.
+// `unloadDefaultCards`). Cards are looked up via the memberships junction.
+// Cascades through collections, spawn_log, trades, and finally the set row itself.
 export async function deleteSetByName(setName: string): Promise<{ removed: number }> {
   const set = await getSetByName(setName);
   if (!set) return { removed: 0 };
@@ -346,8 +326,7 @@ export async function deleteSetByName(setName: string): Promise<{ removed: numbe
 
 // ── Card Sets v2 (first-class sets + memberships, Phase 1-3) ─────────────────
 // Replaces the ad-hoc cards.set_name aggregation with a proper sets table +
-// junction. `cards.set_name` is still maintained for back-compat during the
-// transition (Phase 5 will drop it). Guilds pick an active set via
+// junction table. Guilds pick an active set via
 // /setadmin active — only its cards spawn (Option B: no active set = no
 // random spawns).
 
@@ -435,21 +414,38 @@ export async function moveCardBetweenSets(fromSetId: number, toSetId: number, ca
   invalidateActiveSetCardsCache();
 }
 
-/** Resolves names → ids leniently. Returns counts + any names not found. */
+/** Resolves names → ids leniently. Returns counts + any names not found.
+ *  Uses a single bulk insert/delete instead of one round-trip per card. */
 export async function bulkAddCardsToSet(
   setId: number, cardNames: string[],
 ): Promise<{ added: number; alreadyIn: number; notFound: string[] }> {
   const all = await getAllCards();
   const byName = new Map(all.map(c => [c.name.toLowerCase(), c]));
   const notFound: string[] = [];
-  let added = 0, alreadyIn = 0;
+  const cardIds: number[] = [];
   for (const raw of cardNames) {
     const card = byName.get(raw.toLowerCase().trim());
     if (!card) { notFound.push(raw); continue; }
-    const r = await addCardToSet(setId, card.id);
-    if (r.added) added++; else alreadyIn++;
+    cardIds.push(card.id);
   }
-  return { added, alreadyIn, notFound };
+  if (cardIds.length === 0) return { added: 0, alreadyIn: 0, notFound };
+
+  // Find which cards are already in the set
+  const existing = await db.select({ cardId: cardSetMembershipsTable.cardId })
+    .from(cardSetMembershipsTable)
+    .where(and(
+      eq(cardSetMembershipsTable.setId, setId),
+      inArray(cardSetMembershipsTable.cardId, cardIds),
+    ));
+  const alreadySet = new Set(existing.map(r => r.cardId));
+  const toAdd = cardIds.filter(id => !alreadySet.has(id));
+  if (toAdd.length > 0) {
+    await db.insert(cardSetMembershipsTable).values(
+      toAdd.map(id => ({ setId, cardId: id })),
+    );
+    invalidateActiveSetCardsCache();
+  }
+  return { added: toAdd.length, alreadyIn: alreadySet.size, notFound };
 }
 
 export async function bulkRemoveCardsFromSet(
@@ -458,14 +454,24 @@ export async function bulkRemoveCardsFromSet(
   const all = await getAllCards();
   const byName = new Map(all.map(c => [c.name.toLowerCase(), c]));
   const notFound: string[] = [];
-  let removed = 0, notInSet = 0;
+  const cardIds: number[] = [];
   for (const raw of cardNames) {
     const card = byName.get(raw.toLowerCase().trim());
     if (!card) { notFound.push(raw); continue; }
-    const r = await removeCardFromSet(setId, card.id);
-    if (r.removed) removed++; else notInSet++;
+    cardIds.push(card.id);
   }
-  return { removed, notInSet, notFound };
+  if (cardIds.length === 0) return { removed: 0, notInSet: 0, notFound };
+
+  const res = await db.delete(cardSetMembershipsTable)
+    .where(and(
+      eq(cardSetMembershipsTable.setId, setId),
+      inArray(cardSetMembershipsTable.cardId, cardIds),
+    ))
+    .returning({ cardId: cardSetMembershipsTable.cardId });
+  const removedSet = new Set(res.map(r => r.cardId));
+  const notInSet = cardIds.length - removedSet.size;
+  if (removedSet.size > 0) invalidateActiveSetCardsCache();
+  return { removed: removedSet.size, notInSet, notFound };
 }
 
 export async function getCardsInSet(setId: number): Promise<Card[]> {

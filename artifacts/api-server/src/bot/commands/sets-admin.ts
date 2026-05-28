@@ -1,7 +1,7 @@
 import type { ChatInputCommandInteraction, GuildMember } from "discord.js";
 import { AttachmentBuilder, MessageFlags, EmbedBuilder } from "discord.js";
 import {
-  isAdmin,
+  isAdmin, invalidateActiveSetCardsCache,
   createSet, renameSet, deleteSetById, deleteSetByName,
   addCardToSet, removeCardFromSet, moveCardBetweenSets,
   bulkAddCardsToSet, bulkRemoveCardsFromSet,
@@ -16,6 +16,8 @@ import {
 } from "../db.js";
 import { importCardsFromJson } from "./import.js";
 import { logger } from "../../lib/logger.js";
+import { db, cardsTable, cardSetMembershipsTable } from "@workspace/db";
+import { eq, inArray, and } from "drizzle-orm";
 import type { Card, CardSet } from "@workspace/db";
 import { RARITY_EMOJI, type Rarity } from "../cards-data.js";
 import { isHomeGuild, GLOBAL_ONLY_MSG } from "../home-guild.js";
@@ -380,8 +382,31 @@ export async function handleSetAdminCommand(interaction: ChatInputCommandInterac
       sets: [],
     };
     let totalCards = 0;
+    // Batch: fetch all cards for all sets in one query, then partition by setId.
+    const setIds = picked.map(p => p.set.id);
+    const allCards = await db.select({
+      id: cardsTable.id,
+      name: cardsTable.name, description: cardsTable.description,
+      rarity: cardsTable.rarity, cardType: cardsTable.cardType, dropWeight: cardsTable.dropWeight,
+      worthValue: cardsTable.worthValue, burnValue: cardsTable.burnValue,
+      isLimitedEdition: cardsTable.isLimitedEdition, isEventExclusive: cardsTable.isEventExclusive,
+      maxCopies: cardsTable.maxCopies, totalMinted: cardsTable.totalMinted,
+      imageUrl: cardsTable.imageUrl, flavor: cardsTable.flavor,
+      droppable: cardsTable.droppable, inPacks: cardsTable.inPacks,
+      isArchived: cardsTable.isArchived,
+      setId: cardSetMembershipsTable.setId,
+    }).from(cardsTable)
+      .innerJoin(cardSetMembershipsTable, eq(cardSetMembershipsTable.cardId, cardsTable.id))
+      .where(inArray(cardSetMembershipsTable.setId, setIds));
+
+    const cardsBySet = new Map<number, Card[]>();
+    for (const c of allCards) {
+      const list = cardsBySet.get(c.setId) ?? [];
+      list.push(c as unknown as Card);
+      cardsBySet.set(c.setId, list);
+    }
     for (const { set } of picked) {
-      const cards = await getCardsInSet(set.id);
+      const cards = cardsBySet.get(set.id) ?? [];
       bundle.sets.push(buildSingleSetPayload(set, cards));
       totalCards += cards.length;
     }
@@ -442,9 +467,24 @@ export async function handleSetAdminCommand(interaction: ChatInputCommandInterac
       return;
     }
     let added = 0;
-    for (const card of orphans) {
-      const r = await addCardToSet(set.id, card.id);
-      if (r.added) added++;
+    // Batch insert: filter out cards already in the set, then insert the rest
+    // in a single query. This avoids the N+1 loop that was one round-trip per card.
+    if (orphans.length > 0) {
+      const existing = await db.select({ cardId: cardSetMembershipsTable.cardId })
+        .from(cardSetMembershipsTable)
+        .where(and(
+          eq(cardSetMembershipsTable.setId, set.id),
+          inArray(cardSetMembershipsTable.cardId, orphans.map(c => c.id)),
+        ));
+      const alreadyIn = new Set(existing.map(r => r.cardId));
+      const toInsert = orphans.filter(c => !alreadyIn.has(c.id));
+      if (toInsert.length > 0) {
+        await db.insert(cardSetMembershipsTable).values(
+          toInsert.map(c => ({ setId: set.id, cardId: c.id })),
+        );
+        invalidateActiveSetCardsCache();
+      }
+      added = toInsert.length;
     }
     const filterNote: string[] = [];
     if (includeArchived) filterNote.push("archived");

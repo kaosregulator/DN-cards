@@ -98,8 +98,8 @@ export async function startBot() {
     // ("Load Defaults" button) or `/setadmin load file:<.json>`. Keeps fresh
     // servers free to load only their own custom roster.
     await initAllGuilds(client);
-    // P7: legacy `cards.set_name` is gone. The boot-time backfill that mirrored
-    // it into the first-class sets table is no longer needed.
+    // Boot-time backfill is no longer needed; sets are managed via the
+    // first-class sets + card_set_memberships tables.
     await registerCommands(c.user.id, token, client);
   });
 
