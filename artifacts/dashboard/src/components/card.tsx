@@ -64,14 +64,23 @@ export function CardComponent({ card, relativeDropChance, count, shinyCount = 0 
   const resolvedImageUrl = resolveImageUrl(card.imageUrl);
   const [imageError, setImageError] = useState(!resolvedImageUrl);
 
-  const isLegendary = card.rarity === "legendary";
+  // Use the effective rarity (custom tier or renamed built-in) for ALL display.
+  // For CSS lookups: fall back to base rarity when the effective slug has no
+  // entry in the maps (custom tier slugs like "gold_legendary" aren't in there).
+  const displayRarityLabel = card.effectiveRarityLabel ?? card.rarity;
+  const displayRarityKey = (
+    card.effectiveRarity && (card.effectiveRarity in rarityColors)
+      ? card.effectiveRarity
+      : card.rarity
+  ) as keyof typeof rarityColors;
+  const isLegendary = displayRarityKey === "legendary" || displayRarityKey === "mythic";
 
   return (
     <>
       <motion.div
         layoutId={`card-${card.id}`}
         onClick={() => setIsOpen(true)}
-        className={`group relative flex cursor-pointer flex-col overflow-hidden rounded-xl border bg-card text-card-foreground transition-all duration-300 hover:-translate-y-1 hover:shadow-xl ${rarityBorders[card.rarity]}`}
+        className={`group relative flex cursor-pointer flex-col overflow-hidden rounded-xl border bg-card text-card-foreground transition-all duration-300 hover:-translate-y-1 hover:shadow-xl ${rarityBorders[displayRarityKey]}`}
         data-testid={`card-item-${card.id}`}
         whileHover={{ scale: 1.02 }}
         whileTap={{ scale: 0.98 }}
@@ -104,7 +113,7 @@ export function CardComponent({ card, relativeDropChance, count, shinyCount = 0 
               onError={() => setImageError(true)}
             />
           ) : (
-            <div className={`flex h-full w-full flex-col items-center justify-center p-6 text-center ${rarityColors[card.rarity]} border-0`}>
+            <div className={`flex h-full w-full flex-col items-center justify-center p-6 text-center ${rarityColors[displayRarityKey]} border-0`}>
                <ImageIcon className="mb-4 h-12 w-12 opacity-50" />
                <span className="font-bold tracking-widest opacity-80 uppercase">{card.name}</span>
             </div>
@@ -135,8 +144,8 @@ export function CardComponent({ card, relativeDropChance, count, shinyCount = 0 
         {/* Content Area */}
         <div className="relative flex flex-1 flex-col p-4 z-10 -mt-12">
            <div className="mb-2 flex items-center justify-between">
-            <Badge variant="outline" className={`text-[10px] uppercase font-mono tracking-widest ${rarityColors[card.rarity]}`}>
-              {card.rarity}
+            <Badge variant="outline" className={`text-[10px] uppercase font-mono tracking-widest ${rarityColors[displayRarityKey]}`}>
+              {displayRarityLabel}
             </Badge>
             <span className="text-xs font-mono text-muted-foreground uppercase">{card.cardType}</span>
           </div>
@@ -167,7 +176,7 @@ export function CardComponent({ card, relativeDropChance, count, shinyCount = 0 
             const anim = PREVIEW_ANIMS[card.previewAnimation as PreviewAnim] ?? PREVIEW_ANIMS.spin;
             const stageStyle: React.CSSProperties = card.previewBgColor
               ? { background: card.previewBgColor }
-              : { backgroundImage: RARITY_STAGE_BG[card.rarity] ?? RARITY_STAGE_BG.common };
+              : { backgroundImage: RARITY_STAGE_BG[displayRarityKey] ?? RARITY_STAGE_BG.common };
             return (
               <div className="flex flex-col md:flex-row">
                 {/* Left: animated image stage. Landscape cards (e.g. Boss Sea
@@ -198,7 +207,7 @@ export function CardComponent({ card, relativeDropChance, count, shinyCount = 0 
                         className="max-h-full max-w-full object-contain rounded-lg shadow-2xl"
                       />
                     ) : (
-                      <div className={`flex h-full w-full flex-col items-center justify-center p-6 text-center ${rarityColors[card.rarity]}`}>
+                      <div className={`flex h-full w-full flex-col items-center justify-center p-6 text-center ${rarityColors[displayRarityKey]}`}>
                         <ImageIcon className="mb-4 h-16 w-16 opacity-50" />
                         <span className="text-xl font-bold tracking-widest opacity-80 uppercase">{card.name}</span>
                       </div>
