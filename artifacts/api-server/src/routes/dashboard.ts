@@ -1,5 +1,5 @@
 import { Router, type IRouter, type Request, type Response } from "express";
-import { db, cardsTable, cardDisplayOverridesTable, collectionsTable, userCurrencyTable, achievementsTable, setsTable, cardSetMembershipsTable } from "@workspace/db";
+import { db, cardsTable, cardDisplayOverridesTable, collectionsTable, userCurrencyTable, achievementsTable, setsTable, cardSetMembershipsTable, cardRarityOverridesTable, customRaritiesTable } from "@workspace/db";
 import { and, eq, sql, desc } from "drizzle-orm";
 import { z } from "zod/v4";
 import { ACHIEVEMENTS } from "../bot/achievements";
@@ -31,7 +31,9 @@ function parseParams<T extends z.ZodTypeAny>(schema: T, req: Request, res: Respo
 // Also joins `sets` memberships so the client can display which set(s) a card
 // belongs to without ever touching the removed `cards.set_name` column.
 router.get("/cards", async (_req, res) => {
-  const [rows, memberships] = await Promise.all([
+  const homeGuildId = process.env["HOME_GUILD_ID"] ?? null;
+
+  const [rows, memberships, customOverrides] = await Promise.all([
     db
       .select({ card: cardsTable, override: cardDisplayOverridesTable })
       .from(cardsTable)
@@ -42,6 +44,23 @@ router.get("/cards", async (_req, res) => {
       .select({ cardId: cardSetMembershipsTable.cardId, setId: setsTable.id, setName: setsTable.name })
       .from(cardSetMembershipsTable)
       .innerJoin(setsTable, eq(setsTable.id, cardSetMembershipsTable.setId)),
+    homeGuildId
+      ? db
+          .select({
+            cardId: cardRarityOverridesTable.cardId,
+            slug: customRaritiesTable.slug,
+            name: customRaritiesTable.name,
+          })
+          .from(cardRarityOverridesTable)
+          .innerJoin(
+            customRaritiesTable,
+            and(
+              eq(customRaritiesTable.guildId, cardRarityOverridesTable.guildId),
+              eq(customRaritiesTable.slug, cardRarityOverridesTable.customRaritySlug),
+            ),
+          )
+          .where(eq(cardRarityOverridesTable.guildId, homeGuildId))
+      : Promise.resolve([] as { cardId: number; slug: string; name: string }[]),
   ]);
 
   const setsByCard = new Map<number, { id: number; name: string }[]>();
@@ -50,18 +69,28 @@ router.get("/cards", async (_req, res) => {
     setsByCard.get(m.cardId)!.push({ id: m.setId, name: m.setName });
   }
 
+  const customTierByCard = new Map<number, { slug: string; name: string }>();
+  for (const o of customOverrides) {
+    customTierByCard.set(o.cardId, { slug: o.slug, name: o.name });
+  }
+
   const visible = rows
     .filter(r => !(r.override?.hiddenFromSite ?? false))
-    .map(r => ({
-      ...r.card,
-      name: r.override?.displayName ?? r.card.name,
-      description: r.override?.displayDescription ?? r.card.description,
-      imageUrl: r.override?.displayImageUrl ?? r.card.imageUrl,
-      flavor: r.override?.flavorText ?? r.card.flavor,
-      featured: r.override?.featured ?? false,
-      sortWeight: r.override?.sortWeight ?? 0,
-      sets: setsByCard.get(r.card.id) ?? [],
-    }))
+    .map(r => {
+      const customTier = customTierByCard.get(r.card.id);
+      return {
+        ...r.card,
+        name: r.override?.displayName ?? r.card.name,
+        description: r.override?.displayDescription ?? r.card.description,
+        imageUrl: r.override?.displayImageUrl ?? r.card.imageUrl,
+        flavor: r.override?.flavorText ?? r.card.flavor,
+        featured: r.override?.featured ?? false,
+        sortWeight: r.override?.sortWeight ?? 0,
+        sets: setsByCard.get(r.card.id) ?? [],
+        effectiveRarity: customTier?.slug ?? r.card.rarity,
+        effectiveRarityLabel: customTier?.name ?? r.card.rarity,
+      };
+    })
     .sort((a, b) => {
       if (a.featured !== b.featured) return a.featured ? -1 : 1;
       if (a.sortWeight !== b.sortWeight) return b.sortWeight - a.sortWeight;

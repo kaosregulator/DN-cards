@@ -44,6 +44,10 @@ export interface Card {
   // Public dashboard /cards endpoint also adds these (post-merge):
   featured?: boolean;
   sortWeight?: number;
+  // When HOME_GUILD_ID is set and a card has a custom rarity tier assigned,
+  // these override `rarity` for display/grouping on the public website.
+  effectiveRarity?: string;
+  effectiveRarityLabel?: string;
 }
 
 export interface AdminCard extends Card {
