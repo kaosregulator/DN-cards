@@ -257,7 +257,7 @@ export async function handleRarityHubButton(interaction: ButtonInteraction): Pro
             .setRequired(false).setPlaceholder("Leave blank to keep current value").setMaxLength(10),
         ),
         new ActionRowBuilder<TextInputBuilder>().addComponents(
-          new TextInputBuilder().setCustomId("weight").setLabel("Drop weight (e.g. 1.5, 0 = disabled)").setStyle(TextInputStyle.Short)
+          new TextInputBuilder().setCustomId("weight").setLabel("Drop % (0 = disabled, e.g. 1.5)").setStyle(TextInputStyle.Short)
             .setRequired(false).setPlaceholder("Leave blank to keep current value").setMaxLength(10),
         ),
       );
@@ -284,12 +284,12 @@ export async function handleRarityHubButton(interaction: ButtonInteraction): Pro
             .setRequired(true).setMaxLength(10).setPlaceholder("e.g. 5.5 to sit between Legendary and Mythic"),
         ),
         new ActionRowBuilder<TextInputBuilder>().addComponents(
-          new TextInputBuilder().setCustomId("worth").setLabel("Worth (💠 shards per card)").setStyle(TextInputStyle.Short)
+          new TextInputBuilder().setCustomId("worth").setLabel("Worth (💠 shards per card — burn = 50%)").setStyle(TextInputStyle.Short)
             .setRequired(true).setMaxLength(10).setPlaceholder("e.g. 3000"),
         ),
         new ActionRowBuilder<TextInputBuilder>().addComponents(
-          new TextInputBuilder().setCustomId("burn").setLabel("Burn value (💠 shards)").setStyle(TextInputStyle.Short)
-            .setRequired(true).setMaxLength(10).setPlaceholder("e.g. 1500"),
+          new TextInputBuilder().setCustomId("drop").setLabel("Drop % (0 = disabled, e.g. 15)").setStyle(TextInputStyle.Short)
+            .setRequired(true).setMaxLength(10).setPlaceholder("e.g. 15 for ~15% of spawns"),
         ),
       );
     await interaction.showModal(modal);
@@ -462,16 +462,16 @@ export async function handleRarityHubSelect(interaction: StringSelectMenuInterac
             .setRequired(false).setMaxLength(8).setValue(tier.emoji),
         ),
         new ActionRowBuilder<TextInputBuilder>().addComponents(
+          new TextInputBuilder().setCustomId("drop").setLabel("Drop % (0 = disabled, e.g. 15)").setStyle(TextInputStyle.Short)
+            .setRequired(false).setMaxLength(10).setValue(String(tier.dropWeight)),
+        ),
+        new ActionRowBuilder<TextInputBuilder>().addComponents(
           new TextInputBuilder().setCustomId("worth").setLabel("Worth (💠 shards)").setStyle(TextInputStyle.Short)
             .setRequired(false).setMaxLength(10).setValue(String(tier.worthValue)),
         ),
         new ActionRowBuilder<TextInputBuilder>().addComponents(
           new TextInputBuilder().setCustomId("burn").setLabel("Burn (💠 shards)").setStyle(TextInputStyle.Short)
             .setRequired(false).setMaxLength(10).setValue(String(tier.burnValue)),
-        ),
-        new ActionRowBuilder<TextInputBuilder>().addComponents(
-          new TextInputBuilder().setCustomId("color").setLabel("Hex color (e.g. #ff2d92)").setStyle(TextInputStyle.Short)
-            .setRequired(false).setMaxLength(9).setValue(hex(tier.color)),
         ),
       );
     await interaction.showModal(modal);
@@ -532,7 +532,7 @@ export async function handleRarityHubModal(interaction: ModalSubmitInteraction):
     const emoji = interaction.fields.getTextInputValue("emoji").trim();
     const positionRaw = interaction.fields.getTextInputValue("position").trim();
     const worthRaw = interaction.fields.getTextInputValue("worth").trim();
-    const burnRaw = interaction.fields.getTextInputValue("burn").trim();
+    const dropRaw = interaction.fields.getTextInputValue("drop").trim();
 
     if (!name || name.length > 32) { await interaction.followUp({ content: "❌ Name must be 1–32 chars.", flags: MessageFlags.Ephemeral }); return; }
     if (!emoji || emoji.length > 8) { await interaction.followUp({ content: "❌ Emoji must be 1–8 chars.", flags: MessageFlags.Ephemeral }); return; }
@@ -540,8 +540,9 @@ export async function handleRarityHubModal(interaction: ModalSubmitInteraction):
     if (isNaN(position) || position <= 0 || position > 100) { await interaction.followUp({ content: "❌ Position must be 0.01–100 (e.g. 5.5 = between Legendary and Mythic).", flags: MessageFlags.Ephemeral }); return; }
     const worth = parseInt(worthRaw, 10);
     if (isNaN(worth) || worth < 0) { await interaction.followUp({ content: "❌ Worth must be a non-negative whole number.", flags: MessageFlags.Ephemeral }); return; }
-    const burn = parseInt(burnRaw, 10);
-    if (isNaN(burn) || burn < 0) { await interaction.followUp({ content: "❌ Burn must be a non-negative whole number.", flags: MessageFlags.Ephemeral }); return; }
+    const drop = parseFloat(dropRaw);
+    if (isNaN(drop) || drop < 0 || drop > 100) { await interaction.followUp({ content: "❌ Drop % must be 0–100.", flags: MessageFlags.Ephemeral }); return; }
+    const burn = Math.floor(worth * 0.5);
 
     let slug = name.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "").slice(0, 32) || "tier";
     let attempts = 0;
@@ -549,7 +550,7 @@ export async function handleRarityHubModal(interaction: ModalSubmitInteraction):
       try {
         await createCustomRarity(guildId, {
           slug, name, emoji, position, worthValue: worth, burnValue: burn,
-          color: 0x5865f2, dropWeight: 1.0, droppable: true, inPacks: false,
+          color: 0x5865f2, dropWeight: drop, droppable: drop > 0, inPacks: false,
           updatedBy: userId,
         });
         break;
@@ -572,16 +573,16 @@ export async function handleRarityHubModal(interaction: ModalSubmitInteraction):
   if (section === "custom" && extra === "edit" && slugExtra) {
     const name = interaction.fields.getTextInputValue("name").trim();
     const emoji = interaction.fields.getTextInputValue("emoji").trim();
+    const dropRaw = interaction.fields.getTextInputValue("drop").trim();
     const worthRaw = interaction.fields.getTextInputValue("worth").trim();
     const burnRaw = interaction.fields.getTextInputValue("burn").trim();
-    const colorRaw = interaction.fields.getTextInputValue("color").trim();
 
     const patch: Parameters<typeof updateCustomRarity>[2] = { updatedBy: userId };
     if (name) { if (name.length > 32) { await interaction.followUp({ content: "❌ Name too long (max 32 chars).", flags: MessageFlags.Ephemeral }); return; } patch.name = name; }
     if (emoji) { if (emoji.length > 8) { await interaction.followUp({ content: "❌ Emoji too long (max 8 chars).", flags: MessageFlags.Ephemeral }); return; } patch.emoji = emoji; }
+    if (dropRaw) { const v = parseFloat(dropRaw); if (isNaN(v) || v < 0 || v > 100) { await interaction.followUp({ content: "❌ Drop % must be 0–100.", flags: MessageFlags.Ephemeral }); return; } patch.dropWeight = v; patch.droppable = v > 0; }
     if (worthRaw) { const v = parseInt(worthRaw, 10); if (isNaN(v) || v < 0) { await interaction.followUp({ content: "❌ Worth must be ≥ 0.", flags: MessageFlags.Ephemeral }); return; } patch.worthValue = v; }
     if (burnRaw) { const v = parseInt(burnRaw, 10); if (isNaN(v) || v < 0) { await interaction.followUp({ content: "❌ Burn must be ≥ 0.", flags: MessageFlags.Ephemeral }); return; } patch.burnValue = v; }
-    if (colorRaw) { const parsed = parseHexColor(colorRaw); if (parsed === null) { await interaction.followUp({ content: "❌ Color must be a valid hex code like `#ff2d92`.", flags: MessageFlags.Ephemeral }); return; } patch.color = parsed; }
 
     if (Object.keys(patch).length <= 1) {
       await interaction.followUp({ content: "❌ Change at least one field.", flags: MessageFlags.Ephemeral });

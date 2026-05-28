@@ -56,15 +56,17 @@ export default function Home() {
     // fall back to all droppable cards (same as the old behaviour).
     const hasActiveSet = data.activeSetId != null;
 
-    // Total weight across the ENTIRE active pool — used as the denominator so
-    // drop % reflects the actual chance of landing on that specific card, not
-    // "chance within its rarity bucket" (which shows 100% when it's the only
-    // card in a custom tier like Gold Legendary).
+    // Total weight across the ENTIRE active pool (denominator for rarity %).
     let totalPoolWeight = 0;
+    // Per-rarity weight sum — all cards in a rarity share the same displayed %.
+    const rarityPoolWeight = new Map<string, number>();
     data.cards.forEach((c) => {
       const inPool = c.droppable && (hasActiveSet ? !!c.inActiveSet : true);
       if (inPool) {
-        totalPoolWeight += c.effectiveDropWeight ?? c.dropWeight;
+        const w = c.effectiveDropWeight ?? c.dropWeight;
+        totalPoolWeight += w;
+        const slug = c.effectiveRarity ?? c.rarity;
+        rarityPoolWeight.set(slug, (rarityPoolWeight.get(slug) ?? 0) + w);
       }
     });
 
@@ -91,12 +93,16 @@ export default function Home() {
     // Order: custom tiers (alpha) then built-in descending rarity
     const customSlugs = Object.keys(grouped).filter(s => !BUILT_IN_SET.has(s)).sort();
     const builtInSlugs = BUILT_IN_ORDER.filter(r => grouped[r]?.length);
-    return [...customSlugs, ...builtInSlugs].map(slug => ({
-      rarity: slug,
-      label: labelBySlug[slug] ?? slug,
-      totalPoolWeight,
-      cards: grouped[slug] ?? [],
-    }));
+    return [...customSlugs, ...builtInSlugs].map(slug => {
+      const rw = rarityPoolWeight.get(slug) ?? 0;
+      const rarityDropChance = totalPoolWeight > 0 && rw > 0 ? (rw / totalPoolWeight) * 100 : undefined;
+      return {
+        rarity: slug,
+        label: labelBySlug[slug] ?? slug,
+        rarityDropChance,
+        cards: grouped[slug] ?? [],
+      };
+    });
 
   }, [data, search, selectedRarities]);
 
@@ -292,13 +298,7 @@ export default function Home() {
                     >
                       <CardComponent
                         card={card}
-                        relativeDropChance={(() => {
-                          const hasActiveSet = data?.activeSetId != null;
-                          const inPool = card.droppable && (hasActiveSet ? !!card.inActiveSet : true);
-                          if (!inPool || group.totalPoolWeight <= 0) return undefined;
-                          const w = card.effectiveDropWeight ?? card.dropWeight;
-                          return (w / group.totalPoolWeight) * 100;
-                        })()}
+                        relativeDropChance={card.droppable ? group.rarityDropChance : undefined}
                       />
                     </motion.div>
                   ))}

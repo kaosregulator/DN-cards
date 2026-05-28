@@ -282,7 +282,7 @@ export function CardComponent({ card, relativeDropChance, count, shinyCount = 0 
                      </div>
                      {relativeDropChance !== undefined && card.droppable && (
                        <div className="flex flex-col">
-                          <span className="text-[10px] uppercase tracking-widest text-muted-foreground font-mono mb-1">Drop Chance</span>
+                          <span className="text-[10px] uppercase tracking-widest text-muted-foreground font-mono mb-1">Rarity Drop Rate</span>
                           <span className="flex items-center gap-2 font-mono font-medium">
                              <Target className="h-4 w-4 text-muted-foreground" />
                              ~{relativeDropChance.toFixed(2)}%
