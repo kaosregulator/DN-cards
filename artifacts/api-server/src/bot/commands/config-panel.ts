@@ -7,7 +7,7 @@ import {
 } from "discord.js";
 import { getOrCreateGuildSettings, updateGuildSettings, isAdmin, getActiveSet } from "../db.js";
 import { scheduleNextSpawn, clearSpawnTimer } from "../spawn-manager.js";
-import { RARITY_WEIGHTS, RARITY_LABELS, type Rarity } from "../cards-data.js";
+import { RARITY_WEIGHTS, RARITY_LABELS, RARITY_EMOJI, type Rarity } from "../cards-data.js";
 import type { GuildSettings } from "@workspace/db";
 import { PACK_TIERS, PACK_TIER_META, PACK_DEFAULTS, resolveTierConfig, type PackTier } from "./pack.js";
 
@@ -19,9 +19,6 @@ const RARITY_ORDER: Rarity[] = ["common", "uncommon", "epic", "legendary", "rare
 // admin-only top tier (default weight 0) and is configured via the dashboard
 // or `/event` boosts instead — see replit.md > Mythic tier.
 const UI_RARITY_ORDER: Rarity[] = ["common", "uncommon", "epic", "legendary", "rare"];
-const RARITY_EMOJI: Record<Rarity, string> = {
-  common: "⚪", uncommon: "🟢", epic: "🟣", legendary: "🟡", rare: "🔴", mythic: "🔮",
-};
 // Percentage options offered per rarity (preset menu). `null` = "Default" (use card's default).
 // Stored internally as weights — when the values sum to 100, weight == percent exactly.
 const RARITY_WEIGHT_OPTIONS: Record<Rarity, (number | null)[]> = {
@@ -368,7 +365,7 @@ function buildConfigEmbed(s: GuildSettings, activeSetName: string | null): Embed
         inline: true,
       },
       {
-        name: "🎲 Rarity Mix (chance of each rarity when a card drops)",
+        name: "🎲 Rarity Percentages (chance of each rarity when a card drops)",
         value: rarityRowsSummary(s),
         inline: false,
       },
@@ -554,7 +551,7 @@ function buildRatesComponents(s: GuildSettings) {
     const opts = RARITY_WEIGHT_OPTIONS[r].map(w => {
       if (w === null) {
         return {
-          label: `Default (${RARITY_WEIGHTS[r]}%)`,
+          label: `Default chance (${RARITY_WEIGHTS[r]}%)`,
           value: "default",
           default: current === null,
         };
@@ -567,7 +564,7 @@ function buildRatesComponents(s: GuildSettings) {
     });
     const select = new StringSelectMenuBuilder()
       .setCustomId(`rates_${r}`)
-      .setPlaceholder(`${RARITY_EMOJI[r]} ${RARITY_LABELS[r]} — % chance`)
+      .setPlaceholder(`${RARITY_EMOJI[r]} ${RARITY_LABELS[r]} — spawn %`)
       .addOptions(opts);
     return new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(select);
   });

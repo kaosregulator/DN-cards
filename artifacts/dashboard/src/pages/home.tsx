@@ -50,26 +50,6 @@ export default function Home() {
   const processedCards = useMemo(() => {
     if (!data?.cards) return [];
 
-    // When an active set is configured, only cards in that set can spawn.
-    // Use inActiveSet (server-provided) as the pool filter so the denominator
-    // matches what the bot actually draws from.  If no active set is known,
-    // fall back to all droppable cards (same as the old behaviour).
-    const hasActiveSet = data.activeSetId != null;
-
-    // Total weight across the ENTIRE active pool (denominator for rarity %).
-    let totalPoolWeight = 0;
-    // Per-rarity weight sum — all cards in a rarity share the same displayed %.
-    const rarityPoolWeight = new Map<string, number>();
-    data.cards.forEach((c) => {
-      const inPool = c.droppable && (hasActiveSet ? !!c.inActiveSet : true);
-      if (inPool) {
-        const w = c.effectiveDropWeight ?? c.dropWeight;
-        totalPoolWeight += w;
-        const slug = c.effectiveRarity ?? c.rarity;
-        rarityPoolWeight.set(slug, (rarityPoolWeight.get(slug) ?? 0) + w);
-      }
-    });
-
     const filtered = data.cards.filter((c) => {
       const setNamesStr = (c.sets ?? []).map(s => s.name).join(" ").toLowerCase();
       const matchesSearch = c.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -94,13 +74,13 @@ export default function Home() {
     const customSlugs = Object.keys(grouped).filter(s => !BUILT_IN_SET.has(s)).sort();
     const builtInSlugs = BUILT_IN_ORDER.filter(r => grouped[r]?.length);
     return [...customSlugs, ...builtInSlugs].map(slug => {
-      const rw = rarityPoolWeight.get(slug) ?? 0;
-      const rarityDropChance = totalPoolWeight > 0 && rw > 0 ? (rw / totalPoolWeight) * 100 : undefined;
+      const cards = grouped[slug] ?? [];
+      const rarityDropChance = cards.find(c => c.rarityDropChancePercent != null)?.rarityDropChancePercent ?? undefined;
       return {
         rarity: slug,
         label: labelBySlug[slug] ?? slug,
         rarityDropChance,
-        cards: grouped[slug] ?? [],
+        cards,
       };
     });
 
@@ -285,20 +265,25 @@ export default function Home() {
                 <Badge variant="secondary" className="font-mono text-xs">
                   {group.cards.length} ASSETS
                 </Badge>
+                {group.rarityDropChance !== undefined && (
+                  <Badge variant="outline" className="font-mono text-xs">
+                    Spawn {group.rarityDropChance.toFixed(2)}%
+                  </Badge>
+                )}
               </div>
               
               <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
                 <AnimatePresence>
-                  {group.cards.map((card, idx) => (
+                  {group.cards.map((card) => (
                     <motion.div
                       key={card.id}
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: idx * 0.05 }}
+                      transition={{ duration: 0.15 }}
                     >
                       <CardComponent
                         card={card}
-                        relativeDropChance={card.droppable ? group.rarityDropChance : undefined}
+                        relativeDropChance={card.droppable && card.inActiveSet ? group.rarityDropChance : undefined}
                       />
                     </motion.div>
                   ))}

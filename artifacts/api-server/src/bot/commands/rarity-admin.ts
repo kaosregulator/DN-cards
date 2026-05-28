@@ -61,7 +61,7 @@ function buildHubPanel() {
     .setDescription(
       "Manage all rarity settings for this server.\n\n" +
       "**🎨 Display Names** — rename, recolor, or change the emoji of any built-in tier\n" +
-      "**📊 Economy Overrides** — adjust worth, burn value, or drop weight per tier\n" +
+      "**📊 Economy Overrides** — adjust worth, burn value, or spawn % per tier\n" +
       "**✨ Custom Tiers** — create tiers beyond Common → Mythic\n" +
       "**🃏 Card Tiers** — move a card into a custom tier\n\u200b",
     );
@@ -90,7 +90,7 @@ function buildEconomyPanel(profiles: ProfileRow[]) {
     .setTitle("📊 Economy Overrides")
     .setColor(0x5865f2)
     .setDescription(
-      "Set worth, burn, and drop weight for any built-in tier. " +
+      "Set worth, burn, and the visible spawn % source for any built-in tier. " +
       "Overrides apply to **every card in that tier** for this server.\n" +
       "Pick a tier from the menu to configure it.\n\u200b",
     );
@@ -100,7 +100,7 @@ function buildEconomyPanel(profiles: ProfileRow[]) {
     embed.addFields({
       name: `${RARITY_EMOJI[r]} ${RARITY_LABELS[r]}`,
       value: hasAny
-        ? `Worth: ${fmtVal(row?.worthValue, " 💠")} · Burn: ${fmtVal(row?.burnValue, " 💠")} · Weight: ${fmtVal(row?.dropWeight)}`
+        ? `Worth: ${fmtVal(row?.worthValue, " 💠")} · Burn: ${fmtVal(row?.burnValue, " 💠")} · Spawn %: ${fmtVal(row?.dropWeight)}`
         : "*(using card defaults)*",
       inline: false,
     });
@@ -114,7 +114,7 @@ function buildEconomyPanel(profiles: ProfileRow[]) {
         const parts: string[] = [];
         if (row?.worthValue != null) parts.push(`Worth: ${row.worthValue}`);
         if (row?.burnValue != null) parts.push(`Burn: ${row.burnValue}`);
-        if (row?.dropWeight != null) parts.push(`Weight: ${row.dropWeight}`);
+        if (row?.dropWeight != null) parts.push(`Spawn %: ${row.dropWeight}`);
         return {
           label: `${RARITY_EMOJI[r]} ${RARITY_LABELS[r]}`,
           value: r,
@@ -139,7 +139,7 @@ function buildEconomyTierPanel(rarity: Rarity, profile: ProfileRow | undefined) 
     .addFields(
       { name: "Worth", value: fmtVal(profile?.worthValue, " 💠"), inline: true },
       { name: "Burn", value: fmtVal(profile?.burnValue, " 💠"), inline: true },
-      { name: "Drop Weight", value: fmtVal(profile?.dropWeight), inline: true },
+      { name: "Spawn % Source", value: fmtVal(profile?.dropWeight), inline: true },
     );
   if (!hasOverride) embed.setDescription("*No overrides — cards in this tier use their own values.*\n\u200b");
   const row1 = new ActionRowBuilder<ButtonBuilder>().addComponents(
@@ -169,7 +169,7 @@ function buildCustomPanel(tiers: CustomRow[]) {
       name: `${t.emoji} ${t.name}`,
       value:
         `Position **${t.position}** · Color ${hex(t.color)}\n` +
-        `Worth 💠 ${t.worthValue.toLocaleString()} · Burn 💠 ${t.burnValue.toLocaleString()} · Drop weight ${t.dropWeight}\n` +
+        `Worth 💠 ${t.worthValue.toLocaleString()} · Burn 💠 ${t.burnValue.toLocaleString()} · Spawn % ${t.dropWeight}\n` +
         `Spawns: ${t.droppable ? "✅" : "❌"} · In packs: ${t.inPacks ? "✅" : "❌"}`,
       inline: false,
     });
@@ -219,7 +219,7 @@ function buildCardTierPanel() {
     .setTitle("🃏 Card Tier Assignments")
     .setColor(0x5865f2)
     .setDescription(
-      "Assign a card into a custom tier — the tier's worth, burn, and drop weight replace the card's own values.\n" +
+      "Assign a card into a custom tier — the tier's worth, burn, and spawn % source replace the card's own values.\n" +
       "Unassigning reverts the card back to its built-in rarity.\n\u200b",
     );
   const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
@@ -512,7 +512,7 @@ export async function handleRarityHubModal(interaction: ModalSubmitInteraction):
     }
     if (weightRaw) {
       const v = parseFloat(weightRaw);
-      if (isNaN(v) || v < 0) { await interaction.followUp({ content: "❌ Drop weight must be a non-negative number.", flags: MessageFlags.Ephemeral }); return; }
+      if (isNaN(v) || v < 0) { await interaction.followUp({ content: "❌ Drop % source must be a non-negative number.", flags: MessageFlags.Ephemeral }); return; }
       patch.dropWeight = v;
     }
     if (Object.keys(patch).length <= 1) {

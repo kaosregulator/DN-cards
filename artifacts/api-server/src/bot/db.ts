@@ -12,7 +12,7 @@ import { eq, and, sql, desc, inArray, isNull } from "drizzle-orm";
 import type { Card, CardEvent, CardSet, CustomRarity, GuildSettings, RarityProfile, Trade } from "@workspace/db";
 import {
   DEFAULT_CARDS, SHINY_RATE, SHINY_MULTIPLIER, type Rarity,
-  RARITY_LABELS, RARITY_EMOJI, RARITY_COLORS,
+  RARITY_LABELS, RARITY_EMOJI, RARITY_COLORS, RARITY_WEIGHTS,
   rarityLabel as builtinRarityLabel, rarityEmoji as builtinRarityEmoji, rarityColor as builtinRarityColor,
   type RarityDisplayMap,
 } from "./cards-data.js";
@@ -246,6 +246,101 @@ export function getDisplayRarities(
   const all = [...builtins, ...customs];
   all.sort((a, b) => rarestFirst ? b.position - a.position : a.position - b.position);
   return all;
+}
+
+// ── Effective drop weights and visible percentages ───────────────────────────
+// One resolver for every surface that needs to talk about spawn odds. Stored
+// columns remain named dropWeight for compatibility, but admin/user-facing UI
+// should display the normalized percentage returned by buildDropChanceSummary.
+export type DropWeightOptions = {
+  ctx?: RarityContext;
+  rarityWeights?: Record<string, number>;
+  setRarityWeights?: Record<string, number> | null;
+  eventBoosts?: Map<number, number>;
+};
+
+export type DropChanceSummary = {
+  totalWeight: number;
+  weightByCardId: Map<number, number>;
+  weightByRarityKey: Map<string, number>;
+  cardPercentById: Map<number, number>;
+  rarityPercentByKey: Map<string, number>;
+};
+
+export function getGuildRarityWeights(settings: GuildSettings): Record<string, number> | undefined {
+  const hasCustom = [
+    settings.rarityWeightCommon,
+    settings.rarityWeightUncommon,
+    settings.rarityWeightRare,
+    settings.rarityWeightEpic,
+    settings.rarityWeightLegendary,
+    settings.rarityWeightMythic,
+  ].some(v => v !== null);
+  if (!hasCustom) return undefined;
+  return {
+    common: settings.rarityWeightCommon ?? RARITY_WEIGHTS.common,
+    uncommon: settings.rarityWeightUncommon ?? RARITY_WEIGHTS.uncommon,
+    rare: settings.rarityWeightRare ?? RARITY_WEIGHTS.rare,
+    epic: settings.rarityWeightEpic ?? RARITY_WEIGHTS.epic,
+    legendary: settings.rarityWeightLegendary ?? RARITY_WEIGHTS.legendary,
+    mythic: settings.rarityWeightMythic ?? RARITY_WEIGHTS.mythic,
+  };
+}
+
+export function isRandomDroppable(card: { id: number; droppable: boolean; isArchived?: boolean | null }, ctx?: RarityContext): boolean {
+  if (!card.droppable || card.isArchived) return false;
+  const customTier = ctx?.customByCard.get(card.id);
+  return customTier ? customTier.droppable : true;
+}
+
+export function getEffectiveDropWeight<T extends EconCard & { id: number }>(
+  card: T,
+  opts: DropWeightOptions = {},
+): number {
+  const customTier = opts.ctx?.customByCard.get(card.id);
+  let base: number;
+  if (customTier) {
+    base = customTier.dropWeight;
+  } else {
+    const setWeight = opts.setRarityWeights?.[card.rarity];
+    if (setWeight != null) {
+      base = setWeight;
+    } else {
+      const profileWeight = opts.ctx?.profile.get(card.rarity as Rarity)?.dropWeight;
+      if (profileWeight != null) base = profileWeight;
+      else if (opts.rarityWeights) base = opts.rarityWeights[card.rarity] ?? card.dropWeight;
+      else base = card.dropWeight;
+    }
+  }
+  const boost = opts.eventBoosts?.get(card.id) ?? 1;
+  return Math.max(0, base) * boost;
+}
+
+export function buildDropChanceSummary<T extends EconCard & { id: number; droppable: boolean; isArchived?: boolean | null }>(
+  cards: T[],
+  opts: DropWeightOptions = {},
+): DropChanceSummary {
+  const weightByCardId = new Map<number, number>();
+  const weightByRarityKey = new Map<string, number>();
+  const cardPercentById = new Map<number, number>();
+  const rarityPercentByKey = new Map<string, number>();
+
+  for (const card of cards) {
+    if (!isRandomDroppable(card, opts.ctx)) continue;
+    const weight = getEffectiveDropWeight(card, opts);
+    if (weight <= 0) continue;
+    weightByCardId.set(card.id, weight);
+    const key = opts.ctx ? effectiveRarityKey(card, opts.ctx) : card.rarity;
+    weightByRarityKey.set(key, (weightByRarityKey.get(key) ?? 0) + weight);
+  }
+
+  const totalWeight = [...weightByCardId.values()].reduce((sum, weight) => sum + weight, 0);
+  if (totalWeight > 0) {
+    for (const [cardId, weight] of weightByCardId) cardPercentById.set(cardId, (weight / totalWeight) * 100);
+    for (const [key, weight] of weightByRarityKey) rarityPercentByKey.set(key, (weight / totalWeight) * 100);
+  }
+
+  return { totalWeight, weightByCardId, weightByRarityKey, cardPercentById, rarityPercentByKey };
 }
 
 // ── Seed / resync default cards ───────────────────────────────────────────────
@@ -845,45 +940,21 @@ export async function pickRandomCard(
   // pool. Spawn-manager always provides `availableCards` so Option B (no
   // active set → no spawns) is enforced before we even get here.
   let cards = availableCards ?? (await getAllCards()).filter(c => c.droppable && !c.isArchived);
-  // Stage-2: respect each custom tier's `droppable` flag — a card assigned
-  // to a non-droppable custom tier is excluded from random spawns even if
-  // its own column says droppable=true.
-  if (ctx && ctx.customByCard.size > 0) {
-    cards = cards.filter(c => {
-      const tier = ctx.customByCard.get(c.id);
-      return tier ? tier.droppable : true;
-    });
-  }
+  // Respect each custom tier's `droppable` flag — a card assigned to a
+  // non-droppable custom tier is excluded from random spawns even if its own
+  // column says droppable=true.
+  cards = cards.filter(c => isRandomDroppable(c, ctx));
   if (cards.length === 0) return undefined;
 
-  // Precedence:
-  //   1. Stage-2 custom tier dropWeight (replaces everything for that card)
-  //   2. Active set's per-tier weight override (Phase 4, only when set)
-  //   3. Stage-1 rarity_profiles.dropWeight (per built-in tier)
-  //   4. guild_settings rarityWeight* (legacy per-tier)
-  //   5. card.dropWeight (per-card baseline)
   // Event boost multiplies whichever base wins so admins can still spike a
   // single card above its tier baseline. Note: set weights are read from a
   // PARTIAL map — keys the admin didn't override fall through.
-  const getWeight = (card: Card) => {
-    let base: number;
-    const customTier = ctx?.customByCard.get(card.id);
-    if (customTier) {
-      base = customTier.dropWeight;
-    } else {
-      const setWeight = setRarityWeights ? setRarityWeights[card.rarity] : undefined;
-      if (setWeight != null) {
-        base = setWeight;
-      } else {
-        const profileWeight = ctx?.profile.get(card.rarity as Rarity)?.dropWeight;
-        if (profileWeight != null) base = profileWeight;
-        else if (rarityWeights) base = rarityWeights[card.rarity] ?? card.dropWeight;
-        else base = card.dropWeight;
-      }
-    }
-    const boost = eventBoosts?.get(card.id) ?? 1;
-    return Math.max(0, base) * boost;
-  };
+  const getWeight = (card: Card) => getEffectiveDropWeight(card, {
+    rarityWeights,
+    eventBoosts,
+    ctx,
+    setRarityWeights,
+  });
 
   const totalWeight = cards.reduce((sum, c) => sum + getWeight(c), 0);
   if (totalWeight <= 0) {

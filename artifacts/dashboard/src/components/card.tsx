@@ -11,7 +11,7 @@ const SHINY_MULTIPLIER = 2;
 
 interface CardComponentProps {
   card: CardType;
-  relativeDropChance?: number; // percentage
+  relativeDropChance?: number; // server-resolved rarity percentage
   count?: number;
   shinyCount?: number;
 }
@@ -78,12 +78,9 @@ export function CardComponent({ card, relativeDropChance, count, shinyCount = 0 
   return (
     <>
       <motion.div
-        layoutId={`card-${card.id}`}
         onClick={() => setIsOpen(true)}
         className={`group relative flex cursor-pointer flex-col overflow-hidden rounded-xl border bg-card text-card-foreground transition-all duration-300 hover:-translate-y-1 hover:shadow-xl ${rarityBorders[displayRarityKey]}`}
         data-testid={`card-item-${card.id}`}
-        whileHover={{ scale: 1.02 }}
-        whileTap={{ scale: 0.98 }}
       >
         {/* Count Badge — totals both piles so users see their full holdings at a glance. */}
         {count !== undefined && (count + shinyCount) > 1 && (
@@ -159,7 +156,7 @@ export function CardComponent({ card, relativeDropChance, count, shinyCount = 0 
                <Zap className="h-3 w-3 text-primary" /> {card.worthValue}
             </span>
             {relativeDropChance !== undefined && (
-              <span className="flex items-center gap-1" title="Drop Chance">
+              <span className="flex items-center gap-1" title="Rarity Chance">
                 <Target className="h-3 w-3" /> {relativeDropChance.toFixed(2)}%
               </span>
             )}
@@ -282,7 +279,7 @@ export function CardComponent({ card, relativeDropChance, count, shinyCount = 0 
                      </div>
                      {relativeDropChance !== undefined && card.droppable && (
                        <div className="flex flex-col">
-                          <span className="text-[10px] uppercase tracking-widest text-muted-foreground font-mono mb-1">Rarity Drop Rate</span>
+                          <span className="text-[10px] uppercase tracking-widest text-muted-foreground font-mono mb-1">Rarity Chance</span>
                           <span className="flex items-center gap-2 font-mono font-medium">
                              <Target className="h-4 w-4 text-muted-foreground" />
                              ~{relativeDropChance.toFixed(2)}%

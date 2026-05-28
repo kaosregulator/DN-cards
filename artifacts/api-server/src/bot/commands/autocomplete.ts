@@ -1,5 +1,5 @@
 import type { AutocompleteInteraction } from "discord.js";
-import { getAllCards, listSetsV2, getUserCollection, getUserWishlist, listCustomRarities } from "../db.js";
+import { getAllCards, listSetsV2, getUserCollection, getUserWishlist, listCustomRarities, getRarityContext, getOrCreateGuildSettings, getRarityDisplayOverrides, getDisplayRarities } from "../db.js";
 import { RARITY_EMOJI, type Rarity } from "../cards-data.js";
 
 const MAX_CHOICES = 25;
@@ -126,6 +126,31 @@ export async function handleAutocomplete(interaction: AutocompleteInteraction): 
         await interaction.respond(scored.map(x => formatCardChoice(x.c)));
         return;
       }
+    }
+
+
+    // ── /tradein rarity — built-ins plus custom tiers in server ladder order ──
+    if (cmd === "tradein" && focused.name === "rarity" && interaction.guild) {
+      const q = query.toLowerCase().trim();
+      const [ctx, settings, displayMap] = await Promise.all([
+        getRarityContext(interaction.guild.id),
+        getOrCreateGuildSettings(interaction.guild.id),
+        getRarityDisplayOverrides(interaction.guild.id),
+      ]);
+      const ladder = getDisplayRarities(ctx, settings, { rarestFirst: false, displayMap });
+      const options = ladder.slice(0, -1).map((tier, idx) => {
+        const next = ladder[idx + 1];
+        const value = tier.isCustom ? `custom:${tier.slug}` : tier.rarity!;
+        return {
+          name: `${tier.emoji} ${tier.label} → ${next?.emoji ?? "⬆️"} ${next?.label ?? "next"}`.slice(0, 100),
+          value: value.slice(0, 100),
+        };
+      });
+      const filtered = !q
+        ? options
+        : options.filter(o => o.name.toLowerCase().includes(q) || o.value.toLowerCase().includes(q));
+      await interaction.respond(filtered.slice(0, MAX_CHOICES));
+      return;
     }
 
     // ── /addcard rarity — built-ins + guild custom tiers ────────────────────

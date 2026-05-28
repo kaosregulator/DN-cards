@@ -17,6 +17,7 @@ import {
   applyRarityContext,
   getActiveSetSpawnPoolCached,
   getRarityDisplayOverrides,
+  getGuildRarityWeights,
 } from "./db.js";
 import {
   RARITY_COLORS, RARITY_EMOJI, RARITY_LABELS, TYPE_EMOJI, getTypeEmoji,
@@ -27,7 +28,7 @@ import {
 import { toAbsoluteImageUrl } from "./image-url.js";
 import { applyEmbedOverride } from "./embed-overrides.js";
 import { logger } from "../lib/logger.js";
-import type { Card, GuildSettings } from "@workspace/db";
+import type { Card } from "@workspace/db";
 
 interface PendingCatch {
   userId: string;
@@ -91,28 +92,6 @@ export function getBotClient(): Client | null { return botClient; }
 
 export function initSpawnManager(client: Client) {
   botClient = client;
-}
-
-// ── Extract guild rarity weight overrides ─────────────────────────────────────
-function getGuildRarityWeights(settings: GuildSettings): Record<string, number> | undefined {
-  const hasCustom = [
-    settings.rarityWeightCommon,
-    settings.rarityWeightUncommon,
-    settings.rarityWeightRare,
-    settings.rarityWeightEpic,
-    settings.rarityWeightLegendary,
-    settings.rarityWeightMythic,
-  ].some(v => v !== null);
-  if (!hasCustom) return undefined;
-  // Hierarchy: Common → Uncommon → Exotic (epic) → Legendary → Rare → Mythic (top)
-  return {
-    common: settings.rarityWeightCommon ?? 60,
-    uncommon: settings.rarityWeightUncommon ?? 25,
-    epic: settings.rarityWeightEpic ?? 10,
-    legendary: settings.rarityWeightLegendary ?? 4,
-    rare: settings.rarityWeightRare ?? 1,
-    mythic: settings.rarityWeightMythic ?? 0,
-  };
 }
 
 // ── Schedule next spawn ───────────────────────────────────────────────────────

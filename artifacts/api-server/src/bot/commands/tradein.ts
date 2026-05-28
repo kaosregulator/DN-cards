@@ -14,7 +14,7 @@ import {
 import {
   RARITY_COLORS, RARITY_EMOJI, RARITY_LABELS, SHINY_EMOJI, SHINY_MULTIPLIER,
   rarityLabel, rarityEmoji, rarityColor,
-  type Rarity, type RarityDisplayMap,
+  type RarityDisplayMap,
 } from "../cards-data.js";
 import type { GuildSettings } from "@workspace/db";
 import { checkAchievements, formatUnlockLine } from "../achievements.js";
@@ -22,10 +22,6 @@ import { toAbsoluteImageUrl } from "../image-url.js";
 import type { Card } from "@workspace/db";
 
 export const TRADEIN_COST = 5;
-
-// Built-in /tradein rarity choices remain on the slash command; custom tiers
-// are reachable as the destination via position-ordered ladder lookup.
-const RARITY_LADDER: Rarity[] = ["common", "uncommon", "rare", "epic", "legendary", "mythic"];
 
 // Build a position-ordered ladder (ascending) of built-in + custom tiers for
 // this guild. The "next" tier above any given tier is just the next element.
@@ -119,11 +115,6 @@ export async function handleTradein(interaction: ChatInputCommandInteraction): P
   const userId = interaction.user.id;
 
   const fromRarityRaw = interaction.options.getString("rarity", true).toLowerCase();
-  if (!RARITY_LADDER.includes(fromRarityRaw as Rarity)) {
-    await interaction.editReply(`❌ Invalid rarity. Choose one of: ${RARITY_LADDER.join(", ")}.`);
-    return;
-  }
-  const fromRarity = fromRarityRaw as Rarity;
   const [settings, displayMap, ctx] = await Promise.all([
     getOrCreateGuildSettings(guildId),
     getRarityDisplayOverrides(guildId),
@@ -131,15 +122,19 @@ export async function handleTradein(interaction: ChatInputCommandInteraction): P
   ]);
 
   // Build the per-guild ladder (built-ins + custom tiers by position). The
-  // slash command only exposes built-in rarities as the FROM tier, but the
-  // ladder may contain custom tiers above/below them as the TO target.
+  // autocomplete value for custom tiers is `custom:<slug>`; accept bare slugs
+  // too so older copied commands remain forgiving.
   const ladder = buildLadder(ctx, settings, displayMap);
-  const fromKey = fromRarity; // built-in keys ARE the rarity string
+  const fromKey = fromRarityRaw.startsWith("custom:")
+    ? fromRarityRaw
+    : ctx.customBySlug.has(fromRarityRaw)
+      ? `custom:${fromRarityRaw}`
+      : fromRarityRaw;
   const fromTier = ladder.find(t => t.key === fromKey);
   const toTier = fromTier ? findNextTier(ladder, fromTier.key) : null;
 
   if (!fromTier) {
-    await interaction.editReply(`❌ "${fromRarity}" isn't on this server's rarity ladder.`);
+    await interaction.editReply(`❌ "${fromRarityRaw}" isn't on this server's rarity ladder. Pick one from autocomplete.`);
     return;
   }
   if (!toTier) {

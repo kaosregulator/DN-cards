@@ -48,9 +48,10 @@ export interface Card {
   // these override `rarity` for display/grouping on the public website.
   effectiveRarity?: string;
   effectiveRarityLabel?: string;
-  // Custom tier dropWeight replaces the card's base dropWeight (same rule the bot uses).
-  // Always present on the public roster endpoint.
+  // Server-resolved spawn values. Percentages are null when no HOME_GUILD_ID/active pool is available.
   effectiveDropWeight?: number;
+  dropChancePercent?: number | null;
+  rarityDropChancePercent?: number | null;
   // True when an active set is configured for HOME_GUILD_ID and this card is in it.
   // False = card exists but is not in the live spawn pool (no active set, or not a member).
   inActiveSet?: boolean;

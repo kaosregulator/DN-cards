@@ -106,14 +106,7 @@ export function buildCommands() {
     cmd("packstats", "(User) See your pack costs, weekly caps & cooldown", s => s),
 
     cmd("tradein", "(User) Burn 5 cards of one rarity for 1 random card of the next tier up", s => s
-      .addStringOption(o => o.setName("rarity").setDescription("Rarity of cards to trade in").setRequired(true)
-        .addChoices(
-          { name: "Common → Uncommon", value: "common" },
-          { name: "Uncommon → Rare", value: "uncommon" },
-          { name: "Rare → Epic", value: "rare" },
-          { name: "Epic → Legendary", value: "epic" },
-          { name: "Legendary → Mythic", value: "legendary" },
-        ))),
+      .addStringOption(o => o.setName("rarity").setDescription("Rarity of cards to trade in").setRequired(true).setAutocomplete(true))),
 
     cmd("achievements", "(User) View unlocked achievements", s => s
       .addUserOption(o => o.setName("user").setDescription("View another member's achievements"))),
@@ -176,7 +169,7 @@ export function buildCommands() {
             { name: "Rare", value: "rare" }, { name: "Epic", value: "epic" },
             { name: "Legendary", value: "legendary" }, { name: "Mythic", value: "mythic" },
           ))
-        .addIntegerOption(o => o.setName("weight").setDescription("Spawn weight (0 = disable that tier while set is active)").setRequired(true).setMinValue(0)))
+        .addIntegerOption(o => o.setName("weight").setDescription("Spawn % source value (0 = disable that tier while set is active)").setRequired(true).setMinValue(0)))
       .addSubcommand(sc => sc.setName("clearweight").setDescription("Remove a per-set spawn-weight override (falls back to guild profile)")
         .addStringOption(o => o.setName("set").setDescription("Set name").setRequired(true).setAutocomplete(true))
         .addStringOption(o => o.setName("rarity").setDescription("Leave empty to clear all overrides on this set")
@@ -266,7 +259,7 @@ export function buildCommands() {
       .addStringOption(o => o.setName("description").setDescription("Card description (up to 500 chars)").setMaxLength(500))
       .addIntegerOption(o => o.setName("worth").setDescription("Worth in 💠 shards (blank = rarity default)").setMinValue(0))
       .addIntegerOption(o => o.setName("burn").setDescription("Burn value in 💠 (blank = rarity default)").setMinValue(0))
-      .addNumberOption(o => o.setName("weight").setDescription("Drop rate (blank = rarity default)").setMinValue(0))
+      .addNumberOption(o => o.setName("weight").setDescription("Drop % source value (blank = rarity default)").setMinValue(0))
       .addBooleanOption(o => o.setName("limited").setDescription("Limited edition — capped copy count?"))
       .addIntegerOption(o => o.setName("max_copies").setDescription("Max copies if limited (default 50)").setMinValue(1))
       .addBooleanOption(o => o.setName("event_exclusive").setDescription("Event exclusive — never spawns randomly?"))),

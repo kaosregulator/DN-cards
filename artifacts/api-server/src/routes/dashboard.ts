@@ -1,10 +1,11 @@
 import { Router, type IRouter, type Request, type Response } from "express";
-import { db, cardsTable, cardDisplayOverridesTable, collectionsTable, userCurrencyTable, achievementsTable, setsTable, cardSetMembershipsTable, cardRarityOverridesTable, customRaritiesTable, rarityDisplayOverridesTable, guildSettingsTable } from "@workspace/db";
+import { db, cardsTable, cardDisplayOverridesTable, collectionsTable, userCurrencyTable, achievementsTable, setsTable, cardSetMembershipsTable, cardRarityOverridesTable, customRaritiesTable, rarityDisplayOverridesTable } from "@workspace/db";
 import { and, eq, sql, desc } from "drizzle-orm";
 import { z } from "zod/v4";
 import { ACHIEVEMENTS } from "../bot/achievements";
 import { getCollectorRank, getNextRank, SHINY_MULTIPLIER } from "../bot/cards-data";
 import { getBotClient } from "../bot/spawn-manager";
+import { buildDropChanceSummary, getActiveSetSpawnPoolCached, getEffectiveDropWeight, getGuildRarityWeights, getOrCreateGuildSettings, getRarityContext } from "../bot/db";
 
 const router: IRouter = Router();
 
@@ -33,7 +34,7 @@ function parseParams<T extends z.ZodTypeAny>(schema: T, req: Request, res: Respo
 router.get("/cards", async (_req, res) => {
   const homeGuildId = process.env["HOME_GUILD_ID"] ?? null;
 
-  const [rows, memberships, customOverrides, rarityLabels, activeSetRows] = await Promise.all([
+  const [rows, memberships, customOverrides, rarityLabels, rarityRuntime] = await Promise.all([
     db
       .select({ card: cardsTable, override: cardDisplayOverridesTable })
       .from(cardsTable)
@@ -69,14 +70,28 @@ router.get("/cards", async (_req, res) => {
           .from(rarityDisplayOverridesTable)
           .where(eq(rarityDisplayOverridesTable.guildId, homeGuildId))
       : Promise.resolve([] as { rarity: string; displayName: string | null }[]),
-    // Active set for the home guild — determines the live spawn pool
+    // Active set + rarity context for the home guild — determines the live spawn pool
     homeGuildId
-      ? db
-          .select({ activeSetId: guildSettingsTable.activeSetId })
-          .from(guildSettingsTable)
-          .where(eq(guildSettingsTable.guildId, homeGuildId))
-          .limit(1)
-      : Promise.resolve([] as { activeSetId: number | null }[]),
+      ? (async () => {
+          const [settings, ctx, spawnPool] = await Promise.all([
+            getOrCreateGuildSettings(homeGuildId),
+            getRarityContext(homeGuildId),
+            getActiveSetSpawnPoolCached(homeGuildId),
+          ]);
+          const rarityWeights = getGuildRarityWeights(settings);
+          return {
+            settings,
+            ctx,
+            spawnPool,
+            rarityWeights,
+            chanceSummary: buildDropChanceSummary(spawnPool.cards, {
+              ctx,
+              rarityWeights,
+              setRarityWeights: spawnPool.rarityWeights,
+            }),
+          };
+        })()
+      : Promise.resolve(null),
   ]);
 
   const setsByCard = new Map<number, { id: number; name: string }[]>();
@@ -85,7 +100,7 @@ router.get("/cards", async (_req, res) => {
     setsByCard.get(m.cardId)!.push({ id: m.setId, name: m.setName });
   }
 
-  const activeSetId = activeSetRows[0]?.activeSetId ?? null;
+  const activeSetId = rarityRuntime?.settings.activeSetId ?? null;
 
   const customTierByCard = new Map<number, { slug: string; name: string; dropWeight: number }>();
   for (const o of customOverrides) {
@@ -105,8 +120,17 @@ router.get("/cards", async (_req, res) => {
       // Precedence: custom tier > renamed built-in > raw rarity
       const effectiveRarity = customTier?.slug ?? r.card.rarity;
       const effectiveRarityLabel = customTier?.name ?? rarityLabelMap.get(r.card.rarity) ?? r.card.rarity;
-      // Custom tier fully replaces the card's dropWeight (same rule the bot uses)
-      const effectiveDropWeight = customTier?.dropWeight ?? r.card.dropWeight;
+      const effectiveDropWeight = rarityRuntime
+        ? getEffectiveDropWeight(r.card, {
+            ctx: rarityRuntime.ctx,
+            rarityWeights: rarityRuntime.rarityWeights,
+            setRarityWeights: rarityRuntime.spawnPool.rarityWeights,
+          })
+        : customTier?.dropWeight ?? r.card.dropWeight;
+      const dropChancePercent = rarityRuntime?.chanceSummary.cardPercentById.get(r.card.id) ?? null;
+      const rarityDropChancePercent = rarityRuntime?.chanceSummary.rarityPercentByKey.get(
+        customTier ? `custom:${customTier.slug}` : r.card.rarity,
+      ) ?? null;
       const cardSets = setsByCard.get(r.card.id) ?? [];
       // inActiveSet: true only when a set is active AND this card belongs to it
       const inActiveSet = activeSetId !== null && cardSets.some(s => s.id === activeSetId);
@@ -122,6 +146,8 @@ router.get("/cards", async (_req, res) => {
         effectiveRarity,
         effectiveRarityLabel,
         effectiveDropWeight,
+        dropChancePercent,
+        rarityDropChancePercent,
         inActiveSet,
       };
     })
