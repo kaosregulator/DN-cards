@@ -1,5 +1,5 @@
 import { Router, type IRouter, type Request, type Response } from "express";
-import { db, cardsTable, cardDisplayOverridesTable, collectionsTable, userCurrencyTable, achievementsTable, setsTable, cardSetMembershipsTable, cardRarityOverridesTable, customRaritiesTable } from "@workspace/db";
+import { db, cardsTable, cardDisplayOverridesTable, collectionsTable, userCurrencyTable, achievementsTable, setsTable, cardSetMembershipsTable, cardRarityOverridesTable, customRaritiesTable, rarityDisplayOverridesTable } from "@workspace/db";
 import { and, eq, sql, desc } from "drizzle-orm";
 import { z } from "zod/v4";
 import { ACHIEVEMENTS } from "../bot/achievements";
@@ -33,7 +33,7 @@ function parseParams<T extends z.ZodTypeAny>(schema: T, req: Request, res: Respo
 router.get("/cards", async (_req, res) => {
   const homeGuildId = process.env["HOME_GUILD_ID"] ?? null;
 
-  const [rows, memberships, customOverrides] = await Promise.all([
+  const [rows, memberships, customOverrides, rarityLabels] = await Promise.all([
     db
       .select({ card: cardsTable, override: cardDisplayOverridesTable })
       .from(cardsTable)
@@ -61,6 +61,13 @@ router.get("/cards", async (_req, res) => {
           )
           .where(eq(cardRarityOverridesTable.guildId, homeGuildId))
       : Promise.resolve([] as { cardId: number; slug: string; name: string }[]),
+    // Built-in rarity rename overrides (e.g. "legendary" → "Exotic")
+    homeGuildId
+      ? db
+          .select({ rarity: rarityDisplayOverridesTable.rarity, displayName: rarityDisplayOverridesTable.displayName })
+          .from(rarityDisplayOverridesTable)
+          .where(eq(rarityDisplayOverridesTable.guildId, homeGuildId))
+      : Promise.resolve([] as { rarity: string; displayName: string | null }[]),
   ]);
 
   const setsByCard = new Map<number, { id: number; name: string }[]>();
@@ -74,10 +81,19 @@ router.get("/cards", async (_req, res) => {
     customTierByCard.set(o.cardId, { slug: o.slug, name: o.name });
   }
 
+  // Map of built-in rarity enum → admin-chosen display name (e.g. "legendary" → "Exotic")
+  const rarityLabelMap = new Map<string, string>();
+  for (const r of rarityLabels) {
+    if (r.displayName) rarityLabelMap.set(r.rarity, r.displayName);
+  }
+
   const visible = rows
     .filter(r => !(r.override?.hiddenFromSite ?? false))
     .map(r => {
       const customTier = customTierByCard.get(r.card.id);
+      // Precedence: custom tier > renamed built-in > raw rarity
+      const effectiveRarity = customTier?.slug ?? r.card.rarity;
+      const effectiveRarityLabel = customTier?.name ?? rarityLabelMap.get(r.card.rarity) ?? r.card.rarity;
       return {
         ...r.card,
         name: r.override?.displayName ?? r.card.name,
@@ -87,8 +103,8 @@ router.get("/cards", async (_req, res) => {
         featured: r.override?.featured ?? false,
         sortWeight: r.override?.sortWeight ?? 0,
         sets: setsByCard.get(r.card.id) ?? [],
-        effectiveRarity: customTier?.slug ?? r.card.rarity,
-        effectiveRarityLabel: customTier?.name ?? r.card.rarity,
+        effectiveRarity,
+        effectiveRarityLabel,
       };
     })
     .sort((a, b) => {
