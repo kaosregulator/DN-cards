@@ -319,7 +319,7 @@ async function showEditMenu(msg: Message, card: Card) {
   await msg.reply(
     `## ✏️ Editing: **${card.name}**\n` +
     `**Current values:**\n` +
-    `• Rarity: ${RARITY_EMOJI[r]} ${RARITY_LABELS[r]} (spawn % source ${card.dropWeight})\n` +
+    `• Rarity: ${RARITY_EMOJI[r]} ${RARITY_LABELS[r]} (spawn chance source ${card.dropWeight})\n` +
     `• Worth: 💠 ${card.worthValue.toLocaleString()} · Burn: 🔥 ${card.burnValue.toLocaleString()}\n` +
     `• Type: ${getTypeEmoji(card.cardType)} ${card.cardType}\n` +
     `• Description: ${card.description || "*none*"}\n` +

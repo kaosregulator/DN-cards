@@ -169,7 +169,7 @@ export async function startBot() {
           await handleEditCardSelect(interaction);
         } else if (interaction.customId === "rarity_edit:select") {
           await handleRarityEditSelect(interaction);
-        } else if (interaction.customId.startsWith("rarity_hub:economy:select") || interaction.customId.startsWith("rarity_hub:custom:select:")) {
+        } else if (interaction.customId.startsWith("rarity_hub:settings:select") || interaction.customId.startsWith("rarity_hub:economy:select") || interaction.customId.startsWith("rarity_hub:custom:select:")) {
           await handleRarityHubSelect(interaction);
         }
         return;

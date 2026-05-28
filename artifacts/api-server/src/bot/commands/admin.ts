@@ -95,11 +95,8 @@ async function handleAdminHelp(interaction: ChatInputCommandInteraction): Promis
       {
         name: "🎖️ Rarity Tuning *(slash)*",
         value:
-          "`/rarity` — opens the **Rarity Hub** with four sections:\n" +
-          "• **🎨 Display Names** — rename/recolor/re-emoji any built-in tier\n" +
-          "• **📊 Economy Overrides** — adjust worth, burn, drop rate per tier\n" +
-          "• **✨ Custom Tiers** — create tiers beyond Common→Mythic\n" +
-          "• **🃏 Card Tiers** — assign a card into a custom tier",
+          "`/rarity` — edit built-in rarity display, spawn %, worth, and burn\n" +
+          "• Advanced custom labels remain available for legacy setups, but normal servers should use built-in rarity settings.",
       },
       {
         name: "🌐 Web Dashboard",

@@ -151,7 +151,7 @@ export async function handleSetupButton(interaction: ButtonInteraction): Promise
             `Drops are live in <#${settings.spawnChannelId}>.\n\n` +
             `**👈 What to do next**\n` +
             `• **Post the welcome guide:** Go to your info channel and run \`/welcome\`\n` +
-            `• **Add your own cards:** \`${settings.commandPrefix}addcard\` · \`${settings.commandPrefix}addlimited\` · \`${settings.commandPrefix}addevent\`\n` +
+            `• **Add your own cards:** \`/addcard\` with an image attachment\n` +
             `• **Test drops:** \`/drop\` (force one) · \`/massdrop\` (batch)\n` +
             `• **Players need help?** \`/help\` · \`/adminhelp\`\n\n` +
             `Re-open anytime: \`${settings.commandPrefix}setup\` or \`/setup\``,
@@ -327,7 +327,7 @@ function buildSetupEmbed(s: GuildSettings, hasDefaults: boolean): EmbedBuilder {
   return new EmbedBuilder()
     .setTitle("🃏 DN Cards — Setup")
     .setColor(0x5865f2)
-    .setDescription("Quick setup — changes save instantly. Click **Finish** when done.")
+    .setDescription("Guided setup — choose channels, drop timing, rarity percentages, and starting cards. Changes save instantly.")
     .addFields(
       {
         name: "📢 Spawn Channel",
@@ -350,7 +350,7 @@ function buildSetupEmbed(s: GuildSettings, hasDefaults: boolean): EmbedBuilder {
         inline: true,
       },
       {
-        name: "📤‍📤 Drops",
+        name: "🃏 Cards per Drop",
         value: dropsLabel,
         inline: true,
       },
@@ -366,11 +366,11 @@ function buildSetupEmbed(s: GuildSettings, hasDefaults: boolean): EmbedBuilder {
       },
       { name: "📖 Cards", value: defaultsLine, inline: false },
       {
-        name: "🎯 Quick Actions",
+        name: "✅ Guided Next Steps",
         value:
           `• \`/welcome\` — post player guide (run in info channel)\n` +
           `• \`/drop\` — force a drop instantly\n` +
-          `• \`${s.commandPrefix}addcard\` — create a card`,
+          `• \`/addcard\` — create a card with built-in rarity + upload`,
         inline: false,
       },
     )
@@ -448,7 +448,7 @@ function buildSetupComponents(s: GuildSettings, hasDefaults: boolean) {
       .setStyle(ButtonStyle.Secondary),
     new ButtonBuilder()
       .setCustomId("setup:rates")
-      .setLabel("🎯 Drop Rates")
+      .setLabel("🎛️ Rarity Setup")
       .setStyle(ButtonStyle.Secondary),
   );
 

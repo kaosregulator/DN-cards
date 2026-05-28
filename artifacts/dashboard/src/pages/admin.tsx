@@ -249,7 +249,7 @@ function EditDialog({
                 <Row k="Type" v={card.cardType} />
                 <Row k="Worth" v={`${card.worthValue.toLocaleString()} 💠`} />
                 <Row k="Burn" v={`${card.burnValue.toLocaleString()} 💠`} />
-                <Row k="Spawn % source" v={String(card.dropWeight)} />
+                <Row k="Spawn chance source" v={String(card.dropWeight)} />
                 <Row k="In packs" v={card.inPacks ? "yes" : "no"} />
                 <Row k="Droppable" v={card.droppable ? "yes" : "no"} />
                 <Row k="Limited" v={card.isLimitedEdition ? `yes (${card.totalMinted}/${card.maxCopies ?? "∞"})` : "no"} />
