@@ -135,6 +135,9 @@ export function buildCommands() {
 
     adminCmd("set_admin", "(Admin) Interactive set hub — full set management with buttons and dropdowns, no subcommands needed", s => s),
 
+    adminCmd("deletecard", "(Admin) Permanently delete a card from the roster", s => s
+      .addStringOption(o => o.setName("name").setDescription("Card to delete").setRequired(true).setAutocomplete(true))),
+
     adminCmd("setadmin", "(Admin) Manage card sets — create, add cards, set active spawn pool, export/import", s => s
       .addSubcommand(sc => sc.setName("create").setDescription("Create a new set")
         .addStringOption(o => o.setName("name").setDescription("Set name (e.g. v1, halloween-2026)").setRequired(true))
@@ -375,5 +378,5 @@ export const USER_COMMAND_NAMES = new Set([
 
 export const ADMIN_COMMAND_NAMES = new Set([
   "config", "adminhub", "sethub", "set_admin", "setadmin", "welcomeadmin", "adminhelp", "drop", "massdrop", "give", "giveshards", "takeback", "takeshards", "event", "dashboard", "setup",
-  "addcard", "editcard", "rarity", "embed",
+  "addcard", "editcard", "deletecard", "rarity", "embed",
 ]);

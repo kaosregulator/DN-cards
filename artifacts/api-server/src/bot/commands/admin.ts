@@ -154,6 +154,28 @@ export async function handleAdminCommand(
     await handleSetAdminHubCommand(interaction);
     return;
   }
+  // /deletecard — permanently removes a card from the global roster.
+  if (cmd === "deletecard") {
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+    if (!(await checkAdmin(interaction))) {
+      await interaction.editReply("❌ Admins only.");
+      return;
+    }
+    if (!isHomeGuild(interaction.guild.id)) {
+      await interaction.editReply(GLOBAL_ONLY_MSG);
+      return;
+    }
+    const name = interaction.options.getString("name", true).trim();
+    const { getCardByName, removeCard } = await import("../db.js");
+    const card = await getCardByName(name);
+    if (!card) {
+      await interaction.editReply(`❌ No card found named **${name}**.`);
+      return;
+    }
+    await removeCard(card.name);
+    await interaction.editReply(`🗑️ **${card.name}** (${card.rarity}) has been permanently deleted.`);
+    return;
+  }
   // /setadmin — subcommand tree; defer first, then dispatch.
   if (cmd === "setadmin") {
     await interaction.deferReply({ flags: MessageFlags.Ephemeral });
