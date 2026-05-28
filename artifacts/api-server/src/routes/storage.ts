@@ -1,8 +1,8 @@
 import express, { Router, type IRouter, type Request, type Response, type NextFunction } from "express";
 import { z } from "zod/v4";
-import { timingSafeEqual } from "node:crypto";
 import { Readable } from "node:stream";
 import { ObjectStorageService, ObjectNotFoundError } from "../lib/objectStorage";
+import { requireDashboardAuth } from "../middlewares/dashboard-auth.js";
 
 const router: IRouter = Router();
 const storage = new ObjectStorageService();
@@ -10,29 +10,12 @@ const storage = new ObjectStorageService();
 const ALLOWED_IMAGE_MIME = /^image\/(png|jpe?g|gif|webp|avif)$/i;
 const MAX_UPLOAD_BYTES = 8 * 1024 * 1024;
 
-function requireAdmin(req: Request, res: Response, next: NextFunction) {
-  const expected = process.env["ADMIN_TOKEN"];
-  if (!expected) {
-    res.status(503).json({ error: "ADMIN_TOKEN not configured on server" });
-    return;
-  }
-  const header = req.header("authorization") ?? "";
-  const provided = header.startsWith("Bearer ") ? header.slice(7) : req.header("x-admin-token") ?? "";
-  const expectedBuf = Buffer.from(expected, "utf8");
-  const providedBuf = Buffer.from(provided, "utf8");
-  if (providedBuf.length !== expectedBuf.length || !timingSafeEqual(providedBuf, expectedBuf)) {
-    res.status(401).json({ error: "Invalid admin token" });
-    return;
-  }
-  next();
-}
-
 const requestUrlSchema = z.object({
   contentType: z.string().regex(/^image\/(png|jpe?g|gif|webp|avif)$/i, "contentType must be a supported image MIME"),
 });
 
 // POST /api/admin/uploads/request-url — admin-only; returns presigned PUT URL + objectPath to store on the card.
-router.post("/admin/uploads/request-url", requireAdmin, async (req, res) => {
+router.post("/admin/uploads/request-url", requireDashboardAuth, async (req, res) => {
   const parsed = requestUrlSchema.safeParse(req.body ?? {});
   if (!parsed.success) {
     res.status(400).json({ error: "Invalid payload", details: parsed.error.issues });
@@ -56,7 +39,7 @@ router.post("/admin/uploads/request-url", requireAdmin, async (req, res) => {
 // sends the file as the request body with Content-Type: image/<format>.
 router.post(
   "/admin/uploads/file",
-  requireAdmin,
+  requireDashboardAuth,
   express.raw({ type: "image/*", limit: MAX_UPLOAD_BYTES }),
   async (req, res) => {
     const contentType = (req.header("content-type") ?? "").toLowerCase();
