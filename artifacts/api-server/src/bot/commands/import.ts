@@ -2,7 +2,7 @@ import type { Message } from "discord.js";
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import { addCard, getCardByName, createSet, addCardToSet, setSetRarityWeights, setSetAwardsCompletion } from "../db.js";
-import { RARITY_WEIGHTS, type Rarity } from "../cards-data.js";
+import { RARITY_BURN, RARITY_WEIGHTS, type Rarity } from "../cards-data.js";
 import { logger } from "../../lib/logger.js";
 
 export interface ImportResult {
@@ -157,13 +157,14 @@ interface ImportSetMeta {
   awardsCompletion?: boolean;
 }
 
-// Map any source rarity to our 5-tier system
+// Map source rarity labels to the stable built-in rarity enum.
 function mapRarity(raw: string | undefined): Rarity {
   const r = (raw ?? "").toLowerCase().trim();
   if (r === "common") return "common";
   if (r === "uncommon") return "uncommon";
   if (r === "rare") return "rare";
   if (r === "legendary") return "legendary";
+  if (r === "mythic") return "mythic";
   if (r === "graded") return "legendary";          // 0.6%, rarest in user's set
   if (r === "le soldiers" || r === "le") return "epic";
   if (r === "mech") return "epic";
@@ -245,18 +246,21 @@ export async function handleImport(msg: Message): Promise<void> {
     return;
   }
 
-  const { created, skipped, failed, errors, setName } = result;
+  const { created, skipped, failed, errors, setName, setsImported } = result;
+  const setLabel = setsImported === 1
+    ? `set: \`${setName}\``
+    : `${setsImported} sets imported (last: \`${setName}\`)`;
   const summary =
-    `✅ **Import complete** — set: \`${setName}\`\n` +
+    `✅ **Import complete** — ${setLabel}\n` +
     `➕ Created: **${created}**\n` +
     `⏭️ Skipped (already exist): **${skipped}**\n` +
     (failed > 0 ? `❌ Failed: **${failed}**\n${errors.map(e => `• ${e}`).join("\n")}\n\n` : "\n") +
     `Use \`/setadmin unload set:${setName}\` to remove this set later.\n` +
-    `Use \`!editcard <Name>\` to tweak any card. *(Your prefix may differ — check \`<prefix>setprefix\`.)*`
+    `Use \`/editcard name:<card>\` to tweak any card after import.`
 
   try { await status.edit(summary); } catch { await msg.reply(summary); }
 }
 
 function defaultBurn(r: Rarity): number {
-  return { common: 5, uncommon: 25, rare: 250, epic: 500, legendary: 1250, mythic: 3000 }[r];
+  return RARITY_BURN[r];
 }
