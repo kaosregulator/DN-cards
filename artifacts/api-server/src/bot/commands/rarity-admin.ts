@@ -280,7 +280,7 @@ export async function handleRarityHubButton(interaction: ButtonInteraction): Pro
             .setRequired(true).setMaxLength(8),
         ),
         new ActionRowBuilder<TextInputBuilder>().addComponents(
-          new TextInputBuilder().setCustomId("position").setLabel("Ladder position (1=Common … 6=Mythic; 5.5 = between)").setStyle(TextInputStyle.Short)
+          new TextInputBuilder().setCustomId("position").setLabel("Position (1=Common … 6=Mythic, 5.5=between)").setStyle(TextInputStyle.Short)
             .setRequired(true).setMaxLength(10).setPlaceholder("e.g. 5.5 to sit between Legendary and Mythic"),
         ),
         new ActionRowBuilder<TextInputBuilder>().addComponents(
