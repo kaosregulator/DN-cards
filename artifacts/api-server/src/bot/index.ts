@@ -5,7 +5,7 @@ import { initSpawnManager, initAllGuilds, handleCatchAttempt, handleClaimButtonC
 import { handleConfigButton, handleConfigSelect, handleRatesSelect, handlePacksSelect, handleRatesCustomModal } from "./commands/config-panel.js";
 import { handleSetsHubButton, handleSetsHubSelect, handleSetsHubModal } from "./commands/sets-panel.js";
 import { handleSetAdminHubButton, handleSetAdminHubSelect, handleSetAdminHubWeightSelect, handleSetAdminHubModal } from "./commands/set-admin-hub.js";
-import { handleRarityEditButton, handleRarityEditSelect, handleRarityEditModal } from "./commands/rarity-admin.js";
+import { handleRarityEditButton, handleRarityEditSelect, handleRarityEditModal, handleRarityHubButton, handleRarityHubSelect, handleRarityHubModal } from "./commands/rarity-admin.js";
 import { handleSetChannelsPick, handleSetChannelsApply } from "./commands/setchannels.js";
 import { handleAdminHubButton, handleAdminHubModal } from "./commands/admin-hub.js";
 import { checkAchievements, formatUnlockLine } from "./achievements.js";
@@ -168,6 +168,8 @@ export async function startBot() {
           await handleEditCardSelect(interaction);
         } else if (interaction.customId === "rarity_edit:select") {
           await handleRarityEditSelect(interaction);
+        } else if (interaction.customId.startsWith("rarity_hub:economy:select") || interaction.customId.startsWith("rarity_hub:custom:select:")) {
+          await handleRarityHubSelect(interaction);
         }
         return;
       }
@@ -197,6 +199,8 @@ export async function startBot() {
           await handleEditCardModal(interaction);
         } else if (interaction.customId.startsWith("rarity_edit:modal:")) {
           await handleRarityEditModal(interaction);
+        } else if (interaction.customId.startsWith("rarity_hub:modal:")) {
+          await handleRarityHubModal(interaction);
         }
         return;
       }
@@ -236,7 +240,12 @@ export async function startBot() {
           return;
         }
 
-        // ── Rarity display edit panel buttons ──────────────────────────────
+        // ── Rarity hub + display edit panel buttons ────────────────────────
+        if (action === "rarity_hub") {
+          await handleRarityHubButton(interaction);
+          return;
+        }
+
         if (action === "rarity_edit") {
           await handleRarityEditButton(interaction);
           return;

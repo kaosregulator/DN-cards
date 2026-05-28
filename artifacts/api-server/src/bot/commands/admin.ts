@@ -95,12 +95,11 @@ async function handleAdminHelp(interaction: ChatInputCommandInteraction): Promis
       {
         name: "🎖️ Rarity Tuning *(slash)*",
         value:
-          "`/rarity profile set rarity:<tier> [worth] [burn] [weight]` — override per-tier values for this server\n" +
-          "`/rarity profile reset rarity:<tier>` · `/rarity profile list`\n" +
-          "`/rarity custom add|edit|remove|list` — create brand-new rarity tiers beyond the 6 built-ins\n" +
-          "`/rarity card assign card:<Name> slug:<tier>` — move a card into a custom tier (replaces worth/burn/weight)\n" +
-          "`/rarity card unassign card:<Name>` — revert to its built-in rarity\n" +
-          "`/rarityname name:<Name> emoji:<🔮> [color:<#hex>] [reset:true]` — rename the Mythic tier for this server",
+          "`/rarity` — opens the **Rarity Hub** with four sections:\n" +
+          "• **🎨 Display Names** — rename/recolor/re-emoji any built-in tier\n" +
+          "• **📊 Economy Overrides** — adjust worth, burn, drop weight per tier\n" +
+          "• **✨ Custom Tiers** — create tiers beyond Common→Mythic\n" +
+          "• **🃏 Card Tiers** — assign a card into a custom tier",
       },
       {
         name: "🌐 Web Dashboard",
@@ -193,16 +192,9 @@ export async function handleAdminCommand(
   const guildId = interaction.guild.id;
   const opts = interaction.options;
 
-  // ── /rarityname — customize the Mythic tier name/emoji/color ───────────────
-  if (cmd === "rarityname") {
-    const { handleRarityName } = await import("./rarity-name.js");
-    await handleRarityName(interaction);
-    return;
-  }
-
   if (cmd === "rarity") {
-    const { handleRarityAdminCommand } = await import("./rarity-admin.js");
-    await handleRarityAdminCommand(interaction);
+    const { handleRarityHubCommand } = await import("./rarity-admin.js");
+    await handleRarityHubCommand(interaction);
     return;
   }
 

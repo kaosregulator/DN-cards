@@ -176,73 +176,8 @@ export function buildCommands() {
     adminCmd("editcard", "(Admin) Edit any card — rarity, worth, image, name, etc.", s => s
       .addStringOption(o => o.setName("name").setDescription("Card to edit").setRequired(true).setAutocomplete(true))),
 
-    adminCmd("rarityname", "(Admin) Deprecated — redirects to /rarity edit, which covers all six tiers", s => s
-      .addStringOption(o => o.setName("name").setDescription("Ignored — use /rarity edit instead").setRequired(false).setMaxLength(32))
-      .addStringOption(o => o.setName("emoji").setDescription("Ignored — use /rarity edit instead").setRequired(false).setMaxLength(8))
-      .addStringOption(o => o.setName("color").setDescription("Ignored — use /rarity edit instead").setMaxLength(9))
-      .addBooleanOption(o => o.setName("reset").setDescription("Reset back to default Mythic / 🔮 / pink"))),
-
-    // ── /rarity — owns ALL writes to rarity_profiles, custom_rarities,
-    //              and card_rarity_overrides. The website only reads these.
-    adminCmd("rarity", "(Admin) Manage rarity profiles, custom tiers, and card-tier assignments", s => s
-      .addSubcommandGroup(g => g.setName("profile").setDescription("Per-tier worth/burn/drop-weight overrides for built-in rarities")
-        .addSubcommand(sc => sc.setName("set").setDescription("Override worth/burn/weight for a built-in rarity")
-          .addStringOption(o => o.setName("rarity").setDescription("Which built-in tier to override").setRequired(true)
-            .addChoices(
-              { name: "⚪ Common",    value: "common" },
-              { name: "🟢 Uncommon",  value: "uncommon" },
-              { name: "🔵 Rare",      value: "rare" },
-              { name: "🟣 Epic",      value: "epic" },
-              { name: "🟡 Legendary", value: "legendary" },
-              { name: "🔮 Mythic",    value: "mythic" },
-            ))
-          .addIntegerOption(o => o.setName("worth").setDescription("Override worth (💠 per card). Omit to leave unchanged.").setMinValue(0))
-          .addIntegerOption(o => o.setName("burn").setDescription("Override burn value (💠 per burn). Omit to leave unchanged.").setMinValue(0))
-          .addNumberOption(o => o.setName("weight").setDescription("Override drop weight. Omit to leave unchanged.").setMinValue(0)))
-        .addSubcommand(sc => sc.setName("reset").setDescription("Clear all overrides for one built-in rarity")
-          .addStringOption(o => o.setName("rarity").setDescription("Which tier to reset").setRequired(true)
-            .addChoices(
-              { name: "⚪ Common",    value: "common" },
-              { name: "🟢 Uncommon",  value: "uncommon" },
-              { name: "🔵 Rare",      value: "rare" },
-              { name: "🟣 Epic",      value: "epic" },
-              { name: "🟡 Legendary", value: "legendary" },
-              { name: "🔮 Mythic",    value: "mythic" },
-            )))
-        .addSubcommand(sc => sc.setName("list").setDescription("Show current profile overrides for this server")))
-      .addSubcommandGroup(g => g.setName("custom").setDescription("Brand-new rarity tiers beyond the 6 built-ins")
-        .addSubcommand(sc => sc.setName("add").setDescription("Create a new custom rarity tier")
-          .addStringOption(o => o.setName("slug").setDescription("Short id (e.g. 'ultra', 'prismatic'). Lowercase, 1-32 chars.").setRequired(true).setMaxLength(32))
-          .addStringOption(o => o.setName("name").setDescription("Display name").setRequired(true).setMaxLength(32))
-          .addStringOption(o => o.setName("emoji").setDescription("Emoji shown next to the tier (e.g. 🌈)").setRequired(true).setMaxLength(8))
-          .addNumberOption(o => o.setName("position").setDescription("Ladder position. Built-ins are 1-6. 5.5 = between legendary and mythic.").setRequired(true).setMinValue(0.01).setMaxValue(100))
-          .addIntegerOption(o => o.setName("worth").setDescription("Worth in 💠 per card").setRequired(true).setMinValue(0))
-          .addIntegerOption(o => o.setName("burn").setDescription("Burn value in 💠").setRequired(true).setMinValue(0))
-          .addStringOption(o => o.setName("color").setDescription("Hex color, e.g. #ff2d92").setMaxLength(9))
-          .addNumberOption(o => o.setName("weight").setDescription("Drop weight (default 1.0)").setMinValue(0))
-          .addBooleanOption(o => o.setName("droppable").setDescription("Can cards in this tier spawn randomly? (default yes)"))
-          .addBooleanOption(o => o.setName("inpacks").setDescription("Include this tier in /pack pools? (default no)")))
-        .addSubcommand(sc => sc.setName("edit").setDescription("Edit an existing custom tier — only the fields you set will change")
-          .addStringOption(o => o.setName("slug").setDescription("Custom tier to edit").setRequired(true).setMaxLength(32).setAutocomplete(true))
-          .addStringOption(o => o.setName("name").setDescription("New display name").setMaxLength(32))
-          .addStringOption(o => o.setName("emoji").setDescription("New emoji").setMaxLength(8))
-          .addNumberOption(o => o.setName("position").setDescription("New ladder position").setMinValue(0.01).setMaxValue(100))
-          .addIntegerOption(o => o.setName("worth").setDescription("New worth").setMinValue(0))
-          .addIntegerOption(o => o.setName("burn").setDescription("New burn value").setMinValue(0))
-          .addStringOption(o => o.setName("color").setDescription("New hex color").setMaxLength(9))
-          .addNumberOption(o => o.setName("weight").setDescription("New drop weight").setMinValue(0))
-          .addBooleanOption(o => o.setName("droppable").setDescription("Toggle droppable"))
-          .addBooleanOption(o => o.setName("inpacks").setDescription("Toggle pack inclusion")))
-        .addSubcommand(sc => sc.setName("remove").setDescription("Delete a custom tier (cards in it revert to their built-in rarity)")
-          .addStringOption(o => o.setName("slug").setDescription("Custom tier to remove").setRequired(true).setMaxLength(32).setAutocomplete(true)))
-        .addSubcommand(sc => sc.setName("list").setDescription("List all custom tiers in this server")))
-      .addSubcommandGroup(g => g.setName("card").setDescription("Assign or unassign a card to a custom rarity tier")
-        .addSubcommand(sc => sc.setName("assign").setDescription("Put a card into a custom tier — tier's values fully replace the card's gameplay values")
-          .addStringOption(o => o.setName("card").setDescription("Card name").setRequired(true).setAutocomplete(true))
-          .addStringOption(o => o.setName("slug").setDescription("Custom tier to assign").setRequired(true).setMaxLength(32).setAutocomplete(true)))
-        .addSubcommand(sc => sc.setName("unassign").setDescription("Remove the custom-tier override — card reverts to its built-in rarity")
-          .addStringOption(o => o.setName("card").setDescription("Card name").setRequired(true).setAutocomplete(true))))
-      .addSubcommand(sc => sc.setName("edit").setDescription("Edit a rarity tier's display name, emoji, and color for this server (cosmetic only)"))),
+    // ── /rarity — hub command: display names, economy overrides, custom tiers, card assignments
+    adminCmd("rarity", "(Admin) Open the Rarity Hub — display names, economy overrides, custom tiers, card assignments", s => s),
 
     // ── /embed — owns ALL writes to embed_overrides. Replaces the old
     //              /admin/embeds dashboard page.
@@ -345,5 +280,5 @@ export const USER_COMMAND_NAMES = new Set([
 
 export const ADMIN_COMMAND_NAMES = new Set([
   "config", "adminhub", "sethub", "set_admin", "welcomeadmin", "adminhelp", "drop", "massdrop", "give", "giveshards", "takeback", "takeshards", "event", "dashboard", "setup",
-  "editcard", "rarityname", "rarity", "embed",
+  "editcard", "rarity", "embed",
 ]);

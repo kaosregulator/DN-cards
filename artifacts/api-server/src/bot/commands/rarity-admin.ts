@@ -1,10 +1,11 @@
-// /rarity — admin command that owns ALL gameplay-rarity writes.
-// Replaces the old website rarity editors. Three subcommand groups:
-//   /rarity profile set|reset|list       — per-built-in-rarity worth/burn/weight overrides
-//   /rarity custom add|edit|remove|list  — define brand-new rarity tiers per guild
-//   /rarity card assign|unassign         — put a specific card into a custom tier
+// /rarity — single hub command. Four sections accessed via buttons:
+//   🎨 Display Names  — cosmetic overrides per built-in tier
+//   📊 Economy        — worth/burn/weight profile overrides per tier
+//   ✨ Custom Tiers    — brand-new tiers beyond the 6 built-ins
+//   🃏 Card Tiers      — assign/unassign cards to custom tiers
 //
 // Discord = source of truth. The website only ever READS these tables.
+
 import {
   EmbedBuilder, MessageFlags,
   ActionRowBuilder, ButtonBuilder, ButtonStyle,
@@ -26,7 +27,10 @@ import {
   RARITY_EMOJI, RARITY_LABELS, RARITY_COLORS, type Rarity, type RarityDisplayMap,
 } from "../cards-data.js";
 
-const BUILTIN_RARITIES: Rarity[] = ["common", "uncommon", "rare", "epic", "legendary", "mythic"];
+export const BUILTIN_RARITIES: Rarity[] = ["common", "uncommon", "rare", "epic", "legendary", "mythic"];
+export { RARITY_COLORS };
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
 function parseHexColor(input: string): number | null {
   const s = input.trim().replace(/^#/, "").replace(/^0x/i, "");
@@ -41,268 +45,596 @@ function hex(n: number): string {
 }
 
 function fmtVal(v: number | null | undefined, suffix = ""): string {
-  if (v === null || v === undefined) return "*(unset → use card value)*";
+  if (v === null || v === undefined) return "*(default)*";
   return `${v.toLocaleString()}${suffix}`;
 }
 
-function isValidSlug(slug: string): boolean {
-  return /^[a-z0-9][a-z0-9_-]{0,31}$/.test(slug);
+type ProfileRow = { rarity: string; worthValue: number | null; burnValue: number | null; dropWeight: number | null };
+type CustomRow = Awaited<ReturnType<typeof listCustomRarities>>[number];
+
+// ── Hub ───────────────────────────────────────────────────────────────────────
+
+function buildHubPanel() {
+  const embed = new EmbedBuilder()
+    .setTitle("🎨 Rarity Hub")
+    .setColor(0x5865f2)
+    .setDescription(
+      "Manage all rarity settings for this server.\n\n" +
+      "**🎨 Display Names** — rename, recolor, or change the emoji of any built-in tier\n" +
+      "**📊 Economy Overrides** — adjust worth, burn value, or drop weight per tier\n" +
+      "**✨ Custom Tiers** — create tiers beyond Common → Mythic\n" +
+      "**🃏 Card Tiers** — move a card into a custom tier\n\u200b",
+    );
+  const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder().setCustomId("rarity_hub:display").setLabel("🎨 Display Names").setStyle(ButtonStyle.Primary),
+    new ButtonBuilder().setCustomId("rarity_hub:economy").setLabel("📊 Economy Overrides").setStyle(ButtonStyle.Primary),
+    new ButtonBuilder().setCustomId("rarity_hub:custom").setLabel("✨ Custom Tiers").setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder().setCustomId("rarity_hub:cardtier").setLabel("🃏 Card Tiers").setStyle(ButtonStyle.Secondary),
+  );
+  return { embeds: [embed], components: [row] };
 }
 
-export async function handleRarityAdminCommand(interaction: ChatInputCommandInteraction): Promise<void> {
+export async function handleRarityHubCommand(interaction: ChatInputCommandInteraction): Promise<void> {
   if (!interaction.guild) {
     await interaction.editReply("❌ This command can only be used in a server.");
     return;
   }
-  const guildId = interaction.guild.id;
-  const userId = interaction.user.id;
-  const group = interaction.options.getSubcommandGroup(false);
-  const sub = interaction.options.getSubcommand(true);
+  await interaction.editReply(buildHubPanel());
+}
 
-  // ── edit — cosmetic display overrides (no group) ──────────────────────────
-  if (!group && sub === "edit") {
-    const displayMap = await getRarityDisplayOverrides(guildId);
-    const settings = await getOrCreateGuildSettings(guildId);
+// ── Economy Overrides ─────────────────────────────────────────────────────────
+
+function buildEconomyPanel(profiles: ProfileRow[]) {
+  const byRarity = new Map(profiles.map(r => [r.rarity as Rarity, r]));
+  const embed = new EmbedBuilder()
+    .setTitle("📊 Economy Overrides")
+    .setColor(0x5865f2)
+    .setDescription(
+      "Set worth, burn, and drop weight for any built-in tier. " +
+      "Overrides apply to **every card in that tier** for this server.\n" +
+      "Pick a tier from the menu to configure it.\n\u200b",
+    );
+  for (const r of BUILTIN_RARITIES) {
+    const row = byRarity.get(r);
+    const hasAny = row && (row.worthValue !== null || row.burnValue !== null || row.dropWeight !== null);
+    embed.addFields({
+      name: `${RARITY_EMOJI[r]} ${RARITY_LABELS[r]}`,
+      value: hasAny
+        ? `Worth: ${fmtVal(row?.worthValue, " 💠")} · Burn: ${fmtVal(row?.burnValue, " 💠")} · Weight: ${fmtVal(row?.dropWeight)}`
+        : "*(using card defaults)*",
+      inline: false,
+    });
+  }
+  const selectRow = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
+    new StringSelectMenuBuilder()
+      .setCustomId("rarity_hub:economy:select")
+      .setPlaceholder("Pick a tier to configure…")
+      .addOptions(BUILTIN_RARITIES.map(r => {
+        const row = byRarity.get(r);
+        const parts: string[] = [];
+        if (row?.worthValue != null) parts.push(`Worth: ${row.worthValue}`);
+        if (row?.burnValue != null) parts.push(`Burn: ${row.burnValue}`);
+        if (row?.dropWeight != null) parts.push(`Weight: ${row.dropWeight}`);
+        return {
+          label: `${RARITY_EMOJI[r]} ${RARITY_LABELS[r]}`,
+          value: r,
+          description: (parts.length ? parts.join(" · ") : "No overrides").slice(0, 100),
+        };
+      })),
+  );
+  const btnRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder().setCustomId("rarity_hub:economy:resetall").setLabel("🔄 Reset All").setStyle(ButtonStyle.Danger),
+    new ButtonBuilder().setCustomId("rarity_hub:main").setLabel("← Hub").setStyle(ButtonStyle.Secondary),
+  );
+  return { embeds: [embed], components: [selectRow, btnRow] };
+}
+
+function buildEconomyTierPanel(rarity: Rarity, profile: ProfileRow | undefined) {
+  const label = RARITY_LABELS[rarity];
+  const emoji = RARITY_EMOJI[rarity];
+  const hasOverride = profile && (profile.worthValue !== null || profile.burnValue !== null || profile.dropWeight !== null);
+  const embed = new EmbedBuilder()
+    .setTitle(`📊 ${emoji} ${label} — Economy`)
+    .setColor(RARITY_COLORS[rarity] ?? 0x5865f2)
+    .addFields(
+      { name: "Worth", value: fmtVal(profile?.worthValue, " 💠"), inline: true },
+      { name: "Burn", value: fmtVal(profile?.burnValue, " 💠"), inline: true },
+      { name: "Drop Weight", value: fmtVal(profile?.dropWeight), inline: true },
+    );
+  if (!hasOverride) embed.setDescription("*No overrides — cards in this tier use their own values.*\n\u200b");
+  const row1 = new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder().setCustomId(`rarity_hub:economy:set:${rarity}`).setLabel("✏️ Set Overrides").setStyle(ButtonStyle.Primary),
+    new ButtonBuilder().setCustomId(`rarity_hub:economy:reset:${rarity}`).setLabel("🔄 Reset").setStyle(ButtonStyle.Danger),
+  );
+  const row2 = new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder().setCustomId("rarity_hub:economy").setLabel("← Economy").setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder().setCustomId("rarity_hub:main").setLabel("← Hub").setStyle(ButtonStyle.Secondary),
+  );
+  return { embeds: [embed], components: [row1, row2] };
+}
+
+// ── Custom Tiers ──────────────────────────────────────────────────────────────
+
+function buildCustomPanel(tiers: CustomRow[]) {
+  const embed = new EmbedBuilder()
+    .setTitle("✨ Custom Tiers")
+    .setColor(0x5865f2)
+    .setDescription(
+      tiers.length === 0
+        ? "_No custom tiers yet. Click **Add Tier** to create one._\n\u200b"
+        : `${tiers.length} custom tier${tiers.length === 1 ? "" : "s"} in this server. Built-ins occupy positions 1–6.\n\u200b`,
+    );
+  for (const t of tiers) {
+    embed.addFields({
+      name: `${t.emoji} ${t.name}`,
+      value:
+        `Position **${t.position}** · Color ${hex(t.color)}\n` +
+        `Worth 💠 ${t.worthValue.toLocaleString()} · Burn 💠 ${t.burnValue.toLocaleString()} · Drop weight ${t.dropWeight}\n` +
+        `Spawns: ${t.droppable ? "✅" : "❌"} · In packs: ${t.inPacks ? "✅" : "❌"}`,
+      inline: false,
+    });
+  }
+  const btns: ButtonBuilder[] = [
+    new ButtonBuilder().setCustomId("rarity_hub:custom:add").setLabel("➕ Add Tier").setStyle(ButtonStyle.Success),
+  ];
+  if (tiers.length > 0) {
+    btns.push(
+      new ButtonBuilder().setCustomId("rarity_hub:custom:edit").setLabel("✏️ Edit Tier").setStyle(ButtonStyle.Primary),
+      new ButtonBuilder().setCustomId("rarity_hub:custom:remove").setLabel("🗑️ Remove Tier").setStyle(ButtonStyle.Danger),
+    );
+  }
+  btns.push(new ButtonBuilder().setCustomId("rarity_hub:main").setLabel("← Hub").setStyle(ButtonStyle.Secondary));
+  const row = new ActionRowBuilder<ButtonBuilder>().addComponents(btns);
+  return { embeds: [embed], components: [row] };
+}
+
+function buildCustomSelectPanel(tiers: CustomRow[], action: "edit" | "remove") {
+  const embed = new EmbedBuilder()
+    .setTitle(action === "edit" ? "✏️ Pick a Tier to Edit" : "🗑️ Pick a Tier to Remove")
+    .setColor(action === "edit" ? 0x5865f2 : 0xe74c3c)
+    .setDescription(
+      action === "remove"
+        ? "⚠️ Cards in the removed tier will revert to their built-in rarity.\n\u200b"
+        : "Select a custom tier to edit.\n\u200b",
+    );
+  const select = new StringSelectMenuBuilder()
+    .setCustomId(`rarity_hub:custom:select:${action}`)
+    .setPlaceholder("Pick a custom tier…")
+    .addOptions(tiers.slice(0, 25).map(t => ({
+      label: `${t.emoji} ${t.name}`,
+      value: t.slug,
+      description: `Worth ${t.worthValue} · Burn ${t.burnValue} · Weight ${t.dropWeight}`.slice(0, 100),
+    })));
+  const selectRow = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(select);
+  const backRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder().setCustomId("rarity_hub:custom").setLabel("← Custom Tiers").setStyle(ButtonStyle.Secondary),
+  );
+  return { embeds: [embed], components: [selectRow, backRow] };
+}
+
+// ── Card Tiers ────────────────────────────────────────────────────────────────
+
+function buildCardTierPanel() {
+  const embed = new EmbedBuilder()
+    .setTitle("🃏 Card Tier Assignments")
+    .setColor(0x5865f2)
+    .setDescription(
+      "Assign a card into a custom tier — the tier's worth, burn, and drop weight replace the card's own values.\n" +
+      "Unassigning reverts the card back to its built-in rarity.\n\u200b",
+    );
+  const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder().setCustomId("rarity_hub:cardtier:assign").setLabel("📌 Assign Card to Tier").setStyle(ButtonStyle.Primary),
+    new ButtonBuilder().setCustomId("rarity_hub:cardtier:unassign").setLabel("🔓 Unassign Card").setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder().setCustomId("rarity_hub:main").setLabel("← Hub").setStyle(ButtonStyle.Secondary),
+  );
+  return { embeds: [embed], components: [row] };
+}
+
+// ── Button Handler ────────────────────────────────────────────────────────────
+// Buttons that open modals MUST NOT call deferUpdate first.
+
+export async function handleRarityHubButton(interaction: ButtonInteraction): Promise<void> {
+  if (!interaction.guild) { await interaction.deferUpdate(); return; }
+  const parts = interaction.customId.split(":");
+  // parts: ["rarity_hub", section, sub?, extra?]
+  const section = parts[1]!;
+  const sub = parts[2];
+  const extra = parts[3];
+
+  // ── Economy: set override → modal (no defer) ──────────────────────────────
+  if (section === "economy" && sub === "set" && extra && BUILTIN_RARITIES.includes(extra as Rarity)) {
+    const r = extra as Rarity;
+    const modal = new ModalBuilder()
+      .setCustomId(`rarity_hub:modal:economy:${r}`)
+      .setTitle(`${RARITY_EMOJI[r]} ${RARITY_LABELS[r]} — Set Overrides`)
+      .addComponents(
+        new ActionRowBuilder<TextInputBuilder>().addComponents(
+          new TextInputBuilder().setCustomId("worth").setLabel("Worth (💠 shards)").setStyle(TextInputStyle.Short)
+            .setRequired(false).setPlaceholder("Leave blank to keep current value").setMaxLength(10),
+        ),
+        new ActionRowBuilder<TextInputBuilder>().addComponents(
+          new TextInputBuilder().setCustomId("burn").setLabel("Burn value (💠 shards)").setStyle(TextInputStyle.Short)
+            .setRequired(false).setPlaceholder("Leave blank to keep current value").setMaxLength(10),
+        ),
+        new ActionRowBuilder<TextInputBuilder>().addComponents(
+          new TextInputBuilder().setCustomId("weight").setLabel("Drop weight (e.g. 1.5, 0 = disabled)").setStyle(TextInputStyle.Short)
+            .setRequired(false).setPlaceholder("Leave blank to keep current value").setMaxLength(10),
+        ),
+      );
+    await interaction.showModal(modal);
+    return;
+  }
+
+  // ── Custom: add → modal (no defer) ───────────────────────────────────────
+  if (section === "custom" && sub === "add") {
+    const modal = new ModalBuilder()
+      .setCustomId("rarity_hub:modal:custom:add")
+      .setTitle("Create Custom Tier")
+      .addComponents(
+        new ActionRowBuilder<TextInputBuilder>().addComponents(
+          new TextInputBuilder().setCustomId("name").setLabel("Display name (e.g. Ultra, Prismatic)").setStyle(TextInputStyle.Short)
+            .setRequired(true).setMaxLength(32),
+        ),
+        new ActionRowBuilder<TextInputBuilder>().addComponents(
+          new TextInputBuilder().setCustomId("emoji").setLabel("Emoji (e.g. 🌈 or 💫)").setStyle(TextInputStyle.Short)
+            .setRequired(true).setMaxLength(8),
+        ),
+        new ActionRowBuilder<TextInputBuilder>().addComponents(
+          new TextInputBuilder().setCustomId("position").setLabel("Ladder position (1=Common … 6=Mythic; 5.5 = between)").setStyle(TextInputStyle.Short)
+            .setRequired(true).setMaxLength(10).setPlaceholder("e.g. 5.5 to sit between Legendary and Mythic"),
+        ),
+        new ActionRowBuilder<TextInputBuilder>().addComponents(
+          new TextInputBuilder().setCustomId("worth").setLabel("Worth (💠 shards per card)").setStyle(TextInputStyle.Short)
+            .setRequired(true).setMaxLength(10).setPlaceholder("e.g. 3000"),
+        ),
+        new ActionRowBuilder<TextInputBuilder>().addComponents(
+          new TextInputBuilder().setCustomId("burn").setLabel("Burn value (💠 shards)").setStyle(TextInputStyle.Short)
+            .setRequired(true).setMaxLength(10).setPlaceholder("e.g. 1500"),
+        ),
+      );
+    await interaction.showModal(modal);
+    return;
+  }
+
+  // ── Card tier: assign / unassign → modal (no defer) ──────────────────────
+  if (section === "cardtier" && sub === "assign") {
+    const modal = new ModalBuilder()
+      .setCustomId("rarity_hub:modal:cardtier:assign")
+      .setTitle("Assign Card to Custom Tier")
+      .addComponents(
+        new ActionRowBuilder<TextInputBuilder>().addComponents(
+          new TextInputBuilder().setCustomId("card").setLabel("Card name (exact)").setStyle(TextInputStyle.Short)
+            .setRequired(true).setMaxLength(100),
+        ),
+        new ActionRowBuilder<TextInputBuilder>().addComponents(
+          new TextInputBuilder().setCustomId("tier").setLabel("Custom tier name (e.g. Ultra)").setStyle(TextInputStyle.Short)
+            .setRequired(true).setMaxLength(100),
+        ),
+      );
+    await interaction.showModal(modal);
+    return;
+  }
+
+  if (section === "cardtier" && sub === "unassign") {
+    const modal = new ModalBuilder()
+      .setCustomId("rarity_hub:modal:cardtier:unassign")
+      .setTitle("Unassign Card from Custom Tier")
+      .addComponents(
+        new ActionRowBuilder<TextInputBuilder>().addComponents(
+          new TextInputBuilder().setCustomId("card").setLabel("Card name (exact)").setStyle(TextInputStyle.Short)
+            .setRequired(true).setMaxLength(100),
+        ),
+      );
+    await interaction.showModal(modal);
+    return;
+  }
+
+  // ── All other buttons (no modal) — safe to defer ──────────────────────────
+  await interaction.deferUpdate();
+  const guildId = interaction.guild.id;
+
+  if (section === "main") {
+    await interaction.editReply(buildHubPanel());
+    return;
+  }
+
+  if (section === "display") {
+    const [displayMap, settings] = await Promise.all([
+      getRarityDisplayOverrides(guildId),
+      getOrCreateGuildSettings(guildId),
+    ]);
     await interaction.editReply(buildEditPanel(displayMap, settings));
     return;
   }
 
-  // ── profile (built-in rarity overrides) ──────────────────────────────────
-  if (group === "profile") {
-    if (sub === "set") {
-      const rarity = interaction.options.getString("rarity", true) as Rarity;
-      if (!BUILTIN_RARITIES.includes(rarity)) {
-        await interaction.editReply("❌ Unknown rarity.");
-        return;
-      }
-      const worth = interaction.options.getInteger("worth");
-      const burn = interaction.options.getInteger("burn");
-      const weight = interaction.options.getNumber("weight");
-      if (worth === null && burn === null && weight === null) {
-        await interaction.editReply("❌ Provide at least one of `worth`, `burn`, or `weight`. To clear all, use `/rarity profile reset`.");
-        return;
-      }
-      const patch: { worthValue?: number; burnValue?: number; dropWeight?: number; updatedBy?: string } = { updatedBy: userId };
-      if (worth !== null) patch.worthValue = worth;
-      if (burn !== null) patch.burnValue = burn;
-      if (weight !== null) patch.dropWeight = weight;
-      await upsertRarityProfile(guildId, rarity, patch);
-      await interaction.editReply(
-        `✅ Updated **${RARITY_EMOJI[rarity]} ${RARITY_LABELS[rarity]}** profile:\n` +
-        (worth !== null ? `• Worth → 💠 ${worth.toLocaleString()}\n` : "") +
-        (burn !== null ? `• Burn → 💠 ${burn.toLocaleString()}\n` : "") +
-        (weight !== null ? `• Drop weight → ${weight}\n` : "") +
-        `\nUnchanged fields keep their current value. Use \`/rarity profile reset\` to clear all overrides for this tier.`,
-      );
+  if (section === "economy") {
+    if (!sub) {
+      const profiles = await listRarityProfiles(guildId);
+      await interaction.editReply(buildEconomyPanel(profiles));
       return;
     }
-    if (sub === "reset") {
-      const rarity = interaction.options.getString("rarity", true) as Rarity;
-      const removed = await deleteRarityProfile(guildId, rarity);
-      await interaction.editReply(
-        removed
-          ? `🔄 Cleared profile overrides for **${RARITY_EMOJI[rarity]} ${RARITY_LABELS[rarity]}**. Cards in this tier fall back to their own worth/burn/weight.`
-          : `ℹ️ No profile override was set for **${RARITY_EMOJI[rarity]} ${RARITY_LABELS[rarity]}**.`,
-      );
+    if (sub === "resetall") {
+      for (const r of BUILTIN_RARITIES) await deleteRarityProfile(guildId, r);
+      const profiles = await listRarityProfiles(guildId);
+      await interaction.editReply(buildEconomyPanel(profiles));
       return;
     }
-    if (sub === "list") {
-      const rows = await listRarityProfiles(guildId);
-      const byRarity = new Map(rows.map(r => [r.rarity as Rarity, r]));
-      const embed = new EmbedBuilder()
-        .setTitle("📊 Rarity Profile Overrides")
-        .setColor(0x5865f2)
-        .setDescription("Per-tier overrides for **this server only**. Null = falls back to each card's own value.");
-      for (const r of BUILTIN_RARITIES) {
-        const row = byRarity.get(r);
-        embed.addFields({
-          name: `${RARITY_EMOJI[r]} ${RARITY_LABELS[r]}`,
-          value:
-            `Worth: ${fmtVal(row?.worthValue, " 💠")}\n` +
-            `Burn: ${fmtVal(row?.burnValue, " 💠")}\n` +
-            `Drop weight: ${fmtVal(row?.dropWeight)}`,
-          inline: true,
-        });
-      }
-      embed.setFooter({ text: "Edit with /rarity profile set · Clear with /rarity profile reset" });
-      await interaction.editReply({ embeds: [embed] });
+    if (sub === "reset" && extra) {
+      await deleteRarityProfile(guildId, extra as Rarity);
+      const profiles = await listRarityProfiles(guildId);
+      const profile = profiles.find(p => p.rarity === extra);
+      await interaction.editReply(buildEconomyTierPanel(extra as Rarity, profile));
+      return;
+    }
+    if (sub === "economy" && !extra) {
+      const profiles = await listRarityProfiles(guildId);
+      await interaction.editReply(buildEconomyPanel(profiles));
       return;
     }
   }
 
-  // ── custom (new rarity tiers beyond the 6 built-ins) ─────────────────────
-  if (group === "custom") {
-    if (sub === "add") {
-      const slug = interaction.options.getString("slug", true).trim().toLowerCase();
-      const name = interaction.options.getString("name", true).trim();
-      const emoji = interaction.options.getString("emoji", true).trim();
-      const position = interaction.options.getNumber("position", true);
-      const worth = interaction.options.getInteger("worth", true);
-      const burn = interaction.options.getInteger("burn", true);
-      const colorRaw = interaction.options.getString("color");
-      const weight = interaction.options.getNumber("weight");
-      const droppable = interaction.options.getBoolean("droppable");
-      const inPacks = interaction.options.getBoolean("inpacks");
-
-      if (!isValidSlug(slug)) {
-        await interaction.editReply("❌ Slug must be 1-32 chars, lowercase letters/numbers/`-`/`_`, starting with a letter or number (e.g. `ultra`, `prismatic-v2`).");
+  if (section === "custom") {
+    if (!sub) {
+      const tiers = await listCustomRarities(guildId);
+      await interaction.editReply(buildCustomPanel(tiers));
+      return;
+    }
+    if (sub === "edit") {
+      const tiers = await listCustomRarities(guildId);
+      if (tiers.length === 0) {
+        await interaction.followUp({ content: "❌ No custom tiers to edit. Add one first.", flags: MessageFlags.Ephemeral });
         return;
       }
-      if (name.length === 0 || name.length > 32) { await interaction.editReply("❌ Name must be 1-32 chars."); return; }
-      if (emoji.length === 0 || emoji.length > 8) { await interaction.editReply("❌ Emoji must be 1-8 chars."); return; }
-      if (!Number.isFinite(position) || position <= 0 || position > 100) { await interaction.editReply("❌ Position must be > 0 and ≤ 100. Built-ins are 1-6 (common=1 … mythic=6)."); return; }
-      if (worth < 0 || burn < 0) { await interaction.editReply("❌ Worth and burn must be ≥ 0."); return; }
-
-      let color = 0x5865f2;
-      if (colorRaw && colorRaw.trim()) {
-        const parsed = parseHexColor(colorRaw);
-        if (parsed === null) { await interaction.editReply("❌ Color must be a hex code like `#ff2d92`."); return; }
-        color = parsed;
+      await interaction.editReply(buildCustomSelectPanel(tiers, "edit"));
+      return;
+    }
+    if (sub === "remove") {
+      const tiers = await listCustomRarities(guildId);
+      if (tiers.length === 0) {
+        await interaction.followUp({ content: "❌ No custom tiers to remove.", flags: MessageFlags.Ephemeral });
+        return;
       }
+      await interaction.editReply(buildCustomSelectPanel(tiers, "remove"));
+      return;
+    }
+  }
 
-      const existing = await getCustomRarityBySlug(guildId, slug);
-      if (existing) { await interaction.editReply(`❌ A custom tier with slug \`${slug}\` already exists. Use \`/rarity custom edit\` to change it.`); return; }
+  if (section === "cardtier" && !sub) {
+    await interaction.editReply(buildCardTierPanel());
+    return;
+  }
+}
 
-      // The pre-check above is a UX shortcut. The DB has a unique
-      // (guildId, slug) constraint that closes the TOCTOU window if two
-      // admins try to create the same slug simultaneously.
-      let row;
+// ── Select Menu Handler ───────────────────────────────────────────────────────
+
+export async function handleRarityHubSelect(interaction: StringSelectMenuInteraction): Promise<void> {
+  if (!interaction.guild) { await interaction.deferUpdate(); return; }
+  const guildId = interaction.guild.id;
+  const parts = interaction.customId.split(":");
+  // "rarity_hub:economy:select" or "rarity_hub:custom:select:edit|remove"
+  const section = parts[1]!;
+  const sub = parts[2];
+  const action = parts[3] as "edit" | "remove" | undefined;
+
+  if (section === "economy" && sub === "select") {
+    await interaction.deferUpdate();
+    const r = interaction.values[0] as Rarity;
+    const profiles = await listRarityProfiles(guildId);
+    const profile = profiles.find(p => p.rarity === r);
+    await interaction.editReply(buildEconomyTierPanel(r, profile));
+    return;
+  }
+
+  if (section === "custom" && sub === "select" && action === "remove") {
+    await interaction.deferUpdate();
+    const slug = interaction.values[0]!;
+    const { removed, clearedAssignments } = await deleteCustomRarity(guildId, slug);
+    const tiers = await listCustomRarities(guildId);
+    const panel = buildCustomPanel(tiers);
+    if (removed) {
+      panel.embeds[0]!.setFooter({ text: `✅ Removed "${slug}" — ${clearedAssignments} card assignment(s) cleared` });
+    } else {
+      panel.embeds[0]!.setFooter({ text: `❌ Tier "${slug}" not found` });
+    }
+    await interaction.editReply(panel);
+    return;
+  }
+
+  if (section === "custom" && sub === "select" && action === "edit") {
+    const slug = interaction.values[0]!;
+    const tier = await getCustomRarityBySlug(guildId, slug);
+    if (!tier) {
+      await interaction.deferUpdate();
+      const tiers = await listCustomRarities(guildId);
+      await interaction.editReply(buildCustomPanel(tiers));
+      return;
+    }
+    const modal = new ModalBuilder()
+      .setCustomId(`rarity_hub:modal:custom:edit:${slug}`)
+      .setTitle(`Edit: ${tier.emoji} ${tier.name}`)
+      .addComponents(
+        new ActionRowBuilder<TextInputBuilder>().addComponents(
+          new TextInputBuilder().setCustomId("name").setLabel("Display name").setStyle(TextInputStyle.Short)
+            .setRequired(false).setMaxLength(32).setValue(tier.name),
+        ),
+        new ActionRowBuilder<TextInputBuilder>().addComponents(
+          new TextInputBuilder().setCustomId("emoji").setLabel("Emoji").setStyle(TextInputStyle.Short)
+            .setRequired(false).setMaxLength(8).setValue(tier.emoji),
+        ),
+        new ActionRowBuilder<TextInputBuilder>().addComponents(
+          new TextInputBuilder().setCustomId("worth").setLabel("Worth (💠 shards)").setStyle(TextInputStyle.Short)
+            .setRequired(false).setMaxLength(10).setValue(String(tier.worthValue)),
+        ),
+        new ActionRowBuilder<TextInputBuilder>().addComponents(
+          new TextInputBuilder().setCustomId("burn").setLabel("Burn (💠 shards)").setStyle(TextInputStyle.Short)
+            .setRequired(false).setMaxLength(10).setValue(String(tier.burnValue)),
+        ),
+        new ActionRowBuilder<TextInputBuilder>().addComponents(
+          new TextInputBuilder().setCustomId("color").setLabel("Hex color (e.g. #ff2d92)").setStyle(TextInputStyle.Short)
+            .setRequired(false).setMaxLength(9).setValue(hex(tier.color)),
+        ),
+      );
+    await interaction.showModal(modal);
+    return;
+  }
+}
+
+// ── Modal Handler ─────────────────────────────────────────────────────────────
+
+export async function handleRarityHubModal(interaction: ModalSubmitInteraction): Promise<void> {
+  if (!interaction.guild) { await interaction.deferUpdate(); return; }
+  await interaction.deferUpdate();
+  const guildId = interaction.guild.id;
+  const userId = interaction.user.id;
+  const parts = interaction.customId.split(":");
+  // "rarity_hub:modal:<section>:<extra>[:<slug>]"
+  const section = parts[2]!;
+  const extra = parts[3];
+  const slugExtra = parts[4];
+
+  // ── Economy modal ─────────────────────────────────────────────────────────
+  if (section === "economy" && extra) {
+    const r = extra as Rarity;
+    const worthRaw = interaction.fields.getTextInputValue("worth").trim();
+    const burnRaw = interaction.fields.getTextInputValue("burn").trim();
+    const weightRaw = interaction.fields.getTextInputValue("weight").trim();
+
+    const patch: { worthValue?: number; burnValue?: number; dropWeight?: number; updatedBy?: string } = { updatedBy: userId };
+    if (worthRaw) {
+      const v = parseInt(worthRaw, 10);
+      if (isNaN(v) || v < 0) { await interaction.followUp({ content: "❌ Worth must be a non-negative whole number.", flags: MessageFlags.Ephemeral }); return; }
+      patch.worthValue = v;
+    }
+    if (burnRaw) {
+      const v = parseInt(burnRaw, 10);
+      if (isNaN(v) || v < 0) { await interaction.followUp({ content: "❌ Burn must be a non-negative whole number.", flags: MessageFlags.Ephemeral }); return; }
+      patch.burnValue = v;
+    }
+    if (weightRaw) {
+      const v = parseFloat(weightRaw);
+      if (isNaN(v) || v < 0) { await interaction.followUp({ content: "❌ Drop weight must be a non-negative number.", flags: MessageFlags.Ephemeral }); return; }
+      patch.dropWeight = v;
+    }
+    if (Object.keys(patch).length <= 1) {
+      await interaction.followUp({ content: "❌ Fill in at least one field.", flags: MessageFlags.Ephemeral });
+      return;
+    }
+    await upsertRarityProfile(guildId, r, patch);
+    const profiles = await listRarityProfiles(guildId);
+    const profile = profiles.find(p => p.rarity === r);
+    await interaction.editReply(buildEconomyTierPanel(r, profile));
+    return;
+  }
+
+  // ── Custom tier: add ──────────────────────────────────────────────────────
+  if (section === "custom" && extra === "add") {
+    const name = interaction.fields.getTextInputValue("name").trim();
+    const emoji = interaction.fields.getTextInputValue("emoji").trim();
+    const positionRaw = interaction.fields.getTextInputValue("position").trim();
+    const worthRaw = interaction.fields.getTextInputValue("worth").trim();
+    const burnRaw = interaction.fields.getTextInputValue("burn").trim();
+
+    if (!name || name.length > 32) { await interaction.followUp({ content: "❌ Name must be 1–32 chars.", flags: MessageFlags.Ephemeral }); return; }
+    if (!emoji || emoji.length > 8) { await interaction.followUp({ content: "❌ Emoji must be 1–8 chars.", flags: MessageFlags.Ephemeral }); return; }
+    const position = parseFloat(positionRaw);
+    if (isNaN(position) || position <= 0 || position > 100) { await interaction.followUp({ content: "❌ Position must be 0.01–100 (e.g. 5.5 = between Legendary and Mythic).", flags: MessageFlags.Ephemeral }); return; }
+    const worth = parseInt(worthRaw, 10);
+    if (isNaN(worth) || worth < 0) { await interaction.followUp({ content: "❌ Worth must be a non-negative whole number.", flags: MessageFlags.Ephemeral }); return; }
+    const burn = parseInt(burnRaw, 10);
+    if (isNaN(burn) || burn < 0) { await interaction.followUp({ content: "❌ Burn must be a non-negative whole number.", flags: MessageFlags.Ephemeral }); return; }
+
+    let slug = name.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "").slice(0, 32) || "tier";
+    let attempts = 0;
+    while (attempts < 5) {
       try {
-        row = await createCustomRarity(guildId, {
+        await createCustomRarity(guildId, {
           slug, name, emoji, position, worthValue: worth, burnValue: burn,
-          color, dropWeight: weight ?? 1.0, droppable: droppable ?? true, inPacks: inPacks ?? false,
+          color: 0x5865f2, dropWeight: 1.0, droppable: true, inPacks: false,
           updatedBy: userId,
         });
+        break;
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : String(err);
         if (/unique|duplicate key|23505/i.test(msg)) {
-          await interaction.editReply(`❌ A custom tier with slug \`${slug}\` was just created by someone else. Use \`/rarity custom edit slug:${slug}\` to change it instead.`);
-          return;
-        }
-        throw err;
+          attempts++;
+          slug = (slug.replace(/_\d+$/, "") + `_${attempts + 1}`).slice(0, 32);
+        } else throw err;
       }
-      const embed = new EmbedBuilder()
-        .setTitle(`✨ Created custom tier: ${row.emoji} ${row.name}`)
-        .setColor(row.color)
-        .addFields(
-          { name: "Slug", value: `\`${row.slug}\``, inline: true },
-          { name: "Position", value: String(row.position), inline: true },
-          { name: "Color", value: hex(row.color), inline: true },
-          { name: "Worth", value: `💠 ${row.worthValue.toLocaleString()}`, inline: true },
-          { name: "Burn", value: `💠 ${row.burnValue.toLocaleString()}`, inline: true },
-          { name: "Drop weight", value: String(row.dropWeight), inline: true },
-          { name: "Droppable", value: row.droppable ? "✅" : "❌", inline: true },
-          { name: "In packs", value: row.inPacks ? "✅" : "❌", inline: true },
-        )
-        .setFooter({ text: "Assign cards to this tier with /rarity card assign" });
-      await interaction.editReply({ embeds: [embed] });
-      return;
     }
-
-    if (sub === "edit") {
-      const slug = interaction.options.getString("slug", true).trim().toLowerCase();
-      const existing = await getCustomRarityBySlug(guildId, slug);
-      if (!existing) { await interaction.editReply(`❌ No custom tier with slug \`${slug}\`.`); return; }
-
-      const patch: Parameters<typeof updateCustomRarity>[2] = { updatedBy: userId };
-      const name = interaction.options.getString("name");
-      const emoji = interaction.options.getString("emoji");
-      const position = interaction.options.getNumber("position");
-      const worth = interaction.options.getInteger("worth");
-      const burn = interaction.options.getInteger("burn");
-      const colorRaw = interaction.options.getString("color");
-      const weight = interaction.options.getNumber("weight");
-      const droppable = interaction.options.getBoolean("droppable");
-      const inPacks = interaction.options.getBoolean("inpacks");
-
-      if (name !== null) { if (name.length === 0 || name.length > 32) { await interaction.editReply("❌ Name must be 1-32 chars."); return; } patch.name = name.trim(); }
-      if (emoji !== null) { if (emoji.length === 0 || emoji.length > 8) { await interaction.editReply("❌ Emoji must be 1-8 chars."); return; } patch.emoji = emoji.trim(); }
-      if (position !== null) { if (!Number.isFinite(position) || position <= 0 || position > 100) { await interaction.editReply("❌ Position must be > 0 and ≤ 100."); return; } patch.position = position; }
-      if (worth !== null) { if (worth < 0) { await interaction.editReply("❌ Worth must be ≥ 0."); return; } patch.worthValue = worth; }
-      if (burn !== null) { if (burn < 0) { await interaction.editReply("❌ Burn must be ≥ 0."); return; } patch.burnValue = burn; }
-      if (colorRaw !== null) { const parsed = parseHexColor(colorRaw); if (parsed === null) { await interaction.editReply("❌ Color must be a hex code like `#ff2d92`."); return; } patch.color = parsed; }
-      if (weight !== null) patch.dropWeight = weight;
-      if (droppable !== null) patch.droppable = droppable;
-      if (inPacks !== null) patch.inPacks = inPacks;
-
-      if (Object.keys(patch).length <= 1) { await interaction.editReply("❌ Provide at least one field to change."); return; }
-      const updated = await updateCustomRarity(guildId, slug, patch);
-      if (!updated) { await interaction.editReply("❌ Update failed — tier may have been deleted."); return; }
-      await interaction.editReply(`✅ Updated custom tier **${updated.emoji} ${updated.name}** (\`${updated.slug}\`).`);
-      return;
-    }
-
-    if (sub === "remove") {
-      const slug = interaction.options.getString("slug", true).trim().toLowerCase();
-      const { removed, clearedAssignments } = await deleteCustomRarity(guildId, slug);
-      if (!removed) { await interaction.editReply(`❌ No custom tier with slug \`${slug}\`.`); return; }
-      await interaction.editReply(`🗑️ Removed custom tier \`${slug}\`. Cleared **${clearedAssignments}** card assignment(s) — those cards revert to their built-in rarity.`);
-      return;
-    }
-
-    if (sub === "list") {
-      const rows = await listCustomRarities(guildId);
-      const embed = new EmbedBuilder()
-        .setTitle("🎨 Custom Rarity Tiers")
-        .setColor(0x5865f2)
-        .setDescription(rows.length === 0
-          ? "_No custom tiers yet. Create one with `/rarity custom add`._"
-          : `${rows.length} custom tier${rows.length === 1 ? "" : "s"} in this server. Built-ins occupy positions 1-6.`);
-      for (const r of rows) {
-        embed.addFields({
-          name: `${r.emoji} ${r.name} (\`${r.slug}\`)`,
-          value:
-            `Position **${r.position}** · Color ${hex(r.color)}\n` +
-            `Worth 💠 ${r.worthValue.toLocaleString()} · Burn 💠 ${r.burnValue.toLocaleString()} · Drop weight ${r.dropWeight}\n` +
-            `Droppable ${r.droppable ? "✅" : "❌"} · In packs ${r.inPacks ? "✅" : "❌"}`,
-          inline: false,
-        });
-      }
-      await interaction.editReply({ embeds: [embed] });
-      return;
-    }
+    const tiers = await listCustomRarities(guildId);
+    const panel = buildCustomPanel(tiers);
+    panel.embeds[0]!.setFooter({ text: `✅ Created tier "${name}"` });
+    await interaction.editReply(panel);
+    return;
   }
 
-  // ── card (assign/unassign a card to a custom tier) ───────────────────────
-  if (group === "card") {
-    if (sub === "assign") {
-      const cardName = interaction.options.getString("card", true).trim();
-      const slug = interaction.options.getString("slug", true).trim().toLowerCase();
-      const card = await getCardByName(cardName);
-      if (!card) { await interaction.editReply(`❌ No card named **${cardName}**.`); return; }
-      const tier = await getCustomRarityBySlug(guildId, slug);
-      if (!tier) { await interaction.editReply(`❌ No custom tier \`${slug}\`. Create one with \`/rarity custom add\` or list with \`/rarity custom list\`.`); return; }
-      await assignCardToCustomRarity(guildId, card.id, slug);
-      await interaction.editReply(`✅ **${card.name}** is now in custom tier ${tier.emoji} **${tier.name}** (worth 💠 ${tier.worthValue.toLocaleString()}, burn 💠 ${tier.burnValue.toLocaleString()}, drop weight ${tier.dropWeight}).`);
+  // ── Custom tier: edit ─────────────────────────────────────────────────────
+  if (section === "custom" && extra === "edit" && slugExtra) {
+    const name = interaction.fields.getTextInputValue("name").trim();
+    const emoji = interaction.fields.getTextInputValue("emoji").trim();
+    const worthRaw = interaction.fields.getTextInputValue("worth").trim();
+    const burnRaw = interaction.fields.getTextInputValue("burn").trim();
+    const colorRaw = interaction.fields.getTextInputValue("color").trim();
+
+    const patch: Parameters<typeof updateCustomRarity>[2] = { updatedBy: userId };
+    if (name) { if (name.length > 32) { await interaction.followUp({ content: "❌ Name too long (max 32 chars).", flags: MessageFlags.Ephemeral }); return; } patch.name = name; }
+    if (emoji) { if (emoji.length > 8) { await interaction.followUp({ content: "❌ Emoji too long (max 8 chars).", flags: MessageFlags.Ephemeral }); return; } patch.emoji = emoji; }
+    if (worthRaw) { const v = parseInt(worthRaw, 10); if (isNaN(v) || v < 0) { await interaction.followUp({ content: "❌ Worth must be ≥ 0.", flags: MessageFlags.Ephemeral }); return; } patch.worthValue = v; }
+    if (burnRaw) { const v = parseInt(burnRaw, 10); if (isNaN(v) || v < 0) { await interaction.followUp({ content: "❌ Burn must be ≥ 0.", flags: MessageFlags.Ephemeral }); return; } patch.burnValue = v; }
+    if (colorRaw) { const parsed = parseHexColor(colorRaw); if (parsed === null) { await interaction.followUp({ content: "❌ Color must be a valid hex code like `#ff2d92`.", flags: MessageFlags.Ephemeral }); return; } patch.color = parsed; }
+
+    if (Object.keys(patch).length <= 1) {
+      await interaction.followUp({ content: "❌ Change at least one field.", flags: MessageFlags.Ephemeral });
       return;
     }
-    if (sub === "unassign") {
-      const cardName = interaction.options.getString("card", true).trim();
-      const card = await getCardByName(cardName);
-      if (!card) { await interaction.editReply(`❌ No card named **${cardName}**.`); return; }
-      const removed = await unassignCardCustomRarity(guildId, card.id);
-      const r = card.rarity as Rarity;
-      await interaction.editReply(
-        removed
-          ? `🔄 **${card.name}** is back to its built-in rarity ${RARITY_EMOJI[r] ?? "🃏"} **${RARITY_LABELS[r] ?? r}**.`
-          : `ℹ️ **${card.name}** was not assigned to any custom tier.`,
-      );
-      return;
-    }
+    const updated = await updateCustomRarity(guildId, slugExtra, patch);
+    const tiers = await listCustomRarities(guildId);
+    const panel = buildCustomPanel(tiers);
+    if (updated) panel.embeds[0]!.setFooter({ text: `✅ Updated "${updated.name}"` });
+    await interaction.editReply(panel);
+    return;
   }
 
-  await interaction.editReply("❌ Unknown rarity subcommand.");
+  // ── Card tier: assign ─────────────────────────────────────────────────────
+  if (section === "cardtier" && extra === "assign") {
+    const cardName = interaction.fields.getTextInputValue("card").trim();
+    const tierInput = interaction.fields.getTextInputValue("tier").trim().toLowerCase();
+    const card = await getCardByName(cardName);
+    if (!card) { await interaction.followUp({ content: `❌ No card named **${cardName}**.`, flags: MessageFlags.Ephemeral }); return; }
+    const tiers = await listCustomRarities(guildId);
+    const tier = tiers.find(t => t.slug === tierInput || t.name.toLowerCase() === tierInput);
+    if (!tier) {
+      const names = tiers.map(t => `${t.emoji} ${t.name}`).join(", ") || "none created yet";
+      await interaction.followUp({ content: `❌ No custom tier named **"${tierInput}"**.\nAvailable: ${names}`, flags: MessageFlags.Ephemeral });
+      return;
+    }
+    await assignCardToCustomRarity(guildId, card.id, tier.slug);
+    await interaction.followUp({
+      content: `✅ **${card.name}** → ${tier.emoji} **${tier.name}** (worth 💠 ${tier.worthValue.toLocaleString()}, burn 💠 ${tier.burnValue.toLocaleString()}).`,
+      flags: MessageFlags.Ephemeral,
+    });
+    return;
+  }
+
+  // ── Card tier: unassign ───────────────────────────────────────────────────
+  if (section === "cardtier" && extra === "unassign") {
+    const cardName = interaction.fields.getTextInputValue("card").trim();
+    const card = await getCardByName(cardName);
+    if (!card) { await interaction.followUp({ content: `❌ No card named **${cardName}**.`, flags: MessageFlags.Ephemeral }); return; }
+    const removed = await unassignCardCustomRarity(guildId, card.id);
+    const r = card.rarity as Rarity;
+    await interaction.followUp({
+      content: removed
+        ? `🔄 **${card.name}** reverted to ${RARITY_EMOJI[r] ?? "🃏"} **${RARITY_LABELS[r] ?? r}**.`
+        : `ℹ️ **${card.name}** wasn't in any custom tier.`,
+      flags: MessageFlags.Ephemeral,
+    });
+    return;
+  }
 }
 
-// Card-name autocomplete for /rarity card assign|unassign is handled by the
-// shared autocomplete handler (it already routes any unrecognized card-name
-// option to the full roster).
-export { BUILTIN_RARITIES, RARITY_COLORS };
-
-// ── /rarity edit — interactive cosmetic panel ────────────────────────────────
-// Shows all 6 built-in tiers with their current display overrides. Select a
-// tier from the dropdown, then use modal-backed buttons to change name/emoji/
-// color for this server. Resets wipe back to defaults. Economy is untouched.
+// ── Display Names Panel (cosmetic overrides for built-in tiers) ───────────────
+// Accessed from the hub via the "🎨 Display Names" button.
 
 type EditSettings = { mythicLabel?: string | null; mythicEmoji?: string | null; mythicColor?: number | null };
 
@@ -323,11 +655,11 @@ function buildEditPanel(
   settings: EditSettings | null,
 ): { embeds: EmbedBuilder[]; components: ActionRowBuilder<StringSelectMenuBuilder | ButtonBuilder>[] } {
   const embed = new EmbedBuilder()
-    .setTitle("🎨 Rarity Display Overrides")
+    .setTitle("🎨 Rarity Display Names")
     .setColor(0x5865f2)
     .setDescription(
-      "Rename any built-in rarity tier for this server — changes display name, emoji, and embed color " +
-      "in spawns, collections, packs, and trade-ins. Economy values (worth/burn/weight) are unaffected.\n\u200b",
+      "Rename any built-in rarity tier for this server — changes the display name, emoji, and embed color " +
+      "in spawns, collections, packs, and trade-ins. Economy values are unaffected.\n\u200b",
     );
   for (const r of BUILTIN_RARITIES) {
     const { label, emoji, color, hasOverride } = getEffectiveDisplay(r, displayMap, settings);
@@ -350,13 +682,11 @@ function buildEditPanel(
         }),
       ),
   );
-  const resetAllRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
-    new ButtonBuilder()
-      .setCustomId("rarity_edit:resetall")
-      .setLabel("🗑️ Reset All Overrides")
-      .setStyle(ButtonStyle.Danger),
+  const btnRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder().setCustomId("rarity_edit:resetall").setLabel("🗑️ Reset All").setStyle(ButtonStyle.Danger),
+    new ButtonBuilder().setCustomId("rarity_hub:main").setLabel("← Hub").setStyle(ButtonStyle.Secondary),
   );
-  return { embeds: [embed], components: [selectRow, resetAllRow] };
+  return { embeds: [embed], components: [selectRow, btnRow] };
 }
 
 function buildTierPanel(
@@ -504,7 +834,6 @@ export async function handleRarityEditModal(interaction: ModalSubmitInteraction)
   await interaction.deferUpdate();
   const guildId = interaction.guild.id;
   const userId = interaction.user.id;
-  // customId: rarity_edit:modal:<action>:<rarity>
   const parts = interaction.customId.split(":");
   const action = parts[2] as "name" | "emoji" | "color";
   const r = parts[3] as Rarity;
@@ -513,17 +842,9 @@ export async function handleRarityEditModal(interaction: ModalSubmitInteraction)
   const raw = interaction.fields.getTextInputValue("value").trim();
 
   if (action === "name") {
-    if (raw.length === 0) {
-      await upsertRarityDisplayOverride(guildId, r, { displayName: null }, userId);
-    } else {
-      await upsertRarityDisplayOverride(guildId, r, { displayName: raw }, userId);
-    }
+    await upsertRarityDisplayOverride(guildId, r, { displayName: raw.length === 0 ? null : raw }, userId);
   } else if (action === "emoji") {
-    if (raw.length === 0) {
-      await upsertRarityDisplayOverride(guildId, r, { emoji: null }, userId);
-    } else {
-      await upsertRarityDisplayOverride(guildId, r, { emoji: raw }, userId);
-    }
+    await upsertRarityDisplayOverride(guildId, r, { emoji: raw.length === 0 ? null : raw }, userId);
   } else if (action === "color") {
     if (raw.length === 0) {
       await upsertRarityDisplayOverride(guildId, r, { color: null }, userId);
