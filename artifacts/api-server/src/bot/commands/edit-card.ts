@@ -130,6 +130,9 @@ export async function handleEditCardSelect(interaction: StringSelectMenuInteract
 
     // Rarity → secondary select (built-ins + any custom tiers for this guild)
     if (value === "rarity") {
+      // Defer immediately — DB fetch below must happen before we can build the
+      // select, but Discord's 3-second ack window won't survive the round-trip.
+      await interaction.deferUpdate();
       const options: { label: string; value: string; emoji: string; description?: string }[] = RARITIES.map(r => ({
         label: RARITY_LABELS[r] ?? r,
         value: r,
@@ -146,7 +149,7 @@ export async function handleEditCardSelect(interaction: StringSelectMenuInteract
         .setCustomId(`editcard:rarity:${cardId}`)
         .setPlaceholder("Pick a rarity…")
         .addOptions(options);
-      await interaction.update({
+      await interaction.editReply({
         content: "✨ Pick the new rarity:",
         embeds: [],
         components: [new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(select)],
