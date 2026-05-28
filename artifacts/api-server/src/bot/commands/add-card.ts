@@ -8,11 +8,13 @@
 // message so the admin can immediately refine anything.
 
 import {
-  MessageFlags,
   type ChatInputCommandInteraction,
 } from "discord.js";
-import { addCard, getCardByName } from "../db.js";
+import { addCard, getCardByName, getCustomRarityBySlug, assignCardToCustomRarity } from "../db.js";
 import { renderPanel } from "./edit-card.js";
+import type { Rarity } from "../cards-data.js";
+
+const BUILTIN_RARITIES = new Set<string>(["common", "uncommon", "rare", "epic", "legendary", "mythic"]);
 
 const RARITY_DEFAULTS: Record<string, { worth: number; burn: number; weight: number }> = {
   common:    { worth: 10,   burn: 5,    weight: 60 },
@@ -24,17 +26,14 @@ const RARITY_DEFAULTS: Record<string, { worth: number; burn: number; weight: num
 };
 
 export async function handleAddCardCommand(interaction: ChatInputCommandInteraction): Promise<void> {
-  const opts = interaction.options;
-  const name           = opts.getString("name", true).trim();
-  const rarity         = opts.getString("rarity", true);
-  const type           = opts.getString("type", true);
+  const opts        = interaction.options;
+  const guildId     = interaction.guildId!;
+  const name        = opts.getString("name", true).trim();
+  const rarityInput = opts.getString("rarity", true);
+  const type        = opts.getString("type", true);
   const imageAttachment = opts.getAttachment("image");
-  const imageUrl       = imageAttachment?.url ?? opts.getString("imageurl") ?? undefined;
-  const description    = opts.getString("description") ?? "";
-  const defs           = RARITY_DEFAULTS[rarity] ?? RARITY_DEFAULTS.common!;
-  const worth          = opts.getInteger("worth")  ?? defs.worth;
-  const burn           = opts.getInteger("burn")   ?? defs.burn;
-  const weight         = opts.getNumber("weight")  ?? defs.weight;
+  const imageUrl    = imageAttachment?.url ?? opts.getString("imageurl") ?? undefined;
+  const description = opts.getString("description") ?? "";
   const limited        = opts.getBoolean("limited") ?? false;
   const maxCopies      = opts.getInteger("max_copies") ?? undefined;
   const eventExclusive = opts.getBoolean("event_exclusive") ?? false;
@@ -43,6 +42,33 @@ export async function handleAddCardCommand(interaction: ChatInputCommandInteract
     await interaction.editReply("❌ Card name cannot be empty.");
     return;
   }
+
+  // Resolve whether this is a built-in rarity or a guild custom tier slug.
+  const isCustom = !BUILTIN_RARITIES.has(rarityInput);
+  let baseRarity: Rarity = "common";
+  let customSlug: string | null = null;
+  let defs = RARITY_DEFAULTS.common!;
+
+  if (isCustom) {
+    const tier = await getCustomRarityBySlug(guildId, rarityInput);
+    if (!tier) {
+      await interaction.editReply(`❌ Unknown rarity \`${rarityInput}\`. Please pick one from the autocomplete list.`);
+      return;
+    }
+    customSlug = tier.slug;
+    // Use the custom tier's economy values as defaults; admin can override via the fields.
+    defs = { worth: tier.worthValue, burn: tier.burnValue, weight: tier.dropWeight };
+    // The DB rarity column is an enum — store "common" as a neutral placeholder.
+    // The custom tier override in card_rarity_overrides is the actual source of truth.
+    baseRarity = "common";
+  } else {
+    baseRarity = rarityInput as Rarity;
+    defs = RARITY_DEFAULTS[rarityInput] ?? RARITY_DEFAULTS.common!;
+  }
+
+  const worth  = opts.getInteger("worth")  ?? defs.worth;
+  const burn   = opts.getInteger("burn")   ?? defs.burn;
+  const weight = opts.getNumber("weight")  ?? defs.weight;
 
   const existing = await getCardByName(name);
   if (existing) {
@@ -55,7 +81,7 @@ export async function handleAddCardCommand(interaction: ChatInputCommandInteract
 
   const card = await addCard({
     name,
-    rarity,
+    rarity: baseRarity,
     cardType: type,
     description,
     imageUrl,
@@ -66,8 +92,14 @@ export async function handleAddCardCommand(interaction: ChatInputCommandInteract
     maxCopies: limited ? (maxCopies ?? 50) : undefined,
     isEventExclusive: eventExclusive,
     droppable: !eventExclusive,
-    inPacks:   !eventExclusive && rarity !== "mythic",
+    inPacks:   !eventExclusive && baseRarity !== "mythic",
   });
 
-  await renderPanel(interaction, card.id, false, `✅ Created **${card.name}** — tweak any field below`);
+  // If a custom tier was chosen, assign it now so the rarity resolver picks it up immediately.
+  if (customSlug) {
+    await assignCardToCustomRarity(guildId, card.id, customSlug);
+  }
+
+  const rarityLabel = customSlug ? `custom tier \`${customSlug}\`` : `**${baseRarity}**`;
+  await renderPanel(interaction, card.id, false, `✅ Created **${card.name}** (${rarityLabel}) — tweak any field below`);
 }
