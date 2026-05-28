@@ -128,6 +128,29 @@ export async function handleAutocomplete(interaction: AutocompleteInteraction): 
       }
     }
 
+    // ── /addcard rarity — built-ins + guild custom tiers ────────────────────
+    if (cmd === "addcard" && focused.name === "rarity" && interaction.guild) {
+      const q = query.toLowerCase().trim();
+      const BUILTIN: { emoji: string; label: string; value: string }[] = [
+        { emoji: "⚪", label: "Common",    value: "common"    },
+        { emoji: "🟢", label: "Uncommon",  value: "uncommon"  },
+        { emoji: "🔵", label: "Rare",      value: "rare"      },
+        { emoji: "🟣", label: "Epic",      value: "epic"      },
+        { emoji: "🟡", label: "Legendary", value: "legendary" },
+        { emoji: "🔮", label: "Mythic",    value: "mythic"    },
+      ];
+      const customTiers = await listCustomRarities(interaction.guild.id);
+      const allOptions = [
+        ...BUILTIN.map(b => ({ name: `${b.emoji} ${b.label}`, value: b.value })),
+        ...customTiers.map(t => ({ name: `${t.emoji} ${t.name} (custom)`, value: t.slug })),
+      ];
+      const filtered = !q
+        ? allOptions
+        : allOptions.filter(o => o.name.toLowerCase().includes(q) || o.value.includes(q));
+      await interaction.respond(filtered.slice(0, MAX_CHOICES));
+      return;
+    }
+
     // ── /rarity custom slug — show existing custom tiers by name ────────────
     if (cmd === "rarity" && focused.name === "slug" && interaction.guild) {
       const tiers = await listCustomRarities(interaction.guild.id);

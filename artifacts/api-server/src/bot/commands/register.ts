@@ -175,15 +175,7 @@ export function buildCommands() {
 
     adminCmd("addcard", "(Admin) Create a new card — attach an image file or paste a URL", s => s
       .addStringOption(o => o.setName("name").setDescription("Card name").setRequired(true).setMaxLength(80))
-      .addStringOption(o => o.setName("rarity").setDescription("Rarity tier").setRequired(true)
-        .addChoices(
-          { name: "⚪ Common",    value: "common"    },
-          { name: "🟢 Uncommon",  value: "uncommon"  },
-          { name: "🔵 Rare",      value: "rare"      },
-          { name: "🟣 Epic",      value: "epic"      },
-          { name: "🟡 Legendary", value: "legendary" },
-          { name: "🔮 Mythic",    value: "mythic"    },
-        ))
+      .addStringOption(o => o.setName("rarity").setDescription("Rarity tier — type to search, custom tiers appear here too").setRequired(true).setAutocomplete(true))
       .addStringOption(o => o.setName("type").setDescription("Card type").setRequired(true)
         .addChoices(
           { name: "tank",        value: "tank"        },
