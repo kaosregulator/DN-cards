@@ -1,6 +1,8 @@
 import { Client, GatewayIntentBits, Partials, Events, REST, Routes, type Interaction } from "discord.js";
 import { logger } from "../lib/logger.js";
-import { burnCard, getOrCreateCurrency } from "./db.js";
+import { burnCard, getOrCreateCurrency, getAllCards } from "./db.js";
+import { handleEditCardSelect, handleEditCardModal } from "./commands/edit-card.js";
+import { handleTradeButton } from "./commands/trading.js";
 import { initSpawnManager, initAllGuilds, handleCatchAttempt, handleClaimButtonClick, scheduleNextSpawn, buildPostDecisionEmbed, buildDisabledDecisionRow, markDecisionMade } from "./spawn-manager.js";
 import { handleConfigButton, handleConfigSelect, handleRatesSelect, handlePacksSelect, handleRatesCustomModal } from "./commands/config-panel.js";
 import { handleSetsHubButton, handleSetsHubSelect, handleSetsHubModal } from "./commands/sets-panel.js";
@@ -164,7 +166,6 @@ export async function startBot() {
         } else if (interaction.customId.startsWith("setadminhub:weight:")) {
           await handleSetAdminHubWeightSelect(interaction);
         } else if (interaction.customId.startsWith("editcard:")) {
-          const { handleEditCardSelect } = await import("./commands/edit-card.js");
           await handleEditCardSelect(interaction);
         } else if (interaction.customId === "rarity_edit:select") {
           await handleRarityEditSelect(interaction);
@@ -195,7 +196,6 @@ export async function startBot() {
         } else if (interaction.customId.startsWith("setadminhub:modal:")) {
           await handleSetAdminHubModal(interaction);
         } else if (interaction.customId.startsWith("editcard:modal:")) {
-          const { handleEditCardModal } = await import("./commands/edit-card.js");
           await handleEditCardModal(interaction);
         } else if (interaction.customId.startsWith("rarity_edit:modal:")) {
           await handleRarityEditModal(interaction);
@@ -298,7 +298,6 @@ export async function startBot() {
         // ── Trade Accept/Decline buttons ───────────────────────────────────
         if (action === "trade_accept" || action === "trade_decline") {
           const tradeId = parseInt(parts[1], 10);
-          const { handleTradeButton } = await import("./commands/trading.js");
           await handleTradeButton(interaction, action === "trade_accept" ? "accept" : "decline", tradeId);
           return;
         }
@@ -320,7 +319,6 @@ export async function startBot() {
           }
 
           // Look up the card name for any public announcement.
-          const { getAllCards } = await import("./db.js");
           const allCards = await getAllCards();
           const card = allCards.find(c => c.id === cardId);
           const cardName = card?.name ?? "the card";

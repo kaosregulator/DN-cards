@@ -26,6 +26,22 @@ import {
 import { getCardByName, getCardById, updateCard, listCustomRarities, assignCardToCustomRarity } from "../db.js";
 import { RARITY_EMOJI, RARITY_LABELS, RARITY_COLORS, type Rarity } from "../cards-data.js";
 
+// ── Synchronous per-guild cache for custom rarities ──────────────────────────
+// Populated when /editcard opens (before any component interaction can fire),
+// so the rarity picker can call interaction.update() with NO async work.
+type CachedTier = { name: string; slug: string; emoji: string };
+const _customTierCache = new Map<string, CachedTier[]>();
+
+function _getCachedTiers(guildId: string): CachedTier[] {
+  return _customTierCache.get(guildId) ?? [];
+}
+
+function _prewarmTiers(guildId: string): void {
+  listCustomRarities(guildId)
+    .then(tiers => _customTierCache.set(guildId, tiers.map(t => ({ name: t.name, slug: t.slug, emoji: t.emoji }))))
+    .catch(() => {});
+}
+
 const RARITIES: Rarity[] = ["common", "uncommon", "rare", "epic", "legendary", "mythic"];
 const TYPE_CHOICES = ["tank", "aircraft", "ship", "vehicle", "infantry", "boss", "community", "event", "achievement", "limited"];
 
@@ -104,6 +120,9 @@ export async function handleEditCardCommand(interaction: ChatInputCommandInterac
     await interaction.editReply(`❌ No card named **${name}**. Use autocomplete to pick one.`);
     return;
   }
+  // Pre-warm custom tier cache so the rarity picker can respond synchronously
+  // (no deferUpdate needed) when the user opens the rarity sub-select.
+  if (interaction.guildId) _prewarmTiers(interaction.guildId);
   await renderPanel(interaction, card.id, false);
 }
 
@@ -128,28 +147,31 @@ export async function handleEditCardSelect(interaction: StringSelectMenuInteract
       return;
     }
 
-    // Rarity → secondary select (built-ins + any custom tiers for this guild)
+    // Rarity → secondary select (built-ins + any custom tiers for this guild).
+    // Uses the pre-warmed sync cache so interaction.update() fires immediately
+    // with zero DB round-trips, eliminating Unknown Interaction (10062) errors.
     if (value === "rarity") {
-      // Defer immediately — DB fetch below must happen before we can build the
-      // select, but Discord's 3-second ack window won't survive the round-trip.
-      await interaction.deferUpdate();
-      const options: { label: string; value: string; emoji: string; description?: string }[] = RARITIES.map(r => ({
-        label: RARITY_LABELS[r] ?? r,
-        value: r,
-        emoji: RARITY_EMOJI[r] ?? "🃏",
-        description: "built-in",
-      }));
-      if (interaction.guildId) {
-        const customTiers = await listCustomRarities(interaction.guildId);
-        for (const t of customTiers.slice(0, 25 - RARITIES.length)) {
-          options.push({ label: t.name, value: `custom:${t.slug}`, emoji: t.emoji, description: "custom tier" });
-        }
-      }
+      const cached = interaction.guildId ? _getCachedTiers(interaction.guildId) : [];
+      const options: { label: string; value: string; emoji: string; description?: string }[] = [
+        ...RARITIES.map(r => ({
+          label: RARITY_LABELS[r] ?? r,
+          value: r,
+          emoji: RARITY_EMOJI[r] ?? "🃏",
+          description: "built-in",
+        })),
+        ...cached.slice(0, 25 - RARITIES.length).map(t => ({
+          label: t.name,
+          value: `custom:${t.slug}`,
+          emoji: t.emoji,
+          description: "custom tier",
+        })),
+      ];
+      if (interaction.guildId) _prewarmTiers(interaction.guildId);
       const select = new StringSelectMenuBuilder()
         .setCustomId(`editcard:rarity:${cardId}`)
         .setPlaceholder("Pick a rarity…")
         .addOptions(options);
-      await interaction.editReply({
+      await interaction.update({
         content: "✨ Pick the new rarity:",
         embeds: [],
         components: [new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(select)],

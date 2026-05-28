@@ -154,6 +154,13 @@ export async function handleAdminCommand(
     await handleSetAdminHubCommand(interaction);
     return;
   }
+  // /setadmin — subcommand tree; defer first, then dispatch.
+  if (cmd === "setadmin") {
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+    const { handleSetAdminCommand } = await import("./sets-admin.js");
+    await handleSetAdminCommand(interaction);
+    return;
+  }
   // /addcard — same defer-first pattern as /editcard; home guild only.
   if (cmd === "addcard") {
     await interaction.deferReply({ flags: MessageFlags.Ephemeral });

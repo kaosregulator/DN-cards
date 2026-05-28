@@ -55,7 +55,7 @@ export async function handleAutocomplete(interaction: AutocompleteInteraction): 
     // Any string option named `set`, `from`, `to`, or `name` on these two
     // commands resolves to a set picker (except /setadmin create, which takes
     // a new name — but that's not autocompleted so it won't reach here).
-    const setNameCommands = new Set(["sets", "drop", "massdrop"]);
+    const setNameCommands = new Set(["sets", "drop", "massdrop", "setadmin"]);
     if (setNameCommands.has(cmd)
         && ["set", "from", "to", "name"].includes(focused.name)) {
       const sets = await listSetsV2();
