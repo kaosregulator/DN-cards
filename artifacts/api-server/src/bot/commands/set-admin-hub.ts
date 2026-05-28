@@ -163,7 +163,7 @@ function buildContextualRow3(setId: number) {
       .setStyle(ButtonStyle.Secondary),
     new ButtonBuilder()
       .setCustomId(`setadminhub:weights:${setId}`)
-      .setLabel("Rarity Weights")
+      .setLabel("Set Spawn %")
       .setEmoji("⚖️")
       .setStyle(ButtonStyle.Secondary),
     new ButtonBuilder()
@@ -254,7 +254,7 @@ function buildViewNavRow(setId: number, page: number, totalPages: number) {
   );
 }
 
-// ── Rarity weights sub-panel ──────────────────────────────────────────────────
+// ── Set spawn % override sub-panel ──────────────────────────────────────────────────
 function buildWeightsEmbed(
   setName: string,
   rarityWeights: Record<string, number> | null,
@@ -264,11 +264,11 @@ function buildWeightsEmbed(
   const allRarities: Rarity[] = ["common", "uncommon", "rare", "epic", "legendary", "mythic"];
   const lines = allRarities.map(r => {
     const v = w[r];
-    const tag = v == null ? "*(guild profile)*" : `**${v}**`;
+    const tag = v == null ? "*(server rarity setup)*" : `**${v}%**`;
     return `${RARITY_EMOJI[r]} \`${r}\` — ${tag}`;
   });
   return new EmbedBuilder()
-    .setTitle(`⚖️ ${setName} — Rarity Weights`)
+    .setTitle(`🎛️ ${setName} — Set Spawn % Overrides`)
     .setColor(isActive ? 0x57f287 : 0x5865f2)
     .setDescription(
       lines.join("\n") +
@@ -277,7 +277,7 @@ function buildWeightsEmbed(
         ? "\n🟢 **This set is active — overrides are live.**"
         : "\n⚠️ Activate this set for these overrides to take effect."),
     )
-    .setFooter({ text: "null = falls through to guild rarity profile · 0 = disabled for this set" });
+    .setFooter({ text: "Default = use server rarity setup · 0% = disabled while this set is active" });
 }
 
 function buildWeightsComponents(setId: number, rarityWeights: Record<string, number> | null) {
@@ -289,10 +289,10 @@ function buildWeightsComponents(setId: number, rarityWeights: Record<string, num
     const current = w[rarity] ?? null;
     const select = new StringSelectMenuBuilder()
       .setCustomId(`setadminhub:weight:${setId}:${rarity}`)
-      .setPlaceholder(`${RARITY_EMOJI[rarity]} ${rarity} weight`)
+      .setPlaceholder(`${RARITY_EMOJI[rarity]} ${rarity} spawn %`)
       .addOptions(
         opts.map(v => ({
-          label: v == null ? `${rarity} — Default (guild profile)` : `${rarity} — ${v}`,
+          label: v == null ? `${rarity} — Default (server setup)` : `${rarity} — ${v}%`,
           value: v == null ? "default" : String(v),
           default: v === current,
         })),
@@ -310,7 +310,7 @@ function buildWeightsComponents(setId: number, rarityWeights: Record<string, num
         .setStyle(ButtonStyle.Secondary),
       new ButtonBuilder()
         .setCustomId(`setadminhub:clearweights:${setId}`)
-        .setLabel("Clear All Weights")
+        .setLabel("Reset Set %")
         .setEmoji("🔄")
         .setStyle(ButtonStyle.Danger),
     ),
@@ -357,7 +357,7 @@ export async function handleSetAdminHubSelect(interaction: StringSelectMenuInter
   await interaction.editReply(payload);
 }
 
-// ── Weight select: user changes a rarity weight in the sub-panel ──────────────
+// ── Set spawn % select: user changes a per-set rarity override ─────────────
 export async function handleSetAdminHubWeightSelect(interaction: StringSelectMenuInteraction): Promise<void> {
   if (!interaction.guild) return;
   await interaction.deferUpdate();
@@ -736,7 +736,7 @@ export async function handleSetAdminHubButton(interaction: ButtonInteraction): P
     return;
   }
 
-  // ── Rarity weights sub-panel ──────────────────────────────────────────────
+  // ── Set spawn % override sub-panel ──────────────────────────────────────────────
   if (action === "weights") {
     const payload = await buildWeightsPayload(setId, guildId);
     if (!payload) {
@@ -747,7 +747,7 @@ export async function handleSetAdminHubButton(interaction: ButtonInteraction): P
     return;
   }
 
-  // ── Clear all weight overrides ────────────────────────────────────────────
+  // ── Clear all set spawn % overrides ────────────────────────────────────────────
   if (action === "clearweights") {
     if (!isHomeGuild(guildId)) {
       await interaction.followUp({ content: GLOBAL_ONLY_MSG, flags: MessageFlags.Ephemeral });
@@ -757,7 +757,7 @@ export async function handleSetAdminHubButton(interaction: ButtonInteraction): P
     const payload = await buildWeightsPayload(setId, guildId);
     if (!payload) return;
     await interaction.editReply(payload);
-    await interaction.followUp({ content: "🔄 All rarity weight overrides cleared for this set.", flags: MessageFlags.Ephemeral });
+    await interaction.followUp({ content: "🔄 All set spawn % overrides cleared. This set now uses the server rarity setup.", flags: MessageFlags.Ephemeral });
     return;
   }
 }

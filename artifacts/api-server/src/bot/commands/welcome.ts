@@ -156,7 +156,7 @@ export async function handleWelcomeAdmin(interaction: ChatInputCommandInteractio
 
       "**✅ Step 3 — Add & Edit Cards**\n" +
       `• **Website** → [${SITE_ADMIN}](${SITE_ADMIN}) — display name, image, description, featured/hidden, sort order.\n` +
-      "• **Discord prefix commands** → `!addcard` / `!editcard <Name>` — rarity, worth, burn, drop weight, packs.\n\n" +
+      "• **Discord prefix commands** → `!addcard` / `!editcard <Name>` — rarity, worth, burn, spawn chance, packs.\n\n" +
 
       "**✅ Step 4 — Dashboard Login**\n" +
       "Run `/dashboard` — bot DMs you a one-time login link. Do this for every admin who needs site access.\n\n" +
@@ -177,7 +177,7 @@ export async function handleWelcomeAdmin(interaction: ChatInputCommandInteractio
       "**🌐 Website (display overrides only)**\n" +
       `Go to **[Card Manager](${adminUrl})** → pick a card → edit in the side panel.\n` +
       "You can change: Display Name · Image URL · Description · Flavor Text · Hidden from Site · Featured · Sort Weight.\n" +
-      "Everything else (rarity, worth, burn, drop weight, packs) is shown read-only for reference.\n" +
+      "Everything else (rarity, worth, burn, spawn chance, packs) is shown read-only for reference.\n" +
       `Public card roster: **[${SITE_URL}](${SITE_URL})**\n\n` +
 
       "**🎮 Discord (gameplay values — prefix commands)**\n" +

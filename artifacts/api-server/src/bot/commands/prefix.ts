@@ -216,7 +216,7 @@ export async function handlePrefixCommand(msg: Message, prefix: string): Promise
       legendary: { rarityWeightLegendary: weight },
     };
     await updateGuildSettings(guildId, colMap[rarity]);
-    await msg.reply(`✅ ${RARITY_EMOJI[rarity as Rarity]} **${rarity}** drop weight → **${weight}** (default: ${RARITY_WEIGHTS[rarity as Rarity]}).`);
+    await msg.reply(`✅ ${RARITY_EMOJI[rarity as Rarity]} **${rarity}** spawn chance source → **${weight}** (default: ${RARITY_WEIGHTS[rarity as Rarity]}).`);
     return;
   }
 
@@ -294,7 +294,7 @@ export async function handlePrefixCommand(msg: Message, prefix: string): Promise
       `🪟 Catch Window: ${formatTime(s.catchWindowSeconds)}\n` +
       `📦 Cards per Batch: ${cardsPerSpawnLabel}\n` +
       `🎯 Catch Mode: **${(s as unknown as { catchMode?: string }).catchMode ?? "type"}** (${{type:"✍️ typing — lag-fair (earliest sent wins)",button:"🎯 click Claim — position randomized",both:"✍️ + 🎯 both"}[(s as unknown as { catchMode?: string }).catchMode ?? "type"]})\n` +
-      `🎲 Rarity Weights (✏️ = customised): ${rarityLines}\n` +
+      `🎲 Rarity Spawn Chances (✏️ = customised): ${rarityLines}\n` +
       `🔄 Trading: ${s.tradeEnabled ? "✅ Enabled" : "⏸️ Disabled"}\n` +
       `💬 Trade Channel: ${s.tradeChannelId ? `<#${s.tradeChannelId}>` : "Any channel"}\n` +
       `⚖️ Command Prefix: \`${s.commandPrefix}\` (change with \`${s.commandPrefix}setprefix\`)`,

@@ -139,7 +139,7 @@ export async function handleConfigButton(interaction: ButtonInteraction): Promis
       const settings = await getOrCreateGuildSettings(guildId);
       await refreshPanel(interaction, settings);
       await interaction.followUp({
-        content: "🔄 Rarity Mix reset to defaults — Common 60% · Uncommon 25% · Exotic 10% · Legendary 4% · Rare 1%.",
+        content: "🔄 Rarity setup reset to defaults — Common 60% · Uncommon 25% · Exotic 10% · Legendary 4% · Rare 1%.",
         flags: MessageFlags.Ephemeral,
       }).catch(() => { /* ignore */ });
       return;
@@ -365,7 +365,7 @@ function buildConfigEmbed(s: GuildSettings, activeSetName: string | null): Embed
         inline: true,
       },
       {
-        name: "🎲 Rarity Percentages (chance of each rarity when a card drops)",
+        name: "🎛️ Rarity Setup (visible spawn chance by rarity)",
         value: rarityRowsSummary(s),
         inline: false,
       },
@@ -453,15 +453,15 @@ function buildConfigComponents(s: GuildSettings) {
   const subPanelRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder()
       .setCustomId("config:rates:open")
-      .setLabel("🎲 Rarity Mix")
+      .setLabel("🎛️ Rarity Setup")
       .setStyle(ButtonStyle.Secondary),
     new ButtonBuilder()
       .setCustomId("config:rates:custom")
-      .setLabel("✏️ Custom Mix")
+      .setLabel("✏️ Exact %")
       .setStyle(ButtonStyle.Primary),
     new ButtonBuilder()
       .setCustomId("config:rates:reset")
-      .setLabel("🔄 Reset Mix")
+      .setLabel("🔄 Reset %")
       .setStyle(ButtonStyle.Danger),
     new ButtonBuilder()
       .setCustomId("config:packs:open")
@@ -484,7 +484,7 @@ function formatSec(sec: number): string {
   return `${sec}s`;
 }
 
-// ── Drop rates sub-panel (also reused by the !setup wizard) ────────────────────────────────
+// ── Rarity percentage sub-panel (also reused by the setup wizard) ────────────
 export { buildRatesEmbed, buildRatesComponents };
 
 function rarityBar(s: GuildSettings): string {
@@ -529,17 +529,17 @@ function buildRatesEmbed(s: GuildSettings): EmbedBuilder {
     : `ℹ️ Your values add up to **${total}** — Discord auto-balances them to **100%** below. ` +
       "(Pick numbers that sum to 100 to keep things simple.)";
   return new EmbedBuilder()
-    .setTitle("🎲 Rarity Mix — How often each rarity drops")
+    .setTitle("🎛️ Rarity Setup — Spawn Chance by Rarity")
     .setColor(0xeb459e)
     .setDescription(
-      "Set the **% chance** for each rarity when a card spawns.\n" +
+      "Set the visible **spawn chance %** for each built-in rarity.\n" +
       "**Defaults:** Common 60 · Uncommon 25 · Exotic 10 · Legendary 4 · Rare 1 (= 100%)\n" +
-      "_Want exact numbers? Close this and tap **✏️ Custom Mix** on the main panel._\n\n" +
+      "_Want exact numbers? Close this and tap **✏️ Exact %** on the main panel._\n\n" +
       `${rarityBar(s)}\n\n` +
       note,
     )
     .addFields({ name: "Current mix", value: rarityRowsSummary(s), inline: false })
-    .setFooter({ text: "Changes save instantly. To start over, close this and use 🔄 Reset Mix on the main config panel." });
+    .setFooter({ text: "Changes save instantly. To start over, close this and use 🔄 Reset % on the main config panel." });
 }
 
 function buildRatesComponents(s: GuildSettings) {
@@ -570,14 +570,14 @@ function buildRatesComponents(s: GuildSettings) {
   });
 }
 
-// ── Custom Mix modal ──────────────────────────────────────────────────────────
+// ── Exact percentage modal ──────────────────────────────────────────────────────────
 // Lets the admin type any % for each rarity. Values can be any non-negative
 // integer; if they don't sum to 100, Discord auto-normalises in the spawn engine
 // (same behaviour as the preset dropdowns).
 function buildCustomMixModal(s: GuildSettings): ModalBuilder {
   const modal = new ModalBuilder()
     .setCustomId("rates_custom")
-    .setTitle("Custom Rarity Mix (sum to 100)");
+    .setTitle("Exact Rarity % (sum to 100)");
   // Modals also cap at 5 rows — mythic is configured via the dashboard.
   const inputs = UI_RARITY_ORDER.map(r =>
     new TextInputBuilder()
@@ -640,7 +640,7 @@ export async function handleRatesCustomModal(interaction: ModalSubmitInteraction
   const note = sum === 100 ? "✅ Sums to 100%." : `ℹ️ Sums to **${sum}** — Discord will auto-balance to 100%.`;
   await interaction.reply({
     embeds: [buildRatesEmbed(settings)],
-    content: `✏️ Custom Mix saved: ${summary}\n${note}`,
+    content: `✏️ Exact rarity % saved: ${summary}\n${note}`,
     flags: MessageFlags.Ephemeral,
   });
 }

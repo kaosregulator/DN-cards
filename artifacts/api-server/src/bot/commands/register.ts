@@ -161,7 +161,7 @@ export function buildCommands() {
       .addSubcommand(sc => sc.setName("deactivate").setDescription("Clear the active set — random spawns disabled until one is chosen"))
       .addSubcommand(sc => sc.setName("view").setDescription("View all cards in a set")
         .addStringOption(o => o.setName("name").setDescription("Set name").setRequired(true).setAutocomplete(true)))
-      .addSubcommand(sc => sc.setName("setweight").setDescription("Override a rarity's spawn weight when this set is active")
+      .addSubcommand(sc => sc.setName("setweight").setDescription("Override a rarity's spawn chance when this set is active")
         .addStringOption(o => o.setName("set").setDescription("Set name").setRequired(true).setAutocomplete(true))
         .addStringOption(o => o.setName("rarity").setDescription("Rarity tier").setRequired(true)
           .addChoices(
@@ -169,8 +169,8 @@ export function buildCommands() {
             { name: "Rare", value: "rare" }, { name: "Epic", value: "epic" },
             { name: "Legendary", value: "legendary" }, { name: "Mythic", value: "mythic" },
           ))
-        .addIntegerOption(o => o.setName("weight").setDescription("Spawn % source value (0 = disable that tier while set is active)").setRequired(true).setMinValue(0)))
-      .addSubcommand(sc => sc.setName("clearweight").setDescription("Remove a per-set spawn-weight override (falls back to guild profile)")
+        .addIntegerOption(o => o.setName("weight").setDescription("Set-specific spawn chance % (0 = disable that rarity while active)").setRequired(true).setMinValue(0)))
+      .addSubcommand(sc => sc.setName("clearweight").setDescription("Remove a per-set spawn chance override (falls back to server rarity setup)")
         .addStringOption(o => o.setName("set").setDescription("Set name").setRequired(true).setAutocomplete(true))
         .addStringOption(o => o.setName("rarity").setDescription("Leave empty to clear all overrides on this set")
           .addChoices(
@@ -178,7 +178,7 @@ export function buildCommands() {
             { name: "Rare", value: "rare" }, { name: "Epic", value: "epic" },
             { name: "Legendary", value: "legendary" }, { name: "Mythic", value: "mythic" },
           )))
-      .addSubcommand(sc => sc.setName("showweights").setDescription("Show per-set rarity weight overrides")
+      .addSubcommand(sc => sc.setName("showweights").setDescription("Show per-set rarity spawn chance overrides")
         .addStringOption(o => o.setName("set").setDescription("Set name").setRequired(true).setAutocomplete(true)))
       .addSubcommand(sc => sc.setName("showcase").setDescription("Toggle set-completion achievement for this set")
         .addStringOption(o => o.setName("set").setDescription("Set name").setRequired(true).setAutocomplete(true))
@@ -240,7 +240,7 @@ export function buildCommands() {
 
     adminCmd("addcard", "(Admin) Create a new card — attach an image file or paste a URL", s => s
       .addStringOption(o => o.setName("name").setDescription("Card name").setRequired(true).setMaxLength(80))
-      .addStringOption(o => o.setName("rarity").setDescription("Rarity tier — type to search, custom tiers appear here too").setRequired(true).setAutocomplete(true))
+      .addStringOption(o => o.setName("rarity").setDescription("Built-in rarity tier — type to search").setRequired(true).setAutocomplete(true))
       .addStringOption(o => o.setName("type").setDescription("Card type").setRequired(true)
         .addChoices(
           { name: "tank",        value: "tank"        },
@@ -269,7 +269,7 @@ export function buildCommands() {
       .addStringOption(o => o.setName("name").setDescription("Card to edit").setRequired(true).setAutocomplete(true))),
 
     // ── /rarity — hub command: display names, economy overrides, custom tiers, card assignments
-    adminCmd("rarity", "(Admin) Open the Rarity Hub — display names, economy overrides, custom tiers, card assignments", s => s),
+    adminCmd("rarity", "(Admin) Edit built-in rarity names, colors, spawn %, worth, and burn", s => s),
 
     // ── /embed — owns ALL writes to embed_overrides. Replaces the old
     //              /admin/embeds dashboard page.
