@@ -154,6 +154,22 @@ export async function handleAdminCommand(
     await handleSetAdminHubCommand(interaction);
     return;
   }
+  // /addcard — same defer-first pattern as /editcard; home guild only.
+  if (cmd === "addcard") {
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+    if (!(await checkAdmin(interaction))) {
+      await interaction.editReply("❌ Admins only.");
+      return;
+    }
+    if (!isHomeGuild(interaction.guild.id)) {
+      await interaction.editReply(GLOBAL_ONLY_MSG);
+      return;
+    }
+    const { handleAddCardCommand } = await import("./add-card.js");
+    await handleAddCardCommand(interaction);
+    return;
+  }
+
   // /editcard — defer first so checkAdmin()'s isAdmin() DB call can't blow
   // Discord's 3s window. handleEditCardCommand receives an already-deferred
   // interaction and uses editReply for its panel.

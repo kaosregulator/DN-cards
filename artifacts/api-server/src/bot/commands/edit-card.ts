@@ -23,10 +23,10 @@ import {
   type ChatInputCommandInteraction, type StringSelectMenuInteraction,
   type ModalSubmitInteraction, type RepliableInteraction,
 } from "discord.js";
-import { getCardByName, getCardById, updateCard } from "../db.js";
+import { getCardByName, getCardById, updateCard, listCustomRarities, assignCardToCustomRarity } from "../db.js";
 import { RARITY_EMOJI, RARITY_LABELS, RARITY_COLORS, type Rarity } from "../cards-data.js";
 
-const RARITIES: Rarity[] = ["common", "uncommon", "rare", "epic", "legendary"];
+const RARITIES: Rarity[] = ["common", "uncommon", "rare", "epic", "legendary", "mythic"];
 const TYPE_CHOICES = ["tank", "aircraft", "ship", "vehicle", "infantry", "boss", "community", "event", "achievement", "limited"];
 
 // ── Preview embed + field-picker select ─────────────────────────────────────
@@ -72,20 +72,25 @@ async function buildPanel(cardId: number): Promise<{ embeds: EmbedBuilder[]; com
   return { embeds: [embed], components: [new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(select)] };
 }
 
-async function renderPanel(interaction: RepliableInteraction, cardId: number, reply: boolean): Promise<void> {
+export async function renderPanel(
+  interaction: RepliableInteraction,
+  cardId: number,
+  reply: boolean,
+  content?: string,
+): Promise<void> {
   const panel = await buildPanel(cardId);
   if (!panel) {
-    const content = "❌ Card not found.";
-    if (reply) await interaction.reply({ content, flags: MessageFlags.Ephemeral }).catch(() => {});
+    const errContent = "❌ Card not found.";
+    if (reply) await interaction.reply({ content: errContent, flags: MessageFlags.Ephemeral }).catch(() => {});
     else if (interaction.isMessageComponent() || interaction.isModalSubmit()) {
-      await interaction.editReply({ content, embeds: [], components: [] }).catch(() => {});
+      await interaction.editReply({ content: errContent, embeds: [], components: [] }).catch(() => {});
     }
     return;
   }
   if (reply) {
-    await interaction.reply({ ...panel, flags: MessageFlags.Ephemeral });
+    await interaction.reply({ ...panel, content, flags: MessageFlags.Ephemeral });
   } else {
-    await interaction.editReply(panel);
+    await interaction.editReply({ ...panel, content: content ?? "" });
   }
 }
 
@@ -123,16 +128,24 @@ export async function handleEditCardSelect(interaction: StringSelectMenuInteract
       return;
     }
 
-    // Rarity → secondary select
+    // Rarity → secondary select (built-ins + any custom tiers for this guild)
     if (value === "rarity") {
+      const options: { label: string; value: string; emoji: string; description?: string }[] = RARITIES.map(r => ({
+        label: RARITY_LABELS[r] ?? r,
+        value: r,
+        emoji: RARITY_EMOJI[r] ?? "🃏",
+        description: "built-in",
+      }));
+      if (interaction.guildId) {
+        const customTiers = await listCustomRarities(interaction.guildId);
+        for (const t of customTiers.slice(0, 25 - RARITIES.length)) {
+          options.push({ label: t.name, value: `custom:${t.slug}`, emoji: t.emoji, description: "custom tier" });
+        }
+      }
       const select = new StringSelectMenuBuilder()
         .setCustomId(`editcard:rarity:${cardId}`)
         .setPlaceholder("Pick a rarity…")
-        .addOptions(RARITIES.map(r => ({
-          label: RARITY_LABELS[r] ?? r,
-          value: r,
-          emoji: RARITY_EMOJI[r] ?? "🃏",
-        })));
+        .addOptions(options);
       await interaction.update({
         content: "✨ Pick the new rarity:",
         embeds: [],
@@ -160,11 +173,18 @@ export async function handleEditCardSelect(interaction: StringSelectMenuInteract
     return;
   }
 
-  // Rarity sub-select
+  // Rarity sub-select (built-in OR custom:slug)
   if (sub === "rarity") {
     await interaction.deferUpdate();
-    if (!RARITIES.includes(value as Rarity)) return;
-    await updateCard(cardId, { rarity: value });
+    if (value.startsWith("custom:")) {
+      const slug = value.slice("custom:".length);
+      if (interaction.guildId) {
+        await assignCardToCustomRarity(interaction.guildId, cardId, slug);
+      }
+    } else {
+      if (!RARITIES.includes(value as Rarity)) return;
+      await updateCard(cardId, { rarity: value });
+    }
     await renderPanel(interaction, cardId, false);
     return;
   }

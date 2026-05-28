@@ -173,6 +173,40 @@ export function buildCommands() {
       .addSubcommand(sc => sc.setName("stop").setDescription("Stop an active event early")
         .addIntegerOption(o => o.setName("id").setDescription("Event ID from /event list").setRequired(true).setMinValue(1)))),
 
+    adminCmd("addcard", "(Admin) Create a new card — attach an image file or paste a URL", s => s
+      .addStringOption(o => o.setName("name").setDescription("Card name").setRequired(true).setMaxLength(80))
+      .addStringOption(o => o.setName("rarity").setDescription("Rarity tier").setRequired(true)
+        .addChoices(
+          { name: "⚪ Common",    value: "common"    },
+          { name: "🟢 Uncommon",  value: "uncommon"  },
+          { name: "🔵 Rare",      value: "rare"      },
+          { name: "🟣 Epic",      value: "epic"      },
+          { name: "🟡 Legendary", value: "legendary" },
+          { name: "🔮 Mythic",    value: "mythic"    },
+        ))
+      .addStringOption(o => o.setName("type").setDescription("Card type").setRequired(true)
+        .addChoices(
+          { name: "tank",        value: "tank"        },
+          { name: "aircraft",    value: "aircraft"    },
+          { name: "ship",        value: "ship"        },
+          { name: "vehicle",     value: "vehicle"     },
+          { name: "infantry",    value: "infantry"    },
+          { name: "boss",        value: "boss"        },
+          { name: "community",   value: "community"   },
+          { name: "event",       value: "event"       },
+          { name: "achievement", value: "achievement" },
+          { name: "limited",     value: "limited"     },
+        ))
+      .addAttachmentOption(o => o.setName("image").setDescription("Upload card image — drag a file from your desktop or Finder"))
+      .addStringOption(o => o.setName("imageurl").setDescription("Or paste an image URL instead of uploading a file").setMaxLength(500))
+      .addStringOption(o => o.setName("description").setDescription("Card description (up to 500 chars)").setMaxLength(500))
+      .addIntegerOption(o => o.setName("worth").setDescription("Worth in 💠 shards (blank = rarity default)").setMinValue(0))
+      .addIntegerOption(o => o.setName("burn").setDescription("Burn value in 💠 (blank = rarity default)").setMinValue(0))
+      .addNumberOption(o => o.setName("weight").setDescription("Drop weight (blank = rarity default)").setMinValue(0))
+      .addBooleanOption(o => o.setName("limited").setDescription("Limited edition — capped copy count?"))
+      .addIntegerOption(o => o.setName("max_copies").setDescription("Max copies if limited (default 50)").setMinValue(1))
+      .addBooleanOption(o => o.setName("event_exclusive").setDescription("Event exclusive — never spawns randomly?"))),
+
     adminCmd("editcard", "(Admin) Edit any card — rarity, worth, image, name, etc.", s => s
       .addStringOption(o => o.setName("name").setDescription("Card to edit").setRequired(true).setAutocomplete(true))),
 
@@ -280,5 +314,5 @@ export const USER_COMMAND_NAMES = new Set([
 
 export const ADMIN_COMMAND_NAMES = new Set([
   "config", "adminhub", "sethub", "set_admin", "welcomeadmin", "adminhelp", "drop", "massdrop", "give", "giveshards", "takeback", "takeshards", "event", "dashboard", "setup",
-  "editcard", "rarity", "embed",
+  "addcard", "editcard", "rarity", "embed",
 ]);
