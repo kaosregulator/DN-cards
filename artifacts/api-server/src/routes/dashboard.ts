@@ -5,7 +5,7 @@ import { z } from "zod/v4";
 import { ACHIEVEMENTS } from "../bot/achievements";
 import { getCollectorRank, getNextRank, SHINY_MULTIPLIER } from "../bot/cards-data";
 import { getBotClient } from "../bot/spawn-manager";
-import { buildDropChanceSummary, getActiveSetSpawnPoolCached, getEffectiveDropWeight, getGuildRarityWeights, getOrCreateGuildSettings, getRarityContext } from "../bot/db";
+import { getEffectiveDropWeight, getGuildDropChanceRuntime } from "../bot/db";
 
 const router: IRouter = Router();
 
@@ -70,28 +70,10 @@ router.get("/cards", async (_req, res) => {
           .from(rarityDisplayOverridesTable)
           .where(eq(rarityDisplayOverridesTable.guildId, homeGuildId))
       : Promise.resolve([] as { rarity: string; displayName: string | null }[]),
-    // Active set + rarity context for the home guild — determines the live spawn pool
-    homeGuildId
-      ? (async () => {
-          const [settings, ctx, spawnPool] = await Promise.all([
-            getOrCreateGuildSettings(homeGuildId),
-            getRarityContext(homeGuildId),
-            getActiveSetSpawnPoolCached(homeGuildId),
-          ]);
-          const rarityWeights = getGuildRarityWeights(settings);
-          return {
-            settings,
-            ctx,
-            spawnPool,
-            rarityWeights,
-            chanceSummary: buildDropChanceSummary(spawnPool.cards, {
-              ctx,
-              rarityWeights,
-              setRarityWeights: spawnPool.rarityWeights,
-            }),
-          };
-        })()
-      : Promise.resolve(null),
+    // Active set + rarity context for the home guild — determines the live spawn pool.
+    // This shared runtime includes rarity profiles, custom tiers, set overrides,
+    // and active event boosts, matching the bot's spawn picker inputs.
+    homeGuildId ? getGuildDropChanceRuntime(homeGuildId) : Promise.resolve(null),
   ]);
 
   const setsByCard = new Map<number, { id: number; name: string }[]>();
@@ -125,6 +107,7 @@ router.get("/cards", async (_req, res) => {
             ctx: rarityRuntime.ctx,
             rarityWeights: rarityRuntime.rarityWeights,
             setRarityWeights: rarityRuntime.spawnPool.rarityWeights,
+            eventBoosts: rarityRuntime.eventBoosts,
           })
         : customTier?.dropWeight ?? r.card.dropWeight;
       const dropChancePercent = rarityRuntime?.chanceSummary.cardPercentById.get(r.card.id) ?? null;

@@ -10,7 +10,7 @@
 import {
   type ChatInputCommandInteraction,
 } from "discord.js";
-import { addCard, getCardByName, getCustomRarityBySlug, assignCardToCustomRarity } from "../db.js";
+import { addCard, addCardToSet, getCardByName, getCustomRarityBySlug, getSetByName, assignCardToCustomRarity } from "../db.js";
 import { renderPanel } from "./edit-card.js";
 import { RARITY_BURN, RARITY_WEIGHTS, RARITY_WORTH, type Rarity } from "../cards-data.js";
 
@@ -32,6 +32,7 @@ export async function handleAddCardCommand(interaction: ChatInputCommandInteract
   const type        = opts.getString("type", true);
   const imageAttachment = opts.getAttachment("image");
   const imageUrl    = imageAttachment?.url ?? opts.getString("imageurl") ?? undefined;
+  const setName     = opts.getString("set")?.trim();
   const description = opts.getString("description") ?? "";
   const limited        = opts.getBoolean("limited") ?? false;
   const maxCopies      = opts.getInteger("max_copies") ?? undefined;
@@ -99,6 +100,17 @@ export async function handleAddCardCommand(interaction: ChatInputCommandInteract
     await assignCardToCustomRarity(guildId, card.id, customSlug);
   }
 
+  let setNote = "";
+  if (setName) {
+    const set = await getSetByName(setName);
+    if (set) {
+      await addCardToSet(set.id, card.id);
+      setNote = ` and added to set \`${set.name}\``;
+    } else {
+      setNote = ` (set \`${setName}\` was not found, so no set was assigned)`;
+    }
+  }
+
   const rarityLabel = customSlug ? `custom tier \`${customSlug}\`` : `**${baseRarity}**`;
-  await renderPanel(interaction, card.id, false, `✅ Created **${card.name}** (${rarityLabel}) — tweak any field below`);
+  await renderPanel(interaction, card.id, false, `✅ Created **${card.name}** (${rarityLabel})${setNote} — tweak any field below`);
 }

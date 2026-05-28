@@ -256,6 +256,7 @@ export function buildCommands() {
         ))
       .addAttachmentOption(o => o.setName("image").setDescription("Upload card image — drag a file from your desktop or Finder"))
       .addStringOption(o => o.setName("imageurl").setDescription("Or paste an image URL instead of uploading a file").setMaxLength(500))
+      .addStringOption(o => o.setName("set").setDescription("Optional set to add this card to immediately").setAutocomplete(true))
       .addStringOption(o => o.setName("description").setDescription("Card description (up to 500 chars)").setMaxLength(500))
       .addIntegerOption(o => o.setName("worth").setDescription("Worth in 💠 shards (blank = rarity default)").setMinValue(0))
       .addIntegerOption(o => o.setName("burn").setDescription("Burn value in 💠 (blank = rarity default)").setMinValue(0))

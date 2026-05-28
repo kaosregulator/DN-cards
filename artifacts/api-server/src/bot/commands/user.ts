@@ -10,7 +10,7 @@ import {
   getRarityContext, applyRarityContextAll,
   effectiveRarityKey, getDisplayRarities,
   getRarityDisplayOverrides,
-  getActiveSetSpawnPoolCached, getGuildRarityWeights, buildDropChanceSummary,
+  getGuildDropChanceRuntime,
 } from "../db.js";
 import {
   RARITY_COLORS, RARITY_EMOJI, RARITY_LABELS, getTypeEmoji,
@@ -310,23 +310,17 @@ export async function handleUserCommand(
   // ── /info ─────────────────────────────────────────────────────────────────────
   if (sub === "info") {
     const cardName = interaction.options.getString("name", true);
-    const rawCards = await getAllCards();
-    const [ctx, infoSettings, infoDisplayMap, spawnPool] = await Promise.all([
-      getRarityContext(guildId),
-      getOrCreateGuildSettings(guildId),
+    const [rawCards, runtime, infoDisplayMap] = await Promise.all([
+      getAllCards(),
+      getGuildDropChanceRuntime(guildId),
       getRarityDisplayOverrides(guildId),
-      getActiveSetSpawnPoolCached(guildId),
     ]);
+    const { ctx, settings: infoSettings, spawnPool, chanceSummary } = runtime;
     const cards = applyRarityContextAll(rawCards, ctx);
     const card = cards.find(c => c.name.toLowerCase() === cardName.toLowerCase());
     if (!card) { await interaction.editReply(`❌ "**${cardName}**" not found. Try \`/list\`.`); return; }
 
     const cardType = card.cardType;
-    const chanceSummary = buildDropChanceSummary(spawnPool.cards, {
-      ctx,
-      rarityWeights: getGuildRarityWeights(infoSettings),
-      setRarityWeights: spawnPool.rarityWeights,
-    });
     const cardChance = chanceSummary.cardPercentById.get(card.id);
     const dropChance = cardChance != null
       ? `~${cardChance.toFixed(2)}%`
@@ -385,13 +379,12 @@ export async function handleUserCommand(
   // Interactive overview → drill-down view of the full roster (no personal
   // stats). Same paginator as /collection and /catalog.
   if (sub === "list") {
-    const rawCards = await getAllCards();
-    const [listCtx, listSettings, listDisplayMap, spawnPool] = await Promise.all([
-      getRarityContext(guildId),
-      getOrCreateGuildSettings(guildId),
+    const [rawCards, runtime, listDisplayMap] = await Promise.all([
+      getAllCards(),
+      getGuildDropChanceRuntime(guildId),
       getRarityDisplayOverrides(guildId),
-      getActiveSetSpawnPoolCached(guildId),
     ]);
+    const { ctx: listCtx, settings: listSettings, spawnPool, chanceSummary } = runtime;
     const cards = applyRarityContextAll(rawCards, listCtx);
     if (cards.length === 0) { await interaction.editReply("No cards in the pool yet."); return; }
 
@@ -414,11 +407,6 @@ export async function handleUserCommand(
     // Aggregate drop-chance share per tier from the active spawn pool using
     // the same resolver as the spawn engine. No active set means no visible
     // random-spawn percentages, matching actual bot behavior.
-    const chanceSummary = buildDropChanceSummary(spawnPool.cards, {
-      ctx: listCtx,
-      rarityWeights: getGuildRarityWeights(listSettings),
-      setRarityWeights: spawnPool.rarityWeights,
-    });
     const tierShare = (key: string) => chanceSummary.rarityPercentByKey.get(key) ?? 0;
 
     // ── Overview ──

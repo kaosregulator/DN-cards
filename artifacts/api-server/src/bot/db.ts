@@ -343,6 +343,23 @@ export function buildDropChanceSummary<T extends EconCard & { id: number; droppa
   return { totalWeight, weightByCardId, weightByRarityKey, cardPercentById, rarityPercentByKey };
 }
 
+export async function getGuildDropChanceRuntime(guildId: string) {
+  const [settings, ctx, spawnPool, eventBoosts] = await Promise.all([
+    getOrCreateGuildSettings(guildId),
+    getRarityContext(guildId),
+    getActiveSetSpawnPoolCached(guildId),
+    getActiveEventBoosts(guildId),
+  ]);
+  const rarityWeights = getGuildRarityWeights(settings);
+  const chanceSummary = buildDropChanceSummary(spawnPool.cards, {
+    ctx,
+    rarityWeights,
+    setRarityWeights: spawnPool.rarityWeights,
+    eventBoosts,
+  });
+  return { settings, ctx, spawnPool, rarityWeights, eventBoosts, chanceSummary };
+}
+
 // ── Seed / resync default cards ───────────────────────────────────────────────
 // Defaults are now tracked purely
 // via the first-class `sets` + `card_set_memberships` tables.
