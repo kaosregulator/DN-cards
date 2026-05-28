@@ -1,8 +1,9 @@
-// /rarity — single hub command. Four sections accessed via buttons:
-//   🎨 Display Names  — cosmetic overrides per built-in tier
-//   📊 Economy        — worth/burn/weight profile overrides per tier
-//   ✨ Custom Tiers    — brand-new tiers beyond the 6 built-ins
-//   🃏 Card Tiers      — assign/unassign cards to custom tiers
+// /rarity — Discord-first rarity settings. Built-in rarities are the primary
+// admin-facing system; advanced custom-tier tools remain for compatibility.
+//   🎛️ Rarity Settings — display + spawn % + worth/burn per built-in tier
+//   🎨 Display          — focused cosmetic editor
+//   📊 Values           — focused spawn % / worth / burn editor
+//   ⚙️ Advanced         — legacy custom-tier/assignment tools
 //
 // Discord = source of truth. The website only ever READS these tables.
 
@@ -56,22 +57,24 @@ type CustomRow = Awaited<ReturnType<typeof listCustomRarities>>[number];
 
 function buildHubPanel() {
   const embed = new EmbedBuilder()
-    .setTitle("🎨 Rarity Hub")
+    .setTitle("🎛️ Rarity Settings")
     .setColor(0x5865f2)
     .setDescription(
-      "Manage all rarity settings for this server.\n\n" +
-      "**🎨 Display Names** — rename, recolor, or change the emoji of any built-in tier\n" +
-      "**📊 Economy Overrides** — adjust worth, burn value, or spawn % per tier\n" +
-      "**✨ Custom Tiers** — create tiers beyond Common → Mythic\n" +
-      "**🃏 Card Tiers** — move a card into a custom tier\n\u200b",
-    );
-  const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
-    new ButtonBuilder().setCustomId("rarity_hub:display").setLabel("🎨 Display Names").setStyle(ButtonStyle.Primary),
-    new ButtonBuilder().setCustomId("rarity_hub:economy").setLabel("📊 Economy Overrides").setStyle(ButtonStyle.Primary),
-    new ButtonBuilder().setCustomId("rarity_hub:custom").setLabel("✨ Custom Tiers").setStyle(ButtonStyle.Secondary),
-    new ButtonBuilder().setCustomId("rarity_hub:cardtier").setLabel("🃏 Card Tiers").setStyle(ButtonStyle.Secondary),
+      "Built-in rarities are the stable source of truth. Configure how each rarity **looks** and **drops** for this server.\n\n" +
+      "Use **Edit Rarities** for the normal flow: display name, emoji, color, spawn %, worth, and burn.\n" +
+      "Advanced custom-tier tools are still available for existing data, but they are not needed for normal setup.\n​",
+    )
+    .setFooter({ text: "Admins see percentages and values here; internal weights stay hidden for compatibility." });
+  const primaryRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder().setCustomId("rarity_hub:settings").setLabel("🎛️ Edit Rarities").setStyle(ButtonStyle.Primary),
+    new ButtonBuilder().setCustomId("rarity_hub:display").setLabel("🎨 Display Only").setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder().setCustomId("rarity_hub:economy").setLabel("📊 Values Only").setStyle(ButtonStyle.Secondary),
   );
-  return { embeds: [embed], components: [row] };
+  const advancedRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder().setCustomId("rarity_hub:custom").setLabel("⚙️ Advanced Labels").setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder().setCustomId("rarity_hub:cardtier").setLabel("⚙️ Legacy Assignments").setStyle(ButtonStyle.Secondary),
+  );
+  return { embeds: [embed], components: [primaryRow, advancedRow] };
 }
 
 export async function handleRarityHubCommand(interaction: ChatInputCommandInteraction): Promise<void> {
@@ -82,17 +85,99 @@ export async function handleRarityHubCommand(interaction: ChatInputCommandIntera
   await interaction.editReply(buildHubPanel());
 }
 
+function buildSettingsPanel(
+  displayMap: RarityDisplayMap,
+  settings: EditSettings | null,
+  profiles: ProfileRow[],
+): { embeds: EmbedBuilder[]; components: ActionRowBuilder<StringSelectMenuBuilder | ButtonBuilder>[] } {
+  const byRarity = new Map(profiles.map(r => [r.rarity as Rarity, r]));
+  const embed = new EmbedBuilder()
+    .setTitle("🎛️ Built-in Rarity Settings")
+    .setColor(0x5865f2)
+    .setDescription(
+      "Pick a built-in rarity to edit its display, spawn chance, worth, and burn for this server. " +
+      "Cards keep their internal rarity identity; these settings only change server behavior and presentation.\n​",
+    );
+
+  for (const r of BUILTIN_RARITIES) {
+    const display = getEffectiveDisplay(r, displayMap, settings);
+    const profile = byRarity.get(r);
+    const values = [
+      `Spawn: ${fmtVal(profile?.dropWeight, "%")}`,
+      `Worth: ${fmtVal(profile?.worthValue, " 💠")}`,
+      `Burn: ${fmtVal(profile?.burnValue, " 💠")}`,
+    ].join(" · ");
+    embed.addFields({ name: `${display.emoji} ${display.label}`, value: values, inline: false });
+  }
+
+  const selectRow = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
+    new StringSelectMenuBuilder()
+      .setCustomId("rarity_hub:settings:select")
+      .setPlaceholder("Choose a built-in rarity to edit…")
+      .addOptions(BUILTIN_RARITIES.map(r => {
+        const display = getEffectiveDisplay(r, displayMap, settings);
+        const profile = byRarity.get(r);
+        const hasValues = profile && (profile.worthValue !== null || profile.burnValue !== null || profile.dropWeight !== null);
+        return {
+          label: `${display.emoji} ${display.label}`,
+          value: r,
+          description: `${display.hasOverride ? "Display set" : "Default display"} · ${hasValues ? "Values set" : "Default values"}`.slice(0, 100),
+        };
+      })),
+  );
+  const backRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder().setCustomId("rarity_hub:main").setLabel("← Back").setStyle(ButtonStyle.Secondary),
+  );
+  return { embeds: [embed], components: [selectRow, backRow] };
+}
+
+function buildSettingsTierPanel(
+  r: Rarity,
+  displayMap: RarityDisplayMap,
+  settings: EditSettings | null,
+  profile: ProfileRow | undefined,
+): { embeds: EmbedBuilder[]; components: ActionRowBuilder<ButtonBuilder>[] } {
+  const display = getEffectiveDisplay(r, displayMap, settings);
+  const embed = new EmbedBuilder()
+    .setTitle(`🎛️ ${display.emoji} ${display.label}`)
+    .setColor(display.color)
+    .setDescription(
+      `Internal rarity: \`${r}\` — stable for inventories and compatibility.\n` +
+      "Edit what admins and players see: display, spawn chance, worth, and burn.\n​",
+    )
+    .addFields(
+      { name: "Display", value: `${display.emoji} **${display.label}** · ${hex(display.color)}`, inline: false },
+      { name: "Spawn Chance", value: fmtVal(profile?.dropWeight, "%"), inline: true },
+      { name: "Worth", value: fmtVal(profile?.worthValue, " 💠"), inline: true },
+      { name: "Burn", value: fmtVal(profile?.burnValue, " 💠"), inline: true },
+    )
+    .setFooter({ text: "Blank/default values fall back to card defaults and the shared rarity runtime." });
+
+  const displayRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder().setCustomId(`rarity_edit:name:${r}`).setLabel("Name").setStyle(ButtonStyle.Primary),
+    new ButtonBuilder().setCustomId(`rarity_edit:emoji:${r}`).setLabel("Emoji").setStyle(ButtonStyle.Primary),
+    new ButtonBuilder().setCustomId(`rarity_edit:color:${r}`).setLabel("Color").setStyle(ButtonStyle.Primary),
+    new ButtonBuilder().setCustomId(`rarity_edit:preview:${r}`).setLabel("Preview").setStyle(ButtonStyle.Secondary),
+  );
+  const valuesRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder().setCustomId(`rarity_hub:settings:editvalues:${r}`).setLabel("Spawn % / Worth / Burn").setStyle(ButtonStyle.Primary),
+    new ButtonBuilder().setCustomId(`rarity_hub:settings:resetvalues:${r}`).setLabel("Reset Values").setStyle(ButtonStyle.Danger),
+    new ButtonBuilder().setCustomId("rarity_hub:settings").setLabel("← Rarities").setStyle(ButtonStyle.Secondary),
+  );
+  return { embeds: [embed], components: [displayRow, valuesRow] };
+}
+
 // ── Economy Overrides ─────────────────────────────────────────────────────────
 
 function buildEconomyPanel(profiles: ProfileRow[]) {
   const byRarity = new Map(profiles.map(r => [r.rarity as Rarity, r]));
   const embed = new EmbedBuilder()
-    .setTitle("📊 Economy Overrides")
+    .setTitle("📊 Rarity Values")
     .setColor(0x5865f2)
     .setDescription(
-      "Set worth, burn, and the visible spawn % source for any built-in tier. " +
-      "Overrides apply to **every card in that tier** for this server.\n" +
-      "Pick a tier from the menu to configure it.\n\u200b",
+      "Set spawn chance, worth, and burn for built-in rarities. " +
+      "These values apply to **every card in that rarity** for this server.\n" +
+      "Pick a rarity from the menu to configure it.\n\u200b",
     );
   for (const r of BUILTIN_RARITIES) {
     const row = byRarity.get(r);
@@ -114,7 +199,7 @@ function buildEconomyPanel(profiles: ProfileRow[]) {
         const parts: string[] = [];
         if (row?.worthValue != null) parts.push(`Worth: ${row.worthValue}`);
         if (row?.burnValue != null) parts.push(`Burn: ${row.burnValue}`);
-        if (row?.dropWeight != null) parts.push(`Spawn %: ${row.dropWeight}`);
+        if (row?.dropWeight != null) parts.push(`Spawn: ${row.dropWeight}%`);
         return {
           label: `${RARITY_EMOJI[r]} ${RARITY_LABELS[r]}`,
           value: r,
@@ -139,11 +224,11 @@ function buildEconomyTierPanel(rarity: Rarity, profile: ProfileRow | undefined) 
     .addFields(
       { name: "Worth", value: fmtVal(profile?.worthValue, " 💠"), inline: true },
       { name: "Burn", value: fmtVal(profile?.burnValue, " 💠"), inline: true },
-      { name: "Spawn % Source", value: fmtVal(profile?.dropWeight), inline: true },
+      { name: "Spawn Chance", value: fmtVal(profile?.dropWeight, "%"), inline: true },
     );
   if (!hasOverride) embed.setDescription("*No overrides — cards in this tier use their own values.*\n\u200b");
   const row1 = new ActionRowBuilder<ButtonBuilder>().addComponents(
-    new ButtonBuilder().setCustomId(`rarity_hub:economy:set:${rarity}`).setLabel("✏️ Set Overrides").setStyle(ButtonStyle.Primary),
+    new ButtonBuilder().setCustomId(`rarity_hub:economy:set:${rarity}`).setLabel("✏️ Edit Values").setStyle(ButtonStyle.Primary),
     new ButtonBuilder().setCustomId(`rarity_hub:economy:reset:${rarity}`).setLabel("🔄 Reset").setStyle(ButtonStyle.Danger),
   );
   const row2 = new ActionRowBuilder<ButtonBuilder>().addComponents(
@@ -157,12 +242,12 @@ function buildEconomyTierPanel(rarity: Rarity, profile: ProfileRow | undefined) 
 
 function buildCustomPanel(tiers: CustomRow[]) {
   const embed = new EmbedBuilder()
-    .setTitle("✨ Custom Tiers")
+    .setTitle("⚙️ Advanced Labels (Legacy Custom Tiers)")
     .setColor(0x5865f2)
     .setDescription(
       tiers.length === 0
-        ? "_No custom tiers yet. Click **Add Tier** to create one._\n\u200b"
-        : `${tiers.length} custom tier${tiers.length === 1 ? "" : "s"} in this server. Built-ins occupy positions 1–6.\n\u200b`,
+        ? "_No advanced labels yet. Most servers do not need these._\n\u200b"
+        : `${tiers.length} advanced label${tiers.length === 1 ? "" : "s"} in this server. Built-in rarities remain the primary system.\n\u200b`,
     );
   for (const t of tiers) {
     embed.addFields({
@@ -175,12 +260,12 @@ function buildCustomPanel(tiers: CustomRow[]) {
     });
   }
   const btns: ButtonBuilder[] = [
-    new ButtonBuilder().setCustomId("rarity_hub:custom:add").setLabel("➕ Add Tier").setStyle(ButtonStyle.Success),
+    new ButtonBuilder().setCustomId("rarity_hub:custom:add").setLabel("➕ Add Advanced Label").setStyle(ButtonStyle.Success),
   ];
   if (tiers.length > 0) {
     btns.push(
-      new ButtonBuilder().setCustomId("rarity_hub:custom:edit").setLabel("✏️ Edit Tier").setStyle(ButtonStyle.Primary),
-      new ButtonBuilder().setCustomId("rarity_hub:custom:remove").setLabel("🗑️ Remove Tier").setStyle(ButtonStyle.Danger),
+      new ButtonBuilder().setCustomId("rarity_hub:custom:edit").setLabel("✏️ Edit Label").setStyle(ButtonStyle.Primary),
+      new ButtonBuilder().setCustomId("rarity_hub:custom:remove").setLabel("🗑️ Remove Label").setStyle(ButtonStyle.Danger),
     );
   }
   btns.push(new ButtonBuilder().setCustomId("rarity_hub:main").setLabel("← Hub").setStyle(ButtonStyle.Secondary));
@@ -190,12 +275,12 @@ function buildCustomPanel(tiers: CustomRow[]) {
 
 function buildCustomSelectPanel(tiers: CustomRow[], action: "edit" | "remove") {
   const embed = new EmbedBuilder()
-    .setTitle(action === "edit" ? "✏️ Pick a Tier to Edit" : "🗑️ Pick a Tier to Remove")
+    .setTitle(action === "edit" ? "✏️ Pick an Advanced Label to Edit" : "🗑️ Pick an Advanced Label to Remove")
     .setColor(action === "edit" ? 0x5865f2 : 0xe74c3c)
     .setDescription(
       action === "remove"
-        ? "⚠️ Cards in the removed tier will revert to their built-in rarity.\n\u200b"
-        : "Select a custom tier to edit.\n\u200b",
+        ? "⚠️ Cards assigned to this legacy label will revert to their built-in rarity.\n\u200b"
+        : "Select an advanced label to edit. Most servers should use built-in rarity settings instead.\n\u200b",
     );
   const select = new StringSelectMenuBuilder()
     .setCustomId(`rarity_hub:custom:select:${action}`)
@@ -203,11 +288,11 @@ function buildCustomSelectPanel(tiers: CustomRow[], action: "edit" | "remove") {
     .addOptions(tiers.slice(0, 25).map(t => ({
       label: `${t.emoji} ${t.name}`,
       value: t.slug,
-      description: `Worth ${t.worthValue} · Burn ${t.burnValue} · Weight ${t.dropWeight}`.slice(0, 100),
+      description: `Advanced · Worth ${t.worthValue} · Burn ${t.burnValue} · Spawn ${t.dropWeight}%`.slice(0, 100),
     })));
   const selectRow = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(select);
   const backRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
-    new ButtonBuilder().setCustomId("rarity_hub:custom").setLabel("← Custom Tiers").setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder().setCustomId("rarity_hub:custom").setLabel("← Advanced Labels").setStyle(ButtonStyle.Secondary),
   );
   return { embeds: [embed], components: [selectRow, backRow] };
 }
@@ -216,15 +301,15 @@ function buildCustomSelectPanel(tiers: CustomRow[], action: "edit" | "remove") {
 
 function buildCardTierPanel() {
   const embed = new EmbedBuilder()
-    .setTitle("🃏 Card Tier Assignments")
+    .setTitle("⚙️ Legacy Card Assignments")
     .setColor(0x5865f2)
     .setDescription(
-      "Assign a card into a custom tier — the tier's worth, burn, and spawn % source replace the card's own values.\n" +
-      "Unassigning reverts the card back to its built-in rarity.\n\u200b",
+      "Advanced compatibility tool: assign a card to a legacy custom tier.\n" +
+      "For normal rarity setup, use built-in rarity settings instead. Unassigning reverts the card back to its built-in rarity.\n\u200b",
     );
   const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
-    new ButtonBuilder().setCustomId("rarity_hub:cardtier:assign").setLabel("📌 Assign Card to Tier").setStyle(ButtonStyle.Primary),
-    new ButtonBuilder().setCustomId("rarity_hub:cardtier:unassign").setLabel("🔓 Unassign Card").setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder().setCustomId("rarity_hub:cardtier:assign").setLabel("📌 Assign Legacy Label").setStyle(ButtonStyle.Primary),
+    new ButtonBuilder().setCustomId("rarity_hub:cardtier:unassign").setLabel("🔓 Clear Legacy Label").setStyle(ButtonStyle.Secondary),
     new ButtonBuilder().setCustomId("rarity_hub:main").setLabel("← Hub").setStyle(ButtonStyle.Secondary),
   );
   return { embeds: [embed], components: [row] };
@@ -241,12 +326,12 @@ export async function handleRarityHubButton(interaction: ButtonInteraction): Pro
   const sub = parts[2];
   const extra = parts[3];
 
-  // ── Economy: set override → modal (no defer) ──────────────────────────────
-  if (section === "economy" && sub === "set" && extra && BUILTIN_RARITIES.includes(extra as Rarity)) {
+  // ── Built-in settings: values modal (no defer) ────────────────────────────
+  if (section === "settings" && sub === "editvalues" && extra && BUILTIN_RARITIES.includes(extra as Rarity)) {
     const r = extra as Rarity;
     const modal = new ModalBuilder()
-      .setCustomId(`rarity_hub:modal:economy:${r}`)
-      .setTitle(`${RARITY_EMOJI[r]} ${RARITY_LABELS[r]} — Set Overrides`)
+      .setCustomId(`rarity_hub:modal:settingsvalues:${r}`)
+      .setTitle(`Edit ${RARITY_LABELS[r]} — Values`)
       .addComponents(
         new ActionRowBuilder<TextInputBuilder>().addComponents(
           new TextInputBuilder().setCustomId("worth").setLabel("Worth (💠 shards)").setStyle(TextInputStyle.Short)
@@ -257,7 +342,31 @@ export async function handleRarityHubButton(interaction: ButtonInteraction): Pro
             .setRequired(false).setPlaceholder("Leave blank to keep current value").setMaxLength(10),
         ),
         new ActionRowBuilder<TextInputBuilder>().addComponents(
-          new TextInputBuilder().setCustomId("weight").setLabel("Drop % (0 = disabled, e.g. 1.5)").setStyle(TextInputStyle.Short)
+          new TextInputBuilder().setCustomId("weight").setLabel("Spawn chance % (e.g. 30)").setStyle(TextInputStyle.Short)
+            .setRequired(false).setPlaceholder("Leave blank to keep current value").setMaxLength(10),
+        ),
+      );
+    await interaction.showModal(modal);
+    return;
+  }
+
+  // ── Economy: set override → modal (no defer) ──────────────────────────────
+  if (section === "economy" && sub === "set" && extra && BUILTIN_RARITIES.includes(extra as Rarity)) {
+    const r = extra as Rarity;
+    const modal = new ModalBuilder()
+      .setCustomId(`rarity_hub:modal:economy:${r}`)
+      .setTitle(`${RARITY_EMOJI[r]} ${RARITY_LABELS[r]} — Values`)
+      .addComponents(
+        new ActionRowBuilder<TextInputBuilder>().addComponents(
+          new TextInputBuilder().setCustomId("worth").setLabel("Worth (💠 shards)").setStyle(TextInputStyle.Short)
+            .setRequired(false).setPlaceholder("Leave blank to keep current value").setMaxLength(10),
+        ),
+        new ActionRowBuilder<TextInputBuilder>().addComponents(
+          new TextInputBuilder().setCustomId("burn").setLabel("Burn value (💠 shards)").setStyle(TextInputStyle.Short)
+            .setRequired(false).setPlaceholder("Leave blank to keep current value").setMaxLength(10),
+        ),
+        new ActionRowBuilder<TextInputBuilder>().addComponents(
+          new TextInputBuilder().setCustomId("weight").setLabel("Spawn chance % (e.g. 30)").setStyle(TextInputStyle.Short)
             .setRequired(false).setPlaceholder("Leave blank to keep current value").setMaxLength(10),
         ),
       );
@@ -269,7 +378,7 @@ export async function handleRarityHubButton(interaction: ButtonInteraction): Pro
   if (section === "custom" && sub === "add") {
     const modal = new ModalBuilder()
       .setCustomId("rarity_hub:modal:custom:add")
-      .setTitle("Create Custom Tier")
+      .setTitle("Create Advanced Label")
       .addComponents(
         new ActionRowBuilder<TextInputBuilder>().addComponents(
           new TextInputBuilder().setCustomId("name").setLabel("Display name (e.g. Ultra, Prismatic)").setStyle(TextInputStyle.Short)
@@ -280,7 +389,7 @@ export async function handleRarityHubButton(interaction: ButtonInteraction): Pro
             .setRequired(true).setMaxLength(8),
         ),
         new ActionRowBuilder<TextInputBuilder>().addComponents(
-          new TextInputBuilder().setCustomId("position").setLabel("Position (1=Common … 6=Mythic, 5.5=between)").setStyle(TextInputStyle.Short)
+          new TextInputBuilder().setCustomId("position").setLabel("Advanced order (1=Common … 6=Mythic)").setStyle(TextInputStyle.Short)
             .setRequired(true).setMaxLength(10).setPlaceholder("e.g. 5.5 to sit between Legendary and Mythic"),
         ),
         new ActionRowBuilder<TextInputBuilder>().addComponents(
@@ -288,7 +397,7 @@ export async function handleRarityHubButton(interaction: ButtonInteraction): Pro
             .setRequired(true).setMaxLength(10).setPlaceholder("e.g. 3000"),
         ),
         new ActionRowBuilder<TextInputBuilder>().addComponents(
-          new TextInputBuilder().setCustomId("drop").setLabel("Drop % (0 = disabled, e.g. 15)").setStyle(TextInputStyle.Short)
+          new TextInputBuilder().setCustomId("drop").setLabel("Legacy spawn % (0 = disabled)").setStyle(TextInputStyle.Short)
             .setRequired(true).setMaxLength(10).setPlaceholder("e.g. 15 for ~15% of spawns"),
         ),
       );
@@ -300,14 +409,14 @@ export async function handleRarityHubButton(interaction: ButtonInteraction): Pro
   if (section === "cardtier" && sub === "assign") {
     const modal = new ModalBuilder()
       .setCustomId("rarity_hub:modal:cardtier:assign")
-      .setTitle("Assign Card to Custom Tier")
+      .setTitle("Assign Legacy Label")
       .addComponents(
         new ActionRowBuilder<TextInputBuilder>().addComponents(
           new TextInputBuilder().setCustomId("card").setLabel("Card name (exact)").setStyle(TextInputStyle.Short)
             .setRequired(true).setMaxLength(100),
         ),
         new ActionRowBuilder<TextInputBuilder>().addComponents(
-          new TextInputBuilder().setCustomId("tier").setLabel("Custom tier name (e.g. Ultra)").setStyle(TextInputStyle.Short)
+          new TextInputBuilder().setCustomId("tier").setLabel("Advanced label name (e.g. Event)").setStyle(TextInputStyle.Short)
             .setRequired(true).setMaxLength(100),
         ),
       );
@@ -318,7 +427,7 @@ export async function handleRarityHubButton(interaction: ButtonInteraction): Pro
   if (section === "cardtier" && sub === "unassign") {
     const modal = new ModalBuilder()
       .setCustomId("rarity_hub:modal:cardtier:unassign")
-      .setTitle("Unassign Card from Custom Tier")
+      .setTitle("Clear Legacy Label")
       .addComponents(
         new ActionRowBuilder<TextInputBuilder>().addComponents(
           new TextInputBuilder().setCustomId("card").setLabel("Card name (exact)").setStyle(TextInputStyle.Short)
@@ -335,6 +444,27 @@ export async function handleRarityHubButton(interaction: ButtonInteraction): Pro
 
   if (section === "main") {
     await interaction.editReply(buildHubPanel());
+    return;
+  }
+
+  if (section === "settings") {
+    if (sub === "resetvalues" && extra && BUILTIN_RARITIES.includes(extra as Rarity)) {
+      const r = extra as Rarity;
+      await deleteRarityProfile(guildId, r);
+      const [displayMap, settings, profiles] = await Promise.all([
+        getRarityDisplayOverrides(guildId),
+        getOrCreateGuildSettings(guildId),
+        listRarityProfiles(guildId),
+      ]);
+      await interaction.editReply(buildSettingsTierPanel(r, displayMap, settings, profiles.find(p => p.rarity === r)));
+      return;
+    }
+    const [displayMap, settings, profiles] = await Promise.all([
+      getRarityDisplayOverrides(guildId),
+      getOrCreateGuildSettings(guildId),
+      listRarityProfiles(guildId),
+    ]);
+    await interaction.editReply(buildSettingsPanel(displayMap, settings, profiles));
     return;
   }
 
@@ -382,7 +512,7 @@ export async function handleRarityHubButton(interaction: ButtonInteraction): Pro
     if (sub === "edit") {
       const tiers = await listCustomRarities(guildId);
       if (tiers.length === 0) {
-        await interaction.followUp({ content: "❌ No custom tiers to edit. Add one first.", flags: MessageFlags.Ephemeral });
+        await interaction.followUp({ content: "❌ No advanced labels to edit. Add one first.", flags: MessageFlags.Ephemeral });
         return;
       }
       await interaction.editReply(buildCustomSelectPanel(tiers, "edit"));
@@ -391,7 +521,7 @@ export async function handleRarityHubButton(interaction: ButtonInteraction): Pro
     if (sub === "remove") {
       const tiers = await listCustomRarities(guildId);
       if (tiers.length === 0) {
-        await interaction.followUp({ content: "❌ No custom tiers to remove.", flags: MessageFlags.Ephemeral });
+        await interaction.followUp({ content: "❌ No advanced labels to remove.", flags: MessageFlags.Ephemeral });
         return;
       }
       await interaction.editReply(buildCustomSelectPanel(tiers, "remove"));
@@ -415,6 +545,18 @@ export async function handleRarityHubSelect(interaction: StringSelectMenuInterac
   const section = parts[1]!;
   const sub = parts[2];
   const action = parts[3] as "edit" | "remove" | undefined;
+
+  if (section === "settings" && sub === "select") {
+    await interaction.deferUpdate();
+    const r = interaction.values[0] as Rarity;
+    const [displayMap, settings, profiles] = await Promise.all([
+      getRarityDisplayOverrides(guildId),
+      getOrCreateGuildSettings(guildId),
+      listRarityProfiles(guildId),
+    ]);
+    await interaction.editReply(buildSettingsTierPanel(r, displayMap, settings, profiles.find(p => p.rarity === r)));
+    return;
+  }
 
   if (section === "economy" && sub === "select") {
     await interaction.deferUpdate();
@@ -462,7 +604,7 @@ export async function handleRarityHubSelect(interaction: StringSelectMenuInterac
             .setRequired(false).setMaxLength(8).setValue(tier.emoji),
         ),
         new ActionRowBuilder<TextInputBuilder>().addComponents(
-          new TextInputBuilder().setCustomId("drop").setLabel("Drop % (0 = disabled, e.g. 15)").setStyle(TextInputStyle.Short)
+          new TextInputBuilder().setCustomId("drop").setLabel("Legacy spawn % (0 = disabled)").setStyle(TextInputStyle.Short)
             .setRequired(false).setMaxLength(10).setValue(String(tier.dropWeight)),
         ),
         new ActionRowBuilder<TextInputBuilder>().addComponents(
@@ -493,7 +635,7 @@ export async function handleRarityHubModal(interaction: ModalSubmitInteraction):
   const slugExtra = parts[4];
 
   // ── Economy modal ─────────────────────────────────────────────────────────
-  if (section === "economy" && extra) {
+  if ((section === "economy" || section === "settingsvalues") && extra) {
     const r = extra as Rarity;
     const worthRaw = interaction.fields.getTextInputValue("worth").trim();
     const burnRaw = interaction.fields.getTextInputValue("burn").trim();
@@ -512,7 +654,7 @@ export async function handleRarityHubModal(interaction: ModalSubmitInteraction):
     }
     if (weightRaw) {
       const v = parseFloat(weightRaw);
-      if (isNaN(v) || v < 0) { await interaction.followUp({ content: "❌ Drop % source must be a non-negative number.", flags: MessageFlags.Ephemeral }); return; }
+      if (isNaN(v) || v < 0) { await interaction.followUp({ content: "❌ Spawn chance must be a non-negative number.", flags: MessageFlags.Ephemeral }); return; }
       patch.dropWeight = v;
     }
     if (Object.keys(patch).length <= 1) {
@@ -522,7 +664,15 @@ export async function handleRarityHubModal(interaction: ModalSubmitInteraction):
     await upsertRarityProfile(guildId, r, patch);
     const profiles = await listRarityProfiles(guildId);
     const profile = profiles.find(p => p.rarity === r);
-    await interaction.editReply(buildEconomyTierPanel(r, profile));
+    if (section === "settingsvalues") {
+      const [displayMap, settings] = await Promise.all([
+        getRarityDisplayOverrides(guildId),
+        getOrCreateGuildSettings(guildId),
+      ]);
+      await interaction.editReply(buildSettingsTierPanel(r, displayMap, settings, profile));
+    } else {
+      await interaction.editReply(buildEconomyTierPanel(r, profile));
+    }
     return;
   }
 
