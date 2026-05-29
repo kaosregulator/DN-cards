@@ -9,6 +9,7 @@ export interface CardDisplayOverride {
   displayName: string | null;
   displayImageUrl: string | null;
   displayDescription: string | null;
+  displayCategory: string | null;
   flavorText: string | null;
   hiddenFromSite: boolean;
   featured: boolean;
@@ -48,6 +49,9 @@ export interface Card {
   // these override `rarity` for display/grouping on the public website.
   effectiveRarity?: string;
   effectiveRarityLabel?: string;
+  // Website-only category/grouping override from the private admin panel.
+  websiteCategory?: string | null;
+  websiteCategoryLabel?: string | null;
   // Server-resolved spawn values. Percentages are null when no HOME_GUILD_ID/active pool is available.
   effectiveDropWeight?: number;
   dropChancePercent?: number | null;
@@ -65,6 +69,7 @@ export type DisplayOverridePatch = Partial<{
   displayName: string | null;
   displayImageUrl: string | null;
   displayDescription: string | null;
+  displayCategory: string | null;
   flavorText: string | null;
   hiddenFromSite: boolean;
   featured: boolean;
