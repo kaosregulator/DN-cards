@@ -69,7 +69,7 @@ function ImageUploadField({
   const preview = resolveImageUrl(value);
   return (
     <div className="space-y-2">
-      <Label htmlFor={id}>Display image (overrides spawn image on website only)</Label>
+      <Label htmlFor={id}>Display image/GIF (website only)</Label>
       <div className="flex gap-3 items-start">
         <div className="h-20 w-20 rounded-md bg-muted/50 border border-border/40 overflow-hidden flex-shrink-0 flex items-center justify-center">
           {preview
@@ -77,19 +77,13 @@ function ImageUploadField({
             : <span className="text-[10px] text-muted-foreground font-mono">no override</span>}
         </div>
         <div className="flex-1 space-y-2">
-          <Input
-            id={id}
-            value={value ?? ""}
-            onChange={(e) => onChange(e.target.value || null)}
-            placeholder={placeholder ?? "Leave blank to use the Discord image"}
-          />
           <div className="flex items-center gap-2">
             <label className={`inline-flex items-center gap-2 text-xs px-3 py-1.5 rounded-md border border-border/60 cursor-pointer hover:bg-muted transition-colors ${uploading ? "opacity-60 cursor-wait" : ""}`}>
               {uploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
-              {uploading ? "Uploading…" : "Upload image"}
+              {uploading ? "Uploading…" : "Upload image/GIF"}
               <input
                 type="file"
-                accept="image/*"
+                accept="image/png,image/jpeg,image/gif,image/webp,image/avif"
                 className="sr-only"
                 disabled={uploading}
                 onChange={async (e) => {
@@ -100,7 +94,7 @@ function ImageUploadField({
                   try {
                     const path = await uploadImageFile(file);
                     onChange(path);
-                    toast({ title: "Image uploaded" });
+                    toast({ title: "Upload saved" });
                   } catch (err) {
                     toast({ variant: "destructive", title: "Upload failed", description: err instanceof Error ? err.message : "Unknown error" });
                   } finally {
@@ -249,7 +243,6 @@ function EditDialog({
                 <Row k="Type" v={card.cardType} />
                 <Row k="Worth" v={`${card.worthValue.toLocaleString()} 💠`} />
                 <Row k="Burn" v={`${card.burnValue.toLocaleString()} 💠`} />
-                <Row k="Spawn chance source" v={String(card.dropWeight)} />
                 <Row k="In packs" v={card.inPacks ? "yes" : "no"} />
                 <Row k="Droppable" v={card.droppable ? "yes" : "no"} />
                 <Row k="Limited" v={card.isLimitedEdition ? `yes (${card.totalMinted}/${card.maxCopies ?? "∞"})` : "no"} />
