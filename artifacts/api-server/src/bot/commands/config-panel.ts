@@ -5,9 +5,9 @@ import {
   type ChatInputCommandInteraction, type ButtonInteraction,
   type StringSelectMenuInteraction, type ModalSubmitInteraction,
 } from "discord.js";
-import { getOrCreateGuildSettings, updateGuildSettings, isAdmin, getActiveSet } from "../db.js";
+import { getOrCreateGuildSettings, updateGuildSettings, isAdmin, getActiveSet, getRarityDisplayOverrides } from "../db.js";
 import { scheduleNextSpawn, clearSpawnTimer } from "../spawn-manager.js";
-import { RARITY_WEIGHTS, RARITY_LABELS, RARITY_EMOJI, type Rarity } from "../cards-data.js";
+import { RARITY_WEIGHTS, RARITY_LABELS, RARITY_EMOJI, rarityLabel, rarityEmoji, type Rarity, type RarityDisplayMap } from "../cards-data.js";
 import type { GuildSettings } from "@workspace/db";
 import { PACK_TIERS, PACK_TIER_META, PACK_DEFAULTS, resolveTierConfig, type PackTier } from "./pack.js";
 
@@ -48,13 +48,14 @@ export async function handleConfigCommand(interaction: ChatInputCommandInteracti
   const ok = await ensureAdmin(interaction);
   if (!ok) return;
   const guildId = interaction.guild.id;
-  const [settings, activeSet] = await Promise.all([
+  const [settings, activeSet, displayMap] = await Promise.all([
     getOrCreateGuildSettings(guildId),
     getActiveSet(guildId),
+    getRarityDisplayOverrides(guildId),
   ]);
   await interaction.editReply({
-    embeds: [buildConfigEmbed(settings, activeSet?.name ?? null)],
-    components: buildConfigComponents(settings),
+    embeds: [buildConfigEmbed(settings, activeSet?.name ?? null, displayMap)],
+    components: buildConfigComponents(settings, displayMap),
   });
 }
 
@@ -102,8 +103,11 @@ export async function handleConfigButton(interaction: ButtonInteraction): Promis
   if (action === "rates" && arg === "custom") {
     const ok = await ensureAdmin(interaction);
     if (!ok) return;
-    const settings = await getOrCreateGuildSettings(guildId);
-    await interaction.showModal(buildCustomMixModal(settings));
+    const [settings, displayMap] = await Promise.all([
+      getOrCreateGuildSettings(guildId),
+      getRarityDisplayOverrides(guildId),
+    ]);
+    await interaction.showModal(buildCustomMixModal(settings, displayMap));
     return;
   }
 
@@ -145,10 +149,13 @@ export async function handleConfigButton(interaction: ButtonInteraction): Promis
       return;
     }
     // rates:open — show rates sub-panel (replaces config panel in-place)
-    const settings = await getOrCreateGuildSettings(guildId);
+    const [settings, displayMap] = await Promise.all([
+      getOrCreateGuildSettings(guildId),
+      getRarityDisplayOverrides(guildId),
+    ]);
     await interaction.editReply({
-      embeds: [buildRatesEmbed(settings)],
-      components: buildRatesComponents(settings),
+      embeds: [buildRatesEmbed(settings, displayMap)],
+      components: buildRatesComponents(settings, displayMap),
     });
     return;
   } else if (action === "packs") {
@@ -250,10 +257,13 @@ export async function handleRatesSelect(interaction: StringSelectMenuInteraction
   const weight: number | null = raw === "default" ? null : parseInt(raw!, 10);
   await updateGuildSettings(guildId, { [rarityWeightKey(rarity)]: weight } as Partial<GuildSettings>);
 
-  const settings = await getOrCreateGuildSettings(guildId);
+  const [settings, displayMap] = await Promise.all([
+    getOrCreateGuildSettings(guildId),
+    getRarityDisplayOverrides(guildId),
+  ]);
   await interaction.editReply({
-    embeds: [buildRatesEmbed(settings)],
-    components: buildRatesComponents(settings),
+    embeds: [buildRatesEmbed(settings, displayMap)],
+    components: buildRatesComponents(settings, displayMap),
   });
 }
 
@@ -263,10 +273,13 @@ async function refreshPanel(
   settings: GuildSettings,
 ): Promise<void> {
   const guildId = interaction.guild!.id;
-  const activeSet = await getActiveSet(guildId);
+  const [activeSet, displayMap] = await Promise.all([
+    getActiveSet(guildId),
+    getRarityDisplayOverrides(guildId),
+  ]);
   await interaction.editReply({
-    embeds: [buildConfigEmbed(settings, activeSet?.name ?? null)],
-    components: buildConfigComponents(settings),
+    embeds: [buildConfigEmbed(settings, activeSet?.name ?? null, displayMap)],
+    components: buildConfigComponents(settings, displayMap),
   });
 }
 
@@ -293,7 +306,7 @@ async function ensureAdmin(
   return !!allowed;
 }
 
-function buildConfigEmbed(s: GuildSettings, activeSetName: string | null): EmbedBuilder {
+function buildConfigEmbed(s: GuildSettings, activeSetName: string | null, displayMap?: RarityDisplayMap | null): EmbedBuilder {
   const catchMode = (s as unknown as { catchMode?: string }).catchMode ?? "type";
   const modeLabel = ({
     type: "Typing",
@@ -366,14 +379,14 @@ function buildConfigEmbed(s: GuildSettings, activeSetName: string | null): Embed
       },
       {
         name: "🎛️ Rarity Setup (visible spawn chance by rarity)",
-        value: rarityRowsSummary(s),
+        value: rarityRowsSummary(s, displayMap),
         inline: false,
       },
     )
     .setFooter({ text: "Ephemeral — only you see this. Use /sethub to change the active set." });
 }
 
-function buildConfigComponents(s: GuildSettings) {
+function buildConfigComponents(s: GuildSettings, displayMap?: RarityDisplayMap | null) {
   const catchMode = (s as unknown as { catchMode?: string }).catchMode ?? "type";
 
   const modeSelect = new StringSelectMenuBuilder()
@@ -509,18 +522,18 @@ function rarityBar(s: GuildSettings): string {
   return RARITY_ORDER.map((r, i) => blocks[r].repeat(floors[i]!)).join("");
 }
 
-function rarityRowsSummary(s: GuildSettings): string {
+function rarityRowsSummary(s: GuildSettings, displayMap?: RarityDisplayMap | null): string {
   const weights = RARITY_ORDER.map(r => effectiveWeight(s, r));
   const total = weights.reduce((a, b) => a + b, 0) || 1;
   return RARITY_ORDER.map((r, i) => {
     const w = weights[i]!;
     const pct = ((w / total) * 100).toFixed(1);
     const tag = getRarityWeight(s, r) === null ? " *(default)*" : "";
-    return `${RARITY_EMOJI[r]} **${RARITY_LABELS[r]}** — ${pct}%${tag}`;
+    return `${rarityEmoji(r, s, displayMap)} **${rarityLabel(r, s, displayMap)}** — ${pct}%${tag}`;
   }).join("\n");
 }
 
-function buildRatesEmbed(s: GuildSettings): EmbedBuilder {
+function buildRatesEmbed(s: GuildSettings, displayMap?: RarityDisplayMap | null): EmbedBuilder {
   const weights = RARITY_ORDER.map(r => effectiveWeight(s, r));
   const total = weights.reduce((a, b) => a + b, 0);
   const balanced = total === 100;
@@ -538,11 +551,11 @@ function buildRatesEmbed(s: GuildSettings): EmbedBuilder {
       `${rarityBar(s)}\n\n` +
       note,
     )
-    .addFields({ name: "Current mix", value: rarityRowsSummary(s), inline: false })
+    .addFields({ name: "Current mix", value: rarityRowsSummary(s, displayMap), inline: false })
     .setFooter({ text: "Changes save instantly. To start over, close this and use 🔄 Reset % on the main config panel." });
 }
 
-function buildRatesComponents(s: GuildSettings) {
+function buildRatesComponents(s: GuildSettings, displayMap?: RarityDisplayMap | null) {
   // Discord caps action rows at 5 — so all 5 rarities go here, no room for a button.
   // Reset is exposed via the 🔄 Reset Mix button on the main config panel.
   // Mythic is intentionally excluded; configure it from the dashboard.
@@ -564,7 +577,7 @@ function buildRatesComponents(s: GuildSettings) {
     });
     const select = new StringSelectMenuBuilder()
       .setCustomId(`rates_${r}`)
-      .setPlaceholder(`${RARITY_EMOJI[r]} ${RARITY_LABELS[r]} — spawn %`)
+      .setPlaceholder(`${rarityEmoji(r, s, displayMap)} ${rarityLabel(r, s, displayMap)} — spawn %`)
       .addOptions(opts);
     return new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(select);
   });
@@ -574,7 +587,7 @@ function buildRatesComponents(s: GuildSettings) {
 // Lets the admin type any % for each rarity. Values can be any non-negative
 // integer; if they don't sum to 100, Discord auto-normalises in the spawn engine
 // (same behaviour as the preset dropdowns).
-function buildCustomMixModal(s: GuildSettings): ModalBuilder {
+function buildCustomMixModal(s: GuildSettings, displayMap?: RarityDisplayMap | null): ModalBuilder {
   const modal = new ModalBuilder()
     .setCustomId("rates_custom")
     .setTitle("Exact Rarity % (sum to 100)");
@@ -582,7 +595,7 @@ function buildCustomMixModal(s: GuildSettings): ModalBuilder {
   const inputs = UI_RARITY_ORDER.map(r =>
     new TextInputBuilder()
       .setCustomId(`mix_${r}`)
-      .setLabel(`${RARITY_LABELS[r]} %`)
+      .setLabel(`${rarityLabel(r, s, displayMap)} %`)
       .setStyle(TextInputStyle.Short)
       .setRequired(true)
       .setMaxLength(3)
@@ -609,6 +622,7 @@ export async function handleRatesCustomModal(interaction: ModalSubmitInteraction
     return;
   }
 
+  const displayMap = await getRarityDisplayOverrides(guildId);
   const patch: Partial<GuildSettings> = {};
   const parsed: { r: Rarity; v: number }[] = [];
   for (const r of UI_RARITY_ORDER) {
@@ -616,7 +630,7 @@ export async function handleRatesCustomModal(interaction: ModalSubmitInteraction
     const n = parseInt(raw, 10);
     if (!Number.isFinite(n) || n < 0 || n > 100) {
       await interaction.reply({
-        content: `❌ **${RARITY_LABELS[r]}** must be a whole number from 0–100. You entered: \`${raw}\``,
+        content: `❌ **${rarityLabel(r, null, displayMap)}** must be a whole number from 0–100. You entered: \`${raw}\``,
         flags: MessageFlags.Ephemeral,
       });
       return;
@@ -636,10 +650,10 @@ export async function handleRatesCustomModal(interaction: ModalSubmitInteraction
 
   await updateGuildSettings(guildId, patch);
   const settings = await getOrCreateGuildSettings(guildId);
-  const summary = parsed.map(({ r, v }) => `${RARITY_EMOJI[r]} ${RARITY_LABELS[r]} **${v}**`).join(" · ");
+  const summary = parsed.map(({ r, v }) => `${rarityEmoji(r, settings, displayMap)} ${rarityLabel(r, settings, displayMap)} **${v}**`).join(" · ");
   const note = sum === 100 ? "✅ Sums to 100%." : `ℹ️ Sums to **${sum}** — Discord will auto-balance to 100%.`;
   await interaction.reply({
-    embeds: [buildRatesEmbed(settings)],
+    embeds: [buildRatesEmbed(settings, displayMap)],
     content: `✏️ Exact rarity % saved: ${summary}\n${note}`,
     flags: MessageFlags.Ephemeral,
   });

@@ -24,23 +24,29 @@ import {
   type ChatInputCommandInteraction, type StringSelectMenuInteraction,
   type ModalSubmitInteraction, type RepliableInteraction,
 } from "discord.js";
-import { getCardByName, getCardById, updateCard } from "../db.js";
-import { RARITY_EMOJI, RARITY_LABELS, RARITY_COLORS, type Rarity } from "../cards-data.js";
+import { getCardByName, getCardById, updateCard, getOrCreateGuildSettings, getRarityDisplayOverrides } from "../db.js";
+import { RARITY_EMOJI, RARITY_LABELS, RARITY_COLORS, rarityLabel, rarityEmoji, rarityColor, type Rarity } from "../cards-data.js";
 
 const RARITIES: Rarity[] = ["common", "uncommon", "rare", "epic", "legendary", "mythic"];
 const TYPE_CHOICES = ["tank", "aircraft", "ship", "vehicle", "infantry", "boss", "community", "event", "achievement", "limited"];
 
 // ── Preview embed + field-picker select ─────────────────────────────────────
-async function buildPanel(cardId: number): Promise<{ embeds: EmbedBuilder[]; components: ActionRowBuilder<StringSelectMenuBuilder>[] } | null> {
+async function buildPanel(cardId: number, guildId?: string | null): Promise<{ embeds: EmbedBuilder[]; components: ActionRowBuilder<StringSelectMenuBuilder>[] } | null> {
   const card = await getCardById(cardId);
   if (!card) return null;
   const r = card.rarity as Rarity;
+  const [settings, displayMap] = guildId
+    ? await Promise.all([getOrCreateGuildSettings(guildId), getRarityDisplayOverrides(guildId)])
+    : [null, null] as const;
+  const displayLabel = rarityLabel(r, settings, displayMap);
+  const displayEmoji = rarityEmoji(r, settings, displayMap);
+  const displayColor = rarityColor(r, settings, displayMap);
   const embed = new EmbedBuilder()
     .setTitle(`✏️ Edit: ${card.name}`)
-    .setColor(RARITY_COLORS[r] ?? 0x5865f2)
+    .setColor(displayColor ?? RARITY_COLORS[r] ?? 0x5865f2)
     .setDescription(card.description || "_(no description)_")
     .addFields(
-      { name: "Rarity", value: `${RARITY_EMOJI[r] ?? "🃏"} ${RARITY_LABELS[r] ?? r}`, inline: true },
+      { name: "Rarity", value: `${displayEmoji} ${displayLabel}`, inline: true },
       { name: "Type", value: card.cardType, inline: true },
       { name: "Worth", value: `💠 ${card.worthValue.toLocaleString()}`, inline: true },
       { name: "Burn", value: `💠 ${card.burnValue.toLocaleString()}`, inline: true },
@@ -56,7 +62,7 @@ async function buildPanel(cardId: number): Promise<{ embeds: EmbedBuilder[]; com
     .setCustomId(`editcard:menu:${card.id}`)
     .setPlaceholder("Pick a field to edit…")
     .addOptions(
-      { label: "Rarity", value: "rarity", emoji: "✨", description: `Currently ${RARITY_LABELS[r] ?? r}` },
+      { label: "Rarity", value: "rarity", emoji: "✨", description: `Currently ${displayLabel}` },
       { label: "Name", value: "name", emoji: "🏷️" },
       { label: "Description", value: "description", emoji: "📝" },
       { label: "Type", value: "type", emoji: "🎯", description: `Currently ${card.cardType}` },
@@ -74,7 +80,7 @@ export async function renderPanel(
   reply: boolean,
   content?: string,
 ): Promise<void> {
-  const panel = await buildPanel(cardId);
+  const panel = await buildPanel(cardId, (interaction as { guildId?: string | null }).guildId);
   if (!panel) {
     const errContent = "❌ Card not found.";
     if (reply) await interaction.reply({ content: errContent, flags: MessageFlags.Ephemeral }).catch(() => {});
@@ -136,13 +142,16 @@ export async function handleEditCardSelect(interaction: StringSelectMenuInteract
     // Rarity → secondary select (built-ins only). Advanced labels/custom tiers
     // remain available in /rarity, but normal card editing keeps stable rarity IDs.
     if (value === "rarity") {
+      const [settings, displayMap] = interaction.guildId
+        ? await Promise.all([getOrCreateGuildSettings(interaction.guildId), getRarityDisplayOverrides(interaction.guildId)])
+        : [null, null] as const;
       const select = new StringSelectMenuBuilder()
         .setCustomId(`editcard:rarity:${cardId}`)
         .setPlaceholder("Pick a built-in rarity…")
         .addOptions(RARITIES.map(r => ({
-          label: RARITY_LABELS[r] ?? r,
+          label: rarityLabel(r, settings, displayMap),
           value: r,
-          emoji: RARITY_EMOJI[r] ?? "🃏",
+          emoji: rarityEmoji(r, settings, displayMap) ?? RARITY_EMOJI[r] ?? "🃏",
         })));
       await interaction.update({
         content: "✨ Pick the new rarity:",
