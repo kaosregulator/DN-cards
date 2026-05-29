@@ -8,6 +8,7 @@
 //   On select:
 //     • rarity / type        → secondary StringSelect with the valid values
 //     • text/number fields   → Modal with a single input
+//     • image upload         → pass image:<file> to /editcard
 //     • boolean toggles      → flipped immediately, panel re-renders
 //
 // Custom IDs:
@@ -23,24 +24,8 @@ import {
   type ChatInputCommandInteraction, type StringSelectMenuInteraction,
   type ModalSubmitInteraction, type RepliableInteraction,
 } from "discord.js";
-import { getCardByName, getCardById, updateCard, listCustomRarities, assignCardToCustomRarity } from "../db.js";
+import { getCardByName, getCardById, updateCard } from "../db.js";
 import { RARITY_EMOJI, RARITY_LABELS, RARITY_COLORS, type Rarity } from "../cards-data.js";
-
-// ── Synchronous per-guild cache for custom rarities ──────────────────────────
-// Populated when /editcard opens (before any component interaction can fire),
-// so the rarity picker can call interaction.update() with NO async work.
-type CachedTier = { name: string; slug: string; emoji: string };
-const _customTierCache = new Map<string, CachedTier[]>();
-
-function _getCachedTiers(guildId: string): CachedTier[] {
-  return _customTierCache.get(guildId) ?? [];
-}
-
-function _prewarmTiers(guildId: string): void {
-  listCustomRarities(guildId)
-    .then(tiers => _customTierCache.set(guildId, tiers.map(t => ({ name: t.name, slug: t.slug, emoji: t.emoji }))))
-    .catch(() => {});
-}
 
 const RARITIES: Rarity[] = ["common", "uncommon", "rare", "epic", "legendary", "mythic"];
 const TYPE_CHOICES = ["tank", "aircraft", "ship", "vehicle", "infantry", "boss", "community", "event", "achievement", "limited"];
@@ -57,7 +42,6 @@ async function buildPanel(cardId: number): Promise<{ embeds: EmbedBuilder[]; com
     .addFields(
       { name: "Rarity", value: `${RARITY_EMOJI[r] ?? "🃏"} ${RARITY_LABELS[r] ?? r}`, inline: true },
       { name: "Type", value: card.cardType, inline: true },
-      { name: "Spawn Chance", value: `${card.dropWeight}% source`, inline: true },
       { name: "Worth", value: `💠 ${card.worthValue.toLocaleString()}`, inline: true },
       { name: "Burn", value: `💠 ${card.burnValue.toLocaleString()}`, inline: true },
       { name: "In Packs", value: card.inPacks ? "✅ Yes" : "❌ No", inline: true },
@@ -65,7 +49,7 @@ async function buildPanel(cardId: number): Promise<{ embeds: EmbedBuilder[]; com
       { name: "Archived", value: card.isArchived ? "🗄️ Yes" : "❌ No", inline: true },
       { name: "Limited", value: card.isLimitedEdition ? `💎 Yes (${card.totalMinted}/${card.maxCopies ?? "?"})` : "❌ No", inline: true },
     )
-    .setFooter({ text: `Card #${card.id} — pick a field to edit. Changes apply instantly.` });
+    .setFooter({ text: `Card #${card.id} — use /editcard name:<card> image:<file> to replace the image.` });
   if (card.imageUrl) embed.setThumbnail(card.imageUrl);
 
   const select = new StringSelectMenuBuilder()
@@ -76,10 +60,6 @@ async function buildPanel(cardId: number): Promise<{ embeds: EmbedBuilder[]; com
       { label: "Name", value: "name", emoji: "🏷️" },
       { label: "Description", value: "description", emoji: "📝" },
       { label: "Type", value: "type", emoji: "🎯", description: `Currently ${card.cardType}` },
-      { label: "Worth (💠)", value: "worthValue", emoji: "💰", description: `Currently ${card.worthValue}` },
-      { label: "Burn value (💠)", value: "burnValue", emoji: "🔥", description: `Currently ${card.burnValue}` },
-      { label: "Spawn chance", value: "dropWeight", emoji: "🎲", description: `Currently ${card.dropWeight}% source` },
-      { label: "Image URL", value: "imageUrl", emoji: "🖼️" },
       { label: card.inPacks ? "Toggle: remove from packs" : "Toggle: add to packs", value: "toggle:inPacks", emoji: "📦" },
       { label: card.droppable ? "Toggle: make undroppable" : "Toggle: make droppable", value: "toggle:droppable", emoji: "🎁" },
       { label: card.isArchived ? "Toggle: un-archive" : "Toggle: archive", value: "toggle:isArchived", emoji: "🗄️" },
@@ -115,15 +95,21 @@ export async function renderPanel(
 // so we use editReply (reply=false) instead of reply.
 export async function handleEditCardCommand(interaction: ChatInputCommandInteraction): Promise<void> {
   const name = interaction.options.getString("name", true).trim();
+  const image = interaction.options.getAttachment("image");
   const card = await getCardByName(name);
   if (!card) {
     await interaction.editReply(`❌ No card named **${name}**. Use autocomplete to pick one.`);
     return;
   }
-  // Pre-warm custom tier cache so the rarity picker can respond synchronously
-  // (no deferUpdate needed) when the user opens the rarity sub-select.
-  if (interaction.guildId) _prewarmTiers(interaction.guildId);
-  await renderPanel(interaction, card.id, false);
+  if (image) {
+    await updateCard(card.id, { imageUrl: image.url });
+  }
+  await renderPanel(
+    interaction,
+    card.id,
+    false,
+    image ? `✅ Updated **${card.name}** image from your upload.` : undefined,
+  );
 }
 
 // ── Select handler ──────────────────────────────────────────────────────────
@@ -147,30 +133,17 @@ export async function handleEditCardSelect(interaction: StringSelectMenuInteract
       return;
     }
 
-    // Rarity → secondary select (built-ins + any custom tiers for this guild).
-    // Uses the pre-warmed sync cache so interaction.update() fires immediately
-    // with zero DB round-trips, eliminating Unknown Interaction (10062) errors.
+    // Rarity → secondary select (built-ins only). Advanced labels/custom tiers
+    // remain available in /rarity, but normal card editing keeps stable rarity IDs.
     if (value === "rarity") {
-      const cached = interaction.guildId ? _getCachedTiers(interaction.guildId) : [];
-      const options: { label: string; value: string; emoji: string; description?: string }[] = [
-        ...RARITIES.map(r => ({
+      const select = new StringSelectMenuBuilder()
+        .setCustomId(`editcard:rarity:${cardId}`)
+        .setPlaceholder("Pick a built-in rarity…")
+        .addOptions(RARITIES.map(r => ({
           label: RARITY_LABELS[r] ?? r,
           value: r,
           emoji: RARITY_EMOJI[r] ?? "🃏",
-          description: "built-in",
-        })),
-        ...cached.slice(0, 25 - RARITIES.length).map(t => ({
-          label: t.name,
-          value: `custom:${t.slug}`,
-          emoji: t.emoji,
-          description: "custom tier",
-        })),
-      ];
-      if (interaction.guildId) _prewarmTiers(interaction.guildId);
-      const select = new StringSelectMenuBuilder()
-        .setCustomId(`editcard:rarity:${cardId}`)
-        .setPlaceholder("Pick a rarity…")
-        .addOptions(options);
+        })));
       await interaction.update({
         content: "✨ Pick the new rarity:",
         embeds: [],
@@ -198,18 +171,11 @@ export async function handleEditCardSelect(interaction: StringSelectMenuInteract
     return;
   }
 
-  // Rarity sub-select (built-in OR custom:slug)
+  // Rarity sub-select (built-in only)
   if (sub === "rarity") {
     await interaction.deferUpdate();
-    if (value.startsWith("custom:")) {
-      const slug = value.slice("custom:".length);
-      if (interaction.guildId) {
-        await assignCardToCustomRarity(interaction.guildId, cardId, slug);
-      }
-    } else {
-      if (!RARITIES.includes(value as Rarity)) return;
-      await updateCard(cardId, { rarity: value });
-    }
+    if (!RARITIES.includes(value as Rarity)) return;
+    await updateCard(cardId, { rarity: value });
     await renderPanel(interaction, cardId, false);
     return;
   }
@@ -227,10 +193,6 @@ export async function handleEditCardSelect(interaction: StringSelectMenuInteract
 const TEXT_FIELDS: Record<string, { title: string; label: string; style: TextInputStyle; max?: number; placeholder?: string }> = {
   name:        { title: "Edit Name",        label: "Card name (1–80 chars)",        style: TextInputStyle.Short,     max: 80 },
   description: { title: "Edit Description", label: "Description (max 500 chars)",   style: TextInputStyle.Paragraph, max: 500 },
-  imageUrl:    { title: "Edit Image URL",   label: "Image URL (blank to clear)",    style: TextInputStyle.Short,     max: 500, placeholder: "https://… or leave empty" },
-  worthValue:  { title: "Edit Worth",       label: "Worth in 💠 shards (0–999999)", style: TextInputStyle.Short,     max: 10 },
-  burnValue:   { title: "Edit Burn Value",  label: "Burn value in 💠 (0–999999)",   style: TextInputStyle.Short,     max: 10 },
-  dropWeight:  { title: "Edit Spawn Chance", label: "Spawn chance source (0–1000)",  style: TextInputStyle.Short,     max: 10 },
 };
 
 async function openFieldModal(interaction: StringSelectMenuInteraction, cardId: number, field: string): Promise<void> {
@@ -269,20 +231,6 @@ export async function handleEditCardModal(interaction: ModalSubmitInteraction): 
     case "description":
       patch.description = raw;
       break;
-    case "imageUrl":
-      patch.imageUrl = raw || null;
-      break;
-    case "worthValue":
-    case "burnValue":
-    case "dropWeight": {
-      const n = Number(raw);
-      if (!Number.isFinite(n) || n < 0) {
-        await interaction.reply({ content: `❌ \`${field}\` must be a number ≥ 0.`, flags: MessageFlags.Ephemeral });
-        return;
-      }
-      patch[field] = field === "dropWeight" ? n : Math.floor(n);
-      break;
-    }
     default:
       await interaction.reply({ content: "❌ Unknown field.", flags: MessageFlags.Ephemeral });
       return;

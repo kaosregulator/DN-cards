@@ -238,7 +238,7 @@ export function buildCommands() {
       .addSubcommand(sc => sc.setName("stop").setDescription("Stop an active event early")
         .addIntegerOption(o => o.setName("id").setDescription("Event ID from /event list").setRequired(true).setMinValue(1)))),
 
-    adminCmd("addcard", "(Admin) Create a new card — attach an image file or paste a URL", s => s
+    adminCmd("addcard", "(Admin) Create a new card — upload an image/GIF from Discord", s => s
       .addStringOption(o => o.setName("name").setDescription("Card name").setRequired(true).setMaxLength(80))
       .addStringOption(o => o.setName("rarity").setDescription("Built-in rarity tier — type to search").setRequired(true).setAutocomplete(true))
       .addStringOption(o => o.setName("type").setDescription("Card type").setRequired(true)
@@ -254,19 +254,16 @@ export function buildCommands() {
           { name: "achievement", value: "achievement" },
           { name: "limited",     value: "limited"     },
         ))
-      .addAttachmentOption(o => o.setName("image").setDescription("Upload card image — drag a file from your desktop or Finder"))
-      .addStringOption(o => o.setName("imageurl").setDescription("Or paste an image URL instead of uploading a file").setMaxLength(500))
+      .addAttachmentOption(o => o.setName("image").setDescription("Upload card image/GIF with Discord's file picker"))
       .addStringOption(o => o.setName("set").setDescription("Optional set to add this card to immediately").setAutocomplete(true))
       .addStringOption(o => o.setName("description").setDescription("Card description (up to 500 chars)").setMaxLength(500))
-      .addIntegerOption(o => o.setName("worth").setDescription("Worth in 💠 shards (blank = rarity default)").setMinValue(0))
-      .addIntegerOption(o => o.setName("burn").setDescription("Burn value in 💠 (blank = rarity default)").setMinValue(0))
-      .addNumberOption(o => o.setName("weight").setDescription("Drop % source value (blank = rarity default)").setMinValue(0))
       .addBooleanOption(o => o.setName("limited").setDescription("Limited edition — capped copy count?"))
       .addIntegerOption(o => o.setName("max_copies").setDescription("Max copies if limited (default 50)").setMinValue(1))
       .addBooleanOption(o => o.setName("event_exclusive").setDescription("Event exclusive — never spawns randomly?"))),
 
-    adminCmd("editcard", "(Admin) Edit any card — rarity, worth, image, name, etc.", s => s
-      .addStringOption(o => o.setName("name").setDescription("Card to edit").setRequired(true).setAutocomplete(true))),
+    adminCmd("editcard", "(Admin) Edit a card — optionally upload a replacement image/GIF", s => s
+      .addStringOption(o => o.setName("name").setDescription("Card to edit").setRequired(true).setAutocomplete(true))
+      .addAttachmentOption(o => o.setName("image").setDescription("Optional replacement image/GIF upload"))),
 
     // ── /rarity — hub command: display names, economy overrides, custom tiers, card assignments
     adminCmd("rarity", "(Admin) Edit built-in rarity names, colors, spawn %, worth, and burn", s => s),
