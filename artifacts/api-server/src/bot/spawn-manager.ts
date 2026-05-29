@@ -18,11 +18,11 @@ import {
   getActiveSetSpawnPoolCached,
   getRarityDisplayOverrides,
   getGuildRarityWeights,
+  getCardDisplayRarity,
 } from "./db.js";
 import {
-  RARITY_COLORS, RARITY_EMOJI, RARITY_LABELS, TYPE_EMOJI, getTypeEmoji,
+  getTypeEmoji,
   SHINY_EMOJI, SHINY_MULTIPLIER,
-  rarityLabel, rarityEmoji, rarityColor,
   type Rarity,
 } from "./cards-data.js";
 import { toAbsoluteImageUrl } from "./image-url.js";
@@ -171,6 +171,7 @@ async function doSingleSpawn(guildId: string, forcedCardId?: number, isForced = 
   // worth display) all use the overridden numbers.
   const ctxForGuild = await getRarityContext(guildId);
   card = applyRarityContext(card, ctxForGuild);
+  const spawnDisplayRarity = getCardDisplayRarity(card, ctxForGuild, settings, displayMap);
 
   if (card.maxCopies && card.totalMinted >= card.maxCopies) {
     logger.info({ cardId: card.id }, "Card max copies reached, skipping");
@@ -241,7 +242,6 @@ async function doSingleSpawn(guildId: string, forcedCardId?: number, isForced = 
       gs?.delete(spawnId);
       if (gs && gs.size === 0) activeSpawns.delete(guildId);
       try {
-        const rarity = cardRef.rarity as Rarity;
         const quip = ESCAPE_QUIPS[Math.floor(Math.random() * ESCAPE_QUIPS.length)]!;
         await message.edit({
           embeds: [
@@ -249,7 +249,7 @@ async function doSingleSpawn(guildId: string, forcedCardId?: number, isForced = 
               .setTitle(`\ud83d\udca8 ${cardRef.name} escaped!`)
               .setDescription(
                 `${quip}\n\n` +
-                `**Rarity:** ${rarityEmoji(rarity, settings, displayMap)} ${rarityLabel(rarity, settings, displayMap)}\n` +
+                `**Rarity:** ${spawnDisplayRarity.emoji} ${spawnDisplayRarity.label}\n` +
                 `**Caught by:** *nobody — too slow!*`,
               )
               .setColor(0x636e72)
@@ -518,8 +518,7 @@ async function buildClaimedEmbed(
   const typeEmoji = getTypeEmoji(cardType);
   const settings = guildId ? await getOrCreateGuildSettings(guildId) : null;
   const displayMap = guildId ? await getRarityDisplayOverrides(guildId) : null;
-  const rEmoji = rarityEmoji(rarity, settings, displayMap);
-  const rLabel = rarityLabel(rarity, settings, displayMap);
+  const displayRarity = getCardDisplayRarity(card, ctx, settings, displayMap);
   const shinyPrefix = isShiny ? `${SHINY_EMOJI} ` : "";
   const worth = isShiny ? card.worthValue * SHINY_MULTIPLIER : card.worthValue;
   const embed = new EmbedBuilder()
@@ -532,7 +531,7 @@ async function buildClaimedEmbed(
     )
     .addFields(
       { name: `${typeEmoji} ${shinyPrefix}${card.name}`, value: card.description || "\u200b", inline: false },
-      { name: "Rarity", value: `${rEmoji} ${rLabel}`, inline: true },
+      { name: "Rarity", value: `${displayRarity.emoji} ${displayRarity.label}`, inline: true },
       { name: "Worth", value: `💠 ${worth.toLocaleString()} shards${isShiny ? ` *(${SHINY_MULTIPLIER}×)*` : ""}`, inline: true },
       { name: "Caught by", value: `<@${userId}>`, inline: true },
     )
@@ -542,7 +541,7 @@ async function buildClaimedEmbed(
   if (defaultImg) embed.setImage(defaultImg);
   await applyEmbedOverride(embed, {
     guildId, key: "claimed", rarity, defaultImageUrl: defaultImg,
-    ctx: { userId, card: card.name, rarity: rLabel, worth },
+    ctx: { userId, card: card.name, rarity: displayRarity.label, worth },
   });
   return embed;
 }
@@ -553,9 +552,8 @@ async function buildSpawnEmbed(card: Card, windowSeconds: number, mode: "type" |
   const cardType = card.cardType;
   const settings = guildId ? await getOrCreateGuildSettings(guildId) : null;
   const displayMap = guildId ? await getRarityDisplayOverrides(guildId) : null;
-  const rEmoji = rarityEmoji(rarity, settings, displayMap);
-  const rLabel = rarityLabel(rarity, settings, displayMap);
-  const color = rarityColor(rarity, settings, displayMap);
+  const ctx = guildId ? await getRarityContext(guildId) : null;
+  const displayRarity = getCardDisplayRarity(card, ctx, settings, displayMap);
   const badges: string[] = [];
   if (card.isLimitedEdition) badges.push("💎 **LIMITED EDITION**");
   if (card.isEventExclusive) badges.push("🎆 **EVENT EXCLUSIVE**");
@@ -567,14 +565,14 @@ async function buildSpawnEmbed(card: Card, windowSeconds: number, mode: "type" |
     : `Type the card name exactly to catch it:\n\`\`\`${card.name}\`\`\``;
 
   const embed = new EmbedBuilder()
-    .setTitle(`${rEmoji} A DN Card has appeared!`)
-    .setColor(color)
+    .setTitle(`${displayRarity.emoji} A DN Card has appeared!`)
+    .setColor(displayRarity.color)
     .setDescription(
       `${badges.length > 0 ? badges.join("\n") + "\n\n" : ""}${howTo}`,
     )
     .addFields(
       { name: `${getTypeEmoji(cardType)} ${card.name}`, value: card.description || "\u200b", inline: false },
-      { name: "Rarity", value: `${rEmoji} ${rLabel}`, inline: true },
+      { name: "Rarity", value: `${displayRarity.emoji} ${displayRarity.label}`, inline: true },
       { name: "Worth", value: `💠 ${card.worthValue.toLocaleString()} shards`, inline: true },
       { name: "⏱️ Window", value: `${windowSeconds}s`, inline: true },
     )
@@ -585,7 +583,7 @@ async function buildSpawnEmbed(card: Card, windowSeconds: number, mode: "type" |
   if (defaultImg) embed.setImage(defaultImg);
   await applyEmbedOverride(embed, {
     guildId, key: "spawn", rarity, defaultImageUrl: defaultImg,
-    ctx: { card: card.name, rarity: rLabel, worth: card.worthValue },
+    ctx: { card: card.name, rarity: displayRarity.label, worth: card.worthValue },
   });
   return embed;
 }
@@ -620,15 +618,14 @@ export async function buildPostDecisionEmbed(
 
   const settings = guildId ? await getOrCreateGuildSettings(guildId) : null;
   const displayMap = guildId ? await getRarityDisplayOverrides(guildId) : null;
-  const rEmoji = rarityEmoji(rarity, settings, displayMap);
-  const rLabel = rarityLabel(rarity, settings, displayMap);
+  const displayRarity = getCardDisplayRarity(card, ctxForDecision, settings, displayMap);
   const embed = new EmbedBuilder()
     .setTitle(titles[action])
     .setColor(colors[action])
     .setDescription(descriptions[action])
     .addFields(
       { name: `${getTypeEmoji(cardType)} ${card.name}`, value: card.description || "\u200b", inline: false },
-      { name: "Rarity", value: `${rEmoji} ${rLabel}`, inline: true },
+      { name: "Rarity", value: `${displayRarity.emoji} ${displayRarity.label}`, inline: true },
       { name: "Worth", value: `\ud83d\udca0 ${card.worthValue.toLocaleString()} shards`, inline: true },
       { name: "Caught by", value: `<@${userId}>`, inline: true },
       { name: "Status", value: statusLabels[action], inline: true },
@@ -639,7 +636,7 @@ export async function buildPostDecisionEmbed(
   if (defaultImg) embed.setImage(defaultImg);
   await applyEmbedOverride(embed, {
     guildId, key: "claimed", rarity, defaultImageUrl: defaultImg,
-    ctx: { userId, card: card.name, rarity: rLabel, worth: card.worthValue },
+    ctx: { userId, card: card.name, rarity: displayRarity.label, worth: card.worthValue },
   });
   return embed;
 }

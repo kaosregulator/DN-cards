@@ -102,6 +102,8 @@ export interface Profile {
     cardId: number;
     name: string;
     rarity: Rarity;
+    effectiveRarity?: string;
+    effectiveRarityLabel?: string;
     cardType: CardType;
     imageUrl: string | null;
     worthValue: number;
