@@ -24,7 +24,11 @@ import {
   type ChatInputCommandInteraction, type StringSelectMenuInteraction,
   type ModalSubmitInteraction, type RepliableInteraction,
 } from "discord.js";
-import { getCardByName, getCardById, updateCard, getOrCreateGuildSettings, getRarityDisplayOverrides } from "../db.js";
+import {
+  getCardByName, getCardById, updateCard,
+  getOrCreateGuildSettings, getRarityDisplayOverrides,
+  getRarityContext, listCustomRarities, assignCardToCustomRarity, unassignCardCustomRarity,
+} from "../db.js";
 import { RARITY_EMOJI, RARITY_LABELS, RARITY_COLORS, rarityLabel, rarityEmoji, rarityColor, type Rarity } from "../cards-data.js";
 
 const RARITIES: Rarity[] = ["common", "uncommon", "rare", "epic", "legendary", "mythic"];
@@ -35,12 +39,17 @@ async function buildPanel(cardId: number, guildId?: string | null): Promise<{ em
   const card = await getCardById(cardId);
   if (!card) return null;
   const r = card.rarity as Rarity;
-  const [settings, displayMap] = guildId
-    ? await Promise.all([getOrCreateGuildSettings(guildId), getRarityDisplayOverrides(guildId)])
-    : [null, null] as const;
-  const displayLabel = rarityLabel(r, settings, displayMap);
-  const displayEmoji = rarityEmoji(r, settings, displayMap);
-  const displayColor = rarityColor(r, settings, displayMap);
+  const [settings, displayMap, ctx] = guildId
+    ? await Promise.all([
+        getOrCreateGuildSettings(guildId),
+        getRarityDisplayOverrides(guildId),
+        getRarityContext(guildId),
+      ])
+    : [null, null, null] as const;
+  const customTier = ctx?.customByCard.get(card.id);
+  const displayLabel = customTier?.name ?? rarityLabel(r, settings, displayMap);
+  const displayEmoji = customTier?.emoji ?? rarityEmoji(r, settings, displayMap);
+  const displayColor = customTier?.color ?? rarityColor(r, settings, displayMap);
   const embed = new EmbedBuilder()
     .setTitle(`✏️ Edit: ${card.name}`)
     .setColor(displayColor ?? RARITY_COLORS[r] ?? 0x5865f2)
@@ -139,20 +148,34 @@ export async function handleEditCardSelect(interaction: StringSelectMenuInteract
       return;
     }
 
-    // Rarity → secondary select (built-ins only). Advanced labels/custom tiers
-    // remain available in /rarity, but normal card editing keeps stable rarity IDs.
+    // Rarity → secondary select. Built-ins keep stable card identity; custom
+    // rarities write to the same per-card override table used by the runtime.
     if (value === "rarity") {
-      const [settings, displayMap] = interaction.guildId
-        ? await Promise.all([getOrCreateGuildSettings(interaction.guildId), getRarityDisplayOverrides(interaction.guildId)])
-        : [null, null] as const;
-      const select = new StringSelectMenuBuilder()
-        .setCustomId(`editcard:rarity:${cardId}`)
-        .setPlaceholder("Pick a built-in rarity…")
-        .addOptions(RARITIES.map(r => ({
+      const [settings, displayMap, customTiers] = interaction.guildId
+        ? await Promise.all([
+            getOrCreateGuildSettings(interaction.guildId),
+            getRarityDisplayOverrides(interaction.guildId),
+            listCustomRarities(interaction.guildId),
+          ])
+        : [null, null, []] as const;
+      const options = [
+        ...RARITIES.map(r => ({
           label: rarityLabel(r, settings, displayMap),
           value: r,
           emoji: rarityEmoji(r, settings, displayMap) ?? RARITY_EMOJI[r] ?? "🃏",
-        })));
+          description: "built-in",
+        })),
+        ...customTiers.slice(0, 25 - RARITIES.length).map(t => ({
+          label: t.name,
+          value: `custom:${t.slug}`,
+          emoji: t.emoji,
+          description: "custom",
+        })),
+      ];
+      const select = new StringSelectMenuBuilder()
+        .setCustomId(`editcard:rarity:${cardId}`)
+        .setPlaceholder("Pick a rarity…")
+        .addOptions(options);
       await interaction.update({
         content: "✨ Pick the new rarity:",
         embeds: [],
@@ -180,11 +203,17 @@ export async function handleEditCardSelect(interaction: StringSelectMenuInteract
     return;
   }
 
-  // Rarity sub-select (built-in only)
+  // Rarity sub-select (built-in OR custom:slug)
   if (sub === "rarity") {
     await interaction.deferUpdate();
-    if (!RARITIES.includes(value as Rarity)) return;
-    await updateCard(cardId, { rarity: value });
+    if (value.startsWith("custom:")) {
+      if (!interaction.guildId) return;
+      await assignCardToCustomRarity(interaction.guildId, cardId, value.slice("custom:".length));
+    } else {
+      if (!RARITIES.includes(value as Rarity)) return;
+      await updateCard(cardId, { rarity: value });
+      if (interaction.guildId) await unassignCardCustomRarity(interaction.guildId, cardId);
+    }
     await renderPanel(interaction, cardId, false);
     return;
   }

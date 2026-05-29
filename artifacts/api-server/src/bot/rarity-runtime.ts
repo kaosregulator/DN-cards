@@ -90,6 +90,37 @@ export function effectiveRarityKey(card: { id: number; rarity: string }, ctx: Ra
   return tier ? `custom:${tier.slug}` : card.rarity;
 }
 
+
+export function getCardDisplayRarity(
+  card: { id: number; rarity: string },
+  ctx: RarityContext | null | undefined,
+  settings: GuildSettings | null,
+  displayMap?: RarityDisplayMap | null,
+): DisplayRarity {
+  const custom = ctx?.customByCard.get(card.id);
+  if (custom) {
+    return {
+      key: `custom:${custom.slug}`,
+      label: custom.name,
+      emoji: custom.emoji,
+      color: custom.color,
+      position: custom.position,
+      isCustom: true,
+      slug: custom.slug,
+    };
+  }
+  const rarity = card.rarity as Rarity;
+  return {
+    key: rarity,
+    label: builtinRarityLabel(rarity, settings, displayMap ?? null),
+    emoji: builtinRarityEmoji(rarity, settings, displayMap ?? null),
+    color: builtinRarityColor(rarity, settings, displayMap ?? null),
+    position: BUILTIN_POSITIONS[rarity] ?? 0,
+    isCustom: false,
+    rarity,
+  };
+}
+
 export function getDisplayRarities(
   ctx: RarityContext,
   settings: GuildSettings | null,
