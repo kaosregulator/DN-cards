@@ -74,7 +74,7 @@ router.get("/cards", async (_req, res) => {
 
 // ── Upsert a card's website display override ─────────────────────────────────
 // PUT /cards/:id/display
-// Body: { displayName?, displayImageUrl?, displayDescription?, flavorText?,
+// Body: { displayName?, displayImageUrl?, displayDescription?, displayCategory?, flavorText?,
 //         hiddenFromSite?, featured?, sortWeight? }
 //
 // Any omitted field is left at its current value (or default for first insert).
@@ -102,6 +102,7 @@ router.put("/cards/:id/display", async (req, res) => {
       displayName: body.displayName ?? null,
       displayImageUrl: body.displayImageUrl ?? null,
       displayDescription: body.displayDescription ?? null,
+      displayCategory: body.displayCategory ?? null,
       flavorText: body.flavorText ?? null,
       hiddenFromSite: body.hiddenFromSite ?? false,
       featured: body.featured ?? false,
@@ -116,6 +117,7 @@ router.put("/cards/:id/display", async (req, res) => {
         ...(body.displayName !== undefined ? { displayName: body.displayName } : {}),
         ...(body.displayImageUrl !== undefined ? { displayImageUrl: body.displayImageUrl } : {}),
         ...(body.displayDescription !== undefined ? { displayDescription: body.displayDescription } : {}),
+        ...(body.displayCategory !== undefined ? { displayCategory: body.displayCategory } : {}),
         ...(body.flavorText !== undefined ? { flavorText: body.flavorText } : {}),
         ...(body.hiddenFromSite !== undefined ? { hiddenFromSite: body.hiddenFromSite } : {}),
         ...(body.featured !== undefined ? { featured: body.featured } : {}),

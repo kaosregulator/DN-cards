@@ -132,6 +132,7 @@ function EditDialog({
       displayName: o?.displayName ?? null,
       displayImageUrl: o?.displayImageUrl ?? null,
       displayDescription: o?.displayDescription ?? null,
+      displayCategory: o?.displayCategory ?? null,
       flavorText: o?.flavorText ?? null,
       hiddenFromSite: o?.hiddenFromSite ?? false,
       featured: o?.featured ?? false,
@@ -197,6 +198,17 @@ function EditDialog({
               <Label htmlFor="d-flavor">Flavor text (italic line on roster/events page)</Label>
               <Textarea id="d-flavor" rows={2} value={form.flavorText ?? ""} placeholder={card.flavor ?? "(none)"}
                 onChange={e => setForm(s => ({ ...s, flavorText: e.target.value || null }))} />
+            </div>
+
+            <div>
+              <Label htmlFor="d-category">Website category</Label>
+              <Input
+                id="d-category"
+                value={form.displayCategory ?? ""}
+                placeholder={card.effectiveRarityLabel ?? card.rarity}
+                onChange={e => setForm(s => ({ ...s, displayCategory: e.target.value || null }))}
+              />
+              <p className="text-xs text-muted-foreground mt-1">Website-only grouping/filter label. Does not change Discord rarity, drops, or inventory.</p>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
@@ -364,7 +376,7 @@ export default function Admin() {
                 {filtered.map((c) => {
                   const o = c.displayOverride;
                   const displayName = o?.displayName ?? c.name;
-                  const hasOverride = !!o && (o.displayName || o.displayImageUrl || o.displayDescription || o.flavorText || o.hiddenFromSite || o.featured || o.sortWeight !== 0);
+                  const hasOverride = !!o && (o.displayName || o.displayImageUrl || o.displayDescription || o.displayCategory || o.flavorText || o.hiddenFromSite || o.featured || o.sortWeight !== 0);
                   const overrideImg = o?.displayImageUrl ?? null;
                   const srcImg = resolveImageUrl(overrideImg ?? c.imageUrl);
                   return (
