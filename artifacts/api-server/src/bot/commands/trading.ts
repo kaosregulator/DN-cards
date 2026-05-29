@@ -9,11 +9,11 @@ import {
   getOrCreateGuildSettings, updateTradeMessageId,
   getOrCreateCurrency, giftShards, getTradeHistoryFor,
   getRarityContext, applyRarityContext,
+  getCardDisplayRarity,
   getRarityDisplayOverrides,
 } from "../db.js";
 import {
-  RARITY_EMOJI, RARITY_LABELS, FAIRNESS_RATIO_THRESHOLD, type Rarity,
-  rarityLabel, rarityEmoji,
+  FAIRNESS_RATIO_THRESHOLD,
 } from "../cards-data.js";
 import { applyEmbedOverride } from "../embed-overrides.js";
 import { runPaginator, type PaginatorView } from "../components/paginator.js";
@@ -165,11 +165,13 @@ export async function handleTrade(interaction: ChatInputCommandInteraction): Pro
     getRarityDisplayOverrides(guildId),
   ]);
 
-  const offLabel = offeredCard
-    ? `${rarityEmoji(offeredCard.rarity as Rarity, tradeSettings, tradeDisplayMap)} **${offeredCard.name}** *(${rarityLabel(offeredCard.rarity as Rarity, tradeSettings, tradeDisplayMap)})*`
+  const offTier = offeredCard ? getCardDisplayRarity(offeredCard, fairnessCtx, tradeSettings, tradeDisplayMap) : null;
+  const reqTier = requestedCard ? getCardDisplayRarity(requestedCard, fairnessCtx, tradeSettings, tradeDisplayMap) : null;
+  const offLabel = offeredCard && offTier
+    ? `${offTier.emoji} **${offeredCard.name}** *(${offTier.label})*`
     : null;
-  const reqLabel = requestedCard
-    ? `${rarityEmoji(requestedCard.rarity as Rarity, tradeSettings, tradeDisplayMap)} **${requestedCard.name}** *(${rarityLabel(requestedCard.rarity as Rarity, tradeSettings, tradeDisplayMap)})*`
+  const reqLabel = requestedCard && reqTier
+    ? `${reqTier.emoji} **${requestedCard.name}** *(${reqTier.label})*`
     : null;
 
   // fairnessCtx already fetched above

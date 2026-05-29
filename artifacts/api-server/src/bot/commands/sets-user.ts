@@ -3,6 +3,7 @@ import { EmbedBuilder } from "discord.js";
 import {
   listSetsV2, getSetByName, getCardsInSet, getActiveSet,
   getUserCollection, getRarityDisplayOverrides, getOrCreateGuildSettings,
+  getDisplayRarities, getRarityContext, effectiveRarityKey,
 } from "../db.js";
 import { RARITY_EMOJI, rarityLabel, rarityEmoji, type Rarity } from "../cards-data.js";
 
@@ -58,26 +59,27 @@ export async function handleSetsUserCommand(interaction: ChatInputCommandInterac
     const setName = interaction.options.getString("name", true);
     const set = await getSetByName(setName);
     if (!set) { await interaction.editReply(`❌ No set named \`${setName}\`.`); return; }
-    const [cards, active, settings, displayMap] = await Promise.all([
+    const [cards, active, settings, displayMap, ctx] = await Promise.all([
       getCardsInSet(set.id),
       getActiveSet(guildId),
       getOrCreateGuildSettings(guildId),
       getRarityDisplayOverrides(guildId),
+      getRarityContext(guildId),
     ]);
     const isActive = active?.id === set.id;
-    const grouped: Partial<Record<Rarity, string[]>> = {};
+    const ladder = getDisplayRarities(ctx, settings, { displayMap });
+    const grouped = new Map<string, string[]>();
+    for (const tier of ladder) grouped.set(tier.key, []);
     for (const c of cards) {
-      const r = c.rarity as Rarity;
-      (grouped[r] ??= []).push(c.name);
+      const key = effectiveRarityKey(c, ctx);
+      (grouped.get(key) ?? grouped.set(key, []).get(key)!).push(c.name);
     }
-    const fields = RARITY_ORDER
-      .filter(r => grouped[r] && grouped[r]!.length > 0)
-      .map(r => {
-        const list = grouped[r]!.sort();
+    const fields = ladder
+      .filter(tier => (grouped.get(tier.key)?.length ?? 0) > 0)
+      .map(tier => {
+        const list = grouped.get(tier.key)!.sort();
         const value = list.slice(0, 40).join(", ") + (list.length > 40 ? ` (+${list.length - 40} more)` : "");
-        const tierLabel = rarityLabel(r, settings, displayMap);
-        const tierEmoji = rarityEmoji(r, settings, displayMap);
-        return { name: `${tierEmoji} ${tierLabel} (${list.length})`, value: value.slice(0, 1024) };
+        return { name: `${tier.emoji} ${tier.label} (${list.length})`, value: value.slice(0, 1024) };
       });
     const embed = new EmbedBuilder()
       .setTitle(`📦 ${set.name}${isActive ? "  ✦ active" : ""}`)

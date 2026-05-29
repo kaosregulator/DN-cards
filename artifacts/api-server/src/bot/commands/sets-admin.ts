@@ -13,6 +13,7 @@ import {
   getUnassignedCards,
   getAllCards,
   loadDefaultCards, unloadDefaultCards, DEFAULTS_SET_NAME,
+  getDisplayRarities, getRarityContext, effectiveRarityKey,
 } from "../db.js";
 import { importCardsFromJson } from "./import.js";
 import { logger } from "../../lib/logger.js";
@@ -230,19 +231,20 @@ export async function handleSetAdminCommand(interaction: ChatInputCommandInterac
     const setRow = sets.find(s => s.set.id === set.id);
     const total = setRow?.cardCount ?? cards.length;
     const droppable = cards.filter(c => c.droppable && !c.isArchived).length;
-    const grouped: Partial<Record<Rarity, string[]>> = {};
+    const [displayMap, ctx] = await Promise.all([getRarityDisplayOverrides(guildId), getRarityContext(guildId)]);
+    const ladder = getDisplayRarities(ctx, null, { displayMap });
+    const grouped = new Map<string, string[]>();
+    for (const tier of ladder) grouped.set(tier.key, []);
     for (const c of cards) {
-      const r = c.rarity as Rarity;
-      (grouped[r] ??= []).push(c.name);
+      const key = effectiveRarityKey(c, ctx);
+      (grouped.get(key) ?? grouped.set(key, []).get(key)!).push(c.name);
     }
-    const order: Rarity[] = ["mythic", "legendary", "epic", "rare", "uncommon", "common"];
-    const displayMap = await getRarityDisplayOverrides(guildId);
-    const fields = order
-      .filter(r => grouped[r] && grouped[r]!.length > 0)
-      .map(r => {
-        const list = grouped[r]!.sort();
+    const fields = ladder
+      .filter(tier => (grouped.get(tier.key)?.length ?? 0) > 0)
+      .map(tier => {
+        const list = grouped.get(tier.key)!.sort();
         const value = list.slice(0, 30).join(", ") + (list.length > 30 ? ` (+${list.length - 30} more)` : "");
-        return { name: `${rarityEmoji(r, null, displayMap)} ${rarityLabel(r, null, displayMap)} (${list.length})`, value: value.slice(0, 1024) };
+        return { name: `${tier.emoji} ${tier.label} (${list.length})`, value: value.slice(0, 1024) };
       });
     const embed = new EmbedBuilder()
       .setTitle(`📦 Set: ${set.name}${isActive ? "  ✦ active" : ""}`)

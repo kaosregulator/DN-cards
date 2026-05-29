@@ -5,7 +5,7 @@ import { z } from "zod/v4";
 import { ACHIEVEMENTS } from "../bot/achievements";
 import { getCollectorRank, getNextRank, SHINY_MULTIPLIER } from "../bot/cards-data";
 import { getBotClient } from "../bot/spawn-manager";
-import { getEffectiveDropWeight, getGuildDropChanceRuntime } from "../bot/db";
+import { getCardDisplayRarity, getEffectiveDropWeight, getGuildDropChanceRuntime, getRarityContext } from "../bot/db";
 
 const router: IRouter = Router();
 
@@ -159,22 +159,40 @@ router.get("/guilds/:guildId/leaderboard", async (req, res) => {
   const params = parseParams(guildParams, req, res);
   if (!params) return;
   const { guildId } = params;
-  // Net worth must count shinies at SHINY_MULTIPLIER so the dashboard
-  // leaderboard matches the in-bot leaderboard (db.ts getLeaderboard).
-  const netWorthSql = sql`sum((${collectionsTable.count} + ${collectionsTable.shinyCount} * ${SHINY_MULTIPLIER}) * ${cardsTable.worthValue})`;
-  const rows = await db.select({
-    userId: collectionsTable.userId,
-    uniqueCards: sql<number>`count(distinct ${collectionsTable.cardId})::int`,
-    totalCards: sql<number>`sum(${collectionsTable.count} + ${collectionsTable.shinyCount})::int`,
-    shinyCards: sql<number>`coalesce(sum(${collectionsTable.shinyCount})::int, 0)`,
-    netWorth: sql<number>`${netWorthSql}::int`,
-  })
-    .from(collectionsTable)
-    .innerJoin(cardsTable, eq(collectionsTable.cardId, cardsTable.id))
-    .where(eq(collectionsTable.guildId, guildId))
-    .groupBy(collectionsTable.userId)
-    .orderBy(desc(netWorthSql))
-    .limit(25);
+  // Net worth must use the same Setup Hub rarity context as the bot so
+  // custom tier worth/profile overrides are reflected on the website.
+  const [heldRows, ctx] = await Promise.all([
+    db.select({
+      userId: collectionsTable.userId,
+      cardId: cardsTable.id,
+      rarity: cardsTable.rarity,
+      worthValue: cardsTable.worthValue,
+      count: collectionsTable.count,
+      shinyCount: collectionsTable.shinyCount,
+    })
+      .from(collectionsTable)
+      .innerJoin(cardsTable, eq(collectionsTable.cardId, cardsTable.id))
+      .where(eq(collectionsTable.guildId, guildId)),
+    getRarityContext(guildId),
+  ]);
+
+  const byUser = new Map<string, { userId: string; uniqueCards: number; totalCards: number; shinyCards: number; netWorth: number }>();
+  for (const row of heldRows) {
+    const custom = ctx.customByCard.get(row.cardId);
+    const worth = custom ? custom.worthValue : ctx.profile.get(row.rarity)?.worthValue ?? row.worthValue;
+    let entry = byUser.get(row.userId);
+    if (!entry) {
+      entry = { userId: row.userId, uniqueCards: 0, totalCards: 0, shinyCards: 0, netWorth: 0 };
+      byUser.set(row.userId, entry);
+    }
+    entry.uniqueCards += 1;
+    entry.totalCards += row.count + row.shinyCount;
+    entry.shinyCards += row.shinyCount;
+    entry.netWorth += (row.count + row.shinyCount * SHINY_MULTIPLIER) * worth;
+  }
+  const rows = [...byUser.values()]
+    .sort((a, b) => b.netWorth - a.netWorth)
+    .slice(0, 25);
 
   // Enrich with Discord display names (best-effort; falls back to ID).
   const client = getBotClient();
@@ -209,8 +227,9 @@ router.get("/guilds/:guildId/users/:userId", async (req, res) => {
   if (!params) return;
   const { guildId, userId } = params;
 
-  const [collectionRows, [currency], unlockedRows] = await Promise.all([
+  const [rawCollectionRows, [currency], unlockedRows, runtime, profileDisplayMap] = await Promise.all([
     db.select({
+      id: cardsTable.id,
       cardId: cardsTable.id,
       name: cardsTable.name,
       rarity: cardsTable.rarity,
@@ -218,19 +237,39 @@ router.get("/guilds/:guildId/users/:userId", async (req, res) => {
       imageUrl: cardsTable.imageUrl,
       worthValue: cardsTable.worthValue,
       burnValue: cardsTable.burnValue,
+      dropWeight: cardsTable.dropWeight,
       count: collectionsTable.count,
       shinyCount: collectionsTable.shinyCount,
       firstCaughtAt: collectionsTable.firstCaughtAt,
     })
       .from(collectionsTable)
       .innerJoin(cardsTable, eq(collectionsTable.cardId, cardsTable.id))
-      .where(and(eq(collectionsTable.guildId, guildId), eq(collectionsTable.userId, userId)))
-      .orderBy(desc(cardsTable.worthValue)),
+      .where(and(eq(collectionsTable.guildId, guildId), eq(collectionsTable.userId, userId))),
     db.select().from(userCurrencyTable)
       .where(and(eq(userCurrencyTable.guildId, guildId), eq(userCurrencyTable.userId, userId))),
     db.select().from(achievementsTable)
       .where(and(eq(achievementsTable.guildId, guildId), eq(achievementsTable.userId, userId))),
+    getGuildDropChanceRuntime(guildId),
+    db.select({ rarity: rarityDisplayOverridesTable.rarity, displayName: rarityDisplayOverridesTable.displayName, emoji: rarityDisplayOverridesTable.emoji, color: rarityDisplayOverridesTable.color })
+      .from(rarityDisplayOverridesTable)
+      .where(eq(rarityDisplayOverridesTable.guildId, guildId)),
   ]);
+
+  const displayMap = new Map(profileDisplayMap.map(r => [r.rarity, { displayName: r.displayName, emoji: r.emoji, color: r.color }]));
+  const collectionRows = rawCollectionRows.map(row => {
+    const custom = runtime.ctx.customByCard.get(row.cardId);
+    const profile = runtime.ctx.profile.get(row.rarity);
+    const worthValue = custom ? custom.worthValue : profile?.worthValue ?? row.worthValue;
+    const burnValue = custom ? custom.burnValue : profile?.burnValue ?? row.burnValue;
+    const tier = getCardDisplayRarity(row, runtime.ctx, runtime.settings, displayMap);
+    return {
+      ...row,
+      worthValue,
+      burnValue,
+      effectiveRarity: tier.key,
+      effectiveRarityLabel: tier.label,
+    };
+  }).sort((a, b) => b.worthValue - a.worthValue);
 
   const unlockedKeys = new Set(unlockedRows.map(r => r.achievementKey));
   const unique = collectionRows.length;

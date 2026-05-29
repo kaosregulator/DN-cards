@@ -244,7 +244,7 @@ export default function Home() {
                         <div className="flex items-center gap-2 mb-1">
                           <span className="text-sm font-bold uppercase tracking-wide truncate">{card.name}</span>
                           <Badge variant="outline" className="text-[10px] font-mono uppercase border-pink-500/40 text-pink-300 flex-shrink-0">
-                            {card.rarity}
+                            {card.effectiveRarityLabel ?? card.rarity}
                           </Badge>
                         </div>
                         <p className="text-xs text-muted-foreground line-clamp-3">

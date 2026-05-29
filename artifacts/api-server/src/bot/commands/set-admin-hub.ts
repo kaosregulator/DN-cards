@@ -13,6 +13,8 @@ import {
   addCardToSet, removeCardFromSet,
   bulkAddCardsToSet, bulkRemoveCardsFromSet,
   getUnassignedCards,
+  getCardDisplayRarity,
+  getRarityContext,
 } from "../db.js";
 import { buildSingleSetPayload } from "./sets-admin.js";
 import { isHomeGuild, GLOBAL_ONLY_MSG } from "../home-guild.js";
@@ -217,17 +219,22 @@ async function buildPanelPayload(guildId: string, selectedSetId?: number) {
 }
 
 // ── View Cards paginated embed ────────────────────────────────────────────────
-function buildViewCardsEmbed(
+async function buildViewCardsEmbed(
   setName: string,
   cards: Awaited<ReturnType<typeof getCardsInSet>>,
   page: number,
-): EmbedBuilder {
+  guildId: string,
+): Promise<EmbedBuilder> {
   const total = cards.length;
   const totalPages = Math.max(1, Math.ceil(total / VIEW_CARDS_PAGE_SIZE));
   const start = page * VIEW_CARDS_PAGE_SIZE;
   const slice = cards.slice(start, start + VIEW_CARDS_PAGE_SIZE);
 
-  const lines = slice.map(c => `• **${c.name}** — ${rarityEmoji(c.rarity as Rarity, null, null)} ${rarityLabel(c.rarity as Rarity, null, null)}`);
+  const [ctx, displayMap] = await Promise.all([getRarityContext(guildId), getRarityDisplayOverrides(guildId)]);
+  const lines = slice.map(c => {
+    const rarity = getCardDisplayRarity(c, ctx, null, displayMap);
+    return `• **${c.name}** — ${rarity.emoji} ${rarity.label}`;
+  });
 
   return new EmbedBuilder()
     .setTitle(`👁️ ${setName} — Cards (${total})`)
@@ -591,7 +598,7 @@ export async function handleSetAdminHubButton(interaction: ButtonInteraction): P
     const totalPages = Math.max(1, Math.ceil(cards.length / VIEW_CARDS_PAGE_SIZE));
     const clampedPage = Math.max(0, Math.min(page, totalPages - 1));
     await interaction.editReply({
-      embeds: [buildViewCardsEmbed(entry.set.name, cards, clampedPage)],
+      embeds: [await buildViewCardsEmbed(entry.set.name, cards, clampedPage, guildId)],
       components: [buildViewNavRow(setId, clampedPage, totalPages)],
     });
     return;
@@ -739,7 +746,7 @@ export async function handleSetAdminHubButton(interaction: ButtonInteraction): P
     }
     const totalPages = Math.max(1, Math.ceil(cards.length / VIEW_CARDS_PAGE_SIZE));
     await interaction.followUp({
-      embeds: [buildViewCardsEmbed(entry.set.name, cards, 0)],
+      embeds: [await buildViewCardsEmbed(entry.set.name, cards, 0, guildId)],
       components: [buildViewNavRow(setId, 0, totalPages)],
       flags: MessageFlags.Ephemeral,
     });
