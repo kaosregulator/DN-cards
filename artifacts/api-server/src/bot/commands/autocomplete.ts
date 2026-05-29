@@ -100,9 +100,16 @@ export async function handleAutocomplete(interaction: AutocompleteInteraction): 
     // Any string option named `set`, `from`, `to`, or `name` on these two
     // commands resolves to a set picker (except /setadmin create, which takes
     // a new name — but that's not autocompleted so it won't reach here).
-    const setNameCommands = new Set(["sets", "drop", "massdrop", "setadmin", "addcard"]);
-    if (setNameCommands.has(cmd)
-        && ["set", "from", "to", "name"].includes(focused.name)) {
+    // /drop and /massdrop have `name` = card name, `set` = set name
+    // /setadmin has `name` = set name (rename/delete/view), `set`/`from`/`to` = set name
+    // /sets has `name` = set name (view/progress); /addcard has `set` = set name
+    const isSetNameOption =
+      (cmd === "sets" && focused.name === "name") ||
+      (cmd === "setadmin" && ["name", "set", "from", "to"].includes(focused.name)) ||
+      (cmd === "drop" && focused.name === "set") ||
+      (cmd === "massdrop" && focused.name === "set") ||
+      (cmd === "addcard" && focused.name === "set");
+    if (isSetNameOption) {
       const sets = await getSetsCached();
       const q = query.toLowerCase().trim();
       const matches = sets
