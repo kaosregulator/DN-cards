@@ -22,6 +22,13 @@ function parseParams<T extends z.ZodTypeAny>(schema: T, req: Request, res: Respo
   return result.data;
 }
 
+function slugifyDisplayCategory(raw: string): string {
+  return raw.toLowerCase().trim()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 64) || "category";
+}
+
 // ── All cards (the public roster — excludes archived) ────────────────────────
 // Reads `cards` LEFT JOIN `card_display_overrides`. The website applies the
 // overrides BEFORE returning so the client never sees the raw gameplay name /
@@ -99,7 +106,9 @@ router.get("/cards", async (_req, res) => {
     .filter(r => !(r.override?.hiddenFromSite ?? false))
     .map(r => {
       const customTier = customTierByCard.get(r.card.id);
-      // Precedence: custom tier > renamed built-in > raw rarity
+      const websiteCategoryLabel = r.override?.displayCategory?.trim() || null;
+      const websiteCategory = websiteCategoryLabel ? `website:${slugifyDisplayCategory(websiteCategoryLabel)}` : null;
+      // Gameplay display fallback: custom tier > renamed built-in > raw rarity
       const effectiveRarity = customTier?.slug ?? r.card.rarity;
       const effectiveRarityLabel = customTier?.name ?? rarityLabelMap.get(r.card.rarity) ?? r.card.rarity;
       const effectiveDropWeight = rarityRuntime
@@ -128,6 +137,8 @@ router.get("/cards", async (_req, res) => {
         sets: cardSets,
         effectiveRarity,
         effectiveRarityLabel,
+        websiteCategory,
+        websiteCategoryLabel,
         effectiveDropWeight,
         dropChancePercent,
         rarityDropChancePercent,

@@ -12,6 +12,7 @@ async function runBootMigrations() {
   await pool.query(`ALTER TABLE cards ADD COLUMN IF NOT EXISTS preview_animation text`);
   await pool.query(`ALTER TABLE cards ADD COLUMN IF NOT EXISTS preview_bg_color text`);
   await pool.query(`ALTER TABLE cards ADD COLUMN IF NOT EXISTS display_orientation text`);
+  await pool.query(`ALTER TABLE card_display_overrides ADD COLUMN IF NOT EXISTS display_category text`);
 
   // Convert card_type from enum → text so admins can use any free-form label.
   // Idempotent: only runs while the column still has the enum type.

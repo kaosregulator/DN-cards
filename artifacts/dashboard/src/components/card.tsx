@@ -64,10 +64,11 @@ export function CardComponent({ card, relativeDropChance, count, shinyCount = 0 
   const resolvedImageUrl = resolveImageUrl(card.imageUrl);
   const [imageError, setImageError] = useState(!resolvedImageUrl);
 
-  // Use the effective rarity (custom tier or renamed built-in) for ALL display.
+  // Use the website category override first, then the effective rarity
+  // (custom tier or renamed built-in), for all visible rarity/category labels.
   // For CSS lookups: fall back to base rarity when the effective slug has no
   // entry in the maps (custom tier slugs like "gold_legendary" aren't in there).
-  const displayRarityLabel = card.effectiveRarityLabel ?? card.rarity;
+  const displayRarityLabel = card.websiteCategoryLabel ?? card.effectiveRarityLabel ?? card.rarity;
   const displayRarityKey = (
     card.effectiveRarity && (card.effectiveRarity in rarityColors)
       ? card.effectiveRarity

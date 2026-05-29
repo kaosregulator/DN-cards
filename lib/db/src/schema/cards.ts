@@ -501,6 +501,8 @@ export const cardDisplayOverridesTable = pgTable("card_display_overrides", {
   displayName: text("display_name"),
   displayImageUrl: text("display_image_url"),
   displayDescription: text("display_description"),
+  // Website-only grouping/category label. Does not affect Discord gameplay rarity.
+  displayCategory: text("display_category"),
   flavorText: text("flavor_text"),
   hiddenFromSite: boolean("hidden_from_site").notNull().default(false),
   featured: boolean("featured").notNull().default(false),
