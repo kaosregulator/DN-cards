@@ -4,7 +4,8 @@ import {
   createCardEvent, listActiveCardEvents, stopCardEvent,
   getCardByName, getOrCreateGuildSettings,
 } from "../db.js";
-import { RARITY_EMOJI, RARITY_LABELS, type Rarity } from "../cards-data.js";
+import { RARITY_EMOJI, RARITY_LABELS, type Rarity, rarityLabel, rarityEmoji } from "../cards-data.js";
+import { getRarityDisplayOverrides } from "../db.js";
 
 // Accepts compact durations: "30m", "2h", "1d". Returns ms or null on parse fail.
 // Capped at 14 days so a typo doesn't pin a card on the boost board forever.
@@ -113,16 +114,19 @@ export async function handleEventCommand(
     });
 
     const r = card.rarity as Rarity;
+    const displayMap = await getRarityDisplayOverrides(guildId);
+    const rLabel = rarityLabel(r, null, displayMap);
+    const rEmoji = rarityEmoji(r, null, displayMap);
     await interaction.editReply(
-      `✅ Started event **#${event.id}** — ${RARITY_EMOJI[r]} **${card.name}** spawns at ` +
+      `✅ Started event **#${event.id}** — ${rEmoji} **${card.name}** spawns at ` +
       `**${multiplier.toFixed(1)}×** weight for **${formatRemaining(ms)}** ` +
       `(ends <t:${Math.floor(endsAt.getTime() / 1000)}:R>).` + setWarning,
     );
 
     await announce(
       interaction,
-      `🎉 **Limited-Time Event!** ${RARITY_EMOJI[r]} **${card.name}** ` +
-      `(${RARITY_LABELS[r]}) is spawning **${multiplier.toFixed(1)}× more often** ` +
+      `🎉 **Limited-Time Event!** ${rEmoji} **${card.name}** ` +
+      `(${rLabel}) is spawning **${multiplier.toFixed(1)}× more often** ` +
       `for the next **${formatRemaining(ms)}** — ends <t:${Math.floor(endsAt.getTime() / 1000)}:R>.`,
     );
     return;

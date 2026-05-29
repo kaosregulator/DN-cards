@@ -19,7 +19,8 @@ import { logger } from "../../lib/logger.js";
 import { db, cardsTable, cardSetMembershipsTable } from "@workspace/db";
 import { eq, inArray, and } from "drizzle-orm";
 import type { Card, CardSet } from "@workspace/db";
-import { RARITY_EMOJI, type Rarity } from "../cards-data.js";
+import { RARITY_EMOJI, type Rarity, rarityLabel, rarityEmoji } from "../cards-data.js";
+import { getRarityDisplayOverrides } from "../db.js";
 import { isHomeGuild, GLOBAL_ONLY_MSG } from "../home-guild.js";
 
 async function checkAdmin(interaction: ChatInputCommandInteraction): Promise<boolean> {
@@ -235,12 +236,13 @@ export async function handleSetAdminCommand(interaction: ChatInputCommandInterac
       (grouped[r] ??= []).push(c.name);
     }
     const order: Rarity[] = ["mythic", "legendary", "epic", "rare", "uncommon", "common"];
+    const displayMap = await getRarityDisplayOverrides(guildId);
     const fields = order
       .filter(r => grouped[r] && grouped[r]!.length > 0)
       .map(r => {
         const list = grouped[r]!.sort();
         const value = list.slice(0, 30).join(", ") + (list.length > 30 ? ` (+${list.length - 30} more)` : "");
-        return { name: `${RARITY_EMOJI[r]} ${r} (${list.length})`, value: value.slice(0, 1024) };
+        return { name: `${rarityEmoji(r, null, displayMap)} ${rarityLabel(r, null, displayMap)} (${list.length})`, value: value.slice(0, 1024) };
       });
     const embed = new EmbedBuilder()
       .setTitle(`📦 Set: ${set.name}${isActive ? "  ✦ active" : ""}`)
@@ -256,7 +258,7 @@ export async function handleSetAdminCommand(interaction: ChatInputCommandInterac
       const order: Rarity[] = ["common", "uncommon", "rare", "epic", "legendary", "mythic"];
       const line = order
         .filter(r => w[r] != null)
-        .map(r => `${RARITY_EMOJI[r]} ${r} **${w[r]}**`)
+        .map(r => `${rarityEmoji(r, null, displayMap)} ${rarityLabel(r, null, displayMap)} **${w[r]}**`)
         .join(" · ");
       embed.addFields({ name: "⚖️ Active-set weight overrides", value: line || "—" });
     }
@@ -280,8 +282,11 @@ export async function handleSetAdminCommand(interaction: ChatInputCommandInterac
     const liveNote = isActive
       ? "\n⚖️ This set is active — the new weight is live."
       : `\n💡 Activate this set with \`/setadmin active set:${set.name}\` for the override to take effect.`;
+    const displayMap2 = await getRarityDisplayOverrides(guildId);
+    const rLabel = rarityLabel(rarity as Rarity, null, displayMap2);
+    const rEmoji = rarityEmoji(rarity as Rarity, null, displayMap2);
     await interaction.editReply(
-      `✅ \`${set.name}\` · ${RARITY_EMOJI[rarity as Rarity] ?? ""} **${rarity}** weight → **${weight}**.` +
+      `✅ \`${set.name}\` · ${rEmoji} **${rLabel}** weight → **${weight}**.` +
       ` Other tiers fall through to the guild rarity profile.${zeroNote}${liveNote}` +
       (updated ? "" : " *(set lookup mismatch — please retry)*"),
     );
@@ -313,10 +318,11 @@ export async function handleSetAdminCommand(interaction: ChatInputCommandInterac
     const order: Rarity[] = ["common", "uncommon", "rare", "epic", "legendary", "mythic"];
     const active = await getActiveSet(guildId);
     const isActive = active?.id === set.id;
+    const displayMap = await getRarityDisplayOverrides(guildId);
     const lines = order.map(r => {
       const v = w[r];
       const tag = v == null ? "*(uses guild profile)*" : `**${v}**`;
-      return `${RARITY_EMOJI[r]} \`${r}\` — ${tag}`;
+      return `${rarityEmoji(r, null, displayMap)} ${rarityLabel(r, null, displayMap)} — ${tag}`;
     });
     const embed = new EmbedBuilder()
       .setTitle(`⚖️ ${set.name} · spawn weights${isActive ? "  ✦ active" : ""}`)

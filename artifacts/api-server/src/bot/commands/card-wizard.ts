@@ -3,8 +3,9 @@ import { addCard, getCardByName, updateCard } from "../db.js";
 import {
   RARITY_EMOJI, RARITY_LABELS, RARITY_WEIGHTS, RARITY_WORTH, RARITY_BURN,
   TYPE_EMOJI, getTypeEmoji,
-  type Rarity,
+  type Rarity, rarityLabel, rarityEmoji,
 } from "../cards-data.js";
+import { getRarityDisplayOverrides } from "../db.js";
 import type { Card } from "@workspace/db";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -125,8 +126,9 @@ async function processStep(
       session.data.description = input.toLowerCase() === "skip" ? "" : input.slice(0, 256).trim();
       session.step = "card_rarity";
 
+      const displayMap = await getRarityDisplayOverrides(msg.guild!.id);
       const rarityLines = RARITY_CHOICES.map((r, i) =>
-        `**${i + 1}️⃣ ${RARITY_EMOJI[r]} ${RARITY_LABELS[r]}** — 💠 ${RARITY_WORTH[r].toLocaleString()} worth · 🔥 ${RARITY_BURN[r].toLocaleString()} burn`,
+        `**${i + 1}️⃣ ${rarityEmoji(r, null, displayMap)} ${rarityLabel(r, null, displayMap)}** — 💠 ${RARITY_WORTH[r].toLocaleString()} worth · 🔥 ${RARITY_BURN[r].toLocaleString()} burn`,
       ).join("\n");
 
       await msg.reply(
@@ -152,8 +154,11 @@ async function processStep(
       const col1 = typeLines.slice(0, half).join("\n");
       const col2 = typeLines.slice(half).join("\n");
 
+      const displayMap = await getRarityDisplayOverrides(msg.guild!.id);
+      const rLabel = rarityLabel(session.data.rarity!, null, displayMap);
+      const rEmoji = rarityEmoji(session.data.rarity!, null, displayMap);
       await msg.reply(
-        `✅ Rarity: ${RARITY_EMOJI[session.data.rarity!]} **${RARITY_LABELS[session.data.rarity!]}**\n\n` +
+        `✅ Rarity: ${rEmoji} **${rLabel}**\n\n` +
         `**Step 4 — Card Type**\n${col1}\n${col2}\n\nType **1–${TYPE_CHOICES.length}**:`,
       );
       return true;
@@ -252,11 +257,16 @@ async function showConfirmation(msg: Message, session: CardWizardSession) {
   const worth = RARITY_WORTH[r] * mult;
   const burn = RARITY_BURN[r] * mult;
 
+  const guildId = msg.guild?.id;
+  const displayMap = guildId ? await getRarityDisplayOverrides(guildId) : null;
+  const rLabel = rarityLabel(r, null, displayMap);
+  const rEmoji = rarityEmoji(r, null, displayMap);
+
   const kindEmoji = session.kind === "standard" ? "🃏" : session.kind === "limited" ? "💎" : "🎆";
   const lines = [
     `**Name:** ${d.name}`,
     `**Kind:** ${kindEmoji} ${KIND_LABEL[session.kind]}`,
-    `**Rarity:** ${RARITY_EMOJI[r]} ${RARITY_LABELS[r]}`,
+    `**Rarity:** ${rEmoji} ${rLabel}`,
     `**Type:** ${getTypeEmoji(d.cardType)} ${d.cardType}`,
     d.description ? `**Description:** ${d.description}` : "*No description*",
     `**Worth:** 💠 ${worth.toLocaleString()} · **Burn:** 🔥 ${burn.toLocaleString()}`,
@@ -316,10 +326,14 @@ export async function startEditWizard(msg: Message, cardName: string): Promise<v
 
 async function showEditMenu(msg: Message, card: Card) {
   const r = card.rarity as Rarity;
+  const guildId = msg.guild?.id;
+  const displayMap = guildId ? await getRarityDisplayOverrides(guildId) : null;
+  const rLabel = rarityLabel(r, null, displayMap);
+  const rEmoji = rarityEmoji(r, null, displayMap);
   await msg.reply(
     `## ✏️ Editing: **${card.name}**\n` +
     `**Current values:**\n` +
-    `• Rarity: ${RARITY_EMOJI[r]} ${RARITY_LABELS[r]} (spawn chance source ${card.dropWeight})\n` +
+    `• Rarity: ${rEmoji} ${rLabel} (spawn chance source ${card.dropWeight})\n` +
     `• Worth: 💠 ${card.worthValue.toLocaleString()} · Burn: 🔥 ${card.burnValue.toLocaleString()}\n` +
     `• Type: ${getTypeEmoji(card.cardType)} ${card.cardType}\n` +
     `• Description: ${card.description || "*none*"}\n` +
@@ -377,7 +391,10 @@ async function processEditStep(msg: Message, session: EditSession, k: string, in
       }
       const newRarity = RARITY_CHOICES[idx];
       await updateCard(session.cardId, { rarity: newRarity, dropWeight: RARITY_WEIGHTS[newRarity] });
-      await msg.reply(`✅ Rarity → ${RARITY_EMOJI[newRarity]} **${RARITY_LABELS[newRarity]}** (spawn % source reset to ${RARITY_WEIGHTS[newRarity]}).`);
+      const displayMap = await getRarityDisplayOverrides(msg.guild!.id);
+      const rLabel = rarityLabel(newRarity, null, displayMap);
+      const rEmoji = rarityEmoji(newRarity, null, displayMap);
+      await msg.reply(`✅ Rarity → ${rEmoji} **${rLabel}** (spawn % source reset to ${RARITY_WEIGHTS[newRarity]}).`);
       return await backToMenu(msg, session);
     }
 
@@ -451,7 +468,8 @@ async function processEditStep(msg: Message, session: EditSession, k: string, in
 async function promptForField(msg: Message, step: EditStep) {
   switch (step) {
     case "edit_rarity": {
-      const lines = RARITY_CHOICES.map((r, i) => `**${i + 1}.** ${RARITY_EMOJI[r]} ${RARITY_LABELS[r]} — 💠 ${RARITY_WORTH[r]} / 🔥 ${RARITY_BURN[r]} default`).join("\n");
+      const displayMap = await getRarityDisplayOverrides(msg.guild!.id);
+      const lines = RARITY_CHOICES.map((r, i) => `**${i + 1}.** ${rarityEmoji(r, null, displayMap)} ${rarityLabel(r, null, displayMap)} — 💠 ${RARITY_WORTH[r]} / 🔥 ${RARITY_BURN[r]} default`).join("\n");
       await msg.reply(`**Choose new rarity:**\n${lines}\n\nType **1–5**:`);
       return;
     }
@@ -512,9 +530,13 @@ async function createCard(msg: Message, session: CardWizardSession) {
       ? "It will appear in random card drops automatically."
       : `Use \`/drop name:${card.name}\` to award it to members.`;
 
+    const guildId = msg.guild?.id;
+    const displayMap = guildId ? await getRarityDisplayOverrides(guildId) : null;
+    const rLabel = rarityLabel(r, null, displayMap);
+    const rEmoji = rarityEmoji(r, null, displayMap);
     await msg.reply(
       `## ${kindEmoji} Card Created!\n` +
-      `**${card.name}** — ${RARITY_EMOJI[r]} ${RARITY_LABELS[r]}\n` +
+      `**${card.name}** — ${rEmoji} ${rLabel}\n` +
       `Worth: 💠 ${card.worthValue.toLocaleString()} · Burn: 🔥 ${card.burnValue.toLocaleString()}\n\n` +
       extra +
       (session.kind !== "standard" ? `\nRemove with \`!removecard ${card.name}\` if needed (your prefix may differ).` : ""),

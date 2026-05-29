@@ -16,7 +16,8 @@ import {
 } from "../db.js";
 import { buildSingleSetPayload } from "./sets-admin.js";
 import { isHomeGuild, GLOBAL_ONLY_MSG } from "../home-guild.js";
-import { RARITY_EMOJI, type Rarity } from "../cards-data.js";
+import { RARITY_EMOJI, type Rarity, rarityLabel, rarityEmoji } from "../cards-data.js";
+import { getRarityDisplayOverrides } from "../db.js";
 
 // ── Rarity weight options for the weights sub-panel ──────────────────────────
 const WEIGHT_RARITIES: Rarity[] = ["common", "uncommon", "rare", "epic", "legendary", "mythic"];
@@ -226,7 +227,7 @@ function buildViewCardsEmbed(
   const start = page * VIEW_CARDS_PAGE_SIZE;
   const slice = cards.slice(start, start + VIEW_CARDS_PAGE_SIZE);
 
-  const lines = slice.map(c => `• **${c.name}** — ${RARITY_EMOJI[c.rarity as Rarity] ?? ""} ${c.rarity}`);
+  const lines = slice.map(c => `• **${c.name}** — ${rarityEmoji(c.rarity as Rarity, null, null)} ${rarityLabel(c.rarity as Rarity, null, null)}`);
 
   return new EmbedBuilder()
     .setTitle(`👁️ ${setName} — Cards (${total})`)
@@ -259,13 +260,14 @@ function buildWeightsEmbed(
   setName: string,
   rarityWeights: Record<string, number> | null,
   isActive: boolean,
+  displayMap?: import("../cards-data.js").RarityDisplayMap | null,
 ): EmbedBuilder {
   const w = rarityWeights ?? {};
   const allRarities: Rarity[] = ["common", "uncommon", "rare", "epic", "legendary", "mythic"];
   const lines = allRarities.map(r => {
     const v = w[r];
     const tag = v == null ? "*(server rarity setup)*" : `**${v}%**`;
-    return `${RARITY_EMOJI[r]} \`${r}\` — ${tag}`;
+    return `${rarityEmoji(r, null, displayMap)} ${rarityLabel(r, null, displayMap)} — ${tag}`;
   });
   return new EmbedBuilder()
     .setTitle(`🎛️ ${setName} — Set Spawn % Overrides`)
@@ -280,7 +282,11 @@ function buildWeightsEmbed(
     .setFooter({ text: "Default = use server rarity setup · 0% = disabled while this set is active" });
 }
 
-function buildWeightsComponents(setId: number, rarityWeights: Record<string, number> | null) {
+function buildWeightsComponents(
+  setId: number,
+  rarityWeights: Record<string, number> | null,
+  displayMap?: import("../cards-data.js").RarityDisplayMap | null,
+) {
   const w = rarityWeights ?? {};
   const rows: ActionRowBuilder<any>[] = [];
 
@@ -289,10 +295,10 @@ function buildWeightsComponents(setId: number, rarityWeights: Record<string, num
     const current = w[rarity] ?? null;
     const select = new StringSelectMenuBuilder()
       .setCustomId(`setadminhub:weight:${setId}:${rarity}`)
-      .setPlaceholder(`${RARITY_EMOJI[rarity]} ${rarity} spawn %`)
+      .setPlaceholder(`${rarityEmoji(rarity, null, displayMap)} ${rarityLabel(rarity, null, displayMap)} spawn %`)
       .addOptions(
         opts.map(v => ({
-          label: v == null ? `${rarity} — Default (server setup)` : `${rarity} — ${v}%`,
+          label: v == null ? `${rarityLabel(rarity, null, displayMap)} — Default (server setup)` : `${rarityLabel(rarity, null, displayMap)} — ${v}%`,
           value: v == null ? "default" : String(v),
           default: v === current,
         })),
@@ -320,7 +326,9 @@ function buildWeightsComponents(setId: number, rarityWeights: Record<string, num
 }
 
 async function buildWeightsPayload(setId: number, guildId: string) {
-  const [sets, activeSet] = await Promise.all([listSetsV2(), getActiveSet(guildId)]);
+  const [sets, activeSet, displayMap] = await Promise.all([
+    listSetsV2(), getActiveSet(guildId), getRarityDisplayOverrides(guildId),
+  ]);
   const entry = sets.find(s => s.set.id === setId);
   if (!entry) return null;
   const isActive = activeSet?.id === setId;
@@ -328,10 +336,12 @@ async function buildWeightsPayload(setId: number, guildId: string) {
     entry.set.name,
     entry.set.rarityWeights as Record<string, number> | null,
     isActive,
+    displayMap,
   );
   const components = buildWeightsComponents(
     setId,
     entry.set.rarityWeights as Record<string, number> | null,
+    displayMap,
   );
   return { embeds: [embed], components };
 }

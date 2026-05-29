@@ -377,11 +377,6 @@ function buildConfigEmbed(s: GuildSettings, activeSetName: string | null, displa
         value: spawnOn ? "🟢 ON" : "🔴 OFF",
         inline: true,
       },
-      {
-        name: "🎛️ Rarity Setup (visible spawn chance by rarity)",
-        value: rarityRowsSummary(s, displayMap),
-        inline: false,
-      },
     )
     .setFooter({ text: "Ephemeral — only you see this. Use /sethub to change the active set." });
 }
@@ -464,18 +459,6 @@ function buildConfigComponents(s: GuildSettings, displayMap?: RarityDisplayMap |
       .setStyle(ButtonStyle.Primary),
   );
   const subPanelRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
-    new ButtonBuilder()
-      .setCustomId("config:rates:open")
-      .setLabel("🎛️ Rarity Setup")
-      .setStyle(ButtonStyle.Secondary),
-    new ButtonBuilder()
-      .setCustomId("config:rates:custom")
-      .setLabel("✏️ Exact %")
-      .setStyle(ButtonStyle.Primary),
-    new ButtonBuilder()
-      .setCustomId("config:rates:reset")
-      .setLabel("🔄 Reset %")
-      .setStyle(ButtonStyle.Danger),
     new ButtonBuilder()
       .setCustomId("config:packs:open")
       .setLabel("🎴 Packs")

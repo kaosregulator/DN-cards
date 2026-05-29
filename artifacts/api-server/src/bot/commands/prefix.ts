@@ -6,7 +6,8 @@ import {
   loadDefaultCards, unloadDefaultCards,
 } from "../db.js";
 import { scheduleNextSpawn, clearSpawnTimer } from "../spawn-manager.js";
-import { RARITY_EMOJI, RARITY_WEIGHTS, type Rarity } from "../cards-data.js";
+import { RARITY_EMOJI, RARITY_WEIGHTS, type Rarity, rarityLabel, rarityEmoji } from "../cards-data.js";
+import { getRarityDisplayOverrides } from "../db.js";
 import { startSetupWizard } from "./setup-wizard.js";
 import { startCardWizard, startEditWizard } from "./card-wizard.js";
 import { handleImport } from "./import.js";
@@ -216,7 +217,10 @@ export async function handlePrefixCommand(msg: Message, prefix: string): Promise
       legendary: { rarityWeightLegendary: weight },
     };
     await updateGuildSettings(guildId, colMap[rarity]);
-    await msg.reply(`✅ ${RARITY_EMOJI[rarity as Rarity]} **${rarity}** spawn chance source → **${weight}** (default: ${RARITY_WEIGHTS[rarity as Rarity]}).`);
+    const displayMap = await getRarityDisplayOverrides(guildId);
+    const rLabel = rarityLabel(rarity as Rarity, null, displayMap);
+    const rEmoji = rarityEmoji(rarity as Rarity, null, displayMap);
+    await msg.reply(`✅ ${rEmoji} **${rLabel}** spawn chance source → **${weight}** (default: ${RARITY_WEIGHTS[rarity as Rarity]}).`);
     return;
   }
 

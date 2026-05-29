@@ -5,7 +5,8 @@ import {
 } from "../db.js";
 import { isHomeGuild, GLOBAL_ONLY_MSG } from "../home-guild.js";
 import { spawnCard, scheduleNextSpawn } from "../spawn-manager.js";
-import { RARITY_EMOJI, RARITY_LABELS, type Rarity } from "../cards-data.js";
+import { RARITY_EMOJI, RARITY_LABELS, type Rarity, rarityLabel, rarityEmoji } from "../cards-data.js";
+import { getRarityDisplayOverrides } from "../db.js";
 import { logger } from "../../lib/logger.js";
 import { handleConfigCommand } from "./config-panel.js";
 import { handleAdminHubCommand } from "./admin-hub.js";
@@ -370,9 +371,10 @@ export async function handleAdminCommand(
 
     const counts: Record<Rarity, number> = { common: 0, uncommon: 0, rare: 0, epic: 0, legendary: 0, mythic: 0 };
     for (const c of queue) counts[c.rarity as Rarity]++;
+    const displayMap = await getRarityDisplayOverrides(guildId);
     const summary = ladder
       .filter(r => counts[r] > 0)
-      .map(r => `${RARITY_EMOJI[r]} ×${counts[r]}`)
+      .map(r => `${rarityEmoji(r, null, displayMap)} ×${counts[r]}`)
       .join(" · ");
 
     await interaction.editReply(
@@ -409,8 +411,11 @@ export async function handleAdminCommand(
       await catchCard(guildId, target.id, card.id, { noShiny: true });
     }
     const r = card.rarity as Rarity;
+    const displayMap = await getRarityDisplayOverrides(guildId);
+    const rLabel = rarityLabel(r, null, displayMap);
+    const rEmoji = rarityEmoji(r, null, displayMap);
     const suffix = amount > 1 ? ` ×${amount}` : "";
-    await interaction.editReply(`✅ Gave **${card.name}**${suffix} (${RARITY_EMOJI[r]} ${RARITY_LABELS[r]}) to <@${target.id}>.`);
+    await interaction.editReply(`✅ Gave **${card.name}**${suffix} (${rEmoji} ${rLabel}) to <@${target.id}>.`);
     return;
   }
 
@@ -444,10 +449,13 @@ export async function handleAdminCommand(
       return;
     }
     const r = card.rarity as Rarity;
+    const displayMap = await getRarityDisplayOverrides(guildId);
+    const rLabel = rarityLabel(r, null, displayMap);
+    const rEmoji = rarityEmoji(r, null, displayMap);
     const suffix = removed > 1 ? ` ×${removed}` : "";
     const shortfall = removed < amount ? ` (only had ${removed}, requested ${amount})` : "";
     await interaction.editReply(
-      `✅ Removed **${card.name}**${suffix} (${RARITY_EMOJI[r]} ${RARITY_LABELS[r]}) from <@${target.id}>.${shortfall}` +
+      `✅ Removed **${card.name}**${suffix} (${rEmoji} ${rLabel}) from <@${target.id}>.${shortfall}` +
       (remaining > 0 ? ` They still have ×${remaining}.` : " Last copy removed."),
     );
     return;

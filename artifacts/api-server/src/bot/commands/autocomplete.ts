@@ -73,7 +73,7 @@ function scoreMatch(name: string, q: string): number {
 }
 
 function formatCardChoice(c: { name: string; rarity: string }) {
-  const emoji = RARITY_EMOJI[c.rarity as Rarity] ?? "🃏";
+  const emoji = rarityEmoji(c.rarity as Rarity, null, null) ?? "🃏";
   const display = `${emoji} ${c.name}`.slice(0, 100);
   return { name: display, value: c.name.slice(0, 100) };
 }

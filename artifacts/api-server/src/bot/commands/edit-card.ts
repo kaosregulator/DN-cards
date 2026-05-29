@@ -43,7 +43,7 @@ async function buildPanel(cardId: number, guildId?: string | null): Promise<{ em
   const displayColor = rarityColor(r, settings, displayMap);
   const embed = new EmbedBuilder()
     .setTitle(`✏️ Edit: ${card.name}`)
-    .setColor(displayColor ?? RARITY_COLORS[r] ?? 0x5865f2)
+    .setColor(displayColor)
     .setDescription(card.description || "_(no description)_")
     .addFields(
       { name: "Rarity", value: `${displayEmoji} ${displayLabel}`, inline: true },
@@ -151,7 +151,7 @@ export async function handleEditCardSelect(interaction: StringSelectMenuInteract
         .addOptions(RARITIES.map(r => ({
           label: rarityLabel(r, settings, displayMap),
           value: r,
-          emoji: rarityEmoji(r, settings, displayMap) ?? RARITY_EMOJI[r] ?? "🃏",
+          emoji: rarityEmoji(r, settings, displayMap) ?? "🃏",
         })));
       await interaction.update({
         content: "✨ Pick the new rarity:",

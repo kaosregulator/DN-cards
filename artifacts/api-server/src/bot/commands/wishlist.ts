@@ -4,7 +4,8 @@ import {
   addWishlist, removeWishlist, getUserWishlist, getCardByName,
   getRarityProfile,
 } from "../db.js";
-import { RARITY_COLORS, RARITY_EMOJI, RARITY_LABELS, type Rarity } from "../cards-data.js";
+import { RARITY_COLORS, RARITY_EMOJI, RARITY_LABELS, type Rarity, rarityLabel, rarityEmoji, rarityColor } from "../cards-data.js";
+import { getRarityDisplayOverrides } from "../db.js";
 
 export async function handleWishlist(interaction: ChatInputCommandInteraction): Promise<void> {
   if (!interaction.guild) return;
@@ -18,9 +19,12 @@ export async function handleWishlist(interaction: ChatInputCommandInteraction): 
     if (card.isArchived) { await interaction.editReply(`❌ **${card.name}** is archived and can't be wishlisted.`); return; }
     const added = await addWishlist(guildId, interaction.user.id, card.id);
     const rarity = card.rarity as Rarity;
+    const displayMap = await getRarityDisplayOverrides(guildId);
+    const rLabel = rarityLabel(rarity, null, displayMap);
+    const rEmoji = rarityEmoji(rarity, null, displayMap);
     await interaction.editReply(
       added
-        ? `⭐ Added **${card.name}** (${RARITY_EMOJI[rarity]} ${RARITY_LABELS[rarity]}) to your wishlist. You'll be pinged when it spawns.`
+        ? `⭐ Added **${card.name}** (${rEmoji} ${rLabel}) to your wishlist. You'll be pinged when it spawns.`
         : `**${card.name}** is already on your wishlist.`,
     );
     return;
@@ -60,8 +64,9 @@ export async function handleWishlist(interaction: ChatInputCommandInteraction): 
     const byRarity: Record<string, typeof items> = {};
     for (const it of items) (byRarity[it.rarity] ??= []).push(it);
 
+    const displayMap = await getRarityDisplayOverrides(guildId);
     const fields = rarityOrder.filter(r => byRarity[r]?.length).map(r => ({
-      name: `${RARITY_EMOJI[r]} ${RARITY_LABELS[r]} (${byRarity[r].length})`,
+      name: `${rarityEmoji(r, null, displayMap)} ${rarityLabel(r, null, displayMap)} (${byRarity[r].length})`,
       value: byRarity[r].map(i => `• **${i.name}** — 💠 ${i.worthValue.toLocaleString()}`).join("\n"),
       inline: false,
     }));
@@ -69,7 +74,7 @@ export async function handleWishlist(interaction: ChatInputCommandInteraction): 
     const topRarity = (items[0]?.rarity ?? "common") as Rarity;
     const embed = new EmbedBuilder()
       .setTitle(`⭐ ${target.username}'s Wishlist (${items.length})`)
-      .setColor(RARITY_COLORS[topRarity] ?? 0xf1c40f)
+      .setColor(rarityColor(topRarity, null, displayMap))
       .addFields(fields)
       .setFooter({ text: "Wished cards ping their owner when they spawn." });
     await interaction.editReply({ embeds: [embed] });
