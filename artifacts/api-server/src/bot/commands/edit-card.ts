@@ -74,6 +74,8 @@ async function buildPanel(cardId: number, guildId?: string | null): Promise<{ em
       { label: "Name", value: "name", emoji: "🏷️" },
       { label: "Description", value: "description", emoji: "📝" },
       { label: "Type", value: "type", emoji: "🎯", description: `Currently ${card.cardType}` },
+      { label: "Worth value", value: "worthValue", emoji: "💠", description: `Currently ${card.worthValue.toLocaleString()}` },
+      { label: "Burn value", value: "burnValue", emoji: "🔥", description: `Currently ${card.burnValue.toLocaleString()}` },
       { label: card.inPacks ? "Toggle: remove from packs" : "Toggle: add to packs", value: "toggle:inPacks", emoji: "📦" },
       { label: card.droppable ? "Toggle: make undroppable" : "Toggle: make droppable", value: "toggle:droppable", emoji: "🎁" },
       { label: card.isArchived ? "Toggle: un-archive" : "Toggle: archive", value: "toggle:isArchived", emoji: "🗄️" },
@@ -227,6 +229,8 @@ export async function handleEditCardSelect(interaction: StringSelectMenuInteract
 const TEXT_FIELDS: Record<string, { title: string; label: string; style: TextInputStyle; max?: number; placeholder?: string }> = {
   name:        { title: "Edit Name",        label: "Card name (1–80 chars)",        style: TextInputStyle.Short,     max: 80 },
   description: { title: "Edit Description", label: "Description (max 500 chars)",   style: TextInputStyle.Paragraph, max: 500 },
+  worthValue:  { title: "Edit Worth Value", label: "Worth value in DN Shards",       style: TextInputStyle.Short,     placeholder: "Example: 2500" },
+  burnValue:   { title: "Edit Burn Value",  label: "Burn value in DN Shards",        style: TextInputStyle.Short,     placeholder: "Example: 1250" },
 };
 
 async function openFieldModal(interaction: StringSelectMenuInteraction, cardId: number, field: string): Promise<void> {
@@ -265,6 +269,16 @@ export async function handleEditCardModal(interaction: ModalSubmitInteraction): 
     case "description":
       patch.description = raw;
       break;
+    case "worthValue":
+    case "burnValue": {
+      const value = Number(raw.replace(/,/g, ""));
+      if (!Number.isInteger(value) || value < 0) {
+        await interaction.reply({ content: "❌ Enter a whole number of shards, 0 or higher.", flags: MessageFlags.Ephemeral });
+        return;
+      }
+      patch[field] = value;
+      break;
+    }
     default:
       await interaction.reply({ content: "❌ Unknown field.", flags: MessageFlags.Ephemeral });
       return;
