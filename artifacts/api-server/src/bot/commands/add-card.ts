@@ -1,8 +1,7 @@
 // /addcard — interactive slash command replacing !addcard / !addlimited / !addevent.
 //
 // The command itself takes the core required fields (name, rarity, type) plus
-// optional extras. The image option accepts a Discord attachment (drag-and-drop
-// from the file picker) OR a URL in the imageurl option.
+// optional extras. Images are provided with Discord's native file upload.
 //
 // After creation the bot renders the /editcard panel in the same ephemeral
 // message so the admin can immediately refine anything.
@@ -10,7 +9,7 @@
 import {
   type ChatInputCommandInteraction,
 } from "discord.js";
-import { addCard, addCardToSet, getCardByName, getCustomRarityBySlug, getSetByName, assignCardToCustomRarity } from "../db.js";
+import { addCard, addCardToSet, getCardByName, getSetByName } from "../db.js";
 import { renderPanel } from "./edit-card.js";
 import { RARITY_BURN, RARITY_WEIGHTS, RARITY_WORTH, type Rarity } from "../cards-data.js";
 
@@ -31,7 +30,7 @@ export async function handleAddCardCommand(interaction: ChatInputCommandInteract
   const rarityInput = opts.getString("rarity", true);
   const type        = opts.getString("type", true);
   const imageAttachment = opts.getAttachment("image");
-  const imageUrl    = imageAttachment?.url ?? opts.getString("imageurl") ?? undefined;
+  const imageUrl    = imageAttachment?.url ?? undefined;
   const setName     = opts.getString("set")?.trim();
   const description = opts.getString("description") ?? "";
   const limited        = opts.getBoolean("limited") ?? false;
@@ -43,32 +42,15 @@ export async function handleAddCardCommand(interaction: ChatInputCommandInteract
     return;
   }
 
-  // Resolve whether this is a built-in rarity or a guild custom tier slug.
-  const isCustom = !BUILTIN_RARITIES.has(rarityInput);
-  let baseRarity: Rarity = "common";
-  let customSlug: string | null = null;
-  let defs = builtInDefaults("common");
-
-  if (isCustom) {
-    const tier = await getCustomRarityBySlug(guildId, rarityInput);
-    if (!tier) {
-      await interaction.editReply(`❌ Unknown rarity \`${rarityInput}\`. Please pick one from the autocomplete list.`);
-      return;
-    }
-    customSlug = tier.slug;
-    // Use the custom tier's economy values as defaults; admin can override via the fields.
-    defs = { worth: tier.worthValue, burn: tier.burnValue, weight: tier.dropWeight };
-    // The DB rarity column is an enum — store "common" as a neutral placeholder.
-    // The custom tier override in card_rarity_overrides is the actual source of truth.
-    baseRarity = "common";
-  } else {
-    baseRarity = rarityInput as Rarity;
-    defs = builtInDefaults(baseRarity);
+  if (!BUILTIN_RARITIES.has(rarityInput)) {
+    await interaction.editReply("❌ Pick one of the built-in rarities from autocomplete. Advanced labels can be managed from `/rarity`.");
+    return;
   }
-
-  const worth  = opts.getInteger("worth")  ?? defs.worth;
-  const burn   = opts.getInteger("burn")   ?? defs.burn;
-  const weight = opts.getNumber("weight")  ?? defs.weight;
+  const baseRarity = rarityInput as Rarity;
+  const defs = builtInDefaults(baseRarity);
+  const worth = defs.worth;
+  const burn = defs.burn;
+  const weight = defs.weight;
 
   const existing = await getCardByName(name);
   if (existing) {
@@ -95,11 +77,6 @@ export async function handleAddCardCommand(interaction: ChatInputCommandInteract
     inPacks:   !eventExclusive && baseRarity !== "mythic",
   });
 
-  // If a custom tier was chosen, assign it now so the rarity resolver picks it up immediately.
-  if (customSlug) {
-    await assignCardToCustomRarity(guildId, card.id, customSlug);
-  }
-
   let setNote = "";
   if (setName) {
     const set = await getSetByName(setName);
@@ -111,6 +88,6 @@ export async function handleAddCardCommand(interaction: ChatInputCommandInteract
     }
   }
 
-  const rarityLabel = customSlug ? `custom tier \`${customSlug}\`` : `**${baseRarity}**`;
+  const rarityLabel = `**${baseRarity}**`;
   await renderPanel(interaction, card.id, false, `✅ Created **${card.name}** (${rarityLabel})${setNote} — tweak any field below`);
 }
