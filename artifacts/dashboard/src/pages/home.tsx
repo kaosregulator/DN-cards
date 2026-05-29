@@ -141,23 +141,23 @@ export default function Home() {
           
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-xs font-mono uppercase text-muted-foreground mr-2">Filter Rarity:</span>
-            {allRarities.map((rarity) => {
-              const active = selectedRarities.has(rarity);
+            {allRarities.map(({ key, label }) => {
+              const active = selectedRarities.has(key);
               return (
                 <button
-                  key={rarity}
+                  key={key}
                   type="button"
                   aria-pressed={active}
-                  aria-label={`Filter by ${rarity}`}
-                  onClick={() => toggleRarity(rarity)}
-                  data-testid={`filter-rarity-${rarity}`}
+                  aria-label={`Filter by ${label}`}
+                  onClick={() => toggleRarity(key)}
+                  data-testid={`filter-rarity-${key}`}
                   className={`cursor-pointer uppercase font-mono tracking-widest text-xs px-3 py-1 rounded-md border transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
                     active
                       ? "bg-primary text-primary-foreground border-primary"
                       : "border-border hover:bg-muted"
                   }`}
                 >
-                  {rarity}
+                  {label}
                 </button>
               );
             })}
