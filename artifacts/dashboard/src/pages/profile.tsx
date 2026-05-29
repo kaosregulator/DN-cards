@@ -195,6 +195,8 @@ export default function Profile() {
                         id: item.cardId,
                         name: item.name,
                         rarity: item.rarity,
+                        effectiveRarity: item.effectiveRarity,
+                        effectiveRarityLabel: item.effectiveRarityLabel,
                         cardType: item.cardType,
                         imageUrl: item.imageUrl,
                         worthValue: item.worthValue,

@@ -40,6 +40,41 @@ async function runBootMigrations() {
      WHERE image_url ~ '^https?://[^/]+/dashboard/'
   `);
 
+  // Legacy rarity assignment cleanup: early Setup Hub builds could persist a
+  // built-in rarity name in card_rarity_overrides.custom_rarity_slug. That row
+  // does not join to custom_rarities, so resolvers fell back to cards.rarity
+  // (often "common"). Promote those orphan built-in assignments into cards.rarity
+  // and remove only the orphan rows. Real custom tiers with the same slug are
+  // preserved by the NOT EXISTS guard.
+  await pool.query(`
+    WITH legacy_builtin AS (
+      SELECT o.guild_id, o.card_id, o.custom_rarity_slug
+      FROM card_rarity_overrides o
+      WHERE o.custom_rarity_slug IN ('common', 'uncommon', 'rare', 'epic', 'legendary', 'mythic')
+        AND NOT EXISTS (
+          SELECT 1
+          FROM custom_rarities c
+          WHERE c.guild_id = o.guild_id
+            AND c.slug = o.custom_rarity_slug
+        )
+    )
+    UPDATE cards
+       SET rarity = legacy_builtin.custom_rarity_slug::rarity
+      FROM legacy_builtin
+     WHERE cards.id = legacy_builtin.card_id
+       AND cards.rarity::text <> legacy_builtin.custom_rarity_slug
+  `);
+  await pool.query(`
+    DELETE FROM card_rarity_overrides o
+    WHERE o.custom_rarity_slug IN ('common', 'uncommon', 'rare', 'epic', 'legendary', 'mythic')
+      AND NOT EXISTS (
+        SELECT 1
+        FROM custom_rarities c
+        WHERE c.guild_id = o.guild_id
+          AND c.slug = o.custom_rarity_slug
+      )
+  `);
+
   // One-time backfill: if no card currently holds a podium slot, seed it from
   // the old name-based heuristic (1st/2nd/3rd in the name of an event card).
   // Idempotent — once any card has podium_place set, the inner NOT EXISTS

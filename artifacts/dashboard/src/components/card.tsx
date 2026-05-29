@@ -225,8 +225,8 @@ export function CardComponent({ card, relativeDropChance, count, shinyCount = 0 
             <div className="flex w-full md:w-1/2 flex-col p-6 md:p-8">
                <DialogHeader className="mb-6 text-left">
                   <div className="mb-3 flex items-center gap-2">
-                    <Badge className={`text-xs uppercase font-mono tracking-widest ${rarityColors[card.rarity]}`}>
-                      {card.rarity}
+                    <Badge className={`text-xs uppercase font-mono tracking-widest ${rarityColors[displayRarityKey]}`}>
+                      {displayRarityLabel}
                     </Badge>
                     <Badge variant="outline" className="text-xs uppercase font-mono tracking-widest">
                       {card.cardType}

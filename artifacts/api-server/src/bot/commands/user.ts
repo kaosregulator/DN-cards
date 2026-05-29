@@ -8,7 +8,7 @@ import {
   getOrCreateCurrency, burnCard, getCardByName, getUserCardCount, getUserOwnedCount,
   getOrCreateGuildSettings,
   getRarityContext, applyRarityContextAll,
-  effectiveRarityKey, getDisplayRarities,
+  effectiveRarityKey, getCardDisplayRarity, getDisplayRarities,
   getRarityDisplayOverrides,
   getGuildDropChanceRuntime,
 } from "../db.js";
@@ -92,11 +92,18 @@ export async function handleUserCommand(
       return;
     }
 
-    const settings = await getOrCreateGuildSettings(guildId);
-    const displayMap = await getRarityDisplayOverrides(guildId);
-    const byRarity = new Map<Rarity, typeof items>();
-    for (const r of RARITY_ORDER) byRarity.set(r, []);
-    for (const item of items) byRarity.get(item.rarity as Rarity)?.push(item);
+    const [settings, displayMap, collectionCtx] = await Promise.all([
+      getOrCreateGuildSettings(guildId),
+      getRarityDisplayOverrides(guildId),
+      getRarityContext(guildId),
+    ]);
+    const collectionLadder = getDisplayRarities(collectionCtx, settings, { displayMap });
+    const byRarity = new Map<string, typeof items>();
+    for (const tier of collectionLadder) byRarity.set(tier.key, []);
+    for (const item of items) {
+      const key = effectiveRarityKey(item, collectionCtx);
+      (byRarity.get(key) ?? byRarity.set(key, []).get(key)!).push(item);
+    }
 
     const totalCards = items.reduce((s, i) => s + i.count + i.shinyCount, 0);
     const totalShinies = items.reduce((s, i) => s + i.shinyCount, 0);
@@ -159,10 +166,10 @@ export async function handleUserCommand(
     if (totalShinies > 0) {
       const shinyItems = items.filter(i => i.shinyCount > 0);
       const shinyLines: string[] = [];
-      for (const r of RARITY_ORDER) {
-        const inR = shinyItems.filter(i => (i.rarity as Rarity) === r);
+      for (const tier of collectionLadder) {
+        const inR = shinyItems.filter(i => effectiveRarityKey(i, collectionCtx) === tier.key);
         if (inR.length === 0) continue;
-        shinyLines.push(`__${rarityEmoji(r, settings, displayMap)} ${rarityLabel(r, settings, displayMap)}__`);
+        shinyLines.push(`__${tier.emoji} ${tier.label}__`);
         for (const i of inR) shinyLines.push(`${SHINY_EMOJI} **${i.name}** ×${i.shinyCount}`);
       }
       const shinyWorth = shinyItems.reduce(
@@ -187,8 +194,8 @@ export async function handleUserCommand(
     }
 
     // ── Per-rarity views (only rarities user actually owns) ──
-    for (const r of RARITY_ORDER) {
-      const group = byRarity.get(r);
+    for (const tier of collectionLadder) {
+      const group = byRarity.get(tier.key);
       if (!group || group.length === 0) continue;
       const groupTotal = group.reduce((s, i) => s + i.count + i.shinyCount, 0);
       const groupShinies = group.reduce((s, i) => s + i.shinyCount, 0);
@@ -203,8 +210,8 @@ export async function handleUserCommand(
       const rarityImg = pickRarestImage(group);
       const baseRarity = () => {
         const e = new EmbedBuilder()
-          .setTitle(`${rarityEmoji(r, settings, displayMap)} ${rarityLabel(r, settings, displayMap)} — ${target.username}`)
-          .setColor(rarityColor(r, settings, displayMap))
+          .setTitle(`${tier.emoji} ${tier.label} — ${target.username}`)
+          .setColor(tier.color)
           .setThumbnail(rarityImg ?? target.displayAvatarURL())
           .setDescription(
             `**${group.length}** unique · **${groupTotal}** total` +
@@ -214,9 +221,9 @@ export async function handleUserCommand(
       };
       const { fields } = chunkLines(lines, { baseName: "Cards", maxFields: 1000 });
       views.push({
-        key: `rarity:${r}`,
-        label: rarityLabel(r, settings, displayMap),
-        emoji: rarityEmoji(r, settings, displayMap),
+        key: `rarity:${tier.key}`,
+        label: tier.label,
+        emoji: tier.emoji,
         description: `${group.length} unique · ${groupTotal} total`,
         screens: buildEmbedScreens(baseRarity, fields),
       });
@@ -230,7 +237,8 @@ export async function handleUserCommand(
         .sort((a, b) => b.worthValue - a.worthValue || a.name.localeCompare(b.name))
         .map(i => {
           const shinyTag = i.shinyCount > 0 ? ` · ${SHINY_EMOJI}×${i.shinyCount}` : "";
-          return `${rarityEmoji(i.rarity as Rarity, settings, displayMap)} **${i.name}** ×${i.count}${shinyTag}`;
+          const tier = getCardDisplayRarity(i, collectionCtx, settings, displayMap);
+          return `${tier.emoji} **${i.name}** ×${i.count}${shinyTag}`;
         });
       const limImg = pickRarestImage(limitedItems);
       const baseLim = () => new EmbedBuilder()
@@ -256,7 +264,8 @@ export async function handleUserCommand(
         .sort((a, b) => b.worthValue - a.worthValue || a.name.localeCompare(b.name))
         .map(i => {
           const shinyTag = i.shinyCount > 0 ? ` · ${SHINY_EMOJI}×${i.shinyCount}` : "";
-          return `${rarityEmoji(i.rarity as Rarity, settings, displayMap)} **${i.name}** ×${i.count}${shinyTag}`;
+          const tier = getCardDisplayRarity(i, collectionCtx, settings, displayMap);
+          return `${tier.emoji} **${i.name}** ×${i.count}${shinyTag}`;
         });
       const evImg = pickRarestImage(eventItems);
       const baseEv = () => new EmbedBuilder()
@@ -472,7 +481,10 @@ export async function handleUserCommand(
       const lines = limitedCards
         .slice()
         .sort((a, b) => a.name.localeCompare(b.name))
-        .map(c => `${rarityEmoji(c.rarity as Rarity, listSettings, listDisplayMap)} ${c.name}` + (c.maxCopies ? ` *(${c.totalMinted}/${c.maxCopies})*` : ""));
+        .map(c => {
+          const tier = getCardDisplayRarity(c, listCtx, listSettings, listDisplayMap);
+          return `${tier.emoji} ${c.name}` + (c.maxCopies ? ` *(${c.totalMinted}/${c.maxCopies})*` : "");
+        });
       const limImg = pickRarestImage(limitedCards);
       const baseLim = () => {
         const e = new EmbedBuilder()
@@ -496,7 +508,10 @@ export async function handleUserCommand(
       const lines = eventCards
         .slice()
         .sort((a, b) => a.name.localeCompare(b.name))
-        .map(c => `${rarityEmoji(c.rarity as Rarity, listSettings, listDisplayMap)} ${c.name}`);
+        .map(c => {
+          const tier = getCardDisplayRarity(c, listCtx, listSettings, listDisplayMap);
+          return `${tier.emoji} ${c.name}`;
+        });
       const evImg = pickRarestImage(eventCards);
       const baseEv = () => {
         const e = new EmbedBuilder()
