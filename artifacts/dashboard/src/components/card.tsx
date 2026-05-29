@@ -67,7 +67,7 @@ export function CardComponent({ card, relativeDropChance, count, shinyCount = 0 
   // Use the effective rarity (custom tier or renamed built-in) for ALL display.
   // For CSS lookups: fall back to base rarity when the effective slug has no
   // entry in the maps (custom tier slugs like "gold_legendary" aren't in there).
-  const displayRarityLabel = card.effectiveRarityLabel ?? card.rarity;
+  const displayRarityLabel = card.websiteCategoryLabel ?? card.effectiveRarityLabel ?? card.rarity;
   const displayRarityKey = (
     card.effectiveRarity && (card.effectiveRarity in rarityColors)
       ? card.effectiveRarity

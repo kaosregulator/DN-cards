@@ -10,6 +10,16 @@ import { motion, AnimatePresence } from "framer-motion";
 const BUILT_IN_ORDER: Rarity[] = ["legendary", "epic", "rare", "uncommon", "common"];
 const BUILT_IN_SET = new Set<string>(BUILT_IN_ORDER);
 
+type RarityFilterOption = { key: string; label: string };
+
+function cardCategoryKey(c: { websiteCategory?: string | null; effectiveRarity?: string; rarity: string }) {
+  return c.websiteCategory ?? c.effectiveRarity ?? c.rarity;
+}
+
+function cardCategoryLabel(c: { websiteCategoryLabel?: string | null; effectiveRarityLabel?: string; rarity: string }) {
+  return c.websiteCategoryLabel ?? c.effectiveRarityLabel ?? c.rarity;
+}
+
 export default function Home() {
   const { data, isLoading, error } = useCards();
   const [search, setSearch] = useState("");
@@ -25,16 +35,19 @@ export default function Home() {
     [data],
   );
 
-  // All unique effective rarities present in the roster, custom tiers first
-  // (sorted alpha), then standard built-in order.
-  const allRarities = useMemo(() => {
-    if (!data?.cards) return BUILT_IN_ORDER as string[];
-    const customSlugs = new Set<string>();
+  // All unique website categories / display rarities present in the roster.
+  // Website category overrides are presentation-only and sort before built-ins.
+  const allRarities = useMemo<RarityFilterOption[]>(() => {
+    if (!data?.cards) return BUILT_IN_ORDER.map(key => ({ key, label: key }));
+    const labelByKey = new Map<string, string>();
     for (const c of data.cards) {
-      const slug = c.effectiveRarity ?? c.rarity;
-      if (!BUILT_IN_SET.has(slug)) customSlugs.add(slug);
+      labelByKey.set(cardCategoryKey(c), cardCategoryLabel(c));
     }
-    return [...[...customSlugs].sort(), ...BUILT_IN_ORDER];
+    const customKeys = [...labelByKey.keys()].filter(key => !BUILT_IN_SET.has(key)).sort((a, b) => {
+      return (labelByKey.get(a) ?? a).localeCompare(labelByKey.get(b) ?? b);
+    });
+    const builtInKeys = BUILT_IN_ORDER.filter(key => labelByKey.has(key));
+    return [...customKeys, ...builtInKeys].map(key => ({ key, label: labelByKey.get(key) ?? key }));
   }, [data]);
 
   const toggleRarity = (rarity: string) => {
@@ -54,7 +67,7 @@ export default function Home() {
       const setNamesStr = (c.sets ?? []).map(s => s.name).join(" ").toLowerCase();
       const matchesSearch = c.name.toLowerCase().includes(search.toLowerCase()) ||
                            setNamesStr.includes(search.toLowerCase());
-      const effectiveSlug = c.effectiveRarity ?? c.rarity;
+      const effectiveSlug = cardCategoryKey(c);
       const matchesRarity = selectedRarities.size === 0 || selectedRarities.has(effectiveSlug);
       return matchesSearch && matchesRarity;
     });
@@ -63,15 +76,15 @@ export default function Home() {
     const grouped: Record<string, typeof filtered> = {};
     const labelBySlug: Record<string, string> = {};
     filtered.forEach((c) => {
-      const slug = c.effectiveRarity ?? c.rarity;
-      const label = c.effectiveRarityLabel ?? c.rarity;
+      const slug = cardCategoryKey(c);
+      const label = cardCategoryLabel(c);
       if (!grouped[slug]) grouped[slug] = [];
       grouped[slug].push(c);
       labelBySlug[slug] = label;
     });
 
     // Order: custom tiers (alpha) then built-in descending rarity
-    const customSlugs = Object.keys(grouped).filter(s => !BUILT_IN_SET.has(s)).sort();
+    const customSlugs = Object.keys(grouped).filter(s => !BUILT_IN_SET.has(s)).sort((a, b) => (labelBySlug[a] ?? a).localeCompare(labelBySlug[b] ?? b));
     const builtInSlugs = BUILT_IN_ORDER.filter(r => grouped[r]?.length);
     return [...customSlugs, ...builtInSlugs].map(slug => {
       const cards = grouped[slug] ?? [];
@@ -128,23 +141,23 @@ export default function Home() {
           
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-xs font-mono uppercase text-muted-foreground mr-2">Filter Rarity:</span>
-            {allRarities.map((rarity) => {
-              const active = selectedRarities.has(rarity);
+            {allRarities.map(({ key, label }) => {
+              const active = selectedRarities.has(key);
               return (
                 <button
-                  key={rarity}
+                  key={key}
                   type="button"
                   aria-pressed={active}
-                  aria-label={`Filter by ${rarity}`}
-                  onClick={() => toggleRarity(rarity)}
-                  data-testid={`filter-rarity-${rarity}`}
+                  aria-label={`Filter by ${label}`}
+                  onClick={() => toggleRarity(key)}
+                  data-testid={`filter-rarity-${key}`}
                   className={`cursor-pointer uppercase font-mono tracking-widest text-xs px-3 py-1 rounded-md border transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
                     active
                       ? "bg-primary text-primary-foreground border-primary"
                       : "border-border hover:bg-muted"
                   }`}
                 >
-                  {rarity}
+                  {label}
                 </button>
               );
             })}
@@ -231,7 +244,7 @@ export default function Home() {
                         <div className="flex items-center gap-2 mb-1">
                           <span className="text-sm font-bold uppercase tracking-wide truncate">{card.name}</span>
                           <Badge variant="outline" className="text-[10px] font-mono uppercase border-pink-500/40 text-pink-300 flex-shrink-0">
-                            {card.rarity}
+                            {cardCategoryLabel(card)}
                           </Badge>
                         </div>
                         <p className="text-xs text-muted-foreground line-clamp-3">
