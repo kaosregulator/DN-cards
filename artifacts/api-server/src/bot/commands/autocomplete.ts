@@ -1,6 +1,6 @@
 import type { AutocompleteInteraction } from "discord.js";
 import { getAllCards, listSetsV2, getUserCollection, getUserWishlist, listCustomRarities, getRarityContext, getOrCreateGuildSettings, getRarityDisplayOverrides, getDisplayRarities } from "../db.js";
-import { RARITY_EMOJI, type Rarity } from "../cards-data.js";
+import { RARITY_EMOJI, rarityEmoji, rarityLabel, type Rarity } from "../cards-data.js";
 
 const MAX_CHOICES = 25;
 
@@ -203,14 +203,15 @@ export async function handleAutocomplete(interaction: AutocompleteInteraction): 
     // should start with a stable built-in rarity identity.
     if (cmd === "addcard" && focused.name === "rarity" && interaction.guild) {
       const q = query.toLowerCase().trim();
-      const builtInOptions = [
-        { name: "⚪ Common", value: "common" },
-        { name: "🟢 Uncommon", value: "uncommon" },
-        { name: "🔵 Rare", value: "rare" },
-        { name: "🟣 Exotic", value: "epic" },
-        { name: "🟡 Legendary", value: "legendary" },
-        { name: "🔮 Mythic", value: "mythic" },
-      ];
+      const [settings, displayMap] = await Promise.all([
+        getOrCreateGuildSettings(interaction.guild.id),
+        getRarityDisplayOverrides(interaction.guild.id),
+      ]);
+      const builtIn: Rarity[] = ["common", "uncommon", "rare", "epic", "legendary", "mythic"];
+      const builtInOptions = builtIn.map(r => ({
+        name: `${rarityEmoji(r, settings, displayMap)} ${rarityLabel(r, settings, displayMap)}`.slice(0, 100),
+        value: r,
+      }));
       const filtered = !q
         ? builtInOptions
         : builtInOptions.filter(o => o.name.toLowerCase().includes(q) || o.value.includes(q));
