@@ -79,12 +79,14 @@ those tables now happen through Discord slash commands — see
   Gameplay values are shown read-only in a side panel with a "change this in
   Discord" hint.
 - Public roster (`/api/cards` via `dashboard.ts`) LEFT JOINs the overrides,
-  applies them before responding, filters `hiddenFromSite`, and sorts
-  `featured` → `sortWeight` desc → `id` asc.
+  applies them before responding, filters `hiddenFromSite`, groups by the
+  website category override when present, and sorts `featured` →
+  `sortWeight` desc → `id` asc.
 - Storage: `card_display_overrides` — one row per `cardId` (PK FK→cards.id ON
   DELETE CASCADE). All text override columns are nullable; null = fall back
-  to the card's gameplay value. Single global table (no `guildId`) because
-  the website is one public showcase.
+  to the card's gameplay value. `displayCategory` is website-only grouping
+  and does not affect Discord rarity, drops, or inventory. Single global table
+  (no `guildId`) because the website is one public showcase.
 - API: `GET /api/admin/cards` returns base+override join, `PUT
   /api/admin/cards/:id/display` upserts the override, `DELETE
   /api/admin/cards/:id/display` clears it. Behind `requireDashboardAuth`.

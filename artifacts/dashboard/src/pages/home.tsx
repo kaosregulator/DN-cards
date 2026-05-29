@@ -10,6 +10,16 @@ import { motion, AnimatePresence } from "framer-motion";
 const BUILT_IN_ORDER: Rarity[] = ["legendary", "epic", "rare", "uncommon", "common"];
 const BUILT_IN_SET = new Set<string>(BUILT_IN_ORDER);
 
+type RarityFilterOption = { key: string; label: string };
+
+function cardCategoryKey(c: { websiteCategory?: string | null; effectiveRarity?: string; rarity: string }) {
+  return c.websiteCategory ?? c.effectiveRarity ?? c.rarity;
+}
+
+function cardCategoryLabel(c: { websiteCategoryLabel?: string | null; effectiveRarityLabel?: string; rarity: string }) {
+  return c.websiteCategoryLabel ?? c.effectiveRarityLabel ?? c.rarity;
+}
+
 export default function Home() {
   const { data, isLoading, error } = useCards();
   const [search, setSearch] = useState("");
@@ -25,16 +35,19 @@ export default function Home() {
     [data],
   );
 
-  // All unique effective rarities present in the roster, custom tiers first
-  // (sorted alpha), then standard built-in order.
-  const allRarities = useMemo(() => {
-    if (!data?.cards) return BUILT_IN_ORDER as string[];
-    const customSlugs = new Set<string>();
+  // All unique website categories / display rarities present in the roster.
+  // Website category overrides are presentation-only and sort before built-ins.
+  const allRarities = useMemo<RarityFilterOption[]>(() => {
+    if (!data?.cards) return BUILT_IN_ORDER.map(key => ({ key, label: key }));
+    const labelByKey = new Map<string, string>();
     for (const c of data.cards) {
-      const slug = c.effectiveRarity ?? c.rarity;
-      if (!BUILT_IN_SET.has(slug)) customSlugs.add(slug);
+      labelByKey.set(cardCategoryKey(c), cardCategoryLabel(c));
     }
-    return [...[...customSlugs].sort(), ...BUILT_IN_ORDER];
+    const customKeys = [...labelByKey.keys()]
+      .filter(key => !BUILT_IN_SET.has(key))
+      .sort((a, b) => (labelByKey.get(a) ?? a).localeCompare(labelByKey.get(b) ?? b));
+    const builtInKeys = BUILT_IN_ORDER.filter(key => labelByKey.has(key));
+    return [...customKeys, ...builtInKeys].map(key => ({ key, label: labelByKey.get(key) ?? key }));
   }, [data]);
 
   const toggleRarity = (rarity: string) => {
