@@ -10,6 +10,7 @@ import type { GuildSettings } from "@workspace/db";
 import {
   isAdmin, getOrCreateGuildSettings, updateGuildSettings, addCard,
   loadDefaultCards, unloadDefaultCards, listSets, DEFAULTS_SET_NAME,
+  getRarityDisplayOverrides,
 } from "../db.js";
 import { isHomeGuild, GLOBAL_ONLY_MSG } from "../home-guild.js";
 import { spawnCard, scheduleNextSpawn, clearSpawnTimer } from "../spawn-manager.js";
@@ -123,10 +124,13 @@ export async function handleSetupButton(interaction: ButtonInteraction): Promise
     return;
   } else if (action === "rates") {
     // followUp = new ephemeral message after deferUpdate (can't editReply — that would replace the panel)
-    const settings = await getOrCreateGuildSettings(guildId);
+    const [settings, displayMap] = await Promise.all([
+      getOrCreateGuildSettings(guildId),
+      getRarityDisplayOverrides(guildId),
+    ]);
     await interaction.followUp({
-      embeds: [buildRatesEmbed(settings)],
-      components: buildRatesComponents(settings),
+      embeds: [buildRatesEmbed(settings, displayMap)],
+      components: buildRatesComponents(settings, displayMap),
       flags: MessageFlags.Ephemeral,
     }).catch(() => {});
     return;
