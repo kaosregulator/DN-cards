@@ -129,8 +129,8 @@ export async function startBot() {
           `You can manage card art, server settings, and message customization from there.\n\n` +
           `🔗 ${url}\n\n` +
           `**Expires:** <t:${Math.floor(expiresAt.getTime() / 1000)}:R>\n` +
-          `Need a fresh link later? Run \`/dashboard\` in your server.\n\n` +
-          `Quick start: run \`/welcome\` for the public intro, then \`/setup\` to configure spawning.`,
+          `Need a fresh link later? Run \`/admin dashboard\` in your server.\n\n` +
+          `Quick start: run \`/cards welcome\` for the public intro, then \`/admin setup\` to configure spawning.`,
         );
       await owner.send({ embeds: [embed] });
     } catch (err) {
@@ -363,7 +363,7 @@ export async function startBot() {
             await interaction.followUp({
               content:
                 `🔥 Card burned! You received 💠 **${result.shardsGained.toLocaleString()} shards**.\n` +
-                `New balance: **${currency.shards.toLocaleString()}** 💠 — check \`/shards\` anytime.`,
+                `New balance: **${currency.shards.toLocaleString()}** 💠 — check \`/cards shards\` anytime.`,
               flags: MessageFlags.Ephemeral,
             }).catch(() => { /* ignore */ });
             const burnUnlocks = await checkAchievements(guildId, userId).catch(() => []);
@@ -382,7 +382,7 @@ export async function startBot() {
               }).catch(() => { /* may be deleted */ });
             }
             await interaction.followUp({
-              content: "💾 Kept! The card is in your collection — use `/collection` to view it.",
+              content: "💾 Kept! The card is in your collection — use `/cards collection` to view it.",
               flags: MessageFlags.Ephemeral,
             }).catch(() => { /* ignore */ });
           } else {
@@ -407,7 +407,19 @@ export async function startBot() {
       if (!interaction.isChatInputCommand()) return;
       const cmd = interaction.commandName;
 
-      if (USER_COMMAND_NAMES.has(cmd)) {
+      if (cmd === "cards") {
+        await handleUserCommand(interaction, interaction.options.getSubcommand(true));
+      } else if (cmd === "admin") {
+        const adminSubcommand = interaction.options.getSubcommand(true);
+        const legacyName = ({
+          hub: "adminhub",
+          "set-hub": "sethub",
+          "set-manager": "set_admin",
+          welcome: "welcomeadmin",
+          help: "adminhelp",
+        } as Record<string, string>)[adminSubcommand] ?? adminSubcommand;
+        await handleAdminCommand(interaction, legacyName);
+      } else if (USER_COMMAND_NAMES.has(cmd)) {
         await handleUserCommand(interaction, cmd);
       } else if (ADMIN_COMMAND_NAMES.has(cmd)) {
         await handleAdminCommand(interaction, cmd);

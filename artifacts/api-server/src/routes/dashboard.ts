@@ -3,7 +3,7 @@ import { db, cardsTable, cardDisplayOverridesTable, collectionsTable, userCurren
 import { and, eq, sql, desc } from "drizzle-orm";
 import { z } from "zod/v4";
 import { ACHIEVEMENTS } from "../bot/achievements";
-import { getCollectorRank, getNextRank, SHINY_MULTIPLIER } from "../bot/cards-data";
+import { getCollectorRank, getNextRank, getShinyMultiplier } from "../bot/cards-data";
 import { getBotClient } from "../bot/spawn-manager";
 import { getCardDisplayRarity, getEffectiveDropWeight, getGuildDropChanceRuntime, getRarityContext } from "../bot/db";
 
@@ -161,7 +161,7 @@ router.get("/guilds/:guildId/leaderboard", async (req, res) => {
   const { guildId } = params;
   // Net worth must use the same Setup Hub rarity context as the bot so
   // custom tier worth/profile overrides are reflected on the website.
-  const [heldRows, ctx] = await Promise.all([
+  const [heldRows, runtime] = await Promise.all([
     db.select({
       userId: collectionsTable.userId,
       cardId: cardsTable.id,
@@ -173,9 +173,11 @@ router.get("/guilds/:guildId/leaderboard", async (req, res) => {
       .from(collectionsTable)
       .innerJoin(cardsTable, eq(collectionsTable.cardId, cardsTable.id))
       .where(eq(collectionsTable.guildId, guildId)),
-    getRarityContext(guildId),
+    getGuildDropChanceRuntime(guildId),
   ]);
 
+  const ctx = runtime.ctx;
+  const shinyMultiplier = getShinyMultiplier(runtime.settings);
   const byUser = new Map<string, { userId: string; uniqueCards: number; totalCards: number; shinyCards: number; netWorth: number }>();
   for (const row of heldRows) {
     const custom = ctx.customByCard.get(row.cardId);
@@ -188,7 +190,7 @@ router.get("/guilds/:guildId/leaderboard", async (req, res) => {
     entry.uniqueCards += 1;
     entry.totalCards += row.count + row.shinyCount;
     entry.shinyCards += row.shinyCount;
-    entry.netWorth += (row.count + row.shinyCount * SHINY_MULTIPLIER) * worth;
+    entry.netWorth += (row.count + row.shinyCount * shinyMultiplier) * worth;
   }
   const rows = [...byUser.values()]
     .sort((a, b) => b.netWorth - a.netWorth)
@@ -271,13 +273,14 @@ router.get("/guilds/:guildId/users/:userId", async (req, res) => {
     };
   }).sort((a, b) => b.worthValue - a.worthValue);
 
+  const shinyMultiplier = getShinyMultiplier(runtime.settings);
   const unlockedKeys = new Set(unlockedRows.map(r => r.achievementKey));
   const unique = collectionRows.length;
   // Total = normal + shiny copies; net worth counts shinies at SHINY_MULTIPLIER.
   const total = collectionRows.reduce((s, r) => s + r.count + r.shinyCount, 0);
   const shinyTotal = collectionRows.reduce((s, r) => s + r.shinyCount, 0);
   const netWorth = collectionRows.reduce(
-    (s, r) => s + (r.count + r.shinyCount * SHINY_MULTIPLIER) * r.worthValue,
+    (s, r) => s + (r.count + r.shinyCount * shinyMultiplier) * r.worthValue,
     0,
   );
   const rank = getCollectorRank(unique);

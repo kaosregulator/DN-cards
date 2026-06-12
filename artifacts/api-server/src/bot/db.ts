@@ -11,7 +11,7 @@ import {
 import { eq, and, sql, desc, inArray, isNull } from "drizzle-orm";
 import type { Card, CardEvent, CardSet, CustomRarity, GuildSettings, RarityProfile, Trade } from "@workspace/db";
 import {
-  DEFAULT_CARDS, SHINY_RATE, SHINY_MULTIPLIER, type Rarity,
+  DEFAULT_CARDS, SHINY_RATE, getShinyMultiplier, type Rarity,
   type RarityDisplayMap,
 } from "./cards-data.js";
 import {
@@ -938,12 +938,13 @@ export async function getUserCollection(guildId: string, userId: string) {
 }
 
 export async function getUserCardCount(guildId: string, userId: string): Promise<{ unique: number; total: number; netWorth: number }> {
-  const items = await getUserCollection(guildId, userId);
+  const [items, settings] = await Promise.all([getUserCollection(guildId, userId), getOrCreateGuildSettings(guildId)]);
+  const shinyMultiplier = getShinyMultiplier(settings);
   return {
     unique: items.length,
     total: items.reduce((s, i) => s + i.count + i.shinyCount, 0),
     netWorth: items.reduce(
-      (s, i) => s + i.worthValue * (i.count + i.shinyCount * SHINY_MULTIPLIER),
+      (s, i) => s + i.worthValue * (i.count + i.shinyCount * shinyMultiplier),
       0,
     ),
   };
@@ -977,7 +978,8 @@ export async function getLeaderboard(guildId: string, sortBy: "worth" | "cards" 
     .innerJoin(cardsTable, eq(collectionsTable.cardId, cardsTable.id))
     .where(eq(collectionsTable.guildId, guildId));
 
-  const ctx = await getRarityContext(guildId);
+  const [ctx, settings] = await Promise.all([getRarityContext(guildId), getOrCreateGuildSettings(guildId)]);
+  const shinyMultiplier = getShinyMultiplier(settings);
   type Agg = { userId: string; totalCards: number; uniqueCards: number; netWorth: number };
   const byUser = new Map<string, Agg>();
   for (const r of rows) {
@@ -991,7 +993,7 @@ export async function getLeaderboard(guildId: string, sortBy: "worth" | "cards" 
     if (!a) { a = { userId: r.userId, totalCards: 0, uniqueCards: 0, netWorth: 0 }; byUser.set(r.userId, a); }
     a.totalCards += r.count + r.shinyCount;
     a.uniqueCards += 1; // one row per (user,card)
-    a.netWorth += (r.count + r.shinyCount * SHINY_MULTIPLIER) * worth;
+    a.netWorth += (r.count + r.shinyCount * shinyMultiplier) * worth;
   }
   const sorted = [...byUser.values()].sort((a, b) =>
     sortBy === "cards" ? b.totalCards - a.totalCards : b.netWorth - a.netWorth,
@@ -1113,7 +1115,7 @@ export async function burnCard(
   if (!card) return { success: false, burned: 0, shardsGained: 0, remaining: 0, isShiny: !!opts?.shiny };
   // Per-guild rarity context may override the card's burnValue, either via
   // a Stage-2 custom tier (replaces) or a Stage-1 profile (per built-in tier).
-  const ctx = await getRarityContext(guildId);
+  const [ctx, settings] = await Promise.all([getRarityContext(guildId), getOrCreateGuildSettings(guildId)]);
   const customTier = ctx.customByCard.get(cardId);
   const effectiveBurnValue = customTier
     ? customTier.burnValue
@@ -1145,7 +1147,7 @@ export async function burnCard(
   if (row.count === 0 && row.shinyCount === 0) {
     await db.delete(collectionsTable).where(eq(collectionsTable.id, row.id));
   }
-  const perCard = effectiveBurnValue * (burningShiny ? SHINY_MULTIPLIER : 1);
+  const perCard = effectiveBurnValue * (burningShiny ? getShinyMultiplier(settings) : 1);
   const shardsGained = perCard * amount;
   await addShards(guildId, userId, shardsGained);
   await incrementCardsBurned(guildId, userId, amount);

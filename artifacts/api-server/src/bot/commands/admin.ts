@@ -25,17 +25,17 @@ async function handleAdminHelp(interaction: ChatInputCommandInteraction): Promis
     .setTitle("🛠️ DN Cards — Admin Reference")
     .setColor(0xeb459e)
     .setDescription(
-      "All commands here are admin-gated. Player commands are in `/help`.\n" +
-      "Most actions are also reachable visually from `/setup` or `/config`.",
+      "All commands here are admin-gated. Player commands are in `/cards help`.\n" +
+      "Most actions are also reachable visually from `/admin setup` or `/admin config`.",
     )
     .addFields(
       {
         name: "⚙️ Setup & Config",
         value:
-          "`/setup` — **interactive setup panel** (recommended)\n" +
-          "`/config` — open the config panel anytime (catch mode, intervals, toggles, rates)\n" +
-          "`/adminhub` — manage bot admins, catch timeouts, channel config\n" +
-          "`/adminhelp` — this reference panel",
+          "`/admin setup` — **interactive setup panel** (recommended)\n" +
+          "`/admin config` — open the config panel anytime (catch mode, intervals, toggles, rates)\n" +
+          "`/admin hub` — manage bot admins, catch timeouts, channel config\n" +
+          "`/admin help` — this reference panel",
       },
       {
         name: "📢 Channels & Toggles *(prefix commands)*",
@@ -50,17 +50,17 @@ async function handleAdminHelp(interaction: ChatInputCommandInteraction): Promis
       {
         name: "🃏 Card Management",
         value:
-          "`/editcard name:<card>` — interactive panel (autocomplete!)\n" +
+          "`/admin editcard name:<card>` — interactive panel (autocomplete!)\n" +
           "`<prefix>addcard` · `<prefix>addlimited` · `<prefix>addevent` — guided wizards\n" +
           "`<prefix>removecard <Name>` · `<prefix>import` — bulk import from JSON",
       },
       {
         name: "⚡ Live Actions *(slash)*",
         value:
-          "`/drop [name]` — force a single drop\n" +
-          "`/massdrop [amount]` — drop 10-25 cards in a batch *(event use)*\n" +
-          "`/give user:@Member name:<card>` · `/takeback user:@Member name:<card>`\n" +
-          "`/giveshards user:@Member amount:<n>` · `/takeshards user:@Member amount:<n>`",
+          "`/admin drop [name]` — force a single drop\n" +
+          "`/admin massdrop [amount]` — drop 10-25 cards in a batch *(event use)*\n" +
+          "`/admin give user:@Member name:<card>` · `/admin takeback user:@Member name:<card>`\n" +
+          "`/admin giveshards user:@Member amount:<n>` · `/admin takeshards user:@Member amount:<n>`",
       },
       {
         name: "🎯 Limited-Time Events *(slash)*",
@@ -73,15 +73,15 @@ async function handleAdminHelp(interaction: ChatInputCommandInteraction): Promis
       {
         name: "🗂️ Card Sets *(slash — /set_admin)*",
         value:
-          "`/set_admin` — interactive hub: create, rename, delete, set active/deactivate\n" +
+          "`/admin set-manager` — interactive hub: create, rename, delete, set active/deactivate\n" +
           "Add/remove cards, bulk add/remove, Assign All unassigned cards in one click\n" +
           "Export single set or all sets · Import from URL · Rarity weights per set\n" +
-          "*Built-in starter roster is opt-in via the `/setup` panel.*",
+          "*Built-in starter roster is opt-in via the `/admin setup` panel.*",
       },
       {
         name: "👥 Admins *(inside /adminhub)*",
         value:
-          "`/adminhub` — click buttons to add/remove admins, timeout users, or set channels\n" +
+          "`/admin hub` — click buttons to add/remove admins, timeout users, or set channels\n" +
           "Server owner + Discord Administrators are always admins.\n" +
           "*Tip: in Discord → Server Settings → Integrations → DN Cards you can also grant admin commands to specific roles per-command.*",
       },
@@ -102,7 +102,7 @@ async function handleAdminHelp(interaction: ChatInputCommandInteraction): Promis
       {
         name: "🌐 Web Dashboard",
         value:
-          "`/dashboard` — DMs you a one-time link to **create or reset** your dashboard login.\n" +
+          "`/admin dashboard` — DMs you a one-time link to **create or reset** your dashboard login.\n" +
           "The dashboard is **presentation-only** — display name, image, description, flavor, visibility, sort order. All gameplay values (rarity, worth, burn, drop rate, packs) are read-only there; change them with the Discord commands above.\n" +
           "• `/admin` — card display overrides + website roster\n" +
           "• `/admin/news` · `/admin/suggestions` — site content + user feedback queue\n" +
@@ -283,7 +283,7 @@ export async function handleAdminCommand(
     if (cardName) {
       const cards = await getAllCards();
       const found = cards.find(c => c.name.toLowerCase() === cardName.toLowerCase());
-      if (!found) { await interaction.editReply(`❌ Card "**${cardName}**" not found. Try \`/list\`.`); return; }
+      if (!found) { await interaction.editReply(`❌ Card "**${cardName}**" not found. Try \`/cards list\`.`); return; }
       forcedCardId = found.id;
     }
     // Optional set override: if a set is named, we pick from that set's cards

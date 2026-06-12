@@ -14,7 +14,7 @@ import {
 } from "../db.js";
 import {
   RARITY_COLORS, RARITY_EMOJI, RARITY_LABELS, getTypeEmoji,
-  SHINY_EMOJI, SHINY_MULTIPLIER,
+  SHINY_EMOJI, getShinyMultiplier, getShinyName,
   getCollectorRank, getNextRank,
   rarityLabel, rarityEmoji, rarityColor,
   type Rarity, type RarityDisplayMap,
@@ -98,6 +98,8 @@ export async function handleUserCommand(
       getRarityContext(guildId),
     ]);
     const collectionLadder = getDisplayRarities(collectionCtx, settings, { displayMap });
+    const shinyMultiplier = getShinyMultiplier(settings);
+    const shinyName = getShinyName(settings);
     const byRarity = new Map<string, typeof items>();
     for (const tier of collectionLadder) byRarity.set(tier.key, []);
     for (const item of items) {
@@ -108,7 +110,7 @@ export async function handleUserCommand(
     const totalCards = items.reduce((s, i) => s + i.count + i.shinyCount, 0);
     const totalShinies = items.reduce((s, i) => s + i.shinyCount, 0);
     const netWorth = items.reduce(
-      (s, i) => s + i.worthValue * (i.count + i.shinyCount * SHINY_MULTIPLIER),
+      (s, i) => s + i.worthValue * (i.count + i.shinyCount * shinyMultiplier),
       0,
     );
     const unique = items.length;
@@ -147,7 +149,7 @@ export async function handleUserCommand(
       .setDescription(
         rankProgress + "\n" +
         `**🃏 Cards:** ${unique} unique · ${totalCards} total` +
-        (totalShinies > 0 ? ` · ${SHINY_EMOJI} **${totalShinies}** shiny` : "") + "\n" +
+        (totalShinies > 0 ? ` · ${SHINY_EMOJI} **${totalShinies}** ${shinyName}` : "") + "\n" +
         `**💠 Net Worth:** ${netWorth.toLocaleString()} shards\n` +
         lbLine + "\n" +
         achLine,
@@ -173,22 +175,22 @@ export async function handleUserCommand(
         for (const i of inR) shinyLines.push(`${SHINY_EMOJI} **${i.name}** ×${i.shinyCount}`);
       }
       const shinyWorth = shinyItems.reduce(
-        (s, i) => s + i.shinyCount * i.worthValue * SHINY_MULTIPLIER, 0,
+        (s, i) => s + i.shinyCount * i.worthValue * shinyMultiplier, 0,
       );
       const baseShiny = () => new EmbedBuilder()
-        .setTitle(`${SHINY_EMOJI} ${target.username}'s Shinies`)
+        .setTitle(`${SHINY_EMOJI} ${target.username}'s ${shinyName} Cards`)
         .setColor(0xf5c518)
         .setThumbnail(target.displayAvatarURL())
         .setDescription(
-          `**${totalShinies}** shiny ${totalShinies === 1 ? "copy" : "copies"} across **${shinyItems.length}** card${shinyItems.length === 1 ? "" : "s"}\n` +
-          `Worth **💠 ${shinyWorth.toLocaleString()}** at ${SHINY_MULTIPLIER}× multiplier`,
+          `**${totalShinies}** ${shinyName} ${totalShinies === 1 ? "copy" : "copies"} across **${shinyItems.length}** card${shinyItems.length === 1 ? "" : "s"}\n` +
+          `Worth **💠 ${shinyWorth.toLocaleString()}** at ${shinyMultiplier}× multiplier`,
         );
-      const { fields } = chunkLines(shinyLines, { baseName: "Shinies", maxFields: 1000 });
+      const { fields } = chunkLines(shinyLines, { baseName: shinyName, maxFields: 1000 });
       views.push({
         key: "shinies",
-        label: "Shinies",
+        label: shinyName,
         emoji: "✨",
-        description: `${totalShinies} shiny ${totalShinies === 1 ? "copy" : "copies"}`,
+        description: `${totalShinies} ${shinyName} ${totalShinies === 1 ? "copy" : "copies"}`,
         screens: buildEmbedScreens(baseShiny, fields),
       });
     }
@@ -327,7 +329,7 @@ export async function handleUserCommand(
     const { ctx, settings: infoSettings, spawnPool, chanceSummary } = runtime;
     const cards = applyRarityContextAll(rawCards, ctx);
     const card = cards.find(c => c.name.toLowerCase() === cardName.toLowerCase());
-    if (!card) { await interaction.editReply(`❌ "**${cardName}**" not found. Try \`/list\`.`); return; }
+    if (!card) { await interaction.editReply(`❌ "**${cardName}**" not found. Try \`/cards list\`.`); return; }
 
     const cardType = card.cardType;
     const cardChance = chanceSummary.cardPercentById.get(card.id);
@@ -752,7 +754,7 @@ export async function handleUserCommand(
       return `${medal} <@${r.userId}> — **${r.totalCards.toLocaleString()}** cards (${r.uniqueCards} unique)`;
     });
     const packLines = byPacks.length === 0
-      ? ["*No packs opened yet — be the first with `/pack`!*"]
+      ? ["*No packs opened yet — be the first with `/cards pack`!*"]
       : byPacks.map((r, i) => {
           const medal = medals[i] ?? `**${i + 1}.**`;
           return `${medal} <@${r.userId}> — **${r.packsOpened.toLocaleString()}** packs`;
@@ -800,7 +802,7 @@ export async function handleUserCommand(
     const burnAll = interaction.options.getBoolean("all") ?? false;
     const wantShiny = interaction.options.getBoolean("shiny") ?? false;
     const card = await getCardByName(cardName);
-    if (!card) { await interaction.editReply(`❌ "**${cardName}**" not found. Check \`/list\`.`); return; }
+    if (!card) { await interaction.editReply(`❌ "**${cardName}**" not found. Check \`/cards list\`.`); return; }
     const rarity = card.rarity as Rarity;
     const { count, shinyCount } = await getUserOwnedCount(guildId, interaction.user.id, card.id);
     // Burn targets the chosen pile only — shiny:true burns from shinyCount,
@@ -824,7 +826,7 @@ export async function handleUserCommand(
     if (!burnAll && requested > pile) {
       await interaction.editReply(
         `❌ You only have **×${pile}** ${pileLabel}of **${card.name}** — can't burn ${requested}.\n` +
-        `Try \`/burn name:${card.name}${wantShiny ? " shiny:true" : ""} all:true\` to burn all ${pile}.`,
+        `Try \`/cards burn name:${card.name}${wantShiny ? " shiny:true" : ""} all:true\` to burn all ${pile}.`,
       );
       return;
     }
@@ -834,7 +836,9 @@ export async function handleUserCommand(
       return;
     }
     const currency = await getOrCreateCurrency(guildId, interaction.user.id);
-    const perCardVal = card.burnValue * (wantShiny ? SHINY_MULTIPLIER : 1);
+    const shinySettings = await getOrCreateGuildSettings(guildId);
+    const shinyMultiplier = getShinyMultiplier(shinySettings);
+    const perCardVal = card.burnValue * (wantShiny ? shinyMultiplier : 1);
     const perCard = perCardVal.toLocaleString();
     const nameWithShiny = wantShiny ? `${SHINY_EMOJI} ${card.name}` : card.name;
     const [burnSettings, burnDisplayMap] = await Promise.all([
@@ -885,53 +889,56 @@ export async function handleUserCommand(
   }
   if (sub === "achievements") { await handleAchievementsCommand(interaction); return; }
 
-  // ── /help (player commands only — admins use /adminhelp) ─────────────────────
+  // ── /cards help (player commands only — admins use /admin help) ───────────────
+  const helpSettings = await getOrCreateGuildSettings(guildId);
+  const helpShinyName = getShinyName(helpSettings);
+  const helpShinyMultiplier = getShinyMultiplier(helpSettings);
   const embed = new EmbedBuilder()
     .setTitle("🃏 DN Cards — Player Commands")
     .setColor(0x5865f2)
     .setDescription(
       "When a card spawns in the drop channel, **type its name exactly** to catch it!\n" +
       "Most card-name fields **autocomplete** as you type — pick from the dropdown.\n\n" +
-      "👋 New here? Run `/welcome` for the full game intro.\n" +
-      "Admins: use `/adminhelp` for setup, drops, and config commands.",
+      "👋 New here? Run `/cards welcome` for the full game intro.\n" +
+      "Admins: use `/admin help` for setup, drops, and config commands.",
     )
     .addFields(
       {
         name: "📦 Collection",
         value:
-          "`/collection [user]` — see what you've caught\n" +
-          "`/rank [user]` — your collector rank & progression\n" +
-          "`/info name:<card>` — card details, worth & drop chance\n" +
-          "`/list` — full roster grouped by rarity\n" +
-          "`/catalog category:<rarity|event|limited|all>` — browse by category\n" +
-          "`/top` — leaderboard by net worth\n" +
-          "`/achievements [user]` — your unlocked badges",
+          "`/cards collection [user]` — see what you've caught\n" +
+          "`/cards rank [user]` — your collector rank & progression\n" +
+          "`/cards info name:<card>` — card details, worth & drop chance\n" +
+          "`/cards list` — full roster grouped by rarity\n" +
+          "`/cards catalog category:<rarity|event|limited|all>` — browse by category\n" +
+          "`/cards top` — leaderboard by net worth\n" +
+          "`/cards achievements [user]` — your unlocked badges",
       },
       {
         name: "🔥 Economy *(private replies)*",
         value:
-          "`/burn name:<card> [amount] [all] [shiny:true]` — destroy duplicates for 💠 (shiny burns the ✨ pile at 2×)\n" +
-          "`/shards [user]` — check 💠 balance\n" +
-          "`/daily` — claim daily shards (streak bonus!)\n" +
-          "`/pack tier:<basic|premium|legendary>` — open a 5-card pack (💠 250 / 750 / 2,000)\n" +
-          "`/packstats` — your costs, weekly caps, cooldown\n" +
-          "`/tradein rarity:<r>` — burn 5 to roll 1 from the next tier\n" +
-          "`/gift user:@Member amount:<n>` — send 💠 to a friend",
+          "`/cards burn name:<card> [amount] [all] [shiny:true]` — destroy duplicates for 💠 (shiny burns the ✨ pile at 2×)\n" +
+          "`/cards shards [user]` — check 💠 balance\n" +
+          "`/cards daily` — claim daily shards (streak bonus!)\n" +
+          "`/cards pack tier:<basic|premium|legendary>` — open a 5-card pack (💠 250 / 750 / 2,000)\n" +
+          "`/cards packstats` — your costs, weekly caps, cooldown\n" +
+          "`/cards tradein rarity:<r>` — burn 5 to roll 1 from the next tier\n" +
+          "`/cards gift user:@Member amount:<n>` — send 💠 to a friend",
       },
       {
         name: "🔄 Trading",
         value:
-          "`/trade user:@Member offer:<card> want:<card>` — propose a trade\n" +
+          "`/cards trade user:@Member offer:<card> want:<card>` — propose a trade\n" +
           "Add `offer_shards:<n>` or `want_shards:<n>` to mix in 💠 (or trade pure shards)\n" +
           "Trades with a value gap >3:1 show an orange ⚠️ warning — informational only\n" +
-          "`/trades` · `/tradehistory [user]` · `/accept id:<n>` · `/decline id:<n>` — manage offers\n" +
+          "`/cards trades` · `/cards tradehistory [user]` · `/cards accept id:<n>` · `/cards decline id:<n>` — manage offers\n" +
           "Accept/Decline buttons also appear right on the trade message",
       },
       {
-        name: "✨ Shinies",
+        name: `✨ ${helpShinyName} Cards`,
         value:
-          "Every random catch, pack pull, and trade-in has a flat **0.5%** chance to mint a shiny.\n" +
-          "Shinies are tracked separately and count at **2× worth & burn**.\n" +
+          `Every random catch, pack pull, and trade-in has a flat **0.5%** chance to mint a ${helpShinyName} card.\n` +
+          `${helpShinyName} cards are tracked separately and count at **${helpShinyMultiplier}× worth & burn**.\n` +
           "Not tradeable in v1 — trades only move standard copies.",
       },
       {

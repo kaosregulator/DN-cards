@@ -91,7 +91,13 @@ async function suggestCardNames(query: string, pool?: Array<{ name: string; rari
 
 export async function handleAutocomplete(interaction: AutocompleteInteraction): Promise<void> {
   const focused = interaction.options.getFocused(true);
-  const cmd = interaction.commandName;
+  const topLevelCommand = interaction.commandName;
+  const hubSubcommand = topLevelCommand === "cards" || topLevelCommand === "admin"
+    ? interaction.options.getSubcommand(false)
+    : null;
+  const cmd = hubSubcommand === "set-manager" ? "set_admin"
+    : hubSubcommand === "set-hub" ? "sethub"
+    : hubSubcommand ?? topLevelCommand;
   const query = (focused.value ?? "").toString();
 
   try {

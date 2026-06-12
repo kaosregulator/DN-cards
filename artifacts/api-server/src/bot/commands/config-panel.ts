@@ -325,7 +325,7 @@ function buildConfigEmbed(s: GuildSettings, activeSetName: string | null, displa
   const hasActiveSet = !!activeSetName;
   const setField = hasActiveSet
     ? `🟢 **${activeSetName}** — only cards in this set will spawn`
-    : "⚠️ **None** — random spawns are disabled until a set is activated (use `/sethub`)";
+    : "⚠️ **None** — random spawns are disabled until a set is activated (use `/admin set-hub`)";
 
   // Warn if spawning is on but there's no active set — drops are silently no-ops
   const spawnWarning = spawnOn && !hasActiveSet
@@ -685,7 +685,7 @@ export function buildPacksEmbed(s: GuildSettings): EmbedBuilder {
     .setTitle("🎴 Pack Store — Pricing & Limits")
     .setColor(0xfee75c)
     .setDescription(
-      "Tune what `/pack` charges and how often players can open.\n" +
+      "Tune what `/cards pack` charges and how often players can open.\n" +
       "*Weekly counters reset every Monday 00:00 UTC.*",
     )
     .addFields(
@@ -746,7 +746,7 @@ export function buildPacksSizesEmbed(s: GuildSettings): EmbedBuilder {
     .setTitle("📐 Cards per Pack")
     .setColor(0xfee75c)
     .setDescription(
-      "How many cards each tier hands out per `/pack` open. Default is **5** for all tiers.",
+      "How many cards each tier hands out per `/cards pack` open. Default is **5** for all tiers.",
     )
     .addFields({
       name: "Current sizes",

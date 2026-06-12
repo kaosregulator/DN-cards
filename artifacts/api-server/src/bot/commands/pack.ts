@@ -10,7 +10,7 @@ import {
   getRarityDisplayOverrides,
 } from "../db.js";
 import {
-  SHINY_EMOJI, SHINY_MULTIPLIER,
+  SHINY_EMOJI, getShinyMultiplier, getShinyName,
   type Rarity,
 } from "../cards-data.js";
 import { checkAchievements, formatUnlockLine } from "../achievements.js";
@@ -201,10 +201,6 @@ async function buildSummaryEmbed(
   guildId: string | null = null, userId: string | null = null,
 ): Promise<EmbedBuilder> {
   const meta = PACK_TIER_META[tier];
-  const totalWorth = cards.reduce(
-    (s, c, i) => s + c.worthValue * (shinies[i] ? SHINY_MULTIPLIER : 1),
-    0,
-  );
   const shinyCount = shinies.filter(Boolean).length;
   const last = cards[cards.length - 1]!;
   const [settings, displayMap, ctx] = await Promise.all([
@@ -212,16 +208,22 @@ async function buildSummaryEmbed(
     guildId ? getRarityDisplayOverrides(guildId) : Promise.resolve(null),
     guildId ? getRarityContext(guildId) : Promise.resolve(null),
   ]);
+  const shinyMultiplier = getShinyMultiplier(settings);
+  const shinyName = getShinyName(settings);
+  const totalWorth = cards.reduce(
+    (s, c, i) => s + c.worthValue * (shinies[i] ? shinyMultiplier : 1),
+    0,
+  );
   const embed = new EmbedBuilder()
-    .setTitle(`${meta.emoji} ${meta.label} Pack — ${cards.length} cards${shinyCount > 0 ? ` · ${SHINY_EMOJI}×${shinyCount}` : ""}`)
+    .setTitle(`${meta.emoji} ${meta.label} Pack — ${cards.length} cards${shinyCount > 0 ? ` · ${SHINY_EMOJI} ${shinyName} ×${shinyCount}` : ""}`)
     .setColor(shinyCount > 0 ? 0xf1c40f : meta.color)
     .setDescription(
       cards.map((c, i) => {
         const rarity = getCardDisplayRarity(c, ctx, settings, displayMap);
         const shiny = shinies[i];
-        const worth = c.worthValue * (shiny ? SHINY_MULTIPLIER : 1);
+        const worth = c.worthValue * (shiny ? shinyMultiplier : 1);
         const prefix = shiny ? `${SHINY_EMOJI} ` : "";
-        return `**${i + 1}.** ${rarity.emoji} ${prefix}**${c.name}** — *${rarity.label}* · 💠 ${worth.toLocaleString()}${shiny ? ` *(${SHINY_MULTIPLIER}×)*` : ""}`;
+        return `**${i + 1}.** ${rarity.emoji} ${prefix}**${c.name}** — *${rarity.label}* · 💠 ${worth.toLocaleString()}${shiny ? ` *(${shinyMultiplier}×)*` : ""}`;
       }).join("\n") +
       `\n\n**Total worth:** 💠 ${totalWorth.toLocaleString()}\n` +
       `Spent: 💠 ${spent.toLocaleString()} · Balance: 💠 ${balanceAfter.toLocaleString()}`,
@@ -378,7 +380,7 @@ async function tryClaimPack(
     ok: false, reason: "shards",
     detail: `❌ ${meta.emoji} **${meta.label} Pack** costs 💠 **${cfg.cost.toLocaleString()}**.\n` +
       `You have 💠 **${current.shards.toLocaleString()}**. ` +
-      `Earn more by burning duplicates (\`/burn\`), claiming \`/daily\`, or opening a cheaper tier.`,
+      `Earn more by burning duplicates (\`/cards burn\`), claiming \`/cards daily\`, or opening a cheaper tier.`,
   };
 }
 

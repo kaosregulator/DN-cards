@@ -115,7 +115,7 @@ export async function handleTrade(interaction: ChatInputCommandInteraction): Pro
   let offeredCard = null as Awaited<ReturnType<typeof getCardByName>> | null;
   if (offeredName) {
     offeredCard = await getCardByName(offeredName);
-    if (!offeredCard) { await interaction.editReply(`❌ Card "**${offeredName}**" not found. Check \`/list\`.`); return; }
+    if (!offeredCard) { await interaction.editReply(`❌ Card "**${offeredName}**" not found. Check \`/cards list\`.`); return; }
     const entry = await getCollectionEntry(guildId, interaction.user.id, offeredCard.id);
     if (!entry || entry.count < 1) { await interaction.editReply(`❌ You don't have **${offeredCard.name}** in your collection.`); return; }
   }
@@ -124,7 +124,7 @@ export async function handleTrade(interaction: ChatInputCommandInteraction): Pro
   let requestedCard = null as Awaited<ReturnType<typeof getCardByName>> | null;
   if (requestedName) {
     requestedCard = await getCardByName(requestedName);
-    if (!requestedCard) { await interaction.editReply(`❌ Card "**${requestedName}**" not found. Check \`/list\`.`); return; }
+    if (!requestedCard) { await interaction.editReply(`❌ Card "**${requestedName}**" not found. Check \`/cards list\`.`); return; }
     const entry = await getCollectionEntry(guildId, target.id, requestedCard.id);
     if (!entry || entry.count < 1) { await interaction.editReply(`❌ <@${target.id}> doesn't have **${requestedCard.name}**.`); return; }
   }
@@ -276,7 +276,7 @@ export async function handleTradeButton(interaction: ButtonInteraction, action: 
     return;
   }
   await interaction.update({
-    content: `✅ Trade **complete!** <@${trade.initiatorId}> ↔️ <@${trade.targetId}> — check \`/collection\` and \`/shards\`.`,
+    content: `✅ Trade **complete!** <@${trade.initiatorId}> ↔️ <@${trade.targetId}> — check \`/cards collection\` and \`/cards shards\`.`,
     embeds: [],
     components: [],
   }).catch(() => { /* may be deleted */ });
@@ -321,7 +321,7 @@ export async function handleAccept(interaction: ChatInputCommandInteraction): Pr
   }
 
   await interaction.editReply(
-    `✅ Trade #${tradeId} complete! <@${trade.initiatorId}> ↔️ <@${trade.targetId}> — check \`/collection\` and \`/shards\`.`,
+    `✅ Trade #${tradeId} complete! <@${trade.initiatorId}> ↔️ <@${trade.targetId}> — check \`/cards collection\` and \`/cards shards\`.`,
   );
 
   const { checkAchievements, formatUnlockLine } = await import("../achievements.js");
@@ -362,7 +362,7 @@ export async function handleListTrades(interaction: ChatInputCommandInteraction)
   const trades = await getPendingTradesFor(interaction.guild.id, interaction.user.id);
 
   if (trades.length === 0) {
-    await interaction.editReply("You have no pending trades.\nPropose one with `/trade user:@Member offer:<card> want:<card>`");
+    await interaction.editReply("You have no pending trades.\nPropose one with `/cards trade user:@Member offer:<card> want:<card>`");
     return;
   }
 
@@ -378,7 +378,7 @@ export async function handleListTrades(interaction: ChatInputCommandInteraction)
   const embed = new EmbedBuilder()
     .setTitle("🔄 Your Pending Trades")
     .setColor(0x0984e3)
-    .setDescription(lines.join("\n") + "\n\nUse the Accept/Decline buttons on the trade message, or `/accept id:<ID>` / `/decline id:<ID>`.");
+    .setDescription(lines.join("\n") + "\n\nUse the Accept/Decline buttons on the trade message, or `/cards accept id:<ID>` / `/cards decline id:<ID>`.");
 
   await interaction.editReply({ embeds: [embed] });
 }
@@ -399,7 +399,7 @@ export async function handleTradeHistory(interaction: ChatInputCommandInteractio
   if (rows.length === 0) {
     await interaction.editReply(
       isSelf
-        ? "📜 You don't have any completed trades yet. Propose one with `/trade`!"
+        ? "📜 You don't have any completed trades yet. Propose one with `/cards trade`!"
         : `📜 **${target.username}** has no completed trades yet.`,
     );
     return;

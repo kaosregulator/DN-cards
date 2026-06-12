@@ -309,7 +309,7 @@ export async function startEditWizard(msg: Message, cardName: string): Promise<v
   if (!msg.guild) return;
   const card = await getCardByName(cardName);
   if (!card) {
-    await msg.reply(`❌ No card named **${cardName}** found. Try \`/list\` to see all cards.`);
+    await msg.reply(`❌ No card named **${cardName}** found. Try \`/cards list\` to see all cards.`);
     return;
   }
 
@@ -528,7 +528,7 @@ async function createCard(msg: Message, session: CardWizardSession) {
     const kindEmoji = session.kind === "standard" ? "🃏" : session.kind === "limited" ? "💎" : "🎆";
     const extra = session.kind === "standard"
       ? "It will appear in random card drops automatically."
-      : `Use \`/drop name:${card.name}\` to award it to members.`;
+      : `Use \`/admin drop name:${card.name}\` to award it to members.`;
 
     const guildId = msg.guild?.id;
     const displayMap = guildId ? await getRarityDisplayOverrides(guildId) : null;

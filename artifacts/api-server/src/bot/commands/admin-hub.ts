@@ -7,7 +7,7 @@ import {
 import {
   isAdmin, listAdmins, addAdmin, removeAdmin,
   setUserTimeout, clearUserTimeout, listActiveTimeouts,
-  getOrCreateGuildSettings,
+  getOrCreateGuildSettings, updateGuildSettings,
 } from "../db.js";
 
 // ── Public entry: /adminhub command opens the ephemeral hub ──────────────────
@@ -31,7 +31,7 @@ export async function handleAdminHubButton(interaction: ButtonInteraction): Prom
   // ── Modal paths: showModal() MUST be the first response — cannot defer first.
   // Use a fast inline check (memberPermissions, zero RTT). The modal submit
   // handler re-validates with the full DB check.
-  if (action === "addadmin" || action === "rmadmin" || action === "timeout" || action === "untimeout") {
+  if (action === "addadmin" || action === "rmadmin" || action === "timeout" || action === "untimeout" || action === "shiny") {
     if (!ensureAdminInline(interaction)) {
       await interaction.reply({ content: "❌ Admins only.", flags: MessageFlags.Ephemeral });
       return;
@@ -40,6 +40,7 @@ export async function handleAdminHubButton(interaction: ButtonInteraction): Prom
     if (action === "rmadmin")  await interaction.showModal(buildRemoveAdminModal());
     if (action === "timeout")  await interaction.showModal(buildTimeoutModal());
     if (action === "untimeout") await interaction.showModal(buildClearTimeoutModal());
+    if (action === "shiny") await interaction.showModal(buildShinySettingsModal());
     return;
   }
 
@@ -106,6 +107,22 @@ export async function handleAdminHubModal(interaction: ModalSubmitInteraction): 
     return;
   }
 
+  if (action === "shiny") {
+    const multiplier = Number(interaction.fields.getTextInputValue("multiplier").trim());
+    const shinyName = interaction.fields.getTextInputValue("name").trim();
+    if (!Number.isFinite(multiplier) || multiplier < 0.1 || multiplier > 100) {
+      await replyError(interaction, "Value must be a multiplier from 0.1 to 100 (for example, `2` or `2.5`).");
+      return;
+    }
+    if (!/^[\p{L}\p{N}][\p{L}\p{N} '&-]{0,31}$/u.test(shinyName)) {
+      await replyError(interaction, "Name must be 1–32 readable characters (examples: `Fresh`, `Shinys`, `Vintage`).");
+      return;
+    }
+    await updateGuildSettings(interaction.guild.id, { shinyValueMultiplier: multiplier, shinyName });
+    await replyOk(interaction, `✨ Variant renamed to **${escapeMd(shinyName)}** and set to **${multiplier}× value**. The shiny chance was not changed.`);
+    return;
+  }
+
   if (action === "untimeout") {
     const userId = parseUserId(interaction.fields.getTextInputValue("user"));
     if (!userId) { await replyError(interaction, "Couldn't parse a user. Paste the user's @mention or numeric ID."); return; }
@@ -168,8 +185,8 @@ async function buildHubEmbed(guildId: string): Promise<EmbedBuilder> {
     .setColor(0xed4245)
     .setDescription(
       "Quick admin actions for this server. Buttons below open private prompts; results show only to you.\n\n" +
-      "**Spawn / drop / settings:** use `/config` (channel, interval, drop rates, catch mode, toggles).\n" +
-      "**Card grants:** `/drop` `/give` `/giveshards` `/takeback` `/takeshards`.\n" +
+      "**Spawn / drop / settings:** use `/admin config` (channel, interval, drop rates, catch mode, toggles).\n" +
+      "**Card grants:** `/admin drop` `/admin give` `/admin giveshards` `/admin takeback` `/admin takeshards`.\n" +
       "**Card sets:** `/setadmin load` `/setadmin unload` `/setadmin listloaded`.",
     )
     .addFields(
@@ -188,11 +205,12 @@ async function buildHubEmbed(guildId: string): Promise<EmbedBuilder> {
         value:
           `${settings.spawnEnabled ? "✅" : "⏸️"} Auto-Spawning · ` +
           `${settings.tradeEnabled ? "✅" : "⏸️"} Trading · ` +
-          `Catch mode: \`${(settings as unknown as { catchMode?: string }).catchMode ?? "type"}\``,
+          `Catch mode: \`${(settings as unknown as { catchMode?: string }).catchMode ?? "type"}\` · ` +
+          `✨ ${settings.shinyName}: ${settings.shinyValueMultiplier}× value`,
         inline: false,
       },
     )
-    .setFooter({ text: "Tip: /config opens the settings panel with drop-rate controls." });
+    .setFooter({ text: "Tip: /admin config opens the settings panel with drop-rate controls." });
 }
 
 function buildHubComponents() {
@@ -205,6 +223,7 @@ function buildHubComponents() {
   );
   const row2 = new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder().setCustomId("adminhub:setchannels").setLabel("📡 Set Channels").setStyle(ButtonStyle.Primary),
+    new ButtonBuilder().setCustomId("adminhub:shiny").setLabel("✨ Shiny Value & Name").setStyle(ButtonStyle.Primary),
   );
   return [row1, row2];
 }
@@ -257,6 +276,15 @@ function buildClearTimeoutModal(): ModalBuilder {
 
 function rowOf(input: TextInputBuilder): ActionRowBuilder<TextInputBuilder> {
   return new ActionRowBuilder<TextInputBuilder>().addComponents(input);
+}
+
+function buildShinySettingsModal(): ModalBuilder {
+  const m = new ModalBuilder().setCustomId("adminhub:shiny").setTitle("Shiny Value & Name");
+  m.addComponents(
+    rowOf(new TextInputBuilder().setCustomId("multiplier").setLabel("Value multiplier (0.1–100)").setPlaceholder("2").setRequired(true).setStyle(TextInputStyle.Short)),
+    rowOf(new TextInputBuilder().setCustomId("name").setLabel("Variant name").setPlaceholder("Fresh, Shinys, or Vintage").setMaxLength(32).setRequired(true).setStyle(TextInputStyle.Short)),
+  );
+  return m;
 }
 
 function parseUserId(raw: string): string | null {

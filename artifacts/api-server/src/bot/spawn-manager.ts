@@ -22,7 +22,7 @@ import {
 } from "./db.js";
 import {
   getTypeEmoji,
-  SHINY_EMOJI, SHINY_MULTIPLIER,
+  SHINY_EMOJI, getShinyMultiplier, getShinyName,
   type Rarity,
 } from "./cards-data.js";
 import { toAbsoluteImageUrl } from "./image-url.js";
@@ -151,7 +151,7 @@ async function doSingleSpawn(guildId: string, forcedCardId?: number, isForced = 
   } else {
     // Sets-driven spawn pool (Phases 1-3): random spawns now pull EXCLUSIVELY
     // from the guild's active set. No active set → no random spawns (Option B).
-    // Admin `/drop name:<X>` and `/give` bypass this by setting forcedCardId.
+    // Admin `/admin drop name:<X>` and `/admin give` bypass this by setting forcedCardId.
     const spawnPool = await getActiveSetSpawnPoolCached(guildId);
     if (spawnPool.cards.length === 0) {
       logger.debug({ guildId }, "No active set or active set is empty — skipping random spawn");
@@ -338,9 +338,10 @@ async function awardSpawn(guildId: string, spawnId: string, userId: string): Pro
   if (spawn.resolveTimer) { clearTimeout(spawn.resolveTimer); spawn.resolveTimer = null; }
 
   // Parallel: write collection row + mark spawn log. Both independent DB calls.
-  const [{ isShiny }] = await Promise.all([
+  const [{ isShiny }, , shinySettings] = await Promise.all([
     catchCard(guildId, userId, spawn.cardId),
     markCaught(spawn.spawnLogId, userId),
+    getOrCreateGuildSettings(guildId),
   ]);
 
   try {
@@ -348,7 +349,7 @@ async function awardSpawn(guildId: string, spawnId: string, userId: string): Pro
     if (claimedEmbed) {
       await spawn.message.edit({
         embeds: [claimedEmbed],
-        components: [buildDecisionRow(guildId, userId, spawn.cardId, spawn.burnValue, isShiny)],
+        components: [buildDecisionRow(guildId, userId, spawn.cardId, spawn.burnValue, isShiny, getShinyMultiplier(shinySettings))],
       });
     }
   } catch { /* deleted */ }
@@ -401,8 +402,8 @@ export async function handleClaimButtonClick(guildId: string, spawnId: string, u
 // `isShiny` is encoded into the burn customId as a 5th `:1`/`:0` segment
 // so the click handler knows which pile to torch and what payout to credit.
 // Index.ts treats a missing segment as 0 for backwards-compat.
-function buildDecisionRow(guildId: string, userId: string, cardId: number, burnValue: number, isShiny = false): ActionRowBuilder<ButtonBuilder> {
-  const effectiveBurn = isShiny ? burnValue * SHINY_MULTIPLIER : burnValue;
+function buildDecisionRow(guildId: string, userId: string, cardId: number, burnValue: number, isShiny = false, shinyMultiplier = 2): ActionRowBuilder<ButtonBuilder> {
+  const effectiveBurn = isShiny ? burnValue * shinyMultiplier : burnValue;
   const shinyFlag = isShiny ? "1" : "0";
   return new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder()
@@ -519,20 +520,22 @@ async function buildClaimedEmbed(
   const settings = guildId ? await getOrCreateGuildSettings(guildId) : null;
   const displayMap = guildId ? await getRarityDisplayOverrides(guildId) : null;
   const displayRarity = getCardDisplayRarity(card, ctx, settings, displayMap);
+  const shinyMultiplier = getShinyMultiplier(settings);
+  const shinyName = getShinyName(settings);
   const shinyPrefix = isShiny ? `${SHINY_EMOJI} ` : "";
-  const worth = isShiny ? card.worthValue * SHINY_MULTIPLIER : card.worthValue;
+  const worth = isShiny ? card.worthValue * shinyMultiplier : card.worthValue;
   const embed = new EmbedBuilder()
     .setTitle(`✅ CLAIMED — ${shinyPrefix}${card.name}`)
     .setColor(isShiny ? 0xf1c40f : 0x00b894)
     .setDescription(
       `# 🎉 CLAIMED BY <@${userId}>` +
-      (isShiny ? `\n## ${SHINY_EMOJI} **SHINY!** (1 in 200 — counts at ${SHINY_MULTIPLIER}× value)` : "") +
+      (isShiny ? `\n## ${SHINY_EMOJI} **${shinyName.toUpperCase()}!** (1 in 200 — counts at ${shinyMultiplier}× value)` : "") +
       `\n\u200b`,
     )
     .addFields(
       { name: `${typeEmoji} ${shinyPrefix}${card.name}`, value: card.description || "\u200b", inline: false },
       { name: "Rarity", value: `${displayRarity.emoji} ${displayRarity.label}`, inline: true },
-      { name: "Worth", value: `💠 ${worth.toLocaleString()} shards${isShiny ? ` *(${SHINY_MULTIPLIER}×)*` : ""}`, inline: true },
+      { name: "Worth", value: `💠 ${worth.toLocaleString()} shards${isShiny ? ` *(${shinyMultiplier}×)*` : ""}`, inline: true },
       { name: "Caught by", value: `<@${userId}>`, inline: true },
     )
     .setTimestamp();

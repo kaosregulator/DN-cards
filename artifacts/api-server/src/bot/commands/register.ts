@@ -23,7 +23,7 @@ function adminCmd(name: string, desc: string, build: (s: SlashCommandBuilder) =>
   ).toJSON();
 }
 
-export function buildCommands() {
+function buildLegacyCommands() {
   return [
     // ── User Commands ─────────────────────────────────────────────────────────
     cmd("collection", "(User) View your DN Cards collection", s => s
@@ -360,14 +360,53 @@ export function buildCommands() {
   ];
 }
 
-export const USER_COMMAND_NAMES = new Set([
-  "collection", "rank", "info", "list", "catalog", "top",
-  "burn", "shards", "trade", "trades", "accept", "decline", "help", "welcome",
-  "daily", "pack", "packstats", "achievements", "wishlist", "gift", "tradein", "tradehistory",
-  "sets",
+
+type CommandJson = ReturnType<SlashCommandBuilder["toJSON"]>;
+
+const USER_HUB_COMMANDS = new Set([
+  "collection", "rank", "info", "list", "catalog", "top", "burn", "shards",
+  "trade", "gift", "trades", "tradehistory", "accept", "decline", "welcome",
+  "help", "daily", "pack", "packstats", "tradein", "achievements",
 ]);
 
-export const ADMIN_COMMAND_NAMES = new Set([
-  "config", "adminhub", "sethub", "set_admin", "setadmin", "welcomeadmin", "adminhelp", "drop", "massdrop", "give", "giveshards", "takeback", "takeshards", "event", "dashboard", "setup",
-  "addcard", "editcard", "deletecard", "rarity", "embed",
+const ADMIN_HUB_COMMANDS = new Set([
+  "setup", "config", "adminhub", "sethub", "set_admin", "deletecard",
+  "welcomeadmin", "adminhelp", "drop", "massdrop", "give", "giveshards",
+  "takeback", "takeshards", "addcard", "editcard", "dashboard",
 ]);
+
+const ADMIN_HUB_NAMES: Record<string, string> = {
+  adminhub: "hub",
+  sethub: "set-hub",
+  set_admin: "set-manager",
+  welcomeadmin: "welcome",
+  adminhelp: "help",
+};
+
+function consolidateCommands(commands: CommandJson[], names: Set<string>, hubName: string, description: string, admin = false): CommandJson {
+  const selected = commands.filter(command => names.has(command.name));
+  return {
+    name: hubName, description, type: 1, dm_permission: false,
+    ...(admin ? { default_member_permissions: PermissionFlagsBits.Administrator.toString() } : {}),
+    options: selected.map(command => ({
+      type: 1,
+      name: ADMIN_HUB_NAMES[command.name] ?? command.name,
+      description: command.description.replace(/^\((?:User|Admin)\)\s*/, "").slice(0, 100),
+      options: command.options,
+    })),
+  } as CommandJson;
+}
+
+export function buildCommands() {
+  const legacy = buildLegacyCommands() as CommandJson[];
+  const consolidatedNames = new Set([...USER_HUB_COMMANDS, ...ADMIN_HUB_COMMANDS]);
+  return [
+    consolidateCommands(legacy, USER_HUB_COMMANDS, "cards", "Player command hub for DN Cards"),
+    consolidateCommands(legacy, ADMIN_HUB_COMMANDS, "admin", "Admin command hub for DN Cards", true),
+    ...legacy.filter(command => !consolidatedNames.has(command.name)),
+  ];
+}
+
+export const USER_COMMAND_NAMES = new Set(["cards", "wishlist", "sets"]);
+
+export const ADMIN_COMMAND_NAMES = new Set(["admin", "setadmin", "event", "rarity", "embed"]);
