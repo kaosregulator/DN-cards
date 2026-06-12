@@ -196,6 +196,9 @@ export const guildSettingsTable = pgTable("guild_settings", {
   // Catch mode: "type" (type card name), "button" (click claim button), or "both"
   catchMode: text("catch_mode").notNull().default("type"),
   commandPrefix: text("command_prefix").notNull().default("!"),
+  // Shiny odds stay fixed; admins may only tune value and the display name.
+  shinyValueMultiplier: real("shiny_value_multiplier").notNull().default(2),
+  shinyName: text("shiny_name").notNull().default("Shiny"),
   // ── Pack store config ──────────────────────────────────────────────────────
   // Shared cooldown between any two pack opens (0 = no cooldown).
   packCooldownSeconds: integer("pack_cooldown_seconds").notNull().default(60),

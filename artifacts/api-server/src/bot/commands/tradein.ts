@@ -12,7 +12,7 @@ import {
   type DisplayRarity, type RarityContext,
 } from "../db.js";
 import {
-  RARITY_COLORS, RARITY_EMOJI, RARITY_LABELS, SHINY_EMOJI, SHINY_MULTIPLIER,
+  RARITY_COLORS, RARITY_EMOJI, RARITY_LABELS, SHINY_EMOJI, getShinyMultiplier, getShinyName,
   rarityLabel, rarityEmoji, rarityColor,
   type RarityDisplayMap,
 } from "../cards-data.js";
@@ -124,6 +124,8 @@ export async function handleTradein(interaction: ChatInputCommandInteraction): P
   // Build the per-guild ladder (built-ins + custom tiers by position). The
   // autocomplete value for custom tiers is `custom:<slug>`; accept bare slugs
   // too so older copied commands remain forgiving.
+  const shinyMultiplier = getShinyMultiplier(settings);
+  const shinyName = getShinyName(settings);
   const ladder = buildLadder(ctx, settings, displayMap);
   const fromKey = fromRarityRaw.startsWith("custom:")
     ? fromRarityRaw
@@ -157,7 +159,7 @@ export async function handleTradein(interaction: ChatInputCommandInteraction): P
     await interaction.editReply(
       `❌ You need **${TRADEIN_COST}** ${fromTier.emoji} ${fromTier.label} cards to trade in. ` +
       `You have **${totalAtRarity}**.\n` +
-      `Tip: \`/burn\` duplicates first if you'd rather have shards.`,
+      `Tip: \`/cards burn\` duplicates first if you'd rather have shards.`,
     );
     return;
   }
@@ -313,8 +315,8 @@ export async function handleTradein(interaction: ChatInputCommandInteraction): P
     const { isShiny } = await catchCard(guildId, userId, reward.id);
     const balance = (await getOrCreateCurrency(guildId, userId)).shards;
     const shinyPrefix = isShiny ? `${SHINY_EMOJI} ` : "";
-    const rewardWorth = isShiny ? reward.worthValue * SHINY_MULTIPLIER : reward.worthValue;
-    const rewardBurn = isShiny ? reward.burnValue * SHINY_MULTIPLIER : reward.burnValue;
+    const rewardWorth = isShiny ? reward.worthValue * shinyMultiplier : reward.worthValue;
+    const rewardBurn = isShiny ? reward.burnValue * shinyMultiplier : reward.burnValue;
 
     const fE = fromTier.emoji, fL = fromTier.label;
     const tE = toTier.emoji,   tL = toTier.label;
@@ -325,14 +327,14 @@ export async function handleTradein(interaction: ChatInputCommandInteraction): P
         `You burned **${TRADEIN_COST}** ${fE} ${fL} cards ` +
         `and received a random ${tE} **${tL}**.\n\n` +
         `**🎁 You got:** ${tE} ${shinyPrefix}**${reward.name}**` +
-        (isShiny ? `\n${SHINY_EMOJI} **SHINY!** Counts at ${SHINY_MULTIPLIER}× value.` : "") +
+        (isShiny ? `\n${SHINY_EMOJI} **${shinyName.toUpperCase()}!** Counts at ${shinyMultiplier}× value.` : "") +
         (reward.description ? `\n*${reward.description}*` : "") +
         `\n\n**Consumed:**\n${plan.map(p => `• **${p.taken}× ${p.name}**`).join("\n")}` +
         `\n\n💠 Balance: **${balance.toLocaleString()}**`,
       )
       .addFields(
-        { name: "💠 Worth", value: rewardWorth.toLocaleString() + (isShiny ? ` *(${SHINY_MULTIPLIER}×)*` : ""), inline: true },
-        { name: "🔥 Burn", value: rewardBurn.toLocaleString() + (isShiny ? ` *(${SHINY_MULTIPLIER}×)*` : ""), inline: true },
+        { name: "💠 Worth", value: rewardWorth.toLocaleString() + (isShiny ? ` *(${shinyMultiplier}×)*` : ""), inline: true },
+        { name: "🔥 Burn", value: rewardBurn.toLocaleString() + (isShiny ? ` *(${shinyMultiplier}×)*` : ""), inline: true },
         { name: "Rarity", value: `${tE} ${tL}`, inline: true },
       )
       .setFooter({ text: "Use /collection to view your new card." });
@@ -356,7 +358,7 @@ export async function handleTradein(interaction: ChatInputCommandInteraction): P
     if (resolved) return;
     if (reason === "time") {
       await interaction.editReply({
-        content: "⏱️ Trade-in timed out — no cards were destroyed. Run `/tradein` again to retry.",
+        content: "⏱️ Trade-in timed out — no cards were destroyed. Run `/cards tradein` again to retry.",
         embeds: [], components: [],
       }).catch(() => { /* ignore */ });
     }

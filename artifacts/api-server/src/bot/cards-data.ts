@@ -148,6 +148,18 @@ export const SHINY_RATE = 0.005;
 export const SHINY_MULTIPLIER = 2;
 export const SHINY_EMOJI = "✨";
 
+type ShinySettings = { shinyValueMultiplier?: number | null; shinyName?: string | null };
+
+export function getShinyMultiplier(settings?: ShinySettings | null): number {
+  const value = Number(settings?.shinyValueMultiplier);
+  return Number.isFinite(value) && value >= 0.1 && value <= 100 ? value : SHINY_MULTIPLIER;
+}
+
+export function getShinyName(settings?: ShinySettings | null): string {
+  const name = settings?.shinyName?.trim();
+  return name ? name.slice(0, 32) : "Shiny";
+}
+
 // Trade fairness: warn when one side's total value is more than 3× the
 // other side's. Pure shards count 1:1 with shard value; cards use worthValue.
 // Shinies are not tradeable in v1 so they don't enter this calc.
