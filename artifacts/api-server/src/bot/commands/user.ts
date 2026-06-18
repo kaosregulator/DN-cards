@@ -889,6 +889,13 @@ export async function handleUserCommand(
   }
   if (sub === "achievements") { await handleAchievementsCommand(interaction); return; }
 
+  // ── /rep (reputation system) ───────────────────────────────────────────────
+  if (sub === "rep") {
+    const { handleRep } = await import("./rep.js");
+    await handleRep(interaction);
+    return;
+  }
+
   // ── /cards help (player commands only — admins use /admin help) ───────────────
   const helpSettings = await getOrCreateGuildSettings(guildId);
   const helpShinyName = getShinyName(helpSettings);

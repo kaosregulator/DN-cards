@@ -348,6 +348,14 @@ function buildLegacyCommands() {
     // ── Dashboard ─────────────────────────────────────────────────────────────
     adminCmd("dashboard", "(Admin) Get a one-time link to set up or reset your web dashboard login", s => s),
 
+    // ── /rep (user, reputation system) ────────────────────────────────────────
+    cmd("rep", "(User) Reputation system — give rep, check rep, and see the leaderboard", s => s
+      .addSubcommand(sc => sc.setName("give").setDescription("Give +1 rep to another member (24h cooldown per person)")
+        .addUserOption(o => o.setName("user").setDescription("Member to rep").setRequired(true)))
+      .addSubcommand(sc => sc.setName("check").setDescription("Check a member's rep score")
+        .addUserOption(o => o.setName("user").setDescription("Member to check (default: you)")))
+      .addSubcommand(sc => sc.setName("top").setDescription("Top 10 most reputed members on this server"))),
+
     // ── /sets (user, read-only) ───────────────────────────────────────────────
     cmd("sets", "(User) Browse card sets and your collection progress", s => s
       .addSubcommand(sc => sc.setName("list").setDescription("List every card set on this server"))
@@ -407,6 +415,6 @@ export function buildCommands() {
   ];
 }
 
-export const USER_COMMAND_NAMES = new Set(["cards", "wishlist", "sets"]);
+export const USER_COMMAND_NAMES = new Set(["cards", "wishlist", "sets", "rep"]);
 
 export const ADMIN_COMMAND_NAMES = new Set(["admin", "setadmin", "event", "rarity", "embed"]);
