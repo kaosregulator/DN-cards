@@ -542,3 +542,32 @@ export const rarityDisplayOverridesTable = pgTable("rarity_display_overrides", {
 }));
 
 export type RarityDisplayOverride = typeof rarityDisplayOverridesTable.$inferSelect;
+
+// ── User Reputation ──────────────────────────────────────────────────────────
+// Per-guild reputation score. Other users can award +1 rep via `/rep give`.
+// A 24-hour cooldown per (giver→receiver) pair prevents spam. Negative rep
+// is not supported — only positive rep gifts.
+export const userReputationTable = pgTable("user_reputation", {
+  id: serial("id").primaryKey(),
+  guildId: text("guild_id").notNull(),
+  userId: text("user_id").notNull(),
+  rep: integer("rep").notNull().default(0),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (t) => ({
+  uniqGuildUser: uniqueIndex("user_reputation_guild_user_uniq").on(t.guildId, t.userId),
+}));
+
+export type UserReputation = typeof userReputationTable.$inferSelect;
+
+// ── Rep Log (cooldown tracking + audit trail) ────────────────────────────────
+// One row per rep gift. The (guildId, giverId, receiverId) triple plus
+// `givenAt` is used to enforce the 24-hour cooldown between the same pair.
+export const repLogTable = pgTable("rep_log", {
+  id: serial("id").primaryKey(),
+  guildId: text("guild_id").notNull(),
+  giverId: text("giver_id").notNull(),
+  receiverId: text("receiver_id").notNull(),
+  givenAt: timestamp("given_at").notNull().defaultNow(),
+});
+
+export type RepLog = typeof repLogTable.$inferSelect;
