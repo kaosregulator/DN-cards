@@ -152,6 +152,7 @@ export async function handleEditCardSelect(interaction: StringSelectMenuInteract
     // Rarity → secondary select. Built-ins update the card identity; custom
     // tiers write the same Setup Hub assignment table used by /rarity.
     if (value === "rarity") {
+      await interaction.deferUpdate();
       const [settings, displayMap, ctx] = interaction.guildId
         ? await Promise.all([getOrCreateGuildSettings(interaction.guildId), getRarityDisplayOverrides(interaction.guildId), getRarityContext(interaction.guildId)])
         : [null, null, null] as const;
@@ -166,7 +167,7 @@ export async function handleEditCardSelect(interaction: StringSelectMenuInteract
           value: r.isCustom ? `custom:${r.slug}` : `builtin:${r.rarity}`,
           emoji: r.emoji || "🃏",
         })));
-      await interaction.update({
+      await interaction.editReply({
         content: "✨ Pick the new rarity:",
         embeds: [],
         components: [new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(select)],
