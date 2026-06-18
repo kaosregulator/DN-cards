@@ -1,6 +1,6 @@
 import {
   pgTable, text, serial, integer, timestamp,
-  boolean, real, pgEnum, uniqueIndex, jsonb,
+  boolean, real, pgEnum, uniqueIndex, index, jsonb,
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { sql } from "drizzle-orm";
@@ -568,6 +568,8 @@ export const repLogTable = pgTable("rep_log", {
   giverId: text("giver_id").notNull(),
   receiverId: text("receiver_id").notNull(),
   givenAt: timestamp("given_at").notNull().defaultNow(),
-});
+}, (t) => ({
+  cooldownIdx: index("rep_log_cooldown_idx").on(t.guildId, t.giverId, t.receiverId, t.givenAt),
+}));
 
 export type RepLog = typeof repLogTable.$inferSelect;
