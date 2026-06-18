@@ -30,16 +30,16 @@ export async function startBot() {
   const token = process.env["DISCORD_BOT_TOKEN"];
   if (!token) { logger.error("DISCORD_BOT_TOKEN not set — bot will not start."); return; }
 
-  const { HOME_GUILD_ID } = await import("./home-guild.js");
-  if (!HOME_GUILD_ID) {
+  const { HOME_GUILD_IDS } = await import("./home-guild.js");
+  if (HOME_GUILD_IDS.length === 0) {
     logger.warn(
-      "HOME_GUILD_ID is not set. Commands that mutate globally shared data " +
+      "HOME_GUILD_IDS is not set. Commands that mutate globally shared data " +
       "(addcard, editcard, removecard, import, /setadmin create|rename|delete|add|remove|…) " +
-      "will be blocked for ALL guilds until HOME_GUILD_ID is configured. " +
-      "Set it to your home server's Discord guild ID in the environment variables.",
+      "will be blocked for ALL guilds until HOME_GUILD_IDS is configured. " +
+      "Set it to a comma-separated list of authorised server Discord guild IDs.",
     );
   } else {
-    logger.info({ homeGuildId: HOME_GUILD_ID }, "Tenant isolation active — global mutations restricted to home guild");
+    logger.info({ homeGuildIds: HOME_GUILD_IDS }, "Tenant isolation active — global mutations restricted to home guilds");
   }
 
   // --- Multi-instance guard ---
