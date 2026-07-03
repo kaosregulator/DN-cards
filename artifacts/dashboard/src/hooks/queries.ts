@@ -203,6 +203,15 @@ export function useResetCardDisplay() {
   });
 }
 
+export function useUpdateCardRarity() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, rarity }: { id: number; rarity: Rarity }) =>
+      adminSend<{ card: { id: number; rarity: Rarity } }>("PATCH", `/api/admin/cards/${id}/rarity`, { rarity }),
+    onSuccess: () => invalidateCardLists(qc),
+  });
+}
+
 // ── News ────────────────────────────────────────────────────────────────────
 export interface NewsPost {
   id: number;

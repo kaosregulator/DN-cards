@@ -191,7 +191,7 @@ export async function handleEditCardSelect(interaction: StringSelectMenuInteract
         .addOptions(rarities.slice(0, 25).map(r => ({
           label: r.label.slice(0, 100),
           value: r.isCustom ? `custom:${r.slug}` : `builtin:${r.rarity}`,
-          emoji: r.emoji || "🃏",
+          emoji: { name: r.emoji || "🃏" } as Record<string, unknown>,
         })));
       await interaction.update({
         content: "✨ Pick the new rarity:",

@@ -1,8 +1,9 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   useAdminCards,
   useUpdateCardDisplay,
   useResetCardDisplay,
+  useUpdateCardRarity,
   type AdminCard,
   type DisplayOverridePatch,
   type Rarity,
@@ -115,18 +116,22 @@ function ImageUploadField({
   );
 }
 
-// ── Edit dialog (display overrides ONLY) ─────────────────────────────────────
+// ── Edit dialog ───────────────────────────────────────────────────────────────
 function EditDialog({
   card, open, onOpenChange,
 }: { card: AdminCard | null; open: boolean; onOpenChange: (o: boolean) => void }) {
   const { toast } = useToast();
   const update = useUpdateCardDisplay();
   const reset = useResetCardDisplay();
+  const updateRarity = useUpdateCardRarity();
   const [form, setForm] = useState<DisplayOverridePatch>({});
+  const [rarityDraft, setRarityDraft] = useState<Rarity | "">("");
   const [trackedId, setTrackedId] = useState<number | null>(null);
 
-  if (card && card.id !== trackedId) {
-    setTrackedId(card.id);
+  // Reset form state whenever the dialog opens (or switches to a different card).
+  // Using useEffect keyed on `open` + `card?.id` handles same-card reopen correctly.
+  useEffect(() => {
+    if (!open || !card) return;
     const o = card.displayOverride;
     setForm({
       displayName: o?.displayName ?? null,
@@ -138,9 +143,22 @@ function EditDialog({
       featured: o?.featured ?? false,
       sortWeight: o?.sortWeight ?? 0,
     });
-  }
+    setRarityDraft("");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, card?.id]);
 
   if (!card) return null;
+
+  const onSaveRarity = async () => {
+    if (!rarityDraft) return;
+    try {
+      await updateRarity.mutateAsync({ id: card.id, rarity: rarityDraft as Rarity });
+      toast({ title: "Rarity updated", description: `${card.name} → ${rarityDraft}` });
+      setRarityDraft("");
+    } catch (err) {
+      toast({ variant: "destructive", title: "Rarity update failed", description: err instanceof Error ? err.message : "Unknown error" });
+    }
+  };
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -235,23 +253,47 @@ function EditDialog({
               <p className="text-xs text-muted-foreground mt-1">Higher = appears earlier in the roster. Featured cards always come first.</p>
             </div>
 
+            {/* ── Rarity (gameplay, writes to cards table) ── */}
+            <div className="rounded-md border border-border/60 p-3 space-y-2">
+              <Label className="font-mono uppercase tracking-widest text-xs">Rarity</Label>
+              <div className="flex gap-2">
+                <select
+                  className="flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm font-mono"
+                  value={rarityDraft || card.rarity}
+                  onChange={e => setRarityDraft(e.target.value as Rarity)}
+                >
+                  {RARITIES.map(r => (
+                    <option key={r} value={r}>{r}</option>
+                  ))}
+                </select>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  disabled={updateRarity.isPending || !rarityDraft || rarityDraft === card.rarity}
+                  onClick={onSaveRarity}
+                >
+                  {updateRarity.isPending ? "Saving…" : "Save rarity"}
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground">Updates the actual card rarity used by Discord drops and inventory.</p>
+            </div>
+
             <DialogFooter className="gap-2">
               <Button type="button" variant="ghost" onClick={onReset} disabled={reset.isPending}>
                 <RotateCcw className="h-4 w-4 mr-1" />
                 Clear override
               </Button>
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-              <Button type="submit" disabled={update.isPending}>{update.isPending ? "Saving…" : "Save"}</Button>
+              <Button type="submit" disabled={update.isPending}>{update.isPending ? "Saving…" : "Save display"}</Button>
             </DialogFooter>
           </form>
 
           <aside className="space-y-3 text-xs">
             <div className="rounded-md border border-amber-500/30 bg-amber-500/5 p-3">
               <div className="font-mono uppercase tracking-widest text-amber-400 mb-2">Discord (read-only)</div>
-              <p className="text-muted-foreground mb-2">Change these in Discord with admin commands. The website cannot edit them.</p>
+              <p className="text-muted-foreground mb-2">Name, worth, burn, drop flags — change these via Discord admin commands.</p>
               <dl className="space-y-1 font-mono">
                 <Row k="Name" v={card.name} />
-                <Row k="Rarity" v={card.rarity} />
                 <Row k="Type" v={card.cardType} />
                 <Row k="Worth" v={`${card.worthValue.toLocaleString()} 💠`} />
                 <Row k="Burn" v={`${card.burnValue.toLocaleString()} 💠`} />

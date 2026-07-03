@@ -3,6 +3,7 @@ import { db, cardsTable, cardDisplayOverridesTable, upsertCardDisplayOverrideSch
 import { eq } from "drizzle-orm";
 import { z } from "zod/v4";
 import { requireDashboardAuth } from "../middlewares/dashboard-auth.js";
+import { invalidateCardCache } from "../bot/db.js";
 
 // IMPORTANT: This router is presentation-only.
 //
@@ -129,6 +130,33 @@ router.put("/cards/:id/display", async (req, res) => {
     .returning();
 
   res.json({ override: row });
+});
+
+// ── Update a card's rarity (gameplay field) ───────────────────────────────────
+// PATCH /cards/:id/rarity
+// Body: { rarity: "common" | "uncommon" | "rare" | "epic" | "legendary" | "mythic" }
+const rarityValues = ["common", "uncommon", "rare", "epic", "legendary", "mythic"] as const;
+const patchRaritySchema = z.object({ rarity: z.enum(rarityValues) });
+
+router.patch("/cards/:id/rarity", async (req, res) => {
+  const params = parse(idParam, req.params, res);
+  if (!params) return;
+  const body = parse(patchRaritySchema, req.body, res);
+  if (!body) return;
+
+  const [card] = await db.select({ id: cardsTable.id }).from(cardsTable).where(eq(cardsTable.id, params.id));
+  if (!card) { res.status(404).json({ error: "Card not found" }); return; }
+
+  const [updated] = await db
+    .update(cardsTable)
+    .set({ rarity: body.rarity })
+    .where(eq(cardsTable.id, params.id))
+    .returning({ id: cardsTable.id, rarity: cardsTable.rarity });
+
+  // Bust the bot's in-memory card cache so spawns/commands see the new rarity immediately.
+  invalidateCardCache();
+
+  res.json({ card: updated });
 });
 
 // ── Reset (delete) a card's display override row ─────────────────────────────
