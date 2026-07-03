@@ -12,10 +12,10 @@
 export type Rarity = "common" | "uncommon" | "rare" | "epic" | "legendary" | "mythic";
 export type CardType = string; // free-form label — any text the admin types
 
-// Rarity hierarchy (least → most rare):
-//   Common → Uncommon → Exotic (epic key) → Legendary → Rare → Mythic
-// The DB enum keeps "epic" but it's labelled "Exotic" for users.
-// Mythic is the new top tier — admin-only drops by default (weight 0).
+// Built-in rarity display order (least → most rare):
+//   Common → Uncommon → Gold Legendary (rare key) → Exotic (epic key) → LE Limited Edition (legendary key) → Mythic
+// The DB enum keys are fixed for compatibility; the user-facing labels below are what players see.
+// Mythic is the event/admin-only top tier — default weight 0 so it never spawns unless boosted.
 export const RARITY_WEIGHTS: Record<Rarity, number> = {
   common: 60,
   uncommon: 25,
@@ -183,10 +183,10 @@ export const FAIRNESS_RATIO_THRESHOLD = 3;
 export const RARITY_LABELS: Record<Rarity, string> = {
   common: "Common",
   uncommon: "Uncommon",
-  epic: "LE Limited Edition",  // DB enum key "epic" — user-facing label; cards being reclassified to rare
-  legendary: "Exotic",         // DB enum key "legendary" — user-facing label is Exotic
-  rare: "LE Limited Edition",  // DB enum key "rare" — top user-facing tier
-  mythic: "Mythic",            // admin-only top tier
+  rare: "Gold Legendary",      // DB enum key "rare" — user-facing label
+  epic: "Exotic",              // DB enum key "epic" — user-facing label
+  legendary: "LE Limited Edition", // DB enum key "legendary" — user-facing label
+  mythic: "Mythic",            // event/admin-only top tier
 };
 
 export const TYPE_EMOJI: Record<string, string> = {

@@ -12,13 +12,13 @@ import type { GuildSettings } from "@workspace/db";
 import { PACK_TIERS, PACK_TIER_META, PACK_DEFAULTS, resolveTierConfig, type PackTier } from "./pack.js";
 
 // Rarity display order in the panel (least → most rare).
-// DB enum key "epic" is labelled "Exotic" via RARITY_LABELS — Rare is the rarest tier.
-const RARITY_ORDER: Rarity[] = ["common", "uncommon", "epic", "legendary", "rare", "mythic"];
+// These are the DB enum keys; the user-facing labels come from RARITY_LABELS in cards-data.ts.
+const RARITY_ORDER: Rarity[] = ["common", "uncommon", "rare", "epic", "legendary", "mythic"];
 // Discord caps an action-row count at 5 per message AND 5 per modal, so the
 // interactive rate-mix controls can only expose 5 rarities. Mythic is the
-// admin-only top tier (default weight 0) and is configured via the dashboard
-// or `/event` boosts instead — see replit.md > Mythic tier.
-const UI_RARITY_ORDER: Rarity[] = ["common", "uncommon", "epic", "legendary", "rare"];
+// event/admin-only top tier (default weight 0) and is configured via the
+// `/rarity` panel or `/event` boosts instead.
+const UI_RARITY_ORDER: Rarity[] = ["common", "uncommon", "rare", "epic", "legendary"];
 // Percentage options offered per rarity (preset menu). `null` = "Default" (use card's default).
 // Stored internally as weights — when the values sum to 100, weight == percent exactly.
 const RARITY_WEIGHT_OPTIONS: Record<Rarity, (number | null)[]> = {
@@ -144,6 +144,17 @@ export async function handleConfigButton(interaction: ButtonInteraction): Promis
     if (s.spawnEnabledSecondary) scheduleNextSpawnSecondary(guildId);
   } else if (action === "channel" && arg === "trade") {
     await updateGuildSettings(guildId, { tradeChannelId: interaction.channelId });
+  } else if (action === "drops") {
+    const settings = await getOrCreateGuildSettings(guildId);
+    if (arg === "back") {
+      await refreshPanel(interaction, settings);
+    } else {
+      await interaction.editReply({
+        embeds: [buildDropsEmbed(settings)],
+        components: buildDropsComponents(settings),
+      });
+    }
+    return;
   } else if (action === "rates") {
     if (arg === "reset") {
       const resetPatch: Partial<GuildSettings> = {};
@@ -154,7 +165,7 @@ export async function handleConfigButton(interaction: ButtonInteraction): Promis
       const settings = await getOrCreateGuildSettings(guildId);
       await refreshPanel(interaction, settings);
       await interaction.followUp({
-        content: "🔄 Rarity setup reset to defaults — Common 60% · Uncommon 25% · Exotic 10% · Legendary 4% · Rare 1%.",
+        content: "🔄 Rarity setup reset to defaults — Common 60% · Uncommon 25% · Gold Legendary 1% · Exotic 10% · LE Limited Edition 4%.",
         flags: MessageFlags.Ephemeral,
       }).catch(() => { /* ignore */ });
       return;
@@ -418,15 +429,6 @@ function buildConfigComponents(s: GuildSettings, displayMap?: RarityDisplayMap |
       { label: "Both", value: "both", emoji: "🔀", default: catchMode === "both" },
     );
 
-  const dropsSelect = new StringSelectMenuBuilder()
-    .setCustomId("config_drops")
-    .setPlaceholder("📤‍📤 Cards per spawn")
-    .addOptions(
-      { label: "1 card", value: "1", default: s.cardsPerSpawn === 1 },
-      { label: "3 cards", value: "3", default: s.cardsPerSpawn === 3 },
-      { label: "5 cards", value: "5", default: s.cardsPerSpawn === 5 },
-      { label: "Random 1–3", value: "-1", default: s.cardsPerSpawn === -1 },
-    );
 
   const intervalOpts: { label: string; sec: number }[] = [
     { label: "1 minute", sec: 1 * 60 },
@@ -489,6 +491,10 @@ function buildConfigComponents(s: GuildSettings, displayMap?: RarityDisplayMap |
       .setLabel("🎴 Packs")
       .setStyle(ButtonStyle.Secondary),
     new ButtonBuilder()
+      .setCustomId("config:drops:open")
+      .setLabel("📤‍📤 Drops")
+      .setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder()
       .setCustomId("config:toggle:spawn2")
       .setLabel(s.spawnEnabledSecondary ? "🟢 Stream 2 ON" : "🔴 Stream 2 OFF")
       .setStyle(ButtonStyle.Secondary),
@@ -500,7 +506,7 @@ function buildConfigComponents(s: GuildSettings, displayMap?: RarityDisplayMap |
 
   return [
     new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(modeSelect),
-    new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(dropsSelect),
+    new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(windowSelect),
     new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(intervalSelect),
     toggleRow,
     subPanelRow,
@@ -511,6 +517,35 @@ function formatSec(sec: number): string {
   if (sec >= 3600) return `${Math.round(sec / 3600)}h`;
   if (sec >= 60) return `${Math.round(sec / 60)}m`;
   return `${sec}s`;
+}
+
+// ── Drops per spawn sub-panel ────────────────────────────────────────────────
+
+function buildDropsEmbed(s: GuildSettings): EmbedBuilder {
+  const dropsLabel = s.cardsPerSpawn === -1 ? "Random 1–3" : `${s.cardsPerSpawn}`;
+  return new EmbedBuilder()
+    .setTitle("📤‍📤 Drops per Spawn")
+    .setColor(0x5865f2)
+    .setDescription(`How many cards appear in each automatic spawn.\n\nCurrent: **${dropsLabel}**`);
+}
+
+function buildDropsComponents(s: GuildSettings) {
+  const dropsSelect = new StringSelectMenuBuilder()
+    .setCustomId("config_drops")
+    .setPlaceholder("📤‍📤 Cards per spawn")
+    .addOptions(
+      { label: "1 card", value: "1", default: s.cardsPerSpawn === 1 },
+      { label: "3 cards", value: "3", default: s.cardsPerSpawn === 3 },
+      { label: "5 cards", value: "5", default: s.cardsPerSpawn === 5 },
+      { label: "Random 1–3", value: "-1", default: s.cardsPerSpawn === -1 },
+    );
+  const backRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder().setCustomId("config:drops:back").setLabel("← Back").setStyle(ButtonStyle.Secondary),
+  );
+  return [
+    new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(dropsSelect),
+    backRow,
+  ];
 }
 
 // ── Rarity percentage sub-panel (also reused by the setup wizard) ────────────
@@ -562,7 +597,7 @@ function buildRatesEmbed(s: GuildSettings, displayMap?: RarityDisplayMap | null)
     .setColor(0xeb459e)
     .setDescription(
       "Set the visible **spawn chance %** for each built-in rarity.\n" +
-      "**Defaults:** Common 60 · Uncommon 25 · Exotic 10 · Legendary 4 · Rare 1 (= 100%)\n" +
+      "**Defaults:** Common 60 · Uncommon 25 · Gold Legendary 1 · Exotic 10 · LE Limited Edition 4 (= 100%)\n" +
       "_Want exact numbers? Close this and tap **✏️ Exact %** on the main panel._\n\n" +
       `${rarityBar(s)}\n\n` +
       note,

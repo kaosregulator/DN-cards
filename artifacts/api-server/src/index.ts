@@ -151,9 +151,9 @@ async function runBootMigrations() {
       await client.query(`
         INSERT INTO rarity_display_overrides(guild_id, rarity, display_name, updated_at)
         VALUES
-          ('1363917781355069761', 'legendary', 'Exotic',             now()),
-          ('1363917781355069761', 'epic',      'LE Limited Edition', now()),
-          ('1363917781355069761', 'rare',      'LE Limited Edition', now())
+          ('1363917781355069761', 'rare',      'Gold Legendary',     now()),
+          ('1363917781355069761', 'epic',      'Exotic',             now()),
+          ('1363917781355069761', 'legendary', 'LE Limited Edition', now())
         ON CONFLICT(guild_id, rarity) DO UPDATE
           SET display_name = EXCLUDED.display_name,
               updated_at   = EXCLUDED.updated_at;
