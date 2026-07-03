@@ -397,7 +397,7 @@ const USER_HUB_COMMANDS = new Set([
 const ADMIN_HUB_COMMANDS = new Set([
   "setup", "config", "adminhub", "sethub", "set_admin", "deletecard",
   "welcomeadmin", "adminhelp", "drop", "massdrop", "give", "giveshards",
-  "takeback", "takeshards", "addcard", "editcard", "dashboard", "edituser",
+  "takeback", "takeshards", "addcard", "editcard", "dashboard",
 ]);
 
 const ADMIN_HUB_NAMES: Record<string, string> = {
@@ -434,4 +434,4 @@ export function buildCommands() {
 
 export const USER_COMMAND_NAMES = new Set(["cards", "wishlist", "sets", "rep", "menu", "mttvalues"]);
 
-export const ADMIN_COMMAND_NAMES = new Set(["admin", "setadmin", "event", "rarity", "embed"]);
+export const ADMIN_COMMAND_NAMES = new Set(["admin", "setadmin", "event", "rarity", "embed", "edituser"]);
