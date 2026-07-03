@@ -168,10 +168,10 @@ export const FAIRNESS_RATIO_THRESHOLD = 3;
 export const RARITY_LABELS: Record<Rarity, string> = {
   common: "Common",
   uncommon: "Uncommon",
-  epic: "Exotic",     // DB enum key stays "epic" — user-facing label is Exotic
-  legendary: "Legendary",
-  rare: "Rare",       // promoted to top tier (rarest)
-  mythic: "Mythic",   // new top tier — admin renameable via /rarityname
+  epic: "Exotic",              // DB enum key stays "epic" — user-facing label is Exotic
+  legendary: "Gold Legendary", // default display name for legendary tier
+  rare: "Limited Edition",     // DB enum key stays "rare" — user-facing label is Limited Edition
+  mythic: "Mythic",            // admin-only top tier
 };
 
 export const TYPE_EMOJI: Record<string, string> = {

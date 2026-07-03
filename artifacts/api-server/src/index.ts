@@ -145,6 +145,20 @@ async function runBootMigrations() {
     const client = await (await import("@workspace/db")).pool.connect();
     try {
       await client.query("BEGIN");
+      // Remove only the specific stale overrides that conflict with updated RARITY_LABELS defaults.
+      // Targeted by exact value so any future admin customizations on these tiers are unaffected.
+      //   rare → "Exotic" was wrong (now code default is "Limited Edition")
+      //   epic → "Exotic" was redundant (matches new code default)
+      //   legendary → "Gold Legendary" was redundant (matches new code default)
+      await client.query(`
+        DELETE FROM rarity_display_overrides
+        WHERE guild_id='1363917781355069761'
+          AND (
+            (rarity='rare'      AND display_name='Exotic')         OR
+            (rarity='epic'      AND display_name='Exotic')         OR
+            (rarity='legendary' AND display_name='Gold Legendary')
+          );
+      `);
       await client.query("ALTER TABLE cards DROP CONSTRAINT IF EXISTS cards_name_unique;");
       const _dataMigrations: string[] = [
         "INSERT INTO cards(id,name,description,rarity,drop_weight,image_url,created_at,card_type,worth_value,burn_value,is_limited_edition,is_event_exclusive,max_copies,total_minted,flavor,droppable,in_packs,is_archived,podium_place) VALUES(315,'BOB','The Face. The Legend. The Cult. Awarded to members present during the Great Bob Awakening. Grants unlimited emotional support and questionable tactical advice.','rare',0,'/card-bob.png','2026-05-25T05:52:12.999Z','limited',5000,2500,false,true,NULL,2,NULL,false,false,false,NULL) ON CONFLICT(id) DO UPDATE SET name=EXCLUDED.name,description=EXCLUDED.description,rarity=EXCLUDED.rarity,drop_weight=EXCLUDED.drop_weight,image_url=CASE WHEN EXCLUDED.image_url='' THEN cards.image_url ELSE EXCLUDED.image_url END,card_type=EXCLUDED.card_type,worth_value=EXCLUDED.worth_value,burn_value=EXCLUDED.burn_value,is_limited_edition=EXCLUDED.is_limited_edition,is_event_exclusive=EXCLUDED.is_event_exclusive,droppable=EXCLUDED.droppable,in_packs=EXCLUDED.in_packs,is_archived=EXCLUDED.is_archived;",
