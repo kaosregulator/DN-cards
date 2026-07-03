@@ -61,6 +61,21 @@ export const RARITY_EMOJI: Record<Rarity, string> = {
   mythic: "🔮",
 };
 
+/**
+ * Discord StringSelectMenu options only accept Unicode emojis or {id,name} custom emoji objects.
+ * Custom emoji shortcodes (e.g. ":yellow_heart:") crash the option builder with COMPONENT_INVALID_EMOJI.
+ * This helper falls back to a safe Unicode emoji when the resolved value is not usable.
+ */
+export function selectMenuEmoji(
+  emoji: string | undefined | null,
+  fallback: string,
+): { name: string } {
+  const e = emoji?.trim() ?? "";
+  // Shortcodes contain colons; plain text/IDs are not valid option emojis either.
+  const isUnicode = !e.includes(":") && /^\p{Extended_Pictographic}/u.test(e);
+  return { name: isUnicode ? e : fallback };
+}
+
 // ── Per-guild rarity display overrides ───────────────────────────────────────
 // Admins can rename any of the 6 built-in rarity tiers for their server via
 // `/rarity edit` — changing the display name, emoji, and/or embed color.

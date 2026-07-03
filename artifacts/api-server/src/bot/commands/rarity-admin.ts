@@ -25,7 +25,7 @@ import {
   getOrCreateGuildSettings,
 } from "../db.js";
 import {
-  RARITY_EMOJI, RARITY_LABELS, RARITY_COLORS, type Rarity, type RarityDisplayMap,
+  RARITY_EMOJI, RARITY_LABELS, RARITY_COLORS, selectMenuEmoji, type Rarity, type RarityDisplayMap,
   rarityLabel, rarityEmoji, rarityColor,
 } from "../cards-data.js";
 
@@ -119,9 +119,11 @@ function buildSettingsPanel(
         const display = getEffectiveDisplay(r, displayMap, settings);
         const profile = byRarity.get(r);
         const hasValues = profile && (profile.worthValue !== null || profile.burnValue !== null || profile.dropWeight !== null);
+        const emojiObj = selectMenuEmoji(display.emoji, RARITY_EMOJI[r]);
         return {
           label: `${display.emoji} ${display.label}`,
           value: r,
+          emoji: emojiObj,
           description: `${display.hasOverride ? "Display set" : "Default display"} · ${hasValues ? "Values set" : "Default values"}`.slice(0, 100),
         };
       })),
@@ -203,9 +205,11 @@ function buildEconomyPanel(profiles: ProfileRow[], displayMap?: RarityDisplayMap
         if (row?.worthValue != null) parts.push(`Worth: ${row.worthValue}`);
         if (row?.burnValue != null) parts.push(`Burn: ${row.burnValue}`);
         if (row?.dropWeight != null) parts.push(`Spawn: ${row.dropWeight}%`);
+        const emojiObj = selectMenuEmoji(rarityEmoji(r, null, displayMap), RARITY_EMOJI[r]);
         return {
           label: `${rarityEmoji(r, null, displayMap)} ${rarityLabel(r, null, displayMap)}`,
           value: r,
+          emoji: emojiObj,
           description: (parts.length ? parts.join(" · ") : "No overrides").slice(0, 100),
         };
       })),
@@ -291,6 +295,7 @@ function buildCustomSelectPanel(tiers: CustomRow[], action: "edit" | "remove") {
     .addOptions(tiers.slice(0, 25).map(t => ({
       label: `${t.emoji} ${t.name}`,
       value: t.slug,
+      emoji: selectMenuEmoji(t.emoji, "⭐"),
       description: `Advanced · Worth ${t.worthValue} · Burn ${t.burnValue} · Spawn ${t.dropWeight}%`.slice(0, 100),
     })));
   const selectRow = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(select);

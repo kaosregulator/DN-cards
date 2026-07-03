@@ -37,7 +37,7 @@ import {
   unassignCardCustomRarity,
   updateCard,
 } from "../db.js";
-import { type Rarity } from "../cards-data.js";
+import { RARITY_EMOJI, selectMenuEmoji, type Rarity } from "../cards-data.js";
 import { objectStorageClient } from "../../lib/objectStorage.js";
 
 // ── Permanent image upload ────────────────────────────────────────────────────
@@ -191,7 +191,7 @@ export async function handleEditCardSelect(interaction: StringSelectMenuInteract
         .addOptions(rarities.slice(0, 25).map(r => ({
           label: r.label.slice(0, 100),
           value: r.isCustom ? `custom:${r.slug}` : `builtin:${r.rarity}`,
-          emoji: { name: r.emoji || "🃏" } as Record<string, unknown>,
+          emoji: selectMenuEmoji(r.emoji, r.isCustom ? "⭐" : RARITY_EMOJI[r.rarity as Rarity] ?? "🃏"),
         })));
       await interaction.update({
         content: "✨ Pick the new rarity:",
