@@ -61,6 +61,11 @@ app.use(
   }),
 );
 
+// Health check — must respond before bot/migrations finish booting
+app.get("/api/healthz", (_req, res) => {
+  res.json({ ok: true });
+});
+
 app.use("/api", router);
 
 export default app;
