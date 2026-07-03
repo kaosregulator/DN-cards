@@ -7,6 +7,7 @@ import {
   bulkAddCardsToSet, bulkRemoveCardsFromSet,
   getSetByName, getCardsInSet, getCardByName,
   setActiveSet, clearActiveSet, getActiveSet,
+  setActiveSetSecondary, clearActiveSetSecondary,
   listSets, listSetsV2,
   patchSetRarityWeight, setSetRarityWeights,
   setSetAwardsCompletion,
@@ -197,25 +198,42 @@ export async function handleSetAdminCommand(interaction: ChatInputCommandInterac
   // ── active ───────────────────────────────────────────────────────────────
   if (sub === "active") {
     const setName = interaction.options.getString("set", true);
+    const isSecondary = interaction.options.getBoolean("secondary") ?? false;
     const set = await getSetByName(setName);
     if (!set) { await interaction.editReply(`❌ No set named \`${setName}\`.`); return; }
     const memberCount = (await getCardsInSet(set.id)).filter(c => c.droppable && !c.isArchived).length;
-    await setActiveSet(guildId, set.id);
-    await interaction.editReply(
-      `✅ Active set for this server → \`${set.name}\` (**${memberCount}** droppable cards).\n` +
-      (memberCount === 0
-        ? `⚠️ This set has no droppable cards, so random spawns still won't fire. Add cards with \`/setadmin add\`.`
-        : `Random spawns now pull exclusively from this set.`),
-    );
+    if (isSecondary) {
+      await setActiveSetSecondary(guildId, set.id);
+      await interaction.editReply(
+        `✅ **Stream 2** active set → \`${set.name}\` (**${memberCount}** droppable cards).\n` +
+        (memberCount === 0
+          ? `⚠️ This set has no droppable cards — Stream 2 won't fire. Add cards with \`/setadmin add\`.`
+          : `Enable Stream 2 in \`/config\` and set its channel to start drops.`),
+      );
+    } else {
+      await setActiveSet(guildId, set.id);
+      await interaction.editReply(
+        `✅ Active set for this server → \`${set.name}\` (**${memberCount}** droppable cards).\n` +
+        (memberCount === 0
+          ? `⚠️ This set has no droppable cards, so random spawns still won't fire. Add cards with \`/setadmin add\`.`
+          : `Random spawns now pull exclusively from this set.`),
+      );
+    }
     return;
   }
 
   // ── deactivate ───────────────────────────────────────────────────────────
   if (sub === "deactivate") {
-    await clearActiveSet(guildId);
-    await interaction.editReply(
-      `✅ Cleared active set. **Random spawns are now disabled** until you pick a new one with \`/setadmin active\`. Admin \`/admin drop name:<Card>\` still works.`,
-    );
+    const isSecondary = interaction.options.getBoolean("secondary") ?? false;
+    if (isSecondary) {
+      await clearActiveSetSecondary(guildId);
+      await interaction.editReply(`✅ Cleared Stream 2 active set. Stream 2 drops are now disabled.`);
+    } else {
+      await clearActiveSet(guildId);
+      await interaction.editReply(
+        `✅ Cleared active set. **Random spawns are now disabled** until you pick a new one with \`/setadmin active\`. Admin \`/drop name:<Card>\` still works.`,
+      );
+    }
     return;
   }
 
@@ -590,7 +608,7 @@ export async function handleSetAdminCommand(interaction: ChatInputCommandInterac
     if (setName === DEFAULTS_SET_NAME) {
       const { removed } = await unloadDefaultCards();
       await interaction.editReply(
-        `✅ Removed **${removed}** built-in default cards.\nThey will **not** come back on restart. Re-load anytime with \`/setadmin load file:<.json>\` or the \`/admin setup\` panel.`,
+        `✅ Removed **${removed}** built-in default cards.\nThey will **not** come back on restart. Re-load anytime with \`/setadmin load file:<.json>\` or the \`/setup\` panel.`,
       );
       return;
     }

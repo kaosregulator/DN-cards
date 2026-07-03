@@ -129,7 +129,7 @@ export async function handleSetChannelsApply(interaction: ChannelSelectMenuInter
   const slot = SLOT_BY_KEY.get(slotKey);
   const channel = interaction.channels.first();
   if (!slot || !channel) {
-    await interaction.editReply({ content: "❌ Couldn't read your selection — try `/admin hub` then Set Channels again.", embeds: [], components: [] });
+    await interaction.editReply({ content: "❌ Couldn't read your selection — try `/adminhub` then Set Channels again.", embeds: [], components: [] });
     return;
   }
 

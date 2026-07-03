@@ -10,7 +10,7 @@ import {
   type ChatInputCommandInteraction,
 } from "discord.js";
 import { addCard, addCardToSet, getCardByName, getSetByName } from "../db.js";
-import { renderPanel } from "./edit-card.js";
+import { renderPanel, persistBotImage } from "./edit-card.js";
 import { RARITY_BURN, RARITY_WEIGHTS, RARITY_WORTH, type Rarity } from "../cards-data.js";
 
 const BUILTIN_RARITIES = new Set<string>(["common", "uncommon", "rare", "epic", "legendary", "mythic"]);
@@ -30,7 +30,9 @@ export async function handleAddCardCommand(interaction: ChatInputCommandInteract
   const rarityInput = opts.getString("rarity", true);
   const type        = opts.getString("type", true);
   const imageAttachment = opts.getAttachment("image");
-  const imageUrl    = imageAttachment?.url ?? undefined;
+  const imageUrl = imageAttachment
+    ? await persistBotImage(imageAttachment.url, imageAttachment.contentType ?? undefined)
+    : undefined;
   const setName     = opts.getString("set")?.trim();
   const description = opts.getString("description") ?? "";
   const limited        = opts.getBoolean("limited") ?? false;
@@ -56,7 +58,7 @@ export async function handleAddCardCommand(interaction: ChatInputCommandInteract
   if (existing) {
     await interaction.editReply(
       `❌ A card named **${name}** already exists (ID #${existing.id}). ` +
-      `Use \`/admin editcard\` to modify it.`,
+      `Use \`/editcard\` to modify it.`,
     );
     return;
   }

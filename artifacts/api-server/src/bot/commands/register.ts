@@ -157,8 +157,10 @@ function buildLegacyCommands() {
         .addStringOption(o => o.setName("set").setDescription("Set name").setRequired(true).setAutocomplete(true))
         .addStringOption(o => o.setName("cards").setDescription("Comma-separated card names").setRequired(true)))
       .addSubcommand(sc => sc.setName("active").setDescription("Set the active spawn pool for this server")
-        .addStringOption(o => o.setName("set").setDescription("Set name").setRequired(true).setAutocomplete(true)))
-      .addSubcommand(sc => sc.setName("deactivate").setDescription("Clear the active set — random spawns disabled until one is chosen"))
+        .addStringOption(o => o.setName("set").setDescription("Set name").setRequired(true).setAutocomplete(true))
+        .addBooleanOption(o => o.setName("secondary").setDescription("Apply to the secondary spawn stream instead of the primary (default: false)")))
+      .addSubcommand(sc => sc.setName("deactivate").setDescription("Clear the active set — random spawns disabled until one is chosen")
+        .addBooleanOption(o => o.setName("secondary").setDescription("Deactivate the secondary spawn stream instead of the primary (default: false)")))
       .addSubcommand(sc => sc.setName("view").setDescription("View all cards in a set")
         .addStringOption(o => o.setName("name").setDescription("Set name").setRequired(true).setAutocomplete(true)))
       .addSubcommand(sc => sc.setName("setweight").setDescription("Override a rarity's spawn chance when this set is active")
@@ -365,6 +367,17 @@ function buildLegacyCommands() {
       .addSubcommand(sc => sc.setName("progress").setDescription("Show set-by-set completion for a member")
         .addUserOption(o => o.setName("user").setDescription("Member to inspect (defaults to you)")))),
 
+    // ── /menu — interactive main menu hub ────────────────────────────────────
+    cmd("menu", "(User) Open the DN Cards interactive main menu — collection, packs, burn & trades in one place", s => s),
+
+    // ── /mttvalues — Military Tycoon Trading values lookup ───────────────────
+    cmd("mttvalues", "(User) Search Military Tycoon Trading values from mttvalues.com", s => s
+      .addSubcommand(sc => sc.setName("search").setDescription("Search for an item by name, rarity, or tag")
+        .addStringOption(o => o.setName("query").setDescription("Search keyword (leave blank for full list)")))
+      .addSubcommand(sc => sc.setName("list").setDescription("Show all items sorted by value"))
+      .addSubcommand(sc => sc.setName("info").setDescription("Show full details for an item")
+        .addStringOption(o => o.setName("name").setDescription("Item name (exact match)").setRequired(true).setAutocomplete(true)))),
+
   ];
 }
 
@@ -415,6 +428,6 @@ export function buildCommands() {
   ];
 }
 
-export const USER_COMMAND_NAMES = new Set(["cards", "wishlist", "sets", "rep"]);
+export const USER_COMMAND_NAMES = new Set(["cards", "wishlist", "sets", "rep", "menu", "mttvalues"]);
 
 export const ADMIN_COMMAND_NAMES = new Set(["admin", "setadmin", "event", "rarity", "embed"]);

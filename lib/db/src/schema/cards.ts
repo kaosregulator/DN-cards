@@ -1,6 +1,6 @@
 import {
   pgTable, text, serial, integer, timestamp,
-  boolean, real, pgEnum, uniqueIndex, index, jsonb,
+  boolean, real, pgEnum, uniqueIndex, jsonb, index,
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { sql } from "drizzle-orm";
@@ -196,9 +196,6 @@ export const guildSettingsTable = pgTable("guild_settings", {
   // Catch mode: "type" (type card name), "button" (click claim button), or "both"
   catchMode: text("catch_mode").notNull().default("type"),
   commandPrefix: text("command_prefix").notNull().default("!"),
-  // Shiny odds stay fixed; admins may only tune value and the display name.
-  shinyValueMultiplier: real("shiny_value_multiplier").notNull().default(2),
-  shinyName: text("shiny_name").notNull().default("Shiny"),
   // ── Pack store config ──────────────────────────────────────────────────────
   // Shared cooldown between any two pack opens (0 = no cooldown).
   packCooldownSeconds: integer("pack_cooldown_seconds").notNull().default(60),
@@ -218,6 +215,13 @@ export const guildSettingsTable = pgTable("guild_settings", {
   // guild. NULL = no set selected → **nothing spawns** (admins must pick a
   // set via `/setadmin active`). `/drop` (forced card) bypasses this check.
   activeSetId: integer("active_set_id").references(() => setsTable.id, { onDelete: "set null" }),
+  // ── Secondary spawn stream ─────────────────────────────────────────────────
+  // Optional second channel + set that runs simultaneously alongside the
+  // primary stream. Each stream has its own timer, channel, and active set.
+  // spawnEnabledSecondary=false (default) means the secondary stream is off.
+  spawnChannelIdSecondary: text("spawn_channel_id_secondary"),
+  activeSetIdSecondary: integer("active_set_id_secondary").references(() => setsTable.id, { onDelete: "set null" }),
+  spawnEnabledSecondary: boolean("spawn_enabled_secondary").notNull().default(false),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
@@ -544,7 +548,6 @@ export const rarityDisplayOverridesTable = pgTable("rarity_display_overrides", {
 export type RarityDisplayOverride = typeof rarityDisplayOverridesTable.$inferSelect;
 
 // ── User Reputation ──────────────────────────────────────────────────────────
-// Per-guild reputation score. Other users can award +1 rep via `/rep give`.
 // A 24-hour cooldown per (giver→receiver) pair prevents spam. Negative rep
 // is not supported — only positive rep gifts.
 export const userReputationTable = pgTable("user_reputation", {

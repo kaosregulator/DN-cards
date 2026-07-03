@@ -24,6 +24,7 @@ import {
   type ChatInputCommandInteraction, type StringSelectMenuInteraction,
   type ModalSubmitInteraction, type RepliableInteraction,
 } from "discord.js";
+import { randomUUID } from "crypto";
 import {
   assignCardToCustomRarity,
   getCardByName,
@@ -37,6 +38,31 @@ import {
   updateCard,
 } from "../db.js";
 import { type Rarity } from "../cards-data.js";
+import { objectStorageClient } from "../../lib/objectStorage.js";
+
+// ── Permanent image upload ────────────────────────────────────────────────────
+// Discord slash-command attachment URLs are ephemeral — they expire within
+// hours/days. Download the bytes and re-upload to object storage so the URL
+// is permanent and usable in Discord embeds + the website indefinitely.
+// Falls back to the original URL silently if GCS is unavailable or upload fails.
+export async function persistBotImage(url: string, contentType?: string): Promise<string> {
+  const bucketId = process.env.DEFAULT_OBJECT_STORAGE_BUCKET_ID;
+  if (!bucketId) return url;
+  try {
+    const resp = await fetch(url, { signal: AbortSignal.timeout(20_000) });
+    if (!resp.ok) return url;
+    const ct = contentType ?? resp.headers.get("content-type") ?? "image/png";
+    const buf = Buffer.from(await resp.arrayBuffer());
+    if (buf.length === 0 || buf.length > 10 * 1024 * 1024) return url; // 10 MB cap
+    const ext = ct.includes("gif") ? "gif" : ct.includes("webp") ? "webp" : ct.includes("png") ? "png" : "jpg";
+    const objectName = `bot-uploads/${randomUUID()}.${ext}`;
+    const file = objectStorageClient.bucket(bucketId).file(objectName);
+    await file.save(buf, { contentType: ct, public: true });
+    return `https://storage.googleapis.com/${bucketId}/${objectName}`;
+  } catch {
+    return url; // graceful fallback — command still works, image just ephemeral
+  }
+}
 
 const RARITIES: Rarity[] = ["common", "uncommon", "rare", "epic", "legendary", "mythic"];
 const TYPE_CHOICES = ["tank", "aircraft", "ship", "vehicle", "infantry", "boss", "community", "event", "achievement", "limited"];
@@ -118,7 +144,8 @@ export async function handleEditCardCommand(interaction: ChatInputCommandInterac
     return;
   }
   if (image) {
-    await updateCard(card.id, { imageUrl: image.url });
+    const permanentUrl = await persistBotImage(image.url, image.contentType ?? undefined);
+    await updateCard(card.id, { imageUrl: permanentUrl });
   }
   await renderPanel(
     interaction,
@@ -152,7 +179,6 @@ export async function handleEditCardSelect(interaction: StringSelectMenuInteract
     // Rarity → secondary select. Built-ins update the card identity; custom
     // tiers write the same Setup Hub assignment table used by /rarity.
     if (value === "rarity") {
-      await interaction.deferUpdate();
       const [settings, displayMap, ctx] = interaction.guildId
         ? await Promise.all([getOrCreateGuildSettings(interaction.guildId), getRarityDisplayOverrides(interaction.guildId), getRarityContext(interaction.guildId)])
         : [null, null, null] as const;
@@ -167,7 +193,7 @@ export async function handleEditCardSelect(interaction: StringSelectMenuInteract
           value: r.isCustom ? `custom:${r.slug}` : `builtin:${r.rarity}`,
           emoji: r.emoji || "🃏",
         })));
-      await interaction.editReply({
+      await interaction.update({
         content: "✨ Pick the new rarity:",
         embeds: [],
         components: [new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(select)],

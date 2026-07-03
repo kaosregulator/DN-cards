@@ -1,18 +1,32 @@
 import type { AutocompleteInteraction } from "discord.js";
 import { getAllCards, listSetsV2, getUserCollection, getUserWishlist, listCustomRarities, getRarityContext, getOrCreateGuildSettings, getRarityDisplayOverrides, getDisplayRarities } from "../db.js";
+import { db, cardDisplayOverridesTable } from "@workspace/db";
+import { isNotNull } from "drizzle-orm";
 import { RARITY_EMOJI, rarityEmoji, rarityLabel, type Rarity } from "../cards-data.js";
 
 const MAX_CHOICES = 25;
 
+type SlimCard = { name: string; rarity: string; displayName?: string | null };
+
 // Cache the full card list briefly so we don't hammer the DB on every keystroke.
-let cardCache: { at: number; cards: Array<{ name: string; rarity: string }> } | null = null;
+let cardCache: { at: number; cards: SlimCard[] } | null = null;
 const CACHE_MS = 15_000;
 
-async function getCardsCached(): Promise<Array<{ name: string; rarity: string }>> {
+async function getCardsCached(): Promise<SlimCard[]> {
   const now = Date.now();
   if (cardCache && now - cardCache.at < CACHE_MS) return cardCache.cards;
-  const cards = await getAllCards();
-  const slim = cards.map(c => ({ name: c.name, rarity: c.rarity }));
+  const [cards, overrides] = await Promise.all([
+    getAllCards(),
+    db.select({ cardId: cardDisplayOverridesTable.cardId, displayName: cardDisplayOverridesTable.displayName })
+      .from(cardDisplayOverridesTable)
+      .where(isNotNull(cardDisplayOverridesTable.displayName)),
+  ]);
+  const overrideMap = new Map(overrides.map(o => [o.cardId, o.displayName]));
+  const slim = cards.map(c => ({
+    name: c.name,
+    rarity: c.rarity,
+    displayName: overrideMap.get(c.id) ?? null,
+  }));
   cardCache = { at: now, cards: slim };
   return slim;
 }
@@ -72,17 +86,29 @@ function scoreMatch(name: string, q: string): number {
   return 3;
 }
 
-function formatCardChoice(c: { name: string; rarity: string }) {
+function formatCardChoice(c: SlimCard) {
   const emoji = rarityEmoji(c.rarity as Rarity, null, null) ?? "🃏";
-  const display = `${emoji} ${c.name}`.slice(0, 100);
-  return { name: display, value: c.name.slice(0, 100) };
+  // When a website display-name override exists, show both so the admin
+  // can find the card by either name. Value is always cards.name so
+  // getCardByName() resolves it correctly.
+  const label = c.displayName && c.displayName !== c.name
+    ? `${emoji} ${c.displayName} (${c.name})`.slice(0, 100)
+    : `${emoji} ${c.name}`.slice(0, 100);
+  return { name: label, value: c.name.slice(0, 100) };
 }
 
-async function suggestCardNames(query: string, pool?: Array<{ name: string; rarity: string }>) {
+async function suggestCardNames(query: string, pool?: SlimCard[]) {
   const q = query.toLowerCase().trim();
   const cards = pool ?? await getCardsCached();
   const scored = cards
-    .map(c => ({ c, s: scoreMatch(c.name, q) }))
+    .map(c => {
+      // Match against gameplay name OR website display-name override
+      const s = Math.min(
+        scoreMatch(c.name, q),
+        c.displayName ? scoreMatch(c.displayName, q) : 3,
+      );
+      return { c, s };
+    })
     .filter(x => x.s < 3)
     .sort((a, b) => a.s - b.s || a.c.name.localeCompare(b.c.name))
     .slice(0, MAX_CHOICES);
@@ -91,13 +117,7 @@ async function suggestCardNames(query: string, pool?: Array<{ name: string; rari
 
 export async function handleAutocomplete(interaction: AutocompleteInteraction): Promise<void> {
   const focused = interaction.options.getFocused(true);
-  const topLevelCommand = interaction.commandName;
-  const hubSubcommand = topLevelCommand === "cards" || topLevelCommand === "admin"
-    ? interaction.options.getSubcommand(false)
-    : null;
-  const cmd = hubSubcommand === "set-manager" ? "set_admin"
-    : hubSubcommand === "set-hub" ? "sethub"
-    : hubSubcommand ?? topLevelCommand;
+  const cmd = interaction.commandName;
   const query = (focused.value ?? "").toString();
 
   try {
@@ -186,6 +206,13 @@ export async function handleAutocomplete(interaction: AutocompleteInteraction): 
       }
     }
 
+
+    // ── /mttvalues info — autocomplete item names from MTTValues.com ────────────
+    if (cmd === "mttvalues" && focused.name === "name") {
+      const { handleMTTValuesAutocomplete } = await import("./mttvalues.js");
+      await handleMTTValuesAutocomplete(interaction, focused);
+      return;
+    }
 
     // ── /tradein rarity — built-ins plus custom tiers in server ladder order ──
     if (cmd === "tradein" && focused.name === "rarity" && interaction.guild) {

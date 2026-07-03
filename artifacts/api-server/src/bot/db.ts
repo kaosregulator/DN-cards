@@ -6,12 +6,13 @@ import {
   rarityProfilesTable,
   customRaritiesTable, cardRarityOverridesTable,
   rarityDisplayOverridesTable,
+  cardDisplayOverridesTable,
   setsTable, cardSetMembershipsTable,
 } from "@workspace/db";
 import { eq, and, sql, desc, inArray, isNull } from "drizzle-orm";
 import type { Card, CardEvent, CardSet, CustomRarity, GuildSettings, RarityProfile, Trade } from "@workspace/db";
 import {
-  DEFAULT_CARDS, SHINY_RATE, getShinyMultiplier, type Rarity,
+  DEFAULT_CARDS, SHINY_RATE, SHINY_MULTIPLIER, type Rarity,
   type RarityDisplayMap,
 } from "./cards-data.js";
 import {
@@ -606,8 +607,52 @@ export async function listShowcaseSets(): Promise<CardSet[]> {
 }
 
 export function invalidateActiveSetCardsCache(guildId?: string): void {
-  if (guildId) _activeSetCardsCache.delete(guildId);
-  else _activeSetCardsCache.clear();
+  if (guildId) { _activeSetCardsCache.delete(guildId); _activeSetCardsCacheSecondary.delete(guildId); }
+  else { _activeSetCardsCache.clear(); _activeSetCardsCacheSecondary.clear(); }
+}
+
+// ── Secondary spawn-pool cache ─────────────────────────────────────────────
+const _activeSetCardsCacheSecondary = new Map<string, { value: ActiveSetSpawnPool; expiresAt: number }>();
+
+export async function getActiveSetSpawnPoolCachedSecondary(guildId: string): Promise<ActiveSetSpawnPool> {
+  const cached = _activeSetCardsCacheSecondary.get(guildId);
+  if (cached && cached.expiresAt > Date.now()) return cached.value;
+  const settings = await getOrCreateGuildSettings(guildId);
+  let pool: ActiveSetSpawnPool = { cards: [], rarityWeights: null };
+  if (settings.activeSetIdSecondary) {
+    const [set, all] = await Promise.all([
+      getSetById(settings.activeSetIdSecondary),
+      getCardsInSet(settings.activeSetIdSecondary),
+    ]);
+    pool = {
+      cards: all.filter(c => c.droppable && !c.isArchived),
+      rarityWeights: set?.rarityWeights ?? null,
+    };
+  }
+  _activeSetCardsCacheSecondary.set(guildId, { value: pool, expiresAt: Date.now() + ACTIVE_SET_CACHE_TTL_MS });
+  return pool;
+}
+
+export async function setActiveSetSecondary(guildId: string, setId: number): Promise<void> {
+  await getOrCreateGuildSettings(guildId);
+  await db.update(guildSettingsTable)
+    .set({ activeSetIdSecondary: setId, updatedAt: new Date() })
+    .where(eq(guildSettingsTable.guildId, guildId));
+  _activeSetCardsCacheSecondary.delete(guildId);
+}
+
+export async function clearActiveSetSecondary(guildId: string): Promise<void> {
+  await db.update(guildSettingsTable)
+    .set({ activeSetIdSecondary: null, updatedAt: new Date() })
+    .where(eq(guildSettingsTable.guildId, guildId));
+  _activeSetCardsCacheSecondary.delete(guildId);
+}
+
+export async function getActiveSetSecondary(guildId: string): Promise<CardSet | null> {
+  const settings = await getOrCreateGuildSettings(guildId);
+  if (!settings.activeSetIdSecondary) return null;
+  const set = await getSetById(settings.activeSetIdSecondary);
+  return set ?? null;
 }
 
 // ── Guild Settings ────────────────────────────────────────────────────────────
@@ -716,7 +761,16 @@ export async function getCardByName(name: string): Promise<Card | undefined> {
   const [card] = await db
     .select().from(cardsTable)
     .where(sql`lower(${cardsTable.name}) = lower(${name})`);
-  return card;
+  if (card) return card;
+  // Fallback: if the name didn't match cards.name, try card_display_overrides.display_name.
+  // This lets admins use either the gameplay name or the website display-name override
+  // interchangeably in /editcard, /info, /drop, and similar commands.
+  const [override] = await db
+    .select({ cardId: cardDisplayOverridesTable.cardId })
+    .from(cardDisplayOverridesTable)
+    .where(sql`lower(${cardDisplayOverridesTable.displayName}) = lower(${name})`);
+  if (!override) return undefined;
+  return getCardById(override.cardId);
 }
 
 export async function getCardById(id: number): Promise<Card | undefined> {
@@ -938,13 +992,12 @@ export async function getUserCollection(guildId: string, userId: string) {
 }
 
 export async function getUserCardCount(guildId: string, userId: string): Promise<{ unique: number; total: number; netWorth: number }> {
-  const [items, settings] = await Promise.all([getUserCollection(guildId, userId), getOrCreateGuildSettings(guildId)]);
-  const shinyMultiplier = getShinyMultiplier(settings);
+  const items = await getUserCollection(guildId, userId);
   return {
     unique: items.length,
     total: items.reduce((s, i) => s + i.count + i.shinyCount, 0),
     netWorth: items.reduce(
-      (s, i) => s + i.worthValue * (i.count + i.shinyCount * shinyMultiplier),
+      (s, i) => s + i.worthValue * (i.count + i.shinyCount * SHINY_MULTIPLIER),
       0,
     ),
   };
@@ -978,8 +1031,7 @@ export async function getLeaderboard(guildId: string, sortBy: "worth" | "cards" 
     .innerJoin(cardsTable, eq(collectionsTable.cardId, cardsTable.id))
     .where(eq(collectionsTable.guildId, guildId));
 
-  const [ctx, settings] = await Promise.all([getRarityContext(guildId), getOrCreateGuildSettings(guildId)]);
-  const shinyMultiplier = getShinyMultiplier(settings);
+  const ctx = await getRarityContext(guildId);
   type Agg = { userId: string; totalCards: number; uniqueCards: number; netWorth: number };
   const byUser = new Map<string, Agg>();
   for (const r of rows) {
@@ -993,7 +1045,7 @@ export async function getLeaderboard(guildId: string, sortBy: "worth" | "cards" 
     if (!a) { a = { userId: r.userId, totalCards: 0, uniqueCards: 0, netWorth: 0 }; byUser.set(r.userId, a); }
     a.totalCards += r.count + r.shinyCount;
     a.uniqueCards += 1; // one row per (user,card)
-    a.netWorth += (r.count + r.shinyCount * shinyMultiplier) * worth;
+    a.netWorth += (r.count + r.shinyCount * SHINY_MULTIPLIER) * worth;
   }
   const sorted = [...byUser.values()].sort((a, b) =>
     sortBy === "cards" ? b.totalCards - a.totalCards : b.netWorth - a.netWorth,
@@ -1115,7 +1167,7 @@ export async function burnCard(
   if (!card) return { success: false, burned: 0, shardsGained: 0, remaining: 0, isShiny: !!opts?.shiny };
   // Per-guild rarity context may override the card's burnValue, either via
   // a Stage-2 custom tier (replaces) or a Stage-1 profile (per built-in tier).
-  const [ctx, settings] = await Promise.all([getRarityContext(guildId), getOrCreateGuildSettings(guildId)]);
+  const ctx = await getRarityContext(guildId);
   const customTier = ctx.customByCard.get(cardId);
   const effectiveBurnValue = customTier
     ? customTier.burnValue
@@ -1147,7 +1199,7 @@ export async function burnCard(
   if (row.count === 0 && row.shinyCount === 0) {
     await db.delete(collectionsTable).where(eq(collectionsTable.id, row.id));
   }
-  const perCard = effectiveBurnValue * (burningShiny ? getShinyMultiplier(settings) : 1);
+  const perCard = effectiveBurnValue * (burningShiny ? SHINY_MULTIPLIER : 1);
   const shardsGained = perCard * amount;
   await addShards(guildId, userId, shardsGained);
   await incrementCardsBurned(guildId, userId, amount);

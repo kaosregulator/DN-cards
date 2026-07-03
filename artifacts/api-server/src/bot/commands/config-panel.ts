@@ -5,8 +5,8 @@ import {
   type ChatInputCommandInteraction, type ButtonInteraction,
   type StringSelectMenuInteraction, type ModalSubmitInteraction,
 } from "discord.js";
-import { getOrCreateGuildSettings, updateGuildSettings, isAdmin, getActiveSet, getRarityDisplayOverrides } from "../db.js";
-import { scheduleNextSpawn, clearSpawnTimer } from "../spawn-manager.js";
+import { getOrCreateGuildSettings, updateGuildSettings, isAdmin, getActiveSet, getActiveSetSecondary, getRarityDisplayOverrides } from "../db.js";
+import { scheduleNextSpawn, clearSpawnTimer, scheduleNextSpawnSecondary, clearSpawnTimerSecondary } from "../spawn-manager.js";
 import { RARITY_WEIGHTS, RARITY_LABELS, RARITY_EMOJI, rarityLabel, rarityEmoji, type Rarity, type RarityDisplayMap } from "../cards-data.js";
 import type { GuildSettings } from "@workspace/db";
 import { PACK_TIERS, PACK_TIER_META, PACK_DEFAULTS, resolveTierConfig, type PackTier } from "./pack.js";
@@ -48,13 +48,14 @@ export async function handleConfigCommand(interaction: ChatInputCommandInteracti
   const ok = await ensureAdmin(interaction);
   if (!ok) return;
   const guildId = interaction.guild.id;
-  const [settings, activeSet, displayMap] = await Promise.all([
+  const [settings, activeSet, activeSetSecondary, displayMap] = await Promise.all([
     getOrCreateGuildSettings(guildId),
     getActiveSet(guildId),
+    getActiveSetSecondary(guildId),
     getRarityDisplayOverrides(guildId),
   ]);
   await interaction.editReply({
-    embeds: [buildConfigEmbed(settings, activeSet?.name ?? null, displayMap)],
+    embeds: [buildConfigEmbed(settings, activeSet?.name ?? null, displayMap, activeSetSecondary?.name ?? null)],
     components: buildConfigComponents(settings, displayMap),
   });
 }
@@ -131,6 +132,16 @@ export async function handleConfigButton(interaction: ButtonInteraction): Promis
   } else if (action === "channel" && arg === "spawn") {
     await updateGuildSettings(guildId, { spawnChannelId: interaction.channelId });
     scheduleNextSpawn(guildId);
+  } else if (action === "toggle" && arg === "spawn2") {
+    const s = await getOrCreateGuildSettings(guildId);
+    const next = !s.spawnEnabledSecondary;
+    await updateGuildSettings(guildId, { spawnEnabledSecondary: next });
+    if (next && s.spawnChannelIdSecondary) scheduleNextSpawnSecondary(guildId);
+    else clearSpawnTimerSecondary(guildId);
+  } else if (action === "channel" && arg === "spawn2") {
+    await updateGuildSettings(guildId, { spawnChannelIdSecondary: interaction.channelId });
+    const s = await getOrCreateGuildSettings(guildId);
+    if (s.spawnEnabledSecondary) scheduleNextSpawnSecondary(guildId);
   } else if (action === "channel" && arg === "trade") {
     await updateGuildSettings(guildId, { tradeChannelId: interaction.channelId });
   } else if (action === "rates") {
@@ -273,12 +284,13 @@ async function refreshPanel(
   settings: GuildSettings,
 ): Promise<void> {
   const guildId = interaction.guild!.id;
-  const [activeSet, displayMap] = await Promise.all([
+  const [activeSet, activeSetSecondary, displayMap] = await Promise.all([
     getActiveSet(guildId),
+    getActiveSetSecondary(guildId),
     getRarityDisplayOverrides(guildId),
   ]);
   await interaction.editReply({
-    embeds: [buildConfigEmbed(settings, activeSet?.name ?? null, displayMap)],
+    embeds: [buildConfigEmbed(settings, activeSet?.name ?? null, displayMap, activeSetSecondary?.name ?? null)],
     components: buildConfigComponents(settings, displayMap),
   });
 }
@@ -306,7 +318,7 @@ async function ensureAdmin(
   return !!allowed;
 }
 
-function buildConfigEmbed(s: GuildSettings, activeSetName: string | null, displayMap?: RarityDisplayMap | null): EmbedBuilder {
+function buildConfigEmbed(s: GuildSettings, activeSetName: string | null, displayMap?: RarityDisplayMap | null, activeSetNameSecondary?: string | null): EmbedBuilder {
   const catchMode = (s as unknown as { catchMode?: string }).catchMode ?? "type";
   const modeLabel = ({
     type: "Typing",
@@ -325,7 +337,7 @@ function buildConfigEmbed(s: GuildSettings, activeSetName: string | null, displa
   const hasActiveSet = !!activeSetName;
   const setField = hasActiveSet
     ? `🟢 **${activeSetName}** — only cards in this set will spawn`
-    : "⚠️ **None** — random spawns are disabled until a set is activated (use `/admin set-hub`)";
+    : "⚠️ **None** — random spawns are disabled until a set is activated (use `/sethub`)";
 
   // Warn if spawning is on but there's no active set — drops are silently no-ops
   const spawnWarning = spawnOn && !hasActiveSet
@@ -345,6 +357,19 @@ function buildConfigEmbed(s: GuildSettings, activeSetName: string | null, displa
       {
         name: "📢 Spawn Channel",
         value: s.spawnChannelId ? `<#${s.spawnChannelId}>` : "Not set — click **📢 Spawn here**",
+        inline: false,
+      },
+      {
+        name: "📡 Stream 2",
+        value: (() => {
+          if (!s.spawnChannelIdSecondary) return "Off — click **📡 Stream 2 here** to set a channel, then enable";
+          const channelMention = `<#${s.spawnChannelIdSecondary}>`;
+          const status = s.spawnEnabledSecondary ? "🟢" : "🔴";
+          const setInfo = activeSetNameSecondary
+            ? `set: **${activeSetNameSecondary}**`
+            : "⚠️ **no active set** — run `/setadmin active secondary:true` to pick one";
+          return `${status} ${channelMention} — ${setInfo}`;
+        })(),
         inline: false,
       },
       {
@@ -463,6 +488,14 @@ function buildConfigComponents(s: GuildSettings, displayMap?: RarityDisplayMap |
       .setCustomId("config:packs:open")
       .setLabel("🎴 Packs")
       .setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder()
+      .setCustomId("config:toggle:spawn2")
+      .setLabel(s.spawnEnabledSecondary ? "🟢 Stream 2 ON" : "🔴 Stream 2 OFF")
+      .setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder()
+      .setCustomId("config:channel:spawn2")
+      .setLabel("📡 Stream 2 here")
+      .setStyle(ButtonStyle.Primary),
   );
 
   return [
@@ -685,7 +718,7 @@ export function buildPacksEmbed(s: GuildSettings): EmbedBuilder {
     .setTitle("🎴 Pack Store — Pricing & Limits")
     .setColor(0xfee75c)
     .setDescription(
-      "Tune what `/cards pack` charges and how often players can open.\n" +
+      "Tune what `/pack` charges and how often players can open.\n" +
       "*Weekly counters reset every Monday 00:00 UTC.*",
     )
     .addFields(
@@ -746,7 +779,7 @@ export function buildPacksSizesEmbed(s: GuildSettings): EmbedBuilder {
     .setTitle("📐 Cards per Pack")
     .setColor(0xfee75c)
     .setDescription(
-      "How many cards each tier hands out per `/cards pack` open. Default is **5** for all tiers.",
+      "How many cards each tier hands out per `/pack` open. Default is **5** for all tiers.",
     )
     .addFields({
       name: "Current sizes",

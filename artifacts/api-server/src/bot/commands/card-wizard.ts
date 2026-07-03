@@ -6,6 +6,7 @@ import {
   type Rarity, rarityLabel, rarityEmoji,
 } from "../cards-data.js";
 import { getRarityDisplayOverrides } from "../db.js";
+import { persistBotImage } from "./edit-card.js";
 import type { Card } from "@workspace/db";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -198,12 +199,12 @@ async function processStep(
 
     // ── Image ─────────────────────────────────────────────────────────────────
     case "card_image": {
-      const attachmentUrl = msg.attachments.first()?.url;
+      const attachment = msg.attachments.first();
       const isUrl = /^https?:\/\/.+/i.test(input);
       const isSkip = input.toLowerCase() === "skip";
 
-      if (attachmentUrl) {
-        session.data.imageUrl = attachmentUrl;
+      if (attachment) {
+        session.data.imageUrl = await persistBotImage(attachment.url, attachment.contentType ?? undefined);
       } else if (isUrl) {
         session.data.imageUrl = input;
       } else if (isSkip) {
@@ -309,7 +310,7 @@ export async function startEditWizard(msg: Message, cardName: string): Promise<v
   if (!msg.guild) return;
   const card = await getCardByName(cardName);
   if (!card) {
-    await msg.reply(`❌ No card named **${cardName}** found. Try \`/cards list\` to see all cards.`);
+    await msg.reply(`❌ No card named **${cardName}** found. Try \`/list\` to see all cards.`);
     return;
   }
 
@@ -422,9 +423,10 @@ async function processEditStep(msg: Message, session: EditSession, k: string, in
     }
 
     case "edit_image": {
-      const attachmentUrl = msg.attachments.first()?.url;
-      if (attachmentUrl) {
-        await updateCard(session.cardId, { imageUrl: attachmentUrl });
+      const attachment = msg.attachments.first();
+      if (attachment) {
+        const permanentUrl = await persistBotImage(attachment.url, attachment.contentType ?? undefined);
+        await updateCard(session.cardId, { imageUrl: permanentUrl });
         await msg.reply("✅ Image updated.");
       } else if (lower === "remove" || lower === "clear") {
         await updateCard(session.cardId, { imageUrl: null });
@@ -528,7 +530,7 @@ async function createCard(msg: Message, session: CardWizardSession) {
     const kindEmoji = session.kind === "standard" ? "🃏" : session.kind === "limited" ? "💎" : "🎆";
     const extra = session.kind === "standard"
       ? "It will appear in random card drops automatically."
-      : `Use \`/admin drop name:${card.name}\` to award it to members.`;
+      : `Use \`/drop name:${card.name}\` to award it to members.`;
 
     const guildId = msg.guild?.id;
     const displayMap = guildId ? await getRarityDisplayOverrides(guildId) : null;

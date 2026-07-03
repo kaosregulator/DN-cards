@@ -11,18 +11,20 @@ import {
   markCaught,
   getAllCardsCached,
   getCardWishlisters,
+  removeWishlist,
   getUserTimeout,
   getActiveEventBoosts,
   getRarityContext,
   applyRarityContext,
   getActiveSetSpawnPoolCached,
+  getActiveSetSpawnPoolCachedSecondary,
   getRarityDisplayOverrides,
   getGuildRarityWeights,
   getCardDisplayRarity,
 } from "./db.js";
 import {
   getTypeEmoji,
-  SHINY_EMOJI, getShinyMultiplier, getShinyName,
+  SHINY_EMOJI, SHINY_MULTIPLIER,
   type Rarity,
 } from "./cards-data.js";
 import { toAbsoluteImageUrl } from "./image-url.js";
@@ -77,6 +79,23 @@ const ESCAPE_QUIPS: readonly string[] = [
   "Tactical retreat. Better luck next drop. \u26f0\ufe0f",
 ];
 
+// Short catch confirmations — mirror the escape-quip format so both ends
+// of the spawn feel equally flavourful. Template: {card} … {mention}.
+// The card name and mention are interpolated at runtime; these strings
+// supply only the surrounding flavour text.
+const CATCH_QUIPS: ReadonlyArray<(card: string, mention: string) => string> = [
+  (c, u) => `\ud83c\udfaf **${c}** was secured by ${u}.`,
+  (c, u) => `\u26a1 **${c}** joined ${u}'s collection.`,
+  (c, u) => `\ud83d\udd25 **${c}** has been claimed by ${u}.`,
+  (c, u) => `\u2694\ufe0f **${c}** reported for duty to ${u}.`,
+  (c, u) => `\ud83c\udfc6 **${c}** has found its home with ${u}.`,
+  (c, u) => `\ud83d\udce6 **${c}** secured and shipped to ${u}.`,
+  (c, u) => `\ud83c\udf96\ufe0f **${c}** enlisted by ${u}.`,
+  (c, u) => `\ud83d\ude80 **${c}** launched straight into ${u}'s arsenal.`,
+  (c, u) => `\ud83d\udcf2 Incoming! **${c}** locked on to ${u}.`,
+  (c, u) => `\u2705 Pinpoint accuracy \u2014 ${u} snagged **${c}**.`,
+];
+
 // Grace window for collecting concurrent typing-mode catch attempts.
 // Anyone whose Discord-stamped message lands within this window of the first
 // matching message gets considered; lowest timestamp wins.
@@ -85,6 +104,7 @@ const TYPE_GRACE_MS = 600;
 // Multiple active spawns per guild (for cardsPerSpawn > 1)
 const activeSpawns = new Map<string, Map<string, ActiveSpawn>>();
 const spawnTimers = new Map<string, ReturnType<typeof setTimeout>>();
+const spawnTimersSecondary = new Map<string, ReturnType<typeof setTimeout>>();
 
 let botClient: Client | null = null;
 
@@ -119,6 +139,44 @@ export function clearSpawnTimer(guildId: string) {
   if (t) { clearTimeout(t); spawnTimers.delete(guildId); }
 }
 
+// ── Secondary spawn stream scheduling ─────────────────────────────────────────
+export async function scheduleNextSpawnSecondary(guildId: string) {
+  clearSpawnTimerSecondary(guildId);
+  const settings = await getOrCreateGuildSettings(guildId);
+  if (!settings.spawnEnabledSecondary || !settings.spawnChannelIdSecondary) return;
+
+  let delayMs: number;
+  if (settings.useRandomInterval && settings.spawnIntervalMin && settings.spawnIntervalMax) {
+    const minMs = settings.spawnIntervalMin * 1000;
+    const maxMs = settings.spawnIntervalMax * 1000;
+    delayMs = Math.floor(Math.random() * (maxMs - minMs + 1)) + minMs;
+  } else {
+    delayMs = settings.spawnIntervalSeconds * 1000;
+  }
+
+  logger.info({ guildId, delayMs }, "Next secondary card spawn scheduled");
+  const timer = setTimeout(() => doSpawnBatchSecondary(guildId), delayMs);
+  spawnTimersSecondary.set(guildId, timer);
+}
+
+export function clearSpawnTimerSecondary(guildId: string) {
+  const t = spawnTimersSecondary.get(guildId);
+  if (t) { clearTimeout(t); spawnTimersSecondary.delete(guildId); }
+}
+
+async function doSpawnBatchSecondary(guildId: string) {
+  const settings = await getOrCreateGuildSettings(guildId);
+  let count = settings.cardsPerSpawn;
+  if (count === -1) count = Math.floor(Math.random() * 3) + 1;
+  if (count < 1) count = 1;
+
+  for (let i = 0; i < count; i++) {
+    if (i > 0) await sleep(5000);
+    await doSingleSpawn(guildId, undefined, false, { secondary: true });
+  }
+  scheduleNextSpawnSecondary(guildId);
+}
+
 // ── Spawn batch (timer-triggered, respects cardsPerSpawn) ─────────────────────
 async function doSpawnBatch(guildId: string) {
   const settings = await getOrCreateGuildSettings(guildId);
@@ -134,10 +192,13 @@ async function doSpawnBatch(guildId: string) {
 }
 
 // ── Core single-card spawn (no scheduling) ────────────────────────────────────
-async function doSingleSpawn(guildId: string, forcedCardId?: number, isForced = false): Promise<void> {
+// Pass opts.secondary=true to use the secondary channel + set instead of primary.
+async function doSingleSpawn(guildId: string, forcedCardId?: number, isForced = false, opts?: { secondary?: boolean }): Promise<void> {
   if (!botClient) return;
   const settings = await getOrCreateGuildSettings(guildId);
-  if (!settings.spawnChannelId) return;
+  const isSecondary = opts?.secondary ?? false;
+  const channelId = isSecondary ? settings.spawnChannelIdSecondary : settings.spawnChannelId;
+  if (!channelId) return;
   const displayMap = await getRarityDisplayOverrides(guildId);
 
   let card: Card | undefined;
@@ -149,12 +210,14 @@ async function doSingleSpawn(guildId: string, forcedCardId?: number, isForced = 
       return;
     }
   } else {
-    // Sets-driven spawn pool (Phases 1-3): random spawns now pull EXCLUSIVELY
-    // from the guild's active set. No active set → no random spawns (Option B).
-    // Admin `/admin drop name:<X>` and `/admin give` bypass this by setting forcedCardId.
-    const spawnPool = await getActiveSetSpawnPoolCached(guildId);
+    // Sets-driven spawn pool: random spawns pull EXCLUSIVELY from the active
+    // set for this stream. No active set → no random spawns (Option B).
+    // Admin `/drop name:<X>` and `/give` bypass this by setting forcedCardId.
+    const spawnPool = isSecondary
+      ? await getActiveSetSpawnPoolCachedSecondary(guildId)
+      : await getActiveSetSpawnPoolCached(guildId);
     if (spawnPool.cards.length === 0) {
-      logger.debug({ guildId }, "No active set or active set is empty — skipping random spawn");
+      logger.debug({ guildId, isSecondary }, "No active set or active set is empty — skipping random spawn");
       return;
     }
     const rarityWeights = getGuildRarityWeights(settings);
@@ -178,19 +241,19 @@ async function doSingleSpawn(guildId: string, forcedCardId?: number, isForced = 
     return;
   }
 
-  const channel = botClient.channels.cache.get(settings.spawnChannelId) as TextChannel | undefined;
+  const channel = botClient.channels.cache.get(channelId) as TextChannel | undefined;
   if (!channel) return;
 
   const mode = ((settings as unknown as { catchMode?: string }).catchMode ?? "type") as "type" | "button" | "both";
   const spawnId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
   const embed = await buildSpawnEmbed(card, settings.catchWindowSeconds, mode, guildId);
-  const spawnLog = await logSpawn(guildId, settings.spawnChannelId, card.id, isForced);
+  const spawnLog = await logSpawn(guildId, channelId, card.id, isForced);
   const components = mode === "type" ? [] : [buildClaimRow(guildId, spawnId)];
   let message: Message;
   try {
     message = await channel.send({ embeds: [embed], components });
   } catch (sendErr) {
-    logger.warn({ err: sendErr, channelId: settings.spawnChannelId, guildId }, "Failed to send spawn message — check bot permissions in the spawn channel");
+    logger.warn({ err: sendErr, channelId, guildId }, "Failed to send spawn message — check bot permissions in the spawn channel");
     return;
   }
 
@@ -217,7 +280,7 @@ async function doSingleSpawn(guildId: string, forcedCardId?: number, isForced = 
     cardId: card.id,
     cardName: card.name,
     burnValue: card.burnValue,
-    channelId: settings.spawnChannelId,
+    channelId,
     spawnLogId: spawnLog.id,
     message,
     expiresAt: new Date(Date.now() + settings.catchWindowSeconds * 1000),
@@ -338,38 +401,32 @@ async function awardSpawn(guildId: string, spawnId: string, userId: string): Pro
   if (spawn.resolveTimer) { clearTimeout(spawn.resolveTimer); spawn.resolveTimer = null; }
 
   // Parallel: write collection row + mark spawn log. Both independent DB calls.
-  const [{ isShiny }, , shinySettings] = await Promise.all([
+  const [{ isShiny }] = await Promise.all([
     catchCard(guildId, userId, spawn.cardId),
     markCaught(spawn.spawnLogId, userId),
-    getOrCreateGuildSettings(guildId),
   ]);
 
-  try {
-    const claimedEmbed = await buildClaimedEmbed(spawn.cardId, userId, isShiny, guildId);
-    if (claimedEmbed) {
-      await spawn.message.edit({
-        embeds: [claimedEmbed],
-        components: [buildDecisionRow(guildId, userId, spawn.cardId, spawn.burnValue, isShiny, getShinyMultiplier(shinySettings))],
-      });
-    }
-  } catch { /* deleted */ }
+  // Auto-remove the caught card from the winner's wishlist so they stop
+  // receiving pings every time that card spawns again.
+  removeWishlist(guildId, userId, spawn.cardId).catch(err => {
+    logger.warn({ err }, "Wishlist auto-remove after catch failed");
+  });
 
-  // Auto-keep after 90s if no button pressed — edit the spawn embed in place.
-  // Bail out if the winner already clicked Burn/Keep/Trade themselves, or
-  // we'd overwrite their actual decision with a misleading "KEPT" embed.
-  setTimeout(async () => {
-    const gs = activeSpawns.get(guildId);
-    const current = gs?.get(spawnId);
-    if (current?.decisionMade) return;
-    try {
-      const keptEmbed = await buildPostDecisionEmbed(spawn.cardId, userId, "kept", guildId);
-      if (keptEmbed) await spawn.message.edit({
-        embeds: [keptEmbed],
-        components: [buildDisabledDecisionRow(guildId, userId, spawn.cardId, spawn.burnValue, "keep")],
-      });
-      if (current) current.decisionMade = true;
-    } catch { /* deleted */ }
-  }, 90_000);
+  try {
+    const quipFn = CATCH_QUIPS[Math.floor(Math.random() * CATCH_QUIPS.length)]!;
+    const cards = await getAllCardsCached();
+    const rawCard = cards.find(c => c.id === spawn.cardId);
+    const cardName = rawCard?.name ?? spawn.cardName;
+    const shinyBadge = isShiny ? ` ✨` : "";
+    await spawn.message.edit({
+      embeds: [
+        new EmbedBuilder()
+          .setDescription(quipFn(`${cardName}${shinyBadge}`, `<@${userId}>`))
+          .setColor(isShiny ? 0xf1c40f : 0x00b894),
+      ],
+      components: [],
+    });
+  } catch { /* deleted or lacking edit perms */ }
 
   return true;
 }
@@ -402,8 +459,8 @@ export async function handleClaimButtonClick(guildId: string, spawnId: string, u
 // `isShiny` is encoded into the burn customId as a 5th `:1`/`:0` segment
 // so the click handler knows which pile to torch and what payout to credit.
 // Index.ts treats a missing segment as 0 for backwards-compat.
-function buildDecisionRow(guildId: string, userId: string, cardId: number, burnValue: number, isShiny = false, shinyMultiplier = 2): ActionRowBuilder<ButtonBuilder> {
-  const effectiveBurn = isShiny ? burnValue * shinyMultiplier : burnValue;
+function buildDecisionRow(guildId: string, userId: string, cardId: number, burnValue: number, isShiny = false): ActionRowBuilder<ButtonBuilder> {
+  const effectiveBurn = isShiny ? burnValue * SHINY_MULTIPLIER : burnValue;
   const shinyFlag = isShiny ? "1" : "0";
   return new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder()
@@ -501,6 +558,9 @@ export async function initAllGuilds(client: Client) {
     if (settings.spawnEnabled && settings.spawnChannelId) {
       scheduleNextSpawn(guildId);
     }
+    if (settings.spawnEnabledSecondary && settings.spawnChannelIdSecondary) {
+      scheduleNextSpawnSecondary(guildId);
+    }
   }
 }
 
@@ -520,22 +580,20 @@ async function buildClaimedEmbed(
   const settings = guildId ? await getOrCreateGuildSettings(guildId) : null;
   const displayMap = guildId ? await getRarityDisplayOverrides(guildId) : null;
   const displayRarity = getCardDisplayRarity(card, ctx, settings, displayMap);
-  const shinyMultiplier = getShinyMultiplier(settings);
-  const shinyName = getShinyName(settings);
   const shinyPrefix = isShiny ? `${SHINY_EMOJI} ` : "";
-  const worth = isShiny ? card.worthValue * shinyMultiplier : card.worthValue;
+  const worth = isShiny ? card.worthValue * SHINY_MULTIPLIER : card.worthValue;
   const embed = new EmbedBuilder()
     .setTitle(`✅ CLAIMED — ${shinyPrefix}${card.name}`)
     .setColor(isShiny ? 0xf1c40f : 0x00b894)
     .setDescription(
       `# 🎉 CLAIMED BY <@${userId}>` +
-      (isShiny ? `\n## ${SHINY_EMOJI} **${shinyName.toUpperCase()}!** (1 in 200 — counts at ${shinyMultiplier}× value)` : "") +
+      (isShiny ? `\n## ${SHINY_EMOJI} **SHINY!** (1 in 200 — counts at ${SHINY_MULTIPLIER}× value)` : "") +
       `\n\u200b`,
     )
     .addFields(
       { name: `${typeEmoji} ${shinyPrefix}${card.name}`, value: card.description || "\u200b", inline: false },
       { name: "Rarity", value: `${displayRarity.emoji} ${displayRarity.label}`, inline: true },
-      { name: "Worth", value: `💠 ${worth.toLocaleString()} shards${isShiny ? ` *(${shinyMultiplier}×)*` : ""}`, inline: true },
+      { name: "Worth", value: `💠 ${worth.toLocaleString()} shards${isShiny ? ` *(${SHINY_MULTIPLIER}×)*` : ""}`, inline: true },
       { name: "Caught by", value: `<@${userId}>`, inline: true },
     )
     .setTimestamp();

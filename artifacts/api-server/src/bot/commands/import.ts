@@ -256,7 +256,7 @@ export async function handleImport(msg: Message): Promise<void> {
     `⏭️ Skipped (already exist): **${skipped}**\n` +
     (failed > 0 ? `❌ Failed: **${failed}**\n${errors.map(e => `• ${e}`).join("\n")}\n\n` : "\n") +
     `Use \`/setadmin unload set:${setName}\` to remove this set later.\n` +
-    `Use \`/admin editcard name:<card>\` to tweak any card after import.`
+    `Use \`/editcard name:<card>\` to tweak any card after import.`
 
   try { await status.edit(summary); } catch { await msg.reply(summary); }
 }

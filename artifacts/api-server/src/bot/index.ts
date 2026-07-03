@@ -19,6 +19,8 @@ import {
 } from "./commands/setup-wizard.js";
 import { handleCardWizardStep, handleCardEditStep } from "./commands/card-wizard.js";
 import { handleAutocomplete } from "./commands/autocomplete.js";
+import { handleMenuCommand } from "./commands/menu.js";
+import { handleMTTValuesCommand, handleMTTValuesAutocomplete } from "./commands/mttvalues.js";
 import {
   buildCommands, USER_COMMAND_NAMES, ADMIN_COMMAND_NAMES,
 } from "./commands/register.js";
@@ -419,6 +421,10 @@ export async function startBot() {
           help: "adminhelp",
         } as Record<string, string>)[adminSubcommand] ?? adminSubcommand;
         await handleAdminCommand(interaction, legacyName);
+      } else if (cmd === "menu") {
+        await handleMenuCommand(interaction);
+      } else if (cmd === "mttvalues") {
+        await handleMTTValuesCommand(interaction);
       } else if (USER_COMMAND_NAMES.has(cmd)) {
         await handleUserCommand(interaction, cmd);
       } else if (ADMIN_COMMAND_NAMES.has(cmd)) {

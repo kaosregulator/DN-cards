@@ -16,3 +16,6 @@
 - [Dashboard session revocation](dashboard-session-revocation.md) — cached session role bits need live revocation/version checks or deleted/demoted users stay privileged.
 - [Guild-local auth vs global data](guild-local-auth-vs-global-data.md) — per-guild admin checks are unsafe when the mutated records are shared across all tenants.
 - [Rarity display overlay threading](rarity-display-overlay.md) — cosmetic display map must be threaded to EVERY rarity-label surface; easy to miss sets-user.ts and tradein.ts which are separate files from the main user.ts handlers.
+- [DN Cards DB restore flow](dn-cards-db-restore.md) — restore-prod-data.ts SQL uses DO $$ IF wrapper; extract pure INSERT lines only (not semicolon-split) to avoid rollback from END IF fragments contaminating a BEGIN block.
+- [DN Cards secondary spawn stream](dn-cards-secondary-spawn.md) — secondary spawn requires 3 new guild_settings columns; schema copied from ZIP but drizzle-kit push needs TTY — apply via raw ALTER TABLE; config-panel.ts has the toggle UI.
+- [DN Cards schema import pitfall](dn-cards-schema-import-pitfall.md) — copying schema/cards.ts from ZIP drops any locally-added tables (e.g. reputation); always append local-only tables after the copy and verify all pg-core imports (index, uniqueIndex etc) are present.
