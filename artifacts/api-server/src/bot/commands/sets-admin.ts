@@ -15,6 +15,7 @@ import {
   getAllCards,
   loadDefaultCards, unloadDefaultCards, DEFAULTS_SET_NAME,
   getDisplayRarities, getRarityContext, effectiveRarityKey,
+  updateGuildSettings,
 } from "../db.js";
 import { importCardsFromJson } from "./import.js";
 import { logger } from "../../lib/logger.js";
@@ -520,6 +521,80 @@ export async function handleSetAdminCommand(interaction: ChatInputCommandInterac
       `${createdSet ? `🆕 Created set \`${set.name}\`.\n` : ""}` +
       `✅ Assigned **${added}** card${added === 1 ? "" : "s"} into \`${set.name}\`${note}.\n` +
       `💡 Make it the active spawn pool with \`/setadmin active set:${set.name}\`.`,
+    );
+    return;
+  }
+
+  if (sub === "quickstart") {
+    const setName = interaction.options.getString("name", true);
+    const channel = interaction.options.getChannel("channel");
+    const includeArchived = interaction.options.getBoolean("includearchived") ?? false;
+    const includeNonDroppable = interaction.options.getBoolean("includedroppablefalse") ?? false;
+
+    let set = await getSetByName(setName);
+    let createdSet = false;
+    if (!set) {
+      try {
+        set = await createSet(setName);
+        createdSet = true;
+      } catch (err: any) {
+        logger.error({ err, setName, guildId }, "Failed to create set via quickstart");
+        await interaction.editReply(`❌ Couldn't create set \`${setName}\`: ${err?.message ?? "unknown error"}`);
+        return;
+      }
+    }
+
+    const allCards = await getAllCards();
+    let cardsToAdd = allCards;
+    if (!includeArchived) cardsToAdd = cardsToAdd.filter(c => !c.isArchived);
+    if (!includeNonDroppable) cardsToAdd = cardsToAdd.filter(c => c.droppable);
+
+    const cardIds = cardsToAdd.map(c => c.id);
+    let added = 0;
+    let alreadyIn = 0;
+    if (cardIds.length > 0) {
+      const existing = await db.select({ cardId: cardSetMembershipsTable.cardId })
+        .from(cardSetMembershipsTable)
+        .where(and(
+          eq(cardSetMembershipsTable.setId, set.id),
+          inArray(cardSetMembershipsTable.cardId, cardIds),
+        ));
+      const alreadyInSet = new Set(existing.map(r => r.cardId));
+      const toInsert = cardIds.filter(id => !alreadyInSet.has(id));
+      added = toInsert.length;
+      alreadyIn = alreadyInSet.size;
+      if (toInsert.length > 0) {
+        await db.insert(cardSetMembershipsTable).values(
+          toInsert.map(id => ({ setId: set.id, cardId: id })),
+        );
+        invalidateActiveSetCardsCache();
+      }
+    }
+
+    await setActiveSet(guildId, set.id);
+    await clearActiveSetSecondary(guildId);
+    await updateGuildSettings(guildId, { spawnEnabledSecondary: false });
+
+    if (channel) {
+      if (!channel.isTextBased()) {
+        await interaction.editReply("❌ The selected channel must be a text or announcement channel.");
+        return;
+      }
+      await updateGuildSettings(guildId, { spawnChannelId: channel.id });
+    }
+
+    const filterNote: string[] = [];
+    if (includeArchived) filterNote.push("archived");
+    if (includeNonDroppable) filterNote.push("non-droppable");
+    const note = filterNote.length > 0 ? ` (including ${filterNote.join(" + ")})` : "";
+
+    await interaction.editReply(
+      `${createdSet ? `🆕 Created set \`${set.name}\`.\n` : ""}` +
+      `✅ Added **${added}** card${added === 1 ? "" : "s"} to \`${set.name}\`${note}.\n` +
+      `📦 ${alreadyIn} card${alreadyIn === 1 ? "" : "s"} already in the set.\n` +
+      `🎯 \`${set.name}\` is now the active spawn pool.\n` +
+      `🚫 Secondary spawn stream disabled.` +
+      (channel ? `\n📺 Spawn channel set to <#${channel.id}>.` : "")
     );
     return;
   }

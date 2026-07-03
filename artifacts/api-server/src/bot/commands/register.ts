@@ -1,5 +1,5 @@
 import {
-  SlashCommandBuilder, PermissionFlagsBits,
+  SlashCommandBuilder, PermissionFlagsBits, ChannelType,
   type SlashCommandOptionsOnlyBuilder,
   type SlashCommandSubcommandsOnlyBuilder,
 } from "discord.js";
@@ -191,6 +191,12 @@ function buildLegacyCommands() {
         .addStringOption(o => o.setName("sets").setDescription("Comma-separated set names to include (leave empty for all)")))
       .addSubcommand(sc => sc.setName("assignall").setDescription("Assign all unassigned cards to a set (creates set if needed)")
         .addStringOption(o => o.setName("set").setDescription("Destination set name").setRequired(true))
+        .addBooleanOption(o => o.setName("includearchived").setDescription("Include archived cards (default false)"))
+        .addBooleanOption(o => o.setName("includedroppablefalse").setDescription("Include non-droppable cards (default false)")))
+      .addSubcommand(sc => sc.setName("quickstart").setDescription("Create a set, add all cards, activate it, and disable secondary stream")
+        .addStringOption(o => o.setName("name").setDescription("Set name (e.g. MT)").setRequired(true))
+        .addChannelOption(o => o.setName("channel").setDescription("Optional: spawn channel to set")
+          .addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement))
         .addBooleanOption(o => o.setName("includearchived").setDescription("Include archived cards (default false)"))
         .addBooleanOption(o => o.setName("includedroppablefalse").setDescription("Include non-droppable cards (default false)")))
       .addSubcommand(sc => sc.setName("exportcards").setDescription("Export every card as a flat JSON (no set info)")

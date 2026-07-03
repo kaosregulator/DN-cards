@@ -13,6 +13,7 @@
 - [Discord admin component handler authz](discord-admin-component-authz.md) — component and modal handlers for admin commands must re-check admin rights and guild scoping; trusting the initial slash command gate is not enough.
 - [Discord 5-row limit](discord-row-limits.md) — max 5 ActionRows per message; overflow surfaces as a misleading "Interaction has already been acknowledged" on the next update.
 - [Discord 3s interaction window](discord-3s-window.md) — never do network RTT (members.fetch) before ACKing; use interaction.memberPermissions (inline payload) for admin checks.
+- [Slash channel validation](slash-channel-validation.md) — restrict channel options to text-capable types at registration and re-validate at runtime before storing channel IDs.
 - [Trade accept atomic status flip](trade-accept-atomic.md) — gate the pending→accepted transition with a conditional UPDATE inside the swap transaction; per-row count>=1 debits alone are NOT enough when a user holds multiple copies.
 - [Autoscale startup probe — listen before migrations](autoscale-listen-first.md) — awaiting DDL migrations before app.listen() blocks the health probe on Autoscale; always listen first, migrate after.
 - [Dashboard session revocation](dashboard-session-revocation.md) — cached session role bits need live revocation/version checks or deleted/demoted users stay privileged.
