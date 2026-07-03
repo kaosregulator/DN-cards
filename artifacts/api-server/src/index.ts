@@ -2,6 +2,7 @@ import app from "./app";
 import { logger } from "./lib/logger";
 import { startBot } from "./bot/index";
 import { pool } from "@workspace/db";
+import { SEED_SQL } from "./lib/seedData.js";
 
 // Idempotent runtime migrations. Drizzle `db push` only runs against dev;
 // production gets schema changes applied here on boot. Each statement uses
@@ -103,6 +104,17 @@ async function runBootMigrations() {
       WHERE cards.id = sub.id
     `);
     logger.info("Podium backfill applied from card-name heuristic");
+  }
+
+  // One-time production data seed — runs only when cards table is empty.
+  // Idempotent: every statement uses ON CONFLICT DO UPDATE / DO NOTHING.
+  const { rows: cardCheck } = await pool.query(`SELECT 1 FROM cards LIMIT 1`);
+  if (cardCheck.length === 0) {
+    logger.info("Cards table empty — running production data seed");
+    for (const stmt of SEED_SQL) {
+      await pool.query(stmt);
+    }
+    logger.info({ count: SEED_SQL.length }, "Production seed complete");
   }
 
   logger.info("Boot migrations applied");
