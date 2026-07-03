@@ -836,7 +836,9 @@ function buildEditPanel(
       .addOptions(
         BUILTIN_RARITIES.map(r => {
           const { label, emoji, hasOverride } = getEffectiveDisplay(r, displayMap, settings);
-          return { label, emoji, value: r, description: hasOverride ? "Has overrides" : "Using defaults" };
+          // Discord.js 14 requires emoji as an object, not a raw string
+          const emojiObj = emoji ? ({ name: emoji } as Record<string, unknown>) : undefined;
+          return { label, emoji: emojiObj, value: r, description: hasOverride ? "Has overrides" : "Using defaults" };
         }),
       ),
   );

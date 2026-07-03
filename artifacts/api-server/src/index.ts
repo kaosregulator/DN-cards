@@ -145,19 +145,18 @@ async function runBootMigrations() {
     const client = await (await import("@workspace/db")).pool.connect();
     try {
       await client.query("BEGIN");
-      // Remove only the specific stale overrides that conflict with updated RARITY_LABELS defaults.
-      // Targeted by exact value so any future admin customizations on these tiers are unaffected.
-      //   rare → "Exotic" was wrong (now code default is "Limited Edition")
-      //   epic → "Exotic" was redundant (matches new code default)
-      //   legendary → "Gold Legendary" was redundant (matches new code default)
+      // Set correct display names for built-in rarity tiers on the home guild.
+      // Uses UPSERT so reruns are safe and admin tweaks via /rarity edit are
+      // immediately visible (we only write these three known-correct values).
       await client.query(`
-        DELETE FROM rarity_display_overrides
-        WHERE guild_id='1363917781355069761'
-          AND (
-            (rarity='rare'      AND display_name='Exotic')         OR
-            (rarity='epic'      AND display_name='Exotic')         OR
-            (rarity='legendary' AND display_name='Gold Legendary')
-          );
+        INSERT INTO rarity_display_overrides(guild_id, rarity, display_name, updated_at)
+        VALUES
+          ('1363917781355069761', 'legendary', 'Exotic',             now()),
+          ('1363917781355069761', 'epic',      'LE Limited Edition', now()),
+          ('1363917781355069761', 'rare',      'LE Limited Edition', now())
+        ON CONFLICT(guild_id, rarity) DO UPDATE
+          SET display_name = EXCLUDED.display_name,
+              updated_at   = EXCLUDED.updated_at;
       `);
       await client.query("ALTER TABLE cards DROP CONSTRAINT IF EXISTS cards_name_unique;");
       const _dataMigrations: string[] = [

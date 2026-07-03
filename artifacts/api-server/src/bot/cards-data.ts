@@ -168,9 +168,9 @@ export const FAIRNESS_RATIO_THRESHOLD = 3;
 export const RARITY_LABELS: Record<Rarity, string> = {
   common: "Common",
   uncommon: "Uncommon",
-  epic: "Exotic",              // DB enum key stays "epic" — user-facing label is Exotic
-  legendary: "Gold Legendary", // default display name for legendary tier
-  rare: "Limited Edition",     // DB enum key stays "rare" — user-facing label is Limited Edition
+  epic: "LE Limited Edition",  // DB enum key "epic" — user-facing label; cards being reclassified to rare
+  legendary: "Exotic",         // DB enum key "legendary" — user-facing label is Exotic
+  rare: "LE Limited Edition",  // DB enum key "rare" — top user-facing tier
   mythic: "Mythic",            // admin-only top tier
 };
 
