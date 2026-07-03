@@ -215,6 +215,18 @@ export async function handleAdminCommand(
     await handleEditCardCommand(interaction);
     return;
   }
+
+  // /edituser — guild-scoped member editor; admin-gated above.
+  if (cmd === "edituser") {
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+    if (!(await checkAdmin(interaction))) {
+      await interaction.editReply("❌ Admins only.");
+      return;
+    }
+    const { handleEditUserCommand } = await import("./edit-user.js");
+    await handleEditUserCommand(interaction);
+    return;
+  }
   // All admin replies are ephemeral — only the staff member running the
   // command sees the confirmation. The side effects (card drops, etc.)
   // are already broadcast publicly through their own messages.

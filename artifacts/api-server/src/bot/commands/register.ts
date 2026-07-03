@@ -350,6 +350,10 @@ function buildLegacyCommands() {
     // ── Dashboard ─────────────────────────────────────────────────────────────
     adminCmd("dashboard", "(Admin) Get a one-time link to set up or reset your web dashboard login", s => s),
 
+    // ── /edituser — interactive member editor (cards, shinies, shards) ─────────
+    adminCmd("edituser", "(Admin) Edit a member's cards, shinies, and shards", s => s
+      .addUserOption(o => o.setName("user").setDescription("Member to edit").setRequired(true))),
+
     // ── /rep (user, reputation system) ────────────────────────────────────────
     cmd("rep", "(User) Reputation system — give rep, check rep, and see the leaderboard", s => s
       .addSubcommand(sc => sc.setName("give").setDescription("Give +1 rep to another member (24h cooldown per person)")
@@ -393,7 +397,7 @@ const USER_HUB_COMMANDS = new Set([
 const ADMIN_HUB_COMMANDS = new Set([
   "setup", "config", "adminhub", "sethub", "set_admin", "deletecard",
   "welcomeadmin", "adminhelp", "drop", "massdrop", "give", "giveshards",
-  "takeback", "takeshards", "addcard", "editcard", "dashboard",
+  "takeback", "takeshards", "addcard", "editcard", "dashboard", "edituser",
 ]);
 
 const ADMIN_HUB_NAMES: Record<string, string> = {

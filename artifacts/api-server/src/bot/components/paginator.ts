@@ -10,6 +10,7 @@ import {
   EmbedBuilder,
   MessageFlags,
 } from "discord.js";
+import { selectMenuEmoji } from "../cards-data.js";
 
 export interface PaginatorView {
   key: string;
@@ -72,8 +73,9 @@ export async function runPaginator(opts: PaginatorOpts): Promise<void> {
               default: v2.key === viewKey,
             };
             if (v2.description) opt.description = v2.description.slice(0, 100);
-            // Discord.js 14 requires emoji as an object, not a raw string
-            if (v2.emoji) (opt as Record<string, unknown>).emoji = { name: v2.emoji };
+            // Discord.js 14 requires emoji as an object, not a raw string.
+            // Custom emoji shortcodes (e.g. :yellow_heart:) are invalid here.
+            if (v2.emoji) (opt as Record<string, unknown>).emoji = selectMenuEmoji(v2.emoji, "🃏");
             return opt;
           }),
         );

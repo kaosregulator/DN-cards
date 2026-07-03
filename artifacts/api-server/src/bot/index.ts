@@ -2,6 +2,7 @@ import { Client, GatewayIntentBits, Partials, Events, REST, Routes, type Interac
 import { logger } from "../lib/logger.js";
 import { burnCard, getOrCreateCurrency, getAllCards } from "./db.js";
 import { handleEditCardSelect, handleEditCardModal } from "./commands/edit-card.js";
+import { handleEditUserInteraction, handleEditUserModal } from "./commands/edit-user.js";
 import { handleTradeButton } from "./commands/trading.js";
 import { initSpawnManager, initAllGuilds, handleCatchAttempt, handleClaimButtonClick, scheduleNextSpawn, buildPostDecisionEmbed, buildDisabledDecisionRow, markDecisionMade } from "./spawn-manager.js";
 import { handleConfigButton, handleConfigSelect, handleRatesSelect, handlePacksSelect, handleRatesCustomModal } from "./commands/config-panel.js";
@@ -169,6 +170,8 @@ export async function startBot() {
           await handleSetAdminHubWeightSelect(interaction);
         } else if (interaction.customId.startsWith("editcard:")) {
           await handleEditCardSelect(interaction);
+        } else if (interaction.customId.startsWith("edituser:menu:")) {
+          await handleEditUserInteraction(interaction);
         } else if (interaction.customId === "rarity_edit:select") {
           await handleRarityEditSelect(interaction);
         } else if (interaction.customId.startsWith("rarity_hub:settings:select") || interaction.customId.startsWith("rarity_hub:economy:select") || interaction.customId.startsWith("rarity_hub:custom:select:")) {
@@ -199,6 +202,8 @@ export async function startBot() {
           await handleSetAdminHubModal(interaction);
         } else if (interaction.customId.startsWith("editcard:modal:")) {
           await handleEditCardModal(interaction);
+        } else if (interaction.customId.startsWith("edituser:modal:")) {
+          await handleEditUserModal(interaction);
         } else if (interaction.customId.startsWith("rarity_edit:modal:")) {
           await handleRarityEditModal(interaction);
         } else if (interaction.customId.startsWith("rarity_hub:modal:")) {
