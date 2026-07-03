@@ -12,8 +12,8 @@
 export type Rarity = "common" | "uncommon" | "rare" | "epic" | "legendary" | "mythic";
 export type CardType = string; // free-form label — any text the admin types
 
-// Built-in rarity display order (least → most rare):
-//   Common → Uncommon → Gold Legendary (rare key) → Exotic (epic key) → LE Limited Edition (legendary key) → Mythic
+// Built-in rarity display order (by DB enum key, not by spawn weight):
+//   Common → Uncommon → LE Limited Edition (rare key) → Exotic (epic key) → Gold Legendary (legendary key) → Mythic
 // The DB enum keys are fixed for compatibility; the user-facing labels below are what players see.
 // Mythic is the event/admin-only top tier — default weight 0 so it never spawns unless boosted.
 export const RARITY_WEIGHTS: Record<Rarity, number> = {
@@ -183,9 +183,9 @@ export const FAIRNESS_RATIO_THRESHOLD = 3;
 export const RARITY_LABELS: Record<Rarity, string> = {
   common: "Common",
   uncommon: "Uncommon",
-  rare: "Gold Legendary",      // DB enum key "rare" — user-facing label
+  rare: "LE Limited Edition",   // DB enum key "rare" — user-facing label
   epic: "Exotic",              // DB enum key "epic" — user-facing label
-  legendary: "LE Limited Edition", // DB enum key "legendary" — user-facing label
+  legendary: "Gold Legendary", // DB enum key "legendary" — user-facing label
   mythic: "Mythic",            // event/admin-only top tier
 };
 

@@ -165,7 +165,7 @@ export async function handleConfigButton(interaction: ButtonInteraction): Promis
       const settings = await getOrCreateGuildSettings(guildId);
       await refreshPanel(interaction, settings);
       await interaction.followUp({
-        content: "🔄 Rarity setup reset to defaults — Common 60% · Uncommon 25% · Gold Legendary 1% · Exotic 10% · LE Limited Edition 4%.",
+        content: "🔄 Rarity setup reset to defaults — Common 60% · Uncommon 25% · LE Limited Edition 1% · Exotic 10% · Gold Legendary 4%.",
         flags: MessageFlags.Ephemeral,
       }).catch(() => { /* ignore */ });
       return;
@@ -597,7 +597,7 @@ function buildRatesEmbed(s: GuildSettings, displayMap?: RarityDisplayMap | null)
     .setColor(0xeb459e)
     .setDescription(
       "Set the visible **spawn chance %** for each built-in rarity.\n" +
-      "**Defaults:** Common 60 · Uncommon 25 · Gold Legendary 1 · Exotic 10 · LE Limited Edition 4 (= 100%)\n" +
+      "**Defaults:** Common 60 · Uncommon 25 · LE Limited Edition 1 · Exotic 10 · Gold Legendary 4 (= 100%)\n" +
       "_Want exact numbers? Close this and tap **✏️ Exact %** on the main panel._\n\n" +
       `${rarityBar(s)}\n\n` +
       note,

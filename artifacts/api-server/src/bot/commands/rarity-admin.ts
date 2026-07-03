@@ -841,8 +841,9 @@ function buildEditPanel(
       .addOptions(
         BUILTIN_RARITIES.map(r => {
           const { label, emoji, hasOverride } = getEffectiveDisplay(r, displayMap, settings);
-          // Discord.js 14 requires emoji as an object, not a raw string
-          const emojiObj = emoji ? ({ name: emoji } as Record<string, unknown>) : undefined;
+          // Custom emoji shortcodes (e.g. ":yellow_heart:") crash Discord select options;
+          // StringSelectMenu emojis must be Unicode or {id,name}. Fall back to the default Unicode emoji.
+          const emojiObj = selectMenuEmoji(emoji, RARITY_EMOJI[r]);
           return { label, emoji: emojiObj, value: r, description: hasOverride ? "Has overrides" : "Using defaults" };
         }),
       ),
