@@ -7,18 +7,21 @@ import {
 } from "discord.js";
 import { getOrCreateGuildSettings, updateGuildSettings, isAdmin, getActiveSet, getActiveSetSecondary, getRarityDisplayOverrides } from "../db.js";
 import { scheduleNextSpawn, clearSpawnTimer, scheduleNextSpawnSecondary, clearSpawnTimerSecondary } from "../spawn-manager.js";
-import { RARITY_WEIGHTS, RARITY_LABELS, RARITY_EMOJI, rarityLabel, rarityEmoji, type Rarity, type RarityDisplayMap } from "../cards-data.js";
+import { RARITY_WEIGHTS, RARITY_LABELS, RARITY_EMOJI, rarityLabel, rarityEmoji, getRarityOrder, type Rarity, type RarityDisplayMap } from "../cards-data.js";
 import type { GuildSettings } from "@workspace/db";
 import { PACK_TIERS, PACK_TIER_META, PACK_DEFAULTS, resolveTierConfig, type PackTier } from "./pack.js";
 
-// Rarity display order in the panel (least → most rare).
-// These are the DB enum keys; the user-facing labels come from RARITY_LABELS in cards-data.ts.
-const RARITY_ORDER: Rarity[] = ["common", "uncommon", "rare", "epic", "legendary", "mythic"];
+// Rarity display order defaults to the canonical DB enum key order.
+// Admins can reorder it per-guild via `/rarity` → "Order". Use getRarityOrder(settings)
+// everywhere the panel needs to enumerate built-in rarities.
+const DEFAULT_RARITY_ORDER: Rarity[] = ["common", "uncommon", "rare", "epic", "legendary", "mythic"];
 // Discord caps an action-row count at 5 per message AND 5 per modal, so the
 // interactive rate-mix controls can only expose 5 rarities. Mythic is the
 // event/admin-only top tier (default weight 0) and is configured via the
 // `/rarity` panel or `/event` boosts instead.
-const UI_RARITY_ORDER: Rarity[] = ["common", "uncommon", "rare", "epic", "legendary"];
+function getUiRarityOrder(s: GuildSettings): Rarity[] {
+  return getRarityOrder(s).filter(r => r !== "mythic");
+}
 // Percentage options offered per rarity (preset menu). `null` = "Default" (use card's default).
 // Stored internally as weights — when the values sum to 100, weight == percent exactly.
 const RARITY_WEIGHT_OPTIONS: Record<Rarity, (number | null)[]> = {
@@ -157,15 +160,23 @@ export async function handleConfigButton(interaction: ButtonInteraction): Promis
     return;
   } else if (action === "rates") {
     if (arg === "reset") {
+      const [baseSettings, displayMap] = await Promise.all([
+        getOrCreateGuildSettings(guildId),
+        getRarityDisplayOverrides(guildId),
+      ]);
       const resetPatch: Partial<GuildSettings> = {};
-      for (const r of RARITY_ORDER) {
+      const order = getRarityOrder(baseSettings);
+      for (const r of order) {
         (resetPatch as Record<string, number | null>)[rarityWeightKey(r) as string] = null;
       }
       await updateGuildSettings(guildId, resetPatch);
-      const settings = await getOrCreateGuildSettings(guildId);
-      await refreshPanel(interaction, settings);
+      const freshSettings = await getOrCreateGuildSettings(guildId);
+      await refreshPanel(interaction, freshSettings);
+      const orderLabels = getRarityOrder(freshSettings)
+        .map(r => `${rarityLabel(r, freshSettings, displayMap)} ${effectiveWeight(freshSettings, r)}%`)
+        .join(" · ");
       await interaction.followUp({
-        content: "🔄 Rarity setup reset to defaults — Common 60% · Uncommon 25% · LE Limited Edition 1% · Exotic 10% · Gold Legendary 4%.",
+        content: `🔄 Rarity setup reset to defaults — ${orderLabels}.`,
         flags: MessageFlags.Ephemeral,
       }).catch(() => { /* ignore */ });
       return;
@@ -273,19 +284,20 @@ export async function handleRatesSelect(interaction: StringSelectMenuInteraction
 
   const guildId = interaction.guild.id;
   const rarity = interaction.customId.slice("rates_".length) as Rarity;
-  if (!RARITY_ORDER.includes(rarity)) return;
+  const settings = await getOrCreateGuildSettings(guildId);
+  if (!getRarityOrder(settings).includes(rarity)) return;
 
   const raw = interaction.values[0];
   const weight: number | null = raw === "default" ? null : parseInt(raw!, 10);
   await updateGuildSettings(guildId, { [rarityWeightKey(rarity)]: weight } as Partial<GuildSettings>);
 
-  const [settings, displayMap] = await Promise.all([
+  const [freshSettings, displayMap] = await Promise.all([
     getOrCreateGuildSettings(guildId),
     getRarityDisplayOverrides(guildId),
   ]);
   await interaction.editReply({
-    embeds: [buildRatesEmbed(settings, displayMap)],
-    components: buildRatesComponents(settings, displayMap),
+    embeds: [buildRatesEmbed(freshSettings, displayMap)],
+    components: buildRatesComponents(freshSettings, displayMap),
   });
 }
 
@@ -552,7 +564,8 @@ function buildDropsComponents(s: GuildSettings) {
 export { buildRatesEmbed, buildRatesComponents };
 
 function rarityBar(s: GuildSettings): string {
-  const weights = RARITY_ORDER.map(r => effectiveWeight(s, r));
+  const order = getRarityOrder(s);
+  const weights = order.map(r => effectiveWeight(s, r));
   const total = weights.reduce((a, b) => a + b, 0) || 1;
   const SLOTS = 20;
   // Allocate bar slots proportional to weight; guarantee any nonzero rarity gets ≥1 slot if it fits.
@@ -570,13 +583,14 @@ function rarityBar(s: GuildSettings): string {
   const blocks: Record<Rarity, string> = {
     common: "⬜", uncommon: "🟩", rare: "🟦", epic: "🟪", legendary: "🟨", mythic: "🟥",
   };
-  return RARITY_ORDER.map((r, i) => blocks[r].repeat(floors[i]!)).join("");
+  return order.map((r, i) => blocks[r].repeat(floors[i]!)).join("");
 }
 
 function rarityRowsSummary(s: GuildSettings, displayMap?: RarityDisplayMap | null): string {
-  const weights = RARITY_ORDER.map(r => effectiveWeight(s, r));
+  const order = getRarityOrder(s);
+  const weights = order.map(r => effectiveWeight(s, r));
   const total = weights.reduce((a, b) => a + b, 0) || 1;
-  return RARITY_ORDER.map((r, i) => {
+  return order.map((r, i) => {
     const w = weights[i]!;
     const pct = ((w / total) * 100).toFixed(1);
     const tag = getRarityWeight(s, r) === null ? " *(default)*" : "";
@@ -585,19 +599,24 @@ function rarityRowsSummary(s: GuildSettings, displayMap?: RarityDisplayMap | nul
 }
 
 function buildRatesEmbed(s: GuildSettings, displayMap?: RarityDisplayMap | null): EmbedBuilder {
-  const weights = RARITY_ORDER.map(r => effectiveWeight(s, r));
+  const order = getRarityOrder(s);
+  const weights = order.map(r => effectiveWeight(s, r));
   const total = weights.reduce((a, b) => a + b, 0);
   const balanced = total === 100;
   const note = balanced
     ? "✅ Your values add up to **100%** — what you pick is exactly what players see."
     : `ℹ️ Your values add up to **${total}** — Discord auto-balances them to **100%** below. ` +
       "(Pick numbers that sum to 100 to keep things simple.)";
+  const defaultSummary = order
+    .filter(r => r !== "mythic")
+    .map(r => `${rarityLabel(r, s, displayMap)} ${RARITY_WEIGHTS[r]}`)
+    .join(" · ");
   return new EmbedBuilder()
     .setTitle("🎛️ Rarity Setup — Spawn Chance by Rarity")
     .setColor(0xeb459e)
     .setDescription(
       "Set the visible **spawn chance %** for each built-in rarity.\n" +
-      "**Defaults:** Common 60 · Uncommon 25 · LE Limited Edition 1 · Exotic 10 · Gold Legendary 4 (= 100%)\n" +
+      `**Defaults:** ${defaultSummary} (= 100%)\n` +
       "_Want exact numbers? Close this and tap **✏️ Exact %** on the main panel._\n\n" +
       `${rarityBar(s)}\n\n` +
       note,
@@ -607,10 +626,10 @@ function buildRatesEmbed(s: GuildSettings, displayMap?: RarityDisplayMap | null)
 }
 
 function buildRatesComponents(s: GuildSettings, displayMap?: RarityDisplayMap | null) {
-  // Discord caps action rows at 5 — so all 5 rarities go here, no room for a button.
+  // Discord caps action rows at 5 — so all 5 non-mythic rarities go here, no room for a button.
   // Reset is exposed via the 🔄 Reset Mix button on the main config panel.
   // Mythic is intentionally excluded; configure it from the dashboard.
-  return UI_RARITY_ORDER.map(r => {
+  return getUiRarityOrder(s).map(r => {
     const current = getRarityWeight(s, r);
     const opts = RARITY_WEIGHT_OPTIONS[r].map(w => {
       if (w === null) {
@@ -643,7 +662,7 @@ function buildCustomMixModal(s: GuildSettings, displayMap?: RarityDisplayMap | n
     .setCustomId("rates_custom")
     .setTitle("Exact Rarity % (sum to 100)");
   // Modals also cap at 5 rows — mythic is configured via the dashboard.
-  const inputs = UI_RARITY_ORDER.map(r =>
+  const inputs = getUiRarityOrder(s).map(r =>
     new TextInputBuilder()
       .setCustomId(`mix_${r}`)
       .setLabel(`${rarityLabel(r, s, displayMap)} %`)
@@ -674,9 +693,10 @@ export async function handleRatesCustomModal(interaction: ModalSubmitInteraction
   }
 
   const displayMap = await getRarityDisplayOverrides(guildId);
+  const settings = await getOrCreateGuildSettings(guildId);
   const patch: Partial<GuildSettings> = {};
   const parsed: { r: Rarity; v: number }[] = [];
-  for (const r of UI_RARITY_ORDER) {
+  for (const r of getUiRarityOrder(settings)) {
     const raw = interaction.fields.getTextInputValue(`mix_${r}`).trim();
     const n = parseInt(raw, 10);
     if (!Number.isFinite(n) || n < 0 || n > 100) {
@@ -700,11 +720,11 @@ export async function handleRatesCustomModal(interaction: ModalSubmitInteraction
   }
 
   await updateGuildSettings(guildId, patch);
-  const settings = await getOrCreateGuildSettings(guildId);
-  const summary = parsed.map(({ r, v }) => `${rarityEmoji(r, settings, displayMap)} ${rarityLabel(r, settings, displayMap)} **${v}**`).join(" · ");
+  const freshSettings = await getOrCreateGuildSettings(guildId);
+  const summary = parsed.map(({ r, v }) => `${rarityEmoji(r, freshSettings, displayMap)} ${rarityLabel(r, freshSettings, displayMap)} **${v}**`).join(" · ");
   const note = sum === 100 ? "✅ Sums to 100%." : `ℹ️ Sums to **${sum}** — Discord will auto-balance to 100%.`;
   await interaction.reply({
-    embeds: [buildRatesEmbed(settings, displayMap)],
+    embeds: [buildRatesEmbed(freshSettings, displayMap)],
     content: `✏️ Exact rarity % saved: ${summary}\n${note}`,
     flags: MessageFlags.Ephemeral,
   });

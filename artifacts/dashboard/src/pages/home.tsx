@@ -7,8 +7,8 @@ import { Badge } from "@/components/ui/badge";
 import { Loader2, Search, ChevronDown, ChevronUp, Sparkles, Sparkle } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
-const BUILT_IN_ORDER: Rarity[] = ["legendary", "epic", "rare", "uncommon", "common"];
-const BUILT_IN_SET = new Set<string>(BUILT_IN_ORDER);
+const DEFAULT_RARITY_ORDER: Rarity[] = ["legendary", "epic", "rare", "uncommon", "common", "mythic"];
+const BUILT_IN_SET = new Set<string>(DEFAULT_RARITY_ORDER);
 
 type RarityFilterOption = { key: string; label: string };
 
@@ -38,7 +38,8 @@ export default function Home() {
   // All unique website categories / display rarities present in the roster.
   // Website category overrides are presentation-only and sort before built-ins.
   const allRarities = useMemo<RarityFilterOption[]>(() => {
-    if (!data?.cards) return BUILT_IN_ORDER.map(key => ({ key, label: key }));
+    const order = data?.rarityOrder ?? DEFAULT_RARITY_ORDER;
+    if (!data?.cards) return order.map(key => ({ key, label: key }));
     const labelByKey = new Map<string, string>();
     for (const c of data.cards) {
       labelByKey.set(cardCategoryKey(c), cardCategoryLabel(c));
@@ -46,7 +47,7 @@ export default function Home() {
     const customKeys = [...labelByKey.keys()]
       .filter(key => !BUILT_IN_SET.has(key))
       .sort((a, b) => (labelByKey.get(a) ?? a).localeCompare(labelByKey.get(b) ?? b));
-    const builtInKeys = BUILT_IN_ORDER.filter(key => labelByKey.has(key));
+    const builtInKeys = order.filter(key => labelByKey.has(key));
     return [...customKeys, ...builtInKeys].map(key => ({ key, label: labelByKey.get(key) ?? key }));
   }, [data]);
 
@@ -84,8 +85,9 @@ export default function Home() {
     });
 
     // Order: custom tiers (alpha) then built-in descending rarity
+    const displayOrder = data?.rarityOrder ?? DEFAULT_RARITY_ORDER;
     const customSlugs = Object.keys(grouped).filter(s => !BUILT_IN_SET.has(s)).sort();
-    const builtInSlugs = BUILT_IN_ORDER.filter(r => grouped[r]?.length);
+    const builtInSlugs = displayOrder.filter(r => grouped[r]?.length);
     return [...customSlugs, ...builtInSlugs].map(slug => {
       const cards = grouped[slug] ?? [];
       const rarityDropChance = cards.find(c => c.rarityDropChancePercent != null)?.rarityDropChancePercent ?? undefined;

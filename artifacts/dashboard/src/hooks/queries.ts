@@ -138,7 +138,7 @@ export interface GuildSummary {
 export function useCards() {
   return useQuery({
     queryKey: ["cards"],
-    queryFn: () => apiGet<{ cards: Card[]; activeSetId: number | null }>("/api/cards"),
+    queryFn: () => apiGet<{ cards: Card[]; activeSetId: number | null; rarityOrder: Rarity[] | null }>("/api/cards"),
   });
 }
 

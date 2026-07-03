@@ -193,6 +193,9 @@ export const guildSettingsTable = pgTable("guild_settings", {
   mythicLabel: text("mythic_label"),
   mythicEmoji: text("mythic_emoji"),
   mythicColor: integer("mythic_color"),
+  // Per-guild display order for built-in rarities. Stored as text[] array of rarity enum keys.
+  // Null = use canonical key order: common, uncommon, rare, epic, legendary, mythic.
+  rarityOrder: text("rarity_order").array(),
   // Catch mode: "type" (type card name), "button" (click claim button), or "both"
   catchMode: text("catch_mode").notNull().default("type"),
   commandPrefix: text("command_prefix").notNull().default("!"),

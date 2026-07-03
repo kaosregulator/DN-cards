@@ -23,14 +23,14 @@ import {
   getRarityDisplayOverrides, upsertRarityDisplayOverride,
   clearRarityDisplayOverride, clearAllRarityDisplayOverrides,
   getOrCreateGuildSettings,
+  updateGuildSettings,
 } from "../db.js";
 import {
   RARITY_EMOJI, RARITY_LABELS, RARITY_COLORS, selectMenuEmoji, type Rarity, type RarityDisplayMap,
-  rarityLabel, rarityEmoji, rarityColor,
+  rarityLabel, rarityEmoji, rarityColor, getRarityOrder, BUILTIN_RARITIES,
 } from "../cards-data.js";
 
-export const BUILTIN_RARITIES: Rarity[] = ["common", "uncommon", "rare", "epic", "legendary", "mythic"];
-export { RARITY_COLORS };
+export { RARITY_COLORS, BUILTIN_RARITIES };
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -71,11 +71,14 @@ function buildHubPanel() {
     new ButtonBuilder().setCustomId("rarity_hub:display").setLabel("🎨 Display Only").setStyle(ButtonStyle.Secondary),
     new ButtonBuilder().setCustomId("rarity_hub:economy").setLabel("📊 Values Only").setStyle(ButtonStyle.Secondary),
   );
+  const secondaryRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder().setCustomId("rarity_hub:order").setLabel("🧾 Order").setStyle(ButtonStyle.Secondary),
+  );
   const advancedRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder().setCustomId("rarity_hub:custom").setLabel("⚙️ Advanced Labels").setStyle(ButtonStyle.Secondary),
     new ButtonBuilder().setCustomId("rarity_hub:cardtier").setLabel("⚙️ Legacy Assignments").setStyle(ButtonStyle.Secondary),
   );
-  return { embeds: [embed], components: [primaryRow, advancedRow] };
+  return { embeds: [embed], components: [primaryRow, secondaryRow, advancedRow] };
 }
 
 export async function handleRarityHubCommand(interaction: ChatInputCommandInteraction): Promise<void> {
@@ -84,6 +87,55 @@ export async function handleRarityHubCommand(interaction: ChatInputCommandIntera
     return;
   }
   await interaction.editReply(buildHubPanel());
+}
+
+// ── Order maker ───────────────────────────────────────────────────────────────
+
+function buildOrderPanel(
+  order: Rarity[],
+  displayMap: RarityDisplayMap,
+  settings: EditSettings | null,
+  selected: Rarity = order[0]!,
+): { embeds: EmbedBuilder[]; components: ActionRowBuilder<StringSelectMenuBuilder | ButtonBuilder>[] } {
+  const selectedIndex = order.indexOf(selected);
+  const safeSelected = selectedIndex >= 0 ? selected : order[0]!;
+  const safeIndex = order.indexOf(safeSelected);
+  const embed = new EmbedBuilder()
+    .setTitle("🧾 Rarity Display Order")
+    .setColor(0x5865f2)
+    .setDescription(
+      "Pick a rarity, then tap **Move Up** or **Move Down**. This order is used in the roster, `/rarity`, `/config`, and `/collection`.\n\n" +
+      order.map((r, i) => {
+        const marker = r === safeSelected ? "▶" : "•";
+        const label = rarityLabel(r, settings, displayMap);
+        const emoji = rarityEmoji(r, settings, displayMap);
+        return `${marker} ${i + 1}. ${emoji} ${label}`;
+      }).join("\n"),
+    )
+    .setFooter({ text: "Drag-free order editor · Reset restores the default order" });
+
+  const selectRow = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
+    new StringSelectMenuBuilder()
+      .setCustomId("rarity_hub:order:select")
+      .setPlaceholder("Pick a rarity to move")
+      .addOptions(
+        order.map(r => {
+          const label = rarityLabel(r, settings, displayMap);
+          const emoji = rarityEmoji(r, settings, displayMap);
+          const emojiObj = selectMenuEmoji(emoji, RARITY_EMOJI[r]);
+          return { label: `${emoji} ${label}`, value: r, emoji: emojiObj, default: r === safeSelected };
+        }),
+      ),
+  );
+
+  const btnRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder().setCustomId(`rarity_hub:order:up:${safeSelected}`).setLabel("⬆️ Move Up").setStyle(ButtonStyle.Secondary).setDisabled(safeIndex <= 0),
+    new ButtonBuilder().setCustomId(`rarity_hub:order:down:${safeSelected}`).setLabel("⬇️ Move Down").setStyle(ButtonStyle.Secondary).setDisabled(safeIndex >= order.length - 1),
+    new ButtonBuilder().setCustomId("rarity_hub:order:reset").setLabel("↩️ Reset").setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder().setCustomId("rarity_hub:main").setLabel("← Back").setStyle(ButtonStyle.Secondary),
+  );
+
+  return { embeds: [embed], components: [selectRow, btnRow] };
 }
 
 function buildSettingsPanel(
@@ -100,7 +152,8 @@ function buildSettingsPanel(
       "Cards keep their internal rarity identity; these settings only change server behavior and presentation.\n​",
     );
 
-  for (const r of BUILTIN_RARITIES) {
+  const order = getRarityOrder(settings);
+  for (const r of order) {
     const display = getEffectiveDisplay(r, displayMap, settings);
     const profile = byRarity.get(r);
     const values = [
@@ -115,7 +168,7 @@ function buildSettingsPanel(
     new StringSelectMenuBuilder()
       .setCustomId("rarity_hub:settings:select")
       .setPlaceholder("Choose a built-in rarity to edit…")
-      .addOptions(BUILTIN_RARITIES.map(r => {
+      .addOptions(order.map(r => {
         const display = getEffectiveDisplay(r, displayMap, settings);
         const profile = byRarity.get(r);
         const hasValues = profile && (profile.worthValue !== null || profile.burnValue !== null || profile.dropWeight !== null);
@@ -172,7 +225,11 @@ function buildSettingsTierPanel(
 
 // ── Economy Overrides ─────────────────────────────────────────────────────────
 
-function buildEconomyPanel(profiles: ProfileRow[], displayMap?: RarityDisplayMap | null) {
+function buildEconomyPanel(
+  profiles: ProfileRow[],
+  displayMap?: RarityDisplayMap | null,
+  settings?: EditSettings | null,
+) {
   const byRarity = new Map(profiles.map(r => [r.rarity as Rarity, r]));
   const embed = new EmbedBuilder()
     .setTitle("📊 Rarity Values")
@@ -182,11 +239,12 @@ function buildEconomyPanel(profiles: ProfileRow[], displayMap?: RarityDisplayMap
       "These values apply to **every card in that rarity** for this server.\n" +
       "Pick a rarity from the menu to configure it.\n\u200b",
     );
-  for (const r of BUILTIN_RARITIES) {
+  const order = getRarityOrder(settings);
+  for (const r of order) {
     const row = byRarity.get(r);
     const hasAny = row && (row.worthValue !== null || row.burnValue !== null || row.dropWeight !== null);
-    const dispLabel = rarityLabel(r, null, displayMap);
-    const dispEmoji = rarityEmoji(r, null, displayMap);
+    const dispLabel = rarityLabel(r, settings, displayMap);
+    const dispEmoji = rarityEmoji(r, settings, displayMap);
     embed.addFields({
       name: `${dispEmoji} ${dispLabel}`,
       value: hasAny
@@ -199,15 +257,15 @@ function buildEconomyPanel(profiles: ProfileRow[], displayMap?: RarityDisplayMap
     new StringSelectMenuBuilder()
       .setCustomId("rarity_hub:economy:select")
       .setPlaceholder("Pick a tier to configure…")
-      .addOptions(BUILTIN_RARITIES.map(r => {
+      .addOptions(order.map(r => {
         const row = byRarity.get(r);
         const parts: string[] = [];
         if (row?.worthValue != null) parts.push(`Worth: ${row.worthValue}`);
         if (row?.burnValue != null) parts.push(`Burn: ${row.burnValue}`);
         if (row?.dropWeight != null) parts.push(`Spawn: ${row.dropWeight}%`);
-        const emojiObj = selectMenuEmoji(rarityEmoji(r, null, displayMap), RARITY_EMOJI[r]);
+        const emojiObj = selectMenuEmoji(rarityEmoji(r, settings, displayMap), RARITY_EMOJI[r]);
         return {
-          label: `${rarityEmoji(r, null, displayMap)} ${rarityLabel(r, null, displayMap)}`,
+          label: `${rarityEmoji(r, settings, displayMap)} ${rarityLabel(r, settings, displayMap)}`,
           value: r,
           emoji: emojiObj,
           description: (parts.length ? parts.join(" · ") : "No overrides").slice(0, 100),
@@ -221,13 +279,18 @@ function buildEconomyPanel(profiles: ProfileRow[], displayMap?: RarityDisplayMap
   return { embeds: [embed], components: [selectRow, btnRow] };
 }
 
-function buildEconomyTierPanel(rarity: Rarity, profile: ProfileRow | undefined, displayMap?: RarityDisplayMap | null) {
-  const label = rarityLabel(rarity, null, displayMap);
-  const emoji = rarityEmoji(rarity, null, displayMap);
+function buildEconomyTierPanel(
+  rarity: Rarity,
+  profile: ProfileRow | undefined,
+  displayMap?: RarityDisplayMap | null,
+  settings?: EditSettings | null,
+) {
+  const label = rarityLabel(rarity, settings, displayMap);
+  const emoji = rarityEmoji(rarity, settings, displayMap);
   const hasOverride = profile && (profile.worthValue !== null || profile.burnValue !== null || profile.dropWeight !== null);
   const embed = new EmbedBuilder()
     .setTitle(`📊 ${emoji} ${label} — Economy`)
-    .setColor(rarityColor(rarity, null, displayMap))
+    .setColor(rarityColor(rarity, settings, displayMap))
     .addFields(
       { name: "Worth", value: fmtVal(profile?.worthValue, " 💠"), inline: true },
       { name: "Burn", value: fmtVal(profile?.burnValue, " 💠"), inline: true },
@@ -487,28 +550,75 @@ export async function handleRarityHubButton(interaction: ButtonInteraction): Pro
     return;
   }
 
+  if (section === "order") {
+    if (sub === "reset") {
+      await updateGuildSettings(guildId, { rarityOrder: null });
+      const [displayMap, settings] = await Promise.all([
+        getRarityDisplayOverrides(guildId),
+        getOrCreateGuildSettings(guildId),
+      ]);
+      await interaction.editReply(buildOrderPanel(getRarityOrder(settings), displayMap, settings));
+      return;
+    }
+    if ((sub === "up" || sub === "down") && extra) {
+      const r = extra as Rarity;
+      const [displayMap, settings] = await Promise.all([
+        getRarityDisplayOverrides(guildId),
+        getOrCreateGuildSettings(guildId),
+      ]);
+      const order = getRarityOrder(settings);
+      const idx = order.indexOf(r);
+      if (idx >= 0) {
+        const swapIdx = sub === "up" ? idx - 1 : idx + 1;
+        if (swapIdx >= 0 && swapIdx < order.length) {
+          const next = [...order];
+          [next[idx], next[swapIdx]] = [next[swapIdx]!, next[idx]!];
+          await updateGuildSettings(guildId, { rarityOrder: next });
+          const updatedSettings = await getOrCreateGuildSettings(guildId);
+          await interaction.editReply(buildOrderPanel(getRarityOrder(updatedSettings), displayMap, updatedSettings, r));
+          return;
+        }
+      }
+      await interaction.editReply(buildOrderPanel(order, displayMap, settings, r));
+      return;
+    }
+    const [displayMap, settings] = await Promise.all([
+      getRarityDisplayOverrides(guildId),
+      getOrCreateGuildSettings(guildId),
+    ]);
+    await interaction.editReply(buildOrderPanel(getRarityOrder(settings), displayMap, settings));
+    return;
+  }
+
   if (section === "economy") {
+    if (sub === "reset" && extra) {
+      await deleteRarityProfile(guildId, extra as Rarity);
+      const [profiles, displayMap, settings] = await Promise.all([
+        listRarityProfiles(guildId),
+        getRarityDisplayOverrides(guildId),
+        getOrCreateGuildSettings(guildId),
+      ]);
+      const profile = profiles.find(p => p.rarity === extra);
+      await interaction.editReply(buildEconomyTierPanel(extra as Rarity, profile, displayMap, settings));
+      return;
+    }
+    const [profiles, displayMap, settings] = await Promise.all([
+      listRarityProfiles(guildId),
+      getRarityDisplayOverrides(guildId),
+      getOrCreateGuildSettings(guildId),
+    ]);
     if (!sub) {
-      const [profiles, displayMap] = await Promise.all([listRarityProfiles(guildId), getRarityDisplayOverrides(guildId)]);
-      await interaction.editReply(buildEconomyPanel(profiles, displayMap));
+      await interaction.editReply(buildEconomyPanel(profiles, displayMap, settings));
       return;
     }
     if (sub === "resetall") {
       for (const r of BUILTIN_RARITIES) await deleteRarityProfile(guildId, r);
-      const [profiles, displayMap] = await Promise.all([listRarityProfiles(guildId), getRarityDisplayOverrides(guildId)]);
-      await interaction.editReply(buildEconomyPanel(profiles, displayMap));
-      return;
-    }
-    if (sub === "reset" && extra) {
-      await deleteRarityProfile(guildId, extra as Rarity);
-      const [profiles, displayMap] = await Promise.all([listRarityProfiles(guildId), getRarityDisplayOverrides(guildId)]);
-      const profile = profiles.find(p => p.rarity === extra);
-      await interaction.editReply(buildEconomyTierPanel(extra as Rarity, profile, displayMap));
+      const freshProfiles = await listRarityProfiles(guildId);
+      await interaction.editReply(buildEconomyPanel(freshProfiles, displayMap, settings));
       return;
     }
     if (sub === "economy" && !extra) {
-      const [profiles, displayMap] = await Promise.all([listRarityProfiles(guildId), getRarityDisplayOverrides(guildId)]);
-      await interaction.editReply(buildEconomyPanel(profiles, displayMap));
+      await interaction.editReply(buildEconomyPanel(profiles, displayMap, settings));
       return;
     }
   }
@@ -571,9 +681,24 @@ export async function handleRarityHubSelect(interaction: StringSelectMenuInterac
   if (section === "economy" && sub === "select") {
     await interaction.deferUpdate();
     const r = interaction.values[0] as Rarity;
-    const profiles = await listRarityProfiles(guildId);
+    const [profiles, displayMap, settings] = await Promise.all([
+      listRarityProfiles(guildId),
+      getRarityDisplayOverrides(guildId),
+      getOrCreateGuildSettings(guildId),
+    ]);
     const profile = profiles.find(p => p.rarity === r);
-    await interaction.editReply(buildEconomyTierPanel(r, profile));
+    await interaction.editReply(buildEconomyTierPanel(r, profile, displayMap, settings));
+    return;
+  }
+
+  if (section === "order" && sub === "select") {
+    await interaction.deferUpdate();
+    const r = interaction.values[0] as Rarity;
+    const [displayMap, settings] = await Promise.all([
+      getRarityDisplayOverrides(guildId),
+      getOrCreateGuildSettings(guildId),
+    ]);
+    await interaction.editReply(buildOrderPanel(getRarityOrder(settings), displayMap, settings, r));
     return;
   }
 
@@ -681,8 +806,11 @@ export async function handleRarityHubModal(interaction: ModalSubmitInteraction):
       ]);
       await interaction.editReply(buildSettingsTierPanel(r, displayMap, settings, profile));
     } else {
-      const displayMap = await getRarityDisplayOverrides(guildId);
-      await interaction.editReply(buildEconomyTierPanel(r, profile, displayMap));
+      const [displayMap, settings] = await Promise.all([
+        getRarityDisplayOverrides(guildId),
+        getOrCreateGuildSettings(guildId),
+      ]);
+      await interaction.editReply(buildEconomyTierPanel(r, profile, displayMap, settings));
     }
     return;
   }
@@ -799,7 +927,7 @@ export async function handleRarityHubModal(interaction: ModalSubmitInteraction):
 // ── Display Names Panel (cosmetic overrides for built-in tiers) ───────────────
 // Accessed from the hub via the "🎨 Display Names" button.
 
-type EditSettings = { mythicLabel?: string | null; mythicEmoji?: string | null; mythicColor?: number | null };
+type EditSettings = { mythicLabel?: string | null; mythicEmoji?: string | null; mythicColor?: number | null; rarityOrder?: string[] | null };
 
 function getEffectiveDisplay(r: Rarity, displayMap: RarityDisplayMap, settings: EditSettings | null) {
   const ov = displayMap.get(r);
@@ -824,7 +952,8 @@ function buildEditPanel(
       "Rename any built-in rarity tier for this server — changes the display name, emoji, and embed color " +
       "in spawns, collections, packs, and trade-ins. Economy values are unaffected.\n\u200b",
     );
-  for (const r of BUILTIN_RARITIES) {
+  const order = getRarityOrder(settings);
+  for (const r of order) {
     const { label, emoji, color, hasOverride } = getEffectiveDisplay(r, displayMap, settings);
     embed.addFields({
       name: `${emoji} ${label}`,
@@ -839,7 +968,7 @@ function buildEditPanel(
       .setCustomId("rarity_edit:select")
       .setPlaceholder("Pick a rarity tier to edit…")
       .addOptions(
-        BUILTIN_RARITIES.map(r => {
+        order.map(r => {
           const { label, emoji, hasOverride } = getEffectiveDisplay(r, displayMap, settings);
           // Custom emoji shortcodes (e.g. ":yellow_heart:") crash Discord select options;
           // StringSelectMenu emojis must be Unicode or {id,name}. Fall back to the default Unicode emoji.

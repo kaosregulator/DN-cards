@@ -3,7 +3,7 @@ import { db, cardsTable, cardDisplayOverridesTable, collectionsTable, userCurren
 import { and, eq, sql, desc } from "drizzle-orm";
 import { z } from "zod/v4";
 import { ACHIEVEMENTS } from "../bot/achievements";
-import { getCollectorRank, getNextRank, SHINY_MULTIPLIER } from "../bot/cards-data";
+import { getCollectorRank, getNextRank, SHINY_MULTIPLIER, getRarityOrder, type Rarity } from "../bot/cards-data";
 import { getBotClient } from "../bot/spawn-manager";
 import { getCardDisplayRarity, getEffectiveDropWeight, getGuildDropChanceRuntime, getRarityContext } from "../bot/db";
 
@@ -90,6 +90,7 @@ router.get("/cards", async (_req, res) => {
   }
 
   const activeSetId = rarityRuntime?.settings.activeSetId ?? null;
+  const rarityOrder = rarityRuntime ? getRarityOrder(rarityRuntime.settings) : null;
 
   const customTierByCard = new Map<number, { slug: string; name: string; dropWeight: number }>();
   for (const o of customOverrides) {
@@ -151,7 +152,7 @@ router.get("/cards", async (_req, res) => {
       return a.id - b.id;
     });
 
-  res.json({ cards: visible, activeSetId });
+  res.json({ cards: visible, activeSetId, rarityOrder });
 });
 
 // ── Guild leaderboard (top 25 by net worth) ───────────────────────────────────

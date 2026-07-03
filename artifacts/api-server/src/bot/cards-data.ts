@@ -103,6 +103,34 @@ export function getMythicDisplay(
   };
 }
 
+/** Canonical built-in rarity key order. */
+export const BUILTIN_RARITIES: Rarity[] = ["common", "uncommon", "rare", "epic", "legendary", "mythic"];
+
+/**
+ * Return the per-guild display order for built-in rarities, falling back to
+ * the canonical key order. Invalid or partial arrays are sanitized so the
+ * result always contains exactly one entry for every built-in rarity.
+ */
+export function getRarityOrder(
+  settings?: { rarityOrder?: string[] | null } | null,
+): Rarity[] {
+  const order = settings?.rarityOrder;
+  if (!order || order.length === 0) return [...BUILTIN_RARITIES];
+  const seen = new Set<Rarity>();
+  const valid: Rarity[] = [];
+  for (const r of order) {
+    if (BUILTIN_RARITIES.includes(r as Rarity) && !seen.has(r as Rarity)) {
+      seen.add(r as Rarity);
+      valid.push(r as Rarity);
+    }
+  }
+  // Append any missing rarities in canonical order so the result is always complete.
+  for (const r of BUILTIN_RARITIES) {
+    if (!seen.has(r)) valid.push(r);
+  }
+  return valid;
+}
+
 /**
  * Resolves the display label for a rarity, with two layers of per-guild override:
  *   1. `displayMap` — per-rarity override from `rarity_display_overrides` (highest priority)

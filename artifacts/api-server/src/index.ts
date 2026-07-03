@@ -8,6 +8,9 @@ import { SEED_SQL } from "./lib/seedData.js";
 // production gets schema changes applied here on boot. Each statement uses
 // `IF NOT EXISTS` so reruns are safe.
 async function runBootMigrations() {
+  // Per-guild rarity display order. Stored as text[] so any array of rarity keys can be persisted.
+  await pool.query(`ALTER TABLE guild_settings ADD COLUMN IF NOT EXISTS rarity_order text[]`);
+
   await pool.query(`ALTER TABLE cards ADD COLUMN IF NOT EXISTS podium_place integer`);
   await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS cards_podium_place_uniq ON cards (podium_place) WHERE podium_place IS NOT NULL`);
   await pool.query(`ALTER TABLE cards ADD COLUMN IF NOT EXISTS preview_animation text`);
