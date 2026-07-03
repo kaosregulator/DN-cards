@@ -72,7 +72,8 @@ export async function runPaginator(opts: PaginatorOpts): Promise<void> {
               default: v2.key === viewKey,
             };
             if (v2.description) opt.description = v2.description.slice(0, 100);
-            if (v2.emoji) opt.emoji = v2.emoji;
+            // Discord.js 14 requires emoji as an object, not a raw string
+            if (v2.emoji) (opt as Record<string, unknown>).emoji = { name: v2.emoji };
             return opt;
           }),
         );
