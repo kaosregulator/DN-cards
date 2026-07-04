@@ -1,6 +1,6 @@
 import { Router, type IRouter, type Response } from "express";
-import { db, cardsTable, cardDisplayOverridesTable, upsertCardDisplayOverrideSchema, setsTable, cardSetMembershipsTable } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { db, cardsTable, cardDisplayOverridesTable, upsertCardDisplayOverrideSchema, setsTable, cardSetMembershipsTable, cardRarityOverridesTable, customRaritiesTable, rarityDisplayOverridesTable } from "@workspace/db";
+import { eq, and } from "drizzle-orm";
 import { z } from "zod/v4";
 import { requireDashboardAuth } from "../middlewares/dashboard-auth.js";
 import { invalidateCardCache } from "../bot/db.js";
@@ -46,7 +46,9 @@ function parse<T extends z.ZodTypeAny>(schema: T, value: unknown, res: Response)
 // admin UI can show "Discord says X / website shows Y" side by side.
 // Also includes the card's set memberships from the first-class sets tables.
 router.get("/cards", async (_req, res) => {
-  const [rows, memberships] = await Promise.all([
+  const homeGuildId = process.env["HOME_GUILD_ID"] ?? null;
+
+  const [rows, memberships, customOverrides, rarityLabels] = await Promise.all([
     db
       .select({ card: cardsTable, override: cardDisplayOverridesTable })
       .from(cardsTable)
@@ -56,6 +58,29 @@ router.get("/cards", async (_req, res) => {
       .select({ cardId: cardSetMembershipsTable.cardId, setId: setsTable.id, setName: setsTable.name })
       .from(cardSetMembershipsTable)
       .innerJoin(setsTable, eq(setsTable.id, cardSetMembershipsTable.setId)),
+    homeGuildId
+      ? db
+          .select({
+            cardId: cardRarityOverridesTable.cardId,
+            slug: customRaritiesTable.slug,
+            name: customRaritiesTable.name,
+          })
+          .from(cardRarityOverridesTable)
+          .innerJoin(
+            customRaritiesTable,
+            and(
+              eq(customRaritiesTable.guildId, cardRarityOverridesTable.guildId),
+              eq(customRaritiesTable.slug, cardRarityOverridesTable.customRaritySlug),
+            ),
+          )
+          .where(eq(cardRarityOverridesTable.guildId, homeGuildId))
+      : Promise.resolve([] as { cardId: number; slug: string; name: string }[]),
+    homeGuildId
+      ? db
+          .select({ rarity: rarityDisplayOverridesTable.rarity, displayName: rarityDisplayOverridesTable.displayName })
+          .from(rarityDisplayOverridesTable)
+          .where(eq(rarityDisplayOverridesTable.guildId, homeGuildId))
+      : Promise.resolve([] as { rarity: string; displayName: string | null }[]),
   ]);
 
   const setsByCard = new Map<number, { id: number; name: string }[]>();
@@ -64,12 +89,29 @@ router.get("/cards", async (_req, res) => {
     setsByCard.get(m.cardId)!.push({ id: m.setId, name: m.setName });
   }
 
+  const customTierByCard = new Map<number, { slug: string; name: string }>();
+  for (const o of customOverrides) {
+    customTierByCard.set(o.cardId, { slug: o.slug, name: o.name });
+  }
+
+  const rarityLabelMap = new Map<string, string>();
+  for (const r of rarityLabels) {
+    if (r.displayName) rarityLabelMap.set(r.rarity, r.displayName);
+  }
+
   res.json({
-    cards: rows.map(r => ({
-      ...r.card,
-      sets: setsByCard.get(r.card.id) ?? [],
-      displayOverride: r.override ?? null,
-    })),
+    cards: rows.map(r => {
+      const customTier = customTierByCard.get(r.card.id);
+      const effectiveRarity = customTier?.slug ?? r.card.rarity;
+      const effectiveRarityLabel = customTier?.name ?? rarityLabelMap.get(r.card.rarity) ?? r.card.rarity;
+      return {
+        ...r.card,
+        sets: setsByCard.get(r.card.id) ?? [],
+        displayOverride: r.override ?? null,
+        effectiveRarity,
+        effectiveRarityLabel,
+      };
+    }),
   });
 });
 

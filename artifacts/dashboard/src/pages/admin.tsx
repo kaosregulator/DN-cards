@@ -438,7 +438,9 @@ export default function Admin() {
                         {o?.displayName ? <span className="font-medium">{displayName}</span> : <span className="text-muted-foreground italic">— (uses Discord name)</span>}
                       </td>
                       <td className="p-3">
-                        <Badge variant="outline" className={`uppercase font-mono text-xs ${RARITY_COLOR[c.rarity]}`}>{c.rarity}</Badge>
+                        <Badge variant="outline" className={`uppercase font-mono text-xs ${RARITY_COLOR[c.effectiveRarity as Rarity] ?? "text-zinc-400 border-zinc-500/40"}`}>
+                          {c.effectiveRarityLabel ?? c.rarity}
+                        </Badge>
                       </td>
                       <td className="p-3">
                         <div className="flex flex-wrap gap-1">
