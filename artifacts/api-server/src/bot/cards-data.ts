@@ -13,9 +13,9 @@ export type Rarity = "common" | "uncommon" | "rare" | "epic" | "legendary" | "my
 export type CardType = string; // free-form label — any text the admin types
 
 // Built-in rarity display order (by DB enum key, not by spawn weight):
-//   Common → Uncommon → LE Limited Edition (rare key) → Exotic (epic key) → Gold Legendary (legendary key) → Mythic
+//   Common → Uncommon → LE Limited Edition (rare key) → Exotic (epic key) → Gold Legendary (legendary key) → Extra (mythic key)
 // The DB enum keys are fixed for compatibility; the user-facing labels below are what players see.
-// Mythic is the event/admin-only top tier — default weight 0 so it never spawns unless boosted.
+// Extra (mythic key) is the event/admin-only top tier — default weight 0 so it never spawns unless boosted.
 export const RARITY_WEIGHTS: Record<Rarity, number> = {
   common: 60,
   uncommon: 25,
@@ -70,9 +70,11 @@ export function selectMenuEmoji(
   emoji: string | undefined | null,
   fallback: string,
 ): { name: string } {
-  const e = emoji?.trim() ?? "";
+  // Strip Unicode variation selectors (U+FE00–U+FE0F) — Discord rejects them
+  // as invalid emoji names (COMPONENT_INVALID_EMOJI).
+  const e = (emoji?.trim() ?? "").replace(/[\uFE00-\uFE0F]/g, "");
   // Shortcodes contain colons; plain text/IDs are not valid option emojis either.
-  const isUnicode = !e.includes(":") && /^\p{Extended_Pictographic}/u.test(e);
+  const isUnicode = e.length > 0 && !e.includes(":") && /^\p{Extended_Pictographic}/u.test(e);
   return { name: isUnicode ? e : fallback };
 }
 
@@ -214,7 +216,7 @@ export const RARITY_LABELS: Record<Rarity, string> = {
   rare: "LE Limited Edition",   // DB enum key "rare" — user-facing label
   epic: "Exotic",              // DB enum key "epic" — user-facing label
   legendary: "Gold Legendary", // DB enum key "legendary" — user-facing label
-  mythic: "Mythic",            // event/admin-only top tier
+  mythic: "Extra",             // event/admin-only top tier
 };
 
 export const TYPE_EMOJI: Record<string, string> = {

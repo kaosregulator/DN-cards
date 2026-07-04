@@ -40,7 +40,7 @@ function buildLegacyCommands() {
     cmd("catalog", "(User) Browse by category — see what you own and what's missing", s => s
       .addStringOption(o => o.setName("category").setDescription("Optional: jump straight to a category (default: overview)")
         .addChoices(
-          { name: "🔮 Mythic", value: "mythic" },
+          { name: "🔮 Extra", value: "mythic" },
           { name: "🟡 Legendary", value: "legendary" },
           { name: "🟣 Epic", value: "epic" },
           { name: "🔵 Rare", value: "rare" },
@@ -169,7 +169,7 @@ function buildLegacyCommands() {
           .addChoices(
             { name: "Common", value: "common" }, { name: "Uncommon", value: "uncommon" },
             { name: "Rare", value: "rare" }, { name: "Epic", value: "epic" },
-            { name: "Legendary", value: "legendary" }, { name: "Mythic", value: "mythic" },
+            { name: "Legendary", value: "legendary" }, { name: "Extra", value: "mythic" },
           ))
         .addIntegerOption(o => o.setName("weight").setDescription("Set-specific spawn chance % (0 = disable that rarity while active)").setRequired(true).setMinValue(0)))
       .addSubcommand(sc => sc.setName("clearweight").setDescription("Remove a per-set spawn chance override (falls back to server rarity setup)")
@@ -178,7 +178,7 @@ function buildLegacyCommands() {
           .addChoices(
             { name: "Common", value: "common" }, { name: "Uncommon", value: "uncommon" },
             { name: "Rare", value: "rare" }, { name: "Epic", value: "epic" },
-            { name: "Legendary", value: "legendary" }, { name: "Mythic", value: "mythic" },
+            { name: "Legendary", value: "legendary" }, { name: "Extra", value: "mythic" },
           )))
       .addSubcommand(sc => sc.setName("showweights").setDescription("Show per-set rarity spawn chance overrides")
         .addStringOption(o => o.setName("set").setDescription("Set name").setRequired(true).setAutocomplete(true)))
