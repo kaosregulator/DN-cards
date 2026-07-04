@@ -3,6 +3,7 @@ import { EmbedBuilder, MessageFlags } from "discord.js";
 import { applyEmbedOverride } from "../embed-overrides.js";
 import { getOrCreateGuildSettings, isAdmin } from "../db.js";
 import { getShinyMultiplier, getShinyName } from "../cards-data.js";
+import { tierLabel } from "./pack.js";
 
 // Thin animated divider GIF used as the separator image at the bottom of each
 // embed. The rainbow-glow line (4 KB, GitHub user-images CDN) renders as a
@@ -41,13 +42,14 @@ export async function handleWelcome(interaction: ChatInputCommandInteraction): P
     .setDescription(
       "DarkNight's military collectible card game — tanks, jets, warships, bosses, " +
       "and the occasional cursed community card. Cards drop randomly. You catch them. " +
-      "You hoard them. You flex a 👑 Legendary on someone still grinding Commons. It's a lifestyle.\n\n" +
+      "You hoard them. You flex a 👑 " + tierLabel(shinySettings, "legendary") + " on someone still grinding Commons. It's a lifestyle.\n\n" +
 
       "**Getting Started**\n" +
       "① **Watch the spawn channel** — when a card drops, just **type its name** to catch it. " +
         "No slash command. No button. Just type. (Unless the server is in button mode — then click.)\n" +
       "② **`/cards daily`** — free shards every day. 7-day streak = 💠 1,000 shard achievement. Easy.\n" +
-      "③ **`/cards pack`** — spend shards on 5-card packs. 🥉 Basic (250 💠) · 🥈 Premium (750 💠) · 🥇 Legendary (2,000 💠, no commons).\n" +
+      "③ **`/cards pack`** — spend shards on 5-card packs. " +
+        `🥉 ${tierLabel(shinySettings, "basic")} (250 💠) · 🥈 ${tierLabel(shinySettings, "premium")} (750 💠) · 🥇 ${tierLabel(shinySettings, "legendary")} (2,000 💠, no commons).\n` +
       "④ **`/cards burn`** — turn duplicate cards into shards. Burn, reinvest, repeat.\n" +
       "⑤ **`/cards top`** — check where you stand. Goal: 👑 Dark Commander.",
     )
@@ -95,7 +97,7 @@ export async function handleWelcome(interaction: ChatInputCommandInteraction): P
       "Earn: daily claims · burning cards · achievements · trade-ins · admin gifts. " +
       "Spend: packs · trade offers · `/cards gift` to friends. " +
       "Packs share one cooldown across tiers but each tier has its own **separate weekly cap** — " +
-      "hit the Legendary cap and you can still open Basics. Caps reset Monday 00:00 UTC.\n\n" +
+      `hit the ${tierLabel(shinySettings, "legendary")} cap and you can still open ${tierLabel(shinySettings, "basic")}s. Caps reset Monday 00:00 UTC.\n\n` +
 
       "**🔄 Trading**\n" +
       "`/cards trade user:@ offer:<card> want:<card>` — mix in shards with `offer_shards`/`want_shards`. " +

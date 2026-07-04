@@ -23,7 +23,7 @@ import { handleTrade, handleAccept, handleDecline, handleListTrades, handleGift,
 import { handleDaily, handleAchievementsCommand } from "./daily.js";
 import { ACHIEVEMENTS, getAchievement, getUnlockedKeys, getRecentUnlocks } from "../achievements.js";
 import { toAbsoluteImageUrl } from "../image-url.js";
-import { handlePack, handlePackStats } from "./pack.js";
+import { handlePack, handlePackStats, tierLabel } from "./pack.js";
 import { handleTradein } from "./tradein.js";
 import { handleWishlist } from "./wishlist.js";
 import { handleWelcome } from "./welcome.js";
@@ -927,7 +927,8 @@ export async function handleUserCommand(
           "`/cards burn name:<card> [amount] [all] [shiny:true]` — destroy duplicates for 💠 (shiny burns the ✨ pile at 2×)\n" +
           "`/cards shards [user]` — check 💠 balance\n" +
           "`/cards daily` — claim daily shards (streak bonus!)\n" +
-          "`/cards pack tier:<basic|premium|legendary>` — open a 5-card pack (💠 250 / 750 / 2,000)\n" +
+          "`/cards pack tier:<basic|premium|legendary>` — open a 5-card pack " +
+          `(${tierLabel(helpSettings, "basic")} 💠 250 / ${tierLabel(helpSettings, "premium")} 💠 750 / ${tierLabel(helpSettings, "legendary")} 💠 2,000)\n` +
           "`/cards packstats` — your costs, weekly caps, cooldown\n" +
           "`/cards tradein rarity:<r>` — burn 5 to roll 1 from the next tier\n" +
           "`/cards gift user:@Member amount:<n>` — send 💠 to a friend",

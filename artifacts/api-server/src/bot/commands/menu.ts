@@ -52,7 +52,7 @@ import {
   getNextRank,
   type Rarity,
 } from "../cards-data.js";
-import { PACK_TIER_META, PACK_TIERS, handlePack, handlePackStats, type PackTier, PACK_DEFAULTS } from "./pack.js";
+import { PACK_TIER_META, PACK_TIERS, handlePack, handlePackStats, type PackTier, PACK_DEFAULTS, tierLabel } from "./pack.js";
 import { checkAchievements, formatUnlockLine } from "../achievements.js";
 import { toAbsoluteImageUrl } from "../image-url.js";
 
@@ -380,7 +380,7 @@ async function buildPackScreen(guildId: string, userId: string): Promise<{
                  tier === "premium" ? settings.packPremiumCost :
                  settings.packLegendaryCost;
     const canAfford = currency.shards >= cost;
-    return `${meta.emoji} **${meta.label}** — 💠 ${cost.toLocaleString()}${canAfford ? "" : " *(need more shards)*"}`;
+    return `${meta.emoji} **${tierLabel(settings, tier)}** — 💠 ${cost.toLocaleString()}${canAfford ? "" : " *(need more shards)*"}`;
   });
 
   const embed = new EmbedBuilder()
@@ -392,9 +392,9 @@ async function buildPackScreen(guildId: string, userId: string): Promise<{
       "\n\n*Pick a tier below to open a pack.*",
     )
     .addFields(
-      { name: "🥉 Basic", value: "Common–Rare cards. Best value per shard.", inline: true },
-      { name: "🥈 Premium", value: "2× Rare+. No real dogs in here.", inline: true },
-      { name: "🥇 Legendary", value: "No commons. Stacked with guaranteed hits.", inline: true },
+      { name: `🥉 ${tierLabel(settings, "basic")}`, value: "Common–Rare cards. Best value per shard.", inline: true },
+      { name: `🥈 ${tierLabel(settings, "premium")}`, value: "2× Rare+. No real dogs in here.", inline: true },
+      { name: `🥇 ${tierLabel(settings, "legendary")}`, value: "No commons. Stacked with guaranteed hits.", inline: true },
     )
     .setFooter({ text: footerText("Packs") });
 
@@ -404,9 +404,9 @@ async function buildPackScreen(guildId: string, userId: string): Promise<{
 
   const components: ActionRowBuilder<MessageActionRowComponentBuilder>[] = [
     row(
-      btn(`🥉 Basic (${basicCost.toLocaleString()})`, "menu:pack:open:basic", ButtonStyle.Secondary, undefined, currency.shards < basicCost),
-      btn(`🥈 Premium (${premiumCost.toLocaleString()})`, "menu:pack:open:premium", ButtonStyle.Primary, undefined, currency.shards < premiumCost),
-      btn(`🥇 Legendary (${legendCost.toLocaleString()})`, "menu:pack:open:legendary", ButtonStyle.Success, undefined, currency.shards < legendCost),
+      btn(`🥉 ${tierLabel(settings, "basic")} (${basicCost.toLocaleString()})`, "menu:pack:open:basic", ButtonStyle.Secondary, undefined, currency.shards < basicCost),
+      btn(`🥈 ${tierLabel(settings, "premium")} (${premiumCost.toLocaleString()})`, "menu:pack:open:premium", ButtonStyle.Primary, undefined, currency.shards < premiumCost),
+      btn(`🥇 ${tierLabel(settings, "legendary")} (${legendCost.toLocaleString()})`, "menu:pack:open:legendary", ButtonStyle.Success, undefined, currency.shards < legendCost),
     ),
     row(
       btn("My Pack Stats", "menu:pack:stats", ButtonStyle.Secondary, "📊"),
@@ -874,7 +874,7 @@ export async function handleMenuCommand(interaction: ChatInputCommandInteraction
             await i.editReply({
               embeds: [
                 new EmbedBuilder()
-                  .setTitle(`🎁 Open ${PACK_TIER_META[tier].emoji} ${PACK_TIER_META[tier].label} Pack?`)
+                  .setTitle(`🎁 Open ${PACK_TIER_META[tier].emoji} ${tierLabel(settings2, tier)} Pack?`)
                   .setColor(PACK_COLOR)
                   .setDescription(
                     `Cost: 💠 **${cost.toLocaleString()}** shards\nBalance after: 💠 **${(cur2.shards - cost).toLocaleString()}**\n\n` +
@@ -901,7 +901,7 @@ export async function handleMenuCommand(interaction: ChatInputCommandInteraction
               const used = tier === "basic" ? cur3.packsBasicWeek : tier === "premium" ? cur3.packsPremiumWeek : cur3.packsLegendaryWeek;
               const cap = tier === "basic" ? settings3.packBasicWeeklyLimit : tier === "premium" ? settings3.packPremiumWeeklyLimit : settings3.packLegendaryWeeklyLimit;
               const capLabel = cap === 0 ? "∞" : cap.toString();
-              return `${meta.emoji} **${meta.label}** — 💠 ${cost.toLocaleString()} · **${used}/${capLabel}** this week`;
+              return `${meta.emoji} **${tierLabel(settings3, tier)}** — 💠 ${cost.toLocaleString()} · **${used}/${capLabel}** this week`;
             };
             const coolMs = settings3.packCooldownSeconds * 1000;
             const sinceMs = cur3.lastPackOpenedAt ? Date.now() - cur3.lastPackOpenedAt.getTime() : Infinity;

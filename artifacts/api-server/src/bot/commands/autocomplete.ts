@@ -1,5 +1,6 @@
 import type { AutocompleteInteraction } from "discord.js";
 import { getAllCards, listSetsV2, getUserCollection, getUserWishlist, listCustomRarities, getRarityContext, getOrCreateGuildSettings, getRarityDisplayOverrides, getDisplayRarities, getDistinctCardTypes, listCustomPacks } from "../db.js";
+import { tierLabel } from "./pack.js";
 import { db, cardDisplayOverridesTable } from "@workspace/db";
 import { isNotNull } from "drizzle-orm";
 import { RARITY_EMOJI, rarityEmoji, rarityLabel, type Rarity } from "../cards-data.js";
@@ -301,9 +302,9 @@ export async function handleAutocomplete(interaction: AutocompleteInteraction): 
     if (effectiveCmd === "pack" && focused.name === "tier" && interaction.guild) {
       const s = await getOrCreateGuildSettings(interaction.guild.id);
       const builtIns = [
-        { name: `🥉 Basic — 💠 ${s.packBasicCost.toLocaleString()} (standard rates)`.slice(0, 100), value: "basic" },
-        { name: `🥈 Premium — 💠 ${s.packPremiumCost.toLocaleString()} (better rates)`.slice(0, 100), value: "premium" },
-        { name: `🥇 Legendary — 💠 ${s.packLegendaryCost.toLocaleString()} (no commons)`.slice(0, 100), value: "legendary" },
+        { name: `🥉 ${tierLabel(s, "basic")} — 💠 ${s.packBasicCost.toLocaleString()} (standard rates)`.slice(0, 100), value: "basic" },
+        { name: `🥈 ${tierLabel(s, "premium")} — 💠 ${s.packPremiumCost.toLocaleString()} (better rates)`.slice(0, 100), value: "premium" },
+        { name: `🥇 ${tierLabel(s, "legendary")} — 💠 ${s.packLegendaryCost.toLocaleString()} (no commons)`.slice(0, 100), value: "legendary" },
       ];
       const customPacks = await listCustomPacks(interaction.guild.id);
       const customOptions = customPacks.map(p => ({

@@ -9,7 +9,7 @@ import { getOrCreateGuildSettings, updateGuildSettings, isAdmin, getActiveSet, g
 import { scheduleNextSpawn, clearSpawnTimer, scheduleNextSpawnSecondary, clearSpawnTimerSecondary } from "../spawn-manager.js";
 import { RARITY_WEIGHTS, RARITY_LABELS, RARITY_EMOJI, rarityLabel, rarityEmoji, getRarityOrder, type Rarity, type RarityDisplayMap } from "../cards-data.js";
 import type { CustomPack, GuildSettings } from "@workspace/db";
-import { PACK_TIERS, PACK_TIER_META, PACK_DEFAULTS, resolveTierConfig, type PackTier } from "./pack.js";
+import { PACK_TIERS, PACK_TIER_META, PACK_DEFAULTS, resolveTierConfig, tierLabel, type PackTier } from "./pack.js";
 
 // Rarity display order defaults to the canonical DB enum key order.
 // Admins can reorder it per-guild via `/rarity` → "Order". Use getRarityOrder(settings)
@@ -120,6 +120,13 @@ export async function handleConfigButton(interaction: ButtonInteraction): Promis
       await interaction.showModal(buildCustomPackModal(parts[4]));
       return;
     }
+  }
+
+  if (action === "packs" && arg === "names" && parts[3] === "edit") {
+    // Rename modal — no DB call before showModal; auth check runs in submit handler.
+    const settings = await getOrCreateGuildSettings(guildId);
+    await interaction.showModal(buildPacksNamesModal(settings));
+    return;
   }
 
   if (action === "rates" && arg === "custom") {
@@ -238,6 +245,11 @@ export async function handleConfigButton(interaction: ButtonInteraction): Promis
       await interaction.editReply({
         embeds: [buildPacksLimitsEmbed(settings)],
         components: buildPacksLimitsComponents(settings),
+      });
+    } else if (arg === "names") {
+      await interaction.editReply({
+        embeds: [buildPacksNamesEmbed(settings)],
+        components: buildPacksNamesComponents(),
       });
     } else if (arg === "back") {
       await interaction.editReply({
@@ -800,7 +812,7 @@ function formatLimit(n: number): string {
 function tierSummaryLine(s: GuildSettings, tier: PackTier): string {
   const cfg = resolveTierConfig(s, tier);
   const meta = PACK_TIER_META[tier];
-  return `${meta.emoji} **${meta.label}** — 💠 ${cfg.cost.toLocaleString()} · ${cfg.size} cards · ${formatLimit(cfg.weeklyLimit)}`;
+  return `${meta.emoji} **${tierLabel(s, tier)}** — 💠 ${cfg.cost.toLocaleString()} · ${cfg.size} cards · ${formatLimit(cfg.weeklyLimit)}`;
 }
 
 export function buildPacksEmbed(s: GuildSettings): EmbedBuilder {
@@ -822,7 +834,7 @@ export function buildPacksEmbed(s: GuildSettings): EmbedBuilder {
       {
         name: "Tips",
         value:
-          `**Defaults:** Basic 💠 ${PACK_DEFAULTS.basic.cost} · Premium 💠 ${PACK_DEFAULTS.premium.cost} · Legendary 💠 ${PACK_DEFAULTS.legendary.cost}\n` +
+          `**Defaults:** ${tierLabel(s, "basic")} 💠 ${PACK_DEFAULTS.basic.cost} · ${tierLabel(s, "premium")} 💠 ${PACK_DEFAULTS.premium.cost} · ${tierLabel(s, "legendary")} 💠 ${PACK_DEFAULTS.legendary.cost}\n` +
           "Click **📐 Cards/Pack** or **📅 Weekly Limits** for more options.",
         inline: false,
       },
@@ -847,7 +859,7 @@ export function buildPacksComponents(s: GuildSettings) {
     }));
     return new StringSelectMenuBuilder()
       .setCustomId(`packs_cost_${tier}`)
-      .setPlaceholder(`${meta.emoji} ${meta.label} cost`)
+      .setPlaceholder(`${meta.emoji} ${tierLabel(s, tier)} cost`)
       .addOptions(opts);
   };
 
@@ -855,6 +867,7 @@ export function buildPacksComponents(s: GuildSettings) {
     new ButtonBuilder().setCustomId("config:packs:sizes").setLabel("📐 Cards / Pack").setStyle(ButtonStyle.Secondary),
     new ButtonBuilder().setCustomId("config:packs:limits").setLabel("📅 Weekly Limits").setStyle(ButtonStyle.Secondary),
     new ButtonBuilder().setCustomId("config:packs:custom").setLabel("🎁 Custom Packs").setStyle(ButtonStyle.Primary),
+    new ButtonBuilder().setCustomId("config:packs:names").setLabel("🏷️ Rename Tiers").setStyle(ButtonStyle.Secondary),
   );
 
   return [
@@ -889,7 +902,7 @@ export function buildPacksSizesComponents(s: GuildSettings) {
     }));
     return new StringSelectMenuBuilder()
       .setCustomId(`packs_size_${tier}`)
-      .setPlaceholder(`${meta.emoji} ${meta.label} size`)
+      .setPlaceholder(`${meta.emoji} ${tierLabel(s, tier)} size`)
       .addOptions(opts);
   };
   const back = new ActionRowBuilder<ButtonBuilder>().addComponents(
@@ -925,7 +938,7 @@ export function buildPacksLimitsComponents(s: GuildSettings) {
     }));
     return new StringSelectMenuBuilder()
       .setCustomId(`packs_limit_${tier}`)
-      .setPlaceholder(`${meta.emoji} ${meta.label} weekly cap`)
+      .setPlaceholder(`${meta.emoji} ${tierLabel(s, tier)} weekly cap`)
       .addOptions(opts);
   };
   const back = new ActionRowBuilder<ButtonBuilder>().addComponents(
@@ -937,6 +950,98 @@ export function buildPacksLimitsComponents(s: GuildSettings) {
     new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(limitSelect("legendary", s.packLegendaryWeeklyLimit)),
     back,
   ];
+}
+
+// ── Rename built-in pack tiers sub-panel ─────────────────────────────────────
+
+function buildPacksNamesEmbed(s: GuildSettings): EmbedBuilder {
+  return new EmbedBuilder()
+    .setTitle("🏷️ Rename Pack Tiers")
+    .setColor(0x57f287)
+    .setDescription(
+      "Change the visible names of the three built-in pack tiers. " +
+      "Internal values stay the same, so `/pack tier:basic` still works even if you rename it to **Recruit**.\n\n" +
+      "Leave a field blank to reset that tier to its default name.",
+    )
+    .addFields({
+      name: "Current display names",
+      value: PACK_TIERS.map(t => {
+        const meta = PACK_TIER_META[t];
+        const name = tierLabel(s, t);
+        const isDefault = name === meta.label;
+        return `${meta.emoji} **${name}**${isDefault ? " *(default)*" : ""}`;
+      }).join("\n"),
+    });
+}
+
+function buildPacksNamesComponents(): ActionRowBuilder<ButtonBuilder>[] {
+  return [
+    new ActionRowBuilder<ButtonBuilder>().addComponents(
+      new ButtonBuilder().setCustomId("config:packs:names:edit").setLabel("✏️ Edit Names").setStyle(ButtonStyle.Primary),
+      new ButtonBuilder().setCustomId("config:packs:back").setLabel("← Back to Packs").setStyle(ButtonStyle.Secondary),
+    ),
+  ];
+}
+
+function buildPacksNamesModal(s: GuildSettings): ModalBuilder {
+  const input = (tier: PackTier, label: string) => new ActionRowBuilder<TextInputBuilder>().addComponents(
+    new TextInputBuilder()
+      .setCustomId(`name_${tier}`)
+      .setLabel(label)
+      .setStyle(TextInputStyle.Short)
+      .setRequired(false)
+      .setMaxLength(30)
+      .setValue(tierLabel(s, tier))
+      // Placeholder intentionally shows the immutable default name so clearing
+      // the field reverts to the original label.
+      .setPlaceholder(PACK_TIER_META[tier].label),
+  );
+  return new ModalBuilder()
+    .setCustomId("packs_names_modal")
+    .setTitle("Rename Pack Tiers")
+    .addComponents(
+      input("basic", `🥉 ${tierLabel(s, "basic")} display name`),
+      input("premium", `🥈 ${tierLabel(s, "premium")} display name`),
+      input("legendary", `🥇 ${tierLabel(s, "legendary")} display name`),
+    );
+}
+
+export async function handlePacksNamesModal(interaction: ModalSubmitInteraction): Promise<void> {
+  if (!interaction.guild) return;
+  const guildId = interaction.guild.id;
+  await interaction.deferUpdate();
+
+  // Authoritative admin check after ACK — consistent with other config modals.
+  const perms = interaction.memberPermissions;
+  const authorized =
+    interaction.guild.ownerId === interaction.user.id ||
+    perms?.has("Administrator") ||
+    (await isAdmin(guildId, interaction.user.id));
+  if (!authorized) {
+    await interaction.followUp({ content: "❌ Only admins can rename pack tiers.", flags: MessageFlags.Ephemeral });
+    return;
+  }
+
+  const normalize = (raw: string): string | null => {
+    const v = raw.trim();
+    return v.length > 0 ? v.slice(0, 30) : null;
+  };
+
+  const patch: Partial<GuildSettings> = {};
+  const basicName = normalize(interaction.fields.getTextInputValue("name_basic"));
+  const premiumName = normalize(interaction.fields.getTextInputValue("name_premium"));
+  const legendaryName = normalize(interaction.fields.getTextInputValue("name_legendary"));
+  // Blank = reset to default (NULL). Non-blank = use custom name.
+  patch.packBasicName = basicName;
+  patch.packPremiumName = premiumName;
+  patch.packLegendaryName = legendaryName;
+
+  await updateGuildSettings(guildId, patch);
+  const settings = await getOrCreateGuildSettings(guildId);
+  await interaction.editReply({
+    embeds: [buildPacksNamesEmbed(settings)],
+    components: buildPacksNamesComponents(),
+  });
 }
 
 // ── Custom Packs sub-panel ────────────────────────────────────────────────────

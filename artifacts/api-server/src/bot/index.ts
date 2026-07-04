@@ -5,7 +5,7 @@ import { handleEditCardSelect, handleEditCardModal } from "./commands/edit-card.
 import { handleEditUserInteraction, handleEditUserModal } from "./commands/edit-user.js";
 import { handleTradeButton } from "./commands/trading.js";
 import { initSpawnManager, initAllGuilds, handleCatchAttempt, handleClaimButtonClick, scheduleNextSpawn, buildPostDecisionEmbed, buildDisabledDecisionRow, markDecisionMade } from "./spawn-manager.js";
-import { handleConfigButton, handleConfigSelect, handleRatesSelect, handlePacksSelect, handleRatesCustomModal, handleCustomPackModal } from "./commands/config-panel.js";
+import { handleConfigButton, handleConfigSelect, handleRatesSelect, handlePacksSelect, handleRatesCustomModal, handleCustomPackModal, handlePacksNamesModal } from "./commands/config-panel.js";
 import { handleSetsHubButton, handleSetsHubSelect, handleSetsHubModal } from "./commands/sets-panel.js";
 import { handleSetAdminHubButton, handleSetAdminHubSelect, handleSetAdminHubWeightSelect, handleSetAdminHubModal } from "./commands/set-admin-hub.js";
 import { handleRarityEditButton, handleRarityEditSelect, handleRarityEditModal, handleRarityHubButton, handleRarityHubSelect, handleRarityHubModal } from "./commands/rarity-admin.js";
@@ -215,6 +215,8 @@ export async function startBot() {
           await handleRarityHubModal(interaction);
         } else if (interaction.customId.startsWith("packs_custom_modal:")) {
           await handleCustomPackModal(interaction);
+        } else if (interaction.customId === "packs_names_modal") {
+          await handlePacksNamesModal(interaction);
         }
         return;
       }

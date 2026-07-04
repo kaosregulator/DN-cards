@@ -213,6 +213,10 @@ export const guildSettingsTable = pgTable("guild_settings", {
   packLegendaryCost: integer("pack_legendary_cost").notNull().default(2000),
   packLegendarySize: integer("pack_legendary_size").notNull().default(5),
   packLegendaryWeeklyLimit: integer("pack_legendary_weekly_limit").notNull().default(5),
+  // Per-guild display names for built-in pack tiers. Null/empty = use defaults.
+  packBasicName: text("pack_basic_name"),
+  packPremiumName: text("pack_premium_name"),
+  packLegendaryName: text("pack_legendary_name"),
   // ── Active set (Sets-driven spawn pool) ────────────────────────────────────
   // The single set whose cards are eligible for random autodrops in this
   // guild. NULL = no set selected → **nothing spawns** (admins must pick a

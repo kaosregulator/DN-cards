@@ -41,6 +41,19 @@ export const PACK_TIER_META: Record<PackTier, {
   },
 };
 
+// Per-guild display-name override. The internal tier keys (basic/premium/legendary)
+// never change — only the visible label is configurable. Empty/null falls back to default.
+export function tierLabel(s: GuildSettings | null, tier: PackTier): string {
+  if (!s) return PACK_TIER_META[tier].label;
+  if (tier === "basic") return s.packBasicName || PACK_TIER_META[tier].label;
+  if (tier === "premium") return s.packPremiumName || PACK_TIER_META[tier].label;
+  return s.packLegendaryName || PACK_TIER_META[tier].label;
+}
+
+export function tierMeta(s: GuildSettings | null, tier: PackTier) {
+  return { ...PACK_TIER_META[tier], label: tierLabel(s, tier) };
+}
+
 // Per-tier rarity distribution. Sums to 1.0.
 // Mythic appears only in the Legendary tier (0.5%) by default — it's the new
 // top tier, so it's intentionally rarer than Legendary itself.
@@ -202,11 +215,11 @@ async function buildSummaryEmbed(
   tier: PackTier, cards: Card[], shinies: boolean[], spent: number, balanceAfter: number,
   guildId: string | null = null, userId: string | null = null,
 ): Promise<EmbedBuilder> {
-  const meta = PACK_TIER_META[tier];
+  const settings = guildId ? await getOrCreateGuildSettings(guildId) : null;
+  const meta = tierMeta(settings, tier);
   const shinyCount = shinies.filter(Boolean).length;
   const last = cards[cards.length - 1]!;
-  const [settings, displayMap, ctx] = await Promise.all([
-    guildId ? getOrCreateGuildSettings(guildId) : Promise.resolve(null),
+  const [displayMap, ctx] = await Promise.all([
     guildId ? getRarityDisplayOverrides(guildId) : Promise.resolve(null),
     guildId ? getRarityContext(guildId) : Promise.resolve(null),
   ]);
@@ -348,7 +361,8 @@ async function tryClaimPack(
 
   // Claim failed — figure out why. Re-read row to give the user a useful message.
   const current = await getOrCreateCurrency(guildId, userId);
-  const meta = PACK_TIER_META[tier];
+  const settings = await getOrCreateGuildSettings(guildId);
+  const meta = tierMeta(settings, tier);
 
   // Cooldown?
   if (cooldownSec > 0 && current.lastPackOpenedAt) {
@@ -643,8 +657,10 @@ export async function handlePack(interaction: ChatInputCommandInteraction): Prom
     return;
   } else if (!PACK_TIERS.includes(tierRaw as PackTier)) {
     // Provided but not a known built-in or valid custom — reject explicitly.
+    const settings = await getOrCreateGuildSettings(guildId);
+    const names = PACK_TIERS.map(t => tierLabel(settings, t));
     await interaction.editReply(
-      `❌ **"${tierRaw}"** is not a recognised pack tier. Use \`/pack\` autocomplete to pick **Basic**, **Premium**, **Legendary**, or a custom pack.`,
+      `❌ **"${tierRaw}"** is not a recognised pack tier. Use \`/pack\` autocomplete to pick **${names.join("**, **")}**, or a custom pack.`,
     );
     return;
   }
@@ -738,7 +754,7 @@ export async function handlePackStats(interaction: ChatInputCommandInteraction):
     const cfg = resolveTierConfig(settings, tier);
     const used = readWeekCounter(cur, tier);
     const cap = cfg.weeklyLimit === 0 ? "∞" : cfg.weeklyLimit.toLocaleString();
-    const meta = PACK_TIER_META[tier];
+    const meta = tierMeta(settings, tier);
     return `${meta.emoji} **${meta.label}** — 💠 ${cfg.cost.toLocaleString()} · ` +
       `${cfg.size} cards · used **${used}/${cap}** this week`;
   };
