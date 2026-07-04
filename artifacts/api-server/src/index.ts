@@ -153,19 +153,9 @@ async function runBootMigrations() {
     const client = await (await import("@workspace/db")).pool.connect();
     try {
       await client.query("BEGIN");
-      // Set correct display names for built-in rarity tiers on the home guild.
-      // Uses UPSERT so reruns are safe and admin tweaks via /rarity edit are
-      // immediately visible (we only write these three known-correct values).
-      await client.query(`
-        INSERT INTO rarity_display_overrides(guild_id, rarity, display_name, updated_at)
-        VALUES
-          ('1363917781355069761', 'rare',      'LE Limited Edition', now()),
-          ('1363917781355069761', 'epic',      'Exotic',             now()),
-          ('1363917781355069761', 'legendary', 'Gold Legendary',     now())
-        ON CONFLICT(guild_id, rarity) DO UPDATE
-          SET display_name = EXCLUDED.display_name,
-              updated_at   = EXCLUDED.updated_at;
-      `);
+      // NOTE: Hardcoded rarity display overrides were removed from the boot migration.
+      // Rarity labels are now fully controlled by admins via `/rarity edit` in Discord.
+      // Forcing them here on every restart overwrote any server-specific custom labels.
       await client.query("ALTER TABLE cards DROP CONSTRAINT IF EXISTS cards_name_unique;");
       // NOTE: Hardcoded card INSERT statements were removed from this boot migration.
       // Cards are managed through Discord commands (addcard, editcard, deletecard).
