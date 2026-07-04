@@ -5,7 +5,7 @@ import { handleEditCardSelect, handleEditCardModal } from "./commands/edit-card.
 import { handleEditUserInteraction, handleEditUserModal } from "./commands/edit-user.js";
 import { handleTradeButton } from "./commands/trading.js";
 import { initSpawnManager, initAllGuilds, handleCatchAttempt, handleClaimButtonClick, scheduleNextSpawn, buildPostDecisionEmbed, buildDisabledDecisionRow, markDecisionMade } from "./spawn-manager.js";
-import { handleConfigButton, handleConfigSelect, handleRatesSelect, handlePacksSelect, handleRatesCustomModal, handleCustomPackModal, handlePacksNamesModal } from "./commands/config-panel.js";
+import { handleConfigButton, handleConfigSelect, handleRatesSelect, handlePacksSelect, handleRatesCustomModal, handleCustomPackModal, handlePacksNamesModal, handleCustomPackTypesSelect } from "./commands/config-panel.js";
 import { handleSetsHubButton, handleSetsHubSelect, handleSetsHubModal } from "./commands/sets-panel.js";
 import { handleSetAdminHubButton, handleSetAdminHubSelect, handleSetAdminHubWeightSelect, handleSetAdminHubModal } from "./commands/set-admin-hub.js";
 import { handleRarityEditButton, handleRarityEditSelect, handleRarityEditModal, handleRarityHubButton, handleRarityHubSelect, handleRarityHubModal } from "./commands/rarity-admin.js";
@@ -152,7 +152,9 @@ export async function startBot() {
 
       // ── String select menus (config panel + setup panel) ──────────────────
       if (interaction.isStringSelectMenu()) {
-        if (interaction.customId.startsWith("config_")) {
+        if (interaction.customId.startsWith("custompack:types:")) {
+          await handleCustomPackTypesSelect(interaction);
+        } else if (interaction.customId.startsWith("config_")) {
           await handleConfigSelect(interaction);
         } else if (interaction.customId.startsWith("rates_")) {
           await handleRatesSelect(interaction);

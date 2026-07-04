@@ -5,7 +5,7 @@ import {
   type ChatInputCommandInteraction, type ButtonInteraction,
   type StringSelectMenuInteraction, type ModalSubmitInteraction,
 } from "discord.js";
-import { getOrCreateGuildSettings, updateGuildSettings, isAdmin, getActiveSet, getActiveSetSecondary, getRarityDisplayOverrides, createCustomPack, listCustomPacks, getCustomPack, updateCustomPack, deleteCustomPack } from "../db.js";
+import { getOrCreateGuildSettings, updateGuildSettings, isAdmin, getActiveSet, getActiveSetSecondary, getRarityDisplayOverrides, createCustomPack, listCustomPacks, getCustomPack, updateCustomPack, deleteCustomPack, getDistinctCardTypes } from "../db.js";
 import { scheduleNextSpawn, clearSpawnTimer, scheduleNextSpawnSecondary, clearSpawnTimerSecondary } from "../spawn-manager.js";
 import { RARITY_WEIGHTS, RARITY_LABELS, RARITY_EMOJI, rarityLabel, rarityEmoji, getRarityOrder, type Rarity, type RarityDisplayMap } from "../cards-data.js";
 import type { CustomPack, GuildSettings } from "@workspace/db";
@@ -230,8 +230,31 @@ export async function handleConfigButton(interaction: ButtonInteraction): Promis
         const target = await getCustomPack(packId);
         if (target?.guildId === guildId) await deleteCustomPack(packId);
       }
+      if (subAction === "types" && parts[4]) {
+        const packId = parseInt(parts[4]!, 10);
+        const target = await getCustomPack(packId);
+        if (!target || target.guildId !== guildId) {
+          await interaction.followUp({ content: "❌ Pack not found.", flags: MessageFlags.Ephemeral });
+          return;
+        }
+        const allTypes = await getDistinctCardTypes();
+        if (allTypes.length === 0) {
+          await interaction.editReply({
+            content: `No card types exist yet in this server. Add a card with \`/addcard\` first, then you can filter **${target.name}** by type.`,
+            embeds: [],
+            components: buildCustomPacksComponents(await listCustomPacks(guildId, true)),
+          });
+          return;
+        }
+        await interaction.editReply({
+          content: `Pick the card types for **${target.name}**. Selected types are saved automatically; pick **All** to clear the filter.`,
+          embeds: [],
+          components: buildCustomPackTypesComponents(target, allTypes),
+        });
+        return;
+      }
       const packs = await listCustomPacks(guildId, true);
-      await interaction.editReply({ embeds: [buildCustomPacksEmbed(packs)], components: buildCustomPacksComponents(packs) });
+      await interaction.editReply({ content: null, embeds: [buildCustomPacksEmbed(packs)], components: buildCustomPacksComponents(packs) });
       return;
     }
 
@@ -1098,6 +1121,10 @@ function buildCustomPacksComponents(packs: CustomPack[]): ActionRowBuilder<Butto
           .setLabel(`✏️ ${pack.name}`.slice(0, 80))
           .setStyle(ButtonStyle.Primary),
         new ButtonBuilder()
+          .setCustomId(`config:packs:custom:types:${pack.id}`)
+          .setLabel("📋 Types")
+          .setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder()
           .setCustomId(`config:packs:custom:delete:${pack.id}`)
           .setLabel("🗑️ Delete")
           .setStyle(ButtonStyle.Danger),
@@ -1160,10 +1187,65 @@ function buildCustomPackModal(packIdStr?: string): ModalBuilder {
         .setStyle(TextInputStyle.Short)
         .setRequired(false)
         .setMaxLength(200)
-        .setPlaceholder("e.g. tank, aircraft, nuke"),
+        .setPlaceholder("e.g. tank, aircraft, nuke — or use 📋 Types button after creating"),
     ),
   );
   return modal;
+}
+
+function buildCustomPackTypesComponents(pack: CustomPack, allTypes: string[]): ActionRowBuilder<ButtonBuilder | StringSelectMenuBuilder>[] {
+  const selected = new Set(pack.cardTypes.map(t => t.toLowerCase().trim()));
+  const options = allTypes.map(type => ({
+    label: type[0]!.toUpperCase() + type.slice(1),
+    value: type,
+    default: selected.has(type.toLowerCase()),
+  }));
+  // Discord select menus support up to 25 options; cap just in case.
+  const capped = options.slice(0, 25);
+  const rows: ActionRowBuilder<ButtonBuilder | StringSelectMenuBuilder>[] = [
+    new ActionRowBuilder<ButtonBuilder | StringSelectMenuBuilder>().addComponents(
+      new StringSelectMenuBuilder()
+        .setCustomId(`custompack:types:${pack.id}`)
+        .setPlaceholder("Pick card types (multi-select)")
+        .setMinValues(0)
+        .setMaxValues(Math.max(capped.length, 1))
+        .addOptions(capped),
+    ),
+    new ActionRowBuilder<ButtonBuilder | StringSelectMenuBuilder>().addComponents(
+      new ButtonBuilder()
+        .setCustomId("config:packs:custom:back")
+        .setLabel("← Back to Custom Packs")
+        .setStyle(ButtonStyle.Secondary),
+    ),
+  ];
+  return rows;
+}
+
+export async function handleCustomPackTypesSelect(interaction: StringSelectMenuInteraction): Promise<void> {
+  if (!interaction.guild) return;
+  const guildId = interaction.guild.id;
+  await interaction.deferUpdate();
+  const ok = await ensureAdmin(interaction);
+  if (!ok) {
+    await interaction.followUp({ content: "❌ Admins only.", flags: MessageFlags.Ephemeral });
+    return;
+  }
+
+  const parts = interaction.customId.split(":");
+  const packId = parseInt(parts[2]!, 10);
+  const target = await getCustomPack(packId);
+  if (!target || target.guildId !== guildId) {
+    await interaction.followUp({ content: "❌ Pack not found.", flags: MessageFlags.Ephemeral });
+    return;
+  }
+
+  await updateCustomPack(packId, { cardTypes: interaction.values });
+  const packs = await listCustomPacks(guildId, true);
+  await interaction.editReply({
+    content: `✅ Updated types for **${target.name}**: ${interaction.values.length > 0 ? interaction.values.join(", ") : "*All*"}.`,
+    embeds: [buildCustomPacksEmbed(packs)],
+    components: buildCustomPacksComponents(packs),
+  });
 }
 
 // Exported so bot/index.ts can wire the modal route.
