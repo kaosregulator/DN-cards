@@ -812,7 +812,7 @@ export async function updateCard(cardId: number, values: Partial<{
   name: string; description: string; rarity: string; cardType: string;
   dropWeight: number; worthValue: number; burnValue: number;
   isLimitedEdition: boolean; isEventExclusive: boolean; isArchived: boolean; inPacks: boolean;
-  maxCopies: number | null; imageUrl: string | null; flavor: string | null; droppable: boolean;
+  maxCopies: number | null; totalMinted: number; imageUrl: string | null; flavor: string | null; droppable: boolean;
 }>) {
   const [updated] = await db.update(cardsTable).set(values as any).where(eq(cardsTable.id, cardId)).returning();
   invalidateCardCache();

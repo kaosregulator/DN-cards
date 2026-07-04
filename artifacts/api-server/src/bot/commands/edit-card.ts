@@ -102,9 +102,12 @@ async function buildPanel(cardId: number, guildId?: string | null): Promise<{ em
       { label: "Type", value: "type", emoji: "🎯", description: `Currently ${card.cardType}` },
       { label: "Worth value", value: "worthValue", emoji: "💠", description: `Currently ${card.worthValue.toLocaleString()}` },
       { label: "Burn value", value: "burnValue", emoji: "🔥", description: `Currently ${card.burnValue.toLocaleString()}` },
+      { label: `Max copies ${card.maxCopies ?? "∞"}`, value: "maxCopies", emoji: "🔢", description: card.isLimitedEdition ? `Limited (${card.totalMinted}/${card.maxCopies ?? "?"})` : "Not limited" },
+      { label: `Total minted ${card.totalMinted.toLocaleString()}`, value: "totalMinted", emoji: "🏭", description: "How many copies currently exist" },
       { label: card.inPacks ? "Toggle: remove from packs" : "Toggle: add to packs", value: "toggle:inPacks", emoji: "📦" },
       { label: card.droppable ? "Toggle: make undroppable" : "Toggle: make droppable", value: "toggle:droppable", emoji: "🎁" },
       { label: card.isArchived ? "Toggle: un-archive" : "Toggle: archive", value: "toggle:isArchived", emoji: "🗄️" },
+      { label: card.isLimitedEdition ? "Toggle: not limited" : "Toggle: limited", value: "toggle:isLimitedEdition", emoji: "💎" },
     );
 
   return { embeds: [embed], components: [new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(select)] };
@@ -138,20 +141,46 @@ export async function renderPanel(
 export async function handleEditCardCommand(interaction: ChatInputCommandInteraction): Promise<void> {
   const name = interaction.options.getString("name", true).trim();
   const image = interaction.options.getAttachment("image");
+  const maxCopiesOpt = interaction.options.getInteger("max_copies");
+  const totalMintedOpt = interaction.options.getInteger("total_minted");
+  const limitedOpt = interaction.options.getBoolean("limited");
   const card = await getCardByName(name);
   if (!card) {
     await interaction.editReply(`❌ No card named **${name}**. Use autocomplete to pick one.`);
     return;
   }
+
+  const directPatch: Parameters<typeof updateCard>[1] = {};
   if (image) {
-    const permanentUrl = await persistBotImage(image.url, image.contentType ?? undefined);
-    await updateCard(card.id, { imageUrl: permanentUrl });
+    directPatch.imageUrl = await persistBotImage(image.url, image.contentType ?? undefined);
   }
+  if (maxCopiesOpt !== null) {
+    directPatch.maxCopies = maxCopiesOpt === 0 ? null : maxCopiesOpt;
+    if (maxCopiesOpt > 0) directPatch.isLimitedEdition = true;
+  }
+  if (totalMintedOpt !== null) {
+    directPatch.totalMinted = totalMintedOpt;
+  }
+  if (limitedOpt !== null) {
+    directPatch.isLimitedEdition = limitedOpt;
+    // Match /addcard: turning limited on with no cap defaults to 50.
+    if (limitedOpt && maxCopiesOpt === null && card.maxCopies === null) {
+      directPatch.maxCopies = 50;
+    }
+  }
+
+  const directFields = Object.keys(directPatch).length;
+  if (directFields > 0) {
+    await updateCard(card.id, directPatch);
+  }
+
   await renderPanel(
     interaction,
     card.id,
     false,
-    image ? `✅ Updated **${card.name}** image from your upload.` : undefined,
+    directFields > 0 || image
+      ? `✅ Updated **${card.name}**.`
+      : undefined,
   );
 }
 
@@ -167,11 +196,16 @@ export async function handleEditCardSelect(interaction: StringSelectMenuInteract
     // Boolean toggle: "toggle:<field>"
     if (value.startsWith("toggle:")) {
       await interaction.deferUpdate();
-      const field = value.slice("toggle:".length) as "inPacks" | "droppable" | "isArchived";
+      const field = value.slice("toggle:".length) as "inPacks" | "droppable" | "isArchived" | "isLimitedEdition";
       const card = await getCardById(cardId);
       if (!card) { await interaction.editReply({ content: "❌ Card not found.", embeds: [], components: [] }); return; }
       const cur = (card as unknown as Record<string, boolean>)[field];
-      await updateCard(card.id, { [field]: !cur } as Parameters<typeof updateCard>[1]);
+      const patch: Parameters<typeof updateCard>[1] = { [field]: !cur };
+      // Turning on limited edition without a cap is confusing; default to 50 like /addcard.
+      if (field === "isLimitedEdition" && !cur && card.maxCopies === null) {
+        patch.maxCopies = 50;
+      }
+      await updateCard(card.id, patch);
       await renderPanel(interaction, cardId, false);
       return;
     }
@@ -251,6 +285,8 @@ const TEXT_FIELDS: Record<string, { title: string; label: string; style: TextInp
   worthValue:  { title: "Edit Worth Value", label: "Worth value in DN Shards",                     style: TextInputStyle.Short,     placeholder: "Example: 2500" },
   burnValue:   { title: "Edit Burn Value",  label: "Burn value in DN Shards",                      style: TextInputStyle.Short,     placeholder: "Example: 1250" },
   type:        { title: "Edit Card Type",   label: "Type/tag (e.g. tank, aircraft, nuke)", style: TextInputStyle.Short,     max: 40, placeholder: "e.g. tank, aircraft, nuke" },
+  maxCopies:   { title: "Edit Max Copies",  label: "Max copies for limited edition (0 = unlimited)", style: TextInputStyle.Short,     placeholder: "Example: 50" },
+  totalMinted: { title: "Edit Total Minted", label: "Current copies in existence (manual override)", style: TextInputStyle.Short,     placeholder: "Example: 12" },
 };
 
 async function openFieldModal(interaction: StringSelectMenuInteraction, cardId: number, field: string): Promise<void> {
@@ -299,6 +335,25 @@ export async function handleEditCardModal(interaction: ModalSubmitInteraction): 
         return;
       }
       patch[field] = value;
+      break;
+    }
+    case "maxCopies": {
+      const value = Number(raw.replace(/,/g, ""));
+      if (!Number.isInteger(value) || value < 0) {
+        await interaction.reply({ content: "❌ Enter a whole number, 0 or higher. Use 0 to remove the copy limit.", flags: MessageFlags.Ephemeral });
+        return;
+      }
+      patch.maxCopies = value === 0 ? null : value;
+      if (value > 0) patch.isLimitedEdition = true;
+      break;
+    }
+    case "totalMinted": {
+      const value = Number(raw.replace(/,/g, ""));
+      if (!Number.isInteger(value) || value < 0) {
+        await interaction.reply({ content: "❌ Enter a whole number of copies, 0 or higher.", flags: MessageFlags.Ephemeral });
+        return;
+      }
+      patch.totalMinted = value;
       break;
     }
     case "type":

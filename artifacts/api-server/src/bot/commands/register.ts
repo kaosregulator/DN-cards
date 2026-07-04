@@ -255,7 +255,11 @@ function buildLegacyCommands() {
 
     adminCmd("editcard", "(Admin) Edit a card — optionally upload a replacement image/GIF", s => s
       .addStringOption(o => o.setName("name").setDescription("Card to edit").setRequired(true).setAutocomplete(true))
-      .addAttachmentOption(o => o.setName("image").setDescription("Optional replacement image/GIF upload"))),
+      .addAttachmentOption(o => o.setName("image").setDescription("Optional replacement image/GIF upload"))
+      .addIntegerOption(o => o.setName("max_copies").setDescription("Max copies for a limited edition card (set 0 or blank to remove limit)").setMinValue(0))
+      .addIntegerOption(o => o.setName("total_minted").setDescription("Current number of copies that exist (careful: manual override)").setMinValue(0))
+      .addBooleanOption(o => o.setName("limited").setDescription("Mark this card as limited edition (enforces max_copies cap)"))),
+
 
     // ── /rarity — hub command: display names, economy overrides, custom tiers, card assignments
     adminCmd("rarity", "(Admin) Edit built-in rarity names, colors, spawn %, worth, and burn", s => s),
