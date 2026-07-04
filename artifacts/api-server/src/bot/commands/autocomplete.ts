@@ -120,6 +120,13 @@ export async function handleAutocomplete(interaction: AutocompleteInteraction): 
   const cmd = interaction.commandName;
   const query = (focused.value ?? "").toString();
 
+  // The /admin and /cards hub commands consolidate many commands as subcommands.
+  // interaction.commandName is "admin" or "cards" for all of them, so we must
+  // resolve the actual subcommand name to route autocomplete correctly.
+  const effectiveCmd = (cmd === "admin" || cmd === "cards")
+    ? (interaction.options.getSubcommand(false) ?? cmd)
+    : cmd;
+
   try {
 
     // ── Set-name autocomplete for /sets, /drop, /massdrop ───────────────────
@@ -130,11 +137,11 @@ export async function handleAutocomplete(interaction: AutocompleteInteraction): 
     // /setadmin has `name` = set name (rename/delete/view), `set`/`from`/`to` = set name
     // /sets has `name` = set name (view/progress); /addcard has `set` = set name
     const isSetNameOption =
-      (cmd === "sets" && focused.name === "name") ||
-      (cmd === "setadmin" && ["name", "set", "from", "to"].includes(focused.name)) ||
-      (cmd === "drop" && focused.name === "set") ||
-      (cmd === "massdrop" && focused.name === "set") ||
-      (cmd === "addcard" && focused.name === "set");
+      (effectiveCmd === "sets" && focused.name === "name") ||
+      (effectiveCmd === "setadmin" && ["name", "set", "from", "to"].includes(focused.name)) ||
+      (effectiveCmd === "drop" && focused.name === "set") ||
+      (effectiveCmd === "massdrop" && focused.name === "set") ||
+      (effectiveCmd === "addcard" && focused.name === "set");
     if (isSetNameOption) {
       const sets = await getSetsCached();
       const q = query.toLowerCase().trim();
@@ -151,7 +158,7 @@ export async function handleAutocomplete(interaction: AutocompleteInteraction): 
     }
 
     // ── /burn — only suggest cards the user actually owns ───────────────────
-    if (cmd === "burn" && focused.name === "name" && interaction.guild) {
+    if (effectiveCmd === "burn" && focused.name === "name" && interaction.guild) {
       const owned = await getUserCollectionCached(interaction.guild.id, interaction.user.id);
       const pool = owned.map(o => ({ name: o.name, rarity: o.rarity }));
       const q = query.toLowerCase().trim();
@@ -165,7 +172,7 @@ export async function handleAutocomplete(interaction: AutocompleteInteraction): 
     }
 
     // ── /trade offer — only cards the user owns ─────────────────────────────
-    if (cmd === "trade" && focused.name === "offer" && interaction.guild) {
+    if (effectiveCmd === "trade" && focused.name === "offer" && interaction.guild) {
       const owned = await getUserCollectionCached(interaction.guild.id, interaction.user.id);
       const pool = owned.map(o => ({ name: o.name, rarity: o.rarity }));
       await interaction.respond(await suggestCardNames(query, pool));
@@ -173,7 +180,7 @@ export async function handleAutocomplete(interaction: AutocompleteInteraction): 
     }
 
     // ── /trade want — only cards the TARGET user owns ───────────────────────
-    if (cmd === "trade" && focused.name === "want" && interaction.guild) {
+    if (effectiveCmd === "trade" && focused.name === "want" && interaction.guild) {
       const targetOpt = interaction.options.get("user", false);
       const targetId = targetOpt?.user?.id;
       if (targetId && targetId !== interaction.user.id) {
@@ -190,7 +197,7 @@ export async function handleAutocomplete(interaction: AutocompleteInteraction): 
     }
 
     // ── /wishlist remove — only suggest cards already on the user's wishlist ─
-    if (cmd === "wishlist" && focused.name === "name" && interaction.guild) {
+    if (effectiveCmd === "wishlist" && focused.name === "name" && interaction.guild) {
       const sub = interaction.options.getSubcommand(false);
       if (sub === "remove") {
         const wished = await getUserWishlistCached(interaction.guild.id, interaction.user.id);
@@ -208,14 +215,14 @@ export async function handleAutocomplete(interaction: AutocompleteInteraction): 
 
 
     // ── /mttvalues info — autocomplete item names from MTTValues.com ────────────
-    if (cmd === "mttvalues" && focused.name === "name") {
+    if (effectiveCmd === "mttvalues" && focused.name === "name") {
       const { handleMTTValuesAutocomplete } = await import("./mttvalues.js");
       await handleMTTValuesAutocomplete(interaction, focused);
       return;
     }
 
     // ── /tradein rarity — built-ins plus custom tiers in server ladder order ──
-    if (cmd === "tradein" && focused.name === "rarity" && interaction.guild) {
+    if (effectiveCmd === "tradein" && focused.name === "rarity" && interaction.guild) {
       const q = query.toLowerCase().trim();
       const [ctx, settings, displayMap] = await Promise.all([
         getRarityContext(interaction.guild.id),
@@ -241,7 +248,7 @@ export async function handleAutocomplete(interaction: AutocompleteInteraction): 
     // ── /addcard rarity — built-in rarities only for the simplified flow ────
     // Legacy custom-tier assignment still exists in advanced tools; new cards
     // should start with a stable built-in rarity identity.
-    if (cmd === "addcard" && focused.name === "rarity" && interaction.guild) {
+    if (effectiveCmd === "addcard" && focused.name === "rarity" && interaction.guild) {
       const q = query.toLowerCase().trim();
       const [settings, displayMap] = await Promise.all([
         getOrCreateGuildSettings(interaction.guild.id),
@@ -260,7 +267,7 @@ export async function handleAutocomplete(interaction: AutocompleteInteraction): 
     }
 
     // ── /rarity custom slug — show existing custom tiers by name ────────────
-    if (cmd === "rarity" && focused.name === "slug" && interaction.guild) {
+    if (effectiveCmd === "rarity" && focused.name === "slug" && interaction.guild) {
       const tiers = await getCustomRaritiesCached(interaction.guild.id);
       const q = query.toLowerCase().trim();
       const matches = tiers

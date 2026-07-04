@@ -16,6 +16,7 @@ import { db, cardsTable, collectionsTable, userCurrencyTable } from "@workspace/
 import {
   getOrCreateCurrency,
   getUserCollection,
+  getAllCards,
   getCardByName,
   catchCard,
   removeCardFromUser,
@@ -155,7 +156,7 @@ export async function handleEditUserInteraction(interaction: StringSelectMenuInt
           .setLabel("Card name")
           .setStyle(TextInputStyle.Short)
           .setRequired(true)
-          .setPlaceholder("Exact card name (e.g. M1 Abrams)"),
+          .setPlaceholder("Partial name OK — e.g. Abrams, Raptor, Mi-35"),
       ),
     );
   }
@@ -210,13 +211,32 @@ export async function handleEditUserModal(interaction: ModalSubmitInteraction): 
     : null;
 
   let cardId: number | undefined;
+  let resolvedCardName: string | undefined;
   if (cardName) {
-    const card = await getCardByName(cardName);
+    let card = await getCardByName(cardName);
+    if (!card) {
+      // Fuzzy fallback: partial case-insensitive match across the full roster
+      const allCards = await getAllCards();
+      const q = cardName.toLowerCase();
+      const matches = allCards.filter(c => c.name.toLowerCase().includes(q));
+      if (matches.length === 1) {
+        card = matches[0];
+      } else if (matches.length > 1) {
+        const list = matches.slice(0, 8).map(c => `• ${c.name}`).join("\n");
+        const more = matches.length > 8 ? `\n…and ${matches.length - 8} more` : "";
+        await interaction.reply({
+          content: `❌ **"${cardName}"** matches multiple cards — be more specific:\n${list}${more}`,
+          flags: MessageFlags.Ephemeral,
+        }).catch(() => {});
+        return;
+      }
+    }
     if (!card) {
       await interaction.reply({ content: `❌ Card "**${cardName}**" not found.`, flags: MessageFlags.Ephemeral }).catch(() => {});
       return;
     }
     cardId = card.id;
+    resolvedCardName = card.name;
   }
 
   await interaction.deferUpdate();
@@ -225,7 +245,6 @@ export async function handleEditUserModal(interaction: ModalSubmitInteraction): 
   try {
     switch (action) {
       case "add_cards": {
-        const card = await getCardByName(cardName!);
         await db.transaction(async tx => {
           await tx.insert(collectionsTable)
             .values({ guildId, userId, cardId: cardId!, count: amount, shinyCount: 0 })
@@ -237,11 +256,10 @@ export async function handleEditUserModal(interaction: ModalSubmitInteraction): 
             .set({ totalMinted: sql`${cardsTable.totalMinted} + ${amount}` })
             .where(eq(cardsTable.id, cardId!));
         });
-        feedback = `✅ Added **${card?.name}** ×${amount.toLocaleString()} to <@${userId}>.`;
+        feedback = `✅ Added **${resolvedCardName}** ×${amount.toLocaleString()} to <@${userId}>.`;
         break;
       }
       case "remove_cards": {
-        const card = await getCardByName(cardName!);
         const result = await db.transaction(async tx => {
           const [entry] = await tx.select().from(collectionsTable)
             .where(and(
@@ -263,15 +281,14 @@ export async function handleEditUserModal(interaction: ModalSubmitInteraction): 
           return { removed, had: entry.count };
         });
         feedback = result.removed > 0
-          ? `✅ Removed **${card?.name}** ×${result.removed.toLocaleString()} from <@${userId}>${result.removed < amount ? ` (only had ${result.had})` : ""}.`
-          : `❌ <@${userId}> has no normal copies of **${card?.name}**.`;
+          ? `✅ Removed **${resolvedCardName}** ×${result.removed.toLocaleString()} from <@${userId}>${result.removed < amount ? ` (only had ${result.had})` : ""}.`
+          : `❌ <@${userId}> has no normal copies of **${resolvedCardName}**.`;
         break;
       }
       case "set_cards":
       case "set_shinies": {
         const isShiny = action === "set_shinies";
         const countCol = isShiny ? collectionsTable.shinyCount : collectionsTable.count;
-        const card = await getCardByName(cardName!);
         await db.transaction(async tx => {
           const [existing] = await tx.select().from(collectionsTable)
             .where(and(
@@ -308,11 +325,10 @@ export async function handleEditUserModal(interaction: ModalSubmitInteraction): 
           }
         });
         const typeLabel = isShiny ? "shiny" : "normal";
-        feedback = `✅ Set <@${userId}>'s ${typeLabel} **${card?.name}** count to ${amount.toLocaleString()}.`;
+        feedback = `✅ Set <@${userId}>'s ${typeLabel} **${resolvedCardName}** count to ${amount.toLocaleString()}.`;
         break;
       }
       case "add_shinies": {
-        const card = await getCardByName(cardName!);
         await db.transaction(async tx => {
           await tx.insert(collectionsTable)
             .values({ guildId, userId, cardId: cardId!, count: 0, shinyCount: amount })
@@ -324,11 +340,10 @@ export async function handleEditUserModal(interaction: ModalSubmitInteraction): 
             .set({ totalMinted: sql`${cardsTable.totalMinted} + ${amount}` })
             .where(eq(cardsTable.id, cardId!));
         });
-        feedback = `✅ Added **${card?.name}** shiny ×${amount.toLocaleString()} to <@${userId}>.`;
+        feedback = `✅ Added **${resolvedCardName}** shiny ×${amount.toLocaleString()} to <@${userId}>.`;
         break;
       }
       case "remove_shinies": {
-        const card = await getCardByName(cardName!);
         const result = await db.transaction(async tx => {
           const [entry] = await tx.select().from(collectionsTable)
             .where(and(
@@ -350,8 +365,8 @@ export async function handleEditUserModal(interaction: ModalSubmitInteraction): 
           return { removed, had: entry.shinyCount };
         });
         feedback = result.removed > 0
-          ? `✅ Removed **${card?.name}** shiny ×${result.removed.toLocaleString()} from <@${userId}>${result.removed < amount ? ` (only had ${result.had})` : ""}.`
-          : `❌ <@${userId}> has no shiny copies of **${card?.name}**.`;
+          ? `✅ Removed **${resolvedCardName}** shiny ×${result.removed.toLocaleString()} from <@${userId}>${result.removed < amount ? ` (only had ${result.had})` : ""}.`
+          : `❌ <@${userId}> has no shiny copies of **${resolvedCardName}**.`;
         break;
       }
       case "add_shards": {
