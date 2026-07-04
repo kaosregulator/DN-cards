@@ -1,5 +1,5 @@
 import type { AutocompleteInteraction } from "discord.js";
-import { getAllCards, listSetsV2, getUserCollection, getUserWishlist, listCustomRarities, getRarityContext, getOrCreateGuildSettings, getRarityDisplayOverrides, getDisplayRarities } from "../db.js";
+import { getAllCards, listSetsV2, getUserCollection, getUserWishlist, listCustomRarities, getRarityContext, getOrCreateGuildSettings, getRarityDisplayOverrides, getDisplayRarities, getDistinctCardTypes, listCustomPacks } from "../db.js";
 import { db, cardDisplayOverridesTable } from "@workspace/db";
 import { isNotNull } from "drizzle-orm";
 import { RARITY_EMOJI, rarityEmoji, rarityLabel, type Rarity } from "../cards-data.js";
@@ -275,6 +275,47 @@ export async function handleAutocomplete(interaction: AutocompleteInteraction): 
         .slice(0, MAX_CHOICES)
         .map(t => ({ name: `${t.emoji} ${t.name}`.slice(0, 100), value: t.slug }));
       await interaction.respond(matches);
+      return;
+    }
+
+    // ── /addcard and /editcard type — free-text with existing types as suggestions ──
+    if (
+      (effectiveCmd === "addcard" || effectiveCmd === "editcard") &&
+      focused.name === "type"
+    ) {
+      const types = await getDistinctCardTypes();
+      const q = query.toLowerCase().trim();
+      const matched = types.filter(t => !q || t.toLowerCase().includes(q));
+      const options: { name: string; value: string }[] = matched
+        .slice(0, MAX_CHOICES - 1)
+        .map(t => ({ name: t, value: t }));
+      // If the user's query doesn't match any existing type exactly, offer it as a new type.
+      if (q && !types.some(t => t.toLowerCase() === q)) {
+        options.unshift({ name: `✏️ "${query}" (new type)`, value: query.slice(0, 100) });
+      }
+      await interaction.respond(options.slice(0, MAX_CHOICES));
+      return;
+    }
+
+    // ── /pack tier — built-in tiers + active custom guild packs ─────────────
+    if (effectiveCmd === "pack" && focused.name === "tier" && interaction.guild) {
+      const s = await getOrCreateGuildSettings(interaction.guild.id);
+      const builtIns = [
+        { name: `🥉 Basic — 💠 ${s.packBasicCost.toLocaleString()} (standard rates)`.slice(0, 100), value: "basic" },
+        { name: `🥈 Premium — 💠 ${s.packPremiumCost.toLocaleString()} (better rates)`.slice(0, 100), value: "premium" },
+        { name: `🥇 Legendary — 💠 ${s.packLegendaryCost.toLocaleString()} (no commons)`.slice(0, 100), value: "legendary" },
+      ];
+      const customPacks = await listCustomPacks(interaction.guild.id);
+      const customOptions = customPacks.map(p => ({
+        name: `🎁 ${p.name} — 💠 ${p.cost.toLocaleString()} · ${p.size} cards`.slice(0, 100),
+        value: `custom:${p.id}`,
+      }));
+      const all = [...builtIns, ...customOptions];
+      const q = query.toLowerCase().trim();
+      const filtered = !q ? all : all.filter(o =>
+        o.name.toLowerCase().includes(q) || o.value.toLowerCase().includes(q),
+      );
+      await interaction.respond(filtered.slice(0, MAX_CHOICES));
       return;
     }
 

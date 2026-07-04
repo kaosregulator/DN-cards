@@ -491,6 +491,46 @@ export const embedOverridesTable = pgTable("embed_overrides", {
 
 export type EmbedOverride = typeof embedOverridesTable.$inferSelect;
 
+// ── Custom Packs (per-guild type-filtered pack tiers) ────────────────────────
+// Admins define named packs that pull only from specific card types/tags
+// (e.g. "Nuke Pack" → cardTypes = ["nuke","aircraft"]). Rarity distribution,
+// cost, size, and weekly limit are all configurable. Created via /config → Packs.
+export const customPacksTable = pgTable("custom_packs", {
+  id: serial("id").primaryKey(),
+  guildId: text("guild_id").notNull(),
+  slug: text("slug").notNull(),
+  name: text("name").notNull(),
+  cost: integer("cost").notNull().default(500),
+  size: integer("size").notNull().default(5),
+  weeklyLimit: integer("weekly_limit").notNull().default(10),
+  // Rarity draw rates — shape mirrors TIER_RATES in pack.ts.
+  rarityRates: jsonb("rarity_rates").$type<Record<string, number>>().notNull(),
+  // Card types this pack draws from. Empty array = all types.
+  cardTypes: text("card_types").array().notNull().default([]),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (t) => ({
+  guildSlugUniq: uniqueIndex("custom_packs_guild_slug_idx").on(t.guildId, t.slug),
+}));
+
+export type CustomPack = typeof customPacksTable.$inferSelect;
+
+// Per-(guild, user, pack) weekly usage counter for custom packs.
+// Separate from user_currency's built-in pack counters so custom packs
+// don't interfere with the basic/premium/legendary weekly limits.
+export const userCustomPackWeekTable = pgTable("user_custom_pack_week", {
+  id: serial("id").primaryKey(),
+  guildId: text("guild_id").notNull(),
+  userId: text("user_id").notNull(),
+  packId: integer("pack_id").notNull().references(() => customPacksTable.id, { onDelete: "cascade" }),
+  weekOpens: integer("week_opens").notNull().default(0),
+  weekResetAt: timestamp("week_reset_at").notNull().defaultNow(),
+}, (t) => ({
+  guildUserPackUniq: uniqueIndex("user_custom_pack_week_idx").on(t.guildId, t.userId, t.packId),
+}));
+
+export type UserCustomPackWeek = typeof userCustomPackWeekTable.$inferSelect;
+
 // ── Card Display Overrides (website presentation only) ───────────────────────
 // One row per card. The website (and ONLY the website) reads these to override
 // the card's roster/news/events display — without touching the `cards` row

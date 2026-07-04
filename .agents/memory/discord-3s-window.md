@@ -21,6 +21,10 @@ RTT plus one DB query reliably blew the budget across every admin panel
   `await interaction.deferUpdate()` for button/select. Then `editReply()`.
 - `interaction.showModal()` is itself a response — it cannot follow a defer.
   Handlers that may end in a modal must NOT defer.
+- For button handlers that show modals: use **inline-only** (`memberPermissions`)
+  permission check before `showModal()`. The authoritative DB `isAdmin()` check
+  belongs in the modal *submit* handler, after `deferUpdate()` (which is safe
+  there since modal submit is a separate interaction with its own 3s window).
 - Central dispatchers (e.g. `admin.ts`) that defer before branching mean
   every sub-handler must use `editReply`, not `reply`. Double-defer also
   surfaces as "Unknown interaction" / "Interaction already acknowledged".

@@ -1,5 +1,5 @@
 import {
-  db,
+  db, pool,
   cardsTable, collectionsTable, guildSettingsTable,
   adminUsersTable, spawnLogTable, userCurrencyTable, tradesTable,
   wishlistsTable, userTimeoutsTable, cardEventsTable,
@@ -8,9 +8,10 @@ import {
   rarityDisplayOverridesTable,
   cardDisplayOverridesTable,
   setsTable, cardSetMembershipsTable,
+  customPacksTable, userCustomPackWeekTable,
 } from "@workspace/db";
 import { eq, and, sql, desc, inArray, isNull } from "drizzle-orm";
-import type { Card, CardEvent, CardSet, CustomRarity, GuildSettings, RarityProfile, Trade } from "@workspace/db";
+import type { Card, CardEvent, CardSet, CustomPack, CustomRarity, GuildSettings, RarityProfile, Trade } from "@workspace/db";
 import {
   DEFAULT_CARDS, SHINY_RATE, SHINY_MULTIPLIER, type Rarity,
   type RarityDisplayMap,
@@ -1760,4 +1761,173 @@ export async function unassignCardCustomRarity(guildId: string, cardId: number):
   invalidateRarityContextCache(guildId);
   invalidateCardCache();
   return res.length > 0;
+}
+
+// ── Distinct card types (for /addcard and /editcard autocomplete) ─────────────
+let _distinctTypesCache: { at: number; types: string[] } | null = null;
+const DISTINCT_TYPES_CACHE_MS = 30_000;
+
+export async function getDistinctCardTypes(): Promise<string[]> {
+  const now = Date.now();
+  if (_distinctTypesCache && now - _distinctTypesCache.at < DISTINCT_TYPES_CACHE_MS) {
+    return _distinctTypesCache.types;
+  }
+  const rows = await db.selectDistinct({ cardType: cardsTable.cardType }).from(cardsTable);
+  const types = rows.map(r => r.cardType).filter(Boolean).sort();
+  _distinctTypesCache = { at: now, types };
+  return types;
+}
+
+// Invalidate when a card's type changes so autocomplete reflects it quickly.
+export function invalidateDistinctTypesCache(): void {
+  _distinctTypesCache = null;
+}
+
+// ── Custom Packs CRUD ─────────────────────────────────────────────────────────
+// Per-guild cache for active custom packs (used in /pack autocomplete + draw).
+const _customPackCache = new Map<string, { value: CustomPack[]; expiresAt: number }>();
+const CUSTOM_PACK_CACHE_MS = 10_000;
+
+export function invalidateCustomPackCache(guildId: string): void {
+  _customPackCache.delete(guildId);
+}
+
+export async function listCustomPacks(
+  guildId: string,
+  includeInactive = false,
+): Promise<CustomPack[]> {
+  if (!includeInactive) {
+    const cached = _customPackCache.get(guildId);
+    if (cached && cached.expiresAt > Date.now()) return cached.value;
+  }
+  const rows = await db.select().from(customPacksTable)
+    .where(includeInactive
+      ? eq(customPacksTable.guildId, guildId)
+      : and(eq(customPacksTable.guildId, guildId), eq(customPacksTable.isActive, true)))
+    .orderBy(customPacksTable.createdAt);
+  if (!includeInactive) {
+    _customPackCache.set(guildId, { value: rows, expiresAt: Date.now() + CUSTOM_PACK_CACHE_MS });
+  }
+  return rows;
+}
+
+export async function getCustomPack(id: number): Promise<CustomPack | undefined> {
+  const [row] = await db.select().from(customPacksTable)
+    .where(eq(customPacksTable.id, id)).limit(1);
+  return row;
+}
+
+function slugifyPackName(name: string): string {
+  return (
+    name.toLowerCase().trim().replace(/[^a-z0-9_-]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 40)
+  ) || `pack-${Date.now()}`;
+}
+
+export async function createCustomPack(
+  guildId: string,
+  name: string,
+  cost: number,
+  size: number,
+  weeklyLimit: number,
+  rarityRates: Record<string, number>,
+  cardTypes: string[],
+): Promise<CustomPack> {
+  const slug = slugifyPackName(name);
+  const [row] = await db.insert(customPacksTable)
+    .values({ guildId, slug, name, cost, size, weeklyLimit, rarityRates, cardTypes, isActive: true })
+    .onConflictDoUpdate({
+      target: [customPacksTable.guildId, customPacksTable.slug],
+      set: { name, cost, size, weeklyLimit, rarityRates, cardTypes, isActive: true },
+    })
+    .returning();
+  invalidateCustomPackCache(guildId);
+  return row!;
+}
+
+export async function updateCustomPack(
+  id: number,
+  patch: Partial<{
+    name: string; slug: string; cost: number; size: number; weeklyLimit: number;
+    rarityRates: Record<string, number>; cardTypes: string[]; isActive: boolean;
+  }>,
+): Promise<void> {
+  const [existing] = await db.select({ guildId: customPacksTable.guildId })
+    .from(customPacksTable).where(eq(customPacksTable.id, id)).limit(1);
+  if (!existing) return;
+  await db.update(customPacksTable).set(patch).where(eq(customPacksTable.id, id));
+  invalidateCustomPackCache(existing.guildId);
+}
+
+export async function deleteCustomPack(id: number): Promise<void> {
+  const [existing] = await db.select({ guildId: customPacksTable.guildId })
+    .from(customPacksTable).where(eq(customPacksTable.id, id)).limit(1);
+  if (!existing) return;
+  await db.delete(customPacksTable).where(eq(customPacksTable.id, id));
+  invalidateCustomPackCache(existing.guildId);
+}
+
+// ── Custom pack weekly-cap tracking ──────────────────────────────────────────
+// Atomic upsert: increments week_opens if the user is under the weekly cap
+// (accounting for a mid-week rollover). Returns { ok: true } on success, or
+// { ok: false, weekOpens, weekResetAt } when the cap is already reached.
+export async function tryClaimCustomPackWeek(
+  guildId: string,
+  userId: string,
+  packId: number,
+  weeklyLimit: number,
+  nextResetAt: Date,
+): Promise<{ ok: true } | { ok: false; weekOpens: number; weekResetAt: Date }> {
+  if (weeklyLimit === 0) return { ok: true }; // 0 = unlimited
+
+  const result = await pool.query<{ week_opens: number; week_reset_at: Date }>(`
+    INSERT INTO user_custom_pack_week(guild_id, user_id, pack_id, week_opens, week_reset_at)
+    VALUES($1, $2, $3, 1, $4)
+    ON CONFLICT(guild_id, user_id, pack_id) DO UPDATE
+      SET week_opens = CASE
+            WHEN user_custom_pack_week.week_reset_at <= NOW() THEN 1
+            ELSE user_custom_pack_week.week_opens + 1
+          END,
+          week_reset_at = CASE
+            WHEN user_custom_pack_week.week_reset_at <= NOW() THEN $4
+            ELSE user_custom_pack_week.week_reset_at
+          END
+    WHERE (CASE
+             WHEN user_custom_pack_week.week_reset_at <= NOW() THEN 0
+             ELSE user_custom_pack_week.week_opens
+           END) < $5
+    RETURNING week_opens, week_reset_at
+  `, [guildId, userId, packId, nextResetAt, weeklyLimit]);
+
+  if (result.rows.length > 0) return { ok: true };
+
+  // Cap reached — read current state so the caller can show the user their usage.
+  const [existing] = await db.select({
+    weekOpens: userCustomPackWeekTable.weekOpens,
+    weekResetAt: userCustomPackWeekTable.weekResetAt,
+  }).from(userCustomPackWeekTable)
+    .where(and(
+      eq(userCustomPackWeekTable.guildId, guildId),
+      eq(userCustomPackWeekTable.userId, userId),
+      eq(userCustomPackWeekTable.packId, packId),
+    )).limit(1);
+
+  return {
+    ok: false,
+    weekOpens: existing?.weekOpens ?? weeklyLimit,
+    weekResetAt: existing?.weekResetAt ?? nextResetAt,
+  };
+}
+
+// Refund one weekly-cap slot (called when a pack open fails after the cap was claimed).
+export async function refundCustomPackWeek(
+  guildId: string,
+  userId: string,
+  packId: number,
+): Promise<void> {
+  await pool.query(
+    `UPDATE user_custom_pack_week
+     SET week_opens = GREATEST(0, week_opens - 1)
+     WHERE guild_id = $1 AND user_id = $2 AND pack_id = $3`,
+    [guildId, userId, packId],
+  );
 }

@@ -8,6 +8,8 @@ import {
   getRarityContext, applyRarityContextAll,
   getCardDisplayRarity,
   getRarityDisplayOverrides,
+  getCustomPack, tryClaimCustomPackWeek, refundCustomPackWeek,
+  type RarityContext,
 } from "../db.js";
 import {
   SHINY_EMOJI, getShinyMultiplier, getShinyName,
@@ -16,7 +18,7 @@ import {
 import { checkAchievements, formatUnlockLine } from "../achievements.js";
 import { applyEmbedOverride } from "../embed-overrides.js";
 import { toAbsoluteImageUrl } from "../image-url.js";
-import type { Card, GuildSettings } from "@workspace/db";
+import type { Card, CustomPack, GuildSettings } from "@workspace/db";
 
 // ── Tier definitions ─────────────────────────────────────────────────────────
 export type PackTier = "basic" | "premium" | "legendary";
@@ -407,14 +409,247 @@ async function refundClaim(
     ));
 }
 
+// ── Custom pack draw ─────────────────────────────────────────────────────────
+async function drawCustomPack(pack: CustomPack, ctx: RarityContext): Promise<Card[]> {
+  const all = applyRarityContextAll(
+    (await getAllCards()).filter(c => {
+      if (!(c.droppable && c.inPacks && !c.isArchived && !c.isEventExclusive)) return false;
+      if (c.isLimitedEdition && c.maxCopies != null && c.totalMinted >= c.maxCopies) return false;
+      return true;
+    }),
+    ctx,
+  );
+
+  let eligible = all;
+  if (pack.cardTypes.length > 0) {
+    const typeSet = new Set(pack.cardTypes.map(t => t.toLowerCase().trim()));
+    eligible = all.filter(c => typeSet.has(c.cardType.toLowerCase().trim()));
+  }
+  if (eligible.length === 0) return [];
+
+  const byRarity: Record<Rarity, Card[]> = {
+    common: [], uncommon: [], rare: [], epic: [], legendary: [], mythic: [],
+  };
+  for (const c of eligible) byRarity[c.rarity as Rarity]?.push(c);
+
+  const rates = pack.rarityRates as Record<string, number>;
+  const allRarities: Rarity[] = ["mythic", "legendary", "epic", "rare", "uncommon", "common"];
+
+  const drawn: Card[] = [];
+  for (let i = 0; i < pack.size; i++) {
+    // Roll rarity from the pack's configured rates
+    const r = Math.random();
+    let acc = 0;
+    let rolled: Rarity = "common";
+    for (const [rarity, weight] of Object.entries(rates) as [Rarity, number][]) {
+      acc += weight;
+      if (r <= acc) { rolled = rarity; break; }
+    }
+    // Walk adjacent rarities if the rolled bucket is empty
+    const startIdx = allRarities.indexOf(rolled);
+    let picked: Card | undefined;
+    for (let j = startIdx; j < allRarities.length; j++) {
+      picked = pickByDropWeight(byRarity[allRarities[j]!]!);
+      if (picked) break;
+    }
+    if (!picked) {
+      for (let j = 0; j < startIdx; j++) {
+        picked = pickByDropWeight(byRarity[allRarities[j]!]!);
+        if (picked) break;
+      }
+    }
+    if (picked) drawn.push(picked);
+  }
+  return drawn;
+}
+
+// ── Custom pack open handler ──────────────────────────────────────────────────
+export async function handleCustomPack(
+  interaction: ChatInputCommandInteraction,
+  guildId: string,
+  userId: string,
+  packId: number,
+): Promise<void> {
+  const pack = await getCustomPack(packId);
+  if (!pack || pack.guildId !== guildId || !pack.isActive) {
+    await interaction.editReply("❌ That pack doesn't exist or is no longer available. Use `/pack` to see current packs.");
+    return;
+  }
+
+  // Draw cards first (pure read — no cost consumed if pool is empty)
+  const ctx = await getRarityContext(guildId);
+  const cards = await drawCustomPack(pack, ctx);
+  if (cards.length === 0) {
+    const typeHint =
+      pack.cardTypes.length > 0
+        ? ` This pack draws from types: **${pack.cardTypes.join(", ")}** — ask an admin to add cards with those types.`
+        : "";
+    await interaction.editReply(`❌ No eligible cards for **${pack.name}**.${typeHint}`);
+    return;
+  }
+
+  // Ensure currency row exists for the atomic shard deduction
+  await getOrCreateCurrency(guildId, userId);
+
+  // Soft pre-check — not authoritative, but avoids the cap claim on obvious failures
+  const currency = await getOrCreateCurrency(guildId, userId);
+  if (currency.shards < pack.cost) {
+    await interaction.editReply(
+      `❌ **${pack.name}** costs 💠 **${pack.cost.toLocaleString()}**.\n` +
+      `You have 💠 **${currency.shards.toLocaleString()}**. Earn more by burning duplicates or claiming \`/daily\`.`,
+    );
+    return;
+  }
+
+  // Atomic weekly-cap claim
+  const nextMonday = nextMondayUtc(new Date());
+  const capResult = await tryClaimCustomPackWeek(guildId, userId, packId, pack.weeklyLimit, nextMonday);
+  if (!capResult.ok) {
+    const resetMs = capResult.weekResetAt.getTime() - Date.now();
+    await interaction.editReply(
+      `🚫 You've hit your weekly cap for **${pack.name}** ` +
+      `(**${capResult.weekOpens}/${pack.weeklyLimit}** this week).\n` +
+      `Resets in **${formatRemaining(Math.max(0, resetMs))}**. *(Mondays 00:00 UTC)*`,
+    );
+    return;
+  }
+
+  // Atomic shard deduction — only succeeds if user still has enough
+  const deductResult = await db.update(userCurrencyTable)
+    .set({
+      shards: sql`${userCurrencyTable.shards} - ${pack.cost}`,
+      packsOpened: sql`${userCurrencyTable.packsOpened} + 1`,
+    })
+    .where(and(
+      eq(userCurrencyTable.guildId, guildId),
+      eq(userCurrencyTable.userId, userId),
+      sql`${userCurrencyTable.shards} >= ${pack.cost}`,
+    ))
+    .returning({ shards: userCurrencyTable.shards });
+
+  if (deductResult.length === 0) {
+    // Shards were spent between pre-check and deduct — refund cap slot
+    await refundCustomPackWeek(guildId, userId, packId);
+    const cur = await getOrCreateCurrency(guildId, userId);
+    await interaction.editReply(
+      `❌ **${pack.name}** costs 💠 **${pack.cost.toLocaleString()}**.\n` +
+      `You have 💠 **${cur.shards.toLocaleString()}**. Earn more by burning duplicates or claiming \`/daily\`.`,
+    );
+    return;
+  }
+  const shardsAfter = deductResult[0]!.shards;
+
+  // Grant cards — any shortfall (partial or total) triggers a full refund.
+  const shinies: boolean[] = [];
+  let granted = 0;
+  for (const card of cards) {
+    try {
+      const { isShiny } = await catchCard(guildId, userId, card.id);
+      shinies.push(isShiny);
+      granted++;
+    } catch {
+      break;
+    }
+  }
+
+  if (granted < cards.length) {
+    // Partial or total grant failure — refund shards and weekly cap slot in full.
+    await db.update(userCurrencyTable)
+      .set({
+        shards: sql`${userCurrencyTable.shards} + ${pack.cost}`,
+        packsOpened: sql`GREATEST(0, ${userCurrencyTable.packsOpened} - 1)`,
+      })
+      .where(and(eq(userCurrencyTable.guildId, guildId), eq(userCurrencyTable.userId, userId)));
+    await refundCustomPackWeek(guildId, userId, packId);
+    if (granted === 0) {
+      await interaction.editReply("❌ Pack opening failed — your shards were refunded. Please try again.");
+    } else {
+      await interaction.editReply(
+        `⚠️ Only ${granted} of ${cards.length} cards could be granted — your shards and weekly use were fully refunded. Please try again.`,
+      );
+    }
+    return;
+  }
+
+  const [settings, displayMap, ctxFresh] = await Promise.all([
+    getOrCreateGuildSettings(guildId),
+    getRarityDisplayOverrides(guildId),
+    getRarityContext(guildId),
+  ]);
+  const shinyMultiplier = getShinyMultiplier(settings);
+  const shinyName = getShinyName(settings);
+  const shinyCount = shinies.filter(Boolean).length;
+  const totalWorth = cards.reduce((s, c, i) => s + c.worthValue * (shinies[i] ? shinyMultiplier : 1), 0);
+  const last = cards[cards.length - 1]!;
+
+  const embed = new EmbedBuilder()
+    .setTitle(
+      `🎁 ${pack.name} — ${cards.length} card${cards.length !== 1 ? "s" : ""}` +
+      (shinyCount > 0 ? ` · ${SHINY_EMOJI} ${shinyName} ×${shinyCount}` : ""),
+    )
+    .setColor(shinyCount > 0 ? 0xf1c40f : 0x5865f2)
+    .setDescription(
+      cards
+        .map((c, i) => {
+          const rarity = getCardDisplayRarity(c, ctxFresh, settings, displayMap);
+          const shiny = shinies[i];
+          const worth = c.worthValue * (shiny ? shinyMultiplier : 1);
+          const prefix = shiny ? `${SHINY_EMOJI} ` : "";
+          return (
+            `**${i + 1}.** ${rarity.emoji} ${prefix}**${c.name}** — *${rarity.label}* · 💠 ${worth.toLocaleString()}` +
+            (shiny ? ` *(${shinyMultiplier}×)*` : "")
+          );
+        })
+        .join("\n") +
+        `\n\n**Total worth:** 💠 ${totalWorth.toLocaleString()}\n` +
+        `Spent: 💠 ${pack.cost.toLocaleString()} · Balance: 💠 ${shardsAfter.toLocaleString()}` +
+        (pack.cardTypes.length > 0 ? `\nTypes: ${pack.cardTypes.join(", ")}` : ""),
+    )
+    .setFooter({ text: "Cards added to your collection — use /collection to view. /packstats for built-in pack limits." });
+
+  const thumb = toAbsoluteImageUrl(last.imageUrl);
+  if (thumb) embed.setThumbnail(thumb);
+
+  await interaction.editReply({ embeds: [embed], components: [] });
+
+  const newly = await checkAchievements(guildId, userId);
+  if (newly.length > 0) {
+    await interaction.followUp({
+      content: "🏆 **Achievement unlocked!**\n" + newly.map(formatUnlockLine).join("\n"),
+      flags: MessageFlags.Ephemeral,
+    }).catch(() => {});
+  }
+}
+
 // ── Handler ──────────────────────────────────────────────────────────────────
 export async function handlePack(interaction: ChatInputCommandInteraction): Promise<void> {
   if (!interaction.guild) return;
   const guildId = interaction.guild.id;
   const userId = interaction.user.id;
 
-  const tierInput = (interaction.options.getString("tier") ?? "basic") as PackTier;
-  const tier: PackTier = PACK_TIERS.includes(tierInput) ? tierInput : "basic";
+  const tierRaw = interaction.options.getString("tier");
+
+  // Default to "basic" only when the option was entirely omitted.
+  if (tierRaw === null) {
+    // fall through with tier = "basic"
+  } else if (tierRaw.startsWith("custom:")) {
+    // Route custom packs (value = "custom:<packId>")
+    const packId = parseInt(tierRaw.slice(7), 10);
+    if (isNaN(packId)) {
+      await interaction.editReply("❌ Invalid pack selection — please use `/pack` autocomplete to choose a tier.");
+      return;
+    }
+    await handleCustomPack(interaction, guildId, userId, packId);
+    return;
+  } else if (!PACK_TIERS.includes(tierRaw as PackTier)) {
+    // Provided but not a known built-in or valid custom — reject explicitly.
+    await interaction.editReply(
+      `❌ **"${tierRaw}"** is not a recognised pack tier. Use \`/pack\` autocomplete to pick **Basic**, **Premium**, **Legendary**, or a custom pack.`,
+    );
+    return;
+  }
+
+  const tier: PackTier = (tierRaw as PackTier | null) ?? "basic";
 
   const settings = await getOrCreateGuildSettings(guildId);
   const cfg = resolveTierConfig(settings, tier);

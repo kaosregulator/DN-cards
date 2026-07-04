@@ -201,17 +201,9 @@ export async function handleEditCardSelect(interaction: StringSelectMenuInteract
       return;
     }
 
-    // Type → secondary select with TYPE_CHOICES
+    // Type → modal with free-text input (accepts any tag, not limited to fixed choices)
     if (value === "type") {
-      const select = new StringSelectMenuBuilder()
-        .setCustomId(`editcard:type:${cardId}`)
-        .setPlaceholder("Pick a card type…")
-        .addOptions(TYPE_CHOICES.map(t => ({ label: t, value: t })));
-      await interaction.update({
-        content: "🎯 Pick the new type:",
-        embeds: [],
-        components: [new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(select)],
-      });
+      await openFieldModal(interaction, cardId, "type");
       return;
     }
 
@@ -254,17 +246,20 @@ export async function handleEditCardSelect(interaction: StringSelectMenuInteract
 
 // ── Modal for text/number fields ────────────────────────────────────────────
 const TEXT_FIELDS: Record<string, { title: string; label: string; style: TextInputStyle; max?: number; placeholder?: string }> = {
-  name:        { title: "Edit Name",        label: "Card name (1–80 chars)",        style: TextInputStyle.Short,     max: 80 },
-  description: { title: "Edit Description", label: "Description (max 500 chars)",   style: TextInputStyle.Paragraph, max: 500 },
-  worthValue:  { title: "Edit Worth Value", label: "Worth value in DN Shards",       style: TextInputStyle.Short,     placeholder: "Example: 2500" },
-  burnValue:   { title: "Edit Burn Value",  label: "Burn value in DN Shards",        style: TextInputStyle.Short,     placeholder: "Example: 1250" },
+  name:        { title: "Edit Name",        label: "Card name (1–80 chars)",                      style: TextInputStyle.Short,     max: 80 },
+  description: { title: "Edit Description", label: "Description (max 500 chars)",                  style: TextInputStyle.Paragraph, max: 500 },
+  worthValue:  { title: "Edit Worth Value", label: "Worth value in DN Shards",                     style: TextInputStyle.Short,     placeholder: "Example: 2500" },
+  burnValue:   { title: "Edit Burn Value",  label: "Burn value in DN Shards",                      style: TextInputStyle.Short,     placeholder: "Example: 1250" },
+  type:        { title: "Edit Card Type",   label: "Type/tag (e.g. tank, aircraft, nuke)", style: TextInputStyle.Short,     max: 40, placeholder: "e.g. tank, aircraft, nuke" },
 };
 
 async function openFieldModal(interaction: StringSelectMenuInteraction, cardId: number, field: string): Promise<void> {
   const def = TEXT_FIELDS[field];
   if (!def) { await interaction.deferUpdate().catch(() => {}); return; }
   const card = await getCardById(cardId);
-  const current = card ? String((card as unknown as Record<string, unknown>)[field] ?? "") : "";
+  // "type" in the UI maps to "cardType" in the card object
+  const propKey = field === "type" ? "cardType" : field;
+  const current = card ? String((card as unknown as Record<string, unknown>)[propKey] ?? "") : "";
   const input = new TextInputBuilder()
     .setCustomId("value")
     .setLabel(def.label)
@@ -306,6 +301,9 @@ export async function handleEditCardModal(interaction: ModalSubmitInteraction): 
       patch[field] = value;
       break;
     }
+    case "type":
+      patch.cardType = raw.toLowerCase().trim().slice(0, 40) || "vehicle";
+      break;
     default:
       await interaction.reply({ content: "❌ Unknown field.", flags: MessageFlags.Ephemeral });
       return;

@@ -148,31 +148,26 @@ async function processStep(
       session.data.rarity = RARITY_CHOICES[idx];
       session.step = "card_ctype";
 
-      const typeLines = TYPE_CHOICES.map((t, i) =>
-        `**${i + 1}.** ${TYPE_EMOJI[t]} ${t.charAt(0).toUpperCase() + t.slice(1)}`,
-      );
-      const half = Math.ceil(typeLines.length / 2);
-      const col1 = typeLines.slice(0, half).join("\n");
-      const col2 = typeLines.slice(half).join("\n");
-
       const displayMap = await getRarityDisplayOverrides(msg.guild!.id);
       const rLabel = rarityLabel(session.data.rarity!, null, displayMap);
       const rEmoji = rarityEmoji(session.data.rarity!, null, displayMap);
       await msg.reply(
         `✅ Rarity: ${rEmoji} **${rLabel}**\n\n` +
-        `**Step 4 — Card Type**\n${col1}\n${col2}\n\nType **1–${TYPE_CHOICES.length}**:`,
+        "**Step 4 — Card Type**\n" +
+        "Type any card type/tag (e.g. `tank`, `aircraft`, `nuke`, `infantry`) — or type **skip** for `vehicle`:",
       );
       return true;
     }
 
     // ── Card Type ─────────────────────────────────────────────────────────────
     case "card_ctype": {
-      const idx = parseInt(input, 10) - 1;
-      if (idx < 0 || idx >= TYPE_CHOICES.length) {
-        await msg.reply(`❌ Please type a number **1–${TYPE_CHOICES.length}**:`);
+      const lower = input.toLowerCase().trim();
+      const cardType = lower === "skip" ? "vehicle" : lower.slice(0, 40);
+      if (!cardType) {
+        await msg.reply("❌ Please type a card type (e.g. `tank`, `aircraft`, `nuke`) or **skip** for `vehicle`:");
         return true;
       }
-      session.data.cardType = TYPE_CHOICES[idx];
+      session.data.cardType = cardType;
 
       if (session.kind === "limited") {
         session.step = "card_maxcopies";
@@ -442,13 +437,10 @@ async function processEditStep(msg: Message, session: EditSession, k: string, in
     }
 
     case "edit_ctype": {
-      const idx = parseInt(input, 10) - 1;
-      if (idx < 0 || idx >= TYPE_CHOICES.length) {
-        await msg.reply(`❌ Type **1–${TYPE_CHOICES.length}**:`); return true;
-      }
-      const newType = TYPE_CHOICES[idx];
+      const newType = input.toLowerCase().trim().slice(0, 40);
+      if (!newType) { await msg.reply("❌ Please enter a card type:"); return true; }
       await updateCard(session.cardId, { cardType: newType });
-      await msg.reply(`✅ Type → ${TYPE_EMOJI[newType]} **${newType}**.`);
+      await msg.reply(`✅ Type → **${newType}**.`);
       return await backToMenu(msg, session);
     }
 
@@ -480,8 +472,7 @@ async function promptForField(msg: Message, step: EditStep) {
     case "edit_desc": await msg.reply("Enter a new **description**, or type **skip** to clear:"); return;
     case "edit_image": await msg.reply("Attach an image, paste an image URL, or type **remove** to clear:"); return;
     case "edit_ctype": {
-      const lines = TYPE_CHOICES.map((t, i) => `**${i + 1}.** ${TYPE_EMOJI[t]} ${t}`).join("  ");
-      await msg.reply(`**Choose a card type:**\n${lines}\n\nType **1–${TYPE_CHOICES.length}**:`);
+      await msg.reply("**Enter new card type/tag** (any text, e.g. `tank`, `aircraft`, `nuke`) or type **cancel** to abort:");
       return;
     }
     case "edit_name": await msg.reply("Enter the new **card name** (must be unique):"); return;

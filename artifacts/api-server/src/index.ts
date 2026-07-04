@@ -275,6 +275,39 @@ async function runBootMigrations() {
     }
   }
 
+  // Custom packs (type-filtered per-guild pack tiers created via /config).
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS custom_packs (
+      id           SERIAL PRIMARY KEY,
+      guild_id     TEXT NOT NULL,
+      slug         TEXT NOT NULL,
+      name         TEXT NOT NULL,
+      cost         INTEGER NOT NULL DEFAULT 500,
+      size         INTEGER NOT NULL DEFAULT 5,
+      weekly_limit INTEGER NOT NULL DEFAULT 10,
+      rarity_rates JSONB NOT NULL DEFAULT '{"common":0.6,"uncommon":0.25,"rare":0.11,"epic":0.035,"legendary":0.005,"mythic":0}',
+      card_types   TEXT[] NOT NULL DEFAULT '{}',
+      is_active    BOOLEAN NOT NULL DEFAULT TRUE,
+      created_at   TIMESTAMP NOT NULL DEFAULT NOW()
+    )
+  `);
+  await pool.query(
+    `CREATE UNIQUE INDEX IF NOT EXISTS custom_packs_guild_slug_idx ON custom_packs(guild_id, slug)`
+  );
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS user_custom_pack_week (
+      id            SERIAL PRIMARY KEY,
+      guild_id      TEXT NOT NULL,
+      user_id       TEXT NOT NULL,
+      pack_id       INTEGER NOT NULL REFERENCES custom_packs(id) ON DELETE CASCADE,
+      week_opens    INTEGER NOT NULL DEFAULT 0,
+      week_reset_at TIMESTAMP NOT NULL DEFAULT NOW()
+    )
+  `);
+  await pool.query(
+    `CREATE UNIQUE INDEX IF NOT EXISTS user_custom_pack_week_idx ON user_custom_pack_week(guild_id, user_id, pack_id)`
+  );
+
   logger.info("Boot migrations applied");
 }
 

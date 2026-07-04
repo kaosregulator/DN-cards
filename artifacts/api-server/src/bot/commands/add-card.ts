@@ -28,7 +28,7 @@ export async function handleAddCardCommand(interaction: ChatInputCommandInteract
   const guildId     = interaction.guildId!;
   const name        = opts.getString("name", true).trim();
   const rarityInput = opts.getString("rarity", true);
-  const type        = opts.getString("type", true);
+  const type        = opts.getString("type", true).trim().toLowerCase().replace(/\s+/g, " ").slice(0, 40);
   const imageAttachment = opts.getAttachment("image");
   const imageUrl = imageAttachment
     ? await persistBotImage(imageAttachment.url, imageAttachment.contentType ?? undefined)
@@ -41,6 +41,11 @@ export async function handleAddCardCommand(interaction: ChatInputCommandInteract
 
   if (!name) {
     await interaction.editReply("❌ Card name cannot be empty.");
+    return;
+  }
+
+  if (!type) {
+    await interaction.editReply("❌ Card type cannot be empty. Enter a type/tag such as `tank`, `aircraft`, or `nuke`.");
     return;
   }
 

@@ -5,10 +5,10 @@ import {
   type ChatInputCommandInteraction, type ButtonInteraction,
   type StringSelectMenuInteraction, type ModalSubmitInteraction,
 } from "discord.js";
-import { getOrCreateGuildSettings, updateGuildSettings, isAdmin, getActiveSet, getActiveSetSecondary, getRarityDisplayOverrides } from "../db.js";
+import { getOrCreateGuildSettings, updateGuildSettings, isAdmin, getActiveSet, getActiveSetSecondary, getRarityDisplayOverrides, createCustomPack, listCustomPacks, getCustomPack, updateCustomPack, deleteCustomPack } from "../db.js";
 import { scheduleNextSpawn, clearSpawnTimer, scheduleNextSpawnSecondary, clearSpawnTimerSecondary } from "../spawn-manager.js";
 import { RARITY_WEIGHTS, RARITY_LABELS, RARITY_EMOJI, rarityLabel, rarityEmoji, getRarityOrder, type Rarity, type RarityDisplayMap } from "../cards-data.js";
-import type { GuildSettings } from "@workspace/db";
+import type { CustomPack, GuildSettings } from "@workspace/db";
 import { PACK_TIERS, PACK_TIER_META, PACK_DEFAULTS, resolveTierConfig, type PackTier } from "./pack.js";
 
 // Rarity display order defaults to the canonical DB enum key order.
@@ -100,10 +100,28 @@ export async function handleConfigSelect(interaction: StringSelectMenuInteractio
 // ── Router: button interactions on the panel ──────────────────────────────────────────────────────────────────
 export async function handleConfigButton(interaction: ButtonInteraction): Promise<void> {
   if (!interaction.guild) return;
-  const [, action, arg] = interaction.customId.split(":"); // "config:toggle:spawn"
+  const parts = interaction.customId.split(":"); // "config:toggle:spawn"
+  const action = parts[1]!;
+  const arg = parts[2];
   const guildId = interaction.guild.id;
 
   // ── Modal path: showModal() MUST be the first response — cannot deferUpdate first. ──
+
+  // Custom packs create/edit modals — NO DB call, NO auth check before showModal.
+  // The config panel is already admin-gated; authoritative isAdmin() check runs in the
+  // modal submit handler (handleCustomPackModal) after deferUpdate, where DB latency is safe.
+  if (action === "packs" && arg === "custom") {
+    const subAction = parts[3];
+    if (subAction === "new") {
+      await interaction.showModal(buildCustomPackModal());
+      return;
+    }
+    if (subAction === "edit" && parts[4]) {
+      await interaction.showModal(buildCustomPackModal(parts[4]));
+      return;
+    }
+  }
+
   if (action === "rates" && arg === "custom") {
     const ok = await ensureAdmin(interaction);
     if (!ok) return;
@@ -192,6 +210,24 @@ export async function handleConfigButton(interaction: ButtonInteraction): Promis
     });
     return;
   } else if (action === "packs") {
+    if (arg === "custom") {
+      // Custom packs sub-panel (delete is handled here; new/edit already returned above via modal)
+      const subAction = parts[3];
+      if (subAction === "back") {
+        const settings = await getOrCreateGuildSettings(guildId);
+        await interaction.editReply({ embeds: [buildPacksEmbed(settings)], components: buildPacksComponents(settings) });
+        return;
+      }
+      if (subAction === "delete" && parts[4]) {
+        const packId = parseInt(parts[4]!, 10);
+        const target = await getCustomPack(packId);
+        if (target?.guildId === guildId) await deleteCustomPack(packId);
+      }
+      const packs = await listCustomPacks(guildId, true);
+      await interaction.editReply({ embeds: [buildCustomPacksEmbed(packs)], components: buildCustomPacksComponents(packs) });
+      return;
+    }
+
     const settings = await getOrCreateGuildSettings(guildId);
     if (arg === "sizes") {
       await interaction.editReply({
@@ -818,6 +854,7 @@ export function buildPacksComponents(s: GuildSettings) {
   const buttons = new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder().setCustomId("config:packs:sizes").setLabel("📐 Cards / Pack").setStyle(ButtonStyle.Secondary),
     new ButtonBuilder().setCustomId("config:packs:limits").setLabel("📅 Weekly Limits").setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder().setCustomId("config:packs:custom").setLabel("🎁 Custom Packs").setStyle(ButtonStyle.Primary),
   );
 
   return [
@@ -900,4 +937,236 @@ export function buildPacksLimitsComponents(s: GuildSettings) {
     new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(limitSelect("legendary", s.packLegendaryWeeklyLimit)),
     back,
   ];
+}
+
+// ── Custom Packs sub-panel ────────────────────────────────────────────────────
+// Rate presets for new custom packs (mirrors TIER_RATES in pack.ts).
+const CUSTOM_PACK_RATE_PRESETS: Record<string, Record<string, number>> = {
+  basic:     { common: 0.60, uncommon: 0.25, rare: 0.110, epic: 0.035, legendary: 0.005, mythic: 0.000 },
+  premium:   { common: 0.40, uncommon: 0.25, rare: 0.220, epic: 0.100, legendary: 0.030, mythic: 0.000 },
+  legendary: { common: 0.00, uncommon: 0.30, rare: 0.345, epic: 0.250, legendary: 0.100, mythic: 0.005 },
+};
+const DEFAULT_CUSTOM_PACK_RATES = CUSTOM_PACK_RATE_PRESETS.basic!;
+
+function buildCustomPacksEmbed(packs: CustomPack[]): EmbedBuilder {
+  const desc =
+    packs.length === 0
+      ? "No custom packs yet. Click **➕ New Pack** to create one.\n\n" +
+        "Custom packs let you create themed pulls — e.g. a **\"Nuke Pack\"** that only draws nuclear-themed cards.\n" +
+        "Each pack has its own cost, size, weekly limit, and card-type filter."
+      : packs
+          .map(
+            (p, i) =>
+              `**${i + 1}. ${p.name}** — 💠 ${p.cost.toLocaleString()} · ${p.size} cards · ${formatLimit(p.weeklyLimit)}\n` +
+              `Types: ${p.cardTypes.length > 0 ? p.cardTypes.join(", ") : "*All*"} · ${p.isActive ? "🟢 Active" : "🔴 Inactive"}`,
+          )
+          .join("\n\n");
+  return new EmbedBuilder()
+    .setTitle("🎁 Custom Packs")
+    .setColor(0x57f287)
+    .setDescription(desc)
+    .setFooter({
+      text:
+        packs.length > 4
+          ? `Controls shown for first 4 packs. ${packs.length - 4} more exist — manage via delete + recreate.`
+          : "← Back returns to Pack Store settings.",
+    });
+}
+
+function buildCustomPacksComponents(packs: CustomPack[]): ActionRowBuilder<ButtonBuilder>[] {
+  const topRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder()
+      .setCustomId("config:packs:custom:back")
+      .setLabel("← Back to Packs")
+      .setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder()
+      .setCustomId("config:packs:custom:new")
+      .setLabel("➕ New Pack")
+      .setStyle(ButtonStyle.Success),
+  );
+  const rows: ActionRowBuilder<ButtonBuilder>[] = [topRow];
+  for (const pack of packs.slice(0, 4)) {
+    rows.push(
+      new ActionRowBuilder<ButtonBuilder>().addComponents(
+        new ButtonBuilder()
+          .setCustomId(`config:packs:custom:edit:${pack.id}`)
+          .setLabel(`✏️ ${pack.name}`.slice(0, 80))
+          .setStyle(ButtonStyle.Primary),
+        new ButtonBuilder()
+          .setCustomId(`config:packs:custom:delete:${pack.id}`)
+          .setLabel("🗑️ Delete")
+          .setStyle(ButtonStyle.Danger),
+      ),
+    );
+  }
+  return rows;
+}
+
+// packIdStr is passed for edit mode; undefined for create mode.
+// No DB call is made here — the modal-open path must stay inside Discord's 3s window.
+// For edit mode all numeric fields are optional (blank = keep current value); the submit
+// handler loads the existing pack and merges after ACK.
+function buildCustomPackModal(packIdStr?: string): ModalBuilder {
+  const isEdit = !!packIdStr;
+  const modal = new ModalBuilder()
+    .setCustomId(isEdit ? `packs_custom_modal:edit:${packIdStr}` : "packs_custom_modal:new")
+    .setTitle(isEdit ? "Edit Custom Pack" : "Create Custom Pack");
+  modal.addComponents(
+    new ActionRowBuilder<TextInputBuilder>().addComponents(
+      new TextInputBuilder()
+        .setCustomId("name")
+        .setLabel(isEdit ? "New pack name (blank = keep current)" : "Pack name (shown in /pack autocomplete)")
+        .setStyle(TextInputStyle.Short)
+        .setRequired(!isEdit)
+        .setMaxLength(50)
+        .setPlaceholder("e.g. Nuke Pack"),
+    ),
+    new ActionRowBuilder<TextInputBuilder>().addComponents(
+      new TextInputBuilder()
+        .setCustomId("cost")
+        .setLabel(isEdit ? "Cost in 💠 Shards (blank = keep current)" : "Cost in 💠 Shards")
+        .setStyle(TextInputStyle.Short)
+        .setRequired(!isEdit)
+        .setMaxLength(7)
+        .setPlaceholder(isEdit ? "e.g. 500 — leave blank to keep" : "500"),
+    ),
+    new ActionRowBuilder<TextInputBuilder>().addComponents(
+      new TextInputBuilder()
+        .setCustomId("size")
+        .setLabel(isEdit ? "Cards per open 1–10 (blank = keep)" : "Cards per open (1–10)")
+        .setStyle(TextInputStyle.Short)
+        .setRequired(!isEdit)
+        .setMaxLength(2)
+        .setPlaceholder(isEdit ? "e.g. 5 — leave blank to keep" : "5"),
+    ),
+    new ActionRowBuilder<TextInputBuilder>().addComponents(
+      new TextInputBuilder()
+        .setCustomId("limit")
+        .setLabel(isEdit ? "Weekly limit (blank = keep; 0 = unlimited)" : "Weekly limit (0 = unlimited)")
+        .setStyle(TextInputStyle.Short)
+        .setRequired(!isEdit)
+        .setMaxLength(5)
+        .setPlaceholder(isEdit ? "e.g. 10 — leave blank to keep" : "10"),
+    ),
+    new ActionRowBuilder<TextInputBuilder>().addComponents(
+      new TextInputBuilder()
+        .setCustomId("types")
+        .setLabel(isEdit ? "Card types — blank keeps current; '-' = all" : "Card types (comma-separated; blank = all)")
+        .setStyle(TextInputStyle.Short)
+        .setRequired(false)
+        .setMaxLength(200)
+        .setPlaceholder("e.g. tank, aircraft, nuke"),
+    ),
+  );
+  return modal;
+}
+
+// Exported so bot/index.ts can wire the modal route.
+export async function handleCustomPackModal(interaction: ModalSubmitInteraction): Promise<void> {
+  if (!interaction.guild) return;
+  const guildId = interaction.guild.id;
+
+  const modalParts = interaction.customId.split(":");
+  const isEdit = modalParts[1] === "edit";
+  const packId = isEdit ? parseInt(modalParts[2]!, 10) : NaN;
+
+  const nameRaw  = interaction.fields.getTextInputValue("name").trim();
+  const costRaw  = interaction.fields.getTextInputValue("cost").trim();
+  const sizeRaw  = interaction.fields.getTextInputValue("size").trim();
+  const limitRaw = interaction.fields.getTextInputValue("limit").trim();
+  const typesRaw = interaction.fields.getTextInputValue("types").trim();
+
+  // Only name is validated synchronously before ACK (to avoid "interaction failed" toast
+  // in Discord for the most obvious create-mode error). Numeric fields can be blank on
+  // edit mode (blank = keep current), so they're validated post-ACK with mode awareness.
+  if (!isEdit && !nameRaw) {
+    await interaction.reply({ content: "❌ Pack name is required.", flags: MessageFlags.Ephemeral });
+    return;
+  }
+
+  // ACK first — update the ephemeral config-panel message in-place.
+  await interaction.deferUpdate();
+
+  // Parse numeric fields after ACK (safe for edit mode blank values → NaN handled in merge).
+  const cost  = parseInt(costRaw.replace(/,/g, ""), 10);
+  const size  = parseInt(sizeRaw, 10);
+  const limit = parseInt(limitRaw, 10);
+  const cardTypes = typesRaw
+    ? typesRaw.split(",").map(t => t.trim().toLowerCase()).filter(Boolean)
+    : [];
+
+  // Authoritative admin check after ACK — safe here, no 3s constraint on this side.
+  // Includes DB-backed bot-admins via isAdmin(), covering all admin persona types.
+  const perms = interaction.memberPermissions;
+  const authorized =
+    interaction.guild.ownerId === interaction.user.id ||
+    perms?.has("Administrator") ||
+    (await isAdmin(guildId, interaction.user.id));
+  if (!authorized) {
+    await interaction.followUp({ content: "❌ Only admins can manage custom packs.", flags: MessageFlags.Ephemeral });
+    return;
+  }
+
+  try {
+    let successMsg: string;
+    if (isEdit && !isNaN(packId)) {
+      const existing = await getCustomPack(packId);
+      if (!existing || existing.guildId !== guildId) {
+        await interaction.followUp({ content: "❌ Pack not found.", flags: MessageFlags.Ephemeral });
+        return;
+      }
+      // Merge: blank/unprovided fields keep their existing values.
+      const finalName  = nameRaw  || existing.name;
+      const finalCost  = costRaw  ? cost  : existing.cost;
+      const finalSize  = sizeRaw  ? size  : existing.size;
+      const finalLimit = limitRaw ? limit : existing.weeklyLimit;
+      // For types: empty = keep existing; "-" = clear to all-types
+      const finalTypes = typesRaw === ""
+        ? existing.cardTypes
+        : typesRaw === "-"
+          ? []
+          : cardTypes;
+
+      // Re-validate merged values that came from user input
+      if (costRaw && (!Number.isInteger(finalCost) || finalCost < 0)) {
+        await interaction.followUp({ content: "❌ Cost must be a whole number ≥ 0.", flags: MessageFlags.Ephemeral }); return;
+      }
+      if (sizeRaw && (!Number.isInteger(finalSize) || finalSize < 1 || finalSize > 10)) {
+        await interaction.followUp({ content: "❌ Cards per open must be 1–10.", flags: MessageFlags.Ephemeral }); return;
+      }
+      if (limitRaw && (!Number.isInteger(finalLimit) || finalLimit < 0)) {
+        await interaction.followUp({ content: "❌ Weekly limit must be ≥ 0 (0 = unlimited).", flags: MessageFlags.Ephemeral }); return;
+      }
+
+      await updateCustomPack(packId, {
+        name: finalName, cost: finalCost, size: finalSize,
+        weeklyLimit: finalLimit, cardTypes: finalTypes,
+      });
+      successMsg = `✅ Updated **${finalName}**.`;
+    } else {
+      // Create — all fields were required in the modal for new packs
+      if (!Number.isInteger(cost) || cost < 0) {
+        await interaction.followUp({ content: "❌ Cost must be a whole number ≥ 0.", flags: MessageFlags.Ephemeral }); return;
+      }
+      if (!Number.isInteger(size) || size < 1 || size > 10) {
+        await interaction.followUp({ content: "❌ Cards per open must be 1–10.", flags: MessageFlags.Ephemeral }); return;
+      }
+      if (!Number.isInteger(limit) || limit < 0) {
+        await interaction.followUp({ content: "❌ Weekly limit must be ≥ 0 (0 = unlimited).", flags: MessageFlags.Ephemeral }); return;
+      }
+      const created = await createCustomPack(guildId, nameRaw, cost, size, limit, DEFAULT_CUSTOM_PACK_RATES, cardTypes);
+      successMsg = `✅ Created **${created.name}**! It now appears in \`/pack\` autocomplete for this server.`;
+    }
+    const packs = await listCustomPacks(guildId, true);
+    await interaction.editReply({
+      content: successMsg,
+      embeds: [buildCustomPacksEmbed(packs)],
+      components: buildCustomPacksComponents(packs),
+    });
+  } catch {
+    await interaction.followUp({
+      content: "❌ Failed to save the pack. Please try again.",
+      flags: MessageFlags.Ephemeral,
+    });
+  }
 }

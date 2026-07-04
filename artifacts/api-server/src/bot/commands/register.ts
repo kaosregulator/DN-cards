@@ -94,14 +94,10 @@ function buildLegacyCommands() {
 
     cmd("daily", "(User) Claim your daily DN Shards reward", s => s),
 
-    cmd("pack", "(User) Open a pack — pick a tier", s => s
+    cmd("pack", "(User) Open a pack — type to search tiers and custom packs", s => s
       .addStringOption(o => o.setName("tier")
-        .setDescription("Which pack to open (default: Basic)")
-        .addChoices(
-          { name: "🥉 Basic (cheapest, standard rates)",       value: "basic" },
-          { name: "🥈 Premium (better rates, costs more)",     value: "premium" },
-          { name: "🥇 Legendary (no commons, top-tier odds)",  value: "legendary" },
-        ))),
+        .setDescription("Which pack to open — built-in or custom (type to search, default: Basic)")
+        .setAutocomplete(true))),
 
     cmd("packstats", "(User) View pack costs, weekly caps & cooldown", s => s),
 
@@ -249,19 +245,7 @@ function buildLegacyCommands() {
     adminCmd("addcard", "(Admin) Create a new card — upload an image/GIF from Discord", s => s
       .addStringOption(o => o.setName("name").setDescription("Card name").setRequired(true).setMaxLength(80))
       .addStringOption(o => o.setName("rarity").setDescription("Built-in rarity tier — type to search").setRequired(true).setAutocomplete(true))
-      .addStringOption(o => o.setName("type").setDescription("Card type").setRequired(true)
-        .addChoices(
-          { name: "tank",        value: "tank"        },
-          { name: "aircraft",    value: "aircraft"    },
-          { name: "ship",        value: "ship"        },
-          { name: "vehicle",     value: "vehicle"     },
-          { name: "infantry",    value: "infantry"    },
-          { name: "boss",        value: "boss"        },
-          { name: "community",   value: "community"   },
-          { name: "event",       value: "event"       },
-          { name: "achievement", value: "achievement" },
-          { name: "limited",     value: "limited"     },
-        ))
+      .addStringOption(o => o.setName("type").setDescription("Card type/tag — type to search existing types or enter a new one").setRequired(true).setAutocomplete(true))
       .addAttachmentOption(o => o.setName("image").setDescription("Upload card image/GIF with Discord's file picker"))
       .addStringOption(o => o.setName("set").setDescription("Optional set to add this card to immediately").setAutocomplete(true))
       .addStringOption(o => o.setName("description").setDescription("Card description (up to 500 chars)").setMaxLength(500))
