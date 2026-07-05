@@ -368,14 +368,13 @@ function buildLegacyCommands() {
     // ── /menu — interactive main menu hub ────────────────────────────────────
     cmd("menu", "(User) Open the DN Cards interactive main menu — collection, packs, burn & trades in one place", s => s),
 
-    // ── /mttvalues — Military Tycoon Trading values lookup ───────────────────
-    cmd("mttvalues", "(User) Search Military Tycoon Trading values from mttvalues.com", s => s
-      .addSubcommand(sc => sc.setName("search").setDescription("Search for an item by name, rarity, or tag")
-        .addStringOption(o => o.setName("query").setDescription("Search keyword (leave blank for full list)")))
-      .addSubcommand(sc => sc.setName("list").setDescription("Show all items sorted by value"))
-      .addSubcommand(sc => sc.setName("info").setDescription("Show full details for an item")
-        .addStringOption(o => o.setName("name").setDescription("Item name (exact match)").setRequired(true).setAutocomplete(true)))
-      .addSubcommand(sc => sc.setName("calculator").setDescription("Open a trade calculator hub for MTT values"))),
+    // ── /dnvalues* — DN values lookup ─────────────────────────────────────
+    cmd("dnvaluesearch", "(User) Search DN values by name, rarity, or tag", s => s
+      .addStringOption(o => o.setName("query").setDescription("Search keyword (leave blank for full list)"))),
+    cmd("dnvaluelist", "(User) Show all DN values sorted by value", s => s),
+    cmd("dnvalueinfo", "(User) Show full details for a DN value item", s => s
+      .addStringOption(o => o.setName("name").setDescription("Item name (exact match)").setRequired(true).setAutocomplete(true))),
+    cmd("dnvaluecalc", "(User) Open a DN values trade calculator hub", s => s),
 
   ];
 }
@@ -427,6 +426,6 @@ export function buildCommands() {
   ];
 }
 
-export const USER_COMMAND_NAMES = new Set(["cards", "wishlist", "sets", "rep", "menu", "mttvalues"]);
+export const USER_COMMAND_NAMES = new Set(["cards", "wishlist", "sets", "rep", "menu", "dnvaluesearch", "dnvaluelist", "dnvalueinfo", "dnvaluecalc"]);
 
 export const ADMIN_COMMAND_NAMES = new Set(["admin", "setadmin", "event", "rarity", "embed", "edituser"]);

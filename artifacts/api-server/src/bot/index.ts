@@ -21,7 +21,7 @@ import {
 import { handleCardWizardStep, handleCardEditStep } from "./commands/card-wizard.js";
 import { handleAutocomplete } from "./commands/autocomplete.js";
 import { handleMenuCommand } from "./commands/menu.js";
-import { handleMTTValuesCommand, handleMTTValuesAutocomplete, handleMTTValuesCalculator, handleMTTValuesCalcButton, handleMTTValuesCalcModal } from "./commands/mttvalues.js";
+import { handleDNValuesSearch, handleDNValuesList, handleDNValuesInfo, handleDNValuesAutocomplete, handleDNValuesCalculator, handleDNValuesCalcButton, handleDNValuesCalcModal } from "./commands/dnvalues.js";
 import {
   buildCommands, USER_COMMAND_NAMES, ADMIN_COMMAND_NAMES,
 } from "./commands/register.js";
@@ -221,8 +221,8 @@ export async function startBot() {
           await handlePacksNamesModal(interaction);
         } else if (interaction.customId === "packs_desc_modal") {
           await handlePacksDescModal(interaction);
-        } else if (interaction.customId.startsWith("mttcalc_modal:")) {
-          await handleMTTValuesCalcModal(interaction);
+        } else if (interaction.customId.startsWith("dncalc_modal:")) {
+          await handleDNValuesCalcModal(interaction);
         }
         return;
       }
@@ -232,9 +232,9 @@ export async function startBot() {
         const parts = interaction.customId.split(":");
         const action = parts[0];
 
-        // ── MTTValues calculator hub buttons ───────────────────────────────
-        if (action === "mttcalc") {
-          await handleMTTValuesCalcButton(interaction);
+        // ── DN values calculator hub buttons ───────────────────────────────
+        if (action === "dncalc") {
+          await handleDNValuesCalcButton(interaction);
           return;
         }
 
@@ -449,13 +449,14 @@ export async function startBot() {
         await handleAdminCommand(interaction, legacyName);
       } else if (cmd === "menu") {
         await handleMenuCommand(interaction);
-      } else if (cmd === "mttvalues") {
-        const sub = interaction.options.getSubcommand(true);
-        if (sub === "calculator") {
-          await handleMTTValuesCalculator(interaction);
-        } else {
-          await handleMTTValuesCommand(interaction);
-        }
+      } else if (cmd === "dnvaluesearch") {
+        await handleDNValuesSearch(interaction);
+      } else if (cmd === "dnvaluelist") {
+        await handleDNValuesList(interaction);
+      } else if (cmd === "dnvalueinfo") {
+        await handleDNValuesInfo(interaction);
+      } else if (cmd === "dnvaluecalc") {
+        await handleDNValuesCalculator(interaction);
       } else if (USER_COMMAND_NAMES.has(cmd)) {
         await handleUserCommand(interaction, cmd);
       } else if (ADMIN_COMMAND_NAMES.has(cmd)) {

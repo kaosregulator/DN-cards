@@ -215,10 +215,10 @@ export async function handleAutocomplete(interaction: AutocompleteInteraction): 
     }
 
 
-    // ── /mttvalues info — autocomplete item names from MTTValues.com ────────────
-    if (effectiveCmd === "mttvalues" && focused.name === "name") {
-      const { handleMTTValuesAutocomplete } = await import("./mttvalues.js");
-      await handleMTTValuesAutocomplete(interaction, focused);
+    // ── /dnvalueinfo — autocomplete item names from DN values ────────────
+    if (effectiveCmd === "dnvalueinfo" && focused.name === "name") {
+      const { handleDNValuesAutocomplete } = await import("./dnvalues.js");
+      await handleDNValuesAutocomplete(interaction, focused);
       return;
     }
 

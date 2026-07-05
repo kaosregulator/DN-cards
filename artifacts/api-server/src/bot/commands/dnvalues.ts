@@ -7,14 +7,14 @@ import {
 import { logger } from "../../lib/logger.js";
 import { getBotClient } from "../client-holder.js";
 
-// MTTValues.com data source via public Firebase REST API
+// DN.com data source via public Firebase REST API
 const FIRESTORE_API_KEY = "AIzaSyDjB8PzhaPVn4sUwAUbrLbcxHZWMr3QFh0";
 const FIRESTORE_API_URL =
   `https://firestore.googleapis.com/v1/projects/military-tycoon-trading-values/databases/(default)/documents/items?key=${FIRESTORE_API_KEY}&pageSize=100`;
 
 const REPLY_DELETE_MS = 40_000; // ephemeral replies vanish after 40 seconds
 
-type MTTItem = {
+type DNItem = {
   id: string;
   name: string;
   valueMin: number | null;
@@ -27,7 +27,7 @@ type MTTItem = {
   image: string | null;
 };
 
-let cache: MTTItem[] | null = null;
+let cache: DNItem[] | null = null;
 let cacheExpiresAt = 0;
 const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 
@@ -54,7 +54,7 @@ function getFieldArray(fields: Record<string, unknown>, key: string): string[] {
   return arr.map((item) => (item.stringValue as string | undefined) ?? "").filter(Boolean);
 }
 
-function parseDoc(doc: { name: string; fields?: Record<string, unknown> }): MTTItem {
+function parseDoc(doc: { name: string; fields?: Record<string, unknown> }): DNItem {
   const fields = doc.fields ?? {};
   const valueMin = getFieldInt(fields, "valueMin");
   const valueMax = getFieldInt(fields, "valueMax");
@@ -72,7 +72,7 @@ function parseDoc(doc: { name: string; fields?: Record<string, unknown> }): MTTI
   };
 }
 
-async function fetchItems(): Promise<MTTItem[]> {
+async function fetchItems(): Promise<DNItem[]> {
   const now = Date.now();
   if (cache && cacheExpiresAt > now) {
     return cache;
@@ -102,7 +102,7 @@ async function fetchItems(): Promise<MTTItem[]> {
     } while (pageToken && pageCount < maxPages);
 
     if (pageToken) {
-      logger.warn({ fetched: allDocs.length }, "MTTValues collection may exceed pagination safety cap; some items not loaded");
+      logger.warn({ fetched: allDocs.length }, "DN collection may exceed pagination safety cap; some items not loaded");
     }
 
     const items = allDocs.map(parseDoc);
@@ -110,8 +110,8 @@ async function fetchItems(): Promise<MTTItem[]> {
     cacheExpiresAt = now + CACHE_TTL_MS;
     return items;
   } catch (err) {
-    logger.error({ err: (err as Error).message }, "Failed to fetch MTTValues data");
-    throw new Error("Could not load MTTValues data. The site might be temporarily unavailable.");
+    logger.error({ err: (err as Error).message }, "Failed to fetch DN data");
+    throw new Error("Could not load DN data. The site might be temporarily unavailable.");
   }
 }
 
@@ -124,7 +124,7 @@ async function publicReply(
   setTimeout(() => interaction.deleteReply().catch(() => {}), REPLY_DELETE_MS);
 }
 
-function formatValue(item: MTTItem): string {
+function formatValue(item: DNItem): string {
   if (item.valueMin == null && item.valueMax == null) return "?";
   if (item.valueMin === item.valueMax) return item.valueMin?.toLocaleString() ?? "?";
   if (item.valueMin == null) return item.valueMax?.toLocaleString() ?? "?";
@@ -157,7 +157,7 @@ function tagEmoji(tag: string): string {
   return map[tag] ?? "";
 }
 
-function buildItemEmbed(item: MTTItem): EmbedBuilder {
+function buildItemEmbed(item: DNItem): EmbedBuilder {
   const valueStr = formatValue(item);
   const rarityStr = item.rarity.map((r) => `${rarityEmoji(r)} ${r}`).join(" · ") || "—";
   const tagStr = item.tags.map((t) => `${tagEmoji(t)} ${t}`).join(" · ") || "—";
@@ -178,7 +178,7 @@ function buildItemEmbed(item: MTTItem): EmbedBuilder {
   return embed;
 }
 
-function itemNameAcronym(item: MTTItem): string {
+function itemNameAcronym(item: DNItem): string {
   return item.name
     .split(/[^a-zA-Z0-9]+/)
     .map((w) => w[0])
@@ -186,7 +186,7 @@ function itemNameAcronym(item: MTTItem): string {
     .toLowerCase();
 }
 
-function matchScore(item: MTTItem, query: string): number {
+function matchScore(item: DNItem, query: string): number {
   const q = query.toLowerCase().trim().replace(/\s+/g, " ");
   if (!q) return 0;
   const tokens = q.split(/\s+/).filter(Boolean);
@@ -220,114 +220,103 @@ function matchScore(item: MTTItem, query: string): number {
   return score;
 }
 
-export async function handleMTTValuesCommand(interaction: ChatInputCommandInteraction): Promise<void> {
-  const subcommand = interaction.options.getSubcommand(true);
+export async function handleDNValuesSearch(interaction: ChatInputCommandInteraction): Promise<void> {
+  const query = interaction.options.getString("query", false) ?? "";
+  const items = await fetchItems();
 
-  if (subcommand === "search") {
-    const query = interaction.options.getString("query", false) ?? "";
-    const items = await fetchItems();
-
-    let results = items;
-    if (query.trim()) {
-      const scored = items
-        .map((item) => ({ item, score: matchScore(item, query) }))
-        .filter(({ score }) => score > 0)
-        .sort((a, b) => b.score - a.score);
-      results = scored.map((s) => s.item);
-    } else {
-      // Blank query = list all by value, same as /mttvalues list but capped at 10.
-      results = items
-        .slice()
-        .sort((a, b) => (b.valueMax ?? 0) - (a.valueMax ?? 0) || (b.valueMin ?? 0) - (a.valueMin ?? 0));
-    }
-
-    if (results.length === 0) {
-      await publicReply(interaction, {
-        content: `🔍 No MTTValues items found for "${query}". Try a different keyword or use \/mttvalues list to browse all items.`,
-      });
-      return;
-    }
-
-    // If only one result, show full details
-    if (results.length === 1) {
-      await publicReply(interaction, { embeds: [buildItemEmbed(results[0])] });
-      return;
-    }
-
-    // Show top 10 matches by relevance score (value already contributes a tiny tie-break).
-    const toShow = results.slice(0, 10);
-
-    const lines = toShow.map(
-      (item, i) =>
-        `**${i + 1}.** ${item.name}\n  💰 ${formatValue(item)} · ${item.rarity.map(rarityEmoji).join("") || "—"} · Demand: ${item.demand ?? "—"}/10`,
-    );
-
-    const embed = new EmbedBuilder()
-      .setTitle(`🔍 MTTValues — ${query ? `"${query}"` : "All items"}`)
-      .setDescription(lines.join("\n\n"))
-      .setColor(0x9b59b6)
-      .setFooter({
-        text: `Showing ${toShow.length} of ${results.length} result${results.length === 1 ? "" : "s"} · Data from mttvalues.com`,
-      });
-
-    await publicReply(interaction, { embeds: [embed] });
-    return;
-  }
-
-  if (subcommand === "list") {
-    const items = await fetchItems();
-    const sorted = items
+  let results = items;
+  if (query.trim()) {
+    const scored = items
+      .map((item) => ({ item, score: matchScore(item, query) }))
+      .filter(({ score }) => score > 0)
+      .sort((a, b) => b.score - a.score);
+    results = scored.map((s) => s.item);
+  } else {
+    // Blank query = list all by value, same as /dnvaluelist but capped at 10.
+    results = items
       .slice()
       .sort((a, b) => (b.valueMax ?? 0) - (a.valueMax ?? 0) || (b.valueMin ?? 0) - (a.valueMin ?? 0));
-    const toShow = sorted.slice(0, 15);
+  }
 
-    const lines = toShow.map(
-      (item, i) =>
-        `**${i + 1}.** ${item.name}\n  💰 ${formatValue(item)} · ${item.rarity.map(rarityEmoji).join("") || "—"} · Demand: ${item.demand ?? "—"}/10`,
-    );
-
-    const embed = new EmbedBuilder()
-      .setTitle("📋 MTTValues — All Items (Top 15 by Value)")
-      .setDescription(lines.join("\n\n"))
-      .setColor(0x9b59b6)
-      .setFooter({ text: `Showing 15 of ${items.length} items · Data from mttvalues.com` });
-
-    await publicReply(interaction, { embeds: [embed] });
+  if (results.length === 0) {
+    await publicReply(interaction, {
+      content: `🔍 No DN items found for "${query}". Try a different keyword or use \/dnvaluelist to browse all items.`,
+    });
     return;
   }
 
-  if (subcommand === "info") {
-    const name = interaction.options.getString("name", true);
-    const items = await fetchItems();
-    const exact = items.find((i) => i.name.toLowerCase() === name.trim().toLowerCase());
-
-    let item = exact;
-    if (!item) {
-      // Fallback: fuzzy match; highest textual score wins.
-      const scored = items
-        .map((i) => ({ i, score: matchScore(i, name) }))
-        .filter(({ score }) => score > 0)
-        .sort((a, b) => b.score - a.score);
-      item = scored[0]?.i;
-    }
-
-    if (!item) {
-      await publicReply(interaction, {
-        content: `❌ Could not find "${name}" on MTTValues. Use \/mttvalues search to find it.`,
-      });
-      return;
-    }
-
-    await publicReply(interaction, { embeds: [buildItemEmbed(item)] });
+  // If only one result, show full details
+  if (results.length === 1) {
+    await publicReply(interaction, { embeds: [buildItemEmbed(results[0])] });
     return;
   }
 
-  await publicReply(interaction, {
-    content: "❌ Unknown subcommand. Use `search`, `list`, or `info`.",
-  });
+  // Show top 10 matches by relevance score (value already contributes a tiny tie-break).
+  const toShow = results.slice(0, 10);
+
+  const lines = toShow.map(
+    (item, i) =>
+      `**${i + 1}.** ${item.name}\n  💰 ${formatValue(item)} · ${item.rarity.map(rarityEmoji).join("") || "—"} · Demand: ${item.demand ?? "—"}/10`,
+  );
+
+  const embed = new EmbedBuilder()
+    .setTitle(`🔍 DN — ${query ? `"${query}"` : "All items"}`)
+    .setDescription(lines.join("\n\n"))
+    .setColor(0x9b59b6)
+    .setFooter({
+      text: `Showing ${toShow.length} of ${results.length} result${results.length === 1 ? "" : "s"} · Data from dnvalues.com`,
+    });
+
+  await publicReply(interaction, { embeds: [embed] });
 }
 
-export async function handleMTTValuesAutocomplete(
+export async function handleDNValuesList(interaction: ChatInputCommandInteraction): Promise<void> {
+  const items = await fetchItems();
+  const sorted = items
+    .slice()
+    .sort((a, b) => (b.valueMax ?? 0) - (a.valueMax ?? 0) || (b.valueMin ?? 0) - (a.valueMin ?? 0));
+  const toShow = sorted.slice(0, 15);
+
+  const lines = toShow.map(
+    (item, i) =>
+      `**${i + 1}.** ${item.name}\n  💰 ${formatValue(item)} · ${item.rarity.map(rarityEmoji).join("") || "—"} · Demand: ${item.demand ?? "—"}/10`,
+  );
+
+  const embed = new EmbedBuilder()
+    .setTitle("📋 DN — All Items (Top 15 by Value)")
+    .setDescription(lines.join("\n\n"))
+    .setColor(0x9b59b6)
+    .setFooter({ text: `Showing 15 of ${items.length} items · Data from dnvalues.com` });
+
+  await publicReply(interaction, { embeds: [embed] });
+}
+
+export async function handleDNValuesInfo(interaction: ChatInputCommandInteraction): Promise<void> {
+  const name = interaction.options.getString("name", true);
+  const items = await fetchItems();
+  const exact = items.find((i) => i.name.toLowerCase() === name.trim().toLowerCase());
+
+  let item = exact;
+  if (!item) {
+    // Fallback: fuzzy match; highest textual score wins.
+    const scored = items
+      .map((i) => ({ i, score: matchScore(i, name) }))
+      .filter(({ score }) => score > 0)
+      .sort((a, b) => b.score - a.score);
+    item = scored[0]?.i;
+  }
+
+  if (!item) {
+    await publicReply(interaction, {
+      content: `❌ Could not find "${name}" on DN. Use \/dnvaluesearch to find it.`,
+    });
+    return;
+  }
+
+  await publicReply(interaction, { embeds: [buildItemEmbed(item)] });
+}
+
+export async function handleDNValuesAutocomplete(
   interaction: AutocompleteInteraction,
   focused: { name: string; value: string },
 ): Promise<void> {
@@ -351,7 +340,7 @@ export async function handleMTTValuesAutocomplete(
 }
 
 // ── Trade Calculator Hub ─────────────────────────────────────────────────────
-// Mirrors the calculator on mttvalues.com: two offer sides, star bonuses,
+// Mirrors the calculator on dnvalues.com: two offer sides, star bonuses,
 // low/mid/high tier picks, and a 5%-threshold fair/win/loss verdict.
 
 const STAR_VALUE: Record<number, number> = { 1: 0, 2: 1000, 3: 10000, 4: 35000, 5: 75000 };
@@ -359,7 +348,7 @@ const STAR_VALUE: Record<number, number> = { 1: 0, 2: 1000, 3: 10000, 4: 35000, 
 type CalcTier = "low" | "mid" | "high";
 
 type CalcItem = {
-  item: MTTItem;
+  item: DNItem;
   quantity: number;
   tier: CalcTier;
   stars: number;
@@ -435,7 +424,7 @@ function formatCalcItem(c: CalcItem): string {
   return `${c.item.name}${qtyText}${tierText}${starText} — 💎 ${shortValue(val)}`;
 }
 
-function buildCalcEmbed(state: CalcState, title = "🧮 MTT Trade Calculator", description?: string): EmbedBuilder {
+function buildCalcEmbed(state: CalcState, title = "🧮 DN Trade Calculator", description?: string): EmbedBuilder {
   const yourLines = state.yourItems.length > 0
     ? state.yourItems.map(formatCalcItem).join("\n")
     : "*No items yet*";
@@ -470,17 +459,17 @@ function buildCalcEmbed(state: CalcState, title = "🧮 MTT Trade Calculator", d
 function buildCalcComponents(): ActionRowBuilder<ButtonBuilder>[] {
   return [
     new ActionRowBuilder<ButtonBuilder>().addComponents(
-      new ButtonBuilder().setCustomId("mttcalc:your").setLabel("➕ Your item").setStyle(ButtonStyle.Primary),
-      new ButtonBuilder().setCustomId("mttcalc:their").setLabel("➕ Their item").setStyle(ButtonStyle.Primary),
-      new ButtonBuilder().setCustomId("mttcalc:calc").setLabel("🧮 Calculate").setStyle(ButtonStyle.Success),
-      new ButtonBuilder().setCustomId("mttcalc:clear").setLabel("🗑️ Clear").setStyle(ButtonStyle.Danger),
+      new ButtonBuilder().setCustomId("dncalc:your").setLabel("➕ Your item").setStyle(ButtonStyle.Primary),
+      new ButtonBuilder().setCustomId("dncalc:their").setLabel("➕ Their item").setStyle(ButtonStyle.Primary),
+      new ButtonBuilder().setCustomId("dncalc:calc").setLabel("🧮 Calculate").setStyle(ButtonStyle.Success),
+      new ButtonBuilder().setCustomId("dncalc:clear").setLabel("🗑️ Clear").setStyle(ButtonStyle.Danger),
     ),
   ];
 }
 
 function buildCalcModal(side: "your" | "their"): ModalBuilder {
   const modal = new ModalBuilder()
-    .setCustomId(`mttcalc_modal:${side}`)
+    .setCustomId(`dncalc_modal:${side}`)
     .setTitle(side === "your" ? "Add to your offer" : "Add to their offer");
   modal.addComponents(
     new ActionRowBuilder<TextInputBuilder>().addComponents(
@@ -529,7 +518,7 @@ function isCalcOwner(interaction: ButtonInteraction | ModalSubmitInteraction, st
 
 async function denyUnauthorized(interaction: ButtonInteraction | ModalSubmitInteraction): Promise<void> {
   const payload: InteractionReplyOptions = {
-    content: "❌ This calculator hub belongs to someone else. Use your own `/mttvalues calculator`.",
+    content: "❌ This calculator hub belongs to someone else. Use your own `/dnvaluecalc`.",
     flags: MessageFlags.Ephemeral,
   };
   if (interaction.deferred || interaction.replied) {
@@ -560,7 +549,7 @@ function resetCalcTimer(state: CalcState): void {
   );
 }
 
-export async function handleMTTValuesCalculator(interaction: ChatInputCommandInteraction): Promise<void> {
+export async function handleDNValuesCalculator(interaction: ChatInputCommandInteraction): Promise<void> {
   if (!interaction.channel) return;
   const state: CalcState = {
     yourItems: [],
@@ -570,7 +559,7 @@ export async function handleMTTValuesCalculator(interaction: ChatInputCommandInt
     messageId: "",
   };
   await interaction.reply({
-    embeds: [buildCalcEmbed(state, "🧮 MTT Trade Calculator")],
+    embeds: [buildCalcEmbed(state, "🧮 DN Trade Calculator")],
     components: buildCalcComponents(),
   });
   const messageId = (await interaction.fetchReply()).id;
@@ -579,7 +568,7 @@ export async function handleMTTValuesCalculator(interaction: ChatInputCommandInt
   resetCalcTimer(state);
 }
 
-export async function handleMTTValuesCalcButton(interaction: ButtonInteraction): Promise<void> {
+export async function handleDNValuesCalcButton(interaction: ButtonInteraction): Promise<void> {
   const parts = interaction.customId.split(":");
   const action = parts[1];
   const messageId = interaction.message.id;
@@ -601,7 +590,7 @@ export async function handleMTTValuesCalcButton(interaction: ButtonInteraction):
     state.yourItems = [];
     state.theirItems = [];
     await interaction.editReply({
-      embeds: [buildCalcEmbed(state, "🧮 MTT Trade Calculator")],
+      embeds: [buildCalcEmbed(state, "🧮 DN Trade Calculator")],
       components: buildCalcComponents(),
     });
     resetCalcTimer(state);
@@ -610,8 +599,8 @@ export async function handleMTTValuesCalcButton(interaction: ButtonInteraction):
 
   if (action === "calc") {
     const title = state.yourItems.length === 0 && state.theirItems.length === 0
-      ? "🧮 MTT Trade Calculator"
-      : "🧮 MTT Trade Calculator — Result";
+      ? "🧮 DN Trade Calculator"
+      : "🧮 DN Trade Calculator — Result";
     await interaction.editReply({
       embeds: [buildCalcEmbed(state, title)],
       components: buildCalcComponents(),
@@ -621,7 +610,7 @@ export async function handleMTTValuesCalcButton(interaction: ButtonInteraction):
   }
 }
 
-export async function handleMTTValuesCalcModal(interaction: ModalSubmitInteraction): Promise<void> {
+export async function handleDNValuesCalcModal(interaction: ModalSubmitInteraction): Promise<void> {
   await interaction.deferUpdate();
   const parts = interaction.customId.split(":");
   const side = parts[1] as "your" | "their";
@@ -647,7 +636,7 @@ export async function handleMTTValuesCalcModal(interaction: ModalSubmitInteracti
 
   if (!match) {
     await interaction.editReply({
-      embeds: [buildCalcEmbed(state, "🧮 MTT Trade Calculator", `❌ Could not find "${nameRaw}" on MTTValues.`)],
+      embeds: [buildCalcEmbed(state, "🧮 DN Trade Calculator", `❌ Could not find "${nameRaw}" on DN.`)],
       components: buildCalcComponents(),
     });
     resetCalcTimer(state);
@@ -663,7 +652,7 @@ export async function handleMTTValuesCalcModal(interaction: ModalSubmitInteracti
   });
 
   await interaction.editReply({
-    embeds: [buildCalcEmbed(state, "🧮 MTT Trade Calculator")],
+    embeds: [buildCalcEmbed(state, "🧮 DN Trade Calculator")],
     components: buildCalcComponents(),
   });
   resetCalcTimer(state);
