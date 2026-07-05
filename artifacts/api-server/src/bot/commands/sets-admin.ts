@@ -1,5 +1,5 @@
 import type { ChatInputCommandInteraction, GuildMember } from "discord.js";
-import { AttachmentBuilder, MessageFlags, EmbedBuilder } from "discord.js";
+import { AttachmentBuilder, MessageFlags, EmbedBuilder, ChannelType } from "discord.js";
 import {
   isAdmin, invalidateActiveSetCardsCache,
   createSet, renameSet, deleteSetById, deleteSetByName,
@@ -576,7 +576,7 @@ export async function handleSetAdminCommand(interaction: ChatInputCommandInterac
     await updateGuildSettings(guildId, { spawnEnabledSecondary: false });
 
     if (channel) {
-      if (!channel.isTextBased()) {
+      if (channel.type !== ChannelType.GuildText && channel.type !== ChannelType.GuildAnnouncement) {
         await interaction.editReply("❌ The selected channel must be a text or announcement channel.");
         return;
       }

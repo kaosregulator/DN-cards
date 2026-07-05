@@ -193,15 +193,17 @@ export const SHINY_RATE = 0.005;
 export const SHINY_MULTIPLIER = 2;
 export const SHINY_EMOJI = "✨";
 
+import type { GuildSettings } from "@workspace/db";
+
 type ShinySettings = { shinyValueMultiplier?: number | null; shinyName?: string | null };
 
-export function getShinyMultiplier(settings?: ShinySettings | null): number {
-  const value = Number(settings?.shinyValueMultiplier);
+export function getShinyMultiplier(settings?: ShinySettings | GuildSettings | null): number {
+  const value = Number((settings as ShinySettings | null)?.shinyValueMultiplier);
   return Number.isFinite(value) && value >= 0.1 && value <= 100 ? value : SHINY_MULTIPLIER;
 }
 
-export function getShinyName(settings?: ShinySettings | null): string {
-  const name = settings?.shinyName?.trim();
+export function getShinyName(settings?: ShinySettings | GuildSettings | null): string {
+  const name = (settings as ShinySettings | null)?.shinyName?.trim();
   return name ? name.slice(0, 32) : "Shiny";
 }
 
