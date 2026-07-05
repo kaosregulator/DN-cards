@@ -368,13 +368,13 @@ function buildLegacyCommands() {
     // ── /menu — interactive main menu hub ────────────────────────────────────
     cmd("menu", "(User) Open the DN Cards interactive main menu — collection, packs, burn & trades in one place", s => s),
 
-    // ── /dnvalues* — DN values lookup (data from dnvalues.com) ─────────────
-    cmd("dnvaluesearch", "(User) Search DN values by name, rarity, or tag — values from dnvalues.com", s => s
+    // ── /dnvalues* — DN values lookup ─────────────────────────────────────
+    cmd("dnvaluesearch", "(User) Search DN values by name, rarity, or tag", s => s
       .addStringOption(o => o.setName("query").setDescription("Search keyword (leave blank for full list)"))),
-    cmd("dnvaluelist", "(User) Show all DN values sorted by value — values from dnvalues.com", s => s),
-    cmd("dnvalueinfo", "(User) Show full details for a DN value item — values from dnvalues.com", s => s
+    cmd("dnvaluelist", "(User) Show all DN values sorted by value", s => s),
+    cmd("dnvalueinfo", "(User) Show full details for a DN value item", s => s
       .addStringOption(o => o.setName("name").setDescription("Item name (exact match)").setRequired(true).setAutocomplete(true))),
-    cmd("dnvaluecalc", "(User) Open a DN values trade calculator hub — values from dnvalues.com", s => s
+    cmd("dnvaluecalc", "(User) Open a DN values trade calculator hub", s => s
       .addStringOption(o => o.setName("item").setDescription("Item name to add to the calculator").setAutocomplete(true))
       .addStringOption(o => o.setName("side").setDescription("Which side to add to")
         .addChoices({ name: "Your offer", value: "your" }, { name: "Their offer", value: "their" }))
@@ -382,7 +382,7 @@ function buildLegacyCommands() {
       .addStringOption(o => o.setName("tier").setDescription("Value tier: low, mid, or high (default mid)")
         .addChoices({ name: "Low", value: "low" }, { name: "Mid", value: "mid" }, { name: "High", value: "high" }))
       .addIntegerOption(o => o.setName("stars").setDescription("Stars 1-5 (default 1)").setMinValue(1).setMaxValue(5))),
-    cmd("dnhelp", "(User) Show DN values command help — values from dnvalues.com", s => s),
+    cmd("dnhelp", "(User) Show DN values command help", s => s),
 
   ];
 }

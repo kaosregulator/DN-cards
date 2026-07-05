@@ -264,7 +264,7 @@ export async function handleDNValuesSearch(interaction: ChatInputCommandInteract
     .setDescription(lines.join("\n\n"))
     .setColor(0x9b59b6)
     .setFooter({
-      text: `Showing ${toShow.length} of ${results.length} result${results.length === 1 ? "" : "s"} · Data from dnvalues.com`,
+      text: `Showing ${toShow.length} of ${results.length} result${results.length === 1 ? "" : "s"} · Prices from mttvalues.com`,
     });
 
   await publicReply(interaction, { embeds: [embed] });
@@ -286,7 +286,7 @@ export async function handleDNValuesList(interaction: ChatInputCommandInteractio
     .setTitle("📋 DN — All Items (Top 15 by Value)")
     .setDescription(lines.join("\n\n"))
     .setColor(0x9b59b6)
-    .setFooter({ text: `Showing 15 of ${items.length} items · Data from dnvalues.com` });
+    .setFooter({ text: `Showing 15 of ${items.length} items · Prices from mttvalues.com` });
 
   await publicReply(interaction, { embeds: [embed] });
 }
@@ -358,14 +358,14 @@ export async function handleDNValuesHelp(interaction: ChatInputCommandInteractio
       "• Click **Your item / Their item** to add items manually, or use `/dnvaluecalc item:...` for autocomplete.\n" +
       "• Set `tier` to low/mid/high and `stars` to 1-5 to match the exact value you want.\n" +
       "• The verdict turns **fair** when both sides are within 5% of each other.\n\n" +
-      "Data pulled live from dnvalues.com."
+      "Prices were used from mttvalues.com."
     )
-    .setFooter({ text: "Values from dnvalues.com" });
+    .setFooter({ text: "Prices from mttvalues.com" });
   await interaction.reply({ embeds: [embed] });
 }
 
 // ── Trade Calculator Hub ─────────────────────────────────────────────────────
-// Mirrors the calculator on dnvalues.com: two offer sides, star bonuses,
+// Mirrors the calculator on mttvalues.com: two offer sides, star bonuses,
 // low/mid/high tier picks, and a 5%-threshold fair/win/loss verdict.
 
 const STAR_VALUE: Record<number, number> = { 1: 0, 2: 1000, 3: 10000, 4: 35000, 5: 75000 };
@@ -479,7 +479,7 @@ function buildCalcEmbed(state: CalcState, title = "🧮 DN Trade Calculator", de
       `**Their offer** — 💎 ${shortValue(theirTotal)}${theirDemand != null ? ` · Demand ${theirDemand.toFixed(1)}/10` : ""}\n${theirLines}\n\n` +
       `**Verdict:** ${verdict}`,
     )
-    .setFooter({ text: "Values from dnvalues.com" });
+    .setFooter({ text: "Prices from mttvalues.com" });
   return embed;
 }
 
