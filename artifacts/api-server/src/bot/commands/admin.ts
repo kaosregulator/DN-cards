@@ -2,6 +2,7 @@ import { MessageFlags, type ChatInputCommandInteraction, type GuildMember } from
 import {
   isAdmin, getAllCards, addShards, catchCard, getOrCreateGuildSettings,
   removeCardFromUser, deductShards, addAdmin, removeAdmin, listAdmins,
+  giveCardCopy, getCardsInSet,
 } from "../db.js";
 import { isHomeGuild, GLOBAL_ONLY_MSG } from "../home-guild.js";
 import { spawnCard, scheduleNextSpawn } from "../spawn-manager.js";
@@ -60,6 +61,7 @@ async function handleAdminHelp(interaction: ChatInputCommandInteraction): Promis
           "`/admin drop [name]` — force a single drop\n" +
           "`/admin massdrop [amount]` — drop 10-25 cards in a batch *(event use)*\n" +
           "`/admin give user:@Member name:<card>` · `/admin takeback user:@Member name:<card>`\n" +
+          "`/admin giveall user:@Member` — give one of every card *(filter by set/rarity, random shiny)*\n" +
           "`/admin giveshards user:@Member amount:<n>` · `/admin takeshards user:@Member amount:<n>`",
       },
       {
@@ -428,6 +430,59 @@ export async function handleAdminCommand(
     const rEmoji = rarityEmoji(r, null, displayMap);
     const suffix = amount > 1 ? ` ×${amount}` : "";
     await interaction.editReply(`✅ Gave **${card.name}**${suffix} (${rEmoji} ${rLabel}) to <@${target.id}>.`);
+    return;
+  }
+
+  // ── /giveall ──────────────────────────────────────────────────────────────
+  // Give one copy of every matching card to a user. Shiny chance is configurable;
+  // each card rolls independently. Filter by set or base rarity.
+  if (cmd === "giveall") {
+    const target = opts.getUser("user", true);
+    const setName = opts.getString("set");
+    const rarity = opts.getString("rarity") as Rarity | null;
+    const shinyRate = Math.min(100, Math.max(0, opts.getInteger("shinyrate") ?? 0.5));
+
+    let pool = await getAllCards();
+
+    if (setName?.trim()) {
+      const { getSetByName } = await import("../db.js");
+      const set = await getSetByName(setName.trim());
+      if (!set) {
+        await interaction.editReply(`❌ Set "**${setName.trim()}**" not found.`);
+        return;
+      }
+      const setCards = await getCardsInSet(set.id);
+      const setCardIds = new Set(setCards.map(c => c.id));
+      pool = pool.filter(c => setCardIds.has(c.id));
+    }
+
+    if (rarity) {
+      pool = pool.filter(c => c.rarity === rarity);
+    }
+
+    pool = pool.filter(c => !c.isArchived);
+
+    if (pool.length === 0) {
+      await interaction.editReply("❌ No cards match the selected set/rarity filter.");
+      return;
+    }
+
+    let given = 0;
+    let shinies = 0;
+    for (const card of pool) {
+      const isShiny = Math.random() * 100 < shinyRate;
+      await giveCardCopy(guildId, target.id, card.id, isShiny);
+      given++;
+      if (isShiny) shinies++;
+    }
+
+    const r = rarity ? rarityLabel(rarity as Rarity, null, await getRarityDisplayOverrides(guildId)) : "all rarities";
+    const suffix = rarity ? ` (${r})` : "";
+    const setText = setName?.trim() ? ` from set **${setName.trim()}**` : "";
+    await interaction.editReply(
+      `✅ Gave **${given} card${given === 1 ? "" : "s"}**${suffix}${setText} to <@${target.id}>.` +
+      (shinies > 0 ? ` ${shinies} shiny ✨` : ""),
+    );
     return;
   }
 

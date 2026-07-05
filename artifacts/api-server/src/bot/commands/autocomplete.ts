@@ -142,7 +142,8 @@ export async function handleAutocomplete(interaction: AutocompleteInteraction): 
       (effectiveCmd === "setadmin" && ["name", "set", "from", "to"].includes(focused.name)) ||
       (effectiveCmd === "drop" && focused.name === "set") ||
       (effectiveCmd === "massdrop" && focused.name === "set") ||
-      (effectiveCmd === "addcard" && focused.name === "set");
+      (effectiveCmd === "addcard" && focused.name === "set") ||
+      (effectiveCmd === "giveall" && focused.name === "set");
     if (isSetNameOption) {
       const sets = await getSetsCached();
       const q = query.toLowerCase().trim();

@@ -219,6 +219,13 @@ function buildLegacyCommands() {
       .addStringOption(o => o.setName("name").setDescription("Card name").setRequired(true).setAutocomplete(true))
       .addIntegerOption(o => o.setName("amount").setDescription("How many copies to give (default 1, max 100)").setMinValue(1).setMaxValue(100))),
 
+    adminCmd("giveall", "(Admin) Give one copy of every card to a member — random shiny chance, filter by set or rarity", s => s
+      .addUserOption(o => o.setName("user").setDescription("Member to receive the cards").setRequired(true))
+      .addStringOption(o => o.setName("set").setDescription("Only cards from this set (leave blank for all cards)").setAutocomplete(true))
+      .addStringOption(o => o.setName("rarity").setDescription("Only cards of this rarity (leave blank for all rarities)")
+        .addChoices({ name: "Common", value: "common" }, { name: "Uncommon", value: "uncommon" }, { name: "Rare", value: "rare" }, { name: "Epic", value: "epic" }, { name: "Legendary", value: "legendary" }, { name: "Mythic", value: "mythic" }))
+      .addIntegerOption(o => o.setName("shinyrate").setDescription("Shiny chance 0-100% (default 0.5)").setMinValue(0).setMaxValue(100))),
+
     adminCmd("giveshards", "(Admin) Give DN Shards to a member", s => s
       .addUserOption(o => o.setName("user").setDescription("Member to receive shards").setRequired(true))
       .addIntegerOption(o => o.setName("amount").setDescription("Amount of shards").setRequired(true).setMinValue(1))),
@@ -398,7 +405,7 @@ const USER_HUB_COMMANDS = new Set([
 
 const ADMIN_HUB_COMMANDS = new Set([
   "setup", "config", "adminhub", "sethub", "set_admin", "deletecard",
-  "welcomeadmin", "adminhelp", "drop", "massdrop", "give", "giveshards",
+  "welcomeadmin", "adminhelp", "drop", "massdrop", "give", "giveall", "giveshards",
   "takeback", "takeshards", "addcard", "editcard", "dashboard",
 ]);
 

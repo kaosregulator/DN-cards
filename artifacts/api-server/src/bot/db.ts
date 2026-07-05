@@ -919,6 +919,45 @@ export async function catchCard(
 }
 
 /**
+ * Admin bulk giveaway: give one copy of a card to a user with explicit shiny
+ * control. Increments `totalMinted` just like a normal catch. Use this for
+ * deterministic /give-all-style commands where the caller already rolled
+ * the shiny chance.
+ */
+export async function giveCardCopy(
+  guildId: string,
+  userId: string,
+  cardId: number,
+  isShiny: boolean,
+): Promise<void> {
+  if (isShiny) {
+    await db.insert(collectionsTable)
+      .values({ guildId, userId, cardId, count: 0, shinyCount: 1 })
+      .onConflictDoUpdate({
+        target: [collectionsTable.guildId, collectionsTable.userId, collectionsTable.cardId],
+        set: {
+          shinyCount: sql`${collectionsTable.shinyCount} + 1`,
+          lastCaughtAt: new Date(),
+        },
+      });
+  } else {
+    await db.insert(collectionsTable)
+      .values({ guildId, userId, cardId, count: 1 })
+      .onConflictDoUpdate({
+        target: [collectionsTable.guildId, collectionsTable.userId, collectionsTable.cardId],
+        set: {
+          count: sql`${collectionsTable.count} + 1`,
+          lastCaughtAt: new Date(),
+        },
+      });
+  }
+
+  await db.update(cardsTable)
+    .set({ totalMinted: sql`${cardsTable.totalMinted} + 1` })
+    .where(eq(cardsTable.id, cardId));
+}
+
+/**
  * Restore a card copy to a user's collection WITHOUT touching the global
  * `totalMinted` counter. Use this when refunding a card that was previously
  * removed by `removeCardFromUser` (e.g. a failed /tradein) — the card was
