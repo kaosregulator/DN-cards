@@ -1,7 +1,7 @@
 import {
   ChatInputCommandInteraction, AutocompleteInteraction, EmbedBuilder, MessageFlags,
   ButtonBuilder, ButtonStyle, ActionRowBuilder, ModalBuilder, TextInputBuilder, TextInputStyle,
-  type ButtonInteraction, type ModalSubmitInteraction,
+  type ButtonInteraction, type ModalSubmitInteraction, type TextChannel,
   type InteractionReplyOptions, type BaseMessageOptions,
 } from "discord.js";
 import { logger } from "../../lib/logger.js";
@@ -339,6 +339,30 @@ export async function handleDNValuesAutocomplete(
   }
 }
 
+export async function handleDNValuesHelp(interaction: ChatInputCommandInteraction): Promise<void> {
+  const embed = new EmbedBuilder()
+    .setTitle("🧭 DN Values Commands")
+    .setColor(0x9b59b6)
+    .setDescription(
+      "Quick reference for the DN values lookup tools.\n\n" +
+      "**Commands**\n" +
+      "• `/dnvaluesearch <keyword>` — search items by name, rarity, or tag.\n" +
+      "• `/dnvaluelist` — show all items sorted by value.\n" +
+      "• `/dnvalueinfo <item>` — full details for one item (autocomplete).\n" +
+      "• `/dnvaluecalc` — open a fresh trade calculator hub.\n" +
+      "• `/dnvaluecalc item:<item> side:<your/their>` — add an item straight to your current hub with autocomplete.\n" +
+      "• `/dnhelp` — show this message.\n\n" +
+      "**Calculator tips**\n" +
+      "• The calculator is **yours only** — only you can press its buttons.\n" +
+      "• It shows for **40 seconds**, then auto-deletes. Just run `/dnvaluecalc` again for a fresh one.\n" +
+      "• Click **Your item / Their item** to add items manually, or use `/dnvaluecalc item:...` for autocomplete.\n" +
+      "• Set `tier` to low/mid/high and `stars` to 1-5 to match the exact value you want.\n" +
+      "• The verdict turns **fair** when both sides are within 5% of each other.\n\n" +
+      "Data from dnvalues.com."
+    );
+  await interaction.reply({ embeds: [embed] });
+}
+
 // ── Trade Calculator Hub ─────────────────────────────────────────────────────
 // Mirrors the calculator on dnvalues.com: two offer sides, star bonuses,
 // low/mid/high tier picks, and a 5%-threshold fair/win/loss verdict.
@@ -360,6 +384,7 @@ type CalcState = {
   ownerUserId: string;
   channelId: string;
   messageId: string;
+  createdAt: number;
 };
 
 const calcStates = new Map<string, CalcState>();
@@ -528,6 +553,18 @@ async function denyUnauthorized(interaction: ButtonInteraction | ModalSubmitInte
   }
 }
 
+async function denyExpired(interaction: ButtonInteraction | ModalSubmitInteraction): Promise<void> {
+  const payload: InteractionReplyOptions = {
+    content: "⏱️ This calculator hub has expired or was replaced. Run `/dnvaluecalc` to open a fresh one.",
+    flags: MessageFlags.Ephemeral,
+  };
+  if (interaction.deferred || interaction.replied) {
+    await interaction.followUp(payload).catch(() => {});
+  } else {
+    await interaction.reply(payload).catch(() => {});
+  }
+}
+
 function resetCalcTimer(state: CalcState): void {
   const existing = calcTimers.get(state.messageId);
   if (existing) clearTimeout(existing);
@@ -549,13 +586,42 @@ function resetCalcTimer(state: CalcState): void {
   );
 }
 
-function findUserCalcState(userId: string, channelId: string): CalcState | undefined {
+function deleteCalcState(state: CalcState): void {
+  const timer = calcTimers.get(state.messageId);
+  if (timer) clearTimeout(timer);
+  calcTimers.delete(state.messageId);
+  calcStates.delete(state.messageId);
+}
+
+async function cleanupUserCalcStates(userId: string, channelId: string, channel: TextChannel | null): Promise<void> {
+  const toDelete: CalcState[] = [];
   for (const state of calcStates.values()) {
     if (state.ownerUserId === userId && state.channelId === channelId) {
-      return state;
+      toDelete.push(state);
     }
   }
-  return undefined;
+  for (const state of toDelete) {
+    // Best-effort delete the old hub message so dead buttons don't linger.
+    if (channel && "messages" in channel) {
+      const message = await channel.messages.fetch(state.messageId).catch(() => null);
+      if (message && "deletable" in message && message.deletable) {
+        await message.delete().catch(() => {});
+      }
+    }
+    deleteCalcState(state);
+  }
+}
+
+function findUserCalcState(userId: string, channelId: string): CalcState | undefined {
+  let latest: CalcState | undefined;
+  for (const state of calcStates.values()) {
+    if (state.ownerUserId === userId && state.channelId === channelId) {
+      if (!latest || state.createdAt > latest.createdAt) {
+        latest = state;
+      }
+    }
+  }
+  return latest;
 }
 
 export async function handleDNValuesCalculator(interaction: ChatInputCommandInteraction): Promise<void> {
@@ -603,10 +669,7 @@ export async function handleDNValuesCalculator(interaction: ChatInputCommandInte
         return;
       }
       // Stale state — clean it up so it doesn't poison future lookups.
-      const staleTimer = calcTimers.get(existingState.messageId);
-      if (staleTimer) clearTimeout(staleTimer);
-      calcTimers.delete(existingState.messageId);
-      calcStates.delete(existingState.messageId);
+      deleteCalcState(existingState);
     }
 
     // No existing hub in this channel (or it was stale) — create a new one with this item already in it.
@@ -616,6 +679,7 @@ export async function handleDNValuesCalculator(interaction: ChatInputCommandInte
       ownerUserId: interaction.user.id,
       channelId: interaction.channel.id,
       messageId: "",
+      createdAt: Date.now(),
     };
     await interaction.reply({
       embeds: [buildCalcEmbed(state, "🧮 DN Trade Calculator")],
@@ -628,12 +692,16 @@ export async function handleDNValuesCalculator(interaction: ChatInputCommandInte
   }
 
   // ── Default hub-open flow ─
+  // Enforce one active hub per user per channel so repeated `/dnvaluecalc` always
+  // starts fresh and autocomplete adds land on the current calculator.
+  await cleanupUserCalcStates(interaction.user.id, interaction.channel.id, interaction.channel as TextChannel);
   const state: CalcState = {
     yourItems: [],
     theirItems: [],
     ownerUserId: interaction.user.id,
     channelId: interaction.channel.id,
     messageId: "",
+    createdAt: Date.now(),
   };
   await interaction.reply({
     embeds: [buildCalcEmbed(state, "🧮 DN Trade Calculator")],
@@ -650,7 +718,11 @@ export async function handleDNValuesCalcButton(interaction: ButtonInteraction): 
   const action = parts[1];
   const messageId = interaction.message.id;
   const state = calcStates.get(messageId);
-  if (!state || !isCalcOwner(interaction, state)) {
+  if (!state) {
+    await denyExpired(interaction);
+    return;
+  }
+  if (!isCalcOwner(interaction, state)) {
     await denyUnauthorized(interaction);
     return;
   }
@@ -695,7 +767,11 @@ export async function handleDNValuesCalcModal(interaction: ModalSubmitInteractio
   if (!messageId) return;
 
   const state = calcStates.get(messageId);
-  if (!state || !isCalcOwner(interaction, state)) {
+  if (!state) {
+    await denyExpired(interaction);
+    return;
+  }
+  if (!isCalcOwner(interaction, state)) {
     await denyUnauthorized(interaction);
     return;
   }

@@ -382,6 +382,7 @@ function buildLegacyCommands() {
       .addStringOption(o => o.setName("tier").setDescription("Value tier: low, mid, or high (default mid)")
         .addChoices({ name: "Low", value: "low" }, { name: "Mid", value: "mid" }, { name: "High", value: "high" }))
       .addIntegerOption(o => o.setName("stars").setDescription("Stars 1-5 (default 1)").setMinValue(1).setMaxValue(5))),
+    cmd("dnhelp", "(User) Show DN values command help", s => s),
 
   ];
 }
@@ -433,6 +434,6 @@ export function buildCommands() {
   ];
 }
 
-export const USER_COMMAND_NAMES = new Set(["cards", "wishlist", "sets", "rep", "menu", "dnvaluesearch", "dnvaluelist", "dnvalueinfo", "dnvaluecalc"]);
+export const USER_COMMAND_NAMES = new Set(["cards", "wishlist", "sets", "rep", "menu", "dnvaluesearch", "dnvaluelist", "dnvalueinfo", "dnvaluecalc", "dnhelp"]);
 
 export const ADMIN_COMMAND_NAMES = new Set(["admin", "setadmin", "event", "rarity", "embed", "edituser"]);

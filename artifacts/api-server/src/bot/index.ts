@@ -21,7 +21,7 @@ import {
 import { handleCardWizardStep, handleCardEditStep } from "./commands/card-wizard.js";
 import { handleAutocomplete } from "./commands/autocomplete.js";
 import { handleMenuCommand } from "./commands/menu.js";
-import { handleDNValuesSearch, handleDNValuesList, handleDNValuesInfo, handleDNValuesAutocomplete, handleDNValuesCalculator, handleDNValuesCalcButton, handleDNValuesCalcModal } from "./commands/dnvalues.js";
+import { handleDNValuesSearch, handleDNValuesList, handleDNValuesInfo, handleDNValuesAutocomplete, handleDNValuesCalculator, handleDNValuesCalcButton, handleDNValuesCalcModal, handleDNValuesHelp } from "./commands/dnvalues.js";
 import {
   buildCommands, USER_COMMAND_NAMES, ADMIN_COMMAND_NAMES,
 } from "./commands/register.js";
@@ -457,6 +457,8 @@ export async function startBot() {
         await handleDNValuesInfo(interaction);
       } else if (cmd === "dnvaluecalc") {
         await handleDNValuesCalculator(interaction);
+      } else if (cmd === "dnhelp") {
+        await handleDNValuesHelp(interaction);
       } else if (USER_COMMAND_NAMES.has(cmd)) {
         await handleUserCommand(interaction, cmd);
       } else if (ADMIN_COMMAND_NAMES.has(cmd)) {
