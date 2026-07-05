@@ -358,8 +358,9 @@ export async function handleDNValuesHelp(interaction: ChatInputCommandInteractio
       "• Click **Your item / Their item** to add items manually, or use `/dnvaluecalc item:...` for autocomplete.\n" +
       "• Set `tier` to low/mid/high and `stars` to 1-5 to match the exact value you want.\n" +
       "• The verdict turns **fair** when both sides are within 5% of each other.\n\n" +
-      "Data from dnvalues.com."
-    );
+      "Data pulled live from dnvalues.com."
+    )
+    .setFooter({ text: "Values from dnvalues.com" });
   await interaction.reply({ embeds: [embed] });
 }
 
@@ -477,7 +478,8 @@ function buildCalcEmbed(state: CalcState, title = "🧮 DN Trade Calculator", de
       `**Your offer** — 💎 ${shortValue(yourTotal)}${yourDemand != null ? ` · Demand ${yourDemand.toFixed(1)}/10` : ""}\n${yourLines}\n\n` +
       `**Their offer** — 💎 ${shortValue(theirTotal)}${theirDemand != null ? ` · Demand ${theirDemand.toFixed(1)}/10` : ""}\n${theirLines}\n\n` +
       `**Verdict:** ${verdict}`,
-    );
+    )
+    .setFooter({ text: "Values from dnvalues.com" });
   return embed;
 }
 
