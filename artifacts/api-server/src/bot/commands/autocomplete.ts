@@ -87,8 +87,12 @@ function scoreMatch(name: string, q: string): number {
   return 3;
 }
 
-function formatCardChoice(c: SlimCard) {
-  const emoji = rarityEmoji(c.rarity as Rarity, null, null) ?? "🃏";
+function formatCardChoice(
+  c: SlimCard,
+  displayMap?: Awaited<ReturnType<typeof getRarityDisplayOverrides>> | null,
+  settings?: Awaited<ReturnType<typeof getOrCreateGuildSettings>> | null,
+) {
+  const emoji = rarityEmoji(c.rarity as Rarity, settings, displayMap) ?? "🃏";
   // When a website display-name override exists, show both so the admin
   // can find the card by either name. Value is always cards.name so
   // getCardByName() resolves it correctly.
@@ -98,7 +102,12 @@ function formatCardChoice(c: SlimCard) {
   return { name: label, value: c.name.slice(0, 100) };
 }
 
-async function suggestCardNames(query: string, pool?: SlimCard[]) {
+async function suggestCardNames(
+  query: string,
+  pool?: SlimCard[],
+  displayMap?: Awaited<ReturnType<typeof getRarityDisplayOverrides>> | null,
+  settings?: Awaited<ReturnType<typeof getOrCreateGuildSettings>> | null,
+) {
   const q = query.toLowerCase().trim();
   const cards = pool ?? await getCardsCached();
   const scored = cards
@@ -113,7 +122,7 @@ async function suggestCardNames(query: string, pool?: SlimCard[]) {
     .filter(x => x.s < 3)
     .sort((a, b) => a.s - b.s || a.c.name.localeCompare(b.c.name))
     .slice(0, MAX_CHOICES);
-  return scored.map(x => formatCardChoice(x.c));
+  return scored.map(x => formatCardChoice(x.c, displayMap, settings));
 }
 
 export async function handleAutocomplete(interaction: AutocompleteInteraction): Promise<void> {
@@ -129,6 +138,15 @@ export async function handleAutocomplete(interaction: AutocompleteInteraction): 
     : cmd;
 
   try {
+    // Fetch per-guild rarity display overrides once so every card-name dropdown
+    // reflects the server's custom rarity emojis/labels (e.g. red 🔴 for LE).
+    const guildId = interaction.guildId;
+    const [displayMap, settings] = guildId
+      ? await Promise.all([
+          getRarityDisplayOverrides(guildId),
+          getOrCreateGuildSettings(guildId),
+        ])
+      : [null, null];
 
     // ── Set-name autocomplete for /sets, /drop, /massdrop ───────────────────
     // Any string option named `set`, `from`, `to`, or `name` on these two
@@ -169,7 +187,7 @@ export async function handleAutocomplete(interaction: AutocompleteInteraction): 
         .filter(x => x.s < 3)
         .sort((a, b) => a.s - b.s || a.c.name.localeCompare(b.c.name))
         .slice(0, MAX_CHOICES);
-      await interaction.respond(scored.map(x => formatCardChoice(x.c)));
+      await interaction.respond(scored.map(x => formatCardChoice(x.c, displayMap, settings)));
       return;
     }
 
@@ -177,7 +195,7 @@ export async function handleAutocomplete(interaction: AutocompleteInteraction): 
     if (effectiveCmd === "trade" && focused.name === "offer" && interaction.guild) {
       const owned = await getUserCollectionCached(interaction.guild.id, interaction.user.id);
       const pool = owned.map(o => ({ name: o.name, rarity: o.rarity }));
-      await interaction.respond(await suggestCardNames(query, pool));
+      await interaction.respond(await suggestCardNames(query, pool, displayMap, settings));
       return;
     }
 
@@ -192,7 +210,7 @@ export async function handleAutocomplete(interaction: AutocompleteInteraction): 
           return;
         }
         const pool = targetOwned.map(o => ({ name: o.name, rarity: o.rarity }));
-        await interaction.respond(await suggestCardNames(query, pool));
+        await interaction.respond(await suggestCardNames(query, pool, displayMap, settings));
         return;
       }
       // No user picked yet → fall through to full roster so the dropdown isn't empty
@@ -210,7 +228,7 @@ export async function handleAutocomplete(interaction: AutocompleteInteraction): 
           .filter(x => x.s < 3)
           .sort((a, b) => a.s - b.s || a.c.name.localeCompare(b.c.name))
           .slice(0, MAX_CHOICES);
-        await interaction.respond(scored.map(x => formatCardChoice(x.c)));
+        await interaction.respond(scored.map(x => formatCardChoice(x.c, displayMap, settings)));
         return;
       }
     }
@@ -324,7 +342,7 @@ export async function handleAutocomplete(interaction: AutocompleteInteraction): 
 
     // ── All other card-name fields → full roster ────────────────────────────
     // /info, /drop, /give, /takeback, /trade.want, /wishlist add
-    await interaction.respond(await suggestCardNames(query));
+    await interaction.respond(await suggestCardNames(query, undefined, displayMap, settings));
   } catch {
     try { await interaction.respond([]); } catch { /* ignore */ }
   }
