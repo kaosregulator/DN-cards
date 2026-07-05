@@ -374,7 +374,14 @@ function buildLegacyCommands() {
     cmd("dnvaluelist", "(User) Show all DN values sorted by value", s => s),
     cmd("dnvalueinfo", "(User) Show full details for a DN value item", s => s
       .addStringOption(o => o.setName("name").setDescription("Item name (exact match)").setRequired(true).setAutocomplete(true))),
-    cmd("dnvaluecalc", "(User) Open a DN values trade calculator hub", s => s),
+    cmd("dnvaluecalc", "(User) Open a DN values trade calculator hub — or add an item with autocomplete", s => s
+      .addStringOption(o => o.setName("item").setDescription("Item name to add to the calculator").setAutocomplete(true))
+      .addStringOption(o => o.setName("side").setDescription("Which side to add to")
+        .addChoices({ name: "Your offer", value: "your" }, { name: "Their offer", value: "their" }))
+      .addIntegerOption(o => o.setName("quantity").setDescription("How many copies (default 1)").setMinValue(1))
+      .addStringOption(o => o.setName("tier").setDescription("Value tier: low, mid, or high (default mid)")
+        .addChoices({ name: "Low", value: "low" }, { name: "Mid", value: "mid" }, { name: "High", value: "high" }))
+      .addIntegerOption(o => o.setName("stars").setDescription("Stars 1-5 (default 1)").setMinValue(1).setMaxValue(5))),
 
   ];
 }

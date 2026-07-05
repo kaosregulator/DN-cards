@@ -215,8 +215,9 @@ export async function handleAutocomplete(interaction: AutocompleteInteraction): 
     }
 
 
-    // ── /dnvalueinfo — autocomplete item names from DN values ────────────
-    if (effectiveCmd === "dnvalueinfo" && focused.name === "name") {
+    // ── /dnvalueinfo and /dnvaluecalc — autocomplete item names from DN values ─
+    if ((effectiveCmd === "dnvalueinfo" && focused.name === "name") ||
+        (effectiveCmd === "dnvaluecalc" && focused.name === "item")) {
       const { handleDNValuesAutocomplete } = await import("./dnvalues.js");
       await handleDNValuesAutocomplete(interaction, focused);
       return;

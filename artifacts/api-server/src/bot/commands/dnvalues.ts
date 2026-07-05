@@ -320,7 +320,7 @@ export async function handleDNValuesAutocomplete(
   interaction: AutocompleteInteraction,
   focused: { name: string; value: string },
 ): Promise<void> {
-  if (focused.name !== "name") {
+  if (!["name", "item"].includes(focused.name)) {
     await interaction.respond([]);
     return;
   }
@@ -549,8 +549,85 @@ function resetCalcTimer(state: CalcState): void {
   );
 }
 
+function findUserCalcState(userId: string, channelId: string): CalcState | undefined {
+  for (const state of calcStates.values()) {
+    if (state.ownerUserId === userId && state.channelId === channelId) {
+      return state;
+    }
+  }
+  return undefined;
+}
+
 export async function handleDNValuesCalculator(interaction: ChatInputCommandInteraction): Promise<void> {
   if (!interaction.channel) return;
+
+  const itemName = interaction.options.getString("item", false);
+
+  // ── Add-to-existing-hub flow (real Discord autocomplete on the item option) ─
+  if (itemName?.trim()) {
+    const items = await fetchItems();
+    const match = items.find((i) => i.name.toLowerCase() === itemName.trim().toLowerCase())
+      ?? items
+        .map((i) => ({ i, score: matchScore(i, itemName) }))
+        .filter(({ score }) => score > 0)
+        .sort((a, b) => b.score - a.score)[0]?.i;
+
+    if (!match) {
+      await publicReply(interaction, {
+        content: `❌ Could not find "${itemName}" on DN. Try \`/dnvaluesearch\` to find it.`,
+      });
+      return;
+    }
+
+    const side = (interaction.options.getString("side", false) as "your" | "their") || "your";
+    const quantity = Math.max(1, interaction.options.getInteger("quantity", false) ?? 1);
+    const tierRaw = interaction.options.getString("tier", false) ?? "mid";
+    const tier: CalcTier = ["low", "mid", "high"].includes(tierRaw) ? (tierRaw as CalcTier) : "mid";
+    const stars = Math.min(5, Math.max(1, interaction.options.getInteger("stars", false) ?? 1));
+
+    const existingState = findUserCalcState(interaction.user.id, interaction.channel.id);
+    if (existingState) {
+      // Try to edit the existing hub message. If it's gone, the state is stale
+      // and we should fall through to creating a fresh hub instead of lying.
+      const message = await interaction.channel.messages.fetch(existingState.messageId).catch(() => null);
+      if (message && "edit" in message) {
+        existingState[side === "your" ? "yourItems" : "theirItems"].push({ item: match, quantity, tier, stars });
+        await (message as any).edit({
+          embeds: [buildCalcEmbed(existingState, "🧮 DN Trade Calculator")],
+          components: buildCalcComponents(),
+        });
+        await publicReply(interaction, {
+          content: `✅ Added **${match.name}** x${quantity} to **${side}** offer.`,
+        });
+        resetCalcTimer(existingState);
+        return;
+      }
+      // Stale state — clean it up so it doesn't poison future lookups.
+      const staleTimer = calcTimers.get(existingState.messageId);
+      if (staleTimer) clearTimeout(staleTimer);
+      calcTimers.delete(existingState.messageId);
+      calcStates.delete(existingState.messageId);
+    }
+
+    // No existing hub in this channel (or it was stale) — create a new one with this item already in it.
+    const state: CalcState = {
+      yourItems: side === "your" ? [{ item: match, quantity, tier, stars }] : [],
+      theirItems: side === "their" ? [{ item: match, quantity, tier, stars }] : [],
+      ownerUserId: interaction.user.id,
+      channelId: interaction.channel.id,
+      messageId: "",
+    };
+    await interaction.reply({
+      embeds: [buildCalcEmbed(state, "🧮 DN Trade Calculator")],
+      components: buildCalcComponents(),
+    });
+    state.messageId = (await interaction.fetchReply()).id;
+    calcStates.set(state.messageId, state);
+    resetCalcTimer(state);
+    return;
+  }
+
+  // ── Default hub-open flow ─
   const state: CalcState = {
     yourItems: [],
     theirItems: [],
