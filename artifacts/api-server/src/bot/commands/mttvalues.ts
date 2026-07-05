@@ -1,5 +1,11 @@
-import { ChatInputCommandInteraction, AutocompleteInteraction, EmbedBuilder, MessageFlags, type InteractionReplyOptions, type BaseMessageOptions } from "discord.js";
+import {
+  ChatInputCommandInteraction, AutocompleteInteraction, EmbedBuilder, MessageFlags,
+  ButtonBuilder, ButtonStyle, ActionRowBuilder, ModalBuilder, TextInputBuilder, TextInputStyle,
+  type ButtonInteraction, type ModalSubmitInteraction,
+  type InteractionReplyOptions, type BaseMessageOptions,
+} from "discord.js";
 import { logger } from "../../lib/logger.js";
+import { getBotClient } from "../client-holder.js";
 
 // MTTValues.com data source via public Firebase REST API
 const FIRESTORE_API_KEY = "AIzaSyDjB8PzhaPVn4sUwAUbrLbcxHZWMr3QFh0";
@@ -109,12 +115,12 @@ async function fetchItems(): Promise<MTTItem[]> {
   }
 }
 
-// Ephemeral reply visible only to the command user, then deleted after 40 seconds.
-async function ephemeralReply(
+// Public reply seen by everyone in the channel, then deleted after 40 seconds.
+async function publicReply(
   interaction: ChatInputCommandInteraction,
   payload: InteractionReplyOptions & BaseMessageOptions,
 ): Promise<void> {
-  await interaction.reply({ ...payload, flags: MessageFlags.Ephemeral });
+  await interaction.reply(payload);
   setTimeout(() => interaction.deleteReply().catch(() => {}), REPLY_DELETE_MS);
 }
 
@@ -236,7 +242,7 @@ export async function handleMTTValuesCommand(interaction: ChatInputCommandIntera
     }
 
     if (results.length === 0) {
-      await ephemeralReply(interaction, {
+      await publicReply(interaction, {
         content: `🔍 No MTTValues items found for "${query}". Try a different keyword or use \/mttvalues list to browse all items.`,
       });
       return;
@@ -244,7 +250,7 @@ export async function handleMTTValuesCommand(interaction: ChatInputCommandIntera
 
     // If only one result, show full details
     if (results.length === 1) {
-      await ephemeralReply(interaction, { embeds: [buildItemEmbed(results[0])] });
+      await publicReply(interaction, { embeds: [buildItemEmbed(results[0])] });
       return;
     }
 
@@ -264,7 +270,7 @@ export async function handleMTTValuesCommand(interaction: ChatInputCommandIntera
         text: `Showing ${toShow.length} of ${results.length} result${results.length === 1 ? "" : "s"} · Data from mttvalues.com`,
       });
 
-    await ephemeralReply(interaction, { embeds: [embed] });
+    await publicReply(interaction, { embeds: [embed] });
     return;
   }
 
@@ -286,7 +292,7 @@ export async function handleMTTValuesCommand(interaction: ChatInputCommandIntera
       .setColor(0x9b59b6)
       .setFooter({ text: `Showing 15 of ${items.length} items · Data from mttvalues.com` });
 
-    await ephemeralReply(interaction, { embeds: [embed] });
+    await publicReply(interaction, { embeds: [embed] });
     return;
   }
 
@@ -306,17 +312,17 @@ export async function handleMTTValuesCommand(interaction: ChatInputCommandIntera
     }
 
     if (!item) {
-      await ephemeralReply(interaction, {
+      await publicReply(interaction, {
         content: `❌ Could not find "${name}" on MTTValues. Use \/mttvalues search to find it.`,
       });
       return;
     }
 
-    await ephemeralReply(interaction, { embeds: [buildItemEmbed(item)] });
+    await publicReply(interaction, { embeds: [buildItemEmbed(item)] });
     return;
   }
 
-  await ephemeralReply(interaction, {
+  await publicReply(interaction, {
     content: "❌ Unknown subcommand. Use `search`, `list`, or `info`.",
   });
 }
@@ -342,4 +348,323 @@ export async function handleMTTValuesAutocomplete(
   } catch {
     await interaction.respond([]);
   }
+}
+
+// ── Trade Calculator Hub ─────────────────────────────────────────────────────
+// Mirrors the calculator on mttvalues.com: two offer sides, star bonuses,
+// low/mid/high tier picks, and a 5%-threshold fair/win/loss verdict.
+
+const STAR_VALUE: Record<number, number> = { 1: 0, 2: 1000, 3: 10000, 4: 35000, 5: 75000 };
+
+type CalcTier = "low" | "mid" | "high";
+
+type CalcItem = {
+  item: MTTItem;
+  quantity: number;
+  tier: CalcTier;
+  stars: number;
+};
+
+type CalcState = {
+  yourItems: CalcItem[];
+  theirItems: CalcItem[];
+  ownerUserId: string;
+  channelId: string;
+  messageId: string;
+};
+
+const calcStates = new Map<string, CalcState>();
+const calcTimers = new Map<string, ReturnType<typeof setTimeout>>();
+
+function calcItemValue(c: CalcItem): number {
+  const min = c.item.valueMin ?? c.item.valueMax ?? 0;
+  const max = c.item.valueMax ?? c.item.valueMin ?? 0;
+  let base = 0;
+  if (c.tier === "low") base = min;
+  else if (c.tier === "high") base = max;
+  else base = Math.round((min + max) / 2);
+  return Math.max(0, base + STAR_VALUE[c.stars]) * c.quantity;
+}
+
+function calcWeightedDemand(items: CalcItem[]): number | null {
+  let valueSum = 0;
+  let demandSum = 0;
+  let demandCount = 0;
+  for (const c of items) {
+    const v = calcItemValue(c);
+    valueSum += v;
+    if (c.item.demand != null) {
+      demandSum += c.item.demand * v;
+      demandCount += v;
+    }
+  }
+  if (valueSum === 0) {
+    // Fallback to simple average when values are zero.
+    let count = 0;
+    let total = 0;
+    for (const c of items) {
+      if (c.item.demand != null) {
+        total += c.item.demand;
+        count++;
+      }
+    }
+    return count > 0 ? total / count : null;
+  }
+  return demandCount > 0 ? demandSum / demandCount : null;
+}
+
+function calcSideValue(items: CalcItem[]): number {
+  return items.reduce((sum, c) => sum + calcItemValue(c), 0);
+}
+
+function shortValue(n: number): string {
+  const abs = Math.abs(n);
+  const sign = n < 0 ? "-" : "";
+  if (abs >= 1_000_000_000) return `${sign}${(abs / 1_000_000_000).toFixed(2)}B`.replace(/\.00B$/, "B");
+  if (abs >= 1_000_000) return `${sign}${(abs / 1_000_000).toFixed(2)}M`.replace(/\.00M$/, "M");
+  if (abs >= 10_000) return `${sign}${Math.round(abs / 1_000).toLocaleString()}K`;
+  if (abs >= 1_000) return `${sign}${(abs / 1_000).toFixed(1)}K`.replace(/\.0K$/, "K");
+  return n.toLocaleString();
+}
+
+function formatCalcItem(c: CalcItem): string {
+  const val = calcItemValue(c);
+  const starText = c.stars > 1 ? ` · ${"⭐".repeat(c.stars)}` : "";
+  const tierText = c.tier !== "mid" ? ` · ${c.tier}` : "";
+  const qtyText = c.quantity > 1 ? ` x${c.quantity}` : "";
+  return `${c.item.name}${qtyText}${tierText}${starText} — 💎 ${shortValue(val)}`;
+}
+
+function buildCalcEmbed(state: CalcState, title = "🧮 MTT Trade Calculator", description?: string): EmbedBuilder {
+  const yourLines = state.yourItems.length > 0
+    ? state.yourItems.map(formatCalcItem).join("\n")
+    : "*No items yet*";
+  const theirLines = state.theirItems.length > 0
+    ? state.theirItems.map(formatCalcItem).join("\n")
+    : "*No items yet*";
+  const yourTotal = calcSideValue(state.yourItems);
+  const theirTotal = calcSideValue(state.theirItems);
+  const yourDemand = calcWeightedDemand(state.yourItems);
+  const theirDemand = calcWeightedDemand(state.theirItems);
+  const diff = yourTotal - theirTotal;
+  const rel = Math.abs(diff) / Math.max(yourTotal, theirTotal, 1);
+  let verdict = "➖ Add items to both sides and press **Calculate**";
+  if (yourTotal > 0 || theirTotal > 0) {
+    if (rel <= 0.05) verdict = "⚖️ Fair trade";
+    else if (diff > 0) verdict = `🔴 You lose — their offer is short by 💎 ${shortValue(Math.abs(diff))}`;
+    else verdict = `🟢 You win — your offer is short by 💎 ${shortValue(Math.abs(diff))}`;
+  }
+
+  const embed = new EmbedBuilder()
+    .setTitle(title)
+    .setColor(0x74cdd8)
+    .setDescription(
+      description ??
+      `**Your offer** — 💎 ${shortValue(yourTotal)}${yourDemand != null ? ` · Demand ${yourDemand.toFixed(1)}/10` : ""}\n${yourLines}\n\n` +
+      `**Their offer** — 💎 ${shortValue(theirTotal)}${theirDemand != null ? ` · Demand ${theirDemand.toFixed(1)}/10` : ""}\n${theirLines}\n\n` +
+      `**Verdict:** ${verdict}`,
+    );
+  return embed;
+}
+
+function buildCalcComponents(): ActionRowBuilder<ButtonBuilder>[] {
+  return [
+    new ActionRowBuilder<ButtonBuilder>().addComponents(
+      new ButtonBuilder().setCustomId("mttcalc:your").setLabel("➕ Your item").setStyle(ButtonStyle.Primary),
+      new ButtonBuilder().setCustomId("mttcalc:their").setLabel("➕ Their item").setStyle(ButtonStyle.Primary),
+      new ButtonBuilder().setCustomId("mttcalc:calc").setLabel("🧮 Calculate").setStyle(ButtonStyle.Success),
+      new ButtonBuilder().setCustomId("mttcalc:clear").setLabel("🗑️ Clear").setStyle(ButtonStyle.Danger),
+    ),
+  ];
+}
+
+function buildCalcModal(side: "your" | "their"): ModalBuilder {
+  const modal = new ModalBuilder()
+    .setCustomId(`mttcalc_modal:${side}`)
+    .setTitle(side === "your" ? "Add to your offer" : "Add to their offer");
+  modal.addComponents(
+    new ActionRowBuilder<TextInputBuilder>().addComponents(
+      new TextInputBuilder()
+        .setCustomId("name")
+        .setLabel("Item name")
+        .setStyle(TextInputStyle.Short)
+        .setRequired(true)
+        .setMaxLength(100)
+        .setPlaceholder("e.g. Super Tiger Mech"),
+    ),
+    new ActionRowBuilder<TextInputBuilder>().addComponents(
+      new TextInputBuilder()
+        .setCustomId("qty")
+        .setLabel("Quantity")
+        .setStyle(TextInputStyle.Short)
+        .setRequired(false)
+        .setMaxLength(3)
+        .setPlaceholder("1"),
+    ),
+    new ActionRowBuilder<TextInputBuilder>().addComponents(
+      new TextInputBuilder()
+        .setCustomId("tier")
+        .setLabel("Tier: low, mid, or high")
+        .setStyle(TextInputStyle.Short)
+        .setRequired(false)
+        .setMaxLength(4)
+        .setPlaceholder("mid"),
+    ),
+    new ActionRowBuilder<TextInputBuilder>().addComponents(
+      new TextInputBuilder()
+        .setCustomId("stars")
+        .setLabel("Stars (1-5)")
+        .setStyle(TextInputStyle.Short)
+        .setRequired(false)
+        .setMaxLength(1)
+        .setPlaceholder("1"),
+    ),
+  );
+  return modal;
+}
+
+function isCalcOwner(interaction: ButtonInteraction | ModalSubmitInteraction, state: CalcState): boolean {
+  return interaction.user.id === state.ownerUserId;
+}
+
+async function denyUnauthorized(interaction: ButtonInteraction | ModalSubmitInteraction): Promise<void> {
+  const payload: InteractionReplyOptions = {
+    content: "❌ This calculator hub belongs to someone else. Use your own `/mttvalues calculator`.",
+    flags: MessageFlags.Ephemeral,
+  };
+  if (interaction.deferred || interaction.replied) {
+    await interaction.followUp(payload).catch(() => {});
+  } else {
+    await interaction.reply(payload).catch(() => {});
+  }
+}
+
+function resetCalcTimer(state: CalcState): void {
+  const existing = calcTimers.get(state.messageId);
+  if (existing) clearTimeout(existing);
+  calcTimers.set(
+    state.messageId,
+    setTimeout(async () => {
+      try {
+        const client = getBotClient();
+        if (client) {
+          const channel = await client.channels.fetch(state.channelId).catch(() => null);
+          if (channel && "messages" in channel) {
+            await (channel as any).messages.delete(state.messageId).catch(() => {});
+          }
+        }
+      } catch { /* ignore */ }
+      calcStates.delete(state.messageId);
+      calcTimers.delete(state.messageId);
+    }, REPLY_DELETE_MS),
+  );
+}
+
+export async function handleMTTValuesCalculator(interaction: ChatInputCommandInteraction): Promise<void> {
+  if (!interaction.channel) return;
+  const state: CalcState = {
+    yourItems: [],
+    theirItems: [],
+    ownerUserId: interaction.user.id,
+    channelId: interaction.channel.id,
+    messageId: "",
+  };
+  await interaction.reply({
+    embeds: [buildCalcEmbed(state, "🧮 MTT Trade Calculator")],
+    components: buildCalcComponents(),
+  });
+  const messageId = (await interaction.fetchReply()).id;
+  state.messageId = messageId;
+  calcStates.set(messageId, state);
+  resetCalcTimer(state);
+}
+
+export async function handleMTTValuesCalcButton(interaction: ButtonInteraction): Promise<void> {
+  const parts = interaction.customId.split(":");
+  const action = parts[1];
+  const messageId = interaction.message.id;
+  const state = calcStates.get(messageId);
+  if (!state || !isCalcOwner(interaction, state)) {
+    await denyUnauthorized(interaction);
+    return;
+  }
+
+  if (action === "your" || action === "their") {
+    await interaction.showModal(buildCalcModal(action));
+    return;
+  }
+
+  // For calc/clear we need to update the original message.
+  await interaction.deferUpdate();
+
+  if (action === "clear") {
+    state.yourItems = [];
+    state.theirItems = [];
+    await interaction.editReply({
+      embeds: [buildCalcEmbed(state, "🧮 MTT Trade Calculator")],
+      components: buildCalcComponents(),
+    });
+    resetCalcTimer(state);
+    return;
+  }
+
+  if (action === "calc") {
+    const title = state.yourItems.length === 0 && state.theirItems.length === 0
+      ? "🧮 MTT Trade Calculator"
+      : "🧮 MTT Trade Calculator — Result";
+    await interaction.editReply({
+      embeds: [buildCalcEmbed(state, title)],
+      components: buildCalcComponents(),
+    });
+    resetCalcTimer(state);
+    return;
+  }
+}
+
+export async function handleMTTValuesCalcModal(interaction: ModalSubmitInteraction): Promise<void> {
+  await interaction.deferUpdate();
+  const parts = interaction.customId.split(":");
+  const side = parts[1] as "your" | "their";
+  const messageId = interaction.message?.id;
+  if (!messageId) return;
+
+  const state = calcStates.get(messageId);
+  if (!state || !isCalcOwner(interaction, state)) {
+    await denyUnauthorized(interaction);
+    return;
+  }
+  const nameRaw = interaction.fields.getTextInputValue("name").trim();
+  const qtyRaw = interaction.fields.getTextInputValue("qty").trim() || "1";
+  const tierRaw = interaction.fields.getTextInputValue("tier").trim().toLowerCase() || "mid";
+  const starsRaw = interaction.fields.getTextInputValue("stars").trim() || "1";
+
+  const items = await fetchItems();
+  const match = items.find((i) => i.name.toLowerCase() === nameRaw.toLowerCase())
+    ?? items
+      .map((i) => ({ i, score: matchScore(i, nameRaw) }))
+      .filter(({ score }) => score > 0)
+      .sort((a, b) => b.score - a.score)[0]?.i;
+
+  if (!match) {
+    await interaction.editReply({
+      embeds: [buildCalcEmbed(state, "🧮 MTT Trade Calculator", `❌ Could not find "${nameRaw}" on MTTValues.`)],
+      components: buildCalcComponents(),
+    });
+    resetCalcTimer(state);
+    return;
+  }
+
+  const quantity = Math.max(1, parseInt(qtyRaw, 10) || 1);
+  const tier: CalcTier = ["low", "mid", "high"].includes(tierRaw) ? (tierRaw as CalcTier) : "mid";
+  const stars = Math.min(5, Math.max(1, parseInt(starsRaw, 10) || 1));
+
+  state[side === "your" ? "yourItems" : "theirItems"].push({
+    item: match, quantity, tier, stars,
+  });
+
+  await interaction.editReply({
+    embeds: [buildCalcEmbed(state, "🧮 MTT Trade Calculator")],
+    components: buildCalcComponents(),
+  });
+  resetCalcTimer(state);
 }

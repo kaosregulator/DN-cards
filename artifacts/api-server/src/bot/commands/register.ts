@@ -374,7 +374,8 @@ function buildLegacyCommands() {
         .addStringOption(o => o.setName("query").setDescription("Search keyword (leave blank for full list)")))
       .addSubcommand(sc => sc.setName("list").setDescription("Show all items sorted by value"))
       .addSubcommand(sc => sc.setName("info").setDescription("Show full details for an item")
-        .addStringOption(o => o.setName("name").setDescription("Item name (exact match)").setRequired(true).setAutocomplete(true)))),
+        .addStringOption(o => o.setName("name").setDescription("Item name (exact match)").setRequired(true).setAutocomplete(true)))
+      .addSubcommand(sc => sc.setName("calculator").setDescription("Open a trade calculator hub for MTT values"))),
 
   ];
 }

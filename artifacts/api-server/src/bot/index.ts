@@ -21,7 +21,7 @@ import {
 import { handleCardWizardStep, handleCardEditStep } from "./commands/card-wizard.js";
 import { handleAutocomplete } from "./commands/autocomplete.js";
 import { handleMenuCommand } from "./commands/menu.js";
-import { handleMTTValuesCommand, handleMTTValuesAutocomplete } from "./commands/mttvalues.js";
+import { handleMTTValuesCommand, handleMTTValuesAutocomplete, handleMTTValuesCalculator, handleMTTValuesCalcButton, handleMTTValuesCalcModal } from "./commands/mttvalues.js";
 import {
   buildCommands, USER_COMMAND_NAMES, ADMIN_COMMAND_NAMES,
 } from "./commands/register.js";
@@ -221,6 +221,8 @@ export async function startBot() {
           await handlePacksNamesModal(interaction);
         } else if (interaction.customId === "packs_desc_modal") {
           await handlePacksDescModal(interaction);
+        } else if (interaction.customId.startsWith("mttcalc_modal:")) {
+          await handleMTTValuesCalcModal(interaction);
         }
         return;
       }
@@ -229,6 +231,12 @@ export async function startBot() {
       if (interaction.isButton()) {
         const parts = interaction.customId.split(":");
         const action = parts[0];
+
+        // ── MTTValues calculator hub buttons ───────────────────────────────
+        if (action === "mttcalc") {
+          await handleMTTValuesCalcButton(interaction);
+          return;
+        }
 
         // ── Config panel buttons (toggle, channel set) ─────────────────────
         if (action === "config") {
@@ -442,7 +450,12 @@ export async function startBot() {
       } else if (cmd === "menu") {
         await handleMenuCommand(interaction);
       } else if (cmd === "mttvalues") {
-        await handleMTTValuesCommand(interaction);
+        const sub = interaction.options.getSubcommand(true);
+        if (sub === "calculator") {
+          await handleMTTValuesCalculator(interaction);
+        } else {
+          await handleMTTValuesCommand(interaction);
+        }
       } else if (USER_COMMAND_NAMES.has(cmd)) {
         await handleUserCommand(interaction, cmd);
       } else if (ADMIN_COMMAND_NAMES.has(cmd)) {
