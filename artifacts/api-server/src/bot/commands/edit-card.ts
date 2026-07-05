@@ -285,8 +285,8 @@ const TEXT_FIELDS: Record<string, { title: string; label: string; style: TextInp
   worthValue:  { title: "Edit Worth Value", label: "Worth value in DN Shards",                     style: TextInputStyle.Short,     placeholder: "Example: 2500" },
   burnValue:   { title: "Edit Burn Value",  label: "Burn value in DN Shards",                      style: TextInputStyle.Short,     placeholder: "Example: 1250" },
   type:        { title: "Edit Card Type",   label: "Type/tag (e.g. tank, aircraft, nuke)", style: TextInputStyle.Short,     max: 40, placeholder: "e.g. tank, aircraft, nuke" },
-  maxCopies:   { title: "Edit Max Copies",  label: "Max copies for limited edition (0 = unlimited)", style: TextInputStyle.Short,     placeholder: "Example: 50" },
-  totalMinted: { title: "Edit Total Minted", label: "Current copies in existence (manual override)", style: TextInputStyle.Short,     placeholder: "Example: 12" },
+  maxCopies:   { title: "Edit Max Copies",  label: "Max copies (0 = remove limit)", style: TextInputStyle.Short,     placeholder: "Example: 50" },
+  totalMinted: { title: "Edit Total Minted", label: "Copies in existence (manual)", style: TextInputStyle.Short,     placeholder: "Example: 12" },
 };
 
 async function openFieldModal(interaction: StringSelectMenuInteraction, cardId: number, field: string): Promise<void> {

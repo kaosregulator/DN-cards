@@ -54,6 +54,13 @@ export function tierMeta(s: GuildSettings | null, tier: PackTier) {
   return { ...PACK_TIER_META[tier], label: tierLabel(s, tier) };
 }
 
+// Per-guild description for built-in pack tiers. Null/empty = no description shown.
+export function tierDesc(s: GuildSettings | null, tier: PackTier): string | null {
+  if (!s) return null;
+  const raw = tier === "basic" ? s.packBasicDesc : tier === "premium" ? s.packPremiumDesc : s.packLegendaryDesc;
+  return raw && raw.trim().length > 0 ? raw.trim() : null;
+}
+
 // Per-tier rarity distribution. Sums to 1.0.
 // Mythic appears only in the Legendary tier (0.5%) by default — it's the new
 // top tier, so it's intentionally rarer than Legendary itself.
@@ -241,7 +248,8 @@ async function buildSummaryEmbed(
         return `**${i + 1}.** ${rarity.emoji} ${prefix}**${c.name}** — *${rarity.label}* · 💠 ${worth.toLocaleString()}${shiny ? ` *(${shinyMultiplier}×)*` : ""}`;
       }).join("\n") +
       `\n\n**Total worth:** 💠 ${totalWorth.toLocaleString()}\n` +
-      `Spent: 💠 ${spent.toLocaleString()} · Balance: 💠 ${balanceAfter.toLocaleString()}`,
+      `Spent: 💠 ${spent.toLocaleString()} · Balance: 💠 ${balanceAfter.toLocaleString()}` +
+      (() => { const d = tierDesc(settings, tier); return d ? `\n*${d}*` : ""; })(),
     )
     .setFooter({ text: "Cards added to your collection — use /collection to view. /packstats for your weekly cap." });
   const defaultImg = toAbsoluteImageUrl(last.imageUrl);
@@ -617,7 +625,7 @@ export async function handleCustomPack(
         .join("\n") +
         `\n\n**Total worth:** 💠 ${totalWorth.toLocaleString()}\n` +
         `Spent: 💠 ${pack.cost.toLocaleString()} · Balance: 💠 ${shardsAfter.toLocaleString()}` +
-        (pack.cardTypes.length > 0 ? `\nTypes: ${pack.cardTypes.join(", ")}` : ""),
+        (pack.description ? `\n*${pack.description}*` : pack.cardTypes.length > 0 ? `\nTypes: ${pack.cardTypes.join(", ")}` : ""),
     )
     .setFooter({ text: "Cards added to your collection — use /collection to view. /packstats for built-in pack limits." });
 

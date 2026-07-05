@@ -302,13 +302,13 @@ export async function handleAutocomplete(interaction: AutocompleteInteraction): 
     if (effectiveCmd === "pack" && focused.name === "tier" && interaction.guild) {
       const s = await getOrCreateGuildSettings(interaction.guild.id);
       const builtIns = [
-        { name: `🥉 ${tierLabel(s, "basic")} — 💠 ${s.packBasicCost.toLocaleString()} (standard rates)`.slice(0, 100), value: "basic" },
-        { name: `🥈 ${tierLabel(s, "premium")} — 💠 ${s.packPremiumCost.toLocaleString()} (better rates)`.slice(0, 100), value: "premium" },
-        { name: `🥇 ${tierLabel(s, "legendary")} — 💠 ${s.packLegendaryCost.toLocaleString()} (no commons)`.slice(0, 100), value: "legendary" },
+        { name: (s.packBasicDesc?.trim() ? `🥉 ${tierLabel(s, "basic")} — 💠 ${s.packBasicCost.toLocaleString()} · ${s.packBasicDesc.trim()}` : `🥉 ${tierLabel(s, "basic")} — 💠 ${s.packBasicCost.toLocaleString()} (standard rates)`).slice(0, 100), value: "basic" },
+        { name: (s.packPremiumDesc?.trim() ? `🥈 ${tierLabel(s, "premium")} — 💠 ${s.packPremiumCost.toLocaleString()} · ${s.packPremiumDesc.trim()}` : `🥈 ${tierLabel(s, "premium")} — 💠 ${s.packPremiumCost.toLocaleString()} (better rates)`).slice(0, 100), value: "premium" },
+        { name: (s.packLegendaryDesc?.trim() ? `🥇 ${tierLabel(s, "legendary")} — 💠 ${s.packLegendaryCost.toLocaleString()} · ${s.packLegendaryDesc.trim()}` : `🥇 ${tierLabel(s, "legendary")} — 💠 ${s.packLegendaryCost.toLocaleString()} (no commons)`).slice(0, 100), value: "legendary" },
       ];
       const customPacks = await listCustomPacks(interaction.guild.id);
       const customOptions = customPacks.map(p => ({
-        name: `🎁 ${p.name} — 💠 ${p.cost.toLocaleString()} · ${p.size} cards`.slice(0, 100),
+        name: (p.description?.trim() ? `🎁 ${p.name} — 💠 ${p.cost.toLocaleString()} · ${p.description.trim()}` : `🎁 ${p.name} — 💠 ${p.cost.toLocaleString()} · ${p.size} card/open`).slice(0, 100),
         value: `custom:${p.id}`,
       }));
       const all = [...builtIns, ...customOptions];

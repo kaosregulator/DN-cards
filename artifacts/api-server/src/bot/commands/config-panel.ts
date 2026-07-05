@@ -129,6 +129,13 @@ export async function handleConfigButton(interaction: ButtonInteraction): Promis
     return;
   }
 
+  if (action === "packs" && arg === "names" && parts[3] === "desc") {
+    // Description modal — no DB call before showModal; auth check runs in submit handler.
+    const settings = await getOrCreateGuildSettings(guildId);
+    await interaction.showModal(buildPacksDescModal(settings));
+    return;
+  }
+
   if (action === "rates" && arg === "custom") {
     const ok = await ensureAdmin(interaction);
     if (!ok) return;
@@ -1001,9 +1008,66 @@ function buildPacksNamesComponents(): ActionRowBuilder<ButtonBuilder>[] {
   return [
     new ActionRowBuilder<ButtonBuilder>().addComponents(
       new ButtonBuilder().setCustomId("config:packs:names:edit").setLabel("✏️ Edit Names").setStyle(ButtonStyle.Primary),
+      new ButtonBuilder().setCustomId("config:packs:names:desc").setLabel("📝 Descriptions").setStyle(ButtonStyle.Secondary),
       new ButtonBuilder().setCustomId("config:packs:back").setLabel("← Back to Packs").setStyle(ButtonStyle.Secondary),
     ),
   ];
+}
+
+function buildPacksDescModal(s: GuildSettings): ModalBuilder {
+  const input = (tier: PackTier, label: string, current: string | null | undefined) =>
+    new ActionRowBuilder<TextInputBuilder>().addComponents(
+      new TextInputBuilder()
+        .setCustomId(`desc_${tier}`)
+        .setLabel(label)
+        .setStyle(TextInputStyle.Short)
+        .setRequired(false)
+        .setMaxLength(100)
+        .setValue(current ?? "")
+        .setPlaceholder("Leave blank to remove"),
+    );
+  return new ModalBuilder()
+    .setCustomId("packs_desc_modal")
+    .setTitle("Edit Pack Descriptions")
+    .addComponents(
+      input("basic",     `🥉 ${tierLabel(s, "basic")} description`,     s.packBasicDesc),
+      input("premium",   `🥈 ${tierLabel(s, "premium")} description`,   s.packPremiumDesc),
+      input("legendary", `🥇 ${tierLabel(s, "legendary")} description`, s.packLegendaryDesc),
+    );
+}
+
+export async function handlePacksDescModal(interaction: ModalSubmitInteraction): Promise<void> {
+  if (!interaction.guild) return;
+  const guildId = interaction.guild.id;
+  await interaction.deferUpdate();
+
+  const perms = interaction.memberPermissions;
+  const authorized =
+    interaction.guild.ownerId === interaction.user.id ||
+    perms?.has("Administrator") ||
+    (await isAdmin(guildId, interaction.user.id));
+  if (!authorized) {
+    await interaction.followUp({ content: "❌ Only admins can edit pack descriptions.", flags: MessageFlags.Ephemeral });
+    return;
+  }
+
+  const normalize = (raw: string): string | null => {
+    const v = raw.trim();
+    return v.length > 0 ? v.slice(0, 100) : null;
+  };
+
+  const patch: Partial<GuildSettings> = {
+    packBasicDesc:     normalize(interaction.fields.getTextInputValue("desc_basic")),
+    packPremiumDesc:   normalize(interaction.fields.getTextInputValue("desc_premium")),
+    packLegendaryDesc: normalize(interaction.fields.getTextInputValue("desc_legendary")),
+  };
+
+  await updateGuildSettings(guildId, patch);
+  const settings = await getOrCreateGuildSettings(guildId);
+  await interaction.editReply({
+    embeds: [buildPacksNamesEmbed(settings)],
+    components: buildPacksNamesComponents(),
+  });
 }
 
 function buildPacksNamesModal(s: GuildSettings): ModalBuilder {
@@ -1085,7 +1149,8 @@ function buildCustomPacksEmbed(packs: CustomPack[]): EmbedBuilder {
       : packs
           .map(
             (p, i) =>
-              `**${i + 1}. ${p.name}** — 💠 ${p.cost.toLocaleString()} · ${p.size} cards · ${formatLimit(p.weeklyLimit)}\n` +
+              `**${i + 1}. ${p.name}** — 💠 ${p.cost.toLocaleString()} · ${p.size} card/open · ${formatLimit(p.weeklyLimit)}\n` +
+              (p.description ? `*${p.description}*\n` : "") +
               `Types: ${p.cardTypes.length > 0 ? p.cardTypes.join(", ") : "*All*"} · ${p.isActive ? "🟢 Active" : "🔴 Inactive"}`,
           )
           .join("\n\n");
@@ -1182,12 +1247,12 @@ function buildCustomPackModal(packIdStr?: string): ModalBuilder {
     ),
     new ActionRowBuilder<TextInputBuilder>().addComponents(
       new TextInputBuilder()
-        .setCustomId("types")
-        .setLabel(isEdit ? "Card types — blank keeps current; '-' = all" : "Card types (comma-separated; blank = all)")
+        .setCustomId("description")
+        .setLabel(isEdit ? "Description (blank = keep current)" : "Description (optional)")
         .setStyle(TextInputStyle.Short)
         .setRequired(false)
-        .setMaxLength(200)
-        .setPlaceholder("e.g. tank, aircraft, nuke — or use 📋 Types button after creating"),
+        .setMaxLength(100)
+        .setPlaceholder("e.g. Only OG vehicle cards — shown when pack is opened"),
     ),
   );
   return modal;
@@ -1261,7 +1326,7 @@ export async function handleCustomPackModal(interaction: ModalSubmitInteraction)
   const costRaw  = interaction.fields.getTextInputValue("cost").trim();
   const sizeRaw  = interaction.fields.getTextInputValue("size").trim();
   const limitRaw = interaction.fields.getTextInputValue("limit").trim();
-  const typesRaw = interaction.fields.getTextInputValue("types").trim();
+  const descRaw  = interaction.fields.getTextInputValue("description").trim();
 
   // Only name is validated synchronously before ACK (to avoid "interaction failed" toast
   // in Discord for the most obvious create-mode error). Numeric fields can be blank on
@@ -1278,9 +1343,6 @@ export async function handleCustomPackModal(interaction: ModalSubmitInteraction)
   const cost  = parseInt(costRaw.replace(/,/g, ""), 10);
   const size  = parseInt(sizeRaw, 10);
   const limit = parseInt(limitRaw, 10);
-  const cardTypes = typesRaw
-    ? typesRaw.split(",").map(t => t.trim().toLowerCase()).filter(Boolean)
-    : [];
 
   // Authoritative admin check after ACK — safe here, no 3s constraint on this side.
   // Includes DB-backed bot-admins via isAdmin(), covering all admin persona types.
@@ -1307,12 +1369,7 @@ export async function handleCustomPackModal(interaction: ModalSubmitInteraction)
       const finalCost  = costRaw  ? cost  : existing.cost;
       const finalSize  = sizeRaw  ? size  : existing.size;
       const finalLimit = limitRaw ? limit : existing.weeklyLimit;
-      // For types: empty = keep existing; "-" = clear to all-types
-      const finalTypes = typesRaw === ""
-        ? existing.cardTypes
-        : typesRaw === "-"
-          ? []
-          : cardTypes;
+      const finalDesc  = descRaw !== "" ? descRaw : existing.description;
 
       // Re-validate merged values that came from user input
       if (costRaw && (!Number.isInteger(finalCost) || finalCost < 0)) {
@@ -1327,7 +1384,7 @@ export async function handleCustomPackModal(interaction: ModalSubmitInteraction)
 
       await updateCustomPack(packId, {
         name: finalName, cost: finalCost, size: finalSize,
-        weeklyLimit: finalLimit, cardTypes: finalTypes,
+        weeklyLimit: finalLimit, description: finalDesc,
       });
       successMsg = `✅ Updated **${finalName}**.`;
     } else {
@@ -1341,7 +1398,7 @@ export async function handleCustomPackModal(interaction: ModalSubmitInteraction)
       if (!Number.isInteger(limit) || limit < 0) {
         await interaction.followUp({ content: "❌ Weekly limit must be ≥ 0 (0 = unlimited).", flags: MessageFlags.Ephemeral }); return;
       }
-      const created = await createCustomPack(guildId, nameRaw, cost, size, limit, DEFAULT_CUSTOM_PACK_RATES, cardTypes);
+      const created = await createCustomPack(guildId, nameRaw, cost, size, limit, DEFAULT_CUSTOM_PACK_RATES, [], descRaw);
       successMsg = `✅ Created **${created.name}**! It now appears in \`/pack\` autocomplete for this server.`;
     }
     const packs = await listCustomPacks(guildId, true);

@@ -1831,13 +1831,14 @@ export async function createCustomPack(
   weeklyLimit: number,
   rarityRates: Record<string, number>,
   cardTypes: string[],
+  description = "",
 ): Promise<CustomPack> {
   const slug = slugifyPackName(name);
   const [row] = await db.insert(customPacksTable)
-    .values({ guildId, slug, name, cost, size, weeklyLimit, rarityRates, cardTypes, isActive: true })
+    .values({ guildId, slug, name, cost, size, weeklyLimit, rarityRates, cardTypes, description, isActive: true })
     .onConflictDoUpdate({
       target: [customPacksTable.guildId, customPacksTable.slug],
-      set: { name, cost, size, weeklyLimit, rarityRates, cardTypes, isActive: true },
+      set: { name, cost, size, weeklyLimit, rarityRates, cardTypes, description, isActive: true },
     })
     .returning();
   invalidateCustomPackCache(guildId);
@@ -1848,7 +1849,7 @@ export async function updateCustomPack(
   id: number,
   patch: Partial<{
     name: string; slug: string; cost: number; size: number; weeklyLimit: number;
-    rarityRates: Record<string, number>; cardTypes: string[]; isActive: boolean;
+    rarityRates: Record<string, number>; cardTypes: string[]; isActive: boolean; description: string;
   }>,
 ): Promise<void> {
   const [existing] = await db.select({ guildId: customPacksTable.guildId })

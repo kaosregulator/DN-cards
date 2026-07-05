@@ -217,6 +217,10 @@ export const guildSettingsTable = pgTable("guild_settings", {
   packBasicName: text("pack_basic_name"),
   packPremiumName: text("pack_premium_name"),
   packLegendaryName: text("pack_legendary_name"),
+  // Per-guild descriptions for built-in pack tiers. Null/empty = no description.
+  packBasicDesc: text("pack_basic_desc"),
+  packPremiumDesc: text("pack_premium_desc"),
+  packLegendaryDesc: text("pack_legendary_desc"),
   // ── Active set (Sets-driven spawn pool) ────────────────────────────────────
   // The single set whose cards are eligible for random autodrops in this
   // guild. NULL = no set selected → **nothing spawns** (admins must pick a
@@ -511,6 +515,8 @@ export const customPacksTable = pgTable("custom_packs", {
   rarityRates: jsonb("rarity_rates").$type<Record<string, number>>().notNull(),
   // Card types this pack draws from. Empty array = all types.
   cardTypes: text("card_types").array().notNull().default([]),
+  // Optional admin-set description shown when this pack is opened.
+  description: text("description").notNull().default(""),
   isActive: boolean("is_active").notNull().default(true),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 }, (t) => ({

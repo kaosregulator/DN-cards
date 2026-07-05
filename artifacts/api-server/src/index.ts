@@ -281,6 +281,10 @@ async function runBootMigrations() {
   await pool.query(
     `CREATE UNIQUE INDEX IF NOT EXISTS custom_packs_guild_slug_idx ON custom_packs(guild_id, slug)`
   );
+  await pool.query(`ALTER TABLE custom_packs ADD COLUMN IF NOT EXISTS description TEXT NOT NULL DEFAULT ''`);
+  await pool.query(`ALTER TABLE guild_settings ADD COLUMN IF NOT EXISTS pack_basic_desc TEXT`);
+  await pool.query(`ALTER TABLE guild_settings ADD COLUMN IF NOT EXISTS pack_premium_desc TEXT`);
+  await pool.query(`ALTER TABLE guild_settings ADD COLUMN IF NOT EXISTS pack_legendary_desc TEXT`);
   await pool.query(`
     CREATE TABLE IF NOT EXISTS user_custom_pack_week (
       id            SERIAL PRIMARY KEY,
