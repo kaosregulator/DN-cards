@@ -1,9 +1,12 @@
-import { ChatInputCommandInteraction, AutocompleteInteraction, EmbedBuilder, MessageFlags } from "discord.js";
+import { ChatInputCommandInteraction, AutocompleteInteraction, EmbedBuilder, MessageFlags, type InteractionReplyOptions, type BaseMessageOptions } from "discord.js";
 import { logger } from "../../lib/logger.js";
 
 // MTTValues.com data source via public Firebase REST API
+const FIRESTORE_API_KEY = "AIzaSyDjB8PzhaPVn4sUwAUbrLbcxHZWMr3QFh0";
 const FIRESTORE_API_URL =
-  "https://firestore.googleapis.com/v1/projects/military-tycoon-trading-values/databases/(default)/documents/items?key=AIzaSyDjB8PzhaPVn4sUwAUbrLbcxHZWMr3QFh0&pageSize=100";
+  `https://firestore.googleapis.com/v1/projects/military-tycoon-trading-values/databases/(default)/documents/items?key=${FIRESTORE_API_KEY}&pageSize=100`;
+
+const REPLY_DELETE_MS = 40_000; // ephemeral replies vanish after 40 seconds
 
 type MTTItem = {
   id: string;
@@ -45,6 +48,24 @@ function getFieldArray(fields: Record<string, unknown>, key: string): string[] {
   return arr.map((item) => (item.stringValue as string | undefined) ?? "").filter(Boolean);
 }
 
+function parseDoc(doc: { name: string; fields?: Record<string, unknown> }): MTTItem {
+  const fields = doc.fields ?? {};
+  const valueMin = getFieldInt(fields, "valueMin");
+  const valueMax = getFieldInt(fields, "valueMax");
+  return {
+    id: doc.name.split("/").pop() ?? "",
+    name: getFieldValue(fields, "name") ?? "Unknown",
+    valueMin,
+    valueMax,
+    rarity: getFieldArray(fields, "rarity"),
+    demand: getFieldInt(fields, "demand"),
+    functionality: getFieldInt(fields, "functionality"),
+    tags: getFieldArray(fields, "tags"),
+    description: getFieldValue(fields, "description") ?? "",
+    image: getFieldValue(fields, "image"),
+  };
+}
+
 async function fetchItems(): Promise<MTTItem[]> {
   const now = Date.now();
   if (cache && cacheExpiresAt > now) {
@@ -52,31 +73,33 @@ async function fetchItems(): Promise<MTTItem[]> {
   }
 
   try {
-    const resp = await fetch(FIRESTORE_API_URL, { signal: AbortSignal.timeout(8000) });
-    if (!resp.ok) {
-      throw new Error(`HTTP ${resp.status}: ${resp.statusText}`);
-    }
-    const data = await resp.json() as { documents?: Array<{ name: string; fields?: Record<string, unknown> }> };
-    const docs = data.documents ?? [];
+    const allDocs: Array<{ name: string; fields?: Record<string, unknown> }> = [];
+    let pageToken: string | undefined;
+    let pageCount = 0;
+    const maxPages = 50; // Firestore pageSize=100 → up to 5,000 docs before warning
 
-    const items: MTTItem[] = docs.map((doc) => {
-      const fields = doc.fields ?? {};
-      const valueMin = getFieldInt(fields, "valueMin");
-      const valueMax = getFieldInt(fields, "valueMax");
-      return {
-        id: doc.name.split("/").pop() ?? "",
-        name: getFieldValue(fields, "name") ?? "Unknown",
-        valueMin,
-        valueMax,
-        rarity: getFieldArray(fields, "rarity"),
-        demand: getFieldInt(fields, "demand"),
-        functionality: getFieldInt(fields, "functionality"),
-        tags: getFieldArray(fields, "tags"),
-        description: getFieldValue(fields, "description") ?? "",
-        image: getFieldValue(fields, "image"),
+    do {
+      const url = pageToken
+        ? `${FIRESTORE_API_URL}&pageToken=${encodeURIComponent(pageToken)}`
+        : FIRESTORE_API_URL;
+      const resp = await fetch(url, { signal: AbortSignal.timeout(8000) });
+      if (!resp.ok) {
+        throw new Error(`HTTP ${resp.status}: ${resp.statusText}`);
+      }
+      const data = await resp.json() as {
+        documents?: Array<{ name: string; fields?: Record<string, unknown> }>;
+        nextPageToken?: string;
       };
-    });
+      allDocs.push(...(data.documents ?? []));
+      pageToken = data.nextPageToken;
+      pageCount++;
+    } while (pageToken && pageCount < maxPages);
 
+    if (pageToken) {
+      logger.warn({ fetched: allDocs.length }, "MTTValues collection may exceed pagination safety cap; some items not loaded");
+    }
+
+    const items = allDocs.map(parseDoc);
     cache = items;
     cacheExpiresAt = now + CACHE_TTL_MS;
     return items;
@@ -84,6 +107,15 @@ async function fetchItems(): Promise<MTTItem[]> {
     logger.error({ err: (err as Error).message }, "Failed to fetch MTTValues data");
     throw new Error("Could not load MTTValues data. The site might be temporarily unavailable.");
   }
+}
+
+// Ephemeral reply visible only to the command user, then deleted after 40 seconds.
+async function ephemeralReply(
+  interaction: ChatInputCommandInteraction,
+  payload: InteractionReplyOptions & BaseMessageOptions,
+): Promise<void> {
+  await interaction.reply({ ...payload, flags: MessageFlags.Ephemeral });
+  setTimeout(() => interaction.deleteReply().catch(() => {}), REPLY_DELETE_MS);
 }
 
 function formatValue(item: MTTItem): string {
@@ -140,6 +172,48 @@ function buildItemEmbed(item: MTTItem): EmbedBuilder {
   return embed;
 }
 
+function itemNameAcronym(item: MTTItem): string {
+  return item.name
+    .split(/[^a-zA-Z0-9]+/)
+    .map((w) => w[0])
+    .join("")
+    .toLowerCase();
+}
+
+function matchScore(item: MTTItem, query: string): number {
+  const q = query.toLowerCase().trim().replace(/\s+/g, " ");
+  if (!q) return 0;
+  const tokens = q.split(/\s+/).filter(Boolean);
+  const name = item.name.toLowerCase();
+  const desc = item.description.toLowerCase();
+  const rarity = item.rarity.map((r) => r.toLowerCase());
+  const tags = item.tags.map((t) => t.toLowerCase());
+  const compactName = name.replace(/[^a-zA-Z0-9]/g, "");
+  const acronym = itemNameAcronym(item);
+
+  let score = 0;
+  for (const token of tokens) {
+    if (!token) continue;
+    let tokenScore = 0;
+
+    // Exact or prefix match in the name is the strongest signal.
+    if (name === token) tokenScore = 100;
+    else if (name.startsWith(token + " ")) tokenScore = 80;
+    else if (name.includes(token)) tokenScore = 60;
+    else if (compactName.includes(token)) tokenScore = 50;
+    else if (acronym.includes(token)) tokenScore = 45; // e.g. "stm" -> "Super Tiger Mech"
+    else if (desc.includes(token)) tokenScore = 30;
+    else if (rarity.some((r) => r.includes(token))) tokenScore = 20;
+    else if (tags.some((t) => t.includes(token))) tokenScore = 20;
+
+    score += tokenScore;
+  }
+
+  // Slight bonus for higher-value items among equal textual matches.
+  score += (item.valueMax ?? item.valueMin ?? 0) / 1_000_000;
+  return score;
+}
+
 export async function handleMTTValuesCommand(interaction: ChatInputCommandInteraction): Promise<void> {
   const subcommand = interaction.options.getSubcommand(true);
 
@@ -149,38 +223,33 @@ export async function handleMTTValuesCommand(interaction: ChatInputCommandIntera
 
     let results = items;
     if (query.trim()) {
-      const q = query.trim().toLowerCase();
-      results = items.filter(
-        (item) =>
-          item.name.toLowerCase().includes(q) ||
-          item.description.toLowerCase().includes(q) ||
-          item.rarity.some((r) => r.toLowerCase().includes(q)) ||
-          item.tags.some((t) => t.toLowerCase().includes(q)),
-      );
+      const scored = items
+        .map((item) => ({ item, score: matchScore(item, query) }))
+        .filter(({ score }) => score > 0)
+        .sort((a, b) => b.score - a.score);
+      results = scored.map((s) => s.item);
+    } else {
+      // Blank query = list all by value, same as /mttvalues list but capped at 10.
+      results = items
+        .slice()
+        .sort((a, b) => (b.valueMax ?? 0) - (a.valueMax ?? 0) || (b.valueMin ?? 0) - (a.valueMin ?? 0));
     }
 
     if (results.length === 0) {
-      await interaction.reply({
+      await ephemeralReply(interaction, {
         content: `🔍 No MTTValues items found for "${query}". Try a different keyword or use \/mttvalues list to browse all items.`,
-        flags: MessageFlags.Ephemeral,
       });
       return;
     }
 
     // If only one result, show full details
     if (results.length === 1) {
-      await interaction.reply({
-        embeds: [buildItemEmbed(results[0])],
-        flags: MessageFlags.Ephemeral,
-      });
+      await ephemeralReply(interaction, { embeds: [buildItemEmbed(results[0])] });
       return;
     }
 
-    // Sort by value (max first, then min) and show top 10
-    const sorted = results
-      .slice()
-      .sort((a, b) => (b.valueMax ?? 0) - (a.valueMax ?? 0) || (b.valueMin ?? 0) - (a.valueMin ?? 0));
-    const toShow = sorted.slice(0, 10);
+    // Show top 10 matches by relevance score (value already contributes a tiny tie-break).
+    const toShow = results.slice(0, 10);
 
     const lines = toShow.map(
       (item, i) =>
@@ -195,7 +264,7 @@ export async function handleMTTValuesCommand(interaction: ChatInputCommandIntera
         text: `Showing ${toShow.length} of ${results.length} result${results.length === 1 ? "" : "s"} · Data from mttvalues.com`,
       });
 
-    await interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
+    await ephemeralReply(interaction, { embeds: [embed] });
     return;
   }
 
@@ -217,35 +286,38 @@ export async function handleMTTValuesCommand(interaction: ChatInputCommandIntera
       .setColor(0x9b59b6)
       .setFooter({ text: `Showing 15 of ${items.length} items · Data from mttvalues.com` });
 
-    await interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
+    await ephemeralReply(interaction, { embeds: [embed] });
     return;
   }
 
   if (subcommand === "info") {
     const name = interaction.options.getString("name", true);
     const items = await fetchItems();
-    const item = items.find(
-      (i) => i.name.toLowerCase() === name.trim().toLowerCase(),
-    );
+    const exact = items.find((i) => i.name.toLowerCase() === name.trim().toLowerCase());
+
+    let item = exact;
+    if (!item) {
+      // Fallback: fuzzy match; highest textual score wins.
+      const scored = items
+        .map((i) => ({ i, score: matchScore(i, name) }))
+        .filter(({ score }) => score > 0)
+        .sort((a, b) => b.score - a.score);
+      item = scored[0]?.i;
+    }
 
     if (!item) {
-      await interaction.reply({
+      await ephemeralReply(interaction, {
         content: `❌ Could not find "${name}" on MTTValues. Use \/mttvalues search to find it.`,
-        flags: MessageFlags.Ephemeral,
       });
       return;
     }
 
-    await interaction.reply({
-      embeds: [buildItemEmbed(item)],
-      flags: MessageFlags.Ephemeral,
-    });
+    await ephemeralReply(interaction, { embeds: [buildItemEmbed(item)] });
     return;
   }
 
-  await interaction.reply({
+  await ephemeralReply(interaction, {
     content: "❌ Unknown subcommand. Use `search`, `list`, or `info`.",
-    flags: MessageFlags.Ephemeral,
   });
 }
 
@@ -257,13 +329,15 @@ export async function handleMTTValuesAutocomplete(
     await interaction.respond([]);
     return;
   }
-  const q = focused.value.trim().toLowerCase();
+  const q = focused.value.trim();
   try {
     const items = await fetchItems();
     const matches = items
-      .filter((i) => i.name.toLowerCase().includes(q))
+      .map((i) => ({ i, score: matchScore(i, q) }))
+      .filter(({ score }) => score > 0)
+      .sort((a, b) => b.score - a.score)
       .slice(0, 25)
-      .map((i) => ({ name: i.name, value: i.name }));
+      .map((i) => ({ name: i.i.name, value: i.i.name }));
     await interaction.respond(matches);
   } catch {
     await interaction.respond([]);
