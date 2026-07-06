@@ -8,7 +8,7 @@ import {
   getRarityContext, applyRarityContextAll,
   getCardDisplayRarity,
   getRarityDisplayOverrides,
-  getCustomPack, tryClaimCustomPackWeek, refundCustomPackWeek,
+  getCustomPack, getCustomPackCards, tryClaimCustomPackWeek, refundCustomPackWeek,
   type RarityContext,
 } from "../db.js";
 import {
@@ -443,10 +443,18 @@ async function drawCustomPack(pack: CustomPack, ctx: RarityContext): Promise<Car
   );
 
   let eligible = all;
-  if (pack.cardTypes.length > 0) {
+
+  // If an explicit card whitelist exists, draw from those exact cards only.
+  // Otherwise fall back to the cardTypes filter (legacy behavior).
+  const whitelisted = await getCustomPackCards(pack.id);
+  if (whitelisted.length > 0) {
+    const cardIdSet = new Set(whitelisted.map(w => w.cardId));
+    eligible = all.filter(c => cardIdSet.has(c.id));
+  } else if (pack.cardTypes.length > 0) {
     const typeSet = new Set(pack.cardTypes.map(t => t.toLowerCase().trim()));
     eligible = all.filter(c => typeSet.has(c.cardType.toLowerCase().trim()));
   }
+
   if (eligible.length === 0) return [];
 
   const byRarity: Record<Rarity, Card[]> = {

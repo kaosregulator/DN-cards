@@ -1,5 +1,5 @@
 import type { AutocompleteInteraction } from "discord.js";
-import { getAllCards, listSetsV2, getUserCollection, getUserWishlist, listCustomRarities, getRarityContext, getOrCreateGuildSettings, getRarityDisplayOverrides, getDisplayRarities, getDistinctCardTypes, listCustomPacks } from "../db.js";
+import { getAllCards, listSetsV2, getUserCollection, getUserWishlist, listCustomRarities, getRarityContext, getOrCreateGuildSettings, getRarityDisplayOverrides, getDisplayRarities, getDistinctCardTypes, listCustomPacks, getCustomPackCards } from "../db.js";
 import { tierLabel } from "./pack.js";
 import { db, cardDisplayOverridesTable } from "@workspace/db";
 import { isNotNull } from "drizzle-orm";
@@ -7,7 +7,7 @@ import { RARITY_EMOJI, rarityEmoji, rarityLabel, type Rarity } from "../cards-da
 
 const MAX_CHOICES = 25;
 
-type SlimCard = { name: string; rarity: string; displayName?: string | null };
+type SlimCard = { id?: number; name: string; rarity: string; displayName?: string | null };
 
 // Cache the full card list briefly so we don't hammer the DB on every keystroke.
 let cardCache: { at: number; cards: SlimCard[] } | null = null;
@@ -24,6 +24,7 @@ async function getCardsCached(): Promise<SlimCard[]> {
   ]);
   const overrideMap = new Map(overrides.map(o => [o.cardId, o.displayName]));
   const slim = cards.map(c => ({
+    id: c.id,
     name: c.name,
     rarity: c.rarity,
     displayName: overrideMap.get(c.id) ?? null,
@@ -315,6 +316,44 @@ export async function handleAutocomplete(interaction: AutocompleteInteraction): 
         options.unshift({ name: `✏️ "${query}" (new type)`, value: query.slice(0, 100) });
       }
       await interaction.respond(options.slice(0, MAX_CHOICES));
+      return;
+    }
+
+    // ── /editpack pack — autocompletes this guild's custom packs ───────────
+    if (effectiveCmd === "editpack" && focused.name === "pack" && interaction.guild) {
+      const packs = await listCustomPacks(interaction.guild.id, true);
+      const q = query.toLowerCase().trim();
+      const matches = packs
+        .filter(p => !q || p.name.toLowerCase().includes(q) || p.slug.toLowerCase().includes(q))
+        .map(p => ({
+          name: `${p.emoji || "🎁"} ${p.name} — 💠 ${p.cost.toLocaleString()} · ${p.isActive ? "🟢" : "🔴"}`.slice(0, 100),
+          value: p.name.slice(0, 100),
+        }))
+        .slice(0, MAX_CHOICES);
+      await interaction.respond(matches);
+      return;
+    }
+
+    // ── /editpack add/remove_card — autocomplete full roster ──────────────
+    if (effectiveCmd === "editpack" && ["add_card", "remove_card"].includes(focused.name) && interaction.guild) {
+      if (focused.name === "remove_card") {
+        // Only suggest cards currently in the selected pack.
+        const selectedPackName = interaction.options.getString("pack");
+        if (selectedPackName) {
+          const packs = await listCustomPacks(interaction.guild.id, true);
+          const pack = packs.find(p => p.name.toLowerCase() === selectedPackName.toLowerCase());
+          if (pack) {
+            const packCards = await getCustomPackCards(pack.id);
+            const cardById = new Map((await getCardsCached()).map(c => [c.id, c]));
+            const pool = packCards
+              .map(pc => cardById.get(pc.cardId) ?? null)
+              .filter((c): c is SlimCard => c != null);
+            await interaction.respond(await suggestCardNames(query, pool, displayMap, settings));
+            return;
+          }
+        }
+      }
+      await interaction.respond(await suggestCardNames(query, undefined, displayMap, settings));
       return;
     }
 

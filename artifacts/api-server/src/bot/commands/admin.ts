@@ -52,6 +52,7 @@ async function handleAdminHelp(interaction: ChatInputCommandInteraction): Promis
         name: "🃏 Card Management",
         value:
           "`/admin editcard name:<card>` — interactive panel (autocomplete!)\n" +
+          "`/editpack pack:<name>` — edit custom packs: rename, cost, size, add/remove cards, emoji\n" +
           "`<prefix>addcard` · `<prefix>addlimited` · `<prefix>addevent` — guided wizards\n" +
           "`<prefix>removecard <Name>` · `<prefix>import` — bulk import from JSON",
       },

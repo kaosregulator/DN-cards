@@ -21,6 +21,7 @@ import {
 import { handleCardWizardStep, handleCardEditStep } from "./commands/card-wizard.js";
 import { handleAutocomplete } from "./commands/autocomplete.js";
 import { handleMenuCommand } from "./commands/menu.js";
+import { handleEditPackCommand } from "./commands/editpack.js";
 import { handleDNValuesSearch, handleDNValuesList, handleDNValuesInfo, handleDNValuesAutocomplete, handleDNValuesCalculator, handleDNValuesCalcButton, handleDNValuesCalcModal, handleDNValuesHelp } from "./commands/dnvalues.js";
 import {
   buildCommands, USER_COMMAND_NAMES, ADMIN_COMMAND_NAMES,
@@ -449,6 +450,8 @@ export async function startBot() {
         await handleAdminCommand(interaction, legacyName);
       } else if (cmd === "menu") {
         await handleMenuCommand(interaction);
+      } else if (cmd === "editpack") {
+        await handleEditPackCommand(interaction);
       } else if (cmd === "dnvaluesearch") {
         await handleDNValuesSearch(interaction);
       } else if (cmd === "dnvaluelist") {

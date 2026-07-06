@@ -355,6 +355,22 @@ function buildLegacyCommands() {
     adminCmd("edituser", "(Admin) Edit a member's cards, shinies, and shards", s => s
       .addUserOption(o => o.setName("user").setDescription("Member to edit").setRequired(true))),
 
+    adminCmd("editpack", "(Admin) Edit a custom pack — rename, change cost/size, add/remove cards, set emoji", s => s
+      .addStringOption(o => o.setName("pack").setDescription("Pack to edit — type to search").setRequired(true).setAutocomplete(true))
+      .addStringOption(o => o.setName("new_name").setDescription("Rename the pack").setMaxLength(50))
+      .addIntegerOption(o => o.setName("cost").setDescription("Cost in 💠 shards").setMinValue(0))
+      .addIntegerOption(o => o.setName("size").setDescription("Cards per open (1–10)").setMinValue(1).setMaxValue(10))
+      .addIntegerOption(o => o.setName("weekly_limit").setDescription("Weekly limit (0 = unlimited)").setMinValue(0))
+      .addStringOption(o => o.setName("description").setDescription("Pack description shown when opened").setMaxLength(100))
+      .addStringOption(o => o.setName("emoji").setDescription("Pack emoji (single Unicode or <:name:id>)").setMaxLength(80))
+      .addBooleanOption(o => o.setName("active").setDescription("Enable or disable the pack"))
+      .addStringOption(o => o.setName("add_card").setDescription("Add one card to the pack").setAutocomplete(true))
+      .addStringOption(o => o.setName("remove_card").setDescription("Remove one card from the pack").setAutocomplete(true))
+      .addStringOption(o => o.setName("add_rarity").setDescription("Add ALL cards of this rarity to the pack")
+        .addChoices({ name: "Common", value: "common" }, { name: "Uncommon", value: "uncommon" }, { name: "Rare", value: "rare" }, { name: "Epic", value: "epic" }, { name: "Legendary", value: "legendary" }, { name: "Mythic", value: "mythic" }))
+      .addStringOption(o => o.setName("remove_rarity").setDescription("Remove ALL cards of this rarity from the pack")
+        .addChoices({ name: "Common", value: "common" }, { name: "Uncommon", value: "uncommon" }, { name: "Rare", value: "rare" }, { name: "Epic", value: "epic" }, { name: "Legendary", value: "legendary" }, { name: "Mythic", value: "mythic" }))),
+
     // ── /rep (user, reputation system) ────────────────────────────────────────
     cmd("rep", "(User) Reputation system — give rep, check rep, and see the leaderboard", s => s
       .addSubcommand(sc => sc.setName("give").setDescription("Give +1 rep to another member (24h cooldown per person)")

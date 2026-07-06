@@ -499,10 +499,11 @@ export const embedOverridesTable = pgTable("embed_overrides", {
 
 export type EmbedOverride = typeof embedOverridesTable.$inferSelect;
 
-// ── Custom Packs (per-guild type-filtered pack tiers) ────────────────────────
-// Admins define named packs that pull only from specific card types/tags
-// (e.g. "Nuke Pack" → cardTypes = ["nuke","aircraft"]). Rarity distribution,
-// cost, size, and weekly limit are all configurable. Created via /config → Packs.
+// ── Custom Packs (per-guild configurable pack tiers) ──────────────────────────
+// Admins define named packs that can pull from specific card types/tags
+// (e.g. "Nuke Pack" → cardTypes = ["nuke","aircraft"]) and/or an explicit
+// card whitelist (custom_pack_cards). Rarity distribution, cost, size, weekly
+// limit, and emoji are all configurable. Created via /config → Packs or /editpack.
 export const customPacksTable = pgTable("custom_packs", {
   id: serial("id").primaryKey(),
   guildId: text("guild_id").notNull(),
@@ -517,6 +518,8 @@ export const customPacksTable = pgTable("custom_packs", {
   cardTypes: text("card_types").array().notNull().default([]),
   // Optional admin-set description shown when this pack is opened.
   description: text("description").notNull().default(""),
+  // Optional emoji prefix shown in pack autocomplete and open embeds.
+  emoji: text("emoji"),
   isActive: boolean("is_active").notNull().default(true),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 }, (t) => ({
@@ -524,6 +527,20 @@ export const customPacksTable = pgTable("custom_packs", {
 }));
 
 export type CustomPack = typeof customPacksTable.$inferSelect;
+
+// Explicit card whitelist for custom packs. If a pack has any rows here, it
+// draws from this exact card set (still respecting droppable/inPacks/active).
+// Empty = fall back to the cardTypes filter.
+export const customPackCardsTable = pgTable("custom_pack_cards", {
+  id: serial("id").primaryKey(),
+  packId: integer("pack_id").notNull().references(() => customPacksTable.id, { onDelete: "cascade" }),
+  cardId: integer("card_id").notNull().references(() => cardsTable.id, { onDelete: "cascade" }),
+  addedAt: timestamp("added_at").notNull().defaultNow(),
+}, (t) => ({
+  uniqPackCard: uniqueIndex("custom_pack_cards_pack_card_idx").on(t.packId, t.cardId),
+}));
+
+export type CustomPackCard = typeof customPackCardsTable.$inferSelect;
 
 // Per-(guild, user, pack) weekly usage counter for custom packs.
 // Separate from user_currency's built-in pack counters so custom packs

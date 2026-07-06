@@ -8,10 +8,10 @@ import {
   rarityDisplayOverridesTable,
   cardDisplayOverridesTable,
   setsTable, cardSetMembershipsTable,
-  customPacksTable, userCustomPackWeekTable,
+  customPacksTable, customPackCardsTable, userCustomPackWeekTable,
 } from "@workspace/db";
 import { eq, and, sql, desc, inArray, isNull } from "drizzle-orm";
-import type { Card, CardEvent, CardSet, CustomPack, CustomRarity, GuildSettings, RarityProfile, Trade } from "@workspace/db";
+import type { Card, CardEvent, CardSet, CustomPack, CustomPackCard, CustomRarity, GuildSettings, RarityProfile, Trade } from "@workspace/db";
 import {
   DEFAULT_CARDS, SHINY_RATE, SHINY_MULTIPLIER, type Rarity,
   type RarityDisplayMap,
@@ -1888,7 +1888,7 @@ export async function updateCustomPack(
   id: number,
   patch: Partial<{
     name: string; slug: string; cost: number; size: number; weeklyLimit: number;
-    rarityRates: Record<string, number>; cardTypes: string[]; isActive: boolean; description: string;
+    rarityRates: Record<string, number>; cardTypes: string[]; isActive: boolean; description: string; emoji: string | null;
   }>,
 ): Promise<void> {
   const [existing] = await db.select({ guildId: customPacksTable.guildId })
@@ -1903,6 +1903,46 @@ export async function deleteCustomPack(id: number): Promise<void> {
     .from(customPacksTable).where(eq(customPacksTable.id, id)).limit(1);
   if (!existing) return;
   await db.delete(customPacksTable).where(eq(customPacksTable.id, id));
+  invalidateCustomPackCache(existing.guildId);
+}
+
+// ── Explicit card whitelist for custom packs ─────────────────────────────────
+// When a pack has rows in custom_pack_cards, /pack draws from that exact set
+// (still respecting droppable/inPacks/archive). Otherwise it falls back to the
+// cardTypes filter. Whitelists are managed via /editpack.
+
+export async function getCustomPackCards(packId: number): Promise<CustomPackCard[]> {
+  return db.select().from(customPackCardsTable)
+    .where(eq(customPackCardsTable.packId, packId))
+    .orderBy(desc(customPackCardsTable.addedAt));
+}
+
+export async function addCardsToPack(packId: number, cardIds: number[]): Promise<void> {
+  if (cardIds.length === 0) return;
+  const [existing] = await db.select({ guildId: customPacksTable.guildId })
+    .from(customPacksTable).where(eq(customPacksTable.id, packId)).limit(1);
+  if (!existing) return;
+  await db.insert(customPackCardsTable)
+    .values(cardIds.map(cardId => ({ packId, cardId })))
+    .onConflictDoNothing({ target: [customPackCardsTable.packId, customPackCardsTable.cardId] });
+  invalidateCustomPackCache(existing.guildId);
+}
+
+export async function removeCardsFromPack(packId: number, cardIds: number[]): Promise<void> {
+  if (cardIds.length === 0) return;
+  const [existing] = await db.select({ guildId: customPacksTable.guildId })
+    .from(customPacksTable).where(eq(customPacksTable.id, packId)).limit(1);
+  if (!existing) return;
+  await db.delete(customPackCardsTable)
+    .where(and(eq(customPackCardsTable.packId, packId), inArray(customPackCardsTable.cardId, cardIds)));
+  invalidateCustomPackCache(existing.guildId);
+}
+
+export async function clearPackCards(packId: number): Promise<void> {
+  const [existing] = await db.select({ guildId: customPacksTable.guildId })
+    .from(customPacksTable).where(eq(customPacksTable.id, packId)).limit(1);
+  if (!existing) return;
+  await db.delete(customPackCardsTable).where(eq(customPackCardsTable.packId, packId));
   invalidateCustomPackCache(existing.guildId);
 }
 
