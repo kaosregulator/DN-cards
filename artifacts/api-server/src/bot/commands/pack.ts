@@ -457,6 +457,20 @@ async function drawCustomPack(pack: CustomPack, ctx: RarityContext): Promise<Car
 
   if (eligible.length === 0) return [];
 
+  const drawn: Card[] = [];
+
+  // When a pack has an explicit card whitelist, draw directly from those cards
+  // using their drop weights. Admins curate the exact list via /editpack, so
+  // rarity-rate gating should not hide cards they intentionally added.
+  if (whitelisted.length > 0) {
+    for (let i = 0; i < pack.size; i++) {
+      const picked = pickByDropWeight(eligible);
+      if (picked) drawn.push(picked);
+    }
+    return drawn;
+  }
+
+  // Legacy type-filtered path: roll rarity from the pack's configured rates.
   const byRarity: Record<Rarity, Card[]> = {
     common: [], uncommon: [], rare: [], epic: [], legendary: [], mythic: [],
   };
@@ -465,9 +479,7 @@ async function drawCustomPack(pack: CustomPack, ctx: RarityContext): Promise<Car
   const rates = pack.rarityRates as Record<string, number>;
   const allRarities: Rarity[] = ["mythic", "legendary", "epic", "rare", "uncommon", "common"];
 
-  const drawn: Card[] = [];
   for (let i = 0; i < pack.size; i++) {
-    // Roll rarity from the pack's configured rates
     const r = Math.random();
     let acc = 0;
     let rolled: Rarity = "common";
