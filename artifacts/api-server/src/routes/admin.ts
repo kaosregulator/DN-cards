@@ -143,7 +143,7 @@ router.put("/cards/:id/display", async (req, res) => {
     .values({
       cardId: params.id,
       displayName: body.displayName ?? null,
-      displayImageUrl: body.displayImageUrl ?? null,
+      displayImageUrl: body.displayImageUrl || null,
       displayDescription: body.displayDescription ?? null,
       displayCategory: body.displayCategory ?? null,
       flavorText: body.flavorText ?? null,
@@ -158,7 +158,7 @@ router.put("/cards/:id/display", async (req, res) => {
       // Only overwrite the fields the caller actually sent; preserve the rest.
       set: {
         ...(body.displayName !== undefined ? { displayName: body.displayName } : {}),
-        ...(body.displayImageUrl !== undefined ? { displayImageUrl: body.displayImageUrl } : {}),
+        ...(body.displayImageUrl !== undefined ? { displayImageUrl: body.displayImageUrl || null } : {}),
         ...(body.displayDescription !== undefined ? { displayDescription: body.displayDescription } : {}),
         ...(body.displayCategory !== undefined ? { displayCategory: body.displayCategory } : {}),
         ...(body.flavorText !== undefined ? { flavorText: body.flavorText } : {}),

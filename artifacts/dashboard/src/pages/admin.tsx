@@ -419,8 +419,8 @@ export default function Admin() {
                   const o = c.displayOverride;
                   const displayName = o?.displayName ?? c.name;
                   const hasOverride = !!o && (o.displayName || o.displayImageUrl || o.displayDescription || o.displayCategory || o.flavorText || o.hiddenFromSite || o.featured || o.sortWeight !== 0);
-                  const overrideImg = o?.displayImageUrl ?? null;
-                  const srcImg = resolveImageUrl(overrideImg ?? c.imageUrl);
+                  const overrideImg = o?.displayImageUrl || null;
+                  const srcImg = resolveImageUrl(overrideImg || c.imageUrl);
                   return (
                     <tr key={c.id} className="border-t border-border/40 hover:bg-muted/20">
                       <td className="p-3">
