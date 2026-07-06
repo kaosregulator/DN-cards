@@ -655,6 +655,7 @@ export const calculatorMessagesTable = pgTable("calculator_messages", {
   guildId: text("guild_id").notNull(),
   channelId: text("channel_id").notNull(),
   messageId: text("message_id").notNull(),
+  resultChannelId: text("result_channel_id"),
   createdBy: text("created_by").notNull(),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 }, (t) => ({

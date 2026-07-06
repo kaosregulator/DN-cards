@@ -8,7 +8,8 @@ import {
   fetchItems, matchScore, calcItemValue, calcWeightedDemand, calcSideValue, shortValue, formatValue, rarityEmoji,
   type DNItem, type CalcItem, type CalcTier,
 } from "./dnvalues.js";
-import { createCalculatorMessage, isCalculatorMessage, isAdmin } from "../db.js";
+import { createCalculatorMessage, getCalculatorMessage, isAdmin } from "../db.js";
+import type { CalculatorMessage } from "@workspace/db";
 import { logger } from "../../lib/logger.js";
 
 // ── Persistent DN Trade Calculator ───────────────────────────────────────────
@@ -249,8 +250,8 @@ function parseCustomId(customId: string): { action: string; parts: string[] } {
   return { action: parts[1] ?? "", parts };
 }
 
-async function isRegisteredHub(messageId: string): Promise<boolean> {
-  return isCalculatorMessage(messageId);
+async function getRegisteredHub(messageId: string): Promise<CalculatorMessage | undefined> {
+  return getCalculatorMessage(messageId);
 }
 
 // ── /postcalculator ───────────────────────────────────────────────────────────
@@ -274,9 +275,20 @@ export async function handlePostCalculator(interaction: ChatInputCommandInteract
     return;
   }
   const textChannel = channel as GuildTextBasedChannel;
+
+  const resultChannelRaw = interaction.options.getChannel("result_channel");
+  const resultChannel =
+    resultChannelRaw && (resultChannelRaw.type === ChannelType.GuildText || resultChannelRaw.type === ChannelType.GuildAnnouncement)
+      ? (resultChannelRaw as GuildTextBasedChannel)
+      : null;
+
   const me = interaction.guild.members.me;
   if (!me?.permissionsIn(textChannel).has(PermissionFlagsBits.SendMessages | PermissionFlagsBits.EmbedLinks)) {
-    await interaction.editReply("❌ I don't have permission to send messages/embeds in that channel.");
+    await interaction.editReply("❌ I don't have permission to send messages/embeds in the calculator channel.");
+    return;
+  }
+  if (resultChannel && !me?.permissionsIn(resultChannel).has(PermissionFlagsBits.SendMessages | PermissionFlagsBits.EmbedLinks)) {
+    await interaction.editReply("❌ I don't have permission to send messages/embeds in the result channel.");
     return;
   }
 
@@ -296,8 +308,8 @@ export async function handlePostCalculator(interaction: ChatInputCommandInteract
     const message = await textChannel.send({ embeds: [embed], components: buildMainComponents("placeholder") });
     const messageId = message.id;
     await message.edit({ components: buildMainComponents(messageId) });
-    await createCalculatorMessage(interaction.guild.id, textChannel.id, messageId, interaction.user.id);
-    await interaction.editReply(`✅ Posted the calculator in ${textChannel.toString()}.`);
+    await createCalculatorMessage(interaction.guild.id, textChannel.id, messageId, interaction.user.id, resultChannel?.id ?? null);
+    await interaction.editReply(`✅ Posted the calculator in ${textChannel.toString()}${resultChannel ? `; results will go to ${resultChannel.toString()}` : ""}.`);
   } catch (err) {
     logger.error({ err }, "Failed to post calculator");
     await interaction.editReply("❌ Could not post the calculator. Check my permissions.");
@@ -312,7 +324,8 @@ export async function handleDntCalcButton(interaction: ButtonInteraction): Promi
 
   evictStaleSessions();
 
-  if (!(await isRegisteredHub(messageId))) {
+  const hub = await getRegisteredHub(messageId);
+  if (!hub) {
     await interaction.reply({
       content: "❌ This calculator hub is no longer registered. Ask an admin to post a new one with `/postcalculator`.",
       flags: MessageFlags.Ephemeral,
@@ -329,7 +342,7 @@ export async function handleDntCalcButton(interaction: ButtonInteraction): Promi
     const side = action as "your" | "their" | "calc" | "clear";
 
     if (side === "calc") {
-      await handleCalculate(interaction, session);
+      await handleCalculate(interaction, session, hub);
       return;
     }
 
@@ -476,7 +489,11 @@ export async function handleDntCalcButton(interaction: ButtonInteraction): Promi
   }
 }
 
-async function handleCalculate(interaction: ButtonInteraction, session: UserSession): Promise<void> {
+async function handleCalculate(
+  interaction: ButtonInteraction,
+  session: UserSession,
+  hub: CalculatorMessage,
+): Promise<void> {
   await interaction.deferReply({ flags: MessageFlags.Ephemeral }).catch(() => {});
 
   if (session.yourItems.length === 0 || session.theirItems.length === 0) {
@@ -536,13 +553,28 @@ async function handleCalculate(interaction: ButtonInteraction, session: UserSess
     .setFooter({ text: "Prices from mttvalues.com" });
 
   try {
-    const channel = interaction.channel as TextBasedChannel | null;
-    if (channel && "send" in channel) {
-      await channel.send({ embeds: [resultEmbed] });
+    const targetChannelId = hub.resultChannelId ?? hub.channelId;
+    const guild = interaction.guild;
+    let targetChannel: TextBasedChannel | null = null;
+    if (guild) {
+      const fetched = await guild.channels.fetch(targetChannelId).catch(() => null);
+      if (fetched && (fetched.type === ChannelType.GuildText || fetched.type === ChannelType.GuildAnnouncement)) {
+        targetChannel = fetched as GuildTextBasedChannel;
+      }
     }
-    await interaction.editReply({
-      content: "✅ Posted your trade result in the channel.",
-    }).catch(() => {});
+    if (!targetChannel) {
+      targetChannel = interaction.channel as TextBasedChannel | null;
+    }
+    if (targetChannel && "send" in targetChannel) {
+      await targetChannel.send({ embeds: [resultEmbed] });
+      await interaction.editReply({
+        content: `✅ Posted your trade result in ${targetChannel.toString()}.`,
+      }).catch(() => {});
+    } else {
+      await interaction.editReply({
+        content: "❌ Could not find the target channel for the result.",
+      }).catch(() => {});
+    }
   } catch (err) {
     logger.error({ err }, "Failed to post calculator result");
     await interaction.editReply({
@@ -562,7 +594,8 @@ export async function handleDntCalcModal(interaction: ModalSubmitInteraction): P
 
   evictStaleSessions();
 
-  if (!(await isRegisteredHub(messageId))) {
+  const hub = await getRegisteredHub(messageId);
+  if (!hub) {
     await interaction.reply({
       content: "❌ This calculator hub is no longer registered. Ask an admin to post a new one with `/postcalculator`.",
       flags: MessageFlags.Ephemeral,

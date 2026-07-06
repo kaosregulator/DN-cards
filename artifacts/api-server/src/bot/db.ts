@@ -1910,12 +1910,13 @@ export async function deleteCustomPack(id: number): Promise<void> {
 // ── Persistent DN Trade Calculator hubs ───────────────────────────────────────
 export async function createCalculatorMessage(
   guildId: string, channelId: string, messageId: string, createdBy: string,
+  resultChannelId?: string | null,
 ): Promise<CalculatorMessage> {
   const [row] = await db.insert(calculatorMessagesTable)
-    .values({ guildId, channelId, messageId, createdBy })
+    .values({ guildId, channelId, messageId, createdBy, resultChannelId: resultChannelId ?? null })
     .onConflictDoUpdate({
       target: [calculatorMessagesTable.guildId, calculatorMessagesTable.channelId, calculatorMessagesTable.messageId],
-      set: { createdBy },
+      set: { createdBy, resultChannelId: resultChannelId ?? null },
     })
     .returning();
   return row!;
@@ -1937,6 +1938,13 @@ export async function isCalculatorMessage(messageId: string): Promise<boolean> {
     .where(eq(calculatorMessagesTable.messageId, messageId))
     .limit(1);
   return !!row;
+}
+
+export async function getCalculatorMessage(messageId: string): Promise<CalculatorMessage | undefined> {
+  const [row] = await db.select().from(calculatorMessagesTable)
+    .where(eq(calculatorMessagesTable.messageId, messageId))
+    .limit(1);
+  return row;
 }
 
 // ── Explicit card whitelist for custom packs ─────────────────────────────────
