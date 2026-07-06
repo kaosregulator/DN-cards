@@ -9,9 +9,10 @@ import {
   cardDisplayOverridesTable,
   setsTable, cardSetMembershipsTable,
   customPacksTable, customPackCardsTable, userCustomPackWeekTable,
+  calculatorMessagesTable,
 } from "@workspace/db";
 import { eq, and, sql, desc, inArray, isNull } from "drizzle-orm";
-import type { Card, CardEvent, CardSet, CustomPack, CustomPackCard, CustomRarity, GuildSettings, RarityProfile, Trade } from "@workspace/db";
+import type { Card, CardEvent, CardSet, CalculatorMessage, CustomPack, CustomPackCard, CustomRarity, GuildSettings, RarityProfile, Trade } from "@workspace/db";
 import {
   DEFAULT_CARDS, SHINY_RATE, SHINY_MULTIPLIER, type Rarity,
   type RarityDisplayMap,
@@ -1904,6 +1905,38 @@ export async function deleteCustomPack(id: number): Promise<void> {
   if (!existing) return;
   await db.delete(customPacksTable).where(eq(customPacksTable.id, id));
   invalidateCustomPackCache(existing.guildId);
+}
+
+// ── Persistent DN Trade Calculator hubs ───────────────────────────────────────
+export async function createCalculatorMessage(
+  guildId: string, channelId: string, messageId: string, createdBy: string,
+): Promise<CalculatorMessage> {
+  const [row] = await db.insert(calculatorMessagesTable)
+    .values({ guildId, channelId, messageId, createdBy })
+    .onConflictDoUpdate({
+      target: [calculatorMessagesTable.guildId, calculatorMessagesTable.channelId, calculatorMessagesTable.messageId],
+      set: { createdBy },
+    })
+    .returning();
+  return row!;
+}
+
+export async function listCalculatorMessages(guildId?: string): Promise<CalculatorMessage[]> {
+  return db.select().from(calculatorMessagesTable)
+    .where(guildId ? eq(calculatorMessagesTable.guildId, guildId) : undefined)
+    .orderBy(desc(calculatorMessagesTable.createdAt));
+}
+
+export async function deleteCalculatorMessage(id: number): Promise<void> {
+  await db.delete(calculatorMessagesTable).where(eq(calculatorMessagesTable.id, id));
+}
+
+export async function isCalculatorMessage(messageId: string): Promise<boolean> {
+  const [row] = await db.select({ id: calculatorMessagesTable.id })
+    .from(calculatorMessagesTable)
+    .where(eq(calculatorMessagesTable.messageId, messageId))
+    .limit(1);
+  return !!row;
 }
 
 // ── Explicit card whitelist for custom packs ─────────────────────────────────

@@ -646,3 +646,19 @@ export const repLogTable = pgTable("rep_log", {
 }));
 
 export type RepLog = typeof repLogTable.$inferSelect;
+
+// ── Persistent DN Trade Calculator messages ───────────────────────────────────
+// Admins post a permanent calculator hub in a channel with /postcalculator.
+// The hub survives bot restarts; button interactions are routed by message ID.
+export const calculatorMessagesTable = pgTable("calculator_messages", {
+  id: serial("id").primaryKey(),
+  guildId: text("guild_id").notNull(),
+  channelId: text("channel_id").notNull(),
+  messageId: text("message_id").notNull(),
+  createdBy: text("created_by").notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (t) => ({
+  uniqMsg: uniqueIndex("calculator_messages_msg_idx").on(t.guildId, t.channelId, t.messageId),
+}));
+
+export type CalculatorMessage = typeof calculatorMessagesTable.$inferSelect;

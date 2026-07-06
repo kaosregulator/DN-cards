@@ -311,6 +311,19 @@ async function runBootMigrations() {
     `CREATE UNIQUE INDEX IF NOT EXISTS user_custom_pack_week_idx ON user_custom_pack_week(guild_id, user_id, pack_id)`
   );
 
+  // Persistent DN Trade Calculator hub messages (posted by /postcalculator).
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS calculator_messages (
+      id         SERIAL PRIMARY KEY,
+      guild_id   TEXT NOT NULL,
+      channel_id TEXT NOT NULL,
+      message_id TEXT NOT NULL,
+      created_by TEXT NOT NULL,
+      created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+      CONSTRAINT calculator_messages_msg_uniq UNIQUE (guild_id, channel_id, message_id)
+    )
+  `);
+
   logger.info("Boot migrations applied");
 }
 

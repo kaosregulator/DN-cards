@@ -23,6 +23,7 @@ import { handleAutocomplete } from "./commands/autocomplete.js";
 import { handleMenuCommand } from "./commands/menu.js";
 import { handleEditPackCommand } from "./commands/editpack.js";
 import { handleDNValuesSearch, handleDNValuesList, handleDNValuesInfo, handleDNValuesAutocomplete, handleDNValuesCalculator, handleDNValuesCalcButton, handleDNValuesCalcModal, handleDNValuesHelp } from "./commands/dnvalues.js";
+import { handlePostCalculator, handleDntCalcButton, handleDntCalcModal } from "./commands/dntcalc.js";
 import {
   buildCommands, USER_COMMAND_NAMES, ADMIN_COMMAND_NAMES,
 } from "./commands/register.js";
@@ -224,6 +225,8 @@ export async function startBot() {
           await handlePacksDescModal(interaction);
         } else if (interaction.customId.startsWith("dncalc_modal:")) {
           await handleDNValuesCalcModal(interaction);
+        } else if (interaction.customId.startsWith("dntcalc_modal:")) {
+          await handleDntCalcModal(interaction);
         }
         return;
       }
@@ -236,6 +239,11 @@ export async function startBot() {
         // ── DN values calculator hub buttons ───────────────────────────────
         if (action === "dncalc") {
           await handleDNValuesCalcButton(interaction);
+          return;
+        }
+
+        if (action === "dntcalc") {
+          await handleDntCalcButton(interaction);
           return;
         }
 
@@ -460,6 +468,8 @@ export async function startBot() {
         await handleDNValuesInfo(interaction);
       } else if (cmd === "dnvaluecalc") {
         await handleDNValuesCalculator(interaction);
+      } else if (cmd === "postcalculator") {
+        await handlePostCalculator(interaction);
       } else if (cmd === "dnhelp") {
         await handleDNValuesHelp(interaction);
       } else if (USER_COMMAND_NAMES.has(cmd)) {

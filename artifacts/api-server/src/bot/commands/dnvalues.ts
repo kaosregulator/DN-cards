@@ -31,6 +31,8 @@ let cache: DNItem[] | null = null;
 let cacheExpiresAt = 0;
 const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 
+export type { DNItem };
+
 function getFieldValue(fields: Record<string, unknown>, key: string): string | null {
   const v = fields[key] as Record<string, unknown> | undefined;
   if (!v) return null;
@@ -72,7 +74,7 @@ function parseDoc(doc: { name: string; fields?: Record<string, unknown> }): DNIt
   };
 }
 
-async function fetchItems(): Promise<DNItem[]> {
+export async function fetchItems(): Promise<DNItem[]> {
   const now = Date.now();
   if (cache && cacheExpiresAt > now) {
     return cache;
@@ -124,7 +126,7 @@ async function publicReply(
   setTimeout(() => interaction.deleteReply().catch(() => {}), REPLY_DELETE_MS);
 }
 
-function formatValue(item: DNItem): string {
+export function formatValue(item: DNItem): string {
   if (item.valueMin == null && item.valueMax == null) return "?";
   if (item.valueMin === item.valueMax) return item.valueMin?.toLocaleString() ?? "?";
   if (item.valueMin == null) return item.valueMax?.toLocaleString() ?? "?";
@@ -132,7 +134,7 @@ function formatValue(item: DNItem): string {
   return `${item.valueMin.toLocaleString()} – ${item.valueMax.toLocaleString()}`;
 }
 
-function rarityEmoji(rarity: string): string {
+export function rarityEmoji(rarity: string): string {
   const map: Record<string, string> = {
     Common: "⚪",
     Rare: "🔵",
@@ -144,7 +146,7 @@ function rarityEmoji(rarity: string): string {
   return map[rarity] ?? "";
 }
 
-function tagEmoji(tag: string): string {
+export function tagEmoji(tag: string): string {
   const map: Record<string, string> = {
     unstable: "📉",
     underpaid: "⬇️",
@@ -186,7 +188,7 @@ function itemNameAcronym(item: DNItem): string {
     .toLowerCase();
 }
 
-function matchScore(item: DNItem, query: string): number {
+export function matchScore(item: DNItem, query: string): number {
   const q = query.toLowerCase().trim().replace(/\s+/g, " ");
   if (!q) return 0;
   const tokens = q.split(/\s+/).filter(Boolean);
@@ -370,9 +372,9 @@ export async function handleDNValuesHelp(interaction: ChatInputCommandInteractio
 
 const STAR_VALUE: Record<number, number> = { 1: 0, 2: 1000, 3: 10000, 4: 35000, 5: 75000 };
 
-type CalcTier = "low" | "mid" | "high";
+export type CalcTier = "low" | "mid" | "high";
 
-type CalcItem = {
+export type CalcItem = {
   item: DNItem;
   quantity: number;
   tier: CalcTier;
@@ -391,7 +393,7 @@ type CalcState = {
 const calcStates = new Map<string, CalcState>();
 const calcTimers = new Map<string, ReturnType<typeof setTimeout>>();
 
-function calcItemValue(c: CalcItem): number {
+export function calcItemValue(c: CalcItem): number {
   const min = c.item.valueMin ?? c.item.valueMax ?? 0;
   const max = c.item.valueMax ?? c.item.valueMin ?? 0;
   let base = 0;
@@ -401,7 +403,7 @@ function calcItemValue(c: CalcItem): number {
   return Math.max(0, base + STAR_VALUE[c.stars]) * c.quantity;
 }
 
-function calcWeightedDemand(items: CalcItem[]): number | null {
+export function calcWeightedDemand(items: CalcItem[]): number | null {
   let valueSum = 0;
   let demandSum = 0;
   let demandCount = 0;
@@ -428,11 +430,11 @@ function calcWeightedDemand(items: CalcItem[]): number | null {
   return demandCount > 0 ? demandSum / demandCount : null;
 }
 
-function calcSideValue(items: CalcItem[]): number {
+export function calcSideValue(items: CalcItem[]): number {
   return items.reduce((sum, c) => sum + calcItemValue(c), 0);
 }
 
-function shortValue(n: number): string {
+export function shortValue(n: number): string {
   const abs = Math.abs(n);
   const sign = n < 0 ? "-" : "";
   if (abs >= 1_000_000_000) return `${sign}${(abs / 1_000_000_000).toFixed(2)}B`.replace(/\.00B$/, "B");
