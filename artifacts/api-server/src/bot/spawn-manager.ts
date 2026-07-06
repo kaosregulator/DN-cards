@@ -56,6 +56,9 @@ interface ActiveSpawn {
   // Set once the winner clicks Burn / Keep / Trade so the auto-keep timer
   // doesn't overwrite their actual decision 90s later.
   decisionMade: boolean;
+  // Anti-paste: count wrong guesses and progressively reveal hints.
+  failedAttempts: number;
+  hintLevel: number;
 }
 
 // After a spawn is caught, keep its entry around for a short cooldown so
@@ -95,6 +98,51 @@ const CATCH_QUIPS: ReadonlyArray<(card: string, mention: string) => string> = [
   (c, u) => `\ud83d\udcf2 Incoming! **${c}** locked on to ${u}.`,
   (c, u) => `\u2705 Pinpoint accuracy \u2014 ${u} snagged **${c}**.`,
 ];
+
+// Anti-paste hint thresholds for the typing-mode catch flow. Wrong guesses
+// gradually reveal more of the card name so copy-paste of the raw name is
+// no longer an instant win, while still giving legitimate players a path.
+const HINT_LEVELS = [
+  { threshold: 0, label: "Easy" },
+  { threshold: 3, label: "Medium" },
+  { threshold: 6, label: "Hard" },
+];
+
+function hintLevelForFailures(failures: number): number {
+  let level = 0;
+  for (let i = HINT_LEVELS.length - 1; i >= 0; i--) {
+    if (failures >= HINT_LEVELS[i]!.threshold) {
+      level = i;
+      break;
+    }
+  }
+  return level;
+}
+
+function maskName(name: string, level: number): string {
+  if (level >= HINT_LEVELS.length - 1) return name;
+  const reveal = level === 0 ? 1 : 3;
+  return name
+    .split(" ")
+    .map(word => {
+      const shown = Math.min(reveal, word.length);
+      return word.slice(0, shown) + "\u25cf".repeat(Math.max(0, word.length - shown));
+    })
+    .join(" ");
+}
+
+function buildHintLines(name: string, level: number): string {
+  const masked = maskName(name, level);
+  const lines: string[] = [];
+  if (level === 0) {
+    lines.push(`\u2139\ufe0f Name hint: \`${masked}\` (first letter of each word)`);
+  } else if (level === 1) {
+    lines.push(`\u2139\ufe0f Name hint: \`${masked}\` (first three letters of each word)`);
+  } else {
+    lines.push(`\u2139\ufe0f Name revealed: \`${masked}\``);
+  }
+  return lines.join("\n");
+}
 
 // Grace window for collecting concurrent typing-mode catch attempts.
 // Anyone whose Discord-stamped message lands within this window of the first
@@ -246,7 +294,7 @@ async function doSingleSpawn(guildId: string, forcedCardId?: number, isForced = 
 
   const mode = ((settings as unknown as { catchMode?: string }).catchMode ?? "type") as "type" | "button" | "both";
   const spawnId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-  const embed = await buildSpawnEmbed(card, settings.catchWindowSeconds, mode, guildId);
+  const embed = await buildSpawnEmbed(card, settings.catchWindowSeconds, mode, guildId, 0);
   const spawnLog = await logSpawn(guildId, channelId, card.id, isForced);
   const components = mode === "type" ? [] : [buildClaimRow(guildId, spawnId)];
   let message: Message;
@@ -290,6 +338,8 @@ async function doSingleSpawn(guildId: string, forcedCardId?: number, isForced = 
     pending: [],
     resolveTimer: null,
     decisionMade: false,
+    failedAttempts: 0,
+    hintLevel: 0,
   };
 
   let guildSpawns = activeSpawns.get(guildId);
@@ -338,7 +388,7 @@ export async function spawnCard(guildId: string, forcedCardId?: number, isForced
 // timestamp (msg.createdTimestamp) wins, not whoever the bot processed first.
 export async function handleCatchAttempt(
   guildId: string, userId: string, guess: string,
-  messageTimestamp: number,
+  messageTimestamp: number, channelId: string,
 ): Promise<{ matched: boolean; awaiting: boolean; timedOutUntil?: Date }> {
   const guildSpawns = activeSpawns.get(guildId);
   if (!guildSpawns || guildSpawns.size === 0) return { matched: false, awaiting: false };
@@ -356,7 +406,18 @@ export async function handleCatchAttempt(
     matchedSpawnId = spawnId;
     break;
   }
-  if (!matchedSpawnId) return { matched: false, awaiting: false };
+
+  if (!matchedSpawnId) {
+    // Wrong guess: count it against typing-mode spawns in the same channel and
+    // reveal a stronger hint when the threshold is crossed.
+    const sameChannelSpawns = Array.from(guildSpawns.values()).filter(
+      s => !s.caught && now <= s.expiresAt && s.catchMode !== "button" && s.channelId === channelId,
+    );
+    if (sameChannelSpawns.length > 0) {
+      void bumpSpawnHints(sameChannelSpawns, guildId);
+    }
+    return { matched: false, awaiting: false };
+  }
 
   // Admin-imposed catch timeout — block before queuing.
   const timeout = await getUserTimeout(guildId, userId);
@@ -368,6 +429,21 @@ export async function handleCatchAttempt(
     spawn.resolveTimer = setTimeout(() => { void resolveTypingSpawn(guildId, matchedSpawnId!); }, TYPE_GRACE_MS);
   }
   return { matched: true, awaiting: true };
+}
+
+async function bumpSpawnHints(spawns: ActiveSpawn[], guildId: string): Promise<void> {
+  const settings = await getOrCreateGuildSettings(guildId);
+  const cards = await getAllCardsCached();
+  for (const spawn of spawns) {
+    spawn.failedAttempts += 1;
+    const newLevel = hintLevelForFailures(spawn.failedAttempts);
+    if (newLevel <= spawn.hintLevel) continue;
+    spawn.hintLevel = newLevel;
+    const card = cards.find(c => c.id === spawn.cardId);
+    if (!card) continue;
+    const embed = await buildSpawnEmbed(card, settings.catchWindowSeconds, spawn.catchMode, guildId, spawn.hintLevel);
+    await spawn.message.edit({ embeds: [embed] }).catch(() => { /* deleted / no perms */ });
+  }
 }
 
 async function resolveTypingSpawn(guildId: string, spawnId: string): Promise<void> {
@@ -608,7 +684,7 @@ async function buildClaimedEmbed(
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
-async function buildSpawnEmbed(card: Card, windowSeconds: number, mode: "type" | "button" | "both" = "type", guildId: string | null = null): Promise<EmbedBuilder> {
+async function buildSpawnEmbed(card: Card, windowSeconds: number, mode: "type" | "button" | "both" = "type", guildId: string | null = null, hintLevel = 0): Promise<EmbedBuilder> {
   const rarity = card.rarity as Rarity;
   const cardType = card.cardType;
   const settings = guildId ? await getOrCreateGuildSettings(guildId) : null;
@@ -621,18 +697,19 @@ async function buildSpawnEmbed(card: Card, windowSeconds: number, mode: "type" |
   if (card.maxCopies) badges.push(`📦 Only ${card.maxCopies - card.totalMinted} copies remaining`);
 
   const howTo =
-    mode === "button" ? `Hit the **🎯 Claim** button to catch:\n\`\`\`${card.name}\`\`\``
-    : mode === "both" ? `Type the card name **or** hit **🎯 Claim**:\n\`\`\`${card.name}\`\`\``
-    : `Type the card name exactly to catch it:\n\`\`\`${card.name}\`\`\``;
+    mode === "button" ? `Hit the **🎯 Claim** button to catch this card.`
+    : mode === "both" ? `Type the card name **or** hit **🎯 Claim** to catch it.`
+    : `Type the card name to catch it.`;
 
+  const hintText = buildHintLines(card.name, hintLevel);
   const embed = new EmbedBuilder()
     .setTitle(`${displayRarity.emoji} A DN Card has appeared!`)
     .setColor(displayRarity.color)
     .setDescription(
-      `${badges.length > 0 ? badges.join("\n") + "\n\n" : ""}${howTo}`,
+      `${badges.length > 0 ? badges.join("\n") + "\n\n" : ""}${howTo}\n\n${hintText}`,
     )
     .addFields(
-      { name: `${getTypeEmoji(cardType)} ${card.name}`, value: card.description || "\u200b", inline: false },
+      { name: `${getTypeEmoji(cardType)} ${maskName(card.name, hintLevel)}`, value: card.description || "\u200b", inline: false },
       { name: "Rarity", value: `${displayRarity.emoji} ${displayRarity.label}`, inline: true },
       { name: "Worth", value: `💠 ${card.worthValue.toLocaleString()} shards`, inline: true },
       { name: "⏱️ Window", value: `${windowSeconds}s`, inline: true },

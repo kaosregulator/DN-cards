@@ -514,7 +514,7 @@ export async function startBot() {
     // spawn-manager can do lag-fair winner selection (earliest sent wins,
     // not earliest processed).
     const result = await handleCatchAttempt(
-      msg.guild.id, msg.author.id, content, msg.createdTimestamp,
+      msg.guild.id, msg.author.id, content, msg.createdTimestamp, msg.channel.id,
     ).catch(err => {
       logger.error({ err }, "Catch attempt error");
       return { matched: false, awaiting: false, timedOutUntil: undefined as Date | undefined };
