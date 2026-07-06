@@ -510,11 +510,13 @@ export async function handleCustomPack(
   const ctx = await getRarityContext(guildId);
   const cards = await drawCustomPack(pack, ctx);
   if (cards.length === 0) {
-    const typeHint =
-      pack.cardTypes.length > 0
-        ? ` This pack draws from types: **${pack.cardTypes.join(", ")}** — ask an admin to add cards with those types.`
-        : "";
-    await interaction.editReply(`❌ No eligible cards for **${pack.name}**.${typeHint}`);
+    const packCards = await getCustomPackCards(pack.id);
+    const hint = packCards.length > 0
+      ? ` The pack has ${packCards.length} card(s) on its whitelist, but none are eligible to draw right now (archived, not droppable, or limited editions are maxed). Use /editpack to adjust the list.`
+      : pack.cardTypes.length > 0
+        ? ` The pack draws from types: **${pack.cardTypes.join(", ")}**. Use /editpack to add cards or change the type filter.`
+        : " Use /editpack to add cards or set a type filter.";
+    await interaction.editReply(`❌ No eligible cards for **${pack.name}**.${hint}`);
     return;
   }
 
