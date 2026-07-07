@@ -5,6 +5,7 @@ import { z } from "zod/v4";
 import bcrypt from "bcryptjs";
 import { loginRateLimiter } from "../lib/rate-limiters.js";
 import { credentialFingerprint } from "../middlewares/dashboard-auth.js";
+import { isHomeGuild } from "../bot/home-guild.js";
 
 // Augment express-session with our custom fields. Declared here so anything
 // that imports this module picks up the types.
@@ -85,6 +86,11 @@ router.get("/setup/:token/check", loginRateLimiter, async (req, res) => {
     res.status(404).json({ valid: false, error: "Setup link is invalid or expired" });
     return;
   }
+  // Reject non-home-guild tokens early so the setup form never renders for them.
+  if (row.guildId && !isHomeGuild(row.guildId)) {
+    res.status(403).json({ valid: false, error: "This setup link is not valid for the home guild." });
+    return;
+  }
   // For password resets we already know the target user — surface their
   // username so the form can prefill it.
   let presetUsername: string | null = null;
@@ -122,6 +128,14 @@ router.post("/setup/:token", loginRateLimiter, async (req, res) => {
   const releaseToken = async () => {
     await db.update(setupTokensTable).set({ usedAt: null }).where(eq(setupTokensTable.id, row.id));
   };
+
+  // Defense-in-depth: the bot should never mint non-home-guild tokens, but if
+  // one is consumed (legacy/stale token) reject it here.
+  if (row.guildId && !isHomeGuild(row.guildId)) {
+    await releaseToken();
+    res.status(403).json({ error: "This setup link is not valid for the home guild." });
+    return;
+  }
 
   try {
     if (row.resetForUserId) {

@@ -33,6 +33,7 @@ import {
 import { MessageFlags, EmbedBuilder } from "discord.js";
 import { createSetupLink } from "../lib/setup-link.js";
 import { setBotClient } from "./client-holder.js";
+import { isHomeGuild } from "./home-guild.js";
 
 /**
  * Send a public welcome message when the bot joins a new guild.
@@ -69,7 +70,9 @@ async function sendGuildWelcome(guild: Guild): Promise<void> {
         value:
           "1. Run `/admin setup` in your spawn channel to configure drops, rarity, and catch mode.\n" +
           "2. Run `/admin set-hub` to activate a card set (spawns only pull from the active set).\n" +
-          "3. Run `/admin dashboard` to get your web dashboard login link.\n" +
+          (isHomeGuild(guild.id)
+            ? "3. Run `/admin dashboard` to get your web dashboard login link.\n"
+            : "3. The web dashboard is only available for the home server.\n") +
           "Need the full guide? Run `/adminhelp` or `/welcomeadmin`.",
       },
       {
@@ -186,30 +189,38 @@ export async function startBot() {
       .put(Routes.applicationGuildCommands(client.user!.id, guild.id), { body: buildCommands() })
       .catch(err => logger.error({ err, guildId: guild.id }, "Failed to register guild commands on join"));
 
-    // DM the server owner a one-time dashboard setup link. Best-effort —
-    // if their DMs are off, they can run /dashboard later.
+    // DM the server owner a one-time dashboard setup link — only for the home
+    // guild, because the dashboard is home-guild-only. Other servers still get a
+    // friendly welcome DM with setup guidance. Best-effort — if DMs are off,
+    // they can run /admin setup in the server.
     try {
       const owner = await guild.fetchOwner();
-      const { url, expiresAt } = await createSetupLink({
-        discordUserId: owner.id,
-        guildId: guild.id,
-        ttlHours: 72,
-      });
-      const embed = new EmbedBuilder()
-        .setColor(0x5865f2)
-        .setTitle("👋 Welcome to DN Cards!")
-        .setDescription(
-          `Thanks for adding **DN Cards** to **${guild.name}**.\n\n` +
+      let description = `Thanks for adding **DN Cards** to **${guild.name}**.\n\n`;
+      if (isHomeGuild(guild.id)) {
+        const { url, expiresAt } = await createSetupLink({
+          discordUserId: owner.id,
+          guildId: guild.id,
+          ttlHours: 72,
+        });
+        description +=
           `Open this link to set up your **web dashboard** login (pick a username + password). ` +
           `You can manage card art, server settings, and message customization from there.\n\n` +
           `🔗 ${url}\n\n` +
           `**Expires:** <t:${Math.floor(expiresAt.getTime() / 1000)}:R>\n` +
-          `Need a fresh link later? Run \`/admin dashboard\` in your server.\n\n` +
-          `Quick start: run \`/cards welcome\` for the public intro, then \`/admin setup\` to configure spawning.`,
-        );
+          `Need a fresh link later? Run \`/admin dashboard\` in your server.\n\n`;
+      } else {
+        description +=
+          "The web dashboard is only available for the home server. " +
+          "Guild-scoped settings and commands are managed right here in Discord.\n\n";
+      }
+      description += `Quick start: run \`/cards welcome\` for the public intro, then \`/admin setup\` to configure spawning.`;
+      const embed = new EmbedBuilder()
+        .setColor(0x5865f2)
+        .setTitle("👋 Welcome to DN Cards!")
+        .setDescription(description);
       await owner.send({ embeds: [embed] });
     } catch (err) {
-      logger.warn({ err, guildId: guild.id }, "Could not DM server owner with dashboard setup link");
+      logger.warn({ err, guildId: guild.id }, "Could not DM server owner with welcome/setup link");
     }
   });
 

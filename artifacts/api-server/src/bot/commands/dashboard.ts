@@ -1,13 +1,19 @@
 import type { ChatInputCommandInteraction } from "discord.js";
-import { EmbedBuilder, MessageFlags } from "discord.js";
+import { EmbedBuilder } from "discord.js";
 import { createSetupLink } from "../../lib/setup-link.js";
 import { logger } from "../../lib/logger.js";
+import { isHomeGuild, GLOBAL_ONLY_MSG } from "../home-guild.js";
 
 // /dashboard — DM the requesting admin a fresh one-time login link.
 // Reply is ephemeral; the link itself goes to DMs so it's not visible in
 // channel even if the user is on shared screens.
+// The dashboard is home-guild-only; non-home servers get a clear explanation.
 export async function handleDashboardCommand(interaction: ChatInputCommandInteraction): Promise<void> {
   if (!interaction.guild) return;
+  if (!isHomeGuild(interaction.guild.id)) {
+    await interaction.editReply(`❌ ${GLOBAL_ONLY_MSG}`);
+    return;
+  }
 
   const { url, expiresAt } = await createSetupLink({
     discordUserId: interaction.user.id,

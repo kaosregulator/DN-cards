@@ -1,5 +1,6 @@
 import { db, setupTokensTable } from "@workspace/db";
 import { randomBytes } from "node:crypto";
+import { isHomeGuild } from "../bot/home-guild.js";
 
 // Generates a one-time setup URL the recipient can open in a browser to claim
 // (or reset) a dashboard login. Used by the bot when joining a guild and by
@@ -9,6 +10,9 @@ export async function createSetupLink(opts: {
   guildId?: string | null;
   ttlHours?: number;
 }): Promise<{ token: string; url: string; expiresAt: Date }> {
+  if (opts.guildId && !isHomeGuild(opts.guildId)) {
+    throw new Error("Dashboard setup links are only available for the home guild.");
+  }
   const ttlMs = (opts.ttlHours ?? 24) * 60 * 60 * 1000;
   const token = randomBytes(24).toString("base64url");
   const expiresAt = new Date(Date.now() + ttlMs);
