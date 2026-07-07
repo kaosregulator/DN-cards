@@ -25,7 +25,10 @@ export const cardsTable = pgTable("cards", {
   id: serial("id").primaryKey(),
   // Per-guild ownership: cards created by the home guild are shared globally;
   // cards created by other guilds are only visible in that guild.
-  guildId: text("guild_id").notNull(),
+  // Default is the home guild ID so production schema migrations that add this
+  // column to existing rows do not truncate the table. Application code always
+  // supplies the real guild ID for new inserts.
+  guildId: text("guild_id").notNull().default("1363917781355069761"),
   name: text("name").notNull(),
   description: text("description").notNull().default(""),
   rarity: rarityEnum("rarity").notNull(),
@@ -254,7 +257,10 @@ export const setsTable = pgTable("sets", {
   id: serial("id").primaryKey(),
   // Per-guild ownership: the home guild's sets are shared globally; other
   // guilds' sets are private to that guild. Set names are unique within a guild.
-  guildId: text("guild_id").notNull(),
+  // Default is the home guild ID so production schema migrations that add this
+  // column to existing rows do not truncate the table. Application code always
+  // supplies the real guild ID for new inserts.
+  guildId: text("guild_id").notNull().default("1363917781355069761"),
   name: text("name").notNull(),
   description: text("description"),
   // Optional per-tier spawn-weight override applied ONLY when this set is the
