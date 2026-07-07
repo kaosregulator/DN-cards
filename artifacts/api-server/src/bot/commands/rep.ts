@@ -129,15 +129,14 @@ export async function handleRep(
 
     const newRep = await giveRep(guildId, interaction.user.id, target.id);
 
-    // Hidden rep message - only visible to the giver
+    // Public rep message - visible to everyone
     const embed = new EmbedBuilder()
       .setColor(0x2ecc71)
-      .setTitle("⭐ Rep Given (Hidden)")
+      .setTitle("⭐ Rep Given!")
       .setDescription(
-        `You repped <@${target.id}>!\n\n` +
+        `<@${interaction.user.id}> repped <@${target.id}>!\n\n` +
         `**${target.username}** now has **${newRep}** rep point${newRep !== 1 ? "s" : ""}.`,
       )
-      .setFooter({ text: "This message is only visible to you" })
       .setTimestamp();
 
     await interaction.editReply({ embeds: [embed] });
@@ -216,7 +215,7 @@ export async function handleRep(
   }
 }
 
-// ── /thanks command handler ──────────────────────────────────────────────────
+// ── /thanks command handler ─────────────────────────────────────────��────────
 
 export async function handleThanks(
   interaction: ChatInputCommandInteraction,
@@ -228,7 +227,6 @@ export async function handleThanks(
 
   // Reuse rep table for thanks tracking (stored as separate data, same table structure)
   // In a future update, we'd have a dedicated thanks table
-  const thanksPrefix = "thanks:";
 
   if (sub === "give") {
     const target = interaction.options.getUser("user", true);
@@ -247,14 +245,14 @@ export async function handleThanks(
     // Store thanks count by incrementing a phantom "thanks" counter
     // This is a temporary solution - ideally needs dedicated table
 
+    // Public thanks message - visible to everyone
     const embed = new EmbedBuilder()
       .setColor(0x27ae60)
       .setTitle("🙏 Thanks Given!")
       .setDescription(
-        `You thanked <@${target.id}>!\n\n` +
-        `**${target.username}** is appreciated!`,
+        `<@${interaction.user.id}> thanked <@${target.id}>!\n\n` +
+        `**${target.username}** is appreciated! Thank you for being helpful!`,
       )
-      .setFooter({ text: "This message is only visible to you" })
       .setTimestamp();
 
     await interaction.editReply({ embeds: [embed] });
@@ -272,12 +270,12 @@ export async function handleThanks(
     const medals = ["🥇", "🥈", "🥉"];
     const lines = rows.map((r, i) => {
       const prefix = medals[i] ?? `**${i + 1}.**`;
-      return `${prefix} <@${r.userId}> — **${r.rep}** appreciation`;
+      return `${prefix} <@${r.userId}> — **${r.rep}** thanks`;
     });
 
     const embed = new EmbedBuilder()
       .setColor(0x27ae60)
-      .setTitle("🙏 Thanks Leaderboard")
+      .setTitle("🙏 Thanks Leaderboard (Helpful & Appreciated)")
       .setDescription(lines.join("\n"))
       .setFooter({ text: "Give thanks with /thanks give @user" })
       .setTimestamp();
