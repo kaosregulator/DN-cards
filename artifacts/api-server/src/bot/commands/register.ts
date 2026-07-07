@@ -136,6 +136,7 @@ function buildLegacyCommands() {
         .addStringOption(o => o.setName("to").setDescription("New name").setRequired(true)))
       .addSubcommand(sc => sc.setName("delete").setDescription("Delete a set (cards kept)")
         .addStringOption(o => o.setName("name").setDescription("Set name").setRequired(true).setAutocomplete(true)))
+      .addSubcommand(sc => sc.setName("deleteall").setDescription("Delete ALL sets in this server (cards kept)"))
       .addSubcommand(sc => sc.setName("add").setDescription("Add a card to a set")
         .addStringOption(o => o.setName("set").setDescription("Set name").setRequired(true).setAutocomplete(true))
         .addStringOption(o => o.setName("card").setDescription("Card name").setRequired(true).setAutocomplete(true)))

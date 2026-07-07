@@ -110,13 +110,12 @@ export async function startBot() {
   const { HOME_GUILD_ID } = await import("./home-guild.js");
   if (!HOME_GUILD_ID) {
     logger.warn(
-      "HOME_GUILD_ID is not set. Commands that mutate globally shared data " +
-      "(addcard, editcard, removecard, import, /setadmin create|rename|delete|add|remove|…) " +
-      "will be blocked for ALL guilds until HOME_GUILD_ID is configured. " +
+      "HOME_GUILD_ID is not set. Guilds can still manage their own cards/sets, " +
+      "but the admin dashboard will be unavailable until HOME_GUILD_ID is configured. " +
       "Set it to your home server's Discord guild ID in the environment variables.",
     );
   } else {
-    logger.info({ homeGuildId: HOME_GUILD_ID }, "Tenant isolation active — global mutations restricted to home guild");
+    logger.info({ homeGuildId: HOME_GUILD_ID }, "Tenant isolation active — each server manages its own cards/sets");
   }
 
   // --- Multi-instance guard ---

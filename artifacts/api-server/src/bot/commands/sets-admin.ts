@@ -2,7 +2,7 @@ import type { ChatInputCommandInteraction, GuildMember } from "discord.js";
 import { AttachmentBuilder, MessageFlags, EmbedBuilder, ChannelType } from "discord.js";
 import {
   isAdmin, invalidateActiveSetCardsCache,
-  createSet, renameSet, deleteSetById, deleteSetByName,
+  createSet, renameSet, deleteSetById, deleteSetByName, deleteAllSets,
   addCardToSet, removeCardFromSet, moveCardBetweenSets,
   bulkAddCardsToSet, bulkRemoveCardsFromSet,
   getSetByName, getCardsInSet, getCardByName,
@@ -93,6 +93,22 @@ export async function handleSetAdminCommand(interaction: ChatInputCommandInterac
     await interaction.editReply(
       `✅ Deleted set \`${set.name}\` — kept all cards intact, removed **${removedMemberships}** membership${removedMemberships === 1 ? "" : "s"}. ` +
       `To delete cards too, use \`!removecard <Name>\` per card.`,
+    );
+    return;
+  }
+
+  // ── deleteall ──────────────────────────────────────────────────────────────
+  // Non-destructive: removes every set (and its memberships) in this server.
+  // Cards themselves are left untouched so they can be re-added to new sets.
+  if (sub === "deleteall") {
+    const { deletedSets, removedMemberships } = await deleteAllSets(guildId);
+    if (deletedSets === 0) {
+      await interaction.editReply("📭 No sets to delete in this server.");
+      return;
+    }
+    await interaction.editReply(
+      `✅ Deleted **${deletedSets}** set${deletedSets === 1 ? "" : "s"} — kept all cards intact, removed **${removedMemberships}** membership${removedMemberships === 1 ? "" : "s"}. ` +
+      `To delete the cards too, use \`/setadmin exportcards\` to back them up, then \`!removecard <Name>\` per card.`,
     );
     return;
   }

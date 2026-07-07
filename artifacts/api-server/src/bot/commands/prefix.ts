@@ -11,28 +11,13 @@ import { getRarityDisplayOverrides } from "../db.js";
 import { startSetupWizard } from "./setup-wizard.js";
 import { startCardWizard, startEditWizard } from "./card-wizard.js";
 import { handleImport } from "./import.js";
-import { isHomeGuild, GLOBAL_ONLY_MSG_TEXT } from "../home-guild.js";
-
+import { GLOBAL_ONLY_MSG_TEXT } from "../home-guild.js";
 // ── Permission check ──────────────────────────────────────────────────────────
 async function checkAdmin(msg: Message): Promise<boolean> {
   if (!msg.guild) return false;
   if (msg.guild.ownerId === msg.author.id) return true;
   if ((msg.member as GuildMember | null)?.permissions.has("Administrator")) return true;
   return isAdmin(msg.guild.id, msg.author.id);
-}
-
-// ── Global-mutation gate ───────────────────────────────────────────────────
-// Commands that write to the shared cards/sets tables (no guildId column) are
-// restricted to the home guild. Returns true when the caller should proceed.
-async function requireGlobalAdmin(msg: Message): Promise<boolean> {
-  if (!msg.guild) return false;
-  if (!isHomeGuild(msg.guild.id)) {
-    await msg.reply(GLOBAL_ONLY_MSG_TEXT);
-    return false;
-  }
-  const ok = await checkAdmin(msg);
-  if (!ok) await msg.reply("❌ You don't have permission to use admin commands.");
-  return ok;
 }
 
 // ── Channel resolver: accepts #mention or plain name ─────────────────────────
@@ -101,18 +86,18 @@ export async function handlePrefixCommand(msg: Message, prefix: string): Promise
   }
 
   // ── Card creation wizards ──────────────────────────────────────────────────
-  // These write to the global cards table — home guild only.
+  // These write to the current server's cards table.
   if (cmd === "addcard" || cmd === "addlimited" || cmd === "addevent") {
-    if (!await requireGlobalAdmin(msg)) return;
+    if (!await checkAdmin(msg)) return;
     const kind = cmd === "addcard" ? "standard" : cmd === "addlimited" ? "limited" : "event";
     await startCardWizard(msg, kind as "standard" | "limited" | "event");
     return;
   }
 
   // ── !editcard <Name> — edit any field of an existing card ──────────────────
-  // Writes to the global cards table — home guild only.
+  // Writes to the current server's cards table.
   if (cmd === "editcard") {
-    if (!await requireGlobalAdmin(msg)) return;
+    if (!await checkAdmin(msg)) return;
     const name = args.join(" ");
     if (!name) { await msg.reply("❌ Usage: `!editcard F-22 Raptor`"); return; }
     await startEditWizard(msg, name);
@@ -120,17 +105,17 @@ export async function handlePrefixCommand(msg: Message, prefix: string): Promise
   }
 
   // ── !import — bulk import cards from JSON ──────────────────────────────────
-  // Writes to global cards/sets tables — home guild only.
+  // Writes to the current server's cards/sets tables.
   if (cmd === "import") {
-    if (!await requireGlobalAdmin(msg)) return;
+    if (!await checkAdmin(msg)) return;
     await handleImport(msg);
     return;
   }
 
   // ── !unloaddefaults / !loaddefaults — kept as aliases; prefer /setadmin load/unload
-  // Both mutate global cards table — home guild only.
+  // Both mutate the current server's cards table.
   if (cmd === "unloaddefaults") {
-    if (!await requireGlobalAdmin(msg)) return;
+    if (!await checkAdmin(msg)) return;
     const { removed } = await unloadDefaultCards(guildId);
     await msg.reply(
       `✅ Removed **${removed}** built-in default cards. Re-load anytime from \`${prefix}setup\` or \`/setadmin load file:<.json>\`.`
@@ -138,8 +123,8 @@ export async function handlePrefixCommand(msg: Message, prefix: string): Promise
     return;
   }
   if (cmd === "loaddefaults") {
-    if (!await requireGlobalAdmin(msg)) return;
-    const { added, skipped } = await loadDefaultCards();
+    if (!await checkAdmin(msg)) return;
+    const { added, skipped } = await loadDefaultCards(guildId);
     await msg.reply(
       `✅ Added **${added}** default cards back.` +
       (skipped > 0 ? ` ⏭️ Skipped **${skipped}** already in roster.` : "") +
@@ -307,13 +292,9 @@ export async function handlePrefixCommand(msg: Message, prefix: string): Promise
   }
 
   // ── !removecard ────────────────────────────────────────────────────────────
-  // Deletes from the global cards table and cascades into all guilds' gameplay
-  // records — home guild only.
+  // Deletes a card from the current server's cards table. Scoped to this server.
   if (cmd === "removecard") {
-    if (!isHomeGuild(guildId)) {
-      await msg.reply(GLOBAL_ONLY_MSG_TEXT);
-      return;
-    }
+    if (!await checkAdmin(msg)) return;
     const { removeCard } = await import("../db.js");
     const name = args.join(" ");
     if (!name) { await msg.reply("❌ Usage: `!removecard F-22 Raptor`"); return; }

@@ -12,7 +12,6 @@ import {
   loadDefaultCards, unloadDefaultCards, listSets, DEFAULTS_SET_NAME,
   getRarityDisplayOverrides,
 } from "../db.js";
-import { isHomeGuild, GLOBAL_ONLY_MSG } from "../home-guild.js";
 import { spawnCard, scheduleNextSpawn, clearSpawnTimer } from "../spawn-manager.js";
 import { DEFAULT_CARDS, RARITY_WEIGHTS, type Rarity } from "../cards-data.js";
 import { buildRatesEmbed, buildRatesComponents } from "./config-panel.js";
@@ -94,12 +93,8 @@ export async function handleSetupButton(interaction: ButtonInteraction): Promise
   } else if (action === "channel" && arg === "trade") {
     await updateGuildSettings(guildId, { tradeChannelId: interaction.channelId });
   } else if (action === "loaddefaults") {
-    // loadDefaultCards writes to the globally shared cards/sets tables.
-    if (!isHomeGuild(guildId)) {
-      await interaction.followUp({ content: GLOBAL_ONLY_MSG, flags: MessageFlags.Ephemeral }).catch(() => {});
-      return;
-    }
-    const { added, skipped } = await loadDefaultCards();
+    // loadDefaultCards writes to the current server's cards/sets tables only.
+    const { added, skipped } = await loadDefaultCards(guildId);
     await refreshPanel(interaction, guildId);
     const settings = await getOrCreateGuildSettings(guildId);
     await interaction.followUp({
@@ -110,11 +105,7 @@ export async function handleSetupButton(interaction: ButtonInteraction): Promise
     }).catch(() => {});
     return;
   } else if (action === "cleardefaults") {
-    // unloadDefaultCards deletes from the globally shared cards table.
-    if (!isHomeGuild(guildId)) {
-      await interaction.followUp({ content: GLOBAL_ONLY_MSG, flags: MessageFlags.Ephemeral }).catch(() => {});
-      return;
-    }
+    // unloadDefaultCards deletes from the current server's cards table only.
     const { removed } = await unloadDefaultCards(guildId);
     await refreshPanel(interaction, guildId);
     await interaction.followUp({
@@ -201,11 +192,6 @@ export async function handleSetupModalSubmit(interaction: ModalSubmitInteraction
   if (!(await ensureAdminModal(interaction))) return;
 
   const guildId = interaction.guild.id;
-  // addCard writes to the globally shared cards table — home guild only.
-  if (!isHomeGuild(guildId)) {
-    await interaction.editReply(GLOBAL_ONLY_MSG);
-    return;
-  }
   const settings = await getOrCreateGuildSettings(guildId);
   if (!settings.spawnChannelId) {
     await interaction.editReply("❌ Pick a spawn channel first — click **📢 Spawn here** in your drops channel.");

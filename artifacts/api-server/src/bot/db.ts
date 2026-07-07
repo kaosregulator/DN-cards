@@ -204,12 +204,11 @@ export const DEFAULTS_SET_NAME = "defaults";
 // activatable via `/setadmin active set:defaults`.
 // Force-add default cards (used by /loadset defaults). Skips names already in DB.
 // Each newly-added card is also joined to the "defaults" set.
-export async function loadDefaultCards(): Promise<{ added: number; skipped: number }> {
+export async function loadDefaultCards(actorGuildId: string): Promise<{ added: number; skipped: number }> {
   let added = 0, skipped = 0;
-  const homeId = HOME_GUILD_ID ?? "unknown";
-  const defaultsSet = (await getSetByName(DEFAULTS_SET_NAME, homeId)) ?? (await createSet(DEFAULTS_SET_NAME, undefined, homeId));
+  const defaultsSet = (await getSetByName(DEFAULTS_SET_NAME, actorGuildId)) ?? (await createSet(DEFAULTS_SET_NAME, undefined, actorGuildId));
   for (const card of DEFAULT_CARDS) {
-    const existing = await getCardByName(card.name, homeId);
+    const existing = await getCardByName(card.name, actorGuildId);
     if (existing) {
       // Ensure existing copies are still members of the defaults set.
       await db.insert(cardSetMembershipsTable)
@@ -218,7 +217,7 @@ export async function loadDefaultCards(): Promise<{ added: number; skipped: numb
       skipped++;
       continue;
     }
-    const [inserted] = await db.insert(cardsTable).values({ ...card, guildId: homeId }).onConflictDoNothing().returning({ id: cardsTable.id });
+    const [inserted] = await db.insert(cardsTable).values({ ...card, guildId: actorGuildId }).onConflictDoNothing().returning({ id: cardsTable.id });
     if (inserted) {
       await db.insert(cardSetMembershipsTable)
         .values({ setId: defaultsSet.id, cardId: inserted.id })
@@ -349,6 +348,26 @@ export async function deleteSetById(setId: number, actorGuildId: string): Promis
   // Cascade clears cardSetMembershipsTable rows automatically.
   invalidateActiveSetCardsCache();
   return { removedMemberships: memberships.length };
+}
+
+/** Non-destructive — deletes every set (and its memberships) owned by the
+ * actor guild. Cards themselves are left untouched. */
+export async function deleteAllSets(actorGuildId: string): Promise<{ deletedSets: number; removedMemberships: number }> {
+  const rows = await listSetsV2(actorGuildId);
+  if (rows.length === 0) return { deletedSets: 0, removedMemberships: 0 };
+  const setIds = rows.map(r => r.set.id);
+  const memberships = await db.select({ cardId: cardSetMembershipsTable.cardId, setId: cardSetMembershipsTable.setId })
+    .from(cardSetMembershipsTable).where(inArray(cardSetMembershipsTable.setId, setIds));
+  await db.delete(setsTable).where(inArray(setsTable.id, setIds));
+  // Cascade clears memberships; clear active set if it pointed to one of these.
+  await db.update(guildSettingsTable)
+    .set({ activeSetId: null, updatedAt: new Date() })
+    .where(and(eq(guildSettingsTable.guildId, actorGuildId), inArray(guildSettingsTable.activeSetId, setIds)));
+  await db.update(guildSettingsTable)
+    .set({ activeSetIdSecondary: null, updatedAt: new Date() })
+    .where(and(eq(guildSettingsTable.guildId, actorGuildId), inArray(guildSettingsTable.activeSetIdSecondary, setIds)));
+  invalidateActiveSetCardsCache();
+  return { deletedSets: setIds.length, removedMemberships: memberships.length };
 }
 
 // A set can only contain cards from its own guild. It must never contain a
