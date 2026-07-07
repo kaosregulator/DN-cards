@@ -25,7 +25,7 @@ function adminCmd(name: string, desc: string, build: (s: SlashCommandBuilder) =>
 
 function buildLegacyCommands() {
   return [
-    // ── User Commands ─────────────────────────────────────────────────────────
+    // ── User Commands ───────────────────────���────────────────────────────────[...]
     cmd("collection", "(User) View your DN Cards collection", s => s
       .addUserOption(o => o.setName("user").setDescription("View another member's collection"))),
 
@@ -345,16 +345,26 @@ function buildLegacyCommands() {
             { name: "rarityColor: mythic",     value: "rarityColor.mythic" },
           )))),
 
-    // ── Dashboard ─────────────────────────────────────────────────────────────
+    // ── Dashboard ──────��──────────────────────────────────────────────────[...]
     adminCmd("dashboard", "(Admin) Get a one-time link to set up or reset your web dashboard login", s => s),
 
     // ── /rep (user, reputation system) ────────────────────────────────────────
-    cmd("rep", "(User) Reputation system — give rep, check rep, and see the leaderboard", s => s
+    cmd("rep", "(User) Reputation system — give rep, check rep, remove rep, and see the leaderboard", s => s
       .addSubcommand(sc => sc.setName("give").setDescription("Give +1 rep to another member (24h cooldown per person)")
         .addUserOption(o => o.setName("user").setDescription("Member to rep").setRequired(true)))
       .addSubcommand(sc => sc.setName("check").setDescription("Check a member's rep score")
         .addUserOption(o => o.setName("user").setDescription("Member to check (default: you)")))
-      .addSubcommand(sc => sc.setName("top").setDescription("Top 10 most reputed members on this server"))),
+      .addSubcommand(sc => sc.setName("top").setDescription("Top 10 most reputed members on this server"))
+      .addSubcommand(sc => sc.setName("remove").setDescription("(Admin) Remove rep from a member")
+        .addUserOption(o => o.setName("user").setDescription("Member to remove rep from").setRequired(true))
+        .addIntegerOption(o => o.setName("amount").setDescription("Amount of rep to remove (default: 1)").setMinValue(1))
+        .addStringOption(o => o.setName("reason").setDescription("Optional reason for removal")))),
+
+    // ── /thanks (user, gratitude tracking) ────────���───────────────────────────
+    cmd("thanks", "(User) Thank members for being helpful — track appreciation", s => s
+      .addSubcommand(sc => sc.setName("give").setDescription("Give thanks to a helpful member (24h cooldown per person)")
+        .addUserOption(o => o.setName("user").setDescription("Member to thank").setRequired(true)))
+      .addSubcommand(sc => sc.setName("top").setDescription("Top 10 most appreciated members on this server"))),
 
     // ── /sets (user, read-only) ───────────────────────────────────────────────
     cmd("sets", "(User) Browse card sets and your collection progress", s => s
@@ -415,6 +425,6 @@ export function buildCommands() {
   ];
 }
 
-export const USER_COMMAND_NAMES = new Set(["cards", "wishlist", "sets", "rep"]);
+export const USER_COMMAND_NAMES = new Set(["cards", "wishlist", "sets", "rep", "thanks"]);
 
 export const ADMIN_COMMAND_NAMES = new Set(["admin", "setadmin", "event", "rarity", "embed"]);
