@@ -1,4 +1,7 @@
-import { Client, GatewayIntentBits, Partials, Events, REST, Routes, type Interaction } from "discord.js";
+import {
+  Client, GatewayIntentBits, Partials, Events, REST, Routes, type Interaction,
+  ChannelType, PermissionFlagsBits, type Guild, type TextChannel,
+} from "discord.js";
 import { logger } from "../lib/logger.js";
 import { burnCard, getOrCreateCurrency, getAllCards } from "./db.js";
 import { handleEditCardSelect, handleEditCardModal } from "./commands/edit-card.js";
@@ -30,6 +33,72 @@ import {
 import { MessageFlags, EmbedBuilder } from "discord.js";
 import { createSetupLink } from "../lib/setup-link.js";
 import { setBotClient } from "./client-holder.js";
+
+/**
+ * Send a public welcome message when the bot joins a new guild.
+ * Tries the guild's system channel first, then the first text channel where we
+ * have permission to send messages. Best-effort — failures are logged, not thrown.
+ */
+async function sendGuildWelcome(guild: Guild): Promise<void> {
+  const me = guild.members.me;
+  const requiredPerms = PermissionFlagsBits.ViewChannel | PermissionFlagsBits.SendMessages | PermissionFlagsBits.EmbedLinks;
+  const canWrite = (ch: typeof guild.channels.cache extends Map<string, infer V> ? V : never): ch is TextChannel =>
+    (ch.type === ChannelType.GuildText || ch.type === ChannelType.GuildAnnouncement) &&
+    ch.permissionsFor(me ?? guild.client.user.id)?.has(requiredPerms) === true;
+
+  const writableFallback = guild.channels.cache
+    .filter(canWrite)
+    .sort((a, b) => a.position - b.position)
+    .values();
+
+  const systemChannel = guild.systemChannel && canWrite(guild.systemChannel) ? guild.systemChannel : null;
+  const candidates = systemChannel
+    ? [systemChannel, ...writableFallback].filter((ch, i, arr) => arr.findIndex(c => c.id === ch.id) === i)
+    : [...writableFallback];
+
+  const embed = new EmbedBuilder()
+    .setColor(0xe63946)
+    .setTitle("🃏 DN Cards has arrived!")
+    .setDescription(
+      "Welcome to **DN Cards** — DarkNight's military collectible card game for Discord. " +
+      "Tanks, jets, warships, bosses, and community cards drop randomly. Catch them, trade them, flex them."
+    )
+    .addFields(
+      {
+        name: "🛠️ Admins — set up in 3 steps",
+        value:
+          "1. Run `/admin setup` in your spawn channel to configure drops, rarity, and catch mode.\n" +
+          "2. Run `/admin set-hub` to activate a card set (spawns only pull from the active set).\n" +
+          "3. Run `/admin dashboard` to get your web dashboard login link.\n" +
+          "Need the full guide? Run `/adminhelp` or `/welcomeadmin`.",
+      },
+      {
+        name: "🎮 Players — start here",
+        value:
+          "• `/cards welcome` — full game guide\n" +
+          "• `/cards daily` — free shards every day\n" +
+          "• `/cards pack` — buy card packs\n" +
+          "• Type card names when they drop to catch them",
+      },
+      {
+        name: "💡 Need help?",
+        value:
+          "Admins: `/adminhelp` · Players: `/help`\n" +
+          "Website: https://dncards.com",
+      },
+    );
+
+  for (const ch of candidates) {
+    try {
+      await ch.send({ embeds: [embed] });
+      return;
+    } catch (err) {
+      logger.warn({ err, guildId: guild.id, channelId: ch.id }, "Could not send guild join welcome message");
+    }
+  }
+
+  logger.info({ guildId: guild.id }, "No suitable channel for guild join welcome message");
+}
 
 export async function startBot() {
   const token = process.env["DISCORD_BOT_TOKEN"];
@@ -111,6 +180,7 @@ export async function startBot() {
   client.on(Events.GuildCreate, async (guild) => {
     logger.info({ guildId: guild.id, name: guild.name }, "Bot joined guild");
     scheduleNextSpawn(guild.id);
+    await sendGuildWelcome(guild);
     const rest = new REST().setToken(token);
     await rest
       .put(Routes.applicationGuildCommands(client.user!.id, guild.id), { body: buildCommands() })
