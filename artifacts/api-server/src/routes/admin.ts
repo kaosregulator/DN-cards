@@ -4,6 +4,7 @@ import { eq, and } from "drizzle-orm";
 import { z } from "zod/v4";
 import { requireDashboardAuth } from "../middlewares/dashboard-auth.js";
 import { invalidateCardCache } from "../bot/db.js";
+import { HOME_GUILD_ID } from "../bot/home-guild.js";
 
 // IMPORTANT: This router is presentation-only.
 //
@@ -30,6 +31,16 @@ const router: IRouter = Router();
 
 router.use(requireDashboardAuth);
 
+// The website admin panel is locked to the home guild only. Per-guild cards/sets
+// are managed through Discord commands in their respective servers.
+router.use((req, res, next) => {
+  if (!HOME_GUILD_ID) {
+    res.status(503).json({ error: "Dashboard admin is not configured (HOME_GUILD_ID missing)." });
+    return;
+  }
+  next();
+});
+
 const idParam = z.object({ id: z.coerce.number().int().positive() });
 
 function parse<T extends z.ZodTypeAny>(schema: T, value: unknown, res: Response): z.infer<T> | null {
@@ -53,6 +64,7 @@ router.get("/cards", async (_req, res) => {
       .select({ card: cardsTable, override: cardDisplayOverridesTable })
       .from(cardsTable)
       .leftJoin(cardDisplayOverridesTable, eq(cardDisplayOverridesTable.cardId, cardsTable.id))
+      .where(eq(cardsTable.guildId, HOME_GUILD_ID!))
       .orderBy(cardsTable.id),
     db
       .select({ cardId: cardSetMembershipsTable.cardId, setId: setsTable.id, setName: setsTable.name })
@@ -128,11 +140,15 @@ router.put("/cards/:id/display", async (req, res) => {
   const body = parse(upsertCardDisplayOverrideSchema, req.body, res);
   if (!body) return;
 
-  // Make sure the card exists so we don't insert a dangling FK row that the
-  // DB would (correctly) reject with a less helpful error.
-  const [card] = await db.select({ id: cardsTable.id }).from(cardsTable).where(eq(cardsTable.id, params.id));
+  // Make sure the card exists and belongs to the home guild so we don't insert
+  // a dangling FK row or override a card from another server.
+  const [card] = await db.select({ id: cardsTable.id, guildId: cardsTable.guildId }).from(cardsTable).where(eq(cardsTable.id, params.id));
   if (!card) {
     res.status(404).json({ error: "Card not found" });
+    return;
+  }
+  if (card.guildId !== HOME_GUILD_ID!) {
+    res.status(403).json({ error: "Card is not owned by the home guild." });
     return;
   }
 
@@ -186,8 +202,9 @@ router.patch("/cards/:id/rarity", async (req, res) => {
   const body = parse(patchRaritySchema, req.body, res);
   if (!body) return;
 
-  const [card] = await db.select({ id: cardsTable.id }).from(cardsTable).where(eq(cardsTable.id, params.id));
+  const [card] = await db.select({ id: cardsTable.id, guildId: cardsTable.guildId }).from(cardsTable).where(eq(cardsTable.id, params.id));
   if (!card) { res.status(404).json({ error: "Card not found" }); return; }
+  if (card.guildId !== HOME_GUILD_ID!) { res.status(403).json({ error: "Card is not owned by the home guild." }); return; }
 
   const [updated] = await db
     .update(cardsTable)

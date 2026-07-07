@@ -11,7 +11,7 @@ import {
   customPacksTable, customPackCardsTable, userCustomPackWeekTable,
   calculatorMessagesTable,
 } from "@workspace/db";
-import { eq, and, sql, desc, inArray, isNull } from "drizzle-orm";
+import { eq, and, or, sql, desc, inArray, isNull } from "drizzle-orm";
 import type { Card, CardEvent, CardSet, CalculatorMessage, CustomPack, CustomPackCard, CustomRarity, GuildSettings, RarityProfile, Trade } from "@workspace/db";
 import {
   DEFAULT_CARDS, SHINY_RATE, SHINY_MULTIPLIER, type Rarity,
@@ -53,6 +53,7 @@ export type {
   DropChanceSummary,
 } from "./rarity-runtime.js";
 import { logger } from "../lib/logger.js";
+import { HOME_GUILD_ID, isHomeGuild, isVisibleTo, isOwnedBy } from "./home-guild.js";
 
 // ── Per-guild rarity profile (worth/burn/dropWeight overrides) ───────────────
 // One row per (guild, rarity). Any null column means "use the card's value".
@@ -205,9 +206,10 @@ export const DEFAULTS_SET_NAME = "defaults";
 // Each newly-added card is also joined to the "defaults" set.
 export async function loadDefaultCards(): Promise<{ added: number; skipped: number }> {
   let added = 0, skipped = 0;
-  const defaultsSet = (await getSetByName(DEFAULTS_SET_NAME)) ?? (await createSet(DEFAULTS_SET_NAME));
+  const homeId = HOME_GUILD_ID ?? "unknown";
+  const defaultsSet = (await getSetByName(DEFAULTS_SET_NAME, homeId)) ?? (await createSet(DEFAULTS_SET_NAME, undefined, homeId));
   for (const card of DEFAULT_CARDS) {
-    const existing = await getCardByName(card.name);
+    const existing = await getCardByName(card.name, homeId);
     if (existing) {
       // Ensure existing copies are still members of the defaults set.
       await db.insert(cardSetMembershipsTable)
@@ -216,7 +218,7 @@ export async function loadDefaultCards(): Promise<{ added: number; skipped: numb
       skipped++;
       continue;
     }
-    const [inserted] = await db.insert(cardsTable).values(card).onConflictDoNothing().returning({ id: cardsTable.id });
+    const [inserted] = await db.insert(cardsTable).values({ ...card, guildId: homeId }).onConflictDoNothing().returning({ id: cardsTable.id });
     if (inserted) {
       await db.insert(cardSetMembershipsTable)
         .values({ setId: defaultsSet.id, cardId: inserted.id })
@@ -229,23 +231,32 @@ export async function loadDefaultCards(): Promise<{ added: number; skipped: numb
 }
 
 // Remove all default-roster cards (and their FK dependents) — destructive.
-export async function unloadDefaultCards(): Promise<{ removed: number }> {
-  return deleteSetByName(DEFAULTS_SET_NAME);
+export async function unloadDefaultCards(actorGuildId: string): Promise<{ removed: number }> {
+  return deleteSetByName(DEFAULTS_SET_NAME, actorGuildId);
 }
 
 // ── Card Sets ─────────────────────────────────────────────────────────────────
+function setVisibilityFilter(viewerGuildId: string | null | undefined) {
+  if (!HOME_GUILD_ID) return undefined; // fail-open
+  if (viewerGuildId && isHomeGuild(viewerGuildId)) return undefined; // home sees all
+  const filters = [eq(setsTable.guildId, HOME_GUILD_ID)];
+  if (viewerGuildId) filters.push(eq(setsTable.guildId, viewerGuildId));
+  return or(...filters);
+}
+
 // Thin wrapper for legacy callers that expect the old `{ setName, cardCount }` shape.
-export async function listSets(): Promise<Array<{ setName: string; cardCount: number }>> {
-  const rows = await listSetsV2();
+export async function listSets(viewerGuildId?: string | null): Promise<Array<{ setName: string; cardCount: number }>> {
+  const rows = await listSetsV2(viewerGuildId);
   return rows.map(r => ({ setName: r.set.name, cardCount: r.cardCount }));
 }
 
 // Delete every card in a set by NAME — destructive (used by `/unloadset` and
 // `unloadDefaultCards`). Cards are looked up via the memberships junction.
 // Cascades through collections, spawn_log, trades, and finally the set row itself.
-export async function deleteSetByName(setName: string): Promise<{ removed: number }> {
-  const set = await getSetByName(setName);
+export async function deleteSetByName(setName: string, actorGuildId: string): Promise<{ removed: number }> {
+  const set = await getSetByName(setName, actorGuildId);
   if (!set) return { removed: 0 };
+  if (!isOwnedBy(set, actorGuildId)) throw new Error("You can only delete sets owned by your server.");
   const members = await db.select({ cardId: cardSetMembershipsTable.cardId })
     .from(cardSetMembershipsTable).where(eq(cardSetMembershipsTable.setId, set.id));
   const ids = members.map(m => m.cardId);
@@ -282,37 +293,56 @@ function slugifySetName(raw: string): string {
 }
 
 // Resolve a set by its name (case-insensitive). Returns undefined when missing.
-export async function getSetByName(name: string): Promise<CardSet | undefined> {
+export async function getSetByName(name: string, viewerGuildId?: string | null): Promise<CardSet | undefined> {
   const slug = slugifySetName(name);
   if (!slug) return undefined;
+  // Prefer the viewer guild's own set, then fall back to the shared home-guild set.
+  if (viewerGuildId) {
+    const [local] = await db.select().from(setsTable)
+      .where(and(eq(setsTable.guildId, viewerGuildId), sql`lower(${setsTable.name}) = ${slug}`))
+      .limit(1);
+    if (local) return local;
+  }
+  if (HOME_GUILD_ID) {
+    const [home] = await db.select().from(setsTable)
+      .where(and(eq(setsTable.guildId, HOME_GUILD_ID), sql`lower(${setsTable.name}) = ${slug}`))
+      .limit(1);
+    if (home) return home;
+  }
   const [row] = await db.select().from(setsTable)
     .where(sql`lower(${setsTable.name}) = ${slug}`).limit(1);
   return row;
 }
 
-export async function getSetById(id: number): Promise<CardSet | undefined> {
+export async function getSetById(id: number, viewerGuildId?: string | null): Promise<CardSet | undefined> {
   const [row] = await db.select().from(setsTable).where(eq(setsTable.id, id)).limit(1);
+  if (!row) return undefined;
+  if (!isVisibleTo(row, viewerGuildId ?? null)) return undefined;
   return row;
 }
 
 /** Idempotent: returns existing set if one with this slug already exists. */
-export async function createSet(name: string, description?: string): Promise<CardSet> {
+export async function createSet(name: string, description?: string, guildId?: string): Promise<CardSet> {
   const slug = slugifySetName(name);
   if (!slug) throw new Error("Set name must contain at least one letter or digit.");
-  const existing = await getSetByName(slug);
+  const ownerId = guildId ?? HOME_GUILD_ID ?? "unknown";
+  const existing = await getSetByName(slug, ownerId);
   if (existing) return existing;
   const [row] = await db.insert(setsTable)
-    .values({ name: slug, description: description ?? null })
+    .values({ name: slug, description: description ?? null, guildId: ownerId })
     .returning();
   invalidateActiveSetCardsCache();
   return row;
 }
 
-export async function renameSet(setId: number, newName: string): Promise<CardSet | undefined> {
+export async function renameSet(setId: number, newName: string, actorGuildId: string): Promise<CardSet | undefined> {
+  const set = await getSetById(setId, actorGuildId);
+  if (!set) return undefined;
+  if (!isOwnedBy(set, actorGuildId)) throw new Error("You can only rename sets owned by your server.");
   const slug = slugifySetName(newName);
   if (!slug) throw new Error("New set name must contain at least one letter or digit.");
-  const clash = await getSetByName(slug);
-  if (clash && clash.id !== setId) throw new Error(`A set named \`${slug}\` already exists.`);
+  const clash = await getSetByName(slug, actorGuildId);
+  if (clash && clash.id !== setId) throw new Error(`A set named \`${slug}\` already exists in your server.`);
   const [row] = await db.update(setsTable)
     .set({ name: slug, updatedAt: new Date() })
     .where(eq(setsTable.id, setId))
@@ -322,7 +352,10 @@ export async function renameSet(setId: number, newName: string): Promise<CardSet
 }
 
 /** Non-destructive — deletes the set row + membership rows only. Cards stay. */
-export async function deleteSetById(setId: number): Promise<{ removedMemberships: number }> {
+export async function deleteSetById(setId: number, actorGuildId: string): Promise<{ removedMemberships: number }> {
+  const set = await getSetById(setId, actorGuildId);
+  if (!set) return { removedMemberships: 0 };
+  if (!isOwnedBy(set, actorGuildId)) throw new Error("You can only delete sets owned by your server.");
   const memberships = await db.select({ cardId: cardSetMembershipsTable.cardId })
     .from(cardSetMembershipsTable).where(eq(cardSetMembershipsTable.setId, setId));
   await db.delete(setsTable).where(eq(setsTable.id, setId));
@@ -331,7 +364,23 @@ export async function deleteSetById(setId: number): Promise<{ removedMemberships
   return { removedMemberships: memberships.length };
 }
 
-export async function addCardToSet(setId: number, cardId: number): Promise<{ added: boolean }> {
+// A set can contain cards from its own guild or from the shared home guild.
+// It must never contain a card from a third guild, and only the set's owner
+// (or the home guild) may modify its membership.
+async function assertMembershipAllowed(setId: number, cardId: number, actorGuildId: string): Promise<void> {
+  const [set, card] = await Promise.all([
+    getSetById(setId, actorGuildId),
+    getCardById(cardId, actorGuildId),
+  ]);
+  if (!set || !isOwnedBy(set, actorGuildId)) throw new Error("You can only modify sets owned by your server.");
+  if (!card) throw new Error("Card not found or not available in your server.");
+  if (set.guildId !== HOME_GUILD_ID && card.guildId !== HOME_GUILD_ID && set.guildId !== card.guildId) {
+    throw new Error("You cannot add a card from another server into this set.");
+  }
+}
+
+export async function addCardToSet(setId: number, cardId: number, actorGuildId: string): Promise<{ added: boolean }> {
+  await assertMembershipAllowed(setId, cardId, actorGuildId);
   const existing = await db.select({ cardId: cardSetMembershipsTable.cardId })
     .from(cardSetMembershipsTable)
     .where(and(eq(cardSetMembershipsTable.setId, setId), eq(cardSetMembershipsTable.cardId, cardId)))
@@ -342,7 +391,8 @@ export async function addCardToSet(setId: number, cardId: number): Promise<{ add
   return { added: true };
 }
 
-export async function removeCardFromSet(setId: number, cardId: number): Promise<{ removed: boolean }> {
+export async function removeCardFromSet(setId: number, cardId: number, actorGuildId: string): Promise<{ removed: boolean }> {
+  await assertMembershipAllowed(setId, cardId, actorGuildId);
   const res = await db.delete(cardSetMembershipsTable)
     .where(and(eq(cardSetMembershipsTable.setId, setId), eq(cardSetMembershipsTable.cardId, cardId)))
     .returning({ cardId: cardSetMembershipsTable.cardId });
@@ -351,7 +401,9 @@ export async function removeCardFromSet(setId: number, cardId: number): Promise<
   return { removed: true };
 }
 
-export async function moveCardBetweenSets(fromSetId: number, toSetId: number, cardId: number): Promise<void> {
+export async function moveCardBetweenSets(fromSetId: number, toSetId: number, cardId: number, actorGuildId: string): Promise<void> {
+  await assertMembershipAllowed(fromSetId, cardId, actorGuildId);
+  await assertMembershipAllowed(toSetId, cardId, actorGuildId);
   await db.delete(cardSetMembershipsTable)
     .where(and(eq(cardSetMembershipsTable.setId, fromSetId), eq(cardSetMembershipsTable.cardId, cardId)));
   await db.insert(cardSetMembershipsTable).values({ setId: toSetId, cardId }).onConflictDoNothing();
@@ -361,9 +413,12 @@ export async function moveCardBetweenSets(fromSetId: number, toSetId: number, ca
 /** Resolves names → ids leniently. Returns counts + any names not found.
  *  Uses a single bulk insert/delete instead of one round-trip per card. */
 export async function bulkAddCardsToSet(
-  setId: number, cardNames: string[],
+  setId: number, cardNames: string[], viewerGuildId?: string | null,
 ): Promise<{ added: number; alreadyIn: number; notFound: string[] }> {
-  const all = await getAllCards();
+  if (!viewerGuildId) throw new Error("Guild ID is required to modify a set.");
+  const set = await getSetById(setId, viewerGuildId);
+  if (!set || !isOwnedBy(set, viewerGuildId)) throw new Error("You can only modify sets owned by your server.");
+  const all = await getAllCards(viewerGuildId);
   const byName = new Map(all.map(c => [c.name.toLowerCase(), c]));
   const notFound: string[] = [];
   const cardIds: number[] = [];
@@ -393,9 +448,12 @@ export async function bulkAddCardsToSet(
 }
 
 export async function bulkRemoveCardsFromSet(
-  setId: number, cardNames: string[],
+  setId: number, cardNames: string[], viewerGuildId?: string | null,
 ): Promise<{ removed: number; notInSet: number; notFound: string[] }> {
-  const all = await getAllCards();
+  if (!viewerGuildId) throw new Error("Guild ID is required to modify a set.");
+  const set = await getSetById(setId, viewerGuildId);
+  if (!set || !isOwnedBy(set, viewerGuildId)) throw new Error("You can only modify sets owned by your server.");
+  const all = await getAllCards(viewerGuildId);
   const byName = new Map(all.map(c => [c.name.toLowerCase(), c]));
   const notFound: string[] = [];
   const cardIds: number[] = [];
@@ -418,9 +476,13 @@ export async function bulkRemoveCardsFromSet(
   return { removed: removedSet.size, notInSet, notFound };
 }
 
-export async function getCardsInSet(setId: number): Promise<Card[]> {
+export async function getCardsInSet(setId: number, viewerGuildId?: string | null): Promise<Card[]> {
+  const filter = cardVisibilityFilter(viewerGuildId);
+  const where = filter
+    ? and(eq(cardSetMembershipsTable.setId, setId), filter)
+    : eq(cardSetMembershipsTable.setId, setId);
   return db.select({
-    id: cardsTable.id, name: cardsTable.name, description: cardsTable.description,
+    id: cardsTable.id, guildId: cardsTable.guildId, name: cardsTable.name, description: cardsTable.description,
     rarity: cardsTable.rarity, cardType: cardsTable.cardType, dropWeight: cardsTable.dropWeight,
     worthValue: cardsTable.worthValue, burnValue: cardsTable.burnValue,
     isLimitedEdition: cardsTable.isLimitedEdition, isEventExclusive: cardsTable.isEventExclusive,
@@ -434,7 +496,7 @@ export async function getCardsInSet(setId: number): Promise<Card[]> {
     createdAt: cardsTable.createdAt,
   }).from(cardsTable)
     .innerJoin(cardSetMembershipsTable, eq(cardSetMembershipsTable.cardId, cardsTable.id))
-    .where(eq(cardSetMembershipsTable.setId, setId));
+    .where(where);
 }
 
 /**
@@ -443,9 +505,13 @@ export async function getCardsInSet(setId: number): Promise<Card[]> {
  * assigned to a set (common on Server 2 where the legacy roster pre-dates
  * the sets system).
  */
-export async function getUnassignedCards(): Promise<Card[]> {
+export async function getUnassignedCards(viewerGuildId?: string | null): Promise<Card[]> {
+  const filter = cardVisibilityFilter(viewerGuildId);
+  const where = filter
+    ? and(isNull(cardSetMembershipsTable.cardId), filter)
+    : isNull(cardSetMembershipsTable.cardId);
   return db.select({
-    id: cardsTable.id, name: cardsTable.name, description: cardsTable.description,
+    id: cardsTable.id, guildId: cardsTable.guildId, name: cardsTable.name, description: cardsTable.description,
     rarity: cardsTable.rarity, cardType: cardsTable.cardType, dropWeight: cardsTable.dropWeight,
     worthValue: cardsTable.worthValue, burnValue: cardsTable.burnValue,
     isLimitedEdition: cardsTable.isLimitedEdition, isEventExclusive: cardsTable.isEventExclusive,
@@ -459,7 +525,7 @@ export async function getUnassignedCards(): Promise<Card[]> {
     createdAt: cardsTable.createdAt,
   }).from(cardsTable)
     .leftJoin(cardSetMembershipsTable, eq(cardSetMembershipsTable.cardId, cardsTable.id))
-    .where(isNull(cardSetMembershipsTable.cardId));
+    .where(where);
 }
 
 /** Returns true iff a card belongs to a given set. O(1) round-trip. */
@@ -472,20 +538,22 @@ export async function isCardInSet(setId: number, cardId: number): Promise<boolea
 }
 
 /** List all sets with card counts. Sorted by largest first. */
-export async function listSetsV2(): Promise<Array<{ set: CardSet; cardCount: number }>> {
+export async function listSetsV2(viewerGuildId?: string | null): Promise<Array<{ set: CardSet; cardCount: number }>> {
+  const filter = setVisibilityFilter(viewerGuildId);
   const rows = await db.select({
-    id: setsTable.id, name: setsTable.name, description: setsTable.description,
+    id: setsTable.id, guildId: setsTable.guildId, name: setsTable.name, description: setsTable.description,
     rarityWeights: setsTable.rarityWeights, awardsCompletion: setsTable.awardsCompletion,
     createdAt: setsTable.createdAt, updatedAt: setsTable.updatedAt,
     cardCount: sql<number>`coalesce(count(${cardSetMembershipsTable.cardId}), 0)::int`.as("card_count"),
   })
     .from(setsTable)
     .leftJoin(cardSetMembershipsTable, eq(cardSetMembershipsTable.setId, setsTable.id))
+    .where(filter)
     .groupBy(setsTable.id);
   return rows
     .map(r => ({
       set: {
-        id: r.id, name: r.name, description: r.description,
+        id: r.id, guildId: r.guildId, name: r.name, description: r.description,
         rarityWeights: r.rarityWeights, awardsCompletion: r.awardsCompletion,
         createdAt: r.createdAt, updatedAt: r.updatedAt,
       } satisfies CardSet,
@@ -513,7 +581,7 @@ export async function clearActiveSet(guildId: string): Promise<void> {
 export async function getActiveSet(guildId: string): Promise<CardSet | null> {
   const settings = await getOrCreateGuildSettings(guildId);
   if (!settings.activeSetId) return null;
-  const set = await getSetById(settings.activeSetId);
+  const set = await getSetById(settings.activeSetId, guildId);
   return set ?? null;
 }
 
@@ -532,8 +600,8 @@ export async function getActiveSetSpawnPoolCached(guildId: string): Promise<Acti
   let pool: ActiveSetSpawnPool = { cards: [], rarityWeights: null };
   if (settings.activeSetId) {
     const [set, all] = await Promise.all([
-      getSetById(settings.activeSetId),
-      getCardsInSet(settings.activeSetId),
+      getSetById(settings.activeSetId, guildId),
+      getCardsInSet(settings.activeSetId, guildId),
     ]);
     pool = {
       cards: all.filter(c => c.droppable && !c.isArchived),
@@ -550,7 +618,11 @@ export async function getActiveSetSpawnPoolCached(guildId: string): Promise<Acti
 export async function setSetRarityWeights(
   setId: number,
   weights: Record<string, number> | null,
+  actorGuildId: string,
 ): Promise<CardSet | undefined> {
+  const set = await getSetById(setId, actorGuildId);
+  if (!set) return undefined;
+  if (!isOwnedBy(set, actorGuildId)) throw new Error("You can only edit sets owned by your server.");
   const [row] = await db.update(setsTable)
     .set({ rarityWeights: weights, updatedAt: new Date() })
     .where(eq(setsTable.id, setId))
@@ -563,18 +635,23 @@ export async function patchSetRarityWeight(
   setId: number,
   rarity: string,
   weight: number | null,
+  actorGuildId: string,
 ): Promise<CardSet | undefined> {
-  const existing = await getSetById(setId);
+  const existing = await getSetById(setId, actorGuildId);
   if (!existing) return undefined;
+  if (!isOwnedBy(existing, actorGuildId)) throw new Error("You can only edit sets owned by your server.");
   const next = { ...(existing.rarityWeights ?? {}) };
   if (weight == null) delete next[rarity];
   else next[rarity] = weight;
   const cleaned = Object.keys(next).length > 0 ? next : null;
-  return setSetRarityWeights(setId, cleaned);
+  return setSetRarityWeights(setId, cleaned, actorGuildId);
 }
 
 // P6: showcase toggle for set-completion achievements. Off by default.
-export async function setSetAwardsCompletion(setId: number, enabled: boolean): Promise<CardSet | undefined> {
+export async function setSetAwardsCompletion(setId: number, enabled: boolean, actorGuildId: string): Promise<CardSet | undefined> {
+  const set = await getSetById(setId, actorGuildId);
+  if (!set) return undefined;
+  if (!isOwnedBy(set, actorGuildId)) throw new Error("You can only edit sets owned by your server.");
   const [row] = await db.update(setsTable)
     .set({ awardsCompletion: enabled, updatedAt: new Date() })
     .where(eq(setsTable.id, setId))
@@ -736,47 +813,80 @@ export async function listActiveTimeouts(guildId: string) {
 }
 
 // ── Cards ─────────────────────────────────────────────────────────────────────
-let _allCardsCache: Card[] | null = null;
-let _allCardsAt = 0;
+// Per-guild cache: home guild cards are shared, each other guild sees its own
+// plus the home guild's cards. Dashboard/home-guild callers pass HOME_GUILD_ID.
+const _cardsCache = new Map<string, { value: Card[]; expiresAt: number }>();
 const CARD_CACHE_TTL_MS = 5_000;
 
-export async function getAllCards(): Promise<Card[]> {
-  return db.select().from(cardsTable);
+function cardsCacheKey(viewerGuildId: string | null): string {
+  return viewerGuildId ?? "__public__";
+}
+
+function cardVisibilityFilter(viewerGuildId: string | null | undefined) {
+  if (!HOME_GUILD_ID) return undefined; // fail-open
+  if (viewerGuildId && isHomeGuild(viewerGuildId)) return undefined; // home sees all
+  const filters = [eq(cardsTable.guildId, HOME_GUILD_ID)];
+  if (viewerGuildId) filters.push(eq(cardsTable.guildId, viewerGuildId));
+  return or(...filters);
+}
+
+export async function getAllCards(viewerGuildId?: string | null | undefined): Promise<Card[]> {
+  const filter = cardVisibilityFilter(viewerGuildId);
+  if (!filter) return db.select().from(cardsTable);
+  return db.select().from(cardsTable).where(filter);
 }
 
 // Cached variant for the hot path (spawn embeds, catch embeds, decision buttons).
 // 5s TTL keeps it fresh while eliminating repeated DB round-trips.
-export async function getAllCardsCached(): Promise<Card[]> {
-  const now = Date.now();
-  if (_allCardsCache && _allCardsAt + CARD_CACHE_TTL_MS > now) return _allCardsCache;
-  _allCardsCache = await getAllCards();
-  _allCardsAt = now;
-  return _allCardsCache;
+export async function getAllCardsCached(viewerGuildId?: string | null | undefined): Promise<Card[]> {
+  const key = cardsCacheKey(viewerGuildId ?? null);
+  const cached = _cardsCache.get(key);
+  if (cached && cached.expiresAt > Date.now()) return cached.value;
+  const cards = await getAllCards(viewerGuildId);
+  _cardsCache.set(key, { value: cards, expiresAt: Date.now() + CARD_CACHE_TTL_MS });
+  return cards;
 }
 
 export function invalidateCardCache(): void {
-  _allCardsCache = null;
-  _allCardsAt = 0;
+  _cardsCache.clear();
 }
 
-export async function getCardByName(name: string): Promise<Card | undefined> {
-  const [card] = await db
-    .select().from(cardsTable)
-    .where(sql`lower(${cardsTable.name}) = lower(${name})`);
-  if (card) return card;
+export async function getCardByName(name: string, viewerGuildId?: string | null | undefined): Promise<Card | undefined> {
+  const slug = name.trim().toLowerCase();
+  // Prefer the viewer guild's own card, then fall back to the shared home-guild card.
+  if (viewerGuildId) {
+    const [local] = await db.select().from(cardsTable)
+      .where(and(eq(cardsTable.guildId, viewerGuildId), sql`lower(${cardsTable.name}) = ${slug}`))
+      .limit(1);
+    if (local) return local;
+  }
+  if (HOME_GUILD_ID) {
+    const [home] = await db.select().from(cardsTable)
+      .where(and(eq(cardsTable.guildId, HOME_GUILD_ID), sql`lower(${cardsTable.name}) = ${slug}`))
+      .limit(1);
+    if (home) return home;
+  }
+  if (!HOME_GUILD_ID) {
+    const [card] = await db.select().from(cardsTable)
+      .where(sql`lower(${cardsTable.name}) = ${slug}`).limit(1);
+    if (card) return card;
+  }
   // Fallback: if the name didn't match cards.name, try card_display_overrides.display_name.
   // This lets admins use either the gameplay name or the website display-name override
   // interchangeably in /editcard, /info, /drop, and similar commands.
   const [override] = await db
     .select({ cardId: cardDisplayOverridesTable.cardId })
     .from(cardDisplayOverridesTable)
-    .where(sql`lower(${cardDisplayOverridesTable.displayName}) = lower(${name})`);
+    .where(sql`lower(${cardDisplayOverridesTable.displayName}) = ${slug}`)
+    .limit(1);
   if (!override) return undefined;
-  return getCardById(override.cardId);
+  return getCardById(override.cardId, viewerGuildId);
 }
 
-export async function getCardById(id: number): Promise<Card | undefined> {
+export async function getCardById(id: number, viewerGuildId?: string | null): Promise<Card | undefined> {
   const [card] = await db.select().from(cardsTable).where(eq(cardsTable.id, id));
+  if (!card) return undefined;
+  if (!isVisibleTo(card, viewerGuildId ?? null)) return undefined;
   return card;
 }
 
@@ -786,16 +896,17 @@ export async function addCard(values: {
   isLimitedEdition?: boolean; isEventExclusive?: boolean;
   maxCopies?: number; imageUrl?: string; flavor?: string; droppable?: boolean;
   inPacks?: boolean;
-}) {
-  const [card] = await db.insert(cardsTable).values(values as any).returning();
+}, guildId: string) {
+  const [card] = await db.insert(cardsTable).values({ ...values as any, guildId }).returning();
   await db.update(cardsTable).set({ totalMinted: 0 }).where(eq(cardsTable.id, card.id));
   invalidateCardCache();
   return card;
 }
 
-export async function removeCard(name: string) {
-  const card = await getCardByName(name);
+export async function removeCard(name: string, actorGuildId: string) {
+  const card = await getCardByName(name, actorGuildId);
   if (!card) return;
+  if (!isOwnedBy(card, actorGuildId)) throw new Error("You can only delete cards owned by your server.");
   const id = card.id;
   await db.transaction(async (tx) => {
     await tx.delete(collectionsTable).where(eq(collectionsTable.cardId, id));

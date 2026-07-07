@@ -162,18 +162,14 @@ export async function handleAdminCommand(
       await interaction.editReply("❌ Admins only.");
       return;
     }
-    if (!isHomeGuild(interaction.guild.id)) {
-      await interaction.editReply(GLOBAL_ONLY_MSG);
-      return;
-    }
     const name = interaction.options.getString("name", true).trim();
     const { getCardByName, removeCard } = await import("../db.js");
-    const card = await getCardByName(name);
+    const card = await getCardByName(name, interaction.guild.id);
     if (!card) {
       await interaction.editReply(`❌ No card found named **${name}**.`);
       return;
     }
-    await removeCard(card.name);
+    await removeCard(card.name, interaction.guild.id);
     await interaction.editReply(`🗑️ **${card.name}** (${card.rarity}) has been permanently deleted.`);
     return;
   }
@@ -191,10 +187,6 @@ export async function handleAdminCommand(
       await interaction.editReply("❌ Admins only.");
       return;
     }
-    if (!isHomeGuild(interaction.guild.id)) {
-      await interaction.editReply(GLOBAL_ONLY_MSG);
-      return;
-    }
     const { handleAddCardCommand } = await import("./add-card.js");
     await handleAddCardCommand(interaction);
     return;
@@ -207,11 +199,6 @@ export async function handleAdminCommand(
     await interaction.deferReply({ flags: MessageFlags.Ephemeral });
     if (!(await checkAdmin(interaction))) {
       await interaction.editReply("❌ Admins only.");
-      return;
-    }
-    // /editcard mutates the globally shared cards table — home guild only.
-    if (!isHomeGuild(interaction.guild.id)) {
-      await interaction.editReply(GLOBAL_ONLY_MSG);
       return;
     }
     const { handleEditCardCommand } = await import("./edit-card.js");
@@ -296,7 +283,7 @@ export async function handleAdminCommand(
     }
     let forcedCardId: number | undefined;
     if (cardName) {
-      const cards = await getAllCards();
+      const cards = await getAllCards(guildId);
       const found = cards.find(c => c.name.toLowerCase() === cardName.toLowerCase());
       if (!found) { await interaction.editReply(`❌ Card "**${cardName}**" not found. Try \`/cards list\`.`); return; }
       forcedCardId = found.id;
@@ -305,9 +292,9 @@ export async function handleAdminCommand(
     // instead of the guild's active set. Forced card still bypasses everything.
     if (setName && !forcedCardId) {
       const { getSetByName, getCardsInSet } = await import("../db.js");
-      const set = await getSetByName(setName);
+      const set = await getSetByName(setName, guildId);
       if (!set) { await interaction.editReply(`❌ No set named \`${setName}\`.`); return; }
-      const setCards = await getCardsInSet(set.id);
+      const setCards = await getCardsInSet(set.id, guildId);
       const pool = setCards.filter(c => c.droppable && !c.isArchived && (!c.maxCopies || c.totalMinted < c.maxCopies));
       if (pool.length === 0) { await interaction.editReply(`❌ No droppable cards in set \`${setName}\`.`); return; }
       const pick = pool[Math.floor(Math.random() * pool.length)];
@@ -343,12 +330,12 @@ export async function handleAdminCommand(
     const { getActiveSetSpawnPoolCached, getSetByName, getCardsInSet } = await import("../db.js");
     let allCards: Awaited<ReturnType<typeof getAllCards>>;
     if (setName) {
-      const set = await getSetByName(setName);
+      const set = await getSetByName(setName, guildId);
       if (!set) { await interaction.editReply(`❌ No set named \`${setName}\`.`); return; }
-      allCards = await getCardsInSet(set.id);
+      allCards = await getCardsInSet(set.id, guildId);
     } else {
       const activePool = await getActiveSetSpawnPoolCached(guildId);
-      allCards = activePool.cards.length > 0 ? activePool.cards : await getAllCards();
+      allCards = activePool.cards.length > 0 ? activePool.cards : await getAllCards(guildId);
     }
     const pool = allCards.filter(c => c.droppable && !c.isArchived && (!c.maxCopies || c.totalMinted < c.maxCopies));
     const byRarity: Record<Rarity, typeof pool> = { common: [], uncommon: [], rare: [], epic: [], legendary: [], mythic: [] };
@@ -417,7 +404,7 @@ export async function handleAdminCommand(
     const target = opts.getUser("user", true);
     const cardName = opts.getString("name", true);
     const amount = opts.getInteger("amount") ?? 1;
-    const cards = await getAllCards();
+    const cards = await getAllCards(guildId);
     const card = cards.find(c => c.name.toLowerCase() === cardName.toLowerCase());
     if (!card) { await interaction.editReply(`❌ Card "**${cardName}**" not found.`); return; }
     // Admin gives are deterministic — no shiny roll. Use /event or normal
@@ -443,16 +430,16 @@ export async function handleAdminCommand(
     const rarity = opts.getString("rarity") as Rarity | null;
     const shinyRate = Math.min(100, Math.max(0, opts.getInteger("shinyrate") ?? 0.5));
 
-    let pool = await getAllCards();
+    let pool = await getAllCards(guildId);
 
     if (setName?.trim()) {
       const { getSetByName } = await import("../db.js");
-      const set = await getSetByName(setName.trim());
+      const set = await getSetByName(setName.trim(), guildId);
       if (!set) {
         await interaction.editReply(`❌ Set "**${setName.trim()}**" not found.`);
         return;
       }
-      const setCards = await getCardsInSet(set.id);
+      const setCards = await getCardsInSet(set.id, guildId);
       const setCardIds = new Set(setCards.map(c => c.id));
       pool = pool.filter(c => setCardIds.has(c.id));
     }
@@ -501,7 +488,7 @@ export async function handleAdminCommand(
     const target = opts.getUser("user", true);
     const cardName = opts.getString("name", true);
     const amount = opts.getInteger("amount") ?? 1;
-    const cards = await getAllCards();
+    const cards = await getAllCards(guildId);
     const card = cards.find(c => c.name.toLowerCase() === cardName.toLowerCase());
     if (!card) { await interaction.editReply(`❌ Card "**${cardName}**" not found.`); return; }
     let removed = 0;

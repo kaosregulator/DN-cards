@@ -13,7 +13,7 @@ export async function handleWishlist(interaction: ChatInputCommandInteraction): 
 
   if (sub === "add") {
     const name = interaction.options.getString("name", true);
-    const card = await getCardByName(name);
+    const card = await getCardByName(name, guildId);
     if (!card) { await interaction.editReply(`❌ No card named **${name}**.`); return; }
     if (card.isArchived) { await interaction.editReply(`❌ **${card.name}** is archived and can't be wishlisted.`); return; }
     const added = await addWishlist(guildId, interaction.user.id, card.id);
@@ -29,7 +29,7 @@ export async function handleWishlist(interaction: ChatInputCommandInteraction): 
 
   if (sub === "remove") {
     const name = interaction.options.getString("name", true);
-    const card = await getCardByName(name);
+    const card = await getCardByName(name, guildId);
     if (!card) { await interaction.editReply(`❌ No card named **${name}**.`); return; }
     const removed = await removeWishlist(guildId, interaction.user.id, card.id);
     await interaction.editReply(

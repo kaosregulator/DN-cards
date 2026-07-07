@@ -144,7 +144,7 @@ export async function handleEditCardCommand(interaction: ChatInputCommandInterac
   const maxCopiesOpt = interaction.options.getInteger("max_copies");
   const totalMintedOpt = interaction.options.getInteger("total_minted");
   const limitedOpt = interaction.options.getBoolean("limited");
-  const card = await getCardByName(name);
+  const card = await getCardByName(name, interaction.guildId);
   if (!card) {
     await interaction.editReply(`❌ No card named **${name}**. Use autocomplete to pick one.`);
     return;

@@ -303,7 +303,7 @@ function ekey(guildId: string, userId: string) { return `ce:${guildId}:${userId}
 
 export async function startEditWizard(msg: Message, cardName: string): Promise<void> {
   if (!msg.guild) return;
-  const card = await getCardByName(cardName);
+  const card = await getCardByName(cardName, msg.guild.id);
   if (!card) {
     await msg.reply(`❌ No card named **${cardName}** found. Try \`/list\` to see all cards.`);
     return;
@@ -480,10 +480,9 @@ async function promptForField(msg: Message, step: EditStep) {
 }
 
 async function backToMenu(msg: Message, session: EditSession): Promise<boolean> {
-  const card = await getCardByName(""); // placeholder
   // Fetch fresh card by ID instead
   const { getAllCards } = await import("../db.js");
-  const fresh = (await getAllCards()).find(c => c.id === session.cardId);
+  const fresh = (await getAllCards(session.guildId)).find(c => c.id === session.cardId);
   if (fresh) {
     session.step = "edit_menu";
     await showEditMenu(msg, fresh);
@@ -516,7 +515,7 @@ async function createCard(msg: Message, session: CardWizardSession) {
       maxCopies: session.kind === "limited" ? d.maxCopies : undefined,
       imageUrl: d.imageUrl,
       droppable: session.kind === "standard",
-    });
+    }, msg.guild?.id ?? session.guildId);
 
     const kindEmoji = session.kind === "standard" ? "🃏" : session.kind === "limited" ? "💎" : "🎆";
     const extra = session.kind === "standard"

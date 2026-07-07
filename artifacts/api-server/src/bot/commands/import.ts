@@ -22,6 +22,7 @@ export interface ImportResult {
 export async function importCardsFromJson(
   jsonText: string,
   sourceLabel: string,
+  guildId: string,
   setNameOverride?: string,
 ): Promise<ImportResult> {
   let parsed: unknown;
@@ -43,15 +44,15 @@ export async function importCardsFromJson(
   for (const chunk of chunks) {
     const rawName = setNameOverride ?? chunk.set?.name ?? sourceLabel.replace(/\.json$/i, "");
     const setName = sanitizeSetName(rawName);
-    const set = await createSet(setName, chunk.set?.description);
+    const set = await createSet(setName, chunk.set?.description, guildId ?? undefined);
     // Restore rarity-weight overrides if the file carries any. We only
     // overwrite when the JSON has weights — silent files leave existing
     // weights alone (safer for partial re-imports).
     if (chunk.set?.rarityWeights && Object.keys(chunk.set.rarityWeights).length > 0) {
-      await setSetRarityWeights(set.id, chunk.set.rarityWeights);
+      await setSetRarityWeights(set.id, chunk.set.rarityWeights, guildId ?? "unknown");
     }
     if (typeof chunk.set?.awardsCompletion === "boolean") {
-      await setSetAwardsCompletion(set.id, chunk.set.awardsCompletion);
+      await setSetAwardsCompletion(set.id, chunk.set.awardsCompletion, guildId ?? "unknown");
     }
     agg.setName = setName;
     agg.setsImported++;
@@ -59,9 +60,9 @@ export async function importCardsFromJson(
     for (const raw of chunk.cards) {
       if (!raw.name) { agg.failed++; continue; }
       try {
-        const existing = await getCardByName(raw.name);
+        const existing = await getCardByName(raw.name, guildId);
         if (existing) {
-          await addCardToSet(set.id, existing.id);
+          await addCardToSet(set.id, existing.id, guildId ?? "unknown");
           agg.skipped++; continue;
         }
         const rarity = mapRarity(raw.rarity);
@@ -88,8 +89,8 @@ export async function importCardsFromJson(
           isLimitedEdition: typeof raw.isLimitedEdition === "boolean" ? raw.isLimitedEdition : undefined,
           isEventExclusive: typeof raw.isEventExclusive === "boolean" ? raw.isEventExclusive : undefined,
           maxCopies: typeof raw.maxCopies === "number" ? raw.maxCopies : undefined,
-        });
-        if (newCard?.id) await addCardToSet(set.id, newCard.id);
+        }, guildId ?? "unknown");
+        if (newCard?.id) await addCardToSet(set.id, newCard.id, guildId ?? "unknown");
         agg.created++;
       } catch (err: any) {
         agg.failed++;
@@ -240,7 +241,7 @@ export async function handleImport(msg: Message): Promise<void> {
 
   let result;
   try {
-    result = await importCardsFromJson(jsonText, sourceLabel);
+    result = await importCardsFromJson(jsonText, sourceLabel, msg.guild.id);
   } catch (err: any) {
     await status.edit(`❌ ${err?.message ?? "Import failed"}`);
     return;

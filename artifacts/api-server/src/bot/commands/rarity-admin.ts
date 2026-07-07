@@ -889,7 +889,7 @@ export async function handleRarityHubModal(interaction: ModalSubmitInteraction):
   if (section === "cardtier" && extra === "assign") {
     const cardName = interaction.fields.getTextInputValue("card").trim();
     const tierInput = interaction.fields.getTextInputValue("tier").trim().toLowerCase();
-    const card = await getCardByName(cardName);
+    const card = await getCardByName(cardName, guildId);
     if (!card) { await interaction.followUp({ content: `❌ No card named **${cardName}**.`, flags: MessageFlags.Ephemeral }); return; }
     const tiers = await listCustomRarities(guildId);
     const tier = tiers.find(t => t.slug === tierInput || t.name.toLowerCase() === tierInput);
@@ -909,7 +909,7 @@ export async function handleRarityHubModal(interaction: ModalSubmitInteraction):
   // ── Card tier: unassign ───────────────────────────────────────────────────
   if (section === "cardtier" && extra === "unassign") {
     const cardName = interaction.fields.getTextInputValue("card").trim();
-    const card = await getCardByName(cardName);
+    const card = await getCardByName(cardName, guildId);
     if (!card) { await interaction.followUp({ content: `❌ No card named **${cardName}**.`, flags: MessageFlags.Ephemeral }); return; }
     const removed = await unassignCardCustomRarity(guildId, card.id);
     const r = card.rarity as Rarity;

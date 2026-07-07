@@ -251,7 +251,7 @@ async function doSingleSpawn(guildId: string, forcedCardId?: number, isForced = 
 
   let card: Card | undefined;
   if (forcedCardId) {
-    const cards = await getAllCardsCached();
+    const cards = await getAllCardsCached(guildId);
     card = cards.find(c => c.id === forcedCardId);
     if (card?.isArchived) {
       logger.info({ cardId: card.id }, "Refusing to spawn archived card");
@@ -433,7 +433,7 @@ export async function handleCatchAttempt(
 
 async function bumpSpawnHints(spawns: ActiveSpawn[], guildId: string): Promise<void> {
   const settings = await getOrCreateGuildSettings(guildId);
-  const cards = await getAllCardsCached();
+  const cards = await getAllCardsCached(guildId);
   for (const spawn of spawns) {
     spawn.failedAttempts += 1;
     const newLevel = hintLevelForFailures(spawn.failedAttempts);
@@ -490,7 +490,7 @@ async function awardSpawn(guildId: string, spawnId: string, userId: string): Pro
 
   try {
     const quipFn = CATCH_QUIPS[Math.floor(Math.random() * CATCH_QUIPS.length)]!;
-    const cards = await getAllCardsCached();
+    const cards = await getAllCardsCached(guildId);
     const rawCard = cards.find(c => c.id === spawn.cardId);
     const cardName = rawCard?.name ?? spawn.cardName;
     const shinyBadge = isShiny ? ` ✨` : "";
@@ -645,7 +645,7 @@ export async function initAllGuilds(client: Client) {
 async function buildClaimedEmbed(
   cardId: number, userId: string, isShiny: boolean = false, guildId: string | null = null,
 ): Promise<EmbedBuilder | null> {
-  const cards = await getAllCardsCached();
+  const cards = await getAllCardsCached(guildId);
   const rawCard = cards.find(c => c.id === cardId);
   if (!rawCard) return null;
   const ctx = guildId ? await getRarityContext(guildId) : null;
@@ -729,7 +729,7 @@ async function buildSpawnEmbed(card: Card, windowSeconds: number, mode: "type" |
 export async function buildPostDecisionEmbed(
   cardId: number, userId: string, action: "burned" | "kept" | "trade", guildId: string | null = null,
 ): Promise<EmbedBuilder | null> {
-  const cards = await getAllCardsCached();
+  const cards = await getAllCardsCached(guildId);
   const rawCard = cards.find(c => c.id === cardId);
   if (!rawCard) return null;
   const ctxForDecision = guildId ? await getRarityContext(guildId) : null;

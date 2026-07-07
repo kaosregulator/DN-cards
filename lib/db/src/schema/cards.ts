@@ -23,7 +23,10 @@ export const tradeStatusEnum = pgEnum("trade_status", [
 // ── Cards ─────────────────────────────────────────────────────────────────────
 export const cardsTable = pgTable("cards", {
   id: serial("id").primaryKey(),
-  name: text("name").notNull().unique(),
+  // Per-guild ownership: cards created by the home guild are shared globally;
+  // cards created by other guilds are only visible in that guild.
+  guildId: text("guild_id").notNull(),
+  name: text("name").notNull(),
   description: text("description").notNull().default(""),
   rarity: rarityEnum("rarity").notNull(),
   // cardType was a pgEnum("card_type") until May 2026; converted to plain text
@@ -58,6 +61,9 @@ export const cardsTable = pgTable("cards", {
   displayOrientation: text("display_orientation"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 }, (t) => ({
+  // Card names are unique within a guild. The home guild's cards are shared
+  // across all servers; other guilds' cards stay private to that server.
+  guildNameUniq: uniqueIndex("cards_guild_name_uniq").on(t.guildId, t.name),
   // At most one card per podium slot. Partial index so null values (most
   // cards) don't conflict.
   podiumPlaceUniq: uniqueIndex("cards_podium_place_uniq")
@@ -246,10 +252,10 @@ export type GuildSettings = typeof guildSettingsTable.$inferSelect;
 // during the transition (Phase 5 will drop it).
 export const setsTable = pgTable("sets", {
   id: serial("id").primaryKey(),
-  // Lowercase slug-ish identifier (e.g. "defaults", "v1", "halloween-2026").
-  // Globally unique because sets are global today — Phase 6 may scope them
-  // per-guild if that need emerges.
-  name: text("name").notNull().unique(),
+  // Per-guild ownership: the home guild's sets are shared globally; other
+  // guilds' sets are private to that guild. Set names are unique within a guild.
+  guildId: text("guild_id").notNull(),
+  name: text("name").notNull(),
   description: text("description"),
   // Optional per-tier spawn-weight override applied ONLY when this set is the
   // guild's active set. Shape: `{ common: 60, uncommon: 25, ... }` — any keys
@@ -264,7 +270,10 @@ export const setsTable = pgTable("sets", {
   awardsCompletion: boolean("awards_completion").notNull().default(false),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
-});
+}, (t) => ({
+  // Set names are unique within a guild; home guild sets are shared globally.
+  guildNameUniq: uniqueIndex("sets_guild_name_uniq").on(t.guildId, t.name),
+}));
 
 export type CardSet = typeof setsTable.$inferSelect;
 

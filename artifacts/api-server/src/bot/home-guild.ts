@@ -29,6 +29,23 @@ export function isHomeGuild(guildId: string): boolean {
   return guildId === HOME_GUILD_ID;
 }
 
+// A card/set is visible to a guild if it belongs to the home guild (shared)
+// or to the viewing guild itself. The home guild can see everything.
+export function isVisibleTo(record: { guildId: string }, viewerGuildId: string | null | undefined): boolean {
+  if (!HOME_GUILD_ID) return true;
+  if (record.guildId === HOME_GUILD_ID) return true;
+  if (viewerGuildId && record.guildId === viewerGuildId) return true;
+  if (viewerGuildId && isHomeGuild(viewerGuildId)) return true;
+  return false;
+}
+
+// A card/set can be mutated by a guild if that guild owns it or is the home guild.
+export function isOwnedBy(record: { guildId: string }, actorGuildId: string): boolean {
+  if (!HOME_GUILD_ID) return true;
+  if (isHomeGuild(actorGuildId)) return true;
+  return record.guildId === actorGuildId;
+}
+
 export const GLOBAL_ONLY_MSG =
   "❌ This command modifies shared global data (cards/sets) and can only be " +
   "run from the home server. Guild-scoped commands (`/setadmin active`, " +

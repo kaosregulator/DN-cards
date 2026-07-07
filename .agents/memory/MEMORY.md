@@ -30,3 +30,5 @@
 - [Discord ephemeral auto-delete](discord-ephemeral-auto-delete.md) — bot can delete its own ephemeral replies via `interaction.deleteReply()` after a timeout; schedule it with `setTimeout` and swallow errors.
 - [Firestore REST pagination](firestore-rest-pagination.md) — Firestore `pageSize` defaults to small batches; follow `nextPageToken` to load the full collection and warn if a safety cap is reached.
 - [MTTValues fuzzy search](mttvalues-fuzzy-search.md) — item names often have shorthands/acronyms; include acronym matching (first letters of words) alongside substring matching for reliable lookup.
+- [Multi-tenant boot migrations](multi-tenant-boot-migrations.md) — when adding guild_id, drop legacy global unique constraints via ALTER TABLE DROP CONSTRAINT, never re-add them, and parameterize the backfill.
+- [Set membership ownership checks](set-membership-ownership.md) — centralize actor-guild ownership/visibility checks in card/set membership helpers; imports and bulk paths can bypass command-level gating.

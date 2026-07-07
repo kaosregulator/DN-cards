@@ -21,7 +21,7 @@ import { buildRatesEmbed, buildRatesComponents } from "./config-panel.js";
 export async function startSetupWizard(msg: Message): Promise<void> {
   if (!msg.guild) return;
   const settings = await getOrCreateGuildSettings(msg.guild.id);
-  const hasDefaults = await defaultsLoaded();
+  const hasDefaults = await defaultsLoaded(msg.guild.id);
   await msg.reply({
     embeds: [buildSetupEmbed(settings, hasDefaults)],
     components: buildSetupComponents(settings, hasDefaults),
@@ -36,7 +36,7 @@ export async function handleSetupCommand(interaction: ChatInputCommandInteractio
   const ok = await ensureAdminSlash(interaction);
   if (!ok) return;
   const settings = await getOrCreateGuildSettings(interaction.guild.id);
-  const hasDefaults = await defaultsLoaded();
+  const hasDefaults = await defaultsLoaded(interaction.guild.id);
   await interaction.editReply({
     embeds: [buildSetupEmbed(settings, hasDefaults)],
     components: buildSetupComponents(settings, hasDefaults),
@@ -115,7 +115,7 @@ export async function handleSetupButton(interaction: ButtonInteraction): Promise
       await interaction.followUp({ content: GLOBAL_ONLY_MSG, flags: MessageFlags.Ephemeral }).catch(() => {});
       return;
     }
-    const { removed } = await unloadDefaultCards();
+    const { removed } = await unloadDefaultCards(guildId);
     await refreshPanel(interaction, guildId);
     await interaction.followUp({
       content: `🗑️ Removed **${removed}** built-in default cards. Your custom cards are untouched.`,
@@ -228,7 +228,7 @@ export async function handleSetupModalSubmit(interaction: ModalSubmitInteraction
       worthValue: 10,
       burnValue: 5,
       droppable: false,
-    });
+    }, guildId);
     await spawnCard(guildId, card.id, true);
     await interaction.editReply(
       `🧪 Test card **${name}** dropped in <#${settings.spawnChannelId}>. Go catch it!\nClean up later with \`${settings.commandPrefix}removecard ${name}\`.`,
@@ -239,8 +239,8 @@ export async function handleSetupModalSubmit(interaction: ModalSubmitInteraction
 }
 
 // ── Helpers ─────────────────────────────────────────────────────────────────────────────────────────────────────────────
-async function defaultsLoaded(): Promise<boolean> {
-  const sets = await listSets();
+async function defaultsLoaded(guildId: string): Promise<boolean> {
+  const sets = await listSets(guildId);
   return sets.some(s => s.setName === DEFAULTS_SET_NAME && s.cardCount > 0);
 }
 
@@ -250,7 +250,7 @@ async function refreshPanel(
   guildId: string,
 ): Promise<void> {
   const settings = await getOrCreateGuildSettings(guildId);
-  const hasDefaults = await defaultsLoaded();
+  const hasDefaults = await defaultsLoaded(guildId);
   await interaction.editReply({
     embeds: [buildSetupEmbed(settings, hasDefaults)],
     components: buildSetupComponents(settings, hasDefaults),

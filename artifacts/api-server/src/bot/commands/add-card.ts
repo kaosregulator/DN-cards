@@ -59,7 +59,7 @@ export async function handleAddCardCommand(interaction: ChatInputCommandInteract
   const burn = defs.burn;
   const weight = defs.weight;
 
-  const existing = await getCardByName(name);
+  const existing = await getCardByName(name, guildId);
   if (existing) {
     await interaction.editReply(
       `❌ A card named **${name}** already exists (ID #${existing.id}). ` +
@@ -82,13 +82,13 @@ export async function handleAddCardCommand(interaction: ChatInputCommandInteract
     isEventExclusive: eventExclusive,
     droppable: !eventExclusive,
     inPacks:   !eventExclusive && baseRarity !== "mythic",
-  });
+  }, guildId);
 
   let setNote = "";
   if (setName) {
-    const set = await getSetByName(setName);
+    const set = await getSetByName(setName, guildId);
     if (set) {
-      await addCardToSet(set.id, card.id);
+      await addCardToSet(set.id, card.id, guildId);
       setNote = ` and added to set \`${set.name}\``;
     } else {
       setNote = ` (set \`${setName}\` was not found, so no set was assigned)`;

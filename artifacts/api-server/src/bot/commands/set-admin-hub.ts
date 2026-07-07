@@ -49,7 +49,7 @@ async function ensureAdmin(
 
 // ── Embed / component builders ────────────────────────────────────────────────
 async function buildHubEmbed(guildId: string, selectedSetId?: number): Promise<EmbedBuilder> {
-  const [sets, activeSet] = await Promise.all([listSetsV2(), getActiveSet(guildId)]);
+  const [sets, activeSet] = await Promise.all([listSetsV2(guildId), getActiveSet(guildId)]);
   const activeId = activeSet?.id;
 
   const activeDesc = activeSet
@@ -198,7 +198,7 @@ function buildGlobalRow() {
 }
 
 async function buildPanelPayload(guildId: string, selectedSetId?: number) {
-  const [sets, activeSet] = await Promise.all([listSetsV2(), getActiveSet(guildId)]);
+  const [sets, activeSet] = await Promise.all([listSetsV2(guildId), getActiveSet(guildId)]);
   const activeId = activeSet?.id;
   const embed = await buildHubEmbed(guildId, selectedSetId);
   const components: ActionRowBuilder<any>[] = [];
@@ -334,7 +334,7 @@ function buildWeightsComponents(
 
 async function buildWeightsPayload(setId: number, guildId: string) {
   const [sets, activeSet, displayMap] = await Promise.all([
-    listSetsV2(), getActiveSet(guildId), getRarityDisplayOverrides(guildId),
+    listSetsV2(guildId), getActiveSet(guildId), getRarityDisplayOverrides(guildId),
   ]);
   const entry = sets.find(s => s.set.id === setId);
   if (!entry) return null;
@@ -391,9 +391,8 @@ export async function handleSetAdminHubWeightSelect(interaction: StringSelectMen
   const raw = interaction.values[0];
   const weight: number | null = raw === "default" ? null : parseInt(raw!, 10);
 
-  await patchSetRarityWeight(setId, rarity, weight);
-
   const guildId = interaction.guild.id;
+  await patchSetRarityWeight(setId, rarity, weight, guildId);
   const payload = await buildWeightsPayload(setId, guildId);
   if (!payload) {
     await interaction.followUp({ content: "❌ Set not found.", flags: MessageFlags.Ephemeral });
@@ -559,7 +558,7 @@ export async function handleSetAdminHubButton(interaction: ButtonInteraction): P
     }
     await interaction.deferUpdate();
     if (!await ensureAdmin(interaction)) return;
-    const [allUnassigned, alreadyInSet] = await Promise.all([getUnassignedCards(), getCardsInSet(setId)]);
+    const [allUnassigned, alreadyInSet] = await Promise.all([getUnassignedCards(guildId), getCardsInSet(setId, guildId)]);
     const alreadyIds = new Set(alreadyInSet.map(c => c.id));
     const droppable = allUnassigned.filter(c => !alreadyIds.has(c.id) && c.droppable && !c.isArchived);
     if (droppable.length === 0) {
@@ -567,7 +566,7 @@ export async function handleSetAdminHubButton(interaction: ButtonInteraction): P
       return;
     }
     const names = droppable.map(c => c.name);
-    const { added } = await bulkAddCardsToSet(setId, names);
+    const { added } = await bulkAddCardsToSet(setId, names, guildId);
     await invalidateActiveSetCardsCache(guildId);
     const payload = await buildPanelPayload(guildId, setId);
     await interaction.editReply(payload);
@@ -592,7 +591,7 @@ export async function handleSetAdminHubButton(interaction: ButtonInteraction): P
   // ── View cards pagination (prev/next) ─────────────────────────────────────
   if (action === "viewpage" && setId !== undefined && arg2 !== undefined) {
     const page = parseInt(arg2, 10);
-    const [cards, sets] = await Promise.all([getCardsInSet(setId), listSetsV2()]);
+    const [cards, sets] = await Promise.all([getCardsInSet(setId, guildId), listSetsV2(guildId)]);
     const entry = sets.find(s => s.set.id === setId);
     if (!entry) return;
     const totalPages = Math.max(1, Math.ceil(cards.length / VIEW_CARDS_PAGE_SIZE));
@@ -612,7 +611,7 @@ export async function handleSetAdminHubButton(interaction: ButtonInteraction): P
 
   // ── Export ALL ────────────────────────────────────────────────────────────
   if (action === "exportall") {
-    const all = await listSetsV2();
+    const all = await listSetsV2(guildId);
     if (all.length === 0) {
       await interaction.followUp({ content: "❌ No sets to export yet.", flags: MessageFlags.Ephemeral });
       return;
@@ -623,7 +622,7 @@ export async function handleSetAdminHubButton(interaction: ButtonInteraction): P
     };
     let totalCards = 0;
     for (const { set } of all) {
-      const cards = await getCardsInSet(set.id);
+      const cards = await getCardsInSet(set.id, guildId);
       bundle.sets.push(buildSingleSetPayload(set, cards));
       totalCards += cards.length;
     }
@@ -656,7 +655,7 @@ export async function handleSetAdminHubButton(interaction: ButtonInteraction): P
     await setActiveSet(guildId, setId);
     const [payload, sets] = await Promise.all([
       buildPanelPayload(guildId, setId),
-      listSetsV2(),
+      listSetsV2(guildId),
     ]);
     await interaction.editReply(payload);
     const entry = sets.find(s => s.set.id === setId);
@@ -673,12 +672,12 @@ export async function handleSetAdminHubButton(interaction: ButtonInteraction): P
       await interaction.followUp({ content: GLOBAL_ONLY_MSG, flags: MessageFlags.Ephemeral });
       return;
     }
-    const entry = (await listSetsV2()).find(s => s.set.id === setId);
+    const entry = (await listSetsV2(guildId)).find(s => s.set.id === setId);
     if (!entry) {
       await interaction.followUp({ content: "❌ Set not found.", flags: MessageFlags.Ephemeral });
       return;
     }
-    const { removedMemberships } = await deleteSetById(setId);
+    const { removedMemberships } = await deleteSetById(setId, guildId);
     const payload = await buildPanelPayload(guildId);
     await interaction.editReply(payload);
     await interaction.followUp({
@@ -694,14 +693,14 @@ export async function handleSetAdminHubButton(interaction: ButtonInteraction): P
       await interaction.followUp({ content: GLOBAL_ONLY_MSG, flags: MessageFlags.Ephemeral });
       return;
     }
-    const sets = await listSetsV2();
+    const sets = await listSetsV2(guildId);
     const entry = sets.find(s => s.set.id === setId);
     if (!entry) {
       await interaction.followUp({ content: "❌ Set not found.", flags: MessageFlags.Ephemeral });
       return;
     }
     const next = !entry.set.awardsCompletion;
-    await setSetAwardsCompletion(setId, next);
+    await setSetAwardsCompletion(setId, next, guildId);
     const payload = await buildPanelPayload(guildId, setId);
     await interaction.editReply(payload);
     const msg = next
@@ -713,13 +712,13 @@ export async function handleSetAdminHubButton(interaction: ButtonInteraction): P
 
   // ── Export single set ─────────────────────────────────────────────────────
   if (action === "export") {
-    const sets = await listSetsV2();
+    const sets = await listSetsV2(guildId);
     const entry = sets.find(s => s.set.id === setId);
     if (!entry) {
       await interaction.followUp({ content: "❌ Set not found.", flags: MessageFlags.Ephemeral });
       return;
     }
-    const cards = await getCardsInSet(setId);
+    const cards = await getCardsInSet(setId, guildId);
     const payload = JSON.stringify(
       { exportedAt: new Date().toISOString(), ...buildSingleSetPayload(entry.set, cards) },
       null,
@@ -737,7 +736,7 @@ export async function handleSetAdminHubButton(interaction: ButtonInteraction): P
 
   // ── View Cards — paginated embed as followUp ──────────────────────────────
   if (action === "view") {
-    const [cards, sets] = await Promise.all([getCardsInSet(setId), listSetsV2()]);
+    const [cards, sets] = await Promise.all([getCardsInSet(setId, guildId), listSetsV2(guildId)]);
     const entry = sets.find(s => s.set.id === setId);
     if (!entry) return;
     if (cards.length === 0) {
@@ -770,7 +769,7 @@ export async function handleSetAdminHubButton(interaction: ButtonInteraction): P
       await interaction.followUp({ content: GLOBAL_ONLY_MSG, flags: MessageFlags.Ephemeral });
       return;
     }
-    await setSetRarityWeights(setId, null);
+    await setSetRarityWeights(setId, null, guildId);
     const payload = await buildWeightsPayload(setId, guildId);
     if (!payload) return;
     await interaction.editReply(payload);
@@ -807,7 +806,7 @@ export async function handleSetAdminHubModal(interaction: ModalSubmitInteraction
       return;
     }
     try {
-      const set = await createSet(name, desc);
+      const set = await createSet(name, desc, guildId);
       await invalidateActiveSetCardsCache(guildId);
       const payload = await buildPanelPayload(guildId, set.id);
       await interaction.editReply(payload);
@@ -834,12 +833,12 @@ export async function handleSetAdminHubModal(interaction: ModalSubmitInteraction
       return;
     }
     try {
-      const entry = await getSetById(setId);
+      const entry = await getSetById(setId, guildId);
       if (!entry) {
         await interaction.followUp({ content: "❌ Set not found.", flags: MessageFlags.Ephemeral });
         return;
       }
-      const updated = await renameSet(setId, newName);
+      const updated = await renameSet(setId, newName, guildId);
       const payload = await buildPanelPayload(guildId, setId);
       await interaction.editReply(payload);
       await interaction.followUp({
@@ -861,12 +860,12 @@ export async function handleSetAdminHubModal(interaction: ModalSubmitInteraction
     }
     const cardName = interaction.fields.getTextInputValue("setadminhub:cardname").trim();
     const { getCardByName } = await import("../db.js");
-    const card = await getCardByName(cardName);
+    const card = await getCardByName(cardName, guildId);
     if (!card) {
       await interaction.followUp({ content: `❌ No card named **${cardName}** found. Check the spelling.`, flags: MessageFlags.Ephemeral });
       return;
     }
-    const { added } = await addCardToSet(setId, card.id);
+    const { added } = await addCardToSet(setId, card.id, guildId);
     await invalidateActiveSetCardsCache(guildId);
     const payload = await buildPanelPayload(guildId, setId);
     await interaction.editReply(payload);
@@ -886,12 +885,12 @@ export async function handleSetAdminHubModal(interaction: ModalSubmitInteraction
     }
     const cardName = interaction.fields.getTextInputValue("setadminhub:cardname").trim();
     const { getCardByName } = await import("../db.js");
-    const card = await getCardByName(cardName);
+    const card = await getCardByName(cardName, guildId);
     if (!card) {
       await interaction.followUp({ content: `❌ No card named **${cardName}** found. Check the spelling.`, flags: MessageFlags.Ephemeral });
       return;
     }
-    const { removed } = await removeCardFromSet(setId, card.id);
+    const { removed } = await removeCardFromSet(setId, card.id, guildId);
     await invalidateActiveSetCardsCache(guildId);
     const payload = await buildPanelPayload(guildId, setId);
     await interaction.editReply(payload);
@@ -915,7 +914,7 @@ export async function handleSetAdminHubModal(interaction: ModalSubmitInteraction
       await interaction.followUp({ content: "❌ No card names provided.", flags: MessageFlags.Ephemeral });
       return;
     }
-    const { added, alreadyIn, notFound } = await bulkAddCardsToSet(setId, names);
+    const { added, alreadyIn, notFound } = await bulkAddCardsToSet(setId, names, guildId);
     await invalidateActiveSetCardsCache(guildId);
     const payload = await buildPanelPayload(guildId, setId);
     await interaction.editReply(payload);
@@ -939,7 +938,7 @@ export async function handleSetAdminHubModal(interaction: ModalSubmitInteraction
       await interaction.followUp({ content: "❌ No card names provided.", flags: MessageFlags.Ephemeral });
       return;
     }
-    const { removed, notInSet, notFound } = await bulkRemoveCardsFromSet(setId, names);
+    const { removed, notInSet, notFound } = await bulkRemoveCardsFromSet(setId, names, guildId);
     await invalidateActiveSetCardsCache(guildId);
     const payload = await buildPanelPayload(guildId, setId);
     await interaction.editReply(payload);
@@ -978,7 +977,7 @@ export async function handleSetAdminHubModal(interaction: ModalSubmitInteraction
     try {
       const { importCardsFromJson } = await import("./import.js");
       const filename = url.split("/").pop() ?? "import.json";
-      const { created, skipped, failed, errors, setName } = await importCardsFromJson(jsonText, filename, nameOverride);
+      const { created, skipped, failed, errors, setName } = await importCardsFromJson(jsonText, filename, guildId, nameOverride);
       const payload = await buildPanelPayload(guildId);
       await interaction.editReply(payload);
       await interaction.followUp({

@@ -8,6 +8,11 @@ import { SEED_SQL } from "./lib/seedData.js";
 // production gets schema changes applied here on boot. Each statement uses
 // `IF NOT EXISTS` so reruns are safe.
 async function runBootMigrations() {
+  const homeGuildId = process.env["HOME_GUILD_ID"];
+  if (!homeGuildId) {
+    throw new Error("HOME_GUILD_ID is required to run boot migrations. Set it to the home Discord server ID.");
+  }
+
   // Per-guild rarity display order. Stored as text[] so any array of rarity keys can be persisted.
   await pool.query(`ALTER TABLE guild_settings ADD COLUMN IF NOT EXISTS rarity_order text[]`);
 
@@ -16,6 +21,21 @@ async function runBootMigrations() {
   await pool.query(`ALTER TABLE guild_settings ADD COLUMN IF NOT EXISTS pack_premium_name text`);
   await pool.query(`ALTER TABLE guild_settings ADD COLUMN IF NOT EXISTS pack_legendary_name text`);
 
+
+  // Per-guild ownership of cards and sets. Backfill existing rows to the home
+  // guild so the live main-server roster remains shared. Names are unique per
+  // guild, not globally, so separate servers can each have their own "M1 Abrams".
+  await pool.query(`ALTER TABLE cards ADD COLUMN IF NOT EXISTS guild_id text`);
+  await pool.query(`UPDATE cards SET guild_id = $1 WHERE guild_id IS NULL`, [homeGuildId]);
+  await pool.query(`ALTER TABLE cards ALTER COLUMN guild_id SET NOT NULL`);
+  await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS cards_guild_name_uniq ON cards (guild_id, name)`);
+  await pool.query(`ALTER TABLE cards DROP CONSTRAINT IF EXISTS cards_name_unique`);
+
+  await pool.query(`ALTER TABLE sets ADD COLUMN IF NOT EXISTS guild_id text`);
+  await pool.query(`UPDATE sets SET guild_id = $1 WHERE guild_id IS NULL`, [homeGuildId]);
+  await pool.query(`ALTER TABLE sets ALTER COLUMN guild_id SET NOT NULL`);
+  await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS sets_guild_name_uniq ON sets (guild_id, name)`);
+  await pool.query(`ALTER TABLE sets DROP CONSTRAINT IF EXISTS sets_name_unique`);
 
   await pool.query(`ALTER TABLE cards ADD COLUMN IF NOT EXISTS podium_place integer`);
   await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS cards_podium_place_uniq ON cards (podium_place) WHERE podium_place IS NOT NULL`);
@@ -144,8 +164,7 @@ async function runBootMigrations() {
 
   // Corrective data migration: fix card names (315-329), add card 329, gold_legendary rarity,
   // rarity overrides, user_currency, achievements, daily_claims.
-  // Wrapped in a single transaction so that the cards_name_unique constraint is always
-  // either fully applied or fully rolled back — never left in a dropped state.
+  // Wrapped in a single transaction so a mid-run failure rolls back completely.
   await (async () => {
     // Ensure user_currency has a unique index on (guild_id, user_id) so ON CONFLICT works.
     await pool.query(
@@ -224,9 +243,9 @@ async function runBootMigrations() {
         "INSERT INTO daily_claims(guild_id,user_id,last_claimed_at,streak) VALUES('1480402385821110292','1211353501909786749','2026-05-24 03:36:06.426',1) ON CONFLICT(guild_id,user_id) DO NOTHING;",
       ];
       for (const _stmt of _dataMigrations) { await client.query(_stmt); }
-      // Re-add constraint inside the same transaction — rolled back if any stmt above fails.
-      // Constraint was dropped unconditionally above, so always re-add it here.
-      await client.query("ALTER TABLE cards ADD CONSTRAINT cards_name_unique UNIQUE (name);");
+      // Per-guild uniqueness is enforced by cards_guild_name_uniq above; the old
+      // global cards_name_unique constraint is no longer compatible with multi-tenant
+      // cards and must stay dropped.
       await client.query("COMMIT");
       logger.info("Data correction migration applied");
     } catch (err) {

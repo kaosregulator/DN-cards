@@ -13,11 +13,11 @@ type SlimCard = { id?: number; name: string; rarity: string; displayName?: strin
 let cardCache: { at: number; cards: SlimCard[] } | null = null;
 const CACHE_MS = 15_000;
 
-async function getCardsCached(): Promise<SlimCard[]> {
+async function getCardsCached(guildId?: string | null): Promise<SlimCard[]> {
   const now = Date.now();
   if (cardCache && now - cardCache.at < CACHE_MS) return cardCache.cards;
   const [cards, overrides] = await Promise.all([
-    getAllCards(),
+    getAllCards(guildId),
     db.select({ cardId: cardDisplayOverridesTable.cardId, displayName: cardDisplayOverridesTable.displayName })
       .from(cardDisplayOverridesTable)
       .where(isNotNull(cardDisplayOverridesTable.displayName)),
@@ -35,10 +35,10 @@ async function getCardsCached(): Promise<SlimCard[]> {
 
 let setCache: { at: number; sets: Awaited<ReturnType<typeof listSetsV2>> } | null = null;
 const SET_CACHE_MS = 5_000;
-async function getSetsCached(): Promise<Awaited<ReturnType<typeof listSetsV2>>> {
+async function getSetsCached(guildId?: string | null): Promise<Awaited<ReturnType<typeof listSetsV2>>> {
   const now = Date.now();
   if (setCache && now - setCache.at < SET_CACHE_MS) return setCache.sets;
-  const sets = await listSetsV2();
+  const sets = await listSetsV2(guildId);
   setCache = { at: now, sets };
   return sets;
 }
@@ -108,9 +108,10 @@ async function suggestCardNames(
   pool?: SlimCard[],
   displayMap?: Awaited<ReturnType<typeof getRarityDisplayOverrides>> | null,
   settings?: Awaited<ReturnType<typeof getOrCreateGuildSettings>> | null,
+  guildId?: string | null,
 ) {
   const q = query.toLowerCase().trim();
-  const cards = pool ?? await getCardsCached();
+  const cards = pool ?? await getCardsCached(guildId);
   const scored = cards
     .map(c => {
       // Match against gameplay name OR website display-name override
@@ -164,7 +165,7 @@ export async function handleAutocomplete(interaction: AutocompleteInteraction): 
       (effectiveCmd === "addcard" && focused.name === "set") ||
       (effectiveCmd === "giveall" && focused.name === "set");
     if (isSetNameOption) {
-      const sets = await getSetsCached();
+      const sets = await getSetsCached(guildId);
       const q = query.toLowerCase().trim();
       const matches = sets
         .filter(s => !q || s.set.name.toLowerCase().includes(q))
@@ -344,11 +345,11 @@ export async function handleAutocomplete(interaction: AutocompleteInteraction): 
           const pack = packs.find(p => p.name.toLowerCase() === selectedPackName.toLowerCase());
           if (pack) {
             const packCards = await getCustomPackCards(pack.id);
-            const cardById = new Map((await getCardsCached()).map(c => [c.id, c]));
+            const cardById = new Map((await getCardsCached(guildId)).map(c => [c.id, c]));
             const pool = packCards
               .map(pc => cardById.get(pc.cardId) ?? null)
               .filter((c): c is SlimCard => c != null);
-            await interaction.respond(await suggestCardNames(query, pool, displayMap, settings));
+            await interaction.respond(await suggestCardNames(query, pool, displayMap, settings, guildId));
             return;
           }
         }

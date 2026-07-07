@@ -131,7 +131,7 @@ export async function handlePrefixCommand(msg: Message, prefix: string): Promise
   // Both mutate global cards table — home guild only.
   if (cmd === "unloaddefaults") {
     if (!await requireGlobalAdmin(msg)) return;
-    const { removed } = await unloadDefaultCards();
+    const { removed } = await unloadDefaultCards(guildId);
     await msg.reply(
       `✅ Removed **${removed}** built-in default cards. Re-load anytime from \`${prefix}setup\` or \`/setadmin load file:<.json>\`.`
     );
@@ -317,7 +317,7 @@ export async function handlePrefixCommand(msg: Message, prefix: string): Promise
     const { removeCard } = await import("../db.js");
     const name = args.join(" ");
     if (!name) { await msg.reply("❌ Usage: `!removecard F-22 Raptor`"); return; }
-    await removeCard(name);
+    await removeCard(name, guildId);
     await msg.reply(`✅ Removed **${name}** from the card pool.`);
     return;
   }

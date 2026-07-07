@@ -67,12 +67,12 @@ export async function handleSetAdminCommand(interaction: ChatInputCommandInterac
     const name = interaction.options.getString("name", true);
     const description = interaction.options.getString("description") ?? undefined;
     try {
-      const existing = await getSetByName(name);
+      const existing = await getSetByName(name, guildId);
       if (existing) {
         await interaction.editReply(`⚠️ Set \`${existing.name}\` already exists.`);
         return;
       }
-      const set = await createSet(name, description);
+      const set = await createSet(name, description, guildId);
       await interaction.editReply(
         `✅ Created set \`${set.name}\`. Add cards with \`/setadmin add set:${set.name} card:<Name>\` or activate it for spawns with \`/setadmin active set:${set.name}\`.`,
       );
@@ -86,10 +86,10 @@ export async function handleSetAdminCommand(interaction: ChatInputCommandInterac
   if (sub === "rename") {
     const fromName = interaction.options.getString("from", true);
     const toName = interaction.options.getString("to", true);
-    const set = await getSetByName(fromName);
+    const set = await getSetByName(fromName, guildId);
     if (!set) { await interaction.editReply(`❌ No set named \`${fromName}\`.`); return; }
     try {
-      const updated = await renameSet(set.id, toName);
+      const updated = await renameSet(set.id, toName, guildId);
       await interaction.editReply(`✅ Renamed \`${set.name}\` → \`${updated?.name}\`.`);
     } catch (err: any) {
       await interaction.editReply(`❌ ${err?.message ?? "Rename failed."}`);
@@ -100,9 +100,9 @@ export async function handleSetAdminCommand(interaction: ChatInputCommandInterac
   // ── delete ───────────────────────────────────────────────────────────────
   if (sub === "delete") {
     const name = interaction.options.getString("name", true);
-    const set = await getSetByName(name);
+    const set = await getSetByName(name, guildId);
     if (!set) { await interaction.editReply(`❌ No set named \`${name}\`.`); return; }
-    const { removedMemberships } = await deleteSetById(set.id);
+    const { removedMemberships } = await deleteSetById(set.id, guildId);
     await interaction.editReply(
       `✅ Deleted set \`${set.name}\` — kept all cards intact, removed **${removedMemberships}** membership${removedMemberships === 1 ? "" : "s"}. ` +
       `To delete cards too, use \`!removecard <Name>\` per card.`,
@@ -114,11 +114,11 @@ export async function handleSetAdminCommand(interaction: ChatInputCommandInterac
   if (sub === "add") {
     const setName = interaction.options.getString("set", true);
     const cardName = interaction.options.getString("card", true);
-    const set = await getSetByName(setName);
+    const set = await getSetByName(setName, guildId);
     if (!set) { await interaction.editReply(`❌ No set named \`${setName}\`.`); return; }
-    const card = await getCardByName(cardName);
+    const card = await getCardByName(cardName, guildId);
     if (!card) { await interaction.editReply(`❌ No card named **${cardName}**.`); return; }
-    const { added } = await addCardToSet(set.id, card.id);
+    const { added } = await addCardToSet(set.id, card.id, guildId);
     await interaction.editReply(
       added
         ? `✅ Added **${card.name}** to \`${set.name}\`.`
@@ -131,11 +131,11 @@ export async function handleSetAdminCommand(interaction: ChatInputCommandInterac
   if (sub === "remove") {
     const setName = interaction.options.getString("set", true);
     const cardName = interaction.options.getString("card", true);
-    const set = await getSetByName(setName);
+    const set = await getSetByName(setName, guildId);
     if (!set) { await interaction.editReply(`❌ No set named \`${setName}\`.`); return; }
-    const card = await getCardByName(cardName);
+    const card = await getCardByName(cardName, guildId);
     if (!card) { await interaction.editReply(`❌ No card named **${cardName}**.`); return; }
-    const { removed } = await removeCardFromSet(set.id, card.id);
+    const { removed } = await removeCardFromSet(set.id, card.id, guildId);
     await interaction.editReply(
       removed
         ? `✅ Removed **${card.name}** from \`${set.name}\`. Card itself is untouched.`
@@ -149,13 +149,13 @@ export async function handleSetAdminCommand(interaction: ChatInputCommandInterac
     const fromName = interaction.options.getString("from", true);
     const toName = interaction.options.getString("to", true);
     const cardName = interaction.options.getString("card", true);
-    const fromSet = await getSetByName(fromName);
-    const toSet = await getSetByName(toName);
+    const fromSet = await getSetByName(fromName, guildId);
+    const toSet = await getSetByName(toName, guildId);
     if (!fromSet) { await interaction.editReply(`❌ No set named \`${fromName}\`.`); return; }
     if (!toSet) { await interaction.editReply(`❌ No set named \`${toName}\`.`); return; }
-    const card = await getCardByName(cardName);
+    const card = await getCardByName(cardName, guildId);
     if (!card) { await interaction.editReply(`❌ No card named **${cardName}**.`); return; }
-    await moveCardBetweenSets(fromSet.id, toSet.id, card.id);
+    await moveCardBetweenSets(fromSet.id, toSet.id, card.id, guildId);
     await interaction.editReply(`✅ Moved **${card.name}** from \`${fromSet.name}\` → \`${toSet.name}\`.`);
     return;
   }
@@ -164,11 +164,11 @@ export async function handleSetAdminCommand(interaction: ChatInputCommandInterac
   if (sub === "bulkadd") {
     const setName = interaction.options.getString("set", true);
     const cardsRaw = interaction.options.getString("cards", true);
-    const set = await getSetByName(setName);
+    const set = await getSetByName(setName, guildId);
     if (!set) { await interaction.editReply(`❌ No set named \`${setName}\`.`); return; }
     const names = parseList(cardsRaw);
     if (names.length === 0) { await interaction.editReply("❌ Provide a comma-separated list of card names."); return; }
-    const { added, alreadyIn, notFound } = await bulkAddCardsToSet(set.id, names);
+    const { added, alreadyIn, notFound } = await bulkAddCardsToSet(set.id, names, guildId);
     await interaction.editReply(
       `✅ Bulk add → \`${set.name}\`\n` +
       `➕ Added: **${added}**\n` +
@@ -182,11 +182,11 @@ export async function handleSetAdminCommand(interaction: ChatInputCommandInterac
   if (sub === "bulkremove") {
     const setName = interaction.options.getString("set", true);
     const cardsRaw = interaction.options.getString("cards", true);
-    const set = await getSetByName(setName);
+    const set = await getSetByName(setName, guildId);
     if (!set) { await interaction.editReply(`❌ No set named \`${setName}\`.`); return; }
     const names = parseList(cardsRaw);
     if (names.length === 0) { await interaction.editReply("❌ Provide a comma-separated list of card names."); return; }
-    const { removed, notInSet, notFound } = await bulkRemoveCardsFromSet(set.id, names);
+    const { removed, notInSet, notFound } = await bulkRemoveCardsFromSet(set.id, names, guildId);
     await interaction.editReply(
       `✅ Bulk remove from \`${set.name}\`\n` +
       `➖ Removed: **${removed}**\n` +
@@ -200,9 +200,9 @@ export async function handleSetAdminCommand(interaction: ChatInputCommandInterac
   if (sub === "active") {
     const setName = interaction.options.getString("set", true);
     const isSecondary = interaction.options.getBoolean("secondary") ?? false;
-    const set = await getSetByName(setName);
+    const set = await getSetByName(setName, guildId);
     if (!set) { await interaction.editReply(`❌ No set named \`${setName}\`.`); return; }
-    const memberCount = (await getCardsInSet(set.id)).filter(c => c.droppable && !c.isArchived).length;
+    const memberCount = (await getCardsInSet(set.id, guildId)).filter(c => c.droppable && !c.isArchived).length;
     if (isSecondary) {
       await setActiveSetSecondary(guildId, set.id);
       await interaction.editReply(
@@ -241,12 +241,12 @@ export async function handleSetAdminCommand(interaction: ChatInputCommandInterac
   // ── view ─────────────────────────────────────────────────────────────────
   if (sub === "view") {
     const setName = interaction.options.getString("name", true);
-    const set = await getSetByName(setName);
+    const set = await getSetByName(setName, guildId);
     if (!set) { await interaction.editReply(`❌ No set named \`${setName}\`.`); return; }
-    const cards = await getCardsInSet(set.id);
+    const cards = await getCardsInSet(set.id, guildId);
     const active = await getActiveSet(guildId);
     const isActive = active?.id === set.id;
-    const sets = await listSetsV2();
+    const sets = await listSetsV2(guildId);
     const setRow = sets.find(s => s.set.id === set.id);
     const total = setRow?.cardCount ?? cards.length;
     const droppable = cards.filter(c => c.droppable && !c.isArchived).length;
@@ -292,9 +292,9 @@ export async function handleSetAdminCommand(interaction: ChatInputCommandInterac
     const setName = interaction.options.getString("set", true);
     const rarity = interaction.options.getString("rarity", true);
     const weight = interaction.options.getInteger("weight", true);
-    const set = await getSetByName(setName);
+    const set = await getSetByName(setName, guildId);
     if (!set) { await interaction.editReply(`❌ No set named \`${setName}\`.`); return; }
-    const updated = await patchSetRarityWeight(set.id, rarity, weight);
+    const updated = await patchSetRarityWeight(set.id, rarity, weight, guildId);
     const active = await getActiveSet(guildId);
     const isActive = active?.id === set.id;
     const zeroNote = weight === 0
@@ -321,10 +321,10 @@ export async function handleSetAdminCommand(interaction: ChatInputCommandInterac
     const set = await getSetByName(setName);
     if (!set) { await interaction.editReply(`❌ No set named \`${setName}\`.`); return; }
     if (rarity) {
-      await patchSetRarityWeight(set.id, rarity, null);
+      await patchSetRarityWeight(set.id, rarity, null, guildId);
       await interaction.editReply(`✅ Cleared **${rarity}** override on \`${set.name}\`. Falls back to guild rarity profile.`);
     } else {
-      await setSetRarityWeights(set.id, null);
+      await setSetRarityWeights(set.id, null, guildId);
       await interaction.editReply(`✅ Cleared **all** weight overrides on \`${set.name}\`. Set now uses the guild rarity profile.`);
     }
     return;
@@ -333,7 +333,7 @@ export async function handleSetAdminCommand(interaction: ChatInputCommandInterac
   // ── showweights ──────────────────────────────────────────────────────────
   if (sub === "showweights") {
     const setName = interaction.options.getString("set", true);
-    const set = await getSetByName(setName);
+    const set = await getSetByName(setName, guildId);
     if (!set) { await interaction.editReply(`❌ No set named \`${setName}\`.`); return; }
     const w = set.rarityWeights ?? {};
     const order: Rarity[] = ["common", "uncommon", "rare", "epic", "legendary", "mythic"];
@@ -364,8 +364,8 @@ export async function handleSetAdminCommand(interaction: ChatInputCommandInterac
     const enabled = interaction.options.getBoolean("enabled", true);
     const set = await getSetByName(setName);
     if (!set) { await interaction.editReply(`❌ No set named \`${setName}\`.`); return; }
-    await setSetAwardsCompletion(set.id, enabled);
-    const cards = await getCardsInSet(set.id);
+    await setSetAwardsCompletion(set.id, enabled, guildId);
+    const cards = await getCardsInSet(set.id, guildId);
     await interaction.editReply(
       enabled
         ? `✨ \`${set.name}\` is now a **showcase set** — collectors who own all **${cards.length}** of its cards unlock a dedicated achievement. ` +
@@ -379,9 +379,9 @@ export async function handleSetAdminCommand(interaction: ChatInputCommandInterac
   // ── export (single set as JSON attachment) ───────────────────────────────
   if (sub === "export") {
     const setName = interaction.options.getString("set", true);
-    const set = await getSetByName(setName);
+    const set = await getSetByName(setName, guildId);
     if (!set) { await interaction.editReply(`❌ No set named \`${setName}\`.`); return; }
-    const cards = await getCardsInSet(set.id);
+    const cards = await getCardsInSet(set.id, guildId);
     const payload = buildSingleSetPayload(set, cards);
     const file = new AttachmentBuilder(Buffer.from(JSON.stringify(payload, null, 2), "utf8"), {
       name: `${set.name}.json`,
@@ -398,7 +398,7 @@ export async function handleSetAdminCommand(interaction: ChatInputCommandInterac
   if (sub === "exportall") {
     const filterRaw = interaction.options.getString("sets");
     const filter = filterRaw ? new Set(parseList(filterRaw).map(s => s.toLowerCase())) : null;
-    const all = await listSetsV2();
+    const all = await listSetsV2(guildId);
     const picked = filter ? all.filter(({ set }) => filter.has(set.name.toLowerCase())) : all;
     if (picked.length === 0) {
       await interaction.editReply(filter ? "❌ None of those set names matched." : "❌ No sets to export yet.");
@@ -443,7 +443,7 @@ export async function handleSetAdminCommand(interaction: ChatInputCommandInterac
     // Otherwise an admin asking for "set:foo" would unexpectedly get extras.
     let unassignedCount = 0;
     if (!filter) {
-      const orphans = await getUnassignedCards();
+      const orphans = await getUnassignedCards(guildId);
       if (orphans.length > 0) {
         unassignedCount = orphans.length;
         bundle.sets.push(buildSingleSetPayload(
@@ -471,18 +471,18 @@ export async function handleSetAdminCommand(interaction: ChatInputCommandInterac
     const setName = interaction.options.getString("set", true);
     const includeArchived = interaction.options.getBoolean("includearchived") ?? false;
     const includeDroppableFalse = interaction.options.getBoolean("includedroppablefalse") ?? false;
-    let set = await getSetByName(setName);
+      let set = await getSetByName(setName, guildId);
     let createdSet = false;
     if (!set) {
       try {
-        set = await createSet(setName);
+        set = await createSet(setName, undefined, guildId);
         createdSet = true;
       } catch (err: any) {
         await interaction.editReply(`❌ Couldn't create set \`${setName}\`: ${err?.message ?? "unknown error"}`);
         return;
       }
     }
-    const orphansAll = await getUnassignedCards();
+    const orphansAll = await getUnassignedCards(guildId);
     let orphans = orphansAll;
     if (!includeArchived) orphans = orphans.filter(c => !c.isArchived);
     if (!includeDroppableFalse) orphans = orphans.filter(c => c.droppable);
@@ -531,11 +531,11 @@ export async function handleSetAdminCommand(interaction: ChatInputCommandInterac
     const includeArchived = interaction.options.getBoolean("includearchived") ?? false;
     const includeNonDroppable = interaction.options.getBoolean("includedroppablefalse") ?? false;
 
-    let set = await getSetByName(setName);
+      let set = await getSetByName(setName, guildId);
     let createdSet = false;
     if (!set) {
       try {
-        set = await createSet(setName);
+        set = await createSet(setName, undefined, guildId);
         createdSet = true;
       } catch (err: any) {
         logger.error({ err, setName, guildId }, "Failed to create set via quickstart");
@@ -544,7 +544,7 @@ export async function handleSetAdminCommand(interaction: ChatInputCommandInterac
       }
     }
 
-    const allCards = await getAllCards();
+    const allCards = await getAllCards(guildId);
     let cardsToAdd = allCards;
     if (!includeArchived) cardsToAdd = cardsToAdd.filter(c => !c.isArchived);
     if (!includeNonDroppable) cardsToAdd = cardsToAdd.filter(c => c.droppable);
@@ -601,7 +601,7 @@ export async function handleSetAdminCommand(interaction: ChatInputCommandInterac
 
   if (sub === "exportcards") {
     const includeArchived = interaction.options.getBoolean("includearchived") ?? false;
-    const all = await getAllCards();
+    const all = await getAllCards(guildId);
     const cards = includeArchived ? all : all.filter(c => !c.isArchived);
     if (cards.length === 0) {
       await interaction.editReply("❌ No cards to export.");
@@ -663,7 +663,7 @@ export async function handleSetAdminCommand(interaction: ChatInputCommandInterac
     }
     try {
       const { created, skipped, failed, errors, setName } =
-        await importCardsFromJson(jsonText, file.name, nameOverride);
+        await importCardsFromJson(jsonText, file.name, interaction.guildId ?? "unknown", nameOverride);
       await interaction.editReply(
         `✅ **Set loaded** — \`${setName}\`\n` +
         `➕ Created: **${created}**\n` +
@@ -681,13 +681,13 @@ export async function handleSetAdminCommand(interaction: ChatInputCommandInterac
   if (sub === "unload") {
     const setName = interaction.options.getString("set", true).toLowerCase().trim();
     if (setName === DEFAULTS_SET_NAME) {
-      const { removed } = await unloadDefaultCards();
+      const { removed } = await unloadDefaultCards(guildId);
       await interaction.editReply(
         `✅ Removed **${removed}** built-in default cards.\nThey will **not** come back on restart. Re-load anytime with \`/setadmin load file:<.json>\` or the \`/setup\` panel.`,
       );
       return;
     }
-    const { removed } = await deleteSetByName(setName);
+      const { removed } = await deleteSetByName(setName, guildId);
     if (removed === 0) {
       await interaction.editReply(`❌ No set named \`${setName}\`. Try \`/setadmin listloaded\`.`);
       return;
@@ -701,7 +701,7 @@ export async function handleSetAdminCommand(interaction: ChatInputCommandInterac
 
   // ── listloaded (legacy /listsets replacement) ────────────────────────────────
   if (sub === "listloaded") {
-    const sets = await listSets();
+    const sets = await listSets(guildId);
     if (sets.length === 0) {
       await interaction.editReply("📦 No card sets loaded.");
       return;

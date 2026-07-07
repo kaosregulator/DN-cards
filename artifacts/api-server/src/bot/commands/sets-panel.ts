@@ -31,7 +31,7 @@ function ensureAdminInline(interaction: ButtonInteraction): boolean {
 
 // ── Embed builder ─────────────────────────────────────────────────────────────
 async function buildHubEmbed(guildId: string, selectedSetId?: number): Promise<EmbedBuilder> {
-  const [sets, activeSet] = await Promise.all([listSetsV2(), getActiveSet(guildId)]);
+  const [sets, activeSet] = await Promise.all([listSetsV2(guildId), getActiveSet(guildId)]);
   const embed = new EmbedBuilder()
     .setTitle("🗂️ Set Manager")
     .setColor(0x5865f2);
@@ -126,7 +126,7 @@ function buildGlobalRow() {
 }
 
 async function buildPanelPayload(guildId: string, selectedSetId?: number) {
-  const [sets, activeSet] = await Promise.all([listSetsV2(), getActiveSet(guildId)]);
+  const [sets, activeSet] = await Promise.all([listSetsV2(guildId), getActiveSet(guildId)]);
   const activeId = activeSet?.id;
   const embed = await buildHubEmbed(guildId, selectedSetId);
   const components: ActionRowBuilder<any>[] = [];
@@ -212,7 +212,7 @@ export async function handleSetsHubButton(interaction: ButtonInteraction): Promi
 
   // ── Export ALL — sends a file, then refreshes the panel ───────────────────
   if (action === "exportall") {
-    const all = await listSetsV2();
+    const all = await listSetsV2(guildId);
     if (all.length === 0) {
       await interaction.followUp({ content: "❌ No sets to export yet.", flags: MessageFlags.Ephemeral });
       return;
@@ -223,7 +223,7 @@ export async function handleSetsHubButton(interaction: ButtonInteraction): Promi
     };
     let totalCards = 0;
     for (const { set } of all) {
-      const cards = await getCardsInSet(set.id);
+      const cards = await getCardsInSet(set.id, guildId);
       bundle.sets.push(buildSingleSetPayload(set, cards));
       totalCards += cards.length;
     }
@@ -252,7 +252,7 @@ export async function handleSetsHubButton(interaction: ButtonInteraction): Promi
     await setActiveSet(guildId, argId);
     const payload = await buildPanelPayload(guildId, argId);
     await interaction.editReply(payload);
-    const sets = await listSetsV2();
+    const sets = await listSetsV2(guildId);
     const set = sets.find(s => s.set.id === argId);
     if (set) {
       const warn = set.cardCount === 0 ? " ⚠️ This set has no cards yet — add some with `/setadmin add`." : "";
@@ -263,7 +263,7 @@ export async function handleSetsHubButton(interaction: ButtonInteraction): Promi
 
   // ── View Cards — send as new ephemeral followUp (hub panel stays intact) ──
   if (action === "view") {
-    const cards = await getCardsInSet(argId);
+    const cards = await getCardsInSet(argId, guildId);
     if (cards.length === 0) {
       await interaction.followUp({ content: "📭 No cards in this set yet. Add some with `/setadmin add`.", flags: MessageFlags.Ephemeral });
       return;
@@ -276,7 +276,7 @@ export async function handleSetsHubButton(interaction: ButtonInteraction): Promi
       else cur = cur ? cur + "\n" + l : l;
     }
     if (cur) chunks.push(cur);
-    const sets = await listSetsV2();
+    const sets = await listSetsV2(guildId);
     const set = sets.find(s => s.set.id === argId);
     const title = `**${set?.set.name ?? "Set"} — ${cards.length} card${cards.length === 1 ? "" : "s"}**\n`;
     await interaction.followUp({ content: title + (chunks[0] ?? ""), flags: MessageFlags.Ephemeral });
@@ -288,10 +288,10 @@ export async function handleSetsHubButton(interaction: ButtonInteraction): Promi
 
   // ── Export single set ─────────────────────────────────────────────────────
   if (action === "export") {
-    const sets = await listSetsV2();
+    const sets = await listSetsV2(guildId);
     const entry = sets.find(s => s.set.id === argId);
     if (!entry) { await interaction.followUp({ content: "❌ Set not found.", flags: MessageFlags.Ephemeral }); return; }
-    const cards = await getCardsInSet(argId);
+    const cards = await getCardsInSet(argId, guildId);
     const payload = JSON.stringify({ exportedAt: new Date().toISOString(), ...buildSingleSetPayload(entry.set, cards) }, null, 2);
     const safeName = entry.set.name.replace(/[^a-z0-9_-]/gi, "_").toLowerCase();
     const file = new AttachmentBuilder(Buffer.from(payload, "utf8"), { name: `${safeName}.json` });
@@ -310,11 +310,11 @@ export async function handleSetsHubButton(interaction: ButtonInteraction): Promi
       await interaction.followUp({ content: GLOBAL_ONLY_MSG, flags: MessageFlags.Ephemeral });
       return;
     }
-    const sets = await listSetsV2();
+    const sets = await listSetsV2(guildId);
     const entry = sets.find(s => s.set.id === argId);
     if (!entry) { await interaction.followUp({ content: "❌ Set not found.", flags: MessageFlags.Ephemeral }); return; }
     const next = !entry.set.awardsCompletion;
-    await setSetAwardsCompletion(argId, next);
+    await setSetAwardsCompletion(argId, next, guildId);
     const payload = await buildPanelPayload(guildId, argId);
     await interaction.editReply(payload);
     const msg = next
@@ -340,7 +340,7 @@ export async function handleSetsHubModal(interaction: ModalSubmitInteraction): P
   const name = interaction.fields.getTextInputValue("sets:name").trim();
   const desc = interaction.fields.getTextInputValue("sets:desc").trim() || undefined;
   if (!name) { await interaction.editReply("❌ Set name cannot be empty."); return; }
-  const set = await createSet(name, desc);
+  const set = await createSet(name, desc, guildId);
   await interaction.editReply(
     `✅ Created set **${set.name}**. Add cards with \`/setadmin add set:${set.name} card:<Name>\`.`,
   );

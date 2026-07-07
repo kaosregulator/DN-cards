@@ -81,7 +81,7 @@ export async function handleEventCommand(
       return;
     }
 
-    const card = await getCardByName(cardName);
+    const card = await getCardByName(cardName, guildId);
     if (!card) {
       await interaction.editReply(`❌ Card "**${cardName}**" not found.`);
       return;

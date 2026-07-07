@@ -6,8 +6,22 @@ import { ACHIEVEMENTS } from "../bot/achievements";
 import { getCollectorRank, getNextRank, SHINY_MULTIPLIER, getRarityOrder, type Rarity } from "../bot/cards-data";
 import { getBotClient } from "../bot/spawn-manager";
 import { getCardDisplayRarity, getEffectiveDropWeight, getGuildDropChanceRuntime, getRarityContext } from "../bot/db";
+import { HOME_GUILD_ID } from "../bot/home-guild.js";
 
 const router: IRouter = Router();
+
+function homeGuildOnly(req: Request, res: Response): { guildId: string } | null {
+  if (!HOME_GUILD_ID) {
+    res.status(503).json({ error: "Dashboard is not configured (HOME_GUILD_ID missing)." });
+    return null;
+  }
+  const requested = req.params.guildId;
+  if (requested && requested !== HOME_GUILD_ID) {
+    res.status(403).json({ error: "This dashboard is only available for the home guild." });
+    return null;
+  }
+  return { guildId: HOME_GUILD_ID };
+}
 
 const snowflakeSchema = z.string().regex(/^\d{15,21}$/, "must be a Discord snowflake");
 const guildParams = z.object({ guildId: snowflakeSchema });
@@ -38,15 +52,17 @@ function slugifyDisplayCategory(raw: string): string {
 // unaffected by anything in this endpoint.
 // Also joins `sets` memberships so the client can display which set(s) a card
 // belongs to without ever touching the removed `cards.set_name` column.
-router.get("/cards", async (_req, res) => {
-  const homeGuildId = process.env["HOME_GUILD_ID"] ?? null;
+router.get("/cards", async (req, res) => {
+  const home = homeGuildOnly(req, res);
+  if (!home) return;
+  const homeGuildId = home.guildId;
 
   const [rows, memberships, customOverrides, rarityLabels, rarityRuntime] = await Promise.all([
     db
       .select({ card: cardsTable, override: cardDisplayOverridesTable })
       .from(cardsTable)
       .leftJoin(cardDisplayOverridesTable, eq(cardDisplayOverridesTable.cardId, cardsTable.id))
-      .where(eq(cardsTable.isArchived, false))
+      .where(and(eq(cardsTable.isArchived, false), eq(cardsTable.guildId, homeGuildId)))
       .orderBy(cardsTable.id),
     db
       .select({ cardId: cardSetMembershipsTable.cardId, setId: setsTable.id, setName: setsTable.name })
@@ -157,6 +173,8 @@ router.get("/cards", async (_req, res) => {
 
 // ── Guild leaderboard (top 25 by net worth) ───────────────────────────────────
 router.get("/guilds/:guildId/leaderboard", async (req, res) => {
+  const home = homeGuildOnly(req, res);
+  if (!home) return;
   const params = parseParams(guildParams, req, res);
   if (!params) return;
   const { guildId } = params;
@@ -224,6 +242,8 @@ router.get("/guilds/:guildId/leaderboard", async (req, res) => {
 
 // ── User profile (collection + currency + achievements + rank) ────────────────
 router.get("/guilds/:guildId/users/:userId", async (req, res) => {
+  const home = homeGuildOnly(req, res);
+  if (!home) return;
   const params = parseParams(guildUserParams, req, res);
   if (!params) return;
   const { guildId, userId } = params;
@@ -313,6 +333,8 @@ router.get("/guilds/:guildId/users/:userId", async (req, res) => {
 
 // ── Guild summary (counts for dashboard hero) ─────────────────────────────────
 router.get("/guilds/:guildId/summary", async (req, res) => {
+  const home = homeGuildOnly(req, res);
+  if (!home) return;
   const params = parseParams(guildParams, req, res);
   if (!params) return;
   const { guildId } = params;
@@ -322,7 +344,7 @@ router.get("/guilds/:guildId/summary", async (req, res) => {
       cardsHeld: sql<number>`coalesce(sum(${collectionsTable.count} + ${collectionsTable.shinyCount})::int, 0)`,
       shinyCards: sql<number>`coalesce(sum(${collectionsTable.shinyCount})::int, 0)`,
     }).from(collectionsTable).where(eq(collectionsTable.guildId, guildId)),
-    db.select({ total: sql<number>`count(*)::int` }).from(cardsTable).where(eq(cardsTable.isArchived, false)),
+    db.select({ total: sql<number>`count(*)::int` }).from(cardsTable).where(and(eq(cardsTable.isArchived, false), eq(cardsTable.guildId, guildId))),
     db.select({
       packs: sql<number>`coalesce(sum(${userCurrencyTable.packsOpened})::int, 0)`,
       burns: sql<number>`coalesce(sum(${userCurrencyTable.cardsBurned})::int, 0)`,

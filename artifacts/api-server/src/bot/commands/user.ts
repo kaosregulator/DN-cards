@@ -322,7 +322,7 @@ export async function handleUserCommand(
   if (sub === "info") {
     const cardName = interaction.options.getString("name", true);
     const [rawCards, runtime, infoDisplayMap] = await Promise.all([
-      getAllCards(),
+      getAllCards(guildId),
       getGuildDropChanceRuntime(guildId),
       getRarityDisplayOverrides(guildId),
     ]);
@@ -391,7 +391,7 @@ export async function handleUserCommand(
   // stats). Same paginator as /collection and /catalog.
   if (sub === "list") {
     const [rawCards, runtime, listDisplayMap] = await Promise.all([
-      getAllCards(),
+      getAllCards(guildId),
       getGuildDropChanceRuntime(guildId),
       getRarityDisplayOverrides(guildId),
     ]);
@@ -548,7 +548,7 @@ export async function handleUserCommand(
     const category = interaction.options.getString("category") as Rarity | "event" | "limited" | "all" | null;
     const target = interaction.options.getUser("user") ?? interaction.user;
     const [allCards, collection] = await Promise.all([
-      getAllCards(),
+      getAllCards(guildId),
       getUserCollection(guildId, target.id),
     ]);
     const ownedById = new Map<number, number>();
@@ -801,7 +801,7 @@ export async function handleUserCommand(
     const requested = interaction.options.getInteger("amount") ?? 1;
     const burnAll = interaction.options.getBoolean("all") ?? false;
     const wantShiny = interaction.options.getBoolean("shiny") ?? false;
-    const card = await getCardByName(cardName);
+    const card = await getCardByName(cardName, guildId);
     if (!card) { await interaction.editReply(`❌ "**${cardName}**" not found. Check \`/cards list\`.`); return; }
     const rarity = card.rarity as Rarity;
     const { count, shinyCount } = await getUserOwnedCount(guildId, interaction.user.id, card.id);

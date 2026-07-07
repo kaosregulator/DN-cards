@@ -213,10 +213,10 @@ export async function handleEditUserModal(interaction: ModalSubmitInteraction): 
   let cardId: number | undefined;
   let resolvedCardName: string | undefined;
   if (cardName) {
-    let card = await getCardByName(cardName);
+    let card = await getCardByName(cardName, guildId);
     if (!card) {
       // Fuzzy fallback: partial case-insensitive match across the full roster
-      const allCards = await getAllCards();
+      const allCards = await getAllCards(guildId);
       const q = cardName.toLowerCase();
       const matches = allCards.filter(c => c.name.toLowerCase().includes(q));
       if (matches.length === 1) {

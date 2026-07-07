@@ -356,7 +356,7 @@ export async function startBot() {
           }
 
           // Look up the card name for any public announcement.
-          const allCards = await getAllCards();
+          const allCards = await getAllCards(guildId);
           const card = allCards.find(c => c.id === cardId);
           const cardName = card?.name ?? "the card";
           const burnValue = card?.burnValue ?? 0;

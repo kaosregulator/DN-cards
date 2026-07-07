@@ -172,7 +172,7 @@ async function drawPack(tier: PackTier, size: number, guildId: string): Promise<
   // keeps the built-in pack tiers (Basic/Premium/Legendary) focused on the
   // built-in rarity ladder unless an admin explicitly opts a custom tier in.
   const all = applyRarityContextAll(
-    (await getAllCards()).filter(c => {
+    (await getAllCards(guildId)).filter(c => {
       if (!(c.droppable && c.inPacks && !c.isArchived && !c.isEventExclusive)) return false;
       if (c.isLimitedEdition && c.maxCopies != null && c.totalMinted >= c.maxCopies) return false;
       const customTier = ctx.customByCard.get(c.id);
@@ -432,9 +432,9 @@ async function refundClaim(
 }
 
 // ── Custom pack draw ─────────────────────────────────────────────────────────
-async function drawCustomPack(pack: CustomPack, ctx: RarityContext): Promise<Card[]> {
+async function drawCustomPack(pack: CustomPack, ctx: RarityContext, guildId: string): Promise<Card[]> {
   const all = applyRarityContextAll(
-    (await getAllCards()).filter(c => {
+    (await getAllCards(guildId)).filter(c => {
       if (!(c.droppable && c.inPacks && !c.isArchived && !c.isEventExclusive)) return false;
       if (c.isLimitedEdition && c.maxCopies != null && c.totalMinted >= c.maxCopies) return false;
       return true;
@@ -520,7 +520,7 @@ export async function handleCustomPack(
 
   // Draw cards first (pure read — no cost consumed if pool is empty)
   const ctx = await getRarityContext(guildId);
-  const cards = await drawCustomPack(pack, ctx);
+  const cards = await drawCustomPack(pack, ctx, guildId);
   if (cards.length === 0) {
     const packCards = await getCustomPackCards(pack.id);
     const hint = packCards.length > 0

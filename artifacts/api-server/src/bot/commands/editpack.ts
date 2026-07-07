@@ -83,7 +83,7 @@ export async function handleEditPackCommand(interaction: ChatInputCommandInterac
   const addRarity = opts.getString("add_rarity") as Rarity | null;
   const removeRarity = opts.getString("remove_rarity") as Rarity | null;
 
-  const allCards = await getAllCards();
+  const allCards = await getAllCards(guildId);
   const cardByName = (name: string) => allCards.find(c => c.name.toLowerCase() === name.toLowerCase());
 
   const addedCards: string[] = [];

@@ -318,7 +318,7 @@ async function buildCardDetailScreen(
 } | null> {
   const [collection, rawCards, ctx, settings, displayMap] = await Promise.all([
     getUserCollection(guildId, userId),
-    getAllCards(),
+    getAllCards(guildId),
     getRarityContext(guildId),
     getOrCreateGuildSettings(guildId),
     getRarityDisplayOverrides(guildId),
@@ -547,7 +547,7 @@ async function buildBurnConfirmScreen(
   components: ActionRowBuilder<MessageActionRowComponentBuilder>[];
 } | null> {
   const [rawCards, ctx, settings, displayMap] = await Promise.all([
-    getAllCards(),
+    getAllCards(guildId),
     getRarityContext(guildId),
     getOrCreateGuildSettings(guildId),
     getRarityDisplayOverrides(guildId),
@@ -934,7 +934,7 @@ export async function handleMenuCommand(interaction: ChatInputCommandInteraction
           const type = rest[1]; // "1" | "shiny"
           await i.deferUpdate();
 
-          const rawCards = await getAllCards();
+          const rawCards = await getAllCards(guildId);
           const ctx2 = await getRarityContext(guildId);
           const cards2 = applyRarityContextAll(rawCards, ctx2);
           const card2 = cards2.find(c => c.id === cardId);
@@ -980,7 +980,7 @@ export async function handleMenuCommand(interaction: ChatInputCommandInteraction
           await i.deferUpdate();
 
           const isShiny = type === "shiny";
-          const rawCards2 = await getAllCards();
+          const rawCards2 = await getAllCards(guildId);
           const ctx3 = await getRarityContext(guildId);
           const cards3 = applyRarityContextAll(rawCards2, ctx3);
           const card3 = cards3.find(c => c.id === cardId);
@@ -1024,7 +1024,7 @@ export async function handleMenuCommand(interaction: ChatInputCommandInteraction
           await i.deferUpdate();
           const { addWishlist } = await import("../db.js");
           const added = await addWishlist(guildId, userId, cardId);
-          const rawCards3 = await getAllCards();
+          const rawCards3 = await getAllCards(guildId);
           const ctx4 = await getRarityContext(guildId);
           const cards4 = applyRarityContextAll(rawCards3, ctx4);
           const card4 = cards4.find(c => c.id === cardId);
