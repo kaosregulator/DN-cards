@@ -1,18 +1,13 @@
 /**
  * home-guild.ts — Cross-guild tenant isolation guard
  *
- * Cards and sets are globally shared data (no guildId column on cards or sets).
- * Any guild that adds the bot would otherwise allow its owner/admins to mutate
- * shared data affecting every other community.
+ * Cards and sets are owned per-guild. The home guild keeps its own cards/sets
+ * (and is the only guild that can use the admin dashboard), but every other
+ * guild is a completely separate tenant: they only see and mutate cards/sets
+ * that belong to their own server.
  *
- * HOME_GUILD_ID designates the single Discord server authorised to run commands
- * that create, edit, or delete globally shared records (cards table,
- * sets table, card_set_memberships table).
- *
- * Guild-scoped operations remain available from ANY server:
- *   /setadmin active|deactivate|view|showweights|list
- *   /rarity, /embed, /config, /adminhub, /setup
- *   gameplay commands (/drop, /give, /event, /daily, /pack, …)
+ * HOME_GUILD_ID designates the single Discord server that owns the shared
+ * roster and runs the dashboard. It is still isolated from other guilds' data.
  *
  * How to find your guild ID:
  *   Discord → right-click the server icon (Developer Mode on) → Copy Server ID
@@ -22,27 +17,23 @@ export const HOME_GUILD_ID: string | null =
   process.env["HOME_GUILD_ID"]?.trim() || null;
 
 export function isHomeGuild(guildId: string): boolean {
-  // When HOME_GUILD_ID is not configured, allow all guilds (fail-open).
-  // The restriction only activates once you explicitly set the env var,
-  // at which point only that one server can mutate globally shared data.
+  // When HOME_GUILD_ID is not configured, treat every guild as home. This only
+  // affects the dashboard gate; visibility/ownership below are still strict
+  // per-guild, so a missing env var does not leak data across servers.
   if (!HOME_GUILD_ID) return true;
   return guildId === HOME_GUILD_ID;
 }
 
-// A card/set is visible to a guild if it belongs to the home guild (shared)
-// or to the viewing guild itself. The home guild can see everything.
+// A card/set is visible to a guild only if it belongs to that guild.
+// No cross-guild visibility, including from the home guild.
 export function isVisibleTo(record: { guildId: string }, viewerGuildId: string | null | undefined): boolean {
-  if (!HOME_GUILD_ID) return true;
-  if (record.guildId === HOME_GUILD_ID) return true;
-  if (viewerGuildId && record.guildId === viewerGuildId) return true;
-  if (viewerGuildId && isHomeGuild(viewerGuildId)) return true;
-  return false;
+  if (!viewerGuildId) return false;
+  return record.guildId === viewerGuildId;
 }
 
-// A card/set can be mutated by a guild if that guild owns it or is the home guild.
+// A card/set can be mutated only by its owning guild.
 export function isOwnedBy(record: { guildId: string }, actorGuildId: string): boolean {
-  if (!HOME_GUILD_ID) return true;
-  if (isHomeGuild(actorGuildId)) return true;
+  if (!actorGuildId) return false;
   return record.guildId === actorGuildId;
 }
 

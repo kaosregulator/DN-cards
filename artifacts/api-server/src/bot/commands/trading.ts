@@ -114,7 +114,7 @@ export async function handleTrade(interaction: ChatInputCommandInteraction): Pro
   // Validate offered card
   let offeredCard = null as Awaited<ReturnType<typeof getCardByName>> | null;
   if (offeredName) {
-    offeredCard = await getCardByName(offeredName);
+    offeredCard = await getCardByName(offeredName, guildId);
     if (!offeredCard) { await interaction.editReply(`❌ Card "**${offeredName}**" not found. Check \`/cards list\`.`); return; }
     const entry = await getCollectionEntry(guildId, interaction.user.id, offeredCard.id);
     if (!entry || entry.count < 1) { await interaction.editReply(`❌ You don't have **${offeredCard.name}** in your collection.`); return; }
@@ -123,7 +123,7 @@ export async function handleTrade(interaction: ChatInputCommandInteraction): Pro
   // Validate requested card
   let requestedCard = null as Awaited<ReturnType<typeof getCardByName>> | null;
   if (requestedName) {
-    requestedCard = await getCardByName(requestedName);
+    requestedCard = await getCardByName(requestedName, guildId);
     if (!requestedCard) { await interaction.editReply(`❌ Card "**${requestedName}**" not found. Check \`/cards list\`.`); return; }
     const entry = await getCollectionEntry(guildId, target.id, requestedCard.id);
     if (!entry || entry.count < 1) { await interaction.editReply(`❌ <@${target.id}> doesn't have **${requestedCard.name}**.`); return; }

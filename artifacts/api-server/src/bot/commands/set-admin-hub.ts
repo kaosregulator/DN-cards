@@ -17,7 +17,6 @@ import {
   getRarityContext,
 } from "../db.js";
 import { buildSingleSetPayload } from "./sets-admin.js";
-import { isHomeGuild, GLOBAL_ONLY_MSG } from "../home-guild.js";
 import { RARITY_EMOJI, type Rarity, rarityLabel, rarityEmoji } from "../cards-data.js";
 import { getRarityDisplayOverrides } from "../db.js";
 
@@ -379,10 +378,6 @@ export async function handleSetAdminHubWeightSelect(interaction: StringSelectMen
   if (!interaction.guild) return;
   await interaction.deferUpdate();
   if (!await ensureAdmin(interaction)) return;
-  if (!isHomeGuild(interaction.guild.id)) {
-    await interaction.followUp({ content: GLOBAL_ONLY_MSG, flags: MessageFlags.Ephemeral });
-    return;
-  }
 
   // customId: setadminhub:weight:${setId}:${rarity}
   const parts = interaction.customId.split(":");
@@ -418,10 +413,7 @@ export async function handleSetAdminHubButton(interaction: ButtonInteraction): P
   // which includes DB-backed bot admins, so anyone who reached this panel
   // was already authorized at open time.
   if (action === "create") {
-    if (!isHomeGuild(guildId)) {
-      await interaction.reply({ content: GLOBAL_ONLY_MSG, flags: MessageFlags.Ephemeral });
-      return;
-    }
+
     const modal = new ModalBuilder()
       .setCustomId("setadminhub:modal:create")
       .setTitle("Create a New Set")
@@ -449,10 +441,7 @@ export async function handleSetAdminHubButton(interaction: ButtonInteraction): P
   }
 
   if (action === "rename" && setId !== undefined) {
-    if (!isHomeGuild(guildId)) {
-      await interaction.reply({ content: GLOBAL_ONLY_MSG, flags: MessageFlags.Ephemeral });
-      return;
-    }
+
     const modal = new ModalBuilder()
       .setCustomId(`setadminhub:modal:rename:${setId}`)
       .setTitle("Rename Set")
@@ -472,10 +461,7 @@ export async function handleSetAdminHubButton(interaction: ButtonInteraction): P
   }
 
   if ((action === "addcard" || action === "removecard") && setId !== undefined) {
-    if (!isHomeGuild(guildId)) {
-      await interaction.reply({ content: GLOBAL_ONLY_MSG, flags: MessageFlags.Ephemeral });
-      return;
-    }
+
     const isAdd = action === "addcard";
     const modal = new ModalBuilder()
       .setCustomId(`setadminhub:modal:${action}:${setId}`)
@@ -496,10 +482,7 @@ export async function handleSetAdminHubButton(interaction: ButtonInteraction): P
   }
 
   if ((action === "bulkadd" || action === "bulkremove") && setId !== undefined) {
-    if (!isHomeGuild(guildId)) {
-      await interaction.reply({ content: GLOBAL_ONLY_MSG, flags: MessageFlags.Ephemeral });
-      return;
-    }
+
     const isAdd = action === "bulkadd";
     const modal = new ModalBuilder()
       .setCustomId(`setadminhub:modal:${action}:${setId}`)
@@ -520,10 +503,7 @@ export async function handleSetAdminHubButton(interaction: ButtonInteraction): P
   }
 
   if (action === "import") {
-    if (!isHomeGuild(guildId)) {
-      await interaction.reply({ content: GLOBAL_ONLY_MSG, flags: MessageFlags.Ephemeral });
-      return;
-    }
+
     const modal = new ModalBuilder()
       .setCustomId("setadminhub:modal:import")
       .setTitle("Import Set from URL")
@@ -552,10 +532,7 @@ export async function handleSetAdminHubButton(interaction: ButtonInteraction): P
 
   // ── Assign All: defer as followUp (can't editReply during deferUpdate with file) ─
   if (action === "assignall" && setId !== undefined) {
-    if (!isHomeGuild(guildId)) {
-      await interaction.reply({ content: GLOBAL_ONLY_MSG, flags: MessageFlags.Ephemeral });
-      return;
-    }
+
     await interaction.deferUpdate();
     if (!await ensureAdmin(interaction)) return;
     const [allUnassigned, alreadyInSet] = await Promise.all([getUnassignedCards(guildId), getCardsInSet(setId, guildId)]);
@@ -668,10 +645,7 @@ export async function handleSetAdminHubButton(interaction: ButtonInteraction): P
 
   // ── Delete set ────────────────────────────────────────────────────────────
   if (action === "delete") {
-    if (!isHomeGuild(guildId)) {
-      await interaction.followUp({ content: GLOBAL_ONLY_MSG, flags: MessageFlags.Ephemeral });
-      return;
-    }
+
     const entry = (await listSetsV2(guildId)).find(s => s.set.id === setId);
     if (!entry) {
       await interaction.followUp({ content: "❌ Set not found.", flags: MessageFlags.Ephemeral });
@@ -689,10 +663,7 @@ export async function handleSetAdminHubButton(interaction: ButtonInteraction): P
 
   // ── Toggle Showcase ───────────────────────────────────────────────────────
   if (action === "showcase") {
-    if (!isHomeGuild(guildId)) {
-      await interaction.followUp({ content: GLOBAL_ONLY_MSG, flags: MessageFlags.Ephemeral });
-      return;
-    }
+
     const sets = await listSetsV2(guildId);
     const entry = sets.find(s => s.set.id === setId);
     if (!entry) {
@@ -765,10 +736,7 @@ export async function handleSetAdminHubButton(interaction: ButtonInteraction): P
 
   // ── Clear all set spawn % overrides ────────────────────────────────────────────
   if (action === "clearweights") {
-    if (!isHomeGuild(guildId)) {
-      await interaction.followUp({ content: GLOBAL_ONLY_MSG, flags: MessageFlags.Ephemeral });
-      return;
-    }
+
     await setSetRarityWeights(setId, null, guildId);
     const payload = await buildWeightsPayload(setId, guildId);
     if (!payload) return;
@@ -795,10 +763,7 @@ export async function handleSetAdminHubModal(interaction: ModalSubmitInteraction
 
   // ── Create ────────────────────────────────────────────────────────────────
   if (action === "create") {
-    if (!isHomeGuild(guildId)) {
-      await interaction.followUp({ content: GLOBAL_ONLY_MSG, flags: MessageFlags.Ephemeral });
-      return;
-    }
+
     const name = interaction.fields.getTextInputValue("setadminhub:name").trim();
     const desc = interaction.fields.getTextInputValue("setadminhub:desc").trim() || undefined;
     if (!name) {
@@ -823,10 +788,7 @@ export async function handleSetAdminHubModal(interaction: ModalSubmitInteraction
   // ── Rename ────────────────────────────────────────────────────────────────
   if (action === "rename") {
     const setId = parseInt(parts[3]!, 10);
-    if (!isHomeGuild(guildId)) {
-      await interaction.followUp({ content: GLOBAL_ONLY_MSG, flags: MessageFlags.Ephemeral });
-      return;
-    }
+
     const newName = interaction.fields.getTextInputValue("setadminhub:newname").trim();
     if (!newName) {
       await interaction.followUp({ content: "❌ Name cannot be empty.", flags: MessageFlags.Ephemeral });
@@ -854,10 +816,7 @@ export async function handleSetAdminHubModal(interaction: ModalSubmitInteraction
   // ── Add Card ──────────────────────────────────────────────────────────────
   if (action === "addcard") {
     const setId = parseInt(parts[3]!, 10);
-    if (!isHomeGuild(guildId)) {
-      await interaction.followUp({ content: GLOBAL_ONLY_MSG, flags: MessageFlags.Ephemeral });
-      return;
-    }
+
     const cardName = interaction.fields.getTextInputValue("setadminhub:cardname").trim();
     const { getCardByName } = await import("../db.js");
     const card = await getCardByName(cardName, guildId);
@@ -879,10 +838,7 @@ export async function handleSetAdminHubModal(interaction: ModalSubmitInteraction
   // ── Remove Card ───────────────────────────────────────────────────────────
   if (action === "removecard") {
     const setId = parseInt(parts[3]!, 10);
-    if (!isHomeGuild(guildId)) {
-      await interaction.followUp({ content: GLOBAL_ONLY_MSG, flags: MessageFlags.Ephemeral });
-      return;
-    }
+
     const cardName = interaction.fields.getTextInputValue("setadminhub:cardname").trim();
     const { getCardByName } = await import("../db.js");
     const card = await getCardByName(cardName, guildId);
@@ -904,10 +860,7 @@ export async function handleSetAdminHubModal(interaction: ModalSubmitInteraction
   // ── Bulk Add ──────────────────────────────────────────────────────────────
   if (action === "bulkadd") {
     const setId = parseInt(parts[3]!, 10);
-    if (!isHomeGuild(guildId)) {
-      await interaction.followUp({ content: GLOBAL_ONLY_MSG, flags: MessageFlags.Ephemeral });
-      return;
-    }
+
     const raw = interaction.fields.getTextInputValue("setadminhub:cardlist");
     const names = raw.split(/[,\n]+/).map(s => s.trim()).filter(s => s.length > 0);
     if (names.length === 0) {
@@ -928,10 +881,7 @@ export async function handleSetAdminHubModal(interaction: ModalSubmitInteraction
   // ── Bulk Remove ───────────────────────────────────────────────────────────
   if (action === "bulkremove") {
     const setId = parseInt(parts[3]!, 10);
-    if (!isHomeGuild(guildId)) {
-      await interaction.followUp({ content: GLOBAL_ONLY_MSG, flags: MessageFlags.Ephemeral });
-      return;
-    }
+
     const raw = interaction.fields.getTextInputValue("setadminhub:cardlist");
     const names = raw.split(/[,\n]+/).map(s => s.trim()).filter(s => s.length > 0);
     if (names.length === 0) {
@@ -951,10 +901,7 @@ export async function handleSetAdminHubModal(interaction: ModalSubmitInteraction
 
   // ── Import ────────────────────────────────────────────────────────────────
   if (action === "import") {
-    if (!isHomeGuild(guildId)) {
-      await interaction.followUp({ content: GLOBAL_ONLY_MSG, flags: MessageFlags.Ephemeral });
-      return;
-    }
+
 
     const url = interaction.fields.getTextInputValue("setadminhub:url").trim();
     const nameOverride = interaction.fields.getTextInputValue("setadminhub:nameoverride").trim() || undefined;

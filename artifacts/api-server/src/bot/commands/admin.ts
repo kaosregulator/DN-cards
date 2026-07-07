@@ -155,7 +155,7 @@ export async function handleAdminCommand(
     await handleSetAdminHubCommand(interaction);
     return;
   }
-  // /deletecard — permanently removes a card from the global roster.
+  // /deletecard — permanently removes a card from this server's roster.
   if (cmd === "deletecard") {
     await interaction.deferReply({ flags: MessageFlags.Ephemeral });
     if (!(await checkAdmin(interaction))) {
@@ -180,7 +180,7 @@ export async function handleAdminCommand(
     await handleSetAdminCommand(interaction);
     return;
   }
-  // /addcard — same defer-first pattern as /editcard; home guild only.
+  // /addcard — same defer-first pattern as /editcard; creates a server-owned card.
   if (cmd === "addcard") {
     await interaction.deferReply({ flags: MessageFlags.Ephemeral });
     if (!(await checkAdmin(interaction))) {

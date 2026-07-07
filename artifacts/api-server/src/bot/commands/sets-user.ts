@@ -17,7 +17,7 @@ export async function handleSetsUserCommand(interaction: ChatInputCommandInterac
 
   // ── /sets list ───────────────────────────────────────────────────────────
   if (sub === "list") {
-    const sets = await listSetsV2();
+    const sets = await listSetsV2(guildId);
     const active = await getActiveSet(guildId);
     if (sets.length === 0) {
       await interaction.editReply("📭 No card sets defined yet. Ask an admin to create one with `/setadmin create`.");
@@ -45,7 +45,7 @@ export async function handleSetsUserCommand(interaction: ChatInputCommandInterac
       await interaction.editReply("⚠️ No active set selected — random spawns are currently **disabled** on this server.");
       return;
     }
-    const cards = await getCardsInSet(active.id);
+    const cards = await getCardsInSet(active.id, guildId);
     const droppable = cards.filter(c => c.droppable && !c.isArchived).length;
     await interaction.editReply(
       `✦ Active set: \`${active.name}\` — **${cards.length}** cards (**${droppable}** droppable). ` +
@@ -57,10 +57,10 @@ export async function handleSetsUserCommand(interaction: ChatInputCommandInterac
   // ── /sets view name:<set> ────────────────────────────────────────────────
   if (sub === "view") {
     const setName = interaction.options.getString("name", true);
-    const set = await getSetByName(setName);
+    const set = await getSetByName(setName, guildId);
     if (!set) { await interaction.editReply(`❌ No set named \`${setName}\`.`); return; }
     const [cards, active, settings, displayMap, ctx] = await Promise.all([
-      getCardsInSet(set.id),
+      getCardsInSet(set.id, guildId),
       getActiveSet(guildId),
       getOrCreateGuildSettings(guildId),
       getRarityDisplayOverrides(guildId),
@@ -101,7 +101,7 @@ export async function handleSetsUserCommand(interaction: ChatInputCommandInterac
   // ── /sets progress [user] ────────────────────────────────────────────────
   if (sub === "progress") {
     const target = interaction.options.getUser("user") ?? interaction.user;
-    const sets = await listSetsV2();
+    const sets = await listSetsV2(guildId);
     if (sets.length === 0) {
       await interaction.editReply("📭 No card sets defined yet.");
       return;
@@ -112,7 +112,7 @@ export async function handleSetsUserCommand(interaction: ChatInputCommandInterac
     const rows = await Promise.all(
       sets.map(async ({ set, cardCount }) => {
         if (cardCount === 0) return { name: set.name, owned: 0, total: 0, isActive: active?.id === set.id };
-        const cards = await getCardsInSet(set.id);
+        const cards = await getCardsInSet(set.id, guildId);
         const ownedInSet = cards.filter(c => ownedIds.has(c.id)).length;
         return { name: set.name, owned: ownedInSet, total: cards.length, isActive: active?.id === set.id };
       }),

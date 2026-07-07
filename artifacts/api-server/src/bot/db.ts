@@ -237,11 +237,8 @@ export async function unloadDefaultCards(actorGuildId: string): Promise<{ remove
 
 // ── Card Sets ─────────────────────────────────────────────────────────────────
 function setVisibilityFilter(viewerGuildId: string | null | undefined) {
-  if (!HOME_GUILD_ID) return undefined; // fail-open
-  if (viewerGuildId && isHomeGuild(viewerGuildId)) return undefined; // home sees all
-  const filters = [eq(setsTable.guildId, HOME_GUILD_ID)];
-  if (viewerGuildId) filters.push(eq(setsTable.guildId, viewerGuildId));
-  return or(...filters);
+  if (!viewerGuildId) return undefined; // no guild context = unrestricted (internal use)
+  return eq(setsTable.guildId, viewerGuildId);
 }
 
 // Thin wrapper for legacy callers that expect the old `{ setName, cardCount }` shape.
@@ -292,25 +289,15 @@ function slugifySetName(raw: string): string {
     .slice(0, 40);
 }
 
-// Resolve a set by its name (case-insensitive). Returns undefined when missing.
+// Resolve a set by its name (case-insensitive) within the viewer's guild.
+// Returns undefined when missing. No cross-guild fallback.
 export async function getSetByName(name: string, viewerGuildId?: string | null): Promise<CardSet | undefined> {
   const slug = slugifySetName(name);
   if (!slug) return undefined;
-  // Prefer the viewer guild's own set, then fall back to the shared home-guild set.
-  if (viewerGuildId) {
-    const [local] = await db.select().from(setsTable)
-      .where(and(eq(setsTable.guildId, viewerGuildId), sql`lower(${setsTable.name}) = ${slug}`))
-      .limit(1);
-    if (local) return local;
-  }
-  if (HOME_GUILD_ID) {
-    const [home] = await db.select().from(setsTable)
-      .where(and(eq(setsTable.guildId, HOME_GUILD_ID), sql`lower(${setsTable.name}) = ${slug}`))
-      .limit(1);
-    if (home) return home;
-  }
+  if (!viewerGuildId) return undefined;
   const [row] = await db.select().from(setsTable)
-    .where(sql`lower(${setsTable.name}) = ${slug}`).limit(1);
+    .where(and(eq(setsTable.guildId, viewerGuildId), sql`lower(${setsTable.name}) = ${slug}`))
+    .limit(1);
   return row;
 }
 
@@ -364,9 +351,8 @@ export async function deleteSetById(setId: number, actorGuildId: string): Promis
   return { removedMemberships: memberships.length };
 }
 
-// A set can contain cards from its own guild or from the shared home guild.
-// It must never contain a card from a third guild, and only the set's owner
-// (or the home guild) may modify its membership.
+// A set can only contain cards from its own guild. It must never contain a
+// card from another guild, and only the set's owner may modify its membership.
 async function assertMembershipAllowed(setId: number, cardId: number, actorGuildId: string): Promise<void> {
   const [set, card] = await Promise.all([
     getSetById(setId, actorGuildId),
@@ -374,8 +360,8 @@ async function assertMembershipAllowed(setId: number, cardId: number, actorGuild
   ]);
   if (!set || !isOwnedBy(set, actorGuildId)) throw new Error("You can only modify sets owned by your server.");
   if (!card) throw new Error("Card not found or not available in your server.");
-  if (set.guildId !== HOME_GUILD_ID && card.guildId !== HOME_GUILD_ID && set.guildId !== card.guildId) {
-    throw new Error("You cannot add a card from another server into this set.");
+  if (set.guildId !== card.guildId) {
+    throw new Error("Cards in a set must belong to the same server as the set.");
   }
 }
 
@@ -823,11 +809,8 @@ function cardsCacheKey(viewerGuildId: string | null): string {
 }
 
 function cardVisibilityFilter(viewerGuildId: string | null | undefined) {
-  if (!HOME_GUILD_ID) return undefined; // fail-open
-  if (viewerGuildId && isHomeGuild(viewerGuildId)) return undefined; // home sees all
-  const filters = [eq(cardsTable.guildId, HOME_GUILD_ID)];
-  if (viewerGuildId) filters.push(eq(cardsTable.guildId, viewerGuildId));
-  return or(...filters);
+  if (!viewerGuildId) return undefined; // no guild context = unrestricted (internal use)
+  return eq(cardsTable.guildId, viewerGuildId);
 }
 
 export async function getAllCards(viewerGuildId?: string | null | undefined): Promise<Card[]> {
@@ -853,27 +836,14 @@ export function invalidateCardCache(): void {
 
 export async function getCardByName(name: string, viewerGuildId?: string | null | undefined): Promise<Card | undefined> {
   const slug = name.trim().toLowerCase();
-  // Prefer the viewer guild's own card, then fall back to the shared home-guild card.
-  if (viewerGuildId) {
-    const [local] = await db.select().from(cardsTable)
-      .where(and(eq(cardsTable.guildId, viewerGuildId), sql`lower(${cardsTable.name}) = ${slug}`))
-      .limit(1);
-    if (local) return local;
-  }
-  if (HOME_GUILD_ID) {
-    const [home] = await db.select().from(cardsTable)
-      .where(and(eq(cardsTable.guildId, HOME_GUILD_ID), sql`lower(${cardsTable.name}) = ${slug}`))
-      .limit(1);
-    if (home) return home;
-  }
-  if (!HOME_GUILD_ID) {
-    const [card] = await db.select().from(cardsTable)
-      .where(sql`lower(${cardsTable.name}) = ${slug}`).limit(1);
-    if (card) return card;
-  }
-  // Fallback: if the name didn't match cards.name, try card_display_overrides.display_name.
-  // This lets admins use either the gameplay name or the website display-name override
-  // interchangeably in /editcard, /info, /drop, and similar commands.
+  if (!viewerGuildId) return undefined;
+  // Strictly within the viewer's guild.
+  const [local] = await db.select().from(cardsTable)
+    .where(and(eq(cardsTable.guildId, viewerGuildId), sql`lower(${cardsTable.name}) = ${slug}`))
+    .limit(1);
+  if (local) return local;
+  // Fallback: if the name didn't match cards.name, try card_display_overrides.display_name
+  // — but only if the override points to a card visible in this guild.
   const [override] = await db
     .select({ cardId: cardDisplayOverridesTable.cardId })
     .from(cardDisplayOverridesTable)

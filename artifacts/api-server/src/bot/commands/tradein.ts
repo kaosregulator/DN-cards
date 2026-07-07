@@ -167,7 +167,7 @@ export async function handleTradein(interaction: ChatInputCommandInteraction): P
   // Reward pool: cards whose effective rarity key matches the destination
   // tier. For built-in destinations this is `c.rarity === toKey`; for custom
   // destinations it's `customByCard.get(c.id)?.slug === <slug>`.
-  const allCards = applyRarityContextAll(await getAllCards(), ctx);
+  const allCards = applyRarityContextAll(await getAllCards(guildId), ctx);
   const rewardPool = allCards.filter(c =>
     effectiveRarityKey(c, ctx) === toTier.key &&
     !c.isArchived &&
@@ -292,7 +292,7 @@ export async function handleTradein(interaction: ChatInputCommandInteraction): P
     // Roll the reward (re-filter in case stock changed). Re-fetch context so
     // an admin save between confirm and resolve is respected.
     const freshCtx = await getRarityContext(guildId);
-    const freshAll = applyRarityContextAll(await getAllCards(), freshCtx);
+    const freshAll = applyRarityContextAll(await getAllCards(guildId), freshCtx);
     const freshPool = freshAll.filter(c =>
       effectiveRarityKey(c, freshCtx) === toTier.key &&
       !c.isArchived &&

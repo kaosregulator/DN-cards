@@ -38,6 +38,7 @@ import {
   updateCard,
 } from "../db.js";
 import { RARITY_EMOJI, selectMenuEmoji, type Rarity } from "../cards-data.js";
+import { isOwnedBy } from "../home-guild.js";
 import { objectStorageClient } from "../../lib/objectStorage.js";
 
 // ── Permanent image upload ────────────────────────────────────────────────────
@@ -69,7 +70,7 @@ const TYPE_CHOICES = ["tank", "aircraft", "ship", "vehicle", "infantry", "boss",
 
 // ── Preview embed + field-picker select ─────────────────────────────────────
 async function buildPanel(cardId: number, guildId?: string | null): Promise<{ embeds: EmbedBuilder[]; components: ActionRowBuilder<StringSelectMenuBuilder>[] } | null> {
-  const card = await getCardById(cardId);
+  const card = await getCardById(cardId, guildId);
   if (!card) return null;
   const [settings, displayMap, ctx] = guildId
     ? await Promise.all([getOrCreateGuildSettings(guildId), getRarityDisplayOverrides(guildId), getRarityContext(guildId)])
@@ -144,9 +145,15 @@ export async function handleEditCardCommand(interaction: ChatInputCommandInterac
   const maxCopiesOpt = interaction.options.getInteger("max_copies");
   const totalMintedOpt = interaction.options.getInteger("total_minted");
   const limitedOpt = interaction.options.getBoolean("limited");
-  const card = await getCardByName(name, interaction.guildId);
+  const guildId = interaction.guildId;
+  if (!guildId) return;
+  const card = await getCardByName(name, guildId);
   if (!card) {
     await interaction.editReply(`❌ No card named **${name}**. Use autocomplete to pick one.`);
+    return;
+  }
+  if (!isOwnedBy(card, guildId)) {
+    await interaction.editReply(`❌ You can only edit cards owned by this server.`);
     return;
   }
 
@@ -196,9 +203,13 @@ export async function handleEditCardSelect(interaction: StringSelectMenuInteract
     // Boolean toggle: "toggle:<field>"
     if (value.startsWith("toggle:")) {
       await interaction.deferUpdate();
+      if (!interaction.guildId) return;
       const field = value.slice("toggle:".length) as "inPacks" | "droppable" | "isArchived" | "isLimitedEdition";
-      const card = await getCardById(cardId);
-      if (!card) { await interaction.editReply({ content: "❌ Card not found.", embeds: [], components: [] }); return; }
+      const card = await getCardById(cardId, interaction.guildId);
+      if (!card || !isOwnedBy(card, interaction.guildId)) {
+        await interaction.editReply({ content: "❌ Card not found or not owned by this server.", embeds: [], components: [] });
+        return;
+      }
       const cur = (card as unknown as Record<string, boolean>)[field];
       const patch: Parameters<typeof updateCard>[1] = { [field]: !cur };
       // Turning on limited edition without a cap is confusing; default to 50 like /addcard.
@@ -251,6 +262,11 @@ export async function handleEditCardSelect(interaction: StringSelectMenuInteract
   if (sub === "rarity") {
     await interaction.deferUpdate();
     if (!interaction.guildId) return;
+    const card = await getCardById(cardId, interaction.guildId);
+    if (!card || !isOwnedBy(card, interaction.guildId)) {
+      await renderPanel(interaction, cardId, false, "❌ Card not found or not owned by this server.");
+      return;
+    }
     if (value.startsWith("custom:")) {
       const slug = value.slice("custom:".length);
       const ctx = await getRarityContext(interaction.guildId);
@@ -272,6 +288,12 @@ export async function handleEditCardSelect(interaction: StringSelectMenuInteract
   // Type sub-select
   if (sub === "type") {
     await interaction.deferUpdate();
+    if (!interaction.guildId) return;
+    const card = await getCardById(cardId, interaction.guildId);
+    if (!card || !isOwnedBy(card, interaction.guildId)) {
+      await renderPanel(interaction, cardId, false, "❌ Card not found or not owned by this server.");
+      return;
+    }
     await updateCard(cardId, { cardType: value });
     await renderPanel(interaction, cardId, false);
     return;
@@ -292,7 +314,7 @@ const TEXT_FIELDS: Record<string, { title: string; label: string; style: TextInp
 async function openFieldModal(interaction: StringSelectMenuInteraction, cardId: number, field: string): Promise<void> {
   const def = TEXT_FIELDS[field];
   if (!def) { await interaction.deferUpdate().catch(() => {}); return; }
-  const card = await getCardById(cardId);
+  const card = await getCardById(cardId, interaction.guildId);
   // "type" in the UI maps to "cardType" in the card object
   const propKey = field === "type" ? "cardType" : field;
   const current = card ? String((card as unknown as Record<string, unknown>)[propKey] ?? "") : "";
@@ -362,6 +384,16 @@ export async function handleEditCardModal(interaction: ModalSubmitInteraction): 
     default:
       await interaction.reply({ content: "❌ Unknown field.", flags: MessageFlags.Ephemeral });
       return;
+  }
+
+  if (!interaction.guildId) {
+    await interaction.reply({ content: "❌ This command can only be used in a server.", flags: MessageFlags.Ephemeral });
+    return;
+  }
+  const card = await getCardById(cardId, interaction.guildId);
+  if (!card || !isOwnedBy(card, interaction.guildId)) {
+    await interaction.reply({ content: "❌ Card not found or not owned by this server.", flags: MessageFlags.Ephemeral });
+    return;
   }
 
   try {

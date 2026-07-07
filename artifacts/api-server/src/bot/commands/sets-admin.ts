@@ -24,7 +24,6 @@ import { eq, inArray, and } from "drizzle-orm";
 import type { Card, CardSet } from "@workspace/db";
 import { RARITY_EMOJI, type Rarity, rarityLabel, rarityEmoji } from "../cards-data.js";
 import { getRarityDisplayOverrides } from "../db.js";
-import { isHomeGuild, GLOBAL_ONLY_MSG } from "../home-guild.js";
 
 async function checkAdmin(interaction: ChatInputCommandInteraction): Promise<boolean> {
   if (!interaction.guild) return false;
@@ -49,18 +48,6 @@ export async function handleSetAdminCommand(interaction: ChatInputCommandInterac
   const guildId = interaction.guild.id;
   const sub = interaction.options.getSubcommand(true);
 
-  // ── Tenant isolation: gate global mutations to the home guild ────────────
-  // active, deactivate, view, showweights, list, listloaded are guild-scoped
-  // (they touch guild_settings or are read-only). Everything else mutates the
-  // globally shared cards / sets / card_set_memberships tables and is
-  // restricted to the home guild's admins.
-  const GUILD_SCOPED_SUBS = new Set([
-    "active", "deactivate", "view", "showweights", "list", "listloaded",
-  ]);
-  if (!GUILD_SCOPED_SUBS.has(sub) && !isHomeGuild(guildId)) {
-    await interaction.editReply(GLOBAL_ONLY_MSG);
-    return;
-  }
 
   // ── create ───────────────────────────────────────────────────────────────
   if (sub === "create") {
@@ -318,7 +305,7 @@ export async function handleSetAdminCommand(interaction: ChatInputCommandInterac
   if (sub === "clearweight") {
     const setName = interaction.options.getString("set", true);
     const rarity = interaction.options.getString("rarity");
-    const set = await getSetByName(setName);
+    const set = await getSetByName(setName, guildId);
     if (!set) { await interaction.editReply(`❌ No set named \`${setName}\`.`); return; }
     if (rarity) {
       await patchSetRarityWeight(set.id, rarity, null, guildId);
@@ -362,7 +349,7 @@ export async function handleSetAdminCommand(interaction: ChatInputCommandInterac
   if (sub === "showcase") {
     const setName = interaction.options.getString("set", true);
     const enabled = interaction.options.getBoolean("enabled", true);
-    const set = await getSetByName(setName);
+    const set = await getSetByName(setName, guildId);
     if (!set) { await interaction.editReply(`❌ No set named \`${setName}\`.`); return; }
     await setSetAwardsCompletion(set.id, enabled, guildId);
     const cards = await getCardsInSet(set.id, guildId);
