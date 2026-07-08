@@ -35,6 +35,9 @@ export const battleSettingsTable = pgTable("battle_settings", {
   // ── Rules / timers ─────────────────────────────────────────────────────────
   turnTimerSeconds: integer("turn_timer_seconds").notNull().default(45),
   aiOfferSeconds: integer("ai_offer_seconds").notNull().default(60),
+  // Animation pacing: delay in ms between cinematic frames (higher = slower,
+  // more dramatic battles). Admin-tunable "speed controller". 120–4000.
+  frameDelayMs: integer("frame_delay_ms").notNull().default(950),
   // ── Combat formula coefficients (all tunable) ────────────────────────────────
   hpBase: integer("hp_base").notNull().default(750),
   hpPerRarity: integer("hp_per_rarity").notNull().default(220),
@@ -97,6 +100,10 @@ export const battleCardConfigTable = pgTable("battle_card_config", {
   guildId: text("guild_id").notNull(),
   cardId: integer("card_id").notNull().references(() => cardsTable.id, { onDelete: "cascade" }),
   enabled: boolean("enabled").notNull().default(true),
+  // Per-guild BATTLE-ONLY rarity override. Null = use the card's real rarity.
+  // Lets admins fix a card whose battle rarity looks wrong WITHOUT changing the
+  // real card's rarity/worth/economy. Drives both stat derivation and display.
+  rarity: text("rarity"),
   health: integer("health"),
   attack: integer("attack"),
   defense: integer("defense"),
