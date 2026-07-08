@@ -236,6 +236,13 @@ export async function handleAutocomplete(interaction: AutocompleteInteraction): 
     }
 
 
+    // ── /info_mttv — autocomplete MTTV item names ─────────────────────────────
+    if (effectiveCmd === "info_mttv" && focused.name === "item") {
+      const { handleMTTVAutocomplete } = await import("./mttvalues.js");
+      await handleMTTVAutocomplete(interaction, focused);
+      return;
+    }
+
     // ── /dnvalueinfo and /dnvaluecalc — autocomplete item names from DN values ─
     if ((effectiveCmd === "dnvalueinfo" && focused.name === "name") ||
         (effectiveCmd === "dnvaluecalc" && focused.name === "item")) {

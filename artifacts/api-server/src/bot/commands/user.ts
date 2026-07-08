@@ -71,6 +71,14 @@ export async function handleUserCommand(
   sub: string,
 ): Promise<void> {
   if (!interaction.guild) return;
+
+  // /calc is ephemeral and cannot be deferred first — it must reply directly.
+  if (sub === "calc") {
+    const { handleCalc } = await import("./mttvalues.js");
+    await handleCalc(interaction);
+    return;
+  }
+
   await interaction.deferReply(
     EPHEMERAL_COMMANDS.has(sub) ? { flags: MessageFlags.Ephemeral } : {},
   );
@@ -901,6 +909,14 @@ export async function handleUserCommand(
     const { handleThanks } = await import("./rep.js");
     await handleThanks(interaction);
     return;
+  }
+
+  // ── /info_mttv /valuehelp /valuelist (MTTV values) ───────────────────────
+  if (sub === "info_mttv" || sub === "valuehelp" || sub === "valuelist") {
+    const { handleInfoMTTV, handleValueHelp, handleValueList } = await import("./mttvalues.js");
+    if (sub === "info_mttv") { await handleInfoMTTV(interaction); return; }
+    if (sub === "valuehelp") { await handleValueHelp(interaction); return; }
+    if (sub === "valuelist") { await handleValueList(interaction); return; }
   }
 
   // ── /cards help (player commands only — admins use /admin help) ────────────

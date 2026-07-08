@@ -391,6 +391,20 @@ function buildLegacyCommands() {
         .addUserOption(o => o.setName("user").setDescription("Member to thank").setRequired(true)))
       .addSubcommand(sc => sc.setName("top").setDescription("Top 10 most appreciated members on this server"))),
 
+    // ── /info_mttv /calc /valuehelp /valuelist (MTTV values) ─────────────────
+    cmd("info_mttv", "(User) Show details for one MTTV item — prices from MTTV", s => s
+      .addStringOption(o => o.setName("item").setDescription("Item name to look up").setRequired(true).setAutocomplete(true))),
+
+    cmd("calc", "(User) MTTV trade calculator — two-sided offer with buttons — prices from MTTV", s => s),
+
+    cmd("valuehelp", "(User) How MTTV values work — prices from MTTV", s => s),
+
+    cmd("valuelist", "(User) Top MTTV items by value — prices from MTTV", s => s),
+
+    adminCmd("postcalculator", "(Admin) Post a persistent MTTV trade calculator hub in a channel", s => s
+      .addChannelOption(o => o.setName("channel").setDescription("Channel to post the calculator in").setRequired(true))
+      .addChannelOption(o => o.setName("result_channel").setDescription("Optional channel to post calculation results in").setRequired(false))),
+
     // ── /battle (user, Card Battle System) ────────────────────────────────────
     cmd("battle", "(User) Card battles — challenge players or AI, view stats & leaderboards", s => s
       .addSubcommand(sc => sc.setName("fight").setDescription("Start a battle — challenge a player, or leave empty to fight the AI")
@@ -492,6 +506,6 @@ export function buildCommands() {
   ];
 }
 
-export const USER_COMMAND_NAMES = new Set(["cards", "wishlist", "sets", "rep", "thanks", "menu", "dnvaluesearch", "dnvaluelist", "dnvalueinfo", "dnvaluecalc", "dnhelp"]);
+export const USER_COMMAND_NAMES = new Set(["cards", "wishlist", "sets", "rep", "thanks", "menu", "dnvaluesearch", "dnvaluelist", "dnvalueinfo", "dnvaluecalc", "dnhelp", "info_mttv", "calc", "valuehelp", "valuelist"]);
 
-export const ADMIN_COMMAND_NAMES = new Set(["admin", "setadmin", "event", "rarity", "embed", "edituser"]);
+export const ADMIN_COMMAND_NAMES = new Set(["admin", "setadmin", "event", "rarity", "embed", "edituser", "postcalculator"]);

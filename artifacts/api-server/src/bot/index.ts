@@ -26,7 +26,8 @@ import { handleAutocomplete } from "./commands/autocomplete.js";
 import { handleMenuCommand } from "./commands/menu.js";
 import { handleEditPackCommand } from "./commands/editpack.js";
 import { handleDNValuesSearch, handleDNValuesList, handleDNValuesInfo, handleDNValuesAutocomplete, handleDNValuesCalculator, handleDNValuesCalcButton, handleDNValuesCalcModal, handleDNValuesHelp } from "./commands/dnvalues.js";
-import { handlePostCalculator, handleDntCalcButton, handleDntCalcModal } from "./commands/dntcalc.js";
+import { handleDntCalcButton, handleDntCalcModal } from "./commands/dntcalc.js";
+import { handlePostCalculator, handleMttvHubButton, handleMttvHubModal } from "./commands/mttcalc-hub.js";
 import { handleBattleCommand } from "./commands/battle.js";
 import {
   handleBattleAdminCommand, handleBattleAdminButton, handleBattleAdminSelect,
@@ -322,6 +323,11 @@ export async function startBot() {
           await handleDNValuesCalcModal(interaction);
         } else if (interaction.customId.startsWith("dntcalc_modal:")) {
           await handleDntCalcModal(interaction);
+        } else if (interaction.customId.startsWith("mtcalc_modal:")) {
+          const { handleMTTVCalcModal } = await import("./commands/mttvalues.js");
+          await handleMTTVCalcModal(interaction);
+        } else if (interaction.customId.startsWith("mttcalc_hub_modal:")) {
+          await handleMttvHubModal(interaction);
         }
         return;
       }
@@ -339,6 +345,19 @@ export async function startBot() {
 
         if (action === "dntcalc") {
           await handleDntCalcButton(interaction);
+          return;
+        }
+
+        // ── MTTV ephemeral /calc buttons ───────────────────────────────────
+        if (action === "mtcalc") {
+          const { handleMTTVCalcButton } = await import("./commands/mttvalues.js");
+          await handleMTTVCalcButton(interaction);
+          return;
+        }
+
+        // ── MTTV posted calculator hub buttons ────────────────────────────
+        if (action === "mttcalc_hub") {
+          await handleMttvHubButton(interaction);
           return;
         }
 
