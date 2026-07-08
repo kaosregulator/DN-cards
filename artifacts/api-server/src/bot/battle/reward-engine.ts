@@ -1,13 +1,15 @@
-// Reward Engine — end-of-battle payouts, ranking, and safe stake transfers.
+// Reward Engine — end-of-battle payouts and ranking.
 //
-// Uses the EXISTING DN Shards economy (addShards) and the existing collection
-// helpers (removeCardFromUser / restoreCardToUser) so battle rewards and staked
-// card swaps flow through the same money + ownership plumbing as the rest of the
-// bot. Card transfers re-validate ownership at settle time so a card can never
-// be duplicated or moved twice.
+// Uses the EXISTING DN Shards economy (addShards) so battle rewards flow through
+// the same money plumbing as the rest of the bot. Handles shards, XP/levels,
+// ELO rank points, streaks, the daily reward cap, and free packs; it also
+// records the win/loss card counters. The actual staked-card MOVEMENT is owned
+// by the battle-manager's escrow (cards are held out of both collections for the
+// whole battle, then the winner receives both) — so a card can never be
+// duplicated or moved twice.
 
 import type { BattleSettings, BattleProfile, BattleRecord, BattleSeason } from "@workspace/db";
-import { addShards, removeCardFromUser, restoreCardToUser } from "../db.js";
+import { addShards } from "../db.js";
 import {
   updateProfile, getOrCreateProfile, insertBattleRecord,
 } from "./db.js";
@@ -190,23 +192,11 @@ export async function processBattleRewards(args: {
   if (chalOutcome) outcomes.push(chalOutcome);
   if (oppOutcome) outcomes.push(oppOutcome);
 
-  // ── Settle staked card transfer (PvP only) ─────────────────────────────────
-  // Re-validate ownership at settle time: the loser must still own the card,
-  // otherwise (traded/burned mid-battle) the transfer is skipped rather than
-  // minting a phantom copy. Uses removeCardFromUser + restoreCardToUser so the
-  // global mint count is untouched (a transfer, not a new card).
-  if (staked && !args.isAi && args.winnerId && !args.challenger.isAi && !args.opponent.isAi) {
-    const winner = args.winnerId === args.challenger.userId ? args.challenger : args.opponent;
-    const loser = args.winnerId === args.challenger.userId ? args.opponent : args.challenger;
-    const removed = await removeCardFromUser(guildId, loser.userId, loser.cardId);
-    if (removed.success) {
-      await restoreCardToUser(guildId, winner.userId, loser.cardId);
-    } else {
-      // Ownership lost mid-battle — annotate outcomes so the winner isn't
-      // promised a card that couldn't be transferred.
-      for (const o of outcomes) if (o.userId === winner.userId) o.cardWonId = null;
-    }
-  }
+  // NOTE: the actual staked-card movement is handled by the battle-manager's
+  // escrow (cards are held out of both collections for the whole battle, then
+  // the winner receives both). Here we only record the win/loss counters via
+  // the cardWonId / cardLostId flags computed above — no DB card transfer, so a
+  // card can never be duplicated or moved twice.
 
   const record = await insertBattleRecord({
     guildId,

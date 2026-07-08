@@ -231,6 +231,16 @@ export async function sweepStaleLocks(maxAgeMs: number): Promise<void> {
   await db.delete(battleLocksTable).where(sql`${battleLocksTable.createdAt} < ${cutoff}`);
 }
 
+// Every lock row (used by startup escrow recovery — at a cold start there are no
+// in-memory battles, so any surviving row is from a crashed process).
+export async function getAllLocks() {
+  return db.select().from(battleLocksTable);
+}
+
+export async function deleteAllLocks(): Promise<void> {
+  await db.delete(battleLocksTable);
+}
+
 // ── Leaderboard ──────────────────────────────────────────────────────────────
 export async function getBattleLeaderboard(
   guildId: string, sortBy: "rank" | "wins" | "streak" = "rank", limit = 10,

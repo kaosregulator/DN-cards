@@ -18,6 +18,7 @@ import {
 } from "discord.js";
 import { logger } from "../../lib/logger.js";
 import { getBotClient } from "../client-holder.js";
+import { removeCardFromUser, restoreCardToUser } from "../db.js";
 import type { BattleSettings } from "@workspace/db";
 import type { Combatant, MoveType, AiDifficulty, Rarity } from "./types.js";
 import { AI_DIFFICULTIES } from "./types.js";
@@ -28,7 +29,7 @@ import { resolveMove, startOfTurn, availableMoves } from "./combat-engine.js";
 import { chooseAiMove, pickAiCardIndex, AI_LABELS } from "./ai-engine.js";
 import {
   getOwnedBattleCards, getAllBattleCards, acquireBattleLock, releaseBattleLock,
-  getUserLock, sweepStaleLocks, type OwnedBattleCard,
+  getUserLock, sweepStaleLocks, getAllLocks, deleteAllLocks, type OwnedBattleCard,
 } from "./db.js";
 import { processBattleRewards, type ParticipantResult, type RewardOutcome } from "./reward-engine.js";
 import { advanceDaily } from "./daily-engine.js";
@@ -43,6 +44,7 @@ import { formatAchievementLine } from "./achievement-engine.js";
 
 const MAX_BATTLE_MS = 20 * 60 * 1000;   // hard TTL safety net
 const FRAME_MS = 950;                    // delay between animation frames
+const MAX_COMBAT_TURNS = 30;             // sudden-death cap → decide by HP%
 
 const sleep = (ms: number) => new Promise<void>(r => setTimeout(r, ms));
 const AI_ID = "AI";
@@ -80,6 +82,12 @@ interface BattleRuntime {
   turnNumber: number;
   currentSide: 0 | 1;
   staked: boolean;
+  // When a staked PvP battle starts, one copy of each fighter's card is removed
+  // from their collection and held here (escrow). This makes it impossible to
+  // burn/trade a staked card mid-battle to dodge a loss; the copies are settled
+  // (winner takes both / draw returns both) exactly once when the battle ends.
+  escrow: { challengerCardId: number; opponentCardId: number } | null;
+  escrowSettled: boolean;
   log: string[];
   coinCall: string;
 
@@ -202,7 +210,8 @@ export async function startChallenge(
     isAi: !opponent, aiDifficulty: "normal",
     phase: opponent ? "challenge" : "aidiff",
     prep: new Map(), eligibleCache: new Map(),
-    a: null, b: null, turnNumber: 1, currentSide: 0, staked: false, log: [], coinCall: "heads",
+    a: null, b: null, turnNumber: 1, currentSide: 0, staked: false,
+    escrow: null, escrowSettled: false, log: [], coinCall: "heads",
     crits: [0, 0], dmg: [0, 0], wentLow: [false, false],
     turnTimer: null, aiOfferTimer: null, ttlTimer: null, processing: false, createdAt: Date.now(),
   };
@@ -465,6 +474,23 @@ async function beginCombat(rt: BattleRuntime) {
     rt.staked = rt.settings.stakingEnabled && chalPrep.stake && oppPrep.stake;
   }
 
+  // Escrow staked cards up-front (before locks reflect the stake) so neither
+  // player can burn or trade the card away mid-battle. If either escrow fails
+  // (card no longer owned), refund the other and fall back to a normal battle.
+  if (rt.staked && rt.a && rt.b) {
+    const okA = await removeCardFromUser(rt.guildId, rt.a.userId, rt.a.cardId).catch(() => ({ success: false, remaining: 0 }));
+    const okB = okA.success
+      ? await removeCardFromUser(rt.guildId, rt.b.userId, rt.b.cardId).catch(() => ({ success: false, remaining: 0 }))
+      : { success: false, remaining: 0 };
+    if (okA.success && okB.success) {
+      rt.escrow = { challengerCardId: rt.a.cardId, opponentCardId: rt.b.cardId };
+    } else {
+      if (okA.success) await restoreCardToUser(rt.guildId, rt.a.userId, rt.a.cardId).catch(() => {});
+      rt.staked = false;
+      rt.log.push("⚠️ Stake cancelled — a staked card was no longer owned. Fighting a normal battle.");
+    }
+  }
+
   // Record staked cards on the locks (card-lock during battle).
   await releaseAndRelock(rt);
 
@@ -547,11 +573,15 @@ async function applyMove(rt: BattleRuntime, side: 0 | 1, move: MoveType) {
     const actor = side === 0 ? rt.a! : rt.b!;
     const foe = other(rt, side);
 
-    // Start-of-turn ticks (DoT / regen / freeze / energy).
+    // Start-of-turn ticks (DoT / regen / freeze / energy). Attribute any DoT
+    // loss to the foe's dealt-damage total so leaderboard stats stay honest.
+    const actorPoolBefore = actor.hp + actor.shield;
     const start = startOfTurn(actor, rt.settings);
+    const dotLoss = Math.max(0, actorPoolBefore - (actor.hp + actor.shield));
+    if (dotLoss > 0) rt.dmg[foeSide(side)] += dotLoss;
     for (const e of start.events) rt.log.push(e.text);
+    if (actor.hp / actor.stats.maxHealth <= 0.15) rt.wentLow[side] = true;
     if (start.koed) {
-      pushDamage(rt, side, foe);
       await finishBattle(rt, foeSide(side), "dot");
       return;
     }
@@ -561,21 +591,30 @@ async function applyMove(rt: BattleRuntime, side: 0 | 1, move: MoveType) {
     await sleep(FRAME_MS);
 
     if (!start.skipped) {
-      const before = foe.hp + foe.shield;
+      // Measure BOTH combatants' losses so counters/reflect count correctly:
+      // the actor's own loss (counter/reflect) is damage the foe dealt.
+      const foePoolBefore = foe.hp + foe.shield;
+      const selfPoolBefore = actor.hp + actor.shield;
       const result = resolveMove(rt.settings, actor, foe, move);
       for (const e of result.events) {
         rt.log.push(e.text);
         if (e.flash === "crit") rt.crits[side]++;
       }
-      const dealt = Math.max(0, before - (foe.hp + foe.shield));
-      rt.dmg[side] += dealt;
-      if (foe.hp / foe.stats.maxHealth <= 0.15) rt.wentLow[foeSide(side) === 0 ? 0 : 1] = true;
+      rt.dmg[side] += Math.max(0, foePoolBefore - (foe.hp + foe.shield));
+      rt.dmg[foeSide(side)] += Math.max(0, selfPoolBefore - (actor.hp + actor.shield));
+      if (foe.hp / foe.stats.maxHealth <= 0.15) rt.wentLow[foeSide(side)] = true;
+      if (actor.hp / actor.stats.maxHealth <= 0.15) rt.wentLow[side] = true;
 
       await renderCombat(rt);
       await sleep(FRAME_MS);
 
+      // A counter/reflect can KO the attacker — check both.
+      if (actor.hp <= 0 && foe.hp > 0) {
+        await finishBattle(rt, foeSide(side), "ko");
+        return;
+      }
       if (result.koed || foe.hp <= 0) {
-        await finishBattle(rt, side, "ko");
+        await finishBattle(rt, actor.hp <= 0 ? null : side, "ko");
         return;
       }
     } else {
@@ -585,6 +624,12 @@ async function applyMove(rt: BattleRuntime, side: 0 | 1, move: MoveType) {
     // Next turn.
     rt.currentSide = foeSide(side);
     if (rt.currentSide === 0) rt.turnNumber++;
+    // Sudden-death cap keeps battles snappy — decide by remaining HP%.
+    if (rt.turnNumber > MAX_COMBAT_TURNS) {
+      rt.log.push("⌛ Time limit reached — the fighter with more HP wins!");
+      await finishBattle(rt, decideByHp(rt), "turnlimit");
+      return;
+    }
     rt.processing = false;
     await startTurn(rt);
   } catch (err) {
@@ -592,8 +637,6 @@ async function applyMove(rt: BattleRuntime, side: 0 | 1, move: MoveType) {
     rt.processing = false;
   }
 }
-
-function pushDamage(_rt: BattleRuntime, _side: 0 | 1, _foe: Combatant) { /* telemetry hook */ }
 
 // ── Battle end + rewards ─────────────────────────────────────────────────────
 async function finishBattle(rt: BattleRuntime, winnerSide: 0 | 1 | null, reason: string) {
@@ -639,6 +682,9 @@ async function finishBattle(rt: BattleRuntime, winnerSide: 0 | 1 | null, reason:
     logger.error({ err, battleId: rt.id }, "reward processing failed");
   }
 
+  // Settle escrowed staked cards exactly once (winner takes both, draw returns).
+  await settleEscrow(rt, winnerSide);
+
   const rewardLines = buildRewardLines(rt, outcomes);
   const view = toView(rt);
   if (rt.message) {
@@ -681,15 +727,40 @@ function buildRewardLines(rt: BattleRuntime, outcomes: RewardOutcome[]): string[
   return lines;
 }
 
+// Return escrowed staked cards. Winner receives BOTH cards; a draw returns each
+// player their own. Idempotent via `escrowSettled`. Uses restoreCardToUser so
+// the global mint count is untouched (a transfer, not a new card).
+async function settleEscrow(rt: BattleRuntime, winnerSide: 0 | 1 | null): Promise<void> {
+  if (!rt.escrow || rt.escrowSettled) return;
+  rt.escrowSettled = true;
+  const { challengerCardId, opponentCardId } = rt.escrow;
+  const chalId = rt.challengerId;
+  const oppId = rt.b?.userId ?? rt.opponentId ?? "";
+  // Consume the lock rows BEFORE restoring so a crash mid-settlement can't let
+  // startup recovery restore the same cards a second time (prefer a rare loss
+  // over any chance of duplication).
+  await releaseBattleLock(rt.guildId, chalId, rt.id).catch(() => {});
+  if (oppId && oppId !== AI_ID) await releaseBattleLock(rt.guildId, oppId, rt.id).catch(() => {});
+  if (!oppId || oppId === AI_ID) {
+    // No valid opponent (shouldn't happen for staked PvP) — refund challenger.
+    await restoreCardToUser(rt.guildId, chalId, challengerCardId).catch(() => {});
+    return;
+  }
+  if (winnerSide === null) {
+    await restoreCardToUser(rt.guildId, chalId, challengerCardId).catch(() => {});
+    await restoreCardToUser(rt.guildId, oppId, opponentCardId).catch(() => {});
+  } else {
+    const winnerId = winnerSide === 0 ? chalId : oppId;
+    await restoreCardToUser(rt.guildId, winnerId, challengerCardId).catch(() => {});
+    await restoreCardToUser(rt.guildId, winnerId, opponentCardId).catch(() => {});
+  }
+}
+
 async function endBattleByTimeout(rt: BattleRuntime) {
   if (rt.phase === "ended") return;
   if (rt.phase === "combat" && rt.a && rt.b) {
-    // Decide by remaining HP%.
-    const aPct = rt.a.hp / rt.a.stats.maxHealth;
-    const bPct = rt.b.hp / rt.b.stats.maxHealth;
-    const winnerSide: 0 | 1 | null = aPct === bPct ? null : aPct > bPct ? 0 : 1;
     rt.log.push("⌛ Battle timed out — winner decided by remaining HP.");
-    await finishBattle(rt, winnerSide, "timeout");
+    await finishBattle(rt, decideByHp(rt), "timeout");
     return;
   }
   if (rt.message) {
@@ -734,6 +805,15 @@ function other(rt: BattleRuntime, side: 0 | 1): Combatant {
   return side === 0 ? rt.b! : rt.a!;
 }
 function foeSide(side: 0 | 1): 0 | 1 { return side === 0 ? 1 : 0; }
+
+// Decide a winner by remaining HP fraction (ties = draw). Used by the turn cap
+// and the TTL safety net.
+function decideByHp(rt: BattleRuntime): 0 | 1 | null {
+  if (!rt.a || !rt.b) return null;
+  const aPct = rt.a.hp / rt.a.stats.maxHealth;
+  const bPct = rt.b.hp / rt.b.stats.maxHealth;
+  return aPct === bPct ? null : aPct > bPct ? 0 : 1;
+}
 
 // ── Component builders ───────────────────────────────────────────────────────
 function buildChallengeEmbed(rt: BattleRuntime, opponent: User | null, aiOffered = false): EmbedBuilder {
@@ -927,7 +1007,30 @@ async function safeEphemeral(
   } catch { /* ignore */ }
 }
 
-// Periodic stale-lock sweep (crash recovery) — call once at bot startup.
+// Startup recovery + periodic stale-lock sweep — call once at bot startup.
+// At a cold start there are no in-memory battles, so any surviving lock row is
+// from a crashed process: refund every escrowed staked card to its owner and
+// wipe the lock table so no player is left stuck "already in a battle".
 export function startBattleMaintenance(): void {
+  void recoverAbandonedStakes();
   setInterval(() => { void sweepStaleLocks(MAX_BATTLE_MS + 60_000); }, 5 * 60_000);
+}
+
+async function recoverAbandonedStakes(): Promise<void> {
+  try {
+    const locks = await getAllLocks();
+    let refunded = 0;
+    for (const l of locks) {
+      if (l.staked && l.cardId != null) {
+        await restoreCardToUser(l.guildId, l.userId, l.cardId).catch(() => {});
+        refunded++;
+      }
+    }
+    await deleteAllLocks();
+    if (locks.length > 0) {
+      logger.info({ clearedLocks: locks.length, refundedStakes: refunded }, "battle: recovered abandoned locks at startup");
+    }
+  } catch (err) {
+    logger.warn({ err }, "battle: startup lock recovery failed (non-fatal)");
+  }
 }

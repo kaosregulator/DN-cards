@@ -73,11 +73,27 @@ layered on without rewriting the core:
 
 - **Multiple-battle prevention / card locking:** `battle_locks` has a unique
   `(guild_id, user_id)` index — a player can't be in two battles at once, and
-  the staked card id is locked on the row.
-- **Ownership validation & no double-transfer:** staked cards settle via the
-  existing `removeCardFromUser` + `restoreCardToUser` helpers with an ownership
-  re-check at settle time, so a card can't be duplicated or moved twice.
+  the staked card id is recorded on the row.
+- **Staked-card escrow (no mid-battle dodging, no double-transfer):** when a
+  staked PvP battle begins, one copy of each fighter's card is removed from
+  their collection and held in escrow, so a losing player can't burn or trade
+  the card away to dodge the loss. On battle end the winner receives BOTH cards
+  and a draw returns each their own — settled exactly once. Transfers use
+  `restoreCardToUser` so the global mint count is untouched (a move, not a mint).
+- **Crash recovery:** on startup, escrowed stakes from any crashed process are
+  refunded and the lock table is cleared (lock rows are consumed before the
+  refund write, so recovery can never double-restore).
 - **Reward protection:** a per-day rewarded-battle cap throttles farming; shards
-  flow through the existing atomic `addShards`.
-- **Race protection:** an in-memory per-move processing guard plus a stale-lock
-  sweep for crash recovery.
+  flow through the existing atomic `addShards`; AI battles pay a configurable
+  fraction and never move rank points.
+- **Race protection:** an in-memory per-move processing guard, a sudden-death
+  turn cap, and a hard TTL safety net.
+
+## Testing utility
+
+`pnpm --filter @workspace/scripts run sim:battle` runs thousands of headless
+battles through the real combat/stat/AI engines (no Discord, no DB) and asserts
+the core invariants: combat always terminates with one winner or a clean draw,
+meters never go NaN/over-max, damage-dealt matches damage-taken (no phantom
+damage), the lock model admits exactly one battle per `(guild,user)`, ELO is
+zero-sum, higher rarity out-powers lower, and higher AI difficulty wins more.
