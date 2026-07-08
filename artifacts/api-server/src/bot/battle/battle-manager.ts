@@ -43,11 +43,17 @@ import {
 import { formatAchievementLine } from "./achievement-engine.js";
 
 const MAX_BATTLE_MS = 20 * 60 * 1000;   // hard TTL safety net
-const FRAME_MS = 950;                    // delay between animation frames
+const DEFAULT_FRAME_MS = 950;            // fallback delay between animation frames
 const MAX_COMBAT_TURNS = 30;             // sudden-death cap → decide by HP%
 
 const sleep = (ms: number) => new Promise<void>(r => setTimeout(r, ms));
 const AI_ID = "AI";
+
+// Per-guild animation pace (the "speed controller"), clamped to a sane range.
+function frameMs(rt: BattleRuntime): number {
+  const v = rt.settings.frameDelayMs ?? DEFAULT_FRAME_MS;
+  return Math.max(120, Math.min(4000, v));
+}
 
 type Phase = "challenge" | "aidiff" | "prep" | "combat" | "ended";
 
@@ -141,7 +147,11 @@ function buildCombatant(
   rt: BattleRuntime, userId: string, name: string, isAi: boolean, side: 0 | 1,
   card: OwnedBattleCard, special: OwnedBattleCard | null, aiDifficulty?: AiDifficulty,
 ): Combatant {
-  const stats = applyStatOverrides(deriveStats(cardish(card), rt.settings), card.config);
+  // A per-card battle-rarity override (set in the admin card editor) drives both
+  // stat derivation and the rarity shown in the battle embed, without touching
+  // the real card.
+  const battleRarity = (card.config?.rarity as Rarity) || (card.rarity as Rarity);
+  const stats = applyStatOverrides(deriveStats(cardish(card), rt.settings, battleRarity), card.config);
   let specialEffect: string | null = null;
   let specialCooldownMax = 3;
   if (rt.settings.specialCardsEnabled && special) {
@@ -150,7 +160,7 @@ function buildCombatant(
   }
   return {
     userId, displayName: name, isAi, aiDifficulty, side,
-    cardId: card.id, cardName: card.name, cardRarity: card.rarity as Rarity,
+    cardId: card.id, cardName: card.name, cardRarity: battleRarity,
     cardType: card.cardType, cardImageUrl: card.imageUrl,
     stats,
     hp: stats.maxHealth, shield: 0, energy: 40, ultimate: 0, status: [],
@@ -527,10 +537,10 @@ async function playIntro(rt: BattleRuntime, firstSide: 0 | 1, flip: string) {
   const view = () => toView(rt);
   for (let f = 0; f < 4; f++) {
     await rt.message.edit({ embeds: [buildIntroFrame(view(), f)], components: [] }).catch(() => {});
-    await sleep(FRAME_MS);
+    await sleep(frameMs(rt));
   }
   await rt.message.edit({ embeds: [buildCoinFlipEmbed(view(), firstSide, flip)], components: [] }).catch(() => {});
-  await sleep(FRAME_MS);
+  await sleep(frameMs(rt));
   rt.log.push(`🔔 Battle begins! ${firstSide === 0 ? "Challenger" : "Opponent"} moves first.`);
   await renderCombat(rt);
   await startTurn(rt);
@@ -541,7 +551,7 @@ async function startTurn(rt: BattleRuntime) {
   if (rt.phase !== "combat") return;
   const actor = rt.currentSide === 0 ? rt.a! : rt.b!;
   if (actor.isAi) {
-    await sleep(FRAME_MS);
+    await sleep(frameMs(rt));
     const move = chooseAiMove(actor, other(rt, rt.currentSide), rt.settings, rt.aiDifficulty);
     await applyMove(rt, rt.currentSide, move);
     return;
@@ -588,7 +598,7 @@ async function applyMove(rt: BattleRuntime, side: 0 | 1, move: MoveType) {
 
     // "Current move" animation frame.
     await renderCombat(rt, { currentMove: `${actor.cardName} → ${moveLabel(move)}…` });
-    await sleep(FRAME_MS);
+    await sleep(frameMs(rt));
 
     if (!start.skipped) {
       // Measure BOTH combatants' losses so counters/reflect count correctly:
@@ -606,7 +616,7 @@ async function applyMove(rt: BattleRuntime, side: 0 | 1, move: MoveType) {
       if (actor.hp / actor.stats.maxHealth <= 0.15) rt.wentLow[side] = true;
 
       await renderCombat(rt);
-      await sleep(FRAME_MS);
+      await sleep(frameMs(rt));
 
       // A counter/reflect can KO the attacker — check both.
       if (actor.hp <= 0 && foe.hp > 0) {

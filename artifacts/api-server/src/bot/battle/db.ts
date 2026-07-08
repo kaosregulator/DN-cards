@@ -91,6 +91,18 @@ export async function getAllBattleCards(guildId: string): Promise<OwnedBattleCar
   }));
 }
 
+export async function getBattleCardConfig(guildId: string, cardId: number): Promise<BattleCardConfig | null> {
+  const [row] = await db.select().from(battleCardConfigTable)
+    .where(and(eq(battleCardConfigTable.guildId, guildId), eq(battleCardConfigTable.cardId, cardId))).limit(1);
+  return row ?? null;
+}
+
+// Clear all battle overrides for a card (reset it to fully auto/derived).
+export async function resetBattleCardConfig(guildId: string, cardId: number): Promise<void> {
+  await db.delete(battleCardConfigTable)
+    .where(and(eq(battleCardConfigTable.guildId, guildId), eq(battleCardConfigTable.cardId, cardId)));
+}
+
 export async function upsertBattleCardConfig(
   guildId: string, cardId: number, patch: Partial<BattleCardConfig>, updatedBy?: string,
 ): Promise<void> {
