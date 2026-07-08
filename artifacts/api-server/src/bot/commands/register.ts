@@ -27,6 +27,8 @@ function buildLegacyCommands() {
   return [
     // ── User Commands ─────────────────────────────────────────────────────────
     cmd("collection", "(User) View your collection", s => s
+    // ── User Commands ───────────────────────���────────────────────────────────[...]
+    cmd("collection", "(User) View your DN Cards collection", s => s
       .addUserOption(o => o.setName("user").setDescription("View another member's collection"))),
 
     cmd("rank", "(User) Your rank and progression", s => s
@@ -349,7 +351,7 @@ function buildLegacyCommands() {
             { name: "rarityColor: mythic",     value: "rarityColor.mythic" },
           )))),
 
-    // ── Dashboard ─────────────────────────────────────────────────────────────
+    // ── Dashboard ──────��──────────────────────────────────────────────────[...]
     adminCmd("dashboard", "(Admin) Get a one-time link to set up or reset your web dashboard login", s => s),
 
     // ── /edituser — interactive member editor (cards, shinies, shards) ─────────
@@ -373,12 +375,40 @@ function buildLegacyCommands() {
         .addChoices({ name: "Common", value: "common" }, { name: "Uncommon", value: "uncommon" }, { name: "Rare", value: "rare" }, { name: "Epic", value: "epic" }, { name: "Legendary", value: "legendary" }, { name: "Mythic", value: "mythic" }))),
 
     // ── /rep (user, reputation system) ────────────────────────────────────────
-    cmd("rep", "(User) Reputation system — give rep, check rep, and see the leaderboard", s => s
+    cmd("rep", "(User) Reputation system — give rep, check rep, remove rep, and see the leaderboard", s => s
       .addSubcommand(sc => sc.setName("give").setDescription("Give +1 rep to another member (24h cooldown per person)")
         .addUserOption(o => o.setName("user").setDescription("Member to rep").setRequired(true)))
       .addSubcommand(sc => sc.setName("check").setDescription("Check a member's rep score")
         .addUserOption(o => o.setName("user").setDescription("Member to check (default: you)")))
-      .addSubcommand(sc => sc.setName("top").setDescription("Top 10 most reputed members on this server"))),
+      .addSubcommand(sc => sc.setName("top").setDescription("Top 10 most reputed members on this server"))
+      .addSubcommand(sc => sc.setName("remove").setDescription("(Admin) Remove rep from a member")
+        .addUserOption(o => o.setName("user").setDescription("Member to remove rep from").setRequired(true))
+        .addIntegerOption(o => o.setName("amount").setDescription("Amount of rep to remove (default: 1)").setMinValue(1))
+        .addStringOption(o => o.setName("reason").setDescription("Optional reason for removal")))),
+
+    // ── /thanks (user, gratitude tracking) ────────���───────────────────────────
+    cmd("thanks", "(User) Thank members for being helpful — track appreciation", s => s
+      .addSubcommand(sc => sc.setName("give").setDescription("Give thanks to a helpful member (24h cooldown per person)")
+        .addUserOption(o => o.setName("user").setDescription("Member to thank").setRequired(true)))
+      .addSubcommand(sc => sc.setName("top").setDescription("Top 10 most appreciated members on this server"))),
+
+    // ── /battle (user, Card Battle System) ────────────────────────────────────
+    cmd("battle", "(User) Card battles — challenge players or AI, view stats & leaderboards", s => s
+      .addSubcommand(sc => sc.setName("fight").setDescription("Start a battle — challenge a player, or leave empty to fight the AI")
+        .addUserOption(o => o.setName("opponent").setDescription("Player to challenge (empty = battle the AI)")))
+      .addSubcommand(sc => sc.setName("profile").setDescription("View a battle profile — record, rank, stats")
+        .addUserOption(o => o.setName("user").setDescription("Whose profile to view (default: you)")))
+      .addSubcommand(sc => sc.setName("leaderboard").setDescription("Battle rankings")
+        .addStringOption(o => o.setName("scope").setDescription("Guild or global").addChoices(
+          { name: "This server", value: "guild" }, { name: "Global (opt-in)", value: "global" }))
+        .addStringOption(o => o.setName("sort").setDescription("Sort by").addChoices(
+          { name: "Rank points", value: "rank" }, { name: "Wins", value: "wins" }, { name: "Best streak", value: "streak" })))
+      .addSubcommand(sc => sc.setName("achievements").setDescription("View unlocked battle achievements")
+        .addUserOption(o => o.setName("user").setDescription("Whose achievements to view (default: you)")))
+      .addSubcommand(sc => sc.setName("daily").setDescription("View today's battle challenges and progress"))),
+
+    // ── /battleadmin (admin, Battle System configuration) ─────────────────────
+    adminCmd("battleadmin", "(Admin) Battle system hub — setup wizard, rules, rewards, cards, seasons", s => s),
 
     // ── /sets (user, read-only) ───────────────────────────────────────────────
     cmd("sets", "(User) Browse card sets and your collection progress", s => s
@@ -464,5 +494,6 @@ export function buildCommands() {
 }
 
 export const USER_COMMAND_NAMES = new Set(["cards", "wishlist", "sets", "rep", "menu", "dnvaluesearch", "dnvaluelist", "dnvalueinfo", "dnvaluecalc", "dnhelp"]);
+export const USER_COMMAND_NAMES = new Set(["cards", "wishlist", "sets", "rep", "thanks"]);
 
 export const ADMIN_COMMAND_NAMES = new Set(["admin", "setadmin", "event", "rarity", "embed", "edituser"]);

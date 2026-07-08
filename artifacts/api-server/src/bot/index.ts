@@ -27,6 +27,12 @@ import { handleMenuCommand } from "./commands/menu.js";
 import { handleEditPackCommand } from "./commands/editpack.js";
 import { handleDNValuesSearch, handleDNValuesList, handleDNValuesInfo, handleDNValuesAutocomplete, handleDNValuesCalculator, handleDNValuesCalcButton, handleDNValuesCalcModal, handleDNValuesHelp } from "./commands/dnvalues.js";
 import { handlePostCalculator, handleDntCalcButton, handleDntCalcModal } from "./commands/dntcalc.js";
+import { handleBattleCommand } from "./commands/battle.js";
+import {
+  handleBattleAdminCommand, handleBattleAdminButton, handleBattleAdminSelect,
+  handleBattleAdminChannelSelect, handleBattleAdminModal,
+} from "./commands/battle-admin.js";
+import { handleBattleComponent, startBattleMaintenance } from "./battle/battle-manager.js";
 import {
   buildCommands, USER_COMMAND_NAMES, ADMIN_COMMAND_NAMES,
 } from "./commands/register.js";
@@ -176,6 +182,7 @@ export async function startBot() {
     await initAllGuilds(client);
     // Boot-time backfill is no longer needed; sets are managed via the
     // first-class sets + card_set_memberships tables.
+    startBattleMaintenance();
     await registerCommands(c.user.id, token, client);
   });
 
@@ -236,6 +243,10 @@ export async function startBot() {
       if (interaction.isStringSelectMenu()) {
         if (interaction.customId.startsWith("custompack:types:")) {
           await handleCustomPackTypesSelect(interaction);
+        if (interaction.customId.startsWith("battle:")) {
+          await handleBattleComponent(interaction);
+        } else if (interaction.customId.startsWith("battleadmin:")) {
+          await handleBattleAdminSelect(interaction);
         } else if (interaction.customId.startsWith("config_")) {
           await handleConfigSelect(interaction);
         } else if (interaction.customId.startsWith("rates_")) {
@@ -273,13 +284,17 @@ export async function startBot() {
       if (interaction.isChannelSelectMenu()) {
         if (interaction.customId.startsWith("setchannels:set:")) {
           await handleSetChannelsApply(interaction);
+        } else if (interaction.customId.startsWith("battleadmin:")) {
+          await handleBattleAdminChannelSelect(interaction);
         }
         return;
       }
 
       // ── Modal submissions (admin hub + setup test card + custom mix) ─────
       if (interaction.isModalSubmit()) {
-        if (interaction.customId.startsWith("adminhub:")) {
+        if (interaction.customId.startsWith("battleadmin:")) {
+          await handleBattleAdminModal(interaction);
+        } else if (interaction.customId.startsWith("adminhub:")) {
           await handleAdminHubModal(interaction);
         } else if (interaction.customId.startsWith("setup_")) {
           await handleSetupModalSubmit(interaction);
@@ -324,6 +339,15 @@ export async function startBot() {
 
         if (action === "dntcalc") {
           await handleDntCalcButton(interaction);
+        // ── Battle system buttons (challenge, prep, combat moves) ──────────
+        if (action === "battle") {
+          await handleBattleComponent(interaction);
+          return;
+        }
+
+        // ── Battle admin hub buttons ───────────────────────────────────────
+        if (action === "battleadmin") {
+          await handleBattleAdminButton(interaction);
           return;
         }
 
@@ -524,7 +548,11 @@ export async function startBot() {
       if (!interaction.isChatInputCommand()) return;
       const cmd = interaction.commandName;
 
-      if (cmd === "cards") {
+      if (cmd === "battle") {
+        await handleBattleCommand(interaction, interaction.options.getSubcommand(true));
+      } else if (cmd === "battleadmin") {
+        await handleBattleAdminCommand(interaction);
+      } else if (cmd === "cards") {
         await handleUserCommand(interaction, interaction.options.getSubcommand(true));
       } else if (cmd === "admin") {
         const adminSubcommand = interaction.options.getSubcommand(true);

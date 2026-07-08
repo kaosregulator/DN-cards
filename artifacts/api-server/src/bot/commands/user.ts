@@ -76,7 +76,7 @@ export async function handleUserCommand(
   );
   const guildId = interaction.guild.id;
 
-  // ── /collection ──────────────────────────────────────────────────────────────
+  // ── /collection ─────────────────────────────────────────────────────────────
   // Interactive overview → drill-down view (rarity / shinies / limited / event).
   // Locked to the invoking user; 5-min idle timeout. See components/paginator.ts.
   if (sub === "collection") {
@@ -293,7 +293,7 @@ export async function handleUserCommand(
     return;
   }
 
-  // ── /rank ─────────────────────────────────────────────────────────────────────
+  // ── /rank ───────────────────────────────────────────────────────────[...]
   if (sub === "rank") {
     const target = interaction.options.getUser("user") ?? interaction.user;
     const { unique, total, netWorth } = await getUserCardCount(guildId, target.id);
@@ -318,7 +318,7 @@ export async function handleUserCommand(
     return;
   }
 
-  // ── /info ─────────────────────────────────────────────────────────────────────
+  // ── /info ───────────────────────────────────────────────────────────[...]
   if (sub === "info") {
     const cardName = interaction.options.getString("name", true);
     const [rawCards, runtime, infoDisplayMap] = await Promise.all([
@@ -386,7 +386,7 @@ export async function handleUserCommand(
     return;
   }
 
-  // ── /list ─────────────────────────────────────────────────────────────────────
+  // ── /list ───────────────────────────────────────────────────────────[...]
   // Interactive overview → drill-down view of the full roster (no personal
   // stats). Same paginator as /collection and /catalog.
   if (sub === "list") {
@@ -541,7 +541,7 @@ export async function handleUserCommand(
     return;
   }
 
-  // ── /catalog ──────────────────────────────────────────────────────────────────
+  // ── /catalog ──────────────────────────────────────────────────────────[...]
   // Interactive overview → drill-down view of ownership vs the full pool.
   // The optional `category` option deep-links straight into a specific view.
   if (sub === "catalog") {
@@ -732,7 +732,7 @@ export async function handleUserCommand(
     return;
   }
 
-  // ── /top ──────────────────────────────────────────────────────────────────────
+  // ── /top ───────────────────────────────────────────────────────────────
   if (sub === "top") {
     const [byWorth, byCards, byPacks] = await Promise.all([
       getLeaderboard(guildId, "worth", 10),
@@ -778,7 +778,7 @@ export async function handleUserCommand(
     return;
   }
 
-  // ── /shards ───────────────────────────────────────────────────────────────────
+  // ── /shards ─────────────────────────────────────────────────────────────
   if (sub === "shards") {
     const target = interaction.options.getUser("user") ?? interaction.user;
     const currency = await getOrCreateCurrency(guildId, target.id);
@@ -795,7 +795,7 @@ export async function handleUserCommand(
     return;
   }
 
-  // ── /burn ─────────────────────────────────────────────────────────────────────
+  // ── /burn ───────────────────────────────────────────────────────────────
   if (sub === "burn") {
     const cardName = interaction.options.getString("name", true);
     const requested = interaction.options.getInteger("amount") ?? 1;
@@ -865,7 +865,7 @@ export async function handleUserCommand(
     return;
   }
 
-  // ── Trading ───────────────────────────────────────────────────────────────────
+  // ── Trading ─────────────────────────────────────────────────────────────
   if (sub === "trade") { await handleTrade(interaction); return; }
   if (sub === "accept") { await handleAccept(interaction); return; }
   if (sub === "decline") { await handleDecline(interaction); return; }
@@ -881,7 +881,7 @@ export async function handleUserCommand(
   // message — we still deferReply'd above without ephemeral flag.
   if (sub === "welcome") { await handleWelcome(interaction); return; }
 
-  // ── /sets (read-only set browser) ─────────────────────────────────────────
+  // ── /sets (read-only set browser) ────────────────────────────────────────
   if (sub === "sets") {
     const { handleSetsUserCommand } = await import("./sets-user.js");
     await handleSetsUserCommand(interaction);
@@ -889,14 +889,21 @@ export async function handleUserCommand(
   }
   if (sub === "achievements") { await handleAchievementsCommand(interaction); return; }
 
-  // ── /rep (reputation system) ───────────────────────────────────────────────
+  // ── /rep (reputation system) ────────────────────────────────────────────
   if (sub === "rep") {
     const { handleRep } = await import("./rep.js");
     await handleRep(interaction);
     return;
   }
 
-  // ── /cards help (player commands only — admins use /admin help) ───────────────
+  // ── /thanks (gratitude tracking) ────────────────────────────────────────
+  if (sub === "thanks") {
+    const { handleThanks } = await import("./rep.js");
+    await handleThanks(interaction);
+    return;
+  }
+
+  // ── /cards help (player commands only — admins use /admin help) ────────────
   const helpSettings = await getOrCreateGuildSettings(guildId);
   const helpShinyName = getShinyName(helpSettings);
   const helpShinyMultiplier = getShinyMultiplier(helpSettings);
@@ -962,6 +969,15 @@ export async function handleUserCommand(
           "`/sets active` — which set is currently spawning cards\n" +
           "`/sets view set:<…>` — browse cards in a set\n" +
           "`/sets progress set:<…> [user]` — how many cards in that set you've caught",
+      },
+      {
+        name: "⭐ Reputation & Thanks",
+        value:
+          "`/rep give @user` — give someone +1 rep\n" +
+          "`/rep check [@user]` — see someone's rep score\n" +
+          "`/rep top` — leaderboard\n" +
+          "`/thanks give @user` — thank someone for being helpful\n" +
+          "`/thanks top` — leaderboard of most appreciated members",
       },
     );
   await interaction.editReply({ embeds: [embed] });
