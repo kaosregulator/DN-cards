@@ -26,7 +26,6 @@ function adminCmd(name: string, desc: string, build: (s: SlashCommandBuilder) =>
 function buildLegacyCommands() {
   return [
     // ── User Commands ─────────────────────────────────────────────────────────
-    cmd("collection", "(User) View your collection", s => s
     // ── User Commands ───────────────────────���────────────────────────────────[...]
     cmd("collection", "(User) View your DN Cards collection", s => s
       .addUserOption(o => o.setName("user").setDescription("View another member's collection"))),
@@ -493,7 +492,6 @@ export function buildCommands() {
   ];
 }
 
-export const USER_COMMAND_NAMES = new Set(["cards", "wishlist", "sets", "rep", "menu", "dnvaluesearch", "dnvaluelist", "dnvalueinfo", "dnvaluecalc", "dnhelp"]);
-export const USER_COMMAND_NAMES = new Set(["cards", "wishlist", "sets", "rep", "thanks"]);
+export const USER_COMMAND_NAMES = new Set(["cards", "wishlist", "sets", "rep", "thanks", "menu", "dnvaluesearch", "dnvaluelist", "dnvalueinfo", "dnvaluecalc", "dnhelp"]);
 
 export const ADMIN_COMMAND_NAMES = new Set(["admin", "setadmin", "event", "rarity", "embed", "edituser"]);

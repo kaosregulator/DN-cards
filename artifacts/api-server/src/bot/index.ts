@@ -243,7 +243,7 @@ export async function startBot() {
       if (interaction.isStringSelectMenu()) {
         if (interaction.customId.startsWith("custompack:types:")) {
           await handleCustomPackTypesSelect(interaction);
-        if (interaction.customId.startsWith("battle:")) {
+        } else if (interaction.customId.startsWith("battle:")) {
           await handleBattleComponent(interaction);
         } else if (interaction.customId.startsWith("battleadmin:")) {
           await handleBattleAdminSelect(interaction);
@@ -339,6 +339,9 @@ export async function startBot() {
 
         if (action === "dntcalc") {
           await handleDntCalcButton(interaction);
+          return;
+        }
+
         // ── Battle system buttons (challenge, prep, combat moves) ──────────
         if (action === "battle") {
           await handleBattleComponent(interaction);
