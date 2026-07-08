@@ -15,6 +15,7 @@ import {
   AFK_BRAND, AFK_EMOJI, AFK_DURATIONS,
   getDraft, patchDraft, clearDraft,
   applyAfkNickname, canDismiss, forgetDismissOwner,
+  formatDuration, parseDuration, MAX_CUSTOM_DURATION_MS,
 } from "./shared.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -65,13 +66,20 @@ async function onMethodSelect(interaction: StringSelectMenuInteraction): Promise
     const menu = new StringSelectMenuBuilder()
       .setCustomId("afk:set:duration")
       .setPlaceholder("Pick how long you'll be away…")
-      .addOptions(AFK_DURATIONS.map(d =>
-        new StringSelectMenuOptionBuilder().setLabel(d.label).setValue(d.value).setEmoji(AFK_EMOJI.TIMED)));
+      .addOptions([
+        ...AFK_DURATIONS.map(d =>
+          new StringSelectMenuOptionBuilder().setLabel(d.label).setValue(d.value).setEmoji(AFK_EMOJI.TIMED)),
+        new StringSelectMenuOptionBuilder()
+          .setLabel("Custom duration")
+          .setValue("custom")
+          .setDescription("Type your own time, e.g. 2h30m or 90m")
+          .setEmoji("⌨️"),
+      ]);
 
     const embed = new EmbedBuilder()
       .setColor(AFK_BRAND.COLOR_PRIMARY)
       .setTitle(`${AFK_EMOJI.TIMED} Set your countdown`)
-      .setDescription("Choose an interval. We'll automatically lift your AFK when it elapses.")
+      .setDescription("Choose an interval or type your own. We'll automatically lift your AFK when it elapses.")
       .setFooter({ text: AFK_BRAND.FOOTER });
     await interaction.update({
       embeds: [embed],
@@ -86,6 +94,23 @@ async function onMethodSelect(interaction: StringSelectMenuInteraction): Promise
 
 /** Duration chosen for a timed AFK → show a preview + confirm gate. */
 async function onDurationSelect(interaction: StringSelectMenuInteraction): Promise<void> {
+  if (interaction.values[0] === "custom") {
+    const modal = new ModalBuilder()
+      .setCustomId("afk:customduration")
+      .setTitle("Set a custom AFK duration")
+      .addComponents(new ActionRowBuilder<TextInputBuilder>().addComponents(
+        new TextInputBuilder()
+          .setCustomId("duration")
+          .setLabel("Duration (e.g. 2h30m, 90m, 1h)")
+          .setStyle(TextInputStyle.Short)
+          .setMinLength(1).setMaxLength(20)
+          .setPlaceholder("2h30m")
+          .setRequired(true),
+      ));
+    await interaction.showModal(modal);
+    return;
+  }
+
   const preset = AFK_DURATIONS.find(d => d.value === interaction.values[0]);
   if (!preset) { await interaction.update({ content: "Unknown duration.", components: [] }); return; }
 
@@ -95,14 +120,20 @@ async function onDurationSelect(interaction: StringSelectMenuInteraction): Promi
     return;
   }
 
-  const returnAt = Math.floor((Date.now() + preset.ms) / 1000);
-  const preview = new EmbedBuilder()
+  await showTimedPreview(interaction, preset.ms, draft.reason);
+}
+
+/** Build the timed-AFK preview shown after a preset or custom duration is chosen. */
+function buildTimedPreview(ms: number, reason: string): { embed: EmbedBuilder; components: ActionRowBuilder<ButtonBuilder>[] } {
+  const returnAt = Math.floor((Date.now() + ms) / 1000);
+  const label = formatDuration(ms);
+  const embed = new EmbedBuilder()
     .setColor(AFK_BRAND.COLOR_PRIMARY)
     .setTitle(`${AFK_EMOJI.SPARKLE} Preview — confirm to go AFK`)
     .setDescription("Here's exactly what your away state will look like:")
     .addFields(
-      { name: "Reason", value: draft.reason, inline: false },
-      { name: "Trigger", value: `${AFK_EMOJI.TIMED} Timed · **${preset.label}**`, inline: true },
+      { name: "Reason", value: reason, inline: false },
+      { name: "Trigger", value: `${AFK_EMOJI.TIMED} Timed · **${label}**`, inline: true },
       // <t:…:R> and <t:…:F> render in each viewer's OWN timezone automatically.
       { name: "Auto-returns", value: `<t:${returnAt}:F>\n(<t:${returnAt}:R>)`, inline: true },
     )
@@ -112,7 +143,20 @@ async function onDurationSelect(interaction: StringSelectMenuInteraction): Promi
     new ButtonBuilder().setCustomId("afk:set:confirm").setStyle(ButtonStyle.Success).setEmoji("✅").setLabel("Confirm & Go AFK"),
     new ButtonBuilder().setCustomId("afk:set:cancel").setStyle(ButtonStyle.Secondary).setEmoji("↩️").setLabel("Cancel"),
   );
-  await interaction.update({ embeds: [preview], components: [row] });
+  return { embed, components: [row] };
+}
+
+async function showTimedPreview(
+  interaction: StringSelectMenuInteraction | ModalSubmitInteraction,
+  ms: number,
+  reason: string,
+): Promise<void> {
+  const { embed, components } = buildTimedPreview(ms, reason);
+  if (interaction.isModalSubmit()) {
+    await interaction.reply({ embeds: [embed], components, flags: MessageFlags.Ephemeral });
+  } else {
+    await interaction.update({ embeds: [embed], components });
+  }
 }
 
 // ── Buttons ──────────────────────────────────────────────────────────────────
@@ -161,9 +205,15 @@ async function finalizeAfk(
 
   // Soft hierarchy shield lives inside applyAfkNickname — never throws.
   let originalNickname: string | null = null;
+  let nicknameStatus = "⚪ Nickname tagging is off";
   if (member) {
     const res = await applyAfkNickname(member, settings);
     originalNickname = res.originalNickname;
+    nicknameStatus = res.ok
+      ? "✅ Nickname tagged [AFK]"
+      : settings.nicknameChanges
+        ? "⚠️ Nickname not changed — bot's role must be above yours"
+        : "⚪ Nickname tagging is off";
   }
 
   await setAfk({ guildId, userId: interaction.user.id, reason, removalMethod: method, autoRemoveAt, originalNickname });
@@ -179,7 +229,10 @@ async function finalizeAfk(
     .setAuthor({ name: `${interaction.user.username} is now AFK`, iconURL: interaction.user.displayAvatarURL() })
     .setTitle(`${AFK_EMOJI.SPARKLE} Your Secretary is on duty`)
     .setDescription(`> ${reason}`)
-    .addFields({ name: "Return trigger", value: triggerLine })
+    .addFields(
+      { name: "Return trigger", value: triggerLine, inline: true },
+      { name: "Nickname", value: nicknameStatus, inline: true },
+    )
     .setFooter({ text: AFK_BRAND.FOOTER })
     .setTimestamp();
 
@@ -394,6 +447,32 @@ async function onDismiss(interaction: ButtonInteraction): Promise<void> {
 // ── Modals ───────────────────────────────────────────────────────────────────
 async function routeModal(interaction: ModalSubmitInteraction): Promise<void> {
   if (interaction.customId.startsWith("afk:notemodal:")) return onNoteModalSubmit(interaction);
+  if (interaction.customId === "afk:customduration") return onCustomDurationModalSubmit(interaction);
+}
+
+async function onCustomDurationModalSubmit(interaction: ModalSubmitInteraction): Promise<void> {
+  const raw = interaction.fields.getTextInputValue("duration").trim();
+  const ms = parseDuration(raw);
+  if (!ms || ms <= 0) {
+    await interaction.reply({
+      content: "❌ I didn't understand that duration. Try something like `2h30m`, `90m`, or `1h`.",
+      flags: MessageFlags.Ephemeral,
+    });
+    return;
+  }
+  if (ms > MAX_CUSTOM_DURATION_MS) {
+    await interaction.reply({
+      content: `❌ That's too long. The max custom duration is **7 days**.`,
+      flags: MessageFlags.Ephemeral,
+    });
+    return;
+  }
+  const draft = patchDraft(interaction.user.id, { method: "AUTO", durationMs: ms });
+  if (!draft) {
+    await interaction.reply({ content: "⌛ This dashboard expired. Run `/afk set` again.", flags: MessageFlags.Ephemeral });
+    return;
+  }
+  await showTimedPreview(interaction, ms, draft.reason);
 }
 
 async function onNoteModalSubmit(interaction: ModalSubmitInteraction): Promise<void> {

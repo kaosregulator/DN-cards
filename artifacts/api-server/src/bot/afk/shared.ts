@@ -65,6 +65,52 @@ export const AFK_DURATIONS: { label: string; value: string; ms: number }[] = [
   { label: "4 hours", value: "4h", ms: 4 * 60 * 60_000 },
 ];
 
+export const MAX_CUSTOM_DURATION_MS = 7 * 24 * 60 * 60 * 1000;
+
+/** Format a millisecond duration as a human-readable string (e.g. "2h 30m"). */
+export function formatDuration(ms: number): string {
+  const seconds = Math.floor(ms / 1000);
+  const days = Math.floor(seconds / 86400);
+  const hours = Math.floor((seconds % 86400) / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  const secs = seconds % 60;
+  const parts: string[] = [];
+  if (days > 0) parts.push(`${days}d`);
+  if (hours > 0) parts.push(`${hours}h`);
+  if (minutes > 0) parts.push(`${minutes}m`);
+  if (secs > 0) parts.push(`${secs}s`);
+  return parts.join(" ") || "0m";
+}
+
+/**
+ * Parse a human duration string into milliseconds. Accepts:
+ *   "90m", "2h30m", "1h", "5m30s", "1d", or a bare number (treated as minutes).
+ * Returns null if the string cannot be parsed.
+ */
+export function parseDuration(input: string): number | null {
+  const trimmed = input.trim().toLowerCase().replace(/\s+/g, "");
+  if (!trimmed) return null;
+  if (/^\d+$/.test(trimmed)) {
+    const minutes = parseInt(trimmed, 10);
+    return minutes > 0 ? minutes * 60 * 1000 : null;
+  }
+  const regex = /(\d+)([dhms])/g;
+  let totalMs = 0;
+  let match: RegExpExecArray | null;
+  let foundAny = false;
+  while ((match = regex.exec(trimmed)) !== null) {
+    foundAny = true;
+    const value = parseInt(match[1], 10);
+    const unit = match[2];
+    if (value <= 0) continue;
+    if (unit === "d") totalMs += value * 24 * 60 * 60 * 1000;
+    else if (unit === "h") totalMs += value * 60 * 60 * 1000;
+    else if (unit === "m") totalMs += value * 60 * 1000;
+    else if (unit === "s") totalMs += value * 1000;
+  }
+  return foundAny && totalMs > 0 ? totalMs : null;
+}
+
 // ── In-memory caches ─────────────────────────────────────────────────────────
 // Deliberately process-local. On a single-instance deployment (this bot only
 // ever runs one gateway connection — see the multi-instance guard in index.ts)
