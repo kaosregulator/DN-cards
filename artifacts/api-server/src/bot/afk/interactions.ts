@@ -404,6 +404,14 @@ async function onNoteModalSubmit(interaction: ModalSubmitInteraction): Promise<v
     return;
   }
 
+  // Guard: the modal may have been opened while the user was away, but they
+  // returned before it was submitted. Only save notes for active AFK states.
+  const state = await getAfk(interaction.guild!.id, afkUserId);
+  if (!state) {
+    await interaction.reply({ content: `${AFK_EMOJI.RETURN} They're already back — no need to leave a note!`, flags: MessageFlags.Ephemeral });
+    return;
+  }
+
   const settings = await getAfkSettings(interaction.guild!.id);
   const { stored, atCapacity } = await addNote({
     guildId: interaction.guild!.id,
