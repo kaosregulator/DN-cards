@@ -3,6 +3,7 @@ import {
   type SlashCommandOptionsOnlyBuilder,
   type SlashCommandSubcommandsOnlyBuilder,
 } from "discord.js";
+import { buildAfkCommandJson, buildAfkSetupCommandJson } from "../afk/commands.js";
 
 type AnySlashBuilder = SlashCommandBuilder | SlashCommandOptionsOnlyBuilder | SlashCommandSubcommandsOnlyBuilder;
 
@@ -422,6 +423,9 @@ export function buildCommands() {
     consolidateCommands(legacy, USER_HUB_COMMANDS, "cards", "Player command hub for DN Cards"),
     consolidateCommands(legacy, ADMIN_HUB_COMMANDS, "admin", "Admin command hub for DN Cards", true),
     ...legacy.filter(command => !consolidatedNames.has(command.name)),
+    // ── AFK Secretary & Whitelist Access System (standalone top-level cmds) ──
+    buildAfkCommandJson() as CommandJson,
+    buildAfkSetupCommandJson() as CommandJson,
   ];
 }
 

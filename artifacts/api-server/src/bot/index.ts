@@ -25,6 +25,11 @@ import {
 import { MessageFlags, EmbedBuilder } from "discord.js";
 import { createSetupLink } from "../lib/setup-link.js";
 import { setBotClient } from "./client-holder.js";
+// ── AFK Secretary & Whitelist Access System ──────────────────────────────────
+import { handleAfkCommand, handleAfkSetupCommand } from "./afk/commands.js";
+import { handleAfkInteraction } from "./afk/interactions.js";
+import { handleAfkMessage } from "./afk/message-hook.js";
+import { handleAfkPresence, startAfkSweeper } from "./afk/presence-hook.js";
 
 export async function startBot() {
   const token = process.env["DISCORD_BOT_TOKEN"];
@@ -69,13 +74,24 @@ export async function startBot() {
     return;
   }
 
+  // The AFK Secretary "On Status Change" trigger needs the privileged
+  // GuildPresences intent. It's opt-in via AFK_PRESENCE_INTENT=1 because a
+  // client that requests a privileged intent NOT enabled in the Developer
+  // Portal fails login outright — we never want the AFK addon to take the whole
+  // bot down. When unset, every other AFK feature still works; only the
+  // status-change auto-clear is inert. Enable BOTH the env flag and the
+  // "Presence Intent" toggle in the portal to turn it on.
+  const afkPresenceEnabled = process.env["AFK_PRESENCE_INTENT"] === "1";
+  const intents = [
+    GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildMessages,
+    GatewayIntentBits.MessageContent,
+    GatewayIntentBits.GuildMembers,
+  ];
+  if (afkPresenceEnabled) intents.push(GatewayIntentBits.GuildPresences);
+
   const client = new Client({
-    intents: [
-      GatewayIntentBits.Guilds,
-      GatewayIntentBits.GuildMessages,
-      GatewayIntentBits.MessageContent,
-      GatewayIntentBits.GuildMembers,
-    ],
+    intents,
     partials: [Partials.Channel],
   });
 
@@ -101,7 +117,20 @@ export async function startBot() {
     // Boot-time backfill is no longer needed; sets are managed via the
     // first-class sets + card_set_memberships tables.
     await registerCommands(c.user.id, token, client);
+    // AFK Secretary: start the timed auto-remove sweeper (clears "timed" AFKs
+    // once their countdown elapses; presence/messages can't cover this).
+    startAfkSweeper(client);
   });
+
+  // AFK Secretary: "On Status Change" trigger — clears AFK when a member flips
+  // Offline/Idle → Online. Only wired when the GuildPresences intent is enabled
+  // (AFK_PRESENCE_INTENT=1); otherwise presenceUpdate never delivers anyway.
+  if (afkPresenceEnabled) {
+    client.on(Events.PresenceUpdate, (oldPresence, newPresence) => {
+      if (!newPresence) return;
+      void handleAfkPresence(oldPresence, newPresence);
+    });
+  }
 
   client.on(Events.GuildCreate, async (guild) => {
     logger.info({ guildId: guild.id, name: guild.name }, "Bot joined guild");
@@ -144,6 +173,17 @@ export async function startBot() {
       // ── Autocomplete (card / set suggestions as user types) ───────────────
       if (interaction.isAutocomplete()) {
         await handleAutocomplete(interaction);
+        return;
+      }
+
+      // ── AFK Secretary components/modals (afk:* customIds) ─────────────────
+      // Intercept early so the AFK switchboard owns every button, select menu
+      // and modal it namespaced — without touching the routers below.
+      if (
+        (interaction.isMessageComponent() || interaction.isModalSubmit()) &&
+        interaction.customId.startsWith("afk:")
+      ) {
+        await handleAfkInteraction(interaction);
         return;
       }
 
@@ -407,7 +447,11 @@ export async function startBot() {
       if (!interaction.isChatInputCommand()) return;
       const cmd = interaction.commandName;
 
-      if (cmd === "cards") {
+      if (cmd === "afk") {
+        await handleAfkCommand(interaction);
+      } else if (cmd === "afksetup") {
+        await handleAfkSetupCommand(interaction);
+      } else if (cmd === "cards") {
         await handleUserCommand(interaction, interaction.options.getSubcommand(true));
       } else if (cmd === "admin") {
         const adminSubcommand = interaction.options.getSubcommand(true);
@@ -441,6 +485,11 @@ export async function startBot() {
   client.on(Events.MessageCreate, async (msg) => {
     if (msg.author.bot || !msg.guild) return;
     const content = msg.content.trim();
+
+    // AFK Secretary: clear the author's "on return" AFK (past grace) and post
+    // the intercept embed if they pinged anyone away. Fire-and-forget — never
+    // consumes the message or blocks the prefix / card-catch pipeline below.
+    void handleAfkMessage(msg).catch(err => logger.debug({ err }, "AFK message hook error"));
 
     // prefix commands (admin setup and config) — prefix is configurable per-guild
     const prefix = await getGuildPrefix(msg.guild.id);
