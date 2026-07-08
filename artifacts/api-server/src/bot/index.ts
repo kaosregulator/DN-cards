@@ -614,7 +614,7 @@ export async function startBot() {
         await handleBattleCommand(interaction, interaction.options.getSubcommand(true));
       } else if (cmd === "battleadmin") {
         await handleBattleAdminCommand(interaction);
-      if (cmd === "afk") {
+      } else if (cmd === "afk") {
         await handleAfkCommand(interaction);
       } else if (cmd === "afksetup") {
         await handleAfkSetupCommand(interaction);

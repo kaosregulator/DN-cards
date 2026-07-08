@@ -450,11 +450,6 @@ function buildLegacyCommands() {
       .addStringOption(o => o.setName("tier").setDescription("Value tier: low, mid, or high (default mid)")
         .addChoices({ name: "Low", value: "low" }, { name: "Mid", value: "mid" }, { name: "High", value: "high" }))
       .addIntegerOption(o => o.setName("stars").setDescription("Stars 1-5 (default 1)").setMinValue(1).setMaxValue(5))),
-    adminCmd("postcalculator", "(Admin) Post a persistent DN trade calculator hub in a channel", s => s
-      .addChannelOption(o => o.setName("channel").setDescription("Channel to post the calculator in").setRequired(true)
-        .addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement))
-      .addChannelOption(o => o.setName("result_channel").setDescription("Optional channel to post calculation results in (defaults to the calculator channel)")
-        .addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement))),
     cmd("dnhelp", "(User) Show DN values command help", s => s),
 
   ];
