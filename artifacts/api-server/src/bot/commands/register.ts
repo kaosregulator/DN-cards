@@ -366,6 +366,24 @@ function buildLegacyCommands() {
         .addUserOption(o => o.setName("user").setDescription("Member to thank").setRequired(true)))
       .addSubcommand(sc => sc.setName("top").setDescription("Top 10 most appreciated members on this server"))),
 
+    // ── /battle (user, Card Battle System) ────────────────────────────────────
+    cmd("battle", "(User) Card battles — challenge players or AI, view stats & leaderboards", s => s
+      .addSubcommand(sc => sc.setName("fight").setDescription("Start a battle — challenge a player, or leave empty to fight the AI")
+        .addUserOption(o => o.setName("opponent").setDescription("Player to challenge (empty = battle the AI)")))
+      .addSubcommand(sc => sc.setName("profile").setDescription("View a battle profile — record, rank, stats")
+        .addUserOption(o => o.setName("user").setDescription("Whose profile to view (default: you)")))
+      .addSubcommand(sc => sc.setName("leaderboard").setDescription("Battle rankings")
+        .addStringOption(o => o.setName("scope").setDescription("Guild or global").addChoices(
+          { name: "This server", value: "guild" }, { name: "Global (opt-in)", value: "global" }))
+        .addStringOption(o => o.setName("sort").setDescription("Sort by").addChoices(
+          { name: "Rank points", value: "rank" }, { name: "Wins", value: "wins" }, { name: "Best streak", value: "streak" })))
+      .addSubcommand(sc => sc.setName("achievements").setDescription("View unlocked battle achievements")
+        .addUserOption(o => o.setName("user").setDescription("Whose achievements to view (default: you)")))
+      .addSubcommand(sc => sc.setName("daily").setDescription("View today's battle challenges and progress"))),
+
+    // ── /battleadmin (admin, Battle System configuration) ─────────────────────
+    adminCmd("battleadmin", "(Admin) Battle system hub — setup wizard, rules, rewards, cards, seasons", s => s),
+
     // ── /sets (user, read-only) ───────────────────────────────────────────────
     cmd("sets", "(User) Browse card sets and your collection progress", s => s
       .addSubcommand(sc => sc.setName("list").setDescription("List every card set on this server"))
