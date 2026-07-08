@@ -238,6 +238,27 @@ those tables now happen through Discord slash commands — see
   (Roblox Open Cloud DataStore writes for card milestones) can bolt on later
   without reworking the link/verify core.
 
+### Global Server-vs-Server Leaderboard
+- **One global board that ranks whole servers**, not individual players — so a
+  community has a reason to push their SERVER up. No per-user card / rarity /
+  image data ever leaves a server; only coarse server totals are compared.
+- **Metrics:** 💠 total shards, 🎴 packs opened, 🤝 trades won, ⚔️ battles won,
+  plus a composite **Power Score** (`shards + packs·100 + trades·150 +
+  battles·250`). `/serverrank top [metric]` ranks by any single axis or the
+  overall score; the caller's own server is highlighted and its full breakdown
+  shown even when it's outside the top 10.
+- **Live aggregation:** shards/packs come from `SUM(user_currency)`, trades from
+  `COUNT(trades WHERE status='accepted')` — always correct, no syncing. Only
+  `battles_won`, the display-name cache, and the opt-out flag live in the new
+  `server_stats` table (one row per guild).
+- **Battles feed the board:** `incrementBattlesWon(guildId)` is the hook the
+  card-battling feature calls on each duel win.
+- **Privacy:** `/serverrank visibility hidden:true` (admin) removes a server
+  from the global board.
+- **Storage/code:** `server_stats` (`lib/db/src/schema/server-stats.ts`);
+  aggregation + score in `bot/server-stats/store.ts`; command in
+  `bot/server-stats/commands.ts`; standalone, dispatched in `bot/index.ts`.
+
 ### Trade Fairness Warning
 - When the proposing side's worth ratio vs the requesting side exceeds **3:1** (cards by `worthValue`, shards 1:1), the trade embed shows an orange ⚠️ banner naming the disadvantaged party. Trade still goes through if accepted — it's informational only.
 
@@ -391,6 +412,8 @@ Card catching is text-based — when a card spawns, type its name exactly to cat
 | `/accept id:<ID>` | Accept a trade |
 | `/decline id:<ID>` | Decline or cancel a trade |
 | `/link start\|verify\|status\|unlink\|whois` | Link your Roblox account (profile-code verified) for server perks |
+| `/serverrank top [metric]` | Global leaderboard ranking your server against every other DN Cards server |
+| `/serverrank visibility hidden:<bool>` | (Admin) Hide or show this server on the global board |
 
 ### Admin Quick Actions (Slash Commands)
 | Command | Description |

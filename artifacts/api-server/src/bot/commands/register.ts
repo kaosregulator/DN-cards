@@ -5,6 +5,7 @@ import {
 } from "discord.js";
 import { buildAfkCommandJson, buildAfkSetupCommandJson } from "../afk/commands.js";
 import { buildLinkCommandJson, buildRobloxAdminCommandJson } from "../roblox/commands.js";
+import { buildServerRankCommandJson } from "../server-stats/commands.js";
 
 type AnySlashBuilder = SlashCommandBuilder | SlashCommandOptionsOnlyBuilder | SlashCommandSubcommandsOnlyBuilder;
 
@@ -430,6 +431,8 @@ export function buildCommands() {
     // ── Roblox integration (standalone top-level cmds) ───────────────────────
     buildLinkCommandJson() as CommandJson,
     buildRobloxAdminCommandJson() as CommandJson,
+    // ── Global server-vs-server leaderboard ──────────────────────────────────
+    buildServerRankCommandJson() as CommandJson,
   ];
 }
 

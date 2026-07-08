@@ -28,6 +28,7 @@ import { setBotClient } from "./client-holder.js";
 // ── AFK Secretary & Whitelist Access System ──────────────────────────────────
 import { handleAfkCommand, handleAfkSetupCommand } from "./afk/commands.js";
 import { handleLinkCommand, handleRobloxAdminCommand } from "./roblox/commands.js";
+import { handleServerRankCommand } from "./server-stats/commands.js";
 import { handleAfkInteraction } from "./afk/interactions.js";
 import { handleAfkMessage } from "./afk/message-hook.js";
 import { handleAfkPresence, startAfkSweeper } from "./afk/presence-hook.js";
@@ -456,6 +457,8 @@ export async function startBot() {
         await handleLinkCommand(interaction);
       } else if (cmd === "roblox") {
         await handleRobloxAdminCommand(interaction);
+      } else if (cmd === "serverrank") {
+        await handleServerRankCommand(interaction);
       } else if (cmd === "cards") {
         await handleUserCommand(interaction, interaction.options.getSubcommand(true));
       } else if (cmd === "admin") {
