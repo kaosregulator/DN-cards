@@ -212,6 +212,32 @@ those tables now happen through Discord slash commands — see
 - Boost is applied AFTER the rarity-tier weight override (so admins can promote a single card above its tier baseline). Stacking events on the same card multiplies their boosts.
 - Activations and stops are announced (best-effort) in the configured spawn channel.
 
+### Roblox Integration (account linking + perks)
+- **Global link, per-guild perks.** `roblox_links` is keyed by Discord user ID
+  (one Discord user ↔ one Roblox account) and is deliberately NOT per-guild —
+  per-server gameplay (collections, currency, trades) is never touched. Only
+  perks are per-guild and only fire when an admin enables Roblox for that server.
+- **Profile-code verification** (no OAuth app, no secrets, no Roblox-side setup):
+  `/link start roblox_username:<name>` resolves the username via the public
+  Roblox API, stores a random code in `roblox_verifications` (30-min TTL), and
+  tells the user to paste it into their Roblox **About** blurb. `/link verify`
+  re-reads the blurb and, on match, writes `roblox_links` and applies perks.
+- **User commands** (`/link` — standalone, dispatched in `bot/index.ts`):
+  `start`, `verify`, `status [user]` (public), `unlink`, `whois roblox_username`
+  (public reverse lookup). All personal flows are ephemeral.
+- **Admin command** `/roblox config|show` (Administrator): toggle `enabled`, set
+  `verified_role` (granted on verify), `link_bonus_shards` (one-time per member,
+  idempotent via `roblox_reward_grants`), and `group_id` (shows the member's
+  group rank on `/link status`). Config lives in `roblox_guild_settings`.
+- **Storage:** `roblox_links`, `roblox_verifications`, `roblox_guild_settings`,
+  `roblox_reward_grants` (`lib/db/src/schema/roblox.ts`). API client is
+  `bot/roblox/api.ts` (public `users`/`groups`/`thumbnails` endpoints, all
+  timeout-guarded and null-safe); DB helpers in `bot/roblox/store.ts`; commands
+  in `bot/roblox/commands.ts`.
+- **Extensible:** built Discord-side-only for v1. Two-way in-game rewards
+  (Roblox Open Cloud DataStore writes for card milestones) can bolt on later
+  without reworking the link/verify core.
+
 ### Trade Fairness Warning
 - When the proposing side's worth ratio vs the requesting side exceeds **3:1** (cards by `worthValue`, shards 1:1), the trade embed shows an orange ⚠️ banner naming the disadvantaged party. Trade still goes through if accepted — it's informational only.
 
@@ -364,6 +390,7 @@ Card catching is text-based — when a card spawns, type its name exactly to cat
 | `/tradehistory [user]` | Recent completed trades, newest first |
 | `/accept id:<ID>` | Accept a trade |
 | `/decline id:<ID>` | Decline or cancel a trade |
+| `/link start\|verify\|status\|unlink\|whois` | Link your Roblox account (profile-code verified) for server perks |
 
 ### Admin Quick Actions (Slash Commands)
 | Command | Description |
@@ -393,6 +420,8 @@ Card catching is text-based — when a card spawns, type its name exactly to cat
 | `/setadmin load file:<.json> [name:<set>]` | Import cards from a JSON file (creates or appends to a set) |
 | `/setadmin unload set:<Name>` | Nuke a set and all its cards (destructive) |
 | `/setadmin listloaded` | List all sets with card counts |
+| `/roblox config` | Enable Roblox perks — verified role, one-time link bonus shards, group ID |
+| `/roblox show` | Show the current Roblox perk configuration |
 
 ### Setup & Config Commands (`!` prefix — admin only)
 | Command | Description |

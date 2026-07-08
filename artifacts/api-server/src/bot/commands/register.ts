@@ -4,6 +4,7 @@ import {
   type SlashCommandSubcommandsOnlyBuilder,
 } from "discord.js";
 import { buildAfkCommandJson, buildAfkSetupCommandJson } from "../afk/commands.js";
+import { buildLinkCommandJson, buildRobloxAdminCommandJson } from "../roblox/commands.js";
 
 type AnySlashBuilder = SlashCommandBuilder | SlashCommandOptionsOnlyBuilder | SlashCommandSubcommandsOnlyBuilder;
 
@@ -426,6 +427,9 @@ export function buildCommands() {
     // ── AFK Secretary & Whitelist Access System (standalone top-level cmds) ──
     buildAfkCommandJson() as CommandJson,
     buildAfkSetupCommandJson() as CommandJson,
+    // ── Roblox integration (standalone top-level cmds) ───────────────────────
+    buildLinkCommandJson() as CommandJson,
+    buildRobloxAdminCommandJson() as CommandJson,
   ];
 }
 

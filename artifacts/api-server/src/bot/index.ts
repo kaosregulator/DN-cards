@@ -27,6 +27,7 @@ import { createSetupLink } from "../lib/setup-link.js";
 import { setBotClient } from "./client-holder.js";
 // ── AFK Secretary & Whitelist Access System ──────────────────────────────────
 import { handleAfkCommand, handleAfkSetupCommand } from "./afk/commands.js";
+import { handleLinkCommand, handleRobloxAdminCommand } from "./roblox/commands.js";
 import { handleAfkInteraction } from "./afk/interactions.js";
 import { handleAfkMessage } from "./afk/message-hook.js";
 import { handleAfkPresence, startAfkSweeper } from "./afk/presence-hook.js";
@@ -451,6 +452,10 @@ export async function startBot() {
         await handleAfkCommand(interaction);
       } else if (cmd === "afksetup") {
         await handleAfkSetupCommand(interaction);
+      } else if (cmd === "link") {
+        await handleLinkCommand(interaction);
+      } else if (cmd === "roblox") {
+        await handleRobloxAdminCommand(interaction);
       } else if (cmd === "cards") {
         await handleUserCommand(interaction, interaction.options.getSubcommand(true));
       } else if (cmd === "admin") {
