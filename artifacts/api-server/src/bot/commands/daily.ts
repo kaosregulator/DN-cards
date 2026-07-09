@@ -91,6 +91,23 @@ export async function handleDaily(interaction: ChatInputCommandInteraction): Pro
   const bonus = Math.min(MAX_STREAK_BONUS, (newStreak - 1) * STREAK_BONUS);
   const reward = BASE_REWARD + bonus;
   await addShards(guildId, userId, reward);
+
+  // ── Login-calendar milestone bonus ─────────────────────────────────────────
+  const { cycleDay, milestoneFor } = await import("../cards/calendar.js");
+  const calDay = cycleDay(newStreak);
+  const milestone = milestoneFor(calDay);
+  let milestoneNote = "";
+  if (milestone) {
+    await addShards(guildId, userId, milestone.shards);
+    if (milestone.packTier) {
+      const { grantFreePack } = await import("../battle/pack-grant.js");
+      await grantFreePack(guildId, userId, milestone.packTier).catch(() => undefined);
+    }
+    milestoneNote =
+      `\n\n🏆 **Day ${calDay} milestone!** +💠 **${milestone.shards.toLocaleString()}**` +
+      (milestone.packTier ? ` and a 📦 **${milestone.packTier} pack**` : "") + "!";
+  }
+
   const currency = await getOrCreateCurrency(guildId, userId);
 
   const embed = new EmbedBuilder()
@@ -99,10 +116,11 @@ export async function handleDaily(interaction: ChatInputCommandInteraction): Pro
     .setDescription(
       `You earned 💠 **${reward.toLocaleString()} shards**!\n` +
       `Base: ${BASE_REWARD} · Streak bonus: +${bonus}\n\n` +
-      `🔥 Streak: **${newStreak} day${newStreak === 1 ? "" : "s"}**\n` +
-      `Balance: 💠 **${currency.shards.toLocaleString()}**`,
+      `🔥 Streak: **${newStreak} day${newStreak === 1 ? "" : "s"}**  ·  📅 Calendar day **${calDay}/30**\n` +
+      `Balance: 💠 **${currency.shards.toLocaleString()}**` +
+      milestoneNote,
     )
-    .setFooter({ text: "Come back tomorrow to keep your streak alive!" });
+    .setFooter({ text: "Come back tomorrow to keep your streak alive! · /cards calendar · /cards quests" });
 
   await applyEmbedOverride(embed, {
     guildId, key: "daily",
@@ -114,6 +132,14 @@ export async function handleDaily(interaction: ChatInputCommandInteraction): Pro
   });
 
   await interaction.editReply({ embeds: [embed] });
+
+  // Quest progress — claiming daily counts toward any "claim daily" quest.
+  try {
+    const { recordQuestEvent, formatQuestCompletions } = await import("../quests/engine.js");
+    const done = await recordQuestEvent(guildId, userId, "daily", 1);
+    const note = formatQuestCompletions(done);
+    if (note) await interaction.followUp({ content: note, flags: MessageFlags.Ephemeral });
+  } catch { /* non-fatal */ }
 
   // Achievement: streak_7 needs the live streak value
   const newly = await checkAchievements(guildId, userId, { dailyStreak: newStreak });

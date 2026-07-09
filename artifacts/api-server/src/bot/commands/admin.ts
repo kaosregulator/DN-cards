@@ -174,6 +174,14 @@ export async function handleAdminCommand(
     await interaction.editReply(`🗑️ **${card.name}** (${card.rarity}) has been permanently deleted.`);
     return;
   }
+  // /admin collectorrole — set/clear the opt-in spawn ping role.
+  if (cmd === "collectorrole") {
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+    if (!(await checkAdmin(interaction))) { await interaction.editReply("❌ Admins only."); return; }
+    const { handleSetCollectorRole } = await import("../cards/collector.js");
+    await handleSetCollectorRole(interaction);
+    return;
+  }
   // /setadmin — subcommand tree; defer first, then dispatch.
   if (cmd === "setadmin") {
     await interaction.deferReply({ flags: MessageFlags.Ephemeral });

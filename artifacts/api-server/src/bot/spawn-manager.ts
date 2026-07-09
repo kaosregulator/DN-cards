@@ -212,6 +212,14 @@ async function doSingleSpawn(guildId: string, forcedCardId?: number, isForced = 
     logger.warn({ err }, "Wishlist ping failed");
   }
 
+  // ── Collector role ping: opt-in role that gets @mentioned on every spawn ──
+  if (settings.collectorRoleId) {
+    await channel.send({
+      content: `🔔 <@&${settings.collectorRoleId}> a wild **${card.name}** appeared!`,
+      allowedMentions: { roles: [settings.collectorRoleId] },
+    }).catch(() => { /* role deleted / permissions — ignore */ });
+  }
+
   const spawn: ActiveSpawn = {
     spawnId,
     cardId: card.id,
@@ -343,6 +351,16 @@ async function awardSpawn(guildId: string, spawnId: string, userId: string): Pro
     markCaught(spawn.spawnLogId, userId),
     getOrCreateGuildSettings(guildId),
   ]);
+
+  // Quest progress (catch) — best-effort, never blocks the catch flow.
+  void (async () => {
+    try {
+      const cards = await getAllCardsCached();
+      const rarity = cards.find(c => c.id === spawn.cardId)?.rarity as Rarity | undefined;
+      const { recordQuestEvent } = await import("./quests/engine.js");
+      await recordQuestEvent(guildId, userId, "catch", 1, rarity);
+    } catch { /* non-fatal */ }
+  })();
 
   try {
     const claimedEmbed = await buildClaimedEmbed(spawn.cardId, userId, isShiny, guildId);
