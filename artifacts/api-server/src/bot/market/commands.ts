@@ -46,7 +46,7 @@ async function handleSell(interaction: ChatInputCommandInteraction, guildId: str
   const buyout = interaction.options.getInteger("buyout");
 
   if (price < 1) { await interaction.editReply("❌ Price must be at least 💠 1."); return; }
-  const card = await getCardByName(name);
+  const card = await getCardByName(name, guildId);
   if (!card) { await interaction.editReply(`❌ "**${name}**" not found. Try \`/cards list\`.`); return; }
 
   const isAuction = hours != null;

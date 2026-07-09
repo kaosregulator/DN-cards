@@ -268,7 +268,7 @@ export async function handleBattleAdminModal(interaction: ModalSubmitInteraction
   } else if (action === "editcard") {
     // Search for a card by name, then open its battle-card editor panel.
     const name = interaction.fields.getTextInputValue("name").trim();
-    const card = await getCardByName(name);
+    const card = await getCardByName(name, guildId);
     if (!card) { await interaction.editReply(`❌ No card named **${name}** found. Check the spelling and try again.`); return; }
     const panel = await buildCardEditorPanel(guildId, card.id);
     if (panel) await interaction.editReply(panel);

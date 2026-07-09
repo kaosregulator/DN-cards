@@ -55,7 +55,7 @@ export async function handleCardLevel(interaction: ChatInputCommandInteraction):
     return;
   }
 
-  const card = await getCardByName(name);
+  const card = await getCardByName(name, guildId);
   if (!card) { await interaction.editReply(`❌ "**${name}**" not found. Try \`/cards list\`.`); return; }
 
   const owned = await getUserOwnedCount(guildId, userId, card.id);
@@ -105,7 +105,7 @@ export async function handleCardLock(interaction: ChatInputCommandInteraction): 
   const name = interaction.options.getString("name", true);
   const state = interaction.options.getString("state"); // "on" | "off" | null (toggle)
 
-  const card = await getCardByName(name);
+  const card = await getCardByName(name, guildId);
   if (!card) { await interaction.editReply(`❌ "**${name}**" not found. Try \`/cards list\`.`); return; }
   const owned = await getUserOwnedCount(guildId, userId, card.id);
   if (owned.count + owned.shinyCount === 0) {
@@ -131,7 +131,7 @@ export async function handleCardFrame(interaction: ChatInputCommandInteraction):
   const name = interaction.options.getString("name", true);
   const style = interaction.options.getString("style");
 
-  const card = await getCardByName(name);
+  const card = await getCardByName(name, guildId);
   if (!card) { await interaction.editReply(`❌ "**${name}**" not found. Try \`/cards list\`.`); return; }
   const rarity = card.rarity as Rarity;
   const progress = await getCardProgress(guildId, userId, card.id);
