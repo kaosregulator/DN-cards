@@ -40,19 +40,16 @@ import {
 } from "../db.js";
 import { RARITY_EMOJI, selectMenuEmoji, type Rarity } from "../cards-data.js";
 import { isOwnedBy } from "../home-guild.js";
-import { objectStorageClient } from "../../lib/objectStorage.js";
+import { objectStorageClient, ObjectStorageService } from "../../lib/objectStorage.js";
 
 // ── Permanent image upload ────────────────────────────────────────────────────
 // Discord slash-command attachment URLs are ephemeral — they expire within
-// hours/days. Download the bytes and re-upload to object storage so the URL
-// is permanent and usable in Discord embeds + the website indefinitely.
-// Falls back to the original URL silently if GCS is unavailable or upload fails.
+// hours/days. Download the bytes and re-upload to the project's object storage
+// (private object dir) so the app can serve them permanently via
+// /api/storage/objects/<objectPath>. Returns an object path like /objects/uploads/...
+// or an absolute URL if persistence is unavailable.
 export async function persistBotImage(url: string, contentType?: string): Promise<string> {
-  const bucketId = process.env.DEFAULT_OBJECT_STORAGE_BUCKET_ID;
-  if (!bucketId) {
-    logger.warn({ reason: "missing_default_object_storage_bucket_id" }, "Image persistence skipped: no object storage bucket configured");
-    return url;
-  }
+  const storage = new ObjectStorageService();
   try {
     const resp = await fetch(url, { signal: AbortSignal.timeout(20_000) });
     if (!resp.ok) {
@@ -65,11 +62,23 @@ export async function persistBotImage(url: string, contentType?: string): Promis
       logger.warn({ url, size: buf.length, reason: buf.length === 0 ? "empty" : "too_large" }, "Image persistence skipped: invalid size");
       return url; // 10 MB cap
     }
-    const ext = ct.includes("gif") ? "gif" : ct.includes("webp") ? "webp" : ct.includes("png") ? "png" : "jpg";
-    const objectName = `bot-uploads/${randomUUID()}.${ext}`;
-    const file = objectStorageClient.bucket(bucketId).file(objectName);
-    await file.save(buf, { contentType: ct, public: true });
-    return `https://storage.googleapis.com/${bucketId}/${objectName}`;
+
+    const uploadURL = await storage.getObjectEntityUploadURL();
+    const put = await fetch(uploadURL, {
+      method: "PUT",
+      headers: { "Content-Type": ct, "Content-Length": String(buf.length) },
+      body: buf,
+      signal: AbortSignal.timeout(30_000),
+    });
+    if (!put.ok) {
+      const detail = await put.text().catch(() => "");
+      logger.warn({ url, status: put.status, detail, reason: "gcs_put_failed" }, "Image persistence skipped: GCS PUT failed");
+      return url;
+    }
+
+    const signed = new URL(uploadURL);
+    const objectPath = storage.normalizeObjectEntityPath(`https://storage.googleapis.com${signed.pathname}`);
+    return objectPath;
   } catch (err) {
     logger.warn({ url, reason: "upload_error", error: err instanceof Error ? err.message : String(err) }, "Image persistence skipped: upload error");
     return url; // graceful fallback — command still works, image just ephemeral

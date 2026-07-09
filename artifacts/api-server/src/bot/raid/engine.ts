@@ -9,6 +9,7 @@ import { deriveStats, applyStatOverrides } from "../battle/stat-engine.js";
 import { resolveMove, startOfTurn } from "../battle/combat-engine.js";
 import { rarityRank } from "../battle/config-engine.js";
 import type { OwnedBattleCard } from "../battle/db.js";
+import { toAbsoluteImageUrl } from "../image-url.js";
 
 export const BOSS_USER_ID = "BOSS";
 
@@ -59,7 +60,7 @@ export function buildBossCombatant(
   return {
     userId: BOSS_USER_ID, displayName: boss.name, isAi: true, side: 1,
     cardId: -boss.id, cardName: boss.name, cardRarity: (boss.rarity as Rarity),
-    cardType: boss.archetype, cardImageUrl: boss.imageUrl,
+    cardType: boss.archetype, cardImageUrl: toAbsoluteImageUrl(boss.imageUrl),
     stats, hp: maxHealth, shield: 0, energy: 40, ultimate: 0, status: [],
     specialCardId: null, specialCardName: null, specialEffect: null,
     specialCooldownMax: 3, specialCooldownRemaining: 0,

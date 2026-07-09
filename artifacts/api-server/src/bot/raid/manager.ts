@@ -18,6 +18,7 @@ import { getOwnedBattleCards, getOrCreateProfile } from "../battle/db.js";
 import type { OwnedBattleCard } from "../battle/db.js";
 import { bar } from "../battle/embeds.js";
 import { starsForLevel, starString, levelForStars } from "../cards/leveling.js";
+import { toAbsoluteImageUrl } from "../image-url.js";
 import { logger } from "../../lib/logger.js";
 import { getBossByName } from "./db.js";
 import {
@@ -359,7 +360,8 @@ function buildLobbyEmbed(session: RaidSession): EmbedBuilder {
     )
     .addFields({ name: `👥 Party (${session.party.size}/${b.maxPlayers})`, value: members, inline: false })
     .setFooter({ text: "Click Join to pick your card · Starter clicks Begin when ready" });
-  if (b.imageUrl) embed.setThumbnail(b.imageUrl);
+  const thumb = toAbsoluteImageUrl(b.imageUrl);
+  if (thumb) embed.setThumbnail(thumb);
   return embed;
 }
 

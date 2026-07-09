@@ -17,6 +17,7 @@ import {
   type StringSelectMenuInteraction, type Message, type User,
 } from "discord.js";
 import { logger } from "../../lib/logger.js";
+import { toAbsoluteImageUrl } from "../image-url.js";
 import { getBotClient } from "../client-holder.js";
 import { removeCardFromUser, restoreCardToUser } from "../db.js";
 import type { BattleSettings } from "@workspace/db";
@@ -161,7 +162,7 @@ function buildCombatant(
   return {
     userId, displayName: name, isAi, aiDifficulty, side,
     cardId: card.id, cardName: card.name, cardRarity: battleRarity,
-    cardType: card.cardType, cardImageUrl: card.imageUrl,
+    cardType: card.cardType, cardImageUrl: toAbsoluteImageUrl(card.imageUrl),
     stats,
     hp: stats.maxHealth, shield: 0, energy: 40, ultimate: 0, status: [],
     specialCardId: special?.id ?? null,
