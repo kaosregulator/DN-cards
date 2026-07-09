@@ -479,6 +479,11 @@ export async function handlePack(interaction: ChatInputCommandInteraction): Prom
     }
     const note = formatQuestCompletions(completed);
     if (note) await interaction.followUp({ content: note, flags: MessageFlags.Ephemeral }).catch(() => { /* ignore */ });
+    const { recordGiveawayEvent } = await import("../giveaway/engine.js");
+    await recordGiveawayEvent(guildId, userId, "pack_open", 1);
+    for (const card of cards) {
+      await recordGiveawayEvent(guildId, userId, "catch", 1, { rarity: card.rarity as Rarity });
+    }
   } catch { /* non-fatal */ }
 
   const newly = await checkAchievements(guildId, userId);

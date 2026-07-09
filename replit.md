@@ -47,6 +47,8 @@ DN Cards is DarkNight's collectible military trading card game for the Roblox + 
 - Card/rank data: `artifacts/api-server/src/bot/cards-data.ts`
 - DB helpers: `artifacts/api-server/src/bot/db.ts`
 - Slash command registration: `artifacts/api-server/src/bot/commands/register.ts`
+- Giveaway System schema: `lib/db/src/schema/giveaways.ts` (giveaways, giveaway_entries, giveaway_winners)
+- Giveaway System module: `artifacts/api-server/src/bot/giveaway/` (`db.ts` CRUD, `engine.ts` progress+winner draw, `embeds.ts` UI, `manager.ts` message/claim, `command.ts` user, `admin.ts` `/giveawayadmin`, `sweeper.ts` auto-end/reroll, `message-hook.ts` message tracking, `prizes.ts` payout)
 
 ### Website vs Discord responsibilities
 
@@ -215,6 +217,16 @@ those tables now happen through Discord slash commands — see
 ### Trade Fairness Warning
 - When the proposing side's worth ratio vs the requesting side exceeds **3:1** (cards by `worthValue`, shards 1:1), the trade embed shows an orange ⚠️ banner naming the disadvantaged party. Trade still goes through if accepted — it's informational only.
 
+### Giveaway System (add-on)
+- Purely additive feature powered by DN Cards. Admins run giveaways with custom prizes; players earn chances through real gameplay. Three per-guild tables (`giveaways`, `giveaway_entries`, `giveaway_winners`); nothing in the core card/battle/raid/echo tables is modified.
+- **Prizes** (any mix): `shards`, `pack` (basic/premium/legendary ×N), `card:<Name> xN` (minted via the real `catchCard` path), `nitro`, `role` (auto-assigned on claim), `custom`. Card/pack/shard prizes auto-fulfil through the existing economy; nitro/custom produce an admin hand-off receipt.
+- **Requirements** measure activity from when the giveaway goes active, fed by fire-and-forget hooks on the SAME flows quests use: `catch` (rarity-gatable), `burn`, `pack_open`, `battle_win`, `battle_played` (valid, non-forfeit), `raid_join`, `raid_damage`, `echo_use`, `message` (anti-spam: bots/commands ignored, one counted msg per member per 12s).
+- **Winner modes:** `entry` (weighted random by earned 🎟️ entries — `*N` per unit, `+N` on completion) or `completion` (must finish every requirement). **Difficulty:** easy/medium/hard/legendary (cosmetic tier + color).
+- **UI (raid-style):** one channel message updates in place while entrants join, then the SAME message is edited into a winner announcement with a **Claim Prize** button. Buttons: My Progress / Enter (open giveaways) / Details / Claim. Times use Discord `<t:unix:…>` so every viewer sees their local timezone with no stored preference.
+- **Claim + reroll:** winners claim within `claimTimerMinutes` (default 24h); the minute sweeper (`giveaway/sweeper.ts`) auto-ends due giveaways, draws winners, and rerolls unclaimed slots. Admins can `/giveawayadmin reroll`. Announce via channel / DM / both.
+- **Commands:** `/giveaways` (board + your standing), `/giveaway progress [id]`, and admin `/giveawayadmin create|edit|end|winners|list|reroll`. Create uses compact syntax, e.g. `prizes: shards:50000; nitro:1 Month Nitro; card:Dragon Lord x10` and `requirements: catch:50:*1; battlewin:10:+10; message:100`.
+- **DB push:** new tables require `pnpm -C lib/db run push` after deploy.
+
 ## Architecture decisions
 
 - Bot runs inside the same Express server process (startBot() called from index.ts) — keeps infra simple, one workflow to manage.
@@ -364,6 +376,8 @@ Card catching is text-based — when a card spawns, type its name exactly to cat
 | `/tradehistory [user]` | Recent completed trades, newest first |
 | `/accept id:<ID>` | Accept a trade |
 | `/decline id:<ID>` | Decline or cancel a trade |
+| `/giveaways` | Active giveaways: prizes, live countdown, requirements, your progress + entries |
+| `/giveaway progress [id]` | Detailed per-requirement progress and earned entries |
 
 ### Admin Quick Actions (Slash Commands)
 | Command | Description |
@@ -380,6 +394,12 @@ Card catching is text-based — when a card spawns, type its name exactly to cat
 | `/event start card:<Name> duration:<e.g. 2h> [multiplier:<n>]` | Start a limited-time spawn boost |
 | `/event list` | Show all active events |
 | `/event stop id:<ID>` | End an event early |
+| `/giveawayadmin create title duration prizes [requirements] [winners] [difficulty] [mode] [channel] [image] [claimtimer] [announce]` | Create & launch a giveaway (compact prize/requirement syntax) |
+| `/giveawayadmin edit id [fields…]` | Edit any field of a giveaway; refreshes the live message |
+| `/giveawayadmin end id` | End a giveaway now and draw winners |
+| `/giveawayadmin winners id` | View winners and claim status |
+| `/giveawayadmin list` | Active + past giveaways |
+| `/giveawayadmin reroll id [user]` | Reroll a winner (auto-picks a fresh eligible player) |
 | `/rarityname name:<Name> emoji:<🔮> [color:<#hex>] [reset:true]` | Customize the Mythic tier's display name, emoji & color |
 | `/rarity profile set rarity:<tier> [worth] [burn] [weight]` | Override worth/burn/drop-weight for a built-in rarity |
 | `/rarity profile reset rarity:<tier>` | Clear all overrides for a built-in rarity |

@@ -867,6 +867,8 @@ export async function handleUserCommand(
       const done = await recordQuestEvent(guildId, interaction.user.id, "burn", result.burned);
       const note = formatQuestCompletions(done);
       if (note) await interaction.followUp({ content: note, flags: MessageFlags.Ephemeral }).catch(() => { /* ignore */ });
+      const { recordGiveawayEvent } = await import("../giveaway/engine.js");
+      await recordGiveawayEvent(guildId, interaction.user.id, "burn", result.burned);
     } catch { /* non-fatal */ }
     const newlyBurn = await checkAchievements(guildId, interaction.user.id);
     if (newlyBurn.length > 0) {

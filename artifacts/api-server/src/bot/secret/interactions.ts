@@ -55,6 +55,12 @@ async function handleWhisperModal(interaction: ModalSubmitInteraction): Promise<
     components: [row],
     allowedMentions: { users: [targetId] },
   });
+
+  // Giveaway progress — sending an Echo whisper counts as an Echo activation.
+  try {
+    const { recordGiveawayEvent } = await import("../giveaway/engine.js");
+    await recordGiveawayEvent(guildId, senderId, "echo_use", 1);
+  } catch { /* non-fatal */ }
 }
 
 async function handleAdminSecretModal(interaction: ModalSubmitInteraction): Promise<void> {

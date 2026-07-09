@@ -31,6 +31,11 @@ import { handleSquadCommand } from "./squad/commands.js";
 import { handleRaidCommand } from "./raid/command.js";
 import { handleRaidAdminCommand } from "./raid/admin.js";
 import { handleRaidComponent } from "./raid/manager.js";
+import { handleGiveawaysCommand, handleGiveawayUserCommand } from "./giveaway/command.js";
+import { handleGiveawayAdminCommand } from "./giveaway/admin.js";
+import { handleGiveawayComponent } from "./giveaway/manager.js";
+import { handleGiveawayMessage } from "./giveaway/message-hook.js";
+import { startGiveawayMaintenance } from "./giveaway/sweeper.js";
 import { handleWhisperCommand, handleAdminSecretCommand, handleEchoCommand } from "./secret/commands.js";
 import { isSecretModal, handleSecretModal, isSecretButton, handleSecretButton } from "./secret/interactions.js";
 import {
@@ -132,6 +137,7 @@ export async function startBot() {
     // first-class sets + card_set_memberships tables.
     startBattleMaintenance();
     startMarketMaintenance();
+    startGiveawayMaintenance();
     await registerCommands(c.user.id, token, client);
     // AFK Secretary: start the timed auto-remove sweeper (clears "timed" AFKs
     // once their countdown elapses; presence/messages can't cover this).
@@ -293,6 +299,12 @@ export async function startBot() {
         // ── Raid buttons (lobby join/begin, combat actions) ────────────────
         if (action === "raid") {
           await handleRaidComponent(interaction);
+          return;
+        }
+
+        // ── Giveaway buttons (my progress, details, claim prize) ───────────
+        if (action === "giveaway") {
+          await handleGiveawayComponent(interaction);
           return;
         }
 
@@ -461,6 +473,8 @@ export async function startBot() {
             try {
               const { recordQuestEvent } = await import("./quests/engine.js");
               await recordQuestEvent(guildId, userId, "burn", 1);
+              const { recordGiveawayEvent } = await import("./giveaway/engine.js");
+              await recordGiveawayEvent(guildId, userId, "burn", 1);
             } catch { /* non-fatal */ }
             const burnUnlocks = await checkAchievements(guildId, userId).catch(() => []);
             if (burnUnlocks.length > 0) {
@@ -515,6 +529,12 @@ export async function startBot() {
         await handleRaidCommand(interaction);
       } else if (cmd === "raidadmin") {
         await handleRaidAdminCommand(interaction);
+      } else if (cmd === "giveaways") {
+        await handleGiveawaysCommand(interaction);
+      } else if (cmd === "giveaway") {
+        await handleGiveawayUserCommand(interaction);
+      } else if (cmd === "giveawayadmin") {
+        await handleGiveawayAdminCommand(interaction);
       } else if (cmd === "whisper") {
         await handleWhisperCommand(interaction);
       } else if (cmd === "adminsecret") {
@@ -567,6 +587,11 @@ export async function startBot() {
 
     // prefix commands (admin setup and config) — prefix is configurable per-guild
     const prefix = await getGuildPrefix(msg.guild.id);
+
+    // Giveaway message-requirement tracking (anti-spam, ignores commands/bots).
+    // Fire-and-forget — never consumes the message or blocks the pipeline below.
+    void handleGiveawayMessage(msg, prefix).catch(err => logger.debug({ err }, "Giveaway message hook error"));
+
     if (content.startsWith(prefix)) {
       await handlePrefixCommand(msg, prefix).catch(err => logger.error({ err }, "Prefix command error"));
       return;

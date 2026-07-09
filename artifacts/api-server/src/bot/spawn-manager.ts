@@ -359,6 +359,8 @@ async function awardSpawn(guildId: string, spawnId: string, userId: string): Pro
       const rarity = cards.find(c => c.id === spawn.cardId)?.rarity as Rarity | undefined;
       const { recordQuestEvent } = await import("./quests/engine.js");
       await recordQuestEvent(guildId, userId, "catch", 1, rarity);
+      const { recordGiveawayEvent } = await import("./giveaway/engine.js");
+      await recordGiveawayEvent(guildId, userId, "catch", 1, { rarity });
     } catch { /* non-fatal */ }
   })();
 
