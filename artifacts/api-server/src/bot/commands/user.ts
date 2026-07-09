@@ -2,7 +2,7 @@ import type { ChatInputCommandInteraction } from "discord.js";
 import { EmbedBuilder, MessageFlags } from "discord.js";
 
 // Commands whose results are personal/spammy and should only be seen by the user.
-const EPHEMERAL_COMMANDS = new Set(["burn", "shards", "trades", "tradehistory", "help", "daily", "quests", "achievements", "pack", "packstats", "wishlist", "gift", "tradein", "sets", "level", "frame"]);
+const EPHEMERAL_COMMANDS = new Set(["burn", "shards", "trades", "tradehistory", "help", "daily", "quests", "achievements", "pack", "packstats", "wishlist", "gift", "tradein", "sets", "level", "frame", "lock", "search"]);
 import {
   getUserCollection, getAllCards, getLeaderboard, getTopPackOpeners,
   getOrCreateCurrency, burnCard, getCardByName, getUserCardCount, getUserOwnedCount,
@@ -803,6 +803,13 @@ export async function handleUserCommand(
     const wantShiny = interaction.options.getBoolean("shiny") ?? false;
     const card = await getCardByName(cardName);
     if (!card) { await interaction.editReply(`❌ "**${cardName}**" not found. Check \`/cards list\`.`); return; }
+    {
+      const { isCardLocked } = await import("../cards/locks.js");
+      if (await isCardLocked(guildId, interaction.user.id, card.id)) {
+        await interaction.editReply(`🔒 **${card.name}** is locked (favorited) and can't be burned. Unlock it first with \`/cards lock name:${card.name}\`.`);
+        return;
+      }
+    }
     const rarity = card.rarity as Rarity;
     const { count, shinyCount } = await getUserOwnedCount(guildId, interaction.user.id, card.id);
     // Burn targets the chosen pile only — shiny:true burns from shinyCount,
@@ -891,6 +898,16 @@ export async function handleUserCommand(
   if (sub === "frame") {
     const { handleCardFrame } = await import("../cards/level-command.js");
     await handleCardFrame(interaction);
+    return;
+  }
+  if (sub === "lock") {
+    const { handleCardLock } = await import("../cards/level-command.js");
+    await handleCardLock(interaction);
+    return;
+  }
+  if (sub === "search") {
+    const { handleSearch } = await import("../cards/search-command.js");
+    await handleSearch(interaction);
     return;
   }
   if (sub === "pack") { await handlePack(interaction); return; }

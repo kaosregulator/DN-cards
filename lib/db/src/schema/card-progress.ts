@@ -1,5 +1,5 @@
 import {
-  pgTable, text, serial, integer, timestamp, uniqueIndex,
+  pgTable, text, serial, integer, boolean, timestamp, uniqueIndex,
 } from "drizzle-orm/pg-core";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -23,6 +23,9 @@ export const cardProgressTable = pgTable("card_progress", {
   battlesWon: integer("battles_won").notNull().default(0),
   // Equipped frame id (see frames registry). Null = the rarity's default frame.
   equippedFrame: text("equipped_frame"),
+  // Favorite/lock flag: locked cards are protected from `/burn` and bulk
+  // trade-in so a prized copy can't be destroyed by a mass action.
+  locked: boolean("locked").notNull().default(false),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 }, (t) => ({
   guildUserCardUniq: uniqueIndex("card_progress_guild_user_card_uniq").on(t.guildId, t.userId, t.cardId),

@@ -150,8 +150,11 @@ export async function handleTradein(interaction: ChatInputCommandInteraction): P
   // custom tier won't show up under their built-in rarity any more (which is
   // what the admin wants).
   const collection = await getUserCollection(guildId, userId);
+  // Locked (favorited) cards are protected from bulk trade-in.
+  const { getLockedCardIds } = await import("../cards/locks.js");
+  const lockedIds = await getLockedCardIds(guildId, userId);
   const eligible = collection
-    .filter(c => !c.isEventExclusive && effectiveRarityKey(c, ctx) === fromKey)
+    .filter(c => !c.isEventExclusive && !lockedIds.has(c.cardId) && effectiveRarityKey(c, ctx) === fromKey)
     .map(c => ({ cardId: c.cardId, name: c.name, count: c.count }));
   const totalAtRarity = eligible.reduce((s, c) => s + c.count, 0);
 

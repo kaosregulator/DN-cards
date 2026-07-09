@@ -3,6 +3,7 @@ import { EmbedBuilder } from "discord.js";
 import { db, cardProgressTable } from "@workspace/db";
 import { and, eq, desc } from "drizzle-orm";
 import { getCardByName, getAllCardsCached, getUserOwnedCount } from "../db.js";
+import { isCardLocked, setCardLocked } from "./locks.js";
 import { toAbsoluteImageUrl } from "../image-url.js";
 import type { Rarity } from "../cards-data.js";
 import {
@@ -94,6 +95,32 @@ export async function handleCardLevel(interaction: ChatInputCommandInteraction):
   if (img) embed.setThumbnail(img);
 
   await interaction.editReply({ embeds: [embed] });
+}
+
+// ── /cards lock name:<card> [state] ──────────────────────────────────────────
+export async function handleCardLock(interaction: ChatInputCommandInteraction): Promise<void> {
+  if (!interaction.guild) return;
+  const guildId = interaction.guild.id;
+  const userId = interaction.user.id;
+  const name = interaction.options.getString("name", true);
+  const state = interaction.options.getString("state"); // "on" | "off" | null (toggle)
+
+  const card = await getCardByName(name);
+  if (!card) { await interaction.editReply(`❌ "**${name}**" not found. Try \`/cards list\`.`); return; }
+  const owned = await getUserOwnedCount(guildId, userId, card.id);
+  if (owned.count + owned.shinyCount === 0) {
+    await interaction.editReply(`❌ You don't own **${card.name}**, so there's nothing to lock.`);
+    return;
+  }
+
+  const currently = await isCardLocked(guildId, userId, card.id);
+  const next = state === "on" ? true : state === "off" ? false : !currently;
+  await setCardLocked(guildId, userId, card.id, next);
+  await interaction.editReply(
+    next
+      ? `🔒 **${card.name}** is now **locked** — it's protected from \`/burn\` and bulk trade-in.`
+      : `🔓 **${card.name}** is now **unlocked** — it can be burned or traded in again.`,
+  );
 }
 
 // ── /cards frame name:<card> [style:<frame>] ─────────────────────────────────

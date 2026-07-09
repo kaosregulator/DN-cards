@@ -103,6 +103,22 @@ function buildLegacyCommands() {
       .addStringOption(o => o.setName("name").setDescription("Card name").setRequired(true).setAutocomplete(true))
       .addStringOption(o => o.setName("style").setDescription("Frame to equip (leave empty to list options)"))),
 
+    cmd("lock", "(User) Lock/favorite a card so it can't be burned or traded in", s => s
+      .addStringOption(o => o.setName("name").setDescription("Card to lock/unlock").setRequired(true).setAutocomplete(true))
+      .addStringOption(o => o.setName("state").setDescription("Lock or unlock (default: toggle)")
+        .addChoices({ name: "lock", value: "on" }, { name: "unlock", value: "off" }))),
+
+    cmd("search", "(User) Search the roster by name, rarity, or type — see what you own", s => s
+      .addStringOption(o => o.setName("query").setDescription("Text to match in the card name"))
+      .addStringOption(o => o.setName("rarity").setDescription("Filter by rarity")
+        .addChoices(
+          { name: "⚪ Common", value: "common" }, { name: "🟢 Uncommon", value: "uncommon" },
+          { name: "🔵 Rare", value: "rare" }, { name: "🟣 Epic", value: "epic" },
+          { name: "🟡 Legendary", value: "legendary" }, { name: "🔴 Mythic", value: "mythic" }))
+      .addStringOption(o => o.setName("type").setDescription("Filter by card type"))
+      .addStringOption(o => o.setName("owned").setDescription("Only owned or only missing")
+        .addChoices({ name: "Owned", value: "owned" }, { name: "Missing", value: "missing" }))),
+
     cmd("pack", "(User) Open a card pack — pick a tier", s => s
       .addStringOption(o => o.setName("tier")
         .setDescription("Which pack to open (default: Basic)")
@@ -497,7 +513,7 @@ const USER_HUB_COMMANDS = new Set([
   "collection", "rank", "info", "list", "catalog", "top", "burn", "shards",
   "trade", "gift", "trades", "tradehistory", "accept", "decline", "welcome",
   "help", "daily", "quests", "pack", "packstats", "tradein", "achievements",
-  "level", "frame",
+  "level", "frame", "lock", "search",
 ]);
 
 const ADMIN_HUB_COMMANDS = new Set([
