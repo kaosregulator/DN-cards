@@ -25,6 +25,8 @@ import {
   handleBattleAdminChannelSelect, handleBattleAdminModal,
 } from "./commands/battle-admin.js";
 import { handleBattleComponent, startBattleMaintenance } from "./battle/battle-manager.js";
+import { handleMarketCommand } from "./market/commands.js";
+import { startMarketMaintenance } from "./market/sweeper.js";
 import { handleWhisperCommand, handleAdminSecretCommand, handleEchoCommand } from "./secret/commands.js";
 import { isSecretModal, handleSecretModal, isSecretButton, handleSecretButton } from "./secret/interactions.js";
 import {
@@ -109,6 +111,7 @@ export async function startBot() {
     // Boot-time backfill is no longer needed; sets are managed via the
     // first-class sets + card_set_memberships tables.
     startBattleMaintenance();
+    startMarketMaintenance();
     await registerCommands(c.user.id, token, client);
   });
 
@@ -452,6 +455,8 @@ export async function startBot() {
         await handleBattleCommand(interaction, interaction.options.getSubcommand(true));
       } else if (cmd === "battleadmin") {
         await handleBattleAdminCommand(interaction);
+      } else if (cmd === "market") {
+        await handleMarketCommand(interaction);
       } else if (cmd === "whisper") {
         await handleWhisperCommand(interaction);
       } else if (cmd === "adminsecret") {

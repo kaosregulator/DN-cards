@@ -402,6 +402,26 @@ function buildLegacyCommands() {
       .addSubcommand(sc => sc.setName("progress").setDescription("Show set-by-set completion for a member")
         .addUserOption(o => o.setName("user").setDescription("Member to inspect (defaults to you)")))),
 
+    // ── /market (user, Marketplace) ───────────────────────────────────────────
+    cmd("market", "(User) Buy, sell, and auction cards for DN Shards", s => s
+      .addSubcommand(sc => sc.setName("sell").setDescription("List a card for sale, or as a timed auction")
+        .addStringOption(o => o.setName("name").setDescription("Card to sell").setRequired(true).setAutocomplete(true))
+        .addIntegerOption(o => o.setName("price").setDescription("Sale price, or auction starting bid").setRequired(true).setMinValue(1))
+        .addIntegerOption(o => o.setName("hours").setDescription("Auction length in hours (omit for a fixed-price sale)").setMinValue(1).setMaxValue(168))
+        .addIntegerOption(o => o.setName("buyout").setDescription("Optional instant-buy price for an auction").setMinValue(1)))
+      .addSubcommand(sc => sc.setName("browse").setDescription("Browse active market listings")
+        .addUserOption(o => o.setName("seller").setDescription("Only show a specific seller's listings"))
+        .addStringOption(o => o.setName("kind").setDescription("Filter by type")
+          .addChoices({ name: "For sale", value: "sale" }, { name: "Auctions", value: "auction" })))
+      .addSubcommand(sc => sc.setName("buy").setDescription("Buy a fixed-price listing (or auction buyout)")
+        .addIntegerOption(o => o.setName("id").setDescription("Listing ID").setRequired(true).setMinValue(1)))
+      .addSubcommand(sc => sc.setName("bid").setDescription("Bid on an auction")
+        .addIntegerOption(o => o.setName("id").setDescription("Listing ID").setRequired(true).setMinValue(1))
+        .addIntegerOption(o => o.setName("amount").setDescription("Your bid in shards").setRequired(true).setMinValue(1)))
+      .addSubcommand(sc => sc.setName("cancel").setDescription("Cancel one of your listings")
+        .addIntegerOption(o => o.setName("id").setDescription("Listing ID").setRequired(true).setMinValue(1)))
+      .addSubcommand(sc => sc.setName("mine").setDescription("View your listings and active bids"))),
+
     // ── Echo-Whisper (encrypted messaging addon) ──────────────────────────────
     cmd("whisper", "(User) Send an encrypted whisper only a chosen member can read", s => s
       .addUserOption(o => o.setName("user").setDescription("The member who can read this message").setRequired(true))),

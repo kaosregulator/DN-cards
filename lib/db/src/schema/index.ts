@@ -5,3 +5,4 @@ export * from "./battles";
 export * from "./secret";
 export * from "./quests";
 export * from "./card-progress";
+export * from "./market";
