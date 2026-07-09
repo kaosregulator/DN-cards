@@ -34,6 +34,14 @@ import {
   handleBattleAdminChannelSelect, handleBattleAdminModal,
 } from "./commands/battle-admin.js";
 import { handleBattleComponent, startBattleMaintenance } from "./battle/battle-manager.js";
+import { handleMarketCommand } from "./market/commands.js";
+import { startMarketMaintenance } from "./market/sweeper.js";
+import { handleSquadCommand } from "./squad/commands.js";
+import { handleRaidCommand } from "./raid/command.js";
+import { handleRaidAdminCommand } from "./raid/admin.js";
+import { handleRaidComponent } from "./raid/manager.js";
+import { handleWhisperCommand, handleAdminSecretCommand, handleEchoCommand } from "./secret/commands.js";
+import { isSecretModal, handleSecretModal, isSecretButton, handleSecretButton } from "./secret/interactions.js";
 import {
   buildCommands, USER_COMMAND_NAMES, ADMIN_COMMAND_NAMES,
 } from "./commands/register.js";
@@ -200,6 +208,7 @@ export async function startBot() {
     // Boot-time backfill is no longer needed; sets are managed via the
     // first-class sets + card_set_memberships tables.
     startBattleMaintenance();
+    startMarketMaintenance();
     await registerCommands(c.user.id, token, client);
     // AFK Secretary: start the timed auto-remove sweeper (clears "timed" AFKs
     // once their countdown elapses; presence/messages can't cover this).
@@ -286,6 +295,8 @@ export async function startBot() {
           await handleCustomPackTypesSelect(interaction);
         } else if (interaction.customId.startsWith("battle:")) {
           await handleBattleComponent(interaction);
+        } else if (interaction.customId.startsWith("raid:")) {
+          await handleRaidComponent(interaction);
         } else if (interaction.customId.startsWith("battleadmin:")) {
           await handleBattleAdminSelect(interaction);
         } else if (interaction.customId.startsWith("config_")) {
@@ -333,7 +344,9 @@ export async function startBot() {
 
       // ── Modal submissions (admin hub + setup test card + custom mix) ─────
       if (interaction.isModalSubmit()) {
-        if (interaction.customId.startsWith("battleadmin:")) {
+        if (isSecretModal(interaction.customId)) {
+          await handleSecretModal(interaction);
+        } else if (interaction.customId.startsWith("battleadmin:")) {
           await handleBattleAdminModal(interaction);
         } else if (interaction.customId.startsWith("adminhub:")) {
           await handleAdminHubModal(interaction);
@@ -401,9 +414,21 @@ export async function startBot() {
           return;
         }
 
+        // ── Echo-Whisper reveal buttons ────────────────────────────────────
+        if (isSecretButton(interaction.customId)) {
+          await handleSecretButton(interaction);
+          return;
+        }
+
         // ── Battle system buttons (challenge, prep, combat moves) ──────────
         if (action === "battle") {
           await handleBattleComponent(interaction);
+          return;
+        }
+
+        // ── Raid buttons (lobby join/begin, combat actions) ────────────────
+        if (action === "raid") {
+          await handleRaidComponent(interaction);
           return;
         }
 
@@ -569,6 +594,10 @@ export async function startBot() {
                 `New balance: **${currency.shards.toLocaleString()}** 💠 — check \`/cards shards\` anytime.`,
               flags: MessageFlags.Ephemeral,
             }).catch(() => { /* ignore */ });
+            try {
+              const { recordQuestEvent } = await import("./quests/engine.js");
+              await recordQuestEvent(guildId, userId, "burn", 1);
+            } catch { /* non-fatal */ }
             const burnUnlocks = await checkAchievements(guildId, userId).catch(() => []);
             if (burnUnlocks.length > 0) {
               await interaction.followUp({
@@ -618,6 +647,20 @@ export async function startBot() {
         await handleAfkCommand(interaction);
       } else if (cmd === "afksetup") {
         await handleAfkSetupCommand(interaction);
+      } else if (cmd === "market") {
+        await handleMarketCommand(interaction);
+      } else if (cmd === "squad") {
+        await handleSquadCommand(interaction);
+      } else if (cmd === "raid") {
+        await handleRaidCommand(interaction);
+      } else if (cmd === "raidadmin") {
+        await handleRaidAdminCommand(interaction);
+      } else if (cmd === "whisper") {
+        await handleWhisperCommand(interaction);
+      } else if (cmd === "adminsecret") {
+        await handleAdminSecretCommand(interaction);
+      } else if (cmd === "echo") {
+        await handleEchoCommand(interaction);
       } else if (cmd === "cards") {
         await handleUserCommand(interaction, interaction.options.getSubcommand(true));
       } else if (cmd === "admin") {

@@ -14,6 +14,16 @@ import {
   updateProfile, getOrCreateProfile, insertBattleRecord,
 } from "./db.js";
 import { checkBattleAchievements, type BattleAchievementDef, type BattleContext } from "./achievement-engine.js";
+import type { Rarity } from "../cards-data.js";
+
+export interface CardLevelUp {
+  userId: string;
+  cardName: string;
+  newLevel: number;
+  oldStars: number;
+  newStars: number;
+  newFrames: string[];
+}
 
 export interface ParticipantResult {
   userId: string;
@@ -73,7 +83,7 @@ export async function processBattleRewards(args: {
   turns: number;
   endedReason: string;
   grantPack?: (guildId: string, userId: string, tier: string) => Promise<unknown>;
-}): Promise<{ record: BattleRecord; outcomes: RewardOutcome[] }> {
+}): Promise<{ record: BattleRecord; outcomes: RewardOutcome[]; levelUps: CardLevelUp[] }> {
   const { guildId, settings, staked } = args;
   const dayKey = utcDayKey();
 
@@ -192,6 +202,43 @@ export async function processBattleRewards(args: {
   if (chalOutcome) outcomes.push(chalOutcome);
   if (oppOutcome) outcomes.push(oppOutcome);
 
+  // Quest progress — the winner (a real player, not the AI / not a draw) gets
+  // "win a battle" credit. Best-effort; never blocks reward settlement.
+  if (args.winnerId && args.winnerId !== "AI") {
+    try {
+      const { recordQuestEvent } = await import("../quests/engine.js");
+      await recordQuestEvent(guildId, args.winnerId, "battle_win", 1);
+    } catch { /* non-fatal */ }
+  }
+
+  // Card leveling — each real participant's fielded card earns battle XP
+  // (cosmetic frames only, no stat impact). Best-effort. Collect level-ups so
+  // the battle-manager can surface them on the winner screen.
+  const levelUps: CardLevelUp[] = [];
+  try {
+    const { grantCardBattleXp, starsForLevel } = await import("../cards/leveling.js");
+    const { getAllCardsCached } = await import("../db.js");
+    const allCards = await getAllCardsCached();
+    const cardOf = (id: number) => allCards.find(c => c.id === id);
+    const outcomeFor = (p: ParticipantResult): "win" | "loss" | "draw" =>
+      args.winnerId === null ? "draw" : args.winnerId === p.userId ? "win" : "loss";
+    for (const p of [args.challenger, args.opponent]) {
+      if (p.isAi) continue;
+      const card = cardOf(p.cardId);
+      const grant = await grantCardBattleXp(guildId, p.userId, p.cardId, (card?.rarity ?? "common") as Rarity, outcomeFor(p));
+      if (grant?.leveledUp) {
+        levelUps.push({
+          userId: p.userId,
+          cardName: card?.name ?? `Card #${p.cardId}`,
+          newLevel: grant.newLevel,
+          oldStars: starsForLevel(grant.oldLevel),
+          newStars: starsForLevel(grant.newLevel),
+          newFrames: grant.newlyUnlocked.map(f => f.name),
+        });
+      }
+    }
+  } catch { /* non-fatal */ }
+
   // NOTE: the actual staked-card movement is handled by the battle-manager's
   // escrow (cards are held out of both collections for the whole battle, then
   // the winner receives both). Here we only record the win/loss counters via
@@ -215,5 +262,5 @@ export async function processBattleRewards(args: {
     endedReason: args.endedReason,
   });
 
-  return { record, outcomes };
+  return { record, outcomes, levelUps };
 }

@@ -181,6 +181,10 @@ export const guildSettingsTable = pgTable("guild_settings", {
   guildId: text("guild_id").notNull().unique(),
   spawnChannelId: text("spawn_channel_id"),
   tradeChannelId: text("trade_channel_id"),
+  // Opt-in "collector" ping role: when set, spawns @mention this role so
+  // subscribed members get pinged on every spawn. Members self-toggle it with
+  // /cards collector; admins set it with /admin collectorrole.
+  collectorRoleId: text("collector_role_id"),
   spawnIntervalSeconds: integer("spawn_interval_seconds").notNull().default(3600),
   spawnIntervalMin: integer("spawn_interval_min"),
   spawnIntervalMax: integer("spawn_interval_max"),

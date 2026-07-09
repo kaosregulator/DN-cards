@@ -96,7 +96,35 @@ function buildLegacyCommands() {
 
     cmd("daily", "(User) Claim your daily DN Shards reward", s => s),
 
-    cmd("pack", "(User) Open a pack — type to search tiers and custom packs", s => s
+    cmd("pack", "(User) Open a pack — type to search tiers and custom packs", s => s),
+    cmd("quests", "(User) View daily & weekly quests — earn shards and packs", s => s),
+
+    cmd("level", "(User) View a card's battle level, XP, and unlocked frames", s => s
+      .addStringOption(o => o.setName("name").setDescription("Card name (leave empty for your top leveled cards)").setAutocomplete(true))),
+
+    cmd("frame", "(User) Equip a cosmetic frame on a card you've leveled", s => s
+      .addStringOption(o => o.setName("name").setDescription("Card name").setRequired(true).setAutocomplete(true))
+      .addStringOption(o => o.setName("style").setDescription("Frame to equip (leave empty to list options)"))),
+
+    cmd("lock", "(User) Lock/favorite a card so it can't be burned or traded in", s => s
+      .addStringOption(o => o.setName("name").setDescription("Card to lock/unlock").setRequired(true).setAutocomplete(true))
+      .addStringOption(o => o.setName("state").setDescription("Lock or unlock (default: toggle)")
+        .addChoices({ name: "lock", value: "on" }, { name: "unlock", value: "off" }))),
+
+    cmd("collector", "(User) Toggle spawn pings — join/leave the collector ping role", s => s),
+
+    cmd("search", "(User) Search the roster by name, rarity, or type — see what you own", s => s
+      .addStringOption(o => o.setName("query").setDescription("Text to match in the card name"))
+      .addStringOption(o => o.setName("rarity").setDescription("Filter by rarity")
+        .addChoices(
+          { name: "⚪ Common", value: "common" }, { name: "🟢 Uncommon", value: "uncommon" },
+          { name: "🔵 Rare", value: "rare" }, { name: "🟣 Epic", value: "epic" },
+          { name: "🟡 Legendary", value: "legendary" }, { name: "🔴 Mythic", value: "mythic" }))
+      .addStringOption(o => o.setName("type").setDescription("Filter by card type"))
+      .addStringOption(o => o.setName("owned").setDescription("Only owned or only missing")
+        .addChoices({ name: "Owned", value: "owned" }, { name: "Missing", value: "missing" }))),
+
+    cmd("pack", "(User) Open a card pack — pick a tier", s => s
       .addStringOption(o => o.setName("tier")
         .setDescription("Which pack to open — built-in or custom (type to search, default: Basic)")
         .setAutocomplete(true))),
@@ -237,6 +265,9 @@ function buildLegacyCommands() {
       .addUserOption(o => o.setName("user").setDescription("Member to take the card from").setRequired(true))
       .addStringOption(o => o.setName("name").setDescription("Card name").setRequired(true).setAutocomplete(true))
       .addIntegerOption(o => o.setName("amount").setDescription("How many copies to remove (default 1, max 100)").setMinValue(1).setMaxValue(100))),
+
+    adminCmd("collectorrole", "(Admin) Set the opt-in role that gets pinged on every spawn", s => s
+      .addRoleOption(o => o.setName("role").setDescription("Role to ping on spawns (leave empty to clear)"))),
 
     adminCmd("takeshards", "(Admin) Deduct DN Shards from a member", s => s
       .addUserOption(o => o.setName("user").setDescription("Member to deduct shards from").setRequired(true))
@@ -424,6 +455,66 @@ function buildLegacyCommands() {
     // ── /battleadmin (admin, Battle System configuration) ─────────────────────
     adminCmd("battleadmin", "(Admin) Battle system hub — setup wizard, rules, rewards, cards, seasons", s => s),
 
+    // ── /squad (user, Squads / guilds) ────────────────────────────────────────
+    cmd("squad", "(User) Team up — create or join a squad and climb the squad leaderboard", s => s
+      .addSubcommand(sc => sc.setName("create").setDescription("Found a new squad (you become leader)")
+        .addStringOption(o => o.setName("name").setDescription("Squad name").setRequired(true))
+        .addStringOption(o => o.setName("tag").setDescription("Short tag shown by members, e.g. WLF (max 6)"))
+        .addStringOption(o => o.setName("description").setDescription("Squad description")))
+      .addSubcommand(sc => sc.setName("join").setDescription("Join a squad")
+        .addStringOption(o => o.setName("name").setDescription("Squad to join").setRequired(true).setAutocomplete(true)))
+      .addSubcommand(sc => sc.setName("leave").setDescription("Leave your squad"))
+      .addSubcommand(sc => sc.setName("disband").setDescription("Disband your squad (leader only)"))
+      .addSubcommand(sc => sc.setName("info").setDescription("View a squad's combined stats and roster")
+        .addStringOption(o => o.setName("name").setDescription("Squad (default: yours)").setAutocomplete(true)))
+      .addSubcommand(sc => sc.setName("list").setDescription("Squad leaderboard for this server"))),
+
+    // ── /raid (user, Co-op Boss Raids) ────────────────────────────────────────
+    cmd("raid", "(User) Team up to take down a boss — co-op raid", s => s
+      .addSubcommand(sc => sc.setName("start").setDescription("Start a raid lobby for a boss")
+        .addStringOption(o => o.setName("boss").setDescription("Which boss to raid").setRequired(true).setAutocomplete(true)))
+      .addSubcommand(sc => sc.setName("bosses").setDescription("List the raid bosses available on this server"))),
+
+    // ── /raidadmin (admin, Boss management) ───────────────────────────────────
+    adminCmd("raidadmin", "(Admin) Create and tune co-op raid bosses", s => s
+      .addSubcommand(sc => sc.setName("create").setDescription("Create a new raid boss")
+        .addStringOption(o => o.setName("name").setDescription("Boss name").setRequired(true))
+        .addStringOption(o => o.setName("description").setDescription("Flavor text"))
+        .addStringOption(o => o.setName("image").setDescription("Boss image URL"))
+        .addStringOption(o => o.setName("archetype").setDescription("Combat archetype (default boss)"))
+        .addStringOption(o => o.setName("rarity").setDescription("Reference rarity (default mythic)"))
+        .addIntegerOption(o => o.setName("health").setDescription("Base health (per-player oriented)").setMinValue(100))
+        .addIntegerOption(o => o.setName("attack").setDescription("Base attack").setMinValue(1))
+        .addIntegerOption(o => o.setName("defense").setDescription("Base defense").setMinValue(0))
+        .addIntegerOption(o => o.setName("minstars").setDescription("Min card stars to join (1-5)").setMinValue(1).setMaxValue(5))
+        .addIntegerOption(o => o.setName("minlevel").setDescription("Min battle level to join").setMinValue(1))
+        .addIntegerOption(o => o.setName("minplayers").setDescription("Min players").setMinValue(1).setMaxValue(10))
+        .addIntegerOption(o => o.setName("maxplayers").setDescription("Max players").setMinValue(1).setMaxValue(10))
+        .addIntegerOption(o => o.setName("enrage").setDescription("Boss enrages after N rounds (0 = never)").setMinValue(0))
+        .addIntegerOption(o => o.setName("reward").setDescription("Shards per survivor on clear").setMinValue(0))
+        .addIntegerOption(o => o.setName("cardxp").setDescription("Bonus card XP per survivor on clear").setMinValue(0)))
+      .addSubcommand(sc => sc.setName("edit").setDescription("Edit an existing boss")
+        .addStringOption(o => o.setName("name").setDescription("Boss to edit").setRequired(true).setAutocomplete(true))
+        .addStringOption(o => o.setName("description").setDescription("Flavor text"))
+        .addStringOption(o => o.setName("image").setDescription("Boss image URL"))
+        .addStringOption(o => o.setName("archetype").setDescription("Combat archetype"))
+        .addIntegerOption(o => o.setName("health").setDescription("Base health").setMinValue(100))
+        .addIntegerOption(o => o.setName("attack").setDescription("Base attack").setMinValue(1))
+        .addIntegerOption(o => o.setName("defense").setDescription("Base defense").setMinValue(0))
+        .addIntegerOption(o => o.setName("minstars").setDescription("Min card stars (1-5)").setMinValue(1).setMaxValue(5))
+        .addIntegerOption(o => o.setName("minlevel").setDescription("Min battle level").setMinValue(1))
+        .addIntegerOption(o => o.setName("minplayers").setDescription("Min players").setMinValue(1).setMaxValue(10))
+        .addIntegerOption(o => o.setName("maxplayers").setDescription("Max players").setMinValue(1).setMaxValue(10))
+        .addIntegerOption(o => o.setName("enrage").setDescription("Enrage round (0 = never)").setMinValue(0))
+        .addIntegerOption(o => o.setName("reward").setDescription("Shards per survivor").setMinValue(0))
+        .addIntegerOption(o => o.setName("cardxp").setDescription("Bonus card XP per survivor").setMinValue(0)))
+      .addSubcommand(sc => sc.setName("list").setDescription("List all raid bosses on this server"))
+      .addSubcommand(sc => sc.setName("enable").setDescription("Enable or disable a boss")
+        .addStringOption(o => o.setName("name").setDescription("Boss").setRequired(true).setAutocomplete(true))
+        .addBooleanOption(o => o.setName("enabled").setDescription("Enabled?").setRequired(true)))
+      .addSubcommand(sc => sc.setName("delete").setDescription("Delete a boss")
+        .addStringOption(o => o.setName("name").setDescription("Boss to delete").setRequired(true).setAutocomplete(true)))),
+
     // ── /sets (user, read-only) ───────────────────────────────────────────────
     cmd("sets", "(User) Browse card sets and your collection progress", s => s
       .addSubcommand(sc => sc.setName("list").setDescription("List every card set on this server"))
@@ -451,6 +542,44 @@ function buildLegacyCommands() {
         .addChoices({ name: "Low", value: "low" }, { name: "Mid", value: "mid" }, { name: "High", value: "high" }))
       .addIntegerOption(o => o.setName("stars").setDescription("Stars 1-5 (default 1)").setMinValue(1).setMaxValue(5))),
     cmd("dnhelp", "(User) Show DN values command help", s => s),
+    // ── /market (user, Marketplace) ───────────────────────────────────────────
+    cmd("market", "(User) Buy, sell, and auction cards for DN Shards", s => s
+      .addSubcommand(sc => sc.setName("sell").setDescription("List a card for sale, or as a timed auction")
+        .addStringOption(o => o.setName("name").setDescription("Card to sell").setRequired(true).setAutocomplete(true))
+        .addIntegerOption(o => o.setName("price").setDescription("Sale price, or auction starting bid").setRequired(true).setMinValue(1))
+        .addIntegerOption(o => o.setName("hours").setDescription("Auction length in hours (omit for a fixed-price sale)").setMinValue(1).setMaxValue(168))
+        .addIntegerOption(o => o.setName("buyout").setDescription("Optional instant-buy price for an auction").setMinValue(1)))
+      .addSubcommand(sc => sc.setName("browse").setDescription("Browse active market listings")
+        .addUserOption(o => o.setName("seller").setDescription("Only show a specific seller's listings"))
+        .addStringOption(o => o.setName("kind").setDescription("Filter by type")
+          .addChoices({ name: "For sale", value: "sale" }, { name: "Auctions", value: "auction" })))
+      .addSubcommand(sc => sc.setName("buy").setDescription("Buy a fixed-price listing (or auction buyout)")
+        .addIntegerOption(o => o.setName("id").setDescription("Listing ID").setRequired(true).setMinValue(1)))
+      .addSubcommand(sc => sc.setName("bid").setDescription("Bid on an auction")
+        .addIntegerOption(o => o.setName("id").setDescription("Listing ID").setRequired(true).setMinValue(1))
+        .addIntegerOption(o => o.setName("amount").setDescription("Your bid in shards").setRequired(true).setMinValue(1)))
+      .addSubcommand(sc => sc.setName("cancel").setDescription("Cancel one of your listings")
+        .addIntegerOption(o => o.setName("id").setDescription("Listing ID").setRequired(true).setMinValue(1)))
+      .addSubcommand(sc => sc.setName("mine").setDescription("View your listings and active bids"))),
+
+    // ── Echo-Whisper (encrypted messaging addon) ──────────────────────────────
+    cmd("whisper", "(User) Send an encrypted whisper only a chosen member can read", s => s
+      .addUserOption(o => o.setName("user").setDescription("The member who can read this message").setRequired(true))),
+
+    cmd("adminsecret", "(User) Post an encrypted staff message only authorized roles can reveal", s => s),
+
+    adminCmd("echo", "(Admin) Echo-Whisper hub — viewer roles, admin override, stats, config", s => s
+      .addSubcommand(sc => sc.setName("role").setDescription("Manage roles allowed to reveal /adminsecret messages")
+        .addStringOption(o => o.setName("action").setDescription("Add, remove, or list").setRequired(true)
+          .addChoices({ name: "add", value: "add" }, { name: "remove", value: "remove" }, { name: "list", value: "list" }))
+        .addRoleOption(o => o.setName("role").setDescription("Role to add or remove")))
+      .addSubcommand(sc => sc.setName("override").setDescription("Toggle whether admins can decrypt any message")
+        .addStringOption(o => o.setName("mode").setDescription("Enable or disable admin override").setRequired(true)
+          .addChoices({ name: "enable", value: "enable" }, { name: "disable", value: "disable" })))
+      .addSubcommand(sc => sc.setName("whisper").setDescription("View whisper configuration"))
+      .addSubcommand(sc => sc.setName("adminsecret").setDescription("View adminsecret configuration"))
+      .addSubcommand(sc => sc.setName("stats").setDescription("View Echo-Whisper usage stats"))
+      .addSubcommand(sc => sc.setName("config").setDescription("View Echo-Whisper configuration"))),
 
   ];
 }
@@ -461,13 +590,16 @@ type CommandJson = ReturnType<SlashCommandBuilder["toJSON"]>;
 const USER_HUB_COMMANDS = new Set([
   "collection", "rank", "info", "list", "catalog", "top", "burn", "shards",
   "trade", "gift", "trades", "tradehistory", "accept", "decline", "welcome",
-  "help", "daily", "pack", "packstats", "tradein", "achievements",
+  "help", "daily", "quests", "pack", "packstats", "tradein", "achievements",
+  "level", "frame", "lock", "search", "collector", "calendar",
 ]);
 
 const ADMIN_HUB_COMMANDS = new Set([
   "setup", "config", "adminhub", "sethub", "set_admin", "deletecard",
   "welcomeadmin", "adminhelp", "drop", "massdrop", "give", "giveall", "giveshards",
   "takeback", "takeshards", "addcard", "editcard", "dashboard",
+  "welcomeadmin", "adminhelp", "drop", "massdrop", "give", "giveshards",
+  "takeback", "takeshards", "addcard", "editcard", "dashboard", "collectorrole",
 ]);
 
 const ADMIN_HUB_NAMES: Record<string, string> = {

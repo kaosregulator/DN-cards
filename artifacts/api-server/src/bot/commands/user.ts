@@ -2,7 +2,7 @@ import type { ChatInputCommandInteraction } from "discord.js";
 import { EmbedBuilder, MessageFlags } from "discord.js";
 
 // Commands whose results are personal/spammy and should only be seen by the user.
-const EPHEMERAL_COMMANDS = new Set(["burn", "shards", "trades", "tradehistory", "help", "daily", "achievements", "pack", "packstats", "wishlist", "gift", "tradein", "sets"]);
+const EPHEMERAL_COMMANDS = new Set(["burn", "shards", "trades", "tradehistory", "help", "daily", "quests", "achievements", "pack", "packstats", "wishlist", "gift", "tradein", "sets", "level", "frame", "lock", "search", "collector", "calendar"]);
 import {
   getUserCollection, getAllCards, getLeaderboard, getTopPackOpeners,
   getOrCreateCurrency, burnCard, getCardByName, getUserCardCount, getUserOwnedCount,
@@ -811,6 +811,13 @@ export async function handleUserCommand(
     const wantShiny = interaction.options.getBoolean("shiny") ?? false;
     const card = await getCardByName(cardName, guildId);
     if (!card) { await interaction.editReply(`❌ "**${cardName}**" not found. Check \`/cards list\`.`); return; }
+    {
+      const { isCardLocked } = await import("../cards/locks.js");
+      if (await isCardLocked(guildId, interaction.user.id, card.id)) {
+        await interaction.editReply(`🔒 **${card.name}** is locked (favorited) and can't be burned. Unlock it first with \`/cards lock name:${card.name}\`.`);
+        return;
+      }
+    }
     const rarity = card.rarity as Rarity;
     const { count, shinyCount } = await getUserOwnedCount(guildId, interaction.user.id, card.id);
     // Burn targets the chosen pile only — shiny:true burns from shinyCount,
@@ -863,6 +870,12 @@ export async function handleUserCommand(
         `+💠 **${result.shardsGained.toLocaleString()} shards** — New balance: **${currency.shards.toLocaleString()}**\n` +
         (result.remaining > 0 ? `You still have **×${result.remaining}** ${pileLabel}${result.remaining === 1 ? "copy" : "copies"}.` : `*Last ${wantShiny ? "shiny " : ""}copy burned.*`);
     await interaction.editReply(breakdown);
+    try {
+      const { recordQuestEvent, formatQuestCompletions } = await import("../quests/engine.js");
+      const done = await recordQuestEvent(guildId, interaction.user.id, "burn", result.burned);
+      const note = formatQuestCompletions(done);
+      if (note) await interaction.followUp({ content: note, flags: MessageFlags.Ephemeral }).catch(() => { /* ignore */ });
+    } catch { /* non-fatal */ }
     const newlyBurn = await checkAchievements(guildId, interaction.user.id);
     if (newlyBurn.length > 0) {
       await interaction.followUp({
@@ -880,6 +893,41 @@ export async function handleUserCommand(
   if (sub === "trades") { await handleListTrades(interaction); return; }
   if (sub === "tradehistory") { await handleTradeHistory(interaction); return; }
   if (sub === "daily") { await handleDaily(interaction); return; }
+  if (sub === "quests") {
+    const { handleQuests } = await import("../quests/command.js");
+    await handleQuests(interaction);
+    return;
+  }
+  if (sub === "level") {
+    const { handleCardLevel } = await import("../cards/level-command.js");
+    await handleCardLevel(interaction);
+    return;
+  }
+  if (sub === "frame") {
+    const { handleCardFrame } = await import("../cards/level-command.js");
+    await handleCardFrame(interaction);
+    return;
+  }
+  if (sub === "lock") {
+    const { handleCardLock } = await import("../cards/level-command.js");
+    await handleCardLock(interaction);
+    return;
+  }
+  if (sub === "search") {
+    const { handleSearch } = await import("../cards/search-command.js");
+    await handleSearch(interaction);
+    return;
+  }
+  if (sub === "collector") {
+    const { handleCollectorToggle } = await import("../cards/collector.js");
+    await handleCollectorToggle(interaction);
+    return;
+  }
+  if (sub === "calendar") {
+    const { handleCalendar } = await import("../cards/calendar-command.js");
+    await handleCalendar(interaction);
+    return;
+  }
   if (sub === "pack") { await handlePack(interaction); return; }
   if (sub === "packstats") { await handlePackStats(interaction); return; }
   if (sub === "tradein") { await handleTradein(interaction); return; }

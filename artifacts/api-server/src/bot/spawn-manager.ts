@@ -24,7 +24,7 @@ import {
 } from "./db.js";
 import {
   getTypeEmoji,
-  SHINY_EMOJI, SHINY_MULTIPLIER,
+  SHINY_EMOJI, SHINY_MULTIPLIER, getShinyMultiplier,
   type Rarity,
 } from "./cards-data.js";
 import { toAbsoluteImageUrl } from "./image-url.js";
@@ -323,6 +323,14 @@ async function doSingleSpawn(guildId: string, forcedCardId?: number, isForced = 
     logger.warn({ err }, "Wishlist ping failed");
   }
 
+  // ── Collector role ping: opt-in role that gets @mentioned on every spawn ──
+  if (settings.collectorRoleId) {
+    await channel.send({
+      content: `🔔 <@&${settings.collectorRoleId}> a wild **${card.name}** appeared!`,
+      allowedMentions: { roles: [settings.collectorRoleId] },
+    }).catch(() => { /* role deleted / permissions — ignore */ });
+  }
+
   const spawn: ActiveSpawn = {
     spawnId,
     cardId: card.id,
@@ -477,9 +485,10 @@ async function awardSpawn(guildId: string, spawnId: string, userId: string): Pro
   if (spawn.resolveTimer) { clearTimeout(spawn.resolveTimer); spawn.resolveTimer = null; }
 
   // Parallel: write collection row + mark spawn log. Both independent DB calls.
-  const [{ isShiny }] = await Promise.all([
+  const [{ isShiny }, , shinySettings] = await Promise.all([
     catchCard(guildId, userId, spawn.cardId),
     markCaught(spawn.spawnLogId, userId),
+    getOrCreateGuildSettings(guildId),
   ]);
 
   // Auto-remove the caught card from the winner's wishlist so they stop
@@ -488,21 +497,42 @@ async function awardSpawn(guildId: string, spawnId: string, userId: string): Pro
     logger.warn({ err }, "Wishlist auto-remove after catch failed");
   });
 
+  // Quest progress (catch) — best-effort, never blocks the catch flow.
+  void (async () => {
+    try {
+      const cards = await getAllCardsCached(guildId);
+      const rarity = cards.find(c => c.id === spawn.cardId)?.rarity as Rarity | undefined;
+      const { recordQuestEvent } = await import("./quests/engine.js");
+      await recordQuestEvent(guildId, userId, "catch", 1, rarity);
+    } catch { /* non-fatal */ }
+  })();
+
   try {
-    const quipFn = CATCH_QUIPS[Math.floor(Math.random() * CATCH_QUIPS.length)]!;
-    const cards = await getAllCardsCached(guildId);
-    const rawCard = cards.find(c => c.id === spawn.cardId);
-    const cardName = rawCard?.name ?? spawn.cardName;
-    const shinyBadge = isShiny ? ` ✨` : "";
-    await spawn.message.edit({
-      embeds: [
-        new EmbedBuilder()
-          .setDescription(quipFn(`${cardName}${shinyBadge}`, `<@${userId}>`))
-          .setColor(isShiny ? 0xf1c40f : 0x00b894),
-      ],
-      components: [],
-    });
-  } catch { /* deleted or lacking edit perms */ }
+    const claimedEmbed = await buildClaimedEmbed(spawn.cardId, userId, isShiny, guildId);
+    if (claimedEmbed) {
+      await spawn.message.edit({
+        embeds: [claimedEmbed],
+        components: [buildDecisionRow(guildId, userId, spawn.cardId, spawn.burnValue, isShiny, getShinyMultiplier(shinySettings))],
+      });
+    }
+  } catch { /* deleted */ }
+
+  // Auto-keep after 90s if no button pressed — edit the spawn embed in place.
+  // Bail out if the winner already clicked Burn/Keep/Trade themselves, or
+  // we'd overwrite their actual decision with a misleading "KEPT" embed.
+  setTimeout(async () => {
+    const gs = activeSpawns.get(guildId);
+    const current = gs?.get(spawnId);
+    if (current?.decisionMade) return;
+    try {
+      const keptEmbed = await buildPostDecisionEmbed(spawn.cardId, userId, "kept", guildId);
+      if (keptEmbed) await spawn.message.edit({
+        embeds: [keptEmbed],
+        components: [buildDisabledDecisionRow(guildId, userId, spawn.cardId, spawn.burnValue, "keep")],
+      });
+      if (current) current.decisionMade = true;
+    } catch { /* deleted */ }
+  }, 90_000);
 
   return true;
 }
@@ -535,8 +565,8 @@ export async function handleClaimButtonClick(guildId: string, spawnId: string, u
 // `isShiny` is encoded into the burn customId as a 5th `:1`/`:0` segment
 // so the click handler knows which pile to torch and what payout to credit.
 // Index.ts treats a missing segment as 0 for backwards-compat.
-function buildDecisionRow(guildId: string, userId: string, cardId: number, burnValue: number, isShiny = false): ActionRowBuilder<ButtonBuilder> {
-  const effectiveBurn = isShiny ? burnValue * SHINY_MULTIPLIER : burnValue;
+function buildDecisionRow(guildId: string, userId: string, cardId: number, burnValue: number, isShiny = false, shinyMultiplier = SHINY_MULTIPLIER): ActionRowBuilder<ButtonBuilder> {
+  const effectiveBurn = isShiny ? burnValue * shinyMultiplier : burnValue;
   const shinyFlag = isShiny ? "1" : "0";
   return new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder()

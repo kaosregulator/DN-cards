@@ -297,6 +297,19 @@ export async function handleTradeButton(interaction: ButtonInteraction, action: 
       }).catch(() => { /* ignore */ });
     }
   } catch { /* ignore */ }
+
+  await recordTradeQuest(trade.guildId, trade.initiatorId, trade.targetId);
+}
+
+// Credit both participants toward "complete a trade" quests. Best-effort.
+async function recordTradeQuest(guildId: string, initiatorId: string, targetId: string): Promise<void> {
+  try {
+    const { recordQuestEvent } = await import("../quests/engine.js");
+    await Promise.all([
+      recordQuestEvent(guildId, initiatorId, "trade", 1),
+      recordQuestEvent(guildId, targetId, "trade", 1),
+    ]);
+  } catch { /* non-fatal */ }
 }
 
 // ── /accept (slash fallback — still supported) ───────────────────────────────
@@ -323,6 +336,8 @@ export async function handleAccept(interaction: ChatInputCommandInteraction): Pr
   await interaction.editReply(
     `✅ Trade #${tradeId} complete! <@${trade.initiatorId}> ↔️ <@${trade.targetId}> — check \`/cards collection\` and \`/cards shards\`.`,
   );
+
+  await recordTradeQuest(trade.guildId, trade.initiatorId, trade.targetId);
 
   const { checkAchievements, formatUnlockLine } = await import("../achievements.js");
   const [initUnlocks, targUnlocks] = await Promise.all([
