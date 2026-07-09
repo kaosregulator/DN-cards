@@ -102,6 +102,24 @@ export async function handleAutocomplete(interaction: AutocompleteInteraction): 
 
   try {
 
+    // ── Raid boss-name autocomplete for /raid start + /raidadmin ────────────
+    if ((cmd === "raid" && focused.name === "boss") ||
+        (cmd === "raidadmin" && focused.name === "name")) {
+      if (!interaction.guild) { await interaction.respond([]); return; }
+      const { getAllBosses } = await import("../raid/db.js");
+      // /raid start should only surface enabled bosses; admin sees all.
+      const bosses = (await getAllBosses(interaction.guild.id))
+        .filter(b => cmd === "raidadmin" || b.enabled);
+      const q = query.toLowerCase().trim();
+      await interaction.respond(
+        bosses
+          .filter(b => !q || b.name.toLowerCase().includes(q))
+          .slice(0, MAX_CHOICES)
+          .map(b => ({ name: `${b.name}${b.enabled ? "" : " (disabled)"}`.slice(0, 100), value: b.name.slice(0, 100) })),
+      );
+      return;
+    }
+
     // ── Set-name autocomplete for /sets, /drop, /massdrop ───────────────────
     // Any string option named `set`, `from`, `to`, or `name` on these two
     // commands resolves to a set picker (except /setadmin create, which takes

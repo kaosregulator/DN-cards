@@ -10,6 +10,28 @@ import { framesForRarity, type Frame } from "./frames.js";
 
 export const MAX_LEVEL = 20;
 
+// Star rating (1–5) derived from level. A card hits a new star at each of these
+// level milestones — so a fully-maxed (Lv 20) card is 5 stars. Used as the
+// prestige gate for co-op boss raids.
+export const STAR_LEVELS = [1, 5, 10, 15, 20] as const;
+export const MAX_STARS = STAR_LEVELS.length;
+
+export function starsForLevel(level: number): number {
+  let stars = 0;
+  for (const threshold of STAR_LEVELS) if (level >= threshold) stars++;
+  return stars;
+}
+
+// Level needed to reach a given star count (for "needs N stars" messaging).
+export function levelForStars(stars: number): number {
+  const idx = Math.max(1, Math.min(MAX_STARS, stars)) - 1;
+  return STAR_LEVELS[idx];
+}
+
+export function starString(stars: number): string {
+  return "★".repeat(stars) + "☆".repeat(Math.max(0, MAX_STARS - stars));
+}
+
 // Battle XP awards.
 const XP_WIN = 120;
 const XP_DRAW = 60;
@@ -76,9 +98,10 @@ export interface XpGrant {
 // Award battle XP to a card. Best-effort; callers ignore failures.
 export async function grantCardBattleXp(
   guildId: string, userId: string, cardId: number, rarity: Rarity, outcome: "win" | "loss" | "draw",
+  bonusXp = 0,
 ): Promise<XpGrant | null> {
   try {
-    const gained = outcome === "win" ? XP_WIN : outcome === "draw" ? XP_DRAW : XP_LOSS;
+    const gained = (outcome === "win" ? XP_WIN : outcome === "draw" ? XP_DRAW : XP_LOSS) + Math.max(0, bonusXp);
     const existing = await getCardProgress(guildId, userId, cardId);
     const oldXp = existing?.xp ?? 0;
     const oldLevel = existing?.level ?? 1;

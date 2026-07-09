@@ -7,6 +7,7 @@ import { toAbsoluteImageUrl } from "../image-url.js";
 import type { Rarity } from "../cards-data.js";
 import {
   getCardProgress, setEquippedFrame, levelProgress, MAX_LEVEL,
+  starsForLevel, starString,
 } from "./leveling.js";
 import {
   framesForRarity, resolveActiveFrame, isFrameUnlocked, defaultFrameForRarity,
@@ -42,7 +43,7 @@ export async function handleCardLevel(interaction: ChatInputCommandInteraction):
       const rarity = (c?.rarity ?? "common") as Rarity;
       const frame = resolveActiveFrame(rarity, r.equippedFrame, r.level);
       const wr = r.battlesFought > 0 ? Math.round((r.battlesWon / r.battlesFought) * 100) : 0;
-      return `**${i + 1}.** ${frame.emoji} **${c?.name ?? `#${r.cardId}`}** — Lv **${r.level}**${r.level >= MAX_LEVEL ? " ⭐" : ""}  ·  ${r.battlesWon}/${r.battlesFought}W (${wr}%)`;
+      return `**${i + 1}.** ${frame.emoji} **${c?.name ?? `#${r.cardId}`}** — Lv **${r.level}** ${starString(starsForLevel(r.level))}  ·  ${r.battlesWon}/${r.battlesFought}W (${wr}%)`;
     });
     const embed = new EmbedBuilder()
       .setTitle(`🎖️ ${interaction.user.username}'s Leveled Cards`)
@@ -83,7 +84,7 @@ export async function handleCardLevel(interaction: ChatInputCommandInteraction):
     .setTitle(frame.wrap(`${frame.emoji} ${card.name}`))
     .setColor(frame.color)
     .setDescription(
-      `**Level ${level}**${level >= MAX_LEVEL ? " ⭐ MAX" : ""}  ·  Frame: **${frame.name}**\n` +
+      `**Level ${level}**${level >= MAX_LEVEL ? " MAX" : ""}  ${starString(starsForLevel(level))}  ·  Frame: **${frame.name}**\n` +
       `\`${bar(into, needed)}\` ` + (needed > 0 ? `${into}/${needed} XP to Lv ${level + 1}` : "Max level") + "\n" +
       `⚔️ Battles: **${fought}**  ·  🏆 Wins: **${won}**`,
     )

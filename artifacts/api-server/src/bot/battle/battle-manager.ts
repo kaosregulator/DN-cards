@@ -667,6 +667,7 @@ async function finishBattle(rt: BattleRuntime, winnerSide: 0 | 1 | null, reason:
 
   const season = await ensureSeason(rt.guildId).catch(() => null);
   let outcomes: RewardOutcome[] = [];
+  let levelUps: import("./reward-engine.js").CardLevelUp[] = [];
   try {
     const res = await processBattleRewards({
       guildId: rt.guildId, settings: rt.settings, season,
@@ -677,6 +678,7 @@ async function finishBattle(rt: BattleRuntime, winnerSide: 0 | 1 | null, reason:
       grantPack: grantFreePack,
     });
     outcomes = res.outcomes;
+    levelUps = res.levelUps;
 
     // Daily challenge progress for humans.
     for (const side of [0, 1] as const) {
@@ -714,6 +716,19 @@ async function finishBattle(rt: BattleRuntime, winnerSide: 0 | 1 | null, reason:
       }
     }
     if (client) await logBattleResult(client, rt.guildId, buildWinnerEmbed(view, winnerSide, rewardLines)).catch(() => {});
+
+    // Card level-up / star-up toasts.
+    if (levelUps.length > 0 && rt.message.channel.isSendable()) {
+      const lines = levelUps.map(l => {
+        const starUp = l.newStars > l.oldStars ? `  ⭐ **${l.newStars}-star!**` : "";
+        const frames = l.newFrames.length > 0 ? `  ·  🖼️ unlocked: ${l.newFrames.join(", ")}` : "";
+        return `🎖️ <@${l.userId}>'s **${l.cardName}** reached **Level ${l.newLevel}**${starUp}${frames}`;
+      });
+      await rt.message.channel.send({
+        content: lines.join("\n"),
+        allowedMentions: { users: levelUps.map(l => l.userId) },
+      }).catch(() => {});
+    }
   }
 
   await teardown(rt);

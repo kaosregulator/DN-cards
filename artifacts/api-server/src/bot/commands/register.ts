@@ -393,6 +393,52 @@ function buildLegacyCommands() {
     // ── /battleadmin (admin, Battle System configuration) ─────────────────────
     adminCmd("battleadmin", "(Admin) Battle system hub — setup wizard, rules, rewards, cards, seasons", s => s),
 
+    // ── /raid (user, Co-op Boss Raids) ────────────────────────────────────────
+    cmd("raid", "(User) Team up to take down a boss — co-op raid", s => s
+      .addSubcommand(sc => sc.setName("start").setDescription("Start a raid lobby for a boss")
+        .addStringOption(o => o.setName("boss").setDescription("Which boss to raid").setRequired(true).setAutocomplete(true)))
+      .addSubcommand(sc => sc.setName("bosses").setDescription("List the raid bosses available on this server"))),
+
+    // ── /raidadmin (admin, Boss management) ───────────────────────────────────
+    adminCmd("raidadmin", "(Admin) Create and tune co-op raid bosses", s => s
+      .addSubcommand(sc => sc.setName("create").setDescription("Create a new raid boss")
+        .addStringOption(o => o.setName("name").setDescription("Boss name").setRequired(true))
+        .addStringOption(o => o.setName("description").setDescription("Flavor text"))
+        .addStringOption(o => o.setName("image").setDescription("Boss image URL"))
+        .addStringOption(o => o.setName("archetype").setDescription("Combat archetype (default boss)"))
+        .addStringOption(o => o.setName("rarity").setDescription("Reference rarity (default mythic)"))
+        .addIntegerOption(o => o.setName("health").setDescription("Base health (per-player oriented)").setMinValue(100))
+        .addIntegerOption(o => o.setName("attack").setDescription("Base attack").setMinValue(1))
+        .addIntegerOption(o => o.setName("defense").setDescription("Base defense").setMinValue(0))
+        .addIntegerOption(o => o.setName("minstars").setDescription("Min card stars to join (1-5)").setMinValue(1).setMaxValue(5))
+        .addIntegerOption(o => o.setName("minlevel").setDescription("Min battle level to join").setMinValue(1))
+        .addIntegerOption(o => o.setName("minplayers").setDescription("Min players").setMinValue(1).setMaxValue(10))
+        .addIntegerOption(o => o.setName("maxplayers").setDescription("Max players").setMinValue(1).setMaxValue(10))
+        .addIntegerOption(o => o.setName("enrage").setDescription("Boss enrages after N rounds (0 = never)").setMinValue(0))
+        .addIntegerOption(o => o.setName("reward").setDescription("Shards per survivor on clear").setMinValue(0))
+        .addIntegerOption(o => o.setName("cardxp").setDescription("Bonus card XP per survivor on clear").setMinValue(0)))
+      .addSubcommand(sc => sc.setName("edit").setDescription("Edit an existing boss")
+        .addStringOption(o => o.setName("name").setDescription("Boss to edit").setRequired(true).setAutocomplete(true))
+        .addStringOption(o => o.setName("description").setDescription("Flavor text"))
+        .addStringOption(o => o.setName("image").setDescription("Boss image URL"))
+        .addStringOption(o => o.setName("archetype").setDescription("Combat archetype"))
+        .addIntegerOption(o => o.setName("health").setDescription("Base health").setMinValue(100))
+        .addIntegerOption(o => o.setName("attack").setDescription("Base attack").setMinValue(1))
+        .addIntegerOption(o => o.setName("defense").setDescription("Base defense").setMinValue(0))
+        .addIntegerOption(o => o.setName("minstars").setDescription("Min card stars (1-5)").setMinValue(1).setMaxValue(5))
+        .addIntegerOption(o => o.setName("minlevel").setDescription("Min battle level").setMinValue(1))
+        .addIntegerOption(o => o.setName("minplayers").setDescription("Min players").setMinValue(1).setMaxValue(10))
+        .addIntegerOption(o => o.setName("maxplayers").setDescription("Max players").setMinValue(1).setMaxValue(10))
+        .addIntegerOption(o => o.setName("enrage").setDescription("Enrage round (0 = never)").setMinValue(0))
+        .addIntegerOption(o => o.setName("reward").setDescription("Shards per survivor").setMinValue(0))
+        .addIntegerOption(o => o.setName("cardxp").setDescription("Bonus card XP per survivor").setMinValue(0)))
+      .addSubcommand(sc => sc.setName("list").setDescription("List all raid bosses on this server"))
+      .addSubcommand(sc => sc.setName("enable").setDescription("Enable or disable a boss")
+        .addStringOption(o => o.setName("name").setDescription("Boss").setRequired(true).setAutocomplete(true))
+        .addBooleanOption(o => o.setName("enabled").setDescription("Enabled?").setRequired(true)))
+      .addSubcommand(sc => sc.setName("delete").setDescription("Delete a boss")
+        .addStringOption(o => o.setName("name").setDescription("Boss to delete").setRequired(true).setAutocomplete(true)))),
+
     // ── /sets (user, read-only) ───────────────────────────────────────────────
     cmd("sets", "(User) Browse card sets and your collection progress", s => s
       .addSubcommand(sc => sc.setName("list").setDescription("List every card set on this server"))

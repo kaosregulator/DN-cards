@@ -27,6 +27,9 @@ import {
 import { handleBattleComponent, startBattleMaintenance } from "./battle/battle-manager.js";
 import { handleMarketCommand } from "./market/commands.js";
 import { startMarketMaintenance } from "./market/sweeper.js";
+import { handleRaidCommand } from "./raid/command.js";
+import { handleRaidAdminCommand } from "./raid/admin.js";
+import { handleRaidComponent } from "./raid/manager.js";
 import { handleWhisperCommand, handleAdminSecretCommand, handleEchoCommand } from "./secret/commands.js";
 import { isSecretModal, handleSecretModal, isSecretButton, handleSecretButton } from "./secret/interactions.js";
 import {
@@ -163,6 +166,8 @@ export async function startBot() {
       if (interaction.isStringSelectMenu()) {
         if (interaction.customId.startsWith("battle:")) {
           await handleBattleComponent(interaction);
+        } else if (interaction.customId.startsWith("raid:")) {
+          await handleRaidComponent(interaction);
         } else if (interaction.customId.startsWith("battleadmin:")) {
           await handleBattleAdminSelect(interaction);
         } else if (interaction.customId.startsWith("config_")) {
@@ -241,6 +246,12 @@ export async function startBot() {
         // ── Battle system buttons (challenge, prep, combat moves) ──────────
         if (action === "battle") {
           await handleBattleComponent(interaction);
+          return;
+        }
+
+        // ── Raid buttons (lobby join/begin, combat actions) ────────────────
+        if (action === "raid") {
+          await handleRaidComponent(interaction);
           return;
         }
 
@@ -457,6 +468,10 @@ export async function startBot() {
         await handleBattleAdminCommand(interaction);
       } else if (cmd === "market") {
         await handleMarketCommand(interaction);
+      } else if (cmd === "raid") {
+        await handleRaidCommand(interaction);
+      } else if (cmd === "raidadmin") {
+        await handleRaidAdminCommand(interaction);
       } else if (cmd === "whisper") {
         await handleWhisperCommand(interaction);
       } else if (cmd === "adminsecret") {
