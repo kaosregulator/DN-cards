@@ -44,7 +44,7 @@ interface ActiveSpawn {
   burnValue: number;
   channelId: string;
   spawnLogId: number;
-  message: { edit: (opts: unknown) => Promise<unknown> };
+  message: Message;
   expiresAt: Date;
   caught: boolean;
   winnerUserId: string | null;
@@ -485,10 +485,9 @@ async function awardSpawn(guildId: string, spawnId: string, userId: string): Pro
   if (spawn.resolveTimer) { clearTimeout(spawn.resolveTimer); spawn.resolveTimer = null; }
 
   // Parallel: write collection row + mark spawn log. Both independent DB calls.
-  const [{ isShiny }, , shinySettings] = await Promise.all([
+  const [{ isShiny }] = await Promise.all([
     catchCard(guildId, userId, spawn.cardId),
     markCaught(spawn.spawnLogId, userId),
-    getOrCreateGuildSettings(guildId),
   ]);
 
   // Auto-remove the caught card from the winner's wishlist so they stop
@@ -508,31 +507,24 @@ async function awardSpawn(guildId: string, spawnId: string, userId: string): Pro
   })();
 
   try {
-    const claimedEmbed = await buildClaimedEmbed(spawn.cardId, userId, isShiny, guildId);
-    if (claimedEmbed) {
-      await spawn.message.edit({
-        embeds: [claimedEmbed],
-        components: [buildDecisionRow(guildId, userId, spawn.cardId, spawn.burnValue, isShiny, getShinyMultiplier(shinySettings))],
-      });
-    }
-  } catch { /* deleted */ }
-
-  // Auto-keep after 90s if no button pressed — edit the spawn embed in place.
-  // Bail out if the winner already clicked Burn/Keep/Trade themselves, or
-  // we'd overwrite their actual decision with a misleading "KEPT" embed.
-  setTimeout(async () => {
-    const gs = activeSpawns.get(guildId);
-    const current = gs?.get(spawnId);
-    if (current?.decisionMade) return;
-    try {
-      const keptEmbed = await buildPostDecisionEmbed(spawn.cardId, userId, "kept", guildId);
-      if (keptEmbed) await spawn.message.edit({
-        embeds: [keptEmbed],
-        components: [buildDisabledDecisionRow(guildId, userId, spawn.cardId, spawn.burnValue, "keep")],
-      });
-      if (current) current.decisionMade = true;
-    } catch { /* deleted */ }
-  }, 90_000);
+    const quipFn = CATCH_QUIPS[Math.floor(Math.random() * CATCH_QUIPS.length)]!;
+    const cards = await getAllCardsCached(guildId);
+    const rawCard = cards.find(c => c.id === spawn.cardId);
+    const cardName = rawCard?.name ?? spawn.cardName;
+    const shinyBadge = isShiny ? ` ✨` : "";
+    await spawn.message.edit({
+      embeds: [
+        new EmbedBuilder()
+          .setDescription(quipFn(`${cardName}${shinyBadge}`, `<@${userId}>`))
+          .setColor(isShiny ? 0xf1c40f : 0x00b894),
+      ],
+      components: [],
+    });
+    // Fun ephemeral message — vanishes after a few seconds so the channel stays clean.
+    setTimeout(() => {
+      spawn.message.delete().catch(() => { /* may be deleted / no perms */ });
+    }, 6_000);
+  } catch { /* deleted or lacking edit perms */ }
 
   return true;
 }
