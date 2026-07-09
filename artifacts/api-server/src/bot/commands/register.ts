@@ -96,7 +96,6 @@ function buildLegacyCommands() {
 
     cmd("daily", "(User) Claim your daily DN Shards reward", s => s),
 
-    cmd("pack", "(User) Open a pack — type to search tiers and custom packs", s => s),
     cmd("quests", "(User) View daily & weekly quests — earn shards and packs", s => s),
 
     cmd("level", "(User) View a card's battle level, XP, and unlocked frames", s => s
@@ -590,8 +589,8 @@ type CommandJson = ReturnType<SlashCommandBuilder["toJSON"]>;
 const USER_HUB_COMMANDS = new Set([
   "collection", "rank", "info", "list", "catalog", "top", "burn", "shards",
   "trade", "gift", "trades", "tradehistory", "accept", "decline", "welcome",
-  "help", "daily", "quests", "pack", "packstats", "tradein", "achievements",
-  "level", "frame", "lock", "search", "collector", "calendar",
+  "help", "daily", "pack", "packstats", "tradein", "achievements",
+  "lock", "search", "collector", "calendar",
 ]);
 
 const ADMIN_HUB_COMMANDS = new Set([
@@ -637,6 +636,6 @@ export function buildCommands() {
   ];
 }
 
-export const USER_COMMAND_NAMES = new Set(["cards", "wishlist", "sets", "rep", "thanks", "menu", "dnvaluesearch", "dnvaluelist", "dnvalueinfo", "dnvaluecalc", "dnhelp", "info_mttv", "calc", "valuehelp", "valuelist"]);
+export const USER_COMMAND_NAMES = new Set(["cards", "wishlist", "sets", "rep", "thanks", "menu", "dnvaluesearch", "dnvaluelist", "dnvalueinfo", "dnvaluecalc", "dnhelp", "info_mttv", "calc", "valuehelp", "valuelist", "quests", "level", "frame"]);
 
 export const ADMIN_COMMAND_NAMES = new Set(["admin", "setadmin", "event", "rarity", "embed", "edituser", "postcalculator"]);
