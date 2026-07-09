@@ -25,6 +25,7 @@ import { eq } from "drizzle-orm";
 import { SPECIAL_EFFECT_KEYS, getEffectDef, inferSpecialEffect } from "../battle/special-cards.js";
 import { RARITY_LABELS, RARITY_EMOJI } from "../cards-data.js";
 import type { Rarity } from "../cards-data.js";
+import { toAbsoluteImageUrl } from "../image-url.js";
 
 // Battle speed presets (frame delay ms) for the admin speed controller.
 const SPEED_PRESETS: Array<{ value: string; label: string; emoji: string; ms: number }> = [
@@ -538,7 +539,8 @@ async function buildCardEditorPanel(
         inline: false },
     )
     .setFooter({ text: "Changes save instantly, for this server only." });
-  if (card.imageUrl) embed.setThumbnail(card.imageUrl);
+  const thumb = toAbsoluteImageUrl(card.imageUrl);
+  if (thumb) embed.setThumbnail(thumb);
 
   const rarityRow = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
     new StringSelectMenuBuilder().setCustomId(`battleadmin:bcrarity:${cardId}`).setPlaceholder("🎖️ Battle rarity")

@@ -82,7 +82,7 @@ export function buildPlayerCombatant(
   return {
     userId: member.userId, displayName: member.displayName, isAi: false, side: 0,
     cardId: member.card.id, cardName: member.card.name, cardRarity: battleRarity,
-    cardType: member.card.cardType, cardImageUrl: member.card.imageUrl,
+    cardType: member.card.cardType, cardImageUrl: toAbsoluteImageUrl(member.card.imageUrl),
     stats, hp: stats.maxHealth, shield: 0, energy: 40, ultimate: 0, status: [],
     specialCardId: null, specialCardName: null, specialEffect: null,
     specialCooldownMax: 3, specialCooldownRemaining: 0,

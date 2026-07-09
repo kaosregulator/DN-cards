@@ -41,6 +41,7 @@ import {
 import { RARITY_EMOJI, selectMenuEmoji, type Rarity } from "../cards-data.js";
 import { isOwnedBy } from "../home-guild.js";
 import { objectStorageClient, ObjectStorageService } from "../../lib/objectStorage.js";
+import { toAbsoluteImageUrl } from "../image-url.js";
 
 // ── Permanent image upload ────────────────────────────────────────────────────
 // Discord slash-command attachment URLs are ephemeral — they expire within
@@ -111,7 +112,8 @@ async function buildPanel(cardId: number, guildId?: string | null): Promise<{ em
       { name: "Limited", value: card.isLimitedEdition ? `💎 Yes (${card.totalMinted}/${card.maxCopies ?? "?"})` : "❌ No", inline: true },
     )
     .setFooter({ text: `Card #${card.id} — use /editcard name:<card> image:<file> to replace the image.` });
-  if (card.imageUrl) embed.setThumbnail(card.imageUrl);
+  const thumb = toAbsoluteImageUrl(card.imageUrl);
+  if (thumb) embed.setThumbnail(thumb);
 
   const select = new StringSelectMenuBuilder()
     .setCustomId(`editcard:menu:${card.id}`)
