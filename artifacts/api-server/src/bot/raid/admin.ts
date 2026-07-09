@@ -6,6 +6,7 @@ import { EmbedBuilder, MessageFlags, PermissionFlagsBits, type GuildMember } fro
 import type { RaidBoss } from "@workspace/db";
 import { createBoss, updateBoss, deleteBoss, getAllBosses, getBossByName } from "./db.js";
 import { starString, levelForStars } from "../cards/leveling.js";
+import { persistBotImage } from "../commands/edit-card.js";
 
 const EPHEMERAL = { flags: MessageFlags.Ephemeral } as const;
 const VALID_ARCHETYPES = ["boss", "tank", "ship", "aircraft", "vehicle", "infantry", "community"];
@@ -56,10 +57,15 @@ export async function handleRaidAdminCommand(interaction: ChatInputCommandIntera
     if (!VALID_ARCHETYPES.includes(archetype)) { await interaction.editReply(`❌ Archetype must be one of: ${VALID_ARCHETYPES.join(", ")}.`); return; }
     if (!VALID_RARITIES.includes(rarity)) { await interaction.editReply(`❌ Rarity must be one of: ${VALID_RARITIES.join(", ")}.`); return; }
 
+    const imageAttachment = interaction.options.getAttachment("image");
+    const imageUrl = imageAttachment
+      ? await persistBotImage(imageAttachment.url, imageAttachment.contentType ?? undefined)
+      : null;
+
     const boss = await createBoss({
       guildId, name, createdBy: interaction.user.id,
       description: interaction.options.getString("description") ?? null,
-      imageUrl: interaction.options.getString("image") ?? null,
+      imageUrl,
       archetype, rarity,
       baseHealth: interaction.options.getInteger("health") ?? undefined,
       baseAttack: interaction.options.getInteger("attack") ?? undefined,
@@ -102,13 +108,16 @@ export async function handleRaidAdminCommand(interaction: ChatInputCommandIntera
     const setInt = (opt: string, key: keyof RaidBoss) => { const v = interaction.options.getInteger(opt); if (v != null) (patch as Record<string, unknown>)[key] = v; };
     const setStr = (opt: string, key: keyof RaidBoss) => { const v = interaction.options.getString(opt); if (v != null) (patch as Record<string, unknown>)[key] = v; };
     setStr("description", "description");
-    setStr("image", "imageUrl");
     setInt("health", "baseHealth"); setInt("attack", "baseAttack"); setInt("defense", "baseDefense");
     setInt("minstars", "minStars"); setInt("minlevel", "minPlayerLevel");
     setInt("minplayers", "minPlayers"); setInt("maxplayers", "maxPlayers");
     setInt("enrage", "enrageTurn"); setInt("reward", "rewardShards"); setInt("cardxp", "rewardCardXp");
     const arch = interaction.options.getString("archetype");
     if (arch) { if (!VALID_ARCHETYPES.includes(arch.toLowerCase())) { await interaction.editReply(`❌ Bad archetype.`); return; } patch.archetype = arch.toLowerCase(); }
+    const imageAttachment = interaction.options.getAttachment("image");
+    if (imageAttachment) {
+      patch.imageUrl = await persistBotImage(imageAttachment.url, imageAttachment.contentType ?? undefined);
+    }
     if (Object.keys(patch).length === 0) { await interaction.editReply("Nothing to change — pass at least one field to edit."); return; }
     const updated = await updateBoss(boss.id, patch);
     await interaction.editReply({ content: `✅ Updated **${boss.name}**.`, embeds: [new EmbedBuilder().setColor(0x3498db).setDescription(bossSummary(updated!))] });
