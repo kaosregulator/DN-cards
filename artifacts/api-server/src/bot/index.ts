@@ -25,6 +25,8 @@ import {
   handleBattleAdminChannelSelect, handleBattleAdminModal,
 } from "./commands/battle-admin.js";
 import { handleBattleComponent, startBattleMaintenance } from "./battle/battle-manager.js";
+import { handleWhisperCommand, handleAdminSecretCommand, handleEchoCommand } from "./secret/commands.js";
+import { isSecretModal, handleSecretModal, isSecretButton, handleSecretButton } from "./secret/interactions.js";
 import {
   buildCommands, USER_COMMAND_NAMES, ADMIN_COMMAND_NAMES,
 } from "./commands/register.js";
@@ -198,7 +200,9 @@ export async function startBot() {
 
       // ── Modal submissions (admin hub + setup test card + custom mix) ─────
       if (interaction.isModalSubmit()) {
-        if (interaction.customId.startsWith("battleadmin:")) {
+        if (isSecretModal(interaction.customId)) {
+          await handleSecretModal(interaction);
+        } else if (interaction.customId.startsWith("battleadmin:")) {
           await handleBattleAdminModal(interaction);
         } else if (interaction.customId.startsWith("adminhub:")) {
           await handleAdminHubModal(interaction);
@@ -224,6 +228,12 @@ export async function startBot() {
       if (interaction.isButton()) {
         const parts = interaction.customId.split(":");
         const action = parts[0];
+
+        // ── Echo-Whisper reveal buttons ────────────────────────────────────
+        if (isSecretButton(interaction.customId)) {
+          await handleSecretButton(interaction);
+          return;
+        }
 
         // ── Battle system buttons (challenge, prep, combat moves) ──────────
         if (action === "battle") {
@@ -438,6 +448,12 @@ export async function startBot() {
         await handleBattleCommand(interaction, interaction.options.getSubcommand(true));
       } else if (cmd === "battleadmin") {
         await handleBattleAdminCommand(interaction);
+      } else if (cmd === "whisper") {
+        await handleWhisperCommand(interaction);
+      } else if (cmd === "adminsecret") {
+        await handleAdminSecretCommand(interaction);
+      } else if (cmd === "echo") {
+        await handleEchoCommand(interaction);
       } else if (cmd === "cards") {
         await handleUserCommand(interaction, interaction.options.getSubcommand(true));
       } else if (cmd === "admin") {

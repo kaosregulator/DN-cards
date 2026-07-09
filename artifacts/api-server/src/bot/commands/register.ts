@@ -393,6 +393,25 @@ function buildLegacyCommands() {
       .addSubcommand(sc => sc.setName("progress").setDescription("Show set-by-set completion for a member")
         .addUserOption(o => o.setName("user").setDescription("Member to inspect (defaults to you)")))),
 
+    // ── Echo-Whisper (encrypted messaging addon) ──────────────────────────────
+    cmd("whisper", "(User) Send an encrypted whisper only a chosen member can read", s => s
+      .addUserOption(o => o.setName("user").setDescription("The member who can read this message").setRequired(true))),
+
+    cmd("adminsecret", "(User) Post an encrypted staff message only authorized roles can reveal", s => s),
+
+    adminCmd("echo", "(Admin) Echo-Whisper hub — viewer roles, admin override, stats, config", s => s
+      .addSubcommand(sc => sc.setName("role").setDescription("Manage roles allowed to reveal /adminsecret messages")
+        .addStringOption(o => o.setName("action").setDescription("Add, remove, or list").setRequired(true)
+          .addChoices({ name: "add", value: "add" }, { name: "remove", value: "remove" }, { name: "list", value: "list" }))
+        .addRoleOption(o => o.setName("role").setDescription("Role to add or remove")))
+      .addSubcommand(sc => sc.setName("override").setDescription("Toggle whether admins can decrypt any message")
+        .addStringOption(o => o.setName("mode").setDescription("Enable or disable admin override").setRequired(true)
+          .addChoices({ name: "enable", value: "enable" }, { name: "disable", value: "disable" })))
+      .addSubcommand(sc => sc.setName("whisper").setDescription("View whisper configuration"))
+      .addSubcommand(sc => sc.setName("adminsecret").setDescription("View adminsecret configuration"))
+      .addSubcommand(sc => sc.setName("stats").setDescription("View Echo-Whisper usage stats"))
+      .addSubcommand(sc => sc.setName("config").setDescription("View Echo-Whisper configuration"))),
+
   ];
 }
 
