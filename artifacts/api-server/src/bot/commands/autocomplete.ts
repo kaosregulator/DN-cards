@@ -120,6 +120,21 @@ export async function handleAutocomplete(interaction: AutocompleteInteraction): 
       return;
     }
 
+    // ── Squad-name autocomplete for /squad join + /squad info ───────────────
+    if (cmd === "squad" && focused.name === "name" && interaction.guild) {
+      const { db, squadsTable } = await import("@workspace/db");
+      const { eq } = await import("drizzle-orm");
+      const squads = await db.select().from(squadsTable).where(eq(squadsTable.guildId, interaction.guild.id));
+      const q = query.toLowerCase().trim();
+      await interaction.respond(
+        squads
+          .filter(s => !q || s.name.toLowerCase().includes(q))
+          .slice(0, MAX_CHOICES)
+          .map(s => ({ name: (s.tag ? `[${s.tag}] ${s.name}` : s.name).slice(0, 100), value: s.name.slice(0, 100) })),
+      );
+      return;
+    }
+
     // ── Set-name autocomplete for /sets, /drop, /massdrop ───────────────────
     // Any string option named `set`, `from`, `to`, or `name` on these two
     // commands resolves to a set picker (except /setadmin create, which takes

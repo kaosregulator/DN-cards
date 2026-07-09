@@ -27,6 +27,7 @@ import {
 import { handleBattleComponent, startBattleMaintenance } from "./battle/battle-manager.js";
 import { handleMarketCommand } from "./market/commands.js";
 import { startMarketMaintenance } from "./market/sweeper.js";
+import { handleSquadCommand } from "./squad/commands.js";
 import { handleRaidCommand } from "./raid/command.js";
 import { handleRaidAdminCommand } from "./raid/admin.js";
 import { handleRaidComponent } from "./raid/manager.js";
@@ -468,6 +469,8 @@ export async function startBot() {
         await handleBattleAdminCommand(interaction);
       } else if (cmd === "market") {
         await handleMarketCommand(interaction);
+      } else if (cmd === "squad") {
+        await handleSquadCommand(interaction);
       } else if (cmd === "raid") {
         await handleRaidCommand(interaction);
       } else if (cmd === "raidadmin") {

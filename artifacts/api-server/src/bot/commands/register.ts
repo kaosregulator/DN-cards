@@ -414,6 +414,20 @@ function buildLegacyCommands() {
     // ── /battleadmin (admin, Battle System configuration) ─────────────────────
     adminCmd("battleadmin", "(Admin) Battle system hub — setup wizard, rules, rewards, cards, seasons", s => s),
 
+    // ── /squad (user, Squads / guilds) ────────────────────────────────────────
+    cmd("squad", "(User) Team up — create or join a squad and climb the squad leaderboard", s => s
+      .addSubcommand(sc => sc.setName("create").setDescription("Found a new squad (you become leader)")
+        .addStringOption(o => o.setName("name").setDescription("Squad name").setRequired(true))
+        .addStringOption(o => o.setName("tag").setDescription("Short tag shown by members, e.g. WLF (max 6)"))
+        .addStringOption(o => o.setName("description").setDescription("Squad description")))
+      .addSubcommand(sc => sc.setName("join").setDescription("Join a squad")
+        .addStringOption(o => o.setName("name").setDescription("Squad to join").setRequired(true).setAutocomplete(true)))
+      .addSubcommand(sc => sc.setName("leave").setDescription("Leave your squad"))
+      .addSubcommand(sc => sc.setName("disband").setDescription("Disband your squad (leader only)"))
+      .addSubcommand(sc => sc.setName("info").setDescription("View a squad's combined stats and roster")
+        .addStringOption(o => o.setName("name").setDescription("Squad (default: yours)").setAutocomplete(true)))
+      .addSubcommand(sc => sc.setName("list").setDescription("Squad leaderboard for this server"))),
+
     // ── /raid (user, Co-op Boss Raids) ────────────────────────────────────────
     cmd("raid", "(User) Team up to take down a boss — co-op raid", s => s
       .addSubcommand(sc => sc.setName("start").setDescription("Start a raid lobby for a boss")
