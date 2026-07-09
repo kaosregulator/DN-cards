@@ -96,6 +96,13 @@ function buildLegacyCommands() {
 
     cmd("quests", "(User) View daily & weekly quests — earn shards and packs", s => s),
 
+    cmd("level", "(User) View a card's battle level, XP, and unlocked frames", s => s
+      .addStringOption(o => o.setName("name").setDescription("Card name (leave empty for your top leveled cards)").setAutocomplete(true))),
+
+    cmd("frame", "(User) Equip a cosmetic frame on a card you've leveled", s => s
+      .addStringOption(o => o.setName("name").setDescription("Card name").setRequired(true).setAutocomplete(true))
+      .addStringOption(o => o.setName("style").setDescription("Frame to equip (leave empty to list options)"))),
+
     cmd("pack", "(User) Open a card pack — pick a tier", s => s
       .addStringOption(o => o.setName("tier")
         .setDescription("Which pack to open (default: Basic)")
@@ -424,6 +431,7 @@ const USER_HUB_COMMANDS = new Set([
   "collection", "rank", "info", "list", "catalog", "top", "burn", "shards",
   "trade", "gift", "trades", "tradehistory", "accept", "decline", "welcome",
   "help", "daily", "quests", "pack", "packstats", "tradein", "achievements",
+  "level", "frame",
 ]);
 
 const ADMIN_HUB_COMMANDS = new Set([

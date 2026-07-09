@@ -14,6 +14,7 @@ import {
   updateProfile, getOrCreateProfile, insertBattleRecord,
 } from "./db.js";
 import { checkBattleAchievements, type BattleAchievementDef, type BattleContext } from "./achievement-engine.js";
+import type { Rarity } from "../cards-data.js";
 
 export interface ParticipantResult {
   userId: string;
@@ -200,6 +201,20 @@ export async function processBattleRewards(args: {
       await recordQuestEvent(guildId, args.winnerId, "battle_win", 1);
     } catch { /* non-fatal */ }
   }
+
+  // Card leveling — each real participant's fielded card earns battle XP
+  // (cosmetic frames only, no stat impact). Best-effort.
+  try {
+    const { grantCardBattleXp } = await import("../cards/leveling.js");
+    const { getAllCardsCached } = await import("../db.js");
+    const allCards = await getAllCardsCached();
+    const rarityOf = (id: number) => (allCards.find(c => c.id === id)?.rarity ?? "common") as Rarity;
+    const outcomeFor = (p: ParticipantResult): "win" | "loss" | "draw" =>
+      args.winnerId === null ? "draw" : args.winnerId === p.userId ? "win" : "loss";
+    await Promise.all([args.challenger, args.opponent]
+      .filter(p => !p.isAi)
+      .map(p => grantCardBattleXp(guildId, p.userId, p.cardId, rarityOf(p.cardId), outcomeFor(p))));
+  } catch { /* non-fatal */ }
 
   // NOTE: the actual staked-card movement is handled by the battle-manager's
   // escrow (cards are held out of both collections for the whole battle, then

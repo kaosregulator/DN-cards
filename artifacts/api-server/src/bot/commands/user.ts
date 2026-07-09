@@ -2,7 +2,7 @@ import type { ChatInputCommandInteraction } from "discord.js";
 import { EmbedBuilder, MessageFlags } from "discord.js";
 
 // Commands whose results are personal/spammy and should only be seen by the user.
-const EPHEMERAL_COMMANDS = new Set(["burn", "shards", "trades", "tradehistory", "help", "daily", "quests", "achievements", "pack", "packstats", "wishlist", "gift", "tradein", "sets"]);
+const EPHEMERAL_COMMANDS = new Set(["burn", "shards", "trades", "tradehistory", "help", "daily", "quests", "achievements", "pack", "packstats", "wishlist", "gift", "tradein", "sets", "level", "frame"]);
 import {
   getUserCollection, getAllCards, getLeaderboard, getTopPackOpeners,
   getOrCreateCurrency, burnCard, getCardByName, getUserCardCount, getUserOwnedCount,
@@ -881,6 +881,16 @@ export async function handleUserCommand(
   if (sub === "quests") {
     const { handleQuests } = await import("../quests/command.js");
     await handleQuests(interaction);
+    return;
+  }
+  if (sub === "level") {
+    const { handleCardLevel } = await import("../cards/level-command.js");
+    await handleCardLevel(interaction);
+    return;
+  }
+  if (sub === "frame") {
+    const { handleCardFrame } = await import("../cards/level-command.js");
+    await handleCardFrame(interaction);
     return;
   }
   if (sub === "pack") { await handlePack(interaction); return; }
