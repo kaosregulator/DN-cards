@@ -40,7 +40,7 @@ import {
 } from "../db.js";
 import { RARITY_EMOJI, selectMenuEmoji, type Rarity } from "../cards-data.js";
 import { isOwnedBy } from "../home-guild.js";
-import { objectStorageClient, ObjectStorageService } from "../../lib/objectStorage.js";
+import { ObjectStorageService } from "../../lib/objectStorage.js";
 import { toAbsoluteImageUrl } from "../image-url.js";
 
 // ── Permanent image upload ────────────────────────────────────────────────────

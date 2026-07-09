@@ -75,12 +75,15 @@ export async function handleRaidAdminCommand(interaction: ChatInputCommandIntera
     const imageAttachment = interaction.options.getAttachment("image");
     const validation = validateImageAttachment(imageAttachment);
     if (!validation.ok) { await interaction.editReply(validation.reason); return; }
-    const imageUrl = imageAttachment
-      ? await persistBotImage(imageAttachment.url, imageAttachment.contentType ?? undefined)
-      : null;
-    const ephemeralWarning = imageAttachment && isEphemeralImage(imageUrl ?? "", imageAttachment.url)
-      ? "\n⚠️ Image could not be saved permanently — it may stop showing later."
-      : "";
+    let imageUrl: string | null = null;
+    if (imageAttachment) {
+      const persisted = await persistBotImage(imageAttachment.url, imageAttachment.contentType ?? undefined);
+      if (isEphemeralImage(persisted, imageAttachment.url)) {
+        await interaction.editReply({ content: "⚠️ Image could not be saved permanently. Boss was not created — try again or check storage setup.", embeds: [] });
+        return;
+      }
+      imageUrl = persisted;
+    }
 
     const boss = await createBoss({
       guildId, name, createdBy: interaction.user.id,
@@ -99,7 +102,7 @@ export async function handleRaidAdminCommand(interaction: ChatInputCommandIntera
       rewardCardXp: interaction.options.getInteger("cardxp") ?? undefined,
     });
     await interaction.editReply({
-      content: `✅ Created raid boss **${boss.name}**. Players fight it with \`/raid start boss:${boss.name}\`.${ephemeralWarning}`,
+      content: `✅ Created raid boss **${boss.name}**. Players fight it with \`/raid start boss:${boss.name}\`.`,
       embeds: [new EmbedBuilder().setColor(0x2ecc71).setDescription(bossSummary(boss))],
     });
     return;
