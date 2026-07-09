@@ -7,13 +7,28 @@ import type { RaidBoss } from "@workspace/db";
 import { createBoss, updateBoss, deleteBoss, getAllBosses, getBossByName } from "./db.js";
 import { starString, levelForStars } from "../cards/leveling.js";
 import { persistBotImage } from "../commands/edit-card.js";
+import { logger } from "../../lib/logger.js";
 
 const EPHEMERAL = { flags: MessageFlags.Ephemeral } as const;
 const VALID_ARCHETYPES = ["boss", "tank", "ship", "aircraft", "vehicle", "infantry", "community"];
 const VALID_RARITIES = ["common", "uncommon", "rare", "epic", "legendary", "mythic"];
+const VALID_IMAGE_MIME_TYPES = ["image/png", "image/jpeg", "image/webp", "image/gif"];
 
 function isAdmin(member: GuildMember | null): boolean {
   return !!member?.permissions.has(PermissionFlagsBits.Administrator);
+}
+
+function validateImageAttachment(att: import("discord.js").Attachment | null): { ok: true } | { ok: false; reason: string } {
+  if (!att) return { ok: true };
+  const ct = att.contentType ?? "application/octet-stream";
+  if (!VALID_IMAGE_MIME_TYPES.includes(ct)) {
+    return { ok: false, reason: `❌ Image must be one of: PNG, JPEG, WebP, GIF (got ${ct}).` };
+  }
+  return { ok: true };
+}
+
+function isEphemeralImage(savedUrl: string, originalUrl: string): boolean {
+  return savedUrl === originalUrl && !savedUrl.includes("storage.googleapis.com");
 }
 
 function bossSummary(b: RaidBoss): string {
@@ -58,9 +73,14 @@ export async function handleRaidAdminCommand(interaction: ChatInputCommandIntera
     if (!VALID_RARITIES.includes(rarity)) { await interaction.editReply(`❌ Rarity must be one of: ${VALID_RARITIES.join(", ")}.`); return; }
 
     const imageAttachment = interaction.options.getAttachment("image");
+    const validation = validateImageAttachment(imageAttachment);
+    if (!validation.ok) { await interaction.editReply(validation.reason); return; }
     const imageUrl = imageAttachment
       ? await persistBotImage(imageAttachment.url, imageAttachment.contentType ?? undefined)
       : null;
+    const ephemeralWarning = imageAttachment && isEphemeralImage(imageUrl ?? "", imageAttachment.url)
+      ? "\n⚠️ Image could not be saved permanently — it may stop showing later."
+      : "";
 
     const boss = await createBoss({
       guildId, name, createdBy: interaction.user.id,
@@ -79,7 +99,7 @@ export async function handleRaidAdminCommand(interaction: ChatInputCommandIntera
       rewardCardXp: interaction.options.getInteger("cardxp") ?? undefined,
     });
     await interaction.editReply({
-      content: `✅ Created raid boss **${boss.name}**. Players fight it with \`/raid start boss:${boss.name}\`.`,
+      content: `✅ Created raid boss **${boss.name}**. Players fight it with \`/raid start boss:${boss.name}\`.${ephemeralWarning}`,
       embeds: [new EmbedBuilder().setColor(0x2ecc71).setDescription(bossSummary(boss))],
     });
     return;
@@ -116,7 +136,14 @@ export async function handleRaidAdminCommand(interaction: ChatInputCommandIntera
     if (arch) { if (!VALID_ARCHETYPES.includes(arch.toLowerCase())) { await interaction.editReply(`❌ Bad archetype.`); return; } patch.archetype = arch.toLowerCase(); }
     const imageAttachment = interaction.options.getAttachment("image");
     if (imageAttachment) {
-      patch.imageUrl = await persistBotImage(imageAttachment.url, imageAttachment.contentType ?? undefined);
+      const validation = validateImageAttachment(imageAttachment);
+      if (!validation.ok) { await interaction.editReply(validation.reason); return; }
+      const persistedUrl = await persistBotImage(imageAttachment.url, imageAttachment.contentType ?? undefined);
+      if (isEphemeralImage(persistedUrl, imageAttachment.url)) {
+        await interaction.editReply({ content: `⚠️ Image could not be saved permanently. Boss image was not updated.`, embeds: [] });
+        return;
+      }
+      patch.imageUrl = persistedUrl;
     }
     if (Object.keys(patch).length === 0) { await interaction.editReply("Nothing to change — pass at least one field to edit."); return; }
     const updated = await updateBoss(boss.id, patch);

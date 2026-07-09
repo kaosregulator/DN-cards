@@ -25,6 +25,7 @@ import {
   type ModalSubmitInteraction, type RepliableInteraction,
 } from "discord.js";
 import { randomUUID } from "crypto";
+import { logger } from "../../lib/logger.js";
 import {
   assignCardToCustomRarity,
   getCardByName,
@@ -48,19 +49,29 @@ import { objectStorageClient } from "../../lib/objectStorage.js";
 // Falls back to the original URL silently if GCS is unavailable or upload fails.
 export async function persistBotImage(url: string, contentType?: string): Promise<string> {
   const bucketId = process.env.DEFAULT_OBJECT_STORAGE_BUCKET_ID;
-  if (!bucketId) return url;
+  if (!bucketId) {
+    logger.warn({ reason: "missing_default_object_storage_bucket_id" }, "Image persistence skipped: no object storage bucket configured");
+    return url;
+  }
   try {
     const resp = await fetch(url, { signal: AbortSignal.timeout(20_000) });
-    if (!resp.ok) return url;
+    if (!resp.ok) {
+      logger.warn({ url, status: resp.status, reason: "fetch_failed" }, "Image persistence skipped: fetch failed");
+      return url;
+    }
     const ct = contentType ?? resp.headers.get("content-type") ?? "image/png";
     const buf = Buffer.from(await resp.arrayBuffer());
-    if (buf.length === 0 || buf.length > 10 * 1024 * 1024) return url; // 10 MB cap
+    if (buf.length === 0 || buf.length > 10 * 1024 * 1024) {
+      logger.warn({ url, size: buf.length, reason: buf.length === 0 ? "empty" : "too_large" }, "Image persistence skipped: invalid size");
+      return url; // 10 MB cap
+    }
     const ext = ct.includes("gif") ? "gif" : ct.includes("webp") ? "webp" : ct.includes("png") ? "png" : "jpg";
     const objectName = `bot-uploads/${randomUUID()}.${ext}`;
     const file = objectStorageClient.bucket(bucketId).file(objectName);
     await file.save(buf, { contentType: ct, public: true });
     return `https://storage.googleapis.com/${bucketId}/${objectName}`;
-  } catch {
+  } catch (err) {
+    logger.warn({ url, reason: "upload_error", error: err instanceof Error ? err.message : String(err) }, "Image persistence skipped: upload error");
     return url; // graceful fallback — command still works, image just ephemeral
   }
 }
