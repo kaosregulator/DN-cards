@@ -108,6 +108,8 @@ function buildLegacyCommands() {
       .addStringOption(o => o.setName("state").setDescription("Lock or unlock (default: toggle)")
         .addChoices({ name: "lock", value: "on" }, { name: "unlock", value: "off" }))),
 
+    cmd("collector", "(User) Toggle spawn pings — join/leave the collector ping role", s => s),
+
     cmd("search", "(User) Search the roster by name, rarity, or type — see what you own", s => s
       .addStringOption(o => o.setName("query").setDescription("Text to match in the card name"))
       .addStringOption(o => o.setName("rarity").setDescription("Filter by rarity")
@@ -248,6 +250,9 @@ function buildLegacyCommands() {
       .addUserOption(o => o.setName("user").setDescription("Member to take the card from").setRequired(true))
       .addStringOption(o => o.setName("name").setDescription("Card name").setRequired(true).setAutocomplete(true))
       .addIntegerOption(o => o.setName("amount").setDescription("How many copies to remove (default 1, max 100)").setMinValue(1).setMaxValue(100))),
+
+    adminCmd("collectorrole", "(Admin) Set the opt-in role that gets pinged on every spawn", s => s
+      .addRoleOption(o => o.setName("role").setDescription("Role to ping on spawns (leave empty to clear)"))),
 
     adminCmd("takeshards", "(Admin) Deduct DN Shards from a member", s => s
       .addUserOption(o => o.setName("user").setDescription("Member to deduct shards from").setRequired(true))
@@ -513,13 +518,13 @@ const USER_HUB_COMMANDS = new Set([
   "collection", "rank", "info", "list", "catalog", "top", "burn", "shards",
   "trade", "gift", "trades", "tradehistory", "accept", "decline", "welcome",
   "help", "daily", "quests", "pack", "packstats", "tradein", "achievements",
-  "level", "frame", "lock", "search",
+  "level", "frame", "lock", "search", "collector", "calendar",
 ]);
 
 const ADMIN_HUB_COMMANDS = new Set([
   "setup", "config", "adminhub", "sethub", "set_admin", "deletecard",
   "welcomeadmin", "adminhelp", "drop", "massdrop", "give", "giveshards",
-  "takeback", "takeshards", "addcard", "editcard", "dashboard",
+  "takeback", "takeshards", "addcard", "editcard", "dashboard", "collectorrole",
 ]);
 
 const ADMIN_HUB_NAMES: Record<string, string> = {

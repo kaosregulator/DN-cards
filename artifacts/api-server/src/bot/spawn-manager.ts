@@ -212,6 +212,14 @@ async function doSingleSpawn(guildId: string, forcedCardId?: number, isForced = 
     logger.warn({ err }, "Wishlist ping failed");
   }
 
+  // ── Collector role ping: opt-in role that gets @mentioned on every spawn ──
+  if (settings.collectorRoleId) {
+    await channel.send({
+      content: `🔔 <@&${settings.collectorRoleId}> a wild **${card.name}** appeared!`,
+      allowedMentions: { roles: [settings.collectorRoleId] },
+    }).catch(() => { /* role deleted / permissions — ignore */ });
+  }
+
   const spawn: ActiveSpawn = {
     spawnId,
     cardId: card.id,

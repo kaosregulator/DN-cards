@@ -2,7 +2,7 @@ import type { ChatInputCommandInteraction } from "discord.js";
 import { EmbedBuilder, MessageFlags } from "discord.js";
 
 // Commands whose results are personal/spammy and should only be seen by the user.
-const EPHEMERAL_COMMANDS = new Set(["burn", "shards", "trades", "tradehistory", "help", "daily", "quests", "achievements", "pack", "packstats", "wishlist", "gift", "tradein", "sets", "level", "frame", "lock", "search"]);
+const EPHEMERAL_COMMANDS = new Set(["burn", "shards", "trades", "tradehistory", "help", "daily", "quests", "achievements", "pack", "packstats", "wishlist", "gift", "tradein", "sets", "level", "frame", "lock", "search", "collector", "calendar"]);
 import {
   getUserCollection, getAllCards, getLeaderboard, getTopPackOpeners,
   getOrCreateCurrency, burnCard, getCardByName, getUserCardCount, getUserOwnedCount,
@@ -908,6 +908,16 @@ export async function handleUserCommand(
   if (sub === "search") {
     const { handleSearch } = await import("../cards/search-command.js");
     await handleSearch(interaction);
+    return;
+  }
+  if (sub === "collector") {
+    const { handleCollectorToggle } = await import("../cards/collector.js");
+    await handleCollectorToggle(interaction);
+    return;
+  }
+  if (sub === "calendar") {
+    const { handleCalendar } = await import("../cards/calendar-command.js");
+    await handleCalendar(interaction);
     return;
   }
   if (sub === "pack") { await handlePack(interaction); return; }
