@@ -86,7 +86,7 @@ export async function handlePrefixCommand(msg: Message, prefix: string): Promise
   if (cmd === "help") {
     await msg.reply(
       "🃏 **DN Cards Help**\n" +
-      "• Everyone → run `/cards help` for the full **interactive guide** — pick any topic from the dropdown.\n" +
+      "• Everyone → run `/help` for the full **interactive guide** — pick any topic from the dropdown.\n" +
       `• Admins → the guide has an **Admin** page, or run \`${prefix}setup\` to open the visual setup panel.\n` +
       `• Prefix commands use \`${prefix}\` (change with \`${prefix}setprefix\`).`,
     );

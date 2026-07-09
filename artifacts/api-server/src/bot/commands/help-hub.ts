@@ -48,7 +48,7 @@ const SECTIONS: SectionMeta[] = [
 export async function handleHelpHub(
   interaction: ChatInputCommandInteraction, opening: HelpSection = "home",
 ): Promise<void> {
-  // Callers may or may not have deferred already (e.g. /cards help defers
+  // Callers may or may not have deferred already (e.g. /help defers
   // ephemerally; !help / direct /help may not). Normalize.
   if (!interaction.deferred && !interaction.replied) {
     await interaction.deferReply(EPHEMERAL).catch(() => {});
@@ -133,13 +133,13 @@ const PAGES: Record<HelpSection, PageFn> = {
         "**How catching works**\n" +
         "When a card spawns in the drop channel, just **type its name** to catch it — no command needed *(unless the server uses button mode, then you click)*. First valid catch wins; Discord's own message timestamp breaks ties fairly.\n\n" +
         "**Your first five minutes**\n" +
-        "① `/cards daily` — grab free 💠 shards\n" +
+        "① `/daily` — grab free 💠 shards\n" +
         "② Watch the spawn channel and **type card names** to catch\n" +
-        "③ `/cards pack tier:basic` — spend shards on a 5-card pack\n" +
-        "④ `/cards collection` — see what you own\n" +
-        "⑤ `/cards burn` duplicates → more shards → repeat\n\n" +
+        "③ `/pack tier:basic` — spend shards on a 5-card pack\n" +
+        "④ `/collection` — see what you own\n" +
+        "⑤ `/burn` duplicates → more shards → repeat\n\n" +
         "**What else is here** — battles & co-op raids, squads, a player marketplace, giveaways, daily/weekly quests, reputation, encrypted Echo whispers, and more. Pick a topic below.\n\n" +
-        "💡 New to the server? Run `/cards welcome` for the public intro & rules." +
+        "💡 New to the server? Run `/welcome` for the public intro & rules." +
         `\n\n🌐 Full roster & stats: **[${site}](${site})**`,
       )
       .setFooter({ text: "DN Cards · pick a topic below to see every command" });
@@ -152,21 +152,21 @@ const PAGES: Record<HelpSection, PageFn> = {
       .addFields(
         { name: "🎯 Catch & Browse", value:
           "**Type a card's name** in the spawn channel to catch it.\n" +
-          "`/cards collection [user]` — your (or someone's) collection\n" +
-          "`/cards info name:<card>` — details, worth, drop chance\n" +
-          "`/cards list` — full roster grouped by rarity\n" +
-          "`/cards catalog category:<rarity|event|limited|all>` — browse by type\n" +
-          "`/cards search query:<text>` — free-text card search" },
+          "`/collection [user]` — your (or someone's) collection\n" +
+          "`/info name:<card>` — details, worth, drop chance\n" +
+          "`/list` — full roster grouped by rarity\n" +
+          "`/catalog category:<rarity|event|limited|all>` — browse by type\n" +
+          "`/search query:<text>` — free-text card search" },
         { name: "🏅 Progress & Rank", value:
-          "`/cards rank [user]` — collector rank & progression\n" +
-          "`/cards top` — net-worth leaderboard\n" +
-          "`/cards achievements [user]` — unlocked badges\n" +
-          "`/cards collector` — opt in/out of the spawn-ping collector role\n" +
-          "`/cards calendar` — your login streak calendar" },
+          "`/rank [user]` — collector rank & progression\n" +
+          "`/top` — net-worth leaderboard\n" +
+          "`/achievements [user]` — unlocked badges\n" +
+          "`/collector` — opt in/out of the spawn-ping collector role\n" +
+          "`/calendar` — your login streak calendar" },
         { name: "⭐ Card Upgrades & Cosmetics", value:
-          "`/cards level [card]` — a card's battle level & stars\n" +
-          "`/cards frame` — equip a cosmetic frame on a card\n" +
-          "`/cards lock name:<card>` — lock/favorite a card so it's safe from bulk burns" },
+          "`/level [card]` — a card's battle level & stars\n" +
+          "`/frame` — equip a cosmetic frame on a card\n" +
+          "`/lock name:<card>` — lock/favorite a card so it's safe from bulk burns" },
         { name: "🗂️ Card Sets", value:
           "`/sets list` — every set + how many cards each has\n" +
           "`/sets active` — which set is currently spawning\n" +
@@ -182,19 +182,19 @@ const PAGES: Record<HelpSection, PageFn> = {
       .setDescription("Earn and spend **DN Shards** — the currency behind everything." + NAV_HINT)
       .addFields(
         { name: "💰 Earn Shards", value:
-          "`/cards daily` — free shards daily (streak bonus grows the payout)\n" +
-          "`/cards burn name:<card> [amount] [all] [shiny:true]` — destroy duplicates for 💠\n" +
-          "`/cards shards [user]` — check a balance\n" +
+          "`/daily` — free shards daily (streak bonus grows the payout)\n" +
+          "`/burn name:<card> [amount] [all] [shiny:true]` — destroy duplicates for 💠\n" +
+          "`/shards [user]` — check a balance\n" +
           "Also earned from achievements, quests, battles, and trade-ins." },
         { name: "📦 Packs", value:
-          "`/cards pack tier:<basic|premium|legendary>` — open a 5-card pack\n" +
+          "`/pack tier:<basic|premium|legendary>` — open a 5-card pack\n" +
           "🥉 Basic 250 💠 · 🥈 Premium 750 💠 · 🥇 Legendary 2,000 💠 (no commons)\n" +
-          "`/cards packstats` — your costs, weekly caps & cooldown\n" +
+          "`/packstats` — your costs, weekly caps & cooldown\n" +
           "Tiers share one cooldown but each has its **own weekly cap** (resets Mon 00:00 UTC)." },
         { name: "♻️ Trade-In", value:
-          "`/cards tradein rarity:<r>` — burn **5** of one rarity to roll **1** of the next tier up." },
+          "`/tradein rarity:<r>` — burn **5** of one rarity to roll **1** of the next tier up." },
         { name: "🎁 Gifting", value:
-          "`/cards gift user:@Member amount:<n>` — send shards to a friend." },
+          "`/gift user:@Member amount:<n>` — send shards to a friend." },
       );
   },
 
@@ -204,10 +204,10 @@ const PAGES: Record<HelpSection, PageFn> = {
       .setDescription("Move cards between players — directly, or on the open market." + NAV_HINT)
       .addFields(
         { name: "🤝 Direct Trades", value:
-          "`/cards trade user:@Member offer:<card> want:<card>` — propose a trade\n" +
+          "`/trade user:@Member offer:<card> want:<card>` — propose a trade\n" +
           "Add `offer_shards:<n>` / `want_shards:<n>` to mix in 💠 (or trade pure shards)\n" +
-          "`/cards trades` — pending offers · `/cards tradehistory [user]`\n" +
-          "`/cards accept id:<n>` · `/cards decline id:<n>` (or use the buttons on the offer)\n" +
+          "`/trades` — pending offers · `/tradehistory [user]`\n" +
+          "`/accept id:<n>` · `/decline id:<n>` (or use the buttons on the offer)\n" +
           "Deals over **3:1** in value show an orange ⚠️ fairness warning (informational)." },
         { name: "📌 Wishlist", value:
           "`/wishlist add name:<card>` — get pinged when it spawns\n" +
@@ -267,7 +267,7 @@ const PAGES: Record<HelpSection, PageFn> = {
       .setDescription("Extra goals and community standing layered on top of everyday play." + NAV_HINT)
       .addFields(
         { name: "🎯 Quests", value:
-          "`/cards quests` — your **daily** and **weekly** objectives (catch, open packs, trade, battle, burn, claim daily).\n" +
+          "`/quests` — your **daily** and **weekly** objectives (catch, open packs, trade, battle, burn, claim daily).\n" +
           "Progress tracks automatically as you play; complete them for 💠 shards and the occasional free pack." },
         { name: "⭐ Reputation", value:
           "`/rep give @user` — give someone +1 rep\n" +
@@ -299,15 +299,15 @@ const PAGES: Record<HelpSection, PageFn> = {
       .setDescription("Setup, configuration, and management. Most live under `/admin` (and prefix `!` commands for setup)." + NAV_HINT)
       .addFields(
         { name: "🚀 First-Time Setup", value:
-          "`/admin setup` — interactive setup wizard (spawn channel, interval, catch mode, roster)\n" +
-          "`/admin config` — visual config panel · `/admin hub` — admins, timeouts, channels, state\n" +
-          "`/admin dashboard` — DM yourself a website login link · `/admin help` — full admin reference" },
+          "`/setup` — interactive setup wizard (spawn channel, interval, catch mode, roster)\n" +
+          "`/config` — visual config panel · `/adminhub` — admins, timeouts, channels, state\n" +
+          "`/dashboard` — DM yourself a website login link · `/adminhelp` — full admin reference" },
         { name: "🎁 Drops, Gives & Events", value:
-          "`/admin drop [name]` · `/admin massdrop [amount]`\n" +
-          "`/admin give` / `takeback` (cards) · `/admin giveshards` / `takeshards`\n" +
+          "`/drop [name]` · `/massdrop [amount]`\n" +
+          "`/give` / `takeback` (cards) · `/giveshards` / `takeshards`\n" +
           "`/event start card:<…> duration:<…> [multiplier]` · `/event list` · `/event stop id:<…>`" },
         { name: "🗂️ Cards & Sets", value:
-          "`/admin set-hub` — clickable set manager · `/setadmin …` — typed set commands\n" +
+          "`/sethub` — clickable set manager · `/setadmin …` — typed set commands\n" +
           "`!addcard` / `!editcard <Name>` / `!import` — card creation & editing (prefix commands)\n" +
           "`/rarity …` — rarity names, colors, worth, burn, weights" },
         { name: "🎨 Appearance & Embeds", value:
@@ -318,7 +318,7 @@ const PAGES: Record<HelpSection, PageFn> = {
           "`/raidadmin create|edit|list|enable|delete` — co-op raid bosses\n" +
           "`/giveawayadmin create|edit|end|winners|list|reroll` — run giveaways\n" +
           "`/echo …` — Echo-Whisper viewer roles, override & stats" },
-        { name: "🌐 Website", value: `Public: **[${site}](${site})** · Admin dashboard: run \`/admin dashboard\` for your login link.` },
+        { name: "🌐 Website", value: `Public: **[${site}](${site})** · Admin dashboard: run \`/dashboard\` for your login link.` },
       );
   },
 };

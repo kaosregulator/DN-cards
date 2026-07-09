@@ -88,7 +88,7 @@ export async function handleAdminCommand(
     await interaction.editReply(`🗑️ **${card.name}** (${card.rarity}) has been permanently deleted.`);
     return;
   }
-  // /admin collectorrole — set/clear the opt-in spawn ping role.
+  // /collectorrole — set/clear the opt-in spawn ping role.
   if (cmd === "collectorrole") {
     await interaction.deferReply({ flags: MessageFlags.Ephemeral });
     if (!(await checkAdmin(interaction))) { await interaction.editReply("❌ Admins only."); return; }
@@ -205,7 +205,7 @@ export async function handleAdminCommand(
     if (cardName) {
       const cards = await getAllCards();
       const found = cards.find(c => c.name.toLowerCase() === cardName.toLowerCase());
-      if (!found) { await interaction.editReply(`❌ Card "**${cardName}**" not found. Try \`/cards list\`.`); return; }
+      if (!found) { await interaction.editReply(`❌ Card "**${cardName}**" not found. Try \`/list\`.`); return; }
       forcedCardId = found.id;
     }
     // Optional set override: if a set is named, we pick from that set's cards

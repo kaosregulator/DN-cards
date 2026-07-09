@@ -185,8 +185,8 @@ async function buildHubEmbed(guildId: string): Promise<EmbedBuilder> {
     .setColor(0xed4245)
     .setDescription(
       "Quick admin actions for this server. Buttons below open private prompts; results show only to you.\n\n" +
-      "**Spawn / drop / settings:** use `/admin config` (channel, interval, drop rates, catch mode, toggles).\n" +
-      "**Card grants:** `/admin drop` `/admin give` `/admin giveshards` `/admin takeback` `/admin takeshards`.\n" +
+      "**Spawn / drop / settings:** use `/config` (channel, interval, drop rates, catch mode, toggles).\n" +
+      "**Card grants:** `/drop` `/give` `/giveshards` `/takeback` `/takeshards`.\n" +
       "**Card sets:** `/setadmin load` `/setadmin unload` `/setadmin listloaded`.",
     )
     .addFields(
@@ -210,7 +210,7 @@ async function buildHubEmbed(guildId: string): Promise<EmbedBuilder> {
         inline: false,
       },
     )
-    .setFooter({ text: "Tip: /admin config opens the settings panel with drop-rate controls." });
+    .setFooter({ text: "Tip: /config opens the settings panel with drop-rate controls." });
 }
 
 function buildHubComponents() {

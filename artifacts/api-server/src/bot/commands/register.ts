@@ -583,54 +583,37 @@ function buildLegacyCommands() {
 
 type CommandJson = ReturnType<SlashCommandBuilder["toJSON"]>;
 
-const USER_HUB_COMMANDS = new Set([
+// Commands are FLAT top-level slash commands — e.g. `/burn`, `/daily`, `/drop`
+// — rather than being nested under `/…` / `/…` hubs. These two sets
+// name the flattened commands so the interaction dispatcher (index.ts) knows
+// whether each one is handled by handleUserCommand or handleAdminCommand. The
+// category grouping players see instead lives in the interactive `/help` hub.
+export const USER_HUB_COMMANDS = new Set([
   "collection", "rank", "info", "list", "catalog", "top", "burn", "shards",
   "trade", "gift", "trades", "tradehistory", "accept", "decline", "welcome",
   "help", "daily", "quests", "pack", "packstats", "tradein", "achievements",
   "level", "frame", "lock", "search", "collector", "calendar",
 ]);
 
-const ADMIN_HUB_COMMANDS = new Set([
+export const ADMIN_HUB_COMMANDS = new Set([
   "setup", "config", "adminhub", "sethub", "set_admin", "deletecard",
   "welcomeadmin", "adminhelp", "drop", "massdrop", "give", "giveshards",
   "takeback", "takeshards", "addcard", "editcard", "dashboard", "collectorrole",
 ]);
 
-const ADMIN_HUB_NAMES: Record<string, string> = {
-  adminhub: "hub",
-  sethub: "set-hub",
-  set_admin: "set-manager",
-  welcomeadmin: "welcome",
-  adminhelp: "help",
-};
-
-function consolidateCommands(commands: CommandJson[], names: Set<string>, hubName: string, description: string, admin = false): CommandJson {
-  const selected = commands.filter(command => names.has(command.name));
-  return {
-    name: hubName, description, type: 1, dm_permission: false,
-    ...(admin ? { default_member_permissions: PermissionFlagsBits.Administrator.toString() } : {}),
-    options: selected.map(command => ({
-      type: 1,
-      name: ADMIN_HUB_NAMES[command.name] ?? command.name,
-      description: command.description.replace(/^\((?:User|Admin)\)\s*/, "").slice(0, 100),
-      options: command.options,
-    })),
-  } as CommandJson;
-}
-
 export function buildCommands() {
+  // Every command is registered standalone — no /or /wrapper.
   const legacy = buildLegacyCommands() as CommandJson[];
-  const consolidatedNames = new Set([...USER_HUB_COMMANDS, ...ADMIN_HUB_COMMANDS]);
   return [
-    consolidateCommands(legacy, USER_HUB_COMMANDS, "cards", "Player command hub for DN Cards"),
-    consolidateCommands(legacy, ADMIN_HUB_COMMANDS, "admin", "Admin command hub for DN Cards", true),
-    ...legacy.filter(command => !consolidatedNames.has(command.name)),
+    ...legacy,
     // ── AFK Secretary & Whitelist Access System (standalone top-level cmds) ──
     buildAfkCommandJson() as CommandJson,
     buildAfkSetupCommandJson() as CommandJson,
   ];
 }
 
-export const USER_COMMAND_NAMES = new Set(["cards", "wishlist", "sets", "rep", "thanks"]);
+// Standalone commands that carry their OWN subcommands (handled inside their
+// respective handlers). Kept separate from the flattened hub sets above.
+export const USER_COMMAND_NAMES = new Set(["wishlist", "sets", "rep", "thanks"]);
 
-export const ADMIN_COMMAND_NAMES = new Set(["admin", "setadmin", "event", "rarity", "embed"]);
+export const ADMIN_COMMAND_NAMES = new Set(["setadmin", "event", "rarity", "embed"]);

@@ -7,19 +7,19 @@ import { getOrCreateGuildSettings, updateGuildSettings } from "../db.js";
 
 const EPHEMERAL = { flags: MessageFlags.Ephemeral } as const;
 
-// ── /cards collector — member self-toggles the ping role ─────────────────────
+// ── /collector — member self-toggles the ping role ─────────────────────
 export async function handleCollectorToggle(interaction: ChatInputCommandInteraction): Promise<void> {
   if (!interaction.guild) return;
   const guildId = interaction.guild.id;
   const settings = await getOrCreateGuildSettings(guildId);
   if (!settings.collectorRoleId) {
-    await interaction.editReply("🔕 This server hasn't set up a collector ping role yet. An admin can create one with `/admin collectorrole role:@Collectors`.");
+    await interaction.editReply("🔕 This server hasn't set up a collector ping role yet. An admin can create one with `/collectorrole role:@Collectors`.");
     return;
   }
   const role = interaction.guild.roles.cache.get(settings.collectorRoleId)
     ?? await interaction.guild.roles.fetch(settings.collectorRoleId).catch(() => null);
   if (!role) {
-    await interaction.editReply("⚠️ The configured collector role no longer exists. Ask an admin to set a new one with `/admin collectorrole`.");
+    await interaction.editReply("⚠️ The configured collector role no longer exists. Ask an admin to set a new one with `/collectorrole`.");
     return;
   }
 
@@ -43,7 +43,7 @@ export async function handleCollectorToggle(interaction: ChatInputCommandInterac
   }
 }
 
-// ── /admin collectorrole — admin sets/clears the ping role ───────────────────
+// ── /collectorrole — admin sets/clears the ping role ───────────────────
 export async function handleSetCollectorRole(interaction: ChatInputCommandInteraction): Promise<void> {
   if (!interaction.guild) return;
   const guildId = interaction.guild.id;
@@ -63,7 +63,7 @@ export async function handleSetCollectorRole(interaction: ChatInputCommandIntera
   const canManage = me?.permissions.has(PermissionFlagsBits.ManageRoles)
     && me.roles.highest.comparePositionTo(role.id) > 0;
   await interaction.editReply(
-    `✅ Collector ping role set to <@&${role.id}>. Members opt in with \`/cards collector\`.` +
+    `✅ Collector ping role set to <@&${role.id}>. Members opt in with \`/collector\`.` +
     (canManage ? "" : "\n\n⚠️ Heads up: I currently **can't manage this role** for self-assignment. Give me **Manage Roles** and drag my role **above** it in Server Settings → Roles."),
   );
 }

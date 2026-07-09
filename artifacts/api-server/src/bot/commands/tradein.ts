@@ -162,7 +162,7 @@ export async function handleTradein(interaction: ChatInputCommandInteraction): P
     await interaction.editReply(
       `❌ You need **${TRADEIN_COST}** ${fromTier.emoji} ${fromTier.label} cards to trade in. ` +
       `You have **${totalAtRarity}**.\n` +
-      `Tip: \`/cards burn\` duplicates first if you'd rather have shards.`,
+      `Tip: \`/burn\` duplicates first if you'd rather have shards.`,
     );
     return;
   }
@@ -361,7 +361,7 @@ export async function handleTradein(interaction: ChatInputCommandInteraction): P
     if (resolved) return;
     if (reason === "time") {
       await interaction.editReply({
-        content: "⏱️ Trade-in timed out — no cards were destroyed. Run `/cards tradein` again to retry.",
+        content: "⏱️ Trade-in timed out — no cards were destroyed. Run `/tradein` again to retry.",
         embeds: [], components: [],
       }).catch(() => { /* ignore */ });
     }

@@ -31,7 +31,7 @@ export async function handleCalendar(interaction: ChatInputCommandInteraction): 
     .setColor(0xf1c40f)
     .setDescription(
       `🔥 Streak: **${streak} day${streak === 1 ? "" : "s"}**  ·  Calendar day **${day}/30**\n` +
-      (claimedToday ? "✅ Claimed today — come back tomorrow!" : "🎁 Your daily reward is ready — run `/cards daily`!") +
+      (claimedToday ? "✅ Claimed today — come back tomorrow!" : "🎁 Your daily reward is ready — run `/daily`!") +
       "\n\n" + renderGrid(day),
     )
     .addFields({ name: "🏆 Milestone rewards", value: milestoneList, inline: false })
@@ -42,7 +42,7 @@ export async function handleCalendar(interaction: ChatInputCommandInteraction): 
     });
 
   if (todayMilestone && day > 0) {
-    embed.addFields({ name: "🎉 Today", value: `Day ${day} is a milestone — claim \`/cards daily\` for the bonus if you haven't!`, inline: false });
+    embed.addFields({ name: "🎉 Today", value: `Day ${day} is a milestone — claim \`/daily\` for the bonus if you haven't!`, inline: false });
   }
 
   await interaction.editReply({ embeds: [embed] });

@@ -56,7 +56,7 @@ export async function handleAddCardCommand(interaction: ChatInputCommandInteract
   if (existing) {
     await interaction.editReply(
       `❌ A card named **${name}** already exists (ID #${existing.id}). ` +
-      `Use \`/admin editcard\` to modify it.`,
+      `Use \`/editcard\` to modify it.`,
     );
     return;
   }

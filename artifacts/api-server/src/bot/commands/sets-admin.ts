@@ -214,7 +214,7 @@ export async function handleSetAdminCommand(interaction: ChatInputCommandInterac
   if (sub === "deactivate") {
     await clearActiveSet(guildId);
     await interaction.editReply(
-      `✅ Cleared active set. **Random spawns are now disabled** until you pick a new one with \`/setadmin active\`. Admin \`/admin drop name:<Card>\` still works.`,
+      `✅ Cleared active set. **Random spawns are now disabled** until you pick a new one with \`/setadmin active\`. Admin \`/drop name:<Card>\` still works.`,
     );
     return;
   }
@@ -590,7 +590,7 @@ export async function handleSetAdminCommand(interaction: ChatInputCommandInterac
     if (setName === DEFAULTS_SET_NAME) {
       const { removed } = await unloadDefaultCards();
       await interaction.editReply(
-        `✅ Removed **${removed}** built-in default cards.\nThey will **not** come back on restart. Re-load anytime with \`/setadmin load file:<.json>\` or the \`/admin setup\` panel.`,
+        `✅ Removed **${removed}** built-in default cards.\nThey will **not** come back on restart. Re-load anytime with \`/setadmin load file:<.json>\` or the \`/setup\` panel.`,
       );
       return;
     }

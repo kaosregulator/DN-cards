@@ -340,7 +340,7 @@ async function eligibleCards(session: RaidSession, userId: string): Promise<{
     .sort((a, b) => b.stars - a.stars || b.level - a.level);
 
   if (eligible.length === 0) {
-    return { eligible, reason: `🔒 This raid needs a **${boss.minStars}-star** card (${starString(boss.minStars)}) — reach card **Level ${levelForStars(boss.minStars)}**. Level cards by fielding them in \`/battle\`; check \`/cards level\`.` };
+    return { eligible, reason: `🔒 This raid needs a **${boss.minStars}-star** card (${starString(boss.minStars)}) — reach card **Level ${levelForStars(boss.minStars)}**. Level cards by fielding them in \`/battle\`; check \`/level\`.` };
   }
   return { eligible };
 }

@@ -380,7 +380,7 @@ async function tryClaimPack(
     ok: false, reason: "shards",
     detail: `❌ ${meta.emoji} **${meta.label} Pack** costs 💠 **${cfg.cost.toLocaleString()}**.\n` +
       `You have 💠 **${current.shards.toLocaleString()}**. ` +
-      `Earn more by burning duplicates (\`/cards burn\`), claiming \`/cards daily\`, or opening a cheaper tier.`,
+      `Earn more by burning duplicates (\`/burn\`), claiming \`/daily\`, or opening a cheaper tier.`,
   };
 }
 

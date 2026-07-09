@@ -144,7 +144,7 @@ export function clearDraft(userId: string): void {
   drafts.delete(userId);
 }
 
-// ── Access wall (whitelist + staff/admin bypass) ─────────────────────────────
+// ── Access wall (whitelist + staff/bypass) ─────────────────────────────
 /**
  * The permission gate for /afk. Bypass is granted to:
  *   1. The server owner.

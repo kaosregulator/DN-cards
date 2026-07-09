@@ -41,6 +41,7 @@ import { handleWhisperCommand, handleAdminSecretCommand, handleEchoCommand } fro
 import { isSecretModal, handleSecretModal, isSecretButton, handleSecretButton } from "./secret/interactions.js";
 import {
   buildCommands, USER_COMMAND_NAMES, ADMIN_COMMAND_NAMES,
+  USER_HUB_COMMANDS, ADMIN_HUB_COMMANDS,
 } from "./commands/register.js";
 import { MessageFlags, EmbedBuilder } from "discord.js";
 import { createSetupLink } from "../lib/setup-link.js";
@@ -181,8 +182,8 @@ export async function startBot() {
           `You can manage card art, server settings, and message customization from there.\n\n` +
           `🔗 ${url}\n\n` +
           `**Expires:** <t:${Math.floor(expiresAt.getTime() / 1000)}:R>\n` +
-          `Need a fresh link later? Run \`/admin dashboard\` in your server.\n\n` +
-          `Quick start: run \`/cards welcome\` for the public intro, then \`/admin setup\` to configure spawning.`,
+          `Need a fresh link later? Run \`/dashboard\` in your server.\n\n` +
+          `Quick start: run \`/welcome\` for the public intro, then \`/setup\` to configure spawning.`,
         );
       await owner.send({ embeds: [embed] });
     } catch (err) {
@@ -476,7 +477,7 @@ export async function startBot() {
             await interaction.followUp({
               content:
                 `🔥 Card burned! You received 💠 **${result.shardsGained.toLocaleString()} shards**.\n` +
-                `New balance: **${currency.shards.toLocaleString()}** 💠 — check \`/cards shards\` anytime.`,
+                `New balance: **${currency.shards.toLocaleString()}** 💠 — check \`/shards\` anytime.`,
               flags: MessageFlags.Ephemeral,
             }).catch(() => { /* ignore */ });
             try {
@@ -501,7 +502,7 @@ export async function startBot() {
               }).catch(() => { /* may be deleted */ });
             }
             await interaction.followUp({
-              content: "💾 Kept! The card is in your collection — use `/cards collection` to view it.",
+              content: "💾 Kept! The card is in your collection — use `/collection` to view it.",
               flags: MessageFlags.Ephemeral,
             }).catch(() => { /* ignore */ });
           } else {
@@ -554,21 +555,13 @@ export async function startBot() {
         await handleAfkCommand(interaction);
       } else if (cmd === "afksetup") {
         await handleAfkSetupCommand(interaction);
-      } else if (cmd === "cards") {
-        await handleUserCommand(interaction, interaction.options.getSubcommand(true));
-      } else if (cmd === "admin") {
-        const adminSubcommand = interaction.options.getSubcommand(true);
-        const legacyName = ({
-          hub: "adminhub",
-          "set-hub": "sethub",
-          "set-manager": "set_admin",
-          welcome: "welcomeadmin",
-          help: "adminhelp",
-        } as Record<string, string>)[adminSubcommand] ?? adminSubcommand;
-        await handleAdminCommand(interaction, legacyName);
-      } else if (USER_COMMAND_NAMES.has(cmd)) {
+      } else if (USER_HUB_COMMANDS.has(cmd) || USER_COMMAND_NAMES.has(cmd)) {
+        // Flattened player commands (/burn, /daily, …) + standalone player
+        // commands that carry their own subcommands (/sets, /rep, …).
         await handleUserCommand(interaction, cmd);
-      } else if (ADMIN_COMMAND_NAMES.has(cmd)) {
+      } else if (ADMIN_HUB_COMMANDS.has(cmd) || ADMIN_COMMAND_NAMES.has(cmd)) {
+        // Flattened admin commands (/drop, /give, /setup, …) + standalone admin
+        // commands with their own subcommands (/setadmin, /event, …).
         await handleAdminCommand(interaction, cmd);
       }
     } catch (err) {

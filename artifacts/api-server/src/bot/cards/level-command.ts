@@ -20,7 +20,7 @@ function bar(into: number, needed: number, width = 12): string {
   return "▰".repeat(filled) + "▱".repeat(width - filled);
 }
 
-// ── /cards level [name] ──────────────────────────────────────────────────────
+// ── /level [name] ──────────────────────────────────────────────────────
 export async function handleCardLevel(interaction: ChatInputCommandInteraction): Promise<void> {
   if (!interaction.guild) return;
   const guildId = interaction.guild.id;
@@ -34,7 +34,7 @@ export async function handleCardLevel(interaction: ChatInputCommandInteraction):
       .orderBy(desc(cardProgressTable.level), desc(cardProgressTable.xp))
       .limit(10);
     if (rows.length === 0) {
-      await interaction.editReply("You haven't leveled any cards yet. Field a card in `/battle` to start earning card XP, then check `/cards level name:<card>`.");
+      await interaction.editReply("You haven't leveled any cards yet. Field a card in `/battle` to start earning card XP, then check `/level name:<card>`.");
       return;
     }
     const cards = await getAllCardsCached();
@@ -50,13 +50,13 @@ export async function handleCardLevel(interaction: ChatInputCommandInteraction):
       .setTitle(`🎖️ ${interaction.user.username}'s Leveled Cards`)
       .setColor(0xf1c40f)
       .setDescription(lines.join("\n"))
-      .setFooter({ text: "View one card: /cards level name:<card> · Change frame: /cards frame" });
+      .setFooter({ text: "View one card: /level name:<card> · Change frame: /frame" });
     await interaction.editReply({ embeds: [embed] });
     return;
   }
 
   const card = await getCardByName(name);
-  if (!card) { await interaction.editReply(`❌ "**${name}**" not found. Try \`/cards list\`.`); return; }
+  if (!card) { await interaction.editReply(`❌ "**${name}**" not found. Try \`/list\`.`); return; }
 
   const owned = await getUserOwnedCount(guildId, userId, card.id);
   if (owned.count + owned.shinyCount === 0) {
@@ -90,14 +90,14 @@ export async function handleCardLevel(interaction: ChatInputCommandInteraction):
       `⚔️ Battles: **${fought}**  ·  🏆 Wins: **${won}**`,
     )
     .addFields({ name: "🖼️ Frames", value: frameLines.join("\n"), inline: false })
-    .setFooter({ text: "Equip a frame: /cards frame name:<card> style:<frame> · Card XP is earned in /battle" });
+    .setFooter({ text: "Equip a frame: /frame name:<card> style:<frame> · Card XP is earned in /battle" });
   const img = toAbsoluteImageUrl(card.imageUrl);
   if (img) embed.setThumbnail(img);
 
   await interaction.editReply({ embeds: [embed] });
 }
 
-// ── /cards lock name:<card> [state] ──────────────────────────────────────────
+// ── /lock name:<card> [state] ──────────────────────────────────────────
 export async function handleCardLock(interaction: ChatInputCommandInteraction): Promise<void> {
   if (!interaction.guild) return;
   const guildId = interaction.guild.id;
@@ -106,7 +106,7 @@ export async function handleCardLock(interaction: ChatInputCommandInteraction): 
   const state = interaction.options.getString("state"); // "on" | "off" | null (toggle)
 
   const card = await getCardByName(name);
-  if (!card) { await interaction.editReply(`❌ "**${name}**" not found. Try \`/cards list\`.`); return; }
+  if (!card) { await interaction.editReply(`❌ "**${name}**" not found. Try \`/list\`.`); return; }
   const owned = await getUserOwnedCount(guildId, userId, card.id);
   if (owned.count + owned.shinyCount === 0) {
     await interaction.editReply(`❌ You don't own **${card.name}**, so there's nothing to lock.`);
@@ -123,7 +123,7 @@ export async function handleCardLock(interaction: ChatInputCommandInteraction): 
   );
 }
 
-// ── /cards frame name:<card> [style:<frame>] ─────────────────────────────────
+// ── /frame name:<card> [style:<frame>] ─────────────────────────────────
 export async function handleCardFrame(interaction: ChatInputCommandInteraction): Promise<void> {
   if (!interaction.guild) return;
   const guildId = interaction.guild.id;
@@ -132,7 +132,7 @@ export async function handleCardFrame(interaction: ChatInputCommandInteraction):
   const style = interaction.options.getString("style");
 
   const card = await getCardByName(name);
-  if (!card) { await interaction.editReply(`❌ "**${name}**" not found. Try \`/cards list\`.`); return; }
+  if (!card) { await interaction.editReply(`❌ "**${name}**" not found. Try \`/list\`.`); return; }
   const rarity = card.rarity as Rarity;
   const progress = await getCardProgress(guildId, userId, card.id);
   const level = progress?.level ?? 1;
@@ -152,7 +152,7 @@ export async function handleCardFrame(interaction: ChatInputCommandInteraction):
       .setColor(active.color)
       .setDescription(
         `Your level: **${level}**\n\n${lines.join("\n")}\n\n` +
-        "Equip one with `/cards frame name:" + card.name + " style:<name>` (e.g. `style:" + (frames[1]?.name.split(" ")[0].toLowerCase() ?? "default") + "`).",
+        "Equip one with `/frame name:" + card.name + " style:<name>` (e.g. `style:" + (frames[1]?.name.split(" ")[0].toLowerCase() ?? "default") + "`).",
       );
     await interaction.editReply({ embeds: [embed] });
     return;
@@ -182,5 +182,5 @@ export async function handleCardFrame(interaction: ChatInputCommandInteraction):
   // The rarity default is stored as null so it self-heals if the registry changes.
   const store = match.id === defaultFrameForRarity(rarity).id ? null : match.id;
   await setEquippedFrame(guildId, userId, card.id, store);
-  await interaction.editReply(`✅ Equipped **${match.emoji} ${match.name}** on **${card.name}**. View it with \`/cards level name:${card.name}\`.`);
+  await interaction.editReply(`✅ Equipped **${match.emoji} ${match.name}** on **${card.name}**. View it with \`/level name:${card.name}\`.`);
 }

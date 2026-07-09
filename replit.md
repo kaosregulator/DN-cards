@@ -49,7 +49,7 @@ DN Cards is DarkNight's collectible military trading card game for the Roblox + 
 - Slash command registration: `artifacts/api-server/src/bot/commands/register.ts`
 - Giveaway System schema: `lib/db/src/schema/giveaways.ts` (giveaways, giveaway_entries, giveaway_winners)
 - Giveaway System module: `artifacts/api-server/src/bot/giveaway/` (`db.ts` CRUD, `engine.ts` progress+winner draw, `embeds.ts` UI, `manager.ts` message/claim, `command.ts` user, `admin.ts` `/giveawayadmin`, `sweeper.ts` auto-end/reroll, `message-hook.ts` message tracking, `prizes.ts` payout)
-- Unified help hub: `artifacts/api-server/src/bot/commands/help-hub.ts` (interactive `/cards help` — topic dropdown, live-edited pages, animated banner; `/adminhelp` opens it on the Admin page). Banner/palette: `artifacts/api-server/src/bot/help-banners.ts`. Rebrandable via `/embed … key:help`.
+- Unified help hub: `artifacts/api-server/src/bot/commands/help-hub.ts` (interactive `/help` — topic dropdown, live-edited pages, animated banner; `/adminhelp` opens it on the Admin page). Banner/palette: `artifacts/api-server/src/bot/help-banners.ts`. Rebrandable via `/embed … key:help`.
 
 ### Website vs Discord responsibilities
 
@@ -219,7 +219,7 @@ those tables now happen through Discord slash commands — see
 - When the proposing side's worth ratio vs the requesting side exceeds **3:1** (cards by `worthValue`, shards 1:1), the trade embed shows an orange ⚠️ banner naming the disadvantaged party. Trade still goes through if accepted — it's informational only.
 
 ### Unified Help Hub
-- `/cards help` (and `!help`) open one interactive, ephemeral help message: an animated banner + a **topic dropdown** (Overview, Collecting, Economy, Trading & Market, Battles/Raids/Squads, Giveaways, Quests & Reputation, Echo & AFK, Admin). Picking a topic **live-edits** the same message — no new messages. `/adminhelp` opens it on the Admin page (admin-gated). It documents every player and admin command in one place.
+- `/help` (and `!help`) open one interactive, ephemeral help message: an animated banner + a **topic dropdown** (Overview, Collecting, Economy, Trading & Market, Battles/Raids/Squads, Giveaways, Quests & Reputation, Echo & AFK, Admin). Picking a topic **live-edits** the same message — no new messages. `/adminhelp` opens it on the Admin page (admin-gated). It documents every player and admin command in one place.
 - The embed is admin-rebrandable through the existing override system: `/embed set key:help field:customImageUrl|color|title|footer value:<…>` (the `help` key was added to `EMBED_KEYS`). Banner + section palette live in `help-banners.ts`; the banner is a free direct-hotlink animated GIF and swappable per guild.
 - Custom-IDs are namespaced `help:*` (select `help:select`, button `help:home`) and routed in `index.ts`.
 
@@ -237,6 +237,7 @@ those tables now happen through Discord slash commands — see
 
 - Bot runs inside the same Express server process (startBot() called from index.ts) — keeps infra simple, one workflow to manage.
 - **Command split:** Setup/config commands use `!` prefix (text commands). Quick admin actions + all user commands use slash commands.
+- **Flat slash commands:** every command is a standalone top-level command (`/burn`, `/daily`, `/drop`, `/setup`) — NOT nested under `/cards …` / `/admin …` hubs. `register.ts` `buildCommands()` returns them flat; `index.ts` routes each name via the exported `USER_HUB_COMMANDS` / `ADMIN_HUB_COMMANDS` sets to `handleUserCommand` / `handleAdminCommand`. The category grouping players see lives in the `/help` hub, not the slash menu. ~67 commands total (under Discord's 100/guild cap).
 - Weighted random card drops: each card has a `dropWeight`; guild-specific rarity weights override per-rarity (stored as nullable ints in guild_settings).
 - Multi-card spawns: `cardsPerSpawn` (1/3/5/-1=random) fires N independent spawn events with 5s gaps. `activeSpawns` is `Map<guildId, Map<spawnId, ActiveSpawn>>` to support multiple simultaneous spawns.
 - Catch detection: any non-`!` message is checked against ALL active spawns for the guild (case-insensitive).

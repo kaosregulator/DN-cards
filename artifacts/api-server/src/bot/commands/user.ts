@@ -329,7 +329,7 @@ export async function handleUserCommand(
     const { ctx, settings: infoSettings, spawnPool, chanceSummary } = runtime;
     const cards = applyRarityContextAll(rawCards, ctx);
     const card = cards.find(c => c.name.toLowerCase() === cardName.toLowerCase());
-    if (!card) { await interaction.editReply(`❌ "**${cardName}**" not found. Try \`/cards list\`.`); return; }
+    if (!card) { await interaction.editReply(`❌ "**${cardName}**" not found. Try \`/list\`.`); return; }
 
     const cardType = card.cardType;
     const cardChance = chanceSummary.cardPercentById.get(card.id);
@@ -754,7 +754,7 @@ export async function handleUserCommand(
       return `${medal} <@${r.userId}> — **${r.totalCards.toLocaleString()}** cards (${r.uniqueCards} unique)`;
     });
     const packLines = byPacks.length === 0
-      ? ["*No packs opened yet — be the first with `/cards pack`!*"]
+      ? ["*No packs opened yet — be the first with `/pack`!*"]
       : byPacks.map((r, i) => {
           const medal = medals[i] ?? `**${i + 1}.**`;
           return `${medal} <@${r.userId}> — **${r.packsOpened.toLocaleString()}** packs`;
@@ -802,11 +802,11 @@ export async function handleUserCommand(
     const burnAll = interaction.options.getBoolean("all") ?? false;
     const wantShiny = interaction.options.getBoolean("shiny") ?? false;
     const card = await getCardByName(cardName);
-    if (!card) { await interaction.editReply(`❌ "**${cardName}**" not found. Check \`/cards list\`.`); return; }
+    if (!card) { await interaction.editReply(`❌ "**${cardName}**" not found. Check \`/list\`.`); return; }
     {
       const { isCardLocked } = await import("../cards/locks.js");
       if (await isCardLocked(guildId, interaction.user.id, card.id)) {
-        await interaction.editReply(`🔒 **${card.name}** is locked (favorited) and can't be burned. Unlock it first with \`/cards lock name:${card.name}\`.`);
+        await interaction.editReply(`🔒 **${card.name}** is locked (favorited) and can't be burned. Unlock it first with \`/lock name:${card.name}\`.`);
         return;
       }
     }
@@ -833,7 +833,7 @@ export async function handleUserCommand(
     if (!burnAll && requested > pile) {
       await interaction.editReply(
         `❌ You only have **×${pile}** ${pileLabel}of **${card.name}** — can't burn ${requested}.\n` +
-        `Try \`/cards burn name:${card.name}${wantShiny ? " shiny:true" : ""} all:true\` to burn all ${pile}.`,
+        `Try \`/burn name:${card.name}${wantShiny ? " shiny:true" : ""} all:true\` to burn all ${pile}.`,
       );
       return;
     }
@@ -953,7 +953,7 @@ export async function handleUserCommand(
     return;
   }
 
-  // ── /cards help → the unified, interactive help hub (all features + admin) ──
+  // ── /help → the unified, interactive help hub (all features + admin) ──
   const { handleHelpHub } = await import("./help-hub.js");
   await handleHelpHub(interaction);
 }
