@@ -94,6 +94,8 @@ function buildLegacyCommands() {
 
     cmd("daily", "(User) Claim your daily DN Shards reward", s => s),
 
+    cmd("quests", "(User) View daily & weekly quests — earn shards and packs", s => s),
+
     cmd("pack", "(User) Open a card pack — pick a tier", s => s
       .addStringOption(o => o.setName("tier")
         .setDescription("Which pack to open (default: Basic)")
@@ -421,7 +423,7 @@ type CommandJson = ReturnType<SlashCommandBuilder["toJSON"]>;
 const USER_HUB_COMMANDS = new Set([
   "collection", "rank", "info", "list", "catalog", "top", "burn", "shards",
   "trade", "gift", "trades", "tradehistory", "accept", "decline", "welcome",
-  "help", "daily", "pack", "packstats", "tradein", "achievements",
+  "help", "daily", "quests", "pack", "packstats", "tradein", "achievements",
 ]);
 
 const ADMIN_HUB_COMMANDS = new Set([

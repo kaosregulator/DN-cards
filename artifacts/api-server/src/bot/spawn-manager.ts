@@ -344,6 +344,16 @@ async function awardSpawn(guildId: string, spawnId: string, userId: string): Pro
     getOrCreateGuildSettings(guildId),
   ]);
 
+  // Quest progress (catch) — best-effort, never blocks the catch flow.
+  void (async () => {
+    try {
+      const cards = await getAllCardsCached();
+      const rarity = cards.find(c => c.id === spawn.cardId)?.rarity as Rarity | undefined;
+      const { recordQuestEvent } = await import("./quests/engine.js");
+      await recordQuestEvent(guildId, userId, "catch", 1, rarity);
+    } catch { /* non-fatal */ }
+  })();
+
   try {
     const claimedEmbed = await buildClaimedEmbed(spawn.cardId, userId, isShiny, guildId);
     if (claimedEmbed) {

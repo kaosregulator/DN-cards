@@ -192,6 +192,15 @@ export async function processBattleRewards(args: {
   if (chalOutcome) outcomes.push(chalOutcome);
   if (oppOutcome) outcomes.push(oppOutcome);
 
+  // Quest progress — the winner (a real player, not the AI / not a draw) gets
+  // "win a battle" credit. Best-effort; never blocks reward settlement.
+  if (args.winnerId && args.winnerId !== "AI") {
+    try {
+      const { recordQuestEvent } = await import("../quests/engine.js");
+      await recordQuestEvent(guildId, args.winnerId, "battle_win", 1);
+    } catch { /* non-fatal */ }
+  }
+
   // NOTE: the actual staked-card movement is handled by the battle-manager's
   // escrow (cards are held out of both collections for the whole battle, then
   // the winner receives both). Here we only record the win/loss counters via

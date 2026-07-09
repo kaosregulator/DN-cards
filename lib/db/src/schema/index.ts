@@ -3,3 +3,4 @@ export * from "./news";
 export * from "./suggestions";
 export * from "./battles";
 export * from "./secret";
+export * from "./quests";

@@ -403,6 +403,10 @@ export async function startBot() {
                 `New balance: **${currency.shards.toLocaleString()}** 💠 — check \`/cards shards\` anytime.`,
               flags: MessageFlags.Ephemeral,
             }).catch(() => { /* ignore */ });
+            try {
+              const { recordQuestEvent } = await import("./quests/engine.js");
+              await recordQuestEvent(guildId, userId, "burn", 1);
+            } catch { /* non-fatal */ }
             const burnUnlocks = await checkAchievements(guildId, userId).catch(() => []);
             if (burnUnlocks.length > 0) {
               await interaction.followUp({

@@ -467,6 +467,20 @@ export async function handlePack(interaction: ChatInputCommandInteraction): Prom
     components: [],
   });
 
+  // Quest progress — opening a pack counts once, and each pulled card counts as
+  // a catch (rarity-aware). Best-effort; never blocks the pack flow.
+  try {
+    const { recordQuestEvent, formatQuestCompletions } = await import("../quests/engine.js");
+    const completed = [
+      ...await recordQuestEvent(guildId, userId, "pack_open", 1),
+    ];
+    for (const card of cards) {
+      completed.push(...await recordQuestEvent(guildId, userId, "catch", 1, card.rarity as Rarity));
+    }
+    const note = formatQuestCompletions(completed);
+    if (note) await interaction.followUp({ content: note, flags: MessageFlags.Ephemeral }).catch(() => { /* ignore */ });
+  } catch { /* non-fatal */ }
+
   const newly = await checkAchievements(guildId, userId);
   if (newly.length > 0) {
     await interaction.followUp({

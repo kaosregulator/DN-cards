@@ -2,7 +2,7 @@ import type { ChatInputCommandInteraction } from "discord.js";
 import { EmbedBuilder, MessageFlags } from "discord.js";
 
 // Commands whose results are personal/spammy and should only be seen by the user.
-const EPHEMERAL_COMMANDS = new Set(["burn", "shards", "trades", "tradehistory", "help", "daily", "achievements", "pack", "packstats", "wishlist", "gift", "tradein", "sets"]);
+const EPHEMERAL_COMMANDS = new Set(["burn", "shards", "trades", "tradehistory", "help", "daily", "quests", "achievements", "pack", "packstats", "wishlist", "gift", "tradein", "sets"]);
 import {
   getUserCollection, getAllCards, getLeaderboard, getTopPackOpeners,
   getOrCreateCurrency, burnCard, getCardByName, getUserCardCount, getUserOwnedCount,
@@ -855,6 +855,12 @@ export async function handleUserCommand(
         `+💠 **${result.shardsGained.toLocaleString()} shards** — New balance: **${currency.shards.toLocaleString()}**\n` +
         (result.remaining > 0 ? `You still have **×${result.remaining}** ${pileLabel}${result.remaining === 1 ? "copy" : "copies"}.` : `*Last ${wantShiny ? "shiny " : ""}copy burned.*`);
     await interaction.editReply(breakdown);
+    try {
+      const { recordQuestEvent, formatQuestCompletions } = await import("../quests/engine.js");
+      const done = await recordQuestEvent(guildId, interaction.user.id, "burn", result.burned);
+      const note = formatQuestCompletions(done);
+      if (note) await interaction.followUp({ content: note, flags: MessageFlags.Ephemeral }).catch(() => { /* ignore */ });
+    } catch { /* non-fatal */ }
     const newlyBurn = await checkAchievements(guildId, interaction.user.id);
     if (newlyBurn.length > 0) {
       await interaction.followUp({
@@ -872,6 +878,11 @@ export async function handleUserCommand(
   if (sub === "trades") { await handleListTrades(interaction); return; }
   if (sub === "tradehistory") { await handleTradeHistory(interaction); return; }
   if (sub === "daily") { await handleDaily(interaction); return; }
+  if (sub === "quests") {
+    const { handleQuests } = await import("../quests/command.js");
+    await handleQuests(interaction);
+    return;
+  }
   if (sub === "pack") { await handlePack(interaction); return; }
   if (sub === "packstats") { await handlePackStats(interaction); return; }
   if (sub === "tradein") { await handleTradein(interaction); return; }
