@@ -21,95 +21,9 @@ async function handleAdminHelp(interaction: ChatInputCommandInteraction): Promis
     await interaction.editReply("❌ Admins only.");
     return;
   }
-  const embed = new EmbedBuilder()
-    .setTitle("🛠️ DN Cards — Admin Reference")
-    .setColor(0xeb459e)
-    .setDescription(
-      "All commands here are admin-gated. Player commands are in `/cards help`.\n" +
-      "Most actions are also reachable visually from `/admin setup` or `/admin config`.",
-    )
-    .addFields(
-      {
-        name: "⚙️ Setup & Config",
-        value:
-          "`/admin setup` — **interactive setup panel** (recommended)\n" +
-          "`/admin config` — open the config panel anytime (catch mode, intervals, toggles, rates)\n" +
-          "`/admin hub` — manage bot admins, catch timeouts, channel config\n" +
-          "`/admin help` — this reference panel",
-      },
-      {
-        name: "📢 Channels & Toggles *(prefix commands)*",
-        value:
-          "`<prefix>setchannel #channel` · `<prefix>settradechannel #channel`\n" +
-          "`<prefix>setinterval <time>` · `<prefix>setinterval random <min> <max>` · `<prefix>setwindow <time>`\n" +
-          "`<prefix>setdrops <1|3|5|random>` · `<prefix>setcatchmode <type|button|both>`\n" +
-          "`<prefix>setrarity <rarity> <weight>`\n" +
-          "`<prefix>spawnenable` / `<prefix>spawndisable` · `<prefix>tradingenable` / `<prefix>tradingdisable`\n" +
-          "*Default prefix is `!`. Change it with `<prefix>setprefix`.*",
-      },
-      {
-        name: "🃏 Card Management",
-        value:
-          "`/admin editcard name:<card>` — interactive panel (autocomplete!)\n" +
-          "`<prefix>addcard` · `<prefix>addlimited` · `<prefix>addevent` — guided wizards\n" +
-          "`<prefix>removecard <Name>` · `<prefix>import` — bulk import from JSON",
-      },
-      {
-        name: "⚡ Live Actions *(slash)*",
-        value:
-          "`/admin drop [name]` — force a single drop\n" +
-          "`/admin massdrop [amount]` — drop 10-25 cards in a batch *(event use)*\n" +
-          "`/admin give user:@Member name:<card>` · `/admin takeback user:@Member name:<card>`\n" +
-          "`/admin giveshards user:@Member amount:<n>` · `/admin takeshards user:@Member amount:<n>`",
-      },
-      {
-        name: "🎯 Limited-Time Events *(slash)*",
-        value:
-          "`/event start card:<Name> duration:<30m|2h|1d> [multiplier:<1.1–50>]` — boost a card's spawn weight (default 2×, max 14d)\n" +
-          "`/event list` — show active events + remaining time\n" +
-          "`/event stop id:<n>` — end an event early\n" +
-          "*Activations/stops are announced in the spawn channel.*",
-      },
-      {
-        name: "🗂️ Card Sets *(slash — /set_admin)*",
-        value:
-          "`/admin set-manager` — interactive hub: create, rename, delete, set active/deactivate\n" +
-          "Add/remove cards, bulk add/remove, Assign All unassigned cards in one click\n" +
-          "Export single set or all sets · Import from URL · Rarity weights per set\n" +
-          "*Built-in starter roster is opt-in via the `/admin setup` panel.*",
-      },
-      {
-        name: "👥 Admins *(inside /adminhub)*",
-        value:
-          "`/admin hub` — click buttons to add/remove admins, timeout users, or set channels\n" +
-          "Server owner + Discord Administrators are always admins.\n" +
-          "*Tip: in Discord → Server Settings → Integrations → DN Cards you can also grant admin commands to specific roles per-command.*",
-      },
-      {
-        name: "🎨 Embed Customization *(slash)*",
-        value:
-          "`/embed show key:<embed>` — see the current override for an embed\n" +
-          "`/embed set key:<embed> field:<field> value:<v>` — set one field (title, footer, color, image, etc.) — empty value clears\n" +
-          "`/embed reset key:<embed> [field]` — reset one field, or the whole embed if no field given\n" +
-          "Embeds: `spawn` · `claimed` · `daily` · `pack` · `trade` · `welcome` · `rules` · `commands`. Tokens like `{user} {card} {rarity} {worth} {streak} {tier}` are interpolated.",
-      },
-      {
-        name: "🎖️ Rarity Tuning *(slash)*",
-        value:
-          "`/rarity` — edit built-in rarity display, spawn %, worth, and burn\n" +
-          "• Advanced custom labels remain available for legacy setups, but normal servers should use built-in rarity settings.",
-      },
-      {
-        name: "🌐 Web Dashboard",
-        value:
-          "`/admin dashboard` — DMs you a one-time link to **create or reset** your dashboard login.\n" +
-          "The dashboard is **presentation-only** — display name, image, description, flavor, visibility, sort order. All gameplay values (rarity, worth, burn, drop rate, packs) are read-only there; change them with the Discord commands above.\n" +
-          "• `/admin` — card display overrides + website roster\n" +
-          "• `/admin/news` · `/admin/suggestions` — site content + user feedback queue\n" +
-          "• `/admin/users` (owner only) — invite additional dashboard logins.",
-      },
-    );
-  await interaction.editReply({ embeds: [embed] });
+  // Unified /help hub, opened on the Admin page (single source of truth).
+  const { handleHelpHub } = await import("./help-hub.js");
+  await handleHelpHub(interaction, "admin");
 }
 
 // ── Permission check ──────────────────────────────────────────────────────────

@@ -49,6 +49,7 @@ DN Cards is DarkNight's collectible military trading card game for the Roblox + 
 - Slash command registration: `artifacts/api-server/src/bot/commands/register.ts`
 - Giveaway System schema: `lib/db/src/schema/giveaways.ts` (giveaways, giveaway_entries, giveaway_winners)
 - Giveaway System module: `artifacts/api-server/src/bot/giveaway/` (`db.ts` CRUD, `engine.ts` progress+winner draw, `embeds.ts` UI, `manager.ts` message/claim, `command.ts` user, `admin.ts` `/giveawayadmin`, `sweeper.ts` auto-end/reroll, `message-hook.ts` message tracking, `prizes.ts` payout)
+- Unified help hub: `artifacts/api-server/src/bot/commands/help-hub.ts` (interactive `/cards help` — topic dropdown, live-edited pages, animated banner; `/adminhelp` opens it on the Admin page). Banner/palette: `artifacts/api-server/src/bot/help-banners.ts`. Rebrandable via `/embed … key:help`.
 
 ### Website vs Discord responsibilities
 
@@ -216,6 +217,11 @@ those tables now happen through Discord slash commands — see
 
 ### Trade Fairness Warning
 - When the proposing side's worth ratio vs the requesting side exceeds **3:1** (cards by `worthValue`, shards 1:1), the trade embed shows an orange ⚠️ banner naming the disadvantaged party. Trade still goes through if accepted — it's informational only.
+
+### Unified Help Hub
+- `/cards help` (and `!help`) open one interactive, ephemeral help message: an animated banner + a **topic dropdown** (Overview, Collecting, Economy, Trading & Market, Battles/Raids/Squads, Giveaways, Quests & Reputation, Echo & AFK, Admin). Picking a topic **live-edits** the same message — no new messages. `/adminhelp` opens it on the Admin page (admin-gated). It documents every player and admin command in one place.
+- The embed is admin-rebrandable through the existing override system: `/embed set key:help field:customImageUrl|color|title|footer value:<…>` (the `help` key was added to `EMBED_KEYS`). Banner + section palette live in `help-banners.ts`; the banner is a free direct-hotlink animated GIF and swappable per guild.
+- Custom-IDs are namespaced `help:*` (select `help:select`, button `help:home`) and routed in `index.ts`.
 
 ### Giveaway System (add-on)
 - Purely additive feature powered by DN Cards. Admins run giveaways with custom prizes; players earn chances through real gameplay. Three per-guild tables (`giveaways`, `giveaway_entries`, `giveaway_winners`); nothing in the core card/battle/raid/echo tables is modified.

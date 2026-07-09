@@ -313,6 +313,7 @@ function buildLegacyCommands() {
             { name: "welcome",  value: "welcome"  },
             { name: "rules",    value: "rules"    },
             { name: "commands", value: "commands" },
+            { name: "help",     value: "help"     },
           )))
       .addSubcommand(sc => sc.setName("set").setDescription("Set one field on an embed override")
         .addStringOption(o => o.setName("key").setDescription("Which embed").setRequired(true)
@@ -325,6 +326,7 @@ function buildLegacyCommands() {
             { name: "welcome",  value: "welcome"  },
             { name: "rules",    value: "rules"    },
             { name: "commands", value: "commands" },
+            { name: "help",     value: "help"     },
           ))
         .addStringOption(o => o.setName("field").setDescription("Which field to set").setRequired(true)
           .addChoices(
@@ -356,6 +358,7 @@ function buildLegacyCommands() {
             { name: "welcome",  value: "welcome"  },
             { name: "rules",    value: "rules"    },
             { name: "commands", value: "commands" },
+            { name: "help",     value: "help"     },
           ))
         .addStringOption(o => o.setName("field").setDescription("Specific field to reset — omit to wipe the whole override")
           .addChoices(

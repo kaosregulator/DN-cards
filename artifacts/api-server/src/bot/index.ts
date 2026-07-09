@@ -36,6 +36,7 @@ import { handleGiveawayAdminCommand } from "./giveaway/admin.js";
 import { handleGiveawayComponent } from "./giveaway/manager.js";
 import { handleGiveawayMessage } from "./giveaway/message-hook.js";
 import { startGiveawayMaintenance } from "./giveaway/sweeper.js";
+import { handleHelpHubComponent } from "./commands/help-hub.js";
 import { handleWhisperCommand, handleAdminSecretCommand, handleEchoCommand } from "./secret/commands.js";
 import { isSecretModal, handleSecretModal, isSecretButton, handleSecretButton } from "./secret/interactions.js";
 import {
@@ -211,7 +212,9 @@ export async function startBot() {
 
       // ── String select menus (config panel + setup panel) ──────────────────
       if (interaction.isStringSelectMenu()) {
-        if (interaction.customId.startsWith("battle:")) {
+        if (interaction.customId.startsWith("help:")) {
+          await handleHelpHubComponent(interaction);
+        } else if (interaction.customId.startsWith("battle:")) {
           await handleBattleComponent(interaction);
         } else if (interaction.customId.startsWith("raid:")) {
           await handleRaidComponent(interaction);
@@ -305,6 +308,12 @@ export async function startBot() {
         // ── Giveaway buttons (my progress, details, claim prize) ───────────
         if (action === "giveaway") {
           await handleGiveawayComponent(interaction);
+          return;
+        }
+
+        // ── Help hub nav buttons (home) ────────────────────────────────────
+        if (action === "help") {
+          await handleHelpHubComponent(interaction);
           return;
         }
 
