@@ -41,6 +41,16 @@ export const bobSettingsTable = pgTable("bob_settings", {
   channels: jsonb("channels").$type<string[]>().notNull().default([]),
   // OPT-IN: rare Bob rewards may grant real DN Cards shards/packs.
   dexIntegration: boolean("dex_integration").notNull().default(false),
+  // Custom avatar image URLs per form (shown as the embed thumbnail). Null =
+  // fall back to the emoji face. Admins set these with `/bob_admin avatar`.
+  avatarNormal: text("avatar_normal"),
+  avatarBlue: text("avatar_blue"),
+  avatarUpside: text("avatar_upside"),
+  // Extra reaction/scene images (key → URL): win, lose, suspense, jackpot,
+  // roulette, blackjack, event, … Set with `/bob_admin image`. All optional.
+  images: jsonb("images").$type<Record<string, string>>().notNull().default({}),
+  // Bob occasionally replies when @mentioned (short, in character, rate-limited).
+  mentionChat: boolean("mention_chat").notNull().default(true),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
