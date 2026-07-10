@@ -10,3 +10,4 @@ export * from "./raids";
 export * from "./squads";
 export * from "./afk";
 export * from "./giveaways";
+export * from "./bob";

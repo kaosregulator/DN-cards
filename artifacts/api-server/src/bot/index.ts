@@ -37,6 +37,15 @@ import { handleGiveawayComponent } from "./giveaway/manager.js";
 import { handleGiveawayMessage } from "./giveaway/message-hook.js";
 import { startGiveawayMaintenance } from "./giveaway/sweeper.js";
 import { handleHelpHubComponent } from "./commands/help-hub.js";
+import {
+  handleBob, handleBobRoulette, handleBobDuel, handleBobRoast, handleBobTalk,
+  handleBobStats, handleBobLeaderboard,
+} from "./bob/command.js";
+import { handleBobAdmin } from "./bob/admin.js";
+import {
+  isBobComponent, handleBobButton, handleBobSelect, handleBobUserSelect, handleBobModal,
+} from "./bob/router.js";
+import { startBobEvents } from "./bob/events.js";
 import { handleWhisperCommand, handleAdminSecretCommand, handleEchoCommand } from "./secret/commands.js";
 import { isSecretModal, handleSecretModal, isSecretButton, handleSecretButton } from "./secret/interactions.js";
 import {
@@ -140,6 +149,7 @@ export async function startBot() {
     startBattleMaintenance();
     startMarketMaintenance();
     startGiveawayMaintenance();
+    startBobEvents(client);
     await registerCommands(c.user.id, token, client);
     // AFK Secretary: start the timed auto-remove sweeper (clears "timed" AFKs
     // once their countdown elapses; presence/messages can't cover this).
@@ -215,6 +225,8 @@ export async function startBot() {
       if (interaction.isStringSelectMenu()) {
         if (interaction.customId.startsWith("help:")) {
           await handleHelpHubComponent(interaction);
+        } else if (isBobComponent(interaction.customId)) {
+          await handleBobSelect(interaction);
         } else if (interaction.customId.startsWith("battle:")) {
           await handleBattleComponent(interaction);
         } else if (interaction.customId.startsWith("raid:")) {
@@ -257,9 +269,17 @@ export async function startBot() {
         return;
       }
 
+      // ── User select menus (Bob roast target picker) ────────────────────────
+      if (interaction.isUserSelectMenu()) {
+        if (isBobComponent(interaction.customId)) await handleBobUserSelect(interaction);
+        return;
+      }
+
       // ── Modal submissions (admin hub + setup test card + custom mix) ─────
       if (interaction.isModalSubmit()) {
-        if (isSecretModal(interaction.customId)) {
+        if (isBobComponent(interaction.customId)) {
+          await handleBobModal(interaction);
+        } else if (isSecretModal(interaction.customId)) {
           await handleSecretModal(interaction);
         } else if (interaction.customId.startsWith("battleadmin:")) {
           await handleBattleAdminModal(interaction);
@@ -315,6 +335,12 @@ export async function startBot() {
         // ── Help hub nav buttons (home) ────────────────────────────────────
         if (action === "help") {
           await handleHelpHubComponent(interaction);
+          return;
+        }
+
+        // ── Bob entertainment module (games, roulette, duel, events, menu) ──
+        if (action === "bob") {
+          await handleBobButton(interaction);
           return;
         }
 
@@ -548,6 +574,22 @@ export async function startBot() {
         await handleGiveawayUserCommand(interaction);
       } else if (cmd === "giveawayadmin") {
         await handleGiveawayAdminCommand(interaction);
+      } else if (cmd === "bob") {
+        await handleBob(interaction);
+      } else if (cmd === "bob_roulette") {
+        await handleBobRoulette(interaction);
+      } else if (cmd === "bob_duel") {
+        await handleBobDuel(interaction);
+      } else if (cmd === "bob_roast") {
+        await handleBobRoast(interaction);
+      } else if (cmd === "bob_talk") {
+        await handleBobTalk(interaction);
+      } else if (cmd === "bob_stats") {
+        await handleBobStats(interaction);
+      } else if (cmd === "bob_leaderboard") {
+        await handleBobLeaderboard(interaction);
+      } else if (cmd === "bob_admin") {
+        await handleBobAdmin(interaction);
       } else if (cmd === "whisper") {
         await handleWhisperCommand(interaction);
       } else if (cmd === "adminsecret") {

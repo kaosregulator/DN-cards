@@ -50,6 +50,8 @@ DN Cards is DarkNight's collectible military trading card game for the Roblox + 
 - Giveaway System schema: `lib/db/src/schema/giveaways.ts` (giveaways, giveaway_entries, giveaway_winners)
 - Giveaway System module: `artifacts/api-server/src/bot/giveaway/` (`db.ts` CRUD, `engine.ts` progress+winner draw, `embeds.ts` UI, `manager.ts` message/claim, `command.ts` user, `admin.ts` `/giveaway_admin`, `sweeper.ts` auto-end/reroll, `message-hook.ts` message tracking, `prizes.ts` payout)
 - Unified help hub: `artifacts/api-server/src/bot/commands/help-hub.ts` (interactive `/help` — topic dropdown, live-edited pages, animated banner; `/admin_help` opens it on the Admin page). Banner/palette: `artifacts/api-server/src/bot/help-banners.ts`. Rebrandable via `/embed … key:help`.
+- Bob (entertainment NPC) schema: `lib/db/src/schema/bob.ts` (bob_settings, bob_profiles, bob_progress)
+- Bob module: `artifacts/api-server/src/bot/bob/` (`persona.ts` 3 forms + line banks, `db.ts` coins/xp/stats/leaderboards + opt-in DN reward bridge, `progress.ts` tasks/quests, `games.ts` mini-games, `roulette.ts` roulette+duel, `roast.ts`, `talk.ts` local+optional-Claude, `events.ts` random channel events, `stats.ts`, `menu.ts` hub, `command.ts`/`admin.ts`/`router.ts`)
 
 ### Website vs Discord responsibilities
 
@@ -223,6 +225,15 @@ those tables now happen through Discord slash commands — see
 - The embed is admin-rebrandable through the existing override system: `/embed set key:help field:customImageUrl|color|title|footer value:<…>` (the `help` key was added to `EMBED_KEYS`). Banner + section palette live in `help-banners.ts`; the banner is a free direct-hotlink animated GIF and swappable per guild.
 - Custom-IDs are namespaced `help:*` (select `help:select`, button `help:home`) and routed in `index.ts`.
 
+### Bob — Entertainment NPC (add-on)
+- A self-contained fun module with its **own** currency (🪙 Bob Coins), XP/levels, stats, tasks, quests, and cosmetic titles. It never touches the DN Cards card/collection/currency tables. Three per-guild tables (`bob_settings`, `bob_profiles`, `bob_progress`); live games run in memory.
+- **Three forms** rolled per interaction: 🟡 Normal, 🔵 Blue (evil, ~12%, doubles win rewards / hard-mode roulette), 🙃 Upside-Down (glitched, ~2%, may invert outcomes). Odds are admin-tunable.
+- **Games:** `/bob_roulette` (animated survival, gentle losses — never below 0 coins, survival streak), `/bob_duel` (turn-based, first BANG loses), plus Coin Flip, Dice, Higher/Lower, Slots, Lucky Wheel, Guess-the-Emoji in the `/bob` hub — all animated, cooldown-gated, with rewards + stats.
+- **Roast** (`/bob_roast`, form-flavoured banks, cooldown anti-spam), **Talk** (`/bob_talk` — local personality by default; upgrades to Claude when `bob_admin toggle ai on` AND `ANTHROPIC_API_KEY` is set; keeps short per-user memory), **Tasks** (daily) + **Quests** (long-term) that pay coins/XP/titles, and random **channel events** ("BOB HAS ARRIVED" — first-click / trivia / mystery box) that only fire in admin-configured channels.
+- **Stats & leaderboards:** `/bob_stats`, `/bob_leaderboard` (richest, most wins, best roulette streak, most interactions, biggest gamblers, jackpot kings, highest level).
+- **Commands:** `/bob` (hub), `/bob_roulette`, `/bob_duel`, `/bob_roast`, `/bob_talk`, `/bob_stats`, `/bob_leaderboard`, admin `/bob_admin settings|toggle|odds|rewards|cooldown|channels|testevent`. All component IDs namespaced `bob:*` and routed in `bob/router.ts`.
+- **Optional DN Cards bridge:** `bob_admin toggle dex on` lets rare Bob events pay real DN Shards/packs via the existing grant paths — the only crossover. New tables need `pnpm -C lib/db run push`.
+
 ### Giveaway System (add-on)
 - Purely additive feature powered by DN Cards. Admins run giveaways with custom prizes; players earn chances through real gameplay. Three per-guild tables (`giveaways`, `giveaway_entries`, `giveaway_winners`); nothing in the core card/battle/raid/echo tables is modified.
 - **Prizes** (any mix): `shards`, `pack` (basic/premium/legendary ×N), `card:<Name> xN` (minted via the real `catchCard` path), `nitro`, `role` (auto-assigned on claim), `custom`. Card/pack/shard prizes auto-fulfil through the existing economy; nitro/custom produce an admin hand-off receipt.
@@ -385,6 +396,8 @@ Card catching is text-based — when a card spawns, type its name exactly to cat
 | `/decline id:<ID>` | Decline or cancel a trade |
 | `/giveaways` | Active giveaways: prizes, live countdown, requirements, your progress + entries |
 | `/giveaway progress [id]` | Detailed per-requirement progress and earned entries |
+| `/bob` | Open Bob — games, roulette, roasts, tasks, quests, talk, stats |
+| `/bob_roulette` · `/bob_duel` · `/bob_roast` · `/bob_talk` · `/bob_stats` · `/bob_leaderboard` | Bob entertainment commands |
 
 ### Admin Quick Actions (Slash Commands)
 | Command | Description |

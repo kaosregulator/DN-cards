@@ -558,6 +558,43 @@ function buildLegacyCommands() {
         .addIntegerOption(o => o.setName("id").setDescription("Listing ID").setRequired(true).setMinValue(1)))
       .addSubcommand(sc => sc.setName("mine").setDescription("View your listings and active bids"))),
 
+    // ── Bob — interactive entertainment NPC (its own module) ──────────────────
+    cmd("bob", "(User) Open Bob — games, roasts, tasks, quests & chaos", s => s),
+    cmd("bob_roulette", "(User) Play Bob's roulette — survive the chamber for coins", s => s),
+    cmd("bob_duel", "(User) Challenge someone to a Bob roulette duel", s => s
+      .addUserOption(o => o.setName("user").setDescription("Who to duel").setRequired(true))),
+    cmd("bob_roast", "(User) Have Bob roast a member", s => s
+      .addUserOption(o => o.setName("user").setDescription("Who to roast").setRequired(true))),
+    cmd("bob_talk", "(User) Chat with Bob", s => s
+      .addStringOption(o => o.setName("message").setDescription("Say something to Bob (leave empty to open the chat)"))),
+    cmd("bob_stats", "(User) View your (or someone's) Bob stats", s => s
+      .addUserOption(o => o.setName("user").setDescription("Whose stats (default: you)"))),
+    cmd("bob_leaderboard", "(User) Bob leaderboards — coins, wins, streaks & more", s => s
+      .addStringOption(o => o.setName("board").setDescription("Which leaderboard")
+        .addChoices(
+          { name: "🪙 Richest", value: "coins" }, { name: "🏆 Most wins", value: "wins" },
+          { name: "🎲 Best roulette streak", value: "streak" }, { name: "💬 Most interactions", value: "interactions" },
+          { name: "🎰 Biggest gamblers", value: "gambled" }, { name: "💎 Jackpot kings", value: "jackpots" },
+          { name: "📈 Highest level", value: "level" }))),
+    adminCmd("bob_admin", "(Admin) Configure Bob — toggles, odds, rewards, cooldown, channels", s => s
+      .addSubcommand(sc => sc.setName("settings").setDescription("View Bob's current settings"))
+      .addSubcommand(sc => sc.setName("toggle").setDescription("Enable/disable Bob or a specific game/feature")
+        .addStringOption(o => o.setName("feature").setDescription("bob, events, ai, dex, roulette, roast, duel, coinflip, dice, hl, slots, wheel, emoji").setRequired(true))
+        .addBooleanOption(o => o.setName("enabled").setDescription("On or off").setRequired(true)))
+      .addSubcommand(sc => sc.setName("odds").setDescription("Set Blue / Upside-Down Bob appearance chances")
+        .addIntegerOption(o => o.setName("blue").setDescription("Blue Bob % (0-100)").setMinValue(0).setMaxValue(100))
+        .addIntegerOption(o => o.setName("upside").setDescription("Upside-Down Bob % (0-100)").setMinValue(0).setMaxValue(100)))
+      .addSubcommand(sc => sc.setName("rewards").setDescription("Set the reward multiplier %")
+        .addIntegerOption(o => o.setName("multiplier").setDescription("Percent (100 = normal)").setRequired(true).setMinValue(0).setMaxValue(1000)))
+      .addSubcommand(sc => sc.setName("cooldown").setDescription("Set the per-user action cooldown")
+        .addIntegerOption(o => o.setName("seconds").setDescription("Seconds (0-120)").setRequired(true).setMinValue(0).setMaxValue(120)))
+      .addSubcommand(sc => sc.setName("channels").setDescription("Manage channels Bob can appear in for random events")
+        .addStringOption(o => o.setName("action").setDescription("add / remove / clear").setRequired(true)
+          .addChoices({ name: "add", value: "add" }, { name: "remove", value: "remove" }, { name: "clear", value: "clear" }))
+        .addChannelOption(o => o.setName("channel").setDescription("Channel to add/remove")))
+      .addSubcommand(sc => sc.setName("testevent").setDescription("Spawn a Bob event now (test)")
+        .addChannelOption(o => o.setName("channel").setDescription("Where (default: here)")))),
+
     // ── Echo-Whisper (encrypted messaging addon) ──────────────────────────────
     cmd("whisper", "(User) Send an encrypted whisper only a chosen member can read", s => s
       .addUserOption(o => o.setName("user").setDescription("The member who can read this message").setRequired(true))),
