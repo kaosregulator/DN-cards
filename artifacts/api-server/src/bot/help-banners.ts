@@ -1,0 +1,43 @@
+// Shared animated banner + section palette for the unified /help hub (and other
+// intro embeds). The banner is a free, direct-hotlink animated GIF — a full-
+// width glowing stripe that renders inline in Discord embeds (the same asset the
+// welcome guide already uses, from the widely-used GitHub user-images CDN).
+//
+// Everything here is a DEFAULT: the /help embed runs through applyEmbedOverride
+// with the "help" key, so an admin can swap the banner, color, title, or footer
+// at any time with `/embed set key:help field:customImageUrl value:<url>` — no
+// code change required.
+
+// Free, hotlinkable animated divider GIF (renders as an animated stripe in
+// Discord). Kept as the single reliable default; admins can override per guild.
+export const HELP_BANNER =
+  "https://user-images.githubusercontent.com/73097560/115834477-dbab4500-a447-11eb-908a-139a6edaec5c.gif";
+
+// A slimmer animated line used as an in-embed separator where a full banner
+// would be too heavy. Same source family; overridable via the "help" key.
+export const HELP_DIVIDER = HELP_BANNER;
+
+// Brand palette (dark military theme). Each help section gets an accent color so
+// pages feel distinct even though they share one animated banner.
+export const BRAND_COLOR = 0xe63946; // DarkNight red
+
+export const SECTION_COLOR = {
+  home:     0xe63946, // red
+  collect:  0x3498db, // blue
+  economy:  0xf1c40f, // gold
+  trade:    0x2ecc71, // green
+  battle:   0xe74c3c, // combat red
+  giveaway: 0x9b59b6, // purple
+  quests:   0xe67e22, // orange
+  social:   0x1abc9c, // teal
+  bob:      0xf1c40f, // Bob yellow
+  admin:    0xeb459e, // pink
+} as const;
+
+export type HelpSection = keyof typeof SECTION_COLOR;
+
+// The public site URL, resolved from the Replit domain when available.
+export function siteUrl(): string {
+  const domain = process.env["REPLIT_DOMAINS"]?.split(",")[0]?.trim();
+  return domain ? `https://${domain}` : "https://dncards.com";
+}

@@ -1,6 +1,6 @@
 // Echo-Whisper slash-command handlers (ported into DN Cards). Three commands:
 //   /whisper user:@x      — encrypted member-to-member message
-//   /adminsecret          — role-gated staff message
+//   /admin_secret          — role-gated staff message
 //   /echo <sub>           — management hub (roles, override, stats, config)
 //
 // The heavy lifting (modal submits + reveal buttons) lives in interactions.ts.
@@ -42,7 +42,7 @@ export async function handleWhisperCommand(interaction: ChatInputCommandInteract
   await interaction.showModal(modal);
 }
 
-// ── /adminsecret ─────────────────────────────────────────────────────────────
+// ── /admin_secret ─────────────────────────────────────────────────────────────
 export async function handleAdminSecretCommand(interaction: ChatInputCommandInteraction): Promise<void> {
   const modal = new ModalBuilder()
     .setCustomId("adminsecret_modal")
@@ -85,7 +85,7 @@ export async function handleEchoCommand(interaction: ChatInputCommandInteraction
         });
       } else {
         const list = roleIds.map(id => `• <@&${id}>`).join("\n");
-        await interaction.reply({ content: `**🔐 Authorized roles for /adminsecret viewing:**\n${list}`, ...EPHEMERAL });
+        await interaction.reply({ content: `**🔐 Authorized roles for /admin_secret viewing:**\n${list}`, ...EPHEMERAL });
       }
       return;
     }
@@ -96,7 +96,7 @@ export async function handleEchoCommand(interaction: ChatInputCommandInteraction
     }
     if (action === "add") {
       await addViewerRole(guildId, role.id);
-      await interaction.reply({ content: `✅ <@&${role.id}> can now reveal /adminsecret messages.`, ...EPHEMERAL });
+      await interaction.reply({ content: `✅ <@&${role.id}> can now reveal /admin_secret messages.`, ...EPHEMERAL });
     } else {
       const removed = await removeViewerRole(guildId, role.id);
       await interaction.reply({
@@ -115,7 +115,7 @@ export async function handleEchoCommand(interaction: ChatInputCommandInteraction
     await setAdminOverride(guildId, enable);
     await interaction.reply({
       content: `✅ **Admin override** is now **${enable ? "enabled" : "disabled"}**.\n` +
-        `Admins ${enable ? "can" : "cannot"} decrypt any /adminsecret and /whisper message.`,
+        `Admins ${enable ? "can" : "cannot"} decrypt any /admin_secret and /whisper message.`,
       ...EPHEMERAL,
     });
     return;
@@ -145,7 +145,7 @@ export async function handleEchoCommand(interaction: ChatInputCommandInteraction
         "**What it does:** Staff can post encrypted messages for authorized roles only.\n" +
         `**Authorized roles:**\n${roleList}\n` +
         `**Admin override:** ${override ? "✅ Enabled — admins can decrypt any adminsecret" : "❌ Disabled — admins follow role rules"}\n\n` +
-        "**Usage:** `/adminsecret`",
+        "**Usage:** `/admin_secret`",
       ...EPHEMERAL,
     });
     return;
@@ -160,7 +160,7 @@ export async function handleEchoCommand(interaction: ChatInputCommandInteraction
         "📊 **Echo-Whisper Statistics**\n\n" +
         `**Servers:** ${guildCount}\n` +
         `**Uptime:** ${uptime}\n` +
-        "**Commands:** /adminsecret, /whisper, /echo\n" +
+        "**Commands:** /admin_secret, /whisper, /echo\n" +
         "**Storage:** Encrypted payloads in the DN Cards database (per-guild)",
       ...EPHEMERAL,
     });
@@ -176,7 +176,7 @@ export async function handleEchoCommand(interaction: ChatInputCommandInteraction
         `**Viewer roles:** ${settings.viewerRoleIds.length} role(s) configured\n` +
         "**Encryption:** AES-256-CBC (key derived from ENCRYPTION_KEY)\n\n" +
         "**Available commands:**\n" +
-        "• `/adminsecret` — staff encrypted messages\n" +
+        "• `/admin_secret` — staff encrypted messages\n" +
         "• `/whisper` — member private conversations\n" +
         "• `/echo` — this management hub",
       ...EPHEMERAL,

@@ -20,7 +20,7 @@ export async function handleSetsUserCommand(interaction: ChatInputCommandInterac
     const sets = await listSetsV2(guildId);
     const active = await getActiveSet(guildId);
     if (sets.length === 0) {
-      await interaction.editReply("📭 No card sets defined yet. Ask an admin to create one with `/setadmin create`.");
+      await interaction.editReply("📭 No card sets defined yet. Ask an admin to create one with `/sets_admin create`.");
       return;
     }
     const lines = sets

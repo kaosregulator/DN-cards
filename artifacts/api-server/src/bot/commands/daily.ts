@@ -120,7 +120,7 @@ export async function handleDaily(interaction: ChatInputCommandInteraction): Pro
       `Balance: 💠 **${currency.shards.toLocaleString()}**` +
       milestoneNote,
     )
-    .setFooter({ text: "Come back tomorrow to keep your streak alive! · /cards calendar · /cards quests" });
+    .setFooter({ text: "Come back tomorrow to keep your streak alive! · /calendar · /quests" });
 
   await applyEmbedOverride(embed, {
     guildId, key: "daily",

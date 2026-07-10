@@ -140,7 +140,7 @@ async function buildPanelPayload(guildId: string, selectedSetId?: number) {
   return { embeds: [embed], components };
 }
 
-// ── Entry: /sethub slash command ──────────────────────────────────────────────
+// ── Entry: /set_hub slash command ──────────────────────────────────────────────
 export async function handleSetsHubCommand(interaction: ChatInputCommandInteraction): Promise<void> {
   // admin.ts dispatcher has already called deferReply(ephemeral) — use editReply, not reply.
   if (!await ensureAdmin(interaction)) return;
@@ -250,7 +250,7 @@ export async function handleSetsHubButton(interaction: ButtonInteraction): Promi
     const sets = await listSetsV2(guildId);
     const set = sets.find(s => s.set.id === argId);
     if (set) {
-      const warn = set.cardCount === 0 ? " ⚠️ This set has no cards yet — add some with `/setadmin add`." : "";
+      const warn = set.cardCount === 0 ? " ⚠️ This set has no cards yet — add some with `/sets_admin add`." : "";
       await interaction.followUp({ content: `✅ **${set.set.name}** is now the active spawn pool.${warn}`, flags: MessageFlags.Ephemeral });
     }
     return;
@@ -260,7 +260,7 @@ export async function handleSetsHubButton(interaction: ButtonInteraction): Promi
   if (action === "view") {
     const cards = await getCardsInSet(argId, guildId);
     if (cards.length === 0) {
-      await interaction.followUp({ content: "📭 No cards in this set yet. Add some with `/setadmin add`.", flags: MessageFlags.Ephemeral });
+      await interaction.followUp({ content: "📭 No cards in this set yet. Add some with `/sets_admin add`.", flags: MessageFlags.Ephemeral });
       return;
     }
     const lines = cards.map(c => `• **${c.name}** — ${c.rarity}`);
@@ -327,7 +327,7 @@ export async function handleSetsHubModal(interaction: ModalSubmitInteraction): P
   if (!name) { await interaction.editReply("❌ Set name cannot be empty."); return; }
   const set = await createSet(name, desc, guildId);
   await interaction.editReply(
-    `✅ Created set **${set.name}**. Add cards with \`/setadmin add set:${set.name} card:<Name>\`.`,
+    `✅ Created set **${set.name}**. Add cards with \`/sets_admin add set:${set.name} card:<Name>\`.`,
   );
   await invalidateActiveSetCardsCache(guildId);
 }

@@ -6,8 +6,14 @@
  * guild is a completely separate tenant: they only see and mutate cards/sets
  * that belong to their own server.
  *
- * HOME_GUILD_ID designates the single Discord server that owns the shared
- * roster and runs the dashboard. It is still isolated from other guilds' data.
+ * HOME_GUILD_ID designates the single Discord server authorised to run commands
+ * that create, edit, or delete globally shared records (cards table,
+ * sets table, card_set_memberships table).
+ *
+ * Guild-scoped operations remain available from ANY server:
+ *   /sets_admin active|deactivate|view|showweights|list
+ *   /rarity, /embed, /config, /admin_hub, /setup
+ *   gameplay commands (/drop, /give, /event, /daily, /pack, …)
  *
  * How to find your guild ID:
  *   Discord → right-click the server icon (Developer Mode on) → Copy Server ID
@@ -39,8 +45,8 @@ export function isOwnedBy(record: { guildId: string }, actorGuildId: string): bo
 
 export const GLOBAL_ONLY_MSG =
   "❌ This command modifies shared global data (cards/sets) and can only be " +
-  "run from the home server. Guild-scoped commands (`/setadmin active`, " +
-  "`/setadmin deactivate`, `/rarity`, `/embed`, `/admin config`) still work from " +
+  "run from the home server. Guild-scoped commands (`/sets_admin active`, " +
+  "`/sets_admin deactivate`, `/rarity`, `/embed`, `/config`) still work from " +
   "any server.\n" +
   "*(Bot operator: set the `HOME_GUILD_ID` environment variable to your " +
   "server's ID.)*";

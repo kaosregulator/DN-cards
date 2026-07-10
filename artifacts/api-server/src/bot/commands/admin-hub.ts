@@ -10,7 +10,7 @@ import {
   getOrCreateGuildSettings,
 } from "../db.js";
 
-// ── Public entry: /adminhub command opens the ephemeral hub ──────────────────
+// ── Public entry: /admin_hub command opens the ephemeral hub ──────────────────
 export async function handleAdminHubCommand(interaction: ChatInputCommandInteraction): Promise<void> {
   if (!interaction.guild) return;
   // ACK immediately — buildHubEmbed has 3 DB calls, easily past 3s without defer.
@@ -169,8 +169,8 @@ async function buildHubEmbed(guildId: string): Promise<EmbedBuilder> {
     .setDescription(
       "Quick admin actions for this server. Buttons below open private prompts; results show only to you.\n\n" +
       "**Spawn / drop / settings:** use `/config` (channel, interval, drop rates, catch mode, toggles).\n" +
-      "**Card grants:** `/drop` `/give` `/giveshards` `/takeback` `/takeshards`.\n" +
-      "**Card sets:** `/setadmin load` `/setadmin unload` `/setadmin listloaded`.",
+      "**Card grants:** `/drop` `/give` `/give_shards` `/take_back` `/take_shards`.\n" +
+      "**Card sets:** `/sets_admin load` `/sets_admin unload` `/sets_admin listloaded`.",
     )
     .addFields(
       {

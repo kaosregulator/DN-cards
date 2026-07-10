@@ -1,4 +1,4 @@
-// /raidadmin — boss management for server admins. Create, edit, list, delete,
+// /raid_admin — boss management for server admins. Create, edit, list, delete,
 // and enable/disable the co-op raid bosses players can fight.
 
 import type { ChatInputCommandInteraction } from "discord.js";
@@ -42,7 +42,7 @@ export async function handleRaidAdminCommand(interaction: ChatInputCommandIntera
   const guild = interaction.guild;
   if (!guild) { await interaction.reply({ content: "❌ Server only.", ...EPHEMERAL }); return; }
   if (!isAdmin(interaction.member as GuildMember | null)) {
-    await interaction.reply({ content: "❌ You need the **Administrator** permission for `/raidadmin`.", ...EPHEMERAL });
+    await interaction.reply({ content: "❌ You need the **Administrator** permission for `/raid_admin`.", ...EPHEMERAL });
     return;
   }
   const guildId = guild.id;
@@ -52,7 +52,7 @@ export async function handleRaidAdminCommand(interaction: ChatInputCommandIntera
   if (sub === "list") {
     const bosses = await getAllBosses(guildId);
     if (bosses.length === 0) {
-      await interaction.editReply("No raid bosses yet. Create one with `/raidadmin create name:<name>`.");
+      await interaction.editReply("No raid bosses yet. Create one with `/raid_admin create name:<name>`.");
       return;
     }
     const embed = new EmbedBuilder().setTitle("🐉 Raid Bosses").setColor(0xc0392b)
@@ -64,7 +64,7 @@ export async function handleRaidAdminCommand(interaction: ChatInputCommandIntera
   if (sub === "create") {
     const name = interaction.options.getString("name", true).trim();
     if (await getBossByNameExact(guildId, name)) {
-      await interaction.editReply(`❌ A boss called "**${name}**" already exists. Use \`/raidadmin edit\`.`);
+      await interaction.editReply(`❌ A boss called "**${name}**" already exists. Use \`/raid_admin edit\`.`);
       return;
     }
     const archetype = (interaction.options.getString("archetype") ?? "boss").toLowerCase();
@@ -111,7 +111,7 @@ export async function handleRaidAdminCommand(interaction: ChatInputCommandIntera
   // edit / delete / enable all target an existing boss by name.
   const targetName = interaction.options.getString("name", true);
   const boss = await getBossByName(guildId, targetName);
-  if (!boss) { await interaction.editReply(`❌ No boss called "**${targetName}**". See \`/raidadmin list\`.`); return; }
+  if (!boss) { await interaction.editReply(`❌ No boss called "**${targetName}**". See \`/raid_admin list\`.`); return; }
 
   if (sub === "delete") {
     await deleteBoss(boss.id);

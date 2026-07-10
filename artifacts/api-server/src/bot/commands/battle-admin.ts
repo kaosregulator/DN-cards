@@ -1,4 +1,4 @@
-// /battleadmin — the graphical Admin Battle Hub + first-time Setup Wizard.
+// /battle_admin — the graphical Admin Battle Hub + first-time Setup Wizard.
 //
 // One ephemeral, button-driven control panel where an admin configures the whole
 // per-guild battle system: enable/disable, channels, combat rules & formulas,

@@ -100,7 +100,7 @@ export async function handleSetupButton(interaction: ButtonInteraction): Promise
     await interaction.followUp({
       content: `📦 Loaded the built-in roster — added **${added}** cards` +
         (skipped > 0 ? ` (skipped **${skipped}** already in your roster).` : ".") +
-        `\nRemove anytime with **🗑️ Remove Defaults** or \`${settings.commandPrefix}unloaddefaults\` / \`/setadmin unload set:${DEFAULTS_SET_NAME}\`.`,
+        `\nRemove anytime with **🗑️ Remove Defaults** or \`${settings.commandPrefix}unloaddefaults\` / \`/sets_admin unload set:${DEFAULTS_SET_NAME}\`.`,
       flags: MessageFlags.Ephemeral,
     }).catch(() => {});
     return;
@@ -146,9 +146,9 @@ export async function handleSetupButton(interaction: ButtonInteraction): Promise
             `Drops are live in <#${settings.spawnChannelId}>.\n\n` +
             `**👈 What to do next**\n` +
             `• **Post the welcome guide:** Go to your info channel and run \`/welcome\`\n` +
-            `• **Add your own cards:** \`/addcard\` with an image attachment\n` +
-            `• **Test drops:** \`/drop\` (force one) · \`/massdrop\` (batch)\n` +
-            `• **Players need help?** \`/help\` · \`/adminhelp\`\n\n` +
+            `• **Add your own cards:** \`/add_card\` with an image attachment\n` +
+            `• **Test drops:** \`/drop\` (force one) · \`/mass_drop\` (batch)\n` +
+            `• **Players need help?** \`/help\` · \`/admin_help\`\n\n` +
             `Re-open anytime: \`${settings.commandPrefix}setup\` or \`/setup\``,
           ),
       ],
@@ -360,7 +360,7 @@ function buildSetupEmbed(s: GuildSettings, hasDefaults: boolean): EmbedBuilder {
         value:
           `• \`/welcome\` — post player guide (run in info channel)\n` +
           `• \`/drop\` — force a drop instantly\n` +
-          `• \`/addcard\` — create a card with built-in rarity + upload`,
+          `• \`/add_card\` — create a card with built-in rarity + upload`,
         inline: false,
       },
     )

@@ -3,7 +3,7 @@
 // Flow:
 //   /whisper → modal → encrypted transmission posted publicly with a "View
 //   Whisper" button (only sender / recipient / override-admin can reveal).
-//   /adminsecret → modal → encrypted transmission with a "View Secret" button
+//   /admin_secret → modal → encrypted transmission with a "View Secret" button
 //   (only authorized viewer roles / override-admin can reveal).
 
 import {
@@ -55,6 +55,12 @@ async function handleWhisperModal(interaction: ModalSubmitInteraction): Promise<
     components: [row],
     allowedMentions: { users: [targetId] },
   });
+
+  // Giveaway progress — sending an Echo whisper counts as an Echo activation.
+  try {
+    const { recordGiveawayEvent } = await import("../giveaway/engine.js");
+    await recordGiveawayEvent(guildId, senderId, "echo_use", 1);
+  } catch { /* non-fatal */ }
 }
 
 async function handleAdminSecretModal(interaction: ModalSubmitInteraction): Promise<void> {

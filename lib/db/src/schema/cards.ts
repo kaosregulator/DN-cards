@@ -426,7 +426,7 @@ export type EmbedOverrideConfig = {
 };
 
 export const EMBED_KEYS = [
-  "spawn", "claimed", "daily", "pack", "trade", "welcome", "rules", "commands",
+  "spawn", "claimed", "daily", "pack", "trade", "welcome", "rules", "commands", "help",
 ] as const;
 export type EmbedKey = typeof EMBED_KEYS[number];
 

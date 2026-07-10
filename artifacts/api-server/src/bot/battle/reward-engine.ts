@@ -211,6 +211,20 @@ export async function processBattleRewards(args: {
     } catch { /* non-fatal */ }
   }
 
+  // Giveaway progress — winner gets "battle_win" credit; every real participant
+  // (a valid, non-forfeit battle only) gets "battle_played". Best-effort.
+  if (args.endedReason !== "forfeit") {
+    try {
+      const { recordGiveawayEvent } = await import("../giveaway/engine.js");
+      if (args.winnerId && args.winnerId !== "AI") {
+        await recordGiveawayEvent(guildId, args.winnerId, "battle_win", 1);
+      }
+      for (const p of [args.challenger, args.opponent]) {
+        if (!p.isAi) await recordGiveawayEvent(guildId, p.userId, "battle_played", 1);
+      }
+    } catch { /* non-fatal */ }
+  }
+
   // Card leveling — each real participant's fielded card earns battle XP
   // (cosmetic frames only, no stat impact). Best-effort. Collect level-ups so
   // the battle-manager can surface them on the winner screen.

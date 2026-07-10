@@ -47,7 +47,7 @@ async function handleSell(interaction: ChatInputCommandInteraction, guildId: str
 
   if (price < 1) { await interaction.editReply("❌ Price must be at least 💠 1."); return; }
   const card = await getCardByName(name, guildId);
-  if (!card) { await interaction.editReply(`❌ "**${name}**" not found. Try \`/cards list\`.`); return; }
+  if (!card) { await interaction.editReply(`❌ "**${name}**" not found. Try \`/list\`.`); return; }
 
   const isAuction = hours != null;
   if (isAuction && (hours! < 1 || hours! > MAX_AUCTION_HOURS)) {
@@ -132,14 +132,14 @@ async function handleBuy(interaction: ChatInputCommandInteraction, guildId: stri
   if (!res.ok) {
     const msg = res.reason === "gone" ? "❌ That listing was just taken or cancelled."
       : res.reason === "own_listing" ? "❌ You can't buy your own listing."
-      : res.reason === "insufficient" ? `❌ You need 💠 **${price.toLocaleString()}** to buy this. Check \`/cards shards\`.`
+      : res.reason === "insufficient" ? `❌ You need 💠 **${price.toLocaleString()}** to buy this. Check \`/shards\`.`
       : "❌ That listing can't be bought directly.";
     await interaction.editReply(msg); return;
   }
   const cards = await cardMap();
   await interaction.editReply(
     `✅ Bought **${cardLabel(cards.get(res.cardId), res.cardId)}** for 💠 **${price.toLocaleString()}**! ` +
-    `It's in your \`/cards collection\`. Seller <@${res.sellerId}> received 💠 ${proceedsFor(price).toLocaleString()} (after ${MARKET_FEE_PCT}% fee).`,
+    `It's in your \`/collection\`. Seller <@${res.sellerId}> received 💠 ${proceedsFor(price).toLocaleString()} (after ${MARKET_FEE_PCT}% fee).`,
   );
 }
 

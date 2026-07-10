@@ -72,7 +72,7 @@ export async function startRaid(interaction: ChatInputCommandInteraction, bossNa
   const guildId = guild.id;
   const settings = await getBattleSettings(guildId);
   if (!settings.enabled || !settings.setupComplete) {
-    await interaction.reply({ content: "🛠️ The battle system must be set up first (`/battleadmin` → Setup Wizard).", ...EPHEMERAL });
+    await interaction.reply({ content: "🛠️ The battle system must be set up first (`/battle_admin` → Setup Wizard).", ...EPHEMERAL });
     return;
   }
   if (userSession.has(uKey(guildId, interaction.user.id))) {
@@ -81,7 +81,7 @@ export async function startRaid(interaction: ChatInputCommandInteraction, bossNa
   }
   const boss = await getBossByName(guildId, bossName);
   if (!boss || !boss.enabled) {
-    await interaction.reply({ content: `❌ No enabled boss called "**${bossName}**". Ask an admin to create one with \`/raidadmin create\`, or see \`/raid bosses\`.`, ...EPHEMERAL });
+    await interaction.reply({ content: `❌ No enabled boss called "**${bossName}**". Ask an admin to create one with \`/raid_admin create\`, or see \`/raid bosses\`.`, ...EPHEMERAL });
     return;
   }
 
@@ -293,6 +293,20 @@ async function finishRaid(session: RaidSession, outcome: "clear" | "wipe" | "tim
     rewardNote = `⌛ **${boss.name}** outlasted the party after ${MAX_ROUNDS} rounds. Bring more firepower next time.`;
   }
 
+  // Giveaway progress — every party member (survivors AND downed) gets raid
+  // participation credit, plus an even share of the damage the party dealt to
+  // the boss as their contribution. Best-effort; never blocks the raid.
+  try {
+    const { recordGiveawayEvent } = await import("../giveaway/engine.js");
+    const bc = session.bossCombatant;
+    const bossDamage = bc ? Math.max(0, bc.stats.maxHealth - Math.max(0, bc.hp)) : 0;
+    const share = session.party.size > 0 ? Math.round(bossDamage / session.party.size) : 0;
+    for (const s of session.party.values()) {
+      await recordGiveawayEvent(session.guildId, s.member.userId, "raid_join", 1);
+      if (share > 0) await recordGiveawayEvent(session.guildId, s.member.userId, "raid_damage", share);
+    }
+  } catch { /* non-fatal */ }
+
   if (session.message) {
     await session.message.edit({ embeds: [buildEndEmbed(session, outcome, rewardNote)], components: [] }).catch(() => {});
   }
@@ -327,7 +341,7 @@ async function eligibleCards(session: RaidSession, userId: string): Promise<{
     .sort((a, b) => b.stars - a.stars || b.level - a.level);
 
   if (eligible.length === 0) {
-    return { eligible, reason: `🔒 This raid needs a **${boss.minStars}-star** card (${starString(boss.minStars)}) — reach card **Level ${levelForStars(boss.minStars)}**. Level cards by fielding them in \`/battle\`; check \`/cards level\`.` };
+    return { eligible, reason: `🔒 This raid needs a **${boss.minStars}-star** card (${starString(boss.minStars)}) — reach card **Level ${levelForStars(boss.minStars)}**. Level cards by fielding them in \`/battle\`; check \`/level\`.` };
   }
   return { eligible };
 }

@@ -15,7 +15,7 @@ export async function handleRaidCommand(interaction: ChatInputCommandInteraction
     await interaction.deferReply({ flags: MessageFlags.Ephemeral });
     const bosses = await getEnabledBosses(interaction.guild.id);
     if (bosses.length === 0) {
-      await interaction.editReply("No raid bosses are available yet. Ask an admin to create one with `/raidadmin create`.");
+      await interaction.editReply("No raid bosses are available yet. Ask an admin to create one with `/raid_admin create`.");
       return;
     }
     const embed = new EmbedBuilder()

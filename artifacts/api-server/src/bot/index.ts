@@ -1,14 +1,10 @@
-import {
-  Client, GatewayIntentBits, Partials, Events, REST, Routes, type Interaction,
-  ChannelType, PermissionFlagsBits, type Guild, type TextChannel,
-} from "discord.js";
+import { Client, GatewayIntentBits, Partials, Events, REST, Routes, type Interaction } from "discord.js";
 import { logger } from "../lib/logger.js";
 import { burnCard, getOrCreateCurrency, getAllCards } from "./db.js";
 import { handleEditCardSelect, handleEditCardModal } from "./commands/edit-card.js";
-import { handleEditUserInteraction, handleEditUserModal } from "./commands/edit-user.js";
 import { handleTradeButton } from "./commands/trading.js";
 import { initSpawnManager, initAllGuilds, handleCatchAttempt, handleClaimButtonClick, scheduleNextSpawn, buildPostDecisionEmbed, buildDisabledDecisionRow, markDecisionMade } from "./spawn-manager.js";
-import { handleConfigButton, handleConfigSelect, handleRatesSelect, handlePacksSelect, handleRatesCustomModal, handleCustomPackModal, handlePacksNamesModal, handlePacksDescModal, handleCustomPackTypesSelect } from "./commands/config-panel.js";
+import { handleConfigButton, handleConfigSelect, handleRatesSelect, handlePacksSelect, handleRatesCustomModal } from "./commands/config-panel.js";
 import { handleSetsHubButton, handleSetsHubSelect, handleSetsHubModal } from "./commands/sets-panel.js";
 import { handleSetAdminHubButton, handleSetAdminHubSelect, handleSetAdminHubWeightSelect, handleSetAdminHubModal } from "./commands/set-admin-hub.js";
 import { handleRarityEditButton, handleRarityEditSelect, handleRarityEditModal, handleRarityHubButton, handleRarityHubSelect, handleRarityHubModal } from "./commands/rarity-admin.js";
@@ -23,11 +19,6 @@ import {
 } from "./commands/setup-wizard.js";
 import { handleCardWizardStep, handleCardEditStep } from "./commands/card-wizard.js";
 import { handleAutocomplete } from "./commands/autocomplete.js";
-import { handleMenuCommand } from "./commands/menu.js";
-import { handleEditPackCommand } from "./commands/editpack.js";
-import { handleDNValuesSearch, handleDNValuesList, handleDNValuesInfo, handleDNValuesAutocomplete, handleDNValuesCalculator, handleDNValuesCalcButton, handleDNValuesCalcModal, handleDNValuesHelp } from "./commands/dnvalues.js";
-import { handleDntCalcButton, handleDntCalcModal } from "./commands/dntcalc.js";
-import { handlePostCalculator, handleMttvHubButton, handleMttvHubModal } from "./commands/mttcalc-hub.js";
 import { handleBattleCommand } from "./commands/battle.js";
 import {
   handleBattleAdminCommand, handleBattleAdminButton, handleBattleAdminSelect,
@@ -40,83 +31,29 @@ import { handleSquadCommand } from "./squad/commands.js";
 import { handleRaidCommand } from "./raid/command.js";
 import { handleRaidAdminCommand } from "./raid/admin.js";
 import { handleRaidComponent } from "./raid/manager.js";
+import { handleGiveawaysCommand, handleGiveawayUserCommand } from "./giveaway/command.js";
+import { handleGiveawayAdminCommand } from "./giveaway/admin.js";
+import { handleGiveawayComponent } from "./giveaway/manager.js";
+import { handleGiveawayMessage } from "./giveaway/message-hook.js";
+import { startGiveawayMaintenance } from "./giveaway/sweeper.js";
+import { handleHelpHubComponent } from "./commands/help-hub.js";
+import {
+  handleBob, handleBobRoulette, handleBobDuel, handleBobRoast, handleBobTalk,
+  handleBobStats, handleBobLeaderboard,
+} from "./bob/command.js";
+import { handleBobAdmin } from "./bob/admin.js";
+import {
+  isBobComponent, handleBobButton, handleBobSelect, handleBobUserSelect, handleBobModal,
+} from "./bob/router.js";
+import { startBobEvents } from "./bob/events.js";
 import { handleWhisperCommand, handleAdminSecretCommand, handleEchoCommand } from "./secret/commands.js";
 import { isSecretModal, handleSecretModal, isSecretButton, handleSecretButton } from "./secret/interactions.js";
 import {
-  buildCommands, USER_COMMAND_NAMES, ADMIN_COMMAND_NAMES,
+  buildCommands, USER_HUB_COMMANDS, ADMIN_HUB_COMMANDS, internalCommandName,
 } from "./commands/register.js";
 import { MessageFlags, EmbedBuilder } from "discord.js";
 import { createSetupLink } from "../lib/setup-link.js";
 import { setBotClient } from "./client-holder.js";
-import { isHomeGuild } from "./home-guild.js";
-
-/**
- * Send a public welcome message when the bot joins a new guild.
- * Tries the guild's system channel first, then the first text channel where we
- * have permission to send messages. Best-effort — failures are logged, not thrown.
- */
-async function sendGuildWelcome(guild: Guild): Promise<void> {
-  const me = guild.members.me;
-  const requiredPerms = PermissionFlagsBits.ViewChannel | PermissionFlagsBits.SendMessages | PermissionFlagsBits.EmbedLinks;
-  const canWrite = (ch: typeof guild.channels.cache extends Map<string, infer V> ? V : never): ch is TextChannel =>
-    (ch.type === ChannelType.GuildText || ch.type === ChannelType.GuildAnnouncement) &&
-    ch.permissionsFor(me ?? guild.client.user.id)?.has(requiredPerms) === true;
-
-  const writableFallback = guild.channels.cache
-    .filter(canWrite)
-    .sort((a, b) => a.position - b.position)
-    .values();
-
-  const systemChannel = guild.systemChannel && canWrite(guild.systemChannel) ? guild.systemChannel : null;
-  const candidates = systemChannel
-    ? [systemChannel, ...writableFallback].filter((ch, i, arr) => arr.findIndex(c => c.id === ch.id) === i)
-    : [...writableFallback];
-
-  const embed = new EmbedBuilder()
-    .setColor(0xe63946)
-    .setTitle("🃏 DN Cards has arrived!")
-    .setDescription(
-      "Welcome to **DN Cards** — DarkNight's military collectible card game for Discord. " +
-      "Tanks, jets, warships, bosses, and community cards drop randomly. Catch them, trade them, flex them."
-    )
-    .addFields(
-      {
-        name: "🛠️ Admins — set up in 3 steps",
-        value:
-          "1. Run `/admin setup` in your spawn channel to configure drops, rarity, and catch mode.\n" +
-          "2. Run `/admin set-hub` to activate a card set (spawns only pull from the active set).\n" +
-          (isHomeGuild(guild.id)
-            ? "3. Run `/admin dashboard` to get your web dashboard login link.\n"
-            : "3. The web dashboard is only available for the home server.\n") +
-          "Need the full guide? Run `/adminhelp` or `/welcomeadmin`.",
-      },
-      {
-        name: "🎮 Players — start here",
-        value:
-          "• `/cards welcome` — full game guide\n" +
-          "• `/cards daily` — free shards every day\n" +
-          "• `/cards pack` — buy card packs\n" +
-          "• Type card names when they drop to catch them",
-      },
-      {
-        name: "💡 Need help?",
-        value:
-          "Admins: `/adminhelp` · Players: `/help`\n" +
-          "Website: https://dncards.com",
-      },
-    );
-
-  for (const ch of candidates) {
-    try {
-      await ch.send({ embeds: [embed] });
-      return;
-    } catch (err) {
-      logger.warn({ err, guildId: guild.id, channelId: ch.id }, "Could not send guild join welcome message");
-    }
-  }
-
-  logger.info({ guildId: guild.id }, "No suitable channel for guild join welcome message");
-}
 // ── AFK Secretary & Whitelist Access System ──────────────────────────────────
 import { handleAfkCommand, handleAfkSetupCommand } from "./afk/commands.js";
 import { handleAfkInteraction } from "./afk/interactions.js";
@@ -130,12 +67,13 @@ export async function startBot() {
   const { HOME_GUILD_ID } = await import("./home-guild.js");
   if (!HOME_GUILD_ID) {
     logger.warn(
-      "HOME_GUILD_ID is not set. Guilds can still manage their own cards/sets, " +
-      "but the admin dashboard will be unavailable until HOME_GUILD_ID is configured. " +
+      "HOME_GUILD_ID is not set. Commands that mutate globally shared data " +
+      "(addcard, editcard, removecard, import, /sets_admin create|rename|delete|add|remove|…) " +
+      "will be blocked for ALL guilds until HOME_GUILD_ID is configured. " +
       "Set it to your home server's Discord guild ID in the environment variables.",
     );
   } else {
-    logger.info({ homeGuildId: HOME_GUILD_ID }, "Tenant isolation active — each server manages its own cards/sets");
+    logger.info({ homeGuildId: HOME_GUILD_ID }, "Tenant isolation active — global mutations restricted to home guild");
   }
 
   // --- Multi-instance guard ---
@@ -202,13 +140,15 @@ export async function startBot() {
       "DN Cards bot ready",
     );
     // Default 27-card roster is NOT auto-seeded — admins opt-in from `!setup`
-    // ("Load Defaults" button) or `/setadmin load file:<.json>`. Keeps fresh
+    // ("Load Defaults" button) or `/sets_admin load file:<.json>`. Keeps fresh
     // servers free to load only their own custom roster.
     await initAllGuilds(client);
     // Boot-time backfill is no longer needed; sets are managed via the
     // first-class sets + card_set_memberships tables.
     startBattleMaintenance();
     startMarketMaintenance();
+    startGiveawayMaintenance();
+    startBobEvents(client);
     await registerCommands(c.user.id, token, client);
     // AFK Secretary: start the timed auto-remove sweeper (clears "timed" AFKs
     // once their countdown elapses; presence/messages can't cover this).
@@ -228,44 +168,35 @@ export async function startBot() {
   client.on(Events.GuildCreate, async (guild) => {
     logger.info({ guildId: guild.id, name: guild.name }, "Bot joined guild");
     scheduleNextSpawn(guild.id);
-    await sendGuildWelcome(guild);
     const rest = new REST().setToken(token);
     await rest
       .put(Routes.applicationGuildCommands(client.user!.id, guild.id), { body: buildCommands() })
       .catch(err => logger.error({ err, guildId: guild.id }, "Failed to register guild commands on join"));
 
-    // DM the server owner a one-time dashboard setup link — only for the home
-    // guild, because the dashboard is home-guild-only. Other servers still get a
-    // friendly welcome DM with setup guidance. Best-effort — if DMs are off,
-    // they can run /admin setup in the server.
+    // DM the server owner a one-time dashboard setup link. Best-effort —
+    // if their DMs are off, they can run /dashboard later.
     try {
       const owner = await guild.fetchOwner();
-      let description = `Thanks for adding **DN Cards** to **${guild.name}**.\n\n`;
-      if (isHomeGuild(guild.id)) {
-        const { url, expiresAt } = await createSetupLink({
-          discordUserId: owner.id,
-          guildId: guild.id,
-          ttlHours: 72,
-        });
-        description +=
+      const { url, expiresAt } = await createSetupLink({
+        discordUserId: owner.id,
+        guildId: guild.id,
+        ttlHours: 72,
+      });
+      const embed = new EmbedBuilder()
+        .setColor(0x5865f2)
+        .setTitle("👋 Welcome to DN Cards!")
+        .setDescription(
+          `Thanks for adding **DN Cards** to **${guild.name}**.\n\n` +
           `Open this link to set up your **web dashboard** login (pick a username + password). ` +
           `You can manage card art, server settings, and message customization from there.\n\n` +
           `🔗 ${url}\n\n` +
           `**Expires:** <t:${Math.floor(expiresAt.getTime() / 1000)}:R>\n` +
-          `Need a fresh link later? Run \`/admin dashboard\` in your server.\n\n`;
-      } else {
-        description +=
-          "The web dashboard is only available for the home server. " +
-          "Guild-scoped settings and commands are managed right here in Discord.\n\n";
-      }
-      description += `Quick start: run \`/cards welcome\` for the public intro, then \`/admin setup\` to configure spawning.`;
-      const embed = new EmbedBuilder()
-        .setColor(0x5865f2)
-        .setTitle("👋 Welcome to DN Cards!")
-        .setDescription(description);
+          `Need a fresh link later? Run \`/dashboard\` in your server.\n\n` +
+          `Quick start: run \`/welcome\` for the public intro, then \`/setup\` to configure spawning.`,
+        );
       await owner.send({ embeds: [embed] });
     } catch (err) {
-      logger.warn({ err, guildId: guild.id }, "Could not DM server owner with welcome/setup link");
+      logger.warn({ err, guildId: guild.id }, "Could not DM server owner with dashboard setup link");
     }
   });
 
@@ -291,8 +222,10 @@ export async function startBot() {
 
       // ── String select menus (config panel + setup panel) ──────────────────
       if (interaction.isStringSelectMenu()) {
-        if (interaction.customId.startsWith("custompack:types:")) {
-          await handleCustomPackTypesSelect(interaction);
+        if (interaction.customId.startsWith("help:")) {
+          await handleHelpHubComponent(interaction);
+        } else if (isBobComponent(interaction.customId)) {
+          await handleBobSelect(interaction);
         } else if (interaction.customId.startsWith("battle:")) {
           await handleBattleComponent(interaction);
         } else if (interaction.customId.startsWith("raid:")) {
@@ -317,16 +250,9 @@ export async function startBot() {
           await handleSetAdminHubWeightSelect(interaction);
         } else if (interaction.customId.startsWith("editcard:")) {
           await handleEditCardSelect(interaction);
-        } else if (interaction.customId.startsWith("edituser:menu:")) {
-          await handleEditUserInteraction(interaction);
         } else if (interaction.customId === "rarity_edit:select") {
           await handleRarityEditSelect(interaction);
-        } else if (
-          interaction.customId.startsWith("rarity_hub:settings:select") ||
-          interaction.customId.startsWith("rarity_hub:economy:select") ||
-          interaction.customId.startsWith("rarity_hub:custom:select:") ||
-          interaction.customId === "rarity_hub:order:select"
-        ) {
+        } else if (interaction.customId.startsWith("rarity_hub:settings:select") || interaction.customId.startsWith("rarity_hub:economy:select") || interaction.customId.startsWith("rarity_hub:custom:select:")) {
           await handleRarityHubSelect(interaction);
         }
         return;
@@ -342,9 +268,17 @@ export async function startBot() {
         return;
       }
 
+      // ── User select menus (Bob roast target picker) ────────────────────────
+      if (interaction.isUserSelectMenu()) {
+        if (isBobComponent(interaction.customId)) await handleBobUserSelect(interaction);
+        return;
+      }
+
       // ── Modal submissions (admin hub + setup test card + custom mix) ─────
       if (interaction.isModalSubmit()) {
-        if (isSecretModal(interaction.customId)) {
+        if (isBobComponent(interaction.customId)) {
+          await handleBobModal(interaction);
+        } else if (isSecretModal(interaction.customId)) {
           await handleSecretModal(interaction);
         } else if (interaction.customId.startsWith("battleadmin:")) {
           await handleBattleAdminModal(interaction);
@@ -360,27 +294,10 @@ export async function startBot() {
           await handleSetAdminHubModal(interaction);
         } else if (interaction.customId.startsWith("editcard:modal:")) {
           await handleEditCardModal(interaction);
-        } else if (interaction.customId.startsWith("edituser:modal:")) {
-          await handleEditUserModal(interaction);
         } else if (interaction.customId.startsWith("rarity_edit:modal:")) {
           await handleRarityEditModal(interaction);
         } else if (interaction.customId.startsWith("rarity_hub:modal:")) {
           await handleRarityHubModal(interaction);
-        } else if (interaction.customId.startsWith("packs_custom_modal:")) {
-          await handleCustomPackModal(interaction);
-        } else if (interaction.customId === "packs_names_modal") {
-          await handlePacksNamesModal(interaction);
-        } else if (interaction.customId === "packs_desc_modal") {
-          await handlePacksDescModal(interaction);
-        } else if (interaction.customId.startsWith("dncalc_modal:")) {
-          await handleDNValuesCalcModal(interaction);
-        } else if (interaction.customId.startsWith("dntcalc_modal:")) {
-          await handleDntCalcModal(interaction);
-        } else if (interaction.customId.startsWith("mtcalc_modal:")) {
-          const { handleMTTVCalcModal } = await import("./commands/mttvalues.js");
-          await handleMTTVCalcModal(interaction);
-        } else if (interaction.customId.startsWith("mttcalc_hub_modal:")) {
-          await handleMttvHubModal(interaction);
         }
         return;
       }
@@ -389,30 +306,6 @@ export async function startBot() {
       if (interaction.isButton()) {
         const parts = interaction.customId.split(":");
         const action = parts[0];
-
-        // ── DN values calculator hub buttons ───────────────────────────────
-        if (action === "dncalc") {
-          await handleDNValuesCalcButton(interaction);
-          return;
-        }
-
-        if (action === "dntcalc") {
-          await handleDntCalcButton(interaction);
-          return;
-        }
-
-        // ── MTTV ephemeral /calc buttons ───────────────────────────────────
-        if (action === "mtcalc") {
-          const { handleMTTVCalcButton } = await import("./commands/mttvalues.js");
-          await handleMTTVCalcButton(interaction);
-          return;
-        }
-
-        // ── MTTV posted calculator hub buttons ────────────────────────────
-        if (action === "mttcalc_hub") {
-          await handleMttvHubButton(interaction);
-          return;
-        }
 
         // ── Echo-Whisper reveal buttons ────────────────────────────────────
         if (isSecretButton(interaction.customId)) {
@@ -429,6 +322,24 @@ export async function startBot() {
         // ── Raid buttons (lobby join/begin, combat actions) ────────────────
         if (action === "raid") {
           await handleRaidComponent(interaction);
+          return;
+        }
+
+        // ── Giveaway buttons (my progress, details, claim prize) ───────────
+        if (action === "giveaway") {
+          await handleGiveawayComponent(interaction);
+          return;
+        }
+
+        // ── Help hub nav buttons (home) ────────────────────────────────────
+        if (action === "help") {
+          await handleHelpHubComponent(interaction);
+          return;
+        }
+
+        // ── Bob entertainment module (games, roulette, duel, events, menu) ──
+        if (action === "bob") {
+          await handleBobButton(interaction);
           return;
         }
 
@@ -547,7 +458,7 @@ export async function startBot() {
           }
 
           // Look up the card name for any public announcement.
-          const allCards = await getAllCards(guildId);
+          const allCards = await getAllCards();
           const card = allCards.find(c => c.id === cardId);
           const cardName = card?.name ?? "the card";
           const burnValue = card?.burnValue ?? 0;
@@ -591,12 +502,14 @@ export async function startBot() {
             await interaction.followUp({
               content:
                 `🔥 Card burned! You received 💠 **${result.shardsGained.toLocaleString()} shards**.\n` +
-                `New balance: **${currency.shards.toLocaleString()}** 💠 — check \`/cards shards\` anytime.`,
+                `New balance: **${currency.shards.toLocaleString()}** 💠 — check \`/shards\` anytime.`,
               flags: MessageFlags.Ephemeral,
             }).catch(() => { /* ignore */ });
             try {
               const { recordQuestEvent } = await import("./quests/engine.js");
               await recordQuestEvent(guildId, userId, "burn", 1);
+              const { recordGiveawayEvent } = await import("./giveaway/engine.js");
+              await recordGiveawayEvent(guildId, userId, "burn", 1);
             } catch { /* non-fatal */ }
             const burnUnlocks = await checkAchievements(guildId, userId).catch(() => []);
             if (burnUnlocks.length > 0) {
@@ -614,7 +527,7 @@ export async function startBot() {
               }).catch(() => { /* may be deleted */ });
             }
             await interaction.followUp({
-              content: "💾 Kept! The card is in your collection — use `/cards collection` to view it.",
+              content: "💾 Kept! The card is in your collection — use `/collection` to view it.",
               flags: MessageFlags.Ephemeral,
             }).catch(() => { /* ignore */ });
           } else {
@@ -637,16 +550,15 @@ export async function startBot() {
 
       // ── Slash commands ─────────────────────────────────────────────────────
       if (!interaction.isChatInputCommand()) return;
-      const cmd = interaction.commandName;
+      // Translate the clean, registered command name (e.g. "battle_admin") back
+      // to its internal handler name (e.g. "battleadmin") so every branch and
+      // dispatch set below keeps working unchanged.
+      const cmd = internalCommandName(interaction.commandName);
 
       if (cmd === "battle") {
         await handleBattleCommand(interaction, interaction.options.getSubcommand(true));
       } else if (cmd === "battleadmin") {
         await handleBattleAdminCommand(interaction);
-      } else if (cmd === "afk") {
-        await handleAfkCommand(interaction);
-      } else if (cmd === "afksetup") {
-        await handleAfkSetupCommand(interaction);
       } else if (cmd === "market") {
         await handleMarketCommand(interaction);
       } else if (cmd === "squad") {
@@ -655,43 +567,45 @@ export async function startBot() {
         await handleRaidCommand(interaction);
       } else if (cmd === "raidadmin") {
         await handleRaidAdminCommand(interaction);
+      } else if (cmd === "giveaways") {
+        await handleGiveawaysCommand(interaction);
+      } else if (cmd === "giveaway") {
+        await handleGiveawayUserCommand(interaction);
+      } else if (cmd === "giveawayadmin") {
+        await handleGiveawayAdminCommand(interaction);
+      } else if (cmd === "bob") {
+        await handleBob(interaction);
+      } else if (cmd === "bob_roulette") {
+        await handleBobRoulette(interaction);
+      } else if (cmd === "bob_duel") {
+        await handleBobDuel(interaction);
+      } else if (cmd === "bob_roast") {
+        await handleBobRoast(interaction);
+      } else if (cmd === "bob_talk") {
+        await handleBobTalk(interaction);
+      } else if (cmd === "bob_stats") {
+        await handleBobStats(interaction);
+      } else if (cmd === "bob_leaderboard") {
+        await handleBobLeaderboard(interaction);
+      } else if (cmd === "bob_admin") {
+        await handleBobAdmin(interaction);
       } else if (cmd === "whisper") {
         await handleWhisperCommand(interaction);
       } else if (cmd === "adminsecret") {
         await handleAdminSecretCommand(interaction);
       } else if (cmd === "echo") {
         await handleEchoCommand(interaction);
-      } else if (cmd === "cards") {
-        await handleUserCommand(interaction, interaction.options.getSubcommand(true));
-      } else if (cmd === "admin") {
-        const adminSubcommand = interaction.options.getSubcommand(true);
-        const legacyName = ({
-          hub: "adminhub",
-          "set-hub": "sethub",
-          "set-manager": "set_admin",
-          welcome: "welcomeadmin",
-          help: "adminhelp",
-        } as Record<string, string>)[adminSubcommand] ?? adminSubcommand;
-        await handleAdminCommand(interaction, legacyName);
-      } else if (cmd === "menu") {
-        await handleMenuCommand(interaction);
-      } else if (cmd === "editpack") {
-        await handleEditPackCommand(interaction);
-      } else if (cmd === "dnvaluesearch") {
-        await handleDNValuesSearch(interaction);
-      } else if (cmd === "dnvaluelist") {
-        await handleDNValuesList(interaction);
-      } else if (cmd === "dnvalueinfo") {
-        await handleDNValuesInfo(interaction);
-      } else if (cmd === "dnvaluecalc") {
-        await handleDNValuesCalculator(interaction);
-      } else if (cmd === "postcalculator") {
-        await handlePostCalculator(interaction);
-      } else if (cmd === "dnhelp") {
-        await handleDNValuesHelp(interaction);
-      } else if (USER_COMMAND_NAMES.has(cmd)) {
+      } else if (cmd === "afk") {
+        await handleAfkCommand(interaction);
+      } else if (cmd === "afksetup") {
+        await handleAfkSetupCommand(interaction);
+      } else if (USER_HUB_COMMANDS.has(cmd)) {
+        // Flattened player commands (/burn, /daily, …) + standalone player
+        // commands that carry their own subcommands (/sets, /rep, …).
         await handleUserCommand(interaction, cmd);
-      } else if (ADMIN_COMMAND_NAMES.has(cmd)) {
+      } else if (ADMIN_HUB_COMMANDS.has(cmd)) {
+        // Flattened admin commands (/drop, /give, /setup, …) + standalone admin
+        // commands with their own subcommands (/sets_admin, /event, …).
         await handleAdminCommand(interaction, cmd);
       }
     } catch (err) {
@@ -707,6 +621,25 @@ export async function startBot() {
     }
   });
 
+  // ── Command dispatch coverage guard ───────────────────────────────────────
+  // Fail fast at startup if any registered slash command has no handler route.
+  const routedInternalNames = new Set([
+    ...USER_HUB_COMMANDS,
+    ...ADMIN_HUB_COMMANDS,
+    // Explicitly routed in the interaction handler above.
+    "battle", "battleadmin", "market", "squad", "raid", "raidadmin",
+    "giveaways", "giveaway", "giveawayadmin",
+    "bob", "bob_roulette", "bob_duel", "bob_roast", "bob_talk", "bob_stats", "bob_leaderboard", "bob_admin",
+    "whisper", "adminsecret", "echo", "afk", "afksetup",
+  ]);
+  const unmapped = buildCommands()
+    .map(c => internalCommandName(c.name))
+    .filter(name => !routedInternalNames.has(name));
+  if (unmapped.length > 0) {
+    logger.error({ unmapped }, "Registered slash commands have no dispatch route");
+    throw new Error(`Unmapped registered slash commands: ${unmapped.join(", ")}`);
+  }
+
   // ── Messages: prefix commands → setup wizard → card wizard → catch ────────
   client.on(Events.MessageCreate, async (msg) => {
     if (msg.author.bot || !msg.guild) return;
@@ -719,6 +652,11 @@ export async function startBot() {
 
     // prefix commands (admin setup and config) — prefix is configurable per-guild
     const prefix = await getGuildPrefix(msg.guild.id);
+
+    // Giveaway message-requirement tracking (anti-spam, ignores commands/bots).
+    // Fire-and-forget — never consumes the message or blocks the pipeline below.
+    void handleGiveawayMessage(msg, prefix).catch(err => logger.debug({ err }, "Giveaway message hook error"));
+
     if (content.startsWith(prefix)) {
       await handlePrefixCommand(msg, prefix).catch(err => logger.error({ err }, "Prefix command error"));
       return;
@@ -736,7 +674,7 @@ export async function startBot() {
     // spawn-manager can do lag-fair winner selection (earliest sent wins,
     // not earliest processed).
     const result = await handleCatchAttempt(
-      msg.guild.id, msg.author.id, content, msg.createdTimestamp, msg.channel.id,
+      msg.guild.id, msg.author.id, content, msg.createdTimestamp, msg.channelId,
     ).catch(err => {
       logger.error({ err }, "Catch attempt error");
       return { matched: false, awaiting: false, timedOutUntil: undefined as Date | undefined };
