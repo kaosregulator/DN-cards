@@ -28,6 +28,7 @@ export async function handleEditImageCommand(interaction: ChatInputCommandIntera
   }
 
   let imageUrl: string | undefined;
+  let description: string | undefined;
 
   if (image) {
     imageUrl = await persistBotImage(image.url, image.contentType ?? undefined);
@@ -57,16 +58,20 @@ export async function handleEditImageCommand(interaction: ChatInputCommandIntera
     }
 
     imageUrl = await persistBotImage(item.image);
+    description = item.description || undefined;
   }
 
-  if (imageUrl) {
-    await updateCard(card.id, { imageUrl });
+  const patch: Parameters<typeof updateCard>[1] = {};
+  if (imageUrl) patch.imageUrl = imageUrl;
+  if (description) patch.description = description;
+  if (Object.keys(patch).length > 0) {
+    await updateCard(card.id, patch);
   }
 
   await renderPanel(
     interaction,
     card.id,
     false,
-    image ? `✅ Updated image for **${card.name}**` : `✅ Updated image for **${card.name}** from MTTV`,
+    image ? `✅ Updated image for **${card.name}**` : `✅ Updated image and description for **${card.name}** from MTTV`,
   );
 }
