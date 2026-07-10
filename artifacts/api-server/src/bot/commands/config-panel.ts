@@ -325,7 +325,7 @@ function buildConfigEmbed(s: GuildSettings, activeSetName: string | null, displa
   const hasActiveSet = !!activeSetName;
   const setField = hasActiveSet
     ? `🟢 **${activeSetName}** — only cards in this set will spawn`
-    : "⚠️ **None** — random spawns are disabled until a set is activated (use `/sethub`)";
+    : "⚠️ **None** — random spawns are disabled until a set is activated (use `/set_hub`)";
 
   // Warn if spawning is on but there's no active set — drops are silently no-ops
   const spawnWarning = spawnOn && !hasActiveSet
@@ -378,7 +378,7 @@ function buildConfigEmbed(s: GuildSettings, activeSetName: string | null, displa
         inline: true,
       },
     )
-    .setFooter({ text: "Ephemeral — only you see this. Use /sethub to change the active set." });
+    .setFooter({ text: "Ephemeral — only you see this. Use /set_hub to change the active set." });
 }
 
 function buildConfigComponents(s: GuildSettings, displayMap?: RarityDisplayMap | null) {

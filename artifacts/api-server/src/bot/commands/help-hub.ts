@@ -189,10 +189,10 @@ const PAGES: Record<HelpSection, PageFn> = {
         { name: "📦 Packs", value:
           "`/pack tier:<basic|premium|legendary>` — open a 5-card pack\n" +
           "🥉 Basic 250 💠 · 🥈 Premium 750 💠 · 🥇 Legendary 2,000 💠 (no commons)\n" +
-          "`/packstats` — your costs, weekly caps & cooldown\n" +
+          "`/pack_stats` — your costs, weekly caps & cooldown\n" +
           "Tiers share one cooldown but each has its **own weekly cap** (resets Mon 00:00 UTC)." },
         { name: "♻️ Trade-In", value:
-          "`/tradein rarity:<r>` — burn **5** of one rarity to roll **1** of the next tier up." },
+          "`/trade_in rarity:<r>` — burn **5** of one rarity to roll **1** of the next tier up." },
         { name: "🎁 Gifting", value:
           "`/gift user:@Member amount:<n>` — send shards to a friend." },
       );
@@ -206,7 +206,7 @@ const PAGES: Record<HelpSection, PageFn> = {
         { name: "🤝 Direct Trades", value:
           "`/trade user:@Member offer:<card> want:<card>` — propose a trade\n" +
           "Add `offer_shards:<n>` / `want_shards:<n>` to mix in 💠 (or trade pure shards)\n" +
-          "`/trades` — pending offers · `/tradehistory [user]`\n" +
+          "`/trades` — pending offers · `/trade_history [user]`\n" +
           "`/accept id:<n>` · `/decline id:<n>` (or use the buttons on the offer)\n" +
           "Deals over **3:1** in value show an orange ⚠️ fairness warning (informational)." },
         { name: "📌 Wishlist", value:
@@ -285,11 +285,11 @@ const PAGES: Record<HelpSection, PageFn> = {
       .addFields(
         { name: "🔐 Echo-Whisper", value:
           "`/whisper user:@Member` — send an encrypted message only that member can reveal\n" +
-          "`/adminsecret` — post an encrypted staff message only authorized roles can reveal\n" +
+          "`/admin_secret` — post an encrypted staff message only authorized roles can reveal\n" +
           "Recipients click **🔐 View** to decrypt — nobody else can read it." },
         { name: "💤 AFK Secretary", value:
           "`/afk [message] [duration]` — set an away status; the bot replies for you when you're pinged and clears it when you're back\n" +
-          "`/afksetup` — (admin) configure the AFK Secretary for the server" },
+          "`/afk_setup` — (admin) configure the AFK Secretary for the server" },
       );
   },
 
@@ -300,23 +300,23 @@ const PAGES: Record<HelpSection, PageFn> = {
       .addFields(
         { name: "🚀 First-Time Setup", value:
           "`/setup` — interactive setup wizard (spawn channel, interval, catch mode, roster)\n" +
-          "`/config` — visual config panel · `/adminhub` — admins, timeouts, channels, state\n" +
-          "`/dashboard` — DM yourself a website login link · `/adminhelp` — full admin reference" },
+          "`/config` — visual config panel · `/admin_hub` — admins, timeouts, channels, state\n" +
+          "`/dashboard` — DM yourself a website login link · `/admin_help` — full admin reference" },
         { name: "🎁 Drops, Gives & Events", value:
-          "`/drop [name]` · `/massdrop [amount]`\n" +
-          "`/give` / `takeback` (cards) · `/giveshards` / `takeshards`\n" +
+          "`/drop [name]` · `/mass_drop [amount]`\n" +
+          "`/give` / `takeback` (cards) · `/give_shards` / `takeshards`\n" +
           "`/event start card:<…> duration:<…> [multiplier]` · `/event list` · `/event stop id:<…>`" },
         { name: "🗂️ Cards & Sets", value:
-          "`/sethub` — clickable set manager · `/setadmin …` — typed set commands\n" +
+          "`/set_hub` — clickable set manager · `/sets_admin …` — typed set commands\n" +
           "`!addcard` / `!editcard <Name>` / `!import` — card creation & editing (prefix commands)\n" +
           "`/rarity …` — rarity names, colors, worth, burn, weights" },
         { name: "🎨 Appearance & Embeds", value:
           "`/embed set key:<embed> field:<field> value:<v>` — customize any embed (incl. **key:help** to rebrand this guide)\n" +
           "`/rarityname …` — rename/recolor the Mythic tier" },
         { name: "⚔️ Feature Admin", value:
-          "`/battleadmin` — battle system hub (setup, rules, rewards, seasons)\n" +
-          "`/raidadmin create|edit|list|enable|delete` — co-op raid bosses\n" +
-          "`/giveawayadmin create|edit|end|winners|list|reroll` — run giveaways\n" +
+          "`/battle_admin` — battle system hub (setup, rules, rewards, seasons)\n" +
+          "`/raid_admin create|edit|list|enable|delete` — co-op raid bosses\n" +
+          "`/giveaway_admin create|edit|end|winners|list|reroll` — run giveaways\n" +
           "`/echo …` — Echo-Whisper viewer roles, override & stats" },
         { name: "🌐 Website", value: `Public: **[${site}](${site})** · Admin dashboard: run \`/dashboard\` for your login link.` },
       );

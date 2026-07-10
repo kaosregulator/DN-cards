@@ -93,7 +93,7 @@ function nextMondayUtc(from: Date): Date {
   return d;
 }
 
-// Idempotent rollover for read paths (/packstats). Guarded by WHERE so concurrent
+// Idempotent rollover for read paths (/pack_stats). Guarded by WHERE so concurrent
 // callers can't undo each other's increments — only flips when the row's
 // reset date is still the stale value we observed.
 async function rolloverIfStale(
@@ -228,7 +228,7 @@ async function buildSummaryEmbed(
       `\n\n**Total worth:** 💠 ${totalWorth.toLocaleString()}\n` +
       `Spent: 💠 ${spent.toLocaleString()} · Balance: 💠 ${balanceAfter.toLocaleString()}`,
     )
-    .setFooter({ text: "Cards added to your collection — use /collection to view. /packstats for your weekly cap." });
+    .setFooter({ text: "Cards added to your collection — use /collection to view. /pack_stats for your weekly cap." });
   const defaultImg = toAbsoluteImageUrl(last.imageUrl);
   if (defaultImg) embed.setThumbnail(defaultImg);
   await applyEmbedOverride(embed, {
@@ -495,7 +495,7 @@ export async function handlePack(interaction: ChatInputCommandInteraction): Prom
   }
 }
 
-// ── /packstats — show user's pack usage ──────────────────────────────────────
+// ── /pack_stats — show user's pack usage ──────────────────────────────────────
 export async function handlePackStats(interaction: ChatInputCommandInteraction): Promise<void> {
   if (!interaction.guild) return;
   const guildId = interaction.guild.id;

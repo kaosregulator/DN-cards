@@ -19,7 +19,7 @@ import { buildNotesViewer } from "./interactions.js";
 //
 // Two commands:
 //   /afk        (user)  — set an away state, read notes left for you
-//   /afksetup   (admin) — feature toggles + the access whitelist
+//   /afk_setup   (admin) — feature toggles + the access whitelist
 //
 // The multi-step /afk set dashboard (method → optional duration → preview →
 // confirm) and the notes viewer are continued in interactions.ts; this file
@@ -47,7 +47,7 @@ export function buildAfkCommandJson() {
     .toJSON();
 }
 
-/** `/afksetup` — admin-only (Manage Server). */
+/** `/afk_setup` — admin-only (Manage Server). */
 export function buildAfkSetupCommandJson() {
   return new SlashCommandBuilder()
     .setName("afksetup")
@@ -99,7 +99,7 @@ function accessDeniedEmbed(): EmbedBuilder {
       "account isn't on the access list for this server yet.\n\n" +
       "**How to request access**\n" +
       "› Ask a server administrator or staff member to run\n" +
-      " `/afksetup whitelist add` and mention you.\n" +
+      " `/afk_setup whitelist add` and mention you.\n" +
       "› Access can be granted to you individually or to a role you already hold.",
     )
     .setFooter({ text: AFK_BRAND.FOOTER })
@@ -186,7 +186,7 @@ async function handleAfkMessages(interaction: ChatInputCommandInteraction): Prom
   await interaction.editReply(view);
 }
 
-// ── /afksetup dispatch ───────────────────────────────────────────────────────
+// ── /afk_setup dispatch ───────────────────────────────────────────────────────
 
 export async function handleAfkSetupCommand(interaction: ChatInputCommandInteraction): Promise<void> {
   if (!interaction.guild) return;

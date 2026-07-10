@@ -111,7 +111,7 @@ async function announceWinners(g: Giveaway, winners: GiveawayWinner[], client: C
 
 // ── Reroll ───────────────────────────────────────────────────────────────────
 // Replace a vacated winner slot with a fresh draw, excluding everyone already
-// picked. Used by /giveawayadmin reroll and by the auto-expiry sweeper.
+// picked. Used by /giveaway_admin reroll and by the auto-expiry sweeper.
 export async function rerollWinner(
   g: Giveaway, oldWinner: GiveawayWinner, client: Client, reason: "expired" | "manual",
 ): Promise<GiveawayWinner | null> {

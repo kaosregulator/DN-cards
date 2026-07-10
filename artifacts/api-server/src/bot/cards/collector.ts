@@ -13,13 +13,13 @@ export async function handleCollectorToggle(interaction: ChatInputCommandInterac
   const guildId = interaction.guild.id;
   const settings = await getOrCreateGuildSettings(guildId);
   if (!settings.collectorRoleId) {
-    await interaction.editReply("🔕 This server hasn't set up a collector ping role yet. An admin can create one with `/collectorrole role:@Collectors`.");
+    await interaction.editReply("🔕 This server hasn't set up a collector ping role yet. An admin can create one with `/collector_role role:@Collectors`.");
     return;
   }
   const role = interaction.guild.roles.cache.get(settings.collectorRoleId)
     ?? await interaction.guild.roles.fetch(settings.collectorRoleId).catch(() => null);
   if (!role) {
-    await interaction.editReply("⚠️ The configured collector role no longer exists. Ask an admin to set a new one with `/collectorrole`.");
+    await interaction.editReply("⚠️ The configured collector role no longer exists. Ask an admin to set a new one with `/collector_role`.");
     return;
   }
 
@@ -43,7 +43,7 @@ export async function handleCollectorToggle(interaction: ChatInputCommandInterac
   }
 }
 
-// ── /collectorrole — admin sets/clears the ping role ───────────────────
+// ── /collector_role — admin sets/clears the ping role ───────────────────
 export async function handleSetCollectorRole(interaction: ChatInputCommandInteraction): Promise<void> {
   if (!interaction.guild) return;
   const guildId = interaction.guild.id;

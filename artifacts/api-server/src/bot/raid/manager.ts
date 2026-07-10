@@ -71,7 +71,7 @@ export async function startRaid(interaction: ChatInputCommandInteraction, bossNa
   const guildId = guild.id;
   const settings = await getBattleSettings(guildId);
   if (!settings.enabled || !settings.setupComplete) {
-    await interaction.reply({ content: "🛠️ The battle system must be set up first (`/battleadmin` → Setup Wizard).", ...EPHEMERAL });
+    await interaction.reply({ content: "🛠️ The battle system must be set up first (`/battle_admin` → Setup Wizard).", ...EPHEMERAL });
     return;
   }
   if (userSession.has(uKey(guildId, interaction.user.id))) {
@@ -80,7 +80,7 @@ export async function startRaid(interaction: ChatInputCommandInteraction, bossNa
   }
   const boss = await getBossByName(guildId, bossName);
   if (!boss || !boss.enabled) {
-    await interaction.reply({ content: `❌ No enabled boss called "**${bossName}**". Ask an admin to create one with \`/raidadmin create\`, or see \`/raid bosses\`.`, ...EPHEMERAL });
+    await interaction.reply({ content: `❌ No enabled boss called "**${bossName}**". Ask an admin to create one with \`/raid_admin create\`, or see \`/raid bosses\`.`, ...EPHEMERAL });
     return;
   }
 

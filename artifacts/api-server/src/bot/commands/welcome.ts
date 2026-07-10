@@ -105,7 +105,7 @@ export async function handleWelcome(interaction: ChatInputCommandInteraction): P
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// /welcomeadmin — ephemeral, admin-only onboarding guide.
+// /welcome_admin — ephemeral, admin-only onboarding guide.
 // Three embeds: Quick-Start checklist · Card Editing guide · Command cheat-sheet.
 // ─────────────────────────────────────────────────────────────────────────────
 export async function handleWelcomeAdmin(interaction: ChatInputCommandInteraction): Promise<void> {
@@ -138,8 +138,8 @@ export async function handleWelcomeAdmin(interaction: ChatInputCommandInteractio
       "rarity weights, and the default starter card roster. One flow, everything configured.\n\n" +
 
       "**✅ Step 2 — Activate a Card Set**\n" +
-      "Random spawns only fire from the **active set**. Run `/sethub` (clickable panel) " +
-      "or `/setadmin active set:<name>`. No active set = no random spawns (admin `/drop` always works).\n\n" +
+      "Random spawns only fire from the **active set**. Run `/set_hub` (clickable panel) " +
+      "or `/sets_admin active set:<name>`. No active set = no random spawns (admin `/drop` always works).\n\n" +
 
       "**✅ Step 3 — Add & Edit Cards**\n" +
       `• **Website** → [${SITE_ADMIN}](${SITE_ADMIN}) — display name, image, description, featured/hidden, sort order.\n` +
@@ -179,8 +179,8 @@ export async function handleWelcomeAdmin(interaction: ChatInputCommandInteractio
       "Images must be **URLs** (Imgur, Discord CDN). No file uploads in prefix commands.\n\n" +
 
       "**🗂️ Sets (spawn rotation)**\n" +
-      "`/sethub` — clickable panel (create, activate, export, toggle showcase).\n" +
-      "`/setadmin` — typed subcommands for everything the panel does, plus bulk operations.\n" +
+      "`/set_hub` — clickable panel (create, activate, export, toggle showcase).\n" +
+      "`/sets_admin` — typed subcommands for everything the panel does, plus bulk operations.\n" +
       "Export any set to JSON → re-import with `!loadset` + file attachment. Full roundtrip.",
     )
     .setImage(DIVIDER_GIF);
@@ -194,9 +194,9 @@ export async function handleWelcomeAdmin(interaction: ChatInputCommandInteractio
         name: "🎁 Drops & Giveaways",
         value:
           "`/drop [name]` — single drop (bypasses active-set check)\n" +
-          "`/massdrop [amount]` — 10–25 cards in a batch (event use)\n" +
-          "`/give user:@ name:<card>` · `/takeback user:@ name:<card>`\n" +
-          "`/giveshards user:@ amount:<n>` · `/takeshards user:@ amount:<n>`",
+          "`/mass_drop [amount]` — 10–25 cards in a batch (event use)\n" +
+          "`/give user:@ name:<card>` · `/take_back user:@ name:<card>`\n" +
+          "`/give_shards user:@ amount:<n>` · `/take_shards user:@ amount:<n>`",
         inline: false,
       },
       {
@@ -210,16 +210,16 @@ export async function handleWelcomeAdmin(interaction: ChatInputCommandInteractio
         name: "⚙️ Config & Channels",
         value:
           "`/setup` — first-time wizard · `/config` — visual config panel\n" +
-          "`/adminhub` — manage admins, timeouts, channels & server state\n" +
-          "`/adminhelp` — full admin reference",
+          "`/admin_hub` — manage admins, timeouts, channels & server state\n" +
+          "`/admin_help` — full admin reference",
         inline: false,
       },
       {
         name: "🗂️ Sets",
         value:
-          "`/sethub` — **clickable panel** (recommended)\n" +
-          "`/setadmin active set:<…>` · `/setadmin deactivate`\n" +
-          "`/setadmin add set:<…> card:<…>` · `/setadmin exportall` — full backup",
+          "`/set_hub` — **clickable panel** (recommended)\n" +
+          "`/sets_admin active set:<…>` · `/sets_admin deactivate`\n" +
+          "`/sets_admin add set:<…> card:<…>` · `/sets_admin exportall` — full backup",
         inline: false,
       },
       {
@@ -239,7 +239,7 @@ export async function handleWelcomeAdmin(interaction: ChatInputCommandInteractio
         inline: false,
       },
     )
-    .setFooter({ text: "Player commands → /help  ·  Full admin reference → /adminhelp" });
+    .setFooter({ text: "Player commands → /help  ·  Full admin reference → /admin_help" });
 
   await interaction.editReply({ embeds: [quickstart, cardEditing, cheatsheet] });
 }

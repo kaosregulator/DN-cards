@@ -3,7 +3,7 @@
 // Flow:
 //   /whisper → modal → encrypted transmission posted publicly with a "View
 //   Whisper" button (only sender / recipient / override-admin can reveal).
-//   /adminsecret → modal → encrypted transmission with a "View Secret" button
+//   /admin_secret → modal → encrypted transmission with a "View Secret" button
 //   (only authorized viewer roles / override-admin can reveal).
 
 import {

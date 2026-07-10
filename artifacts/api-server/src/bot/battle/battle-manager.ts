@@ -187,7 +187,7 @@ export async function startChallenge(
     return;
   }
   if (!settings.setupComplete) {
-    await interaction.reply({ content: "🛠️ Battles aren't set up yet. An admin needs to run **/battleadmin** → **Setup Wizard** first.", flags: MessageFlags.Ephemeral });
+    await interaction.reply({ content: "🛠️ Battles aren't set up yet. An admin needs to run **/battle_admin** → **Setup Wizard** first.", flags: MessageFlags.Ephemeral });
     return;
   }
   if (settings.battleChannelId && settings.battleChannelId !== interaction.channelId) {

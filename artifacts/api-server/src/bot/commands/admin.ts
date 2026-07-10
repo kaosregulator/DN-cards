@@ -14,7 +14,7 @@ import { handleEventCommand } from "./event.js";
 import { handleDashboardCommand } from "./dashboard.js";
 import { EmbedBuilder } from "discord.js";
 
-// ── /adminhelp — admin/setup command reference ───────────────────────────────
+// ── /admin_help — admin/setup command reference ───────────────────────────────
 async function handleAdminHelp(interaction: ChatInputCommandInteraction): Promise<void> {
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
   if (!(await checkAdmin(interaction))) {
@@ -66,7 +66,7 @@ export async function handleAdminCommand(
     await handleSetAdminHubCommand(interaction);
     return;
   }
-  // /deletecard — permanently removes a card from the global roster.
+  // /delete_card — permanently removes a card from the global roster.
   if (cmd === "deletecard") {
     await interaction.deferReply({ flags: MessageFlags.Ephemeral });
     if (!(await checkAdmin(interaction))) {
@@ -88,7 +88,7 @@ export async function handleAdminCommand(
     await interaction.editReply(`🗑️ **${card.name}** (${card.rarity}) has been permanently deleted.`);
     return;
   }
-  // /collectorrole — set/clear the opt-in spawn ping role.
+  // /collector_role — set/clear the opt-in spawn ping role.
   if (cmd === "collectorrole") {
     await interaction.deferReply({ flags: MessageFlags.Ephemeral });
     if (!(await checkAdmin(interaction))) { await interaction.editReply("❌ Admins only."); return; }
@@ -96,14 +96,14 @@ export async function handleAdminCommand(
     await handleSetCollectorRole(interaction);
     return;
   }
-  // /setadmin — subcommand tree; defer first, then dispatch.
+  // /sets_admin — subcommand tree; defer first, then dispatch.
   if (cmd === "setadmin") {
     await interaction.deferReply({ flags: MessageFlags.Ephemeral });
     const { handleSetAdminCommand } = await import("./sets-admin.js");
     await handleSetAdminCommand(interaction);
     return;
   }
-  // /addcard — same defer-first pattern as /editcard; home guild only.
+  // /add_card — same defer-first pattern as /edit_card; home guild only.
   if (cmd === "addcard") {
     await interaction.deferReply({ flags: MessageFlags.Ephemeral });
     if (!(await checkAdmin(interaction))) {
@@ -119,7 +119,7 @@ export async function handleAdminCommand(
     return;
   }
 
-  // /editcard — defer first so checkAdmin()'s isAdmin() DB call can't blow
+  // /edit_card — defer first so checkAdmin()'s isAdmin() DB call can't blow
   // Discord's 3s window. handleEditCardCommand receives an already-deferred
   // interaction and uses editReply for its panel.
   if (cmd === "editcard") {
@@ -128,7 +128,7 @@ export async function handleAdminCommand(
       await interaction.editReply("❌ Admins only.");
       return;
     }
-    // /editcard mutates the globally shared cards table — home guild only.
+    // /edit_card mutates the globally shared cards table — home guild only.
     if (!isHomeGuild(interaction.guild.id)) {
       await interaction.editReply(GLOBAL_ONLY_MSG);
       return;
@@ -177,14 +177,14 @@ export async function handleAdminCommand(
     return;
   }
 
-  // ── /sethub (clickable set manager panel) ────────────────────────────────
+  // ── /set_hub (clickable set manager panel) ────────────────────────────────
   if (cmd === "sethub") {
     const { handleSetsHubCommand } = await import("./sets-panel.js");
     await handleSetsHubCommand(interaction);
     return;
   }
 
-  // ── /welcomeadmin (admin onboarding guide — ephemeral) ────────────────────
+  // ── /welcome_admin (admin onboarding guide — ephemeral) ────────────────────
   if (cmd === "welcomeadmin") {
     const { handleWelcomeAdmin } = await import("./welcome.js");
     await handleWelcomeAdmin(interaction);
@@ -230,7 +230,7 @@ export async function handleAdminCommand(
     return;
   }
 
-  // ── /massdrop ─────────────────────────────────────────────────────────────
+  // ── /mass_drop ─────────────────────────────────────────────────────────────
   // "Admin abuse" — a chaotic event batch tilted heavily toward low rarities
   // with guaranteed mid-tier and one legendary banger. Fires sequentially with
   // a small gap so Discord doesn't rate-limit and so the channel reads as a
@@ -244,7 +244,7 @@ export async function handleAdminCommand(
       await interaction.editReply(`❌ No spawn channel set. Run \`${pfx}setchannel #channel\` first.`);
       return;
     }
-    // /massdrop respects the guild's active set so chaotic batches don't
+    // /mass_drop respects the guild's active set so chaotic batches don't
     // dump cards that aren't part of the current rotation. If a specific set
     // is named we use that instead. If no active set we fall back to global.
     const { getActiveSetSpawnPoolCached, getSetByName, getCardsInSet } = await import("../db.js");
@@ -341,7 +341,7 @@ export async function handleAdminCommand(
     return;
   }
 
-  // ── /giveshards ───────────────────────────────────────────────────────────
+  // ── /give_shards ───────────────────────────────────────────────────────────
   if (cmd === "giveshards") {
     const target = opts.getUser("user", true);
     const amount = opts.getInteger("amount", true);
@@ -350,7 +350,7 @@ export async function handleAdminCommand(
     return;
   }
 
-  // ── /takeback ─────────────────────────────────────────────────────────────
+  // ── /take_back ─────────────────────────────────────────────────────────────
   if (cmd === "takeback") {
     const target = opts.getUser("user", true);
     const cardName = opts.getString("name", true);
@@ -383,7 +383,7 @@ export async function handleAdminCommand(
     return;
   }
 
-  // ── /takeshards ───────────────────────────────────────────────────────────
+  // ── /take_shards ───────────────────────────────────────────────────────────
   if (cmd === "takeshards") {
     const target = opts.getUser("user", true);
     const amount = opts.getInteger("amount", true);

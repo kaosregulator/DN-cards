@@ -222,7 +222,7 @@ function buildLegacyCommands() {
       .addSubcommand(sc => sc.setName("exportcards").setDescription("Export every card as a flat JSON (no set info)")
         .addBooleanOption(o => o.setName("includearchived").setDescription("Include archived cards (default false)")))
       .addSubcommand(sc => sc.setName("load").setDescription("Import cards + set from a JSON file attachment")
-        .addAttachmentOption(o => o.setName("file").setDescription("JSON file from /setadmin export or exportall").setRequired(true))
+        .addAttachmentOption(o => o.setName("file").setDescription("JSON file from /sets_admin export or exportall").setRequired(true))
         .addStringOption(o => o.setName("name").setDescription("Override set name (single-set files only)")))
       .addSubcommand(sc => sc.setName("unload").setDescription("Unload (delete members of) a set — cards kept")
         .addStringOption(o => o.setName("name").setDescription("Set name").setRequired(true).setAutocomplete(true)))
@@ -415,7 +415,7 @@ function buildLegacyCommands() {
         .addUserOption(o => o.setName("user").setDescription("Whose achievements to view (default: you)")))
       .addSubcommand(sc => sc.setName("daily").setDescription("View today's battle challenges and progress"))),
 
-    // ── /battleadmin (admin, Battle System configuration) ─────────────────────
+    // ── /battle_admin (admin, Battle System configuration) ─────────────────────
     adminCmd("battleadmin", "(Admin) Battle system hub — setup wizard, rules, rewards, cards, seasons", s => s),
 
     // ── /squad (user, Squads / guilds) ────────────────────────────────────────
@@ -438,7 +438,7 @@ function buildLegacyCommands() {
         .addStringOption(o => o.setName("boss").setDescription("Which boss to raid").setRequired(true).setAutocomplete(true)))
       .addSubcommand(sc => sc.setName("bosses").setDescription("List the raid bosses available on this server"))),
 
-    // ── /raidadmin (admin, Boss management) ───────────────────────────────────
+    // ── /raid_admin (admin, Boss management) ───────────────────────────────────
     adminCmd("raidadmin", "(Admin) Create and tune co-op raid bosses", s => s
       .addSubcommand(sc => sc.setName("create").setDescription("Create a new raid boss")
         .addStringOption(o => o.setName("name").setDescription("Boss name").setRequired(true))
@@ -486,7 +486,7 @@ function buildLegacyCommands() {
       .addSubcommand(sc => sc.setName("progress").setDescription("Your per-requirement progress and entries")
         .addIntegerOption(o => o.setName("id").setDescription("A specific giveaway id (defaults to all active)")))),
 
-    // ── /giveawayadmin (admin, Giveaway management) ───────────────────────────
+    // ── /giveaway_admin (admin, Giveaway management) ───────────────────────────
     adminCmd("giveawayadmin", "(Admin) Create and manage DN Cards giveaways", s => s
       .addSubcommand(sc => sc.setName("create").setDescription("Create and launch a giveaway")
         .addStringOption(o => o.setName("title").setDescription("Giveaway title").setRequired(true))
@@ -565,7 +565,7 @@ function buildLegacyCommands() {
     cmd("adminsecret", "(User) Post an encrypted staff message only authorized roles can reveal", s => s),
 
     adminCmd("echo", "(Admin) Echo-Whisper hub — viewer roles, admin override, stats, config", s => s
-      .addSubcommand(sc => sc.setName("role").setDescription("Manage roles allowed to reveal /adminsecret messages")
+      .addSubcommand(sc => sc.setName("role").setDescription("Manage roles allowed to reveal /admin_secret messages")
         .addStringOption(o => o.setName("action").setDescription("Add, remove, or list").setRequired(true)
           .addChoices({ name: "add", value: "add" }, { name: "remove", value: "remove" }, { name: "list", value: "list" }))
         .addRoleOption(o => o.setName("role").setDescription("Role to add or remove")))
@@ -584,10 +584,13 @@ function buildLegacyCommands() {
 type CommandJson = ReturnType<SlashCommandBuilder["toJSON"]>;
 
 // Commands are FLAT top-level slash commands — e.g. `/burn`, `/daily`, `/drop`
-// — rather than being nested under `/…` / `/…` hubs. These two sets
+// — rather than being nested under `/cards …` / `/admin …` hubs. These two sets
 // name the flattened commands so the interaction dispatcher (index.ts) knows
 // whether each one is handled by handleUserCommand or handleAdminCommand. The
 // category grouping players see instead lives in the interactive `/help` hub.
+//
+// NOTE: these sets use the INTERNAL handler names (the string each handler
+// switches on). The name a user actually sees can differ — see COMMAND_RENAMES.
 export const USER_HUB_COMMANDS = new Set([
   "collection", "rank", "info", "list", "catalog", "top", "burn", "shards",
   "trade", "gift", "trades", "tradehistory", "accept", "decline", "welcome",
@@ -601,15 +604,64 @@ export const ADMIN_HUB_COMMANDS = new Set([
   "takeback", "takeshards", "addcard", "editcard", "dashboard", "collectorrole",
 ]);
 
+// ── Clean public command names ───────────────────────────────────────────────
+// Maps a command's INTERNAL name (what handlers switch on) to the clean,
+// underscore-separated name shown to users. Only the REGISTERED name changes;
+// every handler, dispatch set, and button customId keeps its internal name.
+// index.ts translates an incoming interaction name back to internal via
+// internalCommandName() before routing. Rule: split concatenated words with `_`
+// (e.g. packstats → pack_stats, battleadmin → battle_admin), which also keeps
+// the distinguishing suffix that separates admin variants from user commands
+// (e.g. /battle vs /battle_admin).
+export const COMMAND_RENAMES: Record<string, string> = {
+  packstats: "pack_stats",
+  tradehistory: "trade_history",
+  tradein: "trade_in",
+  adminsecret: "admin_secret",
+  afksetup: "afk_setup",
+  collectorrole: "collector_role",
+  addcard: "add_card",
+  editcard: "edit_card",
+  deletecard: "delete_card",
+  giveshards: "give_shards",
+  takeshards: "take_shards",
+  takeback: "take_back",
+  massdrop: "mass_drop",
+  adminhub: "admin_hub",
+  adminhelp: "admin_help",
+  welcomeadmin: "welcome_admin",
+  battleadmin: "battle_admin",
+  raidadmin: "raid_admin",
+  giveawayadmin: "giveaway_admin",
+  sethub: "set_hub",
+  setadmin: "sets_admin",
+};
+
+const INTERNAL_BY_CLEAN: Record<string, string> =
+  Object.fromEntries(Object.entries(COMMAND_RENAMES).map(([internal, clean]) => [clean, internal]));
+
+// Public (registered) name for an internal command name.
+export function publicCommandName(internal: string): string {
+  return COMMAND_RENAMES[internal] ?? internal;
+}
+
+// Internal handler name for a registered/public command name (inverse).
+export function internalCommandName(clean: string): string {
+  return INTERNAL_BY_CLEAN[clean] ?? clean;
+}
+
 export function buildCommands() {
-  // Every command is registered standalone — no /or /wrapper.
+  // Every command is registered standalone — no /cards or /admin wrapper — and
+  // renamed to its clean public form.
   const legacy = buildLegacyCommands() as CommandJson[];
-  return [
+  const all = [
     ...legacy,
     // ── AFK Secretary & Whitelist Access System (standalone top-level cmds) ──
     buildAfkCommandJson() as CommandJson,
     buildAfkSetupCommandJson() as CommandJson,
   ];
+  for (const c of all) c.name = publicCommandName(c.name);
+  return all;
 }
 
 // Standalone commands that carry their OWN subcommands (handled inside their

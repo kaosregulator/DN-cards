@@ -398,7 +398,7 @@ export async function handleListTrades(interaction: ChatInputCommandInteraction)
   await interaction.editReply({ embeds: [embed] });
 }
 
-// ── /tradehistory ─────────────────────────────────────────────────────────────
+// ── /trade_history ─────────────────────────────────────────────────────────────
 // Recent resolved (accepted/declined/cancelled/expired) trades involving the
 // target user. Joins the cards table twice for offered/requested names.
 export async function handleTradeHistory(interaction: ChatInputCommandInteraction): Promise<void> {

@@ -1,4 +1,4 @@
-// /giveawayadmin — admin creation & management for the Giveaway System.
+// /giveaway_admin — admin creation & management for the Giveaway System.
 //
 //   create   — build and launch a giveaway (compact prize/requirement syntax)
 //   edit     — change any field of an existing giveaway
@@ -36,7 +36,7 @@ function isAdmin(member: GuildMember | null): boolean {
 export async function handleGiveawayAdminCommand(interaction: ChatInputCommandInteraction): Promise<void> {
   if (!interaction.guild) { await interaction.reply({ content: "❌ Server only.", ...EPHEMERAL }); return; }
   if (!isAdmin(interaction.member as GuildMember | null)) {
-    await interaction.reply({ content: "❌ You need the **Administrator** permission for `/giveawayadmin`.", ...EPHEMERAL });
+    await interaction.reply({ content: "❌ You need the **Administrator** permission for `/giveaway_admin`.", ...EPHEMERAL });
     return;
   }
   const sub = interaction.options.getSubcommand();
@@ -172,13 +172,13 @@ async function doWinners(interaction: ChatInputCommandInteraction): Promise<void
     .setTitle(`🏆 Winners — ${g.title} (#${g.id})`)
     .setColor(DIFFICULTY_META[g.difficulty].color)
     .setDescription(lines.join("\n"))
-    .setFooter({ text: "Use /giveawayadmin reroll id:<id> user:<@winner> to replace a winner." })] });
+    .setFooter({ text: "Use /giveaway_admin reroll id:<id> user:<@winner> to replace a winner." })] });
 }
 
 // ── list ─────────────────────────────────────────────────────────────────────
 async function doList(interaction: ChatInputCommandInteraction): Promise<void> {
   const all = await listGiveaways(interaction.guild!.id);
-  if (all.length === 0) { await interaction.editReply("No giveaways created on this server yet. Make one with `/giveawayadmin create`."); return; }
+  if (all.length === 0) { await interaction.editReply("No giveaways created on this server yet. Make one with `/giveaway_admin create`."); return; }
   const active = all.filter(g => g.status === "active");
   const past = all.filter(g => g.status !== "active").slice(0, 10);
   const fmt = async (g: Giveaway) => {
@@ -217,7 +217,7 @@ async function requireGiveaway(interaction: ChatInputCommandInteraction): Promis
   const id = interaction.options.getInteger("id", true);
   const g = await getGiveaway(id);
   if (!g || g.guildId !== interaction.guild!.id) {
-    await interaction.editReply(`No giveaway \`#${id}\` on this server. See \`/giveawayadmin list\`.`);
+    await interaction.editReply(`No giveaway \`#${id}\` on this server. See \`/giveaway_admin list\`.`);
     return null;
   }
   return g;

@@ -41,7 +41,7 @@ import { handleWhisperCommand, handleAdminSecretCommand, handleEchoCommand } fro
 import { isSecretModal, handleSecretModal, isSecretButton, handleSecretButton } from "./secret/interactions.js";
 import {
   buildCommands, USER_COMMAND_NAMES, ADMIN_COMMAND_NAMES,
-  USER_HUB_COMMANDS, ADMIN_HUB_COMMANDS,
+  USER_HUB_COMMANDS, ADMIN_HUB_COMMANDS, internalCommandName,
 } from "./commands/register.js";
 import { MessageFlags, EmbedBuilder } from "discord.js";
 import { createSetupLink } from "../lib/setup-link.js";
@@ -60,7 +60,7 @@ export async function startBot() {
   if (!HOME_GUILD_ID) {
     logger.warn(
       "HOME_GUILD_ID is not set. Commands that mutate globally shared data " +
-      "(addcard, editcard, removecard, import, /setadmin create|rename|delete|add|remove|…) " +
+      "(addcard, editcard, removecard, import, /sets_admin create|rename|delete|add|remove|…) " +
       "will be blocked for ALL guilds until HOME_GUILD_ID is configured. " +
       "Set it to your home server's Discord guild ID in the environment variables.",
     );
@@ -132,7 +132,7 @@ export async function startBot() {
       "DN Cards bot ready",
     );
     // Default 27-card roster is NOT auto-seeded — admins opt-in from `!setup`
-    // ("Load Defaults" button) or `/setadmin load file:<.json>`. Keeps fresh
+    // ("Load Defaults" button) or `/sets_admin load file:<.json>`. Keeps fresh
     // servers free to load only their own custom roster.
     await initAllGuilds(client);
     // Boot-time backfill is no longer needed; sets are managed via the
@@ -525,7 +525,10 @@ export async function startBot() {
 
       // ── Slash commands ─────────────────────────────────────────────────────
       if (!interaction.isChatInputCommand()) return;
-      const cmd = interaction.commandName;
+      // Translate the clean, registered command name (e.g. "battle_admin") back
+      // to its internal handler name (e.g. "battleadmin") so every branch and
+      // dispatch set below keeps working unchanged.
+      const cmd = internalCommandName(interaction.commandName);
 
       if (cmd === "battle") {
         await handleBattleCommand(interaction, interaction.options.getSubcommand(true));
@@ -561,7 +564,7 @@ export async function startBot() {
         await handleUserCommand(interaction, cmd);
       } else if (ADMIN_HUB_COMMANDS.has(cmd) || ADMIN_COMMAND_NAMES.has(cmd)) {
         // Flattened admin commands (/drop, /give, /setup, …) + standalone admin
-        // commands with their own subcommands (/setadmin, /event, …).
+        // commands with their own subcommands (/sets_admin, /event, …).
         await handleAdminCommand(interaction, cmd);
       }
     } catch (err) {

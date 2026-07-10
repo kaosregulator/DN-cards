@@ -197,7 +197,7 @@ export const DEFAULTS_SET_NAME = "defaults";
 // Seed defaults ONLY on a completely empty database — never re-sync or re-add
 // after unload, so admin removals are permanent. Membership rows are added to
 // the "defaults" set (created if missing) so the cards are immediately
-// activatable via `/setadmin active set:defaults`.
+// activatable via `/sets_admin active set:defaults`.
 // Force-add default cards (used by /loadset defaults). Skips names already in DB.
 // Each newly-added card is also joined to the "defaults" set.
 export async function loadDefaultCards(): Promise<{ added: number; skipped: number }> {
@@ -268,7 +268,7 @@ export async function deleteSetByName(setName: string): Promise<{ removed: numbe
 // ── Card Sets v2 (first-class sets + memberships, Phase 1-3) ─────────────────
 // Replaces the ad-hoc cards.set_name aggregation with a proper sets table +
 // junction table. Guilds pick an active set via
-// /setadmin active — only its cards spawn (Option B: no active set = no
+// /sets_admin active — only its cards spawn (Option B: no active set = no
 // random spawns).
 
 function slugifySetName(raw: string): string {
@@ -435,7 +435,7 @@ export async function getCardsInSet(setId: number): Promise<Card[]> {
 }
 
 /**
- * Cards that aren't a member of ANY set. Used by `/setadmin exportall` so a
+ * Cards that aren't a member of ANY set. Used by `/sets_admin exportall` so a
  * single export gives admins a full backup even if some cards were never
  * assigned to a set (common on Server 2 where the legacy roster pre-dates
  * the sets system).
@@ -866,7 +866,7 @@ export async function catchCard(
 /**
  * Restore a card copy to a user's collection WITHOUT touching the global
  * `totalMinted` counter. Use this when refunding a card that was previously
- * removed by `removeCardFromUser` (e.g. a failed /tradein) — the card was
+ * removed by `removeCardFromUser` (e.g. a failed /trade_in) — the card was
  * never destroyed from the world's perspective, so the mint count shouldn't
  * move. For genuine new mints (drops, packs, admin gives) use `catchCard`.
  */

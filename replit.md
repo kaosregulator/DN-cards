@@ -25,7 +25,7 @@ DN Cards is DarkNight's collectible military trading card game for the Roblox + 
 - DB schema: `lib/db/src/schema/cards.ts` (cards, collections, guilds, packs, daily, achievements, embeds, rarity profiles, custom rarities, dashboard users, card display overrides)
 - News schema: `lib/db/src/schema/news.ts`
 - Suggestions schema: `lib/db/src/schema/suggestions.ts`
-- Sets admin commands: `artifacts/api-server/src/bot/commands/sets-admin.ts` (`/setadmin`)
+- Sets admin commands: `artifacts/api-server/src/bot/commands/sets-admin.ts` (`/sets_admin`)
 - Sets user commands: `artifacts/api-server/src/bot/commands/sets-user.ts` (`/sets`)
 - Website-only admin route: `artifacts/api-server/src/routes/admin.ts` (presentation-only — `card_display_overrides` upserts)
 - Public roster route (merges overrides): `artifacts/api-server/src/routes/dashboard.ts` `GET /cards`
@@ -48,8 +48,8 @@ DN Cards is DarkNight's collectible military trading card game for the Roblox + 
 - DB helpers: `artifacts/api-server/src/bot/db.ts`
 - Slash command registration: `artifacts/api-server/src/bot/commands/register.ts`
 - Giveaway System schema: `lib/db/src/schema/giveaways.ts` (giveaways, giveaway_entries, giveaway_winners)
-- Giveaway System module: `artifacts/api-server/src/bot/giveaway/` (`db.ts` CRUD, `engine.ts` progress+winner draw, `embeds.ts` UI, `manager.ts` message/claim, `command.ts` user, `admin.ts` `/giveawayadmin`, `sweeper.ts` auto-end/reroll, `message-hook.ts` message tracking, `prizes.ts` payout)
-- Unified help hub: `artifacts/api-server/src/bot/commands/help-hub.ts` (interactive `/help` — topic dropdown, live-edited pages, animated banner; `/adminhelp` opens it on the Admin page). Banner/palette: `artifacts/api-server/src/bot/help-banners.ts`. Rebrandable via `/embed … key:help`.
+- Giveaway System module: `artifacts/api-server/src/bot/giveaway/` (`db.ts` CRUD, `engine.ts` progress+winner draw, `embeds.ts` UI, `manager.ts` message/claim, `command.ts` user, `admin.ts` `/giveaway_admin`, `sweeper.ts` auto-end/reroll, `message-hook.ts` message tracking, `prizes.ts` payout)
+- Unified help hub: `artifacts/api-server/src/bot/commands/help-hub.ts` (interactive `/help` — topic dropdown, live-edited pages, animated banner; `/admin_help` opens it on the Admin page). Banner/palette: `artifacts/api-server/src/bot/help-banners.ts`. Rebrandable via `/embed … key:help`.
 
 ### Website vs Discord responsibilities
 
@@ -134,9 +134,9 @@ those tables now happen through Discord slash commands — see
 - **Replacement, not layering:** a card assigned to a custom tier uses the **tier's** worth/burn/dropWeight — the Stage-1 rarity profile is ignored for that card. One source of truth per card per guild.
 - Storage: `custom_rarities` (`(guildId, slug)` unique) and `card_rarity_overrides` (`(guildId, cardId)` unique). Built-in `cards.rarity` is preserved untouched so removing a tier instantly reverts assigned cards.
 - API: `GET/PUT/DELETE /api/custom-rarities/:guildId[/:slug]` and `GET/PUT/DELETE /api/card-rarity-overrides/:guildId[/:cardId]`, behind `requireDashboardAuth`.
-- Resolver: `getRarityContext(guildId)` returns `{ profile, customBySlug, customByCard }` from a 5s cache. `applyRarityContext(card, ctx)` is THE chokepoint for `worth/burn/dropWeight` — custom override first, then Stage-1 profile, then card's own value. Used by spawn weighting, `/info`, `/list`, `/collection`, `/catalog`, `/burn`, `/pack` pool, `/tradein` ladder, `/trade` fairness, leaderboard.
+- Resolver: `getRarityContext(guildId)` returns `{ profile, customBySlug, customByCard }` from a 5s cache. `applyRarityContext(card, ctx)` is THE chokepoint for `worth/burn/dropWeight` — custom override first, then Stage-1 profile, then card's own value. Used by spawn weighting, `/info`, `/list`, `/collection`, `/catalog`, `/burn`, `/pack` pool, `/trade_in` ladder, `/trade` fairness, leaderboard.
 - `/pack` excludes custom-tier cards by default (toggle `inPacks` true to opt in). Custom tiers with `droppable=false` are skipped by `pickRandomCard`.
-- `/tradein` ladder is position-ordered: groups user holdings by **effective rarity key** (built-in OR custom slug), so a card moved into a custom tier won't be eligible for the built-in's trade-in chain. The slash command rarity option still only exposes the six built-ins as the FROM tier.
+- `/trade_in` ladder is position-ordered: groups user holdings by **effective rarity key** (built-in OR custom slug), so a card moved into a custom tier won't be eligible for the built-in's trade-in chain. The slash command rarity option still only exposes the six built-ins as the FROM tier.
 - Deleting a tier also wipes its `card_rarity_overrides` rows (no DB-level FK on slug, done in the route).
 
 ### Per-Server Rarity Profiles
@@ -149,7 +149,7 @@ those tables now happen through Discord slash commands — see
 
 ### Per-Set Rarity Weights (Phase 4)
 - Each set has an optional `rarity_weights jsonb` column — partial map of `{ rarity: weight }`. Applies **only when the set is the guild's active set**. Cards' rarity/worth/burn/dropWeight are never touched.
-- Admin commands: `/setadmin setweight set:<s> rarity:<tier> weight:<n>`, `/setadmin clearweight set:<s> [rarity]`, `/setadmin showweights set:<s>`.
+- Admin commands: `/sets_admin setweight set:<s> rarity:<tier> weight:<n>`, `/sets_admin clearweight set:<s> [rarity]`, `/sets_admin showweights set:<s>`.
 - Precedence inside `pickRandomCard` (top wins):
   1. custom-tier dropWeight
   2. **active set's rarityWeights[rarity]** ← Phase 4
@@ -167,7 +167,7 @@ those tables now happen through Discord slash commands — see
   with an empty active set, `doSingleSpawn` returns early. Admin `/drop` and
   `/give` bypass the set check (forcedCardId path) — they always work.
 - **Command split**:
-  - `/setadmin` (admin) — `create rename delete add remove move bulkadd bulkremove active deactivate view setweight clearweight showweights export exportall showcase`.
+  - `/sets_admin` (admin) — `create rename delete add remove move bulkadd bulkremove active deactivate view setweight clearweight showweights export exportall showcase`.
   - `/sets` (user, read-only, ephemeral) — `list active view progress`.
 - `pickRandomCard(weights, boosts, ctx, availableCards?)` — new 4th param is
   the pre-filtered pool (active set). Old call sites without it fall back to
@@ -175,7 +175,7 @@ those tables now happen through Discord slash commands — see
 - Active-set spawn pool is cached 5s per guild via
   `getActiveSetSpawnPoolCached`, invalidated on any set/membership write OR
   `setActiveSet/clearActiveSet`.
-- `/massdrop` filters to the active set when one is selected (falls back to
+- `/mass_drop` filters to the active set when one is selected (falls back to
   the global pool otherwise so testing still works).
 - `/info` shows an "Active Set: ✅ / ⚠️ / none" badge so users know whether
   the displayed drop chance can actually fire right now.
@@ -187,9 +187,9 @@ those tables now happen through Discord slash commands — see
   and `loadDefaultCards` join inserted cards directly to the "defaults" set.
   `importCardsFromJson` writes membership rows only.
 - **Phase 5 — export/import roundtrip.**
-  - `/setadmin export set:<name>` attaches a single-set JSON (cards + rarity
+  - `/sets_admin export set:<name>` attaches a single-set JSON (cards + rarity
     weights + `awardsCompletion` flag).
-  - `/setadmin exportall [sets:<a,b>]` attaches a bundle of every set (or a
+  - `/sets_admin exportall [sets:<a,b>]` attaches a bundle of every set (or a
     subset) in one file.
   - `importCardsFromJson` accepts three shapes: flat (`{cards:[…]}`),
     single-set (`{set:{…}, cards:[…]}`), and bundle (`{sets:[{set,cards}…]}`).
@@ -201,12 +201,12 @@ those tables now happen through Discord slash commands — see
     +1500 💠), `set_master` (5 sets, +4000 💠) — fire across ALL sets the
     user has finished, regardless of any per-set flag.
   - Dynamic: `set_complete:<setId>` (+1000 💠) — only sets whose admin
-    toggled `awardsCompletion=true` via `/setadmin showcase` award their
+    toggled `awardsCompletion=true` via `/sets_admin showcase` award their
     own dedicated achievement. "Completion" = own every card in the set
     (collections row exists; shinies irrelevant).
 - Legacy `/loadset`, `/listsets`, `/unloadset` have been merged into
-  `/setadmin load/unload/listloaded` for easier discovery. `/setadmin unload`
-  is destructive (deletes cards), `/setadmin delete` only removes memberships.
+  `/sets_admin load/unload/listloaded` for easier discovery. `/sets_admin unload`
+  is destructive (deletes cards), `/sets_admin delete` only removes memberships.
 
 ### Limited-Time Events
 - `/event start card:<Name> duration:<30m|2h|1d> [multiplier:<1.1–50>]` — boost a card's effective spawn weight. Max 14d duration, default 2× multiplier.
@@ -219,7 +219,7 @@ those tables now happen through Discord slash commands — see
 - When the proposing side's worth ratio vs the requesting side exceeds **3:1** (cards by `worthValue`, shards 1:1), the trade embed shows an orange ⚠️ banner naming the disadvantaged party. Trade still goes through if accepted — it's informational only.
 
 ### Unified Help Hub
-- `/help` (and `!help`) open one interactive, ephemeral help message: an animated banner + a **topic dropdown** (Overview, Collecting, Economy, Trading & Market, Battles/Raids/Squads, Giveaways, Quests & Reputation, Echo & AFK, Admin). Picking a topic **live-edits** the same message — no new messages. `/adminhelp` opens it on the Admin page (admin-gated). It documents every player and admin command in one place.
+- `/help` (and `!help`) open one interactive, ephemeral help message: an animated banner + a **topic dropdown** (Overview, Collecting, Economy, Trading & Market, Battles/Raids/Squads, Giveaways, Quests & Reputation, Echo & AFK, Admin). Picking a topic **live-edits** the same message — no new messages. `/admin_help` opens it on the Admin page (admin-gated). It documents every player and admin command in one place.
 - The embed is admin-rebrandable through the existing override system: `/embed set key:help field:customImageUrl|color|title|footer value:<…>` (the `help` key was added to `EMBED_KEYS`). Banner + section palette live in `help-banners.ts`; the banner is a free direct-hotlink animated GIF and swappable per guild.
 - Custom-IDs are namespaced `help:*` (select `help:select`, button `help:home`) and routed in `index.ts`.
 
@@ -229,8 +229,8 @@ those tables now happen through Discord slash commands — see
 - **Requirements** measure activity from when the giveaway goes active, fed by fire-and-forget hooks on the SAME flows quests use: `catch` (rarity-gatable), `burn`, `pack_open`, `battle_win`, `battle_played` (valid, non-forfeit), `raid_join`, `raid_damage`, `echo_use`, `message` (anti-spam: bots/commands ignored, one counted msg per member per 12s).
 - **Winner modes:** `entry` (weighted random by earned 🎟️ entries — `*N` per unit, `+N` on completion) or `completion` (must finish every requirement). **Difficulty:** easy/medium/hard/legendary (cosmetic tier + color).
 - **UI (raid-style):** one channel message updates in place while entrants join, then the SAME message is edited into a winner announcement with a **Claim Prize** button. Buttons: My Progress / Enter (open giveaways) / Details / Claim. Times use Discord `<t:unix:…>` so every viewer sees their local timezone with no stored preference.
-- **Claim + reroll:** winners claim within `claimTimerMinutes` (default 24h); the minute sweeper (`giveaway/sweeper.ts`) auto-ends due giveaways, draws winners, and rerolls unclaimed slots. Admins can `/giveawayadmin reroll`. Announce via channel / DM / both.
-- **Commands:** `/giveaways` (board + your standing), `/giveaway progress [id]`, and admin `/giveawayadmin create|edit|end|winners|list|reroll`. Create uses compact syntax, e.g. `prizes: shards:50000; nitro:1 Month Nitro; card:Dragon Lord x10` and `requirements: catch:50:*1; battlewin:10:+10; message:100`.
+- **Claim + reroll:** winners claim within `claimTimerMinutes` (default 24h); the minute sweeper (`giveaway/sweeper.ts`) auto-ends due giveaways, draws winners, and rerolls unclaimed slots. Admins can `/giveaway_admin reroll`. Announce via channel / DM / both.
+- **Commands:** `/giveaways` (board + your standing), `/giveaway progress [id]`, and admin `/giveaway_admin create|edit|end|winners|list|reroll`. Create uses compact syntax, e.g. `prizes: shards:50000; nitro:1 Month Nitro; card:Dragon Lord x10` and `requirements: catch:50:*1; battlewin:10:+10; message:100`.
 - **DB push:** new tables require `pnpm -C lib/db run push` after deploy.
 
 ## Architecture decisions
@@ -251,7 +251,7 @@ those tables now happen through Discord slash commands — see
 - `!setup` wizard: interactive multi-step setup — choose_type → channel → cooldown_number → cooldown_unit → cards_per_spawn → rarity_choice → (5 rarity steps) → test_card. Sessions stored in memory per `guildId:userId`, 5-min timeout.
 - **Pack store atomic claim:** `/pack` open is a single conditional UPDATE that enforces shards ≥ cost, shared cooldown, and per-tier weekly cap (with Monday 00:00 UTC rollover applied inline via CASE). Zero rows = no state change; caller re-reads the row to explain why. Prevents TOCTOU races across concurrent opens. Failed-grant path calls `refundClaim()` to roll back shards + counters.
 - **Daily atomic claim:** `/daily` uses `INSERT … ON CONFLICT DO NOTHING` for first-time, then a cooldown-gated UPDATE for repeats. Streak resets via SQL CASE when last claim > 48h ago.
-- **Achievements** unlock check fires after catches, /burn, /pack, /trade-accept, /daily, /tradein. Stored in `achievements_unlocked` with a unique (guild, user, key) index so the insert is idempotent.
+- **Achievements** unlock check fires after catches, /burn, /pack, /trade-accept, /daily, /trade_in. Stored in `achievements_unlocked` with a unique (guild, user, key) index so the insert is idempotent.
 - **Shinies** are a separate `shinyCount` column on `collections` (not a flag on individual rows) — keeps the (guild, user, card) unique index intact while letting us count shinies once at SHINY_MULTIPLIER for net worth and leaderboard. `catchCard` rolls SHINY_RATE bot-side then UPSERTs the right counter; `burnCard({shiny:true})` decrements `shinyCount` specifically so `/burn name:X all:true` can't accidentally torch rare shinies.
 - **Event boosts** are read once per spawn via `getActiveEventBoosts(guildId)` (joined-and-filtered by `endsAt > NOW()`) and passed as `Map<cardId, multiplier>` into `pickRandomCard`. Stopping an event is just `UPDATE … SET endsAt = NOW()` so expired rows stay around as history.
 
@@ -265,7 +265,7 @@ those tables now happen through Discord slash commands — see
 - **Limited-time events**: `/event start|list|stop` — admin boosts any card's spawn weight for a duration
 - **Admin giveaways**: `/give user:@User name:<Card Name>` — direct award (no shiny roll)
 - **Trading**: `/trade user:@User offer:<card>|shards want:<card>|shards` (shows ⚠️ if value ratio > 3:1)
-- **Trade-in**: `/tradein <rarity>` — burn 5 of one rarity for 1 random card of the next tier up
+- **Trade-in**: `/trade_in <rarity>` — burn 5 of one rarity for 1 random card of the next tier up
 - **Wishlists**: `/wishlist` — get pinged when wished-for cards spawn
 - **Shinies ✨**: every random/pack/tradein acquisition has a flat 0.5% chance to mint a shiny. Shiny copies count at 2× worth/burn, are tracked separately, and are **not tradeable** in v1.
 
@@ -291,13 +291,13 @@ those tables now happen through Discord slash commands — see
 - **Separate per-tier weekly caps** — hit Legendary cap, you can still open Basics.
 - **Weekly reset**: Monday 00:00 UTC for all three buckets.
 - All four knobs (cost / size / cap / shared cooldown) configurable per server via `/config → 🎴 Packs`.
-- Use `/packstats` to see your per-tier usage, cooldown remaining, and reset countdown.
+- Use `/pack_stats` to see your per-tier usage, cooldown remaining, and reset countdown.
 
 ### Economy (DN Shards 💠)
-- **Earned by**: burning duplicate cards (`/burn`), `/daily` rewards (50 base + streak bonus up to +200), gifts (`/gift`), trade-in upgrades, admin awards (`/giveshards`), achievement unlocks
+- **Earned by**: burning duplicate cards (`/burn`), `/daily` rewards (50 base + streak bonus up to +200), gifts (`/gift`), trade-in upgrades, admin awards (`/give_shards`), achievement unlocks
 - **Spent on**: `/pack` openings, `/trade` offers, `/gift` to other members
 - Balance + all-time-earned tracked per user per guild
-- Admins can deduct with `/takeshards`
+- Admins can deduct with `/take_shards`
 
 ### Daily Reward
 - 20h cooldown (slight grace so dailies don't drift later each day)
@@ -373,14 +373,14 @@ Card catching is text-based — when a card spawns, type its name exactly to cat
 | `/shards [user]` | Check shard balance |
 | `/daily` | Claim daily shards (with streak bonus) |
 | `/pack tier:<basic\|premium\|legendary>` | Open a pack |
-| `/packstats` | Your pack costs, weekly caps, cooldown |
-| `/tradein rarity:<r>` | Burn 5 of one rarity for 1 random card of the next tier |
+| `/pack_stats` | Your pack costs, weekly caps, cooldown |
+| `/trade_in rarity:<r>` | Burn 5 of one rarity for 1 random card of the next tier |
 | `/wishlist` | Manage your wishlist — get pinged on spawn |
 | `/achievements [user]` | View unlocked achievements |
 | `/trade user:@User offer want` | Propose a trade (cards, shards, or both) |
 | `/gift user:@User amount:<n>` | Gift shards to another member |
 | `/trades` | View pending trade offers |
-| `/tradehistory [user]` | Recent completed trades, newest first |
+| `/trade_history [user]` | Recent completed trades, newest first |
 | `/accept id:<ID>` | Accept a trade |
 | `/decline id:<ID>` | Decline or cancel a trade |
 | `/giveaways` | Active giveaways: prizes, live countdown, requirements, your progress + entries |
@@ -390,23 +390,23 @@ Card catching is text-based — when a card spawns, type its name exactly to cat
 | Command | Description |
 |---|---|
 | `/config` | Visual config panel (toggles, intervals, rates, packs sub-panel) |
-| `/adminhub` | Ephemeral admin hub — manage bot admins, catch timeouts, set channels, server state |
-| `/adminhelp` | Show admin & setup command reference |
+| `/admin_hub` | Ephemeral admin hub — manage bot admins, catch timeouts, set channels, server state |
+| `/admin_help` | Show admin & setup command reference |
 | `/drop [name:<Name>]` | Force-drop a card for events/giveaways |
-| `/massdrop` | Drop a big batch of cards — mostly low tier with a few bangers |
+| `/mass_drop` | Drop a big batch of cards — mostly low tier with a few bangers |
 | `/give user:@User name:<Name>` | Give a card directly to a member |
-| `/giveshards user:@User amount:<n>` | Give DN Shards to a member |
-| `/takeback user:@User name:<Name>` | Remove a card from a member |
-| `/takeshards user:@User amount:<n>` | Deduct DN Shards from a member |
+| `/give_shards user:@User amount:<n>` | Give DN Shards to a member |
+| `/take_back user:@User name:<Name>` | Remove a card from a member |
+| `/take_shards user:@User amount:<n>` | Deduct DN Shards from a member |
 | `/event start card:<Name> duration:<e.g. 2h> [multiplier:<n>]` | Start a limited-time spawn boost |
 | `/event list` | Show all active events |
 | `/event stop id:<ID>` | End an event early |
-| `/giveawayadmin create title duration prizes [requirements] [winners] [difficulty] [mode] [channel] [image] [claimtimer] [announce]` | Create & launch a giveaway (compact prize/requirement syntax) |
-| `/giveawayadmin edit id [fields…]` | Edit any field of a giveaway; refreshes the live message |
-| `/giveawayadmin end id` | End a giveaway now and draw winners |
-| `/giveawayadmin winners id` | View winners and claim status |
-| `/giveawayadmin list` | Active + past giveaways |
-| `/giveawayadmin reroll id [user]` | Reroll a winner (auto-picks a fresh eligible player) |
+| `/giveaway_admin create title duration prizes [requirements] [winners] [difficulty] [mode] [channel] [image] [claimtimer] [announce]` | Create & launch a giveaway (compact prize/requirement syntax) |
+| `/giveaway_admin edit id [fields…]` | Edit any field of a giveaway; refreshes the live message |
+| `/giveaway_admin end id` | End a giveaway now and draw winners |
+| `/giveaway_admin winners id` | View winners and claim status |
+| `/giveaway_admin list` | Active + past giveaways |
+| `/giveaway_admin reroll id [user]` | Reroll a winner (auto-picks a fresh eligible player) |
 | `/rarityname name:<Name> emoji:<🔮> [color:<#hex>] [reset:true]` | Customize the Mythic tier's display name, emoji & color |
 | `/rarity profile set rarity:<tier> [worth] [burn] [weight]` | Override worth/burn/drop-weight for a built-in rarity |
 | `/rarity profile reset rarity:<tier>` | Clear all overrides for a built-in rarity |
@@ -417,9 +417,9 @@ Card catching is text-based — when a card spawns, type its name exactly to cat
 | `/embed show key:<embed>` | Show current per-guild override for an embed |
 | `/embed set key:<embed> field:<field> value:<v>` | Set one field on an embed override (color, title, footer, image, etc.) |
 | `/embed reset key:<embed> [field]` | Reset one field or the whole embed override |
-| `/setadmin load file:<.json> [name:<set>]` | Import cards from a JSON file (creates or appends to a set) |
-| `/setadmin unload set:<Name>` | Nuke a set and all its cards (destructive) |
-| `/setadmin listloaded` | List all sets with card counts |
+| `/sets_admin load file:<.json> [name:<set>]` | Import cards from a JSON file (creates or appends to a set) |
+| `/sets_admin unload set:<Name>` | Nuke a set and all its cards (destructive) |
+| `/sets_admin listloaded` | List all sets with card counts |
 
 ### Setup & Config Commands (`!` prefix — admin only)
 | Command | Description |

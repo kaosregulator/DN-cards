@@ -101,9 +101,9 @@ export async function handleEventCommand(
       const { getActiveSet, isCardInSet } = await import("../db.js");
       const active = await getActiveSet(guildId);
       if (!active) {
-        setWarning = `\n⚠️ **No active set is selected**, so random spawns are disabled and this event will have no effect until you set one with \`/setadmin active\`.`;
+        setWarning = `\n⚠️ **No active set is selected**, so random spawns are disabled and this event will have no effect until you set one with \`/sets_admin active\`.`;
       } else if (!(await isCardInSet(active.id, card.id))) {
-        setWarning = `\n⚠️ **${card.name}** isn't in the active set \`${active.name}\`, so the boost won't fire on random spawns. Add it with \`/setadmin add set:${active.name} card:${card.name}\`.`;
+        setWarning = `\n⚠️ **${card.name}** isn't in the active set \`${active.name}\`, so the boost won't fire on random spawns. Add it with \`/sets_admin add set:${active.name} card:${card.name}\`.`;
       }
     } catch { /* non-fatal — skip warn */ }
 
