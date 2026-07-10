@@ -43,6 +43,12 @@ import { isOwnedBy } from "../home-guild.js";
 import { ObjectStorageService } from "../../lib/objectStorage.js";
 import { toAbsoluteImageUrl } from "../image-url.js";
 
+// Helper: convert a stored imageUrl (absolute URL or /objects/... path) to an
+// absolute URL that Discord embeds accept. Null/undefined passes through.
+function cardImageUrl(url: string | null | undefined): string | null {
+  return toAbsoluteImageUrl(url);
+}
+
 // ── Permanent image upload ────────────────────────────────────────────────────
 // Discord slash-command attachment URLs are ephemeral — they expire within
 // hours/days. Download the bytes and re-upload to the project's object storage
@@ -112,7 +118,8 @@ async function buildPanel(cardId: number, guildId?: string | null): Promise<{ em
       { name: "Limited", value: card.isLimitedEdition ? `💎 Yes (${card.totalMinted}/${card.maxCopies ?? "?"})` : "❌ No", inline: true },
     )
     .setFooter({ text: `Card #${card.id} — use /edit_card name:<card> image:<file> to replace the image.` });
-  if (card.imageUrl) embed.setThumbnail(card.imageUrl);
+  const thumbUrl = cardImageUrl(card.imageUrl);
+  if (thumbUrl) embed.setThumbnail(thumbUrl);
 
   const select = new StringSelectMenuBuilder()
     .setCustomId(`editcard:menu:${card.id}`)
