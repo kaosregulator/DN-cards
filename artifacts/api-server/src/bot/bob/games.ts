@@ -3,8 +3,8 @@
 // per play (Blue Bob doubles rewards; Upside-Down Bob may invert the outcome).
 
 import {
-  ActionRowBuilder, ButtonBuilder, ButtonStyle,
-  type ButtonInteraction,
+  ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder,
+  type ButtonInteraction, type ChatInputCommandInteraction,
 } from "discord.js";
 import { getBobSettings, getBobProfile, checkCooldown, grantReward, gameEnabled, applyCurse, formAvatar, bobImage } from "./db.js";
 import { rollForm, pick, speak, WIN_LINES, LOSS_LINES, type BobForm } from "./persona.js";
@@ -15,6 +15,12 @@ import type { BobSettings } from "@workspace/db";
 
 export const GAME_KEYS = ["coinflip", "dice", "hl", "slots", "wheel", "emoji", "bj", "rps"] as const;
 export type GameKey = typeof GAME_KEYS[number];
+
+// Build a stateless game button ID. The owner's userId is always the last segment
+// so public game messages can only be played by the user who started them.
+export function gameId(key: GameKey, action: string, ownerId: string, ...data: string[]): string {
+  return ["bob:game", key, action, ...data, ownerId].join(":");
+}
 
 export const GAME_META: Record<GameKey, { label: string; emoji: string }> = {
   coinflip: { label: "Coin Flip", emoji: "🪙" },
@@ -41,8 +47,8 @@ function applyForm(form: BobForm, base: Outcome): Outcome {
 }
 
 async function finish(
-  interaction: ButtonInteraction, form: BobForm, settings: BobSettings,
-  headline: string, outcome: Outcome, gameKey: GameKey, againId: string,
+  interaction: ButtonInteraction | ChatInputCommandInteraction, form: BobForm, settings: BobSettings,
+  headline: string, outcome: Outcome, gameKey: GameKey, againId: string, ownerId: string,
 ): Promise<void> {
   const guildId = interaction.guildId!;
   const userId = interaction.user.id;
@@ -58,12 +64,14 @@ async function finish(
   const line = speak(form, outcome.won ? pick(WIN_LINES[form]) : pick(LOSS_LINES[form]));
   const embed = bobEmbed(form, GAME_META[gameKey].label, `${headline}\n\n${line}${rewardTail(reward, outcome.coins, outcome.xp)}`, formAvatar(settings, form));
   const note = formatCompletions(completed);
-  await interaction.editReply({ embeds: [embed], components: [navRow({ again: againId })] }).catch(() => {});
+  await interaction.editReply({ embeds: [embed], components: [navRow({ again: againId, ownerId })] }).catch(() => {});
   if (note) await interaction.followUp({ content: note, ...EPHEMERAL }).catch(() => {});
 }
 
 // Gate: settings enabled + game enabled + cooldown. Returns form + settings or null.
-async function gate(interaction: ButtonInteraction, gameKey: GameKey): Promise<{ form: BobForm; settings: BobSettings } | null> {
+async function gate(
+  interaction: ButtonInteraction | ChatInputCommandInteraction, gameKey: GameKey,
+): Promise<{ form: BobForm; settings: BobSettings } | null> {
   const guildId = interaction.guildId!;
   const settings = await getBobSettings(guildId);
   if (!settings.enabled) { await interaction.reply({ content: "😴 Bob is switched off in this server. Ask an admin to run `/bob_admin`.", ...EPHEMERAL }); return null; }
@@ -75,10 +83,15 @@ async function gate(interaction: ButtonInteraction, gameKey: GameKey): Promise<{
 
 // ── Router ───────────────────────────────────────────────────────────────────
 export async function handleBobGame(interaction: ButtonInteraction, parts: string[]): Promise<void> {
-  // bob:game:<key>:<action>[:data...]
+  // bob:game:<key>:<action>[:data...:<ownerId>]
   const key = parts[2] as GameKey;
   const action = parts[3];
+  const ownerId = parts[parts.length - 1];
   if (!GAME_KEYS.includes(key)) { await interaction.reply({ content: "Unknown game.", ...EPHEMERAL }); return; }
+  if (ownerId && interaction.user.id !== ownerId) {
+    await interaction.reply({ content: "🔒 This isn't your game. Run the slash command to start your own.", flags: 64 }).catch(() => {});
+    return;
+  }
   if (action === "open") return openGame(interaction, key);
   switch (key) {
     case "coinflip": return playCoinflip(interaction, parts[4]!);
@@ -92,74 +105,95 @@ export async function handleBobGame(interaction: ButtonInteraction, parts: strin
   }
 }
 
-// Open screen (the game's start UI). Uses interaction.update so it fits the menu.
-async function openGame(interaction: ButtonInteraction, key: GameKey): Promise<void> {
-  const settings = await getBobSettings(interaction.guildId!);
-  const form = rollForm(settings);
+// Build the opening screen for a game. Shared by the /bob menu and slash commands.
+function buildGameOpenScreen(form: BobForm, key: GameKey, username: string, ownerId: string, avatar: string | null): { embeds: EmbedBuilder[]; components: ActionRowBuilder<ButtonBuilder>[] } {
   switch (key) {
     case "coinflip": {
-      const embed = bobEmbed(form, "Coin Flip", "Call it in the air. Heads or tails?");
+      const embed = bobEmbed(form, "Coin Flip", "Call it in the air. Heads or tails?", avatar);
       const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
-        new ButtonBuilder().setCustomId("bob:game:coinflip:pick:heads").setLabel("Heads").setEmoji("👑").setStyle(ButtonStyle.Primary),
-        new ButtonBuilder().setCustomId("bob:game:coinflip:pick:tails").setLabel("Tails").setEmoji("🪙").setStyle(ButtonStyle.Primary),
+        new ButtonBuilder().setCustomId(gameId("coinflip", "pick", ownerId, "heads")).setLabel("Heads").setEmoji("👑").setStyle(ButtonStyle.Primary),
+        new ButtonBuilder().setCustomId(gameId("coinflip", "pick", ownerId, "tails")).setLabel("Tails").setEmoji("🪙").setStyle(ButtonStyle.Primary),
       );
-      await interaction.update({ embeds: [embed], components: [row, navRow()] }).catch(() => {});
-      return;
+      return { embeds: [embed], components: [row, navRow({ ownerId })] };
     }
     case "dice": {
-      const embed = bobEmbed(form, "Dice Roll", "You vs Bob. Highest roll wins. Bob does not cheat. Much.");
+      const embed = bobEmbed(form, "Dice Roll", "You vs Bob. Highest roll wins. Bob does not cheat. Much.", avatar);
       const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
-        new ButtonBuilder().setCustomId("bob:game:dice:roll").setLabel("Roll").setEmoji("🎲").setStyle(ButtonStyle.Success));
-      await interaction.update({ embeds: [embed], components: [row, navRow()] }).catch(() => {});
-      return;
+        new ButtonBuilder().setCustomId(gameId("dice", "roll", ownerId)).setLabel("Roll").setEmoji("🎲").setStyle(ButtonStyle.Success));
+      return { embeds: [embed], components: [row, navRow({ ownerId })] };
     }
     case "hl": {
       const n = 1 + Math.floor(Math.random() * 9); // 1-9
-      const embed = bobEmbed(form, "Higher or Lower", `The number is **${n}**.\nWill the next (1–10) be higher or lower?`);
+      const embed = bobEmbed(form, "Higher or Lower", `The number is **${n}**.\nWill the next (1–10) be higher or lower?`, avatar);
       const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
-        new ButtonBuilder().setCustomId(`bob:game:hl:higher:${n}`).setLabel("Higher").setEmoji("🔼").setStyle(ButtonStyle.Primary),
-        new ButtonBuilder().setCustomId(`bob:game:hl:lower:${n}`).setLabel("Lower").setEmoji("🔽").setStyle(ButtonStyle.Primary),
+        new ButtonBuilder().setCustomId(gameId("hl", "higher", ownerId, String(n))).setLabel("Higher").setEmoji("🔼").setStyle(ButtonStyle.Primary),
+        new ButtonBuilder().setCustomId(gameId("hl", "lower", ownerId, String(n))).setLabel("Lower").setEmoji("🔽").setStyle(ButtonStyle.Primary),
       );
-      await interaction.update({ embeds: [embed], components: [row, navRow()] }).catch(() => {});
-      return;
+      return { embeds: [embed], components: [row, navRow({ ownerId })] };
     }
     case "slots": {
-      const embed = bobEmbed(form, "Slots", "Pull the lever. Three-of-a-kind = jackpot. 🎰");
+      const embed = bobEmbed(form, "Slots", "Pull the lever. Three-of-a-kind = jackpot. 🎰", avatar);
       const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
-        new ButtonBuilder().setCustomId("bob:game:slots:spin").setLabel("Spin").setEmoji("🎰").setStyle(ButtonStyle.Success));
-      await interaction.update({ embeds: [embed], components: [row, navRow()] }).catch(() => {});
-      return;
+        new ButtonBuilder().setCustomId(gameId("slots", "spin", ownerId)).setLabel("Spin").setEmoji("🎰").setStyle(ButtonStyle.Success));
+      return { embeds: [embed], components: [row, navRow({ ownerId })] };
     }
     case "wheel": {
-      const embed = bobEmbed(form, "Lucky Wheel", "Spin the wheel of questionable fortune. 🎡");
+      const embed = bobEmbed(form, "Lucky Wheel", "Spin the wheel of questionable fortune. 🎡", avatar);
       const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
-        new ButtonBuilder().setCustomId("bob:game:wheel:spin").setLabel("Spin").setEmoji("🎡").setStyle(ButtonStyle.Success));
-      await interaction.update({ embeds: [embed], components: [row, navRow()] }).catch(() => {});
-      return;
+        new ButtonBuilder().setCustomId(gameId("wheel", "spin", ownerId)).setLabel("Spin").setEmoji("🎡").setStyle(ButtonStyle.Success));
+      return { embeds: [embed], components: [row, navRow({ ownerId })] };
     }
     case "emoji": {
       const set = pick(EMOJI_SETS);
       const correct = Math.floor(Math.random() * set.options.length);
-      const embed = bobEmbed(form, "Guess the Emoji", `${set.clue}\n\nWhich emoji fits? Tap fast.`);
+      const embed = bobEmbed(form, "Guess the Emoji", `${set.clue}\n\nWhich emoji fits? Tap fast.`, avatar);
       const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
-        set.options.map((e, i) => new ButtonBuilder().setCustomId(`bob:game:emoji:pick:${i}:${correct}`).setLabel(e).setStyle(ButtonStyle.Secondary)),
+        set.options.map((e, i) => new ButtonBuilder().setCustomId(gameId("emoji", "pick", ownerId, String(i), String(correct))).setLabel(e).setStyle(ButtonStyle.Secondary)),
       );
-      await interaction.update({ embeds: [embed], components: [row, navRow()] }).catch(() => {});
-      return;
+      return { embeds: [embed], components: [row, navRow({ ownerId })] };
     }
-    case "bj": return openBlackjack(interaction, form);
     case "rps": {
       const embed = bobEmbed(form, "Rock Paper Scissors",
-        `${introLine(form, interaction.user.username)}\n\nBest hand wins. Bob claims he never cheats. Bob is a known liar.`);
+        `${introLine(form, username)}\n\nBest hand wins. Bob claims he never cheats. Bob is a known liar.`, avatar);
       const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
-        new ButtonBuilder().setCustomId("bob:game:rps:pick:r").setLabel("Rock").setEmoji("🪨").setStyle(ButtonStyle.Primary),
-        new ButtonBuilder().setCustomId("bob:game:rps:pick:p").setLabel("Paper").setEmoji("📄").setStyle(ButtonStyle.Primary),
-        new ButtonBuilder().setCustomId("bob:game:rps:pick:s").setLabel("Scissors").setEmoji("✂️").setStyle(ButtonStyle.Primary),
+        new ButtonBuilder().setCustomId(gameId("rps", "pick", ownerId, "r")).setLabel("Rock").setEmoji("🪨").setStyle(ButtonStyle.Primary),
+        new ButtonBuilder().setCustomId(gameId("rps", "pick", ownerId, "p")).setLabel("Paper").setEmoji("📄").setStyle(ButtonStyle.Primary),
+        new ButtonBuilder().setCustomId(gameId("rps", "pick", ownerId, "s")).setLabel("Scissors").setEmoji("✂️").setStyle(ButtonStyle.Primary),
       );
-      await interaction.update({ embeds: [embed], components: [row, navRow()] }).catch(() => {});
-      return;
+      return { embeds: [embed], components: [row, navRow({ ownerId })] };
     }
+    default:
+      throw new Error(`Unhandled game key: ${key}`);
   }
+}
+
+// Open screen from the /bob menu (button-driven). The new game is owned by the clicker.
+async function openGame(interaction: ButtonInteraction, key: GameKey): Promise<void> {
+  const settings = await getBobSettings(interaction.guildId!);
+  const form = rollForm(settings);
+  const ownerId = interaction.user.id;
+  const avatar = formAvatar(settings, form);
+  if (key === "bj") return openBlackjack(interaction, form, ownerId);
+  await interaction.update({ ...buildGameOpenScreen(form, key, interaction.user.username, ownerId, avatar) }).catch(() => {});
+}
+
+// Slash command entry point for individual game commands (/bob_coinflip, etc.).
+export async function handleBobGameCommand(interaction: ChatInputCommandInteraction, key: GameKey): Promise<void> {
+  const g = await gate(interaction, key);
+  if (!g) return;
+  const { form, settings } = g;
+  const ownerId = interaction.user.id;
+  const avatar = formAvatar(settings, form);
+  if (key === "bj") {
+    const bjAvatar = bobImage(settings, "blackjack", form);
+    const player = { name: interaction.user.username, icon: interaction.user.displayAvatarURL() };
+    const p = [drawCard(), drawCard()];
+    const d = [drawCard(), drawCard()];
+    await interaction.reply({ content: "🃏 Bob shuffles. Badly. On purpose." });
+    await renderBjTurn(interaction, form, p, d, bjAvatar, player, true, ownerId);
+    return;
+  }
+  await interaction.reply({ ...buildGameOpenScreen(form, key, interaction.user.username, ownerId, avatar) });
 }
 
 // ── Blackjack — Bob deals ─────────────────────────────────────────────────────
@@ -183,7 +217,7 @@ function handValue(cards: number[]): number {
 const enc = (cards: number[]) => cards.join("-");
 const dec = (s: string) => s.split("-").map(Number).filter(n => n >= 1 && n <= 13);
 
-async function openBlackjack(interaction: ButtonInteraction, form: BobForm): Promise<void> {
+async function openBlackjack(interaction: ButtonInteraction, form: BobForm, ownerId: string): Promise<void> {
   const settings = await getBobSettings(interaction.guildId!);
   if (!settings.enabled || !gameEnabled(settings, "bj")) { await interaction.reply({ content: "🚫 Blackjack is disabled here.", ...EPHEMERAL }); return; }
   const cd = await checkCooldown(interaction.guildId!, interaction.user.id, settings.cooldownSeconds);
@@ -197,16 +231,16 @@ async function openBlackjack(interaction: ButtonInteraction, form: BobForm): Pro
     frame(form, "Blackjack", "🃏 Bob shuffles. Badly. On purpose.\n\nDealing...", 900, { avatar, player }),
     frame(form, "Blackjack", `**Your hand:** ${handStr([p[0]!])}\n**Bob:** ${handStr([d[0]!])}`, 800, { avatar, player }),
   ]);
-  await renderBjTurn(interaction, form, p, d, avatar, player, true);
+  await renderBjTurn(interaction, form, p, d, avatar, player, true, ownerId);
 }
 
 async function renderBjTurn(
-  interaction: ButtonInteraction, form: BobForm, p: number[], d: number[],
-  avatar: string | null, player: { name: string; icon?: string }, firstMove: boolean,
+  interaction: ButtonInteraction | ChatInputCommandInteraction, form: BobForm, p: number[], d: number[],
+  avatar: string | null, player: { name: string; icon?: string }, firstMove: boolean, ownerId: string,
 ): Promise<void> {
   const pv = handValue(p);
-  if (pv >= 21) return resolveBlackjack(interaction, form, p, d, avatar, player, false);
-  const id = (a: string) => `bob:game:bj:${a}:${enc(p)}:${enc(d)}`;
+  if (pv >= 21) return resolveBlackjack(interaction, form, p, d, avatar, player, false, ownerId);
+  const id = (a: string) => gameId("bj", a, ownerId, enc(p), enc(d));
   const embed = bobEmbed(form, "Blackjack",
     `**Your hand:** ${handStr(p)}  →  **${pv}**\n**Bob shows:** ${handStr(d, true)}\n\n${speak(form, pick(MOOD_REACTIONS[rollMood(form)]))}`, avatar);
   embed.setAuthor({ name: player.name, iconURL: player.icon });
@@ -223,12 +257,14 @@ async function renderBjTurn(
 async function playBlackjack(interaction: ButtonInteraction, action: string, data: string[]): Promise<void> {
   // No per-click cooldown here: a single blackjack hand takes several clicks
   // (hit/hit/stand). The cooldown was already paid when the table opened.
+  // data = [encP, encD, ownerId] (ownerId is the last segment of the customId).
   const settings = await getBobSettings(interaction.guildId!);
   if (!settings.enabled || !gameEnabled(settings, "bj")) { await interaction.reply({ content: "🚫 Blackjack is disabled here.", ...EPHEMERAL }); return; }
   const form = rollForm(settings);
   const avatar = bobImage(settings, "blackjack", form);
   const player = { name: interaction.user.username, icon: interaction.user.displayAvatarURL() };
   const p = dec(data[0] ?? ""); const d = dec(data[1] ?? "");
+  const ownerId = data[2] ?? interaction.user.id;
   if (p.length < 2 || d.length < 2) { await interaction.reply({ content: "⌛ That table went cold. Start a new hand from the menu.", ...EPHEMERAL }).catch(() => {}); return; }
 
   if (action === "hit" || action === "double") {
@@ -237,18 +273,18 @@ async function playBlackjack(interaction: ButtonInteraction, action: string, dat
     await playFrames(interaction, [
       frame(form, "Blackjack", `🃏 Bob flicks you a card...\n\n**${cardStr(card, p.length - 1)}**`, 900, { avatar, player }),
     ]);
-    if (action === "double") return resolveBlackjack(interaction, form, p, d, avatar, player, true);
-    if (handValue(p) >= 21) return resolveBlackjack(interaction, form, p, d, avatar, player, false);
-    return renderBjTurn(interaction, form, p, d, avatar, player, false);
+    if (action === "double") return resolveBlackjack(interaction, form, p, d, avatar, player, true, ownerId);
+    if (handValue(p) >= 21) return resolveBlackjack(interaction, form, p, d, avatar, player, false, ownerId);
+    return renderBjTurn(interaction, form, p, d, avatar, player, false, ownerId);
   }
   // stand
   if (!interaction.deferred && !interaction.replied) await interaction.deferUpdate().catch(() => {});
-  return resolveBlackjack(interaction, form, p, d, avatar, player, false);
+  return resolveBlackjack(interaction, form, p, d, avatar, player, false, ownerId);
 }
 
 async function resolveBlackjack(
-  interaction: ButtonInteraction, form: BobForm, p: number[], d: number[],
-  avatar: string | null, player: { name: string; icon?: string }, doubled: boolean,
+  interaction: ButtonInteraction | ChatInputCommandInteraction, form: BobForm, p: number[], d: number[],
+  avatar: string | null, player: { name: string; icon?: string }, doubled: boolean, ownerId: string,
 ): Promise<void> {
   const settings = await getBobSettings(interaction.guildId!);
   const pv = handValue(p);
@@ -282,7 +318,7 @@ async function resolveBlackjack(
     `**Bob:** ${handStr(d)} → **${dv}**${dealerBust ? " 💥 BUST" : ""}\n\n` +
     (push ? "🤝 **Push.** Bob slides your coins back. Reluctantly." : won || blackjack ? "🏆 **You win the hand!**" : "🏠 **House wins.** Bob bows.") +
     (doubled ? "\n💰 *Double down honored.*" : "");
-  await finish(interaction, form, settings, head, outcome, "bj", "bob:game:bj:open");
+  await finish(interaction, form, settings, head, outcome, "bj", "bob:game:bj:open", ownerId);
 }
 
 // ── Rock Paper Scissors ──────────────────────────────────────────────────────
@@ -311,30 +347,32 @@ async function playRps(interaction: ButtonInteraction, choice: string): Promise<
   const base: Outcome = tie ? { coins: 10, xp: 10, won: false } : won ? { coins: 35, xp: 22, won: true } : { coins: 0, xp: 8, won: false };
   const outcome = applyForm(form, base);
   const head = `You throw ${mine.emoji} **${mine.label}** — Bob throws ${theirs.emoji} **${theirs.label}**.\n${tie ? "🤝 It's a tie. Rematch?" : won ? "🏆 You win the throw!" : "🏠 Bob takes it."}`;
-  await finish(interaction, form, settings, head, outcome, "rps", "bob:game:rps:open");
+  await finish(interaction, form, settings, head, outcome, "rps", "bob:game:rps:open", interaction.user.id);
 }
 
 // ── Coin Flip ────────────────────────────────────────────────────────────────
 async function playCoinflip(interaction: ButtonInteraction, choice: string): Promise<void> {
   const g = await gate(interaction, "coinflip"); if (!g) return;
   const { form, settings } = g;
+  const avatar = formAvatar(settings, form);
   await animate(interaction, [
-    { embed: bobEmbed(form, "Coin Flip", "🪙 Flipping..."), delayMs: 700 },
-    { embed: bobEmbed(form, "Coin Flip", "🪙 ⟳ ...tumbling..."), delayMs: 700 },
+    { embed: bobEmbed(form, "Coin Flip", "🪙 Flipping...", avatar), delayMs: 700 },
+    { embed: bobEmbed(form, "Coin Flip", "🪙 ⟳ ...tumbling...", avatar), delayMs: 700 },
   ]);
   const result = Math.random() < 0.5 ? "heads" : "tails";
   const won = result === choice;
   const outcome = applyForm(form, won ? { coins: 30, xp: 20, won: true } : { coins: 0, xp: 8, won: false });
-  await finish(interaction, form, settings, `It's **${result.toUpperCase()}**! You called ${choice}.`, outcome, "coinflip", "bob:game:coinflip:open");
+  await finish(interaction, form, settings, `It's **${result.toUpperCase()}**! You called ${choice}.`, outcome, "coinflip", "bob:game:coinflip:open", interaction.user.id);
 }
 
 // ── Dice ─────────────────────────────────────────────────────────────────────
 async function playDice(interaction: ButtonInteraction): Promise<void> {
   const g = await gate(interaction, "dice"); if (!g) return;
   const { form, settings } = g;
+  const avatar = formAvatar(settings, form);
   await animate(interaction, [
-    { embed: bobEmbed(form, "Dice Roll", "🎲 Rolling..."), delayMs: 700 },
-    { embed: bobEmbed(form, "Dice Roll", "🎲🎲 ...bouncing..."), delayMs: 700 },
+    { embed: bobEmbed(form, "Dice Roll", "🎲 Rolling...", avatar), delayMs: 700 },
+    { embed: bobEmbed(form, "Dice Roll", "🎲🎲 ...bouncing...", avatar), delayMs: 700 },
   ]);
   const you = 1 + Math.floor(Math.random() * 6);
   const bob = 1 + Math.floor(Math.random() * 6);
@@ -343,20 +381,21 @@ async function playDice(interaction: ButtonInteraction): Promise<void> {
   const base: Outcome = tie ? { coins: 10, xp: 10, won: false } : won ? { coins: 35, xp: 22, won: true } : { coins: 0, xp: 8, won: false };
   const outcome = applyForm(form, base);
   const head = `You rolled **${you}** 🎲 · Bob rolled **${bob}** 🎲 — ${tie ? "a tie!" : won ? "you win!" : "Bob wins."}`;
-  await finish(interaction, form, settings, head, outcome, "dice", "bob:game:dice:open");
+  await finish(interaction, form, settings, head, outcome, "dice", "bob:game:dice:open", interaction.user.id);
 }
 
 // ── Higher or Lower ──────────────────────────────────────────────────────────
 async function playHigherLower(interaction: ButtonInteraction, dir: string, data: string[]): Promise<void> {
   const g = await gate(interaction, "hl"); if (!g) return;
   const { form, settings } = g;
+  const avatar = formAvatar(settings, form);
   const base = Number(data[0]);
-  await animate(interaction, [{ embed: bobEmbed(form, "Higher or Lower", "🎴 Revealing..."), delayMs: 800 }]);
+  await animate(interaction, [{ embed: bobEmbed(form, "Higher or Lower", "🎴 Revealing...", avatar), delayMs: 800 }]);
   let next = 1 + Math.floor(Math.random() * 10);
   if (next === base) next = next === 10 ? 9 : next + 1; // avoid exact tie
   const won = dir === "higher" ? next > base : next < base;
   const outcome = applyForm(form, won ? { coins: 40, xp: 25, won: true } : { coins: 0, xp: 8, won: false });
-  await finish(interaction, form, settings, `It was **${next}** (you said ${dir} than ${base}).`, outcome, "hl", "bob:game:hl:open");
+  await finish(interaction, form, settings, `It was **${next}** (you said ${dir} than ${base}).`, outcome, "hl", "bob:game:hl:open", interaction.user.id);
 }
 
 // ── Slots ────────────────────────────────────────────────────────────────────
@@ -381,7 +420,7 @@ async function playSlots(interaction: ButtonInteraction): Promise<void> {
   const base: Outcome = allSame ? { coins: jackpot ? 250 : 150, xp: 70, won: true, jackpot } : twoSame ? { coins: 40, xp: 22, won: true } : { coins: 0, xp: 6, won: false };
   const outcome = applyForm(form, base);
   const head = `[ ${reels.join(" | ")} ]${jackpot ? "\n💎 **JACKPOT!** 💎" : allSame ? "\n🎉 Three of a kind!" : twoSame ? "\nTwo match — small win." : ""}`;
-  await finish(interaction, form, settings, head, outcome, "slots", "bob:game:slots:open");
+  await finish(interaction, form, settings, head, outcome, "slots", "bob:game:slots:open", interaction.user.id);
 }
 
 // ── Lucky Wheel ──────────────────────────────────────────────────────────────
@@ -396,17 +435,18 @@ const WHEEL = [
 async function playWheel(interaction: ButtonInteraction): Promise<void> {
   const g = await gate(interaction, "wheel"); if (!g) return;
   const { form, settings } = g;
+  const avatar = formAvatar(settings, form);
   await animate(interaction, [
-    { embed: bobEmbed(form, "Lucky Wheel", "🎡 ◔ spinning..."), delayMs: 600 },
-    { embed: bobEmbed(form, "Lucky Wheel", "🎡 ◑ spinning..."), delayMs: 600 },
-    { embed: bobEmbed(form, "Lucky Wheel", "🎡 ◕ slowing..."), delayMs: 600 },
+    { embed: bobEmbed(form, "Lucky Wheel", "🎡 ◔ spinning...", avatar), delayMs: 600 },
+    { embed: bobEmbed(form, "Lucky Wheel", "🎡 ◑ spinning...", avatar), delayMs: 600 },
+    { embed: bobEmbed(form, "Lucky Wheel", "🎡 ◕ slowing...", avatar), delayMs: 600 },
   ]);
   const seg = pick(WHEEL);
   if ((seg as { curse?: boolean }).curse) {
     await applyCurse(interaction.guildId!, interaction.user.id, "🐸 turned into a frog (cosmetic, harmless)", 30);
   }
   const outcome = applyForm(form, { coins: seg.coins, xp: seg.xp, won: seg.won, jackpot: (seg as { jackpot?: boolean }).jackpot });
-  await finish(interaction, form, settings, `The wheel lands on: **${seg.label}**`, outcome, "wheel", "bob:game:wheel:open");
+  await finish(interaction, form, settings, `The wheel lands on: **${seg.label}**`, outcome, "wheel", "bob:game:wheel:open", interaction.user.id);
 }
 
 // ── Guess the Emoji ──────────────────────────────────────────────────────────
@@ -420,11 +460,12 @@ const EMOJI_SETS = [
 async function playEmoji(interaction: ButtonInteraction, data: string[]): Promise<void> {
   const g = await gate(interaction, "emoji"); if (!g) return;
   const { form, settings } = g;
+  const avatar = formAvatar(settings, form);
   const picked = Number(data[0]);
   const correct = Number(data[1]);
-  await animate(interaction, [{ embed: bobEmbed(form, "Guess the Emoji", "🤔 Checking..."), delayMs: 600 }]);
+  await animate(interaction, [{ embed: bobEmbed(form, "Guess the Emoji", "🤔 Checking...", avatar), delayMs: 600 }]);
   await sleep(150);
   const won = picked === correct;
   const outcome = applyForm(form, won ? { coins: 30, xp: 20, won: true } : { coins: 0, xp: 6, won: false });
-  await finish(interaction, form, settings, won ? "✅ Correct!" : "❌ Nope!", outcome, "emoji", "bob:game:emoji:open");
+  await finish(interaction, form, settings, won ? "✅ Correct!" : "❌ Nope!", outcome, "emoji", "bob:game:emoji:open", interaction.user.id);
 }

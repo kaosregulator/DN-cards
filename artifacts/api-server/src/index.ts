@@ -349,6 +349,86 @@ async function runBootMigrations() {
     ADD COLUMN IF NOT EXISTS result_channel_id TEXT
   `);
 
+  // ── Bob v2 tables + columns ───────────────────────────────────────────────────
+  // Bob is self-contained; these tables are separate from DN Cards. Create the
+  // tables and backfill any missing columns so the published deployment stays in
+  // sync with the Drizzle schema without requiring a manual drizzle-kit push.
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS bob_settings (
+      id                  SERIAL PRIMARY KEY,
+      guild_id            TEXT NOT NULL UNIQUE,
+      enabled             BOOLEAN NOT NULL DEFAULT TRUE,
+      games_enabled       JSONB NOT NULL DEFAULT '{}',
+      blue_bob_pct        INTEGER NOT NULL DEFAULT 12,
+      upside_bob_pct      INTEGER NOT NULL DEFAULT 2,
+      reward_multiplier_pct INTEGER NOT NULL DEFAULT 100,
+      cooldown_seconds    INTEGER NOT NULL DEFAULT 4,
+      ai_talking          BOOLEAN NOT NULL DEFAULT FALSE,
+      events_enabled      BOOLEAN NOT NULL DEFAULT TRUE,
+      channels            JSONB NOT NULL DEFAULT '[]',
+      dex_integration     BOOLEAN NOT NULL DEFAULT FALSE,
+      avatar_normal       TEXT,
+      avatar_blue         TEXT,
+      avatar_upside       TEXT,
+      images              JSONB NOT NULL DEFAULT '{}',
+      mention_chat        BOOLEAN NOT NULL DEFAULT TRUE,
+      created_at          TIMESTAMP NOT NULL DEFAULT NOW(),
+      updated_at          TIMESTAMP NOT NULL DEFAULT NOW()
+    )
+  `);
+  await pool.query(`ALTER TABLE bob_settings ADD COLUMN IF NOT EXISTS avatar_normal TEXT`);
+  await pool.query(`ALTER TABLE bob_settings ADD COLUMN IF NOT EXISTS avatar_blue TEXT`);
+  await pool.query(`ALTER TABLE bob_settings ADD COLUMN IF NOT EXISTS avatar_upside TEXT`);
+  await pool.query(`ALTER TABLE bob_settings ADD COLUMN IF NOT EXISTS images JSONB NOT NULL DEFAULT '{}'`);
+  await pool.query(`ALTER TABLE bob_settings ADD COLUMN IF NOT EXISTS mention_chat BOOLEAN NOT NULL DEFAULT TRUE`);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS bob_profiles (
+      id                  SERIAL PRIMARY KEY,
+      guild_id            TEXT NOT NULL,
+      user_id             TEXT NOT NULL,
+      coins               INTEGER NOT NULL DEFAULT 0,
+      xp                  INTEGER NOT NULL DEFAULT 0,
+      level               INTEGER NOT NULL DEFAULT 1,
+      games_played        INTEGER NOT NULL DEFAULT 0,
+      wins                INTEGER NOT NULL DEFAULT 0,
+      losses              INTEGER NOT NULL DEFAULT 0,
+      biggest_win         INTEGER NOT NULL DEFAULT 0,
+      jackpots            INTEGER NOT NULL DEFAULT 0,
+      roasts_given        INTEGER NOT NULL DEFAULT 0,
+      interactions        INTEGER NOT NULL DEFAULT 0,
+      coins_gambled       INTEGER NOT NULL DEFAULT 0,
+      tasks_completed     INTEGER NOT NULL DEFAULT 0,
+      quests_completed    INTEGER NOT NULL DEFAULT 0,
+      roulette_streak     INTEGER NOT NULL DEFAULT 0,
+      best_roulette_streak INTEGER NOT NULL DEFAULT 0,
+      titles              JSONB NOT NULL DEFAULT '[]',
+      current_title       TEXT,
+      curse_label         TEXT,
+      curse_until         TIMESTAMP,
+      memory              JSONB NOT NULL DEFAULT '[]',
+      last_action_at      TIMESTAMP,
+      created_at          TIMESTAMP NOT NULL DEFAULT NOW(),
+      updated_at          TIMESTAMP NOT NULL DEFAULT NOW(),
+      CONSTRAINT bob_profiles_guild_user_uniq UNIQUE (guild_id, user_id)
+    )
+  `);
+  await pool.query(`CREATE INDEX IF NOT EXISTS bob_profiles_guild_coins_idx ON bob_profiles(guild_id, coins)`);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS bob_progress (
+      id          SERIAL PRIMARY KEY,
+      guild_id    TEXT NOT NULL,
+      user_id     TEXT NOT NULL,
+      kind        TEXT NOT NULL,
+      period_key  TEXT NOT NULL,
+      items       JSONB NOT NULL DEFAULT '[]',
+      created_at  TIMESTAMP NOT NULL DEFAULT NOW(),
+      updated_at  TIMESTAMP NOT NULL DEFAULT NOW(),
+      CONSTRAINT bob_progress_guild_user_kind_period_uniq UNIQUE (guild_id, user_id, kind, period_key)
+    )
+  `);
+
   logger.info("Boot migrations applied");
 }
 

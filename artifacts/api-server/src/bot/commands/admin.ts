@@ -112,6 +112,18 @@ export async function handleAdminCommand(
     return;
   }
 
+  // /create_card_from_mttv — creates a DN card using an MTTV item's image + name.
+  if (cmd === "createcardfrommttv") {
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+    if (!(await checkAdmin(interaction))) {
+      await interaction.editReply("❌ Admins only.");
+      return;
+    }
+    const { handleCreateCardFromMTTV } = await import("./mttvalues.js");
+    await handleCreateCardFromMTTV(interaction);
+    return;
+  }
+
   // /edit_card — defer first so checkAdmin()'s isAdmin() DB call can't blow
   // Discord's 3s window. handleEditCardCommand receives an already-deferred
   // interaction and uses editReply for its panel.

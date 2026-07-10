@@ -72,7 +72,8 @@ async function showChoices(
   form: BobForm, mood: Mood, bullets: number, risk: number,
   avatar: string | null, player: PlayerBadge, note = "",
 ): Promise<void> {
-  const id = (a: string) => `bob:roulette:act:${a}:${bullets}:${risk}`;
+  const ownerId = interaction.user.id;
+  const id = (a: string) => `bob:roulette:act:${a}:${bullets}:${risk}:${ownerId}`;
   const buttons: ButtonBuilder[] = [
     new ButtonBuilder().setCustomId(id("pull")).setLabel("Pull Trigger").setEmoji("🔫").setStyle(ButtonStyle.Danger),
     new ButtonBuilder().setCustomId(id("spin")).setLabel("Spin Chamber").setEmoji("🔄").setStyle(ButtonStyle.Primary),
@@ -94,12 +95,21 @@ async function showChoices(
   const embed = bobEmbed(form, "Roulette — your move", desc, avatar);
   embed.setAuthor({ name: player.name, iconURL: player.icon });
   const row = new ActionRowBuilder<ButtonBuilder>().addComponents(buttons);
-  await interaction.editReply({ embeds: [embed], components: [row] }).catch(() => {});
+  if (interaction.isButton() && !interaction.deferred && !interaction.replied) {
+    await interaction.update({ embeds: [embed], components: [row] }).catch(() => {});
+  } else {
+    await interaction.editReply({ embeds: [embed], components: [row] }).catch(() => {});
+  }
 }
 
 // Button entry for the choice actions (routed from router.ts).
 export async function handleRouletteAction(interaction: ButtonInteraction, parts: string[]): Promise<void> {
-  // bob:roulette:act:<action>:<bullets>:<risk>
+  // bob:roulette:act:<action>:<bullets>:<risk>:<ownerId>
+  const ownerId = parts[6];
+  if (!ownerId || interaction.user.id !== ownerId) {
+    await interaction.reply({ content: "🔒 This roulette game belongs to someone else. Run `/bob_roulette` to start your own.", ...EPHEMERAL }).catch(() => {});
+    return;
+  }
   const guildId = interaction.guildId!;
   const settings = await getBobSettings(guildId);
   const form = rollForm(settings);
@@ -320,15 +330,16 @@ export async function startDuel(interaction: ChatInputCommandInteraction, oppone
   userDuel.set(uKey(guildId, s.challengerId), s.id);
   userDuel.set(uKey(guildId, s.opponentId), s.id);
 
+  const avatar = bobImage(settings, "roulette", form);
   const embed = bobEmbed(form, "Roulette Duel",
-    `<@${interaction.user.id}> challenges <@${opponent.id}> to a **roulette duel**!\n\nTake turns pulling the trigger. First **BANG** loses. Winner takes the glory (and the coins).\n\n<@${opponent.id}>, do you accept?`);
+    `<@${interaction.user.id}> challenges <@${opponent.id}> to a **roulette duel**!\n\nTake turns pulling the trigger. First **BANG** loses. Winner takes the glory (and the coins).\n\n<@${opponent.id}>, do you accept?`, avatar);
   const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder().setCustomId(`bob:duel:accept:${s.id}`).setLabel("Accept").setEmoji("🔫").setStyle(ButtonStyle.Success),
     new ButtonBuilder().setCustomId(`bob:duel:decline:${s.id}`).setLabel("Decline").setStyle(ButtonStyle.Danger),
   );
   await interaction.reply({ content: `<@${opponent.id}>`, embeds: [embed], components: [row] });
   s.message = await interaction.fetchReply() as Message;
-  s.timer = setTimeout(() => { if (s.phase === "pending") { s.message?.edit({ embeds: [bobEmbed(s.form, "Duel expired", "Nobody pulled the trigger in time. Cowards.")], components: [] }).catch(() => {}); clearDuel(s); } }, 60_000);
+  s.timer = setTimeout(() => { if (s.phase === "pending") { s.message?.edit({ embeds: [bobEmbed(s.form, "Duel expired", "Nobody pulled the trigger in time. Cowards.", bobImage(settings, "roulette", form))], components: [] }).catch(() => {}); clearDuel(s); } }, 60_000);
 }
 
 export async function handleBobDuel(interaction: ButtonInteraction, parts: string[]): Promise<void> {
@@ -338,7 +349,7 @@ export async function handleBobDuel(interaction: ButtonInteraction, parts: strin
 
   if (action === "decline") {
     if (interaction.user.id !== s.opponentId) { await interaction.reply({ content: "Only the challenged player can decline.", ...EPHEMERAL }); return; }
-    await interaction.update({ embeds: [bobEmbed(s.form, "Duel declined", `<@${s.opponentId}> chickened out. Bob is not surprised.`)], components: [] }).catch(() => {});
+    await interaction.update({ embeds: [bobEmbed(s.form, "Duel declined", `<@${s.opponentId}> chickened out. Bob is not surprised.`, bobImage(await getBobSettings(s.guildId), "roulette", s.form))], components: [] }).catch(() => {});
     clearDuel(s); return;
   }
   if (action === "accept") {
@@ -346,7 +357,7 @@ export async function handleBobDuel(interaction: ButtonInteraction, parts: strin
     if (s.phase !== "pending") { await interaction.reply({ content: "Already started.", ...EPHEMERAL }); return; }
     s.phase = "playing";
     if (s.timer) clearTimeout(s.timer);
-    await interaction.update(duelTurnView(s)).catch(() => {});
+    await interaction.update(await duelTurnView(s)).catch(() => {});
     return;
   }
   if (action === "pull") {
@@ -356,28 +367,32 @@ export async function handleBobDuel(interaction: ButtonInteraction, parts: strin
   }
 }
 
-function duelTurnView(s: DuelSession): { embeds: EmbedBuilder[]; components: ActionRowBuilder<ButtonBuilder>[] } {
+async function duelTurnView(s: DuelSession): Promise<{ embeds: EmbedBuilder[]; components: ActionRowBuilder<ButtonBuilder>[] }> {
+  const settings = await getBobSettings(s.guildId);
+  const avatar = bobImage(settings, "roulette", s.form);
   const embed = bobEmbed(s.form, "Roulette Duel",
-    `🔫 <@${s.challengerId}> vs <@${s.opponentId}>\nRound **${s.rounds + 1}**\n\nIt's <@${s.turnUserId}>'s turn. Pull the trigger.`);
+    `🔫 <@${s.challengerId}> vs <@${s.opponentId}>\nRound **${s.rounds + 1}**\n\nIt's <@${s.turnUserId}>'s turn. Pull the trigger.`, avatar);
   const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder().setCustomId(`bob:duel:pull:${s.id}`).setLabel("Pull Trigger").setEmoji("🔫").setStyle(ButtonStyle.Danger));
   return { embeds: [embed], components: [row] };
 }
 
 async function resolveDuelPull(interaction: ButtonInteraction, s: DuelSession): Promise<void> {
+  const settings = await getBobSettings(s.guildId);
+  const avatar = bobImage(settings, "roulette", s.form);
   s.rounds++;
   // BANG chance ramps each round to keep duels short and tense.
   const bangChance = Math.min(0.55, 1 / 6 + s.rounds * 0.05);
   const bang = Math.random() < bangChance;
-  await interaction.update({ embeds: [bobEmbed(s.form, "Roulette Duel", `<@${s.turnUserId}> pulls the trigger...\n\n${chamberBar(Math.floor(Math.random() * 6))}`)], components: [] }).catch(() => {});
+  await interaction.update({ embeds: [bobEmbed(s.form, "Roulette Duel", `<@${s.turnUserId}> pulls the trigger...\n\n${chamberBar(Math.floor(Math.random() * 6))}`, avatar)], components: [] }).catch(() => {});
   await sleep(900);
 
   if (!bang) {
     // survive → pass the turn
     s.turnUserId = s.turnUserId === s.challengerId ? s.opponentId : s.challengerId;
-    await interaction.editReply({ embeds: [bobEmbed(s.form, "Roulette Duel", `**CLICK.** ${speak(s.form, pick(ROULETTE_CLICK[s.form]))}`)], components: [] }).catch(() => {});
+    await interaction.editReply({ embeds: [bobEmbed(s.form, "Roulette Duel", `**CLICK.** ${speak(s.form, pick(ROULETTE_CLICK[s.form]))}`, avatar)], components: [] }).catch(() => {});
     await sleep(900);
-    await interaction.editReply(duelTurnView(s)).catch(() => {});
+    await interaction.editReply(await duelTurnView(s)).catch(() => {});
     return;
   }
 
@@ -385,7 +400,6 @@ async function resolveDuelPull(interaction: ButtonInteraction, s: DuelSession): 
   s.phase = "ended";
   const loserId = s.turnUserId;
   const winnerId = loserId === s.challengerId ? s.opponentId : s.challengerId;
-  const settings = await getBobSettings(s.guildId);
   const reward = await grantReward(s.guildId, winnerId, settings, {
     coins: 120, xp: 60, countGame: true, win: true, interaction: true, title: TITLES.gambler, gambled: 25,
   });
@@ -394,7 +408,7 @@ async function resolveDuelPull(interaction: ButtonInteraction, s: DuelSession): 
   await recordBobEvent(s.guildId, loserId, "game_play", 1);
 
   const desc = `**BANG!** ${speak(s.form, pick(ROULETTE_BANG[s.form]))}\n\n💀 <@${loserId}> is out.\n🏆 <@${winnerId}> wins the duel!${rewardTail(reward, 120, 60)}`;
-  await interaction.editReply({ embeds: [bobEmbed(s.form, "Duel Over", desc)], components: [] }).catch(() => {});
+  await interaction.editReply({ embeds: [bobEmbed(s.form, "Duel Over", desc, bobImage(settings, "roulette", s.form))], components: [] }).catch(() => {});
   const note = formatCompletions(completed);
   if (note && s.message) await s.message.reply({ content: `<@${winnerId}> ${note}` }).catch(() => {});
   clearDuel(s);

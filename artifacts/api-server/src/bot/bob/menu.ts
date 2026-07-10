@@ -9,7 +9,7 @@ import {
 import { getBobSettings, getBobProfile, activeCurse, formAvatar } from "./db.js";
 import { rollForm, pick, speak, GREETINGS, FORMS, formTitle, type BobForm } from "./persona.js";
 import { bobEmbed, EPHEMERAL, coins } from "./ui.js";
-import { GAME_KEYS, GAME_META } from "./games.js";
+import { GAME_KEYS, GAME_META, gameId } from "./games.js";
 import { getDailyTasks, getQuests } from "./progress.js";
 import { buildStatsEmbed } from "./stats.js";
 import { talkIntro, talkComponents } from "./talk.js";
@@ -35,11 +35,12 @@ function homeButtons(): ActionRowBuilder<ButtonBuilder>[] {
 async function homeView(guildId: string, userId: string, form: BobForm) {
   const [p, settings] = await Promise.all([getBobProfile(guildId, userId), getBobSettings(guildId)]);
   const curse = activeCurse(p);
+  const avatar = formAvatar(settings, form);
   const embed = bobEmbed(form, "Menu",
     `${speak(form, pick(GREETINGS[form]))}\n\n${coins(p.coins)} · Level **${p.level}**${p.currentTitle ? ` · ${p.currentTitle}` : ""}` +
     (curse ? `\n🌀 ${curse}` : "") +
-    `\n\nPick your poison:`, formAvatar(settings, form))
-    .setFooter({ text: `${formTitle(form)} · ${FORMS[form].blurb}` });
+    `\n\nPick your poison:`, avatar)
+    .setFooter({ text: `${formTitle(form, "", avatar)} · ${FORMS[form].blurb}` });
   return { embeds: [embed], components: homeButtons() };
 }
 
@@ -67,41 +68,49 @@ export async function handleBobMenu(interaction: ButtonInteraction, section: str
       const rows: ActionRowBuilder<ButtonBuilder>[] = [];
       let row = new ActionRowBuilder<ButtonBuilder>();
       GAME_KEYS.forEach((k, i) => {
-        row.addComponents(new ButtonBuilder().setCustomId(`bob:game:${k}:open`).setLabel(GAME_META[k].label).setEmoji(GAME_META[k].emoji).setStyle(ButtonStyle.Primary));
+        row.addComponents(new ButtonBuilder().setCustomId(gameId(k, "open", userId)).setLabel(GAME_META[k].label).setEmoji(GAME_META[k].emoji).setStyle(ButtonStyle.Primary));
         if ((i + 1) % 3 === 0) { rows.push(row); row = new ActionRowBuilder<ButtonBuilder>(); }
       });
       if (row.components.length) rows.push(row);
       rows.push(new ActionRowBuilder<ButtonBuilder>().addComponents(
         new ButtonBuilder().setCustomId("bob:roulette:again").setLabel("Roulette").setEmoji("🔫").setStyle(ButtonStyle.Danger),
         new ButtonBuilder().setCustomId("bob:menu:home").setLabel("Back").setEmoji("↩️").setStyle(ButtonStyle.Secondary)));
-      await interaction.update({ embeds: [bobEmbed(form, "Games", "Pick a game. Win coins. Lose dignity. The Bob way.")], components: rows }).catch(() => {});
+      const avatar = formAvatar(settings, form);
+      await interaction.update({ embeds: [bobEmbed(form, "Games", "Pick a game. Win coins. Lose dignity. The Bob way.", avatar)], components: rows }).catch(() => {});
       return;
     }
-    case "roast":
-      await interaction.update({ embeds: [bobEmbed(form, "Roast", "Who's getting cooked today? Choose your victim.")], components: [roastPickerRow(), backRow()] }).catch(() => {});
+    case "roast": {
+      const avatar = formAvatar(settings, form);
+      await interaction.update({ embeds: [bobEmbed(form, "Roast", "Who's getting cooked today? Choose your victim.", avatar)], components: [roastPickerRow(), backRow()] }).catch(() => {});
       return;
-    case "talk":
-      await interaction.update({ embeds: [talkIntro(form, activeCurse(await getBobProfile(guildId, userId)))], components: [talkComponents()] }).catch(() => {});
+    }
+    case "talk": {
+      const avatar = formAvatar(settings, form);
+      await interaction.update({ embeds: [talkIntro(form, activeCurse(await getBobProfile(guildId, userId)), avatar)], components: [talkComponents()] }).catch(() => {});
       return;
+    }
     case "stats":
       await interaction.update({ embeds: [await buildStatsEmbed(guildId, userId, form, interaction.user.username)], components: [backRow()] }).catch(() => {});
       return;
     case "tasks": {
       const { items } = await getDailyTasks(guildId, userId);
       const body = items.map(o => `${o.done ? "✅" : o.emoji} ${o.label} — **${Math.min(o.progress, o.goal)}/${o.goal}** · 🪙 ${o.rewardCoins}`).join("\n");
-      await interaction.update({ embeds: [bobEmbed(form, "Daily Tasks", body || "No tasks today. Suspicious.")], components: [backRow()] }).catch(() => {});
+      const avatar = formAvatar(settings, form);
+      await interaction.update({ embeds: [bobEmbed(form, "Daily Tasks", body || "No tasks today. Suspicious.", avatar)], components: [backRow()] }).catch(() => {});
       return;
     }
     case "quests": {
       const items = await getQuests(guildId, userId);
       const body = items.map(o => `${o.done ? "✅" : o.emoji} ${o.label} — **${Math.min(o.progress, o.goal)}/${o.goal}** · 🪙 ${o.rewardCoins}${o.rewardTitle ? ` · 🏷️ ${o.rewardTitle}` : ""}`).join("\n");
-      await interaction.update({ embeds: [bobEmbed(form, "Quests", body)], components: [backRow()] }).catch(() => {});
+      const avatar = formAvatar(settings, form);
+      await interaction.update({ embeds: [bobEmbed(form, "Quests", body, avatar)], components: [backRow()] }).catch(() => {});
       return;
     }
     case "rewards": {
       const p = await getBobProfile(guildId, userId);
+      const avatar = formAvatar(settings, form);
       const embed = bobEmbed(form, "Rewards & Titles",
-        `${coins(p.coins)} · Level **${p.level}**\n\n**Your titles:** ${p.titles.length ? p.titles.join(", ") : "*none yet — win games and finish quests!*"}\n\nEquip one below.`);
+        `${coins(p.coins)} · Level **${p.level}**\n\n**Your titles:** ${p.titles.length ? p.titles.join(", ") : "*none yet — win games and finish quests!*"}\n\nEquip one below.`, avatar);
       const comps: ActionRowBuilder<StringSelectMenuBuilder | ButtonBuilder>[] = [];
       if (p.titles.length) {
         comps.push(new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
@@ -132,6 +141,8 @@ export async function handleTitleEquip(interaction: StringSelectMenuInteraction)
   const { and, eq } = await import("drizzle-orm");
   await db.update(bobProfilesTable).set({ currentTitle: next })
     .where(and(eq(bobProfilesTable.guildId, guildId), eq(bobProfilesTable.userId, interaction.user.id)));
-  const form = rollForm(await getBobSettings(guildId));
-  await interaction.update({ content: next ? `🏷️ Equipped **${next}**.` : "🏷️ Title removed.", embeds: [bobEmbed(form, "Rewards & Titles", `Updated. Looking sharp${next ? "" : "... plain, but sharp"}.`)], components: [backRow()] }).catch(() => {});
+  const settings = await getBobSettings(guildId);
+  const form = rollForm(settings);
+  const avatar = formAvatar(settings, form);
+  await interaction.update({ content: next ? `🏷️ Equipped **${next}**.` : "🏷️ Title removed.", embeds: [bobEmbed(form, "Rewards & Titles", `Updated. Looking sharp${next ? "" : "... plain, but sharp"}.`, avatar)], components: [backRow()] }).catch(() => {});
 }

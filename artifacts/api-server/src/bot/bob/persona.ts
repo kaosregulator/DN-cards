@@ -46,9 +46,11 @@ export function speak(form: BobForm, line: string): string {
   return form === "upside" ? glitchify(line) : line;
 }
 
-export function formTitle(form: BobForm, suffix = ""): string {
+export function formTitle(form: BobForm, suffix = "", avatarUrl?: string | null): string {
   const m = FORMS[form];
-  return `${m.face} ${m.name}${suffix ? " — " + suffix : ""}`;
+  // If a custom avatar is set, use only the name (the avatar is shown as the thumbnail).
+  const prefix = avatarUrl ? m.name : `${m.face} ${m.name}`;
+  return suffix ? `${prefix} — ${suffix}` : prefix;
 }
 
 // ── Greetings (menu / talk open) ─────────────────────────────────────────────

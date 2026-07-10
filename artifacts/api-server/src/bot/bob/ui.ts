@@ -15,7 +15,7 @@ export function sleep(ms: number): Promise<void> { return new Promise(r => setTi
 export function bobEmbed(form: BobForm, title: string, description: string, avatarUrl?: string | null): EmbedBuilder {
   const e = new EmbedBuilder()
     .setColor(FORMS[form].color)
-    .setTitle(formTitle(form, title))
+    .setTitle(formTitle(form, title, avatarUrl))
     .setDescription(description);
   if (avatarUrl) e.setThumbnail(avatarUrl);
   return e;
@@ -49,9 +49,12 @@ export async function cooldownReply(interaction: ButtonInteraction | ChatInputCo
 }
 
 // A single-row "Back to menu" / "Play again" button set.
-export function navRow(opts: { again?: string; menu?: boolean } = {}): ActionRowBuilder<ButtonBuilder> {
+export function navRow(opts: { again?: string; menu?: boolean; ownerId?: string } = {}): ActionRowBuilder<ButtonBuilder> {
   const row = new ActionRowBuilder<ButtonBuilder>();
-  if (opts.again) row.addComponents(new ButtonBuilder().setCustomId(opts.again).setLabel("Play Again").setEmoji("🔁").setStyle(ButtonStyle.Success));
+  if (opts.again) {
+    const againId = opts.ownerId ? `${opts.again}:${opts.ownerId}` : opts.again;
+    row.addComponents(new ButtonBuilder().setCustomId(againId).setLabel("Play Again").setEmoji("🔁").setStyle(ButtonStyle.Success));
+  }
   if (opts.menu !== false) row.addComponents(new ButtonBuilder().setCustomId("bob:menu:home").setLabel("Menu").setEmoji("🏠").setStyle(ButtonStyle.Secondary));
   return row;
 }

@@ -1,6 +1,6 @@
 import type { AutocompleteInteraction } from "discord.js";
 import { internalCommandName } from "./register.js";
-import { getAllCards, listSetsV2, getUserCollection, getUserWishlist, listCustomRarities, getRarityContext, getOrCreateGuildSettings, getRarityDisplayOverrides, getDisplayRarities } from "../db.js";
+import { getAllCards, listSetsV2, getUserCollection, getUserWishlist, listCustomRarities, getRarityContext, getOrCreateGuildSettings, getRarityDisplayOverrides, getDisplayRarities, getDistinctCardTypes } from "../db.js";
 import { RARITY_EMOJI, rarityEmoji, rarityLabel, type Rarity } from "../cards-data.js";
 
 const MAX_CHOICES = 25;
@@ -144,7 +144,8 @@ export async function handleAutocomplete(interaction: AutocompleteInteraction): 
       (cmd === "setadmin" && ["name", "set", "from", "to"].includes(focused.name)) ||
       (cmd === "drop" && focused.name === "set") ||
       (cmd === "massdrop" && focused.name === "set") ||
-      (cmd === "addcard" && focused.name === "set");
+      (cmd === "addcard" && focused.name === "set") ||
+      (cmd === "createcardfrommttv" && focused.name === "set");
     if (isSetNameOption) {
       const sets = await getSetsCached();
       const q = query.toLowerCase().trim();
@@ -241,10 +242,10 @@ export async function handleAutocomplete(interaction: AutocompleteInteraction): 
       return;
     }
 
-    // ── /add_card rarity — built-in rarities only for the simplified flow ────
+    // ── /add_card and /create_card_from_mttv rarity — built-in rarities only ────
     // Legacy custom-tier assignment still exists in advanced tools; new cards
     // should start with a stable built-in rarity identity.
-    if (cmd === "addcard" && focused.name === "rarity" && interaction.guild) {
+    if ((cmd === "addcard" || cmd === "createcardfrommttv") && focused.name === "rarity" && interaction.guild) {
       const q = query.toLowerCase().trim();
       const [settings, displayMap] = await Promise.all([
         getOrCreateGuildSettings(interaction.guild.id),
@@ -262,8 +263,25 @@ export async function handleAutocomplete(interaction: AutocompleteInteraction): 
       return;
     }
 
-    // ── /info_mttv — suggest MTTV items, not DN cards ───────────────────────
-    if (cmd === "info_mttv" && focused.name === "item") {
+    // ── /add_card and /create_card_from_mttv type — existing card types plus free entry ──
+    if ((cmd === "addcard" || cmd === "createcardfrommttv") && focused.name === "type" && interaction.guild) {
+      const q = query.toLowerCase().trim();
+      const types = await getDistinctCardTypes();
+      const options = types
+        .filter(t => !q || t.toLowerCase().includes(q))
+        .slice(0, MAX_CHOICES)
+        .map(t => ({ name: t.slice(0, 100), value: t.slice(0, 100) }));
+      // If the user typed something completely new, offer it as-is so they can create a new type.
+      if (q && !types.some(t => t.toLowerCase() === q)) {
+        options.unshift({ name: `New: ${focused.value}`.slice(0, 100), value: focused.value.slice(0, 100) });
+        if (options.length > MAX_CHOICES) options.pop();
+      }
+      await interaction.respond(options);
+      return;
+    }
+
+    // ── /info_mttv and /create_card_from_mttv — suggest MTTV items, not DN cards ──
+    if ((cmd === "info_mttv" || cmd === "createcardfrommttv") && focused.name === "item") {
       const { handleMTTVAutocomplete } = await import("./mttvalues.js");
       await handleMTTVAutocomplete(interaction, focused);
       return;

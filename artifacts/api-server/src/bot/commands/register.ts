@@ -295,6 +295,17 @@ function buildLegacyCommands() {
       .addIntegerOption(o => o.setName("max_copies").setDescription("Max copies if limited (default 50)").setMinValue(1))
       .addBooleanOption(o => o.setName("event_exclusive").setDescription("Event exclusive — never spawns randomly?"))),
 
+    adminCmd("createcardfrommttv", "Create a new DN card from an MTTV item — image + value pulled from MTTV", s => s
+      .addStringOption(o => o.setName("item").setDescription("MTTV item name — type to search").setRequired(true).setAutocomplete(true))
+      .addStringOption(o => o.setName("rarity").setDescription("DN rarity tier — type to search").setRequired(true).setAutocomplete(true))
+      .addStringOption(o => o.setName("type").setDescription("Card type/tag — type to search existing types or enter a new one").setRequired(true).setAutocomplete(true))
+      .addStringOption(o => o.setName("set").setDescription("Optional set to add this card to immediately").setAutocomplete(true))
+      .addStringOption(o => o.setName("description").setDescription("Override the card description (up to 500 chars)").setMaxLength(500))
+      .addBooleanOption(o => o.setName("limited").setDescription("Limited edition — capped copy count?"))
+      .addIntegerOption(o => o.setName("max_copies").setDescription("Max copies if limited (default 50)").setMinValue(1))
+      .addBooleanOption(o => o.setName("event_exclusive").setDescription("Event exclusive — never spawns randomly?"))),
+
+
     adminCmd("editcard", "Edit a card — optionally upload a replacement image/GIF", s => s
       .addStringOption(o => o.setName("name").setDescription("Card to edit").setRequired(true).setAutocomplete(true))
       .addAttachmentOption(o => o.setName("image").setDescription("Optional replacement image/GIF upload"))
@@ -617,6 +628,14 @@ function buildLegacyCommands() {
 
     // ── Bob — interactive entertainment NPC (its own module) ──────────────────
     cmd("bob", "Open Bob — games, roasts, tasks, quests & chaos", s => s),
+    cmd("bob_coinflip", "Play Bob's coin flip", s => s),
+    cmd("bob_dice", "Play Bob's dice roll", s => s),
+    cmd("bob_hl", "Play Bob's higher or lower", s => s),
+    cmd("bob_slots", "Play Bob's slots", s => s),
+    cmd("bob_wheel", "Play Bob's lucky wheel", s => s),
+    cmd("bob_emoji", "Play Bob's guess the emoji", s => s),
+    cmd("bob_bj", "Play Bob's blackjack", s => s),
+    cmd("bob_rps", "Play Bob's rock paper scissors", s => s),
     cmd("bob_roulette", "Play Bob's roulette — survive the chamber for coins", s => s),
     cmd("bob_duel", "Challenge someone to a Bob roulette duel", s => s
       .addUserOption(o => o.setName("user").setDescription("Who to duel").setRequired(true))),
@@ -633,10 +652,10 @@ function buildLegacyCommands() {
           { name: "🎲 Best roulette streak", value: "streak" }, { name: "💬 Most interactions", value: "interactions" },
           { name: "🎰 Biggest gamblers", value: "gambled" }, { name: "💎 Jackpot kings", value: "jackpots" },
           { name: "📈 Highest level", value: "level" }))),
-    adminCmd("bob_admin", "Configure Bob — toggles, odds, rewards, cooldown, channels", s => s
+    adminCmd("bob_admin", "Configure Bob — toggles, odds, rewards, cooldown, channels, images, avatars", s => s
       .addSubcommand(sc => sc.setName("settings").setDescription("View Bob's current settings"))
       .addSubcommand(sc => sc.setName("toggle").setDescription("Enable/disable Bob or a specific game/feature")
-        .addStringOption(o => o.setName("feature").setDescription("bob, events, ai, dex, roulette, roast, duel, coinflip, dice, hl, slots, wheel, emoji").setRequired(true))
+        .addStringOption(o => o.setName("feature").setDescription("bob, events, ai, dex, mention, roulette, roast, duel, coin, dice, hl, slots, wheel, emoji, bj, rps").setRequired(true))
         .addBooleanOption(o => o.setName("enabled").setDescription("On or off").setRequired(true)))
       .addSubcommand(sc => sc.setName("odds").setDescription("Set Blue / Upside-Down Bob appearance chances")
         .addIntegerOption(o => o.setName("blue").setDescription("Blue Bob % (0-100)").setMinValue(0).setMaxValue(100))
@@ -703,6 +722,7 @@ export const COMMAND_RENAMES: Record<string, string> = {
   afksetup: "afk_setup",
   collectorrole: "collector_role",
   addcard: "add_card",
+  createcardfrommttv: "create_card_from_mttv",
   editcard: "edit_card",
   deletecard: "delete_card",
   giveshards: "give_shards",
@@ -766,7 +786,7 @@ export const USER_HUB_COMMANDS = new Set([
 export const ADMIN_HUB_COMMANDS = new Set([
   "setup", "config", "adminhub", "sethub", "set_admin", "deletecard",
   "welcomeadmin", "adminhelp", "drop", "massdrop", "give", "giveshards",
-  "takeback", "takeshards", "addcard", "editcard", "dashboard", "collectorrole",
+  "takeback", "takeshards", "addcard", "createcardfrommttv", "editcard", "dashboard", "collectorrole",
   "setadmin", "rarity", "embed", "event", "edituser", "giveall", "editpack",
   "postcalculator",
 ]);

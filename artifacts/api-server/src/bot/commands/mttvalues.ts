@@ -9,6 +9,9 @@ import {
 } from "discord.js";
 import { logger } from "../../lib/logger.js";
 import { getBotClient } from "../client-holder.js";
+import { addCard, addCardToSet, getCardByName, getSetByName } from "../db.js";
+import { renderPanel, persistBotImage } from "./edit-card.js";
+import { RARITY_BURN, RARITY_WEIGHTS, RARITY_WORTH, type Rarity } from "../cards-data.js";
 
 // MTTV data source via public Firebase REST API — prices from MTTV.
 // The Firebase Web API key is intentionally public (used by browser clients),
@@ -239,6 +242,103 @@ export async function handleInfoMTTV(interaction: ChatInputCommandInteraction): 
   }
 
   await interaction.editReply({ embeds: [buildMTTVItemEmbed(item)] });
+}
+
+const CREATE_CARD_RARITIES = new Set<string>(["common", "uncommon", "rare", "epic", "legendary", "mythic"]);
+
+function createCardRarityDefaults(rarity: Rarity): { worth: number; burn: number; weight: number } {
+  return {
+    worth: RARITY_WORTH[rarity],
+    burn: RARITY_BURN[rarity],
+    weight: RARITY_WEIGHTS[rarity],
+  };
+}
+
+export async function handleCreateCardFromMTTV(interaction: ChatInputCommandInteraction): Promise<void> {
+  // Caller (admin.ts) has already deferred the reply.
+  const guildId = interaction.guildId!;
+  const itemName = interaction.options.getString("item", true).trim();
+  const rarityInput = interaction.options.getString("rarity", true);
+  const type = interaction.options.getString("type", true).trim().toLowerCase().replace(/\s+/g, " ").slice(0, 40);
+  const setName = interaction.options.getString("set")?.trim();
+  const descriptionOverride = interaction.options.getString("description") ?? "";
+  const limited = interaction.options.getBoolean("limited") ?? false;
+  const maxCopies = interaction.options.getInteger("max_copies") ?? undefined;
+  const eventExclusive = interaction.options.getBoolean("event_exclusive") ?? false;
+
+  if (!type) {
+    await interaction.editReply("❌ Card type cannot be empty. Enter a type/tag such as `tank`, `aircraft`, or `nuke`.");
+    return;
+  }
+
+  if (!CREATE_CARD_RARITIES.has(rarityInput)) {
+    await interaction.editReply("❌ Pick one of the built-in rarities from autocomplete.");
+    return;
+  }
+  const baseRarity = rarityInput as Rarity;
+  const defs = createCardRarityDefaults(baseRarity);
+
+  let item: MTTVItem | undefined;
+  try {
+    const items = await fetchMTTVItems();
+    item = items.find((i) => i.name.toLowerCase() === itemName.toLowerCase());
+    if (!item) {
+      const scored = items
+        .map((i) => ({ i, score: matchScore(i, itemName) }))
+        .filter(({ score }) => score > 0)
+        .sort((a, b) => b.score - a.score);
+      item = scored[0]?.i;
+    }
+  } catch (err) {
+    logger.error({ err }, "Failed to fetch MTTV items for create_card_from_mttv");
+    await interaction.editReply("❌ Could not reach MTTV. Try again later.");
+    return;
+  }
+
+  if (!item) {
+    await interaction.editReply(`❌ Could not find MTTV item "${itemName}". Use /info_mttv to search first.`);
+    return;
+  }
+
+  const existing = await getCardByName(item.name, guildId);
+  if (existing) {
+    await interaction.editReply(
+      `❌ A card named **${item.name}** already exists (ID #${existing.id}). ` +
+      `Use \`/edit_card\` to modify it.`,
+    );
+    return;
+  }
+
+  const imageUrl = item.image ? await persistBotImage(item.image) : undefined;
+
+  const card = await addCard({
+    name: item.name,
+    rarity: baseRarity,
+    cardType: type,
+    description: descriptionOverride || item.description || "",
+    imageUrl,
+    worthValue: defs.worth,
+    burnValue: defs.burn,
+    dropWeight: defs.weight,
+    isLimitedEdition: limited,
+    maxCopies: limited ? (maxCopies ?? 50) : undefined,
+    isEventExclusive: eventExclusive,
+    droppable: !eventExclusive,
+    inPacks: !eventExclusive && baseRarity !== "mythic",
+  }, guildId);
+
+  let setNote = "";
+  if (setName) {
+    const set = await getSetByName(setName, guildId);
+    if (set) {
+      await addCardToSet(set.id, card.id, guildId);
+      setNote = ` and added to set \`${set.name}\``;
+    } else {
+      setNote = ` (set \`${setName}\` was not found, so no set was assigned)`;
+    }
+  }
+
+  await renderPanel(interaction, card.id, false, `✅ Created **${card.name}** from MTTV (${baseRarity})${setNote} — tweak any field below`);
 }
 
 export async function handleValueList(interaction: ChatInputCommandInteraction): Promise<void> {

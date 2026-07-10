@@ -6,7 +6,7 @@ import {
   ActionRowBuilder, UserSelectMenuBuilder,
   type ChatInputCommandInteraction, type ButtonInteraction, type UserSelectMenuInteraction, type User,
 } from "discord.js";
-import { getBobSettings, checkCooldown, incRoasts, gameEnabled } from "./db.js";
+import { getBobSettings, checkCooldown, incRoasts, gameEnabled, formAvatar } from "./db.js";
 import { rollForm, pick, speak, ROASTS, UPSIDE_ROASTS, formTitle, type BobForm, type RoastCategory } from "./persona.js";
 import { bobEmbed, sleep, EPHEMERAL } from "./ui.js";
 import { recordBobEvent, formatCompletions } from "./progress.js";
@@ -41,16 +41,17 @@ async function runRoast(
   if (!cd.ok) { await reply(interaction, deferredPublic, `⏳ Let the last roast cool for ${Math.ceil(cd.retryMs / 1000)}s.`, true); return; }
 
   const form = rollForm(settings);
+  const avatar = formAvatar(settings, form);
   // "Thinking..." beat.
-  await editThinking(interaction, deferredPublic, form);
+  await editThinking(interaction, deferredPublic, form, avatar);
   await sleep(1400);
 
   const roast = buildRoast(form, `<@${target.id}>`);
   await incRoasts(guildId, interaction.user.id);
   const completed = await recordBobEvent(guildId, interaction.user.id, "roast", 1);
 
-  const embed = bobEmbed(form, "Roast", roast).setFooter({ text: `Requested by ${interaction.user.username}` });
-  await editFinal(interaction, deferredPublic, embed.data.description ?? roast, form, target.id);
+  const embed = bobEmbed(form, "Roast", roast, avatar).setFooter({ text: `Requested by ${interaction.user.username}` });
+  await editFinal(interaction, deferredPublic, embed.data.description ?? roast, form, target.id, avatar);
   const note = formatCompletions(completed);
   if (note) await interaction.followUp({ content: note, ...EPHEMERAL }).catch(() => {});
 }
@@ -79,10 +80,11 @@ export async function handleRoastPick(interaction: UserSelectMenuInteraction): P
   const cd = await checkCooldown(guildId, interaction.user.id, Math.max(settings.cooldownSeconds, 6));
   if (!cd.ok) { await interaction.followUp({ content: `⏳ Cooldown: ${Math.ceil(cd.retryMs / 1000)}s.`, ...EPHEMERAL }).catch(() => {}); return; }
   const form = rollForm(settings);
+  const avatar = formAvatar(settings, form);
   const roast = buildRoast(form, `<@${target.id}>`);
   await incRoasts(guildId, interaction.user.id);
   const completed = await recordBobEvent(guildId, interaction.user.id, "roast", 1);
-  const embed = bobEmbed(form, "Roast", roast).setFooter({ text: `Requested by ${interaction.user.username}` });
+  const embed = bobEmbed(form, "Roast", roast, avatar).setFooter({ text: `Requested by ${interaction.user.username}` });
   if (interaction.channel && "send" in interaction.channel) {
     await (interaction.channel as { send: Function }).send({ content: `<@${target.id}>`, embeds: [embed] }).catch(() => {});
   }
@@ -96,12 +98,12 @@ async function reply(interaction: ChatInputCommandInteraction | UserSelectMenuIn
   else await interaction.reply({ content, ...(ephemeral ? EPHEMERAL : {}) }).catch(() => {});
 }
 
-async function editThinking(interaction: ChatInputCommandInteraction | UserSelectMenuInteraction, deferred: boolean, form: BobForm): Promise<void> {
-  const e = bobEmbed(form, "Roast", "🔥 Bob is thinking of something devastating...");
+async function editThinking(interaction: ChatInputCommandInteraction | UserSelectMenuInteraction, deferred: boolean, form: BobForm, avatar: string | null): Promise<void> {
+  const e = bobEmbed(form, "Roast", "🔥 Bob is thinking of something devastating...", avatar);
   if (deferred) await interaction.editReply({ embeds: [e] }).catch(() => {});
 }
 
-async function editFinal(interaction: ChatInputCommandInteraction | UserSelectMenuInteraction, deferred: boolean, roast: string, form: BobForm, targetId: string): Promise<void> {
-  const embed = bobEmbed(form, "Roast", roast).setFooter({ text: `${formTitle(form)} · a Bob production` });
+async function editFinal(interaction: ChatInputCommandInteraction | UserSelectMenuInteraction, deferred: boolean, roast: string, form: BobForm, targetId: string, avatar: string | null): Promise<void> {
+  const embed = bobEmbed(form, "Roast", roast, avatar).setFooter({ text: `${formTitle(form, "", avatar)} · a Bob production` });
   if (deferred) await interaction.editReply({ content: `<@${targetId}>`, embeds: [embed] }).catch(() => {});
 }

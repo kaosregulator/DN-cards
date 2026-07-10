@@ -3,7 +3,7 @@
 import {
   ActionRowBuilder, StringSelectMenuBuilder, EmbedBuilder,
 } from "discord.js";
-import { getBobProfile, getBobLeaderboard, luckPct, xpIntoLevel, activeCurse, type BobBoard } from "./db.js";
+import { getBobProfile, getBobLeaderboard, luckPct, xpIntoLevel, activeCurse, type BobBoard, getBobSettings, formAvatar } from "./db.js";
 import { bobEmbed, coins } from "./ui.js";
 import type { BobForm } from "./persona.js";
 import type { BobProfile } from "@workspace/db";
@@ -14,13 +14,14 @@ function bar(into: number, need: number, width = 12): string {
 }
 
 export async function buildStatsEmbed(guildId: string, userId: string, form: BobForm, username: string): Promise<EmbedBuilder> {
-  const p = await getBobProfile(guildId, userId);
+  const [p, settings] = await Promise.all([getBobProfile(guildId, userId), getBobSettings(guildId)]);
   const { into, need } = xpIntoLevel(p.xp);
   const curse = activeCurse(p);
+  const avatar = formAvatar(settings, form);
   const embed = bobEmbed(form, `${username}'s Bob Stats`,
     `${coins(p.coins)} · **Level ${p.level}**  ${bar(into, need)}  ${into}/${need} XP` +
     (p.currentTitle ? `\n🏷️ ${p.currentTitle}` : "") +
-    (curse ? `\n🌀 Cursed: ${curse}` : ""))
+    (curse ? `\n🌀 Cursed: ${curse}` : ""), avatar)
     .addFields(
       { name: "🎮 Games", value: `Played **${p.gamesPlayed}**\nWon **${p.wins}** · Lost **${p.losses}**\nLuck **${luckPct(p)}%**`, inline: true },
       { name: "🎲 Roulette", value: `Streak **${p.rouletteStreak}**\nBest **${p.bestRouletteStreak}**\nJackpots **${p.jackpots}**`, inline: true },
@@ -43,12 +44,12 @@ const BOARD_META: Record<BobBoard, { label: string; emoji: string; value: (p: Bo
 const MEDALS = ["🥇", "🥈", "🥉"];
 
 export async function buildLeaderboardEmbed(guildId: string, board: BobBoard, form: BobForm): Promise<EmbedBuilder> {
-  const rows = await getBobLeaderboard(guildId, board, 10);
+  const [rows, settings] = await Promise.all([getBobLeaderboard(guildId, board, 10), getBobSettings(guildId)]);
   const meta = BOARD_META[board];
   const body = rows.length
     ? rows.map((p, i) => `${MEDALS[i] ?? `\`#${i + 1}\``} <@${p.userId}> — **${meta.value(p)}**`).join("\n")
     : "*No one has played with Bob yet. Be the first.*";
-  return bobEmbed(form, `Leaderboard — ${meta.emoji} ${meta.label}`, body);
+  return bobEmbed(form, `Leaderboard — ${meta.emoji} ${meta.label}`, body, formAvatar(settings, form));
 }
 
 export function leaderboardSelect(current: BobBoard): ActionRowBuilder<StringSelectMenuBuilder> {

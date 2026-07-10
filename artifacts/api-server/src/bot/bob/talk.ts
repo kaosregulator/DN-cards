@@ -102,9 +102,9 @@ async function aiReply(form: BobForm, message: string, memory: BobMemory[]): Pro
 }
 
 // ── Menu / command surfaces ──────────────────────────────────────────────────
-export function talkIntro(form: BobForm, curse: string | null): EmbedBuilder {
+export function talkIntro(form: BobForm, curse: string | null, avatar?: string | null): EmbedBuilder {
   const embed = bobEmbed(form, "Talk to Bob",
-    `${speak(form, pick(GREETINGS[form]))}\n\nHit **Say Something** to chat with me. I remember the last few things you said — for better or worse.`);
+    `${speak(form, pick(GREETINGS[form]))}\n\nHit **Say Something** to chat with me. I remember the last few things you said — for better or worse.`, avatar);
   if (curse) embed.addFields({ name: "🌀 Active curse", value: curse, inline: false });
   return embed;
 }
@@ -124,12 +124,13 @@ export async function handleTalkCommand(interaction: ChatInputCommandInteraction
   const form = rollForm(settings);
   if (!message) {
     const profile = await getBobProfile(interaction.guildId, interaction.user.id);
-    await interaction.reply({ embeds: [talkIntro(form, activeCurse(profile))], components: [talkComponents()], ...EPHEMERAL });
+    await interaction.reply({ embeds: [talkIntro(form, activeCurse(profile), formAvatar(settings, form))], components: [talkComponents()], ...EPHEMERAL });
     return;
   }
   await interaction.deferReply();
   const reply = await bobReply(interaction.guildId, interaction.user.id, form, message);
-  await interaction.editReply({ embeds: [bobEmbed(form, "Talk", `**You:** ${message.slice(0, 200)}\n\n**${formTitle(form)}:** ${reply}`, formAvatar(settings, form))] });
+  const avatar = formAvatar(settings, form);
+  await interaction.editReply({ embeds: [bobEmbed(form, "Talk", `**You:** ${message.slice(0, 200)}\n\n**${formTitle(form, "", avatar)}:** ${reply}`, avatar)] });
 }
 
 // Button: open the "say something" modal.
@@ -149,7 +150,8 @@ export async function handleTalkModal(interaction: ModalSubmitInteraction): Prom
   const form = rollForm(settings);
   const reply = await bobReply(interaction.guildId, interaction.user.id, form, message);
   const completed = await recordBobEvent(interaction.guildId, interaction.user.id, "talk", 0); // already counted in bobReply
-  const embed = bobEmbed(form, "Talk", `**You:** ${message.slice(0, 200)}\n\n**${formTitle(form)}:** ${reply}`, formAvatar(settings, form));
+  const avatar = formAvatar(settings, form);
+  const embed = bobEmbed(form, "Talk", `**You:** ${message.slice(0, 200)}\n\n**${formTitle(form, "", avatar)}:** ${reply}`, avatar);
   await interaction.editReply({ embeds: [embed], components: [talkComponents()] });
   const note = formatCompletions(completed);
   if (note) await interaction.followUp({ content: note, ...EPHEMERAL }).catch(() => {});

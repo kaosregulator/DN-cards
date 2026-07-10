@@ -44,6 +44,7 @@ import {
   handleBob, handleBobRoulette, handleBobDuel, handleBobRoast, handleBobTalk,
   handleBobStats, handleBobLeaderboard,
 } from "./bob/command.js";
+import { handleBobGameCommand } from "./bob/games.js";
 import { handleBobAdmin } from "./bob/admin.js";
 import {
   isBobComponent, handleBobButton, handleBobSelect, handleBobUserSelect, handleBobModal,
@@ -601,6 +602,22 @@ export async function startBot() {
         await handleGiveawayAdminCommand(interaction);
       } else if (cmd === "bob") {
         await handleBob(interaction);
+      } else if (cmd === "bob_coinflip") {
+        await handleBobGameCommand(interaction, "coinflip");
+      } else if (cmd === "bob_dice") {
+        await handleBobGameCommand(interaction, "dice");
+      } else if (cmd === "bob_hl") {
+        await handleBobGameCommand(interaction, "hl");
+      } else if (cmd === "bob_slots") {
+        await handleBobGameCommand(interaction, "slots");
+      } else if (cmd === "bob_wheel") {
+        await handleBobGameCommand(interaction, "wheel");
+      } else if (cmd === "bob_emoji") {
+        await handleBobGameCommand(interaction, "emoji");
+      } else if (cmd === "bob_bj") {
+        await handleBobGameCommand(interaction, "bj");
+      } else if (cmd === "bob_rps") {
+        await handleBobGameCommand(interaction, "rps");
       } else if (cmd === "bob_roulette") {
         await handleBobRoulette(interaction);
       } else if (cmd === "bob_duel") {
@@ -655,7 +672,8 @@ export async function startBot() {
     // Explicitly routed in the interaction handler above.
     "battle", "battleadmin", "market", "squad", "raid", "raidadmin",
     "giveaways", "giveaway", "giveawayadmin",
-    "bob", "bob_roulette", "bob_duel", "bob_roast", "bob_talk", "bob_stats", "bob_leaderboard", "bob_admin",
+    "bob", "bob_coinflip", "bob_dice", "bob_hl", "bob_slots", "bob_wheel", "bob_emoji", "bob_bj", "bob_rps",
+    "bob_roulette", "bob_duel", "bob_roast", "bob_talk", "bob_stats", "bob_leaderboard", "bob_admin",
     "whisper", "adminsecret", "echo", "afk", "afksetup",
     "valuehelp", "valuelist", "info_mttv", "dnvaluesearch", "dnvaluelist", "dnvalueinfo", "dnvaluecalc", "dnhelp", "giveall", "editpack", "postcalculator",
   ]);

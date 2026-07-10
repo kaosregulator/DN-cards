@@ -9,7 +9,7 @@ import {
   type ButtonInteraction, type Client, type Message, type TextChannel,
 } from "discord.js";
 import { randomBytes } from "crypto";
-import { getBobSettings, grantReward, grantDexReward } from "./db.js";
+import { getBobSettings, grantReward, grantDexReward, formAvatar } from "./db.js";
 import { rollForm, pick, speak, type BobForm } from "./persona.js";
 import { bobEmbed, coins } from "./ui.js";
 import { logger } from "../../lib/logger.js";
@@ -24,6 +24,7 @@ interface EventSession {
   channelId: string;
   kind: EventKind;
   form: BobForm;
+  avatar: string | null; // custom form avatar (if any)
   answer?: number;       // trivia correct index
   reward: number;        // base coin reward
   dexReward?: boolean;   // rare: also pays DN Cards shards (if integration on)
@@ -54,21 +55,22 @@ export async function spawnBobEvent(client: Client, guildId: string, channelId: 
   const kind: EventKind = pick(["firstclick", "trivia", "mystery"] as const);
   const dexReward = settings.dexIntegration && Math.random() < 0.15; // rare DN Cards payout
   const reward = form === "blue" ? 150 : form === "upside" ? 80 : 100;
-  const s: EventSession = { id: newId(), guildId, channelId, kind, form, reward, dexReward, claimed: false };
+  const avatar = formAvatar(settings, form);
+  const s: EventSession = { id: newId(), guildId, channelId, kind, form, avatar, reward, dexReward, claimed: false };
 
   const arrival = form === "blue" ? "🔵 **BLUE BOB HAS TAKEN OVER.**" : form === "upside" ? "🙃 **ƨɒʜ ᗺOᗺ… ɘⱱiɿɿɒ**" : "🟡 **BOB HAS ARRIVED.**";
   let embed; let row;
   if (kind === "firstclick") {
-    embed = bobEmbed(form, "Quick! First click wins!", `${arrival}\n\nFirst person to smash the button wins ${coins(reward)}${dexReward ? " + 💠 DN Shards" : ""}!`);
+    embed = bobEmbed(form, "Quick! First click wins!", `${arrival}\n\nFirst person to smash the button wins ${coins(reward)}${dexReward ? " + 💠 DN Shards" : ""}!`, avatar);
     row = new ActionRowBuilder<ButtonBuilder>().addComponents(
       new ButtonBuilder().setCustomId(`bob:event:click:${s.id}`).setLabel("CLICK ME").setEmoji("🎯").setStyle(ButtonStyle.Success));
   } else if (kind === "trivia") {
     const t = pick(TRIVIA); s.answer = t.a;
-    embed = bobEmbed(form, "Trivia Time!", `${arrival}\n\n**${t.q}**\n\nFirst correct answer wins ${coins(reward)}${dexReward ? " + 💠 DN Shards" : ""}!`);
+    embed = bobEmbed(form, "Trivia Time!", `${arrival}\n\n**${t.q}**\n\nFirst correct answer wins ${coins(reward)}${dexReward ? " + 💠 DN Shards" : ""}!`, avatar);
     row = new ActionRowBuilder<ButtonBuilder>().addComponents(
       t.options.map((o, i) => new ButtonBuilder().setCustomId(`bob:event:trivia:${s.id}:${i}`).setLabel(o).setStyle(ButtonStyle.Primary)));
   } else {
-    embed = bobEmbed(form, "Mystery Box!", `${arrival}\n\nA mystery box appeared. First to open it gets... something. Probably.`);
+    embed = bobEmbed(form, "Mystery Box!", `${arrival}\n\nA mystery box appeared. First to open it gets... something. Probably.`, avatar);
     row = new ActionRowBuilder<ButtonBuilder>().addComponents(
       new ButtonBuilder().setCustomId(`bob:event:mystery:${s.id}`).setLabel("Open the Box").setEmoji("🎁").setStyle(ButtonStyle.Success));
   }
@@ -86,7 +88,7 @@ function expire(s: EventSession) {
   active.delete(s.id);
   channelBusy.delete(s.channelId);
   if (!s.claimed && s.message) {
-    s.message.edit({ embeds: [bobEmbed(s.form, "Event over", "Nobody claimed it in time. Bob leaves, disappointed but not surprised.")], components: [] }).catch(() => {});
+    s.message.edit({ embeds: [bobEmbed(s.form, "Event over", "Nobody claimed it in time. Bob leaves, disappointed but not surprised.", s.avatar)], components: [] }).catch(() => {});
   }
 }
 
@@ -126,7 +128,7 @@ export async function handleBobEvent(interaction: ButtonInteraction, parts: stri
 
   const line = speak(s.form, form_congrats(s.form));
   await interaction.update({
-    embeds: [bobEmbed(s.form, "Winner!", `🏆 <@${interaction.user.id}> wins ${coins(coinReward)}${extra}!${dexLine}\n\n${line}\n\nBalance: ${coins(reward.profile.coins)}`)],
+    embeds: [bobEmbed(s.form, "Winner!", `🏆 <@${interaction.user.id}> wins ${coins(coinReward)}${extra}!${dexLine}\n\n${line}\n\nBalance: ${coins(reward.profile.coins)}`, s.avatar)],
     components: [],
   }).catch(() => {});
 }
