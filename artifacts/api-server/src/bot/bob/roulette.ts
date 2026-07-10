@@ -10,10 +10,11 @@ import {
 import { randomBytes } from "crypto";
 import {
   getBobSettings, getBobProfile, checkCooldown, grantReward, gameEnabled,
-  bumpRouletteStreak, applyCurse, formAvatar,
+  bumpRouletteStreak, applyCurse, bobImage,
 } from "./db.js";
 import { rollForm, pick, speak, ROULETTE_CLICK, ROULETTE_BANG, TITLES, type BobForm } from "./persona.js";
 import { bobEmbed, navRow, rewardTail, cooldownReply, sleep, EPHEMERAL, coins } from "./ui.js";
+import { rollMood, moodLine, introLine, playFrames, frame, SUSPENSE, type Mood } from "./scenes.js";
 import { recordBobEvent, formatCompletions } from "./progress.js";
 import type { BobSettings } from "@workspace/db";
 
@@ -35,7 +36,11 @@ async function render(
   }
 }
 
-// ── Single-player roulette ───────────────────────────────────────────────────
+// ── Single-player roulette — Bob's signature scene game ─────────────────────
+//
+// Not one fixed script: a random intro scene, a mood, PLAYER CHOICES (spin /
+// pull / random / trust Bob / walk away / raise risk), and rare special events.
+// State (bullets, risk) rides in the button customIds so it survives restarts.
 export async function playRoulette(interaction: ButtonInteraction | ChatInputCommandInteraction): Promise<void> {
   const guildId = interaction.guildId;
   if (!guildId) { await interaction.reply({ content: "Bob only plays in servers.", ...EPHEMERAL }); return; }
@@ -46,81 +51,219 @@ export async function playRoulette(interaction: ButtonInteraction | ChatInputCom
   if (!cd.ok) { await cooldownReply(interaction, cd.retryMs); return; }
 
   const form = rollForm(settings);
-  const avatar = formAvatar(settings, form);
-  const hardMode = form === "blue"; // Blue Bob loads an extra round.
-  const bullets = hardMode ? 2 : 1;
-  const who = interaction.user.username;
+  const mood = rollMood(form);
+  const avatar = bobImage(settings, "roulette", form);
+  const player = { name: interaction.user.username, icon: interaction.user.displayAvatarURL() };
+  const bullets = form === "blue" ? 2 : 1;
 
-  // ── Animated load + spin ───────────────────────────────────────────────────
-  // 1) Load the chamber (bullets slide in), 2) spin the cylinder, 3) raise to
-  // the head, 4) squeeze. Each frame edits the same message for a real "scene".
-  await render(interaction, true, bobEmbed(form, "Roulette",
-    `**${who}** steps up to the table.\n\n🔫 Bob loads the revolver...\n\n${loadFrame(bullets)}` +
-    (hardMode ? "\n\n😈 *Blue Bob slipped in a second round. Hard mode — but DOUBLE coins if you live.*" : ""), avatar));
-  await sleep(900);
-  for (const f of SPIN_FRAMES) { await render(interaction, false, bobEmbed(form, "Roulette", `Spinning the cylinder...\n\n${f}`, avatar)); await sleep(430); }
-  await render(interaction, false, bobEmbed(form, "Roulette", `🔫 Bob raises the barrel...\n\n**${who}** holds their breath.`, avatar)); await sleep(950);
-  await render(interaction, false, bobEmbed(form, "Roulette", `😬 ...\n\n**squeeze...**`, avatar)); await sleep(1100);
+  // 1) Intro scene (random) → 2) choices.
+  await playFrames(interaction, [
+    frame(form, "Roulette", introLine(form, player.name, true), 1500, { avatar, player }),
+    frame(form, "Roulette", `${moodLine(mood)}\n\n🔫 The revolver sits on the table.\n${loadFrame(bullets)}`, 900, { avatar, player }),
+  ]);
+  await showChoices(interaction, form, mood, bullets, 1, avatar, player);
+}
 
-  const loaded = new Set<number>();
-  while (loaded.size < bullets) loaded.add(Math.floor(Math.random() * 6));
-  const result = Math.floor(Math.random() * 6);
-  const survived = !loaded.has(result);
+interface PlayerBadge { name: string; icon?: string }
 
+// The choice screen. Options rotate — not every option appears every round.
+async function showChoices(
+  interaction: ButtonInteraction | ChatInputCommandInteraction,
+  form: BobForm, mood: Mood, bullets: number, risk: number,
+  avatar: string | null, player: PlayerBadge, note = "",
+): Promise<void> {
+  const id = (a: string) => `bob:roulette:act:${a}:${bullets}:${risk}`;
+  const buttons: ButtonBuilder[] = [
+    new ButtonBuilder().setCustomId(id("pull")).setLabel("Pull Trigger").setEmoji("🔫").setStyle(ButtonStyle.Danger),
+    new ButtonBuilder().setCustomId(id("spin")).setLabel("Spin Chamber").setEmoji("🔄").setStyle(ButtonStyle.Primary),
+  ];
+  // Rotating extras — 2 of 4 appear each round.
+  const extras: ButtonBuilder[] = [
+    new ButtonBuilder().setCustomId(id("random")).setLabel("Random Choice").setEmoji("🎲").setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder().setCustomId(id("trust")).setLabel("Trust Bob").setEmoji("😈").setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder().setCustomId(id("risk")).setLabel("Raise Risk").setEmoji("💰").setStyle(ButtonStyle.Secondary).setDisabled(bullets >= 3),
+    new ButtonBuilder().setCustomId(id("walk")).setLabel("Walk Away").setEmoji("🏃").setStyle(ButtonStyle.Secondary),
+  ];
+  for (let i = extras.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [extras[i], extras[j]] = [extras[j]!, extras[i]!]; }
+  buttons.push(...extras.slice(0, 2));
+
+  const desc = `${note ? note + "\n\n" : ""}Cylinder: ${loadFrame(bullets)}\n` +
+    `Risk: **x${risk}** ${risk > 1 ? "💰" : ""} · Survive for **${40 * risk}+ coins**` +
+    (bullets > 1 ? `\n⚠️ **${bullets} bullets loaded.**` : "") +
+    `\n\nYour move, **${player.name}**.`;
+  const embed = bobEmbed(form, "Roulette — your move", desc, avatar);
+  embed.setAuthor({ name: player.name, iconURL: player.icon });
+  const row = new ActionRowBuilder<ButtonBuilder>().addComponents(buttons);
+  await interaction.editReply({ embeds: [embed], components: [row] }).catch(() => {});
+}
+
+// Button entry for the choice actions (routed from router.ts).
+export async function handleRouletteAction(interaction: ButtonInteraction, parts: string[]): Promise<void> {
+  // bob:roulette:act:<action>:<bullets>:<risk>
+  const guildId = interaction.guildId!;
+  const settings = await getBobSettings(guildId);
+  const form = rollForm(settings);
+  const mood = rollMood(form);
+  const avatar = bobImage(settings, "roulette", form);
+  const player = { name: interaction.user.username, icon: interaction.user.displayAvatarURL() };
+  let action = parts[3] ?? "pull";
+  let bullets = Math.max(1, Math.min(3, Number(parts[4]) || 1));
+  let risk = Math.max(1, Math.min(4, Number(parts[5]) || 1));
+
+  if (action === "random") action = pick(["pull", "spin", "trust"] as const);
+
+  switch (action) {
+    case "spin": {
+      await playFrames(interaction, [
+        frame(form, "Roulette", `🔄 You give the cylinder a lazy spin...\n\n${pick(SPIN_FRAMES)}\n\n${moodLine(mood)}`, 1100, { avatar, player }),
+      ]);
+      return showChoices(interaction, form, mood, bullets, risk, avatar, player, speak(form, pick(["\"Stalling. Respect.\"", "\"Spin it all you like. Physics is on MY side.\"", "\"Ooh, dramatic.\""])));
+    }
+    case "risk": {
+      bullets = Math.min(3, bullets + 1);
+      risk = Math.min(4, risk + 1);
+      return showChoices(interaction, form, mood, bullets, risk, avatar, player,
+        speak(form, `💰 **Another round slides in.** Bob whistles. \"Bold. Payout's now x${risk}.\"`));
+    }
+    case "walk": {
+      const reward = await grantReward(guildId, interaction.user.id, settings, { xp: 6, interaction: true });
+      const line = speak(form, pick([
+        "\"Smart. Boring, but smart.\"", "\"The duck lives to waddle another day.\"",
+        "\"Leaving? I'll tell everyone you screamed.\"",
+      ]));
+      await interaction.update({
+        embeds: [bobEmbed(form, "Roulette — walked away 🏃", `${line}\n\n+⭐ 6 XP for self-preservation.\nBalance: ${coins(reward.profile.coins)}`, avatar)],
+        components: [navRow({ again: "bob:roulette:again" })],
+      }).catch(() => {});
+      return;
+    }
+    case "trust": {
+      // Bob pulls for you. Normal Bob is kind-ish; Blue Bob is... Blue Bob.
+      const surviveChance = form === "blue" ? 0.45 : form === "upside" ? 0.5 : 0.66;
+      await playFrames(interaction, [
+        frame(form, "Roulette", speak(form, pick([
+          "😈 You hand Bob the revolver. He looks TOO happy about it.",
+          "😈 \"You trust me? That's your first mistake today.\"",
+          "😈 Bob takes the gun. \"I've only dropped this twice.\"",
+        ])), 1400, { avatar, player }),
+        frame(form, "Roulette", `${pick(SUSPENSE)}\n\n${pick(SPIN_FRAMES)}`, 1200, { avatar, player }),
+      ]);
+      return resolvePull(interaction, form, mood, bullets, risk, avatar, player, Math.random() < surviveChance, true);
+    }
+    case "pull":
+    default: {
+      await playFrames(interaction, [
+        frame(form, "Roulette", `🔫 You raise the barrel...\n\n${moodLine(mood)}`, 1000, { avatar, player }),
+        frame(form, "Roulette", `${pick(SUSPENSE)}`, 900, { avatar, player }),
+        frame(form, "Roulette", "**squeeze...**", 1100, { avatar, player }),
+      ]);
+      const survived = Math.random() < (6 - bullets) / 6;
+      return resolvePull(interaction, form, mood, bullets, risk, avatar, player, survived, false);
+    }
+  }
+}
+
+// ── Special events (rare outcome twists) ─────────────────────────────────────
+type Special =
+  | { key: "golden"; line: string } | { key: "lucky"; line: string } | { key: "duck"; line: string }
+  | { key: "cheat"; line: string } | { key: "bobshot"; line: string } | { key: "mystery"; line: string }
+  | { key: "jackpot"; line: string };
+
+function rollSpecial(): Special | null {
+  const r = Math.random();
+  if (r < 0.03) return { key: "jackpot", line: "✨ The chamber glows. **JACKPOT CHAMBER!**" };
+  if (r < 0.06) return { key: "golden", line: "🪙 A **GOLDEN CHAMBER** — the casing is solid gold!" };
+  if (r < 0.09) return { key: "duck", line: "🦆 ...a **rubber duck** pops out. It squeaks. Menacingly." };
+  if (r < 0.12) return { key: "cheat", line: "🫳 Bob's hand blurs. Did he just **swap the cylinder?!**" };
+  if (r < 0.145) return { key: "bobshot", line: "🫡 Bob grabs the gun. \"MY TURN.\" **Bob takes the shot.**" };
+  if (r < 0.175) return { key: "mystery", line: "🎁 A **mystery box** drops out of the chamber???" };
+  if (r < 0.20) return { key: "lucky", line: "🍀 A four-leaf clover is jammed in the mechanism. **Lucky shot!**" };
+  return null;
+}
+
+// Shared outcome resolution for pull/trust.
+async function resolvePull(
+  interaction: ButtonInteraction, form: BobForm, mood: Mood, bullets: number, risk: number,
+  avatar: string | null, player: PlayerBadge, survivedRoll: boolean, trusted: boolean,
+): Promise<void> {
+  const guildId = interaction.guildId!;
   const userId = interaction.user.id;
+  const settings = await getBobSettings(guildId);
+  const special = rollSpecial();
+  let survived = survivedRoll;
+  if (special?.key === "lucky") survived = true;
+  if (special?.key === "cheat") survived = !survived;         // Bob flips fate
+  if (special?.key === "duck" || special?.key === "bobshot") survived = true;
+
+  if (special) {
+    await playFrames(interaction, [frame(form, "Roulette — wait, what?", special.line, 1400, { avatar, player })]);
+  }
+
   if (survived) {
     const streak = await bumpRouletteStreak(guildId, userId, true);
-    const base = 40 + Math.min(60, streak.streak * 5);
-    const coinsWon = hardMode ? base * 2 : base;
+    let coinsWon = (40 + Math.min(60, streak.streak * 5)) * risk;
+    let extra = "";
+    if (special?.key === "golden") { coinsWon *= 3; extra = "\n🪙 Golden chamber: **x3 coins!**"; }
+    if (special?.key === "jackpot") { coinsWon += 300; extra = "\n✨ Jackpot chamber: **+300!**"; }
+    if (special?.key === "mystery") { const m = 10 + Math.floor(Math.random() * 290); coinsWon += m; extra = `\n🎁 Mystery box: **+${m}!**`; }
+    if (special?.key === "duck") { coinsWon = Math.max(coinsWon, 50); extra = "\n🦆 The duck approves. Bonus coins."; }
+    if (special?.key === "bobshot") { extra = "\n🫡 Bob survived too. Unfortunately. He pays you for the entertainment."; coinsWon += 40; }
     const title = streak.best >= 10 ? TITLES.survivor : undefined;
     const reward = await grantReward(guildId, userId, settings, {
-      coins: coinsWon, xp: 30, countGame: true, win: true, interaction: true, title, gambled: 25,
+      coins: coinsWon, xp: 30 * risk, countGame: true, win: true, interaction: true, title, gambled: 25 * risk,
+      jackpot: special?.key === "jackpot",
     });
     const completed = [
       ...await recordBobEvent(guildId, userId, "roulette_survive", 1),
       ...await recordBobEvent(guildId, userId, "roulette_win", 1),
+      ...(special?.key === "jackpot" ? await recordBobEvent(guildId, userId, "jackpot", 1) : []),
     ];
-    const line = speak(form, pick(ROULETTE_CLICK[form]));
-    const desc = `${line}\n\n🎯 Survival streak: **${streak.streak}**${streak.brokeRecord ? " 🏅 *new record!*" : ""}${rewardTail(reward, coinsWon, 30)}`;
-    await render(interaction, false, bobEmbed(form, "Roulette — CLICK 😅", desc, avatar), [navRow({ again: "bob:roulette:again" })]);
+    const line = speak(form, trusted ? pick([
+      "\"See? I'm SO trustworthy.\" Bob takes 10% emotionally.",
+      "\"You doubted me. I felt it. Rude.\"",
+    ]) : pick(ROULETTE_CLICK[form]));
+    const winImg = bobImage(settings, "win", form) ?? avatar;
+    const desc = `**CLICK.**\n\n${line}${extra}\n\n🎯 Survival streak: **${streak.streak}**${streak.brokeRecord ? " 🏅 *new record!*" : ""}${rewardTail(reward, coinsWon, 30 * risk)}\n\n${moodLine(mood)}`;
+    await interaction.editReply({ embeds: [withPlayer(bobEmbed(form, "Roulette — CLICK 😅", desc, winImg), player)], components: [navRow({ again: "bob:roulette:again" })] }).catch(() => {});
     const note = formatCompletions(completed);
     if (note) await interaction.followUp({ content: note, ...EPHEMERAL }).catch(() => {});
   } else {
     await bumpRouletteStreak(guildId, userId, false);
     const p = await getBobProfile(guildId, userId);
-    const lost = Math.min(p.coins, 15);
-    const reward = await grantReward(guildId, userId, settings, {
-      coins: -lost, xp: 8, countGame: true, loss: true, interaction: true,
-    });
-    // 25% chance of a harmless, funny temporary curse.
+    const lost = Math.min(p.coins, 15 * risk);
+    const reward = await grantReward(guildId, userId, settings, { coins: -lost, xp: 8, countGame: true, loss: true, interaction: true });
     let curseNote = "";
     if (Math.random() < 0.25) {
       const curse = pick(CURSES);
       await applyCurse(guildId, userId, curse, 30);
-      curseNote = `\n\n🌀 **Bob's curse:** ${curse} *(cosmetic, 30 min, harmless)*`;
+      curseNote = `\n🌀 **Bob's curse:** ${curse} *(cosmetic, 30 min, harmless)*`;
     }
-    const line = speak(form, pick(ROULETTE_BANG[form]));
-    const desc = `${line}${lost > 0 ? `\n\nYou dropped ${coins(lost)}. Your streak resets to 0.` : "\n\nYou had no coins to lose. Small mercies."}${curseNote}\n\nBalance: ${coins(reward.profile.coins)}`;
-    await render(interaction, false, bobEmbed(form, "Roulette — BANG! 💥", desc, avatar), [navRow({ again: "bob:roulette:again" })]);
+    const line = speak(form, trusted ? pick([
+      "\"Whoops.\" Bob does not look sorry.",
+      "\"In my defence... no, I've got nothing. That was funny.\"",
+    ]) : pick(ROULETTE_BANG[form]));
+    const loseImg = bobImage(settings, "lose", form) ?? avatar;
+    const desc = `**BANG!** 💥\n\n${line}\n\n${lost > 0 ? `You dropped ${coins(lost)}. Streak resets.` : "Nothing to lose. Somehow, still embarrassing."}${curseNote}\nBalance: ${coins(reward.profile.coins)}\n\n${moodLine(mood)}`;
+    await interaction.editReply({ embeds: [withPlayer(bobEmbed(form, "Roulette — BANG! 💥", desc, loseImg), player)], components: [navRow({ again: "bob:roulette:again" })] }).catch(() => {});
   }
+}
+
+function withPlayer(e: ReturnType<typeof bobEmbed>, player: PlayerBadge) {
+  return e.setAuthor({ name: player.name, iconURL: player.icon });
 }
 
 // Chamber load display: filled rounds slide into a 6-slot cylinder.
 function loadFrame(bullets: number): string {
   const slots = Array.from({ length: 6 }, (_, i) => (i < bullets ? "🔴" : "⚪"));
-  return `Cylinder:  ${slots.join(" ")}`;
+  return `${slots.join(" ")}`;
 }
 
 // Cylinder spin frames — the marker races around the 6 chambers.
 const SPIN_FRAMES = [
   "🔴 ⚪ ⚪ ⚪ ⚪ ⚪   ↻",
-  "⚪ 🔴 ⚪ ⚪ ⚪ ⚪   ↻",
   "⚪ ⚪ 🔴 ⚪ ⚪ ⚪   ↻",
-  "⚪ ⚪ ⚪ 🔴 ⚪ ⚪   ↻",
   "⚪ ⚪ ⚪ ⚪ 🔴 ⚪   ↻",
-  "⚪ ⚪ ⚪ ⚪ ⚪ 🔴   ↻",
-  "🔴 ⚪ ⚪ ⚪ ⚪ ⚪   ↻",
-  "⚪ ⚪ 🔴 ⚪ ⚪ ⚪   ·",
+  "⚪ 🔴 ⚪ ⚪ ⚪ ⚪   ·",
 ];
 
 const CURSES = [
@@ -130,6 +273,7 @@ const CURSES = [
   "🫠 you are Officially Melting",
   "🥔 potato energy",
 ];
+
 
 // ── Multiplayer duel ─────────────────────────────────────────────────────────
 interface DuelSession {

@@ -28,6 +28,9 @@ import {
 } from "./router.js";
 
 export { startBobEvents } from "./events.js";
+// Optional: call from your MessageCreate handler so Bob occasionally reacts to
+// @mentions:  void handleBobMention(msg);
+export { handleBobMention } from "./talk.js";
 
 // Build Bob's 8 slash commands as JSON, ready to spread into your command array.
 export function bobCommandsJson() {
@@ -78,6 +81,11 @@ export function bobCommandsJson() {
         .addChannelOption(o => o.setName("channel").setDescription("Channel to add/remove")))
       .addSubcommand(sc => sc.setName("testevent").setDescription("Spawn a Bob event now (test)")
         .addChannelOption(o => o.setName("channel").setDescription("Where (default: here)")))
+      .addSubcommand(sc => sc.setName("image").setDescription("Set a scene/reaction image (win, lose, suspense, jackpot, roulette, blackjack, event)")
+        .addStringOption(o => o.setName("key").setDescription("Which image slot").setRequired(true)
+          .addChoices({ name: "win", value: "win" }, { name: "lose", value: "lose" }, { name: "suspense", value: "suspense" },
+            { name: "jackpot", value: "jackpot" }, { name: "roulette", value: "roulette" }, { name: "blackjack", value: "blackjack" }, { name: "event", value: "event" }))
+        .addStringOption(o => o.setName("url").setDescription("Direct image/GIF URL — empty to clear")))
       .addSubcommand(sc => sc.setName("avatar").setDescription("Set Bob's avatar image per form")
         .addStringOption(o => o.setName("form").setDescription("Which Bob").setRequired(true)
           .addChoices({ name: "🟡 Normal Bob", value: "normal" }, { name: "🔵 Blue Bob", value: "blue" }, { name: "🙃 Upside-Down Bob", value: "upside" }))

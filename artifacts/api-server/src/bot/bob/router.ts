@@ -6,7 +6,7 @@ import type {
 } from "discord.js";
 import { handleBobMenu, handleTitleEquip } from "./menu.js";
 import { handleBobGame } from "./games.js";
-import { playRoulette, handleBobDuel } from "./roulette.js";
+import { playRoulette, handleRouletteAction, handleBobDuel } from "./roulette.js";
 import { handleRoastPick } from "./roast.js";
 import { handleTalkSay, handleTalkModal, handleTalkForget } from "./talk.js";
 import { handleBobEvent } from "./events.js";
@@ -42,7 +42,9 @@ export async function handleBobButton(interaction: ButtonInteraction): Promise<v
     switch (parts[1]) {
       case "menu": return handleBobMenu(interaction, parts[2] ?? "home");
       case "game": return handleBobGame(interaction, parts);
-      case "roulette": return playRoulette(interaction);
+      case "roulette":
+        if (parts[2] === "act") return handleRouletteAction(interaction, parts);
+        return playRoulette(interaction);
       case "duel": return handleBobDuel(interaction, parts);
       case "event": return handleBobEvent(interaction, parts);
       case "talk":
