@@ -47,6 +47,12 @@ export function formAvatar(settings: BobSettings, form: "normal" | "blue" | "ups
   return (form === "blue" ? settings.avatarBlue : form === "upside" ? settings.avatarUpside : settings.avatarNormal) || null;
 }
 
+// Resolve a reaction/scene image by key (win, lose, suspense, jackpot, …).
+// Falls back to the form avatar so scenes always have SOMETHING if configured.
+export function bobImage(settings: BobSettings, key: string, form?: "normal" | "blue" | "upside"): string | null {
+  return settings.images[key] || (form ? formAvatar(settings, form) : null);
+}
+
 // ── Profiles ─────────────────────────────────────────────────────────────────
 export async function getBobProfile(guildId: string, userId: string): Promise<BobProfile> {
   await db.insert(bobProfilesTable).values({ guildId, userId }).onConflictDoNothing();

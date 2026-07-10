@@ -46,6 +46,11 @@ export const bobSettingsTable = pgTable("bob_settings", {
   avatarNormal: text("avatar_normal"),
   avatarBlue: text("avatar_blue"),
   avatarUpside: text("avatar_upside"),
+  // Extra reaction/scene images (key → URL): win, lose, suspense, jackpot,
+  // roulette, blackjack, event, … Set with `/bob_admin image`. All optional.
+  images: jsonb("images").$type<Record<string, string>>().notNull().default({}),
+  // Bob occasionally replies when @mentioned (short, in character, rate-limited).
+  mentionChat: boolean("mention_chat").notNull().default(true),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });

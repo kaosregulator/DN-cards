@@ -594,6 +594,11 @@ function buildLegacyCommands() {
         .addChannelOption(o => o.setName("channel").setDescription("Channel to add/remove")))
       .addSubcommand(sc => sc.setName("testevent").setDescription("Spawn a Bob event now (test)")
         .addChannelOption(o => o.setName("channel").setDescription("Where (default: here)")))
+      .addSubcommand(sc => sc.setName("image").setDescription("Set a scene/reaction image (win, lose, suspense, jackpot, roulette, blackjack, event)")
+        .addStringOption(o => o.setName("key").setDescription("Which image slot").setRequired(true)
+          .addChoices({ name: "win", value: "win" }, { name: "lose", value: "lose" }, { name: "suspense", value: "suspense" },
+            { name: "jackpot", value: "jackpot" }, { name: "roulette", value: "roulette" }, { name: "blackjack", value: "blackjack" }, { name: "event", value: "event" }))
+        .addStringOption(o => o.setName("url").setDescription("Direct image/GIF URL — empty to clear")))
       .addSubcommand(sc => sc.setName("avatar").setDescription("Set Bob's avatar image per form (upload to Discord, copy link)")
         .addStringOption(o => o.setName("form").setDescription("Which Bob").setRequired(true)
           .addChoices({ name: "🟡 Normal Bob", value: "normal" }, { name: "🔵 Blue Bob", value: "blue" }, { name: "🙃 Upside-Down Bob", value: "upside" }))
