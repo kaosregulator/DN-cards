@@ -291,7 +291,7 @@ export async function startBot() {
           await handleBattleAdminModal(interaction);
         } else if (interaction.customId.startsWith("adminhub:")) {
           await handleAdminHubModal(interaction);
-        } else if (interaction.customId.startsWith("mttcalc_hub:")) {
+        } else if (interaction.customId.startsWith("mttcalc_hub_modal:")) {
           await handleMttvHubModal(interaction);
         } else if (interaction.customId.startsWith("mtcalc_modal:")) {
           await handleMTTVCalcModal(interaction);

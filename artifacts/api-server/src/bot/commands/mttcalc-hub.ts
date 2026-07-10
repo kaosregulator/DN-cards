@@ -634,18 +634,21 @@ export async function handleMttvHubModal(interaction: ModalSubmitInteraction): P
   const userId = parts[4];
   if (!messageId || !side || !userId || userId !== interaction.user.id) return;
 
+  // Acknowledge the modal submission immediately before doing any DB or
+  // network work. Discord only gives us a 3-second window to respond.
+  await interaction.deferUpdate().catch(() => {});
+
   evictStaleSessions();
 
   const hub = await getRegisteredHub(messageId);
   if (!hub) {
-    await interaction.reply({
+    await interaction.editReply({
       content: "❌ This calculator hub is no longer registered. Ask an admin to post a new one with `/postcalculator`.",
-      flags: MessageFlags.Ephemeral,
+      embeds: [],
+      components: [],
     }).catch(() => {});
     return;
   }
-
-  await interaction.deferUpdate().catch(() => {});
 
   const session = getSession(messageId, userId);
   const items = sideField(session, side);
