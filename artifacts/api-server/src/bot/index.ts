@@ -49,6 +49,7 @@ import {
   isBobComponent, handleBobButton, handleBobSelect, handleBobUserSelect, handleBobModal,
 } from "./bob/router.js";
 import { startBobEvents } from "./bob/events.js";
+import { handleBobMention } from "./bob/talk.js";
 import { handleWhisperCommand, handleAdminSecretCommand, handleEchoCommand } from "./secret/commands.js";
 import { isSecretModal, handleSecretModal, isSecretButton, handleSecretButton } from "./secret/interactions.js";
 import {
@@ -682,6 +683,10 @@ export async function startBot() {
     // Giveaway message-requirement tracking (anti-spam, ignores commands/bots).
     // Fire-and-forget — never consumes the message or blocks the pipeline below.
     void handleGiveawayMessage(msg, prefix).catch(err => logger.debug({ err }, "Giveaway message hook error"));
+
+    // Bob @mention chat — Bob occasionally reacts when tagged (rate-limited,
+    // sometimes ignores you on purpose). Fire-and-forget.
+    void handleBobMention(msg).catch(err => logger.debug({ err }, "Bob mention hook error"));
 
     if (content.startsWith(prefix)) {
       await handlePrefixCommand(msg, prefix).catch(err => logger.error({ err }, "Prefix command error"));

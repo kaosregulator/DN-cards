@@ -8,7 +8,9 @@ import { triggerBobEvent } from "./events.js";
 import type { BobSettings } from "@workspace/db";
 
 const EPHEMERAL = { flags: MessageFlags.Ephemeral } as const;
-const TOGGLE_KEYS = ["bob", "events", "ai", "dex", ...GAME_KEYS, "roulette", "roast", "duel"];
+const TOGGLE_KEYS = ["bob", "events", "ai", "dex", "mention", ...GAME_KEYS, "roulette", "roast", "duel"];
+// Reaction/scene image slots settable via /bob_admin image.
+const IMAGE_KEYS = ["win", "lose", "suspense", "jackpot", "roulette", "blackjack", "event"];
 
 function isAdmin(member: GuildMember | null): boolean {
   return !!member?.permissions.has(PermissionFlagsBits.Administrator);
@@ -18,7 +20,8 @@ function overview(s: BobSettings): EmbedBuilder {
   const games = [...GAME_KEYS, "roulette", "roast", "duel"].map(k => `${s.gamesEnabled[k] === false ? "🚫" : "✅"} ${k}`).join(" · ");
   return new EmbedBuilder().setColor(0xf1c40f).setTitle("🟡 Bob — Server Settings").setDescription(
     `**Enabled:** ${s.enabled ? "yes" : "no"}\n` +
-    `**Random events:** ${s.eventsEnabled ? "on" : "off"} · **AI talk:** ${s.aiTalking ? "on" : "off"} · **DN Cards rewards:** ${s.dexIntegration ? "on" : "off"}\n` +
+    `**Random events:** ${s.eventsEnabled ? "on" : "off"} · **AI talk:** ${s.aiTalking ? "on" : "off"} · **@mention chat:** ${s.mentionChat ? "on" : "off"} · **DN Cards rewards:** ${s.dexIntegration ? "on" : "off"}\n` +
+    `**Scene images set:** ${Object.keys(s.images).length}\n` +
     `**Blue Bob:** ${s.blueBobPct}% · **Upside-Down Bob:** ${s.upsideBobPct}%\n` +
     `**Reward multiplier:** ${s.rewardMultiplierPct}% · **Cooldown:** ${s.cooldownSeconds}s\n` +
     `**Event channels:** ${s.channels.length ? s.channels.map(c => `<#${c}>`).join(", ") : "*none set — random events won't fire*"}\n\n` +
@@ -49,6 +52,7 @@ export async function handleBobAdmin(interaction: ChatInputCommandInteraction): 
       else if (key === "events") await updateBobSettings(guildId, { eventsEnabled: on });
       else if (key === "ai") await updateBobSettings(guildId, { aiTalking: on });
       else if (key === "dex") await updateBobSettings(guildId, { dexIntegration: on });
+      else if (key === "mention") await updateBobSettings(guildId, { mentionChat: on });
       else await updateBobSettings(guildId, { gamesEnabled: { ...s.gamesEnabled, [key]: on } });
       await interaction.editReply(`✅ **${key}** is now **${on ? "on" : "off"}**.`);
       return;
@@ -91,6 +95,34 @@ export async function handleBobAdmin(interaction: ChatInputCommandInteraction): 
       } else { await interaction.editReply("Pass a `channel:` for add/remove (or use `clear`)."); return; }
       const u = await updateBobSettings(guildId, { channels });
       await interaction.editReply(`✅ Event channels: ${u.channels.length ? u.channels.map(c => `<#${c}>`).join(", ") : "none"}.`);
+      return;
+    }
+
+    case "image": {
+      const key = interaction.options.getString("key", true).toLowerCase();
+      const url = interaction.options.getString("url"); // empty clears
+      if (!IMAGE_KEYS.includes(key)) { await interaction.editReply(`❌ Unknown image key. One of: ${IMAGE_KEYS.join(", ")}`); return; }
+      if (url && !/^https?:\/\/\S+\.(png|jpe?g|gif|webp)(\?\S*)?$/i.test(url)) {
+        await interaction.editReply("❌ That doesn't look like a direct image URL (.png/.jpg/.gif/.webp). Upload it to Discord → right-click → Copy Link.");
+        return;
+      }
+      const images = { ...s.images };
+      if (url) images[key] = url; else delete images[key];
+      await updateBobSettings(guildId, { images });
+      await interaction.editReply(url ? `✅ Scene image **${key}** set. GIFs work too.` : `✅ Cleared the **${key}** image.`);
+      return;
+    }
+
+    case "avatar": {
+      const form = interaction.options.getString("form", true);
+      const url = interaction.options.getString("url"); // empty/omitted clears
+      if (url && !/^https?:\/\/\S+\.(png|jpe?g|gif|webp)(\?\S*)?$/i.test(url)) {
+        await interaction.editReply("❌ That doesn't look like a direct image URL (must end in .png/.jpg/.gif/.webp). Upload the image to Discord, right-click → Copy Link.");
+        return;
+      }
+      const col = form === "blue" ? "avatarBlue" : form === "upside" ? "avatarUpside" : "avatarNormal";
+      await updateBobSettings(guildId, { [col]: url || null } as Partial<BobSettings>);
+      await interaction.editReply(url ? `✅ ${form} Bob avatar set. It'll show as the thumbnail on his embeds.` : `✅ Cleared the ${form} Bob avatar (back to the emoji face).`);
       return;
     }
 
