@@ -28,18 +28,18 @@ function buildLegacyCommands() {
   return [
     // ── User Commands ─────────────────────────────────────────────────────────
     // ── User Commands ───────────────────────���────────────────────────────────[...]
-    cmd("collection", "(User) View your DN Cards collection", s => s
+    cmd("collection", "View your DN Cards collection", s => s
       .addUserOption(o => o.setName("user").setDescription("View another member's collection"))),
 
-    cmd("rank", "(User) Your rank and progression", s => s
+    cmd("rank", "Your rank and progression", s => s
       .addUserOption(o => o.setName("user").setDescription("View another member's rank"))),
 
-    cmd("info", "(User) Details, worth, and drop chance", s => s
+    cmd("info", "Details, worth, and drop chance", s => s
       .addStringOption(o => o.setName("name").setDescription("Name to look up").setRequired(true).setAutocomplete(true))),
 
-    cmd("list", "(User) Full roster grouped by rarity", s => s),
+    cmd("list", "Full roster grouped by rarity", s => s),
 
-    cmd("catalog", "(User) Browse by category — see what you own and what's missing", s => s
+    cmd("catalog", "Browse by category — see what you own and what's missing", s => s
       .addStringOption(o => o.setName("category").setDescription("Optional: jump straight to a category (default: overview)")
         .addChoices(
           { name: "🔮 Extra", value: "mythic" },
@@ -54,65 +54,65 @@ function buildLegacyCommands() {
         ))
       .addUserOption(o => o.setName("user").setDescription("Check another member's ownership (default: you)"))),
 
-    cmd("top", "(User) Top 10 collectors leaderboard", s => s),
+    cmd("top", "Top 10 collectors leaderboard", s => s),
 
-    cmd("burn", "(User) Burn duplicates for DN Shards", s => s
+    cmd("burn", "Burn duplicates for DN Shards", s => s
       .addStringOption(o => o.setName("name").setDescription("Name to burn").setRequired(true).setAutocomplete(true))
       .addIntegerOption(o => o.setName("amount").setDescription("How many copies to burn (default 1)").setMinValue(1))
       .addBooleanOption(o => o.setName("all").setDescription("Burn every copy you own of this card"))
       .addBooleanOption(o => o.setName("shiny").setDescription("Burn shiny copies (2× shards) instead of normal copies"))),
 
-    cmd("shards", "(User) Check your DN Shards balance", s => s
+    cmd("shards", "Check your DN Shards balance", s => s
       .addUserOption(o => o.setName("user").setDescription("View another member's balance"))),
 
-    cmd("trade", "(User) Propose a trade — cards, shards, or both", s => s
+    cmd("trade", "Propose a trade — cards, shards, or both", s => s
       .addUserOption(o => o.setName("user").setDescription("Member to trade with").setRequired(true))
       .addStringOption(o => o.setName("offer").setDescription("Name you are offering").setAutocomplete(true))
       .addStringOption(o => o.setName("want").setDescription("Name you want in return").setAutocomplete(true))
       .addIntegerOption(o => o.setName("offer_shards").setDescription("💠 shards you offer (optional)").setMinValue(1))
       .addIntegerOption(o => o.setName("want_shards").setDescription("💠 shards you want (optional)").setMinValue(1))),
 
-    cmd("gift", "(User) Gift DN Shards to another member", s => s
+    cmd("gift", "Gift DN Shards to another member", s => s
       .addUserOption(o => o.setName("user").setDescription("Member to send shards to").setRequired(true))
       .addIntegerOption(o => o.setName("amount").setDescription("Amount of 💠 shards to gift").setRequired(true).setMinValue(1))),
 
-    cmd("trades", "(User) View your pending trade offers", s => s),
-    cmd("tradehistory", "(User) View recent completed trades", s => s
+    cmd("trades", "View your pending trade offers", s => s),
+    cmd("tradehistory", "View recent completed trades", s => s
       .addUserOption(o => o.setName("user").setDescription("Whose history to view (default: you)").setRequired(false))),
 
-    cmd("accept", "(User) Accept a pending trade offer", s => s
+    cmd("accept", "Accept a pending trade offer", s => s
       .addIntegerOption(o => o.setName("id").setDescription("Trade ID from /trades").setRequired(true).setMinValue(1))),
 
-    cmd("decline", "(User) Decline or cancel a trade offer", s => s
+    cmd("decline", "Decline or cancel a trade offer", s => s
       .addIntegerOption(o => o.setName("id").setDescription("Trade ID from /trades").setRequired(true).setMinValue(1))),
 
-    cmd("welcome", "(User) Welcome — game intro, quick start & commands", s => s),
+    cmd("welcome", "Welcome — game intro, quick start & commands", s => s),
 
-    adminCmd("setup", "(Admin) Interactive server setup wizard — channels, spawns, rates, toggles", s => s),
+    adminCmd("setup", "Interactive server setup wizard — channels, spawns, rates, toggles", s => s),
 
-    cmd("help", "(User) Show player commands", s => s),
+    cmd("help", "Show player commands", s => s),
 
-    adminCmd("adminhelp", "(Admin) Show admin & setup commands", s => s),
+    adminCmd("adminhelp", "Show admin & setup commands", s => s),
 
-    cmd("daily", "(User) Claim your daily DN Shards reward", s => s),
+    cmd("daily", "Claim your daily DN Shards reward", s => s),
 
-    cmd("quests", "(User) View daily & weekly quests — earn shards and packs", s => s),
+    cmd("quests", "View daily & weekly quests — earn shards and packs", s => s),
 
-    cmd("level", "(User) View a card's battle level, XP, and unlocked frames", s => s
+    cmd("level", "View a card's battle level, XP, and unlocked frames", s => s
       .addStringOption(o => o.setName("name").setDescription("Card name (leave empty for your top leveled cards)").setAutocomplete(true))),
 
-    cmd("frame", "(User) Equip a cosmetic frame on a card you've leveled", s => s
+    cmd("frame", "Equip a cosmetic frame on a card you've leveled", s => s
       .addStringOption(o => o.setName("name").setDescription("Card name").setRequired(true).setAutocomplete(true))
       .addStringOption(o => o.setName("style").setDescription("Frame to equip (leave empty to list options)"))),
 
-    cmd("lock", "(User) Lock/favorite a card so it can't be burned or traded in", s => s
+    cmd("lock", "Lock/favorite a card so it can't be burned or traded in", s => s
       .addStringOption(o => o.setName("name").setDescription("Card to lock/unlock").setRequired(true).setAutocomplete(true))
       .addStringOption(o => o.setName("state").setDescription("Lock or unlock (default: toggle)")
         .addChoices({ name: "lock", value: "on" }, { name: "unlock", value: "off" }))),
 
-    cmd("collector", "(User) Toggle spawn pings — join/leave the collector ping role", s => s),
+    cmd("collector", "Toggle spawn pings — join/leave the collector ping role", s => s),
 
-    cmd("search", "(User) Search the roster by name, rarity, or type — see what you own", s => s
+    cmd("search", "Search the roster by name, rarity, or type — see what you own", s => s
       .addStringOption(o => o.setName("query").setDescription("Text to match in the card name"))
       .addStringOption(o => o.setName("rarity").setDescription("Filter by rarity")
         .addChoices(
@@ -123,20 +123,20 @@ function buildLegacyCommands() {
       .addStringOption(o => o.setName("owned").setDescription("Only owned or only missing")
         .addChoices({ name: "Owned", value: "owned" }, { name: "Missing", value: "missing" }))),
 
-    cmd("pack", "(User) Open a card pack — pick a tier", s => s
+    cmd("pack", "Open a card pack — pick a tier", s => s
       .addStringOption(o => o.setName("tier")
         .setDescription("Which pack to open — built-in or custom (type to search, default: Basic)")
         .setAutocomplete(true))),
 
-    cmd("packstats", "(User) View pack costs, weekly caps & cooldown", s => s),
+    cmd("packstats", "View pack costs, weekly caps & cooldown", s => s),
 
-    cmd("tradein", "(User) Burn 5 of one rarity for 1 of the next tier up", s => s
+    cmd("tradein", "Burn 5 of one rarity for 1 of the next tier up", s => s
       .addStringOption(o => o.setName("rarity").setDescription("Rarity to trade in").setRequired(true).setAutocomplete(true))),
 
-    cmd("achievements", "(User) View unlocked achievements", s => s
+    cmd("achievements", "View unlocked achievements", s => s
       .addUserOption(o => o.setName("user").setDescription("View another member's achievements"))),
 
-    cmd("wishlist", "(User) Manage your wishlist — get pinged when wished cards spawn", s => s
+    cmd("wishlist", "Manage your wishlist — get pinged when wished cards spawn", s => s
       .addSubcommand(sc => sc.setName("add").setDescription("Add to your wishlist")
         .addStringOption(o => o.setName("name").setDescription("Name to add").setRequired(true).setAutocomplete(true)))
       .addSubcommand(sc => sc.setName("remove").setDescription("Remove from your wishlist")
@@ -145,18 +145,18 @@ function buildLegacyCommands() {
         .addUserOption(o => o.setName("user").setDescription("View another member's wishlist")))),
 
     // ── Quick Admin Slash Commands ────────────────────────────────────────────
-    adminCmd("config", "(Admin) Open the server config panel — visual toggles for catch mode, intervals, etc.", s => s),
+    adminCmd("config", "Open the server config panel — visual toggles for catch mode, intervals, etc.", s => s),
 
-    adminCmd("adminhub", "(Admin) Quick hub — manage admins, timeouts, and see server state", s => s),
+    adminCmd("adminhub", "Quick hub — manage admins, timeouts, and see server state", s => s),
 
-    adminCmd("sethub", "(Admin) Clickable set manager — create sets, add cards, activate spawn pool, export with one click", s => s),
+    adminCmd("sethub", "Clickable set manager — create sets, add cards, activate spawn pool, export with one click", s => s),
 
-    adminCmd("set_admin", "(Admin) Interactive set hub — full set management with buttons and dropdowns, no subcommands needed", s => s),
+    adminCmd("set_admin", "Interactive set hub — full set management with buttons and dropdowns, no subcommands needed", s => s),
 
-    adminCmd("deletecard", "(Admin) Permanently delete a card from the roster", s => s
+    adminCmd("deletecard", "Permanently delete a card from the roster", s => s
       .addStringOption(o => o.setName("name").setDescription("Card to delete").setRequired(true).setAutocomplete(true))),
 
-    adminCmd("setadmin", "(Admin) Manage card sets — create, add cards, set active spawn pool, export/import", s => s
+    adminCmd("setadmin", "Manage card sets — create, add cards, set active spawn pool, export/import", s => s
       .addSubcommand(sc => sc.setName("create").setDescription("Create a new set")
         .addStringOption(o => o.setName("name").setDescription("Set name (e.g. v1, halloween-2026)").setRequired(true))
         .addStringOption(o => o.setName("description").setDescription("Optional description")))
@@ -234,46 +234,46 @@ function buildLegacyCommands() {
         .addStringOption(o => o.setName("name").setDescription("Set name").setRequired(true).setAutocomplete(true)))
       .addSubcommand(sc => sc.setName("listloaded").setDescription("List all loaded sets and their card counts"))),
 
-    adminCmd("welcomeadmin", "(Admin) Post the admin onboarding guide — setup, card editing, website, and commands", s => s),
+    adminCmd("welcomeadmin", "Post the admin onboarding guide — setup, card editing, website, and commands", s => s),
 
-    adminCmd("drop", "(Admin) Force-drop a card — for events and giveaways", s => s
+    adminCmd("drop", "Force-drop a card — for events and giveaways", s => s
       .addStringOption(o => o.setName("name").setDescription("Card name — leave empty for a random drop from active set").setAutocomplete(true))
       .addStringOption(o => o.setName("set").setDescription("Pick a specific set to drop from (ignores active set)").setAutocomplete(true))),
 
-    adminCmd("massdrop", "(Admin) Drop a big batch of cards — mostly low tier with a few bangers", s => s
+    adminCmd("massdrop", "Drop a big batch of cards — mostly low tier with a few bangers", s => s
       .addIntegerOption(o => o.setName("amount").setDescription("How many cards to drop (10-25, default 15)").setMinValue(10).setMaxValue(25))
       .addStringOption(o => o.setName("set").setDescription("Pick a specific set to drop from (ignores active set)").setAutocomplete(true))),
 
-    adminCmd("give", "(Admin) Give a card directly to a member", s => s
+    adminCmd("give", "Give a card directly to a member", s => s
       .addUserOption(o => o.setName("user").setDescription("Member to receive the card").setRequired(true))
       .addStringOption(o => o.setName("name").setDescription("Card name").setRequired(true).setAutocomplete(true))
       .addIntegerOption(o => o.setName("amount").setDescription("How many copies to give (default 1, max 100)").setMinValue(1).setMaxValue(100))),
 
-    adminCmd("giveall", "(Admin) Give one copy of every card to a member — random shiny chance, filter by set or rarity", s => s
+    adminCmd("giveall", "Give one copy of every card to a member — random shiny chance, filter by set or rarity", s => s
       .addUserOption(o => o.setName("user").setDescription("Member to receive the cards").setRequired(true))
       .addStringOption(o => o.setName("set").setDescription("Only cards from this set (leave blank for all cards)").setAutocomplete(true))
       .addStringOption(o => o.setName("rarity").setDescription("Only cards of this rarity (leave blank for all rarities)")
         .addChoices({ name: "Common", value: "common" }, { name: "Uncommon", value: "uncommon" }, { name: "Rare", value: "rare" }, { name: "Epic", value: "epic" }, { name: "Legendary", value: "legendary" }, { name: "Mythic", value: "mythic" }))
       .addIntegerOption(o => o.setName("shinyrate").setDescription("Shiny chance 0-100% (default 0.5)").setMinValue(0).setMaxValue(100))),
 
-    adminCmd("giveshards", "(Admin) Give DN Shards to a member", s => s
+    adminCmd("giveshards", "Give DN Shards to a member", s => s
       .addUserOption(o => o.setName("user").setDescription("Member to receive shards").setRequired(true))
       .addIntegerOption(o => o.setName("amount").setDescription("Amount of shards").setRequired(true).setMinValue(1))),
 
-    adminCmd("takeback", "(Admin) Remove a card from a member's collection", s => s
+    adminCmd("takeback", "Remove a card from a member's collection", s => s
       .addUserOption(o => o.setName("user").setDescription("Member to take the card from").setRequired(true))
       .addStringOption(o => o.setName("name").setDescription("Card name").setRequired(true).setAutocomplete(true))
       .addIntegerOption(o => o.setName("amount").setDescription("How many copies to remove (default 1, max 100)").setMinValue(1).setMaxValue(100))),
 
-    adminCmd("collectorrole", "(Admin) Set the opt-in role that gets pinged on every spawn", s => s
+    adminCmd("collectorrole", "Set the opt-in role that gets pinged on every spawn", s => s
       .addRoleOption(o => o.setName("role").setDescription("Role to ping on spawns (leave empty to clear)"))),
 
-    adminCmd("takeshards", "(Admin) Deduct DN Shards from a member", s => s
+    adminCmd("takeshards", "Deduct DN Shards from a member", s => s
       .addUserOption(o => o.setName("user").setDescription("Member to deduct shards from").setRequired(true))
       .addIntegerOption(o => o.setName("amount").setDescription("Amount to deduct").setRequired(true).setMinValue(1))),
 
     // ── Card Events (limited-time spawn boosts) ──────────────────────────────
-    adminCmd("event", "(Admin) Run limited-time card events — boost a card's spawn rate", s => s
+    adminCmd("event", "Run limited-time card events — boost a card's spawn rate", s => s
       .addSubcommand(sc => sc.setName("start").setDescription("Start a limited-time card event")
         .addStringOption(o => o.setName("card").setDescription("Card to boost").setRequired(true).setAutocomplete(true))
         .addStringOption(o => o.setName("duration").setDescription("How long (e.g. 30m, 2h, 1d — max 14d)").setRequired(true))
@@ -282,7 +282,7 @@ function buildLegacyCommands() {
       .addSubcommand(sc => sc.setName("stop").setDescription("Stop an active event early")
         .addIntegerOption(o => o.setName("id").setDescription("Event ID from /event list").setRequired(true).setMinValue(1)))),
 
-    adminCmd("addcard", "(Admin) Create a new card — upload an image/GIF from Discord", s => s
+    adminCmd("addcard", "Create a new card — upload an image/GIF from Discord", s => s
       .addStringOption(o => o.setName("name").setDescription("Card name").setRequired(true).setMaxLength(80))
       .addStringOption(o => o.setName("rarity").setDescription("Built-in rarity tier — type to search").setRequired(true).setAutocomplete(true))
       .addStringOption(o => o.setName("type").setDescription("Card type/tag — type to search existing types or enter a new one").setRequired(true).setAutocomplete(true))
@@ -293,7 +293,7 @@ function buildLegacyCommands() {
       .addIntegerOption(o => o.setName("max_copies").setDescription("Max copies if limited (default 50)").setMinValue(1))
       .addBooleanOption(o => o.setName("event_exclusive").setDescription("Event exclusive — never spawns randomly?"))),
 
-    adminCmd("editcard", "(Admin) Edit a card — optionally upload a replacement image/GIF", s => s
+    adminCmd("editcard", "Edit a card — optionally upload a replacement image/GIF", s => s
       .addStringOption(o => o.setName("name").setDescription("Card to edit").setRequired(true).setAutocomplete(true))
       .addAttachmentOption(o => o.setName("image").setDescription("Optional replacement image/GIF upload"))
       .addIntegerOption(o => o.setName("max_copies").setDescription("Max copies for a limited edition card (set 0 or blank to remove limit)").setMinValue(0))
@@ -302,11 +302,11 @@ function buildLegacyCommands() {
 
 
     // ── /rarity — hub command: display names, economy overrides, custom tiers, card assignments
-    adminCmd("rarity", "(Admin) Edit built-in rarity names, colors, spawn %, worth, and burn", s => s),
+    adminCmd("rarity", "Edit built-in rarity names, colors, spawn %, worth, and burn", s => s),
 
     // ── /embed — owns ALL writes to embed_overrides. Replaces the old
     //              /admin/embeds dashboard page.
-    adminCmd("embed", "(Admin) Customize bot embeds — title, footer, color, image, etc.", s => s
+    adminCmd("embed", "Customize bot embeds — title, footer, color, image, etc.", s => s
       .addSubcommand(sc => sc.setName("show").setDescription("Show current overrides for one embed")
         .addStringOption(o => o.setName("key").setDescription("Which embed").setRequired(true)
           .addChoices(
@@ -385,13 +385,13 @@ function buildLegacyCommands() {
           )))),
 
     // ── Dashboard ──────��──────────────────────────────────────────────────[...]
-    adminCmd("dashboard", "(Admin) Get a one-time link to set up or reset your web dashboard login", s => s),
+    adminCmd("dashboard", "Get a one-time link to set up or reset your web dashboard login", s => s),
 
     // ── /edituser — interactive member editor (cards, shinies, shards) ─────────
-    adminCmd("edituser", "(Admin) Edit a member's cards, shinies, and shards", s => s
+    adminCmd("edituser", "Edit a member's cards, shinies, and shards", s => s
       .addUserOption(o => o.setName("user").setDescription("Member to edit").setRequired(true))),
 
-    adminCmd("editpack", "(Admin) Edit a custom pack — rename, change cost/size, add/remove cards, set emoji", s => s
+    adminCmd("editpack", "Edit a custom pack — rename, change cost/size, add/remove cards, set emoji", s => s
       .addStringOption(o => o.setName("pack").setDescription("Pack to edit — type to search").setRequired(true).setAutocomplete(true))
       .addStringOption(o => o.setName("new_name").setDescription("Rename the pack").setMaxLength(50))
       .addIntegerOption(o => o.setName("cost").setDescription("Cost in 💠 shards").setMinValue(0))
@@ -408,7 +408,7 @@ function buildLegacyCommands() {
         .addChoices({ name: "Common", value: "common" }, { name: "Uncommon", value: "uncommon" }, { name: "Rare", value: "rare" }, { name: "Epic", value: "epic" }, { name: "Legendary", value: "legendary" }, { name: "Mythic", value: "mythic" }))),
 
     // ── /rep (user, reputation system) ────────────────────────────────────────
-    cmd("rep", "(User) Reputation system — give rep, check rep, remove rep, and see the leaderboard", s => s
+    cmd("rep", "Reputation system — give rep, check rep, remove rep, and see the leaderboard", s => s
       .addSubcommand(sc => sc.setName("give").setDescription("Give +1 rep to another member (24h cooldown per person)")
         .addUserOption(o => o.setName("user").setDescription("Member to rep").setRequired(true)))
       .addSubcommand(sc => sc.setName("check").setDescription("Check a member's rep score")
@@ -420,27 +420,27 @@ function buildLegacyCommands() {
         .addStringOption(o => o.setName("reason").setDescription("Optional reason for removal")))),
 
     // ── /thanks (user, gratitude tracking) ────────���───────────────────────────
-    cmd("thanks", "(User) Thank members for being helpful — track appreciation", s => s
+    cmd("thanks", "Thank members for being helpful — track appreciation", s => s
       .addSubcommand(sc => sc.setName("give").setDescription("Give thanks to a helpful member (24h cooldown per person)")
         .addUserOption(o => o.setName("user").setDescription("Member to thank").setRequired(true)))
       .addSubcommand(sc => sc.setName("top").setDescription("Top 10 most appreciated members on this server"))),
     // ── /info_mttv /calc /valuehelp /valuelist (MTTV values) ─────────────────
-    cmd("info_mttv", "(User) Show details for one MTTV item — prices from MTTV", s => s
+    cmd("info_mttv", "Show details for one MTTV item — prices from MTTV", s => s
       .addStringOption(o => o.setName("item").setDescription("Item name to look up").setRequired(true).setAutocomplete(true))),
 
-    cmd("calc", "(User) MTTV trade calculator — two-sided offer with buttons — prices from MTTV", s => s),
+    cmd("calc", "MTTV trade calculator — two-sided offer with buttons — prices from MTTV", s => s),
 
-    cmd("valuehelp", "(User) How MTTV values work — prices from MTTV", s => s),
+    cmd("valuehelp", "How MTTV values work — prices from MTTV", s => s),
 
-    cmd("valuelist", "(User) Top MTTV items by value — prices from MTTV", s => s),
+    cmd("valuelist", "Top MTTV items by value — prices from MTTV", s => s),
 
-    adminCmd("postcalculator", "(Admin) Post a persistent MTTV trade calculator hub in a channel", s => s
+    adminCmd("postcalculator", "Post a persistent MTTV trade calculator hub in a channel", s => s
       .addChannelOption(o => o.setName("channel").setDescription("Channel to post the calculator in").setRequired(true))
       .addChannelOption(o => o.setName("result_channel").setDescription("Optional channel to post calculation results in").setRequired(false))),
 
 
     // ── /battle (user, Card Battle System) ────────────────────────────────────
-    cmd("battle", "(User) Card battles — challenge players or AI, view stats & leaderboards", s => s
+    cmd("battle", "Card battles — challenge players or AI, view stats & leaderboards", s => s
       .addSubcommand(sc => sc.setName("fight").setDescription("Start a battle — challenge a player, or leave empty to fight the AI")
         .addUserOption(o => o.setName("opponent").setDescription("Player to challenge (empty = battle the AI)")))
       .addSubcommand(sc => sc.setName("profile").setDescription("View a battle profile — record, rank, stats")
@@ -455,10 +455,10 @@ function buildLegacyCommands() {
       .addSubcommand(sc => sc.setName("daily").setDescription("View today's battle challenges and progress"))),
 
     // ── /battle_admin (admin, Battle System configuration) ─────────────────────
-    adminCmd("battleadmin", "(Admin) Battle system hub — setup wizard, rules, rewards, cards, seasons", s => s),
+    adminCmd("battleadmin", "Battle system hub — setup wizard, rules, rewards, cards, seasons", s => s),
 
     // ── /squad (user, Squads / guilds) ────────────────────────────────────────
-    cmd("squad", "(User) Team up — create or join a squad and climb the squad leaderboard", s => s
+    cmd("squad", "Team up — create or join a squad and climb the squad leaderboard", s => s
       .addSubcommand(sc => sc.setName("create").setDescription("Found a new squad (you become leader)")
         .addStringOption(o => o.setName("name").setDescription("Squad name").setRequired(true))
         .addStringOption(o => o.setName("tag").setDescription("Short tag shown by members, e.g. WLF (max 6)"))
@@ -472,13 +472,13 @@ function buildLegacyCommands() {
       .addSubcommand(sc => sc.setName("list").setDescription("Squad leaderboard for this server"))),
 
     // ── /raid (user, Co-op Boss Raids) ────────────────────────────────────────
-    cmd("raid", "(User) Team up to take down a boss — co-op raid", s => s
+    cmd("raid", "Team up to take down a boss — co-op raid", s => s
       .addSubcommand(sc => sc.setName("start").setDescription("Start a raid lobby for a boss")
         .addStringOption(o => o.setName("boss").setDescription("Which boss to raid").setRequired(true).setAutocomplete(true)))
       .addSubcommand(sc => sc.setName("bosses").setDescription("List the raid bosses available on this server"))),
 
     // ── /raid_admin (admin, Boss management) ───────────────────────────────────
-    adminCmd("raidadmin", "(Admin) Create and tune co-op raid bosses", s => s
+    adminCmd("raidadmin", "Create and tune co-op raid bosses", s => s
       .addSubcommand(sc => sc.setName("create").setDescription("Create a new raid boss")
         .addStringOption(o => o.setName("name").setDescription("Boss name").setRequired(true))
         .addStringOption(o => o.setName("description").setDescription("Flavor text"))
@@ -518,15 +518,15 @@ function buildLegacyCommands() {
         .addStringOption(o => o.setName("name").setDescription("Boss to delete").setRequired(true).setAutocomplete(true)))),
 
     // ── /giveaways (user, Giveaway System overview) ───────────────────────────
-    cmd("giveaways", "(User) See active giveaways, prizes, timers, and your progress", s => s),
+    cmd("giveaways", "See active giveaways, prizes, timers, and your progress", s => s),
 
     // ── /giveaway (user, personal progress) ───────────────────────────────────
-    cmd("giveaway", "(User) Track your giveaway requirement progress", s => s
+    cmd("giveaway", "Track your giveaway requirement progress", s => s
       .addSubcommand(sc => sc.setName("progress").setDescription("Your per-requirement progress and entries")
         .addIntegerOption(o => o.setName("id").setDescription("A specific giveaway id (defaults to all active)")))),
 
     // ── /giveaway_admin (admin, Giveaway management) ───────────────────────────
-    adminCmd("giveawayadmin", "(Admin) Create and manage DN Cards giveaways", s => s
+    adminCmd("giveawayadmin", "Create and manage DN Cards giveaways", s => s
       .addSubcommand(sc => sc.setName("create").setDescription("Create and launch a giveaway")
         .addStringOption(o => o.setName("title").setDescription("Giveaway title").setRequired(true))
         .addStringOption(o => o.setName("duration").setDescription("How long it runs, e.g. 24h, 3d, 1w").setRequired(true))
@@ -569,7 +569,7 @@ function buildLegacyCommands() {
         .addUserOption(o => o.setName("user").setDescription("Winner to replace (defaults to an unclaimed one")))),
 
     // ── /sets (user, read-only) ───────────────────────────────────────────────
-    cmd("sets", "(User) Browse card sets and your collection progress", s => s
+    cmd("sets", "Browse card sets and your collection progress", s => s
       .addSubcommand(sc => sc.setName("list").setDescription("List every card set on this server"))
       .addSubcommand(sc => sc.setName("active").setDescription("Show the set that random spawns currently pull from"))
       .addSubcommand(sc => sc.setName("view").setDescription("Show every card in a set")
@@ -578,12 +578,12 @@ function buildLegacyCommands() {
         .addUserOption(o => o.setName("user").setDescription("Member to inspect (defaults to you)")))),
 
     // ── /dnvalues* — DN values lookup ─────────────────────────────────────
-    cmd("dnvaluesearch", "(User) Search DN values by name, rarity, or tag", s => s
+    cmd("dnvaluesearch", "Search DN values by name, rarity, or tag", s => s
       .addStringOption(o => o.setName("query").setDescription("Search keyword (leave blank for full list)"))),
-    cmd("dnvaluelist", "(User) Show all DN values sorted by value", s => s),
-    cmd("dnvalueinfo", "(User) Show full details for a DN value item", s => s
+    cmd("dnvaluelist", "Show all DN values sorted by value", s => s),
+    cmd("dnvalueinfo", "Show full details for a DN value item", s => s
       .addStringOption(o => o.setName("name").setDescription("Item name (exact match)").setRequired(true).setAutocomplete(true))),
-    cmd("dnvaluecalc", "(User) Open a DN values trade calculator hub", s => s
+    cmd("dnvaluecalc", "Open a DN values trade calculator hub", s => s
       .addStringOption(o => o.setName("item").setDescription("Item name to add to the calculator").setAutocomplete(true))
       .addStringOption(o => o.setName("side").setDescription("Which side to add to")
         .addChoices({ name: "Your offer", value: "your" }, { name: "Their offer", value: "their" }))
@@ -591,10 +591,10 @@ function buildLegacyCommands() {
       .addStringOption(o => o.setName("tier").setDescription("Value tier: low, mid, or high (default mid)")
         .addChoices({ name: "Low", value: "low" }, { name: "Mid", value: "mid" }, { name: "High", value: "high" }))
       .addIntegerOption(o => o.setName("stars").setDescription("Stars 1-5 (default 1)").setMinValue(1).setMaxValue(5))),
-    cmd("dnhelp", "(User) Show DN values command help", s => s),
+    cmd("dnhelp", "Show DN values command help", s => s),
 
     // ── /market (user, Marketplace) ───────────────────────────────────────────
-    cmd("market", "(User) Buy, sell, and auction cards for DN Shards", s => s
+    cmd("market", "Buy, sell, and auction cards for DN Shards", s => s
       .addSubcommand(sc => sc.setName("sell").setDescription("List a card for sale, or as a timed auction")
         .addStringOption(o => o.setName("name").setDescription("Card to sell").setRequired(true).setAutocomplete(true))
         .addIntegerOption(o => o.setName("price").setDescription("Sale price, or auction starting bid").setRequired(true).setMinValue(1))
@@ -614,24 +614,24 @@ function buildLegacyCommands() {
       .addSubcommand(sc => sc.setName("mine").setDescription("View your listings and active bids"))),
 
     // ── Bob — interactive entertainment NPC (its own module) ──────────────────
-    cmd("bob", "(User) Open Bob — games, roasts, tasks, quests & chaos", s => s),
-    cmd("bob_roulette", "(User) Play Bob's roulette — survive the chamber for coins", s => s),
-    cmd("bob_duel", "(User) Challenge someone to a Bob roulette duel", s => s
+    cmd("bob", "Open Bob — games, roasts, tasks, quests & chaos", s => s),
+    cmd("bob_roulette", "Play Bob's roulette — survive the chamber for coins", s => s),
+    cmd("bob_duel", "Challenge someone to a Bob roulette duel", s => s
       .addUserOption(o => o.setName("user").setDescription("Who to duel").setRequired(true))),
-    cmd("bob_roast", "(User) Have Bob roast a member", s => s
+    cmd("bob_roast", "Have Bob roast a member", s => s
       .addUserOption(o => o.setName("user").setDescription("Who to roast").setRequired(true))),
-    cmd("bob_talk", "(User) Chat with Bob", s => s
+    cmd("bob_talk", "Chat with Bob", s => s
       .addStringOption(o => o.setName("message").setDescription("Say something to Bob (leave empty to open the chat)"))),
-    cmd("bob_stats", "(User) View your (or someone's) Bob stats", s => s
+    cmd("bob_stats", "View your (or someone's) Bob stats", s => s
       .addUserOption(o => o.setName("user").setDescription("Whose stats (default: you)"))),
-    cmd("bob_leaderboard", "(User) Bob leaderboards — coins, wins, streaks & more", s => s
+    cmd("bob_leaderboard", "Bob leaderboards — coins, wins, streaks & more", s => s
       .addStringOption(o => o.setName("board").setDescription("Which leaderboard")
         .addChoices(
           { name: "🪙 Richest", value: "coins" }, { name: "🏆 Most wins", value: "wins" },
           { name: "🎲 Best roulette streak", value: "streak" }, { name: "💬 Most interactions", value: "interactions" },
           { name: "🎰 Biggest gamblers", value: "gambled" }, { name: "💎 Jackpot kings", value: "jackpots" },
           { name: "📈 Highest level", value: "level" }))),
-    adminCmd("bob_admin", "(Admin) Configure Bob — toggles, odds, rewards, cooldown, channels", s => s
+    adminCmd("bob_admin", "Configure Bob — toggles, odds, rewards, cooldown, channels", s => s
       .addSubcommand(sc => sc.setName("settings").setDescription("View Bob's current settings"))
       .addSubcommand(sc => sc.setName("toggle").setDescription("Enable/disable Bob or a specific game/feature")
         .addStringOption(o => o.setName("feature").setDescription("bob, events, ai, dex, roulette, roast, duel, coinflip, dice, hl, slots, wheel, emoji").setRequired(true))
@@ -651,12 +651,12 @@ function buildLegacyCommands() {
         .addChannelOption(o => o.setName("channel").setDescription("Where (default: here)")))),
 
     // ── Echo-Whisper (encrypted messaging addon) ──────────────────────────────
-    cmd("whisper", "(User) Send an encrypted whisper only a chosen member can read", s => s
+    cmd("whisper", "Send an encrypted whisper only a chosen member can read", s => s
       .addUserOption(o => o.setName("user").setDescription("The member who can read this message").setRequired(true))),
 
-    cmd("adminsecret", "(User) Post an encrypted staff message only authorized roles can reveal", s => s),
+    cmd("adminsecret", "Post an encrypted staff message only authorized roles can reveal", s => s),
 
-    adminCmd("echo", "(Admin) Echo-Whisper hub — viewer roles, admin override, stats, config", s => s
+    adminCmd("echo", "Echo-Whisper hub — viewer roles, admin override, stats, config", s => s
       .addSubcommand(sc => sc.setName("role").setDescription("Manage roles allowed to reveal /admin_secret messages")
         .addStringOption(o => o.setName("action").setDescription("Add, remove, or list").setRequired(true)
           .addChoices({ name: "add", value: "add" }, { name: "remove", value: "remove" }, { name: "list", value: "list" }))
