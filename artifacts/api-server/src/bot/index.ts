@@ -10,6 +10,8 @@ import { handleSetAdminHubButton, handleSetAdminHubSelect, handleSetAdminHubWeig
 import { handleRarityEditButton, handleRarityEditSelect, handleRarityEditModal, handleRarityHubButton, handleRarityHubSelect, handleRarityHubModal } from "./commands/rarity-admin.js";
 import { handleSetChannelsPick, handleSetChannelsApply } from "./commands/setchannels.js";
 import { handleAdminHubButton, handleAdminHubModal } from "./commands/admin-hub.js";
+import { handleMttvHubButton, handleMttvHubModal } from "./commands/mttcalc-hub.js";
+import { handleDNValuesAutocomplete, handleDNValuesCalcButton, handleDNValuesCalcModal } from "./commands/dnvalues.js";
 import { checkAchievements, formatUnlockLine } from "./achievements.js";
 import { handleAdminCommand } from "./commands/admin.js";
 import { handleUserCommand } from "./commands/user.js";
@@ -205,6 +207,10 @@ export async function startBot() {
     try {
       // ── Autocomplete (card / set suggestions as user types) ───────────────
       if (interaction.isAutocomplete()) {
+        if (interaction.commandName === "dnvalueinfo" || interaction.commandName === "dnvaluecalc") {
+          await handleDNValuesAutocomplete(interaction, interaction.options.getFocused(true));
+          return;
+        }
         await handleAutocomplete(interaction);
         return;
       }
@@ -284,6 +290,10 @@ export async function startBot() {
           await handleBattleAdminModal(interaction);
         } else if (interaction.customId.startsWith("adminhub:")) {
           await handleAdminHubModal(interaction);
+        } else if (interaction.customId.startsWith("mttcalc_hub:")) {
+          await handleMttvHubModal(interaction);
+        } else if (interaction.customId.startsWith("dncalc_modal:")) {
+          await handleDNValuesCalcModal(interaction);
         } else if (interaction.customId.startsWith("setup_")) {
           await handleSetupModalSubmit(interaction);
         } else if (interaction.customId === "rates_custom") {
@@ -364,6 +374,14 @@ export async function startBot() {
         // ── Admin hub buttons ─────────────────────────────────────────────
         if (action === "adminhub") {
           await handleAdminHubButton(interaction);
+          return;
+        }
+        if (action === "mttcalc_hub") {
+          await handleMttvHubButton(interaction);
+          return;
+        }
+        if (action === "dncalc") {
+          await handleDNValuesCalcButton(interaction);
           return;
         }
 
@@ -631,6 +649,7 @@ export async function startBot() {
     "giveaways", "giveaway", "giveawayadmin",
     "bob", "bob_roulette", "bob_duel", "bob_roast", "bob_talk", "bob_stats", "bob_leaderboard", "bob_admin",
     "whisper", "adminsecret", "echo", "afk", "afksetup",
+    "valuehelp", "valuelist", "info_mttv", "dnvaluesearch", "dnvaluelist", "dnvalueinfo", "dnvaluecalc", "dnhelp", "giveall", "editpack", "postcalculator",
   ]);
   const unmapped = buildCommands()
     .map(c => internalCommandName(c.name))

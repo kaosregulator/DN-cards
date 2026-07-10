@@ -78,6 +78,25 @@ export async function handleUserCommand(
     await handleCalc(interaction);
     return;
   }
+  if (sub === "valuehelp" || sub === "valuelist" || sub === "info_mttv") {
+    const { handleValueHelp, handleValueList, handleInfoMTTV } = await import("./mttvalues.js");
+    if (sub === "valuehelp") await handleValueHelp(interaction);
+    else if (sub === "valuelist") await handleValueList(interaction);
+    else await handleInfoMTTV(interaction);
+    return;
+  }
+  if (sub === "dnvaluesearch" || sub === "dnvaluelist" || sub === "dnvalueinfo" || sub === "dnvaluecalc" || sub === "dnhelp") {
+    const {
+      handleDNValuesSearch, handleDNValuesList, handleDNValuesInfo,
+      handleDNValuesCalculator, handleDNValuesHelp,
+    } = await import("./dnvalues.js");
+    if (sub === "dnvaluesearch") await handleDNValuesSearch(interaction);
+    else if (sub === "dnvaluelist") await handleDNValuesList(interaction);
+    else if (sub === "dnvalueinfo") await handleDNValuesInfo(interaction);
+    else if (sub === "dnvaluecalc") await handleDNValuesCalculator(interaction);
+    else await handleDNValuesHelp(interaction);
+    return;
+  }
 
   await interaction.deferReply(
     EPHEMERAL_COMMANDS.has(sub) ? { flags: MessageFlags.Ephemeral } : {},

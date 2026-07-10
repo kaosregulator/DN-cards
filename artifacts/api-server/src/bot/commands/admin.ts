@@ -142,6 +142,74 @@ export async function handleAdminCommand(
     await handleEditUserCommand(interaction);
     return;
   }
+  // ── /giveall ──────────────────────────────────────────────────────────────
+  // Give one copy of every matching card to a user. Shiny chance is configurable;
+  // each card rolls independently. Filter by set or base rarity.
+  if (cmd === "giveall") {
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+    if (!(await checkAdmin(interaction))) {
+      await interaction.editReply("❌ Admins only.");
+      return;
+    }
+    const target = interaction.options.getUser("user", true);
+    const setName = interaction.options.getString("set");
+    const rarity = interaction.options.getString("rarity") as Rarity | null;
+    const shinyRate = Math.min(100, Math.max(0, interaction.options.getInteger("shinyrate") ?? 0.5));
+    const gId = interaction.guild.id;
+
+    const { getSetByName } = await import("../db.js");
+    let pool = await getAllCards(gId);
+
+    if (setName?.trim()) {
+      const set = await getSetByName(setName.trim(), gId);
+      if (!set) {
+        await interaction.editReply(`❌ Set "**${setName.trim()}**" not found.`);
+        return;
+      }
+      const setCards = await getCardsInSet(set.id, gId);
+      const setCardIds = new Set(setCards.map(c => c.id));
+      pool = pool.filter(c => setCardIds.has(c.id));
+    }
+
+    if (rarity) {
+      pool = pool.filter(c => c.rarity === rarity);
+    }
+
+    pool = pool.filter(c => !c.isArchived);
+
+    if (pool.length === 0) {
+      await interaction.editReply("❌ No cards match the selected set/rarity filter.");
+      return;
+    }
+
+    let given = 0;
+    let shinies = 0;
+    for (const card of pool) {
+      const isShiny = Math.random() * 100 < shinyRate;
+      await giveCardCopy(gId, target.id, card.id, isShiny);
+      given++;
+      if (isShiny) shinies++;
+    }
+
+    const r = rarity ? rarityLabel(rarity as Rarity, null, await getRarityDisplayOverrides(gId)) : "all rarities";
+    const suffix = rarity ? ` (${r})` : "";
+    const setText = setName?.trim() ? ` from set **${setName.trim()}**` : "";
+    await interaction.editReply(
+      `✅ Gave **${given} card${given === 1 ? "" : "s"}**${suffix}${setText} to <@${target.id}>.` +
+      (shinies > 0 ? ` ${shinies} shiny ✨` : ""),
+    );
+    return;
+  }
+  if (cmd === "editpack") {
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+    if (!(await checkAdmin(interaction))) {
+      await interaction.editReply("❌ Admins only.");
+      return;
+    }
+    const { handleEditPackCommand } = await import("./editpack.js");
+    await handleEditPackCommand(interaction);
+    return;
+  }
   // All admin replies are ephemeral — only the staff member running the
   // command sees the confirmation. The side effects (card drops, etc.)
   // are already broadcast publicly through their own messages.
@@ -156,6 +224,11 @@ export async function handleAdminCommand(
   // /dashboard — admin-gated above; DM the user a one-time setup link.
   if (cmd === "dashboard") {
     await handleDashboardCommand(interaction);
+    return;
+  }
+  if (cmd === "postcalculator") {
+    const { handlePostCalculator } = await import("./mttcalc-hub.js");
+    await handlePostCalculator(interaction);
     return;
   }
 

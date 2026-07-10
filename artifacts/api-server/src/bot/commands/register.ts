@@ -249,6 +249,13 @@ function buildLegacyCommands() {
       .addStringOption(o => o.setName("name").setDescription("Card name").setRequired(true).setAutocomplete(true))
       .addIntegerOption(o => o.setName("amount").setDescription("How many copies to give (default 1, max 100)").setMinValue(1).setMaxValue(100))),
 
+    adminCmd("giveall", "(Admin) Give one copy of every card to a member — random shiny chance, filter by set or rarity", s => s
+      .addUserOption(o => o.setName("user").setDescription("Member to receive the cards").setRequired(true))
+      .addStringOption(o => o.setName("set").setDescription("Only cards from this set (leave blank for all cards)").setAutocomplete(true))
+      .addStringOption(o => o.setName("rarity").setDescription("Only cards of this rarity (leave blank for all rarities)")
+        .addChoices({ name: "Common", value: "common" }, { name: "Uncommon", value: "uncommon" }, { name: "Rare", value: "rare" }, { name: "Epic", value: "epic" }, { name: "Legendary", value: "legendary" }, { name: "Mythic", value: "mythic" }))
+      .addIntegerOption(o => o.setName("shinyrate").setDescription("Shiny chance 0-100% (default 0.5)").setMinValue(0).setMaxValue(100))),
+
     adminCmd("giveshards", "(Admin) Give DN Shards to a member", s => s
       .addUserOption(o => o.setName("user").setDescription("Member to receive shards").setRequired(true))
       .addIntegerOption(o => o.setName("amount").setDescription("Amount of shards").setRequired(true).setMinValue(1))),
@@ -384,6 +391,22 @@ function buildLegacyCommands() {
     adminCmd("edituser", "(Admin) Edit a member's cards, shinies, and shards", s => s
       .addUserOption(o => o.setName("user").setDescription("Member to edit").setRequired(true))),
 
+    adminCmd("editpack", "(Admin) Edit a custom pack — rename, change cost/size, add/remove cards, set emoji", s => s
+      .addStringOption(o => o.setName("pack").setDescription("Pack to edit — type to search").setRequired(true).setAutocomplete(true))
+      .addStringOption(o => o.setName("new_name").setDescription("Rename the pack").setMaxLength(50))
+      .addIntegerOption(o => o.setName("cost").setDescription("Cost in 💠 shards").setMinValue(0))
+      .addIntegerOption(o => o.setName("size").setDescription("Cards per open (1–10)").setMinValue(1).setMaxValue(10))
+      .addIntegerOption(o => o.setName("weekly_limit").setDescription("Weekly limit (0 = unlimited)").setMinValue(0))
+      .addStringOption(o => o.setName("description").setDescription("Pack description shown when opened").setMaxLength(100))
+      .addStringOption(o => o.setName("emoji").setDescription("Pack emoji (single Unicode or <:name:id>)").setMaxLength(80))
+      .addBooleanOption(o => o.setName("active").setDescription("Enable or disable the pack"))
+      .addStringOption(o => o.setName("add_card").setDescription("Add one card to the pack").setAutocomplete(true))
+      .addStringOption(o => o.setName("remove_card").setDescription("Remove one card from the pack").setAutocomplete(true))
+      .addStringOption(o => o.setName("add_rarity").setDescription("Add ALL cards of this rarity to the pack")
+        .addChoices({ name: "Common", value: "common" }, { name: "Uncommon", value: "uncommon" }, { name: "Rare", value: "rare" }, { name: "Epic", value: "epic" }, { name: "Legendary", value: "legendary" }, { name: "Mythic", value: "mythic" }))
+      .addStringOption(o => o.setName("remove_rarity").setDescription("Remove ALL cards of this rarity from the pack")
+        .addChoices({ name: "Common", value: "common" }, { name: "Uncommon", value: "uncommon" }, { name: "Rare", value: "rare" }, { name: "Epic", value: "epic" }, { name: "Legendary", value: "legendary" }, { name: "Mythic", value: "mythic" }))),
+
     // ── /rep (user, reputation system) ────────────────────────────────────────
     cmd("rep", "(User) Reputation system — give rep, check rep, remove rep, and see the leaderboard", s => s
       .addSubcommand(sc => sc.setName("give").setDescription("Give +1 rep to another member (24h cooldown per person)")
@@ -401,6 +424,20 @@ function buildLegacyCommands() {
       .addSubcommand(sc => sc.setName("give").setDescription("Give thanks to a helpful member (24h cooldown per person)")
         .addUserOption(o => o.setName("user").setDescription("Member to thank").setRequired(true)))
       .addSubcommand(sc => sc.setName("top").setDescription("Top 10 most appreciated members on this server"))),
+    // ── /info_mttv /calc /valuehelp /valuelist (MTTV values) ─────────────────
+    cmd("info_mttv", "(User) Show details for one MTTV item — prices from MTTV", s => s
+      .addStringOption(o => o.setName("item").setDescription("Item name to look up").setRequired(true).setAutocomplete(true))),
+
+    cmd("calc", "(User) MTTV trade calculator — two-sided offer with buttons — prices from MTTV", s => s),
+
+    cmd("valuehelp", "(User) How MTTV values work — prices from MTTV", s => s),
+
+    cmd("valuelist", "(User) Top MTTV items by value — prices from MTTV", s => s),
+
+    adminCmd("postcalculator", "(Admin) Post a persistent MTTV trade calculator hub in a channel", s => s
+      .addChannelOption(o => o.setName("channel").setDescription("Channel to post the calculator in").setRequired(true))
+      .addChannelOption(o => o.setName("result_channel").setDescription("Optional channel to post calculation results in").setRequired(false))),
+
 
     // ── /battle (user, Card Battle System) ────────────────────────────────────
     cmd("battle", "(User) Card battles — challenge players or AI, view stats & leaderboards", s => s
@@ -539,6 +576,22 @@ function buildLegacyCommands() {
         .addStringOption(o => o.setName("name").setDescription("Set name").setRequired(true).setAutocomplete(true)))
       .addSubcommand(sc => sc.setName("progress").setDescription("Show set-by-set completion for a member")
         .addUserOption(o => o.setName("user").setDescription("Member to inspect (defaults to you)")))),
+
+    // ── /dnvalues* — DN values lookup ─────────────────────────────────────
+    cmd("dnvaluesearch", "(User) Search DN values by name, rarity, or tag", s => s
+      .addStringOption(o => o.setName("query").setDescription("Search keyword (leave blank for full list)"))),
+    cmd("dnvaluelist", "(User) Show all DN values sorted by value", s => s),
+    cmd("dnvalueinfo", "(User) Show full details for a DN value item", s => s
+      .addStringOption(o => o.setName("name").setDescription("Item name (exact match)").setRequired(true).setAutocomplete(true))),
+    cmd("dnvaluecalc", "(User) Open a DN values trade calculator hub", s => s
+      .addStringOption(o => o.setName("item").setDescription("Item name to add to the calculator").setAutocomplete(true))
+      .addStringOption(o => o.setName("side").setDescription("Which side to add to")
+        .addChoices({ name: "Your offer", value: "your" }, { name: "Their offer", value: "their" }))
+      .addIntegerOption(o => o.setName("quantity").setDescription("How many copies (default 1)").setMinValue(1))
+      .addStringOption(o => o.setName("tier").setDescription("Value tier: low, mid, or high (default mid)")
+        .addChoices({ name: "Low", value: "low" }, { name: "Mid", value: "mid" }, { name: "High", value: "high" }))
+      .addIntegerOption(o => o.setName("stars").setDescription("Stars 1-5 (default 1)").setMinValue(1).setMaxValue(5))),
+    cmd("dnhelp", "(User) Show DN values command help", s => s),
 
     // ── /market (user, Marketplace) ───────────────────────────────────────────
     cmd("market", "(User) Buy, sell, and auction cards for DN Shards", s => s
@@ -695,12 +748,14 @@ export const USER_HUB_COMMANDS = new Set([
   "trade", "gift", "trades", "tradehistory", "accept", "decline", "welcome",
   "help", "daily", "quests", "pack", "packstats", "tradein", "achievements",
   "level", "frame", "lock", "search", "collector", "calendar", "wishlist",
-  "sets", "rep", "thanks",
+  "sets", "rep", "thanks", "valuehelp", "valuelist", "info_mttv",
+  "dnvaluesearch", "dnvaluelist", "dnvalueinfo", "dnvaluecalc", "dnhelp",
 ]);
 
 export const ADMIN_HUB_COMMANDS = new Set([
   "setup", "config", "adminhub", "sethub", "set_admin", "deletecard",
   "welcomeadmin", "adminhelp", "drop", "massdrop", "give", "giveshards",
   "takeback", "takeshards", "addcard", "editcard", "dashboard", "collectorrole",
-  "setadmin", "rarity", "embed", "event", "edituser",
+  "setadmin", "rarity", "embed", "event", "edituser", "giveall", "editpack",
+  "postcalculator",
 ]);
