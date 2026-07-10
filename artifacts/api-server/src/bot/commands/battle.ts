@@ -93,7 +93,7 @@ async function cmdLeaderboard(interaction: ChatInputCommandInteraction) {
   if (scope === "global") {
     const settings = await getBattleSettings(guildId);
     if (!settings.globalLeaderboardOptIn) {
-      await interaction.editReply("🌐 This server hasn't opted into the global leaderboard. An admin can enable it in **/battleadmin**.");
+      await interaction.editReply("🌐 This server hasn't opted into the global leaderboard. An admin can enable it in **/battle_admin**.");
       return;
     }
     const optedRows = await db.select({ guildId: battleSettingsTable.guildId })

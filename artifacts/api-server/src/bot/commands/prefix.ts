@@ -86,8 +86,8 @@ export async function handlePrefixCommand(msg: Message, prefix: string): Promise
   if (cmd === "help") {
     await msg.reply(
       "🃏 **DN Cards Help**\n" +
-      "• Players → run `/cards help`\n" +
-      `• Admins → run \`/admin help\` (or \`${prefix}setup\` to open the visual setup panel).\n` +
+      "• Everyone → run `/help` for the full **interactive guide** — pick any topic from the dropdown.\n" +
+      `• Admins → the guide has an **Admin** page, or run \`${prefix}setup\` to open the visual setup panel.\n` +
       `• Prefix commands use \`${prefix}\` (change with \`${prefix}setprefix\`).`,
     );
     return;
@@ -127,13 +127,13 @@ export async function handlePrefixCommand(msg: Message, prefix: string): Promise
     return;
   }
 
-  // ── !unloaddefaults / !loaddefaults — kept as aliases; prefer /setadmin load/unload
+  // ── !unloaddefaults / !loaddefaults — kept as aliases; prefer /sets_admin load/unload
   // Both mutate global cards table — home guild only.
   if (cmd === "unloaddefaults") {
     if (!await requireGlobalAdmin(msg)) return;
     const { removed } = await unloadDefaultCards();
     await msg.reply(
-      `✅ Removed **${removed}** built-in default cards. Re-load anytime from \`${prefix}setup\` or \`/setadmin load file:<.json>\`.`
+      `✅ Removed **${removed}** built-in default cards. Re-load anytime from \`${prefix}setup\` or \`/sets_admin load file:<.json>\`.`
     );
     return;
   }
@@ -143,7 +143,7 @@ export async function handlePrefixCommand(msg: Message, prefix: string): Promise
     await msg.reply(
       `✅ Added **${added}** default cards back.` +
       (skipped > 0 ? ` ⏭️ Skipped **${skipped}** already in roster.` : "") +
-      ` Tip: \`/setadmin load file:<.json>\` is the slash-command version.`,
+      ` Tip: \`/sets_admin load file:<.json>\` is the slash-command version.`,
     );
     return;
   }

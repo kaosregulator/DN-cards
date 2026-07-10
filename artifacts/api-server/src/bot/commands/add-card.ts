@@ -1,9 +1,9 @@
-// /addcard — interactive slash command replacing !addcard / !addlimited / !addevent.
+// /add_card — interactive slash command replacing !addcard / !addlimited / !addevent.
 //
 // The command itself takes the core required fields (name, rarity, type) plus
 // optional extras. Images are provided with Discord's native file upload.
 //
-// After creation the bot renders the /editcard panel in the same ephemeral
+// After creation the bot renders the /edit_card panel in the same ephemeral
 // message so the admin can immediately refine anything.
 
 import {
@@ -56,7 +56,7 @@ export async function handleAddCardCommand(interaction: ChatInputCommandInteract
   if (existing) {
     await interaction.editReply(
       `❌ A card named **${name}** already exists (ID #${existing.id}). ` +
-      `Use \`/admin editcard\` to modify it.`,
+      `Use \`/edit_card\` to modify it.`,
     );
     return;
   }

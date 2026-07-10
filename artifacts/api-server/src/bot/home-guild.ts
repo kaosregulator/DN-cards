@@ -10,8 +10,8 @@
  * sets table, card_set_memberships table).
  *
  * Guild-scoped operations remain available from ANY server:
- *   /setadmin active|deactivate|view|showweights|list
- *   /rarity, /embed, /config, /adminhub, /setup
+ *   /sets_admin active|deactivate|view|showweights|list
+ *   /rarity, /embed, /config, /admin_hub, /setup
  *   gameplay commands (/drop, /give, /event, /daily, /pack, …)
  *
  * How to find your guild ID:
@@ -31,8 +31,8 @@ export function isHomeGuild(guildId: string): boolean {
 
 export const GLOBAL_ONLY_MSG =
   "❌ This command modifies shared global data (cards/sets) and can only be " +
-  "run from the home server. Guild-scoped commands (`/setadmin active`, " +
-  "`/setadmin deactivate`, `/rarity`, `/embed`, `/admin config`) still work from " +
+  "run from the home server. Guild-scoped commands (`/sets_admin active`, " +
+  "`/sets_admin deactivate`, `/rarity`, `/embed`, `/config`) still work from " +
   "any server.\n" +
   "*(Bot operator: set the `HOME_GUILD_ID` environment variable to your " +
   "server's ID.)*";

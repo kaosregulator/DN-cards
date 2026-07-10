@@ -1,4 +1,5 @@
 import type { AutocompleteInteraction } from "discord.js";
+import { internalCommandName } from "./register.js";
 import { getAllCards, listSetsV2, getUserCollection, getUserWishlist, listCustomRarities, getRarityContext, getOrCreateGuildSettings, getRarityDisplayOverrides, getDisplayRarities } from "../db.js";
 import { RARITY_EMOJI, rarityEmoji, rarityLabel, type Rarity } from "../cards-data.js";
 
@@ -91,18 +92,14 @@ async function suggestCardNames(query: string, pool?: Array<{ name: string; rari
 
 export async function handleAutocomplete(interaction: AutocompleteInteraction): Promise<void> {
   const focused = interaction.options.getFocused(true);
-  const topLevelCommand = interaction.commandName;
-  const hubSubcommand = topLevelCommand === "cards" || topLevelCommand === "admin"
-    ? interaction.options.getSubcommand(false)
-    : null;
-  const cmd = hubSubcommand === "set-manager" ? "set_admin"
-    : hubSubcommand === "set-hub" ? "sethub"
-    : hubSubcommand ?? topLevelCommand;
+  // Commands are flat + publicly renamed; map the registered name (e.g.
+  // "raid_admin") back to its internal name (e.g. "raidadmin") for the checks below.
+  const cmd = internalCommandName(interaction.commandName);
   const query = (focused.value ?? "").toString();
 
   try {
 
-    // ── Raid boss-name autocomplete for /raid start + /raidadmin ────────────
+    // ── Raid boss-name autocomplete for /raid start + /raid_admin ────────────
     if ((cmd === "raid" && focused.name === "boss") ||
         (cmd === "raidadmin" && focused.name === "name")) {
       if (!interaction.guild) { await interaction.respond([]); return; }
@@ -135,13 +132,13 @@ export async function handleAutocomplete(interaction: AutocompleteInteraction): 
       return;
     }
 
-    // ── Set-name autocomplete for /sets, /drop, /massdrop ───────────────────
+    // ── Set-name autocomplete for /sets, /drop, /mass_drop ───────────────────
     // Any string option named `set`, `from`, `to`, or `name` on these two
-    // commands resolves to a set picker (except /setadmin create, which takes
+    // commands resolves to a set picker (except /sets_admin create, which takes
     // a new name — but that's not autocompleted so it won't reach here).
-    // /drop and /massdrop have `name` = card name, `set` = set name
-    // /setadmin has `name` = set name (rename/delete/view), `set`/`from`/`to` = set name
-    // /sets has `name` = set name (view/progress); /addcard has `set` = set name
+    // /drop and /mass_drop have `name` = card name, `set` = set name
+    // /sets_admin has `name` = set name (rename/delete/view), `set`/`from`/`to` = set name
+    // /sets has `name` = set name (view/progress); /add_card has `set` = set name
     const isSetNameOption =
       (cmd === "sets" && focused.name === "name") ||
       (cmd === "setadmin" && ["name", "set", "from", "to"].includes(focused.name)) ||
@@ -220,7 +217,7 @@ export async function handleAutocomplete(interaction: AutocompleteInteraction): 
     }
 
 
-    // ── /tradein rarity — built-ins plus custom tiers in server ladder order ──
+    // ── /trade_in rarity — built-ins plus custom tiers in server ladder order ──
     if (cmd === "tradein" && focused.name === "rarity" && interaction.guild) {
       const q = query.toLowerCase().trim();
       const [ctx, settings, displayMap] = await Promise.all([
@@ -244,7 +241,7 @@ export async function handleAutocomplete(interaction: AutocompleteInteraction): 
       return;
     }
 
-    // ── /addcard rarity — built-in rarities only for the simplified flow ────
+    // ── /add_card rarity — built-in rarities only for the simplified flow ────
     // Legacy custom-tier assignment still exists in advanced tools; new cards
     // should start with a stable built-in rarity identity.
     if (cmd === "addcard" && focused.name === "rarity" && interaction.guild) {
@@ -278,7 +275,7 @@ export async function handleAutocomplete(interaction: AutocompleteInteraction): 
     }
 
     // ── All other card-name fields → full roster ────────────────────────────
-    // /info, /drop, /give, /takeback, /trade.want, /wishlist add
+    // /info, /drop, /give, /take_back, /trade.want, /wishlist add
     await interaction.respond(await suggestCardNames(query));
   } catch {
     try { await interaction.respond([]); } catch { /* ignore */ }

@@ -1,14 +1,14 @@
-// /editcard — interactive admin slash command for editing ANY card (defaults
+// /edit_card — interactive admin slash command for editing ANY card (defaults
 // and custom alike). Mirrors the dashboard editor so admins can manage their
 // roster without leaving Discord.
 //
 // Flow:
-//   /editcard name:<autocomplete>
+//   /edit_card name:<autocomplete>
 //     → ephemeral preview + StringSelect "what to edit?"
 //   On select:
 //     • rarity / type        → secondary StringSelect with the valid values
 //     • text/number fields   → Modal with a single input
-//     • image upload         → pass image:<file> to /editcard
+//     • image upload         → pass image:<file> to /edit_card
 //     • boolean toggles      → flipped immediately, panel re-renders
 //
 // Custom IDs:
@@ -63,7 +63,7 @@ async function buildPanel(cardId: number, guildId?: string | null): Promise<{ em
       { name: "Archived", value: card.isArchived ? "🗄️ Yes" : "❌ No", inline: true },
       { name: "Limited", value: card.isLimitedEdition ? `💎 Yes (${card.totalMinted}/${card.maxCopies ?? "?"})` : "❌ No", inline: true },
     )
-    .setFooter({ text: `Card #${card.id} — use /editcard name:<card> image:<file> to replace the image.` });
+    .setFooter({ text: `Card #${card.id} — use /edit_card name:<card> image:<file> to replace the image.` });
   if (card.imageUrl) embed.setThumbnail(card.imageUrl);
 
   const select = new StringSelectMenuBuilder()

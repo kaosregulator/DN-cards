@@ -151,7 +151,7 @@ async function doSingleSpawn(guildId: string, forcedCardId?: number, isForced = 
   } else {
     // Sets-driven spawn pool (Phases 1-3): random spawns now pull EXCLUSIVELY
     // from the guild's active set. No active set → no random spawns (Option B).
-    // Admin `/admin drop name:<X>` and `/admin give` bypass this by setting forcedCardId.
+    // Admin `/drop name:<X>` and `/give` bypass this by setting forcedCardId.
     const spawnPool = await getActiveSetSpawnPoolCached(guildId);
     if (spawnPool.cards.length === 0) {
       logger.debug({ guildId }, "No active set or active set is empty — skipping random spawn");
@@ -359,6 +359,8 @@ async function awardSpawn(guildId: string, spawnId: string, userId: string): Pro
       const rarity = cards.find(c => c.id === spawn.cardId)?.rarity as Rarity | undefined;
       const { recordQuestEvent } = await import("./quests/engine.js");
       await recordQuestEvent(guildId, userId, "catch", 1, rarity);
+      const { recordGiveawayEvent } = await import("./giveaway/engine.js");
+      await recordGiveawayEvent(guildId, userId, "catch", 1, { rarity });
     } catch { /* non-fatal */ }
   })();
 

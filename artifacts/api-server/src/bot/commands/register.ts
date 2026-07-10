@@ -222,7 +222,7 @@ function buildLegacyCommands() {
       .addSubcommand(sc => sc.setName("exportcards").setDescription("Export every card as a flat JSON (no set info)")
         .addBooleanOption(o => o.setName("includearchived").setDescription("Include archived cards (default false)")))
       .addSubcommand(sc => sc.setName("load").setDescription("Import cards + set from a JSON file attachment")
-        .addAttachmentOption(o => o.setName("file").setDescription("JSON file from /setadmin export or exportall").setRequired(true))
+        .addAttachmentOption(o => o.setName("file").setDescription("JSON file from /sets_admin export or exportall").setRequired(true))
         .addStringOption(o => o.setName("name").setDescription("Override set name (single-set files only)")))
       .addSubcommand(sc => sc.setName("unload").setDescription("Unload (delete members of) a set — cards kept")
         .addStringOption(o => o.setName("name").setDescription("Set name").setRequired(true).setAutocomplete(true)))
@@ -313,6 +313,7 @@ function buildLegacyCommands() {
             { name: "welcome",  value: "welcome"  },
             { name: "rules",    value: "rules"    },
             { name: "commands", value: "commands" },
+            { name: "help",     value: "help"     },
           )))
       .addSubcommand(sc => sc.setName("set").setDescription("Set one field on an embed override")
         .addStringOption(o => o.setName("key").setDescription("Which embed").setRequired(true)
@@ -325,6 +326,7 @@ function buildLegacyCommands() {
             { name: "welcome",  value: "welcome"  },
             { name: "rules",    value: "rules"    },
             { name: "commands", value: "commands" },
+            { name: "help",     value: "help"     },
           ))
         .addStringOption(o => o.setName("field").setDescription("Which field to set").setRequired(true)
           .addChoices(
@@ -356,6 +358,7 @@ function buildLegacyCommands() {
             { name: "welcome",  value: "welcome"  },
             { name: "rules",    value: "rules"    },
             { name: "commands", value: "commands" },
+            { name: "help",     value: "help"     },
           ))
         .addStringOption(o => o.setName("field").setDescription("Specific field to reset — omit to wipe the whole override")
           .addChoices(
@@ -412,7 +415,7 @@ function buildLegacyCommands() {
         .addUserOption(o => o.setName("user").setDescription("Whose achievements to view (default: you)")))
       .addSubcommand(sc => sc.setName("daily").setDescription("View today's battle challenges and progress"))),
 
-    // ── /battleadmin (admin, Battle System configuration) ─────────────────────
+    // ── /battle_admin (admin, Battle System configuration) ─────────────────────
     adminCmd("battleadmin", "(Admin) Battle system hub — setup wizard, rules, rewards, cards, seasons", s => s),
 
     // ── /squad (user, Squads / guilds) ────────────────────────────────────────
@@ -435,7 +438,7 @@ function buildLegacyCommands() {
         .addStringOption(o => o.setName("boss").setDescription("Which boss to raid").setRequired(true).setAutocomplete(true)))
       .addSubcommand(sc => sc.setName("bosses").setDescription("List the raid bosses available on this server"))),
 
-    // ── /raidadmin (admin, Boss management) ───────────────────────────────────
+    // ── /raid_admin (admin, Boss management) ───────────────────────────────────
     adminCmd("raidadmin", "(Admin) Create and tune co-op raid bosses", s => s
       .addSubcommand(sc => sc.setName("create").setDescription("Create a new raid boss")
         .addStringOption(o => o.setName("name").setDescription("Boss name").setRequired(true))
@@ -475,6 +478,57 @@ function buildLegacyCommands() {
       .addSubcommand(sc => sc.setName("delete").setDescription("Delete a boss")
         .addStringOption(o => o.setName("name").setDescription("Boss to delete").setRequired(true).setAutocomplete(true)))),
 
+    // ── /giveaways (user, Giveaway System overview) ───────────────────────────
+    cmd("giveaways", "(User) See active giveaways, prizes, timers, and your progress", s => s),
+
+    // ── /giveaway (user, personal progress) ───────────────────────────────────
+    cmd("giveaway", "(User) Track your giveaway requirement progress", s => s
+      .addSubcommand(sc => sc.setName("progress").setDescription("Your per-requirement progress and entries")
+        .addIntegerOption(o => o.setName("id").setDescription("A specific giveaway id (defaults to all active)")))),
+
+    // ── /giveaway_admin (admin, Giveaway management) ───────────────────────────
+    adminCmd("giveawayadmin", "(Admin) Create and manage DN Cards giveaways", s => s
+      .addSubcommand(sc => sc.setName("create").setDescription("Create and launch a giveaway")
+        .addStringOption(o => o.setName("title").setDescription("Giveaway title").setRequired(true))
+        .addStringOption(o => o.setName("duration").setDescription("How long it runs, e.g. 24h, 3d, 1w").setRequired(true))
+        .addStringOption(o => o.setName("prizes").setDescription("e.g. shards:50000; nitro:1 Month Nitro; card:Dragon Lord x10").setRequired(true))
+        .addStringOption(o => o.setName("requirements").setDescription("e.g. catch:50:*1; battlewin:10:+10; message:100 (blank = open to all)"))
+        .addIntegerOption(o => o.setName("winners").setDescription("Number of winners (default 1)").setMinValue(1).setMaxValue(50))
+        .addStringOption(o => o.setName("difficulty").setDescription("Difficulty tier")
+          .addChoices({ name: "Easy", value: "easy" }, { name: "Medium", value: "medium" }, { name: "Hard", value: "hard" }, { name: "Legendary", value: "legendary" }))
+        .addStringOption(o => o.setName("mode").setDescription("Winner rule")
+          .addChoices({ name: "Entry-based (activity = chances)", value: "entry" }, { name: "Completion (must finish all)", value: "completion" }))
+        .addChannelOption(o => o.setName("channel").setDescription("Channel to post in (defaults to here)"))
+        .addStringOption(o => o.setName("description").setDescription("Extra flavor text"))
+        .addStringOption(o => o.setName("image").setDescription("Custom giveaway image URL (optional; card art used otherwise)"))
+        .addStringOption(o => o.setName("claimtimer").setDescription("Claim window, e.g. 24h (default 24h)"))
+        .addStringOption(o => o.setName("announce").setDescription("How winners are notified")
+          .addChoices({ name: "Channel", value: "channel" }, { name: "DM", value: "dm" }, { name: "Both", value: "both" })))
+      .addSubcommand(sc => sc.setName("edit").setDescription("Edit an existing giveaway")
+        .addIntegerOption(o => o.setName("id").setDescription("Giveaway id").setRequired(true))
+        .addStringOption(o => o.setName("title").setDescription("New title"))
+        .addStringOption(o => o.setName("duration").setDescription("New duration from now, e.g. 12h"))
+        .addStringOption(o => o.setName("prizes").setDescription("Replace prizes (same syntax as create)"))
+        .addStringOption(o => o.setName("requirements").setDescription("Replace requirements (blank clears them)"))
+        .addIntegerOption(o => o.setName("winners").setDescription("Winner count").setMinValue(1).setMaxValue(50))
+        .addStringOption(o => o.setName("difficulty").setDescription("Difficulty")
+          .addChoices({ name: "Easy", value: "easy" }, { name: "Medium", value: "medium" }, { name: "Hard", value: "hard" }, { name: "Legendary", value: "legendary" }))
+        .addStringOption(o => o.setName("mode").setDescription("Winner rule")
+          .addChoices({ name: "Entry-based", value: "entry" }, { name: "Completion", value: "completion" }))
+        .addStringOption(o => o.setName("description").setDescription("New description"))
+        .addStringOption(o => o.setName("image").setDescription("New custom image URL (blank clears)"))
+        .addStringOption(o => o.setName("claimtimer").setDescription("New claim window, e.g. 24h"))
+        .addStringOption(o => o.setName("announce").setDescription("Winner notification")
+          .addChoices({ name: "Channel", value: "channel" }, { name: "DM", value: "dm" }, { name: "Both", value: "both" })))
+      .addSubcommand(sc => sc.setName("end").setDescription("End a giveaway now and draw winners")
+        .addIntegerOption(o => o.setName("id").setDescription("Giveaway id").setRequired(true)))
+      .addSubcommand(sc => sc.setName("winners").setDescription("View a giveaway's winners and claim status")
+        .addIntegerOption(o => o.setName("id").setDescription("Giveaway id").setRequired(true)))
+      .addSubcommand(sc => sc.setName("list").setDescription("List active and past giveaways"))
+      .addSubcommand(sc => sc.setName("reroll").setDescription("Reroll a winner")
+        .addIntegerOption(o => o.setName("id").setDescription("Giveaway id").setRequired(true))
+        .addUserOption(o => o.setName("user").setDescription("Winner to replace (defaults to an unclaimed one")))),
+
     // ── /sets (user, read-only) ───────────────────────────────────────────────
     cmd("sets", "(User) Browse card sets and your collection progress", s => s
       .addSubcommand(sc => sc.setName("list").setDescription("List every card set on this server"))
@@ -504,6 +558,43 @@ function buildLegacyCommands() {
         .addIntegerOption(o => o.setName("id").setDescription("Listing ID").setRequired(true).setMinValue(1)))
       .addSubcommand(sc => sc.setName("mine").setDescription("View your listings and active bids"))),
 
+    // ── Bob — interactive entertainment NPC (its own module) ──────────────────
+    cmd("bob", "(User) Open Bob — games, roasts, tasks, quests & chaos", s => s),
+    cmd("bob_roulette", "(User) Play Bob's roulette — survive the chamber for coins", s => s),
+    cmd("bob_duel", "(User) Challenge someone to a Bob roulette duel", s => s
+      .addUserOption(o => o.setName("user").setDescription("Who to duel").setRequired(true))),
+    cmd("bob_roast", "(User) Have Bob roast a member", s => s
+      .addUserOption(o => o.setName("user").setDescription("Who to roast").setRequired(true))),
+    cmd("bob_talk", "(User) Chat with Bob", s => s
+      .addStringOption(o => o.setName("message").setDescription("Say something to Bob (leave empty to open the chat)"))),
+    cmd("bob_stats", "(User) View your (or someone's) Bob stats", s => s
+      .addUserOption(o => o.setName("user").setDescription("Whose stats (default: you)"))),
+    cmd("bob_leaderboard", "(User) Bob leaderboards — coins, wins, streaks & more", s => s
+      .addStringOption(o => o.setName("board").setDescription("Which leaderboard")
+        .addChoices(
+          { name: "🪙 Richest", value: "coins" }, { name: "🏆 Most wins", value: "wins" },
+          { name: "🎲 Best roulette streak", value: "streak" }, { name: "💬 Most interactions", value: "interactions" },
+          { name: "🎰 Biggest gamblers", value: "gambled" }, { name: "💎 Jackpot kings", value: "jackpots" },
+          { name: "📈 Highest level", value: "level" }))),
+    adminCmd("bob_admin", "(Admin) Configure Bob — toggles, odds, rewards, cooldown, channels", s => s
+      .addSubcommand(sc => sc.setName("settings").setDescription("View Bob's current settings"))
+      .addSubcommand(sc => sc.setName("toggle").setDescription("Enable/disable Bob or a specific game/feature")
+        .addStringOption(o => o.setName("feature").setDescription("bob, events, ai, dex, roulette, roast, duel, coinflip, dice, hl, slots, wheel, emoji").setRequired(true))
+        .addBooleanOption(o => o.setName("enabled").setDescription("On or off").setRequired(true)))
+      .addSubcommand(sc => sc.setName("odds").setDescription("Set Blue / Upside-Down Bob appearance chances")
+        .addIntegerOption(o => o.setName("blue").setDescription("Blue Bob % (0-100)").setMinValue(0).setMaxValue(100))
+        .addIntegerOption(o => o.setName("upside").setDescription("Upside-Down Bob % (0-100)").setMinValue(0).setMaxValue(100)))
+      .addSubcommand(sc => sc.setName("rewards").setDescription("Set the reward multiplier %")
+        .addIntegerOption(o => o.setName("multiplier").setDescription("Percent (100 = normal)").setRequired(true).setMinValue(0).setMaxValue(1000)))
+      .addSubcommand(sc => sc.setName("cooldown").setDescription("Set the per-user action cooldown")
+        .addIntegerOption(o => o.setName("seconds").setDescription("Seconds (0-120)").setRequired(true).setMinValue(0).setMaxValue(120)))
+      .addSubcommand(sc => sc.setName("channels").setDescription("Manage channels Bob can appear in for random events")
+        .addStringOption(o => o.setName("action").setDescription("add / remove / clear").setRequired(true)
+          .addChoices({ name: "add", value: "add" }, { name: "remove", value: "remove" }, { name: "clear", value: "clear" }))
+        .addChannelOption(o => o.setName("channel").setDescription("Channel to add/remove")))
+      .addSubcommand(sc => sc.setName("testevent").setDescription("Spawn a Bob event now (test)")
+        .addChannelOption(o => o.setName("channel").setDescription("Where (default: here)")))),
+
     // ── Echo-Whisper (encrypted messaging addon) ──────────────────────────────
     cmd("whisper", "(User) Send an encrypted whisper only a chosen member can read", s => s
       .addUserOption(o => o.setName("user").setDescription("The member who can read this message").setRequired(true))),
@@ -511,7 +602,7 @@ function buildLegacyCommands() {
     cmd("adminsecret", "(User) Post an encrypted staff message only authorized roles can reveal", s => s),
 
     adminCmd("echo", "(Admin) Echo-Whisper hub — viewer roles, admin override, stats, config", s => s
-      .addSubcommand(sc => sc.setName("role").setDescription("Manage roles allowed to reveal /adminsecret messages")
+      .addSubcommand(sc => sc.setName("role").setDescription("Manage roles allowed to reveal /admin_secret messages")
         .addStringOption(o => o.setName("action").setDescription("Add, remove, or list").setRequired(true)
           .addChoices({ name: "add", value: "add" }, { name: "remove", value: "remove" }, { name: "list", value: "list" }))
         .addRoleOption(o => o.setName("role").setDescription("Role to add or remove")))
@@ -529,54 +620,89 @@ function buildLegacyCommands() {
 
 type CommandJson = ReturnType<SlashCommandBuilder["toJSON"]>;
 
-const USER_HUB_COMMANDS = new Set([
+// Commands are FLAT top-level slash commands — e.g. `/burn`, `/daily`, `/drop`
+// — rather than being nested under `/cards …` / `/admin …` hubs. These two sets
+// name the flattened commands so the interaction dispatcher (index.ts) knows
+// whether each one is handled by handleUserCommand or handleAdminCommand. The
+// category grouping players see instead lives in the interactive `/help` hub.
+//
+// NOTE: these sets use the INTERNAL handler names (the string each handler
+// switches on). The name a user actually sees can differ — see COMMAND_RENAMES.
+export const USER_HUB_COMMANDS = new Set([
   "collection", "rank", "info", "list", "catalog", "top", "burn", "shards",
   "trade", "gift", "trades", "tradehistory", "accept", "decline", "welcome",
   "help", "daily", "quests", "pack", "packstats", "tradein", "achievements",
   "level", "frame", "lock", "search", "collector", "calendar",
 ]);
 
-const ADMIN_HUB_COMMANDS = new Set([
+export const ADMIN_HUB_COMMANDS = new Set([
   "setup", "config", "adminhub", "sethub", "set_admin", "deletecard",
   "welcomeadmin", "adminhelp", "drop", "massdrop", "give", "giveshards",
   "takeback", "takeshards", "addcard", "editcard", "dashboard", "collectorrole",
 ]);
 
-const ADMIN_HUB_NAMES: Record<string, string> = {
-  adminhub: "hub",
-  sethub: "set-hub",
-  set_admin: "set-manager",
-  welcomeadmin: "welcome",
-  adminhelp: "help",
+// ── Clean public command names ───────────────────────────────────────────────
+// Maps a command's INTERNAL name (what handlers switch on) to the clean,
+// underscore-separated name shown to users. Only the REGISTERED name changes;
+// every handler, dispatch set, and button customId keeps its internal name.
+// index.ts translates an incoming interaction name back to internal via
+// internalCommandName() before routing. Rule: split concatenated words with `_`
+// (e.g. packstats → pack_stats, battleadmin → battle_admin), which also keeps
+// the distinguishing suffix that separates admin variants from user commands
+// (e.g. /battle vs /battle_admin).
+export const COMMAND_RENAMES: Record<string, string> = {
+  packstats: "pack_stats",
+  tradehistory: "trade_history",
+  tradein: "trade_in",
+  adminsecret: "admin_secret",
+  afksetup: "afk_setup",
+  collectorrole: "collector_role",
+  addcard: "add_card",
+  editcard: "edit_card",
+  deletecard: "delete_card",
+  giveshards: "give_shards",
+  takeshards: "take_shards",
+  takeback: "take_back",
+  massdrop: "mass_drop",
+  adminhub: "admin_hub",
+  adminhelp: "admin_help",
+  welcomeadmin: "welcome_admin",
+  battleadmin: "battle_admin",
+  raidadmin: "raid_admin",
+  giveawayadmin: "giveaway_admin",
+  sethub: "set_hub",
+  setadmin: "sets_admin",
 };
 
-function consolidateCommands(commands: CommandJson[], names: Set<string>, hubName: string, description: string, admin = false): CommandJson {
-  const selected = commands.filter(command => names.has(command.name));
-  return {
-    name: hubName, description, type: 1, dm_permission: false,
-    ...(admin ? { default_member_permissions: PermissionFlagsBits.Administrator.toString() } : {}),
-    options: selected.map(command => ({
-      type: 1,
-      name: ADMIN_HUB_NAMES[command.name] ?? command.name,
-      description: command.description.replace(/^\((?:User|Admin)\)\s*/, "").slice(0, 100),
-      options: command.options,
-    })),
-  } as CommandJson;
+const INTERNAL_BY_CLEAN: Record<string, string> =
+  Object.fromEntries(Object.entries(COMMAND_RENAMES).map(([internal, clean]) => [clean, internal]));
+
+// Public (registered) name for an internal command name.
+export function publicCommandName(internal: string): string {
+  return COMMAND_RENAMES[internal] ?? internal;
+}
+
+// Internal handler name for a registered/public command name (inverse).
+export function internalCommandName(clean: string): string {
+  return INTERNAL_BY_CLEAN[clean] ?? clean;
 }
 
 export function buildCommands() {
+  // Every command is registered standalone — no /cards or /admin wrapper — and
+  // renamed to its clean public form.
   const legacy = buildLegacyCommands() as CommandJson[];
-  const consolidatedNames = new Set([...USER_HUB_COMMANDS, ...ADMIN_HUB_COMMANDS]);
-  return [
-    consolidateCommands(legacy, USER_HUB_COMMANDS, "cards", "Player command hub for DN Cards"),
-    consolidateCommands(legacy, ADMIN_HUB_COMMANDS, "admin", "Admin command hub for DN Cards", true),
-    ...legacy.filter(command => !consolidatedNames.has(command.name)),
+  const all = [
+    ...legacy,
     // ── AFK Secretary & Whitelist Access System (standalone top-level cmds) ──
     buildAfkCommandJson() as CommandJson,
     buildAfkSetupCommandJson() as CommandJson,
   ];
+  for (const c of all) c.name = publicCommandName(c.name);
+  return all;
 }
 
-export const USER_COMMAND_NAMES = new Set(["cards", "wishlist", "sets", "rep", "thanks"]);
+// Standalone commands that carry their OWN subcommands (handled inside their
+// respective handlers). Kept separate from the flattened hub sets above.
+export const USER_COMMAND_NAMES = new Set(["wishlist", "sets", "rep", "thanks"]);
 
-export const ADMIN_COMMAND_NAMES = new Set(["admin", "setadmin", "event", "rarity", "embed"]);
+export const ADMIN_COMMAND_NAMES = new Set(["setadmin", "event", "rarity", "embed"]);

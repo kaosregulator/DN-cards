@@ -14,102 +14,16 @@ import { handleEventCommand } from "./event.js";
 import { handleDashboardCommand } from "./dashboard.js";
 import { EmbedBuilder } from "discord.js";
 
-// ── /adminhelp — admin/setup command reference ───────────────────────────────
+// ── /admin_help — admin/setup command reference ───────────────────────────────
 async function handleAdminHelp(interaction: ChatInputCommandInteraction): Promise<void> {
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
   if (!(await checkAdmin(interaction))) {
     await interaction.editReply("❌ Admins only.");
     return;
   }
-  const embed = new EmbedBuilder()
-    .setTitle("🛠️ DN Cards — Admin Reference")
-    .setColor(0xeb459e)
-    .setDescription(
-      "All commands here are admin-gated. Player commands are in `/cards help`.\n" +
-      "Most actions are also reachable visually from `/admin setup` or `/admin config`.",
-    )
-    .addFields(
-      {
-        name: "⚙️ Setup & Config",
-        value:
-          "`/admin setup` — **interactive setup panel** (recommended)\n" +
-          "`/admin config` — open the config panel anytime (catch mode, intervals, toggles, rates)\n" +
-          "`/admin hub` — manage bot admins, catch timeouts, channel config\n" +
-          "`/admin help` — this reference panel",
-      },
-      {
-        name: "📢 Channels & Toggles *(prefix commands)*",
-        value:
-          "`<prefix>setchannel #channel` · `<prefix>settradechannel #channel`\n" +
-          "`<prefix>setinterval <time>` · `<prefix>setinterval random <min> <max>` · `<prefix>setwindow <time>`\n" +
-          "`<prefix>setdrops <1|3|5|random>` · `<prefix>setcatchmode <type|button|both>`\n" +
-          "`<prefix>setrarity <rarity> <weight>`\n" +
-          "`<prefix>spawnenable` / `<prefix>spawndisable` · `<prefix>tradingenable` / `<prefix>tradingdisable`\n" +
-          "*Default prefix is `!`. Change it with `<prefix>setprefix`.*",
-      },
-      {
-        name: "🃏 Card Management",
-        value:
-          "`/admin editcard name:<card>` — interactive panel (autocomplete!)\n" +
-          "`<prefix>addcard` · `<prefix>addlimited` · `<prefix>addevent` — guided wizards\n" +
-          "`<prefix>removecard <Name>` · `<prefix>import` — bulk import from JSON",
-      },
-      {
-        name: "⚡ Live Actions *(slash)*",
-        value:
-          "`/admin drop [name]` — force a single drop\n" +
-          "`/admin massdrop [amount]` — drop 10-25 cards in a batch *(event use)*\n" +
-          "`/admin give user:@Member name:<card>` · `/admin takeback user:@Member name:<card>`\n" +
-          "`/admin giveshards user:@Member amount:<n>` · `/admin takeshards user:@Member amount:<n>`",
-      },
-      {
-        name: "🎯 Limited-Time Events *(slash)*",
-        value:
-          "`/event start card:<Name> duration:<30m|2h|1d> [multiplier:<1.1–50>]` — boost a card's spawn weight (default 2×, max 14d)\n" +
-          "`/event list` — show active events + remaining time\n" +
-          "`/event stop id:<n>` — end an event early\n" +
-          "*Activations/stops are announced in the spawn channel.*",
-      },
-      {
-        name: "🗂️ Card Sets *(slash — /set_admin)*",
-        value:
-          "`/admin set-manager` — interactive hub: create, rename, delete, set active/deactivate\n" +
-          "Add/remove cards, bulk add/remove, Assign All unassigned cards in one click\n" +
-          "Export single set or all sets · Import from URL · Rarity weights per set\n" +
-          "*Built-in starter roster is opt-in via the `/admin setup` panel.*",
-      },
-      {
-        name: "👥 Admins *(inside /adminhub)*",
-        value:
-          "`/admin hub` — click buttons to add/remove admins, timeout users, or set channels\n" +
-          "Server owner + Discord Administrators are always admins.\n" +
-          "*Tip: in Discord → Server Settings → Integrations → DN Cards you can also grant admin commands to specific roles per-command.*",
-      },
-      {
-        name: "🎨 Embed Customization *(slash)*",
-        value:
-          "`/embed show key:<embed>` — see the current override for an embed\n" +
-          "`/embed set key:<embed> field:<field> value:<v>` — set one field (title, footer, color, image, etc.) — empty value clears\n" +
-          "`/embed reset key:<embed> [field]` — reset one field, or the whole embed if no field given\n" +
-          "Embeds: `spawn` · `claimed` · `daily` · `pack` · `trade` · `welcome` · `rules` · `commands`. Tokens like `{user} {card} {rarity} {worth} {streak} {tier}` are interpolated.",
-      },
-      {
-        name: "🎖️ Rarity Tuning *(slash)*",
-        value:
-          "`/rarity` — edit built-in rarity display, spawn %, worth, and burn\n" +
-          "• Advanced custom labels remain available for legacy setups, but normal servers should use built-in rarity settings.",
-      },
-      {
-        name: "🌐 Web Dashboard",
-        value:
-          "`/admin dashboard` — DMs you a one-time link to **create or reset** your dashboard login.\n" +
-          "The dashboard is **presentation-only** — display name, image, description, flavor, visibility, sort order. All gameplay values (rarity, worth, burn, drop rate, packs) are read-only there; change them with the Discord commands above.\n" +
-          "• `/admin` — card display overrides + website roster\n" +
-          "• `/admin/news` · `/admin/suggestions` — site content + user feedback queue\n" +
-          "• `/admin/users` (owner only) — invite additional dashboard logins.",
-      },
-    );
-  await interaction.editReply({ embeds: [embed] });
+  // Unified /help hub, opened on the Admin page (single source of truth).
+  const { handleHelpHub } = await import("./help-hub.js");
+  await handleHelpHub(interaction, "admin");
 }
 
 // ── Permission check ──────────────────────────────────────────────────────────
@@ -152,7 +66,7 @@ export async function handleAdminCommand(
     await handleSetAdminHubCommand(interaction);
     return;
   }
-  // /deletecard — permanently removes a card from the global roster.
+  // /delete_card — permanently removes a card from the global roster.
   if (cmd === "deletecard") {
     await interaction.deferReply({ flags: MessageFlags.Ephemeral });
     if (!(await checkAdmin(interaction))) {
@@ -174,7 +88,7 @@ export async function handleAdminCommand(
     await interaction.editReply(`🗑️ **${card.name}** (${card.rarity}) has been permanently deleted.`);
     return;
   }
-  // /admin collectorrole — set/clear the opt-in spawn ping role.
+  // /collector_role — set/clear the opt-in spawn ping role.
   if (cmd === "collectorrole") {
     await interaction.deferReply({ flags: MessageFlags.Ephemeral });
     if (!(await checkAdmin(interaction))) { await interaction.editReply("❌ Admins only."); return; }
@@ -182,14 +96,14 @@ export async function handleAdminCommand(
     await handleSetCollectorRole(interaction);
     return;
   }
-  // /setadmin — subcommand tree; defer first, then dispatch.
+  // /sets_admin — subcommand tree; defer first, then dispatch.
   if (cmd === "setadmin") {
     await interaction.deferReply({ flags: MessageFlags.Ephemeral });
     const { handleSetAdminCommand } = await import("./sets-admin.js");
     await handleSetAdminCommand(interaction);
     return;
   }
-  // /addcard — same defer-first pattern as /editcard; home guild only.
+  // /add_card — same defer-first pattern as /edit_card; home guild only.
   if (cmd === "addcard") {
     await interaction.deferReply({ flags: MessageFlags.Ephemeral });
     if (!(await checkAdmin(interaction))) {
@@ -205,7 +119,7 @@ export async function handleAdminCommand(
     return;
   }
 
-  // /editcard — defer first so checkAdmin()'s isAdmin() DB call can't blow
+  // /edit_card — defer first so checkAdmin()'s isAdmin() DB call can't blow
   // Discord's 3s window. handleEditCardCommand receives an already-deferred
   // interaction and uses editReply for its panel.
   if (cmd === "editcard") {
@@ -214,7 +128,7 @@ export async function handleAdminCommand(
       await interaction.editReply("❌ Admins only.");
       return;
     }
-    // /editcard mutates the globally shared cards table — home guild only.
+    // /edit_card mutates the globally shared cards table — home guild only.
     if (!isHomeGuild(interaction.guild.id)) {
       await interaction.editReply(GLOBAL_ONLY_MSG);
       return;
@@ -263,14 +177,14 @@ export async function handleAdminCommand(
     return;
   }
 
-  // ── /sethub (clickable set manager panel) ────────────────────────────────
+  // ── /set_hub (clickable set manager panel) ────────────────────────────────
   if (cmd === "sethub") {
     const { handleSetsHubCommand } = await import("./sets-panel.js");
     await handleSetsHubCommand(interaction);
     return;
   }
 
-  // ── /welcomeadmin (admin onboarding guide — ephemeral) ────────────────────
+  // ── /welcome_admin (admin onboarding guide — ephemeral) ────────────────────
   if (cmd === "welcomeadmin") {
     const { handleWelcomeAdmin } = await import("./welcome.js");
     await handleWelcomeAdmin(interaction);
@@ -291,7 +205,7 @@ export async function handleAdminCommand(
     if (cardName) {
       const cards = await getAllCards();
       const found = cards.find(c => c.name.toLowerCase() === cardName.toLowerCase());
-      if (!found) { await interaction.editReply(`❌ Card "**${cardName}**" not found. Try \`/cards list\`.`); return; }
+      if (!found) { await interaction.editReply(`❌ Card "**${cardName}**" not found. Try \`/list\`.`); return; }
       forcedCardId = found.id;
     }
     // Optional set override: if a set is named, we pick from that set's cards
@@ -316,7 +230,7 @@ export async function handleAdminCommand(
     return;
   }
 
-  // ── /massdrop ─────────────────────────────────────────────────────────────
+  // ── /mass_drop ─────────────────────────────────────────────────────────────
   // "Admin abuse" — a chaotic event batch tilted heavily toward low rarities
   // with guaranteed mid-tier and one legendary banger. Fires sequentially with
   // a small gap so Discord doesn't rate-limit and so the channel reads as a
@@ -330,7 +244,7 @@ export async function handleAdminCommand(
       await interaction.editReply(`❌ No spawn channel set. Run \`${pfx}setchannel #channel\` first.`);
       return;
     }
-    // /massdrop respects the guild's active set so chaotic batches don't
+    // /mass_drop respects the guild's active set so chaotic batches don't
     // dump cards that aren't part of the current rotation. If a specific set
     // is named we use that instead. If no active set we fall back to global.
     const { getActiveSetSpawnPoolCached, getSetByName, getCardsInSet } = await import("../db.js");
@@ -427,7 +341,7 @@ export async function handleAdminCommand(
     return;
   }
 
-  // ── /giveshards ───────────────────────────────────────────────────────────
+  // ── /give_shards ───────────────────────────────────────────────────────────
   if (cmd === "giveshards") {
     const target = opts.getUser("user", true);
     const amount = opts.getInteger("amount", true);
@@ -436,7 +350,7 @@ export async function handleAdminCommand(
     return;
   }
 
-  // ── /takeback ─────────────────────────────────────────────────────────────
+  // ── /take_back ─────────────────────────────────────────────────────────────
   if (cmd === "takeback") {
     const target = opts.getUser("user", true);
     const cardName = opts.getString("name", true);
@@ -469,7 +383,7 @@ export async function handleAdminCommand(
     return;
   }
 
-  // ── /takeshards ───────────────────────────────────────────────────────────
+  // ── /take_shards ───────────────────────────────────────────────────────────
   if (cmd === "takeshards") {
     const target = opts.getUser("user", true);
     const amount = opts.getInteger("amount", true);

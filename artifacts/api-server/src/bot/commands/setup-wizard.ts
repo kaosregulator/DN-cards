@@ -105,7 +105,7 @@ export async function handleSetupButton(interaction: ButtonInteraction): Promise
     await interaction.followUp({
       content: `📦 Loaded the built-in roster — added **${added}** cards` +
         (skipped > 0 ? ` (skipped **${skipped}** already in your roster).` : ".") +
-        `\nRemove anytime with **🗑️ Remove Defaults** or \`${settings.commandPrefix}unloaddefaults\` / \`/setadmin unload set:${DEFAULTS_SET_NAME}\`.`,
+        `\nRemove anytime with **🗑️ Remove Defaults** or \`${settings.commandPrefix}unloaddefaults\` / \`/sets_admin unload set:${DEFAULTS_SET_NAME}\`.`,
       flags: MessageFlags.Ephemeral,
     }).catch(() => {});
     return;
@@ -154,11 +154,11 @@ export async function handleSetupButton(interaction: ButtonInteraction): Promise
           .setDescription(
             `Drops are live in <#${settings.spawnChannelId}>.\n\n` +
             `**👈 What to do next**\n` +
-            `• **Post the welcome guide:** Go to your info channel and run \`/cards welcome\`\n` +
-            `• **Add your own cards:** \`/admin addcard\` with an image attachment\n` +
-            `• **Test drops:** \`/admin drop\` (force one) · \`/admin massdrop\` (batch)\n` +
-            `• **Players need help?** \`/cards help\` · \`/admin help\`\n\n` +
-            `Re-open anytime: \`${settings.commandPrefix}setup\` or \`/admin setup\``,
+            `• **Post the welcome guide:** Go to your info channel and run \`/welcome\`\n` +
+            `• **Add your own cards:** \`/add_card\` with an image attachment\n` +
+            `• **Test drops:** \`/drop\` (force one) · \`/mass_drop\` (batch)\n` +
+            `• **Players need help?** \`/help\` · \`/admin_help\`\n\n` +
+            `Re-open anytime: \`${settings.commandPrefix}setup\` or \`/setup\``,
           ),
       ],
       components: [],
@@ -372,9 +372,9 @@ function buildSetupEmbed(s: GuildSettings, hasDefaults: boolean): EmbedBuilder {
       {
         name: "✅ Guided Next Steps",
         value:
-          `• \`/cards welcome\` — post player guide (run in info channel)\n` +
-          `• \`/admin drop\` — force a drop instantly\n` +
-          `• \`/admin addcard\` — create a card with built-in rarity + upload`,
+          `• \`/welcome\` — post player guide (run in info channel)\n` +
+          `• \`/drop\` — force a drop instantly\n` +
+          `• \`/add_card\` — create a card with built-in rarity + upload`,
         inline: false,
       },
     )

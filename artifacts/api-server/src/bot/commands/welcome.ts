@@ -2,7 +2,7 @@ import type { ChatInputCommandInteraction } from "discord.js";
 import { EmbedBuilder, MessageFlags } from "discord.js";
 import { applyEmbedOverride } from "../embed-overrides.js";
 import { getOrCreateGuildSettings, isAdmin } from "../db.js";
-import { getShinyMultiplier, getShinyName } from "../cards-data.js";
+import { getShinyName } from "../cards-data.js";
 
 // Thin animated divider GIF used as the separator image at the bottom of each
 // embed. The rainbow-glow line (4 KB, GitHub user-images CDN) renders as a
@@ -24,105 +24,88 @@ function dashboardAdminUrl(): string {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // /welcome — public, member-facing. Drops in #welcome or #info channels.
-// Two clean embeds separated by the animated GIF divider line.
+// Small, spaced-out sections — Welcome · Rules · Good to Know · Dive In — each
+// separated by the animated GIF banner. Kept short on purpose: the full command
+// reference lives in the interactive `/help` hub. Each section stays editable
+// via `/embed` (keys: welcome · rules · commands).
 // NOT in EPHEMERAL_COMMANDS — visible to everyone.
 // ─────────────────────────────────────────────────────────────────────────────
 export async function handleWelcome(interaction: ChatInputCommandInteraction): Promise<void> {
   const shinySettings = interaction.guildId ? await getOrCreateGuildSettings(interaction.guildId) : null;
   const shinyName = getShinyName(shinySettings);
-  const shinyMultiplier = getShinyMultiplier(shinySettings);
   const guildId   = interaction.guildId;
   const guildName = interaction.guild?.name ?? "this server";
 
-  // ── Embed 1: Welcome & Quick Start ─────────────────────────────────────────
+  // ── 1 · Welcome ─────────────────────────────────────────────────────────────
   const welcome = new EmbedBuilder()
     .setColor(BRAND_COLOR)
     .setTitle("🃏 Welcome to DN Cards")
     .setDescription(
-      "DarkNight's military collectible card game — tanks, jets, warships, bosses, " +
-      "and the occasional cursed community card. Cards drop randomly. You catch them. " +
-      "You hoard them. You flex a 👑 Legendary on someone still grinding Commons. It's a lifestyle.\n\n" +
-
-      "**Getting Started**\n" +
-      "① **Watch the spawn channel** — when a card drops, just **type its name** to catch it. " +
-        "No slash command. No button. Just type. (Unless the server is in button mode — then click.)\n" +
-      "② **`/cards daily`** — free shards every day. 7-day streak = 💠 1,000 shard achievement. Easy.\n" +
-      "③ **`/cards pack`** — spend shards on 5-card packs. 🥉 Basic (250 💠) · 🥈 Premium (750 💠) · 🥇 Legendary (2,000 💠, no commons).\n" +
-      "④ **`/cards burn`** — turn duplicate cards into shards. Burn, reinvest, repeat.\n" +
-      "⑤ **`/cards top`** — check where you stand. Goal: 👑 Dark Commander.",
+      `Welcome to **${guildName}** — DarkNight's military collectible card game. Tanks, jets, warships, bosses, and the odd cursed community card drop right here in chat.\n\n` +
+      "**When a card spawns, just type its name to catch it.** That's the core loop — then hoard, battle, trade, and climb the leaderboard.",
     )
-    .setImage(DIVIDER_GIF);  // animated divider line between this embed and the next
+    .setImage(DIVIDER_GIF);
 
   await applyEmbedOverride(welcome, {
-    guildId,
-    key: "welcome",
-    defaultImageUrl: DIVIDER_GIF,
+    guildId, key: "welcome", defaultImageUrl: DIVIDER_GIF,
     ctx: { guild: guildName, username: interaction.user.username, userId: interaction.user.id },
   });
 
-  // ── Embed 2: Things to Know ─────────────────────────────────────────────────
+  // ── 2 · Rules & Fair Play ───────────────────────────────────────────────────
   const rules = new EmbedBuilder()
-    .setColor(BRAND_COLOR)
-    .setTitle("📌 Things You Actually Need to Know")
+    .setColor(0xf1c40f)
+    .setTitle("📜 Rules & Fair Play")
     .setDescription(
-      "**🎯 How Catching Works**\n" +
-      "Type the card name exactly — capitalisation doesn't matter, spelling does. " +
-      "You'll see a 🎯 reaction when your catch was **registered**. " +
-      "That's not a win confirmation — it means you're in the pool. " +
-      "If two people type the name within the same split-second, Discord's own message timestamp decides the winner, " +
-      "not bot processing speed. So if you got 🎯 but lost, someone else genuinely sent their message before you. No bugs, no foul play.\n\n" +
-
-      "**⏳ Lag & Discord Being Discord**\n" +
-      "Discord embeds take a moment to load — that's normal, the card is catchable the whole time. " +
-      "Cards stay up for the full catch window (usually 60–120 s), so you're not racing milliseconds on every drop. " +
-      "If you catch successfully you'll see 🔥 Burn / 💾 Keep / 🔄 Trade buttons in the spawn message.\n\n" +
-
-      "**🏆 Leaderboard**\n" +
-      "Use `/cards top` for the in-Discord net-worth leaderboard. " +
-      `Browse the full card roster, featured cards, and stats at **[${SITE_URL}](${SITE_URL})**.\n\n` +
-
-      "**🗂️ Card Sets**\n" +
-      "Random spawns only pull from the server's **active set** — admins rotate these for seasons and events. " +
-      "`/sets active` shows what's in rotation right now. `/sets progress set:<…>` shows how close you are to completing a set. " +
-      "Completing full sets can unlock special achievements with shard payouts.\n\n" +
-
-      `**✨ ${shinyName} Cards**\n` +
-      `Every catch, pack pull, and trade-in has a **0.5% chance** of minting a ${shinyName} card — ` +
-      `worth **${shinyMultiplier}× the normal burn value**. It shows up separately in your collection. ` +
-      "Getting one is genuinely rare. Cherish it or burn it for the bag, your call.\n\n" +
-
-      "**💠 Shards & Economy**\n" +
-      "Earn: daily claims · burning cards · achievements · trade-ins · admin gifts. " +
-      "Spend: packs · trade offers · `/cards gift` to friends. " +
-      "Packs share one cooldown across tiers but each tier has its own **separate weekly cap** — " +
-      "hit the Legendary cap and you can still open Basics. Caps reset Monday 00:00 UTC.\n\n" +
-
-      "**🔄 Trading**\n" +
-      "`/cards trade user:@ offer:<card> want:<card>` — mix in shards with `offer_shards`/`want_shards`. " +
-      "If the deal is more than **3:1 in value**, an orange ⚠️ banner warns the short side. " +
-      "Trade still goes through if accepted. Use `/wishlist add name:<card>` to get pinged when your target spawns.\n\n" +
-
-      "**📖 Commands Quick-Ref**\n" +
-      "`/cards collection` · `/cards rank` · `/cards info` · `/cards list` · `/cards catalog` · `/cards top` · `/cards achievements`\n" +
-      "`/cards daily` · `/cards pack` · `/cards packstats` · `/cards burn` · `/cards tradein` · `/cards shards` · `/cards gift`\n" +
-      "`/cards trade` · `/cards trades` · `/cards accept` · `/cards decline` · `/cards tradehistory` · `/wishlist`\n" +
-      "`/sets list|active|view|progress` · `/cards help`",
+      "• **Be cool** — follow the server rules and keep chat friendly.\n" +
+      "• **No cheating** — macros, self-bots, or auto-typers to snipe catches are bannable.\n" +
+      "• **Fair catches** — ties break by Discord's own message timestamp, not bot speed. Got the 🎯 but lost? Someone genuinely typed it first — no bugs, no favouritism.\n" +
+      "• **Trade honestly** — deals over 3:1 in value show a ⚠️ warning; it's a heads-up, not a block.",
     )
-    .setFooter({ text: `🌐 ${SITE_URL}  ·  💡 Card name fields autocomplete — use the dropdown` })
     .setImage(DIVIDER_GIF);
 
   await applyEmbedOverride(rules, {
-    guildId,
-    key: "rules",
-    defaultImageUrl: DIVIDER_GIF,
-    ctx: { guild: guildName },
+    guildId, key: "rules", defaultImageUrl: DIVIDER_GIF, ctx: { guild: guildName },
   });
 
-  await interaction.editReply({ embeds: [welcome, rules] });
+  // ── 3 · Good to Know ────────────────────────────────────────────────────────
+  const info = new EmbedBuilder()
+    .setColor(0x3498db)
+    .setTitle("💡 Good to Know")
+    .addFields(
+      { name: "🎯 Catching", value: "Type the card name exactly (spelling matters, caps don't). A 🎯 means you're in the pool. Cards stay up 60–120s — no need to race milliseconds." },
+      { name: "💠 Shards & Packs", value: "Earn shards from `/daily`, burning duplicates, achievements & quests. Spend them on `/pack` — 🥉 Basic · 🥈 Premium · 🥇 Legendary." },
+      { name: `✨ ${shinyName} Cards`, value: `Every catch and pull has a **0.5%** chance to mint a rare ${shinyName} — worth extra and tracked separately.` },
+      { name: "🗂️ Sets", value: "Spawns pull from the server's **active set**. Check `/sets active` and track completion with `/sets progress`." },
+    )
+    .setImage(DIVIDER_GIF);
+
+  await applyEmbedOverride(info, {
+    guildId, key: "commands", defaultImageUrl: DIVIDER_GIF, ctx: { guild: guildName },
+  });
+
+  // ── 4 · Dive In ─────────────────────────────────────────────────────────────
+  const start = new EmbedBuilder()
+    .setColor(0x2ecc71)
+    .setTitle("🎮 Dive In")
+    .setDescription(
+      "**Plenty to do here:**\n" +
+      "🃏 Collect & complete sets · 💠 Open packs · 🔄 Trade & use the `/market`\n" +
+      "⚔️ Battle players or AI · 🐉 Team up for co-op boss `/raid`s · 🤝 Join a `/squad`\n" +
+      "🎯 Daily & weekly `/quests` · 🎉 Enter `/giveaways` for real prizes\n\n" +
+      "**Start now:**\n" +
+      "① `/daily` — grab free shards\n" +
+      "② Watch chat and **type card names** to catch\n" +
+      "③ `/pack` — open your first pack\n" +
+      "④ **`/help`** — the full interactive guide to every feature",
+    )
+    .setFooter({ text: `🌐 ${SITE_URL}  ·  Run /help for the complete guide` })
+    .setImage(DIVIDER_GIF);
+
+  await interaction.editReply({ embeds: [welcome, rules, info, start] });
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// /welcomeadmin — ephemeral, admin-only onboarding guide.
+// /welcome_admin — ephemeral, admin-only onboarding guide.
 // Three embeds: Quick-Start checklist · Card Editing guide · Command cheat-sheet.
 // ─────────────────────────────────────────────────────────────────────────────
 export async function handleWelcomeAdmin(interaction: ChatInputCommandInteraction): Promise<void> {
@@ -150,23 +133,23 @@ export async function handleWelcomeAdmin(interaction: ChatInputCommandInteractio
     .setDescription(
       "Do these **in order** the first time:\n\n" +
 
-      "**✅ Step 1 — `/admin setup`**\n" +
+      "**✅ Step 1 — `/setup`**\n" +
       "Interactive wizard — spawn channel, drop interval, catch mode (type/button/both), " +
       "rarity weights, and the default starter card roster. One flow, everything configured.\n\n" +
 
       "**✅ Step 2 — Activate a Card Set**\n" +
-      "Random spawns only fire from the **active set**. Run `/admin set-hub` (clickable panel) " +
-      "or `/setadmin active set:<name>`. No active set = no random spawns (admin `/admin drop` always works).\n\n" +
+      "Random spawns only fire from the **active set**. Run `/set_hub` (clickable panel) " +
+      "or `/sets_admin active set:<name>`. No active set = no random spawns (admin `/drop` always works).\n\n" +
 
       "**✅ Step 3 — Add & Edit Cards**\n" +
       `• **Website** → [${SITE_ADMIN}](${SITE_ADMIN}) — display name, image, description, featured/hidden, sort order.\n` +
       "• **Discord prefix commands** → `!addcard` / `!editcard <Name>` — rarity, worth, burn, spawn chance, packs.\n\n" +
 
       "**✅ Step 4 — Dashboard Login**\n" +
-      "Run `/admin dashboard` — bot DMs you a one-time login link. Do this for every admin who needs site access.\n\n" +
+      "Run `/dashboard` — bot DMs you a one-time login link. Do this for every admin who needs site access.\n\n" +
 
       "**✅ Step 5 — Test It**\n" +
-      "Run `/admin drop` (no name = random from active set). If nothing spawns, check the set has droppable cards and the spawn channel is configured.",
+      "Run `/drop` (no name = random from active set). If nothing spawns, check the set has droppable cards and the spawn channel is configured.",
     )
     .setImage(DIVIDER_GIF);
 
@@ -196,8 +179,8 @@ export async function handleWelcomeAdmin(interaction: ChatInputCommandInteractio
       "Images must be **URLs** (Imgur, Discord CDN). No file uploads in prefix commands.\n\n" +
 
       "**🗂️ Sets (spawn rotation)**\n" +
-      "`/admin set-hub` — clickable panel (create, activate, export, toggle showcase).\n" +
-      "`/setadmin` — typed subcommands for everything the panel does, plus bulk operations.\n" +
+      "`/set_hub` — clickable panel (create, activate, export, toggle showcase).\n" +
+      "`/sets_admin` — typed subcommands for everything the panel does, plus bulk operations.\n" +
       "Export any set to JSON → re-import with `!loadset` + file attachment. Full roundtrip.",
     )
     .setImage(DIVIDER_GIF);
@@ -210,10 +193,10 @@ export async function handleWelcomeAdmin(interaction: ChatInputCommandInteractio
       {
         name: "🎁 Drops & Giveaways",
         value:
-          "`/admin drop [name]` — single drop (bypasses active-set check)\n" +
-          "`/admin massdrop [amount]` — 10–25 cards in a batch (event use)\n" +
-          "`/admin give user:@ name:<card>` · `/admin takeback user:@ name:<card>`\n" +
-          "`/admin giveshards user:@ amount:<n>` · `/admin takeshards user:@ amount:<n>`",
+          "`/drop [name]` — single drop (bypasses active-set check)\n" +
+          "`/mass_drop [amount]` — 10–25 cards in a batch (event use)\n" +
+          "`/give user:@ name:<card>` · `/take_back user:@ name:<card>`\n" +
+          "`/give_shards user:@ amount:<n>` · `/take_shards user:@ amount:<n>`",
         inline: false,
       },
       {
@@ -226,17 +209,17 @@ export async function handleWelcomeAdmin(interaction: ChatInputCommandInteractio
       {
         name: "⚙️ Config & Channels",
         value:
-          "`/admin setup` — first-time wizard · `/admin config` — visual config panel\n" +
-          "`/admin hub` — manage admins, timeouts, channels & server state\n" +
-          "`/admin help` — full admin reference",
+          "`/setup` — first-time wizard · `/config` — visual config panel\n" +
+          "`/admin_hub` — manage admins, timeouts, channels & server state\n" +
+          "`/admin_help` — full admin reference",
         inline: false,
       },
       {
         name: "🗂️ Sets",
         value:
-          "`/admin set-hub` — **clickable panel** (recommended)\n" +
-          "`/setadmin active set:<…>` · `/setadmin deactivate`\n" +
-          "`/setadmin add set:<…> card:<…>` · `/setadmin exportall` — full backup",
+          "`/set_hub` — **clickable panel** (recommended)\n" +
+          "`/sets_admin active set:<…>` · `/sets_admin deactivate`\n" +
+          "`/sets_admin add set:<…> card:<…>` · `/sets_admin exportall` — full backup",
         inline: false,
       },
       {
@@ -252,11 +235,11 @@ export async function handleWelcomeAdmin(interaction: ChatInputCommandInteractio
         value:
           `Public: **[${SITE_URL}](${SITE_URL})** — card roster, news, player suggestions\n` +
           `Admin: **[${adminUrl}](${adminUrl})** — card display overrides, news posts, suggestion queue\n` +
-          "Run `/admin dashboard` to get your login link (one-time DM).",
+          "Run `/dashboard` to get your login link (one-time DM).",
         inline: false,
       },
     )
-    .setFooter({ text: "Player commands → /help  ·  Full admin reference → /adminhelp" });
+    .setFooter({ text: "Player commands → /help  ·  Full admin reference → /admin_help" });
 
   await interaction.editReply({ embeds: [quickstart, cardEditing, cheatsheet] });
 }

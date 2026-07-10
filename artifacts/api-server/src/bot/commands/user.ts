@@ -329,7 +329,7 @@ export async function handleUserCommand(
     const { ctx, settings: infoSettings, spawnPool, chanceSummary } = runtime;
     const cards = applyRarityContextAll(rawCards, ctx);
     const card = cards.find(c => c.name.toLowerCase() === cardName.toLowerCase());
-    if (!card) { await interaction.editReply(`❌ "**${cardName}**" not found. Try \`/cards list\`.`); return; }
+    if (!card) { await interaction.editReply(`❌ "**${cardName}**" not found. Try \`/list\`.`); return; }
 
     const cardType = card.cardType;
     const cardChance = chanceSummary.cardPercentById.get(card.id);
@@ -754,7 +754,7 @@ export async function handleUserCommand(
       return `${medal} <@${r.userId}> — **${r.totalCards.toLocaleString()}** cards (${r.uniqueCards} unique)`;
     });
     const packLines = byPacks.length === 0
-      ? ["*No packs opened yet — be the first with `/cards pack`!*"]
+      ? ["*No packs opened yet — be the first with `/pack`!*"]
       : byPacks.map((r, i) => {
           const medal = medals[i] ?? `**${i + 1}.**`;
           return `${medal} <@${r.userId}> — **${r.packsOpened.toLocaleString()}** packs`;
@@ -802,11 +802,11 @@ export async function handleUserCommand(
     const burnAll = interaction.options.getBoolean("all") ?? false;
     const wantShiny = interaction.options.getBoolean("shiny") ?? false;
     const card = await getCardByName(cardName);
-    if (!card) { await interaction.editReply(`❌ "**${cardName}**" not found. Check \`/cards list\`.`); return; }
+    if (!card) { await interaction.editReply(`❌ "**${cardName}**" not found. Check \`/list\`.`); return; }
     {
       const { isCardLocked } = await import("../cards/locks.js");
       if (await isCardLocked(guildId, interaction.user.id, card.id)) {
-        await interaction.editReply(`🔒 **${card.name}** is locked (favorited) and can't be burned. Unlock it first with \`/cards lock name:${card.name}\`.`);
+        await interaction.editReply(`🔒 **${card.name}** is locked (favorited) and can't be burned. Unlock it first with \`/lock name:${card.name}\`.`);
         return;
       }
     }
@@ -833,7 +833,7 @@ export async function handleUserCommand(
     if (!burnAll && requested > pile) {
       await interaction.editReply(
         `❌ You only have **×${pile}** ${pileLabel}of **${card.name}** — can't burn ${requested}.\n` +
-        `Try \`/cards burn name:${card.name}${wantShiny ? " shiny:true" : ""} all:true\` to burn all ${pile}.`,
+        `Try \`/burn name:${card.name}${wantShiny ? " shiny:true" : ""} all:true\` to burn all ${pile}.`,
       );
       return;
     }
@@ -867,6 +867,8 @@ export async function handleUserCommand(
       const done = await recordQuestEvent(guildId, interaction.user.id, "burn", result.burned);
       const note = formatQuestCompletions(done);
       if (note) await interaction.followUp({ content: note, flags: MessageFlags.Ephemeral }).catch(() => { /* ignore */ });
+      const { recordGiveawayEvent } = await import("../giveaway/engine.js");
+      await recordGiveawayEvent(guildId, interaction.user.id, "burn", result.burned);
     } catch { /* non-fatal */ }
     const newlyBurn = await checkAchievements(guildId, interaction.user.id);
     if (newlyBurn.length > 0) {
@@ -951,81 +953,7 @@ export async function handleUserCommand(
     return;
   }
 
-  // ── /cards help (player commands only — admins use /admin help) ────────────
-  const helpSettings = await getOrCreateGuildSettings(guildId);
-  const helpShinyName = getShinyName(helpSettings);
-  const helpShinyMultiplier = getShinyMultiplier(helpSettings);
-  const embed = new EmbedBuilder()
-    .setTitle("🃏 DN Cards — Player Commands")
-    .setColor(0x5865f2)
-    .setDescription(
-      "When a card spawns in the drop channel, **type its name exactly** to catch it!\n" +
-      "Most card-name fields **autocomplete** as you type — pick from the dropdown.\n\n" +
-      "👋 New here? Run `/cards welcome` for the full game intro.\n" +
-      "Admins: use `/admin help` for setup, drops, and config commands.",
-    )
-    .addFields(
-      {
-        name: "📦 Collection",
-        value:
-          "`/cards collection [user]` — see what you've caught\n" +
-          "`/cards rank [user]` — your collector rank & progression\n" +
-          "`/cards info name:<card>` — card details, worth & drop chance\n" +
-          "`/cards list` — full roster grouped by rarity\n" +
-          "`/cards catalog category:<rarity|event|limited|all>` — browse by category\n" +
-          "`/cards top` — leaderboard by net worth\n" +
-          "`/cards achievements [user]` — your unlocked badges",
-      },
-      {
-        name: "🔥 Economy *(private replies)*",
-        value:
-          "`/cards burn name:<card> [amount] [all] [shiny:true]` — destroy duplicates for 💠 (shiny burns the ✨ pile at 2×)\n" +
-          "`/cards shards [user]` — check 💠 balance\n" +
-          "`/cards daily` — claim daily shards (streak bonus!)\n" +
-          "`/cards pack tier:<basic|premium|legendary>` — open a 5-card pack (💠 250 / 750 / 2,000)\n" +
-          "`/cards packstats` — your costs, weekly caps, cooldown\n" +
-          "`/cards tradein rarity:<r>` — burn 5 to roll 1 from the next tier\n" +
-          "`/cards gift user:@Member amount:<n>` — send 💠 to a friend",
-      },
-      {
-        name: "🔄 Trading",
-        value:
-          "`/cards trade user:@Member offer:<card> want:<card>` — propose a trade\n" +
-          "Add `offer_shards:<n>` or `want_shards:<n>` to mix in 💠 (or trade pure shards)\n" +
-          "Trades with a value gap >3:1 show an orange ⚠️ warning — informational only\n" +
-          "`/cards trades` · `/cards tradehistory [user]` · `/cards accept id:<n>` · `/cards decline id:<n>` — manage offers\n" +
-          "Accept/Decline buttons also appear right on the trade message",
-      },
-      {
-        name: `✨ ${helpShinyName} Cards`,
-        value:
-          `Every random catch, pack pull, and trade-in has a flat **0.5%** chance to mint a ${helpShinyName} card.\n` +
-          `${helpShinyName} cards are tracked separately and count at **${helpShinyMultiplier}× worth & burn**.\n` +
-          "Not tradeable in v1 — trades only move standard copies.",
-      },
-      {
-        name: "📌 Wishlist",
-        value:
-          "`/wishlist add name:<card>` — get pinged when it spawns\n" +
-          "`/wishlist remove name:<card>` · `/wishlist list [user]`",
-      },
-      {
-        name: "🗂️ Card Sets",
-        value:
-          "`/sets list` — see all sets and how many cards are in each\n" +
-          "`/sets active` — which set is currently spawning cards\n" +
-          "`/sets view set:<…>` — browse cards in a set\n" +
-          "`/sets progress set:<…> [user]` — how many cards in that set you've caught",
-      },
-      {
-        name: "⭐ Reputation & Thanks",
-        value:
-          "`/rep give @user` — give someone +1 rep\n" +
-          "`/rep check [@user]` — see someone's rep score\n" +
-          "`/rep top` — leaderboard\n" +
-          "`/thanks give @user` — thank someone for being helpful\n" +
-          "`/thanks top` — leaderboard of most appreciated members",
-      },
-    );
-  await interaction.editReply({ embeds: [embed] });
+  // ── /help → the unified, interactive help hub (all features + admin) ──
+  const { handleHelpHub } = await import("./help-hub.js");
+  await handleHelpHub(interaction);
 }
