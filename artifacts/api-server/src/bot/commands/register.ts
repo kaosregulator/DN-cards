@@ -748,7 +748,7 @@ export const USER_HUB_COMMANDS = new Set([
   "trade", "gift", "trades", "tradehistory", "accept", "decline", "welcome",
   "help", "daily", "quests", "pack", "packstats", "tradein", "achievements",
   "level", "frame", "lock", "search", "collector", "calendar", "wishlist",
-  "sets", "rep", "thanks", "valuehelp", "valuelist", "info_mttv",
+  "sets", "rep", "thanks", "calc", "valuehelp", "valuelist", "info_mttv",
   "dnvaluesearch", "dnvaluelist", "dnvalueinfo", "dnvaluecalc", "dnhelp",
 ]);
 
