@@ -41,3 +41,9 @@ id = "_2YIRcw9Gi3Ur7CnT4SUY"
 uri = "file://exports/dn-cards-backup.tar.gz"
 type = "unspecified"
 title = "DN Cards — Full Project Backup (.tar.gz)"
+
+[[outputs]]
+id = "AcevgjaY8545FyubOGNwo"
+uri = "file://docs/dn-cards-commands.pdf"
+type = "pdf"
+title = "DN Cards Command Reference (PDF)"
