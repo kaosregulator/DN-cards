@@ -24,7 +24,7 @@ import { getCardByName, getCardById, updateCard } from "../db.js";
 import { isOwnedBy } from "../home-guild.js";
 import { logger } from "../../lib/logger.js";
 import { renderPanel, persistBotImage } from "./edit-card.js";
-import { fetchMTTVItems, matchScore, buildMTTVItemEmbed, type MTTVItem } from "./mttvalues.js";
+import { fetchMTTVItems, matchScore, buildMTTVItemEmbed, rarityEmoji, type MTTVItem } from "./mttvalues.js";
 
 const CUSTOM_ID_PREFIX = "editimage";
 const SEARCH_TTL_MS = 15 * 60 * 1000; // 15 min
@@ -177,6 +177,8 @@ export async function handleEditImageModal(interaction: ModalSubmitInteraction):
   const rows: ActionRowBuilder<ButtonBuilder>[] = [];
   let current = new ActionRowBuilder<ButtonBuilder>();
   results.forEach((res, idx) => {
+    const rarity = res.rarity.map(rarityEmoji).join("") || "—";
+    const label = `${rarity} ${res.name.slice(0, 80)}`.slice(0, 80);
     if (current.components.length >= 5) {
       rows.push(current);
       current = new ActionRowBuilder<ButtonBuilder>();
@@ -184,7 +186,7 @@ export async function handleEditImageModal(interaction: ModalSubmitInteraction):
     current.addComponents(
       new ButtonBuilder()
         .setCustomId(`${CUSTOM_ID_PREFIX}:pick:${cardId}:${idx}`)
-        .setLabel(res.name.slice(0, 80))
+        .setLabel(label)
         .setStyle(ButtonStyle.Primary),
     );
   });

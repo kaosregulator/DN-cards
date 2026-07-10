@@ -133,7 +133,7 @@ export function getMTTVAverageValue(item: MTTVItem): number {
   return Math.round((item.valueMin + item.valueMax) / 2);
 }
 
-function rarityEmoji(rarity: string): string {
+export function rarityEmoji(rarity: string): string {
   const map: Record<string, string> = {
     Common: "⚪",
     Rare: "🔵",
