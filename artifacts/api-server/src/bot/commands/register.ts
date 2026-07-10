@@ -313,9 +313,9 @@ function buildLegacyCommands() {
       .addIntegerOption(o => o.setName("total_minted").setDescription("Current number of copies that exist (careful: manual override)").setMinValue(0))
       .addBooleanOption(o => o.setName("limited").setDescription("Mark this card as limited edition (enforces max_copies cap)"))),
 
-    adminCmd("editimage", "Update a card's image from MTTV or an uploaded file", s => s
+    adminCmd("editimage", "Update a card's image and description from MTTV or an uploaded file", s => s
       .addStringOption(o => o.setName("name").setDescription("Card to edit").setRequired(true).setAutocomplete(true))
-      .addAttachmentOption(o => o.setName("image").setDescription("Upload image/GIF (leave blank to pull from MTTV)"))),
+      .addAttachmentOption(o => o.setName("image").setDescription("Upload image/GIF (overrides MTTV search)"))),
 
 
     // ── /rarity — hub command: display names, economy overrides, custom tiers, card assignments

@@ -2,6 +2,7 @@ import { Client, GatewayIntentBits, Partials, Events, REST, Routes, type Interac
 import { logger } from "../lib/logger.js";
 import { burnCard, getOrCreateCurrency, getAllCards } from "./db.js";
 import { handleEditCardSelect, handleEditCardModal } from "./commands/edit-card.js";
+import { handleEditImageButton, handleEditImageModal, handleEditImagePick } from "./commands/edit-image.js";
 import { handleTradeButton } from "./commands/trading.js";
 import { initSpawnManager, initAllGuilds, handleCatchAttempt, handleClaimButtonClick, scheduleNextSpawn, buildPostDecisionEmbed, buildDisabledDecisionRow, markDecisionMade } from "./spawn-manager.js";
 import { handleConfigButton, handleConfigSelect, handleRatesSelect, handlePacksSelect, handleRatesCustomModal } from "./commands/config-panel.js";
@@ -309,6 +310,8 @@ export async function startBot() {
           await handleSetAdminHubModal(interaction);
         } else if (interaction.customId.startsWith("editcard:modal:")) {
           await handleEditCardModal(interaction);
+        } else if (interaction.customId.startsWith("editimage:search_modal:")) {
+          await handleEditImageModal(interaction);
         } else if (interaction.customId.startsWith("rarity_edit:modal:")) {
           await handleRarityEditModal(interaction);
         } else if (interaction.customId.startsWith("rarity_hub:modal:")) {
@@ -414,6 +417,15 @@ export async function startBot() {
 
         if (action === "rarity_edit") {
           await handleRarityEditButton(interaction);
+          return;
+        }
+
+        if (action === "editimage") {
+          if (interaction.customId.startsWith("editimage:pick:") || interaction.customId.startsWith("editimage:cancel:")) {
+            await handleEditImagePick(interaction);
+          } else {
+            await handleEditImageButton(interaction);
+          }
           return;
         }
 
