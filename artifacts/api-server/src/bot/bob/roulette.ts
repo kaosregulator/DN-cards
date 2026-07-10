@@ -10,7 +10,7 @@ import {
 import { randomBytes } from "crypto";
 import {
   getBobSettings, getBobProfile, checkCooldown, grantReward, gameEnabled,
-  bumpRouletteStreak, applyCurse,
+  bumpRouletteStreak, applyCurse, formAvatar,
 } from "./db.js";
 import { rollForm, pick, speak, ROULETTE_CLICK, ROULETTE_BANG, TITLES, type BobForm } from "./persona.js";
 import { bobEmbed, navRow, rewardTail, cooldownReply, sleep, EPHEMERAL, coins } from "./ui.js";
@@ -46,14 +46,21 @@ export async function playRoulette(interaction: ButtonInteraction | ChatInputCom
   if (!cd.ok) { await cooldownReply(interaction, cd.retryMs); return; }
 
   const form = rollForm(settings);
+  const avatar = formAvatar(settings, form);
   const hardMode = form === "blue"; // Blue Bob loads an extra round.
   const bullets = hardMode ? 2 : 1;
+  const who = interaction.user.username;
 
-  // Animated load + spin.
+  // ── Animated load + spin ───────────────────────────────────────────────────
+  // 1) Load the chamber (bullets slide in), 2) spin the cylinder, 3) raise to
+  // the head, 4) squeeze. Each frame edits the same message for a real "scene".
   await render(interaction, true, bobEmbed(form, "Roulette",
-    `🔫 Bob loads the chamber...\n\n${chamberBar(5)}${hardMode ? "\n\n😈 *Blue Bob loaded a second round. Hard mode — double reward if you live.*" : ""}`));
-  for (let i = 4; i >= 0; i--) { await sleep(500); await render(interaction, false, bobEmbed(form, "Roulette", `Spinning...\n\n${chamberBar(i)}`)); }
-  await sleep(650);
+    `**${who}** steps up to the table.\n\n🔫 Bob loads the revolver...\n\n${loadFrame(bullets)}` +
+    (hardMode ? "\n\n😈 *Blue Bob slipped in a second round. Hard mode — but DOUBLE coins if you live.*" : ""), avatar));
+  await sleep(900);
+  for (const f of SPIN_FRAMES) { await render(interaction, false, bobEmbed(form, "Roulette", `Spinning the cylinder...\n\n${f}`, avatar)); await sleep(430); }
+  await render(interaction, false, bobEmbed(form, "Roulette", `🔫 Bob raises the barrel...\n\n**${who}** holds their breath.`, avatar)); await sleep(950);
+  await render(interaction, false, bobEmbed(form, "Roulette", `😬 ...\n\n**squeeze...**`, avatar)); await sleep(1100);
 
   const loaded = new Set<number>();
   while (loaded.size < bullets) loaded.add(Math.floor(Math.random() * 6));
@@ -75,7 +82,7 @@ export async function playRoulette(interaction: ButtonInteraction | ChatInputCom
     ];
     const line = speak(form, pick(ROULETTE_CLICK[form]));
     const desc = `${line}\n\n🎯 Survival streak: **${streak.streak}**${streak.brokeRecord ? " 🏅 *new record!*" : ""}${rewardTail(reward, coinsWon, 30)}`;
-    await render(interaction, false, bobEmbed(form, "Roulette — CLICK", desc), [navRow({ again: "bob:roulette:again" })]);
+    await render(interaction, false, bobEmbed(form, "Roulette — CLICK 😅", desc, avatar), [navRow({ again: "bob:roulette:again" })]);
     const note = formatCompletions(completed);
     if (note) await interaction.followUp({ content: note, ...EPHEMERAL }).catch(() => {});
   } else {
@@ -94,9 +101,27 @@ export async function playRoulette(interaction: ButtonInteraction | ChatInputCom
     }
     const line = speak(form, pick(ROULETTE_BANG[form]));
     const desc = `${line}${lost > 0 ? `\n\nYou dropped ${coins(lost)}. Your streak resets to 0.` : "\n\nYou had no coins to lose. Small mercies."}${curseNote}\n\nBalance: ${coins(reward.profile.coins)}`;
-    await render(interaction, false, bobEmbed(form, "Roulette — BANG!", desc), [navRow({ again: "bob:roulette:again" })]);
+    await render(interaction, false, bobEmbed(form, "Roulette — BANG! 💥", desc, avatar), [navRow({ again: "bob:roulette:again" })]);
   }
 }
+
+// Chamber load display: filled rounds slide into a 6-slot cylinder.
+function loadFrame(bullets: number): string {
+  const slots = Array.from({ length: 6 }, (_, i) => (i < bullets ? "🔴" : "⚪"));
+  return `Cylinder:  ${slots.join(" ")}`;
+}
+
+// Cylinder spin frames — the marker races around the 6 chambers.
+const SPIN_FRAMES = [
+  "🔴 ⚪ ⚪ ⚪ ⚪ ⚪   ↻",
+  "⚪ 🔴 ⚪ ⚪ ⚪ ⚪   ↻",
+  "⚪ ⚪ 🔴 ⚪ ⚪ ⚪   ↻",
+  "⚪ ⚪ ⚪ 🔴 ⚪ ⚪   ↻",
+  "⚪ ⚪ ⚪ ⚪ 🔴 ⚪   ↻",
+  "⚪ ⚪ ⚪ ⚪ ⚪ 🔴   ↻",
+  "🔴 ⚪ ⚪ ⚪ ⚪ ⚪   ↻",
+  "⚪ ⚪ 🔴 ⚪ ⚪ ⚪   ·",
+];
 
 const CURSES = [
   "🐸 you're a frog now",

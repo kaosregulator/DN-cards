@@ -94,6 +94,19 @@ export async function handleBobAdmin(interaction: ChatInputCommandInteraction): 
       return;
     }
 
+    case "avatar": {
+      const form = interaction.options.getString("form", true);
+      const url = interaction.options.getString("url"); // empty/omitted clears
+      if (url && !/^https?:\/\/\S+\.(png|jpe?g|gif|webp)(\?\S*)?$/i.test(url)) {
+        await interaction.editReply("❌ That doesn't look like a direct image URL (must end in .png/.jpg/.gif/.webp). Upload the image to Discord, right-click → Copy Link.");
+        return;
+      }
+      const col = form === "blue" ? "avatarBlue" : form === "upside" ? "avatarUpside" : "avatarNormal";
+      await updateBobSettings(guildId, { [col]: url || null } as Partial<BobSettings>);
+      await interaction.editReply(url ? `✅ ${form} Bob avatar set. It'll show as the thumbnail on his embeds.` : `✅ Cleared the ${form} Bob avatar (back to the emoji face).`);
+      return;
+    }
+
     case "testevent": {
       const channel = interaction.options.getChannel("channel") ?? interaction.channel;
       const chId = channel && "id" in channel ? channel.id : interaction.channelId!;

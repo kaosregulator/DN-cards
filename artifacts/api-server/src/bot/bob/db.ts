@@ -42,6 +42,11 @@ export function gameEnabled(settings: BobSettings, key: string): boolean {
   return settings.gamesEnabled[key] !== false;
 }
 
+// Resolve the custom avatar image URL for a form (null = use the emoji face).
+export function formAvatar(settings: BobSettings, form: "normal" | "blue" | "upside"): string | null {
+  return (form === "blue" ? settings.avatarBlue : form === "upside" ? settings.avatarUpside : settings.avatarNormal) || null;
+}
+
 // ── Profiles ─────────────────────────────────────────────────────────────────
 export async function getBobProfile(guildId: string, userId: string): Promise<BobProfile> {
   await db.insert(bobProfilesTable).values({ guildId, userId }).onConflictDoNothing();

@@ -6,7 +6,7 @@ import {
   ActionRowBuilder, ButtonBuilder, ButtonStyle,
   type ButtonInteraction,
 } from "discord.js";
-import { getBobSettings, getBobProfile, checkCooldown, grantReward, gameEnabled, applyCurse } from "./db.js";
+import { getBobSettings, getBobProfile, checkCooldown, grantReward, gameEnabled, applyCurse, formAvatar } from "./db.js";
 import { rollForm, pick, speak, WIN_LINES, LOSS_LINES, type BobForm } from "./persona.js";
 import { bobEmbed, animate, navRow, rewardTail, cooldownReply, sleep, EPHEMERAL } from "./ui.js";
 import { recordBobEvent, formatCompletions } from "./progress.js";
@@ -53,7 +53,7 @@ async function finish(
   if (outcome.jackpot) completed.push(...await recordBobEvent(guildId, userId, "jackpot", 1));
 
   const line = speak(form, outcome.won ? pick(WIN_LINES[form]) : pick(LOSS_LINES[form]));
-  const embed = bobEmbed(form, GAME_META[gameKey].label, `${headline}\n\n${line}${rewardTail(reward, outcome.coins, outcome.xp)}`);
+  const embed = bobEmbed(form, GAME_META[gameKey].label, `${headline}\n\n${line}${rewardTail(reward, outcome.coins, outcome.xp)}`, formAvatar(settings, form));
   const note = formatCompletions(completed);
   await interaction.editReply({ embeds: [embed], components: [navRow({ again: againId })] }).catch(() => {});
   if (note) await interaction.followUp({ content: note, ...EPHEMERAL }).catch(() => {});
@@ -196,11 +196,16 @@ async function playSlots(interaction: ButtonInteraction): Promise<void> {
   const g = await gate(interaction, "slots"); if (!g) return;
   const { form, settings } = g;
   const roll = () => pick(SLOT_SYMBOLS);
+  const avatar = formAvatar(settings, form);
+  // Reels lock left-to-right for suspense.
+  const final = [roll(), roll(), roll()];
   await animate(interaction, [
-    { embed: bobEmbed(form, "Slots", `[ ${roll()} | ${roll()} | ${roll()} ]\nSpinning...`), delayMs: 600 },
-    { embed: bobEmbed(form, "Slots", `[ ${roll()} | ${roll()} | ${roll()} ]\nSpinning...`), delayMs: 600 },
+    { embed: bobEmbed(form, "Slots", `🎰  [ ${roll()} | ${roll()} | ${roll()} ]\n\nPulling the lever...`, avatar), delayMs: 550 },
+    { embed: bobEmbed(form, "Slots", `🎰  [ ${roll()} | ${roll()} | ${roll()} ]\n\nReels spinning...`, avatar), delayMs: 550 },
+    { embed: bobEmbed(form, "Slots", `🎰  [ ${final[0]} | ${roll()} | ${roll()} ]\n\nReel 1 locks!`, avatar), delayMs: 600 },
+    { embed: bobEmbed(form, "Slots", `🎰  [ ${final[0]} | ${final[1]} | ${roll()} ]\n\nReel 2 locks!`, avatar), delayMs: 650 },
   ]);
-  const reels = [roll(), roll(), roll()];
+  const reels = final;
   const allSame = reels[0] === reels[1] && reels[1] === reels[2];
   const twoSame = reels[0] === reels[1] || reels[1] === reels[2] || reels[0] === reels[2];
   const jackpot = allSame && reels[0] === "💎";

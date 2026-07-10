@@ -6,7 +6,7 @@ import {
   ActionRowBuilder, ButtonBuilder, ButtonStyle, StringSelectMenuBuilder,
   type ButtonInteraction, type StringSelectMenuInteraction, type ChatInputCommandInteraction,
 } from "discord.js";
-import { getBobSettings, getBobProfile, activeCurse } from "./db.js";
+import { getBobSettings, getBobProfile, activeCurse, formAvatar } from "./db.js";
 import { rollForm, pick, speak, GREETINGS, FORMS, formTitle, type BobForm } from "./persona.js";
 import { bobEmbed, EPHEMERAL, coins } from "./ui.js";
 import { GAME_KEYS, GAME_META } from "./games.js";
@@ -33,12 +33,12 @@ function homeButtons(): ActionRowBuilder<ButtonBuilder>[] {
 }
 
 async function homeView(guildId: string, userId: string, form: BobForm) {
-  const p = await getBobProfile(guildId, userId);
+  const [p, settings] = await Promise.all([getBobProfile(guildId, userId), getBobSettings(guildId)]);
   const curse = activeCurse(p);
   const embed = bobEmbed(form, "Menu",
     `${speak(form, pick(GREETINGS[form]))}\n\n${coins(p.coins)} · Level **${p.level}**${p.currentTitle ? ` · ${p.currentTitle}` : ""}` +
     (curse ? `\n🌀 ${curse}` : "") +
-    `\n\nPick your poison:`)
+    `\n\nPick your poison:`, formAvatar(settings, form))
     .setFooter({ text: `${formTitle(form)} · ${FORMS[form].blurb}` });
   return { embeds: [embed], components: homeButtons() };
 }
