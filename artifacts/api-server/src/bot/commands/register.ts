@@ -593,7 +593,11 @@ function buildLegacyCommands() {
           .addChoices({ name: "add", value: "add" }, { name: "remove", value: "remove" }, { name: "clear", value: "clear" }))
         .addChannelOption(o => o.setName("channel").setDescription("Channel to add/remove")))
       .addSubcommand(sc => sc.setName("testevent").setDescription("Spawn a Bob event now (test)")
-        .addChannelOption(o => o.setName("channel").setDescription("Where (default: here)")))),
+        .addChannelOption(o => o.setName("channel").setDescription("Where (default: here)")))
+      .addSubcommand(sc => sc.setName("avatar").setDescription("Set Bob's avatar image per form (upload to Discord, copy link)")
+        .addStringOption(o => o.setName("form").setDescription("Which Bob").setRequired(true)
+          .addChoices({ name: "🟡 Normal Bob", value: "normal" }, { name: "🔵 Blue Bob", value: "blue" }, { name: "🙃 Upside-Down Bob", value: "upside" }))
+        .addStringOption(o => o.setName("url").setDescription("Direct image URL (.png/.jpg/.gif/.webp) — leave empty to clear")))),
 
     // ── Echo-Whisper (encrypted messaging addon) ──────────────────────────────
     cmd("whisper", "(User) Send an encrypted whisper only a chosen member can read", s => s

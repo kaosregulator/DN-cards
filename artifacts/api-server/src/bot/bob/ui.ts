@@ -12,11 +12,13 @@ export const EPHEMERAL = { flags: MessageFlags.Ephemeral } as const;
 
 export function sleep(ms: number): Promise<void> { return new Promise(r => setTimeout(r, ms)); }
 
-export function bobEmbed(form: BobForm, title: string, description: string): EmbedBuilder {
-  return new EmbedBuilder()
+export function bobEmbed(form: BobForm, title: string, description: string, avatarUrl?: string | null): EmbedBuilder {
+  const e = new EmbedBuilder()
     .setColor(FORMS[form].color)
     .setTitle(formTitle(form, title))
     .setDescription(description);
+  if (avatarUrl) e.setThumbnail(avatarUrl);
+  return e;
 }
 
 // A little footer flavour line, form-appropriate.
