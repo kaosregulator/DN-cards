@@ -313,6 +313,10 @@ function buildLegacyCommands() {
       .addIntegerOption(o => o.setName("total_minted").setDescription("Current number of copies that exist (careful: manual override)").setMinValue(0))
       .addBooleanOption(o => o.setName("limited").setDescription("Mark this card as limited edition (enforces max_copies cap)"))),
 
+    adminCmd("editimage", "Update a card's image from MTTV or an uploaded file", s => s
+      .addStringOption(o => o.setName("name").setDescription("Card to edit").setRequired(true).setAutocomplete(true))
+      .addAttachmentOption(o => o.setName("image").setDescription("Upload image/GIF (leave blank to pull from MTTV)"))),
+
 
     // ── /rarity — hub command: display names, economy overrides, custom tiers, card assignments
     adminCmd("rarity", "Edit built-in rarity names, colors, spawn %, worth, and burn", s => s),
@@ -724,6 +728,7 @@ export const COMMAND_RENAMES: Record<string, string> = {
   addcard: "add_card",
   createcardfrommttv: "create_card_from_mttv",
   editcard: "edit_card",
+  editimage: "edit_image",
   deletecard: "delete_card",
   giveshards: "give_shards",
   takeshards: "take_shards",
@@ -786,7 +791,7 @@ export const USER_HUB_COMMANDS = new Set([
 export const ADMIN_HUB_COMMANDS = new Set([
   "setup", "config", "adminhub", "sethub", "set_admin", "deletecard",
   "welcomeadmin", "adminhelp", "drop", "massdrop", "give", "giveshards",
-  "takeback", "takeshards", "addcard", "createcardfrommttv", "editcard", "dashboard", "collectorrole",
+  "takeback", "takeshards", "addcard", "createcardfrommttv", "editcard", "editimage", "dashboard", "collectorrole",
   "setadmin", "rarity", "embed", "event", "edituser", "giveall", "editpack",
   "postcalculator",
 ]);

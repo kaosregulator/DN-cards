@@ -143,6 +143,22 @@ export async function handleAdminCommand(
     return;
   }
 
+  // /edit_image — same admin/home-guild guard as /edit_card; only changes image.
+  if (cmd === "editimage") {
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+    if (!(await checkAdmin(interaction))) {
+      await interaction.editReply("❌ Admins only.");
+      return;
+    }
+    if (!isHomeGuild(interaction.guild.id)) {
+      await interaction.editReply(GLOBAL_ONLY_MSG);
+      return;
+    }
+    const { handleEditImageCommand } = await import("./edit-image.js");
+    await handleEditImageCommand(interaction);
+    return;
+  }
+
   // /edituser — guild-scoped member editor; admin-gated above.
   if (cmd === "edituser") {
     await interaction.deferReply({ flags: MessageFlags.Ephemeral });
