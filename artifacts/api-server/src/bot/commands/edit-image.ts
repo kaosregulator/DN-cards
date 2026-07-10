@@ -24,7 +24,7 @@ import { getCardByName, getCardById, updateCard } from "../db.js";
 import { isOwnedBy } from "../home-guild.js";
 import { logger } from "../../lib/logger.js";
 import { renderPanel, persistBotImage } from "./edit-card.js";
-import { fetchMTTVItems, matchScore, buildMTTVItemEmbed, rarityEmoji, type MTTVItem } from "./mttvalues.js";
+import { fetchMTTVItems, matchScore, buildMTTVItemEmbed, rarityEmoji, formatMTTVValue, type MTTVItem } from "./mttvalues.js";
 
 const CUSTOM_ID_PREFIX = "editimage";
 const SEARCH_TTL_MS = 15 * 60 * 1000; // 15 min
@@ -159,11 +159,12 @@ export async function handleEditImageModal(interaction: ModalSubmitInteraction):
     return;
   }
 
+  const MAX_RESULTS = 10;
   const results = items
     .map((i) => ({ i, score: matchScore(i, query) }))
     .filter(({ score }) => score > 0)
     .sort((a, b) => b.score - a.score)
-    .slice(0, 25)
+    .slice(0, MAX_RESULTS)
     .map(({ i }) => i);
 
   if (results.length === 0) {
@@ -174,12 +175,18 @@ export async function handleEditImageModal(interaction: ModalSubmitInteraction):
     return;
   }
 
+  const lines = results.map(
+    (item, i) => `${i + 1}. ${item.rarity.map(rarityEmoji).join("") || "—"} **${item.name}** · 💰 ${formatMTTVValue(item)}`,
+  ).join("\n");
+
   const rows: ActionRowBuilder<ButtonBuilder>[] = [];
   let current = new ActionRowBuilder<ButtonBuilder>();
-  results.forEach((res, idx) => {
-    const rarity = res.rarity.map(rarityEmoji).join("") || "—";
-    const label = `${rarity} ${res.name.slice(0, 80)}`.slice(0, 80);
-    if (current.components.length >= 5) {
+  results.forEach((item, idx) => {
+    const rarity = item.rarity.map(rarityEmoji).join("") || "—";
+    const label = `${rarity} ${item.name.slice(0, 80)}`.slice(0, 80);
+    // Two buttons per row so we can fit a Cancel button in the last row
+    // while staying within Discord's 5-action-row limit.
+    if (current.components.length >= 2) {
       rows.push(current);
       current = new ActionRowBuilder<ButtonBuilder>();
     }
@@ -191,22 +198,26 @@ export async function handleEditImageModal(interaction: ModalSubmitInteraction):
     );
   });
   if (current.components.length > 0) rows.push(current);
-  rows.push(
-    new ActionRowBuilder<ButtonBuilder>().addComponents(
-      new ButtonBuilder()
-        .setCustomId(`${CUSTOM_ID_PREFIX}:cancel:${cardId}`)
-        .setLabel("Cancel")
-        .setStyle(ButtonStyle.Secondary),
-    ),
-  );
 
-  const embed = new EmbedBuilder()
-    .setTitle(`🔍 MTTV results for "${query}"`)
-    .setDescription("Pick the item whose image + description you want to use.")
-    .setColor(0x9b59b6);
+  const cancelButton = new ButtonBuilder()
+    .setCustomId(`${CUSTOM_ID_PREFIX}:cancel:${cardId}`)
+    .setLabel("↩️ Cancel")
+    .setStyle(ButtonStyle.Secondary);
+  const lastRow = rows[rows.length - 1];
+  if (lastRow && lastRow.components.length < 5) {
+    lastRow.addComponents(cancelButton);
+  } else {
+    rows.push(new ActionRowBuilder<ButtonBuilder>().addComponents(cancelButton));
+  }
 
   await interaction.reply({
-    embeds: [embed],
+    embeds: [
+      new EmbedBuilder()
+        .setTitle("🔍 Select an item")
+        .setColor(0x9b59b6)
+        .setDescription(`Search results for "${query}":\n${lines}`)
+        .setFooter({ text: "Prices from MTTV" }),
+    ],
     components: rows,
     flags: MessageFlags.Ephemeral,
   });
