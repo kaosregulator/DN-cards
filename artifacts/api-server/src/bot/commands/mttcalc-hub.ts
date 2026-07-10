@@ -271,7 +271,7 @@ async function getRegisteredHub(messageId: string): Promise<CalculatorMessage | 
 // ── /postcalculator ───────────────────────────────────────────────────────────
 export async function handlePostCalculator(interaction: ChatInputCommandInteraction): Promise<void> {
   if (!interaction.guild) return;
-  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+  // Note: caller (handleAdminCommand) already deferred the interaction ephemerally.
 
   // Server-side admin guard (slash default permissions are not enough).
   const isAuthorized =

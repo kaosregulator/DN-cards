@@ -218,6 +218,7 @@ export function matchScore(item: MTTVItem, query: string): number {
 }
 
 export async function handleInfoMTTV(interaction: ChatInputCommandInteraction): Promise<void> {
+  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
   const name = interaction.options.getString("item", true);
   const items = await fetchMTTVItems();
   let item = items.find(
@@ -233,20 +234,15 @@ export async function handleInfoMTTV(interaction: ChatInputCommandInteraction): 
   }
 
   if (!item) {
-    const msg = await interaction.editReply({
-      content: `❌ Could not find "${name}" on MTTV. Use /valuelist to browse items or /calc to compare values.`,
-    });
-    setTimeout(() => msg.delete().catch(() => { /* ignore */ }), 60000);
+    await interaction.editReply(`❌ Could not find "${name}" on MTTV. Use /valuelist to browse items or /calc to compare values.`);
     return;
   }
 
-  const msg = await interaction.editReply({
-    embeds: [buildMTTVItemEmbed(item)],
-  });
-  setTimeout(() => msg.delete().catch(() => { /* ignore */ }), 60000);
+  await interaction.editReply({ embeds: [buildMTTVItemEmbed(item)] });
 }
 
 export async function handleValueList(interaction: ChatInputCommandInteraction): Promise<void> {
+  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
   const items = await fetchMTTVItems();
   const sorted = items
     .slice()
@@ -265,11 +261,11 @@ export async function handleValueList(interaction: ChatInputCommandInteraction):
     .setColor(0x9b59b6)
     .setFooter({ text: `Showing 15 of ${items.length} items · Prices from MTTV` });
 
-  const msg = await interaction.editReply({ embeds: [embed] });
-  setTimeout(() => msg.delete().catch(() => { /* ignore */ }), 60000);
+  await interaction.editReply({ embeds: [embed] });
 }
 
 export async function handleValueHelp(interaction: ChatInputCommandInteraction): Promise<void> {
+  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
   const embed = new EmbedBuilder()
     .setTitle("❓ MTTV Value Help")
     .setColor(0x9b59b6)
@@ -288,8 +284,7 @@ export async function handleValueHelp(interaction: ChatInputCommandInteraction):
       "All prices are pulled live from MTTV.",
     )
     .setFooter({ text: "Prices from MTTV" });
-  const msg = await interaction.editReply({ embeds: [embed] });
-  setTimeout(() => msg.delete().catch(() => { /* ignore */ }), 60000);
+  await interaction.editReply({ embeds: [embed] });
 }
 
 // ── MTTV Trade Calculator ───────────────────────────────────────────────────

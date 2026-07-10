@@ -11,6 +11,7 @@ import { handleRarityEditButton, handleRarityEditSelect, handleRarityEditModal, 
 import { handleSetChannelsPick, handleSetChannelsApply } from "./commands/setchannels.js";
 import { handleAdminHubButton, handleAdminHubModal } from "./commands/admin-hub.js";
 import { handleMttvHubButton, handleMttvHubModal } from "./commands/mttcalc-hub.js";
+import { handleMTTVCalcButton, handleMTTVCalcModal } from "./commands/mttvalues.js";
 import { handleDNValuesAutocomplete, handleDNValuesCalcButton, handleDNValuesCalcModal } from "./commands/dnvalues.js";
 import { checkAchievements, formatUnlockLine } from "./achievements.js";
 import { handleAdminCommand } from "./commands/admin.js";
@@ -292,6 +293,8 @@ export async function startBot() {
           await handleAdminHubModal(interaction);
         } else if (interaction.customId.startsWith("mttcalc_hub:")) {
           await handleMttvHubModal(interaction);
+        } else if (interaction.customId.startsWith("mtcalc_modal:")) {
+          await handleMTTVCalcModal(interaction);
         } else if (interaction.customId.startsWith("dncalc_modal:")) {
           await handleDNValuesCalcModal(interaction);
         } else if (interaction.customId.startsWith("setup_")) {
@@ -378,6 +381,10 @@ export async function startBot() {
         }
         if (action === "mttcalc_hub") {
           await handleMttvHubButton(interaction);
+          return;
+        }
+        if (action === "mtcalc") {
+          await handleMTTVCalcButton(interaction);
           return;
         }
         if (action === "dncalc") {

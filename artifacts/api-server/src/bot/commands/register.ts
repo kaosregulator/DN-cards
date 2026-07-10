@@ -96,6 +96,8 @@ function buildLegacyCommands() {
 
     cmd("daily", "Claim your daily DN Shards reward", s => s),
 
+    cmd("calendar", "View your monthly login-calendar rewards and streak", s => s),
+
     cmd("quests", "View daily & weekly quests — earn shards and packs", s => s),
 
     cmd("level", "View a card's battle level, XP, and unlocked frames", s => s

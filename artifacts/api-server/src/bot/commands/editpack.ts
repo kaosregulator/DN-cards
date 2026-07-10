@@ -33,7 +33,7 @@ function isValidEmoji(input: string): boolean {
 
 export async function handleEditPackCommand(interaction: ChatInputCommandInteraction): Promise<void> {
   if (!interaction.guild) return;
-  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+  // Caller (admin.ts) already deferred the interaction ephemerally.
 
   const guildId = interaction.guild.id;
   const member = interaction.member as GuildMember | null;
