@@ -262,6 +262,20 @@ export async function handleAutocomplete(interaction: AutocompleteInteraction): 
       return;
     }
 
+    // ── /info_mttv — suggest MTTV items, not DN cards ───────────────────────
+    if (cmd === "info_mttv" && focused.name === "item") {
+      const { handleMTTVAutocomplete } = await import("./mttvalues.js");
+      await handleMTTVAutocomplete(interaction, focused);
+      return;
+    }
+
+    // ── /dnvalueinfo /dnvaluecalc — suggest DN values, not DN cards ─────────
+    if ((cmd === "dnvalueinfo" || cmd === "dnvaluecalc") && ["name", "item"].includes(focused.name)) {
+      const { handleDNValuesAutocomplete } = await import("./dnvalues.js");
+      await handleDNValuesAutocomplete(interaction, focused);
+      return;
+    }
+
     // ── /rarity custom slug — show existing custom tiers by name ────────────
     if (cmd === "rarity" && focused.name === "slug" && interaction.guild) {
       const tiers = await getCustomRaritiesCached(interaction.guild.id);
