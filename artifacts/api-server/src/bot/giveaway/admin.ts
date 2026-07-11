@@ -70,7 +70,11 @@ async function doCreate(interaction: ChatInputCommandInteraction): Promise<void>
   if (prizes.length === 0) { await interaction.editReply("❌ No valid prizes parsed. Example: `shards:50000; nitro:1 Month Nitro; card:Dragon Lord x10`"); return; }
 
   const reqRaw = interaction.options.getString("requirements") ?? "";
-  const requirements = parseRequirements(reqRaw);
+  const { requirements, invalid: invalidReqs } = parseRequirements(reqRaw);
+  if (invalidReqs.length > 0) {
+    await interaction.editReply(`❌ Couldn't parse these requirements: ${invalidReqs.map(r => "`" + r + "`").join(", ")}.\nExamples: \`card:50\`, \`battlewin:10\`, \`message:100\` (or click a preset from autocomplete).`);
+    return;
+  }
 
   const winnerCount = clampInt(interaction.options.getInteger("winners") ?? 1, 1, 50);
   const difficulty = (interaction.options.getString("difficulty") ?? "medium") as GiveawayDifficulty;
@@ -133,7 +137,14 @@ async function doEdit(interaction: ChatInputCommandInteraction): Promise<void> {
   if (prizesRaw) { const p = await parsePrizes(prizesRaw, interaction); if (p.length) patch.prizes = p; }
 
   const reqRaw = interaction.options.getString("requirements");
-  if (reqRaw !== null) patch.requirements = parseRequirements(reqRaw);
+  if (reqRaw !== null) {
+    const { requirements, invalid: invalidReqs } = parseRequirements(reqRaw);
+    if (invalidReqs.length > 0) {
+      await interaction.editReply(`❌ Couldn't parse these requirements: ${invalidReqs.map(r => "`" + r + "`").join(", ")}.\nExamples: \`card:50\`, \`battlewin:10\`, \`message:100\` (or click a preset from autocomplete).`);
+      return;
+    }
+    patch.requirements = requirements;
+  }
 
   if (Object.keys(patch).length === 0) { await interaction.editReply("Nothing to change — pass at least one field."); return; }
 
@@ -302,6 +313,7 @@ function extractQty(rest: string): { qty?: number; rest: string } {
 // Flags: a rarity word → rarityMin; `+N` → entriesOnComplete; `*N` → entriesPerUnit.
 const TYPE_ALIAS: Record<string, GiveawayReqType> = {
   catch: "catch", catches: "catch",
+  card: "catch", cards: "catch",
   burn: "burn", burns: "burn",
   pack: "pack_open", packs: "pack_open", packopen: "pack_open",
   win: "battle_win", wins: "battle_win", battlewin: "battle_win", battlewins: "battle_win",
@@ -316,15 +328,21 @@ const REQ_EMOJI: Record<GiveawayReqType, string> = {
   raid_join: "🐉", raid_damage: "💥", echo_use: "🔊", message: "💬",
 };
 
-export function parseRequirements(raw: string): GiveawayRequirement[] {
+export interface ParsedRequirements {
+  requirements: GiveawayRequirement[];
+  invalid: string[];
+}
+
+export function parseRequirements(raw: string): ParsedRequirements {
   const out: GiveawayRequirement[] = [];
+  const invalid: string[] = [];
   let i = 0;
   for (const tokenRaw of raw.split(";").map(s => s.trim()).filter(Boolean)) {
     const parts = tokenRaw.split(":").map(s => s.trim()).filter(Boolean);
-    if (parts.length < 2) continue;
+    if (parts.length < 2) { invalid.push(tokenRaw); continue; }
     const type = TYPE_ALIAS[parts[0]!.toLowerCase()];
     const goal = parseInt(parts[1]!.replace(/[^\d]/g, ""), 10);
-    if (!type || !goal || goal <= 0) continue;
+    if (!type || !goal || goal <= 0) { invalid.push(tokenRaw); continue; }
 
     let rarityMin: string | undefined;
     let entriesOnComplete: number | undefined;
@@ -342,7 +360,7 @@ export function parseRequirements(raw: string): GiveawayRequirement[] {
       label: requirementLabel(type, goal, rarityMin),
     });
   }
-  return out;
+  return { requirements: out, invalid };
 }
 
 function requirementLabel(type: GiveawayReqType, goal: number, rarityMin?: string): string {

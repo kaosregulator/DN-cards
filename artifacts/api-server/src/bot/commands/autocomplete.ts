@@ -331,6 +331,33 @@ export async function handleAutocomplete(interaction: AutocompleteInteraction): 
       return;
     }
 
+    // ── /giveaway_admin requirements — preset requirement templates ──────────
+    if (cmd === "giveawayadmin" && focused.name === "requirements" && interaction.guild) {
+      const q = query.toLowerCase().trim();
+      const presets = [
+        { name: "🎯 Catch 50 cards", value: "card:50" },
+        { name: "🎯 Catch 10 rare-or-better", value: "card:10:rare" },
+        { name: "🎯 Catch 5 legendary-or-better", value: "card:5:legendary" },
+        { name: "⚔️ Win 10 battles", value: "battlewin:10" },
+        { name: "🛡️ Play 20 battles", value: "battle:20" },
+        { name: "🔥 Burn 10 cards", value: "burn:10" },
+        { name: "📦 Open 5 packs", value: "pack:5" },
+        { name: "💬 Send 100 messages", value: "message:100" },
+        { name: "🐉 Join 5 raids", value: "raid:5" },
+        { name: "💥 Deal 5,000 raid damage", value: "raiddamage:5000" },
+        { name: "🔊 Use Echo 10 times", value: "echo:10" },
+        { name: "🎯 Catch 50 + entry per card", value: "card:50:*1" },
+        { name: "⚔️ Win 10 + 5 bonus", value: "battlewin:10:+5" },
+        { name: "🎯 Catch 50 + win 10 battles", value: "card:50;battlewin:10" },
+        { name: "🎯 Catch 20 + send 50 messages", value: "card:20;message:50" },
+      ];
+      const filtered = !q
+        ? presets
+        : presets.filter(p => p.name.toLowerCase().includes(q) || p.value.toLowerCase().includes(q));
+      await interaction.respond(filtered.slice(0, MAX_CHOICES));
+      return;
+    }
+
     // ── All other card-name fields → full roster ────────────────────────────
     // /info, /drop, /give, /take_back, /trade.want, /wishlist add
     await interaction.respond(await suggestCardNames(query));
