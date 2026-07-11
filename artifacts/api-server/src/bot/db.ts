@@ -234,18 +234,19 @@ export async function unloadDefaultCards(actorGuildId: string): Promise<{ remove
   return deleteSetByName(DEFAULTS_SET_NAME, actorGuildId);
 }
 
-// Copy the home guild's largest set as a blank template for a new server.
-// Only the set metadata (name, description, rarity weights, showcase flag) is
-// copied; cards are NOT copied. This lets a new server start from your set
-// structure while keeping their cards and edits isolated to their guild.
+// Copy the home guild's largest set, including all of its cards, into a new
+// server. The copied set is immediately set as the active spawn set so the
+// server can use it right away. Every copied card is stamped with the actor
+// guild's ID, so later edits, trades, burns, or deletes stay isolated to that
+// server and never touch the home server or the dashboard.
 export async function copyHomeSetTemplate(
   actorGuildId: string,
-): Promise<{ copiedSetName: string | null; skipped: boolean }> {
+): Promise<{ copiedSetName: string | null; copiedCards: number; skipped: boolean }> {
   if (!HOME_GUILD_ID) {
     throw new Error("HOME_GUILD_ID is not configured — cannot copy home set template.");
   }
   if (actorGuildId === HOME_GUILD_ID) {
-    return { copiedSetName: null, skipped: true };
+    return { copiedSetName: null, copiedCards: 0, skipped: true };
   }
 
   // Find the home guild's largest set (by card count).
@@ -267,14 +268,40 @@ export async function copyHomeSetTemplate(
 
   const homeSet = rows[0];
   if (!homeSet) {
-    return { copiedSetName: null, skipped: true };
+    return { copiedSetName: null, copiedCards: 0, skipped: true };
   }
 
   // Idempotent: don't overwrite if the actor already has this set.
   const existing = await getSetByName(homeSet.name, actorGuildId);
   if (existing) {
-    return { copiedSetName: null, skipped: true };
+    return { copiedSetName: null, copiedCards: 0, skipped: true };
   }
+
+  // Fetch every card in the home set so we can mirror it in the actor guild.
+  const homeCards = await db.select({
+    id: cardsTable.id,
+    name: cardsTable.name,
+    description: cardsTable.description,
+    rarity: cardsTable.rarity,
+    cardType: cardsTable.cardType,
+    dropWeight: cardsTable.dropWeight,
+    worthValue: cardsTable.worthValue,
+    burnValue: cardsTable.burnValue,
+    isLimitedEdition: cardsTable.isLimitedEdition,
+    isEventExclusive: cardsTable.isEventExclusive,
+    maxCopies: cardsTable.maxCopies,
+    imageUrl: cardsTable.imageUrl,
+    flavor: cardsTable.flavor,
+    droppable: cardsTable.droppable,
+    inPacks: cardsTable.inPacks,
+    isArchived: cardsTable.isArchived,
+    previewAnimation: cardsTable.previewAnimation,
+    previewBgColor: cardsTable.previewBgColor,
+    displayOrientation: cardsTable.displayOrientation,
+  })
+    .from(cardsTable)
+    .innerJoin(cardSetMembershipsTable, eq(cardSetMembershipsTable.cardId, cardsTable.id))
+    .where(eq(cardSetMembershipsTable.setId, homeSet.id));
 
   const newSet = await createSet(homeSet.name, homeSet.description ?? undefined, actorGuildId);
   if (homeSet.rarityWeights) {
@@ -283,7 +310,56 @@ export async function copyHomeSetTemplate(
   if (homeSet.awardsCompletion) {
     await setSetAwardsCompletion(newSet.id, true, actorGuildId);
   }
-  return { copiedSetName: newSet.name, skipped: false };
+
+  let copiedCards = 0;
+  for (const homeCard of homeCards) {
+    // If the actor already has a card with the same name, add that copy to the
+    // set instead of creating a duplicate. This mirrors `loadDefaultCards`.
+    const existingCard = await getCardByName(homeCard.name, actorGuildId);
+    if (existingCard) {
+      await db.insert(cardSetMembershipsTable)
+        .values({ setId: newSet.id, cardId: existingCard.id })
+        .onConflictDoNothing();
+      continue;
+    }
+
+    const [inserted] = await db.insert(cardsTable)
+      .values({
+        guildId: actorGuildId,
+        name: homeCard.name,
+        description: homeCard.description,
+        rarity: homeCard.rarity,
+        cardType: homeCard.cardType,
+        dropWeight: homeCard.dropWeight,
+        worthValue: homeCard.worthValue,
+        burnValue: homeCard.burnValue,
+        isLimitedEdition: homeCard.isLimitedEdition,
+        isEventExclusive: homeCard.isEventExclusive,
+        maxCopies: homeCard.maxCopies,
+        imageUrl: homeCard.imageUrl,
+        flavor: homeCard.flavor,
+        droppable: homeCard.droppable,
+        inPacks: homeCard.inPacks,
+        isArchived: homeCard.isArchived,
+        previewAnimation: homeCard.previewAnimation,
+        previewBgColor: homeCard.previewBgColor,
+        displayOrientation: homeCard.displayOrientation,
+      })
+      .onConflictDoNothing()
+      .returning({ id: cardsTable.id });
+    if (inserted) {
+      await db.insert(cardSetMembershipsTable)
+        .values({ setId: newSet.id, cardId: inserted.id })
+        .onConflictDoNothing();
+      copiedCards++;
+    }
+  }
+
+  // Make the copied set the active spawn set immediately so the server can use it.
+  await setActiveSet(actorGuildId, newSet.id);
+  invalidateCardCache();
+  invalidateActiveSetCardsCache();
+  return { copiedSetName: newSet.name, copiedCards, skipped: false };
 }
 
 // ── Card Sets ─────────────────────────────────────────────────────────────────

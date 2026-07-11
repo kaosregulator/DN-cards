@@ -114,7 +114,7 @@ export async function handleSetupButton(interaction: ButtonInteraction): Promise
     }).catch(() => {});
     return;
   } else if (action === "copytemplate") {
-    const { copiedSetName, skipped } = await copyHomeSetTemplate(guildId);
+    const { copiedSetName, copiedCards, skipped } = await copyHomeSetTemplate(guildId);
     await refreshPanel(interaction, guildId);
     if (skipped) {
       await interaction.followUp({
@@ -123,7 +123,7 @@ export async function handleSetupButton(interaction: ButtonInteraction): Promise
       }).catch(() => {});
     } else {
       await interaction.followUp({
-        content: `📋 Copied home set **${copiedSetName}** as a blank template. Add your own cards with \`/add_card\` or \`/sets_admin load\` — edits stay in your server.`,
+        content: `📋 Copied home set **${copiedSetName}** with **${copiedCards}** cards. It is now your active spawn set — drops can start immediately. Any edits, trades, or burns stay in this server and never affect the home server.`,
         flags: MessageFlags.Ephemeral,
       }).catch(() => {});
     }
