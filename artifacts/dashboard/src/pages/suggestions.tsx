@@ -12,7 +12,7 @@ import { MessageSquarePlus, CheckCircle2 } from "lucide-react";
 const CATEGORIES: { value: SuggestionCategory; label: string; hint: string }[] = [
   { value: "bug_report",        label: "Bug report",        hint: "Something broken or unexpected on the site or the bot." },
   { value: "card_correction",   label: "Card correction",   hint: "Typo, wrong image, wrong stats on an existing card." },
-  { value: "card_suggestion",   label: "New card idea",     hint: "Suggest a new card for the roster." },
+  { value: "card_suggestion",   label: "New card idea",     hint: "Suggest a new card for the collection." },
   { value: "event_suggestion",  label: "Event idea",        hint: "Suggest a community event or limited-time drop." },
   { value: "website_feedback",  label: "Website feedback",  hint: "UX, navigation, missing features." },
 ];

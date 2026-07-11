@@ -213,7 +213,7 @@ function EditDialog({
             </div>
 
             <div>
-              <Label htmlFor="d-flavor">Flavor text (italic line on roster/events page)</Label>
+              <Label htmlFor="d-flavor">Flavor text (italic line on the Card Vault / events page)</Label>
               <Textarea id="d-flavor" rows={2} value={form.flavorText ?? ""} placeholder={card.flavor ?? "(none)"}
                 onChange={e => setForm(s => ({ ...s, flavorText: e.target.value || null }))} />
             </div>
@@ -239,7 +239,7 @@ function EditDialog({
               </div>
               <div className="flex items-center justify-between border border-border/40 rounded-md p-3">
                 <div>
-                  <Label className="font-normal cursor-pointer">Feature on roster</Label>
+                  <Label className="font-normal cursor-pointer">Feature in vault</Label>
                   <p className="text-xs text-muted-foreground mt-1">Floats this card to the top.</p>
                 </div>
                 <Switch checked={!!form.featured} onCheckedChange={v => setForm(s => ({ ...s, featured: v }))} />
@@ -250,7 +250,7 @@ function EditDialog({
               <Label htmlFor="d-sort">Sort weight</Label>
               <Input id="d-sort" type="number" value={form.sortWeight ?? 0}
                 onChange={e => setForm(s => ({ ...s, sortWeight: Number(e.target.value) || 0 }))} />
-              <p className="text-xs text-muted-foreground mt-1">Higher = appears earlier in the roster. Featured cards always come first.</p>
+              <p className="text-xs text-muted-foreground mt-1">Higher = appears earlier in the Card Vault. Featured cards always come first.</p>
             </div>
 
             {/* ── Rarity (gameplay, writes to cards table) ── */}

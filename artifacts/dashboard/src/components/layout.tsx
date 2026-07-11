@@ -6,7 +6,7 @@ export function Nav() {
   const { user, isOwner, logout } = useAuth();
 
   const links: { href: string; label: string; show: boolean }[] = [
-    { href: "/", label: "Roster", show: true },
+    { href: "/", label: "Card Vault", show: true },
     { href: "/leaderboard", label: "Leaderboard", show: true },
     { href: "/events", label: "Events", show: true },
     { href: "/news", label: "News", show: true },
@@ -23,7 +23,7 @@ export function Nav() {
       <div className="container flex h-14 max-w-screen-2xl items-center gap-4">
         <Link href="/" className="flex items-center space-x-2 shrink-0">
           <span className="hidden font-bold sm:inline-block text-primary tracking-wider uppercase">
-            DN COMMAND
+            DEX N CARDS
           </span>
         </Link>
         <nav className="flex items-center gap-4 sm:gap-6 text-sm font-medium overflow-x-auto">
@@ -66,7 +66,7 @@ export function Footer() {
     <footer className="border-t py-6 md:py-0">
       <div className="container flex flex-col items-center justify-between gap-4 md:h-16 md:flex-row max-w-screen-2xl">
         <p className="text-sm leading-loose text-muted-foreground md:text-left tracking-wide">
-          DN Cards public dashboard. A companion tool for the Discord bot.
+          Dex N Cards Official · Collection viewer for our Discord community.
         </p>
       </div>
     </footer>
