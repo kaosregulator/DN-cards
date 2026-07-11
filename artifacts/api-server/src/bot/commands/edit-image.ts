@@ -155,7 +155,7 @@ export async function handleEditImageModal(interaction: ModalSubmitInteraction):
 
   const exact = items.find((i) => i.name.toLowerCase() === query.toLowerCase());
   if (exact && exact.image) {
-    await applyMTTVItem(interaction, cardId, exact);
+    await applyMTTVItem(interaction, cardId, exact, interaction.guildId);
     return;
   }
 
@@ -254,7 +254,7 @@ export async function handleEditImagePick(interaction: ButtonInteraction): Promi
     return;
   }
 
-  await applyMTTVItem(interaction, cardId, item);
+  await applyMTTVItem(interaction, cardId, item, interaction.guildId);
 }
 
 // ── Apply the chosen MTTV item to the card ────────────────────────────────────
@@ -262,6 +262,7 @@ async function applyMTTVItem(
   interaction: ButtonInteraction | ModalSubmitInteraction,
   cardId: number,
   item: MTTVItem,
+  viewerGuildId: string | null,
 ): Promise<void> {
   if (!item.image) {
     const content = `❌ **${item.name}** has no image on MTTV. Pick another item or upload your own.`;
@@ -281,7 +282,7 @@ async function applyMTTVItem(
     await interaction.deferReply({ flags: MessageFlags.Ephemeral }).catch(() => {});
   }
 
-  const card = await getCardById(cardId);
+  const card = await getCardById(cardId, viewerGuildId);
   if (!card) {
     await interaction.editReply({ content: "❌ Card not found." }).catch(() => {});
     return;
