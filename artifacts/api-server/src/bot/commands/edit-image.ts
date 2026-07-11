@@ -273,13 +273,17 @@ async function applyMTTVItem(
     return;
   }
 
+  // Defer before doing network/storage work so we don't hit the 3-second
+  // interaction timeout. /make_card works because it defers the slash reply.
+  if (interaction.isButton()) {
+    await interaction.deferUpdate().catch(() => {});
+  } else {
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral }).catch(() => {});
+  }
+
   const card = await getCardById(cardId);
   if (!card) {
-    if (interaction.isButton()) {
-      await interaction.followUp({ content: "❌ Card not found.", flags: MessageFlags.Ephemeral }).catch(() => {});
-    } else {
-      await interaction.reply({ content: "❌ Card not found.", flags: MessageFlags.Ephemeral }).catch(() => {});
-    }
+    await interaction.editReply({ content: "❌ Card not found." }).catch(() => {});
     return;
   }
 
@@ -287,10 +291,5 @@ async function applyMTTVItem(
   await updateCard(card.id, { imageUrl, description: item.description || "" });
 
   const embed = buildMTTVItemEmbed(item).setTitle(`✅ Updated ${card.name} from MTTV`);
-
-  if (interaction.isButton()) {
-    await interaction.update({ embeds: [embed], components: [] }).catch(() => {});
-  } else {
-    await interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral }).catch(() => {});
-  }
+  await interaction.editReply({ embeds: [embed], components: [] }).catch(() => {});
 }
