@@ -216,7 +216,9 @@ export function matchScore(item: MTTVItem, query: string): number {
     score += tokenScore;
   }
 
-  score += (item.valueMax ?? item.valueMin ?? 0) / 1_000_000;
+  // Only apply the tiny value tie-breaker if the query actually matched something.
+  // Otherwise high-value unrelated items would outrank genuine partial matches.
+  if (score > 0) score += (item.valueMax ?? item.valueMin ?? 0) / 1_000_000;
   return score;
 }
 
