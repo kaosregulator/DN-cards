@@ -313,30 +313,45 @@ export async function handleCreateCardFromMTTV(interaction: ChatInputCommandInte
 
   const imageUrl = item.image ? await persistBotImage(item.image) : undefined;
 
-  const card = await addCard({
-    name: item.name,
-    rarity: baseRarity,
-    cardType: type,
-    description: descriptionOverride || item.description || "",
-    imageUrl,
-    worthValue: defs.worth,
-    burnValue: defs.burn,
-    dropWeight: defs.weight,
-    isLimitedEdition: limited,
-    maxCopies: limited ? (maxCopies ?? 50) : undefined,
-    isEventExclusive: eventExclusive,
-    droppable: !eventExclusive,
-    inPacks: !eventExclusive && baseRarity !== "mythic",
-  }, guildId);
+  let card;
+  try {
+    card = await addCard({
+      name: item.name,
+      rarity: baseRarity,
+      cardType: type,
+      description: descriptionOverride || item.description || "",
+      imageUrl,
+      worthValue: defs.worth,
+      burnValue: defs.burn,
+      dropWeight: defs.weight,
+      isLimitedEdition: limited,
+      maxCopies: limited ? (maxCopies ?? 50) : undefined,
+      isEventExclusive: eventExclusive,
+      droppable: !eventExclusive,
+      inPacks: !eventExclusive && baseRarity !== "mythic",
+    }, guildId);
+  } catch (err) {
+    logger.error({ err, itemName: item.name, guildId }, "Failed to create card from MTTV");
+    await interaction.editReply(
+      `❌ Could not create card **${item.name}** — the server hit an error while saving it. ` +
+      `Try again; if it keeps failing, tell me the exact item name and the error message you see.`,
+    );
+    return;
+  }
 
   let setNote = "";
   if (setName) {
-    const set = await getSetByName(setName, guildId);
-    if (set) {
-      await addCardToSet(set.id, card.id, guildId);
-      setNote = ` and added to set \`${set.name}\``;
-    } else {
-      setNote = ` (set \`${setName}\` was not found, so no set was assigned)`;
+    try {
+      const set = await getSetByName(setName, guildId);
+      if (set) {
+        await addCardToSet(set.id, card.id, guildId);
+        setNote = ` and added to set \`${set.name}\``;
+      } else {
+        setNote = ` (set \`${setName}\` was not found, so no set was assigned)`;
+      }
+    } catch (err) {
+      logger.error({ err, cardId: card.id, setName, guildId }, "Failed to add MTTV-created card to set");
+      setNote = ` (could not add to set \`${setName}\`)`;
     }
   }
 
