@@ -9,10 +9,14 @@ import type {
   Giveaway, GiveawayRequirement, GiveawayEntry, GiveawayReqType,
 } from "@workspace/db";
 import {
+  db, giveawayEntriesTable, spawnLogTable, userCurrencyTable, battleProfilesTable, cardsTable,
+} from "@workspace/db";
+import {
   getActiveGiveaways, ensureEntry, saveEntry, listEntries,
 } from "./db.js";
 import { logger } from "../../lib/logger.js";
 import type { Rarity } from "../cards-data.js";
+import { and, count, eq, gte, isNotNull, sql } from "drizzle-orm";
 
 const RARITY_RANK: Record<string, number> = {
   common: 1, uncommon: 2, rare: 3, epic: 4, legendary: 5, mythic: 6,
@@ -112,6 +116,138 @@ async function applyToGiveaway(
   if (!changed) return;
   const { entries, completed } = computeEntries(g.requirements, progress);
   await saveEntry(entry.id, { progress, entries, completed });
+}
+
+// ── Backfill progress for existing activity ───────────────────────────────────
+// When a giveaway is created or edited, players who already met the requirements
+// should qualify immediately. We read durable totals from the same tables the event
+// hooks later write to, so backfill + live events never double-count.
+export async function backfillGiveawayProgress(g: Giveaway): Promise<number> {
+  if (g.requirements.length === 0) return 0;
+
+  const existing = await listEntries(g.id);
+  const existingMap = new Map(existing.map(e => [e.userId, e]));
+  const progressMap = new Map<string, Record<string, number>>();
+
+  for (const req of g.requirements) {
+    const totals = await getLifetimeTotals(g.guildId, req);
+    for (const { userId, amount } of totals) {
+      if (!progressMap.has(userId)) progressMap.set(userId, {});
+      progressMap.get(userId)![req.key] = Math.min(req.goal, amount);
+    }
+  }
+
+  if (progressMap.size === 0) return 0;
+
+  const values: Array<{
+    giveawayId: number; guildId: string; userId: string;
+    progress: Record<string, number>; entries: number; completed: boolean;
+  }> = [];
+
+  for (const [userId, progress] of progressMap) {
+    const existing = existingMap.get(userId);
+    const merged = existing ? mergeProgress(existing.progress, progress) : progress;
+    const { entries, completed } = computeEntries(g.requirements, merged);
+    values.push({ giveawayId: g.id, guildId: g.guildId, userId, progress: merged, entries, completed });
+  }
+
+  const newRows = values.filter(v => !existingMap.has(v.userId));
+  const existingRows = values.filter(v => existingMap.has(v.userId));
+
+  if (newRows.length > 0) {
+    await db.insert(giveawayEntriesTable)
+      .values(newRows)
+      .onConflictDoNothing({ target: [giveawayEntriesTable.giveawayId, giveawayEntriesTable.userId] });
+  }
+
+  for (const v of existingRows) {
+    const entry = existingMap.get(v.userId)!;
+    await saveEntry(entry.id, { progress: v.progress, entries: v.entries, completed: v.completed });
+  }
+
+  return values.length;
+}
+
+function mergeProgress(
+  existing: Record<string, number>, backfill: Record<string, number>,
+): Record<string, number> {
+  const merged = { ...existing };
+  for (const [key, val] of Object.entries(backfill)) {
+    merged[key] = Math.max(merged[key] ?? 0, val);
+  }
+  return merged;
+}
+
+async function getLifetimeTotals(
+  guildId: string, req: GiveawayRequirement,
+): Promise<Array<{ userId: string; amount: number }>> {
+  try {
+    switch (req.type) {
+      case "catch": {
+        if (req.rarityMin) {
+          const rank = RARITY_RANK[req.rarityMin] ?? 99;
+          const rarityRankSql = sql<number>`case ${cardsTable.rarity}
+            when 'common' then 1
+            when 'uncommon' then 2
+            when 'rare' then 3
+            when 'epic' then 4
+            when 'legendary' then 5
+            when 'mythic' then 6
+            else 0
+          end`;
+          const rows = await db.select({
+            userId: spawnLogTable.caughtBy,
+            amount: count(),
+          })
+            .from(spawnLogTable)
+            .innerJoin(cardsTable, eq(cardsTable.id, spawnLogTable.cardId))
+            .where(and(
+              eq(spawnLogTable.guildId, guildId),
+              isNotNull(spawnLogTable.caughtBy),
+              gte(rarityRankSql, rank),
+            ))
+            .groupBy(spawnLogTable.caughtBy);
+          return rows.map(r => ({ userId: r.userId!, amount: Number(r.amount) }));
+        }
+        const rows = await db.select({
+          userId: spawnLogTable.caughtBy,
+          amount: count(),
+        })
+          .from(spawnLogTable)
+          .where(and(eq(spawnLogTable.guildId, guildId), isNotNull(spawnLogTable.caughtBy)))
+          .groupBy(spawnLogTable.caughtBy);
+        return rows.map(r => ({ userId: r.userId!, amount: Number(r.amount) }));
+      }
+      case "burn": {
+        const rows = await db.select({ userId: userCurrencyTable.userId, amount: userCurrencyTable.cardsBurned })
+          .from(userCurrencyTable)
+          .where(and(eq(userCurrencyTable.guildId, guildId), gte(userCurrencyTable.cardsBurned, 1)));
+        return rows.map(r => ({ userId: r.userId, amount: r.amount }));
+      }
+      case "pack_open": {
+        const rows = await db.select({ userId: userCurrencyTable.userId, amount: userCurrencyTable.packsOpened })
+          .from(userCurrencyTable)
+          .where(and(eq(userCurrencyTable.guildId, guildId), gte(userCurrencyTable.packsOpened, 1)));
+        return rows.map(r => ({ userId: r.userId, amount: r.amount }));
+      }
+      case "battle_win": {
+        const rows = await db.select({ userId: battleProfilesTable.userId, amount: battleProfilesTable.wins })
+          .from(battleProfilesTable)
+          .where(and(eq(battleProfilesTable.guildId, guildId), gte(battleProfilesTable.wins, 1)));
+        return rows.map(r => ({ userId: r.userId, amount: r.amount }));
+      }
+      case "battle_played": {
+        const rows = await db.select({ userId: battleProfilesTable.userId, amount: battleProfilesTable.totalBattles })
+          .from(battleProfilesTable)
+          .where(and(eq(battleProfilesTable.guildId, guildId), gte(battleProfilesTable.totalBattles, 1)));
+        return rows.map(r => ({ userId: r.userId, amount: r.amount }));
+      }
+      default: return [];
+    }
+  } catch (err) {
+    logger.warn({ err, guildId, reqType: req.type }, "giveaway backfill failed for requirement type");
+    return [];
+  }
 }
 
 // Read a single user's live standing in a giveaway (for /giveaway progress).

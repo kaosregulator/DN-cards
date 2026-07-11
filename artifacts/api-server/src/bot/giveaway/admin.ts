@@ -20,7 +20,7 @@ import {
   createGiveaway, updateGiveaway, getGiveaway, listGiveaways, listWinners, countEntrants,
 } from "./db.js";
 import { postGiveawayMessage, endGiveaway, rerollWinner, refreshGiveawayMessage } from "./manager.js";
-import { invalidateActiveCache } from "./engine.js";
+import { invalidateActiveCache, backfillGiveawayProgress } from "./engine.js";
 import { invalidateMessageReqCache } from "./message-hook.js";
 import { DIFFICULTY_META, formatPrizeList } from "./embeds.js";
 import { getCardByName } from "../db.js";
@@ -98,12 +98,15 @@ async function doCreate(interaction: ChatInputCommandInteraction): Promise<void>
   });
 
   const posted = await postGiveawayMessage(g, interaction.client);
+  const backfilled = await backfillGiveawayProgress(posted);
+  if (backfilled > 0) await refreshGiveawayMessage(posted, interaction.client);
   invalidateActiveCache(guildId);
   invalidateMessageReqCache(guildId);
 
   const d = DIFFICULTY_META[difficulty];
   await interaction.editReply({
-    content: `✅ Launched giveaway **${title}** (#${posted.id})` + (posted.messageId ? ` in <#${posted.channelId}>.` : "."),
+    content: `✅ Launched giveaway **${title}** (#${posted.id})` + (posted.messageId ? ` in <#${posted.channelId}>.` : ".") +
+      (backfilled > 0 ? ` ${backfilled} players already met the requirements and were entered.` : ""),
     embeds: [new EmbedBuilder().setColor(d.color).setDescription(
       `${d.emoji} **${d.label}** · ${winnerCount} winner(s) · ${winnerMode === "entry" ? "entry-based" : "completion"}\n\n` +
       `**Prizes**\n${formatPrizeList(prizes)}\n\n` +
@@ -149,10 +152,15 @@ async function doEdit(interaction: ChatInputCommandInteraction): Promise<void> {
   if (Object.keys(patch).length === 0) { await interaction.editReply("Nothing to change — pass at least one field."); return; }
 
   const updated = await updateGiveaway(g.id, patch);
+  let backfilled = 0;
+  if (updated) {
+    backfilled = await backfillGiveawayProgress(updated);
+    if (backfilled > 0) await refreshGiveawayMessage(updated, interaction.client);
+  }
   invalidateActiveCache(g.guildId);
   invalidateMessageReqCache(g.guildId);
-  if (updated) await refreshGiveawayMessage(updated, interaction.client);
-  await interaction.editReply(`✅ Updated giveaway **${updated?.title ?? g.title}** (#${g.id}). The live message has been refreshed.`);
+  await interaction.editReply(`✅ Updated giveaway **${updated?.title ?? g.title}** (#${g.id}).` +
+    (updated ? ` The live message has been refreshed${backfilled > 0 ? ` and ${backfilled} players were backfilled` : ""}.` : ""));
 }
 
 // ── end ──────────────────────────────────────────────────────────────────────
