@@ -1,5 +1,38 @@
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
+import { useDiscordAuth } from "@/features/auth/useDiscordAuth";
+
+function DiscordAuthControls() {
+  const { configured, user, isLoggedIn, login, logout } = useDiscordAuth();
+  if (!configured) return null;
+  if (isLoggedIn && user) {
+    const avatarUrl = user.avatar ? `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png?size=64` : null;
+    return (
+      <div className="flex items-center gap-2">
+        {avatarUrl ? (
+          <img src={avatarUrl} alt="" className="h-6 w-6 rounded-full border border-border/60" />
+        ) : (
+          <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/20 text-[10px] font-bold text-primary">
+            {(user.username ?? "?").slice(0, 1).toUpperCase()}
+          </span>
+        )}
+        <span className="hidden max-w-[10rem] truncate text-muted-foreground sm:inline">{user.username}</span>
+        <button onClick={() => logout.mutate()} className="uppercase tracking-widest text-foreground/60 hover:text-foreground" data-testid="discord-logout">
+          Log out
+        </button>
+      </div>
+    );
+  }
+  return (
+    <button
+      onClick={login}
+      className="flex items-center gap-2 rounded-md bg-[#5865F2] px-3 py-1.5 font-semibold uppercase tracking-widest text-white transition-opacity hover:opacity-90"
+      data-testid="discord-login"
+    >
+      Login with Discord
+    </button>
+  );
+}
 
 export function Nav() {
   const [location] = useLocation();
@@ -42,6 +75,7 @@ export function Nav() {
           ))}
         </nav>
         <div className="ml-auto flex items-center gap-3 text-xs">
+          <DiscordAuthControls />
           {user ? (
             <>
               <span className="hidden sm:inline text-muted-foreground">{user.username}</span>
@@ -54,7 +88,7 @@ export function Nav() {
             </>
           ) : (
             <Link href="/login" className="text-foreground/60 hover:text-foreground uppercase tracking-widest">
-              Sign in
+              Admin
             </Link>
           )}
         </div>

@@ -1,3 +1,4 @@
+import { useMemo, useState } from "react";
 import { useCards } from "@/hooks/queries";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -5,13 +6,30 @@ import { Loader2, Search, ArrowUpDown, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { VaultCard } from "@/features/vault/VaultCard";
 import { useVaultFilters, SORT_LABELS, type SortMode } from "@/features/vault/useVaultFilters";
+import { useDiscordAuth, useOwnedCards } from "@/features/auth/useDiscordAuth";
 import { cn } from "@/lib/utils";
 
 const SORT_MODES: SortMode[] = ["newest", "oldest", "rarity", "name"];
+type OwnFilter = "all" | "owned" | "missing";
+const OWN_FILTERS: { key: OwnFilter; label: string }[] = [
+  { key: "all", label: "All" },
+  { key: "owned", label: "Owned" },
+  { key: "missing", label: "Missing" },
+];
 
 export default function Vault() {
   const { data, isLoading, error } = useCards();
   const f = useVaultFilters(data?.cards, data?.rarityOrder);
+  const { isLoggedIn } = useDiscordAuth();
+  const { ownedSet, holdings } = useOwnedCards(isLoggedIn);
+  const [ownFilter, setOwnFilter] = useState<OwnFilter>("all");
+
+  // Layer ownership on top of the base filtered/sorted result (only meaningful
+  // when logged in — otherwise ownership is unknown and we show everything).
+  const shown = useMemo(() => {
+    if (!isLoggedIn || ownFilter === "all") return f.result;
+    return f.result.filter((c) => (ownFilter === "owned" ? ownedSet.has(c.id) : !ownedSet.has(c.id)));
+  }, [f.result, isLoggedIn, ownFilter, ownedSet]);
 
   if (isLoading) {
     return (
@@ -80,6 +98,18 @@ export default function Vault() {
             </div>
           </div>
 
+          {/* Ownership filter — only when logged in via Discord */}
+          {isLoggedIn && (
+            <FilterRow label="Show">
+              {OWN_FILTERS.map((o) => (
+                <FilterChip key={o.key} active={ownFilter === o.key} onClick={() => setOwnFilter(o.key)} testId={`vault-own-${o.key}`}>
+                  {o.label}
+                  {o.key === "owned" && <span className="opacity-50"> {ownedSet.size}</span>}
+                </FilterChip>
+              ))}
+            </FilterRow>
+          )}
+
           {/* Rarity filters */}
           {f.rarityOptions.length > 0 && (
             <FilterRow label="Rarity">
@@ -125,19 +155,30 @@ export default function Vault() {
 
         {/* Results */}
         <div className="mb-4 font-mono text-xs uppercase tracking-widest text-muted-foreground">
-          {f.result.length} {f.result.length === 1 ? "card" : "cards"} shown
+          {shown.length} {shown.length === 1 ? "card" : "cards"} shown
+          {isLoggedIn && <span className="ml-2 opacity-60">· {ownedSet.size}/{data?.cards.length ?? 0} owned</span>}
         </div>
 
-        {f.result.length === 0 ? (
+        {shown.length === 0 ? (
           <div className="rounded-xl border border-dashed border-border py-20 text-center">
             <p className="font-mono uppercase tracking-widest text-muted-foreground">No cards match your filters</p>
           </div>
         ) : (
           <motion.div layout className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
             <AnimatePresence mode="popLayout">
-              {f.result.map((card) => (
-                <VaultCard key={card.id} card={card} pool={data?.cards ?? []} />
-              ))}
+              {shown.map((card) => {
+                const h = holdings.get(card.id);
+                return (
+                  <VaultCard
+                    key={card.id}
+                    card={card}
+                    pool={data?.cards ?? []}
+                    owned={isLoggedIn ? ownedSet.has(card.id) : undefined}
+                    count={h?.count}
+                    shinyCount={h?.shinyCount}
+                  />
+                );
+              })}
             </AnimatePresence>
           </motion.div>
         )}

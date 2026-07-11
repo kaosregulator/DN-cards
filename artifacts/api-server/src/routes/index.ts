@@ -8,12 +8,14 @@ import dashboardUsersRouter from "./dashboard-users";
 import newsRouter from "./news";
 import suggestionsRouter from "./suggestions";
 import siteRouter from "./site";
+import oauthRouter from "./oauth";
 
 const router: IRouter = Router();
 
 router.use(healthRouter);
 router.use(siteRouter);
 router.use("/auth", authRouter);
+router.use("/oauth", oauthRouter);
 router.use("/dashboard/users", dashboardUsersRouter);
 router.use("/admin", adminRouter);
 router.use(storageRouter);
