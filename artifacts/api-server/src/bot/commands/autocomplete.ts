@@ -1,7 +1,8 @@
 import type { AutocompleteInteraction } from "discord.js";
 import { internalCommandName } from "./register.js";
-import { getAllCards, listSetsV2, getUserCollection, getUserWishlist, listCustomRarities, getRarityContext, getOrCreateGuildSettings, getRarityDisplayOverrides, getDisplayRarities, getDistinctCardTypes } from "../db.js";
+import { getAllCards, listSetsV2, getUserCollection, getUserWishlist, listCustomRarities, getRarityContext, getOrCreateGuildSettings, getRarityDisplayOverrides, getDisplayRarities, getDistinctCardTypes, listCustomPacks } from "../db.js";
 import { RARITY_EMOJI, rarityEmoji, rarityLabel, type Rarity } from "../cards-data.js";
+import { tierLabel, PACK_TIER_META, PACK_TIERS } from "./pack.js";
 
 const MAX_CHOICES = 25;
 
@@ -291,6 +292,30 @@ export async function handleAutocomplete(interaction: AutocompleteInteraction): 
     if ((cmd === "dnvalueinfo" || cmd === "dnvaluecalc") && ["name", "item"].includes(focused.name)) {
       const { handleDNValuesAutocomplete } = await import("./dnvalues.js");
       await handleDNValuesAutocomplete(interaction, focused);
+      return;
+    }
+
+    // ── /pack tier — built-in tiers + active custom packs (not cards) ────────
+    if (cmd === "pack" && focused.name === "tier" && interaction.guild) {
+      const q = query.toLowerCase().trim();
+      const [settings, customPacks] = await Promise.all([
+        getOrCreateGuildSettings(interaction.guild.id),
+        listCustomPacks(interaction.guild.id, false),
+      ]);
+      const builtInOptions = PACK_TIERS.map(t => {
+        const meta = PACK_TIER_META[t];
+        const label = tierLabel(settings, t);
+        return { name: `${meta.emoji} ${label}`.slice(0, 100), value: t };
+      });
+      const customOptions = customPacks.map(p => ({
+        name: `${p.emoji || "📦"} ${p.name}`.slice(0, 100),
+        value: `custom:${p.id}`,
+      }));
+      const options = [...builtInOptions, ...customOptions];
+      const filtered = !q
+        ? options
+        : options.filter(o => o.name.toLowerCase().includes(q) || o.value.toLowerCase().includes(q));
+      await interaction.respond(filtered.slice(0, MAX_CHOICES));
       return;
     }
 
