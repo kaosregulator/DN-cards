@@ -30,6 +30,10 @@ export interface PresentationConfig {
     /** ms each rarity tier is shown before cycling up. */
     tierDurationMs: number;
   };
+  theme: {
+    /** HSL triplet WITHOUT the hsl() wrapper, matching the CSS var --primary. */
+    primary: string;
+  };
   /** Invite link used by CTAs (mini-game funnel, etc.). Overridable by the CMS. */
   discordInviteUrl: string;
 }
@@ -51,6 +55,10 @@ export const DEFAULT_PRESENTATION: PresentationConfig = {
     enabled: true,
     tierDurationMs: 2600,
   },
+  theme: {
+    // Matches the tactical amber accent baked into index.css.
+    primary: "25 100% 55%",
+  },
   // Placeholder — replace with your real invite (or set it via the CMS later).
   discordInviteUrl: "https://discord.gg/",
 };
@@ -61,6 +69,7 @@ export function resolvePresentation(override: Partial<PresentationConfig> | null
   return {
     hero: { ...DEFAULT_PRESENTATION.hero, ...(override.hero ?? {}) },
     splash: { ...DEFAULT_PRESENTATION.splash, ...(override.splash ?? {}) },
+    theme: { ...DEFAULT_PRESENTATION.theme, ...(override.theme ?? {}) },
     discordInviteUrl: override.discordInviteUrl ?? DEFAULT_PRESENTATION.discordInviteUrl,
   };
 }

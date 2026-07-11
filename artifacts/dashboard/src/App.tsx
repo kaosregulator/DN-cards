@@ -5,6 +5,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { Layout } from "@/components/layout";
 import { CardViewerProvider } from "@/features/viewer/viewer-context";
 import { CardViewer } from "@/features/viewer/CardViewer";
+import { ThemeApplier } from "@/features/site/ThemeApplier";
 
 import Home from "@/pages/home";
 import Vault from "@/pages/vault";
@@ -19,6 +20,7 @@ import Events from "@/pages/events";
 import News from "@/pages/news";
 import NewsDetail from "@/pages/news-detail";
 import NewsAdmin from "@/pages/news-admin";
+import SiteAdmin from "@/pages/site-admin";
 import Suggestions from "@/pages/suggestions";
 import SuggestionsAdmin from "@/pages/suggestions-admin";
 import NotFound from "@/pages/not-found";
@@ -48,6 +50,7 @@ function Router() {
       <Route path="/setup/:token" component={Setup} />
       <Route path="/admin/users" component={Users} />
       <Route path="/admin/news" component={NewsAdmin} />
+      <Route path="/admin/appearance" component={SiteAdmin} />
       <Route path="/admin/suggestions" component={SuggestionsAdmin} />
       <Route path="/admin" component={Admin} />
       <Route component={NotFound} />
@@ -59,6 +62,7 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
+        <ThemeApplier />
         <CardViewerProvider>
           <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
             <Layout>

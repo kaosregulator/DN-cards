@@ -9,6 +9,7 @@ import newsRouter from "./news";
 import suggestionsRouter from "./suggestions";
 import siteRouter from "./site";
 import oauthRouter from "./oauth";
+import adminSiteRouter from "./admin-site";
 
 const router: IRouter = Router();
 
@@ -17,6 +18,7 @@ router.use(siteRouter);
 router.use("/auth", authRouter);
 router.use("/oauth", oauthRouter);
 router.use("/dashboard/users", dashboardUsersRouter);
+router.use("/admin", adminSiteRouter);
 router.use("/admin", adminRouter);
 router.use(storageRouter);
 router.use(newsRouter);

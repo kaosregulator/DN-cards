@@ -48,6 +48,7 @@ export function Nav() {
     { href: "/suggestions", label: "Suggestions", show: true },
     { href: "/profile", label: "Profile", show: true },
     { href: "/admin", label: "Admin", show: !!user },
+    { href: "/admin/appearance", label: "Appearance", show: !!user },
     { href: "/admin/news", label: "News Admin", show: !!user },
     { href: "/admin/suggestions", label: "Suggestions Admin", show: !!user },
     { href: "/admin/users", label: "Users", show: isOwner },
