@@ -1063,10 +1063,26 @@ export async function addCard(values: {
   maxCopies?: number; imageUrl?: string; flavor?: string; droppable?: boolean;
   inPacks?: boolean;
 }, guildId: string) {
-  const [card] = await db.insert(cardsTable).values({ ...values as any, guildId }).returning();
-  await db.update(cardsTable).set({ totalMinted: 0 }).where(eq(cardsTable.id, card.id));
-  invalidateCardCache();
-  return card;
+  try {
+    const [card] = await db.insert(cardsTable).values({ ...values as any, guildId }).returning();
+    await db.update(cardsTable).set({ totalMinted: 0 }).where(eq(cardsTable.id, card.id));
+    invalidateCardCache();
+    return card;
+  } catch (err) {
+    const msg = String(err ?? "");
+    if (msg.includes("duplicate key") && msg.includes("cards_pkey")) {
+      // Sequence fell behind the table (common after a restore/import with explicit IDs).
+      // Allocate the next free id explicitly and bump the sequence so the default path works again.
+      const maxRow = await db.select({ max: sql<number>`MAX(id)` }).from(cardsTable);
+      const nextId = (maxRow[0]?.max ?? 0) + 1;
+      await db.execute(sql`SELECT setval(pg_get_serial_sequence('cards', 'id'), ${nextId}, true)`);
+      const [card] = await db.insert(cardsTable).values({ id: nextId, ...values as any, guildId }).returning();
+      await db.update(cardsTable).set({ totalMinted: 0 }).where(eq(cardsTable.id, card.id));
+      invalidateCardCache();
+      return card;
+    }
+    throw err;
+  }
 }
 
 export async function removeCard(name: string, actorGuildId: string) {
