@@ -429,6 +429,33 @@ async function runBootMigrations() {
     )
   `);
 
+  // After any restore or bulk import that inserted rows with explicit IDs,
+  // serial sequences can fall behind the real table data and cause duplicate-
+  // key failures on new inserts. Resync every sequence owned by a serial
+  // column to the current max id + 1. This is idempotent and safe.
+  await pool.query(`
+    DO $
+    DECLARE
+      r RECORD;
+    BEGIN
+      FOR r IN
+        SELECT n.nspname AS schema_name, c.relname AS table_name, a.attname AS column_name
+        FROM pg_class c
+        JOIN pg_namespace n ON n.oid = c.relnamespace
+        JOIN pg_attribute a ON a.attrelid = c.oid AND a.attnum > 0 AND NOT a.attisdropped
+        JOIN pg_attrdef d ON d.adrelid = c.oid AND d.adnum = a.attnum
+        WHERE c.relkind = 'r'
+          AND d.adsrc IS DISTINCT FROM NULL
+          AND pg_get_serial_sequence(quote_ident(n.nspname) || '.' || quote_ident(c.relname), a.attname) IS NOT NULL
+      LOOP
+        EXECUTE format(
+          'SELECT setval(pg_get_serial_sequence(%L, %L), COALESCE((SELECT MAX(%I) FROM %I.%I), 1), true)',
+          r.schema_name || '.' || r.table_name, r.column_name, r.column_name, r.schema_name, r.table_name
+        );
+      END LOOP;
+    END $;
+  `);
+
   logger.info("Boot migrations applied");
 }
 
