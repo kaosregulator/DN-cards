@@ -1069,7 +1069,7 @@ export async function addCard(values: {
     invalidateCardCache();
     return card;
   } catch (err) {
-    const msg = String(err ?? "");
+    const msg = String(err ?? "") + " " + String((err as any)?.cause ?? "");
     if (msg.includes("duplicate key") && msg.includes("cards_pkey")) {
       // Sequence fell behind the table (common after a restore/import with explicit IDs).
       // Allocate the next free id explicitly and bump the sequence so the default path works again.
