@@ -10,7 +10,7 @@ import type { GuildSettings } from "@workspace/db";
 import {
   isAdmin, getOrCreateGuildSettings, updateGuildSettings, addCard,
   loadDefaultCards, unloadDefaultCards, listSets, DEFAULTS_SET_NAME,
-  getRarityDisplayOverrides,
+  getRarityDisplayOverrides, copyHomeSetTemplate,
 } from "../db.js";
 import { spawnCard, scheduleNextSpawn, clearSpawnTimer } from "../spawn-manager.js";
 import { DEFAULT_CARDS, RARITY_WEIGHTS, type Rarity } from "../cards-data.js";
@@ -112,6 +112,21 @@ export async function handleSetupButton(interaction: ButtonInteraction): Promise
       content: `🗑️ Removed **${removed}** built-in default cards. Your custom cards are untouched.`,
       flags: MessageFlags.Ephemeral,
     }).catch(() => {});
+    return;
+  } else if (action === "copytemplate") {
+    const { copiedSetName, skipped } = await copyHomeSetTemplate(guildId);
+    await refreshPanel(interaction, guildId);
+    if (skipped) {
+      await interaction.followUp({
+        content: "ℹ️ Home set template is already copied or not available.",
+        flags: MessageFlags.Ephemeral,
+      }).catch(() => {});
+    } else {
+      await interaction.followUp({
+        content: `📋 Copied home set **${copiedSetName}** as a blank template. Add your own cards with \`/add_card\` or \`/sets_admin load\` — edits stay in your server.`,
+        flags: MessageFlags.Ephemeral,
+      }).catch(() => {});
+    }
     return;
   } else if (action === "rates") {
     // followUp = new ephemeral message after deferUpdate (can't editReply — that would replace the panel)
@@ -312,7 +327,7 @@ function buildSetupEmbed(s: GuildSettings, hasDefaults: boolean): EmbedBuilder {
 
   const defaultsLine = hasDefaults
     ? `60 built-in cards loaded`
-    : `No defaults — click **Load Defaults** or add your own cards`;
+    : `No defaults — click **Load Defaults**, **Copy Home Set**, or add your own cards`;
 
   return new EmbedBuilder()
     .setTitle("🃏 DN Cards — Setup")
@@ -442,7 +457,7 @@ function buildSetupComponents(s: GuildSettings, hasDefaults: boolean) {
       .setStyle(ButtonStyle.Secondary),
   );
 
-  // Row 5: defaults + test + finish
+  // Row 5: defaults + copy home template + test + finish
   const finishRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
     hasDefaults
       ? new ButtonBuilder()
@@ -453,6 +468,10 @@ function buildSetupComponents(s: GuildSettings, hasDefaults: boolean) {
           .setCustomId("setup:loaddefaults")
           .setLabel("📖 Load Defaults")
           .setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder()
+      .setCustomId("setup:copytemplate")
+      .setLabel("📋 Copy Home Set")
+      .setStyle(ButtonStyle.Secondary),
     new ButtonBuilder()
       .setCustomId("setup:testdrop")
       .setLabel("🧪 Test Drop")

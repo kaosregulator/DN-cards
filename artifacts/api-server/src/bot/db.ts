@@ -234,6 +234,58 @@ export async function unloadDefaultCards(actorGuildId: string): Promise<{ remove
   return deleteSetByName(DEFAULTS_SET_NAME, actorGuildId);
 }
 
+// Copy the home guild's largest set as a blank template for a new server.
+// Only the set metadata (name, description, rarity weights, showcase flag) is
+// copied; cards are NOT copied. This lets a new server start from your set
+// structure while keeping their cards and edits isolated to their guild.
+export async function copyHomeSetTemplate(
+  actorGuildId: string,
+): Promise<{ copiedSetName: string | null; skipped: boolean }> {
+  if (!HOME_GUILD_ID) {
+    throw new Error("HOME_GUILD_ID is not configured — cannot copy home set template.");
+  }
+  if (actorGuildId === HOME_GUILD_ID) {
+    return { copiedSetName: null, skipped: true };
+  }
+
+  // Find the home guild's largest set (by card count).
+  const rows = await db
+    .select({
+      id: setsTable.id,
+      name: setsTable.name,
+      description: setsTable.description,
+      rarityWeights: setsTable.rarityWeights,
+      awardsCompletion: setsTable.awardsCompletion,
+      cardCount: sql<number>`count(${cardSetMembershipsTable.cardId})::int`,
+    })
+    .from(setsTable)
+    .leftJoin(cardSetMembershipsTable, eq(cardSetMembershipsTable.setId, setsTable.id))
+    .where(eq(setsTable.guildId, HOME_GUILD_ID))
+    .groupBy(setsTable.id)
+    .orderBy(sql`count(${cardSetMembershipsTable.cardId}) DESC`)
+    .limit(1);
+
+  const homeSet = rows[0];
+  if (!homeSet) {
+    return { copiedSetName: null, skipped: true };
+  }
+
+  // Idempotent: don't overwrite if the actor already has this set.
+  const existing = await getSetByName(homeSet.name, actorGuildId);
+  if (existing) {
+    return { copiedSetName: null, skipped: true };
+  }
+
+  const newSet = await createSet(homeSet.name, homeSet.description ?? undefined, actorGuildId);
+  if (homeSet.rarityWeights) {
+    await setSetRarityWeights(newSet.id, homeSet.rarityWeights, actorGuildId);
+  }
+  if (homeSet.awardsCompletion) {
+    await setSetAwardsCompletion(newSet.id, true, actorGuildId);
+  }
+  return { copiedSetName: newSet.name, skipped: false };
+}
+
 // ── Card Sets ─────────────────────────────────────────────────────────────────
 // ⚠️ REPLIT SAFETY REVIEW — STRICT PER-GUILD SET FILTER ⚠️
 // Same strict model as cards: a set is only visible to the guild that owns it.
