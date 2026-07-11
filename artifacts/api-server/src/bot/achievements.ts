@@ -79,7 +79,7 @@ async function loadStats(guildId: string, userId: string, dailyStreak: number): 
     ));
 
   const legendaryTotal = await db.select({ id: cardsTable.id })
-    .from(cardsTable).where(eq(cardsTable.rarity, "legendary"));
+    .from(cardsTable).where(and(eq(cardsTable.rarity, "legendary"), eq(cardsTable.guildId, guildId)));
 
   const [currency] = await db.select({
     cardsBurned: userCurrencyTable.cardsBurned,
@@ -162,7 +162,7 @@ export async function checkAchievements(
   // We only generate keys for sets the user has actually completed, so the
   // hot path stays O(completed showcase sets) rather than O(all sets).
   if (stats.completedSetIds.length > 0) {
-    const showcase = await listShowcaseSets();
+    const showcase = await listShowcaseSets(guildId);
     const showcaseIds = new Set(showcase.map(s => s.id));
     for (const setId of stats.completedSetIds) {
       if (!showcaseIds.has(setId)) continue;

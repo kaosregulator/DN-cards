@@ -694,9 +694,11 @@ export async function getCompletedSetIds(guildId: string, userId: string): Promi
 }
 
 // P6: every set flagged with awardsCompletion = true (for dynamic showcase
-// achievement generation). Tiny table, no need to cache.
-export async function listShowcaseSets(): Promise<CardSet[]> {
-  return db.select().from(setsTable).where(eq(setsTable.awardsCompletion, true));
+// achievement generation) within the viewer's guild. Per-guild scoped so one
+// server's showcase sets don't leak into another's achievements.
+export async function listShowcaseSets(viewerGuildId?: string | null): Promise<CardSet[]> {
+  const filter = setVisibilityFilter(viewerGuildId);
+  return db.select().from(setsTable).where(and(eq(setsTable.awardsCompletion, true), filter));
 }
 
 export function invalidateActiveSetCardsCache(guildId?: string): void {
