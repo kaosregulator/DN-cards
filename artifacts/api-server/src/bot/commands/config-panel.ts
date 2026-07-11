@@ -244,7 +244,7 @@ export async function handleConfigButton(interaction: ButtonInteraction): Promis
           await interaction.followUp({ content: "❌ Pack not found.", flags: MessageFlags.Ephemeral });
           return;
         }
-        const allTypes = await getDistinctCardTypes();
+        const allTypes = await getDistinctCardTypes(guildId);
         if (allTypes.length === 0) {
           await interaction.editReply({
             content: `No card types exist yet in this server. Add a card with \`/addcard\` first, then you can filter **${target.name}** by type.`,

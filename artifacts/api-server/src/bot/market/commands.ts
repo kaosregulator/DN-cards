@@ -16,8 +16,8 @@ const RARITY_EMOJI: Record<string, string> = {
   common: "⚪", uncommon: "🟢", rare: "🔵", epic: "🟣", legendary: "🟡", mythic: "🔴",
 };
 
-async function cardMap() {
-  const cards = await getAllCardsCached();
+async function cardMap(guildId: string) {
+  const cards = await getAllCardsCached(guildId);
   return new Map(cards.map(c => [c.id, c]));
 }
 
@@ -96,7 +96,7 @@ async function handleBrowse(interaction: ChatInputCommandInteraction, guildId: s
     await interaction.editReply("🛒 The market is empty right now. List a card with `/market sell`.");
     return;
   }
-  const cards = await cardMap();
+  const cards = await cardMap(guildId);
   const sales = listings.filter(l => l.kind === "sale");
   const auctions = listings.filter(l => l.kind === "auction");
   const embed = new EmbedBuilder()
@@ -136,7 +136,7 @@ async function handleBuy(interaction: ChatInputCommandInteraction, guildId: stri
       : "❌ That listing can't be bought directly.";
     await interaction.editReply(msg); return;
   }
-  const cards = await cardMap();
+  const cards = await cardMap(guildId);
   await interaction.editReply(
     `✅ Bought **${cardLabel(cards.get(res.cardId), res.cardId)}** for 💠 **${price.toLocaleString()}**! ` +
     `It's in your \`/collection\`. Seller <@${res.sellerId}> received 💠 ${proceedsFor(price).toLocaleString()} (after ${MARKET_FEE_PCT}% fee).`,
@@ -158,7 +158,7 @@ async function handleBid(interaction: ChatInputCommandInteraction, guildId: stri
       : `❌ You need 💠 **${amount.toLocaleString()}** available to bid (it's held until you're outbid or the auction ends).`;
     await interaction.editReply(msg); return;
   }
-  const cards = await cardMap();
+  const cards = await cardMap(guildId);
   const l = res.listing;
   await interaction.editReply(
     `✅ Bid placed: 💠 **${amount.toLocaleString()}** on **${cardLabel(cards.get(l.cardId), l.cardId)}** \`#${l.id}\`. ` +
@@ -178,7 +178,7 @@ async function handleCancel(interaction: ChatInputCommandInteraction, guildId: s
       : "❌ Could not cancel that listing.";
     await interaction.editReply(msg); return;
   }
-  const cards = await cardMap();
+  const cards = await cardMap(guildId);
   let note = `✅ Listing \`#${id}\` cancelled — **${cardLabel(cards.get(res.cardId), res.cardId)}** is back in your collection.`;
   if (res.refundedBidder) note += ` The top bidder <@${res.refundedBidder}> was refunded.`;
   await interaction.editReply(note);
@@ -192,7 +192,7 @@ async function handleMine(interaction: ChatInputCommandInteraction, guildId: str
     getUserBids(guildId, userId),
     getOrCreateCurrency(guildId, userId),
   ]);
-  const cards = await cardMap();
+  const cards = await cardMap(guildId);
   const embed = new EmbedBuilder()
     .setTitle("📃 Your Marketplace Activity")
     .setColor(0x9b59b6)

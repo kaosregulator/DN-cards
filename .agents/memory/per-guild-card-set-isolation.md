@@ -11,6 +11,10 @@ The data model treats every Discord server as a separate tenant. `cards` and `se
 - `isVisibleTo(record, viewerGuildId)` returns true only when `record.guildId === viewerGuildId`.
 - `isOwnedBy(record, actorGuildId)` returns true only when `record.guildId === actorGuildId`.
 - `getCardByName`, `getSetByName`, `cardVisibilityFilter`, and `setVisibilityFilter` do **not** fall back to the home guild for non-home viewers.
+- **Fail-safe (not fail-open):** every card/set read that lacks a `guildId` now returns NOTHING instead of everything. `getAllCards()`/`getAllCardsCached()`/`getDistinctCardTypes()` with no guildId → `[]` + a loud `[ISOLATION]` `logger.error`. `cardVisibilityFilter()`/`setVisibilityFilter()` with no guildId → SQL `false` (matches no rows). This makes a forgotten guild argument a visible bug, never a silent cross-tenant leak.
+- **Intentional cross-guild reads** must call `getAllCardsAllGuilds()` explicitly (only the market sweeper, which resolves card names across all servers' due auctions, and the boot isolation self-check use it). A code search for that name flags every legitimate cross-guild read.
+- **Autocomplete caches are keyed per guild** (`cardCache`/`setCache` Maps in `commands/autocomplete.ts`); a shared cache would leak one server's roster into another's autocomplete.
+- **Boot canary:** `isolation-check.ts` `runIsolationSelfCheck()` runs once at `ClientReady` and logs `[ISOLATION]/[REPLIT]` if it finds orphaned (null-guild) cards, a home roster below `ISOLATION_HOME_CARD_FLOOR` (mass-delete signal), or collection rows pointing at another guild's card.
 
 **Why:** The previous model allowed home-guild cards/sets to be shared/visible to every guild. That let a new server edit cards that belonged to another set (or the home guild) as soon as the name matched, because lookups fell back to the home guild. The user wanted each new server to be a fresh start: own cards, own sets, no cross-guild access.
 

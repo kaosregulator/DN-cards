@@ -4,7 +4,7 @@
 
 import { resolveDueAuctions, proceedsFor, MARKET_FEE_PCT } from "./db.js";
 import { getBotClient } from "../client-holder.js";
-import { getAllCardsCached } from "../db.js";
+import { getAllCardsAllGuilds } from "../db.js";
 import { logger } from "../../lib/logger.js";
 
 const SWEEP_INTERVAL_MS = 60_000; // check every minute
@@ -28,7 +28,11 @@ async function sweepOnce(): Promise<void> {
 
     const client = getBotClient();
     if (!client) return;
-    const cards = await getAllCardsCached();
+    // Cross-guild by design: this background sweeper resolves card NAMES for
+    // every due auction across ALL servers at once, so it must read the global
+    // card table. This is a name lookup only — no card data crosses servers,
+    // and the auctions were already scoped per-guild when created. ⚠️ REPLIT ⚠️
+    const cards = await getAllCardsAllGuilds();
     const nameOf = (id: number) => cards.find(c => c.id === id)?.name ?? `Card #${id}`;
 
     for (const r of resolved) {

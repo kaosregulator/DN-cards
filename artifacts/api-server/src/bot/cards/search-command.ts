@@ -26,7 +26,7 @@ export async function handleSearch(interaction: ChatInputCommandInteraction): Pr
   }
 
   const [cards, collection] = await Promise.all([
-    getAllCards(),
+    getAllCards(guildId),
     getUserCollection(guildId, userId),
   ]);
   const ownedMap = new Map<number, number>();

@@ -379,7 +379,7 @@ async function buildCardsComponents(guildId: string): Promise<ActionRowBuilder<a
   );
 
   // Distinct card types present in the roster.
-  const cards = await getAllCards();
+  const cards = await getAllCards(guildId);
   const types = Array.from(new Set(cards.map(c => (c.cardType ?? "").toLowerCase()).filter(Boolean))).slice(0, 24);
   const selected = new Set((s.allowedTypes ?? []).map(t => t.toLowerCase()));
   const typeOptions = [

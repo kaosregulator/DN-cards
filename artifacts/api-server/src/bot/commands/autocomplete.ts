@@ -7,25 +7,33 @@ import { tierLabel, PACK_TIER_META, PACK_TIERS } from "./pack.js";
 const MAX_CHOICES = 25;
 
 // Cache the full card list briefly so we don't hammer the DB on every keystroke.
-let cardCache: { at: number; cards: Array<{ name: string; rarity: string }> } | null = null;
+// ⚠️ REPLIT SAFETY REVIEW ⚠️ Keyed PER GUILD — a shared cache would let one
+// server's roster autocomplete into another server. Callers MUST pass the
+// viewer's guildId; without one we return [] (never another server's cards).
+const cardCache = new Map<string, { at: number; cards: Array<{ name: string; rarity: string }> }>();
 const CACHE_MS = 15_000;
 
-async function getCardsCached(): Promise<Array<{ name: string; rarity: string }>> {
+async function getCardsCached(guildId: string | null | undefined): Promise<Array<{ name: string; rarity: string }>> {
+  if (!guildId) return [];
   const now = Date.now();
-  if (cardCache && now - cardCache.at < CACHE_MS) return cardCache.cards;
-  const cards = await getAllCards();
+  const cached = cardCache.get(guildId);
+  if (cached && now - cached.at < CACHE_MS) return cached.cards;
+  const cards = await getAllCards(guildId);
   const slim = cards.map(c => ({ name: c.name, rarity: c.rarity }));
-  cardCache = { at: now, cards: slim };
+  cardCache.set(guildId, { at: now, cards: slim });
   return slim;
 }
 
-let setCache: { at: number; sets: Awaited<ReturnType<typeof listSetsV2>> } | null = null;
+// Per-guild set cache — same isolation rule as the card cache above.
+const setCache = new Map<string, { at: number; sets: Awaited<ReturnType<typeof listSetsV2>> }>();
 const SET_CACHE_MS = 5_000;
-async function getSetsCached(): Promise<Awaited<ReturnType<typeof listSetsV2>>> {
+async function getSetsCached(guildId: string | null | undefined): Promise<Awaited<ReturnType<typeof listSetsV2>>> {
+  if (!guildId) return [];
   const now = Date.now();
-  if (setCache && now - setCache.at < SET_CACHE_MS) return setCache.sets;
-  const sets = await listSetsV2();
-  setCache = { at: now, sets };
+  const cached = setCache.get(guildId);
+  if (cached && now - cached.at < SET_CACHE_MS) return cached.sets;
+  const sets = await listSetsV2(guildId);
+  setCache.set(guildId, { at: now, sets });
   return sets;
 }
 
@@ -80,9 +88,9 @@ function formatCardChoice(c: { name: string; rarity: string }) {
   return { name: display, value: c.name.slice(0, 100) };
 }
 
-async function suggestCardNames(query: string, pool?: Array<{ name: string; rarity: string }>) {
+async function suggestCardNames(query: string, guildId: string | null | undefined, pool?: Array<{ name: string; rarity: string }>) {
   const q = query.toLowerCase().trim();
-  const cards = pool ?? await getCardsCached();
+  const cards = pool ?? await getCardsCached(guildId);
   const scored = cards
     .map(c => ({ c, s: scoreMatch(c.name, q) }))
     .filter(x => x.s < 3)
@@ -148,7 +156,7 @@ export async function handleAutocomplete(interaction: AutocompleteInteraction): 
       (cmd === "addcard" && focused.name === "set") ||
       (cmd === "createcardfrommttv" && focused.name === "set");
     if (isSetNameOption) {
-      const sets = await getSetsCached();
+      const sets = await getSetsCached(interaction.guildId);
       const q = query.toLowerCase().trim();
       const matches = sets
         .filter(s => !q || s.set.name.toLowerCase().includes(q))
@@ -180,7 +188,7 @@ export async function handleAutocomplete(interaction: AutocompleteInteraction): 
     if (cmd === "trade" && focused.name === "offer" && interaction.guild) {
       const owned = await getUserCollectionCached(interaction.guild.id, interaction.user.id);
       const pool = owned.map(o => ({ name: o.name, rarity: o.rarity }));
-      await interaction.respond(await suggestCardNames(query, pool));
+      await interaction.respond(await suggestCardNames(query, interaction.guild.id, pool));
       return;
     }
 
@@ -195,7 +203,7 @@ export async function handleAutocomplete(interaction: AutocompleteInteraction): 
           return;
         }
         const pool = targetOwned.map(o => ({ name: o.name, rarity: o.rarity }));
-        await interaction.respond(await suggestCardNames(query, pool));
+        await interaction.respond(await suggestCardNames(query, interaction.guild.id, pool));
         return;
       }
       // No user picked yet → fall through to full roster so the dropdown isn't empty
@@ -267,7 +275,7 @@ export async function handleAutocomplete(interaction: AutocompleteInteraction): 
     // ── /add_card and /create_card_from_mttv type — existing card types plus free entry ──
     if ((cmd === "addcard" || cmd === "createcardfrommttv") && focused.name === "type" && interaction.guild) {
       const q = query.toLowerCase().trim();
-      const types = await getDistinctCardTypes();
+      const types = await getDistinctCardTypes(interaction.guild.id);
       const options = types
         .filter(t => !q || t.toLowerCase().includes(q))
         .slice(0, MAX_CHOICES)
@@ -360,7 +368,8 @@ export async function handleAutocomplete(interaction: AutocompleteInteraction): 
 
     // ── All other card-name fields → full roster ────────────────────────────
     // /info, /drop, /give, /take_back, /trade.want, /wishlist add
-    await interaction.respond(await suggestCardNames(query));
+    // Scope to THIS guild's roster only (getCardsCached returns [] without one).
+    await interaction.respond(await suggestCardNames(query, interaction.guildId));
   } catch {
     try { await interaction.respond([]); } catch { /* ignore */ }
   }

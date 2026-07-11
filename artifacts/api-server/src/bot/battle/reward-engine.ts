@@ -232,7 +232,7 @@ export async function processBattleRewards(args: {
   try {
     const { grantCardBattleXp, starsForLevel } = await import("../cards/leveling.js");
     const { getAllCardsCached } = await import("../db.js");
-    const allCards = await getAllCardsCached();
+    const allCards = await getAllCardsCached(guildId);
     const cardOf = (id: number) => allCards.find(c => c.id === id);
     const outcomeFor = (p: ParticipantResult): "win" | "loss" | "draw" =>
       args.winnerId === null ? "draw" : args.winnerId === p.userId ? "win" : "loss";

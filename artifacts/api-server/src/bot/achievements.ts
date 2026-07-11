@@ -168,7 +168,7 @@ export async function checkAchievements(
       if (!showcaseIds.has(setId)) continue;
       const key = `set_complete:${setId}`;
       if (unlocked.has(key)) continue;
-      const set = await getSetById(setId);
+      const set = await getSetById(setId, guildId);
       if (!set) continue;
       const inserted = await db.insert(achievementsTable)
         .values({ guildId, userId, achievementKey: key })

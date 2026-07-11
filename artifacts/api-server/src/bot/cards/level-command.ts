@@ -37,7 +37,7 @@ export async function handleCardLevel(interaction: ChatInputCommandInteraction):
       await interaction.editReply("You haven't leveled any cards yet. Field a card in `/battle` to start earning card XP, then check `/level name:<card>`.");
       return;
     }
-    const cards = await getAllCardsCached();
+    const cards = await getAllCardsCached(guildId);
     const byId = new Map(cards.map(c => [c.id, c]));
     const lines = rows.map((r, i) => {
       const c = byId.get(r.cardId);

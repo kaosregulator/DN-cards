@@ -1,6 +1,7 @@
 import { Client, GatewayIntentBits, Partials, Events, REST, Routes, type Interaction } from "discord.js";
 import { logger } from "../lib/logger.js";
 import { burnCard, getOrCreateCurrency, getAllCards } from "./db.js";
+import { runIsolationSelfCheck } from "./isolation-check.js";
 import { handleEditCardSelect, handleEditCardModal } from "./commands/edit-card.js";
 import { handleEditImageButton, handleEditImageModal, handleEditImagePick } from "./commands/edit-image.js";
 import { handleTradeButton } from "./commands/trading.js";
@@ -149,6 +150,10 @@ export async function startBot() {
     // ("Load Defaults" button) or `/sets_admin load file:<.json>`. Keeps fresh
     // servers free to load only their own custom roster.
     await initAllGuilds(client);
+    // ⚠️ REPLIT SAFETY REVIEW ⚠️ Cross-server data-isolation canary. Read-only;
+    // shouts in the logs ([ISOLATION]/[REPLIT]) if it spots orphaned cards, a
+    // mass-deleted home roster, or cross-guild collection contamination.
+    void runIsolationSelfCheck();
     // Boot-time backfill is no longer needed; sets are managed via the
     // first-class sets + card_set_memberships tables.
     startBattleMaintenance();
@@ -497,7 +502,7 @@ export async function startBot() {
           }
 
           // Look up the card name for any public announcement.
-          const allCards = await getAllCards();
+          const allCards = await getAllCards(guildId);
           const card = allCards.find(c => c.id === cardId);
           const cardName = card?.name ?? "the card";
           const burnValue = card?.burnValue ?? 0;

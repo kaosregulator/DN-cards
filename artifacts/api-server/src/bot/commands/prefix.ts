@@ -113,7 +113,9 @@ export async function handlePrefixCommand(msg: Message, prefix: string): Promise
   }
 
   // ── !unloaddefaults / !loaddefaults — kept as aliases; prefer /sets_admin load/unload
-  // Both mutate global cards table — home guild only.
+  // Per-server: loadDefaultCards/unloadDefaultCards write ONLY to the current
+  // guild's cards + sets (guildId scoped). Any server's admin can seed its own
+  // copy of the 120 default cards; it never touches another server's roster.
   if (cmd === "unloaddefaults") {
     if (!await checkAdmin(msg)) return;
     const { removed } = await unloadDefaultCards(guildId);

@@ -11,7 +11,7 @@ import {
   customPacksTable, customPackCardsTable, userCustomPackWeekTable,
   calculatorMessagesTable,
 } from "@workspace/db";
-import { eq, and, or, sql, desc, inArray, isNull } from "drizzle-orm";
+import { eq, and, or, sql, desc, inArray, isNull, type SQL } from "drizzle-orm";
 import type { Card, CardEvent, CardSet, CalculatorMessage, CustomPack, CustomPackCard, CustomRarity, GuildSettings, RarityProfile, Trade } from "@workspace/db";
 import {
   DEFAULT_CARDS, SHINY_RATE, SHINY_MULTIPLIER, type Rarity,
@@ -235,8 +235,17 @@ export async function unloadDefaultCards(actorGuildId: string): Promise<{ remove
 }
 
 // ── Card Sets ─────────────────────────────────────────────────────────────────
-function setVisibilityFilter(viewerGuildId: string | null | undefined) {
-  if (!viewerGuildId) return undefined; // no guild context = unrestricted (internal use)
+// ⚠️ REPLIT SAFETY REVIEW — STRICT PER-GUILD SET FILTER ⚠️
+// Same strict model as cards: a set is only visible to the guild that owns it.
+// No guildId → `false` (match nothing) so a forgotten guild arg leaks ZERO
+// sets instead of every server's sets.
+function setVisibilityFilter(viewerGuildId: string | null | undefined): SQL {
+  if (!viewerGuildId) {
+    logger.error(
+      "[ISOLATION] setVisibilityFilter() called without a guildId — matching no rows to prevent a cross-server set leak.",
+    );
+    return sql`false`;
+  }
   return eq(setsTable.guildId, viewerGuildId);
 }
 
@@ -705,8 +714,8 @@ export async function getActiveSetSpawnPoolCachedSecondary(guildId: string): Pro
   let pool: ActiveSetSpawnPool = { cards: [], rarityWeights: null };
   if (settings.activeSetIdSecondary) {
     const [set, all] = await Promise.all([
-      getSetById(settings.activeSetIdSecondary),
-      getCardsInSet(settings.activeSetIdSecondary),
+      getSetById(settings.activeSetIdSecondary, guildId),
+      getCardsInSet(settings.activeSetIdSecondary, guildId),
     ]);
     pool = {
       cards: all.filter(c => c.droppable && !c.isArchived),
@@ -827,21 +836,59 @@ function cardsCacheKey(viewerGuildId: string | null): string {
   return viewerGuildId ?? "__public__";
 }
 
-function cardVisibilityFilter(viewerGuildId: string | null | undefined) {
-  if (!viewerGuildId) return undefined; // no guild context = unrestricted (internal use)
+// ⚠️ REPLIT SAFETY REVIEW — STRICT PER-GUILD CARD FILTER ⚠️
+// Builds the SQL predicate that scopes a card query to a single server. This is
+// the strict model: a card is only ever visible to the guild that owns it.
+//   • with a viewerGuildId → cards.guild_id = viewerGuildId
+//   • WITHOUT a viewerGuildId → `false` (match nothing) so a query that forgot
+//     to pass a guild leaks ZERO rows instead of every server's cards.
+// Used by the set-membership reads (getCardsInSet / getUnassignedCards) that
+// join cards to card_set_memberships and still need a guild predicate.
+function cardVisibilityFilter(viewerGuildId?: string | null): SQL {
+  if (!viewerGuildId) {
+    logger.error(
+      "[ISOLATION] cardVisibilityFilter() called without a guildId — matching no rows to prevent a cross-server card leak.",
+    );
+    return sql`false`;
+  }
   return eq(cardsTable.guildId, viewerGuildId);
 }
 
+// ⚠️ REPLIT SAFETY REVIEW — CROSS-SERVER CARD ISOLATION ⚠️
+// Cards are per-server (cards.guild_id). A card read WITHOUT a viewer guildId
+// used to return EVERY server's cards — a cross-tenant leak (Server B seeing
+// Server A's roster, spawning it, autocompleting it). To make that class of bug
+// impossible, getAllCards now FAILS SAFE: no guildId → return [] and shout in
+// the logs, instead of silently leaking. Intentional cross-guild maintenance
+// (e.g. the market sweeper resolving card names for every due auction) must use
+// getAllCardsAllGuilds() explicitly.
 export async function getAllCards(viewerGuildId?: string | null | undefined): Promise<Card[]> {
-  const filter = cardVisibilityFilter(viewerGuildId);
-  if (!filter) return db.select().from(cardsTable);
-  return db.select().from(cardsTable).where(filter);
+  if (!viewerGuildId) {
+    logger.error(
+      "[ISOLATION] getAllCards() called without a guildId — returning [] to prevent a cross-server card leak. " +
+      "Fix the caller to pass the viewer's guildId, or use getAllCardsAllGuilds() for intentional cross-guild maintenance.",
+    );
+    return [];
+  }
+  return db.select().from(cardsTable).where(eq(cardsTable.guildId, viewerGuildId));
+}
+
+// Explicit, INTERNAL-ONLY cross-guild read. Never expose the result to a player
+// or a per-guild flow — only for global maintenance (market sweeper, isolation
+// self-check). Kept deliberately verbose so a code search flags every use.
+export async function getAllCardsAllGuilds(): Promise<Card[]> {
+  return db.select().from(cardsTable);
 }
 
 // Cached variant for the hot path (spawn embeds, catch embeds, decision buttons).
-// 5s TTL keeps it fresh while eliminating repeated DB round-trips.
+// 5s TTL keeps it fresh while eliminating repeated DB round-trips. Same fail-safe
+// rule: no guildId → [] (never a cross-server leak).
 export async function getAllCardsCached(viewerGuildId?: string | null | undefined): Promise<Card[]> {
-  const key = cardsCacheKey(viewerGuildId ?? null);
+  if (!viewerGuildId) {
+    logger.error("[ISOLATION] getAllCardsCached() called without a guildId — returning [] to prevent a cross-server card leak.");
+    return [];
+  }
+  const key = cardsCacheKey(viewerGuildId);
   const cached = _cardsCache.get(key);
   if (cached && cached.expiresAt > Date.now()) return cached.value;
   const cards = await getAllCards(viewerGuildId);
@@ -938,10 +985,18 @@ export async function pickRandomCard(
   setRarityWeights?: Record<string, number> | null,
 ): Promise<Card | undefined> {
   // When the caller passes `availableCards`, trust it as-is (already filtered
-  // — e.g. by guild active set). Otherwise fall back to the global droppable
-  // pool. Spawn-manager always provides `availableCards` so Option B (no
-  // active set → no spawns) is enforced before we even get here.
-  let cards = availableCards ?? (await getAllCards()).filter(c => c.droppable && !c.isArchived);
+  // — e.g. by guild active set). Spawn-manager and pack-grant ALWAYS provide
+  // `availableCards` (already scoped to the actor's guild), so this fallback
+  // should never fire in practice. If it ever does, we must NOT reach for a
+  // global pool — that would spawn one server's cards into another. Fail safe
+  // to an empty pool and shout in the logs. ⚠️ REPLIT SAFETY REVIEW ⚠️
+  if (!availableCards) {
+    logger.error(
+      "[ISOLATION] pickRandomCard() called without availableCards — refusing to fall back to a cross-guild pool. " +
+      "Returning no card. The caller must pass a guild-scoped card list.",
+    );
+  }
+  let cards = availableCards ?? [];
   // Respect each custom tier's `droppable` flag — a card assigned to a
   // non-droppable custom tier is excluded from random spawns even if its own
   // column says droppable=true.
@@ -1904,23 +1959,32 @@ export async function unassignCardCustomRarity(guildId: string, cardId: number):
 }
 
 // ── Distinct card types (for /addcard and /editcard autocomplete) ─────────────
-let _distinctTypesCache: { at: number; types: string[] } | null = null;
+// Per-guild: types are drawn ONLY from the viewer's own cards so one server's
+// custom card types never bleed into another server's autocomplete. ⚠️ REPLIT ⚠️
+const _distinctTypesCache = new Map<string, { at: number; types: string[] }>();
 const DISTINCT_TYPES_CACHE_MS = 30_000;
 
-export async function getDistinctCardTypes(): Promise<string[]> {
-  const now = Date.now();
-  if (_distinctTypesCache && now - _distinctTypesCache.at < DISTINCT_TYPES_CACHE_MS) {
-    return _distinctTypesCache.types;
+export async function getDistinctCardTypes(viewerGuildId?: string | null): Promise<string[]> {
+  if (!viewerGuildId) {
+    logger.error("[ISOLATION] getDistinctCardTypes() called without a guildId — returning [] to prevent a cross-server type leak.");
+    return [];
   }
-  const rows = await db.selectDistinct({ cardType: cardsTable.cardType }).from(cardsTable);
+  const now = Date.now();
+  const cached = _distinctTypesCache.get(viewerGuildId);
+  if (cached && now - cached.at < DISTINCT_TYPES_CACHE_MS) {
+    return cached.types;
+  }
+  const rows = await db.selectDistinct({ cardType: cardsTable.cardType })
+    .from(cardsTable)
+    .where(eq(cardsTable.guildId, viewerGuildId));
   const types = rows.map(r => r.cardType).filter(Boolean).sort();
-  _distinctTypesCache = { at: now, types };
+  _distinctTypesCache.set(viewerGuildId, { at: now, types });
   return types;
 }
 
 // Invalidate when a card's type changes so autocomplete reflects it quickly.
 export function invalidateDistinctTypesCache(): void {
-  _distinctTypesCache = null;
+  _distinctTypesCache.clear();
 }
 
 // ── Custom Packs CRUD ─────────────────────────────────────────────────────────
