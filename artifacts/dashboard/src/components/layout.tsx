@@ -6,7 +6,9 @@ export function Nav() {
   const { user, isOwner, logout } = useAuth();
 
   const links: { href: string; label: string; show: boolean }[] = [
-    { href: "/", label: "Card Vault", show: true },
+    { href: "/", label: "Home", show: true },
+    { href: "/vault", label: "Card Vault", show: true },
+    { href: "/play", label: "Play", show: true },
     { href: "/leaderboard", label: "Leaderboard", show: true },
     { href: "/events", label: "Events", show: true },
     { href: "/news", label: "News", show: true },

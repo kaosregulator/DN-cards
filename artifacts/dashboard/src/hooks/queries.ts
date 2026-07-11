@@ -134,7 +134,21 @@ export interface GuildSummary {
   totalShardsEarned: number;
 }
 
-// ── Public roster ────────────────────────────────────────────────────────────
+// ── Site presentation config (read-only) ─────────────────────────────────────
+export interface SiteConfig {
+  homeGuildId: string | null;
+  presentation: unknown | null;
+}
+
+export function useSiteConfig() {
+  return useQuery({
+    queryKey: ["site", "config"],
+    queryFn: () => apiGet<SiteConfig>("/api/site/config"),
+    staleTime: 1000 * 60 * 10,
+  });
+}
+
+// ── Public card catalogue (the Card Vault) ───────────────────────────────────
 export function useCards() {
   return useQuery({
     queryKey: ["cards"],

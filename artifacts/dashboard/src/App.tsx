@@ -6,7 +6,9 @@ import { Layout } from "@/components/layout";
 import { CardViewerProvider } from "@/features/viewer/viewer-context";
 import { CardViewer } from "@/features/viewer/CardViewer";
 
+import Home from "@/pages/home";
 import Vault from "@/pages/vault";
+import Play from "@/pages/play";
 import Leaderboard from "@/pages/leaderboard";
 import Profile from "@/pages/profile";
 import Admin from "@/pages/admin";
@@ -33,8 +35,9 @@ const queryClient = new QueryClient({
 function Router() {
   return (
     <Switch>
-      <Route path="/" component={Vault} />
+      <Route path="/" component={Home} />
       <Route path="/vault" component={Vault} />
+      <Route path="/play" component={Play} />
       <Route path="/leaderboard" component={Leaderboard} />
       <Route path="/events" component={Events} />
       <Route path="/news" component={News} />
