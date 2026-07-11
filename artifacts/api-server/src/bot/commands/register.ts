@@ -679,9 +679,10 @@ function buildLegacyCommands() {
           .addChoices({ name: "win", value: "win" }, { name: "lose", value: "lose" }, { name: "suspense", value: "suspense" },
             { name: "jackpot", value: "jackpot" }, { name: "roulette", value: "roulette" }, { name: "blackjack", value: "blackjack" }, { name: "event", value: "event" }))
         .addStringOption(o => o.setName("url").setDescription("Direct image/GIF URL — empty to clear")))
-      .addSubcommand(sc => sc.setName("avatar").setDescription("Set Bob's avatar image per form (upload to Discord, copy link)")
+      .addSubcommand(sc => sc.setName("avatar").setDescription("Set Bob's avatar image per form (upload or paste a direct link)")
         .addStringOption(o => o.setName("form").setDescription("Which Bob").setRequired(true)
           .addChoices({ name: "🟡 Normal Bob", value: "normal" }, { name: "🔵 Blue Bob", value: "blue" }, { name: "🙃 Upside-Down Bob", value: "upside" }))
+        .addAttachmentOption(o => o.setName("image").setDescription("Upload an image/GIF file directly"))
         .addStringOption(o => o.setName("url").setDescription("Direct image URL (.png/.jpg/.gif/.webp) — leave empty to clear")))),
 
     // ── Echo-Whisper (encrypted messaging addon) ──────────────────────────────

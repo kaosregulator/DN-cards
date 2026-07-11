@@ -7,17 +7,19 @@ import {
 } from "discord.js";
 import { FORMS, formTitle, pick, QUIPS, type BobForm } from "./persona.js";
 import { COINS_EMOJI, type RewardResult } from "./db.js";
+import { toAbsoluteImageUrl } from "../image-url.js";
 
 export const EPHEMERAL = { flags: MessageFlags.Ephemeral } as const;
 
 export function sleep(ms: number): Promise<void> { return new Promise(r => setTimeout(r, ms)); }
 
 export function bobEmbed(form: BobForm, title: string, description: string, avatarUrl?: string | null): EmbedBuilder {
+  const absoluteAvatarUrl = toAbsoluteImageUrl(avatarUrl);
   const e = new EmbedBuilder()
     .setColor(FORMS[form].color)
-    .setTitle(formTitle(form, title, avatarUrl))
+    .setTitle(formTitle(form, title, absoluteAvatarUrl))
     .setDescription(description);
-  if (avatarUrl) e.setThumbnail(avatarUrl);
+  if (absoluteAvatarUrl) e.setThumbnail(absoluteAvatarUrl);
   return e;
 }
 

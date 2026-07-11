@@ -5,6 +5,8 @@ import { EmbedBuilder, MessageFlags, PermissionFlagsBits, type ChatInputCommandI
 import { getBobSettings, updateBobSettings } from "./db.js";
 import { GAME_KEYS } from "./games.js";
 import { triggerBobEvent } from "./events.js";
+import { persistBotImage } from "../commands/edit-card.js";
+import { toAbsoluteImageUrl } from "../image-url.js";
 import type { BobSettings } from "@workspace/db";
 
 const EPHEMERAL = { flags: MessageFlags.Ephemeral } as const;
@@ -116,13 +118,20 @@ export async function handleBobAdmin(interaction: ChatInputCommandInteraction): 
     case "avatar": {
       const form = interaction.options.getString("form", true);
       const url = interaction.options.getString("url"); // empty/omitted clears
-      if (url && !/^https?:\/\/\S+\.(png|jpe?g|gif|webp)(\?\S*)?$/i.test(url)) {
-        await interaction.editReply("❌ That doesn't look like a direct image URL (must end in .png/.jpg/.gif/.webp). Upload the image to Discord, right-click → Copy Link.");
-        return;
+      const image = interaction.options.getAttachment("image");
+      let finalUrl: string | null = null;
+      if (image) {
+        finalUrl = await persistBotImage(image.url, image.contentType ?? undefined);
+      } else if (url) {
+        if (!/^https?:\/\/\S+\.(png|jpe?g|gif|webp)(\?\S*)?$/i.test(url)) {
+          await interaction.editReply("❌ That doesn't look like a direct image URL (must end in .png/.jpg/.gif/.webp). Upload the image to Discord, right-click → Copy Link, or use the image option.");
+          return;
+        }
+        finalUrl = url;
       }
       const col = form === "blue" ? "avatarBlue" : form === "upside" ? "avatarUpside" : "avatarNormal";
-      await updateBobSettings(guildId, { [col]: url || null } as Partial<BobSettings>);
-      await interaction.editReply(url ? `✅ ${form} Bob avatar set. It'll show as the thumbnail on his embeds.` : `✅ Cleared the ${form} Bob avatar (back to the emoji face).`);
+      await updateBobSettings(guildId, { [col]: finalUrl } as Partial<BobSettings>);
+      await interaction.editReply(finalUrl ? `✅ ${form} Bob avatar set. It'll show as the thumbnail on his embeds.` : `✅ Cleared the ${form} Bob avatar (back to the emoji face).`);
       return;
     }
 
