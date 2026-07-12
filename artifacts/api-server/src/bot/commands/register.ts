@@ -94,6 +94,8 @@ function buildLegacyCommands() {
 
     cmd("help", "Show player commands", s => s),
 
+    cmd("user-hub", "Your profile, collection & stats", s => s),
+
     adminCmd("adminhelp", "Show admin & setup commands", s => s),
 
     cmd("daily", "Claim your daily DN Shards reward", s => s),
@@ -722,6 +724,7 @@ export const COMMAND_RENAMES: Record<string, string> = {
   takeback: "take_back",
   massdrop: "mass_drop",
   adminhub: "admin_hub",
+  user_hub: "user-hub",
   adminhelp: "admin_help",
   welcomeadmin: "welcome_admin",
   battleadmin: "battle_admin",
@@ -775,7 +778,7 @@ export const USER_HUB_COMMANDS = new Set([
   "collection", "rank", "info", "list", "catalog", "top", "burn", "shards",
   "trade", "gift", "trades", "tradehistory", "accept", "decline", "welcome",
   "battles_welcome",
-  "help", "daily", "quests", "pack", "packstats", "tradein", "achievements",
+  "help", "user_hub", "daily", "quests", "pack", "packstats", "tradein", "achievements",
   "level", "frame", "lock", "search", "collector", "calendar", "wishlist",
   "sets", "rep", "thanks", "calc", "valuehelp", "valuelist", "info_mttv",
   "funfact",

@@ -239,6 +239,9 @@ export async function startBot() {
       if (interaction.isStringSelectMenu()) {
         if (interaction.customId.startsWith("help:")) {
           await handleHelpHubComponent(interaction);
+        } else if (interaction.customId.startsWith("user-hub:")) {
+          const { handleUserHubComponent } = await import("./commands/user-hub.js");
+          await handleUserHubComponent(interaction);
         } else if (isBobComponent(interaction.customId)) {
           await handleBobSelect(interaction);
         } else if (interaction.customId.startsWith("battle:")) {
