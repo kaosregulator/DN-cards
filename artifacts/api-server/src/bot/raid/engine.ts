@@ -6,6 +6,7 @@
 import type { BattleSettings, RaidBoss } from "@workspace/db";
 import type { Combatant, BattleEvent, BattleStats, MoveType, Rarity } from "../battle/types.js";
 import { getScaledStats } from "../battle/stat-engine.js";
+import { inferMoveset } from "../battle/movesets.js";
 import { resolveMove, startOfTurn } from "../battle/combat-engine.js";
 import { rarityRank } from "../battle/config-engine.js";
 import type { OwnedBattleCard } from "../battle/db.js";
@@ -83,6 +84,7 @@ export function buildPlayerCombatant(
     userId: member.userId, displayName: member.displayName, isAi: false, side: 0,
     cardId: member.card.id, cardName: member.card.name, cardRarity: battleRarity,
     cardType: member.card.cardType, cardImageUrl: toAbsoluteImageUrl(member.card.imageUrl),
+    moveset: member.card.config?.moveset ?? inferMoveset(member.card.cardType, battleRarity),
     stats, hp: stats.maxHealth, shield: 0, energy: 40, ultimate: 0, status: [],
     specialCardId: null, specialCardName: null, specialEffect: null,
     specialCooldownMax: 3, specialCooldownRemaining: 0,

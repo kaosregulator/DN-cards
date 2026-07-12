@@ -120,6 +120,10 @@ export const battleCardConfigTable = pgTable("battle_card_config", {
   dodge: integer("dodge"),
   energyMax: integer("energy_max"),
   ultimateMax: integer("ultimate_max"),
+  // Signature moveset key (see movesets engine) driving this card's "Special"
+  // move. Null = auto-assign from the card type. Battle-only; never touches the
+  // core card.
+  moveset: text("moveset"),
   // If set, this card can be selected as a SPECIAL support card and applies the
   // named effect (see special-cards engine): heal, damage_boost, shield, poison,
   // burn, freeze, reflect, double_attack, energy_boost, buff, nuke.

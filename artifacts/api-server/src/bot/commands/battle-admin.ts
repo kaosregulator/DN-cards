@@ -23,6 +23,7 @@ import { getScaledStats } from "../battle/stat-engine.js";
 import { db, battleProfilesTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { SPECIAL_EFFECT_KEYS, getEffectDef, inferSpecialEffect } from "../battle/special-cards.js";
+import { getMoveset, inferMoveset } from "../battle/movesets.js";
 import { RARITY_LABELS, RARITY_EMOJI } from "../cards-data.js";
 import type { Rarity } from "../cards-data.js";
 import { toAbsoluteImageUrl } from "../image-url.js";
@@ -522,6 +523,7 @@ async function buildCardEditorPanel(
   const ov = (label: string, val: number, overridden: boolean) => `${label}: **${val}**${overridden ? " ✏️" : ""}`;
   const effectKey = cfg?.specialEffect ?? inferSpecialEffect(card.cardType, battleRarity);
   const effectDef = getEffectDef(effectKey);
+  const moveset = getMoveset(cfg?.moveset ?? inferMoveset(card.cardType, battleRarity));
 
   const embed = new EmbedBuilder()
     .setColor(0x5865f2)
@@ -534,6 +536,7 @@ async function buildCardEditorPanel(
       { name: "Battle Rarity", value: `${RARITY_EMOJI[battleRarity]} ${RARITY_LABELS[battleRarity] ?? battleRarity}${cfg?.rarity ? " ✏️" : " (auto)"}`, inline: true },
       { name: "Usable", value: (cfg?.enabled ?? true) ? "✅ Yes" : "🚫 Disabled", inline: true },
       { name: "As Special Card", value: effectDef ? `${effectDef.emoji} ${effectDef.label}${cfg?.specialEffect ? " ✏️" : " (auto)"}` : "—", inline: true },
+      { name: "Signature Move", value: moveset ? `${moveset.emoji} ${moveset.name}${cfg?.moveset ? " ✏️" : " (auto)"}` : "—", inline: true },
       { name: "Stats", value:
         `${ov("❤️ HP", derived.maxHealth, cfg?.health != null)} · ${ov("⚔️ Atk", derived.attack, cfg?.attack != null)} · ${ov("🛡️ Def", derived.defense, cfg?.defense != null)}\n` +
         `${ov("💨 Spd", derived.speed, cfg?.speed != null)} · ${ov("💥 Crit%", derived.critChance, cfg?.critChance != null)} · 🍀 Luck ${derived.luck}`,

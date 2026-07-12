@@ -29,7 +29,7 @@ export interface BattleStats {
 }
 
 export type StatusKind =
-  | "poison" | "burn" | "freeze" | "shield" | "reflect" | "buff" | "regen" | "weaken";
+  | "poison" | "burn" | "freeze" | "shield" | "reflect" | "buff" | "regen" | "weaken" | "stealth";
 
 export interface StatusEffect {
   kind: StatusKind;
@@ -51,6 +51,9 @@ export interface Combatant {
   cardRarity: Rarity;
   cardType: string;
   cardImageUrl: string | null;
+  // Signature moveset key (see movesets engine) driving the "Special" move.
+  // Optional so non-battle Combatant constructions stay valid; null → generic.
+  moveset?: string | null;
 
   stats: BattleStats;
   hp: number;

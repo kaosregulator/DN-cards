@@ -25,6 +25,7 @@ import type { Combatant, MoveType, AiDifficulty, Rarity } from "./types.js";
 import { AI_DIFFICULTIES } from "./types.js";
 import { getBattleSettings, rarityAllowed, typeAllowed } from "./config-engine.js";
 import { getScaledStats, powerRating } from "./stat-engine.js";
+import { inferMoveset } from "./movesets.js";
 import { inferSpecialEffect, getEffectDef } from "./special-cards.js";
 import { resolveMove, startOfTurn, availableMoves } from "./combat-engine.js";
 import { chooseAiMove, pickAiCardIndex, AI_LABELS } from "./ai-engine.js";
@@ -156,6 +157,7 @@ function buildCombatant(
   const battleRarity = (card.config?.rarity as Rarity) || (card.rarity as Rarity);
   const level = levelOverride ?? card.level;
   const stats = getScaledStats(cardish(card), card.config, rt.settings, level, battleRarity);
+  const moveset = card.config?.moveset ?? inferMoveset(card.cardType, battleRarity);
   let specialEffect: string | null = null;
   let specialCooldownMax = 3;
   if (rt.settings.specialCardsEnabled && special) {
@@ -166,6 +168,7 @@ function buildCombatant(
     userId, displayName: name, isAi, aiDifficulty, side,
     cardId: card.id, cardName: card.name, cardRarity: battleRarity,
     cardType: card.cardType, cardImageUrl: toAbsoluteImageUrl(card.imageUrl),
+    moveset,
     stats,
     hp: stats.maxHealth, shield: 0, energy: 40, ultimate: 0, status: [],
     specialCardId: special?.id ?? null,
