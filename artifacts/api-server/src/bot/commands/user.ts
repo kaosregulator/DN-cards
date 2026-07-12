@@ -2,7 +2,7 @@ import type { ChatInputCommandInteraction } from "discord.js";
 import { EmbedBuilder, MessageFlags } from "discord.js";
 
 // Commands whose results are personal/spammy and should only be seen by the user.
-const EPHEMERAL_COMMANDS = new Set(["burn", "shards", "trades", "tradehistory", "help", "user_hub", "daily", "quests", "achievements", "pack", "packstats", "wishlist", "gift", "tradein", "sets", "level", "frame", "lock", "search", "collector", "calendar"]);
+const EPHEMERAL_COMMANDS = new Set(["burn", "shards", "trades", "tradehistory", "help", "user_hub", "daily", "quests", "achievements", "pack", "packstats", "wishlist", "gift", "tradein", "sets", "level", "frame", "lock", "search", "collector", "calendar", "collection", "catalog", "list"]);
 import {
   getUserCollection, getAllCards, getLeaderboard, getTopPackOpeners,
   getOrCreateCurrency, burnCard, getCardByName, getUserCardCount, getUserOwnedCount,
