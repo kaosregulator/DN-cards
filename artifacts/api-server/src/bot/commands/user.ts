@@ -27,6 +27,7 @@ import { handlePack, handlePackStats, tierLabel } from "./pack.js";
 import { handleTradein } from "./tradein.js";
 import { handleWishlist } from "./wishlist.js";
 import { handleWelcome } from "./welcome.js";
+import { handleBattlesWelcome } from "./battle.js";
 import { checkAchievements, formatUnlockLine } from "../achievements.js";
 import { runPaginator, type PaginatorView } from "../components/paginator.js";
 import { chunkLines } from "../components/field-chunker.js";
@@ -957,6 +958,7 @@ export async function handleUserCommand(
   // /welcome posts publicly (no flags) so it can be used as a server welcome
   // message — we still deferReply'd above without ephemeral flag.
   if (sub === "welcome") { await handleWelcome(interaction); return; }
+  if (sub === "battles_welcome") { await handleBattlesWelcome(interaction); return; }
 
   // ── /sets (read-only set browser) ────────────────────────────────────────
   if (sub === "sets") {

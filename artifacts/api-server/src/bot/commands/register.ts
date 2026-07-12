@@ -87,6 +87,7 @@ function buildLegacyCommands() {
       .addIntegerOption(o => o.setName("id").setDescription("Trade ID from /trades").setRequired(true).setMinValue(1))),
 
     cmd("welcome", "Welcome — game intro, quick start & commands", s => s),
+    cmd("battles_welcome", "Welcome guide to DN Cards battles", s => s),
 
     adminCmd("setup", "Interactive server setup wizard — channels, spawns, rates, toggles", s => s),
 
@@ -783,6 +784,7 @@ export function buildCommands() {
 export const USER_HUB_COMMANDS = new Set([
   "collection", "rank", "info", "list", "catalog", "top", "burn", "shards",
   "trade", "gift", "trades", "tradehistory", "accept", "decline", "welcome",
+  "battles_welcome",
   "help", "daily", "quests", "pack", "packstats", "tradein", "achievements",
   "level", "frame", "lock", "search", "collector", "calendar", "wishlist",
   "sets", "rep", "thanks", "calc", "valuehelp", "valuelist", "info_mttv",

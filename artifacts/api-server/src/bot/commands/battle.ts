@@ -27,6 +27,24 @@ import { BATTLE_ACHIEVEMENTS, formatAchievementLine } from "../battle/achievemen
 import { getOrCreateDaily } from "../battle/daily-engine.js";
 import { bar } from "../battle/embeds.js";
 
+export async function handleBattlesWelcome(interaction: ChatInputCommandInteraction): Promise<void> {
+  const embed = new EmbedBuilder()
+    .setColor(0xed4245)
+    .setTitle("⚔️ Welcome to DN Cards Battles")
+    .setDescription("A quick guide to fighting with your cards. Battles are turn-based and played in one message — pick a card, choose moves, and win rewards.")
+    .addFields(
+      { name: "🎴 How to start", value: "Use **/battle fight** to battle the AI.\nUse **/battle fight @user** to challenge a real player.\nUse **/battle profile** to see your stats and **/battle leaderboard** to see rankings.", inline: false },
+      { name: "⚔️ Picking your fighter", value: "Press **Prepare** to choose a card from your collection. Higher level = stronger stats. You can also pick a second owned card as a **Special Support Card** that gives a bonus effect.", inline: false },
+      { name: "🕹️ Moves", value: "**Attack** — basic strike.\n**Special** — your card's signature move (costs energy).\n**Defend** — raise a shield and reduce incoming damage.\n**Charge** — refill energy and boost your next attack.\n**Special Card** — use your support card's effect (has a cooldown).\n**Ultimate** — a powerful guaranteed hit once your meter is full.", inline: false },
+      { name: "🏆 Rewards", value: "Win battles to earn **DN Shards** 💠 and **XP** ✨. Winning streaks give bonus shards. Every fight also earns rank points in PvP battles. There is a daily reward cap, so you can't farm forever.", inline: false },
+      { name: "🤖 AI Arenas", value: "Fighting the AI lets you pick an arena. Higher arenas have tougher AI and bigger rewards. Picking an arena too hard for your card level is a fast way to lose — level up first!", inline: false },
+      { name: "💰 Staking (PvP)", value: "If staking is enabled, both players can stake their battle card. The winner takes both cards. Only stake what you're willing to lose!", inline: false },
+    )
+    .setFooter({ text: "Tip: level up your cards with /daily and card battles to climb arenas faster!" });
+
+  await interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral }).catch(() => {});
+}
+
 export async function handleBattleCommand(
   interaction: ChatInputCommandInteraction, sub: string,
 ): Promise<void> {
