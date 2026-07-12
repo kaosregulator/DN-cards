@@ -7,7 +7,7 @@
 // straight from the existing project palette (cards-data).
 
 import { EmbedBuilder } from "discord.js";
-import { RARITY_COLORS, RARITY_EMOJI, RARITY_LABELS } from "../cards-data.js";
+import { rarityLabel, rarityEmoji, rarityColor, type RarityDisplayMap } from "../cards-data.js";
 import type { Combatant, Rarity } from "./types.js";
 
 export interface BattleView {
@@ -18,6 +18,7 @@ export interface BattleView {
   staked: boolean;
   log: string[];
   turnEndsAt?: number;   // epoch ms for the turn timer countdown
+  displayMap: RarityDisplayMap | null;   // source-of-truth rarity display overrides
 }
 
 const BATTLE_COLOR = 0xed4245;
@@ -46,8 +47,8 @@ function pct(value: number, max: number): number {
   return max <= 0 ? 0 : Math.round(Math.max(0, Math.min(1, value / max)) * 100);
 }
 
-function rarityColorOf(r: Rarity): number {
-  return RARITY_COLORS[r] ?? BATTLE_COLOR;
+function rarityColorOf(r: Rarity, displayMap: RarityDisplayMap | null): number {
+  return rarityColor(r, null, displayMap) ?? BATTLE_COLOR;
 }
 
 function statusLine(c: Combatant): string {
@@ -58,9 +59,9 @@ function statusLine(c: Combatant): string {
 }
 
 // A combatant's stat block for the live battle embed.
-export function combatantField(c: Combatant, active: boolean): { name: string; value: string; inline: boolean } {
-  const rEmoji = RARITY_EMOJI[c.cardRarity] ?? "•";
-  const rLabel = RARITY_LABELS[c.cardRarity] ?? c.cardRarity;
+export function combatantField(c: Combatant, active: boolean, displayMap: RarityDisplayMap | null): { name: string; value: string; inline: boolean } {
+  const rEmoji = rarityEmoji(c.cardRarity, null, displayMap) ?? "•";
+  const rLabel = rarityLabel(c.cardRarity, null, displayMap) ?? c.cardRarity;
   const turnMark = active ? "🔹 " : "";
   const name = `${turnMark}${rEmoji} ${c.cardName}`;
   const lines = [
@@ -89,11 +90,11 @@ function who(c: Combatant): string {
 export function buildCombatEmbed(v: BattleView, opts?: { currentMove?: string }): EmbedBuilder {
   const active = v.currentSide === 0 ? v.a : v.b;
   const embed = new EmbedBuilder()
-    .setColor(rarityColorOf(active.cardRarity))
+    .setColor(rarityColorOf(active.cardRarity, v.displayMap))
     .setTitle(`⚔️ Card Battle — Turn ${v.turnNumber}${v.staked ? " · 💰 Staked" : ""}`)
     .addFields(
-      combatantField(v.a, v.currentSide === 0),
-      combatantField(v.b, v.currentSide === 1),
+      combatantField(v.a, v.currentSide === 0, v.displayMap),
+      combatantField(v.b, v.currentSide === 1, v.displayMap),
     );
 
   if (active.cardImageUrl) embed.setThumbnail(active.cardImageUrl);
@@ -120,17 +121,17 @@ export function buildIntroFrame(v: BattleView, frame: number): EmbedBuilder {
       break;
     case 1:
       e.setTitle("🔥 A challenger enters!")
-        .setDescription(`${RARITY_EMOJI[v.a.cardRarity]} **${v.a.cardName}** steps onto the battlefield for ${who(v.a)}!`);
+        .setDescription(`${rarityEmoji(v.a.cardRarity, null, v.displayMap)} **${v.a.cardName}** steps onto the battlefield for ${who(v.a)}!`);
       if (v.a.cardImageUrl) e.setThumbnail(v.a.cardImageUrl);
       break;
     case 2:
       e.setTitle("💥 The opponent answers!")
-        .setDescription(`${RARITY_EMOJI[v.b.cardRarity]} **${v.b.cardName}** rises to fight for ${who(v.b)}!`);
+        .setDescription(`${rarityEmoji(v.b.cardRarity, null, v.displayMap)} **${v.b.cardName}** rises to fight for ${who(v.b)}!`);
       if (v.b.cardImageUrl) e.setThumbnail(v.b.cardImageUrl);
       break;
     default:
       e.setTitle("🪙 Coin toss decides who strikes first…")
-        .setDescription(`${RARITY_EMOJI[v.a.cardRarity]} **${v.a.cardName}**  ⚔️  **${v.b.cardName}** ${RARITY_EMOJI[v.b.cardRarity]}`)
+        .setDescription(`${rarityEmoji(v.a.cardRarity, null, v.displayMap)} **${v.a.cardName}**  ⚔️  **${v.b.cardName}** ${rarityEmoji(v.b.cardRarity, null, v.displayMap)}`)
         .addFields(
           { name: who(v.a), value: `❤️ ${v.a.stats.maxHealth} · ⚔️ ${v.a.stats.attack} · 🛡️ ${v.a.stats.defense}`, inline: true },
           { name: who(v.b), value: `❤️ ${v.b.stats.maxHealth} · ⚔️ ${v.b.stats.attack} · 🛡️ ${v.b.stats.defense}`, inline: true },
@@ -158,14 +159,14 @@ export function buildWinnerEmbed(
   } else {
     const w = winnerSide === 0 ? v.a : v.b;
     const l = winnerSide === 0 ? v.b : v.a;
-    e.setColor(rarityColorOf(w.cardRarity))
+    e.setColor(rarityColorOf(w.cardRarity, v.displayMap))
       .setTitle("🏆 Victory!")
-      .setDescription(`${RARITY_EMOJI[w.cardRarity]} **${w.cardName}** defeats **${l.cardName}**!\n${who(w)} wins the battle.`);
+      .setDescription(`${rarityEmoji(w.cardRarity, null, v.displayMap)} **${w.cardName}** defeats **${l.cardName}**!\n${who(w)} wins the battle.`);
     if (w.cardImageUrl) e.setThumbnail(w.cardImageUrl);
   }
   e.addFields(
-    combatantField(v.a, false),
-    combatantField(v.b, false),
+    combatantField(v.a, false, v.displayMap),
+    combatantField(v.b, false, v.displayMap),
   );
   if (rewardLines.length) e.addFields({ name: "🎁 Rewards", value: rewardLines.join("\n").slice(0, 1024), inline: false });
   e.setFooter({ text: `Battle lasted ${v.turnNumber} turn${v.turnNumber === 1 ? "" : "s"}` });

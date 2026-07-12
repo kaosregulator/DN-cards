@@ -44,6 +44,8 @@ import {
   type BattleView,
 } from "./embeds.js";
 import { formatAchievementLine } from "./achievement-engine.js";
+import { rarityLabel, rarityEmoji, rarityColor, type RarityDisplayMap } from "../cards-data.js";
+import { getRarityDisplayOverrides } from "../db.js";
 
 const MAX_BATTLE_MS = 20 * 60 * 1000;   // hard TTL safety net
 const DEFAULT_FRAME_MS = 950;            // fallback delay between animation frames
@@ -91,6 +93,7 @@ interface BattleRuntime {
   turnNumber: number;
   currentSide: 0 | 1;
   staked: boolean;
+  displayMap: RarityDisplayMap | null;   // source-of-truth rarity display overrides
   // When a staked PvP battle starts, one copy of each fighter's card is removed
   // from their collection and held here (escrow). This makes it impossible to
   // burn/trade a staked card mid-battle to dodge a loss; the copies are settled
@@ -220,6 +223,7 @@ export async function startChallenge(
   }
 
   const id = newId();
+  const displayMap = await getRarityDisplayOverrides(guildId);
   const rt: BattleRuntime = {
     id, guildId, channelId: interaction.channelId!, message: null, settings,
     challengerId: interaction.user.id, challengerName: interaction.user.username,
@@ -232,6 +236,7 @@ export async function startChallenge(
     escrow: null, escrowSettled: false, log: [], coinCall: "heads",
     crits: [0, 0], dmg: [0, 0], wentLow: [false, false],
     turnTimer: null, aiOfferTimer: null, ttlTimer: null, processing: false, createdAt: Date.now(),
+    displayMap,
   };
   battles.set(id, rt);
 
@@ -758,7 +763,8 @@ function buildRewardLines(rt: BattleRuntime, outcomes: RewardOutcome[]): string[
     if (o.cardLostId) bits.push("💔 lost staked card");
     if (o.freePackTier) bits.push(`🎁 free ${o.freePackTier} pack`);
     if (o.throttled) bits.push("⚠️ daily reward cap reached");
-    lines.push(`<@${o.userId}> — ${bits.length ? bits.join(" · ") : "no rewards"}`);
+    const status = o.won ? "🏆 Win" : o.draw ? "🤝 Draw" : "❌ Loss";
+    lines.push(`${status}: <@${o.userId}> — ${bits.length ? bits.join(" · ") : "no rewards"}`);
   }
   return lines;
 }
@@ -834,6 +840,7 @@ function toView(rt: BattleRuntime, turnEndsAt?: number): BattleView {
   return {
     a: rt.a!, b: rt.b!, turnNumber: rt.turnNumber, currentSide: rt.currentSide,
     staked: rt.staked, log: rt.log, turnEndsAt,
+    displayMap: rt.displayMap,
   };
 }
 
@@ -960,7 +967,7 @@ function buildPersonalPrepComponents(
     .setPlaceholder("🎴 Choose your battle card")
     .addOptions(eligible.slice(0, 25).map(c => ({
       label: c.name.slice(0, 100),
-      description: `${c.rarity}${c.owned > 1 ? ` · x${c.owned}` : ""}`,
+      description: `${rarityLabel(c.rarity, null, rt.displayMap)}${c.owned > 1 ? ` · x${c.owned}` : ""}`,
       value: String(c.id),
       default: prep?.cardId === c.id,
     })));
