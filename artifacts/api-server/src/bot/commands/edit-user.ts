@@ -2,9 +2,12 @@ import {
   ChatInputCommandInteraction,
   StringSelectMenuInteraction,
   ModalSubmitInteraction,
+  ButtonInteraction,
   EmbedBuilder,
   ActionRowBuilder,
   StringSelectMenuBuilder,
+  ButtonBuilder,
+  ButtonStyle,
   TextInputBuilder,
   ModalBuilder,
   MessageFlags,
@@ -27,6 +30,20 @@ import {
 import { getCollectorRank, getShinyMultiplier } from "../cards-data.js";
 import { getOrCreateGuildSettings } from "../db.js";
 import { getRarityContext } from "../db.js";
+import { setCardLevel, starsForLevel, starString } from "../cards/leveling.js";
+import { getOrCreateProfile, updateProfile } from "../battle/db.js";
+
+// The admin panel has two views: 💳 Core Profile & Economy (cards/shinies/
+// shards — the original actions) and ⚔️ Battle Profile (card levels + battle
+// stats). Nothing from the original command is removed; the battle view is new.
+type EditView = "core" | "battle";
+
+const BATTLE_ACTIONS = [
+  { value: "set_card_level", label: "⚔️ Set card level", desc: "Force a card to a level (1–100)" },
+  { value: "reset_card_level", label: "♻️ Reset card level", desc: "Reset a card back to Lv 1" },
+  { value: "set_battle_level", label: "📈 Set battle level", desc: "Set the user's battle-profile level" },
+  { value: "reset_battle_streak", label: "🔁 Reset win streak", desc: "Clear the user's current battle streak" },
+];
 
 // ── /edituser — interactive admin panel for editing a guild member's profile ─
 // Actions: add/remove/set cards (normal + shiny), add/remove/set shards.
@@ -60,7 +77,7 @@ function parseIds(customId: string): { action: string; guildId: string; userId: 
   return { action: parts[2]!, guildId: parts[3]!, userId: parts[4]! };
 }
 
-async function checkCallerAdmin(interaction: ChatInputCommandInteraction | StringSelectMenuInteraction | ModalSubmitInteraction): Promise<boolean> {
+async function checkCallerAdmin(interaction: ChatInputCommandInteraction | StringSelectMenuInteraction | ModalSubmitInteraction | ButtonInteraction): Promise<boolean> {
   if (!interaction.guild) return false;
   if (interaction.guild.ownerId === interaction.user.id) return true;
   const member = interaction.member as GuildMember | null;
@@ -69,11 +86,12 @@ async function checkCallerAdmin(interaction: ChatInputCommandInteraction | Strin
 }
 
 async function fetchUserSummary(guildId: string, userId: string) {
-  const [currency, items, settings, ctx] = await Promise.all([
+  const [currency, items, settings, ctx, battleProfile] = await Promise.all([
     getOrCreateCurrency(guildId, userId),
     getUserCollection(guildId, userId),
     getOrCreateGuildSettings(guildId),
     getRarityContext(guildId),
+    getOrCreateProfile(guildId, userId),
   ]);
   const shinyMultiplier = getShinyMultiplier(settings);
   const totalCopies = items.reduce((s, i) => s + i.count + i.shinyCount, 0);
@@ -84,32 +102,61 @@ async function fetchUserSummary(guildId: string, userId: string) {
     0,
   );
   const rank = getCollectorRank(unique);
-  return { currency, items, totalCopies, totalShinies, unique, netWorth, rank };
+  return { currency, items, totalCopies, totalShinies, unique, netWorth, rank, battleProfile };
 }
 
-function buildPanel(guildId: string, userId: string, username: string, summary: Awaited<ReturnType<typeof fetchUserSummary>>) {
-  const { currency, totalCopies, totalShinies, unique, netWorth, rank } = summary;
+function viewCustomId(view: EditView, guildId: string, userId: string) {
+  return `edituser:view:${view}:${guildId}:${userId}`;
+}
+
+function buildPanel(
+  guildId: string, userId: string, username: string,
+  summary: Awaited<ReturnType<typeof fetchUserSummary>>, view: EditView = "core",
+) {
+  const { currency, totalCopies, totalShinies, unique, netWorth, rank, battleProfile } = summary;
   const embed = new EmbedBuilder()
     .setTitle(`🛠️ Edit Member · ${username}`)
-    .setColor(0x5865f2)
-    .setDescription(`<@${userId}> (${userId})`)
-    .addFields(
+    .setColor(view === "battle" ? 0xe74c3c : 0x5865f2)
+    .setDescription(`<@${userId}> (${userId})`);
+
+  if (view === "battle") {
+    const bp = battleProfile;
+    const wr = bp.totalBattles > 0 ? Math.round((bp.wins / bp.totalBattles) * 100) : 0;
+    embed.addFields(
+      { name: "📈 Battle level", value: bp.level.toString(), inline: true },
+      { name: "🎖️ Rank points", value: bp.rankPoints.toLocaleString(), inline: true },
+      { name: "🏆 Record", value: `${bp.wins}W / ${bp.losses}L / ${bp.draws}D (${wr}%)`, inline: true },
+      { name: "🔥 Streak", value: `${bp.currentStreak} (best ${bp.highestStreak})`, inline: true },
+      { name: "⚔️ Battles", value: bp.totalBattles.toLocaleString(), inline: true },
+      { name: "💥 Crits", value: bp.criticalHits.toLocaleString(), inline: true },
+    ).setFooter({ text: "⚔️ Battle Profile · card levels drive combat stats & stars." });
+  } else {
+    embed.addFields(
       { name: "💠 Shards", value: currency.shards.toLocaleString(), inline: true },
       { name: "🃏 Unique cards", value: unique.toString(), inline: true },
       { name: "📦 Total copies", value: totalCopies.toString(), inline: true },
       { name: "✨ Shinies", value: totalShinies.toString(), inline: true },
       { name: "💰 Net worth", value: `${netWorth.toLocaleString()} 💠`, inline: true },
       { name: "🏅 Rank", value: `${rank.emoji} ${rank.name}`, inline: true },
-    )
-    .setFooter({ text: "Pick an action below. Card changes are guild-scoped." });
+    ).setFooter({ text: "💳 Core Profile & Economy · card changes are guild-scoped." });
+  }
 
+  // View switcher.
+  const viewRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder().setCustomId(viewCustomId("core", guildId, userId)).setLabel("Core Profile & Economy").setEmoji("💳")
+      .setStyle(view === "core" ? ButtonStyle.Primary : ButtonStyle.Secondary),
+    new ButtonBuilder().setCustomId(viewCustomId("battle", guildId, userId)).setLabel("Battle Profile").setEmoji("⚔️")
+      .setStyle(view === "battle" ? ButtonStyle.Primary : ButtonStyle.Secondary),
+  );
+
+  const actions = view === "battle" ? BATTLE_ACTIONS : ACTIONS;
   const select = new StringSelectMenuBuilder()
     .setCustomId(panelCustomId(guildId, userId))
-    .setPlaceholder("Choose an edit action…")
-    .addOptions(ACTIONS.map(a => ({ label: a.label, value: a.value, description: a.desc })));
+    .setPlaceholder(view === "battle" ? "Choose a battle edit action…" : "Choose an edit action…")
+    .addOptions(actions.map(a => ({ label: a.label, value: a.value, description: a.desc })));
+  const selectRow = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(select);
 
-  const row = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(select);
-  return { embeds: [embed], components: [row] };
+  return { embeds: [embed], components: [viewRow, selectRow] };
 }
 
 export async function handleEditUserCommand(interaction: ChatInputCommandInteraction): Promise<void> {
@@ -141,11 +188,15 @@ export async function handleEditUserInteraction(interaction: StringSelectMenuInt
   const action = interaction.values[0];
   if (!action) { await interaction.deferUpdate().catch(() => {}); return; }
 
-  const needsCard = action.includes("cards") || action.includes("shinies");
+  // A card name is needed for anything that targets a specific card (cards,
+  // shinies, and the battle card-level actions). An amount/level box is needed
+  // for everything except the card-only or profile-only battle actions.
+  const needsCard = action.includes("card") || action.includes("shin");
+  const isLevelAction = action === "set_card_level";
+  const needsAmount = action !== "reset_card_level" && action !== "reset_battle_streak";
 
-  const modal = new ModalBuilder()
-    .setCustomId(modalCustomId(action, guildId, userId))
-    .setTitle(ACTIONS.find(a => a.value === action)?.label ?? "Edit Member");
+  const label = [...ACTIONS, ...BATTLE_ACTIONS].find(a => a.value === action)?.label ?? "Edit Member";
+  const modal = new ModalBuilder().setCustomId(modalCustomId(action, guildId, userId)).setTitle(label.slice(0, 45));
 
   const components = [];
   if (needsCard) {
@@ -160,19 +211,44 @@ export async function handleEditUserInteraction(interaction: StringSelectMenuInt
       ),
     );
   }
-  components.push(
-    new ActionRowBuilder<TextInputBuilder>().addComponents(
-      new TextInputBuilder()
-        .setCustomId("amount")
-        .setLabel("Amount")
-        .setStyle(TextInputStyle.Short)
-        .setRequired(true)
-        .setPlaceholder("Whole number, 0 or higher")
-        .setValue("1"),
-    ),
-  );
+  if (needsAmount) {
+    const isBattleNum = isLevelAction || action === "set_battle_level";
+    components.push(
+      new ActionRowBuilder<TextInputBuilder>().addComponents(
+        new TextInputBuilder()
+          .setCustomId("amount")
+          .setLabel(isBattleNum ? "Level (1–100)" : "Amount")
+          .setStyle(TextInputStyle.Short)
+          .setRequired(true)
+          .setPlaceholder(isBattleNum ? "Whole number 1–100" : "Whole number, 0 or higher")
+          .setValue(isBattleNum ? "100" : "1"),
+      ),
+    );
+  }
   modal.addComponents(components);
   await interaction.showModal(modal);
+}
+
+// View-switch buttons (💳 Core / ⚔️ Battle). Re-renders the panel for the view.
+export async function handleEditUserButton(interaction: ButtonInteraction): Promise<void> {
+  if (!interaction.customId.startsWith("edituser:view:")) return;
+  if (!interaction.guild) { await interaction.deferUpdate().catch(() => {}); return; }
+  if (!(await checkCallerAdmin(interaction))) {
+    await interaction.reply({ content: "❌ Admins only.", flags: MessageFlags.Ephemeral }).catch(() => {});
+    return;
+  }
+  const parts = interaction.customId.split(":"); // edituser:view:<view>:<guildId>:<userId>
+  const view = (parts[2] === "battle" ? "battle" : "core") as EditView;
+  const guildId = parts[3]!;
+  const userId = parts[4]!;
+  if (guildId !== interaction.guild.id) {
+    await interaction.reply({ content: "❌ Guild mismatch.", flags: MessageFlags.Ephemeral }).catch(() => {});
+    return;
+  }
+  const summary = await fetchUserSummary(guildId, userId);
+  const member = await interaction.guild.members.fetch(userId).catch(() => null);
+  const username = member?.user.username ?? "member";
+  await interaction.update(buildPanel(guildId, userId, username, summary, view));
 }
 
 export async function handleEditUserModal(interaction: ModalSubmitInteraction): Promise<void> {
@@ -190,6 +266,82 @@ export async function handleEditUserModal(interaction: ModalSubmitInteraction): 
   }
   if (guildId !== interaction.guild.id) {
     await interaction.reply({ content: "❌ Guild mismatch.", flags: MessageFlags.Ephemeral }).catch(() => {});
+    return;
+  }
+
+  // ── ⚔️ Battle Profile actions ───────────────────────────────────────────────
+  // Self-contained; returns before the Core economy flow below (which is
+  // unchanged). Handles forcing a card level, resetting it, and battle-profile
+  // level / streak edits.
+  const BATTLE_ACTION_VALUES = new Set(BATTLE_ACTIONS.map(a => a.value));
+  if (BATTLE_ACTION_VALUES.has(action)) {
+    const needsCard = action === "set_card_level" || action === "reset_card_level";
+    let cardId: number | undefined;
+    let resolvedCardName: string | undefined;
+    if (needsCard) {
+      const cardName = interaction.fields.getTextInputValue("card").trim();
+      let card = await getCardByName(cardName, guildId);
+      if (!card) {
+        const q = cardName.toLowerCase();
+        const matches = (await getAllCards(guildId)).filter(c => c.name.toLowerCase().includes(q));
+        if (matches.length === 1) card = matches[0];
+        else {
+          await interaction.reply({
+            content: matches.length > 1
+              ? `❌ **"${cardName}"** matches multiple cards — be more specific.`
+              : `❌ Card "**${cardName}**" not found.`,
+            flags: MessageFlags.Ephemeral,
+          }).catch(() => {});
+          return;
+        }
+      }
+      cardId = card!.id;
+      resolvedCardName = card!.name;
+    }
+
+    let lvl = 0;
+    if (action === "set_card_level" || action === "set_battle_level") {
+      lvl = Number(interaction.fields.getTextInputValue("amount").trim().replace(/,/g, ""));
+      if (!Number.isInteger(lvl) || lvl < 1 || lvl > 100) {
+        await interaction.reply({ content: "❌ Level must be a whole number between 1 and 100.", flags: MessageFlags.Ephemeral }).catch(() => {});
+        return;
+      }
+    }
+
+    await interaction.deferUpdate();
+    let feedback = "";
+    try {
+      switch (action) {
+        case "set_card_level": {
+          const res = await setCardLevel(guildId, userId, cardId!, lvl);
+          feedback = `✅ Set <@${userId}>'s **${resolvedCardName}** to **Lv ${res.level}** ${starString(starsForLevel(res.level))}.`;
+          break;
+        }
+        case "reset_card_level": {
+          await setCardLevel(guildId, userId, cardId!, 1);
+          feedback = `✅ Reset <@${userId}>'s **${resolvedCardName}** to **Lv 1**.`;
+          break;
+        }
+        case "set_battle_level": {
+          await updateProfile(guildId, userId, { level: lvl });
+          feedback = `✅ Set <@${userId}>'s battle level to **${lvl}**.`;
+          break;
+        }
+        case "reset_battle_streak": {
+          await updateProfile(guildId, userId, { currentStreak: 0 });
+          feedback = `✅ Cleared <@${userId}>'s current win streak.`;
+          break;
+        }
+        default:
+          feedback = "❌ Unknown battle action.";
+      }
+    } catch (err) {
+      feedback = `❌ Edit failed: ${err instanceof Error ? err.message : "unknown error"}`;
+    }
+    const summary = await fetchUserSummary(guildId, userId);
+    const member = await interaction.guild.members.fetch(userId).catch(() => null);
+    const username = member?.user.username ?? interaction.user.username;
+    await interaction.editReply({ content: feedback, ...buildPanel(guildId, userId, username, summary, "battle") });
     return;
   }
 

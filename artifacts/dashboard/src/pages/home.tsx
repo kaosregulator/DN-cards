@@ -1,313 +1,252 @@
-import { useState, useMemo } from "react";
-import { useCards, Rarity } from "@/hooks/queries";
-import { resolveImageUrl } from "@/lib/api";
-import { CardComponent } from "@/components/card";
-import { Input } from "@/components/ui/input";
+import { useMemo } from "react";
+import { Link } from "wouter";
+import { motion } from "framer-motion";
+import { ArrowRight, Gamepad2, Trophy, Newspaper, Sparkles, Crown, Medal } from "lucide-react";
+import { useCards, useNews, useLeaderboard, useGuildSummary, useSiteConfig } from "@/hooks/queries";
+import { resolvePresentation, type PresentationConfig } from "@/features/site/defaults";
+import { AmbientMedia } from "@/features/media/AmbientMedia";
+import { SmartImage } from "@/features/media/SmartImage";
+import { VaultCard } from "@/features/vault/VaultCard";
+import { SplashScreen } from "@/features/splash/SplashScreen";
+import { useSplashGate } from "@/features/splash/useSplashGate";
+import { rarityLabelOf } from "@/features/vault/rarity";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Search, ChevronDown, ChevronUp, Sparkles, Sparkle } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
-
-const DEFAULT_RARITY_ORDER: Rarity[] = ["legendary", "epic", "rare", "uncommon", "common", "mythic"];
-const BUILT_IN_SET = new Set<string>(DEFAULT_RARITY_ORDER);
-
-type RarityFilterOption = { key: string; label: string };
-
-function cardCategoryKey(c: { websiteCategory?: string | null; effectiveRarity?: string; rarity: string }) {
-  return c.websiteCategory ?? c.effectiveRarity ?? c.rarity;
-}
-
-function cardCategoryLabel(c: { websiteCategoryLabel?: string | null; effectiveRarityLabel?: string; rarity: string }) {
-  return c.websiteCategoryLabel ?? c.effectiveRarityLabel ?? c.rarity;
-}
 
 export default function Home() {
-  const { data, isLoading, error } = useCards();
-  const [search, setSearch] = useState("");
-  const [selectedRarities, setSelectedRarities] = useState<Set<string>>(new Set());
-  const [eventsOpen, setEventsOpen] = useState(true);
+  const { data: cardsData } = useCards();
+  const { data: siteConfig } = useSiteConfig();
+  const { data: news } = useNews();
 
-  // Event-exclusive cards are display-only on the roster: they never spawn,
-  // they're admin-awarded during events. We surface them in their own panel
-  // above the rarity groups, with `flavor` text as the event explanation
-  // (e.g. "Awarded during DN Anniversary, May 2026").
-  const eventCards = useMemo(
-    () => (data?.cards ?? []).filter(c => c.isEventExclusive && !c.isArchived),
-    [data],
+  const homeGuildId = siteConfig?.homeGuildId ?? "";
+  const { data: leaderboard } = useLeaderboard(homeGuildId);
+  const { data: summary } = useGuildSummary(homeGuildId);
+
+  const presentation = useMemo<PresentationConfig>(
+    () => resolvePresentation(siteConfig?.presentation as Partial<PresentationConfig> | null),
+    [siteConfig],
   );
 
-  // All unique website categories / display rarities present in the roster.
-  // Website category overrides are presentation-only and sort before built-ins.
-  const allRarities = useMemo<RarityFilterOption[]>(() => {
-    const order = data?.rarityOrder ?? DEFAULT_RARITY_ORDER;
-    if (!data?.cards) return order.map(key => ({ key, label: key }));
-    const labelByKey = new Map<string, string>();
-    for (const c of data.cards) {
-      labelByKey.set(cardCategoryKey(c), cardCategoryLabel(c));
-    }
-    const customKeys = [...labelByKey.keys()]
-      .filter(key => !BUILT_IN_SET.has(key))
-      .sort((a, b) => (labelByKey.get(a) ?? a).localeCompare(labelByKey.get(b) ?? b));
-    const builtInKeys = order.filter(key => labelByKey.has(key));
-    return [...customKeys, ...builtInKeys].map(key => ({ key, label: labelByKey.get(key) ?? key }));
-  }, [data]);
+  const cards = cardsData?.cards ?? [];
+  const { seen, markSeen } = useSplashGate();
+  const showSplash = presentation.splash.enabled && !seen && cards.length > 0;
 
-  const toggleRarity = (rarity: string) => {
-    const next = new Set(selectedRarities);
-    if (next.has(rarity)) {
-      next.delete(rarity);
-    } else {
-      next.add(rarity);
-    }
-    setSelectedRarities(next);
-  };
+  // Featured spotlights: admin-featured cards, else top-worth cards with art.
+  const spotlights = useMemo(() => {
+    const featured = cards.filter((c) => c.featured && c.imageUrl);
+    if (featured.length >= 4) return featured.slice(0, 6);
+    const rest = [...cards]
+      .filter((c) => c.imageUrl && !c.featured)
+      .sort((a, b) => b.worthValue - a.worthValue);
+    return [...featured, ...rest].slice(0, 6);
+  }, [cards]);
 
-  const processedCards = useMemo(() => {
-    if (!data?.cards) return [];
+  const latestNews = useMemo(() => {
+    const posts = (news?.posts ?? []).filter((p) => p.publishedAt);
+    return [...posts]
+      .sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0) || new Date(b.publishedAt!).getTime() - new Date(a.publishedAt!).getTime())
+      .slice(0, 3);
+  }, [news]);
 
-    const filtered = data.cards.filter((c) => {
-      const setNamesStr = (c.sets ?? []).map(s => s.name).join(" ").toLowerCase();
-      const matchesSearch = c.name.toLowerCase().includes(search.toLowerCase()) ||
-                           setNamesStr.includes(search.toLowerCase());
-      const effectiveSlug = c.effectiveRarity ?? c.rarity;
-      const matchesRarity = selectedRarities.size === 0 || selectedRarities.has(effectiveSlug);
-      return matchesSearch && matchesRarity;
-    });
-
-    // Group by effective rarity slug
-    const grouped: Record<string, typeof filtered> = {};
-    const labelBySlug: Record<string, string> = {};
-    filtered.forEach((c) => {
-      const slug = c.effectiveRarity ?? c.rarity;
-      const label = c.effectiveRarityLabel ?? c.rarity;
-      if (!grouped[slug]) grouped[slug] = [];
-      grouped[slug].push(c);
-      labelBySlug[slug] = label;
-    });
-
-    // Order: custom tiers (alpha) then built-in descending rarity
-    const displayOrder = data?.rarityOrder ?? DEFAULT_RARITY_ORDER;
-    const customSlugs = Object.keys(grouped).filter(s => !BUILT_IN_SET.has(s)).sort();
-    const builtInSlugs = displayOrder.filter(r => grouped[r]?.length);
-    return [...customSlugs, ...builtInSlugs].map(slug => {
-      const cards = grouped[slug] ?? [];
-      const rarityDropChance = cards.find(c => c.rarityDropChancePercent != null)?.rarityDropChancePercent ?? undefined;
-      return {
-        rarity: slug,
-        label: labelBySlug[slug] ?? slug,
-        rarityDropChance,
-        cards,
-      };
-    });
-
-  }, [data, search, selectedRarities]);
-
-  if (isLoading) {
-    return (
-      <div className="flex h-[50vh] items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="flex h-[50vh] flex-col items-center justify-center text-center">
-        <p className="text-destructive font-mono uppercase tracking-widest mb-2">Error loading roster</p>
-        <p className="text-muted-foreground text-sm">Please check your connection or try again later.</p>
-      </div>
-    );
-  }
+  const topCollectors = (leaderboard?.entries ?? []).slice(0, 5);
 
   return (
-    <div className="container max-w-screen-2xl py-8 px-4 md:px-8 bg-tactical-pattern min-h-screen">
-      <div className="mb-12 space-y-6">
-        <div>
-          <h1 className="text-4xl font-bold tracking-tight uppercase text-foreground mb-2">Unit Roster</h1>
-          <p className="text-muted-foreground font-mono uppercase tracking-widest text-sm">
-            Catalog of all deployable assets
-          </p>
-        </div>
-
-        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between bg-card/50 p-4 rounded-xl border border-border/50 backdrop-blur-sm">
-          <div className="relative w-full md:w-96">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              type="text"
-              placeholder="Search by name or set..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="pl-9 bg-background/50 font-mono text-sm"
-              data-testid="input-search"
-            />
-          </div>
-          
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-xs font-mono uppercase text-muted-foreground mr-2">Filter Rarity:</span>
-            {allRarities.map(({ key, label }) => {
-              const active = selectedRarities.has(key);
-              return (
-                <button
-                  key={key}
-                  type="button"
-                  aria-pressed={active}
-                  aria-label={`Filter by ${label}`}
-                  onClick={() => toggleRarity(key)}
-                  data-testid={`filter-rarity-${key}`}
-                  className={`cursor-pointer uppercase font-mono tracking-widest text-xs px-3 py-1 rounded-md border transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
-                    active
-                      ? "bg-primary text-primary-foreground border-primary"
-                      : "border-border hover:bg-muted"
-                  }`}
-                >
-                  {label}
-                </button>
-              );
-            })}
-            {selectedRarities.size > 0 && (
-              <button
-                type="button"
-                aria-label="Clear rarity filters"
-                onClick={() => setSelectedRarities(new Set())}
-                className="cursor-pointer text-xs uppercase font-mono ml-2 px-3 py-1 rounded-md text-muted-foreground hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              >
-                Clear
-              </button>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Shiny info banner — explains the 0.5% global roll + 2× value. */}
-      <div className="mb-8 rounded-xl border border-pink-500/30 bg-gradient-to-r from-pink-500/5 via-card/40 to-amber-400/5 backdrop-blur-sm p-4 flex items-center gap-4">
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-pink-500 to-amber-400 text-white shadow-md">
-          <Sparkle className="h-5 w-5" />
-        </div>
-        <div className="flex-1 min-w-0">
-          <h3 className="text-sm font-bold uppercase tracking-wider text-pink-200">Shiny Variants ✨</h3>
-          <p className="text-xs text-muted-foreground font-mono leading-relaxed">
-            Every random catch, pack pull, and trade-in has a flat <span className="text-pink-300 font-bold">0.5%</span> chance to mint a shiny.
-            Shinies count at <span className="text-pink-300 font-bold">2× worth & burn</span>, are tracked separately, and are not tradeable yet.
-          </p>
-        </div>
-      </div>
-
-      {eventCards.length > 0 && (
-        <div className="mb-12 rounded-xl border border-pink-500/30 bg-gradient-to-br from-pink-500/5 via-card/40 to-purple-500/5 backdrop-blur-sm overflow-hidden">
-          <button
-            type="button"
-            onClick={() => setEventsOpen(o => !o)}
-            className="w-full flex items-center justify-between gap-4 p-4 hover:bg-pink-500/5 transition-colors"
-            data-testid="toggle-event-panel"
-            aria-expanded={eventsOpen}
-          >
-            <div className="flex items-center gap-3">
-              <Sparkles className="h-5 w-5 text-pink-400" />
-              <div className="text-left">
-                <h2 className="text-lg font-bold uppercase tracking-wider text-pink-200">Event Exclusive Cards</h2>
-                <p className="text-xs font-mono uppercase tracking-widest text-muted-foreground">
-                  Display only · Awarded during events · Never spawn randomly
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center gap-3">
-              <Badge variant="outline" className="border-pink-500/40 text-pink-300 font-mono text-xs">
-                {eventCards.length} CARDS
-              </Badge>
-              {eventsOpen
-                ? <ChevronUp className="h-4 w-4 text-muted-foreground" />
-                : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
-            </div>
-          </button>
-          <AnimatePresence initial={false}>
-            {eventsOpen && (
-              <motion.div
-                initial={{ height: 0, opacity: 0 }}
-                animate={{ height: "auto", opacity: 1 }}
-                exit={{ height: 0, opacity: 0 }}
-                transition={{ duration: 0.25 }}
-                className="overflow-hidden"
-              >
-                <div className="px-4 pb-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                  {eventCards.map(card => (
-                    <div
-                      key={card.id}
-                      className="flex gap-3 rounded-lg border border-border/50 bg-background/40 p-3"
-                      data-testid={`event-card-${card.id}`}
-                    >
-                      {resolveImageUrl(card.imageUrl) && (
-                        <img
-                          src={resolveImageUrl(card.imageUrl)!}
-                          alt={card.name}
-                          className="h-20 w-16 rounded object-cover border border-pink-500/30 flex-shrink-0"
-                          loading="lazy"
-                        />
-                      )}
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="text-sm font-bold uppercase tracking-wide truncate">{card.name}</span>
-                          <Badge variant="outline" className="text-[10px] font-mono uppercase border-pink-500/40 text-pink-300 flex-shrink-0">
-                            {card.effectiveRarityLabel ?? card.rarity}
-                          </Badge>
-                        </div>
-                        <p className="text-xs text-muted-foreground line-clamp-3">
-                          {card.flavor
-                            ? <span className="italic">"{card.flavor}"</span>
-                            : (card.description || <span className="opacity-60">No event note yet — set the card's flavor text in admin to describe when/why it was awarded.</span>)
-                          }
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
+    <div className="min-h-screen">
+      {showSplash && (
+        <SplashScreen
+          cards={cards}
+          rarityOrder={cardsData?.rarityOrder}
+          tierDurationMs={presentation.splash.tierDurationMs}
+          onDone={markSeen}
+        />
       )}
 
-      <div className="space-y-16">
-        {processedCards.length === 0 ? (
-          <div className="text-center py-20 border border-dashed border-border rounded-xl">
-             <p className="text-muted-foreground font-mono uppercase tracking-widest">No assets found matching criteria</p>
-          </div>
-        ) : (
-          processedCards.map((group) => (
-            <div key={group.rarity} className="space-y-6">
-              <div className="flex items-center gap-4 border-b border-border/40 pb-2">
-                <h2 className="text-2xl font-bold uppercase tracking-wider text-foreground">
-                  {group.label}
-                </h2>
-                <Badge variant="secondary" className="font-mono text-xs">
-                  {group.cards.length} ASSETS
-                </Badge>
-                {group.rarityDropChance !== undefined && (
-                  <Badge variant="outline" className="font-mono text-xs">
-                    Spawn {group.rarityDropChance.toFixed(2)}%
-                  </Badge>
-                )}
-              </div>
-              
-              <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
-                <AnimatePresence>
-                  {group.cards.map((card) => (
-                    <motion.div
-                      key={card.id}
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.15 }}
-                    >
-                      <CardComponent
-                        card={card}
-                        relativeDropChance={card.droppable && card.inActiveSet ? group.rarityDropChance : undefined}
-                      />
-                    </motion.div>
-                  ))}
-                </AnimatePresence>
-              </div>
+      {/* ── Hero ─────────────────────────────────────────────────────────── */}
+      <section className="relative flex min-h-[78vh] items-center overflow-hidden border-b border-border/40">
+        <div className="absolute inset-0">
+          {presentation.hero.backgroundSrc ? (
+            <AmbientMedia
+              src={presentation.hero.backgroundSrc}
+              poster={presentation.hero.backgroundPoster}
+              alt=""
+              fit="cover"
+              overlay={0.55}
+            />
+          ) : (
+            <div className="h-full w-full bg-gradient-to-br from-background via-background to-primary/10" />
+          )}
+          <div className="bg-tactical-pattern absolute inset-0 opacity-40" />
+          <div className="absolute inset-0 bg-gradient-to-t from-background via-background/40 to-transparent" />
+        </div>
+
+        <div className="container relative z-10 max-w-screen-2xl px-4 py-20 md:px-8">
+          <motion.p
+            initial={{ opacity: 0, y: 14 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+            className="mb-4 font-mono text-sm uppercase tracking-[0.4em] text-primary"
+          >
+            {presentation.hero.eyebrow}
+          </motion.p>
+          <motion.h1
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.05 }}
+            className="max-w-3xl text-5xl font-bold uppercase leading-[0.95] tracking-tight md:text-7xl"
+          >
+            {presentation.hero.title}
+          </motion.h1>
+          <motion.p
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.12 }}
+            className="mt-6 max-w-xl text-lg leading-relaxed text-muted-foreground"
+          >
+            {presentation.hero.subtitle}
+          </motion.p>
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.2 }}
+            className="mt-10 flex flex-wrap gap-4"
+          >
+            <Link
+              href={presentation.hero.ctaHref}
+              className="group flex items-center gap-2 rounded-lg bg-primary px-7 py-3.5 font-mono text-sm font-bold uppercase tracking-widest text-primary-foreground transition-transform hover:scale-[1.03]"
+            >
+              {presentation.hero.ctaLabel}
+              <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+            </Link>
+            <Link
+              href={presentation.hero.secondaryCtaHref}
+              className="flex items-center gap-2 rounded-lg border border-border bg-background/40 px-7 py-3.5 font-mono text-sm font-bold uppercase tracking-widest backdrop-blur transition-colors hover:bg-muted"
+            >
+              <Gamepad2 className="h-4 w-4" />
+              {presentation.hero.secondaryCtaLabel}
+            </Link>
+          </motion.div>
+
+          {summary && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.6, delay: 0.35 }}
+              className="mt-14 flex flex-wrap gap-8"
+            >
+              <HeroStat value={summary.rosterSize} label="Cards in Dex" />
+              <HeroStat value={summary.collectors} label="Collectors" />
+              <HeroStat value={summary.cardsHeld} label="Cards Held" />
+              <HeroStat value={summary.shinyCards} label="Shinies Minted" />
+            </motion.div>
+          )}
+        </div>
+      </section>
+
+      <div className="container max-w-screen-2xl space-y-20 px-4 py-20 md:px-8">
+        {/* ── Featured spotlights ─────────────────────────────────────────── */}
+        {spotlights.length > 0 && (
+          <section>
+            <SectionHeader icon={<Sparkles className="h-5 w-5" />} title="Featured Cards" subtitle="Spotlight from across the Dex" href="/vault" cta="Open Card Vault" />
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
+              {spotlights.map((card) => (
+                <VaultCard key={card.id} card={card} pool={cards} />
+              ))}
             </div>
-          ))
+          </section>
         )}
+
+        <div className="grid gap-12 lg:grid-cols-3">
+          {/* ── News ──────────────────────────────────────────────────────── */}
+          <section className="lg:col-span-2">
+            <SectionHeader icon={<Newspaper className="h-5 w-5" />} title="Intel & Updates" subtitle="Latest from command" href="/news" cta="All News" />
+            {latestNews.length === 0 ? (
+              <EmptyPanel>No news published yet.</EmptyPanel>
+            ) : (
+              <div className="space-y-4">
+                {latestNews.map((post) => (
+                  <Link
+                    key={post.id}
+                    href={`/news/${post.slug}`}
+                    className="group flex gap-4 overflow-hidden rounded-xl border border-border/50 bg-card/50 p-4 transition-colors hover:border-primary/50"
+                  >
+                    {post.imageUrl && (
+                      <div className="h-20 w-28 shrink-0 overflow-hidden rounded-lg">
+                        <SmartImage src={post.imageUrl} alt={post.title} fit="cover" />
+                      </div>
+                    )}
+                    <div className="min-w-0 flex-1">
+                      <div className="mb-1 flex items-center gap-2">
+                        {post.pinned && <Badge variant="outline" className="border-primary/40 font-mono text-[9px] uppercase text-primary">Pinned</Badge>}
+                        <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+                          {post.publishedAt ? new Date(post.publishedAt).toLocaleDateString() : ""}
+                        </span>
+                      </div>
+                      <h3 className="truncate font-bold uppercase tracking-wide transition-colors group-hover:text-primary">{post.title}</h3>
+                      <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{post.bodyMd.replace(/[#*_>`]/g, "").slice(0, 160)}</p>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            )}
+          </section>
+
+          {/* ── Community leaderboard ─────────────────────────────────────── */}
+          <section>
+            <SectionHeader icon={<Trophy className="h-5 w-5" />} title="Top Collectors" subtitle="By net worth" href="/leaderboard" cta="Full Board" />
+            {topCollectors.length === 0 ? (
+              <EmptyPanel>Leaderboard warming up.</EmptyPanel>
+            ) : (
+              <div className="space-y-2">
+                {topCollectors.map((entry) => (
+                  <div key={entry.userId} className="flex items-center gap-3 rounded-lg border border-border/50 bg-card/50 p-3">
+                    <div className="flex h-8 w-8 items-center justify-center">
+                      {entry.rank === 1 ? <Crown className="h-5 w-5 text-[hsl(var(--rarity-legendary))]" /> : entry.rank <= 3 ? <Medal className="h-5 w-5 text-muted-foreground" /> : <span className="font-mono font-bold text-muted-foreground">{entry.rank}</span>}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="truncate text-sm font-medium">{entry.username ?? entry.userId}</div>
+                      <div className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">{entry.uniqueCards} unique</div>
+                    </div>
+                    <div className="font-mono text-sm font-bold text-primary">{entry.netWorth.toLocaleString()}</div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+        </div>
       </div>
+    </div>
+  );
+}
+
+function HeroStat({ value, label }: { value: number; label: string }) {
+  return (
+    <div>
+      <div className="font-mono text-3xl font-bold text-foreground">{value.toLocaleString()}</div>
+      <div className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">{label}</div>
+    </div>
+  );
+}
+
+function SectionHeader({ icon, title, subtitle, href, cta }: { icon: React.ReactNode; title: string; subtitle: string; href: string; cta: string }) {
+  return (
+    <div className="mb-6 flex items-end justify-between gap-4 border-b border-border/40 pb-3">
+      <div className="flex items-center gap-3">
+        <span className="text-primary">{icon}</span>
+        <div>
+          <h2 className="text-2xl font-bold uppercase tracking-wider">{title}</h2>
+          <p className="font-mono text-xs uppercase tracking-widest text-muted-foreground">{subtitle}</p>
+        </div>
+      </div>
+      <Link href={href} className="hidden shrink-0 items-center gap-1 font-mono text-xs uppercase tracking-widest text-muted-foreground hover:text-foreground sm:flex">
+        {cta} <ArrowRight className="h-3 w-3" />
+      </Link>
+    </div>
+  );
+}
+
+function EmptyPanel({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="rounded-xl border border-dashed border-border/50 bg-card/30 py-12 text-center font-mono text-sm uppercase tracking-widest text-muted-foreground">
+      {children}
     </div>
   );
 }

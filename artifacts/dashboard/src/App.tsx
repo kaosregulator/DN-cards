@@ -3,8 +3,13 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Layout } from "@/components/layout";
+import { CardViewerProvider } from "@/features/viewer/viewer-context";
+import { CardViewer } from "@/features/viewer/CardViewer";
+import { ThemeApplier } from "@/features/site/ThemeApplier";
 
 import Home from "@/pages/home";
+import Vault from "@/pages/vault";
+import Play from "@/pages/play";
 import Leaderboard from "@/pages/leaderboard";
 import Profile from "@/pages/profile";
 import Admin from "@/pages/admin";
@@ -15,6 +20,7 @@ import Events from "@/pages/events";
 import News from "@/pages/news";
 import NewsDetail from "@/pages/news-detail";
 import NewsAdmin from "@/pages/news-admin";
+import SiteAdmin from "@/pages/site-admin";
 import Suggestions from "@/pages/suggestions";
 import SuggestionsAdmin from "@/pages/suggestions-admin";
 import NotFound from "@/pages/not-found";
@@ -32,6 +38,8 @@ function Router() {
   return (
     <Switch>
       <Route path="/" component={Home} />
+      <Route path="/vault" component={Vault} />
+      <Route path="/play" component={Play} />
       <Route path="/leaderboard" component={Leaderboard} />
       <Route path="/events" component={Events} />
       <Route path="/news" component={News} />
@@ -42,6 +50,7 @@ function Router() {
       <Route path="/setup/:token" component={Setup} />
       <Route path="/admin/users" component={Users} />
       <Route path="/admin/news" component={NewsAdmin} />
+      <Route path="/admin/appearance" component={SiteAdmin} />
       <Route path="/admin/suggestions" component={SuggestionsAdmin} />
       <Route path="/admin" component={Admin} />
       <Route component={NotFound} />
@@ -53,11 +62,15 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
-        <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
-          <Layout>
-            <Router />
-          </Layout>
-        </WouterRouter>
+        <ThemeApplier />
+        <CardViewerProvider>
+          <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
+            <Layout>
+              <Router />
+            </Layout>
+          </WouterRouter>
+          <CardViewer />
+        </CardViewerProvider>
         <Toaster />
       </TooltipProvider>
     </QueryClientProvider>

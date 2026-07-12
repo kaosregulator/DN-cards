@@ -8,8 +8,29 @@
 // every formula is admin-configurable.
 
 import type { BattleSettings } from "@workspace/db";
-import type { Combatant, BattleEvent, MoveType, TurnResult } from "./types.js";
+import type { Combatant, BattleEvent, MoveType, TurnResult, StatusEffect } from "./types.js";
 import { getEffectDef } from "./special-cards.js";
+import { getMoveset } from "./movesets.js";
+
+// Apply a moveset's effect. Reuses the shared special-effects registry for the
+// common effects; "stealth" and "weaken" are combat-engine-native mechanics.
+function applyMovesetEffect(
+  effect: string, self: Combatant, foe: Combatant, settings: BattleSettings,
+): BattleEvent[] {
+  if (effect === "stealth") {
+    const st: StatusEffect = { kind: "stealth", turns: 2, magnitude: 0, label: "Stealth", emoji: "🫥" };
+    self.status.push(st);
+    return [{ text: `🫥 **${self.cardName}** slips into **Stealth** — the next attack against it will miss!`, flash: "dodge" }];
+  }
+  if (effect === "weaken") {
+    const dmgDown = 25;
+    foe.status.push({ kind: "weaken", turns: 3, magnitude: dmgDown, label: "Suppressed", emoji: "🔻" });
+    return [{ text: `🔻 **${foe.cardName}** is suppressed — **-${dmgDown}%** attack for 3 turns!`, flash: "miss" }];
+  }
+  const def = getEffectDef(effect);
+  if (def) return def.apply(self, foe, settings);
+  return [];
+}
 
 const chance = (pct: number) => Math.random() * 100 < pct;
 const vary = (n: number, spread: number) => n * (1 + (Math.random() - 0.5) * 2 * spread);
@@ -70,6 +91,16 @@ function strike(
   opts: { powerPct: number; guaranteedHit?: boolean; label: string; ultimate?: boolean },
 ): { events: BattleEvent[]; koed: boolean } {
   const events: BattleEvent[] = [];
+
+  // Stealth: a stealthed defender phases out of the next non-guaranteed attack.
+  if (!opts.guaranteedHit) {
+    const stealthIdx = defender.status.findIndex(s => s.kind === "stealth");
+    if (stealthIdx >= 0) {
+      defender.status.splice(stealthIdx, 1); // consumed by dodging one hit
+      events.push({ text: `🫥 **${defender.cardName}** is in **Stealth** — the ${opts.label} finds only shadow!`, flash: "dodge" });
+      return { events, koed: false };
+    }
+  }
 
   // Miss / dodge (skipped for guaranteed-hit ultimates).
   if (!opts.guaranteedHit) {
@@ -184,13 +215,29 @@ export function resolveMove(
       break;
     }
     case "special": {
-      if (actor.energy < settings.specialCost) {
-        events.push({ text: `⚠️ **${actor.cardName}** lacks energy for a Special Attack and staggers.` });
+      // The card's signature moveset drives its Special (falls back to a
+      // generic heavy strike for a card with no assigned moveset).
+      const ms = getMoveset(actor.moveset);
+      const cost = ms?.energyCost ?? settings.specialCost;
+      if (actor.energy < cost) {
+        events.push({ text: `⚠️ **${actor.cardName}** lacks energy for ${ms ? `**${ms.name}**` : "a Special Attack"} and staggers.` });
         break;
       }
-      actor.energy -= settings.specialCost;
-      const r = strike(actor, foe, settings, { powerPct: 160, label: "Special Attack" });
-      events.push(...r.events); koed = r.koed;
+      actor.energy -= cost;
+      if (!ms || ms.kind === "strike") {
+        const label = ms?.name ?? "Special Attack";
+        if (ms) events.push({ text: `${ms.emoji} **${actor.cardName}** uses **${ms.name}**!` });
+        const r = strike(actor, foe, settings, { powerPct: ms?.powerPct ?? 160, label });
+        events.push(...r.events); koed = r.koed;
+        if (!koed && ms?.followUpPct) {
+          const r2 = strike(actor, foe, settings, { powerPct: ms.followUpPct, label: `${label} (follow-up)` });
+          events.push(...r2.events); koed = r2.koed;
+        }
+      } else {
+        events.push({ text: `${ms.emoji} **${actor.cardName}** uses **${ms.name}**!` });
+        events.push(...applyMovesetEffect(ms.effect!, actor, foe, settings));
+        koed = foe.hp <= 0;
+      }
       break;
     }
     case "ultimate": {
@@ -249,9 +296,10 @@ export function resolveMove(
 
 // Which moves are legal right now (for button enable/disable + AI).
 export function availableMoves(actor: Combatant, settings: BattleSettings): Record<MoveType, boolean> {
+  const specialCost = getMoveset(actor.moveset)?.energyCost ?? settings.specialCost;
   return {
     attack: true,
-    special: actor.energy >= settings.specialCost,
+    special: actor.energy >= specialCost,
     defend: true,
     special_card: !!actor.specialEffect && !!actor.specialCardId && actor.specialCooldownRemaining === 0,
     charge: true,

@@ -14,6 +14,7 @@ import {
   updateProfile, getOrCreateProfile, insertBattleRecord,
 } from "./db.js";
 import { checkBattleAchievements, type BattleAchievementDef, type BattleContext } from "./achievement-engine.js";
+import { getArena } from "./arenas.js";
 import type { Rarity } from "../cards-data.js";
 
 export interface CardLevelUp {
@@ -115,8 +116,10 @@ export async function processBattleRewards(args: {
     const newStreak = won ? myProfile.currentStreak + 1 : 0;
     const highestStreak = Math.max(myProfile.highestStreak, newStreak);
 
-    // Shards + XP (scaled for AI battles, zeroed when throttled).
-    const aiScale = args.isAi ? settings.aiRewardPct / 100 : 1;
+    // Shards + XP (scaled for AI battles, zeroed when throttled). Higher arenas
+    // pay proportionally more — the reward incentive to climb the ladder.
+    const arenaMult = args.isAi ? getArena(args.aiDifficulty).rewardMult : 1;
+    const aiScale = (args.isAi ? settings.aiRewardPct / 100 : 1) * arenaMult;
     let shards = 0, xp = 0, streakBonus = 0;
     if (!throttled) {
       const baseShards = won ? settings.rewardWinShards : draw ? settings.rewardDrawShards : settings.rewardLossShards;
@@ -225,9 +228,10 @@ export async function processBattleRewards(args: {
     } catch { /* non-fatal */ }
   }
 
-  // Card leveling — each real participant's fielded card earns battle XP
-  // (cosmetic frames only, no stat impact). Best-effort. Collect level-ups so
-  // the battle-manager can surface them on the winner screen.
+  // Card leveling — each real participant's fielded card earns battle XP.
+  // Levels now SCALE the card's battle stats (via get_scaled_stats) AND unlock
+  // cosmetic frames, so leveling is a real power grind to Lv 100. Best-effort.
+  // Collect level-ups so the battle-manager can surface them on the winner screen.
   const levelUps: CardLevelUp[] = [];
   try {
     const { grantCardBattleXp, starsForLevel } = await import("../cards/leveling.js");
