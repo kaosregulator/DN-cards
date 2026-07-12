@@ -19,7 +19,7 @@ import { isAdmin, getAllCards, getCardByName, getCardById } from "../db.js";
 import { getBattleSettings, updateBattleSettings, RARITY_ORDER } from "../battle/config-engine.js";
 import { resetSeason } from "../battle/season-engine.js";
 import { upsertBattleCardConfig, getBattleCardConfig, resetBattleCardConfig } from "../battle/db.js";
-import { deriveStats, applyStatOverrides } from "../battle/stat-engine.js";
+import { getScaledStats } from "../battle/stat-engine.js";
 import { db, battleProfilesTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { SPECIAL_EFFECT_KEYS, getEffectDef, inferSpecialEffect } from "../battle/special-cards.js";
@@ -514,9 +514,10 @@ async function buildCardEditorPanel(
   if (!card) return null;
 
   const battleRarity = (cfg?.rarity as Rarity) || (card.rarity as Rarity);
-  const derived = applyStatOverrides(
-    deriveStats({ id: card.id, name: card.name, rarity: card.rarity as Rarity, worthValue: card.worthValue, cardType: card.cardType }, settings, battleRarity),
-    cfg ?? null,
+  // Preview at Lv 1 (base) — stats scale up with the owner's card level in play.
+  const derived = getScaledStats(
+    { id: card.id, name: card.name, rarity: card.rarity as Rarity, worthValue: card.worthValue, cardType: card.cardType },
+    cfg ?? null, settings, 1, battleRarity,
   );
   const ov = (label: string, val: number, overridden: boolean) => `${label}: **${val}**${overridden ? " ✏️" : ""}`;
   const effectKey = cfg?.specialEffect ?? inferSpecialEffect(card.cardType, battleRarity);

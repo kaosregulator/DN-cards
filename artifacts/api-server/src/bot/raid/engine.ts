@@ -5,7 +5,7 @@
 
 import type { BattleSettings, RaidBoss } from "@workspace/db";
 import type { Combatant, BattleEvent, BattleStats, MoveType, Rarity } from "../battle/types.js";
-import { deriveStats, applyStatOverrides } from "../battle/stat-engine.js";
+import { getScaledStats } from "../battle/stat-engine.js";
 import { resolveMove, startOfTurn } from "../battle/combat-engine.js";
 import { rarityRank } from "../battle/config-engine.js";
 import type { OwnedBattleCard } from "../battle/db.js";
@@ -78,7 +78,7 @@ export function buildPlayerCombatant(
     id: member.card.id, name: member.card.name, rarity: member.card.rarity,
     worthValue: member.card.worthValue, cardType: member.card.cardType,
   };
-  const stats = applyStatOverrides(deriveStats(cardish, settings, battleRarity), member.card.config);
+  const stats = getScaledStats(cardish, member.card.config, settings, member.card.level ?? 1, battleRarity);
   return {
     userId: member.userId, displayName: member.displayName, isAi: false, side: 0,
     cardId: member.card.id, cardName: member.card.name, cardRarity: battleRarity,

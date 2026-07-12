@@ -59,6 +59,12 @@ export const battleSettingsTable = pgTable("battle_settings", {
   ultimateChargePerTurn: integer("ultimate_charge_per_turn").notNull().default(14),
   ultimateThreshold: integer("ultimate_threshold").notNull().default(100),
   ultimateDamagePct: integer("ultimate_damage_pct").notNull().default(260),
+  // ── Level scaling ────────────────────────────────────────────────────────────
+  // Card level (1..MAX_LEVEL) scales combat stats. `levelMaxBonusPct` is the
+  // TOTAL bonus applied at max level, spread linearly from level 1 (+0%). E.g.
+  // 150 → a maxed card hits ~2.5× its base. Leveling is the grind that makes a
+  // card stronger; 0 disables scaling (back to flat, level-agnostic stats).
+  levelMaxBonusPct: integer("level_max_bonus_pct").notNull().default(150),
   // ── Card eligibility ─────────────────────────────────────────────────────────
   minRarity: text("min_rarity").notNull().default("common"),
   maxRarity: text("max_rarity").notNull().default("mythic"),

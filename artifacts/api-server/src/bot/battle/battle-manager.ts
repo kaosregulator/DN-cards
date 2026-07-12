@@ -24,7 +24,7 @@ import type { BattleSettings } from "@workspace/db";
 import type { Combatant, MoveType, AiDifficulty, Rarity } from "./types.js";
 import { AI_DIFFICULTIES } from "./types.js";
 import { getBattleSettings, rarityAllowed, typeAllowed } from "./config-engine.js";
-import { deriveStats, applyStatOverrides, powerRating } from "./stat-engine.js";
+import { getScaledStats, powerRating } from "./stat-engine.js";
 import { inferSpecialEffect, getEffectDef } from "./special-cards.js";
 import { resolveMove, startOfTurn, availableMoves } from "./combat-engine.js";
 import { chooseAiMove, pickAiCardIndex, AI_LABELS } from "./ai-engine.js";
@@ -133,8 +133,8 @@ async function eligibleForUser(rt: BattleRuntime, userId: string): Promise<Owned
   const list = owned
     .filter(c => isCardEligible(rt.settings, c))
     .sort((x, y) =>
-      powerRating(applyStatOverrides(deriveStats(cardish(y), rt.settings), y.config))
-      - powerRating(applyStatOverrides(deriveStats(cardish(x), rt.settings), x.config)))
+      powerRating(getScaledStats(cardish(y), y.config, rt.settings, y.level))
+      - powerRating(getScaledStats(cardish(x), x.config, rt.settings, x.level)))
     .slice(0, 25);
   rt.eligibleCache.set(userId, list);
   return list;
@@ -147,12 +147,15 @@ function cardish(c: OwnedBattleCard) {
 function buildCombatant(
   rt: BattleRuntime, userId: string, name: string, isAi: boolean, side: 0 | 1,
   card: OwnedBattleCard, special: OwnedBattleCard | null, aiDifficulty?: AiDifficulty,
+  levelOverride?: number,
 ): Combatant {
   // A per-card battle-rarity override (set in the admin card editor) drives both
   // stat derivation and the rarity shown in the battle embed, without touching
-  // the real card.
+  // the real card. Stats resolve through the single get_scaled_stats entry point,
+  // scaled by the card's level (the AI can override to match the player's card).
   const battleRarity = (card.config?.rarity as Rarity) || (card.rarity as Rarity);
-  const stats = applyStatOverrides(deriveStats(cardish(card), rt.settings, battleRarity), card.config);
+  const level = levelOverride ?? card.level;
+  const stats = getScaledStats(cardish(card), card.config, rt.settings, level, battleRarity);
   let specialEffect: string | null = null;
   let specialCooldownMax = 3;
   if (rt.settings.specialCardsEnabled && special) {
@@ -470,7 +473,7 @@ async function beginCombat(rt: BattleRuntime) {
   if (rt.isAi) {
     const pool = (await getAllBattleCards(rt.guildId)).filter(c => isCardEligible(rt.settings, c));
     const usePool = pool.length ? pool : chalEligible;
-    const scores = usePool.map(c => powerRating(applyStatOverrides(deriveStats(cardish(c), rt.settings), c.config)));
+    const scores = usePool.map(c => powerRating(getScaledStats(cardish(c), c.config, rt.settings, c.level)));
     const idx = pickAiCardIndex(scores, rt.aiDifficulty);
     const aiCard = usePool[idx] ?? usePool[0]!;
     const aiSpecial = usePool[Math.floor(Math.random() * usePool.length)] ?? null;

@@ -7,7 +7,7 @@
 
 import {
   db,
-  cardsTable, collectionsTable,
+  cardsTable, collectionsTable, cardProgressTable,
   battleCardConfigTable, battleProfilesTable, battleRecordsTable,
   battleAchievementsTable, battleSeasonsTable, battleDailyChallengesTable,
   battleLocksTable,
@@ -27,6 +27,10 @@ export interface OwnedBattleCard {
   worthValue: number;
   imageUrl: string | null;
   owned: number;      // normal + shiny copies
+  // The owner's level for THIS card (from card_progress, 1..100). Drives
+  // level-based stat scaling via get_scaled_stats. Defaults to 1 for pools that
+  // aren't tied to a specific owner (e.g. the AI card pool).
+  level: number;
   config: BattleCardConfig | null;
 }
 
@@ -52,9 +56,16 @@ export async function getOwnedBattleCards(guildId: string, userId: string): Prom
       imageUrl: cardsTable.imageUrl,
       count: collectionsTable.count,
       shinyCount: collectionsTable.shinyCount,
+      // Left-joined so a card the user has never battled still returns (level 1).
+      level: cardProgressTable.level,
     })
       .from(collectionsTable)
       .innerJoin(cardsTable, eq(collectionsTable.cardId, cardsTable.id))
+      .leftJoin(cardProgressTable, and(
+        eq(cardProgressTable.guildId, collectionsTable.guildId),
+        eq(cardProgressTable.userId, collectionsTable.userId),
+        eq(cardProgressTable.cardId, collectionsTable.cardId),
+      ))
       .where(and(
         eq(collectionsTable.guildId, guildId),
         eq(collectionsTable.userId, userId),
@@ -70,6 +81,7 @@ export async function getOwnedBattleCards(guildId: string, userId: string): Prom
     worthValue: r.worthValue,
     imageUrl: r.imageUrl,
     owned: r.count + r.shinyCount,
+    level: r.level ?? 1,
     config: cfgMap.get(r.id) ?? null,
   }));
 }
@@ -87,7 +99,7 @@ export async function getAllBattleCards(guildId: string): Promise<OwnedBattleCar
   ]);
   return rows.filter(r => !r.isArchived).map(r => ({
     id: r.id, name: r.name, rarity: r.rarity as Rarity, cardType: r.cardType,
-    worthValue: r.worthValue, imageUrl: r.imageUrl, owned: 0, config: cfgMap.get(r.id) ?? null,
+    worthValue: r.worthValue, imageUrl: r.imageUrl, owned: 0, level: 1, config: cfgMap.get(r.id) ?? null,
   }));
 }
 

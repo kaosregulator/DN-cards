@@ -8,12 +8,16 @@ import { and, eq } from "drizzle-orm";
 import { logger } from "../../lib/logger.js";
 import { framesForRarity, type Frame } from "./frames.js";
 
-export const MAX_LEVEL = 20;
+// Cards now level to 100. Level scales BATTLE STATS (see stat-engine
+// get_scaled_stats) — a maxed Lv 100 card is at full strength — and unlocks
+// cosmetic frames spread evenly across the ladder. Leveling is a real grind
+// with a real payoff, not cosmetic-only.
+export const MAX_LEVEL = 100;
 
-// Star rating (1–5) derived from level. A card hits a new star at each of these
-// level milestones — so a fully-maxed (Lv 20) card is 5 stars. Used as the
-// prestige gate for co-op boss raids.
-export const STAR_LEVELS = [1, 5, 10, 15, 20] as const;
+// Star rating (1–5) derived from level, spread evenly across the 1–100 ladder
+// so a fully-maxed (Lv 100) card is 5 stars. Used as the prestige gate for
+// co-op boss raids (their 1–5⭐ system is unchanged).
+export const STAR_LEVELS = [1, 25, 50, 75, 100] as const;
 export const MAX_STARS = STAR_LEVELS.length;
 
 export function starsForLevel(level: number): number {

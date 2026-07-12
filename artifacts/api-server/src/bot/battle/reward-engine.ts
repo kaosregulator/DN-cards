@@ -225,9 +225,10 @@ export async function processBattleRewards(args: {
     } catch { /* non-fatal */ }
   }
 
-  // Card leveling — each real participant's fielded card earns battle XP
-  // (cosmetic frames only, no stat impact). Best-effort. Collect level-ups so
-  // the battle-manager can surface them on the winner screen.
+  // Card leveling — each real participant's fielded card earns battle XP.
+  // Levels now SCALE the card's battle stats (via get_scaled_stats) AND unlock
+  // cosmetic frames, so leveling is a real power grind to Lv 100. Best-effort.
+  // Collect level-ups so the battle-manager can surface them on the winner screen.
   const levelUps: CardLevelUp[] = [];
   try {
     const { grantCardBattleXp, starsForLevel } = await import("../cards/leveling.js");

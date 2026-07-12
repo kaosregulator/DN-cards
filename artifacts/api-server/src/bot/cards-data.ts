@@ -109,6 +109,25 @@ export function getMythicDisplay(
 export const BUILTIN_RARITIES: Rarity[] = ["common", "uncommon", "rare", "epic", "legendary", "mythic"];
 
 /**
+ * Canonical rarity ladder (low → high). THE single source of truth for rarity
+ * ordering across the whole project — catch, packs, trade, battles, raids, and
+ * stat scaling all rank rarity through {@link rarityRank}. Do not redefine this
+ * ordering anywhere else; import from here.
+ */
+export const RARITY_ORDER: Rarity[] = [...BUILTIN_RARITIES];
+
+/**
+ * Numeric rank of a rarity on the canonical ladder (common = 0 … mythic = 5).
+ * Unknown/custom keys fall back to 0 so callers never crash on an unexpected
+ * tier — custom economy tiers should be resolved to a built-in base first via
+ * the guild rarity context.
+ */
+export function rarityRank(r: Rarity | string): number {
+  const i = RARITY_ORDER.indexOf(r as Rarity);
+  return i < 0 ? 0 : i;
+}
+
+/**
  * Return the per-guild display order for built-in rarities, falling back to
  * the canonical key order. Invalid or partial arrays are sanitized so the
  * result always contains exactly one entry for every built-in rarity.
