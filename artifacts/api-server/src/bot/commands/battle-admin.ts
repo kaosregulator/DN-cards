@@ -20,7 +20,7 @@ import { getBattleSettings, updateBattleSettings, RARITY_ORDER } from "../battle
 import { resetSeason } from "../battle/season-engine.js";
 import { upsertBattleCardConfig, getBattleCardConfig, resetBattleCardConfig } from "../battle/db.js";
 import { getScaledStats } from "../battle/stat-engine.js";
-import { db, battleProfilesTable } from "@workspace/db";
+import { db, battleProfilesTable, type Card } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { SPECIAL_EFFECT_KEYS, getEffectDef, inferSpecialEffect } from "../battle/special-cards.js";
 import { getMoveset, inferMoveset, MOVESETS } from "../battle/movesets.js";
@@ -204,6 +204,15 @@ export async function handleBattleAdminSelect(interaction: StringSelectMenuInter
     return;
   }
 
+  // Fuzzy search result picker from the "Edit Card" modal.
+  if (action === "bcsearchresult") {
+    const cardId = Number(interaction.values[0]);
+    const panel = await buildCardEditorPanel(guildId, cardId);
+    if (panel) await interaction.editReply(panel).catch(() => {});
+    else await interaction.editReply(`❌ Couldn't open the editor for that card.`).catch(() => {});
+    return;
+  }
+
   if (action === "minrarity") await updateBattleSettings(guildId, { minRarity: interaction.values[0] });
   else if (action === "maxrarity") await updateBattleSettings(guildId, { maxRarity: interaction.values[0] });
   else if (action === "types") {
@@ -271,10 +280,49 @@ export async function handleBattleAdminModal(interaction: ModalSubmitInteraction
     });
     await interaction.editReply("✅ Rewards updated.");
   } else if (action === "editcard") {
-    // Search for a card by name, then open its battle-card editor panel.
+    // Fuzzy card search (same scoring as /dnvaluesearch), then open the battle-card editor.
     const name = interaction.fields.getTextInputValue("name").trim();
-    const card = await getCardByName(name, guildId);
-    if (!card) { await interaction.editReply(`❌ No card named **${name}** found. Check the spelling and try again.`); return; }
+    const cards = await getAllCards(guildId);
+    const exact = cards.find((c) => c.name.toLowerCase() === name.toLowerCase());
+    let card: Card | undefined = exact;
+
+    if (!card) {
+      const scored = cards
+        .map((c) => ({ c, score: matchCardScore(c, name) }))
+        .filter(({ score }) => score > 0)
+        .sort((a, b) => b.score - a.score);
+
+      if (scored.length === 0) {
+        await interaction.editReply(`❌ No card found for **${name}**. Check the spelling and try again.`);
+        return;
+      }
+      if (scored.length === 1) {
+        card = scored[0].c;
+      } else {
+        // Multiple matches — show a picker so the admin can choose the right card.
+        const top = scored.slice(0, 25);
+        const embed = new EmbedBuilder()
+          .setTitle("🔍 Multiple card matches")
+          .setDescription(`I found ${scored.length} cards matching "**${name}**". Pick one to edit.`)
+          .setColor(0x5865f2);
+        const row = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
+          new StringSelectMenuBuilder()
+            .setCustomId(`battleadmin:bcsearchresult`)
+            .setPlaceholder("Select a card to edit")
+            .addOptions(top.map(({ c }) => {
+              const desc = `${RARITY_LABELS[c.rarity as Rarity] ?? c.rarity} · ${c.cardType || "—"} · worth ${c.worthValue}`;
+              return {
+                label: c.name.slice(0, 100),
+                description: desc.length > 100 ? desc.slice(0, 97) + "…" : desc,
+                value: String(c.id),
+              };
+            })),
+        );
+        await interaction.editReply({ embeds: [embed], components: [row] });
+        return;
+      }
+    }
+
     const panel = await buildCardEditorPanel(guildId, card.id);
     if (panel) await interaction.editReply(panel);
     else await interaction.editReply(`❌ Couldn't open the editor for **${card.name}**.`);
@@ -483,7 +531,7 @@ function buildCardSearchModal(): ModalBuilder {
   return new ModalBuilder().setCustomId("battleadmin:editcard").setTitle("Edit a Battle Card").addComponents(
     new ActionRowBuilder<TextInputBuilder>().addComponents(
       new TextInputBuilder().setCustomId("name").setLabel("Card name (search)").setStyle(TextInputStyle.Short)
-        .setRequired(true).setPlaceholder("Type the exact card name…")),
+        .setRequired(true).setPlaceholder("Type any card name — exact match, partial match, or acronym…")),
   );
 }
 
@@ -583,6 +631,45 @@ async function buildCardEditorPanel(
     new ButtonBuilder().setCustomId(`battleadmin:bcreset:${cardId}`).setLabel("Reset to Auto").setEmoji("♻️").setStyle(ButtonStyle.Secondary),
   );
   return { embeds: [embed], components: [rarityRow, specialRow, movesetRow, btnRow] };
+}
+
+// ── Card search scoring (mirrors /dnvaluesearch) ─────────────────────────────
+function cardNameAcronym(card: Card): string {
+  return card.name
+    .split(/[^a-zA-Z0-9]+/)
+    .map((w) => w[0])
+    .join("")
+    .toLowerCase();
+}
+
+function matchCardScore(card: Card, query: string): number {
+  const q = query.toLowerCase().trim().replace(/\s+/g, " ");
+  if (!q) return 0;
+  const tokens = q.split(/\s+/).filter(Boolean);
+  const name = card.name.toLowerCase();
+  const desc = (card.description ?? "").toLowerCase();
+  const type = (card.cardType ?? "").toLowerCase();
+  const rarity = (card.rarity ?? "").toLowerCase();
+  const compactName = name.replace(/[^a-zA-Z0-9]/g, "");
+  const acronym = cardNameAcronym(card);
+
+  let score = 0;
+  for (const token of tokens) {
+    if (!token) continue;
+    let tokenScore = 0;
+    if (name === token) tokenScore = 100;
+    else if (name.startsWith(token + " ")) tokenScore = 80;
+    else if (name.includes(token)) tokenScore = 60;
+    else if (compactName.includes(token)) tokenScore = 50;
+    else if (acronym.includes(token)) tokenScore = 45;
+    else if (desc.includes(token)) tokenScore = 30;
+    else if (type.includes(token)) tokenScore = 20;
+    else if (rarity.includes(token)) tokenScore = 20;
+    score += tokenScore;
+  }
+  // Tiny tie-breaker for higher-value cards, like DN values.
+  score += (card.worthValue ?? 0) / 1_000_000;
+  return score;
 }
 
 // ── Admin gating ─────────────────────────────────────────────────────────────
