@@ -297,8 +297,8 @@ function buildLegacyCommands() {
       .addIntegerOption(o => o.setName("max_copies").setDescription("Max copies if limited (default 50)").setMinValue(1))
       .addBooleanOption(o => o.setName("event_exclusive").setDescription("Event exclusive — never spawns randomly?"))),
 
-    adminCmd("createcardfrommttv", "Create a new DN card from an MTTV item — image + value pulled from MTTV", s => s
-      .addStringOption(o => o.setName("item").setDescription("MTTV item name — type to search").setRequired(true).setAutocomplete(true))
+    adminCmd("createcardfrommttv", "Create a new DN card from a Vault Values item — image + value pulled from Vault Values", s => s
+      .addStringOption(o => o.setName("item").setDescription("Vault Values item name — type to search").setRequired(true).setAutocomplete(true))
       .addStringOption(o => o.setName("rarity").setDescription("DN rarity tier — type to search").setRequired(true).setAutocomplete(true))
       .addStringOption(o => o.setName("type").setDescription("Card type/tag — type to search existing types or enter a new one").setRequired(true).setAutocomplete(true))
       .addStringOption(o => o.setName("set").setDescription("Optional set to add this card to immediately").setAutocomplete(true))
@@ -315,9 +315,9 @@ function buildLegacyCommands() {
       .addIntegerOption(o => o.setName("total_minted").setDescription("Current number of copies that exist (careful: manual override)").setMinValue(0))
       .addBooleanOption(o => o.setName("limited").setDescription("Mark this card as limited edition (enforces max_copies cap)"))),
 
-    adminCmd("editimage", "Update a card's image and description from MTTV or an uploaded file", s => s
+    adminCmd("editimage", "Update a card's image and description from Vault Values or an uploaded file", s => s
       .addStringOption(o => o.setName("name").setDescription("Card to edit").setRequired(true).setAutocomplete(true))
-      .addAttachmentOption(o => o.setName("image").setDescription("Upload image/GIF (overrides MTTV search)"))),
+      .addAttachmentOption(o => o.setName("image").setDescription("Upload image/GIF (overrides Vault Values search)"))),
 
 
     // ── /rarity — hub command: display names, economy overrides, custom tiers, card assignments
@@ -443,17 +443,17 @@ function buildLegacyCommands() {
       .addSubcommand(sc => sc.setName("give").setDescription("Give thanks to a helpful member (24h cooldown per person)")
         .addUserOption(o => o.setName("user").setDescription("Member to thank").setRequired(true)))
       .addSubcommand(sc => sc.setName("top").setDescription("Top 10 most appreciated members on this server"))),
-    // ── /info_mttv /calc /valuehelp /valuelist (MTTV values) ─────────────────
-    cmd("info_mttv", "Show details for one MTTV item — prices from MTTV", s => s
+    // ── /info_mttv /calc /valuehelp /valuelist (Vault Values) ─────────────────
+    cmd("info_mttv", "Show details for one item — prices from Vault Values", s => s
       .addStringOption(o => o.setName("item").setDescription("Item name to look up").setRequired(true).setAutocomplete(true))),
 
-    cmd("calc", "MTTV trade calculator — two-sided offer with buttons — prices from MTTV", s => s),
+    cmd("calc", "Vault Values trade calculator — two-sided offer with buttons", s => s),
 
-    cmd("valuehelp", "How MTTV values work — prices from MTTV", s => s),
+    cmd("valuehelp", "How Vault Values pricing works", s => s),
 
-    cmd("valuelist", "Top MTTV items by value — prices from MTTV", s => s),
+    cmd("valuelist", "Top items by value — prices from Vault Values", s => s),
 
-    adminCmd("postcalculator", "Post a persistent MTTV trade calculator hub in a channel", s => s
+    adminCmd("postcalculator", "Post a persistent Vault Values trade calculator hub in a channel", s => s
       .addChannelOption(o => o.setName("channel").setDescription("Channel to post the calculator in").setRequired(true))
       .addChannelOption(o => o.setName("result_channel").setDescription("Optional channel to post calculation results in").setRequired(false))),
 
