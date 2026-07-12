@@ -185,7 +185,7 @@ function buildEditComponents(
   const base = `${messageId}:${side}:${userId}:${idx}`;
   return [
     new ActionRowBuilder<ButtonBuilder>().addComponents(
-      new ButtonBuilder().setCustomId(`${PREFIX}:qty:${base}:dec`).setLabel(`Qty: ${item.quantity}`).setStyle(ButtonStyle.Secondary).setDisabled(true),
+      new ButtonBuilder().setCustomId(`${PREFIX}:qty:${base}:label`).setLabel(`Qty: ${item.quantity}`).setStyle(ButtonStyle.Secondary).setDisabled(true),
       new ButtonBuilder().setCustomId(`${PREFIX}:qty:${base}:inc`).setLabel("➕").setStyle(ButtonStyle.Primary).setDisabled(item.quantity >= 99),
       new ButtonBuilder().setCustomId(`${PREFIX}:qty:${base}:dec`).setLabel("➖").setStyle(ButtonStyle.Primary).setDisabled(item.quantity <= 1),
     ),
