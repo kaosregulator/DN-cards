@@ -269,6 +269,9 @@ export async function startBot() {
           await handleRarityEditSelect(interaction);
         } else if (interaction.customId.startsWith("rarity_hub:settings:select") || interaction.customId.startsWith("rarity_hub:economy:select") || interaction.customId.startsWith("rarity_hub:custom:select:")) {
           await handleRarityHubSelect(interaction);
+        } else if (interaction.customId.startsWith("edituser:")) {
+          const { handleEditUserInteraction } = await import("./commands/edit-user.js");
+          await handleEditUserInteraction(interaction);
         }
         return;
       }
@@ -321,6 +324,9 @@ export async function startBot() {
           await handleRarityEditModal(interaction);
         } else if (interaction.customId.startsWith("rarity_hub:modal:")) {
           await handleRarityHubModal(interaction);
+        } else if (interaction.customId.startsWith("edituser:modal:")) {
+          const { handleEditUserModal } = await import("./commands/edit-user.js");
+          await handleEditUserModal(interaction);
         }
         return;
       }
@@ -339,6 +345,13 @@ export async function startBot() {
         // ── Battle system buttons (challenge, prep, combat moves) ──────────
         if (action === "battle") {
           await handleBattleComponent(interaction);
+          return;
+        }
+
+        // ── Edit-user panel view switch (💳 Core / ⚔️ Battle) ──────────────
+        if (action === "edituser") {
+          const { handleEditUserButton } = await import("./commands/edit-user.js");
+          await handleEditUserButton(interaction);
           return;
         }
 

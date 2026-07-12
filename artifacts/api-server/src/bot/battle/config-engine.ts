@@ -9,15 +9,12 @@ import { db, battleSettingsTable } from "@workspace/db";
 import type { BattleSettings } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import type { Rarity } from "./types.js";
+// Rarity ordering/rank is owned by the shared cards-data service — the single
+// source of truth. Battles must not keep a private copy, or a custom `/rarity`
+// tier would rank differently in combat than everywhere else.
+import { RARITY_ORDER, rarityRank } from "../cards-data.js";
 
-export const RARITY_ORDER: Rarity[] = [
-  "common", "uncommon", "rare", "epic", "legendary", "mythic",
-];
-
-export function rarityRank(r: Rarity): number {
-  const i = RARITY_ORDER.indexOf(r);
-  return i < 0 ? 0 : i;
-}
+export { RARITY_ORDER, rarityRank };
 
 const _cache = new Map<string, { value: BattleSettings; expiresAt: number }>();
 const TTL_MS = 5_000;

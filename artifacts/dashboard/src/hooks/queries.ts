@@ -134,7 +134,63 @@ export interface GuildSummary {
   totalShardsEarned: number;
 }
 
-// ── Public roster ────────────────────────────────────────────────────────────
+// ── Site presentation config (read-only) ─────────────────────────────────────
+export interface SiteConfig {
+  homeGuildId: string | null;
+  presentation: unknown | null;
+}
+
+export function useSiteConfig() {
+  return useQuery({
+    queryKey: ["site", "config"],
+    queryFn: () => apiGet<SiteConfig>("/api/site/config"),
+    staleTime: 1000 * 60 * 10,
+  });
+}
+
+// ── Admin: site presentation CMS (presentation-only) ─────────────────────────
+export interface HeroBannerCfg {
+  id: string;
+  label?: string;
+  imageSrc: string;
+  poster?: string | null;
+  enabled?: boolean;
+  startAt?: string | null;
+  endAt?: string | null;
+}
+export interface PresentationConfigDraft {
+  hero?: Partial<{
+    eyebrow: string; title: string; subtitle: string;
+    ctaLabel: string; ctaHref: string; secondaryCtaLabel: string; secondaryCtaHref: string;
+  }>;
+  heroBanners?: HeroBannerCfg[];
+  splash?: Partial<{ enabled: boolean; tierDurationMs: number }>;
+  theme?: Partial<{ primary: string }>;
+  discordInviteUrl?: string;
+}
+
+export function useAdminPresentation(enabled: boolean) {
+  return useQuery({
+    queryKey: ["admin", "site-presentation"],
+    queryFn: () => adminGet<{ config: PresentationConfigDraft; updatedAt: string | null }>("/api/admin/site-presentation"),
+    enabled,
+    staleTime: 0,
+  });
+}
+
+export function useSavePresentation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (config: PresentationConfigDraft) =>
+      adminSend<{ config: PresentationConfigDraft; updatedAt: string }>("PUT", "/api/admin/site-presentation", config),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["admin", "site-presentation"] });
+      qc.invalidateQueries({ queryKey: ["site", "config"] });
+    },
+  });
+}
+
+// ── Public card catalogue (the Card Vault) ───────────────────────────────────
 export function useCards() {
   return useQuery({
     queryKey: ["cards"],

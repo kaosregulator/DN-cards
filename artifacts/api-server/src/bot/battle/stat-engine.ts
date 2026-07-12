@@ -10,6 +10,7 @@
 import type { Card, BattleSettings, BattleCardConfig } from "@workspace/db";
 import type { BattleStats, Rarity } from "./types.js";
 import { rarityRank } from "./config-engine.js";
+import { MAX_LEVEL } from "../cards/leveling.js";
 
 // Per-card-type archetype weighting. Multipliers applied to the derived base.
 // Unknown types fall back to "balanced".
@@ -105,6 +106,57 @@ export function applyStatOverrides(
     ultimateMax: cfg.ultimateMax ?? derived.ultimateMax,
   };
 }
+
+// ── Level scaling ─────────────────────────────────────────────────────────────
+// Card level (1..MAX_LEVEL) makes a card stronger until it is maxed at Lv 100.
+// Growth is linear in level; `levelMaxBonusPct` is the TOTAL bonus at max level.
+// Attack + ultimate output scale hardest (offense-forward), health/defense a bit
+// less, and crit/dodge gain a mild flat bump — so a maxed card clearly hits and
+// survives harder without any single stat ballooning out of control.
+export function scaleByLevel(stats: BattleStats, level: number, settings: BattleSettings): BattleStats {
+  const maxBonus = Math.max(0, (settings.levelMaxBonusPct ?? 150)) / 100;
+  const lvl = Math.max(1, Math.min(MAX_LEVEL, Math.round(level) || 1));
+  const t = MAX_LEVEL > 1 ? (lvl - 1) / (MAX_LEVEL - 1) : 0; // 0 at Lv1 → 1 at max
+  const grow = (weight: number) => 1 + t * maxBonus * weight;
+  return {
+    maxHealth: Math.round(stats.maxHealth * grow(0.8)),
+    attack: Math.round(stats.attack * grow(1.0)),
+    defense: Math.round(stats.defense * grow(0.7)),
+    speed: Math.round(stats.speed * grow(0.5)),
+    luck: Math.round(stats.luck * grow(0.4)),
+    critChance: clampPct(stats.critChance + Math.round(t * 10), 3, 75),
+    accuracy: stats.accuracy,
+    dodge: clampPct(stats.dodge + Math.round(t * 10), 0, 70),
+    energyMax: stats.energyMax,
+    ultimateMax: stats.ultimateMax,
+  };
+}
+
+// ── get_scaled_stats — THE single entry point for a card's battle stats ───────
+// Resolution order (matches the design contract):
+//   1. battle override  — `battle_card_config` (per-guild, per-card) wins per stat
+//   2. core card        — falls back to the immutable `cards` row's rarity/worth/type
+//   3. global rarity    — `effectiveRarity` should be resolved via the shared
+//                         `/rarity` service (custom tiers → built-in base)
+//   4. level scaling     — scaled by the card's level (1..100)
+// It NEVER mutates the core card. Everything battle-facing (PvP, AI, raids,
+// admin stat preview) must go through this so stats are consistent everywhere.
+export function getScaledStats(
+  card: Pick<Card, "id" | "name" | "rarity" | "worthValue" | "cardType">,
+  cfg: BattleCardConfig | null | undefined,
+  settings: BattleSettings,
+  level: number,
+  effectiveRarity?: Rarity,
+): BattleStats {
+  // Battle rarity override wins; else the globally-resolved rarity; else base.
+  const rarity = (cfg?.rarity as Rarity) || effectiveRarity || (card.rarity as Rarity);
+  const derived = deriveStats(card, settings, rarity);
+  const withOverrides = applyStatOverrides(derived, cfg);
+  return scaleByLevel(withOverrides, level, settings);
+}
+
+// snake_case alias to match the design spec's `get_scaled_stats()` name.
+export const get_scaled_stats = getScaledStats;
 
 // A compact "power rating" used for AI card picks + matchmaking display.
 export function powerRating(s: BattleStats): number {

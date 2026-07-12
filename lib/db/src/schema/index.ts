@@ -12,3 +12,4 @@ export * from "./squads";
 export * from "./afk";
 export * from "./giveaways";
 export * from "./bob";
+export * from "./site-presentation";
