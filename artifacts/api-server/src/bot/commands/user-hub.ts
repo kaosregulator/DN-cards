@@ -15,7 +15,7 @@ import {
   ButtonStyle, MessageFlags,
 } from "discord.js";
 import {
-  getUserCollection, getOrCreateCurrency, getLeaderboard, getUnlockedKeys,
+  getUserCollection, getOrCreateCurrency, getLeaderboard,
   getOrCreateGuildSettings, getRarityDisplayOverrides, getRarityContext,
   effectiveRarityKey, getDisplayRarities, getCardDisplayRarity,
 } from "../db.js";
@@ -23,7 +23,7 @@ import {
   RARITY_EMOJI, SHINY_EMOJI, getShinyName, getShinyMultiplier,
   getCollectorRank, getNextRank, type Rarity,
 } from "../cards-data.js";
-import { ACHIEVEMENTS } from "../achievements.js";
+import { ACHIEVEMENTS, getUnlockedKeys } from "../achievements.js";
 import { toAbsoluteImageUrl } from "../image-url.js";
 
 const EPHEMERAL = { flags: MessageFlags.Ephemeral } as const;
@@ -133,15 +133,15 @@ async function buildProfilePage(
   const unique = items.length;
   const rank = getCollectorRank(unique);
   const nextRank = getNextRank(unique);
-  const totalCards = items.reduce((s, i) => s + i.count + i.shinyCount, 0);
+  const totalCards = items.reduce((s: number, i) => s + i.count + i.shinyCount, 0);
   const shinyMultiplier = getShinyMultiplier(settings);
   const netWorth = items.reduce(
-    (s, i) => s + i.worthValue * (i.count + i.shinyCount * shinyMultiplier),
+    (s: number, i) => s + i.worthValue * (i.count + i.shinyCount * shinyMultiplier),
     0,
   );
 
-  const worthIdx = worthBoard.findIndex(r => r.userId === userId);
-  const cardsIdx = cardsBoard.findIndex(r => r.userId === userId);
+  const worthIdx = worthBoard.findIndex((r: typeof worthBoard[number]) => r.userId === userId);
+  const cardsIdx = cardsBoard.findIndex((r: typeof cardsBoard[number]) => r.userId === userId);
 
   const embed = new EmbedBuilder()
     .setTitle(`${rank.emoji} ${interaction.user.username}'s Profile`)

@@ -26,10 +26,12 @@ import {
   addShards,
   deductShards,
   isAdmin,
+  getDisplayRarities,
+  getOrCreateGuildSettings,
+  getRarityContext,
+  effectiveRarityKey,
 } from "../db.js";
-import { getCollectorRank, getShinyMultiplier } from "../cards-data.js";
-import { getOrCreateGuildSettings } from "../db.js";
-import { getRarityContext } from "../db.js";
+import { getCollectorRank, getShinyMultiplier, type Rarity } from "../cards-data.js";
 import { setCardLevel, starsForLevel, starString } from "../cards/leveling.js";
 import { getOrCreateProfile, updateProfile } from "../battle/db.js";
 
@@ -71,10 +73,16 @@ function modalCustomId(action: string, guildId: string, userId: string) {
   return `edituser:modal:${action}:${guildId}:${userId}`;
 }
 
-function parseIds(customId: string): { action: string; guildId: string; userId: string } | null {
+function parseIds(customId: string): { action: string; guildId: string; userId: string; cardId?: number } | null {
   const parts = customId.split(":");
-  if (parts.length !== 5) return null;
-  return { action: parts[2]!, guildId: parts[3]!, userId: parts[4]! };
+  if (parts.length < 5) return null;
+  const cardId = parts.length === 6 ? Number(parts[5]) : undefined;
+  return {
+    action: parts[2]!,
+    guildId: parts[3]!,
+    userId: parts[4]!,
+    cardId: Number.isInteger(cardId) ? cardId : undefined,
+  };
 }
 
 async function checkCallerAdmin(interaction: ChatInputCommandInteraction | StringSelectMenuInteraction | ModalSubmitInteraction | ButtonInteraction): Promise<boolean> {
@@ -172,7 +180,19 @@ export async function handleEditUserCommand(interaction: ChatInputCommandInterac
 }
 
 export async function handleEditUserInteraction(interaction: StringSelectMenuInteraction): Promise<void> {
-  if (!interaction.customId.startsWith("edituser:menu:")) return;
+  if (interaction.customId.startsWith("edituser:menu:")) {
+    // Main action selector
+    await handleMainActionSelect(interaction);
+  } else if (interaction.customId.startsWith("edituser:rarity:")) {
+    // Rarity selector for card actions
+    await handleRaritySelect(interaction);
+  } else if (interaction.customId.startsWith("edituser:cardpick:")) {
+    // Card selector within a rarity
+    await handleCardPick(interaction);
+  }
+}
+
+async function handleMainActionSelect(interaction: StringSelectMenuInteraction): Promise<void> {
   if (!interaction.guild) { await interaction.deferUpdate().catch(() => {}); return; }
   if (!(await checkCallerAdmin(interaction))) {
     await interaction.reply({ content: "❌ Admins only.", flags: MessageFlags.Ephemeral }).catch(() => {});
@@ -188,13 +208,33 @@ export async function handleEditUserInteraction(interaction: StringSelectMenuInt
   const action = interaction.values[0];
   if (!action) { await interaction.deferUpdate().catch(() => {}); return; }
 
-  // A card name is needed for anything that targets a specific card (cards,
-  // shinies, and the battle card-level actions). An amount/level box is needed
-  // for everything except the card-only or profile-only battle actions.
   const needsCard = action.includes("card") || action.includes("shin");
   const isLevelAction = action === "set_card_level";
   const needsAmount = action !== "reset_card_level" && action !== "reset_battle_streak";
 
+  // For card/shiny actions (but not battle level actions), show rarity selector
+  const isCardOrShinyAction = (action.includes("card") || action.includes("shin")) && !isLevelAction;
+  if (needsCard && isCardOrShinyAction) {
+    const settings = await getOrCreateGuildSettings(guildId);
+    const ctx = await getRarityContext(guildId);
+    const ladder = getDisplayRarities(ctx, settings);
+
+    const rarity_select = new StringSelectMenuBuilder()
+      .setCustomId(`edituser:rarity:${action}:${guildId}:${userId}`)
+      .setPlaceholder("Select a rarity to filter cards…")
+      .addOptions(ladder.map(t => ({
+        label: t.label,
+        value: t.key,
+        emoji: t.emoji,
+        description: `Filter by ${t.label}`,
+      })));
+
+    const row = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(rarity_select);
+    await interaction.update({ components: [row] }).catch(() => {});
+    return;
+  }
+
+  // For battle actions or non-card actions, proceed with modal
   const label = [...ACTIONS, ...BATTLE_ACTIONS].find(a => a.value === action)?.label ?? "Edit Member";
   const modal = new ModalBuilder().setCustomId(modalCustomId(action, guildId, userId)).setTitle(label.slice(0, 45));
 
@@ -225,6 +265,101 @@ export async function handleEditUserInteraction(interaction: StringSelectMenuInt
       ),
     );
   }
+  modal.addComponents(components);
+  await interaction.showModal(modal);
+}
+
+async function handleRaritySelect(interaction: StringSelectMenuInteraction): Promise<void> {
+  if (!interaction.guild) { await interaction.deferUpdate().catch(() => {}); return; }
+  const parts = interaction.customId.split(":");
+  const action = parts[2]!;
+  const guildId = parts[3]!;
+  const userId = parts[4]!;
+
+  if (guildId !== interaction.guild.id) {
+    await interaction.reply({ content: "❌ Guild mismatch.", flags: MessageFlags.Ephemeral }).catch(() => {});
+    return;
+  }
+
+  const rarity = interaction.values[0]!;
+  const [allCards, settings, ctx] = await Promise.all([
+    getAllCards(guildId),
+    getOrCreateGuildSettings(guildId),
+    getRarityContext(guildId),
+  ]);
+
+  // Filter cards by rarity
+  const cardsInRarity = allCards.filter(c => effectiveRarityKey(c, ctx) === rarity);
+  if (cardsInRarity.length === 0) {
+    await interaction.reply({ content: `❌ No cards found in that rarity.`, flags: MessageFlags.Ephemeral }).catch(() => {});
+    return;
+  }
+
+  // Show card selector (max 25 options per Discord limits)
+  const cardSelect = new StringSelectMenuBuilder()
+    .setCustomId(`edituser:cardpick:${action}:${guildId}:${userId}:${rarity}`)
+    .setPlaceholder("Select a card…")
+    .addOptions(
+      cardsInRarity
+        .slice(0, 25)
+        .sort((a, b) => a.name.localeCompare(b.name))
+        .map(c => ({
+          label: c.name,
+          value: c.id.toString(),
+          description: `${c.cardType}`,
+        })),
+    );
+
+  const row = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(cardSelect);
+  await interaction.update({ components: [row] }).catch(() => {});
+}
+
+async function handleCardPick(interaction: StringSelectMenuInteraction): Promise<void> {
+  if (!interaction.guild) { await interaction.deferUpdate().catch(() => {}); return; }
+  if (!(await checkCallerAdmin(interaction))) {
+    await interaction.reply({ content: "❌ Admins only.", flags: MessageFlags.Ephemeral }).catch(() => {});
+    return;
+  }
+
+  const parts = interaction.customId.split(":");
+  const action = parts[2]!;
+  const guildId = parts[3]!;
+  const userId = parts[4]!;
+  const cardId = Number(interaction.values[0]);
+
+  if (guildId !== interaction.guild.id) {
+    await interaction.reply({ content: "❌ Guild mismatch.", flags: MessageFlags.Ephemeral }).catch(() => {});
+    return;
+  }
+
+  if (!Number.isInteger(cardId)) {
+    await interaction.reply({ content: "❌ Invalid card selected.", flags: MessageFlags.Ephemeral }).catch(() => {});
+    return;
+  }
+
+  // Store cardId in modal customId for the amount modal
+  const label = [...ACTIONS, ...BATTLE_ACTIONS].find(a => a.value === action)?.label ?? "Edit Member";
+  const modal = new ModalBuilder()
+    .setCustomId(`edituser:modal:${action}:${guildId}:${userId}:${cardId}`)
+    .setTitle(label.slice(0, 45));
+
+  const needsAmount = action !== "reset_card_level" && action !== "reset_battle_streak";
+  const components = [];
+
+  if (needsAmount) {
+    components.push(
+      new ActionRowBuilder<TextInputBuilder>().addComponents(
+        new TextInputBuilder()
+          .setCustomId("amount")
+          .setLabel("Amount")
+          .setStyle(TextInputStyle.Short)
+          .setRequired(true)
+          .setPlaceholder("Whole number, 0 or higher")
+          .setValue("1"),
+      ),
+    );
+  }
+
   modal.addComponents(components);
   await interaction.showModal(modal);
 }
@@ -358,13 +493,13 @@ export async function handleEditUserModal(interaction: ModalSubmitInteraction): 
     return;
   }
 
-  const cardName = action.includes("cards") || action.includes("shinies")
-    ? interaction.fields.getTextInputValue("card").trim()
-    : null;
-
-  let cardId: number | undefined;
+  // If cardId was pre-selected via the rarity/card picker, use it directly
+  // Otherwise, try to get it from the text input (old modal path)
+  let cardId: number | undefined = parsed.cardId;
   let resolvedCardName: string | undefined;
-  if (cardName) {
+
+  if (!cardId && (action.includes("cards") || action.includes("shinies"))) {
+    const cardName = interaction.fields.getTextInputValue("card").trim();
     let card = await getCardByName(cardName, guildId);
     if (!card) {
       // Fuzzy fallback: partial case-insensitive match across the full roster
@@ -388,7 +523,13 @@ export async function handleEditUserModal(interaction: ModalSubmitInteraction): 
       return;
     }
     cardId = card.id;
-    resolvedCardName = card.name;
+  }
+
+  // Resolve card name for feedback
+  if (cardId) {
+    const allCards = await getAllCards(guildId);
+    const card = allCards.find(c => c.id === cardId);
+    if (card) resolvedCardName = card.name;
   }
 
   await interaction.deferUpdate();
