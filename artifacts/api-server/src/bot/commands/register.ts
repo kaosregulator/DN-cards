@@ -405,7 +405,7 @@ function buildLegacyCommands() {
     adminCmd("dashboard", "Get a one-time link to set up or reset your web dashboard login", s => s),
 
     // ── /edituser — interactive member editor (cards, shinies, shards) ─────────
-    adminCmd("edituser", "Edit a member's cards, shinies, and shards", s => s
+    adminCmd("edituser", "Edit a member: 💳 Core Profile & Economy + ⚔️ Battle Profile", s => s
       .addUserOption(o => o.setName("user").setDescription("Member to edit").setRequired(true))),
 
     adminCmd("editpack", "Edit a custom pack — rename, change cost/size, add/remove cards, set emoji", s => s

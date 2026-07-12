@@ -81,6 +81,23 @@ export async function getCardProgress(
   return row ?? null;
 }
 
+// Admin: force a card to a specific level (jump/fix a user). Clamps to
+// [1, MAX_LEVEL] and syncs xp to that level's cumulative total so the card's
+// progress bar and stars line up. Used by the /edituser Battle Profile view.
+export async function setCardLevel(
+  guildId: string, userId: string, cardId: number, level: number,
+): Promise<{ level: number; xp: number }> {
+  const lvl = Math.max(1, Math.min(MAX_LEVEL, Math.round(level) || 1));
+  const xp = totalXpForLevel(lvl);
+  await db.insert(cardProgressTable)
+    .values({ guildId, userId, cardId, level: lvl, xp })
+    .onConflictDoUpdate({
+      target: [cardProgressTable.guildId, cardProgressTable.userId, cardProgressTable.cardId],
+      set: { level: lvl, xp, updatedAt: new Date() },
+    });
+  return { level: lvl, xp };
+}
+
 export async function setEquippedFrame(
   guildId: string, userId: string, cardId: number, frameId: string | null,
 ): Promise<void> {

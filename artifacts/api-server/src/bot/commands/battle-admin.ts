@@ -23,7 +23,10 @@ import { getScaledStats } from "../battle/stat-engine.js";
 import { db, battleProfilesTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { SPECIAL_EFFECT_KEYS, getEffectDef, inferSpecialEffect } from "../battle/special-cards.js";
-import { getMoveset, inferMoveset } from "../battle/movesets.js";
+import { getMoveset, inferMoveset, MOVESETS } from "../battle/movesets.js";
+
+// Options for the admin moveset picker (≤25 for a select menu).
+const MOVESETS_FOR_PICKER = Object.values(MOVESETS);
 import { RARITY_LABELS, RARITY_EMOJI } from "../cards-data.js";
 import type { Rarity } from "../cards-data.js";
 import { toAbsoluteImageUrl } from "../image-url.js";
@@ -186,14 +189,15 @@ export async function handleBattleAdminSelect(interaction: StringSelectMenuInter
   }
 
   // Per-card editor selects → re-render the card editor panel.
-  if (action === "bcrarity" || action === "bcspecial") {
+  if (action === "bcrarity" || action === "bcspecial" || action === "bcmoveset") {
     const cardId = Number(parts[2]);
+    const v = interaction.values[0];
     if (action === "bcrarity") {
-      const v = interaction.values[0];
       await upsertBattleCardConfig(guildId, cardId, { rarity: v === "__auto__" ? null : v }, interaction.user.id);
-    } else {
-      const v = interaction.values[0];
+    } else if (action === "bcspecial") {
       await upsertBattleCardConfig(guildId, cardId, { specialEffect: v === "__auto__" || v === "__none__" ? null : v }, interaction.user.id);
+    } else {
+      await upsertBattleCardConfig(guildId, cardId, { moveset: v === "__auto__" ? null : v }, interaction.user.id);
     }
     const panel = await buildCardEditorPanel(guildId, cardId);
     if (panel) await interaction.editReply(panel).catch(() => {});
@@ -563,12 +567,22 @@ async function buildCardEditorPanel(
         }),
       ),
   );
+  const movesetRow = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
+    new StringSelectMenuBuilder().setCustomId(`battleadmin:bcmoveset:${cardId}`).setPlaceholder("⚔️ Signature move (the card's Special)")
+      .addOptions(
+        { label: "Auto (infer from type)", value: "__auto__", default: !cfg?.moveset },
+        ...MOVESETS_FOR_PICKER.map(m => ({
+          label: m.name, emoji: m.emoji, value: m.key,
+          description: m.description.slice(0, 90), default: cfg?.moveset === m.key,
+        })),
+      ),
+  );
   const btnRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder().setCustomId(`battleadmin:bcstats:${cardId}`).setLabel("Edit Stats").setEmoji("✏️").setStyle(ButtonStyle.Primary),
     new ButtonBuilder().setCustomId(`battleadmin:bctoggle:${cardId}`).setLabel((cfg?.enabled ?? true) ? "Disable" : "Enable").setEmoji("🔀").setStyle((cfg?.enabled ?? true) ? ButtonStyle.Danger : ButtonStyle.Success),
     new ButtonBuilder().setCustomId(`battleadmin:bcreset:${cardId}`).setLabel("Reset to Auto").setEmoji("♻️").setStyle(ButtonStyle.Secondary),
   );
-  return { embeds: [embed], components: [rarityRow, specialRow, btnRow] };
+  return { embeds: [embed], components: [rarityRow, specialRow, movesetRow, btnRow] };
 }
 
 // ── Admin gating ─────────────────────────────────────────────────────────────
