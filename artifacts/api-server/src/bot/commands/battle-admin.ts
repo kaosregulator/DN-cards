@@ -562,7 +562,7 @@ async function buildCardEditorPanel(
   guildId: string, cardId: number,
 ): Promise<{ embeds: EmbedBuilder[]; components: ActionRowBuilder<any>[] } | null> {
   const [card, cfg, settings] = await Promise.all([
-    getCardById(cardId), getBattleCardConfig(guildId, cardId), getBattleSettings(guildId),
+    getCardById(cardId, guildId), getBattleCardConfig(guildId, cardId), getBattleSettings(guildId),
   ]);
   if (!card) return null;
 
