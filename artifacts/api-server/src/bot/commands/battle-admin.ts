@@ -567,15 +567,22 @@ async function buildCardEditorPanel(
   if (!card) return null;
 
   const battleRarity = (cfg?.rarity as Rarity) || (card.rarity as Rarity);
-  // Preview at Lv 1 (base) — stats scale up with the owner's card level in play.
-  const derived = getScaledStats(
-    { id: card.id, name: card.name, rarity: card.rarity as Rarity, worthValue: card.worthValue, cardType: card.cardType },
-    cfg ?? null, settings, 1, battleRarity,
-  );
+  const cardBase = { id: card.id, name: card.name, rarity: card.rarity as Rarity, worthValue: card.worthValue, cardType: card.cardType };
+  // Preview at Lv 1 (base) and Lv 100 (max) — stats scale up with the owner's card level in play.
+  const derivedLv1 = getScaledStats(cardBase, cfg ?? null, settings, 1, battleRarity);
+  const derivedLv100 = getScaledStats(cardBase, cfg ?? null, settings, 100, battleRarity);
   const ov = (label: string, val: number, overridden: boolean) => `${label}: **${val}**${overridden ? " ✏️" : ""}`;
   const effectKey = cfg?.specialEffect ?? inferSpecialEffect(card.cardType, battleRarity);
   const effectDef = getEffectDef(effectKey);
   const moveset = getMoveset(cfg?.moveset ?? inferMoveset(card.cardType, battleRarity));
+
+  const movesetDisplay = moveset
+    ? `${moveset.emoji} **${moveset.name}** · ${moveset.energyCost}⚡${cfg?.moveset ? " ✏️" : " (auto)"}\n_${moveset.description}_`
+    : "—";
+  const specialDisplay = effectDef
+    ? `${effectDef.emoji} **${effectDef.label}**${cfg?.specialEffect ? " ✏️" : " (auto)"}\n_${effectDef.description}_`
+    : "—";
+  const maxLevelBonus = settings.levelMaxBonusPct ?? 150;
 
   const embed = new EmbedBuilder()
     .setColor(0x5865f2)
@@ -587,12 +594,13 @@ async function buildCardEditorPanel(
     .addFields(
       { name: "Battle Rarity", value: `${RARITY_EMOJI[battleRarity]} ${RARITY_LABELS[battleRarity] ?? battleRarity}${cfg?.rarity ? " ✏️" : " (auto)"}`, inline: true },
       { name: "Usable", value: (cfg?.enabled ?? true) ? "✅ Yes" : "🚫 Disabled", inline: true },
-      { name: "As Special Card", value: effectDef ? `${effectDef.emoji} ${effectDef.label}${cfg?.specialEffect ? " ✏️" : " (auto)"}` : "—", inline: true },
-      { name: "Signature Move", value: moveset ? `${moveset.emoji} ${moveset.name}${cfg?.moveset ? " ✏️" : " (auto)"}` : "—", inline: true },
+      { name: "As Special Card", value: specialDisplay, inline: false },
+      { name: "Signature Move", value: movesetDisplay, inline: false },
       { name: "Stats", value:
-        `${ov("❤️ HP", derived.maxHealth, cfg?.health != null)} · ${ov("⚔️ Atk", derived.attack, cfg?.attack != null)} · ${ov("🛡️ Def", derived.defense, cfg?.defense != null)}\n` +
-        `${ov("💨 Spd", derived.speed, cfg?.speed != null)} · ${ov("💥 Crit%", derived.critChance, cfg?.critChance != null)} · 🍀 Luck ${derived.luck}`,
+        `Lv 1: ${ov("HP", derivedLv1.maxHealth, cfg?.health != null)} · ${ov("Atk", derivedLv1.attack, cfg?.attack != null)} · ${ov("Def", derivedLv1.defense, cfg?.defense != null)} · ${ov("Spd", derivedLv1.speed, cfg?.speed != null)} · ${ov("Crit%", derivedLv1.critChance, cfg?.critChance != null)} · Luck ${derivedLv1.luck}\n` +
+        `Lv 100: ${ov("HP", derivedLv100.maxHealth, cfg?.health != null)} · ${ov("Atk", derivedLv100.attack, cfg?.attack != null)} · ${ov("Def", derivedLv100.defense, cfg?.defense != null)} · ${ov("Spd", derivedLv100.speed, cfg?.speed != null)} · ${ov("Crit%", derivedLv100.critChance, cfg?.critChance != null)} · Luck ${derivedLv100.luck}`,
         inline: false },
+      { name: "Level Scaling", value: `Stats scale from **Lv 1** → **Lv 100** (max +${maxLevelBonus}% total bonus). A player's actual card level is used in real battles.`, inline: false },
     )
     .setFooter({ text: "Changes save instantly, for this server only." });
   const thumb = toAbsoluteImageUrl(card.imageUrl);
