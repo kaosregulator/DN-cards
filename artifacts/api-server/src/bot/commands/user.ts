@@ -98,6 +98,10 @@ export async function handleUserCommand(
     else await handleDNValuesHelp(interaction);
     return;
   }
+  if (sub === "battles_welcome") {
+    await handleBattlesWelcome(interaction);
+    return;
+  }
 
   await interaction.deferReply(
     EPHEMERAL_COMMANDS.has(sub) ? { flags: MessageFlags.Ephemeral } : {},
@@ -958,7 +962,6 @@ export async function handleUserCommand(
   // /welcome posts publicly (no flags) so it can be used as a server welcome
   // message — we still deferReply'd above without ephemeral flag.
   if (sub === "welcome") { await handleWelcome(interaction); return; }
-  if (sub === "battles_welcome") { await handleBattlesWelcome(interaction); return; }
 
   // ── /sets (read-only set browser) ────────────────────────────────────────
   if (sub === "sets") {
