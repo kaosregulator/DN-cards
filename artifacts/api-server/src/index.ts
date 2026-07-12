@@ -434,7 +434,7 @@ async function runBootMigrations() {
   // key failures on new inserts. Resync every sequence owned by a serial
   // column to the current max id + 1. This is idempotent and safe.
   await pool.query(`
-    DO $
+    DO $$
     DECLARE
       r RECORD;
     BEGIN
@@ -451,7 +451,7 @@ async function runBootMigrations() {
           r.schema_name || '.' || r.table_name, r.column_name, r.column_name, r.schema_name, r.table_name
         );
       END LOOP;
-    END $;
+    END $$;
   `);
 
   logger.info("Boot migrations applied");
