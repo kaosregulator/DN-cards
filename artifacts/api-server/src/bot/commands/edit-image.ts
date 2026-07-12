@@ -2,8 +2,8 @@
 //
 // Flow:
 //   /edit_image name:<card>
-//     → ephemeral panel with buttons: [Search MTTV] [Upload own image]
-//   Search MTTV → modal asking for the MTTV item name
+//     → ephemeral panel with buttons: [Search Vault Values] [Upload own image]
+//   Search Vault Values → modal asking for the Item name
 //   Modal submit → fuzzy search results shown as buttons
 //   Pick a result → image + description pulled from MTTV and saved
 //   Upload own image → instructions (use the slash command's image option)
@@ -78,7 +78,7 @@ export async function handleEditImageCommand(interaction: ChatInputCommandIntera
     new ActionRowBuilder<ButtonBuilder>().addComponents(
       new ButtonBuilder()
         .setCustomId(`${CUSTOM_ID_PREFIX}:search:${card.id}`)
-        .setLabel("Search from MTTV")
+        .setLabel("Search Vault Values")
         .setStyle(ButtonStyle.Primary),
       new ButtonBuilder()
         .setCustomId(`${CUSTOM_ID_PREFIX}:upload:${card.id}`)
@@ -100,12 +100,12 @@ export async function handleEditImageButton(interaction: ButtonInteraction): Pro
   if (action === "search") {
     const modal = new ModalBuilder()
       .setCustomId(`${CUSTOM_ID_PREFIX}:search_modal:${cardId}`)
-      .setTitle("Search MTTV")
+      .setTitle("Search Vault Values")
       .addComponents(
         new ActionRowBuilder<TextInputBuilder>().addComponents(
           new TextInputBuilder()
             .setCustomId("query")
-            .setLabel("MTTV item name")
+            .setLabel("Item name")
             .setStyle(TextInputStyle.Short)
             .setRequired(true)
             .setMaxLength(100)
@@ -148,8 +148,8 @@ export async function handleEditImageModal(interaction: ModalSubmitInteraction):
   try {
     items = await fetchMTTVItems();
   } catch (err) {
-    logger.error({ err }, "Failed to fetch MTTV items for edit_image modal");
-    await interaction.reply({ content: "❌ Could not reach MTTV. Try again later.", flags: MessageFlags.Ephemeral });
+    logger.error({ err }, "Failed to fetch Vault Values items for edit_image modal");
+    await interaction.reply({ content: "❌ Could not reach the values service. Try again later.", flags: MessageFlags.Ephemeral });
     return;
   }
 
@@ -169,7 +169,7 @@ export async function handleEditImageModal(interaction: ModalSubmitInteraction):
 
   if (results.length === 0) {
     await interaction.reply({
-      content: `❌ No MTTV items found for "${query}". Try a different name or upload your own image.`,
+      content: `❌ No items found for "${query}". Try a different name or upload your own image.`,
       flags: MessageFlags.Ephemeral,
     });
     return;
@@ -216,7 +216,7 @@ export async function handleEditImageModal(interaction: ModalSubmitInteraction):
         .setTitle("🔍 Select an item")
         .setColor(0x9b59b6)
         .setDescription(`Search results for "${query}":\n${lines}`)
-        .setFooter({ text: "Prices from MTTV" }),
+        .setFooter({ text: "Prices from Vault Values" }),
     ],
     components: rows,
     flags: MessageFlags.Ephemeral,
@@ -265,7 +265,7 @@ async function applyMTTVItem(
   viewerGuildId: string | null,
 ): Promise<void> {
   if (!item.image) {
-    const content = `❌ **${item.name}** has no image on MTTV. Pick another item or upload your own.`;
+    const content = `❌ **${item.name}** has no image available. Pick another item or upload your own.`;
     if (interaction.isButton()) {
       await interaction.followUp({ content, flags: MessageFlags.Ephemeral }).catch(() => {});
     } else {
@@ -291,6 +291,6 @@ async function applyMTTVItem(
   const imageUrl = await persistBotImage(item.image);
   await updateCard(card.id, { imageUrl, description: item.description || "" });
 
-  const embed = buildMTTVItemEmbed(item).setTitle(`✅ Updated ${card.name} from MTTV`);
+  const embed = buildMTTVItemEmbed(item).setTitle(`✅ Updated ${card.name} from Vault Values`);
   await interaction.editReply({ embeds: [embed], components: [] }).catch(() => {});
 }

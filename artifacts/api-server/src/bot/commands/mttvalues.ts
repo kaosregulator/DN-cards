@@ -13,12 +13,14 @@ import { addCard, addCardToSet, getCardByName, getSetByName } from "../db.js";
 import { renderPanel, persistBotImage } from "./edit-card.js";
 import { RARITY_BURN, RARITY_WEIGHTS, RARITY_WORTH, type Rarity } from "../cards-data.js";
 
-// MTTV data source via public Firebase REST API — prices from MTTV.
-// The Firebase Web API key is intentionally public (used by browser clients),
-// but is kept in an env var to avoid hardcoding it in source.
-const MTTV_FIRESTORE_KEY = process.env["MTTV_FIRESTORE_KEY"] ?? "";
-const MTTV_FIRESTORE_URL =
-  `https://firestore.googleapis.com/v1/projects/military-tycoon-trading-values/databases/(default)/documents/items?key=${MTTV_FIRESTORE_KEY}&pageSize=100`;
+// Vault Values data source — a public, unauthenticated JSON endpoint that
+// backs vaultedvaluesx.com's Military Tycoon trade calculator/value list.
+// This replaced the old mttvalues.com Firestore feed after that project
+// locked down its Firestore security rules (server-side reads started
+// returning 403 PERMISSION_DENIED with any key, public or private).
+// No API key is required — the endpoint is served straight from a public
+// Wix Data collection.
+const VAULT_VALUES_URL = "https://valuevaultx.com/_functions/api/MTSValueList";
 
 const CALC_STATE_TTL_MS = 15 * 60 * 1000; // ephemeral /calc state lives up to 15 minutes
 
@@ -37,29 +39,70 @@ export type MTTVItem = {
 
 let cache: MTTVItem[] | null = null;
 let cacheExpiresAt = 0;
-const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+const CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes — plain JSON fetch, cheap to refresh
 
-function getFieldValue(fields: Record<string, unknown>, key: string): string | null {
-  const v = fields[key] as Record<string, unknown> | undefined;
-  if (!v) return null;
-  return (v.stringValue as string | undefined) ?? null;
+// Raw shape returned by the Vault Values API (Wix Data export). Fields are
+// mostly free-text with embedded fractions ("6/10") and emoji prefixes
+// ("✅ Tradable") that we normalize below.
+type VaultRawItem = {
+  title?: string;
+  gemValueLow?: number;
+  gemValueHigh?: number;
+  suggestedRarity?: string;
+  demand?: string;
+  functionality?: string;
+  scarcity?: string;
+  trend?: string;
+  category?: string;
+  special?: string;
+  collectorItem?: string;
+  canBeTraded?: string;
+  note?: string;
+  imagelink?: string;
+};
+
+// Extracts the numerator out of strings like "6/10" → 6. Returns null for
+// missing/unparseable values (e.g. empty functionality on some items).
+function parseFraction(s: string | undefined): number | null {
+  if (!s) return null;
+  const m = s.match(/(\d+(?:\.\d+)?)\s*\/\s*10/);
+  if (!m) return null;
+  const n = Number(m[1]);
+  return Number.isFinite(n) ? n : null;
 }
 
-function getFieldInt(fields: Record<string, unknown>, key: string): number | null {
-  const v = fields[key] as Record<string, unknown> | undefined;
-  if (!v) return null;
-  const iv = v.integerValue as string | undefined;
-  if (!iv) return null;
-  const n = parseInt(iv, 10);
-  return Number.isNaN(n) ? null : n;
+// Trend strings look like "= Stable", "↑ Rising", "↓ Dropping" — reduce to
+// the plain trend word so it lines up with the existing tag emoji map.
+function trendTag(trend: string | undefined): string | null {
+  if (!trend) return null;
+  const t = trend.toLowerCase();
+  if (t.includes("stable")) return "stable";
+  if (t.includes("rising") || t.includes("up")) return "rising";
+  if (t.includes("drop") || t.includes("falling") || t.includes("down")) return "dropping";
+  return null;
 }
 
-function getFieldArray(fields: Record<string, unknown>, key: string): string[] {
-  const v = fields[key] as Record<string, unknown> | undefined;
-  if (!v) return [];
-  const arr = (v.arrayValue as Record<string, unknown> | undefined)?.values as Array<Record<string, unknown>> | undefined;
-  if (!arr) return [];
-  return arr.map((item) => (item.stringValue as string | undefined) ?? "").filter(Boolean);
+function parseVaultItem(raw: VaultRawItem, id: string): MTTVItem {
+  const tags: string[] = [];
+  if (raw.category) tags.push(raw.category);
+  const trend = trendTag(raw.trend);
+  if (trend) tags.push(trend);
+  if (raw.special?.includes("✅")) tags.push("special");
+  if (raw.collectorItem?.includes("✅")) tags.push("collector");
+  if (raw.canBeTraded?.includes("❌")) tags.push("untradable");
+
+  return {
+    id,
+    name: raw.title ?? "Unknown",
+    valueMin: typeof raw.gemValueLow === "number" ? raw.gemValueLow : null,
+    valueMax: typeof raw.gemValueHigh === "number" ? raw.gemValueHigh : null,
+    rarity: raw.suggestedRarity?.trim() ? [raw.suggestedRarity.trim()] : [],
+    demand: parseFraction(raw.demand),
+    functionality: parseFraction(raw.functionality),
+    tags,
+    description: raw.note ?? "",
+    image: raw.imagelink ?? null,
+  };
 }
 
 export async function fetchMTTVItems(): Promise<MTTVItem[]> {
@@ -67,54 +110,23 @@ export async function fetchMTTVItems(): Promise<MTTVItem[]> {
   if (cache && cacheExpiresAt > now) return cache;
 
   try {
-    const allDocs: Array<{ name: string; fields?: Record<string, unknown> }> = [];
-    let pageToken: string | undefined;
-    let pageCount = 0;
-    const maxPages = 50; // Firestore pageSize=100 → up to 5,000 docs before warning
-
-    do {
-      const url = pageToken
-        ? `${MTTV_FIRESTORE_URL}&pageToken=${encodeURIComponent(pageToken)}`
-        : MTTV_FIRESTORE_URL;
-      const resp = await fetch(url, { signal: AbortSignal.timeout(8000) });
-      if (!resp.ok) {
-        throw new Error(`HTTP ${resp.status}: ${resp.statusText}`);
-      }
-      const data = await resp.json() as {
-        documents?: Array<{ name: string; fields?: Record<string, unknown> }>;
-        nextPageToken?: string;
-      };
-      allDocs.push(...(data.documents ?? []));
-      pageToken = data.nextPageToken;
-      pageCount++;
-    } while (pageToken && pageCount < maxPages);
-
-    if (pageToken) {
-      logger.warn({ fetched: allDocs.length }, "MTTV collection may exceed pagination safety cap; some items not loaded");
+    const resp = await fetch(VAULT_VALUES_URL, { signal: AbortSignal.timeout(10_000) });
+    if (!resp.ok) {
+      throw new Error(`HTTP ${resp.status}: ${resp.statusText}`);
+    }
+    const data = await resp.json() as Array<VaultRawItem & { _id?: string }>;
+    if (!Array.isArray(data)) {
+      throw new Error("Unexpected response shape from Vault Values API");
     }
 
-    const items: MTTVItem[] = allDocs.map((doc) => {
-      const fields = doc.fields ?? {};
-      return {
-        id: doc.name.split("/").pop() ?? "",
-        name: getFieldValue(fields, "name") ?? "Unknown",
-        valueMin: getFieldInt(fields, "valueMin"),
-        valueMax: getFieldInt(fields, "valueMax"),
-        rarity: getFieldArray(fields, "rarity"),
-        demand: getFieldInt(fields, "demand"),
-        functionality: getFieldInt(fields, "functionality"),
-        tags: getFieldArray(fields, "tags"),
-        description: getFieldValue(fields, "description") ?? "",
-        image: getFieldValue(fields, "image"),
-      };
-    });
+    const items = data.map((raw, idx) => parseVaultItem(raw, raw._id ?? String(idx)));
 
     cache = items;
     cacheExpiresAt = now + CACHE_TTL_MS;
     return items;
   } catch (err) {
-    logger.error({ err: (err as Error).message }, "Failed to fetch MTTV prices");
-    throw new Error("Could not load MTTV prices. The site might be temporarily unavailable.");
+    logger.error({ err: (err as Error).message }, "Failed to fetch Vault Values prices");
+    throw new Error("Could not load item values. The site might be temporarily unavailable.");
   }
 }
 
@@ -136,11 +148,12 @@ export function getMTTVAverageValue(item: MTTVItem): number {
 export function rarityEmoji(rarity: string): string {
   const map: Record<string, string> = {
     Common: "⚪",
+    Uncommon: "🟢",
     Rare: "🔵",
-    Legendary: "🟡",
     Epic: "🟣",
+    Legendary: "🟡",
     Exotic: "🔥",
-    Limited: "💎",
+    "Limited Edition": "💎",
   };
   return map[rarity] ?? "";
 }
@@ -239,7 +252,7 @@ export async function handleInfoMTTV(interaction: ChatInputCommandInteraction): 
   }
 
   if (!item) {
-    await interaction.editReply(`❌ Could not find "${name}" on MTTV. Use /valuelist to browse items or /calc to compare values.`);
+    await interaction.editReply(`❌ Could not find "${name}". Use /vaultvalue_list to browse items or /vaultvalue_calc to compare values.`);
     return;
   }
 
@@ -293,12 +306,12 @@ export async function handleCreateCardFromMTTV(interaction: ChatInputCommandInte
     }
   } catch (err) {
     logger.error({ err }, "Failed to fetch MTTV items for create_card_from_mttv");
-    await interaction.editReply("❌ Could not reach MTTV. Try again later.");
+    await interaction.editReply("❌ Could not reach the values service. Try again later.");
     return;
   }
 
   if (!item) {
-    await interaction.editReply(`❌ Could not find MTTV item "${itemName}". Use /info_mttv to search first.`);
+    await interaction.editReply(`❌ Could not find item "${itemName}". Use /vaultvalue_info to search first.`);
     return;
   }
 
@@ -355,7 +368,7 @@ export async function handleCreateCardFromMTTV(interaction: ChatInputCommandInte
     }
   }
 
-  await renderPanel(interaction, card.id, false, `✅ Created **${card.name}** from MTTV (${baseRarity})${setNote} — tweak any field below`);
+  await renderPanel(interaction, card.id, false, `✅ Created **${card.name}** from Vault Values (${baseRarity})${setNote} — tweak any field below`);
 }
 
 export async function handleValueList(interaction: ChatInputCommandInteraction): Promise<void> {
@@ -373,10 +386,10 @@ export async function handleValueList(interaction: ChatInputCommandInteraction):
   );
 
   const embed = new EmbedBuilder()
-    .setTitle("📋 MTTV Values — Top Items by Value")
+    .setTitle("📋 Vault Values — Top Items by Value")
     .setDescription(lines.join("\n\n"))
     .setColor(0x9b59b6)
-    .setFooter({ text: `Showing 15 of ${items.length} items · Prices from MTTV` });
+    .setFooter({ text: `Showing 15 of ${items.length} items · Prices from Vault Values` });
 
   await interaction.editReply({ embeds: [embed] });
 }
@@ -384,23 +397,23 @@ export async function handleValueList(interaction: ChatInputCommandInteraction):
 export async function handleValueHelp(interaction: ChatInputCommandInteraction): Promise<void> {
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
   const embed = new EmbedBuilder()
-    .setTitle("❓ MTTV Value Help")
+    .setTitle("❓ Vault Value Help")
     .setColor(0x9b59b6)
     .setDescription(
-      "MTTV (Military Tycoon Trading Values) tracks community prices for Military Tycoon items.\n\n" +
+      "Vault Values tracks community prices for Military Tycoon items.\n\n" +
       "**What the numbers mean:**\n" +
       "• 💰 **Value** — the typical trade value range for the item.\n" +
       "• ⭐ **Rarity** — how hard the item is to obtain.\n" +
       "• 📊 **Demand** — how wanted the item is right now (1–10).\n" +
       "• 🛠️ **Functionality** — how useful the item is in-game (1–10).\n" +
-      "• 🏷️ **Tags** — market trends like `rising`, `dropping`, `stable`, `meta`.\n\n" +
+      "• 🏷️ **Tags** — market trends like `rising`, `dropping`, `stable`.\n\n" +
       "**Commands:**\n" +
-      "• `/info_mttv name:<item>` — full details for one item.\n" +
-      "• `/calc` — MTTV trade calculator with two offer sides.\n" +
-      "• `/valuelist` — top items by value.\n\n" +
-      "All prices are pulled live from MTTV.",
+      "• `/vaultvalue_info name:<item>` — full details for one item.\n" +
+      "• `/vaultvalue_calc` — trade calculator with two offer sides.\n" +
+      "• `/vaultvalue_list` — top items by value.\n\n" +
+      "All prices are pulled live from Vault Values.",
     )
-    .setFooter({ text: "Prices from MTTV" });
+    .setFooter({ text: "Prices from Vault Values" });
   await interaction.editReply({ embeds: [embed] });
 }
 
@@ -506,14 +519,14 @@ function buildCalcPreview(state: CalcState, description?: string): EmbedBuilder 
   const theirDemand = calcWeightedDemand(state.theirItems);
 
   return new EmbedBuilder()
-    .setTitle("🧮 MTTV Trade Calculator")
+    .setTitle("🧮 Vault Trade Calculator")
     .setColor(0x74cdd8)
     .setDescription(
       (description ? `${description}\n\n` : "") +
       `**Your offer** — 💎 ${shortValue(yourTotal)}${yourDemand != null ? ` · Demand ${yourDemand.toFixed(1)}/10` : ""}\n${yourLines}\n\n` +
       `**Their offer** — 💎 ${shortValue(theirTotal)}${theirDemand != null ? ` · Demand ${theirDemand.toFixed(1)}/10` : ""}\n${theirLines}`,
     )
-    .setFooter({ text: "Prices from MTTV · each user has their own private session" });
+    .setFooter({ text: "Prices from Vault Values · each user has their own private session" });
 }
 
 function buildCalcMainComponents(): ActionRowBuilder<ButtonBuilder>[] {
@@ -700,7 +713,7 @@ export async function handleCalc(interaction: ChatInputCommandInteraction): Prom
     messageId: "",
   };
   const embed = new EmbedBuilder()
-    .setTitle("🧮 MTTV Trade Calculator")
+    .setTitle("🧮 Vault Trade Calculator")
     .setColor(0x74cdd8)
     .setDescription(
       "Use the buttons below to build your trade offer.\n\n" +
@@ -709,7 +722,7 @@ export async function handleCalc(interaction: ChatInputCommandInteraction): Prom
       "• **Calculate** — see your result privately\n" +
       "• **Clear** — reset your session",
     )
-    .setFooter({ text: "Prices from MTTV · each user has their own private session" });
+    .setFooter({ text: "Prices from Vault Values · each user has their own private session" });
   await interaction.reply({
     flags: MessageFlags.Ephemeral,
     embeds: [embed],
@@ -817,14 +830,14 @@ export async function handleMTTVCalcButton(interaction: ButtonInteraction): Prom
     const yourLines = state.yourItems.length > 0 ? state.yourItems.map(calcItemLine).join("\n") : CALC_EMPTY_SIDE;
     const theirLines = state.theirItems.length > 0 ? state.theirItems.map(calcItemLine).join("\n") : CALC_EMPTY_SIDE;
     const resultEmbed = new EmbedBuilder()
-      .setTitle("🧮 MTTV Trade Calculator — Result")
+      .setTitle("🧮 Vault Trade Calculator — Result")
       .setColor(color)
       .setDescription(
         `**Your offer** — 💎 ${shortValue(yourTotal)}${yourDemand != null ? ` · Demand ${yourDemand.toFixed(1)}/10` : ""}\n${yourLines}\n\n` +
         `**Their offer** — 💎 ${shortValue(theirTotal)}${theirDemand != null ? ` · Demand ${theirDemand.toFixed(1)}/10` : ""}\n${theirLines}\n\n` +
         `**Verdict:** ${verdict}`,
       )
-      .setFooter({ text: "Prices from MTTV · each user has their own private session" });
+      .setFooter({ text: "Prices from Vault Values · each user has their own private session" });
 
     await interaction.editReply({
       embeds: [resultEmbed],
@@ -962,7 +975,7 @@ export async function handleMTTVCalcModal(interaction: ModalSubmitInteraction): 
     allItems = await fetchMTTVItems();
   } catch {
     await interaction.editReply({
-      embeds: [buildCalcPreview(state, "❌ Could not fetch MTTV items. Please try again.")],
+      embeds: [buildCalcPreview(state, "❌ Could not fetch item values. Please try again.")],
       components: buildCalcManageComponents(side, items.length < MAX_CALC_ITEMS, items.length > 0),
     });
     resetCalcTimer(state);
@@ -1018,7 +1031,7 @@ export async function handleMTTVCalcModal(interaction: ModalSubmitInteraction): 
         .setTitle("🔍 Select an item")
         .setColor(0x9b59b6)
         .setDescription(`Search results for "${nameRaw}":\n${lines}`)
-        .setFooter({ text: "Prices from MTTV" }),
+        .setFooter({ text: "Prices from Vault Values" }),
     ],
     components: buildCalcSearchResultComponents(side, scored.map(s => s.i)),
   });

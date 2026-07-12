@@ -20,6 +20,53 @@ function bar(into: number, needed: number, width = 12): string {
   return "▰".repeat(filled) + "▱".repeat(width - filled);
 }
 
+// Builds the single-card level embed (progress bar, frames) for any card the
+// viewer owns. Extracted so both `/level name:<card>` and the quick-jump
+// button on the battle-stats view (see battle/stats-view.ts) render the exact
+// same embed — read-only, no combat/lookup logic involved.
+export async function buildCardLevelEmbed(
+  guildId: string,
+  userId: string,
+  card: { id: number; name: string; rarity: string; imageUrl: string | null },
+): Promise<{ embed: EmbedBuilder } | { error: string }> {
+  const owned = await getUserOwnedCount(guildId, userId, card.id);
+  if (owned.count + owned.shinyCount === 0) {
+    return { error: `❌ You don't own **${card.name}**. You can only level cards you own.` };
+  }
+
+  const rarity = card.rarity as Rarity;
+  const progress = await getCardProgress(guildId, userId, card.id);
+  const level = progress?.level ?? 1;
+  const xp = progress?.xp ?? 0;
+  const fought = progress?.battlesFought ?? 0;
+  const won = progress?.battlesWon ?? 0;
+  const frame = resolveActiveFrame(rarity, progress?.equippedFrame ?? null, level);
+  const { into, needed } = levelProgress(xp, level);
+
+  const allFrames = framesForRarity(rarity);
+  const frameLines = allFrames.map(f => {
+    const active = f.id === frame.id;
+    const unlocked = isFrameUnlocked(f, level);
+    const tag = active ? "**✓ equipped**" : unlocked ? "unlocked" : `🔒 Lv ${f.unlockLevel}`;
+    return `${f.emoji} **${f.name}** — ${tag}`;
+  });
+
+  const embed = new EmbedBuilder()
+    .setTitle(frame.wrap(`${frame.emoji} ${card.name}`))
+    .setColor(frame.color)
+    .setDescription(
+      `**Level ${level}**${level >= MAX_LEVEL ? " MAX" : ""}  ${starString(starsForLevel(level))}  ·  Frame: **${frame.name}**\n` +
+      `\`${bar(into, needed)}\` ` + (needed > 0 ? `${into}/${needed} XP to Lv ${level + 1}` : "Max level") + "\n" +
+      `⚔️ Battles: **${fought}**  ·  🏆 Wins: **${won}**`,
+    )
+    .addFields({ name: "🖼️ Frames", value: frameLines.join("\n"), inline: false })
+    .setFooter({ text: "Equip a frame: /frame name:<card> style:<frame> · Card XP is earned in /battle" });
+  const img = toAbsoluteImageUrl(card.imageUrl);
+  if (img) embed.setThumbnail(img);
+
+  return { embed };
+}
+
 // ── /level [name] ──────────────────────────────────────────────────────
 export async function handleCardLevel(interaction: ChatInputCommandInteraction): Promise<void> {
   if (!interaction.guild) return;
@@ -58,43 +105,9 @@ export async function handleCardLevel(interaction: ChatInputCommandInteraction):
   const card = await getCardByName(name, guildId);
   if (!card) { await interaction.editReply(`❌ "**${name}**" not found. Try \`/list\`.`); return; }
 
-  const owned = await getUserOwnedCount(guildId, userId, card.id);
-  if (owned.count + owned.shinyCount === 0) {
-    await interaction.editReply(`❌ You don't own **${card.name}**. You can only level cards you own.`);
-    return;
-  }
-
-  const rarity = card.rarity as Rarity;
-  const progress = await getCardProgress(guildId, userId, card.id);
-  const level = progress?.level ?? 1;
-  const xp = progress?.xp ?? 0;
-  const fought = progress?.battlesFought ?? 0;
-  const won = progress?.battlesWon ?? 0;
-  const frame = resolveActiveFrame(rarity, progress?.equippedFrame ?? null, level);
-  const { into, needed } = levelProgress(xp, level);
-
-  const allFrames = framesForRarity(rarity);
-  const frameLines = allFrames.map(f => {
-    const active = f.id === frame.id;
-    const unlocked = isFrameUnlocked(f, level);
-    const tag = active ? "**✓ equipped**" : unlocked ? "unlocked" : `🔒 Lv ${f.unlockLevel}`;
-    return `${f.emoji} **${f.name}** — ${tag}`;
-  });
-
-  const embed = new EmbedBuilder()
-    .setTitle(frame.wrap(`${frame.emoji} ${card.name}`))
-    .setColor(frame.color)
-    .setDescription(
-      `**Level ${level}**${level >= MAX_LEVEL ? " MAX" : ""}  ${starString(starsForLevel(level))}  ·  Frame: **${frame.name}**\n` +
-      `\`${bar(into, needed)}\` ` + (needed > 0 ? `${into}/${needed} XP to Lv ${level + 1}` : "Max level") + "\n" +
-      `⚔️ Battles: **${fought}**  ·  🏆 Wins: **${won}**`,
-    )
-    .addFields({ name: "🖼️ Frames", value: frameLines.join("\n"), inline: false })
-    .setFooter({ text: "Equip a frame: /frame name:<card> style:<frame> · Card XP is earned in /battle" });
-  const img = toAbsoluteImageUrl(card.imageUrl);
-  if (img) embed.setThumbnail(img);
-
-  await interaction.editReply({ embeds: [embed] });
+  const result = await buildCardLevelEmbed(guildId, userId, card);
+  if ("error" in result) { await interaction.editReply(result.error); return; }
+  await interaction.editReply({ embeds: [result.embed] });
 }
 
 // ── /lock name:<card> [state] ──────────────────────────────────────────

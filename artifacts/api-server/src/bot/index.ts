@@ -1,6 +1,9 @@
 import { Client, GatewayIntentBits, Partials, Events, REST, Routes, type Interaction } from "discord.js";
 import { logger } from "../lib/logger.js";
-import { burnCard, getOrCreateCurrency, getAllCards } from "./db.js";
+import {
+  burnCard, getOrCreateCurrency, getAllCards, getAllCardsCached,
+  getRarityContext, applyRarityContextAll, effectiveRarityKey,
+} from "./db.js";
 import { runIsolationSelfCheck } from "./isolation-check.js";
 import { handleEditCardSelect, handleEditCardModal } from "./commands/edit-card.js";
 import { handleEditImageButton, handleEditImageModal, handleEditImagePick } from "./commands/edit-image.js";
@@ -14,7 +17,6 @@ import { handleSetChannelsPick, handleSetChannelsApply } from "./commands/setcha
 import { handleAdminHubButton, handleAdminHubModal } from "./commands/admin-hub.js";
 import { handleMttvHubButton, handleMttvHubModal } from "./commands/mttcalc-hub.js";
 import { handleMTTVCalcButton, handleMTTVCalcModal } from "./commands/mttvalues.js";
-import { handleDNValuesAutocomplete, handleDNValuesCalcButton, handleDNValuesCalcModal } from "./commands/dnvalues.js";
 import { checkAchievements, formatUnlockLine } from "./achievements.js";
 import { handleAdminCommand } from "./commands/admin.js";
 import { handleUserCommand } from "./commands/user.js";
@@ -42,6 +44,8 @@ import { handleGiveawayComponent } from "./giveaway/manager.js";
 import { handleGiveawayMessage } from "./giveaway/message-hook.js";
 import { startGiveawayMaintenance } from "./giveaway/sweeper.js";
 import { handleHelpHubComponent } from "./commands/help-hub.js";
+import { buildBattleStatsEmbed, battleStatsLevelJumpRow } from "./battle/stats-view.js";
+import { buildCardLevelEmbed } from "./cards/level-command.js";
 import {
   handleBob, handleBobRoulette, handleBobDuel, handleBobRoast, handleBobTalk,
   handleBobStats, handleBobLeaderboard,
@@ -216,10 +220,6 @@ export async function startBot() {
     try {
       // ── Autocomplete (card / set suggestions as user types) ───────────────
       if (interaction.isAutocomplete()) {
-        if (interaction.commandName === "dnvalueinfo" || interaction.commandName === "dnvaluecalc") {
-          await handleDNValuesAutocomplete(interaction, interaction.options.getFocused(true));
-          return;
-        }
         await handleAutocomplete(interaction);
         return;
       }
@@ -306,8 +306,6 @@ export async function startBot() {
           await handleMttvHubModal(interaction);
         } else if (interaction.customId.startsWith("mtcalc_modal:")) {
           await handleMTTVCalcModal(interaction);
-        } else if (interaction.customId.startsWith("dncalc_modal:")) {
-          await handleDNValuesCalcModal(interaction);
         } else if (interaction.customId.startsWith("setup_")) {
           await handleSetupModalSubmit(interaction);
         } else if (interaction.customId === "rates_custom") {
@@ -373,6 +371,51 @@ export async function startBot() {
           return;
         }
 
+        // ── Battle-stats quick view (from /info) — read-only, no combat ────
+        if (action === "battlestats") {
+          if (!interaction.guild) return;
+          const guildId = interaction.guild.id;
+          const cardId = parseInt(parts[1], 10);
+          const cards = await getAllCardsCached(guildId);
+          const card = cards.find(c => c.id === cardId);
+          if (!card) {
+            await interaction.reply({ content: "❌ This card no longer exists.", flags: MessageFlags.Ephemeral });
+            return;
+          }
+          const ctx = await getRarityContext(guildId);
+          const [effCard] = applyRarityContextAll([card], ctx);
+          const embed = await buildBattleStatsEmbed(
+            guildId, interaction.user.id, card,
+            effectiveRarityKey(effCard!, ctx) as import("./cards-data.js").Rarity,
+          );
+          await interaction.reply({
+            embeds: [embed],
+            components: [battleStatsLevelJumpRow(cardId)],
+            flags: MessageFlags.Ephemeral,
+          });
+          return;
+        }
+
+        // ── Quick-jump from battle-stats view → same embed as /level ───────
+        if (action === "battlestats_level") {
+          if (!interaction.guild) return;
+          const guildId = interaction.guild.id;
+          const cardId = parseInt(parts[1], 10);
+          const cards = await getAllCardsCached(guildId);
+          const card = cards.find(c => c.id === cardId);
+          if (!card) {
+            await interaction.reply({ content: "❌ This card no longer exists.", flags: MessageFlags.Ephemeral });
+            return;
+          }
+          const result = await buildCardLevelEmbed(guildId, interaction.user.id, card);
+          await interaction.reply({
+            content: "error" in result ? result.error : undefined,
+            embeds: "embed" in result ? [result.embed] : [],
+            flags: MessageFlags.Ephemeral,
+          });
+          return;
+        }
+
         // ── Bob entertainment module (games, roulette, duel, events, menu) ──
         if (action === "bob") {
           await handleBobButton(interaction);
@@ -410,11 +453,6 @@ export async function startBot() {
           await handleMTTVCalcButton(interaction);
           return;
         }
-        if (action === "dncalc") {
-          await handleDNValuesCalcButton(interaction);
-          return;
-        }
-
         // ── Sets hub panel buttons ─────────────────────────────────────────
         if (action === "sets") {
           await handleSetsHubButton(interaction);
@@ -705,7 +743,7 @@ export async function startBot() {
     "bob", "bob_coinflip", "bob_dice", "bob_hl", "bob_slots", "bob_wheel", "bob_emoji", "bob_bj", "bob_rps",
     "bob_roulette", "bob_duel", "bob_roast", "bob_talk", "bob_stats", "bob_leaderboard", "bob_admin",
     "whisper", "adminsecret", "echo", "afk", "afksetup",
-    "valuehelp", "valuelist", "info_mttv", "dnvaluesearch", "dnvaluelist", "dnvalueinfo", "dnvaluecalc", "dnhelp", "giveall", "editpack", "postcalculator",
+    "valuehelp", "valuelist", "info_mttv", "giveall", "editpack", "postcalculator",
   ]);
   const unmapped = buildCommands()
     .map(c => internalCommandName(c.name))

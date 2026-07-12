@@ -31,6 +31,7 @@ import { handleBattlesWelcome } from "./battle.js";
 import { checkAchievements, formatUnlockLine } from "../achievements.js";
 import { runPaginator, type PaginatorView } from "../components/paginator.js";
 import { chunkLines } from "../components/field-chunker.js";
+import { battleStatsButtonRow } from "../battle/stats-view.js";
 
 // Display order for rarity drill-downs (rarest → most common). Used by the
 // paginated /collection, /list, and /catalog views.
@@ -84,18 +85,6 @@ export async function handleUserCommand(
     if (sub === "valuehelp") await handleValueHelp(interaction);
     else if (sub === "valuelist") await handleValueList(interaction);
     else await handleInfoMTTV(interaction);
-    return;
-  }
-  if (sub === "dnvaluesearch" || sub === "dnvaluelist" || sub === "dnvalueinfo" || sub === "dnvaluecalc" || sub === "dnhelp") {
-    const {
-      handleDNValuesSearch, handleDNValuesList, handleDNValuesInfo,
-      handleDNValuesCalculator, handleDNValuesHelp,
-    } = await import("./dnvalues.js");
-    if (sub === "dnvaluesearch") await handleDNValuesSearch(interaction);
-    else if (sub === "dnvaluelist") await handleDNValuesList(interaction);
-    else if (sub === "dnvalueinfo") await handleDNValuesInfo(interaction);
-    else if (sub === "dnvaluecalc") await handleDNValuesCalculator(interaction);
-    else await handleDNValuesHelp(interaction);
     return;
   }
   if (sub === "battles_welcome") {
@@ -414,7 +403,7 @@ export async function handleUserCommand(
       }
     } catch { /* non-fatal — skip badge */ }
     { const img = toAbsoluteImageUrl(card.imageUrl); if (img) embed.setImage(img); }
-    await interaction.editReply({ embeds: [embed] });
+    await interaction.editReply({ embeds: [embed], components: [battleStatsButtonRow(card.id)] });
     return;
   }
 
@@ -962,6 +951,13 @@ export async function handleUserCommand(
   // /welcome posts publicly (no flags) so it can be used as a server welcome
   // message — we still deferReply'd above without ephemeral flag.
   if (sub === "welcome") { await handleWelcome(interaction); return; }
+
+  // ── /funfact — standalone wiki trivia, no calc/battle coupling ─────────────
+  if (sub === "funfact") {
+    const { handleFunFact } = await import("./funfacts.js");
+    await handleFunFact(interaction);
+    return;
+  }
 
   // ── /sets (read-only set browser) ────────────────────────────────────────
   if (sub === "sets") {

@@ -103,14 +103,14 @@ function buildPreview(session: UserSession, description?: string): EmbedBuilder 
   const theirDemand = calcWeightedDemand(session.theirItems);
 
   return new EmbedBuilder()
-    .setTitle("🧮 MTTV Trade Calculator")
+    .setTitle("🧮 Vault Trade Calculator")
     .setColor(0x74cdd8)
     .setDescription(
       (description ? `${description}\n\n` : "") +
       `**Your offer** — 💎 ${shortValue(yourTotal)}${yourDemand != null ? ` · Demand ${yourDemand.toFixed(1)}/10` : ""}\n${yourLines}\n\n` +
       `**Their offer** — 💎 ${shortValue(theirTotal)}${theirDemand != null ? ` · Demand ${theirDemand.toFixed(1)}/10` : ""}\n${theirLines}`,
     )
-    .setFooter({ text: "Prices from MTTV" });
+    .setFooter({ text: "Prices from Vault Values" });
 }
 
 function buildMainComponents(messageId: string): ActionRowBuilder<ButtonBuilder>[] {
@@ -307,7 +307,7 @@ export async function handlePostCalculator(interaction: ChatInputCommandInteract
   }
 
   const embed = new EmbedBuilder()
-    .setTitle("🧮 MTTV Trade Calculator")
+    .setTitle("🧮 Vault Trade Calculator")
     .setColor(0x74cdd8)
     .setDescription(
       "Use the buttons below to build your trade offer.\n\n" +
@@ -316,7 +316,7 @@ export async function handlePostCalculator(interaction: ChatInputCommandInteract
       "• **Calculate** — post the trade result publicly\n" +
       "• **Clear** — reset your session",
     )
-    .setFooter({ text: "Prices from MTTV · each user has their own private session" });
+    .setFooter({ text: "Prices from Vault Values · each user has their own private session" });
 
   try {
     const message = await textChannel.send({ embeds: [embed], components: buildMainComponents("placeholder") });
@@ -533,7 +533,7 @@ async function handleCalculate(
     items = await fetchMTTVItems();
   } catch {
     await interaction.editReply({
-      content: "❌ Could not fetch latest MTTV prices. Please try again.",
+      content: "❌ Could not fetch latest item values. Please try again.",
     }).catch(() => {});
     return;
   }
@@ -574,7 +574,7 @@ async function handleCalculate(
       `**Their offer** — 💎 ${shortValue(theirTotal)}${theirDemand != null ? ` · Demand ${theirDemand.toFixed(1)}/10` : ""}\n${theirLines}\n\n` +
       `**Verdict:** ${verdict}`,
     )
-    .setFooter({ text: "Prices from MTTV" });
+    .setFooter({ text: "Prices from Vault Values" });
 
   try {
     const guild = interaction.guild;
@@ -667,7 +667,7 @@ export async function handleMttvHubModal(interaction: ModalSubmitInteraction): P
     allItems = await fetchMTTVItems();
   } catch {
     await interaction.editReply({
-      embeds: [buildPreview(session, "❌ Could not fetch MTTV items. Please try again.")],
+      embeds: [buildPreview(session, "❌ Could not fetch item values. Please try again.")],
       components: buildManageComponents(messageId, side, userId, items.length < MAX_ITEMS, items.length > 0),
     }).catch(() => {});
     return;
@@ -719,7 +719,7 @@ export async function handleMttvHubModal(interaction: ModalSubmitInteraction): P
         .setTitle("🔍 Select an item")
         .setColor(0x9b59b6)
         .setDescription(`Search results for "${nameRaw}":\n${lines}`)
-        .setFooter({ text: "Prices from MTTV" }),
+        .setFooter({ text: "Prices from Vault Values" }),
     ],
     components: buildSearchResultComponents(messageId, side, userId, scored.map(s => s.i)),
   }).catch(() => {});

@@ -296,13 +296,6 @@ export async function handleAutocomplete(interaction: AutocompleteInteraction): 
       return;
     }
 
-    // ── /dnvalueinfo /dnvaluecalc — suggest DN values, not DN cards ─────────
-    if ((cmd === "dnvalueinfo" || cmd === "dnvaluecalc") && ["name", "item"].includes(focused.name)) {
-      const { handleDNValuesAutocomplete } = await import("./dnvalues.js");
-      await handleDNValuesAutocomplete(interaction, focused);
-      return;
-    }
-
     // ── /pack tier — built-in tiers + active custom packs (not cards) ────────
     if (cmd === "pack" && focused.name === "tier" && interaction.guild) {
       const q = query.toLowerCase().trim();

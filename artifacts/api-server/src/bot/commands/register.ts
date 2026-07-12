@@ -88,6 +88,7 @@ function buildLegacyCommands() {
 
     cmd("welcome", "Welcome — game intro, quick start & commands", s => s),
     cmd("battles_welcome", "Welcome guide to DN Cards battles", s => s),
+    cmd("funfact", "A random Military Tycoon fun fact from the wiki", s => s),
 
     adminCmd("setup", "Interactive server setup wizard — channels, spawns, rates, toggles", s => s),
 
@@ -595,22 +596,6 @@ function buildLegacyCommands() {
       .addSubcommand(sc => sc.setName("progress").setDescription("Show set-by-set completion for a member")
         .addUserOption(o => o.setName("user").setDescription("Member to inspect (defaults to you)")))),
 
-    // ── /dnvalues* — DN values lookup ─────────────────────────────────────
-    cmd("dnvaluesearch", "Search DN values by name, rarity, or tag", s => s
-      .addStringOption(o => o.setName("query").setDescription("Search keyword (leave blank for full list)"))),
-    cmd("dnvaluelist", "Show all DN values sorted by value", s => s),
-    cmd("dnvalueinfo", "Show full details for a DN value item", s => s
-      .addStringOption(o => o.setName("name").setDescription("Item name (exact match)").setRequired(true).setAutocomplete(true))),
-    cmd("dnvaluecalc", "Open a DN values trade calculator hub", s => s
-      .addStringOption(o => o.setName("item").setDescription("Item name to add to the calculator").setAutocomplete(true))
-      .addStringOption(o => o.setName("side").setDescription("Which side to add to")
-        .addChoices({ name: "Your offer", value: "your" }, { name: "Their offer", value: "their" }))
-      .addIntegerOption(o => o.setName("quantity").setDescription("How many copies (default 1)").setMinValue(1))
-      .addStringOption(o => o.setName("tier").setDescription("Value tier: low, mid, or high (default mid)")
-        .addChoices({ name: "Low", value: "low" }, { name: "Mid", value: "mid" }, { name: "High", value: "high" }))
-      .addIntegerOption(o => o.setName("stars").setDescription("Stars 1-5 (default 1)").setMinValue(1).setMaxValue(5))),
-    cmd("dnhelp", "Show DN values command help", s => s),
-
     // ── /market (user, Marketplace) ───────────────────────────────────────────
     cmd("market", "Buy, sell, and auction cards for DN Shards", s => s
       .addSubcommand(sc => sc.setName("sell").setDescription("List a card for sale, or as a timed auction")
@@ -744,6 +729,11 @@ export const COMMAND_RENAMES: Record<string, string> = {
   giveawayadmin: "giveaway_admin",
   sethub: "set_hub",
   setadmin: "sets_admin",
+  info_mttv: "vaultvalue_info",
+  calc: "vaultvalue_calc",
+  valuehelp: "vaultvalue_help",
+  valuelist: "vaultvalue_list",
+  postcalculator: "vaultvalue_postcalc",
 };
 
 const INTERNAL_BY_CLEAN: Record<string, string> =
@@ -788,7 +778,7 @@ export const USER_HUB_COMMANDS = new Set([
   "help", "daily", "quests", "pack", "packstats", "tradein", "achievements",
   "level", "frame", "lock", "search", "collector", "calendar", "wishlist",
   "sets", "rep", "thanks", "calc", "valuehelp", "valuelist", "info_mttv",
-  "dnvaluesearch", "dnvaluelist", "dnvalueinfo", "dnvaluecalc", "dnhelp",
+  "funfact",
 ]);
 
 export const ADMIN_HUB_COMMANDS = new Set([
