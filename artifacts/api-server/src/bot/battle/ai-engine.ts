@@ -7,17 +7,20 @@
 
 import type { BattleSettings } from "@workspace/db";
 import type { Combatant, MoveType, AiDifficulty } from "./types.js";
+import { getArena } from "./arenas.js";
 import { availableMoves } from "./combat-engine.js";
 
-const SKILL: Record<AiDifficulty, number> = {
-  easy: 0.15, normal: 0.45, hard: 0.7, expert: 0.85, nightmare: 0.97,
-};
+// AI tactical skill (0..1) now comes from the chosen ARENA — higher arenas play
+// sharper. `AiDifficulty` is an alias for the arena key.
+function skillFor(arena: AiDifficulty): number {
+  return getArena(arena).aiSkill;
+}
 
-// Choose an index into a scored pool. Higher difficulty → prefers stronger
-// cards; easy picks (nearly) at random.
+// Choose an index into a scored pool. Higher arenas → prefer stronger cards;
+// the Beginner arena picks (nearly) at random.
 export function pickAiCardIndex(scores: number[], difficulty: AiDifficulty): number {
   if (scores.length === 0) return -1;
-  const skill = SKILL[difficulty];
+  const skill = skillFor(difficulty);
   if (Math.random() > skill) return Math.floor(Math.random() * scores.length);
   // Weighted toward the top: sort a copy, bias selection.
   const idx = scores.map((s, i) => ({ s, i })).sort((a, b) => b.s - a.s);
@@ -30,7 +33,7 @@ export function chooseAiMove(
   actor: Combatant, foe: Combatant, settings: BattleSettings, difficulty: AiDifficulty,
 ): MoveType {
   const moves = availableMoves(actor, settings);
-  const skill = SKILL[difficulty];
+  const skill = skillFor(difficulty);
   const hpPct = actor.hp / actor.stats.maxHealth;
   const foeHpPct = foe.hp / foe.stats.maxHealth;
 
@@ -54,7 +57,6 @@ export function chooseAiMove(
   return "attack";
 }
 
-// Human-readable label used in the AI-offer prompt.
-export const AI_LABELS: Record<AiDifficulty, string> = {
-  easy: "🟢 Easy", normal: "🔵 Normal", hard: "🟠 Hard", expert: "🔴 Expert", nightmare: "💀 Nightmare",
-};
+// Human-readable arena label used in the AI-offer prompt (delegates to the
+// arena registry so labels never drift).
+export { arenaLabel as AI_LABEL } from "./arenas.js";

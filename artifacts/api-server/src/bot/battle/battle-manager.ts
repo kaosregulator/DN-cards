@@ -28,7 +28,8 @@ import { getScaledStats, powerRating } from "./stat-engine.js";
 import { inferMoveset } from "./movesets.js";
 import { inferSpecialEffect, getEffectDef } from "./special-cards.js";
 import { resolveMove, startOfTurn, availableMoves } from "./combat-engine.js";
-import { chooseAiMove, pickAiCardIndex, AI_LABELS } from "./ai-engine.js";
+import { chooseAiMove, pickAiCardIndex } from "./ai-engine.js";
+import { ARENAS, ARENA_KEYS, getArena, arenaLabel, isArenaKey } from "./arenas.js";
 import {
   getOwnedBattleCards, getAllBattleCards, acquireBattleLock, releaseBattleLock,
   getUserLock, sweepStaleLocks, getAllLocks, deleteAllLocks, type OwnedBattleCard,
@@ -224,7 +225,7 @@ export async function startChallenge(
     challengerId: interaction.user.id, challengerName: interaction.user.username,
     opponentId: opponent ? opponent.id : null,
     opponentName: opponent ? opponent.username : "AI",
-    isAi: !opponent, aiDifficulty: "normal",
+    isAi: !opponent, aiDifficulty: "beginner",
     phase: opponent ? "challenge" : "aidiff",
     prep: new Map(), eligibleCache: new Map(),
     a: null, b: null, turnNumber: 1, currentSide: 0, staked: false,
@@ -359,8 +360,8 @@ async function onConvertToAi(rt: BattleRuntime, interaction: ButtonInteraction) 
 }
 
 async function onPickAiDifficulty(rt: BattleRuntime, interaction: ButtonInteraction, diff: AiDifficulty) {
-  if (interaction.user.id !== rt.challengerId) return safeEphemeral(interaction, "Only the challenger picks the AI difficulty.");
-  if (!AI_DIFFICULTIES.includes(diff)) return safeEphemeral(interaction, "Unknown difficulty.");
+  if (interaction.user.id !== rt.challengerId) return safeEphemeral(interaction, "Only the challenger picks the arena.");
+  if (!isArenaKey(diff)) return safeEphemeral(interaction, "Unknown arena.");
   rt.isAi = true; rt.opponentId = AI_ID; rt.aiDifficulty = diff;
   await enterPrep(rt, interaction);
 }
@@ -480,7 +481,10 @@ async function beginCombat(rt: BattleRuntime) {
     const idx = pickAiCardIndex(scores, rt.aiDifficulty);
     const aiCard = usePool[idx] ?? usePool[0]!;
     const aiSpecial = usePool[Math.floor(Math.random() * usePool.length)] ?? null;
-    rt.b = buildCombatant(rt, AI_ID, `AI (${rt.aiDifficulty})`, true, 1, aiCard, aiSpecial, rt.aiDifficulty);
+    // The AI card is scaled to the ARENA's level — an under-levelled player
+    // card facing the Ascended Arena's Lv 100 AI is a fast wipe (the grind hook).
+    const arena = getArena(rt.aiDifficulty);
+    rt.b = buildCombatant(rt, AI_ID, `AI · ${arena.name}`, true, 1, aiCard, aiSpecial, rt.aiDifficulty, arena.aiLevel);
     rt.staked = false;
   } else {
     const oppPrep = rt.prep.get(rt.opponentId!)!;
@@ -875,21 +879,32 @@ function buildChallengeComponents(rt: BattleRuntime, aiOffered = false): ActionR
   return [row];
 }
 
-function buildAiDifficultyEmbed(rt: BattleRuntime): EmbedBuilder {
+function buildAiDifficultyEmbed(_rt: BattleRuntime): EmbedBuilder {
   return new EmbedBuilder()
     .setColor(0x5865f2)
-    .setTitle("🤖 Battle the AI")
-    .setDescription("Choose a difficulty. The AI picks a valid card and adapts its strategy to the level you pick.")
-    .addFields({ name: "Difficulties", value: AI_DIFFICULTIES.map(d => `${AI_LABELS[d]}`).join("  ") });
+    .setTitle("🤖 Choose your Arena")
+    .setDescription(
+      "The AI card scales to the **arena's level** — nothing is locked, but bringing an " +
+      "under-levelled card to a high arena is a fast wipe. Grind your card to **Lv 100** to " +
+      "breeze the Ascended Arena (and hit **5⭐** for boss raids). Higher arenas pay out more.",
+    )
+    .addFields(
+      ARENA_KEYS.map(k => {
+        const a = ARENAS[k];
+        const band = a.minLevel === a.maxLevel ? `Lv ${a.minLevel}` : `Lv ${a.minLevel}–${a.maxLevel}`;
+        return { name: `${a.emoji} ${a.name}`, value: `${band} · AI Lv ${a.aiLevel} · ×${a.rewardMult} rewards`, inline: true };
+      }),
+    );
 }
 
 function buildAiDifficultyComponents(rt: BattleRuntime): ActionRowBuilder<ButtonBuilder>[] {
-  const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
-    ...AI_DIFFICULTIES.map(d =>
-      new ButtonBuilder().setCustomId(`battle:aidiff:${rt.id}:${d}`).setLabel(AI_LABELS[d].replace(/^\S+\s/, ""))
-        .setStyle(ButtonStyle.Primary)),
-  );
-  return [row];
+  // 6 arenas over two rows (Discord allows ≤5 buttons per row).
+  const mk = (k: typeof ARENA_KEYS[number]) =>
+    new ButtonBuilder().setCustomId(`battle:aidiff:${rt.id}:${k}`).setLabel(ARENAS[k].name.replace(/ Arena$/, ""))
+      .setEmoji(ARENAS[k].emoji).setStyle(ButtonStyle.Secondary);
+  const row1 = new ActionRowBuilder<ButtonBuilder>().addComponents(ARENA_KEYS.slice(0, 3).map(mk));
+  const row2 = new ActionRowBuilder<ButtonBuilder>().addComponents(ARENA_KEYS.slice(3).map(mk));
+  return [row1, row2];
 }
 
 function buildPrepEmbed(rt: BattleRuntime): EmbedBuilder {
@@ -902,7 +917,7 @@ function buildPrepEmbed(rt: BattleRuntime): EmbedBuilder {
       { name: `Challenger — ${rt.challengerName}`, value: readyMark(rt.challengerId), inline: true },
     );
   if (rt.isAi) {
-    e.addFields({ name: `Opponent — AI`, value: `${AI_LABELS[rt.aiDifficulty]} · ✅ Ready`, inline: true });
+    e.addFields({ name: `Opponent — AI`, value: `${arenaLabel(rt.aiDifficulty)} · ✅ Ready`, inline: true });
   } else if (rt.opponentId) {
     e.addFields({ name: `Opponent — ${rt.opponentName}`, value: readyMark(rt.opponentId), inline: true });
   }

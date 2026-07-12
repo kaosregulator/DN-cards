@@ -7,12 +7,16 @@
 // top of that.
 
 import type { Rarity } from "../cards-data.js";
+import { ARENA_KEYS, type ArenaKey } from "./arenas.js";
 
-export type { Rarity };
+export type { Rarity, ArenaKey };
 
-export type AiDifficulty = "easy" | "normal" | "hard" | "expert" | "nightmare";
+// The AI opponent is now selected by ARENA (a level band), not an abstract
+// difficulty. `AiDifficulty` remains as a back-compat alias for the arena key so
+// the many existing references keep compiling; new code should use ArenaKey.
+export type AiDifficulty = ArenaKey;
 
-export const AI_DIFFICULTIES: AiDifficulty[] = ["easy", "normal", "hard", "expert", "nightmare"];
+export const AI_DIFFICULTIES: AiDifficulty[] = ARENA_KEYS;
 
 // Derived (or admin-overridden) combat stats for a single card.
 export interface BattleStats {

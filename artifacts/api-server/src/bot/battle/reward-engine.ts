@@ -14,6 +14,7 @@ import {
   updateProfile, getOrCreateProfile, insertBattleRecord,
 } from "./db.js";
 import { checkBattleAchievements, type BattleAchievementDef, type BattleContext } from "./achievement-engine.js";
+import { getArena } from "./arenas.js";
 import type { Rarity } from "../cards-data.js";
 
 export interface CardLevelUp {
@@ -115,8 +116,10 @@ export async function processBattleRewards(args: {
     const newStreak = won ? myProfile.currentStreak + 1 : 0;
     const highestStreak = Math.max(myProfile.highestStreak, newStreak);
 
-    // Shards + XP (scaled for AI battles, zeroed when throttled).
-    const aiScale = args.isAi ? settings.aiRewardPct / 100 : 1;
+    // Shards + XP (scaled for AI battles, zeroed when throttled). Higher arenas
+    // pay proportionally more — the reward incentive to climb the ladder.
+    const arenaMult = args.isAi ? getArena(args.aiDifficulty).rewardMult : 1;
+    const aiScale = (args.isAi ? settings.aiRewardPct / 100 : 1) * arenaMult;
     let shards = 0, xp = 0, streakBonus = 0;
     if (!throttled) {
       const baseShards = won ? settings.rewardWinShards : draw ? settings.rewardDrawShards : settings.rewardLossShards;
