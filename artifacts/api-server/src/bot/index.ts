@@ -356,6 +356,13 @@ export async function startBot() {
           return;
         }
 
+        // ── User-hub buttons (daily claim, etc.) ───────────────────────────
+        if (action === "user-hub") {
+          const { handleUserHubComponent } = await import("./commands/user-hub.js");
+          await handleUserHubComponent(interaction);
+          return;
+        }
+
         // ── Raid buttons (lobby join/begin, combat actions) ────────────────
         if (action === "raid") {
           await handleRaidComponent(interaction);

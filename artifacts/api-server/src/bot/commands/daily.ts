@@ -36,13 +36,24 @@ function formatRemaining(ms: number): string {
   return `${mins}m`;
 }
 
-export async function handleDaily(interaction: ChatInputCommandInteraction): Promise<void> {
-  if (!interaction.guild) return;
-  const guildId = interaction.guild.id;
-  const userId = interaction.user.id;
-  const now = new Date();
+// Result of attempting a daily claim — shared by the /daily command and the
+// /user-hub "Daily" section's Claim button.
+export interface DailyClaimResult {
+  ok: boolean;             // true = claimed now, false = still on cooldown
+  embed: EmbedBuilder;     // reward embed (ok) or cooldown notice (!ok)
+  followUps: string[];     // quest/achievement notices to post after the reply
+}
 
-  // Atomic first-ever insert. Survives concurrent /daily calls thanks to the
+// Core daily-claim logic with NO interaction I/O — safe to call from a slash
+// command or a button handler. Performs the atomic claim, credits shards +
+// milestone rewards, and returns the presentation embed + any follow-up notes.
+export async function claimDailyReward(
+  guildId: string, userId: string, username: string, guildName: string,
+): Promise<DailyClaimResult> {
+  const now = new Date();
+  const followUps: string[] = [];
+
+  // Atomic first-ever insert. Survives concurrent claims thanks to the
   // unique (guild_id, user_id) index — only one insert can win.
   const inserted = await db.insert(dailyClaimsTable)
     .values({ guildId, userId, lastClaimedAt: now, streak: 1 })
@@ -53,9 +64,6 @@ export async function handleDaily(interaction: ChatInputCommandInteraction): Pro
   if (inserted.length > 0) {
     newStreak = 1;
   } else {
-    // Atomic update gated by the cooldown predicate. If two callers race,
-    // only one row is returned — the loser sees an empty result and is told
-    // to wait. CASE handles streak reset vs increment inside the same SQL.
     const cooldownHours = COOLDOWN_MS / (60 * 60 * 1000);
     const resetHours = STREAK_RESET_MS / (60 * 60 * 1000);
     const updated = await db.update(dailyClaimsTable)
@@ -79,11 +87,14 @@ export async function handleDaily(interaction: ChatInputCommandInteraction): Pro
         .where(and(eq(dailyClaimsTable.guildId, guildId), eq(dailyClaimsTable.userId, userId)));
       const elapsed = cur ? now.getTime() - cur.lastClaimedAt.getTime() : 0;
       const remaining = Math.max(0, COOLDOWN_MS - elapsed);
-      await interaction.editReply(
-        `⏳ You've already claimed your daily reward. Come back in **${formatRemaining(remaining)}**.\n` +
-        `Current streak: **${cur?.streak ?? 0}** 🔥`,
-      );
-      return;
+      const cooldownEmbed = new EmbedBuilder()
+        .setTitle("⏳ Daily Already Claimed")
+        .setColor(0x95a5a6)
+        .setDescription(
+          `Come back in **${formatRemaining(remaining)}**.\n` +
+          `Current streak: **${cur?.streak ?? 0}** 🔥`,
+        );
+      return { ok: false, embed: cooldownEmbed, followUps };
     }
     newStreak = updated[0].streak;
   }
@@ -124,30 +135,44 @@ export async function handleDaily(interaction: ChatInputCommandInteraction): Pro
 
   await applyEmbedOverride(embed, {
     guildId, key: "daily",
-    ctx: {
-      userId, username: interaction.user.username,
-      streak: newStreak, amount: reward, balance: currency.shards,
-      guild: interaction.guild.name,
-    },
+    ctx: { userId, username, streak: newStreak, amount: reward, balance: currency.shards, guild: guildName },
   });
-
-  await interaction.editReply({ embeds: [embed] });
 
   // Quest progress — claiming daily counts toward any "claim daily" quest.
   try {
     const { recordQuestEvent, formatQuestCompletions } = await import("../quests/engine.js");
     const done = await recordQuestEvent(guildId, userId, "daily", 1);
     const note = formatQuestCompletions(done);
-    if (note) await interaction.followUp({ content: note, flags: MessageFlags.Ephemeral });
+    if (note) followUps.push(note);
   } catch { /* non-fatal */ }
 
   // Achievement: streak_7 needs the live streak value
   const newly = await checkAchievements(guildId, userId, { dailyStreak: newStreak });
   if (newly.length > 0) {
-    await interaction.followUp({
-      content: "🏆 **Achievement unlocked!**\n" + newly.map(formatUnlockLine).join("\n"),
-      flags: MessageFlags.Ephemeral,
-    });
+    followUps.push("🏆 **Achievement unlocked!**\n" + newly.map(formatUnlockLine).join("\n"));
+  }
+
+  return { ok: true, embed, followUps };
+}
+
+export async function handleDaily(interaction: ChatInputCommandInteraction): Promise<void> {
+  if (!interaction.guild) return;
+  const guildId = interaction.guild.id;
+  const userId = interaction.user.id;
+
+  const result = await claimDailyReward(guildId, userId, interaction.user.username, interaction.guild.name);
+
+  // Merge in today's battle challenges as a second embed so /daily is the single
+  // place a player checks their daily loop (login reward + battle challenges).
+  const embeds = [result.embed];
+  try {
+    const { buildBattleDailyEmbed } = await import("./battle.js");
+    embeds.push(await buildBattleDailyEmbed(guildId, userId));
+  } catch { /* non-fatal — battle system may be disabled */ }
+
+  await interaction.editReply({ embeds });
+  for (const note of result.followUps) {
+    await interaction.followUp({ content: note, flags: MessageFlags.Ephemeral }).catch(() => {});
   }
 }
 

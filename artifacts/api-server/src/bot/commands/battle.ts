@@ -68,11 +68,13 @@ async function cmdFight(interaction: ChatInputCommandInteraction) {
   await startChallenge(interaction, opponent);
 }
 
-async function cmdProfile(interaction: ChatInputCommandInteraction) {
-  await interaction.deferReply();
-  const guildId = interaction.guild!.id;
-  const target = interaction.options.getUser("user") ?? interaction.user;
-  const p = await getOrCreateProfile(guildId, target.id);
+// Pure embed builder for a member's battle profile — reused by /battle profile
+// AND the /user-hub "Battle Profile" section. Takes the resolved display name +
+// avatar so it works from any interaction context.
+export async function buildBattleProfileEmbed(
+  guildId: string, userId: string, username: string, avatarUrl: string,
+): Promise<EmbedBuilder> {
+  const p = await getOrCreateProfile(guildId, userId);
   const rt = rankTitle(p.rankPoints);
   const fav = await favoriteCardName(p);
   const nextLevelXp = p.level * 200;
@@ -80,8 +82,8 @@ async function cmdProfile(interaction: ChatInputCommandInteraction) {
 
   const embed = new EmbedBuilder()
     .setColor(0xed4245)
-    .setTitle(`⚔️ Battle Profile — ${target.username}`)
-    .setThumbnail(target.displayAvatarURL())
+    .setTitle(`⚔️ Battle Profile — ${username}`)
+    .setThumbnail(avatarUrl)
     .addFields(
       { name: "Rank", value: `${rt.emoji} **${rt.name}** · ${p.rankPoints} RP`, inline: true },
       { name: "Level", value: `**${p.level}** ${p.currentTitle ? `· *${p.currentTitle}*` : ""}`, inline: true },
@@ -99,6 +101,47 @@ async function cmdProfile(interaction: ChatInputCommandInteraction) {
   if (p.titles && p.titles.length > 0) {
     embed.addFields({ name: "🏷️ Titles", value: p.titles.map(t => `“${t}”`).join(", ").slice(0, 1024) });
   }
+  return embed;
+}
+
+// Pure embed builder for a member's battle achievements — reused by the hub.
+export async function buildBattleAchievementsEmbed(
+  guildId: string, userId: string, username: string,
+): Promise<EmbedBuilder> {
+  const rows = await db.select({ key: battleAchievementsTable.achievementKey })
+    .from(battleAchievementsTable)
+    .where(and(eq(battleAchievementsTable.guildId, guildId), eq(battleAchievementsTable.userId, userId)));
+  const unlocked = new Set(rows.map(r => r.key));
+  const lines = BATTLE_ACHIEVEMENTS.map(a =>
+    unlocked.has(a.key)
+      ? `✅ ${formatAchievementLine(a)}`
+      : `🔒 ${a.emoji} **${a.name}** — ||${a.description}||`);
+  return new EmbedBuilder().setColor(0xfaa61a)
+    .setTitle(`🎖️ Battle Achievements — ${username}`)
+    .setDescription(`${unlocked.size}/${BATTLE_ACHIEVEMENTS.length} unlocked\n\n${lines.join("\n")}`);
+}
+
+// Pure embed builder for a member's daily battle challenges — reused by the hub.
+export async function buildBattleDailyEmbed(
+  guildId: string, userId: string,
+): Promise<EmbedBuilder> {
+  const challenges = await getOrCreateDaily(guildId, userId);
+  const lines = challenges.map(c => {
+    const done = c.claimed || c.progress >= c.goal;
+    const barStr = bar(Math.min(c.progress, c.goal), c.goal, 10);
+    return `${done ? "✅" : "▫️"} **${c.label}**\n\`${barStr}\` (${Math.min(c.progress, c.goal)}/${c.goal}) — 💠${c.rewardShards} · ✨${c.rewardXp} XP`;
+  });
+  return new EmbedBuilder().setColor(0x2ecc71)
+    .setTitle("📅 Daily Battle Challenges")
+    .setDescription(lines.join("\n\n"))
+    .setFooter({ text: "Resets daily (UTC). Rewards auto-credit on completion." });
+}
+
+async function cmdProfile(interaction: ChatInputCommandInteraction) {
+  await interaction.deferReply();
+  const guildId = interaction.guild!.id;
+  const target = interaction.options.getUser("user") ?? interaction.user;
+  const embed = await buildBattleProfileEmbed(guildId, target.id, target.username, target.displayAvatarURL());
   await interaction.editReply({ embeds: [embed] });
 }
 
@@ -137,36 +180,13 @@ async function cmdAchievements(interaction: ChatInputCommandInteraction) {
   await interaction.deferReply();
   const guildId = interaction.guild!.id;
   const target = interaction.options.getUser("user") ?? interaction.user;
-  const rows = await db.select({ key: battleAchievementsTable.achievementKey })
-    .from(battleAchievementsTable)
-    .where(and(eq(battleAchievementsTable.guildId, guildId), eq(battleAchievementsTable.userId, target.id)));
-  const unlocked = new Set(rows.map(r => r.key));
-
-  const lines = BATTLE_ACHIEVEMENTS.map(a =>
-    unlocked.has(a.key)
-      ? `✅ ${formatAchievementLine(a)}`
-      : `🔒 ${a.emoji} **${a.name}** — ||${a.description}||`);
-
-  await interaction.editReply({
-    embeds: [new EmbedBuilder().setColor(0xfaa61a)
-      .setTitle(`🎖️ Battle Achievements — ${target.username}`)
-      .setDescription(`${unlocked.size}/${BATTLE_ACHIEVEMENTS.length} unlocked\n\n${lines.join("\n")}`)],
-  });
+  const embed = await buildBattleAchievementsEmbed(guildId, target.id, target.username);
+  await interaction.editReply({ embeds: [embed] });
 }
 
 async function cmdDaily(interaction: ChatInputCommandInteraction) {
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
   const guildId = interaction.guild!.id;
-  const challenges = await getOrCreateDaily(guildId, interaction.user.id);
-  const lines = challenges.map(c => {
-    const done = c.claimed || c.progress >= c.goal;
-    const barStr = bar(Math.min(c.progress, c.goal), c.goal, 10);
-    return `${done ? "✅" : "▫️"} **${c.label}**\n\`${barStr}\` (${Math.min(c.progress, c.goal)}/${c.goal}) — 💠${c.rewardShards} · ✨${c.rewardXp} XP`;
-  });
-  await interaction.editReply({
-    embeds: [new EmbedBuilder().setColor(0x2ecc71)
-      .setTitle("📅 Daily Battle Challenges")
-      .setDescription(lines.join("\n\n"))
-      .setFooter({ text: "Resets daily (UTC). Rewards auto-credit on completion." })],
-  });
+  const embed = await buildBattleDailyEmbed(guildId, interaction.user.id);
+  await interaction.editReply({ embeds: [embed] });
 }
