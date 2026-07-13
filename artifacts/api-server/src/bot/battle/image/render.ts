@@ -18,7 +18,7 @@
 import type { Rarity } from "../../cards-data.js";
 import {
   CANVAS, CARD_BOX, VS_BADGE, resolveBackground, rarityHex,
-  RARITY_BADGE_BG, RARITY_BADGE_FG, resolveElement, FONTS, FONT_FILES,
+  RARITY_BADGE_BG, RARITY_BADGE_FG, resolveElement, resolveFrameAsset, FONTS, FONT_FILES,
 } from "./theme.js";
 import { logger } from "../../../lib/logger.js";
 import { writeFile, unlink } from "node:fs/promises";
@@ -246,6 +246,20 @@ async function layerArt(ctx: Ctx, mod: CanvasMod, x: number, card: RenderCard) {
   ctx.restore();
 }
 
+// Frame-image overlay: draws your own frame PNG over the card box (stretched to
+// fit). Returns true if a frame was drawn, so the caller can skip the plain
+// drawn border. Any load failure silently returns false (border used instead).
+async function layerFrameImage(
+  ctx: Ctx, mod: CanvasMod, rarity: Rarity, x: number, y: number, w: number, h: number,
+): Promise<boolean> {
+  const asset = resolveFrameAsset(rarity);
+  if (!asset) return false;
+  const img = await loadArt(mod, asset.src);
+  if (!img) return false;
+  ctx.drawImage(img, x, y, w, h);
+  return true;
+}
+
 // Rarity-coloured frame border.
 function layerFrame(ctx: Ctx, x: number, color: string) {
   ctx.save();
@@ -379,7 +393,9 @@ async function drawCard(ctx: Ctx, mod: CanvasMod, x: number, card: RenderCard) {
   const color = rarityHex(card.rarity, card.rarityColor);
   layerGlow(ctx, x, color);
   await layerArt(ctx, mod, x, card);
-  layerFrame(ctx, x, color);
+  // Your frame PNG (if configured) replaces the drawn border.
+  const framed = await layerFrameImage(ctx, mod, card.rarity, x, CARD_BOX.y, CARD_BOX.width, CARD_BOX.height);
+  if (!framed) layerFrame(ctx, x, color);
   layerChips(ctx, x, card);
   layerRarityBadge(ctx, x, card, color);
   layerNameplate(ctx, x, card, color);
@@ -438,13 +454,16 @@ async function drawBigCard(
   ctx.fillStyle = grad; ctx.fillRect(ax, ay + ah - 150, aw, 150);
   ctx.restore();
 
-  // frame
-  ctx.save();
-  ctx.lineWidth = border; ctx.strokeStyle = color;
-  roundRectPath(ctx, gx, gy, gw, gh, radius); ctx.stroke();
-  ctx.lineWidth = 1.5; ctx.strokeStyle = "rgba(255,255,255,0.25)";
-  roundRectPath(ctx, gx + border, gy + border, gw - border * 2, gh - border * 2, radius - 4); ctx.stroke();
-  ctx.restore();
+  // frame — your PNG overlay if configured, else the drawn border.
+  const framed = await layerFrameImage(ctx, mod, card.rarity, gx, gy, gw, gh);
+  if (!framed) {
+    ctx.save();
+    ctx.lineWidth = border; ctx.strokeStyle = color;
+    roundRectPath(ctx, gx, gy, gw, gh, radius); ctx.stroke();
+    ctx.lineWidth = 1.5; ctx.strokeStyle = "rgba(255,255,255,0.25)";
+    roundRectPath(ctx, gx + border, gy + border, gw - border * 2, gh - border * 2, radius - 4); ctx.stroke();
+    ctx.restore();
+  }
 
   // rarity badge top-right
   const rx = gx + gw - border - 10, ry = gy + border + 10;

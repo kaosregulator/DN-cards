@@ -90,6 +90,29 @@ export function rarityHex(rarity: Rarity, overrideColor?: number | null): string
 export const RARITY_BADGE_BG = "rgba(20,20,24,0.82)";
 export const RARITY_BADGE_FG = "#ffffff";
 
+// ── Frame overlays (modular — your own frame PNGs) ───────────────────────────
+// Drop-in frame artwork drawn OVER each card box. Transparent PNGs sized to the
+// card work best. Leave a slot's `src` null to use the drawn rarity border for
+// that band. You have three, so there are three bands: low / mid / high rarity.
+// Point each at a URL or a local path (or set the env var) — the renderer
+// overlays it automatically; nothing else changes.
+export interface FrameAsset { key: string; label: string; src: string | null }
+
+export const FRAMES: Record<string, FrameAsset> = {
+  low:  { key: "low",  label: "Common / Uncommon", src: process.env["BATTLE_FRAME_LOW"] ?? null },
+  mid:  { key: "mid",  label: "Rare / Epic",       src: process.env["BATTLE_FRAME_MID"] ?? null },
+  high: { key: "high", label: "Legendary / Mythic", src: process.env["BATTLE_FRAME_HIGH"] ?? null },
+};
+
+// Which of the three frames a rarity uses. Adjust the bands freely.
+export function resolveFrameAsset(rarity: Rarity): FrameAsset | null {
+  const band =
+    rarity === "common" || rarity === "uncommon" ? "low" :
+    rarity === "rare" || rarity === "epic" ? "mid" : "high";
+  const f = FRAMES[band];
+  return f && f.src ? f : null;
+}
+
 // ── Element icons (modular — maps card type → drawn glyph) ────────────────────
 // Canvas can't render Discord custom emojis, so each element is a small drawn
 // icon: a coloured disc + a unicode glyph. Add a type by adding an entry.
