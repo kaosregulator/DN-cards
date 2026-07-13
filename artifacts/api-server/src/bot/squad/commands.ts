@@ -9,90 +9,82 @@ import {
 
 const EPHEMERAL = { flags: MessageFlags.Ephemeral } as const;
 
-function tag(squad: { name: string; tag: string | null }): string {
+export function tag(squad: { name: string; tag: string | null }): string {
   return squad.tag ? `[${squad.tag}] ${squad.name}` : squad.name;
 }
 
-// ── create ───────────────────────────────────────────────────────────────────
-async function handleCreate(interaction: ChatInputCommandInteraction, guildId: string): Promise<void> {
-  const name = interaction.options.getString("name", true).trim().slice(0, 40);
-  const tagOpt = interaction.options.getString("tag")?.trim().slice(0, 6) ?? null;
-  const description = interaction.options.getString("description")?.trim().slice(0, 200) ?? null;
-  if (name.length < 2) { await interaction.editReply("❌ Squad name must be at least 2 characters."); return; }
+// ─────────────────────────────────────────────────────────────────────────────
+// Param-based core actions — one implementation per squad action, reused by the
+// /squad slash command AND the Squad Hub. No interaction dependency.
+// ─────────────────────────────────────────────────────────────────────────────
 
-  const res = await createSquad({ guildId, name, ownerId: interaction.user.id, tag: tagOpt, description });
+export async function createSquadAction(
+  guildId: string, userId: string,
+  args: { name: string; tag: string | null; description: string | null },
+): Promise<string> {
+  const name = args.name.trim().slice(0, 40);
+  const tagOpt = args.tag?.trim().slice(0, 6) || null;
+  const description = args.description?.trim().slice(0, 200) || null;
+  if (name.length < 2) return "❌ Squad name must be at least 2 characters.";
+  const res = await createSquad({ guildId, name, ownerId: userId, tag: tagOpt, description });
   if (!res.ok) {
-    await interaction.editReply(res.reason === "name_taken"
+    return res.reason === "name_taken"
       ? `❌ A squad called **${name}** already exists here.`
-      : "❌ You're already in a squad. Leave it first with `/squad leave`.");
-    return;
+      : "❌ You're already in a squad. Leave it first before founding a new one.";
   }
-  await interaction.editReply(`🎖️ Squad **${tag(res.squad)}** founded — you're the leader! Others join with \`/squad join name:${res.squad.name}\`.`);
+  return `🎖️ Squad **${tag(res.squad)}** founded — you're the leader! Others can join it from the Squad Hub.`;
 }
 
-// ── join ─────────────────────────────────────────────────────────────────────
-async function handleJoin(interaction: ChatInputCommandInteraction, guildId: string): Promise<void> {
-  const name = interaction.options.getString("name", true);
+export async function joinSquadAction(guildId: string, userId: string, name: string): Promise<string> {
   const squad = await getSquadByName(guildId, name);
-  if (!squad) { await interaction.editReply(`❌ No squad called "**${name}**". See \`/squad list\`.`); return; }
-  const result = await joinSquad(guildId, squad.id, interaction.user.id);
-  if (result === "already_in_squad") {
-    await interaction.editReply("❌ You're already in a squad. Leave it first with `/squad leave`.");
-    return;
-  }
-  await interaction.editReply(`✅ You joined **${tag(squad)}**! See your squad with \`/squad info\`.`);
+  if (!squad) return `❌ No squad called "**${name}**".`;
+  const result = await joinSquad(guildId, squad.id, userId);
+  if (result === "already_in_squad") return "❌ You're already in a squad. Leave it first.";
+  return `✅ You joined **${tag(squad)}**!`;
 }
 
-// ── leave ────────────────────────────────────────────────────────────────────
-async function handleLeave(interaction: ChatInputCommandInteraction, guildId: string): Promise<void> {
-  const userId = interaction.user.id;
+export async function leaveSquadAction(guildId: string, userId: string): Promise<string> {
   const mine = await getUserSquad(guildId, userId);
-  if (!mine) { await interaction.editReply("❌ You're not in a squad."); return; }
-
+  if (!mine) return "❌ You're not in a squad.";
   const members = await getSquadMembers(mine.squad.id);
   if (mine.role === "leader" && members.length > 1) {
-    // Promote the next-oldest member to leader, then leave.
     const heir = members.find(m => m.userId !== userId);
     if (heir) {
       await db.update(squadMembersTable).set({ role: "leader" })
         .where(and(eq(squadMembersTable.guildId, guildId), eq(squadMembersTable.userId, heir.userId)));
       await leaveSquad(guildId, userId);
-      await interaction.editReply(`👋 You left **${tag(mine.squad)}**. Leadership passed to <@${heir.userId}>.`);
-      return;
+      return `👋 You left **${tag(mine.squad)}**. Leadership passed to <@${heir.userId}>.`;
     }
   }
   if (mine.role === "leader" && members.length === 1) {
     await disbandSquad(mine.squad.id);
-    await interaction.editReply(`👋 You left and **${tag(mine.squad)}** was disbanded (you were the last member).`);
-    return;
+    return `👋 You left and **${tag(mine.squad)}** was disbanded (you were the last member).`;
   }
   await leaveSquad(guildId, userId);
-  await interaction.editReply(`👋 You left **${tag(mine.squad)}**.`);
+  return `👋 You left **${tag(mine.squad)}**.`;
 }
 
-// ── disband ──────────────────────────────────────────────────────────────────
-async function handleDisband(interaction: ChatInputCommandInteraction, guildId: string): Promise<void> {
-  const mine = await getUserSquad(guildId, interaction.user.id);
-  if (!mine) { await interaction.editReply("❌ You're not in a squad."); return; }
-  if (mine.role !== "leader") { await interaction.editReply("❌ Only the squad leader can disband it. Use `/squad leave` instead."); return; }
+export async function disbandSquadAction(guildId: string, userId: string): Promise<string> {
+  const mine = await getUserSquad(guildId, userId);
+  if (!mine) return "❌ You're not in a squad.";
+  if (mine.role !== "leader") return "❌ Only the squad leader can disband it. Use Leave instead.";
   await disbandSquad(mine.squad.id);
-  await interaction.editReply(`💥 Squad **${tag(mine.squad)}** disbanded.`);
+  return `💥 Squad **${tag(mine.squad)}** disbanded.`;
 }
 
-// ── info ─────────────────────────────────────────────────────────────────────
-async function handleInfo(interaction: ChatInputCommandInteraction, guildId: string): Promise<void> {
-  const nameOpt = interaction.options.getString("name");
+// Squad info embed — for a named squad, or the caller's own if name omitted.
+export async function buildSquadInfoEmbed(
+  guildId: string, userId: string, nameOpt?: string | null,
+): Promise<EmbedBuilder | { error: string }> {
   const squad = nameOpt
     ? await getSquadByName(guildId, nameOpt)
-    : (await getUserSquad(guildId, interaction.user.id))?.squad ?? null;
+    : (await getUserSquad(guildId, userId))?.squad ?? null;
   if (!squad) {
-    await interaction.editReply(nameOpt ? `❌ No squad called "**${nameOpt}**".` : "❌ You're not in a squad. Create one with `/squad create` or join with `/squad join`.");
-    return;
+    return { error: nameOpt ? `❌ No squad called "**${nameOpt}**".` : "❌ You're not in a squad. Create one or join one from the Squad Hub." };
   }
   const [stats, members] = await Promise.all([getSquadStats(squad.id), getSquadMembers(squad.id)]);
   const roster = members.map(m => `${m.role === "leader" ? "👑" : "•"} <@${m.userId}>`).join("\n") || "—";
-
-  const embed = new EmbedBuilder()
+  return new EmbedBuilder()
     .setTitle(`🎖️ ${tag(squad)}`)
     .setColor(0x2c3e50)
     .setDescription(squad.description ? `*${squad.description}*` : "*A squad of collectors.*")
@@ -109,24 +101,62 @@ async function handleInfo(interaction: ChatInputCommandInteraction, guildId: str
       { name: "Roster", value: roster.slice(0, 1024), inline: false },
     )
     .setFooter({ text: "Squad Score = collection value + wins×200 + burns×5" });
-  await interaction.editReply({ embeds: [embed] });
+}
+
+export async function buildSquadListEmbed(guildId: string): Promise<EmbedBuilder | null> {
+  const board = await getSquadLeaderboard(guildId);
+  if (board.length === 0) return null;
+  const medals = ["🥇", "🥈", "🥉"];
+  const lines = board.map((r, i) =>
+    `${medals[i] ?? `**${i + 1}.**`} **${tag(r.squad)}** — 🏅 ${r.score.toLocaleString()} · 👥 ${r.memberCount} · ⚔️ ${r.wins}W`);
+  return new EmbedBuilder()
+    .setTitle("🏆 Squad Leaderboard")
+    .setColor(0xf1c40f)
+    .setDescription(lines.join("\n").slice(0, 4000))
+    .setFooter({ text: "Rank by Squad Score" });
+}
+
+// List squads for pickers (join select). Reuses the leaderboard query.
+export async function squadChoices(guildId: string): Promise<{ name: string; label: string; members: number }[]> {
+  const board = await getSquadLeaderboard(guildId);
+  return board.map(r => ({ name: r.squad.name, label: tag(r.squad).slice(0, 100), members: r.memberCount }));
+}
+
+// ── create ───────────────────────────────────────────────────────────────────
+async function handleCreate(interaction: ChatInputCommandInteraction, guildId: string): Promise<void> {
+  await interaction.editReply(await createSquadAction(guildId, interaction.user.id, {
+    name: interaction.options.getString("name", true),
+    tag: interaction.options.getString("tag"),
+    description: interaction.options.getString("description"),
+  }));
+}
+
+// ── join ─────────────────────────────────────────────────────────────────────
+async function handleJoin(interaction: ChatInputCommandInteraction, guildId: string): Promise<void> {
+  await interaction.editReply(await joinSquadAction(guildId, interaction.user.id, interaction.options.getString("name", true)));
+}
+
+// ── leave ────────────────────────────────────────────────────────────────────
+async function handleLeave(interaction: ChatInputCommandInteraction, guildId: string): Promise<void> {
+  await interaction.editReply(await leaveSquadAction(guildId, interaction.user.id));
+}
+
+// ── disband ──────────────────────────────────────────────────────────────────
+async function handleDisband(interaction: ChatInputCommandInteraction, guildId: string): Promise<void> {
+  await interaction.editReply(await disbandSquadAction(guildId, interaction.user.id));
+}
+
+// ── info ─────────────────────────────────────────────────────────────────────
+async function handleInfo(interaction: ChatInputCommandInteraction, guildId: string): Promise<void> {
+  const res = await buildSquadInfoEmbed(guildId, interaction.user.id, interaction.options.getString("name"));
+  if ("error" in res) { await interaction.editReply(res.error); return; }
+  await interaction.editReply({ embeds: [res] });
 }
 
 // ── list (leaderboard) ───────────────────────────────────────────────────────
 async function handleList(interaction: ChatInputCommandInteraction, guildId: string): Promise<void> {
-  const board = await getSquadLeaderboard(guildId);
-  if (board.length === 0) {
-    await interaction.editReply("🏳️ No squads yet. Found the first with `/squad create name:<name>`!");
-    return;
-  }
-  const medals = ["🥇", "🥈", "🥉"];
-  const lines = board.map((r, i) =>
-    `${medals[i] ?? `**${i + 1}.**`} **${tag(r.squad)}** — 🏅 ${r.score.toLocaleString()} · 👥 ${r.memberCount} · ⚔️ ${r.wins}W`);
-  const embed = new EmbedBuilder()
-    .setTitle("🏆 Squad Leaderboard")
-    .setColor(0xf1c40f)
-    .setDescription(lines.join("\n").slice(0, 4000))
-    .setFooter({ text: "Rank by Squad Score · /squad info name:<squad> for details" });
+  const embed = await buildSquadListEmbed(guildId);
+  if (!embed) { await interaction.editReply("🏳️ No squads yet. Found the first from the Squad Hub!"); return; }
   await interaction.editReply({ embeds: [embed] });
 }
 

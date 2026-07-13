@@ -6,11 +6,11 @@ import { cycleDay, renderGrid, nextMilestone, milestoneFor, MILESTONES } from ".
 
 const COOLDOWN_MS = 20 * 60 * 60 * 1000;
 
-export async function handleCalendar(interaction: ChatInputCommandInteraction): Promise<void> {
-  if (!interaction.guild) return;
-  const guildId = interaction.guild.id;
-  const userId = interaction.user.id;
-
+// Pure embed builder for a member's login calendar — reused by /calendar AND
+// the /user-hub "Calendar" section.
+export async function buildCalendarEmbed(
+  guildId: string, userId: string, username: string,
+): Promise<EmbedBuilder> {
   const [row] = await db.select().from(dailyClaimsTable)
     .where(and(eq(dailyClaimsTable.guildId, guildId), eq(dailyClaimsTable.userId, userId))).limit(1);
 
@@ -27,7 +27,7 @@ export async function handleCalendar(interaction: ChatInputCommandInteraction): 
   }).join("\n");
 
   const embed = new EmbedBuilder()
-    .setTitle(`📅 ${interaction.user.username}'s Login Calendar`)
+    .setTitle(`📅 ${username}'s Login Calendar`)
     .setColor(0xf1c40f)
     .setDescription(
       `🔥 Streak: **${streak} day${streak === 1 ? "" : "s"}**  ·  Calendar day **${day}/30**\n` +
@@ -45,5 +45,11 @@ export async function handleCalendar(interaction: ChatInputCommandInteraction): 
     embed.addFields({ name: "🎉 Today", value: `Day ${day} is a milestone — claim \`/daily\` for the bonus if you haven't!`, inline: false });
   }
 
+  return embed;
+}
+
+export async function handleCalendar(interaction: ChatInputCommandInteraction): Promise<void> {
+  if (!interaction.guild) return;
+  const embed = await buildCalendarEmbed(interaction.guild.id, interaction.user.id, interaction.user.username);
   await interaction.editReply({ embeds: [embed] });
 }

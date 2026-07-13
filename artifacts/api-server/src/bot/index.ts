@@ -239,6 +239,15 @@ export async function startBot() {
       if (interaction.isStringSelectMenu()) {
         if (interaction.customId.startsWith("help:")) {
           await handleHelpHubComponent(interaction);
+        } else if (interaction.customId.startsWith("user-hub:")) {
+          const { handleUserHubComponent } = await import("./commands/user-hub.js");
+          await handleUserHubComponent(interaction);
+        } else if (interaction.customId.startsWith("market-hub:")) {
+          const { handleMarketHubComponent } = await import("./commands/market-hub.js");
+          await handleMarketHubComponent(interaction);
+        } else if (interaction.customId.startsWith("squad-hub:")) {
+          const { handleSquadHubComponent } = await import("./commands/squad-hub.js");
+          await handleSquadHubComponent(interaction);
         } else if (isBobComponent(interaction.customId)) {
           await handleBobSelect(interaction);
         } else if (interaction.customId.startsWith("battle:")) {
@@ -325,6 +334,12 @@ export async function startBot() {
         } else if (interaction.customId.startsWith("edituser:modal:")) {
           const { handleEditUserModal } = await import("./commands/edit-user.js");
           await handleEditUserModal(interaction);
+        } else if (interaction.customId.startsWith("market-hub:modal:")) {
+          const { handleMarketHubModal } = await import("./commands/market-hub.js");
+          await handleMarketHubModal(interaction);
+        } else if (interaction.customId.startsWith("squad-hub:modal:")) {
+          const { handleSquadHubModal } = await import("./commands/squad-hub.js");
+          await handleSquadHubModal(interaction);
         }
         return;
       }
@@ -350,6 +365,25 @@ export async function startBot() {
         if (action === "edituser") {
           const { handleEditUserButton } = await import("./commands/edit-user.js");
           await handleEditUserButton(interaction);
+          return;
+        }
+
+        // ── User-hub buttons (daily claim, open sub-hubs, etc.) ────────────
+        if (action === "user-hub") {
+          const { handleUserHubComponent } = await import("./commands/user-hub.js");
+          await handleUserHubComponent(interaction);
+          return;
+        }
+
+        // ── Market / Squad hub buttons (back, confirms, pick-driven) ───────
+        if (action === "market-hub") {
+          const { handleMarketHubComponent } = await import("./commands/market-hub.js");
+          await handleMarketHubComponent(interaction);
+          return;
+        }
+        if (action === "squad-hub") {
+          const { handleSquadHubComponent } = await import("./commands/squad-hub.js");
+          await handleSquadHubComponent(interaction);
           return;
         }
 

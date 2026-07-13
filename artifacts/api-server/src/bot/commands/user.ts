@@ -2,7 +2,7 @@ import type { ChatInputCommandInteraction } from "discord.js";
 import { EmbedBuilder, MessageFlags } from "discord.js";
 
 // Commands whose results are personal/spammy and should only be seen by the user.
-const EPHEMERAL_COMMANDS = new Set(["burn", "shards", "trades", "tradehistory", "help", "daily", "quests", "achievements", "pack", "packstats", "wishlist", "gift", "tradein", "sets", "level", "frame", "lock", "search", "collector", "calendar"]);
+const EPHEMERAL_COMMANDS = new Set(["burn", "shards", "trades", "tradehistory", "help", "user_hub", "daily", "quests", "achievements", "pack", "packstats", "wishlist", "gift", "tradein", "sets", "level", "frame", "lock", "search", "collector", "calendar", "collection", "catalog", "list"]);
 import {
   getUserCollection, getAllCards, getLeaderboard, getTopPackOpeners,
   getOrCreateCurrency, burnCard, getCardByName, getUserCardCount, getUserOwnedCount,
@@ -96,6 +96,13 @@ export async function handleUserCommand(
     EPHEMERAL_COMMANDS.has(sub) ? { flags: MessageFlags.Ephemeral } : {},
   );
   const guildId = interaction.guild.id;
+
+  // ── /user-hub ────────────────────────────────────────────────────────────────
+  if (sub === "user_hub") {
+    const { handleUserHub } = await import("./user-hub.js");
+    await handleUserHub(interaction);
+    return;
+  }
 
   // ── /collection ─────────────────────────────────────────────────────────────
   // Interactive overview → drill-down view (rarity / shinies / limited / event).
