@@ -21,6 +21,10 @@ import {
   RARITY_BADGE_BG, RARITY_BADGE_FG, resolveElement, FONTS, FONT_FILES,
 } from "./theme.js";
 import { logger } from "../../../lib/logger.js";
+import { writeFile, unlink } from "node:fs/promises";
+import { randomUUID } from "node:crypto";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
 // The minimal card description the renderer needs. Decoupled from Combatant so
 // the renderer can draw prep screens, previews, or anything else.
@@ -82,6 +86,20 @@ function extractObjectPath(url: string): string | null {
   return null;
 }
 
+// @napi-rs/canvas can mis-detect images loaded from buffers/URLs (it sometimes
+// throws "Invalid SVG image" for valid PNGs). Writing the bytes to a temp file
+// and loading by path works around that, so every fetched image goes through
+// disk before hitting the canvas.
+async function loadImageFromBuffer(mod: CanvasMod, buf: Buffer) {
+  const tmp = join(tmpdir(), `battle-art-${randomUUID()}.img`);
+  try {
+    await writeFile(tmp, buf);
+    return await mod.loadImage(tmp);
+  } finally {
+    await unlink(tmp).catch(() => {});
+  }
+}
+
 // Download an object-storage image directly from GCS. This avoids the public
 // proxy and fixes cases where the server's own fetch to its public URL fails.
 async function loadObjectStorageArt(mod: CanvasMod, objectPath: string) {
@@ -91,7 +109,7 @@ async function loadObjectStorageArt(mod: CanvasMod, objectPath: string) {
     const file = await svc.getObjectEntityFile(objectPath);
     const resp = await svc.downloadObject(file, 60);
     const buf = Buffer.from(await resp.arrayBuffer());
-    return await mod.loadImage(buf);
+    return await loadImageFromBuffer(mod, buf);
   } catch (err) {
     logger.debug({ err, objectPath }, "battle image: failed to load object-storage art");
     return null;
@@ -116,7 +134,7 @@ async function loadArt(mod: CanvasMod, url: string | null | undefined) {
       const res = await fetch(url);
       if (!res.ok) return null;
       const buf = Buffer.from(await res.arrayBuffer());
-      return await mod.loadImage(buf);
+      return await loadImageFromBuffer(mod, buf);
     }
     return await mod.loadImage(url); // local path
   } catch (err) {
