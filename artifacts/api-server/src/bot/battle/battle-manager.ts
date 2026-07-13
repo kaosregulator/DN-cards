@@ -17,7 +17,7 @@ import {
   type StringSelectMenuInteraction, type Message, type User,
 } from "discord.js";
 import { logger } from "../../lib/logger.js";
-import { renderBattleImage, type RenderCard } from "./image/render.js";
+import { renderBattleImage, renderWinnerImage, type RenderCard } from "./image/render.js";
 import { toAbsoluteImageUrl } from "../image-url.js";
 import { getBotClient } from "../client-holder.js";
 import { removeCardFromUser, restoreCardToUser } from "../db.js";
@@ -751,7 +751,19 @@ async function finishBattle(rt: BattleRuntime, winnerSide: 0 | 1 | null, reason:
   const rewardLines = buildRewardLines(rt, outcomes);
   const view = toView(rt);
   if (rt.message) {
-    await rt.message.edit({ embeds: [buildWinnerEmbed(view, winnerSide, rewardLines)], components: [] }).catch(() => {});
+    const winnerEmbed = buildWinnerEmbed(view, winnerSide, rewardLines);
+    // Big composited winner card as the victory image (falls back to the raw
+    // card image that buildWinnerEmbed already set if the render is unavailable).
+    let files: AttachmentBuilder[] = [];
+    const winner = winnerSide === null ? null : (winnerSide === 0 ? rt.a : rt.b);
+    if (winner) {
+      const img = await renderWinnerImage(combatantToRenderCard(rt, winner)).catch(() => null);
+      if (img) {
+        winnerEmbed.setImage("attachment://winner.png");
+        files = [new AttachmentBuilder(img, { name: "winner.png" })];
+      }
+    }
+    await rt.message.edit({ embeds: [winnerEmbed], components: [], files }).catch(() => {});
   }
 
   // Achievement toasts + battle log channel.
