@@ -12,11 +12,12 @@
 
 import {
   EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle,
-  StringSelectMenuBuilder, MessageFlags,
+  StringSelectMenuBuilder, MessageFlags, AttachmentBuilder,
   type ChatInputCommandInteraction, type ButtonInteraction,
   type StringSelectMenuInteraction, type Message, type User,
 } from "discord.js";
 import { logger } from "../../lib/logger.js";
+import { renderBattleImage, type RenderCard } from "./image/render.js";
 import { toAbsoluteImageUrl } from "../image-url.js";
 import { getBotClient } from "../client-holder.js";
 import { removeCardFromUser, restoreCardToUser } from "../db.js";
@@ -25,7 +26,7 @@ import type { Combatant, MoveType, AiDifficulty, Rarity } from "./types.js";
 import { AI_DIFFICULTIES } from "./types.js";
 import { getBattleSettings, rarityAllowed, typeAllowed } from "./config-engine.js";
 import { getScaledStats, powerRating } from "./stat-engine.js";
-import { inferMoveset } from "./movesets.js";
+import { inferMoveset, getMoveset } from "./movesets.js";
 import { inferSpecialEffect, getEffectDef } from "./special-cards.js";
 import { resolveMove, startOfTurn, availableMoves } from "./combat-engine.js";
 import { chooseAiMove, pickAiCardIndex } from "./ai-engine.js";
@@ -113,6 +114,11 @@ interface BattleRuntime {
   ttlTimer: ReturnType<typeof setTimeout> | null;
   processing: boolean;
   createdAt: number;
+
+  // Layered VS battle image (rendered once at combat start; re-attached each
+  // combat render). null when @napi-rs/canvas isn't installed — the battle then
+  // shows the plain embed with no image, never an error.
+  vsImage: Buffer | null;
 }
 
 const battles = new Map<string, BattleRuntime>();
@@ -237,6 +243,7 @@ export async function startChallenge(
     crits: [0, 0], dmg: [0, 0], wentLow: [false, false],
     turnTimer: null, aiOfferTimer: null, ttlTimer: null, processing: false, createdAt: Date.now(),
     displayMap,
+    vsImage: null,
   };
   battles.set(id, rt);
 
@@ -520,6 +527,15 @@ async function beginCombat(rt: BattleRuntime) {
   // Record staked cards on the locks (card-lock during battle).
   await releaseAndRelock(rt);
 
+  // Render the layered VS battle image once (background + both cards + VS).
+  // Fire-and-forget safe: null on any failure → battle just shows no image.
+  if (rt.a && rt.b) {
+    rt.vsImage = await renderBattleImage(
+      combatantToRenderCard(rt, rt.a),
+      combatantToRenderCard(rt, rt.b),
+    ).catch(() => null);
+  }
+
   // Coin flip → first mover.
   const flip = Math.random() < 0.5 ? "heads" : "tails";
   rt.coinCall = flip;
@@ -551,12 +567,31 @@ async function releaseAndRelock(rt: BattleRuntime) {
 async function playIntro(rt: BattleRuntime, firstSide: 0 | 1, flip: string) {
   if (!rt.message) return;
   const view = () => toView(rt);
-  for (let f = 0; f < 4; f++) {
-    await rt.message.edit({ embeds: [buildIntroFrame(view(), f)], components: [] }).catch(() => {});
-    await sleep(frameMs(rt));
+
+  // ── VS reveal ──────────────────────────────────────────────────────────────
+  // Show the battlefield VS image FIRST, like a real fight intro, before the
+  // battle screen appears. If the image lib isn't installed, fall back to the
+  // original text intro frames so the reveal still plays.
+  const reveal = vsTop(rt, `⚔️ ${rt.a?.cardName ?? "Challenger"} VS ${rt.b?.cardName ?? "Opponent"}`);
+  if (reveal.embed) {
+    await rt.message.edit({ content: null, embeds: [reveal.embed], files: [reveal.file!], components: [] }).catch(() => {});
+    await sleep(Math.max(1400, frameMs(rt) * 2));
+  } else {
+    for (let f = 0; f < 4; f++) {
+      await rt.message.edit({ embeds: [buildIntroFrame(view(), f)], components: [] }).catch(() => {});
+      await sleep(frameMs(rt));
+    }
   }
-  await rt.message.edit({ embeds: [buildCoinFlipEmbed(view(), firstSide, flip)], components: [] }).catch(() => {});
+
+  // Coin flip — keep the VS image pinned on top while it resolves.
+  const coinTop = vsTop(rt);
+  await rt.message.edit({
+    embeds: coinTop.embed ? [coinTop.embed, buildCoinFlipEmbed(view(), firstSide, flip)] : [buildCoinFlipEmbed(view(), firstSide, flip)],
+    files: coinTop.file ? [coinTop.file] : [],
+    components: [],
+  }).catch(() => {});
   await sleep(frameMs(rt));
+
   rt.log.push(`🔔 Battle begins! ${firstSide === 0 ? "Challenger" : "Opponent"} moves first.`);
   await renderCombat(rt);
   await startTurn(rt);
@@ -824,15 +859,57 @@ async function teardown(rt: BattleRuntime) {
 }
 
 // ── Rendering ────────────────────────────────────────────────────────────────
+const VS_IMAGE_NAME = "battle-vs.png";
+
+// Map a live Combatant to the renderer's card description.
+function combatantToRenderCard(rt: BattleRuntime, c: Combatant): RenderCard {
+  return {
+    name: c.cardName,
+    rarity: c.cardRarity,
+    rarityLabel: rarityLabel(c.cardRarity, null, rt.displayMap) ?? c.cardRarity,
+    rarityColor: rarityColor(c.cardRarity, null, rt.displayMap),
+    cardId: c.cardId,
+    cardType: c.cardType,
+    artUrl: c.cardImageUrl,
+    attack: c.stats.attack,
+    special: getMoveset(c.moveset)?.name ?? null,
+  };
+}
+
+// The pinned VS-image embed that sits ABOVE the battle embed. Optional title is
+// used for the dramatic pre-combat reveal; combat renders it title-less so the
+// battlefield picture just stays at the top the whole fight.
+function vsTop(rt: BattleRuntime, title?: string): { embed: EmbedBuilder | null; file: AttachmentBuilder | null } {
+  if (!rt.vsImage) return { embed: null, file: null };
+  const embed = new EmbedBuilder()
+    .setColor(rarityColorOfSide(rt))
+    .setImage(`attachment://${VS_IMAGE_NAME}`);
+  if (title) embed.setTitle(title);
+  return { embed, file: new AttachmentBuilder(rt.vsImage, { name: VS_IMAGE_NAME }) };
+}
+
+function rarityColorOfSide(rt: BattleRuntime): number {
+  const active = rt.currentSide === 0 ? rt.a : rt.b;
+  return rarityColor(active?.cardRarity ?? "common", null, rt.displayMap) ?? 0xed4245;
+}
+
 async function renderCombat(rt: BattleRuntime, opts?: { currentMove?: string; turnEndsAt?: number }) {
   if (!rt.message || !rt.a || !rt.b) return;
   const view = toView(rt, opts?.turnEndsAt);
   const actor = rt.currentSide === 0 ? rt.a : rt.b;
   const components = actor.isAi ? [] : buildMoveComponents(rt, actor);
+  // Battle embed keeps the active card's avatar as its thumbnail (buildCombatEmbed)
+  // so players always see whose turn it is.
+  const combatEmbed = buildCombatEmbed(view, { currentMove: opts?.currentMove });
+  // VS battlefield image stays pinned at the TOP, battle details below.
+  const top = vsTop(rt);
+  const embeds = top.embed ? [top.embed, combatEmbed] : [combatEmbed];
+  const files = top.file ? [top.file] : [];
   await rt.message.edit({
     content: null,
-    embeds: [buildCombatEmbed(view, { currentMove: opts?.currentMove })],
+    embeds,
     components,
+    files,
   }).catch(() => {});
 }
 
