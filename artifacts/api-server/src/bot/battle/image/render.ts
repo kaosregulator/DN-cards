@@ -18,7 +18,7 @@
 import type { Rarity } from "../../cards-data.js";
 import {
   CANVAS, CARD_BOX, VS_BADGE, resolveBackground, rarityHex,
-  RARITY_BADGE_BG, RARITY_BADGE_FG, resolveElement, FONTS, FONT_FILES,
+  RARITY_BADGE_BG, RARITY_BADGE_FG, resolveElement, resolveFrameAsset, FONTS, FONT_FILES,
 } from "./theme.js";
 import { logger } from "../../../lib/logger.js";
 import { writeFile, unlink } from "node:fs/promises";
@@ -246,6 +246,20 @@ async function layerArt(ctx: Ctx, mod: CanvasMod, x: number, card: RenderCard) {
   ctx.restore();
 }
 
+// Frame-image overlay: draws your own frame PNG over the card box (stretched to
+// fit). Returns true if a frame was drawn, so the caller can skip the plain
+// drawn border. Any load failure silently returns false (border used instead).
+async function layerFrameImage(
+  ctx: Ctx, mod: CanvasMod, rarity: Rarity, x: number, y: number, w: number, h: number,
+): Promise<boolean> {
+  const asset = resolveFrameAsset(rarity);
+  if (!asset) return false;
+  const img = await loadArt(mod, asset.src);
+  if (!img) return false;
+  ctx.drawImage(img, x, y, w, h);
+  return true;
+}
+
 // Rarity-coloured frame border.
 function layerFrame(ctx: Ctx, x: number, color: string) {
   ctx.save();
@@ -379,7 +393,9 @@ async function drawCard(ctx: Ctx, mod: CanvasMod, x: number, card: RenderCard) {
   const color = rarityHex(card.rarity, card.rarityColor);
   layerGlow(ctx, x, color);
   await layerArt(ctx, mod, x, card);
-  layerFrame(ctx, x, color);
+  // Your frame PNG (if configured) replaces the drawn border.
+  const framed = await layerFrameImage(ctx, mod, card.rarity, x, CARD_BOX.y, CARD_BOX.width, CARD_BOX.height);
+  if (!framed) layerFrame(ctx, x, color);
   layerChips(ctx, x, card);
   layerRarityBadge(ctx, x, card, color);
   layerNameplate(ctx, x, card, color);
@@ -404,6 +420,223 @@ export async function renderBattleImage(
     return await canvas.encode("png");
   } catch {
     return null; // never let an image error break a battle
+  }
+}
+
+// ── Winner / victory image ───────────────────────────────────────────────────
+// A single large winner card on the battlefield with a gold "WINNER" banner.
+// Self-contained (its own geometry) so it never disturbs the VS layout above.
+async function drawBigCard(
+  ctx: Ctx, mod: CanvasMod, gx: number, gy: number, gw: number, gh: number, card: RenderCard,
+) {
+  const color = rarityHex(card.rarity, card.rarityColor);
+  const border = 7, radius = 20, inset = border + 10;
+
+  // rarity glow
+  ctx.save();
+  ctx.shadowColor = color; ctx.shadowBlur = 55; ctx.globalAlpha = 0.6; ctx.fillStyle = color;
+  roundRectPath(ctx, gx - 2, gy - 2, gw + 4, gh + 4, radius + 2); ctx.fill();
+  ctx.restore();
+
+  // art (clipped, cover-fit) + readability gradient
+  const ax = gx + inset, ay = gy + inset, aw = gw - inset * 2, ah = gh - inset * 2;
+  ctx.save();
+  roundRectPath(ctx, ax, ay, aw, ah, radius - 6); ctx.clip();
+  ctx.fillStyle = "#0e0e12"; ctx.fillRect(ax, ay, aw, ah);
+  const img = await loadArt(mod, card.artUrl);
+  if (img) {
+    const s = Math.max(aw / img.width, ah / img.height);
+    const w = img.width * s, h = img.height * s;
+    ctx.drawImage(img, ax + (aw - w) / 2, ay + (ah - h) / 2, w, h);
+  }
+  const grad = ctx.createLinearGradient(0, ay + ah - 150, 0, ay + ah);
+  grad.addColorStop(0, "rgba(0,0,0,0)"); grad.addColorStop(1, "rgba(0,0,0,0.9)");
+  ctx.fillStyle = grad; ctx.fillRect(ax, ay + ah - 150, aw, 150);
+  ctx.restore();
+
+  // frame — your PNG overlay if configured, else the drawn border.
+  const framed = await layerFrameImage(ctx, mod, card.rarity, gx, gy, gw, gh);
+  if (!framed) {
+    ctx.save();
+    ctx.lineWidth = border; ctx.strokeStyle = color;
+    roundRectPath(ctx, gx, gy, gw, gh, radius); ctx.stroke();
+    ctx.lineWidth = 1.5; ctx.strokeStyle = "rgba(255,255,255,0.25)";
+    roundRectPath(ctx, gx + border, gy + border, gw - border * 2, gh - border * 2, radius - 4); ctx.stroke();
+    ctx.restore();
+  }
+
+  // rarity badge top-right
+  const rx = gx + gw - border - 10, ry = gy + border + 10;
+  ctx.font = font(16, FONTS.body, "800");
+  const label = card.rarityLabel.toUpperCase();
+  const bw = Math.max(70, ctx.measureText(label).width + 22);
+  ctx.fillStyle = RARITY_BADGE_BG; roundRectPath(ctx, rx - bw, ry, bw, 28, 6); ctx.fill();
+  ctx.lineWidth = 1.5; ctx.strokeStyle = color; ctx.stroke();
+  ctx.fillStyle = RARITY_BADGE_FG; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  ctx.fillText(label, rx - bw / 2, ry + 15);
+
+  // level + element chips top-left
+  const lx = gx + border + 10; let ly = gy + border + 10;
+  ctx.fillStyle = "rgba(245,245,245,0.92)"; roundRectPath(ctx, lx, ly, 38, 32, 6); ctx.fill();
+  ctx.fillStyle = "#111"; ctx.font = font(20, FONTS.body, "800");
+  ctx.fillText(String(card.level ?? 1), lx + 19, ly + 17);
+  ly += 44;
+  const el = resolveElement(card.cardType);
+  ctx.beginPath(); ctx.arc(lx + 19, ly + 17, 18, 0, Math.PI * 2);
+  ctx.fillStyle = el.disc; ctx.fill(); ctx.lineWidth = 2; ctx.strokeStyle = el.ring; ctx.stroke();
+  ctx.fillStyle = "#fff"; ctx.font = font(20, FONTS.body, "700"); ctx.fillText(el.glyph, lx + 19, ly + 18);
+
+  // nameplate + stat line
+  const cxc = gx + gw / 2;
+  const nameY = gy + gh - inset - 34;
+  ctx.textAlign = "center"; ctx.textBaseline = "alphabetic";
+  if (card.series) {
+    ctx.font = font(14, FONTS.body, "700"); ctx.fillStyle = "rgba(220,220,225,0.85)";
+    ctx.fillText(card.series.toUpperCase().slice(0, 40), cxc, nameY - 28);
+  }
+  const namePx = fitText(ctx, card.name, gw - inset * 2 - 10, 30, FONTS.display, "800");
+  ctx.font = font(namePx, FONTS.display, "800"); ctx.fillStyle = "#ffffff";
+  ctx.shadowColor = "rgba(0,0,0,0.85)"; ctx.shadowBlur = 6; ctx.fillText(card.name, cxc, nameY);
+  ctx.shadowBlur = 0;
+  const uw = Math.min(gw - inset * 2 - 20, ctx.measureText(card.name).width);
+  ctx.fillStyle = color; ctx.fillRect(cxc - uw / 2, nameY + 7, uw, 3);
+  if (card.attack != null || card.special) {
+    const parts: string[] = [];
+    if (card.attack != null) parts.push(`ATK ${card.attack.toLocaleString()}`);
+    if (card.special) parts.push(card.special);
+    const text = parts.join("  ·  ");
+    const spx = fitText(ctx, text, gw - inset * 2 - 6, 15, FONTS.body, "700");
+    ctx.font = font(spx, FONTS.body, "700"); ctx.fillStyle = "rgba(235,235,240,0.9)";
+    ctx.shadowColor = "rgba(0,0,0,0.85)"; ctx.shadowBlur = 4;
+    ctx.fillText(text, cxc, nameY + 26); ctx.shadowBlur = 0;
+  }
+}
+
+// Gold "🏆 WINNER" banner text.
+function layerWinnerBanner(ctx: Ctx, cx: number, cy: number) {
+  ctx.save();
+  ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  ctx.font = font(66, FONTS.display, "800");
+  const g = ctx.createLinearGradient(0, cy - 34, 0, cy + 34);
+  g.addColorStop(0, "#fff2b0"); g.addColorStop(0.5, "#ffcc33"); g.addColorStop(1, "#c8890f");
+  ctx.lineWidth = 8; ctx.strokeStyle = "#3a2600"; ctx.strokeText("🏆 WINNER 🏆", cx, cy);
+  ctx.fillStyle = g; ctx.fillText("🏆 WINNER 🏆", cx, cy);
+  ctx.restore();
+}
+
+// Public: a big single-card victory image for the winner.
+export async function renderWinnerImage(card: RenderCard, opts: RenderOpts = {}): Promise<Buffer | null> {
+  const mod = await getCanvas();
+  if (!mod) return null;
+  try {
+    const canvas = mod.createCanvas(CANVAS.width, CANVAS.height);
+    const ctx = canvas.getContext("2d") as unknown as Ctx;
+    await layerBackground(ctx, mod, opts);
+    layerWinnerBanner(ctx, CANVAS.width / 2, 60);
+    const cw = 300, ch = 420;
+    await drawBigCard(ctx, mod, (CANVAS.width - cw) / 2, 110, cw, ch, card);
+    return await canvas.encode("png");
+  } catch {
+    return null;
+  }
+}
+
+// ── Show Card / trophy image ─────────────────────────────────────────────────
+// A "worthy" premium showcase: obsidian → royal-purple ground with gold rays,
+// a gold star row, the card big (its equipped /frames colour drives the border
+// via card.rarityColor), and a caught / frame caption. Distinct from the battle
+// palette on purpose — this is a trophy, not a fight.
+const TROPHY = {
+  bg0: "#2a1a3e", bg1: "#140f22", bg2: "#0d0b14",
+  gold: "#ffd76b", goldDim: "#c8890f", star: "#ffd76b", starOff: "rgba(255,255,255,0.16)",
+  ink: "#f4efe0", muted: "rgba(230,222,205,0.72)",
+};
+
+export interface ShowcaseOpts {
+  stars?: number;            // 0–5 filled
+  caughtLabel?: string;      // e.g. "CAUGHT · JUL 2026"
+  frameName?: string | null; // equipped /frames name
+  badges?: string[];         // e.g. ["MAXED", "LIMITED"]
+}
+
+function trophyBackground(ctx: Ctx) {
+  const { width: W, height: H } = CANVAS;
+  const g = ctx.createRadialGradient(W / 2, H * 0.34, 70, W / 2, H * 0.5, W * 0.78);
+  g.addColorStop(0, TROPHY.bg0); g.addColorStop(0.6, TROPHY.bg1); g.addColorStop(1, TROPHY.bg2);
+  ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+  // faint gold rays behind the card
+  ctx.save();
+  ctx.translate(W / 2, H * 0.52);
+  for (let i = 0; i < 16; i++) {
+    ctx.rotate(Math.PI / 8);
+    ctx.globalAlpha = 0.05; ctx.fillStyle = TROPHY.gold;
+    ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(-38, -820); ctx.lineTo(38, -820); ctx.closePath(); ctx.fill();
+  }
+  ctx.restore();
+  const v = ctx.createRadialGradient(W / 2, H / 2, H * 0.3, W / 2, H / 2, W * 0.72);
+  v.addColorStop(0, "rgba(0,0,0,0)"); v.addColorStop(1, "rgba(0,0,0,0.5)");
+  ctx.fillStyle = v; ctx.fillRect(0, 0, W, H);
+}
+
+function starRow(ctx: Ctx, cx: number, y: number, stars: number) {
+  const size = 38, gap = 12, total = 5;
+  const w = total * size + (total - 1) * gap;
+  let x = cx - w / 2 + size / 2;
+  ctx.font = font(size, FONTS.display, "800");
+  ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  for (let i = 0; i < total; i++) {
+    if (i < stars) { ctx.fillStyle = TROPHY.star; ctx.shadowColor = TROPHY.gold; ctx.shadowBlur = 16; }
+    else { ctx.fillStyle = TROPHY.starOff; ctx.shadowBlur = 0; }
+    ctx.fillText("★", x, y);
+    x += size + gap;
+  }
+  ctx.shadowBlur = 0;
+}
+
+export async function renderShowcaseImage(card: RenderCard, opts: ShowcaseOpts = {}): Promise<Buffer | null> {
+  const mod = await getCanvas();
+  if (!mod) return null;
+  try {
+    const { width: W } = CANVAS;
+    const canvas = mod.createCanvas(W, CANVAS.height);
+    const ctx = canvas.getContext("2d") as unknown as Ctx;
+    trophyBackground(ctx);
+    starRow(ctx, W / 2, 66, Math.max(0, Math.min(5, opts.stars ?? 0)));
+
+    const cw = 296, ch = 384;
+    await drawBigCard(ctx, mod, (W - cw) / 2, 108, cw, ch, card);
+
+    // caption: frame name (gold) + caught label (muted)
+    ctx.textAlign = "center"; ctx.textBaseline = "alphabetic";
+    let cy = 108 + ch + 34;
+    if (opts.frameName) {
+      ctx.font = font(20, FONTS.display, "800"); ctx.fillStyle = TROPHY.gold;
+      ctx.shadowColor = "rgba(0,0,0,0.6)"; ctx.shadowBlur = 4;
+      ctx.fillText(opts.frameName.toUpperCase(), W / 2, cy); ctx.shadowBlur = 0;
+      cy += 26;
+    }
+    if (opts.caughtLabel) {
+      ctx.font = font(15, FONTS.body, "700"); ctx.fillStyle = TROPHY.muted;
+      ctx.fillText(opts.caughtLabel.toUpperCase(), W / 2, cy);
+    }
+
+    // badges: gold pills along the top corners
+    if (opts.badges && opts.badges.length) {
+      ctx.font = font(14, FONTS.body, "800"); ctx.textBaseline = "middle";
+      let bx = 24;
+      for (const b of opts.badges.slice(0, 3)) {
+        const bw = ctx.measureText(b.toUpperCase()).width + 24;
+        ctx.fillStyle = "rgba(255,215,107,0.14)";
+        roundRectPath(ctx, bx, 22, bw, 30, 8); ctx.fill();
+        ctx.lineWidth = 1.5; ctx.strokeStyle = TROPHY.gold; ctx.stroke();
+        ctx.fillStyle = TROPHY.gold; ctx.textAlign = "center";
+        ctx.fillText(b.toUpperCase(), bx + bw / 2, 38);
+        bx += bw + 10;
+      }
+    }
+    return await canvas.encode("png");
+  } catch {
+    return null;
   }
 }
 

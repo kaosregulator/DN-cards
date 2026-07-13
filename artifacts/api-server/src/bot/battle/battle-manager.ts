@@ -750,8 +750,25 @@ async function finishBattle(rt: BattleRuntime, winnerSide: 0 | 1 | null, reason:
 
   const rewardLines = buildRewardLines(rt, outcomes);
   const view = toView(rt);
+  const winner = winnerSide === null ? null : (winnerSide === 0 ? rt.a : rt.b);
+
+  // Build the victory embed once and reuse it for the message + the battle log.
+  // The winner's card stays the thumbnail (buildWinnerEmbed); the VS battle image
+  // is reused as the big embed image so it isn't wasted, plus an "HP left" line.
+  const winnerEmbed = buildWinnerEmbed(view, winnerSide, rewardLines);
+  if (rt.vsImage) winnerEmbed.setImage(`attachment://${VS_IMAGE_NAME}`);
+  if (winner) {
+    const pct = Math.max(0, Math.round((winner.hp / Math.max(1, winner.stats.maxHealth)) * 100));
+    winnerEmbed.addFields({
+      name: "💪 Survived",
+      value: `Won with **${Math.max(0, winner.hp).toLocaleString()} / ${winner.stats.maxHealth.toLocaleString()} HP** left (${pct}%)`,
+      inline: false,
+    });
+  }
+  const winnerFiles = rt.vsImage ? [new AttachmentBuilder(rt.vsImage, { name: VS_IMAGE_NAME })] : [];
+
   if (rt.message) {
-    await rt.message.edit({ embeds: [buildWinnerEmbed(view, winnerSide, rewardLines)], components: [] }).catch(() => {});
+    await rt.message.edit({ embeds: [winnerEmbed], components: [], files: winnerFiles }).catch(() => {});
   }
 
   // Achievement toasts + battle log channel.
@@ -766,7 +783,10 @@ async function finishBattle(rt: BattleRuntime, winnerSide: 0 | 1 | null, reason:
         }).catch(() => {});
       }
     }
-    if (client) await logBattleResult(client, rt.guildId, buildWinnerEmbed(view, winnerSide, rewardLines)).catch(() => {});
+    // Log the same victory embed, re-attaching the VS image so it stays with
+    // the logged result too.
+    if (client) await logBattleResult(client, rt.guildId, winnerEmbed,
+      rt.vsImage ? { buffer: rt.vsImage, name: VS_IMAGE_NAME } : undefined).catch(() => {});
 
     // Card level-up / star-up toasts.
     if (levelUps.length > 0 && rt.message.channel.isSendable()) {
