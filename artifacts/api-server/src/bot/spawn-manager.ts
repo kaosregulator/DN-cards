@@ -82,6 +82,18 @@ const ESCAPE_QUIPS: readonly string[] = [
   "Tactical retreat. Better luck next drop. \u26f0\ufe0f",
 ];
 
+// Wishlist teases — shown when a card on someone's wishlist spawns. These must
+// NEVER name the card: the whole point is you have to type its name to catch it,
+// so revealing it would give the catch away. One is picked at random per ping.
+const WISHLIST_TEASES: readonly string[] = [
+  "👀 — a card on your **wishlist** just dropped. No spoilers… go catch it!",
+  "⭐ — something you've been hunting just spawned. Type fast!",
+  "🔔 — psst, one of your **wishlisted** cards is in the drop channel *right now*.",
+  "🎯 — a wishlist target just appeared. You know what to do.",
+  "🃏 — a card you starred just showed up. First to type its name wins it!",
+  "📡 — incoming! A **wishlist** card just deployed to the channel.",
+];
+
 // Short catch confirmations — mirror the escape-quip format so both ends
 // of the spawn feel equally flavourful. Template: {card} … {mention}.
 // The card name and mention are interpolated at runtime; these strings
@@ -312,8 +324,10 @@ async function doSingleSpawn(guildId: string, forcedCardId?: number, isForced = 
     for (let i = 0; i < wishers.length; i += CHUNK) {
       const slice = wishers.slice(i, i + CHUNK);
       const mentions = slice.map(u => `<@${u}>`).join(" ");
+      // Random tease that never reveals the card name (typing it is the catch).
+      const tease = WISHLIST_TEASES[Math.floor(Math.random() * WISHLIST_TEASES.length)]!;
       await channel.send({
-        content: `⭐ ${mentions} — **${card.name}** is on your wishlist! Catch it now.`,
+        content: `${mentions} ${tease}`,
         allowedMentions: { users: slice },
       }).catch(() => { /* permissions / rate limit — ignore */ });
     }
