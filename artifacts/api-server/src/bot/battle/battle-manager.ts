@@ -17,7 +17,7 @@ import {
   type StringSelectMenuInteraction, type Message, type User,
 } from "discord.js";
 import { logger } from "../../lib/logger.js";
-import { renderBattleImage, renderWinnerImage, type RenderCard } from "./image/render.js";
+import { renderBattleImage, type RenderCard } from "./image/render.js";
 import { toAbsoluteImageUrl } from "../image-url.js";
 import { getBotClient } from "../client-holder.js";
 import { removeCardFromUser, restoreCardToUser } from "../db.js";
@@ -750,20 +750,25 @@ async function finishBattle(rt: BattleRuntime, winnerSide: 0 | 1 | null, reason:
 
   const rewardLines = buildRewardLines(rt, outcomes);
   const view = toView(rt);
+  const winner = winnerSide === null ? null : (winnerSide === 0 ? rt.a : rt.b);
+
+  // Build the victory embed once and reuse it for the message + the battle log.
+  // The winner's card stays the thumbnail (buildWinnerEmbed); the VS battle image
+  // is reused as the big embed image so it isn't wasted, plus an "HP left" line.
+  const winnerEmbed = buildWinnerEmbed(view, winnerSide, rewardLines);
+  if (rt.vsImage) winnerEmbed.setImage(`attachment://${VS_IMAGE_NAME}`);
+  if (winner) {
+    const pct = Math.max(0, Math.round((winner.hp / Math.max(1, winner.stats.maxHealth)) * 100));
+    winnerEmbed.addFields({
+      name: "💪 Survived",
+      value: `Won with **${Math.max(0, winner.hp).toLocaleString()} / ${winner.stats.maxHealth.toLocaleString()} HP** left (${pct}%)`,
+      inline: false,
+    });
+  }
+  const winnerFiles = rt.vsImage ? [new AttachmentBuilder(rt.vsImage, { name: VS_IMAGE_NAME })] : [];
+
   if (rt.message) {
-    const winnerEmbed = buildWinnerEmbed(view, winnerSide, rewardLines);
-    // Big composited winner card as the victory image (falls back to the raw
-    // card image that buildWinnerEmbed already set if the render is unavailable).
-    let files: AttachmentBuilder[] = [];
-    const winner = winnerSide === null ? null : (winnerSide === 0 ? rt.a : rt.b);
-    if (winner) {
-      const img = await renderWinnerImage(combatantToRenderCard(rt, winner)).catch(() => null);
-      if (img) {
-        winnerEmbed.setImage("attachment://winner.png");
-        files = [new AttachmentBuilder(img, { name: "winner.png" })];
-      }
-    }
-    await rt.message.edit({ embeds: [winnerEmbed], components: [], files }).catch(() => {});
+    await rt.message.edit({ embeds: [winnerEmbed], components: [], files: winnerFiles }).catch(() => {});
   }
 
   // Achievement toasts + battle log channel.
@@ -778,7 +783,10 @@ async function finishBattle(rt: BattleRuntime, winnerSide: 0 | 1 | null, reason:
         }).catch(() => {});
       }
     }
-    if (client) await logBattleResult(client, rt.guildId, buildWinnerEmbed(view, winnerSide, rewardLines)).catch(() => {});
+    // Log the same victory embed, re-attaching the VS image so it stays with
+    // the logged result too.
+    if (client) await logBattleResult(client, rt.guildId, winnerEmbed,
+      rt.vsImage ? { buffer: rt.vsImage, name: VS_IMAGE_NAME } : undefined).catch(() => {});
 
     // Card level-up / star-up toasts.
     if (levelUps.length > 0 && rt.message.channel.isSendable()) {
