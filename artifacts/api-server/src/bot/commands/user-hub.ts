@@ -67,6 +67,12 @@ export async function handleUserHub(
   await interaction.editReply(view);
 }
 
+// Re-render the user-hub in place from a button (used by the sub-hubs' Back).
+export async function openUserHubFromButton(interaction: ButtonInteraction): Promise<void> {
+  const view = await buildView(interaction, "profile");
+  await interaction.update(view).catch(() => {});
+}
+
 // ── Component router (user-hub:* selects + buttons) ──────────────────────────
 export async function handleUserHubComponent(
   interaction: StringSelectMenuInteraction | ButtonInteraction,
@@ -96,6 +102,18 @@ export async function handleUserHubComponent(
     return;
   }
 
+  // Side quick-access: open the Market / Squad sub-hubs in place.
+  if (action === "open-market" && interaction.isButton()) {
+    const { openMarketHubFromButton } = await import("./market-hub.js");
+    await openMarketHubFromButton(interaction);
+    return;
+  }
+  if (action === "open-squad" && interaction.isButton()) {
+    const { openSquadHubFromButton } = await import("./squad-hub.js");
+    await openSquadHubFromButton(interaction);
+    return;
+  }
+
   // Default: main section dropdown changed.
   let section: Section = "profile";
   if (interaction.isStringSelectMenu()) section = (interaction.values[0] as Section) ?? "profile";
@@ -112,6 +130,15 @@ function sectionRow(current: Section) {
       label: s.label, value: s.id, description: s.description, emoji: s.emoji, default: s.id === current,
     })));
   return new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(select);
+}
+
+// Quick-access side panel: open the Market / Squad sub-hubs. (🏆 Show Card —
+// the public trophy showcase — will slot in here in a later phase.)
+function sideRow() {
+  return new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder().setCustomId("user-hub:open-market").setLabel("Market").setEmoji("🏪").setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder().setCustomId("user-hub:open-squad").setLabel("Squad").setEmoji("🤝").setStyle(ButtonStyle.Secondary),
+  );
 }
 
 type AnyInteraction = ChatInputCommandInteraction | StringSelectMenuInteraction | ButtonInteraction;
@@ -159,6 +186,7 @@ async function buildView(interaction: AnyInteraction, section: Section) {
       break;
     }
   }
+  rows.push(sideRow());
   return { embeds, components: rows };
 }
 
