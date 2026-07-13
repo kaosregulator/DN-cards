@@ -17,6 +17,8 @@ import type {
 } from "@workspace/db";
 import { and, eq, sql, desc } from "drizzle-orm";
 import type { Rarity } from "./types.js";
+import { getRarityContext } from "../db.js";
+import { effectiveRarityKey, getCardDisplayRarity, type RarityContext } from "../rarity-runtime.js";
 
 // ── Owned, battle-eligible cards ─────────────────────────────────────────────
 export interface OwnedBattleCard {
@@ -32,6 +34,11 @@ export interface OwnedBattleCard {
   // aren't tied to a specific owner (e.g. the AI card pool).
   level: number;
   config: BattleCardConfig | null;
+  // Source-of-truth rarity context (Stage-1 profile + Stage-2 custom tiers).
+  // `effectiveRarityKey` is the built-in rarity key or `custom:<slug>` for a
+  // custom tier; `displayRarity` is the label/emoji to show in the picker.
+  effectiveRarityKey?: string;
+  displayRarity?: { label: string; emoji: string };
 }
 
 export async function getBattleCardConfigMap(guildId: string): Promise<Map<number, BattleCardConfig>> {
@@ -43,9 +50,11 @@ export async function getBattleCardConfigMap(guildId: string): Promise<Map<numbe
 }
 
 // Every card a user owns in this guild, with its per-guild battle config
-// attached (null if none). Uses the built-in card rarity (battles treat custom
-// economy tiers as their base rarity).
-export async function getOwnedBattleCards(guildId: string, userId: string): Promise<OwnedBattleCard[]> {
+// attached (null if none). Pass the rarity context to surface Stage-1 profile
+// + Stage-2 custom tiers as the source-of-truth rarity in the picker.
+export async function getOwnedBattleCards(
+  guildId: string, userId: string, ctx?: RarityContext,
+): Promise<OwnedBattleCard[]> {
   const [rows, cfgMap] = await Promise.all([
     db.select({
       id: cardsTable.id,
@@ -73,22 +82,30 @@ export async function getOwnedBattleCards(guildId: string, userId: string): Prom
       )),
     getBattleCardConfigMap(guildId),
   ]);
-  return rows.map(r => ({
-    id: r.id,
-    name: r.name,
-    rarity: r.rarity as Rarity,
-    cardType: r.cardType,
-    worthValue: r.worthValue,
-    imageUrl: r.imageUrl,
-    owned: r.count + r.shinyCount,
-    level: r.level ?? 1,
-    config: cfgMap.get(r.id) ?? null,
-  }));
+  const rarityCtx = ctx ?? await getRarityContext(guildId);
+  return rows.map(r => {
+    const effectiveKey = effectiveRarityKey({ id: r.id, rarity: r.rarity }, rarityCtx);
+    const display = getCardDisplayRarity({ id: r.id, rarity: r.rarity }, rarityCtx);
+    return {
+      id: r.id,
+      name: r.name,
+      rarity: r.rarity as Rarity,
+      cardType: r.cardType,
+      worthValue: r.worthValue,
+      imageUrl: r.imageUrl,
+      owned: r.count + r.shinyCount,
+      level: r.level ?? 1,
+      config: cfgMap.get(r.id) ?? null,
+      effectiveRarityKey: effectiveKey,
+      displayRarity: { label: display.label, emoji: display.emoji },
+    };
+  });
 }
 
 // The full pool of enabled cards in the guild (used by AI to pick from). Reads
-// every card, not just owned ones.
-export async function getAllBattleCards(guildId: string): Promise<OwnedBattleCard[]> {
+// every card, not just owned ones. Pass the rarity context so the AI follows the
+// same source-of-truth rarities as /rarity.
+export async function getAllBattleCards(guildId: string, ctx?: RarityContext): Promise<OwnedBattleCard[]> {
   const [rows, cfgMap] = await Promise.all([
     db.select({
       id: cardsTable.id, name: cardsTable.name, rarity: cardsTable.rarity,
@@ -97,10 +114,17 @@ export async function getAllBattleCards(guildId: string): Promise<OwnedBattleCar
     }).from(cardsTable),
     getBattleCardConfigMap(guildId),
   ]);
-  return rows.filter(r => !r.isArchived).map(r => ({
-    id: r.id, name: r.name, rarity: r.rarity as Rarity, cardType: r.cardType,
-    worthValue: r.worthValue, imageUrl: r.imageUrl, owned: 0, level: 1, config: cfgMap.get(r.id) ?? null,
-  }));
+  const rarityCtx = ctx ?? await getRarityContext(guildId);
+  return rows.filter(r => !r.isArchived).map(r => {
+    const effectiveKey = effectiveRarityKey({ id: r.id, rarity: r.rarity }, rarityCtx);
+    const display = getCardDisplayRarity({ id: r.id, rarity: r.rarity }, rarityCtx);
+    return {
+      id: r.id, name: r.name, rarity: r.rarity as Rarity, cardType: r.cardType,
+      worthValue: r.worthValue, imageUrl: r.imageUrl, owned: 0, level: 1, config: cfgMap.get(r.id) ?? null,
+      effectiveRarityKey: effectiveKey,
+      displayRarity: { label: display.label, emoji: display.emoji },
+    };
+  });
 }
 
 export async function getBattleCardConfig(guildId: string, cardId: number): Promise<BattleCardConfig | null> {

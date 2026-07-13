@@ -46,7 +46,8 @@ import {
 } from "./embeds.js";
 import { formatAchievementLine } from "./achievement-engine.js";
 import { rarityLabel, rarityEmoji, rarityColor, type RarityDisplayMap } from "../cards-data.js";
-import { getRarityDisplayOverrides } from "../db.js";
+import { getRarityContext, getRarityDisplayOverrides } from "../db.js";
+import { getCardDisplayRarity, BUILTIN_POSITIONS, type RarityContext } from "../rarity-runtime.js";
 
 const MAX_BATTLE_MS = 20 * 60 * 1000;   // hard TTL safety net
 const DEFAULT_FRAME_MS = 950;            // fallback delay between animation frames
@@ -69,6 +70,7 @@ interface PrepState {
   stake: boolean;
   coin: "heads" | "tails" | null;
   ready: boolean;
+  page: number; // 0-based page for the card picker (25 cards per page)
 }
 
 interface BattleRuntime {
@@ -95,6 +97,7 @@ interface BattleRuntime {
   currentSide: 0 | 1;
   staked: boolean;
   displayMap: RarityDisplayMap | null;   // source-of-truth rarity display overrides
+  ctx: RarityContext;                    // source-of-truth rarity context (profiles + custom tiers)
   // When a staked PvP battle starts, one copy of each fighter's card is removed
   // from their collection and held here (escrow). This makes it impossible to
   // burn/trade a staked card mid-battle to dodge a loss; the copies are settled
@@ -132,21 +135,32 @@ function getRuntime(id: string): BattleRuntime | undefined {
 }
 
 // ── Eligibility ──────────────────────────────────────────────────────────────
-export function isCardEligible(settings: BattleSettings, c: OwnedBattleCard): boolean {
+// Use the card's source-of-truth rarity (built-in or custom tier position) for
+// the rarity window check. Custom tiers compare their position against the
+// built-in min/max rarity positions so "allow all" still includes them.
+export function isCardEligible(settings: BattleSettings, c: OwnedBattleCard, ctx?: RarityContext): boolean {
   if (c.config && c.config.enabled === false) return false;
+  const key = c.effectiveRarityKey ?? c.rarity;
+  if (ctx && key.startsWith("custom:")) {
+    const tier = ctx.customByCard.get(c.id);
+    if (tier) {
+      const minPos = BUILTIN_POSITIONS[settings.minRarity as Rarity] ?? 1;
+      const maxPos = BUILTIN_POSITIONS[settings.maxRarity as Rarity] ?? 6;
+      return tier.position >= minPos && tier.position <= maxPos && typeAllowed(settings, c.cardType);
+    }
+  }
   return rarityAllowed(settings, c.rarity) && typeAllowed(settings, c.cardType);
 }
 
 async function eligibleForUser(rt: BattleRuntime, userId: string): Promise<OwnedBattleCard[]> {
   const cached = rt.eligibleCache.get(userId);
   if (cached) return cached;
-  const owned = await getOwnedBattleCards(rt.guildId, userId);
+  const owned = await getOwnedBattleCards(rt.guildId, userId, rt.ctx);
   const list = owned
-    .filter(c => isCardEligible(rt.settings, c))
+    .filter(c => isCardEligible(rt.settings, c, rt.ctx))
     .sort((x, y) =>
       powerRating(getScaledStats(cardish(y), y.config, rt.settings, y.level))
-      - powerRating(getScaledStats(cardish(x), x.config, rt.settings, x.level)))
-    .slice(0, 25);
+      - powerRating(getScaledStats(cardish(x), x.config, rt.settings, x.level)));
   rt.eligibleCache.set(userId, list);
   return list;
 }
@@ -198,6 +212,7 @@ export async function startChallenge(
   if (!guild) { await interaction.reply({ content: "Battles can only be started in a server.", flags: MessageFlags.Ephemeral }); return; }
   const guildId = guild.id;
   const settings = await getBattleSettings(guildId);
+  const [displayMap, ctx] = await Promise.all([getRarityDisplayOverrides(guildId), getRarityContext(guildId)]);
 
   if (!settings.enabled) {
     await interaction.reply({ content: "⚔️ The battle system is currently disabled on this server.", flags: MessageFlags.Ephemeral });
@@ -222,14 +237,13 @@ export async function startChallenge(
     await interaction.reply({ content: "⚠️ You're already in a battle. Finish it first.", flags: MessageFlags.Ephemeral });
     return;
   }
-  const challengerCards = await getOwnedBattleCards(guildId, interaction.user.id);
-  if (challengerCards.filter(c => isCardEligible(settings, c)).length === 0) {
+  const challengerCards = await getOwnedBattleCards(guildId, interaction.user.id, ctx);
+  if (challengerCards.filter(c => isCardEligible(settings, c, ctx)).length === 0) {
     await interaction.reply({ content: "You don't own any battle-eligible cards yet. Catch or open packs first!", flags: MessageFlags.Ephemeral });
     return;
   }
 
   const id = newId();
-  const displayMap = await getRarityDisplayOverrides(guildId);
   const rt: BattleRuntime = {
     id, guildId, channelId: interaction.channelId!, message: null, settings,
     challengerId: interaction.user.id, challengerName: interaction.user.username,
@@ -243,6 +257,7 @@ export async function startChallenge(
     crits: [0, 0], dmg: [0, 0], wentLow: [false, false],
     turnTimer: null, aiOfferTimer: null, ttlTimer: null, processing: false, createdAt: Date.now(),
     displayMap,
+    ctx,
     vsImage: null,
   };
   battles.set(id, rt);
@@ -299,6 +314,7 @@ export async function handleBattleComponent(
         case "prep": return void await onOpenPrep(rt, interaction);
         case "pstake": return void await onToggleStake(rt, interaction);
         case "pcoin": return void await onPickCoin(rt, interaction, parts[3] as "heads" | "tails");
+        case "ppage": return void await onPage(rt, interaction, parts[3] as "prev" | "next");
         case "pready": return void await onReady(rt, interaction);
         case "move": return void await onMoveButton(rt, interaction, parts[3] as MoveType);
         default: return void await safeEphemeral(interaction, "Unknown action.");
@@ -322,7 +338,7 @@ async function onAccept(rt: BattleRuntime, interaction: ButtonInteraction) {
     return safeEphemeral(interaction, "Only the challenged player can accept.");
   }
   if (rt.phase !== "challenge") return safeEphemeral(interaction, "This challenge is no longer open.");
-  const eligible = (await getOwnedBattleCards(rt.guildId, interaction.user.id)).filter(c => isCardEligible(rt.settings, c));
+  const eligible = (await getOwnedBattleCards(rt.guildId, interaction.user.id, rt.ctx)).filter(c => isCardEligible(rt.settings, c, rt.ctx));
   if (eligible.length === 0) return safeEphemeral(interaction, "You have no battle-eligible cards to fight with.");
   const locked = await acquireBattleLock(rt.guildId, interaction.user.id, rt.id, null, false);
   if (!locked) return safeEphemeral(interaction, "You're already in another battle.");
@@ -381,9 +397,9 @@ async function onPickAiDifficulty(rt: BattleRuntime, interaction: ButtonInteract
 // ── Prep phase ───────────────────────────────────────────────────────────────
 async function enterPrep(rt: BattleRuntime, interaction: ButtonInteraction) {
   rt.phase = "prep";
-  rt.prep.set(rt.challengerId, { cardId: null, specialCardId: null, stake: false, coin: null, ready: false });
+  rt.prep.set(rt.challengerId, { cardId: null, specialCardId: null, stake: false, coin: null, ready: false, page: 0 });
   if (!rt.isAi && rt.opponentId) {
-    rt.prep.set(rt.opponentId, { cardId: null, specialCardId: null, stake: false, coin: null, ready: false });
+    rt.prep.set(rt.opponentId, { cardId: null, specialCardId: null, stake: false, coin: null, ready: false, page: 0 });
   }
   await interaction.update({
     embeds: [buildPrepEmbed(rt)],
@@ -443,6 +459,20 @@ async function onPickCoin(rt: BattleRuntime, interaction: ButtonInteraction, coi
   if (!prep) return safeEphemeral(interaction, "You're not part of this battle.");
   prep.coin = coin;
   const eligible = await eligibleForUser(rt, interaction.user.id);
+  await interaction.update({
+    embeds: [buildPersonalPrepEmbed(rt, interaction.user.id)],
+    components: buildPersonalPrepComponents(rt, interaction.user.id, eligible),
+  }).catch(() => {});
+}
+
+async function onPage(rt: BattleRuntime, interaction: ButtonInteraction, direction: "prev" | "next") {
+  const prep = rt.prep.get(interaction.user.id);
+  if (!prep) return safeEphemeral(interaction, "You're not part of this battle.");
+  const eligible = await eligibleForUser(rt, interaction.user.id);
+  const totalPages = Math.ceil(eligible.length / PICKER_PAGE_SIZE);
+  const current = prep.page ?? 0;
+  const next = direction === "prev" ? Math.max(0, current - 1) : Math.min(totalPages - 1, current + 1);
+  prep.page = next;
   await interaction.update({
     embeds: [buildPersonalPrepEmbed(rt, interaction.user.id)],
     components: buildPersonalPrepComponents(rt, interaction.user.id, eligible),
@@ -1055,23 +1085,46 @@ function buildPersonalPrepEmbed(rt: BattleRuntime, userId: string): EmbedBuilder
     );
 }
 
+const PICKER_PAGE_SIZE = 25;
+
 function buildPersonalPrepComponents(
   rt: BattleRuntime, userId: string, eligible: OwnedBattleCard[],
 ): ActionRowBuilder<any>[] {
   const prep = rt.prep.get(userId);
+  const page = prep?.page ?? 0;
+  const totalPages = Math.ceil(eligible.length / PICKER_PAGE_SIZE);
+  const safePage = Math.max(0, Math.min(page, totalPages - 1));
+  const pageCards = eligible.slice(safePage * PICKER_PAGE_SIZE, (safePage + 1) * PICKER_PAGE_SIZE);
+
   const cardSelect = new StringSelectMenuBuilder()
     .setCustomId(`battle:pcard:${rt.id}`)
-    .setPlaceholder("🎴 Choose your battle card")
-    .addOptions(eligible.slice(0, 25).map(c => ({
-      label: c.name.slice(0, 100),
-      description: `${rarityLabel(c.rarity, null, rt.displayMap)}${c.owned > 1 ? ` · x${c.owned}` : ""}`,
-      value: String(c.id),
-      default: prep?.cardId === c.id,
-    })));
+    .setPlaceholder(`🎴 Choose your battle card (${eligible.length} cards, page ${safePage + 1}/${totalPages || 1})`)
+    .addOptions(pageCards.map(c => {
+      const display = c.displayRarity;
+      const rarityTag = display
+        ? `${display.emoji} ${display.label}`
+        : rarityLabel(c.rarity, null, rt.displayMap);
+      return {
+        label: c.name.slice(0, 100),
+        description: `${rarityTag}${c.owned > 1 ? ` · x${c.owned}` : ""}`,
+        value: String(c.id),
+        default: prep?.cardId === c.id,
+      };
+    }));
 
   const rows: ActionRowBuilder<any>[] = [
     new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(cardSelect),
   ];
+
+  // Pagination row for large collections.
+  if (eligible.length > PICKER_PAGE_SIZE) {
+    rows.push(new ActionRowBuilder<ButtonBuilder>().addComponents(
+      new ButtonBuilder().setCustomId(`battle:ppage:${rt.id}:prev`).setLabel("◀ Prev")
+        .setStyle(ButtonStyle.Secondary).setDisabled(safePage <= 0),
+      new ButtonBuilder().setCustomId(`battle:ppage:${rt.id}:next`).setLabel("Next ▶")
+        .setStyle(ButtonStyle.Secondary).setDisabled(safePage >= totalPages - 1),
+    ));
+  }
 
   if (rt.settings.specialCardsEnabled) {
     const specialSelect = new StringSelectMenuBuilder()
@@ -1079,7 +1132,7 @@ function buildPersonalPrepComponents(
       .setPlaceholder("✨ Optional: special support card")
       .addOptions(
         { label: "None", description: "No special support card", value: "none", default: !prep?.specialCardId },
-        ...eligible.slice(0, 24).map(c => {
+        ...pageCards.slice(0, 24).map(c => {
           const eff = c.config?.specialEffect ?? inferSpecialEffect(c.cardType, c.rarity);
           const def = getEffectDef(eff);
           return {
