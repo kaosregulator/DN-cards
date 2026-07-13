@@ -12,11 +12,12 @@
 
 import {
   EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle,
-  StringSelectMenuBuilder, MessageFlags,
+  StringSelectMenuBuilder, MessageFlags, AttachmentBuilder,
   type ChatInputCommandInteraction, type ButtonInteraction,
   type StringSelectMenuInteraction, type Message, type User,
 } from "discord.js";
 import { logger } from "../../lib/logger.js";
+import { renderBattleImage, type RenderCard } from "./image/render.js";
 import { toAbsoluteImageUrl } from "../image-url.js";
 import { getBotClient } from "../client-holder.js";
 import { removeCardFromUser, restoreCardToUser } from "../db.js";
@@ -113,6 +114,11 @@ interface BattleRuntime {
   ttlTimer: ReturnType<typeof setTimeout> | null;
   processing: boolean;
   createdAt: number;
+
+  // Layered VS battle image (rendered once at combat start; re-attached each
+  // combat render). null when @napi-rs/canvas isn't installed — the battle then
+  // shows the plain embed with no image, never an error.
+  vsImage: Buffer | null;
 }
 
 const battles = new Map<string, BattleRuntime>();
@@ -237,6 +243,7 @@ export async function startChallenge(
     crits: [0, 0], dmg: [0, 0], wentLow: [false, false],
     turnTimer: null, aiOfferTimer: null, ttlTimer: null, processing: false, createdAt: Date.now(),
     displayMap,
+    vsImage: null,
   };
   battles.set(id, rt);
 
@@ -519,6 +526,15 @@ async function beginCombat(rt: BattleRuntime) {
 
   // Record staked cards on the locks (card-lock during battle).
   await releaseAndRelock(rt);
+
+  // Render the layered VS battle image once (background + both cards + VS).
+  // Fire-and-forget safe: null on any failure → battle just shows no image.
+  if (rt.a && rt.b) {
+    rt.vsImage = await renderBattleImage(
+      combatantToRenderCard(rt, rt.a),
+      combatantToRenderCard(rt, rt.b),
+    ).catch(() => null);
+  }
 
   // Coin flip → first mover.
   const flip = Math.random() < 0.5 ? "heads" : "tails";
@@ -824,15 +840,37 @@ async function teardown(rt: BattleRuntime) {
 }
 
 // ── Rendering ────────────────────────────────────────────────────────────────
+const VS_IMAGE_NAME = "battle-vs.png";
+
+// Map a live Combatant to the renderer's card description.
+function combatantToRenderCard(rt: BattleRuntime, c: Combatant): RenderCard {
+  return {
+    name: c.cardName,
+    rarity: c.cardRarity,
+    rarityLabel: rarityLabel(c.cardRarity, null, rt.displayMap) ?? c.cardRarity,
+    rarityColor: rarityColor(c.cardRarity, null, rt.displayMap),
+    cardId: c.cardId,
+    cardType: c.cardType,
+    artUrl: c.cardImageUrl,
+  };
+}
+
 async function renderCombat(rt: BattleRuntime, opts?: { currentMove?: string; turnEndsAt?: number }) {
   if (!rt.message || !rt.a || !rt.b) return;
   const view = toView(rt, opts?.turnEndsAt);
   const actor = rt.currentSide === 0 ? rt.a : rt.b;
   const components = actor.isAi ? [] : buildMoveComponents(rt, actor);
+  const embed = buildCombatEmbed(view, { currentMove: opts?.currentMove });
+  // Attach the layered VS image (re-sent each edit so it always persists).
+  const files = rt.vsImage
+    ? [new AttachmentBuilder(rt.vsImage, { name: VS_IMAGE_NAME })]
+    : [];
+  if (rt.vsImage) embed.setImage(`attachment://${VS_IMAGE_NAME}`);
   await rt.message.edit({
     content: null,
-    embeds: [buildCombatEmbed(view, { currentMove: opts?.currentMove })],
+    embeds: [embed],
     components,
+    files,
   }).catch(() => {});
 }
 
