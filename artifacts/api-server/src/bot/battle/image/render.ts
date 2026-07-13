@@ -20,6 +20,7 @@ import {
   CANVAS, CARD_BOX, VS_BADGE, resolveBackground, rarityHex,
   RARITY_BADGE_BG, RARITY_BADGE_FG, resolveElement, FONTS, FONT_FILES,
 } from "./theme.js";
+import { logger } from "../../../lib/logger.js";
 
 // The minimal card description the renderer needs. Decoupled from Combatant so
 // the renderer can draw prep screens, previews, or anything else.
@@ -66,19 +67,60 @@ function registerFonts(mod: CanvasMod) {
   }
 }
 
+// Resolve an absolute public URL back to a local /objects/... path so we can
+// download it directly from GCS instead of bouncing off the public proxy.
+function extractObjectPath(url: string): string | null {
+  try {
+    const u = new URL(url);
+    if (u.pathname.startsWith("/api/storage/objects/")) {
+      return u.pathname.slice("/api/storage".length);
+    }
+    if (u.pathname.startsWith("/objects/")) {
+      return u.pathname;
+    }
+  } catch { /* not a URL */ }
+  return null;
+}
+
+// Download an object-storage image directly from GCS. This avoids the public
+// proxy and fixes cases where the server's own fetch to its public URL fails.
+async function loadObjectStorageArt(mod: CanvasMod, objectPath: string) {
+  try {
+    const { ObjectStorageService } = await import("../../../lib/objectStorage.js");
+    const svc = new ObjectStorageService();
+    const file = await svc.getObjectEntityFile(objectPath);
+    const resp = await svc.downloadObject(file, 60);
+    const buf = Buffer.from(await resp.arrayBuffer());
+    return await mod.loadImage(buf);
+  } catch (err) {
+    logger.debug({ err, objectPath }, "battle image: failed to load object-storage art");
+    return null;
+  }
+}
+
 // Fetch remote/local art into an Image the canvas can draw. Returns null on any
 // failure so a broken URL just yields a card with no art (never a broken image).
 async function loadArt(mod: CanvasMod, url: string | null | undefined) {
   if (!url) return null;
   try {
+    // Local object path — fetch directly from GCS.
+    if (url.startsWith("/objects/")) {
+      return await loadObjectStorageArt(mod, url);
+    }
+    // Absolute URL that points to our own object storage — also fetch directly.
     if (/^https?:\/\//.test(url)) {
+      const objectPath = extractObjectPath(url);
+      if (objectPath) {
+        return await loadObjectStorageArt(mod, objectPath);
+      }
       const res = await fetch(url);
       if (!res.ok) return null;
       const buf = Buffer.from(await res.arrayBuffer());
       return await mod.loadImage(buf);
     }
     return await mod.loadImage(url); // local path
-  } catch {
+  } catch (err) {
+    logger.debug({ err, url }, "battle image: failed to load art");
     return null;
   }
 }

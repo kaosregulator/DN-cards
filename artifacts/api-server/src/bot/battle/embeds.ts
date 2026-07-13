@@ -162,7 +162,10 @@ export function buildWinnerEmbed(
     e.setColor(rarityColorOf(w.cardRarity, v.displayMap))
       .setTitle("🏆 Victory!")
       .setDescription(`${rarityEmoji(w.cardRarity, null, v.displayMap)} **${w.cardName}** defeats **${l.cardName}**!\n${who(w)} wins the battle.`);
-    if (w.cardImageUrl) e.setThumbnail(w.cardImageUrl);
+    if (w.cardImageUrl) {
+      e.setThumbnail(w.cardImageUrl)
+       .setImage(w.cardImageUrl);
+    }
   }
   e.addFields(
     combatantField(v.a, false, v.displayMap),
