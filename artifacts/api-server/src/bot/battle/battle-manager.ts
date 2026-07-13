@@ -26,7 +26,7 @@ import type { Combatant, MoveType, AiDifficulty, Rarity } from "./types.js";
 import { AI_DIFFICULTIES } from "./types.js";
 import { getBattleSettings, rarityAllowed, typeAllowed } from "./config-engine.js";
 import { getScaledStats, powerRating } from "./stat-engine.js";
-import { inferMoveset } from "./movesets.js";
+import { inferMoveset, getMoveset } from "./movesets.js";
 import { inferSpecialEffect, getEffectDef } from "./special-cards.js";
 import { resolveMove, startOfTurn, availableMoves } from "./combat-engine.js";
 import { chooseAiMove, pickAiCardIndex } from "./ai-engine.js";
@@ -871,6 +871,8 @@ function combatantToRenderCard(rt: BattleRuntime, c: Combatant): RenderCard {
     cardId: c.cardId,
     cardType: c.cardType,
     artUrl: c.cardImageUrl,
+    attack: c.stats.attack,
+    special: getMoveset(c.moveset)?.name ?? null,
   };
 }
 

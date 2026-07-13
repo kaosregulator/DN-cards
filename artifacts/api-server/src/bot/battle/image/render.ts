@@ -33,6 +33,8 @@ export interface RenderCard {
   cardType?: string | null;    // drives the element icon
   level?: number | null;
   artUrl?: string | null;      // character artwork
+  attack?: number | null;      // shown under the name
+  special?: string | null;     // signature move name, shown under the name
 }
 
 export interface RenderOpts {
@@ -256,7 +258,7 @@ function layerRarityBadge(ctx: Ctx, x: number, card: RenderCard, color: string) 
 function layerNameplate(ctx: Ctx, x: number, card: RenderCard, color: string) {
   const inset = CARD_BOX.borderWidth + CARD_BOX.artInset;
   const centerX = x + CARD_BOX.width / 2;
-  const baseY = CARD_BOX.y + CARD_BOX.height - inset - 14;
+  const baseY = CARD_BOX.y + CARD_BOX.height - inset - 30;
   ctx.textAlign = "center"; ctx.textBaseline = "alphabetic";
   if (card.series) {
     ctx.font = font(13, FONTS.body, "700");
@@ -273,6 +275,25 @@ function layerNameplate(ctx: Ctx, x: number, card: RenderCard, color: string) {
   const uw = Math.min(CARD_BOX.width - inset * 2 - 20, ctx.measureText(card.name).width);
   ctx.fillStyle = color;
   ctx.fillRect(centerX - uw / 2, baseY + 6, uw, 3);
+}
+
+// A compact stat line under the name: ATK value + signature move name.
+function layerStatline(ctx: Ctx, x: number, card: RenderCard) {
+  if (card.attack == null && !card.special) return;
+  const inset = CARD_BOX.borderWidth + CARD_BOX.artInset;
+  const centerX = x + CARD_BOX.width / 2;
+  const y = CARD_BOX.y + CARD_BOX.height - inset - 8;
+  const parts: string[] = [];
+  if (card.attack != null) parts.push(`ATK ${card.attack.toLocaleString()}`);
+  if (card.special) parts.push(card.special);
+  const text = parts.join("  ·  ");
+  const px = fitText(ctx, text, CARD_BOX.width - inset * 2 - 6, 14, FONTS.body, "700");
+  ctx.font = font(px, FONTS.body, "700");
+  ctx.textAlign = "center"; ctx.textBaseline = "alphabetic";
+  ctx.fillStyle = "rgba(235,235,240,0.9)";
+  ctx.shadowColor = "rgba(0,0,0,0.85)"; ctx.shadowBlur = 4;
+  ctx.fillText(text, centerX, y);
+  ctx.shadowBlur = 0;
 }
 
 // The gold VS badge in the centre.
@@ -302,6 +323,7 @@ async function drawCard(ctx: Ctx, mod: CanvasMod, x: number, card: RenderCard) {
   layerChips(ctx, x, card);
   layerRarityBadge(ctx, x, card, color);
   layerNameplate(ctx, x, card, color);
+  layerStatline(ctx, x, card);
 }
 
 // ── Public API ───────────────────────────────────────────────────────────────
