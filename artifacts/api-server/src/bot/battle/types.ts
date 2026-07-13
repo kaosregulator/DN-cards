@@ -52,9 +52,12 @@ export interface Combatant {
 
   cardId: number;
   cardName: string;
-  cardRarity: Rarity;
+  cardRarity: Rarity;        // built-in rarity used for stat scaling
   cardType: string;
   cardImageUrl: string | null;
+  // Source-of-truth display rarity (custom tiers / profile overrides) from /rarity.
+  // Used by embeds and the VS image so the UI shows the guild's actual rarity names.
+  cardRarityDisplay?: { label: string; emoji: string; color?: number | null };
   // Signature moveset key (see movesets engine) driving the "Special" move.
   // Optional so non-battle Combatant constructions stay valid; null → generic.
   moveset?: string | null;

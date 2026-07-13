@@ -192,6 +192,7 @@ function buildCombatant(
     userId, displayName: name, isAi, aiDifficulty, side,
     cardId: card.id, cardName: card.name, cardRarity: battleRarity,
     cardType: card.cardType, cardImageUrl: toAbsoluteImageUrl(card.imageUrl),
+    cardRarityDisplay: card.displayRarity,
     moveset,
     stats,
     hp: stats.maxHealth, shield: 0, energy: 40, ultimate: 0, status: [],
@@ -517,7 +518,7 @@ async function beginCombat(rt: BattleRuntime) {
 
   // Build opponent (human or AI).
   if (rt.isAi) {
-    const pool = (await getAllBattleCards(rt.guildId)).filter(c => isCardEligible(rt.settings, c));
+    const pool = (await getAllBattleCards(rt.guildId, rt.ctx)).filter(c => isCardEligible(rt.settings, c, rt.ctx));
     const usePool = pool.length ? pool : chalEligible;
     const scores = usePool.map(c => powerRating(getScaledStats(cardish(c), c.config, rt.settings, c.level)));
     const idx = pickAiCardIndex(scores, rt.aiDifficulty);
@@ -913,11 +914,12 @@ const VS_IMAGE_NAME = "battle-vs.png";
 
 // Map a live Combatant to the renderer's card description.
 function combatantToRenderCard(rt: BattleRuntime, c: Combatant): RenderCard {
+  const display = c.cardRarityDisplay;
   return {
     name: c.cardName,
     rarity: c.cardRarity,
-    rarityLabel: rarityLabel(c.cardRarity, null, rt.displayMap) ?? c.cardRarity,
-    rarityColor: rarityColor(c.cardRarity, null, rt.displayMap),
+    rarityLabel: display ? `${display.emoji} ${display.label}` : (rarityLabel(c.cardRarity, null, rt.displayMap) ?? c.cardRarity),
+    rarityColor: display?.color ?? rarityColor(c.cardRarity, null, rt.displayMap),
     cardId: c.cardId,
     cardType: c.cardType,
     artUrl: c.cardImageUrl,

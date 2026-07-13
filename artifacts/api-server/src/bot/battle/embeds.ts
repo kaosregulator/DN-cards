@@ -51,6 +51,23 @@ function rarityColorOf(r: Rarity, displayMap: RarityDisplayMap | null): number {
   return rarityColor(r, null, displayMap) ?? BATTLE_COLOR;
 }
 
+// Source-of-truth display rarity for a combatant: custom tiers / profile overrides
+// from /rarity take precedence over the built-in rarity key.
+function displayRarityOf(c: Combatant, displayMap: RarityDisplayMap | null) {
+  if (c.cardRarityDisplay) {
+    return {
+      emoji: c.cardRarityDisplay.emoji,
+      label: c.cardRarityDisplay.label,
+      color: c.cardRarityDisplay.color ?? BATTLE_COLOR,
+    };
+  }
+  return {
+    emoji: rarityEmoji(c.cardRarity, null, displayMap) ?? "•",
+    label: rarityLabel(c.cardRarity, null, displayMap) ?? c.cardRarity,
+    color: rarityColorOf(c.cardRarity, displayMap),
+  };
+}
+
 function statusLine(c: Combatant): string {
   if (c.status.length === 0 && c.frozenTurns === 0) return "";
   const parts = c.status.map(s => `${s.emoji}${s.turns > 1 ? `×${s.turns}` : ""}`);
@@ -60,12 +77,11 @@ function statusLine(c: Combatant): string {
 
 // A combatant's stat block for the live battle embed.
 export function combatantField(c: Combatant, active: boolean, displayMap: RarityDisplayMap | null): { name: string; value: string; inline: boolean } {
-  const rEmoji = rarityEmoji(c.cardRarity, null, displayMap) ?? "•";
-  const rLabel = rarityLabel(c.cardRarity, null, displayMap) ?? c.cardRarity;
+  const disp = displayRarityOf(c, displayMap);
   const turnMark = active ? "🔹 " : "";
-  const name = `${turnMark}${rEmoji} ${c.cardName}`;
+  const name = `${turnMark}${disp.emoji} ${c.cardName}`;
   const lines = [
-    `<@${c.userId}>`.replace(/^<@AI>$/, "🤖 **AI**") + ` · *${rLabel}*`,
+    `<@${c.userId}>`.replace(/^<@AI>$/, "🤖 **AI**") + ` · *${disp.label}*`,
     `❤️ ${hpBar(c.hp, c.stats.maxHealth)}`,
     `\`${Math.max(0, c.hp)}/${c.stats.maxHealth}\`${c.shield > 0 ? ` 🛡️ ${c.shield}` : ""}`,
     `⚡ \`${meter(c.energy, c.stats.energyMax, 8)}\` ${pct(c.energy, c.stats.energyMax)}%`,
@@ -89,8 +105,9 @@ function who(c: Combatant): string {
 // ── Live combat embed ────────────────────────────────────────────────────────
 export function buildCombatEmbed(v: BattleView, opts?: { currentMove?: string }): EmbedBuilder {
   const active = v.currentSide === 0 ? v.a : v.b;
+  const activeDisp = displayRarityOf(active, v.displayMap);
   const embed = new EmbedBuilder()
-    .setColor(rarityColorOf(active.cardRarity, v.displayMap))
+    .setColor(activeDisp.color)
     .setTitle(`⚔️ Card Battle — Turn ${v.turnNumber}${v.staked ? " · 💰 Staked" : ""}`)
     .addFields(
       combatantField(v.a, v.currentSide === 0, v.displayMap),
@@ -119,23 +136,30 @@ export function buildIntroFrame(v: BattleView, frame: number): EmbedBuilder {
     case 0:
       e.setTitle("⚔️ Battle Starting…").setDescription("The arena crackles with energy.");
       break;
-    case 1:
+    case 1: {
+      const aDisp = displayRarityOf(v.a, v.displayMap);
       e.setTitle("🔥 A challenger enters!")
-        .setDescription(`${rarityEmoji(v.a.cardRarity, null, v.displayMap)} **${v.a.cardName}** steps onto the battlefield for ${who(v.a)}!`);
+        .setDescription(`${aDisp.emoji} **${v.a.cardName}** steps onto the battlefield for ${who(v.a)}!`);
       if (v.a.cardImageUrl) e.setThumbnail(v.a.cardImageUrl);
       break;
-    case 2:
+    }
+    case 2: {
+      const bDisp = displayRarityOf(v.b, v.displayMap);
       e.setTitle("💥 The opponent answers!")
-        .setDescription(`${rarityEmoji(v.b.cardRarity, null, v.displayMap)} **${v.b.cardName}** rises to fight for ${who(v.b)}!`);
+        .setDescription(`${bDisp.emoji} **${v.b.cardName}** rises to fight for ${who(v.b)}!`);
       if (v.b.cardImageUrl) e.setThumbnail(v.b.cardImageUrl);
       break;
-    default:
+    }
+    default: {
+      const aDisp = displayRarityOf(v.a, v.displayMap);
+      const bDisp = displayRarityOf(v.b, v.displayMap);
       e.setTitle("🪙 Coin toss decides who strikes first…")
-        .setDescription(`${rarityEmoji(v.a.cardRarity, null, v.displayMap)} **${v.a.cardName}**  ⚔️  **${v.b.cardName}** ${rarityEmoji(v.b.cardRarity, null, v.displayMap)}`)
+        .setDescription(`${aDisp.emoji} **${v.a.cardName}**  ⚔️  **${v.b.cardName}** ${bDisp.emoji}`)
         .addFields(
           { name: who(v.a), value: `❤️ ${v.a.stats.maxHealth} · ⚔️ ${v.a.stats.attack} · 🛡️ ${v.a.stats.defense}`, inline: true },
           { name: who(v.b), value: `❤️ ${v.b.stats.maxHealth} · ⚔️ ${v.b.stats.attack} · 🛡️ ${v.b.stats.defense}`, inline: true },
         );
+    }
       break;
   }
   return e;
@@ -159,9 +183,10 @@ export function buildWinnerEmbed(
   } else {
     const w = winnerSide === 0 ? v.a : v.b;
     const l = winnerSide === 0 ? v.b : v.a;
-    e.setColor(rarityColorOf(w.cardRarity, v.displayMap))
+    const wDisp = displayRarityOf(w, v.displayMap);
+    e.setColor(wDisp.color)
       .setTitle("🏆 Victory!")
-      .setDescription(`${rarityEmoji(w.cardRarity, null, v.displayMap)} **${w.cardName}** defeats **${l.cardName}**!\n${who(w)} wins the battle.`);
+      .setDescription(`${wDisp.emoji} **${w.cardName}** defeats **${l.cardName}**!\n${who(w)} wins the battle.`);
     if (w.cardImageUrl) {
       e.setThumbnail(w.cardImageUrl)
        .setImage(w.cardImageUrl);
