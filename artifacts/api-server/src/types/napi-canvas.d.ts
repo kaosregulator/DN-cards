@@ -22,6 +22,8 @@ declare module "@napi-rs/canvas" {
 
     save(): void;
     restore(): void;
+    translate(x: number, y: number): void;
+    rotate(angle: number): void;
     beginPath(): void;
     closePath(): void;
     moveTo(x: number, y: number): void;

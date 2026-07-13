@@ -19,7 +19,7 @@ import type {
 } from "discord.js";
 import {
   EmbedBuilder, ActionRowBuilder, StringSelectMenuBuilder, ButtonBuilder,
-  ButtonStyle, MessageFlags,
+  ButtonStyle, MessageFlags, AttachmentBuilder,
 } from "discord.js";
 import {
   getUserCollection, getLeaderboard, getOrCreateGuildSettings,
@@ -36,7 +36,9 @@ import { claimDailyReward } from "./daily.js";
 import {
   framesForRarity, resolveActiveFrame, isFrameUnlocked, defaultFrameForRarity,
 } from "../cards/frames.js";
-import { getCardProgress, setEquippedFrame } from "../cards/leveling.js";
+import { getCardProgress, setEquippedFrame, starsForLevel } from "../cards/leveling.js";
+import { renderShowcaseImage } from "../battle/image/render.js";
+import { toAbsoluteImageUrl } from "../image-url.js";
 
 const EPHEMERAL = { flags: MessageFlags.Ephemeral } as const;
 
@@ -114,6 +116,16 @@ export async function handleUserHubComponent(
     return;
   }
 
+  // Show Card trophy: open the card picker, then render + post publicly.
+  if (action === "open-showcase" && interaction.isButton()) {
+    await openShowcasePicker(interaction);
+    return;
+  }
+  if (action === "showcase-pick" && interaction.isStringSelectMenu()) {
+    await postShowcase(interaction);
+    return;
+  }
+
   // Default: main section dropdown changed.
   let section: Section = "profile";
   if (interaction.isStringSelectMenu()) section = (interaction.values[0] as Section) ?? "profile";
@@ -138,6 +150,7 @@ function sideRow() {
   return new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder().setCustomId("user-hub:open-market").setLabel("Market").setEmoji("🏪").setStyle(ButtonStyle.Secondary),
     new ButtonBuilder().setCustomId("user-hub:open-squad").setLabel("Squad").setEmoji("🤝").setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder().setCustomId("user-hub:open-showcase").setLabel("Show Card").setEmoji("🏆").setStyle(ButtonStyle.Secondary),
   );
 }
 
@@ -389,4 +402,91 @@ async function handleDailyClaim(interaction: ButtonInteraction) {
   for (const note of result.followUps) {
     await interaction.followUp({ content: note, ...EPHEMERAL }).catch(() => {});
   }
+}
+
+// ── Show Card trophy ──────────────────────────────────────────────────────────
+// Pick a card, render a premium trophy image (with the card's equipped /frames
+// colour), post it PUBLICLY in the channel, and auto-delete after 40 seconds.
+const SHOWCASE_TTL_MS = 40_000;
+
+async function openShowcasePicker(interaction: ButtonInteraction) {
+  const guildId = interaction.guildId!;
+  const userId = interaction.user.id;
+  const items = await getUserCollection(guildId, userId);
+  if (items.length === 0) {
+    await interaction.reply({ content: "You don't own any cards to show off yet — catch some first!", ...EPHEMERAL }).catch(() => {});
+    return;
+  }
+  const select = new StringSelectMenuBuilder()
+    .setCustomId("user-hub:showcase-pick")
+    .setPlaceholder("Pick a card to show off…")
+    .addOptions(
+      items
+        .slice()
+        .sort((a, b) => b.worthValue - a.worthValue || a.name.localeCompare(b.name))
+        .slice(0, 25)
+        .map(i => ({ label: i.name.slice(0, 100), value: i.cardId.toString(), description: (i.rarity as string) })),
+    );
+  const embed = new EmbedBuilder()
+    .setColor(0xffd76b)
+    .setTitle("🏆 Show Card")
+    .setDescription("Pick a card below — it'll be shown off **publicly** in this channel as a trophy for **40 seconds**, then vanish.");
+  await interaction.update({
+    embeds: [embed],
+    components: [new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(select), sideRow()],
+  }).catch(() => {});
+}
+
+async function postShowcase(interaction: StringSelectMenuInteraction) {
+  const guildId = interaction.guildId!;
+  const userId = interaction.user.id;
+  const cardId = Number(interaction.values[0]);
+
+  const [items, settings] = await Promise.all([
+    getUserCollection(guildId, userId),
+    getOrCreateGuildSettings(guildId),
+  ]);
+  const item = items.find(i => i.cardId === cardId);
+  if (!item) {
+    await interaction.reply({ content: "❌ You don't own that card anymore.", ...EPHEMERAL }).catch(() => {});
+    return;
+  }
+
+  const progress = await getCardProgress(guildId, userId, cardId);
+  const level = progress?.level ?? 1;
+  const stars = starsForLevel(level);
+  const frame = resolveActiveFrame(item.rarity as Rarity, progress?.equippedFrame ?? null, level);
+
+  const caughtLabel = item.firstCaughtAt
+    ? `Caught · ${new Date(item.firstCaughtAt).toLocaleDateString(undefined, { month: "short", year: "numeric" })}`
+    : undefined;
+  const badges: string[] = [];
+  if (level >= 100) badges.push("Maxed");
+  if (item.isLimitedEdition) badges.push("Limited");
+  if (item.isEventExclusive) badges.push("Event");
+  if (item.shinyCount > 0) badges.push(getShinyName(settings));
+
+  const img = await renderShowcaseImage({
+    name: item.name,
+    rarity: item.rarity as Rarity,
+    rarityLabel: (item.rarity as string).toUpperCase(),
+    rarityColor: frame.color,          // ← equipped /frames colour drives the border
+    cardId: item.cardId,
+    cardType: item.cardType,
+    level,
+    artUrl: toAbsoluteImageUrl(item.imageUrl),
+  }, { stars, caughtLabel, frameName: frame.name, badges }).catch(() => null);
+
+  // Acknowledge the picker privately.
+  await interaction.reply({ content: "🏆 Showing off your card…", ...EPHEMERAL }).catch(() => {});
+
+  const channel = interaction.channel;
+  if (!channel || !("send" in channel) || !channel.isSendable?.()) {
+    await interaction.followUp({ content: "❌ I can't post in this channel.", ...EPHEMERAL }).catch(() => {});
+    return;
+  }
+  const content = `🏆 <@${userId}> shows off **${item.name}** — Lv ${level} ${"★".repeat(stars)}${"☆".repeat(5 - stars)}`;
+  const files = img ? [new AttachmentBuilder(img, { name: "showcase.png" })] : [];
+  const msg = await channel.send({ content, files, allowedMentions: { users: [] } }).catch(() => null);
+  if (msg) setTimeout(() => { msg.delete().catch(() => {}); }, SHOWCASE_TTL_MS);
 }

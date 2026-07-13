@@ -541,6 +541,105 @@ export async function renderWinnerImage(card: RenderCard, opts: RenderOpts = {})
   }
 }
 
+// ── Show Card / trophy image ─────────────────────────────────────────────────
+// A "worthy" premium showcase: obsidian → royal-purple ground with gold rays,
+// a gold star row, the card big (its equipped /frames colour drives the border
+// via card.rarityColor), and a caught / frame caption. Distinct from the battle
+// palette on purpose — this is a trophy, not a fight.
+const TROPHY = {
+  bg0: "#2a1a3e", bg1: "#140f22", bg2: "#0d0b14",
+  gold: "#ffd76b", goldDim: "#c8890f", star: "#ffd76b", starOff: "rgba(255,255,255,0.16)",
+  ink: "#f4efe0", muted: "rgba(230,222,205,0.72)",
+};
+
+export interface ShowcaseOpts {
+  stars?: number;            // 0–5 filled
+  caughtLabel?: string;      // e.g. "CAUGHT · JUL 2026"
+  frameName?: string | null; // equipped /frames name
+  badges?: string[];         // e.g. ["MAXED", "LIMITED"]
+}
+
+function trophyBackground(ctx: Ctx) {
+  const { width: W, height: H } = CANVAS;
+  const g = ctx.createRadialGradient(W / 2, H * 0.34, 70, W / 2, H * 0.5, W * 0.78);
+  g.addColorStop(0, TROPHY.bg0); g.addColorStop(0.6, TROPHY.bg1); g.addColorStop(1, TROPHY.bg2);
+  ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+  // faint gold rays behind the card
+  ctx.save();
+  ctx.translate(W / 2, H * 0.52);
+  for (let i = 0; i < 16; i++) {
+    ctx.rotate(Math.PI / 8);
+    ctx.globalAlpha = 0.05; ctx.fillStyle = TROPHY.gold;
+    ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(-38, -820); ctx.lineTo(38, -820); ctx.closePath(); ctx.fill();
+  }
+  ctx.restore();
+  const v = ctx.createRadialGradient(W / 2, H / 2, H * 0.3, W / 2, H / 2, W * 0.72);
+  v.addColorStop(0, "rgba(0,0,0,0)"); v.addColorStop(1, "rgba(0,0,0,0.5)");
+  ctx.fillStyle = v; ctx.fillRect(0, 0, W, H);
+}
+
+function starRow(ctx: Ctx, cx: number, y: number, stars: number) {
+  const size = 38, gap = 12, total = 5;
+  const w = total * size + (total - 1) * gap;
+  let x = cx - w / 2 + size / 2;
+  ctx.font = font(size, FONTS.display, "800");
+  ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  for (let i = 0; i < total; i++) {
+    if (i < stars) { ctx.fillStyle = TROPHY.star; ctx.shadowColor = TROPHY.gold; ctx.shadowBlur = 16; }
+    else { ctx.fillStyle = TROPHY.starOff; ctx.shadowBlur = 0; }
+    ctx.fillText("★", x, y);
+    x += size + gap;
+  }
+  ctx.shadowBlur = 0;
+}
+
+export async function renderShowcaseImage(card: RenderCard, opts: ShowcaseOpts = {}): Promise<Buffer | null> {
+  const mod = await getCanvas();
+  if (!mod) return null;
+  try {
+    const { width: W } = CANVAS;
+    const canvas = mod.createCanvas(W, CANVAS.height);
+    const ctx = canvas.getContext("2d") as unknown as Ctx;
+    trophyBackground(ctx);
+    starRow(ctx, W / 2, 66, Math.max(0, Math.min(5, opts.stars ?? 0)));
+
+    const cw = 296, ch = 384;
+    await drawBigCard(ctx, mod, (W - cw) / 2, 108, cw, ch, card);
+
+    // caption: frame name (gold) + caught label (muted)
+    ctx.textAlign = "center"; ctx.textBaseline = "alphabetic";
+    let cy = 108 + ch + 34;
+    if (opts.frameName) {
+      ctx.font = font(20, FONTS.display, "800"); ctx.fillStyle = TROPHY.gold;
+      ctx.shadowColor = "rgba(0,0,0,0.6)"; ctx.shadowBlur = 4;
+      ctx.fillText(opts.frameName.toUpperCase(), W / 2, cy); ctx.shadowBlur = 0;
+      cy += 26;
+    }
+    if (opts.caughtLabel) {
+      ctx.font = font(15, FONTS.body, "700"); ctx.fillStyle = TROPHY.muted;
+      ctx.fillText(opts.caughtLabel.toUpperCase(), W / 2, cy);
+    }
+
+    // badges: gold pills along the top corners
+    if (opts.badges && opts.badges.length) {
+      ctx.font = font(14, FONTS.body, "800"); ctx.textBaseline = "middle";
+      let bx = 24;
+      for (const b of opts.badges.slice(0, 3)) {
+        const bw = ctx.measureText(b.toUpperCase()).width + 24;
+        ctx.fillStyle = "rgba(255,215,107,0.14)";
+        roundRectPath(ctx, bx, 22, bw, 30, 8); ctx.fill();
+        ctx.lineWidth = 1.5; ctx.strokeStyle = TROPHY.gold; ctx.stroke();
+        ctx.fillStyle = TROPHY.gold; ctx.textAlign = "center";
+        ctx.fillText(b.toUpperCase(), bx + bw / 2, 38);
+        bx += bw + 10;
+      }
+    }
+    return await canvas.encode("png");
+  } catch {
+    return null;
+  }
+}
+
 // Whether the renderer can produce images in this runtime (canvas installed).
 export async function battleImageAvailable(): Promise<boolean> {
   return (await getCanvas()) !== null;
