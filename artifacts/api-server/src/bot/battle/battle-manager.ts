@@ -819,6 +819,11 @@ async function finishBattle(rt: BattleRuntime, winnerSide: 0 | 1 | null, reason:
     if (client) await logBattleResult(client, rt.guildId, winnerEmbed,
       rt.vsImage ? { buffer: rt.vsImage, name: VS_IMAGE_NAME } : undefined).catch(() => {});
 
+    // Victory embed is dramatic but temporary; the battle log keeps the result.
+    setTimeout(() => {
+      rt.message?.delete().catch(() => {});
+    }, 15000).unref();
+
     // Card level-up / star-up toasts.
     if (levelUps.length > 0 && rt.message.channel.isSendable()) {
       const lines = levelUps.map(l => {
