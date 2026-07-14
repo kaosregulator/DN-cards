@@ -88,6 +88,11 @@ export async function handleConfigSelect(interaction: StringSelectMenuInteractio
     patch.spawnIntervalSeconds = parseInt(value!, 10);
   } else if (action === "config_window") {
     patch.catchWindowSeconds = parseInt(value!, 10);
+  } else if (action === "config_anim_speed") {
+    const speed = value as "slow" | "normal" | "fast";
+    if (["slow", "normal", "fast"].includes(speed)) {
+      patch.packAnimationSpeed = speed;
+    }
   }
 
   await updateGuildSettings(guildId, patch);
@@ -503,6 +508,11 @@ function buildConfigEmbed(s: GuildSettings, activeSetName: string | null, displa
         value: spawnOn ? "🟢 ON" : "🔴 OFF",
         inline: true,
       },
+      {
+        name: "🎞️ Pack Animation",
+        value: s.packAnimationEnabled ? `🟢 ${s.packAnimationSpeed}` : "🔴 OFF",
+        inline: true,
+      },
     )
     .setFooter({ text: "Ephemeral — only you see this. Use /set_hub to change the active set." });
 }
@@ -593,6 +603,22 @@ function buildConfigComponents(s: GuildSettings, displayMap?: RarityDisplayMap |
       .setLabel("📡 Stream 2 here")
       .setStyle(ButtonStyle.Primary),
   );
+  const animRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder()
+      .setCustomId("config:toggle:packanim")
+      .setLabel(s.packAnimationEnabled ? "🎞️ Pack Anim ON" : "🎞️ Pack Anim OFF")
+      .setStyle(ButtonStyle.Secondary),
+  );
+  const animSpeedRow = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
+    new StringSelectMenuBuilder()
+      .setCustomId("config_anim_speed")
+      .setPlaceholder("🎞️ Pack animation speed")
+      .addOptions([
+        { label: "Slow (cinematic)", value: "slow", emoji: "🐢", default: s.packAnimationSpeed === "slow" },
+        { label: "Normal", value: "normal", emoji: "⚖️", default: s.packAnimationSpeed === "normal" },
+        { label: "Fast", value: "fast", emoji: "🚀", default: s.packAnimationSpeed === "fast" },
+      ]),
+  );
 
   return [
     new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(modeSelect),
@@ -600,6 +626,8 @@ function buildConfigComponents(s: GuildSettings, displayMap?: RarityDisplayMap |
     new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(intervalSelect),
     toggleRow,
     subPanelRow,
+    animRow,
+    animSpeedRow,
   ];
 }
 
