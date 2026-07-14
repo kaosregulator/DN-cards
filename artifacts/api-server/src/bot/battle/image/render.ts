@@ -25,6 +25,7 @@ import { writeFile, unlink } from "node:fs/promises";
 import { randomUUID } from "node:crypto";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { extractArtColor, blendColors } from "./vibrant-color.js";
 
 // The minimal card description the renderer needs. Decoupled from Combatant so
 // the renderer can draw prep screens, previews, or anything else.
@@ -173,7 +174,7 @@ function fitText(ctx: Ctx, text: string, maxW: number, startPx: number, family: 
 
 // ── LAYERS ───────────────────────────────────────────────────────────────────
 // Background image (or gradient fallback) + diagonal split tint.
-async function layerBackground(ctx: Ctx, mod: CanvasMod, opts: RenderOpts) {
+async function layerBackground(ctx: Ctx, mod: CanvasMod, opts: RenderOpts, customGradient?: [string, string]) {
   const bg = resolveBackground(opts.background);
   const img = await loadArt(mod, bg.src);
   if (img) {
@@ -182,9 +183,10 @@ async function layerBackground(ctx: Ctx, mod: CanvasMod, opts: RenderOpts) {
     const w = img.width * scale, h = img.height * scale;
     ctx.drawImage(img, (CANVAS.width - w) / 2, (CANVAS.height - h) / 2, w, h);
   } else {
+    const gradient = customGradient ?? bg.fallbackGradient;
     const g = ctx.createLinearGradient(0, 0, CANVAS.width, CANVAS.height);
-    g.addColorStop(0, bg.fallbackGradient[0]);
-    g.addColorStop(1, bg.fallbackGradient[1]);
+    g.addColorStop(0, gradient[0]);
+    g.addColorStop(1, gradient[1]);
     ctx.fillStyle = g;
     ctx.fillRect(0, 0, CANVAS.width, CANVAS.height);
   }
@@ -411,11 +413,22 @@ export async function renderBattleImage(
   const mod = await getCanvas();
   if (!mod) return null;
   try {
+    // Pull dominant colours from each card's art so the glows, frames, and
+    // background gradient match the artwork. Vibrant extraction is cached.
+    const [colorA, colorB] = await Promise.all([
+      extractArtColor(a.artUrl),
+      extractArtColor(b.artUrl),
+    ]);
+
+    const cardA = { ...a, rarityColor: a.rarityColor ?? colorA };
+    const cardB = { ...b, rarityColor: b.rarityColor ?? colorB };
+    const bgGradient = opts.background ? undefined : blendColors(colorA, colorB, "#0b1622");
+
     const canvas = mod.createCanvas(CANVAS.width, CANVAS.height);
     const ctx = canvas.getContext("2d") as unknown as Ctx;
-    await layerBackground(ctx, mod, opts);
-    await drawCard(ctx, mod, CARD_BOX.leftX, a);
-    await drawCard(ctx, mod, CARD_BOX.rightX, b);
+    await layerBackground(ctx, mod, opts, bgGradient);
+    await drawCard(ctx, mod, CARD_BOX.leftX, cardA);
+    await drawCard(ctx, mod, CARD_BOX.rightX, cardB);
     layerVs(ctx);
     return await canvas.encode("png");
   } catch {

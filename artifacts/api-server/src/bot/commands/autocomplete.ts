@@ -1,4 +1,5 @@
 import type { AutocompleteInteraction } from "discord.js";
+import Fuse from "fuse.js";
 import { internalCommandName } from "./register.js";
 import { getAllCards, listSetsV2, getUserCollection, getUserWishlist, listCustomRarities, getRarityContext, getOrCreateGuildSettings, getRarityDisplayOverrides, getDisplayRarities, getDistinctCardTypes, listCustomPacks } from "../db.js";
 import { RARITY_EMOJI, rarityEmoji, rarityLabel, type Rarity } from "../cards-data.js";
@@ -72,14 +73,11 @@ async function getUserWishlistCached(guildId: string, userId: string): Promise<A
   return rows;
 }
 
-// Score: 0 = startsWith, 1 = word-boundary, 2 = contains, 3 = no match
-function scoreMatch(name: string, q: string): number {
-  if (!q) return 1;
-  const n = name.toLowerCase();
-  if (n.startsWith(q)) return 0;
-  if (n.split(/\s+/).some(w => w.startsWith(q))) return 1;
-  if (n.includes(q)) return 2;
-  return 3;
+function acronym(name: string): string {
+  return name
+    .split(/\s+/)
+    .map(w => w.replace(/[^a-zA-Z0-9]/g, "").slice(0, 1).toUpperCase())
+    .join("");
 }
 
 function formatCardChoice(c: { name: string; rarity: string }) {
@@ -91,12 +89,25 @@ function formatCardChoice(c: { name: string; rarity: string }) {
 async function suggestCardNames(query: string, guildId: string | null | undefined, pool?: Array<{ name: string; rarity: string }>) {
   const q = query.toLowerCase().trim();
   const cards = pool ?? await getCardsCached(guildId);
-  const scored = cards
-    .map(c => ({ c, s: scoreMatch(c.name, q) }))
-    .filter(x => x.s < 3)
-    .sort((a, b) => a.s - b.s || a.c.name.localeCompare(b.c.name))
-    .slice(0, MAX_CHOICES);
-  return scored.map(x => formatCardChoice(x.c));
+  if (!q) return cards.slice(0, MAX_CHOICES).map(formatCardChoice);
+
+  const fuse = new Fuse(cards, {
+    keys: ["name"],
+    threshold: 0.35,
+    includeScore: true,
+    ignoreLocation: true,
+    minMatchCharLength: 1,
+  });
+
+  // Exact / substring / acronym matches get top priority; fuse covers typos.
+  const exactAndAcronym = cards
+    .filter(c => c.name.toLowerCase().includes(q) || acronym(c.name).toLowerCase().includes(q))
+    .sort((a, b) => a.name.localeCompare(b.name));
+
+  const seen = new Set(exactAndAcronym.map(c => c.name));
+  const fuseHits = fuse.search(q).map(r => r.item).filter(c => !seen.has(c.name));
+
+  return [...exactAndAcronym, ...fuseHits].slice(0, MAX_CHOICES).map(formatCardChoice);
 }
 
 export async function handleAutocomplete(interaction: AutocompleteInteraction): Promise<void> {
@@ -174,13 +185,7 @@ export async function handleAutocomplete(interaction: AutocompleteInteraction): 
     if ((cmd === "burn" || cmd === "level" || cmd === "frame" || cmd === "lock" || cmd === "market") && focused.name === "name" && interaction.guild) {
       const owned = await getUserCollectionCached(interaction.guild.id, interaction.user.id);
       const pool = owned.map(o => ({ name: o.name, rarity: o.rarity }));
-      const q = query.toLowerCase().trim();
-      const scored = pool
-        .map(c => ({ c, s: scoreMatch(c.name, q) }))
-        .filter(x => x.s < 3)
-        .sort((a, b) => a.s - b.s || a.c.name.localeCompare(b.c.name))
-        .slice(0, MAX_CHOICES);
-      await interaction.respond(scored.map(x => formatCardChoice(x.c)));
+      await interaction.respond(await suggestCardNames(query, interaction.guild.id, pool));
       return;
     }
 
@@ -215,13 +220,7 @@ export async function handleAutocomplete(interaction: AutocompleteInteraction): 
       if (sub === "remove") {
         const wished = await getUserWishlistCached(interaction.guild.id, interaction.user.id);
         const pool = wished.map(w => ({ name: w.name, rarity: w.rarity }));
-        const q = query.toLowerCase().trim();
-        const scored = pool
-          .map(c => ({ c, s: scoreMatch(c.name, q) }))
-          .filter(x => x.s < 3)
-          .sort((a, b) => a.s - b.s || a.c.name.localeCompare(b.c.name))
-          .slice(0, MAX_CHOICES);
-        await interaction.respond(scored.map(x => formatCardChoice(x.c)));
+        await interaction.respond(await suggestCardNames(query, interaction.guild.id, pool));
         return;
       }
     }
