@@ -13,3 +13,4 @@ export * from "./afk";
 export * from "./giveaways";
 export * from "./bob";
 export * from "./site-presentation";
+export * from "./operations";

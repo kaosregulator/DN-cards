@@ -538,6 +538,49 @@ function buildLegacyCommands() {
       .addSubcommand(sc => sc.setName("delete").setDescription("Delete a boss")
         .addStringOption(o => o.setName("name").setDescription("Boss to delete").setRequired(true).setAutocomplete(true)))),
 
+    // ── /support (user, Operations Center request) ───────────────────────────
+    cmd("support", "Request operations support — staff, combat, defense, escort, or event", s => s),
+
+    // ── /ops_admin (admin, Operations Center management) ─────────────────────
+    adminCmd("opsadmin", "Manage the Operations Center — setup, configure, and control live ops", s => s
+      .addSubcommand(sc => sc.setName("setup").setDescription("Initial setup: post boards to a channel")
+        .addChannelOption(o => o.setName("channel").setDescription("Channel to post operation boards in").setRequired(true))
+        .addRoleOption(o => o.setName("staff_role").setDescription("Role pinged when a new operation starts (optional)")))
+      .addSubcommand(sc => sc.setName("configure").setDescription("Customise operation types — names, colors, images, timeouts"))
+      .addSubcommand(sc => sc.setName("complete").setDescription("Mark the current active operation as completed")
+        .addStringOption(o => o.setName("type").setDescription("Operation type").setRequired(true)
+          .addChoices(
+            { name: "Staff Request", value: "staff_request" },
+            { name: "Combat Support", value: "combat_support" },
+            { name: "Base Defense", value: "base_defense" },
+            { name: "Convoy Escort", value: "convoy_escort" },
+            { name: "Event Support", value: "event_support" },
+            { name: "Custom", value: "custom" },
+          )))
+      .addSubcommand(sc => sc.setName("cancel").setDescription("Cancel the current active operation")
+        .addStringOption(o => o.setName("type").setDescription("Operation type").setRequired(true)
+          .addChoices(
+            { name: "Staff Request", value: "staff_request" },
+            { name: "Combat Support", value: "combat_support" },
+            { name: "Base Defense", value: "base_defense" },
+            { name: "Convoy Escort", value: "convoy_escort" },
+            { name: "Event Support", value: "event_support" },
+            { name: "Custom", value: "custom" },
+          )))
+      .addSubcommand(sc => sc.setName("notes").setDescription("Add a note to the active operation board")
+        .addStringOption(o => o.setName("type").setDescription("Operation type").setRequired(true)
+          .addChoices(
+            { name: "Staff Request", value: "staff_request" },
+            { name: "Combat Support", value: "combat_support" },
+            { name: "Base Defense", value: "base_defense" },
+            { name: "Convoy Escort", value: "convoy_escort" },
+            { name: "Event Support", value: "event_support" },
+            { name: "Custom", value: "custom" },
+          ))
+        .addStringOption(o => o.setName("text").setDescription("Note to display on the board").setRequired(true).setMaxLength(200)))
+      .addSubcommand(sc => sc.setName("stats").setDescription("View operations statistics for this server"))
+      .addSubcommand(sc => sc.setName("rebuild").setDescription("Recreate all operation board embeds (use if boards were deleted)"))),
+
     // ── /giveaways (user, Giveaway System overview) ───────────────────────────
     cmd("giveaways", "See active giveaways, prizes, timers, and your progress", s => s),
 
@@ -730,6 +773,7 @@ export const COMMAND_RENAMES: Record<string, string> = {
   battleadmin: "battle_admin",
   raidadmin: "raid_admin",
   giveawayadmin: "giveaway_admin",
+  opsadmin: "ops_admin",
   sethub: "set_hub",
   setadmin: "sets_admin",
   info_mttv: "vaultvalue_info",
@@ -777,7 +821,7 @@ export function buildCommands() {
 export const USER_HUB_COMMANDS = new Set([
   "collection", "rank", "info", "list", "catalog", "top", "burn", "shards",
   "trade", "gift", "trades", "tradehistory", "accept", "decline", "welcome",
-  "battles_welcome",
+  "battles_welcome", "support",
   "help", "user_hub", "daily", "quests", "pack", "packstats", "tradein", "achievements",
   "level", "frame", "lock", "search", "collector", "calendar", "wishlist",
   "sets", "rep", "thanks", "calc", "valuehelp", "valuelist", "info_mttv",

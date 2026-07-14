@@ -1,0 +1,447 @@
+# DN Cards - Operations Center Add-on
+
+IMPORTANT
+
+This is an ADD-ON to the existing DN Cards project.
+
+DO NOT replace, refactor, or break any existing systems including:
+- Help System
+- Echo Secret
+- Cards
+- Battles
+- Economy
+- Admin Panel
+- Existing Settings
+- Existing Permission Framework
+
+Integrate using the current architecture and coding style.
+
+---
+
+## Goal
+
+Create a new Operations Center module.
+
+This is a professional live operations system for Discord communities.
+
+It should work for any Discord server while shipping with sensible defaults.
+
+This is NOT Military Tycoon specific.
+
+Military Tycoon support is simply one use case.
+
+---
+
+## Core Philosophy
+
+One operation type = One permanent embed.
+
+Never spam new embeds.
+
+Never flood channels.
+
+Every operation updates its existing board.
+
+Examples
+
+• Staff Request
+• Combat Support
+• Base Defense
+• Convoy Escort
+• Event Support
+
+Each board lives forever.
+
+---
+
+## Default Operations
+
+Provide built-in operations.
+
+staff_request
+
+combat_support
+
+base_defense
+
+convoy_escort
+
+event_support
+
+custom
+
+These backend IDs NEVER change.
+
+Admins may rename display names.
+
+Example
+
+combat_support
+
+can become
+
+Airport Defense
+
+or
+
+Raid Team
+
+without affecting backend logic.
+
+---
+
+## Setup Wizard
+
+First time setup.
+
+Admin chooses:
+
+• Category
+
+• Channel
+
+• Staff Role
+
+• Default Responders
+
+Bot automatically creates permanent embeds.
+
+No manual setup required.
+
+---
+
+## Support Command
+
+/support
+
+Opens a modern Discord UI.
+
+Dropdown:
+
+Staff Request
+
+Combat Support
+
+Base Defense
+
+Convoy Escort
+
+Event Support
+
+Custom
+
+Selecting one opens an ephemeral wizard.
+
+---
+
+## Ephemeral Wizard
+
+Minimal steps.
+
+Objective
+
+(optional)
+
+Responders Needed
+
+Roblox Link (optional)
+
+Submit
+
+No public spam.
+
+---
+
+## Public Operations Board
+
+Update existing embed.
+
+Display:
+
+Status
+
+Commander
+
+Objective
+
+Needed
+
+Ready Count
+
+Percent Ready
+
+Responders
+
+Queue
+
+Elapsed Time
+
+Optional Roblox Join Link
+
+Optional Notes
+
+---
+
+## Queue
+
+If an operation already exists:
+
+Do NOT create another embed.
+
+Queue it.
+
+When completed:
+
+Automatically promote the next queued request.
+
+---
+
+## Interactive Buttons
+
+Support configurable buttons.
+
+Examples:
+
+Request Support
+
+Join Raid
+
+Combat Channel
+
+Queue
+
+Deploy
+
+Delayed
+
+Busy
+
+Complete
+
+Buttons should support:
+
+Open URL
+
+Open Discord Channel
+
+Open Thread
+
+Open Queue
+
+Open Voice Channel
+
+Internal Action
+
+Disabled
+
+---
+
+## Live Button Updates
+
+Buttons change based on state.
+
+Example
+
+Inactive
+
+Request Support
+
+↓
+
+Active
+
+Join Raid
+
+Deploy
+
+Busy
+
+Combat Channel
+
+↓
+
+Completed
+
+History
+
+New Request
+
+---
+
+## Progress
+
+Display
+
+3 / 5
+
+60%
+
+Progress Bar
+
+Update live.
+
+---
+
+## Permissions
+
+Reuse existing permission framework.
+
+Support:
+
+Admin
+
+Specific Roles
+
+Everyone
+
+Approval Mode
+
+---
+
+## Customization
+
+Everything editable inside Discord.
+
+Do NOT require editing JSON.
+
+Allow editing:
+
+Board Name
+
+Description
+
+Images
+
+Banner
+
+Thumbnail
+
+Footer
+
+Color
+
+Buttons
+
+Roles
+
+Channel
+
+Default Responders
+
+Operation Name
+
+Timeout
+
+Auto Complete
+
+Queue Size
+
+---
+
+## Channel Buttons
+
+Support buttons that jump directly to configured Discord channels.
+
+Example
+
+Combat Channel
+
+opens
+
+#combat-support
+
+No hardcoded channels.
+
+---
+
+## Roblox Support
+
+Allow requester to provide a Roblox server link.
+
+Display Join Raid button.
+
+Open supplied URL.
+
+No Roblox API required.
+
+---
+
+## Statistics
+
+Track:
+
+Operations Started
+
+Operations Completed
+
+Average Response Time
+
+Reliability
+
+Response Count
+
+---
+
+## Architecture
+
+Create new isolated module.
+
+Suggested
+
+operations-runtime
+
+operations-manager
+
+operations-ui
+
+operations-buttons
+
+operations-settings
+
+operations-permissions
+
+operations-queue
+
+operations-types
+
+Integrate cleanly.
+
+Avoid modifying unrelated systems.
+
+---
+
+## UI Style
+
+Use DN Cards styling.
+
+Modern.
+
+Premium.
+
+Animated where appropriate.
+
+Embeds should feel like a dashboard.
+
+Avoid long slash commands.
+
+Favor buttons, dropdowns and modals.
+
+---
+
+## Quality
+
+Strong typing.
+
+No duplicated logic.
+
+Use existing project utilities.
+
+Respect current coding conventions.
+
+Preserve backwards compatibility.
+
+Feature should be disabled until configured.
+
+Add migration if new database fields are required.
+
+Document new settings.
