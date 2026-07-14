@@ -429,6 +429,124 @@ async function runBootMigrations() {
     )
   `);
 
+  // ── Operations Center tables ────────────────────────────────────────────────
+  // The Operations Center PR introduced the schema but not the runtime migration.
+  // Create all tables, indexes, and constraints idempotently on boot so the
+  // deployed instance stays in sync with the Drizzle schema.
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS ops_guild_config (
+      id            SERIAL PRIMARY KEY,
+      guild_id      TEXT NOT NULL UNIQUE,
+      enabled       BOOLEAN NOT NULL DEFAULT FALSE,
+      ops_channel_id TEXT,
+      staff_role_id TEXT,
+      category_id   TEXT,
+      created_at    TIMESTAMP NOT NULL DEFAULT NOW(),
+      updated_at    TIMESTAMP NOT NULL DEFAULT NOW()
+    )
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS ops_type_config (
+      id                  SERIAL PRIMARY KEY,
+      guild_id            TEXT NOT NULL,
+      op_key              TEXT NOT NULL,
+      enabled             BOOLEAN NOT NULL DEFAULT TRUE,
+      display_name        TEXT,
+      description         TEXT,
+      color               TEXT,
+      thumbnail_url       TEXT,
+      banner_url          TEXT,
+      footer_text         TEXT,
+      timeout_minutes     INTEGER NOT NULL DEFAULT 60,
+      auto_complete       BOOLEAN NOT NULL DEFAULT TRUE,
+      required_responders INTEGER NOT NULL DEFAULT 1,
+      max_queue_size      INTEGER NOT NULL DEFAULT 5,
+      channel_buttons     JSONB NOT NULL DEFAULT '[]',
+      updated_at          TIMESTAMP NOT NULL DEFAULT NOW()
+    )
+  `);
+  await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS ops_type_config_guild_key_uniq ON ops_type_config (guild_id, op_key)`);
+  await pool.query(`CREATE INDEX IF NOT EXISTS ops_type_config_guild_idx ON ops_type_config (guild_id)`);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS ops_boards (
+      id          SERIAL PRIMARY KEY,
+      guild_id    TEXT NOT NULL,
+      op_key      TEXT NOT NULL,
+      channel_id  TEXT NOT NULL,
+      message_id  TEXT NOT NULL,
+      created_at  TIMESTAMP NOT NULL DEFAULT NOW()
+    )
+  `);
+  await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS ops_boards_guild_key_uniq ON ops_boards (guild_id, op_key)`);
+  await pool.query(`CREATE INDEX IF NOT EXISTS ops_boards_guild_idx ON ops_boards (guild_id)`);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS ops_active (
+      id                SERIAL PRIMARY KEY,
+      guild_id          TEXT NOT NULL,
+      op_key            TEXT NOT NULL,
+      status            TEXT NOT NULL DEFAULT 'inactive',
+      commander_id      TEXT,
+      objective         TEXT,
+      roblox_link       TEXT,
+      responders_needed INTEGER NOT NULL DEFAULT 1,
+      notes             TEXT,
+      started_at        TIMESTAMP,
+      completed_at      TIMESTAMP,
+      auto_complete_at  TIMESTAMP
+    )
+  `);
+  await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS ops_active_guild_key_uniq ON ops_active (guild_id, op_key)`);
+  await pool.query(`CREATE INDEX IF NOT EXISTS ops_active_guild_idx ON ops_active (guild_id)`);
+  await pool.query(`CREATE INDEX IF NOT EXISTS ops_active_status_idx ON ops_active (status, auto_complete_at)`);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS ops_queue (
+      id                SERIAL PRIMARY KEY,
+      guild_id          TEXT NOT NULL,
+      op_key            TEXT NOT NULL,
+      requester_id      TEXT NOT NULL,
+      objective         TEXT,
+      roblox_link       TEXT,
+      responders_needed INTEGER NOT NULL DEFAULT 1,
+      queued_at         TIMESTAMP NOT NULL DEFAULT NOW()
+    )
+  `);
+  await pool.query(`CREATE INDEX IF NOT EXISTS ops_queue_guild_key_idx ON ops_queue (guild_id, op_key)`);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS ops_responders (
+      id           SERIAL PRIMARY KEY,
+      active_op_id INTEGER NOT NULL,
+      guild_id     TEXT NOT NULL,
+      op_key       TEXT NOT NULL,
+      user_id      TEXT NOT NULL,
+      joined_at    TIMESTAMP NOT NULL DEFAULT NOW()
+    )
+  `);
+  await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS ops_responders_op_user_uniq ON ops_responders (active_op_id, user_id)`);
+  await pool.query(`CREATE INDEX IF NOT EXISTS ops_responders_active_idx ON ops_responders (active_op_id)`);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS ops_history (
+      id                  SERIAL PRIMARY KEY,
+      guild_id            TEXT NOT NULL,
+      op_key              TEXT NOT NULL,
+      commander_id        TEXT,
+      objective           TEXT,
+      responder_count     INTEGER NOT NULL DEFAULT 0,
+      responders_needed   INTEGER NOT NULL DEFAULT 1,
+      started_at          TIMESTAMP,
+      completed_at        TIMESTAMP NOT NULL DEFAULT NOW(),
+      response_time_seconds INTEGER,
+      outcome             TEXT NOT NULL DEFAULT 'completed'
+    )
+  `);
+  await pool.query(`CREATE INDEX IF NOT EXISTS ops_history_guild_idx ON ops_history (guild_id)`);
+  await pool.query(`CREATE INDEX IF NOT EXISTS ops_history_guild_key_idx ON ops_history (guild_id, op_key)`);
+
   // After any restore or bulk import that inserted rows with explicit IDs,
   // serial sequences can fall behind the real table data and cause duplicate-
   // key failures on new inserts. Resync every sequence owned by a serial

@@ -25,6 +25,7 @@ import { buildAdminTypeSelect, buildAdminTypeConfigRows } from "./buttons.js";
 import { completeOp, setOpNotes, refreshBoard } from "./runtime.js";
 import { isOpsAdmin } from "./permissions.js";
 import { ALL_OP_KEYS, OP_DEFAULTS, type OpKey } from "./types.js";
+import { extractVibrantColor } from "./vibrant-color.js";
 
 // ── /ops_admin dispatch ───────────────────────────────────────────────────────
 
@@ -440,6 +441,17 @@ export async function handleOpsAdminModalSubmit(
     case "setmaxqueue": patch.maxQueueSize = Math.max(1, Math.min(20, parseInt(rawValue, 10) || 5)); break;
     case "setthumb": patch.thumbnailUrl = rawValue || null; break;
     case "setbanner": patch.bannerUrl = rawValue || null; break;
+  }
+
+  // Auto-extract an embed color from a new thumbnail/banner when no custom color is set.
+  if ((action === "setthumb" || action === "setbanner") && rawValue) {
+    const currentCfg = await getOpsTypeConfig(guildId, opKey);
+    if (!currentCfg?.color) {
+      const vibrantColor = await extractVibrantColor(rawValue);
+      if (vibrantColor != null) {
+        patch.color = `#${vibrantColor.toString(16).padStart(6, "0")}`;
+      }
+    }
   }
 
   await upsertOpsTypeConfig(guildId, opKey, patch as Parameters<typeof upsertOpsTypeConfig>[2]);
