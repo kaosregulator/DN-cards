@@ -518,6 +518,23 @@ export const embedOverridesTable = pgTable("embed_overrides", {
 
 export type EmbedOverride = typeof embedOverridesTable.$inferSelect;
 
+// ── Showcase / Canvas Backgrounds ────────────────────────────────────────────
+// Per-guild uploadable backgrounds for the /user-hub "Show Card" trophy canvas.
+// Up to 3 slots; the renderer picks one at random each time a showcase is posted.
+// Empty slots fall back to the built-in obsidian/purple trophy gradient.
+export const showcaseBackgroundsTable = pgTable("showcase_backgrounds", {
+  id: serial("id").primaryKey(),
+  guildId: text("guild_id").notNull(),
+  slot: integer("slot").notNull(), // 1, 2, or 3
+  url: text("url").notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedBy: text("updated_by"),
+}, (t) => ({
+  guildSlotUniq: uniqueIndex("showcase_backgrounds_guild_slot_idx").on(t.guildId, t.slot),
+}));
+
+export type ShowcaseBackground = typeof showcaseBackgroundsTable.$inferSelect;
+
 // ── Custom Packs (per-guild configurable pack tiers) ──────────────────────────
 // Admins define named packs that can pull from specific card types/tags
 // (e.g. "Nuke Pack" → cardTypes = ["nuke","aircraft"]) and/or an explicit

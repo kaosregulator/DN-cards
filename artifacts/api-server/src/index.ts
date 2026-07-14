@@ -44,6 +44,21 @@ async function runBootMigrations() {
   await pool.query(`ALTER TABLE cards ADD COLUMN IF NOT EXISTS display_orientation text`);
   await pool.query(`ALTER TABLE card_display_overrides ADD COLUMN IF NOT EXISTS display_category text`);
 
+  // Uploadable trophy/showcase backgrounds for /user-hub "Show Card".
+  // Up to 3 slots per guild; the renderer picks one at random.
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS showcase_backgrounds (
+      id SERIAL PRIMARY KEY,
+      guild_id TEXT NOT NULL,
+      slot INTEGER NOT NULL,
+      url TEXT NOT NULL,
+      created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+      updated_by TEXT,
+      UNIQUE (guild_id, slot)
+    )
+  `);
+  await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS showcase_backgrounds_guild_slot_idx ON showcase_backgrounds (guild_id, slot)`);
+
   // Convert card_type from enum → text so admins can use any free-form label.
   // Idempotent: only runs while the column still has the enum type.
   await pool.query(`

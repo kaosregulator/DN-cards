@@ -570,10 +570,20 @@ export interface ShowcaseOpts {
   caughtLabel?: string;      // e.g. "CAUGHT · JUL 2026"
   frameName?: string | null; // equipped /frames name
   badges?: string[];         // e.g. ["MAXED", "LIMITED"]
+  backgroundUrl?: string | null; // custom uploaded trophy background
 }
 
-function trophyBackground(ctx: Ctx) {
+function trophyBackground(ctx: Ctx, opts: ShowcaseOpts) {
   const { width: W, height: H } = CANVAS;
+
+  // If an admin-uploaded background is provided, draw it cover-fit first.
+  if (opts.backgroundUrl) {
+    // Best-effort: we don't have the canvas module here, so the caller passes
+    // the URL and the main renderShowcaseImage loads it via loadArt().
+    // We intentionally leave the gradient path untouched; the actual image
+    // is drawn by the caller before invoking trophyBackground.
+  }
+
   const g = ctx.createRadialGradient(W / 2, H * 0.34, 70, W / 2, H * 0.5, W * 0.78);
   g.addColorStop(0, TROPHY.bg0); g.addColorStop(0.6, TROPHY.bg1); g.addColorStop(1, TROPHY.bg2);
   ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
@@ -613,7 +623,21 @@ export async function renderShowcaseImage(card: RenderCard, opts: ShowcaseOpts =
     const { width: W } = CANVAS;
     const canvas = mod.createCanvas(W, CANVAS.height);
     const ctx = canvas.getContext("2d") as unknown as Ctx;
-    trophyBackground(ctx);
+
+    // Draw admin-uploaded background (cover-fit) if one is configured; otherwise
+    // the trophyBackground() fallback gradient is used.
+    if (opts.backgroundUrl) {
+      const bgImg = await loadArt(mod, opts.backgroundUrl);
+      if (bgImg) {
+        const scale = Math.max(W / bgImg.width, CANVAS.height / bgImg.height);
+        const bw = bgImg.width * scale, bh = bgImg.height * scale;
+        ctx.drawImage(bgImg, (W - bw) / 2, (CANVAS.height - bh) / 2, bw, bh);
+        // dim it so the card and text still pop
+        ctx.fillStyle = "rgba(0,0,0,0.35)";
+        ctx.fillRect(0, 0, W, CANVAS.height);
+      }
+    }
+    trophyBackground(ctx, opts);
     starRow(ctx, W / 2, 66, Math.max(0, Math.min(5, opts.stars ?? 0)));
 
     const cw = 296, ch = 384;

@@ -24,6 +24,7 @@ import {
 import {
   getUserCollection, getLeaderboard, getOrCreateGuildSettings,
   getRarityDisplayOverrides, getRarityContext, effectiveRarityKey, getDisplayRarities,
+  getShowcaseBackgrounds,
 } from "../db.js";
 import {
   SHINY_EMOJI, getShinyName, getShinyMultiplier,
@@ -119,6 +120,10 @@ export async function handleUserHubComponent(
   // Show Card trophy: open the card picker, then render + post publicly.
   if (action === "open-showcase" && interaction.isButton()) {
     await openShowcasePicker(interaction);
+    return;
+  }
+  if (action === "showcase-best" && interaction.isButton()) {
+    await postShowcaseBest(interaction);
     return;
   }
   if (action === "showcase-pick" && interaction.isStringSelectMenu()) {
@@ -412,29 +417,50 @@ const SHOWCASE_TTL_MS = 40_000;
 async function openShowcasePicker(interaction: ButtonInteraction) {
   const guildId = interaction.guildId!;
   const userId = interaction.user.id;
-  const items = await getUserCollection(guildId, userId);
-  if (items.length === 0) {
-    await interaction.reply({ content: "You don't own any cards to show off yet — catch some first!", ...EPHEMERAL }).catch(() => {});
+  const leveled = await getLeveledCards(guildId, userId);
+  if (leveled.length === 0) {
+    await interaction.reply({ content: "🔒 Only leveled-up cards can be shown off. Battle with a card to earn XP and unlock the trophy showcase!", ...EPHEMERAL }).catch(() => {});
     return;
   }
   const select = new StringSelectMenuBuilder()
     .setCustomId("user-hub:showcase-pick")
-    .setPlaceholder("Pick a card to show off…")
+    .setPlaceholder("Pick a leveled card to show off…")
     .addOptions(
-      items
-        .slice()
-        .sort((a, b) => b.worthValue - a.worthValue || a.name.localeCompare(b.name))
-        .slice(0, 25)
-        .map(i => ({ label: i.name.slice(0, 100), value: i.cardId.toString(), description: (i.rarity as string) })),
+      leveled
+        .slice(0, 24)
+        .map(({ item, level }) => ({
+          label: `${item.name.slice(0, 80)} · Lv ${level}`,
+          value: item.cardId.toString(),
+          description: `${item.rarity} · ${item.worthValue} shards`,
+        })),
     );
   const embed = new EmbedBuilder()
     .setColor(0xffd76b)
     .setTitle("🏆 Show Card")
-    .setDescription("Pick a card below — it'll be shown off **publicly** in this channel as a trophy for **40 seconds**, then vanish.");
-  await interaction.update({
-    embeds: [embed],
-    components: [new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(select), sideRow()],
-  }).catch(() => {});
+    .setDescription(
+      "Only **leveled-up cards** can be shown off — this gives you a reason to level them up.\n\n" +
+      "Pick a card below or hit **Show Best** to post your highest-level card instantly."
+    );
+  const rows: ActionRowBuilder<any>[] = [
+    new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(select),
+    new ActionRowBuilder<ButtonBuilder>().addComponents(
+      new ButtonBuilder().setCustomId("user-hub:showcase-best").setLabel("🏆 Show Best").setStyle(ButtonStyle.Success),
+    ),
+    sideRow(),
+  ];
+  await interaction.update({ embeds: [embed], components: rows }).catch(() => {});
+}
+
+async function postShowcaseBest(interaction: ButtonInteraction) {
+  const guildId = interaction.guildId!;
+  const userId = interaction.user.id;
+  const leveled = await getLeveledCards(guildId, userId);
+  if (leveled.length === 0) {
+    await interaction.reply({ content: "🔒 No leveled-up cards to show off yet.", ...EPHEMERAL }).catch(() => {});
+    return;
+  }
+  const best = leveled[0]!;
+  await renderAndPostShowcase(interaction, best.item, best.progress, best.level);
 }
 
 async function postShowcase(interaction: StringSelectMenuInteraction) {
@@ -442,18 +468,28 @@ async function postShowcase(interaction: StringSelectMenuInteraction) {
   const userId = interaction.user.id;
   const cardId = Number(interaction.values[0]);
 
-  const [items, settings] = await Promise.all([
-    getUserCollection(guildId, userId),
-    getOrCreateGuildSettings(guildId),
-  ]);
-  const item = items.find(i => i.cardId === cardId);
+  const item = (await getUserCollection(guildId, userId)).find(i => i.cardId === cardId);
   if (!item) {
     await interaction.reply({ content: "❌ You don't own that card anymore.", ...EPHEMERAL }).catch(() => {});
     return;
   }
-
   const progress = await getCardProgress(guildId, userId, cardId);
   const level = progress?.level ?? 1;
+  await renderAndPostShowcase(interaction, item, progress, level);
+}
+
+async function renderAndPostShowcase(
+  interaction: ButtonInteraction | StringSelectMenuInteraction,
+  item: Awaited<ReturnType<typeof getUserCollection>>[number],
+  progress: Awaited<ReturnType<typeof getCardProgress>>,
+  level: number,
+) {
+  const guildId = interaction.guildId!;
+  const userId = interaction.user.id;
+  const [settings, backgrounds] = await Promise.all([
+    getOrCreateGuildSettings(guildId),
+    getShowcaseBackgrounds(guildId),
+  ]);
   const stars = starsForLevel(level);
   const frame = resolveActiveFrame(item.rarity as Rarity, progress?.equippedFrame ?? null, level);
 
@@ -466,18 +502,19 @@ async function postShowcase(interaction: StringSelectMenuInteraction) {
   if (item.isEventExclusive) badges.push("Event");
   if (item.shinyCount > 0) badges.push(getShinyName(settings));
 
+  const backgroundUrl = backgrounds.length > 0 ? backgrounds[Math.floor(Math.random() * backgrounds.length)]! : null;
+
   const img = await renderShowcaseImage({
     name: item.name,
     rarity: item.rarity as Rarity,
     rarityLabel: (item.rarity as string).toUpperCase(),
-    rarityColor: frame.color,          // ← equipped /frames colour drives the border
+    rarityColor: frame.color,
     cardId: item.cardId,
     cardType: item.cardType,
     level,
     artUrl: toAbsoluteImageUrl(item.imageUrl),
-  }, { stars, caughtLabel, frameName: frame.name, badges }).catch(() => null);
+  }, { stars, caughtLabel, frameName: frame.name, badges, backgroundUrl }).catch(() => null);
 
-  // Acknowledge the picker privately.
   await interaction.reply({ content: "🏆 Showing off your card…", ...EPHEMERAL }).catch(() => {});
 
   const channel = interaction.channel;
@@ -489,4 +526,18 @@ async function postShowcase(interaction: StringSelectMenuInteraction) {
   const files = img ? [new AttachmentBuilder(img, { name: "showcase.png" })] : [];
   const msg = await channel.send({ content, files, allowedMentions: { users: [] } }).catch(() => null);
   if (msg) setTimeout(() => { msg.delete().catch(() => {}); }, SHOWCASE_TTL_MS);
+}
+
+async function getLeveledCards(guildId: string, userId: string) {
+  const items = await getUserCollection(guildId, userId);
+  const withProgress = await Promise.all(
+    items.map(async item => {
+      const progress = await getCardProgress(guildId, userId, item.cardId);
+      const level = progress?.level ?? 1;
+      return { item, progress, level };
+    }),
+  );
+  return withProgress
+    .filter(p => p.level > 1)
+    .sort((a, b) => b.level - a.level || b.item.worthValue - a.item.worthValue || a.item.name.localeCompare(b.item.name));
 }

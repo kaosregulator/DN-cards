@@ -164,6 +164,12 @@ export async function handleEmbedAdminCommand(interaction: ChatInputCommandInter
   }
   const key: EmbedKey = keyRaw;
 
+  if (sub === "designer") {
+    const { handleEmbedDesignerCommand } = await import("./embed-designer.js");
+    await handleEmbedDesignerCommand(interaction);
+    return;
+  }
+
   if (sub === "show") {
     const cfg = await getRawEmbedOverride(guildId, key);
     await interaction.editReply({ embeds: [buildShowEmbed(key, cfg)] });
