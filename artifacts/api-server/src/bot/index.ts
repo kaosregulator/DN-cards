@@ -57,6 +57,10 @@ import {
 } from "./bob/router.js";
 import { startBobEvents } from "./bob/events.js";
 import { handleBobMention } from "./bob/talk.js";
+import { handleSupportCommand } from "./operations/command.js";
+import { handleOpsAdminCommand } from "./operations/admin.js";
+import { isOpsComponent, handleOpsButton, handleOpsSelect, handleOpsModal } from "./operations/router.js";
+import { startOpsMaintenance } from "./operations/runtime.js";
 import { handleWhisperCommand, handleAdminSecretCommand, handleEchoCommand } from "./secret/commands.js";
 import { isSecretModal, handleSecretModal, isSecretButton, handleSecretButton } from "./secret/interactions.js";
 import {
@@ -164,6 +168,7 @@ export async function startBot() {
     startMarketMaintenance();
     startGiveawayMaintenance();
     startBobEvents(client);
+    startOpsMaintenance(client);
     await registerCommands(c.user.id, token, client);
     // AFK Secretary: start the timed auto-remove sweeper (clears "timed" AFKs
     // once their countdown elapses; presence/messages can't cover this).
@@ -248,6 +253,8 @@ export async function startBot() {
         } else if (interaction.customId.startsWith("squad-hub:")) {
           const { handleSquadHubComponent } = await import("./commands/squad-hub.js");
           await handleSquadHubComponent(interaction);
+        } else if (isOpsComponent(interaction.customId)) {
+          await handleOpsSelect(interaction, client);
         } else if (isBobComponent(interaction.customId)) {
           await handleBobSelect(interaction);
         } else if (interaction.customId.startsWith("battle:")) {
@@ -340,6 +347,8 @@ export async function startBot() {
         } else if (interaction.customId.startsWith("squad-hub:modal:")) {
           const { handleSquadHubModal } = await import("./commands/squad-hub.js");
           await handleSquadHubModal(interaction);
+        } else if (isOpsComponent(interaction.customId)) {
+          await handleOpsModal(interaction, client);
         }
         return;
       }
@@ -396,6 +405,12 @@ export async function startBot() {
         // ── Giveaway buttons (my progress, details, claim prize) ───────────
         if (action === "giveaway") {
           await handleGiveawayComponent(interaction);
+          return;
+        }
+
+        // ── Operations Center buttons (join, leave, complete, admin cfg) ────
+        if (isOpsComponent(interaction.customId)) {
+          await handleOpsButton(interaction, client);
           return;
         }
 
@@ -702,6 +717,10 @@ export async function startBot() {
         await handleGiveawayUserCommand(interaction);
       } else if (cmd === "giveawayadmin") {
         await handleGiveawayAdminCommand(interaction);
+      } else if (cmd === "support") {
+        await handleSupportCommand(interaction, client);
+      } else if (cmd === "opsadmin") {
+        await handleOpsAdminCommand(interaction, client);
       } else if (cmd === "bob") {
         await handleBob(interaction);
       } else if (cmd === "bob_coinflip") {
