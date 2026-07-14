@@ -123,6 +123,11 @@ export async function handleBattleAdminButton(interaction: ButtonInteraction): P
       await updateBattleSettings(guildId, { aiEnabled: !s.aiEnabled });
       break;
     }
+    case "animtoggle": {
+      const s = await getBattleSettings(guildId);
+      await updateBattleSettings(guildId, { battleAnimationEnabled: !s.battleAnimationEnabled });
+      break;
+    }
     case "cards": {
       await interaction.editReply({ embeds: [await buildCardsEmbed(guildId)], components: await buildCardsComponents(guildId) });
       return;
@@ -184,6 +189,14 @@ export async function handleBattleAdminSelect(interaction: StringSelectMenuInter
   if (action === "speed") {
     const ms = Math.max(120, Math.min(4000, Number(interaction.values[0]) || 950));
     await updateBattleSettings(guildId, { frameDelayMs: ms });
+    await interaction.editReply({ embeds: [await buildHubEmbed(guildId)], components: buildHubComponents(await getBattleSettings(guildId)) }).catch(() => {});
+    return;
+  }
+  if (action === "animspeed") {
+    const speed = interaction.values[0] as "slow" | "normal" | "fast";
+    if (["slow", "normal", "fast"].includes(speed)) {
+      await updateBattleSettings(guildId, { battleAnimationSpeed: speed });
+    }
     await interaction.editReply({ embeds: [await buildHubEmbed(guildId)], components: buildHubComponents(await getBattleSettings(guildId)) }).catch(() => {});
     return;
   }
@@ -363,7 +376,7 @@ async function buildHubEmbed(guildId: string): Promise<EmbedBuilder> {
       { name: "Speed", value: `${speedLabel(s.frameDelayMs)} (${s.frameDelayMs}ms/frame) — set below`, inline: false },
       { name: "Cards", value: `${RARITY_LABELS[s.minRarity as Rarity]} → ${RARITY_LABELS[s.maxRarity as Rarity]} · Types: ${s.allowedTypes?.length ? s.allowedTypes.join(", ") : "All"} · Special ${onoff(s.specialCardsEnabled)} · Stake ${onoff(s.stakingEnabled)}`, inline: false },
       { name: "Rewards", value: `💠 Win ${s.rewardWinShards} / Loss ${s.rewardLossShards} · ✨ ${s.rewardWinXp} XP · Daily cap ${s.dailyRewardLimit} · 🎁 pack every ${s.freePackStreak || "—"} streak`, inline: false },
-      { name: "Toggles", value: `AI ${onoff(s.aiEnabled)} · Global LB ${onoff(s.globalLeaderboardOptIn)}`, inline: false },
+      { name: "Toggles", value: `AI ${onoff(s.aiEnabled)} · Global LB ${onoff(s.globalLeaderboardOptIn)} · GIF Battles ${onoff(s.battleAnimationEnabled)}`, inline: false },
     );
 }
 
@@ -390,7 +403,7 @@ function buildHubComponents(s?: { frameDelayMs: number }): ActionRowBuilder<any>
     new ButtonBuilder().setCustomId("battleadmin:resetlb").setLabel("Reset Leaderboard").setEmoji("🏆").setStyle(ButtonStyle.Danger),
     new ButtonBuilder().setCustomId("battleadmin:season").setLabel("New Season").setEmoji("🔄").setStyle(ButtonStyle.Danger),
     new ButtonBuilder().setCustomId("battleadmin:globaltoggle").setLabel("Global LB").setEmoji("🌐").setStyle(ButtonStyle.Secondary),
-    new ButtonBuilder().setCustomId("battleadmin:hub").setLabel("Refresh").setEmoji("♻️").setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder().setCustomId("battleadmin:animtoggle").setLabel("GIF Battles").setEmoji("🎞️").setStyle(ButtonStyle.Secondary),
   );
   const cur = s?.frameDelayMs ?? 950;
   const speedRow = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
@@ -401,7 +414,15 @@ function buildHubComponents(s?: { frameDelayMs: number }): ActionRowBuilder<any>
         default: Math.abs(p.ms - cur) < 120,
       }))),
   );
-  return [row1, row2, row3, speedRow];
+  const animSpeedRow = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
+    new StringSelectMenuBuilder().setCustomId("battleadmin:animspeed").setPlaceholder("🎞️ GIF battle speed")
+      .addOptions([
+        { label: "Slow (cinematic)", value: "slow", emoji: "🐢" },
+        { label: "Normal", value: "normal", emoji: "⚖️" },
+        { label: "Fast", value: "fast", emoji: "🚀" },
+      ].map(o => ({ ...o, default: o.value === (s?.battleAnimationSpeed ?? "normal") }))),
+  );
+  return [row1, row2, row3, speedRow, animSpeedRow];
 }
 
 async function buildCardsEmbed(guildId: string): Promise<EmbedBuilder> {
