@@ -16,7 +16,7 @@ import type { Rarity } from "../cards-data.js";
 import { getBattleSettings, rarityAllowed } from "../battle/config-engine.js";
 import { getOwnedBattleCards, getOrCreateProfile } from "../battle/db.js";
 import type { OwnedBattleCard } from "../battle/db.js";
-import { bar } from "../battle/embeds.js";
+import { bar, WHITE_LINE } from "../battle/embeds.js";
 import { starsForLevel, starString, levelForStars } from "../cards/leveling.js";
 import { toAbsoluteImageUrl } from "../image-url.js";
 import { logger } from "../../lib/logger.js";
@@ -396,11 +396,12 @@ async function refreshLobby(session: RaidSession): Promise<void> {
 
 function buildFightEmbed(session: RaidSession): EmbedBuilder {
   const boss = session.bossCombatant!;
+  const hpPct = Math.max(0, Math.min(100, Math.round((boss.hp / boss.stats.maxHealth) * 100)));
   const embed = new EmbedBuilder()
     .setTitle(`🐉 ${boss.cardName} — Round ${session.roundNumber}`)
     .setColor(0xe74c3c)
     .setDescription(
-      `**Boss HP**\n${bar(boss.hp, boss.stats.maxHealth, 16)}  **${Math.max(0, boss.hp).toLocaleString()}** / ${boss.stats.maxHealth.toLocaleString()}` +
+      `**Boss HP**\n${bar(boss.hp, boss.stats.maxHealth, 16)}  **${Math.max(0, boss.hp).toLocaleString()}** / ${boss.stats.maxHealth.toLocaleString()} HP (${hpPct}%)` +
       (boss.status.length ? `\n${boss.status.map(s => `${s.emoji} ${s.label} (${s.turns})`).join(" ")}` : ""),
     );
   const partyLines = [...session.party.values()].map(s => {
@@ -410,10 +411,10 @@ function buildFightEmbed(session: RaidSession): EmbedBuilder {
     const shield = c.shield > 0 ? ` 🛡️${c.shield}` : "";
     return `❤️ <@${s.member.userId}> **${c.cardName}**${acted}\n${bar(c.hp, c.stats.maxHealth, 10)} ${c.hp}/${c.stats.maxHealth}${shield} · ⚡${c.energy}`;
   });
-  embed.addFields({ name: "👥 Party", value: partyLines.join("\n") || "—", inline: false });
-  if (session.recentLog.length) embed.addFields({ name: "📜 Battle log", value: session.recentLog.join("\n").slice(0, 1024), inline: false });
+  embed.addFields({ name: `👥 Party ${WHITE_LINE}`, value: partyLines.join(`\n${WHITE_LINE}\n`) || "—", inline: false });
+  if (session.recentLog.length) embed.addFields({ name: `📜 Battle log ${WHITE_LINE}`, value: session.recentLog.join(`\n${WHITE_LINE}\n`).slice(0, 1024), inline: false });
   embed.setFooter({ text: "Everyone picks an action — the round resolves once all living fighters act (or after 60s)." });
-  if (boss.cardImageUrl) embed.setThumbnail(boss.cardImageUrl);
+  if (boss.cardImageUrl) embed.setImage(boss.cardImageUrl);
   return embed;
 }
 
@@ -434,14 +435,36 @@ async function renderFight(session: RaidSession): Promise<void> {
 
 function buildEndEmbed(session: RaidSession, outcome: "clear" | "wipe" | "timeout", note: string): EmbedBuilder {
   const color = outcome === "clear" ? 0x2ecc71 : 0x7f8c8d;
-  const title = outcome === "clear" ? `🏆 ${session.boss.name} DEFEATED` : `🐉 ${session.boss.name} stands`;
-  const roster = [...session.party.values()].map(s => {
+  const title = outcome === "clear" ? "🏆 Raid Batch Finished" : "🐉 Raid Batch Finished";
+  const boss = session.bossCombatant!;
+  const bossMax = boss.stats.maxHealth;
+  const bossHp = Math.max(0, boss.hp);
+  const damageDealt = bossMax - bossHp;
+  const hpPct = Math.max(0, Math.min(100, Math.round((bossHp / bossMax) * 100)));
+  const bossHpLine = `${bar(bossHp, bossMax, 16)} **${bossHp.toLocaleString()}** / ${bossMax.toLocaleString()} HP (${hpPct}%)`;
+
+  const partyLines = [...session.party.values()].map(s => {
     const c = s.combatant!;
-    return `${c.hp > 0 ? "❤️" : "💀"} <@${s.member.userId}> — ${c.hp > 0 ? `${c.hp}/${c.stats.maxHealth} HP` : "downed"}`;
-  }).join("\n");
-  return new EmbedBuilder().setTitle(title).setColor(color)
-    .setDescription(`${note}\n\n**Party**\n${roster}`)
-    .setFooter({ text: `Lasted ${session.roundNumber} round(s)` });
+    const alive = c.hp > 0;
+    const shield = c.shield > 0 ? ` · 🛡️ ${c.shield}` : "";
+    const hpLine = alive ? `${bar(c.hp, c.stats.maxHealth, 10)} ${c.hp}/${c.stats.maxHealth} HP${shield}` : "downed";
+    return `${alive ? "❤️" : "💀"} <@${s.member.userId}> · **${c.cardName}**\n${hpLine}`;
+  });
+
+  const embed = new EmbedBuilder()
+    .setTitle(title)
+    .setColor(color)
+    .setDescription(
+      `**Boss HP**\n${bossHpLine}\n${WHITE_LINE}\n` +
+      `**Damage Dealt** · **${damageDealt.toLocaleString()}** damage across the party`
+    )
+    .addFields(
+      { name: `👥 Party Cards ${WHITE_LINE}`, value: partyLines.join(`\n${WHITE_LINE}\n`) || "—", inline: false },
+      { name: `🎁 Rewards ${WHITE_LINE}`, value: note, inline: false },
+    )
+    .setFooter({ text: `Raid lasted ${session.roundNumber} round(s) · ${session.party.size} fighter(s) fielded their own cards` });
+  if (boss.cardImageUrl) embed.setImage(boss.cardImageUrl);
+  return embed;
 }
 
 // ── TTL / lobby-abandon cleanup ──────────────────────────────────────────────
