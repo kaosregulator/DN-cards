@@ -797,6 +797,7 @@ export async function startBot() {
     "bob_roulette", "bob_duel", "bob_roast", "bob_talk", "bob_stats", "bob_leaderboard", "bob_admin",
     "whisper", "adminsecret", "echo", "afk", "afksetup",
     "valuehelp", "valuelist", "info_mttv", "giveall", "editpack", "postcalculator",
+    "opsadmin", "support",
   ]);
   const unmapped = buildCommands()
     .map(c => internalCommandName(c.name))
