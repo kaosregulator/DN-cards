@@ -18,9 +18,11 @@ import {
 import { checkAchievements, formatUnlockLine } from "../achievements.js";
 import { applyEmbedOverride } from "../embed-overrides.js";
 import { toAbsoluteImageUrl } from "../image-url.js";
+import { logger } from "../../lib/logger.js";
 import type { Card, CustomPack, GuildSettings } from "@workspace/db";
-import { renderPackOpening } from "../animations/index.js";
-import type { AnimationSpeed } from "../animations/types.js";
+import { renderPackCover, renderCardReveal, type RevealStats } from "../animations/index.js";
+import { getBattleSettings } from "../battle/config-engine.js";
+import { getScaledStats } from "../battle/stat-engine.js";
 import type { RenderCard } from "../battle/image/render.js";
 
 // ── Tier definitions ─────────────────────────────────────────────────────────
@@ -238,6 +240,76 @@ function cardToRenderCard(
     cardType: card.cardType,
     artUrl: toAbsoluteImageUrl(card.imageUrl),
   };
+}
+
+const sleep = (ms: number) => new Promise<void>(r => setTimeout(r, ms));
+const REVEAL_FILE = "pack-reveal.png";
+
+// Sequential pack-opening animation: a tier cover canvas (shown, then replaced),
+// then each pulled card revealed one at a time with its Level-1 battle stats,
+// then the summary embed. Uses cheap static PNGs edited into the reply — far
+// lighter than a GIF. Fully best-effort: if the canvas isn't available or any
+// step fails, it silently ends on the summary so /pack never breaks.
+async function playPackReveal(opts: {
+  interaction: ChatInputCommandInteraction;
+  guildId: string;
+  tierColor: number;
+  tierLabel: string;
+  tierEmoji?: string;
+  renderCards: RenderCard[];
+  cards: Card[];
+  shinies: boolean[];
+  summaryEmbed: EmbedBuilder;
+}): Promise<void> {
+  const { interaction, summaryEmbed } = opts;
+  const finish = () => interaction.editReply({ embeds: [summaryEmbed], components: [], files: [] });
+
+  try {
+    // Level-1 stats come from the battle stat engine (best-effort — battle system
+    // may be unconfigured, in which case we reveal cards without a stat block).
+    const battleSettings = await getBattleSettings(opts.guildId).catch(() => null);
+    const statsFor = (card: Card): RevealStats | null => {
+      if (!battleSettings) return null;
+      try {
+        const s = getScaledStats(card, null, battleSettings, 1);
+        return {
+          hp: s.maxHealth, atk: s.attack, def: s.defense, spd: s.speed,
+          critChance: Math.round(s.critChance), accuracy: Math.round(s.accuracy),
+        };
+      } catch { return null; }
+    };
+
+    // 1) Cover.
+    const cover = await renderPackCover({
+      tierLabel: opts.tierLabel, tierColor: opts.tierColor,
+      emoji: opts.tierEmoji, size: opts.renderCards.length,
+    });
+    if (!cover) { await finish(); return; }
+    const coverEmbed = new EmbedBuilder().setColor(opts.tierColor).setImage(`attachment://${REVEAL_FILE}`);
+    await interaction.editReply({ embeds: [coverEmbed], components: [], files: [new AttachmentBuilder(cover, { name: REVEAL_FILE })] });
+    await sleep(1100);
+
+    // 2) Per-card reveals.
+    for (let i = 0; i < opts.renderCards.length; i++) {
+      const rc = opts.renderCards[i]!;
+      const png = await renderCardReveal({
+        card: rc, stats: statsFor(opts.cards[i]!), shiny: opts.shinies[i] ?? false,
+        index: i + 1, total: opts.renderCards.length,
+      });
+      if (!png) continue; // skip a bad frame, keep the sequence going
+      const color = rc.rarityColor ?? opts.tierColor;
+      const embed = new EmbedBuilder().setColor(color)
+        .setImage(`attachment://${REVEAL_FILE}`)
+        .setFooter({ text: `Card ${i + 1} of ${opts.renderCards.length}` });
+      await interaction.editReply({ embeds: [embed], components: [], files: [new AttachmentBuilder(png, { name: REVEAL_FILE })] });
+      await sleep(1300);
+    }
+  } catch (err) {
+    logger.debug({ err }, "pack reveal sequence failed (non-fatal)");
+  }
+
+  // 3) Summary (always).
+  await finish().catch(() => {});
 }
 
 // ── Summary embed ────────────────────────────────────────────────────────────
@@ -677,21 +749,16 @@ export async function handleCustomPack(
   const thumb = toAbsoluteImageUrl(last.imageUrl);
   if (thumb) embed.setThumbnail(thumb);
 
-  const [animation] = await Promise.all([
-    settings.packAnimationEnabled
-      ? renderPackOpening({
-          tier: pack.name,
-          tierColor: 0x5865f2,
-          cards: cards.map(c => cardToRenderCard(c, ctxFresh, displayMap, settings)),
-          shinies,
-        }, settings.packAnimationSpeed as AnimationSpeed)
-      : Promise.resolve(null),
-  ]);
-  await interaction.editReply({
-    embeds: [embed],
-    components: [],
-    files: animation ? [new AttachmentBuilder(animation.buffer, { name: "pack-open.gif" })] : [],
-  });
+  if (settings.packAnimationEnabled) {
+    await playPackReveal({
+      interaction, guildId,
+      tierColor: 0x5865f2, tierLabel: pack.name, tierEmoji: pack.emoji ?? "📦",
+      renderCards: cards.map(c => cardToRenderCard(c, ctxFresh, displayMap, settings)),
+      cards, shinies, summaryEmbed: embed,
+    });
+  } else {
+    await interaction.editReply({ embeds: [embed], components: [], files: [] });
+  }
 
   // Unified account XP: one award per custom pack opened + collection milestones.
   try {
@@ -787,29 +854,24 @@ export async function handlePack(interaction: ChatInputCommandInteraction): Prom
 
   if (granted < cards.length) cards.length = granted;
 
-  // Animation inputs: tier color + rarity display overrides so the GIF matches
-  // the summary embed. Overrides are only fetched when the animation is enabled.
+  // Build the summary, then play the sequential reveal (cover → per-card stat
+  // cards → summary). Reveal inputs share the summary's rarity display overrides.
   const meta = tierMeta(settings, tier);
   const displayMap = settings.packAnimationEnabled
     ? await getRarityDisplayOverrides(guildId)
     : null;
+  const summaryEmbed = await buildSummaryEmbed(tier, cards, shinies, cfg.cost, claim.shardsAfter, guildId, interaction.user.id);
 
-  const [summaryEmbed, animation] = await Promise.all([
-    buildSummaryEmbed(tier, cards, shinies, cfg.cost, claim.shardsAfter, guildId, interaction.user.id),
-    settings.packAnimationEnabled
-      ? renderPackOpening({
-          tier: tierLabel(settings, tier),
-          tierColor: meta.color,
-          cards: cards.map(c => cardToRenderCard(c, null, displayMap, settings)),
-          shinies,
-        }, settings.packAnimationSpeed as AnimationSpeed)
-      : Promise.resolve(null),
-  ]);
-  await interaction.editReply({
-    embeds: [summaryEmbed],
-    components: [],
-    files: animation ? [new AttachmentBuilder(animation.buffer, { name: "pack-open.gif" })] : [],
-  });
+  if (settings.packAnimationEnabled) {
+    await playPackReveal({
+      interaction, guildId,
+      tierColor: meta.color, tierLabel: tierLabel(settings, tier), tierEmoji: meta.emoji,
+      renderCards: cards.map(c => cardToRenderCard(c, null, displayMap, settings)),
+      cards, shinies, summaryEmbed,
+    });
+  } else {
+    await interaction.editReply({ embeds: [summaryEmbed], components: [], files: [] });
+  }
 
   // Quest progress — opening a pack counts once, and each pulled card counts as
   // a catch (rarity-aware). Best-effort; never blocks the pack flow.

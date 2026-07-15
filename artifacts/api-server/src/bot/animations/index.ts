@@ -6,5 +6,12 @@
 
 export { renderPackOpening } from "./pack.js";
 export { renderBattleTurn, renderBattleVictory } from "./battle.js";
+export {
+  renderPackCover, renderCardReveal, renderAttackFrame,
+  REVEAL_COVER, REVEAL_CARD, REVEAL_ATTACK,
+} from "./reveal.js";
+export type {
+  PackCoverInput, CardRevealInput, RevealStats, AttackFrameInput,
+} from "./reveal.js";
 export type { AnimationSettings, AnimationSpeed, AnimationResult } from "./types.js";
 export type { PackAnimationInput, BattleAnimationInput, VictoryAnimationInput } from "./types.js";
