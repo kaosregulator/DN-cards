@@ -234,6 +234,13 @@ export const guildSettingsTable = pgTable("guild_settings", {
   packBasicDesc: text("pack_basic_desc"),
   packPremiumDesc: text("pack_premium_desc"),
   packLegendaryDesc: text("pack_legendary_desc"),
+  // ── Animation system toggles ───────────────────────────────────────────────
+  // Master switches and pacing for the @napi-rs/canvas + gifencoder animation
+  // system. Defaults keep the old instant embed behavior for low-powered setups.
+  packAnimationEnabled: boolean("pack_animation_enabled").notNull().default(true),
+  battleAnimationEnabled: boolean("battle_animation_enabled").notNull().default(true),
+  packAnimationSpeed: text("pack_animation_speed").notNull().default("normal"),
+  battleAnimationSpeed: text("battle_animation_speed").notNull().default("normal"),
   // ── Active set (Sets-driven spawn pool) ────────────────────────────────────
   // The single set whose cards are eligible for random autodrops in this
   // guild. NULL = no set selected → **nothing spawns** (admins must pick a

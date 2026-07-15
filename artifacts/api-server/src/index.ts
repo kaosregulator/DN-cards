@@ -78,6 +78,16 @@ async function runBootMigrations() {
     )
   `);
   await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS player_progression_guild_user_uniq ON player_progression (guild_id, user_id)`);
+  // Animation system configuration toggles (default ON, normal speed).
+  await pool.query(`ALTER TABLE guild_settings ADD COLUMN IF NOT EXISTS pack_animation_enabled boolean NOT NULL DEFAULT true`);
+  await pool.query(`ALTER TABLE guild_settings ADD COLUMN IF NOT EXISTS battle_animation_enabled boolean NOT NULL DEFAULT true`);
+  await pool.query(`ALTER TABLE guild_settings ADD COLUMN IF NOT EXISTS pack_animation_speed text NOT NULL DEFAULT 'normal'`);
+  await pool.query(`ALTER TABLE guild_settings ADD COLUMN IF NOT EXISTS battle_animation_speed text NOT NULL DEFAULT 'normal'`);
+
+  // Battle animation toggles live in battle_settings (per-guild battle config).
+  await pool.query(`ALTER TABLE battle_settings ADD COLUMN IF NOT EXISTS battle_animation_enabled boolean NOT NULL DEFAULT false`);
+  await pool.query(`ALTER TABLE battle_settings ADD COLUMN IF NOT EXISTS pack_animation_enabled boolean NOT NULL DEFAULT true`);
+  await pool.query(`ALTER TABLE battle_settings ADD COLUMN IF NOT EXISTS battle_animation_speed text NOT NULL DEFAULT 'normal'`);
 
   // Convert card_type from enum → text so admins can use any free-form label.
   // Idempotent: only runs while the column still has the enum type.

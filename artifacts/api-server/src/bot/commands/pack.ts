@@ -1,5 +1,5 @@
 import type { ChatInputCommandInteraction } from "discord.js";
-import { EmbedBuilder, MessageFlags } from "discord.js";
+import { EmbedBuilder, MessageFlags, AttachmentBuilder } from "discord.js";
 import { db, userCurrencyTable, cardsTable } from "@workspace/db";
 import { and, eq, sql } from "drizzle-orm";
 import {
@@ -12,13 +12,16 @@ import {
   type RarityContext,
 } from "../db.js";
 import {
-  SHINY_EMOJI, getShinyMultiplier, getShinyName,
+  SHINY_EMOJI, getShinyMultiplier, getShinyName, RARITY_COLORS,
   type Rarity,
 } from "../cards-data.js";
 import { checkAchievements, formatUnlockLine } from "../achievements.js";
 import { applyEmbedOverride } from "../embed-overrides.js";
 import { toAbsoluteImageUrl } from "../image-url.js";
 import type { Card, CustomPack, GuildSettings } from "@workspace/db";
+import { renderPackOpening } from "../animations/index.js";
+import type { AnimationSpeed } from "../animations/types.js";
+import type { RenderCard } from "../battle/image/render.js";
 
 // ── Tier definitions ─────────────────────────────────────────────────────────
 export type PackTier = "basic" | "premium" | "legendary";
@@ -215,6 +218,26 @@ async function drawPack(tier: PackTier, size: number, guildId: string): Promise<
     if (picked) drawn.push(picked);
   }
   return drawn;
+}
+
+// Convert a drawn Card into the renderer's card description for the animation
+// system. Reuses the same display overrides the summary embed uses.
+function cardToRenderCard(
+  card: Card,
+  ctx: import("../db.js").RarityContext | null,
+  displayMap: import("../cards-data.js").RarityDisplayMap | null,
+  settings: GuildSettings | null,
+): RenderCard {
+  const display = getCardDisplayRarity(card, ctx, settings, displayMap);
+  return {
+    name: card.name,
+    rarity: card.rarity as Rarity,
+    rarityLabel: display.label,
+    rarityColor: display.color ?? RARITY_COLORS[card.rarity as Rarity],
+    cardId: card.id,
+    cardType: card.cardType,
+    artUrl: toAbsoluteImageUrl(card.imageUrl),
+  };
 }
 
 // ── Summary embed ────────────────────────────────────────────────────────────
@@ -654,7 +677,21 @@ export async function handleCustomPack(
   const thumb = toAbsoluteImageUrl(last.imageUrl);
   if (thumb) embed.setThumbnail(thumb);
 
-  await interaction.editReply({ embeds: [embed], components: [] });
+  const [animation] = await Promise.all([
+    settings.packAnimationEnabled
+      ? renderPackOpening({
+          tier: pack.name,
+          tierColor: 0x5865f2,
+          cards: cards.map(c => cardToRenderCard(c, ctxFresh, displayMap, settings)),
+          shinies,
+        }, settings.packAnimationSpeed as AnimationSpeed)
+      : Promise.resolve(null),
+  ]);
+  await interaction.editReply({
+    embeds: [embed],
+    components: [],
+    files: animation ? [new AttachmentBuilder(animation.buffer, { name: "pack-open.gif" })] : [],
+  });
 
   // Unified account XP: one award per custom pack opened + collection milestones.
   try {
@@ -750,9 +787,28 @@ export async function handlePack(interaction: ChatInputCommandInteraction): Prom
 
   if (granted < cards.length) cards.length = granted;
 
+  // Animation inputs: tier color + rarity display overrides so the GIF matches
+  // the summary embed. Overrides are only fetched when the animation is enabled.
+  const meta = tierMeta(settings, tier);
+  const displayMap = settings.packAnimationEnabled
+    ? await getRarityDisplayOverrides(guildId)
+    : null;
+
+  const [summaryEmbed, animation] = await Promise.all([
+    buildSummaryEmbed(tier, cards, shinies, cfg.cost, claim.shardsAfter, guildId, interaction.user.id),
+    settings.packAnimationEnabled
+      ? renderPackOpening({
+          tier: tierLabel(settings, tier),
+          tierColor: meta.color,
+          cards: cards.map(c => cardToRenderCard(c, null, displayMap, settings)),
+          shinies,
+        }, settings.packAnimationSpeed as AnimationSpeed)
+      : Promise.resolve(null),
+  ]);
   await interaction.editReply({
-    embeds: [await buildSummaryEmbed(tier, cards, shinies, cfg.cost, claim.shardsAfter, guildId, interaction.user.id)],
+    embeds: [summaryEmbed],
     components: [],
+    files: animation ? [new AttachmentBuilder(animation.buffer, { name: "pack-open.gif" })] : [],
   });
 
   // Quest progress — opening a pack counts once, and each pulled card counts as
