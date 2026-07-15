@@ -156,7 +156,7 @@ export async function handleEmbedDesignerComponent(
   // Select menu: choose an image mode.
   if (action === "mode" && interaction.isStringSelectMenu()) {
     const key = parts[2] as EmbedKey;
-    const mode = interaction.values[0] as EmbedOverrideConfig["imageMode"];
+    const mode = interaction.values[0]!;   // applyField validates the imageMode value
     await applyField(interaction, key, "imageMode", mode);
     return;
   }
@@ -244,7 +244,7 @@ async function buildDesignerHome(guildId: string, userId: string) {
       "Use the **Canvas Backgrounds** button to upload up to 3 images that the /user-hub trophy will rotate randomly.",
     );
 
-  const options = EMBED_KEYS.map(k => ({
+  const options: { label: string; value: string; description: string }[] = EMBED_KEYS.map(k => ({
     label: k.charAt(0).toUpperCase() + k.slice(1),
     value: k,
     description: `Customize the ${k} embed`,
@@ -260,7 +260,9 @@ async function buildDesignerHome(guildId: string, userId: string) {
     ),
   ];
 
-  return { embeds: [embed], components: rows, ...EPHEMERAL };
+  // No `flags` here: these views are delivered via editReply()/update(), which
+  // inherit ephemerality from the initial deferred reply and reject `flags`.
+  return { embeds: [embed], components: rows };
 }
 
 async function buildEmbedEditor(guildId: string, key: EmbedKey, userId: string) {
@@ -300,7 +302,7 @@ async function buildEmbedEditor(guildId: string, key: EmbedKey, userId: string) 
     ),
   ];
 
-  return { embeds: [preview], components: rows, ...EPHEMERAL };
+  return { embeds: [preview], components: rows };
 }
 
 async function buildCanvasManager(guildId: string) {
@@ -346,7 +348,7 @@ async function buildCanvasManager(guildId: string) {
     new ButtonBuilder().setCustomId(`${CUSTOM_ID_PREFIX}:back`).setLabel("↩️ Back").setStyle(ButtonStyle.Secondary),
   ));
 
-  return { embeds: [embed], components: rows, ...EPHEMERAL };
+  return { embeds: [embed], components: rows };
 }
 
 // ── Preview renderer ─────────────────────────────────────────────────────────
@@ -501,7 +503,25 @@ async function applyField(
   }
 
   await upsertEmbedOverride(guildId, key, cfg, userId);
-  await interaction.update(await buildEmbedEditor(guildId, key, userId));
+  await refreshEditorView(interaction, guildId, key, userId);
+}
+
+// Re-render the editor on whichever interaction triggered the change. Component
+// interactions (select/button) and message-backed modal submits can update the
+// source message in place; a plain modal submit falls back to editReply.
+async function refreshEditorView(
+  interaction: StringSelectMenuInteraction | ButtonInteraction | ModalSubmitInteraction,
+  guildId: string,
+  key: EmbedKey,
+  userId: string,
+): Promise<void> {
+  const view = await buildEmbedEditor(guildId, key, userId);
+  if (interaction.isModalSubmit()) {
+    if (interaction.isFromMessage()) await interaction.update(view);
+    else await interaction.editReply(view);
+  } else {
+    await interaction.update(view);
+  }
 }
 
 function parseHexColor(input: string): number | null {

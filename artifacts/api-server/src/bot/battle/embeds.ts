@@ -23,6 +23,10 @@ export interface BattleView {
 
 const BATTLE_COLOR = 0xed4245;
 
+// Visual separator used between embed sections / log entries. Replace with your
+// Discord server's custom white-line emoji if you prefer a different look.
+export const WHITE_LINE = "▭▭▭▭▭▭▭▭▭▭▭▭▭▭▭▭▭";
+
 // ── Progress bars ────────────────────────────────────────────────────────────
 // `██████░░░░ 60%` style bar. Exported for reuse by prep/summary screens.
 export function bar(value: number, max: number, width = 10, filled = "█", empty = "░"): string {
@@ -116,8 +120,10 @@ export function buildCombatEmbed(v: BattleView, opts?: { currentMove?: string })
 
   if (active.cardImageUrl) embed.setThumbnail(active.cardImageUrl);
 
-  const logText = v.log.length ? v.log.slice(-6).join("\n") : "_The battlefield is quiet…_";
-  embed.addFields({ name: "📜 Battle Log", value: logText.slice(0, 1024), inline: false });
+  const logText = v.log.length
+    ? v.log.slice(-6).join(`\n${WHITE_LINE}\n`)
+    : "_The battlefield is quiet…_";
+  embed.addFields({ name: `📜 Battle Log ${WHITE_LINE}`, value: logText.slice(0, 1024), inline: false });
 
   const turnLine = active.isAi
     ? `🤖 **AI** is deciding…`

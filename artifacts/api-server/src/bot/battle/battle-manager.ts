@@ -18,6 +18,8 @@ import {
 } from "discord.js";
 import { logger } from "../../lib/logger.js";
 import { renderBattleImage, type RenderCard } from "./image/render.js";
+import { renderBattleTurn, renderBattleVictory } from "../animations/index.js";
+import type { AnimationSpeed } from "../animations/types.js";
 import { toAbsoluteImageUrl } from "../image-url.js";
 import { getBotClient } from "../client-holder.js";
 import { removeCardFromUser, restoreCardToUser } from "../db.js";
@@ -111,6 +113,9 @@ interface BattleRuntime {
   crits: [number, number];
   dmg: [number, number];
   wentLow: [boolean, boolean];
+
+  // Optional GIF frame shown once on the next combat render, then cleared.
+  turnAnimation: Buffer | null;
 
   turnTimer: ReturnType<typeof setTimeout> | null;
   aiOfferTimer: ReturnType<typeof setTimeout> | null;
@@ -256,6 +261,7 @@ export async function startChallenge(
     a: null, b: null, turnNumber: 1, currentSide: 0, staked: false,
     escrow: null, escrowSettled: false, log: [], coinCall: "heads",
     crits: [0, 0], dmg: [0, 0], wentLow: [false, false],
+    turnAnimation: null,
     turnTimer: null, aiOfferTimer: null, ttlTimer: null, processing: false, createdAt: Date.now(),
     displayMap,
     ctx,
@@ -692,10 +698,30 @@ async function applyMove(rt: BattleRuntime, side: 0 | 1, move: MoveType) {
         rt.log.push(e.text);
         if (e.flash === "crit") rt.crits[side]++;
       }
-      rt.dmg[side] += Math.max(0, foePoolBefore - (foe.hp + foe.shield));
+      const damage = Math.max(0, foePoolBefore - (foe.hp + foe.shield));
+      rt.dmg[side] += damage;
       rt.dmg[foeSide(side)] += Math.max(0, selfPoolBefore - (actor.hp + actor.shield));
       if (foe.hp / foe.stats.maxHealth <= 0.15) rt.wentLow[foeSide(side)] = true;
       if (actor.hp / actor.stats.maxHealth <= 0.15) rt.wentLow[side] = true;
+
+      // Generate a cinematic turn GIF for critical hits and finishing blows.
+      const isCrit = result.events.some(e => e.flash === "crit");
+      if (rt.settings.battleAnimationEnabled && (isCrit || result.koed || foe.hp <= 0)) {
+        rt.turnAnimation = await renderBattleTurn({
+          attacker: combatantToRenderCard(rt, actor),
+          defender: combatantToRenderCard(rt, foe),
+          attackerHp: Math.max(0, actor.hp),
+          attackerMaxHp: actor.stats.maxHealth,
+          defenderHp: Math.max(0, foe.hp),
+          defenderMaxHp: foe.stats.maxHealth,
+          damage,
+          isCrit,
+          isHit: damage > 0,
+          moveName: moveLabel(move),
+          attackerWon: result.koed || foe.hp <= 0,
+          defenderWon: false,
+        }, rt.settings.battleAnimationSpeed as AnimationSpeed).then(r => r?.buffer ?? null).catch(() => null);
+      }
 
       await renderCombat(rt);
       await sleep(frameMs(rt));
@@ -782,6 +808,15 @@ async function finishBattle(rt: BattleRuntime, winnerSide: 0 | 1 | null, reason:
   const rewardLines = buildRewardLines(rt, outcomes);
   const view = toView(rt);
   const winner = winnerSide === null ? null : (winnerSide === 0 ? rt.a : rt.b);
+
+  // Victory animation: replace the static VS image with a cinematic GIF.
+  if (winner && rt.settings.battleAnimationEnabled && rt.a && rt.b) {
+    const victory = await renderBattleVictory({
+      winner: combatantToRenderCard(rt, winner),
+      loser: combatantToRenderCard(rt, winnerSide === 0 ? rt.b : rt.a),
+    }, rt.settings.battleAnimationSpeed as AnimationSpeed).catch(() => null);
+    if (victory) rt.vsImage = victory.buffer;
+  }
 
   // Build the victory embed once and reuse it for the message + the battle log.
   // The winner's card stays the thumbnail (buildWinnerEmbed); the VS battle image
@@ -936,13 +971,14 @@ function combatantToRenderCard(rt: BattleRuntime, c: Combatant): RenderCard {
 // The pinned VS-image embed that sits ABOVE the battle embed. Optional title is
 // used for the dramatic pre-combat reveal; combat renders it title-less so the
 // battlefield picture just stays at the top the whole fight.
-function vsTop(rt: BattleRuntime, title?: string): { embed: EmbedBuilder | null; file: AttachmentBuilder | null } {
-  if (!rt.vsImage) return { embed: null, file: null };
+function vsTop(rt: BattleRuntime, title?: string, image?: Buffer | null): { embed: EmbedBuilder | null; file: AttachmentBuilder | null } {
+  const img = image ?? rt.vsImage;
+  if (!img) return { embed: null, file: null };
   const embed = new EmbedBuilder()
     .setColor(rarityColorOfSide(rt))
     .setImage(`attachment://${VS_IMAGE_NAME}`);
   if (title) embed.setTitle(title);
-  return { embed, file: new AttachmentBuilder(rt.vsImage, { name: VS_IMAGE_NAME }) };
+  return { embed, file: new AttachmentBuilder(img, { name: VS_IMAGE_NAME }) };
 }
 
 function rarityColorOfSide(rt: BattleRuntime): number {
@@ -958,8 +994,11 @@ async function renderCombat(rt: BattleRuntime, opts?: { currentMove?: string; tu
   // Battle embed keeps the active card's avatar as its thumbnail (buildCombatEmbed)
   // so players always see whose turn it is.
   const combatEmbed = buildCombatEmbed(view, { currentMove: opts?.currentMove });
-  // VS battlefield image stays pinned at the TOP, battle details below.
-  const top = vsTop(rt);
+  // VS battlefield image stays pinned at the TOP. If a one-shot turn animation is
+  // queued, consume it for this render only so the GIF plays once.
+  const turnImg = rt.turnAnimation;
+  rt.turnAnimation = null;
+  const top = vsTop(rt, undefined, turnImg);
   const embeds = top.embed ? [top.embed, combatEmbed] : [combatEmbed];
   const files = top.file ? [top.file] : [];
   await rt.message.edit({
