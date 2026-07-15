@@ -457,6 +457,19 @@ function buildLegacyCommands() {
 
     cmd("valuelist", "Top items by value — prices from Vault Values", s => s),
 
+    // ── /mass_role (admin, bulk role assignment) ──────────────────────────────
+    adminCmd("massrole", "Give or remove a role from everyone who has a specific role", s => s
+      .addSubcommand(sc => sc
+        .setName("give")
+        .setDescription("Give a role to all members who have a specific role")
+        .addRoleOption(o => o.setName("role").setDescription("The role to give").setRequired(true))
+        .addRoleOption(o => o.setName("target_role").setDescription("Only affect members who have this role").setRequired(true)))
+      .addSubcommand(sc => sc
+        .setName("remove")
+        .setDescription("Remove a role from all members who have a specific role")
+        .addRoleOption(o => o.setName("role").setDescription("The role to remove").setRequired(true))
+        .addRoleOption(o => o.setName("target_role").setDescription("Only affect members who have this role").setRequired(true)))),
+
     adminCmd("postcalculator", "Post a persistent Vault Values trade calculator hub in a channel", s => s
       .addChannelOption(o => o.setName("channel").setDescription("Channel to post the calculator in").setRequired(true))
       .addChannelOption(o => o.setName("result_channel").setDescription("Optional channel to post calculation results in").setRequired(false))),
@@ -776,6 +789,7 @@ export const COMMAND_RENAMES: Record<string, string> = {
   raidadmin: "raid_admin",
   giveawayadmin: "giveaway_admin",
   opsadmin: "ops_admin",
+  massrole: "mass_role",
   sethub: "set_hub",
   setadmin: "sets_admin",
   info_mttv: "vaultvalue_info",
@@ -835,5 +849,5 @@ export const ADMIN_HUB_COMMANDS = new Set([
   "welcomeadmin", "adminhelp", "drop", "massdrop", "give", "giveshards",
   "takeback", "takeshards", "addcard", "createcardfrommttv", "editcard", "editimage", "dashboard", "collectorrole",
   "setadmin", "rarity", "embed", "event", "edituser", "giveall", "editpack",
-  "postcalculator",
+  "postcalculator", "massrole",
 ]);
