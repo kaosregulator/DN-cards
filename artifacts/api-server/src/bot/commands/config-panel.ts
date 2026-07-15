@@ -476,7 +476,7 @@ function buildConfigEmbed(s: GuildSettings, activeSetName: string | null, displa
           const status = s.spawnEnabledSecondary ? "🟢" : "🔴";
           const setInfo = activeSetNameSecondary
             ? `set: **${activeSetNameSecondary}**`
-            : "⚠️ **no active set** — run `/setadmin active secondary:true` to pick one";
+            : "⚠️ **no active set** — open `/set_hub` or `/set_admin` to pick one";
           return `${status} ${channelMention} — ${setInfo}`;
         })(),
         inline: false,

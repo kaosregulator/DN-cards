@@ -75,7 +75,7 @@ export async function handleWelcome(interaction: ChatInputCommandInteraction): P
       { name: "🎯 Catching", value: "Type the card name exactly (spelling matters, caps don't). A 🎯 means you're in the pool. Cards stay up 60–120s — no need to race milliseconds." },
       { name: "💠 Shards & Packs", value: "Earn shards from `/daily`, burning duplicates, achievements & quests. Spend them on `/pack` — 🥉 Basic · 🥈 Premium · 🥇 Legendary." },
       { name: `✨ ${shinyName} Cards`, value: `Every catch and pull has a **0.5%** chance to mint a rare ${shinyName} — worth extra and tracked separately.` },
-      { name: "🗂️ Sets", value: "Spawns pull from the server's **active set**. Check `/sets active` and track completion with `/sets progress`." },
+      { name: "🗂️ Sets", value: "Spawns pull from the server's **active set**. Browse sets and track completion with `/set_hub`." },
     )
     .setImage(DIVIDER_GIF);
 
@@ -139,7 +139,7 @@ export async function handleWelcomeAdmin(interaction: ChatInputCommandInteractio
 
       "**✅ Step 2 — Activate a Card Set**\n" +
       "Random spawns only fire from the **active set**. Run `/set_hub` (clickable panel) " +
-      "or `/sets_admin active set:<name>`. No active set = no random spawns (admin `/drop` always works).\n\n" +
+      "to pick one. No active set = no random spawns (admin `/drop` always works).\n\n" +
 
       "**✅ Step 3 — Add & Edit Cards**\n" +
       `• **Website** → [${SITE_ADMIN}](${SITE_ADMIN}) — display name, image, description, featured/hidden, sort order.\n` +
@@ -180,7 +180,7 @@ export async function handleWelcomeAdmin(interaction: ChatInputCommandInteractio
 
       "**🗂️ Sets (spawn rotation)**\n" +
       "`/set_hub` — clickable panel (create, activate, export, toggle showcase).\n" +
-      "`/sets_admin` — typed subcommands for everything the panel does, plus bulk operations.\n" +
+      "`/set_admin` — advanced set hub (weights, bulk operations, import/export).\n" +
       "Export any set to JSON → re-import with `!loadset` + file attachment. Full roundtrip.",
     )
     .setImage(DIVIDER_GIF);
@@ -217,9 +217,8 @@ export async function handleWelcomeAdmin(interaction: ChatInputCommandInteractio
       {
         name: "🗂️ Sets",
         value:
-          "`/set_hub` — **clickable panel** (recommended)\n" +
-          "`/sets_admin active set:<…>` · `/sets_admin deactivate`\n" +
-          "`/sets_admin add set:<…> card:<…>` · `/sets_admin exportall` — full backup",
+          "`/set_hub` — **clickable panel** (recommended) — browse, create, activate, export\n" +
+          "`/set_admin` — advanced hub — rarity weights, bulk add/remove, import/export",
         inline: false,
       },
       {

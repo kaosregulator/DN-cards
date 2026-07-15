@@ -39,7 +39,7 @@ function parseList(raw: string): string[] {
 }
 
 export async function handleSetAdminCommand(interaction: ChatInputCommandInteraction): Promise<void> {
-  // The /sets_admin defer happens up the stack in admin.ts. Here we just route.
+  // The /set_admin defer happens up the stack in admin.ts. Here we just route.
   if (!interaction.guild) return;
   if (!(await checkAdmin(interaction))) {
     await interaction.editReply("❌ Admins only.");
@@ -61,7 +61,7 @@ export async function handleSetAdminCommand(interaction: ChatInputCommandInterac
       }
       const set = await createSet(name, description, guildId);
       await interaction.editReply(
-        `✅ Created set \`${set.name}\`. Add cards with \`/sets_admin add set:${set.name} card:<Name>\` or activate it for spawns with \`/sets_admin active set:${set.name}\`.`,
+        `✅ Created set \`${set.name}\`. Add cards with \`/set_admin add set:${set.name} card:<Name>\` or activate it for spawns with \`/set_admin active set:${set.name}\`.`,
       );
     } catch (err: any) {
       await interaction.editReply(`❌ ${err?.message ?? "Failed to create set."}`);
@@ -210,7 +210,7 @@ export async function handleSetAdminCommand(interaction: ChatInputCommandInterac
     await interaction.editReply(
       `✅ Active set for this server → \`${set.name}\` (**${memberCount}** droppable cards).\n` +
       (memberCount === 0
-        ? `⚠️ This set has no droppable cards, so random spawns still won't fire. Add cards with \`/sets_admin add\`.`
+        ? `⚠️ This set has no droppable cards, so random spawns still won't fire. Add cards with \`/set_admin add\`.`
         : `Random spawns now pull exclusively from this set.`),
     );
     return;
@@ -220,7 +220,7 @@ export async function handleSetAdminCommand(interaction: ChatInputCommandInterac
   if (sub === "deactivate") {
     await clearActiveSet(guildId);
     await interaction.editReply(
-      `✅ Cleared active set. **Random spawns are now disabled** until you pick a new one with \`/sets_admin active\`. Admin \`/drop name:<Card>\` still works.`,
+      `✅ Cleared active set. **Random spawns are now disabled** until you pick a new one with \`/set_admin active\`. Admin \`/drop name:<Card>\` still works.`,
     );
     return;
   }
@@ -259,7 +259,7 @@ export async function handleSetAdminCommand(interaction: ChatInputCommandInterac
         (set.description ? `${set.description}\n\n` : "") +
         `**${total}** cards · **${droppable}** droppable`,
       )
-      .addFields(fields.length > 0 ? fields : [{ name: "Empty", value: "No cards yet — use `/sets_admin add` or `/sets_admin bulkadd`." }]);
+      .addFields(fields.length > 0 ? fields : [{ name: "Empty", value: "No cards yet — use `/set_admin add` or `/set_admin bulkadd`." }]);
     // Append a weights footer if any are configured.
     if (set.rarityWeights && Object.keys(set.rarityWeights).length > 0) {
       const w = set.rarityWeights;
@@ -289,7 +289,7 @@ export async function handleSetAdminCommand(interaction: ChatInputCommandInterac
       : "";
     const liveNote = isActive
       ? "\n⚖️ This set is active — the new weight is live."
-      : `\n💡 Activate this set with \`/sets_admin active set:${set.name}\` for the override to take effect.`;
+      : `\n💡 Activate this set with \`/set_admin active set:${set.name}\` for the override to take effect.`;
     const displayMap2 = await getRarityDisplayOverrides(guildId);
     const rLabel = rarityLabel(rarity as Rarity, null, displayMap2);
     const rEmoji = rarityEmoji(rarity as Rarity, null, displayMap2);
@@ -339,7 +339,7 @@ export async function handleSetAdminCommand(interaction: ChatInputCommandInterac
         lines.join("\n") +
         (isActive
           ? "\n\n*Currently active — overrides are live.*"
-          : `\n\n*Inactive — activate with \`/sets_admin active set:${set.name}\` for these to apply.*`),
+          : `\n\n*Inactive — activate with \`/set_admin active set:${set.name}\` for these to apply.*`),
       );
     await interaction.editReply({ embeds: [embed] });
     return;
@@ -375,7 +375,7 @@ export async function handleSetAdminCommand(interaction: ChatInputCommandInterac
     });
     await interaction.editReply({
       content: `📤 Exported set \`${set.name}\` — **${cards.length}** cards${set.rarityWeights ? " (including rarity weight overrides)" : ""}. ` +
-        `Re-import anywhere with \`/sets_admin load file:<this.json>\`.`,
+        `Re-import anywhere with \`/set_admin load file:<this.json>\`.`,
       files: [file],
     });
     return;
@@ -448,7 +448,7 @@ export async function handleSetAdminCommand(interaction: ChatInputCommandInterac
       : "";
     await interaction.editReply({
       content: `📦 Exported **${picked.length + (unassignedCount > 0 ? 1 : 0)}** set${picked.length === 1 && unassignedCount === 0 ? "" : "s"} (${totalCards} card${totalCards === 1 ? "" : "s"} total).${orphanNote}\n` +
-        `Re-import with \`/sets_admin load file:<this.json>\` — each set is restored under its own name with its rarity weights.`,
+        `Re-import with \`/set_admin load file:<this.json>\` — each set is restored under its own name with its rarity weights.`,
       files: [file],
     });
     return;
@@ -507,7 +507,7 @@ export async function handleSetAdminCommand(interaction: ChatInputCommandInterac
     await interaction.editReply(
       `${createdSet ? `🆕 Created set \`${set.name}\`.\n` : ""}` +
       `✅ Assigned **${added}** card${added === 1 ? "" : "s"} into \`${set.name}\`${note}.\n` +
-      `💡 Make it the active spawn pool with \`/sets_admin active set:${set.name}\`.`,
+      `💡 Make it the active spawn pool with \`/set_admin active set:${set.name}\`.`,
     );
     return;
   }
@@ -620,7 +620,7 @@ export async function handleSetAdminCommand(interaction: ChatInputCommandInterac
     );
     await interaction.editReply({
       content: `📤 Exported **${cards.length}** card${cards.length === 1 ? "" : "s"}` +
-        `${includeArchived ? " (including archived)" : ""}. Re-import with \`/sets_admin load file:<this.json>\` — they'll all land in one fresh set.`,
+        `${includeArchived ? " (including archived)" : ""}. Re-import with \`/set_admin load file:<this.json>\` — they'll all land in one fresh set.`,
       files: [file],
     });
     return;
@@ -656,7 +656,7 @@ export async function handleSetAdminCommand(interaction: ChatInputCommandInterac
         `➕ Created: **${created}**\n` +
         `⏭️ Skipped (already exist): **${skipped}**` +
         (failed > 0 ? `\n❌ Failed: **${failed}**\n${errors.map(e => `• ${e}`).join("\n")}` : "") +
-        `\n\nRemove with \`/sets_admin unload set:${setName}\` \u00b7 See all with \`/sets_admin listloaded\`.`,
+        `\n\nRemove with \`/set_admin unload set:${setName}\` \u00b7 See all with \`/set_admin listloaded\`.`,
       );
     } catch (err: any) {
       await interaction.editReply(`❌ ${err?.message ?? "Import failed"}`);
@@ -670,18 +670,18 @@ export async function handleSetAdminCommand(interaction: ChatInputCommandInterac
     if (setName === DEFAULTS_SET_NAME) {
       const { removed } = await unloadDefaultCards(guildId);
       await interaction.editReply(
-        `✅ Removed **${removed}** built-in default cards.\nThey will **not** come back on restart. Re-load anytime with \`/sets_admin load file:<.json>\` or the \`/setup\` panel.`,
+        `✅ Removed **${removed}** built-in default cards.\nThey will **not** come back on restart. Re-load anytime with \`/set_admin load file:<.json>\` or the \`/setup\` panel.`,
       );
       return;
     }
       const { removed } = await deleteSetByName(setName, guildId);
     if (removed === 0) {
-      await interaction.editReply(`❌ No set named \`${setName}\`. Try \`/sets_admin listloaded\`.`);
+      await interaction.editReply(`❌ No set named \`${setName}\`. Try \`/set_admin listloaded\`.`);
       return;
     }
     await interaction.editReply(
       `✅ Unloaded set \`${setName}\` — removed **${removed}** cards and cleared related collections/trades/spawn history.\n` +
-      `💡 Non-destructive alternative: \`/sets_admin delete name:${setName}\` only removes memberships and keeps cards.`,
+      `💡 Non-destructive alternative: \`/set_admin delete name:${setName}\` only removes memberships and keeps cards.`,
     );
     return;
   }
@@ -697,7 +697,7 @@ export async function handleSetAdminCommand(interaction: ChatInputCommandInterac
     const lines = sets.map(s => `• \`${s.setName}\` — **${s.cardCount}** cards`);
     await interaction.editReply(
       `📦 **Loaded card sets** (${sets.length})\n${lines.join("\n")}\n\n` +
-      `Load: \`/sets_admin load file:<.json>\` · Unload: \`/sets_admin unload set:<name>\``,
+      `Load: \`/set_admin load file:<.json>\` · Unload: \`/set_admin unload set:<name>\``,
     );
     return;
   }

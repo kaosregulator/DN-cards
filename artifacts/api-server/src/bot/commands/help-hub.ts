@@ -169,9 +169,8 @@ const PAGES: Record<HelpSection, PageFn> = {
           "`/frame` — equip a cosmetic frame on a card\n" +
           "`/lock name:<card>` — lock/favorite a card so it's safe from bulk burns" },
         { name: "🗂️ Card Sets", value:
-          "`/sets list` — every set + how many cards each has\n" +
-          "`/sets active` — which set is currently spawning\n" +
-          "`/sets view set:<…>` — browse a set · `/sets progress set:<…> [user]` — your completion" },
+          "`/set_hub` — browse every set, see which one is active, and check your completion\n" +
+          "Click any set in the panel for full details and progress." },
         { name: `✨ ${shiny} Cards`, value:
           `Every catch, pack pull, and trade-in has a **0.5%** chance to mint a ${shiny} card — tracked separately and worth more on burn.` },
       );
@@ -328,7 +327,7 @@ const PAGES: Record<HelpSection, PageFn> = {
           "`/give` / `takeback` (cards) · `/give_shards` / `takeshards`\n" +
           "`/event start card:<…> duration:<…> [multiplier]` · `/event list` · `/event stop id:<…>`" },
         { name: "🗂️ Cards & Sets", value:
-          "`/set_hub` — clickable set manager · `/sets_admin …` — typed set commands\n" +
+          "`/set_hub` — clickable set manager · `/set_admin …` — typed set commands\n" +
           "`!addcard` / `!editcard <Name>` / `!import` — card creation & editing (prefix commands)\n" +
           "`/rarity …` — rarity names, colors, worth, burn, weights" },
         { name: "🎨 Appearance & Embeds", value:

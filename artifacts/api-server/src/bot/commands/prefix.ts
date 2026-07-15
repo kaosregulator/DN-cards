@@ -112,7 +112,7 @@ export async function handlePrefixCommand(msg: Message, prefix: string): Promise
     return;
   }
 
-  // ── !unloaddefaults / !loaddefaults — kept as aliases; prefer /sets_admin load/unload
+  // ── !unloaddefaults / !loaddefaults — kept as aliases; prefer /set_admin load/unload
   // Per-server: loadDefaultCards/unloadDefaultCards write ONLY to the current
   // guild's cards + sets (guildId scoped). Any server's admin can seed its own
   // copy of the 120 default cards; it never touches another server's roster.
@@ -120,7 +120,7 @@ export async function handlePrefixCommand(msg: Message, prefix: string): Promise
     if (!await checkAdmin(msg)) return;
     const { removed } = await unloadDefaultCards(guildId);
     await msg.reply(
-      `✅ Removed **${removed}** built-in default cards. Re-load anytime from \`${prefix}setup\` or \`/sets_admin load file:<.json>\`.`
+      `✅ Removed **${removed}** built-in default cards. Re-load anytime from \`${prefix}setup\` or \`/set_admin\` -> load file:<.json>.`
     );
     return;
   }
@@ -130,7 +130,7 @@ export async function handlePrefixCommand(msg: Message, prefix: string): Promise
     await msg.reply(
       `✅ Added **${added}** default cards back.` +
       (skipped > 0 ? ` ⏭️ Skipped **${skipped}** already in roster.` : "") +
-      ` Tip: \`/sets_admin load file:<.json>\` is the slash-command version.`,
+      ` Tip: use \`/set_admin\` -> load file:<.json> for the slash-command version.`,
     );
     return;
   }

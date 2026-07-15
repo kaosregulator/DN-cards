@@ -100,7 +100,7 @@ export async function handleSetupButton(interaction: ButtonInteraction): Promise
     await interaction.followUp({
       content: `📦 Loaded the built-in roster — added **${added}** cards` +
         (skipped > 0 ? ` (skipped **${skipped}** already in your roster).` : ".") +
-        `\nRemove anytime with **🗑️ Remove Defaults** or \`${settings.commandPrefix}unloaddefaults\` / \`/sets_admin unload set:${DEFAULTS_SET_NAME}\`.`,
+        `\nRemove anytime with **🗑️ Remove Defaults** or \`${settings.commandPrefix}unloaddefaults\` / \`/set_admin\` → unload set:${DEFAULTS_SET_NAME}\`.`,
       flags: MessageFlags.Ephemeral,
     }).catch(() => {});
     return;

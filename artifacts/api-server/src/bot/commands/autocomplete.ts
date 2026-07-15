@@ -152,16 +152,11 @@ export async function handleAutocomplete(interaction: AutocompleteInteraction): 
       return;
     }
 
-    // ── Set-name autocomplete for /sets, /drop, /mass_drop ───────────────────
-    // Any string option named `set`, `from`, `to`, or `name` on these two
-    // commands resolves to a set picker (except /sets_admin create, which takes
-    // a new name — but that's not autocompleted so it won't reach here).
-    // /drop and /mass_drop have `name` = card name, `set` = set name
-    // /sets_admin has `name` = set name (rename/delete/view), `set`/`from`/`to` = set name
-    // /sets has `name` = set name (view/progress); /add_card has `set` = set name
+    // ── Set-name autocomplete for /drop, /mass_drop, /add_card, /create_card_from_mttv ─────
+    // Any string option named `set` on these commands resolves to a set picker.
+    // /drop and /mass_drop have `name` = card name, `set` = set name.
+    // /add_card and /create_card_from_mttv have `set` = set name.
     const isSetNameOption =
-      (cmd === "sets" && focused.name === "name") ||
-      (cmd === "setadmin" && ["name", "set", "from", "to"].includes(focused.name)) ||
       (cmd === "drop" && focused.name === "set") ||
       (cmd === "massdrop" && focused.name === "set") ||
       (cmd === "addcard" && focused.name === "set") ||

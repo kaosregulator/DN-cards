@@ -15,7 +15,7 @@ export interface ImportResult {
 }
 
 // Reusable importer — feeds the !import prefix command, /loadset, and roundtrip
-// imports from /sets_admin export*. Accepts three JSON shapes (all back-compat):
+// imports from /set_admin export*. Accepts three JSON shapes (all back-compat):
 //   • Flat array      — { cards: [...] }                      (legacy)
 //   • Single-set obj  — { set: { name, description?, rarityWeights? }, cards: [...] }
 //   • Multi-set bundle — { exportedAt?, sets: [ {set, cards}, ... ] }
@@ -256,7 +256,7 @@ export async function handleImport(msg: Message): Promise<void> {
     `➕ Created: **${created}**\n` +
     `⏭️ Skipped (already exist): **${skipped}**\n` +
     (failed > 0 ? `❌ Failed: **${failed}**\n${errors.map(e => `• ${e}`).join("\n")}\n\n` : "\n") +
-    `Use \`/sets_admin unload set:${setName}\` to remove this set later.\n` +
+    `Use \`/set_admin unload set:${setName}\` to remove this set later.\n` +
     `Use \`/edit_card name:<card>\` to tweak any card after import.`
 
   try { await status.edit(summary); } catch { await msg.reply(summary); }
