@@ -8,4 +8,3 @@ export { renderPackOpening } from "./pack.js";
 export { renderBattleTurn, renderBattleVictory } from "./battle.js";
 export type { AnimationSettings, AnimationSpeed, AnimationResult } from "./types.js";
 export type { PackAnimationInput, BattleAnimationInput, VictoryAnimationInput } from "./types.js";
-export { msPerFrame } from "./engine.js";

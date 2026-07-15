@@ -27,17 +27,23 @@ export async function renderPackOpening(
   input: PackAnimationInput,
   speed: AnimationSpeed,
 ): Promise<AnimationResult | null> {
-  return encodeAnimation(
-    PACK_CANVAS.width,
-    PACK_CANVAS.height,
+  return encodeAnimation({
+    width: PACK_CANVAS.width,
+    height: PACK_CANVAS.height,
     speed,
-    totalDurationMs(input.cards.length),
-    (frame) => renderPackFrame(frame, input),
-  );
+    durationMs: totalDurationMs(input.cards.length),
+    // Optimization budget: cap frames, render at 0.72× resolution, and use a
+    // coarser palette. Gradients/particles compress poorly, so these keep even
+    // large multi-card opens comfortably under Discord's 8MB limit.
+    maxFrames: 30,
+    quality: 18,
+    renderScale: 0.72,
+    render: (frame) => renderPackFrame(frame, input),
+  });
 }
 
 function totalDurationMs(cardCount: number): number {
-  return 2000 + cardCount * 900;
+  return 1500 + cardCount * 550;
 }
 
 function renderPackFrame(

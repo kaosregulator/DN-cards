@@ -15,43 +15,62 @@ import {
 } from "./effects.js";
 import { extractArtColor } from "../battle/image/vibrant-color.js";
 
+// Vibrant colour extraction loads + quantizes the art, so resolve it once per
+// combatant up-front rather than on every frame. Falls back to the card's
+// rarity colour when extraction yields nothing.
+async function resolveColor(card: RenderCard): Promise<number> {
+  return (await extractArtColor(card.artUrl)) ?? card.rarityColor ?? getRarityEffectColor(card.rarity);
+}
+
 export async function renderBattleTurn(
   input: BattleAnimationInput,
   speed: AnimationSpeed,
 ): Promise<AnimationResult | null> {
-  return encodeAnimation(
-    BATTLE_CANVAS.width,
-    BATTLE_CANVAS.height,
+  const [colorA, colorB] = await Promise.all([
+    resolveColor(input.attacker),
+    resolveColor(input.defender),
+  ]);
+  return encodeAnimation({
+    width: BATTLE_CANVAS.width,
+    height: BATTLE_CANVAS.height,
     speed,
-    1800,
-    (frame) => renderBattleTurnFrame(frame, input),
-  );
+    durationMs: 1800,
+    maxFrames: 24,
+    quality: 15,
+    renderScale: 0.78,
+    render: (frame) => renderBattleTurnFrame(frame, input, colorA, colorB),
+  });
 }
 
 export async function renderBattleVictory(
   input: VictoryAnimationInput,
   speed: AnimationSpeed,
 ): Promise<AnimationResult | null> {
-  return encodeAnimation(
-    BATTLE_CANVAS.width,
-    BATTLE_CANVAS.height,
+  const [colorA, colorB] = await Promise.all([
+    resolveColor(input.winner),
+    resolveColor(input.loser),
+  ]);
+  return encodeAnimation({
+    width: BATTLE_CANVAS.width,
+    height: BATTLE_CANVAS.height,
     speed,
-    2200,
-    (frame) => renderVictoryFrame(frame, input),
-  );
+    durationMs: 2000,
+    maxFrames: 26,
+    quality: 16,
+    renderScale: 0.78,
+    render: (frame) => renderVictoryFrame(frame, input, colorA, colorB),
+  });
 }
 
 async function renderBattleTurnFrame(
   frame: import("./engine.js").FrameCtx,
   input: BattleAnimationInput,
+  colorA: number,
+  colorB: number,
 ): Promise<void> {
   const { ctx, t, mod } = frame;
   const { width, height } = BATTLE_CANVAS;
 
-  const colorA = (await extractArtColor(input.attacker.artUrl))
-    ?? (input.attacker.rarityColor ?? getRarityEffectColor(input.attacker.rarity));
-  const colorB = (await extractArtColor(input.defender.artUrl))
-    ?? (input.defender.rarityColor ?? getRarityEffectColor(input.defender.rarity));
   const bg = undefined; // use vibrant blend
 
   // Draw the battlefield background.
@@ -131,13 +150,11 @@ async function renderBattleTurnFrame(
 async function renderVictoryFrame(
   frame: import("./engine.js").FrameCtx,
   input: VictoryAnimationInput,
+  colorA: number,
+  colorB: number,
 ): Promise<void> {
   const { ctx, t, mod } = frame;
   const { width, height } = BATTLE_CANVAS;
-  const colorA = (await extractArtColor(input.winner.artUrl))
-    ?? (input.winner.rarityColor ?? getRarityEffectColor(input.winner.rarity));
-  const colorB = (await extractArtColor(input.loser.artUrl))
-    ?? (input.loser.rarityColor ?? getRarityEffectColor(input.loser.rarity));
   drawBattleBackground(ctx, width, height, colorA, colorB, undefined);
 
   const winnerBox = { x: 220, y: 50, w: 420, h: 440 };

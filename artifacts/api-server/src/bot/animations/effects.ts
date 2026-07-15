@@ -234,13 +234,25 @@ export function drawTextWithShadow(
   ctx.restore();
 }
 
-export async function loadArt(mod: CanvasMod, url: string | null | undefined): Promise<import("@napi-rs/canvas").Image | null> {
+// Small LRU-ish cache of decoded card art. Every animation frame draws the same
+// handful of card images, so without this we'd re-download + re-decode the same
+// URL dozens of times per GIF. Keyed by URL; capped so it can't grow unbounded.
+type LoadedImage = import("@napi-rs/canvas").Image;
+const ART_CACHE_MAX = 128;
+const artCache = new Map<string, Promise<LoadedImage | null>>();
+
+export async function loadArt(mod: CanvasMod, url: string | null | undefined): Promise<LoadedImage | null> {
   if (!url) return null;
-  try {
-    return await mod.loadImage(url);
-  } catch {
-    return null;
+  const cached = artCache.get(url);
+  if (cached) return cached;
+  const promise = mod.loadImage(url).catch(() => null);
+  artCache.set(url, promise);
+  // Evict oldest insertion once over capacity (Map preserves insertion order).
+  if (artCache.size > ART_CACHE_MAX) {
+    const oldest = artCache.keys().next().value;
+    if (oldest !== undefined) artCache.delete(oldest);
   }
+  return promise;
 }
 
 export async function drawCardArt(

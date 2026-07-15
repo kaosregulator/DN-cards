@@ -22,6 +22,7 @@ export type Ctx = SKRSContext2D & {
   transform(a: number, b: number, c: number, d: number, e: number, f: number): void;
   setTransform(a: number, b: number, c: number, d: number, e: number, f: number): void;
   quadraticCurveTo(cpx: number, cpy: number, x: number, y: number): void;
+  getImageData(sx: number, sy: number, sw: number, sh: number): { data: Uint8ClampedArray };
 };
 
 // Horizontal text alignment values accepted by the napi-rs 2D context. Declared
@@ -50,16 +51,34 @@ export async function getCanvas(): Promise<CanvasMod | null> {
   return _canvas;
 }
 
-export function msPerFrame(speed: AnimationSpeed): number {
+// Target frame rate per speed preset. Lower fps → fewer frames → much smaller
+// GIFs (gifencoder writes every frame in full, so frame count is the dominant
+// size lever). These are deliberately modest: 10–14fps reads as smooth for the
+// short, punchy clips we produce while keeping files small.
+function targetFps(speed: AnimationSpeed): number {
   switch (speed) {
-    case "slow": return 160;
-    case "fast": return 60;
-    default: return 100;
+    case "slow": return 10;
+    case "fast": return 14;
+    default: return 12;
   }
 }
 
-export function framesForDurationMs(durationMs: number, speed: AnimationSpeed): number {
-  return Math.max(2, Math.round(durationMs / msPerFrame(speed)));
+export interface FramePlan {
+  frameCount: number;
+  delayMs: number;      // per-frame display delay (multiple of 10ms — GIF granularity)
+}
+
+// Adaptive frame timing: derive a frame count from the requested duration and
+// target fps, then hard-cap it at `maxFrames` and stretch the per-frame delay to
+// preserve the intended wall-clock duration. This keeps long animations from
+// ballooning in size while short ones stay smooth.
+export function planFrames(durationMs: number, speed: AnimationSpeed, maxFrames: number): FramePlan {
+  const fps = targetFps(speed);
+  const ideal = Math.round((durationMs / 1000) * fps);
+  const frameCount = Math.max(2, Math.min(maxFrames, ideal));
+  // GIF delays are stored in centiseconds; round to 10ms and clamp to a sane floor.
+  const delayMs = Math.max(20, Math.round(durationMs / frameCount / 10) * 10);
+  return { frameCount, delayMs };
 }
 
 export interface FrameCtx {
@@ -71,32 +90,72 @@ export interface FrameCtx {
   mod: CanvasMod;
 }
 
-export async function encodeAnimation(
-  width: number,
-  height: number,
-  speed: AnimationSpeed,
-  durationMs: number,
-  render: (frame: FrameCtx) => Promise<void> | void,
-): Promise<AnimationResult | null> {
+export interface EncodeOptions {
+  width: number;        // logical drawing width (renderer coordinate space)
+  height: number;       // logical drawing height
+  speed: AnimationSpeed;
+  durationMs: number;
+  render: (frame: FrameCtx) => Promise<void> | void;
+  maxFrames?: number;   // hard cap on frame count (size guard)
+  quality?: number;     // gifencoder NeuQuant sample factor: 1 best/slow … 30 coarse/small
+  renderScale?: number; // physical pixels per logical unit (<1 shrinks output, 0 renderer changes)
+}
+
+// Cheap FNV-1a hash over a subsample of the frame's pixels. Used only to detect
+// *identical* consecutive frames for coalescing; a rare hash collision would at
+// worst merge two truly-different frames, so subsampling is safe.
+function frameSignature(ctx: Ctx, physW: number, physH: number): number {
+  const data = ctx.getImageData(0, 0, physW, physH).data;
+  let h = 0x811c9dc5;
+  // Step by a prime so the sample walks across scanlines, not down one column.
+  for (let k = 0; k < data.length; k += 389) {
+    h = Math.imul(h ^ data[k]!, 0x01000193);
+  }
+  return h >>> 0;
+}
+
+export async function encodeAnimation(opts: EncodeOptions): Promise<AnimationResult | null> {
   const mod = await getCanvas();
   if (!mod) return null;
+  const {
+    width, height, speed, durationMs, render,
+    maxFrames = 32, quality = 16, renderScale = 1,
+  } = opts;
   try {
-    const delay = msPerFrame(speed);
-    const frameCount = framesForDurationMs(durationMs, speed);
-    const encoder = new GIFEncoder(width, height);
-    encoder.start();
-    encoder.setRepeat(0);       // loop forever
-    encoder.setDelay(delay);    // ms per frame
-    encoder.setQuality(10);     // 1-30, lower = better but slower
+    const { frameCount, delayMs } = planFrames(durationMs, speed, maxFrames);
+    const physW = Math.max(1, Math.round(width * renderScale));
+    const physH = Math.max(1, Math.round(height * renderScale));
 
+    // Render every frame up-front, tagging each with a pixel signature so we can
+    // drop duplicate consecutive frames (idle/hold phases) before encoding.
+    const frames: { ctx: Ctx; sig: number }[] = [];
     for (let i = 0; i < frameCount; i++) {
-      const canvas = mod.createCanvas(width, height);
+      const canvas = mod.createCanvas(physW, physH);
       const ctx = canvas.getContext("2d") as unknown as Ctx;
+      if (renderScale !== 1) ctx.scale(renderScale, renderScale);
       const t = frameCount <= 1 ? 1 : i / (frameCount - 1);
       await render({ canvas, ctx, t, frameIndex: i, frameCount, mod });
-      encoder.addFrame(ctx);
+      frames.push({ ctx, sig: frameSignature(ctx, physW, physH) });
+    }
+
+    const encoder = new GIFEncoder(physW, physH);
+    encoder.start();
+    encoder.setRepeat(0);        // loop forever
+    encoder.setQuality(quality); // higher = coarser palette = smaller file
+
+    // Coalesce runs of identical frames into a single frame with a summed delay.
+    let emitted = 0;
+    let i = 0;
+    while (i < frames.length) {
+      let j = i + 1;
+      while (j < frames.length && frames[j]!.sig === frames[i]!.sig) j++;
+      encoder.setDelay(delayMs * (j - i));
+      encoder.addFrame(frames[i]!.ctx);
+      emitted++;
+      i = j;
     }
     encoder.finish();
+
     const buffer = encoder.out.getData();
     if (buffer.length > MAX_ANIMATION_BYTES) {
       logger.debug(
@@ -107,10 +166,10 @@ export async function encodeAnimation(
     }
     return {
       buffer,
-      width,
-      height,
-      frameCount,
-      durationMs: frameCount * delay,
+      width: physW,
+      height: physH,
+      frameCount: emitted,
+      durationMs: frameCount * delayMs,
     };
   } catch (err) {
     logger.error({ err }, "animation engine: encode failed");
