@@ -504,6 +504,12 @@ export async function handleAdminCommand(
     return;
   }
 
+  if (cmd === "massrole") {
+    const { handleMassRoleCommand } = await import("./mass-role.js");
+    await handleMassRoleCommand(interaction);
+    return;
+  }
+
   await interaction.editReply("❌ Unknown command.");
 }
 
