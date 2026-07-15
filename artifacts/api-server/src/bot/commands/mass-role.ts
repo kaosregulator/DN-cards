@@ -25,7 +25,10 @@ export async function handleMassRoleCommand(
   if (!interaction.guild) return;
 
   // ACK immediately — member fetching + role changes can easily exceed 3s.
-  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+  // Guard against already-acknowledged interactions (double-tap / gateway redelivery).
+  if (!interaction.deferred && !interaction.replied) {
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+  }
 
   if (!(await checkAdmin(interaction))) {
     await interaction.editReply("❌ Admins only.");
