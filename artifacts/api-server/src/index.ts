@@ -59,6 +59,25 @@ async function runBootMigrations() {
   `);
   await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS showcase_backgrounds_guild_slot_idx ON showcase_backgrounds (guild_id, slot)`);
 
+  // Unified account-level progression (Player XP). Purely additive — existing
+  // progression tables (card_progress, battle_profiles, user_currency, quests,
+  // reputation, …) are untouched; this only stores the new account-wide level
+  // that every activity feeds via the PlayerProfile service.
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS player_progression (
+      id SERIAL PRIMARY KEY,
+      guild_id TEXT NOT NULL,
+      user_id TEXT NOT NULL,
+      xp INTEGER NOT NULL DEFAULT 0,
+      level INTEGER NOT NULL DEFAULT 1,
+      xp_by_source JSONB NOT NULL DEFAULT '{}'::jsonb,
+      collection_milestone INTEGER NOT NULL DEFAULT 0,
+      created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
+      UNIQUE (guild_id, user_id)
+    )
+  `);
+  await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS player_progression_guild_user_uniq ON player_progression (guild_id, user_id)`);
   // Animation system configuration toggles (default ON, normal speed).
   await pool.query(`ALTER TABLE guild_settings ADD COLUMN IF NOT EXISTS pack_animation_enabled boolean NOT NULL DEFAULT true`);
   await pool.query(`ALTER TABLE guild_settings ADD COLUMN IF NOT EXISTS battle_animation_enabled boolean NOT NULL DEFAULT true`);

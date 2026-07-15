@@ -103,6 +103,12 @@ export async function claimDailyReward(
   const reward = BASE_REWARD + bonus;
   await addShards(guildId, userId, reward);
 
+  // Unified account XP: one award per successful daily claim (best-effort).
+  try {
+    const { awardPlayerXp, XP } = await import("../player/xp.js");
+    await awardPlayerXp(guildId, userId, "daily", XP.daily);
+  } catch { /* non-fatal */ }
+
   // ── Login-calendar milestone bonus ─────────────────────────────────────────
   const { cycleDay, milestoneFor } = await import("../cards/calendar.js");
   const calDay = cycleDay(newStreak);

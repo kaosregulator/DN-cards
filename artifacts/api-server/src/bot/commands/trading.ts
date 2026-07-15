@@ -281,6 +281,15 @@ export async function handleTradeButton(interaction: ButtonInteraction, action: 
     components: [],
   }).catch(() => { /* may be deleted */ });
 
+  // Unified account XP: a completed trade rewards both participants (best-effort).
+  try {
+    const { awardPlayerXp, XP } = await import("../player/xp.js");
+    await Promise.all([
+      awardPlayerXp(trade.guildId, trade.initiatorId, "trade", XP.trade),
+      awardPlayerXp(trade.guildId, trade.targetId, "trade", XP.trade),
+    ]);
+  } catch { /* non-fatal */ }
+
   // Achievements
   try {
     const { checkAchievements, formatUnlockLine } = await import("../achievements.js");

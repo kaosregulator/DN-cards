@@ -212,7 +212,13 @@ export async function recordQuestEvent(
       applyToPeriod(guildId, userId, "daily", dailyKey(), type, amount, rarity),
       applyToPeriod(guildId, userId, "weekly", weeklyKey(), type, amount, rarity),
     ]);
-    return [...d, ...w];
+    const completed = [...d, ...w];
+    // Unified account XP: one award per quest completed (best-effort).
+    if (completed.length > 0) {
+      const { awardPlayerXp, XP } = await import("../player/xp.js");
+      await awardPlayerXp(guildId, userId, "quest", XP.quest * completed.length);
+    }
+    return completed;
   } catch (err) {
     logger.warn({ err, guildId, userId, type }, "recordQuestEvent failed (non-fatal)");
     return [];

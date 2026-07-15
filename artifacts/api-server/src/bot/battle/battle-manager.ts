@@ -788,7 +788,8 @@ async function finishBattle(rt: BattleRuntime, winnerSide: 0 | 1 | null, reason:
     outcomes = res.outcomes;
     levelUps = res.levelUps;
 
-    // Daily challenge progress for humans.
+    // Daily challenge progress + unified account XP for humans.
+    const { awardPlayerXp, XP } = await import("../player/xp.js");
     for (const side of [0, 1] as const) {
       const c = side === 0 ? a : b;
       if (c.isAi) continue;
@@ -797,6 +798,7 @@ async function finishBattle(rt: BattleRuntime, winnerSide: 0 | 1 | null, reason:
         perfect: winnerId === c.userId && rt.dmg[foeSide(side)] === 0,
         cardRarity: c.cardRarity, crits: rt.crits[side],
       }).catch(() => {});
+      await awardPlayerXp(rt.guildId, c.userId, "battle", winnerId === c.userId ? XP.battleWin : XP.battleLoss);
     }
   } catch (err) {
     logger.error({ err, battleId: rt.id }, "reward processing failed");
