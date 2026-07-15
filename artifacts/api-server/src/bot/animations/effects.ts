@@ -5,7 +5,7 @@
 import type { Rarity } from "../cards-data.js";
 import {
   hexToRgba, roundRectPath, lerp, easeOutBack, easeInOutCubic, easeOutElastic,
-  clamp01, type CanvasMod,
+  clamp01, type CanvasMod, type Ctx, type TextAlign,
 } from "./engine.js";
 
 export interface Particle {
@@ -52,7 +52,7 @@ export function updateParticles(particles: Particle[]): Particle[] {
   return alive;
 }
 
-export function drawParticles(ctx: CanvasRenderingContext2D, particles: Particle[]): void {
+export function drawParticles(ctx: Ctx, particles: Particle[]): void {
   for (const p of particles) {
     ctx.globalAlpha = Math.max(0, p.life);
     ctx.fillStyle = p.color;
@@ -64,7 +64,7 @@ export function drawParticles(ctx: CanvasRenderingContext2D, particles: Particle
 }
 
 export function drawRarityGlow(
-  ctx: CanvasRenderingContext2D,
+  ctx: Ctx,
   x: number, y: number, w: number, h: number,
   color: number, intensity: number,
 ): void {
@@ -79,7 +79,7 @@ export function drawRarityGlow(
 }
 
 export function drawFoilOverlay(
-  ctx: CanvasRenderingContext2D,
+  ctx: Ctx,
   x: number, y: number, w: number, h: number,
   t: number,
 ): void {
@@ -103,7 +103,7 @@ export function drawFoilOverlay(
 }
 
 export function drawHoloSparkles(
-  ctx: CanvasRenderingContext2D,
+  ctx: Ctx,
   x: number, y: number, w: number, h: number,
   t: number, density = 12,
 ): void {
@@ -126,7 +126,7 @@ export function drawHoloSparkles(
 }
 
 export function drawDamageNumber(
-  ctx: CanvasRenderingContext2D,
+  ctx: Ctx,
   amount: number, x: number, y: number,
   t: number, crit = false, miss = false,
 ): void {
@@ -151,7 +151,7 @@ export function drawDamageNumber(
 }
 
 export function drawHealthBar(
-  ctx: CanvasRenderingContext2D,
+  ctx: Ctx,
   x: number, y: number, width: number, height: number,
   current: number, max: number, color: number,
   t: number, previousCurrent: number,
@@ -176,7 +176,7 @@ export function drawHealthBar(
 }
 
 export function drawScreenFlash(
-  ctx: CanvasRenderingContext2D,
+  ctx: Ctx,
   width: number, height: number,
   t: number, color: number,
 ): void {
@@ -187,7 +187,7 @@ export function drawScreenFlash(
 }
 
 export function drawShineSweep(
-  ctx: CanvasRenderingContext2D,
+  ctx: Ctx,
   x: number, y: number, w: number, h: number,
   t: number, color: number,
 ): void {
@@ -205,7 +205,7 @@ export function drawShineSweep(
 }
 
 export function fitText(
-  ctx: CanvasRenderingContext2D,
+  ctx: Ctx,
   text: string,
   maxWidth: number,
   maxPx: number,
@@ -218,10 +218,10 @@ export function fitText(
 }
 
 export function drawTextWithShadow(
-  ctx: CanvasRenderingContext2D,
+  ctx: Ctx,
   text: string,
   x: number, y: number,
-  color: string, fontSize: number, align: CanvasTextAlign = "center",
+  color: string, fontSize: number, align: TextAlign = "center",
 ): void {
   ctx.save();
   ctx.textAlign = align;
@@ -244,7 +244,7 @@ export async function loadArt(mod: CanvasMod, url: string | null | undefined): P
 }
 
 export async function drawCardArt(
-  ctx: CanvasRenderingContext2D,
+  ctx: Ctx,
   mod: CanvasMod,
   x: number, y: number, w: number, h: number,
   artUrl: string | null | undefined,
@@ -264,7 +264,7 @@ export async function drawCardArt(
 }
 
 export function drawCardFrame(
-  ctx: CanvasRenderingContext2D,
+  ctx: Ctx,
   x: number, y: number, w: number, h: number,
   color: number, thickness = 6,
 ): void {
@@ -281,7 +281,7 @@ export function drawCardFrame(
 }
 
 export function drawRarityBadge(
-  ctx: CanvasRenderingContext2D,
+  ctx: Ctx,
   x: number, y: number, label: string, color: number,
 ): void {
   ctx.save();

@@ -387,7 +387,7 @@ function speedLabel(ms: number): string {
   return `${best.emoji} ${best.label.replace(/ \(.*\)$/, "")}`;
 }
 
-function buildHubComponents(s?: { frameDelayMs: number }): ActionRowBuilder<any>[] {
+function buildHubComponents(s?: { frameDelayMs: number; battleAnimationSpeed?: string }): ActionRowBuilder<any>[] {
   const row1 = new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder().setCustomId("battleadmin:wizard").setLabel("Setup Wizard").setEmoji("🚀").setStyle(ButtonStyle.Success),
     new ButtonBuilder().setCustomId("battleadmin:toggle").setLabel("Enable/Disable").setEmoji("🔀").setStyle(ButtonStyle.Secondary),

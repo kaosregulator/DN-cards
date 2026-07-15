@@ -6,25 +6,14 @@ import type { RenderCard } from "../battle/image/render.js";
 import type { BattleAnimationInput, VictoryAnimationInput, AnimationSpeed, AnimationResult } from "./types.js";
 import {
   encodeAnimation, BATTLE_CANVAS, lerp, easeOutBack, easeInOutCubic, clamp01,
-  hexToRgba, drawGradientBackground, type CanvasMod,
+  hexToRgba, drawGradientBackground, roundRectPath, type CanvasMod, type Ctx,
 } from "./engine.js";
 import {
-  createBurst, updateParticles, drawParticles, drawDamageNumber, drawHealthBar,
-  drawScreenFlash, drawRarityGlow, drawCardArt, drawCardFrame, drawTextWithShadow,
-  fitText, getRarityEffectColor,
+  createBurst, drawParticles, drawDamageNumber, drawHealthBar,
+  drawScreenFlash, drawRarityGlow, drawCardArt, drawCardFrame, drawRarityBadge,
+  drawTextWithShadow, fitText, getRarityEffectColor,
 } from "./effects.js";
-import {
-  CANVAS as VS_CANVAS, CARD_BOX, rarityHex, resolveBackground,
-} from "../battle/image/theme.js";
 import { extractArtColor } from "../battle/image/vibrant-color.js";
-import type { Rarity } from "../cards-data.js";
-
-interface BattleFrameState {
-  particles: import("./effects.js").Particle[];
-  colorA: number;
-  colorB: number;
-  bg: string | undefined;
-}
 
 export async function renderBattleTurn(
   input: BattleAnimationInput,
@@ -59,8 +48,10 @@ async function renderBattleTurnFrame(
   const { ctx, t, mod } = frame;
   const { width, height } = BATTLE_CANVAS;
 
-  const colorA = await extractArtColor(input.attacker.artUrl);
-  const colorB = await extractArtColor(input.defender.artUrl);
+  const colorA = (await extractArtColor(input.attacker.artUrl))
+    ?? (input.attacker.rarityColor ?? getRarityEffectColor(input.attacker.rarity));
+  const colorB = (await extractArtColor(input.defender.artUrl))
+    ?? (input.defender.rarityColor ?? getRarityEffectColor(input.defender.rarity));
   const bg = undefined; // use vibrant blend
 
   // Draw the battlefield background.
@@ -143,8 +134,10 @@ async function renderVictoryFrame(
 ): Promise<void> {
   const { ctx, t, mod } = frame;
   const { width, height } = BATTLE_CANVAS;
-  const colorA = await extractArtColor(input.winner.artUrl);
-  const colorB = await extractArtColor(input.loser.artUrl);
+  const colorA = (await extractArtColor(input.winner.artUrl))
+    ?? (input.winner.rarityColor ?? getRarityEffectColor(input.winner.rarity));
+  const colorB = (await extractArtColor(input.loser.artUrl))
+    ?? (input.loser.rarityColor ?? getRarityEffectColor(input.loser.rarity));
   drawBattleBackground(ctx, width, height, colorA, colorB, undefined);
 
   const winnerBox = { x: 220, y: 50, w: 420, h: 440 };
@@ -173,7 +166,7 @@ async function renderVictoryFrame(
 }
 
 function drawBattleBackground(
-  ctx: CanvasRenderingContext2D,
+  ctx: Ctx,
   width: number, height: number,
   colorA: number, colorB: number,
   bg?: string,
@@ -193,7 +186,7 @@ function drawBattleBackground(
 }
 
 async function drawBattleCard(
-  ctx: CanvasRenderingContext2D,
+  ctx: Ctx,
   mod: CanvasMod,
   x: number, y: number, w: number, h: number,
   card: RenderCard,

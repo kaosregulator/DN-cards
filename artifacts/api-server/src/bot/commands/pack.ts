@@ -1,5 +1,5 @@
 import type { ChatInputCommandInteraction } from "discord.js";
-import { EmbedBuilder, MessageFlags } from "discord.js";
+import { EmbedBuilder, MessageFlags, AttachmentBuilder } from "discord.js";
 import { db, userCurrencyTable, cardsTable } from "@workspace/db";
 import { and, eq, sql } from "drizzle-orm";
 import {
@@ -779,6 +779,13 @@ export async function handlePack(interaction: ChatInputCommandInteraction): Prom
   }
 
   if (granted < cards.length) cards.length = granted;
+
+  // Animation inputs: tier color + rarity display overrides so the GIF matches
+  // the summary embed. Overrides are only fetched when the animation is enabled.
+  const meta = tierMeta(settings, tier);
+  const displayMap = settings.packAnimationEnabled
+    ? await getRarityDisplayOverrides(guildId)
+    : null;
 
   const [summaryEmbed, animation] = await Promise.all([
     buildSummaryEmbed(tier, cards, shinies, cfg.cost, claim.shardsAfter, guildId, interaction.user.id),

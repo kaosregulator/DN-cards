@@ -169,6 +169,9 @@ export async function handleConfigButton(interaction: ButtonInteraction): Promis
   } else if (action === "toggle" && arg === "trade") {
     const s = await getOrCreateGuildSettings(guildId);
     await updateGuildSettings(guildId, { tradeEnabled: !s.tradeEnabled });
+  } else if (action === "toggle" && arg === "packanim") {
+    const s = await getOrCreateGuildSettings(guildId);
+    await updateGuildSettings(guildId, { packAnimationEnabled: !s.packAnimationEnabled });
   } else if (action === "channel" && arg === "spawn") {
     await updateGuildSettings(guildId, { spawnChannelId: interaction.channelId });
     scheduleNextSpawn(guildId);

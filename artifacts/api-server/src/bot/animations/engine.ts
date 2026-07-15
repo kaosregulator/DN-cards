@@ -3,14 +3,39 @@
 // commands that don't use animation.
 
 import GIFEncoder from "gifencoder";
-import type { Canvas } from "@napi-rs/canvas";
+import type { Canvas, SKRSContext2D } from "@napi-rs/canvas";
 import type { AnimationSpeed, AnimationResult } from "./types.js";
 import { logger } from "../../lib/logger.js";
 
 export type CanvasMod = typeof import("@napi-rs/canvas");
 
+// The 2D context type used across the animation system. Mirrors the existing
+// battle-image renderer, which types the napi-rs context rather than pulling in
+// the DOM lib. Kept as a single alias so effects/pack/battle stay consistent.
+//
+// The shipped @napi-rs/canvas declarations under-declare a few standard 2D
+// methods in this project's module resolution (scale/transform/setTransform/
+// quadraticCurveTo). They exist at runtime on the spec-complete Skia context,
+// so we re-declare them here to keep the animation code fully typed.
+export type Ctx = SKRSContext2D & {
+  scale(x: number, y: number): void;
+  transform(a: number, b: number, c: number, d: number, e: number, f: number): void;
+  setTransform(a: number, b: number, c: number, d: number, e: number, f: number): void;
+  quadraticCurveTo(cpx: number, cpy: number, x: number, y: number): void;
+};
+
+// Horizontal text alignment values accepted by the napi-rs 2D context. Declared
+// locally because the project intentionally excludes the DOM lib.
+export type TextAlign = "left" | "right" | "center" | "start" | "end";
+
 export const PACK_CANVAS = { width: 800, height: 520 } as const;
 export const BATTLE_CANVAS = { width: 1000, height: 560 } as const;
+
+// Discord's default (non-boosted) attachment limit is 8 MiB. Stay safely under
+// it: an animation that would exceed this is dropped (treated like an encode
+// failure) so the command still succeeds with its static embed instead of the
+// attach throwing after rewards were already granted.
+export const MAX_ANIMATION_BYTES = 8_000_000;
 
 let _canvas: CanvasMod | null | undefined;
 
@@ -39,7 +64,7 @@ export function framesForDurationMs(durationMs: number, speed: AnimationSpeed): 
 
 export interface FrameCtx {
   canvas: Canvas;
-  ctx: CanvasRenderingContext2D;
+  ctx: Ctx;
   t: number;          // 0 → 1 across the whole animation
   frameIndex: number;
   frameCount: number;
@@ -66,13 +91,20 @@ export async function encodeAnimation(
 
     for (let i = 0; i < frameCount; i++) {
       const canvas = mod.createCanvas(width, height);
-      const ctx = canvas.getContext("2d") as unknown as CanvasRenderingContext2D;
+      const ctx = canvas.getContext("2d") as unknown as Ctx;
       const t = frameCount <= 1 ? 1 : i / (frameCount - 1);
       await render({ canvas, ctx, t, frameIndex: i, frameCount, mod });
       encoder.addFrame(ctx);
     }
     encoder.finish();
     const buffer = encoder.out.getData();
+    if (buffer.length > MAX_ANIMATION_BYTES) {
+      logger.debug(
+        { bytes: buffer.length, max: MAX_ANIMATION_BYTES },
+        "animation engine: encoded GIF exceeds attachment limit, falling back to static",
+      );
+      return null;
+    }
     return {
       buffer,
       width,
@@ -117,25 +149,23 @@ export function hexToRgba(hex: number, alpha: number): string {
 }
 
 export function roundRectPath(
-  ctx: CanvasRenderingContext2D,
+  ctx: Ctx,
   x: number, y: number, w: number, h: number, r: number,
 ): void {
   const radius = Math.min(r, w / 2, h / 2);
+  // Uses arcTo (not quadraticCurveTo) to match the battle-image renderer, whose
+  // context type is the source of truth for what the napi-rs canvas exposes.
   ctx.beginPath();
   ctx.moveTo(x + radius, y);
-  ctx.lineTo(x + w - radius, y);
-  ctx.quadraticCurveTo(x + w, y, x + w, y + radius);
-  ctx.lineTo(x + w, y + h - radius);
-  ctx.quadraticCurveTo(x + w, y + h, x + w - radius, y + h);
-  ctx.lineTo(x + radius, y + h);
-  ctx.quadraticCurveTo(x, y + h, x, y + h - radius);
-  ctx.lineTo(x, y + radius);
-  ctx.quadraticCurveTo(x, y, x + radius, y);
+  ctx.arcTo(x + w, y, x + w, y + h, radius);
+  ctx.arcTo(x + w, y + h, x, y + h, radius);
+  ctx.arcTo(x, y + h, x, y, radius);
+  ctx.arcTo(x, y, x + w, y, radius);
   ctx.closePath();
 }
 
 export function drawGradientBackground(
-  ctx: CanvasRenderingContext2D,
+  ctx: Ctx,
   width: number,
   height: number,
   stops: [number, string][],
