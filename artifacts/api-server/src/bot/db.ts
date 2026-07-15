@@ -9,7 +9,7 @@ import {
   cardDisplayOverridesTable,
   setsTable, cardSetMembershipsTable,
   customPacksTable, customPackCardsTable, userCustomPackWeekTable,
-  calculatorMessagesTable,
+  calculatorMessagesTable, showcaseBackgroundsTable,
 } from "@workspace/db";
 import { eq, and, or, sql, desc, inArray, isNull, type SQL } from "drizzle-orm";
 import type { Card, CardEvent, CardSet, CalculatorMessage, CustomPack, CustomPackCard, CustomRarity, GuildSettings, RarityProfile, Trade } from "@workspace/db";
@@ -2361,4 +2361,34 @@ export async function refundCustomPackWeek(
      WHERE guild_id = $1 AND user_id = $2 AND pack_id = $3`,
     [guildId, userId, packId],
   );
+}
+
+// ── Showcase / Canvas Backgrounds ───────────────────────────────────────────
+// Up to 3 uploadable backgrounds per guild. The renderer picks one at random
+// when a /user-hub "Show Card" trophy is posted; an empty table falls back to
+// the built-in gradient.
+export async function getShowcaseBackgrounds(guildId: string): Promise<string[]> {
+  const rows = await db.select({ url: showcaseBackgroundsTable.url })
+    .from(showcaseBackgroundsTable)
+    .where(eq(showcaseBackgroundsTable.guildId, guildId))
+    .orderBy(showcaseBackgroundsTable.slot);
+  return rows.map(r => r.url);
+}
+
+export async function setShowcaseBackground(guildId: string, slot: 1 | 2 | 3, url: string, updatedBy?: string): Promise<void> {
+  await db.insert(showcaseBackgroundsTable)
+    .values({ guildId, slot, url, updatedBy: updatedBy ?? null })
+    .onConflictDoUpdate({
+      target: [showcaseBackgroundsTable.guildId, showcaseBackgroundsTable.slot],
+      set: { url, updatedBy: updatedBy ?? null },
+    });
+}
+
+export async function clearShowcaseBackground(guildId: string, slot: 1 | 2 | 3): Promise<void> {
+  await db.delete(showcaseBackgroundsTable)
+    .where(and(eq(showcaseBackgroundsTable.guildId, guildId), eq(showcaseBackgroundsTable.slot, slot)));
+}
+
+export async function clearAllShowcaseBackgrounds(guildId: string): Promise<void> {
+  await db.delete(showcaseBackgroundsTable).where(eq(showcaseBackgroundsTable.guildId, guildId));
 }

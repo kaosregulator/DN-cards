@@ -328,6 +328,8 @@ function buildLegacyCommands() {
     // ── /embed — owns ALL writes to embed_overrides. Replaces the old
     //              /admin/embeds dashboard page.
     adminCmd("embed", "Customize bot embeds — title, footer, color, image, etc.", s => s
+      .addSubcommand(sc => sc.setName("designer").setDescription("Visual embed designer with live preview and buttons")
+        .addAttachmentOption(o => o.setName("image").setDescription("Quick-upload a canvas/trophy background image")))
       .addSubcommand(sc => sc.setName("show").setDescription("Show current overrides for one embed")
         .addStringOption(o => o.setName("key").setDescription("Which embed").setRequired(true)
           .addChoices(

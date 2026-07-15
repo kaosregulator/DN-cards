@@ -247,6 +247,9 @@ export async function startBot() {
         } else if (interaction.customId.startsWith("user-hub:")) {
           const { handleUserHubComponent } = await import("./commands/user-hub.js");
           await handleUserHubComponent(interaction);
+        } else if (interaction.customId.startsWith("embed:")) {
+          const { handleEmbedDesignerComponent } = await import("./commands/embed-designer.js");
+          await handleEmbedDesignerComponent(interaction);
         } else if (interaction.customId.startsWith("market-hub:")) {
           const { handleMarketHubComponent } = await import("./commands/market-hub.js");
           await handleMarketHubComponent(interaction);
@@ -341,6 +344,9 @@ export async function startBot() {
         } else if (interaction.customId.startsWith("edituser:modal:")) {
           const { handleEditUserModal } = await import("./commands/edit-user.js");
           await handleEditUserModal(interaction);
+        } else if (interaction.customId.startsWith("embed:")) {
+          const { handleEmbedDesignerModal } = await import("./commands/embed-designer.js");
+          await handleEmbedDesignerModal(interaction);
         } else if (interaction.customId.startsWith("market-hub:modal:")) {
           const { handleMarketHubModal } = await import("./commands/market-hub.js");
           await handleMarketHubModal(interaction);
@@ -393,6 +399,13 @@ export async function startBot() {
         if (action === "squad-hub") {
           const { handleSquadHubComponent } = await import("./commands/squad-hub.js");
           await handleSquadHubComponent(interaction);
+          return;
+        }
+
+        // ── Embed designer buttons (visual embed customizer) ─────────────
+        if (action === "embed") {
+          const { handleEmbedDesignerComponent } = await import("./commands/embed-designer.js");
+          await handleEmbedDesignerComponent(interaction);
           return;
         }
 
