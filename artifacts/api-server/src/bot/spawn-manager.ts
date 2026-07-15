@@ -517,6 +517,10 @@ async function awardSpawn(guildId: string, spawnId: string, userId: string): Pro
       await recordQuestEvent(guildId, userId, "catch", 1, rarity);
       const { recordGiveawayEvent } = await import("./giveaway/engine.js");
       await recordGiveawayEvent(guildId, userId, "catch", 1, { rarity });
+      // Unified account XP: catching a card + any collection milestones crossed.
+      const { awardPlayerXp, awardCollectionMilestoneXp, XP } = await import("./player/xp.js");
+      await awardPlayerXp(guildId, userId, "catch", XP.catch);
+      await awardCollectionMilestoneXp(guildId, userId);
     } catch { /* non-fatal */ }
   })();
 

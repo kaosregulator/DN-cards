@@ -656,6 +656,13 @@ export async function handleCustomPack(
 
   await interaction.editReply({ embeds: [embed], components: [] });
 
+  // Unified account XP: one award per custom pack opened + collection milestones.
+  try {
+    const { awardPlayerXp, awardCollectionMilestoneXp, XP } = await import("../player/xp.js");
+    await awardPlayerXp(guildId, userId, "pack", XP.pack);
+    await awardCollectionMilestoneXp(guildId, userId);
+  } catch { /* non-fatal */ }
+
   const newly = await checkAchievements(guildId, userId);
   if (newly.length > 0) {
     await interaction.followUp({
@@ -765,6 +772,10 @@ export async function handlePack(interaction: ChatInputCommandInteraction): Prom
     for (const card of cards) {
       await recordGiveawayEvent(guildId, userId, "catch", 1, { rarity: card.rarity as Rarity });
     }
+    // Unified account XP: one award per pack opened + any collection milestones.
+    const { awardPlayerXp, awardCollectionMilestoneXp, XP } = await import("../player/xp.js");
+    await awardPlayerXp(guildId, userId, "pack", XP.pack);
+    await awardCollectionMilestoneXp(guildId, userId);
   } catch { /* non-fatal */ }
 
   const newly = await checkAchievements(guildId, userId);

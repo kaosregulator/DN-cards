@@ -187,6 +187,14 @@ export async function checkAchievements(
     }
   }
 
+  // Unified account XP: one award per newly-unlocked achievement (best-effort).
+  if (newly.length > 0) {
+    try {
+      const { awardPlayerXp, XP } = await import("./player/xp.js");
+      await awardPlayerXp(guildId, userId, "achievement", XP.achievement * newly.length);
+    } catch { /* non-fatal */ }
+  }
+
   return newly;
 }
 

@@ -40,16 +40,20 @@ import {
 import { getCardProgress, setEquippedFrame, starsForLevel } from "../cards/leveling.js";
 import { renderShowcaseImage } from "../battle/image/render.js";
 import { toAbsoluteImageUrl } from "../image-url.js";
+import { bar } from "../battle/embeds.js";
+import { getPlayerProfile } from "../player/profile.js";
+import type { XpSource } from "@workspace/db";
 
 const EPHEMERAL = { flags: MessageFlags.Ephemeral } as const;
 
 type Section =
-  | "profile" | "collection" | "battle-profile" | "battle-achievements"
+  | "progression" | "profile" | "collection" | "battle-profile" | "battle-achievements"
   | "daily" | "calendar" | "frames";
 
 interface SectionMeta { id: Section; label: string; emoji: string; description: string }
 
 const SECTIONS: SectionMeta[] = [
+  { id: "progression",         label: "Progression",         emoji: "🌟", description: "Your account level & XP across every activity" },
   { id: "profile",             label: "Collector Profile",   emoji: "👤", description: "Rank, net worth, achievements & standing" },
   { id: "collection",          label: "Collection",          emoji: "🃏", description: "Your owned cards by rarity" },
   { id: "battle-profile",      label: "Battle Profile",      emoji: "⚔️", description: "Your combat record & rank points" },
@@ -61,7 +65,7 @@ const SECTIONS: SectionMeta[] = [
 
 // ── Entry point ──────────────────────────────────────────────────────────────
 export async function handleUserHub(
-  interaction: ChatInputCommandInteraction, opening: Section = "profile",
+  interaction: ChatInputCommandInteraction, opening: Section = "progression",
 ): Promise<void> {
   if (!interaction.deferred && !interaction.replied) {
     await interaction.deferReply(EPHEMERAL).catch(() => {});
@@ -72,7 +76,7 @@ export async function handleUserHub(
 
 // Re-render the user-hub in place from a button (used by the sub-hubs' Back).
 export async function openUserHubFromButton(interaction: ButtonInteraction): Promise<void> {
-  const view = await buildView(interaction, "profile");
+  const view = await buildView(interaction, "progression");
   await interaction.update(view).catch(() => {});
 }
 
@@ -172,6 +176,9 @@ async function buildView(interaction: AnyInteraction, section: Section) {
   let embeds: EmbedBuilder[];
 
   switch (section) {
+    case "progression":
+      embeds = [await buildProgressionEmbed(guildId, userId, username, avatar)];
+      break;
     case "profile":
       embeds = [await buildProfileEmbed(guildId, userId, username, avatar)];
       break;
@@ -206,6 +213,90 @@ async function buildView(interaction: AnyInteraction, section: Section) {
   }
   rows.push(sideRow());
   return { embeds, components: rows };
+}
+
+// ── Unified progression ───────────────────────────────────────────────────────
+// The single "source of truth" overview: account level/XP fed by every activity,
+// plus a snapshot of each subsystem (read through the PlayerProfile aggregator,
+// which composes the existing tables — it does not duplicate any of them).
+const XP_SOURCE_LABELS: Record<XpSource, string> = {
+  catch: "🎯 Catching",
+  pack: "📦 Packs",
+  battle: "⚔️ Battles",
+  raid: "🐉 Raids",
+  trade: "🔁 Trades",
+  economy: "🏪 Market",
+  daily: "📅 Daily",
+  quest: "📜 Quests",
+  achievement: "🏆 Achievements",
+  reputation: "⭐ Reputation",
+  collection: "🃏 Collection",
+};
+
+async function buildProgressionEmbed(guildId: string, userId: string, username: string, avatar: string) {
+  const p = await getPlayerProfile(guildId, userId);
+  const { account } = p;
+
+  const levelLine = account.isMax
+    ? `**Level ${account.level}** · MAX 🎉  ·  ${account.xp.toLocaleString()} XP`
+    : `**Level ${account.level}**  ·  ${bar(account.into, account.needed, 12)}  ${account.into.toLocaleString()}/${account.needed.toLocaleString()} XP`;
+
+  // XP-by-source breakdown, highest first — shows every system contributes.
+  const bySource = Object.entries(account.xpBySource)
+    .filter(([, v]) => (v ?? 0) > 0)
+    .sort((a, b) => (b[1] ?? 0) - (a[1] ?? 0));
+  const breakdown = bySource.length
+    ? bySource.map(([src, v]) => `${XP_SOURCE_LABELS[src as XpSource] ?? src} — **${(v ?? 0).toLocaleString()}**`).join("\n")
+    : "_Play any activity — catch, packs, battles, raids, trades, market, daily, quests, achievements, reputation — to start earning account XP._";
+
+  const embed = new EmbedBuilder()
+    .setColor(0xf1c40f)
+    .setAuthor({ name: `${username} — Progression`, iconURL: avatar })
+    .setDescription(
+      `${levelLine}\n\n` +
+      `Every activity feeds one shared account level. Specialized progression ` +
+      `(card XP, battle rank) still applies on top.`,
+    )
+    .addFields(
+      {
+        name: "💠 Economy",
+        value: `${p.economy.shards.toLocaleString()} shards\n${p.economy.totalEarned.toLocaleString()} earned`,
+        inline: true,
+      },
+      {
+        name: "🃏 Collection",
+        value: `${p.collection.unique.toLocaleString()} unique\n${p.collection.total.toLocaleString()} total`,
+        inline: true,
+      },
+      {
+        name: "⚔️ Battles",
+        value: `${p.battles.wins}W / ${p.battles.losses}L\n${p.battles.rankPoints} RP · 🔥${p.battles.currentStreak}`,
+        inline: true,
+      },
+      {
+        name: "📜 Quests",
+        value: `Daily ${p.quests.dailyDone}/${p.quests.dailyTotal}\nWeekly ${p.quests.weeklyDone}/${p.quests.weeklyTotal}`,
+        inline: true,
+      },
+      {
+        name: "📅 Daily",
+        value: `🔥 ${p.daily.streak} day streak`,
+        inline: true,
+      },
+      {
+        name: "⭐ Standing",
+        value: `${p.reputation.rep} rep\n${p.achievements.unlocked} achievements`,
+        inline: true,
+      },
+      {
+        name: "✨ XP by activity",
+        value: breakdown,
+        inline: false,
+      },
+    )
+    .setFooter({ text: "Use the dropdown to dive into any section." });
+
+  return embed;
 }
 
 // ── Collector profile ─────────────────────────────────────────────────────────

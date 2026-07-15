@@ -144,6 +144,15 @@ export async function buyCard(guildId: string, userId: string, id: number): Prom
       : res.reason === "insufficient" ? `❌ You need 💠 **${price.toLocaleString()}** to buy this. Check \`/shards\`.`
       : "❌ That listing can't be bought directly.";
   }
+  // Unified account XP: a completed market sale rewards buyer and seller.
+  try {
+    const { awardPlayerXp, awardCollectionMilestoneXp, XP } = await import("../player/xp.js");
+    await Promise.all([
+      awardPlayerXp(guildId, userId, "economy", XP.economy),
+      awardPlayerXp(guildId, res.sellerId, "economy", XP.economy),
+      awardCollectionMilestoneXp(guildId, userId), // buyer's collection may have grown
+    ]);
+  } catch { /* non-fatal */ }
   const cards = await cardMap(guildId);
   return `✅ Bought **${cardLabel(cards.get(res.cardId), res.cardId)}** for 💠 **${price.toLocaleString()}**! ` +
     `It's in your \`/collection\`. Seller <@${res.sellerId}> received 💠 ${proceedsFor(price).toLocaleString()} (after ${MARKET_FEE_PCT}% fee).`;

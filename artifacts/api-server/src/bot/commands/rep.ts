@@ -54,6 +54,12 @@ async function giveRep(guildId: string, giverId: string, receiverId: string): Pr
     });
   await db.insert(repLogTable).values({ guildId, giverId, receiverId });
 
+  // Unified account XP: receiving reputation contributes to the receiver's level.
+  try {
+    const { awardPlayerXp, XP } = await import("../player/xp.js");
+    await awardPlayerXp(guildId, receiverId, "reputation", XP.reputation);
+  } catch { /* non-fatal */ }
+
   const updated = await getOrCreateRep(guildId, receiverId);
   return updated.rep;
 }

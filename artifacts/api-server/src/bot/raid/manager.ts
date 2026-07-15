@@ -298,12 +298,15 @@ async function finishRaid(session: RaidSession, outcome: "clear" | "wipe" | "tim
   // the boss as their contribution. Best-effort; never blocks the raid.
   try {
     const { recordGiveawayEvent } = await import("../giveaway/engine.js");
+    const { awardPlayerXp, XP } = await import("../player/xp.js");
     const bc = session.bossCombatant;
     const bossDamage = bc ? Math.max(0, bc.stats.maxHealth - Math.max(0, bc.hp)) : 0;
     const share = session.party.size > 0 ? Math.round(bossDamage / session.party.size) : 0;
     for (const s of session.party.values()) {
       await recordGiveawayEvent(session.guildId, s.member.userId, "raid_join", 1);
       if (share > 0) await recordGiveawayEvent(session.guildId, s.member.userId, "raid_damage", share);
+      // Unified account XP: a raid clear pays more than a participation-only run.
+      await awardPlayerXp(session.guildId, s.member.userId, "raid", outcome === "clear" ? XP.raidClear : XP.raidParticipate);
     }
   } catch { /* non-fatal */ }
 
