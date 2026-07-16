@@ -11,7 +11,7 @@ export {
   REVEAL_COVER, REVEAL_CARD, REVEAL_ATTACK,
 } from "./reveal.js";
 export type {
-  PackCoverInput, CardRevealInput, RevealStats, AttackFrameInput,
+  PackCoverInput, CardRevealInput, RevealStats, AttackFrameInput, AttackScene,
 } from "./reveal.js";
 export type { AnimationSettings, AnimationSpeed, AnimationResult } from "./types.js";
 export type { PackAnimationInput, BattleAnimationInput, VictoryAnimationInput } from "./types.js";

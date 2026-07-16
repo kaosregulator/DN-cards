@@ -19,12 +19,13 @@ import {
 import { logger } from "../../lib/logger.js";
 import { renderBattleImage, type RenderCard } from "./image/render.js";
 import { renderAttackFrame, renderBattleVictory } from "../animations/index.js";
+import type { AttackScene } from "../animations/index.js";
 import type { AnimationSpeed } from "../animations/types.js";
 import { toAbsoluteImageUrl } from "../image-url.js";
 import { getBotClient } from "../client-holder.js";
 import { removeCardFromUser, restoreCardToUser, getOrCreateGuildSettings, getCardsInSet } from "../db.js";
 import type { BattleSettings } from "@workspace/db";
-import type { Combatant, MoveType, AiDifficulty, Rarity } from "./types.js";
+import type { Combatant, MoveType, AiDifficulty, Rarity, TurnResult } from "./types.js";
 import { AI_DIFFICULTIES } from "./types.js";
 import { getBattleSettings, rarityAllowed, typeAllowed } from "./config-engine.js";
 import { getScaledStats, powerRating } from "./stat-engine.js";
@@ -757,9 +758,14 @@ async function applyMove(rt: BattleRuntime, side: 0 | 1, move: MoveType) {
       if (foe.hp / foe.stats.maxHealth <= 0.15) rt.wentLow[foeSide(side)] = true;
       if (actor.hp / actor.stats.maxHealth <= 0.15) rt.wentLow[side] = true;
 
-      // Show a lightweight single-card "attack" frame (cheap static PNG, not a
-      // GIF) on every successful turn. Reuses the turnAnimation hook.
+      // Show a lightweight single-card scene frame (cheap static PNG, not a GIF)
+      // on every successful turn. The SCENE is derived from the move + event
+      // flashes so specials/ultimates/KOs/heals/shields/buffs each get themed
+      // FX from the one shared renderer (no second renderer).
       const isCrit = result.events.some(e => e.flash === "crit");
+      const selfGain = Math.max(0, (actor.hp + actor.shield) - selfPoolBefore);
+      const scene = deriveAttackScene(move, result, isCrit, damage, actor, foe);
+      const subtitle = sceneSubtitle(scene, selfGain, result);
       if (rt.settings.battleAnimationEnabled) {
         rt.turnAnimation = await renderAttackFrame({
           attacker: combatantToRenderCard(rt, actor),
@@ -767,6 +773,8 @@ async function applyMove(rt: BattleRuntime, side: 0 | 1, move: MoveType) {
           damage,
           isCrit,
           isHit: damage > 0,
+          scene,
+          subtitle,
         }).catch(() => null);
       }
 
@@ -1296,6 +1304,48 @@ function moveLabel(move: MoveType): string {
     special_card: "✨ Special Card", charge: "⚡ Charge", skip: "⏭️ Skip", ultimate: "💀 Ultimate",
     item: "🎒 Use Item",
   } as Record<MoveType, string>)[move];
+}
+
+// Map a resolved move to a canvas SCENE so the shared renderer themes the frame
+// (special/ultimate/KO/counter/heal/shield/buff/debuff). Reads the event flashes
+// the combat engine already emits — no new combat state.
+function deriveAttackScene(
+  move: MoveType, result: TurnResult, isCrit: boolean, damage: number,
+  actor: Combatant, foe: Combatant,
+): AttackScene {
+  if (result.koed || foe.hp <= 0) return "ko";
+  const flashes = new Set(result.events.map(e => e.flash));
+  if (move === "ultimate") return "ultimate";
+  if (flashes.has("counter")) return "counter";
+  if (move === "defend" || flashes.has("shield") || flashes.has("shield_break")) return "shield";
+  if (flashes.has("heal")) return "heal";
+  if (move === "charge") return "buff";
+  if (move === "item") {
+    const item = getBattleItem(actor.itemId);
+    switch (item?.effectType) {
+      case "heal": return "heal";
+      case "shield": return "shield";
+      case "buff": case "energy": return "buff";
+      case "debuff": return "debuff";
+      case "status": return item.target === "foe" ? "debuff" : "buff";
+      default: return "item";
+    }
+  }
+  if (move === "special") return "special";
+  if (damage <= 0 && (move === "attack")) return "miss";
+  if (isCrit) return "crit";
+  return "attack";
+}
+
+// A short caption under the impact FX for self-affecting scenes.
+function sceneSubtitle(scene: AttackScene, selfGain: number, result: TurnResult): string | undefined {
+  if (scene === "heal" && selfGain > 0) return `+${selfGain.toLocaleString()} HP`;
+  if (scene === "shield" && selfGain > 0) return `+${selfGain.toLocaleString()} shield`;
+  if (scene === "buff") return "Empowered";
+  if (scene === "debuff") return "Weakened";
+  if (scene === "counter") return "Reversed!";
+  void result;
+  return undefined;
 }
 
 // ── Utils ────────────────────────────────────────────────────────────────────
