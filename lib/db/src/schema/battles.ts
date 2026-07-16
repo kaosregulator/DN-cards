@@ -142,6 +142,23 @@ export const battleCardConfigTable = pgTable("battle_card_config", {
 
 export type BattleCardConfig = typeof battleCardConfigTable.$inferSelect;
 
+// ── Battle Backgrounds (per-guild uploadable arena art) ──────────────────────
+// Up to 3 slots. The battle VS renderer picks one at random each fight (auto
+// shuffle); an empty table falls back to the built-in vibrant gradient. Mirrors
+// showcase_backgrounds so admins get the same upload UX for the arena canvas.
+export const battleBackgroundsTable = pgTable("battle_backgrounds", {
+  id: serial("id").primaryKey(),
+  guildId: text("guild_id").notNull(),
+  slot: integer("slot").notNull(), // 1, 2, or 3
+  url: text("url").notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedBy: text("updated_by"),
+}, (t) => ({
+  guildSlotUniq: uniqueIndex("battle_backgrounds_guild_slot_idx").on(t.guildId, t.slot),
+}));
+
+export type BattleBackground = typeof battleBackgroundsTable.$inferSelect;
+
 // ── Battle Profiles (per-guild, per-user persistent stats) ───────────────────
 export const battleProfilesTable = pgTable("battle_profiles", {
   id: serial("id").primaryKey(),

@@ -413,7 +413,8 @@ function buildLegacyCommands() {
       .addSubcommand(sc => sc.setName("daily").setDescription("View today's battle challenges and progress"))),
 
     // ── /battle_admin (admin, Battle System configuration) ─────────────────────
-    adminCmd("battleadmin", "Battle system hub — setup wizard, rules, rewards, cards, seasons", s => s),
+    adminCmd("battleadmin", "Battle system hub — setup wizard, rules, rewards, cards, seasons", s => s
+      .addAttachmentOption(o => o.setName("image").setDescription("Quick-upload a battle arena background (fills the next empty slot)"))),
 
     // ── /squad (user, Squads / guilds) ────────────────────────────────────────
     cmd("squad", "Team up — create or join a squad and climb the squad leaderboard", s => s
