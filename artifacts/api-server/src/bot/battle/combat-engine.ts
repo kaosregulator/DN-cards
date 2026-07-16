@@ -11,6 +11,7 @@ import type { BattleSettings } from "@workspace/db";
 import type { Combatant, BattleEvent, MoveType, TurnResult, StatusEffect } from "./types.js";
 import { getEffectDef } from "./special-cards.js";
 import { getMoveset } from "./movesets.js";
+import { getBattleItem, applyItemEffect } from "./items.js";
 
 // Apply a moveset's effect. Reuses the shared special-effects registry for the
 // common effects; "stealth" and "weaken" are combat-engine-native mechanics.
@@ -67,6 +68,7 @@ export function startOfTurn(
   actor.energy = Math.min(actor.stats.energyMax, actor.energy + settings.energyGainPerTurn);
   actor.ultimate = Math.min(actor.stats.ultimateMax, actor.ultimate + settings.ultimateChargePerTurn);
   if (actor.specialCooldownRemaining > 0) actor.specialCooldownRemaining--;
+  if ((actor.itemCooldownRemaining ?? 0) > 0) actor.itemCooldownRemaining = actor.itemCooldownRemaining! - 1;
 
   if (actor.hp <= 0) return { events, koed: true, skipped: false };
 
@@ -280,6 +282,27 @@ export function resolveMove(
       koed = foe.hp <= 0;
       break;
     }
+    case "item": {
+      const item = getBattleItem(actor.itemId);
+      if (!item) {
+        events.push({ text: `⚠️ **${actor.cardName}** has no battle item equipped.` });
+        break;
+      }
+      if ((actor.itemChargesRemaining ?? 0) <= 0) {
+        events.push({ text: `🎒 **${item.name}** is out of charges.` });
+        break;
+      }
+      if ((actor.itemCooldownRemaining ?? 0) > 0) {
+        events.push({ text: `⏳ **${item.name}** on cooldown (${actor.itemCooldownRemaining} more turn(s)).` });
+        break;
+      }
+      const outcome = applyItemEffect(item, actor, foe);
+      events.push(...outcome.events);
+      koed = outcome.koed || foe.hp <= 0;
+      actor.itemChargesRemaining = (actor.itemChargesRemaining ?? 0) - 1;
+      actor.itemCooldownRemaining = item.cooldown;
+      break;
+    }
     case "skip": {
       actor.energy = Math.min(actor.stats.energyMax, actor.energy + Math.round(settings.energyGainPerTurn / 2));
       events.push({ text: `⏭️ **${actor.cardName}** waits and watches.` });
@@ -305,5 +328,6 @@ export function availableMoves(actor: Combatant, settings: BattleSettings): Reco
     charge: true,
     skip: true,
     ultimate: actor.ultimate >= actor.stats.ultimateMax,
+    item: !!actor.itemId && (actor.itemChargesRemaining ?? 0) > 0 && (actor.itemCooldownRemaining ?? 0) === 0,
   };
 }
