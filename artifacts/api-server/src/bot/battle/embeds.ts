@@ -135,6 +135,41 @@ export function buildCombatEmbed(v: BattleView, opts?: { currentMove?: string })
   return embed;
 }
 
+// ── Two-embed combat layout ──────────────────────────────────────────────────
+// TOP embed: the recent battle log (last 4–6 actions) + a prominent "current
+// turn" line. The log lives in the description so it reads bigger/cleaner.
+export function buildBattleLogEmbed(v: BattleView): EmbedBuilder {
+  const active = v.currentSide === 0 ? v.a : v.b;
+  const activeDisp = displayRarityOf(active, v.displayMap);
+  const logText = v.log.length
+    ? v.log.slice(-6).join(`\n${WHITE_LINE}\n`)
+    : "_The battlefield is quiet…_";
+  const turnLine = active.isAi
+    ? `🤖 **AI** is deciding…`
+    : `🔹 ${who(active)} — **it's your move!**`;
+  const timer = v.turnEndsAt ? ` · ends <t:${Math.floor(v.turnEndsAt / 1000)}:R>` : "";
+  return new EmbedBuilder()
+    .setColor(activeDisp.color)
+    .setTitle(`📜 Battle Log — Turn ${v.turnNumber}${v.staked ? " · 💰 Staked" : ""}`)
+    .setDescription(logText.slice(0, 4000))
+    .addFields({ name: "🎯 Current Turn", value: turnLine + timer, inline: false });
+}
+
+// BOTTOM embed: the battle status — HP/Energy/Ultimate for both combatants — and
+// the combat canvas as the big image filling the lower section. No log here.
+export function buildBattleStatusEmbed(v: BattleView, opts?: { currentMove?: string }): EmbedBuilder {
+  const active = v.currentSide === 0 ? v.a : v.b;
+  const activeDisp = displayRarityOf(active, v.displayMap);
+  const embed = new EmbedBuilder()
+    .setColor(activeDisp.color)
+    .addFields(
+      combatantField(v.a, v.currentSide === 0, v.displayMap),
+      combatantField(v.b, v.currentSide === 1, v.displayMap),
+    );
+  if (opts?.currentMove) embed.setFooter({ text: opts.currentMove });
+  return embed;
+}
+
 // ── Intro animation frames ───────────────────────────────────────────────────
 export function buildIntroFrame(v: BattleView, frame: number): EmbedBuilder {
   const e = new EmbedBuilder().setColor(BATTLE_COLOR);

@@ -390,6 +390,13 @@ export async function startBot() {
           return;
         }
 
+        // ── Card Recycle confirm button ───────────────────────────────────
+        if (action === "recycle") {
+          const { handleRecycleButton } = await import("./commands/tradein.js");
+          await handleRecycleButton(interaction);
+          return;
+        }
+
         // ── Market / Squad hub buttons (back, confirms, pick-driven) ───────
         if (action === "market-hub") {
           const { handleMarketHubComponent } = await import("./commands/market-hub.js");
@@ -556,7 +563,12 @@ export async function startBot() {
           // "interaction failed" and the need to click twice. deferUpdate
           // here parks the interaction so we can take as long as we need.
           await interaction.deferUpdate().catch(() => { /* ignore */ });
-          const result = await handleClaimButtonClick(guildId, spawnId, interaction.user.id);
+          const result = await handleClaimButtonClick(guildId, spawnId, interaction.user.id, {
+            // Button catches have an interaction → the catcher gets a private
+            // ephemeral canvas preview; the public confirmation stays as-is.
+            sendEphemeral: (payload) =>
+              interaction.followUp({ ...payload, flags: MessageFlags.Ephemeral }).then(() => { /* void */ }),
+          });
           if (!result.ok) {
             // self_already / expired = the winner is double-tapping their own
             // claim. Silently ack — the spawn embed above already shows the

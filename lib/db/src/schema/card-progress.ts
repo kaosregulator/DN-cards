@@ -26,6 +26,12 @@ export const cardProgressTable = pgTable("card_progress", {
   // Favorite/lock flag: locked cards are protected from `/burn` and bulk
   // trade-in so a prized copy can't be destroyed by a mass action.
   locked: boolean("locked").notNull().default(false),
+  // ── Star Rank (Card Recycle progression) ────────────────────────────────────
+  // ADDITIVE single property on this owned-card row. Separate from rarity and
+  // from the level→frame stars. Recycle consumes duplicate copies from the
+  // player's existing collection (collections.count — untouched) to raise this
+  // rank by 1, up to 5. Every existing card defaults to 0, fully compatible.
+  starRank: integer("star_rank").notNull().default(0),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 }, (t) => ({
   guildUserCardUniq: uniqueIndex("card_progress_guild_user_card_uniq").on(t.guildId, t.userId, t.cardId),

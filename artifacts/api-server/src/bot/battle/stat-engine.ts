@@ -141,18 +141,39 @@ export function scaleByLevel(stats: BattleStats, level: number, settings: Battle
 //   4. level scaling     — scaled by the card's level (1..100)
 // It NEVER mutates the core card. Everything battle-facing (PvP, AI, raids,
 // admin stat preview) must go through this so stats are consistent everywhere.
+// Star Rank battle bonus: +8% to core stats per star (5★ = +40%), plus a small
+// flat crit/accuracy nudge. Additive on top of level + config scaling. Kept here
+// so the same formula drives combat and any stat preview.
+const STAR_BONUS_PER = 0.08;
+export function applyStarBonus(s: BattleStats, starRank: number): BattleStats {
+  const star = Math.max(0, Math.min(5, starRank));
+  if (star === 0) return s;
+  const m = 1 + star * STAR_BONUS_PER;
+  return {
+    ...s,
+    maxHealth: Math.round(s.maxHealth * m),
+    attack: Math.round(s.attack * m),
+    defense: Math.round(s.defense * m),
+    speed: Math.round(s.speed * m),
+    critChance: Math.min(100, s.critChance + star),
+    accuracy: Math.min(100, s.accuracy + star),
+  };
+}
+
 export function getScaledStats(
   card: Pick<Card, "id" | "name" | "rarity" | "worthValue" | "cardType">,
   cfg: BattleCardConfig | null | undefined,
   settings: BattleSettings,
   level: number,
   effectiveRarity?: Rarity,
+  starRank = 0,
 ): BattleStats {
   // Battle rarity override wins; else the globally-resolved rarity; else base.
   const rarity = (cfg?.rarity as Rarity) || effectiveRarity || (card.rarity as Rarity);
   const derived = deriveStats(card, settings, rarity);
   const withOverrides = applyStatOverrides(derived, cfg);
-  return scaleByLevel(withOverrides, level, settings);
+  const leveled = scaleByLevel(withOverrides, level, settings);
+  return applyStarBonus(leveled, starRank);
 }
 
 // snake_case alias to match the design spec's `get_scaled_stats()` name.

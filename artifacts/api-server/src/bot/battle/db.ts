@@ -33,6 +33,9 @@ export interface OwnedBattleCard {
   // level-based stat scaling via get_scaled_stats. Defaults to 1 for pools that
   // aren't tied to a specific owner (e.g. the AI card pool).
   level: number;
+  // Card Recycle Star Rank (0..5) for this owned card. Adds a battle stat bonus
+  // on top of level scaling. Defaults to 0 for non-owner pools (e.g. AI).
+  starRank: number;
   config: BattleCardConfig | null;
   // Source-of-truth rarity context (Stage-1 profile + Stage-2 custom tiers).
   // `effectiveRarityKey` is the built-in rarity key or `custom:<slug>` for a
@@ -67,6 +70,7 @@ export async function getOwnedBattleCards(
       shinyCount: collectionsTable.shinyCount,
       // Left-joined so a card the user has never battled still returns (level 1).
       level: cardProgressTable.level,
+      starRank: cardProgressTable.starRank,
     })
       .from(collectionsTable)
       .innerJoin(cardsTable, eq(collectionsTable.cardId, cardsTable.id))
@@ -95,6 +99,7 @@ export async function getOwnedBattleCards(
       imageUrl: r.imageUrl,
       owned: r.count + r.shinyCount,
       level: r.level ?? 1,
+      starRank: r.starRank ?? 0,
       config: cfgMap.get(r.id) ?? null,
       effectiveRarityKey: effectiveKey,
       displayRarity: { label: display.label, emoji: display.emoji },
@@ -120,7 +125,7 @@ export async function getAllBattleCards(guildId: string, ctx?: RarityContext): P
     const display = getCardDisplayRarity({ id: r.id, rarity: r.rarity }, rarityCtx);
     return {
       id: r.id, name: r.name, rarity: r.rarity as Rarity, cardType: r.cardType,
-      worthValue: r.worthValue, imageUrl: r.imageUrl, owned: 0, level: 1, config: cfgMap.get(r.id) ?? null,
+      worthValue: r.worthValue, imageUrl: r.imageUrl, owned: 0, level: 1, starRank: 0, config: cfgMap.get(r.id) ?? null,
       effectiveRarityKey: effectiveKey,
       displayRarity: { label: display.label, emoji: display.emoji },
     };

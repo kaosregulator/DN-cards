@@ -22,7 +22,7 @@ import { renderAttackFrame, renderBattleVictory } from "../animations/index.js";
 import type { AnimationSpeed } from "../animations/types.js";
 import { toAbsoluteImageUrl } from "../image-url.js";
 import { getBotClient } from "../client-holder.js";
-import { removeCardFromUser, restoreCardToUser } from "../db.js";
+import { removeCardFromUser, restoreCardToUser, getOrCreateGuildSettings, getCardsInSet } from "../db.js";
 import type { BattleSettings } from "@workspace/db";
 import type { Combatant, MoveType, AiDifficulty, Rarity } from "./types.js";
 import { AI_DIFFICULTIES } from "./types.js";
@@ -43,7 +43,7 @@ import { ensureSeason } from "./season-engine.js";
 import { logBattleResult } from "./logging-engine.js";
 import { grantFreePack } from "./pack-grant.js";
 import {
-  buildCombatEmbed, buildIntroFrame, buildCoinFlipEmbed, buildWinnerEmbed,
+  buildBattleLogEmbed, buildBattleStatusEmbed, buildIntroFrame, buildCoinFlipEmbed, buildWinnerEmbed,
   type BattleView,
 } from "./embeds.js";
 import { formatAchievementLine } from "./achievement-engine.js";
@@ -92,6 +92,10 @@ interface BattleRuntime {
   phase: Phase;
   prep: Map<string, PrepState>;   // human userId → prep
   eligibleCache: Map<string, OwnedBattleCard[]>;
+  // Active Card Set membership (card IDs) — the single source of truth for which
+  // cards may battle. `null` = no active set configured → no restriction (so
+  // battles never lock out). Memoized per battle. `undefined` = not resolved yet.
+  activeSetIds?: Set<number> | null;
 
   a: Combatant | null;   // side 0 = challenger
   b: Combatant | null;   // side 1 = opponent / AI
@@ -157,12 +161,42 @@ export function isCardEligible(settings: BattleSettings, c: OwnedBattleCard, ctx
   return rarityAllowed(settings, c.rarity) && typeAllowed(settings, c.cardType);
 }
 
+// Resolve (and memoize) the Active Card Set membership for this battle. This is
+// the SAME set source packs/spawns use (`getCardsInSet` over the guild's active
+// set + secondary set). `null` means no active set is configured, in which case
+// we impose no restriction so battles keep working.
+async function resolveActiveSetIds(rt: BattleRuntime): Promise<Set<number> | null> {
+  if (rt.activeSetIds !== undefined) return rt.activeSetIds;
+  try {
+    const settings = await getOrCreateGuildSettings(rt.guildId);
+    const setIds = [settings.activeSetId, settings.activeSetIdSecondary]
+      .filter((x): x is number => x != null);
+    if (setIds.length === 0) { rt.activeSetIds = null; return null; }
+    const lists = await Promise.all(setIds.map(sid => getCardsInSet(sid, rt.guildId)));
+    const ids = new Set<number>();
+    for (const list of lists) for (const c of list) ids.add(c.id);
+    rt.activeSetIds = ids.size > 0 ? ids : null;
+  } catch {
+    rt.activeSetIds = null; // never block battles on a lookup failure
+  }
+  return rt.activeSetIds;
+}
+
+// A card may battle only if it passes battle eligibility AND (when an active set
+// exists) belongs to it.
+function inActiveSet(setIds: Set<number> | null, cardId: number): boolean {
+  return !setIds || setIds.has(cardId);
+}
+
 async function eligibleForUser(rt: BattleRuntime, userId: string): Promise<OwnedBattleCard[]> {
   const cached = rt.eligibleCache.get(userId);
   if (cached) return cached;
-  const owned = await getOwnedBattleCards(rt.guildId, userId, rt.ctx);
+  const [owned, setIds] = await Promise.all([
+    getOwnedBattleCards(rt.guildId, userId, rt.ctx),
+    resolveActiveSetIds(rt),
+  ]);
   const list = owned
-    .filter(c => isCardEligible(rt.settings, c, rt.ctx))
+    .filter(c => isCardEligible(rt.settings, c, rt.ctx) && inActiveSet(setIds, c.id))
     .sort((x, y) =>
       powerRating(getScaledStats(cardish(y), y.config, rt.settings, y.level))
       - powerRating(getScaledStats(cardish(x), x.config, rt.settings, x.level)));
@@ -185,7 +219,8 @@ function buildCombatant(
   // scaled by the card's level (the AI can override to match the player's card).
   const battleRarity = (card.config?.rarity as Rarity) || (card.rarity as Rarity);
   const level = levelOverride ?? card.level;
-  const stats = getScaledStats(cardish(card), card.config, rt.settings, level, battleRarity);
+  // Star Rank (Card Recycle) adds a battle stat bonus on top of level scaling.
+  const stats = getScaledStats(cardish(card), card.config, rt.settings, level, battleRarity, card.starRank);
   const moveset = card.config?.moveset ?? inferMoveset(card.cardType, battleRarity);
   let specialEffect: string | null = null;
   let specialCooldownMax = 3;
@@ -524,7 +559,11 @@ async function beginCombat(rt: BattleRuntime) {
 
   // Build opponent (human or AI).
   if (rt.isAi) {
-    const pool = (await getAllBattleCards(rt.guildId, rt.ctx)).filter(c => isCardEligible(rt.settings, c, rt.ctx));
+    // AI draws from the SAME Active Card Set as packs/players — never the whole
+    // database. Falls back to the challenger's eligible cards if the set is empty.
+    const setIds = await resolveActiveSetIds(rt);
+    const pool = (await getAllBattleCards(rt.guildId, rt.ctx))
+      .filter(c => isCardEligible(rt.settings, c, rt.ctx) && inActiveSet(setIds, c.id));
     const usePool = pool.length ? pool : chalEligible;
     const scores = usePool.map(c => powerRating(getScaledStats(cardish(c), c.config, rt.settings, c.level)));
     const idx = pickAiCardIndex(scores, rt.aiDifficulty);
@@ -987,19 +1026,24 @@ async function renderCombat(rt: BattleRuntime, opts?: { currentMove?: string; tu
   const view = toView(rt, opts?.turnEndsAt);
   const actor = rt.currentSide === 0 ? rt.a : rt.b;
   const components = actor.isAi ? [] : buildMoveComponents(rt, actor);
-  // Battle embed keeps the active card's avatar as its thumbnail (buildCombatEmbed)
-  // so players always see whose turn it is.
-  const combatEmbed = buildCombatEmbed(view, { currentMove: opts?.currentMove });
-  // VS battlefield image stays pinned at the TOP. If a one-shot turn animation is
-  // queued, consume it for this render only so the GIF plays once.
+
+  // Two-embed layout:
+  //   TOP    = recent battle log + current turn (buildBattleLogEmbed)
+  //   BOTTOM = HP/Energy/Ultimate status + the combat canvas as its image
+  // A one-shot turn animation, if queued, is consumed for this render only.
+  const logEmbed = buildBattleLogEmbed(view);
+  const statusEmbed = buildBattleStatusEmbed(view, { currentMove: opts?.currentMove });
   const turnImg = rt.turnAnimation;
   rt.turnAnimation = null;
-  const top = vsTop(rt, undefined, turnImg);
-  const embeds = top.embed ? [top.embed, combatEmbed] : [combatEmbed];
-  const files = top.file ? [top.file] : [];
+  const combatImg = turnImg ?? rt.vsImage;
+  const files: AttachmentBuilder[] = [];
+  if (combatImg) {
+    statusEmbed.setImage(`attachment://${VS_IMAGE_NAME}`);
+    files.push(new AttachmentBuilder(combatImg, { name: VS_IMAGE_NAME }));
+  }
   await rt.message.edit({
     content: null,
-    embeds,
+    embeds: [logEmbed, statusEmbed],
     components,
     files,
   }).catch(() => {});
