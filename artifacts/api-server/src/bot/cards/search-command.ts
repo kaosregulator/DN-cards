@@ -2,11 +2,10 @@ import type { ChatInputCommandInteraction } from "discord.js";
 import { EmbedBuilder } from "discord.js";
 import Fuse from "fuse.js";
 import type { IFuseOptions } from "fuse.js";
-import { getAllCards, getUserCollection } from "../db.js";
-
-const RARITY_EMOJI: Record<string, string> = {
-  common: "⚪", uncommon: "🟢", rare: "🔵", epic: "🟣", legendary: "🟡", mythic: "🔴",
-};
+import {
+  getAllCards, getUserCollection, getRarityContext, getOrCreateGuildSettings,
+  getRarityDisplayOverrides, getCardDisplayRarity,
+} from "../db.js";
 const MAX_RESULTS = 25;
 
 // Fuse.js search options tuned for card names: tolerate typos, allow acronym
@@ -46,9 +45,12 @@ export async function handleSearch(interaction: ChatInputCommandInteraction): Pr
     return;
   }
 
-  const [cards, collection] = await Promise.all([
+  const [cards, collection, rarityCtx, settings, displayMap] = await Promise.all([
     getAllCards(guildId),
     getUserCollection(guildId, userId),
+    getRarityContext(guildId),
+    getOrCreateGuildSettings(guildId),
+    getRarityDisplayOverrides(guildId),
   ]);
   const ownedMap = new Map<number, number>();
   for (const c of collection) ownedMap.set(c.cardId, c.count + c.shinyCount);
@@ -119,7 +121,9 @@ export async function handleSearch(interaction: ChatInputCommandInteraction): Pr
     const owned = ownedMap.get(c.id) ?? 0;
     const mark = owned > 0 ? `✅ ×${owned}` : "❌";
     const badges = `${c.isLimitedEdition ? " 💎" : ""}${c.isEventExclusive ? " 🎆" : ""}`;
-    return `${RARITY_EMOJI[c.rarity] ?? "•"} **${c.name}**${badges} — ${mark}`;
+    // Emoji resolves through /rarity (custom tiers + built-in overrides).
+    const emoji = getCardDisplayRarity(c, rarityCtx, settings, displayMap).emoji || "•";
+    return `${emoji} **${c.name}**${badges} — ${mark}`;
   });
 
   const filters: string[] = [];
