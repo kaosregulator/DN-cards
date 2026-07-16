@@ -39,8 +39,8 @@ export const battleSettingsTable = pgTable("battle_settings", {
   // more dramatic battles). Admin-tunable "speed controller". 120–4000.
   frameDelayMs: integer("frame_delay_ms").notNull().default(950),
   // Canvas/GIF animation system master switches and speed presets.
-  // Off by default to keep CPU and Discord bandwidth low; admins can enable.
-  battleAnimationEnabled: boolean("battle_animation_enabled").notNull().default(false),
+  // Battles use cheap single-frame PNGs now, so attack animations are on by default.
+  battleAnimationEnabled: boolean("battle_animation_enabled").notNull().default(true),
   packAnimationEnabled: boolean("pack_animation_enabled").notNull().default(true),
   battleAnimationSpeed: text("battle_animation_speed").notNull().default("normal"),
   // ── Combat formula coefficients (all tunable) ────────────────────────────────

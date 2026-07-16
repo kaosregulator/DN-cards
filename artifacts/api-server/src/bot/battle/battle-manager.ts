@@ -705,9 +705,9 @@ async function applyMove(rt: BattleRuntime, side: 0 | 1, move: MoveType) {
       if (actor.hp / actor.stats.maxHealth <= 0.15) rt.wentLow[side] = true;
 
       // Show a lightweight single-card "attack" frame (cheap static PNG, not a
-      // GIF) for critical hits and finishing blows. Reuses the turnAnimation hook.
+      // GIF) on every successful turn. Reuses the turnAnimation hook.
       const isCrit = result.events.some(e => e.flash === "crit");
-      if (rt.settings.battleAnimationEnabled && (isCrit || result.koed || foe.hp <= 0)) {
+      if (rt.settings.battleAnimationEnabled) {
         rt.turnAnimation = await renderAttackFrame({
           attacker: combatantToRenderCard(rt, actor),
           moveName: moveLabel(move),

@@ -617,6 +617,12 @@ async function runBootMigrations() {
     END $$;
   `);
 
+  // Battle attack frames switched from heavy GIFs to cheap PNGs, so they should
+  // be on by default for all servers. Flip existing rows and update the column
+  // default so new servers get the same behaviour.
+  await pool.query(`ALTER TABLE battle_settings ALTER COLUMN battle_animation_enabled SET DEFAULT true`);
+  await pool.query(`UPDATE battle_settings SET battle_animation_enabled = true, updated_at = NOW() WHERE battle_animation_enabled = false`);
+
   logger.info("Boot migrations applied");
 }
 
