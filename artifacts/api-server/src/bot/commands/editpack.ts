@@ -5,7 +5,7 @@ import {
   addCardsToPack, removeCardsFromPack, getAllCards, getOrCreateGuildSettings,
   getRarityDisplayOverrides, getRarityContext, isAdmin,
 } from "../db.js";
-import { RARITY_EMOJI, RARITY_LABELS, type Rarity } from "../cards-data.js";
+import { rarityEmoji, rarityLabel, type Rarity } from "../cards-data.js";
 import { getCardDisplayRarity } from "../rarity-runtime.js";
 import type { CustomPack } from "@workspace/db";
 
@@ -84,6 +84,11 @@ export async function handleEditPackCommand(interaction: ChatInputCommandInterac
   const removeRarity = opts.getString("remove_rarity") as Rarity | null;
 
   const allCards = await getAllCards(guildId);
+  // Resolve rarity display names/emojis through /rarity (source of truth).
+  const [rSettings, rDisplayMap] = await Promise.all([
+    getOrCreateGuildSettings(guildId),
+    getRarityDisplayOverrides(guildId),
+  ]);
   const cardByName = (name: string) => allCards.find(c => c.name.toLowerCase() === name.toLowerCase());
 
   const addedCards: string[] = [];
@@ -116,7 +121,7 @@ export async function handleEditPackCommand(interaction: ChatInputCommandInterac
       await addCardsToPack(pack.id, toAdd.map(c => c.id));
       addedCards.push(...toAdd.map(c => c.name));
     } else {
-      skippedCards.push(`No matching ${RARITY_EMOJI[addRarity]} ${RARITY_LABELS[addRarity]} cards to add`);
+      skippedCards.push(`No matching ${rarityEmoji(addRarity, rSettings, rDisplayMap)} ${rarityLabel(addRarity, rSettings, rDisplayMap)} cards to add`);
     }
   }
 
@@ -126,7 +131,7 @@ export async function handleEditPackCommand(interaction: ChatInputCommandInterac
       await removeCardsFromPack(pack.id, toRemove.map(c => c.id));
       removedCards.push(...toRemove.map(c => c.name));
     } else {
-      skippedCards.push(`No ${RARITY_EMOJI[removeRarity]} ${RARITY_LABELS[removeRarity]} cards in pack to remove`);
+      skippedCards.push(`No ${rarityEmoji(removeRarity, rSettings, rDisplayMap)} ${rarityLabel(removeRarity, rSettings, rDisplayMap)} cards in pack to remove`);
     }
   }
 

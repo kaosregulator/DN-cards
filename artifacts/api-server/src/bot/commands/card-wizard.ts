@@ -1,7 +1,7 @@
 import type { Message } from "discord.js";
 import { addCard, getCardByName, updateCard } from "../db.js";
 import {
-  RARITY_EMOJI, RARITY_LABELS, RARITY_WEIGHTS, RARITY_WORTH, RARITY_BURN,
+  RARITY_WEIGHTS, RARITY_WORTH, RARITY_BURN,
   TYPE_EMOJI, getTypeEmoji,
   type Rarity, rarityLabel, rarityEmoji,
 } from "../cards-data.js";

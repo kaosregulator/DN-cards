@@ -1,7 +1,10 @@
 import type { ChatInputCommandInteraction } from "discord.js";
 import { EmbedBuilder, MessageFlags } from "discord.js";
 import type { MarketListing } from "@workspace/db";
-import { getCardByName, getAllCardsCached, getOrCreateCurrency } from "../db.js";
+import {
+  getCardByName, getAllCardsCached, getOrCreateCurrency,
+  getRarityContext, getOrCreateGuildSettings, getRarityDisplayOverrides, getCardDisplayRarity,
+} from "../db.js";
 import { toAbsoluteImageUrl } from "../image-url.js";
 import type { Rarity } from "../cards-data.js";
 import {
@@ -12,21 +15,32 @@ import {
 
 const EPHEMERAL = { flags: MessageFlags.Ephemeral } as const;
 const MAX_AUCTION_HOURS = 168; // 7 days
-const RARITY_EMOJI: Record<string, string> = {
-  common: "⚪", uncommon: "🟢", rare: "🔵", epic: "🟣", legendary: "🟡", mythic: "🔴",
-};
 
-export async function cardMap(guildId: string) {
-  const cards = await getAllCardsCached(guildId);
-  return new Map(cards.map(c => [c.id, c]));
+// Card label carrier: `displayEmoji` is resolved through /rarity (custom tiers +
+// built-in name/emoji overrides) so market labels always match the source of truth.
+type LabelCard = { name: string; rarity: string; displayEmoji?: string | null };
+
+// Card map enriched with each card's /rarity-resolved display emoji, so every
+// caller that renders labels from this map follows the rarity source of truth.
+export async function cardMap(guildId: string): Promise<Map<number, LabelCard & { id: number }>> {
+  const [cards, ctx, settings, displayMap] = await Promise.all([
+    getAllCardsCached(guildId),
+    getRarityContext(guildId),
+    getOrCreateGuildSettings(guildId),
+    getRarityDisplayOverrides(guildId),
+  ]);
+  return new Map(cards.map(c => [c.id, {
+    ...c,
+    displayEmoji: getCardDisplayRarity(c, ctx, settings, displayMap).emoji || "•",
+  }]));
 }
 
-export function cardLabel(card: { name: string; rarity: string } | undefined, cardId: number): string {
+export function cardLabel(card: LabelCard | undefined, cardId: number): string {
   if (!card) return `Card #${cardId}`;
-  return `${RARITY_EMOJI[card.rarity] ?? "•"} ${card.name}`;
+  return `${card.displayEmoji || "•"} ${card.name}`;
 }
 
-export function listingLine(l: MarketListing, cards: Map<number, { name: string; rarity: string }>): string {
+export function listingLine(l: MarketListing, cards: Map<number, LabelCard>): string {
   const label = cardLabel(cards.get(l.cardId), l.cardId);
   if (l.kind === "auction") {
     const bid = l.currentBid != null ? `💠 ${l.currentBid.toLocaleString()} (${l.currentBidderId ? `<@${l.currentBidderId}>` : "no bids"})` : `💠 ${l.price.toLocaleString()} start`;
@@ -109,11 +123,13 @@ export async function sellCard(
   if (!res.ok) return { ok: false, error: `❌ You don't own a normal copy of **${card.name}** to list. (Shiny copies can't be listed.)` };
 
   const l = res.listing;
+  // Resolve the card's /rarity display emoji for the confirmation label.
+  const labelCard = (await cardMap(guildId)).get(card.id);
   const embed = new EmbedBuilder()
     .setColor(0x2ecc71)
     .setTitle(isAuction ? "🔨 Auction created" : "🏷️ Listing created")
     .setDescription(
-      `**${cardLabel(card, card.id)}** is now on the market.\n` +
+      `**${cardLabel(labelCard, card.id)}** is now on the market.\n` +
       (isAuction
         ? `Starting bid: 💠 **${price.toLocaleString()}**\n` +
           (buyout ? `Buyout: 💠 **${buyout.toLocaleString()}**\n` : "") +

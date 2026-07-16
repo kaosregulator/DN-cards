@@ -28,9 +28,22 @@ import {
 } from "../embed-overrides.js";
 import {
   getShowcaseBackgrounds, setShowcaseBackground, clearShowcaseBackground,
-  clearAllShowcaseBackgrounds,
+  clearAllShowcaseBackgrounds, getOrCreateGuildSettings, getRarityDisplayOverrides,
 } from "../db.js";
-import { RARITY_LABELS, RARITY_EMOJI, type Rarity } from "../cards-data.js";
+import { rarityLabel, rarityEmoji, type Rarity } from "../cards-data.js";
+
+// Resolve a rarity-color field's label/emoji through /rarity (source of truth),
+// so the color editor shows the admin's custom rarity names/emojis.
+async function rarityFieldDisplay(guildId: string) {
+  const [gs, dm] = await Promise.all([
+    getOrCreateGuildSettings(guildId),
+    getRarityDisplayOverrides(guildId),
+  ]);
+  return (r: Rarity) => ({
+    label: `${rarityLabel(r, gs, dm)} Color`,
+    emoji: rarityEmoji(r, gs, dm),
+  });
+}
 import { renderShowcaseImage } from "../battle/image/render.js";
 import { toAbsoluteImageUrl } from "../image-url.js";
 import { persistBotImage } from "./edit-card.js";
@@ -49,8 +62,17 @@ const EMBED_FIELD_LIST = [
   { key: "showDropChance", label: "Show Drop Chance", emoji: "🎲", type: "toggle" },
 ] as const;
 
+// Static entries carry only the field KEY, the rarity, and a plain fallback
+// label. The visible label/emoji are resolved live from /rarity at render time
+// (see rarityFieldDisplay) — no hardcoded rarity name/emoji tables here.
 const RARITY_COLOR_FIELDS = (["common", "uncommon", "rare", "epic", "legendary", "mythic"] as Rarity[])
-  .map(r => ({ key: `rarityColor.${r}` as const, label: `${RARITY_LABELS[r]} Color`, emoji: RARITY_EMOJI[r], type: "color" as const }));
+  .map(r => ({
+    key: `rarityColor.${r}` as const,
+    rarity: r,
+    label: `${r.charAt(0).toUpperCase()}${r.slice(1)} Color`,
+    emoji: "🎨",
+    type: "color" as const,
+  }));
 
 const IMAGE_MODES = [
   { label: "Default", value: "default" },
@@ -268,6 +290,7 @@ async function buildDesignerHome(guildId: string, userId: string) {
 async function buildEmbedEditor(guildId: string, key: EmbedKey, userId: string) {
   const cfg = await getRawEmbedOverride(guildId, key);
   const preview = await buildPreviewEmbed(guildId, key, cfg);
+  const rarityField = await rarityFieldDisplay(guildId);
 
   const fieldOptions = [
     ...EMBED_FIELD_LIST.map(f => ({
@@ -275,11 +298,14 @@ async function buildEmbedEditor(guildId: string, key: EmbedKey, userId: string) 
       value: f.key,
       description: `Edit ${f.label.toLowerCase()}`,
     })),
-    ...RARITY_COLOR_FIELDS.map(f => ({
-      label: `${f.emoji} ${f.label}`,
-      value: f.key,
-      description: `Edit ${f.label}`,
-    })),
+    ...RARITY_COLOR_FIELDS.map(f => {
+      const d = rarityField(f.rarity); // resolved through /rarity
+      return {
+        label: `${d.emoji} ${d.label}`,
+        value: f.key,
+        description: `Edit ${d.label}`,
+      };
+    }),
   ];
 
   const rows: ActionRowBuilder<any>[] = [
@@ -436,7 +462,7 @@ async function handleFieldSelect(
   await showEditModal(interaction, key, field);
 }
 
-function showEditModal(
+async function showEditModal(
   interaction: StringSelectMenuInteraction | ButtonInteraction,
   key: EmbedKey,
   field: EmbedFieldKey,
@@ -444,12 +470,18 @@ function showEditModal(
   const meta = [...EMBED_FIELD_LIST, ...RARITY_COLOR_FIELDS].find(f => f.key === field)!;
   const isColor = meta.type === "color";
   const isUrl = meta.type === "url";
+  // Rarity-color fields resolve their label live from /rarity.
+  let label = meta.label;
+  if (field.startsWith("rarityColor.") && interaction.guildId) {
+    const r = field.slice("rarityColor.".length) as Rarity;
+    label = (await rarityFieldDisplay(interaction.guildId))(r).label;
+  }
   const modal = new ModalBuilder()
     .setCustomId(`${CUSTOM_ID_PREFIX}:${isColor ? "color" : isUrl ? "url" : "text"}:${key}:${field}`)
-    .setTitle(`Edit ${meta.label}`);
+    .setTitle(`Edit ${label}`);
   const input = new TextInputBuilder()
     .setCustomId("value")
-    .setLabel(meta.label)
+    .setLabel(label)
     .setStyle(TextInputStyle.Short)
     .setRequired(false)
     .setMaxLength(1000)
