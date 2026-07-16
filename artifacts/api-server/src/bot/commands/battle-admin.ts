@@ -15,7 +15,10 @@ import {
   type StringSelectMenuInteraction, type ChannelSelectMenuInteraction,
   type ModalSubmitInteraction,
 } from "discord.js";
-import { isAdmin, getAllCards, getCardByName, getCardById } from "../db.js";
+import {
+  isAdmin, getAllCards, getCardByName, getCardById,
+  getOrCreateGuildSettings, getRarityDisplayOverrides,
+} from "../db.js";
 import { getBattleSettings, updateBattleSettings, RARITY_ORDER } from "../battle/config-engine.js";
 import { resetSeason } from "../battle/season-engine.js";
 import { upsertBattleCardConfig, getBattleCardConfig, resetBattleCardConfig } from "../battle/db.js";
@@ -27,8 +30,21 @@ import { getMoveset, inferMoveset, MOVESETS } from "../battle/movesets.js";
 
 // Options for the admin moveset picker (≤25 for a select menu).
 const MOVESETS_FOR_PICKER = Object.values(MOVESETS);
-import { RARITY_LABELS, RARITY_EMOJI } from "../cards-data.js";
+import { rarityLabel, rarityEmoji } from "../cards-data.js";
 import type { Rarity } from "../cards-data.js";
+
+// Resolve rarity display (label/emoji) through /rarity — the source of truth —
+// so renamed/re-emojied rarities show correctly across the battle admin hub.
+async function rarityDisplay(guildId: string) {
+  const [gs, dm] = await Promise.all([
+    getOrCreateGuildSettings(guildId),
+    getRarityDisplayOverrides(guildId),
+  ]);
+  return {
+    label: (r: Rarity) => rarityLabel(r, gs, dm),
+    emoji: (r: Rarity) => rarityEmoji(r, gs, dm),
+  };
+}
 import { toAbsoluteImageUrl } from "../image-url.js";
 
 // Battle speed presets (frame delay ms) for the admin speed controller.
@@ -314,6 +330,7 @@ export async function handleBattleAdminModal(interaction: ModalSubmitInteraction
       } else {
         // Multiple matches — show a picker so the admin can choose the right card.
         const top = scored.slice(0, 25);
+        const rd = await rarityDisplay(guildId);
         const embed = new EmbedBuilder()
           .setTitle("🔍 Multiple card matches")
           .setDescription(`I found ${scored.length} cards matching "**${name}**". Pick one to edit.`)
@@ -323,7 +340,7 @@ export async function handleBattleAdminModal(interaction: ModalSubmitInteraction
             .setCustomId(`battleadmin:bcsearchresult`)
             .setPlaceholder("Select a card to edit")
             .addOptions(top.map(({ c }) => {
-              const desc = `${RARITY_LABELS[c.rarity as Rarity] ?? c.rarity} · ${c.cardType || "—"} · worth ${c.worthValue}`;
+              const desc = `${rd.label(c.rarity as Rarity)} · ${c.cardType || "—"} · worth ${c.worthValue}`;
               return {
                 label: c.name.slice(0, 100),
                 description: desc.length > 100 ? desc.slice(0, 97) + "…" : desc,
@@ -361,6 +378,7 @@ export async function handleBattleAdminModal(interaction: ModalSubmitInteraction
 // ── Embeds ───────────────────────────────────────────────────────────────────
 async function buildHubEmbed(guildId: string): Promise<EmbedBuilder> {
   const s = await getBattleSettings(guildId);
+  const rd = await rarityDisplay(guildId);
   const onoff = (b: boolean) => b ? "✅ On" : "⏸️ Off";
   return new EmbedBuilder()
     .setColor(s.setupComplete ? 0xed4245 : 0xfaa61a)
@@ -374,7 +392,7 @@ async function buildHubEmbed(guildId: string): Promise<EmbedBuilder> {
       { name: "Log Channel", value: s.logChannelId ? `<#${s.logChannelId}>` : "None", inline: true },
       { name: "Rules", value: `⏱️ ${s.turnTimerSeconds}s · 💥 ${s.critChancePct}% crit · 💨 ${s.missChancePct}% miss · 🌀 ${s.dodgeChancePct}% dodge`, inline: false },
       { name: "Speed", value: `${speedLabel(s.frameDelayMs)} (${s.frameDelayMs}ms/frame) — set below`, inline: false },
-      { name: "Cards", value: `${RARITY_LABELS[s.minRarity as Rarity]} → ${RARITY_LABELS[s.maxRarity as Rarity]} · Types: ${s.allowedTypes?.length ? s.allowedTypes.join(", ") : "All"} · Special ${onoff(s.specialCardsEnabled)} · Stake ${onoff(s.stakingEnabled)}`, inline: false },
+      { name: "Cards", value: `${rd.label(s.minRarity as Rarity)} → ${rd.label(s.maxRarity as Rarity)} · Types: ${s.allowedTypes?.length ? s.allowedTypes.join(", ") : "All"} · Special ${onoff(s.specialCardsEnabled)} · Stake ${onoff(s.stakingEnabled)}`, inline: false },
       { name: "Rewards", value: `💠 Win ${s.rewardWinShards} / Loss ${s.rewardLossShards} · ✨ ${s.rewardWinXp} XP · Daily cap ${s.dailyRewardLimit} · 🎁 pack every ${s.freePackStreak || "—"} streak`, inline: false },
       { name: "Toggles", value: `AI ${onoff(s.aiEnabled)} · Global LB ${onoff(s.globalLeaderboardOptIn)} · GIF Battles ${onoff(s.battleAnimationEnabled)}`, inline: false },
     );
@@ -427,12 +445,13 @@ function buildHubComponents(s?: { frameDelayMs: number; battleAnimationSpeed?: s
 
 async function buildCardsEmbed(guildId: string): Promise<EmbedBuilder> {
   const s = await getBattleSettings(guildId);
+  const rd = await rarityDisplay(guildId);
   return new EmbedBuilder()
     .setColor(0x5865f2)
     .setTitle("🎴 Battle Card Settings")
     .setDescription("Choose which cards can battle by rarity + type, toggle special cards & staking, and fine-tune individual cards with **Edit Card**.")
     .addFields(
-      { name: "Rarity Window", value: `${RARITY_EMOJI[s.minRarity as Rarity]} ${RARITY_LABELS[s.minRarity as Rarity]} → ${RARITY_EMOJI[s.maxRarity as Rarity]} ${RARITY_LABELS[s.maxRarity as Rarity]}`, inline: false },
+      { name: "Rarity Window", value: `${rd.emoji(s.minRarity as Rarity)} ${rd.label(s.minRarity as Rarity)} → ${rd.emoji(s.maxRarity as Rarity)} ${rd.label(s.maxRarity as Rarity)}`, inline: false },
       { name: "Allowed Types", value: s.allowedTypes?.length ? s.allowedTypes.join(", ") : "All types", inline: false },
       { name: "Special Cards", value: s.specialCardsEnabled ? "✅ Enabled" : "⏸️ Disabled", inline: true },
       { name: "Staking", value: s.stakingEnabled ? "✅ Enabled" : "⏸️ Disabled", inline: true },
@@ -441,8 +460,9 @@ async function buildCardsEmbed(guildId: string): Promise<EmbedBuilder> {
 
 async function buildCardsComponents(guildId: string): Promise<ActionRowBuilder<any>[]> {
   const s = await getBattleSettings(guildId);
+  const rd = await rarityDisplay(guildId);
   const rarityOptions = (selected: string) => RARITY_ORDER.map(r => ({
-    label: RARITY_LABELS[r], emoji: RARITY_EMOJI[r], value: r, default: selected === r,
+    label: rd.label(r), emoji: rd.emoji(r), value: r, default: selected === r,
   }));
 
   const minRow = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
@@ -582,8 +602,9 @@ function statInput(id: string, label: string, value: string): ActionRowBuilder<T
 async function buildCardEditorPanel(
   guildId: string, cardId: number,
 ): Promise<{ embeds: EmbedBuilder[]; components: ActionRowBuilder<any>[] } | null> {
-  const [card, cfg, settings] = await Promise.all([
+  const [card, cfg, settings, rd] = await Promise.all([
     getCardById(cardId, guildId), getBattleCardConfig(guildId, cardId), getBattleSettings(guildId),
+    rarityDisplay(guildId),
   ]);
   if (!card) return null;
 
@@ -609,11 +630,11 @@ async function buildCardEditorPanel(
     .setColor(0x5865f2)
     .setTitle(`🎴 Battle Editor — ${card.name}`)
     .setDescription(
-      `Real card rarity: **${RARITY_LABELS[card.rarity as Rarity] ?? card.rarity}** (unchanged). ` +
+      `Real card rarity: **${rd.label(card.rarity as Rarity)}** (unchanged). ` +
       `Everything here is battle-only. ✏️ = overridden.`,
     )
     .addFields(
-      { name: "Battle Rarity", value: `${RARITY_EMOJI[battleRarity]} ${RARITY_LABELS[battleRarity] ?? battleRarity}${cfg?.rarity ? " ✏️" : " (auto)"}`, inline: true },
+      { name: "Battle Rarity", value: `${rd.emoji(battleRarity)} ${rd.label(battleRarity)}${cfg?.rarity ? " ✏️" : " (auto)"}`, inline: true },
       { name: "Usable", value: (cfg?.enabled ?? true) ? "✅ Yes" : "🚫 Disabled", inline: true },
       { name: "As Special Card", value: specialDisplay, inline: false },
       { name: "Signature Move", value: movesetDisplay, inline: false },
@@ -631,7 +652,7 @@ async function buildCardEditorPanel(
     new StringSelectMenuBuilder().setCustomId(`battleadmin:bcrarity:${cardId}`).setPlaceholder("🎖️ Battle rarity")
       .addOptions(
         { label: "Auto (use real rarity)", value: "__auto__", default: !cfg?.rarity },
-        ...RARITY_ORDER.map(r => ({ label: RARITY_LABELS[r], emoji: RARITY_EMOJI[r], value: r, default: cfg?.rarity === r })),
+        ...RARITY_ORDER.map(r => ({ label: rd.label(r), emoji: rd.emoji(r), value: r, default: cfg?.rarity === r })),
       ),
   );
   const specialRow = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
