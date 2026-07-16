@@ -23,7 +23,7 @@ import type { AttackScene } from "../animations/index.js";
 import type { AnimationSpeed } from "../animations/types.js";
 import { toAbsoluteImageUrl } from "../image-url.js";
 import { getBotClient } from "../client-holder.js";
-import { removeCardFromUser, restoreCardToUser, getOrCreateGuildSettings, getCardsInSet } from "../db.js";
+import { removeCardFromUser, restoreCardToUser, getOrCreateGuildSettings, getCardsInSet, getBattleBackgrounds } from "../db.js";
 import type { BattleSettings } from "@workspace/db";
 import type { Combatant, MoveType, AiDifficulty, Rarity, TurnResult } from "./types.js";
 import { AI_DIFFICULTIES } from "./types.js";
@@ -620,10 +620,16 @@ async function beginCombat(rt: BattleRuntime) {
 
   // Render the layered VS battle image once (background + both cards + VS).
   // Fire-and-forget safe: null on any failure → battle just shows no image.
+  // Admin-uploaded arena backgrounds auto-shuffle: pick one at random per fight.
   if (rt.a && rt.b) {
+    const backgrounds = await getBattleBackgrounds(rt.guildId).catch(() => [] as string[]);
+    const backgroundUrl = backgrounds.length
+      ? toAbsoluteImageUrl(backgrounds[Math.floor(Math.random() * backgrounds.length)]!)
+      : null;
     rt.vsImage = await renderBattleImage(
       combatantToRenderCard(rt, rt.a),
       combatantToRenderCard(rt, rt.b),
+      { backgroundUrl },
     ).catch(() => null);
   }
 

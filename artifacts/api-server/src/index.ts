@@ -59,6 +59,20 @@ async function runBootMigrations() {
   `);
   await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS showcase_backgrounds_guild_slot_idx ON showcase_backgrounds (guild_id, slot)`);
 
+  // Battle arena backgrounds — up to 3 slots per guild; the VS renderer shuffles.
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS battle_backgrounds (
+      id SERIAL PRIMARY KEY,
+      guild_id TEXT NOT NULL,
+      slot INTEGER NOT NULL,
+      url TEXT NOT NULL,
+      created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+      updated_by TEXT,
+      UNIQUE (guild_id, slot)
+    )
+  `);
+  await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS battle_backgrounds_guild_slot_idx ON battle_backgrounds (guild_id, slot)`);
+
   // Unified account-level progression (Player XP). Purely additive — existing
   // progression tables (card_progress, battle_profiles, user_currency, quests,
   // reputation, …) are untouched; this only stores the new account-wide level

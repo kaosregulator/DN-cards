@@ -18,7 +18,9 @@ import {
 import {
   isAdmin, getAllCards, getCardByName, getCardById,
   getOrCreateGuildSettings, getRarityDisplayOverrides,
+  getBattleBackgrounds, setBattleBackground, clearBattleBackground, clearAllBattleBackgrounds,
 } from "../db.js";
+import { persistBotImage } from "./edit-card.js";
 import { getBattleSettings, updateBattleSettings, RARITY_ORDER } from "../battle/config-engine.js";
 import { resetSeason } from "../battle/season-engine.js";
 import { upsertBattleCardConfig, getBattleCardConfig, resetBattleCardConfig } from "../battle/db.js";
@@ -61,7 +63,24 @@ export async function handleBattleAdminCommand(interaction: ChatInputCommandInte
   if (!interaction.guild) return;
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
   if (!(await ensureAdmin(interaction))) return;
-  await interaction.editReply({ embeds: [await buildHubEmbed(interaction.guild.id)], components: buildHubComponents(await getBattleSettings(interaction.guild.id)) });
+  const guildId = interaction.guild.id;
+
+  // Quick-upload: an attached image fills the next empty arena-background slot
+  // (or replaces slot 1 when all three are full), then opens the manager.
+  const image = interaction.options.getAttachment("image");
+  if (image?.url) {
+    const existing = await getBattleBackgrounds(guildId);
+    const slot = (existing.length < 3 ? existing.length + 1 : 1) as 1 | 2 | 3;
+    let url = image.url;
+    if (image.url.includes("cdn.discordapp.com") || image.url.includes("media.discordapp.net")) {
+      try { url = await persistBotImage(image.url, image.contentType ?? undefined); } catch { /* fall back to raw URL */ }
+    }
+    await setBattleBackground(guildId, slot, url, interaction.user.id);
+    await interaction.editReply(await buildBackgroundsManager(guildId));
+    return;
+  }
+
+  await interaction.editReply({ embeds: [await buildHubEmbed(guildId)], components: buildHubComponents(await getBattleSettings(guildId)) });
 }
 
 // ── Button router ────────────────────────────────────────────────────────────
@@ -150,6 +169,21 @@ export async function handleBattleAdminButton(interaction: ButtonInteraction): P
     }
     case "channels": {
       await interaction.editReply({ embeds: [await buildChannelsEmbed(guildId)], components: buildChannelsComponents() });
+      return;
+    }
+    case "backgrounds": {
+      await interaction.editReply(await buildBackgroundsManager(guildId));
+      return;
+    }
+    case "bgclear": {
+      const slot = Number(interaction.customId.split(":")[2]) as 1 | 2 | 3;
+      if (slot >= 1 && slot <= 3) await clearBattleBackground(guildId, slot);
+      await interaction.editReply(await buildBackgroundsManager(guildId));
+      return;
+    }
+    case "bgclearall": {
+      await clearAllBattleBackgrounds(guildId);
+      await interaction.editReply(await buildBackgroundsManager(guildId));
       return;
     }
     case "resetlb": {
@@ -410,6 +444,7 @@ function buildHubComponents(s?: { frameDelayMs: number; battleAnimationSpeed?: s
     new ButtonBuilder().setCustomId("battleadmin:wizard").setLabel("Setup Wizard").setEmoji("🚀").setStyle(ButtonStyle.Success),
     new ButtonBuilder().setCustomId("battleadmin:toggle").setLabel("Enable/Disable").setEmoji("🔀").setStyle(ButtonStyle.Secondary),
     new ButtonBuilder().setCustomId("battleadmin:channels").setLabel("Channels").setEmoji("📡").setStyle(ButtonStyle.Primary),
+    new ButtonBuilder().setCustomId("battleadmin:backgrounds").setLabel("Backgrounds").setEmoji("🖼️").setStyle(ButtonStyle.Primary),
   );
   const row2 = new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder().setCustomId("battleadmin:rules").setLabel("Rules").setEmoji("⚙️").setStyle(ButtonStyle.Primary),
@@ -520,6 +555,41 @@ function buildChannelsComponents(): ActionRowBuilder<any>[] {
       new ButtonBuilder().setCustomId("battleadmin:hub").setLabel("Back").setStyle(ButtonStyle.Secondary),
     ),
   ];
+}
+
+// ── Battle Backgrounds manager ───────────────────────────────────────────────
+// Up to 3 uploadable arena backgrounds; the VS renderer auto-shuffles between
+// them each fight. Admins add images by re-running `/battle_admin image:<file>`
+// (fills the next empty slot) and clear slots here.
+async function buildBackgroundsManager(guildId: string): Promise<{ embeds: EmbedBuilder[]; components: ActionRowBuilder<any>[] }> {
+  const urls = await getBattleBackgrounds(guildId);
+  const slotLines = [1, 2, 3].map(i => {
+    const u = urls[i - 1];
+    return u ? `**Slot ${i}** · ✅ set` : `**Slot ${i}** · _empty_`;
+  }).join("\n");
+
+  const embed = new EmbedBuilder()
+    .setColor(0x9b59b6)
+    .setTitle("🖼️ Battle Arena Backgrounds")
+    .setDescription(
+      "Upload up to **3** arena backgrounds. The battle image **auto-shuffles** between them each fight; "
+      + "with none set, battles use the vibrant gradient drawn from the cards.\n\n"
+      + "**To add one:** run `/battle_admin` with the **image** option (attach a PNG/JPG). "
+      + "It fills the next empty slot (or replaces slot 1 when all are full).\n\n"
+      + slotLines,
+    );
+  if (urls[0]) embed.setThumbnail(toAbsoluteImageUrl(urls[0]));
+
+  const clearRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+    ...[1, 2, 3].map(i =>
+      new ButtonBuilder().setCustomId(`battleadmin:bgclear:${i}`).setLabel(`Clear ${i}`).setEmoji("🗑️")
+        .setStyle(ButtonStyle.Secondary).setDisabled(!urls[i - 1])),
+    new ButtonBuilder().setCustomId("battleadmin:bgclearall").setLabel("Clear All").setStyle(ButtonStyle.Danger).setDisabled(urls.length === 0),
+  );
+  const backRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder().setCustomId("battleadmin:hub").setLabel("Back").setStyle(ButtonStyle.Secondary),
+  );
+  return { embeds: [embed], components: [clearRow, backRow] };
 }
 
 function confirmRow(confirmAction: string): ActionRowBuilder<ButtonBuilder> {
