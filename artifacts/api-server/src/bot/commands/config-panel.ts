@@ -302,6 +302,18 @@ export async function handleConfigButton(interaction: ButtonInteraction): Promis
       });
     }
     return;
+  } else if (action === "anim") {
+    const settings = await getOrCreateGuildSettings(guildId);
+    if (arg === "back") {
+      await refreshPanel(interaction, settings);
+    } else {
+      // Open animation sub-panel (replaces config panel in-place)
+      await interaction.editReply({
+        embeds: [buildAnimationEmbed(settings)],
+        components: buildAnimationComponents(settings),
+      });
+    }
+    return;
   }
 
   const settings = await getOrCreateGuildSettings(guildId);
@@ -605,22 +617,10 @@ function buildConfigComponents(s: GuildSettings, displayMap?: RarityDisplayMap |
       .setCustomId("config:channel:spawn2")
       .setLabel("📡 Stream 2 here")
       .setStyle(ButtonStyle.Primary),
-  );
-  const animRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder()
-      .setCustomId("config:toggle:packanim")
-      .setLabel(s.packAnimationEnabled ? "🎞️ Pack Anim ON" : "🎞️ Pack Anim OFF")
+      .setCustomId("config:anim:open")
+      .setLabel("🎞️ Animations")
       .setStyle(ButtonStyle.Secondary),
-  );
-  const animSpeedRow = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
-    new StringSelectMenuBuilder()
-      .setCustomId("config_anim_speed")
-      .setPlaceholder("🎞️ Pack animation speed")
-      .addOptions([
-        { label: "Slow (cinematic)", value: "slow", emoji: "🐢", default: s.packAnimationSpeed === "slow" },
-        { label: "Normal", value: "normal", emoji: "⚖️", default: s.packAnimationSpeed === "normal" },
-        { label: "Fast", value: "fast", emoji: "🚀", default: s.packAnimationSpeed === "fast" },
-      ]),
   );
 
   return [
@@ -629,9 +629,49 @@ function buildConfigComponents(s: GuildSettings, displayMap?: RarityDisplayMap |
     new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(intervalSelect),
     toggleRow,
     subPanelRow,
-    animRow,
-    animSpeedRow,
   ];
+}
+
+// ── Animation sub-panel ─────────────────────────────────────────────────────
+
+function buildAnimationEmbed(s: GuildSettings): EmbedBuilder {
+  return new EmbedBuilder()
+    .setTitle("🎞️ Pack Animation Settings")
+    .setColor(0x5865f2)
+    .setDescription(
+      "Pack openings use lightweight PNG reveal frames. " +
+      "Admins can toggle them off or change the speed to save CPU/bandwidth."
+    )
+    .addFields(
+      {
+        name: "🎴 Pack Animations",
+        value: s.packAnimationEnabled ? `🟢 ON · ${s.packAnimationSpeed}` : "🔴 OFF",
+        inline: true,
+      },
+    );
+}
+
+function buildAnimationComponents(s: GuildSettings) {
+  const toggleRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder()
+      .setCustomId("config:toggle:packanim")
+      .setLabel(s.packAnimationEnabled ? "🎴 Pack Anim ON" : "🎴 Pack Anim OFF")
+      .setStyle(ButtonStyle.Secondary),
+  );
+  const speedRow = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
+    new StringSelectMenuBuilder()
+      .setCustomId("config_anim_speed")
+      .setPlaceholder("🎴 Pack animation speed")
+      .addOptions([
+        { label: "Slow (cinematic)", value: "slow", emoji: "🐢", default: s.packAnimationSpeed === "slow" },
+        { label: "Normal", value: "normal", emoji: "⚖️", default: s.packAnimationSpeed === "normal" },
+        { label: "Fast", value: "fast", emoji: "🚀", default: s.packAnimationSpeed === "fast" },
+      ]),
+  );
+  const backRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder().setCustomId("config:anim:back").setLabel("← Back").setStyle(ButtonStyle.Secondary),
+  );
+  return [toggleRow, speedRow, backRow];
 }
 
 function formatSec(sec: number): string {
