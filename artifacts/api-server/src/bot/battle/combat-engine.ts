@@ -11,6 +11,8 @@ import type { BattleSettings } from "@workspace/db";
 import type { Combatant, BattleEvent, MoveType, TurnResult, StatusEffect } from "./types.js";
 import { getEffectDef } from "./special-cards.js";
 import { getMoveset } from "./movesets.js";
+import { getBattleItem, applyItemEffect } from "./items.js";
+import { applyTurnStartPassive } from "./passives.js";
 
 // Apply a moveset's effect. Reuses the shared special-effects registry for the
 // common effects; "stealth" and "weaken" are combat-engine-native mechanics.
@@ -44,6 +46,10 @@ export function startOfTurn(
   const events: BattleEvent[] = [];
   actor.defending = false;
 
+  // Turn-start passive (regen / energy / shield) fires before status ticks.
+  const passiveEvent = applyTurnStartPassive(actor);
+  if (passiveEvent) events.push(passiveEvent);
+
   for (const st of actor.status) {
     if (st.kind === "poison" || st.kind === "burn") {
       const dmg = Math.max(1, Math.round(st.magnitude));
@@ -67,6 +73,7 @@ export function startOfTurn(
   actor.energy = Math.min(actor.stats.energyMax, actor.energy + settings.energyGainPerTurn);
   actor.ultimate = Math.min(actor.stats.ultimateMax, actor.ultimate + settings.ultimateChargePerTurn);
   if (actor.specialCooldownRemaining > 0) actor.specialCooldownRemaining--;
+  if ((actor.itemCooldownRemaining ?? 0) > 0) actor.itemCooldownRemaining = actor.itemCooldownRemaining! - 1;
 
   if (actor.hp <= 0) return { events, koed: true, skipped: false };
 
@@ -217,7 +224,7 @@ export function resolveMove(
     case "special": {
       // The card's signature moveset drives its Special (falls back to a
       // generic heavy strike for a card with no assigned moveset).
-      const ms = getMoveset(actor.moveset);
+      const ms = actor.movesetDef ?? getMoveset(actor.moveset);
       const cost = ms?.energyCost ?? settings.specialCost;
       if (actor.energy < cost) {
         events.push({ text: `⚠️ **${actor.cardName}** lacks energy for ${ms ? `**${ms.name}**` : "a Special Attack"} and staggers.` });
@@ -280,6 +287,27 @@ export function resolveMove(
       koed = foe.hp <= 0;
       break;
     }
+    case "item": {
+      const item = actor.item ?? getBattleItem(actor.itemId);
+      if (!item) {
+        events.push({ text: `⚠️ **${actor.cardName}** has no battle item equipped.` });
+        break;
+      }
+      if ((actor.itemChargesRemaining ?? 0) <= 0) {
+        events.push({ text: `🎒 **${item.name}** is out of charges.` });
+        break;
+      }
+      if ((actor.itemCooldownRemaining ?? 0) > 0) {
+        events.push({ text: `⏳ **${item.name}** on cooldown (${actor.itemCooldownRemaining} more turn(s)).` });
+        break;
+      }
+      const outcome = applyItemEffect(item, actor, foe);
+      events.push(...outcome.events);
+      koed = outcome.koed || foe.hp <= 0;
+      actor.itemChargesRemaining = (actor.itemChargesRemaining ?? 0) - 1;
+      actor.itemCooldownRemaining = item.cooldown;
+      break;
+    }
     case "skip": {
       actor.energy = Math.min(actor.stats.energyMax, actor.energy + Math.round(settings.energyGainPerTurn / 2));
       events.push({ text: `⏭️ **${actor.cardName}** waits and watches.` });
@@ -296,7 +324,7 @@ export function resolveMove(
 
 // Which moves are legal right now (for button enable/disable + AI).
 export function availableMoves(actor: Combatant, settings: BattleSettings): Record<MoveType, boolean> {
-  const specialCost = getMoveset(actor.moveset)?.energyCost ?? settings.specialCost;
+  const specialCost = (actor.movesetDef ?? getMoveset(actor.moveset))?.energyCost ?? settings.specialCost;
   return {
     attack: true,
     special: actor.energy >= specialCost,
@@ -305,5 +333,6 @@ export function availableMoves(actor: Combatant, settings: BattleSettings): Reco
     charge: true,
     skip: true,
     ultimate: actor.ultimate >= actor.stats.ultimateMax,
+    item: !!actor.itemId && (actor.itemChargesRemaining ?? 0) > 0 && (actor.itemCooldownRemaining ?? 0) === 0,
   };
 }

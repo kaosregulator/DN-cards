@@ -44,7 +44,8 @@ export interface RenderCard {
 }
 
 export interface RenderOpts {
-  background?: string | null;  // theme background key
+  background?: string | null;     // built-in theme background key
+  backgroundUrl?: string | null;  // admin-uploaded arena image (cover-fit); wins over `background`
 }
 
 // ── canvas module (lazy, cached) ─────────────────────────────────────────────
@@ -176,7 +177,10 @@ function fitText(ctx: Ctx, text: string, maxW: number, startPx: number, family: 
 // Background image (or gradient fallback) + diagonal split tint.
 async function layerBackground(ctx: Ctx, mod: CanvasMod, opts: RenderOpts, customGradient?: [string, string]) {
   const bg = resolveBackground(opts.background);
-  const img = await loadArt(mod, bg.src);
+  // An admin-uploaded arena image (auto-shuffled per battle) wins over the
+  // built-in theme key; if it fails to load we fall through to the theme/gradient.
+  const img = (opts.backgroundUrl ? await loadArt(mod, opts.backgroundUrl) : null)
+    ?? await loadArt(mod, bg.src);
   if (img) {
     // cover-fit
     const scale = Math.max(CANVAS.width / img.width, CANVAS.height / img.height);

@@ -129,6 +129,9 @@ export const battleCardConfigTable = pgTable("battle_card_config", {
   // move. Null = auto-assign from the card type. Battle-only; never touches the
   // core card.
   moveset: text("moveset"),
+  // Passive ability id (see passives engine) that auto-triggers in battle. Null =
+  // no passive. Battle-only; never touches the core card.
+  passive: text("passive"),
   // If set, this card can be selected as a SPECIAL support card and applies the
   // named effect (see special-cards engine): heal, damage_boost, shield, poison,
   // burn, freeze, reflect, double_attack, energy_boost, buff, nuke.
@@ -141,6 +144,47 @@ export const battleCardConfigTable = pgTable("battle_card_config", {
 }));
 
 export type BattleCardConfig = typeof battleCardConfigTable.$inferSelect;
+
+// ── Battle Backgrounds (per-guild uploadable arena art) ──────────────────────
+// Up to 3 slots. The battle VS renderer picks one at random each fight (auto
+// shuffle); an empty table falls back to the built-in vibrant gradient. Mirrors
+// showcase_backgrounds so admins get the same upload UX for the arena canvas.
+export const battleBackgroundsTable = pgTable("battle_backgrounds", {
+  id: serial("id").primaryKey(),
+  guildId: text("guild_id").notNull(),
+  slot: integer("slot").notNull(), // 1, 2, or 3
+  url: text("url").notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedBy: text("updated_by"),
+}, (t) => ({
+  guildSlotUniq: uniqueIndex("battle_backgrounds_guild_slot_idx").on(t.guildId, t.slot),
+}));
+
+export type BattleBackground = typeof battleBackgroundsTable.$inferSelect;
+
+// ── Battle Content (per-guild custom content overlay) ────────────────────────
+// A single, data-driven overlay for admin-authored battle content: custom
+// battle items today, and moves/passives in future. Each row is one content
+// entry (kind + contentId) with its full definition in `data`. The engine's
+// registries MERGE these over the code defaults at read time, so every server
+// can add or override content without a code change while the built-in defaults
+// always remain available (a disabled row hides that entry for the guild).
+export const battleContentTable = pgTable("battle_content", {
+  id: serial("id").primaryKey(),
+  guildId: text("guild_id").notNull(),
+  kind: text("kind").notNull(),           // "item" | "move" | "passive"
+  contentId: text("content_id").notNull(),// stable id within the kind
+  data: jsonb("data").$type<Record<string, unknown>>().notNull(),
+  enabled: boolean("enabled").notNull().default(true),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  updatedBy: text("updated_by"),
+}, (t) => ({
+  guildKindIdUniq: uniqueIndex("battle_content_guild_kind_id_idx").on(t.guildId, t.kind, t.contentId),
+  guildKindIdx: index("battle_content_guild_kind_idx").on(t.guildId, t.kind),
+}));
+
+export type BattleContent = typeof battleContentTable.$inferSelect;
 
 // ── Battle Profiles (per-guild, per-user persistent stats) ───────────────────
 export const battleProfilesTable = pgTable("battle_profiles", {

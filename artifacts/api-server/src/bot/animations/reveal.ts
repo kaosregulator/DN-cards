@@ -17,7 +17,7 @@ import {
 } from "./engine.js";
 import {
   drawCardArt, drawCardFrame, drawRarityGlow, drawRarityBadge, drawTextWithShadow,
-  drawFoilOverlay, drawHoloSparkles, getRarityEffectColor, fitText,
+  drawFoilOverlay, drawHoloSparkles, getRarityEffectColor, fitText, drawScreenFlash,
 } from "./effects.js";
 import { logger } from "../../lib/logger.js";
 
@@ -165,56 +165,177 @@ export async function renderCardReveal(input: CardRevealInput): Promise<Buffer |
 }
 
 // ── Battle attack frame (single-card, cheap) ─────────────────────────────────
+// One renderer, many "scenes". The battle loop derives a scene from the move +
+// event flashes; each scene re-themes the SAME frame (accent, banner, impact FX)
+// so we never spin up a second renderer. All scenes are best-effort static PNGs.
+export type AttackScene =
+  | "attack" | "crit" | "special" | "ultimate" | "counter"
+  | "ko" | "buff" | "debuff" | "heal" | "shield" | "item" | "miss";
+
 export interface AttackFrameInput {
   attacker: RenderCard;
   moveName: string;
   damage: number;
   isCrit: boolean;
   isHit: boolean;
+  scene?: AttackScene;   // overrides the attack/crit/miss default when set
+  subtitle?: string;     // optional small caption under the impact (e.g. "+120 HP")
 }
 
-export async function renderAttackFrame(input: AttackFrameInput): Promise<Buffer | null> {
-  const { width, height } = REVEAL_ATTACK;
-  const { attacker } = input;
-  const color = attacker.rarityColor ?? getRarityEffectColor(attacker.rarity);
-  return renderPng(width, height, async (ctx, mod) => {
-    drawGradientBackground(ctx, width, height, [
-      [0, hexToRgba(color, 0.3)],
-      [0.6, "#0b1622"],
-      [1, "#07080c"],
-    ], 0.2);
+interface SceneTheme {
+  accent: number;        // impact + banner accent colour
+  banner: string;        // uppercased banner label
+  bannerColor: string;
+  impact: "burst" | "arrow_back" | "arrow_up" | "arrow_down" | "aura" | "cross" | "hex" | "skull" | "none";
+  screenFlash?: number;  // 0..1 flash strength (ultimates/crits)
+  bg?: [number, number, number]; // [top-accent, mid, bottom] hex override
+}
 
-    // Attacker card on the left, lunging toward the impact.
-    const cw = 240, ch = 336, cx = 44, cy = (height - ch) / 2;
-    drawRarityGlow(ctx, cx, cy, cw, ch, color, 0.7);
-    await drawCardArt(ctx, mod, cx, cy, cw, ch, attacker.artUrl);
-    drawCardFrame(ctx, cx, cy, cw, ch, color, 6);
-    drawRarityBadge(ctx, cx + cw - 12, cy + 12, attacker.rarityLabel, color);
-    drawTextWithShadow(ctx, attacker.name, cx + cw / 2, cy + ch + 22, "#ffffff", fitText(ctx, attacker.name, cw + 40, 22));
+function sceneTheme(scene: AttackScene, rarityColor: number): SceneTheme {
+  switch (scene) {
+    case "ultimate":
+      return { accent: 0xffd54a, banner: "ULTIMATE", bannerColor: "#ffe27a", impact: "burst", screenFlash: 0.5, bg: [0x2a1200, 0x1a0d05, 0x07080c] };
+    case "special":
+      return { accent: 0xb56bff, banner: "SPECIAL", bannerColor: "#d9a8ff", impact: "burst", screenFlash: 0.22, bg: [0x1a0d2a, 0x0d0b1a, 0x07080c] };
+    case "counter":
+      return { accent: 0x36d6d6, banner: "COUNTER!", bannerColor: "#8ff0f0", impact: "arrow_back" };
+    case "ko":
+      return { accent: 0xff3b3b, banner: "K.O.", bannerColor: "#ff6b6b", impact: "skull", screenFlash: 0.4, bg: [0x2a0505, 0x140303, 0x050505] };
+    case "buff":
+      return { accent: 0x4ad991, banner: "EMPOWERED", bannerColor: "#8fffc0", impact: "arrow_up", bg: [0x052a18, 0x03140d, 0x07080c] };
+    case "debuff":
+      return { accent: 0xb56bff, banner: "WEAKENED", bannerColor: "#d9a8ff", impact: "arrow_down" };
+    case "heal":
+      return { accent: 0x4ad991, banner: "RECOVER", bannerColor: "#8fffc0", impact: "cross", bg: [0x052a18, 0x03140d, 0x07080c] };
+    case "shield":
+      return { accent: 0x4a9ff5, banner: "SHIELD", bannerColor: "#a8d4ff", impact: "hex", bg: [0x081a2a, 0x040d14, 0x07080c] };
+    case "item":
+      return { accent: 0xf5a623, banner: "ITEM", bannerColor: "#ffd27a", impact: "burst" };
+    case "crit":
+      return { accent: 0xff4444, banner: "CRITICAL!", bannerColor: "#ff6666", impact: "burst", screenFlash: 0.28 };
+    case "miss":
+      return { accent: 0x95a5a6, banner: "MISS", bannerColor: "#b6c0c2", impact: "none" };
+    default:
+      return { accent: rarityColor, banner: "", bannerColor: "#ffcc33", impact: "burst" };
+  }
+}
 
-    // Move banner.
-    drawTextWithShadow(ctx, input.moveName.toUpperCase(), width / 2 + 90, 54, "#ffcc33", 26);
-
-    // Impact burst + damage number on the right.
-    const ix = width - 200, iy = height / 2;
-    if (input.isHit) {
-      ctx.save();
+function drawImpact(
+  ctx: Ctx, kind: SceneTheme["impact"], ix: number, iy: number, accent: number, big: boolean,
+): void {
+  const c = hexToRgba(accent, 0.85);
+  ctx.save();
+  ctx.strokeStyle = c;
+  ctx.fillStyle = c;
+  const scale = big ? 1.4 : 1;
+  switch (kind) {
+    case "burst": {
       for (let i = 0; i < 12; i++) {
         const a = (i / 12) * Math.PI * 2;
-        const len = input.isCrit ? 90 : 60;
-        ctx.strokeStyle = hexToRgba(color, 0.8);
-        ctx.lineWidth = input.isCrit ? 6 : 4;
+        const len = (big ? 90 : 60) * scale;
+        ctx.lineWidth = big ? 6 : 4;
         ctx.beginPath();
         ctx.moveTo(ix + Math.cos(a) * 24, iy + Math.sin(a) * 24);
         ctx.lineTo(ix + Math.cos(a) * len, iy + Math.sin(a) * len);
         ctx.stroke();
       }
-      ctx.restore();
+      break;
+    }
+    case "arrow_back": case "arrow_up": case "arrow_down": {
+      const dir = kind === "arrow_back" ? { dx: -1, dy: 0 } : kind === "arrow_up" ? { dx: 0, dy: -1 } : { dx: 0, dy: 1 };
+      for (let k = 0; k < 3; k++) {
+        const off = (k - 1) * 34;
+        const bx = ix + (dir.dx ? 0 : off);
+        const by = iy + (dir.dy ? 0 : 0) + (dir.dx ? off : 0);
+        const tipx = bx + dir.dx * 60, tipy = by + dir.dy * 60;
+        ctx.lineWidth = 8;
+        ctx.beginPath(); ctx.moveTo(bx - dir.dx * 40, by - dir.dy * 40); ctx.lineTo(tipx, tipy); ctx.stroke();
+        // arrowhead
+        ctx.beginPath();
+        ctx.moveTo(tipx, tipy);
+        ctx.lineTo(tipx - dir.dx * 22 - dir.dy * 16, tipy - dir.dy * 22 - dir.dx * 16);
+        ctx.lineTo(tipx - dir.dx * 22 + dir.dy * 16, tipy - dir.dy * 22 + dir.dx * 16);
+        ctx.closePath(); ctx.fill();
+      }
+      break;
+    }
+    case "aura": {
+      for (let r = 30; r < 90; r += 18) { ctx.globalAlpha = 1 - r / 100; ctx.lineWidth = 5; ctx.beginPath(); ctx.arc(ix, iy, r, 0, Math.PI * 2); ctx.stroke(); }
+      break;
+    }
+    case "cross": {
+      // Filled plus-sign (rounded rects) — avoids lineCap, which the restricted
+      // Ctx type doesn't declare.
+      roundRectPath(ctx, ix - 8, iy - 40, 16, 80, 6); ctx.fill();
+      roundRectPath(ctx, ix - 40, iy - 8, 80, 16, 6); ctx.fill();
+      break;
+    }
+    case "hex": {
+      ctx.lineWidth = 8;
+      ctx.beginPath();
+      for (let i = 0; i <= 6; i++) { const a = Math.PI / 6 + (i / 6) * Math.PI * 2; const px = ix + Math.cos(a) * 52; const py = iy + Math.sin(a) * 52; i ? ctx.lineTo(px, py) : ctx.moveTo(px, py); }
+      ctx.closePath(); ctx.stroke();
+      break;
+    }
+    case "skull": {
+      for (let i = 0; i < 12; i++) {
+        const a = (i / 12) * Math.PI * 2; const len = 100;
+        ctx.lineWidth = 6; ctx.beginPath();
+        ctx.moveTo(ix + Math.cos(a) * 30, iy + Math.sin(a) * 30);
+        ctx.lineTo(ix + Math.cos(a) * len, iy + Math.sin(a) * len); ctx.stroke();
+      }
+      break;
+    }
+    case "none": break;
+  }
+  ctx.restore();
+}
+
+export async function renderAttackFrame(input: AttackFrameInput): Promise<Buffer | null> {
+  const { width, height } = REVEAL_ATTACK;
+  const { attacker } = input;
+  const rarityColor = attacker.rarityColor ?? getRarityEffectColor(attacker.rarity);
+  // Resolve the scene: explicit hint wins; otherwise crit/miss/attack default.
+  const scene: AttackScene = input.scene ?? (!input.isHit ? "miss" : input.isCrit ? "crit" : "attack");
+  const theme = sceneTheme(scene, rarityColor);
+  const accent = scene === "attack" ? rarityColor : theme.accent;
+  return renderPng(width, height, async (ctx, mod) => {
+    const [top, mid, bot] = theme.bg ?? [rarityColor, 0x0b1622, 0x07080c];
+    drawGradientBackground(ctx, width, height, [
+      [0, hexToRgba(top === rarityColor ? rarityColor : top, 0.3)],
+      [0.6, hexToRgba(mid, 1)],
+      [1, hexToRgba(bot, 1)],
+    ], 0.2);
+
+    if (theme.screenFlash) drawScreenFlash(ctx, width, height, theme.screenFlash, accent);
+
+    // Attacker card on the left, lunging toward the impact.
+    const cw = 240, ch = 336, cx = 44, cy = (height - ch) / 2;
+    drawRarityGlow(ctx, cx, cy, cw, ch, accent, scene === "ultimate" ? 0.95 : 0.7);
+    await drawCardArt(ctx, mod, cx, cy, cw, ch, attacker.artUrl);
+    drawCardFrame(ctx, cx, cy, cw, ch, rarityColor, 6);
+    drawRarityBadge(ctx, cx + cw - 12, cy + 12, attacker.rarityLabel, rarityColor);
+    drawTextWithShadow(ctx, attacker.name, cx + cw / 2, cy + ch + 22, "#ffffff", fitText(ctx, attacker.name, cw + 40, 22));
+
+    // Move banner (name) + scene banner.
+    drawTextWithShadow(ctx, input.moveName.toUpperCase(), width / 2 + 90, 46, "#ffcc33", 24);
+    if (theme.banner) drawTextWithShadow(ctx, theme.banner, width / 2 + 90, 78, theme.bannerColor, 20);
+
+    // Impact FX + readout on the right.
+    const ix = width - 200, iy = height / 2;
+    const big = scene === "ultimate" || scene === "crit" || scene === "ko";
+    drawImpact(ctx, theme.impact, ix, iy, accent, big);
+
+    // Primary readout: damage for offensive scenes, banner-driven otherwise.
+    if (scene === "miss") {
+      drawTextWithShadow(ctx, "MISS", ix, iy, "#95a5a6", 46);
+    } else if (scene === "ko") {
+      drawTextWithShadow(ctx, "K.O.", ix, iy + 4, "#ff5555", 64);
+    } else if (input.isHit && input.damage > 0 && (scene === "attack" || scene === "crit" || scene === "special" || scene === "ultimate" || scene === "counter" || scene === "item")) {
       const dmg = input.isCrit ? `${input.damage.toLocaleString()}!` : `-${input.damage.toLocaleString()}`;
       drawTextWithShadow(ctx, dmg, ix, iy, input.isCrit ? "#ff4444" : "#ffffff", input.isCrit ? 60 : 46);
-      if (input.isCrit) drawTextWithShadow(ctx, "CRITICAL!", ix, iy + 52, "#ff6666", 22);
-    } else {
-      drawTextWithShadow(ctx, "MISS", ix, iy, "#95a5a6", 46);
     }
+    // Optional caption (e.g. "+120 HP", "Shield +80", status label).
+    if (input.subtitle) drawTextWithShadow(ctx, input.subtitle, ix, iy + (scene === "ko" ? 54 : 52), theme.bannerColor, 22);
   });
 }

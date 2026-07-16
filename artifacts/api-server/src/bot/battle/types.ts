@@ -61,6 +61,11 @@ export interface Combatant {
   // Signature moveset key (see movesets engine) driving the "Special" move.
   // Optional so non-battle Combatant constructions stay valid; null → generic.
   moveset?: string | null;
+  // Resolved moveset definition (guild custom or default), snapshotted at battle
+  // start so combat reads it without a guild-scoped registry lookup.
+  movesetDef?: import("./movesets.js").Moveset | null;
+  // Resolved passive ability (auto-triggering), snapshotted at battle start.
+  passive?: import("./passives.js").Passive | null;
 
   stats: BattleStats;
   hp: number;
@@ -82,10 +87,19 @@ export interface Combatant {
   doubleNextAttack: boolean;
   frozenTurns: number;             // skips this many of the combatant's turns
   lastStandUsed: boolean;
+
+  // Battle Item (replaces the old special support-card slot). The chosen item id
+  // plus its remaining charges/cooldown for THIS battle. `null` = none equipped.
+  // `item` is the RESOLVED definition (guild custom or default), snapshotted at
+  // battle start so combat reads it without a guild-scoped registry lookup.
+  itemId?: string | null;
+  item?: import("./items.js").BattleItem | null;
+  itemChargesRemaining?: number;
+  itemCooldownRemaining?: number;
 }
 
 export type MoveType =
-  | "attack" | "special" | "defend" | "special_card" | "charge" | "skip" | "ultimate";
+  | "attack" | "special" | "defend" | "special_card" | "charge" | "skip" | "ultimate" | "item";
 
 // A single visible line in the battle log.
 export interface BattleEvent {

@@ -10,6 +10,7 @@ import {
   setsTable, cardSetMembershipsTable,
   customPacksTable, customPackCardsTable, userCustomPackWeekTable,
   calculatorMessagesTable, showcaseBackgroundsTable,
+  battleBackgroundsTable,
 } from "@workspace/db";
 import { eq, and, or, sql, desc, inArray, isNull, type SQL } from "drizzle-orm";
 import type { Card, CardEvent, CardSet, CalculatorMessage, CustomPack, CustomPackCard, CustomRarity, GuildSettings, RarityProfile, Trade } from "@workspace/db";
@@ -2391,4 +2392,33 @@ export async function clearShowcaseBackground(guildId: string, slot: 1 | 2 | 3):
 
 export async function clearAllShowcaseBackgrounds(guildId: string): Promise<void> {
   await db.delete(showcaseBackgroundsTable).where(eq(showcaseBackgroundsTable.guildId, guildId));
+}
+
+// ── Battle Backgrounds (arena canvas) ───────────────────────────────────────
+// Up to 3 uploadable arena backgrounds per guild. The battle VS renderer picks
+// one at random each fight; an empty table falls back to the vibrant gradient.
+export async function getBattleBackgrounds(guildId: string): Promise<string[]> {
+  const rows = await db.select({ url: battleBackgroundsTable.url })
+    .from(battleBackgroundsTable)
+    .where(eq(battleBackgroundsTable.guildId, guildId))
+    .orderBy(battleBackgroundsTable.slot);
+  return rows.map(r => r.url);
+}
+
+export async function setBattleBackground(guildId: string, slot: 1 | 2 | 3, url: string, updatedBy?: string): Promise<void> {
+  await db.insert(battleBackgroundsTable)
+    .values({ guildId, slot, url, updatedBy: updatedBy ?? null })
+    .onConflictDoUpdate({
+      target: [battleBackgroundsTable.guildId, battleBackgroundsTable.slot],
+      set: { url, updatedBy: updatedBy ?? null },
+    });
+}
+
+export async function clearBattleBackground(guildId: string, slot: 1 | 2 | 3): Promise<void> {
+  await db.delete(battleBackgroundsTable)
+    .where(and(eq(battleBackgroundsTable.guildId, guildId), eq(battleBackgroundsTable.slot, slot)));
+}
+
+export async function clearAllBattleBackgrounds(guildId: string): Promise<void> {
+  await db.delete(battleBackgroundsTable).where(eq(battleBackgroundsTable.guildId, guildId));
 }

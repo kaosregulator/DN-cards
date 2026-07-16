@@ -334,16 +334,45 @@ async function buildCardDetailScreen(
   const imgUrl = toAbsoluteImageUrl(card.imageUrl);
   const shinyBurn = owned.shinyCount * card.burnValue * SHINY_MULTIPLIER;
 
+  // Battle-facing info (Level-1 stats + Star Rank bonus, signature move, special)
+  // via the shared preview helper. Best-effort — null if battle isn't configured.
+  const { getCardBattlePreview } = await import("../battle/card-preview.js");
+  const { starRankString } = await import("../cards/stars.js");
+  const preview = await getCardBattlePreview(guildId, userId, card).catch(() => null);
+
   const embed = new EmbedBuilder()
     .setTitle(`${tier.emoji} ${card.name}`)
     .setColor(tier.color)
     .setDescription(card.description || "*No description.*")
     .addFields(
+      { name: "Rarity", value: `${tier.emoji} ${tier.label}`, inline: true },
+      { name: "⭐ Star Rank", value: preview ? `${starRankString(preview.starRank)} (${preview.starRank}★)` : "—", inline: true },
       { name: "You own", value: `×**${owned.count}**${owned.shinyCount > 0 ? ` · ${SHINY_EMOJI}×${owned.shinyCount}` : ""}`, inline: true },
       { name: "💠 Worth", value: `${card.worthValue.toLocaleString()} shards`, inline: true },
       { name: "🔥 Burn value", value: `${card.burnValue.toLocaleString()} shards`, inline: true },
     )
     .setFooter({ text: footerText("Card Detail") });
+
+  if (preview) {
+    const st = preview.stats;
+    embed.addFields(
+      {
+        name: "⚔️ Battle Stats (Lv 1)",
+        value:
+          `❤️ HP **${st.hp.toLocaleString()}** · ⚔️ ATK **${st.atk.toLocaleString()}** · 🛡️ DEF **${st.def.toLocaleString()}**\n` +
+          `💨 SPD **${st.spd.toLocaleString()}** · 🎯 Crit **${st.crit}%** · 🏹 Acc **${st.acc}%**` +
+          (preview.starRank > 0 ? `\n_Includes +${preview.starRank * 8}% Star Rank bonus._` : ""),
+        inline: false,
+      },
+      {
+        name: "🎯 Abilities",
+        value:
+          `${preview.move ? `${preview.move.emoji} **${preview.move.name}** — ${preview.move.description}` : "Primary attack"}\n` +
+          `${preview.special ? `✨ **${preview.special.name}** — ${preview.special.description}` : "No special"}`,
+        inline: false,
+      },
+    );
+  }
 
   if (imgUrl) embed.setThumbnail(imgUrl);
 
