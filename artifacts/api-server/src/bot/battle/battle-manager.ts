@@ -31,7 +31,7 @@ import { getBattleSettings, rarityAllowed, typeAllowed } from "./config-engine.j
 import { getScaledStats, powerRating } from "./stat-engine.js";
 import { inferMoveset, getMoveset } from "./movesets.js";
 import { inferSpecialEffect, getEffectDef } from "./special-cards.js";
-import { getBattleItem, listBattleItems, applyItemEffect } from "./items.js";
+import { getBattleItem, listBattleItems, applyItemEffect, loadGuildBattleItems } from "./items.js";
 import { resolveMove, startOfTurn, availableMoves } from "./combat-engine.js";
 import { chooseAiMove, pickAiCardIndex } from "./ai-engine.js";
 import { ARENAS, ARENA_KEYS, getArena, arenaLabel, isArenaKey } from "./arenas.js";
@@ -250,8 +250,10 @@ function buildCombatant(
     defending: false, nextAttackBoostPct: 0, doubleNextAttack: false,
     frozenTurns: 0, lastStandUsed: false,
     // Battle Item for this fight (replaces the old special support-card slot).
+    // Resolve the guild-scoped definition (custom or default) once, up-front.
     itemId: itemId ?? null,
-    itemChargesRemaining: getBattleItem(itemId)?.charges ?? 0,
+    item: getBattleItem(itemId, rt.guildId),
+    itemChargesRemaining: getBattleItem(itemId, rt.guildId)?.charges ?? 0,
     itemCooldownRemaining: 0,
   };
 }
@@ -462,10 +464,12 @@ async function enterPrep(rt: BattleRuntime, interaction: ButtonInteraction) {
 
 async function onOpenPrep(rt: BattleRuntime, interaction: ButtonInteraction) {
   if (!rt.prep.has(interaction.user.id)) return safeEphemeral(interaction, "You're not part of this battle.");
+  // Load the guild's custom Battle Items so the prep selector shows them.
+  await loadGuildBattleItems(rt.guildId).catch(() => {});
   const eligible = await eligibleForUser(rt, interaction.user.id);
   if (eligible.length === 0) return safeEphemeral(interaction, "You have no battle-eligible cards.");
   await interaction.reply({
-    content: "🎴 **Prepare for battle** — pick your card, an optional special support card, your coin call, and (optionally) stake your card. Then press **Ready**.",
+    content: "🎴 **Prepare for battle** — pick your card, an optional battle item, your coin call, and (optionally) stake your card. Then press **Ready**.",
     embeds: [buildPersonalPrepEmbed(rt, interaction.user.id)],
     components: buildPersonalPrepComponents(rt, interaction.user.id, eligible),
     flags: MessageFlags.Ephemeral,
@@ -560,6 +564,8 @@ async function onReady(rt: BattleRuntime, interaction: ButtonInteraction) {
 async function beginCombat(rt: BattleRuntime) {
   rt.phase = "combat";
   clearTimer(rt, "aiOfferTimer");
+  // Ensure the guild's custom Battle Items are resolved before building combatants.
+  await loadGuildBattleItems(rt.guildId).catch(() => {});
 
   // Build challenger.
   const chalPrep = rt.prep.get(rt.challengerId)!;
@@ -585,7 +591,7 @@ async function beginCombat(rt: BattleRuntime) {
     const arena = getArena(rt.aiDifficulty);
     // The AI equips a random usable Battle Item (its move engine decides when to
     // use it). Item usage scales the challenge alongside arena level.
-    const aiItems = listBattleItems();
+    const aiItems = listBattleItems(rt.guildId);
     const aiItemId = aiItems.length ? aiItems[Math.floor(Math.random() * aiItems.length)]!.id : null;
     rt.b = buildCombatant(rt, AI_ID, `AI · ${arena.name}`, true, 1, aiCard, aiSpecial, rt.aiDifficulty, arena.aiLevel, aiItemId);
     rt.staked = false;
@@ -1185,7 +1191,7 @@ function buildPrepSharedComponents(rt: BattleRuntime): ActionRowBuilder<ButtonBu
 function buildPersonalPrepEmbed(rt: BattleRuntime, userId: string): EmbedBuilder {
   const prep = rt.prep.get(userId);
   const cardName = prep?.cardId ? (rt.eligibleCache.get(userId)?.find(c => c.id === prep.cardId)?.name ?? `#${prep.cardId}`) : "—";
-  const item = getBattleItem(prep?.itemId);
+  const item = getBattleItem(prep?.itemId, rt.guildId);
   const itemName = item ? `${item.emoji} ${item.name}` : "None";
   return new EmbedBuilder()
     .setColor(0xfaa61a)
@@ -1243,7 +1249,7 @@ function buildPersonalPrepComponents(
 
   // Battle Item selector (replaces the old special support-card slot). Items are
   // data-driven — this list comes straight from the registry.
-  const items = listBattleItems();
+  const items = listBattleItems(rt.guildId);
   if (items.length) {
     const itemSelect = new StringSelectMenuBuilder()
       .setCustomId(`battle:pitem:${rt.id}`)
@@ -1294,7 +1300,7 @@ function buildMoveComponents(rt: BattleRuntime, actor: Combatant): ActionRowBuil
     mk("charge", "Charge", "⚡", ButtonStyle.Secondary),
     mk("skip", "Skip", "⏭️", ButtonStyle.Secondary),
   );
-  const item = getBattleItem(actor.itemId);
+  const item = actor.item ?? getBattleItem(actor.itemId, rt.guildId);
   const itemLabel = item ? item.name.slice(0, 40) : "Use Item";
   const itemEmoji = item?.emoji ?? "🎒";
   const row2 = new ActionRowBuilder<ButtonBuilder>().addComponents(
@@ -1327,7 +1333,7 @@ function deriveAttackScene(
   if (flashes.has("heal")) return "heal";
   if (move === "charge") return "buff";
   if (move === "item") {
-    const item = getBattleItem(actor.itemId);
+    const item = actor.item ?? getBattleItem(actor.itemId);
     switch (item?.effectType) {
       case "heal": return "heal";
       case "shield": return "shield";

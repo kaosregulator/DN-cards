@@ -42,7 +42,7 @@ export function chooseAiMove(
   // Battle-item intelligence — decide whether THIS turn is the moment to use the
   // equipped item, based on its effect and the current battle state. Evaluated
   // for smart play; low-skill AI only stumbles into it randomly below.
-  const item = moves.item ? getBattleItem(actor.itemId) : null;
+  const item = moves.item ? (actor.item ?? getBattleItem(actor.itemId)) : null;
 
   // Random / dumb play for low skill or on a "mistake" roll.
   if (Math.random() > skill) {

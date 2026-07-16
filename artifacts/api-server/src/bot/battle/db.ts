@@ -10,7 +10,7 @@ import {
   cardsTable, collectionsTable, cardProgressTable,
   battleCardConfigTable, battleProfilesTable, battleRecordsTable,
   battleAchievementsTable, battleSeasonsTable, battleDailyChallengesTable,
-  battleLocksTable,
+  battleLocksTable, battleContentTable,
 } from "@workspace/db";
 import type {
   BattleCardConfig, BattleProfile, BattleSeason, BattleRecord, BattleDailyChallenges,
@@ -316,4 +316,57 @@ export async function getGlobalLeaderboard(guildIds: string[], limit = 10): Prom
     .where(sql`${battleProfilesTable.guildId} IN ${guildIds}`)
     .orderBy(desc(battleProfilesTable.rankPoints))
     .limit(limit);
+}
+
+// ── Battle Content overlay (custom items / moves / passives) ──────────────────
+// Per-guild admin-authored content that the engine registries merge over their
+// code defaults. `data` holds the full definition for that kind.
+export interface BattleContentRow {
+  kind: string;
+  contentId: string;
+  data: Record<string, unknown>;
+  enabled: boolean;
+}
+
+export async function listBattleContent(guildId: string, kind: string): Promise<BattleContentRow[]> {
+  const rows = await db.select({
+    kind: battleContentTable.kind,
+    contentId: battleContentTable.contentId,
+    data: battleContentTable.data,
+    enabled: battleContentTable.enabled,
+  }).from(battleContentTable)
+    .where(and(eq(battleContentTable.guildId, guildId), eq(battleContentTable.kind, kind)));
+  return rows.map(r => ({ kind: r.kind, contentId: r.contentId, data: r.data, enabled: r.enabled }));
+}
+
+export async function upsertBattleContent(
+  guildId: string, kind: string, contentId: string,
+  data: Record<string, unknown>, enabled: boolean, updatedBy?: string,
+): Promise<void> {
+  await db.insert(battleContentTable)
+    .values({ guildId, kind, contentId, data, enabled, updatedBy: updatedBy ?? null, updatedAt: new Date() })
+    .onConflictDoUpdate({
+      target: [battleContentTable.guildId, battleContentTable.kind, battleContentTable.contentId],
+      set: { data, enabled, updatedBy: updatedBy ?? null, updatedAt: new Date() },
+    });
+}
+
+export async function setBattleContentEnabled(
+  guildId: string, kind: string, contentId: string, enabled: boolean, updatedBy?: string,
+): Promise<void> {
+  await db.update(battleContentTable)
+    .set({ enabled, updatedBy: updatedBy ?? null, updatedAt: new Date() })
+    .where(and(
+      eq(battleContentTable.guildId, guildId),
+      eq(battleContentTable.kind, kind),
+      eq(battleContentTable.contentId, contentId),
+    ));
+}
+
+export async function deleteBattleContent(guildId: string, kind: string, contentId: string): Promise<void> {
+  await db.delete(battleContentTable).where(and(
+    eq(battleContentTable.guildId, guildId),
+    eq(battleContentTable.kind, kind),
+    eq(battleContentTable.contentId, contentId),
+  ));
 }

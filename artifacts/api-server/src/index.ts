@@ -73,6 +73,24 @@ async function runBootMigrations() {
   `);
   await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS battle_backgrounds_guild_slot_idx ON battle_backgrounds (guild_id, slot)`);
 
+  // Battle Content — per-guild custom items/moves/passives overlaid on defaults.
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS battle_content (
+      id SERIAL PRIMARY KEY,
+      guild_id TEXT NOT NULL,
+      kind TEXT NOT NULL,
+      content_id TEXT NOT NULL,
+      data JSONB NOT NULL,
+      enabled BOOLEAN NOT NULL DEFAULT TRUE,
+      created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
+      updated_by TEXT,
+      UNIQUE (guild_id, kind, content_id)
+    )
+  `);
+  await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS battle_content_guild_kind_id_idx ON battle_content (guild_id, kind, content_id)`);
+  await pool.query(`CREATE INDEX IF NOT EXISTS battle_content_guild_kind_idx ON battle_content (guild_id, kind)`);
+
   // Unified account-level progression (Player XP). Purely additive — existing
   // progression tables (card_progress, battle_profiles, user_currency, quests,
   // reputation, …) are untouched; this only stores the new account-wide level
