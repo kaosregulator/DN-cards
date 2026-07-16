@@ -390,6 +390,13 @@ export async function startBot() {
           return;
         }
 
+        // ── Card Recycle confirm button ───────────────────────────────────
+        if (action === "recycle") {
+          const { handleRecycleButton } = await import("./commands/tradein.js");
+          await handleRecycleButton(interaction);
+          return;
+        }
+
         // ── Market / Squad hub buttons (back, confirms, pick-driven) ───────
         if (action === "market-hub") {
           const { handleMarketHubComponent } = await import("./commands/market-hub.js");

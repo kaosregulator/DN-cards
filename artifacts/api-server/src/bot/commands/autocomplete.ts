@@ -177,7 +177,7 @@ export async function handleAutocomplete(interaction: AutocompleteInteraction): 
     }
 
     // ── /burn, /level, /frame, /lock, /market sell — suggest owned cards ────
-    if ((cmd === "burn" || cmd === "level" || cmd === "frame" || cmd === "lock" || cmd === "market") && focused.name === "name" && interaction.guild) {
+    if ((cmd === "burn" || cmd === "level" || cmd === "frame" || cmd === "lock" || cmd === "market" || cmd === "tradein") && focused.name === "name" && interaction.guild) {
       const owned = await getUserCollectionCached(interaction.guild.id, interaction.user.id);
       const pool = owned.map(o => ({ name: o.name, rarity: o.rarity }));
       await interaction.respond(await suggestCardNames(query, interaction.guild.id, pool));

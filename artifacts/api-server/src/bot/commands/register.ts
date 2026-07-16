@@ -136,8 +136,8 @@ function buildLegacyCommands() {
 
     cmd("packstats", "View pack costs, weekly caps & cooldown", s => s),
 
-    cmd("tradein", "Burn 5 of one rarity for 1 of the next tier up", s => s
-      .addStringOption(o => o.setName("rarity").setDescription("Rarity to trade in").setRequired(true).setAutocomplete(true))),
+    cmd("tradein", "♻️ Card Recycle — merge duplicate copies to raise a card's Star Rank", s => s
+      .addStringOption(o => o.setName("name").setDescription("Card to recycle (you must own duplicate copies)").setRequired(true).setAutocomplete(true))),
 
     cmd("achievements", "View unlocked achievements", s => s
       .addUserOption(o => o.setName("user").setDescription("View another member's achievements"))),
@@ -681,7 +681,7 @@ type CommandJson = ReturnType<SlashCommandBuilder["toJSON"]>;
 export const COMMAND_RENAMES: Record<string, string> = {
   packstats: "pack_stats",
   tradehistory: "trade_history",
-  tradein: "trade_in",
+  tradein: "card_recycle",
   adminsecret: "admin_secret",
   afksetup: "afk_setup",
   collectorrole: "collector_role",
