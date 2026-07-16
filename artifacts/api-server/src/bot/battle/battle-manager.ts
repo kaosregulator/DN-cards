@@ -43,7 +43,7 @@ import { ensureSeason } from "./season-engine.js";
 import { logBattleResult } from "./logging-engine.js";
 import { grantFreePack } from "./pack-grant.js";
 import {
-  buildCombatEmbed, buildIntroFrame, buildCoinFlipEmbed, buildWinnerEmbed,
+  buildBattleLogEmbed, buildBattleStatusEmbed, buildIntroFrame, buildCoinFlipEmbed, buildWinnerEmbed,
   type BattleView,
 } from "./embeds.js";
 import { formatAchievementLine } from "./achievement-engine.js";
@@ -1025,19 +1025,24 @@ async function renderCombat(rt: BattleRuntime, opts?: { currentMove?: string; tu
   const view = toView(rt, opts?.turnEndsAt);
   const actor = rt.currentSide === 0 ? rt.a : rt.b;
   const components = actor.isAi ? [] : buildMoveComponents(rt, actor);
-  // Battle embed keeps the active card's avatar as its thumbnail (buildCombatEmbed)
-  // so players always see whose turn it is.
-  const combatEmbed = buildCombatEmbed(view, { currentMove: opts?.currentMove });
-  // VS battlefield image stays pinned at the TOP. If a one-shot turn animation is
-  // queued, consume it for this render only so the GIF plays once.
+
+  // Two-embed layout:
+  //   TOP    = recent battle log + current turn (buildBattleLogEmbed)
+  //   BOTTOM = HP/Energy/Ultimate status + the combat canvas as its image
+  // A one-shot turn animation, if queued, is consumed for this render only.
+  const logEmbed = buildBattleLogEmbed(view);
+  const statusEmbed = buildBattleStatusEmbed(view, { currentMove: opts?.currentMove });
   const turnImg = rt.turnAnimation;
   rt.turnAnimation = null;
-  const top = vsTop(rt, undefined, turnImg);
-  const embeds = top.embed ? [top.embed, combatEmbed] : [combatEmbed];
-  const files = top.file ? [top.file] : [];
+  const combatImg = turnImg ?? rt.vsImage;
+  const files: AttachmentBuilder[] = [];
+  if (combatImg) {
+    statusEmbed.setImage(`attachment://${VS_IMAGE_NAME}`);
+    files.push(new AttachmentBuilder(combatImg, { name: VS_IMAGE_NAME }));
+  }
   await rt.message.edit({
     content: null,
-    embeds,
+    embeds: [logEmbed, statusEmbed],
     components,
     files,
   }).catch(() => {});
