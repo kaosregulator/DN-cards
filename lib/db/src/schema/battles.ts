@@ -129,6 +129,9 @@ export const battleCardConfigTable = pgTable("battle_card_config", {
   // move. Null = auto-assign from the card type. Battle-only; never touches the
   // core card.
   moveset: text("moveset"),
+  // Passive ability id (see passives engine) that auto-triggers in battle. Null =
+  // no passive. Battle-only; never touches the core card.
+  passive: text("passive"),
   // If set, this card can be selected as a SPECIAL support card and applies the
   // named effect (see special-cards engine): heal, damage_boost, shield, poison,
   // burn, freeze, reflect, double_attack, energy_boost, buff, nuke.

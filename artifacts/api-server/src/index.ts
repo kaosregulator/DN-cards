@@ -91,6 +91,9 @@ async function runBootMigrations() {
   await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS battle_content_guild_kind_id_idx ON battle_content (guild_id, kind, content_id)`);
   await pool.query(`CREATE INDEX IF NOT EXISTS battle_content_guild_kind_idx ON battle_content (guild_id, kind)`);
 
+  // Per-card passive ability assignment (auto-triggering in battle).
+  await pool.query(`ALTER TABLE battle_card_config ADD COLUMN IF NOT EXISTS passive text`);
+
   // Unified account-level progression (Player XP). Purely additive — existing
   // progression tables (card_progress, battle_profiles, user_currency, quests,
   // reputation, …) are untouched; this only stores the new account-wide level

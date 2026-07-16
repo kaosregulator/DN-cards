@@ -80,7 +80,7 @@ export function chooseAiMove(
 
   // Smart play — reason about the card's OWN signature move (heal/shield/reflect/
   // stealth are defensive; strike/burn/weaken/nuke are offensive).
-  const ms = getMoveset(actor.moveset);
+  const ms = actor.movesetDef ?? getMoveset(actor.moveset);
   const defensiveSpecial = ms?.kind === "effect" && ["heal", "shield", "reflect", "stealth", "regen"].includes(ms.effect ?? "");
   const offensiveSpecial = !ms || ms.kind === "strike" || ["burn", "weaken", "nuke", "poison"].includes(ms.effect ?? "");
 
@@ -107,7 +107,7 @@ export function chooseAiMove(
   if (moves.special && offensiveSpecial && Math.random() < 0.55) return "special";
 
   // Bank energy for the Special when we can't afford it yet.
-  const specialCost = getMoveset(actor.moveset)?.energyCost ?? settings.specialCost;
+  const specialCost = (actor.movesetDef ?? getMoveset(actor.moveset))?.energyCost ?? settings.specialCost;
   if (actor.energy < specialCost && Math.random() < 0.4) return "charge";
   return "attack";
 }

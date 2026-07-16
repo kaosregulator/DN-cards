@@ -12,6 +12,7 @@ import type { Combatant, BattleEvent, MoveType, TurnResult, StatusEffect } from 
 import { getEffectDef } from "./special-cards.js";
 import { getMoveset } from "./movesets.js";
 import { getBattleItem, applyItemEffect } from "./items.js";
+import { applyTurnStartPassive } from "./passives.js";
 
 // Apply a moveset's effect. Reuses the shared special-effects registry for the
 // common effects; "stealth" and "weaken" are combat-engine-native mechanics.
@@ -44,6 +45,10 @@ export function startOfTurn(
 ): { events: BattleEvent[]; koed: boolean; skipped: boolean } {
   const events: BattleEvent[] = [];
   actor.defending = false;
+
+  // Turn-start passive (regen / energy / shield) fires before status ticks.
+  const passiveEvent = applyTurnStartPassive(actor);
+  if (passiveEvent) events.push(passiveEvent);
 
   for (const st of actor.status) {
     if (st.kind === "poison" || st.kind === "burn") {
@@ -219,7 +224,7 @@ export function resolveMove(
     case "special": {
       // The card's signature moveset drives its Special (falls back to a
       // generic heavy strike for a card with no assigned moveset).
-      const ms = getMoveset(actor.moveset);
+      const ms = actor.movesetDef ?? getMoveset(actor.moveset);
       const cost = ms?.energyCost ?? settings.specialCost;
       if (actor.energy < cost) {
         events.push({ text: `⚠️ **${actor.cardName}** lacks energy for ${ms ? `**${ms.name}**` : "a Special Attack"} and staggers.` });
@@ -319,7 +324,7 @@ export function resolveMove(
 
 // Which moves are legal right now (for button enable/disable + AI).
 export function availableMoves(actor: Combatant, settings: BattleSettings): Record<MoveType, boolean> {
-  const specialCost = getMoveset(actor.moveset)?.energyCost ?? settings.specialCost;
+  const specialCost = (actor.movesetDef ?? getMoveset(actor.moveset))?.energyCost ?? settings.specialCost;
   return {
     attack: true,
     special: actor.energy >= specialCost,

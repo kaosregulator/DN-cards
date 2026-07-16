@@ -36,6 +36,16 @@ import { db, battleProfilesTable, type Card } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { SPECIAL_EFFECT_KEYS, getEffectDef, inferSpecialEffect } from "../battle/special-cards.js";
 import { getMoveset, inferMoveset, MOVESETS } from "../battle/movesets.js";
+import {
+  loadGuildMovesets, invalidateGuildMovesets, listAllMovesets,
+  coerceMoveset, listDefaultMovesets,
+  type Moveset, type MovesetKind,
+} from "../battle/movesets.js";
+import {
+  loadGuildPassives, invalidateGuildPassives, listAllPassives, listPassives,
+  getPassive, coercePassive, listDefaultPassives,
+  type Passive, type PassiveTrigger, type PassiveEffect,
+} from "../battle/passives.js";
 
 // Options for the admin moveset picker (≤25 for a select menu).
 const MOVESETS_FOR_PICKER = Object.values(MOVESETS);
@@ -96,7 +106,7 @@ export async function handleBattleAdminButton(interaction: ButtonInteraction): P
   const action = interaction.customId.split(":")[1];
 
   // Modal-opening actions must call showModal FIRST (can't defer).
-  if (["rules", "formulas", "rewards", "editcard", "bcstats", "itemtext"].includes(action)) {
+  if (["rules", "formulas", "rewards", "editcard", "bcstats", "itemtext", "movetext", "passtext"].includes(action)) {
     if (!ensureAdminInline(interaction)) { await interaction.reply({ content: "❌ Admins only.", flags: MessageFlags.Ephemeral }); return; }
     const settings = await getBattleSettings(interaction.guild.id);
     if (action === "rules") await interaction.showModal(buildRulesModal(settings));
@@ -105,6 +115,8 @@ export async function handleBattleAdminButton(interaction: ButtonInteraction): P
     if (action === "editcard") await interaction.showModal(buildCardSearchModal());
     if (action === "bcstats") await interaction.showModal(await buildStatsModal(interaction.guild.id, Number(interaction.customId.split(":")[2])));
     if (action === "itemtext") await interaction.showModal(await buildItemTextModal(interaction.guild.id, interaction.customId.split(":")[2]!));
+    if (action === "movetext") await interaction.showModal(await buildMoveTextModal(interaction.guild.id, interaction.customId.split(":")[2]!));
+    if (action === "passtext") await interaction.showModal(await buildPassiveTextModal(interaction.guild.id, interaction.customId.split(":")[2]!));
     return;
   }
 
@@ -227,6 +239,74 @@ export async function handleBattleAdminButton(interaction: ButtonInteraction): P
       await interaction.editReply(await buildItemManager(guildId));
       return;
     }
+    case "movemgr": {
+      await interaction.editReply(await buildMoveManager(guildId));
+      return;
+    }
+    case "movenew": {
+      const id = `custom_${Date.now().toString(36)}`;
+      const template = coerceMoveset(id, {
+        name: "New Move", emoji: "⚔️", description: "Custom signature move.",
+        allowedTypes: "all", energyCost: 40, kind: "strike", powerPct: 160,
+      });
+      await upsertBattleContent(guildId, "move", id, movesetToData(template), true, interaction.user.id);
+      invalidateGuildMovesets(guildId);
+      await interaction.editReply(await buildMoveEditor(guildId, id));
+      return;
+    }
+    case "movetoggle": {
+      const id = interaction.customId.split(":")[2]!;
+      const rows = await listBattleContent(guildId, "move");
+      const row = rows.find(r => r.contentId === id);
+      const cur = await effectiveMove(guildId, id);
+      // Enabled state lives on the battle_content row; default (no row) is enabled.
+      const nextEnabled = !(row ? row.enabled : true);
+      if (cur) {
+        await upsertBattleContent(guildId, "move", id, movesetToData(cur), nextEnabled, interaction.user.id);
+        invalidateGuildMovesets(guildId);
+      }
+      await interaction.editReply(await buildMoveEditor(guildId, id));
+      return;
+    }
+    case "movedelete": {
+      const id = interaction.customId.split(":")[2]!;
+      await deleteBattleContent(guildId, "move", id);
+      invalidateGuildMovesets(guildId);
+      await interaction.editReply(await buildMoveManager(guildId));
+      return;
+    }
+    case "passivemgr": {
+      await interaction.editReply(await buildPassiveManager(guildId));
+      return;
+    }
+    case "passnew": {
+      const id = `custom_${Date.now().toString(36)}`;
+      const template = coercePassive(id, {
+        name: "New Passive", emoji: "✨", description: "Custom passive ability.",
+        trigger: "battle_start", effect: "buff", magnitude: 15, enabled: true,
+      });
+      await upsertBattleContent(guildId, "passive", id, passiveToData(template), true, interaction.user.id);
+      invalidateGuildPassives(guildId);
+      await interaction.editReply(await buildPassiveEditor(guildId, id));
+      return;
+    }
+    case "passtoggle": {
+      const id = interaction.customId.split(":")[2]!;
+      const cur = await effectivePassive(guildId, id);
+      if (cur) {
+        await upsertBattleContent(guildId, "passive", id, passiveToData({ ...cur, enabled: !cur.enabled }), !cur.enabled, interaction.user.id);
+        invalidateGuildPassives(guildId);
+      }
+      await interaction.editReply(await buildPassiveEditor(guildId, id));
+      return;
+    }
+    case "passdelete": {
+      const id = interaction.customId.split(":")[2]!;
+      await deleteBattleContent(guildId, "passive", id);
+      invalidateGuildPassives(guildId);
+      await interaction.editReply(await buildPassiveManager(guildId));
+      return;
+    }
     case "resetlb": {
       await interaction.followUp({
         content: "⚠️ Reset the leaderboard? This zeroes everyone's **rank points & current streak** (lifetime W/L and stats are kept).",
@@ -313,14 +393,58 @@ export async function handleBattleAdminSelect(interaction: StringSelectMenuInter
     return;
   }
 
+  // Move Library selects.
+  if (action === "movepick") {
+    await interaction.editReply(await buildMoveEditor(guildId, interaction.values[0]!)).catch(() => {});
+    return;
+  }
+  if (action === "movekind" || action === "moveeffect") {
+    const key = parts[2]!;
+    const cur = await effectiveMove(guildId, key);
+    const rows = await listBattleContent(guildId, "move");
+    const enabled = rows.find(r => r.contentId === key)?.enabled ?? true;
+    if (cur) {
+      const v = interaction.values[0]!;
+      const patch: Partial<Moveset> = action === "movekind"
+        ? { kind: v as MovesetKind }
+        : { effect: v === "__none__" ? undefined : v };
+      await upsertBattleContent(guildId, "move", key, movesetToData({ ...cur, ...patch }), enabled, interaction.user.id);
+      invalidateGuildMovesets(guildId);
+    }
+    await interaction.editReply(await buildMoveEditor(guildId, key)).catch(() => {});
+    return;
+  }
+
+  // Passive Library selects.
+  if (action === "passivepick") {
+    await interaction.editReply(await buildPassiveEditor(guildId, interaction.values[0]!)).catch(() => {});
+    return;
+  }
+  if (action === "passtrigger" || action === "passeffect") {
+    const id = parts[2]!;
+    const cur = await effectivePassive(guildId, id);
+    if (cur) {
+      const v = interaction.values[0]!;
+      const patch: Partial<Passive> = action === "passtrigger"
+        ? { trigger: v as PassiveTrigger }
+        : { effect: v as PassiveEffect };
+      await upsertBattleContent(guildId, "passive", id, passiveToData({ ...cur, ...patch }), cur.enabled, interaction.user.id);
+      invalidateGuildPassives(guildId);
+    }
+    await interaction.editReply(await buildPassiveEditor(guildId, id)).catch(() => {});
+    return;
+  }
+
   // Per-card editor selects → re-render the card editor panel.
-  if (action === "bcrarity" || action === "bcspecial" || action === "bcmoveset") {
+  if (action === "bcrarity" || action === "bcspecial" || action === "bcmoveset" || action === "bcpassive") {
     const cardId = Number(parts[2]);
     const v = interaction.values[0];
     if (action === "bcrarity") {
       await upsertBattleCardConfig(guildId, cardId, { rarity: v === "__auto__" ? null : v }, interaction.user.id);
     } else if (action === "bcspecial") {
       await upsertBattleCardConfig(guildId, cardId, { specialEffect: v === "__auto__" || v === "__none__" ? null : v }, interaction.user.id);
+    } else if (action === "bcpassive") {
+      await upsertBattleCardConfig(guildId, cardId, { passive: v === "__none__" ? null : v }, interaction.user.id);
     } else {
       await upsertBattleCardConfig(guildId, cardId, { moveset: v === "__auto__" ? null : v }, interaction.user.id);
     }
@@ -390,6 +514,57 @@ export async function handleBattleAdminModal(interaction: ModalSubmitInteraction
       invalidateGuildBattleItems(guildId);
     }
     await interaction.editReply(await buildItemEditor(guildId, id)).catch(() => {});
+    return;
+  }
+
+  // Move Library text/number editor modal.
+  if (action === "movetext") {
+    const key = interaction.customId.split(":")[2]!;
+    const cur = await effectiveMove(guildId, key);
+    const rows = await listBattleContent(guildId, "move");
+    const enabled = rows.find(r => r.contentId === key)?.enabled ?? true;
+    if (cur) {
+      const get = (k: string) => interaction.fields.getTextInputValue(k).trim();
+      const numOr = (s: string, f: number) => { const n = Number(s); return Number.isFinite(n) ? n : f; };
+      const nums = get("nums").split(/[\s,/]+/).filter(Boolean);
+      const typesRaw = get("types").trim();
+      const allowedTypes: string[] | "all" = (!typesRaw || typesRaw.toLowerCase() === "all")
+        ? "all" : typesRaw.split(/[\s,]+/).map(s => s.toLowerCase()).filter(Boolean);
+      const patch: Moveset = {
+        ...cur,
+        name: get("name") || cur.name,
+        emoji: get("emoji") || cur.emoji,
+        description: get("desc") || cur.description,
+        energyCost: numOr(nums[0] ?? "", cur.energyCost),
+        powerPct: numOr(nums[1] ?? "", cur.powerPct ?? 0) || undefined,
+        followUpPct: numOr(nums[2] ?? "", cur.followUpPct ?? 0) || undefined,
+        allowedTypes,
+      };
+      await upsertBattleContent(guildId, "move", key, movesetToData(patch), enabled, interaction.user.id);
+      invalidateGuildMovesets(guildId);
+    }
+    await interaction.editReply(await buildMoveEditor(guildId, key)).catch(() => {});
+    return;
+  }
+
+  // Passive Library text/number editor modal.
+  if (action === "passtext") {
+    const id = interaction.customId.split(":")[2]!;
+    const cur = await effectivePassive(guildId, id);
+    if (cur) {
+      const get = (k: string) => interaction.fields.getTextInputValue(k).trim();
+      const numOr = (s: string, f: number) => { const n = Number(s); return Number.isFinite(n) ? n : f; };
+      const patch: Passive = {
+        ...cur,
+        name: get("name") || cur.name,
+        emoji: get("emoji") || cur.emoji,
+        description: get("desc") || cur.description,
+        magnitude: numOr(get("magnitude"), cur.magnitude),
+      };
+      await upsertBattleContent(guildId, "passive", id, passiveToData(patch), cur.enabled, interaction.user.id);
+      invalidateGuildPassives(guildId);
+    }
+    await interaction.editReply(await buildPassiveEditor(guildId, id)).catch(() => {});
     return;
   }
 
@@ -532,6 +707,7 @@ function buildHubComponents(s?: { frameDelayMs: number; battleAnimationSpeed?: s
     new ButtonBuilder().setCustomId("battleadmin:toggle").setLabel("Enable/Disable").setEmoji("🔀").setStyle(ButtonStyle.Secondary),
     new ButtonBuilder().setCustomId("battleadmin:channels").setLabel("Channels").setEmoji("📡").setStyle(ButtonStyle.Primary),
     new ButtonBuilder().setCustomId("battleadmin:backgrounds").setLabel("Backgrounds").setEmoji("🖼️").setStyle(ButtonStyle.Primary),
+    new ButtonBuilder().setCustomId("battleadmin:movemgr").setLabel("Move Library").setEmoji("⚔️").setStyle(ButtonStyle.Primary),
   );
   const row2 = new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder().setCustomId("battleadmin:rules").setLabel("Rules").setEmoji("⚙️").setStyle(ButtonStyle.Primary),
@@ -545,6 +721,7 @@ function buildHubComponents(s?: { frameDelayMs: number; battleAnimationSpeed?: s
     new ButtonBuilder().setCustomId("battleadmin:season").setLabel("New Season").setEmoji("🔄").setStyle(ButtonStyle.Danger),
     new ButtonBuilder().setCustomId("battleadmin:globaltoggle").setLabel("Global LB").setEmoji("🌐").setStyle(ButtonStyle.Secondary),
     new ButtonBuilder().setCustomId("battleadmin:animtoggle").setLabel("GIF Battles").setEmoji("🎞️").setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder().setCustomId("battleadmin:passivemgr").setLabel("Passives").setEmoji("✨").setStyle(ButtonStyle.Primary),
   );
   const cur = s?.frameDelayMs ?? 950;
   const speedRow = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
@@ -798,6 +975,221 @@ async function buildItemTextModal(guildId: string, id: string): Promise<ModalBui
     );
 }
 
+// ── Move Library ─────────────────────────────────────────────────────────────
+// Data-driven CRUD over the moveset registry (kind "move" in battle_content).
+// A card's Special is driven by its moveset, so custom/overridden moves flow
+// straight into combat, prep, the AI, and card previews.
+const MOVE_KINDS: MovesetKind[] = ["strike", "effect"];
+const MOVE_EFFECTS = [...SPECIAL_EFFECT_KEYS, "stealth", "weaken"];
+
+function movesetToData(m: Moveset): Record<string, unknown> {
+  return { ...m } as Record<string, unknown>;
+}
+
+async function effectiveMove(guildId: string, key: string): Promise<Moveset | null> {
+  invalidateGuildMovesets(guildId);
+  await loadGuildMovesets(guildId);
+  return getMoveset(key, guildId);
+}
+
+async function buildMoveManager(guildId: string): Promise<{ embeds: EmbedBuilder[]; components: ActionRowBuilder<any>[] }> {
+  invalidateGuildMovesets(guildId);
+  await loadGuildMovesets(guildId);
+  const moves = listAllMovesets(guildId).sort((a, b) => a.name.localeCompare(b.name));
+  const overrides = new Set((await listBattleContent(guildId, "move")).map(r => r.contentId));
+  const defaultKeys = new Set(listDefaultMovesets().map(m => m.key));
+
+  const lines = moves.slice(0, 40).map(m => {
+    const tag = !defaultKeys.has(m.key) ? "🆕" : overrides.has(m.key) ? "✏️" : "▫️";
+    const kind = m.kind === "strike" ? `strike ${m.powerPct ?? 0}%${m.followUpPct ? `+${m.followUpPct}%` : ""}` : `effect: ${m.effect ?? "—"}`;
+    return `${tag} ${m.emoji} **${m.name}** — ${kind} · ⚡${m.energyCost}`;
+  });
+  const embed = new EmbedBuilder()
+    .setColor(0x5865f2)
+    .setTitle("⚔️ Move Library")
+    .setDescription(
+      "Create custom signature moves or override the built-in ones. A card's Special is driven by its move, so changes apply in combat, prep, the AI, and previews.\n"
+      + "🆕 custom · ✏️ default overridden · ▫️ built-in default\n\n"
+      + (lines.join("\n") || "_No moves._"),
+    );
+  const pickRow = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
+    new StringSelectMenuBuilder().setCustomId("battleadmin:movepick").setPlaceholder("✏️ Edit a move…")
+      .addOptions(moves.slice(0, 25).map(m => ({
+        label: m.name.slice(0, 100), emoji: m.emoji, value: m.key,
+        description: (m.kind === "strike" ? `strike ${m.powerPct ?? 0}%` : `effect ${m.effect ?? ""}`).slice(0, 100),
+      }))),
+  );
+  const btnRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder().setCustomId("battleadmin:movenew").setLabel("New Move").setEmoji("➕").setStyle(ButtonStyle.Success),
+    new ButtonBuilder().setCustomId("battleadmin:hub").setLabel("Back").setStyle(ButtonStyle.Secondary),
+  );
+  return { embeds: [embed], components: [pickRow, btnRow] };
+}
+
+async function buildMoveEditor(guildId: string, key: string): Promise<{ embeds: EmbedBuilder[]; components: ActionRowBuilder<any>[] }> {
+  const move = await effectiveMove(guildId, key);
+  if (!move) return buildMoveManager(guildId);
+  const isDefault = listDefaultMovesets().some(m => m.key === key);
+  const rows = await listBattleContent(guildId, "move");
+  const enabled = rows.find(r => r.contentId === key)?.enabled ?? true;
+  const types = move.allowedTypes === "all" ? "all" : move.allowedTypes.join(", ");
+
+  const embed = new EmbedBuilder()
+    .setColor(enabled ? 0x2ecc71 : 0x95a5a6)
+    .setTitle(`${move.emoji} ${move.name}`)
+    .setDescription(move.description || "_No description._")
+    .addFields(
+      { name: "Kind", value: move.kind, inline: true },
+      { name: "Energy", value: `⚡${move.energyCost}`, inline: true },
+      { name: "Effect", value: move.effect ?? "—", inline: true },
+      { name: "Power %", value: String(move.powerPct ?? "—"), inline: true },
+      { name: "Follow-up %", value: String(move.followUpPct ?? "—"), inline: true },
+      { name: "Enabled", value: enabled ? "✅ yes" : "🚫 no", inline: true },
+      { name: "Allowed types", value: types, inline: false },
+    )
+    .setFooter({ text: isDefault ? "Built-in default (edits create a per-server override)" : "Custom move" });
+
+  const kindRow = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
+    new StringSelectMenuBuilder().setCustomId(`battleadmin:movekind:${key}`).setPlaceholder("Kind")
+      .addOptions(MOVE_KINDS.map(k => ({ label: k, value: k, default: k === move.kind }))),
+  );
+  const effectRow = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
+    new StringSelectMenuBuilder().setCustomId(`battleadmin:moveeffect:${key}`).setPlaceholder("Effect (for kind = effect)")
+      .addOptions(
+        { label: "none (pure strike)", value: "__none__", default: !move.effect },
+        ...MOVE_EFFECTS.slice(0, 24).map(e => ({ label: e, value: e, default: e === move.effect })),
+      ),
+  );
+  const btnRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder().setCustomId(`battleadmin:movetext:${key}`).setLabel("Edit Text & Numbers").setEmoji("📝").setStyle(ButtonStyle.Primary),
+    new ButtonBuilder().setCustomId(`battleadmin:movetoggle:${key}`).setLabel(enabled ? "Disable" : "Enable").setStyle(enabled ? ButtonStyle.Danger : ButtonStyle.Success),
+    new ButtonBuilder().setCustomId(`battleadmin:movedelete:${key}`).setLabel(isDefault ? "Reset to Default" : "Delete").setEmoji("🗑️").setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder().setCustomId("battleadmin:movemgr").setLabel("Back").setStyle(ButtonStyle.Secondary),
+  );
+  return { embeds: [embed], components: [kindRow, effectRow, btnRow] };
+}
+
+async function buildMoveTextModal(guildId: string, key: string): Promise<ModalBuilder> {
+  const move = (await effectiveMove(guildId, key)) ?? coerceMoveset(key, {});
+  const input = (cid: string, label: string, value: string, style = TextInputStyle.Short, required = false) =>
+    new ActionRowBuilder<TextInputBuilder>().addComponents(
+      new TextInputBuilder().setCustomId(cid).setLabel(label).setStyle(style).setRequired(required).setValue(value.slice(0, 200)),
+    );
+  const types = move.allowedTypes === "all" ? "all" : move.allowedTypes.join(", ");
+  return new ModalBuilder()
+    .setCustomId(`battleadmin:movetext:${key}`)
+    .setTitle(`Edit ${move.name}`.slice(0, 45))
+    .addComponents(
+      input("name", "Name", move.name, TextInputStyle.Short, true),
+      input("emoji", "Emoji", move.emoji),
+      input("desc", "Description", move.description, TextInputStyle.Paragraph),
+      input("nums", "Energy / Power% / Follow-up% (e.g. 40 160 90)", `${move.energyCost} ${move.powerPct ?? 0} ${move.followUpPct ?? 0}`),
+      input("types", "Allowed types (comma list or 'all')", types),
+    );
+}
+
+// ── Passive Library ──────────────────────────────────────────────────────────
+// Data-driven CRUD over auto-triggering passive abilities (kind "passive"). A
+// passive is assigned to a card in the card editor and fires automatically in
+// combat (battle_start or turn_start).
+const PASSIVE_TRIGGERS: PassiveTrigger[] = ["battle_start", "turn_start"];
+const PASSIVE_EFFECTS: PassiveEffect[] = ["regen", "shield", "buff", "energy", "reflect", "stealth"];
+
+function passiveToData(p: Passive): Record<string, unknown> {
+  return { ...p } as Record<string, unknown>;
+}
+
+async function effectivePassive(guildId: string, id: string): Promise<Passive | null> {
+  invalidateGuildPassives(guildId);
+  await loadGuildPassives(guildId);
+  return getPassive(id, guildId);
+}
+
+async function buildPassiveManager(guildId: string): Promise<{ embeds: EmbedBuilder[]; components: ActionRowBuilder<any>[] }> {
+  invalidateGuildPassives(guildId);
+  await loadGuildPassives(guildId);
+  const passives = listAllPassives(guildId).sort((a, b) => a.name.localeCompare(b.name));
+  const overrides = new Set((await listBattleContent(guildId, "passive")).map(r => r.contentId));
+  const defaultIds = new Set(listDefaultPassives().map(p => p.id));
+
+  const lines = passives.slice(0, 40).map(p => {
+    const tag = !defaultIds.has(p.id) ? "🆕" : overrides.has(p.id) ? "✏️" : "▫️";
+    const off = p.enabled ? "" : " · _disabled_";
+    return `${tag} ${p.emoji} **${p.name}** — ${p.trigger} · ${p.effect} ${p.magnitude}${off}`;
+  });
+  const embed = new EmbedBuilder()
+    .setColor(0x9b59b6)
+    .setTitle("✨ Passive Library")
+    .setDescription(
+      "Auto-triggering abilities a card carries into battle. Assign one to a card in **Cards → Edit Card**; it fires on its own (battle start or each turn).\n"
+      + "🆕 custom · ✏️ default overridden · ▫️ built-in default\n\n"
+      + (lines.join("\n") || "_No passives._"),
+    );
+  const pickRow = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
+    new StringSelectMenuBuilder().setCustomId("battleadmin:passivepick").setPlaceholder("✏️ Edit a passive…")
+      .addOptions(passives.slice(0, 25).map(p => ({
+        label: p.name.slice(0, 100), emoji: p.emoji, value: p.id,
+        description: `${p.trigger} · ${p.effect} ${p.magnitude}`.slice(0, 100),
+      }))),
+  );
+  const btnRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder().setCustomId("battleadmin:passnew").setLabel("New Passive").setEmoji("➕").setStyle(ButtonStyle.Success),
+    new ButtonBuilder().setCustomId("battleadmin:hub").setLabel("Back").setStyle(ButtonStyle.Secondary),
+  );
+  return { embeds: [embed], components: [pickRow, btnRow] };
+}
+
+async function buildPassiveEditor(guildId: string, id: string): Promise<{ embeds: EmbedBuilder[]; components: ActionRowBuilder<any>[] }> {
+  const p = await effectivePassive(guildId, id);
+  if (!p) return buildPassiveManager(guildId);
+  const isDefault = listDefaultPassives().some(x => x.id === id);
+
+  const embed = new EmbedBuilder()
+    .setColor(p.enabled ? 0x2ecc71 : 0x95a5a6)
+    .setTitle(`${p.emoji} ${p.name}`)
+    .setDescription(p.description || "_No description._")
+    .addFields(
+      { name: "Trigger", value: p.trigger, inline: true },
+      { name: "Effect", value: p.effect, inline: true },
+      { name: "Magnitude", value: String(p.magnitude), inline: true },
+      { name: "Enabled", value: p.enabled ? "✅ yes" : "🚫 no", inline: true },
+    )
+    .setFooter({ text: isDefault ? "Built-in default (edits create a per-server override)" : "Custom passive" });
+
+  const triggerRow = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
+    new StringSelectMenuBuilder().setCustomId(`battleadmin:passtrigger:${id}`).setPlaceholder("Trigger")
+      .addOptions(PASSIVE_TRIGGERS.map(t => ({ label: t, value: t, default: t === p.trigger }))),
+  );
+  const effectRow = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
+    new StringSelectMenuBuilder().setCustomId(`battleadmin:passeffect:${id}`).setPlaceholder("Effect")
+      .addOptions(PASSIVE_EFFECTS.map(e => ({ label: e, value: e, default: e === p.effect }))),
+  );
+  const btnRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder().setCustomId(`battleadmin:passtext:${id}`).setLabel("Edit Text & Magnitude").setEmoji("📝").setStyle(ButtonStyle.Primary),
+    new ButtonBuilder().setCustomId(`battleadmin:passtoggle:${id}`).setLabel(p.enabled ? "Disable" : "Enable").setStyle(p.enabled ? ButtonStyle.Danger : ButtonStyle.Success),
+    new ButtonBuilder().setCustomId(`battleadmin:passdelete:${id}`).setLabel(isDefault ? "Reset to Default" : "Delete").setEmoji("🗑️").setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder().setCustomId("battleadmin:passivemgr").setLabel("Back").setStyle(ButtonStyle.Secondary),
+  );
+  return { embeds: [embed], components: [triggerRow, effectRow, btnRow] };
+}
+
+async function buildPassiveTextModal(guildId: string, id: string): Promise<ModalBuilder> {
+  const p = (await effectivePassive(guildId, id)) ?? coercePassive(id, {});
+  const input = (cid: string, label: string, value: string, style = TextInputStyle.Short, required = false) =>
+    new ActionRowBuilder<TextInputBuilder>().addComponents(
+      new TextInputBuilder().setCustomId(cid).setLabel(label).setStyle(style).setRequired(required).setValue(value.slice(0, 200)),
+    );
+  return new ModalBuilder()
+    .setCustomId(`battleadmin:passtext:${id}`)
+    .setTitle(`Edit ${p.name}`.slice(0, 45))
+    .addComponents(
+      input("name", "Name", p.name, TextInputStyle.Short, true),
+      input("emoji", "Emoji", p.emoji),
+      input("desc", "Description", p.description, TextInputStyle.Paragraph),
+      input("magnitude", "Magnitude (% HP / % attack / flat energy)", String(p.magnitude)),
+    );
+}
+
 function confirmRow(confirmAction: string): ActionRowBuilder<ButtonBuilder> {
   return new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder().setCustomId(`battleadmin:${confirmAction}`).setLabel("Confirm").setStyle(ButtonStyle.Danger),
@@ -951,12 +1343,25 @@ async function buildCardEditorPanel(
         })),
       ),
   );
+  // Passive ability picker (auto-triggering). Pulls the guild's effective passives.
+  await loadGuildPassives(guildId);
+  const passiveOpts = listPassives(guildId).slice(0, 24);
+  const passiveRow = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
+    new StringSelectMenuBuilder().setCustomId(`battleadmin:bcpassive:${cardId}`).setPlaceholder("✨ Passive ability (auto-triggers)")
+      .addOptions(
+        { label: "None", value: "__none__", default: !cfg?.passive },
+        ...passiveOpts.map(p => ({
+          label: p.name, emoji: p.emoji, value: p.id,
+          description: `${p.trigger} · ${p.effect} ${p.magnitude}`.slice(0, 90), default: cfg?.passive === p.id,
+        })),
+      ),
+  );
   const btnRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder().setCustomId(`battleadmin:bcstats:${cardId}`).setLabel("Edit Stats").setEmoji("✏️").setStyle(ButtonStyle.Primary),
     new ButtonBuilder().setCustomId(`battleadmin:bctoggle:${cardId}`).setLabel((cfg?.enabled ?? true) ? "Disable" : "Enable").setEmoji("🔀").setStyle((cfg?.enabled ?? true) ? ButtonStyle.Danger : ButtonStyle.Success),
     new ButtonBuilder().setCustomId(`battleadmin:bcreset:${cardId}`).setLabel("Reset to Auto").setEmoji("♻️").setStyle(ButtonStyle.Secondary),
   );
-  return { embeds: [embed], components: [rarityRow, specialRow, movesetRow, btnRow] };
+  return { embeds: [embed], components: [rarityRow, movesetRow, passiveRow, specialRow, btnRow] };
 }
 
 // ── Card search scoring (mirrors /dnvaluesearch) ─────────────────────────────

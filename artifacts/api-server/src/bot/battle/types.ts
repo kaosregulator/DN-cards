@@ -61,6 +61,11 @@ export interface Combatant {
   // Signature moveset key (see movesets engine) driving the "Special" move.
   // Optional so non-battle Combatant constructions stay valid; null → generic.
   moveset?: string | null;
+  // Resolved moveset definition (guild custom or default), snapshotted at battle
+  // start so combat reads it without a guild-scoped registry lookup.
+  movesetDef?: import("./movesets.js").Moveset | null;
+  // Resolved passive ability (auto-triggering), snapshotted at battle start.
+  passive?: import("./passives.js").Passive | null;
 
   stats: BattleStats;
   hp: number;

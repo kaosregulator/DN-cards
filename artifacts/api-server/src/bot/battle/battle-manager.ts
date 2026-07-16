@@ -29,7 +29,8 @@ import type { Combatant, MoveType, AiDifficulty, Rarity, TurnResult } from "./ty
 import { AI_DIFFICULTIES } from "./types.js";
 import { getBattleSettings, rarityAllowed, typeAllowed } from "./config-engine.js";
 import { getScaledStats, powerRating } from "./stat-engine.js";
-import { inferMoveset, getMoveset } from "./movesets.js";
+import { inferMoveset, getMoveset, loadGuildMovesets } from "./movesets.js";
+import { getPassive, loadGuildPassives, applyBattleStartPassive } from "./passives.js";
 import { inferSpecialEffect, getEffectDef } from "./special-cards.js";
 import { getBattleItem, listBattleItems, applyItemEffect, loadGuildBattleItems } from "./items.js";
 import { resolveMove, startOfTurn, availableMoves } from "./combat-engine.js";
@@ -240,6 +241,10 @@ function buildCombatant(
     cardType: card.cardType, cardImageUrl: toAbsoluteImageUrl(card.imageUrl),
     cardRarityDisplay: card.displayRarity,
     moveset,
+    // Snapshot the guild-scoped moveset definition (custom or default) up-front.
+    movesetDef: getMoveset(moveset, rt.guildId),
+    // Resolve the card's assigned passive (auto-triggering ability), if any.
+    passive: getPassive(card.config?.passive ?? null, rt.guildId),
     stats,
     hp: stats.maxHealth, shield: 0, energy: 40, ultimate: 0, status: [],
     // The special is now intrinsic to the card, so there's no separate support card.
@@ -466,6 +471,8 @@ async function onOpenPrep(rt: BattleRuntime, interaction: ButtonInteraction) {
   if (!rt.prep.has(interaction.user.id)) return safeEphemeral(interaction, "You're not part of this battle.");
   // Load the guild's custom Battle Items so the prep selector shows them.
   await loadGuildBattleItems(rt.guildId).catch(() => {});
+  await loadGuildMovesets(rt.guildId).catch(() => {});
+  await loadGuildPassives(rt.guildId).catch(() => {});
   const eligible = await eligibleForUser(rt, interaction.user.id);
   if (eligible.length === 0) return safeEphemeral(interaction, "You have no battle-eligible cards.");
   await interaction.reply({
@@ -566,6 +573,8 @@ async function beginCombat(rt: BattleRuntime) {
   clearTimer(rt, "aiOfferTimer");
   // Ensure the guild's custom Battle Items are resolved before building combatants.
   await loadGuildBattleItems(rt.guildId).catch(() => {});
+  await loadGuildMovesets(rt.guildId).catch(() => {});
+  await loadGuildPassives(rt.guildId).catch(() => {});
 
   // Build challenger.
   const chalPrep = rt.prep.get(rt.challengerId)!;
@@ -602,6 +611,14 @@ async function beginCombat(rt: BattleRuntime) {
     const oppSpecial = oppPrep.specialCardId ? oppEligible.find(c => c.id === oppPrep.specialCardId) ?? null : null;
     rt.b = buildCombatant(rt, rt.opponentId!, rt.opponentName, false, 1, oppCard, oppSpecial, undefined, undefined, oppPrep.itemId);
     rt.staked = rt.settings.stakingEnabled && chalPrep.stake && oppPrep.stake;
+  }
+
+  // Apply battle-start passives (shield/buff/regen/reflect/stealth/energy) once,
+  // logging any that fire so players see them before the first turn.
+  for (const c of [rt.a, rt.b]) {
+    if (!c) continue;
+    const ev = applyBattleStartPassive(c);
+    if (ev) rt.log.push(ev.text);
   }
 
   // Escrow staked cards up-front (before locks reflect the stake) so neither

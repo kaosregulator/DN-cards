@@ -123,15 +123,86 @@ export const MOVESETS: Record<string, Moveset> = {
 
 export const MOVESET_KEYS = Object.keys(MOVESETS);
 
-export function getMoveset(key: string | null | undefined): Moveset | null {
+const REGISTRY = new Map<string, Moveset>(Object.entries(MOVESETS));
+
+// ── Per-guild overlay (admin-authored / overridden movesets) ─────────────────
+// The Move Library admin tool writes moveset definitions into battle_content
+// (kind "move"). We merge those over the code defaults into a per-guild cache;
+// combat + prep read it synchronously after `loadGuildMovesets` populates it
+// (called at prep + battle start, exactly like Battle Items).
+const _guildMovesets = new Map<string, { map: Map<string, Moveset>; expiresAt: number }>();
+const GUILD_MOVESETS_TTL_MS = 60_000;
+
+// Coerce an admin-authored record into a valid Moveset, filling missing fields
+// from the same-key default or a safe fallback.
+export function coerceMoveset(key: string, data: Record<string, unknown>, base?: Moveset): Moveset {
+  const d = data as Partial<Moveset>;
+  const b = base ?? REGISTRY.get(key);
+  const num = (v: unknown, f: number) => (typeof v === "number" && Number.isFinite(v) ? v : f);
+  const str = (v: unknown, f: string) => (typeof v === "string" && v ? v : f);
+  let allowed: string[] | "all" = b?.allowedTypes ?? "all";
+  if (d.allowedTypes === "all" || (Array.isArray(d.allowedTypes))) allowed = d.allowedTypes;
+  const m: Moveset = {
+    key,
+    name: str(d.name, b?.name ?? key),
+    emoji: str(d.emoji, b?.emoji ?? "⚔️"),
+    description: str(d.description, b?.description ?? ""),
+    allowedTypes: allowed,
+    energyCost: num(d.energyCost, b?.energyCost ?? 40),
+    kind: (str(d.kind, b?.kind ?? "strike") as MovesetKind),
+    powerPct: num(d.powerPct, b?.powerPct ?? 0) || undefined,
+    followUpPct: num(d.followUpPct, b?.followUpPct ?? 0) || undefined,
+    effect: (d.effect as string | undefined) ?? b?.effect,
+  };
+  return m;
+}
+
+export async function loadGuildMovesets(guildId: string): Promise<void> {
+  const cached = _guildMovesets.get(guildId);
+  if (cached && cached.expiresAt > Date.now()) return;
+  try {
+    const { listBattleContent } = await import("./db.js");
+    const rows = await listBattleContent(guildId, "move");
+    const map = new Map<string, Moveset>(REGISTRY);
+    for (const row of rows) {
+      if (row.enabled === false) { map.delete(row.contentId); continue; }
+      map.set(row.contentId, coerceMoveset(row.contentId, row.data, REGISTRY.get(row.contentId)));
+    }
+    _guildMovesets.set(guildId, { map, expiresAt: Date.now() + GUILD_MOVESETS_TTL_MS });
+  } catch {
+    _guildMovesets.set(guildId, { map: new Map(REGISTRY), expiresAt: Date.now() + GUILD_MOVESETS_TTL_MS });
+  }
+}
+
+export function invalidateGuildMovesets(guildId: string): void {
+  _guildMovesets.delete(guildId);
+}
+
+function registryFor(guildId?: string | null): Map<string, Moveset> {
+  if (guildId) {
+    const c = _guildMovesets.get(guildId);
+    if (c) return c.map;
+  }
+  return REGISTRY;
+}
+
+export function getMoveset(key: string | null | undefined, guildId?: string | null): Moveset | null {
   if (!key) return null;
-  return MOVESETS[key] ?? null;
+  return registryFor(guildId).get(key) ?? null;
+}
+
+/** The effective movesets for a guild (defaults + custom). */
+export function listAllMovesets(guildId?: string | null): Moveset[] {
+  return [...registryFor(guildId).values()];
+}
+export function listDefaultMovesets(): Moveset[] {
+  return [...REGISTRY.values()];
 }
 
 /** All movesets a card of `type` may use: its type-specific ones + all support moves. */
-export function movesetsForType(cardType: string): Moveset[] {
+export function movesetsForType(cardType: string, guildId?: string | null): Moveset[] {
   const t = (cardType ?? "").toLowerCase();
-  return Object.values(MOVESETS).filter(
+  return [...registryFor(guildId).values()].filter(
     (m) => m.allowedTypes === "all" || m.allowedTypes.includes(t),
   );
 }
