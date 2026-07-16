@@ -222,11 +222,14 @@ function buildCombatant(
   // Star Rank (Card Recycle) adds a battle stat bonus on top of level scaling.
   const stats = getScaledStats(cardish(card), card.config, rt.settings, level, battleRarity, card.starRank);
   const moveset = card.config?.moveset ?? inferMoveset(card.cardType, battleRarity);
+  // Card-owned move set: every card now carries its OWN Special ability (moved
+  // off the old support-card slot, which is freed for Battle Items). Still gated
+  // by the admin `specialCardsEnabled` toggle.
   let specialEffect: string | null = null;
   let specialCooldownMax = 3;
-  if (rt.settings.specialCardsEnabled && special) {
-    specialEffect = special.config?.specialEffect ?? inferSpecialEffect(special.cardType, special.rarity);
-    specialCooldownMax = special.config?.specialCooldown ?? 3;
+  if (rt.settings.specialCardsEnabled) {
+    specialEffect = card.config?.specialEffect ?? inferSpecialEffect(card.cardType, battleRarity);
+    specialCooldownMax = card.config?.specialCooldown ?? 3;
   }
   return {
     userId, displayName: name, isAi, aiDifficulty, side,
@@ -236,8 +239,9 @@ function buildCombatant(
     moveset,
     stats,
     hp: stats.maxHealth, shield: 0, energy: 40, ultimate: 0, status: [],
-    specialCardId: special?.id ?? null,
-    specialCardName: special?.name ?? null,
+    // The special is now intrinsic to the card, so there's no separate support card.
+    specialCardId: card.id,
+    specialCardName: card.name,
     specialEffect,
     specialCooldownMax, specialCooldownRemaining: 0,
     defending: false, nextAttackBoostPct: 0, doubleNextAttack: false,
