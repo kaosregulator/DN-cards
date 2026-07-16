@@ -82,10 +82,16 @@ export interface Combatant {
   doubleNextAttack: boolean;
   frozenTurns: number;             // skips this many of the combatant's turns
   lastStandUsed: boolean;
+
+  // Battle Item (replaces the old special support-card slot). The chosen item id
+  // plus its remaining charges/cooldown for THIS battle. `null` = none equipped.
+  itemId?: string | null;
+  itemChargesRemaining?: number;
+  itemCooldownRemaining?: number;
 }
 
 export type MoveType =
-  | "attack" | "special" | "defend" | "special_card" | "charge" | "skip" | "ultimate";
+  | "attack" | "special" | "defend" | "special_card" | "charge" | "skip" | "ultimate" | "item";
 
 // A single visible line in the battle log.
 export interface BattleEvent {

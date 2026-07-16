@@ -30,6 +30,7 @@ import { getBattleSettings, rarityAllowed, typeAllowed } from "./config-engine.j
 import { getScaledStats, powerRating } from "./stat-engine.js";
 import { inferMoveset, getMoveset } from "./movesets.js";
 import { inferSpecialEffect, getEffectDef } from "./special-cards.js";
+import { getBattleItem, listBattleItems, applyItemEffect } from "./items.js";
 import { resolveMove, startOfTurn, availableMoves } from "./combat-engine.js";
 import { chooseAiMove, pickAiCardIndex } from "./ai-engine.js";
 import { ARENAS, ARENA_KEYS, getArena, arenaLabel, isArenaKey } from "./arenas.js";
@@ -68,7 +69,8 @@ type Phase = "challenge" | "aidiff" | "prep" | "combat" | "ended";
 
 interface PrepState {
   cardId: number | null;
-  specialCardId: number | null;
+  specialCardId: number | null;   // legacy; retained for stored-state compatibility
+  itemId: string | null;          // Battle Item chosen for this fight (replaces special slot)
   stake: boolean;
   coin: "heads" | "tails" | null;
   ready: boolean;
@@ -211,7 +213,7 @@ function cardish(c: OwnedBattleCard) {
 function buildCombatant(
   rt: BattleRuntime, userId: string, name: string, isAi: boolean, side: 0 | 1,
   card: OwnedBattleCard, special: OwnedBattleCard | null, aiDifficulty?: AiDifficulty,
-  levelOverride?: number,
+  levelOverride?: number, itemId?: string | null,
 ): Combatant {
   // A per-card battle-rarity override (set in the admin card editor) drives both
   // stat derivation and the rarity shown in the battle embed, without touching
@@ -246,6 +248,10 @@ function buildCombatant(
     specialCooldownMax, specialCooldownRemaining: 0,
     defending: false, nextAttackBoostPct: 0, doubleNextAttack: false,
     frozenTurns: 0, lastStandUsed: false,
+    // Battle Item for this fight (replaces the old special support-card slot).
+    itemId: itemId ?? null,
+    itemChargesRemaining: getBattleItem(itemId)?.charges ?? 0,
+    itemCooldownRemaining: 0,
   };
 }
 
@@ -368,7 +374,7 @@ export async function handleBattleComponent(
     } else {
       switch (action) {
         case "pcard": return void await onSelectCard(rt, interaction);
-        case "pspecial": return void await onSelectSpecial(rt, interaction);
+        case "pitem": return void await onSelectItem(rt, interaction);
         default: return void await safeEphemeral(interaction, "Unknown selection.");
       }
     }
@@ -443,9 +449,9 @@ async function onPickAiDifficulty(rt: BattleRuntime, interaction: ButtonInteract
 // ── Prep phase ───────────────────────────────────────────────────────────────
 async function enterPrep(rt: BattleRuntime, interaction: ButtonInteraction) {
   rt.phase = "prep";
-  rt.prep.set(rt.challengerId, { cardId: null, specialCardId: null, stake: false, coin: null, ready: false, page: 0 });
+  rt.prep.set(rt.challengerId, { cardId: null, specialCardId: null, itemId: null, stake: false, coin: null, ready: false, page: 0 });
   if (!rt.isAi && rt.opponentId) {
-    rt.prep.set(rt.opponentId, { cardId: null, specialCardId: null, stake: false, coin: null, ready: false, page: 0 });
+    rt.prep.set(rt.opponentId, { cardId: null, specialCardId: null, itemId: null, stake: false, coin: null, ready: false, page: 0 });
   }
   await interaction.update({
     embeds: [buildPrepEmbed(rt)],
@@ -476,11 +482,11 @@ async function onSelectCard(rt: BattleRuntime, interaction: StringSelectMenuInte
   }).catch(() => {});
 }
 
-async function onSelectSpecial(rt: BattleRuntime, interaction: StringSelectMenuInteraction) {
+async function onSelectItem(rt: BattleRuntime, interaction: StringSelectMenuInteraction) {
   const prep = rt.prep.get(interaction.user.id);
   if (!prep) return safeEphemeral(interaction, "You're not part of this battle.");
   const v = interaction.values[0];
-  prep.specialCardId = v === "none" ? null : Number(v);
+  prep.itemId = v === "none" ? null : v;
   const eligible = await eligibleForUser(rt, interaction.user.id);
   await interaction.update({
     embeds: [buildPersonalPrepEmbed(rt, interaction.user.id)],
@@ -559,7 +565,7 @@ async function beginCombat(rt: BattleRuntime) {
   const chalEligible = await eligibleForUser(rt, rt.challengerId);
   const chalCard = chalEligible.find(c => c.id === chalPrep.cardId) ?? chalEligible[0]!;
   const chalSpecial = chalPrep.specialCardId ? chalEligible.find(c => c.id === chalPrep.specialCardId) ?? null : null;
-  rt.a = buildCombatant(rt, rt.challengerId, rt.challengerName, false, 0, chalCard, chalSpecial);
+  rt.a = buildCombatant(rt, rt.challengerId, rt.challengerName, false, 0, chalCard, chalSpecial, undefined, undefined, chalPrep.itemId);
 
   // Build opponent (human or AI).
   if (rt.isAi) {
@@ -576,14 +582,18 @@ async function beginCombat(rt: BattleRuntime) {
     // The AI card is scaled to the ARENA's level — an under-levelled player
     // card facing the Ascended Arena's Lv 100 AI is a fast wipe (the grind hook).
     const arena = getArena(rt.aiDifficulty);
-    rt.b = buildCombatant(rt, AI_ID, `AI · ${arena.name}`, true, 1, aiCard, aiSpecial, rt.aiDifficulty, arena.aiLevel);
+    // The AI equips a random usable Battle Item (its move engine decides when to
+    // use it). Item usage scales the challenge alongside arena level.
+    const aiItems = listBattleItems();
+    const aiItemId = aiItems.length ? aiItems[Math.floor(Math.random() * aiItems.length)]!.id : null;
+    rt.b = buildCombatant(rt, AI_ID, `AI · ${arena.name}`, true, 1, aiCard, aiSpecial, rt.aiDifficulty, arena.aiLevel, aiItemId);
     rt.staked = false;
   } else {
     const oppPrep = rt.prep.get(rt.opponentId!)!;
     const oppEligible = await eligibleForUser(rt, rt.opponentId!);
     const oppCard = oppEligible.find(c => c.id === oppPrep.cardId) ?? oppEligible[0]!;
     const oppSpecial = oppPrep.specialCardId ? oppEligible.find(c => c.id === oppPrep.specialCardId) ?? null : null;
-    rt.b = buildCombatant(rt, rt.opponentId!, rt.opponentName, false, 1, oppCard, oppSpecial);
+    rt.b = buildCombatant(rt, rt.opponentId!, rt.opponentName, false, 1, oppCard, oppSpecial, undefined, undefined, oppPrep.itemId);
     rt.staked = rt.settings.stakingEnabled && chalPrep.stake && oppPrep.stake;
   }
 
@@ -1161,13 +1171,14 @@ function buildPrepSharedComponents(rt: BattleRuntime): ActionRowBuilder<ButtonBu
 function buildPersonalPrepEmbed(rt: BattleRuntime, userId: string): EmbedBuilder {
   const prep = rt.prep.get(userId);
   const cardName = prep?.cardId ? (rt.eligibleCache.get(userId)?.find(c => c.id === prep.cardId)?.name ?? `#${prep.cardId}`) : "—";
-  const specName = prep?.specialCardId ? (rt.eligibleCache.get(userId)?.find(c => c.id === prep.specialCardId)?.name ?? `#${prep.specialCardId}`) : "None";
+  const item = getBattleItem(prep?.itemId);
+  const itemName = item ? `${item.emoji} ${item.name}` : "None";
   return new EmbedBuilder()
     .setColor(0xfaa61a)
     .setTitle("Your Battle Prep")
     .addFields(
       { name: "🎴 Card", value: cardName, inline: true },
-      { name: "✨ Special", value: specName, inline: true },
+      { name: "🎒 Battle Item", value: itemName, inline: true },
       { name: "🪙 Coin", value: prep?.coin ? prep.coin[0].toUpperCase() + prep.coin.slice(1) : "—", inline: true },
       ...(rt.settings.stakingEnabled && !rt.isAi
         ? [{ name: "💰 Stake", value: prep?.stake ? "Yes — card on the line!" : "No", inline: true }]
@@ -1216,24 +1227,24 @@ function buildPersonalPrepComponents(
     ));
   }
 
-  if (rt.settings.specialCardsEnabled) {
-    const specialSelect = new StringSelectMenuBuilder()
-      .setCustomId(`battle:pspecial:${rt.id}`)
-      .setPlaceholder("✨ Optional: special support card")
+  // Battle Item selector (replaces the old special support-card slot). Items are
+  // data-driven — this list comes straight from the registry.
+  const items = listBattleItems();
+  if (items.length) {
+    const itemSelect = new StringSelectMenuBuilder()
+      .setCustomId(`battle:pitem:${rt.id}`)
+      .setPlaceholder("🎒 Optional: equip a battle item")
       .addOptions(
-        { label: "None", description: "No special support card", value: "none", default: !prep?.specialCardId },
-        ...pageCards.slice(0, 24).map(c => {
-          const eff = c.config?.specialEffect ?? inferSpecialEffect(c.cardType, c.rarity);
-          const def = getEffectDef(eff);
-          return {
-            label: c.name.slice(0, 100),
-            description: def ? `${def.emoji} ${def.label}` : "Support",
-            value: String(c.id),
-            default: prep?.specialCardId === c.id,
-          };
-        }),
+        { label: "None", description: "Fight without a battle item", value: "none", default: !prep?.itemId },
+        ...items.slice(0, 24).map(it => ({
+          label: `${it.name}`.slice(0, 100),
+          description: it.description.slice(0, 100),
+          emoji: it.emoji,
+          value: it.id,
+          default: prep?.itemId === it.id,
+        })),
       );
-    rows.push(new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(specialSelect));
+    rows.push(new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(itemSelect));
   }
 
   const coinRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
@@ -1269,8 +1280,11 @@ function buildMoveComponents(rt: BattleRuntime, actor: Combatant): ActionRowBuil
     mk("charge", "Charge", "⚡", ButtonStyle.Secondary),
     mk("skip", "Skip", "⏭️", ButtonStyle.Secondary),
   );
+  const item = getBattleItem(actor.itemId);
+  const itemLabel = item ? item.name.slice(0, 40) : "Use Item";
+  const itemEmoji = item?.emoji ?? "🎒";
   const row2 = new ActionRowBuilder<ButtonBuilder>().addComponents(
-    mk("special_card", "Special Card", "✨", ButtonStyle.Success),
+    mk("item", itemLabel, itemEmoji, ButtonStyle.Success),
     mk("ultimate", "Ultimate", "💀", ButtonStyle.Danger),
   );
   return [row1, row2];
@@ -1280,6 +1294,7 @@ function moveLabel(move: MoveType): string {
   return ({
     attack: "⚔️ Attack", special: "🔥 Special Attack", defend: "🛡️ Defend",
     special_card: "✨ Special Card", charge: "⚡ Charge", skip: "⏭️ Skip", ultimate: "💀 Ultimate",
+    item: "🎒 Use Item",
   } as Record<MoveType, string>)[move];
 }
 
