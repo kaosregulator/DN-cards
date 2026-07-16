@@ -18,7 +18,7 @@ import {
 } from "discord.js";
 import { logger } from "../../lib/logger.js";
 import { renderBattleImage, type RenderCard } from "./image/render.js";
-import { renderBattleTurn, renderBattleVictory } from "../animations/index.js";
+import { renderAttackFrame, renderBattleVictory } from "../animations/index.js";
 import type { AnimationSpeed } from "../animations/types.js";
 import { toAbsoluteImageUrl } from "../image-url.js";
 import { getBotClient } from "../client-holder.js";
@@ -704,23 +704,17 @@ async function applyMove(rt: BattleRuntime, side: 0 | 1, move: MoveType) {
       if (foe.hp / foe.stats.maxHealth <= 0.15) rt.wentLow[foeSide(side)] = true;
       if (actor.hp / actor.stats.maxHealth <= 0.15) rt.wentLow[side] = true;
 
-      // Generate a cinematic turn GIF for critical hits and finishing blows.
+      // Show a lightweight single-card "attack" frame (cheap static PNG, not a
+      // GIF) for critical hits and finishing blows. Reuses the turnAnimation hook.
       const isCrit = result.events.some(e => e.flash === "crit");
       if (rt.settings.battleAnimationEnabled && (isCrit || result.koed || foe.hp <= 0)) {
-        rt.turnAnimation = await renderBattleTurn({
+        rt.turnAnimation = await renderAttackFrame({
           attacker: combatantToRenderCard(rt, actor),
-          defender: combatantToRenderCard(rt, foe),
-          attackerHp: Math.max(0, actor.hp),
-          attackerMaxHp: actor.stats.maxHealth,
-          defenderHp: Math.max(0, foe.hp),
-          defenderMaxHp: foe.stats.maxHealth,
+          moveName: moveLabel(move),
           damage,
           isCrit,
           isHit: damage > 0,
-          moveName: moveLabel(move),
-          attackerWon: result.koed || foe.hp <= 0,
-          defenderWon: false,
-        }, rt.settings.battleAnimationSpeed as AnimationSpeed).then(r => r?.buffer ?? null).catch(() => null);
+        }).catch(() => null);
       }
 
       await renderCombat(rt);
