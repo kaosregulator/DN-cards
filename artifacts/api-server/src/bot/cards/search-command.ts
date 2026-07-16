@@ -6,6 +6,7 @@ import {
   getAllCards, getUserCollection, getRarityContext, getOrCreateGuildSettings,
   getRarityDisplayOverrides, getCardDisplayRarity,
 } from "../db.js";
+import { getStarRanks } from "./stars.js";
 const MAX_RESULTS = 25;
 
 // Fuse.js search options tuned for card names: tolerate typos, allow acronym
@@ -45,12 +46,13 @@ export async function handleSearch(interaction: ChatInputCommandInteraction): Pr
     return;
   }
 
-  const [cards, collection, rarityCtx, settings, displayMap] = await Promise.all([
+  const [cards, collection, rarityCtx, settings, displayMap, starRanks] = await Promise.all([
     getAllCards(guildId),
     getUserCollection(guildId, userId),
     getRarityContext(guildId),
     getOrCreateGuildSettings(guildId),
     getRarityDisplayOverrides(guildId),
+    getStarRanks(guildId, userId),
   ]);
   const ownedMap = new Map<number, number>();
   for (const c of collection) ownedMap.set(c.cardId, c.count + c.shinyCount);
@@ -123,7 +125,9 @@ export async function handleSearch(interaction: ChatInputCommandInteraction): Pr
     const badges = `${c.isLimitedEdition ? " 💎" : ""}${c.isEventExclusive ? " 🎆" : ""}`;
     // Emoji resolves through /rarity (custom tiers + built-in overrides).
     const emoji = getCardDisplayRarity(c, rarityCtx, settings, displayMap).emoji || "•";
-    return `${emoji} **${c.name}**${badges} — ${mark}`;
+    const star = starRanks.get(c.id) ?? 0;
+    const starTag = star > 0 ? ` ${"★".repeat(star)}` : "";
+    return `${emoji} **${c.name}**${badges}${starTag} — ${mark}`;
   });
 
   const filters: string[] = [];

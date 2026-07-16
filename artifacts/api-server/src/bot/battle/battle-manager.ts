@@ -219,7 +219,8 @@ function buildCombatant(
   // scaled by the card's level (the AI can override to match the player's card).
   const battleRarity = (card.config?.rarity as Rarity) || (card.rarity as Rarity);
   const level = levelOverride ?? card.level;
-  const stats = getScaledStats(cardish(card), card.config, rt.settings, level, battleRarity);
+  // Star Rank (Card Recycle) adds a battle stat bonus on top of level scaling.
+  const stats = getScaledStats(cardish(card), card.config, rt.settings, level, battleRarity, card.starRank);
   const moveset = card.config?.moveset ?? inferMoveset(card.cardType, battleRarity);
   let specialEffect: string | null = null;
   let specialCooldownMax = 3;
