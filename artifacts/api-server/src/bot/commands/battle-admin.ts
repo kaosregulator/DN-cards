@@ -24,6 +24,13 @@ import { persistBotImage } from "./edit-card.js";
 import { getBattleSettings, updateBattleSettings, RARITY_ORDER } from "../battle/config-engine.js";
 import { resetSeason } from "../battle/season-engine.js";
 import { upsertBattleCardConfig, getBattleCardConfig, resetBattleCardConfig } from "../battle/db.js";
+import { upsertBattleContent, deleteBattleContent, listBattleContent } from "../battle/db.js";
+import {
+  loadGuildBattleItems, invalidateGuildBattleItems, listAllBattleItems, getBattleItem,
+  coerceBattleItem, listDefaultBattleItems,
+  type BattleItem, type ItemEffectType, type ItemTarget,
+} from "../battle/items.js";
+import type { StatusKind } from "../battle/types.js";
 import { getScaledStats } from "../battle/stat-engine.js";
 import { db, battleProfilesTable, type Card } from "@workspace/db";
 import { eq } from "drizzle-orm";
@@ -89,7 +96,7 @@ export async function handleBattleAdminButton(interaction: ButtonInteraction): P
   const action = interaction.customId.split(":")[1];
 
   // Modal-opening actions must call showModal FIRST (can't defer).
-  if (["rules", "formulas", "rewards", "editcard", "bcstats"].includes(action)) {
+  if (["rules", "formulas", "rewards", "editcard", "bcstats", "itemtext"].includes(action)) {
     if (!ensureAdminInline(interaction)) { await interaction.reply({ content: "❌ Admins only.", flags: MessageFlags.Ephemeral }); return; }
     const settings = await getBattleSettings(interaction.guild.id);
     if (action === "rules") await interaction.showModal(buildRulesModal(settings));
@@ -97,6 +104,7 @@ export async function handleBattleAdminButton(interaction: ButtonInteraction): P
     if (action === "rewards") await interaction.showModal(buildRewardsModal(settings));
     if (action === "editcard") await interaction.showModal(buildCardSearchModal());
     if (action === "bcstats") await interaction.showModal(await buildStatsModal(interaction.guild.id, Number(interaction.customId.split(":")[2])));
+    if (action === "itemtext") await interaction.showModal(await buildItemTextModal(interaction.guild.id, interaction.customId.split(":")[2]!));
     return;
   }
 
@@ -186,6 +194,39 @@ export async function handleBattleAdminButton(interaction: ButtonInteraction): P
       await interaction.editReply(await buildBackgroundsManager(guildId));
       return;
     }
+    case "itemmgr": {
+      await interaction.editReply(await buildItemManager(guildId));
+      return;
+    }
+    case "itemnew": {
+      const id = `custom_${Date.now().toString(36)}`;
+      const template = coerceBattleItem(id, {
+        name: "New Item", emoji: "🎒", description: "Custom battle item.",
+        effectType: "heal", target: "self", power: 20, duration: 0, cooldown: 1,
+        charges: 2, category: "utility", rarity: "common", enabled: true,
+      });
+      await upsertBattleContent(guildId, "item", id, itemToData(template), true, interaction.user.id);
+      invalidateGuildBattleItems(guildId);
+      await interaction.editReply(await buildItemEditor(guildId, id));
+      return;
+    }
+    case "itemtoggle": {
+      const id = interaction.customId.split(":")[2]!;
+      const cur = await effectiveItem(guildId, id);
+      if (cur) {
+        await upsertBattleContent(guildId, "item", id, itemToData({ ...cur, enabled: !cur.enabled }), !cur.enabled, interaction.user.id);
+        invalidateGuildBattleItems(guildId);
+      }
+      await interaction.editReply(await buildItemEditor(guildId, id));
+      return;
+    }
+    case "itemdelete": {
+      const id = interaction.customId.split(":")[2]!;
+      await deleteBattleContent(guildId, "item", id);
+      invalidateGuildBattleItems(guildId);
+      await interaction.editReply(await buildItemManager(guildId));
+      return;
+    }
     case "resetlb": {
       await interaction.followUp({
         content: "⚠️ Reset the leaderboard? This zeroes everyone's **rank points & current streak** (lifetime W/L and stats are kept).",
@@ -251,6 +292,27 @@ export async function handleBattleAdminSelect(interaction: StringSelectMenuInter
     return;
   }
 
+  // Battle Item Manager selects.
+  if (action === "itempick") {
+    await interaction.editReply(await buildItemEditor(guildId, interaction.values[0]!)).catch(() => {});
+    return;
+  }
+  if (action === "itemfx" || action === "itemtarget" || action === "itemstatus") {
+    const id = parts[2]!;
+    const cur = await effectiveItem(guildId, id);
+    if (cur) {
+      const v = interaction.values[0]!;
+      const patch: Partial<BattleItem> =
+        action === "itemfx" ? { effectType: v as ItemEffectType }
+        : action === "itemtarget" ? { target: v as ItemTarget }
+        : { statusKind: v === "__none__" ? undefined : (v as StatusKind) };
+      await upsertBattleContent(guildId, "item", id, itemToData({ ...cur, ...patch }), cur.enabled, interaction.user.id);
+      invalidateGuildBattleItems(guildId);
+    }
+    await interaction.editReply(await buildItemEditor(guildId, id)).catch(() => {});
+    return;
+  }
+
   // Per-card editor selects → re-render the card editor panel.
   if (action === "bcrarity" || action === "bcspecial" || action === "bcmoveset") {
     const cardId = Number(parts[2]);
@@ -305,6 +367,31 @@ export async function handleBattleAdminModal(interaction: ModalSubmitInteraction
   if (!(await ensureAdmin(interaction))) return;
   const action = interaction.customId.split(":")[1];
   const guildId = interaction.guild.id;
+
+  // Battle Item text/number editor modal.
+  if (action === "itemtext") {
+    const id = interaction.customId.split(":")[2]!;
+    const cur = await effectiveItem(guildId, id);
+    if (cur) {
+      const get = (k: string) => interaction.fields.getTextInputValue(k).trim();
+      const numOr = (s: string, f: number) => { const n = Number(s); return Number.isFinite(n) ? n : f; };
+      const tuning = get("tuning").split(/[\s,/]+/).filter(Boolean);
+      const patch: BattleItem = {
+        ...cur,
+        name: get("name") || cur.name,
+        emoji: get("emoji") || cur.emoji,
+        description: get("desc") || cur.description,
+        power: numOr(get("power"), cur.power),
+        duration: numOr(tuning[0] ?? "", cur.duration),
+        cooldown: numOr(tuning[1] ?? "", cur.cooldown),
+        charges: numOr(tuning[2] ?? "", cur.charges),
+      };
+      await upsertBattleContent(guildId, "item", id, itemToData(patch), cur.enabled, interaction.user.id);
+      invalidateGuildBattleItems(guildId);
+    }
+    await interaction.editReply(await buildItemEditor(guildId, id)).catch(() => {});
+    return;
+  }
 
   const num = (id: string, min: number, max: number, cur: number): number => {
     const raw = interaction.fields.getTextInputValue(id).trim();
@@ -451,6 +538,7 @@ function buildHubComponents(s?: { frameDelayMs: number; battleAnimationSpeed?: s
     new ButtonBuilder().setCustomId("battleadmin:formulas").setLabel("Formulas").setEmoji("🧮").setStyle(ButtonStyle.Primary),
     new ButtonBuilder().setCustomId("battleadmin:rewards").setLabel("Rewards").setEmoji("🎁").setStyle(ButtonStyle.Primary),
     new ButtonBuilder().setCustomId("battleadmin:cards").setLabel("Cards").setEmoji("🎴").setStyle(ButtonStyle.Primary),
+    new ButtonBuilder().setCustomId("battleadmin:itemmgr").setLabel("Battle Items").setEmoji("🎒").setStyle(ButtonStyle.Primary),
   );
   const row3 = new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder().setCustomId("battleadmin:resetlb").setLabel("Reset Leaderboard").setEmoji("🏆").setStyle(ButtonStyle.Danger),
@@ -590,6 +678,124 @@ async function buildBackgroundsManager(guildId: string): Promise<{ embeds: Embed
     new ButtonBuilder().setCustomId("battleadmin:hub").setLabel("Back").setStyle(ButtonStyle.Secondary),
   );
   return { embeds: [embed], components: [clearRow, backRow] };
+}
+
+// ── Battle Item Manager ──────────────────────────────────────────────────────
+// Data-driven CRUD over the item registry: every guild can add custom items or
+// override/disable the built-in defaults. Rows live in battle_content (kind
+// "item") and the engine merges them over the code defaults at battle start.
+const EFFECT_TYPES: ItemEffectType[] = ["heal", "shield", "damage", "energy", "buff", "debuff", "status"];
+const ITEM_TARGETS: ItemTarget[] = ["self", "foe"];
+const ITEM_STATUS_KINDS: StatusKind[] = ["poison", "burn", "freeze", "shield", "reflect", "buff", "regen", "weaken", "stealth"];
+
+function itemToData(item: BattleItem): Record<string, unknown> {
+  return { ...item } as Record<string, unknown>;
+}
+
+// Resolve the effective definition of an item id for a guild (custom or default).
+async function effectiveItem(guildId: string, id: string): Promise<BattleItem | null> {
+  invalidateGuildBattleItems(guildId);
+  await loadGuildBattleItems(guildId);
+  return getBattleItem(id, guildId);
+}
+
+async function buildItemManager(guildId: string): Promise<{ embeds: EmbedBuilder[]; components: ActionRowBuilder<any>[] }> {
+  invalidateGuildBattleItems(guildId);
+  await loadGuildBattleItems(guildId);
+  const items = listAllBattleItems(guildId).sort((a, b) => a.name.localeCompare(b.name));
+  const overrides = new Set((await listBattleContent(guildId, "item")).map(r => r.contentId));
+  const defaultIds = new Set(listDefaultBattleItems().map(i => i.id));
+
+  const lines = items.slice(0, 40).map(i => {
+    const tag = !defaultIds.has(i.id) ? "🆕" : overrides.has(i.id) ? "✏️" : "▫️";
+    const off = i.enabled ? "" : " · _disabled_";
+    return `${tag} ${i.emoji} **${i.name}** — ${i.effectType}/${i.target} · pw ${i.power} · cd ${i.cooldown} · ${i.charges}×${off}`;
+  });
+  const embed = new EmbedBuilder()
+    .setColor(0xf5a623)
+    .setTitle("🎒 Battle Item Manager")
+    .setDescription(
+      "Create custom items or override the built-in defaults. Combat, prep, and the AI all read this list.\n"
+      + "🆕 custom · ✏️ default overridden · ▫️ built-in default\n\n"
+      + (lines.join("\n") || "_No items._"),
+    );
+
+  const pickRow = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
+    new StringSelectMenuBuilder().setCustomId("battleadmin:itempick").setPlaceholder("✏️ Edit an item…")
+      .addOptions(items.slice(0, 25).map(i => ({
+        label: i.name.slice(0, 100), emoji: i.emoji, value: i.id,
+        description: `${i.effectType}/${i.target} · ${i.enabled ? "on" : "off"}`.slice(0, 100),
+      }))),
+  );
+  const btnRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder().setCustomId("battleadmin:itemnew").setLabel("New Item").setEmoji("➕").setStyle(ButtonStyle.Success),
+    new ButtonBuilder().setCustomId("battleadmin:hub").setLabel("Back").setStyle(ButtonStyle.Secondary),
+  );
+  return { embeds: [embed], components: [pickRow, btnRow] };
+}
+
+async function buildItemEditor(guildId: string, id: string): Promise<{ embeds: EmbedBuilder[]; components: ActionRowBuilder<any>[] }> {
+  const item = await effectiveItem(guildId, id);
+  if (!item) return buildItemManager(guildId);
+  const isDefault = listDefaultBattleItems().some(i => i.id === id);
+
+  const embed = new EmbedBuilder()
+    .setColor(item.enabled ? 0x2ecc71 : 0x95a5a6)
+    .setTitle(`${item.emoji} ${item.name}`)
+    .setDescription(item.description || "_No description._")
+    .addFields(
+      { name: "Effect", value: `${item.effectType} → ${item.target}`, inline: true },
+      { name: "Power", value: String(item.power), inline: true },
+      { name: "Status", value: item.statusKind ?? "—", inline: true },
+      { name: "Duration", value: `${item.duration} turn(s)`, inline: true },
+      { name: "Cooldown", value: `${item.cooldown} turn(s)`, inline: true },
+      { name: "Charges", value: `${item.charges}×`, inline: true },
+      { name: "Category", value: item.category, inline: true },
+      { name: "Rarity", value: item.rarity, inline: true },
+      { name: "Enabled", value: item.enabled ? "✅ yes" : "🚫 no", inline: true },
+    )
+    .setFooter({ text: isDefault ? "Built-in default (edits create a per-server override)" : "Custom item" });
+
+  const fxRow = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
+    new StringSelectMenuBuilder().setCustomId(`battleadmin:itemfx:${id}`).setPlaceholder("Effect type")
+      .addOptions(EFFECT_TYPES.map(t => ({ label: t, value: t, default: t === item.effectType }))),
+  );
+  const targetRow = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
+    new StringSelectMenuBuilder().setCustomId(`battleadmin:itemtarget:${id}`).setPlaceholder("Target")
+      .addOptions(ITEM_TARGETS.map(t => ({ label: t, value: t, default: t === item.target }))),
+  );
+  const statusRow = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
+    new StringSelectMenuBuilder().setCustomId(`battleadmin:itemstatus:${id}`).setPlaceholder("Status effect (for buff/debuff/status)")
+      .addOptions(
+        { label: "none", value: "__none__", default: !item.statusKind },
+        ...ITEM_STATUS_KINDS.map(k => ({ label: k, value: k, default: k === item.statusKind })),
+      ),
+  );
+  const btnRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder().setCustomId(`battleadmin:itemtext:${id}`).setLabel("Edit Text & Numbers").setEmoji("📝").setStyle(ButtonStyle.Primary),
+    new ButtonBuilder().setCustomId(`battleadmin:itemtoggle:${id}`).setLabel(item.enabled ? "Disable" : "Enable").setStyle(item.enabled ? ButtonStyle.Danger : ButtonStyle.Success),
+    new ButtonBuilder().setCustomId(`battleadmin:itemdelete:${id}`).setLabel(isDefault ? "Reset to Default" : "Delete").setEmoji("🗑️").setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder().setCustomId("battleadmin:itemmgr").setLabel("Back").setStyle(ButtonStyle.Secondary),
+  );
+  return { embeds: [embed], components: [fxRow, targetRow, statusRow, btnRow] };
+}
+
+async function buildItemTextModal(guildId: string, id: string): Promise<ModalBuilder> {
+  const item = (await effectiveItem(guildId, id)) ?? coerceBattleItem(id, {});
+  const input = (cid: string, label: string, value: string, style = TextInputStyle.Short, required = false) =>
+    new ActionRowBuilder<TextInputBuilder>().addComponents(
+      new TextInputBuilder().setCustomId(cid).setLabel(label).setStyle(style).setRequired(required).setValue(value.slice(0, 400)),
+    );
+  return new ModalBuilder()
+    .setCustomId(`battleadmin:itemtext:${id}`)
+    .setTitle(`Edit ${item.name}`.slice(0, 45))
+    .addComponents(
+      input("name", "Name", item.name, TextInputStyle.Short, true),
+      input("emoji", "Emoji", item.emoji),
+      input("desc", "Description", item.description, TextInputStyle.Paragraph),
+      input("power", "Power (heal/shield/damage = % HP; energy = flat)", String(item.power)),
+      input("tuning", "Duration / Cooldown / Charges (e.g. 2 3 1)", `${item.duration} ${item.cooldown} ${item.charges}`),
+    );
 }
 
 function confirmRow(confirmAction: string): ActionRowBuilder<ButtonBuilder> {

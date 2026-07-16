@@ -85,7 +85,10 @@ export interface Combatant {
 
   // Battle Item (replaces the old special support-card slot). The chosen item id
   // plus its remaining charges/cooldown for THIS battle. `null` = none equipped.
+  // `item` is the RESOLVED definition (guild custom or default), snapshotted at
+  // battle start so combat reads it without a guild-scoped registry lookup.
   itemId?: string | null;
+  item?: import("./items.js").BattleItem | null;
   itemChargesRemaining?: number;
   itemCooldownRemaining?: number;
 }

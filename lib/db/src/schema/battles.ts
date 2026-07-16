@@ -159,6 +159,30 @@ export const battleBackgroundsTable = pgTable("battle_backgrounds", {
 
 export type BattleBackground = typeof battleBackgroundsTable.$inferSelect;
 
+// ── Battle Content (per-guild custom content overlay) ────────────────────────
+// A single, data-driven overlay for admin-authored battle content: custom
+// battle items today, and moves/passives in future. Each row is one content
+// entry (kind + contentId) with its full definition in `data`. The engine's
+// registries MERGE these over the code defaults at read time, so every server
+// can add or override content without a code change while the built-in defaults
+// always remain available (a disabled row hides that entry for the guild).
+export const battleContentTable = pgTable("battle_content", {
+  id: serial("id").primaryKey(),
+  guildId: text("guild_id").notNull(),
+  kind: text("kind").notNull(),           // "item" | "move" | "passive"
+  contentId: text("content_id").notNull(),// stable id within the kind
+  data: jsonb("data").$type<Record<string, unknown>>().notNull(),
+  enabled: boolean("enabled").notNull().default(true),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  updatedBy: text("updated_by"),
+}, (t) => ({
+  guildKindIdUniq: uniqueIndex("battle_content_guild_kind_id_idx").on(t.guildId, t.kind, t.contentId),
+  guildKindIdx: index("battle_content_guild_kind_idx").on(t.guildId, t.kind),
+}));
+
+export type BattleContent = typeof battleContentTable.$inferSelect;
+
 // ── Battle Profiles (per-guild, per-user persistent stats) ───────────────────
 export const battleProfilesTable = pgTable("battle_profiles", {
   id: serial("id").primaryKey(),

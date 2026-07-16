@@ -283,7 +283,7 @@ export function resolveMove(
       break;
     }
     case "item": {
-      const item = getBattleItem(actor.itemId);
+      const item = actor.item ?? getBattleItem(actor.itemId);
       if (!item) {
         events.push({ text: `⚠️ **${actor.cardName}** has no battle item equipped.` });
         break;

@@ -54,12 +54,92 @@ export const DEFAULT_BATTLE_ITEMS: BattleItem[] = [
 
 const REGISTRY = new Map<string, BattleItem>(DEFAULT_BATTLE_ITEMS.map(i => [i.id, i]));
 
-// Future admin/DB items can be merged in here without touching combat code.
-export function listBattleItems(): BattleItem[] {
-  return [...REGISTRY.values()].filter(i => i.enabled && i.usableInBattle);
+// ── Per-guild overlay (admin-authored custom items) ──────────────────────────
+// The Battle Item Manager writes item definitions into the battle_content table.
+// We merge those over the code defaults into a per-guild cache; combat + prep
+// read that cache synchronously after `loadGuildBattleItems` has populated it
+// (called once at prep + battle start, like the arena backgrounds).
+const _guildItems = new Map<string, { map: Map<string, BattleItem>; expiresAt: number }>();
+const GUILD_ITEMS_TTL_MS = 60_000;
+
+// Coerce an admin-authored record (loose JSON) into a valid BattleItem, filling
+// any missing field from the same-id default or a safe fallback.
+export function coerceBattleItem(id: string, data: Record<string, unknown>, base?: BattleItem): BattleItem {
+  const d = data as Partial<BattleItem>;
+  const b = base ?? REGISTRY.get(id);
+  const num = (v: unknown, f: number) => (typeof v === "number" && Number.isFinite(v) ? v : f);
+  const str = (v: unknown, f: string) => (typeof v === "string" && v ? v : f);
+  const bool = (v: unknown, f: boolean) => (typeof v === "boolean" ? v : f);
+  return {
+    id,
+    name: str(d.name, b?.name ?? id),
+    emoji: str(d.emoji, b?.emoji ?? "🎒"),
+    description: str(d.description, b?.description ?? ""),
+    icon: (d.icon as string | null | undefined) ?? b?.icon ?? null,
+    rarity: str(d.rarity, b?.rarity ?? "common"),
+    category: str(d.category, b?.category ?? "utility"),
+    effectType: str(d.effectType, b?.effectType ?? "heal") as ItemEffectType,
+    target: str(d.target, b?.target ?? "self") as ItemTarget,
+    power: num(d.power, b?.power ?? 0),
+    duration: num(d.duration, b?.duration ?? 0),
+    cooldown: num(d.cooldown, b?.cooldown ?? 0),
+    charges: num(d.charges, b?.charges ?? 1),
+    stackable: bool(d.stackable, b?.stackable ?? false),
+    statusKind: (d.statusKind as StatusKind | undefined) ?? b?.statusKind,
+    animation: str(d.animation, b?.animation ?? ""),
+    usableInBattle: bool(d.usableInBattle, b?.usableInBattle ?? true),
+    enabled: bool(d.enabled, b?.enabled ?? true),
+  };
 }
-export function getBattleItem(id: string | null | undefined): BattleItem | null {
-  return id ? REGISTRY.get(id) ?? null : null;
+
+// Populate the per-guild item cache from the DB overlay. Best-effort: on any
+// failure the guild simply keeps the code defaults.
+export async function loadGuildBattleItems(guildId: string): Promise<void> {
+  const cached = _guildItems.get(guildId);
+  if (cached && cached.expiresAt > Date.now()) return;
+  try {
+    const { listBattleContent } = await import("./db.js");
+    const rows = await listBattleContent(guildId, "item");
+    const map = new Map<string, BattleItem>(REGISTRY);
+    for (const row of rows) {
+      map.set(row.contentId, coerceBattleItem(row.contentId, { ...row.data, enabled: row.enabled }, REGISTRY.get(row.contentId)));
+    }
+    _guildItems.set(guildId, { map, expiresAt: Date.now() + GUILD_ITEMS_TTL_MS });
+  } catch {
+    _guildItems.set(guildId, { map: new Map(REGISTRY), expiresAt: Date.now() + GUILD_ITEMS_TTL_MS });
+  }
+}
+
+// Drop the cache for a guild after an admin edit so changes apply immediately.
+export function invalidateGuildBattleItems(guildId: string): void {
+  _guildItems.delete(guildId);
+}
+
+function registryFor(guildId?: string | null): Map<string, BattleItem> {
+  if (guildId) {
+    const c = _guildItems.get(guildId);
+    if (c) return c.map;
+  }
+  return REGISTRY;
+}
+
+// The effective items for a guild (defaults + custom), usable in battle. Reads
+// the cache; callers load it first via `loadGuildBattleItems`.
+export function listBattleItems(guildId?: string | null): BattleItem[] {
+  return [...registryFor(guildId).values()].filter(i => i.enabled && i.usableInBattle);
+}
+export function getBattleItem(id: string | null | undefined, guildId?: string | null): BattleItem | null {
+  return id ? registryFor(guildId).get(id) ?? null : null;
+}
+
+// The full, admin-facing effective list for a guild (includes disabled items).
+export function listAllBattleItems(guildId?: string | null): BattleItem[] {
+  return [...registryFor(guildId).values()];
+}
+
+// The built-in defaults (used by the manager to show what can be overridden).
+export function listDefaultBattleItems(): BattleItem[] {
+  return [...REGISTRY.values()];
 }
 
 // Percent-of-max-HP helper.
