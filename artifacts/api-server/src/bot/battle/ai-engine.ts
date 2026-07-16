@@ -10,6 +10,7 @@ import type { Combatant, MoveType, AiDifficulty } from "./types.js";
 import { getArena } from "./arenas.js";
 import { availableMoves } from "./combat-engine.js";
 import { getBattleItem } from "./items.js";
+import { getMoveset } from "./movesets.js";
 
 // AI tactical skill (0..1) now comes from the chosen ARENA — higher arenas play
 // sharper. `AiDifficulty` is an alias for the arena key.
@@ -77,16 +78,37 @@ export function chooseAiMove(
     }
   }
 
-  // Smart play.
-  if (moves.ultimate) return "ultimate";                         // always cash a charged ult
-  if (foeHpPct < 0.35 && moves.special) return "special";        // press the kill
-  if (hpPct < 0.3) {
-    if (moves.special_card && (actor.specialEffect === "heal" || actor.specialEffect === "shield")) return "special_card";
-    if (Math.random() < 0.6) return "defend";
+  // Smart play — reason about the card's OWN signature move (heal/shield/reflect/
+  // stealth are defensive; strike/burn/weaken/nuke are offensive).
+  const ms = getMoveset(actor.moveset);
+  const defensiveSpecial = ms?.kind === "effect" && ["heal", "shield", "reflect", "stealth", "regen"].includes(ms.effect ?? "");
+  const offensiveSpecial = !ms || ms.kind === "strike" || ["burn", "weaken", "nuke", "poison"].includes(ms.effect ?? "");
+
+  // Ultimate: cash it unless a plain attack almost certainly finishes the foe
+  // (don't waste the meter on a near-dead target).
+  if (moves.ultimate) {
+    if (foeHpPct <= 0.12) return "attack";
+    return "ultimate";
   }
-  if (moves.special_card && Math.random() < 0.4) return "special_card";
-  if (moves.special && actor.energy >= settings.specialCost && Math.random() < 0.6) return "special";
-  if (actor.energy < settings.specialCost && Math.random() < 0.3) return "charge";
+
+  // Low HP: prioritise survival — defensive special, else brace.
+  if (hpPct < 0.32) {
+    if (moves.special && defensiveSpecial) return "special";
+    if (Math.random() < 0.65) return "defend";
+  }
+
+  // Press the kill with the strongest available offensive tool.
+  if (foeHpPct < 0.4 && moves.special && offensiveSpecial) return "special";
+
+  // Use a defensive special proactively while healthy-ish and the fight will drag.
+  if (moves.special && defensiveSpecial && hpPct < 0.6 && foeHpPct > 0.5 && Math.random() < 0.5) return "special";
+
+  // Otherwise mix offensive specials into the rotation when energy allows.
+  if (moves.special && offensiveSpecial && Math.random() < 0.55) return "special";
+
+  // Bank energy for the Special when we can't afford it yet.
+  const specialCost = getMoveset(actor.moveset)?.energyCost ?? settings.specialCost;
+  if (actor.energy < specialCost && Math.random() < 0.4) return "charge";
   return "attack";
 }
 
