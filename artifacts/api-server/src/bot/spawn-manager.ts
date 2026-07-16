@@ -1,8 +1,12 @@
 import {
-  Client, TextChannel, EmbedBuilder,
+  Client, TextChannel, EmbedBuilder, AttachmentBuilder,
   ActionRowBuilder, ButtonBuilder, ButtonStyle,
   type Message,
 } from "discord.js";
+import { getScaledStats } from "./battle/stat-engine.js";
+import { getBattleSettings } from "./battle/config-engine.js";
+import { renderCardReveal, type RevealStats } from "./animations/index.js";
+import type { RenderCard } from "./battle/image/render.js";
 import {
   getOrCreateGuildSettings,
   pickRandomCard,
@@ -477,7 +481,69 @@ async function resolveTypingSpawn(guildId: string, spawnId: string): Promise<voi
 }
 
 // Award a spawn to a specific user atomically (used by both typing winner and button click).
-async function awardSpawn(guildId: string, spawnId: string, userId: string): Promise<boolean> {
+// Optional private delivery for the catch preview. When the catch came from a
+// button interaction we can DM the catcher an ephemeral canvas; typed catches
+// (plain chat message) have no interaction, so the canvas rides the public
+// confirmation instead.
+export interface CatchDelivery {
+  sendEphemeral?: (payload: { embeds: EmbedBuilder[]; files: AttachmentBuilder[] }) => Promise<void>;
+}
+
+const CATCH_STAT_FILE = "catch.png";
+
+// Build the compact battle-style Stats line + reveal canvas for a caught card,
+// reusing the pack canvas pipeline (renderCardReveal) and the battle stat engine
+// (Level-1 stats). Best-effort — a null canvas just means no image.
+async function buildCatchPreview(
+  guildId: string, cardId: number, isShiny: boolean,
+): Promise<{ statsLine: string | null; canvas: Buffer | null; color: number; rarityLabel: string } | null> {
+  try {
+    const [cards, ctx, settings, displayMap, battleSettings] = await Promise.all([
+      getAllCardsCached(guildId),
+      getRarityContext(guildId),
+      getOrCreateGuildSettings(guildId),
+      getRarityDisplayOverrides(guildId),
+      getBattleSettings(guildId).catch(() => null),
+    ]);
+    const card = cards.find(c => c.id === cardId);
+    if (!card) return null;
+    const display = getCardDisplayRarity(card, ctx, settings, displayMap);
+    const color = display.color ?? 0x00b894;
+
+    let statsLine: string | null = null;
+    let revealStats: RevealStats | null = null;
+    if (battleSettings) {
+      const s = getScaledStats(
+        { id: card.id, name: card.name, rarity: card.rarity, worthValue: card.worthValue, cardType: card.cardType },
+        null, battleSettings, 1,
+      );
+      revealStats = {
+        hp: s.maxHealth, atk: s.attack, def: s.defense, spd: s.speed,
+        critChance: Math.round(s.critChance), accuracy: Math.round(s.accuracy),
+      };
+      statsLine =
+        `❤️ **HP** ${s.maxHealth.toLocaleString()}  ·  ⚔️ **ATK** ${s.attack.toLocaleString()}  ·  🛡️ **DEF** ${s.defense.toLocaleString()}\n` +
+        `💨 **SPD** ${s.speed.toLocaleString()}  ·  🎯 **Crit** ${Math.round(s.critChance)}%  ·  🏹 **Acc** ${Math.round(s.accuracy)}%`;
+    }
+
+    const renderCard: RenderCard = {
+      name: card.name,
+      rarity: card.rarity as Rarity,
+      rarityLabel: display.label,
+      rarityColor: display.color,
+      cardId: card.id,
+      cardType: card.cardType,
+      artUrl: toAbsoluteImageUrl(card.imageUrl),
+    };
+    const canvas = await renderCardReveal({ card: renderCard, stats: revealStats, shiny: isShiny, index: 1, total: 1 });
+    return { statsLine, canvas, color, rarityLabel: display.label };
+  } catch (err) {
+    logger.debug({ err, guildId, cardId }, "buildCatchPreview failed (non-fatal)");
+    return null;
+  }
+}
+
+async function awardSpawn(guildId: string, spawnId: string, userId: string, delivery?: CatchDelivery): Promise<boolean> {
   const guildSpawns = activeSpawns.get(guildId);
   const spawn = guildSpawns?.get(spawnId);
   if (!spawn || spawn.caught) return false;
@@ -530,13 +596,43 @@ async function awardSpawn(guildId: string, spawnId: string, userId: string): Pro
     const rawCard = cards.find(c => c.id === spawn.cardId);
     const cardName = rawCard?.name ?? spawn.cardName;
     const shinyBadge = isShiny ? ` ✨` : "";
+
+    // Build the catch card: compact Stats section (replaces the old plain
+    // description) + a reveal canvas, reusing the pack canvas pipeline.
+    const preview = await buildCatchPreview(guildId, spawn.cardId, isShiny);
+    const headline = quipFn(`${cardName}${shinyBadge}`, `<@${userId}>`);
+
+    const publicEmbed = new EmbedBuilder()
+      .setColor(preview?.color ?? (isShiny ? 0xf1c40f : 0x00b894))
+      .setDescription(
+        preview?.statsLine
+          ? `${headline}\n\n**📊 Stats**\n${preview.statsLine}`
+          : headline,
+      );
+
+    // Deliver the canvas privately (button catch) when we can; otherwise ride
+    // the public confirmation with it.
+    const canEphemeral = !!(delivery?.sendEphemeral && preview?.canvas);
+    if (canEphemeral) {
+      const privEmbed = new EmbedBuilder()
+        .setColor(preview!.color)
+        .setTitle(`✅ Caught ${cardName}${shinyBadge}!`)
+        .setImage(`attachment://${CATCH_STAT_FILE}`);
+      if (preview!.statsLine) privEmbed.setDescription(`**📊 Stats**\n${preview!.statsLine}`);
+      await delivery!.sendEphemeral!({
+        embeds: [privEmbed],
+        files: [new AttachmentBuilder(preview!.canvas!, { name: CATCH_STAT_FILE })],
+      }).catch(() => { /* ephemeral is best-effort */ });
+    } else if (preview?.canvas) {
+      publicEmbed.setImage(`attachment://${CATCH_STAT_FILE}`);
+    }
+
     await spawn.message.edit({
-      embeds: [
-        new EmbedBuilder()
-          .setDescription(quipFn(`${cardName}${shinyBadge}`, `<@${userId}>`))
-          .setColor(isShiny ? 0xf1c40f : 0x00b894),
-      ],
+      embeds: [publicEmbed],
       components: [],
+      files: (!canEphemeral && preview?.canvas)
+        ? [new AttachmentBuilder(preview.canvas, { name: CATCH_STAT_FILE })]
+        : [],
     });
     // Fun ephemeral message — vanishes after a few seconds so the channel stays clean.
     setTimeout(() => {
@@ -550,7 +646,7 @@ async function awardSpawn(guildId: string, spawnId: string, userId: string): Pro
 // Public: button-click claim. Returns success/false.
 // `reason: "self_already"` means this user is the actual winner clicking
 // again (double-tap / both-mode race) — caller should silently swallow it.
-export async function handleClaimButtonClick(guildId: string, spawnId: string, userId: string): Promise<{
+export async function handleClaimButtonClick(guildId: string, spawnId: string, userId: string, delivery?: CatchDelivery): Promise<{
   ok: boolean; reason?: "expired" | "wrong_mode" | "already_caught" | "self_already" | "timed_out";
   timedOutUntil?: Date;
 }> {
@@ -563,7 +659,7 @@ export async function handleClaimButtonClick(guildId: string, spawnId: string, u
   }
   const timeout = await getUserTimeout(guildId, userId);
   if (timeout) return { ok: false, reason: "timed_out", timedOutUntil: timeout.expiresAt };
-  const awarded = await awardSpawn(guildId, spawnId, userId);
+  const awarded = await awardSpawn(guildId, spawnId, userId, delivery);
   if (awarded) return { ok: true };
   // Race: someone else won between our checks. If that someone is us, swallow.
   const after = activeSpawns.get(guildId)?.get(spawnId);

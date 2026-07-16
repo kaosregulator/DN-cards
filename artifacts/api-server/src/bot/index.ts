@@ -556,7 +556,12 @@ export async function startBot() {
           // "interaction failed" and the need to click twice. deferUpdate
           // here parks the interaction so we can take as long as we need.
           await interaction.deferUpdate().catch(() => { /* ignore */ });
-          const result = await handleClaimButtonClick(guildId, spawnId, interaction.user.id);
+          const result = await handleClaimButtonClick(guildId, spawnId, interaction.user.id, {
+            // Button catches have an interaction → the catcher gets a private
+            // ephemeral canvas preview; the public confirmation stays as-is.
+            sendEphemeral: (payload) =>
+              interaction.followUp({ ...payload, flags: MessageFlags.Ephemeral }).then(() => { /* void */ }),
+          });
           if (!result.ok) {
             // self_already / expired = the winner is double-tapping their own
             // claim. Silently ack — the spawn embed above already shows the
