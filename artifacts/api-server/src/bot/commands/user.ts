@@ -1,8 +1,19 @@
 import type { ChatInputCommandInteraction } from "discord.js";
 import { EmbedBuilder, MessageFlags } from "discord.js";
 
-// Commands whose results are personal/spammy and should only be seen by the user.
-const EPHEMERAL_COMMANDS = new Set(["burn", "shards", "trades", "tradehistory", "help", "user_hub", "daily", "quests", "achievements", "pack", "packstats", "wishlist", "gift", "tradein", "level", "frame", "lock", "search", "collector", "calendar", "collection", "catalog", "list"]);
+// Visibility policy for command replies.
+//   PUBLIC (seen by the channel) — moments worth showing off: opening a pack
+//     (the reveal animation), gifting, and giving thanks. These are shared events.
+//   EPHEMERAL (only the invoker) — personal dashboards, balances, and lookups.
+// Note: most personal screens (collection, daily, calendar, frame, rank, top,
+// achievements, market, squad) now live in /user-hub and are always ephemeral
+// there; their entries are kept below only for any legacy/prefix invocation.
+const EPHEMERAL_COMMANDS = new Set([
+  "burn", "shards", "trades", "tradehistory", "help", "user_hub", "daily",
+  "achievements", "packstats", "wishlist", "quests", "tradein", "level", "frame",
+  "lock", "search", "collector", "calendar", "collection", "catalog", "list",
+  // "pack" and "gift" intentionally omitted → PUBLIC so pulls/animations are seen.
+]);
 import {
   getUserCollection, getAllCards, getLeaderboard, getTopPackOpeners,
   getOrCreateCurrency, burnCard, getCardByName, getUserCardCount, getUserOwnedCount,

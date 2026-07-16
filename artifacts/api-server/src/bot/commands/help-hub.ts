@@ -133,11 +133,13 @@ const PAGES: Record<HelpSection, PageFn> = {
         "**DarkNight's military collectible card game.** Tanks, jets, warships, bosses, and the odd cursed community card drop right into your server. Catch them, hoard them, battle with them, trade them, and flex your collection.\n\n" +
         "**How catching works**\n" +
         "When a card spawns in the drop channel, just **type its name** to catch it — no command needed *(unless the server uses button mode, then you click)*. First valid catch wins; Discord's own message timestamp breaks ties fairly.\n\n" +
+        "**Your Hub is home base**\n" +
+        "`/user-hub` is your personal dashboard — **Progression, Collection, Profile, Battle record, Daily, Calendar, Frames**, plus buttons to the **Market**, your **Squad**, and **Show Card**. Most personal screens live here now instead of separate commands.\n\n" +
         "**Your first five minutes**\n" +
-        "① `/daily` — grab free 💠 shards\n" +
+        "① `/user-hub` → **Daily** — grab free 💠 shards\n" +
         "② Watch the spawn channel and **type card names** to catch\n" +
         "③ `/pack tier:basic` — spend shards on a 5-card pack\n" +
-        "④ `/collection` — see what you own\n" +
+        "④ `/user-hub` → **Collection** — see what you own\n" +
         "⑤ `/burn` duplicates → more shards → repeat\n\n" +
         "**What else is here** — battles & co-op raids, squads, a player marketplace, giveaways, daily/weekly quests, reputation, encrypted Echo whispers, and more. Pick a topic below.\n\n" +
         "💡 New to the server? Run `/welcome` for the public intro & rules." +
@@ -153,20 +155,22 @@ const PAGES: Record<HelpSection, PageFn> = {
       .addFields(
         { name: "🎯 Catch & Browse", value:
           "**Type a card's name** in the spawn channel to catch it.\n" +
-          "`/collection [user]` — your (or someone's) collection\n" +
+          "**/user-hub → Collection** — your owned cards by rarity\n" +
           "`/info name:<card>` — details, worth, drop chance\n" +
           "`/list` — full roster grouped by rarity\n" +
           "`/catalog category:<rarity|event|limited|all>` — browse by type\n" +
-          "`/search query:<text>` — free-text card search" },
+          "`/search query:<text>` — free-text card search (shows ⭐ on cards you own)" },
         { name: "🏅 Progress & Rank", value:
-          "`/rank [user]` — collector rank & progression\n" +
-          "`/top` — net-worth leaderboard\n" +
-          "`/achievements [user]` — unlocked badges\n" +
-          "`/collector` — opt in/out of the spawn-ping collector role\n" +
-          "`/calendar` — your login streak calendar" },
-        { name: "⭐ Card Upgrades & Cosmetics", value:
-          "`/level [card]` — a card's battle level & stars\n" +
-          "`/frame` — equip a cosmetic frame on a card\n" +
+          "**/user-hub → Progression** — account level & XP across every activity\n" +
+          "**/user-hub → Collector Profile** — rank, net worth, achievements & the leaderboard\n" +
+          "**/user-hub → Calendar** — your login streak\n" +
+          "`/collector` — opt in/out of the spawn-ping collector role" },
+        { name: "⭐ Star Rank & Card Recycle", value:
+          "Cards gain a **Star Rank (0–5★)** that boosts their battle stats.\n" +
+          "`/card_recycle name:<card>` — recycle **duplicate copies** you already own to raise that card's ⭐ Star Rank (one copy is always kept; rarity never changes)." },
+        { name: "🖼️ Cosmetics & Safety", value:
+          "**/user-hub → Frames** — equip a cosmetic frame on a card\n" +
+          "`/level card:<card>` — a card's battle level, XP & unlocked frames\n" +
           "`/lock name:<card>` — lock/favorite a card so it's safe from bulk burns" },
         { name: "🗂️ Card Sets", value:
           "`/set_hub` — browse every set, see which one is active, and check your completion\n" +
@@ -182,17 +186,17 @@ const PAGES: Record<HelpSection, PageFn> = {
       .setDescription("Earn and spend **DN Shards** — the currency behind everything." + NAV_HINT)
       .addFields(
         { name: "💰 Earn Shards", value:
-          "`/daily` — free shards daily (streak bonus grows the payout)\n" +
+          "**/user-hub → Daily** — free shards daily (streak bonus grows the payout)\n" +
           "`/burn name:<card> [amount] [all] [shiny:true]` — destroy duplicates for 💠\n" +
           "`/shards [user]` — check a balance\n" +
-          "Also earned from achievements, quests, battles, and trade-ins." },
+          "Also earned from achievements, quests, battles, and the market." },
         { name: "📦 Packs", value:
           "`/pack tier:<basic|premium|legendary>` — open a 5-card pack\n" +
           "🥉 Basic 250 💠 · 🥈 Premium 750 💠 · 🥇 Legendary 2,000 💠 (no commons)\n" +
           "`/pack_stats` — your costs, weekly caps & cooldown\n" +
           "Tiers share one cooldown but each has its **own weekly cap** (resets Mon 00:00 UTC)." },
-        { name: "♻️ Trade-In", value:
-          "`/trade_in rarity:<r>` — burn **5** of one rarity to roll **1** of the next tier up." },
+        { name: "♻️ Card Recycle", value:
+          "`/card_recycle name:<card>` — recycle **duplicate copies** of a card to raise its ⭐ **Star Rank** (a permanent battle-stat boost). One copy is always kept and the rarity never changes." },
         { name: "🎁 Gifting", value:
           "`/gift user:@Member amount:<n>` — send shards to a friend." },
       );
@@ -213,11 +217,7 @@ const PAGES: Record<HelpSection, PageFn> = {
           "`/wishlist add name:<card>` — get pinged when it spawns\n" +
           "`/wishlist remove name:<card>` · `/wishlist list [user]`" },
         { name: "🏪 Marketplace", value:
-          "`/market sell name:<card> price:<n> [hours:<n>] [buyout:<n>]` — fixed sale or timed auction\n" +
-          "`/market browse [seller] [kind]` — see active listings\n" +
-          "`/market buy id:<n>` — buy a listing (or auction buyout)\n" +
-          "`/market bid id:<n> amount:<n>` — bid on an auction\n" +
-          "`/market cancel id:<n>` · `/market mine` — manage your listings & bids" },
+          "Open the **🏪 Market** from `/user-hub` — one panel to **sell** (fixed price or timed auction), **browse** active listings, **buy** or **buy out**, **bid** on auctions, and **manage** your own listings & bids." },
       );
   },
 
@@ -228,18 +228,15 @@ const PAGES: Record<HelpSection, PageFn> = {
       .addFields(
         { name: "⚔️ Card Battles", value:
           "`/battle fight [opponent]` — challenge a player, or leave empty to fight the AI\n" +
-          "`/battle profile [user]` — record, rank & stats\n" +
-          "`/battle leaderboard [scope] [sort]` — rankings (guild or global)\n" +
-          "`/battle achievements [user]` — battle badges\n" +
-          "`/battle daily` — today's battle challenges & progress" },
+          "In **Battle Prep** you pick your card, your coin call, and (optionally) stake a card, then **Ready** up.\n" +
+          "Your **Battle Profile**, **Battle Achievements**, and battle **Daily** challenges all live in `/user-hub`.\n" +
+          "`/battle leaderboard [scope] [sort]` — rankings (guild or global)" },
         { name: "🐉 Co-op Boss Raids", value:
           "`/raid bosses` — list the raid bosses on this server\n" +
           "`/raid start boss:<name>` — open a raid lobby; teammates **Join**, pick a card, and fight a shared-HP boss together\n" +
           "Clear it for shards + card XP. Bosses are admin-created." },
         { name: "🤝 Squads", value:
-          "`/squad create name:<…> [tag] [description]` — found a squad\n" +
-          "`/squad join name:<…>` · `/squad leave` · `/squad disband`\n" +
-          "`/squad info [name]` — combined stats & roster · `/squad list` — squad leaderboard" },
+          "Open the **🤝 Squad** panel from `/user-hub` — **create** or **join** a squad, view **info** & roster, **leave** or **disband**, and climb the **squad leaderboard**." },
       );
   },
 
@@ -298,14 +295,15 @@ const PAGES: Record<HelpSection, PageFn> = {
     e.setTitle("🤖 Bob — Games & Chaos")
       .setDescription("Bob is the server's chaotic entertainment NPC. His own coins 🪙, his own games, his own moods. Rarely he turns 🔵 **Blue** (evil, double rewards) or 🙃 **Upside-Down** (glitched, weird). Separate from cards — just for fun." + NAV_HINT)
       .addFields(
-        { name: "🎛️ Start Here", value:
-          "`/bob` — the interactive hub: Games, Roast, Tasks, Quests, Rewards, Talk, Stats" },
-        { name: "🔫 Roulette & Duels", value:
-          "`/bob_roulette` — survive the chamber for coins + a survival streak\n" +
-          "`/bob_duel user:@member` — challenge someone; first BANG loses" },
-        { name: "🎲 Mini-Games & Talk", value:
-          "Coin Flip · Dice · Higher/Lower · Slots · Lucky Wheel · Guess the Emoji (all in `/bob`)\n" +
-          "`/bob_roast user:@member` — get roasted · `/bob_talk [message]` — chat with Bob" },
+        { name: "🎛️ Start Here — `/bob`", value:
+          "`/bob` opens Bob's interactive menu; everything lives inside it:\n" +
+          "🎲 **Games** · 🔫 **Roulette** · 😂 **Roast** · 🎯 **Tasks** · 📜 **Quests** · 🎁 **Rewards** · 💬 **Talk**" },
+        { name: "🎲 Games & Roulette (in the menu)", value:
+          "Coin Flip · Dice · Higher/Lower · Slots · Lucky Wheel · Guess the Emoji · Blackjack · Rock-Paper-Scissors — all under **🎲 Games**.\n" +
+          "**🔫 Roulette** — survive the chamber for coins + a survival streak." },
+        { name: "😂 Roast & 💬 Talk (in the menu)", value:
+          "**😂 Roast** — have Bob roast a member. **💬 Talk** — chat with Bob.\n" +
+          "`/bob_duel user:@member` — challenge someone directly; first BANG loses." },
         { name: "📊 Progress", value:
           "`/bob_stats [user]` — your coins, luck %, streaks & records\n" +
           "`/bob_leaderboard` — richest, most wins, best streaks, biggest gamblers & more\n" +

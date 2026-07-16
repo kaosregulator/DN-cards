@@ -725,6 +725,33 @@ export function internalCommandName(clean: string): string {
   return INTERNAL_BY_CLEAN[clean] ?? clean;
 }
 
+// ── Hub-consolidated commands (deregistered from Discord, handlers kept) ──────
+// These player commands are fully covered by an existing, proven Hub surface, so
+// they are no longer REGISTERED as standalone slash commands (this keeps us well
+// under Discord's 100-command cap). Their handlers, dispatch cases, and button
+// routes are all UNCHANGED — every feature is still reachable, just through the
+// Hub instead of a duplicate slash command. Remove a name here to re-register it.
+//
+// Parity map (feature → where it now lives):
+//   collection    → /user-hub · Collection
+//   daily         → /user-hub · Daily (claim button)
+//   calendar      → /user-hub · Calendar
+//   frame         → /user-hub · Frames
+//   rank          → /user-hub · Progression / Collector Profile
+//   top           → /user-hub · Collector Profile (leaderboard)
+//   achievements  → /user-hub · Collector Profile (achievements)
+//   market        → /user-hub · 🏪 Market button (full market-hub)
+//   squad         → /user-hub · 🤝 Squad button (full squad-hub)
+//   bob_* (games/roast/talk) → /bob menu (Games / Roast / Talk)
+export const HUB_REPLACED_COMMANDS = new Set<string>([
+  // Player commands with full User-Hub parity.
+  "collection", "daily", "calendar", "frame", "rank", "top", "achievements",
+  "market", "squad",
+  // Bob minigame shortcuts — all reachable from the /bob menu.
+  "bob_coinflip", "bob_dice", "bob_hl", "bob_slots", "bob_wheel", "bob_emoji",
+  "bob_bj", "bob_rps", "bob_roulette", "bob_roast", "bob_talk",
+]);
+
 export function buildCommands() {
   // Every command is registered standalone — no /cards or /admin wrapper — and
   // renamed to its clean public form.
@@ -734,7 +761,9 @@ export function buildCommands() {
     // ── AFK Secretary & Whitelist Access System (standalone top-level cmds) ──
     buildAfkCommandJson() as CommandJson,
     buildAfkSetupCommandJson() as CommandJson,
-  ];
+  ]
+    // Drop Hub-consolidated duplicates from the registered set (handlers stay).
+    .filter((c) => !HUB_REPLACED_COMMANDS.has(c.name));
   for (const c of all) c.name = publicCommandName(c.name);
   return all;
 }
