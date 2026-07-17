@@ -4,8 +4,12 @@ import {
   type SlashCommandSubcommandsOnlyBuilder,
 } from "discord.js";
 import { buildAfkCommandJson, buildAfkSetupCommandJson } from "../afk/commands.js";
+import { getRaidFrames } from "../cards/frames.js";
 
 type AnySlashBuilder = SlashCommandBuilder | SlashCommandOptionsOnlyBuilder | SlashCommandSubcommandsOnlyBuilder;
+
+// Exclusive raid-reward frames, as slash-command choices (value = frame id).
+const RAID_FRAME_CHOICES = getRaidFrames().map(f => ({ name: `${f.emoji} ${f.name}`, value: f.id }));
 
 function cmd(name: string, desc: string, build: (s: SlashCommandBuilder) => AnySlashBuilder) {
   return build(
@@ -455,7 +459,10 @@ function buildLegacyCommands() {
         .addIntegerOption(o => o.setName("enrage").setDescription("Boss enrages after N rounds (0 = never)").setMinValue(0))
         .addIntegerOption(o => o.setName("healthscaling").setDescription("Health scaling percent per extra party power (default 100)").setMinValue(0))
         .addIntegerOption(o => o.setName("reward").setDescription("Shards per survivor on clear").setMinValue(0))
-        .addIntegerOption(o => o.setName("cardxp").setDescription("Bonus card XP per survivor on clear").setMinValue(0)))
+        .addIntegerOption(o => o.setName("cardxp").setDescription("Bonus card XP per survivor on clear").setMinValue(0))
+        .addStringOption(o => o.setName("cardname").setDescription("The card this boss IS — granted to winners who pick the boss-card reward"))
+        .addStringOption(o => o.setName("frame").setDescription("Exclusive frame winners unlock (account-wide)").addChoices(...RAID_FRAME_CHOICES))
+        .addIntegerOption(o => o.setName("sequence").setDescription("Ladder order: 0 = first boss, higher = later/final").setMinValue(0)))
       .addSubcommand(sc => sc.setName("edit").setDescription("Edit an existing boss")
         .addStringOption(o => o.setName("name").setDescription("Boss to edit").setRequired(true).setAutocomplete(true))
         .addStringOption(o => o.setName("description").setDescription("Flavor text"))
@@ -472,7 +479,10 @@ function buildLegacyCommands() {
         .addIntegerOption(o => o.setName("enrage").setDescription("Enrage round (0 = never)").setMinValue(0))
         .addIntegerOption(o => o.setName("healthscaling").setDescription("Health scaling percent per extra party power").setMinValue(0))
         .addIntegerOption(o => o.setName("reward").setDescription("Shards per survivor").setMinValue(0))
-        .addIntegerOption(o => o.setName("cardxp").setDescription("Bonus card XP per survivor").setMinValue(0)))
+        .addIntegerOption(o => o.setName("cardxp").setDescription("Bonus card XP per survivor").setMinValue(0))
+        .addStringOption(o => o.setName("cardname").setDescription("The card this boss IS — the boss-card reward"))
+        .addStringOption(o => o.setName("frame").setDescription("Exclusive frame winners unlock (account-wide)").addChoices(...RAID_FRAME_CHOICES))
+        .addIntegerOption(o => o.setName("sequence").setDescription("Ladder order: 0 = first boss, higher = later/final").setMinValue(0)))
       .addSubcommand(sc => sc.setName("list").setDescription("List all raid bosses on this server"))
       .addSubcommand(sc => sc.setName("enable").setDescription("Enable or disable a boss")
         .addStringOption(o => o.setName("name").setDescription("Boss").setRequired(true).setAutocomplete(true))

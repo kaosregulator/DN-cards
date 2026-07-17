@@ -20,12 +20,13 @@ import { bar, WHITE_LINE } from "../battle/embeds.js";
 import { starsForLevel, starString, levelForStars } from "../cards/leveling.js";
 import { toAbsoluteImageUrl } from "../image-url.js";
 import { logger } from "../../lib/logger.js";
-import { getBossByName, getEnabledBosses } from "./db.js";
+import { getBossByName, getEnabledBosses, getNextBoss, grantRaidFrame } from "./db.js";
+import { raidFrameForBoss } from "../cards/frames.js";
 import {
   buildBossCombatant, buildPlayerCombatant, resolveRaidRound,
   BOSS_USER_ID, type PartyMemberSpec,
 } from "./engine.js";
-import { buildRaidIntroScript, buildRaidClearLine, buildRaidWipeLine } from "./story.js";
+import { buildRaidIntroScript, buildRaidIntroBeats, buildRaidClearLine, buildRaidWipeLine } from "./story.js";
 import {
   renderRaidIntro, renderRaidGallery, renderRaidWipeScene,
   RAID_INTRO_FILE, RAID_GALLERY_FILE, RAID_WIPE_FILE,
@@ -48,8 +49,9 @@ interface RaidSession {
   starterId: string;
   boss: RaidBoss;
   settings: BattleSettings;
-  phase: "lobby" | "fight" | "ended";
+  phase: "lobby" | "intro" | "fight" | "ended";
   party: Map<string, PartySlot>;   // userId → slot
+  accepted: Set<string>;           // during "intro": who has hit Accept
   bossCombatant?: Combatant;
   roundNumber: number;
   pendingActions: Map<string, MoveType>;
@@ -64,6 +66,24 @@ interface RaidSession {
 
 const sessions = new Map<string, RaidSession>();
 const userSession = new Map<string, string>(); // "guild:user" → sessionId
+
+// ── Reward store ─────────────────────────────────────────────────────────────
+// A cleared raid's claimable rewards. Lives independently of the (torn-down)
+// session so winners can claim after the fight, and self-expires. In-memory to
+// match the rest of the raid runtime (a restart ends active raids anyway).
+interface RaidReward {
+  guildId: string;
+  bossName: string;
+  cardId: number | null;
+  cardName: string | null;
+  frameId: string;
+  frameName: string;
+  frameEmoji: string;
+  winners: Set<string>;         // eligible userIds (survivors)
+  choice: Map<string, "frame" | "card">; // userId → what they claimed
+}
+const raidRewards = new Map<string, RaidReward>();
+const REWARD_TTL_MS = 30 * 60_000;
 
 function uKey(guildId: string, userId: string): string { return `${guildId}:${userId}`; }
 
@@ -96,7 +116,7 @@ export async function startRaid(interaction: ChatInputCommandInteraction, bossNa
   const id = newId();
   const session: RaidSession = {
     id, guildId, channelId: interaction.channelId!, starterId: interaction.user.id,
-    boss, settings, phase: "lobby", party: new Map(), roundNumber: 1,
+    boss, settings, phase: "lobby", party: new Map(), accepted: new Set(), roundNumber: 1,
     pendingActions: new Map(), resolving: false, recentLog: [],
   };
   sessions.set(id, session);
@@ -112,7 +132,14 @@ export async function handleRaidComponent(
 ): Promise<void> {
   const parts = interaction.customId.split(":"); // raid:<action>:<sid>[:extra]
   const action = parts[1];
-  const sid = parts[2];
+  const sid = parts[2]!;
+
+  // Reward-claim actions outlive the raid session (the fight is torn down, but
+  // winners still claim afterward), so they route to the reward store first.
+  if (action === "reward" || action === "rwframe" || action === "rwcard") {
+    return handleRaidReward(interaction as ButtonInteraction, action, sid);
+  }
+
   const session = sessions.get(sid);
   if (!session) {
     await interaction.reply({ content: "⌛ This raid has ended or expired.", ...EPHEMERAL }).catch(() => {});
@@ -123,6 +150,8 @@ export async function handleRaidComponent(
     case "pick": return handlePick(interaction as StringSelectMenuInteraction, session);
     case "leave": return handleLeave(interaction as ButtonInteraction, session);
     case "begin": return handleBegin(interaction as ButtonInteraction, session);
+    case "accept": return handleAccept(interaction as ButtonInteraction, session);
+    case "decline": return handleDecline(interaction as ButtonInteraction, session);
     case "cancel": return handleCancel(interaction as ButtonInteraction, session);
     case "act": return handleAct(interaction as ButtonInteraction, session, parts[3] as MoveType);
     default:
@@ -198,6 +227,8 @@ async function handleCancel(interaction: ButtonInteraction, session: RaidSession
   teardown(session);
 }
 
+// Begin → play a short intro cutscene (small boss portrait + story beats), then
+// present Accept / Back Out. The fight only commits once the starter Accepts.
 async function handleBegin(interaction: ButtonInteraction, session: RaidSession): Promise<void> {
   if (interaction.user.id !== session.starterId) { await interaction.reply({ content: "Only the raid starter can begin the fight.", ...EPHEMERAL }); return; }
   if (session.phase !== "lobby") { await interaction.reply({ content: "The fight has already started.", ...EPHEMERAL }); return; }
@@ -206,6 +237,108 @@ async function handleBegin(interaction: ButtonInteraction, session: RaidSession)
     return;
   }
   await interaction.deferUpdate().catch(() => {});
+  session.phase = "intro";
+  session.accepted = new Set();
+  if (session.timer) { clearTimeout(session.timer); session.timer = undefined; }
+  void runIntroCutscene(session);
+}
+
+// ── Intro cutscene: small boss portrait + 3 story beats → Accept / Back Out ───
+const INTRO_BEAT_MS = 2600;
+
+async function runIntroCutscene(session: RaidSession): Promise<void> {
+  if (!session.message) return;
+  const beats = buildRaidIntroBeats(session.boss);
+  const thumb = toAbsoluteImageUrl(session.boss.imageUrl);
+
+  const beatEmbed = (idx: number, withButtons: boolean) => {
+    const e = new EmbedBuilder()
+      .setTitle(`🐉 ${session.boss.name}`)
+      .setColor(0xc0392b)
+      .setDescription(beats.slice(0, idx + 1).join("\n\n"))
+      .setFooter({ text: withButtons ? "Accept to enter the arena · Back Out to leave the party" : "…" });
+    if (thumb) e.setThumbnail(thumb);
+    return e;
+  };
+
+  // Beat 1 immediately (buttons hidden), then reveal the rest on a timer. Guard
+  // every edit on the session still being in the intro phase.
+  await session.message.edit({ embeds: [beatEmbed(0, false)], components: [] }).catch(() => {});
+  for (let i = 1; i < beats.length; i++) {
+    await sleep(INTRO_BEAT_MS);
+    if (session.phase !== "intro" || !session.message) return;
+    const last = i === beats.length - 1;
+    await session.message.edit({
+      embeds: [beatEmbed(i, last)],
+      components: last ? buildIntroComponents(session) : [],
+    }).catch(() => {});
+  }
+  // Auto-expire the intro if nobody accepts.
+  armIntroTimer(session);
+}
+
+function sleep(ms: number): Promise<void> { return new Promise(r => setTimeout(r, ms)); }
+
+function buildIntroComponents(session: RaidSession): ActionRowBuilder<ButtonBuilder>[] {
+  return [new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder().setCustomId(`raid:accept:${session.id}`).setLabel("Accept — Let the Raid Begin!").setEmoji("⚔️").setStyle(ButtonStyle.Success),
+    new ButtonBuilder().setCustomId(`raid:decline:${session.id}`).setLabel("Back Out").setEmoji("🚪").setStyle(ButtonStyle.Danger),
+  )];
+}
+
+function armIntroTimer(session: RaidSession): void {
+  if (session.timer) clearTimeout(session.timer);
+  session.timer = setTimeout(() => {
+    if (session.phase === "intro" && session.message) {
+      session.message.edit({ embeds: [new EmbedBuilder().setTitle("⌛ Raid expired").setColor(0x95a5a6).setDescription(`The party hesitated too long before **${session.boss.name}**.`)], components: [] }).catch(() => {});
+      teardown(session);
+    }
+  }, LOBBY_TTL_MS);
+}
+
+async function handleAccept(interaction: ButtonInteraction, session: RaidSession): Promise<void> {
+  if (session.phase !== "intro") { await interaction.reply({ content: "The raid isn't waiting to start.", ...EPHEMERAL }); return; }
+  const userId = interaction.user.id;
+  if (!session.party.has(userId)) { await interaction.reply({ content: "You're not in this raid party.", ...EPHEMERAL }); return; }
+  session.accepted.add(userId);
+
+  // The starter's Accept launches the fight (as long as the party still meets
+  // the minimum). Everyone else's Accept just marks them ready.
+  if (userId === session.starterId) {
+    if (session.party.size < session.boss.minPlayers) {
+      await interaction.reply({ content: `Too many backed out — you need **${session.boss.minPlayers}** fighters. Wait for more or Back Out.`, ...EPHEMERAL });
+      return;
+    }
+    await interaction.deferUpdate().catch(() => {});
+    await commenceFight(session);
+    return;
+  }
+  await interaction.reply({ content: "⚔️ Ready! Waiting for the starter to launch the raid…", ...EPHEMERAL });
+}
+
+async function handleDecline(interaction: ButtonInteraction, session: RaidSession): Promise<void> {
+  const userId = interaction.user.id;
+  if (session.phase !== "intro") { await interaction.reply({ content: "You can't back out now.", ...EPHEMERAL }); return; }
+  if (!session.party.has(userId)) { await interaction.reply({ content: "You're not in this raid.", ...EPHEMERAL }); return; }
+
+  // The starter backing out cancels the whole raid.
+  if (userId === session.starterId) {
+    await interaction.deferUpdate().catch(() => {});
+    if (session.message) {
+      await session.message.edit({ embeds: [new EmbedBuilder().setTitle("🚫 Raid called off").setColor(0x95a5a6).setDescription(`The starter backed out of the raid on **${session.boss.name}**.`)], components: [] }).catch(() => {});
+    }
+    teardown(session);
+    return;
+  }
+  session.party.delete(userId);
+  session.accepted.delete(userId);
+  userSession.delete(uKey(session.guildId, userId));
+  await interaction.reply({ content: "🚪 You backed out of the raid.", ...EPHEMERAL });
+}
+
+// Commit the fight: build combatants, render the VS arena, start round 1.
+async function commenceFight(session: RaidSession): Promise<void> {
+  if (session.timer) { clearTimeout(session.timer); session.timer = undefined; }
   session.phase = "fight";
   const party = [...session.party.values()].map(s => s.member);
   session.bossCombatant = buildBossCombatant(session.boss, session.settings, party);
@@ -213,7 +346,7 @@ async function handleBegin(interaction: ButtonInteraction, session: RaidSession)
     slot.combatant = buildPlayerCombatant(slot.member, session.settings);
   }
 
-  // Gym-battle intro canvas: boss vs the party's cards on the battlefield.
+  // VS arena canvas: boss (prominent) vs the party's cards on the battlefield.
   // Rendered once and reused as the fight image every round. Best-effort.
   session.introImage = await renderRaidIntro(
     {
@@ -318,6 +451,28 @@ async function finishRaid(session: RaidSession, outcome: "clear" | "wipe" | "tim
       const { recordQuestEvent } = await import("../quests/engine.js");
       for (const s of survivors) await recordQuestEvent(session.guildId, s.member.userId, "battle_win", 1);
     } catch { /* non-fatal */ }
+
+    // Stage each winner's PRESTIGE reward choice (exclusive frame or boss card),
+    // claimed privately via the button on the end screen.
+    if (survivors.length > 0) {
+      const frame = raidFrameForBoss(boss.rewardFrameId);
+      let cardName: string | null = null;
+      if (boss.cardId != null) {
+        try {
+          const { getAllCardsCached } = await import("../db.js");
+          const cards = await getAllCardsCached(session.guildId);
+          cardName = cards.find(c => c.id === boss.cardId)?.name ?? null;
+        } catch { /* non-fatal */ }
+      }
+      raidRewards.set(session.id, {
+        guildId: session.guildId, bossName: boss.name,
+        cardId: cardName ? boss.cardId : null, cardName,
+        frameId: frame.id, frameName: frame.name, frameEmoji: frame.emoji,
+        winners: new Set(survivors.map(s => s.member.userId)),
+        choice: new Map(),
+      });
+      setTimeout(() => raidRewards.delete(session.id), REWARD_TTL_MS).unref?.();
+    }
   } else if (outcome === "wipe") {
     rewardNote = `💀 **Wipe!** The party fell to **${boss.name}**. Regroup, level your cards, and try again.`;
   } else {
@@ -388,12 +543,99 @@ async function finishRaid(session: RaidSession, outcome: "clear" | "wipe" | "tim
     } catch { /* non-fatal — plain end embed */ }
   }
 
+  // Progression: on a clear, point the party toward the next boss — or crown
+  // them if they just beat the finale.
+  let progression: string | null = null;
+  if (outcome === "clear") {
+    try {
+      const next = await getNextBoss(session.guildId, boss);
+      progression = next
+        ? `🧭 **Next boss:** ${next.name} — start it with \`/raid start boss:${next.name}\`.`
+        : "👑 **You've reached the top.** This was the **final boss** — the whole ladder has fallen to you.";
+    } catch { /* non-fatal */ }
+  }
+
+  const reward = raidRewards.get(session.id);
   if (session.message) {
-    const endEmbed = buildEndEmbed(session, outcome, rewardNote, storyLine, endFile);
+    const endEmbed = buildEndEmbed(session, outcome, rewardNote, storyLine, endFile, progression, !!reward);
     const files = endImage && endFile ? [new AttachmentBuilder(endImage, { name: endFile })] : [];
-    await session.message.edit({ embeds: [endEmbed], components: [], files }).catch(() => {});
+    const components = reward ? buildRewardComponents(session.id) : [];
+    await session.message.edit({ embeds: [endEmbed], components, files }).catch(() => {});
   }
   teardown(session);
+}
+
+function buildRewardComponents(rid: string): ActionRowBuilder<ButtonBuilder>[] {
+  return [new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder().setCustomId(`raid:reward:${rid}`).setLabel("Claim Your Reward").setEmoji("🎁").setStyle(ButtonStyle.Success),
+  )];
+}
+
+// ── Reward claim (winner-only, private) ──────────────────────────────────────
+async function handleRaidReward(
+  interaction: ButtonInteraction, action: string, rid: string,
+): Promise<void> {
+  const reward = raidRewards.get(rid);
+  if (!reward) { await interaction.reply({ content: "⌛ This raid's reward window has closed.", ...EPHEMERAL }).catch(() => {}); return; }
+  const userId = interaction.user.id;
+  if (!reward.winners.has(userId)) {
+    await interaction.reply({ content: "🔒 Only the winners of this raid can claim a reward.", ...EPHEMERAL }).catch(() => {});
+    return;
+  }
+
+  // Open the private chooser.
+  if (action === "reward") {
+    if (reward.choice.has(userId)) {
+      await interaction.reply({ content: "✅ You've already claimed your reward from this raid.", ...EPHEMERAL }).catch(() => {});
+      return;
+    }
+    const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
+      new ButtonBuilder().setCustomId(`raid:rwframe:${rid}`).setLabel(`Exclusive Frame — ${reward.frameName}`).setEmoji(reward.frameEmoji).setStyle(ButtonStyle.Primary),
+    );
+    if (reward.cardId != null && reward.cardName) {
+      row.addComponents(
+        new ButtonBuilder().setCustomId(`raid:rwcard:${rid}`).setLabel(`Boss Card — ${reward.cardName}`.slice(0, 80)).setEmoji("🃏").setStyle(ButtonStyle.Secondary),
+      );
+    }
+    await interaction.reply({
+      content: `🎁 **Choose your raid reward** for defeating **${reward.bossName}** — you can pick **one**:\n` +
+        `🖼️ **${reward.frameName}** — a permanent, account-wide frame equippable on any card via \`/frame\`.` +
+        (reward.cardId != null ? `\n🃏 **${reward.cardName}** — the boss's own card, added to your collection.` : ""),
+      components: [row],
+      ...EPHEMERAL,
+    }).catch(() => {});
+    return;
+  }
+
+  // Commit a choice (idempotent guard).
+  if (reward.choice.has(userId)) {
+    await interaction.update({ content: "✅ You've already claimed your reward from this raid.", components: [] }).catch(() => {});
+    return;
+  }
+  if (!interaction.guild) { await interaction.reply({ content: "Claims must be made in the server.", ...EPHEMERAL }).catch(() => {}); return; }
+
+  if (action === "rwframe") {
+    reward.choice.set(userId, "frame");
+    await grantRaidFrame(reward.guildId, userId, reward.frameId, null).catch(() => {});
+    await interaction.update({
+      content: `🖼️ **${reward.frameEmoji} ${reward.frameName}** unlocked! Equip it on any card with \`/frame name:<card> style:${reward.frameName.split(" ")[0]!.toLowerCase()}\`.`,
+      components: [],
+    }).catch(() => {});
+    return;
+  }
+  if (action === "rwcard") {
+    if (reward.cardId == null) { await interaction.update({ content: "This raid has no boss card reward.", components: [] }).catch(() => {}); return; }
+    reward.choice.set(userId, "card");
+    try {
+      const { catchCard } = await import("../db.js");
+      await catchCard(reward.guildId, userId, reward.cardId, { noShiny: true });
+    } catch { /* non-fatal */ }
+    await interaction.update({
+      content: `🃏 **${reward.cardName}** — the boss's own card — has been added to your collection! View it with \`/info name:${reward.cardName}\`.`,
+      components: [],
+    }).catch(() => {});
+    return;
+  }
 }
 
 function teardown(session: RaidSession): void {
@@ -479,11 +721,26 @@ async function refreshLobby(session: RaidSession): Promise<void> {
   await session.message.edit({ embeds: [buildLobbyEmbed(session)], components: buildLobbyComponents(session) }).catch(() => {});
 }
 
-function buildFightEmbed(session: RaidSession): EmbedBuilder {
+// Raids mirror the battle screen: TWO stacked embeds in one message — a top
+// LOG embed (the running combat feed) and a bottom STATUS embed (boss HP, party,
+// arena image). Same shape battles use, so it reads identically.
+function buildFightEmbeds(session: RaidSession): EmbedBuilder[] {
   const boss = session.bossCombatant!;
+
+  // ── Top: battle log ──
+  const logEmbed = new EmbedBuilder()
+    .setTitle(`📜 Raid Log — Round ${session.roundNumber}`)
+    .setColor(0xc0392b)
+    .setDescription(
+      session.recentLog.length
+        ? session.recentLog.join(`\n${WHITE_LINE}\n`).slice(0, 4000)
+        : `⚔️ The party faces **${boss.cardName}**…`,
+    );
+
+  // ── Bottom: status (boss HP + party + arena image) ──
   const hpPct = Math.max(0, Math.min(100, Math.round((boss.hp / boss.stats.maxHealth) * 100)));
-  const embed = new EmbedBuilder()
-    .setTitle(`🐉 ${boss.cardName} — Round ${session.roundNumber}`)
+  const statusEmbed = new EmbedBuilder()
+    .setTitle(`🐉 ${boss.cardName}`)
     .setColor(0xe74c3c)
     .setDescription(
       `**Boss HP**\n${bar(boss.hp, boss.stats.maxHealth, 16)}  **${Math.max(0, boss.hp).toLocaleString()}** / ${boss.stats.maxHealth.toLocaleString()} HP (${hpPct}%)` +
@@ -496,15 +753,14 @@ function buildFightEmbed(session: RaidSession): EmbedBuilder {
     const shield = c.shield > 0 ? ` 🛡️${c.shield}` : "";
     return `❤️ <@${s.member.userId}> **${c.cardName}**${acted}\n${bar(c.hp, c.stats.maxHealth, 10)} ${c.hp}/${c.stats.maxHealth}${shield} · ⚡${c.energy}`;
   });
-  embed.addFields({ name: `👥 Party ${WHITE_LINE}`, value: partyLines.join(`\n${WHITE_LINE}\n`) || "—", inline: false });
-  if (session.recentLog.length) embed.addFields({ name: `📜 Battle log ${WHITE_LINE}`, value: session.recentLog.join(`\n${WHITE_LINE}\n`).slice(0, 1024), inline: false });
+  statusEmbed.addFields({ name: `👥 Party ${WHITE_LINE}`, value: partyLines.join(`\n${WHITE_LINE}\n`) || "—", inline: false });
   const livingCount = [...session.party.values()].filter(s => (s.combatant?.hp ?? 0) > 0).length;
   const lockedIn = [...session.party.values()].filter(s => (s.combatant?.hp ?? 0) > 0 && session.pendingActions.has(s.member.userId)).length;
-  embed.setFooter({ text: `🔒 Locked in ${lockedIn}/${livingCount} — the round resolves once all living fighters act (or after 60s).` });
-  // Prefer the generated arena canvas (boss vs party); fall back to the boss art.
-  if (session.introImage) embed.setImage(`attachment://${RAID_INTRO_FILE}`);
-  else if (boss.cardImageUrl) embed.setImage(boss.cardImageUrl);
-  return embed;
+  statusEmbed.setFooter({ text: `🔒 Locked in ${lockedIn}/${livingCount} — the round resolves once all living fighters act (or after 60s).` });
+  if (session.introImage) statusEmbed.setImage(`attachment://${RAID_INTRO_FILE}`);
+  else if (boss.cardImageUrl) statusEmbed.setImage(boss.cardImageUrl);
+
+  return [logEmbed, statusEmbed];
 }
 
 function buildFightComponents(session: RaidSession): ActionRowBuilder<ButtonBuilder>[] {
@@ -522,12 +778,13 @@ async function renderFight(session: RaidSession): Promise<void> {
   const files = session.introImage
     ? [new AttachmentBuilder(session.introImage, { name: RAID_INTRO_FILE })]
     : [];
-  await session.message.edit({ embeds: [buildFightEmbed(session)], components: buildFightComponents(session), files }).catch(() => {});
+  await session.message.edit({ embeds: buildFightEmbeds(session), components: buildFightComponents(session), files }).catch(() => {});
 }
 
 function buildEndEmbed(
   session: RaidSession, outcome: "clear" | "wipe" | "timeout", note: string,
   storyLine?: string | null, endFile?: string | null,
+  progression?: string | null, hasReward?: boolean,
 ): EmbedBuilder {
   const color = outcome === "clear" ? 0x2ecc71 : 0x7f8c8d;
   const title = outcome === "clear" ? "🏆 BOSS DEFEATED" : "💀 RAID FAILED";
@@ -556,9 +813,14 @@ function buildEndEmbed(
     )
     .addFields(
       { name: `👥 Party Cards ${WHITE_LINE}`, value: partyLines.join(`\n${WHITE_LINE}\n`) || "—", inline: false },
-      { name: `🎁 Rewards ${WHITE_LINE}`, value: note, inline: false },
+      {
+        name: `🎁 Rewards ${WHITE_LINE}`,
+        value: note + (hasReward ? "\n\n🏅 **Winners:** tap **Claim Your Reward** to pick your exclusive frame or the boss card." : ""),
+        inline: false,
+      },
     )
     .setFooter({ text: `Raid lasted ${session.roundNumber} round(s) · ${session.party.size} fighter(s) fielded their own cards` });
+  if (progression) embed.addFields({ name: `🧭 The Ladder ${WHITE_LINE}`, value: progression, inline: false });
   // Clear → the boss-roster gallery (defeated boss struck out). Loss → the
   // wipe scene (boss victorious, downed fighters struck out). Else boss art.
   if (endFile) embed.setImage(`attachment://${endFile}`);

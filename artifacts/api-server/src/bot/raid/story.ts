@@ -52,6 +52,21 @@ const COACH = [
   "One target. One party. One shot at glory.",
 ];
 
+// Three discrete cutscene beats shown one-at-a-time before the VS screen, the
+// last always landing on "Let the Raid Begin!". Deterministic per boss so a
+// given boss's intro reads consistently.
+export function buildRaidIntroBeats(boss: RaidBoss): string[] {
+  const seed = boss.id;
+  const taunts = TAUNTS[boss.rarity] ?? TAUNTS["default"]!;
+  return [
+    `🏟️ *${pick(ARRIVALS, seed, 1)}*`,
+    boss.description
+      ? `*${boss.description}*\n\n${pick(taunts, seed, 2)} — **${boss.name}**`
+      : `${pick(taunts, seed, 2)} — **${boss.name}**`,
+    `⚔️ **Let the Raid Begin!**\n*${pick(COACH, seed, 3)}*`,
+  ];
+}
+
 // The lobby/intro script: arrival beat, boss taunt (or admin flavor), coach line.
 export function buildRaidIntroScript(boss: RaidBoss): string {
   const seed = boss.id;

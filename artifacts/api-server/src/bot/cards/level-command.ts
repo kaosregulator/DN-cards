@@ -12,7 +12,9 @@ import {
 } from "./leveling.js";
 import {
   framesForRarity, resolveActiveFrame, isFrameUnlocked, defaultFrameForRarity,
+  getRaidFrames,
 } from "./frames.js";
+import { getRaidFrameUnlocks } from "../raid/db.js";
 
 function bar(into: number, needed: number, width = 12): string {
   if (needed <= 0) return "▰".repeat(width) + " MAX";
@@ -35,12 +37,15 @@ export async function buildCardLevelEmbed(
   }
 
   const rarity = card.rarity as Rarity;
-  const progress = await getCardProgress(guildId, userId, card.id);
+  const [progress, raidUnlocks] = await Promise.all([
+    getCardProgress(guildId, userId, card.id),
+    getRaidFrameUnlocks(guildId, userId),
+  ]);
   const level = progress?.level ?? 1;
   const xp = progress?.xp ?? 0;
   const fought = progress?.battlesFought ?? 0;
   const won = progress?.battlesWon ?? 0;
-  const frame = resolveActiveFrame(rarity, progress?.equippedFrame ?? null, level);
+  const frame = resolveActiveFrame(rarity, progress?.equippedFrame ?? null, level, raidUnlocks);
   const { into, needed } = levelProgress(xp, level);
 
   const allFrames = framesForRarity(rarity);
@@ -50,6 +55,12 @@ export async function buildCardLevelEmbed(
     const tag = active ? "**✓ equipped**" : unlocked ? "unlocked" : `🔒 Lv ${f.unlockLevel}`;
     return `${f.emoji} **${f.name}** — ${tag}`;
   });
+  // Account-wide raid frames the player has earned — equippable on any card.
+  const earnedRaidFrames = getRaidFrames().filter(f => raidUnlocks.has(f.id));
+  for (const f of earnedRaidFrames) {
+    const active = f.id === frame.id;
+    frameLines.push(`${f.emoji} **${f.name}** — ${active ? "**✓ equipped**" : "🐉 raid reward"}`);
+  }
 
   const embed = new EmbedBuilder()
     .setTitle(frame.wrap(`${frame.emoji} ${card.name}`))
@@ -86,10 +97,11 @@ export async function handleCardLevel(interaction: ChatInputCommandInteraction):
     }
     const cards = await getAllCardsCached(guildId);
     const byId = new Map(cards.map(c => [c.id, c]));
+    const raidUnlocks = await getRaidFrameUnlocks(guildId, userId);
     const lines = rows.map((r, i) => {
       const c = byId.get(r.cardId);
       const rarity = (c?.rarity ?? "common") as Rarity;
-      const frame = resolveActiveFrame(rarity, r.equippedFrame, r.level);
+      const frame = resolveActiveFrame(rarity, r.equippedFrame, r.level, raidUnlocks);
       const wr = r.battlesFought > 0 ? Math.round((r.battlesWon / r.battlesFought) * 100) : 0;
       return `**${i + 1}.** ${frame.emoji} **${c?.name ?? `#${r.cardId}`}** — Lv **${r.level}** ${starString(starsForLevel(r.level))}  ·  ${r.battlesWon}/${r.battlesFought}W (${wr}%)`;
     });
@@ -147,10 +159,14 @@ export async function handleCardFrame(interaction: ChatInputCommandInteraction):
   const card = await getCardByName(name, guildId);
   if (!card) { await interaction.editReply(`❌ "**${name}**" not found. Try \`/list\`.`); return; }
   const rarity = card.rarity as Rarity;
-  const progress = await getCardProgress(guildId, userId, card.id);
+  const [progress, raidUnlocks] = await Promise.all([
+    getCardProgress(guildId, userId, card.id),
+    getRaidFrameUnlocks(guildId, userId),
+  ]);
   const level = progress?.level ?? 1;
   const frames = framesForRarity(rarity);
-  const active = resolveActiveFrame(rarity, progress?.equippedFrame ?? null, level);
+  const earnedRaidFrames = getRaidFrames().filter(f => raidUnlocks.has(f.id));
+  const active = resolveActiveFrame(rarity, progress?.equippedFrame ?? null, level, raidUnlocks);
 
   // No style → list frames + how to equip.
   if (!style) {
@@ -160,6 +176,13 @@ export async function handleCardFrame(interaction: ChatInputCommandInteraction):
       const tag = isActive ? "**✓ equipped**" : unlocked ? "available" : `🔒 unlocks at Lv ${f.unlockLevel}`;
       return `${f.emoji} **${f.name}** \`${f.id.split("_")[1] ?? f.id}\` — ${tag}`;
     });
+    if (earnedRaidFrames.length) {
+      lines.push("", "**🐉 Raid Rewards** (equippable on any card)");
+      for (const f of earnedRaidFrames) {
+        const isActive = f.id === active.id;
+        lines.push(`${f.emoji} **${f.name}** \`${f.id.split("_")[1] ?? f.id}\` — ${isActive ? "**✓ equipped**" : "available"}`);
+      }
+    }
     const embed = new EmbedBuilder()
       .setTitle(`🖼️ Frames for ${card.name}`)
       .setColor(active.color)
@@ -171,21 +194,26 @@ export async function handleCardFrame(interaction: ChatInputCommandInteraction):
     return;
   }
 
-  // Match the requested style against frame name / id suffix (case-insensitive).
+  // Match the requested style against rarity frames AND unlocked raid frames.
   const q = style.trim().toLowerCase();
-  const match = frames.find(f =>
+  const matches = (f: typeof frames[number]) =>
     f.name.toLowerCase() === q ||
     f.name.toLowerCase().startsWith(q) ||
     (f.id.split("_")[1] ?? f.id).toLowerCase() === q ||
-    f.id.toLowerCase() === q,
-  );
+    f.id.toLowerCase() === q;
+  const match = frames.find(matches) ?? earnedRaidFrames.find(matches);
   if (!match) {
-    await interaction.editReply(
-      `❌ No frame called "**${style}**" for this rarity. Options: ${frames.map(f => `\`${f.name}\``).join(", ")}.`,
-    );
+    const opts = [...frames, ...earnedRaidFrames].map(f => `\`${f.name}\``).join(", ");
+    await interaction.editReply(`❌ No frame called "**${style}**" you can equip here. Options: ${opts}.`);
     return;
   }
-  if (!isFrameUnlocked(match, level)) {
+  // Account (raid) frames only need the unlock; rarity frames need the level.
+  if (match.account) {
+    if (!raidUnlocks.has(match.id)) {
+      await interaction.editReply(`🔒 **${match.name}** is a raid reward — clear the boss that grants it to unlock it.`);
+      return;
+    }
+  } else if (!isFrameUnlocked(match, level)) {
     await interaction.editReply(
       `🔒 **${match.name}** unlocks at card **Level ${match.unlockLevel}** — you're Level ${level}. Level this card up in \`/battle\`.`,
     );
