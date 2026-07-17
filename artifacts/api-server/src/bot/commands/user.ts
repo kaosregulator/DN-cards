@@ -46,6 +46,7 @@ import { checkAchievements, formatUnlockLine } from "../achievements.js";
 import { runPaginator, type PaginatorView } from "../components/paginator.js";
 import { chunkLines } from "../components/field-chunker.js";
 import { battleStatsButtonRow } from "../battle/stats-view.js";
+import { scheduleReplyDelete } from "../../lib/temp-message.js";
 
 // Display order for rarity drill-downs (rarest → most common). Used by the
 // paginated /collection, /list, and /catalog views.
@@ -389,18 +390,13 @@ export async function handleUserCommand(
     const effKey = effectiveRarityKey(card, ctx);
     const tier = ladder.find(t => t.key === effKey)
       ?? ladder.find(t => t.key === card.rarity)!;
+    // The rarity / type / drop / worth / burn / caught details are now baked
+    // onto the reveal canvas below (CARD INFO block), so the embed stays clean —
+    // only description, edition badges, copies, and the live active-set note.
     const embed = new EmbedBuilder()
       .setTitle(`${tier.emoji} ${card.name}`)
       .setColor(tier.color ?? 0x7289da)
-      .setDescription((card.description || "*No description.*") + (card.flavor ? `\n\n*${card.flavor}*` : ""))
-      .addFields(
-        { name: "Rarity", value: `${tier.emoji} ${tier.label}`, inline: true },
-        { name: "Type", value: `${getTypeEmoji(cardType)} ${card.cardType}`, inline: true },
-        { name: "Drop Chance", value: dropChance, inline: true },
-        { name: "💠 Worth", value: `${card.worthValue.toLocaleString()} shards`, inline: true },
-        { name: "🔥 Burn Value", value: `${card.burnValue.toLocaleString()} shards`, inline: true },
-        { name: "Total Caught", value: card.totalMinted.toLocaleString(), inline: true },
-      );
+      .setDescription((card.description || "*No description.*") + (card.flavor ? `\n\n*${card.flavor}*` : ""));
     if (card.maxCopies) embed.addFields({ name: "📦 Copies", value: `${card.totalMinted} / ${card.maxCopies}`, inline: true });
     if (badges.length > 0) embed.addFields({ name: "Special", value: badges.join(" · "), inline: false });
 
@@ -427,14 +423,36 @@ export async function handleUserCommand(
     // Level-1 stats live behind the Battle Stats button). Falls back to the
     // plain card art if the canvas can't render.
     const { renderCardRevealCanvas, CARD_REVEAL_FILE } = await import("../cards/card-reveal-canvas.js");
-    const reveal = await renderCardRevealCanvas(guildId, card.id, { withStats: false });
+    const reveal = await renderCardRevealCanvas(guildId, card.id, {
+      withStats: false,
+      info: {
+        worth: card.worthValue,
+        burn: card.burnValue,
+        dropChance,
+        totalCaught: card.totalMinted,
+        typeLabel: `${getTypeEmoji(cardType)} ${card.cardType}`,
+      },
+    });
     if (reveal) {
       embed.setImage(`attachment://${CARD_REVEAL_FILE}`);
       await interaction.editReply({ embeds: [embed], components: [battleStatsButtonRow(card.id)], files: [reveal.file] });
     } else {
+      // Canvas unavailable — fall back to the plain art AND restore the detail
+      // fields so no info is lost.
       const img = toAbsoluteImageUrl(card.imageUrl); if (img) embed.setImage(img);
+      embed.addFields(
+        { name: "Rarity", value: `${tier.emoji} ${tier.label}`, inline: true },
+        { name: "Type", value: `${getTypeEmoji(cardType)} ${card.cardType}`, inline: true },
+        { name: "Drop Chance", value: dropChance, inline: true },
+        { name: "💠 Worth", value: `${card.worthValue.toLocaleString()} shards`, inline: true },
+        { name: "🔥 Burn Value", value: `${card.burnValue.toLocaleString()} shards`, inline: true },
+        { name: "Total Caught", value: card.totalMinted.toLocaleString(), inline: true },
+      );
       await interaction.editReply({ embeds: [embed], components: [battleStatsButtonRow(card.id)] });
     }
+    // Public lookup — tidy the channel after 40s (the Battle Stats button opens
+    // its own ephemeral, so nothing important is lost).
+    scheduleReplyDelete(interaction, 40_000);
     return;
   }
 
@@ -827,6 +845,8 @@ export async function handleUserCommand(
           : "Ranked by total collection net worth (💠 shards)",
       });
     await interaction.editReply({ embeds: [embed] });
+    // Public leaderboard — auto-tidy the channel after 40s.
+    scheduleReplyDelete(interaction, 40_000);
     return;
   }
 

@@ -93,9 +93,19 @@ export interface RevealStats {
   accuracy: number;    // percent
 }
 
+// Collector info shown on /info — baked onto the canvas instead of embed text.
+export interface RevealInfo {
+  worth: number;
+  burn: number;
+  dropChance: string;   // pre-formatted, e.g. "~0.30%"
+  totalCaught: number;
+  typeLabel: string;
+}
+
 export interface CardRevealInput {
   card: RenderCard;
   stats: RevealStats | null;  // Level-1 battle stats; null hides the stat block
+  info?: RevealInfo | null;   // collector info block (used when stats is null)
   shiny: boolean;
   index: number;              // 1-based position in the pack
   total: number;
@@ -103,7 +113,7 @@ export interface CardRevealInput {
 
 export async function renderCardReveal(input: CardRevealInput): Promise<Buffer | null> {
   const { width, height } = REVEAL_CARD;
-  const { card, stats, shiny } = input;
+  const { card, stats, info, shiny } = input;
   const color = card.rarityColor ?? getRarityEffectColor(card.rarity);
   return renderPng(width, height, async (ctx, mod) => {
     drawGradientBackground(ctx, width, height, [
@@ -159,6 +169,35 @@ export async function renderCardReveal(input: CardRevealInput): Promise<Buffer |
         const cyi = boxY + 58 + Math.floor(i / 3) * 48;
         drawTextWithShadow(ctx, cells[i]![0], cxi, cyi, "#aab0c0", 15);
         drawTextWithShadow(ctx, cells[i]![1], cxi, cyi + 22, "#ffffff", 22);
+      }
+    } else if (info) {
+      // Collector info block (worth / burn / drop / caught / type) — the /info
+      // details baked onto the canvas so the embed can stay clean.
+      const boxY = nameY + 26, boxH = 150, boxX = 40, boxW = width - 80;
+      ctx.save();
+      ctx.fillStyle = "rgba(18,18,26,0.82)";
+      roundRectPath(ctx, boxX, boxY, boxW, boxH, 14);
+      ctx.fill();
+      ctx.lineWidth = 1.5; ctx.strokeStyle = hexToRgba(color, 0.9);
+      roundRectPath(ctx, boxX, boxY, boxW, boxH, 14);
+      ctx.stroke();
+      ctx.restore();
+
+      drawTextWithShadow(ctx, "CARD INFO", width / 2, boxY + 22, hexToRgba(color, 1), 16);
+
+      const cells: [string, string][] = [
+        ["💠 WORTH", info.worth.toLocaleString()],
+        ["🔥 BURN", info.burn.toLocaleString()],
+        ["🎲 DROP", info.dropChance],
+        ["📦 CAUGHT", info.totalCaught.toLocaleString()],
+        ["🃏 TYPE", info.typeLabel],
+      ];
+      const colW = boxW / 3;
+      for (let i = 0; i < cells.length; i++) {
+        const cxi = boxX + (i % 3) * colW + colW / 2;
+        const cyi = boxY + 58 + Math.floor(i / 3) * 48;
+        drawTextWithShadow(ctx, cells[i]![0], cxi, cyi, "#aab0c0", 15);
+        drawTextWithShadow(ctx, cells[i]![1], cxi, cyi + 22, "#ffffff", fitText(ctx, cells[i]![1], colW - 18, 20));
       }
     }
   });

@@ -243,12 +243,17 @@ async function handleAct(interaction: ButtonInteraction, session: RaidSession, m
   if (session.resolving) { await interaction.reply({ content: "The round is resolving — hang on.", ...EPHEMERAL }); return; }
 
   session.pendingActions.set(interaction.user.id, move);
-  const label = MOVE_LABEL[move] ?? move;
-  await interaction.reply({ content: `🎯 Locked in: **${label}**. Waiting for the rest of the party…`, ...EPHEMERAL });
+  // No ephemeral "locked in" reply — those piled up and shoved the raid board
+  // off-screen. Silently ack the button; the player's ✅ + the "locked in" count
+  // now appear on the single raid board embed itself (like the battle log does).
+  await interaction.deferUpdate().catch(() => {});
 
   const living = livingSlots(session);
   if (living.every(s => session.pendingActions.has(s.member.userId))) {
     await resolveRound(session);
+  } else {
+    // Refresh the board in place so everyone sees who has locked in.
+    await renderFight(session);
   }
 }
 
@@ -463,7 +468,9 @@ function buildFightEmbed(session: RaidSession): EmbedBuilder {
   });
   embed.addFields({ name: `👥 Party ${WHITE_LINE}`, value: partyLines.join(`\n${WHITE_LINE}\n`) || "—", inline: false });
   if (session.recentLog.length) embed.addFields({ name: `📜 Battle log ${WHITE_LINE}`, value: session.recentLog.join(`\n${WHITE_LINE}\n`).slice(0, 1024), inline: false });
-  embed.setFooter({ text: "Everyone picks an action — the round resolves once all living fighters act (or after 60s)." });
+  const livingCount = [...session.party.values()].filter(s => (s.combatant?.hp ?? 0) > 0).length;
+  const lockedIn = [...session.party.values()].filter(s => (s.combatant?.hp ?? 0) > 0 && session.pendingActions.has(s.member.userId)).length;
+  embed.setFooter({ text: `🔒 Locked in ${lockedIn}/${livingCount} — the round resolves once all living fighters act (or after 60s).` });
   // Prefer the generated arena canvas (boss vs party); fall back to the boss art.
   if (session.introImage) embed.setImage(`attachment://${RAID_INTRO_FILE}`);
   else if (boss.cardImageUrl) embed.setImage(boss.cardImageUrl);
