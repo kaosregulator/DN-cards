@@ -9,7 +9,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { AttachmentBuilder } from "discord.js";
-import { renderCardReveal, type RevealStats } from "../animations/index.js";
+import { renderCardReveal, type RevealStats, type RevealInfo } from "../animations/index.js";
 import type { RenderCard } from "../battle/image/render.js";
 import {
   getAllCardsCached, getRarityContext, getOrCreateGuildSettings,
@@ -34,7 +34,7 @@ export interface CardRevealResult {
 // when given, layers the owner's ⭐ Star Rank into the Level-1 stats.
 export async function renderCardRevealCanvas(
   guildId: string, cardId: number,
-  opts: { withStats?: boolean; shiny?: boolean; userId?: string } = {},
+  opts: { withStats?: boolean; shiny?: boolean; userId?: string; info?: RevealInfo | null } = {},
 ): Promise<CardRevealResult | null> {
   try {
     const [cards, ctx, settings, displayMap, battleSettings] = await Promise.all([
@@ -71,7 +71,7 @@ export async function renderCardRevealCanvas(
       cardType: card.cardType,
       artUrl: toAbsoluteImageUrl(card.imageUrl),
     };
-    const canvas = await renderCardReveal({ card: renderCard, stats, shiny: !!opts.shiny, index: 1, total: 1 });
+    const canvas = await renderCardReveal({ card: renderCard, stats, info: opts.info ?? null, shiny: !!opts.shiny, index: 1, total: 1 });
     if (!canvas) return null;
     return { file: new AttachmentBuilder(canvas, { name: CARD_REVEAL_FILE }), color };
   } catch (err) {

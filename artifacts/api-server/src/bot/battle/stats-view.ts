@@ -12,7 +12,6 @@ import { getBattleCardConfig } from "./db.js";
 import { getScaledStats, powerRating } from "./stat-engine.js";
 import { getMoveset, inferMoveset } from "./movesets.js";
 import { getCardProgress } from "../cards/leveling.js";
-import { toAbsoluteImageUrl } from "../image-url.js";
 import type { Rarity } from "./types.js";
 
 export interface StatsViewCard {
@@ -79,27 +78,24 @@ export async function buildBattleStatsEmbed(
   const movesetKey = config?.moveset ?? inferMoveset(card.cardType, rarity);
   const moveset = getMoveset(movesetKey);
 
+  // The core stat grid (ATK / SPD / DEF / HP / CRIT / ACC) is rendered onto the
+  // reveal canvas the caller attaches, so we don't repeat it as embed text. The
+  // embed carries only what the canvas doesn't: the special move, dodge/luck,
+  // and the power rating.
   const embed = new EmbedBuilder()
     .setTitle(`⚔️ ${card.name} — Battle Stats`)
     .setColor(0xe74c3c)
-    .setDescription(`Stats shown are scaled to **Level ${level}**${progress ? "" : " (unowned/base)"}.`)
+    .setDescription(`Stats shown are scaled to **Level ${level}**${progress ? "" : " (unowned/base)"}. Core stats are on the card below.`)
     .addFields(
-      { name: "🗡️ Attack", value: `${stats.attack}`, inline: true },
-      { name: "🏃 Move (Speed)", value: `${stats.speed}`, inline: true },
-      { name: "🛡️ Defense", value: `${stats.defense}`, inline: true },
-      { name: "❤️ Health", value: `${stats.maxHealth}`, inline: true },
-      { name: "🎯 Accuracy / Dodge", value: `${stats.accuracy}% / ${stats.dodge}%`, inline: true },
-      { name: "✨ Crit / Luck", value: `${stats.critChance}% / ${stats.luck}`, inline: true },
       {
         name: "💥 Special",
         value: moveset ? `${moveset.emoji} **${moveset.name}** — ${moveset.description}` : "_None assigned._",
         inline: false,
       },
+      { name: "🛡️ Dodge / ✨ Luck", value: `${stats.dodge}% / ${stats.luck}`, inline: true },
       { name: "📊 Power Rating", value: `${powerRating(stats)}`, inline: true },
     )
     .setFooter({ text: "Jump to /level for XP progress & frames ↓" });
-  const img = toAbsoluteImageUrl(card.imageUrl);
-  if (img) embed.setThumbnail(img);
 
   return embed;
 }
