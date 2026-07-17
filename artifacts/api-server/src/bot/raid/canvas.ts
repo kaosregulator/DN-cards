@@ -1,14 +1,17 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // Raid canvases — the visual layer that makes Boss Raids feel earned.
 //
-// Two single-frame PNG renders, both reusing the SHARED animation engine and
+// Three single-frame PNG renders, all reusing the SHARED animation engine and
 // effects helpers (no second renderer):
-//   • renderRaidIntro   — the gym-battle moment: battlefield (or dramatic
+//   • renderRaidIntro    — the gym-battle moment: battlefield (or dramatic
 //     gradient), the boss towering on the right, the party's cards lined up
 //     against it, "BOSS RAID" banner. Shown when the fight begins.
-//   • renderRaidGallery — the trophy wall on a clear: every ENABLED boss on the
-//     server in a row, with a red ✗ struck through the one just defeated and a
-//     "1 down · N remain" caption.
+//   • renderRaidGallery  — the trophy wall on a clear: every ENABLED boss on
+//     the server in a row, with a red ✗ struck through the one just defeated
+//     and a "1 down · N remain" caption.
+//   • renderRaidWipeScene — the mirror image on a loss: the boss dominant and
+//     victorious, the party's cards below with a red ✗ on every downed
+//     fighter, plus a damage-dealt/taken readout.
 //
 // Best-effort like every other canvas: null on failure → plain embed fallback.
 // ─────────────────────────────────────────────────────────────────────────────
@@ -26,6 +29,7 @@ import { logger } from "../../lib/logger.js";
 export const RAID_CANVAS = { width: 1000, height: 560 } as const;
 export const RAID_INTRO_FILE = "raid-intro.png";
 export const RAID_GALLERY_FILE = "raid-gallery.png";
+export const RAID_WIPE_FILE = "raid-wipe.png";
 
 export interface RaidIntroBoss {
   name: string;
@@ -188,6 +192,89 @@ export async function renderRaidGallery(bosses: GalleryBoss[]): Promise<Buffer |
     return await canvas.encode("png");
   } catch (err) {
     logger.debug({ err }, "raid gallery canvas: render failed");
+    return null;
+  }
+}
+
+// ── Wipe/loss scene — the boss stands over the fallen party ─────────────────
+// The mirror image of renderRaidIntro: the boss victorious and dominant, the
+// party's cards below with a red ✗ struck through each downed fighter, plus a
+// damage-dealt/damage-taken readout. Shown on a wipe or timeout loss.
+export interface RaidWipePartyCard {
+  name: string;
+  imageUrl: string | null;
+  rarity: Rarity;
+  rarityColor?: number | null;
+  downed: boolean; // struck with a red ✗ when true
+}
+
+export async function renderRaidWipeScene(
+  boss: RaidIntroBoss,
+  party: RaidWipePartyCard[],
+  damageDealt: number,
+  damageTaken: number,
+): Promise<Buffer | null> {
+  const mod = await getCanvas();
+  if (!mod) return null;
+  const { width, height } = RAID_CANVAS;
+  try {
+    const accent = boss.rarityColor ?? getRarityEffectColor(boss.rarity);
+    const canvas = mod.createCanvas(width, height);
+    const ctx = canvas.getContext("2d") as unknown as Ctx;
+
+    await layerBattlefield(ctx, mod, boss.battlefieldUrl, accent);
+    // Extra red wash for the defeat mood.
+    ctx.fillStyle = "rgba(120,0,0,0.18)";
+    ctx.fillRect(0, 0, width, height);
+
+    drawTextWithShadow(ctx, "💀 RAID FAILED 💀", width / 2, 32, "#ff5555", 32);
+
+    // Boss dominant, centered, victorious — sized so its name + the damage
+    // readout both fit above the party row with no overlap.
+    const bw = 230, bh = 210, bx = (width - bw) / 2, by = 54;
+    drawRarityGlow(ctx, bx, by, bw, bh, accent, 1);
+    await drawCardArt(ctx, mod, bx, by, bw, bh, boss.imageUrl);
+    drawCardFrame(ctx, bx, by, bw, bh, accent, 7);
+    drawRarityBadge(ctx, bx + bw - 12, by + 14, "VICTOR", accent);
+    drawTextWithShadow(ctx, boss.name, width / 2, by + bh + 24, "#ffffff", fitText(ctx, boss.name, bw + 200, 26));
+
+    // Damage readout — one centered line between the boss and the party row.
+    drawTextWithShadow(
+      ctx, `⚔️ Dealt ${damageDealt.toLocaleString()}     🛡️ Taken ${damageTaken.toLocaleString()}`,
+      width / 2, by + bh + 54, "#ffcc66", 19,
+    );
+
+    // The party below, each downed fighter struck out.
+    const shown = party.slice(0, 4);
+    const cw = 130, ch = 150, gap = 22;
+    const rowY = height - ch - 46;
+    const totalW = shown.length * cw + Math.max(0, shown.length - 1) * gap;
+    const startX = (width - totalW) / 2;
+    for (let i = 0; i < shown.length; i++) {
+      const p = shown[i]!;
+      const px = startX + i * (cw + gap);
+      const color = p.rarityColor ?? getRarityEffectColor(p.rarity);
+      drawRarityGlow(ctx, px, rowY, cw, ch, p.downed ? 0xe74c3c : color, p.downed ? 0.3 : 0.6);
+      await drawCardArt(ctx, mod, px, rowY, cw, ch, p.imageUrl);
+      drawCardFrame(ctx, px, rowY, cw, ch, p.downed ? 0x8a1f1f : color, 5);
+      if (p.downed) {
+        ctx.save();
+        roundRectPath(ctx, px, rowY, cw, ch, 12);
+        ctx.clip();
+        ctx.fillStyle = "rgba(0,0,0,0.5)";
+        ctx.fillRect(px, rowY, cw, ch);
+        ctx.strokeStyle = "rgba(231,60,60,0.95)";
+        ctx.lineWidth = 9;
+        ctx.beginPath(); ctx.moveTo(px + 10, rowY + 10); ctx.lineTo(px + cw - 10, rowY + ch - 10); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(px + cw - 10, rowY + 10); ctx.lineTo(px + 10, rowY + ch - 10); ctx.stroke();
+        ctx.restore();
+      }
+      drawTextWithShadow(ctx, p.name, px + cw / 2, rowY + ch + 16, p.downed ? "#ff8080" : "#ffffff", fitText(ctx, p.name, cw + 10, 15));
+    }
+
+    return await canvas.encode("png");
+  } catch (err) {
+    logger.debug({ err }, "raid wipe canvas: render failed");
     return null;
   }
 }

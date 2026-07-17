@@ -25,9 +25,10 @@ import {
   buildBossCombatant, buildPlayerCombatant, resolveRaidRound,
   BOSS_USER_ID, type PartyMemberSpec,
 } from "./engine.js";
-import { buildRaidIntroScript, buildRaidClearLine } from "./story.js";
+import { buildRaidIntroScript, buildRaidClearLine, buildRaidWipeLine } from "./story.js";
 import {
-  renderRaidIntro, renderRaidGallery, RAID_INTRO_FILE, RAID_GALLERY_FILE,
+  renderRaidIntro, renderRaidGallery, renderRaidWipeScene,
+  RAID_INTRO_FILE, RAID_GALLERY_FILE, RAID_WIPE_FILE,
 } from "./canvas.js";
 
 const EPHEMERAL = { flags: MessageFlags.Ephemeral } as const;
@@ -341,26 +342,55 @@ async function finishRaid(session: RaidSession, outcome: "clear" | "wipe" | "tim
   } catch { /* non-fatal */ }
 
   // On a clear, render the trophy-wall gallery: every enabled boss with a red ✗
-  // struck through the one just defeated. Best-effort → falls back to boss art.
-  let galleryImage: Buffer | null = null;
-  let clearLine: string | null = null;
+  // struck through the one just defeated. On a wipe/timeout, render the mirror
+  // scene: the boss dominant over the fallen party. Both best-effort → fall
+  // back to boss art if the canvas can't render.
+  let endImage: Buffer | null = null;
+  let endFile: string | null = null;
+  let storyLine: string | null = null;
   if (outcome === "clear") {
     try {
       const enabled = await getEnabledBosses(session.guildId);
       const remaining = Math.max(0, enabled.length - 1);
-      clearLine = buildRaidClearLine(boss, remaining);
-      galleryImage = await renderRaidGallery(enabled.map(b => ({
+      storyLine = buildRaidClearLine(boss, remaining);
+      endImage = await renderRaidGallery(enabled.map(b => ({
         name: b.name,
         imageUrl: toAbsoluteImageUrl(b.imageUrl),
         rarity: b.rarity as Rarity,
         defeated: b.id === boss.id,
       }))).catch(() => null);
+      if (endImage) endFile = RAID_GALLERY_FILE;
+    } catch { /* non-fatal — plain end embed */ }
+  } else {
+    try {
+      const bc = session.bossCombatant;
+      const damageDealt = bc ? Math.max(0, bc.stats.maxHealth - Math.max(0, bc.hp)) : 0;
+      const damageTaken = [...session.party.values()].reduce(
+        (sum, s) => sum + (s.combatant ? Math.max(0, s.combatant.stats.maxHealth - Math.max(0, s.combatant.hp)) : 0), 0,
+      );
+      storyLine = buildRaidWipeLine(boss);
+      endImage = await renderRaidWipeScene(
+        {
+          name: boss.name,
+          imageUrl: toAbsoluteImageUrl(boss.imageUrl),
+          rarity: boss.rarity as Rarity,
+          battlefieldUrl: toAbsoluteImageUrl(boss.battlefieldUrl),
+        },
+        [...session.party.values()].map(s => ({
+          name: s.member.card.name,
+          imageUrl: toAbsoluteImageUrl(s.member.card.imageUrl),
+          rarity: s.member.card.rarity as Rarity,
+          downed: (s.combatant?.hp ?? 0) <= 0,
+        })),
+        damageDealt, damageTaken,
+      ).catch(() => null);
+      if (endImage) endFile = RAID_WIPE_FILE;
     } catch { /* non-fatal — plain end embed */ }
   }
 
   if (session.message) {
-    const endEmbed = buildEndEmbed(session, outcome, rewardNote, clearLine, !!galleryImage);
-    const files = galleryImage ? [new AttachmentBuilder(galleryImage, { name: RAID_GALLERY_FILE })] : [];
+    const endEmbed = buildEndEmbed(session, outcome, rewardNote, storyLine, endFile);
+    const files = endImage && endFile ? [new AttachmentBuilder(endImage, { name: endFile })] : [];
     await session.message.edit({ embeds: [endEmbed], components: [], files }).catch(() => {});
   }
   teardown(session);
@@ -497,10 +527,10 @@ async function renderFight(session: RaidSession): Promise<void> {
 
 function buildEndEmbed(
   session: RaidSession, outcome: "clear" | "wipe" | "timeout", note: string,
-  clearLine?: string | null, hasGallery?: boolean,
+  storyLine?: string | null, endFile?: string | null,
 ): EmbedBuilder {
   const color = outcome === "clear" ? 0x2ecc71 : 0x7f8c8d;
-  const title = outcome === "clear" ? "🏆 BOSS DEFEATED" : "🐉 Raid Finished";
+  const title = outcome === "clear" ? "🏆 BOSS DEFEATED" : "💀 RAID FAILED";
   const boss = session.bossCombatant!;
   const bossMax = boss.stats.maxHealth;
   const bossHp = Math.max(0, boss.hp);
@@ -520,7 +550,7 @@ function buildEndEmbed(
     .setTitle(title)
     .setColor(color)
     .setDescription(
-      (clearLine ? `${clearLine}\n${WHITE_LINE}\n` : "") +
+      (storyLine ? `${storyLine}\n${WHITE_LINE}\n` : "") +
       `**Boss HP**\n${bossHpLine}\n${WHITE_LINE}\n` +
       `**Damage Dealt** · **${damageDealt.toLocaleString()}** damage across the party`
     )
@@ -529,8 +559,9 @@ function buildEndEmbed(
       { name: `🎁 Rewards ${WHITE_LINE}`, value: note, inline: false },
     )
     .setFooter({ text: `Raid lasted ${session.roundNumber} round(s) · ${session.party.size} fighter(s) fielded their own cards` });
-  // Clear → the boss-roster gallery (defeated boss struck out). Else the boss art.
-  if (hasGallery) embed.setImage(`attachment://${RAID_GALLERY_FILE}`);
+  // Clear → the boss-roster gallery (defeated boss struck out). Loss → the
+  // wipe scene (boss victorious, downed fighters struck out). Else boss art.
+  if (endFile) embed.setImage(`attachment://${endFile}`);
   else if (boss.cardImageUrl) embed.setImage(boss.cardImageUrl);
   return embed;
 }
