@@ -378,6 +378,7 @@ export async function handleBattleComponent(
         case "ppage": return void await onPage(rt, interaction, parts[3] as "prev" | "next");
         case "pready": return void await onReady(rt, interaction);
         case "move": return void await onMoveButton(rt, interaction, parts[3] as MoveType);
+        case "moves": return void await onMovesButton(rt, interaction);
         default: return void await safeEphemeral(interaction, "Unknown action.");
       }
     } else {
@@ -1327,8 +1328,59 @@ function buildMoveComponents(rt: BattleRuntime, actor: Combatant): ActionRowBuil
   const row2 = new ActionRowBuilder<ButtonBuilder>().addComponents(
     mk("item", itemLabel, itemEmoji, ButtonStyle.Success),
     mk("ultimate", "Ultimate", "💀", ButtonStyle.Danger),
+    // Quick-view of THIS fighter's move set — a private floating popup you can
+    // dismiss. Never disabled: it's read-only and doesn't spend the turn.
+    new ButtonBuilder().setCustomId(`battle:moves:${rt.id}`).setLabel("Moves").setEmoji("📖").setStyle(ButtonStyle.Secondary),
   );
   return [row1, row2];
+}
+
+// A private, dismissible "what can my card do" reference for the current fight:
+// the fighter's Special, equipped Item, Passive, and a basics reminder. Purely
+// read-only — reads the live combatant, never mutates or spends a turn.
+function buildMovesQuickView(rt: BattleRuntime, actor: Combatant): EmbedBuilder {
+  const ms = actor.movesetDef ?? getMoveset(actor.moveset);
+  const item = actor.item ?? getBattleItem(actor.itemId, rt.guildId);
+  const embed = new EmbedBuilder()
+    .setColor(0x5865f2)
+    .setTitle(`📖 ${actor.cardName} — Move Set`)
+    .setDescription("*Quick reference for this fight — only you can see this.*")
+    .addFields(
+      {
+        name: "🔥 Special",
+        value: ms
+          ? `${ms.emoji} **${ms.name}** — ${ms.description}\n⚡ ${ms.energyCost} energy${ms.powerPct ? ` · ${ms.powerPct}% power` : ""}`
+          : "_None assigned._",
+        inline: false,
+      },
+      {
+        name: "🎒 Item",
+        value: item
+          ? `${item.emoji} **${item.name}** — ${item.description}\n🔁 ${item.charges} use${item.charges === 1 ? "" : "s"} · cooldown ${item.cooldown}`
+          : "_No item equipped._",
+        inline: false,
+      },
+    );
+  if (actor.passive) {
+    embed.addFields({
+      name: "✨ Passive",
+      value: `${actor.passive.emoji} **${actor.passive.name}** — ${actor.passive.description}`,
+      inline: false,
+    });
+  }
+  embed.addFields({
+    name: "🕹️ Basics",
+    value: "⚔️ **Attack** · 🛡️ **Defend** (shield) · ⚡ **Charge** (energy + next-hit boost) · 💀 **Ultimate** (once charged)",
+    inline: false,
+  }).setFooter({ text: "Dismiss to close this window." });
+  return embed;
+}
+
+async function onMovesButton(rt: BattleRuntime, interaction: ButtonInteraction): Promise<void> {
+  const uid = interaction.user.id;
+  const actor = rt.a?.userId === uid ? rt.a : rt.b?.userId === uid ? rt.b : null;
+  if (!actor) { await safeEphemeral(interaction, "Only the fighters in this battle can view a move set."); return; }
+  await interaction.reply({ embeds: [buildMovesQuickView(rt, actor)], flags: MessageFlags.Ephemeral }).catch(() => {});
 }
 
 function moveLabel(move: MoveType): string {
