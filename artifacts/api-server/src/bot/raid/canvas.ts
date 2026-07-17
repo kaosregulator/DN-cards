@@ -21,7 +21,7 @@ import {
 } from "../animations/engine.js";
 import {
   drawCardArt, drawCardFrame, drawRarityGlow, drawRarityBadge, drawTextWithShadow,
-  fitText, getRarityEffectColor, loadArt,
+  drawTitle, fitText, getRarityEffectColor, loadArt, TITLE_FONT,
 } from "../animations/effects.js";
 import type { Rarity } from "../cards-data.js";
 import { logger } from "../../lib/logger.js";
@@ -92,7 +92,7 @@ export async function renderRaidIntro(
     await drawCardArt(ctx, mod, bx, by, bw, bh, boss.imageUrl);
     drawCardFrame(ctx, bx, by, bw, bh, accent, 8);
     drawRarityBadge(ctx, bx + bw - 14, by + 16, "BOSS", accent);
-    drawTextWithShadow(ctx, boss.name, bx + bw / 2, by + bh + 26, "#ffffff", fitText(ctx, boss.name, bw + 60, 28));
+    drawTitle(ctx, boss.name, bx + bw / 2, by + bh + 26, "#ffffff", fitText(ctx, boss.name, bw + 60, 28, 12, TITLE_FONT));
 
     // Party — the challengers' cards lined up on the left, facing the boss.
     const shown = party.slice(0, 4);
@@ -111,11 +111,11 @@ export async function renderRaidIntro(
     }
 
     // "VS" between party and boss.
-    drawTextWithShadow(ctx, "VS", (px0 + shown.length * (cw + gap) + bx) / 2, height / 2 + 30, hexToRgba(accent, 1), 64);
+    drawTitle(ctx, "VS", (px0 + shown.length * (cw + gap) + bx) / 2, height / 2 + 30, hexToRgba(accent, 1), 64);
 
     // Title banner.
-    drawTextWithShadow(ctx, "⚔ BOSS RAID ⚔", width / 2, 40, "#ffffff", 40);
-    drawTextWithShadow(ctx, "THE CHALLENGE BEGINS", width / 2, 74, hexToRgba(accent, 1), 20);
+    drawTitle(ctx, "⚔ BOSS RAID ⚔", width / 2, 40, "#ffffff", 40);
+    drawTitle(ctx, "THE CHALLENGE BEGINS", width / 2, 74, hexToRgba(accent, 1), 20);
 
     return await canvas.encode("png");
   } catch (err) {
@@ -154,7 +154,7 @@ export async function renderRaidGallery(bosses: GalleryBoss[]): Promise<Buffer |
       [1, "#06070a"],
     ], 0.3);
 
-    drawTextWithShadow(ctx, "🏆 BOSS ROSTER", width / 2, 38, "#ffffff", 34);
+    drawTitle(ctx, "🏆 BOSS ROSTER", width / 2, 38, "#ffffff", 34);
     const downed = shown.filter(b => b.defeated).length;
     const remain = shown.length - downed;
     drawTextWithShadow(
@@ -227,7 +227,7 @@ export async function renderRaidWipeScene(
     ctx.fillStyle = "rgba(120,0,0,0.18)";
     ctx.fillRect(0, 0, width, height);
 
-    drawTextWithShadow(ctx, "💀 RAID FAILED 💀", width / 2, 32, "#ff5555", 32);
+    drawTitle(ctx, "💀 RAID FAILED 💀", width / 2, 32, "#ff5555", 32);
 
     // Boss dominant, centered, victorious — sized so its name + the damage
     // readout both fit above the party row with no overlap.
@@ -236,7 +236,7 @@ export async function renderRaidWipeScene(
     await drawCardArt(ctx, mod, bx, by, bw, bh, boss.imageUrl);
     drawCardFrame(ctx, bx, by, bw, bh, accent, 7);
     drawRarityBadge(ctx, bx + bw - 12, by + 14, "VICTOR", accent);
-    drawTextWithShadow(ctx, boss.name, width / 2, by + bh + 24, "#ffffff", fitText(ctx, boss.name, bw + 200, 26));
+    drawTitle(ctx, boss.name, width / 2, by + bh + 24, "#ffffff", fitText(ctx, boss.name, bw + 200, 26, 12, TITLE_FONT));
 
     // Damage readout — one centered line between the boss and the party row.
     drawTextWithShadow(

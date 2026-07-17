@@ -20,6 +20,7 @@ import { bar, WHITE_LINE } from "../battle/embeds.js";
 import { starsForLevel, starString, levelForStars } from "../cards/leveling.js";
 import { toAbsoluteImageUrl } from "../image-url.js";
 import { logger } from "../../lib/logger.js";
+import { consumeCooldown } from "../../lib/cooldowns.js";
 import { getBossByName, getEnabledBosses, getNextBoss, grantRaidFrame } from "./db.js";
 import { raidFrameForBoss } from "../cards/frames.js";
 import { renderAttackFrame } from "../animations/index.js";
@@ -92,6 +93,11 @@ const REWARD_TTL_MS = 30 * 60_000;
 
 function uKey(guildId: string, userId: string): string { return `${guildId}:${userId}`; }
 
+/** Is this user currently in a live raid lobby/fight? Used for battle↔raid exclusion. */
+export function isUserInRaid(guildId: string, userId: string): boolean {
+  return userSession.has(uKey(guildId, userId));
+}
+
 function livingSlots(session: RaidSession): PartySlot[] {
   return [...session.party.values()].filter(s => (s.combatant?.hp ?? 0) > 0);
 }
@@ -112,6 +118,15 @@ export async function startRaid(interaction: ChatInputCommandInteraction, bossNa
     await interaction.reply({ content: "You're already in a raid. Finish or leave it first.", ...EPHEMERAL });
     return;
   }
+  // Mutual exclusion: you must finish a live battle before starting a raid.
+  const { getUserLock } = await import("../battle/db.js");
+  if (await getUserLock(guildId, interaction.user.id)) {
+    await interaction.reply({ content: "⚔️ Finish your current **battle** before starting a raid.", ...EPHEMERAL });
+    return;
+  }
+  // Cooldown: no back-to-back raids.
+  const cd = await consumeCooldown("raid", guildId, interaction.user.id);
+  if (!cd.ok) { await interaction.reply({ content: cd.message ?? "You're on cooldown.", ...EPHEMERAL }); return; }
   const boss = await getBossByName(guildId, bossName);
   if (!boss || !boss.enabled) {
     await interaction.reply({ content: `❌ No enabled boss called "**${bossName}**". Ask an admin to create one with \`/raid_admin create\`, or see \`/raid bosses\`.`, ...EPHEMERAL });
