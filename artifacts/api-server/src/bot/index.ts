@@ -59,7 +59,7 @@ import { startBobEvents } from "./bob/events.js";
 import { handleBobMention } from "./bob/talk.js";
 import { handleSupportCommand } from "./operations/command.js";
 import { handleOpsAdminCommand } from "./operations/admin.js";
-import { isOpsComponent, handleOpsButton, handleOpsSelect, handleOpsModal } from "./operations/router.js";
+import { isOpsComponent, handleOpsButton, handleOpsSelect, handleOpsChannelSelect, handleOpsModal } from "./operations/router.js";
 import { startOpsMaintenance } from "./operations/runtime.js";
 import { handleWhisperCommand, handleAdminSecretCommand, handleEchoCommand } from "./secret/commands.js";
 import { isSecretModal, handleSecretModal, isSecretButton, handleSecretButton } from "./secret/interactions.js";
@@ -301,6 +301,8 @@ export async function startBot() {
           await handleSetChannelsApply(interaction);
         } else if (interaction.customId.startsWith("battleadmin:")) {
           await handleBattleAdminChannelSelect(interaction);
+        } else if (isOpsComponent(interaction.customId)) {
+          await handleOpsChannelSelect(interaction, client);
         }
         return;
       }

@@ -163,6 +163,44 @@ export function buildSetupAlreadyEmbed(channelId: string): EmbedBuilder {
     );
 }
 
+// ── Panel deploy list ─────────────────────────────────────────────────────────
+
+/**
+ * The "send a panel out" board: shows where each panel currently lives (or that
+ * it isn't placed yet). Each panel can sit in its own channel — no more dumping
+ * all six into one channel.
+ */
+export function buildDeployListEmbed(
+  placed: Map<OpKey, string>,
+  typeConfigs: OpsTypeConfig[],
+  notice?: string,
+): EmbedBuilder {
+  const cfgMap = new Map(typeConfigs.map(c => [c.opKey as OpKey, c]));
+  const lines = ALL_OP_KEYS.map(key => {
+    const def = OP_DEFAULTS[key];
+    const cfg = cfgMap.get(key);
+    const label = cfg?.displayName ?? def.label;
+    const disabled = cfg?.enabled === false;
+    const chan = placed.get(key);
+    const where = disabled
+      ? "⚫ disabled"
+      : chan ? `→ <#${chan}>`
+        : "*not placed*";
+    return `${def.emoji} **${label}** ${where}`;
+  });
+
+  return new EmbedBuilder()
+    .setColor(0x2196F3)
+    .setTitle("📡 Deploy Operation Panels")
+    .setDescription(
+      (notice ? `${notice}\n\n` : "") +
+      "Pick a panel below, then choose the channel it should live in. " +
+      "Each panel can go in its **own** channel.\n\n" +
+      lines.join("\n"),
+    )
+    .setFooter({ text: "Only visible to you • Re-picking a panel moves it." });
+}
+
 // ── Admin configure panel ─────────────────────────────────────────────────────
 
 export function buildAdminConfigListEmbed(guildCfg: OpsGuildConfig | null, typeConfigs: OpsTypeConfig[]): EmbedBuilder {

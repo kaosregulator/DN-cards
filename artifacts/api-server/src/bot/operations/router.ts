@@ -2,7 +2,8 @@
 // Handles all ops:* customId interactions and dispatches to the right handler.
 
 import type {
-  ButtonInteraction, StringSelectMenuInteraction, ModalSubmitInteraction, Client,
+  ButtonInteraction, StringSelectMenuInteraction, ChannelSelectMenuInteraction,
+  ModalSubmitInteraction, Client,
 } from "discord.js";
 import { MessageFlags } from "discord.js";
 import { isOpsComponent, ALL_OP_KEYS, type OpKey } from "./types.js";
@@ -13,6 +14,7 @@ import {
 } from "./command.js";
 import {
   handleOpsAdminButton, handleOpsAdminSelect, handleOpsAdminModalSubmit,
+  handleOpsDeployPanelSelect, handleOpsDeployChannelSelect,
 } from "./admin.js";
 import { getOpsQueue, getOrCreateOpsActive } from "./db.js";
 import { getOpsTypeConfig } from "./db.js";
@@ -163,6 +165,23 @@ export async function handleOpsSelect(
 
   if (area === "admin_select" && parts[2] === "cfg") {
     return handleOpsAdminSelect(interaction, client);
+  }
+
+  if (area === "admin_select" && parts[2] === "deploy") {
+    return handleOpsDeployPanelSelect(interaction, client);
+  }
+}
+
+// ── Channel select menu router ────────────────────────────────────────────────
+
+export async function handleOpsChannelSelect(
+  interaction: ChannelSelectMenuInteraction,
+  client: Client,
+): Promise<void> {
+  const parts = interaction.customId.split(":");
+  // ops:admin_deploy:<opKey>
+  if (parts[1] === "admin_deploy") {
+    return handleOpsDeployChannelSelect(interaction, client);
   }
 }
 

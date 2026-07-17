@@ -485,9 +485,10 @@ function buildLegacyCommands() {
 
     // ── /ops_admin (admin, Operations Center management) ─────────────────────
     adminCmd("opsadmin", "Manage the Operations Center — setup, configure, and control live ops", s => s
-      .addSubcommand(sc => sc.setName("setup").setDescription("Initial setup: post boards to a channel")
-        .addChannelOption(o => o.setName("channel").setDescription("Channel to post operation boards in").setRequired(true))
+      .addSubcommand(sc => sc.setName("setup").setDescription("Enable the Operations Center, then place panels channel-by-channel")
+        .addChannelOption(o => o.setName("channel").setDescription("Default channel for staff pings").setRequired(true))
         .addRoleOption(o => o.setName("staff_role").setDescription("Role pinged when a new operation starts (optional)")))
+      .addSubcommand(sc => sc.setName("panel").setDescription("Send a panel out — pick a panel, then pick its channel"))
       .addSubcommand(sc => sc.setName("configure").setDescription("Customise operation types — names, colors, images, timeouts"))
       .addSubcommand(sc => sc.setName("complete").setDescription("Mark the current active operation as completed")
         .addStringOption(o => o.setName("type").setDescription("Operation type").setRequired(true)
