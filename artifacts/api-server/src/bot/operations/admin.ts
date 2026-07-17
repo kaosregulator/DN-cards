@@ -5,8 +5,10 @@ import {
   type ChatInputCommandInteraction,
   type ButtonInteraction,
   type StringSelectMenuInteraction,
+  type ChannelSelectMenuInteraction,
   type ModalSubmitInteraction,
   type Client,
+  type TextChannel,
   ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder,
   MessageFlags, ChannelType, EmbedBuilder,
 } from "discord.js";
@@ -16,12 +18,16 @@ import {
   getOpsTypeConfig, upsertOpsTypeConfig, getAllOpsTypeConfigs,
   getOpsBoard, upsertOpsBoard, deleteOpsBoard, getAllOpsBoards,
   getOrCreateOpsActive, getOpsStats, getOpsQueue,
+  getOpsQueueCount, getOpsResponders,
 } from "./db.js";
 import {
   resolveOpConfig, buildAdminConfigListEmbed, buildAdminTypeConfigEmbed,
-  buildSetupSuccessEmbed, buildSetupAlreadyEmbed, buildStatsEmbed, buildQueueEmbed,
+  buildStatsEmbed, buildQueueEmbed, buildDeployListEmbed,
 } from "./embeds.js";
-import { buildAdminTypeSelect, buildAdminTypeConfigRows } from "./buttons.js";
+import {
+  buildAdminTypeSelect, buildAdminTypeConfigRows,
+  buildDeployPanelSelect, buildDeployChannelSelect,
+} from "./buttons.js";
 import { completeOp, setOpNotes, refreshBoard } from "./runtime.js";
 import { isOpsAdmin } from "./permissions.js";
 import { ALL_OP_KEYS, OP_DEFAULTS, type OpKey } from "./types.js";
@@ -50,6 +56,7 @@ export async function handleOpsAdminCommand(
 
   switch (sub) {
     case "setup": return handleSetup(interaction, client);
+    case "panel": return handlePanel(interaction, client);
     case "configure": return handleConfigure(interaction, client);
     case "complete": return handleComplete(interaction, client);
     case "cancel": return handleCancel(interaction, client);
@@ -67,58 +74,56 @@ async function handleSetup(interaction: ChatInputCommandInteraction, client: Cli
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
   const guildId = interaction.guild!.id;
+  // `channel` is now the default channel used for staff pings only. Panels are
+  // placed individually via the deploy picker so they never all pile into one
+  // channel (which was the old spam problem).
   const channel = interaction.options.getChannel("channel", true);
   const staffRole = interaction.options.getRole("staff_role");
 
-  const existing = await getOpsGuildConfig(guildId);
-  if (existing?.enabled && existing.opsChannelId) {
-    await interaction.editReply({ embeds: [buildSetupAlreadyEmbed(existing.opsChannelId)] });
-    return;
-  }
-
-  // Save guild config
+  // Save/refresh guild config. Setup is now re-runnable — it never mass-posts
+  // boards, so running it again just updates the default channel / staff role.
   await upsertOpsGuildConfig(guildId, {
     enabled: true,
     opsChannelId: channel.id,
     staffRoleId: staffRole?.id ?? null,
   });
 
-  // Post permanent board embeds for all enabled types
-  const fetchedChannel = await client.channels.fetch(channel.id).catch(() => null);
-  if (!fetchedChannel?.isTextBased()) {
-    await interaction.editReply("❌ Cannot post to that channel. Make sure the bot has send permissions there.");
+  // Hand straight off to the deploy picker so the admin sends each panel to the
+  // channel they want, one at a time.
+  await renderDeployPicker(interaction, guildId,
+    `✅ Operations Center enabled. Staff pings will use <#${channel.id}>.\n` +
+    "Now pick each panel and choose where it should live 👇");
+}
+
+// ── Deploy panels (pick a panel → pick a channel) ─────────────────────────────
+
+/** Render (or re-render) the ephemeral deploy picker into the current reply. */
+async function renderDeployPicker(
+  interaction: ChatInputCommandInteraction,
+  guildId: string,
+  notice?: string,
+): Promise<void> {
+  const [boards, typeConfigs] = await Promise.all([
+    getAllOpsBoards(guildId),
+    getAllOpsTypeConfigs(guildId),
+  ]);
+  const placed = new Map(boards.map(b => [b.opKey as OpKey, b.channelId]));
+  const cfgMap = new Map(typeConfigs.map(c => [c.opKey as OpKey, { displayName: c.displayName, enabled: c.enabled }]));
+  await interaction.editReply({
+    embeds: [buildDeployListEmbed(placed, typeConfigs, notice)],
+    components: [buildDeployPanelSelect(placed, cfgMap)],
+  });
+}
+
+async function handlePanel(interaction: ChatInputCommandInteraction, client: Client): Promise<void> {
+  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+  const guildId = interaction.guild!.id;
+  const guildCfg = await getOpsGuildConfig(guildId);
+  if (!guildCfg?.enabled) {
+    await interaction.editReply("❌ Run `/ops_admin setup` first to enable the Operations Center.");
     return;
   }
-
-  const typeConfigs = await getAllOpsTypeConfigs(guildId);
-  const cfgMap = new Map(typeConfigs.map(c => [c.opKey as OpKey, c]));
-
-  let posted = 0;
-  for (const opKey of ALL_OP_KEYS) {
-    const cfg = cfgMap.get(opKey) ?? null;
-    if (cfg && !cfg.enabled) continue;
-
-    try {
-      const resolved = resolveOpConfig(opKey, cfg);
-      const active = await getOrCreateOpsActive(guildId, opKey);
-      const { buildBoardEmbed } = await import("./embeds.js");
-      const { buildBoardRows } = await import("./buttons.js");
-
-      const embed = buildBoardEmbed(resolved, active, [], 0);
-      const rows = buildBoardRows(resolved, active, false);
-
-      const msg = await (fetchedChannel as import("discord.js").TextChannel).send({
-        embeds: [embed],
-        components: rows.slice(0, 5),
-      });
-      await upsertOpsBoard(guildId, opKey, channel.id, msg.id);
-      posted++;
-    } catch (err) {
-      logger.warn({ err, opKey }, "ops: failed to post board embed during setup");
-    }
-  }
-
-  await interaction.editReply({ embeds: [buildSetupSuccessEmbed(channel.id, posted)] });
+  await renderDeployPicker(interaction, guildId);
 }
 
 // ── Configure ─────────────────────────────────────────────────────────────────
@@ -209,14 +214,17 @@ async function handleRebuild(interaction: ChatInputCommandInteraction, client: C
   const guildId = interaction.guild!.id;
   const guildCfg = await getOpsGuildConfig(guildId);
 
-  if (!guildCfg?.opsChannelId) {
-    await interaction.editReply("❌ Run `/ops_admin setup` first to configure a channel.");
+  if (!guildCfg?.enabled) {
+    await interaction.editReply("❌ Run `/ops_admin setup` first to enable the Operations Center.");
     return;
   }
 
-  const channel = await client.channels.fetch(guildCfg.opsChannelId).catch(() => null);
-  if (!channel?.isTextBased()) {
-    await interaction.editReply("❌ Cannot find the configured ops channel. Re-run `/ops_admin setup` with a new channel.");
+  // Rebuild each board IN THE CHANNEL IT WAS DEPLOYED TO — respecting per-panel
+  // placement. Panels that were never deployed are skipped (use `/ops_admin
+  // panel` to place them).
+  const boards = await getAllOpsBoards(guildId);
+  if (boards.length === 0) {
+    await interaction.editReply("❌ No panels have been deployed yet. Use `/ops_admin panel` to place them.");
     return;
   }
 
@@ -224,31 +232,38 @@ async function handleRebuild(interaction: ChatInputCommandInteraction, client: C
   const cfgMap = new Map(typeConfigs.map(c => [c.opKey as OpKey, c]));
 
   let rebuilt = 0;
-  for (const opKey of ALL_OP_KEYS) {
+  for (const board of boards) {
+    const opKey = board.opKey as OpKey;
     const cfg = cfgMap.get(opKey) ?? null;
     if (cfg && !cfg.enabled) continue;
 
     try {
+      const channel = await client.channels.fetch(board.channelId).catch(() => null) as import("discord.js").TextChannel | null;
+      if (!channel?.isTextBased()) continue;
+
+      // Delete the old (possibly stale) message before reposting.
+      const oldMsg = await channel.messages.fetch(board.messageId).catch(() => null);
+      await oldMsg?.delete().catch(() => {});
+
       const resolved = resolveOpConfig(opKey, cfg);
       const active = await getOrCreateOpsActive(guildId, opKey);
+      const responders = active.id ? await getOpsResponders(active.id) : [];
+      const queueCount = await getOpsQueueCount(guildId, opKey);
       const { buildBoardEmbed } = await import("./embeds.js");
       const { buildBoardRows } = await import("./buttons.js");
 
-      const embed = buildBoardEmbed(resolved, active, [], 0);
+      const embed = buildBoardEmbed(resolved, active, responders, queueCount);
       const rows = buildBoardRows(resolved, active, false);
 
-      const msg = await (channel as import("discord.js").TextChannel).send({
-        embeds: [embed],
-        components: rows.slice(0, 5),
-      });
-      await upsertOpsBoard(guildId, opKey, guildCfg.opsChannelId, msg.id);
+      const msg = await channel.send({ embeds: [embed], components: rows.slice(0, 5) });
+      await upsertOpsBoard(guildId, opKey, board.channelId, msg.id);
       rebuilt++;
     } catch (err) {
       logger.warn({ err, opKey }, "ops: failed to rebuild board");
     }
   }
 
-  await interaction.editReply(`✅ Rebuilt **${rebuilt}** board embed${rebuilt !== 1 ? "s" : ""} in <#${guildCfg.opsChannelId}>.`);
+  await interaction.editReply(`✅ Rebuilt **${rebuilt}** panel${rebuilt !== 1 ? "s" : ""} in their deployed channels.`);
 }
 
 // ── Admin configure button interactions ───────────────────────────────────────
@@ -412,6 +427,117 @@ export async function handleOpsAdminSelect(
   await interaction.update({
     embeds: [buildAdminTypeConfigEmbed(resolved, cfg)],
     components: buildAdminTypeConfigRows(opKey, resolved.enabled),
+  });
+}
+
+// ── Deploy picker interactions ────────────────────────────────────────────────
+
+/** Step 1 → 2: a panel was chosen; show the channel picker for it. */
+export async function handleOpsDeployPanelSelect(
+  interaction: StringSelectMenuInteraction,
+  client: Client,
+): Promise<void> {
+  if (!interaction.guild) return;
+  const guildId = interaction.guild.id;
+  const member = interaction.guild.members.cache.get(interaction.user.id) ?? await interaction.guild.members.fetch(interaction.user.id);
+  if (!(await isOpsAdmin(guildId, member))) {
+    await interaction.reply({ content: "❌ Admin only.", flags: MessageFlags.Ephemeral });
+    return;
+  }
+
+  const opKey = interaction.values[0] as OpKey;
+  const cfg = await getOpsTypeConfig(guildId, opKey);
+  const resolved = resolveOpConfig(opKey, cfg);
+  const board = await getOpsBoard(guildId, opKey);
+
+  const embed = new EmbedBuilder()
+    .setColor(resolved.color)
+    .setTitle(`${resolved.emoji} Deploy — ${resolved.label}`)
+    .setDescription(
+      (board ? `Currently in <#${board.channelId}>.\n\n` : "") +
+      "Pick the channel this panel should be sent to. " +
+      "The old copy (if any) is removed automatically.",
+    );
+
+  await interaction.update({ embeds: [embed], components: [buildDeployChannelSelect(opKey)] });
+}
+
+/** Step 2: a channel was chosen; (re)post the board there and update the DB. */
+export async function handleOpsDeployChannelSelect(
+  interaction: ChannelSelectMenuInteraction,
+  client: Client,
+): Promise<void> {
+  if (!interaction.guild) return;
+  const guildId = interaction.guild.id;
+  const member = interaction.guild.members.cache.get(interaction.user.id) ?? await interaction.guild.members.fetch(interaction.user.id);
+  if (!(await isOpsAdmin(guildId, member))) {
+    await interaction.reply({ content: "❌ Admin only.", flags: MessageFlags.Ephemeral });
+    return;
+  }
+
+  await interaction.deferUpdate();
+
+  const opKey = interaction.customId.split(":")[2] as OpKey;
+  const picked = interaction.channels.first();
+  if (!picked) {
+    await renderDeployPickerFrom(interaction, guildId, "❌ No channel picked.");
+    return;
+  }
+
+  const target = await client.channels.fetch(picked.id).catch(() => null) as TextChannel | null;
+  if (!target?.isTextBased()) {
+    await renderDeployPickerFrom(interaction, guildId, "❌ That channel can't receive messages. Pick a text channel.");
+    return;
+  }
+
+  const cfg = await getOpsTypeConfig(guildId, opKey);
+  const resolved = resolveOpConfig(opKey, cfg);
+
+  // Remove the previous board message (wherever it was) so we don't leave a dead copy.
+  const prev = await getOpsBoard(guildId, opKey);
+  if (prev) {
+    const prevChannel = await client.channels.fetch(prev.channelId).catch(() => null) as TextChannel | null;
+    if (prevChannel?.isTextBased()) {
+      const prevMsg = await prevChannel.messages.fetch(prev.messageId).catch(() => null);
+      await prevMsg?.delete().catch(() => {});
+    }
+  }
+
+  try {
+    const active = await getOrCreateOpsActive(guildId, opKey);
+    const queueCount = await getOpsQueueCount(guildId, opKey);
+    const responders = active.id ? await getOpsResponders(active.id) : [];
+    const { buildBoardEmbed } = await import("./embeds.js");
+    const { buildBoardRows } = await import("./buttons.js");
+
+    const embed = buildBoardEmbed(resolved, active, responders, queueCount);
+    const rows = buildBoardRows(resolved, active, false);
+
+    const msg = await target.send({ embeds: [embed], components: rows.slice(0, 5) });
+    await upsertOpsBoard(guildId, opKey, target.id, msg.id);
+
+    await renderDeployPickerFrom(interaction, guildId, `✅ **${resolved.label}** deployed to <#${target.id}>.`);
+  } catch (err) {
+    logger.warn({ err, opKey, channelId: target.id }, "ops: failed to deploy panel");
+    await renderDeployPickerFrom(interaction, guildId, "❌ Couldn't post there — check the bot's permissions in that channel.");
+  }
+}
+
+/** Re-render the deploy picker into an existing component interaction's reply. */
+async function renderDeployPickerFrom(
+  interaction: StringSelectMenuInteraction | ChannelSelectMenuInteraction,
+  guildId: string,
+  notice?: string,
+): Promise<void> {
+  const [boards, typeConfigs] = await Promise.all([
+    getAllOpsBoards(guildId),
+    getAllOpsTypeConfigs(guildId),
+  ]);
+  const placed = new Map(boards.map(b => [b.opKey as OpKey, b.channelId]));
+  const cfgMap = new Map(typeConfigs.map(c => [c.opKey as OpKey, { displayName: c.displayName, enabled: c.enabled }]));
+  await interaction.editReply({
+    embeds: [buildDeployListEmbed(placed, typeConfigs, notice)],
+    components: [buildDeployPanelSelect(placed, cfgMap)],
   });
 }
 

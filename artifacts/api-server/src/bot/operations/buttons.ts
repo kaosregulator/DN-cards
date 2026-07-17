@@ -2,7 +2,7 @@
 
 import {
   ActionRowBuilder, ButtonBuilder, ButtonStyle, StringSelectMenuBuilder,
-  StringSelectMenuOptionBuilder,
+  StringSelectMenuOptionBuilder, ChannelSelectMenuBuilder, ChannelType,
 } from "discord.js";
 import { ALL_OP_KEYS, OP_DEFAULTS, type OpKey } from "./types.js";
 import type { OpsActive, OpChannelButton } from "@workspace/db";
@@ -209,6 +209,52 @@ export function buildAdminTypeSelect(): ActionRowBuilder<StringSelectMenuBuilder
       .setCustomId("ops:admin_select:cfg")
       .setPlaceholder("Select an operation type to configure…")
       .addOptions(options),
+  );
+}
+
+// ── Panel deploy: pick a panel → pick a channel ───────────────────────────────
+
+/**
+ * Step 1 of "send a panel out": a select of every op type. Each option's
+ * description shows whether that panel is already placed somewhere. Choosing one
+ * advances to the channel picker.
+ */
+export function buildDeployPanelSelect(
+  placed: Map<OpKey, string>,
+  typeConfigs?: Map<OpKey, { displayName: string | null; enabled: boolean }>,
+): ActionRowBuilder<StringSelectMenuBuilder> {
+  const options = ALL_OP_KEYS.map(key => {
+    const def = OP_DEFAULTS[key];
+    const cfg = typeConfigs?.get(key);
+    const label = cfg?.displayName ?? def.label;
+    const disabled = cfg?.enabled === false;
+    const chan = placed.get(key);
+    const desc = disabled
+      ? "Disabled — enable it in /ops_admin configure"
+      : chan ? "Deployed — pick to move it to another channel"
+        : "Not placed yet — pick a channel to send it";
+    return new StringSelectMenuOptionBuilder()
+      .setValue(key)
+      .setLabel(label)
+      .setEmoji(def.emoji)
+      .setDescription(desc.slice(0, 100));
+  });
+
+  return new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
+    new StringSelectMenuBuilder()
+      .setCustomId("ops:admin_select:deploy")
+      .setPlaceholder("Choose a panel to send out…")
+      .addOptions(options),
+  );
+}
+
+/** Step 2: a native channel picker scoped to the chosen panel. */
+export function buildDeployChannelSelect(opKey: OpKey): ActionRowBuilder<ChannelSelectMenuBuilder> {
+  return new ActionRowBuilder<ChannelSelectMenuBuilder>().addComponents(
+    new ChannelSelectMenuBuilder()
+      .setCustomId(`ops:admin_deploy:${opKey}`)
+      .setPlaceholder("Pick a channel for this panel…")
+      .setChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement),
   );
 }
 
