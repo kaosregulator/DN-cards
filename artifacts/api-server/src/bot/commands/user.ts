@@ -423,8 +423,18 @@ export async function handleUserCommand(
         });
       }
     } catch { /* non-fatal — skip badge */ }
-    { const img = toAbsoluteImageUrl(card.imageUrl); if (img) embed.setImage(img); }
-    await interaction.editReply({ embeds: [embed], components: [battleStatsButtonRow(card.id)] });
+    // Hero image: the same reveal canvas players see after a catch (art-only —
+    // Level-1 stats live behind the Battle Stats button). Falls back to the
+    // plain card art if the canvas can't render.
+    const { renderCardRevealCanvas, CARD_REVEAL_FILE } = await import("../cards/card-reveal-canvas.js");
+    const reveal = await renderCardRevealCanvas(guildId, card.id, { withStats: false });
+    if (reveal) {
+      embed.setImage(`attachment://${CARD_REVEAL_FILE}`);
+      await interaction.editReply({ embeds: [embed], components: [battleStatsButtonRow(card.id)], files: [reveal.file] });
+    } else {
+      const img = toAbsoluteImageUrl(card.imageUrl); if (img) embed.setImage(img);
+      await interaction.editReply({ embeds: [embed], components: [battleStatsButtonRow(card.id)] });
+    }
     return;
   }
 
