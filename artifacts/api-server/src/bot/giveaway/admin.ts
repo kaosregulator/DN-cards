@@ -43,9 +43,11 @@ export async function handleGiveawayAdminCommand(interaction: ChatInputCommandIn
   await interaction.deferReply(EPHEMERAL);
   try {
     switch (sub) {
+      case "quick": return await doQuickCreate(interaction);
       case "create": return await doCreate(interaction);
       case "edit": return await doEdit(interaction);
       case "end": return await doEnd(interaction);
+      case "cancel": return await doCancel(interaction);
       case "winners": return await doWinners(interaction);
       case "list": return await doList(interaction);
       case "reroll": return await doReroll(interaction);
@@ -114,6 +116,92 @@ async function doCreate(interaction: ChatInputCommandInteraction): Promise<void>
       `Ends <t:${Math.floor((now.getTime() + durationMs) / 1000)}:R>.`,
     )],
   });
+}
+
+// ── quick create (dropdown presets — no compact syntax) ──────────────────────
+// Everything is a picked choice: prize type + amount, an optional requirement
+// preset + goal, a duration, and winner count. Launches instantly. This is the
+// "simple run command, choose from dropdowns, boom" path.
+const QUICK_DURATION_MS: Record<string, number> = {
+  "1h": 3600_000, "6h": 6 * 3600_000, "12h": 12 * 3600_000,
+  "24h": 24 * 3600_000, "3d": 3 * 86400_000, "1w": 7 * 86400_000,
+};
+
+async function doQuickCreate(interaction: ChatInputCommandInteraction): Promise<void> {
+  const guildId = interaction.guild!.id;
+  const title = interaction.options.getString("title", true).trim();
+
+  // Prize — a picked type + amount/label (no "shards:50000" typing).
+  const prizeType = interaction.options.getString("prize", true);
+  const prizeAmount = interaction.options.getInteger("amount") ?? 1;
+  const prizeText = interaction.options.getString("prize_text")?.trim();
+  const prizes: GiveawayPrize[] = [];
+  switch (prizeType) {
+    case "shards": prizes.push({ type: "shards", qty: prizeAmount, label: `${prizeAmount.toLocaleString()} DN Shards`, emoji: PRIZE_EMOJI.shards }); break;
+    case "pack": { const tier = (prizeText || "basic").toLowerCase(); prizes.push({ type: "pack", packTier: tier, qty: prizeAmount, label: `${prizeAmount}× ${tier} pack`, emoji: PRIZE_EMOJI.pack }); break; }
+    case "card": {
+      if (!prizeText) { await interaction.editReply("❌ Pick a **card name** in `prize_text` for a card prize."); return; }
+      const card = await getCardByName(prizeText, guildId);
+      if (!card) { await interaction.editReply(`❌ No card named **${prizeText}**.`); return; }
+      prizes.push({ type: "cards", cardId: card.id, cardName: card.name, qty: prizeAmount, label: `${prizeAmount}× ${card.name}`, emoji: PRIZE_EMOJI.cards });
+      break;
+    }
+    default: prizes.push({ type: "custom", label: prizeText || "Custom prize", emoji: PRIZE_EMOJI.custom }); break;
+  }
+
+  // Requirement — an optional preset + goal (no "catch:50").
+  const reqType = interaction.options.getString("requirement"); // null / "none" = open
+  const requirements: GiveawayRequirement[] = [];
+  if (reqType && reqType !== "none") {
+    const goal = clampInt(interaction.options.getInteger("goal") ?? 1, 1, 1_000_000);
+    const type = TYPE_ALIAS[reqType] ?? (reqType as GiveawayReqType);
+    requirements.push({
+      key: `${type}_0`, type, goal,
+      emoji: REQ_EMOJI[type] ?? "•",
+      label: requirementLabel(type, goal),
+    });
+  }
+
+  const durationMs = QUICK_DURATION_MS[interaction.options.getString("duration") ?? "24h"] ?? QUICK_DURATION_MS["24h"]!;
+  const winnerCount = clampInt(interaction.options.getInteger("winners") ?? 1, 1, 50);
+  const winnerMode: GiveawayWinnerMode = requirements.length ? "completion" : "entry";
+  const now = new Date();
+
+  const g = await createGiveaway({
+    guildId, title, createdBy: interaction.user.id,
+    channelId: interaction.channelId!,
+    difficulty: "medium", status: "active", winnerCount, winnerMode,
+    requirements, prizes,
+    startsAt: now, endsAt: new Date(now.getTime() + durationMs),
+    claimTimerMinutes: 24 * 60, announceMode: "channel",
+  });
+
+  const posted = await postGiveawayMessage(g, interaction.client);
+  const backfilled = await backfillGiveawayProgress(posted);
+  if (backfilled > 0) await refreshGiveawayMessage(posted, interaction.client);
+  invalidateActiveCache(guildId);
+  invalidateMessageReqCache(guildId);
+
+  await interaction.editReply(
+    `✅ **${title}** is live in <#${posted.channelId}>! ${winnerCount} winner(s) · ` +
+    `${requirements.length ? requirements[0]!.label : "open to everyone"} · ends <t:${Math.floor((now.getTime() + durationMs) / 1000)}:R>.` +
+    (backfilled > 0 ? ` (${backfilled} already qualified.)` : ""),
+  );
+}
+
+// ── cancel (kill a giveaway with NO winners/announcements) ────────────────────
+// Unlike `end` (which draws winners), cancel just stops a giveaway dead — used
+// to clear a stuck/broken one (e.g. its message was deleted). Expires any
+// pending winners so the sweeper stops rerolling.
+async function doCancel(interaction: ChatInputCommandInteraction): Promise<void> {
+  const g = await requireGiveaway(interaction);
+  if (!g) return;
+  const { expirePendingWinners } = await import("./db.js");
+  await updateGiveaway(g.id, { status: "cancelled" });
+  await expirePendingWinners(g.id);
+  invalidateActiveCache(g.guildId);
+  await refreshGiveawayMessage(g, interaction.client).catch(() => {});
+  await interaction.editReply(`🛑 Cancelled giveaway **${g.title}** (#${g.id}). No winners drawn; any pending rerolls are stopped.`);
 }
 
 // ── edit ─────────────────────────────────────────────────────────────────────

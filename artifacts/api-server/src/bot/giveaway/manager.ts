@@ -12,7 +12,7 @@ import {
 import type { Giveaway, GiveawayWinner } from "@workspace/db";
 import {
   getGiveaway, updateGiveaway, countEntrants, listWinners, addWinners,
-  getWinner, updateWinner, pastWinnerIds,
+  getWinner, updateWinner, pastWinnerIds, expirePendingWinners,
 } from "./db.js";
 import {
   buildGiveawayEmbed, buildGiveawayComponents, buildEndedEmbed, buildWinnerComponents,
@@ -116,6 +116,23 @@ export async function rerollWinner(
   g: Giveaway, oldWinner: GiveawayWinner, client: Client, reason: "expired" | "manual",
 ): Promise<GiveawayWinner | null> {
   await updateWinner(oldWinner.id, { claimStatus: reason === "expired" ? "expired" : "rerolled" });
+
+  // Guard against the "reroll forever" spam: if the giveaway's message is gone
+  // (an admin deleted it), NOBODY can ever click Claim, so auto-rerolling just
+  // re-announces a new winner into the channel every claim window. Detect the
+  // missing message, cancel the giveaway, and stop the cycle. (Manual rerolls
+  // by an admin are exempt — they may be reposting deliberately.)
+  if (reason === "expired" && g.channelId && g.messageId) {
+    const stillThere = await fetchMessage(client, g.channelId, g.messageId);
+    if (!stillThere) {
+      await updateGiveaway(g.id, { status: "cancelled" });
+      await expirePendingWinners(g.id);
+      invalidateActiveCache(g.guildId);
+      logger.info({ giveawayId: g.id }, "giveaway message missing — cancelled instead of rerolling (stops repost loop)");
+      return null;
+    }
+  }
+
   const exclude = await pastWinnerIds(g.id);
   const [pick] = await selectWinners(g, 1, exclude);
   if (!pick) {
