@@ -3,6 +3,9 @@
 // commands that don't use animation.
 
 import GIFEncoder from "gifencoder";
+import { existsSync } from "node:fs";
+import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import type { Canvas, SKRSContext2D } from "@napi-rs/canvas";
 import type { AnimationSpeed, AnimationResult } from "./types.js";
 import { queueRender } from "./render-queue.js";
@@ -45,11 +48,48 @@ export async function getCanvas(): Promise<CanvasMod | null> {
   if (_canvas !== undefined) return _canvas;
   try {
     _canvas = await import("@napi-rs/canvas");
+    registerFonts(_canvas);
   } catch (err) {
     logger.debug({ err }, "animation engine: @napi-rs/canvas not available");
     _canvas = null;
   }
   return _canvas;
+}
+
+// The display font used for canvas TITLES (see TITLE_FONT in effects.ts). Body
+// text stays on the system sans. Orbitron is a bundled OFL font — registering it
+// with @napi-rs/canvas makes `ctx.font = '... "Orbitron" ...'` resolve.
+export const TITLE_FONT_FAMILY = "Orbitron";
+let _fontsRegistered = false;
+
+// Resolve the bundled fonts dir across dev (tsx from src) and prod (bundled
+// dist), trying each likely location and using the first that actually exists.
+function resolveFontsDir(): string | null {
+  const candidates = [
+    fileURLToPath(new URL("../../../assets/fonts/", import.meta.url)),
+    join(process.cwd(), "assets/fonts"),
+    join(process.cwd(), "artifacts/api-server/assets/fonts"),
+  ];
+  for (const dir of candidates) {
+    if (existsSync(join(dir, "Orbitron-Black.ttf"))) return dir;
+  }
+  return null;
+}
+
+function registerFonts(mod: CanvasMod): void {
+  if (_fontsRegistered) return;
+  _fontsRegistered = true;
+  try {
+    const reg = (mod as unknown as { GlobalFonts?: { registerFromPath(p: string, name?: string): boolean } }).GlobalFonts;
+    const fontsDir = resolveFontsDir();
+    if (!reg || !fontsDir) return;
+    reg.registerFromPath(join(fontsDir, "Orbitron-Black.ttf"), TITLE_FONT_FAMILY);
+    reg.registerFromPath(join(fontsDir, "Orbitron-Bold.ttf"), TITLE_FONT_FAMILY);
+    logger.info({ fontsDir }, "animation engine: registered Orbitron title font");
+  } catch (err) {
+    // Non-fatal: titles fall back to the system sans if registration fails.
+    logger.debug({ err }, "animation engine: font registration skipped");
+  }
 }
 
 // Target frame rate per speed preset. Lower fps → fewer frames → much smaller

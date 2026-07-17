@@ -17,6 +17,7 @@ import {
   type StringSelectMenuInteraction, type Message, type User,
 } from "discord.js";
 import { logger } from "../../lib/logger.js";
+import { consumeCooldown } from "../../lib/cooldowns.js";
 import { scheduleMessageDelete } from "../../lib/temp-message.js";
 import { renderBattleImage, type RenderCard } from "./image/render.js";
 import { renderAttackFrame, renderBattleVictory } from "../animations/index.js";
@@ -297,6 +298,16 @@ export async function startChallenge(
     await interaction.reply({ content: "⚠️ You're already in a battle. Finish it first.", flags: MessageFlags.Ephemeral });
     return;
   }
+  // Mutual exclusion: finish a live raid before starting a battle. (Dynamic
+  // import keeps the battle↔raid module dependency one-directional.)
+  const { isUserInRaid } = await import("../raid/manager.js");
+  if (isUserInRaid(guildId, interaction.user.id)) {
+    await interaction.reply({ content: "🐉 Finish your current **raid** before starting a battle.", flags: MessageFlags.Ephemeral });
+    return;
+  }
+  // Cooldown: no back-to-back battles (keeps leveling earned, not spammed).
+  const cd = await consumeCooldown("battle", guildId, interaction.user.id);
+  if (!cd.ok) { await interaction.reply({ content: cd.message ?? "You're on cooldown.", flags: MessageFlags.Ephemeral }); return; }
   const challengerCards = await getOwnedBattleCards(guildId, interaction.user.id, ctx);
   if (challengerCards.filter(c => isCardEligible(settings, c, ctx)).length === 0) {
     await interaction.reply({ content: "You don't own any battle-eligible cards yet. Catch or open packs first!", flags: MessageFlags.Ephemeral });

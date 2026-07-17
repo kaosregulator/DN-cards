@@ -212,28 +212,48 @@ export function fitText(
   maxWidth: number,
   maxPx: number,
   minPx = 12,
+  font?: string,
 ): number {
-  ctx.font = `bold ${maxPx}px "DejaVu Sans", Arial, sans-serif`;
+  // Measure in the SAME family it'll be drawn in — Orbitron is wider than the
+  // system sans, so measuring with the wrong font would overflow the box.
+  const family = font ? `"${font}", "DejaVu Sans", Arial, sans-serif` : `"DejaVu Sans", Arial, sans-serif`;
+  ctx.font = `bold ${maxPx}px ${family}`;
   const w = ctx.measureText(text).width;
   if (w <= maxWidth || maxPx <= minPx) return maxPx;
   return Math.max(minPx, maxPx * (maxWidth / w));
 }
+
+// The bundled display font for TITLES (boss names, banners, big callouts).
+// Falls through to the system sans if Orbitron isn't registered, so nothing
+// breaks when the font is unavailable.
+export const TITLE_FONT = "Orbitron";
+const BODY_STACK = `"DejaVu Sans", Arial, sans-serif`;
 
 export function drawTextWithShadow(
   ctx: Ctx,
   text: string,
   x: number, y: number,
   color: string, fontSize: number, align: TextAlign = "center",
+  font?: string,
 ): void {
   ctx.save();
   ctx.textAlign = align;
   ctx.textBaseline = "middle";
-  ctx.font = `bold ${fontSize}px "DejaVu Sans", Arial, sans-serif`;
+  const family = font ? `"${font}", ${BODY_STACK}` : BODY_STACK;
+  ctx.font = `bold ${fontSize}px ${family}`;
   ctx.lineWidth = 5; ctx.strokeStyle = "rgba(0,0,0,0.85)";
   ctx.strokeText(text, x, y);
   ctx.fillStyle = color;
   ctx.fillText(text, x, y);
   ctx.restore();
+}
+
+// Convenience: draw a TITLE in the special display font (Orbitron).
+export function drawTitle(
+  ctx: Ctx, text: string, x: number, y: number,
+  color: string, fontSize: number, align: TextAlign = "center",
+): void {
+  drawTextWithShadow(ctx, text, x, y, color, fontSize, align, TITLE_FONT);
 }
 
 // Small LRU-ish cache of decoded card art. Every animation frame draws the same

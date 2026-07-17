@@ -17,7 +17,7 @@ import {
 } from "./engine.js";
 import {
   drawCardArt, drawCardFrame, drawRarityGlow, drawRarityBadge, drawTextWithShadow,
-  drawFoilOverlay, drawHoloSparkles, getRarityEffectColor, fitText, drawScreenFlash,
+  drawTitle, drawFoilOverlay, drawHoloSparkles, getRarityEffectColor, fitText, drawScreenFlash, TITLE_FONT,
 } from "./effects.js";
 import { queueRender } from "./render-queue.js";
 import { drawSparks, drawEmbers, drawConfetti, drawExplosion } from "./particles.js";
@@ -83,8 +83,8 @@ export async function renderPackCover(input: PackCoverInput): Promise<Buffer | n
     ctx.restore();
 
     drawTextWithShadow(ctx, input.emoji || "📦", width / 2, py + ph / 2 - 26, "#ffffff", 84);
-    drawTextWithShadow(ctx, "OPENING", width / 2, 46, "#ffffff", 30);
-    drawTextWithShadow(ctx, input.tierLabel.toUpperCase(), width / 2, py + ph + 22, hexToRgba(color, 1), 30);
+    drawTitle(ctx, "OPENING", width / 2, 46, "#ffffff", 30);
+    drawTitle(ctx, input.tierLabel.toUpperCase(), width / 2, py + ph + 22, hexToRgba(color, 1), fitText(ctx, input.tierLabel.toUpperCase(), width - 60, 30, 14, TITLE_FONT));
     drawTextWithShadow(ctx, `${input.size} card${input.size === 1 ? "" : "s"} inside…`, width / 2, height - 22, "#c8c8d0", 18);
   });
 }
@@ -145,7 +145,7 @@ export async function renderCardReveal(input: CardRevealInput): Promise<Buffer |
     // Name + shiny star.
     const nameY = cy + ch + 34;
     const name = shiny ? `✨ ${card.name}` : card.name;
-    drawTextWithShadow(ctx, name, width / 2, nameY, "#ffffff", fitText(ctx, name, width - 60, 30));
+    drawTitle(ctx, name, width / 2, nameY, "#ffffff", fitText(ctx, name, width - 60, 30, 12, TITLE_FONT));
 
     // Stat block (Level 1).
     if (stats) {
@@ -370,8 +370,8 @@ export async function renderAttackFrame(input: AttackFrameInput): Promise<Buffer
     drawTextWithShadow(ctx, attacker.name, cx + cw / 2, cy + ch + 22, "#ffffff", fitText(ctx, attacker.name, cw + 40, 22));
 
     // Move banner (name) + scene banner. Boss raids carry an extra tag.
-    drawTextWithShadow(ctx, input.moveName.toUpperCase(), width / 2 + 90, 46, "#ffcc33", boss ? 26 : 24);
-    if (theme.banner) drawTextWithShadow(ctx, theme.banner, width / 2 + 90, 78, theme.bannerColor, boss ? 22 : 20);
+    drawTitle(ctx, input.moveName.toUpperCase(), width / 2 + 90, 46, "#ffcc33", boss ? 26 : 24);
+    if (theme.banner) drawTitle(ctx, theme.banner, width / 2 + 90, 78, theme.bannerColor, boss ? 22 : 20);
     if (boss) drawTextWithShadow(ctx, "⚔ BOSS RAID ⚔", width / 2 + 90, height - 26, hexToRgba(accent, 1), 18);
 
     // Boss aura: embers drifting up off the attacker card.
@@ -396,12 +396,12 @@ export async function renderAttackFrame(input: AttackFrameInput): Promise<Buffer
     // Primary readout: damage for offensive scenes, banner-driven otherwise.
     const dmgBoost = boss ? 12 : 0;
     if (scene === "miss") {
-      drawTextWithShadow(ctx, "MISS", ix, iy, "#95a5a6", 46);
+      drawTitle(ctx, "MISS", ix, iy, "#95a5a6", 46);
     } else if (scene === "ko") {
-      drawTextWithShadow(ctx, "K.O.", ix, iy + 4, "#ff5555", 64 + dmgBoost);
+      drawTitle(ctx, "K.O.", ix, iy + 4, "#ff5555", 64 + dmgBoost);
     } else if (input.isHit && input.damage > 0 && (scene === "attack" || scene === "crit" || scene === "special" || scene === "ultimate" || scene === "counter" || scene === "item")) {
       const dmg = input.isCrit ? `${input.damage.toLocaleString()}!` : `-${input.damage.toLocaleString()}`;
-      drawTextWithShadow(ctx, dmg, ix, iy, input.isCrit ? "#ff4444" : "#ffffff", (input.isCrit ? 60 : 46) + dmgBoost);
+      drawTitle(ctx, dmg, ix, iy, input.isCrit ? "#ff4444" : "#ffffff", (input.isCrit ? 60 : 46) + dmgBoost);
     }
     // Optional caption (e.g. "+120 HP", "Shield +80", status label).
     if (input.subtitle) drawTextWithShadow(ctx, input.subtitle, ix, iy + (scene === "ko" ? 54 : 52), theme.bannerColor, 22);
