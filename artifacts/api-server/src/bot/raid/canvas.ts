@@ -19,6 +19,8 @@
 import {
   getCanvas, hexToRgba, roundRectPath, drawGradientBackground, type Ctx, type CanvasMod,
 } from "../animations/engine.js";
+import { queueRender } from "../animations/render-queue.js";
+import { drawEmbers, drawExplosion } from "../animations/particles.js";
 import {
   drawCardArt, drawCardFrame, drawRarityGlow, drawRarityBadge, drawTextWithShadow,
   fitText, getRarityEffectColor, loadArt,
@@ -76,6 +78,7 @@ async function layerBattlefield(ctx: Ctx, mod: CanvasMod, url: string | null | u
 export async function renderRaidIntro(
   boss: RaidIntroBoss, party: RaidIntroPartyCard[],
 ): Promise<Buffer | null> {
+  return queueRender("raid-intro", async () => {
   const mod = await getCanvas();
   if (!mod) return null;
   const { width, height } = RAID_CANVAS;
@@ -88,11 +91,17 @@ export async function renderRaidIntro(
 
     // Boss panel — towering on the right, bigger than any card on purpose.
     const bw = 330, bh = 420, bx = width - bw - 52, by = 84;
+    // Boss entrance: a shockwave radiates from BEHIND the boss (drawn first so
+    // the card art stays fully visible on top).
+    drawExplosion(ctx, bx + bw / 2, by + bh / 2, { color: accent, radius: 150, ringCount: 3, seed: `${boss.name}-entrance` });
     drawRarityGlow(ctx, bx, by, bw, bh, accent, 0.95);
     await drawCardArt(ctx, mod, bx, by, bw, bh, boss.imageUrl);
     drawCardFrame(ctx, bx, by, bw, bh, accent, 8);
     drawRarityBadge(ctx, bx + bw - 14, by + 16, "BOSS", accent);
     drawTextWithShadow(ctx, boss.name, bx + bw / 2, by + bh + 26, "#ffffff", fitText(ctx, boss.name, bw + 60, 28));
+
+    // Fiery embers drifting up around the boss (subtle, in front of the art).
+    drawEmbers(ctx, bx - 20, by, bw + 40, bh, { color: accent, count: 40, seed: `${boss.name}-aura` });
 
     // Party — the challengers' cards lined up on the left, facing the boss.
     const shown = party.slice(0, 4);
@@ -122,6 +131,7 @@ export async function renderRaidIntro(
     logger.debug({ err }, "raid intro canvas: render failed");
     return null;
   }
+  });
 }
 
 // ── Defeat gallery — the roster wall with the beaten boss struck out ─────────
@@ -133,6 +143,7 @@ export interface GalleryBoss {
 }
 
 export async function renderRaidGallery(bosses: GalleryBoss[]): Promise<Buffer | null> {
+  return queueRender("raid-gallery", async () => {
   const mod = await getCanvas();
   if (!mod) return null;
   const shown = bosses.slice(0, 8);
@@ -194,6 +205,7 @@ export async function renderRaidGallery(bosses: GalleryBoss[]): Promise<Buffer |
     logger.debug({ err }, "raid gallery canvas: render failed");
     return null;
   }
+  });
 }
 
 // ── Wipe/loss scene — the boss stands over the fallen party ─────────────────
@@ -214,6 +226,7 @@ export async function renderRaidWipeScene(
   damageDealt: number,
   damageTaken: number,
 ): Promise<Buffer | null> {
+  return queueRender("raid-wipe", async () => {
   const mod = await getCanvas();
   if (!mod) return null;
   const { width, height } = RAID_CANVAS;
@@ -277,4 +290,5 @@ export async function renderRaidWipeScene(
     logger.debug({ err }, "raid wipe canvas: render failed");
     return null;
   }
+  });
 }
