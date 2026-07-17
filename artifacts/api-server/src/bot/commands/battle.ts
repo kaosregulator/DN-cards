@@ -138,7 +138,7 @@ export async function buildBattleDailyEmbed(
 }
 
 async function cmdProfile(interaction: ChatInputCommandInteraction) {
-  await interaction.deferReply();
+  await interaction.deferReply({ ephemeral: true });
   const guildId = interaction.guild!.id;
   const target = interaction.options.getUser("user") ?? interaction.user;
   const embed = await buildBattleProfileEmbed(guildId, target.id, target.username, target.displayAvatarURL());
