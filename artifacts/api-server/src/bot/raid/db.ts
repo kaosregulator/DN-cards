@@ -4,6 +4,7 @@
 import { db, raidBossesTable, raidFrameUnlocksTable } from "@workspace/db";
 import type { RaidBoss } from "@workspace/db";
 import { and, eq, asc } from "drizzle-orm";
+import { fuzzyBest } from "../search/fuse-service.js";
 
 // Bosses are ordered by their progression `sequence` first (0 = first boss,
 // highest = the finale), then name as a stable tiebreaker.
@@ -53,6 +54,8 @@ export async function getBossByName(guildId: string, name: string): Promise<Raid
   const q = name.toLowerCase().trim();
   return bosses.find(b => b.name.toLowerCase() === q)
     ?? bosses.find(b => b.name.toLowerCase().includes(q))
+    // Fuzzy fallback (typos / partial / acronym) via the shared search service.
+    ?? fuzzyBest(bosses, name, b => b.name)
     ?? null;
 }
 
