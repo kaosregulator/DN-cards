@@ -23,6 +23,9 @@ export const raidBossesTable = pgTable("raid_bosses", {
   name: text("name").notNull(),
   description: text("description"),
   imageUrl: text("image_url"),
+  // Optional battlefield/arena image drawn behind the raid intro canvas + fight.
+  // One image per boss (admin-uploaded); null falls back to a dramatic gradient.
+  battlefieldUrl: text("battlefield_url"),
   // Archetype (drives the boss's stat flavour via the stat engine) + a rarity
   // reference used in scaling/among display. Admin-tunable.
   archetype: text("archetype").notNull().default("boss"),

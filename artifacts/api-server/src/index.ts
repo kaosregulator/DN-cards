@@ -94,6 +94,9 @@ async function runBootMigrations() {
   // Per-card passive ability assignment (auto-triggering in battle).
   await pool.query(`ALTER TABLE battle_card_config ADD COLUMN IF NOT EXISTS passive text`);
 
+  // Raid overhaul: optional per-boss battlefield/arena image for the raid canvas.
+  await pool.query(`ALTER TABLE raid_bosses ADD COLUMN IF NOT EXISTS battlefield_url text`);
+
   // Unified account-level progression (Player XP). Purely additive — existing
   // progression tables (card_progress, battle_profiles, user_currency, quests,
   // reputation, …) are untouched; this only stores the new account-wide level
