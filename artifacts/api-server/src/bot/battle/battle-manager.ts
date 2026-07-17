@@ -20,7 +20,7 @@ import { logger } from "../../lib/logger.js";
 import { scheduleMessageDelete } from "../../lib/temp-message.js";
 import { renderBattleImage, type RenderCard } from "./image/render.js";
 import { renderAttackFrame, renderBattleVictory } from "../animations/index.js";
-import type { AttackScene } from "../animations/index.js";
+import { deriveAttackScene, sceneSubtitle } from "./turn-visual.js";
 import type { AnimationSpeed } from "../animations/types.js";
 import { toAbsoluteImageUrl } from "../image-url.js";
 import { getBotClient } from "../client-holder.js";
@@ -1337,48 +1337,6 @@ function moveLabel(move: MoveType): string {
     special_card: "✨ Special Card", charge: "⚡ Charge", skip: "⏭️ Skip", ultimate: "💀 Ultimate",
     item: "🎒 Use Item",
   } as Record<MoveType, string>)[move];
-}
-
-// Map a resolved move to a canvas SCENE so the shared renderer themes the frame
-// (special/ultimate/KO/counter/heal/shield/buff/debuff). Reads the event flashes
-// the combat engine already emits — no new combat state.
-function deriveAttackScene(
-  move: MoveType, result: TurnResult, isCrit: boolean, damage: number,
-  actor: Combatant, foe: Combatant,
-): AttackScene {
-  if (result.koed || foe.hp <= 0) return "ko";
-  const flashes = new Set(result.events.map(e => e.flash));
-  if (move === "ultimate") return "ultimate";
-  if (flashes.has("counter")) return "counter";
-  if (move === "defend" || flashes.has("shield") || flashes.has("shield_break")) return "shield";
-  if (flashes.has("heal")) return "heal";
-  if (move === "charge") return "buff";
-  if (move === "item") {
-    const item = actor.item ?? getBattleItem(actor.itemId);
-    switch (item?.effectType) {
-      case "heal": return "heal";
-      case "shield": return "shield";
-      case "buff": case "energy": return "buff";
-      case "debuff": return "debuff";
-      case "status": return item.target === "foe" ? "debuff" : "buff";
-      default: return "item";
-    }
-  }
-  if (move === "special") return "special";
-  if (damage <= 0 && (move === "attack")) return "miss";
-  if (isCrit) return "crit";
-  return "attack";
-}
-
-// A short caption under the impact FX for self-affecting scenes.
-function sceneSubtitle(scene: AttackScene, selfGain: number, result: TurnResult): string | undefined {
-  if (scene === "heal" && selfGain > 0) return `+${selfGain.toLocaleString()} HP`;
-  if (scene === "shield" && selfGain > 0) return `+${selfGain.toLocaleString()} shield`;
-  if (scene === "buff") return "Empowered";
-  if (scene === "debuff") return "Weakened";
-  if (scene === "counter") return "Reversed!";
-  void result;
-  return undefined;
 }
 
 // ── Utils ────────────────────────────────────────────────────────────────────

@@ -22,9 +22,10 @@ import { toAbsoluteImageUrl } from "../image-url.js";
 import { logger } from "../../lib/logger.js";
 import { getBossByName, getEnabledBosses, getNextBoss, grantRaidFrame } from "./db.js";
 import { raidFrameForBoss } from "../cards/frames.js";
+import { renderAttackFrame } from "../animations/index.js";
 import {
   buildBossCombatant, buildPlayerCombatant, resolveRaidRound,
-  BOSS_USER_ID, type PartyMemberSpec,
+  BOSS_USER_ID, type PartyMemberSpec, type RaidBeat,
 } from "./engine.js";
 import { buildRaidIntroScript, buildRaidIntroBeats, buildRaidClearLine, buildRaidWipeLine } from "./story.js";
 import {
@@ -35,6 +36,10 @@ import {
 const EPHEMERAL = { flags: MessageFlags.Ephemeral } as const;
 const MAX_ROUNDS = 25;
 const ROUND_TIMEOUT_MS = 60_000;
+const RAID_ATTACK_FILE = "raid-attack.png";
+const RAID_BEAT_MS = 1100;   // hold per animated hit
+const RAID_TICK_MS = 550;    // hold per text-only beat (status ticks)
+const RAID_MAX_ANIM_BEATS = 10; // cap frames per round so big parties stay snappy
 const LOBBY_TTL_MS = 5 * 60_000;
 
 interface PartySlot {
@@ -405,7 +410,15 @@ async function resolveRound(session: RaidSession): Promise<void> {
       enrageTurn: session.boss.enrageTurn,
     });
     session.pendingActions.clear();
-    session.recentLog = result.events.map(e => e.text).slice(-8);
+
+    // Replay the round hit-by-hit through the SHARED battle animation pipeline
+    // (boss-intensity attack frames), or fall back to a single log update when
+    // animations are off. Either way recentLog ends on the last events.
+    if (session.settings.battleAnimationEnabled && result.beats.length) {
+      await playRaidBeats(session, result.beats);
+    } else {
+      session.recentLog = result.events.map(e => e.text).slice(-8);
+    }
 
     if (result.bossKoed) { await finishRaid(session, "clear"); return; }
     if (result.wiped) { await finishRaid(session, "wipe"); return; }
@@ -418,6 +431,43 @@ async function resolveRound(session: RaidSession): Promise<void> {
   } catch (err) {
     logger.error({ err, raidId: session.id }, "raid round resolution failed");
     session.resolving = false;
+  }
+}
+
+// Replay a resolved round beat-by-beat: render each hit's attack frame (the same
+// renderer battles use, with boss intensity) and edit the board with the beat's
+// HP snapshot, so the party watches the fight unfold. Best-effort — a failed
+// render just skips that frame's image.
+async function playRaidBeats(session: RaidSession, beats: RaidBeat[]): Promise<void> {
+  if (!session.message) return;
+  let animated = 0;
+  for (const beat of beats) {
+    for (const t of beat.texts) session.recentLog.push(t);
+    session.recentLog = session.recentLog.slice(-8);
+
+    let image: Buffer | null = null;
+    const wantsFrame = beat.attacker && beat.visual && animated < RAID_MAX_ANIM_BEATS;
+    if (wantsFrame) {
+      image = await renderAttackFrame({
+        attacker: beat.attacker!,
+        moveName: beat.moveName ?? "Attack",
+        damage: beat.visual!.damage,
+        isCrit: beat.visual!.isCrit,
+        isHit: beat.visual!.isHit,
+        scene: beat.visual!.scene,
+        subtitle: beat.visual!.subtitle,
+        boss: true, // raids always hit harder on screen than a normal battle
+      }).catch(() => null);
+      if (image) animated++;
+    }
+
+    const files = image ? [new AttachmentBuilder(image, { name: RAID_ATTACK_FILE })] : [];
+    await session.message.edit({
+      embeds: buildFightEmbeds(session, { bossHp: beat.bossHp, partyHp: beat.partyHp, attackFile: image ? RAID_ATTACK_FILE : undefined }),
+      components: [],
+      files,
+    }).catch(() => {});
+    await sleep(image ? RAID_BEAT_MS : RAID_TICK_MS);
   }
 }
 
@@ -723,9 +773,16 @@ async function refreshLobby(session: RaidSession): Promise<void> {
 
 // Raids mirror the battle screen: TWO stacked embeds in one message — a top
 // LOG embed (the running combat feed) and a bottom STATUS embed (boss HP, party,
-// arena image). Same shape battles use, so it reads identically.
-function buildFightEmbeds(session: RaidSession): EmbedBuilder[] {
+// arena image). Same shape battles use, so it reads identically. When `opts`
+// carries HP snapshots + an attack image (during beat replay), the board shows
+// that historical moment plus the current attack frame instead of the arena.
+function buildFightEmbeds(
+  session: RaidSession,
+  opts?: { bossHp?: number; partyHp?: Record<string, number>; attackFile?: string },
+): EmbedBuilder[] {
   const boss = session.bossCombatant!;
+  const replaying = !!opts?.attackFile;
+  const bossHp = opts?.bossHp ?? Math.max(0, boss.hp);
 
   // ── Top: battle log ──
   const logEmbed = new EmbedBuilder()
@@ -737,27 +794,33 @@ function buildFightEmbeds(session: RaidSession): EmbedBuilder[] {
         : `⚔️ The party faces **${boss.cardName}**…`,
     );
 
-  // ── Bottom: status (boss HP + party + arena image) ──
-  const hpPct = Math.max(0, Math.min(100, Math.round((boss.hp / boss.stats.maxHealth) * 100)));
+  // ── Bottom: status (boss HP + party + arena/attack image) ──
+  const hpPct = Math.max(0, Math.min(100, Math.round((bossHp / boss.stats.maxHealth) * 100)));
   const statusEmbed = new EmbedBuilder()
     .setTitle(`🐉 ${boss.cardName}`)
     .setColor(0xe74c3c)
     .setDescription(
-      `**Boss HP**\n${bar(boss.hp, boss.stats.maxHealth, 16)}  **${Math.max(0, boss.hp).toLocaleString()}** / ${boss.stats.maxHealth.toLocaleString()} HP (${hpPct}%)` +
+      `**Boss HP**\n${bar(bossHp, boss.stats.maxHealth, 16)}  **${bossHp.toLocaleString()}** / ${boss.stats.maxHealth.toLocaleString()} HP (${hpPct}%)` +
       (boss.status.length ? `\n${boss.status.map(s => `${s.emoji} ${s.label} (${s.turns})`).join(" ")}` : ""),
     );
   const partyLines = [...session.party.values()].map(s => {
     const c = s.combatant!;
-    const acted = session.pendingActions.has(s.member.userId) ? " ✅" : "";
-    if (c.hp <= 0) return `💀 <@${s.member.userId}> **${c.cardName}** — *downed*`;
+    const hp = opts?.partyHp?.[s.member.userId] ?? c.hp;
+    const acted = !replaying && session.pendingActions.has(s.member.userId) ? " ✅" : "";
+    if (hp <= 0) return `💀 <@${s.member.userId}> **${c.cardName}** — *downed*`;
     const shield = c.shield > 0 ? ` 🛡️${c.shield}` : "";
-    return `❤️ <@${s.member.userId}> **${c.cardName}**${acted}\n${bar(c.hp, c.stats.maxHealth, 10)} ${c.hp}/${c.stats.maxHealth}${shield} · ⚡${c.energy}`;
+    return `❤️ <@${s.member.userId}> **${c.cardName}**${acted}\n${bar(hp, c.stats.maxHealth, 10)} ${hp}/${c.stats.maxHealth}${shield} · ⚡${c.energy}`;
   });
   statusEmbed.addFields({ name: `👥 Party ${WHITE_LINE}`, value: partyLines.join(`\n${WHITE_LINE}\n`) || "—", inline: false });
-  const livingCount = [...session.party.values()].filter(s => (s.combatant?.hp ?? 0) > 0).length;
-  const lockedIn = [...session.party.values()].filter(s => (s.combatant?.hp ?? 0) > 0 && session.pendingActions.has(s.member.userId)).length;
-  statusEmbed.setFooter({ text: `🔒 Locked in ${lockedIn}/${livingCount} — the round resolves once all living fighters act (or after 60s).` });
-  if (session.introImage) statusEmbed.setImage(`attachment://${RAID_INTRO_FILE}`);
+  if (replaying) {
+    statusEmbed.setFooter({ text: "⚔️ Resolving the round…" });
+  } else {
+    const livingCount = [...session.party.values()].filter(s => (s.combatant?.hp ?? 0) > 0).length;
+    const lockedIn = [...session.party.values()].filter(s => (s.combatant?.hp ?? 0) > 0 && session.pendingActions.has(s.member.userId)).length;
+    statusEmbed.setFooter({ text: `🔒 Locked in ${lockedIn}/${livingCount} — the round resolves once all living fighters act (or after 60s).` });
+  }
+  if (opts?.attackFile) statusEmbed.setImage(`attachment://${opts.attackFile}`);
+  else if (session.introImage) statusEmbed.setImage(`attachment://${RAID_INTRO_FILE}`);
   else if (boss.cardImageUrl) statusEmbed.setImage(boss.cardImageUrl);
 
   return [logEmbed, statusEmbed];

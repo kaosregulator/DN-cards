@@ -219,6 +219,10 @@ export interface AttackFrameInput {
   isHit: boolean;
   scene?: AttackScene;   // overrides the attack/crit/miss default when set
   subtitle?: string;     // optional small caption under the impact (e.g. "+120 HP")
+  // Boss-raid intensity: forces the big-impact treatment, a heavier screen
+  // flash, a "BOSS RAID" tag, and a larger damage readout so raid hits feel
+  // weightier than normal battle hits. Reuses the same renderer — no new scene.
+  boss?: boolean;
 }
 
 interface SceneTheme {
@@ -338,41 +342,47 @@ export async function renderAttackFrame(input: AttackFrameInput): Promise<Buffer
   const scene: AttackScene = input.scene ?? (!input.isHit ? "miss" : input.isCrit ? "crit" : "attack");
   const theme = sceneTheme(scene, rarityColor);
   const accent = scene === "attack" ? rarityColor : theme.accent;
+  const boss = !!input.boss;
   return renderPng(width, height, async (ctx, mod) => {
     const [top, mid, bot] = theme.bg ?? [rarityColor, 0x0b1622, 0x07080c];
     drawGradientBackground(ctx, width, height, [
-      [0, hexToRgba(top === rarityColor ? rarityColor : top, 0.3)],
+      [0, hexToRgba(top === rarityColor ? rarityColor : top, boss ? 0.42 : 0.3)],
       [0.6, hexToRgba(mid, 1)],
       [1, hexToRgba(bot, 1)],
     ], 0.2);
 
-    if (theme.screenFlash) drawScreenFlash(ctx, width, height, theme.screenFlash, accent);
+    // Boss raids always flash harder than a normal battle hit.
+    const flash = boss ? Math.max(theme.screenFlash ?? 0, 0.34) : theme.screenFlash;
+    if (flash) drawScreenFlash(ctx, width, height, flash, accent);
 
     // Attacker card on the left, lunging toward the impact.
     const cw = 240, ch = 336, cx = 44, cy = (height - ch) / 2;
-    drawRarityGlow(ctx, cx, cy, cw, ch, accent, scene === "ultimate" ? 0.95 : 0.7);
+    drawRarityGlow(ctx, cx, cy, cw, ch, accent, boss ? 1 : scene === "ultimate" ? 0.95 : 0.7);
     await drawCardArt(ctx, mod, cx, cy, cw, ch, attacker.artUrl);
-    drawCardFrame(ctx, cx, cy, cw, ch, rarityColor, 6);
+    drawCardFrame(ctx, cx, cy, cw, ch, rarityColor, boss ? 8 : 6);
     drawRarityBadge(ctx, cx + cw - 12, cy + 12, attacker.rarityLabel, rarityColor);
     drawTextWithShadow(ctx, attacker.name, cx + cw / 2, cy + ch + 22, "#ffffff", fitText(ctx, attacker.name, cw + 40, 22));
 
-    // Move banner (name) + scene banner.
-    drawTextWithShadow(ctx, input.moveName.toUpperCase(), width / 2 + 90, 46, "#ffcc33", 24);
-    if (theme.banner) drawTextWithShadow(ctx, theme.banner, width / 2 + 90, 78, theme.bannerColor, 20);
+    // Move banner (name) + scene banner. Boss raids carry an extra tag.
+    drawTextWithShadow(ctx, input.moveName.toUpperCase(), width / 2 + 90, 46, "#ffcc33", boss ? 26 : 24);
+    if (theme.banner) drawTextWithShadow(ctx, theme.banner, width / 2 + 90, 78, theme.bannerColor, boss ? 22 : 20);
+    if (boss) drawTextWithShadow(ctx, "⚔ BOSS RAID ⚔", width / 2 + 90, height - 26, hexToRgba(accent, 1), 18);
 
-    // Impact FX + readout on the right.
+    // Impact FX + readout on the right. Boss hits always use the big treatment.
     const ix = width - 200, iy = height / 2;
-    const big = scene === "ultimate" || scene === "crit" || scene === "ko";
+    const big = boss || scene === "ultimate" || scene === "crit" || scene === "ko";
     drawImpact(ctx, theme.impact, ix, iy, accent, big);
+    if (boss) drawImpact(ctx, theme.impact, ix, iy, accent, false); // layered burst = denser
 
     // Primary readout: damage for offensive scenes, banner-driven otherwise.
+    const dmgBoost = boss ? 12 : 0;
     if (scene === "miss") {
       drawTextWithShadow(ctx, "MISS", ix, iy, "#95a5a6", 46);
     } else if (scene === "ko") {
-      drawTextWithShadow(ctx, "K.O.", ix, iy + 4, "#ff5555", 64);
+      drawTextWithShadow(ctx, "K.O.", ix, iy + 4, "#ff5555", 64 + dmgBoost);
     } else if (input.isHit && input.damage > 0 && (scene === "attack" || scene === "crit" || scene === "special" || scene === "ultimate" || scene === "counter" || scene === "item")) {
       const dmg = input.isCrit ? `${input.damage.toLocaleString()}!` : `-${input.damage.toLocaleString()}`;
-      drawTextWithShadow(ctx, dmg, ix, iy, input.isCrit ? "#ff4444" : "#ffffff", input.isCrit ? 60 : 46);
+      drawTextWithShadow(ctx, dmg, ix, iy, input.isCrit ? "#ff4444" : "#ffffff", (input.isCrit ? 60 : 46) + dmgBoost);
     }
     // Optional caption (e.g. "+120 HP", "Shield +80", status label).
     if (input.subtitle) drawTextWithShadow(ctx, input.subtitle, ix, iy + (scene === "ko" ? 54 : 52), theme.bannerColor, 22);
