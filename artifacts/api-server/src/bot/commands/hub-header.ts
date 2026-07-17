@@ -12,6 +12,7 @@
 
 import { getCanvas, hexToRgba, roundRectPath, drawGradientBackground, type Ctx, type CanvasMod } from "../animations/engine.js";
 import { drawTextWithShadow, fitText } from "../animations/effects.js";
+import { queueRender } from "../animations/render-queue.js";
 import { logger } from "../../lib/logger.js";
 
 export const HUB_HEADER = { width: 900, height: 260 } as const;
@@ -55,6 +56,7 @@ async function loadAvatar(mod: CanvasMod, url: string | null) {
 }
 
 export async function renderHubHeader(input: HubHeaderInput): Promise<Buffer | null> {
+  return queueRender("hub-header", async () => {
   const mod = await getCanvas();
   if (!mod) return null;
   const { width, height } = HUB_HEADER;
@@ -143,4 +145,5 @@ export async function renderHubHeader(input: HubHeaderInput): Promise<Buffer | n
     logger.debug({ err }, "hub-header: render failed");
     return null;
   }
+  });
 }

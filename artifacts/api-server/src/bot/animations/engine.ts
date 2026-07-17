@@ -5,6 +5,7 @@
 import GIFEncoder from "gifencoder";
 import type { Canvas, SKRSContext2D } from "@napi-rs/canvas";
 import type { AnimationSpeed, AnimationResult } from "./types.js";
+import { queueRender } from "./render-queue.js";
 import { logger } from "../../lib/logger.js";
 
 export type CanvasMod = typeof import("@napi-rs/canvas");
@@ -115,6 +116,7 @@ function frameSignature(ctx: Ctx, physW: number, physH: number): number {
 }
 
 export async function encodeAnimation(opts: EncodeOptions): Promise<AnimationResult | null> {
+  return queueRender("gif", async () => {
   const mod = await getCanvas();
   if (!mod) return null;
   const {
@@ -175,6 +177,7 @@ export async function encodeAnimation(opts: EncodeOptions): Promise<AnimationRes
     logger.error({ err }, "animation engine: encode failed");
     return null;
   }
+  });
 }
 
 export function clamp01(n: number): number {
