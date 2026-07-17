@@ -1,32 +1,12 @@
 import type { ChatInputCommandInteraction } from "discord.js";
 import { EmbedBuilder } from "discord.js";
-import Fuse from "fuse.js";
-import type { IFuseOptions } from "fuse.js";
 import {
   getAllCards, getUserCollection, getRarityContext, getOrCreateGuildSettings,
   getRarityDisplayOverrides, getCardDisplayRarity,
 } from "../db.js";
+import { fuzzyRank } from "../search/fuse-service.js";
 import { getStarRanks } from "./stars.js";
 const MAX_RESULTS = 25;
-
-// Fuse.js search options tuned for card names: tolerate typos, allow acronym
-// matches (e.g. "M1" → "M1 Abrams"), and surface close substring hits first.
-const FUSE_OPTIONS: IFuseOptions<{ name: string }> = {
-  keys: ["name"],
-  threshold: 0.35,
-  includeScore: true,
-  ignoreLocation: true,
-  minMatchCharLength: 1,
-  useExtendedSearch: true,
-};
-
-/** Acronym for a card name, e.g. "M1 Abrams" → "MA". */
-function acronym(name: string): string {
-  return name
-    .split(/\s+/)
-    .map(w => w.replace(/[^a-zA-Z0-9]/g, "").slice(0, 1).toUpperCase())
-    .join("");
-}
 
 export interface SearchOpts {
   query?: string | null;
@@ -82,50 +62,9 @@ export async function buildSearchEmbed(
   if (ownedFilter === "missing") results = results.filter(c => (ownedMap.get(c.id) ?? 0) === 0);
 
   if (query) {
-    const qLower = query.toLowerCase();
-    const fuse = new Fuse(results.map(c => ({ name: c.name, card: c })), {
-      ...FUSE_OPTIONS,
-      keys: ["name"],
-      getFn: (obj, key) => key === "name" ? obj.name : "",
-    });
-
-    // 1. exact / acronym literal matches get top priority
-    const acronymMatches = new Set<number>();
-    const exactMatches = results.filter(c => {
-      if (c.name.toLowerCase().includes(qLower)) return true;
-      if (acronym(c.name).toLowerCase().includes(qLower)) {
-        acronymMatches.add(c.id);
-        return true;
-      }
-      return false;
-    });
-
-    // 2. fuse fills in fuzzy / typo-tolerant results beyond the exact set
-    const fuseHits = fuse.search(query).map(r => r.item.card);
-    const seen = new Set(exactMatches.map(c => c.id));
-    const merged: typeof results = [...exactMatches];
-    for (const c of fuseHits) {
-      if (!seen.has(c.id)) {
-        seen.add(c.id);
-        merged.push(c);
-      }
-    }
-
-    // Sort: exact prefix first, then acronym matches, then by fuse score (already in fuse order)
-    merged.sort((a, b) => {
-      const aName = a.name.toLowerCase();
-      const bName = b.name.toLowerCase();
-      const aExact = aName.includes(qLower);
-      const bExact = bName.includes(qLower);
-      if (aExact && !bExact) return -1;
-      if (!aExact && bExact) return 1;
-      const aAcronym = acronymMatches.has(a.id);
-      const bAcronym = acronymMatches.has(b.id);
-      if (aAcronym && !bAcronym) return -1;
-      if (!aAcronym && bAcronym) return 1;
-      return a.name.localeCompare(b.name);
-    });
-    results = merged;
+    // Shared fuzzy service: literal/acronym hits first, then typo-tolerant Fuse
+    // matches. Uses the cache-free ranker since `results` is a filtered subset.
+    results = fuzzyRank(results, query, c => c.name);
   } else {
     results.sort((a, b) => a.name.localeCompare(b.name));
   }
