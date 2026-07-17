@@ -98,6 +98,7 @@ export async function handleRaidAdminCommand(interaction: ChatInputCommandIntera
       minPlayers: interaction.options.getInteger("minplayers") ?? undefined,
       maxPlayers: interaction.options.getInteger("maxplayers") ?? undefined,
       enrageTurn: interaction.options.getInteger("enrage") ?? undefined,
+      healthScalingPct: interaction.options.getInteger("healthscaling") ?? undefined,
       rewardShards: interaction.options.getInteger("reward") ?? undefined,
       rewardCardXp: interaction.options.getInteger("cardxp") ?? undefined,
     });
@@ -134,7 +135,7 @@ export async function handleRaidAdminCommand(interaction: ChatInputCommandIntera
     setInt("health", "baseHealth"); setInt("attack", "baseAttack"); setInt("defense", "baseDefense");
     setInt("minstars", "minStars"); setInt("minlevel", "minPlayerLevel");
     setInt("minplayers", "minPlayers"); setInt("maxplayers", "maxPlayers");
-    setInt("enrage", "enrageTurn"); setInt("reward", "rewardShards"); setInt("cardxp", "rewardCardXp");
+    setInt("enrage", "enrageTurn"); setInt("healthscaling", "healthScalingPct"); setInt("reward", "rewardShards"); setInt("cardxp", "rewardCardXp");
     const arch = interaction.options.getString("archetype");
     if (arch) { if (!VALID_ARCHETYPES.includes(arch.toLowerCase())) { await interaction.editReply(`❌ Bad archetype.`); return; } patch.archetype = arch.toLowerCase(); }
     const imageAttachment = interaction.options.getAttachment("image");

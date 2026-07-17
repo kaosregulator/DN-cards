@@ -6,7 +6,7 @@ index b12edc9d2e01369226859f9d4896b4fdf926f10d..3198505f46bba450430ff7b7f0036486
    // file size for noticeable speed improvement on small files. Please direct
    // questions about this implementation to ames!jaw.
    var g_init_bits, ClearCode, EOFCode;
-+  var remaining, curPixel;
++  var remaining, curPixel, n_bits;
  
    // Add a character to the end of the current packet, and if it is 254
    // characters, flush the packet to disk.

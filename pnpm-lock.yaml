@@ -155,7 +155,7 @@ overrides:
 
 patchedDependencies:
   gifencoder@2.0.1:
-    hash: 3d65ab0b5b79a65896c23b0597862268f554d58654894117392a91d4913c8ff6
+    hash: 4cb66815cfcdddcd34dc168f9e345496a4fb844b81c95d85124bd68d92119152
     path: patches/gifencoder@2.0.1.patch
 
 importers:
@@ -225,7 +225,7 @@ importers:
         version: 7.4.2
       gifencoder:
         specifier: ^2.0.1
-        version: 2.0.1(patch_hash=3d65ab0b5b79a65896c23b0597862268f554d58654894117392a91d4913c8ff6)
+        version: 2.0.1(patch_hash=4cb66815cfcdddcd34dc168f9e345496a4fb844b81c95d85124bd68d92119152)
       google-auth-library:
         specifier: ^10.6.2
         version: 10.6.2
@@ -6620,7 +6620,7 @@ snapshots:
     dependencies:
       resolve-pkg-maps: 1.0.0
 
-  gifencoder@2.0.1(patch_hash=3d65ab0b5b79a65896c23b0597862268f554d58654894117392a91d4913c8ff6):
+  gifencoder@2.0.1(patch_hash=4cb66815cfcdddcd34dc168f9e345496a4fb844b81c95d85124bd68d92119152):
     dependencies:
       canvas: 2.11.2
     transitivePeerDependencies:
