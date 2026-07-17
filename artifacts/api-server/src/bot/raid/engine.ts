@@ -5,9 +5,11 @@
 
 import type { BattleSettings, RaidBoss } from "@workspace/db";
 import type { Combatant, BattleEvent, BattleStats, MoveType, Rarity } from "../battle/types.js";
+import type { RenderCard } from "../battle/image/render.js";
 import { getScaledStats } from "../battle/stat-engine.js";
 import { inferMoveset } from "../battle/movesets.js";
 import { resolveMove, startOfTurn } from "../battle/combat-engine.js";
+import { computeMoveVisual, combatantToRenderCard, type MoveVisual } from "../battle/turn-visual.js";
 import { rarityRank } from "../battle/config-engine.js";
 import type { OwnedBattleCard } from "../battle/db.js";
 import { toAbsoluteImageUrl } from "../image-url.js";
@@ -94,12 +96,32 @@ export function buildPlayerCombatant(
 }
 
 // ── Round resolution ─────────────────────────────────────────────────────────
+
+// One step of the round, ready to REPLAY through the shared battle animation
+// pipeline (the same renderAttackFrame battles use). A beat with a `visual` +
+// `attacker` is an on-screen hit; a beat with neither is a text-only tick
+// (start-of-turn DoT, enrage/sweep announcements). Each beat snapshots HP so the
+// manager can redraw the board at that exact moment while replaying.
+export interface RaidBeat {
+  texts: string[];
+  attacker?: RenderCard;
+  moveName?: string;
+  visual?: MoveVisual;
+  bossHp: number;
+  partyHp: Record<string, number>; // userId → hp after this beat
+}
+
 export interface RoundResult {
   events: BattleEvent[];
+  beats: RaidBeat[];
   bossKoed: boolean;
   wiped: boolean;              // all players down
   downedThisRound: string[];  // userIds KO'd during the round
 }
+
+const RAID_MOVE_LABEL: Record<string, string> = {
+  attack: "Attack", special: "Special", defend: "Defend", charge: "Charge",
+};
 
 export interface RaidRoundInput {
   settings: BattleSettings;
@@ -113,29 +135,49 @@ export interface RaidRoundInput {
 export function resolveRaidRound(input: RaidRoundInput): RoundResult {
   const { settings, boss, players, actions, roundNumber, enrageTurn } = input;
   const events: BattleEvent[] = [];
+  const beats: RaidBeat[] = [];
   const downedThisRound: string[] = [];
   const living = () => players.filter(p => p.hp > 0);
+  const snap = (): Record<string, number> =>
+    Object.fromEntries(players.map(p => [p.userId, Math.max(0, p.hp)]));
 
-  // 1) Start-of-round status ticks (players then boss).
+  // Record one on-screen hit: resolve `move` and capture its shared MoveVisual.
+  const hitBeat = (actor: Combatant, foe: Combatant, move: MoveType, moveName: string): void => {
+    const foePool = foe.hp + foe.shield;
+    const selfPool = actor.hp + actor.shield;
+    const r = resolveMove(settings, actor, foe, move);
+    events.push(...r.events);
+    beats.push({
+      texts: r.events.map(e => e.text),
+      attacker: combatantToRenderCard(actor),
+      moveName,
+      visual: computeMoveVisual(move, r, actor, foe, foePool, selfPool),
+      bossHp: Math.max(0, boss.hp),
+      partyHp: snap(),
+    });
+  };
+
+  // 1) Start-of-round status ticks (players then boss) → one text-only beat.
+  const tickTexts: string[] = [];
   for (const p of living()) {
     const st = startOfTurn(p, settings);
-    events.push(...st.events);
+    events.push(...st.events); tickTexts.push(...st.events.map(e => e.text));
     if (p.hp <= 0) downedThisRound.push(p.userId);
   }
   {
     const st = startOfTurn(boss, settings);
-    events.push(...st.events);
+    events.push(...st.events); tickTexts.push(...st.events.map(e => e.text));
   }
-  if (boss.hp <= 0) return { events, bossKoed: true, wiped: false, downedThisRound };
+  if (tickTexts.length) beats.push({ texts: tickTexts, bossHp: Math.max(0, boss.hp), partyHp: snap() });
+  if (boss.hp <= 0) return { events, beats, bossKoed: true, wiped: false, downedThisRound };
 
   // 2) Players act (in speed order for a little tactical flavour).
   const order = living().sort((a, b) => b.stats.speed - a.stats.speed);
   for (const p of order) {
     if (p.hp <= 0 || boss.hp <= 0) continue;
     const move = actions.get(p.userId) ?? "defend"; // no input → brace
-    const r = resolveMove(settings, p, boss, move);
-    events.push(...r.events);
-    if (boss.hp <= 0) return { events, bossKoed: true, wiped: false, downedThisRound };
+    hitBeat(p, boss, move, RAID_MOVE_LABEL[move] ?? move);
+    if (boss.hp <= 0) return { events, beats, bossKoed: true, wiped: false, downedThisRound };
   }
 
   // 3) Boss acts. Enrage ramps attack; periodic sweeps hit the whole party.
@@ -144,28 +186,30 @@ export function resolveRaidRound(input: RaidRoundInput): RoundResult {
   if (enraged) {
     const ramp = 1 + 0.15 * (roundNumber - enrageTurn + 1);
     boss.stats.attack = Math.round(savedAttack * Math.min(2.5, ramp));
-    events.push({ text: `🔥 **${boss.cardName}** is **ENRAGED** — its blows hit harder!`, flash: "burn" });
+    const t = `🔥 **${boss.cardName}** is **ENRAGED** — its blows hit harder!`;
+    events.push({ text: t, flash: "burn" });
+    beats.push({ texts: [t], bossHp: Math.max(0, boss.hp), partyHp: snap() });
   }
 
   const sweep = enraged || roundNumber % 4 === 0;
   if (sweep) {
-    events.push({ text: `💥 **${boss.cardName}** unleashes a devastating **sweep** across the party!`, flash: "ultimate" });
+    const t = `💥 **${boss.cardName}** unleashes a devastating **sweep** across the party!`;
+    events.push({ text: t, flash: "ultimate" });
+    beats.push({ texts: [t], bossHp: Math.max(0, boss.hp), partyHp: snap() });
     for (const p of living()) {
-      const r = resolveMove(settings, boss, p, "attack");
-      events.push(...r.events);
+      hitBeat(boss, p, "attack", "Sweep");
       if (p.hp <= 0) downedThisRound.push(p.userId);
     }
   } else {
     // Focus the lowest-HP living player (try to secure a KO).
     const target = living().sort((a, b) => a.hp - b.hp)[0];
     if (target) {
-      const r = resolveMove(settings, boss, target, "attack");
-      events.push(...r.events);
+      hitBeat(boss, target, "attack", "Strike");
       if (target.hp <= 0) downedThisRound.push(target.userId);
     }
   }
   boss.stats.attack = savedAttack;
 
   const wiped = living().length === 0;
-  return { events, bossKoed: boss.hp <= 0, wiped, downedThisRound };
+  return { events, beats, bossKoed: boss.hp <= 0, wiped, downedThisRound };
 }

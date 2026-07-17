@@ -16,6 +16,10 @@ export interface Frame {
   color: number;               // embed accent
   // Decorative wrap applied around the card name in the showcase title.
   wrap: (name: string) => string;
+  // Account-wide prestige frame (a raid reward). Equippable on ANY owned card,
+  // ignores rarity + level; instead gated on an explicit unlock (raid clear).
+  // The `rarity` field is nominal for these and not used for matching.
+  account?: boolean;
 }
 
 // Level thresholds at which each rarity's frames unlock.
@@ -57,8 +61,38 @@ const RARITY_FRAMES: Record<Rarity, [Frame, Frame, Frame]> = {
   ],
 };
 
-const ALL_FRAMES: Frame[] = Object.values(RARITY_FRAMES).flat();
+// ── Raid-exclusive prestige frames (account-wide) ────────────────────────────
+// Earned only by clearing a raid boss. Once unlocked they can be equipped on ANY
+// owned card via /frame, regardless of that card's rarity or level. A boss can
+// name a specific one via reward_frame_id; unspecified bosses grant the generic
+// "Raid Champion". These are the endgame flex.
+const raid = (id: string, name: string, emoji: string, color: number, wrap: (n: string) => string): Frame => ({
+  id, name, emoji, rarity: "mythic", unlockLevel: 0, color, wrap, account: true,
+});
+
+export const RAID_FRAMES: Frame[] = [
+  raid("raid_champion", "Raid Champion", "🐉", 0x2ecc71, plain("⟦🐉", "🐉⟧")),
+  raid("raid_slayer", "Boss Slayer", "⚔️", 0xe74c3c, plain("⚔", "⚔")),
+  raid("raid_vanguard", "Vanguard", "🛡️", 0x3498db, plain("❰🛡", "🛡❱")),
+  raid("raid_ember", "Emberforged", "🔥", 0xe67e22, plain("🔥", "🔥")),
+  raid("raid_eclipse", "Eclipse", "🌑", 0x8e44ad, plain("༺🌑", "🌑༻")),
+  raid("raid_apex", "Apex Predator", "👑", 0xf1c40f, plain("♛", "♛")),
+];
+
+// The default raid frame granted when a boss doesn't name a specific one.
+export const DEFAULT_RAID_FRAME_ID = "raid_champion";
+
+const ALL_FRAMES: Frame[] = [...Object.values(RARITY_FRAMES).flat(), ...RAID_FRAMES];
 const FRAME_BY_ID = new Map(ALL_FRAMES.map(f => [f.id, f]));
+
+export function getRaidFrames(): Frame[] { return RAID_FRAMES; }
+
+// Resolve a boss's reward frame id → a real frame (falls back to the generic
+// Raid Champion when the id is unset or unknown).
+export function raidFrameForBoss(rewardFrameId: string | null | undefined): Frame {
+  return (rewardFrameId ? FRAME_BY_ID.get(rewardFrameId) : undefined)
+    ?? FRAME_BY_ID.get(DEFAULT_RAID_FRAME_ID)!;
+}
 
 export function framesForRarity(rarity: Rarity): Frame[] {
   return RARITY_FRAMES[rarity] ?? RARITY_FRAMES.common;
@@ -73,11 +107,22 @@ export function defaultFrameForRarity(rarity: Rarity): Frame {
 }
 
 // The frame a user currently has active on a card: their equipped one if still
-// valid (right rarity + unlocked), otherwise the rarity default.
-export function resolveActiveFrame(rarity: Rarity, equippedId: string | null, level: number): Frame {
+// valid, otherwise the rarity default. An account-wide raid frame is valid on
+// ANY card as long as the viewer has unlocked it (pass the unlocked-id set);
+// otherwise the usual rarity + level gate applies.
+export function resolveActiveFrame(
+  rarity: Rarity, equippedId: string | null, level: number,
+  unlockedAccountFrames?: Set<string>,
+): Frame {
   if (equippedId) {
     const f = FRAME_BY_ID.get(equippedId);
-    if (f && f.rarity === rarity && level >= f.unlockLevel) return f;
+    if (f) {
+      if (f.account) {
+        if (unlockedAccountFrames?.has(f.id)) return f;
+      } else if (f.rarity === rarity && level >= f.unlockLevel) {
+        return f;
+      }
+    }
   }
   return defaultFrameForRarity(rarity);
 }

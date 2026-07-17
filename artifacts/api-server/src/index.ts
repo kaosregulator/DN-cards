@@ -97,6 +97,24 @@ async function runBootMigrations() {
   // Raid overhaul: optional per-boss battlefield/arena image for the raid canvas.
   await pool.query(`ALTER TABLE raid_bosses ADD COLUMN IF NOT EXISTS battlefield_url text`);
 
+  // Raid endgame: boss→card link (boss-card reward + art), exclusive reward
+  // frame, and a progression sequence. Plus the account-wide raid frame unlocks
+  // table. All additive/backwards-compatible.
+  await pool.query(`ALTER TABLE raid_bosses ADD COLUMN IF NOT EXISTS card_id integer`);
+  await pool.query(`ALTER TABLE raid_bosses ADD COLUMN IF NOT EXISTS reward_frame_id text`);
+  await pool.query(`ALTER TABLE raid_bosses ADD COLUMN IF NOT EXISTS sequence integer NOT NULL DEFAULT 0`);
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS raid_frame_unlocks (
+      id serial PRIMARY KEY,
+      guild_id text NOT NULL,
+      user_id text NOT NULL,
+      frame_id text NOT NULL,
+      boss_id integer,
+      unlocked_at timestamp NOT NULL DEFAULT now()
+    )`);
+  await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS raid_frame_unlocks_guild_user_frame_uniq ON raid_frame_unlocks (guild_id, user_id, frame_id)`);
+  await pool.query(`CREATE INDEX IF NOT EXISTS raid_frame_unlocks_user_idx ON raid_frame_unlocks (guild_id, user_id)`);
+
   // Unified account-level progression (Player XP). Purely additive — existing
   // progression tables (card_progress, battle_profiles, user_currency, quests,
   // reputation, …) are untouched; this only stores the new account-wide level

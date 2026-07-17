@@ -6,6 +6,7 @@ import { EmbedBuilder, MessageFlags, PermissionFlagsBits, type GuildMember } fro
 import type { RaidBoss } from "@workspace/db";
 import { createBoss, updateBoss, deleteBoss, getAllBosses, getBossByName } from "./db.js";
 import { starString, levelForStars } from "../cards/leveling.js";
+import { getRaidFrames } from "../cards/frames.js";
 import { persistBotImage } from "../commands/edit-card.js";
 import { logger } from "../../lib/logger.js";
 
@@ -46,10 +47,37 @@ async function persistOptionalImage(
 }
 
 function bossSummary(b: RaidBoss): string {
-  return `\`#${b.id}\` **${b.name}** ${b.enabled ? "🟢" : "⚪"}\n` +
+  const frame = b.rewardFrameId ? getRaidFrames().find(f => f.id === b.rewardFrameId) : null;
+  return `\`#${b.id}\` **${b.name}** ${b.enabled ? "🟢" : "⚪"} · seq ${b.sequence}\n` +
     `HP ${b.baseHealth.toLocaleString()} · ATK ${b.baseAttack} · DEF ${b.baseDefense} · ` +
     `gate ${starString(b.minStars)} (Lv ${levelForStars(b.minStars)}) · ${b.minPlayers}-${b.maxPlayers}p · ` +
-    `enrage r${b.enrageTurn || "—"} · 💠 ${b.rewardShards}/+${b.rewardCardXp}xp`;
+    `enrage r${b.enrageTurn || "—"} · 💠 ${b.rewardShards}/+${b.rewardCardXp}xp\n` +
+    `🎁 reward: ${frame ? `${frame.emoji} ${frame.name}` : "🐉 Raid Champion"}` +
+    (b.cardId != null ? ` · 🃏 boss card #${b.cardId}` : " · no boss card");
+}
+
+// Resolve the reward-related options (boss card, exclusive frame, ladder
+// sequence) into a boss patch. Returns an error string on a bad value.
+async function resolveRewardFields(
+  interaction: ChatInputCommandInteraction, guildId: string,
+): Promise<{ patch: Partial<RaidBoss> } | { error: string }> {
+  const patch: Partial<RaidBoss> = {};
+  const cardName = interaction.options.getString("cardname");
+  if (cardName) {
+    const { getCardByName } = await import("../db.js");
+    const card = await getCardByName(cardName, guildId);
+    if (!card) return { error: `❌ No card named "**${cardName}**" to link as the boss card. Check \`/list\`.` };
+    patch.cardId = card.id;
+  }
+  const frame = interaction.options.getString("frame");
+  if (frame) {
+    const f = getRaidFrames().find(rf => rf.id === frame);
+    if (!f) return { error: `❌ Unknown raid frame. Options: ${getRaidFrames().map(x => x.name).join(", ")}.` };
+    patch.rewardFrameId = f.id;
+  }
+  const seq = interaction.options.getInteger("sequence");
+  if (seq != null) patch.sequence = seq;
+  return { patch };
 }
 
 export async function handleRaidAdminCommand(interaction: ChatInputCommandInteraction): Promise<void> {
@@ -102,7 +130,11 @@ export async function handleRaidAdminCommand(interaction: ChatInputCommandIntera
     const battlefieldUrl = await persistOptionalImage(interaction, "battlefield");
     if (battlefieldUrl === false) { await interaction.editReply("⚠️ Battlefield image could not be saved. Boss was not created — try again."); return; }
 
+    const reward = await resolveRewardFields(interaction, guildId);
+    if ("error" in reward) { await interaction.editReply(reward.error); return; }
+
     const boss = await createBoss({
+      ...reward.patch,
       guildId, name, createdBy: interaction.user.id,
       description: interaction.options.getString("description") ?? null,
       imageUrl,
@@ -170,6 +202,9 @@ export async function handleRaidAdminCommand(interaction: ChatInputCommandIntera
     const bf = await persistOptionalImage(interaction, "battlefield");
     if (bf === false) { await interaction.editReply("⚠️ Battlefield image could not be saved — nothing changed."); return; }
     if (bf) patch.battlefieldUrl = bf;
+    const reward = await resolveRewardFields(interaction, guildId);
+    if ("error" in reward) { await interaction.editReply(reward.error); return; }
+    Object.assign(patch, reward.patch);
     if (Object.keys(patch).length === 0) { await interaction.editReply("Nothing to change — pass at least one field to edit."); return; }
     const updated = await updateBoss(boss.id, patch);
     await interaction.editReply({ content: `✅ Updated **${boss.name}**.`, embeds: [new EmbedBuilder().setColor(0x3498db).setDescription(bossSummary(updated!))] });

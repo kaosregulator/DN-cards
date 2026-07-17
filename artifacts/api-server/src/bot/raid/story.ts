@@ -52,6 +52,21 @@ const COACH = [
   "One target. One party. One shot at glory.",
 ];
 
+// Three discrete cutscene beats shown one-at-a-time before the VS screen, the
+// last always landing on "Let the Raid Begin!". Deterministic per boss so a
+// given boss's intro reads consistently.
+export function buildRaidIntroBeats(boss: RaidBoss): string[] {
+  const seed = boss.id;
+  const taunts = TAUNTS[boss.rarity] ?? TAUNTS["default"]!;
+  return [
+    `🏟️ *${pick(ARRIVALS, seed, 1)}*`,
+    boss.description
+      ? `*${boss.description}*\n\n${pick(taunts, seed, 2)} — **${boss.name}**`
+      : `${pick(taunts, seed, 2)} — **${boss.name}**`,
+    `⚔️ **Let the Raid Begin!**\n*${pick(COACH, seed, 3)}*`,
+  ];
+}
+
 // The lobby/intro script: arrival beat, boss taunt (or admin flavor), coach line.
 export function buildRaidIntroScript(boss: RaidBoss): string {
   const seed = boss.id;
@@ -65,9 +80,16 @@ export function buildRaidIntroScript(boss: RaidBoss): string {
   return lines.join("\n\n");
 }
 
-// Victory beat used on the clear screen, above the roster gallery.
+// Random pick: unlike `pick()` above, this shuffles every time it's called —
+// used for end-of-raid beats so a party doesn't see the same victory/loss line
+// on every run against the same boss.
+function shuffle<T>(pool: T[]): T {
+  return pool[Math.floor(Math.random() * pool.length)]!;
+}
+
+// Victory beat used on the clear screen, above the roster gallery. Shuffled
+// (not per-boss deterministic) so every clear feels a little different.
 export function buildRaidClearLine(boss: RaidBoss, remaining: number): string {
-  const seed = boss.id;
   const falls = [
     `**${boss.name}** falls. The arena goes silent.`,
     `**${boss.name}** crashes down — the party stands victorious.`,
@@ -76,5 +98,16 @@ export function buildRaidClearLine(boss: RaidBoss, remaining: number): string {
   const next = remaining > 0
     ? `One boss down — **${remaining}** still stand${remaining === 1 ? "s" : ""}. The climb continues.`
     : "Every boss on this server has a challenger to fear now.";
-  return `${pick(falls, seed, 4)}\n${next}`;
+  return `${shuffle(falls)}\n${next}`;
+}
+
+// Loss beat used on the wipe/timeout screen, above the defeat canvas. Shuffled
+// per-occurrence, same as the clear line above.
+export function buildRaidWipeLine(boss: RaidBoss): string {
+  const wipes = [
+    `**${boss.name}** stands unchallenged. The party is down.`,
+    `It's over — **${boss.name}** overwhelms the party.`,
+    `The party falls. **${boss.name}** doesn't even look tired.`,
+  ];
+  return `${shuffle(wipes)}\nRegroup, level your cards, and try again.`;
 }

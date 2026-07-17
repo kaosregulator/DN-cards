@@ -26,6 +26,7 @@ import {
 import { BATTLE_ACHIEVEMENTS, formatAchievementLine } from "../battle/achievement-engine.js";
 import { getOrCreateDaily } from "../battle/daily-engine.js";
 import { bar } from "../battle/embeds.js";
+import { scheduleReplyDelete } from "../../lib/temp-message.js";
 
 export async function handleBattlesWelcome(interaction: ChatInputCommandInteraction): Promise<void> {
   const embed = new EmbedBuilder()
@@ -143,6 +144,8 @@ async function cmdProfile(interaction: ChatInputCommandInteraction) {
   const target = interaction.options.getUser("user") ?? interaction.user;
   const embed = await buildBattleProfileEmbed(guildId, target.id, target.username, target.displayAvatarURL());
   await interaction.editReply({ embeds: [embed] });
+  // Public lookup — tidy the channel after 30s, matching /info and /top.
+  scheduleReplyDelete(interaction, 30_000);
 }
 
 async function cmdLeaderboard(interaction: ChatInputCommandInteraction) {
