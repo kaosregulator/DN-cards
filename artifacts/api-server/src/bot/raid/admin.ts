@@ -31,6 +31,20 @@ function isEphemeralImage(savedUrl: string, originalUrl: string): boolean {
   return savedUrl === originalUrl && !savedUrl.includes("storage.googleapis.com");
 }
 
+// Persist an optional named attachment. Returns the stored URL, "" when the
+// option was omitted, or false when persistence failed (caller should abort).
+async function persistOptionalImage(
+  interaction: ChatInputCommandInteraction, optName: string,
+): Promise<string | false> {
+  const att = interaction.options.getAttachment(optName);
+  if (!att) return "";
+  const validation = validateImageAttachment(att);
+  if (!validation.ok) return false;
+  const persisted = await persistBotImage(att.url, att.contentType ?? undefined);
+  if (isEphemeralImage(persisted, att.url)) return false;
+  return persisted;
+}
+
 function bossSummary(b: RaidBoss): string {
   return `\`#${b.id}\` **${b.name}** ${b.enabled ? "🟢" : "⚪"}\n` +
     `HP ${b.baseHealth.toLocaleString()} · ATK ${b.baseAttack} · DEF ${b.baseDefense} · ` +
@@ -85,10 +99,14 @@ export async function handleRaidAdminCommand(interaction: ChatInputCommandIntera
       imageUrl = persisted;
     }
 
+    const battlefieldUrl = await persistOptionalImage(interaction, "battlefield");
+    if (battlefieldUrl === false) { await interaction.editReply("⚠️ Battlefield image could not be saved. Boss was not created — try again."); return; }
+
     const boss = await createBoss({
       guildId, name, createdBy: interaction.user.id,
       description: interaction.options.getString("description") ?? null,
       imageUrl,
+      battlefieldUrl: battlefieldUrl || null,
       archetype, rarity,
       baseHealth: interaction.options.getInteger("health") ?? undefined,
       baseAttack: interaction.options.getInteger("attack") ?? undefined,
@@ -149,6 +167,9 @@ export async function handleRaidAdminCommand(interaction: ChatInputCommandIntera
       }
       patch.imageUrl = persistedUrl;
     }
+    const bf = await persistOptionalImage(interaction, "battlefield");
+    if (bf === false) { await interaction.editReply("⚠️ Battlefield image could not be saved — nothing changed."); return; }
+    if (bf) patch.battlefieldUrl = bf;
     if (Object.keys(patch).length === 0) { await interaction.editReply("Nothing to change — pass at least one field to edit."); return; }
     const updated = await updateBoss(boss.id, patch);
     await interaction.editReply({ content: `✅ Updated **${boss.name}**.`, embeds: [new EmbedBuilder().setColor(0x3498db).setDescription(bossSummary(updated!))] });

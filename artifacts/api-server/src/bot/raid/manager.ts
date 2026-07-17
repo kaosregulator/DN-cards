@@ -5,7 +5,7 @@
 import {
   ChatInputCommandInteraction, ButtonInteraction, StringSelectMenuInteraction,
   EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle,
-  StringSelectMenuBuilder, MessageFlags, type Message,
+  StringSelectMenuBuilder, MessageFlags, AttachmentBuilder, type Message,
 } from "discord.js";
 import { randomBytes } from "crypto";
 import { db, cardProgressTable } from "@workspace/db";
@@ -20,11 +20,15 @@ import { bar, WHITE_LINE } from "../battle/embeds.js";
 import { starsForLevel, starString, levelForStars } from "../cards/leveling.js";
 import { toAbsoluteImageUrl } from "../image-url.js";
 import { logger } from "../../lib/logger.js";
-import { getBossByName } from "./db.js";
+import { getBossByName, getEnabledBosses } from "./db.js";
 import {
   buildBossCombatant, buildPlayerCombatant, resolveRaidRound,
   BOSS_USER_ID, type PartyMemberSpec,
 } from "./engine.js";
+import { buildRaidIntroScript, buildRaidClearLine } from "./story.js";
+import {
+  renderRaidIntro, renderRaidGallery, RAID_INTRO_FILE, RAID_GALLERY_FILE,
+} from "./canvas.js";
 
 const EPHEMERAL = { flags: MessageFlags.Ephemeral } as const;
 const MAX_ROUNDS = 25;
@@ -52,6 +56,9 @@ interface RaidSession {
   recentLog: string[];
   message?: Message;
   timer?: NodeJS.Timeout;
+  // Rendered once at Begin (boss vs the party's cards on the battlefield) and
+  // re-attached on every fight edit so the arena stays on screen all fight.
+  introImage?: Buffer | null;
 }
 
 const sessions = new Map<string, RaidSession>();
@@ -204,6 +211,24 @@ async function handleBegin(interaction: ButtonInteraction, session: RaidSession)
   for (const slot of session.party.values()) {
     slot.combatant = buildPlayerCombatant(slot.member, session.settings);
   }
+
+  // Gym-battle intro canvas: boss vs the party's cards on the battlefield.
+  // Rendered once and reused as the fight image every round. Best-effort.
+  session.introImage = await renderRaidIntro(
+    {
+      name: session.boss.name,
+      imageUrl: toAbsoluteImageUrl(session.boss.imageUrl),
+      rarity: session.boss.rarity as Rarity,
+      battlefieldUrl: toAbsoluteImageUrl(session.boss.battlefieldUrl),
+    },
+    party.map(m => ({
+      name: m.card.name,
+      imageUrl: toAbsoluteImageUrl(m.card.imageUrl),
+      rarity: m.card.rarity as Rarity,
+      stars: m.cardStars,
+    })),
+  ).catch(() => null);
+
   session.recentLog = [`⚔️ The party descends on **${session.boss.name}**! Choose your actions.`];
   await renderFight(session);
   armRoundTimer(session);
@@ -310,8 +335,28 @@ async function finishRaid(session: RaidSession, outcome: "clear" | "wipe" | "tim
     }
   } catch { /* non-fatal */ }
 
+  // On a clear, render the trophy-wall gallery: every enabled boss with a red ✗
+  // struck through the one just defeated. Best-effort → falls back to boss art.
+  let galleryImage: Buffer | null = null;
+  let clearLine: string | null = null;
+  if (outcome === "clear") {
+    try {
+      const enabled = await getEnabledBosses(session.guildId);
+      const remaining = Math.max(0, enabled.length - 1);
+      clearLine = buildRaidClearLine(boss, remaining);
+      galleryImage = await renderRaidGallery(enabled.map(b => ({
+        name: b.name,
+        imageUrl: toAbsoluteImageUrl(b.imageUrl),
+        rarity: b.rarity as Rarity,
+        defeated: b.id === boss.id,
+      }))).catch(() => null);
+    } catch { /* non-fatal — plain end embed */ }
+  }
+
   if (session.message) {
-    await session.message.edit({ embeds: [buildEndEmbed(session, outcome, rewardNote)], components: [] }).catch(() => {});
+    const endEmbed = buildEndEmbed(session, outcome, rewardNote, clearLine, !!galleryImage);
+    const files = galleryImage ? [new AttachmentBuilder(galleryImage, { name: RAID_GALLERY_FILE })] : [];
+    await session.message.edit({ embeds: [endEmbed], components: [], files }).catch(() => {});
   }
   teardown(session);
 }
@@ -366,11 +411,13 @@ function buildLobbyEmbed(session: RaidSession): EmbedBuilder {
   const members = [...session.party.values()].map(s =>
     `• <@${s.member.userId}> — **${s.member.card.name}** ${starString(s.member.cardStars)}`).join("\n") || "*No one has joined yet.*";
   const embed = new EmbedBuilder()
-    .setTitle(`🐉 RAID — ${b.name}`)
+    .setTitle(`🐉 BOSS RAID — ${b.name}`)
     .setColor(0xc0392b)
     .setDescription(
-      (b.description ? `*${b.description}*\n\n` : "") +
-      `A co-op boss fight for **${b.minPlayers}–${b.maxPlayers}** players. Coordinate — the boss focuses the weakest and **sweeps** the whole party.\n\n` +
+      // The gym-battle opening: arrival beat + boss taunt (weaves in any admin
+      // description) + one-line co-op coaching. Deterministic per boss.
+      `${buildRaidIntroScript(b)}\n\n` +
+      `A co-op boss fight for **${b.minPlayers}–${b.maxPlayers}** players. The boss focuses the weakest and **sweeps** the whole party.\n\n` +
       `**Entry:** a ${starString(b.minStars)} card (Lv ${levelForStars(b.minStars)}+)` +
       (b.minPlayerLevel > 1 ? ` · battle level **${b.minPlayerLevel}+**` : "") + "\n" +
       `**Reward on clear:** 💠 ${b.rewardShards.toLocaleString()} + ${b.rewardCardXp} card XP each`,
@@ -417,7 +464,9 @@ function buildFightEmbed(session: RaidSession): EmbedBuilder {
   embed.addFields({ name: `👥 Party ${WHITE_LINE}`, value: partyLines.join(`\n${WHITE_LINE}\n`) || "—", inline: false });
   if (session.recentLog.length) embed.addFields({ name: `📜 Battle log ${WHITE_LINE}`, value: session.recentLog.join(`\n${WHITE_LINE}\n`).slice(0, 1024), inline: false });
   embed.setFooter({ text: "Everyone picks an action — the round resolves once all living fighters act (or after 60s)." });
-  if (boss.cardImageUrl) embed.setImage(boss.cardImageUrl);
+  // Prefer the generated arena canvas (boss vs party); fall back to the boss art.
+  if (session.introImage) embed.setImage(`attachment://${RAID_INTRO_FILE}`);
+  else if (boss.cardImageUrl) embed.setImage(boss.cardImageUrl);
   return embed;
 }
 
@@ -433,12 +482,18 @@ function buildFightComponents(session: RaidSession): ActionRowBuilder<ButtonBuil
 
 async function renderFight(session: RaidSession): Promise<void> {
   if (!session.message) return;
-  await session.message.edit({ embeds: [buildFightEmbed(session)], components: buildFightComponents(session) }).catch(() => {});
+  const files = session.introImage
+    ? [new AttachmentBuilder(session.introImage, { name: RAID_INTRO_FILE })]
+    : [];
+  await session.message.edit({ embeds: [buildFightEmbed(session)], components: buildFightComponents(session), files }).catch(() => {});
 }
 
-function buildEndEmbed(session: RaidSession, outcome: "clear" | "wipe" | "timeout", note: string): EmbedBuilder {
+function buildEndEmbed(
+  session: RaidSession, outcome: "clear" | "wipe" | "timeout", note: string,
+  clearLine?: string | null, hasGallery?: boolean,
+): EmbedBuilder {
   const color = outcome === "clear" ? 0x2ecc71 : 0x7f8c8d;
-  const title = outcome === "clear" ? "🏆 Raid Batch Finished" : "🐉 Raid Batch Finished";
+  const title = outcome === "clear" ? "🏆 BOSS DEFEATED" : "🐉 Raid Finished";
   const boss = session.bossCombatant!;
   const bossMax = boss.stats.maxHealth;
   const bossHp = Math.max(0, boss.hp);
@@ -458,6 +513,7 @@ function buildEndEmbed(session: RaidSession, outcome: "clear" | "wipe" | "timeou
     .setTitle(title)
     .setColor(color)
     .setDescription(
+      (clearLine ? `${clearLine}\n${WHITE_LINE}\n` : "") +
       `**Boss HP**\n${bossHpLine}\n${WHITE_LINE}\n` +
       `**Damage Dealt** · **${damageDealt.toLocaleString()}** damage across the party`
     )
@@ -466,7 +522,9 @@ function buildEndEmbed(session: RaidSession, outcome: "clear" | "wipe" | "timeou
       { name: `🎁 Rewards ${WHITE_LINE}`, value: note, inline: false },
     )
     .setFooter({ text: `Raid lasted ${session.roundNumber} round(s) · ${session.party.size} fighter(s) fielded their own cards` });
-  if (boss.cardImageUrl) embed.setImage(boss.cardImageUrl);
+  // Clear → the boss-roster gallery (defeated boss struck out). Else the boss art.
+  if (hasGallery) embed.setImage(`attachment://${RAID_GALLERY_FILE}`);
+  else if (boss.cardImageUrl) embed.setImage(boss.cardImageUrl);
   return embed;
 }
 
