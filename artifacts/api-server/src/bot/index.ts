@@ -465,9 +465,15 @@ export async function startBot() {
             guildId, interaction.user.id, card,
             effectiveRarityKey(effCard!, ctx) as import("./cards-data.js").Rarity,
           );
+          // Feature the same reveal canvas players see after a catch — now WITH
+          // the Level-1 stat block (and the viewer's ⭐ Star Rank baked in).
+          const { renderCardRevealCanvas, CARD_REVEAL_FILE } = await import("./cards/card-reveal-canvas.js");
+          const reveal = await renderCardRevealCanvas(guildId, cardId, { withStats: true, userId: interaction.user.id });
+          if (reveal) embed.setImage(`attachment://${CARD_REVEAL_FILE}`);
           await interaction.reply({
             embeds: [embed],
             components: [battleStatsLevelJumpRow(cardId)],
+            files: reveal ? [reveal.file] : [],
             flags: MessageFlags.Ephemeral,
           });
           return;
