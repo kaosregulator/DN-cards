@@ -1,5 +1,9 @@
-import type { ChatInputCommandInteraction } from "discord.js";
-import { EmbedBuilder, MessageFlags, AttachmentBuilder } from "discord.js";
+import type { ChatInputCommandInteraction, ButtonInteraction } from "discord.js";
+import { EmbedBuilder, MessageFlags, AttachmentBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } from "discord.js";
+
+// /pack can be driven by the slash command OR by the "Open Privately/Publicly"
+// prompt buttons; both only ever use editReply/followUp/guild/user.
+type PackInteraction = ChatInputCommandInteraction | ButtonInteraction;
 import { db, userCurrencyTable, cardsTable } from "@workspace/db";
 import { and, eq, sql } from "drizzle-orm";
 import {
@@ -24,6 +28,7 @@ import { renderPackCover, renderCardReveal, type RevealStats } from "../animatio
 import { getBattleSettings } from "../battle/config-engine.js";
 import { getScaledStats } from "../battle/stat-engine.js";
 import type { RenderCard } from "../battle/image/render.js";
+import { scheduleReplyDelete } from "../../lib/temp-message.js";
 
 // ── Tier definitions ─────────────────────────────────────────────────────────
 export type PackTier = "basic" | "premium" | "legendary";
@@ -251,7 +256,7 @@ const REVEAL_FILE = "pack-reveal.png";
 // lighter than a GIF. Fully best-effort: if the canvas isn't available or any
 // step fails, it silently ends on the summary so /pack never breaks.
 async function playPackReveal(opts: {
-  interaction: ChatInputCommandInteraction;
+  interaction: PackInteraction;
   guildId: string;
   tierColor: number;
   tierLabel: string;
@@ -602,7 +607,7 @@ async function drawCustomPack(pack: CustomPack, ctx: RarityContext, guildId: str
 
 // ── Custom pack open handler ──────────────────────────────────────────────────
 export async function handleCustomPack(
-  interaction: ChatInputCommandInteraction,
+  interaction: PackInteraction,
   guildId: string,
   userId: string,
   packId: number,
@@ -777,12 +782,15 @@ export async function handleCustomPack(
 }
 
 // ── Handler ──────────────────────────────────────────────────────────────────
-export async function handlePack(interaction: ChatInputCommandInteraction): Promise<void> {
+export async function handlePack(interaction: PackInteraction, tierOverride?: string | null): Promise<void> {
   if (!interaction.guild) return;
   const guildId = interaction.guild.id;
   const userId = interaction.user.id;
 
-  const tierRaw = interaction.options.getString("tier");
+  // Tier comes from the slash option, or from the privacy-prompt button (override).
+  const tierRaw = tierOverride !== undefined
+    ? tierOverride
+    : (interaction as ChatInputCommandInteraction).options.getString("tier");
 
   // Default to "basic" only when the option was entirely omitted.
   if (tierRaw === null) {
@@ -902,6 +910,53 @@ export async function handlePack(interaction: ChatInputCommandInteraction): Prom
       content: "🏆 **Achievement unlocked!**\n" + newly.map(formatUnlockLine).join("\n"),
       flags: MessageFlags.Ephemeral,
     }).catch(() => { /* ignore */ });
+  }
+}
+
+// ── /pack privacy prompt ──────────────────────────────────────────────────────
+// /pack now asks how to open BEFORE spending anything: publicly (pulls shown to
+// the channel) or privately (ephemeral, just you). The buttons carry the chosen
+// tier; opening happens only on click, and the prompt is cleaned up afterward.
+export async function handlePackPrompt(interaction: ChatInputCommandInteraction): Promise<void> {
+  if (!interaction.guild) return;
+  const guildId = interaction.guild.id;
+  const tierRaw = interaction.options.getString("tier") ?? "basic";
+
+  // Friendly label for the confirmation copy (no charge happens here).
+  let label = "Basic";
+  if (tierRaw.startsWith("custom:")) {
+    const packId = parseInt(tierRaw.slice(7), 10);
+    const pack = Number.isNaN(packId) ? null : await getCustomPack(packId).catch(() => null);
+    label = pack?.name ?? "Custom Pack";
+  } else if (PACK_TIERS.includes(tierRaw as PackTier)) {
+    label = tierLabel(await getOrCreateGuildSettings(guildId), tierRaw as PackTier);
+  }
+
+  const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder().setCustomId(`pack:open:pub:${tierRaw}`).setLabel("Open Publicly").setEmoji("📢").setStyle(ButtonStyle.Primary),
+    new ButtonBuilder().setCustomId(`pack:open:priv:${tierRaw}`).setLabel("Open Privately").setEmoji("🙈").setStyle(ButtonStyle.Secondary),
+  );
+  await interaction.editReply({
+    content: `📦 Ready to open **${label}**.\n**Open Publicly** shows your pulls to the channel · **Open Privately** keeps them to yourself.`,
+    components: [row],
+  });
+}
+
+// Handles the two prompt buttons. Private → render into the (ephemeral) prompt;
+// Public → open into a fresh public message. Re-clicks are gated by the pack
+// cooldown inside tryClaimPack, so nothing double-charges.
+export async function handlePackOpenButton(interaction: ButtonInteraction): Promise<void> {
+  const parts = interaction.customId.split(":"); // pack:open:<vis>:<tierRaw…>
+  const vis = parts[2];
+  const tierRaw = parts.slice(3).join(":") || "basic"; // rejoin (custom:<id> contains a colon)
+  if (vis === "priv") {
+    await interaction.deferUpdate().catch(() => {});
+    await handlePack(interaction, tierRaw);
+  } else {
+    await interaction.deferReply().catch(() => {});
+    await handlePack(interaction, tierRaw);
+    // Public reveal is a transient show-off — clear it 20s after it lands.
+    scheduleReplyDelete(interaction, 20_000);
   }
 }
 

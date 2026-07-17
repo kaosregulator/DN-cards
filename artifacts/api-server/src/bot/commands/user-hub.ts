@@ -30,6 +30,7 @@ import {
 import { buildQuestsEmbed } from "../quests/command.js";
 import { getRepView, giveRepChecked, removeRepChecked } from "./rep.js";
 import { buildSearchEmbed } from "../cards/search-command.js";
+import { renderHubHeader, HUB_HEADER_FILE } from "./hub-header.js";
 import {
   getUserCollection, getLeaderboard, getOrCreateGuildSettings,
   getRarityDisplayOverrides, getRarityContext, effectiveRarityKey, getDisplayRarities,
@@ -257,12 +258,16 @@ async function buildView(interaction: AnyInteraction, section: Section) {
   const avatar = interaction.user.displayAvatarURL();
 
   const rows: ActionRowBuilder<any>[] = [sectionRow(section)];
+  const files: AttachmentBuilder[] = [];
   let embeds: EmbedBuilder[];
 
   switch (section) {
-    case "progression":
-      embeds = [await buildProgressionEmbed(guildId, userId, username, avatar)];
+    case "progression": {
+      const { embed, file } = await buildProgressionEmbed(guildId, userId, username, avatar);
+      embeds = [embed];
+      if (file) files.push(file);
       break;
+    }
     case "profile":
       embeds = [await buildProfileEmbed(guildId, userId, username, avatar)];
       break;
@@ -318,7 +323,8 @@ async function buildView(interaction: AnyInteraction, section: Section) {
       break;
   }
   rows.push(sideRow());
-  return { embeds, components: rows };
+  // Always pass `files` (empty clears any prior header when switching sections).
+  return { embeds, components: rows, files };
 }
 
 // ── Quests / Wishlist / Reputation / Search sections ─────────────────────────
@@ -403,13 +409,32 @@ const XP_SOURCE_LABELS: Record<XpSource, string> = {
   collection: "🃏 Collection",
 };
 
-async function buildProgressionEmbed(guildId: string, userId: string, username: string, avatar: string) {
+async function buildProgressionEmbed(
+  guildId: string, userId: string, username: string, avatar: string,
+): Promise<{ embed: EmbedBuilder; file: AttachmentBuilder | null }> {
   const p = await getPlayerProfile(guildId, userId);
   const { account } = p;
 
   const levelLine = account.isMax
     ? `**Level ${account.level}** · MAX 🎉  ·  ${account.xp.toLocaleString()} XP`
     : `**Level ${account.level}**  ·  ${bar(account.into, account.needed, 12)}  ${account.into.toLocaleString()}/${account.needed.toLocaleString()} XP`;
+
+  // Generated header banner (avatar + level + XP + key stats). Best-effort — a
+  // null render just leaves the embed without a hero image.
+  const headerBuf = await renderHubHeader({
+    username, avatarUrl: avatar,
+    level: account.level,
+    xp: account.xp,
+    xpInto: account.isMax ? 1 : account.into,
+    xpSpan: account.isMax ? 1 : account.needed,
+    stats: [
+      { emoji: "💠", label: "Shards", value: compact(p.economy.shards) },
+      { emoji: "🃏", label: "Unique", value: p.collection.unique.toLocaleString() },
+      { emoji: "⚔️", label: "Record", value: `${p.battles.wins}-${p.battles.losses}` },
+      { emoji: "🔥", label: "Streak", value: String(p.daily.streak) },
+    ],
+  }).catch(() => null);
+  const file = headerBuf ? new AttachmentBuilder(headerBuf, { name: HUB_HEADER_FILE }) : null;
 
   // XP-by-source breakdown, highest first — shows every system contributes.
   const bySource = Object.entries(account.xpBySource)
@@ -465,8 +490,17 @@ async function buildProgressionEmbed(guildId: string, userId: string, username: 
       },
     )
     .setFooter({ text: "Use the dropdown to dive into any section." });
+  if (file) embed.setImage(`attachment://${HUB_HEADER_FILE}`);
 
-  return embed;
+  return { embed, file };
+}
+
+// Compact number formatting for the header chips (e.g. 71,564 → 71.6K).
+function compact(n: number): string {
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 10_000) return `${Math.round(n / 1000)}K`;
+  if (n >= 1_000) return `${(n / 1000).toFixed(1)}K`;
+  return n.toLocaleString();
 }
 
 // ── Collector profile ─────────────────────────────────────────────────────────

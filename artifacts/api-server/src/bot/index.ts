@@ -398,6 +398,13 @@ export async function startBot() {
           return;
         }
 
+        // ── Pack privacy prompt (Open Publicly / Open Privately) ───────────
+        if (action === "pack") {
+          const { handlePackOpenButton } = await import("./commands/pack.js");
+          await handlePackOpenButton(interaction);
+          return;
+        }
+
         // ── Card Recycle confirm button ───────────────────────────────────
         if (action === "recycle") {
           const { handleRecycleButton } = await import("./commands/tradein.js");
