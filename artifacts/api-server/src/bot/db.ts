@@ -13,6 +13,7 @@ import {
   battleBackgroundsTable,
 } from "@workspace/db";
 import { eq, and, or, sql, desc, inArray, isNull, type SQL } from "drizzle-orm";
+import { fuzzyFindCard, bumpCardsSearchVersion } from "./search/fuse-service.js";
 import type { Card, CardEvent, CardSet, CalculatorMessage, CustomPack, CustomPackCard, CustomRarity, GuildSettings, RarityProfile, Trade } from "@workspace/db";
 import {
   DEFAULT_CARDS, SHINY_RATE, SHINY_MULTIPLIER, type Rarity,
@@ -1029,6 +1030,8 @@ export async function getAllCardsCached(viewerGuildId?: string | null | undefine
 
 export function invalidateCardCache(): void {
   _cardsCache.clear();
+  // Card data changed → let the shared fuzzy-search index rebuild lazily.
+  bumpCardsSearchVersion();
 }
 
 export async function getCardByName(name: string, viewerGuildId?: string | null | undefined): Promise<Card | undefined> {
@@ -1046,8 +1049,13 @@ export async function getCardByName(name: string, viewerGuildId?: string | null 
     .from(cardDisplayOverridesTable)
     .where(sql`lower(${cardDisplayOverridesTable.displayName}) = ${slug}`)
     .limit(1);
-  if (!override) return undefined;
-  return getCardById(override.cardId, viewerGuildId);
+  if (override) return getCardById(override.cardId, viewerGuildId);
+  // Last resort: fuzzy match (typos / partial / acronym) via the shared search
+  // service, so every command that resolves a card by name (info, burn, frame,
+  // level, lock, market, raid admin, …) tolerates imperfect input — no per-call
+  // duplication. Uses the cached per-guild card index.
+  const roster = await getAllCardsCached(viewerGuildId);
+  return fuzzyFindCard(viewerGuildId, roster, name);
 }
 
 export async function getCardById(id: number, viewerGuildId?: string | null): Promise<Card | undefined> {

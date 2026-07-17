@@ -19,25 +19,31 @@ import {
   drawCardArt, drawCardFrame, drawRarityGlow, drawRarityBadge, drawTextWithShadow,
   drawTitle, drawFoilOverlay, drawHoloSparkles, getRarityEffectColor, fitText, drawScreenFlash, TITLE_FONT,
 } from "./effects.js";
+import { queueRender } from "./render-queue.js";
+import { drawSparks, drawEmbers, drawConfetti, drawExplosion } from "./particles.js";
 import { logger } from "../../lib/logger.js";
 
-// Core helper: allocate a canvas, draw, and encode a PNG. Never throws.
+// Core helper: allocate a canvas, draw, and encode a PNG. Never throws. Routed
+// through the shared render queue so concurrent card/pack/attack renders never
+// spike CPU (this is a leaf renderer — safe to queue).
 async function renderPng(
   width: number,
   height: number,
   draw: (ctx: Ctx, mod: CanvasMod) => Promise<void> | void,
 ): Promise<Buffer | null> {
-  const mod = await getCanvas();
-  if (!mod) return null;
-  try {
-    const canvas = mod.createCanvas(width, height);
-    const ctx = canvas.getContext("2d") as unknown as Ctx;
-    await draw(ctx, mod);
-    return await canvas.encode("png");
-  } catch (err) {
-    logger.debug({ err }, "reveal renderer: draw/encode failed");
-    return null;
-  }
+  return queueRender("reveal", async () => {
+    const mod = await getCanvas();
+    if (!mod) return null;
+    try {
+      const canvas = mod.createCanvas(width, height);
+      const ctx = canvas.getContext("2d") as unknown as Ctx;
+      await draw(ctx, mod);
+      return await canvas.encode("png");
+    } catch (err) {
+      logger.debug({ err }, "reveal renderer: draw/encode failed");
+      return null;
+    }
+  });
 }
 
 export const REVEAL_COVER = { width: 640, height: 400 } as const;
@@ -368,11 +374,24 @@ export async function renderAttackFrame(input: AttackFrameInput): Promise<Buffer
     if (theme.banner) drawTitle(ctx, theme.banner, width / 2 + 90, 78, theme.bannerColor, boss ? 22 : 20);
     if (boss) drawTextWithShadow(ctx, "⚔ BOSS RAID ⚔", width / 2 + 90, height - 26, hexToRgba(accent, 1), 18);
 
+    // Boss aura: embers drifting up off the attacker card.
+    if (boss) drawEmbers(ctx, cx - 10, cy, cw + 20, ch, { color: accent, seed: `${attacker.name}-ember` });
+
     // Impact FX + readout on the right. Boss hits always use the big treatment.
     const ix = width - 200, iy = height / 2;
     const big = boss || scene === "ultimate" || scene === "crit" || scene === "ko";
     drawImpact(ctx, theme.impact, ix, iy, accent, big);
     if (boss) drawImpact(ctx, theme.impact, ix, iy, accent, false); // layered burst = denser
+
+    // Particle accents (seeded → stable per identical frame). Crits/ultimates
+    // and boss hits throw sparks; a KO bursts a celebratory shockwave + confetti.
+    const pSeed = `${input.moveName}-${input.damage}-${scene}`;
+    if (scene === "ko") {
+      drawExplosion(ctx, ix, iy, { color: accent, radius: big ? 110 : 84, seed: pSeed });
+      drawConfetti(ctx, width, height, { seed: pSeed });
+    } else if (scene === "crit" || scene === "ultimate" || boss) {
+      drawSparks(ctx, ix, iy, { color: accent, count: big ? 20 : 14, maxLen: big ? 92 : 66, seed: pSeed });
+    }
 
     // Primary readout: damage for offensive scenes, banner-driven otherwise.
     const dmgBoost = boss ? 12 : 0;

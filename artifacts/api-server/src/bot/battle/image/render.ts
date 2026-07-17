@@ -21,6 +21,7 @@ import {
   RARITY_BADGE_BG, RARITY_BADGE_FG, resolveElement, resolveFrameAsset, FONTS, FONT_FILES,
 } from "./theme.js";
 import { logger } from "../../../lib/logger.js";
+import { queueRender } from "../../animations/render-queue.js";
 import { writeFile, unlink } from "node:fs/promises";
 import { randomUUID } from "node:crypto";
 import { tmpdir } from "node:os";
@@ -414,6 +415,7 @@ async function drawCard(ctx: Ctx, mod: CanvasMod, x: number, card: RenderCard) {
 export async function renderBattleImage(
   a: RenderCard, b: RenderCard, opts: RenderOpts = {},
 ): Promise<Buffer | null> {
+  return queueRender("battle-vs", async () => {
   const mod = await getCanvas();
   if (!mod) return null;
   try {
@@ -438,6 +440,7 @@ export async function renderBattleImage(
   } catch {
     return null; // never let an image error break a battle
   }
+  });
 }
 
 // ── Winner / victory image ───────────────────────────────────────────────────
