@@ -12,7 +12,10 @@ const EPHEMERAL_COMMANDS = new Set([
   "burn", "shards", "trades", "tradehistory", "help", "user_hub", "daily",
   "achievements", "packstats", "wishlist", "quests", "tradein", "level", "frame",
   "lock", "search", "collector", "calendar", "collection", "catalog", "list",
-  // "pack" and "gift" intentionally omitted → PUBLIC so pulls/animations are seen.
+  // "pack" defers ephemerally for the PRIVACY PROMPT; the actual open picks its
+  // own visibility (Open Publicly renders a fresh public message via its button).
+  "pack",
+  // "gift" intentionally omitted → PUBLIC (a shared, celebratory event).
 ]);
 import {
   getUserCollection, getAllCards, getLeaderboard, getTopPackOpeners,
@@ -34,7 +37,7 @@ import { handleTrade, handleAccept, handleDecline, handleListTrades, handleGift,
 import { handleDaily, handleAchievementsCommand } from "./daily.js";
 import { ACHIEVEMENTS, getAchievement, getUnlockedKeys, getRecentUnlocks } from "../achievements.js";
 import { toAbsoluteImageUrl } from "../image-url.js";
-import { handlePack, handlePackStats, tierLabel } from "./pack.js";
+import { handlePack, handlePackPrompt, handlePackStats, tierLabel } from "./pack.js";
 import { handleTradein } from "./tradein.js";
 import { handleWishlist } from "./wishlist.js";
 import { handleWelcome } from "./welcome.js";
@@ -961,7 +964,7 @@ export async function handleUserCommand(
     await handleCalendar(interaction);
     return;
   }
-  if (sub === "pack") { await handlePack(interaction); return; }
+  if (sub === "pack") { await handlePackPrompt(interaction); return; }
   if (sub === "packstats") { await handlePackStats(interaction); return; }
   if (sub === "tradein") { await handleTradein(interaction); return; }
   if (sub === "wishlist") { await handleWishlist(interaction); return; }

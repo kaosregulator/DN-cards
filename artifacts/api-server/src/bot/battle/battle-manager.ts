@@ -17,6 +17,7 @@ import {
   type StringSelectMenuInteraction, type Message, type User,
 } from "discord.js";
 import { logger } from "../../lib/logger.js";
+import { scheduleMessageDelete } from "../../lib/temp-message.js";
 import { renderBattleImage, type RenderCard } from "./image/render.js";
 import { renderAttackFrame, renderBattleVictory } from "../animations/index.js";
 import type { AttackScene } from "../animations/index.js";
@@ -929,10 +930,12 @@ async function finishBattle(rt: BattleRuntime, winnerSide: 0 | 1 | null, reason:
     const channel = rt.message.channel;
     for (const o of outcomes) {
       if (o.achievements.length > 0 && channel.isSendable()) {
-        await channel.send({
+        const toast = await channel.send({
           content: `🏆 <@${o.userId}> unlocked:\n${o.achievements.map(formatAchievementLine).join("\n")}`,
           allowedMentions: { users: [o.userId] },
-        }).catch(() => {});
+        }).catch(() => null);
+        // Notification, not a record — show it, then keep the channel clean.
+        scheduleMessageDelete(toast, 20_000);
       }
     }
     // Log the same victory embed, re-attaching the VS image so it stays with
@@ -952,10 +955,11 @@ async function finishBattle(rt: BattleRuntime, winnerSide: 0 | 1 | null, reason:
         const frames = l.newFrames.length > 0 ? `  ·  🖼️ unlocked: ${l.newFrames.join(", ")}` : "";
         return `🎖️ <@${l.userId}>'s **${l.cardName}** reached **Level ${l.newLevel}**${starUp}${frames}`;
       });
-      await rt.message.channel.send({
+      const toast = await rt.message.channel.send({
         content: lines.join("\n"),
         allowedMentions: { users: levelUps.map(l => l.userId) },
-      }).catch(() => {});
+      }).catch(() => null);
+      scheduleMessageDelete(toast, 20_000);
     }
   }
 
