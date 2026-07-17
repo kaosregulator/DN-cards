@@ -139,6 +139,18 @@ export async function pastWinnerIds(giveawayId: number): Promise<Set<string>> {
   return new Set(rows.map(r => r.userId));
 }
 
+// Mark every still-pending winner of a giveaway as expired — used when a
+// giveaway is cancelled or its message was deleted, so the sweeper stops
+// rerolling/re-announcing them.
+export async function expirePendingWinners(giveawayId: number): Promise<void> {
+  await db.update(giveawayWinnersTable)
+    .set({ claimStatus: "expired" })
+    .where(and(
+      eq(giveawayWinnersTable.giveawayId, giveawayId),
+      eq(giveawayWinnersTable.claimStatus, "pending"),
+    ));
+}
+
 export async function claimStatusesFor(giveawayId: number, statuses: GiveawayClaimStatus[]): Promise<GiveawayWinner[]> {
   return db.select().from(giveawayWinnersTable)
     .where(and(eq(giveawayWinnersTable.giveawayId, giveawayId), inArray(giveawayWinnersTable.claimStatus, statuses)));
