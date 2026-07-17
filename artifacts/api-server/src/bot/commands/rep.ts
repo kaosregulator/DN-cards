@@ -102,6 +102,42 @@ async function getRepLeaderboard(guildId: string, limit = 10) {
 // ── /rep command handler ─────────────────────────────────────────────────────
 // Called after handleUserCommand has already deferred the reply.
 
+// ── Hub-callable helpers (reused by the User-Hub Reputation section) ─────────
+export async function getRepView(guildId: string, userId: string): Promise<{
+  rep: number;
+  leaderboard: { userId: string; rep: number }[];
+}> {
+  const [mine, leaderboard] = await Promise.all([
+    getOrCreateRep(guildId, userId),
+    getRepLeaderboard(guildId, 10),
+  ]);
+  return { rep: mine.rep, leaderboard };
+}
+
+// Give rep with the same self/bot/cooldown checks as /rep give. Returns a
+// human-readable result the hub can surface.
+export async function giveRepChecked(
+  guildId: string, giverId: string, receiverId: string, receiverIsBot: boolean,
+): Promise<{ ok: boolean; message: string }> {
+  if (receiverId === giverId) return { ok: false, message: "❌ You can't rep yourself." };
+  if (receiverIsBot) return { ok: false, message: "❌ You can't rep a bot." };
+  const lastGiven = await getLastRepTime(guildId, giverId, receiverId);
+  if (lastGiven) {
+    const elapsed = Date.now() - lastGiven.getTime();
+    if (elapsed < REP_COOLDOWN_MS) {
+      const nextAt = Math.floor((lastGiven.getTime() + REP_COOLDOWN_MS) / 1000);
+      return { ok: false, message: `⏳ You already repped <@${receiverId}> recently — again <t:${nextAt}:R>.` };
+    }
+  }
+  const newRep = await giveRep(guildId, giverId, receiverId);
+  return { ok: true, message: `⭐ You repped <@${receiverId}> — they now have **${newRep}** rep.` };
+}
+
+// Admin-only rep removal, reused by the hub's admin control.
+export async function removeRepChecked(guildId: string, targetId: string, amount = 1): Promise<number> {
+  return removeRep(guildId, targetId, amount);
+}
+
 export async function handleRep(
   interaction: ChatInputCommandInteraction,
 ): Promise<void> {

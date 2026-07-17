@@ -747,6 +747,8 @@ export const HUB_REPLACED_COMMANDS = new Set<string>([
   // Player commands with full User-Hub parity.
   "collection", "daily", "calendar", "frame", "rank", "top", "achievements",
   "market", "squad",
+  // Now added as interactive User-Hub sections (Quests / Wishlist / Reputation / Search).
+  "quests", "wishlist", "rep", "search",
   // Bob minigame shortcuts — all reachable from the /bob menu.
   "bob_coinflip", "bob_dice", "bob_hl", "bob_slots", "bob_wheel", "bob_emoji",
   "bob_bj", "bob_rps", "bob_roulette", "bob_roast", "bob_talk",

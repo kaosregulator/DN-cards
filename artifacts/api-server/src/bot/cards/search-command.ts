@@ -28,22 +28,40 @@ function acronym(name: string): string {
     .join("");
 }
 
+export interface SearchOpts {
+  query?: string | null;
+  rarity?: string | null;
+  type?: string | null;
+  owned?: string | null; // "owned" | "missing" | null
+}
+
 // Free-text roster search with rarity/type/ownership filters. Fills the gap the
 // category-only /catalog leaves — find a card by name fragment across the whole
 // roster and see at a glance whether you own it.
 export async function handleSearch(interaction: ChatInputCommandInteraction): Promise<void> {
   if (!interaction.guild) return;
-  const guildId = interaction.guild.id;
-  const userId = interaction.user.id;
+  const result = await buildSearchEmbed(interaction.guild.id, interaction.user.id, {
+    query: interaction.options.getString("query"),
+    rarity: interaction.options.getString("rarity"),
+    type: interaction.options.getString("type"),
+    owned: interaction.options.getString("owned"),
+  });
+  await interaction.editReply(typeof result === "string" ? result : { embeds: [result] });
+}
 
-  const query = (interaction.options.getString("query") ?? "").trim();
-  const rarity = interaction.options.getString("rarity");
-  const type = interaction.options.getString("type")?.trim().toLowerCase();
-  const ownedFilter = interaction.options.getString("owned"); // owned | missing | null
+// Reusable search → returns an embed of results, or a plain string message for
+// the empty/no-input/no-match cases. Shared by the /search command and the
+// User-Hub Search section (which passes only a query).
+export async function buildSearchEmbed(
+  guildId: string, userId: string, opts: SearchOpts,
+): Promise<EmbedBuilder | string> {
+  const query = (opts.query ?? "").trim();
+  const rarity = opts.rarity ?? null;
+  const type = opts.type?.trim().toLowerCase() || null;
+  const ownedFilter = opts.owned ?? null; // owned | missing | null
 
   if (!query && !rarity && !type) {
-    await interaction.editReply("🔎 Give me something to search — a `query` (name), a `rarity`, or a `type`.");
-    return;
+    return "🔎 Give me something to search — a name query, a rarity, or a type.";
   }
 
   const [cards, collection, rarityCtx, settings, displayMap, starRanks] = await Promise.all([
@@ -114,8 +132,7 @@ export async function handleSearch(interaction: ChatInputCommandInteraction): Pr
 
   const total = results.length;
   if (total === 0) {
-    await interaction.editReply("🔎 No cards matched your search. Try a shorter query or fewer filters.");
-    return;
+    return "🔎 No cards matched your search. Try a shorter query or fewer filters.";
   }
 
   const shown = results.slice(0, MAX_RESULTS);
@@ -142,5 +159,5 @@ export async function handleSearch(interaction: ChatInputCommandInteraction): Pr
     .setDescription(lines.join("\n").slice(0, 4000))
     .setFooter({ text: `${filters.join(" · ")}${total > MAX_RESULTS ? ` · showing first ${MAX_RESULTS}` : ""} · ✅ owned  ❌ missing` });
 
-  await interaction.editReply({ embeds: [embed] });
+  return embed;
 }

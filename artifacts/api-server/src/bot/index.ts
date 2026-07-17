@@ -305,9 +305,14 @@ export async function startBot() {
         return;
       }
 
-      // ── User select menus (Bob roast target picker) ────────────────────────
+      // ── User select menus (Bob roast target picker, user-hub rep) ──────────
       if (interaction.isUserSelectMenu()) {
-        if (isBobComponent(interaction.customId)) await handleBobUserSelect(interaction);
+        if (isBobComponent(interaction.customId)) {
+          await handleBobUserSelect(interaction);
+        } else if (interaction.customId.startsWith("user-hub:")) {
+          const { handleUserHubComponent } = await import("./commands/user-hub.js");
+          await handleUserHubComponent(interaction);
+        }
         return;
       }
 
@@ -353,6 +358,9 @@ export async function startBot() {
         } else if (interaction.customId.startsWith("squad-hub:modal:")) {
           const { handleSquadHubModal } = await import("./commands/squad-hub.js");
           await handleSquadHubModal(interaction);
+        } else if (interaction.customId.startsWith("user-hub:modal:")) {
+          const { handleUserHubModal } = await import("./commands/user-hub.js");
+          await handleUserHubModal(interaction);
         } else if (isOpsComponent(interaction.customId)) {
           await handleOpsModal(interaction, client);
         }
