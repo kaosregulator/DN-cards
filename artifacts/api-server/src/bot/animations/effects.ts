@@ -7,6 +7,8 @@ import {
   hexToRgba, roundRectPath, lerp, easeOutBack, easeInOutCubic, easeOutElastic,
   clamp01, type CanvasMod, type Ctx, type TextAlign,
 } from "./engine.js";
+import { ObjectStorageService } from "../../lib/objectStorage.js";
+import { logger } from "../../lib/logger.js";
 
 export interface Particle {
   x: number;
@@ -241,11 +243,60 @@ type LoadedImage = import("@napi-rs/canvas").Image;
 const ART_CACHE_MAX = 128;
 const artCache = new Map<string, Promise<LoadedImage | null>>();
 
+const storage = new ObjectStorageService();
+
+function extractObjectStoragePath(url: string): string | null {
+  if (url.startsWith("/objects/")) return url;
+  try {
+    const u = new URL(url);
+    const prefix = "/api/storage/objects/";
+    const idx = u.pathname.indexOf(prefix);
+    if (idx !== -1) return u.pathname.slice(idx + "/api/storage".length);
+  } catch {
+    // not a URL
+  }
+  return null;
+}
+
+async function loadObjectStorageImage(objectPath: string): Promise<Buffer | null> {
+  try {
+    const file = await storage.getObjectEntityFile(objectPath);
+    const [buffer] = await file.download();
+    return buffer;
+  } catch (err) {
+    logger.warn({ err, objectPath }, "Failed to download object-storage image for canvas");
+    return null;
+  }
+}
+
 export async function loadArt(mod: CanvasMod, url: string | null | undefined): Promise<LoadedImage | null> {
   if (!url) return null;
   const cached = artCache.get(url);
   if (cached) return cached;
-  const promise = mod.loadImage(url).catch(() => null);
+
+  const promise = (async (): Promise<LoadedImage | null> => {
+    // If the URL is one of our object-storage paths, load it directly from GCS
+    // so server-side canvas rendering doesn't depend on the public HTTP domain.
+    const objectPath = extractObjectStoragePath(url);
+    if (objectPath) {
+      const buffer = await loadObjectStorageImage(objectPath);
+      if (buffer) {
+        try {
+          return await mod.loadImage(buffer);
+        } catch (err) {
+          logger.warn({ err, objectPath }, "Canvas failed to decode object-storage image");
+        }
+      }
+      // Fall back to the public URL if direct download fails.
+    }
+    try {
+      return await mod.loadImage(url);
+    } catch (err) {
+      logger.warn({ err, url }, "Canvas failed to load image by URL");
+      return null;
+    }
+  })();
+
   artCache.set(url, promise);
   // Evict oldest insertion once over capacity (Map preserves insertion order).
   if (artCache.size > ART_CACHE_MAX) {
