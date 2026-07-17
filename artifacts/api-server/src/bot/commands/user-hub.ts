@@ -20,7 +20,16 @@ import type {
 import {
   EmbedBuilder, ActionRowBuilder, StringSelectMenuBuilder, ButtonBuilder,
   ButtonStyle, MessageFlags, AttachmentBuilder,
+  UserSelectMenuBuilder, ModalBuilder, TextInputBuilder, TextInputStyle,
+  PermissionFlagsBits,
+  type UserSelectMenuInteraction, type ModalSubmitInteraction,
 } from "discord.js";
+import {
+  addWishlist, removeWishlist, getUserWishlist, getCardByName,
+} from "../db.js";
+import { buildQuestsEmbed } from "../quests/command.js";
+import { getRepView, giveRepChecked, removeRepChecked } from "./rep.js";
+import { buildSearchEmbed } from "../cards/search-command.js";
 import {
   getUserCollection, getLeaderboard, getOrCreateGuildSettings,
   getRarityDisplayOverrides, getRarityContext, effectiveRarityKey, getDisplayRarities,
@@ -48,7 +57,7 @@ const EPHEMERAL = { flags: MessageFlags.Ephemeral } as const;
 
 type Section =
   | "progression" | "profile" | "collection" | "battle-profile" | "battle-achievements"
-  | "daily" | "calendar" | "frames";
+  | "daily" | "calendar" | "frames" | "quests" | "reputation" | "wishlist" | "search";
 
 interface SectionMeta { id: Section; label: string; emoji: string; description: string }
 
@@ -59,8 +68,12 @@ const SECTIONS: SectionMeta[] = [
   { id: "battle-profile",      label: "Battle Profile",      emoji: "⚔️", description: "Your combat record & rank points" },
   { id: "battle-achievements", label: "Battle Achievements", emoji: "🎖️", description: "Combat badges you've unlocked" },
   { id: "daily",               label: "Daily",               emoji: "📅", description: "Claim your login reward + battle challenges" },
+  { id: "quests",              label: "Quests",              emoji: "🎯", description: "Your daily & weekly objectives" },
   { id: "calendar",            label: "Calendar",            emoji: "🗓️", description: "Your login streak calendar" },
   { id: "frames",              label: "Frames",              emoji: "🖼️", description: "Equip a cosmetic frame on a card" },
+  { id: "wishlist",            label: "Wishlist",            emoji: "⭐", description: "Cards you want — get pinged when they spawn" },
+  { id: "reputation",          label: "Reputation",          emoji: "🤝", description: "Give rep & see the rep leaderboard" },
+  { id: "search",              label: "Search",              emoji: "🔎", description: "Find any card by name across the roster" },
 ];
 
 // ── Entry point ──────────────────────────────────────────────────────────────
@@ -82,10 +95,56 @@ export async function openUserHubFromButton(interaction: ButtonInteraction): Pro
 
 // ── Component router (user-hub:* selects + buttons) ──────────────────────────
 export async function handleUserHubComponent(
-  interaction: StringSelectMenuInteraction | ButtonInteraction,
+  interaction: StringSelectMenuInteraction | ButtonInteraction | UserSelectMenuInteraction,
 ): Promise<void> {
   const parts = interaction.customId.split(":"); // user-hub:<action>[:arg]
   const action = parts[1] ?? "select";
+
+  // Reputation: give / admin-remove via user-select. The hub is ephemeral, so we
+  // update the source message in place and surface the result as a notice.
+  if ((action === "rep-give" || action === "rep-remove") && interaction.isUserSelectMenu()) {
+    const targetId = interaction.values[0]!;
+    let notice: string;
+    if (action === "rep-give") {
+      const target = interaction.users.first();
+      const res = await giveRepChecked(interaction.guildId!, interaction.user.id, targetId, target?.bot ?? false);
+      notice = res.message;
+    } else {
+      await removeRepChecked(interaction.guildId!, targetId, 1);
+      notice = `🛠️ Removed 1 rep from <@${targetId}>.`;
+    }
+    const isAdmin = !!interaction.memberPermissions?.has(PermissionFlagsBits.Administrator);
+    const view = await buildRepSection(interaction.guildId!, interaction.user.id, isAdmin, notice);
+    await interaction.update({ embeds: [view.embed], components: [sectionRow("reputation"), ...view.rows, sideRow()] }).catch(() => {});
+    return;
+  }
+
+  // Wishlist: remove a card via select.
+  if (action === "wishlist-remove" && interaction.isStringSelectMenu()) {
+    const cardId = Number(interaction.values[0]);
+    await removeWishlist(interaction.guildId!, interaction.user.id, cardId);
+    const view = await buildView(interaction, "wishlist");
+    await interaction.update(view).catch(() => {});
+    return;
+  }
+
+  // Wishlist add / Search: open a modal for free-text input.
+  if (action === "wishlist-add" && interaction.isButton()) {
+    await interaction.showModal(
+      new ModalBuilder().setCustomId("user-hub:modal:wishlist-add").setTitle("Add to Wishlist")
+        .addComponents(new ActionRowBuilder<TextInputBuilder>().addComponents(
+          new TextInputBuilder().setCustomId("name").setLabel("Card name").setStyle(TextInputStyle.Short).setRequired(true))),
+    ).catch(() => {});
+    return;
+  }
+  if (action === "search-new" && interaction.isButton()) {
+    await interaction.showModal(
+      new ModalBuilder().setCustomId("user-hub:modal:search").setTitle("Search the Roster")
+        .addComponents(new ActionRowBuilder<TextInputBuilder>().addComponents(
+          new TextInputBuilder().setCustomId("query").setLabel("Card name (or fragment)").setStyle(TextInputStyle.Short).setRequired(true))),
+    ).catch(() => {});
+    return;
+  }
 
   // Frame: a card was picked → show that card's frame options.
   if (action === "frame-card" && interaction.isStringSelectMenu()) {
@@ -142,6 +201,31 @@ export async function handleUserHubComponent(
   await interaction.update(view).catch(() => {});
 }
 
+// ── Modal submissions (Wishlist add + Search) ────────────────────────────────
+export async function handleUserHubModal(interaction: ModalSubmitInteraction): Promise<void> {
+  const kind = interaction.customId.split(":")[2]; // user-hub:modal:<kind>
+  await interaction.deferReply({ flags: MessageFlags.Ephemeral }).catch(() => {});
+  const guildId = interaction.guildId!;
+
+  if (kind === "wishlist-add") {
+    const name = interaction.fields.getTextInputValue("name").trim();
+    const card = await getCardByName(name, guildId);
+    if (!card) { await interaction.editReply(`❌ No card named **${name}**.`); return; }
+    if (card.isArchived) { await interaction.editReply(`❌ **${card.name}** is archived and can't be wishlisted.`); return; }
+    const added = await addWishlist(guildId, interaction.user.id, card.id);
+    await interaction.editReply(added
+      ? `⭐ Added **${card.name}** to your wishlist — you'll be pinged when it spawns.`
+      : `**${card.name}** is already on your wishlist.`);
+    return;
+  }
+  if (kind === "search") {
+    const query = interaction.fields.getTextInputValue("query").trim();
+    const result = await buildSearchEmbed(guildId, interaction.user.id, { query });
+    await interaction.editReply(typeof result === "string" ? { content: result } : { embeds: [result] });
+    return;
+  }
+}
+
 // ── Section dropdown ──────────────────────────────────────────────────────────
 function sectionRow(current: Section) {
   const select = new StringSelectMenuBuilder()
@@ -163,7 +247,7 @@ function sideRow() {
   );
 }
 
-type AnyInteraction = ChatInputCommandInteraction | StringSelectMenuInteraction | ButtonInteraction;
+type AnyInteraction = ChatInputCommandInteraction | StringSelectMenuInteraction | ButtonInteraction | UserSelectMenuInteraction;
 
 // ── View builder — returns embeds + components for a section ──────────────────
 async function buildView(interaction: AnyInteraction, section: Section) {
@@ -210,9 +294,95 @@ async function buildView(interaction: AnyInteraction, section: Section) {
       if (cardRow) rows.push(cardRow);
       break;
     }
+    case "quests":
+      embeds = [await buildQuestsEmbed(guildId, userId, username)];
+      break;
+    case "wishlist": {
+      const view = await buildWishlistSection(guildId, userId, username);
+      embeds = [view.embed];
+      rows.push(...view.rows);
+      break;
+    }
+    case "reputation": {
+      const isAdmin = !!interaction.memberPermissions?.has(PermissionFlagsBits.Administrator);
+      const view = await buildRepSection(guildId, userId, isAdmin);
+      embeds = [view.embed];
+      rows.push(...view.rows);
+      break;
+    }
+    case "search":
+      embeds = [buildSearchPromptEmbed()];
+      rows.push(new ActionRowBuilder<ButtonBuilder>().addComponents(
+        new ButtonBuilder().setCustomId("user-hub:search-new").setLabel("New Search").setEmoji("🔎").setStyle(ButtonStyle.Primary),
+      ));
+      break;
   }
   rows.push(sideRow());
   return { embeds, components: rows };
+}
+
+// ── Quests / Wishlist / Reputation / Search sections ─────────────────────────
+function buildSearchPromptEmbed(): EmbedBuilder {
+  return new EmbedBuilder()
+    .setColor(0x3498db)
+    .setTitle("🔎 Search the Roster")
+    .setDescription(
+      "Find any card by name across the whole roster and see at a glance whether you own it (with ⭐ Star Rank).\n\n" +
+      "Press **New Search** and type a name (or fragment). Results are typo-tolerant.",
+    );
+}
+
+async function buildWishlistSection(
+  guildId: string, userId: string, username: string,
+): Promise<{ embed: EmbedBuilder; rows: ActionRowBuilder<any>[] }> {
+  const items = await getUserWishlist(guildId, userId);
+  const embed = new EmbedBuilder().setColor(0xf1c40f).setTitle(`⭐ ${username}'s Wishlist (${items.length})`);
+  if (items.length === 0) {
+    embed.setDescription("Your wishlist is empty. Press **Add Card** — you'll be pinged when a wished card spawns.");
+  } else {
+    embed.setDescription(items.map(i => `• **${i.name}**`).join("\n").slice(0, 4000))
+      .setFooter({ text: "Wished cards ping you when they spawn." });
+  }
+  const rows: ActionRowBuilder<any>[] = [];
+  if (items.length > 0) {
+    rows.push(new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
+      new StringSelectMenuBuilder().setCustomId("user-hub:wishlist-remove").setPlaceholder("🗑️ Remove a card…")
+        .addOptions(items.slice(0, 25).map(i => ({ label: i.name.slice(0, 100), value: String(i.cardId) }))),
+    ));
+  }
+  rows.push(new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder().setCustomId("user-hub:wishlist-add").setLabel("Add Card").setEmoji("➕").setStyle(ButtonStyle.Success),
+  ));
+  return { embed, rows };
+}
+
+async function buildRepSection(
+  guildId: string, userId: string, isAdmin: boolean, notice?: string,
+): Promise<{ embed: EmbedBuilder; rows: ActionRowBuilder<any>[] }> {
+  const { rep, leaderboard } = await getRepView(guildId, userId);
+  const medals = ["🥇", "🥈", "🥉"];
+  const board = leaderboard.length
+    ? leaderboard.map((r, i) => `${medals[i] ?? `**${i + 1}.**`} <@${r.userId}> — **${r.rep}** rep`).join("\n")
+    : "_No one has rep yet — be the first to give some!_";
+  const embed = new EmbedBuilder()
+    .setColor(0xf39c12)
+    .setTitle("🤝 Reputation")
+    .setDescription(
+      (notice ? `${notice}\n\n` : "") +
+      `You have **${rep}** rep point${rep === 1 ? "" : "s"}.\n\nUse the picker to **give** a member +1 rep (once per person per day).`,
+    )
+    .addFields({ name: "⭐ Rep Leaderboard", value: board, inline: false });
+  const rows: ActionRowBuilder<any>[] = [
+    new ActionRowBuilder<UserSelectMenuBuilder>().addComponents(
+      new UserSelectMenuBuilder().setCustomId("user-hub:rep-give").setPlaceholder("⭐ Give someone +1 rep…"),
+    ),
+  ];
+  if (isAdmin) {
+    rows.push(new ActionRowBuilder<UserSelectMenuBuilder>().addComponents(
+      new UserSelectMenuBuilder().setCustomId("user-hub:rep-remove").setPlaceholder("🛠️ Admin: remove 1 rep from…"),
+    ));
+  }
+  return { embed, rows };
 }
 
 // ── Unified progression ───────────────────────────────────────────────────────

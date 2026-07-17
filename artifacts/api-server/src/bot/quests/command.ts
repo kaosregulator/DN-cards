@@ -23,11 +23,8 @@ function sectionValue(quests: Quest[]): string {
   return quests.map(renderQuest).join("\n\n");
 }
 
-export async function handleQuests(interaction: ChatInputCommandInteraction): Promise<void> {
-  if (!interaction.guild) return;
-  const guildId = interaction.guild.id;
-  const userId = interaction.user.id;
-
+// Reusable quests embed — shared by /quests and the User-Hub Quests section.
+export async function buildQuestsEmbed(guildId: string, userId: string, username: string): Promise<EmbedBuilder> {
   const [{ daily, weekly }, currency] = await Promise.all([
     getQuestView(guildId, userId),
     getOrCreateCurrency(guildId, userId),
@@ -36,8 +33,8 @@ export async function handleQuests(interaction: ChatInputCommandInteraction): Pr
   const dailyDone = daily.quests.filter(q => q.done).length;
   const weeklyDone = weekly.quests.filter(q => q.done).length;
 
-  const embed = new EmbedBuilder()
-    .setTitle(`🎯 ${interaction.user.username}'s Quests`)
+  return new EmbedBuilder()
+    .setTitle(`🎯 ${username}'s Quests`)
     .setColor(0x9b59b6)
     .setDescription(
       `Complete objectives to earn 💠 shards and packs. Progress is tracked automatically — rewards are granted the moment a quest completes.\n` +
@@ -48,6 +45,10 @@ export async function handleQuests(interaction: ChatInputCommandInteraction): Pr
       { name: `🗓️ Weekly — ${weeklyDone}/${weekly.quests.length} done (resets Monday UTC)`, value: sectionValue(weekly.quests), inline: false },
     )
     .setFooter({ text: "Quests rotate each day and week." });
+}
 
+export async function handleQuests(interaction: ChatInputCommandInteraction): Promise<void> {
+  if (!interaction.guild) return;
+  const embed = await buildQuestsEmbed(interaction.guild.id, interaction.user.id, interaction.user.username);
   await interaction.editReply({ embeds: [embed] });
 }

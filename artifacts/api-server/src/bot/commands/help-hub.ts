@@ -159,7 +159,7 @@ const PAGES: Record<HelpSection, PageFn> = {
           "`/info name:<card>` — details, worth, drop chance\n" +
           "`/list` — full roster grouped by rarity\n" +
           "`/catalog category:<rarity|event|limited|all>` — browse by type\n" +
-          "`/search query:<text>` — free-text card search (shows ⭐ on cards you own)" },
+          "**/user-hub → Search** — free-text card search (shows ⭐ on cards you own)" },
         { name: "🏅 Progress & Rank", value:
           "**/user-hub → Progression** — account level & XP across every activity\n" +
           "**/user-hub → Collector Profile** — rank, net worth, achievements & the leaderboard\n" +
@@ -214,8 +214,7 @@ const PAGES: Record<HelpSection, PageFn> = {
           "`/accept id:<n>` · `/decline id:<n>` (or use the buttons on the offer)\n" +
           "Deals over **3:1** in value show an orange ⚠️ fairness warning (informational)." },
         { name: "📌 Wishlist", value:
-          "`/wishlist add name:<card>` — get pinged when it spawns\n" +
-          "`/wishlist remove name:<card>` · `/wishlist list [user]`" },
+          "**/user-hub → Wishlist** — add cards you want (get pinged when they spawn), see your list, and remove entries." },
         { name: "🏪 Marketplace", value:
           "Open the **🏪 Market** from `/user-hub` — one panel to **sell** (fixed price or timed auction), **browse** active listings, **buy** or **buy out**, **bid** on auctions, and **manage** your own listings & bids." },
       );
@@ -264,11 +263,10 @@ const PAGES: Record<HelpSection, PageFn> = {
       .setDescription("Extra goals and community standing layered on top of everyday play." + NAV_HINT)
       .addFields(
         { name: "🎯 Quests", value:
-          "`/quests` — your **daily** and **weekly** objectives (catch, open packs, trade, battle, burn, claim daily).\n" +
+          "**/user-hub → Quests** — your **daily** and **weekly** objectives (catch, open packs, trade, battle, burn, claim daily).\n" +
           "Progress tracks automatically as you play; complete them for 💠 shards and the occasional free pack." },
         { name: "⭐ Reputation", value:
-          "`/rep give @user` — give someone +1 rep\n" +
-          "`/rep check [@user]` — see a rep score · `/rep top` — leaderboard" },
+          "**/user-hub → Reputation** — give a member +1 rep (once per person per day) and see the rep leaderboard." },
         { name: "🙏 Thanks", value:
           "`/thanks give @user` — thank a helpful member\n" +
           "`/thanks top` — most-appreciated leaderboard" },
