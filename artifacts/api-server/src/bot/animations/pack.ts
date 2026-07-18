@@ -7,13 +7,13 @@ import type { Rarity } from "../cards-data.js";
 import type { RenderCard } from "../battle/image/render.js";
 import type { PackAnimationInput, AnimationSpeed, AnimationResult } from "./types.js";
 import {
-  encodeAnimation, PACK_CANVAS, lerp, easeOutBack, easeInOutCubic, clamp01,
+  encodeAnimation, getCanvas, PACK_CANVAS, lerp, easeOutBack, easeInOutCubic, clamp01,
   hexToRgba, drawGradientBackground, type CanvasMod,
 } from "./engine.js";
 import {
   createBurst, updateParticles, drawParticles, drawRarityGlow, drawFoilOverlay,
   drawHoloSparkles, drawShineSweep, drawCardArt, drawCardFrame, drawRarityBadge,
-  drawTextWithShadow, fitText, getRarityEffectColor, rarityBurstCount,
+  drawTextWithShadow, fitText, getRarityEffectColor, rarityBurstCount, loadArt,
 } from "./effects.js";
 import { drawAtmosphere } from "./atmosphere.js";
 import { simulateWrapperTear, drawWrapperShards } from "./physics.js";
@@ -29,6 +29,12 @@ export async function renderPackOpening(
   input: PackAnimationInput,
   speed: AnimationSpeed,
 ): Promise<AnimationResult | null> {
+  // Pre-load all card art so the first animated frame doesn't render blank
+  // placeholders while the images are still downloading.
+  const mod = await getCanvas();
+  if (!mod) return null;
+  await Promise.all(input.cards.map(c => c.artUrl ? loadArt(mod, c.artUrl) : Promise.resolve()));
+
   return encodeAnimation({
     width: PACK_CANVAS.width,
     height: PACK_CANVAS.height,
