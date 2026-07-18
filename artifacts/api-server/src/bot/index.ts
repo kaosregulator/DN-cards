@@ -285,6 +285,9 @@ export async function startBot() {
         } else if (interaction.customId.startsWith("edituser:")) {
           const { handleEditUserInteraction } = await import("./commands/edit-user.js");
           await handleEditUserInteraction(interaction);
+        } else if (interaction.customId.startsWith("recycle:")) {
+          const { handleRecycleComponent } = await import("./cards/recycle-generator.js");
+          await handleRecycleComponent(interaction);
         }
         return;
       }

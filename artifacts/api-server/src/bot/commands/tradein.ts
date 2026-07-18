@@ -20,6 +20,7 @@ import { toAbsoluteImageUrl } from "../image-url.js";
 import {
   recycleQuote, recycleCard, recycleCost, starRankString, MAX_STAR,
 } from "../cards/stars.js";
+import { handleRecycleHubCommand, handleRecycleComponent, handleRecycleConfirmButton } from "../cards/recycle-generator.js";
 
 const EPHEMERAL = { flags: MessageFlags.Ephemeral } as const;
 
@@ -48,97 +49,41 @@ export async function handleTradein(interaction: ChatInputCommandInteraction): P
   const userId = interaction.user.id;
   if (!interaction.deferred && !interaction.replied) await interaction.deferReply(EPHEMERAL).catch(() => {});
 
-  const name = interaction.options.getString("name", true).trim();
+  const name = interaction.options.getString("name")?.trim();
+
+  // No name provided → launch the interactive Recycle Card Generator hub.
+  if (!name) {
+    await handleRecycleHubCommand(interaction);
+    return;
+  }
+
   const card = await getCardByName(name, guildId);
   if (!card) {
-    await interaction.editReply(`❌ Couldn't find a card called **${name}**. Use the autocomplete to pick one you own.`);
+    await interaction.editReply(`❌ Couldn't find a card called **${name}**. Use the autocomplete to pick one you own, or run \`/recycle\` without a name for the generator.`);
     return;
   }
 
-  const [quote, disp] = await Promise.all([
-    recycleQuote(guildId, userId, card.id),
-    displayFor(guildId, card),
-  ]);
-
-  const embed = new EmbedBuilder()
-    .setColor(disp.color ?? 0x2ecc71)
-    .setAuthor({ name: `♻️ Card Recycle — ${card.name}` })
-    .setDescription(
-      `${disp.emoji} **${card.name}** · ${disp.label}\n` +
-      `**Star Rank:** ${starRankString(quote.star)}  (${quote.star}★)\n` +
-      `Rarity and Star Rank are separate — recycling never changes the card's rarity.`,
-    );
-  const thumb = toAbsoluteImageUrl(card.imageUrl);
-  if (thumb) embed.setThumbnail(thumb);
-
-  if (quote.atMax) {
-    embed.addFields({ name: "Maxed", value: `This card is already **${MAX_STAR}★** — the highest Star Rank.`, inline: false });
-    await interaction.editReply({ embeds: [embed], components: [] });
+  // Named card → show the interactive selected-card view (with canvas) instead of the old text embed.
+  const { buildRecycleSelectedMessage } = await import("../cards/recycle-generator.js");
+  const msg = await buildRecycleSelectedMessage(guildId, userId, card.id);
+  if (typeof msg === "string") {
+    await interaction.editReply({ content: msg, embeds: [], components: [], files: [] });
     return;
   }
-
-  embed.addFields({
-    name: `Next: ${quote.star}★ → ${quote.star + 1}★`,
-    value:
-      `Cost: **${quote.cost}** duplicate copies\n` +
-      `You have **${quote.spendable}** spendable ${quote.spendable === 1 ? "duplicate" : "duplicates"} (1 copy is always kept).`,
-    inline: false,
-  });
-
-  if (!quote.canRecycle) {
-    embed.addFields({
-      name: "Not enough duplicates",
-      value: `Catch or pull **${Math.max(0, quote.cost - quote.spendable)}** more **${card.name}** to recycle to ${quote.star + 1}★.`,
-      inline: false,
-    });
-    await interaction.editReply({ embeds: [embed], components: [] });
-    return;
-  }
-
-  await interaction.editReply({ embeds: [embed], components: [recycleRow(card.id, false)] });
+  await interaction.editReply(msg);
 }
 
 // Button: recycle:do:<cardId> — confirm and perform one recycle step.
 export async function handleRecycleButton(interaction: ButtonInteraction): Promise<void> {
-  if (!interaction.guild) return;
-  const guildId = interaction.guild.id;
-  const userId = interaction.user.id;
-  const cardId = Number(interaction.customId.split(":")[2]);
-  await interaction.deferUpdate().catch(() => {});
-
-  const card = await getCardById(cardId, guildId);
-  if (!card) { await interaction.editReply({ content: "❌ Card no longer available.", embeds: [], components: [] }); return; }
-
-  const res = await recycleCard(guildId, userId, cardId);
-  const disp = await displayFor(guildId, card);
-
-  if (!res.ok) {
-    const msg = res.reason === "max_star" ? "This card is already at max Star Rank."
-      : res.reason === "not_enough" ? "You no longer have enough duplicate copies to recycle."
-      : "Something went wrong recycling that card.";
-    await interaction.editReply({ content: `❌ ${msg}`, embeds: [], components: [] });
+  // Route the new interactive generator actions to the generator handler, and the
+  // legacy recycle:do confirm to the animated confirm handler.
+  const parts = interaction.customId.split(":");
+  if (parts[0] !== "recycle") return;
+  if (parts[1] === "select" || parts[1] === "back" || parts[1] === "search" || parts[1] === "search-select") {
+    await handleRecycleComponent(interaction);
     return;
   }
-
-  const embed = new EmbedBuilder()
-    .setColor(disp.color ?? 0xf1c40f)
-    .setAuthor({ name: `⭐ Star Up! — ${card.name}` })
-    .setDescription(
-      `${disp.emoji} **${card.name}** recycled **${res.consumed}** duplicates.\n\n` +
-      `**${starRankString(res.fromStar)}**  →  **${starRankString(res.toStar)}**  (${res.toStar}★)\n` +
-      `Its battle stats now scale with the new Star Rank.`,
-    );
-  const thumb = toAbsoluteImageUrl(card.imageUrl);
-  if (thumb) embed.setThumbnail(thumb);
-
-  // Offer another recycle if still possible.
-  const next = await recycleQuote(guildId, userId, cardId);
-  if (!next.atMax && next.canRecycle) {
-    embed.addFields({ name: `Next: ${next.star}★ → ${next.star + 1}★`, value: `Cost: **${next.cost}** duplicates · you have **${next.spendable}**.`, inline: false });
-    await interaction.editReply({ embeds: [embed], components: [recycleRow(cardId, false)] });
-  } else {
-    await interaction.editReply({ embeds: [embed], components: [] });
-  }
+  await handleRecycleConfirmButton(interaction);
 }
 
 // Kept for compatibility with any older imports.
