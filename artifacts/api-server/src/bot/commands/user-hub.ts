@@ -46,7 +46,9 @@ import { buildCalendarEmbed } from "../cards/calendar-command.js";
 import { claimDailyReward } from "./daily.js";
 import {
   framesForRarity, resolveActiveFrame, isFrameUnlocked, defaultFrameForRarity,
+  getRaidFrames,
 } from "../cards/frames.js";
+import { getRaidFrameUnlocks } from "../raid/db.js";
 import { getCardProgress, setEquippedFrame, starsForLevel } from "../cards/leveling.js";
 import { renderShowcaseImage } from "../battle/image/render.js";
 import { toAbsoluteImageUrl } from "../image-url.js";
@@ -621,10 +623,14 @@ async function buildFramePickerView(interaction: AnyInteraction, cardId: number)
     return { embeds: [new EmbedBuilder().setColor(0xe74c3c).setTitle("❌ Card not found").setDescription("You don't own that card anymore.")], components: [sectionRow("frames")] };
   }
   const rarity = item.rarity as Rarity;
-  const progress = await getCardProgress(guildId, userId, cardId);
+  const [progress, raidUnlocks] = await Promise.all([
+    getCardProgress(guildId, userId, cardId),
+    getRaidFrameUnlocks(guildId, userId),
+  ]);
   const level = progress?.level ?? 1;
   const frames = framesForRarity(rarity);
-  const active = resolveActiveFrame(rarity, progress?.equippedFrame ?? null, level);
+  const earnedRaidFrames = getRaidFrames().filter(f => raidUnlocks.has(f.id));
+  const active = resolveActiveFrame(rarity, progress?.equippedFrame ?? null, level, raidUnlocks);
 
   const lines = frames.map(f => {
     const isActive = f.id === active.id;
@@ -632,20 +638,35 @@ async function buildFramePickerView(interaction: AnyInteraction, cardId: number)
     const tag = isActive ? "**✓ equipped**" : unlocked ? "available" : `🔒 Lv ${f.unlockLevel}`;
     return `${f.emoji} **${f.name}** — ${tag}`;
   });
+  if (earnedRaidFrames.length) {
+    lines.push("", "**🐉 Raid Rewards** (equippable on any card)");
+    for (const f of earnedRaidFrames) {
+      lines.push(`${f.emoji} **${f.name}** — ${f.id === active.id ? "**✓ equipped**" : "available"}`);
+    }
+  }
   const embed = new EmbedBuilder()
     .setColor(active.color)
     .setTitle(`🖼️ Frames for ${item.name}`)
     .setDescription(`Card level: **${level}**\n\n${lines.join("\n")}\n\nPick an unlocked frame below to equip it.`);
 
-  const select = new StringSelectMenuBuilder()
-    .setCustomId(`user-hub:frame-pick:${cardId}`)
-    .setPlaceholder("Equip a frame…")
-    .addOptions(frames.map(f => ({
+  const options = [
+    ...frames.map(f => ({
       label: f.name.slice(0, 100),
       value: f.id,
       emoji: f.emoji,
       description: isFrameUnlocked(f, level) ? (f.id === active.id ? "Currently equipped" : "Available") : `Unlocks at Lv ${f.unlockLevel}`,
-    })));
+    })),
+    ...earnedRaidFrames.map(f => ({
+      label: f.name.slice(0, 100),
+      value: f.id,
+      emoji: f.emoji,
+      description: f.id === active.id ? "Currently equipped" : "🐉 Raid reward — available",
+    })),
+  ];
+  const select = new StringSelectMenuBuilder()
+    .setCustomId(`user-hub:frame-pick:${cardId}`)
+    .setPlaceholder("Equip a frame…")
+    .addOptions(options.slice(0, 25));
   return {
     embeds: [embed],
     components: [sectionRow("frames"), new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(select)],
@@ -660,16 +681,24 @@ async function equipFrame(interaction: StringSelectMenuInteraction, cardId: numb
   const item = items.find(i => i.cardId === cardId);
   if (!item) { await interaction.update(await buildView(interaction, "frames")); return; }
   const rarity = item.rarity as Rarity;
-  const progress = await getCardProgress(guildId, userId, cardId);
+  const [progress, raidUnlocks] = await Promise.all([
+    getCardProgress(guildId, userId, cardId),
+    getRaidFrameUnlocks(guildId, userId),
+  ]);
   const level = progress?.level ?? 1;
   const frames = framesForRarity(rarity);
-  const match = frames.find(f => f.id === frameId);
+  const match = frames.find(f => f.id === frameId) ?? getRaidFrames().find(f => f.id === frameId);
 
   if (!match) {
     await interaction.reply({ content: "❌ Unknown frame.", ...EPHEMERAL }).catch(() => {});
     return;
   }
-  if (!isFrameUnlocked(match, level)) {
+  if (match.account) {
+    if (!raidUnlocks.has(match.id)) {
+      await interaction.reply({ content: `🔒 **${match.name}** is a raid reward — clear the boss that grants it first.`, ...EPHEMERAL }).catch(() => {});
+      return;
+    }
+  } else if (!isFrameUnlocked(match, level)) {
     await interaction.reply({ content: `🔒 **${match.name}** unlocks at card **Level ${match.unlockLevel}** — this card is Level ${level}.`, ...EPHEMERAL }).catch(() => {});
     return;
   }
@@ -781,12 +810,13 @@ async function renderAndPostShowcase(
 ) {
   const guildId = interaction.guildId!;
   const userId = interaction.user.id;
-  const [settings, backgrounds] = await Promise.all([
+  const [settings, backgrounds, raidUnlocks] = await Promise.all([
     getOrCreateGuildSettings(guildId),
     getShowcaseBackgrounds(guildId),
+    getRaidFrameUnlocks(guildId, userId),
   ]);
   const stars = starsForLevel(level);
-  const frame = resolveActiveFrame(item.rarity as Rarity, progress?.equippedFrame ?? null, level);
+  const frame = resolveActiveFrame(item.rarity as Rarity, progress?.equippedFrame ?? null, level, raidUnlocks);
 
   const caughtLabel = item.firstCaughtAt
     ? `Caught · ${new Date(item.firstCaughtAt).toLocaleDateString(undefined, { month: "short", year: "numeric" })}`

@@ -56,10 +56,6 @@ import {
 } from "./bob/router.js";
 import { startBobEvents } from "./bob/events.js";
 import { handleBobMention } from "./bob/talk.js";
-import { handleSupportCommand } from "./operations/command.js";
-import { handleOpsAdminCommand } from "./operations/admin.js";
-import { isOpsComponent, handleOpsButton, handleOpsSelect, handleOpsChannelSelect, handleOpsModal } from "./operations/router.js";
-import { startOpsMaintenance } from "./operations/runtime.js";
 import { handleWhisperCommand, handleAdminSecretCommand, handleEchoCommand } from "./secret/commands.js";
 import { isSecretModal, handleSecretModal, isSecretButton, handleSecretButton } from "./secret/interactions.js";
 import {
@@ -167,7 +163,6 @@ export async function startBot() {
     startMarketMaintenance();
     startGiveawayMaintenance();
     startBobEvents(client);
-    startOpsMaintenance(client);
     await registerCommands(c.user.id, token, client);
     // AFK Secretary: start the timed auto-remove sweeper (clears "timed" AFKs
     // once their countdown elapses; presence/messages can't cover this).
@@ -257,8 +252,6 @@ export async function startBot() {
         } else if (interaction.customId.startsWith("squad-hub:")) {
           const { handleSquadHubComponent } = await import("./commands/squad-hub.js");
           await handleSquadHubComponent(interaction);
-        } else if (isOpsComponent(interaction.customId)) {
-          await handleOpsSelect(interaction, client);
         } else if (isBobComponent(interaction.customId)) {
           await handleBobSelect(interaction);
         } else if (interaction.customId.startsWith("battle:")) {
@@ -302,8 +295,6 @@ export async function startBot() {
           await handleSetChannelsApply(interaction);
         } else if (interaction.customId.startsWith("battleadmin:")) {
           await handleBattleAdminChannelSelect(interaction);
-        } else if (isOpsComponent(interaction.customId)) {
-          await handleOpsChannelSelect(interaction, client);
         }
         return;
       }
@@ -850,7 +841,7 @@ export async function startBot() {
     "bob_roulette", "bob_duel", "bob_roast", "bob_talk", "bob_stats", "bob_leaderboard", "bob_admin",
     "whisper", "adminsecret", "echo", "afk", "afksetup",
     "valuehelp", "valuelist", "info_mttv", "giveall", "editpack", "postcalculator",
-    "opsadmin", "support", "massrole",
+    "massrole",
   ]);
   const unmapped = buildCommands()
     .map(c => internalCommandName(c.name))
