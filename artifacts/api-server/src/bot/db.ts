@@ -633,7 +633,7 @@ export async function getCardsInSet(setId: number, viewerGuildId?: string | null
     maxCopies: cardsTable.maxCopies, totalMinted: cardsTable.totalMinted,
     imageUrl: cardsTable.imageUrl, flavor: cardsTable.flavor,
     droppable: cardsTable.droppable, inPacks: cardsTable.inPacks,
-    isArchived: cardsTable.isArchived,
+    isArchived: cardsTable.isArchived, isBossCard: cardsTable.isBossCard,
     podiumPlace: cardsTable.podiumPlace,
     previewAnimation: cardsTable.previewAnimation, previewBgColor: cardsTable.previewBgColor,
     displayOrientation: cardsTable.displayOrientation,
@@ -662,7 +662,7 @@ export async function getUnassignedCards(viewerGuildId?: string | null): Promise
     maxCopies: cardsTable.maxCopies, totalMinted: cardsTable.totalMinted,
     imageUrl: cardsTable.imageUrl, flavor: cardsTable.flavor,
     droppable: cardsTable.droppable, inPacks: cardsTable.inPacks,
-    isArchived: cardsTable.isArchived,
+    isArchived: cardsTable.isArchived, isBossCard: cardsTable.isBossCard,
     podiumPlace: cardsTable.podiumPlace,
     previewAnimation: cardsTable.previewAnimation, previewBgColor: cardsTable.previewBgColor,
     displayOrientation: cardsTable.displayOrientation,
@@ -1065,12 +1065,20 @@ export async function getCardById(id: number, viewerGuildId?: string | null): Pr
   return card;
 }
 
+// Flag an existing card as a boss card (untradeable by default; see
+// guildSettings.allowBossCardTrades). Used when an admin links an EXISTING
+// card as a raid boss's reward instead of auto-creating a new one.
+export async function markCardAsBoss(cardId: number): Promise<void> {
+  await db.update(cardsTable).set({ isBossCard: true }).where(eq(cardsTable.id, cardId));
+  invalidateCardCache();
+}
+
 export async function addCard(values: {
   name: string; description: string; rarity: string; cardType?: string;
   dropWeight: number; worthValue: number; burnValue: number;
   isLimitedEdition?: boolean; isEventExclusive?: boolean;
   maxCopies?: number; imageUrl?: string; flavor?: string; droppable?: boolean;
-  inPacks?: boolean;
+  inPacks?: boolean; isBossCard?: boolean;
 }, guildId: string) {
   try {
     const [card] = await db.insert(cardsTable).values({ ...values as any, guildId }).returning();

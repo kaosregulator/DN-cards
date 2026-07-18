@@ -115,6 +115,11 @@ async function runBootMigrations() {
   await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS raid_frame_unlocks_guild_user_frame_uniq ON raid_frame_unlocks (guild_id, user_id, frame_id)`);
   await pool.query(`CREATE INDEX IF NOT EXISTS raid_frame_unlocks_user_idx ON raid_frame_unlocks (guild_id, user_id)`);
 
+  // Boss cards: a raid boss now auto-creates its own card so it can be handed
+  // out as a reward. Untradeable unless an admin opts the server in.
+  await pool.query(`ALTER TABLE cards ADD COLUMN IF NOT EXISTS is_boss_card boolean NOT NULL DEFAULT false`);
+  await pool.query(`ALTER TABLE guild_settings ADD COLUMN IF NOT EXISTS allow_boss_card_trades boolean NOT NULL DEFAULT false`);
+
   // Unified account-level progression (Player XP). Purely additive — existing
   // progression tables (card_progress, battle_profiles, user_currency, quests,
   // reputation, …) are untouched; this only stores the new account-wide level
