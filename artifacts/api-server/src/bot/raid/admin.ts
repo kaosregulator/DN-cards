@@ -56,8 +56,10 @@ function bossSummary(b: RaidBoss): string {
     (b.cardId != null ? ` · 🃏 boss card #${b.cardId}` : " · no boss card");
 }
 
-// Resolve the reward-related options (boss card, exclusive frame, ladder
-// sequence) into a boss patch. Returns an error string on a bad value.
+// Resolve the reward-related options (boss card LINK, exclusive frame, ladder
+// sequence) into a boss patch. Returns an error string on a bad value. Does NOT
+// auto-create a card — that's ensureBossCard, called separately once the caller
+// knows whether a card still needs to exist.
 async function resolveRewardFields(
   interaction: ChatInputCommandInteraction, guildId: string,
 ): Promise<{ patch: Partial<RaidBoss> } | { error: string }> {
@@ -68,6 +70,10 @@ async function resolveRewardFields(
     const card = await getCardByName(cardName, guildId);
     if (!card) return { error: `❌ No card named "**${cardName}**" to link as the boss card. Check \`/list\`.` };
     patch.cardId = card.id;
+    // Linking an existing card as a boss card marks it untradeable (unless the
+    // server opts in) just like an auto-created one.
+    const { markCardAsBoss } = await import("../db.js");
+    await markCardAsBoss(card.id);
   }
   const frame = interaction.options.getString("frame");
   if (frame) {
@@ -78,6 +84,28 @@ async function resolveRewardFields(
   const seq = interaction.options.getInteger("sequence");
   if (seq != null) patch.sequence = seq;
   return { patch };
+}
+
+// Every boss needs a real, rewardable card. If nothing was explicitly linked
+// (via `cardname`), auto-create one in the boss's own image: same name,
+// description, rarity, and art — admin-drop-only (never spawns/packs), flagged
+// isBossCard so it's untradeable by default and usable in battle.
+async function ensureBossCard(
+  guildId: string, createdBy: string,
+  name: string, description: string | null, rarity: string, imageUrl: string | null,
+): Promise<number> {
+  const { addCard } = await import("../db.js");
+  const { RARITY_WORTH, RARITY_BURN } = await import("../cards-data.js");
+  const r = (VALID_RARITIES.includes(rarity) ? rarity : "mythic") as keyof typeof RARITY_WORTH;
+  const card = await addCard({
+    name, description: description ?? `The boss card for **${name}**.`,
+    rarity: r, cardType: "boss",
+    dropWeight: 0, worthValue: RARITY_WORTH[r], burnValue: RARITY_BURN[r],
+    imageUrl: imageUrl ?? undefined,
+    droppable: false, inPacks: false, isBossCard: true, isLimitedEdition: true,
+  }, guildId);
+  void createdBy; // reserved for future createdBy tracking on cards
+  return card.id;
 }
 
 export async function handleRaidAdminCommand(interaction: ChatInputCommandInteraction): Promise<void> {
@@ -132,11 +160,18 @@ export async function handleRaidAdminCommand(interaction: ChatInputCommandIntera
 
     const reward = await resolveRewardFields(interaction, guildId);
     if ("error" in reward) { await interaction.editReply(reward.error); return; }
+    const description = interaction.options.getString("description") ?? null;
+
+    // Every boss needs a rewardable card. If the admin didn't link an existing
+    // one via `cardname`, auto-create one now in the boss's own image.
+    if (reward.patch.cardId == null) {
+      reward.patch.cardId = await ensureBossCard(guildId, interaction.user.id, name, description, rarity, imageUrl);
+    }
 
     const boss = await createBoss({
       ...reward.patch,
       guildId, name, createdBy: interaction.user.id,
-      description: interaction.options.getString("description") ?? null,
+      description,
       imageUrl,
       battlefieldUrl: battlefieldUrl || null,
       archetype, rarity,
@@ -156,6 +191,18 @@ export async function handleRaidAdminCommand(interaction: ChatInputCommandIntera
       content: `✅ Created raid boss **${boss.name}**. Players fight it with \`/raid start boss:${boss.name}\`.`,
       embeds: [new EmbedBuilder().setColor(0x2ecc71).setDescription(bossSummary(boss))],
     });
+    return;
+  }
+
+  if (sub === "bosscardtrades") {
+    const on = interaction.options.getBoolean("enabled", true);
+    const { updateGuildSettings } = await import("../db.js");
+    await updateGuildSettings(guildId, { allowBossCardTrades: on });
+    await interaction.editReply(
+      on
+        ? "✅ Boss cards can now be **traded** on this server."
+        : "🐉 Boss cards are now **untradeable** again — only earned through raids.",
+    );
     return;
   }
 
@@ -205,9 +252,25 @@ export async function handleRaidAdminCommand(interaction: ChatInputCommandIntera
     const reward = await resolveRewardFields(interaction, guildId);
     if ("error" in reward) { await interaction.editReply(reward.error); return; }
     Object.assign(patch, reward.patch);
+
+    // Backfill: a boss created before boss-cards existed (or otherwise missing
+    // one) gets one auto-created the next time it's edited — no extra flags
+    // needed, this alone is enough to "fix" an old boss.
+    let backfilled = false;
+    if (boss.cardId == null && patch.cardId == null) {
+      patch.cardId = await ensureBossCard(
+        guildId, interaction.user.id, boss.name,
+        patch.description ?? boss.description, boss.rarity, patch.imageUrl ?? boss.imageUrl,
+      );
+      backfilled = true;
+    }
+
     if (Object.keys(patch).length === 0) { await interaction.editReply("Nothing to change — pass at least one field to edit."); return; }
     const updated = await updateBoss(boss.id, patch);
-    await interaction.editReply({ content: `✅ Updated **${boss.name}**.`, embeds: [new EmbedBuilder().setColor(0x3498db).setDescription(bossSummary(updated!))] });
+    await interaction.editReply({
+      content: `✅ Updated **${boss.name}**.` + (backfilled ? " (Auto-created its missing boss card.)" : ""),
+      embeds: [new EmbedBuilder().setColor(0x3498db).setDescription(bossSummary(updated!))],
+    });
     return;
   }
 

@@ -47,6 +47,10 @@ export const cardsTable = pgTable("cards", {
   droppable: boolean("droppable").notNull().default(true),
   inPacks: boolean("in_packs").notNull().default(true),
   isArchived: boolean("is_archived").notNull().default(false),
+  // A raid boss's own card — auto-created when an admin makes a boss (see
+  // raid/admin.ts) so it can be handed out as the boss-card reward. Untradeable
+  // by default (see guildSettings.allowBossCardTrades); usable in battle.
+  isBossCard: boolean("is_boss_card").notNull().default(false),
   // Manual podium pick for the dashboard /events page: 1 = gold, 2 = silver,
   // 3 = bronze, null = appears in the grid below the podium. Only one card
   // per slot — enforced by a partial unique index. Cleared automatically
@@ -192,6 +196,9 @@ export const guildSettingsTable = pgTable("guild_settings", {
   spawnEnabled: boolean("spawn_enabled").notNull().default(true),
   catchWindowSeconds: integer("catch_window_seconds").notNull().default(120),
   tradeEnabled: boolean("trade_enabled").notNull().default(true),
+  // Boss cards (isBossCard) are untradeable unless an admin flips this on —
+  // they're meant to be earned by clearing the raid, not traded around.
+  allowBossCardTrades: boolean("allow_boss_card_trades").notNull().default(false),
   // Cards per spawn: 1, 3, 5, or -1 (random 1–3)
   cardsPerSpawn: integer("cards_per_spawn").notNull().default(1),
   // Custom rarity drop weights per card of that tier (null = use card's default)

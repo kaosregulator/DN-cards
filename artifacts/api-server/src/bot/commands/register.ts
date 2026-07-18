@@ -488,7 +488,9 @@ function buildLegacyCommands() {
         .addStringOption(o => o.setName("name").setDescription("Boss").setRequired(true).setAutocomplete(true))
         .addBooleanOption(o => o.setName("enabled").setDescription("Enabled?").setRequired(true)))
       .addSubcommand(sc => sc.setName("delete").setDescription("Delete a boss")
-        .addStringOption(o => o.setName("name").setDescription("Boss to delete").setRequired(true).setAutocomplete(true)))),
+        .addStringOption(o => o.setName("name").setDescription("Boss to delete").setRequired(true).setAutocomplete(true)))
+      .addSubcommand(sc => sc.setName("bosscardtrades").setDescription("Allow or block trading boss cards on this server")
+        .addBooleanOption(o => o.setName("enabled").setDescription("Allow trading boss cards?").setRequired(true)))),
 
     // ── /support (user, Operations Center request) ───────────────────────────
     cmd("support", "Request operations support — staff, combat, defense, escort, or event", s => s),

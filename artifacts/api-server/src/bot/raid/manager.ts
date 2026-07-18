@@ -37,6 +37,9 @@ import {
 const EPHEMERAL = { flags: MessageFlags.Ephemeral } as const;
 const MAX_ROUNDS = 25;
 const ROUND_TIMEOUT_MS = 60_000;
+// Boss cards enter a winner's collection battle-ready — close to maxed
+// (MAX_LEVEL is 100) rather than starting at level 1 like a normal catch.
+const BOSS_CARD_REWARD_LEVEL = 50;
 const RAID_ATTACK_FILE = "raid-attack.png";
 const RAID_BEAT_MS = 1100;   // hold per animated hit
 const RAID_TICK_MS = 550;    // hold per text-only beat (status ticks)
@@ -87,6 +90,8 @@ interface RaidReward {
   frameEmoji: string;
   winners: Set<string>;         // eligible userIds (survivors)
   choice: Map<string, "frame" | "card">; // userId → what they claimed
+  channelId: string;             // where the final raid embed lives
+  messageId: string | null;      // so we can delete it once everyone has claimed
 }
 const raidRewards = new Map<string, RaidReward>();
 const REWARD_TTL_MS = 30 * 60_000;
@@ -535,6 +540,7 @@ async function finishRaid(session: RaidSession, outcome: "clear" | "wipe" | "tim
         frameId: frame.id, frameName: frame.name, frameEmoji: frame.emoji,
         winners: new Set(survivors.map(s => s.member.userId)),
         choice: new Map(),
+        channelId: session.channelId, messageId: session.message?.id ?? null,
       });
       setTimeout(() => raidRewards.delete(session.id), REWARD_TTL_MS).unref?.();
     }
@@ -664,8 +670,8 @@ async function handleRaidReward(
     }
     await interaction.reply({
       content: `🎁 **Choose your raid reward** for defeating **${reward.bossName}** — you can pick **one**:\n` +
-        `🖼️ **${reward.frameName}** — a permanent, account-wide frame equippable on any card via \`/frame\`.` +
-        (reward.cardId != null ? `\n🃏 **${reward.cardName}** — the boss's own card, added to your collection.` : ""),
+        `🖼️ **${reward.frameName}** — a permanent, account-wide frame equippable on any card. Equip it from **User Hub → 🖼️ Frames**.` +
+        (reward.cardId != null ? `\n🃏 **${reward.cardName}** — the boss's own card (near-max level), added to your collection.` : ""),
       components: [row],
       ...EPHEMERAL,
     }).catch(() => {});
@@ -681,9 +687,11 @@ async function handleRaidReward(
 
   if (action === "rwframe") {
     reward.choice.set(userId, "frame");
-    await grantRaidFrame(reward.guildId, userId, reward.frameId, null).catch(() => {});
+    const granted = await grantRaidFrame(reward.guildId, userId, reward.frameId, null).catch(() => false);
     await interaction.update({
-      content: `🖼️ **${reward.frameEmoji} ${reward.frameName}** unlocked! Equip it on any card with \`/frame name:<card> style:${reward.frameName.split(" ")[0]!.toLowerCase()}\`.`,
+      content: granted !== false
+        ? `🖼️ **${reward.frameEmoji} ${reward.frameName}** unlocked! Equip it on any card from **User Hub → 🖼️ Frames**.`
+        : `🖼️ You already have **${reward.frameEmoji} ${reward.frameName}** — no change made. Equip it from **User Hub → 🖼️ Frames**.`,
       components: [],
     }).catch(() => {});
     return;
@@ -693,13 +701,29 @@ async function handleRaidReward(
     reward.choice.set(userId, "card");
     try {
       const { catchCard } = await import("../db.js");
+      const { setCardLevel } = await import("../cards/leveling.js");
       await catchCard(reward.guildId, userId, reward.cardId, { noShiny: true });
+      // Boss cards enter battle-ready — near-maxed, not level 1.
+      await setCardLevel(reward.guildId, userId, reward.cardId, BOSS_CARD_REWARD_LEVEL);
     } catch { /* non-fatal */ }
     await interaction.update({
-      content: `🃏 **${reward.cardName}** — the boss's own card — has been added to your collection! View it with \`/info name:${reward.cardName}\`.`,
+      content: `🃏 **${reward.cardName}** — the boss's own card — has been added to your collection at **Level ${BOSS_CARD_REWARD_LEVEL}**! View it with \`/info name:${reward.cardName}\`.`,
       components: [],
     }).catch(() => {});
-    return;
+  }
+
+  // Once every winner has claimed, the final raid embed has done its job —
+  // clear it from the channel instead of leaving a stale "Claim Your Reward"
+  // board around forever.
+  if (reward.choice.size >= reward.winners.size && reward.messageId) {
+    try {
+      const channel = await interaction.client.channels.fetch(reward.channelId).catch(() => null);
+      if (channel?.isTextBased()) {
+        const msg = await channel.messages.fetch(reward.messageId).catch(() => null);
+        await msg?.delete().catch(() => {});
+      }
+    } catch { /* non-fatal */ }
+    raidRewards.delete(rid);
   }
 }
 
