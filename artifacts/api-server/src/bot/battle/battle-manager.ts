@@ -1051,6 +1051,54 @@ async function teardown(rt: BattleRuntime) {
   battles.delete(rt.id);
 }
 
+// ── Admin safety valve: force-cancel a stuck battle ──────────────────────────
+// Covers the cases sweepStaleLocks/MAX_BATTLE_MS can't fix on demand: the battle
+// message got deleted so the player has no buttons to act on, or a bug otherwise
+// wedges a battle and an admin needs to unstick the player right now rather than
+// wait out the 20-minute TTL. Any staked cards in escrow are refunded (a forced
+// cancel is nobody's win) and the lock is always cleared even if the in-memory
+// runtime is already gone (process restart, crash) — so the player is never left
+// stuck "already in a battle" no matter how the state got wedged.
+export interface ForceEndResult {
+  found: boolean;         // was there anything to cancel?
+  inMemory: boolean;      // true = a live runtime was torn down; false = DB-only lock cleanup
+  opponentName?: string;
+  refundedStakedCard: boolean;
+}
+
+export async function forceEndUserBattle(guildId: string, userId: string): Promise<ForceEndResult> {
+  const rt = [...battles.values()].find(
+    b => b.guildId === guildId && b.phase !== "ended" &&
+      (b.challengerId === userId || (b.opponentId === userId && b.opponentId !== AI_ID)),
+  );
+
+  if (rt) {
+    const hadEscrow = !!rt.escrow && !rt.escrowSettled;
+    // Draw semantics: nobody "won" an admin-forced cancel, so any staked cards
+    // return to their original owners rather than being awarded to either side.
+    await settleEscrow(rt, null);
+    if (rt.message) {
+      await rt.message.edit({
+        embeds: [new EmbedBuilder().setColor(0x99aab5).setTitle("🛑 Battle cancelled").setDescription("An admin force-ended this battle.")],
+        components: [],
+      }).catch(() => {});
+    }
+    const opponentName = rt.challengerId === userId ? rt.opponentName : rt.challengerName;
+    await teardown(rt);
+    return { found: true, inMemory: true, opponentName, refundedStakedCard: hadEscrow };
+  }
+
+  // No live runtime (bot restarted, or the state is DB-only for some other
+  // reason) — fall back to clearing the lock row directly, mirroring the
+  // startup recovery path so a staked card isn't silently lost.
+  const lock = await getUserLock(guildId, userId);
+  if (!lock) return { found: false, inMemory: false, refundedStakedCard: false };
+  const refund = lock.staked && lock.cardId != null;
+  if (refund) await restoreCardToUser(guildId, userId, lock.cardId!).catch(() => {});
+  await releaseBattleLock(guildId, userId).catch(() => {});
+  return { found: true, inMemory: false, refundedStakedCard: refund };
+}
+
 // ── Rendering ────────────────────────────────────────────────────────────────
 const VS_IMAGE_NAME = "battle-vs.png";
 

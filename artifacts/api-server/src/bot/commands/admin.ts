@@ -449,6 +449,24 @@ export async function handleAdminCommand(
     return;
   }
 
+  // ── /battle_force_end — unstick a member whose battle is wedged (message
+  // deleted, a bug, or they're just stuck) instead of making them wait out the
+  // 20-minute timeout. Any staked card is refunded; nobody "wins" a forced cancel.
+  if (cmd === "battleforceend") {
+    const target = opts.getUser("user", true);
+    const { forceEndUserBattle } = await import("../battle/battle-manager.js");
+    const result = await forceEndUserBattle(guildId, target.id);
+    if (!result.found) {
+      await interaction.editReply(`ℹ️ <@${target.id}> isn't in a battle — nothing to cancel.`);
+      return;
+    }
+    const bits: string[] = [`✅ Cancelled <@${target.id}>'s battle` + (result.opponentName ? ` vs **${result.opponentName}**` : "") + "."];
+    if (result.refundedStakedCard) bits.push("💠 The staked card was refunded.");
+    if (!result.inMemory) bits.push("_(Recovered from a stale lock — no live battle message to update.)_");
+    await interaction.editReply(bits.join(" "));
+    return;
+  }
+
   // ── /take_back ─────────────────────────────────────────────────────────────
   if (cmd === "takeback") {
     const target = opts.getUser("user", true);

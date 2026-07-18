@@ -197,6 +197,9 @@ function buildLegacyCommands() {
       .addStringOption(o => o.setName("name").setDescription("Card name").setRequired(true).setAutocomplete(true))
       .addIntegerOption(o => o.setName("amount").setDescription("How many copies to remove (default 1, max 100)").setMinValue(1).setMaxValue(100))),
 
+    adminCmd("battleforceend", "Force-cancel a member's stuck battle (e.g. the battle message got deleted)", s => s
+      .addUserOption(o => o.setName("user").setDescription("Member whose battle should be cancelled").setRequired(true))),
+
     adminCmd("collectorrole", "Set the opt-in role that gets pinged on every spawn", s => s
       .addRoleOption(o => o.setName("role").setDescription("Role to ping on spawns (leave empty to clear)"))),
 
@@ -619,6 +622,7 @@ export const COMMAND_RENAMES: Record<string, string> = {
   giveshards: "give_shards",
   takeshards: "take_shards",
   takeback: "take_back",
+  battleforceend: "battle_force_end",
   massdrop: "mass_drop",
   adminhub: "admin_hub",
   user_hub: "user-hub",
@@ -718,6 +722,7 @@ export const ADMIN_HUB_COMMANDS = new Set([
   "setup", "config", "adminhub", "sethub", "set_admin", "deletecard",
   "welcomeadmin", "adminhelp", "drop", "massdrop", "give", "giveshards",
   "takeback", "takeshards", "addcard", "createcardfrommttv", "editcard", "editimage", "dashboard", "collectorrole",
+  "battleforceend",
   "rarity", "embed", "event", "edituser", "giveall", "editpack",
   "postcalculator", "massrole",
 ]);
