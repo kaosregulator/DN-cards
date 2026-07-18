@@ -160,7 +160,7 @@ async function renderPackFrame(
     ctx.rotate(rotation);
     ctx.translate(-slotW / 2, -slotH / 2);
 
-    drawCardArt(ctx, frame.mod, 0, 0, slotW, slotH, card.artUrl);
+    await drawCardArt(ctx, frame.mod, 0, 0, slotW, slotH, card.artUrl);
     drawCardFrame(ctx, 0, 0, slotW, slotH, color, 6);
     drawRarityGlow(ctx, 0, 0, slotW, slotH, color, 0.5);
     if (shiny) {

@@ -20,7 +20,7 @@ import { logger } from "../../lib/logger.js";
 import { consumeCooldown } from "../../lib/cooldowns.js";
 import { scheduleMessageDelete } from "../../lib/temp-message.js";
 import { renderBattleImage, type RenderCard } from "./image/render.js";
-import { renderAttackFrame, renderBattleTurn, renderBattleVictory } from "../animations/index.js";
+import { renderAttackFrame, renderBattleVictory } from "../animations/index.js";
 import { deriveAttackScene, sceneSubtitle } from "./turn-visual.js";
 import type { AnimationSpeed } from "../animations/types.js";
 import { toAbsoluteImageUrl } from "../image-url.js";
@@ -800,38 +800,22 @@ async function applyMove(rt: BattleRuntime, side: 0 | 1, move: MoveType) {
       if (foe.hp / foe.stats.maxHealth <= 0.15) rt.wentLow[foeSide(side)] = true;
       if (actor.hp / actor.stats.maxHealth <= 0.15) rt.wentLow[side] = true;
 
-      // Animated GIF per turn: the full renderBattleTurn cinematic (both cards,
-      // lunge, projectile, HP bars, atmosphere). Falls back to the lightweight
-      // static PNG attack frame if the GIF encoder fails or exceeds the size cap.
+      // Static attack-frame PNG shown on every turn (scene-themed FX, move name,
+      // damage readout). GIF encoding mid-turn is too slow for live battles.
       const isCrit = result.events.some(e => e.flash === "crit");
       const selfGain = Math.max(0, (actor.hp + actor.shield) - selfPoolBefore);
       const scene = deriveAttackScene(move, result, isCrit, damage, actor, foe);
       const subtitle = sceneSubtitle(scene, selfGain, result);
       if (rt.settings.battleAnimationEnabled) {
-        const gif = await renderBattleTurn({
+        rt.turnAnimation = await renderAttackFrame({
           attacker: combatantToRenderCard(rt, actor),
-          defender: combatantToRenderCard(rt, foe),
-          attackerHp: actor.hp,
-          attackerMaxHp: actor.stats.maxHealth,
-          defenderHp: foe.hp,
-          defenderMaxHp: foe.stats.maxHealth,
+          moveName: moveLabel(move),
           damage,
           isCrit,
           isHit: damage > 0,
-          moveName: moveLabel(move),
-          attackerWon: false,
-          defenderWon: false,
-        }, rt.settings.battleAnimationSpeed as AnimationSpeed).catch(() => null);
-        if (gif) {
-          rt.turnAnimation = gif.buffer;
-        } else {
-          // PNG fallback when GIF encoding fails.
-          rt.turnAnimation = await renderAttackFrame({
-            attacker: combatantToRenderCard(rt, actor),
-            moveName: moveLabel(move),
-            damage, isCrit, isHit: damage > 0, scene, subtitle,
-          }).catch(() => null);
-        }
+          scene,
+          subtitle,
+        }).catch(() => null);
       }
 
       await renderCombat(rt);
