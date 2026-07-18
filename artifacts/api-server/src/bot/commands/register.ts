@@ -626,7 +626,6 @@ export const COMMAND_RENAMES: Record<string, string> = {
   welcomeadmin: "welcome_admin",
   battleadmin: "battle_admin",
   raidadmin: "raid_admin",
-  opsadmin: "ops_admin",
   giveawayadmin: "giveaway_admin",
   massrole: "mass_role",
   sethub: "set_hub",

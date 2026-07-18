@@ -357,8 +357,6 @@ export async function startBot() {
           await handleUserHubModal(interaction);
         } else if (interaction.customId.startsWith("gwhub:")) {
           await handleGiveawayHubComponent(interaction);
-        } else if (isOpsComponent(interaction.customId)) {
-          await handleOpsModal(interaction, client);
         }
         return;
       }
@@ -442,12 +440,6 @@ export async function startBot() {
         // ── Giveaway hub buttons (browse, admin quick-create, manage) ──────
         if (action === "gwhub") {
           await handleGiveawayHubComponent(interaction);
-          return;
-        }
-
-        // ── Operations Center buttons (join, leave, complete, admin cfg) ────
-        if (isOpsComponent(interaction.customId)) {
-          await handleOpsButton(interaction, client);
           return;
         }
 
@@ -761,10 +753,6 @@ export async function startBot() {
         await handleRaidAdminCommand(interaction);
       } else if (cmd === "giveaway") {
         await handleGiveawayHubCommand(interaction);
-      } else if (cmd === "support") {
-        await handleSupportCommand(interaction, client);
-      } else if (cmd === "opsadmin") {
-        await handleOpsAdminCommand(interaction, client);
       } else if (cmd === "bob") {
         await handleBob(interaction);
       } else if (cmd === "bob_coinflip") {
