@@ -15,6 +15,8 @@ import {
   drawHoloSparkles, drawShineSweep, drawCardArt, drawCardFrame, drawRarityBadge,
   drawTextWithShadow, fitText, getRarityEffectColor, rarityBurstCount,
 } from "./effects.js";
+import { drawAtmosphere } from "./atmosphere.js";
+import { simulateWrapperTear, drawWrapperShards } from "./physics.js";
 
 interface PackFrameState {
   particles: Particle[];
@@ -46,10 +48,10 @@ function totalDurationMs(cardCount: number): number {
   return 1500 + cardCount * 550;
 }
 
-function renderPackFrame(
+async function renderPackFrame(
   frame: import("./engine.js").FrameCtx,
   input: PackAnimationInput,
-): void {
+): Promise<void> {
   const { ctx, t } = frame;
   const { width, height } = PACK_CANVAS;
 
@@ -64,6 +66,12 @@ function renderPackFrame(
     [0.5, "#0b0d12"],
     [1, "#07080c"],
   ], 0.3);
+
+  // Faint drifting dust + sparks behind everything, tinted to the pack tier.
+  drawAtmosphere(ctx, width, height, [
+    { kind: "dust", intensity: 0.5 },
+    { kind: "sparks", intensity: 0.35, color: tierColor },
+  ], { seed: `pack-${input.tier}`, t, color: tierColor });
 
   // Title
   drawTextWithShadow(ctx, `Opening ${input.tier} Pack…`, width / 2, 40, "#ffffff", 28);
@@ -104,6 +112,18 @@ function renderPackFrame(
     ctx.lineWidth = 12 * (1 - burstT);
     ctx.stroke();
     ctx.restore();
+
+    // Physics wrapper tear: the pack's foil splits into fragments that fly out and
+    // fall. Advances with the burst; fades as the reveal takes over. Behind cards.
+    if (burstT < 1 || t < revealStart + 0.15) {
+      const shards = await simulateWrapperTear(width / 2, 160, 240, 320, {
+        color: tierColor, count: 16, power: 10,
+        steps: Math.max(2, Math.round((0.4 + burstT) * 16)), seed: `wrap-${input.tier}`,
+      });
+      const fade = clamp01(1 - (t - burstAt) / (revealStart + 0.15 - burstAt));
+      for (const s of shards) s.alpha = fade;
+      drawWrapperShards(ctx, shards);
+    }
   }
 
   // Card reveals.

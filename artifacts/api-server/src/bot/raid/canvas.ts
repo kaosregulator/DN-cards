@@ -21,6 +21,8 @@ import {
 } from "../animations/engine.js";
 import { queueRender } from "../animations/render-queue.js";
 import { drawEmbers, drawExplosion } from "../animations/particles.js";
+import { drawAtmosphere, atmospherePreset, densityForParticipants } from "../animations/atmosphere.js";
+import { drawImpactDebris } from "../animations/physics.js";
 import {
   drawCardArt, drawCardFrame, drawRarityGlow, drawRarityBadge, drawTextWithShadow,
   drawTitle, fitText, getRarityEffectColor, loadArt, TITLE_FONT,
@@ -89,11 +91,21 @@ export async function renderRaidIntro(
 
     await layerBattlefield(ctx, mod, boss.battlefieldUrl, accent);
 
+    // Ambient arena atmosphere behind everything — fog, dust, and embers, thinned
+    // automatically as the party grows so a full raid never spikes CPU.
+    drawAtmosphere(ctx, width, height, atmospherePreset("arena"), {
+      seed: `${boss.name}-intro`, color: accent, density: densityForParticipants(party.length),
+    });
+
     // Boss panel — towering on the right, bigger than any card on purpose.
     const bw = 330, bh = 420, bx = width - bw - 52, by = 84;
     // Boss entrance: a shockwave radiates from BEHIND the boss (drawn first so
     // the card art stays fully visible on top).
     drawExplosion(ctx, bx + bw / 2, by + bh / 2, { color: accent, radius: 150, ringCount: 3, seed: `${boss.name}-entrance` });
+    // Physics debris kicked up at the boss's feet by the stomp (behind the art).
+    await drawImpactDebris(ctx, bx + bw / 2, by + bh, {
+      color: accent, count: 24, power: 15, spread: 0.7, steps: 16, seed: `${boss.name}-stomp`,
+    });
     drawRarityGlow(ctx, bx, by, bw, bh, accent, 0.95);
     await drawCardArt(ctx, mod, bx, by, bw, bh, boss.imageUrl);
     drawCardFrame(ctx, bx, by, bw, bh, accent, 8);
@@ -239,6 +251,10 @@ export async function renderRaidWipeScene(
     // Extra red wash for the defeat mood.
     ctx.fillStyle = "rgba(120,0,0,0.18)";
     ctx.fillRect(0, 0, width, height);
+    // Smoke + settling ash over the loss, thinned by party size. Behind fighters.
+    drawAtmosphere(ctx, width, height, atmospherePreset("ash"), {
+      seed: `${boss.name}-wipe`, color: accent, density: densityForParticipants(party.length),
+    });
 
     drawTitle(ctx, "💀 RAID FAILED 💀", width / 2, 32, "#ff5555", 32);
 
