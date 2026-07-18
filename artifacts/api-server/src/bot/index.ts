@@ -38,8 +38,7 @@ import { handleSquadCommand } from "./squad/commands.js";
 import { handleRaidCommand } from "./raid/command.js";
 import { handleRaidAdminCommand } from "./raid/admin.js";
 import { handleRaidComponent } from "./raid/manager.js";
-import { handleGiveawaysCommand, handleGiveawayUserCommand } from "./giveaway/command.js";
-import { handleGiveawayAdminCommand } from "./giveaway/admin.js";
+import { handleGiveawayHubCommand, handleGiveawayHubComponent } from "./giveaway/hub.js";
 import { handleGiveawayComponent } from "./giveaway/manager.js";
 import { handleGiveawayMessage } from "./giveaway/message-hook.js";
 import { startGiveawayMaintenance } from "./giveaway/sweeper.js";
@@ -253,6 +252,8 @@ export async function startBot() {
         } else if (interaction.customId.startsWith("market-hub:")) {
           const { handleMarketHubComponent } = await import("./commands/market-hub.js");
           await handleMarketHubComponent(interaction);
+        } else if (interaction.customId.startsWith("gwhub:")) {
+          await handleGiveawayHubComponent(interaction);
         } else if (interaction.customId.startsWith("squad-hub:")) {
           const { handleSquadHubComponent } = await import("./commands/squad-hub.js");
           await handleSquadHubComponent(interaction);
@@ -363,6 +364,8 @@ export async function startBot() {
         } else if (interaction.customId.startsWith("user-hub:modal:")) {
           const { handleUserHubModal } = await import("./commands/user-hub.js");
           await handleUserHubModal(interaction);
+        } else if (interaction.customId.startsWith("gwhub:")) {
+          await handleGiveawayHubComponent(interaction);
         } else if (isOpsComponent(interaction.customId)) {
           await handleOpsModal(interaction, client);
         }
@@ -442,6 +445,12 @@ export async function startBot() {
         // ── Giveaway buttons (my progress, details, claim prize) ───────────
         if (action === "giveaway") {
           await handleGiveawayComponent(interaction);
+          return;
+        }
+
+        // ── Giveaway hub buttons (browse, admin quick-create, manage) ──────
+        if (action === "gwhub") {
+          await handleGiveawayHubComponent(interaction);
           return;
         }
 
@@ -759,12 +768,8 @@ export async function startBot() {
         await handleRaidCommand(interaction);
       } else if (cmd === "raidadmin") {
         await handleRaidAdminCommand(interaction);
-      } else if (cmd === "giveaways") {
-        await handleGiveawaysCommand(interaction);
       } else if (cmd === "giveaway") {
-        await handleGiveawayUserCommand(interaction);
-      } else if (cmd === "giveawayadmin") {
-        await handleGiveawayAdminCommand(interaction);
+        await handleGiveawayHubCommand(interaction);
       } else if (cmd === "support") {
         await handleSupportCommand(interaction, client);
       } else if (cmd === "opsadmin") {
@@ -840,7 +845,7 @@ export async function startBot() {
     ...ADMIN_HUB_COMMANDS,
     // Explicitly routed in the interaction handler above.
     "battle", "battleadmin", "market", "squad", "raid", "raidadmin",
-    "giveaways", "giveaway", "giveawayadmin",
+    "giveaway",
     "bob", "bob_coinflip", "bob_dice", "bob_hl", "bob_slots", "bob_wheel", "bob_emoji", "bob_bj", "bob_rps",
     "bob_roulette", "bob_duel", "bob_roast", "bob_talk", "bob_stats", "bob_leaderboard", "bob_admin",
     "whisper", "adminsecret", "echo", "afk", "afksetup",

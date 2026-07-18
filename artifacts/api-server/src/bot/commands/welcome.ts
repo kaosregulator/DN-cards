@@ -91,7 +91,7 @@ export async function handleWelcome(interaction: ChatInputCommandInteraction): P
       "**Plenty to do here:**\n" +
       "🃏 Collect & complete sets · 💠 Open packs · 🔄 Trade & use the `/market`\n" +
       "⚔️ Battle players or AI · 🐉 Team up for co-op boss `/raid`s · 🤝 Join a `/squad`\n" +
-      "🎯 Daily & weekly `/quests` · 🎉 Enter `/giveaways` for real prizes\n\n" +
+      "🎯 Daily & weekly `/quests` · 🎉 Enter `/giveaway` for real prizes\n\n" +
       "**Start now:**\n" +
       "① `/daily` — grab free shards\n" +
       "② Watch chat and **type card names** to catch\n" +
