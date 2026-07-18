@@ -245,8 +245,7 @@ const PAGES: Record<HelpSection, PageFn> = {
       .setDescription("Win prizes by playing. Admins post giveaways; you earn chances through real activity." + NAV_HINT)
       .addFields(
         { name: "👀 See & Track", value:
-          "`/giveaways` — active giveaways: prizes, live countdown, requirements & your standing\n" +
-          "`/giveaway progress [id]` — your per-requirement progress and 🎟️ entries" },
+          "`/giveaway` — open the Giveaway Hub: active giveaways, prizes, timers, requirements & your standing" },
         { name: "🎟️ How Entering Works", value:
           "Most giveaways track **activity** — catching cards, winning battles, opening packs, joining raids, chatting, and more count automatically toward the requirements.\n" +
           "**Entry mode:** more activity = more entries = better odds.\n" +
@@ -332,7 +331,7 @@ const PAGES: Record<HelpSection, PageFn> = {
         { name: "⚔️ Feature Admin", value:
           "`/battle_admin` — battle system hub (setup, rules, rewards, seasons)\n" +
           "`/raid_admin create|edit|list|enable|delete` — co-op raid bosses\n" +
-          "`/giveaway_admin create|edit|end|winners|list|reroll` — run giveaways\n" +
+          "`/giveaway` → **⚙️ Admin** — quick-create, manage, end, cancel & reroll giveaways\n" +
           "`/bob_admin` — configure Bob (toggles, odds, rewards, cooldown, event channels)\n" +
           "`/echo …` — Echo-Whisper viewer roles, override & stats" },
         { name: "🌐 Website", value: `Public: **[${site}](${site})** · Admin dashboard: run \`/dashboard\` for your login link.` },

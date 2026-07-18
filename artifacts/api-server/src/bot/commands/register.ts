@@ -492,85 +492,8 @@ function buildLegacyCommands() {
       .addSubcommand(sc => sc.setName("bosscardtrades").setDescription("Allow or block trading boss cards on this server")
         .addBooleanOption(o => o.setName("enabled").setDescription("Allow trading boss cards?").setRequired(true)))),
 
-    // ── /giveaways (user, Giveaway System overview) ───────────────────────────
-    cmd("giveaways", "See active giveaways, prizes, timers, and your progress", s => s),
-
-    // ── /giveaway (user, personal progress) ───────────────────────────────────
-    cmd("giveaway", "Track your giveaway requirement progress", s => s
-      .addSubcommand(sc => sc.setName("progress").setDescription("Your per-requirement progress and entries")
-        .addIntegerOption(o => o.setName("id").setDescription("A specific giveaway id (defaults to all active)")))),
-
-    // ── /giveaway_admin (admin, Giveaway management) ───────────────────────────
-    adminCmd("giveawayadmin", "Create and manage DN Cards giveaways", s => s
-      .addSubcommand(sc => sc.setName("quick").setDescription("⚡ Quick giveaway — pick from dropdowns, launches instantly")
-        .addStringOption(o => o.setName("title").setDescription("Giveaway title").setRequired(true))
-        .addStringOption(o => o.setName("prize").setDescription("Prize type").setRequired(true)
-          .addChoices(
-            { name: "💠 DN Shards", value: "shards" },
-            { name: "📦 Pack", value: "pack" },
-            { name: "🃏 Card", value: "card" },
-            { name: "🎁 Custom (admin hands off)", value: "custom" },
-          ))
-        .addStringOption(o => o.setName("duration").setDescription("How long it runs").setRequired(true)
-          .addChoices(
-            { name: "1 hour", value: "1h" }, { name: "6 hours", value: "6h" }, { name: "12 hours", value: "12h" },
-            { name: "24 hours", value: "24h" }, { name: "3 days", value: "3d" }, { name: "1 week", value: "1w" },
-          ))
-        .addIntegerOption(o => o.setName("amount").setDescription("Prize amount / quantity (default 1)").setMinValue(1))
-        .addStringOption(o => o.setName("prize_text").setDescription("Card name, pack tier, or custom text (for those prize types)"))
-        .addStringOption(o => o.setName("requirement").setDescription("What players must do to enter (default: open to all)")
-          .addChoices(
-            { name: "🎉 Open to everyone", value: "none" },
-            { name: "🎯 Catch cards", value: "catch" },
-            { name: "⚔️ Win battles", value: "win" },
-            { name: "📦 Open packs", value: "pack" },
-            { name: "🐉 Join raids", value: "raid" },
-            { name: "💬 Send messages", value: "message" },
-          ))
-        .addIntegerOption(o => o.setName("goal").setDescription("Requirement goal, e.g. 10 (if a requirement is set)").setMinValue(1))
-        .addIntegerOption(o => o.setName("winners").setDescription("Number of winners (default 1)").setMinValue(1).setMaxValue(50)))
-      .addSubcommand(sc => sc.setName("create").setDescription("Create and launch a giveaway (advanced syntax)")
-        .addStringOption(o => o.setName("title").setDescription("Giveaway title").setRequired(true))
-        .addStringOption(o => o.setName("duration").setDescription("How long it runs, e.g. 24h, 3d, 1w").setRequired(true))
-        .addStringOption(o => o.setName("prizes").setDescription("e.g. shards:50000; nitro:1 Month Nitro; card:Dragon Lord x10").setRequired(true))
-        .addStringOption(o => o.setName("requirements").setDescription("e.g. catch:50:*1; battlewin:10:+10; message:100 (blank = open to all)"))
-        .addIntegerOption(o => o.setName("winners").setDescription("Number of winners (default 1)").setMinValue(1).setMaxValue(50))
-        .addStringOption(o => o.setName("difficulty").setDescription("Difficulty tier")
-          .addChoices({ name: "Easy", value: "easy" }, { name: "Medium", value: "medium" }, { name: "Hard", value: "hard" }, { name: "Legendary", value: "legendary" }))
-        .addStringOption(o => o.setName("mode").setDescription("Winner rule")
-          .addChoices({ name: "Entry-based (activity = chances)", value: "entry" }, { name: "Completion (must finish all)", value: "completion" }))
-        .addChannelOption(o => o.setName("channel").setDescription("Channel to post in (defaults to here)"))
-        .addStringOption(o => o.setName("description").setDescription("Extra flavor text"))
-        .addStringOption(o => o.setName("image").setDescription("Custom giveaway image URL (optional; card art used otherwise)"))
-        .addStringOption(o => o.setName("claimtimer").setDescription("Claim window, e.g. 24h (default 24h)"))
-        .addStringOption(o => o.setName("announce").setDescription("How winners are notified")
-          .addChoices({ name: "Channel", value: "channel" }, { name: "DM", value: "dm" }, { name: "Both", value: "both" })))
-      .addSubcommand(sc => sc.setName("edit").setDescription("Edit an existing giveaway")
-        .addIntegerOption(o => o.setName("id").setDescription("Giveaway id").setRequired(true))
-        .addStringOption(o => o.setName("title").setDescription("New title"))
-        .addStringOption(o => o.setName("duration").setDescription("New duration from now, e.g. 12h"))
-        .addStringOption(o => o.setName("prizes").setDescription("Replace prizes (same syntax as create)"))
-        .addStringOption(o => o.setName("requirements").setDescription("Replace requirements (blank clears them)"))
-        .addIntegerOption(o => o.setName("winners").setDescription("Winner count").setMinValue(1).setMaxValue(50))
-        .addStringOption(o => o.setName("difficulty").setDescription("Difficulty")
-          .addChoices({ name: "Easy", value: "easy" }, { name: "Medium", value: "medium" }, { name: "Hard", value: "hard" }, { name: "Legendary", value: "legendary" }))
-        .addStringOption(o => o.setName("mode").setDescription("Winner rule")
-          .addChoices({ name: "Entry-based", value: "entry" }, { name: "Completion", value: "completion" }))
-        .addStringOption(o => o.setName("description").setDescription("New description"))
-        .addStringOption(o => o.setName("image").setDescription("New custom image URL (blank clears)"))
-        .addStringOption(o => o.setName("claimtimer").setDescription("New claim window, e.g. 24h"))
-        .addStringOption(o => o.setName("announce").setDescription("Winner notification")
-          .addChoices({ name: "Channel", value: "channel" }, { name: "DM", value: "dm" }, { name: "Both", value: "both" })))
-      .addSubcommand(sc => sc.setName("end").setDescription("End a giveaway now and draw winners")
-        .addIntegerOption(o => o.setName("id").setDescription("Giveaway id").setRequired(true)))
-      .addSubcommand(sc => sc.setName("cancel").setDescription("🛑 Cancel a giveaway with NO winners (clears a stuck/broken one)")
-        .addIntegerOption(o => o.setName("id").setDescription("Giveaway id").setRequired(true)))
-      .addSubcommand(sc => sc.setName("winners").setDescription("View a giveaway's winners and claim status")
-        .addIntegerOption(o => o.setName("id").setDescription("Giveaway id").setRequired(true)))
-      .addSubcommand(sc => sc.setName("list").setDescription("List active and past giveaways"))
-      .addSubcommand(sc => sc.setName("reroll").setDescription("Reroll a winner")
-        .addIntegerOption(o => o.setName("id").setDescription("Giveaway id").setRequired(true))
-        .addUserOption(o => o.setName("user").setDescription("Winner to replace (defaults to an unclaimed one")))),
+    // ── /giveaway (giveaway hub — browse, enter progress, and admin tools) ─────
+    cmd("giveaway", "Open the Giveaway Hub — browse active giveaways and manage them (admins)", s => s),
 
     // ── /market (user, Marketplace) ───────────────────────────────────────────
     cmd("market", "Buy, sell, and auction cards for DN Shards", s => s
@@ -703,6 +626,7 @@ export const COMMAND_RENAMES: Record<string, string> = {
   welcomeadmin: "welcome_admin",
   battleadmin: "battle_admin",
   raidadmin: "raid_admin",
+  opsadmin: "ops_admin",
   giveawayadmin: "giveaway_admin",
   massrole: "mass_role",
   sethub: "set_hub",
