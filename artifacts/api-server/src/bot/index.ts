@@ -392,6 +392,13 @@ export async function startBot() {
           return;
         }
 
+        // ── Onboarding adventure buttons (continue, claim rewards) ─────────
+        if (action === "onboarding") {
+          const { handleOnboardingComponent } = await import("./onboarding/command.js");
+          await handleOnboardingComponent(interaction);
+          return;
+        }
+
         // ── Pack privacy prompt (Open Publicly / Open Privately) ───────────
         if (action === "pack") {
           const { handlePackOpenButton } = await import("./commands/pack.js");
@@ -795,6 +802,9 @@ export async function startBot() {
         await handleAfkCommand(interaction);
       } else if (cmd === "afksetup") {
         await handleAfkSetupCommand(interaction);
+      } else if (cmd === "begin") {
+        const { handleOnboardingCommand } = await import("./onboarding/command.js");
+        await handleOnboardingCommand(interaction);
       } else if (USER_HUB_COMMANDS.has(cmd)) {
         // Flattened player commands (/burn, /daily, …) + standalone player
         // commands that carry their own subcommands (/sets, /rep, …).
@@ -827,7 +837,7 @@ export async function startBot() {
     "giveaway",
     "bob", "bob_coinflip", "bob_dice", "bob_hl", "bob_slots", "bob_wheel", "bob_emoji", "bob_bj", "bob_rps",
     "bob_roulette", "bob_duel", "bob_roast", "bob_talk", "bob_stats", "bob_leaderboard", "bob_admin",
-    "whisper", "adminsecret", "echo", "afk", "afksetup",
+    "whisper", "adminsecret", "echo", "afk", "afksetup", "begin",
     "valuehelp", "valuelist", "info_mttv", "giveall", "editpack", "postcalculator",
     "massrole",
   ]);

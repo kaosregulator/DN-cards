@@ -94,6 +94,9 @@ function buildLegacyCommands() {
     cmd("battles_welcome", "Welcome guide to DN Cards battles", s => s),
     cmd("funfact", "A random Military Tycoon fun fact from the wiki", s => s),
 
+    // ── /begin (interactive onboarding adventure — one-time, real rewards) ─────
+    cmd("begin", "Start your DN Cards adventure — a guided intro with real starter rewards", s => s),
+
     adminCmd("setup", "Interactive server setup wizard — channels, spawns, rates, toggles", s => s),
 
     cmd("help", "Show player commands", s => s),
