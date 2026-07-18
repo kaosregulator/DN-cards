@@ -24,7 +24,7 @@ import { applyEmbedOverride } from "../embed-overrides.js";
 import { toAbsoluteImageUrl } from "../image-url.js";
 import { logger } from "../../lib/logger.js";
 import type { Card, CustomPack, GuildSettings } from "@workspace/db";
-import { renderPackCover, renderCardReveal, type RevealStats } from "../animations/index.js";
+import { renderPackOpening, renderPackCover, renderCardReveal, type RevealStats, type AnimationSpeed } from "../animations/index.js";
 import { getBattleSettings } from "../battle/config-engine.js";
 import { getScaledStats } from "../battle/stat-engine.js";
 import type { RenderCard } from "../battle/image/render.js";
@@ -250,14 +250,13 @@ function cardToRenderCard(
 const sleep = (ms: number) => new Promise<void>(r => setTimeout(r, ms));
 const REVEAL_FILE = "pack-reveal.png";
 
-// Sequential pack-opening animation: a tier cover canvas (shown, then replaced),
-// then each pulled card revealed one at a time with its Level-1 battle stats,
-// then the summary embed. Uses cheap static PNGs edited into the reply — far
-// lighter than a GIF. Fully best-effort: if the canvas isn't available or any
-// step fails, it silently ends on the summary so /pack never breaks.
+// Pack-opening animation: tries the animated GIF first, then falls back to a
+// sequence of static PNGs if GIF encoding fails or is too large. Always ends
+// on the summary embed so /pack never breaks.
 async function playPackReveal(opts: {
   interaction: PackInteraction;
   guildId: string;
+  tier: string;
   tierColor: number;
   tierLabel: string;
   tierEmoji?: string;
@@ -265,13 +264,39 @@ async function playPackReveal(opts: {
   cards: Card[];
   shinies: boolean[];
   summaryEmbed: EmbedBuilder;
+  speed: AnimationSpeed;
 }): Promise<void> {
   const { interaction, summaryEmbed } = opts;
   const finish = () => interaction.editReply({ embeds: [summaryEmbed], components: [], files: [] });
 
   try {
-    // Level-1 stats come from the battle stat engine (best-effort — battle system
-    // may be unconfigured, in which case we reveal cards without a stat block).
+    // 1) Try the animated GIF opening first.
+    const gif = await renderPackOpening({
+      tier: opts.tier,
+      tierColor: opts.tierColor,
+      cards: opts.renderCards,
+      shinies: opts.shinies,
+    }, opts.speed);
+
+    if (gif) {
+      const gifEmbed = new EmbedBuilder()
+        .setColor(opts.tierColor)
+        .setImage("attachment://pack-open.gif");
+      await interaction.editReply({
+        embeds: [gifEmbed],
+        components: [],
+        files: [new AttachmentBuilder(gif.buffer, { name: "pack-open.gif" })],
+      });
+      await sleep(gif.durationMs);
+      await finish();
+      return;
+    }
+  } catch (err) {
+    logger.debug({ err }, "pack GIF animation failed; falling back to PNG reveals");
+  }
+
+  try {
+    // 2) PNG fallback: Level-1 stats come from the battle stat engine (best-effort).
     const battleSettings = await getBattleSettings(opts.guildId).catch(() => null);
     const statsFor = (card: Card): RevealStats | null => {
       if (!battleSettings) return null;
@@ -284,7 +309,7 @@ async function playPackReveal(opts: {
       } catch { return null; }
     };
 
-    // 1) Cover.
+    // 2a) Cover.
     const cover = await renderPackCover({
       tierLabel: opts.tierLabel, tierColor: opts.tierColor,
       emoji: opts.tierEmoji, size: opts.renderCards.length,
@@ -294,7 +319,7 @@ async function playPackReveal(opts: {
     await interaction.editReply({ embeds: [coverEmbed], components: [], files: [new AttachmentBuilder(cover, { name: REVEAL_FILE })] });
     await sleep(1100);
 
-    // 2) Per-card reveals.
+    // 2b) Per-card reveals.
     for (let i = 0; i < opts.renderCards.length; i++) {
       const rc = opts.renderCards[i]!;
       const png = await renderCardReveal({
@@ -757,9 +782,10 @@ export async function handleCustomPack(
   if (settings.packAnimationEnabled) {
     await playPackReveal({
       interaction, guildId,
-      tierColor: 0x5865f2, tierLabel: pack.name, tierEmoji: pack.emoji ?? "📦",
+      tier: pack.name, tierColor: 0x5865f2, tierLabel: pack.name, tierEmoji: pack.emoji ?? "📦",
       renderCards: cards.map(c => cardToRenderCard(c, ctxFresh, displayMap, settings)),
       cards, shinies, summaryEmbed: embed,
+      speed: settings.packAnimationSpeed as AnimationSpeed,
     });
   } else {
     await interaction.editReply({ embeds: [embed], components: [], files: [] });
@@ -873,9 +899,10 @@ export async function handlePack(interaction: PackInteraction, tierOverride?: st
   if (settings.packAnimationEnabled) {
     await playPackReveal({
       interaction, guildId,
-      tierColor: meta.color, tierLabel: tierLabel(settings, tier), tierEmoji: meta.emoji,
+      tier, tierColor: meta.color, tierLabel: tierLabel(settings, tier), tierEmoji: meta.emoji,
       renderCards: cards.map(c => cardToRenderCard(c, null, displayMap, settings)),
       cards, shinies, summaryEmbed,
+      speed: settings.packAnimationSpeed as AnimationSpeed,
     });
   } else {
     await interaction.editReply({ embeds: [summaryEmbed], components: [], files: [] });
