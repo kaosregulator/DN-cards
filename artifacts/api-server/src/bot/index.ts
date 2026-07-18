@@ -358,6 +358,9 @@ export async function startBot() {
         } else if (interaction.customId.startsWith("user-hub:modal:")) {
           const { handleUserHubModal } = await import("./commands/user-hub.js");
           await handleUserHubModal(interaction);
+        } else if (interaction.customId.startsWith("recycle:modal:")) {
+          const { handleRecycleModal } = await import("./cards/recycle-generator.js");
+          await handleRecycleModal(interaction);
         } else if (interaction.customId.startsWith("gwhub:")) {
           await handleGiveawayHubComponent(interaction);
         }

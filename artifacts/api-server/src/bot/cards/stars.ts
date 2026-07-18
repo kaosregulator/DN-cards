@@ -102,6 +102,16 @@ export type RecycleResult =
   | { ok: true; fromStar: number; toStar: number; consumed: number }
   | { ok: false; reason: "max_star" | "not_enough" | "error" };
 
+export interface MergeAllSource {
+  cardId: number;
+  name: string;
+  consumed: number;
+  remaining: number;
+}
+export type MergeAllResult =
+  | { ok: true; targetCardId: number; targetName: string; fromStar: number; toStar: number; consumed: number; sources: MergeAllSource[] }
+  | { ok: false; reason: "no_duplicates" | "max_star" | "no_progress" | "error" };
+
 // Consume `recycleCost(star)` duplicate copies from the existing collection and
 // raise the card's Star Rank by one. Keeps one normal copy as the card itself.
 export async function recycleCard(guildId: string, userId: string, cardId: number): Promise<RecycleResult> {
@@ -124,6 +134,95 @@ export async function recycleCard(guildId: string, userId: string, cardId: numbe
     return { ok: true, fromStar: q.star, toStar, consumed };
   } catch (err) {
     logger.error({ err, guildId, userId, cardId }, "recycleCard failed");
+    return { ok: false, reason: "error" };
+  }
+}
+
+// Consume spendable duplicate copies from ALL eligible cards and funnel them into
+// the user's highest-starred (then highest-count) card, leveling it as far as
+// the available duplicates allow. Always preserves one copy of every card.
+export async function mergeAllRecycle(guildId: string, userId: string): Promise<MergeAllResult> {
+  try {
+    const { getUserCollection } = await import("../db.js");
+    const collection = await getUserCollection(guildId, userId);
+    const stars = await getStarRanks(guildId, userId);
+    const eligible = collection
+      .filter(c => c.count > 1)
+      .map(c => ({
+        cardId: c.id,
+        name: c.name,
+        count: c.count,
+        star: stars.get(c.id) ?? 0,
+        spendable: c.count - 1,
+      }));
+
+    if (eligible.length === 0) return { ok: false, reason: "no_duplicates" };
+
+    // Target: highest star, then highest count (so we always merge INTO the best card).
+    eligible.sort((a, b) => b.star - a.star || b.count - a.count);
+    const target = eligible[0]!;
+    if (target.star >= MAX_STAR) return { ok: false, reason: "max_star" };
+
+    // Simulate how many copies we can actually spend and how far that takes the target.
+    let currentStar = target.star;
+    let remainingSpendable = eligible.reduce((sum, c) => sum + c.spendable, 0);
+    let neededForNext = recycleCost(currentStar);
+    while (currentStar < MAX_STAR && remainingSpendable >= neededForNext) {
+      remainingSpendable -= neededForNext;
+      currentStar++;
+      neededForNext = recycleCost(currentStar);
+    }
+    const toConsume = eligible.reduce((sum, c) => sum + c.spendable, 0) - remainingSpendable;
+    if (toConsume === 0 || currentStar === target.star) return { ok: false, reason: "no_progress" };
+
+    // Allocate consumption across sources. Sacrifice the weakest cards first,
+    // then the target's own duplicates if still needed.
+    const sources: MergeAllSource[] = [];
+    let stillNeeded = toConsume;
+    const nonTarget = eligible.slice(1).sort((a, b) => a.star - b.star || b.count - a.count);
+    for (const c of nonTarget) {
+      if (stillNeeded <= 0) break;
+      const take = Math.min(c.spendable, stillNeeded);
+      if (take > 0) {
+        sources.push({ cardId: c.cardId, name: c.name, consumed: take, remaining: c.count - take });
+        stillNeeded -= take;
+      }
+    }
+    if (stillNeeded > 0) {
+      const take = Math.min(target.spendable, stillNeeded);
+      if (take > 0) {
+        sources.push({ cardId: target.cardId, name: target.name, consumed: take, remaining: target.count - take });
+        stillNeeded -= take;
+      }
+    }
+
+    if (stillNeeded > 0) {
+      // Math says we had enough, but something shifted; treat it as partial progress.
+      logger.warn({ guildId, userId, targetCardId: target.cardId, stillNeeded }, "mergeAllRecycle shortfall after allocation");
+    }
+
+    // Persist the consumption.
+    for (const s of sources) {
+      for (let i = 0; i < s.consumed; i++) {
+        const res = await removeCardFromUser(guildId, userId, s.cardId);
+        if (!res.success) {
+          logger.warn({ guildId, userId, cardId: s.cardId, i }, "mergeAllRecycle failed to consume a copy");
+        }
+      }
+    }
+
+    await setStarRank(guildId, userId, target.cardId, currentStar);
+    return {
+      ok: true,
+      targetCardId: target.cardId,
+      targetName: target.name,
+      fromStar: target.star,
+      toStar: currentStar,
+      consumed: toConsume - stillNeeded,
+      sources,
+    };
+  } catch (err) {
+    logger.error({ err, guildId, userId }, "mergeAllRecycle failed");
     return { ok: false, reason: "error" };
   }
 }

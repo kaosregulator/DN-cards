@@ -79,8 +79,13 @@ export async function handleRecycleButton(interaction: ButtonInteraction): Promi
   // legacy recycle:do confirm to the animated confirm handler.
   const parts = interaction.customId.split(":");
   if (parts[0] !== "recycle") return;
-  if (parts[1] === "select" || parts[1] === "back" || parts[1] === "search" || parts[1] === "search-select") {
+  if (parts[1] === "select" || parts[1] === "back" || parts[1] === "search-modal" || parts[1] === "search-select") {
     await handleRecycleComponent(interaction);
+    return;
+  }
+  if (parts[1] === "merge-all") {
+    const { handleRecycleMergeAll } = await import("../cards/recycle-generator.js");
+    await handleRecycleMergeAll(interaction);
     return;
   }
   await handleRecycleConfirmButton(interaction);
