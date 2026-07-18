@@ -20,7 +20,8 @@ import { logger } from "../../lib/logger.js";
 import { consumeCooldown } from "../../lib/cooldowns.js";
 import { scheduleMessageDelete } from "../../lib/temp-message.js";
 import { renderBattleImage, type RenderCard } from "./image/render.js";
-import { renderBattleVictory } from "../animations/index.js";
+import { renderAttackFrame, renderBattleVictory } from "../animations/index.js";
+import { computeMoveVisual } from "./turn-visual.js";
 import { renderFatalityCinematic } from "../animations/cinematic/index.js";
 import type { AnimationSpeed } from "../animations/types.js";
 import { toAbsoluteImageUrl } from "../image-url.js";
@@ -859,28 +860,20 @@ async function applyMove(rt: BattleRuntime, side: 0 | 1, move: MoveType) {
       if (foe.hp / foe.stats.maxHealth <= 0.15) rt.wentLow[foeSide(side)] = true;
       if (actor.hp / actor.stats.maxHealth <= 0.15) rt.wentLow[side] = true;
 
-      // Per-turn frame: the SAME battlefield as the VS screen, now with the live
-      // combat overlay (both HP bars + damage chip, the damage number, and the
-      // move banner). A single static PNG — continuous with the intro, and cheap
-      // enough for every turn (per-turn GIF encoding is what was too slow).
-      const isCrit = result.events.some(e => e.flash === "crit");
+      // Per-turn attack frame: a fresh canvas focused on the acting card,
+      // move name, and impact FX — same renderer raids use, so the hit is
+      // visible and readable instead of blended into a busy battlefield.
+      const visual = computeMoveVisual(move, result, actor, foe, foePoolBefore, selfPoolBefore);
       if (rt.settings.battleAnimationEnabled) {
-        rt.turnAnimation = await renderBattleImage(
-          combatantToRenderCard(rt, rt.a!),
-          combatantToRenderCard(rt, rt.b!),
-          { backgroundUrl: rt.battleBgUrl },
-          {
-            attackerSide: side,
-            moveName: moveLabel(move),
-            damage, isHit: damage > 0, isCrit,
-            hpA: rt.a!.hp, hpAMax: rt.a!.stats.maxHealth, prevHpA: aHpBefore, shieldA: rt.a!.shield,
-            hpB: rt.b!.hp, hpBMax: rt.b!.stats.maxHealth, prevHpB: bHpBefore, shieldB: rt.b!.shield,
-          },
-        ).catch(() => null);
-        // Keep the persistent battlefield current: the next turn's "thinking"
-        // frame (and any fallback) shows this up-to-date board, not the stale
-        // pre-combat VS shot — so the image never snaps backward between turns.
-        if (rt.turnAnimation) { rt.vsImage = rt.turnAnimation; rt.vsImageIsGif = false; }
+        rt.turnAnimation = await renderAttackFrame({
+          attacker: combatantToRenderCard(rt, actor),
+          moveName: moveLabel(move),
+          damage: visual.damage,
+          isCrit: visual.isCrit,
+          isHit: visual.isHit,
+          scene: visual.scene,
+          subtitle: visual.subtitle,
+        }).catch(() => null);
       }
 
       await renderCombat(rt);
