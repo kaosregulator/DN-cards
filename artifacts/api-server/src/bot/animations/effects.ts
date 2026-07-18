@@ -160,21 +160,62 @@ export function drawHealthBar(
 ): void {
   const pct = Math.max(0, Math.min(1, current / Math.max(1, max)));
   const prevPct = Math.max(0, Math.min(1, previousCurrent / Math.max(1, max)));
-  const animatedPct = lerp(prevPct, pct, easeInOutCubic(t));
-  const barW = width * animatedPct;
+  const ease = easeInOutCubic(clamp01(t));
+  // The bright "chip" trails behind the solid fill: it starts at the pre-hit HP
+  // and drains toward the new value, so the segment between the two reads as the
+  // damage being taken in real time (the classic fighting-game health bar).
+  const chipPct = lerp(prevPct, pct, ease);
+  const solidW = width * pct;
+  const chipW = width * chipPct;
   ctx.save();
+  // Track.
   ctx.fillStyle = "rgba(20,20,24,0.85)";
   roundRectPath(ctx, x, y, width, height, height / 2);
   ctx.fill();
-  if (barW > 0) {
-    ctx.fillStyle = hexToRgba(color, 1);
-    roundRectPath(ctx, x, y, barW, height, height / 2);
+  // Damage chip (drawn first, then the solid fill covers all but the draining
+  // tail). A gentle pulse keeps it lively while it recedes.
+  if (chipW > 0) {
+    const pulse = 0.55 + 0.25 * Math.sin(t * Math.PI * 6);
+    ctx.fillStyle = hexToRgba(0xffe08a, pulse);
+    roundRectPath(ctx, x, y, chipW, height, height / 2);
+    ctx.fill();
+  }
+  // Solid current-HP fill, tinted toward red as HP drops so low HP reads at a
+  // glance regardless of the card's rarity colour.
+  if (solidW > 0) {
+    const hp = blendHpColor(color, pct);
+    ctx.fillStyle = hexToRgba(hp, 1);
+    roundRectPath(ctx, x, y, solidW, height, height / 2);
+    ctx.fill();
+    // Top gloss.
+    ctx.fillStyle = "rgba(255,255,255,0.18)";
+    roundRectPath(ctx, x, y, solidW, height * 0.45, height / 2);
     ctx.fill();
   }
   ctx.lineWidth = 2; ctx.strokeStyle = "rgba(255,255,255,0.25)";
   roundRectPath(ctx, x, y, width, height, height / 2);
   ctx.stroke();
   ctx.restore();
+  // Ticking HP numerals that count down with the drain.
+  const shownHp = Math.max(0, Math.round(lerp(previousCurrent, current, ease)));
+  drawTextWithShadow(
+    ctx, `${shownHp.toLocaleString()} / ${Math.round(max).toLocaleString()}`,
+    x + width / 2, y + height / 2, "#ffffff", Math.min(14, height * 0.8),
+  );
+}
+
+// Blend a bar's base colour toward red as its fill drops — a low bar always
+// looks dangerous even when the card's rarity colour is green/blue.
+function blendHpColor(base: number, pct: number): number {
+  if (pct > 0.5) return base;
+  const danger = 0xe74c3c;
+  const k = 1 - pct / 0.5; // 0 at 50% → 1 at empty
+  const br = (base >> 16) & 0xff, bg = (base >> 8) & 0xff, bb = base & 0xff;
+  const dr = (danger >> 16) & 0xff, dg = (danger >> 8) & 0xff, dbl = danger & 0xff;
+  const r = Math.round(br + (dr - br) * k);
+  const g = Math.round(bg + (dg - bg) * k);
+  const b = Math.round(bb + (dbl - bb) * k);
+  return (r << 16) | (g << 8) | b;
 }
 
 export function drawScreenFlash(
