@@ -51,6 +51,20 @@ export interface RenderOpts {
   backgroundUrl?: string | null;  // admin-uploaded arena image (cover-fit); wins over `background`
 }
 
+// A live-combat overlay drawn ON the shared VS battlefield, so every turn is the
+// SAME composition as the intro VS screen — no jump to a different image. Purely
+// presentational: HP bars (with a damage "chip"), the damage number, a move
+// banner, an attacker highlight, and crit sparks. Omit it for the plain VS shot.
+export interface CombatOverlay {
+  attackerSide: 0 | 1;            // 0 = left card acting, 1 = right card acting
+  moveName: string;
+  damage: number;
+  isHit: boolean;
+  isCrit: boolean;
+  hpA: number; hpAMax: number; prevHpA: number; shieldA?: number;
+  hpB: number; hpBMax: number; prevHpB: number; shieldB?: number;
+}
+
 // ── canvas module (lazy, cached) ─────────────────────────────────────────────
 type CanvasMod = typeof import("@napi-rs/canvas");
 let _canvas: CanvasMod | null | undefined;
@@ -411,11 +425,106 @@ async function drawCard(ctx: Ctx, mod: CanvasMod, x: number, card: RenderCard) {
   layerStatline(ctx, x, card);
 }
 
+// ── Combat overlay ───────────────────────────────────────────────────────────
+// An HP bar under a card: dark track, a bright "chip" showing the HP just lost
+// (prev → current), the solid current fill (tinted toward red when low), a top
+// gloss, and the numeric HP. Static, but the chip makes the hit read at a glance.
+function drawHpBar(
+  ctx: Ctx, x: number, y: number, w: number, h: number,
+  cur: number, max: number, prev: number, shield: number, color: string,
+) {
+  const pct = Math.max(0, Math.min(1, cur / Math.max(1, max)));
+  const prevPct = Math.max(0, Math.min(1, prev / Math.max(1, max)));
+  ctx.save();
+  // track
+  ctx.fillStyle = "rgba(15,15,20,0.9)";
+  roundRectPath(ctx, x, y, w, h, h / 2); ctx.fill();
+  // damage chip (prev level), warm flash colour
+  if (prevPct > pct) {
+    ctx.fillStyle = "rgba(255,224,138,0.85)";
+    roundRectPath(ctx, x, y, w * prevPct, h, h / 2); ctx.fill();
+  }
+  // current fill — redden as HP drops so low bars always look dangerous
+  if (pct > 0) {
+    ctx.fillStyle = pct > 0.5 ? color : (pct > 0.25 ? "#e8a23c" : "#e74c3c");
+    roundRectPath(ctx, x, y, w * pct, h, h / 2); ctx.fill();
+    ctx.fillStyle = "rgba(255,255,255,0.18)";
+    roundRectPath(ctx, x, y, w * pct, h * 0.45, h / 2); ctx.fill();
+  }
+  ctx.lineWidth = 2; ctx.strokeStyle = "rgba(255,255,255,0.28)";
+  roundRectPath(ctx, x, y, w, h, h / 2); ctx.stroke();
+  ctx.restore();
+  // label
+  ctx.font = font(13, FONTS.body, "800");
+  ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  ctx.fillStyle = "rgba(0,0,0,0.75)";
+  const label = `${Math.max(0, Math.round(cur)).toLocaleString()} / ${Math.round(max).toLocaleString()}${shield > 0 ? `  🛡 ${shield}` : ""}`;
+  ctx.strokeStyle = "rgba(0,0,0,0.75)"; ctx.lineWidth = 3; ctx.strokeText(label, x + w / 2, y + h / 2);
+  ctx.fillStyle = "#ffffff"; ctx.fillText(label, x + w / 2, y + h / 2);
+}
+
+// The big damage readout over the struck card (or MISS on a whiff).
+function drawDamageReadout(ctx: Ctx, cx: number, cy: number, damage: number, isHit: boolean, isCrit: boolean) {
+  ctx.save();
+  ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  const text = !isHit ? "MISS" : (isCrit ? `-${damage.toLocaleString()}!` : `-${damage.toLocaleString()}`);
+  const px = isCrit ? 62 : 48;
+  ctx.font = font(px, FONTS.display, "800");
+  ctx.lineWidth = 8; ctx.strokeStyle = "rgba(0,0,0,0.85)";
+  ctx.strokeText(text, cx, cy);
+  ctx.fillStyle = !isHit ? "#b6c0c2" : (isCrit ? "#ff4444" : "#ffffff");
+  ctx.shadowColor = isCrit ? "rgba(255,60,60,0.9)" : "rgba(0,0,0,0.6)";
+  ctx.shadowBlur = isCrit ? 24 : 8;
+  ctx.fillText(text, cx, cy);
+  ctx.restore();
+}
+
+// Radiating crit sparks from a point — a cheap, seed-free impact accent.
+function drawCritSparks(ctx: Ctx, cx: number, cy: number, color: string) {
+  ctx.save();
+  ctx.strokeStyle = color; ctx.lineWidth = 4;
+  for (let i = 0; i < 12; i++) {
+    const a = (i / 12) * Math.PI * 2;
+    ctx.beginPath();
+    ctx.moveTo(cx + Math.cos(a) * 26, cy + Math.sin(a) * 26);
+    ctx.lineTo(cx + Math.cos(a) * 70, cy + Math.sin(a) * 70);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+// Draw the full combat overlay onto the already-composed battlefield.
+function layerCombatOverlay(ctx: Ctx, combat: CombatOverlay, colorA: string, colorB: string) {
+  const barY = CARD_BOX.y + CARD_BOX.height + 8;   // just under the cards
+  const barH = 22;
+  drawHpBar(ctx, CARD_BOX.leftX, barY, CARD_BOX.width, barH, combat.hpA, combat.hpAMax, combat.prevHpA, combat.shieldA ?? 0, colorA);
+  drawHpBar(ctx, CARD_BOX.rightX, barY, CARD_BOX.width, barH, combat.hpB, combat.hpBMax, combat.prevHpB, combat.shieldB ?? 0, colorB);
+
+  // Move banner where the VS badge would sit.
+  ctx.save();
+  ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  ctx.font = font(30, FONTS.display, "800");
+  const banner = combat.moveName.toUpperCase();
+  const g = ctx.createLinearGradient(0, VS_BADGE.cy - 20, 0, VS_BADGE.cy + 20);
+  g.addColorStop(0, "#fff2b0"); g.addColorStop(1, "#ffcc33");
+  ctx.lineWidth = 7; ctx.strokeStyle = "#3a2600"; ctx.strokeText(banner, VS_BADGE.cx, VS_BADGE.cy - 40);
+  ctx.fillStyle = g; ctx.fillText(banner, VS_BADGE.cx, VS_BADGE.cy - 40);
+  ctx.restore();
+
+  // Damage readout + crit sparks over the STRUCK card (opposite the attacker).
+  const struckLeft = combat.attackerSide === 1;
+  const dx = (struckLeft ? CARD_BOX.leftX : CARD_BOX.rightX) + CARD_BOX.width / 2;
+  const dy = CARD_BOX.y + CARD_BOX.height * 0.42;
+  if (combat.isHit && combat.isCrit) drawCritSparks(ctx, dx, dy, struckLeft ? colorB : colorA);
+  drawDamageReadout(ctx, dx, dy, combat.damage, combat.isHit, combat.isCrit);
+}
+
 // ── Public API ───────────────────────────────────────────────────────────────
 // Returns a PNG Buffer, or null if @napi-rs/canvas isn't available (callers
-// then fall back to the plain embed).
+// then fall back to the plain embed). Pass `combat` to draw the live-combat
+// overlay on the same battlefield (used every turn for a continuous look).
 export async function renderBattleImage(
-  a: RenderCard, b: RenderCard, opts: RenderOpts = {},
+  a: RenderCard, b: RenderCard, opts: RenderOpts = {}, combat?: CombatOverlay,
 ): Promise<Buffer | null> {
   return queueRender("battle-vs", async () => {
   const mod = await getCanvas();
@@ -444,7 +553,14 @@ export async function renderBattleImage(
     });
     await drawCard(ctx, mod, CARD_BOX.leftX, cardA);
     await drawCard(ctx, mod, CARD_BOX.rightX, cardB);
-    layerVs(ctx);
+    // Pre-combat = the classic VS badge; mid-combat = the live overlay (HP bars,
+    // damage number, move banner) on the very same battlefield, so the intro
+    // flows straight into the fight with no image swap.
+    if (combat) {
+      layerCombatOverlay(ctx, combat, rarityHex(cardA.rarity, cardA.rarityColor), rarityHex(cardB.rarity, cardB.rarityColor));
+    } else {
+      layerVs(ctx);
+    }
     return await canvas.encode("png");
   } catch {
     return null; // never let an image error break a battle

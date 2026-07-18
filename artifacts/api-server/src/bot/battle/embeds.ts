@@ -106,6 +106,23 @@ function who(c: Combatant): string {
   return c.isAi ? `🤖 **AI (${c.aiDifficulty ?? "normal"})**` : `<@${c.userId}>`;
 }
 
+// The routine basic-attack line — "⚔️ X's attack hits for N" — is now shown far
+// more clearly on the combat canvas (damage number + draining HP bar), so it's
+// dropped from the text log. Everything NOTABLE stays: crits (💥) and ultimates
+// (☄️) use different icons, and misses/dodges/shields/counters/heals/buffs/
+// debuffs/status/KOs all read through, keeping the log a highlight reel.
+const ROUTINE_HIT = /^⚔️ .* hits for /u;
+
+// Condense the log for display: drop routine hits (the canvas covers them), keep
+// notable events, and always keep the final line for context. Joined with a
+// single newline instead of a heavy divider between every entry.
+function condensedLog(log: string[], max = 5): string {
+  if (log.length === 0) return "_The battlefield is quiet…_";
+  const notable = log.filter((l, i) => i === log.length - 1 || !ROUTINE_HIT.test(l));
+  const shown = (notable.length ? notable : log).slice(-max);
+  return shown.join("\n");
+}
+
 // ── Live combat embed ────────────────────────────────────────────────────────
 export function buildCombatEmbed(v: BattleView, opts?: { currentMove?: string }): EmbedBuilder {
   const active = v.currentSide === 0 ? v.a : v.b;
@@ -120,10 +137,7 @@ export function buildCombatEmbed(v: BattleView, opts?: { currentMove?: string })
 
   if (active.cardImageUrl) embed.setThumbnail(active.cardImageUrl);
 
-  const logText = v.log.length
-    ? v.log.slice(-6).join(`\n${WHITE_LINE}\n`)
-    : "_The battlefield is quiet…_";
-  embed.addFields({ name: `📜 Battle Log ${WHITE_LINE}`, value: logText.slice(0, 1024), inline: false });
+  embed.addFields({ name: `📜 Battle Log ${WHITE_LINE}`, value: condensedLog(v.log).slice(0, 1024), inline: false });
 
   const turnLine = active.isAi
     ? `🤖 **AI** is deciding…`
@@ -141,9 +155,6 @@ export function buildCombatEmbed(v: BattleView, opts?: { currentMove?: string })
 export function buildBattleLogEmbed(v: BattleView): EmbedBuilder {
   const active = v.currentSide === 0 ? v.a : v.b;
   const activeDisp = displayRarityOf(active, v.displayMap);
-  const logText = v.log.length
-    ? v.log.slice(-6).join(`\n${WHITE_LINE}\n`)
-    : "_The battlefield is quiet…_";
   const turnLine = active.isAi
     ? `🤖 **AI** is deciding…`
     : `🔹 ${who(active)} — **it's your move!**`;
@@ -151,7 +162,7 @@ export function buildBattleLogEmbed(v: BattleView): EmbedBuilder {
   return new EmbedBuilder()
     .setColor(activeDisp.color)
     .setTitle(`📜 Battle Log — Turn ${v.turnNumber}${v.staked ? " · 💰 Staked" : ""}`)
-    .setDescription(logText.slice(0, 4000))
+    .setDescription(condensedLog(v.log).slice(0, 4000))
     .addFields({ name: "🎯 Current Turn", value: turnLine + timer, inline: false });
 }
 

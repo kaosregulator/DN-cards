@@ -20,9 +20,8 @@ import { logger } from "../../lib/logger.js";
 import { consumeCooldown } from "../../lib/cooldowns.js";
 import { scheduleMessageDelete } from "../../lib/temp-message.js";
 import { renderBattleImage, type RenderCard } from "./image/render.js";
-import { renderAttackFrame, renderBattleVictory } from "../animations/index.js";
+import { renderBattleVictory } from "../animations/index.js";
 import { renderFatalityCinematic } from "../animations/cinematic/index.js";
-import { deriveAttackScene, sceneSubtitle } from "./turn-visual.js";
 import type { AnimationSpeed } from "../animations/types.js";
 import { toAbsoluteImageUrl } from "../image-url.js";
 import { getBotClient } from "../client-holder.js";
@@ -138,6 +137,10 @@ interface BattleRuntime {
   // combat render). null when @napi-rs/canvas isn't installed — the battle then
   // shows the plain embed with no image, never an error.
   vsImage: Buffer | null;
+  // The one arena background chosen for this fight (admin-uploaded, or null for
+  // the themed gradient). Reused by every combat frame so the battlefield never
+  // changes mid-fight — keeping the VS→combat→result sequence continuous.
+  battleBgUrl: string | null;
   // True once vsImage holds an animated GIF (victory / fatality cinematic) rather
   // than a static PNG — Discord only animates an embed image whose ATTACHMENT
   // FILENAME ends in .gif, so the end-screen attach must match.
@@ -338,7 +341,7 @@ export async function startChallenge(
     turnTimer: null, aiOfferTimer: null, ttlTimer: null, processing: false, createdAt: Date.now(),
     displayMap,
     ctx,
-    vsImage: null, vsImageIsGif: false, fatality: null,
+    vsImage: null, battleBgUrl: null, vsImageIsGif: false, fatality: null,
   };
   battles.set(id, rt);
 
@@ -668,13 +671,15 @@ async function beginCombat(rt: BattleRuntime) {
   // Admin-uploaded arena backgrounds auto-shuffle: pick one at random per fight.
   if (rt.a && rt.b) {
     const backgrounds = await getBattleBackgrounds(rt.guildId).catch(() => [] as string[]);
-    const backgroundUrl = backgrounds.length
+    // Pick ONE arena for the whole fight and remember it, so the VS reveal and
+    // every combat frame share the exact same battlefield (no shuffle mid-fight).
+    rt.battleBgUrl = backgrounds.length
       ? toAbsoluteImageUrl(backgrounds[Math.floor(Math.random() * backgrounds.length)]!)
       : null;
     rt.vsImage = await renderBattleImage(
       combatantToRenderCard(rt, rt.a),
       combatantToRenderCard(rt, rt.b),
-      { backgroundUrl },
+      { backgroundUrl: rt.battleBgUrl },
     ).catch(() => null);
   }
 
@@ -840,6 +845,9 @@ async function applyMove(rt: BattleRuntime, side: 0 | 1, move: MoveType) {
       // the actor's own loss (counter/reflect) is damage the foe dealt.
       const foePoolBefore = foe.hp + foe.shield;
       const selfPoolBefore = actor.hp + actor.shield;
+      // Per-side HP before the exchange — drives the HP-bar "damage chip" so the
+      // struck fighter's bar shows exactly how much it just lost.
+      const aHpBefore = rt.a!.hp, bHpBefore = rt.b!.hp;
       const result = resolveMove(rt.settings, actor, foe, move);
       for (const e of result.events) {
         rt.log.push(e.text);
@@ -851,22 +859,28 @@ async function applyMove(rt: BattleRuntime, side: 0 | 1, move: MoveType) {
       if (foe.hp / foe.stats.maxHealth <= 0.15) rt.wentLow[foeSide(side)] = true;
       if (actor.hp / actor.stats.maxHealth <= 0.15) rt.wentLow[side] = true;
 
-      // Static attack-frame PNG shown on every turn (scene-themed FX, move name,
-      // damage readout). GIF encoding mid-turn is too slow for live battles.
+      // Per-turn frame: the SAME battlefield as the VS screen, now with the live
+      // combat overlay (both HP bars + damage chip, the damage number, and the
+      // move banner). A single static PNG — continuous with the intro, and cheap
+      // enough for every turn (per-turn GIF encoding is what was too slow).
       const isCrit = result.events.some(e => e.flash === "crit");
-      const selfGain = Math.max(0, (actor.hp + actor.shield) - selfPoolBefore);
-      const scene = deriveAttackScene(move, result, isCrit, damage, actor, foe);
-      const subtitle = sceneSubtitle(scene, selfGain, result);
       if (rt.settings.battleAnimationEnabled) {
-        rt.turnAnimation = await renderAttackFrame({
-          attacker: combatantToRenderCard(rt, actor),
-          moveName: moveLabel(move),
-          damage,
-          isCrit,
-          isHit: damage > 0,
-          scene,
-          subtitle,
-        }).catch(() => null);
+        rt.turnAnimation = await renderBattleImage(
+          combatantToRenderCard(rt, rt.a!),
+          combatantToRenderCard(rt, rt.b!),
+          { backgroundUrl: rt.battleBgUrl },
+          {
+            attackerSide: side,
+            moveName: moveLabel(move),
+            damage, isHit: damage > 0, isCrit,
+            hpA: rt.a!.hp, hpAMax: rt.a!.stats.maxHealth, prevHpA: aHpBefore, shieldA: rt.a!.shield,
+            hpB: rt.b!.hp, hpBMax: rt.b!.stats.maxHealth, prevHpB: bHpBefore, shieldB: rt.b!.shield,
+          },
+        ).catch(() => null);
+        // Keep the persistent battlefield current: the next turn's "thinking"
+        // frame (and any fallback) shows this up-to-date board, not the stale
+        // pre-combat VS shot — so the image never snaps backward between turns.
+        if (rt.turnAnimation) { rt.vsImage = rt.turnAnimation; rt.vsImageIsGif = false; }
       }
 
       await renderCombat(rt);
