@@ -24,6 +24,8 @@ import { consumeCooldown } from "../../lib/cooldowns.js";
 import { getBossByName, getEnabledBosses, getNextBoss, grantRaidFrame } from "./db.js";
 import { raidFrameForBoss } from "../cards/frames.js";
 import { renderAttackFrame } from "../animations/index.js";
+import { renderFatalityCinematic } from "../animations/cinematic/index.js";
+import type { RenderCard } from "../battle/image/render.js";
 import {
   buildBossCombatant, buildPlayerCombatant, resolveRaidRound,
   BOSS_USER_ID, type PartyMemberSpec, type RaidBeat,
@@ -41,6 +43,11 @@ const ROUND_TIMEOUT_MS = 60_000;
 // (MAX_LEVEL is 100) rather than starting at level 1 like a normal catch.
 const BOSS_CARD_REWARD_LEVEL = 50;
 const RAID_ATTACK_FILE = "raid-attack.png";
+// Must end in .gif — Discord animates an embed image by attachment extension.
+const RAID_FATALITY_FILE = "raid-fatality.gif";
+// The boss is "finishable" once it drops to this fraction of max HP: the party
+// can choose to end it with a 💀 Fatality cinematic instead of a normal clear.
+const RAID_FATALITY_HP_FRACTION = 0.10;
 const RAID_BEAT_MS = 1100;   // hold per animated hit
 const RAID_TICK_MS = 550;    // hold per text-only beat (status ticks)
 const RAID_MAX_ANIM_BEATS = 10; // cap frames per round so big parties stay snappy
@@ -71,6 +78,9 @@ interface RaidSession {
   // Rendered once at Begin (boss vs the party's cards on the battlefield) and
   // re-attached on every fight edit so the arena stays on screen all fight.
   introImage?: Buffer | null;
+  // Set when a party member lands a 💀 Fatality on the boss — drives the
+  // cinematic end-screen. `null` for every normal clear/wipe/timeout.
+  fatality?: { userName: string; winner: RenderCard } | null;
 }
 
 const sessions = new Map<string, RaidSession>();
@@ -179,6 +189,7 @@ export async function handleRaidComponent(
     case "decline": return handleDecline(interaction as ButtonInteraction, session);
     case "cancel": return handleCancel(interaction as ButtonInteraction, session);
     case "act": return handleAct(interaction as ButtonInteraction, session, parts[3] as MoveType);
+    case "fatality": return handleRaidFatality(interaction as ButtonInteraction, session);
     default:
       await interaction.reply({ content: "Unknown raid action.", ...EPHEMERAL }).catch(() => {});
   }
@@ -416,6 +427,46 @@ async function handleAct(interaction: ButtonInteraction, session: RaidSession, m
   }
 }
 
+// Is the boss finishable — low enough that the party may end it with a Fatality
+// cinematic this round? Reads HP only; the option is offered co-op (any living
+// member may take the finishing blow).
+function raidFatalityReady(session: RaidSession): boolean {
+  const boss = session.bossCombatant;
+  if (!boss || session.phase !== "fight" || session.resolving) return false;
+  return boss.hp > 0 && boss.hp <= boss.stats.maxHealth * RAID_FATALITY_HP_FRACTION;
+}
+
+// A party member lands the finishing blow: end the raid as a clear immediately,
+// preserving the exact clear/rewards/XP/frame/card path — only the end-screen
+// image changes to the Fatality cinematic (via session.fatality).
+async function handleRaidFatality(interaction: ButtonInteraction, session: RaidSession): Promise<void> {
+  if (session.phase !== "fight") { await interaction.reply({ content: "The raid isn't in a fighting phase.", ...EPHEMERAL }); return; }
+  const slot = session.party.get(interaction.user.id);
+  if (!slot || !slot.combatant) { await interaction.reply({ content: "You're not in this raid.", ...EPHEMERAL }); return; }
+  if (slot.combatant.hp <= 0) { await interaction.reply({ content: "💀 Your fighter is down — you can't land the finisher.", ...EPHEMERAL }); return; }
+  if (session.resolving) { await interaction.reply({ content: "The round is resolving — hang on.", ...EPHEMERAL }); return; }
+  if (!raidFatalityReady(session)) { await interaction.reply({ content: "The boss isn't finishable yet — wear it down more first.", ...EPHEMERAL }); return; }
+
+  await interaction.deferUpdate().catch(() => {});
+  session.resolving = true;                     // freeze the round loop
+  if (session.timer) { clearTimeout(session.timer); session.timer = undefined; }
+  const boss = session.bossCombatant!;
+  boss.hp = 0;                                  // the finishing blow
+  session.recentLog.push(`💀 **${slot.member.displayName}** used FATALITY!`);
+  session.recentLog = session.recentLog.slice(-8);
+  session.fatality = {
+    userName: slot.member.displayName,
+    winner: {
+      name: slot.member.card.name,
+      rarity: slot.member.card.rarity as Rarity,
+      rarityLabel: (slot.member.card.rarity as string).toUpperCase(),
+      cardType: slot.member.card.cardType,
+      artUrl: toAbsoluteImageUrl(slot.member.card.imageUrl),
+    },
+  };
+  await finishRaid(session, "clear");
+}
+
 async function resolveRound(session: RaidSession): Promise<void> {
   if (session.resolving || session.phase !== "fight") return;
   session.resolving = true;
@@ -576,8 +627,27 @@ async function finishRaid(session: RaidSession, outcome: "clear" | "wipe" | "tim
   let endImage: Buffer | null = null;
   let endFile: string | null = null;
   let storyLine: string | null = null;
-  if (outcome === "clear") {
+  // A Fatality clear plays the cinematic finisher in place of the roster gallery.
+  if (outcome === "clear" && session.fatality) {
     try {
+      const enabled = await getEnabledBosses(session.guildId);
+      storyLine = buildRaidClearLine(boss, Math.max(0, enabled.length - 1));
+    } catch { /* non-fatal */ }
+    const cine = await renderFatalityCinematic({
+      winner: session.fatality.winner,
+      loser: {
+        name: boss.name,
+        rarity: boss.rarity as Rarity,
+        rarityLabel: "BOSS",
+        cardType: "boss",
+        artUrl: toAbsoluteImageUrl(boss.imageUrl),
+      },
+    }).catch(() => null);
+    if (cine) { endImage = cine.buffer; endFile = RAID_FATALITY_FILE; }
+  }
+  if (outcome === "clear") {
+    // Skip the roster gallery when a Fatality cinematic already produced the image.
+    if (!endImage) try {
       const enabled = await getEnabledBosses(session.guildId);
       const remaining = Math.max(0, enabled.length - 1);
       storyLine = buildRaidClearLine(boss, remaining);
@@ -869,12 +939,20 @@ function buildFightEmbeds(
 
 function buildFightComponents(session: RaidSession): ActionRowBuilder<ButtonBuilder>[] {
   const moves: MoveType[] = ["attack", "special", "defend", "charge"];
-  return [new ActionRowBuilder<ButtonBuilder>().addComponents(
+  const rows = [new ActionRowBuilder<ButtonBuilder>().addComponents(
     moves.map(m => new ButtonBuilder()
       .setCustomId(`raid:act:${session.id}:${m}`)
       .setLabel(MOVE_LABEL[m] ?? m)
       .setStyle(m === "attack" ? ButtonStyle.Danger : m === "defend" ? ButtonStyle.Primary : ButtonStyle.Secondary)),
   )];
+  // Once the boss is finishable, offer the optional 💀 Fatality — any living
+  // member can take the killing blow for the cinematic. Normal moves still work.
+  if (raidFatalityReady(session)) {
+    rows.push(new ActionRowBuilder<ButtonBuilder>().addComponents(
+      new ButtonBuilder().setCustomId(`raid:fatality:${session.id}`).setLabel("FATALITY").setEmoji("💀").setStyle(ButtonStyle.Danger),
+    ));
+  }
+  return rows;
 }
 
 async function renderFight(session: RaidSession): Promise<void> {

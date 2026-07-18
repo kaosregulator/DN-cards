@@ -21,6 +21,7 @@ import { consumeCooldown } from "../../lib/cooldowns.js";
 import { scheduleMessageDelete } from "../../lib/temp-message.js";
 import { renderBattleImage, type RenderCard } from "./image/render.js";
 import { renderAttackFrame, renderBattleVictory } from "../animations/index.js";
+import { renderFatalityCinematic } from "../animations/cinematic/index.js";
 import { deriveAttackScene, sceneSubtitle } from "./turn-visual.js";
 import type { AnimationSpeed } from "../animations/types.js";
 import { toAbsoluteImageUrl } from "../image-url.js";
@@ -137,6 +138,13 @@ interface BattleRuntime {
   // combat render). null when @napi-rs/canvas isn't installed — the battle then
   // shows the plain embed with no image, never an error.
   vsImage: Buffer | null;
+  // True once vsImage holds an animated GIF (victory / fatality cinematic) rather
+  // than a static PNG — Discord only animates an embed image whose ATTACHMENT
+  // FILENAME ends in .gif, so the end-screen attach must match.
+  vsImageIsGif: boolean;
+  // Set when a player triggers a 💀 Fatality finisher; drives the cinematic
+  // end-screen. `null` for every normal ending (which stays byte-for-byte as-is).
+  fatality: { side: 0 | 1; userName: string } | null;
 }
 
 const battles = new Map<string, BattleRuntime>();
@@ -330,7 +338,7 @@ export async function startChallenge(
     turnTimer: null, aiOfferTimer: null, ttlTimer: null, processing: false, createdAt: Date.now(),
     displayMap,
     ctx,
-    vsImage: null,
+    vsImage: null, vsImageIsGif: false, fatality: null,
   };
   battles.set(id, rt);
 
@@ -389,6 +397,7 @@ export async function handleBattleComponent(
         case "ppage": return void await onPage(rt, interaction, parts[3] as "prev" | "next");
         case "pready": return void await onReady(rt, interaction);
         case "move": return void await onMoveButton(rt, interaction, parts[3] as MoveType);
+        case "fatality": return void await onFatalityButton(rt, interaction);
         case "moves": return void await onMovesButton(rt, interaction);
         default: return void await safeEphemeral(interaction, "Unknown action.");
       }
@@ -759,6 +768,48 @@ async function onMoveButton(rt: BattleRuntime, interaction: ButtonInteraction, m
   await applyMove(rt, rt.currentSide, move);
 }
 
+async function onFatalityButton(rt: BattleRuntime, interaction: ButtonInteraction) {
+  if (rt.phase !== "combat") return safeEphemeral(interaction, "The battle isn't in combat.");
+  const side = rt.currentSide;
+  const actor = side === 0 ? rt.a! : rt.b!;
+  const foe = other(rt, side);
+  if (interaction.user.id !== actor.userId) return safeEphemeral(interaction, "It's not your turn.");
+  if (rt.processing) return safeEphemeral(interaction, "Resolving the previous move…");
+  // Re-check the window server-side: never trust a stale button.
+  if (!fatalityReady(actor, foe)) return safeEphemeral(interaction, "The moment has passed — that's no longer a guaranteed finish.");
+  await interaction.deferUpdate().catch(() => {});
+  await applyFatality(rt, side);
+}
+
+// A Fatality is a guaranteed finishing blow: it stops the battle immediately,
+// credits the killing damage exactly like a normal KO (so winner/rewards/XP/
+// stats are byte-for-byte identical to attacking), adds the finisher log line,
+// and routes through the SAME finishBattle path — which renders the cinematic
+// instead of the normal victory image because rt.fatality is set.
+async function applyFatality(rt: BattleRuntime, side: 0 | 1) {
+  if (rt.phase !== "combat" || rt.processing) return;
+  rt.processing = true;
+  clearTimer(rt, "turnTimer");
+  try {
+    const actor = side === 0 ? rt.a! : rt.b!;
+    const foe = other(rt, side);
+    // Credit the lethal blow to the attacker's dealt-damage total, matching a
+    // normal killing hit so leaderboard/reward telemetry is unchanged.
+    const lethal = Math.max(0, foe.hp) + Math.max(0, foe.shield);
+    rt.dmg[side] += lethal;
+    foe.shield = 0;
+    foe.hp = 0;
+    rt.wentLow[foeSide(side)] = true;
+    const userName = side === 0 ? rt.challengerName : rt.opponentName;
+    rt.log.push(`💀 **${userName}** used FATALITY!`);
+    rt.fatality = { side, userName };
+    await finishBattle(rt, side, "fatality");
+  } catch (err) {
+    logger.error({ err, battleId: rt.id }, "applyFatality failed");
+    rt.processing = false;
+  }
+}
+
 async function applyMove(rt: BattleRuntime, side: 0 | 1, move: MoveType) {
   if (rt.phase !== "combat" || rt.processing) return;
   rt.processing = true;
@@ -906,20 +957,29 @@ async function finishBattle(rt: BattleRuntime, winnerSide: 0 | 1 | null, reason:
   const view = toView(rt);
   const winner = winnerSide === null ? null : (winnerSide === 0 ? rt.a : rt.b);
 
-  // Victory animation: replace the static VS image with a cinematic GIF.
-  if (winner && rt.settings.battleAnimationEnabled && rt.a && rt.b) {
+  // End-screen image. A Fatality finisher plays the full cinematic GIF; every
+  // other ending keeps its existing victory GIF exactly as before.
+  if (winner && rt.fatality && rt.a && rt.b) {
+    const cine = await renderFatalityCinematic({
+      winner: combatantToRenderCard(rt, winner),
+      loser: combatantToRenderCard(rt, winnerSide === 0 ? rt.b : rt.a),
+    }).catch(() => null);
+    if (cine) { rt.vsImage = cine.buffer; rt.vsImageIsGif = true; }
+  } else if (winner && rt.settings.battleAnimationEnabled && rt.a && rt.b) {
     const victory = await renderBattleVictory({
       winner: combatantToRenderCard(rt, winner),
       loser: combatantToRenderCard(rt, winnerSide === 0 ? rt.b : rt.a),
     }, rt.settings.battleAnimationSpeed as AnimationSpeed).catch(() => null);
-    if (victory) rt.vsImage = victory.buffer;
+    if (victory) { rt.vsImage = victory.buffer; rt.vsImageIsGif = true; }
   }
 
   // Build the victory embed once and reuse it for the message + the battle log.
   // The winner's card stays the thumbnail (buildWinnerEmbed); the VS battle image
   // is reused as the big embed image so it isn't wasted, plus an "HP left" line.
+  // Animated end-screens MUST attach under a .gif name or Discord freezes them.
+  const endFileName = rt.vsImageIsGif ? VS_IMAGE_NAME_GIF : VS_IMAGE_NAME;
   const winnerEmbed = buildWinnerEmbed(view, winnerSide, rewardLines);
-  if (rt.vsImage) winnerEmbed.setImage(`attachment://${VS_IMAGE_NAME}`);
+  if (rt.vsImage) winnerEmbed.setImage(`attachment://${endFileName}`);
   if (winner) {
     const pct = Math.max(0, Math.round((winner.hp / Math.max(1, winner.stats.maxHealth)) * 100));
     winnerEmbed.addFields({
@@ -928,7 +988,7 @@ async function finishBattle(rt: BattleRuntime, winnerSide: 0 | 1 | null, reason:
       inline: false,
     });
   }
-  const winnerFiles = rt.vsImage ? [new AttachmentBuilder(rt.vsImage, { name: VS_IMAGE_NAME })] : [];
+  const winnerFiles = rt.vsImage ? [new AttachmentBuilder(rt.vsImage, { name: endFileName })] : [];
 
   if (rt.message) {
     await rt.message.edit({ embeds: [winnerEmbed], components: [], files: winnerFiles }).catch(() => {});
@@ -951,7 +1011,7 @@ async function finishBattle(rt: BattleRuntime, winnerSide: 0 | 1 | null, reason:
     // Log the same victory embed, re-attaching the VS image so it stays with
     // the logged result too.
     if (client) await logBattleResult(client, rt.guildId, winnerEmbed,
-      rt.vsImage ? { buffer: rt.vsImage, name: VS_IMAGE_NAME } : undefined).catch(() => {});
+      rt.vsImage ? { buffer: rt.vsImage, name: endFileName } : undefined).catch(() => {});
 
     // Victory embed is dramatic but temporary; the battle log keeps the result.
     setTimeout(() => {
@@ -1099,6 +1159,9 @@ export async function forceEndUserBattle(guildId: string, userId: string): Promi
 
 // ── Rendering ────────────────────────────────────────────────────────────────
 const VS_IMAGE_NAME = "battle-vs.png";
+// Animated end-screens (victory / fatality) must attach as .gif or Discord shows
+// only a frozen first frame — the extension, not the bytes, drives animation.
+const VS_IMAGE_NAME_GIF = "battle-vs.gif";
 
 // Map a live Combatant to the renderer's card description.
 function combatantToRenderCard(rt: BattleRuntime, c: Combatant): RenderCard {
@@ -1367,7 +1430,35 @@ function buildPersonalPrepComponents(
   return rows;
 }
 
+// Is a plain attack from `actor` a GUARANTEED kill on `foe` this turn? Mirrors
+// the deterministic worst case of combat-engine's strike() — no crit, low-end
+// variance, defender's current defense/defending/shield — so it only returns
+// true when even the weakest normal hit finishes the foe. Reads state only; it
+// never mutates combat. Stealth is excluded (it would dodge a normal attack).
+// This is the gate for offering the 💀 Fatality finisher.
+function fatalityReady(actor: Combatant, foe: Combatant): boolean {
+  if (foe.hp <= 0) return false;
+  if (foe.status.some(s => s.kind === "stealth")) return false;
+  const pool = foe.hp + foe.shield;
+  const boost = 1 + actor.nextAttackBoostPct / 100;
+  const rawAtk = actor.stats.attack * boost;                    // powerPct 100
+  const effDef = foe.stats.defense * (foe.defending ? 2 : 1);
+  const base = rawAtk * (rawAtk / (rawAtk + effDef * 0.9));
+  const minDmg = Math.max(1, Math.floor(base * 0.88));          // no crit, low variance
+  return minDmg >= pool;
+}
+
 function buildMoveComponents(rt: BattleRuntime, actor: Combatant): ActionRowBuilder<ButtonBuilder>[] {
+  // 💀 Fatality window: when this attack is a guaranteed KO, replace the whole
+  // control set with just Attack + Fatality for this one turn. Attacking normally
+  // ends the battle exactly as it always has; Fatality triggers the cinematic.
+  const foe = actor.userId === rt.a?.userId ? rt.b : rt.a;
+  if (foe && !actor.isAi && fatalityReady(actor, foe)) {
+    return [new ActionRowBuilder<ButtonBuilder>().addComponents(
+      new ButtonBuilder().setCustomId(`battle:move:${rt.id}:attack`).setLabel("Attack").setEmoji("⚔️").setStyle(ButtonStyle.Primary),
+      new ButtonBuilder().setCustomId(`battle:fatality:${rt.id}`).setLabel("FATALITY").setEmoji("💀").setStyle(ButtonStyle.Danger),
+    )];
+  }
   const avail = availableMoves(actor, rt.settings);
   const mk = (move: MoveType, label: string, emoji: string, style: ButtonStyle) =>
     new ButtonBuilder().setCustomId(`battle:move:${rt.id}:${move}`).setLabel(label).setEmoji(emoji)
