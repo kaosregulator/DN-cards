@@ -105,6 +105,7 @@ export function buildPlayerCombatant(
 export interface RaidBeat {
   texts: string[];
   attacker?: RenderCard;
+  defender?: RenderCard;  // the card being attacked (boss or player)
   moveName?: string;
   visual?: MoveVisual;
   bossHp: number;
@@ -150,6 +151,7 @@ export function resolveRaidRound(input: RaidRoundInput): RoundResult {
     beats.push({
       texts: r.events.map(e => e.text),
       attacker: combatantToRenderCard(actor),
+      defender: combatantToRenderCard(foe),
       moveName,
       visual: computeMoveVisual(move, r, actor, foe, foePool, selfPool),
       bossHp: Math.max(0, boss.hp),

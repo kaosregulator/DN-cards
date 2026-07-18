@@ -23,7 +23,8 @@ import { logger } from "../../lib/logger.js";
 import { consumeCooldown } from "../../lib/cooldowns.js";
 import { getBossByName, getEnabledBosses, getNextBoss, grantRaidFrame } from "./db.js";
 import { raidFrameForBoss } from "../cards/frames.js";
-import { renderAttackFrame } from "../animations/index.js";
+import { renderAttackFrame, renderBattleTurn } from "../animations/index.js";
+import type { AnimationSpeed } from "../animations/types.js";
 import {
   buildBossCombatant, buildPlayerCombatant, resolveRaidRound,
   BOSS_USER_ID, type PartyMemberSpec, type RaidBeat,
@@ -468,16 +469,42 @@ async function playRaidBeats(session: RaidSession, beats: RaidBeat[]): Promise<v
     let image: Buffer | null = null;
     const wantsFrame = beat.attacker && beat.visual && animated < RAID_MAX_ANIM_BEATS;
     if (wantsFrame) {
-      image = await renderAttackFrame({
-        attacker: beat.attacker!,
-        moveName: beat.moveName ?? "Attack",
-        damage: beat.visual!.damage,
-        isCrit: beat.visual!.isCrit,
-        isHit: beat.visual!.isHit,
-        scene: beat.visual!.scene,
-        subtitle: beat.visual!.subtitle,
-        boss: true, // raids always hit harder on screen than a normal battle
-      }).catch(() => null);
+      // Try the animated GIF first (both attacker + defender cards, lunge, HP bars).
+      // Falls back to the lightweight static PNG if GIF encoding fails/overflows.
+      const attCard = beat.attacker!;
+      const defCard = beat.defender;
+      const attId = attCard.cardId ?? 0;
+      const defId = defCard?.cardId ?? 0;
+      const gif = defCard
+        ? await renderBattleTurn({
+            attacker: attCard,
+            defender: defCard,
+            attackerHp: attId < 0 ? beat.bossHp : (beat.partyHp[attId.toString()] ?? 0),
+            attackerMaxHp: attId < 0 ? beat.bossHp : 0,
+            defenderHp: defId < 0 ? beat.bossHp : (beat.partyHp[defId.toString()] ?? 0),
+            defenderMaxHp: defId < 0 ? beat.bossHp : 0,
+            damage: beat.visual!.damage,
+            isCrit: beat.visual!.isCrit,
+            isHit: beat.visual!.isHit,
+            moveName: beat.moveName ?? "Attack",
+            attackerWon: false,
+            defenderWon: false,
+          }, session.settings.battleAnimationSpeed as AnimationSpeed).catch(() => null)
+        : null;
+      if (gif) {
+        image = gif.buffer;
+      } else {
+        image = await renderAttackFrame({
+          attacker: beat.attacker!,
+          moveName: beat.moveName ?? "Attack",
+          damage: beat.visual!.damage,
+          isCrit: beat.visual!.isCrit,
+          isHit: beat.visual!.isHit,
+          scene: beat.visual!.scene,
+          subtitle: beat.visual!.subtitle,
+          boss: true,
+        }).catch(() => null);
+      }
       if (image) animated++;
     }
 
