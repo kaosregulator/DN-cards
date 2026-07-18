@@ -13,6 +13,8 @@ import {
   drawScreenFlash, drawRarityGlow, drawCardArt, drawCardFrame, drawRarityBadge,
   drawTextWithShadow, fitText, getRarityEffectColor,
 } from "./effects.js";
+import { drawAtmosphere, atmospherePreset } from "./atmosphere.js";
+import { drawImpactDebris, physicsShake } from "./physics.js";
 import { extractArtColor } from "../battle/image/vibrant-color.js";
 
 // Vibrant colour extraction loads + quantizes the art, so resolve it once per
@@ -71,10 +73,8 @@ async function renderBattleTurnFrame(
   const { ctx, t, mod } = frame;
   const { width, height } = BATTLE_CANVAS;
 
-  const bg = undefined; // use vibrant blend
-
-  // Draw the battlefield background.
-  drawBattleBackground(ctx, width, height, colorA, colorB, bg);
+  // Draw the battlefield background + advancing arena atmosphere (behind cards).
+  drawBattleBackground(ctx, width, height, colorA, colorB, t, `${input.attacker.name}-turn`);
 
   const left = { x: 70, y: 45, w: 340, h: 470 };
   const right = { x: 590, y: 45, w: 340, h: 470 };
@@ -84,6 +84,15 @@ async function renderBattleTurnFrame(
   const lungeT = clamp01((t - 0.20) / 0.20);
   const hitT = clamp01((t - 0.40) / 0.15);
   const afterT = clamp01((t - 0.55) / 0.45);
+
+  // Physics screen-shake on the moment of impact — a kicked spring that overshoots
+  // and settles. Applied to the combat subjects only (not the background), so the
+  // arena stays framed while the fighters jolt. Zero offset outside the hit window.
+  const shake = input.isHit && hitT > 0 && hitT < 1
+    ? await physicsShake(input.isCrit ? 14 : 8, hitT, `${input.attacker.name}-hit`)
+    : { dx: 0, dy: 0 };
+  ctx.save();
+  ctx.translate(shake.dx, shake.dy);
 
   // Attacker lunge.
   const attackerOffset = lungeT < 1 ? lerp(0, 120, easeInOutCubic(lungeT)) : lerp(120, 0, easeInOutCubic(afterT));
@@ -138,6 +147,17 @@ async function renderBattleTurnFrame(
   }
   drawParticles(ctx, particles);
 
+  // Physics debris shards flung from the point of impact — heavier on a crit.
+  if (input.isHit && hitT > 0 && hitT < 1) {
+    await drawImpactDebris(ctx, defenderX + right.w / 2, right.y + right.h / 2, {
+      color: colorA, count: input.isCrit ? 26 : 14, power: input.isCrit ? 15 : 10,
+      steps: Math.max(2, Math.round(hitT * 16)), seed: `${input.attacker.name}-shard`,
+    });
+  }
+
+  // End of the shaken combat group — HP bars + VS stay steady (UI, not subjects).
+  ctx.restore();
+
   // Health bars.
   const barW = 320, barH = 18;
   drawHealthBar(ctx, left.x + 10, left.y + left.h + 18, barW, barH, input.attackerHp, input.attackerMaxHp, colorA, 1, input.attackerHp);
@@ -155,7 +175,9 @@ async function renderVictoryFrame(
 ): Promise<void> {
   const { ctx, t, mod } = frame;
   const { width, height } = BATTLE_CANVAS;
-  drawBattleBackground(ctx, width, height, colorA, colorB, undefined);
+  drawBattleBackground(ctx, width, height, colorA, colorB, t, `${input.winner.name}-win`);
+  // Embers + sparks rising behind the champion (behind the card).
+  drawAtmosphere(ctx, width, height, atmospherePreset("ember"), { seed: `${input.winner.name}-victory`, t, color: colorA });
 
   const winnerBox = { x: 220, y: 50, w: 420, h: 440 };
   const scale = 0.9 + 0.1 * Math.sin(t * Math.PI * 4);
@@ -186,7 +208,8 @@ function drawBattleBackground(
   ctx: Ctx,
   width: number, height: number,
   colorA: number, colorB: number,
-  bg?: string,
+  t: number,
+  seed: string,
 ): void {
   drawGradientBackground(ctx, width, height, [
     [0, hexToRgba(colorA, 0.22)],
@@ -200,6 +223,9 @@ function drawBattleBackground(
   ctx.fillStyle = "rgba(0,0,0,0.18)";
   ctx.fill();
   ctx.restore();
+  // Living arena: dust/fog/spark ambience that advances with the frame phase and
+  // loops seamlessly. Behind the cards, drawn before any combatant.
+  drawAtmosphere(ctx, width, height, atmospherePreset("battlefield"), { seed, t, color: colorA });
 }
 
 async function drawBattleCard(

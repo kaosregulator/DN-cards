@@ -256,6 +256,9 @@ importers:
       google-auth-library:
         specifier: ^10.6.2
         version: 10.6.2
+      matter-js:
+        specifier: ^0.20.0
+        version: 0.20.0
       nanoid:
         specifier: ^3.3.12
         version: 3.3.12
@@ -274,6 +277,9 @@ importers:
       sharp:
         specifier: ^0.35.3
         version: 0.35.3(@types/node@25.6.2)
+      simplex-noise:
+        specifier: ^4.0.3
+        version: 4.0.3
       zod:
         specifier: 'catalog:'
         version: 3.25.76
@@ -293,6 +299,9 @@ importers:
       '@types/express-session':
         specifier: ^1.19.0
         version: 1.19.0
+      '@types/matter-js':
+        specifier: ^0.20.2
+        version: 0.20.2
       '@types/node':
         specifier: 'catalog:'
         version: 25.6.2
@@ -2146,6 +2155,9 @@ packages:
   '@types/http-errors@2.0.5':
     resolution: {integrity: sha512-r8Tayk8HJnX0FztbZN7oVqGccWgw98T/0neJphO91KkmOzug1KkofZURD4UaD5uH8AqcFLfdPErnBod0u71/qg==}
 
+  '@types/matter-js@0.20.2':
+    resolution: {integrity: sha512-3PPKy3QxvZ89h9+wdBV2488I1JLVs7DEpIkPvgO8JC1mUdiVSO37ZIvVctOTD7hIq8OAL2gJ3ugGSuUip6DhCw==}
+
   '@types/node@16.9.1':
     resolution: {integrity: sha512-QpLcX9ZSsq3YYUUnD3nFDY8H7wctAhQj/TFKL8Ya8v5fMm3CFXxo8zStsLAl780ltoYoo1WvKUVGBQK+1ifr7g==}
 
@@ -3333,6 +3345,9 @@ packages:
     resolution: {integrity: sha512-/IXtbwEk5HTPyEwyKX6hGkYXxM9nbj64B+ilVJnC/R6B0pH5G4V3b0pVbL7DBj4tkhBAppbQUlf6F6Xl9LHu1g==}
     engines: {node: '>= 0.4'}
 
+  matter-js@0.20.0:
+    resolution: {integrity: sha512-iC9fYR7zVT3HppNnsFsp9XOoQdQN2tUyfaKg4CHLH8bN+j6GT4Gw7IH2rP0tflAebrHFw730RR3DkVSZRX8hwA==}
+
   mdurl@2.0.0:
     resolution: {integrity: sha512-Lf+9+2r+Tdp5wXDXC4PcIBjTDtq4UKjCPMQhKIuzpJNW0b96kVqSwW0bT7FhRSfmAiFYgP+SCRvdrDozfh0U5w==}
 
@@ -4005,6 +4020,9 @@ packages:
 
   simplex-noise@2.4.0:
     resolution: {integrity: sha512-OjyDWm/QZjVbMrPxDVi9b2as+SeNn9EBXlrWVRlFW+TSyWMSXouDryXkQN0vf5YP+QZKobrmkvx1eQYPLtuqfw==}
+
+  simplex-noise@4.0.3:
+    resolution: {integrity: sha512-qSE2I4AngLQG7BXqoZj51jokT4WUXe8mOBrvfOXpci8+6Yu44+/dD5zqDpOx3Ux792eamTd2lLcI8jqFntk/lg==}
 
   slash@5.1.0:
     resolution: {integrity: sha512-ZA6oR3T/pEyuqwMgAKT0/hAv8oAXckzbkmR0UkUosQ+Mc4RxGoJkRmwHgHufaenlyAgE1Mxgpdcrf75y6XcnDg==}
@@ -5950,6 +5968,8 @@ snapshots:
 
   '@types/http-errors@2.0.5': {}
 
+  '@types/matter-js@0.20.2': {}
+
   '@types/node@16.9.1': {}
 
   '@types/node@18.19.130':
@@ -7130,6 +7150,8 @@ snapshots:
 
   math-intrinsics@1.1.0: {}
 
+  matter-js@0.20.0: {}
+
   mdurl@2.0.0: {}
 
   media-typer@1.1.0: {}
@@ -7822,6 +7844,8 @@ snapshots:
       simple-concat: 1.0.1
 
   simplex-noise@2.4.0: {}
+
+  simplex-noise@4.0.3: {}
 
   slash@5.1.0: {}
 

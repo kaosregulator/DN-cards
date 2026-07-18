@@ -22,6 +22,8 @@ import {
 } from "./theme.js";
 import { logger } from "../../../lib/logger.js";
 import { queueRender } from "../../animations/render-queue.js";
+import { drawAtmosphere, atmosphereForBackground } from "../../animations/atmosphere.js";
+import type { Ctx as AnimCtx } from "../../animations/engine.js";
 import { writeFile, unlink } from "node:fs/promises";
 import { randomUUID } from "node:crypto";
 import { tmpdir } from "node:os";
@@ -433,6 +435,13 @@ export async function renderBattleImage(
     const canvas = mod.createCanvas(CANVAS.width, CANVAS.height);
     const ctx = canvas.getContext("2d") as unknown as Ctx;
     await layerBackground(ctx, mod, opts, bgGradient);
+    // Ambient arena atmosphere — drawn BEHIND the cards, keyed to the active
+    // background so an ember arena smoulders, a storm rains, etc. Seeded on the
+    // matchup so the field is stable across re-renders.
+    drawAtmosphere(ctx as unknown as AnimCtx, CANVAS.width, CANVAS.height, atmosphereForBackground(opts.background), {
+      seed: `${a.name}-vs-${b.name}`,
+      color: colorA ?? colorB ?? 0xffb060,
+    });
     await drawCard(ctx, mod, CARD_BOX.leftX, cardA);
     await drawCard(ctx, mod, CARD_BOX.rightX, cardB);
     layerVs(ctx);
@@ -552,6 +561,11 @@ export async function renderWinnerImage(card: RenderCard, opts: RenderOpts = {})
     const canvas = mod.createCanvas(CANVAS.width, CANVAS.height);
     const ctx = canvas.getContext("2d") as unknown as Ctx;
     await layerBackground(ctx, mod, opts);
+    // Sparks + embers drift up behind the winner card (behind the UI, as always).
+    drawAtmosphere(ctx as unknown as AnimCtx, CANVAS.width, CANVAS.height, atmosphereForBackground(opts.background), {
+      seed: `winner-${card.name}`,
+      color: parseInt(rarityHex(card.rarity, card.rarityColor).slice(1), 16) || 0xffd54a,
+    });
     layerWinnerBanner(ctx, CANVAS.width / 2, 60);
     const cw = 300, ch = 420;
     await drawBigCard(ctx, mod, (CANVAS.width - cw) / 2, 110, cw, ch, card);
