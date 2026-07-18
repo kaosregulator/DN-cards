@@ -20,7 +20,7 @@ import { logger } from "../../lib/logger.js";
 import { consumeCooldown } from "../../lib/cooldowns.js";
 import { scheduleMessageDelete } from "../../lib/temp-message.js";
 import { renderBattleImage, type RenderCard } from "./image/render.js";
-import { renderAttackFrame, renderBattleVictory } from "../animations/index.js";
+import { renderAttackFrame, renderBattleTurn, renderBattleVictory } from "../animations/index.js";
 import { deriveAttackScene, sceneSubtitle } from "./turn-visual.js";
 import type { AnimationSpeed } from "../animations/types.js";
 import { toAbsoluteImageUrl } from "../image-url.js";
@@ -124,8 +124,12 @@ interface BattleRuntime {
   dmg: [number, number];
   wentLow: [boolean, boolean];
 
-  // Optional GIF frame shown once on the next combat render, then cleared.
+  // Optional frame shown once on the next combat render, then cleared. May be a
+  // static PNG (specialized scenes) or an animated GIF (plain hits) — see
+  // turnAnimationIsGif, which the attachment filename must match or Discord
+  // renders it as a frozen thumbnail instead of an animated embed image.
   turnAnimation: Buffer | null;
+  turnAnimationIsGif: boolean;
 
   turnTimer: ReturnType<typeof setTimeout> | null;
   aiOfferTimer: ReturnType<typeof setTimeout> | null;
@@ -135,8 +139,11 @@ interface BattleRuntime {
 
   // Layered VS battle image (rendered once at combat start; re-attached each
   // combat render). null when @napi-rs/canvas isn't installed — the battle then
-  // shows the plain embed with no image, never an error.
+  // shows the plain embed with no image, never an error. Starts as a static PNG
+  // (renderBattleImage) and is replaced with an animated GIF (renderBattleVictory)
+  // once the battle ends — vsImageIsGif tracks which, for the attachment filename.
   vsImage: Buffer | null;
+  vsImageIsGif: boolean;
 }
 
 const battles = new Map<string, BattleRuntime>();
@@ -326,11 +333,11 @@ export async function startChallenge(
     a: null, b: null, turnNumber: 1, currentSide: 0, staked: false,
     escrow: null, escrowSettled: false, log: [], coinCall: "heads",
     crits: [0, 0], dmg: [0, 0], wentLow: [false, false],
-    turnAnimation: null,
+    turnAnimation: null, turnAnimationIsGif: false,
     turnTimer: null, aiOfferTimer: null, ttlTimer: null, processing: false, createdAt: Date.now(),
     displayMap,
     ctx,
-    vsImage: null,
+    vsImage: null, vsImageIsGif: false,
   };
   battles.set(id, rt);
 
@@ -800,24 +807,48 @@ async function applyMove(rt: BattleRuntime, side: 0 | 1, move: MoveType) {
       if (foe.hp / foe.stats.maxHealth <= 0.15) rt.wentLow[foeSide(side)] = true;
       if (actor.hp / actor.stats.maxHealth <= 0.15) rt.wentLow[side] = true;
 
-      // Show a lightweight single-card scene frame (cheap static PNG, not a GIF)
-      // on every successful turn. The SCENE is derived from the move + event
-      // flashes so specials/ultimates/KOs/heals/shields/buffs each get themed
-      // FX from the one shared renderer (no second renderer).
+      // The SCENE is derived from the move + event flashes so specials/
+      // ultimates/KOs/heals/shields/buffs/counters/items each get themed FX.
+      // Plain damaging hits (attack/crit/miss — the bulk of ordinary turns) play
+      // as a full cinematic GIF: lunge, impact, damage number, health-bar drain,
+      // arena atmosphere, and a physics screen-shake/debris burst on the hit.
+      // Specialized scenes keep the themed static frame — each has bespoke
+      // banner art (K.O./SHIELD/HEAL/…) the animated renderer doesn't draw.
       const isCrit = result.events.some(e => e.flash === "crit");
       const selfGain = Math.max(0, (actor.hp + actor.shield) - selfPoolBefore);
       const scene = deriveAttackScene(move, result, isCrit, damage, actor, foe);
       const subtitle = sceneSubtitle(scene, selfGain, result);
+      const isPlainHit = scene === "attack" || scene === "crit" || scene === "miss";
       if (rt.settings.battleAnimationEnabled) {
-        rt.turnAnimation = await renderAttackFrame({
-          attacker: combatantToRenderCard(rt, actor),
-          moveName: moveLabel(move),
-          damage,
-          isCrit,
-          isHit: damage > 0,
-          scene,
-          subtitle,
-        }).catch(() => null);
+        if (isPlainHit) {
+          const anim = await renderBattleTurn({
+            attacker: combatantToRenderCard(rt, actor),
+            defender: combatantToRenderCard(rt, foe),
+            attackerHp: actor.hp, attackerMaxHp: actor.stats.maxHealth,
+            defenderHp: foe.hp, defenderMaxHp: foe.stats.maxHealth,
+            damage, isCrit, isHit: damage > 0,
+            moveName: moveLabel(move),
+            attackerWon: false, defenderWon: false,
+          }, rt.settings.battleAnimationSpeed as AnimationSpeed).catch(() => null);
+          if (anim) {
+            rt.turnAnimation = anim.buffer;
+            rt.turnAnimationIsGif = true;
+          }
+        }
+        // Either a specialized scene, or the GIF render above came back null
+        // (canvas/gif lib unavailable, or it failed) — fall back to the static
+        // themed frame so a turn is never left with no image at all.
+        if (!rt.turnAnimationIsGif) {
+          rt.turnAnimation = await renderAttackFrame({
+            attacker: combatantToRenderCard(rt, actor),
+            moveName: moveLabel(move),
+            damage,
+            isCrit,
+            isHit: damage > 0,
+            scene,
+            subtitle,
+          }).catch(() => null);
+        }
       }
 
       await renderCombat(rt);
@@ -914,14 +945,15 @@ async function finishBattle(rt: BattleRuntime, winnerSide: 0 | 1 | null, reason:
       winner: combatantToRenderCard(rt, winner),
       loser: combatantToRenderCard(rt, winnerSide === 0 ? rt.b : rt.a),
     }, rt.settings.battleAnimationSpeed as AnimationSpeed).catch(() => null);
-    if (victory) rt.vsImage = victory.buffer;
+    if (victory) { rt.vsImage = victory.buffer; rt.vsImageIsGif = true; }
   }
 
   // Build the victory embed once and reuse it for the message + the battle log.
   // The winner's card stays the thumbnail (buildWinnerEmbed); the VS battle image
   // is reused as the big embed image so it isn't wasted, plus an "HP left" line.
+  const vsFileName = rt.vsImageIsGif ? VS_IMAGE_NAME_GIF : VS_IMAGE_NAME;
   const winnerEmbed = buildWinnerEmbed(view, winnerSide, rewardLines);
-  if (rt.vsImage) winnerEmbed.setImage(`attachment://${VS_IMAGE_NAME}`);
+  if (rt.vsImage) winnerEmbed.setImage(`attachment://${vsFileName}`);
   if (winner) {
     const pct = Math.max(0, Math.round((winner.hp / Math.max(1, winner.stats.maxHealth)) * 100));
     winnerEmbed.addFields({
@@ -930,7 +962,7 @@ async function finishBattle(rt: BattleRuntime, winnerSide: 0 | 1 | null, reason:
       inline: false,
     });
   }
-  const winnerFiles = rt.vsImage ? [new AttachmentBuilder(rt.vsImage, { name: VS_IMAGE_NAME })] : [];
+  const winnerFiles = rt.vsImage ? [new AttachmentBuilder(rt.vsImage, { name: vsFileName })] : [];
 
   if (rt.message) {
     await rt.message.edit({ embeds: [winnerEmbed], components: [], files: winnerFiles }).catch(() => {});
@@ -953,7 +985,7 @@ async function finishBattle(rt: BattleRuntime, winnerSide: 0 | 1 | null, reason:
     // Log the same victory embed, re-attaching the VS image so it stays with
     // the logged result too.
     if (client) await logBattleResult(client, rt.guildId, winnerEmbed,
-      rt.vsImage ? { buffer: rt.vsImage, name: VS_IMAGE_NAME } : undefined).catch(() => {});
+      rt.vsImage ? { buffer: rt.vsImage, name: vsFileName } : undefined).catch(() => {});
 
     // Victory embed is dramatic but temporary; the battle log keeps the result.
     setTimeout(() => {
@@ -1052,7 +1084,12 @@ async function teardown(rt: BattleRuntime) {
 }
 
 // ── Rendering ────────────────────────────────────────────────────────────────
+// Discord decides whether an embed image animates from the ATTACHMENT'S FILE
+// EXTENSION, not the byte content — a GIF buffer uploaded as "battle-vs.png"
+// renders as a frozen first frame. Every call site below must pick the name
+// that matches what it's actually attaching.
 const VS_IMAGE_NAME = "battle-vs.png";
+const VS_IMAGE_NAME_GIF = "battle-vs.gif";
 
 // Map a live Combatant to the renderer's card description.
 function combatantToRenderCard(rt: BattleRuntime, c: Combatant): RenderCard {
@@ -1101,12 +1138,16 @@ async function renderCombat(rt: BattleRuntime, opts?: { currentMove?: string; tu
   const logEmbed = buildBattleLogEmbed(view);
   const statusEmbed = buildBattleStatusEmbed(view, { currentMove: opts?.currentMove });
   const turnImg = rt.turnAnimation;
+  const turnImgIsGif = rt.turnAnimationIsGif;
   rt.turnAnimation = null;
+  rt.turnAnimationIsGif = false;
   const combatImg = turnImg ?? rt.vsImage;
+  const isGif = turnImg ? turnImgIsGif : rt.vsImageIsGif;
+  const fileName = isGif ? VS_IMAGE_NAME_GIF : VS_IMAGE_NAME;
   const files: AttachmentBuilder[] = [];
   if (combatImg) {
-    statusEmbed.setImage(`attachment://${VS_IMAGE_NAME}`);
-    files.push(new AttachmentBuilder(combatImg, { name: VS_IMAGE_NAME }));
+    statusEmbed.setImage(`attachment://${fileName}`);
+    files.push(new AttachmentBuilder(combatImg, { name: fileName }));
   }
   await rt.message.edit({
     content: null,
