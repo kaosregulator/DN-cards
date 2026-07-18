@@ -140,6 +140,23 @@ async function runBootMigrations() {
   `);
   await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS player_progression_guild_user_uniq ON player_progression (guild_id, user_id)`);
 
+  // One-time interactive onboarding adventure — permanent per-player record so
+  // the exclusive rewards/achievement can never be claimed twice. Additive.
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS onboarding_progress (
+      id SERIAL PRIMARY KEY,
+      guild_id TEXT NOT NULL,
+      user_id TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'in_progress',
+      chapter INTEGER NOT NULL DEFAULT 0,
+      rewards_claimed BOOLEAN NOT NULL DEFAULT false,
+      started_at TIMESTAMP NOT NULL DEFAULT NOW(),
+      completed_at TIMESTAMP,
+      UNIQUE (guild_id, user_id)
+    )
+  `);
+  await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS onboarding_guild_user_uniq ON onboarding_progress (guild_id, user_id)`);
+
   // Star Rank (Card Recycle) — additive single property on the owned-card row.
   // Recycle consumes duplicate copies from the existing collection to raise it;
   // collections counting is unchanged. Existing cards default to 0.

@@ -28,6 +28,8 @@ export const ACHIEVEMENTS: AchievementDef[] = [
   { key: "set_first_complete", name: "Set Completionist", emoji: "🧩", description: "Complete your first card set",  reward: 500 },
   { key: "set_collector",      name: "Set Collector",     emoji: "🗂️", description: "Complete 3 different card sets", reward: 1500 },
   { key: "set_master",         name: "Set Master",        emoji: "📚", description: "Complete 5 different card sets", reward: 4000 },
+  // Event-based (granted directly by the onboarding flow, not by meets()).
+  { key: "onboarding",         name: "First Steps",       emoji: "🎓", description: "Complete the DN Cards onboarding adventure", reward: 500 },
 ];
 
 export function getAchievement(key: string): AchievementDef | undefined {
@@ -200,4 +202,26 @@ export async function checkAchievements(
 
 export function formatUnlockLine(ach: AchievementDef): string {
   return `${ach.emoji} **${ach.name}** — ${ach.description} (+💠 ${ach.reward.toLocaleString()})`;
+}
+
+/**
+ * Directly grant an EVENT-based achievement (one not driven by meets(), e.g.
+ * "onboarding"). Idempotent: inserts the row, awards its shard reward + account
+ * XP only on the first grant, and returns the def if newly unlocked (else null).
+ */
+export async function grantAchievement(guildId: string, userId: string, key: string): Promise<AchievementDef | null> {
+  const def = getAchievement(key);
+  if (!def) return null;
+  const inserted = await db.insert(achievementsTable)
+    .values({ guildId, userId, achievementKey: key })
+    .onConflictDoNothing()
+    .returning({ id: achievementsTable.id });
+  if (inserted.length === 0) return null;
+  const { addShards } = await import("./db.js");
+  if (def.reward > 0) await addShards(guildId, userId, def.reward);
+  try {
+    const { awardPlayerXp, XP } = await import("./player/xp.js");
+    await awardPlayerXp(guildId, userId, "achievement", XP.achievement);
+  } catch { /* non-fatal */ }
+  return def;
 }
