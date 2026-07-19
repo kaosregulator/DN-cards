@@ -1,0 +1,269 @@
+Prompt: Expand /recycle into the Card Progression Hub
+
+
+
+Keep the command name as /recycle, but evolve it into the primary card management and progression hub. Preserve all existing functionality while expanding it.
+
+
+
+Hub/canvas Layout
+
+
+
+When a player selects a card, display:
+
+
+
+Card artwork
+
+Card name
+
+Current rarity (star level)
+
+Current level
+
+Level progress (e.g. Level 42 / 100)
+
+Duplicate count
+
+Card value
+
+Recycle scrap value
+
+Progress toward the next Ascension
+
+
+
+Buttons:
+
+
+
+♻️ Recycle
+
+🌟 Fuse All
+
+⬆️ Ascend (only enabled when eligible)
+
+🔍 Search Another Card
+
+⬅️ Back
+
+♻️ Recycle
+
+
+
+Recycle only the currently selected card's duplicate copies.
+
+
+
+Duplicates are converted into Scrap.
+
+
+
+The amount of Scrap awarded should scale with:
+
+
+
+Card rarity
+
+Card value
+
+Any future event modifiers
+
+
+
+Example:
+
+
+
+Common low-value cards → small Scrap reward.
+
+Rare/valuable cards → significantly more Scrap.
+
+
+
+This makes valuable cards feel rewarding to recycle while preserving the existing rarity/value system.
+
+
+
+🌟 Fuse All
+
+
+
+Fuse only duplicates of the currently selected card.
+
+
+
+Never consume unrelated cards.
+
+
+
+Find the strongest owned copy of that card and consume all eligible duplicates to increase its level.
+
+
+
+Level Progression
+
+
+
+Every card starts at:
+
+
+
+☆☆☆☆☆
+
+Level 1
+
+
+
+Players level cards using duplicates.
+
+
+
+Maximum level is:
+
+
+
+Level 100
+
+
+
+Ascension
+
+
+
+Once a card reaches Level 100, it can Ascend.
+
+
+
+Example:
+
+
+
+☆☆☆☆☆ Level 100
+
+
+
+↓
+
+
+
+★☆☆☆☆ Level 1
+
+
+
+The level resets to 1.
+
+
+
+The star increases by one.
+
+
+
+The card's power increases.
+
+
+
+The player repeats this process:
+
+
+
+☆☆☆☆☆ → ★☆☆☆☆ → ★★☆☆☆ → ★★★☆☆ → ★★★★☆ → ★★★★★
+
+
+
+Finally:
+
+
+
+★★★★★ Level 100
+
+
+
+This is the true completed version of the card.
+
+
+
+Important
+
+
+
+Do not allow players to skip Ascension.
+
+
+
+A player must:
+
+
+
+Reach Level 100.
+
+Ascend.
+
+Return to Level 1.
+
+Level back to 100.
+
+Repeat.
+
+
+
+This creates meaningful long-term progression.
+
+
+
+Scrap Economy
+
+
+
+Cards should recycle based on their value.
+
+
+
+Example:
+
+
+
+Higher rarity = more Scrap.
+
+Higher market value = more Scrap.
+
+Event/Limited cards can provide bonus Scrap if desired.
+
+
+
+This keeps every duplicate useful.
+
+
+
+Players now have meaningful choices:
+
+
+
+♻️ Recycle unwanted cards into Scrap.
+
+🌟 Fuse favorite cards to level them.
+
+⬆️ Ascend max-level cards to higher stars.
+
+Animations
+
+
+
+Reuse the existing Pack Animation Engine. or canvas 
+
+
+
+Recycle: Card breaks apart into glowing Scrap fragments before displaying the Scrap earned.
+
+Fuse: Duplicate cards fly into the main card, followed by a glow and level increase.
+
+Ascend: The card erupts with light, its stars increase, and it reforms at Level 1 with the new star rating.
+
+
+
+Do not create a new animation system—reuse the existing animation engine.
+
+
+
+I think this turns /recycle into one of the most engaging commands in DN Cards. Instead of being a utility to delete duplicates, it becomes the place where players make meaningful progression decisions every time they collect new cards. take note i already have a level ssytem built and a way to earn xp 
