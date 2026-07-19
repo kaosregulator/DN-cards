@@ -43,6 +43,11 @@ export const battleSettingsTable = pgTable("battle_settings", {
   battleAnimationEnabled: boolean("battle_animation_enabled").notNull().default(true),
   packAnimationEnabled: boolean("pack_animation_enabled").notNull().default(true),
   battleAnimationSpeed: text("battle_animation_speed").notNull().default("normal"),
+  // When battleAnimationEnabled is on, this picks the visual style:
+  //   true  = animated arena scene (both cards dash over a looping backdrop),
+  //   false = "Classic" cheap single-frame attack cards (the lighter, pre-arena
+  //           style). Admins toggle Off → Classic → Animated via /battle_admin.
+  battleSceneAnimated: boolean("battle_scene_animated").notNull().default(true),
   // ── Combat formula coefficients (all tunable) ────────────────────────────────
   hpBase: integer("hp_base").notNull().default(750),
   hpPerRarity: integer("hp_per_rarity").notNull().default(220),

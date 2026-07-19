@@ -20,7 +20,7 @@ import { logger } from "../../lib/logger.js";
 import { consumeCooldown } from "../../lib/cooldowns.js";
 import { scheduleMessageDelete } from "../../lib/temp-message.js";
 import { renderBattleImage, type RenderCard } from "./image/render.js";
-import { renderBattleVictory, renderBattleTurn, renderBattleIdle } from "../animations/index.js";
+import { renderAttackFrame, renderBattleVictory, renderBattleTurn, renderBattleIdle } from "../animations/index.js";
 import type { BattleAnimationInput } from "../animations/index.js";
 import { DEFAULT_SCENE_ARENA, isSceneArenaKey, SCENE_ARENAS, SCENE_ARENA_KEYS, sceneArenaLabel } from "./scene-arenas.js";
 import { arenaAssetsAvailable } from "../animations/arena-bg.js";
@@ -687,15 +687,16 @@ async function beginCombat(rt: BattleRuntime) {
       : null;
     // Default the visual arena if the challenger didn't pick one at setup.
     if (!isSceneArenaKey(rt.sceneArenaKey)) rt.sceneArenaKey = DEFAULT_SCENE_ARENA;
-    // Animated, looping battlefield (both cards + the chosen arena). It stays
-    // alive between turns because Discord loops the GIF.
-    if (rt.settings.battleAnimationEnabled) {
+    // Animated "arena scene" mode only: a looping battlefield (both cards + the
+    // chosen arena) that stays alive between turns because Discord loops the GIF.
+    // Classic / Off modes use the cheap static VS image below.
+    if (sceneAnimated(rt)) {
       const idle = await renderBattleIdle(
         buildAnimInput(rt, 0), rt.settings.battleAnimationSpeed as AnimationSpeed,
       ).catch(() => null);
       if (idle) { rt.vsImage = Buffer.from(idle.buffer); rt.vsImageIsGif = true; }
     }
-    // Fallback (animation disabled, or the GIF failed to render): classic static VS image.
+    // Classic / Off modes (or a failed GIF render): the static VS image.
     if (!rt.vsImage) {
       rt.vsImage = await renderBattleImage(
         combatantToRenderCard(rt, rt.a),
@@ -886,9 +887,10 @@ async function applyMove(rt: BattleRuntime, side: 0 | 1, move: MoveType) {
       // move name, and impact FX — same renderer raids use, so the hit is
       // visible and readable instead of blended into a busy battlefield.
       const visual = computeMoveVisual(move, result, actor, foe, foePoolBefore, selfPoolBefore);
-      if (rt.settings.battleAnimationEnabled) {
-        // Animated Street-Fighter-style turn: the attacker dashes across the
-        // living arena, impact FX fire on contact, the foe recoils, HP drains.
+      if (sceneAnimated(rt)) {
+        // ANIMATED mode: Street-Fighter-style turn — the attacker dashes across
+        // the living arena, impact FX fire on contact, the foe recoils, HP
+        // drains. The GIF loops between turns, keeping the scene alive.
         const ended = result.koed || foe.hp <= 0;
         const anim = await renderBattleTurn(
           buildAnimInput(rt, side, {
@@ -898,12 +900,21 @@ async function applyMove(rt: BattleRuntime, side: 0 | 1, move: MoveType) {
           rt.settings.battleAnimationSpeed as AnimationSpeed,
         ).catch(() => null);
         rt.turnAnimation = anim ? Buffer.from(anim.buffer) : null;
+      } else if (rt.settings.battleAnimationEnabled) {
+        // CLASSIC mode: the lighter single-frame attack card (pre-arena style).
+        rt.turnAnimation = await renderAttackFrame({
+          attacker: combatantToRenderCard(rt, actor),
+          moveName: moveLabel(move),
+          damage: visual.damage,
+          isCrit: visual.isCrit,
+          isHit: visual.isHit,
+          scene: visual.scene,
+          subtitle: visual.subtitle,
+        }).catch(() => null);
       }
 
       await renderCombat(rt);
       await sleep(frameMs(rt));
-      // Update the resting loop so the between-turns scene reflects the new HP.
-      await refreshRestingScene(rt);
 
       // A counter/reflect can KO the attacker — check both.
       if (actor.hp <= 0 && foe.hp > 0) {
@@ -1245,15 +1256,12 @@ function buildAnimInput(
   };
 }
 
-// Refresh the resting animated idle loop (both cards + looping arena) with the
-// current HP, so the between-turns scene stays alive and shows up-to-date bars.
-// Best-effort: null (canvas off / disabled) leaves the previous image in place.
-async function refreshRestingScene(rt: BattleRuntime): Promise<void> {
-  if (!rt.a || !rt.b || !rt.settings.battleAnimationEnabled) return;
-  const idle = await renderBattleIdle(
-    buildAnimInput(rt, rt.currentSide), rt.settings.battleAnimationSpeed as AnimationSpeed,
-  ).catch(() => null);
-  if (idle) { rt.vsImage = Buffer.from(idle.buffer); rt.vsImageIsGif = true; }
+// True when this fight uses the heavy ANIMATED arena scene (both cards dashing
+// over a looping backdrop). Requires the master GIF switch AND the arena-scene
+// style. When false the fight is either CLASSIC (cheap single-frame attack
+// cards) or fully static — both far lighter to render.
+function sceneAnimated(rt: BattleRuntime): boolean {
+  return rt.settings.battleAnimationEnabled && rt.settings.battleSceneAnimated;
 }
 
 // The pinned VS-image embed that sits ABOVE the battle embed. Optional title is
@@ -1290,9 +1298,9 @@ async function renderCombat(rt: BattleRuntime, opts?: { currentMove?: string; tu
   const turnImg = rt.turnAnimation;
   rt.turnAnimation = null;
   const combatImg = turnImg ?? rt.vsImage;
-  // A one-shot turn animation is always a GIF (renderBattleTurn); otherwise the
-  // resting image's own gif-ness decides.
-  const isGif = turnImg ? true : rt.vsImageIsGif;
+  // A one-shot turn animation is a GIF only in ANIMATED mode (renderBattleTurn);
+  // in CLASSIC mode it's a static PNG. Otherwise the resting image decides.
+  const isGif = turnImg ? sceneAnimated(rt) : rt.vsImageIsGif;
   const files: AttachmentBuilder[] = [];
   if (combatImg) {
     const name = combatImageName(isGif);

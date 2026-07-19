@@ -179,8 +179,16 @@ export async function handleBattleAdminButton(interaction: ButtonInteraction): P
       break;
     }
     case "animtoggle": {
+      // Cycle battle visuals: Off → Classic (light single-frame) → Animated
+      // (arena scene) → Off. Lets admins instantly dial back if the animated
+      // scene is too heavy on their server.
       const s = await getBattleSettings(guildId);
-      await updateBattleSettings(guildId, { battleAnimationEnabled: !s.battleAnimationEnabled });
+      const patch = !s.battleAnimationEnabled
+        ? { battleAnimationEnabled: true, battleSceneAnimated: false }   // Off → Classic
+        : !s.battleSceneAnimated
+          ? { battleSceneAnimated: true }                               // Classic → Animated
+          : { battleAnimationEnabled: false };                          // Animated → Off
+      await updateBattleSettings(guildId, patch);
       break;
     }
     case "cards": {
@@ -690,8 +698,14 @@ async function buildHubEmbed(guildId: string): Promise<EmbedBuilder> {
       { name: "Speed", value: `${speedLabel(s.frameDelayMs)} (${s.frameDelayMs}ms/frame) — set below`, inline: false },
       { name: "Cards", value: `${rd.label(s.minRarity as Rarity)} → ${rd.label(s.maxRarity as Rarity)} · Types: ${s.allowedTypes?.length ? s.allowedTypes.join(", ") : "All"} · Special ${onoff(s.specialCardsEnabled)} · Stake ${onoff(s.stakingEnabled)}`, inline: false },
       { name: "Rewards", value: `💠 Win ${s.rewardWinShards} / Loss ${s.rewardLossShards} · ✨ ${s.rewardWinXp} XP · Daily cap ${s.dailyRewardLimit} · 🎁 pack every ${s.freePackStreak || "—"} streak`, inline: false },
-      { name: "Toggles", value: `AI ${onoff(s.aiEnabled)} · Global LB ${onoff(s.globalLeaderboardOptIn)} · GIF Battles ${onoff(s.battleAnimationEnabled)}`, inline: false },
+      { name: "Toggles", value: `AI ${onoff(s.aiEnabled)} · Global LB ${onoff(s.globalLeaderboardOptIn)} · Battle Visuals **${battleVisualMode(s)}**`, inline: false },
     );
+}
+
+// Battle visual mode label for the 3-state "Battle Visuals" cycle.
+function battleVisualMode(s: { battleAnimationEnabled: boolean; battleSceneAnimated?: boolean }): string {
+  if (!s.battleAnimationEnabled) return "⏸️ Off (static)";
+  return s.battleSceneAnimated ? "🎬 Animated arenas" : "🖼️ Classic (light)";
 }
 
 function speedLabel(ms: number): string {
@@ -720,7 +734,7 @@ function buildHubComponents(s?: { frameDelayMs: number; battleAnimationSpeed?: s
     new ButtonBuilder().setCustomId("battleadmin:resetlb").setLabel("Reset Leaderboard").setEmoji("🏆").setStyle(ButtonStyle.Danger),
     new ButtonBuilder().setCustomId("battleadmin:season").setLabel("New Season").setEmoji("🔄").setStyle(ButtonStyle.Danger),
     new ButtonBuilder().setCustomId("battleadmin:globaltoggle").setLabel("Global LB").setEmoji("🌐").setStyle(ButtonStyle.Secondary),
-    new ButtonBuilder().setCustomId("battleadmin:animtoggle").setLabel("GIF Battles").setEmoji("🎞️").setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder().setCustomId("battleadmin:animtoggle").setLabel("Battle Visuals").setEmoji("🎞️").setStyle(ButtonStyle.Secondary),
     new ButtonBuilder().setCustomId("battleadmin:passivemgr").setLabel("Passives").setEmoji("✨").setStyle(ButtonStyle.Primary),
   );
   const cur = s?.frameDelayMs ?? 950;
