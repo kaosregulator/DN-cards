@@ -325,12 +325,15 @@ export interface CampaignBossArt {
 
 export interface CampaignProgressInput {
   defeatedBoss: CampaignBossArt;
-  rewards: string[];               // e.g. ["🃏 Boss Card", "🖼️ Aegis Frame", "💠 500 Shards"]
+  rewards: string[];               // plain labels, e.g. ["Boss Card", "Aegis Frame", "500 Shards"]
   defeated: number;
   total: number;
   next: { name: string; imageUrl: string | null; rarity: Rarity } | null;
   isFinaleNext: boolean;
   isComplete: boolean;
+  // On a SOLO clear (one player started + finished), their Discord avatar is
+  // badged in the corner. Null for multiplayer clears.
+  soloAvatarUrl?: string | null;
 }
 
 // Segmented progress meter: `total` rounded cells, `filled` of them lit.
@@ -372,6 +375,23 @@ export async function renderCampaignProgress(input: CampaignProgressInput): Prom
       drawEmbers(ctx, 0, 0, width, height, { color: gold, seed: `${input.defeatedBoss.name}-victory` });
 
       drawTitle(ctx, "BOSS DEFEATED!", width / 2, 46, hexToRgba(gold, 1), 40);
+
+      // Solo clear → round Discord avatar badge in the top-left with a gold ring.
+      if (input.soloAvatarUrl) {
+        const av = await loadArt(mod, input.soloAvatarUrl).catch(() => null);
+        if (av) {
+          const ax = 40, ay = 22, ar = 30;
+          ctx.save();
+          ctx.beginPath(); ctx.arc(ax + ar, ay + ar, ar, 0, Math.PI * 2); ctx.closePath(); ctx.clip();
+          ctx.drawImage(av, ax, ay, ar * 2, ar * 2);
+          ctx.restore();
+          ctx.save();
+          ctx.lineWidth = 3; ctx.strokeStyle = hexToRgba(gold, 1);
+          ctx.beginPath(); ctx.arc(ax + ar, ay + ar, ar, 0, Math.PI * 2); ctx.stroke();
+          ctx.restore();
+          drawTextWithShadow(ctx, "SOLO CLEAR", ax + ar, ay + ar * 2 + 14, "#8fffc0", 13);
+        }
+      }
 
       // Left: the boss just beaten.
       const cw = 300, ch = 384, cx = 56, cy = 96;

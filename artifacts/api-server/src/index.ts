@@ -202,6 +202,13 @@ async function runBootMigrations() {
   await pool.query(`ALTER TABLE battle_settings ADD COLUMN IF NOT EXISTS pack_animation_enabled boolean NOT NULL DEFAULT true`);
   await pool.query(`ALTER TABLE battle_settings ADD COLUMN IF NOT EXISTS battle_animation_speed text NOT NULL DEFAULT 'normal'`);
   await pool.query(`ALTER TABLE battle_settings ADD COLUMN IF NOT EXISTS battle_scene_animated boolean NOT NULL DEFAULT true`);
+  // Raid stats on battle_profiles (feed the /top Raid leaderboard). Self-healing.
+  await pool.query(`ALTER TABLE battle_profiles ADD COLUMN IF NOT EXISTS raids_won integer NOT NULL DEFAULT 0`);
+  await pool.query(`ALTER TABLE battle_profiles ADD COLUMN IF NOT EXISTS raids_lost integer NOT NULL DEFAULT 0`);
+  await pool.query(`ALTER TABLE battle_profiles ADD COLUMN IF NOT EXISTS solo_raids_won integer NOT NULL DEFAULT 0`);
+  await pool.query(`ALTER TABLE battle_profiles ADD COLUMN IF NOT EXISTS raids_survived integer NOT NULL DEFAULT 0`);
+  await pool.query(`ALTER TABLE battle_profiles ADD COLUMN IF NOT EXISTS raid_damage_dealt integer NOT NULL DEFAULT 0`);
+  await pool.query(`ALTER TABLE battle_profiles ADD COLUMN IF NOT EXISTS raid_damage_taken integer NOT NULL DEFAULT 0`);
 
   // Convert card_type from enum → text so admins can use any free-form label.
   // Idempotent: only runs while the column still has the enum type.

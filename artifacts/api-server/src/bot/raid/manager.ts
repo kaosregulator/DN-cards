@@ -239,6 +239,7 @@ async function handlePick(interaction: StringSelectMenuInteraction, session: Rai
   session.party.set(userId, {
     member: {
       userId, displayName: interaction.user.username,
+      avatarUrl: interaction.user.displayAvatarURL({ extension: "png", size: 128 }),
       card: pick.card, cardLevel: pick.level, cardStars: pick.stars,
     },
   });
@@ -630,14 +631,27 @@ async function finishRaid(session: RaidSession, outcome: "clear" | "wipe" | "tim
   try {
     const { recordGiveawayEvent } = await import("../giveaway/engine.js");
     const { awardPlayerXp, XP } = await import("../player/xp.js");
+    const { addRaidStats } = await import("../battle/db.js");
     const bc = session.bossCombatant;
     const bossDamage = bc ? Math.max(0, bc.stats.maxHealth - Math.max(0, bc.hp)) : 0;
     const share = session.party.size > 0 ? Math.round(bossDamage / session.party.size) : 0;
+    const solo = session.party.size === 1;
     for (const s of session.party.values()) {
       await recordGiveawayEvent(session.guildId, s.member.userId, "raid_join", 1);
       if (share > 0) await recordGiveawayEvent(session.guildId, s.member.userId, "raid_damage", share);
       // Unified account XP: a raid clear pays more than a participation-only run.
       await awardPlayerXp(session.guildId, s.member.userId, "raid", outcome === "clear" ? XP.raidClear : XP.raidParticipate);
+      // Raid stats for the /top Raid leaderboard.
+      const survived = (s.combatant?.hp ?? 0) > 0;
+      const taken = s.combatant ? Math.max(0, s.combatant.stats.maxHealth - Math.max(0, s.combatant.hp)) : 0;
+      await addRaidStats(session.guildId, s.member.userId, {
+        raidsWon: outcome === "clear" ? 1 : 0,
+        raidsLost: outcome === "clear" ? 0 : 1,
+        soloRaidsWon: outcome === "clear" && solo ? 1 : 0,
+        raidsSurvived: outcome === "clear" && survived ? 1 : 0,
+        raidDamageDealt: share,
+        raidDamageTaken: taken,
+      }).catch(() => {});
     }
   } catch { /* non-fatal */ }
 
@@ -678,11 +692,16 @@ async function finishRaid(session: RaidSession, outcome: "clear" | "wipe" | "tim
       if (boss.cardId != null) rewards.push("Boss Card");
       rewards.push(`${raidFrameForBoss(boss.rewardFrameId).name} Frame`);
       rewards.push(`${boss.rewardShards.toLocaleString()} Shards`);
+      // Solo clear (one player start→finish) → badge their Discord avatar.
+      const soloAvatarUrl = session.party.size === 1
+        ? ([...session.party.values()][0]?.member.avatarUrl ?? null)
+        : null;
       endImage = await renderCampaignProgress({
         defeatedBoss: {
           name: boss.name, imageUrl: toAbsoluteImageUrl(boss.imageUrl),
           rarity: boss.rarity as Rarity, battlefieldUrl: toAbsoluteImageUrl(boss.battlefieldUrl),
         },
+        soloAvatarUrl,
         rewards,
         defeated: prog.defeated,
         total: prog.total,

@@ -288,6 +288,9 @@ export async function startBot() {
         } else if (interaction.customId.startsWith("recycle:")) {
           const { handleFusionComponent } = await import("./cards/fusion.js");
           await handleFusionComponent(interaction);
+        } else if (interaction.customId === "top:cat") {
+          const { handleTopSelect } = await import("./commands/leaderboard.js");
+          await handleTopSelect(interaction);
         }
         return;
       }

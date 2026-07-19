@@ -804,47 +804,12 @@ export async function handleUserCommand(
 
   // ── /top ───────────────────────────────────────────────────────────────
   if (sub === "top") {
-    const [byWorth, byCards, byPacks] = await Promise.all([
-      getLeaderboard(guildId, "worth", 10),
-      getLeaderboard(guildId, "cards", 5),
-      getTopPackOpeners(guildId, 5),
-    ]);
-    if (byWorth.length === 0 && byPacks.length === 0) {
-      await interaction.editReply("No one has caught any cards yet!");
-      return;
-    }
-    const medals = ["🥇", "🥈", "🥉"];
-    const worthLines = byWorth.map((r, i) => {
-      const medal = medals[i] ?? `**${i + 1}.**`;
-      const rank = getCollectorRank(r.uniqueCards);
-      return `${medal} ${rank.emoji} <@${r.userId}> — 💠 **${r.netWorth.toLocaleString()}** · ${r.totalCards} cards`;
-    });
-    const cardLines = byCards.map((r, i) => {
-      const medal = medals[i] ?? `**${i + 1}.**`;
-      return `${medal} <@${r.userId}> — **${r.totalCards.toLocaleString()}** cards (${r.uniqueCards} unique)`;
-    });
-    const packLines = byPacks.length === 0
-      ? ["*No packs opened yet — be the first with `/pack`!*"]
-      : byPacks.map((r, i) => {
-          const medal = medals[i] ?? `**${i + 1}.**`;
-          return `${medal} <@${r.userId}> — **${r.packsOpened.toLocaleString()}** packs`;
-        });
-    const domain = process.env["REPLIT_DOMAINS"]?.split(",")[0];
-    const dashUrl = domain ? `https://${domain}/leaderboard` : null;
-    const embed = new EmbedBuilder()
-      .setTitle("🏆 DN Cards — Collector Leaderboard")
-      .setColor(0xf39c12)
-      .addFields(
-        { name: "💠 Top 10 by Net Worth", value: worthLines.length ? worthLines.join("\n") : "*No collectors yet.*" },
-        { name: "🃏 Top 5 by Card Count", value: cardLines.length ? cardLines.join("\n") : "*No cards caught yet.*" },
-        { name: "📦 Top 5 Pack Openers", value: packLines.join("\n") },
-      )
-      .setFooter({
-        text: dashUrl
-          ? `Full leaderboard on the web → ${dashUrl}`
-          : "Ranked by total collection net worth (💠 shards)",
-      });
-    await interaction.editReply({ embeds: [embed] });
+    // Unified leaderboard: canvas + category dropdown (Collector · Battle · Raid).
+    const { buildTopMessage, isLbCategory } = await import("./leaderboard.js");
+    const raw = interaction.options.getString("board");
+    const category = isLbCategory(raw) ? raw : "collector";
+    const msg = await buildTopMessage(interaction.client, guildId, category);
+    await interaction.editReply(msg);
     // Public leaderboard — auto-tidy the channel after 40s.
     scheduleReplyDelete(interaction, 40_000);
     return;

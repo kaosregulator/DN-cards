@@ -308,6 +308,46 @@ export async function getBattleLeaderboard(
     .limit(limit);
 }
 
+// ── Raid stats (co-op boss raids) ────────────────────────────────────────────
+
+export interface RaidStatDelta {
+  raidsWon?: number;
+  raidsLost?: number;
+  soloRaidsWon?: number;
+  raidsSurvived?: number;
+  raidDamageDealt?: number;
+  raidDamageTaken?: number;
+}
+
+// Increment a player's raid stats on their battle_profiles row (created if
+// missing). Additive-only; each field defaults to 0. Best-effort caller.
+export async function addRaidStats(guildId: string, userId: string, d: RaidStatDelta): Promise<void> {
+  await getOrCreateProfile(guildId, userId);
+  await db.update(battleProfilesTable)
+    .set({
+      raidsWon: sql`${battleProfilesTable.raidsWon} + ${d.raidsWon ?? 0}`,
+      raidsLost: sql`${battleProfilesTable.raidsLost} + ${d.raidsLost ?? 0}`,
+      soloRaidsWon: sql`${battleProfilesTable.soloRaidsWon} + ${d.soloRaidsWon ?? 0}`,
+      raidsSurvived: sql`${battleProfilesTable.raidsSurvived} + ${d.raidsSurvived ?? 0}`,
+      raidDamageDealt: sql`${battleProfilesTable.raidDamageDealt} + ${d.raidDamageDealt ?? 0}`,
+      raidDamageTaken: sql`${battleProfilesTable.raidDamageTaken} + ${d.raidDamageTaken ?? 0}`,
+      updatedAt: new Date(),
+    })
+    .where(and(eq(battleProfilesTable.guildId, guildId), eq(battleProfilesTable.userId, userId)));
+}
+
+// Raid leaderboard: rank by raids won, then raid damage dealt. Only players who
+// have actually raided appear.
+export async function getRaidLeaderboard(guildId: string, limit = 10): Promise<BattleProfile[]> {
+  return db.select().from(battleProfilesTable)
+    .where(and(
+      eq(battleProfilesTable.guildId, guildId),
+      sql`(${battleProfilesTable.raidsWon} > 0 OR ${battleProfilesTable.raidDamageDealt} > 0)`,
+    ))
+    .orderBy(desc(battleProfilesTable.raidsWon), desc(battleProfilesTable.raidDamageDealt))
+    .limit(limit);
+}
+
 // Cross-guild leaderboard — only includes guilds that opted in (checked by the
 // caller). Aggregates by user across guilds that opted in.
 export async function getGlobalLeaderboard(guildIds: string[], limit = 10): Promise<BattleProfile[]> {

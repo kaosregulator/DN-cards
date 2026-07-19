@@ -19,6 +19,7 @@ export const BOSS_USER_ID = "BOSS";
 export interface PartyMemberSpec {
   userId: string;
   displayName: string;
+  avatarUrl?: string | null;   // Discord avatar (shown on a solo raid clear)
   card: OwnedBattleCard;
   cardLevel: number;   // for scaling + display
   cardStars: number;
