@@ -1488,6 +1488,24 @@ export async function refundShards(guildId: string, userId: string, amount: numb
     .where(and(eq(userCurrencyTable.guildId, guildId), eq(userCurrencyTable.userId, userId)));
 }
 
+// ── Scrap currency (second currency, earned via ♻️ Recycle) ──────────────────
+
+export async function getScrap(guildId: string, userId: string): Promise<number> {
+  const row = await getOrCreateCurrency(guildId, userId);
+  return (row as Record<string, unknown>).scrap as number ?? 0;
+}
+
+// Atomic: adds scrap (never affect totalEarned — scrap has its own ledger).
+export async function addScrap(guildId: string, userId: string, amount: number) {
+  await getOrCreateCurrency(guildId, userId);
+  await db.update(userCurrencyTable)
+    .set({
+      scrap: sql`${userCurrencyTable.scrap} + ${amount}`,
+      updatedAt: new Date(),
+    })
+    .where(and(eq(userCurrencyTable.guildId, guildId), eq(userCurrencyTable.userId, userId)));
+}
+
 // ── Burn a card ───────────────────────────────────────────────────────────────
 export async function incrementCardsBurned(guildId: string, userId: string, by: number = 1) {
   await getOrCreateCurrency(guildId, userId);

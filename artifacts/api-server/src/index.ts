@@ -161,6 +161,9 @@ async function runBootMigrations() {
   // Recycle consumes duplicate copies from the existing collection to raise it;
   // collections counting is unchanged. Existing cards default to 0.
   await pool.query(`ALTER TABLE card_progress ADD COLUMN IF NOT EXISTS star_rank integer NOT NULL DEFAULT 0`);
+  // Scrap — second currency earned by the new ♻️ Recycle action (2026-07).
+  // Separate from Shards; no spend path yet. Fully additive / backwards-compatible.
+  await pool.query(`ALTER TABLE user_currency ADD COLUMN IF NOT EXISTS scrap INTEGER NOT NULL DEFAULT 0`);
   // Animation system configuration toggles (default ON, normal speed).
   await pool.query(`ALTER TABLE guild_settings ADD COLUMN IF NOT EXISTS pack_animation_enabled boolean NOT NULL DEFAULT true`);
   await pool.query(`ALTER TABLE guild_settings ADD COLUMN IF NOT EXISTS battle_animation_enabled boolean NOT NULL DEFAULT true`);

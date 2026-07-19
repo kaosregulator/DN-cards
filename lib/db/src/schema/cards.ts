@@ -118,6 +118,9 @@ export const userCurrencyTable = pgTable("user_currency", {
   totalEarned: integer("total_earned").notNull().default(0),
   packsOpened: integer("packs_opened").notNull().default(0),
   cardsBurned: integer("cards_burned").notNull().default(0),
+  // Scrap — second currency earned by recycling duplicate cards. Separate from
+  // Shards; no spend path yet (future economy sink). Added 2026-07.
+  scrap: integer("scrap").notNull().default(0),
   // ── Pack tier counters (rolling weekly bucket) ──────────────────────────────
   // packsWeekResetAt: when the weekly bucket flips. On `/pack`, if now > this,
   // all 3 packs*Week counters are zeroed and the date is rolled forward to the
