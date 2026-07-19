@@ -14,6 +14,7 @@ import {
   drawTextWithShadow, fitText, getRarityEffectColor,
 } from "./effects.js";
 import { drawAtmosphere, atmospherePreset } from "./atmosphere.js";
+import { drawArenaBackground } from "./arena-bg.js";
 import { drawImpactDebris, physicsShake } from "./physics.js";
 import { extractArtColor } from "../battle/image/vibrant-color.js";
 
@@ -64,6 +65,56 @@ export async function renderBattleVictory(
   });
 }
 
+// A light looping "idle" scene shown BETWEEN turns: both cards stand and
+// breathe over the animated arena, HP bars steady. Discord loops the GIF, so the
+// battlefield stays alive while waiting for the next move. Cheap: few frames,
+// no combat FX.
+export async function renderBattleIdle(
+  input: BattleAnimationInput,
+  speed: AnimationSpeed,
+): Promise<AnimationResult | null> {
+  const [colorA, colorB] = await Promise.all([
+    resolveColor(input.attacker),
+    resolveColor(input.defender),
+  ]);
+  return encodeAnimation({
+    width: BATTLE_CANVAS.width,
+    height: BATTLE_CANVAS.height,
+    speed,
+    durationMs: 1600,
+    maxFrames: 14,
+    quality: 16,
+    renderScale: 0.72,
+    render: (frame) => renderBattleIdleFrame(frame, input, colorA, colorB),
+  });
+}
+
+async function renderBattleIdleFrame(
+  frame: import("./engine.js").FrameCtx,
+  input: BattleAnimationInput,
+  colorA: number,
+  colorB: number,
+): Promise<void> {
+  const { ctx, t, mod } = frame;
+  const { width, height } = BATTLE_CANVAS;
+  await drawBattleBackground(ctx, mod, width, height, colorA, colorB, t, `${input.attacker.name}-idle`, input.background);
+
+  const left = { x: 70, y: 45, w: 340, h: 470 };
+  const right = { x: 590, y: 45, w: 340, h: 470 };
+  const cx = width / 2, cy = height / 2;
+
+  // Gentle out-of-phase vertical breathing so the fighters feel alive.
+  const bobA = Math.sin(t * Math.PI * 2) * 6;
+  const bobB = Math.sin(t * Math.PI * 2 + Math.PI) * 6;
+  await drawBattleCard(ctx, mod, left.x, left.y + bobA, left.w, left.h, input.attacker, colorA);
+  await drawBattleCard(ctx, mod, right.x, right.y + bobB, right.w, right.h, input.defender, colorB);
+
+  const barW = 320, barH = 18;
+  drawHealthBar(ctx, left.x + 10, left.y + left.h + 18, barW, barH, input.attackerHp, input.attackerMaxHp, colorA, 1, input.attackerHp);
+  drawHealthBar(ctx, right.x + 10, right.y + right.h + 18, barW, barH, input.defenderHp, input.defenderMaxHp, colorB, 1, input.defenderHp);
+  drawTextWithShadow(ctx, "VS", cx, cy, "#ffcc33", 80);
+}
+
 async function renderBattleTurnFrame(
   frame: import("./engine.js").FrameCtx,
   input: BattleAnimationInput,
@@ -74,7 +125,7 @@ async function renderBattleTurnFrame(
   const { width, height } = BATTLE_CANVAS;
 
   // Draw the battlefield background + advancing arena atmosphere (behind cards).
-  drawBattleBackground(ctx, width, height, colorA, colorB, t, `${input.attacker.name}-turn`);
+  await drawBattleBackground(ctx, mod, width, height, colorA, colorB, t, `${input.attacker.name}-turn`, input.background);
 
   const left = { x: 70, y: 45, w: 340, h: 470 };
   const right = { x: 590, y: 45, w: 340, h: 470 };
@@ -175,7 +226,7 @@ async function renderVictoryFrame(
 ): Promise<void> {
   const { ctx, t, mod } = frame;
   const { width, height } = BATTLE_CANVAS;
-  drawBattleBackground(ctx, width, height, colorA, colorB, t, `${input.winner.name}-win`);
+  await drawBattleBackground(ctx, mod, width, height, colorA, colorB, t, `${input.winner.name}-win`, input.background);
   // Embers + sparks rising behind the champion (behind the card).
   drawAtmosphere(ctx, width, height, atmospherePreset("ember"), { seed: `${input.winner.name}-victory`, t, color: colorA });
 
@@ -204,13 +255,25 @@ async function renderVictoryFrame(
   drawParticles(ctx, particles);
 }
 
-function drawBattleBackground(
+async function drawBattleBackground(
   ctx: Ctx,
+  mod: CanvasMod,
   width: number, height: number,
   colorA: number, colorB: number,
   t: number,
   seed: string,
-): void {
+  arenaKey?: string | null,
+): Promise<void> {
+  // Pixel-art arena backdrop, if one is chosen and available. When it draws we
+  // skip the gradient (the art IS the background) and layer only a LIGHT
+  // procedural atmosphere for depth. Otherwise fall back to the classic
+  // gradient + full battlefield ambience — existing look, unchanged.
+  const drewArena = await drawArenaBackground(ctx, mod, arenaKey, t, width, height);
+  if (drewArena) {
+    drawAtmosphere(ctx, width, height, atmospherePreset("battlefield"), { seed, t, color: colorA, density: 0.4 });
+    return;
+  }
+
   drawGradientBackground(ctx, width, height, [
     [0, hexToRgba(colorA, 0.22)],
     [0.5, "#0b1622"],
