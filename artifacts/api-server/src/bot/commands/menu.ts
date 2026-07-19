@@ -208,7 +208,7 @@ async function buildCollectionScreen(guildId: string, userId: string, username: 
     }
   }
 
-  components.push(row(backBtn(), btn("Trade In (5→1)", "menu:nav:tradein", ButtonStyle.Secondary, "♻️")));
+  components.push(row(backBtn(), btn("Card Fusion", "menu:nav:tradein", ButtonStyle.Secondary, "🔧")));
 
   return { embed, components };
 }
@@ -809,10 +809,10 @@ export async function handleMenuCommand(interaction: ChatInputCommandInteraction
             await i.update({
               embeds: [
                 new EmbedBuilder()
-                  .setTitle("♻️ Trade In")
+                  .setTitle("🔧 Card Fusion")
                   .setColor(ACTION_COLOR)
-                  .setDescription("Burn **5 cards** of one rarity to get **1 random card** of the next tier up.\n\nUse `/tradein rarity:<tier>` — the autocomplete will guide you through rarity selection.\n\n*Trade-ins can't be done from this menu yet as they require a multi-step slash command flow.*")
-                  .setFooter({ text: footerText("Trade In") }),
+                  .setDescription("**Fuse** duplicate copies + **Scrap** to raise a card's **Star Rank** (★) and boost its battle stats. **Recycle** spare duplicates into Scrap to fund fusions.\n\nUse `/card_recycle` to open the Fusion hub — leave the name blank to browse your duplicates, or pass a card name to jump straight to it.")
+                  .setFooter({ text: footerText("Card Fusion") }),
               ],
               components: [row(backBtn("collection"))],
             });

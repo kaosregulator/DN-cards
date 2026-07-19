@@ -143,8 +143,8 @@ function buildLegacyCommands() {
 
     cmd("packstats", "View pack costs, weekly caps & cooldown", s => s),
 
-    cmd("tradein", "♻️ Card Recycle — merge duplicate copies to raise a card's Star Rank", s => s
-      .addStringOption(o => o.setName("name").setDescription("Card to recycle — leave blank for the interactive generator").setRequired(false).setAutocomplete(true))),
+    cmd("tradein", "🔧 Card Fusion — fuse duplicate copies + Scrap to raise a card's Star Rank", s => s
+      .addStringOption(o => o.setName("name").setDescription("Card to fuse — leave blank to browse your duplicates").setRequired(false).setAutocomplete(true))),
 
     cmd("achievements", "View unlocked achievements", s => s
       .addUserOption(o => o.setName("user").setDescription("View another member's achievements"))),

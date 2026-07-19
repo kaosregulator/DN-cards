@@ -1,30 +1,28 @@
 // ─────────────────────────────────────────────────────────────────────────────
-// DN Cards — Star Rank (Card Recycle progression)
+// DN Cards — Star Rank + Card Fusion economy
 //
-// ADDITIVE single property (`card_progress.star_rank`) on an owned card. It is
-// SEPARATE from rarity and from the level→frame stars, and it does NOT change
-// how collections count owned copies — the existing inventory stays the source
-// of truth.
+// Star Rank (`card_progress.star_rank`, 0..MAX_STAR) is the SINGLE progression
+// axis for a card. It is separate from rarity and from the battle level/XP
+// track (which lives in the same row but is driven only by battles). Battles
+// read star_rank directly (see battle/stat-engine.ts `applyStarBonus`).
 //
-// Card Recycle consumes duplicate copies from the player's existing collection
-// (collections.count, via the normal removeCardFromUser path) to raise the
-// selected card's Star Rank by one, up to MAX_STAR. Rarity is never changed.
-// Every existing card defaults to 0★, fully compatible.
+// Two player actions feed the loop:
+//   • ♻️ Recycle  — consume spendable duplicate copies → earn Scrap.
+//   • 🌟 Fuse     — spend duplicates + Scrap → raise the card's Star Rank by 1.
+//
+// Both are consumption-first with atomic conditional guards so double-clicks /
+// concurrent interactions can never double-spend (see
+// .agents/memory/economy-optimistic-lock.md).
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { db, cardProgressTable, collectionsTable, guildSettingsTable, userCurrencyTable } from "@workspace/db";
+import { db, cardProgressTable, collectionsTable, userCurrencyTable } from "@workspace/db";
 import type { GuildSettings } from "@workspace/db";
 import { and, eq, sql } from "drizzle-orm";
-import { removeCardFromUser, getOrCreateGuildSettings } from "../db.js";
+import { getOrCreateGuildSettings, getOrCreateCurrency } from "../db.js";
 import { logger } from "../../lib/logger.js";
 import type { Rarity } from "../cards-data.js";
 
 export const MAX_STAR = 5;
-// Duplicate copies consumed to advance FROM star `n` to `n+1`. Scales so higher
-// stars are a meaningful long-term investment: 5 → 10 → 15 → 20 → 25 (75 total).
-export function recycleCost(fromStar: number): number {
-  return 5 * (fromStar + 1);
-}
 
 // Compact "★★★☆☆" string for a star rank.
 export function starRankString(star: number): string {
@@ -32,8 +30,8 @@ export function starRankString(star: number): string {
   return "★".repeat(s) + "☆".repeat(MAX_STAR - s);
 }
 
-// Battle stat multiplier from star rank. +8% per star (5★ = +40%) — a meaningful
-// long-term investment that stays within balance. Applied on top of level/config.
+// Battle stat multiplier from star rank. +8% per star (5★ = +40%). Battles use
+// their own applyStarBonus; this is kept for previews/tooltips.
 export function starStatMultiplier(star: number): number {
   return 1 + Math.max(0, Math.min(MAX_STAR, star)) * 0.08;
 }
@@ -49,13 +47,23 @@ export async function getStarRank(guildId: string, userId: string, cardId: numbe
   return row?.starRank ?? 0;
 }
 
-// Batch star ranks for a set of cards (collection/search display). Missing =0.
+// Batch star ranks for a set of cards (collection/search display). Missing = 0.
 export async function getStarRanks(guildId: string, userId: string): Promise<Map<number, number>> {
   const rows = await db.select({ cardId: cardProgressTable.cardId, starRank: cardProgressTable.starRank })
     .from(cardProgressTable)
     .where(and(eq(cardProgressTable.guildId, guildId), eq(cardProgressTable.userId, userId)));
   const map = new Map<number, number>();
   for (const r of rows) if (r.starRank > 0) map.set(r.cardId, r.starRank);
+  return map;
+}
+
+// Batch star ranks (raw map incl. 0) for hub dropdowns.
+export async function getStarRankMap(guildId: string, userId: string): Promise<Map<number, number>> {
+  const rows = await db.select({ cardId: cardProgressTable.cardId, starRank: cardProgressTable.starRank })
+    .from(cardProgressTable)
+    .where(and(eq(cardProgressTable.guildId, guildId), eq(cardProgressTable.userId, userId)));
+  const map = new Map<number, number>();
+  for (const r of rows) map.set(r.cardId, r.starRank);
   return map;
 }
 
@@ -78,157 +86,106 @@ async function setStarRank(guildId: string, userId: string, cardId: number, star
     });
 }
 
-export interface RecycleQuote {
-  star: number;         // current star rank
-  atMax: boolean;
-  cost: number;         // duplicates needed for the next star
-  // Duplicates available to spend = normal copies beyond the one kept as the card itself.
-  spendable: number;
-  canRecycle: boolean;
-}
-
-// How much it costs / whether the player can recycle the card once more. One
-// normal copy is always preserved as "the card"; only extras are recyclable.
-export async function recycleQuote(guildId: string, userId: string, cardId: number): Promise<RecycleQuote> {
-  const [star, copies] = await Promise.all([
-    getStarRank(guildId, userId, cardId),
-    baseCopies(guildId, userId, cardId),
-  ]);
-  const atMax = star >= MAX_STAR;
-  const cost = recycleCost(star);
-  const spendable = Math.max(0, copies - 1);
-  return { star, atMax, cost, spendable, canRecycle: !atMax && spendable >= cost };
-}
-
-export type RecycleResult =
-  | { ok: true; fromStar: number; toStar: number; consumed: number }
-  | { ok: false; reason: "max_star" | "not_enough" | "error" };
-
-export interface MergeAllSource {
-  cardId: number;
-  name: string;
-  consumed: number;
-  remaining: number;
-}
-export type MergeAllResult =
-  | { ok: true; targetCardId: number; targetName: string; fromStar: number; toStar: number; consumed: number; sources: MergeAllSource[] }
-  | { ok: false; reason: "no_duplicates" | "max_star" | "no_progress" | "error" };
-
-// ── Batch progress reader (for dropdowns + canvas loaders) ───────────────────
-
-// Returns a map of cardId → {starRank, level, xp} for ALL of a user's cards.
-// One query replaces separate getStarRanks + per-card level lookups.
-export async function getCardProgressBatch(
-  guildId: string, userId: string,
-): Promise<Map<number, { starRank: number; level: number; xp: number }>> {
-  const rows = await db.select({
-    cardId: cardProgressTable.cardId,
-    starRank: cardProgressTable.starRank,
-    level: cardProgressTable.level,
-    xp: cardProgressTable.xp,
-  }).from(cardProgressTable)
-    .where(and(eq(cardProgressTable.guildId, guildId), eq(cardProgressTable.userId, userId)));
-  const map = new Map<number, { starRank: number; level: number; xp: number }>();
-  for (const r of rows) map.set(r.cardId, { starRank: r.starRank, level: r.level, xp: r.xp });
-  return map;
-}
-
-// ── Recycle config ────────────────────────────────────────────────────────────
-// Guild-level overrides for the Card Progression Hub. Defaults keep the bot-wide
-// balance; admins can tune per rarity and apply global multipliers.
+// ── Recycle / Fusion config ─────────────────────────────────────────────────
+// Guild-level overrides. Defaults keep the bot-wide balance; admins can tune
+// per rarity and apply global multipliers via /config.
 
 const DEFAULT_SCRAP_VALUES: Record<Rarity, number> = {
-  common: 5,
-  uncommon: 15,
-  rare: 40,
-  epic: 100,
-  legendary: 250,
-  mythic: 500,
+  common: 5, uncommon: 15, rare: 40, epic: 100, legendary: 250, mythic: 500,
+};
+
+// Fusion base cost for the 0★→1★ step; higher steps scale ×(star+1).
+// Duplicates are the scarce resource (fewer for higher rarities); Scrap does the
+// heavy lifting for the top tiers — and Scrap is earned by recycling anything.
+const DEFAULT_FUSE_DUPES: Record<Rarity, number> = {
+  common: 3, uncommon: 3, rare: 2, epic: 2, legendary: 2, mythic: 1,
+};
+const DEFAULT_FUSE_SCRAP: Record<Rarity, number> = {
+  common: 25, uncommon: 75, rare: 200, epic: 500, legendary: 1200, mythic: 3000,
 };
 
 const SCRAP_VALUE_KEY: Record<Rarity, keyof GuildSettings> = {
-  common: "recycleScrapCommon",
-  uncommon: "recycleScrapUncommon",
-  rare: "recycleScrapRare",
-  epic: "recycleScrapEpic",
-  legendary: "recycleScrapLegendary",
-  mythic: "recycleScrapMythic",
+  common: "recycleScrapCommon", uncommon: "recycleScrapUncommon", rare: "recycleScrapRare",
+  epic: "recycleScrapEpic", legendary: "recycleScrapLegendary", mythic: "recycleScrapMythic",
+};
+const FUSE_DUPES_KEY: Record<Rarity, keyof GuildSettings> = {
+  common: "fuseDupesCommon", uncommon: "fuseDupesUncommon", rare: "fuseDupesRare",
+  epic: "fuseDupesEpic", legendary: "fuseDupesLegendary", mythic: "fuseDupesMythic",
+};
+const FUSE_SCRAP_KEY: Record<Rarity, keyof GuildSettings> = {
+  common: "fuseScrapCommon", uncommon: "fuseScrapUncommon", rare: "fuseScrapRare",
+  epic: "fuseScrapEpic", legendary: "fuseScrapLegendary", mythic: "fuseScrapMythic",
 };
 
 export interface RecycleSettings {
   enabled: boolean;
-  scrapMultiplier: number; // 1.0 = 100%
-  xpMultiplier: number;    // 1.0 = 100%
+  scrapMultiplier: number;            // Scrap EARNED per recycle (1.0 = 100%)
   scrapValues: Record<Rarity, number>;
+  fuseCostMultiplier: number;         // Applied to fusion dupe + scrap cost (1.0 = 100%)
+  fuseDupes: Record<Rarity, number>;  // Base duplicate cost (0★→1★)
+  fuseScrap: Record<Rarity, number>;  // Base scrap cost (0★→1★)
+}
+
+function resolveTable(
+  s: GuildSettings, keys: Record<Rarity, keyof GuildSettings>, defaults: Record<Rarity, number>,
+): Record<Rarity, number> {
+  const out: Record<Rarity, number> = { ...defaults };
+  for (const r of Object.keys(keys) as Rarity[]) {
+    const override = s[keys[r]] as number | null | undefined;
+    if (override != null && override >= 0) out[r] = override;
+  }
+  return out;
 }
 
 export async function getRecycleSettings(guildId: string): Promise<RecycleSettings> {
   const s = await getOrCreateGuildSettings(guildId);
-  const scrapMultiplier = Math.max(0, (s.recycleScrapMultiplier ?? 100) / 100);
-  const xpMultiplier = Math.max(0, (s.recycleXpMultiplier ?? 100) / 100);
-  const scrapValues: Record<Rarity, number> = { ...DEFAULT_SCRAP_VALUES };
-  for (const r of Object.keys(SCRAP_VALUE_KEY) as Rarity[]) {
-    const override = s[SCRAP_VALUE_KEY[r]] as number | null | undefined;
-    if (override != null && override >= 0) scrapValues[r] = override;
-  }
   return {
     enabled: s.recycleEnabled ?? true,
-    scrapMultiplier,
-    xpMultiplier,
-    scrapValues,
+    scrapMultiplier: Math.max(0, (s.recycleScrapMultiplier ?? 100) / 100),
+    scrapValues: resolveTable(s, SCRAP_VALUE_KEY, DEFAULT_SCRAP_VALUES),
+    fuseCostMultiplier: Math.max(0, (s.fuseCostMultiplier ?? 100) / 100),
+    fuseDupes: resolveTable(s, FUSE_DUPES_KEY, DEFAULT_FUSE_DUPES),
+    fuseScrap: resolveTable(s, FUSE_SCRAP_KEY, DEFAULT_FUSE_SCRAP),
   };
 }
 
-// Scrap value per duplicate copy. Scales with rarity tier × log of MTT worth,
-// then guild multipliers / overrides are applied.
+// Scrap earned per duplicate copy recycled. Scales with rarity tier × log of MTT
+// worth, then the guild multiplier / override applies.
 export function scrapValueForCard(rarity: Rarity, worthValue: number, settings: RecycleSettings): number {
   const base = settings.scrapValues[rarity] ?? DEFAULT_SCRAP_VALUES[rarity] ?? 5;
   const multiplier = Math.log10(Math.max(10, worthValue) + 1);
-  const raw = base * multiplier * settings.scrapMultiplier;
-  return Math.max(1, Math.round(raw));
+  return Math.max(1, Math.round(base * multiplier * settings.scrapMultiplier));
 }
 
-// XP per duplicate copy consumed by 🌟 Fuse All. Guild XP multiplier applies.
-export function fuseXpPerCopy(rarity: Rarity, settings: RecycleSettings): number {
-  const table: Record<Rarity, number> = {
-    common: 50,
-    uncommon: 150,
-    rare: 400,
-    epic: 1000,
-    legendary: 2500,
-    mythic: 5000,
-  };
-  const base = table[rarity] ?? 50;
-  return Math.max(1, Math.round(base * settings.xpMultiplier));
+// Duplicate copies needed to fuse FROM `star` to `star+1`. Scales ×(star+1).
+export function fuseDupeCost(rarity: Rarity, star: number, settings: RecycleSettings): number {
+  const base = settings.fuseDupes[rarity] ?? DEFAULT_FUSE_DUPES[rarity] ?? 2;
+  return Math.max(1, Math.round(base * (star + 1) * settings.fuseCostMultiplier));
 }
 
-// How much XP a player gets when spending 1 Scrap on a card. The rate is fixed
-// so that fusing duplicates stays the primary efficient path; Scrap is a flexible
-// fallback. Guild XP multiplier applies.
-export function scrapToXpRate(settings: RecycleSettings): number {
-  return Math.max(0, 1 * settings.xpMultiplier);
+// Scrap needed to fuse FROM `star` to `star+1`. Scales ×(star+1).
+export function fuseScrapCost(rarity: Rarity, star: number, settings: RecycleSettings): number {
+  const base = settings.fuseScrap[rarity] ?? DEFAULT_FUSE_SCRAP[rarity] ?? 200;
+  return Math.max(0, Math.round(base * (star + 1) * settings.fuseCostMultiplier));
 }
+
+// ── ♻️ Recycle: duplicates → Scrap ──────────────────────────────────────────
 
 export type RecycleForScrapResult =
   | { ok: true; consumed: number; scrapEarned: number }
   | { ok: false; reason: "no_duplicates" | "error" };
 
-// ♻️ Recycle — converts ALL spendable dupes (count − 1) into Scrap.
-// Consumption-first with optimistic lock: reads the count, then atomically
-// sets count = 1 only if count still matches the reading. Scrap is awarded
-// ONLY after the update confirms rows were affected, preventing double-spend
-// under concurrent interactions.
+// Converts ALL spendable dupes (count − 1) into Scrap. Consumption-first with an
+// exact-match optimistic lock: count is set to 1 only if it still matches the
+// reading; Scrap is awarded ONLY after the update confirms rows were affected.
 export async function recycleForScrap(
   guildId: string, userId: string, cardId: number, rarity: Rarity, worthValue: number,
 ): Promise<RecycleForScrapResult> {
   try {
-    // Step 1: read current count so we know how many will be consumed.
     const copies = await baseCopies(guildId, userId, cardId);
     const spendable = Math.max(0, copies - 1);
     if (spendable === 0) return { ok: false, reason: "no_duplicates" };
 
-    // Step 2: conditional update — only succeeds if count hasn't changed since
-    // we read it. Concurrent requests that modify count first will fail here.
     const affected = await db.update(collectionsTable)
       .set({ count: 1 })
       .where(and(
@@ -238,13 +195,8 @@ export async function recycleForScrap(
         eq(collectionsTable.count, copies),   // exact-match optimistic lock
       ))
       .returning({ count: collectionsTable.count });
+    if (affected.length === 0) return { ok: false, reason: "no_duplicates" };
 
-    if (affected.length === 0) {
-      // Concurrent modification — another interaction already consumed copies.
-      return { ok: false, reason: "no_duplicates" };
-    }
-
-    // Step 3: consumption confirmed. Award Scrap.
     const settings = await getRecycleSettings(guildId);
     const scrapEarned = spendable * scrapValueForCard(rarity, worthValue, settings);
     const { addScrap } = await import("../db.js");
@@ -256,270 +208,114 @@ export async function recycleForScrap(
   }
 }
 
-export type FuseCardResult =
-  | { ok: true; consumed: number; xpGained: number; oldLevel: number; newLevel: number; leveledUp: boolean }
-  | { ok: false; reason: "no_duplicates" | "max_level" | "error" };
+// ── 🌟 Fuse: duplicates + Scrap → +1 Star ───────────────────────────────────
 
-// 🌟 Fuse All — consumes ALL spendable dupes into XP for the card.
-// Consumption-first with optimistic lock: inventory is decremented BEFORE
-// XP is awarded. XP is never granted unless the update confirms rows affected.
-export async function fuseCard(
+export interface FuseQuote {
+  star: number;
+  atMax: boolean;
+  dupeCost: number;
+  scrapCost: number;
+  spendableDupes: number;   // owned copies beyond the one kept
+  scrapBalance: number;
+  canFuse: boolean;
+  reason?: "max_star" | "insufficient_dupes" | "insufficient_scrap";
+}
+
+// What it costs / whether the player can fuse the card up one star right now.
+// One normal copy is always preserved as "the card"; only extras are spendable.
+export async function fuseStarQuote(
   guildId: string, userId: string, cardId: number, rarity: Rarity,
-): Promise<FuseCardResult> {
+): Promise<FuseQuote> {
+  const [star, copies, settings] = await Promise.all([
+    getStarRank(guildId, userId, cardId),
+    baseCopies(guildId, userId, cardId),
+    getRecycleSettings(guildId),
+  ]);
+  const scrapBalance = await getScrapBalance(guildId, userId);
+  const atMax = star >= MAX_STAR;
+  const dupeCost = fuseDupeCost(rarity, star, settings);
+  const scrapCost = fuseScrapCost(rarity, star, settings);
+  const spendableDupes = Math.max(0, copies - 1);
+
+  let reason: FuseQuote["reason"];
+  if (atMax) reason = "max_star";
+  else if (spendableDupes < dupeCost) reason = "insufficient_dupes";
+  else if (scrapBalance < scrapCost) reason = "insufficient_scrap";
+
+  return {
+    star, atMax, dupeCost, scrapCost, spendableDupes, scrapBalance,
+    canFuse: !reason, reason,
+  };
+}
+
+async function getScrapBalance(guildId: string, userId: string): Promise<number> {
+  const row = await getOrCreateCurrency(guildId, userId);
+  return (row as Record<string, unknown>)["scrap"] as number ?? 0;
+}
+
+export type FuseStarResult =
+  | { ok: true; fromStar: number; toStar: number; consumedDupes: number; scrapSpent: number }
+  | { ok: false; reason: "max_star" | "insufficient_dupes" | "insufficient_scrap" | "error" };
+
+// Atomic fuse: spend duplicates + Scrap to raise Star Rank by one.
+// Consumption-first with conditional guards (WHERE count/scrap >= cost), so two
+// concurrent interactions can never both succeed and over-spend. If the Scrap
+// deduction fails after the dupe deduction, the dupes are credited back.
+export async function fuseStar(
+  guildId: string, userId: string, cardId: number, rarity: Rarity,
+): Promise<FuseStarResult> {
   try {
-    const { getCardProgress, levelFromXp, MAX_LEVEL } = await import("./leveling.js");
-    const settings = await getRecycleSettings(guildId);
-
-    // Step 1: read count and existing progress in parallel.
-    const [copies, progress] = await Promise.all([
-      baseCopies(guildId, userId, cardId),
-      getCardProgress(guildId, userId, cardId),
+    await getOrCreateCurrency(guildId, userId); // ensure a currency row exists
+    const [star, settings] = await Promise.all([
+      getStarRank(guildId, userId, cardId),
+      getRecycleSettings(guildId),
     ]);
-    const spendable = Math.max(0, copies - 1);
-    if (spendable === 0) return { ok: false, reason: "no_duplicates" };
-    const oldLevel = progress?.level ?? 1;
-    if (oldLevel >= MAX_LEVEL) return { ok: false, reason: "max_level" };
+    if (star >= MAX_STAR) return { ok: false, reason: "max_star" };
 
-    // Step 2: consumption-first — optimistic lock ensures count hasn't changed.
-    // XP is only granted after this confirms success.
-    const affected = await db.update(collectionsTable)
-      .set({ count: 1 })
+    const dupeCost = fuseDupeCost(rarity, star, settings);
+    const scrapCost = fuseScrapCost(rarity, star, settings);
+
+    // Step 1: consume duplicates — keep at least one copy (count ≥ dupeCost + 1).
+    const dupAffected = await db.update(collectionsTable)
+      .set({ count: sql`${collectionsTable.count} - ${dupeCost}` })
       .where(and(
         eq(collectionsTable.guildId, guildId),
         eq(collectionsTable.userId, userId),
         eq(collectionsTable.cardId, cardId),
-        eq(collectionsTable.count, copies),   // exact-match optimistic lock
+        sql`${collectionsTable.count} >= ${dupeCost + 1}`,
       ))
       .returning({ count: collectionsTable.count });
+    if (dupAffected.length === 0) return { ok: false, reason: "insufficient_dupes" };
 
-    if (affected.length === 0) {
-      // Concurrent modification — another interaction already consumed copies.
-      return { ok: false, reason: "no_duplicates" };
+    // Step 2: consume Scrap — conditional on sufficient balance.
+    if (scrapCost > 0) {
+      const scrapAffected = await db.update(userCurrencyTable)
+        .set({ scrap: sql`${userCurrencyTable.scrap} - ${scrapCost}`, updatedAt: new Date() })
+        .where(and(
+          eq(userCurrencyTable.guildId, guildId),
+          eq(userCurrencyTable.userId, userId),
+          sql`${userCurrencyTable.scrap} >= ${scrapCost}`,
+        ))
+        .returning({ scrap: userCurrencyTable.scrap });
+      if (scrapAffected.length === 0) {
+        // Compensate the duplicates we already consumed, then abort.
+        await db.update(collectionsTable)
+          .set({ count: sql`${collectionsTable.count} + ${dupeCost}` })
+          .where(and(
+            eq(collectionsTable.guildId, guildId),
+            eq(collectionsTable.userId, userId),
+            eq(collectionsTable.cardId, cardId),
+          ));
+        return { ok: false, reason: "insufficient_scrap" };
+      }
     }
 
-    // Step 3: consumption confirmed. Award XP.
-    const xpGained = spendable * fuseXpPerCopy(rarity, settings);
-    const oldXp = progress?.xp ?? 0;
-    const newXp = oldXp + xpGained;
-    const newLevel = Math.min(MAX_LEVEL, levelFromXp(newXp));
-    await db.insert(cardProgressTable)
-      .values({ guildId, userId, cardId, xp: newXp, level: newLevel })
-      .onConflictDoUpdate({
-        target: [cardProgressTable.guildId, cardProgressTable.userId, cardProgressTable.cardId],
-        set: { xp: newXp, level: newLevel, updatedAt: new Date() },
-      });
-    return { ok: true, consumed: spendable, xpGained, oldLevel, newLevel, leveledUp: newLevel > oldLevel };
-  } catch (err) {
-    logger.error({ err, guildId, userId, cardId }, "fuseCard failed");
-    return { ok: false, reason: "error" };
-  }
-}
-
-export type ScrapToXpResult =
-  | { ok: true; scrapSpent: number; xpGained: number; oldLevel: number; newLevel: number; leveledUp: boolean }
-  | { ok: false; reason: "insufficient_scrap" | "max_level" | "error" };
-
-// 💱 Spend Scrap → XP on any selected card. Consumption-first: scrap is deducted
-// with an exact-match optimistic lock before XP is awarded. Scrap remains less
-// efficient than fusing duplicates, by design.
-export async function spendScrapForXp(
-  guildId: string, userId: string, cardId: number, scrapAmount: number,
-): Promise<ScrapToXpResult> {
-  try {
-    const { getCardProgress, levelFromXp, MAX_LEVEL } = await import("./leveling.js");
-    const settings = await getRecycleSettings(guildId);
-
-    const amount = Math.max(0, Math.floor(scrapAmount));
-    if (amount <= 0) return { ok: false, reason: "insufficient_scrap" };
-
-    const progress = await getCardProgress(guildId, userId, cardId);
-    const oldLevel = progress?.level ?? 1;
-    if (oldLevel >= MAX_LEVEL) return { ok: false, reason: "max_level" };
-
-    // Step 1: read current scrap balance.
-    const [currencyRow] = await db.select({ scrap: userCurrencyTable.scrap })
-      .from(userCurrencyTable)
-      .where(and(eq(userCurrencyTable.guildId, guildId), eq(userCurrencyTable.userId, userId)))
-      .limit(1);
-    const balance = currencyRow?.scrap ?? 0;
-    if (balance < amount) return { ok: false, reason: "insufficient_scrap" };
-
-    // Step 2: conditional update — only succeeds if scrap balance hasn't changed.
-    const affected = await db.update(userCurrencyTable)
-      .set({ scrap: sql`${userCurrencyTable.scrap} - ${amount}` })
-      .where(and(
-        eq(userCurrencyTable.guildId, guildId),
-        eq(userCurrencyTable.userId, userId),
-        eq(userCurrencyTable.scrap, balance),   // exact-match optimistic lock
-      ))
-      .returning({ scrap: userCurrencyTable.scrap });
-
-    if (affected.length === 0) {
-      return { ok: false, reason: "insufficient_scrap" };
-    }
-
-    // Step 3: consumption confirmed. Award XP.
-    const xpGained = Math.floor(amount * scrapToXpRate(settings));
-    if (xpGained <= 0) return { ok: false, reason: "insufficient_scrap" };
-    const oldXp = progress?.xp ?? 0;
-    const newXp = oldXp + xpGained;
-    const newLevel = Math.min(MAX_LEVEL, levelFromXp(newXp));
-    await db.insert(cardProgressTable)
-      .values({ guildId, userId, cardId, xp: newXp, level: newLevel })
-      .onConflictDoUpdate({
-        target: [cardProgressTable.guildId, cardProgressTable.userId, cardProgressTable.cardId],
-        set: { xp: newXp, level: newLevel, updatedAt: new Date() },
-      });
-    return { ok: true, scrapSpent: amount, xpGained, oldLevel, newLevel, leveledUp: newLevel > oldLevel };
-  } catch (err) {
-    logger.error({ err, guildId, userId, cardId, scrapAmount }, "spendScrapForXp failed");
-    return { ok: false, reason: "error" };
-  }
-}
-
-export type AscendResult =
-  | { ok: true; fromStar: number; toStar: number; fromLevel: number }
-  | { ok: false; reason: "not_level_100" | "max_star" | "error" };
-
-// ⬆️ Ascend — only eligible at Level 100 & star < MAX_STAR. Resets level to 1,
-// XP to 0, and increments star_rank by 1.
-export async function ascendCard(
-  guildId: string, userId: string, cardId: number,
-): Promise<AscendResult> {
-  try {
-    const { getCardProgress, MAX_LEVEL } = await import("./leveling.js");
-    const progress = await getCardProgress(guildId, userId, cardId);
-    const currentLevel = progress?.level ?? 1;
-    const currentStar = progress?.starRank ?? 0;
-    if (currentStar >= MAX_STAR) return { ok: false, reason: "max_star" };
-    if (currentLevel < MAX_LEVEL) return { ok: false, reason: "not_level_100" };
-    const toStar = currentStar + 1;
-    await db.insert(cardProgressTable)
-      .values({ guildId, userId, cardId, level: 1, xp: 0, starRank: toStar })
-      .onConflictDoUpdate({
-        target: [cardProgressTable.guildId, cardProgressTable.userId, cardProgressTable.cardId],
-        set: { level: 1, xp: 0, starRank: toStar, updatedAt: new Date() },
-      });
-    return { ok: true, fromStar: currentStar, toStar, fromLevel: currentLevel };
-  } catch (err) {
-    logger.error({ err, guildId, userId, cardId }, "ascendCard failed");
-    return { ok: false, reason: "error" };
-  }
-}
-
-// ── Legacy: direct-recycle-to-star (deprecated — Ascension is now the only
-// path to raise star_rank). Kept so old in-flight messages still work.
-// Consume `recycleCost(star)` duplicate copies from the existing collection and
-// raise the card's Star Rank by one. Keeps one normal copy as the card itself.
-export async function recycleCard(guildId: string, userId: string, cardId: number): Promise<RecycleResult> {
-  try {
-    const q = await recycleQuote(guildId, userId, cardId);
-    if (q.atMax) return { ok: false, reason: "max_star" };
-    if (!q.canRecycle) return { ok: false, reason: "not_enough" };
-    let consumed = 0;
-    for (let i = 0; i < q.cost; i++) {
-      const res = await removeCardFromUser(guildId, userId, cardId);
-      if (!res.success) break;
-      consumed++;
-    }
-    if (consumed < q.cost) {
-      logger.warn({ guildId, userId, cardId, consumed, cost: q.cost }, "recycle consumed fewer than cost");
-      return { ok: false, reason: "not_enough" };
-    }
-    const toStar = q.star + 1;
+    // Step 3: both consumptions confirmed — raise the star.
+    const toStar = star + 1;
     await setStarRank(guildId, userId, cardId, toStar);
-    return { ok: true, fromStar: q.star, toStar, consumed };
+    return { ok: true, fromStar: star, toStar, consumedDupes: dupeCost, scrapSpent: scrapCost };
   } catch (err) {
-    logger.error({ err, guildId, userId, cardId }, "recycleCard failed");
-    return { ok: false, reason: "error" };
-  }
-}
-
-// Consume spendable duplicate copies from ALL eligible cards and funnel them into
-// the user's highest-starred (then highest-count) card, leveling it as far as
-// the available duplicates allow. Always preserves one copy of every card.
-export async function mergeAllRecycle(guildId: string, userId: string): Promise<MergeAllResult> {
-  try {
-    const { getUserCollection } = await import("../db.js");
-    const collection = await getUserCollection(guildId, userId);
-    const stars = await getStarRanks(guildId, userId);
-    const eligible = collection
-      .filter(c => c.count > 1)
-      .map(c => ({
-        cardId: c.id,
-        name: c.name,
-        count: c.count,
-        star: stars.get(c.id) ?? 0,
-        spendable: c.count - 1,
-      }));
-
-    if (eligible.length === 0) return { ok: false, reason: "no_duplicates" };
-
-    // Target: highest star, then highest count (so we always merge INTO the best card).
-    eligible.sort((a, b) => b.star - a.star || b.count - a.count);
-    const target = eligible[0]!;
-    if (target.star >= MAX_STAR) return { ok: false, reason: "max_star" };
-
-    // Simulate how many copies we can actually spend and how far that takes the target.
-    let currentStar = target.star;
-    let remainingSpendable = eligible.reduce((sum, c) => sum + c.spendable, 0);
-    let neededForNext = recycleCost(currentStar);
-    while (currentStar < MAX_STAR && remainingSpendable >= neededForNext) {
-      remainingSpendable -= neededForNext;
-      currentStar++;
-      neededForNext = recycleCost(currentStar);
-    }
-    const toConsume = eligible.reduce((sum, c) => sum + c.spendable, 0) - remainingSpendable;
-    if (toConsume === 0 || currentStar === target.star) return { ok: false, reason: "no_progress" };
-
-    // Allocate consumption across sources. Sacrifice the weakest cards first,
-    // then the target's own duplicates if still needed.
-    const sources: MergeAllSource[] = [];
-    let stillNeeded = toConsume;
-    const nonTarget = eligible.slice(1).sort((a, b) => a.star - b.star || b.count - a.count);
-    for (const c of nonTarget) {
-      if (stillNeeded <= 0) break;
-      const take = Math.min(c.spendable, stillNeeded);
-      if (take > 0) {
-        sources.push({ cardId: c.cardId, name: c.name, consumed: take, remaining: c.count - take });
-        stillNeeded -= take;
-      }
-    }
-    if (stillNeeded > 0) {
-      const take = Math.min(target.spendable, stillNeeded);
-      if (take > 0) {
-        sources.push({ cardId: target.cardId, name: target.name, consumed: take, remaining: target.count - take });
-        stillNeeded -= take;
-      }
-    }
-
-    if (stillNeeded > 0) {
-      // Math says we had enough, but something shifted; treat it as partial progress.
-      logger.warn({ guildId, userId, targetCardId: target.cardId, stillNeeded }, "mergeAllRecycle shortfall after allocation");
-    }
-
-    // Persist the consumption.
-    for (const s of sources) {
-      for (let i = 0; i < s.consumed; i++) {
-        const res = await removeCardFromUser(guildId, userId, s.cardId);
-        if (!res.success) {
-          logger.warn({ guildId, userId, cardId: s.cardId, i }, "mergeAllRecycle failed to consume a copy");
-        }
-      }
-    }
-
-    await setStarRank(guildId, userId, target.cardId, currentStar);
-    return {
-      ok: true,
-      targetCardId: target.cardId,
-      targetName: target.name,
-      fromStar: target.star,
-      toStar: currentStar,
-      consumed: toConsume - stillNeeded,
-      sources,
-    };
-  } catch (err) {
-    logger.error({ err, guildId, userId }, "mergeAllRecycle failed");
+    logger.error({ err, guildId, userId, cardId }, "fuseStar failed");
     return { ok: false, reason: "error" };
   }
 }
