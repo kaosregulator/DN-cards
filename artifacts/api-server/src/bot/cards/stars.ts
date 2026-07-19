@@ -12,9 +12,10 @@
 // Every existing card defaults to 0★, fully compatible.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { db, cardProgressTable, collectionsTable } from "@workspace/db";
+import { db, cardProgressTable, collectionsTable, guildSettingsTable, userCurrencyTable } from "@workspace/db";
+import type { GuildSettings } from "@workspace/db";
 import { and, eq, sql } from "drizzle-orm";
-import { removeCardFromUser } from "../db.js";
+import { removeCardFromUser, getOrCreateGuildSettings } from "../db.js";
 import { logger } from "../../lib/logger.js";
 import type { Rarity } from "../cards-data.js";
 
@@ -132,27 +133,63 @@ export async function getCardProgressBatch(
   return map;
 }
 
-// ── Scrap economy ─────────────────────────────────────────────────────────────
-// Scrap is the second currency: earned by ♻️ Recycling dupes. No spend path
-// yet. Formula easy to tune — just edit the base values or multiplier.
+// ── Recycle config ────────────────────────────────────────────────────────────
+// Guild-level overrides for the Card Progression Hub. Defaults keep the bot-wide
+// balance; admins can tune per rarity and apply global multipliers.
 
-// Scrap value per duplicate copy. Scales with rarity tier × log of MTT worth.
-export function scrapValueForCard(rarity: Rarity, worthValue: number): number {
-  const base: Record<Rarity, number> = {
-    common: 5,
-    uncommon: 15,
-    rare: 40,
-    epic: 100,
-    legendary: 250,
-    mythic: 500,
-  };
-  const b = base[rarity] ?? 5;
-  const multiplier = Math.log10(Math.max(10, worthValue) + 1);
-  return Math.max(1, Math.round(b * multiplier));
+const DEFAULT_SCRAP_VALUES: Record<Rarity, number> = {
+  common: 5,
+  uncommon: 15,
+  rare: 40,
+  epic: 100,
+  legendary: 250,
+  mythic: 500,
+};
+
+const SCRAP_VALUE_KEY: Record<Rarity, keyof GuildSettings> = {
+  common: "recycleScrapCommon",
+  uncommon: "recycleScrapUncommon",
+  rare: "recycleScrapRare",
+  epic: "recycleScrapEpic",
+  legendary: "recycleScrapLegendary",
+  mythic: "recycleScrapMythic",
+};
+
+export interface RecycleSettings {
+  enabled: boolean;
+  scrapMultiplier: number; // 1.0 = 100%
+  xpMultiplier: number;    // 1.0 = 100%
+  scrapValues: Record<Rarity, number>;
 }
 
-// XP per duplicate copy consumed by 🌟 Fuse All.
-export function fuseXpPerCopy(rarity: Rarity): number {
+export async function getRecycleSettings(guildId: string): Promise<RecycleSettings> {
+  const s = await getOrCreateGuildSettings(guildId);
+  const scrapMultiplier = Math.max(0, (s.recycleScrapMultiplier ?? 100) / 100);
+  const xpMultiplier = Math.max(0, (s.recycleXpMultiplier ?? 100) / 100);
+  const scrapValues: Record<Rarity, number> = { ...DEFAULT_SCRAP_VALUES };
+  for (const r of Object.keys(SCRAP_VALUE_KEY) as Rarity[]) {
+    const override = s[SCRAP_VALUE_KEY[r]] as number | null | undefined;
+    if (override != null && override >= 0) scrapValues[r] = override;
+  }
+  return {
+    enabled: s.recycleEnabled ?? true,
+    scrapMultiplier,
+    xpMultiplier,
+    scrapValues,
+  };
+}
+
+// Scrap value per duplicate copy. Scales with rarity tier × log of MTT worth,
+// then guild multipliers / overrides are applied.
+export function scrapValueForCard(rarity: Rarity, worthValue: number, settings: RecycleSettings): number {
+  const base = settings.scrapValues[rarity] ?? DEFAULT_SCRAP_VALUES[rarity] ?? 5;
+  const multiplier = Math.log10(Math.max(10, worthValue) + 1);
+  const raw = base * multiplier * settings.scrapMultiplier;
+  return Math.max(1, Math.round(raw));
+}
+
+// XP per duplicate copy consumed by 🌟 Fuse All. Guild XP multiplier applies.
+export function fuseXpPerCopy(rarity: Rarity, settings: RecycleSettings): number {
   const table: Record<Rarity, number> = {
     common: 50,
     uncommon: 150,
@@ -161,7 +198,15 @@ export function fuseXpPerCopy(rarity: Rarity): number {
     legendary: 2500,
     mythic: 5000,
   };
-  return table[rarity] ?? 50;
+  const base = table[rarity] ?? 50;
+  return Math.max(1, Math.round(base * settings.xpMultiplier));
+}
+
+// How much XP a player gets when spending 1 Scrap on a card. The rate is fixed
+// so that fusing duplicates stays the primary efficient path; Scrap is a flexible
+// fallback. Guild XP multiplier applies.
+export function scrapToXpRate(settings: RecycleSettings): number {
+  return Math.max(0, 1 * settings.xpMultiplier);
 }
 
 export type RecycleForScrapResult =
@@ -200,7 +245,8 @@ export async function recycleForScrap(
     }
 
     // Step 3: consumption confirmed. Award Scrap.
-    const scrapEarned = spendable * scrapValueForCard(rarity, worthValue);
+    const settings = await getRecycleSettings(guildId);
+    const scrapEarned = spendable * scrapValueForCard(rarity, worthValue, settings);
     const { addScrap } = await import("../db.js");
     await addScrap(guildId, userId, scrapEarned);
     return { ok: true, consumed: spendable, scrapEarned };
@@ -222,6 +268,7 @@ export async function fuseCard(
 ): Promise<FuseCardResult> {
   try {
     const { getCardProgress, levelFromXp, MAX_LEVEL } = await import("./leveling.js");
+    const settings = await getRecycleSettings(guildId);
 
     // Step 1: read count and existing progress in parallel.
     const [copies, progress] = await Promise.all([
@@ -251,7 +298,7 @@ export async function fuseCard(
     }
 
     // Step 3: consumption confirmed. Award XP.
-    const xpGained = spendable * fuseXpPerCopy(rarity);
+    const xpGained = spendable * fuseXpPerCopy(rarity, settings);
     const oldXp = progress?.xp ?? 0;
     const newXp = oldXp + xpGained;
     const newLevel = Math.min(MAX_LEVEL, levelFromXp(newXp));
@@ -264,6 +311,68 @@ export async function fuseCard(
     return { ok: true, consumed: spendable, xpGained, oldLevel, newLevel, leveledUp: newLevel > oldLevel };
   } catch (err) {
     logger.error({ err, guildId, userId, cardId }, "fuseCard failed");
+    return { ok: false, reason: "error" };
+  }
+}
+
+export type ScrapToXpResult =
+  | { ok: true; scrapSpent: number; xpGained: number; oldLevel: number; newLevel: number; leveledUp: boolean }
+  | { ok: false; reason: "insufficient_scrap" | "max_level" | "error" };
+
+// 💱 Spend Scrap → XP on any selected card. Consumption-first: scrap is deducted
+// with an exact-match optimistic lock before XP is awarded. Scrap remains less
+// efficient than fusing duplicates, by design.
+export async function spendScrapForXp(
+  guildId: string, userId: string, cardId: number, scrapAmount: number,
+): Promise<ScrapToXpResult> {
+  try {
+    const { getCardProgress, levelFromXp, MAX_LEVEL } = await import("./leveling.js");
+    const settings = await getRecycleSettings(guildId);
+
+    const amount = Math.max(0, Math.floor(scrapAmount));
+    if (amount <= 0) return { ok: false, reason: "insufficient_scrap" };
+
+    const progress = await getCardProgress(guildId, userId, cardId);
+    const oldLevel = progress?.level ?? 1;
+    if (oldLevel >= MAX_LEVEL) return { ok: false, reason: "max_level" };
+
+    // Step 1: read current scrap balance.
+    const [currencyRow] = await db.select({ scrap: userCurrencyTable.scrap })
+      .from(userCurrencyTable)
+      .where(and(eq(userCurrencyTable.guildId, guildId), eq(userCurrencyTable.userId, userId)))
+      .limit(1);
+    const balance = currencyRow?.scrap ?? 0;
+    if (balance < amount) return { ok: false, reason: "insufficient_scrap" };
+
+    // Step 2: conditional update — only succeeds if scrap balance hasn't changed.
+    const affected = await db.update(userCurrencyTable)
+      .set({ scrap: sql`${userCurrencyTable.scrap} - ${amount}` })
+      .where(and(
+        eq(userCurrencyTable.guildId, guildId),
+        eq(userCurrencyTable.userId, userId),
+        eq(userCurrencyTable.scrap, balance),   // exact-match optimistic lock
+      ))
+      .returning({ scrap: userCurrencyTable.scrap });
+
+    if (affected.length === 0) {
+      return { ok: false, reason: "insufficient_scrap" };
+    }
+
+    // Step 3: consumption confirmed. Award XP.
+    const xpGained = Math.floor(amount * scrapToXpRate(settings));
+    if (xpGained <= 0) return { ok: false, reason: "insufficient_scrap" };
+    const oldXp = progress?.xp ?? 0;
+    const newXp = oldXp + xpGained;
+    const newLevel = Math.min(MAX_LEVEL, levelFromXp(newXp));
+    await db.insert(cardProgressTable)
+      .values({ guildId, userId, cardId, xp: newXp, level: newLevel })
+      .onConflictDoUpdate({
+        target: [cardProgressTable.guildId, cardProgressTable.userId, cardProgressTable.cardId],
+        set: { xp: newXp, level: newLevel, updatedAt: new Date() },
+      });
+    return { ok: true, scrapSpent: amount, xpGained, oldLevel, newLevel, leveledUp: newLevel > oldLevel };
+  } catch (err) {
+    logger.error({ err, guildId, userId, cardId, scrapAmount }, "spendScrapForXp failed");
     return { ok: false, reason: "error" };
   }
 }

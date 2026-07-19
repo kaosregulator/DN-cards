@@ -93,12 +93,21 @@ export async function handleConfigSelect(interaction: StringSelectMenuInteractio
     if (["slow", "normal", "fast"].includes(speed)) {
       patch.packAnimationSpeed = speed;
     }
+  } else if (action === "config_recycle_scrap_mult") {
+    patch.recycleScrapMultiplier = parseInt(value!, 10);
+  } else if (action === "config_recycle_xp_mult") {
+    patch.recycleXpMultiplier = parseInt(value!, 10);
   }
 
   await updateGuildSettings(guildId, patch);
   if (action === "config_interval") scheduleNextSpawn(guildId);
 
   const settings = await getOrCreateGuildSettings(guildId);
+  if (action === "config_recycle_scrap_mult" || action === "config_recycle_xp_mult") {
+    const displayMap = await getRarityDisplayOverrides(guildId);
+    await interaction.editReply({ embeds: [buildRecycleEmbed(settings, displayMap)], components: buildRecycleComponents(settings) });
+    return;
+  }
   await refreshPanel(interaction, settings);
 }
 
@@ -149,6 +158,12 @@ export async function handleConfigButton(interaction: ButtonInteraction): Promis
       getRarityDisplayOverrides(guildId),
     ]);
     await interaction.showModal(buildCustomMixModal(settings, displayMap));
+    return;
+  }
+
+  if (action === "recycle" && arg === "values") {
+    const settings = await getOrCreateGuildSettings(guildId);
+    await interaction.showModal(buildRecycleValuesModal(settings));
     return;
   }
 
@@ -311,6 +326,26 @@ export async function handleConfigButton(interaction: ButtonInteraction): Promis
       await interaction.editReply({
         embeds: [buildAnimationEmbed(settings)],
         components: buildAnimationComponents(settings),
+      });
+    }
+    return;
+  } else if (action === "recycle") {
+    const settings = await getOrCreateGuildSettings(guildId);
+    if (arg === "back") {
+      await refreshPanel(interaction, settings);
+    } else if (arg === "open") {
+      const displayMap = await getRarityDisplayOverrides(guildId);
+      await interaction.editReply({
+        embeds: [buildRecycleEmbed(settings, displayMap)],
+        components: buildRecycleComponents(settings),
+      });
+    } else if (arg === "toggle") {
+      await updateGuildSettings(guildId, { recycleEnabled: !settings.recycleEnabled });
+      const fresh = await getOrCreateGuildSettings(guildId);
+      const displayMap = await getRarityDisplayOverrides(guildId);
+      await interaction.editReply({
+        embeds: [buildRecycleEmbed(fresh, displayMap)],
+        components: buildRecycleComponents(fresh),
       });
     }
     return;
@@ -606,6 +641,10 @@ function buildConfigComponents(s: GuildSettings, displayMap?: RarityDisplayMap |
       .setLabel("🎴 Packs")
       .setStyle(ButtonStyle.Secondary),
     new ButtonBuilder()
+      .setCustomId("config:recycle:open")
+      .setLabel(s.recycleEnabled ? "♻️ Recycle" : "♻️ Recycle OFF")
+      .setStyle(s.recycleEnabled ? ButtonStyle.Secondary : ButtonStyle.Danger),
+    new ButtonBuilder()
       .setCustomId("config:drops:open")
       .setLabel("📤‍📤 Drops")
       .setStyle(ButtonStyle.Secondary),
@@ -617,10 +656,6 @@ function buildConfigComponents(s: GuildSettings, displayMap?: RarityDisplayMap |
       .setCustomId("config:channel:spawn2")
       .setLabel("📡 Stream 2 here")
       .setStyle(ButtonStyle.Primary),
-    new ButtonBuilder()
-      .setCustomId("config:anim:open")
-      .setLabel("🎞️ Animations")
-      .setStyle(ButtonStyle.Secondary),
   );
 
   return [
@@ -678,6 +713,144 @@ function formatSec(sec: number): string {
   if (sec >= 3600) return `${Math.round(sec / 3600)}h`;
   if (sec >= 60) return `${Math.round(sec / 60)}m`;
   return `${sec}s`;
+}
+
+// ── Recycle / Card Progression Hub sub-panel ──────────────────────────────────
+
+const RECYCLE_MULTIPLIER_OPTIONS = [50, 75, 100, 125, 150, 200, 300];
+
+const RECYCLE_VALUE_KEY: Record<Rarity, keyof GuildSettings> = {
+  common: "recycleScrapCommon",
+  uncommon: "recycleScrapUncommon",
+  rare: "recycleScrapRare",
+  epic: "recycleScrapEpic",
+  legendary: "recycleScrapLegendary",
+  mythic: "recycleScrapMythic",
+};
+
+function buildRecycleEmbed(s: GuildSettings, displayMap?: RarityDisplayMap | null): EmbedBuilder {
+  const order = getRarityOrder(s);
+  const values = order.map(r => {
+    const label = rarityLabel(r, s, displayMap);
+    const val = s[RECYCLE_VALUE_KEY[r]] as number | null | undefined;
+    return `${label}: **${val ?? "default"}** ⚙️`;
+  }).join("\n");
+
+  return new EmbedBuilder()
+    .setTitle("♻️ Recycle / Card Progression Hub")
+    .setColor(0x2ecc71)
+    .setDescription(
+      "Tune how duplicates turn into Scrap and how fusing turns into XP.\n\n" +
+      `**Enabled:** ${s.recycleEnabled ? "🟢 Yes" : "🔴 No"}\n` +
+      `**Scrap multiplier:** ${s.recycleScrapMultiplier}%\n` +
+      `**XP multiplier:** ${s.recycleXpMultiplier}%\n\n` +
+      `**Per-rarity Scrap values** (null = default):\n${values}`,
+    );
+}
+
+function buildRecycleComponents(s: GuildSettings) {
+  const toggleRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder()
+      .setCustomId("config:recycle:toggle")
+      .setLabel(s.recycleEnabled ? "🔴 Disable Recycle" : "🟢 Enable Recycle")
+      .setStyle(s.recycleEnabled ? ButtonStyle.Danger : ButtonStyle.Success),
+    new ButtonBuilder()
+      .setCustomId("config:recycle:values")
+      .setLabel("⚙️ Edit Rarity Values")
+      .setStyle(ButtonStyle.Primary),
+    new ButtonBuilder()
+      .setCustomId("config:recycle:back")
+      .setLabel("← Back")
+      .setStyle(ButtonStyle.Secondary),
+  );
+
+  const scrapMultSelect = new StringSelectMenuBuilder()
+    .setCustomId("config_recycle_scrap_mult")
+    .setPlaceholder("Scrap multiplier")
+    .addOptions(RECYCLE_MULTIPLIER_OPTIONS.map(p => ({
+      label: `${p}%`,
+      value: String(p),
+      default: s.recycleScrapMultiplier === p,
+    })));
+
+  const xpMultSelect = new StringSelectMenuBuilder()
+    .setCustomId("config_recycle_xp_mult")
+    .setPlaceholder("XP multiplier")
+    .addOptions(RECYCLE_MULTIPLIER_OPTIONS.map(p => ({
+      label: `${p}%`,
+      value: String(p),
+      default: s.recycleXpMultiplier === p,
+    })));
+
+  return [
+    toggleRow,
+    new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(scrapMultSelect),
+    new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(xpMultSelect),
+  ];
+}
+
+function buildRecycleValuesModal(s: GuildSettings): ModalBuilder {
+  const order = getRarityOrder(s);
+  const defaults = [5, 15, 40, 100, 250, 500];
+  const current = order.map((r, i) => (s[RECYCLE_VALUE_KEY[r]] as number | null | undefined) ?? defaults[i] ?? 5);
+  const placeholder = order.join(", ") + " — e.g. " + current.join(", ");
+
+  return new ModalBuilder()
+    .setCustomId("config:recycle:values")
+    .setTitle("Per-rarity Scrap values")
+    .addComponents(
+      new ActionRowBuilder<TextInputBuilder>().addComponents(
+        new TextInputBuilder()
+          .setCustomId("values")
+          .setLabel(`Order: ${order.join(", ")}`)
+          .setStyle(TextInputStyle.Short)
+          .setRequired(true)
+          .setMaxLength(100)
+          .setPlaceholder(placeholder)
+          .setValue(current.join(", ")),
+      ),
+    );
+}
+
+export async function handleRecycleValuesModal(interaction: ModalSubmitInteraction): Promise<void> {
+  if (!interaction.guild) return;
+  const guildId = interaction.guild.id;
+  await interaction.deferUpdate().catch(() => {});
+
+  const ok = await ensureAdmin(interaction);
+  if (!ok) {
+    await interaction.followUp({ content: "❌ Admins only.", flags: MessageFlags.Ephemeral }).catch(() => {});
+    return;
+  }
+
+  const raw = interaction.fields.getTextInputValue("values").trim();
+  const parts = raw.split(",").map(p => p.trim()).filter(Boolean);
+  const settings = await getOrCreateGuildSettings(guildId);
+  const order = getRarityOrder(settings);
+
+  if (parts.length !== order.length) {
+    await interaction.followUp({
+      content: `❌ Provide exactly ${order.length} values separated by commas, in order: ${order.join(", ")}.`,
+      flags: MessageFlags.Ephemeral,
+    }).catch(() => {});
+    return;
+  }
+
+  const patch: Partial<GuildSettings> = {};
+  for (let i = 0; i < order.length; i++) {
+    const r = order[i]!;
+    const val = parseInt(parts[i]!, 10);
+    if (!Number.isInteger(val) || val < 0) {
+      await interaction.followUp({ content: `❌ "${parts[i]}" is not a valid whole number ≥ 0.`, flags: MessageFlags.Ephemeral }).catch(() => {});
+      return;
+    }
+    (patch as Record<string, number | null>)[RECYCLE_VALUE_KEY[r] as string] = val;
+  }
+
+  await updateGuildSettings(guildId, patch);
+  const fresh = await getOrCreateGuildSettings(guildId);
+  const displayMap = await getRarityDisplayOverrides(guildId);
+  await interaction.editReply({ embeds: [buildRecycleEmbed(fresh, displayMap)], components: buildRecycleComponents(fresh) }).catch(() => {});
 }
 
 // ── Drops per spawn sub-panel ────────────────────────────────────────────────

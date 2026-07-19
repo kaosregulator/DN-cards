@@ -121,6 +121,17 @@ async function runBootMigrations() {
   await pool.query(`ALTER TABLE guild_settings ADD COLUMN IF NOT EXISTS allow_boss_card_trades boolean NOT NULL DEFAULT false`);
 
   // Unified account-level progression (Player XP). Purely additive — existing
+  // ── Recycle / Card Progression Hub config ───────────────────────────────────
+  await pool.query(`ALTER TABLE guild_settings ADD COLUMN IF NOT EXISTS recycle_enabled boolean NOT NULL DEFAULT true`);
+  await pool.query(`ALTER TABLE guild_settings ADD COLUMN IF NOT EXISTS recycle_scrap_multiplier integer NOT NULL DEFAULT 100`);
+  await pool.query(`ALTER TABLE guild_settings ADD COLUMN IF NOT EXISTS recycle_xp_multiplier integer NOT NULL DEFAULT 100`);
+  await pool.query(`ALTER TABLE guild_settings ADD COLUMN IF NOT EXISTS recycle_scrap_common integer`);
+  await pool.query(`ALTER TABLE guild_settings ADD COLUMN IF NOT EXISTS recycle_scrap_uncommon integer`);
+  await pool.query(`ALTER TABLE guild_settings ADD COLUMN IF NOT EXISTS recycle_scrap_rare integer`);
+  await pool.query(`ALTER TABLE guild_settings ADD COLUMN IF NOT EXISTS recycle_scrap_epic integer`);
+  await pool.query(`ALTER TABLE guild_settings ADD COLUMN IF NOT EXISTS recycle_scrap_legendary integer`);
+  await pool.query(`ALTER TABLE guild_settings ADD COLUMN IF NOT EXISTS recycle_scrap_mythic integer`);
+
   // progression tables (card_progress, battle_profiles, user_currency, quests,
   // reputation, …) are untouched; this only stores the new account-wide level
   // that every activity feeds via the PlayerProfile service.

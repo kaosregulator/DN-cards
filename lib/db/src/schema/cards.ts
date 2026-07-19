@@ -251,6 +251,20 @@ export const guildSettingsTable = pgTable("guild_settings", {
   battleAnimationEnabled: boolean("battle_animation_enabled").notNull().default(true),
   packAnimationSpeed: text("pack_animation_speed").notNull().default("normal"),
   battleAnimationSpeed: text("battle_animation_speed").notNull().default("normal"),
+  // ── Recycle / Card Progression Hub config ───────────────────────────────────
+  // Master switch for the /recycle Card Progression Hub.
+  recycleEnabled: boolean("recycle_enabled").notNull().default(true),
+  // Global multipliers applied to scrap earned and XP gained from fusing duplicates.
+  // Stored as hundredths (1.00 = 100). 100 = default, 50 = half, 200 = double.
+  recycleScrapMultiplier: integer("recycle_scrap_multiplier").notNull().default(100),
+  recycleXpMultiplier: integer("recycle_xp_multiplier").notNull().default(100),
+  // Per-rarity base scrap value overrides. Null = use the bot-wide default formula.
+  recycleScrapCommon: integer("recycle_scrap_common"),
+  recycleScrapUncommon: integer("recycle_scrap_uncommon"),
+  recycleScrapRare: integer("recycle_scrap_rare"),
+  recycleScrapEpic: integer("recycle_scrap_epic"),
+  recycleScrapLegendary: integer("recycle_scrap_legendary"),
+  recycleScrapMythic: integer("recycle_scrap_mythic"),
   // ── Active set (Sets-driven spawn pool) ────────────────────────────────────
   // The single set whose cards are eligible for random autodrops in this
   // guild. NULL = no set selected → **nothing spawns** (admins must pick a

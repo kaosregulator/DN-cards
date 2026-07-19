@@ -14,6 +14,7 @@ import {
   EmbedBuilder, MessageFlags, AttachmentBuilder,
   ActionRowBuilder, ButtonBuilder, StringSelectMenuBuilder,
   ButtonStyle,
+  ModalBuilder, TextInputBuilder, TextInputStyle,
 } from "discord.js";
 import {
   getCanvas, hexToRgba, roundRectPath, drawGradientBackground, type Ctx, type CanvasMod, type FrameCtx,
@@ -38,6 +39,7 @@ import { toAbsoluteImageUrl } from "../image-url.js";
 import {
   recycleForScrap, fuseCard, ascendCard, scrapValueForCard, fuseXpPerCopy,
   starRankString, MAX_STAR, getCardProgressBatch, mergeAllRecycle,
+  spendScrapForXp, scrapToXpRate, getRecycleSettings, type RecycleSettings,
 } from "./stars.js";
 import { getCardProgress, levelProgress, levelFromXp, MAX_LEVEL } from "./leveling.js";
 import type { Rarity } from "../cards-data.js";
@@ -295,11 +297,12 @@ export async function renderRecycleHubCanvas(
 // ── Selected card canvas (full progression overlay) ──────────────────────────
 
 export async function renderRecycleSelectedCanvas(
-  _guildId: string, _userId: string, entry: RecycleCardEntry,
+  guildId: string, _userId: string, entry: RecycleCardEntry,
 ): Promise<{ buffer: Buffer; color: number } | null> {
   const card = await cardToRenderCard(entry);
   const revealBuffer = await renderCardReveal({ card, stats: null, info: null, shiny: false, index: 1, total: 1 });
   if (!revealBuffer) return null;
+  const settings = await getRecycleSettings(guildId);
 
   return queueRender("recycle-card", async () => {
     const mod = await getCanvas();
@@ -312,7 +315,7 @@ export async function renderRecycleSelectedCanvas(
       ctx.drawImage(art, 0, 0, width, height);
 
       const color = entry.rarityColor ?? getRarityEffectColor(entry.rarity);
-      const panelH = 148;
+      const panelH = 170;
       const panelY = height - 16 - panelH;
       const px = 28, pw = width - 56;
 
@@ -343,25 +346,31 @@ export async function renderRecycleSelectedCanvas(
       const xpStr = atMax ? "MAX LEVEL" : `${prog.into.toLocaleString()} / ${prog.needed.toLocaleString()} XP`;
       drawTextWithShadow(ctx, xpStr, px + pw / 2, barY + barH + 14, "#aab0c0", 13, "center");
 
-      // Row 3: copies + worth + scrap preview
+      // Row 3: copies + spendable
       const row3Y = panelY + 84;
       const spendable = Math.max(0, entry.count - 1);
-      const scrapPer = scrapValueForCard(entry.rarity, entry.worthValue);
-      const totalScrap = spendable * scrapPer;
-      const fuseXp = spendable * fuseXpPerCopy(entry.rarity);
-      drawTextWithShadow(ctx, `×${entry.count} owned  ·  ${spendable} spendable`, px + pw / 2, row3Y, "#ffffff", 15, "center");
+      drawTextWithShadow(ctx, `×${entry.count} owned  ·  ${spendable} spendable duplicate${spendable !== 1 ? "s" : ""}`, px + pw / 2, row3Y, "#ffffff", 15, "center");
 
-      // Row 4: economy preview
+      // Row 4: economy preview (recycle + fuse)
       const row4Y = panelY + 108;
-      const scrapStr = spendable > 0 ? `♻️ +${totalScrap.toLocaleString()} ⚙️ Scrap` : "No dupes to recycle";
+      const scrapPer = scrapValueForCard(entry.rarity, entry.worthValue, settings);
+      const totalScrap = spendable * scrapPer;
+      const fuseXp = spendable * fuseXpPerCopy(entry.rarity, settings);
+      const scrapStr = spendable > 0 ? `♻️ +${totalScrap.toLocaleString()} ⚙️` : "No dupes to recycle";
       const fuseStr  = spendable > 0 && !atMax ? `🌟 +${fuseXp.toLocaleString()} XP` : "";
       const fullStr = fuseStr ? `${scrapStr}  |  ${fuseStr}` : scrapStr;
       drawTextWithShadow(ctx, fullStr, px + pw / 2, row4Y, "#a8e6cf", 13, "center");
 
-      // Ascend hint
+      // Row 5: scrap→XP hint
       const row5Y = panelY + 130;
+      const rate = scrapToXpRate(settings);
+      const rateStr = rate === 1 ? "1 ⚙️ = 1 XP" : `${rate.toFixed(2)} ⚙️ = 1 XP`;
+      drawTextWithShadow(ctx, `⚙️ Spend Scrap on this card · ${rateStr}`, px + pw / 2, row5Y, "#74b9ff", 12, "center");
+
+      // Row 6: Ascend hint
+      const row6Y = panelY + 152;
       if (entry.level >= MAX_LEVEL && entry.star < MAX_STAR) {
-        drawTextWithShadow(ctx, "⬆️ ASCEND READY — reset to Lv 1, gain a ★", px + pw / 2, row5Y, "#ffd54a", 13, "center");
+        drawTextWithShadow(ctx, "⬆️ ASCEND READY — reset to Lv 1, gain a ★", px + pw / 2, row6Y, "#ffd54a", 13, "center");
       }
 
       return { buffer: await canvas.encode("png"), color };
@@ -572,8 +581,8 @@ export async function renderAscendAnimation(
     width,
     height,
     speed: "normal",
-    durationMs: 2200,
-    maxFrames: 32,
+    durationMs: 2800,
+    maxFrames: 40,
     quality: 18,
     renderScale: 0.75,
     render: async (frame: FrameCtx) => {
@@ -736,22 +745,34 @@ export async function renderRecycleMorphAnimation(
 // ── Message builders ─────────────────────────────────────────────────────────
 
 export async function buildRecycleHubMessage(guildId: string, userId: string) {
-  const [cards, collection, scrap] = await Promise.all([
+  const [cards, collection, scrap, settings] = await Promise.all([
     loadRecycleCandidates(guildId, userId, 5),
     loadUserRecycleCards(guildId, userId, 25),
     getScrap(guildId, userId),
+    getRecycleSettings(guildId),
   ]);
+
+  const footerLines = [`⚙️ Scrap: ${scrap.toLocaleString()}`];
+  if (settings.scrapMultiplier !== 1) footerLines.push(`Scrap multiplier: ${Math.round(settings.scrapMultiplier * 100)}%`);
+  if (settings.xpMultiplier !== 1) footerLines.push(`XP multiplier: ${Math.round(settings.xpMultiplier * 100)}%`);
 
   const embed = new EmbedBuilder()
     .setColor(0x2ecc71)
     .setTitle("♻️ Card Progression Hub")
     .setDescription(collection.length === 0
       ? "You don't own any cards yet. Open packs and come back!"
-      : "Pick a card from the dropdown to **Recycle** it for Scrap, **Fuse** duplicates into XP, or **Ascend** at Level 100.")
-    .setFooter({ text: `⚙️ Scrap: ${scrap.toLocaleString()}  ·  Select a card to get started` });
+      : "Pick a card from the dropdown, or **search by name**, to **Recycle**, **Fuse**, **Spend Scrap**, or **Ascend**.")
+    .setFooter({ text: footerLines.join("  ·  ") });
 
   const rows: ActionRowBuilder<ButtonBuilder | StringSelectMenuBuilder>[] = [];
   rows.push(cardSelectMenu(collection));
+  rows.push(new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder()
+      .setCustomId("recycle:search")
+      .setLabel("🔍 Search by Name")
+      .setStyle(ButtonStyle.Primary)
+      .setDisabled(collection.length === 0),
+  ));
 
   const render = await renderRecycleHubCanvas(guildId, userId, cards);
   if (render) {
@@ -771,17 +792,22 @@ export async function buildRecycleSelectedMessage(
   const entry = await loadSingleRecycleCard(guildId, userId, cardId);
   if (!entry) return "You do not own this card.";
 
+  const settings = await getRecycleSettings(guildId);
   const spendable = Math.max(0, entry.count - 1);
   const atMaxLevel = entry.level >= MAX_LEVEL;
   const atMaxStar = entry.star >= MAX_STAR;
-  const scrapPer = scrapValueForCard(entry.rarity, entry.worthValue);
+  const scrapPer = scrapValueForCard(entry.rarity, entry.worthValue, settings);
   const totalScrap = spendable * scrapPer;
-  const fuseXp = spendable * fuseXpPerCopy(entry.rarity);
+  const fuseXp = spendable * fuseXpPerCopy(entry.rarity, settings);
+  const scrapRate = scrapToXpRate(settings);
   const canAscend = atMaxLevel && !atMaxStar;
+  const scrapBalance = await getScrap(guildId, userId);
+  const canSpendScrap = !atMaxLevel && scrapBalance > 0 && scrapRate > 0;
 
   const lines: string[] = [
     `**${entry.rarityLabel}** · ${starRankString(entry.star)} · Level **${entry.level}** / ${MAX_LEVEL}`,
     `Owned: **×${entry.count}** (${spendable} spendable duplicate${spendable !== 1 ? "s" : ""})`,
+    `⚙️ Scrap balance: **${scrapBalance.toLocaleString()}**`,
     "",
   ];
   if (spendable > 0) {
@@ -790,6 +816,10 @@ export async function buildRecycleSelectedMessage(
     else lines.push(`🌟  **Fuse All** → card is at max level; no XP benefit`);
   } else {
     lines.push("*No spendable duplicates — only your single copy remains.*");
+  }
+  if (canSpendScrap) {
+    const rateStr = scrapRate === 1 ? "1 ⚙️ = 1 XP" : `${scrapRate.toFixed(2)} ⚙️ = 1 XP`;
+    lines.push(`⚙️ **Spend Scrap** → ${rateStr} on this card`);
   }
   if (canAscend) {
     lines.push(`\n⬆️  **Ascend ready!** Reset to Lv 1 and gain ★ ${entry.star + 1}`);
@@ -804,7 +834,7 @@ export async function buildRecycleSelectedMessage(
     .setTitle(entry.name)
     .setDescription(lines.join("\n"));
 
-  // Button row — all four actions in one row
+  // Button row — five actions fit in one ActionRow
   const row = new ActionRowBuilder<ButtonBuilder>();
   row.addComponents(
     new ButtonBuilder()
@@ -817,6 +847,11 @@ export async function buildRecycleSelectedMessage(
       .setLabel("🌟 Fuse All")
       .setStyle(ButtonStyle.Primary)
       .setDisabled(spendable === 0 || atMaxLevel),
+    new ButtonBuilder()
+      .setCustomId(`recycle:spendxp:${cardId}`)
+      .setLabel("⚙️ Spend Scrap")
+      .setStyle(ButtonStyle.Primary)
+      .setDisabled(!canSpendScrap),
     new ButtonBuilder()
       .setCustomId(`recycle:ascend:${cardId}`)
       .setLabel("⬆️ Ascend")
@@ -840,8 +875,14 @@ export async function buildRecycleSelectedMessage(
 
 export async function handleRecycleHubCommand(interaction: ChatInputCommandInteraction): Promise<void> {
   if (!interaction.guild) return;
+  const guildId = interaction.guild.id;
   await interaction.deferReply(EPHEMERAL).catch(() => {});
-  const msg = await buildRecycleHubMessage(interaction.guild.id, interaction.user.id);
+  const settings = await getRecycleSettings(guildId);
+  if (!settings.enabled) {
+    await interaction.editReply({ content: "♻️ The Card Progression Hub is currently disabled by server admins.", embeds: [], components: [] }).catch(() => {});
+    return;
+  }
+  const msg = await buildRecycleHubMessage(guildId, interaction.user.id);
   await interaction.editReply(msg).catch(() => {});
 }
 
@@ -867,6 +908,13 @@ export async function handleRecycleComponent(interaction: ButtonInteraction | St
       const msg = await buildRecycleHubMessage(guildId, userId);
       await interaction.editReply(msg).catch(() => {});
       return;
+    }
+    // Modal-launching buttons: must reply with showModal, no defer first.
+    if (sub === "spendxp") {
+      return handleRecycleSpendXpButton(interaction);
+    }
+    if (sub === "search") {
+      return handleRecycleSearchButton(interaction);
     }
   }
 
@@ -907,7 +955,8 @@ export async function handleRecycleScrapButton(interaction: ButtonInteraction): 
   }
 
   // Play animation first
-  const scrapEarned = spendable * scrapValueForCard(entry.rarity, entry.worthValue);
+  const settings = await getRecycleSettings(guildId);
+  const scrapEarned = spendable * scrapValueForCard(entry.rarity, entry.worthValue, settings);
   const anim = await renderRecycleScrapAnimation(guildId, userId, entry, scrapEarned);
   if (anim) {
     const embed = new EmbedBuilder()
@@ -916,7 +965,7 @@ export async function handleRecycleScrapButton(interaction: ButtonInteraction): 
       .setDescription(`Shattering **${spendable}** duplicate${spendable !== 1 ? "s" : ""} of **${entry.name}**…`)
       .setImage(`attachment://${RECYCLE_ANIM_FILE}`);
     await interaction.editReply({ embeds: [embed], components: [], files: [new AttachmentBuilder(anim.buffer, { name: RECYCLE_ANIM_FILE })] }).catch(() => {});
-    await sleep(1800);
+    await sleep(2400);
   }
 
   // Perform the recycle
@@ -969,7 +1018,8 @@ export async function handleRecycleFuse(interaction: ButtonInteraction): Promise
     return;
   }
 
-  const estXp = spendable * fuseXpPerCopy(entry.rarity);
+  const settings = await getRecycleSettings(guildId);
+  const estXp = spendable * fuseXpPerCopy(entry.rarity, settings);
   const animEntry = { ...entry }; // snapshot before mutation
 
   // Play fuse animation first (with estimated new level)
@@ -982,7 +1032,7 @@ export async function handleRecycleFuse(interaction: ButtonInteraction): Promise
       .setDescription(`Channeling **${spendable}** duplicate${spendable !== 1 ? "s" : ""} into **${entry.name}**…`)
       .setImage(`attachment://${RECYCLE_ANIM_FILE}`);
     await interaction.editReply({ embeds: [embed], components: [], files: [new AttachmentBuilder(anim.buffer, { name: RECYCLE_ANIM_FILE })] }).catch(() => {});
-    await sleep(2000);
+    await sleep(2600);
   }
 
   const res = await fuseCard(guildId, userId, cardId, entry.rarity);
@@ -1047,7 +1097,7 @@ export async function handleRecycleAscend(interaction: ButtonInteraction): Promi
       .setDescription(`**${entry.name}** is ascending from ${starRankString(entry.star)} to ${starRankString(entry.star + 1)}…`)
       .setImage(`attachment://${RECYCLE_ANIM_FILE}`);
     await interaction.editReply({ embeds: [embed], components: [], files: [new AttachmentBuilder(anim.buffer, { name: RECYCLE_ANIM_FILE })] }).catch(() => {});
-    await sleep(2200);
+    await sleep(2800);
   }
 
   const res = await ascendCard(guildId, userId, cardId);
@@ -1111,4 +1161,168 @@ export async function handleRecycleConfirmButton(interaction: ButtonInteraction)
   const parts = interaction.customId.split(":");
   if (parts[0] !== "recycle" || parts[1] !== "do") return;
   return handleRecycleScrapButton(interaction);
+}
+
+// ── ⚙️ Spend Scrap → XP ──────────────────────────────────────────────────────
+
+export async function handleRecycleSpendXpButton(interaction: ButtonInteraction): Promise<void> {
+  if (!interaction.guild) return;
+  const parts = interaction.customId.split(":");
+  if (parts[0] !== "recycle" || parts[1] !== "spendxp") return;
+  const cardId = parts[2]!;
+  const balance = await getScrap(interaction.guild.id, interaction.user.id);
+  const modal = new ModalBuilder()
+    .setCustomId(`recycle:spendxp:${cardId}`)
+    .setTitle("Spend Scrap for XP")
+    .addComponents(
+      new ActionRowBuilder<TextInputBuilder>().addComponents(
+        new TextInputBuilder()
+          .setCustomId("amount")
+          .setLabel(`How much Scrap? (you have ${balance.toLocaleString()})`)
+          .setStyle(TextInputStyle.Short)
+          .setRequired(true)
+          .setMaxLength(10)
+          .setPlaceholder("e.g. 100"),
+      ),
+    );
+  await interaction.showModal(modal);
+}
+
+export async function handleRecycleSpendXpModal(interaction: ModalSubmitInteraction): Promise<void> {
+  if (!interaction.guild) return;
+  const guildId = interaction.guild.id;
+  const userId = interaction.user.id;
+  const parts = interaction.customId.split(":");
+  if (parts[0] !== "recycle" || parts[1] !== "spendxp") return;
+  const cardId = Number(parts[2]);
+  await interaction.deferUpdate().catch(() => {});
+
+  const amountRaw = interaction.fields.getTextInputValue("amount").trim().replace(/,/g, "");
+  const amount = parseInt(amountRaw, 10);
+  if (!Number.isInteger(amount) || amount <= 0) {
+    await interaction.editReply({ content: "❌ Enter a positive whole number of Scrap.", embeds: [], components: [], files: [] }).catch(() => {});
+    return;
+  }
+
+  const entry = await loadSingleRecycleCard(guildId, userId, cardId);
+  if (!entry) {
+    await interaction.editReply({ content: "❌ Card not found in your collection.", embeds: [], components: [], files: [] }).catch(() => {});
+    return;
+  }
+  if (entry.level >= MAX_LEVEL) {
+    await interaction.editReply({ content: `❌ **${entry.name}** is already at max level.`, embeds: [], components: [], files: [] }).catch(() => {});
+    return;
+  }
+
+  const res = await spendScrapForXp(guildId, userId, cardId, amount);
+  if (!res.ok) {
+    const msg = res.reason === "insufficient_scrap" ? "Not enough Scrap for that amount."
+      : res.reason === "max_level" ? `**${entry.name}** is already at max level.`
+      : "Spend failed — try again.";
+    await interaction.editReply({ content: `❌ ${msg}`, embeds: [], components: [], files: [] }).catch(() => {});
+    return;
+  }
+
+  const newScrap = await getScrap(guildId, userId);
+  const embed = new EmbedBuilder()
+    .setColor(0x74b9ff)
+    .setTitle("⚙️ Scrap Converted to XP!")
+    .setDescription(
+      `Spent **${res.scrapSpent.toLocaleString()} ⚙️ Scrap** on **${entry.rarityLabel} ${entry.name}**.\n\n` +
+      `⚡  **+${res.xpGained.toLocaleString()} XP**\n` +
+      (res.leveledUp
+        ? `📈  Level **${res.oldLevel}** → **${res.newLevel}** 🎉`
+        : `📊  Still Level **${res.newLevel}** (more XP needed)`) +
+      `\n\nNew Scrap balance: **${newScrap.toLocaleString()}**`,
+    );
+  const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder().setCustomId("recycle:back").setLabel("⬅️ Back to Hub").setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder().setCustomId(`recycle:spendxp:${cardId}`).setLabel("⚙️ Spend More").setStyle(ButtonStyle.Primary),
+    new ButtonBuilder().setCustomId(`recycle:select:${cardId}`).setLabel("🔍 View Card").setStyle(ButtonStyle.Secondary),
+  );
+  await interaction.editReply({ embeds: [embed], components: [row], files: [] }).catch(() => {});
+}
+
+// ── 🔍 Search by name ─────────────────────────────────────────────────────────
+
+export async function handleRecycleSearchButton(interaction: ButtonInteraction): Promise<void> {
+  if (!interaction.guild) return;
+  const parts = interaction.customId.split(":");
+  if (parts[0] !== "recycle" || parts[1] !== "search") return;
+  const modal = new ModalBuilder()
+    .setCustomId("recycle:search")
+    .setTitle("Find a card to level up")
+    .addComponents(
+      new ActionRowBuilder<TextInputBuilder>().addComponents(
+        new TextInputBuilder()
+          .setCustomId("query")
+          .setLabel("Card name")
+          .setStyle(TextInputStyle.Short)
+          .setRequired(true)
+          .setMaxLength(100)
+          .setPlaceholder("Type part of the card name…"),
+      ),
+    );
+  await interaction.showModal(modal);
+}
+
+export async function handleRecycleSearchModal(interaction: ModalSubmitInteraction): Promise<void> {
+  if (!interaction.guild) return;
+  const guildId = interaction.guild.id;
+  const userId = interaction.user.id;
+  await interaction.deferReply({ flags: MessageFlags.Ephemeral }).catch(() => {});
+
+  const query = interaction.fields.getTextInputValue("query").trim().toLowerCase();
+  if (!query) {
+    await interaction.editReply({ content: "❌ Enter a card name to search." }).catch(() => {});
+    return;
+  }
+
+  const [collection, ctx, settings, displayMap, progressMap] = await Promise.all([
+    getUserCollection(guildId, userId),
+    getRarityContext(guildId),
+    getOrCreateGuildSettings(guildId),
+    getRarityDisplayOverrides(guildId),
+    getCardProgressBatch(guildId, userId),
+  ]);
+
+  const matches = collection
+    .filter(c => c.count > 0 && c.name.toLowerCase().includes(query))
+    .slice(0, 25)
+    .map(c => {
+      const display = getCardDisplayRarity(c, ctx, settings, displayMap);
+      const prog = progressMap.get(c.id);
+      return {
+        cardId: c.id,
+        name: c.name,
+        rarityLabel: display.label,
+        level: prog?.level ?? 1,
+        count: c.count,
+      };
+    });
+
+  if (matches.length === 0) {
+    await interaction.editReply({ content: `❌ No owned cards matching "${query}".`, embeds: [], components: [] }).catch(() => {});
+    return;
+  }
+
+  if (matches.length === 1) {
+    const msg = await buildRecycleSelectedMessage(guildId, userId, matches[0]!.cardId);
+    if (typeof msg === "string") { await interaction.editReply({ content: msg, embeds: [], components: [] }).catch(() => {}); return; }
+    await interaction.editReply({ ...msg, content: "🔍 Found one match:", embeds: msg.embeds, components: msg.components, files: msg.files }).catch(() => {});
+    return;
+  }
+
+  const options = matches.map(m => ({
+    label: `${m.name}`.slice(0, 100),
+    description: `${m.rarityLabel} · Lv ${m.level} · ×${m.count}`.slice(0, 100),
+    value: String(m.cardId),
+  }));
+  const row = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
+    new StringSelectMenuBuilder()
+      .setCustomId("recycle:search")
+      .setPlaceholder(`🔍 ${matches.length} matches for "${query}"`)
+      .addOptions(options),
+  );
+  await interaction.editReply({ content: `🔍 Found ${matches.length} cards matching "${query}":`, components: [row] }).catch(() => {});
 }
