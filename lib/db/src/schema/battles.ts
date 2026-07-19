@@ -205,6 +205,13 @@ export const battleProfilesTable = pgTable("battle_profiles", {
   criticalHits: integer("critical_hits").notNull().default(0),
   cardsWon: integer("cards_won").notNull().default(0),
   cardsLost: integer("cards_lost").notNull().default(0),
+  // ── Raid stats (co-op boss raids; feed the /top Raid leaderboard) ────────────
+  raidsWon: integer("raids_won").notNull().default(0),
+  raidsLost: integer("raids_lost").notNull().default(0),
+  soloRaidsWon: integer("solo_raids_won").notNull().default(0),
+  raidsSurvived: integer("raids_survived").notNull().default(0),
+  raidDamageDealt: integer("raid_damage_dealt").notNull().default(0),
+  raidDamageTaken: integer("raid_damage_taken").notNull().default(0),
   currentStreak: integer("current_streak").notNull().default(0),
   highestStreak: integer("highest_streak").notNull().default(0),
   xp: integer("xp").notNull().default(0),

@@ -58,7 +58,13 @@ function buildLegacyCommands() {
         ))
       .addUserOption(o => o.setName("user").setDescription("Check another member's ownership (default: you)"))),
 
-    cmd("top", "Top 10 collectors leaderboard", s => s),
+    cmd("top", "Server leaderboards — Collector, Battle & Raid (switch with the dropdown)", s => s
+      .addStringOption(o => o.setName("board").setDescription("Which leaderboard to open first").setRequired(false)
+        .addChoices(
+          { name: "Collector — Net Worth", value: "collector" },
+          { name: "Battle — Ranked", value: "battle" },
+          { name: "Raid — Campaign", value: "raid" },
+        ))),
 
     cmd("burn", "Burn duplicates for DN Shards", s => s
       .addStringOption(o => o.setName("name").setDescription("Name to burn").setRequired(true).setAutocomplete(true))
