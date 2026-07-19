@@ -32,7 +32,7 @@ import { renderCardReveal } from "../animations/reveal.js";
 import type { RenderCard } from "../battle/image/render.js";
 import {
   getAllCardsCached, getOrCreateGuildSettings, getRarityContext, getRarityDisplayOverrides,
-  getCardDisplayRarity, getUserCollection, getCardById, getActiveSet, getCardsInSet,
+  getCardDisplayRarity, getUserCollection, getCardById,
   getOrCreateCurrency, addScrap, getScrap,
 } from "../db.js";
 import { toAbsoluteImageUrl } from "../image-url.js";
@@ -75,25 +75,17 @@ interface RecycleCardEntry {
 
 // ── Data helpers ─────────────────────────────────────────────────────────────
 
-async function getActiveSetCardIds(guildId: string): Promise<Set<number> | null> {
-  const set = await getActiveSet(guildId);
-  if (!set) return null;
-  const cards = await getCardsInSet(set.id, guildId);
-  return new Set(cards.map(c => c.id));
-}
-
 async function loadRecycleCandidates(guildId: string, userId: string, limit = 5): Promise<RecycleCardEntry[]> {
-  const [collection, ctx, settings, displayMap, progressMap, activeIds] = await Promise.all([
+  const [collection, ctx, settings, displayMap, progressMap] = await Promise.all([
     getUserCollection(guildId, userId),
     getRarityContext(guildId),
     getOrCreateGuildSettings(guildId),
     getRarityDisplayOverrides(guildId),
     getCardProgressBatch(guildId, userId),
-    getActiveSetCardIds(guildId),
   ]);
   const withDisplay = collection.map(c => ({ ...c, display: getCardDisplayRarity(c, ctx, settings, displayMap) }));
   const eligible = withDisplay
-    .filter(c => c.count > 1 && (activeIds === null || activeIds.has(c.id)))
+    .filter(c => c.count > 1)
     .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name))
     .slice(0, limit);
   return eligible.map(c => {
@@ -116,16 +108,15 @@ async function loadRecycleCandidates(guildId: string, userId: string, limit = 5)
 }
 
 async function loadUserRecycleCards(guildId: string, userId: string, limit = 25): Promise<RecycleCardEntry[]> {
-  const [collection, ctx, settings, displayMap, progressMap, activeIds] = await Promise.all([
+  const [collection, ctx, settings, displayMap, progressMap] = await Promise.all([
     getUserCollection(guildId, userId),
     getRarityContext(guildId),
     getOrCreateGuildSettings(guildId),
     getRarityDisplayOverrides(guildId),
     getCardProgressBatch(guildId, userId),
-    getActiveSetCardIds(guildId),
   ]);
   const owned = collection
-    .filter(c => c.count > 0 && (activeIds === null || activeIds.has(c.id)))
+    .filter(c => c.count > 0)
     .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
   return owned.slice(0, limit).map(c => {
     const display = getCardDisplayRarity(c, ctx, settings, displayMap);
@@ -165,16 +156,15 @@ function cardSelectMenu(cards: RecycleCardEntry[]): ActionRowBuilder<StringSelec
 }
 
 async function loadSingleRecycleCard(guildId: string, userId: string, cardId: number): Promise<RecycleCardEntry | null> {
-  const [collection, ctx, settings, displayMap, progress, activeIds] = await Promise.all([
+  const [collection, ctx, settings, displayMap, progress] = await Promise.all([
     getUserCollection(guildId, userId),
     getRarityContext(guildId),
     getOrCreateGuildSettings(guildId),
     getRarityDisplayOverrides(guildId),
     getCardProgress(guildId, userId, cardId).catch(() => null),
-    getActiveSetCardIds(guildId),
   ]);
   const row = collection.find(c => c.id === cardId);
-  if (!row || (activeIds !== null && !activeIds.has(cardId))) return null;
+  if (!row) return null;
   const display = getCardDisplayRarity(row, ctx, settings, displayMap);
   return {
     cardId: row.id,
