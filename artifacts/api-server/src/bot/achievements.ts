@@ -30,6 +30,10 @@ export const ACHIEVEMENTS: AchievementDef[] = [
   { key: "set_master",         name: "Set Master",        emoji: "📚", description: "Complete 5 different card sets", reward: 4000 },
   // Event-based (granted directly by the onboarding flow, not by meets()).
   { key: "onboarding",         name: "First Steps",       emoji: "🎓", description: "Complete the DN Cards onboarding adventure", reward: 500 },
+  // Raid campaign capstone — granted by the raid manager when a player clears
+  // the last boss in their server's ladder. Per-boss clears are dynamic
+  // `raid_boss:<id>` keys (not listed here); this is the finale reward.
+  { key: "raid_campaign_complete", name: "Raid Champion", emoji: "🏅", description: "Defeat every boss in the raid campaign", reward: 5000 },
 ];
 
 export function getAchievement(key: string): AchievementDef | undefined {

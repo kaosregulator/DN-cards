@@ -21,7 +21,7 @@ import { starsForLevel, starString, levelForStars } from "../cards/leveling.js";
 import { toAbsoluteImageUrl } from "../image-url.js";
 import { logger } from "../../lib/logger.js";
 import { consumeCooldown } from "../../lib/cooldowns.js";
-import { getBossByName, getEnabledBosses, getNextBoss, grantRaidFrame } from "./db.js";
+import { getBossByName, getBossById, getEnabledBosses, getNextBoss, grantRaidFrame, getCampaignProgress } from "./db.js";
 import { raidFrameForBoss } from "../cards/frames.js";
 import { renderAttackFrame } from "../animations/index.js";
 import { renderFatalityCinematic } from "../animations/cinematic/index.js";
@@ -32,8 +32,8 @@ import {
 } from "./engine.js";
 import { buildRaidIntroScript, buildRaidIntroBeats, buildRaidClearLine, buildRaidWipeLine } from "./story.js";
 import {
-  renderRaidIntro, renderRaidGallery, renderRaidWipeScene,
-  RAID_INTRO_FILE, RAID_GALLERY_FILE, RAID_WIPE_FILE,
+  renderRaidIntro, renderRaidWipeScene, renderCampaignProgress,
+  RAID_INTRO_FILE, RAID_WIPE_FILE, RAID_CAMPAIGN_FILE,
 } from "./canvas.js";
 
 const EPHEMERAL = { flags: MessageFlags.Ephemeral } as const;
@@ -174,6 +174,9 @@ export async function handleRaidComponent(
   if (action === "reward" || action === "rwframe" || action === "rwcard") {
     return handleRaidReward(interaction as ButtonInteraction, action, sid);
   }
+  // Campaign end-screen buttons also outlive the session.
+  if (action === "next") return handleContinueToNext(interaction as ButtonInteraction, Number(sid));
+  if (action === "hub") return showCampaignHub(interaction as ButtonInteraction);
 
   const session = sessions.get(sid);
   if (!session) {
@@ -575,6 +578,24 @@ async function finishRaid(session: RaidSession, outcome: "clear" | "wipe" | "tim
       for (const s of survivors) await recordQuestEvent(session.guildId, s.member.userId, "battle_win", 1);
     } catch { /* non-fatal */ }
 
+    // Campaign progression: record EVERY participant's clear of this boss (they
+    // were part of the winning party). First clear grants the "🏆 Boss Defeated!"
+    // achievement row + a small one-time bonus; finishing the ladder crowns them.
+    try {
+      const { markBossCleared, getCampaignProgress } = await import("./db.js");
+      const { grantAchievement } = await import("../achievements.js");
+      const { awardPlayerXp, XP } = await import("../player/xp.js");
+      const FIRST_CLEAR_BONUS = 250;
+      for (const s of session.party.values()) {
+        const firstClear = await markBossCleared(session.guildId, s.member.userId, boss.id).catch(() => false);
+        if (!firstClear) continue;
+        await addShards(session.guildId, s.member.userId, FIRST_CLEAR_BONUS).catch(() => {});
+        await awardPlayerXp(session.guildId, s.member.userId, "achievement", XP.achievement).catch(() => {});
+        const prog = await getCampaignProgress(session.guildId, s.member.userId).catch(() => null);
+        if (prog?.isComplete) await grantAchievement(session.guildId, s.member.userId, "raid_campaign_complete").catch(() => {});
+      }
+    } catch { /* non-fatal */ }
+
     // Stage each winner's PRESTIGE reward choice (exclusive frame or boss card),
     // claimed privately via the button on the end screen.
     if (survivors.length > 0) {
@@ -646,18 +667,32 @@ async function finishRaid(session: RaidSession, outcome: "clear" | "wipe" | "tim
     if (cine) { endImage = cine.buffer; endFile = RAID_FATALITY_FILE; }
   }
   if (outcome === "clear") {
-    // Skip the roster gallery when a Fatality cinematic already produced the image.
+    // Skip the campaign canvas when a Fatality cinematic already produced the image.
     if (!endImage) try {
-      const enabled = await getEnabledBosses(session.guildId);
-      const remaining = Math.max(0, enabled.length - 1);
-      storyLine = buildRaidClearLine(boss, remaining);
-      endImage = await renderRaidGallery(enabled.map(b => ({
-        name: b.name,
-        imageUrl: toAbsoluteImageUrl(b.imageUrl),
-        rarity: b.rarity as Rarity,
-        defeated: b.id === boss.id,
-      }))).catch(() => null);
-      if (endImage) endFile = RAID_GALLERY_FILE;
+      // The shared end screen shows the STARTER's campaign progress (clears were
+      // just recorded above, so this reflects the boss they beat this run).
+      const prog = await getCampaignProgress(session.guildId, session.starterId);
+      storyLine = buildRaidClearLine(boss, Math.max(0, prog.total - prog.defeated));
+      // Plain labels — the canvas font has no emoji glyphs.
+      const rewards: string[] = [];
+      if (boss.cardId != null) rewards.push("Boss Card");
+      rewards.push(`${raidFrameForBoss(boss.rewardFrameId).name} Frame`);
+      rewards.push(`${boss.rewardShards.toLocaleString()} Shards`);
+      endImage = await renderCampaignProgress({
+        defeatedBoss: {
+          name: boss.name, imageUrl: toAbsoluteImageUrl(boss.imageUrl),
+          rarity: boss.rarity as Rarity, battlefieldUrl: toAbsoluteImageUrl(boss.battlefieldUrl),
+        },
+        rewards,
+        defeated: prog.defeated,
+        total: prog.total,
+        next: prog.next
+          ? { name: prog.next.name, imageUrl: toAbsoluteImageUrl(prog.next.imageUrl), rarity: prog.next.rarity as Rarity }
+          : null,
+        isFinaleNext: prog.isFinaleNext,
+        isComplete: prog.isComplete,
+      }).catch(() => null);
+      if (endImage) endFile = RAID_CAMPAIGN_FILE;
     } catch { /* non-fatal — plain end embed */ }
   } else {
     try {
@@ -689,12 +724,13 @@ async function finishRaid(session: RaidSession, outcome: "clear" | "wipe" | "tim
   // Progression: on a clear, point the party toward the next boss — or crown
   // them if they just beat the finale.
   let progression: string | null = null;
+  let nextBoss: RaidBoss | null = null;
   if (outcome === "clear") {
     try {
-      const next = await getNextBoss(session.guildId, boss);
-      progression = next
-        ? `🧭 **Next boss:** ${next.name} — start it with \`/raid start boss:${next.name}\`.`
-        : "👑 **You've reached the top.** This was the **final boss** — the whole ladder has fallen to you.";
+      nextBoss = await getNextBoss(session.guildId, boss);
+      progression = nextBoss
+        ? `🧭 **Next boss:** ${nextBoss.name} — hit **Continue** below or \`/raid start boss:${nextBoss.name}\`.`
+        : "👑 **Campaign complete!** This was the **final boss** — the whole ladder has fallen to you.";
     } catch { /* non-fatal */ }
   }
 
@@ -702,16 +738,55 @@ async function finishRaid(session: RaidSession, outcome: "clear" | "wipe" | "tim
   if (session.message) {
     const endEmbed = buildEndEmbed(session, outcome, rewardNote, storyLine, endFile, progression, !!reward);
     const files = endImage && endFile ? [new AttachmentBuilder(endImage, { name: endFile })] : [];
-    const components = reward ? buildRewardComponents(session.id) : [];
+    const components = buildEndComponents(session.id, outcome === "clear", !!reward, nextBoss);
     await session.message.edit({ embeds: [endEmbed], components, files }).catch(() => {});
   }
   teardown(session);
 }
 
-function buildRewardComponents(rid: string): ActionRowBuilder<ButtonBuilder>[] {
-  return [new ActionRowBuilder<ButtonBuilder>().addComponents(
-    new ButtonBuilder().setCustomId(`raid:reward:${rid}`).setLabel("Claim Your Reward").setEmoji("🎁").setStyle(ButtonStyle.Success),
-  )];
+// End-screen buttons. On a clear: claim reward (if any) + Continue to Next Boss
+// (when one remains) + Raid Hub. Non-clear ends show nothing (kept as today).
+function buildEndComponents(
+  rid: string, isClear: boolean, hasReward: boolean, nextBoss: RaidBoss | null,
+): ActionRowBuilder<ButtonBuilder>[] {
+  const row = new ActionRowBuilder<ButtonBuilder>();
+  if (hasReward) {
+    row.addComponents(
+      new ButtonBuilder().setCustomId(`raid:reward:${rid}`).setLabel("Claim Your Reward").setEmoji("🎁").setStyle(ButtonStyle.Success),
+    );
+  }
+  if (isClear) {
+    if (nextBoss) {
+      row.addComponents(
+        new ButtonBuilder().setCustomId(`raid:next:${nextBoss.id}`).setLabel("Continue to Next Boss").setEmoji("➡️").setStyle(ButtonStyle.Primary),
+      );
+    }
+    row.addComponents(
+      new ButtonBuilder().setCustomId("raid:hub:0").setLabel("Raid Hub").setEmoji("🏠").setStyle(ButtonStyle.Secondary),
+    );
+  }
+  return row.components.length ? [row] : [];
+}
+
+// ➡️ Continue to Next Boss — launch a fresh raid lobby on the next ladder boss,
+// reusing the full startRaid path (all its checks: locks, cooldown, setup).
+async function handleContinueToNext(interaction: ButtonInteraction, bossId: number): Promise<void> {
+  const boss = bossId ? await getBossById(bossId) : null;
+  if (!boss || !boss.enabled) {
+    await interaction.reply({ content: "That boss isn't available anymore — see `/raid bosses`.", ...EPHEMERAL }).catch(() => {});
+    return;
+  }
+  // startRaid only uses reply/fetchReply/guild/channelId/user, all present on a
+  // ButtonInteraction; the cast just satisfies the slash-command signature.
+  await startRaid(interaction as unknown as ChatInputCommandInteraction, boss.name);
+}
+
+// 🏠 Raid Hub — show the clicker THEIR OWN campaign map (ephemeral).
+async function showCampaignHub(interaction: ButtonInteraction): Promise<void> {
+  if (!interaction.guild) { await interaction.reply({ content: "Server only.", ...EPHEMERAL }).catch(() => {}); return; }
+  const { buildCampaignEmbed } = await import("./command.js");
+  const embed = await buildCampaignEmbed(interaction.guild.id, interaction.user.id);
+  await interaction.reply({ embeds: [embed], ...EPHEMERAL }).catch(() => {});
 }
 
 // ── Reward claim (winner-only, private) ──────────────────────────────────────

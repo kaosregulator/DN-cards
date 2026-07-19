@@ -34,6 +34,7 @@ export const RAID_CANVAS = { width: 1000, height: 560 } as const;
 export const RAID_INTRO_FILE = "raid-intro.png";
 export const RAID_GALLERY_FILE = "raid-gallery.png";
 export const RAID_WIPE_FILE = "raid-wipe.png";
+export const RAID_CAMPAIGN_FILE = "raid-campaign.png";
 
 export interface RaidIntroBoss {
   name: string;
@@ -306,5 +307,122 @@ export async function renderRaidWipeScene(
     logger.debug({ err }, "raid wipe canvas: render failed");
     return null;
   }
+  });
+}
+
+// ── Campaign progress — the "keep going" screen shown on a clear ──────────────
+// Reuses this file's helpers (battlefield, card art, embers, titles) plus the
+// progression-bar style from the user-hub header. Left: the boss you just beat.
+// Right: rewards earned, a segmented X/N campaign bar, and the next boss (or the
+// "Final Boss Unlocked" / "Campaign Complete" milestone). Best-effort → null.
+
+export interface CampaignBossArt {
+  name: string;
+  imageUrl: string | null;
+  rarity: Rarity;
+  battlefieldUrl?: string | null;
+}
+
+export interface CampaignProgressInput {
+  defeatedBoss: CampaignBossArt;
+  rewards: string[];               // e.g. ["🃏 Boss Card", "🖼️ Aegis Frame", "💠 500 Shards"]
+  defeated: number;
+  total: number;
+  next: { name: string; imageUrl: string | null; rarity: Rarity } | null;
+  isFinaleNext: boolean;
+  isComplete: boolean;
+}
+
+// Segmented progress meter: `total` rounded cells, `filled` of them lit.
+function drawSegmentedBar(
+  ctx: Ctx, x: number, y: number, w: number, h: number, filled: number, total: number, color: number,
+): void {
+  const n = Math.max(1, total);
+  const gap = n > 1 ? 8 : 0;
+  const cw = (w - gap * (n - 1)) / n;
+  for (let i = 0; i < n; i++) {
+    const cx = x + i * (cw + gap);
+    const lit = i < filled;
+    ctx.save();
+    roundRectPath(ctx, cx, y, cw, h, Math.min(8, h / 2));
+    ctx.fillStyle = lit ? hexToRgba(color, 0.95) : "rgba(255,255,255,0.10)";
+    ctx.fill();
+    ctx.lineWidth = 1.5;
+    ctx.strokeStyle = lit ? hexToRgba(color, 1) : "rgba(255,255,255,0.22)";
+    roundRectPath(ctx, cx, y, cw, h, Math.min(8, h / 2));
+    ctx.stroke();
+    ctx.restore();
+  }
+}
+
+export async function renderCampaignProgress(input: CampaignProgressInput): Promise<Buffer | null> {
+  return queueRender("raid-campaign", async () => {
+    const mod = await getCanvas();
+    if (!mod) return null;
+    const { width, height } = RAID_CANVAS;
+    try {
+      const accent = getRarityEffectColor(input.defeatedBoss.rarity);
+      const gold = 0xffd54a, green = 0x2ecc71;
+      const canvas = mod.createCanvas(width, height);
+      const ctx = canvas.getContext("2d") as unknown as Ctx;
+
+      await layerBattlefield(ctx, mod, input.defeatedBoss.battlefieldUrl, accent);
+      ctx.fillStyle = "rgba(6,12,10,0.58)";
+      ctx.fillRect(0, 0, width, height);
+      drawEmbers(ctx, 0, 0, width, height, { color: gold, seed: `${input.defeatedBoss.name}-victory` });
+
+      drawTitle(ctx, "BOSS DEFEATED!", width / 2, 46, hexToRgba(gold, 1), 40);
+
+      // Left: the boss just beaten.
+      const cw = 300, ch = 384, cx = 56, cy = 96;
+      drawRarityGlow(ctx, cx, cy, cw, ch, green, 0.5);
+      await drawCardArt(ctx, mod, cx, cy, cw, ch, input.defeatedBoss.imageUrl);
+      drawCardFrame(ctx, cx, cy, cw, ch, green, 7);
+      // DEFEATED stamp
+      ctx.save();
+      roundRectPath(ctx, cx, cy, cw, ch, 14); ctx.clip();
+      ctx.fillStyle = "rgba(0,0,0,0.28)"; ctx.fillRect(cx, cy, cw, ch);
+      ctx.restore();
+      drawTextWithShadow(ctx, "DEFEATED", cx + cw / 2, cy + ch - 22, "#8fffc0", 22);
+      drawTextWithShadow(ctx, input.defeatedBoss.name, cx + cw / 2, cy + ch + 26, "#ffffff", fitText(ctx, input.defeatedBoss.name, cw + 20, 24));
+
+      // Right column.
+      const rx = 400, rw = width - rx - 44;
+      let y = 108;
+
+      drawTextWithShadow(ctx, "REWARDS EARNED", rx, y, hexToRgba(gold, 1), 22, "left"); y += 32;
+      for (const r of input.rewards.slice(0, 3)) {
+        drawTextWithShadow(ctx, `+ ${r}`, rx + 6, y, "#ffffff", 20, "left"); y += 28;
+      }
+      if (input.rewards.length === 0) { drawTextWithShadow(ctx, "—", rx + 6, y, "#aab0c0", 20, "left"); y += 28; }
+      y += 16;
+
+      ctx.strokeStyle = "rgba(255,255,255,0.15)"; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(rx, y); ctx.lineTo(rx + rw, y); ctx.stroke();
+      y += 30;
+
+      drawTextWithShadow(ctx, "CAMPAIGN PROGRESS", rx, y, hexToRgba(gold, 1), 22, "left"); y += 30;
+      drawSegmentedBar(ctx, rx, y, rw, 26, input.defeated, input.total, green); y += 26 + 26;
+      drawTextWithShadow(ctx, `${input.defeated} / ${input.total} bosses defeated`, rx, y, "#ffffff", 20, "left"); y += 40;
+
+      // Next / milestone.
+      if (input.isComplete) {
+        drawTitle(ctx, "CAMPAIGN COMPLETE", rx, y + 8, hexToRgba(gold, 1), 30, "left");
+        drawTextWithShadow(ctx, "You've conquered every boss on the ladder.", rx, y + 40, "#8fffc0", 18, "left");
+      } else if (input.next) {
+        const bannerColor = input.isFinaleNext ? gold : accent;
+        drawTextWithShadow(ctx, input.isFinaleNext ? "FINAL BOSS UNLOCKED" : "NEXT BOSS", rx, y, hexToRgba(bannerColor, 1), 20, "left"); y += 12;
+        const nw = 96, nh = 122, ny = y;
+        drawRarityGlow(ctx, rx, ny, nw, nh, getRarityEffectColor(input.next.rarity), 0.5);
+        await drawCardArt(ctx, mod, rx, ny, nw, nh, input.next.imageUrl);
+        drawCardFrame(ctx, rx, ny, nw, nh, getRarityEffectColor(input.next.rarity), 5);
+        drawTextWithShadow(ctx, input.next.name, rx + nw + 18, ny + nh / 2, "#ffffff", fitText(ctx, input.next.name, rw - nw - 24, 26), "left");
+      }
+
+      return await canvas.encode("png");
+    } catch (err) {
+      logger.debug({ err }, "raid campaign canvas: render failed");
+      return null;
+    }
   });
 }
