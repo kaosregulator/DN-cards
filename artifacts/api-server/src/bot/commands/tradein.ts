@@ -12,33 +12,39 @@ import {
   handleRecycleMergeAll, handleRecycleConfirmButton,
 } from "../cards/recycle-generator.js";
 import { recycleCost } from "../cards/stars.js";
+import { logger } from "../../lib/logger.js";
 
 export async function handleTradein(interaction: ChatInputCommandInteraction): Promise<void> {
   if (!interaction.guild) return;
   if (!interaction.deferred && !interaction.replied) await interaction.deferReply({ flags: 64 }).catch(() => {});
 
-  const name = interaction.options.getString("name")?.trim();
+  try {
+    const name = interaction.options.getString("name")?.trim();
 
-  // No name provided → launch the interactive hub.
-  if (!name) {
-    await handleRecycleHubCommand(interaction);
-    return;
-  }
+    // No name provided → launch the interactive hub.
+    if (!name) {
+      await handleRecycleHubCommand(interaction);
+      return;
+    }
 
-  // Named card → show the selected-card view directly.
-  const { getCardByName } = await import("../db.js");
-  const card = await getCardByName(name, interaction.guild.id);
-  if (!card) {
-    await interaction.editReply(`❌ Couldn't find a card called **${name}**. Run \`/recycle\` without a name to use the hub.`);
-    return;
+    // Named card → show the selected-card view directly.
+    const { getCardByName } = await import("../db.js");
+    const card = await getCardByName(name, interaction.guild.id);
+    if (!card) {
+      await interaction.editReply(`❌ Couldn't find a card called **${name}**. Run \`/card_recycle\` without a name to use the hub.`);
+      return;
+    }
+    const { buildRecycleSelectedMessage } = await import("../cards/recycle-generator.js");
+    const msg = await buildRecycleSelectedMessage(interaction.guild.id, interaction.user.id, card.id);
+    if (typeof msg === "string") {
+      await interaction.editReply({ content: msg, embeds: [], components: [], files: [] });
+      return;
+    }
+    await interaction.editReply(msg);
+  } catch (err) {
+    logger.error({ err, userId: interaction.user.id, guildId: interaction.guild?.id }, "handleTradein failed");
+    await interaction.editReply({ content: "❌ Something went wrong opening the Card Progression Hub. Try again in a moment.", embeds: [], components: [], files: [] }).catch(() => {});
   }
-  const { buildRecycleSelectedMessage } = await import("../cards/recycle-generator.js");
-  const msg = await buildRecycleSelectedMessage(interaction.guild.id, interaction.user.id, card.id);
-  if (typeof msg === "string") {
-    await interaction.editReply({ content: msg, embeds: [], components: [], files: [] });
-    return;
-  }
-  await interaction.editReply(msg);
 }
 
 // Route all recycle:* button/select interactions.

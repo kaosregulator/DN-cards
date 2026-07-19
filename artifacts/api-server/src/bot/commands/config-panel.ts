@@ -452,7 +452,7 @@ async function refreshPanel(
 }
 
 async function ensureAdmin(
-  interaction: ChatInputCommandInteraction | ButtonInteraction | StringSelectMenuInteraction,
+  interaction: ChatInputCommandInteraction | ButtonInteraction | StringSelectMenuInteraction | ModalSubmitInteraction,
 ): Promise<boolean> {
   // IMPORTANT: do NOT call interaction.guild.members.fetch() here. That's a
   // network round-trip that under cold-start latency can push us past

@@ -9,7 +9,7 @@
 // Reuses the existing animation engine, card reveal rendering, and star helpers.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import type { ChatInputCommandInteraction, ButtonInteraction, StringSelectMenuInteraction } from "discord.js";
+import type { ChatInputCommandInteraction, ButtonInteraction, StringSelectMenuInteraction, ModalSubmitInteraction } from "discord.js";
 import {
   EmbedBuilder, MessageFlags, AttachmentBuilder,
   ActionRowBuilder, ButtonBuilder, StringSelectMenuBuilder,
@@ -876,7 +876,11 @@ export async function buildRecycleSelectedMessage(
 export async function handleRecycleHubCommand(interaction: ChatInputCommandInteraction): Promise<void> {
   if (!interaction.guild) return;
   const guildId = interaction.guild.id;
-  await interaction.deferReply(EPHEMERAL).catch(() => {});
+  // Safe to call from both a fresh slash command and from /card_recycle's wrapper
+  // (user.ts already defers). Only defer if it hasn't been acknowledged yet.
+  if (!interaction.deferred && !interaction.replied) {
+    await interaction.deferReply(EPHEMERAL).catch(() => {});
+  }
   const settings = await getRecycleSettings(guildId);
   if (!settings.enabled) {
     await interaction.editReply({ content: "♻️ The Card Progression Hub is currently disabled by server admins.", embeds: [], components: [] }).catch(() => {});
