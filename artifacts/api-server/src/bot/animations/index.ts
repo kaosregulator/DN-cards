@@ -5,7 +5,7 @@
 // old static embeds still work.
 
 export { renderPackOpening } from "./pack.js";
-export { renderBattleTurn, renderBattleVictory } from "./battle.js";
+export { renderBattleTurn, renderBattleVictory, renderBattleIdle } from "./battle.js";
 export {
   renderPackCover, renderCardReveal, renderAttackFrame,
   REVEAL_COVER, REVEAL_CARD, REVEAL_ATTACK,

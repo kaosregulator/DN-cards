@@ -20,7 +20,10 @@ import { logger } from "../../lib/logger.js";
 import { consumeCooldown } from "../../lib/cooldowns.js";
 import { scheduleMessageDelete } from "../../lib/temp-message.js";
 import { renderBattleImage, type RenderCard } from "./image/render.js";
-import { renderAttackFrame, renderBattleVictory } from "../animations/index.js";
+import { renderBattleVictory, renderBattleTurn, renderBattleIdle } from "../animations/index.js";
+import type { BattleAnimationInput } from "../animations/index.js";
+import { DEFAULT_SCENE_ARENA, isSceneArenaKey, SCENE_ARENAS, SCENE_ARENA_KEYS, sceneArenaLabel } from "./scene-arenas.js";
+import { arenaAssetsAvailable } from "../animations/arena-bg.js";
 import { computeMoveVisual } from "./turn-visual.js";
 import { renderFatalityCinematic } from "../animations/cinematic/index.js";
 import type { AnimationSpeed } from "../animations/types.js";
@@ -142,6 +145,10 @@ interface BattleRuntime {
   // the themed gradient). Reused by every combat frame so the battlefield never
   // changes mid-fight — keeping the VS→combat→result sequence continuous.
   battleBgUrl: string | null;
+  // The pickable VISUAL arena (animated pixel-art backdrop, see scene-arenas.ts)
+  // for this fight's animated scene. Chosen by the challenger at setup; drives
+  // renderBattleTurn/Idle `background`. null → procedural fallback.
+  sceneArenaKey: string | null;
   // True once vsImage holds an animated GIF (victory / fatality cinematic) rather
   // than a static PNG — Discord only animates an embed image whose ATTACHMENT
   // FILENAME ends in .gif, so the end-screen attach must match.
@@ -342,7 +349,7 @@ export async function startChallenge(
     turnTimer: null, aiOfferTimer: null, ttlTimer: null, processing: false, createdAt: Date.now(),
     displayMap,
     ctx,
-    vsImage: null, battleBgUrl: null, vsImageIsGif: false, fatality: null,
+    vsImage: null, battleBgUrl: null, sceneArenaKey: null, vsImageIsGif: false, fatality: null,
   };
   battles.set(id, rt);
 
@@ -409,6 +416,7 @@ export async function handleBattleComponent(
       switch (action) {
         case "pcard": return void await onSelectCard(rt, interaction);
         case "pitem": return void await onSelectItem(rt, interaction);
+        case "arena": return void await onPickArena(rt, interaction);
         default: return void await safeEphemeral(interaction, "Unknown selection.");
       }
     }
@@ -677,11 +685,25 @@ async function beginCombat(rt: BattleRuntime) {
     rt.battleBgUrl = backgrounds.length
       ? toAbsoluteImageUrl(backgrounds[Math.floor(Math.random() * backgrounds.length)]!)
       : null;
-    rt.vsImage = await renderBattleImage(
-      combatantToRenderCard(rt, rt.a),
-      combatantToRenderCard(rt, rt.b),
-      { backgroundUrl: rt.battleBgUrl },
-    ).catch(() => null);
+    // Default the visual arena if the challenger didn't pick one at setup.
+    if (!isSceneArenaKey(rt.sceneArenaKey)) rt.sceneArenaKey = DEFAULT_SCENE_ARENA;
+    // Animated, looping battlefield (both cards + the chosen arena). It stays
+    // alive between turns because Discord loops the GIF.
+    if (rt.settings.battleAnimationEnabled) {
+      const idle = await renderBattleIdle(
+        buildAnimInput(rt, 0), rt.settings.battleAnimationSpeed as AnimationSpeed,
+      ).catch(() => null);
+      if (idle) { rt.vsImage = Buffer.from(idle.buffer); rt.vsImageIsGif = true; }
+    }
+    // Fallback (animation disabled, or the GIF failed to render): classic static VS image.
+    if (!rt.vsImage) {
+      rt.vsImage = await renderBattleImage(
+        combatantToRenderCard(rt, rt.a),
+        combatantToRenderCard(rt, rt.b),
+        { backgroundUrl: rt.battleBgUrl },
+      ).catch(() => null);
+      rt.vsImageIsGif = false;
+    }
   }
 
   // Coin flip → first mover.
@@ -865,19 +887,23 @@ async function applyMove(rt: BattleRuntime, side: 0 | 1, move: MoveType) {
       // visible and readable instead of blended into a busy battlefield.
       const visual = computeMoveVisual(move, result, actor, foe, foePoolBefore, selfPoolBefore);
       if (rt.settings.battleAnimationEnabled) {
-        rt.turnAnimation = await renderAttackFrame({
-          attacker: combatantToRenderCard(rt, actor),
-          moveName: moveLabel(move),
-          damage: visual.damage,
-          isCrit: visual.isCrit,
-          isHit: visual.isHit,
-          scene: visual.scene,
-          subtitle: visual.subtitle,
-        }).catch(() => null);
+        // Animated Street-Fighter-style turn: the attacker dashes across the
+        // living arena, impact FX fire on contact, the foe recoils, HP drains.
+        const ended = result.koed || foe.hp <= 0;
+        const anim = await renderBattleTurn(
+          buildAnimInput(rt, side, {
+            moveName: moveLabel(move), damage: visual.damage,
+            isCrit: visual.isCrit, isHit: visual.isHit, ended,
+          }),
+          rt.settings.battleAnimationSpeed as AnimationSpeed,
+        ).catch(() => null);
+        rt.turnAnimation = anim ? Buffer.from(anim.buffer) : null;
       }
 
       await renderCombat(rt);
       await sleep(frameMs(rt));
+      // Update the resting loop so the between-turns scene reflects the new HP.
+      await refreshRestingScene(rt);
 
       // A counter/reflect can KO the attacker — check both.
       if (actor.hp <= 0 && foe.hp > 0) {
@@ -976,6 +1002,7 @@ async function finishBattle(rt: BattleRuntime, winnerSide: 0 | 1 | null, reason:
     const victory = await renderBattleVictory({
       winner: combatantToRenderCard(rt, winner),
       loser: combatantToRenderCard(rt, winnerSide === 0 ? rt.b : rt.a),
+      background: rt.sceneArenaKey,
     }, rt.settings.battleAnimationSpeed as AnimationSpeed).catch(() => null);
     if (victory) { rt.vsImage = victory.buffer; rt.vsImageIsGif = true; }
   }
@@ -1186,17 +1213,61 @@ function combatantToRenderCard(rt: BattleRuntime, c: Combatant): RenderCard {
   };
 }
 
+// Discord animates an embed image only when the ATTACHMENT filename ends in
+// .gif — the extension, not the bytes, drives it. During the animated fight the
+// combat images are GIFs, so they must attach under the .gif name.
+function combatImageName(isGif: boolean): string {
+  return isGif ? VS_IMAGE_NAME_GIF : VS_IMAGE_NAME;
+}
+
+// Build the animated-scene input from current combat state. `actorSide` is the
+// side drawn on the LEFT (the attacker); the foe is on the right.
+function buildAnimInput(
+  rt: BattleRuntime, actorSide: 0 | 1,
+  move?: { moveName: string; damage: number; isCrit: boolean; isHit: boolean; ended: boolean },
+): BattleAnimationInput {
+  const actor = actorSide === 0 ? rt.a! : rt.b!;
+  const foe = actorSide === 0 ? rt.b! : rt.a!;
+  return {
+    attacker: combatantToRenderCard(rt, actor),
+    defender: combatantToRenderCard(rt, foe),
+    attackerHp: Math.max(0, actor.hp),
+    attackerMaxHp: actor.stats.maxHealth,
+    defenderHp: Math.max(0, foe.hp),
+    defenderMaxHp: foe.stats.maxHealth,
+    damage: move?.damage ?? 0,
+    isCrit: move?.isCrit ?? false,
+    isHit: move?.isHit ?? false,
+    moveName: move?.moveName ?? "",
+    attackerWon: move?.ended ?? false,
+    defenderWon: false,
+    background: rt.sceneArenaKey,
+  };
+}
+
+// Refresh the resting animated idle loop (both cards + looping arena) with the
+// current HP, so the between-turns scene stays alive and shows up-to-date bars.
+// Best-effort: null (canvas off / disabled) leaves the previous image in place.
+async function refreshRestingScene(rt: BattleRuntime): Promise<void> {
+  if (!rt.a || !rt.b || !rt.settings.battleAnimationEnabled) return;
+  const idle = await renderBattleIdle(
+    buildAnimInput(rt, rt.currentSide), rt.settings.battleAnimationSpeed as AnimationSpeed,
+  ).catch(() => null);
+  if (idle) { rt.vsImage = Buffer.from(idle.buffer); rt.vsImageIsGif = true; }
+}
+
 // The pinned VS-image embed that sits ABOVE the battle embed. Optional title is
 // used for the dramatic pre-combat reveal; combat renders it title-less so the
 // battlefield picture just stays at the top the whole fight.
 function vsTop(rt: BattleRuntime, title?: string, image?: Buffer | null): { embed: EmbedBuilder | null; file: AttachmentBuilder | null } {
   const img = image ?? rt.vsImage;
   if (!img) return { embed: null, file: null };
+  const name = combatImageName(rt.vsImageIsGif);
   const embed = new EmbedBuilder()
     .setColor(rarityColorOfSide(rt))
-    .setImage(`attachment://${VS_IMAGE_NAME}`);
+    .setImage(`attachment://${name}`);
   if (title) embed.setTitle(title);
-  return { embed, file: new AttachmentBuilder(img, { name: VS_IMAGE_NAME }) };
+  return { embed, file: new AttachmentBuilder(img, { name }) };
 }
 
 function rarityColorOfSide(rt: BattleRuntime): number {
@@ -1219,10 +1290,14 @@ async function renderCombat(rt: BattleRuntime, opts?: { currentMove?: string; tu
   const turnImg = rt.turnAnimation;
   rt.turnAnimation = null;
   const combatImg = turnImg ?? rt.vsImage;
+  // A one-shot turn animation is always a GIF (renderBattleTurn); otherwise the
+  // resting image's own gif-ness decides.
+  const isGif = turnImg ? true : rt.vsImageIsGif;
   const files: AttachmentBuilder[] = [];
   if (combatImg) {
-    statusEmbed.setImage(`attachment://${VS_IMAGE_NAME}`);
-    files.push(new AttachmentBuilder(combatImg, { name: VS_IMAGE_NAME }));
+    const name = combatImageName(isGif);
+    statusEmbed.setImage(`attachment://${name}`);
+    files.push(new AttachmentBuilder(combatImg, { name }));
   }
   await rt.message.edit({
     content: null,
@@ -1327,14 +1402,44 @@ function buildPrepEmbed(rt: BattleRuntime): EmbedBuilder {
   if (rt.settings.stakingEnabled && !rt.isAi) {
     e.addFields({ name: "💰 Staking", value: "If **both** players stake, the winner takes the loser's card!", inline: false });
   }
+  if (arenaAssetsAvailable()) {
+    e.addFields({ name: "🌌 Battlefield", value: `${sceneArenaLabel(rt.sceneArenaKey ?? DEFAULT_SCENE_ARENA)} — challenger picks below.`, inline: false });
+  }
   return e;
 }
 
-function buildPrepSharedComponents(rt: BattleRuntime): ActionRowBuilder<ButtonBuilder>[] {
-  return [new ActionRowBuilder<ButtonBuilder>().addComponents(
+function buildPrepSharedComponents(rt: BattleRuntime): ActionRowBuilder<ButtonBuilder | StringSelectMenuBuilder>[] {
+  const rows: ActionRowBuilder<ButtonBuilder | StringSelectMenuBuilder>[] = [];
+  // Battlefield backdrop picker (challenger chooses the animated arena for this
+  // fight). Only shown when the bundled arena assets are present.
+  if (arenaAssetsAvailable()) {
+    const current = rt.sceneArenaKey ?? DEFAULT_SCENE_ARENA;
+    const arenaSelect = new StringSelectMenuBuilder()
+      .setCustomId(`battle:arena:${rt.id}`)
+      .setPlaceholder("🌌 Choose the battlefield")
+      .addOptions(SCENE_ARENA_KEYS.map(k => ({
+        label: SCENE_ARENAS[k]!.name,
+        value: k,
+        emoji: SCENE_ARENAS[k]!.emoji,
+        default: k === current,
+      })));
+    rows.push(new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(arenaSelect));
+  }
+  rows.push(new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder().setCustomId(`battle:prep:${rt.id}`).setLabel("Prepare").setEmoji("🎴").setStyle(ButtonStyle.Primary),
     new ButtonBuilder().setCustomId(`battle:cancel:${rt.id}`).setLabel("Cancel").setStyle(ButtonStyle.Secondary),
-  )];
+  ));
+  return rows;
+}
+
+// Challenger-only: set the animated battlefield backdrop for this fight.
+async function onPickArena(rt: BattleRuntime, interaction: StringSelectMenuInteraction) {
+  if (interaction.user.id !== rt.challengerId) {
+    return safeEphemeral(interaction, "Only the challenger picks the battlefield.");
+  }
+  const key = interaction.values[0];
+  if (isSceneArenaKey(key)) rt.sceneArenaKey = key;
+  await interaction.update({ embeds: [buildPrepEmbed(rt)], components: buildPrepSharedComponents(rt) }).catch(() => {});
 }
 
 function buildPersonalPrepEmbed(rt: BattleRuntime, userId: string): EmbedBuilder {
