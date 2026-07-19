@@ -278,6 +278,18 @@ function extractObjectStoragePath(url: string): string | null {
   return null;
 }
 
+// Canvas image loading can hang on unreachable URLs or slow object-storage reads,
+// which leaves the entire Discord interaction stuck in "thinking..." forever.
+// Race every load against a hard timeout so renderers can fall back gracefully.
+const IMAGE_LOAD_TIMEOUT_MS = 10_000;
+
+function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((_, reject) => setTimeout(() => reject(new Error(`${label} timed out after ${ms}ms`)), ms)),
+  ]);
+}
+
 async function loadObjectStorageImage(objectPath: string): Promise<Buffer | null> {
   try {
     const file = await storage.getObjectEntityFile(objectPath);
@@ -295,24 +307,37 @@ export async function loadArt(mod: CanvasMod, url: string | null | undefined): P
   if (cached) return cached;
 
   const promise = (async (): Promise<LoadedImage | null> => {
-    // If the URL is one of our object-storage paths, load it directly from GCS
-    // so server-side canvas rendering doesn't depend on the public HTTP domain.
-    const objectPath = extractObjectStoragePath(url);
-    if (objectPath) {
-      const buffer = await loadObjectStorageImage(objectPath);
-      if (buffer) {
-        try {
-          return await mod.loadImage(buffer);
-        } catch (err) {
-          logger.warn({ err, objectPath }, "Canvas failed to decode object-storage image");
-        }
-      }
-      // Fall back to the public URL if direct download fails.
-    }
     try {
-      return await mod.loadImage(url);
+      // If the URL is one of our object-storage paths, load it directly from GCS
+      // so server-side canvas rendering doesn't depend on the public HTTP domain.
+      const objectPath = extractObjectStoragePath(url);
+      if (objectPath) {
+        const buffer = await withTimeout(
+          loadObjectStorageImage(objectPath),
+          IMAGE_LOAD_TIMEOUT_MS,
+          "object-storage image load",
+        );
+        if (buffer) {
+          try {
+            return await withTimeout(
+              mod.loadImage(buffer),
+              IMAGE_LOAD_TIMEOUT_MS,
+              "canvas decode object-storage image",
+            );
+          } catch (err) {
+            logger.warn({ err, objectPath }, "Canvas failed to decode object-storage image");
+          }
+        }
+        // Fall back to the public URL if direct download fails.
+      }
+      try {
+        return await withTimeout(mod.loadImage(url), IMAGE_LOAD_TIMEOUT_MS, "canvas load image by URL");
+      } catch (err) {
+        logger.warn({ err, url }, "Canvas failed to load image by URL");
+        return null;
+      }
     } catch (err) {
-      logger.warn({ err, url }, "Canvas failed to load image by URL");
+      logger.warn({ err, url }, "Canvas image load timed out or failed");
       return null;
     }
   })();

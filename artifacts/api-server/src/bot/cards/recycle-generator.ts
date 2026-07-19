@@ -311,7 +311,12 @@ export async function renderRecycleSelectedCanvas(
       const { width, height } = CARD_CANVAS;
       const canvas = mod.createCanvas(width, height);
       const ctx = canvas.getContext("2d") as unknown as Ctx;
-      const art = await mod.loadImage(revealBuffer);
+      const art = await Promise.race([
+        mod.loadImage(revealBuffer),
+        new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error("recycle selected card reveal image timed out")), 10_000),
+        ),
+      ]);
       ctx.drawImage(art, 0, 0, width, height);
 
       const color = entry.rarityColor ?? getRarityEffectColor(entry.rarity);
