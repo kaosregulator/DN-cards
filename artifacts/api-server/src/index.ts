@@ -131,6 +131,22 @@ async function runBootMigrations() {
   await pool.query(`ALTER TABLE guild_settings ADD COLUMN IF NOT EXISTS recycle_scrap_epic integer`);
   await pool.query(`ALTER TABLE guild_settings ADD COLUMN IF NOT EXISTS recycle_scrap_legendary integer`);
   await pool.query(`ALTER TABLE guild_settings ADD COLUMN IF NOT EXISTS recycle_scrap_mythic integer`);
+  // ── Card Fusion cost config (duplicates + Scrap → +1 Star) ──────────────────
+  // Self-healing so guild_settings SELECT * (getOrCreateGuildSettings) never hits
+  // a missing column even if a migration tool proposes dropping them.
+  await pool.query(`ALTER TABLE guild_settings ADD COLUMN IF NOT EXISTS fuse_cost_multiplier integer NOT NULL DEFAULT 100`);
+  await pool.query(`ALTER TABLE guild_settings ADD COLUMN IF NOT EXISTS fuse_dupes_common integer`);
+  await pool.query(`ALTER TABLE guild_settings ADD COLUMN IF NOT EXISTS fuse_dupes_uncommon integer`);
+  await pool.query(`ALTER TABLE guild_settings ADD COLUMN IF NOT EXISTS fuse_dupes_rare integer`);
+  await pool.query(`ALTER TABLE guild_settings ADD COLUMN IF NOT EXISTS fuse_dupes_epic integer`);
+  await pool.query(`ALTER TABLE guild_settings ADD COLUMN IF NOT EXISTS fuse_dupes_legendary integer`);
+  await pool.query(`ALTER TABLE guild_settings ADD COLUMN IF NOT EXISTS fuse_dupes_mythic integer`);
+  await pool.query(`ALTER TABLE guild_settings ADD COLUMN IF NOT EXISTS fuse_scrap_common integer`);
+  await pool.query(`ALTER TABLE guild_settings ADD COLUMN IF NOT EXISTS fuse_scrap_uncommon integer`);
+  await pool.query(`ALTER TABLE guild_settings ADD COLUMN IF NOT EXISTS fuse_scrap_rare integer`);
+  await pool.query(`ALTER TABLE guild_settings ADD COLUMN IF NOT EXISTS fuse_scrap_epic integer`);
+  await pool.query(`ALTER TABLE guild_settings ADD COLUMN IF NOT EXISTS fuse_scrap_legendary integer`);
+  await pool.query(`ALTER TABLE guild_settings ADD COLUMN IF NOT EXISTS fuse_scrap_mythic integer`);
 
   // progression tables (card_progress, battle_profiles, user_currency, quests,
   // reputation, …) are untouched; this only stores the new account-wide level
