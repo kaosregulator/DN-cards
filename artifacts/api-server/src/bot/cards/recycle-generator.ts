@@ -7,11 +7,10 @@
 // morph animation when they recycle.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import type { ChatInputCommandInteraction, ButtonInteraction, StringSelectMenuInteraction, ModalSubmitInteraction } from "discord.js";
+import type { ChatInputCommandInteraction, ButtonInteraction, StringSelectMenuInteraction } from "discord.js";
 import {
   EmbedBuilder, MessageFlags, AttachmentBuilder,
   ActionRowBuilder, ButtonBuilder, StringSelectMenuBuilder,
-  ModalBuilder, TextInputBuilder, TextInputStyle,
   ButtonStyle,
 } from "discord.js";
 import {
@@ -90,17 +89,18 @@ async function loadRecycleCandidates(guildId: string, userId: string, limit = 5)
   }));
 }
 
-async function searchUserRecycleCards(guildId: string, userId: string, query: string, limit = 25): Promise<RecycleCardEntry[]> {
+async function loadUserRecycleCards(guildId: string, userId: string, limit = 25): Promise<RecycleCardEntry[]> {
   const [collection, ctx, settings, displayMap] = await Promise.all([
     getUserCollection(guildId, userId),
     getRarityContext(guildId),
     getOrCreateGuildSettings(guildId),
     getRarityDisplayOverrides(guildId),
   ]);
-  const owned = collection.filter(c => c.count > 0);
-  const ranked = query.trim() ? fuzzyRank(owned, query, c => c.name) : owned.sort((a, b) => a.name.localeCompare(b.name));
+  const owned = collection
+    .filter(c => c.count > 0)
+    .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
   const stars = await getStarRanks(guildId, userId);
-  return ranked.slice(0, limit).map(c => {
+  return owned.slice(0, limit).map(c => {
     const display = getCardDisplayRarity(c, ctx, settings, displayMap);
     return {
       cardId: c.id,
@@ -114,6 +114,23 @@ async function searchUserRecycleCards(guildId: string, userId: string, query: st
       star: stars.get(c.id) ?? 0,
     };
   });
+}
+
+function cardSelectMenu(cards: RecycleCardEntry[]): ActionRowBuilder<StringSelectMenuBuilder> {
+  const options = cards.map(c => ({
+    label: `${starRankString(c.star)} ${c.name}`.slice(0, 100),
+    description: `×${c.count} copies`.slice(0, 100),
+    value: String(c.cardId),
+  }));
+  return new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
+    new StringSelectMenuBuilder()
+      .setCustomId("recycle:search")
+      .setPlaceholder("🔍 Pick a card to recycle…")
+      .setOptions(options.length ? options : [{ label: "No cards", value: "__none__", description: "Collection empty" }])
+      .setMinValues(1)
+      .setMaxValues(1)
+      .setDisabled(options.length === 0),
+  );
 }
 
 async function loadSingleRecycleCard(guildId: string, userId: string, cardId: number): Promise<RecycleCardEntry | null> {
@@ -370,45 +387,28 @@ export async function renderRecycleMorphAnimation(
 
 export async function buildRecycleHubMessage(guildId: string, userId: string) {
   const cards = await loadRecycleCandidates(guildId, userId, 5);
+  const collection = await loadUserRecycleCards(guildId, userId, 25);
   const embed = new EmbedBuilder()
     .setColor(0x2ecc71)
     .setTitle("♻️ Recycle Card Generator")
     .setDescription(cards.length === 0
       ? `You need at least **${MIN_DUPLICATES} copies** of a card to recycle. Pull or catch more duplicates and come back!`
-      : "Pick one of your top duplicate cards to star up, or search your collection.");
+      : "Pick a card from the dropdown to view it, or tap one of the quick actions below.");
 
-  const rows: ActionRowBuilder<ButtonBuilder>[] = [];
-  if (cards.length > 0) {
-    const selectRow = new ActionRowBuilder<ButtonBuilder>();
-    for (let i = 0; i < cards.length; i++) {
-      const canRecycle = cards[i]!.count >= MIN_DUPLICATES;
-      selectRow.addComponents(
-        new ButtonBuilder()
-          .setCustomId(`recycle:select:${cards[i]!.cardId}`)
-          .setLabel(`${i + 1}`)
-          .setStyle(ButtonStyle.Primary)
-          .setDisabled(!canRecycle),
-      );
-    }
-    rows.push(selectRow);
-    const recycleTopRow = new ActionRowBuilder<ButtonBuilder>();
-    if (cards[0]!.count >= MIN_DUPLICATES) {
-      recycleTopRow.addComponents(
-        new ButtonBuilder().setCustomId(`recycle:do:${cards[0]!.cardId}`).setLabel("♻️ Recycle Top Card").setEmoji("⭐").setStyle(ButtonStyle.Success),
-      );
-    }
-    recycleTopRow.addComponents(
-      new ButtonBuilder().setCustomId("recycle:search-modal").setLabel("🔍 Search Collection").setStyle(ButtonStyle.Secondary),
+  const rows: ActionRowBuilder<ButtonBuilder | StringSelectMenuBuilder>[] = [];
+  rows.push(cardSelectMenu(collection));
+  const actionRow = new ActionRowBuilder<ButtonBuilder>();
+  if (cards[0]?.count >= MIN_DUPLICATES) {
+    actionRow.addComponents(
+      new ButtonBuilder().setCustomId(`recycle:do:${cards[0]!.cardId}`).setLabel("♻️ Recycle Top Card").setEmoji("⭐").setStyle(ButtonStyle.Success),
     );
-    rows.push(recycleTopRow);
-    rows.push(new ActionRowBuilder<ButtonBuilder>().addComponents(
-      new ButtonBuilder().setCustomId("recycle:merge-all").setLabel("🌟 Merge All into Top Card").setEmoji("♻️").setStyle(ButtonStyle.Primary),
-    ));
-  } else {
-    rows.push(new ActionRowBuilder<ButtonBuilder>().addComponents(
-      new ButtonBuilder().setCustomId("recycle:search-modal").setLabel("🔍 Search Collection").setStyle(ButtonStyle.Secondary),
-    ));
   }
+  if (cards.length > 0) {
+    actionRow.addComponents(
+      new ButtonBuilder().setCustomId("recycle:merge-all").setLabel("🌟 Merge All into Top Card").setEmoji("♻️").setStyle(ButtonStyle.Primary),
+    );
+  }
+  if (actionRow.components.length) rows.push(actionRow);
 
   const render = await renderRecycleHubCanvas(guildId, userId, cards);
   if (render) {
@@ -446,7 +446,6 @@ export async function buildRecycleSelectedMessage(
   const actionRow = new ActionRowBuilder<ButtonBuilder>();
   actionRow.addComponents(
     new ButtonBuilder().setCustomId("recycle:back").setLabel("⬅️ Back").setStyle(ButtonStyle.Secondary),
-    new ButtonBuilder().setCustomId("recycle:search-modal").setLabel("🔍 Search").setStyle(ButtonStyle.Secondary),
   );
   if (!quote.atMax && quote.canRecycle) {
     actionRow.addComponents(
@@ -461,55 +460,6 @@ export async function buildRecycleSelectedMessage(
     return { embeds: [embed], components: rows, files: [new AttachmentBuilder(render.buffer, { name: RECYCLE_CARD_FILE })] };
   }
   return { embeds: [embed], components: rows };
-}
-
-export async function buildRecycleSearchMessage(
-  guildId: string, userId: string, query = "",
-): Promise<{ embeds: EmbedBuilder[]; components: ActionRowBuilder<ButtonBuilder | StringSelectMenuBuilder>[] } | string> {
-  const cards = await searchUserRecycleCards(guildId, userId, query, 25);
-  if (cards.length === 0) {
-    return query.trim()
-      ? "No owned cards matched that search."
-      : "Your collection is empty.";
-  }
-  const embed = new EmbedBuilder()
-    .setColor(0x3498db)
-    .setTitle("🔍 Search Your Collection")
-    .setDescription(query.trim() ? `Results for "${query}"` : "Select a card to recycle.");
-
-  const options = cards.map(c => ({
-    label: `${c.name} ${starRankString(c.star)}`.slice(0, 100),
-    description: `×${c.count} owned · ${c.rarityLabel}`.slice(0, 100),
-    value: String(c.cardId),
-  }));
-  const rows: ActionRowBuilder<ButtonBuilder | StringSelectMenuBuilder>[] = [];
-  rows.push(new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
-    new StringSelectMenuBuilder()
-      .setCustomId("recycle:search-select")
-      .setPlaceholder("Pick a card to recycle…")
-      .setOptions(options),
-  ));
-  rows.push(new ActionRowBuilder<ButtonBuilder>().addComponents(
-    new ButtonBuilder().setCustomId("recycle:back").setLabel("⬅️ Back").setStyle(ButtonStyle.Secondary),
-  ));
-  return { embeds: [embed], components: rows };
-}
-
-export function buildRecycleSearchModal(): ModalBuilder {
-  return new ModalBuilder()
-    .setCustomId("recycle:modal:search")
-    .setTitle("🔍 Search your collection")
-    .addComponents(
-      new ActionRowBuilder<TextInputBuilder>().addComponents(
-        new TextInputBuilder()
-          .setCustomId("query")
-          .setLabel("Card name")
-          .setPlaceholder("Type part of the card name…")
-          .setStyle(TextInputStyle.Short)
-          .setRequired(false)
-          .setMaxLength(100)
-      )
-    );
 }
 
 // ── Interaction handlers ───────────────────────────────────────────────────────
@@ -543,41 +493,15 @@ export async function handleRecycleComponent(interaction: ButtonInteraction | St
       await interaction.editReply(msg).catch(() => {});
       return;
     }
-    if (sub === "search-modal") {
-      await interaction.showModal(buildRecycleSearchModal()).catch(() => {});
-      return;
-    }
   }
 
-  if (interaction.isStringSelectMenu() && sub === "search-select") {
+  if (interaction.isStringSelectMenu() && sub === "search") {
     const cardId = Number(interaction.values[0]);
     await interaction.deferUpdate().catch(() => {});
     const msg = await buildRecycleSelectedMessage(guildId, userId, cardId);
     if (typeof msg === "string") { await interaction.editReply({ content: msg, embeds: [], components: [], files: [] }).catch(() => {}); return; }
     await interaction.editReply(msg).catch(() => {});
   }
-}
-
-export async function handleRecycleModal(interaction: ModalSubmitInteraction): Promise<void> {
-  if (!interaction.guild) return;
-  const guildId = interaction.guild.id;
-  const userId = interaction.user.id;
-  await interaction.deferUpdate().catch(() => {});
-  const query = interaction.fields.getTextInputValue("query")?.trim() ?? "";
-  const cards = await searchUserRecycleCards(guildId, userId, query, 25);
-  if (cards.length === 0) {
-    await interaction.editReply({ content: query ? `No owned cards matched "**${query}**".` : "Your collection is empty.", embeds: [], components: [], files: [] }).catch(() => {});
-    return;
-  }
-  if (cards.length === 1) {
-    const msg = await buildRecycleSelectedMessage(guildId, userId, cards[0]!.cardId);
-    if (typeof msg === "string") { await interaction.editReply({ content: msg, embeds: [], components: [], files: [] }).catch(() => {}); return; }
-    await interaction.editReply(msg).catch(() => {});
-    return;
-  }
-  const msg = await buildRecycleSearchMessage(guildId, userId, query);
-  if (typeof msg === "string") { await interaction.editReply({ content: msg, embeds: [], components: [], files: [] }).catch(() => {}); return; }
-  await interaction.editReply(msg).catch(() => {});
 }
 
 export async function handleRecycleMergeAll(interaction: ButtonInteraction): Promise<void> {
@@ -604,7 +528,6 @@ export async function handleRecycleMergeAll(interaction: ButtonInteraction): Pro
     );
   const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder().setCustomId("recycle:back").setLabel("⬅️ Back to Hub").setStyle(ButtonStyle.Secondary),
-    new ButtonBuilder().setCustomId("recycle:search-modal").setLabel("🔍 Search").setStyle(ButtonStyle.Secondary),
   );
   await interaction.editReply({ embeds: [embed], components: [row], files: [] }).catch(() => {});
 }
@@ -664,7 +587,6 @@ export async function handleRecycleConfirmButton(interaction: ButtonInteraction)
   const row = new ActionRowBuilder<ButtonBuilder>();
   row.addComponents(
     new ButtonBuilder().setCustomId("recycle:back").setLabel("⬅️ Back to Hub").setStyle(ButtonStyle.Secondary),
-    new ButtonBuilder().setCustomId("recycle:search-modal").setLabel("🔍 Search").setStyle(ButtonStyle.Secondary),
   );
   if (!next.atMax && next.canRecycle) {
     row.addComponents(new ButtonBuilder().setCustomId(`recycle:do:${cardId}`).setLabel("♻️ Recycle Again").setEmoji("⭐").setStyle(ButtonStyle.Success));
