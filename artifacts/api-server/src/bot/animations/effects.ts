@@ -278,10 +278,38 @@ function extractObjectStoragePath(url: string): string | null {
   return null;
 }
 
+// Hard cap for any single remote image load used in canvas rendering. Object
+// storage downloads (like remote HTTP fetches) can hang indefinitely on a slow
+// or unreachable backend, and because every render runs inside the shared
+// render queue, one hung load blocks every other render job — leaving the
+// Discord interaction stuck on "Bot is thinking…" forever. See
+// .agents/memory/canvas-image-load-timeouts.md.
+const IMAGE_LOAD_TIMEOUT_MS = 10_000;
+
+// Race a promise against a hard timeout; resolves to `null` on timeout so the
+// caller can fall back and the render queue slot is released promptly.
+async function withImageTimeout<T>(label: string, p: Promise<T>): Promise<T | null> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<null>(resolve => {
+    timer = setTimeout(() => {
+      logger.warn({ label, timeoutMs: IMAGE_LOAD_TIMEOUT_MS }, "canvas image load timed out");
+      resolve(null);
+    }, IMAGE_LOAD_TIMEOUT_MS);
+  });
+  try {
+    return await Promise.race([p, timeout]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
+
 async function loadObjectStorageImage(objectPath: string): Promise<Buffer | null> {
   try {
-    const file = await storage.getObjectEntityFile(objectPath);
-    const [buffer] = await file.download();
+    const file = await withImageTimeout(`object-storage:${objectPath}`, storage.getObjectEntityFile(objectPath));
+    if (!file) return null;
+    const downloaded = await withImageTimeout(`object-storage-download:${objectPath}`, file.download());
+    if (!downloaded) return null;
+    const [buffer] = downloaded;
     return buffer;
   } catch (err) {
     logger.warn({ err, objectPath }, "Failed to download object-storage image for canvas");
