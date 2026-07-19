@@ -47,3 +47,9 @@ id = "AcevgjaY8545FyubOGNwo"
 uri = "file://docs/dn-cards-commands.pdf"
 type = "pdf"
 title = "DN Cards Command Reference (PDF)"
+
+[[outputs]]
+id = "qJUDtPJ4F83x5mvsCHOwR"
+uri = "file://artifacts/api-server/screenshots/recycle-select-menu-preview.png"
+type = "image"
+title = "Recycle select menu preview"
