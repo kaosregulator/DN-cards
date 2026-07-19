@@ -286,8 +286,8 @@ export async function startBot() {
           const { handleEditUserInteraction } = await import("./commands/edit-user.js");
           await handleEditUserInteraction(interaction);
         } else if (interaction.customId.startsWith("recycle:")) {
-          const { handleRecycleComponent } = await import("./cards/recycle-generator.js");
-          await handleRecycleComponent(interaction);
+          const { handleFusionComponent } = await import("./cards/fusion.js");
+          await handleFusionComponent(interaction);
         }
         return;
       }
@@ -358,10 +358,9 @@ export async function startBot() {
         } else if (interaction.customId.startsWith("user-hub:modal:")) {
           const { handleUserHubModal } = await import("./commands/user-hub.js");
           await handleUserHubModal(interaction);
-        } else if (interaction.customId === "recycle:search" || interaction.customId.startsWith("recycle:spendxp:")) {
-          const { handleRecycleSearchModal, handleRecycleSpendXpModal } = await import("./cards/recycle-generator.js");
-          if (interaction.customId === "recycle:search") await handleRecycleSearchModal(interaction);
-          else await handleRecycleSpendXpModal(interaction);
+        } else if (interaction.customId === "recycle:search") {
+          const { handleFusionSearchModal } = await import("./cards/fusion.js");
+          await handleFusionSearchModal(interaction);
         } else if (interaction.customId === "config:recycle:values") {
           const { handleRecycleValuesModal } = await import("./commands/config-panel.js");
           await handleRecycleValuesModal(interaction);

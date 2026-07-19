@@ -95,15 +95,15 @@ export async function handleConfigSelect(interaction: StringSelectMenuInteractio
     }
   } else if (action === "config_recycle_scrap_mult") {
     patch.recycleScrapMultiplier = parseInt(value!, 10);
-  } else if (action === "config_recycle_xp_mult") {
-    patch.recycleXpMultiplier = parseInt(value!, 10);
+  } else if (action === "config_recycle_fuse_mult") {
+    patch.fuseCostMultiplier = parseInt(value!, 10);
   }
 
   await updateGuildSettings(guildId, patch);
   if (action === "config_interval") scheduleNextSpawn(guildId);
 
   const settings = await getOrCreateGuildSettings(guildId);
-  if (action === "config_recycle_scrap_mult" || action === "config_recycle_xp_mult") {
+  if (action === "config_recycle_scrap_mult" || action === "config_recycle_fuse_mult") {
     const displayMap = await getRarityDisplayOverrides(guildId);
     await interaction.editReply({ embeds: [buildRecycleEmbed(settings, displayMap)], components: buildRecycleComponents(settings) });
     return;
@@ -737,14 +737,14 @@ function buildRecycleEmbed(s: GuildSettings, displayMap?: RarityDisplayMap | nul
   }).join("\n");
 
   return new EmbedBuilder()
-    .setTitle("♻️ Recycle / Card Progression Hub")
+    .setTitle("🔧 Card Fusion / Recycle")
     .setColor(0x2ecc71)
     .setDescription(
-      "Tune how duplicates turn into Scrap and how fusing turns into XP.\n\n" +
+      "Tune the Fusion economy: **Recycle** turns duplicates into Scrap; **Fuse** spends duplicates + Scrap to raise a card's Star Rank.\n\n" +
       `**Enabled:** ${s.recycleEnabled ? "🟢 Yes" : "🔴 No"}\n` +
-      `**Scrap multiplier:** ${s.recycleScrapMultiplier}%\n` +
-      `**XP multiplier:** ${s.recycleXpMultiplier}%\n\n` +
-      `**Per-rarity Scrap values** (null = default):\n${values}`,
+      `**Scrap earn multiplier:** ${s.recycleScrapMultiplier}%\n` +
+      `**Fusion cost multiplier:** ${s.fuseCostMultiplier}%\n\n` +
+      `**Per-rarity Scrap earn values** (null = default):\n${values}`,
     );
 }
 
@@ -773,19 +773,19 @@ function buildRecycleComponents(s: GuildSettings) {
       default: s.recycleScrapMultiplier === p,
     })));
 
-  const xpMultSelect = new StringSelectMenuBuilder()
-    .setCustomId("config_recycle_xp_mult")
-    .setPlaceholder("XP multiplier")
+  const fuseMultSelect = new StringSelectMenuBuilder()
+    .setCustomId("config_recycle_fuse_mult")
+    .setPlaceholder("Fusion cost multiplier")
     .addOptions(RECYCLE_MULTIPLIER_OPTIONS.map(p => ({
       label: `${p}%`,
       value: String(p),
-      default: s.recycleXpMultiplier === p,
+      default: s.fuseCostMultiplier === p,
     })));
 
   return [
     toggleRow,
     new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(scrapMultSelect),
-    new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(xpMultSelect),
+    new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(fuseMultSelect),
   ];
 }
 

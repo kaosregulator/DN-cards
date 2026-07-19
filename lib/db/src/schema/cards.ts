@@ -265,6 +265,26 @@ export const guildSettingsTable = pgTable("guild_settings", {
   recycleScrapEpic: integer("recycle_scrap_epic"),
   recycleScrapLegendary: integer("recycle_scrap_legendary"),
   recycleScrapMythic: integer("recycle_scrap_mythic"),
+  // ── Card Fusion cost config (duplicates + Scrap → +1 Star) ─────────────────
+  // Global % multiplier applied to BOTH the duplicate and Scrap cost of fusing.
+  // Stored as hundredths (100 = default, 50 = half price, 200 = double).
+  fuseCostMultiplier: integer("fuse_cost_multiplier").notNull().default(100),
+  // Per-rarity base DUPLICATE cost for the 0★→1★ step (scales ×(star+1) higher).
+  // Null = use the bot-wide default table (see stars.ts DEFAULT_FUSE_DUPES).
+  fuseDupesCommon: integer("fuse_dupes_common"),
+  fuseDupesUncommon: integer("fuse_dupes_uncommon"),
+  fuseDupesRare: integer("fuse_dupes_rare"),
+  fuseDupesEpic: integer("fuse_dupes_epic"),
+  fuseDupesLegendary: integer("fuse_dupes_legendary"),
+  fuseDupesMythic: integer("fuse_dupes_mythic"),
+  // Per-rarity base SCRAP cost for the 0★→1★ step (scales ×(star+1) higher).
+  // Null = use the bot-wide default table (see stars.ts DEFAULT_FUSE_SCRAP).
+  fuseScrapCommon: integer("fuse_scrap_common"),
+  fuseScrapUncommon: integer("fuse_scrap_uncommon"),
+  fuseScrapRare: integer("fuse_scrap_rare"),
+  fuseScrapEpic: integer("fuse_scrap_epic"),
+  fuseScrapLegendary: integer("fuse_scrap_legendary"),
+  fuseScrapMythic: integer("fuse_scrap_mythic"),
   // ── Active set (Sets-driven spawn pool) ────────────────────────────────────
   // The single set whose cards are eligible for random autodrops in this
   // guild. NULL = no set selected → **nothing spawns** (admins must pick a
