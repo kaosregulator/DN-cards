@@ -95,15 +95,17 @@ export async function handleConfigSelect(interaction: StringSelectMenuInteractio
     }
   } else if (action === "config_recycle_scrap_mult") {
     patch.recycleScrapMultiplier = parseInt(value!, 10);
-  } else if (action === "config_recycle_fuse_mult") {
-    patch.fuseCostMultiplier = parseInt(value!, 10);
+  } else if (action === "config_recycle_copies") {
+    (patch as Record<string, number>).fuseCopiesPerStar = parseInt(value!, 10);
+  } else if (action === "config_recycle_overflow") {
+    (patch as Record<string, number>).xpOverflowScrapRate = parseInt(value!, 10);
   }
 
   await updateGuildSettings(guildId, patch);
   if (action === "config_interval") scheduleNextSpawn(guildId);
 
   const settings = await getOrCreateGuildSettings(guildId);
-  if (action === "config_recycle_scrap_mult" || action === "config_recycle_fuse_mult") {
+  if (action === "config_recycle_scrap_mult" || action === "config_recycle_copies" || action === "config_recycle_overflow") {
     const displayMap = await getRarityDisplayOverrides(guildId);
     await interaction.editReply({ embeds: [buildRecycleEmbed(settings, displayMap)], components: buildRecycleComponents(settings) });
     return;
@@ -718,6 +720,10 @@ function formatSec(sec: number): string {
 // ── Recycle / Card Progression Hub sub-panel ──────────────────────────────────
 
 const RECYCLE_MULTIPLIER_OPTIONS = [50, 75, 100, 125, 150, 200, 300];
+// Fusion Hub v2: copies consumed per +1 star, and % of a maxed card's overflow
+// battle-XP that turns into Scrap.
+const FUSE_COPIES_OPTIONS = [3, 4, 5, 6, 8, 10];
+const OVERFLOW_RATE_OPTIONS = [0, 25, 50, 75, 100, 150, 200];
 
 const RECYCLE_VALUE_KEY: Record<Rarity, keyof GuildSettings> = {
   common: "recycleScrapCommon",
@@ -740,10 +746,12 @@ function buildRecycleEmbed(s: GuildSettings, displayMap?: RarityDisplayMap | nul
     .setTitle("🔧 Card Fusion / Recycle")
     .setColor(0x2ecc71)
     .setDescription(
-      "Tune the Fusion economy: **Recycle** turns duplicates into Scrap; **Fuse** spends duplicates + Scrap to raise a card's Star Rank.\n\n" +
+      "Tune the Fusion Hub: **Fuse** spends duplicate copies to raise a card's Star Rank (resets its level); " +
+      "**Scrap** turns spare dupes — and a maxed card's overflow battle-XP — into currency you spend to level cards.\n\n" +
       `**Enabled:** ${s.recycleEnabled ? "🟢 Yes" : "🔴 No"}\n` +
       `**Scrap earn multiplier:** ${s.recycleScrapMultiplier}%\n` +
-      `**Fusion cost multiplier:** ${s.fuseCostMultiplier}%\n\n` +
+      `**Copies per +1 star:** ${(s as { fuseCopiesPerStar?: number }).fuseCopiesPerStar ?? 5}\n` +
+      `**Overflow XP → Scrap rate:** ${(s as { xpOverflowScrapRate?: number }).xpOverflowScrapRate ?? 100}%\n\n` +
       `**Per-rarity Scrap earn values** (null = default):\n${values}`,
     );
 }
@@ -773,19 +781,31 @@ function buildRecycleComponents(s: GuildSettings) {
       default: s.recycleScrapMultiplier === p,
     })));
 
-  const fuseMultSelect = new StringSelectMenuBuilder()
-    .setCustomId("config_recycle_fuse_mult")
-    .setPlaceholder("Fusion cost multiplier")
-    .addOptions(RECYCLE_MULTIPLIER_OPTIONS.map(p => ({
-      label: `${p}%`,
+  const copiesPerStar = (s as { fuseCopiesPerStar?: number }).fuseCopiesPerStar ?? 5;
+  const copiesSelect = new StringSelectMenuBuilder()
+    .setCustomId("config_recycle_copies")
+    .setPlaceholder("Copies per +1 star")
+    .addOptions(FUSE_COPIES_OPTIONS.map(p => ({
+      label: `${p} copies = +1 star`,
       value: String(p),
-      default: s.fuseCostMultiplier === p,
+      default: copiesPerStar === p,
+    })));
+
+  const overflowRate = (s as { xpOverflowScrapRate?: number }).xpOverflowScrapRate ?? 100;
+  const overflowSelect = new StringSelectMenuBuilder()
+    .setCustomId("config_recycle_overflow")
+    .setPlaceholder("Overflow XP → Scrap rate")
+    .addOptions(OVERFLOW_RATE_OPTIONS.map(p => ({
+      label: p === 0 ? "Off (no overflow Scrap)" : `${p}% of overflow XP`,
+      value: String(p),
+      default: overflowRate === p,
     })));
 
   return [
     toggleRow,
     new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(scrapMultSelect),
-    new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(fuseMultSelect),
+    new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(copiesSelect),
+    new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(overflowSelect),
   ];
 }
 

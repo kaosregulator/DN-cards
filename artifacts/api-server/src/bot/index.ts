@@ -364,6 +364,9 @@ export async function startBot() {
         } else if (interaction.customId === "recycle:search") {
           const { handleFusionSearchModal } = await import("./cards/fusion.js");
           await handleFusionSearchModal(interaction);
+        } else if (interaction.customId.startsWith("recycle:spendxp:")) {
+          const { handleFusionSpendScrapModal } = await import("./cards/fusion.js");
+          await handleFusionSpendScrapModal(interaction);
         } else if (interaction.customId === "config:recycle:values") {
           const { handleRecycleValuesModal } = await import("./commands/config-panel.js");
           await handleRecycleValuesModal(interaction);

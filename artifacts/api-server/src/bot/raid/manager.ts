@@ -17,7 +17,8 @@ import { getBattleSettings, rarityAllowed } from "../battle/config-engine.js";
 import { getOwnedBattleCards, getOrCreateProfile } from "../battle/db.js";
 import type { OwnedBattleCard } from "../battle/db.js";
 import { bar, WHITE_LINE } from "../battle/embeds.js";
-import { starsForLevel, starString, levelForStars } from "../cards/leveling.js";
+import { starString } from "../cards/leveling.js";
+import { getStarRankMap } from "../cards/stars.js";
 import { toAbsoluteImageUrl } from "../image-url.js";
 import { logger } from "../../lib/logger.js";
 import { consumeCooldown } from "../../lib/cooldowns.js";
@@ -904,24 +905,27 @@ async function eligibleCards(session: RaidSession, userId: string): Promise<{
   eligible: { card: OwnedBattleCard; level: number; stars: number }[]; reason?: string;
 }> {
   const { boss, settings, guildId } = session;
-  const [owned, levels, profile] = await Promise.all([
+  const [owned, levels, stars, profile] = await Promise.all([
     getOwnedBattleCards(guildId, userId),
     getUserCardLevels(guildId, userId),
+    getStarRankMap(guildId, userId),
     getOrCreateProfile(guildId, userId),
   ]);
   if (profile.level < boss.minPlayerLevel) {
     return { eligible: [], reason: `🔒 You must be **battle level ${boss.minPlayerLevel}** to join this raid (you're level ${profile.level}). Win battles in \`/battle\` to level up.` };
   }
+  // Star Rank is the canonical star (earned by fusing copies in /card_recycle),
+  // not level-derived. The raid gate reads it directly.
   const eligible = owned
     .filter(c => c.owned > 0)
     .filter(c => (c.config?.enabled ?? true))
     .filter(c => rarityAllowed(settings, (c.config?.rarity as Rarity) || (c.rarity as Rarity)))
-    .map(c => { const level = levels.get(c.id) ?? 1; return { card: c, level, stars: starsForLevel(level) }; })
+    .map(c => ({ card: c, level: levels.get(c.id) ?? 1, stars: stars.get(c.id) ?? 0 }))
     .filter(e => e.stars >= boss.minStars)
     .sort((a, b) => b.stars - a.stars || b.level - a.level);
 
   if (eligible.length === 0) {
-    return { eligible, reason: `🔒 This raid needs a **${boss.minStars}-star** card (${starString(boss.minStars)}) — reach card **Level ${levelForStars(boss.minStars)}**. Level cards by fielding them in \`/battle\`; check \`/level\`.` };
+    return { eligible, reason: `🔒 This raid needs a **${boss.minStars}-star** card (${starString(boss.minStars)}) — **fuse** a card to ${boss.minStars}★ in \`/card_recycle\` (${boss.minStars * 5}+ copies). ` };
   }
   return { eligible };
 }
@@ -950,7 +954,7 @@ function buildLobbyEmbed(session: RaidSession): EmbedBuilder {
       // description) + one-line co-op coaching. Deterministic per boss.
       `${buildRaidIntroScript(b)}\n\n` +
       `A co-op boss fight for **${b.minPlayers}–${b.maxPlayers}** players. The boss focuses the weakest and **sweeps** the whole party.\n\n` +
-      `**Entry:** a ${starString(b.minStars)} card (Lv ${levelForStars(b.minStars)}+)` +
+      `**Entry:** a ${starString(b.minStars)} card (fuse ${b.minStars * 5}+ copies in \`/card_recycle\`)` +
       (b.minPlayerLevel > 1 ? ` · battle level **${b.minPlayerLevel}+**` : "") + "\n" +
       `**Reward on clear:** 💠 ${b.rewardShards.toLocaleString()} + ${b.rewardCardXp} card XP each`,
     )

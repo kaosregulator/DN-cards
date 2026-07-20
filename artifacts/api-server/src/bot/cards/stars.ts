@@ -319,3 +319,130 @@ export async function fuseStar(
     return { ok: false, reason: "error" };
   }
 }
+
+// ── Fusion Hub v2: copies → Star (level reset); Scrap = leveling only ─────────
+
+export interface FusionConfig {
+  copiesPerStar: number;   // copies consumed to fuse up one star (flat)
+  xpOverflowRate: number;  // % of overflow XP (past Lv100) that becomes Scrap
+}
+
+export async function getFusionConfig(guildId: string): Promise<FusionConfig> {
+  const s = await getOrCreateGuildSettings(guildId);
+  return {
+    copiesPerStar: Math.max(2, (s as { fuseCopiesPerStar?: number }).fuseCopiesPerStar ?? 5),
+    xpOverflowRate: Math.max(0, (s as { xpOverflowScrapRate?: number }).xpOverflowScrapRate ?? 100) / 100,
+  };
+}
+
+export interface FuseUpQuote {
+  star: number;
+  atMax: boolean;
+  copiesNeeded: number;
+  copiesOwned: number;
+  canFuse: boolean;
+  reason?: "max_star" | "insufficient_copies";
+}
+
+// Fuse quote: own `copiesPerStar` copies of a card to raise it one star.
+export async function fuseUpQuote(guildId: string, userId: string, cardId: number): Promise<FuseUpQuote> {
+  const [star, copies, cfg] = await Promise.all([
+    getStarRank(guildId, userId, cardId),
+    baseCopies(guildId, userId, cardId),
+    getFusionConfig(guildId),
+  ]);
+  const atMax = star >= MAX_STAR;
+  const copiesNeeded = cfg.copiesPerStar;
+  let reason: FuseUpQuote["reason"];
+  if (atMax) reason = "max_star";
+  else if (copies < copiesNeeded) reason = "insufficient_copies";
+  return { star, atMax, copiesNeeded, copiesOwned: copies, canFuse: !reason, reason };
+}
+
+export type FuseUpResult =
+  | { ok: true; fromStar: number; toStar: number; copiesUsed: number }
+  | { ok: false; reason: "max_star" | "insufficient_copies" | "error" };
+
+// Fuse `copiesPerStar` copies into one card of the next Star. The surviving copy
+// becomes the higher star and its LEVEL resets to 1 (xp 0) — you re-grind level
+// each star via the existing battle-XP system. Atomic + concurrency-safe (guard
+// `count >= copiesPerStar`, consume `copiesPerStar - 1`, the survivor upgrades).
+export async function fuseUpStar(guildId: string, userId: string, cardId: number): Promise<FuseUpResult> {
+  try {
+    const [star, cfg] = await Promise.all([getStarRank(guildId, userId, cardId), getFusionConfig(guildId)]);
+    if (star >= MAX_STAR) return { ok: false, reason: "max_star" };
+    const need = cfg.copiesPerStar;
+
+    const affected = await db.update(collectionsTable)
+      .set({ count: sql`${collectionsTable.count} - ${need - 1}` })
+      .where(and(
+        eq(collectionsTable.guildId, guildId),
+        eq(collectionsTable.userId, userId),
+        eq(collectionsTable.cardId, cardId),
+        sql`${collectionsTable.count} >= ${need}`,
+      ))
+      .returning({ count: collectionsTable.count });
+    if (affected.length === 0) return { ok: false, reason: "insufficient_copies" };
+
+    const toStar = star + 1;
+    await db.insert(cardProgressTable)
+      .values({ guildId, userId, cardId, starRank: toStar, level: 1, xp: 0 })
+      .onConflictDoUpdate({
+        target: [cardProgressTable.guildId, cardProgressTable.userId, cardProgressTable.cardId],
+        set: { starRank: toStar, level: 1, xp: 0, updatedAt: new Date() },
+      });
+    return { ok: true, fromStar: star, toStar, copiesUsed: need };
+  } catch (err) {
+    logger.error({ err, guildId, userId, cardId }, "fuseUpStar failed");
+    return { ok: false, reason: "error" };
+  }
+}
+
+export type SpendScrapResult =
+  | { ok: true; scrapSpent: number; xpGained: number; oldLevel: number; newLevel: number; refunded: number }
+  | { ok: false; reason: "insufficient_scrap" | "max_level" | "error" };
+
+// Spend Scrap to level a card (1 Scrap = 1 XP). Caps at Lv100 and refunds any
+// Scrap that would overshoot, so nothing is wasted. Atomic scrap deduction.
+export async function spendScrapForXp(
+  guildId: string, userId: string, cardId: number, scrapAmount: number,
+): Promise<SpendScrapResult> {
+  try {
+    const { getCardProgress, levelFromXp, MAX_LEVEL, xpForLevel } = await import("./leveling.js");
+    const amount = Math.max(0, Math.floor(scrapAmount));
+    if (amount <= 0) return { ok: false, reason: "insufficient_scrap" };
+
+    const prog = await getCardProgress(guildId, userId, cardId);
+    const oldLevel = prog?.level ?? 1;
+    const oldXp = prog?.xp ?? 0;
+    if (oldLevel >= MAX_LEVEL) return { ok: false, reason: "max_level" };
+
+    const cap = xpForLevel(MAX_LEVEL);
+    const usable = Math.max(0, Math.min(amount, cap - oldXp)); // XP that actually fits
+    if (usable <= 0) return { ok: false, reason: "max_level" };
+
+    // Deduct only the usable amount (refund = amount - usable).
+    const affected = await db.update(userCurrencyTable)
+      .set({ scrap: sql`${userCurrencyTable.scrap} - ${usable}`, updatedAt: new Date() })
+      .where(and(
+        eq(userCurrencyTable.guildId, guildId),
+        eq(userCurrencyTable.userId, userId),
+        sql`${userCurrencyTable.scrap} >= ${usable}`,
+      ))
+      .returning({ scrap: userCurrencyTable.scrap });
+    if (affected.length === 0) return { ok: false, reason: "insufficient_scrap" };
+
+    const newXp = oldXp + usable;
+    const newLevel = levelFromXp(newXp);
+    await db.insert(cardProgressTable)
+      .values({ guildId, userId, cardId, xp: newXp, level: newLevel })
+      .onConflictDoUpdate({
+        target: [cardProgressTable.guildId, cardProgressTable.userId, cardProgressTable.cardId],
+        set: { xp: newXp, level: newLevel, updatedAt: new Date() },
+      });
+    return { ok: true, scrapSpent: usable, xpGained: usable, oldLevel, newLevel, refunded: amount - usable };
+  } catch (err) {
+    logger.error({ err, guildId, userId, cardId, scrapAmount }, "spendScrapForXp failed");
+    return { ok: false, reason: "error" };
+  }
+}

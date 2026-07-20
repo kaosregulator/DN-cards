@@ -54,6 +54,9 @@ function totalXpForLevel(level: number): number {
   return sum;
 }
 
+// Public alias — cumulative XP to reach `level` (used by scrap→XP + overflow).
+export function xpForLevel(level: number): number { return totalXpForLevel(level); }
+
 // Derive level from total accumulated XP.
 export function levelFromXp(totalXp: number): number {
   let level = 1;
@@ -79,6 +82,23 @@ export async function getCardProgress(
       eq(cardProgressTable.cardId, cardId),
     )).limit(1);
   return row ?? null;
+}
+
+// Batch progress (star + level + xp) for a user's cards, for hub/collection
+// canvases. Missing rows are simply absent (caller defaults to star 0 / Lv 1).
+export async function getCardProgressBatch(
+  guildId: string, userId: string,
+): Promise<Map<number, { starRank: number; level: number; xp: number }>> {
+  const rows = await db.select({
+    cardId: cardProgressTable.cardId,
+    starRank: cardProgressTable.starRank,
+    level: cardProgressTable.level,
+    xp: cardProgressTable.xp,
+  }).from(cardProgressTable)
+    .where(and(eq(cardProgressTable.guildId, guildId), eq(cardProgressTable.userId, userId)));
+  const map = new Map<number, { starRank: number; level: number; xp: number }>();
+  for (const r of rows) map.set(r.cardId, { starRank: r.starRank ?? 0, level: r.level ?? 1, xp: r.xp ?? 0 });
+  return map;
 }
 
 // Admin: force a card to a specific level (jump/fix a user). Clamps to
@@ -126,7 +146,13 @@ export async function grantCardBattleXp(
     const existing = await getCardProgress(guildId, userId, cardId);
     const oldXp = existing?.xp ?? 0;
     const oldLevel = existing?.level ?? 1;
-    const newXp = oldXp + gained;
+    // Cap stored XP at Lv100; XP that would overshoot becomes Scrap (a currency
+    // used only to level OTHER cards — see cards/stars.ts spendScrapForXp). So a
+    // maxed card keeps earning value from battles instead of dead XP.
+    const cap = totalXpForLevel(MAX_LEVEL);
+    const rawXp = oldXp + gained;
+    const newXp = Math.min(rawXp, cap);
+    const overflow = Math.max(0, rawXp - cap);
     const newLevel = levelFromXp(newXp);
 
     await db.insert(cardProgressTable)
@@ -145,6 +171,16 @@ export async function grantCardBattleXp(
           updatedAt: new Date(),
         },
       });
+
+    if (overflow > 0) {
+      try {
+        const { getOrCreateGuildSettings, addScrap } = await import("../db.js");
+        const s = await getOrCreateGuildSettings(guildId);
+        const rate = Math.max(0, (s as { xpOverflowScrapRate?: number }).xpOverflowScrapRate ?? 100) / 100;
+        const scrap = Math.floor(overflow * rate);
+        if (scrap > 0) await addScrap(guildId, userId, scrap);
+      } catch { /* non-fatal */ }
+    }
 
     const newlyUnlocked = newLevel > oldLevel
       ? framesForRarity(rarity).filter(f => f.unlockLevel > oldLevel && f.unlockLevel <= newLevel)
