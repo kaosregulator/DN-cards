@@ -285,6 +285,14 @@ export const guildSettingsTable = pgTable("guild_settings", {
   fuseScrapEpic: integer("fuse_scrap_epic"),
   fuseScrapLegendary: integer("fuse_scrap_legendary"),
   fuseScrapMythic: integer("fuse_scrap_mythic"),
+  // ── Fusion Hub v2 (copies → Star, level reset; Scrap = leveling only) ───────
+  // How many copies of a card are consumed to fuse it up ONE star. Flat per
+  // star (default 5): 5 copies → +1★, and the card's level resets to 1.
+  fuseCopiesPerStar: integer("fuse_copies_per_star").notNull().default(5),
+  // When a Lv100 card gains more battle XP than it can use, the overflow becomes
+  // Scrap at this % rate (100 = 1 XP → 1 scrap). Scrap is spent only to level
+  // OTHER cards. 0 disables overflow→scrap.
+  xpOverflowScrapRate: integer("xp_overflow_scrap_rate").notNull().default(100),
   // ── Active set (Sets-driven spawn pool) ────────────────────────────────────
   // The single set whose cards are eligible for random autodrops in this
   // guild. NULL = no set selected → **nothing spawns** (admins must pick a

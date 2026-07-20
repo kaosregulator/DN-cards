@@ -1,7 +1,7 @@
 import type { ChatInputCommandInteraction } from "discord.js";
 import { EmbedBuilder, MessageFlags } from "discord.js";
 import { getCampaignProgress } from "./db.js";
-import { starString, levelForStars } from "../cards/leveling.js";
+import { starString } from "../cards/leveling.js";
 import { startRaid } from "./manager.js";
 
 // The campaign map for one player: cleared ✅ / next ➡️ / later ⚪ (no hard lock —
@@ -26,7 +26,7 @@ export async function buildCampaignEmbed(guildId: string, userId: string): Promi
     const mark = cleared ? "✅" : isNext ? "➡️" : "⚪";
     const finale = i === p.ordered.length - 1 ? " 👑" : "";
     return `${mark} **${b.name}**${finale}\n` +
-      `   Entry: ${starString(b.minStars)} (Lv ${levelForStars(b.minStars)}+)` +
+      `   Entry: ${starString(b.minStars)} (fuse ${b.minStars * 5}+ copies)` +
       (b.minPlayerLevel > 1 ? ` · battle lvl ${b.minPlayerLevel}+` : "") +
       ` · ${b.minPlayers}-${b.maxPlayers}p\n` +
       `   Reward: 💠 ${b.rewardShards.toLocaleString()} + ${b.rewardCardXp} card XP` +

@@ -1,17 +1,21 @@
 // ─────────────────────────────────────────────────────────────────────────────
-// Card Fusion — the /card_recycle command (internal key "tradein").
+// Card Fusion Hub — the /card_recycle command (internal key "tradein").
 //
-// Star Rank is the single progression axis. Two actions per card:
-//   ♻️  Recycle — turn spendable duplicate copies into Scrap (⚙️).
-//   🌟  Fuse    — spend duplicates + Scrap to raise the card's Star Rank by one,
-//                 boosting its battle stats. On success a premium 2–3s canvas
-//                 GIF plays: the duplicates shatter into Scrap energy and flow
-//                 into the card as its new star ignites.
+// /card_recycle opens a HUB whose canvas leads with your 5 MOST-DUPLICATED cards
+// (the ones closest to a fuse), plus your Scrap balance. Per card:
+//   🔧  Fuse        — spend N copies → +1 Star Rank (★), boosting battle stats.
+//                     Fusing RESETS the card's level to 1 — you re-grind level
+//                     each star. On success a premium 2–3s canvas GIF plays.
+//   ♻️  Scrap       — turn spendable duplicate copies into Scrap (⚙️).
+//   ⚙️  Spend Scrap — pour Scrap back into a card as battle XP (1 ⚙️ = 1 XP).
+//   🔒  Lock        — protect a card from fuse / scrap / burn.
 //
-// The hub and selected views are lightweight embeds (instant, no canvas). The
-// only canvas render is the celebratory fuse animation, built on the same
-// encodeAnimation pipeline as battles/reveals, with timeout-guarded image loads
-// so it can never hang the interaction.
+// Scrap is NOT a separate economy — it only levels cards. It comes from scrapping
+// spare dupes and from overflow XP a maxed (Lv100) card can no longer use (see
+// leveling.ts grantCardBattleXp). Canvas renders go through the shared render
+// queue / encodeAnimation pipeline with timeout-guarded image loads so they can
+// never hang the interaction; if canvas is unavailable the views fall back to
+// plain embeds.
 // ─────────────────────────────────────────────────────────────────────────────
 
 import type {
@@ -23,32 +27,37 @@ import {
   ModalBuilder, TextInputBuilder, TextInputStyle,
 } from "discord.js";
 import {
-  hexToRgba, type Ctx, type FrameCtx,
+  getCanvas, hexToRgba, type Ctx, type FrameCtx,
   lerp, easeOutBack, clamp01,
   drawGradientBackground,
   encodeAnimation,
 } from "../animations/engine.js";
 import type { AnimationResult } from "../animations/types.js";
 import {
-  drawCardArt, drawCardFrame, drawRarityGlow, drawTextWithShadow,
-  drawTitle, getRarityEffectColor,
+  drawCardArt, drawCardFrame, drawRarityGlow, drawRarityBadge, drawTextWithShadow,
+  drawTitle, fitText, getRarityEffectColor, TITLE_FONT,
 } from "../animations/effects.js";
 import { drawSparks, drawEmbers, drawExplosion } from "../animations/particles.js";
+import { queueRender } from "../animations/render-queue.js";
 import {
   getOrCreateGuildSettings, getRarityContext, getRarityDisplayOverrides,
   getCardDisplayRarity, getUserCollection, getCardByName, getScrap,
 } from "../db.js";
 import { toAbsoluteImageUrl } from "../image-url.js";
 import {
-  recycleForScrap, fuseStar, fuseStarQuote, scrapValueForCard,
-  starRankString, starStatMultiplier, MAX_STAR, getStarRankMap, getRecycleSettings,
+  recycleForScrap, fuseUpStar, fuseUpQuote, spendScrapForXp, scrapValueForCard,
+  starRankString, starStatMultiplier, MAX_STAR, getRecycleSettings, getFusionConfig,
 } from "./stars.js";
+import { getCardProgress, getCardProgressBatch, MAX_LEVEL } from "./leveling.js";
+import { isCardLocked, setCardLocked } from "./locks.js";
 import type { Rarity } from "../cards-data.js";
 import { logger } from "../../lib/logger.js";
 
 const EPHEMERAL = { flags: MessageFlags.Ephemeral } as const;
 const CARD_CANVAS = { width: 520, height: 660 } as const;
+const HUB_CANVAS = { width: 1000, height: 540 } as const;
 const FUSION_FILE = "fusion.gif";
+const HUB_FILE = "fusion-hub.png";
 
 interface FusionEntry {
   cardId: number;
@@ -60,22 +69,24 @@ interface FusionEntry {
   count: number;
   worthValue: number;
   star: number;
+  level: number;
 }
 
 // ── Data ─────────────────────────────────────────────────────────────────────
 
 async function loadFusionEntries(guildId: string, userId: string): Promise<FusionEntry[]> {
-  const [collection, ctx, settings, displayMap, stars] = await Promise.all([
+  const [collection, ctx, settings, displayMap, progress] = await Promise.all([
     getUserCollection(guildId, userId),
     getRarityContext(guildId),
     getOrCreateGuildSettings(guildId),
     getRarityDisplayOverrides(guildId),
-    getStarRankMap(guildId, userId),
+    getCardProgressBatch(guildId, userId),
   ]);
   return collection
     .filter(c => c.count > 1)                          // must have a spendable duplicate
     .map(c => {
       const display = getCardDisplayRarity(c, ctx, settings, displayMap);
+      const prog = progress.get(c.id);
       return {
         cardId: c.id,
         name: c.name,
@@ -85,19 +96,21 @@ async function loadFusionEntries(guildId: string, userId: string): Promise<Fusio
         imageUrl: c.imageUrl,
         count: c.count,
         worthValue: c.worthValue,
-        star: stars.get(c.id) ?? 0,
+        star: prog?.starRank ?? 0,
+        level: prog?.level ?? 1,
       };
     })
-    .sort((a, b) => b.star - a.star || b.count - a.count || a.name.localeCompare(b.name));
+    // Hub shows the MOST-DUPLICATED cards first — the ones ready to fuse.
+    .sort((a, b) => b.count - a.count || b.star - a.star || a.name.localeCompare(b.name));
 }
 
 async function loadSingleEntry(guildId: string, userId: string, cardId: number): Promise<FusionEntry | null> {
-  const [collection, ctx, settings, displayMap, stars] = await Promise.all([
+  const [collection, ctx, settings, displayMap, prog] = await Promise.all([
     getUserCollection(guildId, userId),
     getRarityContext(guildId),
     getOrCreateGuildSettings(guildId),
     getRarityDisplayOverrides(guildId),
-    getStarRankMap(guildId, userId),
+    getCardProgress(guildId, userId, cardId).catch(() => null),
   ]);
   const row = collection.find(c => c.id === cardId);
   if (!row) return null;
@@ -111,8 +124,75 @@ async function loadSingleEntry(guildId: string, userId: string, cardId: number):
     imageUrl: row.imageUrl,
     count: row.count,
     worthValue: row.worthValue,
-    star: stars.get(row.id) ?? 0,
+    star: prog?.starRank ?? 0,
+    level: prog?.level ?? 1,
   };
+}
+
+// ── Hub canvas: your top-5 most-duplicated cards ─────────────────────────────
+
+// A profile-style board that leads with the cards you own the MOST copies of —
+// the ones closest to a fuse. Each shows its star rank, level and copy count.
+export async function renderFusionHubCanvas(
+  guildId: string, userId: string, cards: FusionEntry[], scrap: number, copiesPerStar: number,
+): Promise<{ buffer: Buffer } | null> {
+  return queueRender("fusion-hub", async () => {
+    const mod = await getCanvas();
+    if (!mod) return null;
+    try {
+      const { width, height } = HUB_CANVAS;
+      const canvas = mod.createCanvas(width, height);
+      const ctx = canvas.getContext("2d") as unknown as Ctx;
+      const accent = 0x2ecc71;
+
+      drawGradientBackground(ctx, width, height, [
+        [0, hexToRgba(accent, 0.35)],
+        [0.55, "#0c0e14"],
+        [1, "#070810"],
+      ], 0.3);
+
+      drawTitle(ctx, "CARD FUSION HUB", width / 2, 46, "#ffffff", 34);
+      drawTextWithShadow(ctx, "Your most-duplicated cards — ready to fuse", width / 2, 80, "#aab0c0", 18);
+      drawTextWithShadow(
+        ctx, `Scrap ${scrap.toLocaleString()}   |   ${copiesPerStar} copies = +1 star`,
+        width / 2, 104, "#64d4a4", 16,
+      );
+
+      const shown = cards.slice(0, 5);
+      const cw = 150, ch = 200, gap = 24;
+      const totalW = shown.length * cw + Math.max(0, shown.length - 1) * gap;
+      const startX = (width - totalW) / 2;
+      const y = 140;
+
+      for (let i = 0; i < shown.length; i++) {
+        const c = shown[i]!;
+        const x = startX + i * (cw + gap);
+        const color = c.rarityColor ?? getRarityEffectColor(c.rarity);
+        const ready = c.star < MAX_STAR && c.count >= copiesPerStar;
+
+        drawRarityGlow(ctx, x, y, cw, ch, ready ? 0xffd54a : color, ready ? 0.75 : 0.5);
+        await drawCardArt(ctx, mod, x, y, cw, ch, toAbsoluteImageUrl(c.imageUrl));
+        drawCardFrame(ctx, x, y, cw, ch, ready ? 0xffd54a : color, 5);
+        drawRarityBadge(ctx, x + cw - 10, y + 10, c.rarityLabel, color);
+        drawTextWithShadow(ctx, `#${i + 1}`, x + 14, y + 18, "#ffffff", 16);
+        if (ready) drawTextWithShadow(ctx, "READY", x + cw / 2, y + ch - 16, "#ffd54a", 15);
+
+        const labelY = y + ch + 24;
+        drawTextWithShadow(ctx, c.name, x + cw / 2, labelY, "#ffffff", fitText(ctx, c.name, cw + 20, 15, 11, TITLE_FONT));
+        drawTextWithShadow(ctx, starRankString(c.star), x + cw / 2, labelY + 20, "#ffd54a", 17);
+        drawTextWithShadow(ctx, `Lv ${c.level}  x${c.count}`, x + cw / 2, labelY + 40, "#aab0c0", 14);
+      }
+
+      if (shown.length === 0) {
+        drawTextWithShadow(ctx, "No duplicate cards yet — catch more spawns!", width / 2, height / 2, "#aab0c0", 20);
+      }
+
+      return { buffer: Buffer.from(await canvas.encode("png")) };
+    } catch (err) {
+      logger.debug({ err, guildId, userId }, "renderFusionHubCanvas failed");
+      return null;
+    }
+  });
 }
 
 // ── Messages ───────────────────────────────────────────────────────────────
@@ -133,21 +213,30 @@ function fusionDropdown(entries: FusionEntry[]): ActionRowBuilder<StringSelectMe
 }
 
 async function buildFusionHubMessage(guildId: string, userId: string) {
-  const [entries, scrap] = await Promise.all([
+  const [entries, scrap, cfg] = await Promise.all([
     loadFusionEntries(guildId, userId),
     getScrap(guildId, userId),
+    getFusionConfig(guildId),
   ]);
 
   const embed = new EmbedBuilder()
     .setColor(0x2ecc71)
-    .setTitle("🔧 Card Fusion")
+    .setTitle("🔧 Card Fusion Hub")
     .setDescription(
       entries.length === 0
         ? "You have no duplicate cards yet. Open packs and catch spawns — once you own **2+ copies** of a card you can fuse it here."
-        : "**Fuse** duplicate copies + **Scrap** to raise a card's **Star Rank** (★) and boost its battle stats.\n\n" +
-          "Pick a card below, or **search by name**. Recycle spare dupes into Scrap to fund your next fusion.",
+        : `**Fuse** ${cfg.copiesPerStar} copies of a card → **+1 Star** (★) and stronger battle stats — this **resets its level to 1**, so re-grind it back up.\n\n` +
+          "Pick a card below, or **search by name**. **♻️ Scrap** spare dupes for currency you can pour back into leveling any card.",
     )
     .setFooter({ text: `⚙️ Scrap: ${scrap.toLocaleString()}  ·  ★ +8% battle stats per star` });
+
+  // Render the top-5-dupes hub board; fall back to the embed alone if canvas is off.
+  const hub = await renderFusionHubCanvas(guildId, userId, entries, scrap, cfg.copiesPerStar).catch(() => null);
+  const files: AttachmentBuilder[] = [];
+  if (hub) {
+    embed.setImage(`attachment://${HUB_FILE}`);
+    files.push(new AttachmentBuilder(hub.buffer, { name: HUB_FILE }));
+  }
 
   const rows: ActionRowBuilder<StringSelectMenuBuilder | ButtonBuilder>[] = [
     fusionDropdown(entries),
@@ -155,44 +244,49 @@ async function buildFusionHubMessage(guildId: string, userId: string) {
       new ButtonBuilder().setCustomId("recycle:search").setLabel("🔍 Search by Name").setStyle(ButtonStyle.Primary).setDisabled(entries.length === 0),
     ),
   ];
-  return { embeds: [embed], components: rows };
+  return { embeds: [embed], components: rows, files };
 }
 
 async function buildFusionSelectedMessage(
   guildId: string, userId: string, cardId: number,
-): Promise<{ embeds: EmbedBuilder[]; components: ActionRowBuilder<ButtonBuilder>[] } | string> {
+): Promise<{ embeds: EmbedBuilder[]; components: ActionRowBuilder<ButtonBuilder>[]; files: AttachmentBuilder[] } | string> {
   const entry = await loadSingleEntry(guildId, userId, cardId);
   if (!entry) return "You don't own this card.";
 
-  const [quote, settings, scrap] = await Promise.all([
-    fuseStarQuote(guildId, userId, cardId, entry.rarity),
+  const [quote, settings, scrap, prog, locked] = await Promise.all([
+    fuseUpQuote(guildId, userId, cardId),
     getRecycleSettings(guildId),
     getScrap(guildId, userId),
+    getCardProgress(guildId, userId, cardId),
+    isCardLocked(guildId, userId, cardId),
   ]);
+  const level = prog?.level ?? 1;
   const spendable = Math.max(0, entry.count - 1);
   const scrapPer = scrapValueForCard(entry.rarity, entry.worthValue, settings);
   const recycleGain = spendable * scrapPer;
   const curMult = starStatMultiplier(entry.star);
   const nextMult = starStatMultiplier(entry.star + 1);
+  const atMaxLevel = level >= MAX_LEVEL;
 
   const lines: string[] = [
     `**${entry.rarityLabel}** · ${starRankString(entry.star)}  (${entry.star}/${MAX_STAR}★)`,
-    `Owned: **×${entry.count}**  (${spendable} spendable duplicate${spendable !== 1 ? "s" : ""})`,
-    `⚙️ Scrap balance: **${scrap.toLocaleString()}**`,
+    `Owned: **×${entry.count}**  ·  Level **${level}/${MAX_LEVEL}**${locked ? "  ·  🔒 Locked" : ""}`,
+    `⚙️ Scrap: **${scrap.toLocaleString()}**  ·  ★ battle bonus **+${Math.round((curMult - 1) * 100)}%**`,
     "",
   ];
   if (entry.star >= MAX_STAR) {
-    lines.push(`⭐ **Max Star Rank reached** (${MAX_STAR}★) — battle stats **+${Math.round((curMult - 1) * 100)}%**.`);
+    lines.push(`⭐ **Max Star** (${MAX_STAR}★) reached — keep leveling to Lv ${MAX_LEVEL}.`);
   } else {
     lines.push(
-      `🌟 **Fuse → ${entry.star + 1}★**`,
-      `• Cost: **${quote.dupeCost}** duplicate${quote.dupeCost !== 1 ? "s" : ""}  +  **${quote.scrapCost.toLocaleString()} ⚙️**`,
-      `• Battle stats: +${Math.round((curMult - 1) * 100)}% → **+${Math.round((nextMult - 1) * 100)}%**`,
+      `🔧 **Fuse → ${entry.star + 1}★** — consumes **${quote.copiesNeeded} copies** (you have ${quote.copiesOwned}).`,
+      `   Fusing **resets level to 1** and boosts stats to **+${Math.round((nextMult - 1) * 100)}%**.`,
     );
-    if (quote.reason === "insufficient_dupes") lines.push(`\n❌ Need **${quote.dupeCost - spendable}** more duplicate${quote.dupeCost - spendable !== 1 ? "s" : ""} of this card.`);
-    else if (quote.reason === "insufficient_scrap") lines.push(`\n❌ Need **${(quote.scrapCost - scrap).toLocaleString()}** more ⚙️ Scrap — recycle spare dupes to earn it.`);
+    if (quote.reason === "insufficient_copies") lines.push(`   ❌ Catch **${quote.copiesNeeded - quote.copiesOwned}** more to fuse.`);
   }
-  lines.push("", `♻️ **Recycle** all ${spendable} spare dupe${spendable !== 1 ? "s" : ""} → **+${recycleGain.toLocaleString()} ⚙️** (${scrapPer}/copy)`);
+  lines.push(
+    `♻️ **Scrap** ${spendable} spare dupe${spendable !== 1 ? "s" : ""} → **+${recycleGain.toLocaleString()} ⚙️**`,
+    atMaxLevel ? "⚙️ Card is max level — Scrap it toward another." : "⚙️ **Spend Scrap** to level this card (1 ⚙️ = 1 XP).",
+  );
 
   const embed = new EmbedBuilder()
     .setColor(entry.rarityColor ?? 0x2ecc71)
@@ -202,11 +296,14 @@ async function buildFusionSelectedMessage(
   if (thumb) embed.setThumbnail(thumb);
 
   const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
-    new ButtonBuilder().setCustomId(`recycle:fuse:${cardId}`).setLabel("🌟 Fuse").setStyle(ButtonStyle.Success).setDisabled(!quote.canFuse),
-    new ButtonBuilder().setCustomId(`recycle:recycle:${cardId}`).setLabel("♻️ Recycle Dupes").setStyle(ButtonStyle.Secondary).setDisabled(spendable === 0),
+    new ButtonBuilder().setCustomId(`recycle:fuse:${cardId}`).setLabel(`🔧 Fuse (${quote.copiesNeeded})`).setStyle(ButtonStyle.Success).setDisabled(!quote.canFuse || locked),
+    new ButtonBuilder().setCustomId(`recycle:recycle:${cardId}`).setLabel("♻️ Scrap").setStyle(ButtonStyle.Secondary).setDisabled(spendable === 0 || locked),
+    new ButtonBuilder().setCustomId(`recycle:spendxp:${cardId}`).setLabel("⚙️ Spend Scrap").setStyle(ButtonStyle.Primary).setDisabled(scrap <= 0 || atMaxLevel),
+    new ButtonBuilder().setCustomId(`recycle:lock:${cardId}`).setLabel(locked ? "🔓 Unlock" : "🔒 Lock").setStyle(ButtonStyle.Secondary),
     new ButtonBuilder().setCustomId("recycle:back").setLabel("⬅️ Back").setStyle(ButtonStyle.Secondary),
   );
-  return { embeds: [embed], components: [row] };
+  // files:[] clears any leftover hub/fuse attachment when we swap to this view.
+  return { embeds: [embed], components: [row], files: [] };
 }
 
 // ── Fuse animation (premium GIF) ─────────────────────────────────────────────
@@ -398,6 +495,16 @@ export async function handleFusionComponent(
 
   if (!interaction.isButton()) return;
 
+  // "Fuse Again" jumps straight back into a card's selected view.
+  if (sub === "select") {
+    await interaction.deferUpdate().catch(() => {});
+    const cardId = Number(parts[2]);
+    const msg = await buildFusionSelectedMessage(guildId, userId, cardId);
+    if (typeof msg === "string") { await interaction.editReply({ content: msg, embeds: [], components: [], files: [] }).catch(() => {}); return; }
+    await interaction.editReply(msg).catch(() => {});
+    return;
+  }
+
   if (sub === "back") {
     await interaction.deferUpdate().catch(() => {});
     await interaction.editReply(await buildFusionHubMessage(guildId, userId)).catch(() => {});
@@ -411,8 +518,55 @@ export async function handleFusionComponent(
     await interaction.showModal(modal).catch(() => {});
     return;
   }
+  if (sub === "spendxp") {
+    // Modal-launching → must NOT defer first.
+    const cardId = parts[2];
+    const modal = new ModalBuilder().setCustomId(`recycle:spendxp:${cardId}`).setTitle("Spend Scrap → Level up");
+    modal.addComponents(new ActionRowBuilder<TextInputBuilder>().addComponents(
+      new TextInputBuilder().setCustomId("amt").setLabel("Scrap to spend (1 ⚙️ = 1 XP)").setStyle(TextInputStyle.Short).setRequired(true).setMaxLength(9),
+    ));
+    await interaction.showModal(modal).catch(() => {});
+    return;
+  }
   if (sub === "fuse")    { await handleFuseButton(interaction); return; }
   if (sub === "recycle") { await handleRecycleButton(interaction); return; }
+  if (sub === "lock")    { await handleLockButton(interaction); return; }
+}
+
+async function handleLockButton(interaction: ButtonInteraction): Promise<void> {
+  const guildId = interaction.guild!.id;
+  const userId = interaction.user.id;
+  const cardId = Number(interaction.customId.split(":")[2]);
+  await interaction.deferUpdate().catch(() => {});
+  const nowLocked = !(await isCardLocked(guildId, userId, cardId));
+  await setCardLocked(guildId, userId, cardId, nowLocked).catch(() => {});
+  const back = await buildFusionSelectedMessage(guildId, userId, cardId);
+  const banner = nowLocked ? "🔒 Locked — protected from fuse, scrap & burn." : "🔓 Unlocked.";
+  if (typeof back === "string") { await interaction.editReply({ content: back, embeds: [], components: [] }).catch(() => {}); return; }
+  await interaction.editReply({ content: banner, embeds: back.embeds, components: back.components, files: back.files }).catch(() => {});
+}
+
+// Spend Scrap → card XP (modal submit customId `recycle:spendxp:<cardId>`).
+export async function handleFusionSpendScrapModal(interaction: ModalSubmitInteraction): Promise<void> {
+  if (!interaction.guild) return;
+  const guildId = interaction.guild.id;
+  const userId = interaction.user.id;
+  await interaction.deferUpdate().catch(() => {});
+  const cardId = Number(interaction.customId.split(":")[2]);
+  const amt = Math.max(0, Math.floor(Number(interaction.fields.getTextInputValue("amt").replace(/[^0-9]/g, "")) || 0));
+  const res = await spendScrapForXp(guildId, userId, cardId, amt);
+  const back = await buildFusionSelectedMessage(guildId, userId, cardId);
+  let banner: string;
+  if (!res.ok) {
+    banner = res.reason === "insufficient_scrap" ? "❌ Not enough Scrap."
+      : res.reason === "max_level" ? "❌ That card is already max level."
+      : "❌ Couldn't spend Scrap.";
+  } else {
+    banner = `⚙️ Spent **${res.scrapSpent.toLocaleString()}** Scrap → Level **${res.oldLevel} → ${res.newLevel}**` +
+      (res.refunded > 0 ? ` (refunded ${res.refunded.toLocaleString()} — card maxed).` : ".");
+  }
+  if (typeof back === "string") { await interaction.editReply({ content: banner, embeds: [], components: [] }).catch(() => {}); return; }
+  await interaction.editReply({ content: banner, embeds: back.embeds, components: back.components, files: back.files }).catch(() => {});
 }
 
 async function handleFuseButton(interaction: ButtonInteraction): Promise<void> {
@@ -424,17 +578,20 @@ async function handleFuseButton(interaction: ButtonInteraction): Promise<void> {
   const entry = await loadSingleEntry(guildId, userId, cardId);
   if (!entry) { await interaction.editReply({ content: "❌ Card no longer available.", embeds: [], components: [] }).catch(() => {}); return; }
 
-  const res = await fuseStar(guildId, userId, cardId, entry.rarity);
+  if (await isCardLocked(guildId, userId, cardId)) {
+    await interaction.editReply({ content: "🔒 This card is locked — unlock it to fuse.", embeds: [], components: [] }).catch(() => {});
+    return;
+  }
+  const res = await fuseUpStar(guildId, userId, cardId);
   if (!res.ok) {
     const msg =
-      res.reason === "max_star" ? "This card is already at max Star Rank."
-      : res.reason === "insufficient_dupes" ? "You no longer have enough duplicate copies to fuse."
-      : res.reason === "insufficient_scrap" ? "You don't have enough Scrap to fuse."
+      res.reason === "max_star" ? "This card is already at max Star."
+      : res.reason === "insufficient_copies" ? "You no longer have enough copies to fuse."
       : "Something went wrong fusing that card.";
     // Re-render the selected view so the buttons/costs reflect current state.
     const back = await buildFusionSelectedMessage(guildId, userId, cardId);
     if (typeof back === "string") { await interaction.editReply({ content: `❌ ${msg}`, embeds: [], components: [] }).catch(() => {}); return; }
-    await interaction.editReply({ content: `❌ ${msg}`, embeds: back.embeds, components: back.components }).catch(() => {});
+    await interaction.editReply({ content: `❌ ${msg}`, embeds: back.embeds, components: back.components, files: back.files }).catch(() => {});
     return;
   }
 
@@ -447,8 +604,7 @@ async function handleFuseButton(interaction: ButtonInteraction): Promise<void> {
     .setTitle(`🔧 Fusion complete — ${entry.name}`)
     .setDescription(
       `${starRankString(res.fromStar)}  →  **${starRankString(res.toStar)}**  (${res.toStar}/${MAX_STAR}★)\n` +
-      `Spent **${res.consumedDupes}** duplicate${res.consumedDupes !== 1 ? "s" : ""}` +
-      (res.scrapSpent > 0 ? `  +  **${res.scrapSpent.toLocaleString()} ⚙️ Scrap**` : "") + "\n" +
+      `Fused **${res.copiesUsed} copies** — level reset to **1**, now re-grind to Lv ${MAX_LEVEL}.\n` +
       `Battle stats now **+${Math.round((starStatMultiplier(res.toStar) - 1) * 100)}%**.`,
     );
   const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
@@ -483,7 +639,7 @@ async function handleRecycleButton(interaction: ButtonInteraction): Promise<void
     const msg = res.reason === "no_duplicates" ? "No spendable duplicates to recycle." : "Something went wrong recycling.";
     const back = await buildFusionSelectedMessage(guildId, userId, cardId);
     if (typeof back === "string") { await interaction.editReply({ content: `❌ ${msg}`, embeds: [], components: [] }).catch(() => {}); return; }
-    await interaction.editReply({ content: `❌ ${msg}`, embeds: back.embeds, components: back.components }).catch(() => {});
+    await interaction.editReply({ content: `❌ ${msg}`, embeds: back.embeds, components: back.components, files: back.files }).catch(() => {});
     return;
   }
 
@@ -491,7 +647,7 @@ async function handleRecycleButton(interaction: ButtonInteraction): Promise<void
   const back = await buildFusionSelectedMessage(guildId, userId, cardId);
   const banner = `♻️ Recycled **${res.consumed}** dupe${res.consumed !== 1 ? "s" : ""} → **+${res.scrapEarned.toLocaleString()} ⚙️ Scrap**.`;
   if (typeof back === "string") { await interaction.editReply({ content: banner, embeds: [], components: [] }).catch(() => {}); return; }
-  await interaction.editReply({ content: banner, embeds: back.embeds, components: back.components }).catch(() => {});
+  await interaction.editReply({ content: banner, embeds: back.embeds, components: back.components, files: back.files }).catch(() => {});
 }
 
 export async function handleFusionSearchModal(interaction: ModalSubmitInteraction): Promise<void> {
