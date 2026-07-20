@@ -36,6 +36,7 @@ export interface KitsuItem {
 
 interface KitsuAttributes {
   canonicalTitle?: string;
+  canonicalName?: string;
   titles?: Record<string, string | null | undefined>;
   synopsis?: string | null;
   description?: string | null;
@@ -113,7 +114,7 @@ export async function searchKitsu(category: KitsuCategory, query: string): Promi
 
   try {
     const filterParam = category === "character" ? "filter[name]" : "filter[text]";
-    const url = `${KITSU_API_BASE}/${category}?${filterParam}=${encodeURIComponent(q)}&page[limit]=25`;
+    const url = `${KITSU_API_BASE}/${category}?${filterParam}=${encodeURIComponent(q)}&page[limit]=20`;
     const resp = await fetch(url, { signal: AbortSignal.timeout(10_000) });
     if (!resp.ok) {
       throw new Error(`HTTP ${resp.status}: ${resp.statusText}`);
@@ -140,6 +141,46 @@ export async function searchKitsu(category: KitsuCategory, query: string): Promi
     logger.error({ err: (err as Error).message, category, query }, "Failed to search Kitsu");
     throw new Error("Could not reach Kitsu. Try again in a moment.");
   }
+}
+
+// Fetch a single Kitsu entry by its ID. Used when the user selects an
+// autocomplete option (value = Kitsu ID) so the exact item is chosen.
+export async function getKitsuById(category: KitsuCategory, id: string): Promise<KitsuItem | null> {
+  try {
+    const url = `${KITSU_API_BASE}/${category}/${encodeURIComponent(id)}`;
+    const resp = await fetch(url, { signal: AbortSignal.timeout(10_000) });
+    if (!resp.ok) return null;
+    const data = (await resp.json()) as { data?: { id: string; type: string; attributes: KitsuAttributes } };
+    if (!data?.data) return null;
+    const entry = data.data;
+    const attrs = entry.attributes ?? {};
+    return {
+      id: entry.id,
+      type: category,
+      name: buildName(attrs, category),
+      description: buildDescription(attrs),
+      imageUrl: bestImageUrl(attrs),
+    };
+  } catch (err) {
+    logger.error({ err: (err as Error).message, category, id }, "Failed to fetch Kitsu by ID");
+    return null;
+  }
+}
+
+// Resolve the selected Kitsu item. Autocomplete submits the Kitsu ID as the
+// value, but users can also type free text, so fall back to a name search.
+async function resolveKitsuItem(category: KitsuCategory, value: string): Promise<KitsuItem | undefined> {
+  const v = value.trim();
+  if (!v) return undefined;
+
+  if (/^\d+$/.test(v)) {
+    const byId = await getKitsuById(category, v);
+    if (byId) return byId;
+  }
+
+  const items = await searchKitsu(category, v);
+  return items.find((i) => i.name.toLowerCase() === v.toLowerCase())
+    ?? items.sort((a, b) => matchScore(b, v) - matchScore(a, v))[0];
 }
 
 const CREATE_CARD_RARITIES = new Set<string>(["common", "uncommon", "rare", "epic", "legendary", "mythic"]);
@@ -195,10 +236,13 @@ export async function handleKitsuAutocomplete(interaction: AutocompleteInteracti
       .sort((a, b) => b.score - a.score)
       .slice(0, 25);
     await interaction.respond(
-      scored.map(({ item }) => ({
-        name: `${item.name}`.slice(0, 100),
-        value: item.name.slice(0, 100),
-      })),
+      scored.map(({ item }) => {
+        const preview = item.description ? ` — ${item.description.slice(0, 60)}`.replace(/\s+/g, " ") : "";
+        return {
+          name: `${item.name}${preview}`.slice(0, 100),
+          value: item.id.slice(0, 100),
+        };
+      }),
     );
   } catch (err) {
     logger.error({ err: (err as Error).message }, "Kitsu autocomplete failed");
@@ -238,15 +282,7 @@ export async function handleCreateCardFromKitsu(interaction: ChatInputCommandInt
 
   let item: KitsuItem | undefined;
   try {
-    const items = await searchKitsu(category, itemName);
-    item = items.find((i) => i.name.toLowerCase() === itemName.toLowerCase());
-    if (!item) {
-      const scored = items
-        .map((i) => ({ i, score: matchScore(i, itemName) }))
-        .filter(({ score }) => score > 0)
-        .sort((a, b) => b.score - a.score);
-      item = scored[0]?.i;
-    }
+    item = await resolveKitsuItem(category, itemName);
   } catch (err) {
     logger.error({ err, category, itemName }, "Failed to search Kitsu for create_card_from");
     await interaction.editReply("❌ Could not reach Kitsu. Try again later.");
@@ -322,7 +358,7 @@ export async function handleCreateCardFromKitsu(interaction: ChatInputCommandInt
 }
 
 export async function handleLibraryCommand(interaction: ChatInputCommandInteraction): Promise<void> {
-  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+  // Caller (admin.ts) has already deferred the reply.
   const category = interaction.options.getString("category", true);
   const name = interaction.options.getString("name", true).trim();
 
@@ -333,9 +369,7 @@ export async function handleLibraryCommand(interaction: ChatInputCommandInteract
 
   let item: KitsuItem | undefined;
   try {
-    const items = await searchKitsu(category, name);
-    item = items.find((i) => i.name.toLowerCase() === name.toLowerCase())
-      ?? items.sort((a, b) => matchScore(b, name) - matchScore(a, name))[0];
+    item = await resolveKitsuItem(category, name);
   } catch (err) {
     logger.error({ err, category, name }, "Failed to search Kitsu for library");
     await interaction.editReply("❌ Could not reach Kitsu. Try again later.");
