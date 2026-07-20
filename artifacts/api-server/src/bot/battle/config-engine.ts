@@ -53,8 +53,9 @@ export function rarityAllowed(settings: BattleSettings, rarity: Rarity): boolean
       && r <= rarityRank(settings.maxRarity as Rarity);
 }
 
-export function typeAllowed(settings: BattleSettings, cardType: string): boolean {
-  const allow = settings.allowedTypes;
-  if (!allow || allow.length === 0) return true;
-  return allow.map(t => t.toLowerCase()).includes((cardType ?? "").toLowerCase());
+export function typeAllowed(_settings: BattleSettings, _cardType: string): boolean {
+  // Type restrictions are disabled — all owned cards (including raid boss reward
+  // cards) can be used in battles. Admins can still influence movesets via the
+  // battle card config / move library.
+  return true;
 }
