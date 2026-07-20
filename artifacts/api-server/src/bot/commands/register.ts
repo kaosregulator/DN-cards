@@ -263,6 +263,15 @@ function buildLegacyCommands() {
       .addIntegerOption(o => o.setName("max_copies").setDescription("Max copies if limited (default 50)").setMinValue(1))
       .addBooleanOption(o => o.setName("event_exclusive").setDescription("Event exclusive — never spawns randomly?"))),
 
+    adminCmd("library", "Search the Kitsu library by category and preview the bio + image", s => s
+      .addStringOption(o => o.setName("category").setDescription("Kitsu library to search").setRequired(true)
+        .addChoices(
+          { name: "Anime", value: "anime" },
+          { name: "Manga", value: "manga" },
+          { name: "Character", value: "character" },
+        ))
+      .addStringOption(o => o.setName("name").setDescription("Title or character name — type to search").setRequired(true).setAutocomplete(true))),
+
     adminCmd("editcard", "Edit a card — optionally upload a replacement image/GIF", s => s
       .addStringOption(o => o.setName("name").setDescription("Card to edit").setRequired(true).setAutocomplete(true))
       .addAttachmentOption(o => o.setName("image").setDescription("Optional replacement image/GIF upload"))
@@ -746,7 +755,7 @@ export const USER_HUB_COMMANDS = new Set([
 export const ADMIN_HUB_COMMANDS = new Set([
   "setup", "config", "adminhub", "sethub", "set_admin", "deletecard",
   "welcomeadmin", "adminhelp", "drop", "massdrop", "give", "giveshards",
-  "takeback", "takeshards", "addcard", "createcardfrommttv", "createcardfrom", "editcard", "editimage", "dashboard", "collectorrole",
+  "takeback", "takeshards", "addcard", "createcardfrommttv", "createcardfrom", "library", "editcard", "editimage", "dashboard", "collectorrole",
   "battleforceend",
   "rarity", "embed", "event", "edituser", "giveall", "editpack",
   "postcalculator", "massrole",

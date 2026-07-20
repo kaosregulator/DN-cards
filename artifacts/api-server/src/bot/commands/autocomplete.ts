@@ -291,8 +291,9 @@ export async function handleAutocomplete(interaction: AutocompleteInteraction): 
       return;
     }
 
-    // ── /create_card_from — suggest Kitsu anime/manga/characters ───────────────
-    if (cmd === "createcardfrom" && focused.name === "item") {
+    // ── /create_card_from and /library — suggest Kitsu anime/manga/characters ──
+    // /create_card_from names its search option "item"; /library names it "name".
+    if ((cmd === "createcardfrom" && focused.name === "item") || (cmd === "library" && focused.name === "name")) {
       const { handleKitsuAutocomplete } = await import("./kitsu-cards.js");
       await handleKitsuAutocomplete(interaction);
       return;

@@ -129,6 +129,18 @@ export async function handleAdminCommand(
     return;
   }
 
+  // /library — search Kitsu and preview the bio + image (admin-only, ephemeral).
+  if (cmd === "library") {
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+    if (!(await checkAdmin(interaction))) {
+      await interaction.editReply("❌ Admins only.");
+      return;
+    }
+    const { handleLibraryCommand } = await import("./kitsu-cards.js");
+    await handleLibraryCommand(interaction);
+    return;
+  }
+
   // /edit_card — defer first so checkAdmin()'s isAdmin() DB call can't blow
   // Discord's 3s window. handleEditCardCommand receives an already-deferred
   // interaction and uses editReply for its panel.

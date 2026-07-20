@@ -2,6 +2,7 @@ import type {
   ChatInputCommandInteraction,
   AutocompleteInteraction,
 } from "discord.js";
+import { MessageFlags, EmbedBuilder } from "discord.js";
 import { addCard, addCardToSet, getCardByName, getSetByName } from "../db.js";
 import { renderPanel, persistBotImage } from "./edit-card.js";
 import { RARITY_BURN, RARITY_WEIGHTS, RARITY_WORTH, type Rarity } from "../cards-data.js";
@@ -168,7 +169,7 @@ function matchScore(item: KitsuItem, query: string): number {
 
 export async function handleKitsuAutocomplete(interaction: AutocompleteInteraction): Promise<void> {
   const focused = interaction.options.getFocused(true);
-  if (focused.name !== "item") {
+  if (focused.name !== "item" && focused.name !== "name") {
     await interaction.respond([]);
     return;
   }
@@ -318,5 +319,41 @@ export async function handleCreateCardFromKitsu(interaction: ChatInputCommandInt
   }
 
   await renderPanel(interaction, card.id, false, `✅ Created **${card.name}** from Kitsu ${category} (${baseRarity})${setNote} — tweak any field below`);
+}
+
+export async function handleLibraryCommand(interaction: ChatInputCommandInteraction): Promise<void> {
+  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+  const category = interaction.options.getString("category", true);
+  const name = interaction.options.getString("name", true).trim();
+
+  if (!isKitsuCategory(category)) {
+    await interaction.editReply("❌ Pick a valid category: Anime, Manga, or Character.");
+    return;
+  }
+
+  let item: KitsuItem | undefined;
+  try {
+    const items = await searchKitsu(category, name);
+    item = items.find((i) => i.name.toLowerCase() === name.toLowerCase())
+      ?? items.sort((a, b) => matchScore(b, name) - matchScore(a, name))[0];
+  } catch (err) {
+    logger.error({ err, category, name }, "Failed to search Kitsu for library");
+    await interaction.editReply("❌ Could not reach Kitsu. Try again later.");
+    return;
+  }
+
+  if (!item) {
+    await interaction.editReply(`❌ Could not find "${name}" in Kitsu ${category} library.`);
+    return;
+  }
+
+  const embed = new EmbedBuilder()
+    .setTitle(item.name)
+    .setDescription(item.description || "No synopsis available.")
+    .setColor(0xff6b6b)
+    .setImage(item.imageUrl ?? null)
+    .setFooter({ text: `Kitsu ${category} · ID ${item.id}` });
+
+  await interaction.editReply({ embeds: [embed] });
 }
 
