@@ -207,9 +207,10 @@ async function resolveActiveSetIds(rt: BattleRuntime): Promise<Set<number> | nul
   return rt.activeSetIds;
 }
 
-// Active-set restrictions are disabled: any card a player owns can battle.
-function inActiveSet(_setIds: Set<number> | null, _cardId: number): boolean {
-  return true;
+// A card may battle only if it passes battle eligibility AND (when an active set
+// exists) belongs to it.
+function inActiveSet(setIds: Set<number> | null, cardId: number): boolean {
+  return !setIds || setIds.has(cardId);
 }
 
 async function eligibleForUser(rt: BattleRuntime, userId: string): Promise<OwnedBattleCard[]> {
