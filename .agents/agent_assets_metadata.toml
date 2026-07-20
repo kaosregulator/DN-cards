@@ -53,3 +53,9 @@ id = "qJUDtPJ4F83x5mvsCHOwR"
 uri = "file://artifacts/api-server/screenshots/recycle-select-menu-preview.png"
 type = "image"
 title = "Recycle select menu preview"
+
+[[outputs]]
+id = "VboULg9jjfBQyMBVQ6o8d"
+uri = "file://tmp/riku-kingdom-hearts.jpg"
+type = "image"
+title = "Riku (Kingdom Hearts) — Kitsu character image"
