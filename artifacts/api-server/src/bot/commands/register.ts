@@ -247,6 +247,21 @@ function buildLegacyCommands() {
       .addIntegerOption(o => o.setName("max_copies").setDescription("Max copies if limited (default 50)").setMinValue(1))
       .addBooleanOption(o => o.setName("event_exclusive").setDescription("Event exclusive — never spawns randomly?"))),
 
+    adminCmd("createcardfrom", "Create a new DN card from Kitsu — anime, manga, or character", s => s
+      .addStringOption(o => o.setName("category").setDescription("Kitsu library to search").setRequired(true)
+        .addChoices(
+          { name: "Anime", value: "anime" },
+          { name: "Manga", value: "manga" },
+          { name: "Character", value: "character" },
+        ))
+      .addStringOption(o => o.setName("item").setDescription("Title or character name — type to search").setRequired(true).setAutocomplete(true))
+      .addStringOption(o => o.setName("rarity").setDescription("DN rarity tier — type to search").setRequired(true).setAutocomplete(true))
+      .addStringOption(o => o.setName("type").setDescription("Card type/tag — type to search existing types or enter a new one").setRequired(true).setAutocomplete(true))
+      .addStringOption(o => o.setName("set").setDescription("Optional set to add this card to immediately").setAutocomplete(true))
+      .addStringOption(o => o.setName("description").setDescription("Override the card description (up to 500 chars)").setMaxLength(500))
+      .addBooleanOption(o => o.setName("limited").setDescription("Limited edition — capped copy count?"))
+      .addIntegerOption(o => o.setName("max_copies").setDescription("Max copies if limited (default 50)").setMinValue(1))
+      .addBooleanOption(o => o.setName("event_exclusive").setDescription("Event exclusive — never spawns randomly?"))),
 
     adminCmd("editcard", "Edit a card — optionally upload a replacement image/GIF", s => s
       .addStringOption(o => o.setName("name").setDescription("Card to edit").setRequired(true).setAutocomplete(true))
@@ -625,6 +640,7 @@ export const COMMAND_RENAMES: Record<string, string> = {
   collectorrole: "collector_role",
   addcard: "add_card",
   createcardfrommttv: "create_card_from_mttv",
+  createcardfrom: "create_card_from",
   editcard: "edit_card",
   editimage: "edit_image",
   deletecard: "delete_card",
@@ -730,7 +746,7 @@ export const USER_HUB_COMMANDS = new Set([
 export const ADMIN_HUB_COMMANDS = new Set([
   "setup", "config", "adminhub", "sethub", "set_admin", "deletecard",
   "welcomeadmin", "adminhelp", "drop", "massdrop", "give", "giveshards",
-  "takeback", "takeshards", "addcard", "createcardfrommttv", "editcard", "editimage", "dashboard", "collectorrole",
+  "takeback", "takeshards", "addcard", "createcardfrommttv", "createcardfrom", "editcard", "editimage", "dashboard", "collectorrole",
   "battleforceend",
   "rarity", "embed", "event", "edituser", "giveall", "editpack",
   "postcalculator", "massrole",

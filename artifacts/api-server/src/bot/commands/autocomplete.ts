@@ -152,15 +152,16 @@ export async function handleAutocomplete(interaction: AutocompleteInteraction): 
       return;
     }
 
-    // ── Set-name autocomplete for /drop, /mass_drop, /add_card, /create_card_from_mttv ─────
+    // ── Set-name autocomplete for /drop, /mass_drop, /add_card, /create_card_from_mttv, /create_card_from ─────
     // Any string option named `set` on these commands resolves to a set picker.
     // /drop and /mass_drop have `name` = card name, `set` = set name.
-    // /add_card and /create_card_from_mttv have `set` = set name.
+    // /add_card, /create_card_from_mttv, and /create_card_from have `set` = set name.
     const isSetNameOption =
       (cmd === "drop" && focused.name === "set") ||
       (cmd === "massdrop" && focused.name === "set") ||
       (cmd === "addcard" && focused.name === "set") ||
-      (cmd === "createcardfrommttv" && focused.name === "set");
+      (cmd === "createcardfrommttv" && focused.name === "set") ||
+      (cmd === "createcardfrom" && focused.name === "set");
     if (isSetNameOption) {
       const sets = await getSetsCached(interaction.guildId);
       const q = query.toLowerCase().trim();
@@ -248,7 +249,7 @@ export async function handleAutocomplete(interaction: AutocompleteInteraction): 
     // ── /add_card and /create_card_from_mttv rarity — built-in rarities only ────
     // Legacy custom-tier assignment still exists in advanced tools; new cards
     // should start with a stable built-in rarity identity.
-    if ((cmd === "addcard" || cmd === "createcardfrommttv") && focused.name === "rarity" && interaction.guild) {
+    if ((cmd === "addcard" || cmd === "createcardfrommttv" || cmd === "createcardfrom") && focused.name === "rarity" && interaction.guild) {
       const q = query.toLowerCase().trim();
       const [settings, displayMap] = await Promise.all([
         getOrCreateGuildSettings(interaction.guild.id),
@@ -267,7 +268,7 @@ export async function handleAutocomplete(interaction: AutocompleteInteraction): 
     }
 
     // ── /add_card and /create_card_from_mttv type — existing card types plus free entry ──
-    if ((cmd === "addcard" || cmd === "createcardfrommttv") && focused.name === "type" && interaction.guild) {
+    if ((cmd === "addcard" || cmd === "createcardfrommttv" || cmd === "createcardfrom") && focused.name === "type" && interaction.guild) {
       const q = query.toLowerCase().trim();
       const types = await getDistinctCardTypes(interaction.guild.id);
       const options = types
@@ -287,6 +288,13 @@ export async function handleAutocomplete(interaction: AutocompleteInteraction): 
     if ((cmd === "info_mttv" || cmd === "createcardfrommttv") && focused.name === "item") {
       const { handleMTTVAutocomplete } = await import("./mttvalues.js");
       await handleMTTVAutocomplete(interaction, focused);
+      return;
+    }
+
+    // ── /create_card_from — suggest Kitsu anime/manga/characters ───────────────
+    if (cmd === "createcardfrom" && focused.name === "item") {
+      const { handleKitsuAutocomplete } = await import("./kitsu-cards.js");
+      await handleKitsuAutocomplete(interaction);
       return;
     }
 
