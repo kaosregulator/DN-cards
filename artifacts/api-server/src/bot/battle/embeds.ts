@@ -149,25 +149,34 @@ export function buildCombatEmbed(v: BattleView, opts?: { currentMove?: string })
   return embed;
 }
 
-// ── Two-embed combat layout ──────────────────────────────────────────────────
-// TOP embed: the recent battle log (last 4–6 actions) + a prominent "current
-// turn" line. The log lives in the description so it reads bigger/cleaner.
-export function buildBattleLogEmbed(v: BattleView): EmbedBuilder {
+// The "whose turn is it" line, shared by the layout below.
+function currentTurnLine(v: BattleView): string {
   const active = v.currentSide === 0 ? v.a : v.b;
-  const activeDisp = displayRarityOf(active, v.displayMap);
   const turnLine = active.isAi
     ? `🤖 **AI** is deciding…`
     : `🔹 ${who(active)} — **it's your move!**`;
   const timer = v.turnEndsAt ? ` · ends <t:${Math.floor(v.turnEndsAt / 1000)}:R>` : "";
+  return turnLine + timer;
+}
+
+// ── Two-embed combat layout ──────────────────────────────────────────────────
+// TOP embed: the recent battle log (last 4–6 actions). The log lives in the
+// description so it reads bigger/cleaner. The "whose turn" indicator is NOT here
+// — it now rides with the health bars in the status embed (see below) so players
+// see it right next to the battlefield instead of scrolled off at the top.
+export function buildBattleLogEmbed(v: BattleView): EmbedBuilder {
+  const active = v.currentSide === 0 ? v.a : v.b;
+  const activeDisp = displayRarityOf(active, v.displayMap);
   return new EmbedBuilder()
     .setColor(activeDisp.color)
     .setTitle(`📜 Battle Log — Turn ${v.turnNumber}${v.staked ? " · 💰 Staked" : ""}`)
-    .setDescription(condensedLog(v.log).slice(0, 4000))
-    .addFields({ name: "🎯 Current Turn", value: turnLine + timer, inline: false });
+    .setDescription(condensedLog(v.log).slice(0, 4000));
 }
 
-// BOTTOM embed: the battle status — HP/Energy/Ultimate for both combatants — and
-// the combat canvas as the big image filling the lower section. No log here.
+// BOTTOM embed: the battle status — HP/Energy/Ultimate for both combatants, the
+// "current turn" indicator sitting right beside those health bars, and the combat
+// canvas as the big image filling the lower section. Keeping the turn line here
+// means it's always visible next to the battlefield, not stranded above the log.
 export function buildBattleStatusEmbed(v: BattleView, opts?: { currentMove?: string }): EmbedBuilder {
   const active = v.currentSide === 0 ? v.a : v.b;
   const activeDisp = displayRarityOf(active, v.displayMap);
@@ -176,6 +185,7 @@ export function buildBattleStatusEmbed(v: BattleView, opts?: { currentMove?: str
     .addFields(
       combatantField(v.a, v.currentSide === 0, v.displayMap),
       combatantField(v.b, v.currentSide === 1, v.displayMap),
+      { name: "🎯 Current Turn", value: currentTurnLine(v), inline: false },
     );
   if (opts?.currentMove) embed.setFooter({ text: opts.currentMove });
   return embed;
