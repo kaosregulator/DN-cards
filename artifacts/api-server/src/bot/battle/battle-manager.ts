@@ -13,8 +13,10 @@
 import {
   EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle,
   StringSelectMenuBuilder, MessageFlags, AttachmentBuilder,
+  ModalBuilder, TextInputBuilder, TextInputStyle,
   type ChatInputCommandInteraction, type ButtonInteraction,
-  type StringSelectMenuInteraction, type Message, type User,
+  type StringSelectMenuInteraction, type ModalSubmitInteraction,
+  type Message, type User,
 } from "discord.js";
 import { logger } from "../../lib/logger.js";
 import { consumeCooldown } from "../../lib/cooldowns.js";
@@ -59,6 +61,10 @@ import { formatAchievementLine } from "./achievement-engine.js";
 import { rarityLabel, rarityEmoji, rarityColor, type RarityDisplayMap } from "../cards-data.js";
 import { getRarityContext, getRarityDisplayOverrides } from "../db.js";
 import { getCardDisplayRarity, BUILTIN_POSITIONS, type RarityContext } from "../rarity-runtime.js";
+import { MAX_LEVEL } from "../cards/leveling.js";
+import {
+  renderPrepBoard, renderCardConfirm, renderCoinFlip, type PrepCardStat,
+} from "./prep-canvas.js";
 
 const MAX_BATTLE_MS = 20 * 60 * 1000;   // hard TTL safety net
 const DEFAULT_FRAME_MS = 950;            // fallback delay between animation frames
@@ -82,7 +88,11 @@ interface PrepState {
   stake: boolean;
   coin: "heads" | "tails" | null;
   ready: boolean;
-  page: number; // 0-based page for the card picker (25 cards per page)
+  page: number; // legacy; the card picker is no longer paged (search covers the tail)
+  // Cached prep-board PNG keyed by the selected card, so tapping coin/item/stake
+  // doesn't re-render the canvas — only a change of fighter does.
+  boardImage?: Buffer | null;
+  boardKey?: number | null;   // selectedId the cached board was rendered for (0 = none)
 }
 
 interface BattleRuntime {
@@ -405,8 +415,11 @@ export async function handleBattleComponent(
         case "prep": return void await onOpenPrep(rt, interaction);
         case "pstake": return void await onToggleStake(rt, interaction);
         case "pcoin": return void await onPickCoin(rt, interaction, parts[3] as "heads" | "tails");
-        case "ppage": return void await onPage(rt, interaction, parts[3] as "prev" | "next");
+        case "pquick": return void await onQuickPick(rt, interaction);
+        case "psearch": return void await onSearchOpen(rt, interaction);
+        case "pback": return void await refreshPrep(rt, interaction);
         case "pready": return void await onReady(rt, interaction);
+        case "pconfirm": return void await onConfirmReady(rt, interaction);
         case "move": return void await onMoveButton(rt, interaction, parts[3] as MoveType);
         case "fatality": return void await onFatalityButton(rt, interaction);
         case "moves": return void await onMovesButton(rt, interaction);
@@ -509,23 +522,23 @@ async function onOpenPrep(rt: BattleRuntime, interaction: ButtonInteraction) {
   await loadGuildPassives(rt.guildId).catch(() => {});
   const eligible = await eligibleForUser(rt, interaction.user.id);
   if (eligible.length === 0) return safeEphemeral(interaction, "You have no battle-eligible cards.");
-  await interaction.reply({
-    content: "🎴 **Prepare for battle** — pick your card, an optional battle item, your coin call, and (optionally) stake your card. Then press **Ready**.",
-    embeds: [buildPersonalPrepEmbed(rt, interaction.user.id)],
-    components: buildPersonalPrepComponents(rt, interaction.user.id, eligible),
-    flags: MessageFlags.Ephemeral,
-  }).catch(() => {});
+  await interaction.deferReply({ flags: MessageFlags.Ephemeral }).catch(() => {});
+  const view = await renderPersonalPrepView(rt, interaction.user.id);
+  await interaction.editReply(view).catch(() => {});
+}
+
+// Re-render the ephemeral prep screen after any change. The board PNG is cached
+// per selected card, so coin/item/stake taps don't pay the canvas cost.
+async function refreshPrep(rt: BattleRuntime, interaction: StringSelectMenuInteraction | ButtonInteraction) {
+  const view = await renderPersonalPrepView(rt, interaction.user.id);
+  await interaction.update(view).catch(() => {});
 }
 
 async function onSelectCard(rt: BattleRuntime, interaction: StringSelectMenuInteraction) {
   const prep = rt.prep.get(interaction.user.id);
   if (!prep) return safeEphemeral(interaction, "You're not part of this battle.");
   prep.cardId = Number(interaction.values[0]);
-  const eligible = await eligibleForUser(rt, interaction.user.id);
-  await interaction.update({
-    embeds: [buildPersonalPrepEmbed(rt, interaction.user.id)],
-    components: buildPersonalPrepComponents(rt, interaction.user.id, eligible),
-  }).catch(() => {});
+  await refreshPrep(rt, interaction);
 }
 
 async function onSelectItem(rt: BattleRuntime, interaction: StringSelectMenuInteraction) {
@@ -533,11 +546,7 @@ async function onSelectItem(rt: BattleRuntime, interaction: StringSelectMenuInte
   if (!prep) return safeEphemeral(interaction, "You're not part of this battle.");
   const v = interaction.values[0];
   prep.itemId = v === "none" ? null : v;
-  const eligible = await eligibleForUser(rt, interaction.user.id);
-  await interaction.update({
-    embeds: [buildPersonalPrepEmbed(rt, interaction.user.id)],
-    components: buildPersonalPrepComponents(rt, interaction.user.id, eligible),
-  }).catch(() => {});
+  await refreshPrep(rt, interaction);
 }
 
 async function onToggleStake(rt: BattleRuntime, interaction: ButtonInteraction) {
@@ -545,39 +554,99 @@ async function onToggleStake(rt: BattleRuntime, interaction: ButtonInteraction) 
   if (!prep) return safeEphemeral(interaction, "You're not part of this battle.");
   if (rt.isAi || !rt.settings.stakingEnabled) return safeEphemeral(interaction, "Staking isn't available for this battle.");
   prep.stake = !prep.stake;
-  const eligible = await eligibleForUser(rt, interaction.user.id);
-  await interaction.update({
-    embeds: [buildPersonalPrepEmbed(rt, interaction.user.id)],
-    components: buildPersonalPrepComponents(rt, interaction.user.id, eligible),
-  }).catch(() => {});
+  await refreshPrep(rt, interaction);
 }
 
 async function onPickCoin(rt: BattleRuntime, interaction: ButtonInteraction, coin: "heads" | "tails") {
   const prep = rt.prep.get(interaction.user.id);
   if (!prep) return safeEphemeral(interaction, "You're not part of this battle.");
   prep.coin = coin;
-  const eligible = await eligibleForUser(rt, interaction.user.id);
-  await interaction.update({
-    embeds: [buildPersonalPrepEmbed(rt, interaction.user.id)],
-    components: buildPersonalPrepComponents(rt, interaction.user.id, eligible),
-  }).catch(() => {});
+  await refreshPrep(rt, interaction);
 }
 
-async function onPage(rt: BattleRuntime, interaction: ButtonInteraction, direction: "prev" | "next") {
+// Quick Pick: auto-select your strongest (highest-level) eligible card, then
+// leave you on the prep screen to set an item / coin / stake and Ready up.
+async function onQuickPick(rt: BattleRuntime, interaction: ButtonInteraction) {
   const prep = rt.prep.get(interaction.user.id);
   if (!prep) return safeEphemeral(interaction, "You're not part of this battle.");
-  const eligible = await eligibleForUser(rt, interaction.user.id);
-  const totalPages = Math.ceil(eligible.length / PICKER_PAGE_SIZE);
-  const current = prep.page ?? 0;
-  const next = direction === "prev" ? Math.max(0, current - 1) : Math.min(totalPages - 1, current + 1);
-  prep.page = next;
-  await interaction.update({
-    embeds: [buildPersonalPrepEmbed(rt, interaction.user.id)],
-    components: buildPersonalPrepComponents(rt, interaction.user.id, eligible),
-  }).catch(() => {});
+  const eligible = sortForPrep(await eligibleForUser(rt, interaction.user.id));
+  if (eligible.length === 0) return safeEphemeral(interaction, "You have no battle-eligible cards.");
+  prep.cardId = eligible[0]!.id;
+  await refreshPrep(rt, interaction);
 }
 
+// Search by name — opens a modal so a large collection needs no paging.
+async function onSearchOpen(rt: BattleRuntime, interaction: ButtonInteraction) {
+  if (!rt.prep.has(interaction.user.id)) return safeEphemeral(interaction, "You're not part of this battle.");
+  const modal = new ModalBuilder().setCustomId(`battle:psearch:${rt.id}`).setTitle("Search your cards");
+  modal.addComponents(new ActionRowBuilder<TextInputBuilder>().addComponents(
+    new TextInputBuilder().setCustomId("q").setLabel("Card name").setStyle(TextInputStyle.Short)
+      .setRequired(true).setMaxLength(100).setPlaceholder("Type part of a card's name…"),
+  ));
+  await interaction.showModal(modal).catch(() => {});
+}
+
+export async function handleBattlePrepSearchModal(interaction: ModalSubmitInteraction): Promise<void> {
+  const parts = interaction.customId.split(":"); // battle:psearch:<id>
+  const rt = getRuntime(parts[2]);
+  await interaction.deferUpdate().catch(() => {});
+  if (!rt) return void await interaction.followUp({ content: "This battle has ended or expired.", flags: MessageFlags.Ephemeral }).catch(() => {});
+  const prep = rt.prep.get(interaction.user.id);
+  if (!prep) return void await interaction.followUp({ content: "You're not part of this battle.", flags: MessageFlags.Ephemeral }).catch(() => {});
+  const q = interaction.fields.getTextInputValue("q").trim().toLowerCase();
+  const eligible = await eligibleForUser(rt, interaction.user.id);
+  const hit = eligible.find(c => c.name.toLowerCase() === q)
+    ?? eligible.find(c => c.name.toLowerCase().includes(q));
+  if (!hit) {
+    return void await interaction.followUp({
+      content: `No battle-eligible card matching “${q}”. It may be outside this battle's rarity/type rules.`,
+      flags: MessageFlags.Ephemeral,
+    }).catch(() => {});
+  }
+  prep.cardId = hit.id;
+  const view = await renderPersonalPrepView(rt, interaction.user.id);
+  await interaction.editReply(view).catch(() => {});
+}
+
+// Ready → show the private confirm preview (chosen card + full current stats +
+// move/special/item) with a Confirm button before locking in.
 async function onReady(rt: BattleRuntime, interaction: ButtonInteraction) {
+  const prep = rt.prep.get(interaction.user.id);
+  if (!prep) return safeEphemeral(interaction, "You're not part of this battle.");
+  if (!prep.cardId) return safeEphemeral(interaction, "Pick a battle card first.");
+  if (!prep.coin) prep.coin = Math.random() < 0.5 ? "heads" : "tails";
+
+  const eligible = await eligibleForUser(rt, interaction.user.id);
+  const card = eligible.find(c => c.id === prep.cardId);
+  if (!card) return safeEphemeral(interaction, "That card is no longer available — pick another.");
+
+  const stat = prepStatFor(rt, card);
+  const effRarity = (card.config?.rarity as Rarity) || (card.rarity as Rarity);
+  const move = getMoveset(card.config?.moveset ?? inferMoveset(card.cardType, effRarity));
+  const special = getEffectDef(card.config?.specialEffect ?? inferSpecialEffect(card.cardType, effRarity));
+  const item = getBattleItem(prep.itemId, rt.guildId);
+  const img = await renderCardConfirm(
+    stat,
+    move ? { name: move.name, emoji: move.emoji, description: move.description } : null,
+    special ? { name: special.label, emoji: special.emoji, description: special.description } : null,
+    item ? item.name : null,
+    prep.coin,
+  ).catch(() => null);
+
+  const embed = new EmbedBuilder().setColor(stat.rarityColor ?? 0xed4245)
+    .setTitle("Confirm your fighter")
+    .setDescription(`**${card.name}** · ${"★".repeat(stat.star)}${"☆".repeat(5 - stat.star)} · Lv ${stat.level}\nReview your pick, then **Confirm** to lock in.`);
+  const files: AttachmentBuilder[] = [];
+  if (img) { embed.setImage("attachment://prep-confirm.png"); files.push(new AttachmentBuilder(img, { name: "prep-confirm.png" })); }
+
+  const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder().setCustomId(`battle:pconfirm:${rt.id}`).setLabel("Confirm & Ready").setEmoji("⚔️").setStyle(ButtonStyle.Success),
+    new ButtonBuilder().setCustomId(`battle:pback:${rt.id}`).setLabel("Change pick").setStyle(ButtonStyle.Secondary),
+  );
+  await interaction.update({ content: null, embeds: [embed], files, components: [row] }).catch(() => {});
+}
+
+async function onConfirmReady(rt: BattleRuntime, interaction: ButtonInteraction) {
   const prep = rt.prep.get(interaction.user.id);
   if (!prep) return safeEphemeral(interaction, "You're not part of this battle.");
   if (!prep.cardId) return safeEphemeral(interaction, "Pick a battle card first.");
@@ -587,6 +656,7 @@ async function onReady(rt: BattleRuntime, interaction: ButtonInteraction) {
   await interaction.update({
     content: "✅ You're ready! Waiting for the battle to begin…",
     embeds: [buildPersonalPrepEmbed(rt, interaction.user.id)],
+    files: [],
     components: [],
   }).catch(() => {});
 
@@ -599,6 +669,64 @@ async function onReady(rt: BattleRuntime, interaction: ButtonInteraction) {
   if (humans.every(p => p.ready)) {
     await beginCombat(rt);
   }
+}
+
+// ── Prep view (canvas board + controls) ──────────────────────────────────────
+// Highest-level first — the board leads with your 5 strongest, the dropdown
+// carries the top 25, and search covers the long tail.
+function sortForPrep(cards: OwnedBattleCard[]): OwnedBattleCard[] {
+  return [...cards].sort((a, b) => b.level - a.level || b.starRank - a.starRank || b.owned - a.owned || a.name.localeCompare(b.name));
+}
+
+function prepStatFor(rt: BattleRuntime, card: OwnedBattleCard): PrepCardStat {
+  const effRarity = (card.config?.rarity as Rarity) || (card.rarity as Rarity);
+  const s = getScaledStats(card, card.config, rt.settings, card.level, effRarity, card.starRank);
+  return {
+    cardId: card.id,
+    name: card.name,
+    rarity: card.rarity,
+    rarityLabel: card.displayRarity?.label ?? rarityLabel(card.rarity, null, rt.displayMap) ?? card.rarity,
+    rarityColor: rarityColor(card.rarity, null, rt.displayMap) ?? null,
+    imageUrl: card.imageUrl,
+    level: card.level,
+    star: card.starRank,
+    maxLevel: MAX_LEVEL,
+    hp: s.maxHealth, atk: s.attack, def: s.defense, spd: s.speed,
+  };
+}
+
+async function renderPersonalPrepView(
+  rt: BattleRuntime, userId: string,
+): Promise<{ content: string | null; embeds: EmbedBuilder[]; files: AttachmentBuilder[]; components: ActionRowBuilder<any>[] }> {
+  const prep = rt.prep.get(userId);
+  const eligible = sortForPrep(await eligibleForUser(rt, userId));
+  const selectedId = prep?.cardId ?? null;
+
+  // Render (or reuse) the top-5 board PNG. Cache keyed by selected card so only a
+  // change of fighter re-renders the canvas.
+  const key = selectedId ?? 0;
+  if (!prep?.boardImage || prep.boardKey !== key) {
+    const top5 = eligible.slice(0, 5).map(c => prepStatFor(rt, c));
+    const img = await renderPrepBoard(rt.prep.has(userId) ? (userIdName(rt, userId)) : "Fighter", top5, selectedId).catch(() => null);
+    if (prep) { prep.boardImage = img; prep.boardKey = key; }
+  }
+
+  const embed = buildPersonalPrepEmbed(rt, userId);
+  const files: AttachmentBuilder[] = [];
+  if (prep?.boardImage) { embed.setImage("attachment://prep-board.png"); files.push(new AttachmentBuilder(prep.boardImage, { name: "prep-board.png" })); }
+
+  return {
+    content: null,
+    embeds: [embed],
+    files,
+    components: buildPersonalPrepComponents(rt, userId, eligible),
+  };
+}
+
+function userIdName(rt: BattleRuntime, userId: string): string {
+  if (userId === rt.challengerId) return rt.challengerName;
+  if (userId === rt.opponentId) return rt.opponentName;
+  return "Fighter";
 }
 
 // ── Combat start ─────────────────────────────────────────────────────────────
@@ -754,14 +882,32 @@ async function playIntro(rt: BattleRuntime, firstSide: 0 | 1, flip: string) {
     }
   }
 
-  // Coin flip — keep the VS image pinned on top while it resolves.
+  // ── Animated coin toss ───────────────────────────────────────────────────
+  // A short GIF of the coin spinning and landing on the real result, then a
+  // brief matchup preview naming who strikes first — before combat begins.
+  const coinAnim = await renderCoinFlip(flip as "heads" | "tails").catch(() => null);
+  if (coinAnim) {
+    const coinEmbed = new EmbedBuilder()
+      .setColor(0xf1c40f)
+      .setTitle("🪙 Coin toss…")
+      .setImage("attachment://coin.gif");
+    await rt.message.edit({
+      content: null,
+      embeds: [coinEmbed],
+      files: [new AttachmentBuilder(Buffer.from(coinAnim.buffer), { name: "coin.gif" })],
+      components: [],
+    }).catch(() => {});
+    await sleep(Math.max(1500, coinAnim.durationMs));
+  }
+
+  // Result / matchup preview — keep the VS image pinned on top while it resolves.
   const coinTop = vsTop(rt);
   await rt.message.edit({
     embeds: coinTop.embed ? [coinTop.embed, buildCoinFlipEmbed(view(), firstSide, flip)] : [buildCoinFlipEmbed(view(), firstSide, flip)],
     files: coinTop.file ? [coinTop.file] : [],
     components: [],
   }).catch(() => {});
-  await sleep(frameMs(rt));
+  await sleep(Math.max(frameMs(rt), 1400));
 
   rt.log.push(`🔔 Battle begins! ${firstSide === 0 ? "Challenger" : "Opponent"} moves first.`);
   await renderCombat(rt);
@@ -1457,7 +1603,8 @@ function buildPersonalPrepEmbed(rt: BattleRuntime, userId: string): EmbedBuilder
   const itemName = item ? `${item.emoji} ${item.name}` : "None";
   return new EmbedBuilder()
     .setColor(0xfaa61a)
-    .setTitle("Your Battle Prep")
+    .setTitle("🎴 Choose your fighter")
+    .setDescription("Your top-leveled cards are shown below. Pick from the dropdown, **Quick Pick** your strongest, or **Search** by name — then **Ready** up.")
     .addFields(
       { name: "🎴 Card", value: cardName, inline: true },
       { name: "🎒 Battle Item", value: itemName, inline: true },
@@ -1468,28 +1615,28 @@ function buildPersonalPrepEmbed(rt: BattleRuntime, userId: string): EmbedBuilder
     );
 }
 
-const PICKER_PAGE_SIZE = 25;
+// The dropdown carries the top 25 leveled cards; Quick Pick + Search cover the
+// rest, so the picker is never paged.
+const PICKER_MENU_SIZE = 25;
 
 function buildPersonalPrepComponents(
   rt: BattleRuntime, userId: string, eligible: OwnedBattleCard[],
 ): ActionRowBuilder<any>[] {
   const prep = rt.prep.get(userId);
-  const page = prep?.page ?? 0;
-  const totalPages = Math.ceil(eligible.length / PICKER_PAGE_SIZE);
-  const safePage = Math.max(0, Math.min(page, totalPages - 1));
-  const pageCards = eligible.slice(safePage * PICKER_PAGE_SIZE, (safePage + 1) * PICKER_PAGE_SIZE);
+  const menuCards = eligible.slice(0, PICKER_MENU_SIZE);
+  const extra = Math.max(0, eligible.length - menuCards.length);
 
   const cardSelect = new StringSelectMenuBuilder()
     .setCustomId(`battle:pcard:${rt.id}`)
-    .setPlaceholder(`🎴 Choose your battle card (${eligible.length} cards, page ${safePage + 1}/${totalPages || 1})`)
-    .addOptions(pageCards.map(c => {
+    .setPlaceholder(`🎴 Your top ${menuCards.length} cards${extra ? ` · +${extra} more via Search` : ""}`)
+    .addOptions(menuCards.map(c => {
       const display = c.displayRarity;
       const rarityTag = display
         ? `${display.emoji} ${display.label}`
         : rarityLabel(c.rarity, null, rt.displayMap);
       return {
         label: c.name.slice(0, 100),
-        description: `${rarityTag}${c.owned > 1 ? ` · x${c.owned}` : ""}`,
+        description: `Lv ${c.level}${c.starRank > 0 ? ` · ${c.starRank}★` : ""} · ${rarityTag}`.slice(0, 100),
         value: String(c.id),
         default: prep?.cardId === c.id,
       };
@@ -1499,15 +1646,11 @@ function buildPersonalPrepComponents(
     new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(cardSelect),
   ];
 
-  // Pagination row for large collections.
-  if (eligible.length > PICKER_PAGE_SIZE) {
-    rows.push(new ActionRowBuilder<ButtonBuilder>().addComponents(
-      new ButtonBuilder().setCustomId(`battle:ppage:${rt.id}:prev`).setLabel("◀ Prev")
-        .setStyle(ButtonStyle.Secondary).setDisabled(safePage <= 0),
-      new ButtonBuilder().setCustomId(`battle:ppage:${rt.id}:next`).setLabel("Next ▶")
-        .setStyle(ButtonStyle.Secondary).setDisabled(safePage >= totalPages - 1),
-    ));
-  }
+  // Quick Pick (auto-select strongest) + Search by name (modal) — replaces paging.
+  rows.push(new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder().setCustomId(`battle:pquick:${rt.id}`).setLabel("Quick Pick").setEmoji("⚡").setStyle(ButtonStyle.Primary),
+    new ButtonBuilder().setCustomId(`battle:psearch:${rt.id}`).setLabel("Search by Name").setEmoji("🔍").setStyle(ButtonStyle.Secondary),
+  ));
 
   // Battle Item selector (replaces the old special support-card slot). Items are
   // data-driven — this list comes straight from the registry.
