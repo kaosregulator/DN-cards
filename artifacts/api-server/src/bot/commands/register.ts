@@ -179,16 +179,42 @@ function buildLegacyCommands() {
 
     adminCmd("drop", "Force-drop a card — for events and giveaways", s => s
       .addStringOption(o => o.setName("name").setDescription("Card name — leave empty for a random drop from active set").setAutocomplete(true))
-      .addStringOption(o => o.setName("set").setDescription("Pick a specific set to drop from (ignores active set)").setAutocomplete(true))),
+      .addStringOption(o => o.setName("set").setDescription("Pick a specific set to drop from (ignores active set)").setAutocomplete(true))
+      .addIntegerOption(o => o.setName("star").setDescription("Star Rank the caught card arrives at (0-5)").setMinValue(0).setMaxValue(5))
+      .addIntegerOption(o => o.setName("level").setDescription("Level the caught card arrives at (1-100)").setMinValue(1).setMaxValue(100))),
 
     adminCmd("massdrop", "Drop a big batch of cards — mostly low tier with a few bangers", s => s
       .addIntegerOption(o => o.setName("amount").setDescription("How many cards to drop (10-25, default 15)").setMinValue(10).setMaxValue(25))
       .addStringOption(o => o.setName("set").setDescription("Pick a specific set to drop from (ignores active set)").setAutocomplete(true))),
 
+    // Variable card progression — set the DEFAULT Star/Level a card arrives with
+    // per acquisition source (guild-wide), then override specific cards below.
+    adminCmd("progression_default", "Set the default Star/Level cards arrive at when caught/pulled/dropped", s => s
+      .addBooleanOption(o => o.setName("enabled").setDescription("Turn variable progression on/off for this source").setRequired(true))
+      .addStringOption(o => o.setName("source").setDescription("Which acquisition source (default: all)")
+        .addChoices({ name: "All sources", value: "*" }, { name: "Spawn (random)", value: "spawn" }, { name: "Pack", value: "pack" }, { name: "Drop (admin)", value: "drop" }))
+      .addIntegerOption(o => o.setName("star_min").setDescription("Minimum Star Rank (0-5)").setMinValue(0).setMaxValue(5))
+      .addIntegerOption(o => o.setName("star_max").setDescription("Maximum Star Rank (0-5)").setMinValue(0).setMaxValue(5))
+      .addIntegerOption(o => o.setName("level_min").setDescription("Minimum Level (1-100)").setMinValue(1).setMaxValue(100))
+      .addIntegerOption(o => o.setName("level_max").setDescription("Maximum Level (1-100)").setMinValue(1).setMaxValue(100))),
+
+    adminCmd("progression_card", "Override the Star/Level a SPECIFIC card arrives at (the overrides hub)", s => s
+      .addStringOption(o => o.setName("name").setDescription("Card to override").setRequired(true).setAutocomplete(true))
+      .addStringOption(o => o.setName("source").setDescription("Which acquisition source (default: all)")
+        .addChoices({ name: "All sources", value: "*" }, { name: "Spawn (random)", value: "spawn" }, { name: "Pack", value: "pack" }, { name: "Drop (admin)", value: "drop" }))
+      .addBooleanOption(o => o.setName("enabled").setDescription("Enable this override (default true)"))
+      .addIntegerOption(o => o.setName("star_min").setDescription("Minimum Star Rank (0-5)").setMinValue(0).setMaxValue(5))
+      .addIntegerOption(o => o.setName("star_max").setDescription("Maximum Star Rank (0-5)").setMinValue(0).setMaxValue(5))
+      .addIntegerOption(o => o.setName("level_min").setDescription("Minimum Level (1-100)").setMinValue(1).setMaxValue(100))
+      .addIntegerOption(o => o.setName("level_max").setDescription("Maximum Level (1-100)").setMinValue(1).setMaxValue(100))
+      .addBooleanOption(o => o.setName("clear").setDescription("Remove this card's override instead of setting it"))),
+
     adminCmd("give", "Give a card directly to a member", s => s
       .addUserOption(o => o.setName("user").setDescription("Member to receive the card").setRequired(true))
       .addStringOption(o => o.setName("name").setDescription("Card name").setRequired(true).setAutocomplete(true))
-      .addIntegerOption(o => o.setName("amount").setDescription("How many copies to give (default 1, max 100)").setMinValue(1).setMaxValue(100))),
+      .addIntegerOption(o => o.setName("amount").setDescription("How many copies to give (default 1, max 100)").setMinValue(1).setMaxValue(100))
+      .addIntegerOption(o => o.setName("star").setDescription("Star Rank the card arrives at (0-5)").setMinValue(0).setMaxValue(5))
+      .addIntegerOption(o => o.setName("level").setDescription("Level the card arrives at (1-100)").setMinValue(1).setMaxValue(100))),
 
     adminCmd("giveall", "Give one copy of every card to a member — random shiny chance, filter by set or rarity", s => s
       .addUserOption(o => o.setName("user").setDescription("Member to receive the cards").setRequired(true))
@@ -759,4 +785,5 @@ export const ADMIN_HUB_COMMANDS = new Set([
   "battleforceend",
   "rarity", "embed", "event", "edituser", "giveall", "editpack",
   "postcalculator", "massrole",
+  "progression_default", "progression_card",
 ]);
