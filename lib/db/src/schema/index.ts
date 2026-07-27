@@ -7,6 +7,7 @@ export * from "./secret";
 export * from "./quests";
 export * from "./card-progress";
 export * from "./progression";
+export * from "./card-acquisition";
 export * from "./market";
 export * from "./raids";
 export * from "./squads";

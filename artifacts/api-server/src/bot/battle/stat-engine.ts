@@ -144,11 +144,24 @@ export function scaleByLevel(stats: BattleStats, level: number, settings: Battle
 // Star Rank battle bonus: +8% to core stats per star (5★ = +40%), plus a small
 // flat crit/accuracy nudge. Additive on top of level + config scaling. Kept here
 // so the same formula drives combat and any stat preview.
-const STAR_BONUS_PER = 0.08;
+//
+// This is the SINGLE definition of the per-star multiplier. `cards/stars.ts`
+// (previews/tooltips) and the shared progression service both re-export
+// `starStatMultiplier` from here so combat and UI can never drift apart.
+export const STAR_BONUS_PER = 0.08;
+export const MAX_STAR_RANK = 5;
+
+// The core-stat multiplier a given Star Rank applies (1.0 at 0★ … 1.4 at 5★).
+// Used by battle (via applyStarBonus) and by non-combat previews/tooltips.
+export function starStatMultiplier(starRank: number): number {
+  const star = Math.max(0, Math.min(MAX_STAR_RANK, starRank));
+  return 1 + star * STAR_BONUS_PER;
+}
+
 export function applyStarBonus(s: BattleStats, starRank: number): BattleStats {
-  const star = Math.max(0, Math.min(5, starRank));
+  const star = Math.max(0, Math.min(MAX_STAR_RANK, starRank));
   if (star === 0) return s;
-  const m = 1 + star * STAR_BONUS_PER;
+  const m = starStatMultiplier(star);
   return {
     ...s,
     maxHealth: Math.round(s.maxHealth * m),

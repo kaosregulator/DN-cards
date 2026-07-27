@@ -27,6 +27,7 @@ import type { Card, CustomPack, GuildSettings } from "@workspace/db";
 import { renderPackOpening, renderPackCover, renderCardReveal, type RevealStats, type AnimationSpeed } from "../animations/index.js";
 import { getBattleSettings } from "../battle/config-engine.js";
 import { getScaledStats } from "../battle/stat-engine.js";
+import type { CardProgressionGrant } from "../cards/progression.js";
 import type { RenderCard } from "../battle/image/render.js";
 import { scheduleReplyDelete } from "../../lib/temp-message.js";
 
@@ -253,6 +254,15 @@ const REVEAL_FILE = "pack-reveal.png";
 // Pack-opening animation: tries the animated GIF first, then falls back to a
 // sequence of static PNGs if GIF encoding fails or is too large. Always ends
 // on the summary embed so /pack never breaks.
+// A card pulled pre-levelled/fused (variable acquisition) gets a battle-ready
+// tag next to the shiny tag, so a ready-to-use pull reads as special as a shiny.
+function isBattleReady(g: CardProgressionGrant | null | undefined): boolean {
+  return !!g && (g.level > 1 || g.starRank > 0);
+}
+function battleReadyTag(g: CardProgressionGrant | null | undefined): string {
+  return isBattleReady(g) ? ` ⚡ **Lv ${g!.level}${g!.starRank > 0 ? `·${g!.starRank}★` : ""}**` : "";
+}
+
 async function playPackReveal(opts: {
   interaction: PackInteraction;
   guildId: string;
@@ -263,6 +273,7 @@ async function playPackReveal(opts: {
   renderCards: RenderCard[];
   cards: Card[];
   shinies: boolean[];
+  grants?: (CardProgressionGrant | null)[];
   summaryEmbed: EmbedBuilder;
   speed: AnimationSpeed;
 }): Promise<void> {
@@ -298,15 +309,24 @@ async function playPackReveal(opts: {
   try {
     // 2) PNG fallback: Level-1 stats come from the battle stat engine (best-effort).
     const battleSettings = await getBattleSettings(opts.guildId).catch(() => null);
-    const statsFor = (card: Card): RevealStats | null => {
+    // Scale the reveal's stats to each card's granted Star/Level through the
+    // shared get_scaled_stats entry point, so a battle-ready pull previews its
+    // real power (not a hardcoded Level 1).
+    const statsFor = (card: Card, i: number): RevealStats | null => {
       if (!battleSettings) return null;
       try {
-        const s = getScaledStats(card, null, battleSettings, 1);
+        const g = opts.grants?.[i] ?? null;
+        const s = getScaledStats(card, null, battleSettings, g?.level ?? 1, undefined, g?.starRank ?? 0);
         return {
           hp: s.maxHealth, atk: s.attack, def: s.defense, spd: s.speed,
           critChance: Math.round(s.critChance), accuracy: Math.round(s.accuracy),
         };
       } catch { return null; }
+    };
+    const statLabelFor = (i: number): string | undefined => {
+      const g = opts.grants?.[i] ?? null;
+      if (!g || (g.level <= 1 && g.starRank <= 0)) return undefined;
+      return `LV ${g.level}${g.starRank > 0 ? ` · ${g.starRank}★` : ""} · BATTLE STATS`;
     };
 
     // 2a) Cover.
@@ -323,8 +343,8 @@ async function playPackReveal(opts: {
     for (let i = 0; i < opts.renderCards.length; i++) {
       const rc = opts.renderCards[i]!;
       const png = await renderCardReveal({
-        card: rc, stats: statsFor(opts.cards[i]!), shiny: opts.shinies[i] ?? false,
-        index: i + 1, total: opts.renderCards.length,
+        card: rc, stats: statsFor(opts.cards[i]!, i), shiny: opts.shinies[i] ?? false,
+        index: i + 1, total: opts.renderCards.length, statLabel: statLabelFor(i),
       });
       if (!png) continue; // skip a bad frame, keep the sequence going
       const color = rc.rarityColor ?? opts.tierColor;
@@ -346,10 +366,12 @@ async function playPackReveal(opts: {
 async function buildSummaryEmbed(
   tier: PackTier, cards: Card[], shinies: boolean[], spent: number, balanceAfter: number,
   guildId: string | null = null, userId: string | null = null,
+  grants: (CardProgressionGrant | null)[] = [],
 ): Promise<EmbedBuilder> {
   const settings = guildId ? await getOrCreateGuildSettings(guildId) : null;
   const meta = tierMeta(settings, tier);
   const shinyCount = shinies.filter(Boolean).length;
+  const readyCount = grants.filter(isBattleReady).length;
   const last = cards[cards.length - 1]!;
   const [displayMap, ctx] = await Promise.all([
     guildId ? getRarityDisplayOverrides(guildId) : Promise.resolve(null),
@@ -362,15 +384,15 @@ async function buildSummaryEmbed(
     0,
   );
   const embed = new EmbedBuilder()
-    .setTitle(`${meta.emoji} ${meta.label} Pack — ${cards.length} cards${shinyCount > 0 ? ` · ${SHINY_EMOJI} ${shinyName} ×${shinyCount}` : ""}`)
-    .setColor(shinyCount > 0 ? 0xf1c40f : meta.color)
+    .setTitle(`${meta.emoji} ${meta.label} Pack — ${cards.length} cards${shinyCount > 0 ? ` · ${SHINY_EMOJI} ${shinyName} ×${shinyCount}` : ""}${readyCount > 0 ? ` · ⚡ Battle-ready ×${readyCount}` : ""}`)
+    .setColor(shinyCount > 0 || readyCount > 0 ? 0xf1c40f : meta.color)
     .setDescription(
       cards.map((c, i) => {
         const rarity = getCardDisplayRarity(c, ctx, settings, displayMap);
         const shiny = shinies[i];
         const worth = c.worthValue * (shiny ? shinyMultiplier : 1);
         const prefix = shiny ? `${SHINY_EMOJI} ` : "";
-        return `**${i + 1}.** ${rarity.emoji} ${prefix}**${c.name}** — *${rarity.label}* · 💠 ${worth.toLocaleString()}${shiny ? ` *(${shinyMultiplier}×)*` : ""}`;
+        return `**${i + 1}.** ${rarity.emoji} ${prefix}**${c.name}** — *${rarity.label}* · 💠 ${worth.toLocaleString()}${shiny ? ` *(${shinyMultiplier}×)*` : ""}${battleReadyTag(grants[i])}`;
       }).join("\n") +
       `\n\n**Total worth:** 💠 ${totalWorth.toLocaleString()}\n` +
       `Spent: 💠 ${spent.toLocaleString()} · Balance: 💠 ${balanceAfter.toLocaleString()}` +
@@ -710,11 +732,13 @@ export async function handleCustomPack(
 
   // Grant cards — any shortfall (partial or total) triggers a full refund.
   const shinies: boolean[] = [];
+  const grants: (CardProgressionGrant | null)[] = [];
   let granted = 0;
   for (const card of cards) {
     try {
-      const { isShiny } = await catchCard(guildId, userId, card.id);
+      const { isShiny, progression } = await catchCard(guildId, userId, card.id, { acquisitionSource: "pack" });
       shinies.push(isShiny);
+      grants.push(progression);
       granted++;
     } catch {
       break;
@@ -748,15 +772,17 @@ export async function handleCustomPack(
   const shinyMultiplier = getShinyMultiplier(settings);
   const shinyName = getShinyName(settings);
   const shinyCount = shinies.filter(Boolean).length;
+  const readyCount = grants.filter(isBattleReady).length;
   const totalWorth = cards.reduce((s, c, i) => s + c.worthValue * (shinies[i] ? shinyMultiplier : 1), 0);
   const last = cards[cards.length - 1]!;
 
   const embed = new EmbedBuilder()
     .setTitle(
       `🎁 ${pack.name} — ${cards.length} card${cards.length !== 1 ? "s" : ""}` +
-      (shinyCount > 0 ? ` · ${SHINY_EMOJI} ${shinyName} ×${shinyCount}` : ""),
+      (shinyCount > 0 ? ` · ${SHINY_EMOJI} ${shinyName} ×${shinyCount}` : "") +
+      (readyCount > 0 ? ` · ⚡ Battle-ready ×${readyCount}` : ""),
     )
-    .setColor(shinyCount > 0 ? 0xf1c40f : 0x5865f2)
+    .setColor(shinyCount > 0 || readyCount > 0 ? 0xf1c40f : 0x5865f2)
     .setDescription(
       cards
         .map((c, i) => {
@@ -766,7 +792,7 @@ export async function handleCustomPack(
           const prefix = shiny ? `${SHINY_EMOJI} ` : "";
           return (
             `**${i + 1}.** ${rarity.emoji} ${prefix}**${c.name}** — *${rarity.label}* · 💠 ${worth.toLocaleString()}` +
-            (shiny ? ` *(${shinyMultiplier}×)*` : "")
+            (shiny ? ` *(${shinyMultiplier}×)*` : "") + battleReadyTag(grants[i])
           );
         })
         .join("\n") +
@@ -784,7 +810,7 @@ export async function handleCustomPack(
       interaction, guildId,
       tier: pack.name, tierColor: 0x5865f2, tierLabel: pack.name, tierEmoji: pack.emoji ?? "📦",
       renderCards: cards.map(c => cardToRenderCard(c, ctxFresh, displayMap, settings)),
-      cards, shinies, summaryEmbed: embed,
+      cards, shinies, grants, summaryEmbed: embed,
       speed: settings.packAnimationSpeed as AnimationSpeed,
     });
   } else {
@@ -868,10 +894,12 @@ export async function handlePack(interaction: PackInteraction, tierOverride?: st
   let granted = 0;
   let lastError: unknown = null;
   const shinies: boolean[] = [];
+  const grants: (CardProgressionGrant | null)[] = [];
   for (const card of cards) {
     try {
-      const { isShiny } = await catchCard(guildId, userId, card.id);
+      const { isShiny, progression } = await catchCard(guildId, userId, card.id, { acquisitionSource: "pack" });
       shinies.push(isShiny);
+      grants.push(progression);
       granted += 1;
     } catch (err) {
       lastError = err;
@@ -894,14 +922,14 @@ export async function handlePack(interaction: PackInteraction, tierOverride?: st
   const displayMap = settings.packAnimationEnabled
     ? await getRarityDisplayOverrides(guildId)
     : null;
-  const summaryEmbed = await buildSummaryEmbed(tier, cards, shinies, cfg.cost, claim.shardsAfter, guildId, interaction.user.id);
+  const summaryEmbed = await buildSummaryEmbed(tier, cards, shinies, cfg.cost, claim.shardsAfter, guildId, interaction.user.id, grants);
 
   if (settings.packAnimationEnabled) {
     await playPackReveal({
       interaction, guildId,
       tier, tierColor: meta.color, tierLabel: tierLabel(settings, tier), tierEmoji: meta.emoji,
       renderCards: cards.map(c => cardToRenderCard(c, null, displayMap, settings)),
-      cards, shinies, summaryEmbed,
+      cards, shinies, grants, summaryEmbed,
       speed: settings.packAnimationSpeed as AnimationSpeed,
     });
   } else {

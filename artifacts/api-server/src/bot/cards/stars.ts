@@ -30,11 +30,10 @@ export function starRankString(star: number): string {
   return "★".repeat(s) + "☆".repeat(MAX_STAR - s);
 }
 
-// Battle stat multiplier from star rank. +8% per star (5★ = +40%). Battles use
-// their own applyStarBonus; this is kept for previews/tooltips.
-export function starStatMultiplier(star: number): number {
-  return 1 + Math.max(0, Math.min(MAX_STAR, star)) * 0.08;
-}
+// Battle stat multiplier from star rank. +8% per star (5★ = +40%). Re-exported
+// from the battle stat engine so previews/tooltips and combat share ONE formula
+// (see stat-engine.ts starStatMultiplier / applyStarBonus). Do not re-implement.
+export { starStatMultiplier } from "../battle/stat-engine.js";
 
 // Read the owned card's current Star Rank (0 if no progression row yet).
 export async function getStarRank(guildId: string, userId: string, cardId: number): Promise<number> {

@@ -5,7 +5,8 @@ import {
 } from "discord.js";
 import { getScaledStats } from "./battle/stat-engine.js";
 import { getBattleSettings } from "./battle/config-engine.js";
-import { renderCardReveal, type RevealStats } from "./animations/index.js";
+import { renderCardReveal, renderSpawnReveal, type RevealStats } from "./animations/index.js";
+import type { AnimationSpeed } from "./animations/types.js";
 import type { RenderCard } from "./battle/image/render.js";
 import {
   getOrCreateGuildSettings,
@@ -34,7 +35,8 @@ import {
 import { toAbsoluteImageUrl } from "./image-url.js";
 import { applyEmbedOverride } from "./embed-overrides.js";
 import { logger } from "../lib/logger.js";
-import type { Card } from "@workspace/db";
+import type { Card, AcquisitionSource } from "@workspace/db";
+import type { CardProgressionGrant } from "./cards/progression.js";
 
 interface PendingCatch {
   userId: string;
@@ -63,7 +65,20 @@ interface ActiveSpawn {
   // Anti-paste: count wrong guesses and progressively reveal hints.
   failedAttempts: number;
   hintLevel: number;
+  // Filename of the animated reveal GIF attached to the spawn message (or null
+  // when the reveal was disabled / failed and the static card image is used).
+  // Hint edits re-reference this so the reveal survives; the catch/expire edits
+  // clear it via `attachments: []`.
+  revealFile: string | null;
+  // Variable acquisition: which config the catch rolls its Star/Level from
+  // ("spawn" for random autodrops, "drop" for admin /drop), and an optional
+  // explicit Star/Level that overrides the roll (admin /drop star:… level:…).
+  source: AcquisitionSource;
+  forcedProgression: CardProgressionGrant | null;
 }
+
+// Attachment name for the animated spawn reveal GIF.
+const SPAWN_REVEAL_FILE = "spawn-reveal.gif";
 
 // After a spawn is caught, keep its entry around for a short cooldown so
 // late clicks (double-taps, mobile retries, both-mode type+click race) from
@@ -174,6 +189,22 @@ let botClient: Client | null = null;
 
 export function getBotClient(): Client | null { return botClient; }
 
+// True when a spawn stream (identified by its channel) already has a card that
+// is live — sent, not yet caught, and not yet expired. Used to enforce "one
+// active spawn per stream": a scheduled tick will not stack a new card on top of
+// a card players can still catch. Scoped by channelId so the primary and
+// secondary streams are independent, and a caught-but-lingering entry (kept
+// around for late-click handling) does NOT count as live.
+function hasLiveSpawnInChannel(guildId: string, channelId: string): boolean {
+  const gs = activeSpawns.get(guildId);
+  if (!gs) return false;
+  const now = Date.now();
+  for (const s of gs.values()) {
+    if (s.channelId === channelId && !s.caught && s.expiresAt.getTime() > now) return true;
+  }
+  return false;
+}
+
 export function initSpawnManager(client: Client) {
   botClient = client;
 }
@@ -230,6 +261,13 @@ export function clearSpawnTimerSecondary(guildId: string) {
 
 async function doSpawnBatchSecondary(guildId: string) {
   const settings = await getOrCreateGuildSettings(guildId);
+  // One active spawn per stream: don't stack a new card while the previous one
+  // is still catchable in the secondary channel — reschedule and try next tick.
+  if (settings.spawnChannelIdSecondary && hasLiveSpawnInChannel(guildId, settings.spawnChannelIdSecondary)) {
+    logger.debug({ guildId }, "Secondary spawn skipped — a spawn is still active in the channel");
+    scheduleNextSpawnSecondary(guildId);
+    return;
+  }
   let count = settings.cardsPerSpawn;
   if (count === -1) count = Math.floor(Math.random() * 3) + 1;
   if (count < 1) count = 1;
@@ -244,6 +282,16 @@ async function doSpawnBatchSecondary(guildId: string) {
 // ── Spawn batch (timer-triggered, respects cardsPerSpawn) ─────────────────────
 async function doSpawnBatch(guildId: string) {
   const settings = await getOrCreateGuildSettings(guildId);
+  // One active spawn per stream: don't stack a new card while the previous one
+  // is still catchable in the spawn channel. Skipping + rescheduling makes the
+  // spawn timer effectively restart once the active card is caught or expires,
+  // and guarantees a new card never appears on top of a live one (e.g. when the
+  // configured interval is shorter than the catch window).
+  if (settings.spawnChannelId && hasLiveSpawnInChannel(guildId, settings.spawnChannelId)) {
+    logger.debug({ guildId }, "Spawn batch skipped — a spawn is still active in the channel");
+    scheduleNextSpawn(guildId);
+    return;
+  }
   let count = settings.cardsPerSpawn;
   if (count === -1) count = Math.floor(Math.random() * 3) + 1;
   if (count < 1) count = 1;
@@ -257,7 +305,7 @@ async function doSpawnBatch(guildId: string) {
 
 // ── Core single-card spawn (no scheduling) ────────────────────────────────────
 // Pass opts.secondary=true to use the secondary channel + set instead of primary.
-async function doSingleSpawn(guildId: string, forcedCardId?: number, isForced = false, opts?: { secondary?: boolean }): Promise<void> {
+async function doSingleSpawn(guildId: string, forcedCardId?: number, isForced = false, opts?: { secondary?: boolean; progression?: CardProgressionGrant | null }): Promise<void> {
   if (!botClient) return;
   const settings = await getOrCreateGuildSettings(guildId);
   const isSecondary = opts?.secondary ?? false;
@@ -308,12 +356,32 @@ async function doSingleSpawn(guildId: string, forcedCardId?: number, isForced = 
 
   const mode = ((settings as unknown as { catchMode?: string }).catchMode ?? "type") as "type" | "button" | "both";
   const spawnId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-  const embed = await buildSpawnEmbed(card, settings.catchWindowSeconds, mode, guildId, 0);
+
+  // ── Animated reveal ────────────────────────────────────────────────────────
+  // Generated automatically as part of the normal spawn render, reusing the
+  // canvas+gifencoder animation pipeline and `sharp` image processing. Gated on
+  // the same master animation switch as packs, and fully best-effort: a null
+  // buffer just means the spawn shows the plain card image, exactly as before.
+  let revealBuffer: Buffer | null = null;
+  if (settings.packAnimationEnabled !== false) {
+    revealBuffer = await renderSpawnReveal({
+      artUrl: toAbsoluteImageUrl(card.imageUrl),
+      rarity: card.rarity as Rarity,
+      rarityLabel: spawnDisplayRarity.label,
+      rarityColor: spawnDisplayRarity.color,
+      shiny: false, // shiny is rolled at catch time, not known at spawn
+      speed: (settings.packAnimationSpeed as AnimationSpeed) ?? "normal",
+    });
+  }
+  const revealFile = revealBuffer ? SPAWN_REVEAL_FILE : null;
+
+  const embed = await buildSpawnEmbed(card, settings.catchWindowSeconds, mode, guildId, 0, revealFile);
   const spawnLog = await logSpawn(guildId, channelId, card.id, isForced);
   const components = mode === "type" ? [] : [buildClaimRow(guildId, spawnId)];
+  const files = revealBuffer ? [new AttachmentBuilder(revealBuffer, { name: SPAWN_REVEAL_FILE })] : [];
   let message: Message;
   try {
-    message = await channel.send({ embeds: [embed], components });
+    message = await channel.send({ embeds: [embed], components, files });
   } catch (sendErr) {
     logger.warn({ err: sendErr, channelId, guildId }, "Failed to send spawn message — check bot permissions in the spawn channel");
     return;
@@ -364,6 +432,9 @@ async function doSingleSpawn(guildId: string, forcedCardId?: number, isForced = 
     decisionMade: false,
     failedAttempts: 0,
     hintLevel: 0,
+    revealFile,
+    source: isForced ? "drop" : "spawn",
+    forcedProgression: opts?.progression ?? null,
   };
 
   let guildSpawns = activeSpawns.get(guildId);
@@ -393,8 +464,11 @@ async function doSingleSpawn(guildId: string, forcedCardId?: number, isForced = 
               .setFooter({ text: "Better luck on the next spawn \u2728" })
               .setTimestamp(),
           ],
-          // Clear the stale Claim button row so the message reads cleanly.
+          // Clear the stale Claim button row and the reveal GIF attachment so
+          // the message reads cleanly (a retained attachment would show as a
+          // stray image under the "escaped" embed).
           components: [],
+          attachments: [],
         });
       } catch { /* deleted */ }
     }
@@ -402,8 +476,14 @@ async function doSingleSpawn(guildId: string, forcedCardId?: number, isForced = 
 }
 
 // ── Public API: force-drop a specific card (admin use) ────────────────────────
-export async function spawnCard(guildId: string, forcedCardId?: number, isForced = false): Promise<void> {
-  await doSingleSpawn(guildId, forcedCardId, isForced);
+// `progression` lets an admin drop a card that will be caught at an explicit
+// Star Rank / Level (e.g. `/drop … star:3 level:50`); omit to fall back to the
+// guild's configured "drop" acquisition range (or 0★ / Lv 1 if unconfigured).
+export async function spawnCard(
+  guildId: string, forcedCardId?: number, isForced = false,
+  progression?: CardProgressionGrant | null,
+): Promise<void> {
+  await doSingleSpawn(guildId, forcedCardId, isForced, { progression });
 }
 
 // ── Handle catch attempt (typing) ────────────────────────────────────────────
@@ -465,7 +545,9 @@ async function bumpSpawnHints(spawns: ActiveSpawn[], guildId: string): Promise<v
     spawn.hintLevel = newLevel;
     const card = cards.find(c => c.id === spawn.cardId);
     if (!card) continue;
-    const embed = await buildSpawnEmbed(card, settings.catchWindowSeconds, spawn.catchMode, guildId, spawn.hintLevel);
+    // Pass revealFile so the hint edit keeps referencing the reveal GIF (the
+    // attachment persists across edits when `files`/`attachments` are omitted).
+    const embed = await buildSpawnEmbed(card, settings.catchWindowSeconds, spawn.catchMode, guildId, spawn.hintLevel, spawn.revealFile);
     await spawn.message.edit({ embeds: [embed] }).catch(() => { /* deleted / no perms */ });
   }
 }
@@ -492,10 +574,13 @@ export interface CatchDelivery {
 const CATCH_STAT_FILE = "catch.png";
 
 // Build the compact battle-style Stats line + reveal canvas for a caught card,
-// reusing the pack canvas pipeline (renderCardReveal) and the battle stat engine
-// (Level-1 stats). Best-effort — a null canvas just means no image.
+// reusing the pack canvas pipeline (renderCardReveal) and the shared battle stat
+// engine. When the card arrived pre-levelled/fused (`progression`), stats scale
+// through the SAME get_scaled_stats entry point so the preview shows the card's
+// real, battle-ready power. Best-effort — a null canvas just means no image.
 async function buildCatchPreview(
   guildId: string, cardId: number, isShiny: boolean,
+  progression?: { starRank: number; level: number } | null,
 ): Promise<{ statsLine: string | null; canvas: Buffer | null; color: number; rarityLabel: string } | null> {
   try {
     const [cards, ctx, settings, displayMap, battleSettings] = await Promise.all([
@@ -510,18 +595,27 @@ async function buildCatchPreview(
     const display = getCardDisplayRarity(card, ctx, settings, displayMap);
     const color = display.color ?? 0x00b894;
 
+    const level = Math.max(1, progression?.level ?? 1);
+    const starRank = Math.max(0, progression?.starRank ?? 0);
+    const statLabel = (level > 1 || starRank > 0)
+      ? `LV ${level}${starRank > 0 ? ` · ${starRank}★` : ""} · BATTLE STATS`
+      : "LEVEL 1 · BATTLE STATS";
+
     let statsLine: string | null = null;
     let revealStats: RevealStats | null = null;
     if (battleSettings) {
       const s = getScaledStats(
         { id: card.id, name: card.name, rarity: card.rarity, worthValue: card.worthValue, cardType: card.cardType },
-        null, battleSettings, 1,
+        null, battleSettings, level, undefined, starRank,
       );
       revealStats = {
         hp: s.maxHealth, atk: s.attack, def: s.defense, spd: s.speed,
         critChance: Math.round(s.critChance), accuracy: Math.round(s.accuracy),
       };
-      statsLine =
+      const header = (level > 1 || starRank > 0)
+        ? `⚡ **Battle-ready — Lv ${level}${starRank > 0 ? ` · ${starRank}★` : ""}**\n`
+        : "";
+      statsLine = header +
         `❤️ **HP** ${s.maxHealth.toLocaleString()}  ·  ⚔️ **ATK** ${s.attack.toLocaleString()}  ·  🛡️ **DEF** ${s.defense.toLocaleString()}\n` +
         `💨 **SPD** ${s.speed.toLocaleString()}  ·  🎯 **Crit** ${Math.round(s.critChance)}%  ·  🏹 **Acc** ${Math.round(s.accuracy)}%`;
     }
@@ -535,7 +629,7 @@ async function buildCatchPreview(
       cardType: card.cardType,
       artUrl: toAbsoluteImageUrl(card.imageUrl),
     };
-    const canvas = await renderCardReveal({ card: renderCard, stats: revealStats, shiny: isShiny, index: 1, total: 1 });
+    const canvas = await renderCardReveal({ card: renderCard, stats: revealStats, shiny: isShiny, index: 1, total: 1, statLabel });
     return { statsLine, canvas, color, rarityLabel: display.label };
   } catch (err) {
     logger.debug({ err, guildId, cardId }, "buildCatchPreview failed (non-fatal)");
@@ -563,8 +657,13 @@ async function awardSpawn(guildId: string, spawnId: string, userId: string, deli
   if (spawn.resolveTimer) { clearTimeout(spawn.resolveTimer); spawn.resolveTimer = null; }
 
   // Parallel: write collection row + mark spawn log. Both independent DB calls.
-  const [{ isShiny }] = await Promise.all([
-    catchCard(guildId, userId, spawn.cardId),
+  // The catch also rolls variable acquisition progression (Star/Level) for this
+  // spawn's source — or applies an admin-forced Star/Level — through the shared
+  // progression service, writing the same card_progress row battles read.
+  const [{ isShiny, progression }] = await Promise.all([
+    catchCard(guildId, userId, spawn.cardId, spawn.forcedProgression
+      ? { forcedProgression: spawn.forcedProgression }
+      : { acquisitionSource: spawn.source }),
     markCaught(spawn.spawnLogId, userId),
   ]);
 
@@ -597,13 +696,21 @@ async function awardSpawn(guildId: string, spawnId: string, userId: string, deli
     const cardName = rawCard?.name ?? spawn.cardName;
     const shinyBadge = isShiny ? ` ✨` : "";
 
+    // A card that arrives pre-levelled/fused gets a shiny-style flair so pulling
+    // a battle-ready card feels as special as a shiny.
+    const leveled = !!progression && (progression.level > 1 || progression.starRank > 0);
+    const readyBadge = leveled
+      ? `\n⚡ **BATTLE-READY!** Arrived at **Lv ${progression!.level}${progression!.starRank > 0 ? ` · ${progression!.starRank}★` : ""}** — ready to fight!`
+      : "";
+
     // Build the catch card: compact Stats section (replaces the old plain
-    // description) + a reveal canvas, reusing the pack canvas pipeline.
-    const preview = await buildCatchPreview(guildId, spawn.cardId, isShiny);
-    const headline = quipFn(`${cardName}${shinyBadge}`, `<@${userId}>`);
+    // description) + a reveal canvas, reusing the pack canvas pipeline. Stats
+    // scale to the card's granted progression so the preview is battle-accurate.
+    const preview = await buildCatchPreview(guildId, spawn.cardId, isShiny, progression);
+    const headline = quipFn(`${cardName}${shinyBadge}`, `<@${userId}>`) + readyBadge;
 
     const publicEmbed = new EmbedBuilder()
-      .setColor(preview?.color ?? (isShiny ? 0xf1c40f : 0x00b894))
+      .setColor(preview?.color ?? (isShiny || leveled ? 0xf1c40f : 0x00b894))
       .setDescription(
         preview?.statsLine
           ? `${headline}\n\n**📊 Stats**\n${preview.statsLine}`
@@ -630,6 +737,9 @@ async function awardSpawn(guildId: string, spawnId: string, userId: string, deli
     await spawn.message.edit({
       embeds: [publicEmbed],
       components: [],
+      // Drop the spawn-reveal GIF (attachments: []) before attaching the catch
+      // canvas so the caught message never shows a leftover reveal image.
+      attachments: [],
       files: (!canEphemeral && preview?.canvas)
         ? [new AttachmentBuilder(preview.canvas, { name: CATCH_STAT_FILE })]
         : [],
@@ -820,7 +930,7 @@ async function buildClaimedEmbed(
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
-async function buildSpawnEmbed(card: Card, windowSeconds: number, mode: "type" | "button" | "both" = "type", guildId: string | null = null, hintLevel = 0): Promise<EmbedBuilder> {
+async function buildSpawnEmbed(card: Card, windowSeconds: number, mode: "type" | "button" | "both" = "type", guildId: string | null = null, hintLevel = 0, revealFile: string | null = null): Promise<EmbedBuilder> {
   const rarity = card.rarity as Rarity;
   const cardType = card.cardType;
   const settings = guildId ? await getOrCreateGuildSettings(guildId) : null;
@@ -853,7 +963,10 @@ async function buildSpawnEmbed(card: Card, windowSeconds: number, mode: "type" |
     .setTimestamp();
 
   if (card.flavor) embed.setFooter({ text: card.flavor });
-  const defaultImg = toAbsoluteImageUrl(card.imageUrl);
+  // When an animated reveal GIF is attached, route it through the SAME image
+  // pipeline the static card image used, so admin embed overrides (imageMode /
+  // customImageUrl / none) keep working unchanged.
+  const defaultImg = revealFile ? `attachment://${revealFile}` : toAbsoluteImageUrl(card.imageUrl);
   if (defaultImg) embed.setImage(defaultImg);
   await applyEmbedOverride(embed, {
     guildId, key: "spawn", rarity, defaultImageUrl: defaultImg,

@@ -373,6 +373,36 @@ export async function loadArt(mod: CanvasMod, url: string | null | undefined): P
   return promise;
 }
 
+// Raw image bytes for a card art URL, cached alongside the decoded-image cache.
+// Feeds image processors (e.g. sharp for the spawn reveal blur/silhouette) that
+// need the encoded buffer rather than a decoded canvas Image. Reuses the exact
+// object-storage/remote fetch + timeout logic loadArt uses, so it inherits the
+// same hardening. Best-effort: null on any failure.
+const artBufferCache = new Map<string, Promise<Buffer | null>>();
+
+export async function loadArtBuffer(url: string | null | undefined): Promise<Buffer | null> {
+  if (!url) return null;
+  const cached = artBufferCache.get(url);
+  if (cached) return cached;
+
+  const promise = (async (): Promise<Buffer | null> => {
+    const objectPath = extractObjectStoragePath(url);
+    if (objectPath) {
+      const buffer = await loadObjectStorageImage(objectPath);
+      if (buffer) return buffer;
+      // Fall through to the public URL if direct download fails.
+    }
+    return fetchRemoteImage(url);
+  })();
+
+  artBufferCache.set(url, promise);
+  if (artBufferCache.size > ART_CACHE_MAX) {
+    const oldest = artBufferCache.keys().next().value;
+    if (oldest !== undefined) artBufferCache.delete(oldest);
+  }
+  return promise;
+}
+
 export async function drawCardArt(
   ctx: Ctx,
   mod: CanvasMod,
