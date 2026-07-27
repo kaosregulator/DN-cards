@@ -176,7 +176,9 @@ const PAGES: Record<HelpSection, PageFn> = {
           "`/set_hub` — browse every set, see which one is active, and check your completion\n" +
           "Click any set in the panel for full details and progress." },
         { name: `✨ ${shiny} Cards`, value:
-          `Every catch, pack pull, and trade-in has a **0.5%** chance to mint a ${shiny} card — tracked separately and worth more on burn.` },
+          `Every catch, pack pull, and trade-in has a **0.5%** chance to mint a ${shiny} card — tracked separately and worth more on burn. ${shiny} catches & pulls play a **sparkle/shine animation** so you'll know instantly.` },
+        { name: "🎬 Spawn Reveals & Battle-Ready Pulls", value:
+          "Wild cards now **reveal with an animation** (blur, puzzle, or silhouette by rarity — your admins can change the style). Some servers let cards arrive **already levelled/fused** — those show a **⚡ BATTLE-READY** tag, ready to fight straight away." },
       );
   },
 
@@ -230,6 +232,10 @@ const PAGES: Record<HelpSection, PageFn> = {
           "In **Battle Prep** you pick your card, your coin call, and (optionally) stake a card, then **Ready** up.\n" +
           "Your **Battle Profile**, **Battle Achievements**, and battle **Daily** challenges all live in `/user-hub`.\n" +
           "`/battle leaderboard [scope] [sort]` — rankings (guild or global)" },
+        { name: "💪 How Card Power Works", value:
+          "A card's stats = its **Rarity** (the base) × its **Level** (1–100) × its **Star Rank** (0–5★).\n" +
+          "Rarity sets where you start, then leveling (from battles/raids) and fusing to more stars multiply it — so a **maxed low-rarity card can out-punch a fresh high-rarity one**. At the *same* Level & Star, higher rarity always wins.\n" +
+          "Admins can override any card's exact stats and tune how much level matters, so the ceiling is up to your server." },
         { name: "🐉 Co-op Boss Raids", value:
           "`/raid bosses` — list the raid bosses on this server\n" +
           "`/raid start boss:<name>` — open a raid lobby; teammates **Join**, pick a card, and fight a shared-HP boss together\n" +
@@ -318,13 +324,18 @@ const PAGES: Record<HelpSection, PageFn> = {
           "`/config` — visual config panel · `/admin_hub` — admins, timeouts, channels, state\n" +
           "`/dashboard` — DM yourself a website login link · `/admin_help` — full admin reference" },
         { name: "🎁 Drops, Gives & Events", value:
-          "`/drop [name]` · `/mass_drop [amount]`\n" +
-          "`/give` / `takeback` (cards) · `/give_shards` / `takeshards`\n" +
+          "`/drop [name] [star:0-5] [level:1-100]` · `/mass_drop [amount]`\n" +
+          "`/give [star:0-5] [level:1-100]` / `takeback` (cards) · `/give_shards` / `takeshards`\n" +
+          "*star/level make the card arrive pre-fused/levelled (battle-ready).*\n" +
           "`/event start card:<…> duration:<…> [multiplier]` · `/event list` · `/event stop id:<…>`" },
+        { name: "✨ Reveals & Card Progression", value:
+          "`/config → 🎞️ Reveals` — spawn reveal style (**Auto**/Blur/Puzzle/Silhouette/Off) + **shiny catch animation** toggle\n" +
+          "`/progression_default enabled:<…> [source] [star_min/max] [level_min/max]` — default Star/Level cards spawn/pull/drop at\n" +
+          "`/progression_card name:<card> …` — per-card Star/Level override (the overrides hub)" },
         { name: "🗂️ Cards & Sets", value:
           "`/set_hub` — clickable set manager · `/set_admin …` — typed set commands\n" +
           "`!addcard` / `!editcard <Name>` / `!import` — card creation & editing (prefix commands)\n" +
-          "`/rarity …` — rarity names, colors, worth, burn, weights" },
+          "`/rarity …` — names, colors, worth, burn, weights, + **🧾 Order** (your order now drives battle/raid **strength**, not just display)" },
         { name: "🎨 Appearance & Embeds", value:
           "`/embed set key:<embed> field:<field> value:<v>` — customize any embed (incl. **key:help** to rebrand this guide)\n" +
           "`/rarityname …` — rename/recolor the Mythic tier" },
