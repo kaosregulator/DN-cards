@@ -1,6 +1,6 @@
 import type { CustomRarity, GuildSettings, RarityProfile } from "@workspace/db";
 import {
-  RARITY_WEIGHTS,
+  RARITY_WEIGHTS, BUILTIN_RARITIES, getRarityOrder, rarityRank,
   rarityLabel as builtinRarityLabel,
   rarityEmoji as builtinRarityEmoji,
   rarityColor as builtinRarityColor,
@@ -20,7 +20,45 @@ export type RarityContext = {
   customByCard: Map<number, CustomRarity>;
   customBySlug: Map<string, CustomRarity>;
   customs: CustomRarity[];
+  // The guild's built-in rarity order (weakest → strongest), from the /rarity
+  // Order editor. Drives the strength ladder below.
+  order: Rarity[];
+  // THE strength ladder: rarity key ("common" | "custom:slug") → 0-based rank
+  // (0 = weakest). Merges built-ins (in the guild's order) with custom tiers (by
+  // their position), so a custom tier placed above mythic actually ranks above
+  // mythic in battles, raids, and every stat calc. Baked here so any system that
+  // already resolves the rarity context ranks consistently.
+  rankByKey: Map<string, number>;
+  maxRank: number;
 };
+
+// Build the strength ladder (weakest → strongest) merging built-ins (positioned
+// by the guild's order) with custom tiers (by their stored position). Built-in
+// positions are 1..6 in the guild order; a custom tier's `position` slots it
+// relative to that same 1..6 baseline (e.g. 7 = above mythic, 5.5 = between the
+// 5th and 6th tiers).
+export function buildRarityLadder(
+  order: Rarity[], customs: CustomRarity[],
+): { key: string; position: number; isCustom: boolean }[] {
+  const builtins = order.map((r, i) => ({ key: r as string, position: i + 1, isCustom: false }));
+  const cust = customs.map(c => ({ key: `custom:${c.slug}`, position: c.position, isCustom: true }));
+  return [...builtins, ...cust].sort((a, b) => a.position - b.position);
+}
+
+// Rarity key → 0-based strength rank on the guild ladder.
+export function buildRarityRankMap(order: Rarity[], customs: CustomRarity[]): Map<string, number> {
+  const ladder = buildRarityLadder(order, customs);
+  const m = new Map<string, number>();
+  ladder.forEach((e, i) => m.set(e.key, i));
+  return m;
+}
+
+// The strength rank of a rarity key on the guild ladder. Falls back to the
+// canonical built-in rank if the key is somehow unknown (never crashes).
+export function rarityLadderRank(key: string, ctx?: RarityContext | null): number {
+  const r = ctx?.rankByKey.get(key);
+  return r ?? rarityRank(key);
+}
 
 type EconCard = { rarity: string; worthValue: number; burnValue: number; dropWeight: number };
 

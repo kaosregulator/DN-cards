@@ -28,6 +28,7 @@ import { renderPackOpening, renderPackCover, renderCardReveal, renderShinyReveal
 import { getBattleSettings } from "../battle/config-engine.js";
 import { getScaledStats } from "../battle/stat-engine.js";
 import type { CardProgressionGrant } from "../cards/progression.js";
+import { effectiveRarityKey, rarityLadderRank } from "../rarity-runtime.js";
 import type { RenderCard } from "../battle/image/render.js";
 import { scheduleReplyDelete } from "../../lib/temp-message.js";
 
@@ -309,15 +310,20 @@ async function playPackReveal(opts: {
 
   try {
     // 2) PNG fallback: Level-1 stats come from the battle stat engine (best-effort).
-    const battleSettings = await getBattleSettings(opts.guildId).catch(() => null);
+    const [battleSettings, statCtx] = await Promise.all([
+      getBattleSettings(opts.guildId).catch(() => null),
+      getRarityContext(opts.guildId).catch(() => null),
+    ]);
     // Scale the reveal's stats to each card's granted Star/Level through the
     // shared get_scaled_stats entry point, so a battle-ready pull previews its
-    // real power (not a hardcoded Level 1).
+    // real power (not a hardcoded Level 1). Rank on the guild ladder so custom
+    // tiers preview correctly.
     const statsFor = (card: Card, i: number): RevealStats | null => {
       if (!battleSettings) return null;
       try {
         const g = opts.grants?.[i] ?? null;
-        const s = getScaledStats(card, null, battleSettings, g?.level ?? 1, undefined, g?.starRank ?? 0);
+        const rank = rarityLadderRank(statCtx ? effectiveRarityKey(card, statCtx) : card.rarity, statCtx);
+        const s = getScaledStats(card, null, battleSettings, g?.level ?? 1, undefined, g?.starRank ?? 0, rank);
         return {
           hp: s.maxHealth, atk: s.attack, def: s.defense, spd: s.speed,
           critChance: Math.round(s.critChance), accuracy: Math.round(s.accuracy),

@@ -4,6 +4,7 @@ import {
   type Message,
 } from "discord.js";
 import { getScaledStats } from "./battle/stat-engine.js";
+import { effectiveRarityKey, rarityLadderRank } from "./rarity-runtime.js";
 import { getCardProgress } from "./cards/leveling.js";
 import { getBattleSettings } from "./battle/config-engine.js";
 import { renderCardReveal, renderSpawnReveal, renderShinyReveal, type RevealStats, type RevealMode } from "./animations/index.js";
@@ -612,6 +613,7 @@ async function buildCatchPreview(
       const s = getScaledStats(
         { id: card.id, name: card.name, rarity: card.rarity, worthValue: card.worthValue, cardType: card.cardType },
         null, battleSettings, level, undefined, starRank,
+        rarityLadderRank(effectiveRarityKey(card, ctx), ctx),
       );
       revealStats = {
         hp: s.maxHealth, atk: s.attack, def: s.defense, spd: s.speed,

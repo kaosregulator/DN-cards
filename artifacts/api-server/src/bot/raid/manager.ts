@@ -15,6 +15,7 @@ import type { Combatant, MoveType } from "../battle/types.js";
 import type { Rarity } from "../cards-data.js";
 import { getBattleSettings, rarityAllowed } from "../battle/config-engine.js";
 import { getOwnedBattleCards, getOrCreateProfile } from "../battle/db.js";
+import { getRarityContext } from "../db.js";
 import type { OwnedBattleCard } from "../battle/db.js";
 import { bar, WHITE_LINE } from "../battle/embeds.js";
 import { starString } from "../cards/leveling.js";
@@ -382,9 +383,12 @@ async function commenceFight(session: RaidSession): Promise<void> {
   if (session.timer) { clearTimeout(session.timer); session.timer = undefined; }
   session.phase = "fight";
   const party = [...session.party.values()].map(s => s.member);
-  session.bossCombatant = buildBossCombatant(session.boss, session.settings, party);
+  // Guild rarity ladder so raid stats + boss scaling rank custom/reordered tiers
+  // the same way PvP battles do.
+  const rarityCtx = await getRarityContext(session.guildId);
+  session.bossCombatant = buildBossCombatant(session.boss, session.settings, party, rarityCtx);
   for (const slot of session.party.values()) {
-    slot.combatant = buildPlayerCombatant(slot.member, session.settings);
+    slot.combatant = buildPlayerCombatant(slot.member, session.settings, rarityCtx);
   }
 
   // VS arena canvas: boss (prominent) vs the party's cards on the battlefield.

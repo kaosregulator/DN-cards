@@ -12,6 +12,8 @@ import { getBattleCardConfig } from "./db.js";
 import { getScaledStats, powerRating } from "./stat-engine.js";
 import { getMoveset, inferMoveset } from "./movesets.js";
 import { getCardProgress } from "../cards/leveling.js";
+import { getRarityContext } from "../db.js";
+import { effectiveRarityKey, rarityLadderRank } from "../rarity-runtime.js";
 import type { Rarity } from "./types.js";
 
 export interface StatsViewCard {
@@ -63,16 +65,19 @@ export async function buildBattleStatsEmbed(
   card: StatsViewCard,
   effectiveRarity?: Rarity,
 ): Promise<EmbedBuilder> {
-  const [settings, config, progress] = await Promise.all([
+  const [settings, config, progress, ctx] = await Promise.all([
     getBattleSettings(guildId),
     getBattleCardConfig(guildId, card.id),
     getCardProgress(guildId, userId, card.id),
+    getRarityContext(guildId).catch(() => null),
   ]);
   const level = progress?.level ?? 1;
   const rarity = (effectiveRarity ?? (card.rarity as Rarity));
+  // Star Rank + guild strength-ladder rank so this view matches real combat.
+  const rank = rarityLadderRank(config?.rarity ? String(config.rarity) : (ctx ? effectiveRarityKey(card, ctx) : card.rarity), ctx);
   const stats = getScaledStats(
     { id: card.id, name: card.name, rarity: card.rarity as Rarity, worthValue: card.worthValue, cardType: card.cardType },
-    config, settings, level, rarity,
+    config, settings, level, rarity, progress?.starRank ?? 0, rank,
   );
 
   const movesetKey = config?.moveset ?? inferMoveset(card.cardType, rarity);

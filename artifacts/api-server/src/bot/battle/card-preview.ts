@@ -13,6 +13,8 @@ import { getScaledStats } from "./stat-engine.js";
 import { getMoveset, inferMoveset } from "./movesets.js";
 import { getEffectDef, inferSpecialEffect } from "./special-cards.js";
 import { getStarRank } from "../cards/stars.js";
+import { getRarityContext } from "../db.js";
+import { effectiveRarityKey, rarityLadderRank } from "../rarity-runtime.js";
 
 export interface CardBattlePreview {
   starRank: number;
@@ -26,15 +28,18 @@ export async function getCardBattlePreview(
   userId: string,
   card: Pick<Card, "id" | "name" | "rarity" | "worthValue" | "cardType">,
 ): Promise<CardBattlePreview | null> {
-  const [settings, cfg, starRank] = await Promise.all([
+  const [settings, cfg, starRank, ctx] = await Promise.all([
     getBattleSettings(guildId).catch(() => null),
     getBattleCardConfig(guildId, card.id).catch(() => null),
     getStarRank(guildId, userId, card.id).catch(() => 0),
+    getRarityContext(guildId).catch(() => null),
   ]);
   if (!settings) return null;
 
   const battleRarity = (cfg?.rarity as Rarity) || (card.rarity as Rarity);
-  const s = getScaledStats(card, cfg, settings, 1, battleRarity, starRank);
+  // Rank on the guild strength ladder so the preview matches real combat.
+  const rank = rarityLadderRank(cfg?.rarity ? String(cfg.rarity) : (ctx ? effectiveRarityKey(card, ctx) : card.rarity), ctx);
+  const s = getScaledStats(card, cfg, settings, 1, battleRarity, starRank, rank);
   const moveset = getMoveset(cfg?.moveset ?? inferMoveset(card.cardType, battleRarity));
   const special = getEffectDef(cfg?.specialEffect ?? inferSpecialEffect(card.cardType, battleRarity));
 

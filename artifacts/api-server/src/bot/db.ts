@@ -16,7 +16,7 @@ import { eq, and, or, sql, desc, inArray, isNull, type SQL } from "drizzle-orm";
 import { fuzzyFindCard, bumpCardsSearchVersion } from "./search/fuse-service.js";
 import type { Card, CardEvent, CardSet, CalculatorMessage, CustomPack, CustomPackCard, CustomRarity, GuildSettings, RarityProfile, Trade } from "@workspace/db";
 import {
-  DEFAULT_CARDS, SHINY_RATE, SHINY_MULTIPLIER, type Rarity,
+  DEFAULT_CARDS, SHINY_RATE, SHINY_MULTIPLIER, getRarityOrder, type Rarity,
   type RarityDisplayMap,
 } from "./cards-data.js";
 import {
@@ -31,6 +31,7 @@ import {
   isRandomDroppable,
   getEffectiveDropWeight,
   buildDropChanceSummary,
+  buildRarityRankMap,
   type RarityProfileMap,
   type RarityContext,
 } from "./rarity-runtime.js";
@@ -94,10 +95,11 @@ const CTX_TTL_MS = 5_000;
 export async function getRarityContext(guildId: string): Promise<RarityContext> {
   const cached = _ctxCache.get(guildId);
   if (cached && cached.expiresAt > Date.now()) return cached.value;
-  const [profile, customs, overrides] = await Promise.all([
+  const [profile, customs, overrides, settings] = await Promise.all([
     getRarityProfile(guildId),
     db.select().from(customRaritiesTable).where(eq(customRaritiesTable.guildId, guildId)),
     db.select().from(cardRarityOverridesTable).where(eq(cardRarityOverridesTable.guildId, guildId)),
+    getOrCreateGuildSettings(guildId),
   ]);
   const customBySlug = new Map<string, CustomRarity>();
   for (const c of customs) customBySlug.set(c.slug, c);
@@ -107,7 +109,15 @@ export async function getRarityContext(guildId: string): Promise<RarityContext> 
     if (tier) customByCard.set(o.cardId, tier);
   }
   const sorted = [...customs].sort((a, b) => a.position - b.position);
-  const value: RarityContext = { guildId, profile, customByCard, customBySlug, customs: sorted };
+  // Strength ladder (single source of truth for rarity rank): built-ins in the
+  // guild's configured order + custom tiers by position. Baked into the ctx so
+  // battles/raids/stats rank identically.
+  const order = getRarityOrder(settings);
+  const rankByKey = buildRarityRankMap(order, sorted);
+  const value: RarityContext = {
+    guildId, profile, customByCard, customBySlug, customs: sorted,
+    order, rankByKey, maxRank: Math.max(0, rankByKey.size - 1),
+  };
   _ctxCache.set(guildId, { value, expiresAt: Date.now() + CTX_TTL_MS });
   return value;
 }

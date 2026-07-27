@@ -17,9 +17,10 @@ import {
 } from "discord.js";
 import {
   isAdmin, getAllCards, getCardByName, getCardById,
-  getOrCreateGuildSettings, getRarityDisplayOverrides,
+  getOrCreateGuildSettings, getRarityDisplayOverrides, getRarityContext,
   getBattleBackgrounds, setBattleBackground, clearBattleBackground, clearAllBattleBackgrounds,
 } from "../db.js";
+import { effectiveRarityKey, rarityLadderRank } from "../rarity-runtime.js";
 import { persistBotImage } from "./edit-card.js";
 import { getBattleSettings, updateBattleSettings, RARITY_ORDER } from "../battle/config-engine.js";
 import { resetSeason } from "../battle/season-engine.js";
@@ -1284,17 +1285,19 @@ function statInput(id: string, label: string, value: string): ActionRowBuilder<T
 async function buildCardEditorPanel(
   guildId: string, cardId: number,
 ): Promise<{ embeds: EmbedBuilder[]; components: ActionRowBuilder<any>[] } | null> {
-  const [card, cfg, settings, rd] = await Promise.all([
+  const [card, cfg, settings, rd, statCtx] = await Promise.all([
     getCardById(cardId, guildId), getBattleCardConfig(guildId, cardId), getBattleSettings(guildId),
-    rarityDisplay(guildId),
+    rarityDisplay(guildId), getRarityContext(guildId).catch(() => null),
   ]);
   if (!card) return null;
 
   const battleRarity = (cfg?.rarity as Rarity) || (card.rarity as Rarity);
   const cardBase = { id: card.id, name: card.name, rarity: card.rarity as Rarity, worthValue: card.worthValue, cardType: card.cardType };
+  // Rank on the guild strength ladder so the admin preview matches real combat.
+  const rank = rarityLadderRank(cfg?.rarity ? String(cfg.rarity) : (statCtx ? effectiveRarityKey(cardBase, statCtx) : card.rarity), statCtx);
   // Preview at Lv 1 (base) and Lv 100 (max) — stats scale up with the owner's card level in play.
-  const derivedLv1 = getScaledStats(cardBase, cfg ?? null, settings, 1, battleRarity);
-  const derivedLv100 = getScaledStats(cardBase, cfg ?? null, settings, 100, battleRarity);
+  const derivedLv1 = getScaledStats(cardBase, cfg ?? null, settings, 1, battleRarity, 0, rank);
+  const derivedLv100 = getScaledStats(cardBase, cfg ?? null, settings, 100, battleRarity, 0, rank);
   const ov = (label: string, val: number, overridden: boolean) => `${label}: **${val}**${overridden ? " ✏️" : ""}`;
   const effectKey = cfg?.specialEffect ?? inferSpecialEffect(card.cardType, battleRarity);
   const effectDef = getEffectDef(effectKey);

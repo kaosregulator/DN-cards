@@ -60,7 +60,16 @@ import {
 import { formatAchievementLine } from "./achievement-engine.js";
 import { rarityLabel, rarityEmoji, rarityColor, type RarityDisplayMap } from "../cards-data.js";
 import { getRarityContext, getRarityDisplayOverrides } from "../db.js";
-import { getCardDisplayRarity, BUILTIN_POSITIONS, type RarityContext } from "../rarity-runtime.js";
+import { getCardDisplayRarity, BUILTIN_POSITIONS, effectiveRarityKey, rarityLadderRank, type RarityContext } from "../rarity-runtime.js";
+
+// Strength-ladder rank for an owned card's EFFECTIVE rarity: a per-card battle
+// rarity override wins; else the card's custom-tier assignment; else its
+// built-in rarity — all ranked on the guild ladder so custom/reordered tiers
+// scale correctly.
+function ladderRankFor(card: { id: number; rarity: string; config?: { rarity?: string | null } | null }, ctx: RarityContext): number {
+  const key = card.config?.rarity ? String(card.config.rarity) : effectiveRarityKey(card, ctx);
+  return rarityLadderRank(key, ctx);
+}
 import { MAX_LEVEL } from "../cards/leveling.js";
 import {
   renderPrepBoard, renderCardConfirm, renderCoinFlip, type PrepCardStat,
@@ -233,8 +242,8 @@ async function eligibleForUser(rt: BattleRuntime, userId: string): Promise<Owned
   const list = owned
     .filter(c => isCardEligible(rt.settings, c, rt.ctx) && inActiveSet(setIds, c.id))
     .sort((x, y) =>
-      powerRating(getScaledStats(cardish(y), y.config, rt.settings, y.level))
-      - powerRating(getScaledStats(cardish(x), x.config, rt.settings, x.level)));
+      powerRating(getScaledStats(cardish(y), y.config, rt.settings, y.level, undefined, y.starRank, ladderRankFor(y, rt.ctx)))
+      - powerRating(getScaledStats(cardish(x), x.config, rt.settings, x.level, undefined, x.starRank, ladderRankFor(x, rt.ctx))));
   rt.eligibleCache.set(userId, list);
   return list;
 }
@@ -255,7 +264,9 @@ function buildCombatant(
   const battleRarity = (card.config?.rarity as Rarity) || (card.rarity as Rarity);
   const level = levelOverride ?? card.level;
   // Star Rank (Card Recycle) adds a battle stat bonus on top of level scaling.
-  const stats = getScaledStats(cardish(card), card.config, rt.settings, level, battleRarity, card.starRank);
+  // Strength scales by the card's rank on the GUILD rarity ladder, so custom /
+  // reordered tiers are as strong as their ladder position (not the built-in).
+  const stats = getScaledStats(cardish(card), card.config, rt.settings, level, battleRarity, card.starRank, ladderRankFor(card, rt.ctx));
   const moveset = card.config?.moveset ?? inferMoveset(card.cardType, battleRarity);
   // Card-owned move set: every card now carries its OWN Special ability (moved
   // off the old support-card slot, which is freed for Battle Items). Still gated
@@ -680,7 +691,7 @@ function sortForPrep(cards: OwnedBattleCard[]): OwnedBattleCard[] {
 
 function prepStatFor(rt: BattleRuntime, card: OwnedBattleCard): PrepCardStat {
   const effRarity = (card.config?.rarity as Rarity) || (card.rarity as Rarity);
-  const s = getScaledStats(card, card.config, rt.settings, card.level, effRarity, card.starRank);
+  const s = getScaledStats(card, card.config, rt.settings, card.level, effRarity, card.starRank, ladderRankFor(card, rt.ctx));
   return {
     cardId: card.id,
     name: card.name,
