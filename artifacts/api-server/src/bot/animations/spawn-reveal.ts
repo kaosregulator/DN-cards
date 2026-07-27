@@ -219,19 +219,40 @@ export async function renderSpawnReveal(input: SpawnRevealInput): Promise<Buffer
           if (hiddenBase) ctx.drawImage(hiddenBase, PANEL.x, PANEL.y, PANEL.w, PANEL.h);
           const revealed = Math.round(reveal * puzzleTotal);
           const tw = PANEL.w / puzzleCols, th = PANEL.h / puzzleRows;
+          // Reveal each piece by clipping the clear art to its cell, then trace
+          // the piece edge so the puzzle structure reads clearly (freshly-placed
+          // pieces flash a bright white edge — the "snap into place" pop).
           for (let k = 0; k < revealed; k++) {
             const tile = tileOrder[k]!;
             const cx = tile % puzzleCols, cy = Math.floor(tile / puzzleCols);
             const dx = PANEL.x + cx * tw, dy = PANEL.y + cy * th;
             ctx.save();
-            // roundRectPath (radius 0 = plain rect) uses arcTo, which the
-            // restricted Ctx type declares — unlike ctx.rect. Overlap by ~0.6px
-            // so adjacent revealed tiles leave no seam.
-            roundRectPath(ctx, dx, dy, tw + 0.6, th + 0.6, 0);
+            roundRectPath(ctx, dx, dy, tw, th, 3);
             ctx.clip();
             ctx.drawImage(clearImg!, PANEL.x, PANEL.y, PANEL.w, PANEL.h);
             ctx.restore();
+            const fresh = k >= revealed - 2;
+            ctx.save();
+            ctx.lineWidth = fresh ? 2.5 : 1;
+            ctx.strokeStyle = fresh ? "rgba(255,255,255,0.9)" : hexToRgba(color, 0.45);
+            roundRectPath(ctx, dx + 0.75, dy + 0.75, tw - 1.5, th - 1.5, 3);
+            ctx.stroke();
+            ctx.restore();
           }
+          // Faint seams across the whole panel so even the un-revealed area reads
+          // as a grid of puzzle pieces waiting to be filled.
+          ctx.save();
+          ctx.lineWidth = 1;
+          ctx.strokeStyle = "rgba(255,255,255,0.12)";
+          for (let c = 1; c < puzzleCols; c++) {
+            const gx = PANEL.x + c * tw;
+            ctx.beginPath(); ctx.moveTo(gx, PANEL.y); ctx.lineTo(gx, PANEL.y + PANEL.h); ctx.stroke();
+          }
+          for (let r = 1; r < puzzleRows; r++) {
+            const gy = PANEL.y + r * th;
+            ctx.beginPath(); ctx.moveTo(PANEL.x, gy); ctx.lineTo(PANEL.x + PANEL.w, gy); ctx.stroke();
+          }
+          ctx.restore();
         } else {
           // blur / silhouette — pick the stage nearest this progress.
           const usable = stages.filter((s): s is LoadedImage => !!s);
