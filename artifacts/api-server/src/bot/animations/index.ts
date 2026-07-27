@@ -13,7 +13,7 @@ export {
 export type {
   PackCoverInput, CardRevealInput, RevealStats, RevealInfo, AttackFrameInput, AttackScene,
 } from "./reveal.js";
-export { renderSpawnReveal, revealModeForRarity } from "./spawn-reveal.js";
-export type { SpawnRevealInput, RevealMode } from "./spawn-reveal.js";
+export { renderSpawnReveal, renderShinyReveal, revealModeForRarity } from "./spawn-reveal.js";
+export type { SpawnRevealInput, ShinyRevealInput, RevealMode } from "./spawn-reveal.js";
 export type { AnimationSettings, AnimationSpeed, AnimationResult } from "./types.js";
 export type { PackAnimationInput, BattleAnimationInput, VictoryAnimationInput } from "./types.js";

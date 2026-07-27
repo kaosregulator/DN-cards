@@ -24,8 +24,9 @@ import {
   clamp01, easeInOutCubic, type Ctx, type CanvasMod,
 } from "./engine.js";
 import {
-  loadArtBuffer, drawRarityGlow, drawCardFrame, drawRarityBadge,
-  drawFoilOverlay, drawHoloSparkles, drawTextWithShadow, getRarityEffectColor,
+  loadArtBuffer, drawCardArt, drawRarityGlow, drawCardFrame, drawRarityBadge,
+  drawFoilOverlay, drawHoloSparkles, drawShineSweep, drawTitle, drawTextWithShadow,
+  fitText, TITLE_FONT, getRarityEffectColor,
 } from "./effects.js";
 import { logger } from "../../lib/logger.js";
 
@@ -257,6 +258,74 @@ export async function renderSpawnReveal(input: SpawnRevealInput): Promise<Buffer
     return result?.buffer ?? null;
   } catch (err) {
     logger.debug({ err }, "spawn-reveal: encode failed");
+    return null;
+  }
+}
+
+// ── Shiny reveal ─────────────────────────────────────────────────────────────
+// A looping sparkle/shine animation played when a SHINY is caught or pulled, so
+// a shiny is instantly recognisable. Reuses the same canvas+gifencoder pipeline
+// and the existing holo/foil/shine effect helpers. Best-effort → null (caller
+// falls back to the static shiny canvas + ✨ badge).
+export interface ShinyRevealInput {
+  artUrl: string | null | undefined;
+  rarity: Rarity;
+  rarityLabel: string;
+  rarityColor?: number | null;
+  name: string;
+  speed?: AnimationSpeed;
+}
+
+export async function renderShinyReveal(input: ShinyRevealInput): Promise<Buffer | null> {
+  const mod = await getCanvas();
+  if (!mod) return null;
+  // Require the art to be loadable up-front so we don't emit a frame-less card.
+  const probe = await loadArtBuffer(input.artUrl);
+  if (!probe) return null;
+
+  const color = input.rarityColor ?? getRarityEffectColor(input.rarity);
+  const gold = 0xf1c40f;
+  try {
+    const result = await encodeAnimation({
+      width: WIDTH,
+      height: HEIGHT,
+      speed: input.speed ?? "normal",
+      durationMs: 2400,
+      maxFrames: 24,
+      quality: 20,
+      render: async ({ ctx, t, mod: m }) => {
+        // Warm, shiny gold-tinted backdrop.
+        drawGradientBackground(ctx, WIDTH, HEIGHT, [
+          [0, hexToRgba(gold, 0.32)],
+          [0.5, "#141007"],
+          [1, "#0a0803"],
+        ], 0.32);
+        drawTitle(ctx, "✨ SHINY! ✨", WIDTH / 2, 36, "#ffe27a", 26);
+
+        // Pulsing glow behind the card.
+        const pulse = 0.7 + 0.3 * Math.sin(t * Math.PI * 2);
+        drawRarityGlow(ctx, PANEL.x, PANEL.y, PANEL.w, PANEL.h, gold, pulse);
+
+        // Card art + animated holo/foil/shine layered on top.
+        ctx.save();
+        clipPanel(ctx);
+        await drawCardArt(ctx, m, PANEL.x, PANEL.y, PANEL.w, PANEL.h, input.artUrl);
+        drawFoilOverlay(ctx, PANEL.x, PANEL.y, PANEL.w, PANEL.h, t);
+        drawHoloSparkles(ctx, PANEL.x, PANEL.y, PANEL.w, PANEL.h, t, 28);
+        drawShineSweep(ctx, PANEL.x, PANEL.y, PANEL.w, PANEL.h, t, 0xffffff);
+        ctx.restore();
+
+        drawCardFrame(ctx, PANEL.x, PANEL.y, PANEL.w, PANEL.h, gold, 6);
+        drawRarityBadge(ctx, PANEL.x + PANEL.w - 12, PANEL.y + 12, input.rarityLabel, color);
+
+        // Name below the card.
+        const nameY = PANEL.y + PANEL.h + 32;
+        drawTitle(ctx, `✨ ${input.name}`, WIDTH / 2, nameY, "#ffffff", fitText(ctx, `✨ ${input.name}`, WIDTH - 60, 28, 14, TITLE_FONT));
+      },
+    });
+    return result?.buffer ?? null;
+  } catch (err) {
+    logger.debug({ err }, "shiny-reveal: encode failed");
     return null;
   }
 }

@@ -24,7 +24,7 @@ import { applyEmbedOverride } from "../embed-overrides.js";
 import { toAbsoluteImageUrl } from "../image-url.js";
 import { logger } from "../../lib/logger.js";
 import type { Card, CustomPack, GuildSettings } from "@workspace/db";
-import { renderPackOpening, renderPackCover, renderCardReveal, type RevealStats, type AnimationSpeed } from "../animations/index.js";
+import { renderPackOpening, renderPackCover, renderCardReveal, renderShinyReveal, type RevealStats, type AnimationSpeed } from "../animations/index.js";
 import { getBattleSettings } from "../battle/config-engine.js";
 import { getScaledStats } from "../battle/stat-engine.js";
 import type { CardProgressionGrant } from "../cards/progression.js";
@@ -274,6 +274,7 @@ async function playPackReveal(opts: {
   cards: Card[];
   shinies: boolean[];
   grants?: (CardProgressionGrant | null)[];
+  shinyAnimEnabled?: boolean;
   summaryEmbed: EmbedBuilder;
   speed: AnimationSpeed;
 }): Promise<void> {
@@ -339,19 +340,32 @@ async function playPackReveal(opts: {
     await interaction.editReply({ embeds: [coverEmbed], components: [], files: [new AttachmentBuilder(cover, { name: REVEAL_FILE })] });
     await sleep(1100);
 
-    // 2b) Per-card reveals.
+    // 2b) Per-card reveals. A shiny pull plays the animated sparkle/shine reveal
+    // (when enabled) so it reads as special; everything else is the static card.
     for (let i = 0; i < opts.renderCards.length; i++) {
       const rc = opts.renderCards[i]!;
-      const png = await renderCardReveal({
-        card: rc, stats: statsFor(opts.cards[i]!, i), shiny: opts.shinies[i] ?? false,
-        index: i + 1, total: opts.renderCards.length, statLabel: statLabelFor(i),
-      });
-      if (!png) continue; // skip a bad frame, keep the sequence going
+      const shiny = opts.shinies[i] ?? false;
+      let buf: Buffer | null = null;
+      let fname = REVEAL_FILE;
+      if (shiny && opts.shinyAnimEnabled) {
+        buf = await renderShinyReveal({
+          artUrl: rc.artUrl, rarity: rc.rarity, rarityLabel: rc.rarityLabel,
+          rarityColor: rc.rarityColor, name: rc.name, speed: opts.speed,
+        });
+        if (buf) fname = "pack-reveal-shiny.gif";
+      }
+      if (!buf) {
+        buf = await renderCardReveal({
+          card: rc, stats: statsFor(opts.cards[i]!, i), shiny,
+          index: i + 1, total: opts.renderCards.length, statLabel: statLabelFor(i),
+        });
+      }
+      if (!buf) continue; // skip a bad frame, keep the sequence going
       const color = rc.rarityColor ?? opts.tierColor;
       const embed = new EmbedBuilder().setColor(color)
-        .setImage(`attachment://${REVEAL_FILE}`)
+        .setImage(`attachment://${fname}`)
         .setFooter({ text: `Card ${i + 1} of ${opts.renderCards.length}` });
-      await interaction.editReply({ embeds: [embed], components: [], files: [new AttachmentBuilder(png, { name: REVEAL_FILE })] });
+      await interaction.editReply({ embeds: [embed], components: [], files: [new AttachmentBuilder(buf, { name: fname })] });
       await sleep(1300);
     }
   } catch (err) {
@@ -810,7 +824,9 @@ export async function handleCustomPack(
       interaction, guildId,
       tier: pack.name, tierColor: 0x5865f2, tierLabel: pack.name, tierEmoji: pack.emoji ?? "📦",
       renderCards: cards.map(c => cardToRenderCard(c, ctxFresh, displayMap, settings)),
-      cards, shinies, grants, summaryEmbed: embed,
+      cards, shinies, grants,
+      shinyAnimEnabled: (settings as unknown as { shinyAnimationEnabled?: boolean }).shinyAnimationEnabled ?? true,
+      summaryEmbed: embed,
       speed: settings.packAnimationSpeed as AnimationSpeed,
     });
   } else {
@@ -929,7 +945,9 @@ export async function handlePack(interaction: PackInteraction, tierOverride?: st
       interaction, guildId,
       tier, tierColor: meta.color, tierLabel: tierLabel(settings, tier), tierEmoji: meta.emoji,
       renderCards: cards.map(c => cardToRenderCard(c, null, displayMap, settings)),
-      cards, shinies, grants, summaryEmbed,
+      cards, shinies, grants,
+      shinyAnimEnabled: (settings as unknown as { shinyAnimationEnabled?: boolean }).shinyAnimationEnabled ?? true,
+      summaryEmbed,
       speed: settings.packAnimationSpeed as AnimationSpeed,
     });
   } else {

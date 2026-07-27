@@ -4,8 +4,9 @@ import {
   type Message,
 } from "discord.js";
 import { getScaledStats } from "./battle/stat-engine.js";
+import { getCardProgress } from "./cards/leveling.js";
 import { getBattleSettings } from "./battle/config-engine.js";
-import { renderCardReveal, renderSpawnReveal, type RevealStats } from "./animations/index.js";
+import { renderCardReveal, renderSpawnReveal, renderShinyReveal, type RevealStats, type RevealMode } from "./animations/index.js";
 import type { AnimationSpeed } from "./animations/types.js";
 import type { RenderCard } from "./battle/image/render.js";
 import {
@@ -359,17 +360,19 @@ async function doSingleSpawn(guildId: string, forcedCardId?: number, isForced = 
 
   // ── Animated reveal ────────────────────────────────────────────────────────
   // Generated automatically as part of the normal spawn render, reusing the
-  // canvas+gifencoder animation pipeline and `sharp` image processing. Gated on
-  // the same master animation switch as packs, and fully best-effort: a null
-  // buffer just means the spawn shows the plain card image, exactly as before.
+  // canvas+gifencoder animation pipeline and `sharp` image processing. The style
+  // is the admin's `spawnRevealMode` (auto = by rarity, our method), and "off"
+  // skips it. Fully best-effort: a null buffer just shows the plain card image.
+  const revealMode = (settings as unknown as { spawnRevealMode?: string }).spawnRevealMode ?? "auto";
   let revealBuffer: Buffer | null = null;
-  if (settings.packAnimationEnabled !== false) {
+  if (revealMode !== "off") {
     revealBuffer = await renderSpawnReveal({
       artUrl: toAbsoluteImageUrl(card.imageUrl),
       rarity: card.rarity as Rarity,
       rarityLabel: spawnDisplayRarity.label,
       rarityColor: spawnDisplayRarity.color,
       shiny: false, // shiny is rolled at catch time, not known at spawn
+      mode: revealMode === "auto" ? undefined : (revealMode as RevealMode),
       speed: (settings.packAnimationSpeed as AnimationSpeed) ?? "normal",
     });
   }
@@ -572,31 +575,33 @@ export interface CatchDelivery {
 }
 
 const CATCH_STAT_FILE = "catch.png";
+const CATCH_SHINY_FILE = "catch-shiny.gif";
 
 // Build the compact battle-style Stats line + reveal canvas for a caught card,
 // reusing the pack canvas pipeline (renderCardReveal) and the shared battle stat
-// engine. When the card arrived pre-levelled/fused (`progression`), stats scale
-// through the SAME get_scaled_stats entry point so the preview shows the card's
-// real, battle-ready power. Best-effort — a null canvas just means no image.
+// engine. Stats reflect the catcher's ACTUAL current Level/Star for this card
+// (read from the same card_progress row battles use, after any acquisition grant
+// is applied) — so catching a levelled/fused card shows its real power, not a
+// hardcoded Level 1. Best-effort — a null canvas just means no image.
 async function buildCatchPreview(
-  guildId: string, cardId: number, isShiny: boolean,
-  progression?: { starRank: number; level: number } | null,
-): Promise<{ statsLine: string | null; canvas: Buffer | null; color: number; rarityLabel: string } | null> {
+  guildId: string, userId: string, cardId: number, isShiny: boolean,
+): Promise<{ statsLine: string | null; canvas: Buffer | null; fileName: string; color: number; rarityLabel: string } | null> {
   try {
-    const [cards, ctx, settings, displayMap, battleSettings] = await Promise.all([
+    const [cards, ctx, settings, displayMap, battleSettings, progress] = await Promise.all([
       getAllCardsCached(guildId),
       getRarityContext(guildId),
       getOrCreateGuildSettings(guildId),
       getRarityDisplayOverrides(guildId),
       getBattleSettings(guildId).catch(() => null),
+      getCardProgress(guildId, userId, cardId).catch(() => null),
     ]);
     const card = cards.find(c => c.id === cardId);
     if (!card) return null;
     const display = getCardDisplayRarity(card, ctx, settings, displayMap);
     const color = display.color ?? 0x00b894;
 
-    const level = Math.max(1, progression?.level ?? 1);
-    const starRank = Math.max(0, progression?.starRank ?? 0);
+    const level = Math.max(1, progress?.level ?? 1);
+    const starRank = Math.max(0, progress?.starRank ?? 0);
     const statLabel = (level > 1 || starRank > 0)
       ? `LV ${level}${starRank > 0 ? ` · ${starRank}★` : ""} · BATTLE STATS`
       : "LEVEL 1 · BATTLE STATS";
@@ -629,8 +634,24 @@ async function buildCatchPreview(
       cardType: card.cardType,
       artUrl: toAbsoluteImageUrl(card.imageUrl),
     };
-    const canvas = await renderCardReveal({ card: renderCard, stats: revealStats, shiny: isShiny, index: 1, total: 1, statLabel });
-    return { statsLine, canvas, color, rarityLabel: display.label };
+    // Shiny catch: play the animated sparkle/shine reveal (if enabled) so a
+    // shiny is instantly recognisable; otherwise the static card canvas. Either
+    // is best-effort — a null canvas just means no image on the catch embed.
+    const shinyAnimEnabled = (settings as unknown as { shinyAnimationEnabled?: boolean }).shinyAnimationEnabled ?? true;
+    const speed = (settings.packAnimationSpeed as AnimationSpeed) ?? "normal";
+    let canvas: Buffer | null = null;
+    let fileName = CATCH_STAT_FILE;
+    if (isShiny && shinyAnimEnabled) {
+      canvas = await renderShinyReveal({
+        artUrl: renderCard.artUrl, rarity: renderCard.rarity, rarityLabel: display.label,
+        rarityColor: display.color, name: card.name, speed,
+      });
+      if (canvas) fileName = CATCH_SHINY_FILE;
+    }
+    if (!canvas) {
+      canvas = await renderCardReveal({ card: renderCard, stats: revealStats, shiny: isShiny, index: 1, total: 1, statLabel });
+    }
+    return { statsLine, canvas, fileName, color, rarityLabel: display.label };
   } catch (err) {
     logger.debug({ err, guildId, cardId }, "buildCatchPreview failed (non-fatal)");
     return null;
@@ -705,8 +726,9 @@ async function awardSpawn(guildId: string, spawnId: string, userId: string, deli
 
     // Build the catch card: compact Stats section (replaces the old plain
     // description) + a reveal canvas, reusing the pack canvas pipeline. Stats
-    // scale to the card's granted progression so the preview is battle-accurate.
-    const preview = await buildCatchPreview(guildId, spawn.cardId, isShiny, progression);
+    // reflect the catcher's real current Level/Star for this card so the preview
+    // is battle-accurate (a levelled card no longer shows Level 1).
+    const preview = await buildCatchPreview(guildId, userId, spawn.cardId, isShiny);
     const headline = quipFn(`${cardName}${shinyBadge}`, `<@${userId}>`) + readyBadge;
 
     const publicEmbed = new EmbedBuilder()
@@ -719,19 +741,20 @@ async function awardSpawn(guildId: string, spawnId: string, userId: string, deli
 
     // Deliver the canvas privately (button catch) when we can; otherwise ride
     // the public confirmation with it.
+    const catchFile = preview?.fileName ?? CATCH_STAT_FILE;
     const canEphemeral = !!(delivery?.sendEphemeral && preview?.canvas);
     if (canEphemeral) {
       const privEmbed = new EmbedBuilder()
         .setColor(preview!.color)
         .setTitle(`✅ Caught ${cardName}${shinyBadge}!`)
-        .setImage(`attachment://${CATCH_STAT_FILE}`);
+        .setImage(`attachment://${catchFile}`);
       if (preview!.statsLine) privEmbed.setDescription(`**📊 Stats**\n${preview!.statsLine}`);
       await delivery!.sendEphemeral!({
         embeds: [privEmbed],
-        files: [new AttachmentBuilder(preview!.canvas!, { name: CATCH_STAT_FILE })],
+        files: [new AttachmentBuilder(preview!.canvas!, { name: catchFile })],
       }).catch(() => { /* ephemeral is best-effort */ });
     } else if (preview?.canvas) {
-      publicEmbed.setImage(`attachment://${CATCH_STAT_FILE}`);
+      publicEmbed.setImage(`attachment://${catchFile}`);
     }
 
     await spawn.message.edit({
@@ -741,7 +764,7 @@ async function awardSpawn(guildId: string, spawnId: string, userId: string, deli
       // canvas so the caught message never shows a leftover reveal image.
       attachments: [],
       files: (!canEphemeral && preview?.canvas)
-        ? [new AttachmentBuilder(preview.canvas, { name: CATCH_STAT_FILE })]
+        ? [new AttachmentBuilder(preview.canvas, { name: catchFile })]
         : [],
     });
     // Fun ephemeral message — vanishes after a few seconds so the channel stays clean.
