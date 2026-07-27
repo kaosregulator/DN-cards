@@ -82,7 +82,13 @@ export function buildPlayerCombatant(
     id: member.card.id, name: member.card.name, rarity: member.card.rarity,
     worthValue: member.card.worthValue, cardType: member.card.cardType,
   };
-  const stats = getScaledStats(cardish, member.card.config, settings, member.card.level ?? 1, battleRarity);
+  // Star Rank scales raid stats via the SAME get_scaled_stats entry point that
+  // PvP battles use — raids previously dropped the star bonus (no 6th arg), so a
+  // fused 5★ card fought raids at 0★ power. Now battles + raids stay in sync.
+  const stats = getScaledStats(
+    cardish, member.card.config, settings, member.cardLevel ?? member.card.level ?? 1,
+    battleRarity, member.cardStars ?? member.card.starRank ?? 0,
+  );
   return {
     userId: member.userId, displayName: member.displayName, isAi: false, side: 0,
     cardId: member.card.id, cardName: member.card.name, cardRarity: battleRarity,

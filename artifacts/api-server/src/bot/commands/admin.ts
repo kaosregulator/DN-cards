@@ -6,6 +6,10 @@ import {
 } from "../db.js";
 import { isHomeGuild, GLOBAL_ONLY_MSG } from "../home-guild.js";
 import { spawnCard, scheduleNextSpawn } from "../spawn-manager.js";
+import {
+  setGuildAcquisitionConfig, setCardAcquisitionOverride, deleteCardAcquisitionOverride,
+} from "../cards/progression.js";
+import type { AcquisitionSource } from "@workspace/db";
 import { RARITY_EMOJI, RARITY_LABELS, type Rarity, rarityLabel, rarityEmoji } from "../cards-data.js";
 import { getRarityDisplayOverrides } from "../db.js";
 import { logger } from "../../lib/logger.js";
@@ -318,6 +322,16 @@ export async function handleAdminCommand(
   if (cmd === "drop") {
     const cardName = opts.getString("name");
     const setName = opts.getString("set");
+    // Optional explicit Star/Level: the caught card will arrive at this exact
+    // progression (variable acquisition), overriding the guild's rolled range.
+    const starOpt = opts.getInteger("star");
+    const levelOpt = opts.getInteger("level");
+    const forcedProgression = (starOpt != null || levelOpt != null)
+      ? { starRank: starOpt ?? 0, level: levelOpt ?? 1 }
+      : null;
+    const progressionNote = forcedProgression
+      ? ` — arrives at **Lv ${forcedProgression.level}${forcedProgression.starRank > 0 ? ` · ${forcedProgression.starRank}★` : ""}**`
+      : "";
     const settings = await getOrCreateGuildSettings(guildId);
     if (!settings.spawnChannelId) {
       const pfx = settings.commandPrefix;
@@ -342,14 +356,65 @@ export async function handleAdminCommand(
       if (pool.length === 0) { await interaction.editReply(`❌ No droppable cards in set \`${setName}\`.`); return; }
       const pick = pool[Math.floor(Math.random() * pool.length)];
       forcedCardId = pick!.id;
-      await spawnCard(guildId, forcedCardId, true);
-      await interaction.editReply(`✅ Dropped **${pick!.name}** from set \`${set.name}\`!`);
+      await spawnCard(guildId, forcedCardId, true, forcedProgression);
+      await interaction.editReply(`✅ Dropped **${pick!.name}** from set \`${set.name}\`!${progressionNote}`);
       scheduleNextSpawn(guildId);
       return;
     }
-    await spawnCard(guildId, forcedCardId, true);
-    await interaction.editReply(forcedCardId ? `✅ Force-dropped **${cardName}**!` : "✅ Dropped a random card!");
+    await spawnCard(guildId, forcedCardId, true, forcedProgression);
+    await interaction.editReply((forcedCardId ? `✅ Force-dropped **${cardName}**!` : "✅ Dropped a random card!") + progressionNote);
     scheduleNextSpawn(guildId);
+    return;
+  }
+
+  // ── /progression_default — guild-wide default Star/Level on acquisition ──────
+  if (cmd === "progression_default") {
+    const source = (opts.getString("source") ?? "*") as AcquisitionSource | "*";
+    const enabled = opts.getBoolean("enabled", true);
+    const starMin = opts.getInteger("star_min") ?? 0;
+    const starMax = opts.getInteger("star_max") ?? starMin;
+    const levelMin = opts.getInteger("level_min") ?? 1;
+    const levelMax = opts.getInteger("level_max") ?? levelMin;
+    await setGuildAcquisitionConfig(guildId, source, { enabled, starMin, starMax, levelMin, levelMax }, interaction.user.id);
+    const label = source === "*" ? "all sources" : source;
+    const sLo = Math.min(starMin, starMax), sHi = Math.max(starMin, starMax);
+    const lLo = Math.min(levelMin, levelMax), lHi = Math.max(levelMin, levelMax);
+    await interaction.editReply(
+      enabled
+        ? `✅ Default progression for **${label}**: cards arrive at **★ ${sLo}–${sHi}** · **Lv ${lLo}–${lHi}** (rolled per card). Use \`/progression_card\` to override specific cards.`
+        : `✅ Variable progression **disabled** for **${label}** — cards arrive at 0★ / Lv 1.`,
+    );
+    return;
+  }
+
+  // ── /progression_card — per-card override (the overrides hub) ────────────────
+  if (cmd === "progression_card") {
+    const cardName = opts.getString("name", true);
+    const cards = await getAllCards(guildId);
+    const card = cards.find(c => c.name.toLowerCase() === cardName.toLowerCase());
+    if (!card) { await interaction.editReply(`❌ Card "**${cardName}**" not found. Try \`/list\`.`); return; }
+    const source = (opts.getString("source") ?? "*") as AcquisitionSource | "*";
+    const label = source === "*" ? "all sources" : source;
+    if (opts.getBoolean("clear")) {
+      const removed = await deleteCardAcquisitionOverride(guildId, card.id, source);
+      await interaction.editReply(removed
+        ? `🗑️ Cleared **${card.name}**'s progression override (${label}).`
+        : `ℹ️ No progression override existed for **${card.name}** (${label}).`);
+      return;
+    }
+    const enabled = opts.getBoolean("enabled") ?? true;
+    const starMin = opts.getInteger("star_min") ?? 0;
+    const starMax = opts.getInteger("star_max") ?? starMin;
+    const levelMin = opts.getInteger("level_min") ?? 1;
+    const levelMax = opts.getInteger("level_max") ?? levelMin;
+    await setCardAcquisitionOverride(guildId, card.id, source, { enabled, starMin, starMax, levelMin, levelMax }, interaction.user.id);
+    const sLo = Math.min(starMin, starMax), sHi = Math.max(starMin, starMax);
+    const lLo = Math.min(levelMin, levelMax), lHi = Math.max(levelMin, levelMax);
+    await interaction.editReply(
+      enabled
+        ? `✅ **${card.name}** override (${label}): arrives at **★ ${sLo}–${sHi}** · **Lv ${lLo}–${lHi}**.`
+        : `✅ **${card.name}** override (${label}) set to **disabled** — arrives at 0★ / Lv 1.`,
+    );
     return;
   }
 
@@ -447,20 +512,30 @@ export async function handleAdminCommand(
     const target = opts.getUser("user", true);
     const cardName = opts.getString("name", true);
     const amount = opts.getInteger("amount") ?? 1;
+    // Optional explicit Star/Level: give the card pre-levelled/fused. Applied
+    // through the shared progression service (same card_progress row battles use).
+    const starOpt = opts.getInteger("star");
+    const levelOpt = opts.getInteger("level");
+    const forcedProgression = (starOpt != null || levelOpt != null)
+      ? { starRank: starOpt ?? 0, level: levelOpt ?? 1 }
+      : undefined;
     const cards = await getAllCards(guildId);
     const card = cards.find(c => c.name.toLowerCase() === cardName.toLowerCase());
     if (!card) { await interaction.editReply(`❌ Card "**${cardName}**" not found.`); return; }
     // Admin gives are deterministic — no shiny roll. Use /event or normal
     // drops if you want shiny chances.
     for (let i = 0; i < amount; i++) {
-      await catchCard(guildId, target.id, card.id, { noShiny: true });
+      await catchCard(guildId, target.id, card.id, { noShiny: true, forcedProgression });
     }
     const r = card.rarity as Rarity;
     const displayMap = await getRarityDisplayOverrides(guildId);
     const rLabel = rarityLabel(r, null, displayMap);
     const rEmoji = rarityEmoji(r, null, displayMap);
     const suffix = amount > 1 ? ` ×${amount}` : "";
-    await interaction.editReply(`✅ Gave **${card.name}**${suffix} (${rEmoji} ${rLabel}) to <@${target.id}>.`);
+    const progNote = forcedProgression
+      ? ` — at **Lv ${forcedProgression.level}${forcedProgression.starRank > 0 ? ` · ${forcedProgression.starRank}★` : ""}**`
+      : "";
+    await interaction.editReply(`✅ Gave **${card.name}**${suffix} (${rEmoji} ${rLabel}) to <@${target.id}>.${progNote}`);
     return;
   }
 

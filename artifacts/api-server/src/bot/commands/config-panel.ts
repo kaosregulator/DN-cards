@@ -93,6 +93,10 @@ export async function handleConfigSelect(interaction: StringSelectMenuInteractio
     if (["slow", "normal", "fast"].includes(speed)) {
       patch.packAnimationSpeed = speed;
     }
+  } else if (action === "config_reveal_mode") {
+    if (["auto", "blur", "puzzle", "silhouette", "off"].includes(value!)) {
+      (patch as Record<string, string>).spawnRevealMode = value!;
+    }
   } else if (action === "config_recycle_scrap_mult") {
     patch.recycleScrapMultiplier = parseInt(value!, 10);
   } else if (action === "config_recycle_copies") {
@@ -108,6 +112,12 @@ export async function handleConfigSelect(interaction: StringSelectMenuInteractio
   if (action === "config_recycle_scrap_mult" || action === "config_recycle_copies" || action === "config_recycle_overflow") {
     const displayMap = await getRarityDisplayOverrides(guildId);
     await interaction.editReply({ embeds: [buildRecycleEmbed(settings, displayMap)], components: buildRecycleComponents(settings) });
+    return;
+  }
+  // Reveal-style + pack-speed selects live on the Animation & Reveals sub-panel,
+  // so re-render that panel instead of bouncing back to the main config panel.
+  if (action === "config_reveal_mode" || action === "config_anim_speed") {
+    await interaction.editReply({ embeds: [buildAnimationEmbed(settings)], components: buildAnimationComponents(settings) });
     return;
   }
   await refreshPanel(interaction, settings);
@@ -186,9 +196,19 @@ export async function handleConfigButton(interaction: ButtonInteraction): Promis
   } else if (action === "toggle" && arg === "trade") {
     const s = await getOrCreateGuildSettings(guildId);
     await updateGuildSettings(guildId, { tradeEnabled: !s.tradeEnabled });
-  } else if (action === "toggle" && arg === "packanim") {
+  } else if (action === "toggle" && (arg === "packanim" || arg === "shinyanim")) {
     const s = await getOrCreateGuildSettings(guildId);
-    await updateGuildSettings(guildId, { packAnimationEnabled: !s.packAnimationEnabled });
+    if (arg === "packanim") {
+      await updateGuildSettings(guildId, { packAnimationEnabled: !s.packAnimationEnabled });
+    } else {
+      await updateGuildSettings(guildId, {
+        shinyAnimationEnabled: !((s as unknown as { shinyAnimationEnabled?: boolean }).shinyAnimationEnabled ?? true),
+      } as Partial<GuildSettings>);
+    }
+    // Stay on the Animation & Reveals sub-panel after toggling.
+    const fresh = await getOrCreateGuildSettings(guildId);
+    await interaction.editReply({ embeds: [buildAnimationEmbed(fresh)], components: buildAnimationComponents(fresh) });
+    return;
   } else if (action === "channel" && arg === "spawn") {
     await updateGuildSettings(guildId, { spawnChannelId: interaction.channelId });
     scheduleNextSpawn(guildId);
@@ -636,6 +656,10 @@ function buildConfigComponents(s: GuildSettings, displayMap?: RarityDisplayMap |
       .setCustomId("config:channel:trade")
       .setLabel("💬 Trade here")
       .setStyle(ButtonStyle.Primary),
+    new ButtonBuilder()
+      .setCustomId("config:anim:open")
+      .setLabel("🎞️ Reveals")
+      .setStyle(ButtonStyle.Secondary),
   );
   const subPanelRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder()
@@ -671,17 +695,47 @@ function buildConfigComponents(s: GuildSettings, displayMap?: RarityDisplayMap |
 
 // ── Animation sub-panel ─────────────────────────────────────────────────────
 
+const REVEAL_MODE_LABELS: Record<string, string> = {
+  auto: "Auto (by rarity — our method)",
+  blur: "Blur (Easy)",
+  puzzle: "Puzzle (Medium)",
+  silhouette: "Silhouette (Hard)",
+  off: "Off (plain image)",
+};
+
+function revealModeOf(s: GuildSettings): string {
+  return (s as unknown as { spawnRevealMode?: string }).spawnRevealMode ?? "auto";
+}
+function shinyAnimOf(s: GuildSettings): boolean {
+  return (s as unknown as { shinyAnimationEnabled?: boolean }).shinyAnimationEnabled ?? true;
+}
+
 function buildAnimationEmbed(s: GuildSettings): EmbedBuilder {
+  const revealMode = revealModeOf(s);
   return new EmbedBuilder()
-    .setTitle("🎞️ Pack Animation Settings")
+    .setTitle("🎞️ Animation & Reveal Settings")
     .setColor(0x5865f2)
     .setDescription(
-      "Pack openings use lightweight PNG reveal frames. " +
-      "Admins can toggle them off or change the speed to save CPU/bandwidth."
+      "**Spawn Reveal** picks how a card's art appears when it spawns — the same way " +
+      "**Catch Mode** picks how it's caught. **Auto** uses our method (Blur for low " +
+      "rarities → Puzzle → Silhouette for the rarest). You can also force one style, or " +
+      "turn it off.\n\n" +
+      "**Shiny Animation** plays a sparkle/shine effect on shiny catches & pulls. " +
+      "**Pack Animation** governs the pack-opening reveal frames.",
     )
     .addFields(
       {
-        name: "🎴 Pack Animations",
+        name: "✨ Spawn Reveal",
+        value: revealMode === "off" ? "🔴 OFF" : `🟢 ${REVEAL_MODE_LABELS[revealMode] ?? revealMode}`,
+        inline: true,
+      },
+      {
+        name: "🌟 Shiny Animation",
+        value: shinyAnimOf(s) ? "🟢 ON" : "🔴 OFF",
+        inline: true,
+      },
+      {
+        name: "🎴 Pack Animation",
         value: s.packAnimationEnabled ? `🟢 ON · ${s.packAnimationSpeed}` : "🔴 OFF",
         inline: true,
       },
@@ -689,7 +743,24 @@ function buildAnimationEmbed(s: GuildSettings): EmbedBuilder {
 }
 
 function buildAnimationComponents(s: GuildSettings) {
+  const revealMode = revealModeOf(s);
+  const revealRow = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
+    new StringSelectMenuBuilder()
+      .setCustomId("config_reveal_mode")
+      .setPlaceholder("✨ Spawn reveal style")
+      .addOptions([
+        { label: "Auto — by rarity (our method)", value: "auto", emoji: "🎲", default: revealMode === "auto" },
+        { label: "Blur (Easy)", value: "blur", emoji: "🌫️", default: revealMode === "blur" },
+        { label: "Puzzle (Medium)", value: "puzzle", emoji: "🧩", default: revealMode === "puzzle" },
+        { label: "Silhouette (Hard)", value: "silhouette", emoji: "🌑", default: revealMode === "silhouette" },
+        { label: "Off — plain image", value: "off", emoji: "🚫", default: revealMode === "off" },
+      ]),
+  );
   const toggleRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder()
+      .setCustomId("config:toggle:shinyanim")
+      .setLabel(shinyAnimOf(s) ? "🌟 Shiny Anim ON" : "🌟 Shiny Anim OFF")
+      .setStyle(ButtonStyle.Secondary),
     new ButtonBuilder()
       .setCustomId("config:toggle:packanim")
       .setLabel(s.packAnimationEnabled ? "🎴 Pack Anim ON" : "🎴 Pack Anim OFF")
@@ -708,7 +779,7 @@ function buildAnimationComponents(s: GuildSettings) {
   const backRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder().setCustomId("config:anim:back").setLabel("← Back").setStyle(ButtonStyle.Secondary),
   );
-  return [toggleRow, speedRow, backRow];
+  return [revealRow, toggleRow, speedRow, backRow];
 }
 
 function formatSec(sec: number): string {

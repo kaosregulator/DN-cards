@@ -251,6 +251,15 @@ export const guildSettingsTable = pgTable("guild_settings", {
   battleAnimationEnabled: boolean("battle_animation_enabled").notNull().default(true),
   packAnimationSpeed: text("pack_animation_speed").notNull().default("normal"),
   battleAnimationSpeed: text("battle_animation_speed").notNull().default("normal"),
+  // ── Spawn reveal style ─────────────────────────────────────────────────────
+  // How a spawned card's art is revealed in its animation. "auto" maps by rarity
+  // (Blur → Puzzle → Silhouette as rarity climbs — the bot's own method), or an
+  // admin can force one style for every spawn. "off" shows the plain card image.
+  // Values: "auto" | "blur" | "puzzle" | "silhouette" | "off".
+  spawnRevealMode: text("spawn_reveal_mode").notNull().default("auto"),
+  // Play a sparkle/shine animation when a shiny is caught or pulled, so a shiny
+  // is instantly recognisable. Off falls back to the static ✨ badge + canvas.
+  shinyAnimationEnabled: boolean("shiny_animation_enabled").notNull().default(true),
   // ── Recycle / Card Progression Hub config ───────────────────────────────────
   // Master switch for the /recycle Card Progression Hub.
   recycleEnabled: boolean("recycle_enabled").notNull().default(true),

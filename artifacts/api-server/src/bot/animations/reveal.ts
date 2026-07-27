@@ -110,11 +110,15 @@ export interface RevealInfo {
 
 export interface CardRevealInput {
   card: RenderCard;
-  stats: RevealStats | null;  // Level-1 battle stats; null hides the stat block
+  stats: RevealStats | null;  // battle stats; null hides the stat block
   info?: RevealInfo | null;   // collector info block (used when stats is null)
   shiny: boolean;
   index: number;              // 1-based position in the pack
   total: number;
+  // Header for the stat block. Defaults to "LEVEL 1 · BATTLE STATS"; a
+  // pre-levelled catch/pull passes e.g. "LV 45 · 3★ · BATTLE STATS" so the
+  // canvas reflects the card's real progression, not a hardcoded Level 1.
+  statLabel?: string;
 }
 
 export async function renderCardReveal(input: CardRevealInput): Promise<Buffer | null> {
@@ -159,7 +163,7 @@ export async function renderCardReveal(input: CardRevealInput): Promise<Buffer |
       ctx.stroke();
       ctx.restore();
 
-      drawTextWithShadow(ctx, "LEVEL 1 · BATTLE STATS", width / 2, boxY + 22, hexToRgba(color, 1), 16);
+      drawTextWithShadow(ctx, input.statLabel ?? "LEVEL 1 · BATTLE STATS", width / 2, boxY + 22, hexToRgba(color, 1), 16);
 
       const cells: [string, string][] = [
         ["❤️ HP", stats.hp.toLocaleString()],

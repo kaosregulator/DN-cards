@@ -1199,8 +1199,16 @@ export async function pickRandomCard(
 // before the DB write — caller sees the result and surfaces ✨ in the UI.
 export async function catchCard(
   guildId: string, userId: string, cardId: number,
-  opts?: { noShiny?: boolean },
-): Promise<{ isShiny: boolean }> {
+  opts?: {
+    noShiny?: boolean;
+    // When set, roll this source's configured Star/Level and apply it to the
+    // shared card_progress row (variable acquisition). Best-effort: with no
+    // config the card arrives at 0★ / Lv 1, exactly as before.
+    acquisitionSource?: import("@workspace/db").AcquisitionSource;
+    // Explicit Star/Level (admin /give /drop) — wins over acquisitionSource.
+    forcedProgression?: { starRank: number; level: number };
+  },
+): Promise<{ isShiny: boolean; progression: import("./cards/progression.js").CardProgressionGrant | null }> {
   const isShiny = !opts?.noShiny && Math.random() < SHINY_RATE;
 
   // Atomic upsert — the (guild_id, user_id, card_id) unique index makes this
@@ -1234,7 +1242,22 @@ export async function catchCard(
     .set({ totalMinted: sql`${cardsTable.totalMinted} + 1` })
     .where(eq(cardsTable.id, cardId));
 
-  return { isShiny };
+  // ── Variable acquisition progression ────────────────────────────────────────
+  // Bump the shared card_progress row so a card can arrive pre-levelled / fused.
+  // Dynamically imported to avoid any load-time cycle; fully best-effort.
+  let progression: import("./cards/progression.js").CardProgressionGrant | null = null;
+  try {
+    if (opts?.forcedProgression || opts?.acquisitionSource) {
+      const prog = await import("./cards/progression.js");
+      progression = opts.forcedProgression
+        ? await prog.grantCardProgression(guildId, userId, cardId, opts.forcedProgression)
+        : await prog.rollAndGrantProgression(guildId, userId, cardId, opts.acquisitionSource!);
+    }
+  } catch (err) {
+    logger.warn({ err, guildId, userId, cardId }, "catchCard: acquisition progression failed (non-fatal)");
+  }
+
+  return { isShiny, progression };
 }
 
 /**
