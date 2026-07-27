@@ -11,6 +11,7 @@ import { inferMoveset } from "../battle/movesets.js";
 import { resolveMove, startOfTurn } from "../battle/combat-engine.js";
 import { computeMoveVisual, combatantToRenderCard, type MoveVisual } from "../battle/turn-visual.js";
 import { rarityRank } from "../battle/config-engine.js";
+import { effectiveRarityKey, rarityLadderRank, type RarityContext } from "../rarity-runtime.js";
 import type { OwnedBattleCard } from "../battle/db.js";
 import { toAbsoluteImageUrl } from "../image-url.js";
 
@@ -30,12 +31,22 @@ function memberPower(rarity: Rarity, level: number): number {
   return (rarityRank(rarity) + 1) * (1 + level * 0.03);
 }
 
+// A card's strength-ladder rank for raids: custom-tier assignment (or built-in)
+// resolved on the guild ladder, so custom/reordered tiers rank correctly. Safe
+// when ctx is absent (falls back to the canonical built-in rank).
+function raidLadderRank(card: OwnedBattleCard, ctx?: RarityContext): number {
+  const key = ctx ? effectiveRarityKey(card, ctx) : (card.rarity as string);
+  return rarityLadderRank(key, ctx);
+}
+
 // ── Boss combatant, scaled to the party that showed up ───────────────────────
 export function buildBossCombatant(
-  boss: RaidBoss, settings: BattleSettings, party: PartyMemberSpec[],
+  boss: RaidBoss, settings: BattleSettings, party: PartyMemberSpec[], ctx?: RarityContext,
 ): Combatant {
   const size = Math.max(1, party.length);
-  const avgRank = party.reduce((s, m) => s + rarityRank(m.card.rarity as Rarity), 0) / size;
+  // Rank on the guild strength ladder (custom/reordered tiers included) so the
+  // boss scales to the party's true power, matching how their stats are derived.
+  const avgRank = party.reduce((s, m) => s + raidLadderRank(m.card, ctx), 0) / size;
   const avgLevel = party.reduce((s, m) => s + m.cardLevel, 0) / size;
 
   // Party-scaled health: base per-player HP × party size × a power factor,
@@ -75,7 +86,7 @@ export function buildBossCombatant(
 
 // ── Player combatant (mirrors battle-manager.buildCombatant, no support card) ─
 export function buildPlayerCombatant(
-  member: PartyMemberSpec, settings: BattleSettings,
+  member: PartyMemberSpec, settings: BattleSettings, ctx?: RarityContext,
 ): Combatant {
   const battleRarity = (member.card.config?.rarity as Rarity) || (member.card.rarity as Rarity);
   const cardish = {
@@ -84,10 +95,12 @@ export function buildPlayerCombatant(
   };
   // Star Rank scales raid stats via the SAME get_scaled_stats entry point that
   // PvP battles use — raids previously dropped the star bonus (no 6th arg), so a
-  // fused 5★ card fought raids at 0★ power. Now battles + raids stay in sync.
+  // fused 5★ card fought raids at 0★ power. Now battles + raids stay in sync, and
+  // strength scales by the card's guild-ladder rank (custom/reordered tiers too).
+  const rank = member.card.config?.rarity ? rarityLadderRank(String(member.card.config.rarity), ctx) : raidLadderRank(member.card, ctx);
   const stats = getScaledStats(
     cardish, member.card.config, settings, member.cardLevel ?? member.card.level ?? 1,
-    battleRarity, member.cardStars ?? member.card.starRank ?? 0,
+    battleRarity, member.cardStars ?? member.card.starRank ?? 0, rank,
   );
   return {
     userId: member.userId, displayName: member.displayName, isAi: false, side: 0,

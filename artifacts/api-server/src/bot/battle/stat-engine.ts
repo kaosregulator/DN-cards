@@ -47,9 +47,14 @@ export function deriveStats(
   card: Pick<Card, "id" | "name" | "rarity" | "worthValue" | "cardType">,
   settings: BattleSettings,
   effectiveRarity?: Rarity,
+  // Guild strength-ladder rank (0 = weakest). When provided it OVERRIDES the
+  // canonical built-in rank, so a custom tier / reordered rarity ranks by the
+  // admin's ladder (see rarity-runtime rarityLadderRank). Defaults to the
+  // canonical rank so unconfigured servers behave exactly as before.
+  rankOverride?: number,
 ): BattleStats {
   const rarity = (effectiveRarity ?? (card.rarity as Rarity));
-  const rank = rarityRank(rarity);
+  const rank = rankOverride ?? rarityRank(rarity);
   const arch = ARCHETYPES[(card.cardType ?? "").toLowerCase()] ?? {};
 
   // Worth contributes a soft, capped bump so a 10k-worth legendary isn't 100×
@@ -180,10 +185,13 @@ export function getScaledStats(
   level: number,
   effectiveRarity?: Rarity,
   starRank = 0,
+  // Guild strength-ladder rank for this card's effective rarity (see
+  // rarity-runtime rarityLadderRank). Omit to use the canonical built-in rank.
+  rankOverride?: number,
 ): BattleStats {
   // Battle rarity override wins; else the globally-resolved rarity; else base.
   const rarity = (cfg?.rarity as Rarity) || effectiveRarity || (card.rarity as Rarity);
-  const derived = deriveStats(card, settings, rarity);
+  const derived = deriveStats(card, settings, rarity, rankOverride);
   const withOverrides = applyStatOverrides(derived, cfg);
   const leveled = scaleByLevel(withOverrides, level, settings);
   return applyStarBonus(leveled, starRank);
