@@ -323,6 +323,21 @@ export async function handleAutocomplete(interaction: AutocompleteInteraction): 
       return;
     }
 
+    // ── /edit_pack pack — this guild's custom packs (incl. disabled), NOT cards ──
+    if (cmd === "editpack" && focused.name === "pack" && interaction.guild) {
+      const q = query.toLowerCase().trim();
+      const packs = await listCustomPacks(interaction.guild.id, true);
+      const options = packs
+        .filter(p => !q || p.name.toLowerCase().includes(q) || p.slug.toLowerCase().includes(q))
+        .slice(0, MAX_CHOICES)
+        .map(p => ({
+          name: `${p.emoji || "📦"} ${p.name}${p.isActive ? "" : " (disabled)"}`.slice(0, 100),
+          value: p.name.slice(0, 100),
+        }));
+      await interaction.respond(options);
+      return;
+    }
+
     // ── /rarity custom slug — show existing custom tiers by name ────────────
     if (cmd === "rarity" && focused.name === "slug" && interaction.guild) {
       const tiers = await getCustomRaritiesCached(interaction.guild.id);

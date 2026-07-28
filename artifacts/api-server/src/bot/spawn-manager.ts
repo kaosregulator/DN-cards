@@ -37,7 +37,7 @@ import {
 import { toAbsoluteImageUrl } from "./image-url.js";
 import { applyEmbedOverride } from "./embed-overrides.js";
 import { logger } from "../lib/logger.js";
-import type { Card, AcquisitionSource } from "@workspace/db";
+import type { Card, AcquisitionSource, GuildSettings } from "@workspace/db";
 import type { CardProgressionGrant } from "./cards/progression.js";
 
 interface PendingCatch {
@@ -194,8 +194,72 @@ const TYPE_GRACE_MS = 600;
 const activeSpawns = new Map<string, Map<string, ActiveSpawn>>();
 const spawnTimers = new Map<string, ReturnType<typeof setTimeout>>();
 const spawnTimersSecondary = new Map<string, ReturnType<typeof setTimeout>>();
+// One-shot timers that fire when a scheduled boost starts or ends, so the rate
+// change lands on time even between spawns.
+const boostTimers = new Map<string, ReturnType<typeof setTimeout>>();
 
 let botClient: Client | null = null;
+
+// ── Scheduled spawn boost ─────────────────────────────────────────────────────
+// The active rate multiplier: 2 = twice as many spawns (half the delay), 0.5 =
+// half. 1 when no boost is active (none set, not started yet, or already ended).
+function spawnBoostFactor(settings: GuildSettings): number {
+  const endsAt = settings.spawnBoostEndsAt;
+  if (!endsAt) return 1;
+  const now = Date.now();
+  if (endsAt.getTime() <= now) return 1;
+  const startsAt = settings.spawnBoostStartsAt;
+  if (startsAt && startsAt.getTime() > now) return 1; // scheduled, not started yet
+  const pct = Math.max(10, Math.min(1000, settings.spawnBoostPct ?? 100));
+  return pct / 100;
+}
+
+// Apply the active boost to a base spawn delay (more spawns → shorter delay).
+function applyBoostToDelay(delayMs: number, settings: GuildSettings): number {
+  const factor = spawnBoostFactor(settings);
+  if (factor === 1) return delayMs;
+  return Math.max(5000, Math.round(delayMs / factor));
+}
+
+function clearBoostTimer(guildId: string) {
+  const t = boostTimers.get(guildId);
+  if (t) { clearTimeout(t); boostTimers.delete(guildId); }
+}
+
+// Arm a one-shot timer at the boost's next transition (start, then end) so a
+// scheduled boost kicks in / expires on time even during a long gap between
+// spawns. Re-arms itself after each transition; a no-op when no boost is set.
+async function armBoostTransition(guildId: string) {
+  clearBoostTimer(guildId);
+  const settings = await getOrCreateGuildSettings(guildId);
+  const endsAt = settings.spawnBoostEndsAt;
+  if (!endsAt) return;
+  const now = Date.now();
+  const startsAt = settings.spawnBoostStartsAt;
+  let next: number | null = null;
+  if (startsAt && startsAt.getTime() > now) next = startsAt.getTime();  // boost will start
+  else if (endsAt.getTime() > now) next = endsAt.getTime();             // boost will end
+  if (next == null) return;
+  const delay = Math.max(0, Math.min(next - now + 250, 2_000_000_000));
+  const timer = setTimeout(() => {
+    void (async () => {
+      // The rate just changed (boost started or ended): reschedule both streams
+      // at the new rate, then arm the following transition.
+      await scheduleNextSpawn(guildId);
+      await scheduleNextSpawnSecondary(guildId);
+      await armBoostTransition(guildId);
+    })();
+  }, delay);
+  boostTimers.set(guildId, timer);
+}
+
+// Called after an admin sets/clears a boost: apply it now (reschedule the next
+// spawn at the new rate) and arm the scheduled start/end transition.
+export async function applySpawnBoostChange(guildId: string) {
+  await scheduleNextSpawn(guildId);
+  await scheduleNextSpawnSecondary(guildId);
+  await armBoostTransition(guildId);
+}
 
 export function getBotClient(): Client | null { return botClient; }
 
@@ -233,6 +297,7 @@ export async function scheduleNextSpawn(guildId: string) {
   } else {
     delayMs = settings.spawnIntervalSeconds * 1000;
   }
+  delayMs = applyBoostToDelay(delayMs, settings);
 
   logger.info({ guildId, delayMs }, "Next card spawn scheduled");
   const timer = setTimeout(() => doSpawnBatch(guildId), delayMs);
@@ -258,6 +323,7 @@ export async function scheduleNextSpawnSecondary(guildId: string) {
   } else {
     delayMs = settings.spawnIntervalSeconds * 1000;
   }
+  delayMs = applyBoostToDelay(delayMs, settings);
 
   logger.info({ guildId, delayMs }, "Next secondary card spawn scheduled");
   const timer = setTimeout(() => doSpawnBatchSecondary(guildId), delayMs);
@@ -981,6 +1047,8 @@ export async function initAllGuilds(client: Client) {
     if (settings.spawnEnabledSecondary && settings.spawnChannelIdSecondary) {
       scheduleNextSpawnSecondary(guildId);
     }
+    // Re-arm any scheduled spawn boost so it survives a restart.
+    if (settings.spawnBoostEndsAt) await armBoostTransition(guildId);
   }
 }
 

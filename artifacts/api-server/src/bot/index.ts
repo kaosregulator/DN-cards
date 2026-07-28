@@ -373,6 +373,12 @@ export async function startBot() {
         } else if (interaction.customId === "config:recycle:values") {
           const { handleRecycleValuesModal } = await import("./commands/config-panel.js");
           await handleRecycleValuesModal(interaction);
+        } else if (interaction.customId.startsWith("config:custom:")) {
+          const { handleConfigCustomModal } = await import("./commands/config-panel.js");
+          await handleConfigCustomModal(interaction);
+        } else if (interaction.customId.startsWith("config:boost:")) {
+          const { handleConfigBoostModal } = await import("./commands/config-panel.js");
+          await handleConfigBoostModal(interaction);
         } else if (interaction.customId.startsWith("gwhub:")) {
           await handleGiveawayHubComponent(interaction);
         }
