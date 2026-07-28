@@ -260,6 +260,15 @@ export const guildSettingsTable = pgTable("guild_settings", {
   // Play a sparkle/shine animation when a shiny is caught or pulled, so a shiny
   // is instantly recognisable. Off falls back to the static ✨ badge + canvas.
   shinyAnimationEnabled: boolean("shiny_animation_enabled").notNull().default(true),
+  // ── Scheduled spawn boost (temporary spawn-rate change) ─────────────────────
+  // A temporary multiplier on the spawn RATE for busy/quiet periods, applied on
+  // top of the base interval without changing it. 100 = normal, 200 = double the
+  // spawns (half the interval), 50 = half the spawns. Active while
+  // now < spawnBoostEndsAt AND (spawnBoostStartsAt is null OR already passed).
+  // A null endsAt means no boost. Admins set/schedule this from /config → Drops.
+  spawnBoostPct: integer("spawn_boost_pct").notNull().default(100),
+  spawnBoostStartsAt: timestamp("spawn_boost_starts_at"),
+  spawnBoostEndsAt: timestamp("spawn_boost_ends_at"),
   // ── Recycle / Card Progression Hub config ───────────────────────────────────
   // Master switch for the /recycle Card Progression Hub.
   recycleEnabled: boolean("recycle_enabled").notNull().default(true),

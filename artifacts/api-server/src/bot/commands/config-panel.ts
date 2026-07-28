@@ -6,7 +6,7 @@ import {
   type StringSelectMenuInteraction, type ModalSubmitInteraction,
 } from "discord.js";
 import { getOrCreateGuildSettings, updateGuildSettings, isAdmin, getActiveSet, getActiveSetSecondary, getRarityDisplayOverrides, createCustomPack, listCustomPacks, getCustomPack, updateCustomPack, deleteCustomPack, getDistinctCardTypes } from "../db.js";
-import { scheduleNextSpawn, clearSpawnTimer, scheduleNextSpawnSecondary, clearSpawnTimerSecondary } from "../spawn-manager.js";
+import { scheduleNextSpawn, clearSpawnTimer, scheduleNextSpawnSecondary, clearSpawnTimerSecondary, applySpawnBoostChange } from "../spawn-manager.js";
 import { RARITY_WEIGHTS, RARITY_LABELS, RARITY_EMOJI, rarityLabel, rarityEmoji, getRarityOrder, type Rarity, type RarityDisplayMap } from "../cards-data.js";
 import type { CustomPack, GuildSettings } from "@workspace/db";
 import { PACK_TIERS, PACK_TIER_META, PACK_DEFAULTS, resolveTierConfig, tierLabel, type PackTier } from "./pack.js";
@@ -66,6 +66,14 @@ export async function handleConfigCommand(interaction: ChatInputCommandInteracti
 // ── Router: select-menu interactions on the panel ─────────────────────────────────────────────────────────────────
 export async function handleConfigSelect(interaction: StringSelectMenuInteraction): Promise<void> {
   if (!interaction.guild) return;
+  // "Enter a custom value…" → open a modal (must be the FIRST response, so this
+  // runs before deferUpdate). The panel is already admin-gated; the modal submit
+  // handler re-checks admin.
+  if (interaction.values[0] === "__custom__" &&
+      (interaction.customId === "config_interval" || interaction.customId === "config_window" || interaction.customId === "config_drops")) {
+    await interaction.showModal(buildConfigCustomModal(interaction.customId.replace("config_", "")));
+    return;
+  }
   // ACK immediately — DB work comes after, so we never hit the 3s window.
   await interaction.deferUpdate();
   const ok = await ensureAdmin(interaction);
@@ -118,6 +126,11 @@ export async function handleConfigSelect(interaction: StringSelectMenuInteractio
   // so re-render that panel instead of bouncing back to the main config panel.
   if (action === "config_reveal_mode" || action === "config_anim_speed") {
     await interaction.editReply({ embeds: [buildAnimationEmbed(settings)], components: buildAnimationComponents(settings) });
+    return;
+  }
+  // Cards-per-spawn lives on the Drops & Spawn Rate sub-panel — stay there.
+  if (action === "config_drops") {
+    await interaction.editReply({ embeds: [buildDropsEmbed(settings)], components: buildDropsComponents(settings) });
     return;
   }
   await refreshPanel(interaction, settings);
@@ -179,6 +192,12 @@ export async function handleConfigButton(interaction: ButtonInteraction): Promis
     return;
   }
 
+  // Custom/scheduled spawn boost — showModal must be the first response.
+  if (action === "boost" && arg === "custom") {
+    await interaction.showModal(buildConfigBoostModal());
+    return;
+  }
+
   // ── All other paths: ACK immediately, then do DB work. ──
   await interaction.deferUpdate();
   const ok = await ensureAdmin(interaction);
@@ -234,6 +253,15 @@ export async function handleConfigButton(interaction: ButtonInteraction): Promis
         components: buildDropsComponents(settings),
       });
     }
+    return;
+  } else if (action === "boost") {
+    // Quick spawn-rate boost / slow-down / clear (the custom+scheduled path is a
+    // modal handled above). Stays on the Drops & Spawn Rate sub-panel.
+    if (arg === "up") await setSpawnBoost(guildId, 200, 60);
+    else if (arg === "down") await setSpawnBoost(guildId, 50, 60);
+    else if (arg === "clear") await clearSpawnBoost(guildId);
+    const fresh = await getOrCreateGuildSettings(guildId);
+    await interaction.editReply({ embeds: [buildDropsEmbed(fresh)], components: buildDropsComponents(fresh) });
     return;
   } else if (action === "rates") {
     if (arg === "reset") {
@@ -458,7 +486,7 @@ export async function handleRatesSelect(interaction: StringSelectMenuInteraction
 
 // ── Helpers ──────────────────────────────────────────────────────────────────────────────────────────────────────────────
 async function refreshPanel(
-  interaction: ButtonInteraction | StringSelectMenuInteraction,
+  interaction: ButtonInteraction | StringSelectMenuInteraction | ModalSubmitInteraction,
   settings: GuildSettings,
 ): Promise<void> {
   const guildId = interaction.guild!.id;
@@ -612,14 +640,16 @@ function buildConfigComponents(s: GuildSettings, displayMap?: RarityDisplayMap |
     { label: "2 hours", sec: 2 * 60 * 60 },
     { label: "6 hours", sec: 6 * 60 * 60 },
   ];
+  const intervalCustom = !s.useRandomInterval && !intervalOpts.some(o => o.sec === s.spawnIntervalSeconds);
   const intervalSelect = new StringSelectMenuBuilder()
     .setCustomId("config_interval")
     .setPlaceholder("⏱️ Channel Drop Rate — how often cards spawn")
     .addOptions(
-      intervalOpts.map(o => ({
+      ...intervalOpts.map(o => ({
         label: o.label, value: String(o.sec),
         default: !s.useRandomInterval && s.spawnIntervalSeconds === o.sec,
       })),
+      { label: `✏️ Enter a custom rate…${intervalCustom ? ` (now ${formatSec(s.spawnIntervalSeconds)})` : ""}`, value: "__custom__", default: intervalCustom },
     );
 
   const windowOpts: { label: string; sec: number }[] = [
@@ -629,14 +659,16 @@ function buildConfigComponents(s: GuildSettings, displayMap?: RarityDisplayMap |
     { label: "5 minutes", sec: 300 },
     { label: "10 minutes", sec: 600 },
   ];
+  const windowCustom = !windowOpts.some(o => o.sec === s.catchWindowSeconds);
   const windowSelect = new StringSelectMenuBuilder()
     .setCustomId("config_window")
     .setPlaceholder("🛑 Catch window")
     .addOptions(
-      windowOpts.map(o => ({
+      ...windowOpts.map(o => ({
         label: o.label, value: String(o.sec),
         default: s.catchWindowSeconds === o.sec,
       })),
+      { label: `✏️ Enter a custom window…${windowCustom ? ` (now ${formatSec(s.catchWindowSeconds)})` : ""}`, value: "__custom__", default: windowCustom },
     );
 
   const toggleRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
@@ -946,15 +978,37 @@ export async function handleRecycleValuesModal(interaction: ModalSubmitInteracti
 
 // ── Drops per spawn sub-panel ────────────────────────────────────────────────
 
+// One-line status of the current spawn-rate boost (busy/quiet-hour schedule).
+function boostStatusLine(s: GuildSettings): string {
+  const endsAt = s.spawnBoostEndsAt;
+  const pct = s.spawnBoostPct ?? 100;
+  if (!endsAt || endsAt.getTime() <= Date.now() || pct === 100) {
+    return "⏱️ **Spawn boost:** 🟢 Normal rate (none active)";
+  }
+  const endU = Math.floor(endsAt.getTime() / 1000);
+  const mult = `${pct / 100}×`;
+  const dir = pct > 100 ? "🔼 More spawns" : "🔽 Fewer spawns";
+  const startsAt = s.spawnBoostStartsAt;
+  if (startsAt && startsAt.getTime() > Date.now()) {
+    return `⏱️ **Spawn boost:** ⏳ Scheduled — **${dir} (${mult})** starts <t:${Math.floor(startsAt.getTime() / 1000)}:R>, ends <t:${endU}:R>`;
+  }
+  return `⏱️ **Spawn boost:** **${dir} (${mult})** — active, ends <t:${endU}:R>`;
+}
+
 function buildDropsEmbed(s: GuildSettings): EmbedBuilder {
   const dropsLabel = s.cardsPerSpawn === -1 ? "Random 1–3" : `${s.cardsPerSpawn}`;
   return new EmbedBuilder()
-    .setTitle("📤‍📤 Drops per Spawn")
+    .setTitle("📤‍📤 Drops & Spawn Rate")
     .setColor(0x5865f2)
-    .setDescription(`How many cards appear in each automatic spawn.\n\nCurrent: **${dropsLabel}**`);
+    .setDescription(
+      `**Cards per spawn:** how many cards appear in each automatic spawn. Current: **${dropsLabel}**\n\n` +
+      `${boostStatusLine(s)}\n` +
+      "*A boost temporarily changes how OFTEN cards spawn (not how many) — use it for busy or quiet hours. The base drop rate is unchanged.*",
+    );
 }
 
 function buildDropsComponents(s: GuildSettings) {
+  const dropsCustom = ![1, 3, 5, -1].includes(s.cardsPerSpawn);
   const dropsSelect = new StringSelectMenuBuilder()
     .setCustomId("config_drops")
     .setPlaceholder("📤‍📤 Cards per spawn")
@@ -963,14 +1017,164 @@ function buildDropsComponents(s: GuildSettings) {
       { label: "3 cards", value: "3", default: s.cardsPerSpawn === 3 },
       { label: "5 cards", value: "5", default: s.cardsPerSpawn === 5 },
       { label: "Random 1–3", value: "-1", default: s.cardsPerSpawn === -1 },
+      { label: `✏️ Enter a custom number…${dropsCustom ? ` (now ${s.cardsPerSpawn})` : ""}`, value: "__custom__", default: dropsCustom },
     );
+  const boostRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder().setCustomId("config:boost:up").setLabel("🔼 More (2× · 1h)").setStyle(ButtonStyle.Success),
+    new ButtonBuilder().setCustomId("config:boost:down").setLabel("🔽 Fewer (½× · 1h)").setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder().setCustomId("config:boost:custom").setLabel("✏️ Custom / Schedule").setStyle(ButtonStyle.Primary),
+    new ButtonBuilder().setCustomId("config:boost:clear").setLabel("🧹 Clear boost").setStyle(ButtonStyle.Danger),
+  );
   const backRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder().setCustomId("config:drops:back").setLabel("← Back").setStyle(ButtonStyle.Secondary),
   );
   return [
     new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(dropsSelect),
+    boostRow,
     backRow,
   ];
+}
+
+// ── Spawn boost helpers (busy/quiet-hour scheduling) ─────────────────────────
+async function setSpawnBoost(guildId: string, pct: number, durationMin: number, startInMin = 0): Promise<void> {
+  const now = Date.now();
+  const startsAt = startInMin > 0 ? new Date(now + startInMin * 60_000) : null;
+  const endsAt = new Date((startsAt?.getTime() ?? now) + durationMin * 60_000);
+  await updateGuildSettings(guildId, {
+    spawnBoostPct: Math.max(10, Math.min(1000, Math.round(pct))),
+    spawnBoostStartsAt: startsAt,
+    spawnBoostEndsAt: endsAt,
+  } as Partial<GuildSettings>);
+  await applySpawnBoostChange(guildId);
+}
+
+async function clearSpawnBoost(guildId: string): Promise<void> {
+  await updateGuildSettings(guildId, {
+    spawnBoostPct: 100, spawnBoostStartsAt: null, spawnBoostEndsAt: null,
+  } as Partial<GuildSettings>);
+  await applySpawnBoostChange(guildId);
+}
+
+// Parse a duration in MINUTES: a bare number is minutes; supports m / h / d units.
+function parseMinutes(raw: string): number | null {
+  const m = raw.trim().toLowerCase().match(/^(\d+(?:\.\d+)?)\s*(m|min|mins|minute|minutes|h|hr|hrs|hour|hours|d|day|days)?$/);
+  if (!m) return null;
+  const n = parseFloat(m[1]!);
+  if (!Number.isFinite(n) || n <= 0) return null;
+  const u = m[2] ?? "m";
+  const mult = u.startsWith("d") ? 1440 : u.startsWith("h") ? 60 : 1;
+  return Math.round(n * mult);
+}
+
+function buildConfigBoostModal(): ModalBuilder {
+  return new ModalBuilder()
+    .setCustomId("config:boost:set")
+    .setTitle("Custom / Scheduled Spawn Boost")
+    .addComponents(
+      new ActionRowBuilder<TextInputBuilder>().addComponents(
+        new TextInputBuilder().setCustomId("pct").setLabel("Spawn rate % (200 = 2× · 50 = half)")
+          .setStyle(TextInputStyle.Short).setPlaceholder("200").setRequired(true).setMaxLength(5),
+      ),
+      new ActionRowBuilder<TextInputBuilder>().addComponents(
+        new TextInputBuilder().setCustomId("duration").setLabel("How long (e.g. 90m, 2h, 1d)")
+          .setStyle(TextInputStyle.Short).setPlaceholder("1h").setRequired(true).setMaxLength(8),
+      ),
+      new ActionRowBuilder<TextInputBuilder>().addComponents(
+        new TextInputBuilder().setCustomId("startin").setLabel("Start in… (blank = now; e.g. 30m, 2h)")
+          .setStyle(TextInputStyle.Short).setPlaceholder("now").setRequired(false).setMaxLength(8),
+      ),
+    );
+}
+
+export async function handleConfigBoostModal(interaction: ModalSubmitInteraction): Promise<void> {
+  if (!interaction.guild) return;
+  await interaction.deferUpdate();
+  if (!(await ensureAdmin(interaction))) {
+    await interaction.followUp({ content: "❌ Admins only.", flags: MessageFlags.Ephemeral });
+    return;
+  }
+  const guildId = interaction.guild.id;
+  const bad = (msg: string) => interaction.followUp({ content: `❌ ${msg}`, flags: MessageFlags.Ephemeral });
+
+  const pct = parseInt(interaction.fields.getTextInputValue("pct").replace(/[^\d]/g, ""), 10);
+  if (!Number.isFinite(pct) || pct < 10 || pct > 1000) { await bad("Rate must be **10–1000%** (e.g. 200 for 2× spawns, 50 for half)."); return; }
+  const durMin = parseMinutes(interaction.fields.getTextInputValue("duration"));
+  if (durMin == null) { await bad("Enter a duration like **90m**, **2h**, **1d**, or a number of minutes."); return; }
+  const startRaw = interaction.fields.getTextInputValue("startin").trim();
+  const startMin = startRaw ? parseMinutes(startRaw) : 0;
+  if (startMin == null || startMin < 0) { await bad("Start-in must be blank (now) or like **30m**, **2h**."); return; }
+
+  await setSpawnBoost(guildId, pct, Math.min(durMin, 43_200), startMin);
+  const fresh = await getOrCreateGuildSettings(guildId);
+  await interaction.editReply({ embeds: [buildDropsEmbed(fresh)], components: buildDropsComponents(fresh) }).catch(() => {});
+}
+
+// ── Custom-value entry (drop rate / catch window / cards per spawn) ───────────
+// Accepts a plain number or a number with a unit (s / m / h). Returns seconds.
+function parseDurationSeconds(raw: string): number | null {
+  const m = raw.trim().toLowerCase().match(/^(\d+(?:\.\d+)?)\s*(s|sec|secs|second|seconds|m|min|mins|minute|minutes|h|hr|hrs|hour|hours)?$/);
+  if (!m) return null;
+  const n = parseFloat(m[1]!);
+  if (!Number.isFinite(n) || n <= 0) return null;
+  const unit = m[2] ?? "s";
+  const mult = unit.startsWith("h") ? 3600 : unit.startsWith("m") ? 60 : 1;
+  return Math.round(n * mult);
+}
+
+function buildConfigCustomModal(which: string): ModalBuilder {
+  const meta: Record<string, { title: string; label: string; ph: string }> = {
+    interval: { title: "Custom Drop Rate", label: "How often cards spawn", ph: "e.g. 90s · 5m · 2h · or seconds" },
+    window: { title: "Custom Catch Window", label: "How long to catch (10s–60m)", ph: "e.g. 45s · 2m · or seconds" },
+    drops: { title: "Custom Cards per Spawn", label: "Cards per spawn (1–10)", ph: "e.g. 2" },
+  };
+  const m = meta[which] ?? { title: "Custom Value", label: "Value", ph: "" };
+  return new ModalBuilder()
+    .setCustomId(`config:custom:${which}`)
+    .setTitle(m.title)
+    .addComponents(new ActionRowBuilder<TextInputBuilder>().addComponents(
+      new TextInputBuilder().setCustomId("value").setLabel(m.label).setStyle(TextInputStyle.Short)
+        .setPlaceholder(m.ph).setRequired(true).setMaxLength(12),
+    ));
+}
+
+export async function handleConfigCustomModal(interaction: ModalSubmitInteraction): Promise<void> {
+  if (!interaction.guild) return;
+  await interaction.deferUpdate();
+  if (!(await ensureAdmin(interaction))) {
+    await interaction.followUp({ content: "❌ Admins only.", flags: MessageFlags.Ephemeral });
+    return;
+  }
+  const guildId = interaction.guild.id;
+  const which = interaction.customId.split(":")[2]!; // interval | window | drops
+  const raw = interaction.fields.getTextInputValue("value").trim();
+  const bad = (msg: string) => interaction.followUp({ content: `❌ ${msg}`, flags: MessageFlags.Ephemeral });
+
+  const patch: Partial<GuildSettings> = {};
+  let refreshDrops = false;
+  if (which === "interval") {
+    const sec = parseDurationSeconds(raw);
+    if (sec == null) { await bad("Couldn't read that. Try `90s`, `5m`, `2h`, or a number of seconds."); return; }
+    patch.useRandomInterval = false;
+    patch.spawnIntervalSeconds = Math.max(10, Math.min(86400, sec));
+  } else if (which === "window") {
+    const sec = parseDurationSeconds(raw);
+    if (sec == null) { await bad("Couldn't read that. Try `45s`, `2m`, or a number of seconds."); return; }
+    patch.catchWindowSeconds = Math.max(10, Math.min(3600, sec));
+  } else if (which === "drops") {
+    const n = parseInt(raw, 10);
+    if (!Number.isFinite(n) || n < 1 || n > 10) { await bad("Enter a whole number of cards from **1 to 10**."); return; }
+    patch.cardsPerSpawn = n;
+    refreshDrops = true;
+  } else return;
+
+  await updateGuildSettings(guildId, patch);
+  if (which === "interval") scheduleNextSpawn(guildId);
+  const fresh = await getOrCreateGuildSettings(guildId);
+  if (refreshDrops) {
+    await interaction.editReply({ embeds: [buildDropsEmbed(fresh)], components: buildDropsComponents(fresh) }).catch(() => {});
+  } else {
+    await refreshPanel(interaction, fresh);
+  }
 }
 
 // ── Rarity percentage sub-panel (also reused by the setup wizard) ────────────
