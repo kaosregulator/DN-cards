@@ -7,7 +7,7 @@ import { getScaledStats } from "./battle/stat-engine.js";
 import { effectiveRarityKey, rarityLadderRank } from "./rarity-runtime.js";
 import { getCardProgress } from "./cards/leveling.js";
 import { getBattleSettings } from "./battle/config-engine.js";
-import { renderCardReveal, renderSpawnReveal, renderShinyReveal, type RevealStats, type RevealMode } from "./animations/index.js";
+import { renderCardReveal, createSpawnRevealSession, renderShinyReveal, type RevealStats, type RevealMode, type SpawnRevealSession } from "./animations/index.js";
 import type { AnimationSpeed } from "./animations/types.js";
 import type { RenderCard } from "./battle/image/render.js";
 import {
@@ -67,11 +67,15 @@ interface ActiveSpawn {
   // Anti-paste: count wrong guesses and progressively reveal hints.
   failedAttempts: number;
   hintLevel: number;
-  // Filename of the animated reveal GIF attached to the spawn message (or null
-  // when the reveal was disabled / failed and the static card image is used).
-  // Hint edits re-reference this so the reveal survives; the catch/expire edits
-  // clear it via `attachments: []`.
+  // Filename of the reveal frame attached to the spawn message (or null when the
+  // reveal was disabled / failed and the static card image is used). Hint edits
+  // re-reference this so the current frame survives; the catch/expire edits clear
+  // it via `attachments: []`.
   revealFile: string | null;
+  // Timer for the progressive reveal (edits the message with a slightly more
+  // revealed frame over the catch window). Cleared the instant the card is
+  // caught or the spawn expires so it never overwrites the caught/escaped card.
+  revealTimer: ReturnType<typeof setTimeout> | null;
   // Variable acquisition: which config the catch rolls its Star/Level from
   // ("spawn" for random autodrops, "drop" for admin /drop), and an optional
   // explicit Star/Level that overrides the roll (admin /drop star:… level:…).
@@ -79,8 +83,12 @@ interface ActiveSpawn {
   forcedProgression: CardProgressionGrant | null;
 }
 
-// Attachment name for the animated spawn reveal GIF.
-const SPAWN_REVEAL_FILE = "spawn-reveal.gif";
+// Attachment name for the progressive spawn reveal frame.
+const SPAWN_REVEAL_FILE = "spawn-reveal.png";
+// Minimum spacing between reveal edits (keeps well under Discord's edit rate
+// limits) and the cap on how many reveal steps a single spawn plays.
+const REVEAL_MIN_INTERVAL_MS = 3000;
+const REVEAL_MAX_STEPS = 24;
 
 // After a spawn is caught, keep its entry around for a short cooldown so
 // late clicks (double-taps, mobile retries, both-mode type+click race) from
@@ -359,23 +367,26 @@ async function doSingleSpawn(guildId: string, forcedCardId?: number, isForced = 
   const mode = ((settings as unknown as { catchMode?: string }).catchMode ?? "type") as "type" | "button" | "both";
   const spawnId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
-  // ── Animated reveal ────────────────────────────────────────────────────────
-  // Generated automatically as part of the normal spawn render, reusing the
-  // canvas+gifencoder animation pipeline and `sharp` image processing. The style
-  // is the admin's `spawnRevealMode` (auto = by rarity, our method), and "off"
-  // skips it. Fully best-effort: a null buffer just shows the plain card image.
+  // ── Progressive reveal ─────────────────────────────────────────────────────
+  // The card art is revealed across the WHOLE catch window via message edits:
+  // the message starts fully hidden and a timer edits it with a slightly more
+  // revealed frame until the timer expires or the card is caught. The style is
+  // the admin's `spawnRevealMode` (auto = by rarity), and "off" skips it. Fully
+  // best-effort: no session just shows the plain card image, exactly as before.
   const revealMode = (settings as unknown as { spawnRevealMode?: string }).spawnRevealMode ?? "auto";
+  let revealSession: SpawnRevealSession | null = null;
   let revealBuffer: Buffer | null = null;
   if (revealMode !== "off") {
-    revealBuffer = await renderSpawnReveal({
+    revealSession = await createSpawnRevealSession({
       artUrl: toAbsoluteImageUrl(card.imageUrl),
       rarity: card.rarity as Rarity,
       rarityLabel: spawnDisplayRarity.label,
       rarityColor: spawnDisplayRarity.color,
-      shiny: false, // shiny is rolled at catch time, not known at spawn
       mode: revealMode === "auto" ? undefined : (revealMode as RevealMode),
-      speed: (settings.packAnimationSpeed as AnimationSpeed) ?? "normal",
     });
+    // Frame 0 = fully hidden (blank/blurred/silhouette) — the spawn opens on it.
+    if (revealSession) revealBuffer = await revealSession.renderFrame(0);
+    if (!revealBuffer) revealSession = null;
   }
   const revealFile = revealBuffer ? SPAWN_REVEAL_FILE : null;
 
@@ -437,6 +448,7 @@ async function doSingleSpawn(guildId: string, forcedCardId?: number, isForced = 
     failedAttempts: 0,
     hintLevel: 0,
     revealFile,
+    revealTimer: null,
     source: isForced ? "drop" : "spawn",
     forcedProgression: opts?.progression ?? null,
   };
@@ -451,6 +463,7 @@ async function doSingleSpawn(guildId: string, forcedCardId?: number, isForced = 
     const gs = activeSpawns.get(guildId);
     const s = gs?.get(spawnId);
     if (s && !s.caught) {
+      clearRevealTimer(s); // stop the reveal before showing the "escaped" card
       gs?.delete(spawnId);
       if (gs && gs.size === 0) activeSpawns.delete(guildId);
       try {
@@ -477,6 +490,65 @@ async function doSingleSpawn(guildId: string, forcedCardId?: number, isForced = 
       } catch { /* deleted */ }
     }
   }, settings.catchWindowSeconds * 1000);
+
+  // ── Kick off the progressive reveal across the catch window ─────────────────
+  if (revealSession) {
+    startProgressiveReveal(guildId, spawnId, revealSession, card, settings.catchWindowSeconds);
+  }
+}
+
+// Stop a spawn's progressive-reveal timer (idempotent).
+function clearRevealTimer(spawn: ActiveSpawn): void {
+  if (spawn.revealTimer) { clearTimeout(spawn.revealTimer); spawn.revealTimer = null; }
+}
+
+// Drive the reveal: edit the spawn message with a slightly more revealed frame
+// on a cadence that fits the whole catch window, then stop. The number of steps
+// scales with the window so the reveal lasts the entire guessing period; puzzle
+// reveals one piece per step. Every tick re-checks caught/expired (before AND
+// after the async render) so it never clobbers a caught or escaped card, and it
+// rebuilds the embed at the current hint level so wrong-guess hints survive.
+function startProgressiveReveal(
+  guildId: string, spawnId: string, session: SpawnRevealSession, card: Card, windowSeconds: number,
+): void {
+  const guildSpawns = activeSpawns.get(guildId);
+  const spawn = guildSpawns?.get(spawnId);
+  if (!spawn) return;
+
+  const windowMs = Math.max(2000, windowSeconds * 1000);
+  const maxSteps = Math.min(session.maxSteps, REVEAL_MAX_STEPS);
+  // Leave ~1s of lead-in (first piece appears about a second after the spawn)
+  // and pace the rest so the last full-reveal frame lands near the window's end.
+  const steps = Math.max(4, Math.min(maxSteps, Math.floor((windowMs - 1000) / REVEAL_MIN_INTERVAL_MS)));
+  const intervalMs = Math.max(REVEAL_MIN_INTERVAL_MS, Math.floor((windowMs - 1000) / steps));
+
+  let step = 1;
+  const tick = async (): Promise<void> => {
+    const s = activeSpawns.get(guildId)?.get(spawnId);
+    if (!s || s.caught || Date.now() >= s.expiresAt.getTime()) return; // stop
+    const progress = Math.min(1, step / steps);
+    const frame = await session.renderFrame(progress);
+    // Re-check after the async render — a catch/expire may have landed meanwhile.
+    const s2 = activeSpawns.get(guildId)?.get(spawnId);
+    if (!s2 || s2.caught || Date.now() >= s2.expiresAt.getTime()) return;
+    if (frame) {
+      try {
+        const embed = await buildSpawnEmbed(card, windowSeconds, s2.catchMode, guildId, s2.hintLevel, s2.revealFile);
+        await s2.message.edit({
+          embeds: [embed],
+          attachments: [],
+          files: [new AttachmentBuilder(frame, { name: SPAWN_REVEAL_FILE })],
+        });
+      } catch { /* deleted / no perms / rate-limited — skip this frame */ }
+    }
+    step++;
+    if (step <= steps) {
+      const s3 = activeSpawns.get(guildId)?.get(spawnId);
+      if (s3 && !s3.caught) s3.revealTimer = setTimeout(() => void tick(), intervalMs);
+    }
+  };
+  // First reveal step ~1s after the spawn appears.
+  spawn.revealTimer = setTimeout(() => void tick(), 1000);
 }
 
 // ── Public API: force-drop a specific card (admin use) ────────────────────────
@@ -667,6 +739,7 @@ async function awardSpawn(guildId: string, spawnId: string, userId: string, deli
 
   spawn.caught = true;
   spawn.winnerUserId = userId;
+  clearRevealTimer(spawn); // immediately stop the reveal — the catch card takes over
   // Keep the spawn entry around briefly so we can recognise late clicks from
   // the winner (double-tap, both-mode type+click race) instead of telling
   // them the spawn expired. It's cleaned up after POST_CATCH_LINGER_MS.

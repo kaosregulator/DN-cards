@@ -21,8 +21,9 @@ import type { Rarity } from "../cards-data.js";
 import type { AnimationSpeed } from "./types.js";
 import {
   getCanvas, encodeAnimation, drawGradientBackground, hexToRgba, roundRectPath,
-  clamp01, easeInOutCubic, type Ctx, type CanvasMod,
+  clamp01, type Ctx,
 } from "./engine.js";
+import { queueRender } from "./render-queue.js";
 import {
   loadArtBuffer, drawCardArt, drawRarityGlow, drawCardFrame, drawRarityBadge,
   drawFoilOverlay, drawHoloSparkles, drawShineSweep, drawTitle, drawTextWithShadow,
@@ -55,21 +56,18 @@ export interface SpawnRevealInput {
   rarity: Rarity;
   rarityLabel: string;
   rarityColor?: number | null;
-  shiny?: boolean;
   mode?: RevealMode;      // overrides the rarity-derived default
-  speed?: AnimationSpeed; // reuses the guild's animation speed setting
 }
 
 // Canvas geometry — a compact framed portrait. The spawn embed already carries
-// the title/rarity/worth/hint text, so the GIF is deliberately art-forward.
+// the title/rarity/worth/hint text, so the reveal image is deliberately
+// art-forward.
 const WIDTH = 480;
 const HEIGHT = 600;
 const PANEL = { x: 34, y: 60, w: 412, h: 486 } as const;
 
-// Reveal completes at this fraction of the timeline, then holds on the clear
-// card for the remainder. The engine coalesces the identical held frames, so the
-// loop rests on the readable card most of the time while staying small.
-const REVEAL_FRACTION = 0.72;
+// Puzzle grid — larger, clearer pieces so each one reads as it snaps in.
+const PUZZLE_COLS = 4, PUZZLE_ROWS = 5, PUZZLE_TILES = PUZZLE_COLS * PUZZLE_ROWS;
 
 type LoadedImage = import("@napi-rs/canvas").Image;
 
@@ -92,24 +90,6 @@ async function loadSharp(): Promise<((buf: Buffer) => SharpInstance) | null> {
     _sharp = null;
   }
   return _sharp;
-}
-
-// Cover-fit the source art to the art panel, apply an effect, and decode to a
-// canvas Image ready to draw 1:1 into the panel. Best-effort → null.
-async function processStage(
-  sharpFn: (buf: Buffer) => SharpInstance,
-  mod: CanvasMod,
-  src: Buffer,
-  effect: (s: SharpInstance) => SharpInstance,
-): Promise<LoadedImage | null> {
-  try {
-    const pipeline = sharpFn(src).resize(PANEL.w, PANEL.h, { fit: "cover", position: "center" });
-    const out = await effect(pipeline).png().toBuffer();
-    return await mod.loadImage(out);
-  } catch (err) {
-    logger.debug({ err }, "spawn-reveal: stage processing failed");
-    return null;
-  }
 }
 
 // Deterministic tile order for the puzzle reveal (stable per card art so a card
@@ -138,7 +118,37 @@ function clipPanel(ctx: Ctx): void {
   ctx.fillRect(PANEL.x, PANEL.y, PANEL.w, PANEL.h);
 }
 
-export async function renderSpawnReveal(input: SpawnRevealInput): Promise<Buffer | null> {
+// Allocate a canvas, draw, encode a single PNG. Best-effort → null. Routed
+// through the shared render queue so a spawn frame never spikes CPU next to a
+// battle/pack render.
+async function renderPng(width: number, height: number, draw: (ctx: Ctx) => void): Promise<Buffer | null> {
+  return queueRender("reveal", async () => {
+    const mod = await getCanvas();
+    if (!mod) return null;
+    try {
+      const canvas = mod.createCanvas(width, height);
+      const ctx = canvas.getContext("2d") as unknown as Ctx;
+      draw(ctx);
+      return await canvas.encode("png");
+    } catch (err) {
+      logger.debug({ err }, "spawn-reveal: png render failed");
+      return null;
+    }
+  });
+}
+
+// A live spawn reveal. Prepares the art once, then renders a single framed PNG
+// for any progress in [0,1] — 0 = fully hidden, 1 = fully revealed. The spawn
+// manager posts frame 0 and edits the message with rising progress across the
+// WHOLE catch window, so the reveal lasts the entire guessing period and stops
+// the instant the card is caught or the window ends. All best-effort.
+export interface SpawnRevealSession {
+  mode: RevealMode;
+  maxSteps: number;     // natural number of reveal steps (puzzle = tile count)
+  renderFrame(progress: number): Promise<Buffer | null>;
+}
+
+export async function createSpawnRevealSession(input: SpawnRevealInput): Promise<SpawnRevealSession | null> {
   const mod = await getCanvas();
   if (!mod) return null;
   const src = await loadArtBuffer(input.artUrl);
@@ -148,139 +158,104 @@ export async function renderSpawnReveal(input: SpawnRevealInput): Promise<Buffer
 
   const mode = input.mode ?? revealModeForRarity(input.rarity);
   const color = input.rarityColor ?? getRarityEffectColor(input.rarity);
-  const shiny = !!input.shiny;
 
-  // ── Pre-process the effect stages once (heavy work off the frame loop) ───────
-  let stages: (LoadedImage | null)[] = [];
-  let hiddenBase: LoadedImage | null = null; // puzzle only
-  let clearImg: LoadedImage | null = null;
-
-  if (mode === "blur") {
-    const sigmas = [24, 15, 9, 4.5, 1.5, 0];
-    stages = await Promise.all(sigmas.map(sig =>
-      processStage(sharpFn, mod, src, s => (sig > 0 ? s.blur(sig) : s)),
-    ));
-    clearImg = stages[stages.length - 1];
-  } else if (mode === "silhouette") {
-    const steps: Array<{ b: number; sat: number; blur: number }> = [
-      { b: 0.04, sat: 0.1, blur: 6 },
-      { b: 0.16, sat: 0.28, blur: 3 },
-      { b: 0.38, sat: 0.5, blur: 1.2 },
-      { b: 0.64, sat: 0.75, blur: 0 },
-      { b: 1, sat: 1, blur: 0 },
-    ];
-    stages = await Promise.all(steps.map(st =>
-      processStage(sharpFn, mod, src, s => {
-        let p = s.modulate({ brightness: st.b, saturation: st.sat });
-        if (st.blur > 0) p = p.blur(st.blur);
-        return p;
-      }),
-    ));
-    clearImg = stages[stages.length - 1];
-  } else {
-    // puzzle — clear image + a blurred/darkened hidden base beneath the tiles.
-    [clearImg, hiddenBase] = await Promise.all([
-      processStage(sharpFn, mod, src, s => s),
-      processStage(sharpFn, mod, src, s => s.blur(16).modulate({ brightness: 0.4, saturation: 0.5 })),
-    ]);
-  }
-  if (!clearImg) return null; // nothing usable to draw
-
-  const puzzleCols = 5, puzzleRows = 6, puzzleTotal = puzzleCols * puzzleRows;
-  const tileOrder = mode === "puzzle" ? seededTileOrder(puzzleTotal, String(input.artUrl)) : [];
-
+  // Cover-fit the art once; per-frame effects run on this buffer.
+  let base: Buffer;
   try {
-    const result = await encodeAnimation({
-      width: WIDTH,
-      height: HEIGHT,
-      speed: input.speed ?? "normal",
-      durationMs: 2600,
-      maxFrames: 24,
-      quality: 18,
-      render: ({ ctx, t }) => {
-        const reveal = clamp01(t / REVEAL_FRACTION);
-        const eased = easeInOutCubic(reveal);
-
-        // Backdrop.
-        drawGradientBackground(ctx, WIDTH, HEIGHT, [
-          [0, hexToRgba(color, 0.3)],
-          [0.55, "#0c0e14"],
-          [1, "#07080d"],
-        ], 0.32);
-        drawTextWithShadow(ctx, "A DN CARD APPEARS", WIDTH / 2, 34, "#d7dbe6", 20);
-
-        // Glow behind the panel intensifies as the card emerges.
-        drawRarityGlow(ctx, PANEL.x, PANEL.y, PANEL.w, PANEL.h, color, 0.35 + 0.5 * eased);
-
-        // ── Art reveal ───────────────────────────────────────────────────────
-        ctx.save();
-        clipPanel(ctx);
-        if (mode === "puzzle") {
-          if (hiddenBase) ctx.drawImage(hiddenBase, PANEL.x, PANEL.y, PANEL.w, PANEL.h);
-          const revealed = Math.round(reveal * puzzleTotal);
-          const tw = PANEL.w / puzzleCols, th = PANEL.h / puzzleRows;
-          // Reveal each piece by clipping the clear art to its cell, then trace
-          // the piece edge so the puzzle structure reads clearly (freshly-placed
-          // pieces flash a bright white edge — the "snap into place" pop).
-          for (let k = 0; k < revealed; k++) {
-            const tile = tileOrder[k]!;
-            const cx = tile % puzzleCols, cy = Math.floor(tile / puzzleCols);
-            const dx = PANEL.x + cx * tw, dy = PANEL.y + cy * th;
-            ctx.save();
-            roundRectPath(ctx, dx, dy, tw, th, 3);
-            ctx.clip();
-            ctx.drawImage(clearImg!, PANEL.x, PANEL.y, PANEL.w, PANEL.h);
-            ctx.restore();
-            const fresh = k >= revealed - 2;
-            ctx.save();
-            ctx.lineWidth = fresh ? 2.5 : 1;
-            ctx.strokeStyle = fresh ? "rgba(255,255,255,0.9)" : hexToRgba(color, 0.45);
-            roundRectPath(ctx, dx + 0.75, dy + 0.75, tw - 1.5, th - 1.5, 3);
-            ctx.stroke();
-            ctx.restore();
-          }
-          // Faint seams across the whole panel so even the un-revealed area reads
-          // as a grid of puzzle pieces waiting to be filled.
-          ctx.save();
-          ctx.lineWidth = 1;
-          ctx.strokeStyle = "rgba(255,255,255,0.12)";
-          for (let c = 1; c < puzzleCols; c++) {
-            const gx = PANEL.x + c * tw;
-            ctx.beginPath(); ctx.moveTo(gx, PANEL.y); ctx.lineTo(gx, PANEL.y + PANEL.h); ctx.stroke();
-          }
-          for (let r = 1; r < puzzleRows; r++) {
-            const gy = PANEL.y + r * th;
-            ctx.beginPath(); ctx.moveTo(PANEL.x, gy); ctx.lineTo(PANEL.x + PANEL.w, gy); ctx.stroke();
-          }
-          ctx.restore();
-        } else {
-          // blur / silhouette — pick the stage nearest this progress.
-          const usable = stages.filter((s): s is LoadedImage => !!s);
-          const draw = usable.length > 0
-            ? usable[Math.min(usable.length - 1, Math.floor(eased * (usable.length - 1) + 0.001))]!
-            : clearImg!;
-          ctx.drawImage(draw, PANEL.x, PANEL.y, PANEL.w, PANEL.h);
-        }
-
-        // Shiny flourish, ramping in as the reveal finishes.
-        if (shiny && reveal > 0.45) {
-          const a = clamp01((reveal - 0.45) / 0.55);
-          drawFoilOverlay(ctx, PANEL.x, PANEL.y, PANEL.w, PANEL.h, 0.45 * a);
-          drawHoloSparkles(ctx, PANEL.x, PANEL.y, PANEL.w, PANEL.h, 0.5 * a, 20);
-        }
-        ctx.restore();
-
-        // Frame + rarity badge on top (drawn every frame so it stays crisp).
-        drawCardFrame(ctx, PANEL.x, PANEL.y, PANEL.w, PANEL.h, color, 6);
-        drawRarityBadge(ctx, PANEL.x + PANEL.w - 12, PANEL.y + 12, input.rarityLabel, color);
-        if (shiny) drawTextWithShadow(ctx, "✨ SHINY", PANEL.x + 60, PANEL.y + 26, "#ffe27a", 18);
-      },
-    });
-    return result?.buffer ?? null;
+    base = await sharpFn(src).resize(PANEL.w, PANEL.h, { fit: "cover", position: "center" }).png().toBuffer();
   } catch (err) {
-    logger.debug({ err }, "spawn-reveal: encode failed");
+    logger.debug({ err }, "spawn-reveal: base resize failed");
     return null;
   }
+
+  // Puzzle draws the clear art clipped to revealed tiles — decode it once.
+  const clearImg = mode === "puzzle" ? await mod.loadImage(base).catch(() => null) : null;
+  if (mode === "puzzle" && !clearImg) return null;
+  const tileOrder = mode === "puzzle" ? seededTileOrder(PUZZLE_TILES, String(input.artUrl)) : [];
+
+  // Draw the framed card at a given progress with an already-prepared art image
+  // (blur/silhouette). Puzzle ignores `art` and reveals clear-art tiles instead.
+  const drawFrame = (ctx: Ctx, progress: number, art: LoadedImage | null): void => {
+    drawGradientBackground(ctx, WIDTH, HEIGHT, [
+      [0, hexToRgba(color, 0.3)],
+      [0.55, "#0c0e14"],
+      [1, "#07080d"],
+    ], 0.32);
+    drawTextWithShadow(ctx, "A DN CARD APPEARS", WIDTH / 2, 34, "#d7dbe6", 20);
+    drawRarityGlow(ctx, PANEL.x, PANEL.y, PANEL.w, PANEL.h, color, 0.35 + 0.5 * progress);
+
+    ctx.save();
+    clipPanel(ctx); // dark backer — this IS the "completely hidden" starting state
+    if (mode === "puzzle") {
+      const revealed = Math.round(progress * PUZZLE_TILES);
+      const tw = PANEL.w / PUZZLE_COLS, th = PANEL.h / PUZZLE_ROWS;
+      for (let k = 0; k < revealed; k++) {
+        const tile = tileOrder[k]!;
+        const cx = tile % PUZZLE_COLS, cy = Math.floor(tile / PUZZLE_COLS);
+        const dx = PANEL.x + cx * tw, dy = PANEL.y + cy * th;
+        ctx.save();
+        roundRectPath(ctx, dx, dy, tw, th, 3);
+        ctx.clip();
+        if (clearImg) ctx.drawImage(clearImg, PANEL.x, PANEL.y, PANEL.w, PANEL.h);
+        ctx.restore();
+        // Freshly-placed pieces flash a bright white edge — the "snap" pop.
+        const fresh = k >= revealed - 2;
+        ctx.save();
+        ctx.lineWidth = fresh ? 2.5 : 1;
+        ctx.strokeStyle = fresh ? "rgba(255,255,255,0.9)" : hexToRgba(color, 0.45);
+        roundRectPath(ctx, dx + 0.75, dy + 0.75, tw - 1.5, th - 1.5, 3);
+        ctx.stroke();
+        ctx.restore();
+      }
+      // Seams so the un-revealed area reads as a grid of pieces to fill.
+      ctx.save();
+      ctx.lineWidth = 1;
+      ctx.strokeStyle = "rgba(255,255,255,0.12)";
+      for (let c = 1; c < PUZZLE_COLS; c++) {
+        const gx = PANEL.x + c * tw;
+        ctx.beginPath(); ctx.moveTo(gx, PANEL.y); ctx.lineTo(gx, PANEL.y + PANEL.h); ctx.stroke();
+      }
+      for (let r = 1; r < PUZZLE_ROWS; r++) {
+        const gy = PANEL.y + r * th;
+        ctx.beginPath(); ctx.moveTo(PANEL.x, gy); ctx.lineTo(PANEL.x + PANEL.w, gy); ctx.stroke();
+      }
+      ctx.restore();
+    } else if (art) {
+      ctx.drawImage(art, PANEL.x, PANEL.y, PANEL.w, PANEL.h);
+    }
+    ctx.restore();
+
+    drawCardFrame(ctx, PANEL.x, PANEL.y, PANEL.w, PANEL.h, color, 6);
+    drawRarityBadge(ctx, PANEL.x + PANEL.w - 12, PANEL.y + 12, input.rarityLabel, color);
+  };
+
+  const renderFrame = async (progressIn: number): Promise<Buffer | null> => {
+    const progress = clamp01(progressIn);
+    let art: LoadedImage | null = clearImg;
+    try {
+      if (mode === "blur") {
+        // Heavy blur → clear, in small continuous steps across the window.
+        const sigma = (1 - progress) * 26;
+        art = sigma > 0.4
+          ? await mod.loadImage(await sharpFn(base).blur(sigma).png().toBuffer())
+          : await mod.loadImage(base);
+      } else if (mode === "silhouette") {
+        // Dark, desaturated silhouette → full brightness, colour & detail.
+        const brightness = 0.06 + progress * 0.94;
+        const saturation = 0.12 + progress * 0.88;
+        const sBlur = (1 - progress) * 5;
+        let p = sharpFn(base).modulate({ brightness, saturation });
+        if (sBlur > 0.4) p = p.blur(sBlur);
+        art = await mod.loadImage(await p.png().toBuffer());
+      }
+    } catch (err) {
+      logger.debug({ err }, "spawn-reveal: frame effect failed");
+      art = clearImg; // fall back to the clear art for this frame
+    }
+    return renderPng(WIDTH, HEIGHT, ctx => drawFrame(ctx, progress, art));
+  };
+
+  return { mode, maxSteps: mode === "puzzle" ? PUZZLE_TILES : 24, renderFrame };
 }
 
 // ── Shiny reveal ─────────────────────────────────────────────────────────────
