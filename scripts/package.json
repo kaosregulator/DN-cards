@@ -9,13 +9,16 @@
     "sim:battle": "tsx ./src/battle-sim.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "migration:snapshot": "tsx ./src/migration-snapshot.ts",
-    "migration:compare": "tsx ./src/migration-compare.ts"
+    "migration:compare": "tsx ./src/migration-compare.ts",
+    "db:inventory": "tsx ./src/db-inventory.ts",
+    "storage:export": "tsx ./src/storage-export.ts"
   },
   "devDependencies": {
     "@types/node": "catalog:",
     "tsx": "catalog:"
   },
   "dependencies": {
+    "@google-cloud/storage": "^7.19.0",
     "@workspace/db": "workspace:*"
   }
 }

@@ -47,3 +47,14 @@ Thumbs.db
 # Replit
 .cache/
 .local/
+
+# Database backups and object-storage exports.
+# These contain dashboard_users.password_hash and setup_tokens.token — real
+# credentials. Keep them out of git history; store them off-repo instead.
+backups/
+*.dump
+db-backup.sql
+db-backup.sql.gz
+db-backup.txt
+dn-cards-backup.tar.gz
+exports/*.tar.gz
