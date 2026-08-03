@@ -30,7 +30,6 @@ export const SECTION_COLOR = {
   giveaway: 0x9b59b6, // purple
   quests:   0xe67e22, // orange
   social:   0x1abc9c, // teal
-  bob:      0xf1c40f, // Bob yellow
   admin:    0xeb459e, // pink
 } as const;
 

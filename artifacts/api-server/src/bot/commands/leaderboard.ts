@@ -2,7 +2,7 @@
 // Unified /top — one command, canvas render, category dropdown.
 //
 // Combines the three server leaderboards (Collector · Battle · Raid) behind a
-// single StringSelect (mirrors the Bob leaderboard's dropdown pattern). Each
+// single StringSelect. Each
 // category normalizes to rows of {userId, primary, secondary}; buildTopMessage
 // resolves Discord avatars/names and hands them to the canvas renderer.
 // ─────────────────────────────────────────────────────────────────────────────

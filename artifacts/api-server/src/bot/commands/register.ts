@@ -66,6 +66,8 @@ function buildLegacyCommands() {
           { name: "Raid — Campaign", value: "raid" },
         ))),
 
+    cmd("show_shiny", "Show off your shiny cards with the full shiny effect", s => s),
+
     cmd("burn", "Burn duplicates for DN Shards", s => s
       .addStringOption(o => o.setName("name").setDescription("Name to burn").setRequired(true).setAutocomplete(true))
       .addIntegerOption(o => o.setName("amount").setDescription("How many copies to burn (default 1)").setMinValue(1))
@@ -577,61 +579,6 @@ function buildLegacyCommands() {
         .addIntegerOption(o => o.setName("id").setDescription("Listing ID").setRequired(true).setMinValue(1)))
       .addSubcommand(sc => sc.setName("mine").setDescription("View your listings and active bids"))),
 
-    // ── Bob — interactive entertainment NPC (its own module) ──────────────────
-    cmd("bob", "Open Bob — games, roasts, tasks, quests & chaos", s => s),
-    cmd("bob_coinflip", "Play Bob's coin flip", s => s),
-    cmd("bob_dice", "Play Bob's dice roll", s => s),
-    cmd("bob_hl", "Play Bob's higher or lower", s => s),
-    cmd("bob_slots", "Play Bob's slots", s => s),
-    cmd("bob_wheel", "Play Bob's lucky wheel", s => s),
-    cmd("bob_emoji", "Play Bob's guess the emoji", s => s),
-    cmd("bob_bj", "Play Bob's blackjack", s => s),
-    cmd("bob_rps", "Play Bob's rock paper scissors", s => s),
-    cmd("bob_roulette", "Play Bob's roulette — survive the chamber for coins", s => s),
-    cmd("bob_duel", "Challenge someone to a Bob roulette duel", s => s
-      .addUserOption(o => o.setName("user").setDescription("Who to duel").setRequired(true))),
-    cmd("bob_roast", "Have Bob roast a member", s => s
-      .addUserOption(o => o.setName("user").setDescription("Who to roast").setRequired(true))),
-    cmd("bob_talk", "Chat with Bob", s => s
-      .addStringOption(o => o.setName("message").setDescription("Say something to Bob (leave empty to open the chat)"))),
-    cmd("bob_stats", "View your (or someone's) Bob stats", s => s
-      .addUserOption(o => o.setName("user").setDescription("Whose stats (default: you)"))),
-    cmd("bob_leaderboard", "Bob leaderboards — coins, wins, streaks & more", s => s
-      .addStringOption(o => o.setName("board").setDescription("Which leaderboard")
-        .addChoices(
-          { name: "🪙 Richest", value: "coins" }, { name: "🏆 Most wins", value: "wins" },
-          { name: "🎲 Best roulette streak", value: "streak" }, { name: "💬 Most interactions", value: "interactions" },
-          { name: "🎰 Biggest gamblers", value: "gambled" }, { name: "💎 Jackpot kings", value: "jackpots" },
-          { name: "📈 Highest level", value: "level" }))),
-    adminCmd("bob_admin", "Configure Bob — toggles, odds, rewards, cooldown, channels, images, avatars", s => s
-      .addSubcommand(sc => sc.setName("settings").setDescription("View Bob's current settings"))
-      .addSubcommand(sc => sc.setName("toggle").setDescription("Enable/disable Bob or a specific game/feature")
-        .addStringOption(o => o.setName("feature").setDescription("bob, events, ai, dex, mention, roulette, roast, duel, coin, dice, hl, slots, wheel, emoji, bj, rps").setRequired(true))
-        .addBooleanOption(o => o.setName("enabled").setDescription("On or off").setRequired(true)))
-      .addSubcommand(sc => sc.setName("odds").setDescription("Set Blue / Upside-Down Bob appearance chances")
-        .addIntegerOption(o => o.setName("blue").setDescription("Blue Bob % (0-100)").setMinValue(0).setMaxValue(100))
-        .addIntegerOption(o => o.setName("upside").setDescription("Upside-Down Bob % (0-100)").setMinValue(0).setMaxValue(100)))
-      .addSubcommand(sc => sc.setName("rewards").setDescription("Set the reward multiplier %")
-        .addIntegerOption(o => o.setName("multiplier").setDescription("Percent (100 = normal)").setRequired(true).setMinValue(0).setMaxValue(1000)))
-      .addSubcommand(sc => sc.setName("cooldown").setDescription("Set the per-user action cooldown")
-        .addIntegerOption(o => o.setName("seconds").setDescription("Seconds (0-120)").setRequired(true).setMinValue(0).setMaxValue(120)))
-      .addSubcommand(sc => sc.setName("channels").setDescription("Manage channels Bob can appear in for random events")
-        .addStringOption(o => o.setName("action").setDescription("add / remove / clear").setRequired(true)
-          .addChoices({ name: "add", value: "add" }, { name: "remove", value: "remove" }, { name: "clear", value: "clear" }))
-        .addChannelOption(o => o.setName("channel").setDescription("Channel to add/remove")))
-      .addSubcommand(sc => sc.setName("testevent").setDescription("Spawn a Bob event now (test)")
-        .addChannelOption(o => o.setName("channel").setDescription("Where (default: here)")))
-      .addSubcommand(sc => sc.setName("image").setDescription("Set a scene/reaction image (win, lose, suspense, jackpot, roulette, blackjack, event)")
-        .addStringOption(o => o.setName("key").setDescription("Which image slot").setRequired(true)
-          .addChoices({ name: "win", value: "win" }, { name: "lose", value: "lose" }, { name: "suspense", value: "suspense" },
-            { name: "jackpot", value: "jackpot" }, { name: "roulette", value: "roulette" }, { name: "blackjack", value: "blackjack" }, { name: "event", value: "event" }))
-        .addStringOption(o => o.setName("url").setDescription("Direct image/GIF URL — empty to clear")))
-      .addSubcommand(sc => sc.setName("avatar").setDescription("Set Bob's avatar image per form (upload or paste a direct link)")
-        .addStringOption(o => o.setName("form").setDescription("Which Bob").setRequired(true)
-          .addChoices({ name: "🟡 Normal Bob", value: "normal" }, { name: "🔵 Blue Bob", value: "blue" }, { name: "🙃 Upside-Down Bob", value: "upside" }))
-        .addAttachmentOption(o => o.setName("image").setDescription("Upload an image/GIF file directly"))
-        .addStringOption(o => o.setName("url").setDescription("Direct image URL (.png/.jpg/.gif/.webp) — leave empty to clear")))),
-
     // ── Echo-Whisper (encrypted messaging addon) ──────────────────────────────
     cmd("whisper", "Send an encrypted whisper only a chosen member can read", s => s
       .addUserOption(o => o.setName("user").setDescription("The member who can read this message").setRequired(true))),
@@ -686,6 +633,7 @@ export const COMMAND_RENAMES: Record<string, string> = {
   massdrop: "mass_drop",
   adminhub: "admin_hub",
   user_hub: "user-hub",
+  show_shiny: "show-shiny",
   adminhelp: "admin_help",
   welcomeadmin: "welcome_admin",
   battleadmin: "battle_admin",
@@ -730,7 +678,6 @@ export function internalCommandName(clean: string): string {
 //   achievements  → /user-hub · Collector Profile (achievements)
 //   market        → /user-hub · 🏪 Market button (full market-hub)
 //   squad         → /user-hub · 🤝 Squad button (full squad-hub)
-//   bob_* (games/roast/talk) → /bob menu (Games / Roast / Talk)
 export const HUB_REPLACED_COMMANDS = new Set<string>([
   // Player commands with full User-Hub parity.
   // NOTE: `/top` was restored as a standalone command by request — the collector
@@ -739,9 +686,6 @@ export const HUB_REPLACED_COMMANDS = new Set<string>([
   "market", "squad",
   // Now added as interactive User-Hub sections (Quests / Wishlist / Reputation / Search).
   "quests", "wishlist", "rep", "search",
-  // Bob minigame shortcuts — all reachable from the /bob menu.
-  "bob_coinflip", "bob_dice", "bob_hl", "bob_slots", "bob_wheel", "bob_emoji",
-  "bob_bj", "bob_rps", "bob_roulette", "bob_roast", "bob_talk",
 ]);
 
 export function buildCommands() {
