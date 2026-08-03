@@ -45,6 +45,10 @@ export const afkGuildSettingsTable = pgTable("afk_guild_settings", {
   secretaryEnabled: boolean("secretary_enabled").notNull().default(true),
   // Whether the bot prefixes "[AFK]" onto members' nicknames while away.
   nicknameChanges: boolean("nickname_changes").notNull().default(true),
+  // Post the ping-intercept through a webhook wearing the away member's name +
+  // avatar, so it reads as if they replied. Falls back to a normal bot message
+  // when webhooks aren't available in the channel.
+  speakAsUser: boolean("speak_as_user").notNull().default(false),
   // Cap on how many unread notes a single receiver may accumulate.
   maxSavedMessages: integer("max_saved_messages").notNull().default(25),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),

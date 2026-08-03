@@ -441,6 +441,14 @@ async function onDismiss(interaction: ButtonInteraction): Promise<void> {
     return;
   }
   forgetDismissOwner(messageId);
+  // A "speak as member" intercept is a webhook message; delete it through the
+  // owning webhook so Dismiss works without Manage Messages. Falls back to a
+  // normal delete for bot-authored intercepts (or if the webhook path can't).
+  if (interaction.message.webhookId) {
+    await interaction.deferUpdate().catch(() => {});
+    const { deleteSpokenMessage } = await import("./speak-as-user.js");
+    if (await deleteSpokenMessage(interaction.message).catch(() => false)) return;
+  }
   await interaction.message.delete().catch(() => { /* already gone */ });
 }
 
