@@ -182,6 +182,11 @@ export async function handleUserHubComponent(
     await openSquadHubFromButton(interaction);
     return;
   }
+  if (action === "open-collection" && interaction.isButton()) {
+    const { openCollectionHubFromButton } = await import("./collection-hub.js");
+    await openCollectionHubFromButton(interaction);
+    return;
+  }
 
   // Show Card trophy: open the card picker, then render + post publicly.
   if (action === "open-showcase" && interaction.isButton()) {
@@ -275,6 +280,11 @@ async function buildView(interaction: AnyInteraction, section: Section) {
       break;
     case "collection":
       embeds = [await buildCollectionEmbed(guildId, userId, username, avatar)];
+      // The summary above answers "how much do I have"; this opens the browser
+      // that answers "what exactly, and show me that one".
+      rows.push(new ActionRowBuilder<ButtonBuilder>().addComponents(
+        new ButtonBuilder().setCustomId("user-hub:open-collection").setLabel("Browse Cards").setEmoji("🔎").setStyle(ButtonStyle.Primary),
+      ));
       break;
     case "battle-profile":
       embeds = [await buildBattleProfileEmbed(guildId, userId, username, avatar)];

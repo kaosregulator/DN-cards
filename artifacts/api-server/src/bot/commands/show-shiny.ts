@@ -21,7 +21,10 @@ import {
   EmbedBuilder, ActionRowBuilder, StringSelectMenuBuilder, ButtonBuilder,
   ButtonStyle, MessageFlags, AttachmentBuilder,
 } from "discord.js";
-import { getUserCollection, getOrCreateGuildSettings } from "../db.js";
+import {
+  getUserCollection, getOrCreateGuildSettings,
+  getRarityContext, getRarityDisplayOverrides, getCardDisplayRarity,
+} from "../db.js";
 import { getShinyName, SHINY_EMOJI, type Rarity } from "../cards-data.js";
 import { getCardProgress, starsForLevel } from "../cards/leveling.js";
 import { renderShinyShowcase } from "../animations/index.js";
@@ -72,7 +75,7 @@ export async function handleShowShinyCommand(interaction: ChatInputCommandIntera
   }
 
   // Several shinies — offer a picker (+ Show Best).
-  await interaction.reply(buildPickerView(shinies)).catch(() => {});
+  await interaction.reply(await buildPickerView(guildId, shinies)).catch(() => {});
 }
 
 // ── Component routing (show-shiny:*) ──────────────────────────────────────────
@@ -109,17 +112,29 @@ export async function handleShowShinyComponent(
 }
 
 // ── Picker view ───────────────────────────────────────────────────────────────
-function buildPickerView(shinies: ShinyItem[]) {
+async function buildPickerView(guildId: string, shinies: ShinyItem[]) {
+  // Same rarity source of truth as the showcase itself, so a renamed or custom
+  // tier reads correctly in the picker rather than showing the raw key.
+  const [settings, ctx, displayMap] = await Promise.all([
+    getOrCreateGuildSettings(guildId),
+    getRarityContext(guildId),
+    getRarityDisplayOverrides(guildId),
+  ]);
   const select = new StringSelectMenuBuilder()
     .setCustomId("show-shiny:pick")
     .setPlaceholder("Pick a shiny to show off…")
     .addOptions(
-      shinies.slice(0, 24).map(item => ({
-        label: `${item.name.slice(0, 80)}${item.shinyCount > 1 ? ` ×${item.shinyCount}` : ""}`,
-        value: item.cardId.toString(),
-        description: `${item.rarity} · ${item.worthValue} shards`,
-        emoji: SHINY_EMOJI,
-      })),
+      shinies.slice(0, 24).map(item => {
+        const d = getCardDisplayRarity(
+          { id: item.cardId, rarity: item.rarity as string }, ctx, settings, displayMap,
+        );
+        return {
+          label: `${item.name.slice(0, 80)}${item.shinyCount > 1 ? ` ×${item.shinyCount}` : ""}`,
+          value: item.cardId.toString(),
+          description: `${d.label} · ${item.worthValue} shards`,
+          emoji: SHINY_EMOJI,
+        };
+      }),
     );
   const embed = new EmbedBuilder()
     .setColor(0xf1c40f)
@@ -151,19 +166,27 @@ async function postShiny(
   const guildId = interaction.guildId!;
   const userId = interaction.user.id;
 
-  const [settings, progress] = await Promise.all([
+  const [settings, progress, ctx, displayMap] = await Promise.all([
     getOrCreateGuildSettings(guildId),
     getCardProgress(guildId, userId, item.cardId),
+    getRarityContext(guildId),
+    getRarityDisplayOverrides(guildId),
   ]);
   const level = progress?.level ?? 1;
   const stars = starsForLevel(level);
   const shinyLabel = getShinyName(settings);
+  // Rarity source of truth: resolves a per-card CUSTOM tier first, then the
+  // guild's rarity display overrides (renamed/recoloured built-ins), then the
+  // static default — so a renamed rarity shows its real name and colour here.
+  const display = getCardDisplayRarity(
+    { id: item.cardId, rarity: item.rarity as string }, ctx, settings, displayMap,
+  );
 
   const img = await renderShinyShowcase({
     artUrl: toAbsoluteImageUrl(item.imageUrl),
     rarity: item.rarity as Rarity,
-    rarityLabel: (item.rarity as string).toUpperCase(),
-    rarityColor: null,
+    rarityLabel: display.label.toUpperCase(),
+    rarityColor: display.color,
     name: item.name,
     ownerName: interaction.user.username,
     level,
@@ -193,9 +216,9 @@ async function postShiny(
   } else {
     // Canvas unavailable — still show something, using the plain card art.
     const embed = new EmbedBuilder()
-      .setColor(0xf1c40f)
+      .setColor(display.color)
       .setTitle(`${SHINY_EMOJI} ${item.name}`)
-      .setDescription(`${(item.rarity as string).toUpperCase()} · Lv ${level} ${"★".repeat(stars)}${"☆".repeat(5 - stars)}`)
+      .setDescription(`${display.emoji} ${display.label} · Lv ${level} ${"★".repeat(stars)}${"☆".repeat(5 - stars)}`)
       .setImage(toAbsoluteImageUrl(item.imageUrl));
     msg = await channel.send({ content, embeds: [embed], allowedMentions: { users: [] } })
       .catch((err: unknown) => { logger.debug({ err }, "show-shiny: public fallback post failed"); return null; });
