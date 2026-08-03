@@ -280,6 +280,9 @@ export async function startBot() {
         } else if (interaction.customId.startsWith("show-shiny:")) {
           const { handleShowShinyComponent } = await import("./commands/show-shiny.js");
           await handleShowShinyComponent(interaction);
+        } else if (interaction.customId.startsWith("collhub:")) {
+          const { handleCollectionHubComponent } = await import("./commands/collection-hub.js");
+          await handleCollectionHubComponent(interaction);
         }
         return;
       }
@@ -366,6 +369,9 @@ export async function startBot() {
           await handleConfigBoostModal(interaction);
         } else if (interaction.customId.startsWith("gwhub:")) {
           await handleGiveawayHubComponent(interaction);
+        } else if (interaction.customId.startsWith("collhub:")) {
+          const { handleCollectionHubModal } = await import("./commands/collection-hub.js");
+          await handleCollectionHubModal(interaction);
         }
         return;
       }
@@ -405,6 +411,13 @@ export async function startBot() {
         if (action === "show-shiny") {
           const { handleShowShinyComponent } = await import("./commands/show-shiny.js");
           await handleShowShinyComponent(interaction);
+          return;
+        }
+
+        // ── Collection hub (paging, filters, search, card detail) ──────────
+        if (action === "collhub") {
+          const { handleCollectionHubComponent } = await import("./commands/collection-hub.js");
+          await handleCollectionHubComponent(interaction);
           return;
         }
 
@@ -786,6 +799,9 @@ export async function startBot() {
       } else if (cmd === "show_shiny") {
         const { handleShowShinyCommand } = await import("./commands/show-shiny.js");
         await handleShowShinyCommand(interaction);
+      } else if (cmd === "collection_hub") {
+        const { handleCollectionHubCommand } = await import("./commands/collection-hub.js");
+        await handleCollectionHubCommand(interaction);
       } else if (USER_HUB_COMMANDS.has(cmd)) {
         // Flattened player commands (/burn, /daily, …) + standalone player
         // commands that carry their own subcommands (/sets, /rep, …).
@@ -817,6 +833,7 @@ export async function startBot() {
     "battle", "battleadmin", "market", "squad", "raid", "raidadmin",
     "giveaway",
     "whisper", "adminsecret", "echo", "afk", "afksetup", "begin", "show_shiny",
+    "collection_hub",
     "valuehelp", "valuelist", "info_mttv", "giveall", "editpack", "postcalculator",
     "massrole",
   ]);

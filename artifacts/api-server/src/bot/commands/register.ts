@@ -68,6 +68,18 @@ function buildLegacyCommands() {
 
     cmd("show_shiny", "Show off your shiny cards with the full shiny effect", s => s),
 
+    cmd("collection_hub", "Browse your collection — filter by rarity, shinies, name & more", s => s
+      .addStringOption(o => o.setName("name").setDescription("Jump straight to cards matching this name"))
+      .addStringOption(o => o.setName("rarity").setDescription("Filter by rarity key (e.g. legendary, or a custom tier)"))
+      .addStringOption(o => o.setName("filter").setDescription("Only show a kind of card")
+        .addChoices(
+          { name: "✨ Shinies", value: "shiny" },
+          { name: "💎 Limited", value: "limited" },
+          { name: "🎆 Event", value: "event" },
+          { name: "🔁 Duplicates", value: "dupes" },
+          { name: "⭐ Leveled", value: "leveled" },
+        ))),
+
     cmd("burn", "Burn duplicates for DN Shards", s => s
       .addStringOption(o => o.setName("name").setDescription("Name to burn").setRequired(true).setAutocomplete(true))
       .addIntegerOption(o => o.setName("amount").setDescription("How many copies to burn (default 1)").setMinValue(1))
@@ -634,6 +646,7 @@ export const COMMAND_RENAMES: Record<string, string> = {
   adminhub: "admin_hub",
   user_hub: "user-hub",
   show_shiny: "show-shiny",
+  collection_hub: "collection-hub",
   adminhelp: "admin_help",
   welcomeadmin: "welcome_admin",
   battleadmin: "battle_admin",

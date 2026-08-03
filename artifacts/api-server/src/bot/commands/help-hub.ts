@@ -154,7 +154,8 @@ const PAGES: Record<HelpSection, PageFn> = {
       .addFields(
         { name: "🎯 Catch & Browse", value:
           "**Type a card's name** in the spawn channel to catch it.\n" +
-          "**/user-hub → Collection** — your owned cards by rarity\n" +
+          "`/collection-hub` — **browse your own cards**: filter by rarity (custom tiers included), ✨ shinies, 💎 limited, 🎆 event, duplicates or leveled, search by name, then open any card for its stats & level\n" +
+          "**/user-hub → Collection** — your owned cards by rarity (**🔎 Browse Cards** opens the hub above)\n" +
           "`/info name:<card>` — details, worth, drop chance\n" +
           "`/list` — full roster grouped by rarity\n" +
           "`/catalog category:<rarity|event|limited|all>` — browse by type\n" +
