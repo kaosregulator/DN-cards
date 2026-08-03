@@ -45,17 +45,6 @@ import { startGiveawayMaintenance } from "./giveaway/sweeper.js";
 import { handleHelpHubComponent } from "./commands/help-hub.js";
 import { buildBattleStatsEmbed, battleStatsLevelJumpRow } from "./battle/stats-view.js";
 import { buildCardLevelEmbed } from "./cards/level-command.js";
-import {
-  handleBob, handleBobRoulette, handleBobDuel, handleBobRoast, handleBobTalk,
-  handleBobStats, handleBobLeaderboard,
-} from "./bob/command.js";
-import { handleBobGameCommand } from "./bob/games.js";
-import { handleBobAdmin } from "./bob/admin.js";
-import {
-  isBobComponent, handleBobButton, handleBobSelect, handleBobUserSelect, handleBobModal,
-} from "./bob/router.js";
-import { startBobEvents } from "./bob/events.js";
-import { handleBobMention } from "./bob/talk.js";
 import { handleWhisperCommand, handleAdminSecretCommand, handleEchoCommand } from "./secret/commands.js";
 import { isSecretModal, handleSecretModal, isSecretButton, handleSecretButton } from "./secret/interactions.js";
 import {
@@ -162,7 +151,6 @@ export async function startBot() {
     startBattleMaintenance();
     startMarketMaintenance();
     startGiveawayMaintenance();
-    startBobEvents(client);
     await registerCommands(c.user.id, token, client);
     // AFK Secretary: start the timed auto-remove sweeper (clears "timed" AFKs
     // once their countdown elapses; presence/messages can't cover this).
@@ -252,8 +240,6 @@ export async function startBot() {
         } else if (interaction.customId.startsWith("squad-hub:")) {
           const { handleSquadHubComponent } = await import("./commands/squad-hub.js");
           await handleSquadHubComponent(interaction);
-        } else if (isBobComponent(interaction.customId)) {
-          await handleBobSelect(interaction);
         } else if (interaction.customId.startsWith("battle:")) {
           await handleBattleComponent(interaction);
         } else if (interaction.customId.startsWith("raid:")) {
@@ -291,6 +277,9 @@ export async function startBot() {
         } else if (interaction.customId === "top:cat") {
           const { handleTopSelect } = await import("./commands/leaderboard.js");
           await handleTopSelect(interaction);
+        } else if (interaction.customId.startsWith("show-shiny:")) {
+          const { handleShowShinyComponent } = await import("./commands/show-shiny.js");
+          await handleShowShinyComponent(interaction);
         }
         return;
       }
@@ -305,11 +294,9 @@ export async function startBot() {
         return;
       }
 
-      // ── User select menus (Bob roast target picker, user-hub rep) ──────────
+      // ── User select menus (user-hub rep) ───────────────────────────────────
       if (interaction.isUserSelectMenu()) {
-        if (isBobComponent(interaction.customId)) {
-          await handleBobUserSelect(interaction);
-        } else if (interaction.customId.startsWith("user-hub:")) {
+        if (interaction.customId.startsWith("user-hub:")) {
           const { handleUserHubComponent } = await import("./commands/user-hub.js");
           await handleUserHubComponent(interaction);
         }
@@ -318,9 +305,7 @@ export async function startBot() {
 
       // ── Modal submissions (admin hub + setup test card + custom mix) ─────
       if (interaction.isModalSubmit()) {
-        if (isBobComponent(interaction.customId)) {
-          await handleBobModal(interaction);
-        } else if (isSecretModal(interaction.customId)) {
+        if (isSecretModal(interaction.customId)) {
           await handleSecretModal(interaction);
         } else if (interaction.customId.startsWith("battleadmin:")) {
           await handleBattleAdminModal(interaction);
@@ -413,6 +398,13 @@ export async function startBot() {
         if (action === "user-hub") {
           const { handleUserHubComponent } = await import("./commands/user-hub.js");
           await handleUserHubComponent(interaction);
+          return;
+        }
+
+        // ── Show Shiny picker buttons (Show Best) ──────────────────────────
+        if (action === "show-shiny") {
+          const { handleShowShinyComponent } = await import("./commands/show-shiny.js");
+          await handleShowShinyComponent(interaction);
           return;
         }
 
@@ -528,12 +520,6 @@ export async function startBot() {
             embeds: "embed" in result ? [result.embed] : [],
             flags: MessageFlags.Ephemeral,
           });
-          return;
-        }
-
-        // ── Bob entertainment module (games, roulette, duel, events, menu) ──
-        if (action === "bob") {
-          await handleBobButton(interaction);
           return;
         }
 
@@ -784,38 +770,6 @@ export async function startBot() {
         await handleRaidAdminCommand(interaction);
       } else if (cmd === "giveaway") {
         await handleGiveawayHubCommand(interaction);
-      } else if (cmd === "bob") {
-        await handleBob(interaction);
-      } else if (cmd === "bob_coinflip") {
-        await handleBobGameCommand(interaction, "coinflip");
-      } else if (cmd === "bob_dice") {
-        await handleBobGameCommand(interaction, "dice");
-      } else if (cmd === "bob_hl") {
-        await handleBobGameCommand(interaction, "hl");
-      } else if (cmd === "bob_slots") {
-        await handleBobGameCommand(interaction, "slots");
-      } else if (cmd === "bob_wheel") {
-        await handleBobGameCommand(interaction, "wheel");
-      } else if (cmd === "bob_emoji") {
-        await handleBobGameCommand(interaction, "emoji");
-      } else if (cmd === "bob_bj") {
-        await handleBobGameCommand(interaction, "bj");
-      } else if (cmd === "bob_rps") {
-        await handleBobGameCommand(interaction, "rps");
-      } else if (cmd === "bob_roulette") {
-        await handleBobRoulette(interaction);
-      } else if (cmd === "bob_duel") {
-        await handleBobDuel(interaction);
-      } else if (cmd === "bob_roast") {
-        await handleBobRoast(interaction);
-      } else if (cmd === "bob_talk") {
-        await handleBobTalk(interaction);
-      } else if (cmd === "bob_stats") {
-        await handleBobStats(interaction);
-      } else if (cmd === "bob_leaderboard") {
-        await handleBobLeaderboard(interaction);
-      } else if (cmd === "bob_admin") {
-        await handleBobAdmin(interaction);
       } else if (cmd === "whisper") {
         await handleWhisperCommand(interaction);
       } else if (cmd === "adminsecret") {
@@ -829,6 +783,9 @@ export async function startBot() {
       } else if (cmd === "begin") {
         const { handleOnboardingCommand } = await import("./onboarding/command.js");
         await handleOnboardingCommand(interaction);
+      } else if (cmd === "show_shiny") {
+        const { handleShowShinyCommand } = await import("./commands/show-shiny.js");
+        await handleShowShinyCommand(interaction);
       } else if (USER_HUB_COMMANDS.has(cmd)) {
         // Flattened player commands (/burn, /daily, …) + standalone player
         // commands that carry their own subcommands (/sets, /rep, …).
@@ -859,9 +816,7 @@ export async function startBot() {
     // Explicitly routed in the interaction handler above.
     "battle", "battleadmin", "market", "squad", "raid", "raidadmin",
     "giveaway",
-    "bob", "bob_coinflip", "bob_dice", "bob_hl", "bob_slots", "bob_wheel", "bob_emoji", "bob_bj", "bob_rps",
-    "bob_roulette", "bob_duel", "bob_roast", "bob_talk", "bob_stats", "bob_leaderboard", "bob_admin",
-    "whisper", "adminsecret", "echo", "afk", "afksetup", "begin",
+    "whisper", "adminsecret", "echo", "afk", "afksetup", "begin", "show_shiny",
     "valuehelp", "valuelist", "info_mttv", "giveall", "editpack", "postcalculator",
     "massrole",
   ]);
@@ -889,10 +844,6 @@ export async function startBot() {
     // Giveaway message-requirement tracking (anti-spam, ignores commands/bots).
     // Fire-and-forget — never consumes the message or blocks the pipeline below.
     void handleGiveawayMessage(msg, prefix).catch(err => logger.debug({ err }, "Giveaway message hook error"));
-
-    // Bob @mention chat — Bob occasionally reacts when tagged (rate-limited,
-    // sometimes ignores you on purpose). Fire-and-forget.
-    void handleBobMention(msg).catch(err => logger.debug({ err }, "Bob mention hook error"));
 
     if (content.startsWith(prefix)) {
       await handlePrefixCommand(msg, prefix).catch(err => logger.error({ err }, "Prefix command error"));

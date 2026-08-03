@@ -41,7 +41,6 @@ const SECTIONS: SectionMeta[] = [
   { id: "giveaway", emoji: "🎉", label: "Giveaways",                  blurb: "Win prizes through activity" },
   { id: "quests",   emoji: "🎯", label: "Quests & Reputation",        blurb: "Daily/weekly goals, rep, thanks" },
   { id: "social",   emoji: "🔊", label: "Echo Messages & AFK",        blurb: "Encrypted whispers, away status" },
-  { id: "bob",      emoji: "🤖", label: "Bob — Games & Chaos",        blurb: "Roulette, mini-games, roasts, Bob" },
   { id: "admin",    emoji: "🛠️", label: "Admin Toolbox",              blurb: "Setup, config & management (admins)", adminOnly: true },
 ];
 
@@ -293,27 +292,6 @@ const PAGES: Record<HelpSection, PageFn> = {
       );
   },
 
-  // ── Bob ─────────────────────────────────────────────────────────────────────
-  bob: (e) => {
-    e.setTitle("🤖 Bob — Games & Chaos")
-      .setDescription("Bob is the server's chaotic entertainment NPC. His own coins 🪙, his own games, his own moods. Rarely he turns 🔵 **Blue** (evil, double rewards) or 🙃 **Upside-Down** (glitched, weird). Separate from cards — just for fun." + NAV_HINT)
-      .addFields(
-        { name: "🎛️ Start Here — `/bob`", value:
-          "`/bob` opens Bob's interactive menu; everything lives inside it:\n" +
-          "🎲 **Games** · 🔫 **Roulette** · 😂 **Roast** · 🎯 **Tasks** · 📜 **Quests** · 🎁 **Rewards** · 💬 **Talk**" },
-        { name: "🎲 Games & Roulette (in the menu)", value:
-          "Coin Flip · Dice · Higher/Lower · Slots · Lucky Wheel · Guess the Emoji · Blackjack · Rock-Paper-Scissors — all under **🎲 Games**.\n" +
-          "**🔫 Roulette** — survive the chamber for coins + a survival streak." },
-        { name: "😂 Roast & 💬 Talk (in the menu)", value:
-          "**😂 Roast** — have Bob roast a member. **💬 Talk** — chat with Bob.\n" +
-          "`/bob_duel user:@member` — challenge someone directly; first BANG loses." },
-        { name: "📊 Progress", value:
-          "`/bob_stats [user]` — your coins, luck %, streaks & records\n" +
-          "`/bob_leaderboard` — richest, most wins, best streaks, biggest gamblers & more\n" +
-          "Daily tasks + long-term quests hand out coins, XP and titles as you play." },
-      );
-  },
-
   // ── Admin ─────────────────────────────────────────────────────────────────────
   admin: (e, { site }) => {
     e.setTitle("🛠️ Admin Toolbox")
@@ -343,7 +321,6 @@ const PAGES: Record<HelpSection, PageFn> = {
           "`/battle_admin` — battle system hub (setup, rules, rewards, seasons)\n" +
           "`/raid_admin create|edit|list|enable|delete` — co-op raid bosses\n" +
           "`/giveaway` → **⚙️ Admin** — quick-create, manage, end, cancel & reroll giveaways\n" +
-          "`/bob_admin` — configure Bob (toggles, odds, rewards, cooldown, event channels)\n" +
           "`/echo …` — Echo-Whisper viewer roles, override & stats" },
         { name: "🌐 Website", value: `Public: **[${site}](${site})** · Admin dashboard: run \`/dashboard\` for your login link.` },
       );

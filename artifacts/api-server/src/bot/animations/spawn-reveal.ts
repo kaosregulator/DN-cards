@@ -325,3 +325,100 @@ export async function renderShinyReveal(input: ShinyRevealInput): Promise<Buffer
     return null;
   }
 }
+
+// ── Shiny showcase ───────────────────────────────────────────────────────────
+// A premium, looping "show off" animation for the /show-shiny command. It reuses
+// the exact holo/foil/shine effect stack as the shiny catch reveal, but dressed
+// as a trophy showcase: the owner's chosen shiny front-and-centre with its
+// level, star rank and shiny copy-count called out. Best-effort → null (the
+// caller falls back to a plain embed).
+export interface ShinyShowcaseInput {
+  artUrl: string | null | undefined;
+  rarity: Rarity;
+  rarityLabel: string;
+  rarityColor?: number | null;
+  name: string;
+  ownerName: string;
+  level?: number;
+  stars?: number;       // 0–5 filled
+  shinyCount?: number;  // shiny copies owned
+  shinyLabel?: string;  // the guild's shiny name (default "Shiny")
+  speed?: AnimationSpeed;
+}
+
+// Compact showcase geometry: a slightly shorter card panel than the catch
+// reveal, leaving room below for the card name AND a meta line.
+const SHOWCASE_PANEL = { x: 40, y: 66, w: 400, h: 452 } as const;
+
+export async function renderShinyShowcase(input: ShinyShowcaseInput): Promise<Buffer | null> {
+  const mod = await getCanvas();
+  if (!mod) return null;
+  // Require the art to be loadable up-front so we never emit a frame-less card.
+  const probe = await loadArtBuffer(input.artUrl);
+  if (!probe) return null;
+
+  const color = input.rarityColor ?? getRarityEffectColor(input.rarity);
+  const gold = 0xf1c40f;
+  const stars = Math.max(0, Math.min(5, Math.round(input.stars ?? 0)));
+  const P = SHOWCASE_PANEL;
+  try {
+    const result = await encodeAnimation({
+      width: WIDTH,
+      height: HEIGHT,
+      speed: input.speed ?? "normal",
+      durationMs: 2600,
+      maxFrames: 26,
+      quality: 20,
+      render: async ({ ctx, t, mod: m }) => {
+        // Warm, shiny gold-tinted backdrop.
+        drawGradientBackground(ctx, WIDTH, HEIGHT, [
+          [0, hexToRgba(gold, 0.30)],
+          [0.5, "#141007"],
+          [1, "#0a0803"],
+        ], 0.30);
+
+        // Owner banner up top.
+        const banner = `✨ ${input.ownerName}'s Shiny ✨`;
+        drawTitle(ctx, banner, WIDTH / 2, 36, "#ffe27a", fitText(ctx, banner, WIDTH - 48, 24, 14, TITLE_FONT));
+
+        // Pulsing glow behind the card.
+        const pulse = 0.7 + 0.3 * Math.sin(t * Math.PI * 2);
+        drawRarityGlow(ctx, P.x, P.y, P.w, P.h, gold, pulse);
+
+        // Card art + animated holo/foil/shine layered on top.
+        ctx.save();
+        roundRectPath(ctx, P.x, P.y, P.w, P.h, 16);
+        ctx.clip();
+        ctx.fillStyle = "#0b0c11";
+        ctx.fillRect(P.x, P.y, P.w, P.h);
+        await drawCardArt(ctx, m, P.x, P.y, P.w, P.h, input.artUrl);
+        drawFoilOverlay(ctx, P.x, P.y, P.w, P.h, t);
+        drawHoloSparkles(ctx, P.x, P.y, P.w, P.h, t, 30);
+        drawShineSweep(ctx, P.x, P.y, P.w, P.h, t, 0xffffff);
+        ctx.restore();
+
+        drawCardFrame(ctx, P.x, P.y, P.w, P.h, gold, 6);
+        drawRarityBadge(ctx, P.x + P.w - 12, P.y + 12, input.rarityLabel, color);
+
+        // Name below the card.
+        const nameY = P.y + P.h + 30;
+        const nameText = `✨ ${input.name}`;
+        drawTitle(ctx, nameText, WIDTH / 2, nameY, "#ffffff", fitText(ctx, nameText, WIDTH - 60, 26, 14, TITLE_FONT));
+
+        // Meta line: level · stars · shiny count.
+        const meta: string[] = [];
+        if (input.level && input.level > 1) meta.push(`Lv ${input.level}`);
+        if (stars > 0) meta.push("★".repeat(stars) + "☆".repeat(5 - stars));
+        const count = input.shinyCount ?? 0;
+        if (count > 0) meta.push(`${input.shinyLabel ?? "Shiny"} ×${count}`);
+        if (meta.length) {
+          drawTextWithShadow(ctx, meta.join("   ·   "), WIDTH / 2, nameY + 28, "#ffe27a", 16);
+        }
+      },
+    });
+    return result?.buffer ?? null;
+  } catch (err) {
+    logger.debug({ err }, "shiny-showcase: encode failed");
+    return null;
+  }
+}
