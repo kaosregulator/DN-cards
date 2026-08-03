@@ -18,6 +18,27 @@ import { drawArenaBackground } from "./arena-bg.js";
 import { drawImpactDebris, physicsShake } from "./physics.js";
 import { extractArtColor } from "../battle/image/vibrant-color.js";
 
+// ── Encode tuning (ANIMATED arena mode) ──────────────────────────────────────
+// GIF encoding dominates the cost of an animated turn, and it scales with the
+// PIXEL COUNT of the encoded frames (NeuQuant builds a palette and then maps
+// every pixel through it, per frame). Measured on this renderer, one turn at the
+// old 0.78 render scale spent ~2.3s of its ~4s inside the encoder alone.
+//
+// Two levers, both applied here:
+//   • RENDER_SCALE — physical pixels per logical unit. 0.60 keeps the battle
+//     canvas comfortably above Discord's inline display width while cutting
+//     encoded pixels (and therefore encode time) to roughly a third.
+//   • QUALITY — gifencoder's NeuQuant *sample factor*: HIGHER means the palette
+//     is trained on fewer sampled pixels, so it is both faster and coarser.
+//     Counter-intuitively the old value of 15 was the slowest setting in the
+//     range; 26 is markedly faster and visually near-identical on these busy,
+//     motion-heavy frames.
+// Frame counts come down a little too — every frame costs both a draw and an
+// encode pass.
+const RENDER_SCALE = 0.6;
+const IDLE_RENDER_SCALE = 0.56;
+const QUALITY = 26;
+
 // Vibrant colour extraction loads + quantizes the art, so resolve it once per
 // combatant up-front rather than on every frame. Falls back to the card's
 // rarity colour when extraction yields nothing.
@@ -38,9 +59,9 @@ export async function renderBattleTurn(
     height: BATTLE_CANVAS.height,
     speed,
     durationMs: 1800,
-    maxFrames: 24,
-    quality: 15,
-    renderScale: 0.78,
+    maxFrames: 18,
+    quality: QUALITY,
+    renderScale: RENDER_SCALE,
     render: (frame) => renderBattleTurnFrame(frame, input, colorA, colorB),
   });
 }
@@ -58,9 +79,9 @@ export async function renderBattleVictory(
     height: BATTLE_CANVAS.height,
     speed,
     durationMs: 2000,
-    maxFrames: 26,
-    quality: 16,
-    renderScale: 0.78,
+    maxFrames: 20,
+    quality: QUALITY,
+    renderScale: RENDER_SCALE,
     render: (frame) => renderVictoryFrame(frame, input, colorA, colorB),
   });
 }
@@ -82,9 +103,9 @@ export async function renderBattleIdle(
     height: BATTLE_CANVAS.height,
     speed,
     durationMs: 1600,
-    maxFrames: 14,
-    quality: 16,
-    renderScale: 0.72,
+    maxFrames: 12,
+    quality: QUALITY,
+    renderScale: IDLE_RENDER_SCALE,
     render: (frame) => renderBattleIdleFrame(frame, input, colorA, colorB),
   });
 }

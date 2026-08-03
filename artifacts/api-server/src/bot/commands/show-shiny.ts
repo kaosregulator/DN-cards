@@ -30,6 +30,10 @@ import { logger } from "../../lib/logger.js";
 
 const EPHEMERAL = { flags: MessageFlags.Ephemeral } as const;
 
+// How long the public showcase stays in the channel before it self-deletes.
+// Mirrors the /user-hub "Show Card" trophy showcase.
+const SHOWCASE_TTL_MS = 40_000;
+
 type ShinyItem = Awaited<ReturnType<typeof getUserCollection>>[number];
 
 // The invoker's shiny cards, best first (worth → shiny copies → name).
@@ -179,12 +183,13 @@ async function postShiny(
   const copies = item.shinyCount > 1 ? ` (${shinyLabel} ×${item.shinyCount})` : "";
   const content = `${SHINY_EMOJI} <@${userId}> shows off their shiny **${item.name}**${copies}`;
 
+  let msg: { delete: () => Promise<unknown> } | null;
   if (img) {
-    await channel.send({
+    msg = await channel.send({
       content,
       files: [new AttachmentBuilder(img, { name: "shiny-showcase.gif" })],
       allowedMentions: { users: [] },
-    }).catch((err: unknown) => logger.debug({ err }, "show-shiny: public post failed"));
+    }).catch((err: unknown) => { logger.debug({ err }, "show-shiny: public post failed"); return null; });
   } else {
     // Canvas unavailable — still show something, using the plain card art.
     const embed = new EmbedBuilder()
@@ -192,7 +197,10 @@ async function postShiny(
       .setTitle(`${SHINY_EMOJI} ${item.name}`)
       .setDescription(`${(item.rarity as string).toUpperCase()} · Lv ${level} ${"★".repeat(stars)}${"☆".repeat(5 - stars)}`)
       .setImage(toAbsoluteImageUrl(item.imageUrl));
-    await channel.send({ content, embeds: [embed], allowedMentions: { users: [] } })
-      .catch((err: unknown) => logger.debug({ err }, "show-shiny: public fallback post failed"));
+    msg = await channel.send({ content, embeds: [embed], allowedMentions: { users: [] } })
+      .catch((err: unknown) => { logger.debug({ err }, "show-shiny: public fallback post failed"); return null; });
   }
+  // Auto-clean the public showcase so channels don't fill up with flexes —
+  // same TTL as the /user-hub trophy showcase.
+  if (msg) setTimeout(() => { void msg!.delete().catch(() => {}); }, SHOWCASE_TTL_MS);
 }
