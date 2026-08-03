@@ -747,6 +747,10 @@ async function runBootMigrations() {
   await pool.query(`ALTER TABLE battle_settings ALTER COLUMN battle_animation_enabled SET DEFAULT true`);
   await pool.query(`UPDATE battle_settings SET battle_animation_enabled = true, updated_at = NOW() WHERE battle_animation_enabled = false`);
 
+  // AFK Secretary "speak as the away member" (webhook-impersonated intercept).
+  // Off by default so existing servers keep the current bot-voiced behaviour.
+  await pool.query(`ALTER TABLE afk_guild_settings ADD COLUMN IF NOT EXISTS speak_as_user BOOLEAN NOT NULL DEFAULT FALSE`);
+
   logger.info("Boot migrations applied");
 }
 

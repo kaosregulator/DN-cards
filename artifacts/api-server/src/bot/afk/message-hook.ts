@@ -8,6 +8,7 @@ import {
   AFK_BRAND, AFK_EMOJI, GRACE_PERIOD_MS,
   canPostIntercept, registerDismissOwner, clearAfkForUser,
 } from "./shared.js";
+import { speakAsUser } from "./speak-as-user.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // AFK Secretary — messageCreate hook.
@@ -114,6 +115,23 @@ async function maybeIntercept(msg: Message, guildId: string): Promise<void> {
     new ButtonBuilder().setCustomId(`afk:profile:${id}`).setStyle(ButtonStyle.Secondary).setEmoji(AFK_EMOJI.PROFILE).setLabel("View Profile"),
     new ButtonBuilder().setCustomId(`afk:dismiss:${id}:${msg.author.id}`).setStyle(ButtonStyle.Danger).setEmoji(AFK_EMOJI.DISMISS).setLabel("Dismiss"),
   );
+
+  // Speak as the away member (webhook with their name + avatar) when the guild
+  // has it enabled. Returns null if webhooks aren't usable here, in which case
+  // we post normally so the Secretary always answers.
+  if (settings.speakAsUser) {
+    const sentId = await speakAsUser(msg, {
+      member,
+      fallbackName: displayName,
+      fallbackAvatar: msg.mentions.users.get(id)?.displayAvatarURL() ?? null,
+      embeds: [embed],
+      components: [row],
+    }).catch(() => null);
+    if (sentId) {
+      registerDismissOwner(sentId, msg.author.id);
+      return;
+    }
+  }
 
   try {
     const channel = msg.channel as TextChannel;

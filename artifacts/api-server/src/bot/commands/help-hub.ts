@@ -288,8 +288,10 @@ const PAGES: Record<HelpSection, PageFn> = {
           "`/admin_secret` — post an encrypted staff message only authorized roles can reveal\n" +
           "Recipients click **🔐 View** to decrypt — nobody else can read it." },
         { name: "💤 AFK Secretary", value:
-          "`/afk [message] [duration]` — set an away status; the bot replies for you when you're pinged and clears it when you're back\n" +
-          "`/afk_setup` — (admin) configure the AFK Secretary for the server" },
+          "`/afk set` — go away; the Secretary answers anyone who pings you and clears when you're back\n" +
+          "`/afk clear` — come back now, whatever return trigger you picked\n" +
+          "`/afk messages` — read notes left while you were away\n" +
+          "`/afk_setup` — (admin) configure the Secretary — incl. **Reply As Member** (answer with your name + avatar)" },
       );
   },
 

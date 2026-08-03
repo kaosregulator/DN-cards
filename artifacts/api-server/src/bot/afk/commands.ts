@@ -7,10 +7,11 @@ import {
 import { logger } from "../../lib/logger.js";
 import {
   getAfkSettings, updateAfkSettings, addWhitelist, removeWhitelist,
-  getNotes, type AfkNoteRow,
+  getNotes, getAfk, countUnreadNotes, type AfkNoteRow,
 } from "./models.js";
 import {
   AFK_BRAND, AFK_EMOJI, hasAfkAccess, putDraft, isPresenceTriggerEnabled,
+  clearAfkForUser,
 } from "./shared.js";
 import { buildNotesViewer } from "./interactions.js";
 
@@ -42,6 +43,9 @@ export function buildAfkCommandJson() {
         .setDescription("Why you're stepping away (shown to anyone who pings you)")
         .setMaxLength(200)))
     .addSubcommand(sc => sc
+      .setName("clear")
+      .setDescription("Clear your AFK right now, whatever return trigger you picked"))
+    .addSubcommand(sc => sc
       .setName("messages")
       .setDescription("Read and manage notes left for you while you were away"))
     .toJSON();
@@ -63,6 +67,9 @@ export function buildAfkSetupCommandJson() {
       .addBooleanOption(o => o
         .setName("nicknames")
         .setDescription("Prefix [AFK] onto members' nicknames while away"))
+      .addBooleanOption(o => o
+        .setName("speak_as_user")
+        .setDescription("Reply as the away member (their name + avatar) instead of the bot"))
       .addIntegerOption(o => o
         .setName("max_messages")
         .setDescription("Max unread notes a member may hold (1–100)")
@@ -121,7 +128,49 @@ export async function handleAfkCommand(interaction: ChatInputCommandInteraction)
   }
 
   if (sub === "set") return handleAfkSet(interaction);
+  if (sub === "clear") return handleAfkClear(interaction);
   if (sub === "messages") return handleAfkMessages(interaction);
+}
+
+/**
+ * `/afk clear` — lift your own away state immediately, regardless of the return
+ * trigger you chose. Useful when you picked a long timer (or "on status
+ * change") and just want to be back now. Runs the same teardown every other
+ * clear path uses: nickname restored, Notify-Me subscribers told you're back.
+ */
+async function handleAfkClear(interaction: ChatInputCommandInteraction): Promise<void> {
+  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+  const guildId = interaction.guild!.id;
+  const userId = interaction.user.id;
+
+  const state = await getAfk(guildId, userId);
+  if (!state) {
+    await interaction.editReply({
+      embeds: [new EmbedBuilder()
+        .setColor(AFK_BRAND.COLOR_MUTED)
+        .setDescription(`${AFK_EMOJI.PROFILE} You're not currently AFK — nothing to clear.`)
+        .setFooter({ text: AFK_BRAND.FOOTER })],
+    });
+    return;
+  }
+
+  const cleared = await clearAfkForUser(interaction.client, guildId, userId, "MANUAL")
+    .catch(err => { logger.debug({ err, guildId, userId }, "AFK manual clear failed"); return null; });
+
+  const awaySince = Math.floor(state.startTime.getTime() / 1000);
+  const unread = await countUnreadNotes(guildId, userId).catch(() => 0);
+
+  const embed = new EmbedBuilder()
+    .setColor(cleared ? AFK_BRAND.COLOR_SUCCESS : AFK_BRAND.COLOR_DANGER)
+    .setTitle(cleared ? `${AFK_EMOJI.RETURN} Welcome back` : `${AFK_EMOJI.LOCK} Couldn't clear that`)
+    .setDescription(cleared
+      ? `Your AFK is cleared — you were away since <t:${awaySince}:R>.` +
+        (unread > 0 ? `\n\n${AFK_EMOJI.NOTE} You have **${unread}** unread note${unread === 1 ? "" : "s"} — read them with \`/afk messages\`.` : "")
+      : "Something went wrong lifting your away state. Try again in a moment.")
+    .setFooter({ text: AFK_BRAND.FOOTER })
+    .setTimestamp();
+
+  await interaction.editReply({ embeds: [embed] });
 }
 
 /** Step 1 of the away flow — render the premium method-picker dashboard. */
@@ -218,11 +267,13 @@ async function handleConfig(interaction: ChatInputCommandInteraction): Promise<v
   const guildId = interaction.guild!.id;
   const secretary = interaction.options.getBoolean("secretary");
   const nicknames = interaction.options.getBoolean("nicknames");
+  const speakAsUser = interaction.options.getBoolean("speak_as_user");
   const maxMessages = interaction.options.getInteger("max_messages");
 
   const patch: Parameters<typeof updateAfkSettings>[1] = {};
   if (secretary !== null) patch.secretaryEnabled = secretary;
   if (nicknames !== null) patch.nicknameChanges = nicknames;
+  if (speakAsUser !== null) patch.speakAsUser = speakAsUser;
   if (maxMessages !== null) patch.maxSavedMessages = maxMessages;
 
   const settings = Object.keys(patch).length > 0
@@ -234,13 +285,20 @@ async function handleConfig(interaction: ChatInputCommandInteraction): Promise<v
     .setColor(AFK_BRAND.COLOR_PRIMARY)
     .setTitle("⚙️ AFK Secretary — Configuration")
     .setDescription(
-      Object.keys(patch).length > 0
+      (Object.keys(patch).length > 0
         ? "Your changes have been saved."
-        : "Current configuration for this server.",
+        : "Current configuration for this server.") +
+      (settings.speakAsUser
+        ? "\n\n> **Reply As Member** is on: intercepts post through a webhook with the " +
+          "away member's name and avatar. Discord still shows a small **APP** tag on " +
+          "these — no bot can remove it — and it needs **Manage Webhooks** in the " +
+          "channel, otherwise the Secretary replies as the bot."
+        : ""),
     )
     .addFields(
       { name: "Secretary Engine", value: onOff(settings.secretaryEnabled), inline: true },
       { name: "Nickname Tagging", value: onOff(settings.nicknameChanges), inline: true },
+      { name: "Reply As Member", value: onOff(settings.speakAsUser), inline: true },
       { name: "Max Unread Notes", value: `\`${settings.maxSavedMessages}\``, inline: true },
     )
     .setFooter({ text: AFK_BRAND.FOOTER })

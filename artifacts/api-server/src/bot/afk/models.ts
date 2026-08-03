@@ -50,7 +50,7 @@ export async function getAfkSettings(guildId: string): Promise<AfkGuildSettingsR
 /** Patch feature toggles. Only provided fields change. */
 export async function updateAfkSettings(
   guildId: string,
-  patch: Partial<Pick<AfkGuildSettingsRow, "secretaryEnabled" | "nicknameChanges" | "maxSavedMessages">>,
+  patch: Partial<Pick<AfkGuildSettingsRow, "secretaryEnabled" | "nicknameChanges" | "speakAsUser" | "maxSavedMessages">>,
 ): Promise<AfkGuildSettingsRow> {
   await getAfkSettings(guildId); // ensure the row exists
   const [row] = await db.update(afkGuildSettingsTable)
