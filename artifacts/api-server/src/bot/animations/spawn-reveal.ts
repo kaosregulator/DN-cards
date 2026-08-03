@@ -367,8 +367,13 @@ export async function renderShinyShowcase(input: ShinyShowcaseInput): Promise<Bu
       height: HEIGHT,
       speed: input.speed ?? "normal",
       durationMs: 2600,
-      maxFrames: 26,
-      quality: 20,
+      maxFrames: 20,
+      // GIF encode time scales with encoded pixel count, so the showcase is
+      // rendered at ~0.72 scale (346×432 — still comfortably above Discord's
+      // inline display size) with a coarser NeuQuant sample factor. Keeps the
+      // command feeling instant instead of spending seconds in the encoder.
+      quality: 26,
+      renderScale: 0.72,
       render: async ({ ctx, t, mod: m }) => {
         // Warm, shiny gold-tinted backdrop.
         drawGradientBackground(ctx, WIDTH, HEIGHT, [
