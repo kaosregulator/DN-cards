@@ -52,6 +52,8 @@ DN Cards is DarkNight's collectible military trading card game for the Roblox + 
 - Unified help hub: `artifacts/api-server/src/bot/commands/help-hub.ts` (interactive `/help` — topic dropdown, live-edited pages, animated banner; `/admin_help` opens it on the Admin page). Banner/palette: `artifacts/api-server/src/bot/help-banners.ts`. Rebrandable via `/embed … key:help`.
 - Bob (entertainment NPC) schema: `lib/db/src/schema/bob.ts` (bob_settings, bob_profiles, bob_progress)
 - Bob module: `artifacts/api-server/src/bot/bob/` (`persona.ts` 3 forms + line banks, `db.ts` coins/xp/stats/leaderboards + opt-in DN reward bridge, `progress.ts` tasks/quests, `games.ts` mini-games, `roulette.ts` roulette+duel, `roast.ts`, `talk.ts` local+optional-Claude, `events.ts` random channel events, `stats.ts`, `menu.ts` hub, `command.ts`/`admin.ts`/`router.ts`)
+- Headquarters (HQ) schema: `lib/db/src/schema/headquarters.ts` (player_hq, hq_unlocks, hq_displays, hq_placements)
+- Headquarters engine (`/hq`): `artifacts/api-server/src/bot/hq/` — data-driven, theme-agnostic. `defs/{themes,rooms,decorations,unlock-rules}.ts` (registries), `assets.ts` (procedural↔asset seam), `db.ts`, `engine.ts` (unlocks DERIVED from existing systems), `render.ts` (procedural canvas). Hub UI: `artifacts/api-server/src/bot/commands/hq-hub.ts`. See `docs/headquarters.md`.
 
 ### Website vs Discord responsibilities
 

@@ -17,3 +17,4 @@ export * from "./bob";
 export * from "./site-presentation";
 export * from "./operations";
 export * from "./onboarding";
+export * from "./headquarters";

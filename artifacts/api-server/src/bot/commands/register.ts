@@ -68,6 +68,9 @@ function buildLegacyCommands() {
 
     cmd("show_shiny", "Show off your shiny cards with the full shiny effect", s => s),
 
+    cmd("hq", "Your Headquarters — trophies, displays & customization", s => s
+      .addUserOption(o => o.setName("user").setDescription("Visit another member's Headquarters"))),
+
     cmd("collection_hub", "Browse your collection — filter by rarity, shinies, name & more", s => s
       .addStringOption(o => o.setName("name").setDescription("Jump straight to cards matching this name"))
       .addStringOption(o => o.setName("rarity").setDescription("Filter by rarity key (e.g. legendary, or a custom tier)"))

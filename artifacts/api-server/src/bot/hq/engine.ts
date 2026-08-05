@@ -1,0 +1,141 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// HQ progression engine — DERIVES everything from the existing systems.
+//
+// There is no HQ grind. `snapshotProgress` composes one progress object from the
+// same readers the rest of the bot uses (player profile, collection, raids,
+// achievements). `reconcileUnlocks` evaluates every decoration/room/theme's
+// declarative UnlockRule against that snapshot and idempotently records newly
+// earned cosmetics — so opening `/hq` self-backfills a veteran player exactly
+// like backfillGiveawayProgress does. hq_level is a derived cache.
+//
+// Pull-based on purpose: no call-site edits and no import into player/xp.ts
+// (which explicitly guards against import cycles). A future optional hook inside
+// awardPlayerXp could make grants instant instead of on-view.
+// ─────────────────────────────────────────────────────────────────────────────
+
+import { logger } from "../../lib/logger.js";
+import { getPlayerProfile } from "../player/profile.js";
+import { getUserCollection, getCompletedSetIds } from "../db.js";
+import { getCampaignProgress } from "../raid/db.js";
+import { getUnlockedKeys } from "../achievements.js";
+import { SHINY_MULTIPLIER } from "../cards-data.js";
+import {
+  evalUnlockRule, unlockSourceTag, type HqProgress, type UnlockRule,
+} from "./defs/unlock-rules.js";
+import { HQ_DECORATIONS, type HqDecoration } from "./defs/decorations.js";
+import { HQ_ROOMS, type HqRoom } from "./defs/rooms.js";
+import { HQ_THEMES, DEFAULT_THEME_ID, type HqTheme } from "./defs/themes.js";
+import { getUnlockedItemIds, grantUnlock } from "./db.js";
+
+async function safe<T>(label: string, fn: () => Promise<T>, fallback: T): Promise<T> {
+  try {
+    return await fn();
+  } catch (err) {
+    logger.debug({ err, label }, "hq snapshot sub-read failed (using fallback)");
+    return fallback;
+  }
+}
+
+// Build the progress snapshot from existing systems only. Each domain is
+// isolated so one failing subsystem degrades to a safe zero rather than breaking
+// HQ — same contract as bot/player/profile.ts.
+export async function snapshotProgress(guildId: string, userId: string): Promise<HqProgress> {
+  const [profile, collection, completedSets, campaign, achievementKeys] = await Promise.all([
+    safe("profile", () => getPlayerProfile(guildId, userId), null),
+    safe("collection", () => getUserCollection(guildId, userId), [] as Awaited<ReturnType<typeof getUserCollection>>),
+    safe("sets", () => getCompletedSetIds(guildId, userId), [] as number[]),
+    safe("campaign", () => getCampaignProgress(guildId, userId), null),
+    safe("achievements", () => getUnlockedKeys(guildId, userId), new Set<string>()),
+  ]);
+
+  let uniqueCards = 0, totalCards = 0, netWorth = 0, shinyOwned = 0, ownsLimited = false;
+  for (const i of collection) {
+    const copies = i.count + i.shinyCount;
+    uniqueCards += 1;
+    totalCards += copies;
+    netWorth += i.worthValue * (i.count + i.shinyCount * SHINY_MULTIPLIER);
+    shinyOwned += i.shinyCount;
+    if (i.isLimitedEdition) ownsLimited = true;
+  }
+
+  return {
+    accountLevel: profile?.account.level ?? 1,
+    uniqueCards, totalCards, netWorth, shinyOwned, ownsLimited,
+    battleWins: profile?.battles.wins ?? 0,
+    raidBossesCleared: campaign?.defeated ?? 0,
+    raidCampaignComplete: campaign?.isComplete ?? false,
+    completedSets: completedSets.length,
+    dailyStreak: profile?.daily.streak ?? 0,
+    achievementKeys,
+  };
+}
+
+// An item is unlocked when its rule is `always` OR it's in the earned ledger.
+function isUnlocked(rule: UnlockRule, id: string, owned: Set<string>): boolean {
+  return rule.kind === "always" || owned.has(id);
+}
+
+export function ownedDecorations(owned: Set<string>): HqDecoration[] {
+  return HQ_DECORATIONS.filter(d => isUnlocked(d.unlock, d.id, owned));
+}
+export function isRoomUnlocked(room: HqRoom, owned: Set<string>): boolean {
+  return isUnlocked(room.unlock, room.id, owned);
+}
+export function isThemeUnlocked(theme: HqTheme, owned: Set<string>): boolean {
+  return theme.id === DEFAULT_THEME_ID || isUnlocked(theme.unlock, theme.id, owned);
+}
+export function unlockedThemes(owned: Set<string>): HqTheme[] {
+  return HQ_THEMES.filter(t => isThemeUnlocked(t, owned));
+}
+export function unlockedRooms(owned: Set<string>): HqRoom[] {
+  return HQ_ROOMS.filter(r => isRoomUnlocked(r, owned));
+}
+
+// HQ level rewards BREADTH of accomplishment: each earned cosmetic and each
+// extra room/theme raises it, with a gentle account-level contribution. Purely a
+// display number derived from the snapshot + ledger (source of truth stays the
+// underlying systems).
+export function computeHqLevel(p: HqProgress, owned: Set<string>): number {
+  const earnedDecos = HQ_DECORATIONS.filter(d => d.unlock.kind !== "always" && owned.has(d.id)).length;
+  const extraRooms = HQ_ROOMS.filter(r => r.unlock.kind !== "always" && owned.has(r.id)).length;
+  const extraThemes = HQ_THEMES.filter(t => t.unlock.kind !== "always" && t.id !== DEFAULT_THEME_ID && owned.has(t.id)).length;
+  const level = 1 + earnedDecos + extraRooms + extraThemes + Math.floor(p.accountLevel / 10);
+  return Math.max(1, Math.min(100, level));
+}
+
+export interface ReconcileResult {
+  progress: HqProgress;
+  owned: Set<string>;
+  hqLevel: number;
+  newlyUnlocked: HqDecoration[]; // decorations earned on THIS reconcile (for a toast)
+}
+
+// Grant every satisfied (non-always) unlock idempotently. Safe to call on every
+// /hq open; only the first time an item's rule is met does it record + surface.
+export async function reconcileUnlocks(guildId: string, userId: string): Promise<ReconcileResult> {
+  const progress = await snapshotProgress(guildId, userId);
+
+  const newlyUnlocked: HqDecoration[] = [];
+  for (const d of HQ_DECORATIONS) {
+    if (d.unlock.kind === "always") continue;
+    if (!evalUnlockRule(d.unlock, progress)) continue;
+    const isNew = await grantUnlock(guildId, userId, d.id, "decoration", unlockSourceTag(d.unlock)).catch(() => false);
+    if (isNew) newlyUnlocked.push(d);
+  }
+  for (const r of HQ_ROOMS) {
+    if (r.unlock.kind === "always") continue;
+    if (evalUnlockRule(r.unlock, progress)) {
+      await grantUnlock(guildId, userId, r.id, "room", unlockSourceTag(r.unlock)).catch(() => {});
+    }
+  }
+  for (const t of HQ_THEMES) {
+    if (t.unlock.kind === "always") continue;
+    if (evalUnlockRule(t.unlock, progress)) {
+      await grantUnlock(guildId, userId, t.id, "theme", unlockSourceTag(t.unlock)).catch(() => {});
+    }
+  }
+
+  const owned = await getUnlockedItemIds(guildId, userId).catch(() => new Set<string>());
+  const hqLevel = computeHqLevel(progress, owned);
+  return { progress, owned, hqLevel, newlyUnlocked };
+}
