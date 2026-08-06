@@ -41,6 +41,7 @@ import {
   type SiegeCombatant,
 } from "../hq/siege.js";
 import { rarityLadderRank } from "../rarity-runtime.js";
+import { renderBattleTurn } from "../animations/battle.js";
 import {
   reconcileUnlocks, ownedDecorations, unlockedRooms, unlockedThemes,
   isRoomUnlocked, isThemeUnlocked, unlockedWalls, unlockedFloors,
@@ -778,6 +779,13 @@ function backRow(section: Section) {
   );
 }
 
+// Flavour move names for the classic animated turn.
+const SIEGE_MOVES = ["Siege Strike", "Breach", "Overrun", "Vanguard Charge", "Final Blow", "Rally"];
+// SiegeCombatant → the battle engine's RenderCard (for the classic turn animation).
+function renderCardOf(c: SiegeCombatant) {
+  return { name: c.name, rarityLabel: c.rarityLabel, rarity: c.rarity as Rarity, rarityColor: c.rarityColor, artUrl: c.artUrl, cardId: c.cardId };
+}
+
 async function runSiege(interaction: ButtonInteraction, guildId: string, attackerId: string, defenderId: string, mode: SiegeMode): Promise<void> {
   await interaction.deferUpdate().catch(() => {});
   const blocked = await siegeBlockReason(guildId, attackerId, defenderId);
@@ -813,6 +821,22 @@ async function runSiege(interaction: ButtonInteraction, guildId: string, attacke
 
   const files: AttachmentBuilder[] = [];
   if (mode === "classic") {
+    // CLASSIC: the traditional animated battle — the screen shows the decisive
+    // move/attack between the two champions (reuses the battle-turn engine).
+    const atkC = squad[0];
+    const defC = [...defenders].sort((a, b) => b.power - a.power)[0];
+    if (atkC && defC) {
+      const win = result.attackerWon;
+      const move = SIEGE_MOVES[Math.floor(Math.random() * SIEGE_MOVES.length)]!;
+      const anim = await renderBattleTurn({
+        attacker: renderCardOf(atkC), defender: renderCardOf(defC),
+        attackerHp: win ? 92 : 14, attackerMaxHp: 100,
+        defenderHp: win ? 0 : 90, defenderMaxHp: 100,
+        damage: win ? 86 : 74, isCrit: win, isHit: true, moveName: move,
+        attackerWon: win, defenderWon: !win, background: null,
+      }, "normal").catch(() => null);
+      if (anim?.buffer) { files.push(new AttachmentBuilder(anim.buffer, { name: SIEGE_GIF })); embed.setImage(`attachment://${SIEGE_GIF}`); }
+    }
     const log = result.duels.slice(0, 6).map((d, i) =>
       `**${i + 1}.** ${d.attacker.name} ${d.attackerWon ? "🟢 beat" : "🔴 lost to"} ${d.defender.name}`).join("\n");
     if (log) embed.addFields({ name: "Duels", value: log.slice(0, 1024) });
