@@ -1133,10 +1133,12 @@ const SIEGE_MOVES = ["Siege Strike", "Breach", "Overrun", "Vanguard Charge", "Fi
 
 async function runSiege(interaction: ButtonInteraction, guildId: string, attackerId: string, defenderId: string, mode: SiegeMode): Promise<void> {
   await interaction.deferUpdate().catch(() => {});
-  // Serialize per attacker so rapid/concurrent clicks can't slip past the
-  // cooldown/shield check and double-apply a capture or reward: the queued click
-  // re-checks AFTER the first has committed its attack log + base state.
-  await withHqLock(`hq:siege:${guildId}:${attackerId}`, async () => {
+  // Serialize per DEFENDER (the contested base) so every attack on one base runs
+  // one-at-a-time — not just repeat clicks from a single attacker. Keying by the
+  // attacker would let two DIFFERENT attackers both pass the shield/cooldown check
+  // before either writes the base state, double-resolving a capture. The queued
+  // siege re-runs the block check AFTER the prior one commits its log + state.
+  await withHqLock(`hq:siege:${guildId}:${defenderId}`, async () => {
   const blocked = await siegeBlockReason(guildId, attackerId, defenderId);
   if (blocked) {
     await interaction.editReply({ embeds: [new EmbedBuilder().setColor(0xc0392b).setDescription(`❌ ${blocked}`)], components: [backRow("defenders")], files: [] }).catch(() => {});
