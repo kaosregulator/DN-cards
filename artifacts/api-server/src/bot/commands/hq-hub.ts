@@ -48,9 +48,10 @@ import { resolveDecoration, decorationsByRarityDesc, HQ_DECORATIONS } from "../h
 import { unlockLabel, type UnlockRule } from "../hq/defs/unlock-rules.js";
 import { spriteFor, spriteForPrefix } from "../hq/assets.js";
 import {
-  renderHq, floorSlot, wallSlot, slotIsWall, slotToTile,
+  renderHq, renderBase, floorSlot, wallSlot, slotIsWall, slotToTile,
   HQ_WALL_SLOT_BASE, HQ_WALL_ANCHOR_COUNT, HQ_DEFENDER_SLOTS,
   type HqRenderView, type HqRenderCard, type HqRenderDeco, type HqRenderDefender,
+  type HqBaseView, type HqBaseBuilding, type HqBuildingRole,
 } from "../hq/render.js";
 import type { PlayerHq } from "@workspace/db";
 
@@ -81,7 +82,7 @@ interface SectionMeta { id: Section; label: string; emoji: string; description: 
 const SECTIONS: SectionMeta[] = [
   { id: "overview",    label: "Overview",    emoji: "🏠", description: "Your HQ at a glance" },
   { id: "trophy",      label: "Trophy Hall",  emoji: "🏆", description: "Pin your proudest cards on pedestals" },
-  { id: "defenders",   label: "Defenders",   emoji: "🛡️", description: "Set cards to guard your base" },
+  { id: "defenders",   label: "Base",        emoji: "🏰", description: "Your town base — station defenders" },
   { id: "decorations", label: "Decorations", emoji: "🎏", description: "Place the cosmetics you've earned" },
   { id: "shop",        label: "Shop",        emoji: "🛒", description: "Buy furniture — rotates daily" },
   { id: "rooms",       label: "Rooms",       emoji: "🚪", description: "Switch & unlock rooms" },
@@ -372,6 +373,40 @@ async function renderRoomImage(view: HqRenderView): Promise<AttachmentBuilder | 
   return buf ? new AttachmentBuilder(buf, { name: HQ_FILE }) : null;
 }
 
+async function renderBaseImage(view: HqBaseView): Promise<AttachmentBuilder | null> {
+  const buf = await renderBase(view).catch(() => null);
+  return buf ? new AttachmentBuilder(buf, { name: HQ_FILE }) : null;
+}
+
+// Build the EXTERIOR town-base view: the four structures (art resolved by role,
+// procedural fallback in the renderer) plus the stationed defenders as standees.
+// This is the attackable/defendable town, distinct from the interior showcase.
+const BASE_BUILDING_ROLES: HqBuildingRole[] = ["keep", "camp", "hut", "wall"];
+async function buildBaseRenderView(
+  guildId: string, userId: string, ownerName: string, ownerAvatarUrl: string | null, hq: PlayerHq,
+): Promise<HqBaseView> {
+  const theme = resolveTheme(hq.themeId);
+  const [{ settings, ctx, displayMap, cards }, defenderMap] = await Promise.all([
+    loadCtx(guildId),
+    getDefenders(guildId, userId),
+  ]);
+  const basePath = spriteForPrefix("base", "round");
+  const defenders: HqRenderDefender[] = [];
+  for (const [slot, cardId] of [...defenderMap.entries()].sort((a, b) => a[0] - b[0])) {
+    const card = cards.find(c => c.id === cardId);
+    if (!card) continue;
+    const d = getCardDisplayRarity(card, ctx, settings, displayMap);
+    defenders.push({ slot, cardId: card.id, name: card.name, artUrl: toAbsoluteImageUrl(card.imageUrl), rarityColor: d.color, basePath });
+  }
+  const buildings: HqBaseBuilding[] = BASE_BUILDING_ROLES.map(role => ({ role, spritePath: spriteForPrefix("building", role) }));
+  return {
+    ownerName, displayTitle: hqDisplayTitle(hq, ownerName), ownerAvatarUrl, theme,
+    roomEmoji: "🏰", roomName: "Base", hqLevel: hq.hqLevel,
+    subtitle: `Base • ${defenders.length}/${HQ_DEFENDER_SLOTS} defenders`,
+    buildings, defenders,
+  };
+}
+
 // ── Owner view ────────────────────────────────────────────────────────────────
 async function buildView(
   interaction: HubInteraction,
@@ -397,8 +432,11 @@ async function buildView(
     hq.activeRoomId = DEFAULT_ROOM_ID;
   }
 
-  const renderView = await buildRenderView(guildId, userId, interaction.user.username, interaction.user.displayAvatarURL(), hq, section === "defenders");
-  const file = await renderRoomImage(renderView);
+  // The Base section shows the SEPARATE exterior town (with defenders); every
+  // other section shows the interior room. Defenders live only on the base now.
+  const file = section === "defenders"
+    ? await renderBaseImage(await buildBaseRenderView(guildId, userId, interaction.user.username, interaction.user.displayAvatarURL(), hq))
+    : await renderRoomImage(await buildRenderView(guildId, userId, interaction.user.username, interaction.user.displayAvatarURL(), hq));
   const files = file ? [file] : [];
   const room = resolveRoom(hq.activeRoomId);
   const theme = resolveTheme(hq.themeId);
@@ -470,8 +508,9 @@ async function buildView(
 
     case "defenders": {
       const defenders = await getDefenders(guildId, userId);
-      embed.setTitle("🛡️ Base Defenders").setDescription(
-        "Station cards to **guard your base** — they stand as figures on the floor. This is who other players will face when the raid-style **base attacks** arrive. " +
+      embed.setTitle("🏰 Your Base").setDescription(
+        "Your **town base** — a keep, walls and camps out in the open. Station cards to **guard it**; they stand as figures out front. " +
+        "This exterior base is what other players **scout and attack** in the raid-style base battles (coming next). " +
         `You can post up to **${HQ_DEFENDER_SLOTS}** defenders.\n` +
         (defenders.size === 0 ? "\nNo defenders yet — set one below to start fortifying." : ""),
       );
@@ -642,20 +681,24 @@ async function buildVisitView(guildId: string, targetId: string, targetName: str
   // Show a room the host has actually unlocked (see the note in buildView). This
   // is read-only, so correct for display without persisting to their HQ.
   if (!isRoomUnlocked(resolveRoom(hq.activeRoomId), owned)) hq.activeRoomId = DEFAULT_ROOM_ID;
-  const renderView = await buildRenderView(guildId, targetId, targetName, targetAvatar, hq, true);
-  const file = await renderRoomImage(renderView);
-  const room = resolveRoom(hq.activeRoomId);
+  // A visitor scouts the EXTERIOR base — its buildings and stationed defenders —
+  // because that's what an attacker would face.
+  const file = await renderBaseImage(await buildBaseRenderView(guildId, targetId, targetName, targetAvatar, hq));
   const theme = resolveTheme(hq.themeId);
   const stats = readHqStats(hq);
+  const defenders = await getDefenders(guildId, targetId);
 
   const embed = new EmbedBuilder()
     .setColor(theme.palette.accent)
-    .setTitle(`🏠 Visiting ${hqDisplayTitle(hq, targetName)}`)
+    .setTitle(`🏰 Scouting ${hqDisplayTitle(hq, targetName)}`)
     .setDescription(
       (stats.motto ? `_“${stats.motto}”_\n\n` : "") +
-      `**${theme.emoji} ${theme.name}** · **HQ Level ${hq.hqLevel}** · **${room.emoji} ${room.name}**`,
+      `**${theme.emoji} ${theme.name}** · **HQ Level ${hq.hqLevel}**`,
     )
-    .addFields({ name: "🎏 Decorations earned", value: `**${ownedDecorations(owned).length}** / ${HQ_DECORATIONS.length}`, inline: true });
+    .addFields(
+      { name: "🛡️ Defenders", value: `**${defenders.size}** / ${HQ_DEFENDER_SLOTS} stationed`, inline: true },
+      { name: "🎏 Decorations earned", value: `**${ownedDecorations(owned).length}** / ${HQ_DECORATIONS.length}`, inline: true },
+    );
   if (file) embed.setImage(`attachment://${HQ_FILE}`);
 
   const rows: ActionRowBuilder<any>[] = [];

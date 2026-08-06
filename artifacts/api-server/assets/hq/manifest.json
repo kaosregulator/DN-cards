@@ -1,5 +1,6 @@
 {
-  "_note": "HQ art pack. Keys are '<prefix>/<key>' or a bare '<key>' (see bot/hq/assets.ts spriteForPrefix). Decoration art uses 'deco/<decorationId>'; walls use '<wallPrefix>/wall'; floors use '<floorPrefix>/tile'. All art here is CC0 by Kenney (www.kenney.nl).",
+  "_note": "HQ art pack. Keys are '<prefix>/<key>' or a bare '<key>' (see bot/hq/assets.ts spriteForPrefix). Decoration art uses 'deco/<decorationId>'; walls use '<wallPrefix>/wall'; floors use '<floorPrefix>/tile'; buildings use 'building/<role>'.",
+  "_credits": "furniture/, medals/, bases/ are CC0 by Kenney (www.kenney.nl). buildings/ (keep,wall,camp,hut) are from the Isometric Enemy Base pack, included with the project owner's stated permission — NOT CC0; do not treat as freely redistributable.",
   "sprites": {
     "deco/storage-barrel": "furniture/storage-barrel.png",
     "deco/stacked-barrels": "furniture/stacked-barrels.png",

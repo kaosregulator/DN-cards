@@ -94,25 +94,49 @@ export interface HqRenderDefender {
   basePath: string | null; // base sprite (CC0); procedural disc when null
 }
 
-export interface HqRenderView {
-  ownerName: string;
-  // Banner name shown in the header (custom HQ name or "<owner>'s HQ").
-  displayTitle: string;
+// The fields the shared header band needs — satisfied structurally by both the
+// interior room view and the exterior base view, so layerHeader serves both.
+export interface HqHeaderInfo {
   ownerAvatarUrl: string | null;
-  theme: HqTheme;   // lighting mood, ambient particles, accent, glass tint
+  displayTitle: string;
+  subtitle: string;
+  theme: HqTheme;
+  roomEmoji: string;
+  roomName: string;
+  hqLevel: number;
+}
+
+export interface HqRenderView extends HqHeaderInfo {
+  ownerName: string;
   wall: HqWall;     // wall style (faces, trim, windows)
   floor: HqFloor;   // floor style (tiles, grout)
   // Optional art (resolved by the hub via spriteForPrefix). When present these
   // replace the procedural wall faces / floor tiles; otherwise procedural.
   wallSprite?: string | null;
   floorSprite?: string | null;
-  roomName: string;
-  roomEmoji: string;
-  hqLevel: number;
-  subtitle: string;
   pedestals: (HqRenderCard | null)[]; // length = room.pedestals
   decorations: HqRenderDeco[];        // placed decorations (with slot index)
   defenders?: HqRenderDefender[];     // cards set to defend the base (figures on bases)
+}
+
+// ── Exterior "town base" view ──────────────────────────────────────────────────
+// A SEPARATE outdoor scene (castles/buildings) — the attackable/defendable town,
+// not the interior showcase room. Buildings are placed by ROLE; each resolves art
+// via spriteForPrefix("building", role) with a procedural fallback. Defenders
+// stand out front as standees (reusing drawDefender), and the whole scene is
+// depth-sorted by screen-y.
+export type HqBuildingRole = "keep" | "wall" | "camp" | "hut";
+
+export interface HqBaseBuilding {
+  role: HqBuildingRole;
+  spritePath: string | null; // spriteForPrefix("building", role); null → procedural
+}
+
+export interface HqBaseView extends HqHeaderInfo {
+  ownerName: string;
+  buildings: HqBaseBuilding[];    // which structures the town has
+  defenders: HqRenderDefender[];  // stationed cards, rendered as standees
+  captured?: boolean;             // future: show a captured/shield state banner
 }
 
 // Placement encoding (stored in hq_placements.slot, so no schema change):
@@ -163,6 +187,227 @@ export async function renderHq(view: HqRenderView): Promise<Buffer | null> {
       return null;
     }
   });
+}
+
+// ── Exterior town-base renderer ─────────────────────────────────────────────
+// A separate leaf renderer (own queue label) for the outdoor base scene. Ground
+// slab → buildings + defenders depth-sorted by screen-y → lighting → header.
+// Buildings blit their art base-anchored to a target height (procedural fallback
+// per role when no art), so the copyrighted/CC0 pack and the drawn version share
+// one placement path.
+const BASE_TILE_W = 150, BASE_TILE_H = 74;
+const BASE_ORIGIN_X = W / 2, BASE_ORIGIN_Y = 250;
+function projectBase(gx: number, gy: number): Pt {
+  return {
+    x: BASE_ORIGIN_X + (gx - gy) * (BASE_TILE_W / 2),
+    y: BASE_ORIGIN_Y + (gx + gy) * (BASE_TILE_H / 2),
+  };
+}
+// Building anchor tiles (lattice coords, centred on 0). Keep back-centre, camp/
+// hut on the flanks, wall/gate at the front. Target heights scale each sprite.
+const BUILDING_LAYOUT: Record<HqBuildingRole, { gx: number; gy: number; targetH: number }> = {
+  keep: { gx: 0,    gy: -1.1, targetH: 300 },
+  camp: { gx: -1.7, gy: 0.1,  targetH: 150 },
+  hut:  { gx: 1.7,  gy: 0.1,  targetH: 158 },
+  wall: { gx: 0,    gy: 1.5,  targetH: 150 },
+};
+// Where stationed defenders stand — a front arc between the keep and the wall.
+const BASE_DEFENDER_TILES: { gx: number; gy: number }[] = [
+  { gx: 0, gy: 0.6 }, { gx: -1.15, gy: 0.9 }, { gx: 1.15, gy: 0.9 },
+  { gx: -0.6, gy: 0.1 }, { gx: 0.6, gy: 0.1 },
+];
+
+export async function renderBase(view: HqBaseView): Promise<Buffer | null> {
+  return queueRender("hq-base", async () => {
+    const mod = await getCanvas();
+    if (!mod) return null;
+    try {
+      const canvas = mod.createCanvas(W, H);
+      const ctx = canvas.getContext("2d") as unknown as Ctx;
+
+      layerSky(ctx, view.theme);
+      layerGroundSlab(ctx, view.theme);
+
+      // Collect every placed object with its feet screen-y, then paint far→near.
+      interface Item { depth: number; draw: () => Promise<void> | void }
+      const items: Item[] = [];
+      for (const b of view.buildings) {
+        const a = BUILDING_LAYOUT[b.role];
+        const p = projectBase(a.gx, a.gy);
+        items.push({ depth: p.y, draw: () => drawBuilding(ctx, mod, p.x, p.y, a.targetH, b, view.theme) });
+      }
+      view.defenders.slice(0, BASE_DEFENDER_TILES.length).forEach((def, i) => {
+        const t = BASE_DEFENDER_TILES[i]!;
+        const p = projectBase(t.gx, t.gy);
+        items.push({ depth: p.y + 1, draw: () => drawDefender(ctx, mod, p.x, p.y, def, view.theme) });
+      });
+      items.sort((a, b) => a.depth - b.depth);
+      for (const it of items) await it.draw();
+
+      layerLighting(ctx, view.theme);
+      await layerHeader(ctx, mod, view);
+      return await canvas.encode("png");
+    } catch {
+      return null;
+    }
+  });
+}
+
+// Outdoor sky: theme-tinted gradient with a soft horizon glow + distant hills.
+function layerSky(ctx: Ctx, theme: HqTheme): void {
+  const g = ctx.createLinearGradient(0, 0, 0, H);
+  g.addColorStop(0, theme.palette.wallTop);
+  g.addColorStop(0.55, theme.palette.wallBottom);
+  g.addColorStop(1, "#05070a");
+  ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+  // Horizon glow.
+  const hg = ctx.createRadialGradient(W / 2, 300, 40, W / 2, 300, 620);
+  hg.addColorStop(0, hexToRgba(theme.palette.accent, 0.18));
+  hg.addColorStop(1, "rgba(0,0,0,0)");
+  ctx.fillStyle = hg; ctx.fillRect(0, 0, W, 380);
+  // Distant hill silhouettes.
+  ctx.save();
+  ctx.fillStyle = "rgba(0,0,0,0.28)";
+  for (const [cx, cy, rw, rh] of [[180, 300, 320, 90], [760, 300, 360, 78], [500, 306, 300, 70]] as const) {
+    ctx.beginPath(); ellipse(ctx, cx, cy, rw, rh); ctx.fill();
+  }
+  ctx.restore();
+}
+
+// The town's ground: a big isometric slab with thickness (top diamond + two
+// side faces), grass/dirt toned, with a faint tile grid on top.
+function layerGroundSlab(ctx: Ctx, theme: HqTheme): void {
+  const n = 2.6; // half-extent in tiles
+  const top = projectBase(0, -n), right = projectBase(n, 0), bottom = projectBase(0, n), left = projectBase(-n, 0);
+  const thick = 26;
+  // Side faces.
+  ctx.save();
+  ctx.beginPath();
+  ctx.moveTo(left.x, left.y); ctx.lineTo(bottom.x, bottom.y);
+  ctx.lineTo(bottom.x, bottom.y + thick); ctx.lineTo(left.x, left.y + thick); ctx.closePath();
+  ctx.fillStyle = "#3a2a1c"; ctx.fill();
+  ctx.beginPath();
+  ctx.moveTo(right.x, right.y); ctx.lineTo(bottom.x, bottom.y);
+  ctx.lineTo(bottom.x, bottom.y + thick); ctx.lineTo(right.x, right.y + thick); ctx.closePath();
+  ctx.fillStyle = "#2e2115"; ctx.fill();
+  // Top diamond (grass).
+  ctx.beginPath();
+  ctx.moveTo(top.x, top.y); ctx.lineTo(right.x, right.y); ctx.lineTo(bottom.x, bottom.y); ctx.lineTo(left.x, left.y); ctx.closePath();
+  const gg = ctx.createLinearGradient(0, top.y, 0, bottom.y);
+  gg.addColorStop(0, "#3f6b3a"); gg.addColorStop(1, "#2c4c2a");
+  ctx.fillStyle = gg; ctx.fill();
+  // Tile grid on the slab.
+  ctx.clip();
+  ctx.strokeStyle = "rgba(255,255,255,0.05)"; ctx.lineWidth = 1;
+  for (let g = -Math.ceil(n); g <= Math.ceil(n); g++) {
+    const a1 = projectBase(g, -n), a2 = projectBase(g, n);
+    const b1 = projectBase(-n, g), b2 = projectBase(n, g);
+    ctx.beginPath(); ctx.moveTo(a1.x, a1.y); ctx.lineTo(a2.x, a2.y); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(b1.x, b1.y); ctx.lineTo(b2.x, b2.y); ctx.stroke();
+  }
+  // Rim highlight.
+  ctx.restore();
+  ctx.save();
+  ctx.strokeStyle = hexToRgba(theme.palette.accent, 0.3); ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(top.x, top.y); ctx.lineTo(right.x, right.y); ctx.lineTo(bottom.x, bottom.y); ctx.lineTo(left.x, left.y); ctx.closePath();
+  ctx.stroke();
+  ctx.restore();
+}
+
+// Draw one building base-anchored at (cx, feetY). Art blits to `targetH`
+// (aspect-preserved) with a contact shadow; procedural fallback per role.
+async function drawBuilding(
+  ctx: Ctx, mod: CanvasMod, cx: number, feetY: number, targetH: number, b: HqBaseBuilding, theme: HqTheme,
+): Promise<void> {
+  // Contact shadow.
+  ctx.save(); ctx.fillStyle = "rgba(0,0,0,0.32)";
+  ctx.beginPath(); ellipse(ctx, cx, feetY, targetH * 0.34, targetH * 0.1); ctx.fill(); ctx.restore();
+
+  if (b.spritePath) {
+    const img = await loadSprite(mod, b.spritePath).catch(() => null);
+    if (img) {
+      const iw = Math.max(1, (img as { width: number }).width);
+      const ih = Math.max(1, (img as { height: number }).height);
+      const h = targetH, w = h * (iw / ih);
+      blit(ctx, img, cx - w / 2, feetY - h, w, h); // bottom sits on the ground
+      return;
+    }
+  }
+  drawBuildingProcedural(ctx, cx, feetY, targetH, b.role, theme);
+}
+
+// Compact, recognisable procedural buildings (used when no art is bundled).
+function drawBuildingProcedural(ctx: Ctx, cx: number, feetY: number, h: number, role: HqBuildingRole, theme: HqTheme): void {
+  const stone = "#7b8089", stoneDark = "#565b64", wood = "#7a5433", roof = hexToRgba(theme.palette.accent, 0.9);
+  ctx.save();
+  ctx.translate(cx, feetY);
+  switch (role) {
+    case "keep": {
+      const w = h * 0.52;
+      // Tower body (tapered).
+      ctx.beginPath();
+      ctx.moveTo(-w / 2, 0); ctx.lineTo(-w * 0.42, -h * 0.8); ctx.lineTo(w * 0.42, -h * 0.8); ctx.lineTo(w / 2, 0); ctx.closePath();
+      const gg = ctx.createLinearGradient(-w / 2, 0, w / 2, 0);
+      gg.addColorStop(0, stoneDark); gg.addColorStop(0.5, stone); gg.addColorStop(1, stoneDark);
+      ctx.fillStyle = gg; ctx.fill();
+      // Battlements.
+      ctx.fillStyle = stone;
+      for (let i = -2; i <= 2; i++) ctx.fillRect(i * (w * 0.16) - w * 0.05, -h * 0.9, w * 0.1, h * 0.12);
+      // Door + windows.
+      ctx.fillStyle = "#20242b";
+      ctx.fillRect(-w * 0.1, -h * 0.28, w * 0.2, h * 0.28);
+      for (const wy of [-0.62, -0.45]) { ctx.fillRect(-w * 0.24, h * wy, w * 0.12, h * 0.08); ctx.fillRect(w * 0.12, h * wy, w * 0.12, h * 0.08); }
+      // Pennant.
+      ctx.strokeStyle = "#cfd3da"; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(0, -h * 0.9); ctx.lineTo(0, -h * 1.04); ctx.stroke();
+      ctx.fillStyle = roof; ctx.beginPath();
+      ctx.moveTo(0, -h * 1.04); ctx.lineTo(w * 0.22, -h * 0.99); ctx.lineTo(0, -h * 0.94); ctx.closePath(); ctx.fill();
+      break;
+    }
+    case "wall": {
+      const w = h * 1.7;
+      ctx.fillStyle = stone;
+      ctx.fillRect(-w / 2, -h * 0.62, w, h * 0.62);
+      ctx.fillStyle = stoneDark;
+      ctx.fillRect(-w / 2, -h * 0.62, w, h * 0.1);
+      // Gate arch.
+      ctx.fillStyle = "#1c2027";
+      ctx.beginPath();
+      ctx.moveTo(-w * 0.12, 0); ctx.lineTo(-w * 0.12, -h * 0.34);
+      ctx.arc(0, -h * 0.34, w * 0.12, Math.PI, 0); ctx.lineTo(w * 0.12, 0); ctx.closePath(); ctx.fill();
+      // Battlement teeth.
+      ctx.fillStyle = stone;
+      for (let x = -w / 2; x < w / 2; x += w * 0.12) ctx.fillRect(x, -h * 0.72, w * 0.07, h * 0.1);
+      break;
+    }
+    case "camp": {
+      const w = h * 0.9;
+      // Tent.
+      ctx.fillStyle = hexToRgba(theme.palette.accent, 0.8);
+      ctx.beginPath(); ctx.moveTo(0, -h * 0.86); ctx.lineTo(w / 2, 0); ctx.lineTo(-w / 2, 0); ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = "rgba(0,0,0,0.35)"; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(0, -h * 0.86); ctx.lineTo(0, 0); ctx.stroke();
+      ctx.fillStyle = "#20242b"; // entrance
+      ctx.beginPath(); ctx.moveTo(0, -h * 0.5); ctx.lineTo(w * 0.14, 0); ctx.lineTo(-w * 0.14, 0); ctx.closePath(); ctx.fill();
+      // Campfire.
+      ctx.fillStyle = "#e8873a"; ctx.beginPath(); ellipse(ctx, w * 0.7, -4, 8, 4); ctx.fill();
+      break;
+    }
+    case "hut": {
+      const w = h * 0.8;
+      // Body.
+      ctx.fillStyle = wood; ctx.fillRect(-w / 2, -h * 0.5, w, h * 0.5);
+      // Roof.
+      ctx.fillStyle = roof;
+      ctx.beginPath(); ctx.moveTo(-w * 0.6, -h * 0.5); ctx.lineTo(0, -h * 0.86); ctx.lineTo(w * 0.6, -h * 0.5); ctx.closePath(); ctx.fill();
+      // Door + window.
+      ctx.fillStyle = "#20242b"; ctx.fillRect(-w * 0.12, -h * 0.28, w * 0.24, h * 0.28);
+      ctx.fillStyle = "#2f6b8f"; ctx.fillRect(w * 0.18, -h * 0.38, w * 0.16, h * 0.14);
+      break;
+    }
+  }
+  ctx.restore();
 }
 
 // ── Layers ──────────────────────────────────────────────────────────────────
@@ -680,7 +925,7 @@ function drawDecoration(ctx: Ctx, ox: number, oy: number, scale: number, deco: H
 }
 
 // ── Header ─────────────────────────────────────────────────────────────────
-async function layerHeader(ctx: Ctx, mod: CanvasMod, view: HqRenderView): Promise<void> {
+async function layerHeader(ctx: Ctx, mod: CanvasMod, view: HqHeaderInfo): Promise<void> {
   ctx.save();
   const g = ctx.createLinearGradient(0, 0, W, 0);
   g.addColorStop(0, "rgba(0,0,0,0.62)");

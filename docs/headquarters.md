@@ -163,24 +163,37 @@ Featured-card pedestals live in the Trophy Hall (displays are indexed by slot,
 not room). The other rooms are decorating canvases — decoration placements are
 stored **per room**, so each room keeps its own layout and personality.
 
-## Base defenders (setup for the base-defense mini-game)
+## The exterior town base (`/hq → 🏰 Base`)
 
-`/hq → 🛡️ Defenders` lets a player station cards to **guard their base**. Each
-defender renders as an upright **standee figure** (the card art) standing on an
-isometric base plate (Kenney CC0 base sprite, procedural fallback), positioned
-across the floor. Persisted in the additive `hq_defenders` table (one row per
-post). Defenders show on visits too, so other players can scout who guards a
-base. This is the **setup half**; the attack/combat side (raid-/gym-style, solo
-or clan co-op) reads these and adds its own state in a later phase without
-changing this table.
+The **base** is a **separate outdoor town view**, distinct from the interior
+showcase rooms: an isometric ground slab with a **keep, walls, camps and huts**,
+and the player's **stationed defender cards** rendered as upright **standee
+figures** out front. It's drawn by its own leaf renderer, `renderBase` (queue
+label `hq-base`) in `bot/hq/render.ts`:
+
+- Buildings are placed by **role** (keep centre-back, camps/huts on the flanks,
+  wall/gate at the front) and blit their art base-anchored to a target height,
+  with a **per-role procedural fallback** when no art is present — so the scene
+  renders with or without an art pack.
+- Everything (buildings + defenders) is **depth-sorted by screen-y** so nearer
+  objects overlap further ones.
+
+`/hq → 🏰 Base` lets a player station cards to guard the town (up to
+`HQ_DEFENDER_SLOTS`), persisted in the additive `hq_defenders` table (one row per
+post). **Visiting** another player renders their exterior base — *that's what an
+attacker scouts*. This is the defence half; the attack/capture side
+(raid-/gym-style, solo or clan co-op, reusing `bot/battle/*`) reads these
+defenders and adds its own state in a later phase without changing this table.
 
 ### Art licensing note
 
-Bundled art is **CC0 (Kenney)** and safe to redistribute in this repo. Some
-third-party packs (e.g. the "Isometric Enemy Base — Lite" buildings) are
-licensed *use-in-project-only, no redistribution* — those are **not committed**;
-drop them into `assets/hq/` on your own deployment and add manifest keys to use
-them (they'll render through the same `spriteForPrefix` seam).
+Bundled art under `assets/hq/` is **CC0 (Kenney)** — furniture, medals and the
+defender base plates — and safe to redistribute. The **`buildings/` sprites**
+(keep, wall, camp, hut) are from a third-party isometric pack and are **not
+CC0**; they are included **with the project owner's stated permission** and must
+not be treated as freely redistributable. The renderer never depends on them —
+every building has a procedural fallback — so they can be removed at any time
+without breaking the base view. See `assets/hq/manifest.json` `_credits`.
 
 ## Future phases (same engine, no rewrite)
 
