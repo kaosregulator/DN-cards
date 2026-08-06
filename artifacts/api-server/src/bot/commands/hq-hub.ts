@@ -75,10 +75,10 @@ type HubInteraction =
 
 // Player-set personalization lives in the additive `stats` jsonb — no schema
 // change. `title` renames the HQ banner; `motto` is a short tagline in the embed.
-interface HqStats { title?: string; motto?: string; backdropId?: string; wallsOff?: boolean; glassOff?: boolean }
+interface HqStats { title?: string; motto?: string; backdropId?: string; wallpaperId?: string; wallsOff?: boolean; glassOff?: boolean }
 function readHqStats(hq: PlayerHq): HqStats {
   const s = hq.stats as HqStats | null | undefined;
-  return { title: s?.title, motto: s?.motto, backdropId: s?.backdropId, wallsOff: s?.wallsOff, glassOff: s?.glassOff };
+  return { title: s?.title, motto: s?.motto, backdropId: s?.backdropId, wallpaperId: s?.wallpaperId, wallsOff: s?.wallsOff, glassOff: s?.glassOff };
 }
 function hqDisplayTitle(hq: PlayerHq, ownerName: string): string {
   const t = readHqStats(hq).title?.trim();
@@ -264,6 +264,16 @@ export async function handleHqHubComponent(
     await interaction.update(await buildView(interaction, "theme", [])).catch(() => {});
     return;
   }
+  // Wallpaper the walls with a (backdrop) scene — reuses the backdrop unlock ledger.
+  if (action === "wallpaper" && interaction.isStringSelectMenu()) {
+    const bd = resolveBackdrop(interaction.values[0]!);
+    if (isBackdropUnlocked(bd, await getUnlockedItemIds(guildId, userId))) {
+      const hq = await getOrCreateHq(guildId, userId);
+      await updateHq(guildId, userId, { stats: { ...readHqStats(hq), wallpaperId: bd.id } }).catch(() => {});
+    }
+    await interaction.update(await buildView(interaction, "theme", [])).catch(() => {});
+    return;
+  }
   // Switch the world backdrop (persisted to stats). Guarded to unlocked backdrops.
   if (action === "backdrop" && interaction.isStringSelectMenu()) {
     const bd = resolveBackdrop(interaction.values[0]!);
@@ -392,6 +402,11 @@ async function buildRenderView(
   const style = readHqStats(hq);
   const backdrop = resolveBackdrop(style.backdropId);
   const backdropSprite = backdrop.id === DEFAULT_BACKDROP_ID ? null : spriteForPrefix("backdrop", backdrop.id);
+  // Wallpaper = a scene painted directly onto the wall faces (reuses the backdrop
+  // art). "none" keeps the wall style's own look; otherwise it overrides the
+  // wall texture, so walls-UP can look like the outdoors.
+  const wallpaper = resolveBackdrop(style.wallpaperId);
+  const wallpaperSprite = wallpaper.id === DEFAULT_BACKDROP_ID ? null : spriteForPrefix("backdrop", wallpaper.id);
   const [{ settings, ctx, displayMap, cards }, displays, placements, defenderMap] = await Promise.all([
     loadCtx(guildId),
     getDisplays(guildId, userId),
@@ -440,7 +455,7 @@ async function buildRenderView(
 
   return {
     ownerName, displayTitle: hqDisplayTitle(hq, ownerName), ownerAvatarUrl, theme, wall, floor,
-    wallSprite: spriteForPrefix(wall.spritePrefix, "wall"),
+    wallSprite: wallpaperSprite ?? spriteForPrefix(wall.spritePrefix, "wall"),
     floorSprite: spriteForPrefix(floor.spritePrefix, "tile"),
     roomName: room.name, roomEmoji: room.emoji, hqLevel: hq.hqLevel,
     subtitle, pedestals, decorations, defenders,
@@ -814,10 +829,12 @@ async function buildView(
     case "theme": {
       const style = readHqStats(hq);
       const backdrop = resolveBackdrop(style.backdropId);
+      const wallpaper = resolveBackdrop(style.wallpaperId);
       embed.setTitle("🎨 Style").setDescription(
-        "Restyle your whole HQ — the **theme** sets lighting & mood, **walls** and **floor** reskin the " +
-        "room, and a **backdrop** paints the world behind it. Toggle **walls** off to go *outside* or hide " +
-        "the display **glass**. New styles unlock as you play.",
+        "Restyle your whole HQ — the **theme** sets lighting & mood, **floor** reskins the ground, and a " +
+        "**wallpaper** paints a scene right onto the walls (pick an outdoor one to make it *look* like " +
+        "you're outside while the walls stay up). Or toggle the **walls** off entirely and show a " +
+        "**backdrop** behind the room, and hide the display **glass**. New styles unlock as you play.",
       );
       const themeLines = HQ_THEMES.map(t => {
         const open = isThemeUnlocked(t, owned);
@@ -826,9 +843,9 @@ async function buildView(
       });
       embed.addFields(
         { name: "🎨 Themes", value: themeLines.join("\n").slice(0, 1024) },
-        { name: `🧱 Wall · ${wall.name}`, value: styleList(HQ_WALLS, wall.id, w => isWallUnlocked(w, owned)), inline: true },
+        { name: `🖼️ Wallpaper · ${wallpaper.id === DEFAULT_BACKDROP_ID ? wall.name : wallpaper.name}`, value: styleList(HQ_BACKDROPS, wallpaper.id, b => isBackdropUnlocked(b, owned)), inline: true },
         { name: `🪵 Floor · ${floor.name}`, value: styleList(HQ_FLOORS, floor.id, f => isFloorUnlocked(f, owned)), inline: true },
-        { name: `🖼️ Backdrop · ${backdrop.name}`, value: styleList(HQ_BACKDROPS, backdrop.id, b => isBackdropUnlocked(b, owned)), inline: true },
+        { name: `🌅 Backdrop · ${backdrop.name}`, value: styleList(HQ_BACKDROPS, backdrop.id, b => isBackdropUnlocked(b, owned)), inline: true },
         {
           name: "🪟 Room",
           value:
@@ -855,7 +872,13 @@ async function buildView(
       // reachable once another category collapses back to its default).
       const styleSelects: { id: string; ph: string; opts: { label: string; value: string; emoji: string; default: boolean }[] }[] = [];
       const openBackdrops = unlockedBackdrops(owned);
-      if (openBackdrops.length > 1) styleSelects.push({ id: "backdrop", ph: "Change backdrop…", opts: openBackdrops.map(b => ({ label: b.name, value: b.id, emoji: b.emoji, default: b.id === backdrop.id })) });
+      // Wallpaper reuses the backdrop art — same unlock ledger — but paints it on
+      // the walls. "none" = plain wall. Highest priority (the common ask).
+      if (openBackdrops.length > 1) styleSelects.push({
+        id: "wallpaper", ph: "Wallpaper the walls…",
+        opts: openBackdrops.map(b => ({ label: b.id === DEFAULT_BACKDROP_ID ? "Plain wall" : b.name, value: b.id, emoji: b.emoji, default: b.id === wallpaper.id })),
+      });
+      if (openBackdrops.length > 1) styleSelects.push({ id: "backdrop", ph: "Backdrop (walls-off)…", opts: openBackdrops.map(b => ({ label: b.name, value: b.id, emoji: b.emoji, default: b.id === backdrop.id })) });
       const openThemes = unlockedThemes(owned);
       if (openThemes.length > 1) styleSelects.push({ id: "theme", ph: "Switch theme…", opts: openThemes.map(t => ({ label: t.name, value: t.id, emoji: t.emoji, default: t.id === theme.id })) });
       const openWalls = unlockedWalls(owned);

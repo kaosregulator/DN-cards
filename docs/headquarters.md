@@ -69,6 +69,11 @@ lighting/mood while walls + floor reskin the room itself:
   same unlock-rule contract as walls/floors, reconciled into `hq_unlocks` as
   `itemType: "backdrop"`. The backdrop PNG cover-fits the canvas with a soft
   dark overlay; `none` renders the plain themed backdrop.
+- **Wallpaper** — the same backdrop art can instead be painted _onto the wall
+  faces_ (`stats.wallpaperId`, reusing the backdrop unlock ledger). Pick an
+  outdoor scene and the walls stay **up** but look like the outdoors — this is
+  the everyday "make it feel outside" control; `none` = the plain wall style.
+  Walls-off + backdrop is the fuller open-air variant.
 
 Everything in the Style section persists to the additive `player_hq.stats` jsonb
 (no schema change): `backdropId`, plus two room-shell toggles — `wallsOff`
