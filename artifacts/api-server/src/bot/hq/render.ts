@@ -114,6 +114,9 @@ export interface HqRenderView extends HqHeaderInfo {
   // replace the procedural wall faces / floor tiles; otherwise procedural.
   wallSprite?: string | null;
   floorSprite?: string | null;
+  backdropSprite?: string | null;     // scene behind the room (sky/landscape)
+  wallsOff?: boolean;                 // "outside" — open the walls
+  glassOff?: boolean;                 // hide the glass display cases
   pedestals: (HqRenderCard | null)[]; // length = room.pedestals
   decorations: HqRenderDeco[];        // placed decorations (with slot index)
   defenders?: HqRenderDefender[];     // cards set to defend the base (figures on bases)
@@ -177,8 +180,11 @@ export async function renderHq(view: HqRenderView): Promise<Buffer | null> {
       const ctx = canvas.getContext("2d") as unknown as Ctx;
 
       layerBackdrop(ctx, view.theme);
-      await layerWalls(ctx, mod, view.wall, view.wallSprite ?? null);
-      await layerWallDecorations(ctx, mod, view);
+      await layerSceneryBackdrop(ctx, mod, view.backdropSprite ?? null); // sky/landscape behind
+      if (!view.wallsOff) {
+        await layerWalls(ctx, mod, view.wall, view.wallSprite ?? null);
+        await layerWallDecorations(ctx, mod, view);
+      }
       await layerFloor(ctx, mod, view.floor, view.floorSprite ?? null);
       layerLighting(ctx, view.theme);
       await layerFurniture(ctx, mod, view);
@@ -740,6 +746,21 @@ function layerBackdrop(ctx: Ctx, theme: HqTheme): void {
   ctx.fillRect(0, 0, W, H);
 }
 
+// Scene behind the room — a chosen sky/landscape backdrop, cover-fit. Shows above
+// the walls, and fills the view when the walls are opened ("outside").
+async function layerSceneryBackdrop(ctx: Ctx, mod: CanvasMod, spritePath: string | null): Promise<void> {
+  if (!spritePath) return;
+  const img = await loadSprite(mod, spritePath).catch(() => null);
+  if (!img) return;
+  const iw = Math.max(1, (img as { width: number }).width);
+  const ih = Math.max(1, (img as { height: number }).height);
+  const sc = Math.max(W / iw, H / ih); // cover
+  const dw = iw * sc, dh = ih * sc;
+  blit(ctx, img, (W - dw) / 2, (H - dh) / 2, dw, dh);
+  // Soften so foreground furniture still reads.
+  ctx.save(); ctx.fillStyle = "rgba(0,0,0,0.22)"; ctx.fillRect(0, 0, W, H); ctx.restore();
+}
+
 // Fill a wall face (a parallelogram) with shading, a top trim line, a baseboard,
 // and optional window panels. `corners` are base-left, base-right, top-left,
 // top-right along the same horizontal parameter u (v=0 base, v=1 top).
@@ -889,7 +910,7 @@ async function layerFurniture(ctx: Ctx, mod: CanvasMod, view: HqRenderView): Pro
     const d = (i - (n - 1) / 2) * SPREAD;
     const p = project(2.5 + d, 2.5 - d);  // gx+gy = 5 → shallow back row
     const card = view.pedestals[i]!;
-    items.push({ depth: p.y, draw: () => drawPedestal(ctx, mod, p.x, p.y, card, view.theme) });
+    items.push({ depth: p.y, draw: () => drawPedestal(ctx, mod, p.x, p.y, card, view.theme, !!view.glassOff) });
   }
 
   // Floor decorations, positioned on their exact grid tile.
@@ -915,7 +936,7 @@ async function layerFurniture(ctx: Ctx, mod: CanvasMod, view: HqRenderView): Pro
 
 // ── Card pedestal (upright display panel on an iso plinth) ─────────────────────
 async function drawPedestal(
-  ctx: Ctx, mod: CanvasMod, cx: number, cy: number, card: HqRenderCard | null, theme: HqTheme,
+  ctx: Ctx, mod: CanvasMod, cx: number, cy: number, card: HqRenderCard | null, theme: HqTheme, glassOff = false,
 ): Promise<void> {
   const cardW = 116, cardH = 150;
   const plinthH = 30, plinthW = cardW + 20;
@@ -933,7 +954,7 @@ async function drawPedestal(
   drawIsoBox(ctx, cx, cy, plinthW, plinthH, theme.palette.accent);
 
   if (!card) {
-    drawGlassCase(ctx, cardX, cardTop, cardW, cardH, theme, 0x808895);
+    if (!glassOff) drawGlassCase(ctx, cardX, cardTop, cardW, cardH, theme, 0x808895);
     ctx.save();
     ctx.textAlign = "center"; ctx.textBaseline = "middle";
     drawTitle(ctx, "+", cx, cardTop + cardH / 2 - 8, hexToRgba(theme.palette.accent, 0.85), 42);
@@ -945,7 +966,7 @@ async function drawPedestal(
   drawRarityGlow(ctx, cardX, cardTop, cardW, cardH, card.rarityColor, 0.55);
   await drawCardArt(ctx, mod, cardX, cardTop, cardW, cardH, card.artUrl);
   drawCardFrame(ctx, cardX, cardTop, cardW, cardH, card.rarityColor, 5);
-  drawGlassCase(ctx, cardX, cardTop, cardW, cardH, theme, card.rarityColor);
+  if (!glassOff) drawGlassCase(ctx, cardX, cardTop, cardW, cardH, theme, card.rarityColor);
 
   // Nameplate on the plinth.
   ctx.save();

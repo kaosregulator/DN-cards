@@ -63,8 +63,22 @@ lighting/mood while walls + floor reskin the room itself:
 
 - `defs/walls.ts` — two face colours, trim, optional procedural windows.
 - `defs/floors.ts` — a two-tone tile checker + grout colour.
+- `defs/backdrops.ts` — a **backdrop** is the scene painted _behind_ the room
+  (meadow, forest, autumn, desert, castle vista). Some are default; others are
+  **earned** (account level, battle wins, achievements — not just drops), the
+  same unlock-rule contract as walls/floors, reconciled into `hq_unlocks` as
+  `itemType: "backdrop"`. The backdrop PNG cover-fits the canvas with a soft
+  dark overlay; `none` renders the plain themed backdrop.
 
-Change a wall/floor from **`/hq` → 🎨 Style**. New styles unlock as you play.
+Everything in the Style section persists to the additive `player_hq.stats` jsonb
+(no schema change): `backdropId`, plus two room-shell toggles — `wallsOff`
+("outside": the walls open onto the backdrop) and `glassOff` (hide the pedestal
+display cases). **Inside/Outside presets** set both in one tap (going outside also
+drops the glass for an open-air showcase). Small (≤48 px) sprites render with
+image-smoothing off so pixel-art figures stay crisp.
+
+Change a wall/floor/backdrop, toggle walls/glass, or hit an Inside/Outside preset
+from **`/hq` → 🎨 Style**. New styles unlock as you play.
 
 ## Rendering is separated from assets
 

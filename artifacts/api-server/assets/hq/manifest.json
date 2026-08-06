@@ -26,6 +26,12 @@
     "building/wall": "buildings/wall.png",
     "building/camp": "buildings/camp.png",
     "building/hut": "buildings/hut.png",
+    "backdrop/grass": "backdrops/grass.png",
+    "backdrop/forest": "backdrops/forest.png",
+    "backdrop/fall": "backdrops/fall.png",
+    "backdrop/desert": "backdrops/desert.png",
+    "backdrop/castles": "backdrops/castles.png",
+
     "deco/figure-knight": "figures/figure-knight.png",
     "deco/figure-mage": "figures/figure-mage.png",
     "deco/figure-wizard": "figures/figure-wizard.png",

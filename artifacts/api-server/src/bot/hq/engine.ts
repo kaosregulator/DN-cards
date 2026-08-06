@@ -27,6 +27,7 @@ import { HQ_ROOMS, type HqRoom } from "./defs/rooms.js";
 import { HQ_THEMES, DEFAULT_THEME_ID, type HqTheme } from "./defs/themes.js";
 import { HQ_WALLS, DEFAULT_WALL_ID, type HqWall } from "./defs/walls.js";
 import { HQ_FLOORS, DEFAULT_FLOOR_ID, type HqFloor } from "./defs/floors.js";
+import { HQ_BACKDROPS, DEFAULT_BACKDROP_ID, type HqBackdrop } from "./defs/backdrops.js";
 import { getUnlockedItemIds, grantUnlock } from "./db.js";
 
 async function safe<T>(label: string, fn: () => Promise<T>, fallback: T): Promise<T> {
@@ -106,6 +107,12 @@ export function unlockedWalls(owned: Set<string>): HqWall[] {
 export function unlockedFloors(owned: Set<string>): HqFloor[] {
   return HQ_FLOORS.filter(f => isFloorUnlocked(f, owned));
 }
+export function isBackdropUnlocked(bd: HqBackdrop, owned: Set<string>): boolean {
+  return bd.id === DEFAULT_BACKDROP_ID || isUnlocked(bd.unlock, bd.id, owned);
+}
+export function unlockedBackdrops(owned: Set<string>): HqBackdrop[] {
+  return HQ_BACKDROPS.filter(b => isBackdropUnlocked(b, owned));
+}
 
 // HQ level rewards BREADTH of accomplishment: each earned cosmetic and each
 // extra room/theme raises it, with a gentle account-level contribution. Purely a
@@ -160,6 +167,12 @@ export async function reconcileUnlocks(guildId: string, userId: string): Promise
     if (f.unlock.kind === "always") continue;
     if (evalUnlockRule(f.unlock, progress)) {
       await grantUnlock(guildId, userId, f.id, "floor", unlockSourceTag(f.unlock)).catch(() => {});
+    }
+  }
+  for (const b of HQ_BACKDROPS) {
+    if (b.unlock.kind === "always") continue;
+    if (evalUnlockRule(b.unlock, progress)) {
+      await grantUnlock(guildId, userId, b.id, "backdrop", unlockSourceTag(b.unlock)).catch(() => {});
     }
   }
 

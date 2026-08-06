@@ -44,11 +44,12 @@ import { rarityLadderRank } from "../rarity-runtime.js";
 import {
   reconcileUnlocks, ownedDecorations, unlockedRooms, unlockedThemes,
   isRoomUnlocked, isThemeUnlocked, unlockedWalls, unlockedFloors,
-  isWallUnlocked, isFloorUnlocked,
+  isWallUnlocked, isFloorUnlocked, unlockedBackdrops, isBackdropUnlocked,
 } from "../hq/engine.js";
 import { resolveTheme, HQ_THEMES } from "../hq/defs/themes.js";
 import { resolveWall, HQ_WALLS } from "../hq/defs/walls.js";
 import { resolveFloor, HQ_FLOORS } from "../hq/defs/floors.js";
+import { resolveBackdrop, HQ_BACKDROPS, DEFAULT_BACKDROP_ID } from "../hq/defs/backdrops.js";
 import { resolveRoom, HQ_ROOMS, DEFAULT_ROOM_ID } from "../hq/defs/rooms.js";
 import { resolveDecoration, decorationsByRarityDesc, HQ_DECORATIONS } from "../hq/defs/decorations.js";
 import { unlockLabel, type UnlockRule } from "../hq/defs/unlock-rules.js";
@@ -74,10 +75,10 @@ type HubInteraction =
 
 // Player-set personalization lives in the additive `stats` jsonb — no schema
 // change. `title` renames the HQ banner; `motto` is a short tagline in the embed.
-interface HqStats { title?: string; motto?: string }
+interface HqStats { title?: string; motto?: string; backdropId?: string; wallsOff?: boolean; glassOff?: boolean }
 function readHqStats(hq: PlayerHq): HqStats {
   const s = hq.stats as HqStats | null | undefined;
-  return { title: s?.title, motto: s?.motto };
+  return { title: s?.title, motto: s?.motto, backdropId: s?.backdropId, wallsOff: s?.wallsOff, glassOff: s?.glassOff };
 }
 function hqDisplayTitle(hq: PlayerHq, ownerName: string): string {
   const t = readHqStats(hq).title?.trim();
@@ -263,6 +264,41 @@ export async function handleHqHubComponent(
     await interaction.update(await buildView(interaction, "theme", [])).catch(() => {});
     return;
   }
+  // Switch the world backdrop (persisted to stats). Guarded to unlocked backdrops.
+  if (action === "backdrop" && interaction.isStringSelectMenu()) {
+    const bd = resolveBackdrop(interaction.values[0]!);
+    if (isBackdropUnlocked(bd, await getUnlockedItemIds(guildId, userId))) {
+      const hq = await getOrCreateHq(guildId, userId);
+      await updateHq(guildId, userId, { stats: { ...readHqStats(hq), backdropId: bd.id } }).catch(() => {});
+    }
+    await interaction.update(await buildView(interaction, "theme", [])).catch(() => {});
+    return;
+  }
+  // Room-shell toggles & inside/outside presets — all persisted to stats.
+  if (action === "togglewalls" && interaction.isButton()) {
+    const hq = await getOrCreateHq(guildId, userId);
+    const s = readHqStats(hq);
+    await updateHq(guildId, userId, { stats: { ...s, wallsOff: !s.wallsOff } }).catch(() => {});
+    await interaction.update(await buildView(interaction, "theme", [])).catch(() => {});
+    return;
+  }
+  if (action === "toggleglass" && interaction.isButton()) {
+    const hq = await getOrCreateHq(guildId, userId);
+    const s = readHqStats(hq);
+    await updateHq(guildId, userId, { stats: { ...s, glassOff: !s.glassOff } }).catch(() => {});
+    await interaction.update(await buildView(interaction, "theme", [])).catch(() => {});
+    return;
+  }
+  if (action === "preset" && interaction.isButton()) {
+    const hq = await getOrCreateHq(guildId, userId);
+    const s = readHqStats(hq);
+    // "outside" opens the walls; "inside" closes them. A gentle default: going
+    // outside also drops the glass cases (an open-air showcase), inside restores.
+    const outside = parts[2] === "outside";
+    await updateHq(guildId, userId, { stats: { ...s, wallsOff: outside, glassOff: outside } }).catch(() => {});
+    await interaction.update(await buildView(interaction, "theme", [])).catch(() => {});
+    return;
+  }
 
   // Shop: buy the selected furniture (validated against the live rotation price).
   if (action === "buy" && interaction.isStringSelectMenu()) {
@@ -353,6 +389,9 @@ async function buildRenderView(
   const wall = resolveWall(hq.wallId);
   const floor = resolveFloor(hq.floorId);
   const room = resolveRoom(hq.activeRoomId);
+  const style = readHqStats(hq);
+  const backdrop = resolveBackdrop(style.backdropId);
+  const backdropSprite = backdrop.id === DEFAULT_BACKDROP_ID ? null : spriteForPrefix("backdrop", backdrop.id);
   const [{ settings, ctx, displayMap, cards }, displays, placements, defenderMap] = await Promise.all([
     loadCtx(guildId),
     getDisplays(guildId, userId),
@@ -405,6 +444,7 @@ async function buildRenderView(
     floorSprite: spriteForPrefix(floor.spritePrefix, "tile"),
     roomName: room.name, roomEmoji: room.emoji, hqLevel: hq.hqLevel,
     subtitle, pedestals, decorations, defenders,
+    backdropSprite, wallsOff: !!style.wallsOff, glassOff: !!style.glassOff,
   };
 }
 
@@ -772,9 +812,12 @@ async function buildView(
     }
 
     case "theme": {
+      const style = readHqStats(hq);
+      const backdrop = resolveBackdrop(style.backdropId);
       embed.setTitle("🎨 Style").setDescription(
-        "Restyle your whole HQ — the **theme** sets lighting & mood, while **walls** and **floor** " +
-        "reskin the room itself. New styles unlock as you play.",
+        "Restyle your whole HQ — the **theme** sets lighting & mood, **walls** and **floor** reskin the " +
+        "room, and a **backdrop** paints the world behind it. Toggle **walls** off to go *outside* or hide " +
+        "the display **glass**. New styles unlock as you play.",
       );
       const themeLines = HQ_THEMES.map(t => {
         const open = isThemeUnlocked(t, owned);
@@ -785,26 +828,44 @@ async function buildView(
         { name: "🎨 Themes", value: themeLines.join("\n").slice(0, 1024) },
         { name: `🧱 Wall · ${wall.name}`, value: styleList(HQ_WALLS, wall.id, w => isWallUnlocked(w, owned)), inline: true },
         { name: `🪵 Floor · ${floor.name}`, value: styleList(HQ_FLOORS, floor.id, f => isFloorUnlocked(f, owned)), inline: true },
+        { name: `🖼️ Backdrop · ${backdrop.name}`, value: styleList(HQ_BACKDROPS, backdrop.id, b => isBackdropUnlocked(b, owned)), inline: true },
+        {
+          name: "🪟 Room",
+          value:
+            `Walls: ${style.wallsOff ? "**open** (outside) 🌅" : "**up** (inside) 🧱"}\n` +
+            `Glass: ${style.glassOff ? "**off** 🔓" : "**on** 🟦"}`,
+          inline: true,
+        },
       );
+      // Preset + toggle buttons: Inside/Outside set walls in one tap, then
+      // individual toggles for finer control. Persisted to player_hq.stats.
+      rows.push(new ActionRowBuilder<ButtonBuilder>().addComponents(
+        new ButtonBuilder().setCustomId("hq-hub:preset:inside").setLabel("Inside").setEmoji("🏠")
+          .setStyle(style.wallsOff ? ButtonStyle.Secondary : ButtonStyle.Primary),
+        new ButtonBuilder().setCustomId("hq-hub:preset:outside").setLabel("Outside").setEmoji("🌅")
+          .setStyle(style.wallsOff ? ButtonStyle.Primary : ButtonStyle.Secondary),
+        new ButtonBuilder().setCustomId("hq-hub:togglewalls").setLabel(style.wallsOff ? "Walls on" : "Walls off").setEmoji("🧱")
+          .setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder().setCustomId("hq-hub:toggleglass").setLabel(style.glassOff ? "Glass on" : "Glass off").setEmoji("🪟")
+          .setStyle(ButtonStyle.Secondary),
+      ));
+      // Discord caps a message at 5 action rows; nav + the button row already
+      // take 2. Offer the reskin selects in priority order, stopping before the
+      // cap so a fully-maxed player never overflows (a dropped select is still
+      // reachable once another category collapses back to its default).
+      const styleSelects: { id: string; ph: string; opts: { label: string; value: string; emoji: string; default: boolean }[] }[] = [];
+      const openBackdrops = unlockedBackdrops(owned);
+      if (openBackdrops.length > 1) styleSelects.push({ id: "backdrop", ph: "Change backdrop…", opts: openBackdrops.map(b => ({ label: b.name, value: b.id, emoji: b.emoji, default: b.id === backdrop.id })) });
       const openThemes = unlockedThemes(owned);
-      if (openThemes.length > 1) {
-        rows.push(new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
-          new StringSelectMenuBuilder().setCustomId("hq-hub:theme").setPlaceholder("Switch theme…")
-            .addOptions(openThemes.map(t => ({ label: t.name, value: t.id, emoji: t.emoji, default: t.id === theme.id }))),
-        ));
-      }
+      if (openThemes.length > 1) styleSelects.push({ id: "theme", ph: "Switch theme…", opts: openThemes.map(t => ({ label: t.name, value: t.id, emoji: t.emoji, default: t.id === theme.id })) });
       const openWalls = unlockedWalls(owned);
-      if (openWalls.length > 1) {
-        rows.push(new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
-          new StringSelectMenuBuilder().setCustomId("hq-hub:wall").setPlaceholder("Change walls…")
-            .addOptions(openWalls.map(w => ({ label: w.name, value: w.id, emoji: w.emoji, default: w.id === wall.id }))),
-        ));
-      }
+      if (openWalls.length > 1) styleSelects.push({ id: "wall", ph: "Change walls…", opts: openWalls.map(w => ({ label: w.name, value: w.id, emoji: w.emoji, default: w.id === wall.id })) });
       const openFloors = unlockedFloors(owned);
-      if (openFloors.length > 1) {
+      if (openFloors.length > 1) styleSelects.push({ id: "floor", ph: "Change floor…", opts: openFloors.map(f => ({ label: f.name, value: f.id, emoji: f.emoji, default: f.id === floor.id })) });
+      for (const sel of styleSelects) {
+        if (rows.length >= 5) break;
         rows.push(new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
-          new StringSelectMenuBuilder().setCustomId("hq-hub:floor").setPlaceholder("Change floor…")
-            .addOptions(openFloors.map(f => ({ label: f.name, value: f.id, emoji: f.emoji, default: f.id === floor.id }))),
+          new StringSelectMenuBuilder().setCustomId(`hq-hub:${sel.id}`).setPlaceholder(sel.ph).addOptions(sel.opts),
         ));
       }
       break;
