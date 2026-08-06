@@ -58,6 +58,9 @@ export interface HqRenderDeco {
 
 export interface HqRenderView {
   ownerName: string;
+  // The banner name shown in the header. Defaults to "<ownerName>'s HQ" but a
+  // player may set a custom HQ name (personalization) — the hub resolves it.
+  displayTitle: string;
   ownerAvatarUrl: string | null;
   theme: HqTheme;
   roomName: string;
@@ -319,7 +322,9 @@ async function layerHeader(ctx: Ctx, mod: CanvasMod, view: HqRenderView): Promis
   ctx.save();
   ctx.textAlign = "left"; ctx.textBaseline = "middle";
   const tx = ax + av + 14;
-  drawTitle(ctx, `${view.ownerName}'s HQ`, tx, 24, "#ffffff", fitText(ctx, `${view.ownerName}'s HQ`, 520, 22, 14, TITLE_FONT));
+  // Left-align the banner name (drawTitle centres by default) so it starts at the
+  // avatar and a long/custom HQ name grows rightward instead of clipping the edge.
+  drawTitle(ctx, view.displayTitle, tx, 24, "#ffffff", fitText(ctx, view.displayTitle, 520, 22, 14, TITLE_FONT), "left");
   drawTextWithShadow(ctx, view.subtitle, tx, 46, "rgba(225,225,230,0.85)", 13, "left");
   ctx.restore();
 
@@ -443,6 +448,37 @@ function drawDecoration(ctx: Ctx, a: Anchor, deco: HqRenderDeco): void {
       roundRectPath(ctx, -s * 0.3, -s * 0.42, s * 0.6, s * 0.84, 6); ctx.fill();
       ctx.fillStyle = "rgba(255,255,255,0.5)";
       ctx.fillRect(-s * 0.22, -s * 0.34, s * 0.12, s * 0.68);     // sheen
+      break;
+    }
+    case "crystal": {
+      // Faceted gem: two mirrored triangles with a bright inner core.
+      ctx.shadowColor = hexToRgba(col, 0.9); ctx.shadowBlur = 24;
+      ctx.fillStyle = hexToRgba(col, 0.95);
+      ctx.beginPath();
+      ctx.moveTo(0, -s * 0.5); ctx.lineTo(s * 0.3, -s * 0.05);
+      ctx.lineTo(0, s * 0.5); ctx.lineTo(-s * 0.3, -s * 0.05);
+      ctx.closePath(); ctx.fill();
+      ctx.shadowBlur = 0;
+      ctx.fillStyle = "rgba(255,255,255,0.65)";
+      ctx.beginPath();
+      ctx.moveTo(0, -s * 0.5); ctx.lineTo(s * 0.12, -s * 0.05);
+      ctx.lineTo(0, s * 0.18); ctx.lineTo(-s * 0.12, -s * 0.05);
+      ctx.closePath(); ctx.fill();
+      break;
+    }
+    case "rug": {
+      // A flat floor rug drawn in perspective (wider at the front) with a border.
+      ctx.shadowBlur = 0;
+      ctx.fillStyle = hexToRgba(col, 0.85);
+      ctx.beginPath();
+      ctx.moveTo(-s * 0.34, s * 0.14); ctx.lineTo(s * 0.34, s * 0.14);
+      ctx.lineTo(s * 0.5, s * 0.5); ctx.lineTo(-s * 0.5, s * 0.5);
+      ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = "rgba(255,255,255,0.7)"; ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(-s * 0.26, s * 0.2); ctx.lineTo(s * 0.26, s * 0.2);
+      ctx.lineTo(s * 0.38, s * 0.44); ctx.lineTo(-s * 0.38, s * 0.44);
+      ctx.closePath(); ctx.stroke();
       break;
     }
   }

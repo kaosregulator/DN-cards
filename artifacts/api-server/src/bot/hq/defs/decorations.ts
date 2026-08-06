@@ -17,7 +17,8 @@ import type { UnlockRule } from "./unlock-rules.js";
 // Generic shapes the procedural renderer can draw. A theme/asset pack may later
 // supply real art per (theme, category|id) without changing this list.
 export type DecoCategory =
-  | "banner" | "statue" | "trophy" | "monument" | "plant" | "light" | "case" | "emblem";
+  | "banner" | "statue" | "trophy" | "monument" | "plant" | "light" | "case" | "emblem"
+  | "crystal" | "rug";
 
 export interface HqDecoration {
   id: string;
@@ -71,6 +72,32 @@ export const HQ_DECORATIONS: HqDecoration[] = [
     spriteKey: "deco/founders-obelisk", unlock: { kind: "accountLevel", n: 25 }, story: "Erected at account level 25." },
   { id: "limited-pedestal", name: "Limited Pedestal", emoji: "💎", rarity: "mythic", category: "case",
     spriteKey: "deco/limited-pedestal", unlock: { kind: "ownsLimited" }, story: "Reserved for owners of limited-edition cards." },
+
+  // ── Wealth & scale (Phase 2 — reuses the derived snapshot) ────────────────────
+  { id: "welcome-rug", name: "Welcome Rug", emoji: "🟥", rarity: "common", category: "rug",
+    spriteKey: "deco/welcome-rug", unlock: { kind: "totalCards", n: 25 }, story: "Woven once your collection hit 25 cards." },
+  { id: "archive-stacks", name: "Archive Stacks", emoji: "🗃️", rarity: "rare", category: "case",
+    spriteKey: "deco/archive-stacks", unlock: { kind: "totalCards", n: 250 }, story: "Shelves groaning under 250 cards." },
+  { id: "treasury-crystal", name: "Treasury Crystal", emoji: "🔮", rarity: "epic", category: "crystal",
+    spriteKey: "deco/treasury-crystal", unlock: { kind: "netWorth", n: 25_000 }, story: "Condensed from a 25K-shard fortune." },
+  { id: "sovereign-hoard", name: "Sovereign's Hoard", emoji: "💠", rarity: "mythic", category: "crystal",
+    spriteKey: "deco/sovereign-hoard", unlock: { kind: "netWorth", n: 100_000 }, story: "The glittering proof of a 100K-shard collection." },
+  { id: "shiny-constellation", name: "Shiny Constellation", emoji: "🌌", rarity: "legendary", category: "crystal",
+    spriteKey: "deco/shiny-constellation", unlock: { kind: "shinyOwned", n: 10 }, story: "Ten shinies, arranged like stars." },
+
+  // ── Deeper mastery ────────────────────────────────────────────────────────────
+  { id: "warlord-standard", name: "Warlord's Standard", emoji: "⚔️", rarity: "mythic", category: "banner",
+    spriteKey: "deco/warlord-standard", unlock: { kind: "battleWins", n: 250 }, story: "Flown by the winner of 250 battles." },
+  { id: "eternal-flame", name: "Eternal Flame", emoji: "🕯️", rarity: "legendary", category: "light",
+    spriteKey: "deco/eternal-flame", unlock: { kind: "dailyStreak", n: 100 }, story: "A hundred days without missing a dawn." },
+
+  // ── Achievement-linked (mirrors the achievement registry keys) ─────────────────
+  { id: "sovereign-crown", name: "Sovereign's Crown", emoji: "👑", rarity: "mythic", category: "emblem",
+    spriteKey: "deco/sovereign-crown", unlock: { kind: "achievement", key: "all_legendaries" }, story: "Awarded to those who own every Legendary." },
+  { id: "diplomat-seal", name: "Diplomat's Seal", emoji: "🤝", rarity: "uncommon", category: "emblem",
+    spriteKey: "deco/diplomat-seal", unlock: { kind: "achievement", key: "trader" }, story: "Pressed after your first completed trade." },
+  { id: "collectors-crest", name: "Collector's Crest", emoji: "💼", rarity: "epic", category: "emblem",
+    spriteKey: "deco/collectors-crest", unlock: { kind: "achievement", key: "master" }, story: "Granted to Master Collectors." },
 ];
 
 const DECO_BY_ID = new Map<string, HqDecoration>(HQ_DECORATIONS.map(d => [d.id, d]));

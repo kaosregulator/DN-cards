@@ -352,6 +352,9 @@ export async function startBot() {
         } else if (interaction.customId.startsWith("user-hub:modal:")) {
           const { handleUserHubModal } = await import("./commands/user-hub.js");
           await handleUserHubModal(interaction);
+        } else if (interaction.customId.startsWith("hq-hub:modal:")) {
+          const { handleHqHubModal } = await import("./commands/hq-hub.js");
+          await handleHqHubModal(interaction);
         } else if (interaction.customId === "recycle:search") {
           const { handleFusionSearchModal } = await import("./cards/fusion.js");
           await handleFusionSearchModal(interaction);

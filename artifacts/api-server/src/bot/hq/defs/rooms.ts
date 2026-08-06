@@ -43,6 +43,30 @@ export const HQ_ROOMS: HqRoom[] = [
     decoSlots: 6,
     unlock: { kind: "collectionUnique", n: 10 },
   },
+  // Decoration-focused showcase rooms unlock as the player progresses — each is
+  // its own decorating canvas (placements are keyed per room). Pedestals stay in
+  // the Trophy Hall (featured cards are indexed by slot, not room), so these
+  // rooms express personality through the decorations you've earned.
+  {
+    id: "atrium",
+    name: "Atrium",
+    emoji: "🌿",
+    kind: "display",
+    blurb: "A sunlit gallery for the mementos you're most proud of.",
+    pedestals: 0,
+    decoSlots: 6,
+    unlock: { kind: "collectionUnique", n: 25 },
+  },
+  {
+    id: "hall-of-fame",
+    name: "Hall of Fame",
+    emoji: "🏅",
+    kind: "display",
+    blurb: "Where your hardest-won trophies stand together.",
+    pedestals: 0,
+    decoSlots: 6,
+    unlock: { kind: "accountLevel", n: 15 },
+  },
 ];
 
 export const DEFAULT_ROOM_ID = "entrance";

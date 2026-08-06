@@ -12,10 +12,12 @@
 
 import type {
   ChatInputCommandInteraction, StringSelectMenuInteraction, ButtonInteraction,
+  ModalSubmitInteraction,
 } from "discord.js";
 import {
   EmbedBuilder, ActionRowBuilder, StringSelectMenuBuilder, ButtonBuilder,
   ButtonStyle, MessageFlags, AttachmentBuilder,
+  ModalBuilder, TextInputBuilder, TextInputStyle,
 } from "discord.js";
 import {
   getAllCardsCached, getUserCollection, getOrCreateGuildSettings,
@@ -35,7 +37,7 @@ import {
   isRoomUnlocked, isThemeUnlocked,
 } from "../hq/engine.js";
 import { resolveTheme, HQ_THEMES } from "../hq/defs/themes.js";
-import { resolveRoom, HQ_ROOMS } from "../hq/defs/rooms.js";
+import { resolveRoom, HQ_ROOMS, DEFAULT_ROOM_ID } from "../hq/defs/rooms.js";
 import { resolveDecoration, decorationsByRarityDesc, HQ_DECORATIONS } from "../hq/defs/decorations.js";
 import { unlockLabel } from "../hq/defs/unlock-rules.js";
 import { spriteFor } from "../hq/assets.js";
@@ -44,6 +46,25 @@ import type { PlayerHq } from "@workspace/db";
 
 const EPHEMERAL = { flags: MessageFlags.Ephemeral } as const;
 const HQ_FILE = "hq.png";
+const MAX_HQ_NAME = 40;
+const MAX_HQ_MOTTO = 80;
+
+// Any interaction that can drive the hub. All four expose guildId + user, which
+// is all buildView reads.
+type HubInteraction =
+  | ChatInputCommandInteraction | StringSelectMenuInteraction | ButtonInteraction | ModalSubmitInteraction;
+
+// Player-set personalization lives in the additive `stats` jsonb — no schema
+// change. `title` renames the HQ banner; `motto` is a short tagline in the embed.
+interface HqStats { title?: string; motto?: string }
+function readHqStats(hq: PlayerHq): HqStats {
+  const s = hq.stats as HqStats | null | undefined;
+  return { title: s?.title, motto: s?.motto };
+}
+function hqDisplayTitle(hq: PlayerHq, ownerName: string): string {
+  const t = readHqStats(hq).title?.trim();
+  return t && t.length > 0 ? t : `${ownerName}'s HQ`;
+}
 
 type Section = "overview" | "trophy" | "decorations" | "rooms" | "theme";
 interface SectionMeta { id: Section; label: string; emoji: string; description: string }
@@ -124,9 +145,14 @@ export async function handleHqHubComponent(
     return;
   }
 
-  // Decorations: place into the next free slot / remove a placed one.
+  // Decorations: choosing one opens a slot picker so the player decides the
+  // layout (which slot, swap into an occupied one) — decorating, not auto-fill.
   if (action === "placedeco" && interaction.isStringSelectMenu()) {
-    await placeDecorationAction(guildId, userId, interaction.values[0]!);
+    await interaction.update(await buildSlotPicker(guildId, userId, interaction.values[0]!)).catch(() => {});
+    return;
+  }
+  if (action === "placeat" && interaction.isStringSelectMenu()) {
+    await placeDecorationAt(guildId, userId, parts[2]!, interaction.values[0]!);
     await interaction.update(await buildView(interaction, "decorations", [])).catch(() => {});
     return;
   }
@@ -149,6 +175,27 @@ export async function handleHqHubComponent(
     return;
   }
 
+  // Personalize: open the rename/motto modal (handled by handleHqHubModal).
+  if (action === "renamehq" && interaction.isButton()) {
+    const hq = await getOrCreateHq(guildId, userId);
+    const s = readHqStats(hq);
+    const modal = new ModalBuilder().setCustomId("hq-hub:modal:rename").setTitle("Personalize your HQ")
+      .addComponents(
+        new ActionRowBuilder<TextInputBuilder>().addComponents(
+          new TextInputBuilder().setCustomId("title").setLabel("HQ name (leave blank for default)")
+            .setStyle(TextInputStyle.Short).setRequired(false).setMaxLength(MAX_HQ_NAME)
+            .setValue(s.title ?? ""),
+        ),
+        new ActionRowBuilder<TextInputBuilder>().addComponents(
+          new TextInputBuilder().setCustomId("motto").setLabel("Motto / tagline (optional)")
+            .setStyle(TextInputStyle.Short).setRequired(false).setMaxLength(MAX_HQ_MOTTO)
+            .setValue(s.motto ?? ""),
+        ),
+      );
+    await interaction.showModal(modal).catch(() => {});
+    return;
+  }
+
   if (action === "back") {
     await interaction.update(await buildView(interaction, (parts[2] as Section) ?? "trophy", [])).catch(() => {});
     return;
@@ -158,6 +205,29 @@ export async function handleHqHubComponent(
   const section: Section = interaction.isStringSelectMenu()
     ? ((interaction.values[0] as Section) ?? "overview") : "overview";
   await interaction.update(await buildView(interaction, section, [])).catch(() => {});
+}
+
+// ── Modal submissions (personalize: HQ name + motto) ──────────────────────────
+export async function handleHqHubModal(interaction: ModalSubmitInteraction): Promise<void> {
+  if (!interaction.guildId) return;
+  if (interaction.customId !== "hq-hub:modal:rename") return;
+  const guildId = interaction.guildId;
+  const userId = interaction.user.id;
+
+  const title = interaction.fields.getTextInputValue("title").trim().slice(0, MAX_HQ_NAME);
+  const motto = interaction.fields.getTextInputValue("motto").trim().slice(0, MAX_HQ_MOTTO);
+  const hq = await getOrCreateHq(guildId, userId);
+  const stats: HqStats = { ...readHqStats(hq), title: title || undefined, motto: motto || undefined };
+  await updateHq(guildId, userId, { stats }).catch(() => {});
+
+  // Re-render the overview in place. The modal was opened from the ephemeral hub
+  // message, so it can update that message directly.
+  const view = await buildView(interaction, "overview", []);
+  if (interaction.isFromMessage()) {
+    await interaction.update(view).catch(() => {});
+  } else {
+    await interaction.reply({ ...view, ...EPHEMERAL }).catch(() => {});
+  }
 }
 
 // ── Shared data load ──────────────────────────────────────────────────────────
@@ -212,7 +282,7 @@ async function buildRenderView(
     : `${room.name} • ${decorations.length} decoration${decorations.length === 1 ? "" : "s"}`;
 
   return {
-    ownerName, ownerAvatarUrl, theme,
+    ownerName, displayTitle: hqDisplayTitle(hq, ownerName), ownerAvatarUrl, theme,
     roomName: room.name, roomEmoji: room.emoji, hqLevel: hq.hqLevel,
     subtitle, pedestals, decorations,
   };
@@ -225,7 +295,7 @@ async function renderRoomImage(view: HqRenderView): Promise<AttachmentBuilder | 
 
 // ── Owner view ────────────────────────────────────────────────────────────────
 async function buildView(
-  interaction: ChatInputCommandInteraction | StringSelectMenuInteraction | ButtonInteraction,
+  interaction: HubInteraction,
   section: Section, justUnlocked: { name: string; emoji: string; story: string }[],
 ) {
   const guildId = interaction.guildId!;
@@ -237,6 +307,15 @@ async function buildView(
     ...owned,
     ...HQ_DECORATIONS.filter(d => d.unlock.kind === "always").map(d => d.id),
   ])).catch(() => {});
+
+  // The stored active room can be one the player hasn't unlocked (the table's
+  // default is the flagship Trophy Hall, which is gated). Never leave someone
+  // stranded in a locked room — fall back to the always-open entrance and
+  // persist the correction so switches/placements target a room they own.
+  if (!isRoomUnlocked(resolveRoom(hq.activeRoomId), owned)) {
+    await updateHq(guildId, userId, { activeRoomId: DEFAULT_ROOM_ID }).catch(() => {});
+    hq.activeRoomId = DEFAULT_ROOM_ID;
+  }
 
   const renderView = await buildRenderView(guildId, userId, interaction.user.username, interaction.user.displayAvatarURL(), hq);
   const file = await renderRoomImage(renderView);
@@ -252,8 +331,11 @@ async function buildView(
     case "overview": {
       const decoOwned = ownedDecorations(owned).length;
       const roomsOpen = unlockedRooms(owned).length;
-      embed.setTitle(`🏠 ${interaction.user.username}'s Headquarters`)
+      const stats = readHqStats(hq);
+      const title = hqDisplayTitle(hq, interaction.user.username);
+      embed.setTitle(`🏠 ${title}`)
         .setDescription(
+          (stats.motto ? `_“${stats.motto}”_\n\n` : "") +
           `**${theme.emoji} ${theme.name}** · **HQ Level ${hq.hqLevel}**\n` +
           `Now viewing **${room.emoji} ${room.name}**. Use the dropdown to decorate, restyle, or feature cards.`,
         )
@@ -264,6 +346,11 @@ async function buildView(
         );
       const nextHint = nextUnlockHint(owned);
       if (nextHint) embed.addFields({ name: "🔓 Next up", value: nextHint, inline: false });
+      rows.push(new ActionRowBuilder<ButtonBuilder>().addComponents(
+        new ButtonBuilder().setCustomId("hq-hub:renamehq")
+          .setLabel(stats.title ? "Rename HQ" : "Name your HQ")
+          .setEmoji("✏️").setStyle(ButtonStyle.Secondary),
+      ));
       break;
     }
 
@@ -304,7 +391,7 @@ async function buildView(
       const placements = await getPlacements(guildId, userId, room.id);
       const placedIds = new Set(placements.values());
       embed.setTitle("🎏 Decorations").setDescription(
-        `Cosmetics you've **earned** by playing — each one tells a story. Placing fills the **${room.emoji} ${room.name}**'s ${room.decoSlots} slots.\n` +
+        `Cosmetics you've **earned** by playing — each one tells a story. Arrange them across the **${room.emoji} ${room.name}**'s ${room.decoSlots} slots: pick a decoration, then choose where it goes (or swap it with one already on display).\n` +
         (owns.length === 0 ? "\nYou haven't earned any decorations yet — win battles, clear raids, complete sets and grow your collection." : ""),
       );
       const lines = decorationsByRarityDesc(owns.map(d => d.id)).slice(0, 12)
@@ -317,12 +404,14 @@ async function buildView(
             .map(([slot, id]) => `Slot ${slot + 1}: ${resolveDecoration(id)?.emoji ?? "•"} ${resolveDecoration(id)?.name ?? id}`).join("\n").slice(0, 1024),
         });
       }
-      // Place select (earned but with a free slot available).
+      // Place select (any earned-but-unplaced decoration). Even a full room can
+      // take one — the next step lets the player swap it into an occupied slot.
       const freeSlots = room.decoSlots - placements.size;
       const placeable = owns.filter(d => !placedIds.has(d.id));
-      if (freeSlots > 0 && placeable.length > 0) {
+      if (placeable.length > 0) {
+        const hint = freeSlots > 0 ? `${freeSlots} slot${freeSlots === 1 ? "" : "s"} free` : "room full — place to swap";
         rows.push(new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
-          new StringSelectMenuBuilder().setCustomId("hq-hub:placedeco").setPlaceholder(`Place a decoration… (${freeSlots} slot${freeSlots === 1 ? "" : "s"} free)`)
+          new StringSelectMenuBuilder().setCustomId("hq-hub:placedeco").setPlaceholder(`Place a decoration… (${hint})`)
             .addOptions(placeable.slice(0, 25).map(d => ({ label: d.name.slice(0, 90), value: d.id, description: d.rarity, emoji: d.emoji }))),
         ));
       }
@@ -388,16 +477,23 @@ async function buildView(
 // ── Visit (read-only) ─────────────────────────────────────────────────────────
 async function buildVisitView(guildId: string, targetId: string, targetName: string, targetAvatar: string) {
   const hq = await getOrCreateHq(guildId, targetId);
+  const owned = await getUnlockedItemIds(guildId, targetId);
+  // Show a room the host has actually unlocked (see the note in buildView). This
+  // is read-only, so correct for display without persisting to their HQ.
+  if (!isRoomUnlocked(resolveRoom(hq.activeRoomId), owned)) hq.activeRoomId = DEFAULT_ROOM_ID;
   const renderView = await buildRenderView(guildId, targetId, targetName, targetAvatar, hq);
   const file = await renderRoomImage(renderView);
   const room = resolveRoom(hq.activeRoomId);
   const theme = resolveTheme(hq.themeId);
-  const owned = await getUnlockedItemIds(guildId, targetId);
+  const stats = readHqStats(hq);
 
   const embed = new EmbedBuilder()
     .setColor(theme.palette.accent)
-    .setTitle(`🏠 Visiting ${targetName}'s Headquarters`)
-    .setDescription(`**${theme.emoji} ${theme.name}** · **HQ Level ${hq.hqLevel}** · **${room.emoji} ${room.name}**`)
+    .setTitle(`🏠 Visiting ${hqDisplayTitle(hq, targetName)}`)
+    .setDescription(
+      (stats.motto ? `_“${stats.motto}”_\n\n` : "") +
+      `**${theme.emoji} ${theme.name}** · **HQ Level ${hq.hqLevel}** · **${room.emoji} ${room.name}**`,
+    )
     .addFields({ name: "🎏 Decorations earned", value: `**${ownedDecorations(owned).length}** / ${HQ_DECORATIONS.length}`, inline: true });
   if (file) embed.setImage(`attachment://${HQ_FILE}`);
 
@@ -476,22 +572,78 @@ async function replyCardDetail(
   await interaction.editReply({ embeds, files: reveal ? [reveal.file] : [] }).catch(() => {});
 }
 
+// ── Slot picker sub-view (choose WHERE a decoration goes) ──────────────────────
+async function buildSlotPicker(guildId: string, userId: string, decoId: string) {
+  const deco = resolveDecoration(decoId);
+  const hq = await getOrCreateHq(guildId, userId);
+  const room = resolveRoom(hq.activeRoomId);
+  const theme = resolveTheme(hq.themeId);
+  const placements = await getPlacements(guildId, userId, room.id);
+
+  const embed = new EmbedBuilder()
+    .setColor(theme.palette.accent)
+    .setTitle(`📍 Place ${deco?.emoji ?? "🎏"} ${deco?.name ?? "decoration"}`)
+    .setDescription(
+      `Choose where to display it in the **${room.emoji} ${room.name}** (${room.decoSlots} slots). ` +
+      "Picking an occupied slot swaps what's there back into your earned pile.",
+    );
+
+  const options = [{ label: "Auto — next free slot", value: "auto", description: "Drop it in the first empty spot", emoji: "✨" }];
+  for (let i = 0; i < room.decoSlots; i++) {
+    const occId = placements.get(i);
+    const occ = occId ? resolveDecoration(occId) : undefined;
+    options.push({
+      label: `Slot ${i + 1}${occ ? ` — ${occ.name}` : " — empty"}`.slice(0, 90),
+      value: String(i),
+      description: occ ? "Occupied — pick to swap" : "Empty",
+      emoji: occ?.emoji ?? "▫️",
+    });
+  }
+
+  const rows: ActionRowBuilder<any>[] = [
+    new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
+      new StringSelectMenuBuilder().setCustomId(`hq-hub:placeat:${decoId}`).setPlaceholder("Choose a slot…")
+        .addOptions(options.slice(0, 25)),
+    ),
+    new ActionRowBuilder<ButtonBuilder>().addComponents(
+      new ButtonBuilder().setCustomId("hq-hub:back:decorations").setLabel("Back to Decorations").setEmoji("◀").setStyle(ButtonStyle.Secondary),
+    ),
+  ];
+  return { embeds: [embed], components: rows, files: [] as AttachmentBuilder[] };
+}
+
 // ── Actions ───────────────────────────────────────────────────────────────────
-async function placeDecorationAction(guildId: string, userId: string, decoId: string): Promise<void> {
+// Place (or move) an earned decoration at a chosen slot. `slotValue` is a slot
+// index or "auto" (next free). Moving clears the decoration's previous slot;
+// targeting an occupied slot swaps its current occupant back out.
+async function placeDecorationAt(guildId: string, userId: string, decoId: string, slotValue: string): Promise<void> {
   const deco = resolveDecoration(decoId);
   if (!deco) return;
   const owned = await getUnlockedItemIds(guildId, userId);
-  const isOwned = deco.unlock.kind === "always" || owned.has(deco.id);
-  if (!isOwned) return;
+  if (!(deco.unlock.kind === "always" || owned.has(deco.id))) return;
   const hq = await getOrCreateHq(guildId, userId);
   const room = resolveRoom(hq.activeRoomId);
   const placements = await getPlacements(guildId, userId, room.id);
-  if ([...placements.values()].includes(deco.id)) return; // already placed
-  // Next free slot.
-  let slot = -1;
-  for (let i = 0; i < room.decoSlots; i++) { if (!placements.has(i)) { slot = i; break; } }
-  if (slot < 0) return; // room full
-  await placeDecoration(guildId, userId, room.id, slot, deco.id).catch(() => {});
+
+  let target: number;
+  if (slotValue === "auto") {
+    target = -1;
+    for (let i = 0; i < room.decoSlots; i++) { if (!placements.has(i)) { target = i; break; } }
+    if (target < 0) return; // room full and no explicit slot chosen
+  } else {
+    target = Number(slotValue);
+    if (!Number.isInteger(target) || target < 0 || target >= room.decoSlots) return;
+  }
+
+  // If this decoration is already displayed elsewhere, vacate its old slot first
+  // so it never ends up shown twice.
+  for (const [slot, id] of placements) {
+    if (id === deco.id && slot !== target) {
+      await clearPlacement(guildId, userId, room.id, slot).catch(() => {});
+      break;
+    }
+  }
+  await placeDecoration(guildId, userId, room.id, target, deco.id).catch(() => {});
 }
 
 // ── UI fragments ──────────────────────────────────────────────────────────────
