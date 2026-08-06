@@ -86,9 +86,24 @@ Put PNGs under `artifacts/api-server/assets/hq/` with a `manifest.json`
   procedural styles render today.)*
 - **Floor tiles** — key `<floorPrefix>/tile`.
 
-## Decorations are EARNED, never bought
+## How you get decorations
 
-There is no shop. Each decoration carries the story of how it was earned:
+Most decorations are **earned** by playing (below). Phase 3b adds two more paths
+that reuse existing systems — no new grind, no parallel currency:
+
+- **🛒 Rotating shop** (`/hq → Shop`) — furniture priced in **shards** (the same
+  economy the market uses). The stock is computed deterministically from the UTC
+  date (`bot/hq/shop.ts`), so it **rotates daily** with no storage or cron, and
+  some items are discounted. Buying debits shards atomically and grants the item
+  into the same `hq_unlocks` ledger.
+- **🎁 Catch drops** — a small chance (`bot/hq/drops.ts`, weighted so commons
+  drop more often) that catching a card also yields a decoration, surfaced right
+  on the catch card. Hooked best-effort into the catch flow — it never blocks or
+  breaks a catch.
+
+Shop/drop furniture is marked in data with `price` / `drop` and an
+`unlock: { kind: "shop" }` (never auto-granted). Everything below is still
+**earned**, and each carries the story of how it was earned:
 
 | Earned from | Example decoration |
 |---|---|
@@ -144,6 +159,7 @@ stored **per room**, so each room keeps its own layout and personality.
 
 ## Future phases (same engine, no rewrite)
 
-Shop rotation & mystery crates · visitors & companions · free-form move/rotate ·
-per-room featured-card pedestals · admin-uploaded & community theme packs via
-`spriteFor` · guild HQ · weather / day-night · animated HQ reveals.
+Mystery crates · visitors & companions · free-form grid move/rotate · per-room
+featured-card pedestals · admin-uploaded & community art packs via
+`spriteForPrefix` (walls/floors/furniture) · guild HQ · weather / day-night ·
+animated HQ reveals.

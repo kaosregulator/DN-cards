@@ -30,6 +30,11 @@ export interface HqDecoration {
   spriteKey: string;
   unlock: UnlockRule;
   story: string;
+  // Shop/economy (Phase 3b). `price` (shards) makes an item eligible for the
+  // rotating shop; `drop: true` lets it fall from a catch. Both optional — an
+  // item can be earned (unlock rule), purchasable, droppable, or any mix.
+  price?: number;
+  drop?: boolean;
 }
 
 export const HQ_DECORATIONS: HqDecoration[] = [
@@ -98,6 +103,27 @@ export const HQ_DECORATIONS: HqDecoration[] = [
     spriteKey: "deco/diplomat-seal", unlock: { kind: "achievement", key: "trader" }, story: "Pressed after your first completed trade." },
   { id: "collectors-crest", name: "Collector's Crest", emoji: "💼", rarity: "epic", category: "emblem",
     spriteKey: "deco/collectors-crest", unlock: { kind: "achievement", key: "master" }, story: "Granted to Master Collectors." },
+
+  // ── Shop & catch-drop furniture (Phase 3b) ────────────────────────────────────
+  // Not earned by a milestone: buy them from the rotating shop, or find one as a
+  // bonus drop while catching. Cosmetic-only, priced in shards, reusing existing
+  // procedural categories so they render with zero art.
+  { id: "potted-palm", name: "Potted Palm", emoji: "🌴", rarity: "common", category: "plant",
+    spriteKey: "deco/potted-palm", unlock: { kind: "shop" }, price: 150, drop: true, story: "A leafy corner piece from the shop." },
+  { id: "woven-rug", name: "Woven Rug", emoji: "🧶", rarity: "common", category: "rug",
+    spriteKey: "deco/woven-rug", unlock: { kind: "shop" }, price: 160, drop: true, story: "Soft underfoot — ties the room together." },
+  { id: "floor-lamp", name: "Floor Lamp", emoji: "💡", rarity: "common", category: "light",
+    spriteKey: "deco/floor-lamp", unlock: { kind: "shop" }, price: 180, drop: true, story: "Warm light for a cosy corner." },
+  { id: "display-cabinet", name: "Display Cabinet", emoji: "🗄️", rarity: "uncommon", category: "case",
+    spriteKey: "deco/display-cabinet", unlock: { kind: "shop" }, price: 320, drop: true, story: "Glass shelving for your finest bits." },
+  { id: "polished-geode", name: "Polished Geode", emoji: "🔮", rarity: "uncommon", category: "crystal",
+    spriteKey: "deco/polished-geode", unlock: { kind: "shop" }, price: 360, drop: true, story: "A shop-bought crystal that catches the light." },
+  { id: "laurel-wreath", name: "Laurel Wreath", emoji: "🌿", rarity: "rare", category: "emblem",
+    spriteKey: "deco/laurel-wreath", unlock: { kind: "shop" }, price: 520, drop: true, story: "A classic mark of honour." },
+  { id: "marble-bust", name: "Marble Bust", emoji: "🗿", rarity: "rare", category: "statue",
+    spriteKey: "deco/marble-bust", unlock: { kind: "shop" }, price: 640, drop: true, story: "Sculpted poise for the discerning collector." },
+  { id: "gilded-trophy", name: "Gilded Trophy", emoji: "🏆", rarity: "epic", category: "trophy",
+    spriteKey: "deco/gilded-trophy", unlock: { kind: "shop" }, price: 900, drop: true, story: "A showpiece trophy — pure decoration." },
 ];
 
 const DECO_BY_ID = new Map<string, HqDecoration>(HQ_DECORATIONS.map(d => [d.id, d]));

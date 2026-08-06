@@ -835,6 +835,14 @@ async function awardSpawn(guildId: string, spawnId: string, userId: string, deli
     logger.warn({ err }, "Wishlist auto-remove after catch failed");
   });
 
+  // HQ bonus: a small chance the catch also yields a Headquarters decoration.
+  // Best-effort — never block or break a catch on the HQ side.
+  let hqDrop: { name: string; emoji: string } | null = null;
+  try {
+    const { rollCatchDrop } = await import("./hq/drops.js");
+    hqDrop = await rollCatchDrop(guildId, userId);
+  } catch { /* non-fatal */ }
+
   // Quest progress (catch) — best-effort, never blocks the catch flow.
   void (async () => {
     try {
@@ -870,7 +878,10 @@ async function awardSpawn(guildId: string, spawnId: string, userId: string, deli
     // reflect the catcher's real current Level/Star for this card so the preview
     // is battle-accurate (a levelled card no longer shows Level 1).
     const preview = await buildCatchPreview(guildId, userId, spawn.cardId, isShiny);
-    const headline = quipFn(`${cardName}${shinyBadge}`, `<@${userId}>`) + readyBadge;
+    const dropLine = hqDrop
+      ? `\n🎁 **HQ drop:** ${hqDrop.emoji} ${hqDrop.name} — added to your **/hq** decorations!`
+      : "";
+    const headline = quipFn(`${cardName}${shinyBadge}`, `<@${userId}>`) + readyBadge + dropLine;
 
     const publicEmbed = new EmbedBuilder()
       .setColor(preview?.color ?? (isShiny || leveled ? 0xf1c40f : 0x00b894))

@@ -22,6 +22,7 @@ import {
 import {
   getAllCardsCached, getUserCollection, getOrCreateGuildSettings,
   getRarityContext, getRarityDisplayOverrides, getCardDisplayRarity,
+  getOrCreateCurrency, spendShards, addShards,
 } from "../db.js";
 import { rarityColor, SHINY_EMOJI, type Rarity } from "../cards-data.js";
 import { toAbsoluteImageUrl } from "../image-url.js";
@@ -30,8 +31,9 @@ import { buildCardLevelEmbed } from "../cards/level-command.js";
 import {
   getOrCreateHq, updateHq, getDisplays, pinDisplay, clearDisplay,
   getPlacements, placeDecoration, clearPlacement, pruneUnownedPlacements,
-  getUnlockedItemIds,
+  getUnlockedItemIds, grantUnlock,
 } from "../hq/db.js";
+import { shopRotation, shopEntryFor, formatRefreshIn } from "../hq/shop.js";
 import {
   reconcileUnlocks, ownedDecorations, unlockedRooms, unlockedThemes,
   isRoomUnlocked, isThemeUnlocked, unlockedWalls, unlockedFloors,
@@ -69,12 +71,13 @@ function hqDisplayTitle(hq: PlayerHq, ownerName: string): string {
   return t && t.length > 0 ? t : `${ownerName}'s HQ`;
 }
 
-type Section = "overview" | "trophy" | "decorations" | "rooms" | "theme";
+type Section = "overview" | "trophy" | "decorations" | "shop" | "rooms" | "theme";
 interface SectionMeta { id: Section; label: string; emoji: string; description: string }
 const SECTIONS: SectionMeta[] = [
   { id: "overview",    label: "Overview",    emoji: "🏠", description: "Your HQ at a glance" },
   { id: "trophy",      label: "Trophy Hall",  emoji: "🏆", description: "Pin your proudest cards on pedestals" },
   { id: "decorations", label: "Decorations", emoji: "🎏", description: "Place the cosmetics you've earned" },
+  { id: "shop",        label: "Shop",        emoji: "🛒", description: "Buy furniture — rotates daily" },
   { id: "rooms",       label: "Rooms",       emoji: "🚪", description: "Switch & unlock rooms" },
   { id: "theme",       label: "Style",       emoji: "🎨", description: "Theme, walls & floor" },
 ];
@@ -192,6 +195,13 @@ export async function handleHqHubComponent(
       await updateHq(guildId, userId, { floorId: f.id }).catch(() => {});
     }
     await interaction.update(await buildView(interaction, "theme", [])).catch(() => {});
+    return;
+  }
+
+  // Shop: buy the selected furniture (validated against the live rotation price).
+  if (action === "buy" && interaction.isStringSelectMenu()) {
+    const notice = await buyShopItem(guildId, userId, interaction.values[0]!);
+    await interaction.update(await buildView(interaction, "shop", [], notice)).catch(() => {});
     return;
   }
 
@@ -319,6 +329,7 @@ async function renderRoomImage(view: HqRenderView): Promise<AttachmentBuilder | 
 async function buildView(
   interaction: HubInteraction,
   section: Section, justUnlocked: { name: string; emoji: string; story: string }[],
+  notice?: string,
 ) {
   const guildId = interaction.guildId!;
   const userId = interaction.user.id;
@@ -448,6 +459,37 @@ async function buildView(
             }))),
         ));
       }
+      break;
+    }
+
+    case "shop": {
+      const rot = shopRotation();
+      const currency = await getOrCreateCurrency(guildId, userId).catch(() => ({ shards: 0 }));
+      embed.setTitle("🛒 HQ Shop").setDescription(
+        "Furniture for your HQ — the stock **rotates daily**, and anything you buy lands in **🎏 Decorations** to place.\n" +
+        `💠 **${(currency.shards ?? 0).toLocaleString()}** shards · 🔄 refreshes in **${formatRefreshIn(rot.refreshesInMs)}**`,
+      );
+      const stock = rot.entries.map(e => {
+        const own = owned.has(e.deco.id);
+        const priceStr = e.discountPct > 0
+          ? `~~${e.basePrice}~~ **${e.price}** (−${e.discountPct}%)`
+          : `**${e.price}**`;
+        return `${e.deco.emoji} **${e.deco.name}** · ${e.deco.rarity} — 💠 ${priceStr}${own ? " · ✅ owned" : ""}`;
+      });
+      embed.addFields({ name: "Today's stock", value: stock.join("\n").slice(0, 1024) || "The shelves are empty today." });
+      const buyable = rot.entries.filter(e => !owned.has(e.deco.id));
+      if (buyable.length > 0) {
+        rows.push(new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
+          new StringSelectMenuBuilder().setCustomId("hq-hub:buy").setPlaceholder("Buy an item…")
+            .addOptions(buyable.map(e => ({
+              label: `${e.deco.name} — ${e.price}`.slice(0, 90),
+              value: e.deco.id,
+              description: `${e.discountPct > 0 ? `${e.discountPct}% off · ` : ""}${e.deco.rarity}`,
+              emoji: e.deco.emoji,
+            }))),
+        ));
+      }
+      if (notice) embed.addFields({ name: "🧾 Receipt", value: notice.slice(0, 1024) });
       break;
     }
 
@@ -689,6 +731,24 @@ async function placeDecorationAt(guildId: string, userId: string, decoId: string
     }
   }
   await placeDecoration(guildId, userId, room.id, target, deco.id).catch(() => {});
+}
+
+// Buy a shop item: validate against the LIVE rotation price (a client can't
+// spoof a cheaper/stale item), debit shards atomically, then grant the unlock.
+// Refunds if a race means the grant didn't actually create the row.
+async function buyShopItem(guildId: string, userId: string, decoId: string): Promise<string> {
+  const entry = shopEntryFor(decoId);
+  if (!entry) return "❌ That item just rotated out of the shop.";
+  const owned = await getUnlockedItemIds(guildId, userId);
+  if (owned.has(decoId)) return `You already own ${entry.deco.emoji} ${entry.deco.name}.`;
+  const paid = await spendShards(guildId, userId, entry.price).catch(() => false);
+  if (!paid) return `❌ Not enough shards — ${entry.deco.emoji} ${entry.deco.name} costs 💠 ${entry.price}.`;
+  const granted = await grantUnlock(guildId, userId, decoId, "decoration", "shop").catch(() => false);
+  if (!granted) {
+    await addShards(guildId, userId, entry.price).catch(() => {}); // refund the race
+    return `You already own ${entry.deco.emoji} ${entry.deco.name} — no charge.`;
+  }
+  return `✅ Bought ${entry.deco.emoji} **${entry.deco.name}** for 💠 ${entry.price}! Place it from **🎏 Decorations**.`;
 }
 
 // ── UI fragments ──────────────────────────────────────────────────────────────

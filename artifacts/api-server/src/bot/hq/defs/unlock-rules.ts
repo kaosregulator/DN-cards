@@ -39,7 +39,8 @@ export type UnlockRule =
   | { kind: "setComplete"; n?: number } // n completed sets (default 1)
   | { kind: "dailyStreak"; n: number }
   | { kind: "ownsLimited" }     // owns any limited-edition card
-  | { kind: "achievement"; key: string };
+  | { kind: "achievement"; key: string }
+  | { kind: "shop" };           // not auto-earned — obtained by purchase / catch drop / award
 
 // True when the player currently satisfies the rule. Total and side-effect free.
 export function evalUnlockRule(rule: UnlockRule, p: HqProgress): boolean {
@@ -57,6 +58,7 @@ export function evalUnlockRule(rule: UnlockRule, p: HqProgress): boolean {
     case "dailyStreak":      return p.dailyStreak >= rule.n;
     case "ownsLimited":      return p.ownsLimited;
     case "achievement":      return p.achievementKeys.has(rule.key);
+    case "shop":             return false; // never auto-granted; only bought/dropped/awarded
     default: {
       // Exhaustiveness guard — a new rule kind that forgets a branch fails
       // closed (locked) rather than unlocking everything.
@@ -84,6 +86,7 @@ export function unlockLabel(rule: UnlockRule): string {
     case "dailyStreak":      return `Reach a ${rule.n}-day login streak`;
     case "ownsLimited":      return "Own a limited-edition card";
     case "achievement":      return "Unlock a linked achievement";
+    case "shop":             return "Buy it in the shop, or find it while catching";
     default:                 return "Keep playing to unlock";
   }
 }

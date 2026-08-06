@@ -161,7 +161,7 @@ const PAGES: Record<HelpSection, PageFn> = {
           "`/catalog category:<rarity|event|limited|all>` — browse by type\n" +
           "**/user-hub → Search** — free-text card search (shows ⭐ on cards you own)" },
         { name: "🏠 Headquarters", value:
-          "`/hq` — your personal **Headquarters**: a rendered showcase you customize. Feature your proudest cards on **Trophy Hall** pedestals, place **decorations you earn** by playing (battles, raids, sets, streaks…), restyle with **themes** and unlock new rooms as you progress.\n" +
+          "`/hq` — your personal **Headquarters**: an isometric room you customize. Feature your proudest cards on **Trophy Hall** pedestals, place **decorations** you earn by playing or find as **catch drops**, **buy furniture** from the daily-rotating **🛒 Shop** (shards), and restyle with **themes, walls & floors** as you unlock new rooms.\n" +
           "`/hq user:@member` — visit someone else's HQ and see what they've accomplished" },
         { name: "🏅 Progress & Rank", value:
           "**/user-hub → Progression** — account level & XP across every activity\n" +
