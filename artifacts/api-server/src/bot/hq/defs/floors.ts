@@ -42,6 +42,31 @@ export const HQ_FLOORS: HqFloor[] = [
     id: "grid", name: "Grid", emoji: "🟦", tileA: "#12303a", tileB: "#0e2831",
     grout: "rgba(80,220,220,0.5)", spritePrefix: "floor/grid", unlock: { kind: "accountLevel", n: 20 },
   },
+  // ── Outdoor / natural grounds — for open-air "outside" rooms ──────────────────
+  {
+    id: "grass", name: "Grass", emoji: "🌱", tileA: "#4f8f43", tileB: "#468039",
+    grout: "rgba(30,70,25,0.35)", spritePrefix: "floor/grass", unlock: { kind: "always" },
+  },
+  {
+    id: "dirt", name: "Dirt", emoji: "🟫", tileA: "#8a6239", tileB: "#7d5832",
+    grout: "rgba(50,32,14,0.4)", spritePrefix: "floor/dirt", unlock: { kind: "always" },
+  },
+  {
+    id: "sand", name: "Sand", emoji: "🏜️", tileA: "#e3cf9a", tileB: "#d8c189",
+    grout: "rgba(150,120,70,0.3)", spritePrefix: "floor/sand", unlock: { kind: "totalCards", n: 25 },
+  },
+  {
+    id: "cobblestone", name: "Cobblestone", emoji: "🪨", tileA: "#8b8f96", tileB: "#7c8087",
+    grout: "rgba(30,32,36,0.5)", spritePrefix: "floor/cobblestone", unlock: { kind: "battleWins", n: 10 },
+  },
+  {
+    id: "brick", name: "Brick Floor", emoji: "🧱", tileA: "#9a5240", tileB: "#8a473a",
+    grout: "rgba(50,24,18,0.5)", spritePrefix: "floor/brick", unlock: { kind: "accountLevel", n: 10 },
+  },
+  {
+    id: "checker", name: "Checkerboard", emoji: "🏁", tileA: "#2a2d33", tileB: "#eceef2",
+    grout: "rgba(0,0,0,0.2)", spritePrefix: "floor/checker", unlock: { kind: "dailyStreak", n: 14 },
+  },
 ];
 
 export const DEFAULT_FLOOR_ID = "wood";
