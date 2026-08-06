@@ -1,7 +1,13 @@
 {
   "_note": "HQ art pack. Keys are '<prefix>/<key>' or a bare '<key>' (see bot/hq/assets.ts spriteForPrefix). Decoration art uses 'deco/<decorationId>'; walls use '<wallPrefix>/wall'; floors use '<floorPrefix>/tile'; buildings use 'building/<role>'.",
-  "_credits": "furniture/, medals/, bases/, nature/ are CC0 by Kenney (www.kenney.nl) — nature/ from the Mini Forest preview renders. buildings/ are from the Isometric Enemy Base (Lite) pack, included with the project owner's stated permission — NOT CC0; do not treat as freely redistributable.",
+  "_credits": "furniture/, medals/, bases/, nature/ are CC0 by Kenney (www.kenney.nl) — nature/ from the Mini Forest preview renders. buildings/ are from the Isometric Enemy Base (Lite) pack, included with the project owner's stated permission — NOT CC0; do not treat as freely redistributable. floor/ stone,blue-stone,wood textures are cropped from the Castle-Dungeon 2 tileset the project owner supplied for use.",
   "sprites": {
+    "floor/cobblestone/tile": "floor/stone.png",
+    "floor/tile/tile": "floor/blue-stone.png",
+    "floor/wood/tile": "floor/wood.png",
+    "wall/stone/wall": "floor/stone.png",
+
+
     "deco/storage-barrel": "furniture/storage-barrel.png",
     "deco/stacked-barrels": "furniture/stacked-barrels.png",
     "deco/supply-crate": "furniture/supply-crate.png",
