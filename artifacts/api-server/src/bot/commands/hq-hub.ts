@@ -34,12 +34,15 @@ import {
 } from "../hq/db.js";
 import {
   reconcileUnlocks, ownedDecorations, unlockedRooms, unlockedThemes,
-  isRoomUnlocked, isThemeUnlocked,
+  isRoomUnlocked, isThemeUnlocked, unlockedWalls, unlockedFloors,
+  isWallUnlocked, isFloorUnlocked,
 } from "../hq/engine.js";
 import { resolveTheme, HQ_THEMES } from "../hq/defs/themes.js";
+import { resolveWall, HQ_WALLS } from "../hq/defs/walls.js";
+import { resolveFloor, HQ_FLOORS } from "../hq/defs/floors.js";
 import { resolveRoom, HQ_ROOMS, DEFAULT_ROOM_ID } from "../hq/defs/rooms.js";
 import { resolveDecoration, decorationsByRarityDesc, HQ_DECORATIONS } from "../hq/defs/decorations.js";
-import { unlockLabel } from "../hq/defs/unlock-rules.js";
+import { unlockLabel, type UnlockRule } from "../hq/defs/unlock-rules.js";
 import { spriteFor } from "../hq/assets.js";
 import { renderHq, type HqRenderView, type HqRenderCard, type HqRenderDeco } from "../hq/render.js";
 import type { PlayerHq } from "@workspace/db";
@@ -73,7 +76,7 @@ const SECTIONS: SectionMeta[] = [
   { id: "trophy",      label: "Trophy Hall",  emoji: "🏆", description: "Pin your proudest cards on pedestals" },
   { id: "decorations", label: "Decorations", emoji: "🎏", description: "Place the cosmetics you've earned" },
   { id: "rooms",       label: "Rooms",       emoji: "🚪", description: "Switch & unlock rooms" },
-  { id: "theme",       label: "Theme",       emoji: "🎨", description: "Restyle your whole HQ" },
+  { id: "theme",       label: "Style",       emoji: "🎨", description: "Theme, walls & floor" },
 ];
 
 // ── Slash entry ───────────────────────────────────────────────────────────────
@@ -174,6 +177,23 @@ export async function handleHqHubComponent(
     await interaction.update(await buildView(interaction, "theme", [])).catch(() => {});
     return;
   }
+  // Switch walls / floor (persisted). Guarded to unlocked styles only.
+  if (action === "wall" && interaction.isStringSelectMenu()) {
+    const w = resolveWall(interaction.values[0]!);
+    if (isWallUnlocked(w, await getUnlockedItemIds(guildId, userId))) {
+      await updateHq(guildId, userId, { wallId: w.id }).catch(() => {});
+    }
+    await interaction.update(await buildView(interaction, "theme", [])).catch(() => {});
+    return;
+  }
+  if (action === "floor" && interaction.isStringSelectMenu()) {
+    const f = resolveFloor(interaction.values[0]!);
+    if (isFloorUnlocked(f, await getUnlockedItemIds(guildId, userId))) {
+      await updateHq(guildId, userId, { floorId: f.id }).catch(() => {});
+    }
+    await interaction.update(await buildView(interaction, "theme", [])).catch(() => {});
+    return;
+  }
 
   // Personalize: open the rename/motto modal (handled by handleHqHubModal).
   if (action === "renamehq" && interaction.isButton()) {
@@ -246,6 +266,8 @@ async function buildRenderView(
   guildId: string, userId: string, ownerName: string, ownerAvatarUrl: string | null, hq: PlayerHq,
 ): Promise<HqRenderView> {
   const theme = resolveTheme(hq.themeId);
+  const wall = resolveWall(hq.wallId);
+  const floor = resolveFloor(hq.floorId);
   const room = resolveRoom(hq.activeRoomId);
   const [{ settings, ctx, displayMap, cards }, displays, placements] = await Promise.all([
     loadCtx(guildId),
@@ -282,7 +304,7 @@ async function buildRenderView(
     : `${room.name} • ${decorations.length} decoration${decorations.length === 1 ? "" : "s"}`;
 
   return {
-    ownerName, displayTitle: hqDisplayTitle(hq, ownerName), ownerAvatarUrl, theme,
+    ownerName, displayTitle: hqDisplayTitle(hq, ownerName), ownerAvatarUrl, theme, wall, floor,
     roomName: room.name, roomEmoji: room.emoji, hqLevel: hq.hqLevel,
     subtitle, pedestals, decorations,
   };
@@ -322,6 +344,8 @@ async function buildView(
   const files = file ? [file] : [];
   const room = resolveRoom(hq.activeRoomId);
   const theme = resolveTheme(hq.themeId);
+  const wall = resolveWall(hq.wallId);
+  const floor = resolveFloor(hq.floorId);
 
   const rows: ActionRowBuilder<any>[] = [sectionRow(section)];
   const embed = new EmbedBuilder().setColor(theme.palette.accent);
@@ -446,18 +470,39 @@ async function buildView(
     }
 
     case "theme": {
-      embed.setTitle("🎨 Theme").setDescription("Restyle your entire HQ. New themes unlock as your account grows.");
-      const lines = HQ_THEMES.map(t => {
+      embed.setTitle("🎨 Style").setDescription(
+        "Restyle your whole HQ — the **theme** sets lighting & mood, while **walls** and **floor** " +
+        "reskin the room itself. New styles unlock as you play.",
+      );
+      const themeLines = HQ_THEMES.map(t => {
         const open = isThemeUnlocked(t, owned);
-        const here = t.id === theme.id ? " · ✅ active" : "";
+        const here = t.id === theme.id ? " · ✅" : "";
         return `${open ? t.emoji : "🔒"} **${t.name}**${here}${open ? "" : ` — ${unlockLabel(t.unlock)}`}`;
       });
-      embed.addFields({ name: "Themes", value: lines.join("\n").slice(0, 1024) });
-      const open = unlockedThemes(owned);
-      if (open.length > 1) {
+      embed.addFields(
+        { name: "🎨 Themes", value: themeLines.join("\n").slice(0, 1024) },
+        { name: `🧱 Wall · ${wall.name}`, value: styleList(HQ_WALLS, wall.id, w => isWallUnlocked(w, owned)), inline: true },
+        { name: `🪵 Floor · ${floor.name}`, value: styleList(HQ_FLOORS, floor.id, f => isFloorUnlocked(f, owned)), inline: true },
+      );
+      const openThemes = unlockedThemes(owned);
+      if (openThemes.length > 1) {
         rows.push(new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
           new StringSelectMenuBuilder().setCustomId("hq-hub:theme").setPlaceholder("Switch theme…")
-            .addOptions(open.map(t => ({ label: t.name, value: t.id, emoji: t.emoji, default: t.id === theme.id }))),
+            .addOptions(openThemes.map(t => ({ label: t.name, value: t.id, emoji: t.emoji, default: t.id === theme.id }))),
+        ));
+      }
+      const openWalls = unlockedWalls(owned);
+      if (openWalls.length > 1) {
+        rows.push(new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
+          new StringSelectMenuBuilder().setCustomId("hq-hub:wall").setPlaceholder("Change walls…")
+            .addOptions(openWalls.map(w => ({ label: w.name, value: w.id, emoji: w.emoji, default: w.id === wall.id }))),
+        ));
+      }
+      const openFloors = unlockedFloors(owned);
+      if (openFloors.length > 1) {
+        rows.push(new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
+          new StringSelectMenuBuilder().setCustomId("hq-hub:floor").setPlaceholder("Change floor…")
+            .addOptions(openFloors.map(f => ({ label: f.name, value: f.id, emoji: f.emoji, default: f.id === floor.id }))),
         ));
       }
       break;
@@ -664,6 +709,17 @@ function pedestalButtonRow(
     row.addComponents(btn);
   }
   return row;
+}
+
+// Compact unlockable-style list (walls/floors) for the Style section fields.
+function styleList<T extends { id: string; name: string; emoji: string; unlock: UnlockRule }>(
+  items: T[], currentId: string, isOpen: (t: T) => boolean,
+): string {
+  return items.map(t => {
+    const open = isOpen(t);
+    const here = t.id === currentId ? " ✅" : "";
+    return `${open ? t.emoji : "🔒"} ${t.name}${here}${open ? "" : ` — ${unlockLabel(t.unlock)}`}`;
+  }).join("\n").slice(0, 1024);
 }
 
 // A short "here's what to chase next" line for the overview.

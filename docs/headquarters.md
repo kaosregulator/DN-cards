@@ -48,14 +48,43 @@ lives entirely in data:
 
 **Adding a theme/room/decoration = append to a registry.** No engine changes.
 
+## The room is an isometric scene (Phase 3)
+
+`bot/hq/render.ts` draws a true **isometric room**: two corner walls, a diamond
+floor grid, and furniture placed on floor tiles / wall faces with depth-sorted
+draw order (nearer objects overlap further ones). Card pedestals are upright
+display cases on iso plinths. **Walls** and **floor** are their own data-driven,
+unlockable style registries (`defs/walls.ts`, `defs/floors.ts`) — the theme sets
+lighting/mood while walls + floor reskin the room itself:
+
+- `defs/walls.ts` — two face colours, trim, optional procedural windows.
+- `defs/floors.ts` — a two-tone tile checker + grout colour.
+
+Change a wall/floor from **`/hq` → 🎨 Style**. New styles unlock as you play.
+
 ## Rendering is separated from assets
 
-The HQ image is drawn **procedurally** (`bot/hq/render.ts`) — walls, perspective
-floor, lighting, glass display cases, pedestals and decorations are all canvas
-drawings, so the feature ships with **zero art**. Every visual first asks the
-asset manager (`bot/hq/assets.ts` → `spriteFor(theme, key)`); when a bundled or
-uploaded PNG exists it transparently replaces the procedural drawing. A future
-theme pack (Military, Anime, Fantasy, Vehicles, …) is **assets + config only**.
+The whole scene is drawn **procedurally**, so the feature ships with **zero
+art**. Every visual first asks the asset manager
+(`bot/hq/assets.ts` → `spriteForPrefix(prefix, key)`); when a bundled or uploaded
+PNG exists it transparently replaces the procedural drawing. Walls, floors and
+furniture each resolve by their **own** `spritePrefix`, so an art pack can
+replace any subset independently — a future theme pack (Military, Anime,
+Fantasy, Vehicles, …) is **assets + config only**.
+
+### Drop-in art specs (for uploaded 2D assets)
+
+Put PNGs under `artifacts/api-server/assets/hq/` with a `manifest.json`
+(`{ "sprites": { "<prefix>/<key>": "<file>.png" } }`). Furniture is the highest
+-impact art:
+
+- **Furniture / decorations** — square PNG, transparent background, ~256×256,
+  key `deco/<id>` (see each decoration's `spriteKey`). Drawn ~108 px, base-
+  anchored on the floor tile.
+- **Wall faces** — key `<wallPrefix>/wall-left` · `/wall-right` (e.g.
+  `wall/windowed/wall-left`). *(Wall/floor art blitting lands with the pack;
+  procedural styles render today.)*
+- **Floor tiles** — key `<floorPrefix>/tile`.
 
 ## Decorations are EARNED, never bought
 

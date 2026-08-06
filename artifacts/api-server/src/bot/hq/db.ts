@@ -30,7 +30,7 @@ export async function getOrCreateHq(guildId: string, userId: string): Promise<Pl
 
 export async function updateHq(
   guildId: string, userId: string,
-  patch: Partial<Pick<PlayerHq, "themeId" | "activeRoomId" | "hqLevel" | "stats">>,
+  patch: Partial<Pick<PlayerHq, "themeId" | "activeRoomId" | "wallId" | "floorId" | "hqLevel" | "stats">>,
 ): Promise<void> {
   await getOrCreateHq(guildId, userId);
   await db.update(playerHqTable)

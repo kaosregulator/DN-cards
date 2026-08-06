@@ -1,22 +1,24 @@
 // ─────────────────────────────────────────────────────────────────────────────
-// HQ renderer — composites a player's Headquarters to a PNG.
+// HQ renderer — composites a player's Headquarters to a PNG as an ISOMETRIC room.
 //
 // Built as a "stack of pure layer functions" (the doctrine from
 // battle/image/render.ts and raid/canvas.ts): renderHq only iterates the layers.
-// Everything is PROCEDURAL — walls, floor, lighting, glass display cases,
-// pedestals and decorations are drawn on the canvas so the feature ships with
-// zero art. Each visual first asks the asset manager (spriteFor); a bundled/
-// uploaded PNG transparently replaces the procedural drawing with no code
-// change. This renderer is a LEAF: it does its own createCanvas + encode and is
-// queued once, so it must never call another queued renderer (deadlock rule in
-// render-queue.ts).
+// Phase 3 replaced the flat back-wall look with a true isometric room — two
+// corner walls, a diamond floor grid, and furniture placed on floor tiles / wall
+// faces with depth-sorted draw order. Everything is still drawn PROCEDURALLY so
+// the feature ships with zero art, and every visual first asks the asset manager
+// (spriteForPrefix); a bundled/uploaded PNG transparently replaces the
+// procedural drawing — walls, floor and furniture each swap independently.
 //
-// The hub builds the HqRenderView (resolving card art URLs, rarity display via
-// getCardDisplayRarity, and any sprite paths); this file never touches the DB.
+// This renderer is a LEAF: it does its own createCanvas + encode and is queued
+// once, so it must never call another queued renderer (deadlock rule in
+// render-queue.ts). The hub builds the HqRenderView (resolving card art URLs,
+// rarity via getCardDisplayRarity, and any sprite paths); this file never
+// touches the DB.
 // ─────────────────────────────────────────────────────────────────────────────
 
 import {
-  getCanvas, roundRectPath, hexToRgba, drawGradientBackground,
+  getCanvas, roundRectPath, hexToRgba,
   type Ctx, type CanvasMod,
 } from "../animations/engine.js";
 import {
@@ -27,19 +29,44 @@ import { drawAtmosphere, atmospherePreset } from "../animations/atmosphere.js";
 import { queueRender } from "../animations/render-queue.js";
 import { loadSprite } from "./assets.js";
 import type { HqTheme } from "./defs/themes.js";
+import type { HqWall } from "./defs/walls.js";
+import type { HqFloor } from "./defs/floors.js";
 import type { DecoCategory } from "./defs/decorations.js";
 
 const W = 1000, H = 560;
 const HEADER_H = 66;
-const FLOOR_TOP = 336;
 
-// `ellipse` exists on the Skia 2D context at runtime but is under-declared on
-// the project's Ctx type (same as drawImage's source-rect overload).
+// ── Isometric projection ───────────────────────────────────────────────────────
+// A GRID×GRID floor. project() maps a lattice point (gx,gy) to screen space; a
+// floor tile (i,j) is the diamond between (i,j),(i+1,j),(i+1,j+1),(i,j+1).
+const GRID = 6;
+const TILE_W = 104, TILE_H = 52;   // full diamond width/height (2:1 iso)
+const ORIGIN_X = W / 2, ORIGIN_Y = 150; // screen position of lattice corner (0,0)
+const WALL_H = 140;
+
+interface Pt { x: number; y: number }
+function project(gx: number, gy: number): Pt {
+  return {
+    x: ORIGIN_X + (gx - gy) * (TILE_W / 2),
+    y: ORIGIN_Y + (gx + gy) * (TILE_H / 2),
+  };
+}
+function lerp(a: Pt, b: Pt, t: number): Pt {
+  return { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t };
+}
+
+// `ellipse` exists on the Skia 2D context at runtime but is under-declared on the
+// project's Ctx type (same as drawImage's source-rect overload).
 type EllipseCtx = { ellipse(x: number, y: number, rx: number, ry: number, rot: number, a0: number, a1: number): void };
 function ellipse(ctx: Ctx, x: number, y: number, rx: number, ry: number, rot = 0): void {
   (ctx as unknown as EllipseCtx).ellipse(x, y, rx, ry, rot, 0, Math.PI * 2);
 }
+type DrawImg = { drawImage(i: unknown, x: number, y: number, w: number, h: number): void };
+function blit(ctx: Ctx, img: unknown, x: number, y: number, w: number, h: number): void {
+  (ctx as unknown as DrawImg).drawImage(img, x, y, w, h);
+}
 
+// ── View contract (built by the hub) ───────────────────────────────────────────
 export interface HqRenderCard {
   cardId: number;
   name: string;
@@ -58,11 +85,12 @@ export interface HqRenderDeco {
 
 export interface HqRenderView {
   ownerName: string;
-  // The banner name shown in the header. Defaults to "<ownerName>'s HQ" but a
-  // player may set a custom HQ name (personalization) — the hub resolves it.
+  // Banner name shown in the header (custom HQ name or "<owner>'s HQ").
   displayTitle: string;
   ownerAvatarUrl: string | null;
-  theme: HqTheme;
+  theme: HqTheme;   // lighting mood, ambient particles, accent, glass tint
+  wall: HqWall;     // wall style (faces, trim, windows)
+  floor: HqFloor;   // floor style (tiles, grout)
   roomName: string;
   roomEmoji: string;
   hqLevel: number;
@@ -71,18 +99,20 @@ export interface HqRenderView {
   decorations: HqRenderDeco[];        // placed decorations (with slot index)
 }
 
-// Fixed decoration anchors per slot index. `mount` only tips the procedural
-// drawing (a wall mount hangs; a floor mount stands); the shape is self-
-// contained so any category is valid at any anchor. Rooms with more slots than
-// anchors wrap harmlessly.
-interface Anchor { x: number; y: number; mount: "wall" | "floor"; scale: number }
-const ANCHORS: Anchor[] = [
-  { x: 130, y: 150, mount: "wall", scale: 1 },
-  { x: 870, y: 150, mount: "wall", scale: 1 },
-  { x: 500, y: 116, mount: "wall", scale: 0.9 },
-  { x: 96,  y: 458, mount: "floor", scale: 1 },
-  { x: 904, y: 458, mount: "floor", scale: 1 },
-  { x: 500, y: 522, mount: "floor", scale: 0.8 },
+// Fixed placement per slot index: a wall-mounted screen anchor or a floor tile.
+// The shape drawn is self-contained so any category works at any anchor; rooms
+// with more slots than anchors wrap harmlessly.
+type SlotPlace =
+  | { mount: "wall"; x: number; y: number; scale: number }
+  | { mount: "floor"; gx: number; gy: number; scale: number };
+
+const SLOT_PLACES: SlotPlace[] = [
+  { mount: "wall", x: 648, y: 150, scale: 1 },      // left wall
+  { mount: "wall", x: 352, y: 150, scale: 1 },      // right wall
+  { mount: "wall", x: 500, y: 96, scale: 0.9 },     // near the corner
+  { mount: "floor", gx: 4.5, gy: 3.2, scale: 1 },   // front-right floor
+  { mount: "floor", gx: 3.2, gy: 4.5, scale: 1 },   // front-left floor
+  { mount: "floor", gx: 4.3, gy: 4.3, scale: 0.95 },// front-centre floor
 ];
 
 export async function renderHq(view: HqRenderView): Promise<Buffer | null> {
@@ -93,11 +123,12 @@ export async function renderHq(view: HqRenderView): Promise<Buffer | null> {
       const canvas = mod.createCanvas(W, H);
       const ctx = canvas.getContext("2d") as unknown as Ctx;
 
-      layerRoom(ctx, view.theme);
-      layerFloor(ctx, view.theme);
+      layerBackdrop(ctx, view.theme);
+      layerWalls(ctx, view.wall, view.theme);
+      await layerWallDecorations(ctx, mod, view);
+      layerFloor(ctx, view.floor, view.theme);
       layerLighting(ctx, view.theme);
-      await layerDecorations(ctx, mod, view);
-      await layerPedestals(ctx, mod, view);
+      await layerFurniture(ctx, mod, view);
       await layerHeader(ctx, mod, view);
 
       return await canvas.encode("png");
@@ -107,66 +138,92 @@ export async function renderHq(view: HqRenderView): Promise<Buffer | null> {
   });
 }
 
-// ── Layers ────────────────────────────────────────────────────────────────────
-
-function layerRoom(ctx: Ctx, theme: HqTheme): void {
-  // Back wall.
-  const g = ctx.createLinearGradient(0, 0, 0, FLOOR_TOP);
-  g.addColorStop(0, theme.palette.wallTop);
-  g.addColorStop(1, theme.palette.wallBottom);
+// ── Layers ──────────────────────────────────────────────────────────────────
+function layerBackdrop(ctx: Ctx, theme: HqTheme): void {
+  const g = ctx.createLinearGradient(0, 0, 0, H);
+  g.addColorStop(0, theme.palette.wallBottom);
+  g.addColorStop(1, "#05070a");
   ctx.fillStyle = g;
-  ctx.fillRect(0, 0, W, FLOOR_TOP);
-
-  // Faint wall paneling for texture.
-  ctx.save();
-  ctx.strokeStyle = hexToRgba(theme.palette.accent, 0.06);
-  ctx.lineWidth = 2;
-  for (let x = 120; x < W; x += 160) {
-    ctx.beginPath(); ctx.moveTo(x, 24); ctx.lineTo(x, FLOOR_TOP - 12); ctx.stroke();
-  }
-  ctx.restore();
+  ctx.fillRect(0, 0, W, H);
 }
 
-function layerFloor(ctx: Ctx, theme: HqTheme): void {
-  // Perspective floor: inset back edge, full-width front edge.
-  const inset = 150;
+// Fill a wall face (a parallelogram) with shading, a top trim line, a baseboard,
+// and optional window panels. `corners` are base-left, base-right, top-left,
+// top-right along the same horizontal parameter u (v=0 base, v=1 top).
+function drawWallFace(
+  ctx: Ctx, bl: Pt, br: Pt, tl: Pt, tr: Pt, face: string, trim: string,
+  window: boolean, windowTint: string,
+): void {
   ctx.save();
   ctx.beginPath();
-  ctx.moveTo(inset, FLOOR_TOP);
-  ctx.lineTo(W - inset, FLOOR_TOP);
-  ctx.lineTo(W, H);
-  ctx.lineTo(0, H);
+  ctx.moveTo(bl.x, bl.y); ctx.lineTo(br.x, br.y); ctx.lineTo(tr.x, tr.y); ctx.lineTo(tl.x, tl.y);
   ctx.closePath();
-  const fg = ctx.createLinearGradient(0, FLOOR_TOP, 0, H);
-  fg.addColorStop(0, theme.palette.floorFar);
-  fg.addColorStop(1, theme.palette.floorNear);
-  ctx.fillStyle = fg;
+  ctx.fillStyle = face;
   ctx.fill();
-
-  // Converging floor lines for depth.
   ctx.clip();
-  ctx.strokeStyle = hexToRgba(theme.palette.accent, theme.lighting === "neon" ? 0.28 : 0.12);
-  ctx.lineWidth = 1.5;
-  const cx = W / 2;
-  for (let i = -6; i <= 6; i++) {
-    const frontX = cx + i * 120;
-    ctx.beginPath(); ctx.moveTo(cx + i * 26, FLOOR_TOP); ctx.lineTo(frontX, H); ctx.stroke();
-  }
-  // A couple of horizontal depth bands.
-  for (const [y, a] of [[FLOOR_TOP + 60, 0.10], [FLOOR_TOP + 140, 0.06]] as const) {
-    ctx.strokeStyle = hexToRgba(theme.palette.accent, a);
-    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
+
+  const bilerp = (u: number, v: number): Pt => lerp(lerp(bl, br, u), lerp(tl, tr, u), v);
+
+  if (window) {
+    const cols = 3;
+    for (let c = 0; c < cols; c++) {
+      const u0 = (c + 0.18) / cols, u1 = (c + 0.82) / cols;
+      const p00 = bilerp(u0, 0.32), p10 = bilerp(u1, 0.32);
+      const p01 = bilerp(u0, 0.9),  p11 = bilerp(u1, 0.9);
+      ctx.beginPath();
+      ctx.moveTo(p00.x, p00.y); ctx.lineTo(p10.x, p10.y); ctx.lineTo(p11.x, p11.y); ctx.lineTo(p01.x, p01.y);
+      ctx.closePath();
+      ctx.fillStyle = windowTint; ctx.fill();
+      ctx.strokeStyle = hexToRgba(0xffffff, 0.28); ctx.lineWidth = 2; ctx.stroke();
+      // Mullion.
+      const m0 = bilerp((u0 + u1) / 2, 0.32), m1 = bilerp((u0 + u1) / 2, 0.9);
+      ctx.beginPath(); ctx.moveTo(m0.x, m0.y); ctx.lineTo(m1.x, m1.y); ctx.stroke();
+    }
+  } else {
+    // Subtle vertical paneling for texture.
+    for (let c = 1; c < 4; c++) {
+      const a = bilerp(c / 4, 0), b = bilerp(c / 4, 1);
+      ctx.strokeStyle = hexToRgba(0x000000, 0.12); ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
+    }
   }
   ctx.restore();
 
-  // Baseboard where wall meets floor.
-  ctx.fillStyle = hexToRgba(theme.palette.accent, 0.18);
-  ctx.fillRect(0, FLOOR_TOP - 3, W, 3);
+  // Top trim + baseboard.
+  ctx.strokeStyle = trim; ctx.lineWidth = 3;
+  ctx.beginPath(); ctx.moveTo(tl.x, tl.y); ctx.lineTo(tr.x, tr.y); ctx.stroke();
+  ctx.lineWidth = 4;
+  ctx.beginPath(); ctx.moveTo(bl.x, bl.y); ctx.lineTo(br.x, br.y); ctx.stroke();
+}
+
+function layerWalls(ctx: Ctx, wall: HqWall, _theme: HqTheme): void {
+  const up = (p: Pt): Pt => ({ x: p.x, y: p.y - WALL_H });
+  // Right wall (over the i=0 edge, faces front-left) — draw first (further back).
+  const rBL = project(0, GRID), rBR = project(0, 0);
+  drawWallFace(ctx, rBL, rBR, up(rBL), up(rBR), wall.rightFace, wall.trim, wall.window, wall.windowTint);
+  // Left wall (over the j=0 edge, faces front-right).
+  const lBL = project(0, 0), lBR = project(GRID, 0);
+  drawWallFace(ctx, lBL, lBR, up(lBL), up(lBR), wall.leftFace, wall.trim, wall.window, wall.windowTint);
+}
+
+function layerFloor(ctx: Ctx, floor: HqFloor, _theme: HqTheme): void {
+  for (let i = 0; i < GRID; i++) {
+    for (let j = 0; j < GRID; j++) {
+      const a = project(i, j), b = project(i + 1, j), c = project(i + 1, j + 1), d = project(i, j + 1);
+      ctx.beginPath();
+      ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.lineTo(c.x, c.y); ctx.lineTo(d.x, d.y);
+      ctx.closePath();
+      ctx.fillStyle = (i + j) % 2 === 0 ? floor.tileA : floor.tileB;
+      ctx.fill();
+      ctx.strokeStyle = floor.grout; ctx.lineWidth = 1;
+      ctx.stroke();
+    }
+  }
 }
 
 function layerLighting(ctx: Ctx, theme: HqTheme): void {
   // Key light from above-centre.
-  const r = ctx.createRadialGradient(W / 2, 60, 40, W / 2, 260, 720);
+  const r = ctx.createRadialGradient(W / 2, 40, 30, W / 2, 240, 640);
   r.addColorStop(0, theme.palette.light);
   r.addColorStop(1, "rgba(0,0,0,0)");
   ctx.fillStyle = r;
@@ -175,104 +232,134 @@ function layerLighting(ctx: Ctx, theme: HqTheme): void {
   // Ambient particles for depth (static frame → fixed phase).
   try {
     drawAtmosphere(ctx, W, H, atmospherePreset(theme.atmosphere), {
-      seed: `hq-${theme.id}`, t: 0.35, color: theme.palette.accent, density: 0.5,
+      seed: `hq-${theme.id}`, t: 0.35, color: theme.palette.accent, density: 0.4,
     });
   } catch { /* never break a render on ambience */ }
 
   // Vignette to focus the centre.
-  const v = ctx.createRadialGradient(W / 2, H / 2, H * 0.35, W / 2, H / 2, W * 0.72);
+  const v = ctx.createRadialGradient(W / 2, H / 2, H * 0.34, W / 2, H / 2, W * 0.72);
   v.addColorStop(0, "rgba(0,0,0,0)");
   v.addColorStop(1, "rgba(0,0,0,0.5)");
   ctx.fillStyle = v;
   ctx.fillRect(0, 0, W, H);
 }
 
-async function layerDecorations(ctx: Ctx, mod: CanvasMod, view: HqRenderView): Promise<void> {
+// Wall-mounted decorations sit on the wall plane, drawn between walls and floor.
+async function layerWallDecorations(ctx: Ctx, mod: CanvasMod, view: HqRenderView): Promise<void> {
   for (const deco of view.decorations) {
-    const a = ANCHORS[deco.slot % ANCHORS.length]!;
-    if (deco.spritePath) {
-      const img = await loadSprite(mod, deco.spritePath).catch(() => null);
-      if (img) {
-        const size = 96 * a.scale;
-        (ctx as unknown as { drawImage(i: unknown, x: number, y: number, w: number, h: number): void })
-          .drawImage(img, a.x - size / 2, a.y - size / 2, size, size);
-        continue;
-      }
-    }
-    drawDecoration(ctx, a, deco);
+    const place = SLOT_PLACES[deco.slot % SLOT_PLACES.length]!;
+    if (place.mount !== "wall") continue;
+    await drawDecoAt(ctx, mod, place.x, place.y, place.scale, deco, false);
   }
 }
 
-async function layerPedestals(ctx: Ctx, mod: CanvasMod, view: HqRenderView): Promise<void> {
+// Floor furniture (decorations + card pedestals) drawn back-to-front by depth so
+// nearer objects overlap further ones.
+async function layerFurniture(ctx: Ctx, mod: CanvasMod, view: HqRenderView): Promise<void> {
+  interface Item { depth: number; draw: () => Promise<void> }
+  const items: Item[] = [];
+
+  // Card pedestals along a back anti-diagonal (constant depth), centred and
+  // spaced ~1.4 tiles apart so the display cases never overlap.
   const n = view.pedestals.length;
-  if (n === 0) return;
-  const cardW = 140, cardH = 182;
-  const gap = (W - n * cardW) / (n + 1);
+  const SPREAD = 1.4;
   for (let i = 0; i < n; i++) {
-    const cx = gap * (i + 1) + cardW * i + cardW / 2;
-    await drawPedestal(ctx, mod, cx, view.pedestals[i]!, view.theme, cardW, cardH);
+    const d = (i - (n - 1) / 2) * SPREAD;
+    const p = project(2.5 + d, 2.5 - d);  // gx+gy = 5 → shallow back row
+    const card = view.pedestals[i]!;
+    items.push({ depth: p.y, draw: () => drawPedestal(ctx, mod, p.x, p.y, card, view.theme) });
   }
+
+  // Floor decorations.
+  for (const deco of view.decorations) {
+    const place = SLOT_PLACES[deco.slot % SLOT_PLACES.length]!;
+    if (place.mount !== "floor") continue;
+    const p = project(place.gx, place.gy);
+    items.push({ depth: p.y, draw: async () => { await drawDecoAt(ctx, mod, p.x, p.y, place.scale, deco, true); } });
+  }
+
+  items.sort((a, b) => a.depth - b.depth);
+  for (const it of items) await it.draw();
 }
 
+// ── Card pedestal (upright display panel on an iso plinth) ─────────────────────
 async function drawPedestal(
-  ctx: Ctx, mod: CanvasMod, cx: number, card: HqRenderCard | null,
-  theme: HqTheme, cardW: number, cardH: number,
+  ctx: Ctx, mod: CanvasMod, cx: number, cy: number, card: HqRenderCard | null, theme: HqTheme,
 ): Promise<void> {
-  const cardTop = 286;
+  const cardW = 116, cardH = 150;
+  const plinthH = 30, plinthW = cardW + 20;
+  const cardBottom = cy - 6;           // card stands just above the plinth top
+  const cardTop = cardBottom - cardH;
   const cardX = cx - cardW / 2;
-  const plinthTop = cardTop + cardH - 2;
 
-  // Plinth (base the card stands on).
+  // Ground shadow.
   ctx.save();
-  const pw = cardW + 26, ph = 44;
-  const px = cx - pw / 2, py = plinthTop;
-  const pg = ctx.createLinearGradient(0, py, 0, py + ph);
-  pg.addColorStop(0, hexToRgba(theme.palette.accent, 0.35));
-  pg.addColorStop(1, hexToRgba(theme.palette.accent, 0.08));
-  ctx.fillStyle = pg;
-  roundRectPath(ctx, px, py, pw, ph, 8); ctx.fill();
-  ctx.strokeStyle = hexToRgba(theme.palette.accent, 0.6); ctx.lineWidth = 1.5;
-  roundRectPath(ctx, px, py, pw, ph, 8); ctx.stroke();
-  // Soft floor shadow under the plinth.
-  ctx.fillStyle = "rgba(0,0,0,0.35)";
-  ctx.beginPath(); ellipse(ctx, cx, py + ph + 6, pw / 2, 10); ctx.fill();
+  ctx.fillStyle = "rgba(0,0,0,0.34)";
+  ctx.beginPath(); ellipse(ctx, cx, cy + plinthH - 4, plinthW / 2, 12); ctx.fill();
   ctx.restore();
 
+  // Iso plinth (a short box).
+  drawIsoBox(ctx, cx, cy, plinthW, plinthH, theme.palette.accent);
+
   if (!card) {
-    // Empty glass case with a pin hint.
     drawGlassCase(ctx, cardX, cardTop, cardW, cardH, theme, 0x808895);
     ctx.save();
     ctx.textAlign = "center"; ctx.textBaseline = "middle";
-    drawTitle(ctx, "+", cx, cardTop + cardH / 2 - 10, hexToRgba(theme.palette.accent, 0.8), 44);
-    drawTextWithShadow(ctx, "Pin a card", cx, cardTop + cardH / 2 + 26, "rgba(230,230,235,0.75)", 14);
+    drawTitle(ctx, "+", cx, cardTop + cardH / 2 - 8, hexToRgba(theme.palette.accent, 0.85), 42);
+    drawTextWithShadow(ctx, "Pin a card", cx, cardTop + cardH / 2 + 24, "rgba(230,230,235,0.75)", 13);
     ctx.restore();
     return;
   }
 
-  // Rarity glow, card art, frame — reusing the card primitives.
   drawRarityGlow(ctx, cardX, cardTop, cardW, cardH, card.rarityColor, 0.55);
   await drawCardArt(ctx, mod, cardX, cardTop, cardW, cardH, card.artUrl);
   drawCardFrame(ctx, cardX, cardTop, cardW, cardH, card.rarityColor, 5);
   drawGlassCase(ctx, cardX, cardTop, cardW, cardH, theme, card.rarityColor);
 
-  // Nameplate below the plinth.
+  // Nameplate on the plinth.
   ctx.save();
   ctx.textAlign = "center"; ctx.textBaseline = "middle";
-  const nameY = plinthTop + 44 + 20;
-  const nameSize = fitText(ctx, card.name, cardW + 40, 18, 12, TITLE_FONT);
+  const nameY = cy + plinthH + 10;
+  const nameSize = fitText(ctx, card.name, cardW + 40, 16, 11, TITLE_FONT);
   drawTitle(ctx, card.name, cx, nameY, "#ffffff", nameSize);
-  drawTextWithShadow(ctx, card.rarityLabel.toUpperCase(), cx, nameY + 18, hexToRgba(card.rarityColor, 1), 12);
+  drawTextWithShadow(ctx, card.rarityLabel.toUpperCase(), cx, nameY + 16, hexToRgba(card.rarityColor, 1), 11);
+  ctx.restore();
+}
+
+// A short isometric box (used for pedestals): top diamond + two lit side faces.
+function drawIsoBox(ctx: Ctx, cx: number, cyTop: number, w: number, h: number, accent: number): void {
+  const hw = w / 2, hh = w / 4; // diamond half-extents (2:1)
+  const top = { x: cx, y: cyTop - hh };
+  const right = { x: cx + hw, y: cyTop };
+  const bottom = { x: cx, y: cyTop + hh };
+  const left = { x: cx - hw, y: cyTop };
+  ctx.save();
+  // Left face.
+  ctx.beginPath();
+  ctx.moveTo(left.x, left.y); ctx.lineTo(bottom.x, bottom.y);
+  ctx.lineTo(bottom.x, bottom.y + h); ctx.lineTo(left.x, left.y + h); ctx.closePath();
+  ctx.fillStyle = hexToRgba(accent, 0.22); ctx.fill();
+  // Right face.
+  ctx.beginPath();
+  ctx.moveTo(right.x, right.y); ctx.lineTo(bottom.x, bottom.y);
+  ctx.lineTo(bottom.x, bottom.y + h); ctx.lineTo(right.x, right.y + h); ctx.closePath();
+  ctx.fillStyle = hexToRgba(accent, 0.34); ctx.fill();
+  // Top diamond.
+  ctx.beginPath();
+  ctx.moveTo(top.x, top.y); ctx.lineTo(right.x, right.y); ctx.lineTo(bottom.x, bottom.y); ctx.lineTo(left.x, left.y);
+  ctx.closePath();
+  ctx.fillStyle = hexToRgba(accent, 0.5); ctx.fill();
+  ctx.strokeStyle = hexToRgba(accent, 0.8); ctx.lineWidth = 1.5; ctx.stroke();
   ctx.restore();
 }
 
 // A glass display case: subtle tinted fill + rim highlight + a diagonal sheen.
 function drawGlassCase(ctx: Ctx, x: number, y: number, w: number, h: number, theme: HqTheme, tint: number): void {
   ctx.save();
-  roundRectPath(ctx, x - 6, y - 6, w + 12, h + 12, 14);
+  roundRectPath(ctx, x - 6, y - 6, w + 12, h + 12, 12);
   ctx.clip();
   ctx.fillStyle = theme.palette.glass;
   ctx.fillRect(x - 6, y - 6, w + 12, h + 12);
-  // Diagonal sheen.
   const s = ctx.createLinearGradient(x - 6, y - 6, x + w, y + h);
   s.addColorStop(0, "rgba(255,255,255,0.14)");
   s.addColorStop(0.45, "rgba(255,255,255,0.03)");
@@ -280,81 +367,44 @@ function drawGlassCase(ctx: Ctx, x: number, y: number, w: number, h: number, the
   ctx.fillStyle = s;
   ctx.fillRect(x - 6, y - 6, w + 12, h + 12);
   ctx.restore();
-  // Rim.
   ctx.save();
   ctx.strokeStyle = hexToRgba(tint, 0.5); ctx.lineWidth = 2;
-  roundRectPath(ctx, x - 6, y - 6, w + 12, h + 12, 14); ctx.stroke();
+  roundRectPath(ctx, x - 6, y - 6, w + 12, h + 12, 12); ctx.stroke();
   ctx.restore();
 }
 
-async function layerHeader(ctx: Ctx, mod: CanvasMod, view: HqRenderView): Promise<void> {
-  // Header band.
-  ctx.save();
-  const g = ctx.createLinearGradient(0, 0, W, 0);
-  g.addColorStop(0, "rgba(0,0,0,0.62)");
-  g.addColorStop(1, "rgba(0,0,0,0.32)");
-  ctx.fillStyle = g;
-  ctx.fillRect(0, 0, W, HEADER_H);
-  ctx.fillStyle = hexToRgba(view.theme.palette.accent, 0.8);
-  ctx.fillRect(0, HEADER_H, W, 2);
-  ctx.restore();
-
-  // Avatar.
-  const av = 46, ax = 18, ay = (HEADER_H - av) / 2;
-  if (view.ownerAvatarUrl) {
-    const img = await loadArt(mod, view.ownerAvatarUrl).catch(() => null);
+// Draw one decoration at a screen anchor. `grounded` floor items get a soft
+// contact shadow and are lifted so their base sits on the tile; wall items hang.
+async function drawDecoAt(
+  ctx: Ctx, mod: CanvasMod, x: number, y: number, scale: number, deco: HqRenderDeco, grounded: boolean,
+): Promise<void> {
+  if (deco.spritePath) {
+    const img = await loadSprite(mod, deco.spritePath).catch(() => null);
     if (img) {
-      ctx.save();
-      ctx.beginPath(); ctx.arc(ax + av / 2, ay + av / 2, av / 2, 0, Math.PI * 2); ctx.clip();
-      const iw = (img as { width: number }).width, ih = (img as { height: number }).height;
-      const sc = Math.max(av / iw, av / ih);
-      (ctx as unknown as { drawImage(i: unknown, x: number, y: number, w: number, h: number): void })
-        .drawImage(img, ax + (av - iw * sc) / 2, ay + (av - ih * sc) / 2, iw * sc, ih * sc);
-      ctx.restore();
-      ctx.save();
-      ctx.strokeStyle = hexToRgba(view.theme.palette.accent, 1); ctx.lineWidth = 2;
-      ctx.beginPath(); ctx.arc(ax + av / 2, ay + av / 2, av / 2, 0, Math.PI * 2); ctx.stroke();
-      ctx.restore();
+      const size = 108 * scale;
+      if (grounded) {
+        ctx.save(); ctx.fillStyle = "rgba(0,0,0,0.3)";
+        ctx.beginPath(); ellipse(ctx, x, y, size * 0.34, size * 0.12); ctx.fill(); ctx.restore();
+      }
+      blit(ctx, img, x - size / 2, (grounded ? y - size + 8 : y - size / 2), size, size);
+      return;
     }
   }
-
-  // Owner name + subtitle.
-  ctx.save();
-  ctx.textAlign = "left"; ctx.textBaseline = "middle";
-  const tx = ax + av + 14;
-  // Left-align the banner name (drawTitle centres by default) so it starts at the
-  // avatar and a long/custom HQ name grows rightward instead of clipping the edge.
-  drawTitle(ctx, view.displayTitle, tx, 24, "#ffffff", fitText(ctx, view.displayTitle, 520, 22, 14, TITLE_FONT), "left");
-  drawTextWithShadow(ctx, view.subtitle, tx, 46, "rgba(225,225,230,0.85)", 13, "left");
-  ctx.restore();
-
-  // Right side: theme name + HQ level chip.
-  ctx.save();
-  ctx.textAlign = "right"; ctx.textBaseline = "middle";
-  drawTextWithShadow(ctx, `${view.roomEmoji} ${view.roomName}`, W - 18, 22, "rgba(235,235,240,0.9)", 14, "right");
-  const chip = `HQ LV ${view.hqLevel}`;
-  ctx.font = `bold 13px "${TITLE_FONT}", "DejaVu Sans", Arial, sans-serif`;
-  const cw = ctx.measureText(chip).width + 22;
-  const cxp = W - 18 - cw, cyp = 38;
-  ctx.fillStyle = hexToRgba(view.theme.palette.accent, 0.22);
-  roundRectPath(ctx, cxp, cyp, cw, 20, 10); ctx.fill();
-  ctx.strokeStyle = hexToRgba(view.theme.palette.accent, 0.8); ctx.lineWidth = 1;
-  roundRectPath(ctx, cxp, cyp, cw, 20, 10); ctx.stroke();
-  ctx.textAlign = "center";
-  drawTextWithShadow(ctx, chip, cxp + cw / 2, cyp + 10, "#ffffff", 12);
-  ctx.restore();
+  if (grounded) {
+    ctx.save(); ctx.fillStyle = "rgba(0,0,0,0.3)";
+    ctx.beginPath(); ellipse(ctx, x, y, 34 * scale, 12 * scale); ctx.fill(); ctx.restore();
+  }
+  drawDecoration(ctx, x, grounded ? y - 30 * scale : y, scale, deco);
 }
 
 // ── Procedural decorations ────────────────────────────────────────────────────
 // Each category draws a compact, self-contained glyph tinted by the decoration's
-// rarity colour with a soft glow, so a placed decoration always reads as
-// intentional. An asset pack later replaces these per-category/​per-id.
-function drawDecoration(ctx: Ctx, a: Anchor, deco: HqRenderDeco): void {
-  const s = 60 * a.scale;
+// rarity colour with a soft glow. An asset pack later replaces these per id.
+function drawDecoration(ctx: Ctx, ox: number, oy: number, scale: number, deco: HqRenderDeco): void {
+  const s = 62 * scale;
   const col = deco.rarityColor;
   ctx.save();
-  ctx.translate(a.x, a.y);
-  // Glow.
+  ctx.translate(ox, oy);
   ctx.shadowColor = hexToRgba(col, 0.7);
   ctx.shadowBlur = 18;
 
@@ -386,19 +436,19 @@ function drawDecoration(ctx: Ctx, a: Anchor, deco: HqRenderDeco): void {
       ctx.quadraticCurveTo(-s * 0.28, s * 0.05, -s * 0.28, -s * 0.4);
       ctx.closePath(); ctx.fill();
       ctx.shadowBlur = 0;
-      ctx.fillRect(-s * 0.06, s * 0.12, s * 0.12, s * 0.2);      // stem
-      ctx.fillRect(-s * 0.22, s * 0.32, s * 0.44, s * 0.1);       // base
+      ctx.fillRect(-s * 0.06, s * 0.12, s * 0.12, s * 0.2);
+      ctx.fillRect(-s * 0.22, s * 0.32, s * 0.44, s * 0.1);
       break;
     }
     case "statue": {
       ctx.fillStyle = hexToRgba(col, 0.5);
-      ctx.fillRect(-s * 0.26, s * 0.2, s * 0.52, s * 0.28);       // pedestal
+      ctx.fillRect(-s * 0.26, s * 0.2, s * 0.52, s * 0.28);
       ctx.shadowBlur = 0;
       ctx.fillStyle = hexToRgba(col, 0.95);
-      ctx.beginPath(); ctx.arc(0, -s * 0.16, s * 0.14, 0, Math.PI * 2); ctx.fill(); // head
+      ctx.beginPath(); ctx.arc(0, -s * 0.16, s * 0.14, 0, Math.PI * 2); ctx.fill();
       ctx.beginPath();
       ctx.moveTo(0, -s * 0.02); ctx.lineTo(s * 0.16, s * 0.2); ctx.lineTo(-s * 0.16, s * 0.2);
-      ctx.closePath(); ctx.fill();                                // body
+      ctx.closePath(); ctx.fill();
       break;
     }
     case "monument": {
@@ -409,7 +459,7 @@ function drawDecoration(ctx: Ctx, a: Anchor, deco: HqRenderDeco): void {
       ctx.closePath(); ctx.fill();
       ctx.shadowBlur = 0;
       ctx.fillStyle = hexToRgba(col, 0.5);
-      ctx.fillRect(-s * 0.22, s * 0.5, s * 0.44, s * 0.12);       // base
+      ctx.fillRect(-s * 0.22, s * 0.5, s * 0.44, s * 0.12);
       break;
     }
     case "plant": {
@@ -418,7 +468,7 @@ function drawDecoration(ctx: Ctx, a: Anchor, deco: HqRenderDeco): void {
       ctx.beginPath();
       ctx.moveTo(-s * 0.2, s * 0.12); ctx.lineTo(s * 0.2, s * 0.12);
       ctx.lineTo(s * 0.14, s * 0.5); ctx.lineTo(-s * 0.14, s * 0.5);
-      ctx.closePath(); ctx.fill();                                // pot
+      ctx.closePath(); ctx.fill();
       ctx.shadowColor = hexToRgba(0x2ecc71, 0.6); ctx.shadowBlur = 12;
       ctx.fillStyle = hexToRgba(0x2ecc71, 0.95);
       for (const dx of [-0.16, 0, 0.16]) {
@@ -447,11 +497,10 @@ function drawDecoration(ctx: Ctx, a: Anchor, deco: HqRenderDeco): void {
       ctx.fillStyle = hexToRgba(col, 0.16);
       roundRectPath(ctx, -s * 0.3, -s * 0.42, s * 0.6, s * 0.84, 6); ctx.fill();
       ctx.fillStyle = "rgba(255,255,255,0.5)";
-      ctx.fillRect(-s * 0.22, -s * 0.34, s * 0.12, s * 0.68);     // sheen
+      ctx.fillRect(-s * 0.22, -s * 0.34, s * 0.12, s * 0.68);
       break;
     }
     case "crystal": {
-      // Faceted gem: two mirrored triangles with a bright inner core.
       ctx.shadowColor = hexToRgba(col, 0.9); ctx.shadowBlur = 24;
       ctx.fillStyle = hexToRgba(col, 0.95);
       ctx.beginPath();
@@ -467,20 +516,71 @@ function drawDecoration(ctx: Ctx, a: Anchor, deco: HqRenderDeco): void {
       break;
     }
     case "rug": {
-      // A flat floor rug drawn in perspective (wider at the front) with a border.
       ctx.shadowBlur = 0;
       ctx.fillStyle = hexToRgba(col, 0.85);
       ctx.beginPath();
-      ctx.moveTo(-s * 0.34, s * 0.14); ctx.lineTo(s * 0.34, s * 0.14);
-      ctx.lineTo(s * 0.5, s * 0.5); ctx.lineTo(-s * 0.5, s * 0.5);
+      ctx.moveTo(0, -s * 0.24); ctx.lineTo(s * 0.5, 0); ctx.lineTo(0, s * 0.24); ctx.lineTo(-s * 0.5, 0);
       ctx.closePath(); ctx.fill();
       ctx.strokeStyle = "rgba(255,255,255,0.7)"; ctx.lineWidth = 2;
       ctx.beginPath();
-      ctx.moveTo(-s * 0.26, s * 0.2); ctx.lineTo(s * 0.26, s * 0.2);
-      ctx.lineTo(s * 0.38, s * 0.44); ctx.lineTo(-s * 0.38, s * 0.44);
+      ctx.moveTo(0, -s * 0.16); ctx.lineTo(s * 0.34, 0); ctx.lineTo(0, s * 0.16); ctx.lineTo(-s * 0.34, 0);
       ctx.closePath(); ctx.stroke();
       break;
     }
   }
+  ctx.restore();
+}
+
+// ── Header ─────────────────────────────────────────────────────────────────
+async function layerHeader(ctx: Ctx, mod: CanvasMod, view: HqRenderView): Promise<void> {
+  ctx.save();
+  const g = ctx.createLinearGradient(0, 0, W, 0);
+  g.addColorStop(0, "rgba(0,0,0,0.62)");
+  g.addColorStop(1, "rgba(0,0,0,0.32)");
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, W, HEADER_H);
+  ctx.fillStyle = hexToRgba(view.theme.palette.accent, 0.8);
+  ctx.fillRect(0, HEADER_H, W, 2);
+  ctx.restore();
+
+  const av = 46, ax = 18, ay = (HEADER_H - av) / 2;
+  if (view.ownerAvatarUrl) {
+    const img = await loadArt(mod, view.ownerAvatarUrl).catch(() => null);
+    if (img) {
+      ctx.save();
+      ctx.beginPath(); ctx.arc(ax + av / 2, ay + av / 2, av / 2, 0, Math.PI * 2); ctx.clip();
+      const iw = (img as { width: number }).width, ih = (img as { height: number }).height;
+      const sc = Math.max(av / iw, av / ih);
+      blit(ctx, img, ax + (av - iw * sc) / 2, ay + (av - ih * sc) / 2, iw * sc, ih * sc);
+      ctx.restore();
+      ctx.save();
+      ctx.strokeStyle = hexToRgba(view.theme.palette.accent, 1); ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(ax + av / 2, ay + av / 2, av / 2, 0, Math.PI * 2); ctx.stroke();
+      ctx.restore();
+    }
+  }
+
+  ctx.save();
+  ctx.textAlign = "left"; ctx.textBaseline = "middle";
+  const tx = ax + av + 14;
+  // Left-align the banner name (drawTitle centres by default) so a long/custom
+  // HQ name grows rightward instead of clipping the edge.
+  drawTitle(ctx, view.displayTitle, tx, 24, "#ffffff", fitText(ctx, view.displayTitle, 520, 22, 14, TITLE_FONT), "left");
+  drawTextWithShadow(ctx, view.subtitle, tx, 46, "rgba(225,225,230,0.85)", 13, "left");
+  ctx.restore();
+
+  ctx.save();
+  ctx.textAlign = "right"; ctx.textBaseline = "middle";
+  drawTextWithShadow(ctx, `${view.roomEmoji} ${view.roomName}`, W - 18, 22, "rgba(235,235,240,0.9)", 14, "right");
+  const chip = `HQ LV ${view.hqLevel}`;
+  ctx.font = `bold 13px "${TITLE_FONT}", "DejaVu Sans", Arial, sans-serif`;
+  const cw = ctx.measureText(chip).width + 22;
+  const cxp = W - 18 - cw, cyp = 38;
+  ctx.fillStyle = hexToRgba(view.theme.palette.accent, 0.22);
+  roundRectPath(ctx, cxp, cyp, cw, 20, 10); ctx.fill();
+  ctx.strokeStyle = hexToRgba(view.theme.palette.accent, 0.8); ctx.lineWidth = 1;
+  roundRectPath(ctx, cxp, cyp, cw, 20, 10); ctx.stroke();
+  ctx.textAlign = "center";
+  drawTextWithShadow(ctx, chip, cxp + cw / 2, cyp + 10, "#ffffff", 12);
   ctx.restore();
 }

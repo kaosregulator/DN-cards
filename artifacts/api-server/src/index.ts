@@ -771,6 +771,10 @@ async function runBootMigrations() {
     )
   `);
   await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS player_hq_guild_user_uniq ON player_hq (guild_id, user_id)`);
+  // Additive: isometric-room wall & floor styles (Phase 3). Older rows backfill
+  // to the defaults, so an existing HQ keeps working after a republish.
+  await pool.query(`ALTER TABLE player_hq ADD COLUMN IF NOT EXISTS wall_id TEXT NOT NULL DEFAULT 'plaster'`);
+  await pool.query(`ALTER TABLE player_hq ADD COLUMN IF NOT EXISTS floor_id TEXT NOT NULL DEFAULT 'wood'`);
 
   await pool.query(`
     CREATE TABLE IF NOT EXISTS hq_unlocks (

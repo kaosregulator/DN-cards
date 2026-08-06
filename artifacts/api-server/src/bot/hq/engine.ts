@@ -25,6 +25,8 @@ import {
 import { HQ_DECORATIONS, type HqDecoration } from "./defs/decorations.js";
 import { HQ_ROOMS, type HqRoom } from "./defs/rooms.js";
 import { HQ_THEMES, DEFAULT_THEME_ID, type HqTheme } from "./defs/themes.js";
+import { HQ_WALLS, DEFAULT_WALL_ID, type HqWall } from "./defs/walls.js";
+import { HQ_FLOORS, DEFAULT_FLOOR_ID, type HqFloor } from "./defs/floors.js";
 import { getUnlockedItemIds, grantUnlock } from "./db.js";
 
 async function safe<T>(label: string, fn: () => Promise<T>, fallback: T): Promise<T> {
@@ -90,6 +92,20 @@ export function unlockedThemes(owned: Set<string>): HqTheme[] {
 export function unlockedRooms(owned: Set<string>): HqRoom[] {
   return HQ_ROOMS.filter(r => isRoomUnlocked(r, owned));
 }
+// Wall/floor styles unlock exactly like themes: the default is always available,
+// everything else lives in the earned ledger.
+export function isWallUnlocked(wall: HqWall, owned: Set<string>): boolean {
+  return wall.id === DEFAULT_WALL_ID || isUnlocked(wall.unlock, wall.id, owned);
+}
+export function isFloorUnlocked(floor: HqFloor, owned: Set<string>): boolean {
+  return floor.id === DEFAULT_FLOOR_ID || isUnlocked(floor.unlock, floor.id, owned);
+}
+export function unlockedWalls(owned: Set<string>): HqWall[] {
+  return HQ_WALLS.filter(w => isWallUnlocked(w, owned));
+}
+export function unlockedFloors(owned: Set<string>): HqFloor[] {
+  return HQ_FLOORS.filter(f => isFloorUnlocked(f, owned));
+}
 
 // HQ level rewards BREADTH of accomplishment: each earned cosmetic and each
 // extra room/theme raises it, with a gentle account-level contribution. Purely a
@@ -132,6 +148,18 @@ export async function reconcileUnlocks(guildId: string, userId: string): Promise
     if (t.unlock.kind === "always") continue;
     if (evalUnlockRule(t.unlock, progress)) {
       await grantUnlock(guildId, userId, t.id, "theme", unlockSourceTag(t.unlock)).catch(() => {});
+    }
+  }
+  for (const w of HQ_WALLS) {
+    if (w.unlock.kind === "always") continue;
+    if (evalUnlockRule(w.unlock, progress)) {
+      await grantUnlock(guildId, userId, w.id, "wall", unlockSourceTag(w.unlock)).catch(() => {});
+    }
+  }
+  for (const f of HQ_FLOORS) {
+    if (f.unlock.kind === "always") continue;
+    if (evalUnlockRule(f.unlock, progress)) {
+      await grantUnlock(guildId, userId, f.id, "floor", unlockSourceTag(f.unlock)).catch(() => {});
     }
   }
 

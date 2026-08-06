@@ -60,17 +60,25 @@ export function hqAssetsAvailable(): boolean {
   return manifest() !== null;
 }
 
-// Resolve a sprite for a theme. Tries the theme-specific key first
-// ("<prefix>/<key>"), then a shared key ("<key>"). Returns an absolute file path
-// or null. Phase 1 ships no manifest, so this always returns null → procedural.
-export function spriteFor(theme: HqTheme, key: string): string | null {
+// Resolve a sprite by an explicit asset-pack prefix. Tries the prefixed key
+// first ("<prefix>/<key>"), then a shared bare key ("<key>"). Returns an
+// absolute file path or null. This is the single lookup every visual goes
+// through — walls, floors and furniture each pass their own registry
+// `spritePrefix`, so a bundled/uploaded pack replaces any of them independently
+// with no code change. Ships no manifest → always null → procedural.
+export function spriteForPrefix(prefix: string, key: string): string | null {
   const m = manifest();
   if (!m) return null;
   const sprites = m.manifest.sprites ?? {};
-  const rel = sprites[`${theme.spritePrefix}/${key}`] ?? sprites[key];
+  const rel = sprites[`${prefix}/${key}`] ?? sprites[key];
   if (!rel) return null;
   const path = join(m.dir, rel);
   return existsSync(path) ? path : null;
+}
+
+// Resolve a sprite for a theme (decoration art keyed by the theme prefix).
+export function spriteFor(theme: HqTheme, key: string): string | null {
+  return spriteForPrefix(theme.spritePrefix, key);
 }
 
 // Decoded-image cache shared across renders (a busy channel re-renders the same

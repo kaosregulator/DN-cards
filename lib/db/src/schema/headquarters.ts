@@ -30,6 +30,10 @@ export const playerHqTable = pgTable("player_hq", {
   themeId: text("theme_id").notNull().default("command"),
   // The room currently being viewed/edited (resolves through defs/rooms.ts).
   activeRoomId: text("active_room_id").notNull().default("trophy-hall"),
+  // Active wall & floor styles for the isometric room (resolve through
+  // defs/walls.ts and defs/floors.ts; degrade to the default if ever removed).
+  wallId: text("wall_id").notNull().default("plaster"),
+  floorId: text("floor_id").notNull().default("wood"),
   // Cached HQ level, DERIVED from existing progression by the engine and stored
   // so reads/leaderboards don't recompute the curve. Source of truth stays the
   // underlying systems; this is a convenience cache refreshed on reconcile.
@@ -65,7 +69,7 @@ export const hqUnlocksTable = pgTable("hq_unlocks", {
 }));
 
 export type HqUnlock = typeof hqUnlocksTable.$inferSelect;
-export type HqItemType = "decoration" | "room" | "theme";
+export type HqItemType = "decoration" | "room" | "theme" | "wall" | "floor";
 
 // Pinned featured cards for the Trophy Hall — one row per pedestal slot. Unique
 // on (guild, user, slot); repinning a slot upserts. Clicking a featured card in
