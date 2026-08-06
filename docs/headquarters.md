@@ -30,9 +30,13 @@ provisions them with no manual push.
   - **Overview → Name your HQ** — set a custom HQ name (shown on the rendered
     banner) and a short motto. Stored in the additive `player_hq.stats` jsonb —
     no schema change.
-  - **Decorations** — pick an earned decoration, then choose **which slot** it
-    goes in (or *Auto* for the next free one). Picking an occupied slot swaps
-    the two, so you arrange the room's layout however you like.
+  - **Decorations** — pick a decoration, then choose **which floor tile or wall
+    spot** it goes on (or *Auto*). Placement is grid-precise: the tile is encoded
+    in `hq_placements.slot` (`gy*GRID+gx` for floor, `100+i` for walls — no schema
+    change), so items land exactly where you put them and picking an occupied
+    spot swaps. Each room caps how many items you can display at once.
+  - **🛒 Shop** — buy furniture with shards (rotates daily) or crack a **Mystery
+    Crate** for a random piece.
 - `/hq user:@member` — visit another member's HQ, read-only.
 
 ## The engine is theme-agnostic (data-driven)
@@ -96,6 +100,8 @@ that reuse existing systems — no new grind, no parallel currency:
   date (`bot/hq/shop.ts`), so it **rotates daily** with no storage or cron, and
   some items are discounted. Buying debits shards atomically and grants the item
   into the same `hq_unlocks` ledger.
+- **🎁 Mystery crates** — a fixed-price shard sink (`/hq → Shop → Open Mystery
+  Crate`) that grants a random furniture piece you don't own, rarity-weighted.
 - **🎁 Catch drops** — a small chance (`bot/hq/drops.ts`, weighted so commons
   drop more often) that catching a card also yields a decoration, surfaced right
   on the catch card. Hooked best-effort into the catch flow — it never blocks or

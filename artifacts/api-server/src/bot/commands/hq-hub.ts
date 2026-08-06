@@ -24,7 +24,7 @@ import {
   getRarityContext, getRarityDisplayOverrides, getCardDisplayRarity,
   getOrCreateCurrency, spendShards, addShards,
 } from "../db.js";
-import { rarityColor, SHINY_EMOJI, type Rarity } from "../cards-data.js";
+import { rarityColor, SHINY_EMOJI, BUILTIN_RARITIES, type Rarity } from "../cards-data.js";
 import { toAbsoluteImageUrl } from "../image-url.js";
 import { renderCardRevealCanvas, CARD_REVEAL_FILE } from "../cards/card-reveal-canvas.js";
 import { buildCardLevelEmbed } from "../cards/level-command.js";
@@ -46,7 +46,11 @@ import { resolveRoom, HQ_ROOMS, DEFAULT_ROOM_ID } from "../hq/defs/rooms.js";
 import { resolveDecoration, decorationsByRarityDesc, HQ_DECORATIONS } from "../hq/defs/decorations.js";
 import { unlockLabel, type UnlockRule } from "../hq/defs/unlock-rules.js";
 import { spriteFor, spriteForPrefix } from "../hq/assets.js";
-import { renderHq, type HqRenderView, type HqRenderCard, type HqRenderDeco } from "../hq/render.js";
+import {
+  renderHq, floorSlot, wallSlot, slotIsWall, slotToTile,
+  HQ_WALL_SLOT_BASE, HQ_WALL_ANCHOR_COUNT,
+  type HqRenderView, type HqRenderCard, type HqRenderDeco,
+} from "../hq/render.js";
 import type { PlayerHq } from "@workspace/db";
 
 const EPHEMERAL = { flags: MessageFlags.Ephemeral } as const;
@@ -201,6 +205,12 @@ export async function handleHqHubComponent(
   // Shop: buy the selected furniture (validated against the live rotation price).
   if (action === "buy" && interaction.isStringSelectMenu()) {
     const notice = await buyShopItem(guildId, userId, interaction.values[0]!);
+    await interaction.update(await buildView(interaction, "shop", [], notice)).catch(() => {});
+    return;
+  }
+  // Shop: open a mystery crate for a random furniture item.
+  if (action === "crate" && interaction.isButton()) {
+    const notice = await openMysteryCrate(guildId, userId);
     await interaction.update(await buildView(interaction, "shop", [], notice)).catch(() => {});
     return;
   }
@@ -438,7 +448,7 @@ async function buildView(
         embed.addFields({
           name: `Placed in ${room.name} (${placements.size}/${room.decoSlots})`,
           value: [...placements.entries()].sort((a, b) => a[0] - b[0])
-            .map(([slot, id]) => `Slot ${slot + 1}: ${resolveDecoration(id)?.emoji ?? "•"} ${resolveDecoration(id)?.name ?? id}`).join("\n").slice(0, 1024),
+            .map(([slot, id]) => `${slotLabel(slot)}: ${resolveDecoration(id)?.emoji ?? "•"} ${resolveDecoration(id)?.name ?? id}`).join("\n").slice(0, 1024),
         });
       }
       // Place select (any earned-but-unplaced decoration). Even a full room can
@@ -457,7 +467,7 @@ async function buildView(
         rows.push(new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
           new StringSelectMenuBuilder().setCustomId("hq-hub:removedeco").setPlaceholder("Remove a placed decoration…")
             .addOptions([...placements.entries()].sort((a, b) => a[0] - b[0]).map(([slot, id]) => ({
-              label: `Slot ${slot + 1}: ${(resolveDecoration(id)?.name ?? id).slice(0, 80)}`, value: String(slot), emoji: "🗑️",
+              label: `${slotLabel(slot)}: ${(resolveDecoration(id)?.name ?? id).slice(0, 72)}`, value: String(slot), emoji: "🗑️",
             }))),
         ));
       }
@@ -468,7 +478,8 @@ async function buildView(
       const rot = shopRotation();
       const currency = await getOrCreateCurrency(guildId, userId).catch(() => ({ shards: 0 }));
       embed.setTitle("🛒 HQ Shop").setDescription(
-        "Furniture for your HQ — the stock **rotates daily**, and anything you buy lands in **🎏 Decorations** to place.\n" +
+        "Furniture for your HQ — the stock **rotates daily**, and anything you buy lands in **🎏 Decorations** to place. " +
+        `Feeling lucky? Crack a **🎁 Mystery Crate** for a random piece (💠 ${CRATE_PRICE}).\n` +
         `💠 **${(currency.shards ?? 0).toLocaleString()}** shards · 🔄 refreshes in **${formatRefreshIn(rot.refreshesInMs)}**`,
       );
       const stock = rot.entries.map(e => {
@@ -491,6 +502,9 @@ async function buildView(
             }))),
         ));
       }
+      rows.push(new ActionRowBuilder<ButtonBuilder>().addComponents(
+        new ButtonBuilder().setCustomId("hq-hub:crate").setLabel(`Open Mystery Crate — ${CRATE_PRICE}`).setEmoji("🎁").setStyle(ButtonStyle.Success),
+      ));
       if (notice) embed.addFields({ name: "🧾 Receipt", value: notice.slice(0, 1024) });
       break;
     }
@@ -661,7 +675,23 @@ async function replyCardDetail(
   await interaction.editReply({ embeds, files: reveal ? [reveal.file] : [] }).catch(() => {});
 }
 
-// ── Slot picker sub-view (choose WHERE a decoration goes) ──────────────────────
+// A friendly label for an encoded placement slot (wall spot or floor grid ref).
+function slotLabel(slot: number): string {
+  if (slotIsWall(slot)) return `🧱 Wall ${slot - HQ_WALL_SLOT_BASE + 1}`;
+  const { gx, gy } = slotToTile(slot);
+  return `Floor C${gx + 1}·R${gy + 1}`;
+}
+
+// Curated floor tiles offered in the picker: a spread across the usable front of
+// the room (the back row hides behind the wall). Kept small so wall + floor +
+// auto all fit one 25-option select.
+const FLOOR_PICK_TILES: Array<{ gx: number; gy: number }> = (() => {
+  const out: Array<{ gx: number; gy: number }> = [];
+  for (let gy = 1; gy <= 4; gy++) for (let gx = 1; gx <= 4; gx++) out.push({ gx, gy });
+  return out;
+})();
+
+// ── Placement picker sub-view (choose WHICH tile / wall spot) ───────────────────
 async function buildSlotPicker(guildId: string, userId: string, decoId: string) {
   const deco = resolveDecoration(decoId);
   const hq = await getOrCreateHq(guildId, userId);
@@ -673,25 +703,27 @@ async function buildSlotPicker(guildId: string, userId: string, decoId: string) 
     .setColor(theme.palette.accent)
     .setTitle(`📍 Place ${deco?.emoji ?? "🎏"} ${deco?.name ?? "decoration"}`)
     .setDescription(
-      `Choose where to display it in the **${room.emoji} ${room.name}** (${room.decoSlots} slots). ` +
-      "Picking an occupied slot swaps what's there back into your earned pile.",
+      `Pick a **wall spot** or a **floor tile** in the **${room.emoji} ${room.name}**. ` +
+      "Choosing an occupied spot swaps what's there back into your earned pile. " +
+      `You can display up to **${room.decoSlots}** items here.`,
     );
 
-  const options = [{ label: "Auto — next free slot", value: "auto", description: "Drop it in the first empty spot", emoji: "✨" }];
-  for (let i = 0; i < room.decoSlots; i++) {
-    const occId = placements.get(i);
-    const occ = occId ? resolveDecoration(occId) : undefined;
-    options.push({
-      label: `Slot ${i + 1}${occ ? ` — ${occ.name}` : " — empty"}`.slice(0, 90),
-      value: String(i),
-      description: occ ? "Occupied — pick to swap" : "Empty",
-      emoji: occ?.emoji ?? "▫️",
-    });
+  const occ = (slot: number) => { const id = placements.get(slot); return id ? resolveDecoration(id) : undefined; };
+  const options: { label: string; value: string; description?: string; emoji?: string }[] = [
+    { label: "Auto — next free spot", value: "auto", description: "Drop it in the first opening", emoji: "✨" },
+  ];
+  for (let i = 0; i < HQ_WALL_ANCHOR_COUNT; i++) {
+    const slot = wallSlot(i), o = occ(slot);
+    options.push({ label: `🧱 Wall spot ${i + 1}${o ? ` — ${o.name}` : ""}`.slice(0, 90), value: String(slot), description: o ? "Occupied — swaps" : "Empty wall", emoji: o?.emoji ?? "▫️" });
+  }
+  for (const { gx, gy } of FLOOR_PICK_TILES) {
+    const slot = floorSlot(gx, gy), o = occ(slot);
+    options.push({ label: `Floor C${gx + 1}·R${gy + 1}${o ? ` — ${o.name}` : ""}`.slice(0, 90), value: String(slot), description: o ? "Occupied — swaps" : "Empty tile", emoji: o?.emoji ?? "▫️" });
   }
 
   const rows: ActionRowBuilder<any>[] = [
     new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
-      new StringSelectMenuBuilder().setCustomId(`hq-hub:placeat:${decoId}`).setPlaceholder("Choose a slot…")
+      new StringSelectMenuBuilder().setCustomId(`hq-hub:placeat:${decoId}`).setPlaceholder("Choose a spot…")
         .addOptions(options.slice(0, 25)),
     ),
     new ActionRowBuilder<ButtonBuilder>().addComponents(
@@ -701,10 +733,18 @@ async function buildSlotPicker(guildId: string, userId: string, decoId: string) 
   return { embeds: [embed], components: rows, files: [] as AttachmentBuilder[] };
 }
 
+// True when an encoded slot is a valid wall anchor or floor tile.
+function isValidSlot(slot: number): boolean {
+  if (slotIsWall(slot)) return slot - HQ_WALL_SLOT_BASE < HQ_WALL_ANCHOR_COUNT;
+  const { gx, gy } = slotToTile(slot);
+  return slot >= 0 && floorSlot(gx, gy) === slot; // in-grid, well-formed
+}
+
 // ── Actions ───────────────────────────────────────────────────────────────────
-// Place (or move) an earned decoration at a chosen slot. `slotValue` is a slot
-// index or "auto" (next free). Moving clears the decoration's previous slot;
-// targeting an occupied slot swaps its current occupant back out.
+// Place (or move) an earned decoration at a chosen wall/floor slot. `slotValue`
+// is an encoded slot or "auto" (next free curated tile). Moving clears the
+// decoration's previous spot; an occupied target swaps its occupant back out.
+// The room's decoSlots caps how many items can be displayed at once.
 async function placeDecorationAt(guildId: string, userId: string, decoId: string, slotValue: string): Promise<void> {
   const deco = resolveDecoration(decoId);
   if (!deco) return;
@@ -713,24 +753,27 @@ async function placeDecorationAt(guildId: string, userId: string, decoId: string
   const hq = await getOrCreateHq(guildId, userId);
   const room = resolveRoom(hq.activeRoomId);
   const placements = await getPlacements(guildId, userId, room.id);
+  const alreadyPlaced = [...placements.values()].includes(deco.id);
 
-  let target: number;
+  let target: number | null = null;
   if (slotValue === "auto") {
-    target = -1;
-    for (let i = 0; i < room.decoSlots; i++) { if (!placements.has(i)) { target = i; break; } }
-    if (target < 0) return; // room full and no explicit slot chosen
+    for (const { gx, gy } of FLOOR_PICK_TILES) { const s = floorSlot(gx, gy); if (!placements.has(s)) { target = s; break; } }
+    if (target === null) for (let i = 0; i < HQ_WALL_ANCHOR_COUNT; i++) { const s = wallSlot(i); if (!placements.has(s)) { target = s; break; } }
+    if (target === null) return; // nowhere free
   } else {
-    target = Number(slotValue);
-    if (!Number.isInteger(target) || target < 0 || target >= room.decoSlots) return;
+    const s = Number(slotValue);
+    if (!Number.isInteger(s) || !isValidSlot(s)) return;
+    target = s;
   }
 
-  // If this decoration is already displayed elsewhere, vacate its old slot first
-  // so it never ends up shown twice.
+  // Enforce the per-room display cap for genuinely new placements (a move or a
+  // swap into an occupied tile doesn't grow the count).
+  const targetOccupied = placements.has(target);
+  if (!alreadyPlaced && !targetOccupied && placements.size >= room.decoSlots) return;
+
+  // Moving: vacate this decoration's previous spot so it's never shown twice.
   for (const [slot, id] of placements) {
-    if (id === deco.id && slot !== target) {
-      await clearPlacement(guildId, userId, room.id, slot).catch(() => {});
-      break;
-    }
+    if (id === deco.id && slot !== target) { await clearPlacement(guildId, userId, room.id, slot).catch(() => {}); break; }
   }
   await placeDecoration(guildId, userId, room.id, target, deco.id).catch(() => {});
 }
@@ -751,6 +794,30 @@ async function buyShopItem(guildId: string, userId: string, decoId: string): Pro
     return `You already own ${entry.deco.emoji} ${entry.deco.name} — no charge.`;
   }
   return `✅ Bought ${entry.deco.emoji} **${entry.deco.name}** for 💠 ${entry.price}! Place it from **🎏 Decorations**.`;
+}
+
+// ── Mystery crate (shard sink → a random furniture piece) ──────────────────────
+const CRATE_PRICE = 500;
+// Anything obtainable as furniture (shop-priced or droppable) can come from a crate.
+const CRATE_POOL = HQ_DECORATIONS.filter(d => d.drop || (typeof d.price === "number" && d.price > 0));
+const CRATE_RARITY_WEIGHT: Record<Rarity, number> =
+  Object.fromEntries(BUILTIN_RARITIES.map((r, i) => [r, Math.max(1, BUILTIN_RARITIES.length - i)])) as Record<Rarity, number>;
+
+async function openMysteryCrate(guildId: string, userId: string): Promise<string> {
+  const owned = await getUnlockedItemIds(guildId, userId);
+  const pool = CRATE_POOL.filter(d => !owned.has(d.id));
+  if (pool.length === 0) return "🎁 You already own every crate item — nothing left to find!";
+  const paid = await spendShards(guildId, userId, CRATE_PRICE).catch(() => false);
+  if (!paid) return `❌ A Mystery Crate costs 💠 ${CRATE_PRICE}.`;
+
+  const total = pool.reduce((s, d) => s + (CRATE_RARITY_WEIGHT[d.rarity as Rarity] ?? 1), 0);
+  let roll = Math.random() * total;
+  let pick = pool[0]!;
+  for (const d of pool) { roll -= CRATE_RARITY_WEIGHT[d.rarity as Rarity] ?? 1; if (roll <= 0) { pick = d; break; } }
+
+  const granted = await grantUnlock(guildId, userId, pick.id, "decoration", "crate").catch(() => false);
+  if (!granted) { await addShards(guildId, userId, CRATE_PRICE).catch(() => {}); return "🎁 The crate was empty (already owned) — refunded."; }
+  return `🎁 The crate cracked open — ${pick.emoji} **${pick.name}** (${pick.rarity})! Place it from **🎏 Decorations**.`;
 }
 
 // ── UI fragments ──────────────────────────────────────────────────────────────

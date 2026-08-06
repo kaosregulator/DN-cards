@@ -103,21 +103,25 @@ export interface HqRenderView {
   decorations: HqRenderDeco[];        // placed decorations (with slot index)
 }
 
-// Fixed placement per slot index: a wall-mounted screen anchor or a floor tile.
-// The shape drawn is self-contained so any category works at any anchor; rooms
-// with more slots than anchors wrap harmlessly.
-type SlotPlace =
-  | { mount: "wall"; x: number; y: number; scale: number }
-  | { mount: "floor"; gx: number; gy: number; scale: number };
-
-const SLOT_PLACES: SlotPlace[] = [
-  { mount: "wall", x: 648, y: 150, scale: 1 },      // left wall
-  { mount: "wall", x: 352, y: 150, scale: 1 },      // right wall
-  { mount: "wall", x: 500, y: 96, scale: 0.9 },     // near the corner
-  { mount: "floor", gx: 4.5, gy: 3.2, scale: 1 },   // front-right floor
-  { mount: "floor", gx: 3.2, gy: 4.5, scale: 1 },   // front-left floor
-  { mount: "floor", gx: 4.3, gy: 4.3, scale: 0.95 },// front-centre floor
+// Placement encoding (stored in hq_placements.slot, so no schema change):
+//   • floor tile (gx,gy) → slot = gy*GRID + gx   (0 … GRID²-1)
+//   • wall anchor i       → slot = WALL_SLOT_BASE + i
+// The renderer decodes the slot back to a screen position; the hub builds the
+// same encoding when the player picks a tile/wall spot.
+export const HQ_GRID = GRID;
+export const HQ_WALL_SLOT_BASE = 100;
+const WALL_ANCHORS: { x: number; y: number; scale: number }[] = [
+  { x: 648, y: 150, scale: 1 },    // left wall
+  { x: 352, y: 150, scale: 1 },    // right wall
+  { x: 500, y: 96, scale: 0.9 },   // near the corner
 ];
+export const HQ_WALL_ANCHOR_COUNT = WALL_ANCHORS.length;
+export function floorSlot(gx: number, gy: number): number { return gy * GRID + gx; }
+export function wallSlot(i: number): number { return HQ_WALL_SLOT_BASE + i; }
+export function slotIsWall(slot: number): boolean { return slot >= HQ_WALL_SLOT_BASE; }
+export function slotToTile(slot: number): { gx: number; gy: number } {
+  return { gx: slot % GRID, gy: Math.floor(slot / GRID) % GRID };
+}
 
 export async function renderHq(view: HqRenderView): Promise<Buffer | null> {
   return queueRender("hq", async () => {
@@ -280,9 +284,9 @@ function layerLighting(ctx: Ctx, theme: HqTheme): void {
 // Wall-mounted decorations sit on the wall plane, drawn between walls and floor.
 async function layerWallDecorations(ctx: Ctx, mod: CanvasMod, view: HqRenderView): Promise<void> {
   for (const deco of view.decorations) {
-    const place = SLOT_PLACES[deco.slot % SLOT_PLACES.length]!;
-    if (place.mount !== "wall") continue;
-    await drawDecoAt(ctx, mod, place.x, place.y, place.scale, deco, false);
+    if (!slotIsWall(deco.slot)) continue;
+    const a = WALL_ANCHORS[(deco.slot - HQ_WALL_SLOT_BASE) % WALL_ANCHORS.length]!;
+    await drawDecoAt(ctx, mod, a.x, a.y, a.scale, deco, false);
   }
 }
 
@@ -303,12 +307,12 @@ async function layerFurniture(ctx: Ctx, mod: CanvasMod, view: HqRenderView): Pro
     items.push({ depth: p.y, draw: () => drawPedestal(ctx, mod, p.x, p.y, card, view.theme) });
   }
 
-  // Floor decorations.
+  // Floor decorations, positioned on their exact grid tile.
   for (const deco of view.decorations) {
-    const place = SLOT_PLACES[deco.slot % SLOT_PLACES.length]!;
-    if (place.mount !== "floor") continue;
-    const p = project(place.gx, place.gy);
-    items.push({ depth: p.y, draw: async () => { await drawDecoAt(ctx, mod, p.x, p.y, place.scale, deco, true); } });
+    if (slotIsWall(deco.slot)) continue;
+    const { gx, gy } = slotToTile(deco.slot);
+    const p = project(gx + 0.5, gy + 0.5); // tile centre
+    items.push({ depth: p.y, draw: async () => { await drawDecoAt(ctx, mod, p.x, p.y, 0.95, deco, true); } });
   }
 
   items.sort((a, b) => a.depth - b.depth);
