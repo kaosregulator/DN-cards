@@ -1,6 +1,6 @@
 {
   "_note": "HQ art pack. Keys are '<prefix>/<key>' or a bare '<key>' (see bot/hq/assets.ts spriteForPrefix). Decoration art uses 'deco/<decorationId>'; walls use '<wallPrefix>/wall'; floors use '<floorPrefix>/tile'; buildings use 'building/<role>'.",
-  "_credits": "furniture/, medals/, bases/ are CC0 by Kenney (www.kenney.nl). buildings/ (keep,wall,camp,hut) are from the Isometric Enemy Base pack, included with the project owner's stated permission — NOT CC0; do not treat as freely redistributable.",
+  "_credits": "furniture/, medals/, bases/, nature/ are CC0 by Kenney (www.kenney.nl) — nature/ from the Mini Forest preview renders. buildings/ are from the Isometric Enemy Base (Lite) pack, included with the project owner's stated permission — NOT CC0; do not treat as freely redistributable.",
   "sprites": {
     "deco/storage-barrel": "furniture/storage-barrel.png",
     "deco/stacked-barrels": "furniture/stacked-barrels.png",
@@ -25,6 +25,21 @@
     "building/keep": "buildings/keep.png",
     "building/wall": "buildings/wall.png",
     "building/camp": "buildings/camp.png",
-    "building/hut": "buildings/hut.png"
+    "building/hut": "buildings/hut.png",
+    "building/castle": "buildings/castle.png",
+    "building/cathedral": "buildings/cathedral.png",
+    "building/houses": "buildings/houses.png",
+    "building/village": "buildings/village.png",
+    "building/tower": "buildings/tower.png",
+
+    "nature/tree": "nature/tree.png",
+    "nature/tree-tall": "nature/tree-tall.png",
+    "nature/bush": "nature/bush.png",
+    "nature/rock": "nature/rock.png",
+    "nature/rock-low": "nature/rock-low.png",
+    "nature/stones": "nature/stones.png",
+    "nature/grass": "nature/grass.png",
+    "nature/dirt": "nature/dirt.png",
+    "nature/fence": "nature/fence.png"
   }
 }

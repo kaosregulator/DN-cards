@@ -381,7 +381,9 @@ async function renderBaseImage(view: HqBaseView): Promise<AttachmentBuilder | nu
 // Build the EXTERIOR town-base view: the four structures (art resolved by role,
 // procedural fallback in the renderer) plus the stationed defenders as standees.
 // This is the attackable/defendable town, distinct from the interior showcase.
-const BASE_BUILDING_ROLES: HqBuildingRole[] = ["keep", "camp", "hut", "wall"];
+const BASE_BUILDING_ROLES: HqBuildingRole[] = [
+  "castle", "keep", "tower", "cathedral", "houses", "village", "camp", "hut", "wall",
+];
 async function buildBaseRenderView(
   guildId: string, userId: string, ownerName: string, ownerAvatarUrl: string | null, hq: PlayerHq,
 ): Promise<HqBaseView> {

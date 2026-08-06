@@ -27,7 +27,7 @@ import {
 } from "../animations/effects.js";
 import { drawAtmosphere, atmospherePreset } from "../animations/atmosphere.js";
 import { queueRender } from "../animations/render-queue.js";
-import { loadSprite } from "./assets.js";
+import { loadSprite, spriteForPrefix } from "./assets.js";
 import type { HqTheme } from "./defs/themes.js";
 import type { HqWall } from "./defs/walls.js";
 import type { HqFloor } from "./defs/floors.js";
@@ -125,7 +125,8 @@ export interface HqRenderView extends HqHeaderInfo {
 // via spriteForPrefix("building", role) with a procedural fallback. Defenders
 // stand out front as standees (reusing drawDefender), and the whole scene is
 // depth-sorted by screen-y.
-export type HqBuildingRole = "keep" | "wall" | "camp" | "hut";
+export type HqBuildingRole =
+  | "castle" | "keep" | "tower" | "wall" | "cathedral" | "houses" | "village" | "camp" | "hut";
 
 export interface HqBaseBuilding {
   role: HqBuildingRole;
@@ -203,18 +204,42 @@ function projectBase(gx: number, gy: number): Pt {
     y: BASE_ORIGIN_Y + (gx + gy) * (BASE_TILE_H / 2),
   };
 }
-// Building anchor tiles (lattice coords, centred on 0). Keep back-centre, camp/
-// hut on the flanks, wall/gate at the front. Target heights scale each sprite.
+// City layout (lattice coords, centred on 0): a grand castle centrepiece with a
+// keep + tower flanking it at the back, a cathedral and houses mid-ground, the
+// gate wall at the front, and a walled village + hut on the outer flanks. Target
+// heights scale each sprite; screen-y depth-sorts them so nearer overlaps far.
 const BUILDING_LAYOUT: Record<HqBuildingRole, { gx: number; gy: number; targetH: number }> = {
-  keep: { gx: 0,    gy: -1.1, targetH: 300 },
-  camp: { gx: -1.7, gy: 0.1,  targetH: 150 },
-  hut:  { gx: 1.7,  gy: 0.1,  targetH: 158 },
-  wall: { gx: 0,    gy: 1.5,  targetH: 150 },
+  castle:    { gx: 0.1,  gy: -1.9, targetH: 300 },
+  keep:      { gx: -2.2, gy: -1.3, targetH: 210 },
+  tower:     { gx: 2.3,  gy: -1.4, targetH: 205 },
+  cathedral: { gx: -1.6, gy: 0.1,  targetH: 185 },
+  houses:    { gx: 1.7,  gy: 0.2,  targetH: 178 },
+  village:   { gx: -2.7, gy: 1.4,  targetH: 158 },
+  hut:       { gx: 2.7,  gy: 1.4,  targetH: 150 },
+  camp:      { gx: -0.8, gy: 1.0,  targetH: 116 },
+  wall:      { gx: 0.1,  gy: 1.85, targetH: 150 },
 };
-// Where stationed defenders stand — a front arc between the keep and the wall.
+// Where stationed defenders stand — a front arc inside the gate, centre outwards.
 const BASE_DEFENDER_TILES: { gx: number; gy: number }[] = [
-  { gx: 0, gy: 0.6 }, { gx: -1.15, gy: 0.9 }, { gx: 1.15, gy: 0.9 },
-  { gx: -0.6, gy: 0.1 }, { gx: 0.6, gy: 0.1 },
+  { gx: 0.1, gy: 1.45 }, { gx: -1.35, gy: 1.55 }, { gx: 1.5, gy: 1.55 },
+  { gx: -0.7, gy: 1.15 }, { gx: 0.9, gy: 1.15 },
+];
+// Scattered CC0 nature props (Kenney Mini Forest) that dress the grounds so it
+// reads as an outdoor town, not a bare slab. Placed around the perimeter/edges,
+// behind and beside the buildings; each resolves via spriteForPrefix("nature",…)
+// with a small procedural fallback.
+const SCENERY: { gx: number; gy: number; key: string; scale: number }[] = [
+  { gx: -3.3, gy: -2.3, key: "tree-tall", scale: 1.1 },
+  { gx: 3.4,  gy: -2.4, key: "tree",      scale: 1.1 },
+  { gx: -3.5, gy: -0.6, key: "tree",      scale: 1.0 },
+  { gx: 3.5,  gy: -0.7, key: "tree-tall", scale: 1.0 },
+  { gx: -3.2, gy: 1.0,  key: "bush",      scale: 0.9 },
+  { gx: 3.3,  gy: 1.0,  key: "bush",      scale: 0.9 },
+  { gx: -2.9, gy: 2.3,  key: "rock-low",  scale: 0.9 },
+  { gx: 2.9,  gy: 2.3,  key: "rock",      scale: 0.9 },
+  { gx: -1.6, gy: 2.5,  key: "stones",    scale: 0.8 },
+  { gx: 1.7,  gy: 2.5,  key: "grass",     scale: 0.9 },
+  { gx: 0.1,  gy: 2.6,  key: "dirt",      scale: 0.9 },
 ];
 
 export async function renderBase(view: HqBaseView): Promise<Buffer | null> {
@@ -231,10 +256,19 @@ export async function renderBase(view: HqBaseView): Promise<Buffer | null> {
       // Collect every placed object with its feet screen-y, then paint far→near.
       interface Item { depth: number; draw: () => Promise<void> | void }
       const items: Item[] = [];
+      // Nature dressing (drawn behind/around via the same depth sort).
+      for (const s of SCENERY) {
+        const p = projectBase(s.gx, s.gy);
+        const path = spriteForPrefix("nature", s.key);
+        items.push({ depth: p.y - 2, draw: () => drawScenery(ctx, mod, p.x, p.y, s.scale, s.key, path, view.theme) });
+      }
       for (const b of view.buildings) {
         const a = BUILDING_LAYOUT[b.role];
         const p = projectBase(a.gx, a.gy);
-        items.push({ depth: p.y, draw: () => drawBuilding(ctx, mod, p.x, p.y, a.targetH, b, view.theme) });
+        // Clamp height so a tall sprite never pokes into the header band (nearer
+        // buildings, with lower feet, get more room — which reads as perspective).
+        const targetH = Math.min(a.targetH, Math.max(96, p.y - (HEADER_H + 12)));
+        items.push({ depth: p.y, draw: () => drawBuilding(ctx, mod, p.x, p.y, targetH, b, view.theme) });
       }
       view.defenders.slice(0, BASE_DEFENDER_TILES.length).forEach((def, i) => {
         const t = BASE_DEFENDER_TILES[i]!;
@@ -277,7 +311,7 @@ function layerSky(ctx: Ctx, theme: HqTheme): void {
 // The town's ground: a big isometric slab with thickness (top diamond + two
 // side faces), grass/dirt toned, with a faint tile grid on top.
 function layerGroundSlab(ctx: Ctx, theme: HqTheme): void {
-  const n = 2.6; // half-extent in tiles
+  const n = 3.7; // half-extent in tiles (roomy enough for a whole town)
   const top = projectBase(0, -n), right = projectBase(n, 0), bottom = projectBase(0, n), left = projectBase(-n, 0);
   const thick = 26;
   // Side faces.
@@ -406,6 +440,50 @@ function drawBuildingProcedural(ctx: Ctx, cx: number, feetY: number, h: number, 
       ctx.fillStyle = "#2f6b8f"; ctx.fillRect(w * 0.18, -h * 0.38, w * 0.16, h * 0.14);
       break;
     }
+    // castle / keep / tower / cathedral / houses / village — a generic stone
+    // structure fallback (art is expected for these; this just never leaves a
+    // gap if a sprite is missing).
+    default: {
+      const w = h * 0.6;
+      ctx.fillStyle = stone; ctx.fillRect(-w / 2, -h * 0.72, w, h * 0.72);
+      ctx.fillStyle = stoneDark; ctx.fillRect(-w / 2, -h * 0.72, w, h * 0.1);
+      ctx.fillStyle = roof;
+      ctx.beginPath(); ctx.moveTo(-w * 0.58, -h * 0.72); ctx.lineTo(0, -h * 0.98); ctx.lineTo(w * 0.58, -h * 0.72); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = "#20242b"; ctx.fillRect(-w * 0.1, -h * 0.24, w * 0.2, h * 0.24);
+      for (const wy of [-0.58, -0.4]) { ctx.fillStyle = "#2f6b8f"; ctx.fillRect(-w * 0.28, h * wy, w * 0.14, h * 0.1); ctx.fillRect(w * 0.14, h * wy, w * 0.14, h * 0.1); }
+      break;
+    }
+  }
+  ctx.restore();
+}
+
+// A scattered nature prop (tree/bush/rock/grass) base-anchored on its tile, with
+// a soft contact shadow. Art via spriteForPrefix("nature",…); small procedural
+// fallback keeps the grounds dressed even with no art.
+async function drawScenery(
+  ctx: Ctx, mod: CanvasMod, x: number, y: number, scale: number, key: string, path: string | null, theme: HqTheme,
+): Promise<void> {
+  ctx.save(); ctx.fillStyle = "rgba(0,0,0,0.24)";
+  ctx.beginPath(); ellipse(ctx, x, y, 22 * scale, 8 * scale); ctx.fill(); ctx.restore();
+  if (path) {
+    const img = await loadSprite(mod, path).catch(() => null);
+    if (img) {
+      const iw = Math.max(1, (img as { width: number }).width);
+      const ih = Math.max(1, (img as { height: number }).height);
+      const h = 92 * scale, w = h * (iw / ih);
+      blit(ctx, img, x - w / 2, y - h, w, h);
+      return;
+    }
+  }
+  // Procedural: a leafy tree for tree keys, a small mound otherwise.
+  ctx.save();
+  if (key.startsWith("tree")) {
+    ctx.fillStyle = "#6b4a2a"; ctx.fillRect(x - 3 * scale, y - 26 * scale, 6 * scale, 26 * scale);
+    ctx.fillStyle = "#2f7d3a"; ctx.beginPath(); ellipse(ctx, x, y - 40 * scale, 22 * scale, 26 * scale); ctx.fill();
+  } else if (key === "bush" || key === "grass") {
+    ctx.fillStyle = "#2f7d3a"; ctx.beginPath(); ellipse(ctx, x, y - 8 * scale, 18 * scale, 10 * scale); ctx.fill();
+  } else {
+    ctx.fillStyle = hexToRgba(0x8b8f98, 0.9); ctx.beginPath(); ellipse(ctx, x, y - 6 * scale, 16 * scale, 10 * scale); ctx.fill();
   }
   ctx.restore();
 }
