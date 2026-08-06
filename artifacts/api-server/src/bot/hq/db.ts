@@ -194,6 +194,24 @@ export async function reclaimBase(guildId: string, userId: string): Promise<void
   await upsertBaseState(guildId, userId, { heldByUserId: null, heldByName: null });
 }
 
+// ── Admin maintenance (used by the HQ admin editor) ───────────────────────────
+// Wipe a player's earned-cosmetics ledger (they re-earn via reconcile on open).
+export async function clearUnlocks(guildId: string, userId: string): Promise<void> {
+  await db.delete(hqUnlocksTable).where(and(eq(hqUnlocksTable.guildId, guildId), eq(hqUnlocksTable.userId, userId)));
+}
+// Remove every stationed defender for a player.
+export async function clearAllDefenders(guildId: string, userId: string): Promise<void> {
+  await db.delete(hqDefendersTable).where(and(eq(hqDefendersTable.guildId, guildId), eq(hqDefendersTable.userId, userId)));
+}
+// Remove every placed decoration (all rooms + the base grounds) for a player.
+export async function clearAllPlacements(guildId: string, userId: string): Promise<void> {
+  await db.delete(hqPlacementsTable).where(and(eq(hqPlacementsTable.guildId, guildId), eq(hqPlacementsTable.userId, userId)));
+}
+// Fully clear a base's siege state (drop any capture and shield).
+export async function resetBaseState(guildId: string, userId: string): Promise<void> {
+  await upsertBaseState(guildId, userId, { heldByUserId: null, heldByName: null, shieldUntil: null, lastAttackedAt: null });
+}
+
 export async function logSiege(
   guildId: string, attackerId: string, defenderId: string,
   won: boolean, attackerPower: number, defenderPower: number, mode: string,

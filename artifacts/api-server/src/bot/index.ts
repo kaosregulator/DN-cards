@@ -286,6 +286,9 @@ export async function startBot() {
         } else if (interaction.customId.startsWith("hq-hub:")) {
           const { handleHqHubComponent } = await import("./commands/hq-hub.js");
           await handleHqHubComponent(interaction);
+        } else if (interaction.customId.startsWith("hqadmin:")) {
+          const { handleHqAdminComponent } = await import("./commands/hq-admin.js");
+          await handleHqAdminComponent(interaction);
         }
         return;
       }
@@ -355,6 +358,9 @@ export async function startBot() {
         } else if (interaction.customId.startsWith("hq-hub:modal:")) {
           const { handleHqHubModal } = await import("./commands/hq-hub.js");
           await handleHqHubModal(interaction);
+        } else if (interaction.customId.startsWith("hqadmin:")) {
+          const { handleHqAdminModal } = await import("./commands/hq-admin.js");
+          await handleHqAdminModal(interaction);
         } else if (interaction.customId === "recycle:search") {
           const { handleFusionSearchModal } = await import("./cards/fusion.js");
           await handleFusionSearchModal(interaction);
@@ -818,6 +824,9 @@ export async function startBot() {
       } else if (cmd === "hq") {
         const { handleHqCommand } = await import("./commands/hq-hub.js");
         await handleHqCommand(interaction);
+      } else if (cmd === "hqadmin") {
+        const { handleHqAdminCommand } = await import("./commands/hq-admin.js");
+        await handleHqAdminCommand(interaction);
       } else if (USER_HUB_COMMANDS.has(cmd)) {
         // Flattened player commands (/burn, /daily, …) + standalone player
         // commands that carry their own subcommands (/sets, /rep, …).
@@ -849,7 +858,7 @@ export async function startBot() {
     "battle", "battleadmin", "market", "squad", "raid", "raidadmin",
     "giveaway",
     "whisper", "adminsecret", "echo", "afk", "afksetup", "begin", "show_shiny",
-    "collection_hub", "hq",
+    "collection_hub", "hq", "hqadmin",
     "valuehelp", "valuelist", "info_mttv", "giveall", "editpack", "postcalculator",
     "massrole",
   ]);

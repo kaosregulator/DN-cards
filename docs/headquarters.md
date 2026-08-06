@@ -224,6 +224,25 @@ State is additive: `hq_base_state` (holder + shield) and `hq_base_attacks` (log
 + cooldown). *Clan co-op attacks are the next step and slot in behind the same
 `resolveSiege` interface.*
 
+## Admin editor (`/hqadmin`)
+
+Admin-gated (same check as `/admin` / `/edit-user`). `/hqadmin user:@member`
+opens a panel to fix or reset a member's HQ — all HQ-only data, never the base
+game: **Set HQ level**, **Unlock everything** / **Revoke all unlocks**,
+**Re-sync from progress** (runs the reconcile), **Reset base capture** (clears a
+stuck flag/shield), **Clear defenders**, and **Wipe layout** (placements +
+defenders). Accessors live in `bot/hq/db.ts`; the command is `bot/commands/hq-admin.ts`.
+
+## Addon boundaries (ties in without changing the base game)
+
+This whole feature is an **addon**: it only **adds** tables, **reads** existing
+systems (collection/battles/raids/achievements/rarity ladder) to derive
+progress, and **reuses** the battle/animation engines. Original files are touched
+only at small, additive integration seams — command registration + dispatch, one
+best-effort catch-drop hook, help text, and boot migrations. Content is all
+registries under `bot/hq/defs/*` and art is drop-in via the manifest, so it stays
+easy to extend or tweak.
+
 ## Future phases (same engine, no rewrite)
 
 Mystery crates · visitors & companions · free-form grid move/rotate · per-room

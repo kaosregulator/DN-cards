@@ -71,6 +71,9 @@ function buildLegacyCommands() {
     cmd("hq", "Your Headquarters — trophies, displays & customization", s => s
       .addUserOption(o => o.setName("user").setDescription("Visit another member's Headquarters"))),
 
+    cmd("hqadmin", "Admin: edit a member's Headquarters (unlocks, level, base)", s => s
+      .addUserOption(o => o.setName("user").setDescription("The member whose HQ to edit").setRequired(true))),
+
     cmd("collection_hub", "Browse your collection — filter by rarity, shinies, name & more", s => s
       .addStringOption(o => o.setName("name").setDescription("Jump straight to cards matching this name"))
       .addStringOption(o => o.setName("rarity").setDescription("Filter by rarity key (e.g. legendary, or a custom tier)"))
