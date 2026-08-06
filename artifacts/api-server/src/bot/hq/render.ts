@@ -18,7 +18,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import {
-  getCanvas, roundRectPath, hexToRgba,
+  getCanvas, roundRectPath, hexToRgba, encodeAnimation,
   type Ctx, type CanvasMod,
 } from "../animations/engine.js";
 import {
@@ -219,6 +219,50 @@ function baseRng(seed: number): () => number {
   return () => { a |= 0; a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
 }
 
+// A siege overlay painted ON the base scene (no separate VS screen): the castle
+// health drains, defeated defenders dim + get an ✕, the attacker champion
+// advances on the castle, and a result banner lands at the end.
+export interface SiegeOverlay {
+  healthFrac: number;         // castle HP remaining (0..1)
+  defeated: Set<number>;      // defender indices knocked out
+  attacker: HqRenderDefender | null; // attacker champion assaulting
+  advance: number;            // 0..1 how far the attacker has pushed in
+  banner: { text: string; color: number } | null;
+}
+
+// Deterministic castle-sprite pick per base among the real building art the pack
+// ships (falls back to procedural when none is bundled).
+const CASTLE_SPRITE_ROLES = ["castle", "keep", "tower"];
+function pickCastleSprite(view: HqBaseView): string | null {
+  const avail = CASTLE_SPRITE_ROLES.map(r => spriteForPrefix("building", r)).filter((p): p is string => !!p);
+  if (avail.length === 0) return null;
+  let seed = 0; for (const c of (view.displayTitle || "base")) seed = (seed * 31 + c.charCodeAt(0)) | 0;
+  return avail[Math.abs(seed) % avail.length]!;
+}
+
+// The whole base scene in one painter, reused for the static base view AND every
+// frame of a live siege (so the siege looks identical to the base, just in motion).
+async function paintBaseScene(ctx: Ctx, mod: CanvasMod, view: HqBaseView, siege?: SiegeOverlay): Promise<void> {
+  ctx.fillStyle = "#0f1117"; ctx.fillRect(0, 0, W, H); // void backdrop
+  drawIslandTier(ctx, BASE_CX, ISLAND_CY, ISLAND_HW, ISLAND_HH);
+  drawRiver(ctx);
+  const plateauCy = ISLAND_CY - 40;
+  drawIslandTier(ctx, BASE_CX, plateauCy, 168, 80, true);
+  drawScatter(ctx, view);
+  const castleFeetY = plateauCy + 6;
+  // Use a real castle sprite when the pack has one (deterministic pick per base),
+  // else the procedural castle. drawCastle returns the top for the banner.
+  const castleTop = await drawCastle(ctx, mod, BASE_CX, castleFeetY, pickCastleSprite(view));
+  drawBannerAndHealth(ctx, BASE_CX, castleTop, view, siege?.healthFrac);
+  await drawBaseDefenders(ctx, mod, view, siege?.defeated);
+  if (siege?.attacker) await drawAttacker(ctx, mod, siege.attacker, siege.advance);
+  const lg = ctx.createRadialGradient(BASE_CX, 120, 60, BASE_CX, 300, 640);
+  lg.addColorStop(0, "rgba(255,244,214,0.10)"); lg.addColorStop(1, "rgba(0,0,0,0)");
+  ctx.fillStyle = lg; ctx.fillRect(0, 0, W, H);
+  if (siege?.banner) drawResultBanner(ctx, siege.banner.text, siege.banner.color);
+  await layerHeader(ctx, mod, view);
+}
+
 export async function renderBase(view: HqBaseView): Promise<Buffer | null> {
   return queueRender("hq-base", async () => {
     const mod = await getCanvas();
@@ -226,31 +270,87 @@ export async function renderBase(view: HqBaseView): Promise<Buffer | null> {
     try {
       const canvas = mod.createCanvas(W, H);
       const ctx = canvas.getContext("2d") as unknown as Ctx;
-
-      ctx.fillStyle = "#0f1117"; ctx.fillRect(0, 0, W, H); // void backdrop
-
-      drawIslandTier(ctx, BASE_CX, ISLAND_CY, ISLAND_HW, ISLAND_HH);   // base grass tier
-      drawRiver(ctx);
-      // Raised plateau the castle sits on.
-      const plateauCy = ISLAND_CY - 40;
-      drawIslandTier(ctx, BASE_CX, plateauCy, 168, 80, true);
-      drawScatter(ctx, view);
-      const castleFeetY = plateauCy + 6;
-      drawCastle(ctx, BASE_CX, castleFeetY);
-      drawBannerAndHealth(ctx, BASE_CX, castleFeetY - CASTLE_H, view);
-      await drawBaseDefenders(ctx, mod, view);
-
-      // Gentle top light + soft edge vignette (kept light so it reads bright).
-      const lg = ctx.createRadialGradient(BASE_CX, 120, 60, BASE_CX, 300, 640);
-      lg.addColorStop(0, "rgba(255,244,214,0.10)"); lg.addColorStop(1, "rgba(0,0,0,0)");
-      ctx.fillStyle = lg; ctx.fillRect(0, 0, W, H);
-
-      await layerHeader(ctx, mod, view);
+      await paintBaseScene(ctx, mod, view);
       return await canvas.encode("png");
-    } catch {
-      return null;
-    }
+    } catch { return null; }
   });
+}
+
+// ── Siege on the base scene (static frame OR live GIF) ────────────────────────
+export interface SiegePlan {
+  duels: { slot: number; attackerWon: boolean }[]; // in order; slot = defender index
+  defenderCount: number;
+  captured: boolean;
+  attacker: HqRenderDefender | null;
+  attackerName: string;
+  defenderName: string;
+}
+
+// The overlay state at battle progress p (0=start, 1=resolved+banner).
+function siegeStateAt(plan: SiegePlan, p: number): SiegeOverlay {
+  const D = plan.duels.length;
+  const resolved = Math.min(D, Math.floor(p * (D + 0.999)));
+  const defeated = new Set<number>();
+  let fallen = 0;
+  for (let i = 0; i < resolved; i++) { const d = plan.duels[i]!; if (d.attackerWon) { defeated.add(d.slot); fallen++; } }
+  const remainingFrac = plan.defenderCount > 0 ? (plan.defenderCount - fallen) / plan.defenderCount : 0;
+  const done = resolved >= D;
+  const healthFrac = done && plan.captured ? 0 : remainingFrac;
+  const banner = done
+    ? (plan.captured
+      ? { text: `⚔️ ${plan.attackerName} CAPTURED THE BASE`, color: 0xc0392b }
+      : { text: `🛡️ ${plan.defenderName} HELD THE BASE`, color: 0x4fd06a })
+    : null;
+  return { healthFrac, defeated, attacker: plan.attacker, advance: Math.min(1, p * 1.15), banner };
+}
+
+export async function renderSiege(view: HqBaseView, plan: SiegePlan, live: boolean): Promise<Buffer | null> {
+  if (!live) {
+    return queueRender("hq-siege", async () => {
+      const mod = await getCanvas();
+      if (!mod) return null;
+      try {
+        const canvas = mod.createCanvas(W, H);
+        const ctx = canvas.getContext("2d") as unknown as Ctx;
+        await paintBaseScene(ctx, mod, view, siegeStateAt(plan, 1));
+        return await canvas.encode("png");
+      } catch { return null; }
+    });
+  }
+  const res = await encodeAnimation({
+    width: W, height: H, speed: "normal", durationMs: 2800, maxFrames: 20, quality: 26, renderScale: 0.6,
+    render: async ({ ctx, t, mod }) => { await paintBaseScene(ctx as unknown as Ctx, mod, view, siegeStateAt(plan, t)); },
+  });
+  return res?.buffer ?? null;
+}
+
+// The attacker champion assaulting the castle: a framed card that advances from
+// the front of the island up toward the gate as the battle progresses.
+async function drawAttacker(ctx: Ctx, mod: CanvasMod, def: HqRenderDefender, advance: number): Promise<void> {
+  const cw = 78, ch = 104;
+  const x = BASE_CX - cw / 2;
+  const y = lerp({ x: 0, y: ISLAND_CY + 150 }, { x: 0, y: ISLAND_CY + 34 }, advance).y - ch / 2;
+  ctx.save(); ctx.fillStyle = "rgba(0,0,0,0.34)"; ctx.beginPath(); ellipse(ctx, x + cw / 2, y + ch, cw * 0.5, 9); ctx.fill(); ctx.restore();
+  ctx.save(); ctx.shadowColor = hexToRgba(def.rarityColor, 0.7); ctx.shadowBlur = 14;
+  roundRectPath(ctx, x, y, cw, ch, 8); ctx.fillStyle = "#0d0f14"; ctx.fill(); ctx.restore();
+  ctx.save(); roundRectPath(ctx, x, y, cw, ch, 8); ctx.clip();
+  await drawCardArt(ctx, mod, x, y, cw, ch, def.artUrl);
+  ctx.restore();
+  ctx.save(); roundRectPath(ctx, x, y, cw, ch, 8); ctx.strokeStyle = hexToRgba(def.rarityColor, 0.95); ctx.lineWidth = 3; ctx.stroke(); ctx.restore();
+  ctx.save(); ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  drawTextWithShadow(ctx, "⚔️", x + cw / 2, y - 8, "#ffffff", 20);
+  ctx.restore();
+}
+
+function drawResultBanner(ctx: Ctx, text: string, color: number): void {
+  ctx.save();
+  const bw = W - 160, bh = 60, bx = 80, by = H / 2 - 30;
+  ctx.fillStyle = "rgba(0,0,0,0.72)"; roundRectPath(ctx, bx, by, bw, bh, 16); ctx.fill();
+  ctx.strokeStyle = hexToRgba(color, 0.95); ctx.lineWidth = 3; roundRectPath(ctx, bx, by, bw, bh, 16); ctx.stroke();
+  ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  ctx.shadowColor = hexToRgba(color, 0.8); ctx.shadowBlur = 16;
+  drawTitle(ctx, text, W / 2, by + bh / 2, "#ffffff", fitText(ctx, text, bw - 40, 30, 16, TITLE_FONT));
+  ctx.restore();
 }
 
 // One terraced slab: grass top (with tile shimmer + rim), and two cliff faces
@@ -364,9 +464,26 @@ function drawRock(ctx: Ctx, x: number, y: number, s: number): void {
 }
 
 // A clean light-stone castle: central keep + two crenellated towers, front-iso.
-function drawCastle(ctx: Ctx, cx: number, feetY: number): void {
+// Draw the castle and return the Y of its top (where the banner/health sit).
+// Uses a real castle SPRITE when one is bundled; otherwise a clean procedural
+// castle. Either way the feet sit on the plateau at `feetY`.
+async function drawCastle(ctx: Ctx, mod: CanvasMod, cx: number, feetY: number, spritePath: string | null): Promise<number> {
+  ctx.save(); ctx.fillStyle = "rgba(0,0,0,0.34)"; ctx.beginPath(); ellipse(ctx, cx, feetY, CASTLE_W * 0.62, 18); ctx.fill(); ctx.restore();
+  if (spritePath) {
+    const img = await loadSprite(mod, spritePath).catch(() => null);
+    if (img) {
+      const iw = Math.max(1, (img as { width: number }).width);
+      const ih = Math.max(1, (img as { height: number }).height);
+      const h = 250, w = h * (iw / ih);
+      blit(ctx, img, cx - w / 2, feetY - h, w, h);
+      return feetY - h + 24; // banner just above the towers
+    }
+  }
+  return drawCastleProcedural(ctx, cx, feetY);
+}
+
+function drawCastleProcedural(ctx: Ctx, cx: number, feetY: number): number {
   const stoneL = "#d8d2c0", stone = "#c3bca7", stoneD = "#9a927c", dark = "#2a2620";
-  ctx.save(); ctx.fillStyle = "rgba(0,0,0,0.3)"; ctx.beginPath(); ellipse(ctx, cx, feetY, CASTLE_W * 0.5, 16); ctx.fill(); ctx.restore();
 
   const crenel = (x: number, w: number, topY: number) => {
     ctx.fillStyle = stone;
@@ -401,21 +518,21 @@ function drawCastle(ctx: Ctx, cx: number, feetY: number): void {
   const ctw = CASTLE_W * 0.2, cth = CASTLE_H * 0.78;
   tower(cx - wallW / 2 - ctw * 0.3, ctw, cth);
   tower(cx + wallW / 2 - ctw * 0.7, ctw, cth);
+  return feetY - CASTLE_H - 8;
 }
 
 // Owner banner (colour + crest) hanging from a pole, with a defence health bar
 // floating above the castle — exactly the "banner + HP bar on top" from the mock.
-function drawBannerAndHealth(ctx: Ctx, cx: number, castleTopY: number, view: HqBaseView): void {
+function drawBannerAndHealth(ctx: Ctx, cx: number, castleTopY: number, view: HqBaseView, healthFrac?: number): void {
   const owner = view.captured ? 0xc0392b : 0x3f78c8; // red if captured, else blue (self)
   const barY = castleTopY - 54, barW = 96, barH = 9;
-  // Health = share of defence posts filled.
-  const filled = Math.min(1, (view.defenders?.length ?? 0) / Math.max(1, HQ_DEFENDER_SLOTS));
+  // Health = the siege's remaining castle HP when besieged, else share of posts filled.
+  const filled = healthFrac ?? Math.min(1, (view.defenders?.length ?? 0) / Math.max(1, HQ_DEFENDER_SLOTS));
   ctx.save();
   ctx.fillStyle = "rgba(0,0,0,0.6)"; roundRectPath(ctx, cx - barW / 2 - 2, barY - 2, barW + 4, barH + 4, 5); ctx.fill();
   ctx.fillStyle = "#203020"; roundRectPath(ctx, cx - barW / 2, barY, barW, barH, 4); ctx.fill();
-  const hp = ctx.createLinearGradient(cx - barW / 2, 0, cx + barW / 2, 0);
-  hp.addColorStop(0, "#4fd06a"); hp.addColorStop(1, "#37a94f");
-  ctx.fillStyle = hp; roundRectPath(ctx, cx - barW / 2, barY, Math.max(6, barW * filled), barH, 4); ctx.fill();
+  const hpCol = filled > 0.5 ? "#4fd06a" : filled > 0.25 ? "#e0b83a" : "#d0483a"; // green→amber→red
+  ctx.fillStyle = hpCol; roundRectPath(ctx, cx - barW / 2, barY, Math.max(2, barW * filled), barH, 4); ctx.fill();
   ctx.restore();
   // Banner pole + cloth.
   const poleTop = barY + 14, cloth = 44, bw = 34;
@@ -438,7 +555,7 @@ function drawBannerAndHealth(ctx: Ctx, cx: number, castleTopY: number, view: HqB
 
 // The stationed cards, shown as small framed portraits standing in front of the
 // castle — "the cards you left to defend." Each: card art + rarity border + name.
-async function drawBaseDefenders(ctx: Ctx, mod: CanvasMod, view: HqBaseView): Promise<void> {
+async function drawBaseDefenders(ctx: Ctx, mod: CanvasMod, view: HqBaseView, defeated?: Set<number>): Promise<void> {
   const defs = view.defenders ?? [];
   if (defs.length === 0) return;
   const n = Math.min(defs.length, 5);
@@ -449,9 +566,10 @@ async function drawBaseDefenders(ctx: Ctx, mod: CanvasMod, view: HqBaseView): Pr
   for (let i = 0; i < n; i++) {
     const def = defs[i]!;
     const x = startX + i * (cw + gap), y = rowY - ch;
+    const down = defeated?.has(i) ?? false;
     ctx.save(); ctx.fillStyle = "rgba(0,0,0,0.32)"; ctx.beginPath(); ellipse(ctx, x + cw / 2, rowY, cw * 0.5, 9); ctx.fill(); ctx.restore();
     ctx.save();
-    ctx.shadowColor = hexToRgba(def.rarityColor, 0.6); ctx.shadowBlur = 12;
+    ctx.shadowColor = hexToRgba(def.rarityColor, down ? 0.15 : 0.6); ctx.shadowBlur = 12;
     roundRectPath(ctx, x, y, cw, ch, 8); ctx.fillStyle = "#0d0f14"; ctx.fill();
     ctx.restore();
     ctx.save(); roundRectPath(ctx, x, y, cw, ch, 8); ctx.clip();
@@ -459,98 +577,19 @@ async function drawBaseDefenders(ctx: Ctx, mod: CanvasMod, view: HqBaseView): Pr
     const g = ctx.createLinearGradient(0, y + ch - 28, 0, y + ch);
     g.addColorStop(0, "rgba(0,0,0,0)"); g.addColorStop(1, "rgba(0,0,0,0.82)");
     ctx.fillStyle = g; ctx.fillRect(x, y + ch - 28, cw, 28);
+    if (down) { ctx.fillStyle = "rgba(0,0,0,0.6)"; ctx.fillRect(x, y, cw, ch); } // knocked out
     ctx.restore();
-    ctx.save(); roundRectPath(ctx, x, y, cw, ch, 8); ctx.strokeStyle = hexToRgba(def.rarityColor, 0.95); ctx.lineWidth = 3; ctx.stroke(); ctx.restore();
+    ctx.save(); roundRectPath(ctx, x, y, cw, ch, 8);
+    ctx.strokeStyle = hexToRgba(down ? 0x555a63 : def.rarityColor, 0.95); ctx.lineWidth = 3; ctx.stroke(); ctx.restore();
     ctx.save(); ctx.textAlign = "center"; ctx.textBaseline = "middle";
-    drawTitle(ctx, def.name, x + cw / 2, y + ch - 12, "#ffffff", fitText(ctx, def.name, cw - 8, 12, 9, TITLE_FONT));
+    drawTitle(ctx, def.name, x + cw / 2, y + ch - 12, down ? "#9aa0a8" : "#ffffff", fitText(ctx, def.name, cw - 8, 12, 9, TITLE_FONT));
+    if (down) { // red ✕ over the fallen defender
+      ctx.strokeStyle = "rgba(220,70,60,0.9)"; ctx.lineWidth = 5; ctx.beginPath();
+      ctx.moveTo(x + 14, y + 20); ctx.lineTo(x + cw - 14, y + ch - 34);
+      ctx.moveTo(x + cw - 14, y + 20); ctx.lineTo(x + 14, y + ch - 34); ctx.stroke();
+    }
     ctx.restore();
   }
-}
-
-// ── Siege result (STATIC mode) ──────────────────────────────────────────────
-// A single battle image: the two champions face off over the base, with a VS
-// clash, the duel tally and a VICTORY/HELD banner. (The LIVE mode reuses the
-// animated battle engine; CLASSIC mode is a text embed.)
-export interface HqSiegeChampion { name: string; artUrl: string | null; rarityColor: number }
-export interface HqSiegeView {
-  theme: HqTheme;
-  attackerName: string;
-  defenderName: string;
-  attackerWon: boolean;
-  attackerChamp: HqSiegeChampion | null;
-  defenderChamp: HqSiegeChampion | null;
-  attackerWins: number;
-  defenderWins: number;
-}
-
-export async function renderSiegeStatic(view: HqSiegeView): Promise<Buffer | null> {
-  return queueRender("hq-siege", async () => {
-    const mod = await getCanvas();
-    if (!mod) return null;
-    try {
-      const canvas = mod.createCanvas(W, H);
-      const ctx = canvas.getContext("2d") as unknown as Ctx;
-
-      // Arena backdrop.
-      const g = ctx.createLinearGradient(0, 0, 0, H);
-      g.addColorStop(0, view.theme.palette.wallTop); g.addColorStop(1, "#05070a");
-      ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
-      const clash = ctx.createRadialGradient(W / 2, H / 2, 40, W / 2, H / 2, 520);
-      clash.addColorStop(0, hexToRgba(view.attackerWon ? 0x4fd06a : 0xc0392b, 0.22));
-      clash.addColorStop(1, "rgba(0,0,0,0)");
-      ctx.fillStyle = clash; ctx.fillRect(0, 0, W, H);
-
-      const cardW = 240, cardH = 320, cy = 150;
-      await drawChampion(ctx, mod, 150, cy, cardW, cardH, view.attackerChamp, view.theme, view.attackerWon);
-      await drawChampion(ctx, mod, W - 150 - cardW, cy, cardW, cardH, view.defenderChamp, view.theme, !view.attackerWon);
-
-      // Central VS clash.
-      ctx.save();
-      ctx.textAlign = "center"; ctx.textBaseline = "middle";
-      ctx.shadowColor = hexToRgba(view.theme.palette.accent, 0.9); ctx.shadowBlur = 24;
-      drawTitle(ctx, "VS", W / 2, cy + cardH / 2 - 20, "#ffffff", 64);
-      ctx.restore();
-
-      // Result banner.
-      const won = view.attackerWon;
-      const label = won ? `⚔️ ${view.attackerName} CAPTURED THE BASE` : `🛡️ ${view.defenderName} HELD THE BASE`;
-      const col = won ? 0x4fd06a : 0xc0392b;
-      ctx.save();
-      const bw = W - 120, bh = 56, bx = 60, by = H - 96;
-      ctx.fillStyle = "rgba(0,0,0,0.6)"; roundRectPath(ctx, bx, by, bw, bh, 14); ctx.fill();
-      ctx.strokeStyle = hexToRgba(col, 0.95); ctx.lineWidth = 3; roundRectPath(ctx, bx, by, bw, bh, 14); ctx.stroke();
-      ctx.textAlign = "center"; ctx.textBaseline = "middle";
-      drawTitle(ctx, label, W / 2, by + 22, "#ffffff", fitText(ctx, label, bw - 40, 24, 14, TITLE_FONT));
-      drawTextWithShadow(ctx, `Duels won — ${view.attackerName}: ${view.attackerWins}   ·   ${view.defenderName}: ${view.defenderWins}`,
-        W / 2, by + 42, "rgba(230,230,235,0.9)", 14);
-      ctx.restore();
-
-      return await canvas.encode("png");
-    } catch {
-      return null;
-    }
-  });
-}
-
-async function drawChampion(
-  ctx: Ctx, mod: CanvasMod, x: number, y: number, w: number, h: number,
-  champ: HqSiegeChampion | null, theme: HqTheme, winner: boolean,
-): Promise<void> {
-  const col = champ?.rarityColor ?? 0x808895;
-  drawRarityGlow(ctx, x, y, w, h, col, winner ? 0.85 : 0.4);
-  await drawCardArt(ctx, mod, x, y, w, h, champ?.artUrl ?? null);
-  drawCardFrame(ctx, x, y, w, h, col, 6);
-  // Name plate.
-  ctx.save();
-  const g = ctx.createLinearGradient(0, y + h - 44, 0, y + h);
-  g.addColorStop(0, "rgba(0,0,0,0)"); g.addColorStop(1, "rgba(0,0,0,0.85)");
-  ctx.save(); roundRectPath(ctx, x, y, w, h, 10); ctx.clip();
-  ctx.fillStyle = g; ctx.fillRect(x, y + h - 44, w, 44); ctx.restore();
-  ctx.textAlign = "center"; ctx.textBaseline = "middle";
-  drawTitle(ctx, champ?.name ?? "—", x + w / 2, y + h - 22, "#ffffff", fitText(ctx, champ?.name ?? "—", w - 16, 20, 12, TITLE_FONT));
-  ctx.restore();
-  // Dim the loser.
-  if (!winner) { ctx.save(); roundRectPath(ctx, x, y, w, h, 10); ctx.fillStyle = "rgba(0,0,0,0.42)"; ctx.fill(); ctx.restore(); }
 }
 
 // ── Layers ──────────────────────────────────────────────────────────────────

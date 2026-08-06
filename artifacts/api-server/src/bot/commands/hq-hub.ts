@@ -41,7 +41,6 @@ import {
   type SiegeCombatant,
 } from "../hq/siege.js";
 import { rarityLadderRank } from "../rarity-runtime.js";
-import { renderBattleVictory } from "../animations/battle.js";
 import {
   reconcileUnlocks, ownedDecorations, unlockedRooms, unlockedThemes,
   isRoomUnlocked, isThemeUnlocked, unlockedWalls, unlockedFloors,
@@ -55,10 +54,10 @@ import { resolveDecoration, decorationsByRarityDesc, HQ_DECORATIONS } from "../h
 import { unlockLabel, type UnlockRule } from "../hq/defs/unlock-rules.js";
 import { spriteFor, spriteForPrefix } from "../hq/assets.js";
 import {
-  renderHq, renderBase, renderSiegeStatic, floorSlot, wallSlot, slotIsWall, slotToTile,
+  renderHq, renderBase, renderSiege, floorSlot, wallSlot, slotIsWall, slotToTile,
   HQ_WALL_SLOT_BASE, HQ_WALL_ANCHOR_COUNT, HQ_DEFENDER_SLOTS,
   type HqRenderView, type HqRenderCard, type HqRenderDeco, type HqRenderDefender,
-  type HqBaseView, type HqBaseBuilding, type HqBuildingRole, type HqSiegeView,
+  type HqBaseView, type HqBaseBuilding, type HqBuildingRole, type SiegePlan,
 } from "../hq/render.js";
 import type { PlayerHq } from "@workspace/db";
 
@@ -817,36 +816,27 @@ async function runSiege(interaction: ButtonInteraction, guildId: string, attacke
     const log = result.duels.slice(0, 6).map((d, i) =>
       `**${i + 1}.** ${d.attacker.name} ${d.attackerWon ? "🟢 beat" : "🔴 lost to"} ${d.defender.name}`).join("\n");
     if (log) embed.addFields({ name: "Duels", value: log.slice(0, 1024) });
-  } else if (mode === "static") {
-    const view: HqSiegeView = {
-      theme: resolveTheme(defHq.themeId), attackerName, defenderName,
-      attackerWon: result.attackerWon,
-      attackerChamp: champ(result.attackerWon ? result.championWinner : result.championLoser),
-      defenderChamp: champ(result.attackerWon ? result.championLoser : result.championWinner),
-      attackerWins: result.attackerWins, defenderWins: result.defenderWins,
-    };
-    const buf = await renderSiegeStatic(view).catch(() => null);
-    if (buf) { files.push(new AttachmentBuilder(buf, { name: SIEGE_FILE })); embed.setImage(`attachment://${SIEGE_FILE}`); }
   } else {
-    // LIVE: reuse the animated battle victory engine for the champion clash.
-    const w = result.championWinner, l = result.championLoser;
-    if (w && l) {
-      const anim = await renderBattleVictory({
-        winner: renderCardOf(w), loser: renderCardOf(l), background: null,
-      }, "normal").catch(() => null);
-      if (anim?.buffer) { files.push(new AttachmentBuilder(anim.buffer, { name: SIEGE_GIF })); embed.setImage(`attachment://${SIEGE_GIF}`); }
+    // STATIC + LIVE both render ON the defender's base scene (castle + cards +
+    // health) — the siege looks exactly like the base, just resolving.
+    const baseView = await buildBaseRenderView(guildId, defenderId, defenderName, null, defHq);
+    const champ = squad[0]; // attacker's strongest, assaulting the castle
+    const plan: SiegePlan = {
+      duels: result.duels.map((d, i) => ({ slot: i, attackerWon: d.attackerWon })),
+      defenderCount: defenders.length,
+      captured: result.attackerWon,
+      attacker: champ ? { slot: 0, cardId: champ.cardId, name: champ.name, artUrl: champ.artUrl, rarityColor: champ.rarityColor, basePath: null } : null,
+      attackerName, defenderName,
+    };
+    const buf = await renderSiege(baseView, plan, mode === "live").catch(() => null);
+    if (buf) {
+      const name = mode === "live" ? SIEGE_GIF : SIEGE_FILE;
+      files.push(new AttachmentBuilder(buf, { name }));
+      embed.setImage(`attachment://${name}`);
     }
   }
 
   await interaction.editReply({ embeds: [embed], components: [backRow("defenders")], files }).catch(() => {});
-}
-
-function champ(c: SiegeCombatant | null): HqSiegeView["attackerChamp"] {
-  return c ? { name: c.name, artUrl: c.artUrl, rarityColor: c.rarityColor } : null;
-}
-// SiegeCombatant → the battle engine's RenderCard (for the live animation).
-function renderCardOf(c: SiegeCombatant) {
-  return { name: c.name, rarityLabel: c.rarityLabel, rarity: c.rarity as Rarity, rarityColor: c.rarityColor, artUrl: c.artUrl, cardId: c.cardId };
 }
 
 // ── Visit (read-only) — scout a base, then attack it ──────────────────────────
