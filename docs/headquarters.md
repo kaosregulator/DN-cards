@@ -206,13 +206,19 @@ defenders hold. Combat power is **derived from the guild strength ladder**
 balance surface (`bot/hq/siege.ts`). A per-target attacker **cooldown** limits
 repeat hits; captures lazily revert to the owner when the shield expires.
 
-Three ways to watch a siege:
+Every siege renders **on the castle base scene** (castle + defender cards +
+castle health) — never a separate VS screen. Three ways to watch:
 
-- **Classic** — an instant text report of the duels.
-- **Static** — a single battle image (`renderSiegeStatic`): the two champions,
-  a VS clash and the result banner.
-- **Live** — an animated GIF that **reuses the battle animation engine**
-  (`renderBattleVictory`) for the champion clash.
+- **Classic** — animated on the castle with **move-by-move captions**
+  ("X used <Move>!") and hit flashes as defenders fall.
+- **Static** — a single final frame on the base scene.
+- **Live** — the clean animated siege (health drains, defenders ✕, attacker
+  storms the gate) via the shared `encodeAnimation` engine.
+
+**World Map** (`/hq → 🗺️ World Map`) shows the guild's other bases as castles on
+an isometric map (banner + health + name; 🚩 = held), and lets you pick one to
+raid. **Captures persist until reclaimed** — the owner gets a Reclaim button once
+the conqueror's shield lapses.
 
 State is additive: `hq_base_state` (holder + shield) and `hq_base_attacks` (log
 + cooldown). *Clan co-op attacks are the next step and slot in behind the same

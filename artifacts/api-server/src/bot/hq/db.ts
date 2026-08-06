@@ -11,7 +11,7 @@ import {
   hqBaseStateTable, hqBaseAttacksTable,
   type PlayerHq, type HqItemType, type HqBaseState,
 } from "@workspace/db";
-import { and, eq, gte, sql } from "drizzle-orm";
+import { and, eq, gte, sql, desc } from "drizzle-orm";
 
 // ── player_hq ─────────────────────────────────────────────────────────────────
 export async function getOrCreateHq(guildId: string, userId: string): Promise<PlayerHq> {
@@ -131,6 +131,18 @@ export async function setDefender(guildId: string, userId: string, slot: number,
       target: [hqDefendersTable.guildId, hqDefendersTable.userId, hqDefendersTable.slot],
       set: { cardId, createdAt: new Date() },
     });
+}
+
+// Guild bases with at least one defender (the raid targets for the world map),
+// most-defended first. Excludes the viewer.
+export async function getGuildBases(guildId: string, excludeUserId: string, limit = 8): Promise<{ userId: string; defenders: number }[]> {
+  const rows = await db.select({ userId: hqDefendersTable.userId, n: sql<number>`count(*)::int` })
+    .from(hqDefendersTable)
+    .where(eq(hqDefendersTable.guildId, guildId))
+    .groupBy(hqDefendersTable.userId)
+    .orderBy(desc(sql`count(*)`))
+    .limit(limit + 4);
+  return rows.filter(r => r.userId !== excludeUserId).slice(0, limit).map(r => ({ userId: r.userId, defenders: r.n }));
 }
 
 export async function clearDefender(guildId: string, userId: string, slot: number): Promise<void> {

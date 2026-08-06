@@ -229,6 +229,8 @@ export interface SiegeOverlay {
   attacker: HqRenderDefender | null; // attacker champion assaulting
   advance: number;            // 0..1 how far the attacker has pushed in
   banner: { text: string; color: number } | null;
+  caption?: { text: string; color: number } | null; // "X used <Move>!" (classic)
+  flashSlot?: number | null;  // defender post taking the current hit (classic)
 }
 
 // Deterministic castle-sprite pick per base among the real building art the pack
@@ -278,11 +280,12 @@ async function paintBaseScene(ctx: Ctx, mod: CanvasMod, view: HqBaseView, siege?
   // else the procedural castle. drawCastle returns the top for the banner.
   const castleTop = await drawCastle(ctx, mod, BASE_CX, castleFeetY, pickCastleSprite(view));
   drawBannerAndHealth(ctx, BASE_CX, castleTop, view, siege?.healthFrac);
-  await drawBaseDefenders(ctx, mod, view, siege?.defeated);
+  await drawBaseDefenders(ctx, mod, view, siege?.defeated, siege?.flashSlot ?? null);
   if (siege?.attacker) await drawAttacker(ctx, mod, siege.attacker, siege.advance);
   const lg = ctx.createRadialGradient(BASE_CX, 120, 60, BASE_CX, 300, 640);
   lg.addColorStop(0, "rgba(255,244,214,0.10)"); lg.addColorStop(1, "rgba(0,0,0,0)");
   ctx.fillStyle = lg; ctx.fillRect(0, 0, W, H);
+  if (siege?.caption) drawMoveCaption(ctx, siege.caption.text, siege.caption.color);
   if (siege?.banner) drawResultBanner(ctx, siege.banner.text, siege.banner.color);
   await layerHeader(ctx, mod, view);
 }
@@ -302,7 +305,7 @@ export async function renderBase(view: HqBaseView): Promise<Buffer | null> {
 
 // ── Siege on the base scene (static frame OR live GIF) ────────────────────────
 export interface SiegePlan {
-  duels: { slot: number; attackerWon: boolean }[]; // in order; slot = defender index
+  duels: { slot: number; attackerWon: boolean; move: string }[]; // in order; slot = defender index
   defenderCount: number;
   captured: boolean;
   attacker: HqRenderDefender | null;
@@ -310,10 +313,13 @@ export interface SiegePlan {
   defenderName: string;
 }
 
-// The overlay state at battle progress p (0=start, 1=resolved+banner).
-function siegeStateAt(plan: SiegePlan, p: number): SiegeOverlay {
+// The overlay state at battle progress p (0=start, 1=resolved+banner). When
+// `showMoves` is on (CLASSIC mode) the current duel surfaces a move caption and
+// flashes the defender being hit — the move-by-move battle, on the castle.
+function siegeStateAt(plan: SiegePlan, p: number, showMoves: boolean): SiegeOverlay {
   const D = plan.duels.length;
-  const resolved = Math.min(D, Math.floor(p * (D + 0.999)));
+  const step = p * (D + 0.999);
+  const resolved = Math.min(D, Math.floor(step)); // fully-resolved duels
   const defeated = new Set<number>();
   let fallen = 0;
   for (let i = 0; i < resolved; i++) { const d = plan.duels[i]!; if (d.attackerWon) { defeated.add(d.slot); fallen++; } }
@@ -325,10 +331,15 @@ function siegeStateAt(plan: SiegePlan, p: number): SiegeOverlay {
       ? { text: `⚔️ ${plan.attackerName} CAPTURED THE BASE`, color: 0xc0392b }
       : { text: `🛡️ ${plan.defenderName} HELD THE BASE`, color: 0x4fd06a })
     : null;
-  return { healthFrac, defeated, attacker: plan.attacker, advance: Math.min(1, p * 1.15), banner };
+  const current = !done ? plan.duels[resolved] : undefined; // the duel being fought now
+  const caption = showMoves && current
+    ? { text: `${plan.attacker?.name ?? plan.attackerName} used ${current.move}!`, color: current.attackerWon ? 0x4fd06a : 0xd0483a }
+    : null;
+  const flashSlot = showMoves && current ? current.slot : null;
+  return { healthFrac, defeated, attacker: plan.attacker, advance: Math.min(1, p * 1.15), banner, caption, flashSlot };
 }
 
-export async function renderSiege(view: HqBaseView, plan: SiegePlan, live: boolean): Promise<Buffer | null> {
+export async function renderSiege(view: HqBaseView, plan: SiegePlan, live: boolean, showMoves = false): Promise<Buffer | null> {
   if (!live) {
     return queueRender("hq-siege", async () => {
       const mod = await getCanvas();
@@ -336,14 +347,16 @@ export async function renderSiege(view: HqBaseView, plan: SiegePlan, live: boole
       try {
         const canvas = mod.createCanvas(W, H);
         const ctx = canvas.getContext("2d") as unknown as Ctx;
-        await paintBaseScene(ctx, mod, view, siegeStateAt(plan, 1));
+        await paintBaseScene(ctx, mod, view, siegeStateAt(plan, 1, false));
         return await canvas.encode("png");
       } catch { return null; }
     });
   }
+  // Classic (moves) runs a touch slower + more frames so captions are readable.
   const res = await encodeAnimation({
-    width: W, height: H, speed: "normal", durationMs: 2800, maxFrames: 20, quality: 26, renderScale: 0.6,
-    render: async ({ ctx, t, mod }) => { await paintBaseScene(ctx as unknown as Ctx, mod, view, siegeStateAt(plan, t)); },
+    width: W, height: H, speed: "normal", durationMs: showMoves ? 3600 : 2800,
+    maxFrames: showMoves ? 26 : 20, quality: 26, renderScale: 0.6,
+    render: async ({ ctx, t, mod }) => { await paintBaseScene(ctx as unknown as Ctx, mod, view, siegeStateAt(plan, t, showMoves)); },
   });
   return res?.buffer ?? null;
 }
@@ -579,7 +592,7 @@ function drawBannerAndHealth(ctx: Ctx, cx: number, castleTopY: number, view: HqB
 
 // The stationed cards, shown as small framed portraits standing in front of the
 // castle — "the cards you left to defend." Each: card art + rarity border + name.
-async function drawBaseDefenders(ctx: Ctx, mod: CanvasMod, view: HqBaseView, defeated?: Set<number>): Promise<void> {
+async function drawBaseDefenders(ctx: Ctx, mod: CanvasMod, view: HqBaseView, defeated?: Set<number>, flashSlot?: number | null): Promise<void> {
   const defs = view.defenders ?? [];
   if (defs.length === 0) return;
   const n = Math.min(defs.length, 5);
@@ -589,7 +602,9 @@ async function drawBaseDefenders(ctx: Ctx, mod: CanvasMod, view: HqBaseView, def
   const rowY = ISLAND_CY + 96;
   for (let i = 0; i < n; i++) {
     const def = defs[i]!;
-    const x = startX + i * (cw + gap), y = rowY - ch;
+    const hit = flashSlot === i;
+    const jitter = hit ? (Math.random() * 6 - 3) : 0;
+    const x = startX + i * (cw + gap) + jitter, y = rowY - ch;
     const down = defeated?.has(i) ?? false;
     ctx.save(); ctx.fillStyle = "rgba(0,0,0,0.32)"; ctx.beginPath(); ellipse(ctx, x + cw / 2, rowY, cw * 0.5, 9); ctx.fill(); ctx.restore();
     ctx.save();
@@ -613,7 +628,107 @@ async function drawBaseDefenders(ctx: Ctx, mod: CanvasMod, view: HqBaseView, def
       ctx.moveTo(x + cw - 14, y + 20); ctx.lineTo(x + 14, y + ch - 34); ctx.stroke();
     }
     ctx.restore();
+    if (hit && !down) { // impact flash on the defender taking the current blow
+      ctx.save(); roundRectPath(ctx, x, y, cw, ch, 8);
+      ctx.fillStyle = "rgba(255,240,180,0.5)"; ctx.fill();
+      ctx.strokeStyle = "rgba(255,255,255,0.95)"; ctx.lineWidth = 4; ctx.stroke();
+      ctx.restore();
+      ctx.save(); ctx.textAlign = "center"; ctx.textBaseline = "middle";
+      drawTextWithShadow(ctx, "💥", x + cw / 2, y + ch / 2, "#ffffff", 34);
+      ctx.restore();
+    }
   }
+}
+
+// A move caption banner (classic mode) — "X used <Move>!" high on the scene.
+function drawMoveCaption(ctx: Ctx, text: string, color: number): void {
+  ctx.save();
+  ctx.font = `bold 22px "${TITLE_FONT}", "DejaVu Sans", Arial, sans-serif`;
+  const w = Math.min(W - 80, ctx.measureText(text).width + 48), h = 40, x = (W - w) / 2, y = 86;
+  ctx.fillStyle = "rgba(0,0,0,0.72)"; roundRectPath(ctx, x, y, w, h, 12); ctx.fill();
+  ctx.strokeStyle = hexToRgba(color, 0.95); ctx.lineWidth = 2; roundRectPath(ctx, x, y, w, h, 12); ctx.stroke();
+  ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  drawTitle(ctx, text, W / 2, y + h / 2, "#ffffff", 20);
+  ctx.restore();
+}
+
+// ── World map (top-level: bases to raid) ─────────────────────────────────────
+export interface WorldBaseMarker {
+  name: string;
+  defenders: number;
+  maxDefenders: number;
+  held: boolean;      // currently under someone else's flag
+  color: number;      // banner colour (per base)
+}
+export interface HqWorldView extends HqHeaderInfo { markers: WorldBaseMarker[] }
+
+// Anchor slots for up to 8 castles, spread across the map like the reference.
+const WORLD_ANCHORS: { x: number; y: number }[] = [
+  { x: 300, y: 210 }, { x: 520, y: 180 }, { x: 720, y: 210 },
+  { x: 210, y: 320 }, { x: 520, y: 300 }, { x: 800, y: 320 },
+  { x: 360, y: 420 }, { x: 660, y: 420 },
+];
+
+export async function renderWorldMap(view: HqWorldView): Promise<Buffer | null> {
+  return queueRender("hq-world", async () => {
+    const mod = await getCanvas();
+    if (!mod) return null;
+    try {
+      const canvas = mod.createCanvas(W, H);
+      const ctx = canvas.getContext("2d") as unknown as Ctx;
+      ctx.fillStyle = "#0f1117"; ctx.fillRect(0, 0, W, H);
+      // A big terraced landmass.
+      drawIslandTier(ctx, W / 2, 330, 470, 240);
+      const castleImg = await (async () => {
+        const p = spriteForPrefix("building", "castle") ?? spriteForPrefix("building", "keep");
+        return p ? await loadSprite(mod, p).catch(() => null) : null;
+      })();
+      const markers = view.markers.slice(0, WORLD_ANCHORS.length)
+        .map((m, i) => ({ m, a: WORLD_ANCHORS[i]! }))
+        .sort((p, q) => p.a.y - q.a.y);
+      for (const { m, a } of markers) drawMiniCastle(ctx, mod, a.x, a.y, m, castleImg);
+      const lg = ctx.createRadialGradient(W / 2, 120, 60, W / 2, 300, 700);
+      lg.addColorStop(0, "rgba(255,244,214,0.08)"); lg.addColorStop(1, "rgba(0,0,0,0)");
+      ctx.fillStyle = lg; ctx.fillRect(0, 0, W, H);
+      await layerHeader(ctx, mod, view);
+      return await canvas.encode("png");
+    } catch { return null; }
+  });
+}
+
+function drawMiniCastle(ctx: Ctx, _mod: CanvasMod, cx: number, feetY: number, m: WorldBaseMarker, img: unknown): void {
+  ctx.save(); ctx.fillStyle = "rgba(0,0,0,0.34)"; ctx.beginPath(); ellipse(ctx, cx, feetY, 44, 13); ctx.fill(); ctx.restore();
+  if (img) {
+    const iw = Math.max(1, (img as { width: number }).width), ih = Math.max(1, (img as { height: number }).height);
+    const h = 108, w = h * (iw / ih);
+    blit(ctx, img, cx - w / 2, feetY - h, w, h);
+  } else {
+    ctx.fillStyle = "#c3bca7"; ctx.fillRect(cx - 26, feetY - 60, 52, 60);
+    ctx.fillStyle = "#9a927c"; for (let i = 0; i < 4; i++) ctx.fillRect(cx - 26 + i * 15, feetY - 68, 8, 8);
+  }
+  // Banner + health bar above (owner colour / red if held).
+  const topY = feetY - 128;
+  const owner = m.held ? 0xc0392b : m.color;
+  const barW = 74, barH = 8, barY = topY - 4;
+  ctx.fillStyle = "rgba(0,0,0,0.6)"; roundRectPath(ctx, cx - barW / 2 - 2, barY - 2, barW + 4, barH + 4, 5); ctx.fill();
+  ctx.fillStyle = "#203020"; roundRectPath(ctx, cx - barW / 2, barY, barW, barH, 4); ctx.fill();
+  const frac = m.maxDefenders > 0 ? m.defenders / m.maxDefenders : 0;
+  ctx.fillStyle = frac > 0.5 ? "#4fd06a" : frac > 0.25 ? "#e0b83a" : "#d0483a";
+  roundRectPath(ctx, cx - barW / 2, barY, Math.max(2, barW * frac), barH, 4); ctx.fill();
+  // Small pennant.
+  ctx.strokeStyle = "#c9c1a8"; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(cx, barY + 12); ctx.lineTo(cx, topY + 34); ctx.stroke();
+  ctx.fillStyle = hexToRgba(owner, 1);
+  ctx.beginPath(); ctx.moveTo(cx - 12, barY + 12); ctx.lineTo(cx + 12, barY + 12); ctx.lineTo(cx + 12, barY + 30); ctx.lineTo(cx, barY + 24); ctx.lineTo(cx - 12, barY + 30); ctx.closePath(); ctx.fill();
+  // Name plate.
+  ctx.save();
+  ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  const label = m.held ? `${m.name} (held)` : m.name;
+  ctx.font = `bold 13px "${TITLE_FONT}", "DejaVu Sans", Arial, sans-serif`;
+  const lw = Math.min(180, ctx.measureText(label).width + 16);
+  ctx.fillStyle = "rgba(0,0,0,0.66)"; roundRectPath(ctx, cx - lw / 2, feetY + 4, lw, 20, 8); ctx.fill();
+  drawTextWithShadow(ctx, label, cx, feetY + 14, m.held ? "#ff9a8a" : "#ffffff", 13);
+  ctx.restore();
 }
 
 // ── Layers ──────────────────────────────────────────────────────────────────

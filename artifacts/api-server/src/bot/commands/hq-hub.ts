@@ -32,7 +32,7 @@ import {
   getOrCreateHq, updateHq, getDisplays, pinDisplay, clearDisplay,
   getPlacements, placeDecoration, clearPlacement, pruneUnownedPlacements,
   getUnlockedItemIds, grantUnlock,
-  getDefenders, setDefender, clearDefender,
+  getDefenders, setDefender, clearDefender, getGuildBases,
   getBaseState, applySiegeToBase, logSiege, recentAttackCount, reclaimBase,
 } from "../hq/db.js";
 import { shopRotation, shopEntryFor, formatRefreshIn } from "../hq/shop.js";
@@ -41,7 +41,6 @@ import {
   type SiegeCombatant,
 } from "../hq/siege.js";
 import { rarityLadderRank } from "../rarity-runtime.js";
-import { renderBattleTurn } from "../animations/battle.js";
 import {
   reconcileUnlocks, ownedDecorations, unlockedRooms, unlockedThemes,
   isRoomUnlocked, isThemeUnlocked, unlockedWalls, unlockedFloors,
@@ -55,10 +54,11 @@ import { resolveDecoration, decorationsByRarityDesc, HQ_DECORATIONS } from "../h
 import { unlockLabel, type UnlockRule } from "../hq/defs/unlock-rules.js";
 import { spriteFor, spriteForPrefix } from "../hq/assets.js";
 import {
-  renderHq, renderBase, renderSiege, floorSlot, wallSlot, slotIsWall, slotToTile,
+  renderHq, renderBase, renderSiege, renderWorldMap, floorSlot, wallSlot, slotIsWall, slotToTile,
   HQ_WALL_SLOT_BASE, HQ_WALL_ANCHOR_COUNT, HQ_DEFENDER_SLOTS, HQ_BASE_DECO_SLOTS,
   type HqRenderView, type HqRenderCard, type HqRenderDeco, type HqRenderDefender,
   type HqBaseView, type HqBaseBuilding, type HqBuildingRole, type SiegePlan,
+  type HqWorldView, type WorldBaseMarker,
 } from "../hq/render.js";
 import type { PlayerHq } from "@workspace/db";
 
@@ -84,12 +84,13 @@ function hqDisplayTitle(hq: PlayerHq, ownerName: string): string {
   return t && t.length > 0 ? t : `${ownerName}'s HQ`;
 }
 
-type Section = "overview" | "trophy" | "defenders" | "decorations" | "shop" | "rooms" | "theme";
+type Section = "overview" | "trophy" | "defenders" | "world" | "decorations" | "shop" | "rooms" | "theme";
 interface SectionMeta { id: Section; label: string; emoji: string; description: string }
 const SECTIONS: SectionMeta[] = [
   { id: "overview",    label: "Overview",    emoji: "🏠", description: "Your HQ at a glance" },
   { id: "trophy",      label: "Trophy Hall",  emoji: "🏆", description: "Pin your proudest cards on pedestals" },
   { id: "defenders",   label: "Base",        emoji: "🏰", description: "Your town base — station defenders" },
+  { id: "world",       label: "World Map",   emoji: "🗺️", description: "Raid other players' bases" },
   { id: "decorations", label: "Decorations", emoji: "🎏", description: "Place the cosmetics you've earned" },
   { id: "shop",        label: "Shop",        emoji: "🛒", description: "Buy furniture — rotates daily" },
   { id: "rooms",       label: "Rooms",       emoji: "🚪", description: "Switch & unlock rooms" },
@@ -146,6 +147,11 @@ export async function handleHqHubComponent(
   // ── Base siege: choose an assault mode, then resolve it ──────────────────────
   if (action === "attack" && interaction.isButton()) {
     await interaction.update(await buildAttackModePicker(guildId, userId, parts[2]!)).catch(() => {});
+    return;
+  }
+  // World map → pick a base to raid → mode picker.
+  if (action === "raidpick" && interaction.isStringSelectMenu()) {
+    await interaction.update(await buildAttackModePicker(guildId, userId, interaction.values[0]!)).catch(() => {});
     return;
   }
   if (action === "siege" && interaction.isButton()) {
@@ -412,6 +418,36 @@ async function renderBaseImage(view: HqBaseView): Promise<AttachmentBuilder | nu
   return buf ? new AttachmentBuilder(buf, { name: HQ_FILE }) : null;
 }
 
+// ── World map ─────────────────────────────────────────────────────────────────
+const WORLD_COLORS = [0x3f78c8, 0x9b59b6, 0x2ecc71, 0xe67e22, 0x1abc9c, 0xe84393, 0xf1c40f, 0x5865f2];
+
+async function loadWorldBases(guildId: string, userId: string): Promise<{ userId: string; name: string; defenders: number; held: boolean }[]> {
+  const raw = await getGuildBases(guildId, userId, 8).catch(() => []);
+  const out: { userId: string; name: string; defenders: number; held: boolean }[] = [];
+  for (const b of raw) {
+    const bhq = await getOrCreateHq(guildId, b.userId);
+    const held = !!activeCapture(await getBaseState(guildId, b.userId));
+    const name = readHqStats(bhq).title?.trim() || `Rival ${b.userId.slice(-4)}`;
+    out.push({ userId: b.userId, name, defenders: b.defenders, held });
+  }
+  return out;
+}
+
+async function renderWorldImage(
+  theme: ReturnType<typeof resolveTheme>, avatarUrl: string | null, level: number,
+  bases: { userId: string; name: string; defenders: number; held: boolean }[],
+): Promise<AttachmentBuilder | null> {
+  const markers: WorldBaseMarker[] = bases.map((b, i) => ({
+    name: b.name, defenders: b.defenders, maxDefenders: HQ_DEFENDER_SLOTS, held: b.held, color: WORLD_COLORS[i % WORLD_COLORS.length]!,
+  }));
+  const view: HqWorldView = {
+    ownerAvatarUrl: avatarUrl, displayTitle: "World Map", subtitle: `${bases.length} base${bases.length === 1 ? "" : "s"} to raid`,
+    theme, roomEmoji: "🗺️", roomName: "World", hqLevel: level, markers,
+  };
+  const buf = await renderWorldMap(view).catch(() => null);
+  return buf ? new AttachmentBuilder(buf, { name: HQ_FILE }) : null;
+}
+
 // Build the EXTERIOR town-base view: the four structures (art resolved by role,
 // procedural fallback in the renderer) plus the stationed defenders as standees.
 // This is the attackable/defendable town, distinct from the interior showcase.
@@ -477,16 +513,24 @@ async function buildView(
     hq.activeRoomId = DEFAULT_ROOM_ID;
   }
 
-  // The Base section shows the SEPARATE exterior town (with defenders); every
-  // other section shows the interior room. Defenders live only on the base now.
-  const file = section === "defenders"
-    ? await renderBaseImage(await buildBaseRenderView(guildId, userId, interaction.user.username, interaction.user.displayAvatarURL(), hq))
-    : await renderRoomImage(await buildRenderView(guildId, userId, interaction.user.username, interaction.user.displayAvatarURL(), hq));
-  const files = file ? [file] : [];
   const room = resolveRoom(hq.activeRoomId);
   const theme = resolveTheme(hq.themeId);
   const wall = resolveWall(hq.wallId);
   const floor = resolveFloor(hq.floorId);
+
+  // Section picks the image: World = a map of raidable bases; Base = the exterior
+  // town (with defenders); everything else = the interior room.
+  let worldBases: { userId: string; name: string; defenders: number; held: boolean }[] = [];
+  let file: AttachmentBuilder | null;
+  if (section === "world") {
+    worldBases = await loadWorldBases(guildId, userId);
+    file = await renderWorldImage(theme, interaction.user.displayAvatarURL(), hq.hqLevel, worldBases);
+  } else if (section === "defenders") {
+    file = await renderBaseImage(await buildBaseRenderView(guildId, userId, interaction.user.username, interaction.user.displayAvatarURL(), hq));
+  } else {
+    file = await renderRoomImage(await buildRenderView(guildId, userId, interaction.user.username, interaction.user.displayAvatarURL(), hq));
+  }
+  const files = file ? [file] : [];
 
   const rows: ActionRowBuilder<any>[] = [sectionRow(section)];
   const embed = new EmbedBuilder().setColor(theme.palette.accent);
@@ -607,6 +651,25 @@ async function buildView(
           new ButtonBuilder().setCustomId("hq-hub:reclaim").setEmoji("🚩")
             .setLabel(locked ? "Reclaim (shielded)" : "Reclaim your base")
             .setStyle(ButtonStyle.Danger).setDisabled(locked),
+        ));
+      }
+      break;
+    }
+
+    case "world": {
+      embed.setTitle("🗺️ World Map").setDescription(
+        worldBases.length === 0
+          ? "No rival bases to raid yet — once other members station **base defenders**, their castles appear here to attack."
+          : "Other players' bases. 🚩 = currently held by a conqueror. Pick one below to lay siege.",
+      );
+      if (worldBases.length > 0) {
+        rows.push(new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
+          new StringSelectMenuBuilder().setCustomId("hq-hub:raidpick").setPlaceholder("Attack a base…")
+            .addOptions(worldBases.slice(0, 25).map(b => ({
+              label: `${b.name}`.slice(0, 90), value: b.userId,
+              description: `${b.defenders} defender${b.defenders === 1 ? "" : "s"}${b.held ? " · held 🚩" : ""}`,
+              emoji: "⚔️",
+            }))),
         ));
       }
       break;
@@ -844,12 +907,8 @@ function backRow(section: Section) {
   );
 }
 
-// Flavour move names for the classic animated turn.
-const SIEGE_MOVES = ["Siege Strike", "Breach", "Overrun", "Vanguard Charge", "Final Blow", "Rally"];
-// SiegeCombatant → the battle engine's RenderCard (for the classic turn animation).
-function renderCardOf(c: SiegeCombatant) {
-  return { name: c.name, rarityLabel: c.rarityLabel, rarity: c.rarity as Rarity, rarityColor: c.rarityColor, artUrl: c.artUrl, cardId: c.cardId };
-}
+// Flavour move names for the classic (move-by-move) siege captions.
+const SIEGE_MOVES = ["Siege Strike", "Breach", "Overrun", "Vanguard Charge", "Final Blow", "Rally", "Flank", "Storm the Gate"];
 
 async function runSiege(interaction: ButtonInteraction, guildId: string, attackerId: string, defenderId: string, mode: SiegeMode): Promise<void> {
   await interaction.deferUpdate().catch(() => {});
@@ -884,46 +943,29 @@ async function runSiege(interaction: ButtonInteraction, guildId: string, attacke
       { name: "🛡️ Defence power", value: `**${result.defenderPower}**`, inline: true },
     );
 
+  // All three modes render ON the defender's base scene (castle + cards + health)
+  // — never a separate VS screen. Classic adds move captions + hit flashes; live
+  // is the clean cinematic; static is one final frame.
   const files: AttachmentBuilder[] = [];
-  if (mode === "classic") {
-    // CLASSIC: the traditional animated battle — the screen shows the decisive
-    // move/attack between the two champions (reuses the battle-turn engine).
-    const atkC = squad[0];
-    const defC = [...defenders].sort((a, b) => b.power - a.power)[0];
-    if (atkC && defC) {
-      const win = result.attackerWon;
-      const move = SIEGE_MOVES[Math.floor(Math.random() * SIEGE_MOVES.length)]!;
-      const anim = await renderBattleTurn({
-        attacker: renderCardOf(atkC), defender: renderCardOf(defC),
-        attackerHp: win ? 92 : 14, attackerMaxHp: 100,
-        defenderHp: win ? 0 : 90, defenderMaxHp: 100,
-        damage: win ? 86 : 74, isCrit: win, isHit: true, moveName: move,
-        attackerWon: win, defenderWon: !win, background: null,
-      }, "normal").catch(() => null);
-      if (anim?.buffer) { files.push(new AttachmentBuilder(anim.buffer, { name: SIEGE_GIF })); embed.setImage(`attachment://${SIEGE_GIF}`); }
-    }
-    const log = result.duels.slice(0, 6).map((d, i) =>
-      `**${i + 1}.** ${d.attacker.name} ${d.attackerWon ? "🟢 beat" : "🔴 lost to"} ${d.defender.name}`).join("\n");
-    if (log) embed.addFields({ name: "Duels", value: log.slice(0, 1024) });
-  } else {
-    // STATIC + LIVE both render ON the defender's base scene (castle + cards +
-    // health) — the siege looks exactly like the base, just resolving.
-    const baseView = await buildBaseRenderView(guildId, defenderId, defenderName, null, defHq);
-    const champ = squad[0]; // attacker's strongest, assaulting the castle
-    const plan: SiegePlan = {
-      duels: result.duels.map((d, i) => ({ slot: i, attackerWon: d.attackerWon })),
-      defenderCount: defenders.length,
-      captured: result.attackerWon,
-      attacker: champ ? { slot: 0, cardId: champ.cardId, name: champ.name, artUrl: champ.artUrl, rarityColor: champ.rarityColor, basePath: null } : null,
-      attackerName, defenderName,
-    };
-    const buf = await renderSiege(baseView, plan, mode === "live").catch(() => null);
-    if (buf) {
-      const name = mode === "live" ? SIEGE_GIF : SIEGE_FILE;
-      files.push(new AttachmentBuilder(buf, { name }));
-      embed.setImage(`attachment://${name}`);
-    }
+  const baseView = await buildBaseRenderView(guildId, defenderId, defenderName, null, defHq);
+  const champ = squad[0]; // attacker's strongest, assaulting the castle
+  const plan: SiegePlan = {
+    duels: result.duels.map((d, i) => ({ slot: i, attackerWon: d.attackerWon, move: SIEGE_MOVES[Math.floor(Math.random() * SIEGE_MOVES.length)]! })),
+    defenderCount: defenders.length,
+    captured: result.attackerWon,
+    attacker: champ ? { slot: 0, cardId: champ.cardId, name: champ.name, artUrl: champ.artUrl, rarityColor: champ.rarityColor, basePath: null } : null,
+    attackerName, defenderName,
+  };
+  const live = mode !== "static";
+  const buf = await renderSiege(baseView, plan, live, mode === "classic").catch(() => null);
+  if (buf) {
+    const name = live ? SIEGE_GIF : SIEGE_FILE;
+    files.push(new AttachmentBuilder(buf, { name }));
+    embed.setImage(`attachment://${name}`);
   }
+  const log = result.duels.slice(0, 6).map((d, i) =>
+    `**${i + 1}.** ${d.attacker.name} ${d.attackerWon ? "🟢 beat" : "🔴 lost to"} ${d.defender.name}`).join("\n");
+  if (mode === "classic" && log) embed.addFields({ name: "Duels", value: log.slice(0, 1024) });
 
   await interaction.editReply({ embeds: [embed], components: [backRow("defenders")], files }).catch(() => {});
 }
