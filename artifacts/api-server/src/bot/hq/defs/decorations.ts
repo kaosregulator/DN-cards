@@ -124,6 +124,26 @@ export const HQ_DECORATIONS: HqDecoration[] = [
     spriteKey: "deco/marble-bust", unlock: { kind: "shop" }, price: 640, drop: true, story: "Sculpted poise for the discerning collector." },
   { id: "gilded-trophy", name: "Gilded Trophy", emoji: "🏆", rarity: "epic", category: "trophy",
     spriteKey: "deco/gilded-trophy", unlock: { kind: "shop" }, price: 900, drop: true, story: "A showpiece trophy — pure decoration." },
+
+  // ── Kenney art-backed furniture (CC0 isometric sprites) ───────────────────────
+  // These have bundled art (see assets/hq/manifest.json); the `category` is only
+  // the procedural fallback if the art is ever missing.
+  { id: "storage-barrel", name: "Storage Barrel", emoji: "🛢️", rarity: "common", category: "case",
+    spriteKey: "deco/storage-barrel", unlock: { kind: "shop" }, price: 150, drop: true, story: "An honest wooden barrel." },
+  { id: "stacked-barrels", name: "Stacked Barrels", emoji: "🛢️", rarity: "uncommon", category: "case",
+    spriteKey: "deco/stacked-barrels", unlock: { kind: "shop" }, price: 260, drop: true, story: "Provisions, neatly stacked." },
+  { id: "supply-crate", name: "Supply Crate", emoji: "📦", rarity: "common", category: "case",
+    spriteKey: "deco/supply-crate", unlock: { kind: "shop" }, price: 160, drop: true, story: "What's inside? Who knows." },
+  { id: "supply-crates", name: "Supply Crates", emoji: "📦", rarity: "uncommon", category: "case",
+    spriteKey: "deco/supply-crates", unlock: { kind: "shop" }, price: 280, drop: true, story: "A merchant's whole haul." },
+  { id: "treasure-chest", name: "Treasure Chest", emoji: "🧰", rarity: "rare", category: "case",
+    spriteKey: "deco/treasure-chest", unlock: { kind: "shop" }, price: 480, drop: true, story: "Locked, of course." },
+  { id: "log-pile", name: "Log Pile", emoji: "🪵", rarity: "common", category: "monument",
+    spriteKey: "deco/log-pile", unlock: { kind: "shop" }, price: 140, drop: true, story: "Firewood for long nights." },
+  { id: "feast-table", name: "Feast Table", emoji: "🍽️", rarity: "rare", category: "statue",
+    spriteKey: "deco/feast-table", unlock: { kind: "shop" }, price: 560, drop: true, story: "Set for a hero's welcome." },
+  { id: "study-table", name: "Study Table", emoji: "🪑", rarity: "uncommon", category: "statue",
+    spriteKey: "deco/study-table", unlock: { kind: "shop" }, price: 340, drop: true, story: "For plotting your next set." },
 ];
 
 const DECO_BY_ID = new Map<string, HqDecoration>(HQ_DECORATIONS.map(d => [d.id, d]));

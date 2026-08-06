@@ -91,6 +91,10 @@ export interface HqRenderView {
   theme: HqTheme;   // lighting mood, ambient particles, accent, glass tint
   wall: HqWall;     // wall style (faces, trim, windows)
   floor: HqFloor;   // floor style (tiles, grout)
+  // Optional art (resolved by the hub via spriteForPrefix). When present these
+  // replace the procedural wall faces / floor tiles; otherwise procedural.
+  wallSprite?: string | null;
+  floorSprite?: string | null;
   roomName: string;
   roomEmoji: string;
   hqLevel: number;
@@ -124,9 +128,9 @@ export async function renderHq(view: HqRenderView): Promise<Buffer | null> {
       const ctx = canvas.getContext("2d") as unknown as Ctx;
 
       layerBackdrop(ctx, view.theme);
-      layerWalls(ctx, view.wall, view.theme);
+      await layerWalls(ctx, mod, view.wall, view.wallSprite ?? null);
       await layerWallDecorations(ctx, mod, view);
-      layerFloor(ctx, view.floor, view.theme);
+      await layerFloor(ctx, mod, view.floor, view.floorSprite ?? null);
       layerLighting(ctx, view.theme);
       await layerFurniture(ctx, mod, view);
       await layerHeader(ctx, mod, view);
@@ -196,27 +200,56 @@ function drawWallFace(
   ctx.beginPath(); ctx.moveTo(bl.x, bl.y); ctx.lineTo(br.x, br.y); ctx.stroke();
 }
 
-function layerWalls(ctx: Ctx, wall: HqWall, _theme: HqTheme): void {
+// Blit an image to fill a quad by clipping to it and drawing to its bounding
+// box. Good for a seamless wall/floor texture; exact for axis work isn't needed.
+function blitClippedQuad(ctx: Ctx, img: unknown, p: Pt[]): void {
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  for (const q of p) { minX = Math.min(minX, q.x); minY = Math.min(minY, q.y); maxX = Math.max(maxX, q.x); maxY = Math.max(maxY, q.y); }
+  ctx.save();
+  ctx.beginPath();
+  ctx.moveTo(p[0]!.x, p[0]!.y);
+  for (let i = 1; i < p.length; i++) ctx.lineTo(p[i]!.x, p[i]!.y);
+  ctx.closePath(); ctx.clip();
+  blit(ctx, img, minX, minY, maxX - minX, maxY - minY);
+  ctx.restore();
+}
+
+async function layerWalls(ctx: Ctx, mod: CanvasMod, wall: HqWall, spritePath: string | null): Promise<void> {
   const up = (p: Pt): Pt => ({ x: p.x, y: p.y - WALL_H });
-  // Right wall (over the i=0 edge, faces front-left) — draw first (further back).
   const rBL = project(0, GRID), rBR = project(0, 0);
-  drawWallFace(ctx, rBL, rBR, up(rBL), up(rBR), wall.rightFace, wall.trim, wall.window, wall.windowTint);
-  // Left wall (over the j=0 edge, faces front-right).
   const lBL = project(0, 0), lBR = project(GRID, 0);
+  // Art path: blit a seamless wall texture onto each face (uploaded packs).
+  const img = spritePath ? await loadSprite(mod, spritePath).catch(() => null) : null;
+  if (img) {
+    blitClippedQuad(ctx, img, [rBL, rBR, up(rBR), up(rBL)]);
+    blitClippedQuad(ctx, img, [lBL, lBR, up(lBR), up(lBL)]);
+    // Keep trims so the corner still reads crisply over the texture.
+    ctx.strokeStyle = wall.trim; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(up(rBL).x, up(rBL).y); ctx.lineTo(up(rBR).x, up(rBR).y); ctx.lineTo(up(lBR).x, up(lBR).y); ctx.stroke();
+    return;
+  }
+  // Procedural: two shaded faces with trim + optional windows.
+  drawWallFace(ctx, rBL, rBR, up(rBL), up(rBR), wall.rightFace, wall.trim, wall.window, wall.windowTint);
   drawWallFace(ctx, lBL, lBR, up(lBL), up(lBR), wall.leftFace, wall.trim, wall.window, wall.windowTint);
 }
 
-function layerFloor(ctx: Ctx, floor: HqFloor, _theme: HqTheme): void {
+async function layerFloor(ctx: Ctx, mod: CanvasMod, floor: HqFloor, spritePath: string | null): Promise<void> {
+  const img = spritePath ? await loadSprite(mod, spritePath).catch(() => null) : null;
   for (let i = 0; i < GRID; i++) {
     for (let j = 0; j < GRID; j++) {
       const a = project(i, j), b = project(i + 1, j), c = project(i + 1, j + 1), d = project(i, j + 1);
+      if (img) {
+        blitClippedQuad(ctx, img, [a, b, c, d]);
+        ctx.beginPath();
+        ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.lineTo(c.x, c.y); ctx.lineTo(d.x, d.y); ctx.closePath();
+        ctx.strokeStyle = floor.grout; ctx.lineWidth = 1; ctx.stroke();
+        continue;
+      }
       ctx.beginPath();
-      ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.lineTo(c.x, c.y); ctx.lineTo(d.x, d.y);
-      ctx.closePath();
+      ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.lineTo(c.x, c.y); ctx.lineTo(d.x, d.y); ctx.closePath();
       ctx.fillStyle = (i + j) % 2 === 0 ? floor.tileA : floor.tileB;
       ctx.fill();
-      ctx.strokeStyle = floor.grout; ctx.lineWidth = 1;
-      ctx.stroke();
+      ctx.strokeStyle = floor.grout; ctx.lineWidth = 1; ctx.stroke();
     }
   }
 }
@@ -381,12 +414,21 @@ async function drawDecoAt(
   if (deco.spritePath) {
     const img = await loadSprite(mod, deco.spritePath).catch(() => null);
     if (img) {
-      const size = 108 * scale;
+      // Preserve the sprite's aspect ratio. Kenney iso furniture is tall
+      // (256×512) and base-anchored at the bottom, so floor items fit to a
+      // target WIDTH and sit their bottom on the tile; wall items (icons like
+      // medals) fit to a target HEIGHT and centre on the anchor.
+      const iw = Math.max(1, (img as { width: number }).width);
+      const ih = Math.max(1, (img as { height: number }).height);
       if (grounded) {
-        ctx.save(); ctx.fillStyle = "rgba(0,0,0,0.3)";
-        ctx.beginPath(); ellipse(ctx, x, y, size * 0.34, size * 0.12); ctx.fill(); ctx.restore();
+        const w = 120 * scale, h = w * (ih / iw);
+        ctx.save(); ctx.fillStyle = "rgba(0,0,0,0.28)";
+        ctx.beginPath(); ellipse(ctx, x, y, w * 0.24, w * 0.09); ctx.fill(); ctx.restore();
+        blit(ctx, img, x - w / 2, y - h + 6, w, h); // bottom sits on the tile
+      } else {
+        const h = 88 * scale, w = h * (iw / ih);
+        blit(ctx, img, x - w / 2, y - h / 2, w, h);
       }
-      blit(ctx, img, x - size / 2, (grounded ? y - size + 8 : y - size / 2), size, size);
       return;
     }
   }

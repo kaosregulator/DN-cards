@@ -1,0 +1,19 @@
+{
+  "_note": "HQ art pack. Keys are '<prefix>/<key>' or a bare '<key>' (see bot/hq/assets.ts spriteForPrefix). Decoration art uses 'deco/<decorationId>'; walls use '<wallPrefix>/wall'; floors use '<floorPrefix>/tile'. All art here is CC0 by Kenney (www.kenney.nl).",
+  "sprites": {
+    "deco/storage-barrel": "furniture/storage-barrel.png",
+    "deco/stacked-barrels": "furniture/stacked-barrels.png",
+    "deco/supply-crate": "furniture/supply-crate.png",
+    "deco/supply-crates": "furniture/supply-crates.png",
+    "deco/treasure-chest": "furniture/treasure-chest.png",
+    "deco/log-pile": "furniture/log-pile.png",
+    "deco/feast-table": "furniture/feast-table.png",
+    "deco/study-table": "furniture/study-table.png",
+
+    "deco/veteran-medals": "medals/veteran-medals.png",
+    "deco/sovereign-crown": "medals/sovereign-crown.png",
+    "deco/collectors-crest": "medals/collectors-crest.png",
+    "deco/diplomat-seal": "medals/diplomat-seal.png",
+    "deco/laurel-wreath": "medals/laurel-wreath.png"
+  }
+}

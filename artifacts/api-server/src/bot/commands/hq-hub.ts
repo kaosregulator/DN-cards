@@ -45,7 +45,7 @@ import { resolveFloor, HQ_FLOORS } from "../hq/defs/floors.js";
 import { resolveRoom, HQ_ROOMS, DEFAULT_ROOM_ID } from "../hq/defs/rooms.js";
 import { resolveDecoration, decorationsByRarityDesc, HQ_DECORATIONS } from "../hq/defs/decorations.js";
 import { unlockLabel, type UnlockRule } from "../hq/defs/unlock-rules.js";
-import { spriteFor } from "../hq/assets.js";
+import { spriteFor, spriteForPrefix } from "../hq/assets.js";
 import { renderHq, type HqRenderView, type HqRenderCard, type HqRenderDeco } from "../hq/render.js";
 import type { PlayerHq } from "@workspace/db";
 
@@ -315,6 +315,8 @@ async function buildRenderView(
 
   return {
     ownerName, displayTitle: hqDisplayTitle(hq, ownerName), ownerAvatarUrl, theme, wall, floor,
+    wallSprite: spriteForPrefix(wall.spritePrefix, "wall"),
+    floorSprite: spriteForPrefix(floor.spritePrefix, "tile"),
     roomName: room.name, roomEmoji: room.emoji, hqLevel: hq.hqLevel,
     subtitle, pedestals, decorations,
   };
