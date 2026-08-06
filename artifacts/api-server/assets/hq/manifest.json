@@ -10,7 +10,7 @@
     "floor/sand/tile": "floor/sand.png",
     "floor/marble/tile": "floor/marble.png",
     "wall/stone/wall": "floor/stone.png",
-    "wall/marble/wall": "floor/marble.png",
+    "wall/marble/wall": "wall/marble.png",
 
 
     "deco/storage-barrel": "furniture/storage-barrel.png",
