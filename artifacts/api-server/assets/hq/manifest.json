@@ -26,6 +26,13 @@
     "building/wall": "buildings/wall.png",
     "building/camp": "buildings/camp.png",
     "building/hut": "buildings/hut.png",
+    "deco/figure-knight": "figures/figure-knight.png",
+    "deco/figure-mage": "figures/figure-mage.png",
+    "deco/figure-wizard": "figures/figure-wizard.png",
+    "deco/figure-barbarian": "figures/figure-barbarian.png",
+    "deco/figure-imp": "figures/figure-imp.png",
+    "deco/figure-ranger": "figures/figure-ranger.png",
+
     "building/castle": "buildings/castle.png",
     "building/cathedral": "buildings/cathedral.png",
     "building/houses": "buildings/houses.png",

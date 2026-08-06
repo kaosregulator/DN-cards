@@ -719,10 +719,12 @@ async function buildView(
     case "shop": {
       const rot = shopRotation();
       const currency = await getOrCreateCurrency(guildId, userId).catch(() => ({ shards: 0 }));
-      embed.setTitle("🛒 HQ Shop").setDescription(
-        "Furniture for your HQ — the stock **rotates daily**, and anything you buy lands in **🎏 Decorations** to place. " +
+      embed.setTitle("🛒 The Furnisher's Stall").setDescription(
+        "_“Welcome, collector! Fresh stock every day.”_\n\n" +
+        "Furniture &amp; **mini-figurines** for your HQ, paid in the **same 💠 shards as the market**. " +
+        "Anything you buy lands in **🎏 Decorations** (and on your **🏰 Base** grounds) to place. " +
         `Feeling lucky? Crack a **🎁 Mystery Crate** for a random piece (💠 ${CRATE_PRICE}).\n` +
-        `💠 **${(currency.shards ?? 0).toLocaleString()}** shards · 🔄 refreshes in **${formatRefreshIn(rot.refreshesInMs)}**`,
+        `👛 Your purse: 💠 **${(currency.shards ?? 0).toLocaleString()}**  ·  🔄 restocks in **${formatRefreshIn(rot.refreshesInMs)}**`,
       );
       const stock = rot.entries.map(e => {
         const own = owned.has(e.deco.id);

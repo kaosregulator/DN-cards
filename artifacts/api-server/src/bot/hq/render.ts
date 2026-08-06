@@ -1092,15 +1092,22 @@ async function drawDecoAt(
       // medals) fit to a target HEIGHT and centre on the anchor.
       const iw = Math.max(1, (img as { width: number }).width);
       const ih = Math.max(1, (img as { height: number }).height);
+      // Small source art = pixel sprite (e.g. 16px figurines): render crisp
+      // (nearest-neighbour) and modestly sized so it doesn't blur or tower.
+      const pixel = iw <= 48;
+      const smooth = ctx as unknown as { imageSmoothingEnabled: boolean };
+      if (pixel) smooth.imageSmoothingEnabled = false;
       if (grounded) {
-        const w = 120 * scale, h = w * (ih / iw);
+        const h = pixel ? 76 * scale : 120 * scale * (ih / iw);
+        const w = pixel ? h * (iw / ih) : 120 * scale;
         ctx.save(); ctx.fillStyle = "rgba(0,0,0,0.28)";
-        ctx.beginPath(); ellipse(ctx, x, y, w * 0.24, w * 0.09); ctx.fill(); ctx.restore();
+        ctx.beginPath(); ellipse(ctx, x, y, w * 0.3, w * 0.11); ctx.fill(); ctx.restore();
         blit(ctx, img, x - w / 2, y - h + 6, w, h); // bottom sits on the tile
       } else {
         const h = 88 * scale, w = h * (iw / ih);
         blit(ctx, img, x - w / 2, y - h / 2, w, h);
       }
+      if (pixel) smooth.imageSmoothingEnabled = true;
       return;
     }
   }

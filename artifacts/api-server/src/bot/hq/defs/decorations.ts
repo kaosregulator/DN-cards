@@ -151,6 +151,20 @@ export const HQ_DECORATIONS: HqDecoration[] = [
     spriteKey: "deco/feast-table", unlock: { kind: "shop" }, price: 560, drop: true, story: "Set for a hero's welcome." },
   { id: "study-table", name: "Study Table", emoji: "🪑", rarity: "uncommon", category: "statue",
     spriteKey: "deco/study-table", unlock: { kind: "shop" }, price: 340, drop: true, story: "For plotting your next set." },
+
+  // ── Mini figurines (CC0 pixel characters) — cosmetic collectibles for the shop ─
+  { id: "figure-knight", name: "Knight Figurine", emoji: "🛡️", rarity: "uncommon", category: "statue",
+    spriteKey: "deco/figure-knight", unlock: { kind: "shop" }, price: 220, drop: true, story: "A tiny sworn guardian." },
+  { id: "figure-mage", name: "Mage Figurine", emoji: "🔮", rarity: "uncommon", category: "statue",
+    spriteKey: "deco/figure-mage", unlock: { kind: "shop" }, price: 220, drop: true, story: "Small, but crackling with power." },
+  { id: "figure-wizard", name: "Wizard Figurine", emoji: "🧙", rarity: "rare", category: "statue",
+    spriteKey: "deco/figure-wizard", unlock: { kind: "shop" }, price: 300, drop: true, story: "Wise beyond his inch." },
+  { id: "figure-barbarian", name: "Barbarian Figurine", emoji: "🪓", rarity: "rare", category: "statue",
+    spriteKey: "deco/figure-barbarian", unlock: { kind: "shop" }, price: 300, drop: true, story: "Ready to smash… decoratively." },
+  { id: "figure-ranger", name: "Ranger Figurine", emoji: "🏹", rarity: "uncommon", category: "statue",
+    spriteKey: "deco/figure-ranger", unlock: { kind: "shop" }, price: 240, drop: true, story: "Keeps watch from the shelf." },
+  { id: "figure-imp", name: "Imp Figurine", emoji: "😈", rarity: "epic", category: "statue",
+    spriteKey: "deco/figure-imp", unlock: { kind: "shop" }, price: 420, drop: true, story: "A mischievous little collectible." },
 ];
 
 const DECO_BY_ID = new Map<string, HqDecoration>(HQ_DECORATIONS.map(d => [d.id, d]));
