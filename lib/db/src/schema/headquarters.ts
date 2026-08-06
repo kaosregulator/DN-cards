@@ -30,6 +30,10 @@ export const playerHqTable = pgTable("player_hq", {
   themeId: text("theme_id").notNull().default("command"),
   // The room currently being viewed/edited (resolves through defs/rooms.ts).
   activeRoomId: text("active_room_id").notNull().default("trophy-hall"),
+  // Active wall & floor styles for the isometric room (resolve through
+  // defs/walls.ts and defs/floors.ts; degrade to the default if ever removed).
+  wallId: text("wall_id").notNull().default("plaster"),
+  floorId: text("floor_id").notNull().default("wood"),
   // Cached HQ level, DERIVED from existing progression by the engine and stored
   // so reads/leaderboards don't recompute the curve. Source of truth stays the
   // underlying systems; this is a convenience cache refreshed on reconcile.
@@ -65,7 +69,7 @@ export const hqUnlocksTable = pgTable("hq_unlocks", {
 }));
 
 export type HqUnlock = typeof hqUnlocksTable.$inferSelect;
-export type HqItemType = "decoration" | "room" | "theme";
+export type HqItemType = "decoration" | "room" | "theme" | "wall" | "floor" | "backdrop";
 
 // Pinned featured cards for the Trophy Hall — one row per pedestal slot. Unique
 // on (guild, user, slot); repinning a slot upserts. Clicking a featured card in
@@ -101,3 +105,61 @@ export const hqPlacementsTable = pgTable("hq_placements", {
 }));
 
 export type HqPlacement = typeof hqPlacementsTable.$inferSelect;
+
+// Base defenders — cards a player sets to guard their base, rendered as standee
+// figures. One row per defender slot; unique on (guild, user, slot). This is the
+// SETUP half of the base-defense mini-game; the attack/combat side reads these
+// (and will add its own state) without changing this table's ownership. Purely
+// additive and cosmetic to the rest of the game — a defender is a reference to a
+// card the player owns, not a copy of it.
+export const hqDefendersTable = pgTable("hq_defenders", {
+  id: serial("id").primaryKey(),
+  guildId: text("guild_id").notNull(),
+  userId: text("user_id").notNull(),
+  slot: integer("slot").notNull(),
+  cardId: integer("card_id").notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (t) => ({
+  guildUserSlotUniq: uniqueIndex("hq_defenders_guild_user_slot_uniq").on(t.guildId, t.userId, t.slot),
+  byUser: index("hq_defenders_guild_user_idx").on(t.guildId, t.userId),
+}));
+
+export type HqDefender = typeof hqDefendersTable.$inferSelect;
+
+// Base-siege state — the capture/defend mini-game layered on top of the base.
+// One row per base (guild, user = the base OWNER). `heldBy*` records a conqueror
+// (null = the owner holds their own base); `shieldUntil` protects a freshly
+// attacked base from being farmed. Additive; combat is DERIVED (bot/hq/siege.ts)
+// from card power via the existing battle stat engine — this only stores outcome.
+export const hqBaseStateTable = pgTable("hq_base_state", {
+  id: serial("id").primaryKey(),
+  guildId: text("guild_id").notNull(),
+  userId: text("user_id").notNull(),        // the base owner
+  heldByUserId: text("held_by_user_id"),    // conqueror, or null when owner holds
+  heldByName: text("held_by_name"),
+  shieldUntil: timestamp("shield_until"),   // no attacks allowed until this time
+  lastAttackedAt: timestamp("last_attacked_at"),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (t) => ({
+  guildUserUniq: uniqueIndex("hq_base_state_guild_user_uniq").on(t.guildId, t.userId),
+}));
+
+export type HqBaseState = typeof hqBaseStateTable.$inferSelect;
+
+// Attack log — one row per resolved siege. Powers a per-target attacker cooldown
+// and a battle history; never affects card ownership.
+export const hqBaseAttacksTable = pgTable("hq_base_attacks", {
+  id: serial("id").primaryKey(),
+  guildId: text("guild_id").notNull(),
+  attackerId: text("attacker_id").notNull(),
+  defenderId: text("defender_id").notNull(),
+  won: text("won").notNull(),               // "1" attacker won, "0" defender held
+  attackerPower: integer("attacker_power").notNull().default(0),
+  defenderPower: integer("defender_power").notNull().default(0),
+  mode: text("mode").notNull().default("static"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (t) => ({
+  byPair: index("hq_base_attacks_pair_idx").on(t.guildId, t.attackerId, t.defenderId, t.createdAt),
+}));
+
+export type HqBaseAttack = typeof hqBaseAttacksTable.$inferSelect;

@@ -30,6 +30,8 @@ export type UnlockRule =
   | { kind: "always" }
   | { kind: "accountLevel"; n: number }
   | { kind: "collectionUnique"; n: number }
+  | { kind: "totalCards"; n: number }   // n cards owned counting duplicates
+  | { kind: "netWorth"; n: number }     // collection value in shards
   | { kind: "shinyOwned"; n: number }
   | { kind: "battleWins"; n: number }
   | { kind: "raidBoss" }        // any raid boss cleared
@@ -37,7 +39,8 @@ export type UnlockRule =
   | { kind: "setComplete"; n?: number } // n completed sets (default 1)
   | { kind: "dailyStreak"; n: number }
   | { kind: "ownsLimited" }     // owns any limited-edition card
-  | { kind: "achievement"; key: string };
+  | { kind: "achievement"; key: string }
+  | { kind: "shop" };           // not auto-earned — obtained by purchase / catch drop / award
 
 // True when the player currently satisfies the rule. Total and side-effect free.
 export function evalUnlockRule(rule: UnlockRule, p: HqProgress): boolean {
@@ -45,6 +48,8 @@ export function evalUnlockRule(rule: UnlockRule, p: HqProgress): boolean {
     case "always":           return true;
     case "accountLevel":     return p.accountLevel >= rule.n;
     case "collectionUnique": return p.uniqueCards >= rule.n;
+    case "totalCards":       return p.totalCards >= rule.n;
+    case "netWorth":         return p.netWorth >= rule.n;
     case "shinyOwned":       return p.shinyOwned >= rule.n;
     case "battleWins":       return p.battleWins >= rule.n;
     case "raidBoss":         return p.raidBossesCleared >= 1;
@@ -53,6 +58,7 @@ export function evalUnlockRule(rule: UnlockRule, p: HqProgress): boolean {
     case "dailyStreak":      return p.dailyStreak >= rule.n;
     case "ownsLimited":      return p.ownsLimited;
     case "achievement":      return p.achievementKeys.has(rule.key);
+    case "shop":             return false; // never auto-granted; only bought/dropped/awarded
     default: {
       // Exhaustiveness guard — a new rule kind that forgets a branch fails
       // closed (locked) rather than unlocking everything.
@@ -70,6 +76,8 @@ export function unlockLabel(rule: UnlockRule): string {
     case "always":           return "Available from the start";
     case "accountLevel":     return `Reach account level ${rule.n}`;
     case "collectionUnique": return `Collect ${rule.n} unique cards`;
+    case "totalCards":       return `Own ${rule.n} cards in total`;
+    case "netWorth":         return `Reach ${compact(rule.n)} shards in collection value`;
     case "shinyOwned":       return `Own ${rule.n} shiny card${rule.n === 1 ? "" : "s"}`;
     case "battleWins":       return `Win ${rule.n} battle${rule.n === 1 ? "" : "s"}`;
     case "raidBoss":         return "Defeat a raid boss";
@@ -78,6 +86,7 @@ export function unlockLabel(rule: UnlockRule): string {
     case "dailyStreak":      return `Reach a ${rule.n}-day login streak`;
     case "ownsLimited":      return "Own a limited-edition card";
     case "achievement":      return "Unlock a linked achievement";
+    case "shop":             return "Buy it in the shop, or find it while catching";
     default:                 return "Keep playing to unlock";
   }
 }
@@ -88,6 +97,8 @@ export function unlockSourceTag(rule: UnlockRule): string {
   switch (rule.kind) {
     case "accountLevel":     return `accountLevel>=${rule.n}`;
     case "collectionUnique": return `collectionUnique>=${rule.n}`;
+    case "totalCards":       return `totalCards>=${rule.n}`;
+    case "netWorth":         return `netWorth>=${rule.n}`;
     case "shinyOwned":       return `shinyOwned>=${rule.n}`;
     case "battleWins":       return `battleWins>=${rule.n}`;
     case "setComplete":      return `setComplete>=${rule.n ?? 1}`;
@@ -95,4 +106,11 @@ export function unlockSourceTag(rule: UnlockRule): string {
     case "achievement":      return `achievement:${rule.key}`;
     default:                 return rule.kind;
   }
+}
+
+// Compact large numbers for player-facing hints (12500 → "12.5K", 2_000_000 → "2M").
+function compact(n: number): string {
+  if (n >= 1_000_000) return `${+(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 1_000) return `${+(n / 1_000).toFixed(1)}K`;
+  return String(n);
 }
