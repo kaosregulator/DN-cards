@@ -243,7 +243,9 @@ export async function pruneUnownedPlacements(
   const rows = await db.select({ id: hqPlacementsTable.id, itemId: hqPlacementsTable.itemId })
     .from(hqPlacementsTable)
     .where(and(eq(hqPlacementsTable.guildId, guildId), eq(hqPlacementsTable.userId, userId)));
-  const orphanIds = rows.filter(r => !ownedIds.has(r.itemId)).map(r => r.id);
+  // A placement id may be compound ("<baseId>:<arg>", e.g. a framed card
+  // "portrait-frame:123"); ownership is decided by the BASE id (the buyable).
+  const orphanIds = rows.filter(r => !ownedIds.has(r.itemId.split(":")[0]!)).map(r => r.id);
   if (orphanIds.length === 0) return;
   for (const id of orphanIds) {
     await db.delete(hqPlacementsTable).where(eq(hqPlacementsTable.id, id));

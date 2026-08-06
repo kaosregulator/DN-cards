@@ -36,7 +36,14 @@ provisions them with no manual push.
     change), so items land exactly where you put them and picking an occupied
     spot swaps. Each room caps how many items you can display at once.
   - **🛒 Shop** — buy furniture with shards (rotates daily) or crack a **Mystery
-    Crate** for a random piece.
+    Crate** for a random piece. Stock includes **rugs & lighting** and the
+    **Portrait Frame**.
+  - **🖼️ Card wall-art** — buy the **Portrait Frame** once, then *frame any card
+    you own* and hang its **real art (shrunk into a rarity-tinted frame)** on a
+    wall spot. A framed card is stored as a compound placement id
+    `portrait-frame:<cardId>` (so no schema change; the base id `portrait-frame`
+    is what ownership/prune checks resolve to). Pick a card → pick a wall spot;
+    the renderer pulls the card's live art via `drawCardPortrait`.
 - `/hq user:@member` — visit another member's HQ, read-only.
 
 ## The engine is theme-agnostic (data-driven)

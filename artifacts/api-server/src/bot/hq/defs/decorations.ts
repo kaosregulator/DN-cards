@@ -18,7 +18,7 @@ import type { UnlockRule } from "./unlock-rules.js";
 // supply real art per (theme, category|id) without changing this list.
 export type DecoCategory =
   | "banner" | "statue" | "trophy" | "monument" | "plant" | "light" | "case" | "emblem"
-  | "crystal" | "rug" | "tree" | "rock";
+  | "crystal" | "rug" | "tree" | "rock" | "portrait";
 
 export interface HqDecoration {
   id: string;
@@ -165,7 +165,31 @@ export const HQ_DECORATIONS: HqDecoration[] = [
     spriteKey: "deco/figure-ranger", unlock: { kind: "shop" }, price: 240, drop: true, story: "Keeps watch from the shelf." },
   { id: "figure-imp", name: "Imp Figurine", emoji: "😈", rarity: "epic", category: "statue",
     spriteKey: "deco/figure-imp", unlock: { kind: "shop" }, price: 420, drop: true, story: "A mischievous little collectible." },
+
+  // ── Rugs & lighting (soft-furnishing shop stock) ──────────────────────────────
+  { id: "plush-rug", name: "Plush Rug", emoji: "🟪", rarity: "uncommon", category: "rug",
+    spriteKey: "deco/plush-rug", unlock: { kind: "shop" }, price: 240, drop: true, story: "Deep pile — a little luxury underfoot." },
+  { id: "royal-runner", name: "Royal Runner", emoji: "🟥", rarity: "rare", category: "rug",
+    spriteKey: "deco/royal-runner", unlock: { kind: "shop" }, price: 420, drop: true, story: "Roll it out for distinguished guests." },
+  { id: "wall-sconce", name: "Wall Sconce", emoji: "🔦", rarity: "uncommon", category: "light",
+    spriteKey: "deco/wall-sconce", unlock: { kind: "shop" }, price: 260, drop: true, story: "A warm glow mounted on the wall." },
+  { id: "string-lights", name: "String Lights", emoji: "🎇", rarity: "rare", category: "light",
+    spriteKey: "deco/string-lights", unlock: { kind: "shop" }, price: 380, drop: true, story: "Cosy twinkle for the whole room." },
+
+  // ── Card wall-art ─────────────────────────────────────────────────────────────
+  // The Portrait Frame is the buyable that unlocks CARD WALL-ART: once owned, the
+  // player can frame ANY card they own and hang its real art (shrunk) on a wall.
+  // Each hung frame is stored as a placement `portrait-frame:<cardId>` (see the
+  // hub) — one purchase, unlimited framings, purely cosmetic.
+  { id: "portrait-frame", name: "Portrait Frame", emoji: "🖼️", rarity: "rare", category: "portrait",
+    spriteKey: "deco/portrait-frame", unlock: { kind: "shop" }, price: 500, drop: false,
+    story: "Frame any card you own and hang its art on your wall." },
 ];
+
+// The buyable that unlocks card wall-art, and the placement-id prefix used for a
+// framed card. Kept here so the hub and renderer agree on the encoding.
+export const PORTRAIT_FRAME_ID = "portrait-frame";
+export const PORTRAIT_PREFIX = "portrait-frame:";
 
 const DECO_BY_ID = new Map<string, HqDecoration>(HQ_DECORATIONS.map(d => [d.id, d]));
 

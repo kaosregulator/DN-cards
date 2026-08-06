@@ -81,6 +81,9 @@ export interface HqRenderDeco {
   name: string;
   rarityColor: number;
   spritePath: string | null;
+  // Card wall-art: when set, this decoration is a framed portrait of a real card
+  // (its art, shrunk into a hanging frame on the wall). rarityColor tints the frame.
+  cardArtUrl?: string | null;
 }
 
 // A card assigned to defend the base — rendered as an upright "standee" figure
@@ -1104,6 +1107,11 @@ function drawGlassCase(ctx: Ctx, x: number, y: number, w: number, h: number, the
 async function drawDecoAt(
   ctx: Ctx, mod: CanvasMod, x: number, y: number, scale: number, deco: HqRenderDeco, grounded: boolean,
 ): Promise<void> {
+  // Card wall-art: a framed portrait of a real card, hung on the wall.
+  if (deco.category === "portrait" && deco.cardArtUrl) {
+    await drawCardPortrait(ctx, mod, x, y, scale, deco.cardArtUrl, deco.rarityColor);
+    return;
+  }
   if (deco.spritePath) {
     const img = await loadSprite(mod, deco.spritePath).catch(() => null);
     if (img) {
@@ -1137,6 +1145,46 @@ async function drawDecoAt(
     ctx.beginPath(); ellipse(ctx, x, y, 34 * scale, 12 * scale); ctx.fill(); ctx.restore();
   }
   drawDecoration(ctx, x, grounded ? y - 30 * scale : y, scale, deco);
+}
+
+// A framed card portrait hung on the wall: a shrunk copy of the real card art
+// inside a rarity-tinted frame with a mat border and a little hanging nail — the
+// "mini wall art of your cards" the player buys and mounts. Centred on (x,y).
+async function drawCardPortrait(
+  ctx: Ctx, mod: CanvasMod, x: number, y: number, scale: number, artUrl: string, tint: number,
+): Promise<void> {
+  const cardW = 66 * scale, cardH = 86 * scale;   // shrunk card
+  const mat = 7 * scale, frame = 5 * scale;        // mat + frame thickness
+  const outerW = cardW + (mat + frame) * 2, outerH = cardH + (mat + frame) * 2;
+  const ox = x - outerW / 2, oy = y - outerH / 2;
+
+  // Hanging nail + drop shadow so it reads as mounted, not floating.
+  ctx.save();
+  ctx.fillStyle = "rgba(0,0,0,0.30)";
+  roundRectPath(ctx, ox + 3, oy + 5, outerW, outerH, 4 * scale); ctx.fill();
+  ctx.restore();
+
+  // Outer frame (rarity-tinted, with a soft glow).
+  ctx.save();
+  ctx.shadowColor = hexToRgba(tint, 0.55); ctx.shadowBlur = 14 * scale;
+  ctx.fillStyle = hexToRgba(tint, 0.95);
+  roundRectPath(ctx, ox, oy, outerW, outerH, 4 * scale); ctx.fill();
+  ctx.restore();
+  // Bevel highlight.
+  ctx.strokeStyle = "rgba(255,255,255,0.35)"; ctx.lineWidth = Math.max(1, 1.5 * scale);
+  roundRectPath(ctx, ox + 1, oy + 1, outerW - 2, outerH - 2, 4 * scale); ctx.stroke();
+
+  // White mat inside the frame.
+  ctx.fillStyle = "rgba(244,244,240,0.96)";
+  ctx.fillRect(ox + frame, oy + frame, outerW - frame * 2, outerH - frame * 2);
+
+  // The card art, clipped to the window.
+  const ax = ox + frame + mat, ay = oy + frame + mat;
+  await drawCardArt(ctx, mod, ax, ay, cardW, cardH, artUrl);
+  ctx.strokeStyle = hexToRgba(tint, 0.7); ctx.lineWidth = Math.max(1, 1 * scale);
+  ctx.beginPath();
+  ctx.moveTo(ax, ay); ctx.lineTo(ax + cardW, ay); ctx.lineTo(ax + cardW, ay + cardH);
+  ctx.lineTo(ax, ay + cardH); ctx.closePath(); ctx.stroke();
 }
 
 // ── Procedural decorations ────────────────────────────────────────────────────

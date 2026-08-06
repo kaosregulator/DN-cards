@@ -51,7 +51,10 @@ import { resolveWall, HQ_WALLS } from "../hq/defs/walls.js";
 import { resolveFloor, HQ_FLOORS } from "../hq/defs/floors.js";
 import { resolveBackdrop, HQ_BACKDROPS, DEFAULT_BACKDROP_ID } from "../hq/defs/backdrops.js";
 import { resolveRoom, HQ_ROOMS, DEFAULT_ROOM_ID } from "../hq/defs/rooms.js";
-import { resolveDecoration, decorationsByRarityDesc, HQ_DECORATIONS } from "../hq/defs/decorations.js";
+import {
+  resolveDecoration, decorationsByRarityDesc, HQ_DECORATIONS,
+  PORTRAIT_FRAME_ID, PORTRAIT_PREFIX,
+} from "../hq/defs/decorations.js";
 import { unlockLabel, type UnlockRule } from "../hq/defs/unlock-rules.js";
 import { spriteFor, spriteForPrefix } from "../hq/assets.js";
 import {
@@ -83,6 +86,23 @@ function readHqStats(hq: PlayerHq): HqStats {
 function hqDisplayTitle(hq: PlayerHq, ownerName: string): string {
   const t = readHqStats(hq).title?.trim();
   return t && t.length > 0 ? t : `${ownerName}'s HQ`;
+}
+
+// A placement id is either a plain decoration id or a compound "portrait-frame:<cardId>"
+// for a framed card. Split it into the base (registry) id and any card argument.
+function parsePlacementId(itemId: string): { baseId: string; cardId: number | null } {
+  if (itemId.startsWith(PORTRAIT_PREFIX)) {
+    const n = Number(itemId.slice(PORTRAIT_PREFIX.length));
+    return { baseId: PORTRAIT_FRAME_ID, cardId: Number.isInteger(n) ? n : null };
+  }
+  return { baseId: itemId, cardId: null };
+}
+// Human label for a placement id (handles framed cards, which aren't registry ids).
+function placementLabel(itemId: string): { emoji: string; name: string } {
+  const { baseId, cardId } = parsePlacementId(itemId);
+  if (baseId === PORTRAIT_FRAME_ID) return { emoji: "🖼️", name: cardId != null ? `Framed card #${cardId}` : "Portrait Frame" };
+  const d = resolveDecoration(baseId);
+  return { emoji: d?.emoji ?? "•", name: d?.name ?? baseId };
 }
 
 type Section = "overview" | "trophy" | "defenders" | "world" | "decorations" | "shop" | "rooms" | "theme";
@@ -232,6 +252,16 @@ export async function handleHqHubComponent(
   if (action === "removedeco" && interaction.isStringSelectMenu()) {
     const hq = await getOrCreateHq(guildId, userId);
     await clearPlacement(guildId, userId, resolveRoom(hq.activeRoomId).id, Number(interaction.values[0])).catch(() => {});
+    await interaction.update(await buildView(interaction, "decorations", [])).catch(() => {});
+    return;
+  }
+  // Card wall-art: pick a card to frame → choose a wall spot → hang it.
+  if (action === "framecard" && interaction.isStringSelectMenu()) {
+    await interaction.update(await buildFrameSlotPicker(guildId, userId, Number(interaction.values[0]))).catch(() => {});
+    return;
+  }
+  if (action === "frameat" && interaction.isStringSelectMenu()) {
+    await placeFramedCardAt(guildId, userId, Number(parts[2]), interaction.values[0]!);
     await interaction.update(await buildView(interaction, "decorations", [])).catch(() => {});
     return;
   }
@@ -428,8 +458,20 @@ async function buildRenderView(
 
   const decorations: HqRenderDeco[] = [];
   for (const [slot, itemId] of placements) {
-    const deco = resolveDecoration(itemId);
+    const { baseId, cardId } = parsePlacementId(itemId);
+    const deco = resolveDecoration(baseId);
     if (!deco) continue;
+    // Framed card wall-art: pull the real card's art + rarity colour.
+    if (baseId === PORTRAIT_FRAME_ID && cardId != null) {
+      const card = cards.find(c => c.id === cardId);
+      if (!card) continue;
+      const d = getCardDisplayRarity(card, ctx, settings, displayMap);
+      decorations.push({
+        slot, category: "portrait", name: `${card.name} (framed)`,
+        rarityColor: d.color, spritePath: null, cardArtUrl: toAbsoluteImageUrl(card.imageUrl),
+      });
+      continue;
+    }
     decorations.push({
       slot, category: deco.category, name: deco.name,
       rarityColor: rarityColor(deco.rarity as Rarity, settings, displayMap),
@@ -745,13 +787,19 @@ async function buildView(
         embed.addFields({
           name: `Placed in ${room.name} (${placements.size}/${room.decoSlots})`,
           value: [...placements.entries()].sort((a, b) => a[0] - b[0])
-            .map(([slot, id]) => `${slotLabel(slot)}: ${resolveDecoration(id)?.emoji ?? "•"} ${resolveDecoration(id)?.name ?? id}`).join("\n").slice(0, 1024),
+            .map(([slot, id]) => { const l = placementLabel(id); return `${slotLabel(slot)}: ${l.emoji} ${l.name}`; }).join("\n").slice(0, 1024),
         });
       }
-      // Place select (any earned-but-unplaced decoration). Even a full room can
+      // Card wall-art: once the Portrait Frame is owned, hang any owned card's art.
+      const hasFrame = owned.has(PORTRAIT_FRAME_ID);
+      if (hasFrame) {
+        embed.addFields({ name: "🖼️ Card wall-art", value: "You own the **Portrait Frame** — pick one of your cards below to frame its real art and hang it on a wall spot." });
+      }
+      // Place select (any earned-but-unplaced decoration). The Portrait Frame is
+      // excluded here — it has its own card-picker flow below. Even a full room can
       // take one — the next step lets the player swap it into an occupied slot.
       const freeSlots = room.decoSlots - placements.size;
-      const placeable = owns.filter(d => !placedIds.has(d.id));
+      const placeable = owns.filter(d => d.id !== PORTRAIT_FRAME_ID && !placedIds.has(d.id));
       if (placeable.length > 0) {
         const hint = freeSlots > 0 ? `${freeSlots} slot${freeSlots === 1 ? "" : "s"} free` : "room full — place to swap";
         rows.push(new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
@@ -759,12 +807,22 @@ async function buildView(
             .addOptions(placeable.slice(0, 25).map(d => ({ label: d.name.slice(0, 90), value: d.id, description: d.rarity, emoji: d.emoji }))),
         ));
       }
+      // Frame-a-card select (your top owned cards by worth).
+      if (hasFrame) {
+        const framable = await topOwnedCards(guildId, userId, 25);
+        if (framable.length > 0) {
+          rows.push(new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
+            new StringSelectMenuBuilder().setCustomId("hq-hub:framecard").setPlaceholder("🖼️ Frame a card…")
+              .addOptions(framable.map(c => ({ label: c.name.slice(0, 90), value: String(c.id), description: c.rarity.slice(0, 50), emoji: "🖼️" }))),
+          ));
+        }
+      }
       // Remove select.
       if (placements.size > 0) {
         rows.push(new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
           new StringSelectMenuBuilder().setCustomId("hq-hub:removedeco").setPlaceholder("Remove a placed decoration…")
             .addOptions([...placements.entries()].sort((a, b) => a[0] - b[0]).map(([slot, id]) => ({
-              label: `${slotLabel(slot)}: ${(resolveDecoration(id)?.name ?? id).slice(0, 72)}`, value: String(slot), emoji: "🗑️",
+              label: `${slotLabel(slot)}: ${placementLabel(id).name.slice(0, 72)}`, value: String(slot), emoji: "🗑️",
             }))),
         ));
       }
@@ -1303,6 +1361,77 @@ async function placeDecorationAt(guildId: string, userId: string, decoId: string
     if (id === deco.id && slot !== target) { await clearPlacement(guildId, userId, room.id, slot).catch(() => {}); break; }
   }
   await placeDecoration(guildId, userId, room.id, target, deco.id).catch(() => {});
+}
+
+// ── Card wall-art ─────────────────────────────────────────────────────────────
+// The player's owned cards, richest first, for the frame-a-card picker.
+async function topOwnedCards(
+  guildId: string, userId: string, limit: number,
+): Promise<{ id: number; name: string; rarity: string }[]> {
+  const collection = (await getUserCollection(guildId, userId))
+    .sort((a, b) => b.worthValue - a.worthValue || a.name.localeCompare(b.name));
+  return collection.slice(0, limit).map(i => ({ id: i.cardId, name: i.name, rarity: String(i.rarity) }));
+}
+
+// A wall-only spot picker for hanging a framed card (portraits live on the wall).
+async function buildFrameSlotPicker(guildId: string, userId: string, cardId: number) {
+  const hq = await getOrCreateHq(guildId, userId);
+  const room = resolveRoom(hq.activeRoomId);
+  const theme = resolveTheme(hq.themeId);
+  const placements = await getPlacements(guildId, userId, room.id);
+  const { cards } = await loadCtx(guildId);
+  const card = cards.find(c => c.id === cardId);
+
+  const embed = new EmbedBuilder()
+    .setColor(theme.palette.accent)
+    .setTitle(`🖼️ Hang ${card?.name ?? "card"}`)
+    .setDescription(
+      `Pick a **wall spot** in the **${room.emoji} ${room.name}** to hang the framed art. ` +
+      "Choosing an occupied spot swaps what's there back into your pile.",
+    );
+
+  const occ = (slot: number) => { const id = placements.get(slot); return id ? placementLabel(id) : undefined; };
+  const options = [];
+  for (let i = 0; i < HQ_WALL_ANCHOR_COUNT; i++) {
+    const slot = wallSlot(i), o = occ(slot);
+    options.push({ label: `🧱 Wall spot ${i + 1}${o ? ` — ${o.name}` : ""}`.slice(0, 90), value: String(slot), description: o ? "Occupied — swaps" : "Empty wall", emoji: o?.emoji ?? "▫️" });
+  }
+  const rows: ActionRowBuilder<any>[] = [
+    new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
+      new StringSelectMenuBuilder().setCustomId(`hq-hub:frameat:${cardId}`).setPlaceholder("Choose a wall spot…").addOptions(options),
+    ),
+    new ActionRowBuilder<ButtonBuilder>().addComponents(
+      new ButtonBuilder().setCustomId("hq-hub:back:decorations").setLabel("Back to Decorations").setEmoji("◀").setStyle(ButtonStyle.Secondary),
+    ),
+  ];
+  return { embeds: [embed], components: rows, files: [] as AttachmentBuilder[] };
+}
+
+// Hang a framed card at a wall slot. Requires the Portrait Frame (buyable) and
+// that the player still owns the card. Stored as "portrait-frame:<cardId>".
+async function placeFramedCardAt(guildId: string, userId: string, cardId: number, slotValue: string): Promise<void> {
+  if (!Number.isInteger(cardId)) return;
+  const owned = await getUnlockedItemIds(guildId, userId);
+  if (!owned.has(PORTRAIT_FRAME_ID)) return;                        // must own the frame
+  const ownsCard = (await getUserCollection(guildId, userId)).some(i => i.cardId === cardId);
+  if (!ownsCard) return;                                            // must still own the card
+  const s = Number(slotValue);
+  if (!Number.isInteger(s) || !slotIsWall(s) || !isValidSlot(s)) return;  // wall spots only
+
+  const hq = await getOrCreateHq(guildId, userId);
+  const room = resolveRoom(hq.activeRoomId);
+  const placements = await getPlacements(guildId, userId, room.id);
+  const itemId = `${PORTRAIT_PREFIX}${cardId}`;
+  const targetOccupied = placements.has(s);
+  const alreadyHere = placements.get(s) === itemId;
+  // Respect the room's display cap for a genuinely new frame.
+  if (!targetOccupied && placements.size >= room.decoSlots) return;
+  if (alreadyHere) return;
+  // Only one frame of a given card at a time: vacate any previous spot.
+  for (const [slot, id] of placements) {
+    if (id === itemId && slot !== s) { await clearPlacement(guildId, userId, room.id, slot).catch(() => {}); break; }
+  }
+  await placeDecoration(guildId, userId, room.id, s, itemId).catch(() => {});
 }
 
 // Place an owned decoration on the base grounds' next free spot (its own layout,
