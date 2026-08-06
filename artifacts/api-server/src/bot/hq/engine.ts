@@ -28,7 +28,7 @@ import { HQ_THEMES, DEFAULT_THEME_ID, type HqTheme } from "./defs/themes.js";
 import { HQ_WALLS, DEFAULT_WALL_ID, type HqWall } from "./defs/walls.js";
 import { HQ_FLOORS, DEFAULT_FLOOR_ID, type HqFloor } from "./defs/floors.js";
 import { HQ_BACKDROPS, DEFAULT_BACKDROP_ID, type HqBackdrop } from "./defs/backdrops.js";
-import { getUnlockedItemIds, grantUnlock } from "./db.js";
+import { getUnlockedItemIds, grantUnlock, getOrCreateHq, updateHq } from "./db.js";
 
 async function safe<T>(label: string, fn: () => Promise<T>, fallback: T): Promise<T> {
   try {
@@ -178,5 +178,12 @@ export async function reconcileUnlocks(guildId: string, userId: string): Promise
 
   const owned = await getUnlockedItemIds(guildId, userId).catch(() => new Set<string>());
   const hqLevel = computeHqLevel(progress, owned);
+  // Persist the derived level so the cached `player_hq.hq_level` (read by the hub
+  // header and leaderboards) stays accurate after new unlocks — only write when it
+  // actually changed, so a no-op /hq open costs no extra write.
+  const hq = await getOrCreateHq(guildId, userId).catch(() => null);
+  if (hq && hq.hqLevel !== hqLevel) {
+    await updateHq(guildId, userId, { hqLevel }).catch(() => {});
+  }
   return { progress, owned, hqLevel, newlyUnlocked };
 }
