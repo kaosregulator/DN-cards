@@ -35,7 +35,10 @@ import {
   getDefenders, setDefender, clearDefender, getGuildBases,
   getBaseState, applySiegeToBase, logSiege, recentAttackCount, reclaimBase,
 } from "../hq/db.js";
-import { shopRotation, shopEntryFor, formatRefreshIn } from "../hq/shop.js";
+import {
+  shopRotation, formatRefreshIn,
+  SHOP_AISLES, purchasableInAisle, shopPriceFor,
+} from "../hq/shop.js";
 import {
   resolveSiege, SIEGE_SHIELD_MS, SIEGE_COOLDOWN_MS, SIEGE_MAX_PER_WINDOW,
   type SiegeCombatant,
@@ -340,16 +343,22 @@ export async function handleHqHubComponent(
     return;
   }
 
-  // Shop: buy the selected furniture (validated against the live rotation price).
+  // Shop: switch aisle (category). The aisle is carried in the customId so the
+  // view stays put across buys/crate cracks.
+  if (action === "shopcat" && interaction.isStringSelectMenu()) {
+    await interaction.update(await buildView(interaction, "shop", [], undefined, interaction.values[0]!)).catch(() => {});
+    return;
+  }
+  // Shop: buy the selected item (price validated server-side via shopPriceFor).
   if (action === "buy" && interaction.isStringSelectMenu()) {
     const notice = await buyShopItem(guildId, userId, interaction.values[0]!);
-    await interaction.update(await buildView(interaction, "shop", [], notice)).catch(() => {});
+    await interaction.update(await buildView(interaction, "shop", [], notice, parts[2])).catch(() => {});
     return;
   }
   // Shop: open a mystery crate for a random furniture item.
   if (action === "crate" && interaction.isButton()) {
     const notice = await openMysteryCrate(guildId, userId);
-    await interaction.update(await buildView(interaction, "shop", [], notice)).catch(() => {});
+    await interaction.update(await buildView(interaction, "shop", [], notice, parts[2])).catch(() => {});
     return;
   }
 
@@ -590,6 +599,7 @@ async function buildView(
   interaction: HubInteraction,
   section: Section, justUnlocked: { name: string; emoji: string; story: string }[],
   notice?: string,
+  shopAisle?: string,
 ) {
   const guildId = interaction.guildId!;
   const userId = interaction.user.id;
@@ -832,26 +842,50 @@ async function buildView(
     case "shop": {
       const rot = shopRotation();
       const currency = await getOrCreateCurrency(guildId, userId).catch(() => ({ shards: 0 }));
+      // Aisle "featured" = today's discounted rotation; any SHOP_AISLES id browses
+      // that whole category. Default to Featured.
+      const aisle = shopAisle && SHOP_AISLES.some(a => a.id === shopAisle) ? shopAisle : "featured";
+      const priceStr = (basePrice: number, price: number, pct: number) =>
+        pct > 0 ? `~~${basePrice}~~ **${price}** (−${pct}%)` : `**${price}**`;
+
       embed.setTitle("🛒 The Furnisher's Stall").setDescription(
-        "_“Welcome, collector! Fresh stock every day.”_\n\n" +
-        "Furniture &amp; **mini-figurines** for your HQ, paid in the **same 💠 shards as the market**. " +
+        "_“Welcome, collector! Browse the aisles — pay in the **same 💠 shards as the market**.”_\n" +
         "Anything you buy lands in **🎏 Decorations** (and on your **🏰 Base** grounds) to place. " +
-        `Feeling lucky? Crack a **🎁 Mystery Crate** for a random piece (💠 ${CRATE_PRICE}).\n` +
-        `👛 Your purse: 💠 **${(currency.shards ?? 0).toLocaleString()}**  ·  🔄 restocks in **${formatRefreshIn(rot.refreshesInMs)}**`,
+        `The **⭐ Featured** shelf rotates daily with the only **discounts**.\n` +
+        `👛 Purse: 💠 **${(currency.shards ?? 0).toLocaleString()}**  ·  🔄 Featured restocks in **${formatRefreshIn(rot.refreshesInMs)}**`,
       );
-      const stock = rot.entries.map(e => {
+
+      // Aisle selector (categories) — always first.
+      const aisleOpts = [
+        { label: "Featured (on sale)", value: "featured", description: "Today's rotating discounts", emoji: "⭐", default: aisle === "featured" },
+        ...SHOP_AISLES.map(a => ({ label: a.label, value: a.id, description: `Browse all ${a.label.toLowerCase()}`, emoji: a.emoji, default: aisle === a.id })),
+      ];
+      rows.push(new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
+        new StringSelectMenuBuilder().setCustomId("hq-hub:shopcat").setPlaceholder("🧭 Choose an aisle…").addOptions(aisleOpts),
+      ));
+
+      // The item list for the active aisle.
+      let entries: { deco: typeof HQ_DECORATIONS[number]; basePrice: number; price: number; discountPct: number }[];
+      let fieldName: string;
+      if (aisle === "featured") {
+        entries = rot.entries;
+        fieldName = "⭐ Featured today (on sale)";
+      } else {
+        const a = SHOP_AISLES.find(x => x.id === aisle)!;
+        entries = purchasableInAisle(aisle).map(d => { const e = shopPriceFor(d)!; return { deco: d, basePrice: e.basePrice, price: e.price, discountPct: e.discountPct }; });
+        fieldName = `${a.emoji} ${a.label}`;
+      }
+      const stock = entries.map(e => {
         const own = owned.has(e.deco.id);
-        const priceStr = e.discountPct > 0
-          ? `~~${e.basePrice}~~ **${e.price}** (−${e.discountPct}%)`
-          : `**${e.price}**`;
-        return `${e.deco.emoji} **${e.deco.name}** · ${e.deco.rarity} — 💠 ${priceStr}${own ? " · ✅ owned" : ""}`;
+        return `${e.deco.emoji} **${e.deco.name}** · ${e.deco.rarity} — 💠 ${priceStr(e.basePrice, e.price, e.discountPct)}${own ? " · ✅ owned" : ""}`;
       });
-      embed.addFields({ name: "Today's stock", value: stock.join("\n").slice(0, 1024) || "The shelves are empty today." });
-      const buyable = rot.entries.filter(e => !owned.has(e.deco.id));
+      embed.addFields({ name: fieldName, value: stock.join("\n").slice(0, 1024) || "The shelves here are empty." });
+
+      const buyable = entries.filter(e => !owned.has(e.deco.id));
       if (buyable.length > 0) {
         rows.push(new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
-          new StringSelectMenuBuilder().setCustomId("hq-hub:buy").setPlaceholder("Buy an item…")
-            .addOptions(buyable.map(e => ({
+          new StringSelectMenuBuilder().setCustomId(`hq-hub:buy:${aisle}`).setPlaceholder("Buy an item…")
+            .addOptions(buyable.slice(0, 25).map(e => ({
               label: `${e.deco.name} — ${e.price}`.slice(0, 90),
               value: e.deco.id,
               description: `${e.discountPct > 0 ? `${e.discountPct}% off · ` : ""}${e.deco.rarity}`,
@@ -860,7 +894,7 @@ async function buildView(
         ));
       }
       rows.push(new ActionRowBuilder<ButtonBuilder>().addComponents(
-        new ButtonBuilder().setCustomId("hq-hub:crate").setLabel(`Open Mystery Crate — ${CRATE_PRICE}`).setEmoji("🎁").setStyle(ButtonStyle.Success),
+        new ButtonBuilder().setCustomId(`hq-hub:crate:${aisle}`).setLabel(`Open Mystery Crate — ${CRATE_PRICE}`).setEmoji("🎁").setStyle(ButtonStyle.Success),
       ));
       if (notice) embed.addFields({ name: "🧾 Receipt", value: notice.slice(0, 1024) });
       break;
@@ -1272,7 +1306,9 @@ function slotLabel(slot: number): string {
 // auto all fit one 25-option select.
 const FLOOR_PICK_TILES: Array<{ gx: number; gy: number }> = (() => {
   const out: Array<{ gx: number; gy: number }> = [];
-  for (let gy = 1; gy <= 4; gy++) for (let gx = 1; gx <= 4; gx++) out.push({ gx, gy });
+  // A spread across the big 8×8 floor (front-to-back rows), capped so the picker
+  // — auto + wall spots + these — still fits one 25-option select.
+  for (const gy of [1, 3, 5]) for (let gx = 1; gx <= 6; gx++) out.push({ gx, gy });
   return out;
 })();
 
@@ -1453,8 +1489,9 @@ async function placeBaseDecoration(guildId: string, userId: string, decoId: stri
 // spoof a cheaper/stale item), debit shards atomically, then grant the unlock.
 // Refunds if a race means the grant didn't actually create the row.
 async function buyShopItem(guildId: string, userId: string, decoId: string): Promise<string> {
-  const entry = shopEntryFor(decoId);
-  if (!entry) return "❌ That item just rotated out of the shop.";
+  const deco = resolveDecoration(decoId);
+  const entry = deco ? shopPriceFor(deco) : undefined;
+  if (!entry) return "❌ That item isn't for sale.";
   const owned = await getUnlockedItemIds(guildId, userId);
   if (owned.has(decoId)) return `You already own ${entry.deco.emoji} ${entry.deco.name}.`;
   const paid = await spendShards(guildId, userId, entry.price).catch(() => false);

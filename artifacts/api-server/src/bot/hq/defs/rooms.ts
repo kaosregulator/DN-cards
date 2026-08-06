@@ -30,7 +30,7 @@ export const HQ_ROOMS: HqRoom[] = [
     kind: "entrance",
     blurb: "The welcome hall — the first thing visitors see.",
     pedestals: 0,
-    decoSlots: 4,
+    decoSlots: 8,
     unlock: { kind: "always" },
   },
   {
@@ -39,8 +39,8 @@ export const HQ_ROOMS: HqRoom[] = [
     emoji: "🏆",
     kind: "trophy",
     blurb: "Your museum — pin your proudest cards on lit pedestals.",
-    pedestals: 3,
-    decoSlots: 6,
+    pedestals: 5,
+    decoSlots: 12,
     unlock: { kind: "collectionUnique", n: 10 },
   },
   // Decoration-focused showcase rooms unlock as the player progresses — each is
@@ -54,7 +54,7 @@ export const HQ_ROOMS: HqRoom[] = [
     kind: "display",
     blurb: "A sunlit gallery for the mementos you're most proud of.",
     pedestals: 0,
-    decoSlots: 6,
+    decoSlots: 12,
     unlock: { kind: "collectionUnique", n: 25 },
   },
   {
@@ -64,7 +64,7 @@ export const HQ_ROOMS: HqRoom[] = [
     kind: "display",
     blurb: "Where your hardest-won trophies stand together.",
     pedestals: 0,
-    decoSlots: 6,
+    decoSlots: 12,
     unlock: { kind: "accountLevel", n: 15 },
   },
 ];

@@ -33,16 +33,18 @@ import type { HqWall } from "./defs/walls.js";
 import type { HqFloor } from "./defs/floors.js";
 import type { DecoCategory } from "./defs/decorations.js";
 
-const W = 1000, H = 560;
+const W = 1120, H = 680;
 const HEADER_H = 66;
 
 // ── Isometric projection ───────────────────────────────────────────────────────
 // A GRID×GRID floor. project() maps a lattice point (gx,gy) to screen space; a
 // floor tile (i,j) is the diamond between (i,j),(i+1,j),(i+1,j+1),(i,j+1).
-const GRID = 6;
-const TILE_W = 104, TILE_H = 52;   // full diamond width/height (2:1 iso)
-const ORIGIN_X = W / 2, ORIGIN_Y = 150; // screen position of lattice corner (0,0)
-const WALL_H = 140;
+// The room is deliberately large (an 8×8 hall) so it reads like a proper
+// decoratable space — a "mini-Sims" room, not a diorama.
+const GRID = 8;
+const TILE_W = 116, TILE_H = 58;   // full diamond width/height (2:1 iso)
+const ORIGIN_X = W / 2, ORIGIN_Y = 176; // screen position of lattice corner (0,0)
+const WALL_H = 168;
 
 interface Pt { x: number; y: number }
 function project(gx: number, gy: number): Pt {
@@ -154,11 +156,25 @@ export interface HqBaseView extends HqHeaderInfo {
 // same encoding when the player picks a tile/wall spot.
 export const HQ_GRID = GRID;
 export const HQ_WALL_SLOT_BASE = 100;
-const WALL_ANCHORS: { x: number; y: number; scale: number }[] = [
-  { x: 648, y: 150, scale: 1 },    // left wall
-  { x: 352, y: 150, scale: 1 },    // right wall
-  { x: 500, y: 96, scale: 0.9 },   // near the corner
-];
+// Wall-art anchors are DERIVED from the two wall faces so they scale with the
+// room. Each face gets evenly-spaced spots at ~55% up the wall — a big room means
+// plenty of wall space for framed cards, banners and medals. Right face runs
+// project(0,GRID)→project(0,0); left face project(0,0)→project(GRID,0).
+const WALL_ANCHORS: { x: number; y: number; scale: number }[] = (() => {
+  const out: { x: number; y: number; scale: number }[] = [];
+  const lift = WALL_H * 0.66;   // high on the wall, clear of the pedestal row
+  const rA = { x: ORIGIN_X + (0 - GRID) * (TILE_W / 2), y: ORIGIN_Y + (0 + GRID) * (TILE_H / 2) };
+  const rB = { x: ORIGIN_X, y: ORIGIN_Y };                                   // project(0,0) = back corner
+  const lB = { x: ORIGIN_X + GRID * (TILE_W / 2), y: ORIGIN_Y + GRID * (TILE_H / 2) };
+  const at = (a: { x: number; y: number }, b: { x: number; y: number }, u: number, scale: number) =>
+    ({ x: a.x + (b.x - a.x) * u, y: (a.y + (b.y - a.y) * u) - lift, scale });
+  // Keep art on the SIDE portions of each wall, away from the back corner (where
+  // the pedestals sit). Right face runs far-left→corner, so use small u; left
+  // face runs corner→far-right, so use large u.
+  for (const u of [0.12, 0.26, 0.40]) out.push(at(rA, rB, u, 0.92));  // right wall
+  for (const u of [0.60, 0.74, 0.88]) out.push(at(rB, lB, u, 0.92));  // left wall
+  return out;
+})();
 export const HQ_WALL_ANCHOR_COUNT = WALL_ANCHORS.length;
 export function floorSlot(gx: number, gy: number): number { return gy * GRID + gx; }
 export function wallSlot(i: number): number { return HQ_WALL_SLOT_BASE + i; }
@@ -208,9 +224,9 @@ export async function renderHq(view: HqRenderView): Promise<Buffer | null> {
 // DEFENDERS out front ("the cards you left to guard"). Drawn entirely on the
 // canvas so it always reads as one artwork, matching the reference map.
 const BASE_CX = W / 2;
-const ISLAND_CY = 312;      // vertical centre of the base tier
-const ISLAND_HW = 430;      // half-width of the base (top) diamond
-const ISLAND_HH = 196;      // half-height
+const ISLAND_CY = 388;      // vertical centre of the base tier (centred below the header)
+const ISLAND_HW = 470;      // half-width of the base (top) diamond
+const ISLAND_HH = 214;      // half-height
 const TIER_THICK = 30;      // cliff thickness
 const CASTLE_W = 150, CASTLE_H = 138;
 
@@ -671,12 +687,18 @@ export interface WorldBaseMarker {
 }
 export interface HqWorldView extends HqHeaderInfo { markers: WorldBaseMarker[] }
 
-// Anchor slots for up to 8 castles, spread across the map like the reference.
-const WORLD_ANCHORS: { x: number; y: number }[] = [
-  { x: 300, y: 210 }, { x: 520, y: 180 }, { x: 720, y: 210 },
-  { x: 210, y: 320 }, { x: 520, y: 300 }, { x: 800, y: 320 },
-  { x: 360, y: 420 }, { x: 660, y: 420 },
-];
+// The world landmass (a big terraced diamond) and the castle anchor slots
+// spread across its top face — DERIVED from the island so they track the canvas.
+const WORLD_IX = W / 2, WORLD_IY = 356, WORLD_IHW = 486, WORLD_IHH = 252;
+const WORLD_ANCHORS: { x: number; y: number }[] = (() => {
+  // (u,v) in island-normalised space (|u|+|v| ≲ 0.8 stays on the top face).
+  const uv: [number, number][] = [
+    [-0.30, -0.44], [0.08, -0.50], [0.46, -0.30],
+    [-0.50, -0.06], [0.14, -0.04], [0.54, 0.06],
+    [-0.22, 0.34], [0.32, 0.30],
+  ];
+  return uv.map(([u, v]) => ({ x: WORLD_IX + u * WORLD_IHW, y: WORLD_IY + v * WORLD_IHH }));
+})();
 
 export async function renderWorldMap(view: HqWorldView): Promise<Buffer | null> {
   return queueRender("hq-world", async () => {
@@ -687,7 +709,7 @@ export async function renderWorldMap(view: HqWorldView): Promise<Buffer | null> 
       const ctx = canvas.getContext("2d") as unknown as Ctx;
       ctx.fillStyle = "#0f1117"; ctx.fillRect(0, 0, W, H);
       // A big terraced landmass.
-      drawIslandTier(ctx, W / 2, 330, 470, 240);
+      drawIslandTier(ctx, WORLD_IX, WORLD_IY, WORLD_IHW, WORLD_IHH);
       const castleImg = await (async () => {
         const p = spriteForPrefix("building", "castle") ?? spriteForPrefix("building", "keep");
         return p ? await loadSprite(mod, p).catch(() => null) : null;
@@ -911,7 +933,7 @@ async function layerFurniture(ctx: Ctx, mod: CanvasMod, view: HqRenderView): Pro
   const SPREAD = 1.4;
   for (let i = 0; i < n; i++) {
     const d = (i - (n - 1) / 2) * SPREAD;
-    const p = project(2.5 + d, 2.5 - d);  // gx+gy = 5 → shallow back row
+    const p = project(3.0 + d, 3.0 - d);  // gx+gy = 6 → shallow back row, centred
     const card = view.pedestals[i]!;
     items.push({ depth: p.y, draw: () => drawPedestal(ctx, mod, p.x, p.y, card, view.theme, !!view.glassOff) });
   }
@@ -941,8 +963,8 @@ async function layerFurniture(ctx: Ctx, mod: CanvasMod, view: HqRenderView): Pro
 async function drawPedestal(
   ctx: Ctx, mod: CanvasMod, cx: number, cy: number, card: HqRenderCard | null, theme: HqTheme, glassOff = false,
 ): Promise<void> {
-  const cardW = 116, cardH = 150;
-  const plinthH = 30, plinthW = cardW + 20;
+  const cardW = 98, cardH = 128;
+  const plinthH = 28, plinthW = cardW + 20;
   const cardBottom = cy - 6;           // card stands just above the plinth top
   const cardTop = cardBottom - cardH;
   const cardX = cx - cardW / 2;

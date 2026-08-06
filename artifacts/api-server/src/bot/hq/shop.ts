@@ -87,6 +87,50 @@ export function shopEntryFor(decoId: string, now: Date = new Date()): ShopEntry 
   return shopRotation(now).entries.find(e => e.deco.id === decoId);
 }
 
+// ── Aisles (categories) ───────────────────────────────────────────────────────
+// The shop is browsable by aisle so the growing catalogue stays navigable — an
+// NPC shop with shelves, not one daily list. The daily rotation is the
+// "Featured" aisle (its items are the only ones that can be DISCOUNTED). Every
+// aisle sells at the item's base price; featured items are cheaper today. Aisle
+// order matters — the first matching aisle wins (figurines before furniture,
+// since figures share the "statue" category).
+export interface ShopAisle {
+  id: string;
+  label: string;
+  emoji: string;
+  match: (d: HqDecoration) => boolean;
+}
+
+export const SHOP_AISLES: ShopAisle[] = [
+  { id: "wallart",    label: "Wall Art",        emoji: "🖼️", match: d => d.category === "portrait" || d.category === "banner" || d.category === "emblem" },
+  { id: "rugslights", label: "Rugs & Lighting", emoji: "🕯️", match: d => d.category === "rug" || d.category === "light" },
+  { id: "figurines",  label: "Figurines",       emoji: "🧸", match: d => d.id.startsWith("figure-") },
+  { id: "furniture",  label: "Furniture",       emoji: "🪑", match: d => d.category === "case" || d.category === "statue" || d.category === "monument" || d.category === "trophy" },
+  { id: "nature",     label: "Nature",          emoji: "🌿", match: d => d.category === "plant" || d.category === "tree" || d.category === "rock" || d.category === "crystal" },
+];
+
+// Which aisle a decoration belongs to (first match), or undefined if it sells nowhere.
+export function shopAisleOf(deco: HqDecoration): ShopAisle | undefined {
+  return SHOP_AISLES.find(a => a.match(deco));
+}
+
+// All purchasable items in an aisle, cheapest first.
+export function purchasableInAisle(aisleId: string): HqDecoration[] {
+  const aisle = SHOP_AISLES.find(a => a.id === aisleId);
+  if (!aisle) return [];
+  return PURCHASABLE.filter(d => aisle.match(d)).sort((a, b) => (a.price ?? 0) - (b.price ?? 0));
+}
+
+// The effective price for ANY purchasable item: today's discount if it's in the
+// featured rotation, otherwise its base price. Central so the hub and the buy
+// validator agree (a client can't spoof a cheaper price).
+export function shopPriceFor(deco: HqDecoration, now: Date = new Date()): ShopEntry | undefined {
+  if (typeof deco.price !== "number" || deco.price <= 0) return undefined;
+  const featured = shopEntryFor(deco.id, now);
+  if (featured) return featured;
+  return { deco, basePrice: deco.price, discountPct: 0, price: deco.price };
+}
+
 // "2h 14m" style hint for when the shop next refreshes.
 export function formatRefreshIn(ms: number): string {
   const totalMin = Math.floor(ms / 60000);
