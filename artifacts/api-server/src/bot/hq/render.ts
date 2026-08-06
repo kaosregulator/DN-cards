@@ -137,7 +137,8 @@ export interface HqBaseView extends HqHeaderInfo {
   ownerName: string;
   buildings: HqBaseBuilding[];    // which structures the town has
   defenders: HqRenderDefender[];  // stationed cards, rendered as standees
-  captured?: boolean;             // future: show a captured/shield state banner
+  decorations?: HqRenderDeco[];   // player-placed grounds decorations (trees, items…)
+  captured?: boolean;             // show a captured/held banner (red)
 }
 
 // Placement encoding (stored in hq_placements.slot, so no schema change):
@@ -240,6 +241,28 @@ function pickCastleSprite(view: HqBaseView): string | null {
   return avail[Math.abs(seed) % avail.length]!;
 }
 
+// Screen anchors where the OWNER can place grounds decorations (trees, items…)
+// on the outdoor base — spread on the grass, clear of the castle and defender row.
+const BASE_DECO_TILES: { x: number; y: number }[] = [
+  { x: BASE_CX - 300, y: ISLAND_CY - 6 }, { x: BASE_CX + 300, y: ISLAND_CY - 6 },
+  { x: BASE_CX - 340, y: ISLAND_CY + 70 }, { x: BASE_CX + 340, y: ISLAND_CY + 70 },
+  { x: BASE_CX - 210, y: ISLAND_CY + 150 }, { x: BASE_CX + 210, y: ISLAND_CY + 150 },
+  { x: BASE_CX - 130, y: ISLAND_CY - 70 }, { x: BASE_CX + 150, y: ISLAND_CY - 70 },
+];
+export const HQ_BASE_DECO_SLOTS = BASE_DECO_TILES.length;
+
+// Player-placed grounds decorations on the base (slot = index into BASE_DECO_TILES).
+async function drawBaseDecorations(ctx: Ctx, mod: CanvasMod, view: HqBaseView): Promise<void> {
+  const decos = (view.decorations ?? []).slice().sort((a, b) => {
+    const pa = BASE_DECO_TILES[a.slot % BASE_DECO_TILES.length]!, pb = BASE_DECO_TILES[b.slot % BASE_DECO_TILES.length]!;
+    return pa.y - pb.y;
+  });
+  for (const d of decos) {
+    const p = BASE_DECO_TILES[d.slot % BASE_DECO_TILES.length]!;
+    await drawDecoAt(ctx, mod, p.x, p.y, 0.9, d, true);
+  }
+}
+
 // The whole base scene in one painter, reused for the static base view AND every
 // frame of a live siege (so the siege looks identical to the base, just in motion).
 async function paintBaseScene(ctx: Ctx, mod: CanvasMod, view: HqBaseView, siege?: SiegeOverlay): Promise<void> {
@@ -249,6 +272,7 @@ async function paintBaseScene(ctx: Ctx, mod: CanvasMod, view: HqBaseView, siege?
   const plateauCy = ISLAND_CY - 40;
   drawIslandTier(ctx, BASE_CX, plateauCy, 168, 80, true);
   drawScatter(ctx, view);
+  await drawBaseDecorations(ctx, mod, view); // player-placed grounds items (behind the front row)
   const castleFeetY = plateauCy + 6;
   // Use a real castle sprite when the pack has one (deterministic pick per base),
   // else the procedural castle. drawCastle returns the top for the banner.
@@ -1100,6 +1124,25 @@ function drawDecoration(ctx: Ctx, ox: number, oy: number, scale: number, deco: H
       ctx.beginPath();
       ctx.moveTo(0, -s * 0.16); ctx.lineTo(s * 0.34, 0); ctx.lineTo(0, s * 0.16); ctx.lineTo(-s * 0.34, 0);
       ctx.closePath(); ctx.stroke();
+      break;
+    }
+    case "tree": {
+      ctx.shadowBlur = 0;
+      ctx.fillStyle = "#5a3d22"; ctx.fillRect(-s * 0.06, s * 0.2, s * 0.12, s * 0.32); // trunk
+      for (let i = 0; i < 3; i++) {
+        const ty = s * 0.2 - i * s * 0.26, wsp = s * (0.34 - i * 0.07);
+        ctx.fillStyle = i === 0 ? "#2f6b34" : i === 1 ? "#357a3b" : "#3d8a43";
+        ctx.beginPath(); ctx.moveTo(0, ty - s * 0.34); ctx.lineTo(wsp, ty); ctx.lineTo(-wsp, ty); ctx.closePath(); ctx.fill();
+      }
+      break;
+    }
+    case "rock": {
+      ctx.shadowBlur = 0;
+      ctx.fillStyle = "#8b9099"; ctx.beginPath();
+      ctx.moveTo(-s * 0.34, s * 0.2); ctx.lineTo(-s * 0.16, -s * 0.24); ctx.lineTo(s * 0.14, -s * 0.28);
+      ctx.lineTo(s * 0.34, s * 0.06); ctx.lineTo(s * 0.2, s * 0.2); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = "#a9aeb6"; ctx.beginPath();
+      ctx.moveTo(-s * 0.16, -s * 0.24); ctx.lineTo(s * 0.14, -s * 0.28); ctx.lineTo(s * 0.04, -s * 0.06); ctx.lineTo(-s * 0.08, -s * 0.06); ctx.closePath(); ctx.fill();
       break;
     }
   }

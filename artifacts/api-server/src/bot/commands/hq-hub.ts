@@ -33,7 +33,7 @@ import {
   getPlacements, placeDecoration, clearPlacement, pruneUnownedPlacements,
   getUnlockedItemIds, grantUnlock,
   getDefenders, setDefender, clearDefender,
-  getBaseState, applySiegeToBase, logSiege, recentAttackCount,
+  getBaseState, applySiegeToBase, logSiege, recentAttackCount, reclaimBase,
 } from "../hq/db.js";
 import { shopRotation, shopEntryFor, formatRefreshIn } from "../hq/shop.js";
 import {
@@ -56,7 +56,7 @@ import { unlockLabel, type UnlockRule } from "../hq/defs/unlock-rules.js";
 import { spriteFor, spriteForPrefix } from "../hq/assets.js";
 import {
   renderHq, renderBase, renderSiege, floorSlot, wallSlot, slotIsWall, slotToTile,
-  HQ_WALL_SLOT_BASE, HQ_WALL_ANCHOR_COUNT, HQ_DEFENDER_SLOTS,
+  HQ_WALL_SLOT_BASE, HQ_WALL_ANCHOR_COUNT, HQ_DEFENDER_SLOTS, HQ_BASE_DECO_SLOTS,
   type HqRenderView, type HqRenderCard, type HqRenderDeco, type HqRenderDefender,
   type HqBaseView, type HqBaseBuilding, type HqBuildingRole, type SiegePlan,
 } from "../hq/render.js";
@@ -190,6 +190,23 @@ export async function handleHqHubComponent(
   }
   if (action === "cleardef" && interaction.isButton()) {
     await clearDefender(guildId, userId, Number(parts[2])).catch(() => {});
+    await interaction.update(await buildView(interaction, "defenders", [])).catch(() => {});
+    return;
+  }
+  // Decorate the outdoor base grounds (its own layout) / reclaim a held base.
+  if (action === "basedeco" && interaction.isStringSelectMenu()) {
+    await placeBaseDecoration(guildId, userId, interaction.values[0]!);
+    await interaction.update(await buildView(interaction, "defenders", [])).catch(() => {});
+    return;
+  }
+  if (action === "baseundeco" && interaction.isStringSelectMenu()) {
+    await clearPlacement(guildId, userId, BASE_ROOM_ID, Number(interaction.values[0])).catch(() => {});
+    await interaction.update(await buildView(interaction, "defenders", [])).catch(() => {});
+    return;
+  }
+  if (action === "reclaim" && interaction.isButton()) {
+    const cap = activeCapture(await getBaseState(guildId, userId));
+    if (cap && !(cap.shieldUntil && cap.shieldUntil.getTime() > Date.now())) await reclaimBase(guildId, userId).catch(() => {});
     await interaction.update(await buildView(interaction, "defenders", [])).catch(() => {});
     return;
   }
@@ -419,11 +436,19 @@ async function buildBaseRenderView(
   }
   const buildings: HqBaseBuilding[] = BASE_BUILDING_ROLES.map(role => ({ role, spritePath: spriteForPrefix("building", role) }));
   const capture = activeCapture(await getBaseState(guildId, userId));
+  // Player-placed grounds decorations (the base is its own decoratable "room").
+  const groundsMap = await getPlacements(guildId, userId, BASE_ROOM_ID);
+  const decorations: HqRenderDeco[] = [];
+  for (const [slot, itemId] of groundsMap) {
+    const d = resolveDecoration(itemId);
+    if (!d) continue;
+    decorations.push({ slot, category: d.category, name: d.name, rarityColor: rarityColor(d.rarity as Rarity, settings, displayMap), spritePath: spriteFor(theme, d.spriteKey) });
+  }
   return {
     ownerName, displayTitle: hqDisplayTitle(hq, ownerName), ownerAvatarUrl, theme,
     roomEmoji: "🏰", roomName: "Base", hqLevel: hq.hqLevel,
     subtitle: capture ? `Base • held by ${capture.heldName}` : `Base • ${defenders.length}/${HQ_DEFENDER_SLOTS} defenders`,
-    buildings, defenders, captured: !!capture,
+    buildings, defenders, decorations, captured: !!capture,
   };
 }
 
@@ -528,16 +553,18 @@ async function buildView(
 
     case "defenders": {
       const defenders = await getDefenders(guildId, userId);
+      const capture = activeCapture(await getBaseState(guildId, userId));
+      const grounds = await getPlacements(guildId, userId, BASE_ROOM_ID);
       embed.setTitle("🏰 Your Base").setDescription(
-        "Your **town base** — a keep, walls and camps out in the open. Station cards to **guard it**; they stand as figures out front. " +
-        "This exterior base is what other players **scout and attack** in the raid-style base battles (coming next). " +
-        `You can post up to **${HQ_DEFENDER_SLOTS}** defenders.\n` +
+        "Your **town base** — station cards to **guard it** (they stand out front) and **decorate the grounds** with trees & items. " +
+        "Other players scout and **siege** this base; win and they **hold it until you reclaim it**.\n" +
+        (capture ? `\n🚩 **Held by ${capture.heldName}.**` : "") +
         (defenders.size === 0 ? "\nNo defenders yet — set one below to start fortifying." : ""),
       );
       if (defenders.size > 0) {
         const { cards, settings, ctx, displayMap } = await loadCtx(guildId);
         embed.addFields({
-          name: `On guard (${defenders.size}/${HQ_DEFENDER_SLOTS})`,
+          name: `🛡️ On guard (${defenders.size}/${HQ_DEFENDER_SLOTS})`,
           value: [...defenders.entries()].sort((a, b) => a[0] - b[0]).map(([slot, cardId]) => {
             const card = cards.find(c => c.id === cardId);
             const d = card ? getCardDisplayRarity(card, ctx, settings, displayMap) : null;
@@ -545,8 +572,43 @@ async function buildView(
           }).join("\n").slice(0, 1024),
         });
       }
+      if (grounds.size > 0) {
+        embed.addFields({
+          name: `🌳 Grounds (${grounds.size}/${HQ_BASE_DECO_SLOTS})`,
+          value: [...grounds.entries()].sort((a, b) => a[0] - b[0])
+            .map(([slot, id]) => `Spot ${slot + 1}: ${resolveDecoration(id)?.emoji ?? "•"} ${resolveDecoration(id)?.name ?? id}`).join("\n").slice(0, 1024),
+        });
+      }
       rows.push(pedestalButtonRow("setdef", "Set", HQ_DEFENDER_SLOTS, ButtonStyle.Primary));
       rows.push(pedestalButtonRow("cleardef", "Clear", HQ_DEFENDER_SLOTS, ButtonStyle.Secondary, defenders));
+
+      // Decorate the grounds: place an owned decoration (incl. free trees/rocks)
+      // on the next open spot; remove a placed one. Base is its own layout.
+      const groundsPlaced = new Set(grounds.values());
+      const placeable = ownedDecorations(owned).filter(d => !groundsPlaced.has(d.id));
+      if (grounds.size < HQ_BASE_DECO_SLOTS && placeable.length > 0) {
+        rows.push(new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
+          new StringSelectMenuBuilder().setCustomId("hq-hub:basedeco").setPlaceholder(`Add to grounds… (${HQ_BASE_DECO_SLOTS - grounds.size} spots free)`)
+            .addOptions(placeable.slice(0, 25).map(d => ({ label: d.name.slice(0, 90), value: d.id, description: d.rarity, emoji: d.emoji }))),
+        ));
+      }
+      if (grounds.size > 0) {
+        rows.push(new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
+          new StringSelectMenuBuilder().setCustomId("hq-hub:baseundeco").setPlaceholder("Remove from grounds…")
+            .addOptions([...grounds.entries()].sort((a, b) => a[0] - b[0]).map(([slot, id]) => ({
+              label: `Spot ${slot + 1}: ${(resolveDecoration(id)?.name ?? id).slice(0, 72)}`, value: String(slot), emoji: "🗑️",
+            }))),
+        ));
+      }
+      // Reclaim your base once the conqueror's shield lapses.
+      if (capture) {
+        const locked = !!capture.shieldUntil && capture.shieldUntil.getTime() > Date.now();
+        rows.push(new ActionRowBuilder<ButtonBuilder>().addComponents(
+          new ButtonBuilder().setCustomId("hq-hub:reclaim").setEmoji("🚩")
+            .setLabel(locked ? "Reclaim (shielded)" : "Reclaim your base")
+            .setStyle(ButtonStyle.Danger).setDisabled(locked),
+        ));
+      }
       break;
     }
 
@@ -694,13 +756,16 @@ async function buildView(
   return { embeds: [embed], components: rows, files };
 }
 
-// True when a base is currently held by a conqueror (capture still within its
-// shield window; after that it lazily reverts to the owner).
-function activeCapture(state: Awaited<ReturnType<typeof getBaseState>>): { heldBy: string; heldName: string } | null {
+// A conqueror holds a base until it is RECLAIMED (persistent takeover). The
+// shield only gates how soon it can be re-attacked / reclaimed, not the hold.
+function activeCapture(state: Awaited<ReturnType<typeof getBaseState>>): { heldBy: string; heldName: string; shieldUntil: Date | null } | null {
   if (!state?.heldByUserId) return null;
-  if (state.shieldUntil && state.shieldUntil.getTime() < Date.now()) return null;
-  return { heldBy: state.heldByUserId, heldName: state.heldByName ?? "a rival" };
+  return { heldBy: state.heldByUserId, heldName: state.heldByName ?? "a rival", shieldUntil: state.shieldUntil ?? null };
 }
+
+// Placements under this pseudo-room id decorate the OUTDOOR base (its own grounds
+// layout), separate from the interior rooms.
+const BASE_ROOM_ID = "base";
 
 // ── Base siege (attack/capture mini-game) ─────────────────────────────────────
 type SiegeMode = "classic" | "static" | "live";
@@ -1110,6 +1175,21 @@ async function placeDecorationAt(guildId: string, userId: string, decoId: string
     if (id === deco.id && slot !== target) { await clearPlacement(guildId, userId, room.id, slot).catch(() => {}); break; }
   }
   await placeDecoration(guildId, userId, room.id, target, deco.id).catch(() => {});
+}
+
+// Place an owned decoration on the base grounds' next free spot (its own layout,
+// stored under the BASE_ROOM_ID pseudo-room).
+async function placeBaseDecoration(guildId: string, userId: string, decoId: string): Promise<void> {
+  const deco = resolveDecoration(decoId);
+  if (!deco) return;
+  const owned = await getUnlockedItemIds(guildId, userId);
+  if (!(deco.unlock.kind === "always" || owned.has(deco.id))) return;
+  const placements = await getPlacements(guildId, userId, BASE_ROOM_ID);
+  if ([...placements.values()].includes(deco.id)) return; // already on the grounds
+  let slot = -1;
+  for (let i = 0; i < HQ_BASE_DECO_SLOTS; i++) { if (!placements.has(i)) { slot = i; break; } }
+  if (slot < 0) return; // grounds full
+  await placeDecoration(guildId, userId, BASE_ROOM_ID, slot, deco.id).catch(() => {});
 }
 
 // Buy a shop item: validate against the LIVE rotation price (a client can't

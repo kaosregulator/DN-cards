@@ -18,7 +18,7 @@ import type { UnlockRule } from "./unlock-rules.js";
 // supply real art per (theme, category|id) without changing this list.
 export type DecoCategory =
   | "banner" | "statue" | "trophy" | "monument" | "plant" | "light" | "case" | "emblem"
-  | "crystal" | "rug";
+  | "crystal" | "rug" | "tree" | "rock";
 
 export interface HqDecoration {
   id: string;
@@ -41,6 +41,13 @@ export const HQ_DECORATIONS: HqDecoration[] = [
   // ── Always available ────────────────────────────────────────────────────────
   { id: "starter-plant", name: "Potted Fern", emoji: "🪴", rarity: "common", category: "plant",
     spriteKey: "deco/starter-plant", unlock: { kind: "always" }, story: "A little life in the corner." },
+  // Free landscaping for the outdoor base — add/remove your own trees & rocks.
+  { id: "yard-tree", name: "Pine Tree", emoji: "🌲", rarity: "common", category: "tree",
+    spriteKey: "deco/yard-tree", unlock: { kind: "always" }, story: "Plant it anywhere on your grounds." },
+  { id: "yard-bush", name: "Shrub", emoji: "🌿", rarity: "common", category: "plant",
+    spriteKey: "deco/yard-bush", unlock: { kind: "always" }, story: "A tidy little bush." },
+  { id: "yard-rock", name: "Boulder", emoji: "🪨", rarity: "common", category: "rock",
+    spriteKey: "deco/yard-rock", unlock: { kind: "always" }, story: "Solid landscaping." },
 
   // ── Battle milestones ───────────────────────────────────────────────────────
   { id: "banner-first-win", name: "First Blood Banner", emoji: "🚩", rarity: "uncommon", category: "banner",
