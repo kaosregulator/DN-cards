@@ -46,6 +46,7 @@ import {
   type SiegeCombatant,
 } from "../hq/siege.js";
 import { rarityLadderRank } from "../rarity-runtime.js";
+import { withHqLock } from "../hq/lock.js";
 import {
   reconcileUnlocks, ownedDecorations, unlockedRooms, unlockedThemes,
   isRoomUnlocked, isThemeUnlocked, unlockedWalls, unlockedFloors,
@@ -1132,6 +1133,10 @@ const SIEGE_MOVES = ["Siege Strike", "Breach", "Overrun", "Vanguard Charge", "Fi
 
 async function runSiege(interaction: ButtonInteraction, guildId: string, attackerId: string, defenderId: string, mode: SiegeMode): Promise<void> {
   await interaction.deferUpdate().catch(() => {});
+  // Serialize per attacker so rapid/concurrent clicks can't slip past the
+  // cooldown/shield check and double-apply a capture or reward: the queued click
+  // re-checks AFTER the first has committed its attack log + base state.
+  await withHqLock(`hq:siege:${guildId}:${attackerId}`, async () => {
   const blocked = await siegeBlockReason(guildId, attackerId, defenderId);
   if (blocked) {
     await interaction.editReply({ embeds: [new EmbedBuilder().setColor(0xc0392b).setDescription(`❌ ${blocked}`)], components: [backRow("defenders")], files: [] }).catch(() => {});
@@ -1202,6 +1207,7 @@ async function runSiege(interaction: ButtonInteraction, guildId: string, attacke
   if (mode === "classic" && log) embed.addFields({ name: "Duels", value: log.slice(0, 1024) });
 
   await interaction.editReply({ embeds: [embed], components: [backRow("defenders")], files }).catch(() => {});
+  });
 }
 
 // Best-effort DM to a base owner after their base is attacked. Never throws (DMs
@@ -1449,6 +1455,9 @@ function isValidSlot(slot: number): boolean {
 // decoration's previous spot; an occupied target swaps its occupant back out.
 // The room's decoSlots caps how many items can be displayed at once.
 async function placeDecorationAt(guildId: string, userId: string, decoId: string, slotValue: string): Promise<void> {
+  // Serialize per user so concurrent placement clicks can't each read the same
+  // "free slot" snapshot and both write — bypassing the cap or duplicating.
+  return withHqLock(`hq:place:${guildId}:${userId}`, async () => {
   const deco = resolveDecoration(decoId);
   if (!deco) return;
   const owned = await getUnlockedItemIds(guildId, userId);
@@ -1479,6 +1488,7 @@ async function placeDecorationAt(guildId: string, userId: string, decoId: string
     if (id === deco.id && slot !== target) { await clearPlacement(guildId, userId, room.id, slot).catch(() => {}); break; }
   }
   await placeDecoration(guildId, userId, room.id, target, deco.id).catch(() => {});
+  });
 }
 
 // ── Card wall-art ─────────────────────────────────────────────────────────────
@@ -1529,6 +1539,7 @@ async function buildFrameSlotPicker(guildId: string, userId: string, cardId: num
 // that the player still owns the card. Stored as "portrait-frame:<cardId>".
 async function placeFramedCardAt(guildId: string, userId: string, cardId: number, slotValue: string): Promise<void> {
   if (!Number.isInteger(cardId)) return;
+  return withHqLock(`hq:place:${guildId}:${userId}`, async () => {
   const owned = await getUnlockedItemIds(guildId, userId);
   if (!owned.has(PORTRAIT_FRAME_ID)) return;                        // must own the frame
   const ownsCard = (await getUserCollection(guildId, userId)).some(i => i.cardId === cardId);
@@ -1550,11 +1561,13 @@ async function placeFramedCardAt(guildId: string, userId: string, cardId: number
     if (id === itemId && slot !== s) { await clearPlacement(guildId, userId, room.id, slot).catch(() => {}); break; }
   }
   await placeDecoration(guildId, userId, room.id, s, itemId).catch(() => {});
+  });
 }
 
 // Place an owned decoration on the base grounds' next free spot (its own layout,
 // stored under the BASE_ROOM_ID pseudo-room).
 async function placeBaseDecoration(guildId: string, userId: string, decoId: string): Promise<void> {
+  return withHqLock(`hq:place:${guildId}:${userId}`, async () => {
   const deco = resolveDecoration(decoId);
   if (!deco) return;
   const owned = await getUnlockedItemIds(guildId, userId);
@@ -1565,6 +1578,7 @@ async function placeBaseDecoration(guildId: string, userId: string, decoId: stri
   for (let i = 0; i < HQ_BASE_DECO_SLOTS; i++) { if (!placements.has(i)) { slot = i; break; } }
   if (slot < 0) return; // grounds full
   await placeDecoration(guildId, userId, BASE_ROOM_ID, slot, deco.id).catch(() => {});
+  });
 }
 
 // Buy a shop item: validate against the LIVE rotation price (a client can't
