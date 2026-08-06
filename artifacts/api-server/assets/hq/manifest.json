@@ -19,6 +19,11 @@
     "base/round": "bases/round-stone.png",
     "base/round-stone": "bases/round-stone.png",
     "base/round-grass": "bases/round-grass.png",
-    "base/round-wood": "bases/round-wood.png"
+    "base/round-wood": "bases/round-wood.png",
+
+    "building/keep": "buildings/keep.png",
+    "building/wall": "buildings/wall.png",
+    "building/camp": "buildings/camp.png",
+    "building/hut": "buildings/hut.png"
   }
 }
