@@ -5,7 +5,12 @@
     "floor/cobblestone/tile": "floor/stone.png",
     "floor/tile/tile": "floor/blue-stone.png",
     "floor/wood/tile": "floor/wood.png",
+    "floor/grass/tile": "floor/grass.png",
+    "floor/dirt/tile": "floor/dirt.png",
+    "floor/sand/tile": "floor/sand.png",
+    "floor/marble/tile": "floor/marble.png",
     "wall/stone/wall": "floor/stone.png",
+    "wall/marble/wall": "floor/marble.png",
 
 
     "deco/storage-barrel": "furniture/storage-barrel.png",
