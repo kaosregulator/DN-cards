@@ -32,6 +32,7 @@ import {
   getOrCreateHq, updateHq, getDisplays, pinDisplay, clearDisplay,
   getPlacements, placeDecoration, clearPlacement, pruneUnownedPlacements,
   getUnlockedItemIds, grantUnlock,
+  getDefenders, setDefender, clearDefender,
 } from "../hq/db.js";
 import { shopRotation, shopEntryFor, formatRefreshIn } from "../hq/shop.js";
 import {
@@ -48,8 +49,8 @@ import { unlockLabel, type UnlockRule } from "../hq/defs/unlock-rules.js";
 import { spriteFor, spriteForPrefix } from "../hq/assets.js";
 import {
   renderHq, floorSlot, wallSlot, slotIsWall, slotToTile,
-  HQ_WALL_SLOT_BASE, HQ_WALL_ANCHOR_COUNT,
-  type HqRenderView, type HqRenderCard, type HqRenderDeco,
+  HQ_WALL_SLOT_BASE, HQ_WALL_ANCHOR_COUNT, HQ_DEFENDER_SLOTS,
+  type HqRenderView, type HqRenderCard, type HqRenderDeco, type HqRenderDefender,
 } from "../hq/render.js";
 import type { PlayerHq } from "@workspace/db";
 
@@ -75,11 +76,12 @@ function hqDisplayTitle(hq: PlayerHq, ownerName: string): string {
   return t && t.length > 0 ? t : `${ownerName}'s HQ`;
 }
 
-type Section = "overview" | "trophy" | "decorations" | "shop" | "rooms" | "theme";
+type Section = "overview" | "trophy" | "defenders" | "decorations" | "shop" | "rooms" | "theme";
 interface SectionMeta { id: Section; label: string; emoji: string; description: string }
 const SECTIONS: SectionMeta[] = [
   { id: "overview",    label: "Overview",    emoji: "🏠", description: "Your HQ at a glance" },
   { id: "trophy",      label: "Trophy Hall",  emoji: "🏆", description: "Pin your proudest cards on pedestals" },
+  { id: "defenders",   label: "Defenders",   emoji: "🛡️", description: "Set cards to guard your base" },
   { id: "decorations", label: "Decorations", emoji: "🎏", description: "Place the cosmetics you've earned" },
   { id: "shop",        label: "Shop",        emoji: "🛒", description: "Buy furniture — rotates daily" },
   { id: "rooms",       label: "Rooms",       emoji: "🚪", description: "Switch & unlock rooms" },
@@ -152,6 +154,25 @@ export async function handleHqHubComponent(
   if (action === "clearslot" && interaction.isButton()) {
     await clearDisplay(guildId, userId, Number(parts[2])).catch(() => {});
     await interaction.update(await buildView(interaction, "trophy", [])).catch(() => {});
+    return;
+  }
+
+  // Defenders: pick a card for a defence post / assign / clear.
+  if (action === "setdef" && interaction.isButton()) {
+    await interaction.update(await buildDefenderPicker(guildId, userId, Number(parts[2]))).catch(() => {});
+    return;
+  }
+  if (action === "def" && interaction.isStringSelectMenu()) {
+    const slot = Number(parts[2]);
+    const cardId = Number(interaction.values[0]);
+    const owns = (await getUserCollection(guildId, userId)).some(i => i.cardId === cardId);
+    if (owns) await setDefender(guildId, userId, slot, cardId).catch(() => {});
+    await interaction.update(await buildView(interaction, "defenders", [])).catch(() => {});
+    return;
+  }
+  if (action === "cleardef" && interaction.isButton()) {
+    await clearDefender(guildId, userId, Number(parts[2])).catch(() => {});
+    await interaction.update(await buildView(interaction, "defenders", [])).catch(() => {});
     return;
   }
 
@@ -281,18 +302,21 @@ async function loadCtx(guildId: string) {
   return { settings, ctx, displayMap, cards };
 }
 
-// Build the renderer's view from persisted state.
+// Build the renderer's view from persisted state. `includeDefenders` overlays
+// the base's guarding cards (used by the Defenders section and on visits).
 async function buildRenderView(
   guildId: string, userId: string, ownerName: string, ownerAvatarUrl: string | null, hq: PlayerHq,
+  includeDefenders = false,
 ): Promise<HqRenderView> {
   const theme = resolveTheme(hq.themeId);
   const wall = resolveWall(hq.wallId);
   const floor = resolveFloor(hq.floorId);
   const room = resolveRoom(hq.activeRoomId);
-  const [{ settings, ctx, displayMap, cards }, displays, placements] = await Promise.all([
+  const [{ settings, ctx, displayMap, cards }, displays, placements, defenderMap] = await Promise.all([
     loadCtx(guildId),
     getDisplays(guildId, userId),
     getPlacements(guildId, userId, room.id),
+    includeDefenders ? getDefenders(guildId, userId) : Promise.resolve(new Map<number, number>()),
   ]);
 
   const pedestals: (HqRenderCard | null)[] = [];
@@ -323,12 +347,23 @@ async function buildRenderView(
     ? `${room.name} • ${featured}/${room.pedestals} featured`
     : `${room.name} • ${decorations.length} decoration${decorations.length === 1 ? "" : "s"}`;
 
+  const defenders: HqRenderDefender[] = [];
+  if (includeDefenders) {
+    const basePath = spriteForPrefix("base", "round");
+    for (const [slot, cardId] of [...defenderMap.entries()].sort((a, b) => a[0] - b[0])) {
+      const card = cards.find(c => c.id === cardId);
+      if (!card) continue;
+      const d = getCardDisplayRarity(card, ctx, settings, displayMap);
+      defenders.push({ slot, cardId: card.id, name: card.name, artUrl: toAbsoluteImageUrl(card.imageUrl), rarityColor: d.color, basePath });
+    }
+  }
+
   return {
     ownerName, displayTitle: hqDisplayTitle(hq, ownerName), ownerAvatarUrl, theme, wall, floor,
     wallSprite: spriteForPrefix(wall.spritePrefix, "wall"),
     floorSprite: spriteForPrefix(floor.spritePrefix, "tile"),
     roomName: room.name, roomEmoji: room.emoji, hqLevel: hq.hqLevel,
-    subtitle, pedestals, decorations,
+    subtitle, pedestals, decorations, defenders,
   };
 }
 
@@ -362,7 +397,7 @@ async function buildView(
     hq.activeRoomId = DEFAULT_ROOM_ID;
   }
 
-  const renderView = await buildRenderView(guildId, userId, interaction.user.username, interaction.user.displayAvatarURL(), hq);
+  const renderView = await buildRenderView(guildId, userId, interaction.user.username, interaction.user.displayAvatarURL(), hq, section === "defenders");
   const file = await renderRoomImage(renderView);
   const files = file ? [file] : [];
   const room = resolveRoom(hq.activeRoomId);
@@ -430,6 +465,29 @@ async function buildView(
       }
       rows.push(pedestalButtonRow("setslot", "Set", room.pedestals, ButtonStyle.Primary));
       rows.push(pedestalButtonRow("clearslot", "Clear", room.pedestals, ButtonStyle.Secondary, displays));
+      break;
+    }
+
+    case "defenders": {
+      const defenders = await getDefenders(guildId, userId);
+      embed.setTitle("🛡️ Base Defenders").setDescription(
+        "Station cards to **guard your base** — they stand as figures on the floor. This is who other players will face when the raid-style **base attacks** arrive. " +
+        `You can post up to **${HQ_DEFENDER_SLOTS}** defenders.\n` +
+        (defenders.size === 0 ? "\nNo defenders yet — set one below to start fortifying." : ""),
+      );
+      if (defenders.size > 0) {
+        const { cards, settings, ctx, displayMap } = await loadCtx(guildId);
+        embed.addFields({
+          name: `On guard (${defenders.size}/${HQ_DEFENDER_SLOTS})`,
+          value: [...defenders.entries()].sort((a, b) => a[0] - b[0]).map(([slot, cardId]) => {
+            const card = cards.find(c => c.id === cardId);
+            const d = card ? getCardDisplayRarity(card, ctx, settings, displayMap) : null;
+            return `Post ${slot + 1}: ${d?.emoji ?? "•"} **${card?.name ?? `Card #${cardId}`}**${d ? ` · ${d.label}` : ""}`;
+          }).join("\n").slice(0, 1024),
+        });
+      }
+      rows.push(pedestalButtonRow("setdef", "Set", HQ_DEFENDER_SLOTS, ButtonStyle.Primary));
+      rows.push(pedestalButtonRow("cleardef", "Clear", HQ_DEFENDER_SLOTS, ButtonStyle.Secondary, defenders));
       break;
     }
 
@@ -584,7 +642,7 @@ async function buildVisitView(guildId: string, targetId: string, targetName: str
   // Show a room the host has actually unlocked (see the note in buildView). This
   // is read-only, so correct for display without persisting to their HQ.
   if (!isRoomUnlocked(resolveRoom(hq.activeRoomId), owned)) hq.activeRoomId = DEFAULT_ROOM_ID;
-  const renderView = await buildRenderView(guildId, targetId, targetName, targetAvatar, hq);
+  const renderView = await buildRenderView(guildId, targetId, targetName, targetAvatar, hq, true);
   const file = await renderRoomImage(renderView);
   const room = resolveRoom(hq.activeRoomId);
   const theme = resolveTheme(hq.themeId);
@@ -643,6 +701,36 @@ async function buildPinPicker(guildId: string, userId: string, slot: number) {
   }
   rows.push(new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder().setCustomId("hq-hub:back:trophy").setLabel("Back to Trophy Hall").setEmoji("◀").setStyle(ButtonStyle.Secondary),
+  ));
+  return { embeds: [embed], components: rows, files: [] as AttachmentBuilder[] };
+}
+
+// ── Defender picker sub-view ──────────────────────────────────────────────────
+async function buildDefenderPicker(guildId: string, userId: string, slot: number) {
+  const { settings, ctx, displayMap } = await loadCtx(guildId);
+  const collection = (await getUserCollection(guildId, userId))
+    .sort((a, b) => b.worthValue - a.worthValue || a.name.localeCompare(b.name));
+  const embed = new EmbedBuilder()
+    .setColor(0x4aa3ff)
+    .setTitle(`🛡️ Choose a defender — Post ${slot + 1}`)
+    .setDescription(collection.length === 0
+      ? "You don't own any cards yet. Catch some, then station them to guard your base."
+      : "Pick a card to guard this post. Your strongest (by value) are listed first.");
+  const rows: ActionRowBuilder<any>[] = [];
+  if (collection.length > 0) {
+    rows.push(new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
+      new StringSelectMenuBuilder().setCustomId(`hq-hub:def:${slot}`).setPlaceholder("Choose a card…")
+        .addOptions(collection.slice(0, 25).map(i => {
+          const d = getCardDisplayRarity({ id: i.cardId, rarity: i.rarity as string }, ctx, settings, displayMap);
+          return {
+            label: `${i.name.slice(0, 80)}${i.shinyCount > 0 ? ` ${SHINY_EMOJI}` : ""}`,
+            value: String(i.cardId), description: `${d.label} · ${i.worthValue} shards`, emoji: d.emoji || undefined,
+          };
+        })),
+    ));
+  }
+  rows.push(new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder().setCustomId("hq-hub:back:defenders").setLabel("Back to Defenders").setEmoji("◀").setStyle(ButtonStyle.Secondary),
   ));
   return { embeds: [embed], components: rows, files: [] as AttachmentBuilder[] };
 }
@@ -829,12 +917,13 @@ function sectionRow(current: Section) {
 }
 
 function pedestalButtonRow(
-  action: "setslot" | "clearslot", label: string, n: number, style: ButtonStyle, displays?: Map<number, number>,
+  action: "setslot" | "clearslot" | "setdef" | "cleardef",
+  label: string, n: number, style: ButtonStyle, occupied?: Map<number, number>,
 ) {
   const row = new ActionRowBuilder<ButtonBuilder>();
   for (let slot = 0; slot < Math.min(n, 5); slot++) {
     const btn = new ButtonBuilder().setCustomId(`hq-hub:${action}:${slot}`).setLabel(`${label} ${slot + 1}`).setStyle(style);
-    if (action === "clearslot") btn.setDisabled(!displays?.has(slot));
+    if (action.startsWith("clear")) btn.setDisabled(!occupied?.has(slot));
     row.addComponents(btn);
   }
   return row;

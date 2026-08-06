@@ -819,6 +819,21 @@ async function runBootMigrations() {
   await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS hq_placements_guild_user_room_slot_uniq ON hq_placements (guild_id, user_id, room_id, slot)`);
   await pool.query(`CREATE INDEX IF NOT EXISTS hq_placements_guild_user_room_idx ON hq_placements (guild_id, user_id, room_id)`);
 
+  // Base defenders (cards set to guard the base — setup half of base-defense).
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS hq_defenders (
+      id         SERIAL PRIMARY KEY,
+      guild_id   TEXT NOT NULL,
+      user_id    TEXT NOT NULL,
+      slot       INTEGER NOT NULL,
+      card_id    INTEGER NOT NULL,
+      created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+      UNIQUE (guild_id, user_id, slot)
+    )
+  `);
+  await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS hq_defenders_guild_user_slot_uniq ON hq_defenders (guild_id, user_id, slot)`);
+  await pool.query(`CREATE INDEX IF NOT EXISTS hq_defenders_guild_user_idx ON hq_defenders (guild_id, user_id)`);
+
   logger.info("Boot migrations applied");
 }
 

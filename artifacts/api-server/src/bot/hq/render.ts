@@ -83,6 +83,17 @@ export interface HqRenderDeco {
   spritePath: string | null;
 }
 
+// A card assigned to defend the base — rendered as an upright "standee" figure
+// (the card art) standing on an isometric base, like tabletop miniatures.
+export interface HqRenderDefender {
+  slot: number;
+  cardId: number;
+  name: string;
+  artUrl: string | null;
+  rarityColor: number;
+  basePath: string | null; // base sprite (CC0); procedural disc when null
+}
+
 export interface HqRenderView {
   ownerName: string;
   // Banner name shown in the header (custom HQ name or "<owner>'s HQ").
@@ -101,6 +112,7 @@ export interface HqRenderView {
   subtitle: string;
   pedestals: (HqRenderCard | null)[]; // length = room.pedestals
   decorations: HqRenderDeco[];        // placed decorations (with slot index)
+  defenders?: HqRenderDefender[];     // cards set to defend the base (figures on bases)
 }
 
 // Placement encoding (stored in hq_placements.slot, so no schema change):
@@ -122,6 +134,13 @@ export function slotIsWall(slot: number): boolean { return slot >= HQ_WALL_SLOT_
 export function slotToTile(slot: number): { gx: number; gy: number } {
   return { gx: slot % GRID, gy: Math.floor(slot / GRID) % GRID };
 }
+
+// Where defenders stand — a front arc facing the viewer, centre outwards.
+const DEFENDER_TILES: { gx: number; gy: number }[] = [
+  { gx: 3.0, gy: 3.0 }, { gx: 1.7, gy: 4.0 }, { gx: 4.3, gy: 1.7 },
+  { gx: 4.6, gy: 3.4 }, { gx: 1.7, gy: 1.7 },
+];
+export const HQ_DEFENDER_SLOTS = DEFENDER_TILES.length;
 
 export async function renderHq(view: HqRenderView): Promise<Buffer | null> {
   return queueRender("hq", async () => {
@@ -315,6 +334,15 @@ async function layerFurniture(ctx: Ctx, mod: CanvasMod, view: HqRenderView): Pro
     items.push({ depth: p.y, draw: async () => { await drawDecoAt(ctx, mod, p.x, p.y, 0.95, deco, true); } });
   }
 
+  // Defenders — cards standing on bases along a front arc.
+  const defs = view.defenders ?? [];
+  for (let i = 0; i < defs.length; i++) {
+    const t = DEFENDER_TILES[i % DEFENDER_TILES.length]!;
+    const p = project(t.gx, t.gy);
+    const def = defs[i]!;
+    items.push({ depth: p.y + 1, draw: () => drawDefender(ctx, mod, p.x, p.y, def, view.theme) });
+  }
+
   items.sort((a, b) => a.depth - b.depth);
   for (const it of items) await it.draw();
 }
@@ -361,6 +389,80 @@ async function drawPedestal(
   drawTitle(ctx, card.name, cx, nameY, "#ffffff", nameSize);
   drawTextWithShadow(ctx, card.rarityLabel.toUpperCase(), cx, nameY + 16, hexToRgba(card.rarityColor, 1), 11);
   ctx.restore();
+}
+
+// A defender: a card rendered as an upright standee figure standing on an
+// isometric base (Kenney base sprite when available, else a procedural disc).
+async function drawDefender(
+  ctx: Ctx, mod: CanvasMod, cx: number, cy: number, def: HqRenderDefender, theme: HqTheme,
+): Promise<void> {
+  // Base.
+  let baseTopY = cy; // where the figure's feet rest
+  const baseImg = def.basePath ? await loadSprite(mod, def.basePath).catch(() => null) : null;
+  ctx.save(); ctx.fillStyle = "rgba(0,0,0,0.3)";
+  ctx.beginPath(); ellipse(ctx, cx, cy, 46, 16); ctx.fill(); ctx.restore();
+  if (baseImg) {
+    const iw = Math.max(1, (baseImg as { width: number }).width);
+    const ih = Math.max(1, (baseImg as { height: number }).height);
+    const w = 120, h = w * (ih / iw);
+    blit(ctx, baseImg, cx - w / 2, cy - h + 8, w, h);
+    baseTopY = cy - 16; // stand the figure back on the base top so the plate shows
+  } else {
+    // Procedural round base.
+    ctx.save();
+    ctx.fillStyle = hexToRgba(theme.palette.accent, 0.45);
+    ctx.beginPath(); ellipse(ctx, cx, cy, 44, 15); ctx.fill();
+    ctx.fillStyle = hexToRgba(theme.palette.accent, 0.28);
+    ctx.beginPath(); ellipse(ctx, cx, cy - 5, 44, 15); ctx.fill();
+    ctx.strokeStyle = hexToRgba(theme.palette.accent, 0.8); ctx.lineWidth = 1.5;
+    ctx.beginPath(); ellipse(ctx, cx, cy - 5, 44, 15); ctx.stroke();
+    ctx.restore();
+    baseTopY = cy - 8;
+  }
+
+  // Standee figure: a tall rounded-top panel carrying the card art, tinted by
+  // rarity, standing on the base.
+  const fw = 74, fh = 104;
+  const fx = cx - fw / 2, fy = baseTopY - fh;
+  ctx.save();
+  ctx.shadowColor = hexToRgba(def.rarityColor, 0.6); ctx.shadowBlur = 14;
+  standeePath(ctx, fx, fy, fw, fh);
+  ctx.fillStyle = "#0d0f14"; ctx.fill();
+  ctx.restore();
+
+  ctx.save();
+  standeePath(ctx, fx, fy, fw, fh);
+  ctx.clip();
+  await drawCardArt(ctx, mod, fx, fy - 6, fw, fh + 12, def.artUrl);
+  // Bottom gradient for the nameplate legibility.
+  const g = ctx.createLinearGradient(0, fy + fh - 34, 0, fy + fh);
+  g.addColorStop(0, "rgba(0,0,0,0)"); g.addColorStop(1, "rgba(0,0,0,0.8)");
+  ctx.fillStyle = g; ctx.fillRect(fx, fy + fh - 34, fw, 34);
+  ctx.restore();
+
+  // Rarity border.
+  ctx.save();
+  standeePath(ctx, fx, fy, fw, fh);
+  ctx.strokeStyle = hexToRgba(def.rarityColor, 0.95); ctx.lineWidth = 3; ctx.stroke();
+  ctx.restore();
+
+  // Name label on the figure.
+  ctx.save();
+  ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  const size = fitText(ctx, def.name, fw - 8, 13, 9, TITLE_FONT);
+  drawTitle(ctx, def.name, cx, fy + fh - 14, "#ffffff", size);
+  ctx.restore();
+}
+
+// A "standee" silhouette: rounded top, straight sides, flat bottom.
+function standeePath(ctx: Ctx, x: number, y: number, w: number, h: number): void {
+  const r = w / 2;
+  ctx.beginPath();
+  ctx.moveTo(x, y + r);
+  ctx.arc(x + r, y + r, r, Math.PI, 0);
+  ctx.lineTo(x + w, y + h);
+  ctx.lineTo(x, y + h);
+  ctx.closePath();
 }
 
 // A short isometric box (used for pedestals): top diamond + two lit side faces.

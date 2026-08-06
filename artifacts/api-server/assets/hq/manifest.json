@@ -14,6 +14,11 @@
     "deco/sovereign-crown": "medals/sovereign-crown.png",
     "deco/collectors-crest": "medals/collectors-crest.png",
     "deco/diplomat-seal": "medals/diplomat-seal.png",
-    "deco/laurel-wreath": "medals/laurel-wreath.png"
+    "deco/laurel-wreath": "medals/laurel-wreath.png",
+
+    "base/round": "bases/round-stone.png",
+    "base/round-stone": "bases/round-stone.png",
+    "base/round-grass": "bases/round-grass.png",
+    "base/round-wood": "bases/round-wood.png"
   }
 }

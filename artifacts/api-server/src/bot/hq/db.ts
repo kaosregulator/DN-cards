@@ -7,7 +7,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import {
-  db, playerHqTable, hqUnlocksTable, hqDisplaysTable, hqPlacementsTable,
+  db, playerHqTable, hqUnlocksTable, hqDisplaysTable, hqPlacementsTable, hqDefendersTable,
   type PlayerHq, type HqItemType,
 } from "@workspace/db";
 import { and, eq } from "drizzle-orm";
@@ -112,6 +112,31 @@ export async function clearPlacement(guildId: string, userId: string, roomId: st
     eq(hqPlacementsTable.userId, userId),
     eq(hqPlacementsTable.roomId, roomId),
     eq(hqPlacementsTable.slot, slot),
+  ));
+}
+
+// ── hq_defenders (cards guarding the base) ────────────────────────────────────
+export async function getDefenders(guildId: string, userId: string): Promise<Map<number, number>> {
+  const rows = await db.select({ slot: hqDefendersTable.slot, cardId: hqDefendersTable.cardId })
+    .from(hqDefendersTable)
+    .where(and(eq(hqDefendersTable.guildId, guildId), eq(hqDefendersTable.userId, userId)));
+  return new Map(rows.map(r => [r.slot, r.cardId]));
+}
+
+export async function setDefender(guildId: string, userId: string, slot: number, cardId: number): Promise<void> {
+  await db.insert(hqDefendersTable)
+    .values({ guildId, userId, slot, cardId })
+    .onConflictDoUpdate({
+      target: [hqDefendersTable.guildId, hqDefendersTable.userId, hqDefendersTable.slot],
+      set: { cardId, createdAt: new Date() },
+    });
+}
+
+export async function clearDefender(guildId: string, userId: string, slot: number): Promise<void> {
+  await db.delete(hqDefendersTable).where(and(
+    eq(hqDefendersTable.guildId, guildId),
+    eq(hqDefendersTable.userId, userId),
+    eq(hqDefendersTable.slot, slot),
   ));
 }
 

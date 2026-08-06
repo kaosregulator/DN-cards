@@ -105,3 +105,23 @@ export const hqPlacementsTable = pgTable("hq_placements", {
 }));
 
 export type HqPlacement = typeof hqPlacementsTable.$inferSelect;
+
+// Base defenders — cards a player sets to guard their base, rendered as standee
+// figures. One row per defender slot; unique on (guild, user, slot). This is the
+// SETUP half of the base-defense mini-game; the attack/combat side reads these
+// (and will add its own state) without changing this table's ownership. Purely
+// additive and cosmetic to the rest of the game — a defender is a reference to a
+// card the player owns, not a copy of it.
+export const hqDefendersTable = pgTable("hq_defenders", {
+  id: serial("id").primaryKey(),
+  guildId: text("guild_id").notNull(),
+  userId: text("user_id").notNull(),
+  slot: integer("slot").notNull(),
+  cardId: integer("card_id").notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (t) => ({
+  guildUserSlotUniq: uniqueIndex("hq_defenders_guild_user_slot_uniq").on(t.guildId, t.userId, t.slot),
+  byUser: index("hq_defenders_guild_user_idx").on(t.guildId, t.userId),
+}));
+
+export type HqDefender = typeof hqDefendersTable.$inferSelect;

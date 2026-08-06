@@ -163,6 +163,25 @@ Featured-card pedestals live in the Trophy Hall (displays are indexed by slot,
 not room). The other rooms are decorating canvases — decoration placements are
 stored **per room**, so each room keeps its own layout and personality.
 
+## Base defenders (setup for the base-defense mini-game)
+
+`/hq → 🛡️ Defenders` lets a player station cards to **guard their base**. Each
+defender renders as an upright **standee figure** (the card art) standing on an
+isometric base plate (Kenney CC0 base sprite, procedural fallback), positioned
+across the floor. Persisted in the additive `hq_defenders` table (one row per
+post). Defenders show on visits too, so other players can scout who guards a
+base. This is the **setup half**; the attack/combat side (raid-/gym-style, solo
+or clan co-op) reads these and adds its own state in a later phase without
+changing this table.
+
+### Art licensing note
+
+Bundled art is **CC0 (Kenney)** and safe to redistribute in this repo. Some
+third-party packs (e.g. the "Isometric Enemy Base — Lite" buildings) are
+licensed *use-in-project-only, no redistribution* — those are **not committed**;
+drop them into `assets/hq/` on your own deployment and add manifest keys to use
+them (they'll render through the same `spriteForPrefix` seam).
+
 ## Future phases (same engine, no rewrite)
 
 Mystery crates · visitors & companions · free-form grid move/rotate · per-room
