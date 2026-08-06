@@ -59,6 +59,7 @@
     "nature/stones": "nature/stones.png",
     "nature/grass": "nature/grass.png",
     "nature/dirt": "nature/dirt.png",
-    "nature/fence": "nature/fence.png"
+    "nature/fence": "nature/fence.png",
+    "deco/yard-fence": "nature/fence.png"
   }
 }

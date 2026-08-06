@@ -1358,6 +1358,51 @@ function drawDecoration(ctx: Ctx, ox: number, oy: number, scale: number, deco: H
       ctx.moveTo(-s * 0.16, -s * 0.24); ctx.lineTo(s * 0.14, -s * 0.28); ctx.lineTo(s * 0.04, -s * 0.06); ctx.lineTo(-s * 0.08, -s * 0.06); ctx.closePath(); ctx.fill();
       break;
     }
+    case "fence": {
+      // A short run of pickets with two rails — reads as a garden fence.
+      ctx.shadowBlur = 0;
+      const woody = deco.rarityColor === 0x2ecc71 ? "#3d8a43" : "#c19a5b"; // hedge vs wood tint
+      ctx.strokeStyle = woody; ctx.lineWidth = Math.max(2, s * 0.05);
+      const rail = (yy: number) => { ctx.beginPath(); ctx.moveTo(-s * 0.5, yy); ctx.lineTo(s * 0.5, yy); ctx.stroke(); };
+      rail(-s * 0.02); rail(s * 0.18);
+      ctx.fillStyle = woody;
+      for (let i = -2; i <= 2; i++) {
+        const px = i * s * 0.22;
+        ctx.beginPath();
+        ctx.moveTo(px - s * 0.05, s * 0.34); ctx.lineTo(px - s * 0.05, -s * 0.16);
+        ctx.lineTo(px, -s * 0.24); ctx.lineTo(px + s * 0.05, -s * 0.16); ctx.lineTo(px + s * 0.05, s * 0.34);
+        ctx.closePath(); ctx.fill();
+      }
+      break;
+    }
+    case "path": {
+      // A short flagstone path segment on the ground.
+      ctx.shadowBlur = 0;
+      ctx.fillStyle = hexToRgba(0xb9a888, 0.95);
+      ctx.beginPath();
+      ctx.moveTo(0, -s * 0.2); ctx.lineTo(s * 0.5, 0); ctx.lineTo(0, s * 0.2); ctx.lineTo(-s * 0.5, 0);
+      ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = "rgba(90,78,58,0.6)"; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(-s * 0.24, -s * 0.04); ctx.lineTo(0, s * 0.06);
+      ctx.moveTo(0, -s * 0.06); ctx.lineTo(s * 0.24, s * 0.04); ctx.stroke();
+      break;
+    }
+    case "flowers": {
+      // A low bed of colourful blooms.
+      ctx.shadowBlur = 0;
+      ctx.fillStyle = "#5a3d22";
+      ctx.beginPath();
+      ctx.moveTo(0, s * 0.02); ctx.lineTo(s * 0.4, s * 0.2); ctx.lineTo(0, s * 0.38); ctx.lineTo(-s * 0.4, s * 0.2);
+      ctx.closePath(); ctx.fill();
+      const petals = ["#e05a7a", "#f2c14e", "#8e6bd6", "#ffffff"];
+      for (let i = 0; i < 5; i++) {
+        const bx = (i - 2) * s * 0.15, by = s * 0.12 - Math.abs(i - 2) * s * 0.03;
+        ctx.fillStyle = petals[i % petals.length]!;
+        ctx.beginPath(); ctx.arc(bx, by, s * 0.07, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = "#f7e07a"; ctx.beginPath(); ctx.arc(bx, by, s * 0.025, 0, Math.PI * 2); ctx.fill();
+      }
+      break;
+    }
   }
   ctx.restore();
 }

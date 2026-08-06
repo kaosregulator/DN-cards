@@ -18,7 +18,7 @@ import type { UnlockRule } from "./unlock-rules.js";
 // supply real art per (theme, category|id) without changing this list.
 export type DecoCategory =
   | "banner" | "statue" | "trophy" | "monument" | "plant" | "light" | "case" | "emblem"
-  | "crystal" | "rug" | "tree" | "rock" | "portrait";
+  | "crystal" | "rug" | "tree" | "rock" | "portrait" | "fence" | "path" | "flowers";
 
 export interface HqDecoration {
   id: string;
@@ -48,6 +48,8 @@ export const HQ_DECORATIONS: HqDecoration[] = [
     spriteKey: "deco/yard-bush", unlock: { kind: "always" }, story: "A tidy little bush." },
   { id: "yard-rock", name: "Boulder", emoji: "🪨", rarity: "common", category: "rock",
     spriteKey: "deco/yard-rock", unlock: { kind: "always" }, story: "Solid landscaping." },
+  { id: "yard-fence", name: "Wooden Fence", emoji: "🚧", rarity: "common", category: "fence",
+    spriteKey: "deco/yard-fence", unlock: { kind: "always" }, story: "Mark out your grounds." },
 
   // ── Battle milestones ───────────────────────────────────────────────────────
   { id: "banner-first-win", name: "First Blood Banner", emoji: "🚩", rarity: "uncommon", category: "banner",
@@ -175,6 +177,18 @@ export const HQ_DECORATIONS: HqDecoration[] = [
     spriteKey: "deco/wall-sconce", unlock: { kind: "shop" }, price: 260, drop: true, story: "A warm glow mounted on the wall." },
   { id: "string-lights", name: "String Lights", emoji: "🎇", rarity: "rare", category: "light",
     spriteKey: "deco/string-lights", unlock: { kind: "shop" }, price: 380, drop: true, story: "Cosy twinkle for the whole room." },
+
+  // ── Fences, paths & garden pieces (outdoor grounds landscaping) ───────────────
+  { id: "picket-fence", name: "Picket Fence", emoji: "🚧", rarity: "common", category: "fence",
+    spriteKey: "deco/picket-fence", unlock: { kind: "shop" }, price: 180, drop: true, story: "A tidy white border." },
+  { id: "hedge-row", name: "Hedge Row", emoji: "🌳", rarity: "uncommon", category: "fence",
+    spriteKey: "deco/hedge-row", unlock: { kind: "shop" }, price: 260, drop: true, story: "A living green wall." },
+  { id: "garden-path", name: "Garden Path", emoji: "🟫", rarity: "common", category: "path",
+    spriteKey: "deco/garden-path", unlock: { kind: "shop" }, price: 160, drop: true, story: "Guide your visitors through." },
+  { id: "flower-bed", name: "Flower Bed", emoji: "🌷", rarity: "uncommon", category: "flowers",
+    spriteKey: "deco/flower-bed", unlock: { kind: "shop" }, price: 240, drop: true, story: "A splash of colour on the grounds." },
+  { id: "lamp-post", name: "Lamp Post", emoji: "🪔", rarity: "uncommon", category: "light",
+    spriteKey: "deco/lamp-post", unlock: { kind: "shop" }, price: 280, drop: true, story: "Lights the garden path at dusk." },
 
   // ── Card wall-art ─────────────────────────────────────────────────────────────
   // The Portrait Frame is the buyable that unlocks CARD WALL-ART: once owned, the
