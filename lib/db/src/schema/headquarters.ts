@@ -125,3 +125,41 @@ export const hqDefendersTable = pgTable("hq_defenders", {
 }));
 
 export type HqDefender = typeof hqDefendersTable.$inferSelect;
+
+// Base-siege state — the capture/defend mini-game layered on top of the base.
+// One row per base (guild, user = the base OWNER). `heldBy*` records a conqueror
+// (null = the owner holds their own base); `shieldUntil` protects a freshly
+// attacked base from being farmed. Additive; combat is DERIVED (bot/hq/siege.ts)
+// from card power via the existing battle stat engine — this only stores outcome.
+export const hqBaseStateTable = pgTable("hq_base_state", {
+  id: serial("id").primaryKey(),
+  guildId: text("guild_id").notNull(),
+  userId: text("user_id").notNull(),        // the base owner
+  heldByUserId: text("held_by_user_id"),    // conqueror, or null when owner holds
+  heldByName: text("held_by_name"),
+  shieldUntil: timestamp("shield_until"),   // no attacks allowed until this time
+  lastAttackedAt: timestamp("last_attacked_at"),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (t) => ({
+  guildUserUniq: uniqueIndex("hq_base_state_guild_user_uniq").on(t.guildId, t.userId),
+}));
+
+export type HqBaseState = typeof hqBaseStateTable.$inferSelect;
+
+// Attack log — one row per resolved siege. Powers a per-target attacker cooldown
+// and a battle history; never affects card ownership.
+export const hqBaseAttacksTable = pgTable("hq_base_attacks", {
+  id: serial("id").primaryKey(),
+  guildId: text("guild_id").notNull(),
+  attackerId: text("attacker_id").notNull(),
+  defenderId: text("defender_id").notNull(),
+  won: text("won").notNull(),               // "1" attacker won, "0" defender held
+  attackerPower: integer("attacker_power").notNull().default(0),
+  defenderPower: integer("defender_power").notNull().default(0),
+  mode: text("mode").notNull().default("static"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (t) => ({
+  byPair: index("hq_base_attacks_pair_idx").on(t.guildId, t.attackerId, t.defenderId, t.createdAt),
+}));
+
+export type HqBaseAttack = typeof hqBaseAttacksTable.$inferSelect;

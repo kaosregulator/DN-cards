@@ -195,6 +195,29 @@ not be treated as freely redistributable. The renderer never depends on them —
 every building has a procedural fallback — so they can be removed at any time
 without breaking the base view. See `assets/hq/manifest.json` `_credits`.
 
+## Base siege (attack / capture mini-game)
+
+Scout another player with `/hq user:@member` — the visit shows their **exterior
+base** and stationed defenders — then **⚔️ Attack** it. The attacker's strongest
+cards duel the defenders; win the most duels to **capture** the base (its banner
+flips red and it's **shielded** for an hour so it can't be farmed), otherwise the
+defenders hold. Combat power is **derived from the guild strength ladder**
+(`rarityLadderRank`), the same source of truth battles and raids use — no new
+balance surface (`bot/hq/siege.ts`). A per-target attacker **cooldown** limits
+repeat hits; captures lazily revert to the owner when the shield expires.
+
+Three ways to watch a siege:
+
+- **Classic** — an instant text report of the duels.
+- **Static** — a single battle image (`renderSiegeStatic`): the two champions,
+  a VS clash and the result banner.
+- **Live** — an animated GIF that **reuses the battle animation engine**
+  (`renderBattleVictory`) for the champion clash.
+
+State is additive: `hq_base_state` (holder + shield) and `hq_base_attacks` (log
++ cooldown). *Clan co-op attacks are the next step and slot in behind the same
+`resolveSiege` interface.*
+
 ## Future phases (same engine, no rewrite)
 
 Mystery crates · visitors & companions · free-form grid move/rotate · per-room

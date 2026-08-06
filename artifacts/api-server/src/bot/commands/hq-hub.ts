@@ -33,8 +33,15 @@ import {
   getPlacements, placeDecoration, clearPlacement, pruneUnownedPlacements,
   getUnlockedItemIds, grantUnlock,
   getDefenders, setDefender, clearDefender,
+  getBaseState, applySiegeToBase, logSiege, recentAttackCount,
 } from "../hq/db.js";
 import { shopRotation, shopEntryFor, formatRefreshIn } from "../hq/shop.js";
+import {
+  resolveSiege, SIEGE_SHIELD_MS, SIEGE_COOLDOWN_MS, SIEGE_MAX_PER_WINDOW,
+  type SiegeCombatant,
+} from "../hq/siege.js";
+import { rarityLadderRank } from "../rarity-runtime.js";
+import { renderBattleVictory } from "../animations/battle.js";
 import {
   reconcileUnlocks, ownedDecorations, unlockedRooms, unlockedThemes,
   isRoomUnlocked, isThemeUnlocked, unlockedWalls, unlockedFloors,
@@ -48,10 +55,10 @@ import { resolveDecoration, decorationsByRarityDesc, HQ_DECORATIONS } from "../h
 import { unlockLabel, type UnlockRule } from "../hq/defs/unlock-rules.js";
 import { spriteFor, spriteForPrefix } from "../hq/assets.js";
 import {
-  renderHq, renderBase, floorSlot, wallSlot, slotIsWall, slotToTile,
+  renderHq, renderBase, renderSiegeStatic, floorSlot, wallSlot, slotIsWall, slotToTile,
   HQ_WALL_SLOT_BASE, HQ_WALL_ANCHOR_COUNT, HQ_DEFENDER_SLOTS,
   type HqRenderView, type HqRenderCard, type HqRenderDeco, type HqRenderDefender,
-  type HqBaseView, type HqBaseBuilding, type HqBuildingRole,
+  type HqBaseView, type HqBaseBuilding, type HqBuildingRole, type HqSiegeView,
 } from "../hq/render.js";
 import type { PlayerHq } from "@workspace/db";
 
@@ -103,7 +110,7 @@ export async function handleHqCommand(interaction: ChatInputCommandInteraction):
       await interaction.editReply({ content: "🤖 Bots don't have a Headquarters." }).catch(() => {});
       return;
     }
-    const view = await buildVisitView(interaction.guildId, target.id, target.username, target.displayAvatarURL());
+    const view = await buildVisitView(interaction.guildId, target.id, target.username, target.displayAvatarURL(), interaction.user.id);
     await interaction.editReply(view).catch(() => {});
     return;
   }
@@ -133,6 +140,16 @@ export async function handleHqHubComponent(
   if (action === "open" && interaction.isStringSelectMenu()) {
     await interaction.deferReply(EPHEMERAL).catch(() => {});
     await replyCardDetail(interaction, guildId, userId, Number(interaction.values[0]));
+    return;
+  }
+
+  // ── Base siege: choose an assault mode, then resolve it ──────────────────────
+  if (action === "attack" && interaction.isButton()) {
+    await interaction.update(await buildAttackModePicker(guildId, userId, parts[2]!)).catch(() => {});
+    return;
+  }
+  if (action === "siege" && interaction.isButton()) {
+    await runSiege(interaction, guildId, userId, parts[2]!, (parts[3] as SiegeMode) ?? "static");
     return;
   }
 
@@ -401,11 +418,12 @@ async function buildBaseRenderView(
     defenders.push({ slot, cardId: card.id, name: card.name, artUrl: toAbsoluteImageUrl(card.imageUrl), rarityColor: d.color, basePath });
   }
   const buildings: HqBaseBuilding[] = BASE_BUILDING_ROLES.map(role => ({ role, spritePath: spriteForPrefix("building", role) }));
+  const capture = activeCapture(await getBaseState(guildId, userId));
   return {
     ownerName, displayTitle: hqDisplayTitle(hq, ownerName), ownerAvatarUrl, theme,
     roomEmoji: "🏰", roomName: "Base", hqLevel: hq.hqLevel,
-    subtitle: `Base • ${defenders.length}/${HQ_DEFENDER_SLOTS} defenders`,
-    buildings, defenders,
+    subtitle: capture ? `Base • held by ${capture.heldName}` : `Base • ${defenders.length}/${HQ_DEFENDER_SLOTS} defenders`,
+    buildings, defenders, captured: !!capture,
   };
 }
 
@@ -676,8 +694,163 @@ async function buildView(
   return { embeds: [embed], components: rows, files };
 }
 
-// ── Visit (read-only) ─────────────────────────────────────────────────────────
-async function buildVisitView(guildId: string, targetId: string, targetName: string, targetAvatar: string) {
+// True when a base is currently held by a conqueror (capture still within its
+// shield window; after that it lazily reverts to the owner).
+function activeCapture(state: Awaited<ReturnType<typeof getBaseState>>): { heldBy: string; heldName: string } | null {
+  if (!state?.heldByUserId) return null;
+  if (state.shieldUntil && state.shieldUntil.getTime() < Date.now()) return null;
+  return { heldBy: state.heldByUserId, heldName: state.heldByName ?? "a rival" };
+}
+
+// ── Base siege (attack/capture mini-game) ─────────────────────────────────────
+type SiegeMode = "classic" | "static" | "live";
+const SIEGE_FILE = "siege.png", SIEGE_GIF = "siege.gif";
+type LoadedCtx = Awaited<ReturnType<typeof loadCtx>>;
+
+// A card → siege combatant, power taken from the guild strength ladder (the same
+// source of truth battles/raids use) with a small worth tiebreaker.
+function toSiegeCombatant(card: { id: number; name: string; rarity: string; worthValue?: number; imageUrl: string | null }, cx: LoadedCtx): SiegeCombatant {
+  const d = getCardDisplayRarity({ id: card.id, rarity: card.rarity }, cx.ctx, cx.settings, cx.displayMap);
+  const rank = rarityLadderRank(String(card.rarity), cx.ctx);
+  const power = (rank + 1) * 100 + Math.round((card.worthValue ?? 0) / 25);
+  return {
+    cardId: card.id, name: card.name, rarity: String(card.rarity),
+    rarityLabel: d.label, rarityColor: d.color, artUrl: toAbsoluteImageUrl(card.imageUrl), power,
+  };
+}
+
+async function buildAttackerSquad(guildId: string, userId: string, cx: LoadedCtx, count: number): Promise<SiegeCombatant[]> {
+  const ownedIds = new Set((await getUserCollection(guildId, userId)).map(i => i.cardId));
+  const pool = cx.cards.filter(c => ownedIds.has(c.id)).map(c => toSiegeCombatant(c, cx));
+  pool.sort((a, b) => b.power - a.power);
+  return pool.slice(0, Math.max(1, count));
+}
+
+async function buildDefenderSquad(guildId: string, defenderId: string, cx: LoadedCtx): Promise<SiegeCombatant[]> {
+  const map = await getDefenders(guildId, defenderId);
+  const out: SiegeCombatant[] = [];
+  for (const [, cardId] of [...map.entries()].sort((a, b) => a[0] - b[0])) {
+    const card = cx.cards.find(c => c.id === cardId);
+    if (card) out.push(toSiegeCombatant(card, cx));
+  }
+  return out;
+}
+
+// Why a base can't be attacked right now (null = go ahead).
+async function siegeBlockReason(guildId: string, attackerId: string, defenderId: string): Promise<string | null> {
+  if (attackerId === defenderId) return "You can't besiege your own base.";
+  const defenders = await getDefenders(guildId, defenderId);
+  if (defenders.size === 0) return "That base has no defenders to fight.";
+  if (activeCapture(await getBaseState(guildId, defenderId))) return "That base is shielded after a recent battle. Try again later.";
+  const recent = await recentAttackCount(guildId, attackerId, defenderId, new Date(Date.now() - SIEGE_COOLDOWN_MS));
+  if (recent >= SIEGE_MAX_PER_WINDOW) return "You've attacked this base too recently — wait for the cooldown.";
+  return null;
+}
+
+async function buildAttackModePicker(guildId: string, attackerId: string, defenderId: string) {
+  const blocked = await siegeBlockReason(guildId, attackerId, defenderId);
+  const embed = new EmbedBuilder().setColor(0xc0392b).setTitle("⚔️ Lay Siege");
+  if (blocked) {
+    embed.setDescription(`❌ ${blocked}`);
+    return { embeds: [embed], components: [backRow("defenders")], files: [] as AttachmentBuilder[] };
+  }
+  const cx = await loadCtx(guildId);
+  const defenders = await buildDefenderSquad(guildId, defenderId, cx);
+  const squad = await buildAttackerSquad(guildId, attackerId, cx, defenders.length);
+  const yourP = squad.reduce((s, c) => s + c.power, 0), theirP = defenders.reduce((s, c) => s + c.power, 0);
+  embed.setDescription(
+    `Send your strongest **${squad.length}** cards against **${defenders.length}** defenders. ` +
+    "Win the most duels to capture the base.\n\n" +
+    `⚔️ Your squad power: **${yourP}**  ·  🛡️ Their defence: **${theirP}**\n\n` +
+    "**Pick how to watch it:**\n" +
+    "• **Classic** — instant text report\n• **Static** — a battle image\n• **Live** — an animated battle",
+  );
+  const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder().setCustomId(`hq-hub:siege:${defenderId}:classic`).setLabel("Classic").setEmoji("📜").setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder().setCustomId(`hq-hub:siege:${defenderId}:static`).setLabel("Static").setEmoji("🖼️").setStyle(ButtonStyle.Primary),
+    new ButtonBuilder().setCustomId(`hq-hub:siege:${defenderId}:live`).setLabel("Live").setEmoji("🎬").setStyle(ButtonStyle.Success),
+  );
+  return { embeds: [embed], components: [row, backRow("defenders")], files: [] as AttachmentBuilder[] };
+}
+
+function backRow(section: Section) {
+  return new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder().setCustomId(`hq-hub:back:${section}`).setLabel("Back").setEmoji("◀").setStyle(ButtonStyle.Secondary),
+  );
+}
+
+async function runSiege(interaction: ButtonInteraction, guildId: string, attackerId: string, defenderId: string, mode: SiegeMode): Promise<void> {
+  await interaction.deferUpdate().catch(() => {});
+  const blocked = await siegeBlockReason(guildId, attackerId, defenderId);
+  if (blocked) {
+    await interaction.editReply({ embeds: [new EmbedBuilder().setColor(0xc0392b).setDescription(`❌ ${blocked}`)], components: [backRow("defenders")], files: [] }).catch(() => {});
+    return;
+  }
+  const cx = await loadCtx(guildId);
+  const defenders = await buildDefenderSquad(guildId, defenderId, cx);
+  const squad = await buildAttackerSquad(guildId, attackerId, cx, defenders.length);
+  const result = resolveSiege(squad, defenders);
+
+  const attackerName = interaction.user.username;
+  const defHq = await getOrCreateHq(guildId, defenderId);
+  const defenderName = readHqStats(defHq).title?.trim() || "the defenders";
+
+  // Persist outcome (capture + shield on a win; log either way).
+  await applySiegeToBase(guildId, defenderId, result.attackerWon, attackerId, attackerName, SIEGE_SHIELD_MS).catch(() => {});
+  await logSiege(guildId, attackerId, defenderId, result.attackerWon, result.attackerPower, result.defenderPower, mode).catch(() => {});
+
+  const col = result.attackerWon ? 0x4fd06a : 0xc0392b;
+  const embed = new EmbedBuilder().setColor(col)
+    .setTitle(result.attackerWon ? "⚔️ Base Captured!" : "🛡️ Base Defended!")
+    .setDescription(
+      `**${attackerName}** ${result.attackerWon ? "stormed" : "failed to take"} the base — ` +
+      `duels **${result.attackerWins}–${result.defenderWins}**.` +
+      (result.attackerWon ? "\n🚩 You hold it for the next hour." : "\nThe defenders held the walls."),
+    )
+    .addFields(
+      { name: "⚔️ Squad power", value: `**${result.attackerPower}**`, inline: true },
+      { name: "🛡️ Defence power", value: `**${result.defenderPower}**`, inline: true },
+    );
+
+  const files: AttachmentBuilder[] = [];
+  if (mode === "classic") {
+    const log = result.duels.slice(0, 6).map((d, i) =>
+      `**${i + 1}.** ${d.attacker.name} ${d.attackerWon ? "🟢 beat" : "🔴 lost to"} ${d.defender.name}`).join("\n");
+    if (log) embed.addFields({ name: "Duels", value: log.slice(0, 1024) });
+  } else if (mode === "static") {
+    const view: HqSiegeView = {
+      theme: resolveTheme(defHq.themeId), attackerName, defenderName,
+      attackerWon: result.attackerWon,
+      attackerChamp: champ(result.attackerWon ? result.championWinner : result.championLoser),
+      defenderChamp: champ(result.attackerWon ? result.championLoser : result.championWinner),
+      attackerWins: result.attackerWins, defenderWins: result.defenderWins,
+    };
+    const buf = await renderSiegeStatic(view).catch(() => null);
+    if (buf) { files.push(new AttachmentBuilder(buf, { name: SIEGE_FILE })); embed.setImage(`attachment://${SIEGE_FILE}`); }
+  } else {
+    // LIVE: reuse the animated battle victory engine for the champion clash.
+    const w = result.championWinner, l = result.championLoser;
+    if (w && l) {
+      const anim = await renderBattleVictory({
+        winner: renderCardOf(w), loser: renderCardOf(l), background: null,
+      }, "normal").catch(() => null);
+      if (anim?.buffer) { files.push(new AttachmentBuilder(anim.buffer, { name: SIEGE_GIF })); embed.setImage(`attachment://${SIEGE_GIF}`); }
+    }
+  }
+
+  await interaction.editReply({ embeds: [embed], components: [backRow("defenders")], files }).catch(() => {});
+}
+
+function champ(c: SiegeCombatant | null): HqSiegeView["attackerChamp"] {
+  return c ? { name: c.name, artUrl: c.artUrl, rarityColor: c.rarityColor } : null;
+}
+// SiegeCombatant → the battle engine's RenderCard (for the live animation).
+function renderCardOf(c: SiegeCombatant) {
+  return { name: c.name, rarityLabel: c.rarityLabel, rarity: c.rarity as Rarity, rarityColor: c.rarityColor, artUrl: c.artUrl, cardId: c.cardId };
+}
+
+// ── Visit (read-only) — scout a base, then attack it ──────────────────────────
+async function buildVisitView(guildId: string, targetId: string, targetName: string, targetAvatar: string, attackerId?: string) {
   const hq = await getOrCreateHq(guildId, targetId);
   const owned = await getUnlockedItemIds(guildId, targetId);
   // Show a room the host has actually unlocked (see the note in buildView). This
@@ -689,13 +862,15 @@ async function buildVisitView(guildId: string, targetId: string, targetName: str
   const theme = resolveTheme(hq.themeId);
   const stats = readHqStats(hq);
   const defenders = await getDefenders(guildId, targetId);
+  const capture = activeCapture(await getBaseState(guildId, targetId));
 
   const embed = new EmbedBuilder()
-    .setColor(theme.palette.accent)
+    .setColor(capture ? 0xc0392b : theme.palette.accent)
     .setTitle(`🏰 Scouting ${hqDisplayTitle(hq, targetName)}`)
     .setDescription(
       (stats.motto ? `_“${stats.motto}”_\n\n` : "") +
-      `**${theme.emoji} ${theme.name}** · **HQ Level ${hq.hqLevel}**`,
+      `**${theme.emoji} ${theme.name}** · **HQ Level ${hq.hqLevel}**` +
+      (capture ? `\n🚩 **Currently held by ${capture.heldName}**` : ""),
     )
     .addFields(
       { name: "🛡️ Defenders", value: `**${defenders.size}** / ${HQ_DEFENDER_SLOTS} stationed`, inline: true },
@@ -704,6 +879,18 @@ async function buildVisitView(guildId: string, targetId: string, targetName: str
   if (file) embed.setImage(`attachment://${HQ_FILE}`);
 
   const rows: ActionRowBuilder<any>[] = [];
+
+  // Attack affordance (only when a real rival is scouting a defended base).
+  if (attackerId && attackerId !== targetId) {
+    const canAttack = defenders.size > 0 && !capture;
+    const reason = defenders.size === 0 ? "Undefended — nothing to besiege"
+      : capture ? "Shielded after a recent battle" : "";
+    rows.push(new ActionRowBuilder<ButtonBuilder>().addComponents(
+      new ButtonBuilder().setCustomId(`hq-hub:attack:${targetId}`)
+        .setLabel(canAttack ? `Attack ${targetName}'s base` : (reason || "Cannot attack"))
+        .setEmoji("⚔️").setStyle(ButtonStyle.Danger).setDisabled(!canAttack),
+    ));
+  }
   const displays = await getDisplays(guildId, targetId);
   const pinned = [...displays.entries()].sort((a, b) => a[0] - b[0]);
   if (pinned.length > 0) {

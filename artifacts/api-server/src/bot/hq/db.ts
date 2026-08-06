@@ -8,9 +8,10 @@
 
 import {
   db, playerHqTable, hqUnlocksTable, hqDisplaysTable, hqPlacementsTable, hqDefendersTable,
-  type PlayerHq, type HqItemType,
+  hqBaseStateTable, hqBaseAttacksTable,
+  type PlayerHq, type HqItemType, type HqBaseState,
 } from "@workspace/db";
-import { and, eq } from "drizzle-orm";
+import { and, eq, gte, sql } from "drizzle-orm";
 
 // ── player_hq ─────────────────────────────────────────────────────────────────
 export async function getOrCreateHq(guildId: string, userId: string): Promise<PlayerHq> {
@@ -138,6 +139,70 @@ export async function clearDefender(guildId: string, userId: string, slot: numbe
     eq(hqDefendersTable.userId, userId),
     eq(hqDefendersTable.slot, slot),
   ));
+}
+
+// ── hq_base_state + hq_base_attacks (siege) ───────────────────────────────────
+export async function getBaseState(guildId: string, userId: string): Promise<HqBaseState | null> {
+  const [row] = await db.select().from(hqBaseStateTable)
+    .where(and(eq(hqBaseStateTable.guildId, guildId), eq(hqBaseStateTable.userId, userId))).limit(1);
+  return row ?? null;
+}
+
+async function upsertBaseState(
+  guildId: string, userId: string,
+  patch: Partial<Pick<HqBaseState, "heldByUserId" | "heldByName" | "shieldUntil" | "lastAttackedAt">>,
+): Promise<void> {
+  await db.insert(hqBaseStateTable)
+    .values({ guildId, userId, ...patch })
+    .onConflictDoUpdate({
+      target: [hqBaseStateTable.guildId, hqBaseStateTable.userId],
+      set: { ...patch, updatedAt: new Date() },
+    });
+}
+
+// Apply a resolved siege to the DEFENDER's base: a win flips the holder to the
+// attacker and shields the base; either way the base is marked freshly attacked.
+export async function applySiegeToBase(
+  guildId: string, defenderId: string, attackerWon: boolean,
+  attackerId: string, attackerName: string, shieldMs: number,
+): Promise<void> {
+  const now = new Date();
+  if (attackerWon) {
+    await upsertBaseState(guildId, defenderId, {
+      heldByUserId: attackerId, heldByName: attackerName,
+      shieldUntil: new Date(now.getTime() + shieldMs), lastAttackedAt: now,
+    });
+  } else {
+    await upsertBaseState(guildId, defenderId, { lastAttackedAt: now });
+  }
+}
+
+// The base owner reclaiming their own base clears the conqueror.
+export async function reclaimBase(guildId: string, userId: string): Promise<void> {
+  await upsertBaseState(guildId, userId, { heldByUserId: null, heldByName: null });
+}
+
+export async function logSiege(
+  guildId: string, attackerId: string, defenderId: string,
+  won: boolean, attackerPower: number, defenderPower: number, mode: string,
+): Promise<void> {
+  await db.insert(hqBaseAttacksTable).values({
+    guildId, attackerId, defenderId, won: won ? "1" : "0", attackerPower, defenderPower, mode,
+  });
+}
+
+// Count a pair's attacks since `since` — powers the per-target attacker cooldown.
+export async function recentAttackCount(
+  guildId: string, attackerId: string, defenderId: string, since: Date,
+): Promise<number> {
+  const [row] = await db.select({ n: sql<number>`count(*)::int` }).from(hqBaseAttacksTable)
+    .where(and(
+      eq(hqBaseAttacksTable.guildId, guildId),
+      eq(hqBaseAttacksTable.attackerId, attackerId),
+      eq(hqBaseAttacksTable.defenderId, defenderId),
+      gte(hqBaseAttacksTable.createdAt, since),
+    ));
+  return row?.n ?? 0;
 }
 
 // Remove any placements whose decoration is no longer owned (defensive — keeps a

@@ -834,6 +834,36 @@ async function runBootMigrations() {
   await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS hq_defenders_guild_user_slot_uniq ON hq_defenders (guild_id, user_id, slot)`);
   await pool.query(`CREATE INDEX IF NOT EXISTS hq_defenders_guild_user_idx ON hq_defenders (guild_id, user_id)`);
 
+  // Base-siege state + attack log (capture/defend mini-game).
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS hq_base_state (
+      id               SERIAL PRIMARY KEY,
+      guild_id         TEXT NOT NULL,
+      user_id          TEXT NOT NULL,
+      held_by_user_id  TEXT,
+      held_by_name     TEXT,
+      shield_until     TIMESTAMP,
+      last_attacked_at TIMESTAMP,
+      updated_at       TIMESTAMP NOT NULL DEFAULT NOW(),
+      UNIQUE (guild_id, user_id)
+    )
+  `);
+  await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS hq_base_state_guild_user_uniq ON hq_base_state (guild_id, user_id)`);
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS hq_base_attacks (
+      id             SERIAL PRIMARY KEY,
+      guild_id       TEXT NOT NULL,
+      attacker_id    TEXT NOT NULL,
+      defender_id    TEXT NOT NULL,
+      won            TEXT NOT NULL,
+      attacker_power INTEGER NOT NULL DEFAULT 0,
+      defender_power INTEGER NOT NULL DEFAULT 0,
+      mode           TEXT NOT NULL DEFAULT 'static',
+      created_at     TIMESTAMP NOT NULL DEFAULT NOW()
+    )
+  `);
+  await pool.query(`CREATE INDEX IF NOT EXISTS hq_base_attacks_pair_idx ON hq_base_attacks (guild_id, attacker_id, defender_id, created_at)`);
+
   logger.info("Boot migrations applied");
 }
 

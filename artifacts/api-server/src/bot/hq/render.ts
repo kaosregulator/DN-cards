@@ -467,6 +467,92 @@ async function drawBaseDefenders(ctx: Ctx, mod: CanvasMod, view: HqBaseView): Pr
   }
 }
 
+// ── Siege result (STATIC mode) ──────────────────────────────────────────────
+// A single battle image: the two champions face off over the base, with a VS
+// clash, the duel tally and a VICTORY/HELD banner. (The LIVE mode reuses the
+// animated battle engine; CLASSIC mode is a text embed.)
+export interface HqSiegeChampion { name: string; artUrl: string | null; rarityColor: number }
+export interface HqSiegeView {
+  theme: HqTheme;
+  attackerName: string;
+  defenderName: string;
+  attackerWon: boolean;
+  attackerChamp: HqSiegeChampion | null;
+  defenderChamp: HqSiegeChampion | null;
+  attackerWins: number;
+  defenderWins: number;
+}
+
+export async function renderSiegeStatic(view: HqSiegeView): Promise<Buffer | null> {
+  return queueRender("hq-siege", async () => {
+    const mod = await getCanvas();
+    if (!mod) return null;
+    try {
+      const canvas = mod.createCanvas(W, H);
+      const ctx = canvas.getContext("2d") as unknown as Ctx;
+
+      // Arena backdrop.
+      const g = ctx.createLinearGradient(0, 0, 0, H);
+      g.addColorStop(0, view.theme.palette.wallTop); g.addColorStop(1, "#05070a");
+      ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+      const clash = ctx.createRadialGradient(W / 2, H / 2, 40, W / 2, H / 2, 520);
+      clash.addColorStop(0, hexToRgba(view.attackerWon ? 0x4fd06a : 0xc0392b, 0.22));
+      clash.addColorStop(1, "rgba(0,0,0,0)");
+      ctx.fillStyle = clash; ctx.fillRect(0, 0, W, H);
+
+      const cardW = 240, cardH = 320, cy = 150;
+      await drawChampion(ctx, mod, 150, cy, cardW, cardH, view.attackerChamp, view.theme, view.attackerWon);
+      await drawChampion(ctx, mod, W - 150 - cardW, cy, cardW, cardH, view.defenderChamp, view.theme, !view.attackerWon);
+
+      // Central VS clash.
+      ctx.save();
+      ctx.textAlign = "center"; ctx.textBaseline = "middle";
+      ctx.shadowColor = hexToRgba(view.theme.palette.accent, 0.9); ctx.shadowBlur = 24;
+      drawTitle(ctx, "VS", W / 2, cy + cardH / 2 - 20, "#ffffff", 64);
+      ctx.restore();
+
+      // Result banner.
+      const won = view.attackerWon;
+      const label = won ? `⚔️ ${view.attackerName} CAPTURED THE BASE` : `🛡️ ${view.defenderName} HELD THE BASE`;
+      const col = won ? 0x4fd06a : 0xc0392b;
+      ctx.save();
+      const bw = W - 120, bh = 56, bx = 60, by = H - 96;
+      ctx.fillStyle = "rgba(0,0,0,0.6)"; roundRectPath(ctx, bx, by, bw, bh, 14); ctx.fill();
+      ctx.strokeStyle = hexToRgba(col, 0.95); ctx.lineWidth = 3; roundRectPath(ctx, bx, by, bw, bh, 14); ctx.stroke();
+      ctx.textAlign = "center"; ctx.textBaseline = "middle";
+      drawTitle(ctx, label, W / 2, by + 22, "#ffffff", fitText(ctx, label, bw - 40, 24, 14, TITLE_FONT));
+      drawTextWithShadow(ctx, `Duels won — ${view.attackerName}: ${view.attackerWins}   ·   ${view.defenderName}: ${view.defenderWins}`,
+        W / 2, by + 42, "rgba(230,230,235,0.9)", 14);
+      ctx.restore();
+
+      return await canvas.encode("png");
+    } catch {
+      return null;
+    }
+  });
+}
+
+async function drawChampion(
+  ctx: Ctx, mod: CanvasMod, x: number, y: number, w: number, h: number,
+  champ: HqSiegeChampion | null, theme: HqTheme, winner: boolean,
+): Promise<void> {
+  const col = champ?.rarityColor ?? 0x808895;
+  drawRarityGlow(ctx, x, y, w, h, col, winner ? 0.85 : 0.4);
+  await drawCardArt(ctx, mod, x, y, w, h, champ?.artUrl ?? null);
+  drawCardFrame(ctx, x, y, w, h, col, 6);
+  // Name plate.
+  ctx.save();
+  const g = ctx.createLinearGradient(0, y + h - 44, 0, y + h);
+  g.addColorStop(0, "rgba(0,0,0,0)"); g.addColorStop(1, "rgba(0,0,0,0.85)");
+  ctx.save(); roundRectPath(ctx, x, y, w, h, 10); ctx.clip();
+  ctx.fillStyle = g; ctx.fillRect(x, y + h - 44, w, 44); ctx.restore();
+  ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  drawTitle(ctx, champ?.name ?? "—", x + w / 2, y + h - 22, "#ffffff", fitText(ctx, champ?.name ?? "—", w - 16, 20, 12, TITLE_FONT));
+  ctx.restore();
+  // Dim the loser.
+  if (!winner) { ctx.save(); roundRectPath(ctx, x, y, w, h, 10); ctx.fillStyle = "rgba(0,0,0,0.42)"; ctx.fill(); ctx.restore(); }
+}
+
 // ── Layers ──────────────────────────────────────────────────────────────────
 function layerBackdrop(ctx: Ctx, theme: HqTheme): void {
   const g = ctx.createLinearGradient(0, 0, 0, H);
