@@ -34,6 +34,7 @@ import {
   getUnlockedItemIds, grantUnlock,
   getDefenders, setDefender, clearDefender, getGuildBases,
   getBaseState, applySiegeToBase, logSiege, recentAttackCount, reclaimBase,
+  getConquestLeaders,
 } from "../hq/db.js";
 import {
   shopRotation, formatRefreshIn,
@@ -786,6 +787,19 @@ async function buildView(
             }))),
         ));
       }
+      // Conquest leaderboard — top raiders by career wins, and bases held now.
+      const leaders = await getConquestLeaders(guildId, 5).catch(() => []);
+      if (leaders.length > 0) {
+        const medals = ["🥇", "🥈", "🥉", "🏅", "🏅"];
+        const lines = await Promise.all(leaders.map(async (l, i) => {
+          const lhq = await getOrCreateHq(guildId, l.userId);
+          const name = readHqStats(lhq).title?.trim() || `Warlord ${l.userId.slice(-4)}`;
+          const held = l.holding > 0 ? ` · 🚩 holds ${l.holding}` : "";
+          const you = l.userId === userId ? " · **you**" : "";
+          return `${medals[i] ?? "•"} **${name}** — ${l.wins} win${l.wins === 1 ? "" : "s"}${held}${you}`;
+        }));
+        embed.addFields({ name: "🏆 Conquest leaderboard", value: lines.join("\n").slice(0, 1024) });
+      }
       break;
     }
 
@@ -1136,18 +1150,32 @@ async function runSiege(interaction: ButtonInteraction, guildId: string, attacke
   await applySiegeToBase(guildId, defenderId, result.attackerWon, attackerId, attackerName, SIEGE_SHIELD_MS).catch(() => {});
   await logSiege(guildId, attackerId, defenderId, result.attackerWon, result.attackerPower, result.defenderPower, mode).catch(() => {});
 
+  // Stakes: the attacker earns a shard BOUNTY on a win (scaled by the defence it
+  // beat), or a small consolation on a loss. The bounty is minted, never drained
+  // from the defender — no griefing — and the existing shield + per-target
+  // cooldown gate how often it can be earned. Reuses the market shard economy.
+  const reward = result.attackerWon
+    ? Math.min(300, 60 + Math.round(result.defenderPower / 18))
+    : 20;
+  await addShards(guildId, attackerId, reward).catch(() => {});
+
   const col = result.attackerWon ? 0x4fd06a : 0xc0392b;
   const embed = new EmbedBuilder().setColor(col)
     .setTitle(result.attackerWon ? "⚔️ Base Captured!" : "🛡️ Base Defended!")
     .setDescription(
       `**${attackerName}** ${result.attackerWon ? "stormed" : "failed to take"} the base — ` +
       `duels **${result.attackerWins}–${result.defenderWins}**.` +
-      (result.attackerWon ? "\n🚩 You hold it for the next hour." : "\nThe defenders held the walls."),
+      (result.attackerWon ? "\n🚩 You hold it until it's reclaimed." : "\nThe defenders held the walls."),
     )
     .addFields(
       { name: "⚔️ Squad power", value: `**${result.attackerPower}**`, inline: true },
       { name: "🛡️ Defence power", value: `**${result.defenderPower}**`, inline: true },
+      { name: "💠 Loot", value: `**+${reward}** shards`, inline: true },
     );
+
+  // Notify the base owner (best-effort DM) — attacking someone should let them
+  // know, win or lose, so conquest is a two-way game.
+  void notifySiege(interaction, guildId, defenderId, attackerName, result.attackerWon, reward);
 
   // All three modes render ON the defender's base scene (castle + cards + health)
   // — never a separate VS screen. Classic adds move captions + hit flashes; live
@@ -1174,6 +1202,32 @@ async function runSiege(interaction: ButtonInteraction, guildId: string, attacke
   if (mode === "classic" && log) embed.addFields({ name: "Duels", value: log.slice(0, 1024) });
 
   await interaction.editReply({ embeds: [embed], components: [backRow("defenders")], files }).catch(() => {});
+}
+
+// Best-effort DM to a base owner after their base is attacked. Never throws (DMs
+// may be closed) and never notifies a self-attack.
+async function notifySiege(
+  interaction: ButtonInteraction, guildId: string, defenderId: string,
+  attackerName: string, captured: boolean, reward: number,
+): Promise<void> {
+  if (defenderId === interaction.user.id) return;
+  try {
+    const guildName = interaction.guild?.name ?? "your server";
+    const user = await interaction.client.users.fetch(defenderId);
+    const embed = new EmbedBuilder()
+      .setColor(captured ? 0xc0392b : 0x4fd06a)
+      .setTitle(captured ? "🏰 Your base was captured!" : "🛡️ Your base held!")
+      .setDescription(
+        captured
+          ? `**${attackerName}** stormed your base in **${guildName}** and now holds it. ` +
+            "Reclaim it from **/hq → 🏰 Base** once the shield lifts, or station stronger defenders."
+          : `**${attackerName}** attacked your base in **${guildName}**, but your defenders held the walls. ` +
+            `They walked away with only ${reward} shards.`,
+      );
+    await user.send({ embeds: [embed] });
+  } catch {
+    // DMs closed / user unreachable — silently skip.
+  }
 }
 
 // ── Visit (read-only) — scout a base, then attack it ──────────────────────────

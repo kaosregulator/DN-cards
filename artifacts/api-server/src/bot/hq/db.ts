@@ -221,6 +221,32 @@ export async function logSiege(
   });
 }
 
+// Conquest leaderboard: top attackers by career siege WINS in this guild, with
+// how many bases each currently HOLDS. Reads only the additive siege tables.
+export async function getConquestLeaders(
+  guildId: string, limit = 8,
+): Promise<{ userId: string; wins: number; holding: number }[]> {
+  const winRows = await db.select({
+      userId: hqBaseAttacksTable.attackerId,
+      wins: sql<number>`count(*)::int`,
+    })
+    .from(hqBaseAttacksTable)
+    .where(and(eq(hqBaseAttacksTable.guildId, guildId), eq(hqBaseAttacksTable.won, "1")))
+    .groupBy(hqBaseAttacksTable.attackerId)
+    .orderBy(desc(sql`count(*)`))
+    .limit(limit);
+  if (winRows.length === 0) return [];
+  const holdRows = await db.select({
+      userId: hqBaseStateTable.heldByUserId,
+      holding: sql<number>`count(*)::int`,
+    })
+    .from(hqBaseStateTable)
+    .where(and(eq(hqBaseStateTable.guildId, guildId), sql`${hqBaseStateTable.heldByUserId} is not null`))
+    .groupBy(hqBaseStateTable.heldByUserId);
+  const holdMap = new Map(holdRows.map(r => [r.userId, r.holding]));
+  return winRows.map(r => ({ userId: r.userId, wins: r.wins, holding: holdMap.get(r.userId) ?? 0 }));
+}
+
 // Count a pair's attacks since `since` — powers the per-target attacker cooldown.
 export async function recentAttackCount(
   guildId: string, attackerId: string, defenderId: string, since: Date,
