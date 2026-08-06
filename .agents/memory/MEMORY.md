@@ -42,3 +42,4 @@
 - [Canvas image load timeouts](canvas-image-load-timeouts.md) — `@napi-rs/canvas` loadImage and object-storage downloads can hang forever; race them with a timeout so renders fall back and Discord interactions don't stay stuck in "thinking...".
 - [Recycle GIF timing & image fallback](recycle-gif-image-fallback.md) — GIF result edits must wait for the animation duration; external card image URLs can return SVG/error content and the canvas falls back to a dark placeholder.
 - [Economy optimistic lock pattern](economy-optimistic-lock.md) — consume inventory BEFORE awarding currency/XP; use exact-match UPDATE guard + RETURNING to detect concurrent double-spend; never award if affected rows = 0.
+- [HQ concurrency and derived state](hq-concurrency-and-derived-state.md) — siege/placement mutations need atomic guards, and computed HQ level must be persisted during reconciliation.
