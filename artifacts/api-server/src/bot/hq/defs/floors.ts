@@ -19,6 +19,7 @@ export interface HqFloor {
   grout: string;         // tile-edge line (rgba)
   spritePrefix: string;  // asset-pack prefix (procedural when no art is bundled)
   unlock: UnlockRule;
+  price?: number;        // shard price when buyable from the shop's Surfaces aisle
 }
 
 export const HQ_FLOORS: HqFloor[] = [
@@ -32,15 +33,15 @@ export const HQ_FLOORS: HqFloor[] = [
   },
   {
     id: "carpet", name: "Carpet", emoji: "🟥", tileA: "#7a3550", tileB: "#6d2e47",
-    grout: "rgba(0,0,0,0.18)", spritePrefix: "floor/carpet", unlock: { kind: "accountLevel", n: 5 },
+    grout: "rgba(0,0,0,0.18)", spritePrefix: "floor/carpet", unlock: { kind: "accountLevel", n: 5 }, price: 500,
   },
   {
     id: "marble", name: "Marble", emoji: "⬜", tileA: "#e8e6ea", tileB: "#d5d2dc",
-    grout: "rgba(180,180,200,0.3)", spritePrefix: "floor/marble", unlock: { kind: "netWorth", n: 25_000 },
+    grout: "rgba(180,180,200,0.3)", spritePrefix: "floor/marble", unlock: { kind: "netWorth", n: 25_000 }, price: 1500,
   },
   {
     id: "grid", name: "Grid", emoji: "🟦", tileA: "#12303a", tileB: "#0e2831",
-    grout: "rgba(80,220,220,0.5)", spritePrefix: "floor/grid", unlock: { kind: "accountLevel", n: 20 },
+    grout: "rgba(80,220,220,0.5)", spritePrefix: "floor/grid", unlock: { kind: "accountLevel", n: 20 }, price: 900,
   },
   // ── Outdoor / natural grounds — for open-air "outside" rooms ──────────────────
   {
@@ -53,19 +54,19 @@ export const HQ_FLOORS: HqFloor[] = [
   },
   {
     id: "sand", name: "Sand", emoji: "🏜️", tileA: "#e3cf9a", tileB: "#d8c189",
-    grout: "rgba(150,120,70,0.3)", spritePrefix: "floor/sand", unlock: { kind: "totalCards", n: 25 },
+    grout: "rgba(150,120,70,0.3)", spritePrefix: "floor/sand", unlock: { kind: "totalCards", n: 25 }, price: 450,
   },
   {
     id: "cobblestone", name: "Cobblestone", emoji: "🪨", tileA: "#8b8f96", tileB: "#7c8087",
-    grout: "rgba(30,32,36,0.5)", spritePrefix: "floor/cobblestone", unlock: { kind: "battleWins", n: 10 },
+    grout: "rgba(30,32,36,0.5)", spritePrefix: "floor/cobblestone", unlock: { kind: "battleWins", n: 10 }, price: 500,
   },
   {
-    id: "brick", name: "Brick Floor", emoji: "🧱", tileA: "#9a5240", tileB: "#8a473a",
-    grout: "rgba(50,24,18,0.5)", spritePrefix: "floor/brick", unlock: { kind: "accountLevel", n: 10 },
+    id: "brick-floor", name: "Brick Floor", emoji: "🧱", tileA: "#9a5240", tileB: "#8a473a",
+    grout: "rgba(50,24,18,0.5)", spritePrefix: "floor/brick", unlock: { kind: "accountLevel", n: 10 }, price: 700,
   },
   {
     id: "checker", name: "Checkerboard", emoji: "🏁", tileA: "#2a2d33", tileB: "#eceef2",
-    grout: "rgba(0,0,0,0.2)", spritePrefix: "floor/checker", unlock: { kind: "dailyStreak", n: 14 },
+    grout: "rgba(0,0,0,0.2)", spritePrefix: "floor/checker", unlock: { kind: "dailyStreak", n: 14 }, price: 800,
   },
 ];
 

@@ -38,6 +38,7 @@ import {
 import {
   shopRotation, formatRefreshIn,
   SHOP_AISLES, purchasableInAisle, shopPriceFor,
+  buyableSurfaces, surfaceById,
 } from "../hq/shop.js";
 import {
   resolveSiege, SIEGE_SHIELD_MS, SIEGE_COOLDOWN_MS, SIEGE_MAX_PER_WINDOW,
@@ -353,6 +354,12 @@ export async function handleHqHubComponent(
   if (action === "buy" && interaction.isStringSelectMenu()) {
     const notice = await buyShopItem(guildId, userId, interaction.values[0]!);
     await interaction.update(await buildView(interaction, "shop", [], notice, parts[2])).catch(() => {});
+    return;
+  }
+  // Shop: buy a surface (floor/wall) — grants the style unlock.
+  if (action === "buysurface" && interaction.isStringSelectMenu()) {
+    const notice = await buySurface(guildId, userId, interaction.values[0]!);
+    await interaction.update(await buildView(interaction, "shop", [], notice, "surfaces")).catch(() => {});
     return;
   }
   // Shop: open a mystery crate for a random furniture item.
@@ -842,9 +849,10 @@ async function buildView(
     case "shop": {
       const rot = shopRotation();
       const currency = await getOrCreateCurrency(guildId, userId).catch(() => ({ shards: 0 }));
-      // Aisle "featured" = today's discounted rotation; any SHOP_AISLES id browses
-      // that whole category. Default to Featured.
-      const aisle = shopAisle && SHOP_AISLES.some(a => a.id === shopAisle) ? shopAisle : "featured";
+      // Aisle "featured" = today's discounted rotation; "surfaces" = buyable
+      // floors & walls; any SHOP_AISLES id browses that decoration category.
+      const validAisle = shopAisle === "surfaces" || (shopAisle && SHOP_AISLES.some(a => a.id === shopAisle));
+      const aisle = validAisle ? shopAisle! : "featured";
       const priceStr = (basePrice: number, price: number, pct: number) =>
         pct > 0 ? `~~${basePrice}~~ **${price}** (−${pct}%)` : `**${price}**`;
 
@@ -859,12 +867,32 @@ async function buildView(
       const aisleOpts = [
         { label: "Featured (on sale)", value: "featured", description: "Today's rotating discounts", emoji: "⭐", default: aisle === "featured" },
         ...SHOP_AISLES.map(a => ({ label: a.label, value: a.id, description: `Browse all ${a.label.toLowerCase()}`, emoji: a.emoji, default: aisle === a.id })),
+        { label: "Surfaces", value: "surfaces", description: "Buyable floors & walls for 🎨 Style", emoji: "🧱", default: aisle === "surfaces" },
       ];
       rows.push(new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
         new StringSelectMenuBuilder().setCustomId("hq-hub:shopcat").setPlaceholder("🧭 Choose an aisle…").addOptions(aisleOpts),
       ));
 
-      // The item list for the active aisle.
+      if (aisle === "surfaces") {
+        // Floors & walls — buying grants the style, chosen later in 🎨 Style.
+        const surfaces = buyableSurfaces();
+        const lines = surfaces.map(s => `${s.emoji} **${s.name}** · ${s.kind} — 💠 **${s.price}**${owned.has(s.id) ? " · ✅ owned" : ""}`);
+        embed.addFields({ name: "🧱 Surfaces — floors & walls", value: lines.join("\n").slice(0, 1024) || "No surfaces for sale." });
+        const buyable = surfaces.filter(s => !owned.has(s.id));
+        if (buyable.length > 0) {
+          rows.push(new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
+            new StringSelectMenuBuilder().setCustomId("hq-hub:buysurface").setPlaceholder("Buy a floor or wall…")
+              .addOptions(buyable.slice(0, 25).map(s => ({
+                label: `${s.name} — ${s.price}`.slice(0, 90), value: s.id,
+                description: `${s.kind} · apply it in 🎨 Style`, emoji: s.emoji,
+              }))),
+          ));
+        }
+        if (notice) embed.addFields({ name: "🧾 Receipt", value: notice.slice(0, 1024) });
+        break;
+      }
+
+      // The item list for the active decoration aisle.
       let entries: { deco: typeof HQ_DECORATIONS[number]; basePrice: number; price: number; discountPct: number }[];
       let fieldName: string;
       if (aisle === "featured") {
@@ -1502,6 +1530,23 @@ async function buyShopItem(guildId: string, userId: string, decoId: string): Pro
     return `You already own ${entry.deco.emoji} ${entry.deco.name} — no charge.`;
   }
   return `✅ Bought ${entry.deco.emoji} **${entry.deco.name}** for 💠 ${entry.price}! Place it from **🎏 Decorations**.`;
+}
+
+// Buy a surface (floor or wall). Grants the style unlock (itemType floor/wall) so
+// it can be selected in 🎨 Style. Price validated server-side via surfaceById.
+async function buySurface(guildId: string, userId: string, id: string): Promise<string> {
+  const s = surfaceById(id);
+  if (!s) return "❌ That surface isn't for sale.";
+  const owned = await getUnlockedItemIds(guildId, userId);
+  if (owned.has(s.id)) return `You already own ${s.emoji} ${s.name}.`;
+  const paid = await spendShards(guildId, userId, s.price).catch(() => false);
+  if (!paid) return `❌ Not enough shards — ${s.emoji} ${s.name} costs 💠 ${s.price}.`;
+  const granted = await grantUnlock(guildId, userId, s.id, s.kind, "shop").catch(() => false);
+  if (!granted) {
+    await addShards(guildId, userId, s.price).catch(() => {}); // refund the race
+    return `You already own ${s.emoji} ${s.name} — no charge.`;
+  }
+  return `✅ Bought ${s.emoji} **${s.name}** for 💠 ${s.price}! Apply it from **🎨 Style**.`;
 }
 
 // ── Mystery crate (shard sink → a random furniture piece) ──────────────────────

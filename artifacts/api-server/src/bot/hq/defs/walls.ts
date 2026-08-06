@@ -27,6 +27,7 @@ export interface HqWall {
   windowTint: string;    // rgba glass tint used when `window` is true
   spritePrefix: string;  // asset-pack prefix (procedural when no art is bundled)
   unlock: UnlockRule;
+  price?: number;        // shard price when buyable from the shop's Surfaces aisle
 }
 
 export const HQ_WALLS: HqWall[] = [
@@ -43,32 +44,32 @@ export const HQ_WALLS: HqWall[] = [
   {
     id: "brick", name: "Brick", emoji: "🧱", leftFace: "#7a3b32", rightFace: "#8f4a3f",
     trim: "#5a2a24", window: false, windowTint: "rgba(0,0,0,0)", spritePrefix: "wall/brick",
-    unlock: { kind: "accountLevel", n: 5 },
+    unlock: { kind: "accountLevel", n: 5 }, price: 600,
   },
   {
     id: "concrete", name: "Concrete", emoji: "⬜", leftFace: "#6b6f74", rightFace: "#7d8288",
     trim: "#50545a", window: false, windowTint: "rgba(0,0,0,0)", spritePrefix: "wall/concrete",
-    unlock: { kind: "battleWins", n: 10 },
+    unlock: { kind: "battleWins", n: 10 }, price: 500,
   },
   {
     id: "neon", name: "Neon Panels", emoji: "🟪", leftFace: "#1a1030", rightFace: "#241640",
     trim: "#b06bff", window: true, windowTint: "rgba(170,90,255,0.4)", spritePrefix: "wall/neon",
-    unlock: { kind: "accountLevel", n: 20 },
+    unlock: { kind: "accountLevel", n: 20 }, price: 1200,
   },
   {
     id: "stone", name: "Stone", emoji: "🪨", leftFace: "#6d7178", rightFace: "#80858c",
     trim: "#4c5056", window: false, windowTint: "rgba(0,0,0,0)", spritePrefix: "wall/stone",
-    unlock: { kind: "battleWins", n: 25 },
+    unlock: { kind: "battleWins", n: 25 }, price: 700,
   },
   {
     id: "hedge", name: "Garden Hedge", emoji: "🌿", leftFace: "#2f6b34", rightFace: "#37793c",
     trim: "#24572a", window: false, windowTint: "rgba(0,0,0,0)", spritePrefix: "wall/hedge",
-    unlock: { kind: "collectionUnique", n: 50 },
+    unlock: { kind: "collectionUnique", n: 50 }, price: 600,
   },
   {
-    id: "marble", name: "Marble", emoji: "⬜", leftFace: "#d9d6de", rightFace: "#e9e6ee",
+    id: "marble-wall", name: "Marble", emoji: "⬜", leftFace: "#d9d6de", rightFace: "#e9e6ee",
     trim: "#b7b2c4", window: false, windowTint: "rgba(0,0,0,0)", spritePrefix: "wall/marble",
-    unlock: { kind: "netWorth", n: 25_000 },
+    unlock: { kind: "netWorth", n: 25_000 }, price: 1500,
   },
 ];
 
