@@ -283,6 +283,9 @@ export async function startBot() {
         } else if (interaction.customId.startsWith("collhub:")) {
           const { handleCollectionHubComponent } = await import("./commands/collection-hub.js");
           await handleCollectionHubComponent(interaction);
+        } else if (interaction.customId.startsWith("hq-hub:")) {
+          const { handleHqHubComponent } = await import("./commands/hq-hub.js");
+          await handleHqHubComponent(interaction);
         }
         return;
       }
@@ -418,6 +421,13 @@ export async function startBot() {
         if (action === "collhub") {
           const { handleCollectionHubComponent } = await import("./commands/collection-hub.js");
           await handleCollectionHubComponent(interaction);
+          return;
+        }
+
+        // ── Headquarters hub (pin cards, place decorations, theme/room) ────
+        if (action === "hq-hub") {
+          const { handleHqHubComponent } = await import("./commands/hq-hub.js");
+          await handleHqHubComponent(interaction);
           return;
         }
 
@@ -802,6 +812,9 @@ export async function startBot() {
       } else if (cmd === "collection_hub") {
         const { handleCollectionHubCommand } = await import("./commands/collection-hub.js");
         await handleCollectionHubCommand(interaction);
+      } else if (cmd === "hq") {
+        const { handleHqCommand } = await import("./commands/hq-hub.js");
+        await handleHqCommand(interaction);
       } else if (USER_HUB_COMMANDS.has(cmd)) {
         // Flattened player commands (/burn, /daily, …) + standalone player
         // commands that carry their own subcommands (/sets, /rep, …).
@@ -833,7 +846,7 @@ export async function startBot() {
     "battle", "battleadmin", "market", "squad", "raid", "raidadmin",
     "giveaway",
     "whisper", "adminsecret", "echo", "afk", "afksetup", "begin", "show_shiny",
-    "collection_hub",
+    "collection_hub", "hq",
     "valuehelp", "valuelist", "info_mttv", "giveall", "editpack", "postcalculator",
     "massrole",
   ]);

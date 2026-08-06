@@ -751,6 +751,70 @@ async function runBootMigrations() {
   // Off by default so existing servers keep the current bot-voiced behaviour.
   await pool.query(`ALTER TABLE afk_guild_settings ADD COLUMN IF NOT EXISTS speak_as_user BOOLEAN NOT NULL DEFAULT FALSE`);
 
+  // ── Player Headquarters (HQ) ─────────────────────────────────────────────────
+  // Purely additive: HQ's own state only. Progression and earned cosmetics are
+  // DERIVED from the existing collection/battle/raid/achievement systems by
+  // bot/hq/engine.ts — these tables never duplicate that data. Created here so a
+  // Replit republish provisions them without a manual drizzle push.
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS player_hq (
+      id             SERIAL PRIMARY KEY,
+      guild_id       TEXT NOT NULL,
+      user_id        TEXT NOT NULL,
+      theme_id       TEXT NOT NULL DEFAULT 'command',
+      active_room_id TEXT NOT NULL DEFAULT 'trophy-hall',
+      hq_level       INTEGER NOT NULL DEFAULT 1,
+      stats          JSONB NOT NULL DEFAULT '{}'::jsonb,
+      created_at     TIMESTAMP NOT NULL DEFAULT NOW(),
+      updated_at     TIMESTAMP NOT NULL DEFAULT NOW(),
+      UNIQUE (guild_id, user_id)
+    )
+  `);
+  await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS player_hq_guild_user_uniq ON player_hq (guild_id, user_id)`);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS hq_unlocks (
+      id          SERIAL PRIMARY KEY,
+      guild_id    TEXT NOT NULL,
+      user_id     TEXT NOT NULL,
+      item_id     TEXT NOT NULL,
+      item_type   TEXT NOT NULL DEFAULT 'decoration',
+      source      TEXT,
+      unlocked_at TIMESTAMP NOT NULL DEFAULT NOW(),
+      UNIQUE (guild_id, user_id, item_id)
+    )
+  `);
+  await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS hq_unlocks_guild_user_item_uniq ON hq_unlocks (guild_id, user_id, item_id)`);
+  await pool.query(`CREATE INDEX IF NOT EXISTS hq_unlocks_guild_user_idx ON hq_unlocks (guild_id, user_id)`);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS hq_displays (
+      id         SERIAL PRIMARY KEY,
+      guild_id   TEXT NOT NULL,
+      user_id    TEXT NOT NULL,
+      slot       INTEGER NOT NULL,
+      card_id    INTEGER NOT NULL,
+      created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+      UNIQUE (guild_id, user_id, slot)
+    )
+  `);
+  await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS hq_displays_guild_user_slot_uniq ON hq_displays (guild_id, user_id, slot)`);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS hq_placements (
+      id         SERIAL PRIMARY KEY,
+      guild_id   TEXT NOT NULL,
+      user_id    TEXT NOT NULL,
+      room_id    TEXT NOT NULL,
+      slot       INTEGER NOT NULL,
+      item_id    TEXT NOT NULL,
+      created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+      UNIQUE (guild_id, user_id, room_id, slot)
+    )
+  `);
+  await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS hq_placements_guild_user_room_slot_uniq ON hq_placements (guild_id, user_id, room_id, slot)`);
+  await pool.query(`CREATE INDEX IF NOT EXISTS hq_placements_guild_user_room_idx ON hq_placements (guild_id, user_id, room_id)`);
+
   logger.info("Boot migrations applied");
 }
 
