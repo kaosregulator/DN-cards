@@ -191,56 +191,33 @@ export async function renderHq(view: HqRenderView): Promise<Buffer | null> {
 }
 
 // ── Exterior town-base renderer ─────────────────────────────────────────────
-// A separate leaf renderer (own queue label) for the outdoor base scene. Ground
-// slab → buildings + defenders depth-sorted by screen-y → lighting → header.
-// Buildings blit their art base-anchored to a target height (procedural fallback
-// per role when no art), so the copyrighted/CC0 pack and the drawn version share
-// one placement path.
-const BASE_TILE_W = 150, BASE_TILE_H = 74;
-const BASE_ORIGIN_X = W / 2, BASE_ORIGIN_Y = 250;
-function projectBase(gx: number, gy: number): Pt {
-  return {
-    x: BASE_ORIGIN_X + (gx - gy) * (BASE_TILE_W / 2),
-    y: BASE_ORIGIN_Y + (gx + gy) * (BASE_TILE_H / 2),
-  };
+// A clean, cohesive PROCEDURAL isometric map (no mismatched building sprites,
+// which stacked into a mess). A tiered grass island with cliff edges, a river,
+// pine forests and rocks, and the player's light-stone castle crowned with an
+// owner BANNER + a defence HEALTH BAR — with the stationed cards shown as framed
+// DEFENDERS out front ("the cards you left to guard"). Drawn entirely on the
+// canvas so it always reads as one artwork, matching the reference map.
+const BASE_CX = W / 2;
+const ISLAND_CY = 312;      // vertical centre of the base tier
+const ISLAND_HW = 430;      // half-width of the base (top) diamond
+const ISLAND_HH = 196;      // half-height
+const TIER_THICK = 30;      // cliff thickness
+const CASTLE_W = 150, CASTLE_H = 138;
+
+interface Pt2 { x: number; y: number }
+function diamond(cx: number, cy: number, hw: number, hh: number): Pt2[] {
+  return [{ x: cx, y: cy - hh }, { x: cx + hw, y: cy }, { x: cx, y: cy + hh }, { x: cx - hw, y: cy }];
 }
-// City layout (lattice coords, centred on 0): a grand castle centrepiece with a
-// keep + tower flanking it at the back, a cathedral and houses mid-ground, the
-// gate wall at the front, and a walled village + hut on the outer flanks. Target
-// heights scale each sprite; screen-y depth-sorts them so nearer overlaps far.
-const BUILDING_LAYOUT: Record<HqBuildingRole, { gx: number; gy: number; targetH: number }> = {
-  castle:    { gx: 0.1,  gy: -1.9, targetH: 300 },
-  keep:      { gx: -2.2, gy: -1.3, targetH: 210 },
-  tower:     { gx: 2.3,  gy: -1.4, targetH: 205 },
-  cathedral: { gx: -1.6, gy: 0.1,  targetH: 185 },
-  houses:    { gx: 1.7,  gy: 0.2,  targetH: 178 },
-  village:   { gx: -2.7, gy: 1.4,  targetH: 158 },
-  hut:       { gx: 2.7,  gy: 1.4,  targetH: 150 },
-  camp:      { gx: -0.8, gy: 1.0,  targetH: 116 },
-  wall:      { gx: 0.1,  gy: 1.85, targetH: 150 },
-};
-// Where stationed defenders stand — a front arc inside the gate, centre outwards.
-const BASE_DEFENDER_TILES: { gx: number; gy: number }[] = [
-  { gx: 0.1, gy: 1.45 }, { gx: -1.35, gy: 1.55 }, { gx: 1.5, gy: 1.55 },
-  { gx: -0.7, gy: 1.15 }, { gx: 0.9, gy: 1.15 },
-];
-// Scattered CC0 nature props (Kenney Mini Forest) that dress the grounds so it
-// reads as an outdoor town, not a bare slab. Placed around the perimeter/edges,
-// behind and beside the buildings; each resolves via spriteForPrefix("nature",…)
-// with a small procedural fallback.
-const SCENERY: { gx: number; gy: number; key: string; scale: number }[] = [
-  { gx: -3.3, gy: -2.3, key: "tree-tall", scale: 1.1 },
-  { gx: 3.4,  gy: -2.4, key: "tree",      scale: 1.1 },
-  { gx: -3.5, gy: -0.6, key: "tree",      scale: 1.0 },
-  { gx: 3.5,  gy: -0.7, key: "tree-tall", scale: 1.0 },
-  { gx: -3.2, gy: 1.0,  key: "bush",      scale: 0.9 },
-  { gx: 3.3,  gy: 1.0,  key: "bush",      scale: 0.9 },
-  { gx: -2.9, gy: 2.3,  key: "rock-low",  scale: 0.9 },
-  { gx: 2.9,  gy: 2.3,  key: "rock",      scale: 0.9 },
-  { gx: -1.6, gy: 2.5,  key: "stones",    scale: 0.8 },
-  { gx: 1.7,  gy: 2.5,  key: "grass",     scale: 0.9 },
-  { gx: 0.1,  gy: 2.6,  key: "dirt",      scale: 0.9 },
-];
+function polyPath(ctx: Ctx, pts: Pt2[]): void {
+  ctx.beginPath(); ctx.moveTo(pts[0]!.x, pts[0]!.y);
+  for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i]!.x, pts[i]!.y);
+  ctx.closePath();
+}
+// Deterministic RNG so a base's scenery is stable between renders.
+function baseRng(seed: number): () => number {
+  let a = seed >>> 0;
+  return () => { a |= 0; a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+}
 
 export async function renderBase(view: HqBaseView): Promise<Buffer | null> {
   return queueRender("hq-base", async () => {
@@ -250,35 +227,24 @@ export async function renderBase(view: HqBaseView): Promise<Buffer | null> {
       const canvas = mod.createCanvas(W, H);
       const ctx = canvas.getContext("2d") as unknown as Ctx;
 
-      layerSky(ctx, view.theme);
-      layerGroundSlab(ctx, view.theme);
+      ctx.fillStyle = "#0f1117"; ctx.fillRect(0, 0, W, H); // void backdrop
 
-      // Collect every placed object with its feet screen-y, then paint far→near.
-      interface Item { depth: number; draw: () => Promise<void> | void }
-      const items: Item[] = [];
-      // Nature dressing (drawn behind/around via the same depth sort).
-      for (const s of SCENERY) {
-        const p = projectBase(s.gx, s.gy);
-        const path = spriteForPrefix("nature", s.key);
-        items.push({ depth: p.y - 2, draw: () => drawScenery(ctx, mod, p.x, p.y, s.scale, s.key, path, view.theme) });
-      }
-      for (const b of view.buildings) {
-        const a = BUILDING_LAYOUT[b.role];
-        const p = projectBase(a.gx, a.gy);
-        // Clamp height so a tall sprite never pokes into the header band (nearer
-        // buildings, with lower feet, get more room — which reads as perspective).
-        const targetH = Math.min(a.targetH, Math.max(96, p.y - (HEADER_H + 12)));
-        items.push({ depth: p.y, draw: () => drawBuilding(ctx, mod, p.x, p.y, targetH, b, view.theme) });
-      }
-      view.defenders.slice(0, BASE_DEFENDER_TILES.length).forEach((def, i) => {
-        const t = BASE_DEFENDER_TILES[i]!;
-        const p = projectBase(t.gx, t.gy);
-        items.push({ depth: p.y + 1, draw: () => drawDefender(ctx, mod, p.x, p.y, def, view.theme) });
-      });
-      items.sort((a, b) => a.depth - b.depth);
-      for (const it of items) await it.draw();
+      drawIslandTier(ctx, BASE_CX, ISLAND_CY, ISLAND_HW, ISLAND_HH);   // base grass tier
+      drawRiver(ctx);
+      // Raised plateau the castle sits on.
+      const plateauCy = ISLAND_CY - 40;
+      drawIslandTier(ctx, BASE_CX, plateauCy, 168, 80, true);
+      drawScatter(ctx, view);
+      const castleFeetY = plateauCy + 6;
+      drawCastle(ctx, BASE_CX, castleFeetY);
+      drawBannerAndHealth(ctx, BASE_CX, castleFeetY - CASTLE_H, view);
+      await drawBaseDefenders(ctx, mod, view);
 
-      layerLighting(ctx, view.theme);
+      // Gentle top light + soft edge vignette (kept light so it reads bright).
+      const lg = ctx.createRadialGradient(BASE_CX, 120, 60, BASE_CX, 300, 640);
+      lg.addColorStop(0, "rgba(255,244,214,0.10)"); lg.addColorStop(1, "rgba(0,0,0,0)");
+      ctx.fillStyle = lg; ctx.fillRect(0, 0, W, H);
+
       await layerHeader(ctx, mod, view);
       return await canvas.encode("png");
     } catch {
@@ -287,205 +253,218 @@ export async function renderBase(view: HqBaseView): Promise<Buffer | null> {
   });
 }
 
-// Outdoor sky: theme-tinted gradient with a soft horizon glow + distant hills.
-function layerSky(ctx: Ctx, theme: HqTheme): void {
-  const g = ctx.createLinearGradient(0, 0, 0, H);
-  g.addColorStop(0, theme.palette.wallTop);
-  g.addColorStop(0.55, theme.palette.wallBottom);
-  g.addColorStop(1, "#05070a");
-  ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
-  // Horizon glow.
-  const hg = ctx.createRadialGradient(W / 2, 300, 40, W / 2, 300, 620);
-  hg.addColorStop(0, hexToRgba(theme.palette.accent, 0.18));
-  hg.addColorStop(1, "rgba(0,0,0,0)");
-  ctx.fillStyle = hg; ctx.fillRect(0, 0, W, 380);
-  // Distant hill silhouettes.
-  ctx.save();
+// One terraced slab: grass top (with tile shimmer + rim), and two cliff faces
+// (front-left, front-right) banded dirt→rock for a chunky floating look.
+function drawIslandTier(ctx: Ctx, cx: number, cy: number, hw: number, hh: number, raised = false): void {
+  const [top, right, bottom, left] = diamond(cx, cy, hw, hh) as [Pt2, Pt2, Pt2, Pt2];
+  const thick = raised ? 20 : TIER_THICK;
+  // Cliff faces.
+  ctx.fillStyle = "#5b4327";
+  polyPath(ctx, [left, bottom, { x: bottom.x, y: bottom.y + thick }, { x: left.x, y: left.y + thick }]); ctx.fill();
+  ctx.fillStyle = "#463322";
+  polyPath(ctx, [right, bottom, { x: bottom.x, y: bottom.y + thick }, { x: right.x, y: right.y + thick }]); ctx.fill();
+  // Rock band at the very bottom of each face.
   ctx.fillStyle = "rgba(0,0,0,0.28)";
-  for (const [cx, cy, rw, rh] of [[180, 300, 320, 90], [760, 300, 360, 78], [500, 306, 300, 70]] as const) {
-    ctx.beginPath(); ellipse(ctx, cx, cy, rw, rh); ctx.fill();
+  polyPath(ctx, [{ x: left.x, y: left.y + thick - 6 }, { x: bottom.x, y: bottom.y + thick - 6 }, { x: bottom.x, y: bottom.y + thick }, { x: left.x, y: left.y + thick }]); ctx.fill();
+  polyPath(ctx, [{ x: right.x, y: right.y + thick - 6 }, { x: bottom.x, y: bottom.y + thick - 6 }, { x: bottom.x, y: bottom.y + thick }, { x: right.x, y: right.y + thick }]); ctx.fill();
+  // Grass top.
+  polyPath(ctx, [top, right, bottom, left]);
+  const gg = ctx.createLinearGradient(0, top.y, 0, bottom.y);
+  gg.addColorStop(0, raised ? "#5a8a44" : "#4f7f3c"); gg.addColorStop(1, raised ? "#3f6a32" : "#365c2b");
+  ctx.fillStyle = gg; ctx.fill();
+  // Faint tile shimmer.
+  ctx.save(); polyPath(ctx, [top, right, bottom, left]); ctx.clip();
+  ctx.strokeStyle = "rgba(255,255,255,0.05)"; ctx.lineWidth = 1;
+  const step = hw / 6;
+  for (let i = -6; i <= 6; i++) {
+    ctx.beginPath(); ctx.moveTo(cx + i * step, cy - hh); ctx.lineTo(cx + i * step + hw, cy); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(cx + i * step, cy - hh); ctx.lineTo(cx + i * step - hw, cy); ctx.stroke();
   }
   ctx.restore();
+  // Sunlit top rim.
+  ctx.strokeStyle = "rgba(180,220,150,0.5)"; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(left.x, left.y); ctx.lineTo(top.x, top.y); ctx.lineTo(right.x, right.y); ctx.stroke();
 }
 
-// The town's ground: a big isometric slab with thickness (top diamond + two
-// side faces), grass/dirt toned, with a faint tile grid on top.
-function layerGroundSlab(ctx: Ctx, theme: HqTheme): void {
-  const n = 3.7; // half-extent in tiles (roomy enough for a whole town)
-  const top = projectBase(0, -n), right = projectBase(n, 0), bottom = projectBase(0, n), left = projectBase(-n, 0);
-  const thick = 26;
-  // Side faces.
+// A meandering river across the base tier, clipped to the grass, with a bridge.
+function drawRiver(ctx: Ctx): void {
+  const [top, right, bottom, left] = diamond(BASE_CX, ISLAND_CY, ISLAND_HW, ISLAND_HH) as [Pt2, Pt2, Pt2, Pt2];
   ctx.save();
-  ctx.beginPath();
-  ctx.moveTo(left.x, left.y); ctx.lineTo(bottom.x, bottom.y);
-  ctx.lineTo(bottom.x, bottom.y + thick); ctx.lineTo(left.x, left.y + thick); ctx.closePath();
-  ctx.fillStyle = "#3a2a1c"; ctx.fill();
-  ctx.beginPath();
-  ctx.moveTo(right.x, right.y); ctx.lineTo(bottom.x, bottom.y);
-  ctx.lineTo(bottom.x, bottom.y + thick); ctx.lineTo(right.x, right.y + thick); ctx.closePath();
-  ctx.fillStyle = "#2e2115"; ctx.fill();
-  // Top diamond (grass).
-  ctx.beginPath();
-  ctx.moveTo(top.x, top.y); ctx.lineTo(right.x, right.y); ctx.lineTo(bottom.x, bottom.y); ctx.lineTo(left.x, left.y); ctx.closePath();
-  const gg = ctx.createLinearGradient(0, top.y, 0, bottom.y);
-  gg.addColorStop(0, "#3f6b3a"); gg.addColorStop(1, "#2c4c2a");
-  ctx.fillStyle = gg; ctx.fill();
-  // Tile grid on the slab.
-  ctx.clip();
-  ctx.strokeStyle = "rgba(255,255,255,0.05)"; ctx.lineWidth = 1;
-  for (let g = -Math.ceil(n); g <= Math.ceil(n); g++) {
-    const a1 = projectBase(g, -n), a2 = projectBase(g, n);
-    const b1 = projectBase(-n, g), b2 = projectBase(n, g);
-    ctx.beginPath(); ctx.moveTo(a1.x, a1.y); ctx.lineTo(a2.x, a2.y); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(b1.x, b1.y); ctx.lineTo(b2.x, b2.y); ctx.stroke();
-  }
-  // Rim highlight.
-  ctx.restore();
-  ctx.save();
-  ctx.strokeStyle = hexToRgba(theme.palette.accent, 0.3); ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.moveTo(top.x, top.y); ctx.lineTo(right.x, right.y); ctx.lineTo(bottom.x, bottom.y); ctx.lineTo(left.x, left.y); ctx.closePath();
+  polyPath(ctx, [top, right, bottom, left]); ctx.clip();
+  const pts: Pt2[] = [
+    { x: BASE_CX + 210, y: ISLAND_CY - 150 },
+    { x: BASE_CX + 90, y: ISLAND_CY - 40 },
+    { x: BASE_CX + 150, y: ISLAND_CY + 60 },
+    { x: BASE_CX + 20, y: ISLAND_CY + 150 },
+  ];
+  (ctx as unknown as { lineCap: string; lineJoin: string }).lineCap = "round";
+  (ctx as unknown as { lineCap: string; lineJoin: string }).lineJoin = "round";
+  ctx.strokeStyle = "#2f5d86"; ctx.lineWidth = 30;
+  ctx.beginPath(); ctx.moveTo(pts[0]!.x, pts[0]!.y);
+  for (let i = 1; i < pts.length; i++) { const p = pts[i]!, pv = pts[i - 1]!; ctx.quadraticCurveTo(pv.x, (pv.y + p.y) / 2, p.x, p.y); }
+  ctx.stroke();
+  ctx.strokeStyle = "#4a86bd"; ctx.lineWidth = 18;
+  ctx.beginPath(); ctx.moveTo(pts[0]!.x, pts[0]!.y);
+  for (let i = 1; i < pts.length; i++) { const p = pts[i]!, pv = pts[i - 1]!; ctx.quadraticCurveTo(pv.x, (pv.y + p.y) / 2, p.x, p.y); }
+  ctx.stroke();
+  ctx.strokeStyle = "rgba(200,230,255,0.4)"; ctx.lineWidth = 4;
+  ctx.beginPath(); ctx.moveTo(pts[0]!.x, pts[0]!.y);
+  for (let i = 1; i < pts.length; i++) { const p = pts[i]!, pv = pts[i - 1]!; ctx.quadraticCurveTo(pv.x, (pv.y + p.y) / 2, p.x, p.y); }
   ctx.stroke();
   ctx.restore();
+  // Bridge across the lower bend.
+  const bx = BASE_CX + 95, by = ISLAND_CY + 95;
+  ctx.save(); ctx.translate(bx, by); ctx.rotate(-0.5);
+  ctx.fillStyle = "#8a6a3f"; ctx.fillRect(-30, -12, 60, 24);
+  ctx.fillStyle = "#6b4f2c"; for (let i = -28; i < 30; i += 8) ctx.fillRect(i, -12, 4, 24);
+  ctx.restore();
 }
 
-// Draw one building base-anchored at (cx, feetY). Art blits to `targetH`
-// (aspect-preserved) with a contact shadow; procedural fallback per role.
-async function drawBuilding(
-  ctx: Ctx, mod: CanvasMod, cx: number, feetY: number, targetH: number, b: HqBaseBuilding, theme: HqTheme,
-): Promise<void> {
-  // Contact shadow.
-  ctx.save(); ctx.fillStyle = "rgba(0,0,0,0.32)";
-  ctx.beginPath(); ellipse(ctx, cx, feetY, targetH * 0.34, targetH * 0.1); ctx.fill(); ctx.restore();
-
-  if (b.spritePath) {
-    const img = await loadSprite(mod, b.spritePath).catch(() => null);
-    if (img) {
-      const iw = Math.max(1, (img as { width: number }).width);
-      const ih = Math.max(1, (img as { height: number }).height);
-      const h = targetH, w = h * (iw / ih);
-      blit(ctx, img, cx - w / 2, feetY - h, w, h); // bottom sits on the ground
-      return;
-    }
+// Seeded pine forests + rocks scattered on the base grass, avoiding the plateau,
+// the river and the very centre.
+function drawScatter(ctx: Ctx, view: HqBaseView): void {
+  let seed = 0; for (const c of (view.displayTitle || "base")) seed = (seed * 31 + c.charCodeAt(0)) | 0;
+  const rnd = baseRng(seed);
+  const inRiver = (x: number, y: number) => Math.abs((x - BASE_CX) - (ISLAND_CY - y) * 0.4) < 46 && y > ISLAND_CY - 150 && y < ISLAND_CY + 150;
+  let placed = 0, tries = 0;
+  while (placed < 26 && tries++ < 400) {
+    const u = rnd() * 2 - 1, v = rnd() * 2 - 1;
+    if (Math.abs(u) + Math.abs(v) > 0.96) continue;              // inside diamond
+    const x = BASE_CX + u * ISLAND_HW, y = ISLAND_CY + v * ISLAND_HH;
+    if (Math.abs(u) + Math.abs(v) < 0.34) continue;             // keep centre for the castle
+    if (inRiver(x, y)) continue;
+    const s = 0.8 + rnd() * 0.5;
+    if (rnd() < 0.8) drawPine(ctx, x, y, s); else drawRock(ctx, x, y, s);
+    placed++;
   }
-  drawBuildingProcedural(ctx, cx, feetY, targetH, b.role, theme);
 }
 
-// Compact, recognisable procedural buildings (used when no art is bundled).
-function drawBuildingProcedural(ctx: Ctx, cx: number, feetY: number, h: number, role: HqBuildingRole, theme: HqTheme): void {
-  const stone = "#7b8089", stoneDark = "#565b64", wood = "#7a5433", roof = hexToRgba(theme.palette.accent, 0.9);
+function drawPine(ctx: Ctx, x: number, y: number, s: number): void {
   ctx.save();
-  ctx.translate(cx, feetY);
-  switch (role) {
-    case "keep": {
-      const w = h * 0.52;
-      // Tower body (tapered).
-      ctx.beginPath();
-      ctx.moveTo(-w / 2, 0); ctx.lineTo(-w * 0.42, -h * 0.8); ctx.lineTo(w * 0.42, -h * 0.8); ctx.lineTo(w / 2, 0); ctx.closePath();
-      const gg = ctx.createLinearGradient(-w / 2, 0, w / 2, 0);
-      gg.addColorStop(0, stoneDark); gg.addColorStop(0.5, stone); gg.addColorStop(1, stoneDark);
-      ctx.fillStyle = gg; ctx.fill();
-      // Battlements.
-      ctx.fillStyle = stone;
-      for (let i = -2; i <= 2; i++) ctx.fillRect(i * (w * 0.16) - w * 0.05, -h * 0.9, w * 0.1, h * 0.12);
-      // Door + windows.
-      ctx.fillStyle = "#20242b";
-      ctx.fillRect(-w * 0.1, -h * 0.28, w * 0.2, h * 0.28);
-      for (const wy of [-0.62, -0.45]) { ctx.fillRect(-w * 0.24, h * wy, w * 0.12, h * 0.08); ctx.fillRect(w * 0.12, h * wy, w * 0.12, h * 0.08); }
-      // Pennant.
-      ctx.strokeStyle = "#cfd3da"; ctx.lineWidth = 2;
-      ctx.beginPath(); ctx.moveTo(0, -h * 0.9); ctx.lineTo(0, -h * 1.04); ctx.stroke();
-      ctx.fillStyle = roof; ctx.beginPath();
-      ctx.moveTo(0, -h * 1.04); ctx.lineTo(w * 0.22, -h * 0.99); ctx.lineTo(0, -h * 0.94); ctx.closePath(); ctx.fill();
-      break;
-    }
-    case "wall": {
-      const w = h * 1.7;
-      ctx.fillStyle = stone;
-      ctx.fillRect(-w / 2, -h * 0.62, w, h * 0.62);
-      ctx.fillStyle = stoneDark;
-      ctx.fillRect(-w / 2, -h * 0.62, w, h * 0.1);
-      // Gate arch.
-      ctx.fillStyle = "#1c2027";
-      ctx.beginPath();
-      ctx.moveTo(-w * 0.12, 0); ctx.lineTo(-w * 0.12, -h * 0.34);
-      ctx.arc(0, -h * 0.34, w * 0.12, Math.PI, 0); ctx.lineTo(w * 0.12, 0); ctx.closePath(); ctx.fill();
-      // Battlement teeth.
-      ctx.fillStyle = stone;
-      for (let x = -w / 2; x < w / 2; x += w * 0.12) ctx.fillRect(x, -h * 0.72, w * 0.07, h * 0.1);
-      break;
-    }
-    case "camp": {
-      const w = h * 0.9;
-      // Tent.
-      ctx.fillStyle = hexToRgba(theme.palette.accent, 0.8);
-      ctx.beginPath(); ctx.moveTo(0, -h * 0.86); ctx.lineTo(w / 2, 0); ctx.lineTo(-w / 2, 0); ctx.closePath(); ctx.fill();
-      ctx.strokeStyle = "rgba(0,0,0,0.35)"; ctx.lineWidth = 2;
-      ctx.beginPath(); ctx.moveTo(0, -h * 0.86); ctx.lineTo(0, 0); ctx.stroke();
-      ctx.fillStyle = "#20242b"; // entrance
-      ctx.beginPath(); ctx.moveTo(0, -h * 0.5); ctx.lineTo(w * 0.14, 0); ctx.lineTo(-w * 0.14, 0); ctx.closePath(); ctx.fill();
-      // Campfire.
-      ctx.fillStyle = "#e8873a"; ctx.beginPath(); ellipse(ctx, w * 0.7, -4, 8, 4); ctx.fill();
-      break;
-    }
-    case "hut": {
-      const w = h * 0.8;
-      // Body.
-      ctx.fillStyle = wood; ctx.fillRect(-w / 2, -h * 0.5, w, h * 0.5);
-      // Roof.
-      ctx.fillStyle = roof;
-      ctx.beginPath(); ctx.moveTo(-w * 0.6, -h * 0.5); ctx.lineTo(0, -h * 0.86); ctx.lineTo(w * 0.6, -h * 0.5); ctx.closePath(); ctx.fill();
-      // Door + window.
-      ctx.fillStyle = "#20242b"; ctx.fillRect(-w * 0.12, -h * 0.28, w * 0.24, h * 0.28);
-      ctx.fillStyle = "#2f6b8f"; ctx.fillRect(w * 0.18, -h * 0.38, w * 0.16, h * 0.14);
-      break;
-    }
-    // castle / keep / tower / cathedral / houses / village — a generic stone
-    // structure fallback (art is expected for these; this just never leaves a
-    // gap if a sprite is missing).
-    default: {
-      const w = h * 0.6;
-      ctx.fillStyle = stone; ctx.fillRect(-w / 2, -h * 0.72, w, h * 0.72);
-      ctx.fillStyle = stoneDark; ctx.fillRect(-w / 2, -h * 0.72, w, h * 0.1);
-      ctx.fillStyle = roof;
-      ctx.beginPath(); ctx.moveTo(-w * 0.58, -h * 0.72); ctx.lineTo(0, -h * 0.98); ctx.lineTo(w * 0.58, -h * 0.72); ctx.closePath(); ctx.fill();
-      ctx.fillStyle = "#20242b"; ctx.fillRect(-w * 0.1, -h * 0.24, w * 0.2, h * 0.24);
-      for (const wy of [-0.58, -0.4]) { ctx.fillStyle = "#2f6b8f"; ctx.fillRect(-w * 0.28, h * wy, w * 0.14, h * 0.1); ctx.fillRect(w * 0.14, h * wy, w * 0.14, h * 0.1); }
-      break;
-    }
+  ctx.fillStyle = "rgba(0,0,0,0.22)"; ctx.beginPath(); ellipse(ctx, x, y, 12 * s, 5 * s); ctx.fill();
+  ctx.fillStyle = "#5a3d22"; ctx.fillRect(x - 2 * s, y - 10 * s, 4 * s, 10 * s);
+  for (let i = 0; i < 3; i++) {
+    const ty = y - 6 * s - i * 12 * s, wsp = (16 - i * 3) * s;
+    ctx.fillStyle = i === 0 ? "#2f6b34" : i === 1 ? "#357a3b" : "#3d8a43";
+    ctx.beginPath(); ctx.moveTo(x, ty - 16 * s); ctx.lineTo(x + wsp, ty); ctx.lineTo(x - wsp, ty); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = "rgba(255,255,255,0.12)";
+    ctx.beginPath(); ctx.moveTo(x, ty - 16 * s); ctx.lineTo(x - wsp, ty); ctx.lineTo(x - wsp * 0.4, ty); ctx.closePath(); ctx.fill();
   }
   ctx.restore();
 }
 
-// A scattered nature prop (tree/bush/rock/grass) base-anchored on its tile, with
-// a soft contact shadow. Art via spriteForPrefix("nature",…); small procedural
-// fallback keeps the grounds dressed even with no art.
-async function drawScenery(
-  ctx: Ctx, mod: CanvasMod, x: number, y: number, scale: number, key: string, path: string | null, theme: HqTheme,
-): Promise<void> {
-  ctx.save(); ctx.fillStyle = "rgba(0,0,0,0.24)";
-  ctx.beginPath(); ellipse(ctx, x, y, 22 * scale, 8 * scale); ctx.fill(); ctx.restore();
-  if (path) {
-    const img = await loadSprite(mod, path).catch(() => null);
-    if (img) {
-      const iw = Math.max(1, (img as { width: number }).width);
-      const ih = Math.max(1, (img as { height: number }).height);
-      const h = 92 * scale, w = h * (iw / ih);
-      blit(ctx, img, x - w / 2, y - h, w, h);
-      return;
-    }
-  }
-  // Procedural: a leafy tree for tree keys, a small mound otherwise.
+function drawRock(ctx: Ctx, x: number, y: number, s: number): void {
   ctx.save();
-  if (key.startsWith("tree")) {
-    ctx.fillStyle = "#6b4a2a"; ctx.fillRect(x - 3 * scale, y - 26 * scale, 6 * scale, 26 * scale);
-    ctx.fillStyle = "#2f7d3a"; ctx.beginPath(); ellipse(ctx, x, y - 40 * scale, 22 * scale, 26 * scale); ctx.fill();
-  } else if (key === "bush" || key === "grass") {
-    ctx.fillStyle = "#2f7d3a"; ctx.beginPath(); ellipse(ctx, x, y - 8 * scale, 18 * scale, 10 * scale); ctx.fill();
-  } else {
-    ctx.fillStyle = hexToRgba(0x8b8f98, 0.9); ctx.beginPath(); ellipse(ctx, x, y - 6 * scale, 16 * scale, 10 * scale); ctx.fill();
-  }
+  ctx.fillStyle = "rgba(0,0,0,0.22)"; ctx.beginPath(); ellipse(ctx, x, y, 16 * s, 6 * s); ctx.fill();
+  ctx.fillStyle = "#8b9099"; ctx.beginPath();
+  ctx.moveTo(x - 16 * s, y); ctx.lineTo(x - 8 * s, y - 16 * s); ctx.lineTo(x + 6 * s, y - 18 * s); ctx.lineTo(x + 16 * s, y - 4 * s); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = "#a9aeb6"; ctx.beginPath();
+  ctx.moveTo(x - 8 * s, y - 16 * s); ctx.lineTo(x + 6 * s, y - 18 * s); ctx.lineTo(x + 2 * s, y - 8 * s); ctx.lineTo(x - 4 * s, y - 8 * s); ctx.closePath(); ctx.fill();
   ctx.restore();
+}
+
+// A clean light-stone castle: central keep + two crenellated towers, front-iso.
+function drawCastle(ctx: Ctx, cx: number, feetY: number): void {
+  const stoneL = "#d8d2c0", stone = "#c3bca7", stoneD = "#9a927c", dark = "#2a2620";
+  ctx.save(); ctx.fillStyle = "rgba(0,0,0,0.3)"; ctx.beginPath(); ellipse(ctx, cx, feetY, CASTLE_W * 0.5, 16); ctx.fill(); ctx.restore();
+
+  const crenel = (x: number, w: number, topY: number) => {
+    ctx.fillStyle = stone;
+    const teeth = Math.max(3, Math.floor(w / 12));
+    const tw = w / (teeth * 2 - 1);
+    for (let i = 0; i < teeth; i++) ctx.fillRect(x + i * tw * 2, topY, tw, 8);
+  };
+  const tower = (tx: number, tw: number, th: number) => {
+    const g = ctx.createLinearGradient(tx, 0, tx + tw, 0);
+    g.addColorStop(0, stoneL); g.addColorStop(0.5, stone); g.addColorStop(1, stoneD);
+    ctx.fillStyle = g; ctx.fillRect(tx, feetY - th, tw, th);
+    crenel(tx - 2, tw + 4, feetY - th - 8);
+    ctx.fillStyle = dark; // slit windows
+    for (const wy of [0.72, 0.5, 0.28]) { ctx.fillRect(tx + tw * 0.42, feetY - th * wy, tw * 0.16, th * 0.12); }
+  };
+
+  // Back central keep (tallest).
+  const keepW = CASTLE_W * 0.34;
+  tower(cx - keepW / 2, keepW, CASTLE_H);
+  // Front curtain wall.
+  const wallW = CASTLE_W * 0.86, wallH = CASTLE_H * 0.52;
+  const wg = ctx.createLinearGradient(cx - wallW / 2, 0, cx + wallW / 2, 0);
+  wg.addColorStop(0, stoneL); wg.addColorStop(1, stoneD);
+  ctx.fillStyle = wg; ctx.fillRect(cx - wallW / 2, feetY - wallH, wallW, wallH);
+  crenel(cx - wallW / 2, wallW, feetY - wallH - 8);
+  // Gate.
+  ctx.fillStyle = dark;
+  ctx.beginPath();
+  ctx.moveTo(cx - wallW * 0.1, feetY); ctx.lineTo(cx - wallW * 0.1, feetY - wallH * 0.5);
+  ctx.arc(cx, feetY - wallH * 0.5, wallW * 0.1, Math.PI, 0); ctx.lineTo(cx + wallW * 0.1, feetY); ctx.closePath(); ctx.fill();
+  // Two front corner towers.
+  const ctw = CASTLE_W * 0.2, cth = CASTLE_H * 0.78;
+  tower(cx - wallW / 2 - ctw * 0.3, ctw, cth);
+  tower(cx + wallW / 2 - ctw * 0.7, ctw, cth);
+}
+
+// Owner banner (colour + crest) hanging from a pole, with a defence health bar
+// floating above the castle — exactly the "banner + HP bar on top" from the mock.
+function drawBannerAndHealth(ctx: Ctx, cx: number, castleTopY: number, view: HqBaseView): void {
+  const owner = view.captured ? 0xc0392b : 0x3f78c8; // red if captured, else blue (self)
+  const barY = castleTopY - 54, barW = 96, barH = 9;
+  // Health = share of defence posts filled.
+  const filled = Math.min(1, (view.defenders?.length ?? 0) / Math.max(1, HQ_DEFENDER_SLOTS));
+  ctx.save();
+  ctx.fillStyle = "rgba(0,0,0,0.6)"; roundRectPath(ctx, cx - barW / 2 - 2, barY - 2, barW + 4, barH + 4, 5); ctx.fill();
+  ctx.fillStyle = "#203020"; roundRectPath(ctx, cx - barW / 2, barY, barW, barH, 4); ctx.fill();
+  const hp = ctx.createLinearGradient(cx - barW / 2, 0, cx + barW / 2, 0);
+  hp.addColorStop(0, "#4fd06a"); hp.addColorStop(1, "#37a94f");
+  ctx.fillStyle = hp; roundRectPath(ctx, cx - barW / 2, barY, Math.max(6, barW * filled), barH, 4); ctx.fill();
+  ctx.restore();
+  // Banner pole + cloth.
+  const poleTop = barY + 14, cloth = 44, bw = 34;
+  ctx.strokeStyle = "#c9c1a8"; ctx.lineWidth = 3;
+  ctx.beginPath(); ctx.moveTo(cx, poleTop); ctx.lineTo(cx, castleTopY + 6); ctx.stroke();
+  ctx.fillStyle = hexToRgba(owner, 1);
+  ctx.beginPath();
+  ctx.moveTo(cx - bw / 2, poleTop); ctx.lineTo(cx + bw / 2, poleTop);
+  ctx.lineTo(cx + bw / 2, poleTop + cloth); ctx.lineTo(cx, poleTop + cloth - 10); ctx.lineTo(cx - bw / 2, poleTop + cloth);
+  ctx.closePath(); ctx.fill();
+  ctx.fillStyle = "rgba(0,0,0,0.18)"; ctx.fillRect(cx, poleTop, bw / 2, cloth - 5); // shaded half
+  // Crest (a simple 4-point star).
+  ctx.fillStyle = "rgba(255,255,255,0.95)";
+  const sc = 8, cyC = poleTop + 18;
+  ctx.beginPath();
+  ctx.moveTo(cx, cyC - sc); ctx.lineTo(cx + sc * 0.32, cyC - sc * 0.32); ctx.lineTo(cx + sc, cyC);
+  ctx.lineTo(cx + sc * 0.32, cyC + sc * 0.32); ctx.lineTo(cx, cyC + sc); ctx.lineTo(cx - sc * 0.32, cyC + sc * 0.32);
+  ctx.lineTo(cx - sc, cyC); ctx.lineTo(cx - sc * 0.32, cyC - sc * 0.32); ctx.closePath(); ctx.fill();
+}
+
+// The stationed cards, shown as small framed portraits standing in front of the
+// castle — "the cards you left to defend." Each: card art + rarity border + name.
+async function drawBaseDefenders(ctx: Ctx, mod: CanvasMod, view: HqBaseView): Promise<void> {
+  const defs = view.defenders ?? [];
+  if (defs.length === 0) return;
+  const n = Math.min(defs.length, 5);
+  const cw = 74, ch = 96, gap = 14;
+  const totalW = n * cw + (n - 1) * gap;
+  const startX = BASE_CX - totalW / 2;
+  const rowY = ISLAND_CY + 96;
+  for (let i = 0; i < n; i++) {
+    const def = defs[i]!;
+    const x = startX + i * (cw + gap), y = rowY - ch;
+    ctx.save(); ctx.fillStyle = "rgba(0,0,0,0.32)"; ctx.beginPath(); ellipse(ctx, x + cw / 2, rowY, cw * 0.5, 9); ctx.fill(); ctx.restore();
+    ctx.save();
+    ctx.shadowColor = hexToRgba(def.rarityColor, 0.6); ctx.shadowBlur = 12;
+    roundRectPath(ctx, x, y, cw, ch, 8); ctx.fillStyle = "#0d0f14"; ctx.fill();
+    ctx.restore();
+    ctx.save(); roundRectPath(ctx, x, y, cw, ch, 8); ctx.clip();
+    await drawCardArt(ctx, mod, x, y, cw, ch, def.artUrl);
+    const g = ctx.createLinearGradient(0, y + ch - 28, 0, y + ch);
+    g.addColorStop(0, "rgba(0,0,0,0)"); g.addColorStop(1, "rgba(0,0,0,0.82)");
+    ctx.fillStyle = g; ctx.fillRect(x, y + ch - 28, cw, 28);
+    ctx.restore();
+    ctx.save(); roundRectPath(ctx, x, y, cw, ch, 8); ctx.strokeStyle = hexToRgba(def.rarityColor, 0.95); ctx.lineWidth = 3; ctx.stroke(); ctx.restore();
+    ctx.save(); ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    drawTitle(ctx, def.name, x + cw / 2, y + ch - 12, "#ffffff", fitText(ctx, def.name, cw - 8, 12, 9, TITLE_FONT));
+    ctx.restore();
+  }
 }
 
 // ── Layers ──────────────────────────────────────────────────────────────────
