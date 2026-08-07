@@ -30,14 +30,22 @@ export interface BaseTier {
   emoji: string;
   cost: number;        // shards to upgrade INTO this tier
   fortifyPct: number;  // flat defence bonus at this tier
+  /** Max HP shown on Base Upgrade (mockup Quick Stats). */
+  health: number;
+  /** Flat defense readout on Base Upgrade. */
+  defense: number;
+  /** Shard storage capacity shown on Base Upgrade. */
+  storage: number;
+  /** Income bonus % (hold-tribute / Gold Mine style). */
+  incomeBonusPct: number;
 }
 
 export const BASE_TIERS: BaseTier[] = [
-  { level: 0, label: "Outpost",    emoji: "🏕️", cost: 0,     fortifyPct: 0 },
-  { level: 1, label: "Stronghold", emoji: "🛖", cost: 1_500,  fortifyPct: 10 },
-  { level: 2, label: "Fortress",   emoji: "🏰", cost: 4_000,  fortifyPct: 22 },
-  { level: 3, label: "Citadel",    emoji: "🏯", cost: 9_000,  fortifyPct: 36 },
-  { level: 4, label: "Bastion",    emoji: "🏛️", cost: 18_000, fortifyPct: 52 },
+  { level: 0, label: "Outpost",    emoji: "🏕️", cost: 0,     fortifyPct: 0,  health: 2_000,  defense: 200,  storage: 500,  incomeBonusPct: 0 },
+  { level: 1, label: "Stronghold", emoji: "🛖", cost: 1_500,  fortifyPct: 10, health: 4_000,  defense: 500,  storage: 875,  incomeBonusPct: 10 },
+  { level: 2, label: "Fortress",   emoji: "🏰", cost: 4_000,  fortifyPct: 22, health: 6_000,  defense: 900,  storage: 1_250, incomeBonusPct: 20 },
+  { level: 3, label: "Citadel",    emoji: "🏯", cost: 9_000,  fortifyPct: 36, health: 8_000,  defense: 1_200, storage: 1_625, incomeBonusPct: 35 },
+  { level: 4, label: "Bastion",    emoji: "🏛️", cost: 18_000, fortifyPct: 52, health: 10_000, defense: 1_500, storage: 2_000, incomeBonusPct: 50 },
 ];
 
 export const MAX_BASE_TIER = BASE_TIERS[BASE_TIERS.length - 1]!.level;

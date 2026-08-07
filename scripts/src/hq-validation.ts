@@ -26,6 +26,7 @@ import { HQ_THEMES } from "../../artifacts/api-server/src/bot/hq/defs/themes.js"
 import { HQ_ROOMS } from "../../artifacts/api-server/src/bot/hq/defs/rooms.js";
 import { HQ_BACKDROPS } from "../../artifacts/api-server/src/bot/hq/defs/backdrops.js";
 import { HQ_COMPANIONS } from "../../artifacts/api-server/src/bot/hq/defs/companions.js";
+import { HQ_SKYBOXES, resolveSkybox, DEFAULT_SKYBOX_ID } from "../../artifacts/api-server/src/bot/hq/defs/skyboxes.js";
 import { buildGarrison, territoryTributeOwed, WORLD_TRIBUTE_CAP_HOURS } from "../../artifacts/api-server/src/bot/hq/world.js";
 import { readCursor, clampCursor, cursorLabel } from "../../artifacts/api-server/src/bot/hq/build-state.js";
 import { MAX_RECT_SPAN, MAX_ELEVATION } from "../../artifacts/api-server/src/bot/hq/terrain.js";
@@ -80,6 +81,7 @@ check("no two GATED cosmetics share an id across registries", () => {
   add(HQ_COMPANIONS, "companions");
   add(HQ_WALLPAPERS, "wallpapers");
   add(HQ_SURFACES, "surfaces");
+  add(HQ_SKYBOXES, "skyboxes");
   if (benign.length > 0) console.log(`    (harmless always-unlocked id reuse: ${benign.join(", ")})`);
 });
 
@@ -88,6 +90,25 @@ check("every registry resolves an unknown id to its default instead of throwing"
   assert.equal(resolveWallpaper(null).id, DEFAULT_WALLPAPER_ID);
   assert.ok(resolveSurface("does-not-exist").id);
   assert.ok(resolveSurface(undefined).id);
+  assert.equal(resolveSkybox("does-not-exist").id, DEFAULT_SKYBOX_ID);
+  assert.equal(resolveSkybox(null).id, DEFAULT_SKYBOX_ID);
+});
+
+check("every room declares a purpose, bonuses, and category", () => {
+  for (const r of HQ_ROOMS) {
+    assert.ok(r.blurb.length > 10, `${r.id} missing description`);
+    assert.ok(r.bonuses.length >= 1, `${r.id} needs at least one bonus`);
+    assert.ok(r.category, `${r.id} missing category`);
+    assert.ok(r.sizeLabel, `${r.id} missing sizeLabel`);
+  }
+});
+
+check("skyboxes are outdoor enclosing walls, not wallpapers", () => {
+  for (const s of HQ_SKYBOXES) {
+    assert.match(s.skyTop, /^#[0-9a-f]{6}$/i, `${s.id} skyTop`);
+    assert.match(s.skyHorizon, /^#[0-9a-f]{6}$/i, `${s.id} skyHorizon`);
+    assert.ok(s.spriteKey.startsWith("skybox/"), `${s.id} spriteKey should be under skybox/`);
+  }
 });
 
 check("wallpapers declare sane repeats and a default that stays plain", () => {

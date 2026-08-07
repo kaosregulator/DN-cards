@@ -44,6 +44,7 @@ import type { HqWall } from "./defs/walls.js";
 import type { HqFloor } from "./defs/floors.js";
 import type { DecoCategory } from "./defs/decorations.js";
 import type { CompanionKind } from "./defs/companions.js";
+import type { HqSkybox } from "./defs/skyboxes.js";
 import { HQ_GRID, HQ_BASE_GRID } from "./grid.js";
 
 export type { HqHeaderInfo };
@@ -168,11 +169,19 @@ export interface HqBaseView extends HqHeaderInfo {
   defenders: HqRenderDefender[];  // stationed cards, rendered as standees
   decorations?: HqRenderDeco[];   // player-placed grounds decorations (trees, items…)
   terrain?: HqTerrainFeature[];   // build-mode ponds, hills & paved surfaces
-  cursor?: HqBuildCursor | null;  // build-mode selection overlay
+  cursor?: HqBuildCursor | null;  // build-mode selection overlay — ALSO enables grid guides
+  /** Show edit grid. Defaults to true when cursor is set; false on overview. */
+  showGrid?: boolean;
   captured?: boolean;             // show a captured/held banner (red)
   bannerColor?: number;           // override the castle banner colour (faction/holder)
   companion?: HqRenderCompanion | null; // active pet roaming the grounds
   visitors?: number;              // ambient NPC guests (0-4), derived from prestige
+  /** Outdoor enclosing skybox (surrounding backdrop walls — not a wallpaper). */
+  skybox?: HqSkybox | null;
+  /** Subtle blue aura around the playable area when a shield is active. */
+  shieldActive?: boolean;
+  /** Optional pulse 0..1 for animated shield aura frames. */
+  shieldPulse?: number;
 }
 
 // Placement encoding (stored in hq_placements.slot, so no schema change):
@@ -366,7 +375,8 @@ async function drawBaseDecorations(ctx: Ctx, mod: CanvasMod, view: HqBaseView): 
 // The whole base scene in one painter, reused for the static base view AND every
 // frame of a live siege (so the siege looks identical to the base, just in motion).
 async function paintBaseScene(ctx: Ctx, mod: CanvasMod, view: HqBaseView, siege?: SiegeOverlay): Promise<void> {
-  ctx.fillStyle = "#0f1117"; ctx.fillRect(0, 0, W, H); // void backdrop
+  // Skybox = giant surrounding backdrop walls enclosing the outdoor map.
+  await paintSkybox(ctx, mod, view.skybox ?? null);
   drawIslandTier(ctx, BASE_CX, ISLAND_CY, ISLAND_HW, ISLAND_HH, { thickness: TIER_THICK });
   drawRiver(ctx);
   // Player-built grounds: ponds, hills and paving go down before the plateau and
@@ -380,6 +390,10 @@ async function paintBaseScene(ctx: Ctx, mod: CanvasMod, view: HqBaseView, siege?
   // Use a real castle sprite when the pack has one (deterministic pick per base),
   // else the procedural castle. drawCastle returns the top for the banner.
   const castleTop = await drawCastle(ctx, mod, BASE_CX, castleFeetY, pickCastleSprite(view));
+  // Subtle blue animated aura around the playable area (not a large transparent dome).
+  if (view.shieldActive && !siege) {
+    drawShieldAura(ctx, view.shieldPulse ?? 0.55);
+  }
   // The interactive assault has its own destruction scoreboard, which says the
   // same thing more clearly — two health readouts on one picture just compete.
   if (siege?.destructionPct === undefined) {
@@ -397,10 +411,10 @@ async function paintBaseScene(ctx: Ctx, mod: CanvasMod, view: HqBaseView, siege?
     if (view.companion) drawCompanion(ctx, BASE_CX + 60, ISLAND_CY + 176, view.companion, 1.05);
   }
   if (siege?.attacker) await drawAttacker(ctx, mod, siege.attacker, siege.advance);
-  if (view.cursor) {
-    paintGridGuides(ctx, BASE_PROJECTOR);
-    paintCursor(ctx, BASE_PROJECTOR, view.cursor);
-  }
+  // Grid lines ONLY while editing — never on the Base Overview.
+  const showGrid = view.showGrid ?? !!view.cursor;
+  if (showGrid) paintGridGuides(ctx, BASE_PROJECTOR);
+  if (view.cursor) paintCursor(ctx, BASE_PROJECTOR, view.cursor);
   const lg = ctx.createRadialGradient(BASE_CX, 120, 60, BASE_CX, 300, 640);
   lg.addColorStop(0, "rgba(255,244,214,0.10)"); lg.addColorStop(1, "rgba(0,0,0,0)");
   ctx.fillStyle = lg; ctx.fillRect(0, 0, W, H);
@@ -410,6 +424,122 @@ async function paintBaseScene(ctx: Ctx, mod: CanvasMod, view: HqBaseView, siege?
   if (siege?.caption) drawMoveCaption(ctx, siege.caption.text, siege.caption.color);
   if (siege?.banner) drawResultBanner(ctx, siege.banner.text, siege.banner.color);
   await drawHqHeader(ctx, mod, view, W);
+}
+
+/** Surrounding skybox walls — horizon wrap behind the isometric base. */
+async function paintSkybox(ctx: Ctx, mod: CanvasMod, skybox: HqSkybox | null): Promise<void> {
+  const sb = skybox;
+  const top = sb?.skyTop ?? "#0f1117";
+  const mid = sb?.skyHorizon ?? "#1a2030";
+  const land = sb?.land ?? "#152018";
+  const accent = sb?.accent ?? "#ffffff";
+
+  // Try a real skybox sprite first (cover-fit behind everything).
+  if (sb) {
+    // spriteKey is "skybox/<theme>"; strip the prefix for spriteForPrefix.
+    const key = sb.spriteKey.replace(/^skybox\//, "") || sb.id.replace(/^skybox-/, "");
+    const path = spriteForPrefix("skybox", key);
+    if (path) {
+      const img = await loadSprite(mod, path).catch(() => null);
+      if (img) {
+        const iw = Math.max(1, (img as { width: number }).width);
+        const ih = Math.max(1, (img as { height: number }).height);
+        const sc = Math.max(W / iw, H / ih);
+        const dw = iw * sc, dh = ih * sc;
+        blit(ctx, img, (W - dw) / 2, (H - dh) / 2, dw, dh);
+        ctx.save(); ctx.fillStyle = "rgba(0,0,0,0.18)"; ctx.fillRect(0, 0, W, H); ctx.restore();
+        return;
+      }
+    }
+  }
+
+  // Procedural enclosing walls: sky gradient + distant land bands + mood accents.
+  const g = ctx.createLinearGradient(0, 0, 0, H);
+  g.addColorStop(0, top);
+  g.addColorStop(0.55, mid);
+  g.addColorStop(0.72, land);
+  g.addColorStop(1, "#0a0c10");
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, W, H);
+
+  // Soft distant mountain / dune silhouettes as "surrounding walls".
+  ctx.save();
+  ctx.fillStyle = hexToRgba(parseHex(land) ?? 0x152018, 0.55);
+  ctx.beginPath();
+  ctx.moveTo(0, H * 0.62);
+  for (let i = 0; i <= 8; i++) {
+    const x = (W / 8) * i;
+    const y = H * 0.58 - Math.sin(i * 1.1) * 36 - (i % 3) * 12;
+    ctx.lineTo(x, y);
+  }
+  ctx.lineTo(W, H); ctx.lineTo(0, H); ctx.closePath(); ctx.fill();
+  ctx.restore();
+
+  // Mood accents: clouds / stars / snow flecks.
+  const mood = sb?.mood ?? "day";
+  const rnd = seededRng(hashString(sb?.id ?? "void"));
+  ctx.save();
+  if (mood === "night" || mood === "space") {
+    for (let i = 0; i < (mood === "space" ? 80 : 40); i++) {
+      const x = rnd() * W, y = rnd() * H * 0.55;
+      ctx.fillStyle = hexToRgba(parseHex(accent) ?? 0xffffff, 0.35 + rnd() * 0.55);
+      ctx.beginPath(); ctx.arc(x, y, mood === "space" ? 1.2 + rnd() * 1.8 : 0.8 + rnd(), 0, Math.PI * 2); ctx.fill();
+    }
+  } else if (mood === "day" || mood === "beach") {
+    for (let i = 0; i < 6; i++) {
+      const x = 80 + rnd() * (W - 160), y = 70 + rnd() * 120;
+      const rw = 50 + rnd() * 90, rh = 18 + rnd() * 22;
+      ctx.fillStyle = hexToRgba(parseHex(accent) ?? 0xffffff, 0.35);
+      ctx.beginPath(); ellipse(ctx, x, y, rw, rh); ctx.fill();
+      ctx.beginPath(); ellipse(ctx, x + rw * 0.35, y - 6, rw * 0.55, rh * 0.85); ctx.fill();
+    }
+  } else if (mood === "snow") {
+    for (let i = 0; i < 50; i++) {
+      ctx.fillStyle = "rgba(255,255,255,0.55)";
+      ctx.beginPath(); ctx.arc(rnd() * W, rnd() * H * 0.7, 1 + rnd() * 2, 0, Math.PI * 2); ctx.fill();
+    }
+  }
+  ctx.restore();
+}
+
+function parseHex(hex: string): number | null {
+  const m = /^#?([0-9a-f]{6})$/i.exec(hex.trim());
+  return m ? parseInt(m[1]!, 16) : null;
+}
+
+/**
+ * Subtle blue shield aura around the playable island — a soft elliptical rim,
+ * not a large transparent dome. `pulse` (0..1) gently scales opacity/radius so
+ * animated frames can breathe.
+ */
+function drawShieldAura(ctx: Ctx, pulse: number): void {
+  const p = Math.max(0, Math.min(1, pulse));
+  const rx = ISLAND_HW * (0.92 + p * 0.04);
+  const ry = ISLAND_HH * (0.92 + p * 0.04);
+  const cx = BASE_CX, cy = ISLAND_CY + 8;
+
+  ctx.save();
+  // Soft fill under the grounds edge.
+  const fill = ctx.createRadialGradient(cx, cy, Math.min(rx, ry) * 0.35, cx, cy, Math.max(rx, ry));
+  fill.addColorStop(0, "rgba(80,170,255,0)");
+  fill.addColorStop(0.72, `rgba(70,160,255,${0.04 + p * 0.03})`);
+  fill.addColorStop(1, `rgba(90,180,255,${0.14 + p * 0.08})`);
+  ctx.fillStyle = fill;
+  ctx.beginPath(); ellipse(ctx, cx, cy, rx, ry); ctx.fill();
+
+  // Thin luminous rim.
+  ctx.strokeStyle = `rgba(120,200,255,${0.45 + p * 0.25})`;
+  ctx.lineWidth = 2.5;
+  ctx.shadowColor = "rgba(80,170,255,0.85)";
+  ctx.shadowBlur = 14 + p * 10;
+  ctx.beginPath(); ellipse(ctx, cx, cy, rx, ry); ctx.stroke();
+
+  // Inner hairline for depth.
+  ctx.shadowBlur = 0;
+  ctx.strokeStyle = `rgba(180,230,255,${0.25 + p * 0.15})`;
+  ctx.lineWidth = 1;
+  ctx.beginPath(); ellipse(ctx, cx, cy, rx * 0.96, ry * 0.96); ctx.stroke();
+  ctx.restore();
 }
 
 export async function renderBase(view: HqBaseView): Promise<Buffer | null> {

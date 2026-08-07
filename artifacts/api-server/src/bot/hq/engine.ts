@@ -31,6 +31,7 @@ import { HQ_BACKDROPS, DEFAULT_BACKDROP_ID, type HqBackdrop } from "./defs/backd
 import { HQ_WALLPAPERS, DEFAULT_WALLPAPER_ID, type HqWallpaper } from "./defs/wallpapers.js";
 import { HQ_SURFACES, type HqSurface } from "./defs/surfaces.js";
 import { HQ_COMPANIONS, type HqCompanion } from "./defs/companions.js";
+import { HQ_SKYBOXES, DEFAULT_SKYBOX_ID, type HqSkybox } from "./defs/skyboxes.js";
 import { getUnlockedItemIds, grantUnlock, getOrCreateHq, updateHq } from "./db.js";
 
 async function safe<T>(label: string, fn: () => Promise<T>, fallback: T): Promise<T> {
@@ -116,6 +117,12 @@ export function isBackdropUnlocked(bd: HqBackdrop, owned: Set<string>): boolean 
 export function unlockedBackdrops(owned: Set<string>): HqBackdrop[] {
   return HQ_BACKDROPS.filter(b => isBackdropUnlocked(b, owned));
 }
+export function isSkyboxUnlocked(sb: HqSkybox, owned: Set<string>): boolean {
+  return sb.id === DEFAULT_SKYBOX_ID || sb.unlock.kind === "always" || isUnlocked(sb.unlock, sb.id, owned);
+}
+export function unlockedSkyboxes(owned: Set<string>): HqSkybox[] {
+  return HQ_SKYBOXES.filter(s => isSkyboxUnlocked(s, owned));
+}
 // Wallpapers and build materials follow the same contract: the default is always
 // available, everything else is earned or bought into the ledger.
 export function isWallpaperUnlocked(wp: HqWallpaper, owned: Set<string>): boolean {
@@ -196,6 +203,12 @@ export async function reconcileUnlocks(guildId: string, userId: string): Promise
     if (b.unlock.kind === "always") continue;
     if (evalUnlockRule(b.unlock, progress)) {
       await grantUnlock(guildId, userId, b.id, "backdrop", unlockSourceTag(b.unlock)).catch(() => {});
+    }
+  }
+  for (const s of HQ_SKYBOXES) {
+    if (s.unlock.kind === "always") continue;
+    if (evalUnlockRule(s.unlock, progress)) {
+      await grantUnlock(guildId, userId, s.id, "skybox", unlockSourceTag(s.unlock)).catch(() => {});
     }
   }
   for (const c of HQ_COMPANIONS) {
