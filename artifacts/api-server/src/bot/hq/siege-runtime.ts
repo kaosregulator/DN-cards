@@ -183,6 +183,17 @@ interface SiegeSession extends SiegeRuntimeConfig {
 const sessions = new Map<string, SiegeSession>();
 const activeTargetKeys = new Set<string>();
 
+// ── Replay (auto/skip only) ───────────────────────────────────────────────────
+// A player who chose Auto Skip Mode didn't watch the fight, so the clean result
+// keeps a "View Replay" button that reveals the blow-by-blow. The session is
+// gone by then, so the recap is stashed here under a short-lived id.
+interface SiegeReplay { title: string; scoreLine: string; log: string[]; accent: number; targetName: string; }
+const replays = new Map<string, SiegeReplay>();
+const REPLAY_TTL_MS = 15 * 60 * 1000; // a replay stays viewable for 15 minutes
+// A deliberate beat so the result reads as its own screen, not just the last
+// combat frame flicking to text.
+const RESULT_HOLD_MS = 1300;
+
 /** True while any interactive siege is occupying this base or territory. */
 export function isSiegeTargetActive(targetKey: string): boolean {
   return activeTargetKeys.has(targetKey);
@@ -322,6 +333,9 @@ export async function handleSiegeComponent(
 ): Promise<void> {
   const parts = interaction.customId.split(":"); // hq-hub:ls:<action>:<sid>[:extra]
   const action = parts[2];
+  // Replay is answered from the stashed recap, not a live session (which has
+  // already ended by the time the button exists), so it routes first.
+  if (action === "replay") return handleReplay(interaction as ButtonInteraction, parts[3] ?? "");
   const session = sessions.get(parts[3] ?? "");
   if (!session || session.phase === "ended") {
     await interaction.reply({ content: "⌛ This siege has ended.", ...EPHEMERAL }).catch(() => {});
@@ -364,8 +378,8 @@ async function musterPayload(s: SiegeSession) {
       `**${s.attackerName}** forms up outside **${s.targetName}**, held by **${s.holderName}**.\n\n` +
       `Every card you bring must break a rank of the garrison. Wreck the whole garrison to take the base — ` +
       `**★** at 50% destruction, **★★** for the capture, **★★★** if you do it without losing a card.\n\n` +
-      `🪙 **Call the toss** — guess the coin right and your column strikes first. ` +
-      `⚔️ **Begin Assault** to command the fight yourself, or 📨 **Send them in** to let your captains ` +
+      `🪙 **Call the toss** — guess the coin right and your team strikes first. ` +
+      `⚔️ **Battle** to command the fight yourself, or ⏩ **Auto Skip Mode** to let your captains ` +
       `auto-resolve the siege and ping you when it's done.`,
     )
     .addFields(
@@ -408,15 +422,15 @@ async function musterPayload(s: SiegeSession) {
       .setStyle(s.coinCall === call ? ButtonStyle.Primary : ButtonStyle.Secondary);
   const rows: ActionRowBuilder<ButtonBuilder>[] = [
     new ActionRowBuilder<ButtonBuilder>().addComponents(
-      new ButtonBuilder().setCustomId(`hq-hub:ls:begin:${s.id}`).setLabel("Begin Assault").setEmoji("⚔️").setStyle(ButtonStyle.Danger),
-      new ButtonBuilder().setCustomId(`hq-hub:ls:skip:${s.id}`).setLabel("Send them in").setEmoji("📨").setStyle(ButtonStyle.Success),
+      new ButtonBuilder().setCustomId(`hq-hub:ls:begin:${s.id}`).setLabel("Battle").setEmoji("⚔️").setStyle(ButtonStyle.Danger),
+      new ButtonBuilder().setCustomId(`hq-hub:ls:skip:${s.id}`).setLabel("Auto Skip Mode").setEmoji("⏩").setStyle(ButtonStyle.Success),
       new ButtonBuilder().setCustomId(`hq-hub:ls:concede:${s.id}`).setLabel("Stand down").setEmoji("🏳️").setStyle(ButtonStyle.Secondary),
     ),
     new ActionRowBuilder<ButtonBuilder>().addComponents(
       coinBtn("heads", "Heads", "🪙"),
       coinBtn("tails", "Tails", "🌙"),
       ...(canPick
-        ? [new ButtonBuilder().setCustomId(`hq-hub:ls:column:${s.id}`).setLabel("Choose column").setEmoji("🎴").setStyle(ButtonStyle.Secondary)]
+        ? [new ButtonBuilder().setCustomId(`hq-hub:ls:column:${s.id}`).setLabel("Choose team").setEmoji("🎴").setStyle(ButtonStyle.Secondary)]
         : []),
       new ButtonBuilder().setCustomId(`hq-hub:ls:equip:${s.id}`).setLabel(item ? "Change item" : "Equip item").setEmoji("🎒").setStyle(ButtonStyle.Secondary),
     ),
@@ -498,7 +512,7 @@ async function handleColumnOpen(interaction: ButtonInteraction, s: SiegeSession)
       default: chosen.has(c.cardId),
     })));
   await interaction.reply({
-    content: `🎴 **Form your column** — the order you pick is the order they charge the gate. You may bring up to **${s.columnSize}** (one per garrison rank).`,
+    content: `🎴 **Pick your team** — the order you pick is the order they charge the gate. You may bring up to **${s.columnSize}** (one per garrison rank).`,
     components: [new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(menu)], ...EPHEMERAL,
   }).catch(() => {});
 }
@@ -523,7 +537,7 @@ async function handleColumnSelect(interaction: StringSelectMenuInteraction, s: S
   }
   s.attackerPower = s.attackers.reduce((sum, c) => sum + powerRating(c.stats), 0);
   await interaction.update({
-    content: `🎴 Column set: ${picked.map(c => `**${c.cardName}**`).join(" → ")}.`,
+    content: `🎴 Team set: ${picked.map(c => `**${c.cardName}**`).join(" → ")}.`,
     components: [],
   }).catch(() => {});
   if (s.message) await s.message.edit(await musterPayload(s)).catch(() => {});
@@ -748,6 +762,11 @@ async function buildTurnFrame(
   foePoolBefore: number, selfPoolBefore: number,
 ): Promise<void> {
   if (s.headless || !s.siege.turnVisuals) return;
+  // Only the COMMANDER's blow gets the dash-across-the-castle frame. The
+  // garrison's answer is read off the battlefield itself — HP bars and the
+  // castle's damage update — so the rhythm is: you attack (we see it on the
+  // field), then the view settles back to the castle and the walls answer.
+  if (side !== 0) return;
   const visual = computeMoveVisual(move, result, actor, foe, foePoolBefore, selfPoolBefore);
   if (sceneAnimated(s)) {
     const anim = await renderBattleTurn({
@@ -918,6 +937,21 @@ async function handleConcede(interaction: ButtonInteraction, s: SiegeSession): P
   s.ai = s.attackers.length; // force a loss
   pushLog(s, ["🏳️ You sound the retreat."]);
   await finish(s);
+}
+
+// Reveal the stashed blow-by-blow for an auto-resolved siege. Ephemeral, so each
+// viewer gets their own recap and the clean result message is left untouched.
+async function handleReplay(interaction: ButtonInteraction, replayId: string): Promise<void> {
+  const r = replays.get(replayId);
+  if (!r) {
+    await interaction.reply({ content: "⌛ This replay has expired.", ...EPHEMERAL }).catch(() => {});
+    return;
+  }
+  const body = r.log.length ? r.log.slice(-16).join("\n").slice(0, 3800) : "_No blows were recorded._";
+  const embed = new EmbedBuilder().setColor(r.accent)
+    .setTitle(`🔁 Replay — ${r.title}`)
+    .setDescription(`Assault on **${r.targetName}**\n${r.scoreLine}\n${WHITE_LINE}\n${body}`);
+  await interaction.reply({ embeds: [embed], ...EPHEMERAL }).catch(() => {});
 }
 
 // ── Rendering ─────────────────────────────────────────────────────────────────
@@ -1123,14 +1157,31 @@ async function finish(s: SiegeSession): Promise<void> {
     `**${outcome.defenderCardsLost}**/${s.defenders.length} ranks broken · ` +
     `**${outcome.attackerCardsLost}** card${outcome.attackerCardsLost === 1 ? "" : "s"} lost`;
 
+  // A player who FOUGHT it watched every blow, so their result recaps the log
+  // inline. A player who chose Auto Skip Mode didn't watch — keep their result
+  // clean (outcome only) and tuck the fight behind a "View Replay" button.
+  const components: ActionRowBuilder<ButtonBuilder>[] = [];
   const embed = new EmbedBuilder().setColor(view.color).setTitle(view.title)
-    .setDescription(`${view.description}\n${WHITE_LINE}\n${scoreLine}\n${WHITE_LINE}\n${condensedSiegeLog(s, 6)}`);
+    .setDescription(s.headless
+      ? `${view.description}\n${WHITE_LINE}\n${scoreLine}`
+      : `${view.description}\n${WHITE_LINE}\n${scoreLine}\n${WHITE_LINE}\n${condensedSiegeLog(s, 6)}`);
   if (view.fields?.length) {
     embed.addFields(view.fields.map(f => ({ name: f.name, value: f.value, inline: f.inline ?? true })));
   }
   if (s.castleImage) embed.setImage(`attachment://${SIEGE_CASTLE_IMAGE}`);
+  if (s.headless) {
+    const replayId = randomBytes(4).toString("hex");
+    replays.set(replayId, { title: view.title, scoreLine, log: [...s.log], accent: s.accent, targetName: s.targetName });
+    setTimeout(() => replays.delete(replayId), REPLAY_TTL_MS).unref?.();
+    components.push(new ActionRowBuilder<ButtonBuilder>().addComponents(
+      new ButtonBuilder().setCustomId(`hq-hub:ls:replay:${replayId}`).setLabel("View Replay").setEmoji("🔁").setStyle(ButtonStyle.Secondary),
+    ));
+  }
+  // A distinct beat before the result lands, so it doesn't flash past — only when
+  // a person is watching (a send-off is instant and DM'd).
+  if (!s.headless) await sleep(RESULT_HOLD_MS);
   if (s.message) {
-    await s.message.edit({ embeds: [embed], components: [], files: castleFiles(s) }).catch(() => {});
+    await s.message.edit({ embeds: [embed], components, files: castleFiles(s) }).catch(() => {});
   }
   // Send-off ping: the commander walked away, so DM them the result — "your
   // soldiers are back from the siege". The scene image lives on the (ephemeral)

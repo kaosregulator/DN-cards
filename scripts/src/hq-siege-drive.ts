@@ -315,9 +315,20 @@ async function main(): Promise<void> {
   // Headless: it resolves without walking the board turn-by-turn.
   assert.ok(boards.length - beforeSkip <= 3, `a headless siege should not render every turn (produced ${boards.length - beforeSkip} boards)`);
   const skipFinal = boards[boards.length - 1]!;
-  assert.equal((skipFinal.components ?? []).length, 0, "the send-off result should have no controls");
+  // The auto result is clean but keeps a single "View Replay" control — the fight
+  // isn't shown inline (they didn't watch it), it's tucked behind the button.
+  const skipFinalIds = ((skipFinal.components ?? []) as { toJSON(): { components: { custom_id?: string }[] } }[])
+    .flatMap(r => r.toJSON().components.map(c => c.custom_id ?? ""));
+  const replayId = skipFinalIds.find(id => id.includes(":replay:"));
+  assert.ok(replayId, "the auto result should offer a View Replay button");
+  assert.ok(!/💨|⚔️ \*\*Warden/.test(embedJson(skipFinal, 0)?.description ?? ""),
+    "the auto result should NOT show the blow-by-blow inline");
   assert.ok(!isSiegeTargetActive(skipKey), "the send-off should release its target lock");
-  console.log(`  ✓ resolved in one press over ${so.turns} turns → "${embedJson(skipFinal, 0)?.title}" (${so.destructionPct}%)`);
+  // The replay button reveals the log (ephemerally) without erroring.
+  const beforeReplay = ephemeralReplies;
+  await press(replayId!);
+  assert.ok(ephemeralReplies > beforeReplay, "View Replay should open the recap");
+  console.log(`  ✓ resolved in one press over ${so.turns} turns → "${embedJson(skipFinal, 0)?.title}" (${so.destructionPct}%), View Replay works`);
 
   console.log(`\nSiege played end to end. Boards written to ${OUT}`);
   process.exit(0);
