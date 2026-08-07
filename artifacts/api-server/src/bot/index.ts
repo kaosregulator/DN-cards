@@ -440,6 +440,15 @@ export async function startBot() {
           return;
         }
 
+        // ── HQ admin panel (server siege settings + per-member HQ editor) ──
+        // Its string-selects and modals were already routed above; without this
+        // branch every BUTTON on the panel silently did nothing.
+        if (action === "hqadmin") {
+          const { handleHqAdminComponent } = await import("./commands/hq-admin.js");
+          await handleHqAdminComponent(interaction);
+          return;
+        }
+
         // ── Onboarding adventure buttons (continue, claim rewards) ─────────
         if (action === "onboarding") {
           const { handleOnboardingComponent } = await import("./onboarding/command.js");

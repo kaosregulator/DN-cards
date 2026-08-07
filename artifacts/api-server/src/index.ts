@@ -923,6 +923,24 @@ async function runBootMigrations() {
   `);
   await pool.query(`CREATE INDEX IF NOT EXISTS hq_terrain_guild_user_room_idx ON hq_terrain (guild_id, user_id, room_id)`);
 
+  // Per-guild HQ configuration — the siege ruleset the server owner sets.
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS hq_settings (
+      id                  SERIAL PRIMARY KEY,
+      guild_id            TEXT NOT NULL,
+      siege_mode          TEXT NOT NULL DEFAULT 'turn',
+      siege_intro         BOOLEAN NOT NULL DEFAULT TRUE,
+      siege_turn_seconds  INTEGER NOT NULL DEFAULT 45,
+      siege_turn_visuals  BOOLEAN NOT NULL DEFAULT TRUE,
+      siege_item_uses     INTEGER NOT NULL DEFAULT 3,
+      siege_max_turns     INTEGER NOT NULL DEFAULT 40,
+      extra               JSONB NOT NULL DEFAULT '{}'::jsonb,
+      updated_at          TIMESTAMP NOT NULL DEFAULT NOW(),
+      UNIQUE (guild_id)
+    )
+  `);
+  await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS hq_settings_guild_uniq ON hq_settings (guild_id)`);
+
   logger.info("Boot migrations applied");
 }
 

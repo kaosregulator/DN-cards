@@ -1,0 +1,916 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// HQ — the turn-for-turn siege.
+//
+// A siege is now a real battle, not a summary. It runs the SAME combat engine,
+// the same move set, the same per-turn attack frames and the same timers as
+// `/battle` — so anyone who has fought a battle already knows how to storm a
+// castle — with a Clash-style siege layer on top:
+//
+//   • Both sides take real turns. You pick a move, the garrison answers, and the
+//     board re-renders between each — attack for attack.
+//   • A knockout does NOT end the fight. It breaks one rank: the next defender
+//     steps up (or your next card advances), and the castle takes visible damage.
+//   • Progress is DESTRUCTION, not hit points. Wrecking the garrison fills a
+//     destruction meter and earns stars — ★ at 50%, ★★ for taking the base,
+//     ★★★ for taking it without losing a single card.
+//
+// The message is two embeds, matching that split:
+//   TOP    — the castle itself: the live scene, the destruction scoreboard and
+//            the running siege log. The picture IS the log.
+//   BOTTOM — the battle proper: both active cards' HP/energy/ultimate, whose
+//            turn it is, the turn clock, and the per-turn attack frame.
+//
+// This module owns the session, the board and the turn loop. It knows nothing
+// about capture/tribute/rewards: the caller passes already-built combatants and
+// an `applyOutcome` callback that commits the result and returns the result
+// screen, so a player base and an AI territory share one engine.
+// ─────────────────────────────────────────────────────────────────────────────
+
+import {
+  ButtonInteraction, StringSelectMenuInteraction, EmbedBuilder,
+  ActionRowBuilder, ButtonBuilder, ButtonStyle, StringSelectMenuBuilder,
+  MessageFlags, AttachmentBuilder, type Message,
+} from "discord.js";
+import { randomBytes } from "crypto";
+import type { BattleSettings } from "@workspace/db";
+import type { Combatant, MoveType, AiDifficulty } from "../battle/types.js";
+import { startOfTurn, resolveMove, availableMoves } from "../battle/combat-engine.js";
+import { chooseAiMove } from "../battle/ai-engine.js";
+import { powerRating } from "../battle/stat-engine.js";
+import { combatantField, bar, WHITE_LINE } from "../battle/embeds.js";
+import { computeMoveVisual, combatantToRenderCard } from "../battle/turn-visual.js";
+import { getMoveset } from "../battle/movesets.js";
+import {
+  listBattleItems, getBattleItem, loadGuildBattleItems, applyItemUse, isOffensiveItem,
+} from "../battle/items.js";
+import { renderBattleTurn, renderAttackFrame, type AnimationSpeed } from "../animations/index.js";
+import { renderSiegeFrame, type HqBaseView, type SiegeOverlay, type HqRenderDefender } from "./render.js";
+import type { HqSiegeConfig } from "./settings.js";
+import { logger } from "../../lib/logger.js";
+
+const EPHEMERAL = { flags: MessageFlags.Ephemeral } as const;
+// The garrison fights at a competent (not perfect) skill so specials, items and
+// passives actually get used and an upset stays possible — same as the headless
+// resolver.
+const SIEGE_AI: AiDifficulty = "elite";
+// Hard stop so a walked-away siege can never pin its target forever.
+const MAX_SIEGE_MS = 20 * 60 * 1000;
+const DEFAULT_FRAME_MS = 950;
+
+/** Top embed: the castle scene. */
+export const SIEGE_CASTLE_IMAGE = "siege-castle.png";
+/** Bottom embed: the per-turn attack frame (`.gif` only when animated). */
+const SIEGE_TURN_PNG = "siege-turn.png";
+const SIEGE_TURN_GIF = "siege-turn.gif";
+
+// ── Public contract ───────────────────────────────────────────────────────────
+
+export interface SiegeResultView {
+  title: string;
+  description: string;
+  color: number;
+  fields?: { name: string; value: string; inline?: boolean }[];
+}
+
+export interface SiegeOutcome {
+  attackerWon: boolean;
+  /** Turns fought (a turn = one side acting, matching /battle's counter). */
+  turns: number;
+  attackerCardsLost: number;
+  defenderCardsLost: number;
+  attackerPower: number;
+  defenderPower: number;
+  /** 0–100. 100 = every defender broken. */
+  destructionPct: number;
+  /** 0–3, Clash-style. */
+  stars: number;
+}
+
+export interface SiegeRuntimeConfig {
+  guildId: string;
+  /** Shared key that stops two assaults hitting one target at once. */
+  targetKey?: string;
+  starterId: string;            // only this user may command
+  attackerName: string;
+  targetName: string;
+  /** Shown under the castle name — the faction or holder being fought. */
+  holderName: string;
+  accent: number;
+  attackers: Combatant[];       // side 0, strongest first
+  defenders: Combatant[];       // side 1, fortified, strongest first
+  settings: BattleSettings;
+  siege: HqSiegeConfig;
+  /** The base/territory scene the castle frame is painted from. */
+  baseView: HqBaseView | null;
+  /** The attacker's champion, drawn storming the gate. */
+  champion: HqRenderDefender | null;
+  /** Commit the result (capture / reward / log) and return the result screen. */
+  applyOutcome: (outcome: SiegeOutcome) => Promise<SiegeResultView>;
+}
+
+type Phase = "muster" | "assault" | "ended";
+
+interface SiegeSession extends SiegeRuntimeConfig {
+  id: string;
+  phase: Phase;
+  ai: number;                   // active attacker index
+  di: number;                   // active defender index
+  turnNumber: number;
+  currentSide: 0 | 1;
+  log: string[];
+  message?: Message;
+  turnTimer?: NodeJS.Timeout;
+  ttlTimer?: NodeJS.Timeout;
+  processing: boolean;
+  itemUsesLeft: number;
+  attackerPower: number;
+  defenderPower: number;
+  /** Cached castle frame; only re-rendered when the siege visibly changes. */
+  castleImage: Buffer | null;
+  castleKey: string;
+  /** One-shot per-turn attack frame, consumed by the next render. */
+  turnFrame: Buffer | null;
+  turnFrameIsGif: boolean;
+  /** Item equipped for the whole assault, chosen at muster. */
+  equippedItemId: string | null;
+  /** Damage already dealt to the current defender, for the destruction meter. */
+  defendersBroken: number;
+}
+
+const sessions = new Map<string, SiegeSession>();
+const activeTargetKeys = new Set<string>();
+
+/** True while any interactive siege is occupying this base or territory. */
+export function isSiegeTargetActive(targetKey: string): boolean {
+  return activeTargetKeys.has(targetKey);
+}
+
+const sleep = (ms: number) => new Promise<void>(r => setTimeout(r, ms));
+
+// Animation pacing follows the guild's battle settings, so a siege moves at the
+// same speed as a battle in that server.
+function frameMs(s: SiegeSession): number {
+  return Math.max(120, Math.min(4000, s.settings.frameDelayMs ?? DEFAULT_FRAME_MS));
+}
+// The heavy animated arena scene, vs the lighter single-frame attack card.
+function sceneAnimated(s: SiegeSession): boolean {
+  return s.siege.turnVisuals && s.settings.battleAnimationEnabled && s.settings.battleSceneAnimated;
+}
+function classicFrames(s: SiegeSession): boolean {
+  return s.siege.turnVisuals && s.settings.battleAnimationEnabled && !s.settings.battleSceneAnimated;
+}
+
+const MOVE_LABELS: Record<MoveType, string> = {
+  attack: "Attack", special: "Special", defend: "Defend", charge: "Charge",
+  skip: "Hold", ultimate: "Ultimate", item: "Item", special_card: "Special",
+};
+function moveLabel(move: MoveType, actor: Combatant): string {
+  if (move === "special") return getMoveset(actor.moveset)?.name ?? "Special";
+  return MOVE_LABELS[move] ?? move;
+}
+
+// ── Destruction & stars ───────────────────────────────────────────────────────
+// Progress is measured in wrecked garrison, not raw HP: each defender is an
+// equal slice of the base, and the one currently being fought contributes its
+// own missing-HP fraction. That makes the meter move on every good hit while
+// still making a broken rank feel like a milestone.
+function destructionPct(s: SiegeSession): number {
+  const total = s.defenders.length;
+  if (total === 0) return 100;
+  const cur = s.defenders[s.di];
+  const partial = cur && cur.hp > 0
+    ? 1 - Math.max(0, Math.min(1, cur.hp / Math.max(1, cur.stats.maxHealth)))
+    : 0;
+  return Math.max(0, Math.min(100, ((s.defendersBroken + partial) / total) * 100));
+}
+
+// ★ at half the base wrecked, ★★ for taking it, ★★★ for taking it clean.
+function starsFor(pct: number, captured: boolean, cardsLost: number): number {
+  if (captured) return cardsLost === 0 ? 3 : 2;
+  return pct >= 50 ? 1 : 0;
+}
+
+// ── Entry ─────────────────────────────────────────────────────────────────────
+
+/**
+ * Open the muster board into an already-deferred interaction. The caller has
+ * built and fortified both squads; nothing is committed until the assault ends.
+ */
+export async function startSiege(
+  interaction: ButtonInteraction, config: SiegeRuntimeConfig,
+): Promise<void> {
+  const fail = (msg: string) => interaction.editReply({
+    embeds: [new EmbedBuilder().setColor(0xc0392b).setDescription(`❌ ${msg}`)],
+    components: [], files: [],
+  }).then(() => {}).catch(() => {});
+
+  if (config.attackers.length === 0 || config.defenders.length === 0) {
+    await fail("A siege needs cards on both sides."); return;
+  }
+  if (config.targetKey && activeTargetKeys.has(config.targetKey)) {
+    await fail("That target is already under siege. Wait for the current assault to resolve."); return;
+  }
+  if (config.targetKey) activeTargetKeys.add(config.targetKey);
+  await loadGuildBattleItems(config.guildId).catch(() => {});
+
+  const session: SiegeSession = {
+    ...config,
+    id: randomBytes(4).toString("hex"),
+    phase: "muster",
+    ai: 0, di: 0, turnNumber: 1, currentSide: 0,
+    log: [],
+    processing: false,
+    itemUsesLeft: config.siege.itemUses,
+    attackerPower: config.attackers.reduce((sum, c) => sum + powerRating(c.stats), 0),
+    defenderPower: config.defenders.reduce((sum, c) => sum + powerRating(c.stats), 0),
+    castleImage: null, castleKey: "",
+    turnFrame: null, turnFrameIsGif: false,
+    equippedItemId: null,
+    defendersBroken: 0,
+  };
+  sessions.set(session.id, session);
+  session.ttlTimer = setTimeout(() => { void abandon(session); }, MAX_SIEGE_MS);
+
+  await refreshCastle(session);
+  const posted = await interaction.editReply(await musterPayload(session))
+    .then(() => true).catch(() => false);
+  if (!posted) { await release(session); return; }
+  session.message = await interaction.fetchReply().catch(() => undefined) as Message | undefined;
+}
+
+// ── Component routing (hq-hub:ls:<action>:<sid>[:extra]) ──────────────────────
+// The `ls` namespace is kept from the previous engine so buttons already sitting
+// in a channel keep routing here instead of falling through as unknown.
+export async function handleSiegeComponent(
+  interaction: ButtonInteraction | StringSelectMenuInteraction,
+): Promise<void> {
+  const parts = interaction.customId.split(":"); // hq-hub:ls:<action>:<sid>[:extra]
+  const action = parts[2];
+  const session = sessions.get(parts[3] ?? "");
+  if (!session || session.phase === "ended") {
+    await interaction.reply({ content: "⌛ This siege has ended.", ...EPHEMERAL }).catch(() => {});
+    return;
+  }
+  if (interaction.user.id !== session.starterId) {
+    await interaction.reply({ content: "Only the commander can direct this assault.", ...EPHEMERAL }).catch(() => {});
+    return;
+  }
+  switch (action) {
+    case "begin": return handleBegin(interaction as ButtonInteraction, session);
+    case "equip": return handleEquipOpen(interaction as ButtonInteraction, session);
+    case "equipsel": return handleEquipSelect(interaction as StringSelectMenuInteraction, session);
+    case "move": return handleMove(interaction as ButtonInteraction, session, parts[4] as MoveType);
+    case "item": return handleItemOpen(interaction as ButtonInteraction, session);
+    case "itemsel": return handleItemSelect(interaction as StringSelectMenuInteraction, session);
+    case "itemtgt": return handleItemTarget(interaction as StringSelectMenuInteraction, session, parts[4]!);
+    case "moves": return handleMovesQuickView(interaction as ButtonInteraction, session);
+    case "concede": return handleConcede(interaction as ButtonInteraction, session);
+    default:
+      await interaction.reply({ content: "Unknown siege action.", ...EPHEMERAL }).catch(() => {});
+  }
+}
+
+// ── Muster ────────────────────────────────────────────────────────────────────
+// The pre-assault board: your column, the garrison, the fortification you're up
+// against, and the one item you can carry in. The siege equivalent of /battle's
+// prep screen — nothing is committed until Begin Assault.
+
+async function musterPayload(s: SiegeSession) {
+  const item = s.equippedItemId ? getBattleItem(s.equippedItemId, s.guildId) : null;
+  const embed = new EmbedBuilder()
+    .setColor(s.accent)
+    .setTitle(`🏰 Muster — assault on ${s.targetName}`)
+    .setDescription(
+      `**${s.attackerName}** forms up outside **${s.targetName}**, held by **${s.holderName}**.\n\n` +
+      `Every card you bring must break a rank of the garrison. Wreck the whole garrison to take the base — ` +
+      `**★** at 50% destruction, **★★** for the capture, **★★★** if you do it without losing a card.`,
+    )
+    .addFields(
+      {
+        name: `⚔️ Your column (${s.attackers.length})`,
+        value: squadList(s.attackers),
+        inline: true,
+      },
+      {
+        name: `🛡️ Garrison (${s.defenders.length})`,
+        value: squadList(s.defenders),
+        inline: true,
+      },
+      {
+        name: "📊 Strength",
+        value: `⚔️ **${s.attackerPower}** vs 🛡️ **${s.defenderPower}**`,
+        inline: false,
+      },
+      {
+        name: "🎒 Supplies",
+        value: item
+          ? `${item.emoji} **${item.name}** — ${item.description}\n_Carried by every card in the column._`
+          : "_No item equipped._",
+        inline: false,
+      },
+    )
+    .setFooter({ text: `${s.itemUsesLeft} field use${s.itemUsesLeft === 1 ? "" : "s"} · ${s.siege.turnSeconds}s per move once the assault starts` });
+  if (s.castleImage) embed.setImage(`attachment://${SIEGE_CASTLE_IMAGE}`);
+
+  const rows: ActionRowBuilder<ButtonBuilder>[] = [
+    new ActionRowBuilder<ButtonBuilder>().addComponents(
+      new ButtonBuilder().setCustomId(`hq-hub:ls:begin:${s.id}`).setLabel("Begin Assault").setEmoji("⚔️").setStyle(ButtonStyle.Danger),
+      new ButtonBuilder().setCustomId(`hq-hub:ls:equip:${s.id}`).setLabel(item ? "Change item" : "Equip item").setEmoji("🎒").setStyle(ButtonStyle.Success),
+      new ButtonBuilder().setCustomId(`hq-hub:ls:concede:${s.id}`).setLabel("Stand down").setEmoji("🏳️").setStyle(ButtonStyle.Secondary),
+    ),
+  ];
+  return { embeds: [embed], components: rows, files: castleFiles(s) };
+}
+
+function squadList(cards: Combatant[]): string {
+  return cards.slice(0, 6).map((c, i) =>
+    `${i === 0 ? "**1.**" : `${i + 1}.`} ${c.cardName} · ❤️ ${c.stats.maxHealth} · ⚔️ ${c.stats.attack}`,
+  ).join("\n").slice(0, 1024) || "_none_";
+}
+
+async function handleEquipOpen(interaction: ButtonInteraction, s: SiegeSession): Promise<void> {
+  if (s.phase !== "muster") { await interaction.reply({ content: "The assault has already begun.", ...EPHEMERAL }).catch(() => {}); return; }
+  const items = listBattleItems(s.guildId).slice(0, 24);
+  if (items.length === 0) { await interaction.reply({ content: "No battle items are configured here.", ...EPHEMERAL }).catch(() => {}); return; }
+  const menu = new StringSelectMenuBuilder()
+    .setCustomId(`hq-hub:ls:equipsel:${s.id}`)
+    .setPlaceholder("Pick the item your column carries")
+    .addOptions([
+      { label: "No item", value: "none", description: "Travel light", emoji: "🚫" },
+      ...items.map(it => ({
+        label: it.name.slice(0, 100), value: it.id,
+        description: it.description.slice(0, 100), emoji: it.emoji || undefined,
+      })),
+    ]);
+  await interaction.reply({
+    content: "🎒 Every card in your column carries the same item into the siege.",
+    components: [new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(menu)], ...EPHEMERAL,
+  }).catch(() => {});
+}
+
+async function handleEquipSelect(interaction: StringSelectMenuInteraction, s: SiegeSession): Promise<void> {
+  const choice = interaction.values[0]!;
+  const item = choice === "none" ? null : getBattleItem(choice, s.guildId);
+  s.equippedItemId = item?.id ?? null;
+  // Mirror /battle: the item lives ON the combatant, so `resolveMove("item")`
+  // and the move buttons pick it up with no siege-specific plumbing.
+  for (const c of s.attackers) {
+    c.itemId = item?.id ?? null;
+    c.item = item ?? null;
+    c.itemChargesRemaining = item?.charges ?? 0;
+    c.itemCooldownRemaining = 0;
+  }
+  await interaction.update({
+    content: item ? `${item.emoji} Your column will carry **${item.name}**.` : "Travelling light.",
+    components: [],
+  }).catch(() => {});
+  if (s.message) await s.message.edit(await musterPayload(s)).catch(() => {});
+}
+
+async function handleBegin(interaction: ButtonInteraction, s: SiegeSession): Promise<void> {
+  if (s.phase !== "muster") { await interaction.deferUpdate().catch(() => {}); return; }
+  await interaction.deferUpdate().catch(() => {});
+  s.phase = "assault";
+  const lead = s.attackers[0], garrison = s.defenders[0];
+  pushLog(s, [
+    `⚔️ **${s.attackerName}** throws the column at the walls of **${s.targetName}**.`,
+    lead && garrison ? `🔹 **${lead.cardName}** meets **${garrison.cardName}** at the gate.` : "",
+  ]);
+  await refreshCastle(s, true);
+  await startTurn(s);
+}
+
+// ── Turn loop (mirrors battle-manager) ───────────────────────────────────────
+
+async function startTurn(s: SiegeSession): Promise<void> {
+  if (s.phase !== "assault") return;
+  const actor = active(s, s.currentSide);
+  if (!actor) { await finish(s); return; }
+
+  if (actor.isAi) {
+    // The garrison answers on its own, after a beat, exactly like /battle's AI.
+    await render(s);
+    await sleep(frameMs(s));
+    const foe = active(s, foeSide(s.currentSide));
+    if (!foe) { await finish(s); return; }
+    const move = chooseAiMove(actor, foe, s.settings, SIEGE_AI);
+    await applyMove(s, s.currentSide, move);
+    return;
+  }
+
+  clearTurnTimer(s);
+  const ms = s.siege.turnSeconds * 1000;
+  s.turnTimer = setTimeout(() => {
+    pushLog(s, [`⏱️ ${actor.cardName} hesitated — the column presses on regardless.`]);
+    void applyMove(s, s.currentSide, "attack");
+  }, ms);
+  await render(s, { turnEndsAt: Date.now() + ms });
+}
+
+async function applyMove(s: SiegeSession, side: 0 | 1, move: MoveType): Promise<void> {
+  if (s.phase !== "assault" || s.processing) return;
+  s.processing = true;
+  clearTurnTimer(s);
+  try {
+    const actor = active(s, side);
+    const foe = active(s, foeSide(side));
+    if (!actor || !foe) { await finish(s); return; }
+
+    // Start-of-turn ticks (DoT / regen / freeze / energy regen).
+    const start = startOfTurn(actor, s.settings);
+    pushLog(s, start.events.map(e => e.text));
+    if (start.koed || actor.hp <= 0) {
+      if (await breakRank(s, side)) { await finish(s); return; }
+      await handOver(s, side);
+      return;
+    }
+
+    // "Winding up" frame, then the resolved blow — the same two-beat rhythm a
+    // battle turn has.
+    await render(s, { currentMove: `${actor.cardName} → ${moveLabel(move, actor)}…` });
+    await sleep(frameMs(s));
+
+    if (!start.skipped) {
+      const foePoolBefore = foe.hp + foe.shield;
+      const selfPoolBefore = actor.hp + actor.shield;
+      const result = resolveMove(s.settings, actor, foe, move);
+      pushLog(s, result.events.map(e => e.text));
+
+      await buildTurnFrame(s, side, move, result, actor, foe, foePoolBefore, selfPoolBefore);
+      await render(s);
+      await sleep(frameMs(s));
+
+      // A KO breaks a RANK — it does not end the siege. Check the struck side
+      // first (a counter can drop the attacker), then the foe.
+      if (actor.hp <= 0 && (await breakRank(s, side))) { await finish(s); return; }
+      if (foe.hp <= 0 && (await breakRank(s, foeSide(side)))) { await finish(s); return; }
+    } else {
+      await render(s);
+    }
+
+    await handOver(s, side);
+  } catch (err) {
+    logger.error({ err, siege: s.id }, "siege move failed");
+    s.processing = false;
+  }
+}
+
+// Pass the turn to the other side, advance the turn counter and enforce the cap.
+async function handOver(s: SiegeSession, side: 0 | 1): Promise<void> {
+  s.currentSide = foeSide(side);
+  if (s.currentSide === 0) s.turnNumber++;
+  if (s.turnNumber > s.siege.maxTurns) {
+    pushLog(s, ["⌛ The assault stalls — the siege is decided on ground taken."]);
+    await finish(s);
+    return;
+  }
+  s.processing = false;
+  await startTurn(s);
+}
+
+/**
+ * A card on `side` has fallen: advance that line. Returns true when the siege is
+ * decided (one side has nothing left to send).
+ */
+async function breakRank(s: SiegeSession, side: 0 | 1): Promise<boolean> {
+  if (side === 1) {
+    while (s.defenders[s.di] && s.defenders[s.di]!.hp <= 0) {
+      pushLog(s, [`💥 **${s.defenders[s.di]!.cardName}** is broken — the wall gives ground.`]);
+      s.di++;
+      s.defendersBroken++;
+    }
+    await refreshCastle(s, true);
+    if (s.di >= s.defenders.length) return true;
+    const next = s.defenders[s.di]!;
+    pushLog(s, [`🛡️ **${next.cardName}** steps into the breach.`]);
+    return false;
+  }
+  while (s.attackers[s.ai] && s.attackers[s.ai]!.hp <= 0) {
+    pushLog(s, [`☠️ **${s.attackers[s.ai]!.cardName}** falls at the wall.`]);
+    s.ai++;
+  }
+  await refreshCastle(s, true);
+  if (s.ai >= s.attackers.length) return true;
+  const next = s.attackers[s.ai]!;
+  pushLog(s, [`⚔️ **${next.cardName}** takes up the assault.`]);
+  return false;
+}
+
+// The one-shot attack frame under the battle embed, in whichever style the
+// guild's battle settings use — so a siege turn looks like a battle turn.
+async function buildTurnFrame(
+  s: SiegeSession, side: 0 | 1, move: MoveType,
+  result: ReturnType<typeof resolveMove>, actor: Combatant, foe: Combatant,
+  foePoolBefore: number, selfPoolBefore: number,
+): Promise<void> {
+  if (!s.siege.turnVisuals) return;
+  const visual = computeMoveVisual(move, result, actor, foe, foePoolBefore, selfPoolBefore);
+  if (sceneAnimated(s)) {
+    const anim = await renderBattleTurn({
+      attacker: combatantToRenderCard(actor),
+      defender: combatantToRenderCard(foe),
+      attackerHp: Math.max(0, actor.hp), attackerMaxHp: actor.stats.maxHealth,
+      defenderHp: Math.max(0, foe.hp), defenderMaxHp: foe.stats.maxHealth,
+      damage: visual.damage, isCrit: visual.isCrit, isHit: visual.isHit,
+      moveName: moveLabel(move, actor),
+      attackerWon: result.koed || foe.hp <= 0,
+      defenderWon: false,
+      background: null,
+    }, s.settings.battleAnimationSpeed as AnimationSpeed).catch(() => null);
+    s.turnFrame = anim ? Buffer.from(anim.buffer) : null;
+    s.turnFrameIsGif = !!anim;
+    void side;
+    return;
+  }
+  if (classicFrames(s)) {
+    s.turnFrame = await renderAttackFrame({
+      attacker: combatantToRenderCard(actor),
+      moveName: moveLabel(move, actor),
+      damage: visual.damage, isCrit: visual.isCrit, isHit: visual.isHit,
+      scene: visual.scene, subtitle: visual.subtitle,
+    }).catch(() => null);
+    s.turnFrameIsGif = false;
+  }
+}
+
+// ── Items ─────────────────────────────────────────────────────────────────────
+// Field items are the siege's supply line: a limited pool of uses that any card
+// in the column can spend. Spending one costs the turn, and the garrison answers
+// — exactly like using an item in a battle.
+
+async function handleItemOpen(interaction: ButtonInteraction, s: SiegeSession): Promise<void> {
+  if (s.phase !== "assault") { await interaction.reply({ content: "The assault hasn't started.", ...EPHEMERAL }).catch(() => {}); return; }
+  if (s.processing) { await interaction.reply({ content: "The exchange is resolving — hang on.", ...EPHEMERAL }).catch(() => {}); return; }
+  if (s.itemUsesLeft <= 0) { await interaction.reply({ content: "🎒 Your supplies are spent.", ...EPHEMERAL }).catch(() => {}); return; }
+  const items = listBattleItems(s.guildId).slice(0, 25);
+  if (items.length === 0) { await interaction.reply({ content: "No usable items are configured.", ...EPHEMERAL }).catch(() => {}); return; }
+  const menu = new StringSelectMenuBuilder()
+    .setCustomId(`hq-hub:ls:itemsel:${s.id}`)
+    .setPlaceholder("Call up a field item")
+    .addOptions(items.map(it => ({
+      label: it.name.slice(0, 100), description: it.description.slice(0, 100),
+      emoji: it.emoji || undefined, value: it.id,
+    })));
+  await interaction.reply({
+    content: `🎒 **Field supplies** — **${s.itemUsesLeft}** left. Support items reach any card in your column; offensive ones hit the rank in front of you.`,
+    components: [new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(menu)], ...EPHEMERAL,
+  }).catch(() => {});
+}
+
+async function handleItemSelect(interaction: StringSelectMenuInteraction, s: SiegeSession): Promise<void> {
+  const item = getBattleItem(interaction.values[0], s.guildId);
+  if (!item) { await interaction.update({ content: "That item is gone.", components: [] }).catch(() => {}); return; }
+  if (isOffensiveItem(item)) { await commitItem(interaction, s, item.id, "def"); return; }
+
+  const canRevive = item.effectType === "heal";
+  const opts = s.attackers
+    .map((c, i) => ({ c, i }))
+    .filter(({ c }) => canRevive || c.hp > 0)
+    .map(({ c, i }) => ({
+      label: `${i === s.ai ? "★ " : ""}${c.cardName}`.slice(0, 100),
+      description: (c.hp <= 0 ? "down — revive" : `${c.hp}/${c.stats.maxHealth} HP`).slice(0, 100),
+      value: String(i),
+    }));
+  if (opts.length === 0) { await interaction.update({ content: "No one in the column can take that.", components: [] }).catch(() => {}); return; }
+  const menu = new StringSelectMenuBuilder()
+    .setCustomId(`hq-hub:ls:itemtgt:${s.id}:${item.id}`)
+    .setPlaceholder(`Who gets the ${item.name}?`.slice(0, 100))
+    .addOptions(opts.slice(0, 25));
+  await interaction.update({
+    content: `${item.emoji} **${item.name}** — ${item.description}\nChoose a card:`,
+    components: [new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(menu)],
+  }).catch(() => {});
+}
+
+async function handleItemTarget(
+  interaction: StringSelectMenuInteraction, s: SiegeSession, itemId: string,
+): Promise<void> {
+  await commitItem(interaction, s, itemId, interaction.values[0]!);
+}
+
+async function commitItem(
+  interaction: ButtonInteraction | StringSelectMenuInteraction,
+  s: SiegeSession, itemId: string, targetKey: string,
+): Promise<void> {
+  const item = getBattleItem(itemId, s.guildId);
+  const actor = active(s, 0);
+  if (!item || !actor) { await interaction.update({ content: "That item can't be used now.", components: [] }).catch(() => {}); return; }
+  if (s.processing || s.itemUsesLeft <= 0 || s.phase !== "assault") {
+    await interaction.update({ content: "You can't use an item right now.", components: [] }).catch(() => {});
+    return;
+  }
+  const target = targetKey === "def" ? active(s, 1) : s.attackers[Number(targetKey)];
+  if (!target) { await interaction.update({ content: "That target is gone.", components: [] }).catch(() => {}); return; }
+
+  const outcome = applyItemUse(item, actor, target);
+  s.itemUsesLeft--;
+  pushLog(s, outcome.events.map(e => e.text));
+  await interaction.update({ content: `${item.emoji} Called up **${item.name}**.`, components: [] }).catch(() => {});
+
+  // A field item spends the turn; the garrison answers.
+  if (target.hp <= 0 && targetKey === "def") {
+    if (await breakRank(s, 1)) { await finish(s); return; }
+  }
+  await handOver(s, 0);
+}
+
+// ── Read-only reference (mirrors /battle's Moves popup) ──────────────────────
+async function handleMovesQuickView(interaction: ButtonInteraction, s: SiegeSession): Promise<void> {
+  const actor = active(s, 0);
+  if (!actor) { await interaction.reply({ content: "No card is leading the column.", ...EPHEMERAL }).catch(() => {}); return; }
+  const ms = actor.movesetDef ?? getMoveset(actor.moveset);
+  const item = actor.item ?? getBattleItem(actor.itemId, s.guildId);
+  const embed = new EmbedBuilder()
+    .setColor(0x5865f2)
+    .setTitle(`📖 ${actor.cardName} — Move Set`)
+    .setDescription("*Quick reference for this assault — only you can see this.*")
+    .addFields(
+      {
+        name: "🔥 Special",
+        value: ms ? `${ms.emoji} **${ms.name}** — ${ms.description}\n⚡ ${ms.energyCost} energy` : "_None assigned._",
+        inline: false,
+      },
+      {
+        name: "🎒 Item",
+        value: item ? `${item.emoji} **${item.name}** — ${item.description}` : "_No item equipped._",
+        inline: false,
+      },
+      {
+        name: "🏰 Siege rules",
+        value:
+          "A knockout breaks **one rank**, it doesn't end the assault — the next card steps up on whichever " +
+          "side lost one. Break the whole garrison to take the base.",
+        inline: false,
+      },
+    );
+  await interaction.reply({ embeds: [embed], ...EPHEMERAL }).catch(() => {});
+}
+
+async function handleMove(interaction: ButtonInteraction, s: SiegeSession, move: MoveType): Promise<void> {
+  if (s.phase !== "assault") { await interaction.deferUpdate().catch(() => {}); return; }
+  if (s.processing || s.currentSide !== 0) { await interaction.deferUpdate().catch(() => {}); return; }
+  await interaction.deferUpdate().catch(() => {});
+  await applyMove(s, 0, move);
+}
+
+async function handleConcede(interaction: ButtonInteraction, s: SiegeSession): Promise<void> {
+  await interaction.deferUpdate().catch(() => {});
+  if (s.phase === "muster") {
+    // Nothing was committed, so standing down just closes the board.
+    pushLog(s, ["🏳️ The column stands down."]);
+    if (s.message) {
+      await s.message.edit({
+        embeds: [new EmbedBuilder().setColor(0x9aa0a8).setTitle("🏳️ Stood down")
+          .setDescription(`No assault was made on **${s.targetName}**.`)],
+        components: [], files: [],
+      }).catch(() => {});
+    }
+    await release(s);
+    return;
+  }
+  s.ai = s.attackers.length; // force a loss
+  pushLog(s, ["🏳️ You sound the retreat."]);
+  await finish(s);
+}
+
+// ── Rendering ─────────────────────────────────────────────────────────────────
+
+function pushLog(s: SiegeSession, lines: (string | undefined)[]): void {
+  for (const l of lines) if (l && l.trim()) s.log.push(l);
+  s.log = s.log.slice(-14);
+}
+
+function active(s: SiegeSession, side: 0 | 1): Combatant | undefined {
+  return side === 0 ? s.attackers[s.ai] : s.defenders[s.di];
+}
+function foeSide(side: 0 | 1): 0 | 1 { return side === 0 ? 1 : 0; }
+
+function castleFiles(s: SiegeSession): AttachmentBuilder[] {
+  return s.castleImage ? [new AttachmentBuilder(s.castleImage, { name: SIEGE_CASTLE_IMAGE })] : [];
+}
+
+// Re-render the castle only when the siege visibly changed (a rank broke, or the
+// meter moved a whole step). The buffer is re-sent on every edit — Discord drops
+// attachments that aren't resent — but the expensive canvas work is not redone.
+async function refreshCastle(s: SiegeSession, force = false): Promise<void> {
+  if (!s.baseView) return;
+  const pct = destructionPct(s);
+  const key = `${s.di}:${s.ai}:${Math.floor(pct / 5)}:${s.phase}`;
+  if (!force && key === s.castleKey && s.castleImage) return;
+  const overlay = currentOverlay(s, pct);
+  const buf = await renderSiegeFrame(s.baseView, overlay).catch(() => null);
+  if (buf) { s.castleImage = buf; s.castleKey = key; }
+}
+
+function currentOverlay(s: SiegeSession, pct: number, banner?: { text: string; color: number }): SiegeOverlay {
+  const defeated = new Set<number>();
+  for (let i = 0; i < s.di && i < s.defenders.length; i++) defeated.add(i);
+  const cardsLost = s.ai;
+  const captured = s.di >= s.defenders.length;
+  return {
+    healthFrac: s.defenders.length === 0 ? 0 : Math.max(0, 1 - pct / 100),
+    defeated,
+    attacker: s.champion,
+    advance: Math.max(0.05, Math.min(1, pct / 100)),
+    banner: banner ?? null,
+    destructionPct: pct,
+    stars: starsFor(pct, captured, cardsLost),
+    turnLabel: s.phase === "muster"
+      ? "Muster — the column forms up"
+      : `Turn ${s.turnNumber} · ${s.currentSide === 0 ? "your move" : "the garrison answers"}`,
+  };
+}
+
+// TOP embed: the castle, the scoreboard and the running log. The picture is the
+// log — the text under it is only the highlights.
+function buildCastleEmbed(s: SiegeSession): EmbedBuilder {
+  const pct = destructionPct(s);
+  const captured = s.di >= s.defenders.length;
+  const stars = starsFor(pct, captured, s.ai);
+  const ranksLeft = Math.max(0, s.defenders.length - s.di);
+  const embed = new EmbedBuilder()
+    .setColor(s.accent)
+    .setTitle(`🏰 ${s.targetName} — ${"★".repeat(stars)}${"☆".repeat(3 - stars)} ${Math.round(pct)}%`)
+    .setDescription(
+      `${bar(Math.round(pct), 100, 14)} **destruction**\n` +
+      `🛡️ **${ranksLeft}** rank${ranksLeft === 1 ? "" : "s"} still holding · ⚔️ **${Math.max(0, s.attackers.length - s.ai)}** card${s.attackers.length - s.ai === 1 ? "" : "s"} left in your column\n` +
+      `${WHITE_LINE}\n${condensedSiegeLog(s)}`,
+    );
+  if (s.castleImage) embed.setImage(`attachment://${SIEGE_CASTLE_IMAGE}`);
+  return embed;
+}
+
+// The routine "X's attack hits for N" lines are already shown on the attack
+// frame, so the log keeps the notable beats and the last line for context —
+// same treatment /battle gives its log.
+const ROUTINE_HIT = /^⚔️ .* hits for /u;
+function condensedSiegeLog(s: SiegeSession, max = 6): string {
+  if (s.log.length === 0) return "_The field is quiet…_";
+  const notable = s.log.filter((l, i) => i === s.log.length - 1 || !ROUTINE_HIT.test(l));
+  return (notable.length ? notable : s.log).slice(-max).join("\n").slice(0, 3000);
+}
+
+// BOTTOM embed: the battle itself, built from the SAME combatant field renderer
+// `/battle` uses, so the stat block is identical.
+function buildBattleEmbed(s: SiegeSession, opts?: { currentMove?: string; turnEndsAt?: number }): EmbedBuilder {
+  const atk = active(s, 0);
+  const def = active(s, 1);
+  const embed = new EmbedBuilder().setColor(s.accent);
+  const fields = [];
+  if (atk) fields.push(combatantField(atk, s.currentSide === 0, null));
+  if (def) fields.push(combatantField(def, s.currentSide === 1, null));
+  if (fields.length) embed.addFields(fields);
+
+  const actor = active(s, s.currentSide);
+  const turnLine = s.currentSide === 1
+    ? "🛡️ **The garrison answers…**"
+    : `🔹 <@${s.starterId}> — **your move!**`;
+  const timer = opts?.turnEndsAt ? ` · ends <t:${Math.floor(opts.turnEndsAt / 1000)}:R>` : "";
+  embed.addFields({
+    name: `🎯 Turn ${s.turnNumber}${actor ? ` — ${actor.cardName}` : ""}`,
+    value: turnLine + timer,
+    inline: false,
+  });
+  embed.setFooter({
+    text: opts?.currentMove
+      ?? `🎒 ${s.itemUsesLeft} field use${s.itemUsesLeft === 1 ? "" : "s"} left · a KO breaks a rank, not the siege`,
+  });
+  return embed;
+}
+
+function buildControls(s: SiegeSession): ActionRowBuilder<ButtonBuilder>[] {
+  const actor = active(s, 0);
+  if (!actor || s.currentSide !== 0) return [];
+  const avail = availableMoves(actor, s.settings);
+  const mk = (move: MoveType, label: string, emoji: string, style: ButtonStyle) =>
+    new ButtonBuilder().setCustomId(`hq-hub:ls:move:${s.id}:${move}`).setLabel(label).setEmoji(emoji)
+      .setStyle(style).setDisabled(!avail[move]);
+  const row1 = new ActionRowBuilder<ButtonBuilder>().addComponents(
+    mk("attack", "Attack", "⚔️", ButtonStyle.Primary),
+    mk("special", "Special", "🔥", ButtonStyle.Danger),
+    mk("defend", "Defend", "🛡️", ButtonStyle.Secondary),
+    mk("charge", "Charge", "⚡", ButtonStyle.Secondary),
+    mk("ultimate", "Ultimate", "💀", ButtonStyle.Danger),
+  );
+  const row2 = new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder().setCustomId(`hq-hub:ls:item:${s.id}`)
+      .setLabel(`Supplies (${s.itemUsesLeft})`).setEmoji("🎒")
+      .setStyle(ButtonStyle.Success).setDisabled(s.itemUsesLeft <= 0),
+    new ButtonBuilder().setCustomId(`hq-hub:ls:moves:${s.id}`).setLabel("Moves").setEmoji("📖").setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder().setCustomId(`hq-hub:ls:concede:${s.id}`).setLabel("Retreat").setEmoji("🏳️").setStyle(ButtonStyle.Secondary),
+  );
+  return [row1, row2];
+}
+
+async function render(s: SiegeSession, opts?: { currentMove?: string; turnEndsAt?: number }): Promise<void> {
+  if (!s.message || s.phase === "ended") return;
+  await refreshCastle(s);
+  const files = castleFiles(s);
+  const battleEmbed = buildBattleEmbed(s, opts);
+  // The one-shot attack frame is consumed by this render only, exactly like the
+  // battle manager's turn animation.
+  const frame = s.turnFrame;
+  s.turnFrame = null;
+  if (frame) {
+    const name = s.turnFrameIsGif ? SIEGE_TURN_GIF : SIEGE_TURN_PNG;
+    battleEmbed.setImage(`attachment://${name}`);
+    files.push(new AttachmentBuilder(frame, { name }));
+  }
+  await s.message.edit({
+    content: null,
+    embeds: [buildCastleEmbed(s), battleEmbed],
+    components: buildControls(s),
+    files,
+  }).catch(() => {});
+}
+
+// ── Finish ────────────────────────────────────────────────────────────────────
+
+async function finish(s: SiegeSession): Promise<void> {
+  if (s.phase === "ended") return;
+  s.phase = "ended";
+  s.processing = true;
+  clearTurnTimer(s);
+
+  const captured = s.di >= s.defenders.length && s.ai < s.attackers.length;
+  const pct = captured ? 100 : destructionPct(s);
+  const stars = starsFor(pct, captured, s.ai);
+  const outcome: SiegeOutcome = {
+    attackerWon: captured,
+    turns: s.turnNumber,
+    attackerCardsLost: Math.min(s.ai, s.attackers.length),
+    defenderCardsLost: Math.min(s.di, s.defenders.length),
+    attackerPower: s.attackerPower,
+    defenderPower: s.defenderPower,
+    destructionPct: Math.round(pct),
+    stars,
+  };
+
+  let view: SiegeResultView;
+  try {
+    view = await s.applyOutcome(outcome);
+  } catch (err) {
+    logger.error({ err, siege: s.id }, "siege applyOutcome failed");
+    view = {
+      title: captured ? "🚩 Base captured!" : "🛡️ The walls held",
+      description: captured ? "You took the base." : "Your assault was broken.",
+      color: captured ? 0x4fd06a : 0xc0392b,
+    };
+  }
+
+  // Final castle frame with the result banner painted on.
+  if (s.baseView) {
+    const banner = captured
+      ? { text: `${s.attackerName} CAPTURED ${s.targetName}`, color: 0xc0392b }
+      : { text: `${s.targetName} HELD`, color: 0x4fd06a };
+    const buf = await renderSiegeFrame(s.baseView, currentOverlay(s, pct, banner)).catch(() => null);
+    if (buf) s.castleImage = buf;
+  }
+
+  const scoreLine =
+    `${"★".repeat(stars)}${"☆".repeat(3 - stars)} · **${Math.round(pct)}%** destruction · ` +
+    `**${outcome.defenderCardsLost}**/${s.defenders.length} ranks broken · ` +
+    `**${outcome.attackerCardsLost}** card${outcome.attackerCardsLost === 1 ? "" : "s"} lost`;
+
+  const embed = new EmbedBuilder().setColor(view.color).setTitle(view.title)
+    .setDescription(`${view.description}\n${WHITE_LINE}\n${scoreLine}\n${WHITE_LINE}\n${condensedSiegeLog(s, 6)}`);
+  if (view.fields?.length) {
+    embed.addFields(view.fields.map(f => ({ name: f.name, value: f.value, inline: f.inline ?? true })));
+  }
+  if (s.castleImage) embed.setImage(`attachment://${SIEGE_CASTLE_IMAGE}`);
+  if (s.message) {
+    await s.message.edit({ embeds: [embed], components: [], files: castleFiles(s) }).catch(() => {});
+  }
+  await release(s);
+}
+
+// The TTL net: a siege nobody finished must not hold its target hostage.
+async function abandon(s: SiegeSession): Promise<void> {
+  if (s.phase === "ended") return;
+  pushLog(s, ["⌛ The siege was abandoned — the column withdraws."]);
+  if (s.phase === "muster") {
+    if (s.message) {
+      await s.message.edit({
+        embeds: [new EmbedBuilder().setColor(0x9aa0a8).setTitle("⌛ Assault expired")
+          .setDescription(`The column never moved on **${s.targetName}**.`)],
+        components: [], files: [],
+      }).catch(() => {});
+    }
+    await release(s);
+    return;
+  }
+  s.ai = s.attackers.length; // an abandoned assault is a failed one
+  await finish(s);
+}
+
+async function release(s: SiegeSession): Promise<void> {
+  s.phase = "ended";
+  clearTurnTimer(s);
+  if (s.ttlTimer) { clearTimeout(s.ttlTimer); s.ttlTimer = undefined; }
+  sessions.delete(s.id);
+  if (s.targetKey) activeTargetKeys.delete(s.targetKey);
+}
+
+function clearTurnTimer(s: SiegeSession): void {
+  if (s.turnTimer) { clearTimeout(s.turnTimer); s.turnTimer = undefined; }
+}

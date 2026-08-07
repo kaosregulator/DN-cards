@@ -81,8 +81,8 @@ function buildLegacyCommands() {
     cmd("hq", "Your Headquarters — trophies, displays & customization", s => s
       .addUserOption(o => o.setName("user").setDescription("Visit another member's Headquarters"))),
 
-    cmd("hqadmin", "Admin: edit a member's Headquarters (unlocks, level, base)", s => s
-      .addUserOption(o => o.setName("user").setDescription("The member whose HQ to edit").setRequired(true))),
+    cmd("hqadmin", "Admin: server siege settings, or edit one member's Headquarters", s => s
+      .addUserOption(o => o.setName("user").setDescription("Edit this member's HQ (leave empty for server siege settings)"))),
 
     // The typed half of the HQ world editor. Shares its cursor and its rules
     // with /hq → 🛠️ Build, so a shape can be started with the arrow buttons and
