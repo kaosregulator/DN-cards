@@ -53,22 +53,27 @@ export function propKindFor(category: DecoCategory, name = ""): PropKind {
 export function propKindFromId(id: string): PropKind {
   const map: Record<string, PropKind> = {
     rug: "rug", "welcome-rug": "rug", "woven-rug": "rug", "plush-rug": "rug", "royal-runner": "rug",
-    couch: "couch", sofa: "couch", chair: "chair", armchair: "chair",
+    "command-rug": "rug", "vault-rug": "rug",
+    couch: "couch", sofa: "couch", chair: "chair", armchair: "chair", "officer-chair": "chair",
     table: "table", "feast-table": "table", "study-table": "table", desk: "table",
+    "round-table": "table", "dining-set": "table", "briefing-table": "table",
     bed: "bed", cabinet: "cabinet", bookshelf: "bookshelf", shelves: "bookshelf",
     fireplace: "fireplace", plant: "plant", "starter-plant": "plant", "potted-palm": "plant",
     banner: "banner", "banner-first-win": "banner", "champion-banner": "banner",
     statue: "statue", "marble-bust": "statue", "collector-statue": "statue",
+    "stone-column": "statue", "wood-column": "statue", "archway-deco": "monument",
+    "door-frame": "monument", "window-bay": "monument", "stairs-deco": "monument", "wall-segment": "monument",
     "weapon-rack": "weapon-rack", rack: "weapon-rack",
-    chest: "chest", "treasure-chest": "chest", "storage-barrel": "chest", "supply-crate": "chest",
+    chest: "chest", "treasure-chest": "chest", "treasure-chest-open": "chest",
+    "storage-barrel": "chest", "supply-crate": "chest", "barrels-stacked-tall": "chest",
     crystal: "crystal", "treasury-crystal": "crystal", "polished-geode": "crystal",
     lamp: "lamp", "floor-lamp": "lamp", "wall-sconce": "lamp", "streak-lantern": "lamp",
-    npc: "npc", knight: "npc", mage: "npc",
+    npc: "npc", knight: "npc", mage: "npc", "npc-aide": "npc", "npc-scout": "npc",
     trophy: "trophy", "gilded-trophy": "trophy", "commander-trophy": "trophy",
     monument: "monument", case: "case", emblem: "emblem",
     tree: "tree", rock: "rock", fence: "fence", path: "path", flowers: "flowers",
   };
-  return map[id] ?? (id.includes("figure") ? "npc" : "statue");
+  return map[id] ?? (id.includes("figure") || id.startsWith("npc-") ? "npc" : "statue");
 }
 
 function shadow(ctx: Ctx, x: number, y: number, rx: number, ry: number): void {

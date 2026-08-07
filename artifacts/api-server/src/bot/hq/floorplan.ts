@@ -251,3 +251,10 @@ export function edgeNearCell(
 export function listUnlockedZones(fp: FloorplanState): FloorplanZone[] {
   return fp.zones.filter(z => z.unlocked);
 }
+
+/** Wipe custom floorplan edits and restore the premium starter layout. */
+export async function resetFloorplanToDefault(
+  guildId: string, userId: string,
+): Promise<FloorplanState> {
+  return saveFloorplan(guildId, userId, createDefaultFloorplan());
+}

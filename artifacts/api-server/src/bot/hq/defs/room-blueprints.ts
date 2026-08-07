@@ -8,6 +8,7 @@
 
 import { HQ_GRID } from "../grid.js";
 import type { PropKind } from "../props.js";
+import { spriteForProp } from "../prop-sprites.js";
 import type { DecoCategory } from "./decorations.js";
 
 const WALL_SLOT_BASE = 100;
@@ -56,18 +57,21 @@ function hallway(): BlueprintProp[] {
 
 function commandCenter(): BlueprintProp[] {
   return [
-    { gx: 3, gy: 3, kind: "rug", name: "Command Rug", tint: 0x8b1e2d, scale: 1.15 },
-    { gx: 3, gy: 4, kind: "table", name: "Strategy Table", scale: 1.2 },
-    { gx: 1, gy: 5, kind: "couch", name: "Briefing Sofa", tint: 0x8b1e2d },
-    { gx: 5, gy: 5, kind: "chair", name: "Officer Chair", tint: 0x8b1e2d },
+    { gx: 3, gy: 3, kind: "rug", name: "Command Rug", tint: 0x8b1e2d, scale: 1.2, seed: 3 },
+    { gx: 3, gy: 4, kind: "table", name: "Strategy Table", scale: 1.15 },
+    { gx: 1, gy: 5, kind: "chair", name: "Briefing Chair", tint: 0x8b1e2d, seed: 1 },
+    { gx: 5, gy: 5, kind: "chair", name: "Officer Chair", tint: 0x8b1e2d, seed: 2 },
+    { gx: 2, gy: 5, kind: "chair", name: "Staff Chair", tint: 0x6b4f2c, seed: 3 },
     { gx: 6, gy: 2, kind: "bookshelf", name: "Ops Shelves" },
     { gx: 1, gy: 2, kind: "cabinet", name: "Comms Cabinet" },
     { gx: 6, gy: 5, kind: "lamp", name: "Floor Lamp", tint: 0xf0c060 },
     { gx: 2, gy: 1, kind: "banner", name: "House Banner", tint: 0xc0392b, scale: 0.95 },
     { gx: 5, gy: 1, kind: "banner", name: "War Banner", tint: 0x3f78c8, scale: 0.95 },
     { gx: 4, gy: 6, kind: "plant", name: "Corner Fern" },
-    { gx: 0, gy: 4, kind: "npc", name: "Aide", seed: 1 },
-    { gx: 6, gy: 6, kind: "npc", name: "Scout", seed: 2 },
+    { gx: 0, gy: 3, kind: "statue", name: "Stone Column", seed: 1 },
+    { gx: 6, gy: 3, kind: "statue", name: "Stone Column", seed: 2 },
+    { gx: 0, gy: 4, kind: "npc", name: "Aide", seed: 0 },
+    { gx: 6, gy: 6, kind: "npc", name: "Scout", seed: 1 },
     { wall: true, wallIndex: 0, gx: 0, gy: 0, kind: "banner", name: "Wall Banner", tint: 0xc0392b },
     { wall: true, wallIndex: 3, gx: 0, gy: 0, kind: "emblem", name: "Crest", tint: 0xd4af37 },
   ];
@@ -75,13 +79,14 @@ function commandCenter(): BlueprintProp[] {
 
 function trophyHall(): BlueprintProp[] {
   return [
-    { gx: 3, gy: 3, kind: "rug", name: "Hall Runner", tint: 0x6b2d8b, scale: 1.2 },
+    { gx: 3, gy: 3, kind: "rug", name: "Hall Runner", tint: 0x6b2d8b, scale: 1.25, seed: 5 },
     { gx: 1, gy: 2, kind: "trophy", name: "Gold Cup", tint: 0xd4af37 },
     { gx: 5, gy: 2, kind: "trophy", name: "Silver Cup", tint: 0xc0c8d0 },
-    { gx: 2, gy: 5, kind: "statue", name: "Champion Bust", tint: 0xd0c8b8 },
-    { gx: 5, gy: 5, kind: "statue", name: "Hero Bust", tint: 0xd0c8b8 },
-    { gx: 6, gy: 3, kind: "case", name: "Display Case", tint: 0xd4af37 },
+    { gx: 2, gy: 5, kind: "statue", name: "Champion Column", tint: 0xd0c8b8, seed: 1 },
+    { gx: 5, gy: 5, kind: "statue", name: "Hero Column", tint: 0xd0c8b8, seed: 2 },
+    { gx: 6, gy: 3, kind: "chest", name: "Relic Chest", tint: 0xd4af37 },
     { gx: 0, gy: 3, kind: "case", name: "Relic Case", tint: 0xd4af37 },
+    { gx: 3, gy: 5, kind: "npc", name: "Curator", seed: 2 },
     { gx: 3, gy: 6, kind: "plant", name: "Palm" },
     { gx: 4, gy: 1, kind: "lamp", name: "Spotlight", tint: 0xffe080 },
     { wall: true, wallIndex: 1, gx: 0, gy: 0, kind: "banner", name: "Victory Banner", tint: 0xd4af37 },
@@ -107,10 +112,11 @@ function researchLab(): BlueprintProp[] {
 
 function warRoom(): BlueprintProp[] {
   return [
-    { gx: 3, gy: 3, kind: "rug", name: "War Rug", tint: 0x5a1a1a, scale: 1.15 },
-    { gx: 3, gy: 4, kind: "table", name: "War Table", scale: 1.25 },
-    { gx: 1, gy: 5, kind: "chair", name: "General Chair", tint: 0x8b1e2d },
-    { gx: 5, gy: 5, kind: "chair", name: "Captain Chair", tint: 0x8b1e2d },
+    { gx: 3, gy: 3, kind: "rug", name: "War Rug", tint: 0x5a1a1a, scale: 1.2, seed: 0 },
+    { gx: 3, gy: 4, kind: "table", name: "War Table", scale: 1.2 },
+    { gx: 1, gy: 5, kind: "chair", name: "General Chair", tint: 0x8b1e2d, seed: 1 },
+    { gx: 5, gy: 5, kind: "chair", name: "Captain Chair", tint: 0x8b1e2d, seed: 2 },
+    { gx: 2, gy: 5, kind: "chair", name: "Lieutenant Chair", tint: 0x8b1e2d, seed: 3 },
     { gx: 6, gy: 2, kind: "weapon-rack", name: "Arm Rack" },
     { gx: 1, gy: 2, kind: "banner", name: "Legion Banner", tint: 0xc0392b },
     { gx: 5, gy: 1, kind: "banner", name: "Scout Banner", tint: 0x3f78c8 },
@@ -183,12 +189,13 @@ function workshop(): BlueprintProp[] {
 
 function storageRoom(): BlueprintProp[] {
   return [
-    { gx: 1, gy: 1, kind: "chest", name: "Crate Stack", tint: 0x8a6a3f },
-    { gx: 3, gy: 1, kind: "chest", name: "Barrels", tint: 0x6b4f2c },
-    { gx: 5, gy: 1, kind: "chest", name: "Supply Chests", tint: 0x8a6a3f },
-    { gx: 1, gy: 4, kind: "chest", name: "Grain Sacks", tint: 0xc4a06a },
+    { gx: 1, gy: 1, kind: "chest", name: "Crate Stack", tint: 0x8a6a3f, seed: 1 },
+    { gx: 3, gy: 1, kind: "chest", name: "Barrels", tint: 0x6b4f2c, seed: 2 },
+    { gx: 5, gy: 1, kind: "chest", name: "Supply Chests", tint: 0x8a6a3f, seed: 3 },
+    { gx: 1, gy: 4, kind: "chest", name: "Grain Stores", tint: 0xc4a06a, seed: 4 },
+    { gx: 4, gy: 4, kind: "chest", name: "Open Chest", tint: 0xd4af37, seed: 5 },
     { gx: 5, gy: 4, kind: "cabinet", name: "Spare Cabinet" },
-    { gx: 3, gy: 4, kind: "rug", name: "Warehouse Mat", tint: 0x6a5a4a },
+    { gx: 3, gy: 3, kind: "rug", name: "Warehouse Mat", tint: 0x6a5a4a, seed: 1 },
     { gx: 6, gy: 5, kind: "lamp", name: "Store Lamp", tint: 0xf0c060 },
     { gx: 2, gy: 6, kind: "npc", name: "Quartermaster", seed: 5 },
     { gx: 6, gy: 2, kind: "bookshelf", name: "Inventory Logs" },
@@ -240,12 +247,13 @@ export function blueprintAsDecos(
       ? wallSlot(p.wallIndex ?? 0)
       : floorSlot(p.gx, p.gy);
     if (occupiedSlots.has(slot)) continue;
+    const seed = p.seed ?? slot + 1;
     out.push({
       slot,
       category: categoryForProp(p.kind),
       name: p.name,
       rarityColor: p.tint ?? 0xc0392b,
-      spritePath: null,
+      spritePath: spriteForProp(p.kind, seed),
       propKind: p.kind,
       scale: p.scale,
       seed: p.seed,

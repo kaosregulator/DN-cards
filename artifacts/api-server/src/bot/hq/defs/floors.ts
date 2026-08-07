@@ -58,7 +58,7 @@ export const HQ_FLOORS: HqFloor[] = [
   },
   {
     id: "cobblestone", name: "Cobblestone", emoji: "🪨", tileA: "#8b8f96", tileB: "#7c8087",
-    grout: "rgba(30,32,36,0.5)", spritePrefix: "floor/cobblestone", unlock: { kind: "battleWins", n: 10 }, price: 500,
+    grout: "rgba(30,32,36,0.5)", spritePrefix: "floor/cobblestone", unlock: { kind: "always" }, price: 500,
   },
   {
     id: "brick-floor", name: "Brick Floor", emoji: "🧱", tileA: "#9a5240", tileB: "#8a473a",
@@ -70,7 +70,7 @@ export const HQ_FLOORS: HqFloor[] = [
   },
 ];
 
-export const DEFAULT_FLOOR_ID = "wood";
+export const DEFAULT_FLOOR_ID = "cobblestone";
 
 const FLOOR_BY_ID = new Map<string, HqFloor>(HQ_FLOORS.map(f => [f.id, f]));
 

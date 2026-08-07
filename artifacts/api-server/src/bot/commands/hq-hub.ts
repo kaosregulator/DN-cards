@@ -130,7 +130,7 @@ import { renderFloorplan } from "../hq/render-floorplan.js";
 import {
   loadFloorplan, saveFloorplan, focusZone, claimExpansion, availableExpansions,
   syncZoneUnlocks, describeConnections, listUnlockedZones, getFocusZone,
-  placeOpening, placeWall, edgeNearCell,
+  placeOpening, placeWall, edgeNearCell, resetFloorplanToDefault,
 } from "../hq/floorplan.js";
 import { sharedEdges, FLOORPLAN_EXPANSIONS } from "../hq/defs/floorplan.js";
 import type { PlayerHq } from "@workspace/db";
@@ -684,6 +684,15 @@ export async function handleHqHubComponent(
     await interaction.update(await buildView(
       interaction, "rooms", [],
       `Placed **interior walls** with a doorway inside **${focus.name}**.`,
+    )).catch(() => {});
+    return;
+  }
+  if (action === "fp-reset" && interaction.isButton()) {
+    await resetFloorplanToDefault(guildId, userId).catch(() => {});
+    await updateHq(guildId, userId, { activeRoomId: DEFAULT_ROOM_ID }).catch(() => {});
+    await interaction.update(await buildView(
+      interaction, "rooms", [],
+      "HQ floorplan **reset** to the premium starter layout (Command Center ↔ Hallway ↔ Trophy Hall). Expand wings anytime.",
     )).catch(() => {});
     return;
   }
@@ -1779,7 +1788,8 @@ async function buildView(
         new ButtonBuilder().setCustomId("hq-hub:fp-door").setLabel("Add Door").setEmoji("🚪").setStyle(ButtonStyle.Primary),
         new ButtonBuilder().setCustomId("hq-hub:fp-arch").setLabel("Add Archway").setEmoji("🏛️").setStyle(ButtonStyle.Secondary),
         new ButtonBuilder().setCustomId("hq-hub:fp-wall").setLabel("Interior Walls").setEmoji("🧱").setStyle(ButtonStyle.Secondary),
-        new ButtonBuilder().setCustomId("hq-hub:goto:build:room").setLabel("Decorate Room").setEmoji("🛠️").setStyle(ButtonStyle.Success),
+        new ButtonBuilder().setCustomId("hq-hub:goto:build:room").setLabel("Decorate").setEmoji("🛠️").setStyle(ButtonStyle.Success),
+        new ButtonBuilder().setCustomId("hq-hub:fp-reset").setLabel("Reset HQ").setEmoji("♻️").setStyle(ButtonStyle.Danger),
       ));
       if (notice) embed.addFields({ name: "🧾 Result", value: notice.slice(0, 1024) });
       break;

@@ -40,6 +40,7 @@ import {
 import { paintVoid, paintOpenAtmosphere } from "./render-atmosphere.js";
 import { drawWallpaperFace } from "./render-wallpaper.js";
 import { drawProp, propKindFor, type PropKind } from "./props.js";
+import { spriteForProp } from "./prop-sprites.js";
 import type { HqWallpaper } from "./defs/wallpapers.js";
 import type { HqTheme } from "./defs/themes.js";
 import type { HqWall } from "./defs/walls.js";
@@ -435,7 +436,7 @@ async function paintBaseScene(ctx: Ctx, mod: CanvasMod, view: HqBaseView, siege?
   const castleFeetY = plateauCy + 6;
   const castleTop = await drawCastle(ctx, mod, BASE_CX, castleFeetY, pickCastleSprite(view));
   if (view.shieldActive && !siege) {
-    drawShieldAura(ctx, view.shieldPulse ?? 0.55);
+    await drawShieldAura(ctx, mod, view.shieldPulse ?? 0.55);
   }
   if (siege?.destructionPct === undefined) {
     drawBannerAndHealth(ctx, BASE_CX, castleTop, view, siege?.healthFrac);
@@ -449,7 +450,15 @@ async function paintBaseScene(ctx: Ctx, mod: CanvasMod, view: HqBaseView, siege?
     ];
     for (let i = 0; i < vis; i++) {
       const p = VISITOR_SPOTS[i]!;
-      drawProp(ctx, "npc", p.x, p.y, 1.05, 0x3a5a8b, i + 2);
+      const visitorPath = spriteForProp("npc", i + 2);
+      if (visitorPath) {
+        await drawDecoAt(ctx, mod, p.x, p.y, 1.1, {
+          slot: i, category: "statue", name: "Visitor", rarityColor: 0x3a5a8b,
+          spritePath: visitorPath, propKind: "npc", seed: i + 2,
+        }, true);
+      } else {
+        drawProp(ctx, "npc", p.x, p.y, 1.05, 0x3a5a8b, i + 2);
+      }
     }
     if (view.companion) drawCompanion(ctx, BASE_CX + 60, ISLAND_CY + 176, view.companion, 1.05);
   }
@@ -671,9 +680,10 @@ async function paintSkybox(ctx: Ctx, mod: CanvasMod, skybox: HqSkybox | null): P
 /**
  * Subtle blue shield aura around the playable island — a soft luminous rim
  * hugging the grounds edge, NOT a large transparent dome over the castle.
+ * Soft Kenney puff/flash sprites reinforce the ward when available.
  * `pulse` (0..1) gently scales opacity so animated frames can breathe.
  */
-function drawShieldAura(ctx: Ctx, pulse: number): void {
+async function drawShieldAura(ctx: Ctx, mod: CanvasMod, pulse: number): Promise<void> {
   const p = Math.max(0, Math.min(1, pulse));
   // Sit just outside the island rim so it reads as a ward around the playable
   // area rather than a glass bubble covering the castle.
@@ -682,26 +692,45 @@ function drawShieldAura(ctx: Ctx, pulse: number): void {
   const cx = BASE_CX, cy = ISLAND_CY + 10;
 
   ctx.save();
-  // Very soft outer glow — almost invisible in the centre.
-  const fill = ctx.createRadialGradient(cx, cy, Math.min(rx, ry) * 0.78, cx, cy, Math.max(rx, ry) * 1.08);
+  // Soft outer wash — keep it rim-local so it never reads as a glass dome.
+  const fill = ctx.createRadialGradient(cx, cy, Math.min(rx, ry) * 0.88, cx, cy, Math.max(rx, ry) * 1.04);
   fill.addColorStop(0, "rgba(80,170,255,0)");
-  fill.addColorStop(0.82, `rgba(70,160,255,${0.02 + p * 0.02})`);
-  fill.addColorStop(1, `rgba(100,190,255,${0.10 + p * 0.06})`);
+  fill.addColorStop(0.9, `rgba(70,160,255,${0.015 + p * 0.015})`);
+  fill.addColorStop(1, `rgba(100,190,255,${0.08 + p * 0.05})`);
   ctx.fillStyle = fill;
-  ctx.beginPath(); ellipse(ctx, cx, cy, rx * 1.06, ry * 1.08); ctx.fill();
+  ctx.beginPath(); ellipse(ctx, cx, cy, rx * 1.03, ry * 1.04); ctx.fill();
 
   // Thin luminous rim hugging the island edge.
-  ctx.strokeStyle = `rgba(140,210,255,${0.40 + p * 0.22})`;
-  ctx.lineWidth = 2;
-  ctx.shadowColor = "rgba(90,180,255,0.75)";
-  ctx.shadowBlur = 10 + p * 8;
+  ctx.strokeStyle = `rgba(140,210,255,${0.45 + p * 0.25})`;
+  ctx.lineWidth = 2.5;
+  ctx.shadowColor = "rgba(90,180,255,0.8)";
+  ctx.shadowBlur = 12 + p * 10;
   ctx.beginPath(); ellipse(ctx, cx, cy, rx, ry); ctx.stroke();
 
   // Faint inner hairline for a soft double-rim (aura, not dome).
   ctx.shadowBlur = 0;
-  ctx.strokeStyle = `rgba(190,230,255,${0.18 + p * 0.12})`;
+  ctx.strokeStyle = `rgba(190,230,255,${0.22 + p * 0.12})`;
   ctx.lineWidth = 1;
   ctx.beginPath(); ellipse(ctx, cx, cy, rx * 0.985, ry * 0.985); ctx.stroke();
+  ctx.restore();
+
+  // Soft particle accents along the rim (smoke/flash FX from the art pack).
+  const puffPath = spriteForPrefix("fx", "shield-puff");
+  const flashPath = spriteForPrefix("fx", "shield-flash");
+  const puff = puffPath ? await loadSprite(mod, puffPath).catch(() => null) : null;
+  const flash = flashPath ? await loadSprite(mod, flashPath).catch(() => null) : null;
+  if (!puff && !flash) return;
+  ctx.save();
+  ctx.globalCompositeOperation = "screen";
+  for (let i = 0; i < 10; i++) {
+    const a = (i / 10) * Math.PI * 2 + p * 0.4;
+    const x = cx + Math.cos(a) * rx * 0.98;
+    const y = cy + Math.sin(a) * ry * 0.98;
+    const img = (i % 3 === 0 && flash) ? flash : (puff ?? flash)!;
+    const size = 28 + (i % 3) * 8 + p * 6;
+    ctx.globalAlpha = 0.18 + p * 0.12;
+    blit(ctx, img, x - size / 2, y - size / 2, size, size);
+  }
   ctx.restore();
 }
 
@@ -1738,10 +1767,14 @@ async function drawDecoAt(
           if (pixel) smooth.imageSmoothingEnabled = true;
           return;
         }
-        const h = 120 * scale * (ih / iw);
-        const w = 120 * scale;
+        // Kenney isometric pack is 256×512 with the subject in the lower half —
+        // size so furniture reads clearly on the 7×7 room grid.
+        const kind = deco.propKind ?? propKindFor(deco.category, deco.name);
+        const boost = kind === "rug" ? 1.35 : kind === "npc" ? 1.15 : 1.25;
+        const h = 120 * scale * boost * (ih / iw);
+        const w = 120 * scale * boost;
         ctx.save(); ctx.fillStyle = "rgba(0,0,0,0.28)";
-        ctx.beginPath(); ellipse(ctx, x, y, w * 0.3, w * 0.11); ctx.fill(); ctx.restore();
+        ctx.beginPath(); ellipse(ctx, x, y, w * 0.28, w * 0.1); ctx.fill(); ctx.restore();
         blit(ctx, img, x - w / 2, y - h + 6, w, h);
       } else {
         const h = 88 * scale, w = h * (iw / ih);

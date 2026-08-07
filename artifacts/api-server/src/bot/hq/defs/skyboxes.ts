@@ -79,7 +79,7 @@ export const HQ_SKYBOXES: HqSkybox[] = [
     unlock: { kind: "collectionUnique", n: 40 } },
 ];
 
-export const DEFAULT_SKYBOX_ID = "skybox-clouds";
+export const DEFAULT_SKYBOX_ID = "skybox-outside";
 
 const BY_ID = new Map<string, HqSkybox>(HQ_SKYBOXES.map(s => [s.id, s]));
 
