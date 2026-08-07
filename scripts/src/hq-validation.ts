@@ -27,6 +27,7 @@ import { HQ_ROOMS } from "../../artifacts/api-server/src/bot/hq/defs/rooms.js";
 import { HQ_BACKDROPS } from "../../artifacts/api-server/src/bot/hq/defs/backdrops.js";
 import { HQ_COMPANIONS } from "../../artifacts/api-server/src/bot/hq/defs/companions.js";
 import { HQ_SKYBOXES, resolveSkybox, DEFAULT_SKYBOX_ID } from "../../artifacts/api-server/src/bot/hq/defs/skyboxes.js";
+import { createDefaultFloorplan, sharedEdges } from "../../artifacts/api-server/src/bot/hq/defs/floorplan.js";
 import { buildGarrison, territoryTributeOwed, WORLD_TRIBUTE_CAP_HOURS } from "../../artifacts/api-server/src/bot/hq/world.js";
 import { readCursor, clampCursor, cursorLabel } from "../../artifacts/api-server/src/bot/hq/build-state.js";
 import { MAX_RECT_SPAN, MAX_ELEVATION } from "../../artifacts/api-server/src/bot/hq/terrain.js";
@@ -103,12 +104,21 @@ check("every room declares a purpose, bonuses, and category", () => {
   }
 });
 
-check("skyboxes are outdoor enclosing walls, not wallpapers", () => {
+check("skyboxes are optional open atmosphere, not room walls", () => {
   for (const s of HQ_SKYBOXES) {
     assert.match(s.skyTop, /^#[0-9a-f]{6}$/i, `${s.id} skyTop`);
     assert.match(s.skyHorizon, /^#[0-9a-f]{6}$/i, `${s.id} skyHorizon`);
     assert.ok(s.spriteKey.startsWith("skybox/"), `${s.id} spriteKey should be under skybox/`);
   }
+});
+
+check("default floorplan is connected (doors join starter zones)", () => {
+  const fp = createDefaultFloorplan();
+  assert.ok(fp.zones.filter(z => z.unlocked).length >= 3, "starter has multiple unlocked zones");
+  assert.ok(fp.openings.some(o => o.kind === "door"), "starter has at least one door");
+  const cc = fp.zones.find(z => z.id === "entrance")!;
+  const hall = fp.zones.find(z => z.id === "hallway-main")!;
+  assert.ok(sharedEdges(cc.rect, hall.rect).length > 0, "CC shares an edge with hallway");
 });
 
 check("wallpapers declare sane repeats and a default that stays plain", () => {

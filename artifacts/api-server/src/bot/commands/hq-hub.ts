@@ -77,7 +77,7 @@ import {
   isRoomUnlocked, isThemeUnlocked, unlockedWalls, unlockedFloors,
   isWallUnlocked, isFloorUnlocked, unlockedBackdrops, isBackdropUnlocked,
   isWallpaperUnlocked, isSurfaceUnlocked, ownedCompanions,
-  unlockedSkyboxes, isSkyboxUnlocked,
+  unlockedSkyboxes, isSkyboxUnlocked, snapshotProgress,
 } from "../hq/engine.js";
 import { resolveSkybox, HQ_SKYBOXES } from "../hq/defs/skyboxes.js";
 import { loadBaseState } from "../hq/base-state.js";
@@ -126,6 +126,13 @@ import {
 import {
   renderWorldMap, type HqWorldView, type WorldMarker,
 } from "../hq/render-world.js";
+import { renderFloorplan } from "../hq/render-floorplan.js";
+import {
+  loadFloorplan, saveFloorplan, focusZone, claimExpansion, availableExpansions,
+  syncZoneUnlocks, describeConnections, listUnlockedZones, getFocusZone,
+  placeOpening, placeWall, edgeNearCell,
+} from "../hq/floorplan.js";
+import { sharedEdges, FLOORPLAN_EXPANSIONS } from "../hq/defs/floorplan.js";
 import type { PlayerHq } from "@workspace/db";
 
 const EPHEMERAL = { flags: MessageFlags.Ephemeral } as const;
@@ -144,6 +151,10 @@ interface HqStats {
   title?: string; motto?: string; backdropId?: string; wallpaperId?: string; skyboxId?: string;
   wallsOff?: boolean; glassOff?: boolean; companionId?: string; baseTier?: number;
   editorCategory?: string; editorMode?: string;
+  /** Connected HQ floorplan — pass-through so other stats writes don't wipe it. */
+  floorplan?: unknown;
+  build?: unknown;
+  layers?: unknown;
 }
 function readHqStats(hq: PlayerHq): HqStats {
   const s = hq.stats as HqStats | null | undefined;
@@ -152,6 +163,7 @@ function readHqStats(hq: PlayerHq): HqStats {
     skyboxId: s?.skyboxId, wallsOff: s?.wallsOff, glassOff: s?.glassOff,
     companionId: s?.companionId, baseTier: s?.baseTier,
     editorCategory: s?.editorCategory, editorMode: s?.editorMode,
+    floorplan: s?.floorplan, build: s?.build, layers: s?.layers,
   };
 }
 
@@ -215,7 +227,7 @@ interface SectionMeta { id: Section; label: string; emoji: string; description: 
 const SECTIONS: SectionMeta[] = [
   { id: "overview",    label: "Base",        emoji: "🏰", description: "Base Overview — upgrade, shield, edit, stats" },
   { id: "build",       label: "Edit Base",   emoji: "🛠️", description: "Unified editor — place, move, rotate, skyboxes" },
-  { id: "rooms",       label: "Rooms",       emoji: "🚪", description: "Build & decorate interiors with the same editor" },
+  { id: "rooms",       label: "Floorplan",   emoji: "🚪", description: "Connected HQ — rooms, hallways, expand" },
   { id: "defenders",   label: "Garrison",    emoji: "🛡️", description: "Station defenders on your grounds" },
   { id: "defenses",    label: "Upgrades",    emoji: "⬆️", description: "Base upgrade ladder & buyable shields" },
   { id: "world",       label: "World Map",   emoji: "🗺️", description: "Conquer AI castles & raid rival bases" },
@@ -593,7 +605,86 @@ export async function handleHqHubComponent(
   // Switch room / theme (persisted).
   if (action === "room" && interaction.isStringSelectMenu()) {
     await updateHq(guildId, userId, { activeRoomId: interaction.values[0]! }).catch(() => {});
+    // Keep floorplan focus in sync when jumping via legacy room id.
+    const fp = focusZone(await loadFloorplan(guildId, userId), interaction.values[0]!);
+    await saveFloorplan(guildId, userId, fp).catch(() => {});
     await interaction.update(await buildView(interaction, "rooms", [])).catch(() => {});
+    return;
+  }
+  if (action === "fp-focus" && interaction.isStringSelectMenu()) {
+    const zoneId = interaction.values[0]!;
+    let fp = focusZone(await loadFloorplan(guildId, userId), zoneId);
+    await saveFloorplan(guildId, userId, fp).catch(() => {});
+    const z = getFocusZone(fp);
+    if (z.roomTypeId !== "hallway" && !z.roomTypeId.startsWith("hallway")) {
+      await updateHq(guildId, userId, { activeRoomId: z.roomTypeId }).catch(() => {});
+    }
+    await interaction.update(await buildView(interaction, "rooms", [], `Focused **${z.name}**.`)).catch(() => {});
+    return;
+  }
+  if (action === "fp-expand" && interaction.isStringSelectMenu()) {
+    const expId = interaction.values[0]!;
+    let fp = await loadFloorplan(guildId, userId);
+    const progress = await snapshotProgress(guildId, userId);
+    const ok = availableExpansions(fp, progress).some(e => e.id === expId);
+    if (ok) {
+      fp = claimExpansion(fp, expId);
+      await saveFloorplan(guildId, userId, fp).catch(() => {});
+      const z = getFocusZone(fp);
+      if (z.roomTypeId !== "hallway") {
+        await updateHq(guildId, userId, { activeRoomId: z.roomTypeId }).catch(() => {});
+      }
+      await interaction.update(await buildView(interaction, "rooms", [], `Expanded HQ — **${z.name}** connected with a door.`)).catch(() => {});
+    } else {
+      await interaction.update(await buildView(interaction, "rooms", [], "That wing isn't unlocked yet.")).catch(() => {});
+    }
+    return;
+  }
+  if ((action === "fp-door" || action === "fp-arch") && interaction.isButton()) {
+    let fp = await loadFloorplan(guildId, userId);
+    const focus = getFocusZone(fp);
+    const others = listUnlockedZones(fp).filter(z => z.id !== focus.id);
+    let placed = false;
+    const kind = action === "fp-arch" ? "archway" as const : "door" as const;
+    for (const other of others) {
+      const shared = sharedEdges(focus.rect, other.rect);
+      if (!shared.length) continue;
+      // Prefer an edge that isn't already an opening
+      const key = shared.find(k => !fp.openings.some(o => o.key === k)) ?? shared[0]!;
+      fp = placeOpening(fp, key, kind, focus.id, other.id);
+      placed = true;
+      await saveFloorplan(guildId, userId, fp).catch(() => {});
+      await interaction.update(await buildView(
+        interaction, "rooms", [],
+        `Added **${kind}** between **${focus.name}** and **${other.name}**.`,
+      )).catch(() => {});
+      break;
+    }
+    if (!placed) {
+      await interaction.update(await buildView(
+        interaction, "rooms", [],
+        "No shared wall with a neighbour — expand a wing adjacent to this room first.",
+      )).catch(() => {});
+    }
+    return;
+  }
+  if (action === "fp-wall" && interaction.isButton()) {
+    let fp = await loadFloorplan(guildId, userId);
+    const focus = getFocusZone(fp);
+    // Interior divider: a short wall run down the middle of the focused zone.
+    const r = focus.rect;
+    const midX = r.x + Math.floor(r.w / 2);
+    for (let y = r.y + 1; y < r.y + r.h - 1; y++) {
+      fp = placeWall(fp, edgeNearCell(midX, y, "v"), { kind: "interior", styleId: "wood" });
+    }
+    // Leave a door gap in the middle of the divider
+    const gapY = r.y + Math.floor(r.h / 2);
+    fp = placeOpening(fp, edgeNearCell(midX, gapY, "v"), "door", focus.id, focus.id);
+    await saveFloorplan(guildId, userId, fp).catch(() => {});
+    await interaction.update(await buildView(
+      interaction, "rooms", [],
+      `Placed **interior walls** with a doorway inside **${focus.name}**.`,
+    )).catch(() => {});
     return;
   }
   if (action === "theme" && interaction.isStringSelectMenu()) {
@@ -833,6 +924,7 @@ async function buildRenderView(
     }
   }
 
+  const skybox = resolveSkybox(style.skyboxId);
   return {
     ownerName, displayTitle: hqDisplayTitle(hq, ownerName), ownerAvatarUrl, theme, wall, floor,
     wallSprite: spriteForPrefix(wall.spritePrefix, "wall"),
@@ -843,6 +935,8 @@ async function buildRenderView(
     cursor: cursor ? cursorOverlay(cursor) : null,
     backdropSprite, wallsOff: !!style.wallsOff, glassOff: !!style.glassOff,
     companion: companionRenderFor(hq), visitors: visitorCount(hq.hqLevel),
+    skybox,
+    roomId: room.id,
   };
 }
 
@@ -853,6 +947,42 @@ async function renderRoomImage(view: HqRenderView): Promise<AttachmentBuilder | 
 
 async function renderBaseImage(view: HqBaseView): Promise<AttachmentBuilder | null> {
   const buf = await renderBase(view).catch(() => null);
+  return buf ? new AttachmentBuilder(buf, { name: HQ_FILE }) : null;
+}
+
+async function renderFloorplanImage(
+  guildId: string, userId: string, ownerName: string, ownerAvatarUrl: string | null, hq: PlayerHq,
+): Promise<AttachmentBuilder | null> {
+  let fp = await loadFloorplan(guildId, userId);
+  const owned = await getUnlockedItemIds(guildId, userId).catch(() => new Set<string>());
+  const ownedRooms = new Set(unlockedRooms(owned).map(r => r.id));
+  fp = syncZoneUnlocks(fp, ownedRooms);
+  // Auto-claim expansion parcels for room types the player has unlocked.
+  for (const exp of FLOORPLAN_EXPANSIONS) {
+    if (ownedRooms.has(exp.roomTypeId) && !fp.claimedExpansions.includes(exp.id)) {
+      fp = claimExpansion(fp, exp.id);
+    }
+  }
+  await saveFloorplan(guildId, userId, fp).catch(() => {});
+  const theme = resolveTheme(hq.themeId);
+  const skybox = resolveSkybox(readHqStats(hq).skyboxId);
+  const focus = getFocusZone(fp);
+  const links = describeConnections(fp);
+  const buf = await renderFloorplan({
+    ownerName,
+    ownerAvatarUrl,
+    displayTitle: hqDisplayTitle(hq, ownerName),
+    subtitle: `Floorplan · ${focus.emoji} ${focus.name}`,
+    theme,
+    roomEmoji: "🚪",
+    roomName: "HQ Floorplan",
+    hqLevel: hq.hqLevel,
+    floorplan: fp,
+    skybox,
+    statusLine: links.length
+      ? `Connections: ${links.slice(0, 3).join(" · ")}`
+      : "Build wings · connect rooms with doors · expand your HQ",
+  }).catch(() => null);
   return buf ? new AttachmentBuilder(buf, { name: HQ_FILE }) : null;
 }
 
@@ -1034,6 +1164,8 @@ async function buildView(
           guildId, userId, interaction.user.username, interaction.user.displayAvatarURL(), hq, false, cur));
   } else if (section === "overview" || section === "defenders" || section === "defenses") {
     file = await renderBaseImage(await buildBaseRenderView(guildId, userId, interaction.user.username, interaction.user.displayAvatarURL(), hq));
+  } else if (section === "rooms") {
+    file = await renderFloorplanImage(guildId, userId, interaction.user.username, interaction.user.displayAvatarURL(), hq);
   } else {
     file = await renderRoomImage(await buildRenderView(guildId, userId, interaction.user.username, interaction.user.displayAvatarURL(), hq));
   }
@@ -1579,42 +1711,77 @@ async function buildView(
     }
 
     case "rooms": {
-      // Room Blueprints — same editing engine as outdoors (mockups 04–05).
-      const bonusLines = room.bonuses.map(b => `• **${b.label}:** ${b.value}`).join("\n");
-      embed.setTitle(`🚪 Rooms · ${room.emoji} ${room.name}`)
+      // Connected HQ floorplan — zones joined by doors/hallways, expandable wings.
+      let fp = await loadFloorplan(guildId, userId);
+      const ownedRooms = new Set(unlockedRooms(owned).map(r => r.id));
+      fp = syncZoneUnlocks(fp, ownedRooms);
+      const focus = getFocusZone(fp);
+      const focusRoom = resolveRoom(focus.roomTypeId === "hallway" ? hq.activeRoomId : focus.roomTypeId);
+      const links = describeConnections(fp);
+      const progress = await snapshotProgress(guildId, userId).catch(() => null);
+      const expansions = progress ? availableExpansions(fp, progress) : [];
+
+      embed.setTitle(`🚪 HQ Floorplan · Floor ${fp.floor + 1}`)
         .setDescription(
-          `**Room:** ${room.name} · ${room.sizeLabel}\n${room.blurb}\n\n` +
-          "Build interiors with the **same editor** as the outdoor base — walls, floors, " +
-          "furniture, lighting, trophies & defenses. Open **🛠️ Edit Base**, switch the canvas " +
-          "to this room, and place freely (including rooms-inside-rooms via interior walls).",
+          `Design a **connected headquarters** — not isolated boxes.\n` +
+          `Focus: ${focus.emoji} **${focus.name}**` +
+          (focus.unlocked ? "" : " _(locked parcel)_") + `\n\n` +
+          `Add rooms · connect with **doors / archways** · place **interior walls** · expand wings as you progress.\n` +
+          `_Inspired by Sims Build Mode, RimWorld, and Fallout Shelter._`,
         )
         .addFields(
-          { name: "📊 Room bonuses", value: bonusLines || "_none_", inline: false },
+          {
+            name: "🔗 Connections",
+            value: (links.length ? links.map(l => `• ${l}`).join("\n") : "_No doors yet — expand a wing to link rooms._").slice(0, 1024),
+          },
+          {
+            name: "🏠 Zones",
+            value: listUnlockedZones(fp).map(z => {
+              const here = z.id === focus.id ? " · 📍" : "";
+              return `${z.emoji} **${z.name}**${here}`;
+            }).join("\n").slice(0, 1024) || "_none_",
+          },
         );
-      const lines = HQ_ROOMS.map(r => {
-        const open = isRoomUnlocked(r, owned);
-        const here = r.id === room.id ? " · 📍" : "";
-        const bonus = r.bonuses[0] ? ` (${r.bonuses[0].label} ${r.bonuses[0].value})` : "";
-        return `${open ? r.emoji : "🔒"} **${r.name}**${here}${open ? bonus : ` — ${unlockLabel(r.unlock)}`}`;
-      });
-      embed.addFields({ name: "Room Blueprints", value: lines.join("\n").slice(0, 1024) });
+      if (focus.roomTypeId !== "hallway") {
+        const bonusLines = focusRoom.bonuses.map(b => `• **${b.label}:** ${b.value}`).join("\n");
+        embed.addFields({ name: `📊 ${focusRoom.name} bonuses`, value: bonusLines || "_none_" });
+      }
+      const locked = fp.zones.filter(z => !z.unlocked);
+      if (locked.length) {
+        embed.addFields({
+          name: "🔒 Reserved wings",
+          value: locked.slice(0, 8).map(z => `${z.emoji} ${z.name}`).join(" · ").slice(0, 1024),
+        });
+      }
 
-      const open = unlockedRooms(owned);
-      if (open.length > 0) {
+      const zones = listUnlockedZones(fp);
+      if (zones.length > 0) {
         rows.push(new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
-          new StringSelectMenuBuilder().setCustomId("hq-hub:room").setPlaceholder("Enter a room…")
-            .addOptions(open.slice(0, 25).map(r => ({
-              label: r.name, value: r.id,
-              description: `${r.category} · ${r.blurb}`.slice(0, 100),
-              emoji: r.emoji, default: r.id === room.id,
+          new StringSelectMenuBuilder().setCustomId("hq-hub:fp-focus").setPlaceholder("Focus a room / hallway…")
+            .addOptions(zones.slice(0, 25).map(z => ({
+              label: z.name, value: z.id,
+              description: z.roomTypeId === "hallway" ? "Corridor" : resolveRoom(z.roomTypeId).blurb.slice(0, 100),
+              emoji: z.emoji, default: z.id === focus.id,
+            }))),
+        ));
+      }
+      if (expansions.length > 0) {
+        rows.push(new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
+          new StringSelectMenuBuilder().setCustomId("hq-hub:fp-expand").setPlaceholder("Expand HQ — claim a wing…")
+            .addOptions(expansions.slice(0, 25).map(e => ({
+              label: e.label, value: e.id,
+              description: `Adds ${e.roomTypeId} and connects with a door`,
+              emoji: e.emoji,
             }))),
         ));
       }
       rows.push(new ActionRowBuilder<ButtonBuilder>().addComponents(
-        new ButtonBuilder().setCustomId("hq-hub:goto:build:room").setLabel("Edit this room").setEmoji("🛠️").setStyle(ButtonStyle.Primary),
-        new ButtonBuilder().setCustomId("hq-hub:goto:trophy").setLabel("Trophy Hall").setEmoji("🏆").setStyle(ButtonStyle.Secondary),
-        new ButtonBuilder().setCustomId("hq-hub:goto:overview").setLabel("Back to Base").setEmoji("🏰").setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder().setCustomId("hq-hub:fp-door").setLabel("Add Door").setEmoji("🚪").setStyle(ButtonStyle.Primary),
+        new ButtonBuilder().setCustomId("hq-hub:fp-arch").setLabel("Add Archway").setEmoji("🏛️").setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder().setCustomId("hq-hub:fp-wall").setLabel("Interior Walls").setEmoji("🧱").setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder().setCustomId("hq-hub:goto:build:room").setLabel("Decorate Room").setEmoji("🛠️").setStyle(ButtonStyle.Success),
       ));
+      if (notice) embed.addFields({ name: "🧾 Result", value: notice.slice(0, 1024) });
       break;
     }
 

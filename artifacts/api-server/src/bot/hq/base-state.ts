@@ -47,6 +47,8 @@ export interface HqStatsBlob {
   editorCategory?: string;
   /** Selected editor tool/mode. */
   editorMode?: EditorMode;
+  /** Connected HQ floorplan (walls, doors, zones). */
+  floorplan?: import("./defs/floorplan.js").FloorplanState;
 }
 
 export type EditorMode =
@@ -142,6 +144,7 @@ export function readHqStats(hq: PlayerHq): HqStatsBlob {
     layers: s.layers,
     editorCategory: s.editorCategory,
     editorMode: s.editorMode,
+    floorplan: s.floorplan,
   };
 }
 
