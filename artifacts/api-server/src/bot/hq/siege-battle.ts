@@ -59,7 +59,7 @@ export interface SiegeBattleResult {
 // Build a full battle Combatant from an owned card, headlessly — a faithful
 // mirror of battle-manager.buildCombatant but parameterised (no BattleRuntime),
 // with no equipped item (siege cards don't run the prep/item flow).
-function buildSiegeCombatant(
+export function buildSiegeCombatant(
   card: OwnedBattleCard, settings: BattleSettings, guildId: string, ctx: RarityContext,
   side: 0 | 1, ownerId: string, ownerName: string,
 ): Combatant {
@@ -101,6 +101,17 @@ function buildSiegeCombatant(
 const view = (c: Combatant, color: number): SiegeFighterView => ({
   cardId: c.cardId, name: c.cardName, artUrl: c.cardImageUrl, rarityColor: color,
 });
+
+// Build a whole side of the siege as live Combatants (used by the interactive
+// turn-by-turn siege). Defenders can be fortified by the base's defences.
+export function buildSiegeSquad(
+  cards: OwnedBattleCard[], settings: BattleSettings, guildId: string, ctx: RarityContext,
+  side: 0 | 1, ownerId: string, ownerName: string, fortifyPct = 0,
+): Combatant[] {
+  const squad = cards.map(c => buildSiegeCombatant(c, settings, guildId, ctx, side, ownerId, ownerName));
+  if (side === 1 && fortifyPct > 0) for (const c of squad) fortifyDefender(c, fortifyPct);
+  return squad;
+}
 
 // Apply the base's fortification to a defender: harden HP + attack + defence by
 // the bonus %, then refill to the new max so the wall enters the fight at full
