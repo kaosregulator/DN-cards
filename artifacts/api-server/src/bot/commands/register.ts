@@ -5,11 +5,21 @@ import {
 } from "discord.js";
 import { buildAfkCommandJson, buildAfkSetupCommandJson } from "../afk/commands.js";
 import { getRaidFrames } from "../cards/frames.js";
+import {
+  buildMaterialChoices, buildWallpaperChoices, buildCanvasChoices, BUILD_LIMITS,
+} from "../hq/build-options.js";
 
 type AnySlashBuilder = SlashCommandBuilder | SlashCommandOptionsOnlyBuilder | SlashCommandSubcommandsOnlyBuilder;
 
 // Exclusive raid-reward frames, as slash-command choices (value = frame id).
 const RAID_FRAME_CHOICES = getRaidFrames().map(f => ({ name: `${f.emoji} ${f.name}`, value: f.id }));
+
+// /hqbuild choices, derived from the HQ registries so adding a material or a
+// wallpaper never needs a matching edit here.
+const HQ_MATERIAL_CHOICES = buildMaterialChoices();
+const HQ_WALLPAPER_CHOICES = buildWallpaperChoices();
+const HQ_CANVAS_CHOICES = buildCanvasChoices();
+const HQ_BUILD_LIMITS = BUILD_LIMITS;
 
 function cmd(name: string, desc: string, build: (s: SlashCommandBuilder) => AnySlashBuilder) {
   return build(
@@ -73,6 +83,40 @@ function buildLegacyCommands() {
 
     cmd("hqadmin", "Admin: edit a member's Headquarters (unlocks, level, base)", s => s
       .addUserOption(o => o.setName("user").setDescription("The member whose HQ to edit").setRequired(true))),
+
+    // The typed half of the HQ world editor. Shares its cursor and its rules
+    // with /hq → 🛠️ Build, so a shape can be started with the arrow buttons and
+    // finished by typing exact coordinates (or the other way round).
+    cmd("hqbuild", "Build your HQ world — surfaces, water, hills & wallpaper", s => s
+      .addSubcommand(sc => sc.setName("view")
+        .setDescription("Show the build grid with rulers and your cursor")
+        .addStringOption(o => o.setName("where").setDescription("Which space to look at").addChoices(...HQ_CANVAS_CHOICES)))
+      .addSubcommand(sc => sc.setName("place")
+        .setDescription("Stamp a rectangle of ground — paving, water, a hill, a platform")
+        .addStringOption(o => o.setName("material").setDescription("What to paint").addChoices(...HQ_MATERIAL_CHOICES))
+        .addIntegerOption(o => o.setName("x").setDescription("Left edge (see the X ruler)").setMinValue(0).setMaxValue(HQ_BUILD_LIMITS.maxCoord))
+        .addIntegerOption(o => o.setName("y").setDescription("Top edge (see the Y ruler)").setMinValue(0).setMaxValue(HQ_BUILD_LIMITS.maxCoord))
+        .addIntegerOption(o => o.setName("width").setDescription("Tiles across").setMinValue(1).setMaxValue(HQ_BUILD_LIMITS.maxSpan))
+        .addIntegerOption(o => o.setName("height").setDescription("Tiles deep").setMinValue(1).setMaxValue(HQ_BUILD_LIMITS.maxSpan))
+        .addIntegerOption(o => o.setName("lift").setDescription("Height for hills/platforms, depth for water").setMinValue(0).setMaxValue(HQ_BUILD_LIMITS.maxLift))
+        .addStringOption(o => o.setName("where").setDescription("Which space to build on").addChoices(...HQ_CANVAS_CHOICES)))
+      .addSubcommand(sc => sc.setName("remove")
+        .setDescription("Remove the surface at a tile, or one by id")
+        .addIntegerOption(o => o.setName("x").setDescription("Tile X").setMinValue(0).setMaxValue(HQ_BUILD_LIMITS.maxCoord))
+        .addIntegerOption(o => o.setName("y").setDescription("Tile Y").setMinValue(0).setMaxValue(HQ_BUILD_LIMITS.maxCoord))
+        .addIntegerOption(o => o.setName("id").setDescription("Surface id from /hqbuild list").setMinValue(1))
+        .addStringOption(o => o.setName("where").setDescription("Which space").addChoices(...HQ_CANVAS_CHOICES)))
+      .addSubcommand(sc => sc.setName("clear")
+        .setDescription("Bulldoze every built surface in one space")
+        .addStringOption(o => o.setName("where").setDescription("Which space").addChoices(...HQ_CANVAS_CHOICES)))
+      .addSubcommand(sc => sc.setName("list")
+        .setDescription("List everything you've built, with ids")
+        .addStringOption(o => o.setName("where").setDescription("Which space").addChoices(...HQ_CANVAS_CHOICES)))
+      .addSubcommand(sc => sc.setName("wallpaper")
+        .setDescription("Hang a repeating wallpaper on your current room's walls")
+        .addStringOption(o => o.setName("style").setDescription("Which wallpaper").setRequired(true).addChoices(...HQ_WALLPAPER_CHOICES)))
+      .addSubcommand(sc => sc.setName("materials")
+        .setDescription("List every build material and what you've unlocked"))),
 
     cmd("collection_hub", "Browse your collection — filter by rarity, shinies, name & more", s => s
       .addStringOption(o => o.setName("name").setDescription("Jump straight to cards matching this name"))

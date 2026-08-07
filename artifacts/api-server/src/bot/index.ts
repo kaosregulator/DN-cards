@@ -827,6 +827,9 @@ export async function startBot() {
       } else if (cmd === "hqadmin") {
         const { handleHqAdminCommand } = await import("./commands/hq-admin.js");
         await handleHqAdminCommand(interaction);
+      } else if (cmd === "hqbuild") {
+        const { handleHqBuildCommand } = await import("./commands/hq-build.js");
+        await handleHqBuildCommand(interaction);
       } else if (USER_HUB_COMMANDS.has(cmd)) {
         // Flattened player commands (/burn, /daily, …) + standalone player
         // commands that carry their own subcommands (/sets, /rep, …).
@@ -858,7 +861,7 @@ export async function startBot() {
     "battle", "battleadmin", "market", "squad", "raid", "raidadmin",
     "giveaway",
     "whisper", "adminsecret", "echo", "afk", "afksetup", "begin", "show_shiny",
-    "collection_hub", "hq", "hqadmin",
+    "collection_hub", "hq", "hqadmin", "hqbuild",
     "valuehelp", "valuelist", "info_mttv", "giveall", "editpack", "postcalculator",
     "massrole",
   ]);

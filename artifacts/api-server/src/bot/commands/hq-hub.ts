@@ -63,7 +63,7 @@ import {
   reconcileUnlocks, ownedDecorations, unlockedRooms, unlockedThemes,
   isRoomUnlocked, isThemeUnlocked, unlockedWalls, unlockedFloors,
   isWallUnlocked, isFloorUnlocked, unlockedBackdrops, isBackdropUnlocked,
-  ownedCompanions,
+  isWallpaperUnlocked, isSurfaceUnlocked, ownedCompanions,
 } from "../hq/engine.js";
 import {
   resolveCompanion, companionsByRarityDesc, COMPANION_NONE, HQ_COMPANIONS,
@@ -72,6 +72,18 @@ import { resolveTheme, HQ_THEMES } from "../hq/defs/themes.js";
 import { resolveWall, HQ_WALLS } from "../hq/defs/walls.js";
 import { resolveFloor, HQ_FLOORS } from "../hq/defs/floors.js";
 import { resolveBackdrop, HQ_BACKDROPS, DEFAULT_BACKDROP_ID } from "../hq/defs/backdrops.js";
+import {
+  resolveWallpaper, HQ_WALLPAPERS, DEFAULT_WALLPAPER_ID,
+} from "../hq/defs/wallpapers.js";
+import { resolveSurface, getSurfaceById, surfacesFor } from "../hq/defs/surfaces.js";
+import {
+  listTerrain, placeTerrain, removeTerrainAt, clearTerrain, describeFeature,
+  BASE_CANVAS_ID, MAX_FEATURES_PER_CANVAS, MAX_RECT_SPAN, MAX_ELEVATION,
+} from "../hq/terrain.js";
+import {
+  readCursor, saveCursor, clampCursor, cursorLabel,
+  type BuildCursor, type StoredBuild,
+} from "../hq/build-state.js";
 import { resolveRoom, HQ_ROOMS, DEFAULT_ROOM_ID } from "../hq/defs/rooms.js";
 import {
   resolveDecoration, decorationsByRarityDesc, HQ_DECORATIONS,
@@ -82,9 +94,10 @@ import { spriteFor, spriteForPrefix } from "../hq/assets.js";
 import {
   renderHq, renderBase, renderSiege, floorSlot, wallSlot, slotIsWall, slotToTile,
   HQ_WALL_SLOT_BASE, HQ_WALL_ANCHOR_COUNT, HQ_DEFENDER_SLOTS, HQ_BASE_DECO_SLOTS,
+  HQ_GRID, HQ_BASE_GRID,
   type HqRenderView, type HqRenderCard, type HqRenderDeco, type HqRenderDefender,
   type HqBaseView, type HqBaseBuilding, type HqBuildingRole, type SiegePlan,
-  type HqRenderCompanion,
+  type HqRenderCompanion, type HqBuildCursor,
 } from "../hq/render.js";
 import {
   renderWorldMap, type HqWorldView, type WorldMarker,
@@ -92,7 +105,7 @@ import {
 import type { PlayerHq } from "@workspace/db";
 
 const EPHEMERAL = { flags: MessageFlags.Ephemeral } as const;
-const HQ_FILE = "hq.png";
+export const HQ_FILE = "hq.png";
 const MAX_HQ_NAME = 40;
 const MAX_HQ_MOTTO = 80;
 
@@ -149,17 +162,18 @@ function placementLabel(itemId: string): { emoji: string; name: string } {
   return { emoji: d?.emoji ?? "•", name: d?.name ?? baseId };
 }
 
-type Section = "overview" | "trophy" | "defenders" | "world" | "decorations" | "shop" | "rooms" | "theme";
+type Section = "overview" | "trophy" | "defenders" | "world" | "build" | "decorations" | "shop" | "rooms" | "theme";
 interface SectionMeta { id: Section; label: string; emoji: string; description: string }
 const SECTIONS: SectionMeta[] = [
   { id: "overview",    label: "Overview",    emoji: "🏠", description: "Your HQ at a glance" },
   { id: "trophy",      label: "Trophy Hall",  emoji: "🏆", description: "Pin your proudest cards on pedestals" },
   { id: "defenders",   label: "Base",        emoji: "🏰", description: "Your town base — station defenders" },
-  { id: "world",       label: "World Map",   emoji: "🗺️", description: "Raid other players' bases" },
+  { id: "world",       label: "World Map",   emoji: "🗺️", description: "Conquer AI castles & raid rival bases" },
+  { id: "build",       label: "Build",       emoji: "🛠️", description: "Paint surfaces, water, hills & platforms" },
   { id: "decorations", label: "Decorations", emoji: "🎏", description: "Place the cosmetics you've earned" },
   { id: "shop",        label: "Shop",        emoji: "🛒", description: "Buy furniture — rotates daily" },
   { id: "rooms",       label: "Rooms",       emoji: "🚪", description: "Switch & unlock rooms" },
-  { id: "theme",       label: "Style",       emoji: "🎨", description: "Theme, walls & floor" },
+  { id: "theme",       label: "Style",       emoji: "🎨", description: "Theme, wallpaper & floor" },
 ];
 
 // ── Slash entry ───────────────────────────────────────────────────────────────
@@ -306,6 +320,48 @@ export async function handleHqHubComponent(
     return;
   }
 
+  // ── Build mode: a movable cursor on the isometric lattice ──────────────────
+  if (action === "bmove" && interaction.isButton()) {
+    await nudgeCursor(guildId, userId, parts[2]!);
+    await interaction.update(await buildView(interaction, "build", [])).catch(() => {});
+    return;
+  }
+  if (action === "bsize" && interaction.isButton()) {
+    await cycleCursorSize(guildId, userId, parts[2] === "h" ? "h" : "w");
+    await interaction.update(await buildView(interaction, "build", [])).catch(() => {});
+    return;
+  }
+  if (action === "belev" && interaction.isButton()) {
+    await cycleCursorElevation(guildId, userId);
+    await interaction.update(await buildView(interaction, "build", [])).catch(() => {});
+    return;
+  }
+  if (action === "bmat" && interaction.isStringSelectMenu()) {
+    await setCursorMaterial(guildId, userId, interaction.values[0]!);
+    await interaction.update(await buildView(interaction, "build", [])).catch(() => {});
+    return;
+  }
+  if (action === "bcanvas" && interaction.isStringSelectMenu()) {
+    await setCursorCanvas(guildId, userId, interaction.values[0]!);
+    await interaction.update(await buildView(interaction, "build", [])).catch(() => {});
+    return;
+  }
+  if (action === "bplace" && interaction.isButton()) {
+    const notice = await placeAtCursor(guildId, userId);
+    await interaction.update(await buildView(interaction, "build", [], notice)).catch(() => {});
+    return;
+  }
+  if (action === "bremove" && interaction.isButton()) {
+    const notice = await removeAtCursor(guildId, userId);
+    await interaction.update(await buildView(interaction, "build", [], notice)).catch(() => {});
+    return;
+  }
+  if (action === "bclear" && interaction.isButton()) {
+    const notice = await clearCanvasAtCursor(guildId, userId);
+    await interaction.update(await buildView(interaction, "build", [], notice)).catch(() => {});
+    return;
+  }
+
   // Decorations: choosing one opens a slot picker so the player decides the
   // layout (which slot, swap into an occupied one) — decorating, not auto-fill.
   if (action === "placedeco" && interaction.isStringSelectMenu()) {
@@ -362,12 +418,12 @@ export async function handleHqHubComponent(
     await interaction.update(await buildView(interaction, "theme", [])).catch(() => {});
     return;
   }
-  // Wallpaper the walls with a (backdrop) scene — reuses the backdrop unlock ledger.
+  // Hang a real repeating wallpaper on the walls.
   if (action === "wallpaper" && interaction.isStringSelectMenu()) {
-    const bd = resolveBackdrop(interaction.values[0]!);
-    if (isBackdropUnlocked(bd, await getUnlockedItemIds(guildId, userId))) {
+    const wp = resolveWallpaper(interaction.values[0]!);
+    if (isWallpaperUnlocked(wp, await getUnlockedItemIds(guildId, userId))) {
       const hq = await getOrCreateHq(guildId, userId);
-      await updateHq(guildId, userId, { stats: { ...readHqStats(hq), wallpaperId: bd.id } }).catch(() => {});
+      await updateHq(guildId, userId, { stats: { ...readHqStats(hq), wallpaperId: wp.id } }).catch(() => {});
     }
     await interaction.update(await buildView(interaction, "theme", [])).catch(() => {});
     return;
@@ -503,25 +559,27 @@ async function loadCtx(guildId: string) {
 // the base's guarding cards (used by the Defenders section and on visits).
 async function buildRenderView(
   guildId: string, userId: string, ownerName: string, ownerAvatarUrl: string | null, hq: PlayerHq,
-  includeDefenders = false,
+  includeDefenders = false, cursor?: BuildCursor,
 ): Promise<HqRenderView> {
   const theme = resolveTheme(hq.themeId);
   const wall = resolveWall(hq.wallId);
   const floor = resolveFloor(hq.floorId);
-  const room = resolveRoom(hq.activeRoomId);
+  // Build mode edits whichever canvas the cursor is on, which may not be the
+  // active room; everything below keys off `room` so the picture matches.
+  const room = resolveRoom(cursor && cursor.canvas !== BASE_ROOM_ID ? cursor.canvas : hq.activeRoomId);
   const style = readHqStats(hq);
   const backdrop = resolveBackdrop(style.backdropId);
   const backdropSprite = backdrop.id === DEFAULT_BACKDROP_ID ? null : spriteForPrefix("backdrop", backdrop.id);
-  // Wallpaper = a scene painted directly onto the wall faces (reuses the backdrop
-  // art). "none" keeps the wall style's own look; otherwise it overrides the
-  // wall texture, so walls-UP can look like the outdoors.
-  const wallpaper = resolveBackdrop(style.wallpaperId);
-  const wallpaperSprite = wallpaper.id === DEFAULT_BACKDROP_ID ? null : spriteForPrefix("backdrop", wallpaper.id);
-  const [{ settings, ctx, displayMap, cards }, displays, placements, defenderMap] = await Promise.all([
+  // Wallpaper = a real repeating covering papered onto the wall faces in iso
+  // perspective. "none" keeps the wall style's own look.
+  const wallpaper = resolveWallpaper(style.wallpaperId);
+  const activeWallpaper = wallpaper.id === DEFAULT_WALLPAPER_ID ? null : wallpaper;
+  const [{ settings, ctx, displayMap, cards }, displays, placements, defenderMap, terrain] = await Promise.all([
     loadCtx(guildId),
     getDisplays(guildId, userId),
     getPlacements(guildId, userId, room.id),
     includeDefenders ? getDefenders(guildId, userId) : Promise.resolve(new Map<number, number>()),
+    listTerrain(guildId, userId, room.id).catch(() => []),
   ]);
 
   const pedestals: (HqRenderCard | null)[] = [];
@@ -577,10 +635,12 @@ async function buildRenderView(
 
   return {
     ownerName, displayTitle: hqDisplayTitle(hq, ownerName), ownerAvatarUrl, theme, wall, floor,
-    wallSprite: wallpaperSprite ?? spriteForPrefix(wall.spritePrefix, "wall"),
+    wallSprite: spriteForPrefix(wall.spritePrefix, "wall"),
     floorSprite: spriteForPrefix(floor.spritePrefix, "tile"),
+    wallpaper: activeWallpaper,
     roomName: room.name, roomEmoji: room.emoji, hqLevel: hq.hqLevel,
-    subtitle, pedestals, decorations, defenders,
+    subtitle, pedestals, decorations, defenders, terrain,
+    cursor: cursor ? cursorOverlay(cursor) : null,
     backdropSprite, wallsOff: !!style.wallsOff, glassOff: !!style.glassOff,
     companion: companionRenderFor(hq), visitors: visitorCount(hq.hqLevel),
   };
@@ -683,11 +743,13 @@ const BASE_BUILDING_ROLES: HqBuildingRole[] = [
 ];
 async function buildBaseRenderView(
   guildId: string, userId: string, ownerName: string, ownerAvatarUrl: string | null, hq: PlayerHq,
+  cursor?: BuildCursor,
 ): Promise<HqBaseView> {
   const theme = resolveTheme(hq.themeId);
-  const [{ settings, ctx, displayMap, cards }, defenderMap] = await Promise.all([
+  const [{ settings, ctx, displayMap, cards }, defenderMap, terrain] = await Promise.all([
     loadCtx(guildId),
     getDefenders(guildId, userId),
+    listTerrain(guildId, userId, BASE_ROOM_ID).catch(() => []),
   ]);
   const basePath = spriteForPrefix("base", "round");
   const defenders: HqRenderDefender[] = [];
@@ -711,7 +773,8 @@ async function buildBaseRenderView(
     ownerName, displayTitle: hqDisplayTitle(hq, ownerName), ownerAvatarUrl, theme,
     roomEmoji: "🏰", roomName: "Base", hqLevel: hq.hqLevel,
     subtitle: capture ? `Base • held by ${capture.heldName}` : `Base • ${defenders.length}/${HQ_DEFENDER_SLOTS} defenders`,
-    buildings, defenders, decorations, captured: !!capture,
+    buildings, defenders, decorations, terrain, captured: !!capture,
+    cursor: cursor ? cursorOverlay(cursor) : null,
     companion: companionRenderFor(hq), visitors: visitorCount(hq.hqLevel),
   };
 }
@@ -754,6 +817,15 @@ async function buildView(
   if (section === "world") {
     world = await loadWorld(guildId, userId);
     file = await renderWorldImage(theme, interaction.user.displayAvatarURL(), hq.hqLevel, world, userId);
+  } else if (section === "build") {
+    // Build mode renders whichever canvas the cursor is parked on, with the
+    // lattice rulers and the selection rectangle overlaid.
+    const cur = await loadCursor(guildId, userId, hq);
+    file = cur.canvas === BASE_ROOM_ID
+      ? await renderBaseImage(await buildBaseRenderView(
+          guildId, userId, interaction.user.username, interaction.user.displayAvatarURL(), hq, cur))
+      : await renderRoomImage(await buildRenderView(
+          guildId, userId, interaction.user.username, interaction.user.displayAvatarURL(), hq, false, cur));
   } else if (section === "defenders") {
     file = await renderBaseImage(await buildBaseRenderView(guildId, userId, interaction.user.username, interaction.user.displayAvatarURL(), hq));
   } else {
@@ -994,6 +1066,77 @@ async function buildView(
       break;
     }
 
+    case "build": {
+      const cur = await loadCursor(guildId, userId, hq);
+      const canvasName = cur.canvas === BASE_ROOM_ID ? "Base grounds" : resolveRoom(cur.canvas).name;
+      const grid = gridFor(cur.canvas);
+      const mat = resolveSurface(cur.materialId);
+      const features = await listTerrain(guildId, userId, cur.canvas).catch(() => []);
+
+      embed.setTitle("🛠️ Build Mode").setDescription(
+        `Paint the ground of **${canvasName}** in rectangles. The picture shows the **X/Y rulers** and a ` +
+        "**live cursor** — move it with the arrows, resize it, pick a material, then **Place**.\n\n" +
+        `📍 Cursor: **${cur.w}×${cur.h}** at **(${cur.x}, ${cur.y})** on a **${grid}×${grid}** grid\n` +
+        `🎨 Brush: ${mat.emoji} **${mat.name}** _(${mat.kind})_` +
+        (mat.kind === "flat" ? "" : ` · height **${cur.elevation || mat.height}**`) +
+        `\n🧱 Built here: **${features.length}** / ${MAX_FEATURES_PER_CANVAS}`,
+      );
+      if (features.length > 0) {
+        embed.addFields({
+          name: "Placed surfaces",
+          value: features.slice(-10).reverse().map(describeFeature).join("\n").slice(0, 1024),
+        });
+      }
+      embed.addFields({
+        name: "⌨️ Prefer typing?",
+        value:
+          "`/hqbuild place` drops the brush at exact coordinates, `/hqbuild remove` clears a tile, " +
+          "`/hqbuild list` prints everything you've built, and `/hqbuild wallpaper` re-papers the walls.",
+      });
+      if (notice) embed.addFields({ name: "🧾 Result", value: notice.slice(0, 1024) });
+
+      rows.push(new ActionRowBuilder<ButtonBuilder>().addComponents(
+        new ButtonBuilder().setCustomId("hq-hub:bmove:left").setEmoji("⬅️").setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder().setCustomId("hq-hub:bmove:up").setEmoji("⬆️").setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder().setCustomId("hq-hub:bmove:down").setEmoji("⬇️").setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder().setCustomId("hq-hub:bmove:right").setEmoji("➡️").setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder().setCustomId("hq-hub:bplace").setLabel("Place").setEmoji("✅").setStyle(ButtonStyle.Success),
+      ));
+      rows.push(new ActionRowBuilder<ButtonBuilder>().addComponents(
+        new ButtonBuilder().setCustomId("hq-hub:bsize:w").setLabel(`W ${cur.w}`).setEmoji("↔️").setStyle(ButtonStyle.Primary),
+        new ButtonBuilder().setCustomId("hq-hub:bsize:h").setLabel(`H ${cur.h}`).setEmoji("↕️").setStyle(ButtonStyle.Primary),
+        new ButtonBuilder().setCustomId("hq-hub:belev").setLabel(`Lift ${cur.elevation}`).setEmoji("⛰️")
+          .setStyle(ButtonStyle.Primary).setDisabled(mat.kind === "flat"),
+        new ButtonBuilder().setCustomId("hq-hub:bremove").setLabel("Remove").setEmoji("🗑️").setStyle(ButtonStyle.Danger),
+        new ButtonBuilder().setCustomId("hq-hub:bclear").setLabel("Clear all").setEmoji("🧹")
+          .setStyle(ButtonStyle.Danger).setDisabled(features.length === 0),
+      ));
+      // Only materials the player has earned or bought — the locked ones are
+      // listed in the Shop's Surfaces aisle instead of teasing them here.
+      const space = cur.canvas === BASE_ROOM_ID ? "outdoor" : "indoor";
+      const brushes = surfacesFor(space).filter(s => isSurfaceUnlocked(s, owned));
+      rows.push(new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
+        new StringSelectMenuBuilder().setCustomId("hq-hub:bmat").setPlaceholder("🎨 Pick a material…")
+          .addOptions(brushes.slice(0, 25).map(s => ({
+            label: s.name.slice(0, 90), value: s.id, emoji: s.emoji,
+            description: s.kind, default: s.id === cur.materialId,
+          }))),
+      ));
+      const canvases = [
+        { id: BASE_ROOM_ID, name: "Base grounds", emoji: "🏰" },
+        ...unlockedRooms(owned).map(r => ({ id: r.id, name: r.name, emoji: r.emoji })),
+      ];
+      rows.push(new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
+        new StringSelectMenuBuilder().setCustomId("hq-hub:bcanvas").setPlaceholder("📐 Choose what to build on…")
+          .addOptions(canvases.slice(0, 25).map(c => ({
+            label: c.name.slice(0, 90), value: c.id, emoji: c.emoji,
+            description: c.id === BASE_ROOM_ID ? `${HQ_BASE_GRID}×${HQ_BASE_GRID} outdoor grid` : `${HQ_GRID}×${HQ_GRID} indoor grid`,
+            default: c.id === cur.canvas,
+          }))),
+      ));
+      break;
+    }
+
     case "decorations": {
       const owns = ownedDecorations(owned);
       const placements = await getPlacements(guildId, userId, room.id);
@@ -1079,17 +1222,21 @@ async function buildView(
       ));
 
       if (aisle === "surfaces") {
-        // Floors & walls — buying grants the style, chosen later in 🎨 Style.
+        // Wallpapers, floors, walls and build materials. Buying grants the
+        // style/brush, applied later in 🎨 Style or 🛠️ Build.
         const surfaces = buyableSurfaces();
         const lines = surfaces.map(s => `${s.emoji} **${s.name}** · ${s.kind} — 💠 **${s.price}**${owned.has(s.id) ? " · ✅ owned" : ""}`);
-        embed.addFields({ name: "🧱 Surfaces — floors & walls", value: lines.join("\n").slice(0, 1024) || "No surfaces for sale." });
+        embed.addFields({
+          name: "🧱 Surfaces — wallpaper, floors, walls & build materials",
+          value: lines.join("\n").slice(0, 1024) || "No surfaces for sale.",
+        });
         const buyable = surfaces.filter(s => !owned.has(s.id));
         if (buyable.length > 0) {
           rows.push(new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
-            new StringSelectMenuBuilder().setCustomId("hq-hub:buysurface").setPlaceholder("Buy a floor or wall…")
+            new StringSelectMenuBuilder().setCustomId("hq-hub:buysurface").setPlaceholder("Buy a surface…")
               .addOptions(buyable.slice(0, 25).map(s => ({
                 label: `${s.name} — ${s.price}`.slice(0, 90), value: s.id,
-                description: `${s.kind} · apply it in 🎨 Style`, emoji: s.emoji,
+                description: `${s.kind} · use it in ${s.usedIn}`.slice(0, 100), emoji: s.emoji,
               }))),
           ));
         }
@@ -1154,12 +1301,12 @@ async function buildView(
     case "theme": {
       const style = readHqStats(hq);
       const backdrop = resolveBackdrop(style.backdropId);
-      const wallpaper = resolveBackdrop(style.wallpaperId);
+      const wallpaper = resolveWallpaper(style.wallpaperId);
       embed.setTitle("🎨 Style").setDescription(
-        "Restyle your whole HQ — the **theme** sets lighting & mood, **floor** reskins the ground, and a " +
-        "**wallpaper** paints a scene right onto the walls (pick an outdoor one to make it *look* like " +
-        "you're outside while the walls stay up). Or toggle the **walls** off entirely and show a " +
-        "**backdrop** behind the room, and hide the display **glass**. New styles unlock as you play.",
+        "Restyle your whole HQ — the **theme** sets lighting & mood, the **floor** reskins the ground, and " +
+        "**wallpaper** hangs a real repeating covering on the walls, complete with dado rail and skirting. " +
+        "Or toggle the **walls** off entirely and show a **backdrop** behind the room, and hide the display " +
+        "**glass**. New styles unlock as you play.",
       );
       const themeLines = HQ_THEMES.map(t => {
         const open = isThemeUnlocked(t, owned);
@@ -1168,7 +1315,7 @@ async function buildView(
       });
       embed.addFields(
         { name: "🎨 Themes", value: themeLines.join("\n").slice(0, 1024) },
-        { name: `🖼️ Wallpaper · ${wallpaper.id === DEFAULT_BACKDROP_ID ? wall.name : wallpaper.name}`, value: styleList(HQ_BACKDROPS, wallpaper.id, b => isBackdropUnlocked(b, owned)), inline: true },
+        { name: `🖼️ Wallpaper · ${wallpaper.id === DEFAULT_WALLPAPER_ID ? wall.name : wallpaper.name}`, value: styleList(HQ_WALLPAPERS, wallpaper.id, w => isWallpaperUnlocked(w, owned)), inline: true },
         { name: `🪵 Floor · ${floor.name}`, value: styleList(HQ_FLOORS, floor.id, f => isFloorUnlocked(f, owned)), inline: true },
         { name: `🌅 Backdrop · ${backdrop.name}`, value: styleList(HQ_BACKDROPS, backdrop.id, b => isBackdropUnlocked(b, owned)), inline: true },
         {
@@ -1197,11 +1344,14 @@ async function buildView(
       // reachable once another category collapses back to its default).
       const styleSelects: { id: string; ph: string; opts: { label: string; value: string; emoji: string; default: boolean }[] }[] = [];
       const openBackdrops = unlockedBackdrops(owned);
-      // Wallpaper reuses the backdrop art — same unlock ledger — but paints it on
-      // the walls. "none" = plain wall. Highest priority (the common ask).
-      if (openBackdrops.length > 1) styleSelects.push({
-        id: "wallpaper", ph: "Wallpaper the walls…",
-        opts: openBackdrops.map(b => ({ label: b.id === DEFAULT_BACKDROP_ID ? "Plain wall" : b.name, value: b.id, emoji: b.emoji, default: b.id === wallpaper.id })),
+      // Wallpaper is the headline restyle, so it gets first claim on a row.
+      const openWallpapers = HQ_WALLPAPERS.filter(w => isWallpaperUnlocked(w, owned));
+      if (openWallpapers.length > 1) styleSelects.push({
+        id: "wallpaper", ph: "Hang wallpaper…",
+        opts: openWallpapers.slice(0, 25).map(w => ({
+          label: w.id === DEFAULT_WALLPAPER_ID ? "Plain wall" : w.name,
+          value: w.id, emoji: w.emoji, default: w.id === wallpaper.id,
+        })),
       });
       if (openBackdrops.length > 1) styleSelects.push({ id: "backdrop", ph: "Backdrop (walls-off)…", opts: openBackdrops.map(b => ({ label: b.name, value: b.id, emoji: b.emoji, default: b.id === backdrop.id })) });
       const openThemes = unlockedThemes(owned);
@@ -1239,7 +1389,141 @@ function activeCapture(state: Awaited<ReturnType<typeof getBaseState>>): { heldB
 
 // Placements under this pseudo-room id decorate the OUTDOOR base (its own grounds
 // layout), separate from the interior rooms.
-const BASE_ROOM_ID = "base";
+const BASE_ROOM_ID = BASE_CANVAS_ID;
+
+// ── Build mode ────────────────────────────────────────────────────────────────
+// The grounds and the interior rooms have different lattice sizes; everything
+// that validates or draws a rectangle asks here rather than hardcoding one.
+function gridFor(canvas: string): number {
+  return canvas === BASE_ROOM_ID ? HQ_BASE_GRID : HQ_GRID;
+}
+
+async function loadCursor(guildId: string, userId: string, hq: PlayerHq): Promise<BuildCursor> {
+  const stored = (hq.stats as { build?: StoredBuild } | null)?.build;
+  // A cursor parked on a room the player can no longer open falls back to the
+  // grounds, which are always available.
+  let canvas = stored?.canvas ?? BASE_ROOM_ID;
+  if (canvas !== BASE_ROOM_ID) {
+    const owned = await getUnlockedItemIds(guildId, userId).catch(() => new Set<string>());
+    if (!isRoomUnlocked(resolveRoom(canvas), owned)) canvas = BASE_ROOM_ID;
+  }
+  return readCursor(stored, canvas, gridFor(canvas));
+}
+
+// The cursor as the renderer's overlay: red when the current brush wouldn't fit,
+// so an invalid placement is visible before the button is pressed.
+function cursorOverlay(cur: BuildCursor): HqBuildCursor {
+  const mat = resolveSurface(cur.materialId);
+  return {
+    x: cur.x, y: cur.y, w: cur.w, h: cur.h,
+    color: mat.kind === "water" ? 0x4aa3ff : mat.kind === "mound" ? 0x7bd06a : 0x2fd4d4,
+    label: cursorLabel(cur),
+    valid: true,
+  };
+}
+
+async function nudgeCursor(guildId: string, userId: string, dir: string): Promise<void> {
+  const hq = await getOrCreateHq(guildId, userId);
+  const cur = await loadCursor(guildId, userId, hq);
+  const moved: BuildCursor = { ...cur };
+  if (dir === "left") moved.x -= 1;
+  else if (dir === "right") moved.x += 1;
+  else if (dir === "up") moved.y -= 1;
+  else if (dir === "down") moved.y += 1;
+  await saveCursor(guildId, userId, clampCursor(moved, gridFor(cur.canvas)));
+}
+
+// Sizes cycle 1→MAX→1 so one button covers grow and reset without a second.
+async function cycleCursorSize(guildId: string, userId: string, axis: "w" | "h"): Promise<void> {
+  const hq = await getOrCreateHq(guildId, userId);
+  const cur = await loadCursor(guildId, userId, hq);
+  const grid = gridFor(cur.canvas);
+  const cap = Math.min(MAX_RECT_SPAN, grid);
+  const next = (cur[axis] % cap) + 1;
+  await saveCursor(guildId, userId, clampCursor({ ...cur, [axis]: next }, grid));
+}
+
+async function cycleCursorElevation(guildId: string, userId: string): Promise<void> {
+  const hq = await getOrCreateHq(guildId, userId);
+  const cur = await loadCursor(guildId, userId, hq);
+  await saveCursor(guildId, userId, { ...cur, elevation: (cur.elevation + 1) % (MAX_ELEVATION + 1) });
+}
+
+async function setCursorMaterial(guildId: string, userId: string, materialId: string): Promise<void> {
+  const mat = getSurfaceById(materialId);
+  if (!mat) return;
+  const owned = await getUnlockedItemIds(guildId, userId).catch(() => new Set<string>());
+  if (!isSurfaceUnlocked(mat, owned)) return;
+  const hq = await getOrCreateHq(guildId, userId);
+  const cur = await loadCursor(guildId, userId, hq);
+  await saveCursor(guildId, userId, { ...cur, materialId });
+}
+
+async function setCursorCanvas(guildId: string, userId: string, canvas: string): Promise<void> {
+  const hq = await getOrCreateHq(guildId, userId);
+  const cur = await loadCursor(guildId, userId, hq);
+  if (canvas !== BASE_ROOM_ID) {
+    const owned = await getUnlockedItemIds(guildId, userId).catch(() => new Set<string>());
+    if (!isRoomUnlocked(resolveRoom(canvas), owned)) return;
+  }
+  await saveCursor(guildId, userId, clampCursor({ ...cur, canvas }, gridFor(canvas)));
+}
+
+async function placeAtCursor(guildId: string, userId: string): Promise<string> {
+  return withHqLock(`hq:build:${guildId}:${userId}`, async () => {
+    const hq = await getOrCreateHq(guildId, userId);
+    const cur = await loadCursor(guildId, userId, hq);
+    const res = await placeTerrain(guildId, userId, cur.canvas, gridFor(cur.canvas), {
+      materialId: cur.materialId, x: cur.x, y: cur.y, w: cur.w, h: cur.h, elevation: cur.elevation,
+    });
+    if (!res.ok) return `❌ ${res.reason}`;
+    return `✅ Placed ${describeFeature(res.feature)}.`;
+  });
+}
+
+async function removeAtCursor(guildId: string, userId: string): Promise<string> {
+  return withHqLock(`hq:build:${guildId}:${userId}`, async () => {
+    const hq = await getOrCreateHq(guildId, userId);
+    const cur = await loadCursor(guildId, userId, hq);
+    const removed = await removeTerrainAt(guildId, userId, cur.canvas, cur.x, cur.y);
+    return removed
+      ? `🗑️ Removed ${describeFeature(removed)}.`
+      : `Nothing built at **(${cur.x}, ${cur.y})**.`;
+  });
+}
+
+/**
+ * Render one build canvas with the cursor overlaid — the shared picture behind
+ * both the visual Build section and every `/hqbuild` reply, so the two halves of
+ * the editor can never drift apart visually.
+ */
+export async function renderBuildCanvas(
+  interaction: HubInteraction, canvas: string, cursor: BuildCursor,
+): Promise<AttachmentBuilder | null> {
+  const guildId = interaction.guildId!;
+  const userId = interaction.user.id;
+  const hq = await getOrCreateHq(guildId, userId);
+  const name = interaction.user.username;
+  const avatar = interaction.user.displayAvatarURL();
+  return canvas === BASE_ROOM_ID
+    ? renderBaseImage(await buildBaseRenderView(guildId, userId, name, avatar, hq, cursor))
+    : renderRoomImage(await buildRenderView(guildId, userId, name, avatar, hq, false, cursor));
+}
+
+/** Persist an HQ's wallpaper choice (shared with `/hqbuild wallpaper`). */
+export async function setHqWallpaper(guildId: string, userId: string, wallpaperId: string): Promise<void> {
+  const hq = await getOrCreateHq(guildId, userId);
+  await updateHq(guildId, userId, { stats: { ...readHqStats(hq), wallpaperId } }).catch(() => {});
+}
+
+async function clearCanvasAtCursor(guildId: string, userId: string): Promise<string> {
+  return withHqLock(`hq:build:${guildId}:${userId}`, async () => {
+    const hq = await getOrCreateHq(guildId, userId);
+    const cur = await loadCursor(guildId, userId, hq);
+    const n = await clearTerrain(guildId, userId, cur.canvas);
+    return n > 0 ? `🧹 Cleared **${n}** built surface${n === 1 ? "" : "s"}.` : "Nothing to clear here.";
+  });
+}
 
 // ── Base siege (attack/capture mini-game) ─────────────────────────────────────
 // "cinematic" plays the landscape opening film (camera arrives, gates open, the
@@ -2281,7 +2565,7 @@ async function buySurface(guildId: string, userId: string, id: string): Promise<
     await addShards(guildId, userId, s.price).catch(() => {}); // refund the race
     return `You already own ${s.emoji} ${s.name} — no charge.`;
   }
-  return `✅ Bought ${s.emoji} **${s.name}** for 💠 ${s.price}! Apply it from **🎨 Style**.`;
+  return `✅ Bought ${s.emoji} **${s.name}** for 💠 ${s.price}! Use it from **${s.usedIn}**.`;
 }
 
 // ── Mystery crate (shard sink → a random furniture piece) ──────────────────────

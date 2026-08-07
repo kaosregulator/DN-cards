@@ -28,6 +28,8 @@ import { HQ_THEMES, DEFAULT_THEME_ID, type HqTheme } from "./defs/themes.js";
 import { HQ_WALLS, DEFAULT_WALL_ID, type HqWall } from "./defs/walls.js";
 import { HQ_FLOORS, DEFAULT_FLOOR_ID, type HqFloor } from "./defs/floors.js";
 import { HQ_BACKDROPS, DEFAULT_BACKDROP_ID, type HqBackdrop } from "./defs/backdrops.js";
+import { HQ_WALLPAPERS, DEFAULT_WALLPAPER_ID, type HqWallpaper } from "./defs/wallpapers.js";
+import { HQ_SURFACES, type HqSurface } from "./defs/surfaces.js";
 import { HQ_COMPANIONS, type HqCompanion } from "./defs/companions.js";
 import { getUnlockedItemIds, grantUnlock, getOrCreateHq, updateHq } from "./db.js";
 
@@ -113,6 +115,20 @@ export function isBackdropUnlocked(bd: HqBackdrop, owned: Set<string>): boolean 
 }
 export function unlockedBackdrops(owned: Set<string>): HqBackdrop[] {
   return HQ_BACKDROPS.filter(b => isBackdropUnlocked(b, owned));
+}
+// Wallpapers and build materials follow the same contract: the default is always
+// available, everything else is earned or bought into the ledger.
+export function isWallpaperUnlocked(wp: HqWallpaper, owned: Set<string>): boolean {
+  return wp.id === DEFAULT_WALLPAPER_ID || isUnlocked(wp.unlock, wp.id, owned);
+}
+export function unlockedWallpapers(owned: Set<string>): HqWallpaper[] {
+  return HQ_WALLPAPERS.filter(w => isWallpaperUnlocked(w, owned));
+}
+export function isSurfaceUnlocked(s: HqSurface, owned: Set<string>): boolean {
+  return isUnlocked(s.unlock, s.id, owned);
+}
+export function unlockedSurfaces(owned: Set<string>): HqSurface[] {
+  return HQ_SURFACES.filter(s => isSurfaceUnlocked(s, owned));
 }
 // Companions are earned like decorations (no "always" default — you start with
 // no pet); ownership is entirely the ledger.

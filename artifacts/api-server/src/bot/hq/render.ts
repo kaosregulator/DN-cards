@@ -44,6 +44,7 @@ import type { HqWall } from "./defs/walls.js";
 import type { HqFloor } from "./defs/floors.js";
 import type { DecoCategory } from "./defs/decorations.js";
 import type { CompanionKind } from "./defs/companions.js";
+import { HQ_GRID, HQ_BASE_GRID } from "./grid.js";
 
 export type { HqHeaderInfo };
 
@@ -55,7 +56,7 @@ const HEADER_H = HQ_HEADER_H;
 // floor tile (i,j) is the diamond between (i,j),(i+1,j),(i+1,j+1),(i,j+1).
 // The room is deliberately large (an 8×8 hall) so it reads like a proper
 // decoratable space — a "mini-Sims" room, not a diorama.
-const GRID = 8;
+const GRID = HQ_GRID;
 const TILE_W = 116, TILE_H = 58;   // full diamond width/height (2:1 iso)
 const ORIGIN_X = W / 2, ORIGIN_Y = 176; // screen position of lattice corner (0,0)
 const WALL_H = 168;
@@ -179,7 +180,7 @@ export interface HqBaseView extends HqHeaderInfo {
 //   • wall anchor i       → slot = WALL_SLOT_BASE + i
 // The renderer decodes the slot back to a screen position; the hub builds the
 // same encoding when the player picks a tile/wall spot.
-export const HQ_GRID = GRID;
+export { HQ_GRID, HQ_BASE_GRID };
 export const HQ_WALL_SLOT_BASE = 100;
 // Wall-art anchors are DERIVED from the two wall faces so they scale with the
 // room. Each face gets evenly-spaced spots at ~55% up the wall — a big room means
@@ -299,7 +300,7 @@ const CASTLE_W = 150, CASTLE_H = 138;
 // The outdoor build lattice: a GRID×GRID iso grid laid over the island's top
 // face so the SAME rectangle editor works on the grounds as inside a room.
 // (0,0) is the island's back corner; the grid spans the full diamond.
-const BASE_GRID = 10;
+const BASE_GRID = HQ_BASE_GRID;
 const BASE_TILE_W = (ISLAND_HW * 2) / BASE_GRID;
 const BASE_TILE_H = (ISLAND_HH * 2) / BASE_GRID;
 function baseProject(gx: number, gy: number): Pt {
@@ -310,7 +311,6 @@ function baseProject(gx: number, gy: number): Pt {
 }
 const BASE_PROJECTOR: IsoProjector = { project: baseProject, grid: BASE_GRID, tileW: BASE_TILE_W, tileH: BASE_TILE_H };
 export const HQ_BASE_PROJECTOR = BASE_PROJECTOR;
-export const HQ_BASE_GRID = BASE_GRID;
 
 // A siege overlay painted ON the base scene (no separate VS screen): the castle
 // health drains, defeated defenders dim + get an ✕, the attacker champion

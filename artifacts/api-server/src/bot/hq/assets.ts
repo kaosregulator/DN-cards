@@ -27,6 +27,12 @@ interface HqManifest {
 }
 
 function resolveHqDir(): string | null {
+  // An explicit override wins outright, so a deployment can mount an uploaded
+  // art pack outside the repo tree without a rebuild — even when the bundled
+  // pack is also present.
+  const override = process.env["HQ_ASSETS_DIR"];
+  if (override && existsSync(override)) return override;
+
   const candidates: string[] = [];
   // The module-relative path is best in dev/prod ESM, but a non-file import URL
   // (e.g. a CJS/test bundle where import.meta.url is unset) makes new URL()/
@@ -40,46 +46,88 @@ function resolveHqDir(): string | null {
   for (const dir of candidates) {
     if (existsSync(join(dir, "manifest.json"))) return dir;
   }
+  // A directory with art but no manifest is still usable — the by-convention
+  // lookup below finds "<prefix>/<key>.png" on its own. This is what makes
+  // "drop your PNGs in and restart" work with no JSON editing.
+  for (const dir of candidates) {
+    if (existsSync(dir)) return dir;
+  }
   return null;
 }
 
 let _dir: string | null | undefined;
 let _manifest: HqManifest | null | undefined;
 
-function manifest(): { dir: string; manifest: HqManifest } | null {
+function assetDir(): string | null {
   if (_dir === undefined) _dir = resolveHqDir();
-  if (!_dir) return null;
+  return _dir;
+}
+
+function manifest(): { dir: string; manifest: HqManifest } | null {
+  const dir = assetDir();
+  if (!dir) return null;
   if (_manifest === undefined) {
     try {
-      _manifest = JSON.parse(readFileSync(join(_dir, "manifest.json"), "utf8")) as HqManifest;
+      _manifest = JSON.parse(readFileSync(join(dir, "manifest.json"), "utf8")) as HqManifest;
     } catch (err) {
-      logger.debug({ err }, "hq-assets: failed to read manifest");
+      logger.debug({ err }, "hq-assets: no readable manifest (falling back to by-convention paths)");
       _manifest = null;
     }
   }
-  return _manifest ? { dir: _dir, manifest: _manifest } : null;
+  return _manifest ? { dir, manifest: _manifest } : null;
 }
 
-/** True when an HQ asset pack is bundled (gates any "art available" UI/feature). */
+/** True when an HQ asset pack is available (gates any "art available" UI/feature). */
 export function hqAssetsAvailable(): boolean {
-  return manifest() !== null;
+  return assetDir() !== null;
 }
 
-// Resolve a sprite by an explicit asset-pack prefix. Tries the prefixed key
-// first ("<prefix>/<key>"), then a shared bare key ("<key>"). Returns an
-// absolute file path or null. This is the single lookup every visual goes
-// through — walls, floors and furniture each pass their own registry
-// `spritePrefix`, so a bundled/uploaded pack replaces any of them independently
-// with no code change. Ships no manifest → always null → procedural.
+// Image extensions tried when resolving a key by convention, best first.
+const ART_EXTENSIONS = [".png", ".webp", ".jpg", ".jpeg"];
+
+// Resolve a sprite by an explicit asset-pack prefix. Returns an absolute file
+// path or null. This is the single lookup every visual goes through — walls,
+// floors, wallpapers, build materials and furniture each pass their own
+// registry prefix, so an uploaded pack replaces any of them independently with
+// no code change. Nothing found → null → the renderer draws it procedurally.
+//
+// Two resolution strategies, in order:
+//   1. manifest.json, which can map a key to any relative path;
+//   2. BY CONVENTION — "<dir>/<prefix>/<key>.<ext>" then "<dir>/<key>.<ext>".
+// The second is what lets someone drop `surface/pond.png` (or a whole folder of
+// 2D-iso art) into the pack and have it picked up on the next restart without
+// touching any JSON.
 export function spriteForPrefix(prefix: string, key: string): string | null {
+  const dir = assetDir();
+  if (!dir) return null;
+
   const m = manifest();
-  if (!m) return null;
-  const sprites = m.manifest.sprites ?? {};
-  const rel = sprites[`${prefix}/${key}`] ?? sprites[key];
-  if (!rel) return null;
-  const path = join(m.dir, rel);
-  return existsSync(path) ? path : null;
+  if (m) {
+    const sprites = m.manifest.sprites ?? {};
+    const rel = sprites[`${prefix}/${key}`] ?? sprites[key];
+    if (rel) {
+      const path = join(dir, rel);
+      if (existsSync(path)) return path;
+    }
+  }
+
+  const cacheKey = `${prefix}/${key}`;
+  const cached = _pathCache.get(cacheKey);
+  if (cached !== undefined) return cached;
+  let found: string | null = null;
+  for (const stem of [join(dir, prefix, key), join(dir, key)]) {
+    for (const ext of ART_EXTENSIONS) {
+      if (existsSync(stem + ext)) { found = stem + ext; break; }
+    }
+    if (found) break;
+  }
+  _pathCache.set(cacheKey, found);
+  return found;
 }
+
+// Convention lookups hit the filesystem, and a render asks for dozens of keys
+// per frame — remember the answer (including "not found") for the process.
+const _pathCache = new Map<string, string | null>();
 
 // Resolve a sprite for a theme (decoration art keyed by the theme prefix).
 export function spriteFor(theme: HqTheme, key: string): string | null {
