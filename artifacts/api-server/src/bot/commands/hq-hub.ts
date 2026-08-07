@@ -1245,19 +1245,25 @@ const SIEGE_MOVES = ["Siege Strike", "Breach", "Overrun", "Vanguard Charge", "Fi
 // (or null) to surface at the top of the World map. Best-effort — a failed pay
 // never blocks the view.
 async function collectHoldTribute(guildId: string, userId: string): Promise<string | null> {
-  const held = await getHeldBases(guildId, userId).catch(() => []);
-  if (held.length === 0) return null;
-  const now = new Date();
-  let total = 0;
-  const collectedOwners: string[] = [];
-  for (const b of held) {
-    const owed = tributeOwed(b.since, now);
-    if (owed > 0) { total += owed; collectedOwners.push(b.ownerId); }
-  }
-  if (total <= 0) return null;
-  await addShards(guildId, userId, total).catch(() => {});
-  await markTributesCollected(guildId, userId, collectedOwners, now).catch(() => {});
-  return `💠 **+${total}** hold-tribute collected from **${collectedOwners.length}** held base${collectedOwners.length === 1 ? "" : "s"} (+${TRIBUTE_PER_HOUR}/hr each).`;
+  // Reading owed tribute and advancing its clock is a read-modify-write
+  // sequence. Serialize it per holder so rapid World-map opens cannot both
+  // mint the same interval. Do not advance the clocks if the currency write
+  // fails; the holder can retry instead of silently losing tribute.
+  return withHqLock(`hq:tribute:${guildId}:${userId}`, async () => {
+    const held = await getHeldBases(guildId, userId).catch(() => []);
+    if (held.length === 0) return null;
+    const now = new Date();
+    let total = 0;
+    const collectedOwners: string[] = [];
+    for (const b of held) {
+      const owed = tributeOwed(b.since, now);
+      if (owed > 0) { total += owed; collectedOwners.push(b.ownerId); }
+    }
+    if (total <= 0) return null;
+    await addShards(guildId, userId, total);
+    await markTributesCollected(guildId, userId, collectedOwners, now);
+    return `💠 **+${total}** hold-tribute collected from **${collectedOwners.length}** held base${collectedOwners.length === 1 ? "" : "s"} (+${TRIBUTE_PER_HOUR}/hr each).`;
+  });
 }
 
 // Human "2d 3h", "4h 12m", "37m" from seconds — for reign durations.
