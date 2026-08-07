@@ -2012,7 +2012,9 @@ async function launchTerritorySiege(
   const poolCards = await buildAttackerCards(guildId, attackerId, cx.ctx, SIEGE_COLUMN_POOL).catch(() => attackerCards);
   const attackerPool = buildSiegeSquad(poolCards, settings, guildId, cx.ctx, 0, attackerId, attackerName);
   const attackers = attackerPool.slice(0, garrison.length);
-  const defenders = buildSiegeSquad(garrison, settings, guildId, cx.ctx, 1, `world:${nodeId}`, defenderName);
+  // "AI" as the garrison owner so the battle embed tags the defenders as 🤖 AI
+  // (combatantField special-cases it) instead of showing a raw world node id.
+  const defenders = buildSiegeSquad(garrison, settings, guildId, cx.ctx, 1, "AI", defenderName);
 
   await startSiege(interaction, {
     guildId, targetKey: `hq:world:${guildId}:${nodeId}`,
