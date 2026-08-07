@@ -35,7 +35,11 @@ import {
   getDefenders, setDefender, clearDefender, getGuildBases,
   getBaseState, applySiegeToBase, logSiege, recentAttackCount, reclaimBase,
   getConquestLeaders, getHeldBases, markTributesCollected, getReignLeaders,
+  setBaseShield,
 } from "../hq/db.js";
+import {
+  computeFortification, baseTier, nextBaseTier, SHIELD_PRODUCTS, shieldProduct,
+} from "../hq/fortify.js";
 import {
   shopRotation, formatRefreshIn,
   SHOP_AISLES, purchasableInAisle, shopPriceFor,
@@ -45,7 +49,11 @@ import {
   resolveSiege, SIEGE_SHIELD_MS, SIEGE_COOLDOWN_MS, SIEGE_MAX_PER_WINDOW,
   tributeOwed, TRIBUTE_PER_HOUR, type SiegeCombatant,
 } from "../hq/siege.js";
-import { simulateSiegeBattle, type SiegeBattleResult } from "../hq/siege-battle.js";
+import { simulateSiegeBattle, buildSiegeSquad, type SiegeBattleResult } from "../hq/siege-battle.js";
+import {
+  startLiveSiege, handleLiveSiegeComponent, LIVE_SIEGE_IMAGE,
+  type LiveSiegeConfig, type LiveSiegeOutcome, type LiveSiegeResultView,
+} from "../hq/live-siege.js";
 import {
   listTerritories, captureTerritory, markTerritoryAttacked, getHeldTerritories,
   markTerritoryTributesCollected, territoryTributeOwed, buildGarrison, holderLabel,
@@ -116,10 +124,25 @@ type HubInteraction =
 
 // Player-set personalization lives in the additive `stats` jsonb — no schema
 // change. `title` renames the HQ banner; `motto` is a short tagline in the embed.
-interface HqStats { title?: string; motto?: string; backdropId?: string; wallpaperId?: string; wallsOff?: boolean; glassOff?: boolean; companionId?: string }
+interface HqStats { title?: string; motto?: string; backdropId?: string; wallpaperId?: string; wallsOff?: boolean; glassOff?: boolean; companionId?: string; baseTier?: number }
 function readHqStats(hq: PlayerHq): HqStats {
   const s = hq.stats as HqStats | null | undefined;
-  return { title: s?.title, motto: s?.motto, backdropId: s?.backdropId, wallpaperId: s?.wallpaperId, wallsOff: s?.wallsOff, glassOff: s?.glassOff, companionId: s?.companionId };
+  return { title: s?.title, motto: s?.motto, backdropId: s?.backdropId, wallpaperId: s?.wallpaperId, wallsOff: s?.wallsOff, glassOff: s?.glassOff, companionId: s?.companionId, baseTier: s?.baseTier };
+}
+
+// A base's live fortification (its upgrade tier + the defensive structures it has
+// built on the grounds), as the % that hardens its garrison in a siege. Derived,
+// never stored. Best-effort — any failure means "unfortified" (0%).
+async function baseFortification(guildId: string, userId: string): Promise<ReturnType<typeof computeFortification>> {
+  try {
+    const [features, hq] = await Promise.all([
+      listTerrain(guildId, userId, BASE_CANVAS_ID).catch(() => []),
+      getOrCreateHq(guildId, userId),
+    ]);
+    return computeFortification(features, readHqStats(hq).baseTier);
+  } catch {
+    return computeFortification([], 0);
+  }
 }
 function hqDisplayTitle(hq: PlayerHq, ownerName: string): string {
   const t = readHqStats(hq).title?.trim();
@@ -162,12 +185,13 @@ function placementLabel(itemId: string): { emoji: string; name: string } {
   return { emoji: d?.emoji ?? "•", name: d?.name ?? baseId };
 }
 
-type Section = "overview" | "trophy" | "defenders" | "world" | "build" | "decorations" | "shop" | "rooms" | "theme";
+type Section = "overview" | "trophy" | "defenders" | "defenses" | "world" | "build" | "decorations" | "shop" | "rooms" | "theme";
 interface SectionMeta { id: Section; label: string; emoji: string; description: string }
 const SECTIONS: SectionMeta[] = [
   { id: "overview",    label: "Overview",    emoji: "🏠", description: "Your HQ at a glance" },
   { id: "trophy",      label: "Trophy Hall",  emoji: "🏆", description: "Pin your proudest cards on pedestals" },
   { id: "defenders",   label: "Base",        emoji: "🏰", description: "Your town base — station defenders" },
+  { id: "defenses",    label: "Defenses",    emoji: "🛡️", description: "Upgrade your base, build walls & buy shields" },
   { id: "world",       label: "World Map",   emoji: "🗺️", description: "Conquer AI castles & raid rival bases" },
   { id: "build",       label: "Build",       emoji: "🛠️", description: "Paint surfaces, water, hills & platforms" },
   { id: "decorations", label: "Decorations", emoji: "🎏", description: "Place the cosmetics you've earned" },
@@ -215,6 +239,9 @@ export async function handleHqHubComponent(
   const action = parts[1] ?? "select";
   const guildId = interaction.guildId;
   const userId = interaction.user.id;
+
+  // Interactive turn-by-turn siege runs its own session/board.
+  if (action === "ls") { await handleLiveSiegeComponent(interaction); return; }
 
   // Open a featured card's detail (works in both own & visit views) → ephemeral.
   if (action === "open" && interaction.isStringSelectMenu()) {
@@ -317,6 +344,39 @@ export async function handleHqHubComponent(
     const cap = activeCapture(await getBaseState(guildId, userId));
     if (cap && !(cap.shieldUntil && cap.shieldUntil.getTime() > Date.now())) await reclaimBase(guildId, userId).catch(() => {});
     await interaction.update(await buildView(interaction, "defenders", [])).catch(() => {});
+    return;
+  }
+  // ── Base upgrades + shields (the 🛡️ Defenses panel) ─────────────────────────
+  if (action === "upgrade" && interaction.isButton()) {
+    const hq = await getOrCreateHq(guildId, userId);
+    const next = nextBaseTier(readHqStats(hq).baseTier);
+    let notice: string;
+    if (!next) {
+      notice = "🏛️ Your base is already fully upgraded.";
+    } else if (!(await spendShards(guildId, userId, next.cost).catch(() => false))) {
+      notice = `💠 Not enough shards — **${next.label}** costs **${next.cost.toLocaleString()}**.`;
+    } else {
+      await updateHq(guildId, userId, { stats: { ...readHqStats(hq), baseTier: next.level } }).catch(() => {});
+      notice = `${next.emoji} Base upgraded to **${next.label}** — garrison fortification is now guaranteed **+${next.fortifyPct}%**.`;
+    }
+    await interaction.update(await buildView(interaction, "defenses", [], notice)).catch(() => {});
+    return;
+  }
+  if (action === "buyshield" && interaction.isButton()) {
+    const product = shieldProduct(parts[2]!);
+    let notice: string;
+    if (!product) {
+      notice = "That shield is no longer available.";
+    } else if (!(await spendShards(guildId, userId, product.cost).catch(() => false))) {
+      notice = `💠 Not enough shards — **${product.label}** costs **${product.cost.toLocaleString()}**.`;
+    } else {
+      const state = await getBaseState(guildId, userId).catch(() => null);
+      const from = Math.max(Date.now(), state?.shieldUntil?.getTime() ?? 0);
+      const until = new Date(from + product.hours * 3_600_000);
+      await setBaseShield(guildId, userId, until).catch(() => {});
+      notice = `🛡️ Shield active until <t:${Math.floor(until.getTime() / 1000)}:R> — your base is locked to attackers.`;
+    }
+    await interaction.update(await buildView(interaction, "defenses", [], notice)).catch(() => {});
     return;
   }
 
@@ -826,7 +886,7 @@ async function buildView(
           guildId, userId, interaction.user.username, interaction.user.displayAvatarURL(), hq, cur))
       : await renderRoomImage(await buildRenderView(
           guildId, userId, interaction.user.username, interaction.user.displayAvatarURL(), hq, false, cur));
-  } else if (section === "defenders") {
+  } else if (section === "defenders" || section === "defenses") {
     file = await renderBaseImage(await buildBaseRenderView(guildId, userId, interaction.user.username, interaction.user.displayAvatarURL(), hq));
   } else {
     file = await renderRoomImage(await buildRenderView(guildId, userId, interaction.user.username, interaction.user.displayAvatarURL(), hq));
@@ -974,6 +1034,62 @@ async function buildView(
             .setStyle(ButtonStyle.Danger).setDisabled(locked),
         ));
       }
+      break;
+    }
+
+    case "defenses": {
+      // The tower-defence + upgrades panel. Fortification (base tier + built
+      // defences) is the % that hardens this base's garrison in a siege.
+      const forti = await baseFortification(guildId, userId);
+      const state = await getBaseState(guildId, userId).catch(() => null);
+      const bal = (await getOrCreateCurrency(guildId, userId).catch(() => ({ shards: 0 }))).shards ?? 0;
+      const next = nextBaseTier(forti.tier.level);
+      const shieldOn = !!state?.shieldUntil && state.shieldUntil.getTime() > Date.now();
+
+      embed.setTitle("🛡️ Base Defenses").setDescription(
+        "Harden your base so its garrison actually **fights back** when raided.\n" +
+        `• **Upgrade** the base for a guaranteed fortification floor.\n` +
+        `• **Build** walls, towers, moats & traps in **🛠️ Build** (on the *Base grounds*) to raise it further.\n` +
+        `• **Buy a shield** to lock out attackers for a while.`,
+      ).addFields(
+        {
+          name: "🏯 Fortification",
+          value: `**+${forti.totalPct}%** to your garrison\n` +
+            `${forti.tier.emoji} ${forti.tier.label} tier: **+${forti.tierPct}%** · 🧱 Built: **+${forti.buildPct}%** (${forti.points} pts)`,
+          inline: false,
+        },
+        { name: "🏰 Base tier", value: `${forti.tier.emoji} **${forti.tier.label}** (Lv ${forti.tier.level})`, inline: true },
+        { name: "🛡️ Shield", value: shieldOn ? `active <t:${Math.floor(state!.shieldUntil!.getTime() / 1000)}:R>` : "_none_", inline: true },
+        { name: "💠 Balance", value: `**${bal.toLocaleString()}**`, inline: true },
+      );
+      if (forti.buildPct === 0) {
+        embed.addFields({ name: "🧱 Tip", value: "Open **🛠️ Build**, switch to the **Base grounds**, and place a **Stone Wall**, **Watchtower**, **Moat** or **Caltrops** — each hardens your garrison." });
+      }
+
+      // Upgrade button (or maxed).
+      const upgradeRow = new ActionRowBuilder<ButtonBuilder>();
+      if (next) {
+        upgradeRow.addComponents(
+          new ButtonBuilder().setCustomId("hq-hub:upgrade")
+            .setLabel(`Upgrade → ${next.label} (+${next.fortifyPct}%) · ${next.cost.toLocaleString()}💠`.slice(0, 80))
+            .setEmoji(next.emoji).setStyle(ButtonStyle.Success).setDisabled(bal < next.cost),
+        );
+      } else {
+        upgradeRow.addComponents(
+          new ButtonBuilder().setCustomId("hq-hub:upgrade").setLabel("Base fully upgraded")
+            .setEmoji("🏛️").setStyle(ButtonStyle.Secondary).setDisabled(true),
+        );
+      }
+      rows.push(upgradeRow);
+
+      // Shield purchase row.
+      rows.push(new ActionRowBuilder<ButtonBuilder>().addComponents(
+        SHIELD_PRODUCTS.map(p => new ButtonBuilder()
+          .setCustomId(`hq-hub:buyshield:${p.id}`)
+          .setLabel(`${p.label} · ${p.cost.toLocaleString()}💠`.slice(0, 80))
+          .setEmoji("🛡️").setStyle(ButtonStyle.Primary).setDisabled(bal < p.cost)),
+      ));
+      if (notice) embed.addFields({ name: "🧾 Result", value: notice.slice(0, 1024) });
       break;
     }
 
@@ -1529,7 +1645,7 @@ async function clearCanvasAtCursor(guildId: string, userId: string): Promise<str
 // "cinematic" plays the landscape opening film (camera arrives, gates open, the
 // army musters, your cards fly in) and THEN the battle; the other three are the
 // original fast paths.
-type SiegeMode = "classic" | "static" | "live" | "cinematic";
+type SiegeMode = "classic" | "static" | "live" | "cinematic" | "turn";
 const SIEGE_FILE = "siege.png", SIEGE_GIF = "siege.gif";
 type LoadedCtx = Awaited<ReturnType<typeof loadCtx>>;
 
@@ -1611,17 +1727,21 @@ async function buildAttackModePicker(guildId: string, attackerId: string, defend
   const cx = await loadCtx(guildId);
   const defenders = await buildDefenderSquad(guildId, defenderId, cx);
   const squad = await buildAttackerSquad(guildId, attackerId, cx, defenders.length);
+  const forti = await baseFortification(guildId, defenderId);
   const yourP = squad.reduce((s, c) => s + c.power, 0), theirP = defenders.reduce((s, c) => s + c.power, 0);
   embed.setDescription(
     `Your strongest **${squad.length}** cards storm **${defenders.length}** stationed defenders in a **real battle** ` +
     "(true stats, moves, specials & passives). Knock out every defender to capture the base.\n\n" +
-    `⚔️ Your strength: **${yourP}**  ·  🛡️ Their defence: **${theirP}**\n\n` +
-    "**Pick how to watch it:**\n" +
-    "• **Cinematic** — the full opening scene, then the battle\n" +
+    `⚔️ Your strength: **${yourP}**  ·  🛡️ Their defence: **${theirP}**` +
+    (forti.totalPct > 0 ? `  ·  🏯 **+${forti.totalPct}%** ${forti.tier.label} fortifications` : "") + "\n\n" +
+    "**Pick how to fight it:**\n" +
+    "• **Turn-by-Turn** — YOU play it, move by move, like /battle\n" +
+    "• **Cinematic** — the full opening scene, then an auto battle\n" +
     "• **Classic** — a text battle report\n• **Static** — a battle image\n• **Live** — an animated battle",
   );
   const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
-    new ButtonBuilder().setCustomId(`hq-hub:siege:${defenderId}:cinematic`).setLabel("Cinematic").setEmoji("🎥").setStyle(ButtonStyle.Success),
+    new ButtonBuilder().setCustomId(`hq-hub:siege:${defenderId}:turn`).setLabel("Turn-by-Turn").setEmoji("⚔️").setStyle(ButtonStyle.Success),
+    new ButtonBuilder().setCustomId(`hq-hub:siege:${defenderId}:cinematic`).setLabel("Cinematic").setEmoji("🎥").setStyle(ButtonStyle.Secondary),
     new ButtonBuilder().setCustomId(`hq-hub:siege:${defenderId}:classic`).setLabel("Classic").setEmoji("📜").setStyle(ButtonStyle.Secondary),
     new ButtonBuilder().setCustomId(`hq-hub:siege:${defenderId}:static`).setLabel("Static").setEmoji("🖼️").setStyle(ButtonStyle.Secondary),
     new ButtonBuilder().setCustomId(`hq-hub:siege:${defenderId}:live`).setLabel("Live").setEmoji("🎬").setStyle(ButtonStyle.Primary),
@@ -1741,7 +1861,7 @@ function outcomeFromPower(r: ReturnType<typeof resolveSiege>, champ: ReturnType<
 }
 
 // Resolve a siege — real battle engine first, power auto-resolve as a safety net.
-async function resolveSiegeOutcome(guildId: string, attackerId: string, attackerName: string, defenderId: string, defenderName: string, cx: LoadedCtx): Promise<SiegeOutcome> {
+async function resolveSiegeOutcome(guildId: string, attackerId: string, attackerName: string, defenderId: string, defenderName: string, cx: LoadedCtx, defenderBonusPct = 0): Promise<SiegeOutcome> {
   try {
     const settings = await getBattleSettings(guildId);
     if (settings.enabled) {
@@ -1749,7 +1869,7 @@ async function resolveSiegeOutcome(guildId: string, attackerId: string, attacker
       if (defenderCards.length > 0) {
         const attackerCards = await buildAttackerCards(guildId, attackerId, cx.ctx, defenderCards.length);
         if (attackerCards.length > 0) {
-          const r = simulateSiegeBattle(attackerCards, defenderCards, settings, guildId, cx.ctx, { attackerId, attackerName, defenderId, defenderName });
+          const r = simulateSiegeBattle(attackerCards, defenderCards, settings, guildId, cx.ctx, { attackerId, attackerName, defenderId, defenderName }, defenderBonusPct);
           return outcomeFromBattle(r, championRender(attackerCards[0], cx));
         }
       }
@@ -1762,7 +1882,117 @@ async function resolveSiegeOutcome(guildId: string, attackerId: string, attacker
   const champ = squad[0]
     ? { slot: 0, cardId: squad[0].cardId, name: squad[0].name, artUrl: squad[0].artUrl, rarityColor: squad[0].rarityColor, basePath: null }
     : null;
-  return outcomeFromPower(resolveSiege(squad, defenders), champ, defenders.length);
+  return outcomeFromPower(resolveSiege(squad, defenders, Math.random, defenderBonusPct), champ, defenders.length);
+}
+
+// ── Interactive (turn-by-turn) siege launchers ───────────────────────────────
+// Build both sides as live combatants, render the base once, and hand off to the
+// live-siege engine with an applyOutcome callback that commits capture/reward and
+// returns the result screen — shared shape for player bases and AI territories.
+async function launchPlayerLiveSiege(
+  interaction: ButtonInteraction, guildId: string, attackerId: string, attackerName: string,
+  defenderId: string, defenderName: string, defHq: PlayerHq, cx: LoadedCtx,
+): Promise<void> {
+  const fail = (msg: string) => interaction.editReply({
+    embeds: [new EmbedBuilder().setColor(0xc0392b).setDescription(`❌ ${msg}`)],
+    components: [backRow("defenders")], files: [],
+  }).then(() => {}).catch(() => {});
+  const settings = await getBattleSettings(guildId);
+  if (!settings.enabled) { await fail("Battles are disabled here — try another siege mode."); return; }
+  const defenderCards = await buildDefenderCards(guildId, defenderId, cx.ctx);
+  if (defenderCards.length === 0) { await fail("This base has no defenders to fight — try another mode."); return; }
+  const attackerCards = await buildAttackerCards(guildId, attackerId, cx.ctx, defenderCards.length);
+  if (attackerCards.length === 0) { await fail("You have no cards to march with. Catch some first."); return; }
+
+  const forti = await baseFortification(guildId, defenderId);
+  const attackers = buildSiegeSquad(attackerCards, settings, guildId, cx.ctx, 0, attackerId, attackerName);
+  const defenders = buildSiegeSquad(defenderCards, settings, guildId, cx.ctx, 1, defenderId, defenderName, forti.totalPct);
+  const baseImage = await renderBase(await buildBaseRenderView(guildId, defenderId, defenderName, null, defHq)).catch(() => null);
+
+  await startLiveSiege(interaction, {
+    guildId, starterId: attackerId, attackerName, targetName: defenderName,
+    accent: 0xc0392b, attackers, defenders, settings, baseImage,
+    applyOutcome: (o) => finalizePlayerLiveSiege(interaction, guildId, attackerId, attackerName, defenderId, o, forti.totalPct),
+  });
+}
+
+async function finalizePlayerLiveSiege(
+  interaction: ButtonInteraction, guildId: string, attackerId: string, attackerName: string,
+  defenderId: string, o: LiveSiegeOutcome, fortiPct: number,
+): Promise<LiveSiegeResultView> {
+  await withHqLock(`hq:siege:${guildId}:${defenderId}`, async () => {
+    await applySiegeToBase(guildId, defenderId, o.attackerWon, attackerId, attackerName, SIEGE_SHIELD_MS).catch(() => {});
+  }).catch(() => {});
+  await logSiege(guildId, attackerId, defenderId, o.attackerWon, o.attackerPower, o.defenderPower, "turn").catch(() => {});
+  const reward = o.attackerWon ? Math.min(300, 60 + Math.round(o.defenderPower / 18)) : 20;
+  await addShards(guildId, attackerId, reward).catch(() => {});
+  void notifySiege(interaction, guildId, defenderId, attackerName, o.attackerWon, reward);
+  return {
+    title: o.attackerWon ? "⚔️ Base Captured!" : "🛡️ Base Defended!",
+    description: o.attackerWon
+      ? `You stormed the base in **${o.rounds}** rounds. You hold it until it's reclaimed — earning **${TRIBUTE_PER_HOUR}💠/hr**.`
+      : `The defenders held the walls after **${o.rounds}** rounds.`,
+    color: o.attackerWon ? 0x4fd06a : 0xc0392b,
+    fields: [
+      { name: "⚔️ Squad power", value: `**${o.attackerPower}**`, inline: true },
+      { name: "🛡️ Defence", value: `**${o.defenderPower}**${fortiPct > 0 ? ` · 🏯 +${fortiPct}%` : ""}`, inline: true },
+      { name: "💠 Loot", value: `**+${reward}** shards`, inline: true },
+    ],
+  };
+}
+
+async function launchTerritoryLiveSiege(
+  interaction: ButtonInteraction, guildId: string, attackerId: string, attackerName: string,
+  nodeId: string, view: WorldTerritoryView, theme: ReturnType<typeof resolveTheme>,
+  garrison: OwnedBattleCard[], attackerCards: OwnedBattleCard[], cx: LoadedCtx,
+): Promise<void> {
+  const settings = await getBattleSettings(guildId);
+  if (!settings.enabled) {
+    await interaction.editReply({ embeds: [new EmbedBuilder().setColor(0xc0392b).setDescription("❌ Battles are disabled — try another mode.")], components: [backRow("world")], files: [] }).catch(() => {});
+    return;
+  }
+  const defenderName = holderLabel(view);
+  const attackers = buildSiegeSquad(attackerCards, settings, guildId, cx.ctx, 0, attackerId, attackerName);
+  const defenders = buildSiegeSquad(garrison, settings, guildId, cx.ctx, 1, `world:${nodeId}`, defenderName);
+  const baseImage = await renderBase(territoryBaseView(view, theme, garrison, cx)).catch(() => null);
+
+  await startLiveSiege(interaction, {
+    guildId, starterId: attackerId, attackerName, targetName: view.territory.name,
+    accent: view.faction.color, attackers, defenders, settings, baseImage,
+    applyOutcome: (o) => finalizeTerritoryLiveSiege(interaction, guildId, attackerId, attackerName, nodeId, view, o),
+  });
+}
+
+async function finalizeTerritoryLiveSiege(
+  interaction: ButtonInteraction, guildId: string, attackerId: string, attackerName: string,
+  nodeId: string, view: WorldTerritoryView, o: LiveSiegeOutcome,
+): Promise<LiveSiegeResultView> {
+  const prof = tierProfile(view.territory.tier);
+  let previousHolder: string | null = null;
+  await withHqLock(`hq:world:${guildId}:${nodeId}`, async () => {
+    if (o.attackerWon) {
+      ({ previousHolder } = await captureTerritory(guildId, nodeId, attackerId, attackerName, WORLD_SHIELD_MS)
+        .catch(() => ({ previousHolder: null })));
+    } else {
+      await markTerritoryAttacked(guildId, nodeId).catch(() => {});
+    }
+  }).catch(() => {});
+  await logSiege(guildId, attackerId, territoryLogKey(nodeId), o.attackerWon, o.attackerPower, o.defenderPower, "turn").catch(() => {});
+  const reward = o.attackerWon ? prof.bounty : Math.round(prof.bounty * 0.12);
+  await addShards(guildId, attackerId, reward).catch(() => {});
+  if (previousHolder && previousHolder !== attackerId) void notifyTerritoryLost(interaction, previousHolder, attackerName, view.territory.name);
+  return {
+    title: o.attackerWon ? `🚩 ${view.territory.name} is yours!` : `🛡️ ${view.territory.name} holds`,
+    description: o.attackerWon
+      ? `You broke the ${holderLabel(view)} garrison in **${o.rounds}** rounds and now hold this ${prof.label.toLowerCase()} — **${prof.tributePerHour}💠/hr**.`
+      : `The ${holderLabel(view)} garrison threw you back after **${o.rounds}** rounds.`,
+    color: o.attackerWon ? 0x4fd06a : view.faction.color,
+    fields: [
+      { name: "⚔️ Squad power", value: `**${o.attackerPower}**`, inline: true },
+      { name: "🛡️ Garrison", value: `**${o.defenderPower}**`, inline: true },
+      { name: "💠 Loot", value: `**+${reward}** shards`, inline: true },
+    ],
+  };
 }
 
 async function runSiege(interaction: ButtonInteraction, guildId: string, attackerId: string, defenderId: string, mode: SiegeMode): Promise<void> {
@@ -1783,6 +2013,13 @@ async function runSiege(interaction: ButtonInteraction, guildId: string, attacke
   const defenderName = readHqStats(defHq).title?.trim() || "the defenders";
 
   const cx = await loadCtx(guildId);
+
+  // Turn-by-turn: hand the assault to the player (its own live board), then bail
+  // out of the auto-resolve path.
+  if (mode === "turn") {
+    await launchPlayerLiveSiege(interaction, guildId, attackerId, attackerName, defenderId, defenderName, defHq, cx);
+    return;
+  }
 
   // The opening film, before anything is resolved — the ride up to the base, the
   // gates opening, the garrison mustering, and the raider's cards flying in.
@@ -1807,7 +2044,10 @@ async function runSiege(interaction: ButtonInteraction, guildId: string, attacke
     }, theme.palette.accent);
   }
 
-  const result = await resolveSiegeOutcome(guildId, attackerId, attackerName, defenderId, defenderName, cx);
+  // The defender's fortification (base tier + built walls/towers/moats) hardens
+  // their garrison — this is where Build mode pays off on defence.
+  const forti = await baseFortification(guildId, defenderId);
+  const result = await resolveSiegeOutcome(guildId, attackerId, attackerName, defenderId, defenderName, cx, forti.totalPct);
 
   // Persist outcome (capture + shield on a win; log either way).
   await applySiegeToBase(guildId, defenderId, result.attackerWon, attackerId, attackerName, SIEGE_SHIELD_MS).catch(() => {});
@@ -1832,7 +2072,7 @@ async function runSiege(interaction: ButtonInteraction, guildId: string, attacke
     )
     .addFields(
       { name: "⚔️ Squad power", value: `**${result.attackerPower}**`, inline: true },
-      { name: "🛡️ Defence power", value: `**${result.defenderPower}**`, inline: true },
+      { name: "🛡️ Defence power", value: `**${result.defenderPower}**${forti.totalPct > 0 ? ` · 🏯 +${forti.totalPct}% fortified` : ""}`, inline: true },
       { name: "💠 Loot", value: `**+${reward}** shards`, inline: true },
     );
 
@@ -1923,11 +2163,12 @@ async function buildTerritoryModePicker(guildId: string, attackerId: string, nod
     return { embeds: [embed], components: [backRow("world")], files: [] as AttachmentBuilder[] };
   }
   embed.addFields({
-    name: "🎬 How do you want to watch it?",
-    value: "**Cinematic** plays the full opening — the ride up to the castle, the gates, your cards arriving — before the battle. The others cut straight to the fight.",
+    name: "⚔️ How do you want to fight it?",
+    value: "**Turn-by-Turn** lets YOU command the assault move by move, like `/battle`. **Cinematic** plays the full opening film, then auto-resolves. The others cut straight to the fight.",
   });
   const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
-    new ButtonBuilder().setCustomId(`hq-hub:wsiege:${nodeId}:cinematic`).setLabel("Cinematic").setEmoji("🎥").setStyle(ButtonStyle.Success),
+    new ButtonBuilder().setCustomId(`hq-hub:wsiege:${nodeId}:turn`).setLabel("Turn-by-Turn").setEmoji("⚔️").setStyle(ButtonStyle.Success),
+    new ButtonBuilder().setCustomId(`hq-hub:wsiege:${nodeId}:cinematic`).setLabel("Cinematic").setEmoji("🎥").setStyle(ButtonStyle.Secondary),
     new ButtonBuilder().setCustomId(`hq-hub:wsiege:${nodeId}:classic`).setLabel("Classic").setEmoji("📜").setStyle(ButtonStyle.Secondary),
     new ButtonBuilder().setCustomId(`hq-hub:wsiege:${nodeId}:static`).setLabel("Static").setEmoji("🖼️").setStyle(ButtonStyle.Secondary),
     new ButtonBuilder().setCustomId(`hq-hub:wsiege:${nodeId}:live`).setLabel("Live").setEmoji("🎬").setStyle(ButtonStyle.Primary),
@@ -2045,6 +2286,12 @@ async function runTerritorySiege(
 
     const theme = resolveTheme((await getOrCreateHq(guildId, attackerId)).themeId);
     const defenderName = holderLabel(view);
+
+    // Turn-by-turn: the player commands the assault on the territory themselves.
+    if (mode === "turn") {
+      await launchTerritoryLiveSiege(interaction, guildId, attackerId, attackerName, nodeId, view, theme, garrison, attackerCards, cx);
+      return;
+    }
 
     // The opening film, before anything is resolved.
     if (mode === "cinematic") {

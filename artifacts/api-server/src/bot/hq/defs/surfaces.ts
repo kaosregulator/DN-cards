@@ -40,6 +40,12 @@ export interface HqSurface {
   // whether the player is editing a room interior or the outdoor grounds.
   indoor?: boolean;
   outdoor?: boolean;
+  // Fortification value: defence points contributed PER TILE when this material
+  // is built on the base grounds (roomId "base"). 0/undefined = decorative only.
+  // This is what makes Build mode a tower-defence layer — walls, towers, moats
+  // and traps harden the garrison in a siege (see hq/fortify.ts). Materials that
+  // aren't defensive simply omit it and stay purely cosmetic.
+  defense?: number;
 }
 
 export const HQ_SURFACES: HqSurface[] = [
@@ -89,7 +95,30 @@ export const HQ_SURFACES: HqSurface[] = [
     unlock: { kind: "always" }, price: 450, indoor: true, outdoor: true },
   { id: "battlement", name: "Battlement", emoji: "🏰", kind: "raised", base: "#cdc7b4", shade: "#948e7c",
     edge: "rgba(50,46,38,0.55)", texture: "checker", height: 3, spriteKey: "surface/battlement",
-    unlock: { kind: "battleWins", n: 25 }, price: 1100, outdoor: true, indoor: true },
+    unlock: { kind: "battleWins", n: 25 }, price: 1100, outdoor: true, indoor: true, defense: 8 },
+
+  // ── Defences (tower-defence pieces — build these on the base grounds) ──────────
+  // These are the pieces that make Build mode matter: stacked on the base, they
+  // harden the garrison in a siege (hq/fortify.ts turns placed area × `defense`
+  // into a fortification %). Outdoor-only — they're base walls, not room decor.
+  { id: "palisade", name: "Palisade", emoji: "🧱", kind: "raised", base: "#8a5a2f", shade: "#5f3d1e",
+    edge: "rgba(40,24,10,0.55)", texture: "plank", height: 2, spriteKey: "surface/palisade",
+    unlock: { kind: "battleWins", n: 10 }, price: 700, outdoor: true, defense: 5 },
+  { id: "stone-wall", name: "Stone Wall", emoji: "🧱", kind: "raised", base: "#b3ad9c", shade: "#7a7466",
+    edge: "rgba(35,32,26,0.6)", texture: "checker", height: 3, spriteKey: "surface/stone-wall",
+    unlock: { kind: "battleWins", n: 40 }, price: 1500, outdoor: true, defense: 9 },
+  { id: "watchtower", name: "Watchtower", emoji: "🗼", kind: "raised", base: "#9a9488", shade: "#605b51",
+    edge: "rgba(30,28,24,0.6)", texture: "checker", height: 4, spriteKey: "surface/watchtower",
+    unlock: { kind: "accountLevel", n: 20 }, price: 2200, outdoor: true, defense: 13 },
+  { id: "moat", name: "Moat", emoji: "🌊", kind: "water", base: "#22557f", shade: "#123049",
+    edge: "#7a8790", texture: "wave", height: 2, spriteKey: "surface/moat",
+    unlock: { kind: "collectionUnique", n: 30 }, price: 900, outdoor: true, defense: 6 },
+  { id: "caltrops", name: "Caltrops", emoji: "🔺", kind: "flat", base: "#6b6f76", shade: "#565a60",
+    edge: "rgba(20,22,26,0.55)", texture: "speckle", height: 0, spriteKey: "surface/caltrops",
+    unlock: { kind: "battleWins", n: 15 }, price: 500, outdoor: true, defense: 4 },
+  { id: "rampart", name: "Rampart", emoji: "⛰️", kind: "mound", base: "#7f6a4a", shade: "#574733",
+    edge: "rgba(40,30,18,0.5)", texture: "speckle", height: 3, spriteKey: "surface/rampart",
+    unlock: { kind: "battleWins", n: 60 }, price: 1800, outdoor: true, defense: 7 },
 
   // ── Mounds & hills ──────────────────────────────────────────────────────────
   { id: "grass-hill", name: "Grass Hill", emoji: "⛰️", kind: "mound", base: "#59a04b", shade: "#3d6f34",
@@ -103,7 +132,7 @@ export const HQ_SURFACES: HqSurface[] = [
     unlock: { kind: "always" }, outdoor: true },
   { id: "rock-crag", name: "Rock Crag", emoji: "🪨", kind: "mound", base: "#9aa0a8", shade: "#666c74",
     edge: "rgba(25,28,32,0.5)", texture: "none", height: 3, spriteKey: "surface/rock-crag",
-    unlock: { kind: "collectionUnique", n: 50 }, price: 800, outdoor: true },
+    unlock: { kind: "collectionUnique", n: 50 }, price: 800, outdoor: true, defense: 3 },
   { id: "snow-drift", name: "Snow Drift", emoji: "🏔️", kind: "mound", base: "#eef4fa", shade: "#b9c9d8",
     edge: "rgba(140,165,190,0.4)", texture: "none", height: 3, spriteKey: "surface/snow-drift",
     unlock: { kind: "accountLevel", n: 15 }, price: 1000, outdoor: true },
@@ -130,4 +159,14 @@ export function surfacesFor(space: "indoor" | "outdoor"): HqSurface[] {
 /** Surfaces sold in the shop (a `price` makes a material buyable). */
 export function buyableTerrain(): HqSurface[] {
   return HQ_SURFACES.filter(s => typeof s.price === "number" && s.price > 0);
+}
+
+/** Fortification points a material contributes per tile (0 if not defensive). */
+export function surfaceDefense(id: string | null | undefined): number {
+  return (id && BY_ID.get(id)?.defense) || 0;
+}
+
+/** The defensive build pieces, strongest first (for the Defenses guide). */
+export function defensiveSurfaces(): HqSurface[] {
+  return HQ_SURFACES.filter(s => (s.defense ?? 0) > 0).sort((a, b) => (b.defense ?? 0) - (a.defense ?? 0));
 }

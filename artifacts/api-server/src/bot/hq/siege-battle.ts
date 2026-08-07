@@ -59,7 +59,7 @@ export interface SiegeBattleResult {
 // Build a full battle Combatant from an owned card, headlessly — a faithful
 // mirror of battle-manager.buildCombatant but parameterised (no BattleRuntime),
 // with no equipped item (siege cards don't run the prep/item flow).
-function buildSiegeCombatant(
+export function buildSiegeCombatant(
   card: OwnedBattleCard, settings: BattleSettings, guildId: string, ctx: RarityContext,
   side: 0 | 1, ownerId: string, ownerName: string,
 ): Combatant {
@@ -102,6 +102,28 @@ const view = (c: Combatant, color: number): SiegeFighterView => ({
   cardId: c.cardId, name: c.cardName, artUrl: c.cardImageUrl, rarityColor: color,
 });
 
+// Build a whole side of the siege as live Combatants (used by the interactive
+// turn-by-turn siege). Defenders can be fortified by the base's defences.
+export function buildSiegeSquad(
+  cards: OwnedBattleCard[], settings: BattleSettings, guildId: string, ctx: RarityContext,
+  side: 0 | 1, ownerId: string, ownerName: string, fortifyPct = 0,
+): Combatant[] {
+  const squad = cards.map(c => buildSiegeCombatant(c, settings, guildId, ctx, side, ownerId, ownerName));
+  if (side === 1 && fortifyPct > 0) for (const c of squad) fortifyDefender(c, fortifyPct);
+  return squad;
+}
+
+// Apply the base's fortification to a defender: harden HP + attack + defence by
+// the bonus %, then refill to the new max so the wall enters the fight at full
+// strength. This is how built defences translate into real staying power.
+function fortifyDefender(c: Combatant, bonusPct: number): void {
+  const m = 1 + Math.max(0, bonusPct) / 100;
+  c.stats.maxHealth = Math.round(c.stats.maxHealth * m);
+  c.stats.attack = Math.round(c.stats.attack * m);
+  c.stats.defense = Math.round(c.stats.defense * m);
+  c.hp = c.stats.maxHealth;
+}
+
 // Run one headless turn for `actor` against `foe`: start-of-turn ticks, then an
 // AI-chosen move. Returns whether the actor died (DoT) or KO'd the foe.
 function runTurn(actor: Combatant, foe: Combatant, settings: BattleSettings): { events: BattleEvent[]; actorDied: boolean; foeDied: boolean } {
@@ -125,9 +147,14 @@ export function simulateSiegeBattle(
   guildId: string,
   ctx: RarityContext,
   meta: { attackerId: string; attackerName: string; defenderId: string; defenderName: string },
+  // Fortification: the defender's built defences + base tier as a % (hq/fortify).
+  // Hardens the garrison's HP/attack/defence, so a well-built base actually fights
+  // back. 0 for an unfortified base or an AI territory.
+  defenderBonusPct = 0,
 ): SiegeBattleResult {
   const attackers = attackerCards.map(c => buildSiegeCombatant(c, settings, guildId, ctx, 0, meta.attackerId, meta.attackerName));
   const defenders = defenderCards.map(c => buildSiegeCombatant(c, settings, guildId, ctx, 1, meta.defenderId, meta.defenderName));
+  if (defenderBonusPct > 0) for (const d of defenders) fortifyDefender(d, defenderBonusPct);
   const attackerPower = attackers.reduce((s, c) => s + powerRating(c.stats), 0);
   const defenderPower = defenders.reduce((s, c) => s + powerRating(c.stats), 0);
 
