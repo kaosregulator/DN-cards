@@ -51,10 +51,14 @@ import {
 } from "../hq/siege.js";
 import { simulateSiegeBattle, buildSiegeSquad, type SiegeBattleResult } from "../hq/siege-battle.js";
 import {
-  startLiveSiege, handleLiveSiegeComponent, LIVE_SIEGE_IMAGE,
-  isLiveSiegeTargetActive,
-  type LiveSiegeConfig, type LiveSiegeOutcome, type LiveSiegeResultView,
-} from "../hq/live-siege.js";
+  startSiege, handleSiegeComponent, isSiegeTargetActive,
+  // Aliased: `SiegeOutcome` below is the AUTO-resolver's richer shape, which
+  // predates the turn-for-turn runtime and carries the render plan.
+  type SiegeOutcome as TurnSiegeOutcome, type SiegeResultView as TurnSiegeResultView,
+} from "../hq/siege-runtime.js";
+import {
+  getSiegeConfig, siegeModeMeta, type HqSiegeConfig,
+} from "../hq/settings.js";
 import {
   listTerritories, captureTerritory, markTerritoryAttacked, getHeldTerritories,
   markTerritoryTributesCollected, territoryTributeOwed, buildGarrison, holderLabel,
@@ -242,7 +246,7 @@ export async function handleHqHubComponent(
   const userId = interaction.user.id;
 
   // Interactive turn-by-turn siege runs its own session/board.
-  if (action === "ls") { await handleLiveSiegeComponent(interaction); return; }
+  if (action === "ls") { await handleSiegeComponent(interaction); return; }
 
   // Open a featured card's detail (works in both own & visit views) → ephemeral.
   if (action === "open" && interaction.isStringSelectMenu()) {
@@ -266,7 +270,7 @@ export async function handleHqHubComponent(
 
   // ── Base siege: choose an assault mode, then resolve it ──────────────────────
   if (action === "attack" && interaction.isButton()) {
-    await interaction.update(await buildAttackModePicker(guildId, userId, parts[2]!)).catch(() => {});
+    await interaction.update(await buildAttackBriefing(guildId, userId, parts[2]!)).catch(() => {});
     return;
   }
   // World map → pick a target → mode picker. `t:<nodeId>` is an AI territory,
@@ -274,19 +278,22 @@ export async function handleHqHubComponent(
   if (action === "raidpick" && interaction.isStringSelectMenu()) {
     const value = interaction.values[0]!;
     if (value.startsWith("t:")) {
-      await interaction.update(await buildTerritoryModePicker(guildId, userId, value.slice(2))).catch(() => {});
+      await interaction.update(await buildTerritoryBriefing(guildId, userId, value.slice(2))).catch(() => {});
     } else {
-      await interaction.update(await buildAttackModePicker(guildId, userId, value.replace(/^p:/, ""))).catch(() => {});
+      await interaction.update(await buildAttackBriefing(guildId, userId, value.replace(/^p:/, ""))).catch(() => {});
     }
     return;
   }
+  // The style comes from the guild's siege settings, not the button. A trailing
+  // `:<mode>` segment is tolerated so buttons already posted in a channel from
+  // the old mode picker still start a siege instead of erroring.
   if (action === "siege" && interaction.isButton()) {
-    await runSiege(interaction, guildId, userId, parts[2]!, (parts[3] as SiegeMode) ?? "static");
+    await runSiege(interaction, guildId, userId, parts[2]!);
     return;
   }
   // Assault an AI-held (or member-held) world territory.
   if (action === "wsiege" && interaction.isButton()) {
-    await runTerritorySiege(interaction, guildId, userId, parts[2]!, (parts[3] as SiegeMode) ?? "cinematic");
+    await runTerritorySiege(interaction, guildId, userId, parts[2]!);
     return;
   }
 
@@ -1651,10 +1658,13 @@ async function clearCanvasAtCursor(guildId: string, userId: string): Promise<str
 }
 
 // ── Base siege (attack/capture mini-game) ─────────────────────────────────────
-// "cinematic" plays the landscape opening film (camera arrives, gates open, the
-// army musters, your cards fly in) and THEN the battle; the other three are the
-// original fast paths.
-type SiegeMode = "classic" | "static" | "live" | "cinematic" | "turn";
+// "turn" hands the assault to the player as a full turn-for-turn battle;
+// "cinematic" plays the landscape opening film and then auto-resolves; the rest
+// are the fast auto-resolve paths.
+//
+// Which one a guild uses is the SERVER OWNER's setting (bot/hq/settings.ts) —
+// never a per-attack prompt, so every siege in a server looks the same.
+type SiegeMode = HqSiegeConfig["mode"];
 const SIEGE_FILE = "siege.png", SIEGE_GIF = "siege.gif";
 type LoadedCtx = Awaited<ReturnType<typeof loadCtx>>;
 
@@ -1726,7 +1736,11 @@ async function siegeBlockReason(guildId: string, attackerId: string, defenderId:
   return null;
 }
 
-async function buildAttackModePicker(guildId: string, attackerId: string, defenderId: string) {
+// The pre-siege briefing. How a siege is FOUGHT is no longer the attacker's
+// choice — the server owner sets one style for the whole guild in `/hqadmin`,
+// the same way battle visuals are configured — so this screen is purely "here's
+// what you're walking into", ending in a single Lay Siege button.
+async function buildAttackBriefing(guildId: string, attackerId: string, defenderId: string) {
   const blocked = await siegeBlockReason(guildId, attackerId, defenderId);
   const embed = new EmbedBuilder().setColor(0xc0392b).setTitle("⚔️ Lay Siege");
   if (blocked) {
@@ -1737,23 +1751,18 @@ async function buildAttackModePicker(guildId: string, attackerId: string, defend
   const defenders = await buildDefenderSquad(guildId, defenderId, cx);
   const squad = await buildAttackerSquad(guildId, attackerId, cx, defenders.length);
   const forti = await baseFortification(guildId, defenderId);
+  const siegeCfg = await getSiegeConfig(guildId);
+  const mode = siegeModeMeta(siegeCfg.mode);
   const yourP = squad.reduce((s, c) => s + c.power, 0), theirP = defenders.reduce((s, c) => s + c.power, 0);
   embed.setDescription(
     `Your strongest **${squad.length}** cards storm **${defenders.length}** stationed defenders in a **real battle** ` +
-    "(true stats, moves, specials & passives). Knock out every defender to capture the base.\n\n" +
+    "— true stats, moves, specials and passives. Break every rank to capture the base.\n\n" +
     `⚔️ Your strength: **${yourP}**  ·  🛡️ Their defence: **${theirP}**` +
-    (forti.totalPct > 0 ? `  ·  🏯 **+${forti.totalPct}%** ${forti.tier.label} fortifications` : "") + "\n\n" +
-    "**Pick how to fight it:**\n" +
-    "• **Turn-by-Turn** — YOU play it, move by move, like /battle\n" +
-    "• **Cinematic** — the full opening scene, then an auto battle\n" +
-    "• **Classic** — a text battle report\n• **Static** — a battle image\n• **Live** — an animated battle",
+    (forti.totalPct > 0 ? `  ·  🏯 **+${forti.totalPct}%** ${forti.tier.label} fortifications` : ""),
   );
+  embed.addFields({ name: `${mode.emoji} Siege style — ${mode.label}`, value: `${mode.blurb}\n_Set for this server by an admin in \`/hqadmin\`._` });
   const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
-    new ButtonBuilder().setCustomId(`hq-hub:siege:${defenderId}:turn`).setLabel("Turn-by-Turn").setEmoji("⚔️").setStyle(ButtonStyle.Success),
-    new ButtonBuilder().setCustomId(`hq-hub:siege:${defenderId}:cinematic`).setLabel("Cinematic").setEmoji("🎥").setStyle(ButtonStyle.Secondary),
-    new ButtonBuilder().setCustomId(`hq-hub:siege:${defenderId}:classic`).setLabel("Classic").setEmoji("📜").setStyle(ButtonStyle.Secondary),
-    new ButtonBuilder().setCustomId(`hq-hub:siege:${defenderId}:static`).setLabel("Static").setEmoji("🖼️").setStyle(ButtonStyle.Secondary),
-    new ButtonBuilder().setCustomId(`hq-hub:siege:${defenderId}:live`).setLabel("Live").setEmoji("🎬").setStyle(ButtonStyle.Primary),
+    new ButtonBuilder().setCustomId(`hq-hub:siege:${defenderId}`).setLabel("Lay Siege").setEmoji("⚔️").setStyle(ButtonStyle.Danger),
   );
   return { embeds: [embed], components: [row, backRow("defenders")], files: [] as AttachmentBuilder[] };
 }
@@ -1899,54 +1908,73 @@ async function resolveSiegeOutcome(guildId: string, attackerId: string, attacker
   return outcomeFromPower(resolveSiege(squad, defenders, Math.random, defenderBonusPct), champ, defenders.length);
 }
 
-// ── Interactive (turn-by-turn) siege launchers ───────────────────────────────
-// Build both sides as live combatants, render the base once, and hand off to the
-// live-siege engine with an applyOutcome callback that commits capture/reward and
-// returns the result screen — shared shape for player bases and AI territories.
-async function launchPlayerLiveSiege(
+// ── Turn-for-turn siege launchers ────────────────────────────────────────────
+// Build both sides as live combatants, prepare the castle scene, and hand off to
+// the siege runtime with an applyOutcome callback that commits capture/reward and
+// returns the result screen — one shape for player bases and AI territories.
+
+// The attacker's lead card as the champion figure the castle frame draws
+// storming the gate.
+function championFor(cards: OwnedBattleCard[], cx: LoadedCtx): HqRenderDefender | null {
+  const card = cards[0];
+  if (!card) return null;
+  const d = getCardDisplayRarity({ id: card.id, rarity: card.rarity as string }, cx.ctx, cx.settings, cx.displayMap);
+  return {
+    slot: 0, cardId: card.id, name: card.name,
+    artUrl: toAbsoluteImageUrl(card.imageUrl), rarityColor: d.color, basePath: null,
+  };
+}
+
+async function launchPlayerSiege(
   interaction: ButtonInteraction, guildId: string, attackerId: string, attackerName: string,
-  defenderId: string, defenderName: string, defHq: PlayerHq, cx: LoadedCtx,
+  defenderId: string, defenderName: string, defHq: PlayerHq, cx: LoadedCtx, siegeCfg: HqSiegeConfig,
 ): Promise<void> {
   const fail = (msg: string) => interaction.editReply({
     embeds: [new EmbedBuilder().setColor(0xc0392b).setDescription(`❌ ${msg}`)],
     components: [backRow("defenders")], files: [],
   }).then(() => {}).catch(() => {});
   const settings = await getBattleSettings(guildId);
-  if (!settings.enabled) { await fail("Battles are disabled here — try another siege mode."); return; }
+  if (!settings.enabled) { await fail("Battles are disabled here, so a turn-for-turn siege can't run. An admin can switch the siege style in `/hqadmin`."); return; }
   const defenderCards = await buildDefenderCards(guildId, defenderId, cx.ctx);
-  if (defenderCards.length === 0) { await fail("This base has no defenders to fight — try another mode."); return; }
+  if (defenderCards.length === 0) { await fail("This base has no defenders to fight."); return; }
   const attackerCards = await buildAttackerCards(guildId, attackerId, cx.ctx, defenderCards.length);
   if (attackerCards.length === 0) { await fail("You have no cards to march with. Catch some first."); return; }
 
   const forti = await baseFortification(guildId, defenderId);
   const attackers = buildSiegeSquad(attackerCards, settings, guildId, cx.ctx, 0, attackerId, attackerName);
   const defenders = buildSiegeSquad(defenderCards, settings, guildId, cx.ctx, 1, defenderId, defenderName, forti.totalPct);
-  const baseImage = await renderBase(await buildBaseRenderView(guildId, defenderId, defenderName, null, defHq)).catch(() => null);
+  const baseView = await buildBaseRenderView(guildId, defenderId, defenderName, null, defHq).catch(() => null);
 
-  await startLiveSiege(interaction, {
+  await startSiege(interaction, {
     guildId, targetKey: `hq:base:${guildId}:${defenderId}`,
     starterId: attackerId, attackerName, targetName: defenderName,
-    accent: 0xc0392b, attackers, defenders, settings, baseImage,
-    applyOutcome: (o) => finalizePlayerLiveSiege(interaction, guildId, attackerId, attackerName, defenderId, o, forti.totalPct),
+    holderName: forti.totalPct > 0 ? `${defenderName} · +${forti.totalPct}% fortified` : defenderName,
+    accent: 0xc0392b, attackers, defenders, settings, siege: siegeCfg,
+    baseView, champion: championFor(attackerCards, cx),
+    applyOutcome: (o) => finalizePlayerSiege(interaction, guildId, attackerId, attackerName, defenderId, o, forti.totalPct),
   });
 }
 
-async function finalizePlayerLiveSiege(
+async function finalizePlayerSiege(
   interaction: ButtonInteraction, guildId: string, attackerId: string, attackerName: string,
-  defenderId: string, o: LiveSiegeOutcome, fortiPct: number,
-): Promise<LiveSiegeResultView> {
+  defenderId: string, o: TurnSiegeOutcome, fortiPct: number,
+): Promise<TurnSiegeResultView> {
   await withHqLock(`hq:siege:${guildId}:${defenderId}`, async () => {
     await applySiegeToBase(guildId, defenderId, o.attackerWon, attackerId, attackerName, SIEGE_SHIELD_MS).catch(() => {});
   }).catch(() => {});
   await logSiege(guildId, attackerId, defenderId, o.attackerWon, o.attackerPower, o.defenderPower, "turn").catch(() => {});
-  const reward = o.attackerWon ? Math.min(300, 60 + Math.round(o.defenderPower / 18)) : 20;
+  // A clean three-star assault is worth more than a bloody two-star one.
+  // Stars pay: a clean three-star capture beats a bloody two-star one, and a
+  // failed assault that still wrecked half the base beats one that bounced.
+  const base = o.attackerWon ? Math.min(300, 60 + Math.round(o.defenderPower / 18)) : 20;
+  const reward = Math.round(base * (1 + 0.15 * Math.max(0, o.stars - (o.attackerWon ? 1 : 0))));
   await addShards(guildId, attackerId, reward).catch(() => {});
   void notifySiege(interaction, guildId, defenderId, attackerName, o.attackerWon, reward);
   return {
     title: o.attackerWon ? "⚔️ Base Captured!" : "🛡️ Base Defended!",
     description: o.attackerWon
-      ? `You stormed the base in **${o.rounds}** rounds. You hold it until it's reclaimed — earning **${TRIBUTE_PER_HOUR}💠/hr**.`
-      : `The defenders held the walls after **${o.rounds}** rounds.`,
+      ? `You broke every rank in **${o.turns}** turns. You hold the base until it's reclaimed — earning **${TRIBUTE_PER_HOUR}💠/hr**.`
+      : `The garrison held the walls after **${o.turns}** turns.`,
     color: o.attackerWon ? 0x4fd06a : 0xc0392b,
     fields: [
       { name: "⚔️ Squad power", value: `**${o.attackerPower}**`, inline: true },
@@ -1956,33 +1984,39 @@ async function finalizePlayerLiveSiege(
   };
 }
 
-async function launchTerritoryLiveSiege(
+async function launchTerritorySiege(
   interaction: ButtonInteraction, guildId: string, attackerId: string, attackerName: string,
   nodeId: string, view: WorldTerritoryView, theme: ReturnType<typeof resolveTheme>,
-  garrison: OwnedBattleCard[], attackerCards: OwnedBattleCard[], cx: LoadedCtx,
+  garrison: OwnedBattleCard[], attackerCards: OwnedBattleCard[], cx: LoadedCtx, siegeCfg: HqSiegeConfig,
 ): Promise<void> {
   const settings = await getBattleSettings(guildId);
   if (!settings.enabled) {
-    await interaction.editReply({ embeds: [new EmbedBuilder().setColor(0xc0392b).setDescription("❌ Battles are disabled — try another mode.")], components: [backRow("world")], files: [] }).catch(() => {});
+    await interaction.editReply({
+      embeds: [new EmbedBuilder().setColor(0xc0392b).setDescription(
+        "❌ Battles are disabled here, so a turn-for-turn siege can't run. An admin can switch the siege style in `/hqadmin`.")],
+      components: [backRow("world")], files: [],
+    }).catch(() => {});
     return;
   }
   const defenderName = holderLabel(view);
   const attackers = buildSiegeSquad(attackerCards, settings, guildId, cx.ctx, 0, attackerId, attackerName);
   const defenders = buildSiegeSquad(garrison, settings, guildId, cx.ctx, 1, `world:${nodeId}`, defenderName);
-  const baseImage = await renderBase(territoryBaseView(view, theme, garrison, cx)).catch(() => null);
 
-  await startLiveSiege(interaction, {
+  await startSiege(interaction, {
     guildId, targetKey: `hq:world:${guildId}:${nodeId}`,
     starterId: attackerId, attackerName, targetName: view.territory.name,
-    accent: view.faction.color, attackers, defenders, settings, baseImage,
-    applyOutcome: (o) => finalizeTerritoryLiveSiege(interaction, guildId, attackerId, attackerName, nodeId, view, o),
+    holderName: defenderName,
+    accent: view.faction.color, attackers, defenders, settings, siege: siegeCfg,
+    baseView: territoryBaseView(view, theme, garrison, cx),
+    champion: championFor(attackerCards, cx),
+    applyOutcome: (o) => finalizeTerritorySiege(interaction, guildId, attackerId, attackerName, nodeId, view, o),
   });
 }
 
-async function finalizeTerritoryLiveSiege(
+async function finalizeTerritorySiege(
   interaction: ButtonInteraction, guildId: string, attackerId: string, attackerName: string,
-  nodeId: string, view: WorldTerritoryView, o: LiveSiegeOutcome,
-): Promise<LiveSiegeResultView> {
+  nodeId: string, view: WorldTerritoryView, o: TurnSiegeOutcome,
+): Promise<TurnSiegeResultView> {
   const prof = tierProfile(view.territory.tier);
   let previousHolder: string | null = null;
   await withHqLock(`hq:world:${guildId}:${nodeId}`, async () => {
@@ -1994,14 +2028,15 @@ async function finalizeTerritoryLiveSiege(
     }
   }).catch(() => {});
   await logSiege(guildId, attackerId, territoryLogKey(nodeId), o.attackerWon, o.attackerPower, o.defenderPower, "turn").catch(() => {});
-  const reward = o.attackerWon ? prof.bounty : Math.round(prof.bounty * 0.12);
+  const base = o.attackerWon ? prof.bounty : Math.round(prof.bounty * 0.12);
+  const reward = Math.round(base * (1 + 0.15 * Math.max(0, o.stars - (o.attackerWon ? 1 : 0))));
   await addShards(guildId, attackerId, reward).catch(() => {});
   if (previousHolder && previousHolder !== attackerId) void notifyTerritoryLost(interaction, previousHolder, attackerName, view.territory.name);
   return {
     title: o.attackerWon ? `🚩 ${view.territory.name} is yours!` : `🛡️ ${view.territory.name} holds`,
     description: o.attackerWon
-      ? `You broke the ${holderLabel(view)} garrison in **${o.rounds}** rounds and now hold this ${prof.label.toLowerCase()} — **${prof.tributePerHour}💠/hr**.`
-      : `The ${holderLabel(view)} garrison threw you back after **${o.rounds}** rounds.`,
+      ? `You broke the ${holderLabel(view)} garrison in **${o.turns}** turns and now hold this ${prof.label.toLowerCase()} — **${prof.tributePerHour}💠/hr**.`
+      : `The ${holderLabel(view)} garrison threw you back after **${o.turns}** turns.`,
     color: o.attackerWon ? 0x4fd06a : view.faction.color,
     fields: [
       { name: "⚔️ Squad power", value: `**${o.attackerPower}**`, inline: true },
@@ -2011,15 +2046,44 @@ async function finalizeTerritoryLiveSiege(
   };
 }
 
-async function runSiege(interaction: ButtonInteraction, guildId: string, attackerId: string, defenderId: string, mode: SiegeMode): Promise<void> {
+// The base assault's opening film. Shared by the cinematic auto-siege and the
+// turn-for-turn assault (which rolls it first when the guild has intros on).
+async function playBaseCinematic(
+  interaction: ButtonInteraction, guildId: string, attackerId: string, attackerName: string,
+  defenderId: string, defenderName: string, defHq: PlayerHq, cx: LoadedCtx,
+): Promise<void> {
+  const theme = resolveTheme((await getOrCreateHq(guildId, attackerId)).themeId);
+  const squad = await buildAttackerCards(guildId, attackerId, cx.ctx, 5).catch(() => []);
+  const garrisonSize = (await getDefenders(guildId, defenderId).catch(() => new Map())).size;
+  await playCinematic(interaction, {
+    targetName: defenderName,
+    holderName: readHqStats(defHq).title?.trim() ? defenderName : "its garrison",
+    defenderColor: resolveTheme(defHq.themeId).palette.accent,
+    attackerColor: theme.palette.accent,
+    attackerName,
+    cards: squad.slice(0, 5).map(c => {
+      const d = getCardDisplayRarity({ id: c.id, rarity: c.rarity as string }, cx.ctx, cx.settings, cx.displayMap);
+      return { name: c.name, artUrl: toAbsoluteImageUrl(c.imageUrl), rarityColor: d.color };
+    }),
+    garrison: garrisonSize,
+    structure: "castle",
+    mood: "dusk",
+    tagline: readHqStats(defHq).motto ?? "Take the walls, take the base.",
+  }, theme.palette.accent);
+}
+
+async function runSiege(interaction: ButtonInteraction, guildId: string, attackerId: string, defenderId: string): Promise<void> {
   await interaction.deferUpdate().catch(() => {});
+  // One style for the whole server, set by an admin — never asked of the player.
+  const siegeCfg = await getSiegeConfig(guildId);
+  const mode = siegeCfg.mode;
   // Serialize per DEFENDER (the contested base) so every attack on one base runs
   // one-at-a-time — not just repeat clicks from a single attacker. Keying by the
   // attacker would let two DIFFERENT attackers both pass the shield/cooldown check
   // before either writes the base state, double-resolving a capture. The queued
   // siege re-runs the block check AFTER the prior one commits its log + state.
   await withHqLock(`hq:siege:${guildId}:${defenderId}`, async () => {
-  if (isLiveSiegeTargetActive(`hq:base:${guildId}:${defenderId}`)) {
+  if (isSiegeTargetActive(`hq:base:${guildId}:${defenderId}`)) {
     await interaction.editReply({
       embeds: [new EmbedBuilder().setColor(0xc0392b)
         .setDescription("❌ That base is already under an interactive siege.")],
@@ -2038,34 +2102,20 @@ async function runSiege(interaction: ButtonInteraction, guildId: string, attacke
 
   const cx = await loadCtx(guildId);
 
-  // Turn-by-turn: hand the assault to the player (its own live board), then bail
-  // out of the auto-resolve path.
+  // Turn-for-turn: optionally roll the opening film, then hand the assault to the
+  // player (its own live board) and bail out of the auto-resolve path.
   if (mode === "turn") {
-    await launchPlayerLiveSiege(interaction, guildId, attackerId, attackerName, defenderId, defenderName, defHq, cx);
+    if (siegeCfg.intro) {
+      await playBaseCinematic(interaction, guildId, attackerId, attackerName, defenderId, defenderName, defHq, cx);
+    }
+    await launchPlayerSiege(interaction, guildId, attackerId, attackerName, defenderId, defenderName, defHq, cx, siegeCfg);
     return;
   }
 
   // The opening film, before anything is resolved — the ride up to the base, the
   // gates opening, the garrison mustering, and the raider's cards flying in.
   if (mode === "cinematic") {
-    const theme = resolveTheme((await getOrCreateHq(guildId, attackerId)).themeId);
-    const squad = await buildAttackerCards(guildId, attackerId, cx.ctx, 5).catch(() => []);
-    const garrisonSize = (await getDefenders(guildId, defenderId).catch(() => new Map())).size;
-    await playCinematic(interaction, {
-      targetName: defenderName,
-      holderName: readHqStats(defHq).title?.trim() ? defenderName : "its garrison",
-      defenderColor: resolveTheme(defHq.themeId).palette.accent,
-      attackerColor: theme.palette.accent,
-      attackerName,
-      cards: squad.slice(0, 5).map(c => {
-        const d = getCardDisplayRarity({ id: c.id, rarity: c.rarity as string }, cx.ctx, cx.settings, cx.displayMap);
-        return { name: c.name, artUrl: toAbsoluteImageUrl(c.imageUrl), rarityColor: d.color };
-      }),
-      garrison: garrisonSize,
-      structure: "castle",
-      mood: "dusk",
-      tagline: readHqStats(defHq).motto ?? "Take the walls, take the base.",
-    }, theme.palette.accent);
+    await playBaseCinematic(interaction, guildId, attackerId, attackerName, defenderId, defenderName, defHq, cx);
   }
 
   // The defender's fortification (base tier + built walls/towers/moats) hardens
@@ -2158,7 +2208,7 @@ async function findTerritory(guildId: string, nodeId: string): Promise<WorldTerr
   return all.find(t => t.territory.id === nodeId) ?? null;
 }
 
-async function buildTerritoryModePicker(guildId: string, attackerId: string, nodeId: string) {
+async function buildTerritoryBriefing(guildId: string, attackerId: string, nodeId: string) {
   const view = await findTerritory(guildId, nodeId);
   if (!view) {
     return {
@@ -2186,16 +2236,13 @@ async function buildTerritoryModePicker(guildId: string, attackerId: string, nod
     embed.addFields({ name: "⛔ Not right now", value: blocked });
     return { embeds: [embed], components: [backRow("world")], files: [] as AttachmentBuilder[] };
   }
+  const mode = siegeModeMeta((await getSiegeConfig(guildId)).mode);
   embed.addFields({
-    name: "⚔️ How do you want to fight it?",
-    value: "**Turn-by-Turn** lets YOU command the assault move by move, like `/battle`. **Cinematic** plays the full opening film, then auto-resolves. The others cut straight to the fight.",
+    name: `${mode.emoji} Siege style — ${mode.label}`,
+    value: `${mode.blurb}\n_Set for this server by an admin in \`/hqadmin\`._`,
   });
   const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
-    new ButtonBuilder().setCustomId(`hq-hub:wsiege:${nodeId}:turn`).setLabel("Turn-by-Turn").setEmoji("⚔️").setStyle(ButtonStyle.Success),
-    new ButtonBuilder().setCustomId(`hq-hub:wsiege:${nodeId}:cinematic`).setLabel("Cinematic").setEmoji("🎥").setStyle(ButtonStyle.Secondary),
-    new ButtonBuilder().setCustomId(`hq-hub:wsiege:${nodeId}:classic`).setLabel("Classic").setEmoji("📜").setStyle(ButtonStyle.Secondary),
-    new ButtonBuilder().setCustomId(`hq-hub:wsiege:${nodeId}:static`).setLabel("Static").setEmoji("🖼️").setStyle(ButtonStyle.Secondary),
-    new ButtonBuilder().setCustomId(`hq-hub:wsiege:${nodeId}:live`).setLabel("Live").setEmoji("🎬").setStyle(ButtonStyle.Primary),
+    new ButtonBuilder().setCustomId(`hq-hub:wsiege:${nodeId}`).setLabel("March").setEmoji("⚔️").setStyle(ButtonStyle.Danger),
   );
   return { embeds: [embed], components: [row, backRow("world")], files: [] as AttachmentBuilder[] };
 }
@@ -2212,6 +2259,29 @@ function moodForBiome(biome: string): SiegeCinematicView["mood"] {
     case "hills": return "dusk";
     default: return "dusk";
   }
+}
+
+// The territory assault's opening film, shared by the cinematic auto-siege and
+// the turn-for-turn assault.
+function territoryCinematic(
+  view: WorldTerritoryView, theme: ReturnType<typeof resolveTheme>, attackerName: string,
+  attackerCards: OwnedBattleCard[], garrison: OwnedBattleCard[], cx: LoadedCtx,
+): SiegeCinematicView {
+  return {
+    targetName: view.territory.name,
+    holderName: holderLabel(view),
+    defenderColor: view.heldByUserId ? 0x4aa3ff : view.faction.color,
+    attackerColor: theme.palette.accent,
+    attackerName,
+    cards: attackerCards.slice(0, 5).map(c => {
+      const d = getCardDisplayRarity({ id: c.id, rarity: c.rarity as string }, cx.ctx, cx.settings, cx.displayMap);
+      return { name: c.name, artUrl: toAbsoluteImageUrl(c.imageUrl), rarityColor: d.color };
+    }),
+    garrison: garrison.length,
+    structure: view.territory.structure,
+    mood: moodForBiome(view.territory.biome),
+    tagline: view.territory.blurb,
+  };
 }
 
 // Play the opening film into the ephemeral hub message, then hold on it long
@@ -2264,13 +2334,15 @@ function territoryBaseView(
 }
 
 async function runTerritorySiege(
-  interaction: ButtonInteraction, guildId: string, attackerId: string, nodeId: string, mode: SiegeMode,
+  interaction: ButtonInteraction, guildId: string, attackerId: string, nodeId: string,
 ): Promise<void> {
   await interaction.deferUpdate().catch(() => {});
+  const siegeCfg = await getSiegeConfig(guildId);
+  const mode = siegeCfg.mode;
   // Serialize per TERRITORY: two raiders clicking at once must not both pass the
   // shield check and each "capture" the same castle.
   await withHqLock(`hq:world:${guildId}:${nodeId}`, async () => {
-    if (isLiveSiegeTargetActive(`hq:world:${guildId}:${nodeId}`)) {
+    if (isSiegeTargetActive(`hq:world:${guildId}:${nodeId}`)) {
       await interaction.editReply({
         embeds: [new EmbedBuilder().setColor(0xc0392b)
           .setDescription("❌ That territory is already under an interactive siege.")],
@@ -2321,28 +2393,14 @@ async function runTerritorySiege(
 
     // Turn-by-turn: the player commands the assault on the territory themselves.
     if (mode === "turn") {
-      await launchTerritoryLiveSiege(interaction, guildId, attackerId, attackerName, nodeId, view, theme, garrison, attackerCards, cx);
+      if (siegeCfg.intro) await playCinematic(interaction, territoryCinematic(view, theme, attackerName, attackerCards, garrison, cx), view.faction.color);
+      await launchTerritorySiege(interaction, guildId, attackerId, attackerName, nodeId, view, theme, garrison, attackerCards, cx, siegeCfg);
       return;
     }
 
     // The opening film, before anything is resolved.
     if (mode === "cinematic") {
-      const cine: SiegeCinematicView = {
-        targetName: view.territory.name,
-        holderName: defenderName,
-        defenderColor: view.heldByUserId ? 0x4aa3ff : view.faction.color,
-        attackerColor: theme.palette.accent,
-        attackerName,
-        cards: attackerCards.slice(0, 5).map(c => {
-          const d = getCardDisplayRarity({ id: c.id, rarity: c.rarity as string }, cx.ctx, cx.settings, cx.displayMap);
-          return { name: c.name, artUrl: toAbsoluteImageUrl(c.imageUrl), rarityColor: d.color };
-        }),
-        garrison: garrison.length,
-        structure: view.territory.structure,
-        mood: moodForBiome(view.territory.biome),
-        tagline: view.territory.blurb,
-      };
-      await playCinematic(interaction, cine, view.faction.color);
+      await playCinematic(interaction, territoryCinematic(view, theme, attackerName, attackerCards, garrison, cx), view.faction.color);
     }
 
     // Resolve with the real battle engine; fall back to the power resolver only

@@ -17,6 +17,7 @@
 import assert from "node:assert/strict";
 
 import { __buildViewForTest, type HqSection } from "../../artifacts/api-server/src/bot/commands/hq-hub.js";
+import { __buildServerPanelForTest } from "../../artifacts/api-server/src/bot/commands/hq-admin.js";
 import { getOrCreateGuildSettings } from "../../artifacts/api-server/src/bot/db.js";
 
 // discord.js is not a dependency of this package, so the builder types are
@@ -85,7 +86,30 @@ async function main(): Promise<void> {
     );
   }
 
-  console.log(`\nAll ${SECTIONS.length} /hq sections build a valid Discord payload.`);
+  // The /hqadmin server panel is button- and select-driven, so it gets the same
+  // payload check.
+  const admin = await __buildServerPanelForTest(GUILD_ID);
+  assert.ok(admin.embeds.length === 1, "the admin panel should be one embed");
+  assert.ok(admin.components.length <= 5, "the admin panel has too many rows");
+  for (const row of admin.components) {
+    const json = row.toJSON();
+    assert.ok(json.components.length >= 1 && json.components.length <= 5, "admin panel: bad row size");
+    for (const c of json.components) {
+      if (c.type === 3) {
+        assert.ok(c.options.length >= 1 && c.options.length <= 25, "admin panel: bad select");
+        for (const o of c.options) {
+          assert.ok(!o.description || o.description.length <= 100, "admin panel: option description too long");
+        }
+      }
+    }
+  }
+  const adminEmbed = admin.embeds[0]!.toJSON();
+  for (const f of adminEmbed.fields ?? []) {
+    assert.ok(f.value.length <= 1024, `admin panel: field "${f.name}" over 1024 chars`);
+  }
+  console.log(`  ✓ ${"/hqadmin".padEnd(12)} ${admin.components.length} row(s), ${(adminEmbed.fields ?? []).length} field(s), server siege panel`);
+
+  console.log(`\nAll ${SECTIONS.length} /hq sections + the /hqadmin server panel build valid Discord payloads.`);
   process.exit(0);
 }
 

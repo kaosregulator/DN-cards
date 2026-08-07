@@ -29,8 +29,8 @@ import { drawAtmosphere, atmospherePreset } from "../animations/atmosphere.js";
 import { queueRender } from "../animations/render-queue.js";
 import { loadSprite, spriteForPrefix } from "./assets.js";
 import {
-  ellipse, blit, blitClippedQuad, polyPath, diamond, seededRng, hashString,
-  drawIslandTier, drawPine, drawRock, drawHqHeader,
+  ellipse, blit, blitClippedQuad, polyPath, diamond, seededRng, hashString, stripEmoji,
+  drawIslandTier, drawPine, drawRock, drawHqHeader, HQ_HEADER_H,
   type Pt, type HqHeaderInfo,
 } from "./paint.js";
 import {
@@ -49,6 +49,7 @@ import { HQ_GRID, HQ_BASE_GRID } from "./grid.js";
 export type { HqHeaderInfo };
 
 const W = 1120, H = 680;
+const HEADER_H = HQ_HEADER_H;
 
 // ── Isometric projection ───────────────────────────────────────────────────────
 // A GRID×GRID floor. project() maps a lattice point (gx,gy) to screen space; a
@@ -322,6 +323,12 @@ export interface SiegeOverlay {
   banner: { text: string; color: number } | null;
   caption?: { text: string; color: number } | null; // "X used <Move>!" (classic)
   flashSlot?: number | null;  // defender post taking the current hit (classic)
+  // Clash-style scoreboard for the interactive assault: how much of the base is
+  // wrecked and how many stars that has earned. Omitted by the auto-resolvers,
+  // which have no meaningful mid-fight progress to show.
+  destructionPct?: number;    // 0..100
+  stars?: number;             // 0..3
+  turnLabel?: string | null;  // "Turn 7 · your move" strip under the scoreboard
 }
 
 // Deterministic castle-sprite pick per base among the real building art the pack
@@ -373,7 +380,11 @@ async function paintBaseScene(ctx: Ctx, mod: CanvasMod, view: HqBaseView, siege?
   // Use a real castle sprite when the pack has one (deterministic pick per base),
   // else the procedural castle. drawCastle returns the top for the banner.
   const castleTop = await drawCastle(ctx, mod, BASE_CX, castleFeetY, pickCastleSprite(view));
-  drawBannerAndHealth(ctx, BASE_CX, castleTop, view, siege?.healthFrac);
+  // The interactive assault has its own destruction scoreboard, which says the
+  // same thing more clearly — two health readouts on one picture just compete.
+  if (siege?.destructionPct === undefined) {
+    drawBannerAndHealth(ctx, BASE_CX, castleTop, view, siege?.healthFrac);
+  }
   await drawBaseDefenders(ctx, mod, view, siege?.defeated, siege?.flashSlot ?? null);
   // Ambient life on the grounds — only outside a siege so combat stays readable.
   if (!siege) {
@@ -393,6 +404,9 @@ async function paintBaseScene(ctx: Ctx, mod: CanvasMod, view: HqBaseView, siege?
   const lg = ctx.createRadialGradient(BASE_CX, 120, 60, BASE_CX, 300, 640);
   lg.addColorStop(0, "rgba(255,244,214,0.10)"); lg.addColorStop(1, "rgba(0,0,0,0)");
   ctx.fillStyle = lg; ctx.fillRect(0, 0, W, H);
+  if (siege?.destructionPct !== undefined) {
+    drawDestructionScoreboard(ctx, siege.destructionPct, siege.stars ?? 0, siege.turnLabel ?? null);
+  }
   if (siege?.caption) drawMoveCaption(ctx, siege.caption.text, siege.caption.color);
   if (siege?.banner) drawResultBanner(ctx, siege.banner.text, siege.banner.color);
   await drawHqHeader(ctx, mod, view, W);
@@ -485,6 +499,100 @@ async function drawAttacker(ctx: Ctx, mod: CanvasMod, def: HqRenderDefender, adv
   ctx.save(); ctx.textAlign = "center"; ctx.textBaseline = "middle";
   drawTextWithShadow(ctx, "⚔️", x + cw / 2, y - 8, "#ffffff", 20);
   ctx.restore();
+}
+
+// The Clash-style scoreboard for an interactive assault: three stars, a
+// destruction meter and the turn strip, pinned under the header so it reads as
+// a HUD over the battlefield rather than part of the scenery.
+function drawDestructionScoreboard(ctx: Ctx, pct: number, stars: number, turnLabel: string | null): void {
+  const clamped = Math.max(0, Math.min(100, pct));
+  const panelW = 360, panelH = turnLabel ? 104 : 82;
+  const px = W / 2 - panelW / 2, py = HEADER_H + 14;
+
+  // Opaque, not tinted: the castle's own banner and health bar sit right behind
+  // this strip, and a see-through panel let them bleed through the stars.
+  ctx.save();
+  ctx.shadowColor = "rgba(0,0,0,0.55)"; ctx.shadowBlur = 18; ctx.shadowOffsetY = 4;
+  ctx.fillStyle = "#11151c";
+  roundRectPath(ctx, px, py, panelW, panelH, 14); ctx.fill();
+  ctx.restore();
+  ctx.save();
+  ctx.strokeStyle = "rgba(226,210,170,0.5)"; ctx.lineWidth = 1.5;
+  roundRectPath(ctx, px, py, panelW, panelH, 14); ctx.stroke();
+  ctx.restore();
+
+  // Three stars. Earned stars glow gold; the rest are hollow slots, so the
+  // remaining objective is readable at a glance.
+  const starY = py + 26;
+  for (let i = 0; i < 3; i++) {
+    const sx = W / 2 + (i - 1) * 62;
+    drawStar(ctx, sx, starY, 19, i < stars);
+  }
+
+  // Destruction meter.
+  const barY = py + 50, barW = panelW - 56;
+  const frac = clamped / 100;
+  ctx.save();
+  ctx.fillStyle = "rgba(0,0,0,0.55)";
+  roundRectPath(ctx, W / 2 - barW / 2 - 2, barY - 2, barW + 4, 14, 7); ctx.fill();
+  ctx.fillStyle = "#241a16";
+  roundRectPath(ctx, W / 2 - barW / 2, barY, barW, 10, 5); ctx.fill();
+  const g = ctx.createLinearGradient(W / 2 - barW / 2, 0, W / 2 + barW / 2, 0);
+  g.addColorStop(0, "#e0813a"); g.addColorStop(1, "#d0483a");
+  ctx.fillStyle = g;
+  roundRectPath(ctx, W / 2 - barW / 2, barY, Math.max(3, barW * frac), 10, 5); ctx.fill();
+  ctx.restore();
+
+  ctx.save();
+  ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  drawTitle(ctx, `${Math.round(clamped)}% DESTRUCTION`, W / 2, barY + 22, "#ffe9c8", 15);
+  if (turnLabel) {
+    drawTextWithShadow(ctx, stripEmoji(turnLabel), W / 2, py + panelH - 14, "rgba(226,226,232,0.9)", 13);
+  }
+  ctx.restore();
+}
+
+function drawStar(ctx: Ctx, cx: number, cy: number, r: number, earned: boolean): void {
+  const pts: { x: number; y: number }[] = [];
+  for (let i = 0; i < 10; i++) {
+    const a = -Math.PI / 2 + (i * Math.PI) / 5;
+    const rad = i % 2 === 0 ? r : r * 0.44;
+    pts.push({ x: cx + Math.cos(a) * rad, y: cy + Math.sin(a) * rad });
+  }
+  ctx.save();
+  if (earned) {
+    ctx.shadowColor = "rgba(255,205,90,0.9)"; ctx.shadowBlur = 16;
+    const g = ctx.createLinearGradient(cx, cy - r, cx, cy + r);
+    g.addColorStop(0, "#ffe9a8"); g.addColorStop(1, "#e8a92e");
+    ctx.fillStyle = g;
+  } else {
+    ctx.fillStyle = "rgba(255,255,255,0.07)";
+  }
+  polyPath(ctx, pts); ctx.fill();
+  ctx.shadowBlur = 0;
+  ctx.strokeStyle = earned ? "rgba(255,240,200,0.95)" : "rgba(255,255,255,0.22)";
+  ctx.lineWidth = 2;
+  polyPath(ctx, pts); ctx.stroke();
+  ctx.restore();
+}
+
+/**
+ * One still frame of an interactive assault — the castle as it stands right
+ * now, with the scoreboard, the fallen defenders and the attacker's champion
+ * pushing in. This is the picture that sits at the top of the siege message and
+ * updates as the base comes apart.
+ */
+export async function renderSiegeFrame(view: HqBaseView, overlay: SiegeOverlay): Promise<Buffer | null> {
+  return queueRender("hq-siege-frame", async () => {
+    const mod = await getCanvas();
+    if (!mod) return null;
+    try {
+      const canvas = mod.createCanvas(W, H);
+      const ctx = canvas.getContext("2d") as unknown as Ctx;
+      await paintBaseScene(ctx, mod, view, overlay);
+      return await canvas.encode("png");
+    } catch { return null; }
+  });
 }
 
 function drawResultBanner(ctx: Ctx, text: string, color: number): void {

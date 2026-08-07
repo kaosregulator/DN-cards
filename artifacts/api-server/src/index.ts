@@ -304,6 +304,17 @@ async function runBootMigrations() {
     logger.info("Podium backfill applied from card-name heuristic");
   }
 
+  // `user_currency` has no unique index on (guild_id, user_id) in the Drizzle
+  // schema, but both the production seed below and the corrective data
+  // migration further down upsert into it with `ON CONFLICT(guild_id,user_id)`.
+  // Postgres rejects that without a matching index, so on a FRESH database the
+  // seed threw and aborted the whole boot-migration run — meaning every table
+  // created after it (including hq_settings) never appeared. Create the index
+  // before anything relies on it.
+  await pool.query(
+    "CREATE UNIQUE INDEX IF NOT EXISTS user_currency_guild_user_uniq ON user_currency(guild_id, user_id)",
+  );
+
   // One-time production data seed — runs only when cards table is empty.
   // Executed inside a single transaction: the cards_name_unique constraint is
   // dropped then re-added atomically, so a mid-run failure rolls back completely.
@@ -922,6 +933,24 @@ async function runBootMigrations() {
     )
   `);
   await pool.query(`CREATE INDEX IF NOT EXISTS hq_terrain_guild_user_room_idx ON hq_terrain (guild_id, user_id, room_id)`);
+
+  // Per-guild HQ configuration — the siege ruleset the server owner sets.
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS hq_settings (
+      id                  SERIAL PRIMARY KEY,
+      guild_id            TEXT NOT NULL,
+      siege_mode          TEXT NOT NULL DEFAULT 'turn',
+      siege_intro         BOOLEAN NOT NULL DEFAULT TRUE,
+      siege_turn_seconds  INTEGER NOT NULL DEFAULT 45,
+      siege_turn_visuals  BOOLEAN NOT NULL DEFAULT TRUE,
+      siege_item_uses     INTEGER NOT NULL DEFAULT 3,
+      siege_max_turns     INTEGER NOT NULL DEFAULT 40,
+      extra               JSONB NOT NULL DEFAULT '{}'::jsonb,
+      updated_at          TIMESTAMP NOT NULL DEFAULT NOW(),
+      UNIQUE (guild_id)
+    )
+  `);
+  await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS hq_settings_guild_uniq ON hq_settings (guild_id)`);
 
   logger.info("Boot migrations applied");
 }

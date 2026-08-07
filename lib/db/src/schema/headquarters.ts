@@ -1,5 +1,5 @@
 import {
-  pgTable, text, serial, integer, jsonb, timestamp, uniqueIndex, index,
+  pgTable, text, serial, integer, boolean, jsonb, timestamp, uniqueIndex, index,
 } from "drizzle-orm/pg-core";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -256,3 +256,45 @@ export const hqTerrainTable = pgTable("hq_terrain", {
 }));
 
 export type HqTerrain = typeof hqTerrainTable.$inferSelect;
+
+// Per-guild HQ configuration — currently the siege ruleset. One row per guild,
+// created on first read.
+//
+// Sieges used to ask the attacker how they wanted to watch the fight, which put
+// a presentation choice in front of a gameplay action and meant no two sieges in
+// a server looked alike. Presentation is now the SERVER OWNER's call, exactly
+// like `/battle`'s animation settings: the owner picks one siege style and every
+// assault in the guild runs that way.
+export const hqSettingsTable = pgTable("hq_settings", {
+  id: serial("id").primaryKey(),
+  guildId: text("guild_id").notNull(),
+  // How every siege in this guild plays out. Resolves through
+  // bot/hq/settings.ts, which degrades an unknown value to the default rather
+  // than throwing, so removing a mode never breaks a server.
+  //   turn      — the interactive turn-for-turn assault (default)
+  //   cinematic — opening film, then an auto-resolved animated siege
+  //   classic   — auto-resolved GIF with move captions
+  //   live      — auto-resolved GIF, no captions
+  //   static    — a single resolved frame
+  siegeMode: text("siege_mode").notNull().default("turn"),
+  // Play the landscape opening film before an interactive assault.
+  siegeIntro: boolean("siege_intro").notNull().default(true),
+  // Seconds a commander has to pick a move before the assault presses on
+  // without them (mirrors battle_settings.turn_timer_seconds).
+  siegeTurnSeconds: integer("siege_turn_seconds").notNull().default(45),
+  // Draw a per-turn attack frame under the battle. The STYLE (animated arena
+  // GIF vs the lighter single frame) follows the guild's battle settings, so a
+  // siege looks like a battle in that server.
+  siegeTurnVisuals: boolean("siege_turn_visuals").notNull().default(true),
+  // Field items a commander may spend during one assault.
+  siegeItemUses: integer("siege_item_uses").notNull().default(3),
+  // Turn cap before the siege is decided on destruction dealt.
+  siegeMaxTurns: integer("siege_max_turns").notNull().default(40),
+  // Room for later HQ-wide options without another migration.
+  extra: jsonb("extra").notNull().default({}),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (t) => ({
+  guildUniq: uniqueIndex("hq_settings_guild_uniq").on(t.guildId),
+}));
+
+export type HqSettings = typeof hqSettingsTable.$inferSelect;
