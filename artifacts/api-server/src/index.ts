@@ -881,6 +881,48 @@ async function runBootMigrations() {
   `);
   await pool.query(`CREATE INDEX IF NOT EXISTS hq_base_reigns_holder_idx ON hq_base_reigns (guild_id, holder_id)`);
 
+  // World territories — the AI-held castles seeded onto the shared world map.
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS hq_world_nodes (
+      id               SERIAL PRIMARY KEY,
+      guild_id         TEXT NOT NULL,
+      node_id          TEXT NOT NULL,
+      held_by_user_id  TEXT,
+      held_by_name     TEXT,
+      held_since       TIMESTAMP,
+      last_tribute_at  TIMESTAMP,
+      shield_until     TIMESTAMP,
+      last_attacked_at TIMESTAMP,
+      captures         INTEGER NOT NULL DEFAULT 0,
+      stats            JSONB NOT NULL DEFAULT '{}'::jsonb,
+      created_at       TIMESTAMP NOT NULL DEFAULT NOW(),
+      updated_at       TIMESTAMP NOT NULL DEFAULT NOW(),
+      UNIQUE (guild_id, node_id)
+    )
+  `);
+  await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS hq_world_nodes_guild_node_uniq ON hq_world_nodes (guild_id, node_id)`);
+  await pool.query(`CREATE INDEX IF NOT EXISTS hq_world_nodes_holder_idx ON hq_world_nodes (guild_id, held_by_user_id)`);
+
+  // Built terrain — rectangles stamped by the in-Discord world editor.
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS hq_terrain (
+      id          SERIAL PRIMARY KEY,
+      guild_id    TEXT NOT NULL,
+      user_id     TEXT NOT NULL,
+      room_id     TEXT NOT NULL,
+      material_id TEXT NOT NULL,
+      x           INTEGER NOT NULL,
+      y           INTEGER NOT NULL,
+      w           INTEGER NOT NULL DEFAULT 1,
+      h           INTEGER NOT NULL DEFAULT 1,
+      elevation   INTEGER NOT NULL DEFAULT 0,
+      z           INTEGER NOT NULL DEFAULT 0,
+      meta        JSONB NOT NULL DEFAULT '{}'::jsonb,
+      created_at  TIMESTAMP NOT NULL DEFAULT NOW()
+    )
+  `);
+  await pool.query(`CREATE INDEX IF NOT EXISTS hq_terrain_guild_user_room_idx ON hq_terrain (guild_id, user_id, room_id)`);
+
   logger.info("Boot migrations applied");
 }
 

@@ -11,7 +11,7 @@ import {
   hqBaseStateTable, hqBaseAttacksTable, hqBaseReignsTable,
   type PlayerHq, type HqItemType, type HqBaseState,
 } from "@workspace/db";
-import { and, eq, gte, sql, desc } from "drizzle-orm";
+import { and, eq, gte, inArray, sql, desc } from "drizzle-orm";
 
 // ── player_hq ─────────────────────────────────────────────────────────────────
 export async function getOrCreateHq(guildId: string, userId: string): Promise<PlayerHq> {
@@ -240,6 +240,12 @@ export async function getHeldBases(
 
 // Mark tribute collected for the given held bases (sets last_tribute_at = at),
 // so accrual restarts from now. Only touches bases still held by `holderId`.
+//
+// Uses drizzle's `inArray` rather than a hand-written `= ANY(${ids})`: the raw
+// form binds the JS array as ONE parameter, which Postgres rejects as a
+// malformed array literal. The caller swallows errors, so that failure was
+// silent — and left `last_tribute_at` unchanged, letting the same tribute be
+// collected again on the next World Map open.
 export async function markTributesCollected(
   guildId: string, holderId: string, ownerIds: string[], at: Date,
 ): Promise<void> {
@@ -249,7 +255,7 @@ export async function markTributesCollected(
     .where(and(
       eq(hqBaseStateTable.guildId, guildId),
       eq(hqBaseStateTable.heldByUserId, holderId),
-      sql`${hqBaseStateTable.userId} = ANY(${ownerIds})`,
+      inArray(hqBaseStateTable.userId, ownerIds),
     ));
 }
 

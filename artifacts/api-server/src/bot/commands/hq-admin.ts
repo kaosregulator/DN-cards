@@ -26,6 +26,9 @@ import { HQ_ROOMS } from "../hq/defs/rooms.js";
 import { HQ_THEMES } from "../hq/defs/themes.js";
 import { HQ_WALLS } from "../hq/defs/walls.js";
 import { HQ_FLOORS } from "../hq/defs/floors.js";
+import { HQ_WALLPAPERS } from "../hq/defs/wallpapers.js";
+import { HQ_SURFACES } from "../hq/defs/surfaces.js";
+import { clearAllTerrain } from "../hq/terrain.js";
 
 const EPHEMERAL = { flags: MessageFlags.Ephemeral } as const;
 
@@ -43,6 +46,8 @@ async function grantEverything(guildId: string, userId: string): Promise<void> {
   for (const t of HQ_THEMES) await grantUnlock(guildId, userId, t.id, "theme", "admin").catch(() => {});
   for (const w of HQ_WALLS) await grantUnlock(guildId, userId, w.id, "wall", "admin").catch(() => {});
   for (const f of HQ_FLOORS) await grantUnlock(guildId, userId, f.id, "floor", "admin").catch(() => {});
+  for (const p of HQ_WALLPAPERS) await grantUnlock(guildId, userId, p.id, "wallpaper", "admin").catch(() => {});
+  for (const s of HQ_SURFACES) await grantUnlock(guildId, userId, s.id, "material", "admin").catch(() => {});
 }
 
 // ── Slash entry ───────────────────────────────────────────────────────────────
@@ -115,12 +120,17 @@ export async function handleHqAdminComponent(interaction: ButtonInteraction | St
   }
 
   let notice = "";
-  if (action === "grantall") { await grantEverything(guildId, targetId!); notice = "Unlocked every theme, room, wall, floor & decoration."; }
+  if (action === "grantall") { await grantEverything(guildId, targetId!); notice = "Unlocked every theme, room, wall, floor, wallpaper, build material & decoration."; }
   else if (action === "revokeall") { await clearUnlocks(guildId, targetId!); notice = "Revoked all earned unlocks (they re-earn on next /hq)."; }
   else if (action === "reconcile") { await reconcileUnlocks(guildId, targetId!).catch(() => {}); notice = "Re-synced unlocks & HQ level from real progress."; }
   else if (action === "resetbase") { await resetBaseState(guildId, targetId!); notice = "Cleared base capture & shield."; }
   else if (action === "cleardef") { await clearAllDefenders(guildId, targetId!); notice = "Removed all base defenders."; }
-  else if (action === "wipe") { await clearAllPlacements(guildId, targetId!); await clearAllDefenders(guildId, targetId!); notice = "Wiped placements & defenders (layout reset)."; }
+  else if (action === "wipe") {
+    await clearAllPlacements(guildId, targetId!);
+    await clearAllDefenders(guildId, targetId!);
+    await clearAllTerrain(guildId, targetId!).catch(() => {});
+    notice = "Wiped placements, built terrain & defenders (layout reset).";
+  }
   else return;
 
   await interaction.update(await buildPanel(guildId, targetId!, targetName, notice)).catch(() => {});

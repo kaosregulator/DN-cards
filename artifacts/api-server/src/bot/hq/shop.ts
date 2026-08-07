@@ -15,6 +15,8 @@
 import { HQ_DECORATIONS, type HqDecoration } from "./defs/decorations.js";
 import { HQ_FLOORS } from "./defs/floors.js";
 import { HQ_WALLS } from "./defs/walls.js";
+import { HQ_WALLPAPERS } from "./defs/wallpapers.js";
+import { HQ_SURFACES } from "./defs/surfaces.js";
 
 const SHOP_SIZE = 6;            // items shown per rotation
 const DISCOUNT_CHANCE = 0.34;   // per-item chance of a discount this rotation
@@ -133,28 +135,39 @@ export function shopPriceFor(deco: HqDecoration, now: Date = new Date()): ShopEn
   return { deco, basePrice: deco.price, discountPct: 0, price: deco.price };
 }
 
-// ── Surfaces (buyable floors & walls) ─────────────────────────────────────────
-// Floors and walls with a `price` sell in the shop's "Surfaces" aisle. They grant
-// a floor/wall unlock (not a decoration) and are then chosen in 🎨 Style. The id
-// is globally unique across floors/walls/decorations, so the unlock ledger never
-// cross-wires two surfaces. Buying is an ALTERNATE path to earning them.
+// ── Surfaces (buyable floors, walls, wallpapers & build materials) ────────────
+// Anything with a `price` in the floor, wall, wallpaper or build-material
+// registries sells in the shop's "Surfaces" aisle. Each grants an unlock of its
+// own kind (not a decoration) and is then chosen in 🎨 Style or picked up as a
+// brush in 🛠️ Build. Ids are globally unique across all these registries, so the
+// unlock ledger never cross-wires two surfaces. Buying is an ALTERNATE path to
+// earning them.
+export type SurfaceKindId = "floor" | "wall" | "wallpaper" | "material";
+
 export interface SurfaceEntry {
-  kind: "floor" | "wall";
+  kind: SurfaceKindId;
   id: string;
   name: string;
   emoji: string;
   price: number;
+  /** Where the purchase shows up, for the receipt line. */
+  usedIn: string;
 }
 
 export function buyableSurfaces(): SurfaceEntry[] {
-  const floors: SurfaceEntry[] = HQ_FLOORS
-    .filter(f => typeof f.price === "number" && f.price > 0)
-    .map(f => ({ kind: "floor" as const, id: f.id, name: f.name, emoji: f.emoji, price: f.price! }));
-  const walls: SurfaceEntry[] = HQ_WALLS
-    .filter(w => typeof w.price === "number" && w.price > 0)
-    .map(w => ({ kind: "wall" as const, id: w.id, name: w.name, emoji: w.emoji, price: w.price! }));
-  // Floors first, then walls; each group cheapest-first.
-  return [...floors.sort((a, b) => a.price - b.price), ...walls.sort((a, b) => a.price - b.price)];
+  const priced = <T extends { id: string; name: string; emoji: string; price?: number }>(
+    list: T[], kind: SurfaceKindId, usedIn: string,
+  ): SurfaceEntry[] => list
+    .filter(x => typeof x.price === "number" && x.price > 0)
+    .map(x => ({ kind, id: x.id, name: x.name, emoji: x.emoji, price: x.price!, usedIn }))
+    .sort((a, b) => a.price - b.price);
+
+  return [
+    ...priced(HQ_WALLPAPERS, "wallpaper", "🎨 Style"),
+    ...priced(HQ_FLOORS, "floor", "🎨 Style"),
+    ...priced(HQ_WALLS, "wall", "🎨 Style"),
+    ...priced(HQ_SURFACES, "material", "🛠️ Build"),
+  ];
 }
 
 // Validate a surface purchase server-side (a client can't spoof a cheaper price).
