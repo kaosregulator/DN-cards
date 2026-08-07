@@ -45,6 +45,9 @@ import {
   resolveSiege, SIEGE_SHIELD_MS, SIEGE_COOLDOWN_MS, SIEGE_MAX_PER_WINDOW,
   tributeOwed, TRIBUTE_PER_HOUR, type SiegeCombatant,
 } from "../hq/siege.js";
+import { simulateSiegeBattle, type SiegeBattleResult } from "../hq/siege-battle.js";
+import { getBattleSettings } from "../battle/config-engine.js";
+import { getOwnedBattleCards, type OwnedBattleCard } from "../battle/db.js";
 import { rarityLadderRank } from "../rarity-runtime.js";
 import { withHqLock } from "../hq/lock.js";
 import {
@@ -1105,6 +1108,34 @@ async function buildDefenderSquad(guildId: string, defenderId: string, cx: Loade
   return out;
 }
 
+// Ladder strength for ordering an attacker's squad "strongest first" without
+// deriving full battle stats (same source of truth as toSiegeCombatant).
+function ladderPowerOf(c: OwnedBattleCard, ctx: LoadedCtx["ctx"]): number {
+  const rank = rarityLadderRank(String(c.effectiveRarityKey ?? c.rarity), ctx);
+  return (rank + 1) * 1000 + c.level * 5 + Math.round((c.worthValue ?? 0) / 25);
+}
+
+// Real-engine squads: OwnedBattleCards (level, star rank, config) so the combat
+// engine can derive true stats. Attacker = strongest `count`; defenders = the
+// STATIONED cards in slot order (what the owner set to guard).
+async function buildAttackerCards(guildId: string, userId: string, ctx: LoadedCtx["ctx"], count: number): Promise<OwnedBattleCard[]> {
+  const owned = await getOwnedBattleCards(guildId, userId, ctx);
+  owned.sort((a, b) => ladderPowerOf(b, ctx) - ladderPowerOf(a, ctx));
+  return owned.slice(0, Math.max(1, count));
+}
+
+async function buildDefenderCards(guildId: string, defenderId: string, ctx: LoadedCtx["ctx"]): Promise<OwnedBattleCard[]> {
+  const map = await getDefenders(guildId, defenderId);
+  const owned = await getOwnedBattleCards(guildId, defenderId, ctx);
+  const byId = new Map(owned.map(c => [c.id, c] as const));
+  const out: OwnedBattleCard[] = [];
+  for (const [, cardId] of [...map.entries()].sort((a, b) => a[0] - b[0])) {
+    const c = byId.get(cardId);
+    if (c) out.push(c);
+  }
+  return out;
+}
+
 // Why a base can't be attacked right now (null = go ahead).
 async function siegeBlockReason(guildId: string, attackerId: string, defenderId: string): Promise<string | null> {
   if (attackerId === defenderId) return "You can't besiege your own base.";
@@ -1128,11 +1159,11 @@ async function buildAttackModePicker(guildId: string, attackerId: string, defend
   const squad = await buildAttackerSquad(guildId, attackerId, cx, defenders.length);
   const yourP = squad.reduce((s, c) => s + c.power, 0), theirP = defenders.reduce((s, c) => s + c.power, 0);
   embed.setDescription(
-    `Send your strongest **${squad.length}** cards against **${defenders.length}** defenders. ` +
-    "Win the most duels to capture the base.\n\n" +
-    `⚔️ Your squad power: **${yourP}**  ·  🛡️ Their defence: **${theirP}**\n\n` +
+    `Your strongest **${squad.length}** cards storm **${defenders.length}** stationed defenders in a **real battle** ` +
+    "(true stats, moves, specials & passives). Knock out every defender to capture the base.\n\n" +
+    `⚔️ Your strength: **${yourP}**  ·  🛡️ Their defence: **${theirP}**\n\n` +
     "**Pick how to watch it:**\n" +
-    "• **Classic** — instant text report\n• **Static** — a battle image\n• **Live** — an animated battle",
+    "• **Classic** — a text battle report\n• **Static** — a battle image\n• **Live** — an animated battle",
   );
   const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder().setCustomId(`hq-hub:siege:${defenderId}:classic`).setLabel("Classic").setEmoji("📜").setStyle(ButtonStyle.Secondary),
@@ -1180,6 +1211,84 @@ function formatReign(sec: number): string {
   return "<1m";
 }
 
+// A card the attacker's champion figure is drawn from, in the render's shape.
+function championRender(card: OwnedBattleCard | undefined, cx: LoadedCtx) {
+  if (!card) return null;
+  const d = getCardDisplayRarity({ id: card.id, rarity: card.rarity }, cx.ctx, cx.settings, cx.displayMap);
+  return { slot: 0, cardId: card.id, name: card.name, artUrl: toAbsoluteImageUrl(card.imageUrl), rarityColor: d.color, basePath: null };
+}
+
+// One resolved siege, normalised so runSiege renders it the same whichever engine
+// produced it: the full turn-based battle engine (preferred) or the power
+// auto-resolver (fallback when battles are disabled / a squad can't be built).
+interface SiegeOutcome {
+  attackerWon: boolean;
+  attackerPower: number;
+  defenderPower: number;
+  defenderCount: number;
+  summary: string;                                            // headline for the embed
+  logLines: string[];                                          // classic-mode recap
+  duels: { slot: number; attackerWon: boolean; move: string }[]; // render plan
+  champ: ReturnType<typeof championRender>;                    // attacker's lead card
+  real: boolean;
+}
+
+// Highlight flashes worth surfacing in the classic-mode recap of a real battle.
+const SIEGE_HIGHLIGHT = new Set(["ko", "ultimate", "crit", "laststand", "shield_break", "counter", "combo"]);
+
+function outcomeFromBattle(r: SiegeBattleResult, champ: ReturnType<typeof championRender>): SiegeOutcome {
+  const cleared = r.defenderFalls.filter(d => d.defeated).length;
+  const total = r.defenderFalls.length;
+  const highlights = r.events.filter(e => e.flash && SIEGE_HIGHLIGHT.has(e.flash)).map(e => e.text);
+  const logLines = (highlights.length >= 3 ? highlights : r.events.map(e => e.text)).slice(-8);
+  return {
+    attackerWon: r.attackerWon, attackerPower: r.attackerPower, defenderPower: r.defenderPower,
+    defenderCount: total,
+    summary: r.attackerWon
+      ? `cleared **${cleared}/${total}** defenders, losing **${r.attackerCardsLost}** card${r.attackerCardsLost === 1 ? "" : "s"}`
+      : `the walls held at **${cleared}/${total}** — your assault was broken`,
+    logLines,
+    duels: r.defenderFalls.map(d => ({ slot: d.slot, attackerWon: d.defeated, move: d.move })),
+    champ, real: true,
+  };
+}
+
+function outcomeFromPower(r: ReturnType<typeof resolveSiege>, champ: ReturnType<typeof championRender>, defenderCount: number): SiegeOutcome {
+  return {
+    attackerWon: r.attackerWon, attackerPower: r.attackerPower, defenderPower: r.defenderPower,
+    defenderCount,
+    summary: `duels **${r.attackerWins}–${r.defenderWins}**`,
+    logLines: r.duels.slice(0, 6).map((d, i) => `**${i + 1}.** ${d.attacker.name} ${d.attackerWon ? "🟢 beat" : "🔴 lost to"} ${d.defender.name}`),
+    duels: r.duels.map((d, i) => ({ slot: i, attackerWon: d.attackerWon, move: SIEGE_MOVES[Math.floor(Math.random() * SIEGE_MOVES.length)]! })),
+    champ, real: false,
+  };
+}
+
+// Resolve a siege — real battle engine first, power auto-resolve as a safety net.
+async function resolveSiegeOutcome(guildId: string, attackerId: string, attackerName: string, defenderId: string, defenderName: string, cx: LoadedCtx): Promise<SiegeOutcome> {
+  try {
+    const settings = await getBattleSettings(guildId);
+    if (settings.enabled) {
+      const defenderCards = await buildDefenderCards(guildId, defenderId, cx.ctx);
+      if (defenderCards.length > 0) {
+        const attackerCards = await buildAttackerCards(guildId, attackerId, cx.ctx, defenderCards.length);
+        if (attackerCards.length > 0) {
+          const r = simulateSiegeBattle(attackerCards, defenderCards, settings, guildId, cx.ctx, { attackerId, attackerName, defenderId, defenderName });
+          return outcomeFromBattle(r, championRender(attackerCards[0], cx));
+        }
+      }
+    }
+  } catch {
+    // Fall through to the power auto-resolver below.
+  }
+  const defenders = await buildDefenderSquad(guildId, defenderId, cx);
+  const squad = await buildAttackerSquad(guildId, attackerId, cx, defenders.length);
+  const champ = squad[0]
+    ? { slot: 0, cardId: squad[0].cardId, name: squad[0].name, artUrl: squad[0].artUrl, rarityColor: squad[0].rarityColor, basePath: null }
+    : null;
+  return outcomeFromPower(resolveSiege(squad, defenders), champ, defenders.length);
+}
+
 async function runSiege(interaction: ButtonInteraction, guildId: string, attackerId: string, defenderId: string, mode: SiegeMode): Promise<void> {
   await interaction.deferUpdate().catch(() => {});
   // Serialize per DEFENDER (the contested base) so every attack on one base runs
@@ -1193,14 +1302,12 @@ async function runSiege(interaction: ButtonInteraction, guildId: string, attacke
     await interaction.editReply({ embeds: [new EmbedBuilder().setColor(0xc0392b).setDescription(`❌ ${blocked}`)], components: [backRow("defenders")], files: [] }).catch(() => {});
     return;
   }
-  const cx = await loadCtx(guildId);
-  const defenders = await buildDefenderSquad(guildId, defenderId, cx);
-  const squad = await buildAttackerSquad(guildId, attackerId, cx, defenders.length);
-  const result = resolveSiege(squad, defenders);
-
   const attackerName = interaction.user.username;
   const defHq = await getOrCreateHq(guildId, defenderId);
   const defenderName = readHqStats(defHq).title?.trim() || "the defenders";
+
+  const cx = await loadCtx(guildId);
+  const result = await resolveSiegeOutcome(guildId, attackerId, attackerName, defenderId, defenderName, cx);
 
   // Persist outcome (capture + shield on a win; log either way).
   await applySiegeToBase(guildId, defenderId, result.attackerWon, attackerId, attackerName, SIEGE_SHIELD_MS).catch(() => {});
@@ -1220,7 +1327,7 @@ async function runSiege(interaction: ButtonInteraction, guildId: string, attacke
     .setTitle(result.attackerWon ? "⚔️ Base Captured!" : "🛡️ Base Defended!")
     .setDescription(
       `**${attackerName}** ${result.attackerWon ? "stormed" : "failed to take"} the base — ` +
-      `duels **${result.attackerWins}–${result.defenderWins}**.` +
+      `${result.summary}.` +
       (result.attackerWon ? `\n🚩 You hold it until it's reclaimed — earning **${TRIBUTE_PER_HOUR}💠/hr** while you do. Collect from the 🗺️ World map.` : "\nThe defenders held the walls."),
     )
     .addFields(
@@ -1238,12 +1345,11 @@ async function runSiege(interaction: ButtonInteraction, guildId: string, attacke
   // is the clean cinematic; static is one final frame.
   const files: AttachmentBuilder[] = [];
   const baseView = await buildBaseRenderView(guildId, defenderId, defenderName, null, defHq);
-  const champ = squad[0]; // attacker's strongest, assaulting the castle
   const plan: SiegePlan = {
-    duels: result.duels.map((d, i) => ({ slot: i, attackerWon: d.attackerWon, move: SIEGE_MOVES[Math.floor(Math.random() * SIEGE_MOVES.length)]! })),
-    defenderCount: defenders.length,
+    duels: result.duels,
+    defenderCount: result.defenderCount,
     captured: result.attackerWon,
-    attacker: champ ? { slot: 0, cardId: champ.cardId, name: champ.name, artUrl: champ.artUrl, rarityColor: champ.rarityColor, basePath: null } : null,
+    attacker: result.champ,
     attackerName, defenderName,
   };
   const live = mode !== "static";
@@ -1253,9 +1359,9 @@ async function runSiege(interaction: ButtonInteraction, guildId: string, attacke
     files.push(new AttachmentBuilder(buf, { name }));
     embed.setImage(`attachment://${name}`);
   }
-  const log = result.duels.slice(0, 6).map((d, i) =>
-    `**${i + 1}.** ${d.attacker.name} ${d.attackerWon ? "🟢 beat" : "🔴 lost to"} ${d.defender.name}`).join("\n");
-  if (mode === "classic" && log) embed.addFields({ name: "Duels", value: log.slice(0, 1024) });
+  if (mode === "classic" && result.logLines.length) {
+    embed.addFields({ name: result.real ? "⚔️ Battle log" : "Duels", value: result.logLines.join("\n").slice(0, 1024) });
+  }
 
   await interaction.editReply({ embeds: [embed], components: [backRow("defenders")], files }).catch(() => {});
   });

@@ -225,12 +225,24 @@ without breaking the base view. See `assets/hq/manifest.json` `_credits`.
 
 Scout another player with `/hq user:@member` — the visit shows their **exterior
 base** and stationed defenders — then **⚔️ Attack** it. The attacker's strongest
-cards duel the defenders; win the most duels to **capture** the base (its banner
-flips red and it's **shielded** for an hour so it can't be farmed), otherwise the
-defenders hold. Combat power is **derived from the guild strength ladder**
-(`rarityLadderRank`), the same source of truth battles and raids use — no new
-balance surface (`bot/hq/siege.ts`). A per-target attacker **cooldown** limits
-repeat hits; captures lazily revert to the owner when the shield expires.
+cards storm the stationed defenders in a **real battle** and must knock out every
+one to **capture** the base (its banner flips red and it's **shielded** for an
+hour so it can't be farmed); if the assault is broken, the walls hold.
+
+**Combat runs the actual battle engine.** `bot/hq/siege-battle.ts`
+(`simulateSiegeBattle`) drives the same turn-based combat as `/battle` —
+headlessly, no click-through — over a **gauntlet**: the attacker's active card
+fights the defender's active card; whoever is knocked out is replaced by their
+side's next card (the survivor keeps its HP) until one side is wiped. True stats,
+movesets, specials, passives, statuses, crits and KOs all apply — stats come from
+the single `get_scaled_stats` entry point (level, star rank, config, and the
+guild strength ladder `rarityLadderRank`), the same source of truth `/battle`
+uses, so there's no separate balance surface. A turn-cap standoff is decided by
+attrition progress, with a dead-even standoff favouring the defender. If the
+battle system is disabled or a squad can't be built, it falls back to the power
+auto-resolver (`bot/hq/siege.ts`, `resolveSiege`). A per-target attacker
+**cooldown** limits repeat hits; captures lazily revert to the owner when the
+shield expires.
 
 Every siege renders **on the castle base scene** (castle + defender cards +
 castle health) — never a separate VS screen. Three ways to watch:
