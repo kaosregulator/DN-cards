@@ -22,20 +22,33 @@ import {
   type Ctx, type CanvasMod,
 } from "../animations/engine.js";
 import {
-  loadArt, drawCardArt, drawCardFrame, drawRarityGlow,
+  drawCardArt, drawCardFrame, drawRarityGlow,
   drawTextWithShadow, drawTitle, fitText, TITLE_FONT,
 } from "../animations/effects.js";
 import { drawAtmosphere, atmospherePreset } from "../animations/atmosphere.js";
 import { queueRender } from "../animations/render-queue.js";
 import { loadSprite, spriteForPrefix } from "./assets.js";
+import {
+  ellipse, blit, imgSize, blitClippedQuad, polyPath, diamond, seededRng, hashString,
+  drawIslandTier, drawPine, drawRock, drawHqHeader, HQ_HEADER_H,
+  type Pt, type HqHeaderInfo,
+} from "./paint.js";
+import {
+  paintTerrain, paintCursor, paintGridGuides,
+  type HqTerrainFeature, type IsoProjector,
+} from "./render-terrain.js";
+import { drawWallpaperFace } from "./render-wallpaper.js";
+import type { HqWallpaper } from "./defs/wallpapers.js";
 import type { HqTheme } from "./defs/themes.js";
 import type { HqWall } from "./defs/walls.js";
 import type { HqFloor } from "./defs/floors.js";
 import type { DecoCategory } from "./defs/decorations.js";
 import type { CompanionKind } from "./defs/companions.js";
 
+export type { HqHeaderInfo };
+
 const W = 1120, H = 680;
-const HEADER_H = 66;
+const HEADER_H = HQ_HEADER_H;
 
 // ── Isometric projection ───────────────────────────────────────────────────────
 // A GRID×GRID floor. project() maps a lattice point (gx,gy) to screen space; a
@@ -47,7 +60,6 @@ const TILE_W = 116, TILE_H = 58;   // full diamond width/height (2:1 iso)
 const ORIGIN_X = W / 2, ORIGIN_Y = 176; // screen position of lattice corner (0,0)
 const WALL_H = 168;
 
-interface Pt { x: number; y: number }
 function project(gx: number, gy: number): Pt {
   return {
     x: ORIGIN_X + (gx - gy) * (TILE_W / 2),
@@ -58,16 +70,10 @@ function lerp(a: Pt, b: Pt, t: number): Pt {
   return { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t };
 }
 
-// `ellipse` exists on the Skia 2D context at runtime but is under-declared on the
-// project's Ctx type (same as drawImage's source-rect overload).
-type EllipseCtx = { ellipse(x: number, y: number, rx: number, ry: number, rot: number, a0: number, a1: number): void };
-function ellipse(ctx: Ctx, x: number, y: number, rx: number, ry: number, rot = 0): void {
-  (ctx as unknown as EllipseCtx).ellipse(x, y, rx, ry, rot, 0, Math.PI * 2);
-}
-type DrawImg = { drawImage(i: unknown, x: number, y: number, w: number, h: number): void };
-function blit(ctx: Ctx, img: unknown, x: number, y: number, w: number, h: number): void {
-  (ctx as unknown as DrawImg).drawImage(img, x, y, w, h);
-}
+// The interior room's projector, handed to the terrain painter so build-mode
+// surfaces land on exactly the same lattice as decorations.
+const ROOM_PROJECTOR: IsoProjector = { project, grid: GRID, tileW: TILE_W, tileH: TILE_H };
+export const HQ_ROOM_PROJECTOR = ROOM_PROJECTOR;
 
 // ── View contract (built by the hub) ───────────────────────────────────────────
 export interface HqRenderCard {
@@ -108,16 +114,14 @@ export interface HqRenderDefender {
   basePath: string | null; // base sprite (CC0); procedural disc when null
 }
 
-// The fields the shared header band needs — satisfied structurally by both the
-// interior room view and the exterior base view, so layerHeader serves both.
-export interface HqHeaderInfo {
-  ownerAvatarUrl: string | null;
-  displayTitle: string;
-  subtitle: string;
-  theme: HqTheme;
-  roomEmoji: string;
-  roomName: string;
-  hqLevel: number;
+// A highlighted build cursor drawn over the floor: the rectangle the next
+// place/remove will affect, plus a label so the player can read the coordinates
+// straight off the image instead of guessing at slot numbers.
+export interface HqBuildCursor {
+  x: number; y: number; w: number; h: number;
+  color: number;
+  label: string;
+  valid: boolean;
 }
 
 export interface HqRenderView extends HqHeaderInfo {
@@ -129,10 +133,15 @@ export interface HqRenderView extends HqHeaderInfo {
   wallSprite?: string | null;
   floorSprite?: string | null;
   backdropSprite?: string | null;     // scene behind the room (sky/landscape)
+  // A real repeating wallpaper painted onto the wall faces in iso perspective.
+  // Takes priority over wallSprite; null keeps the wall style's own look.
+  wallpaper?: HqWallpaper | null;
   wallsOff?: boolean;                 // "outside" — open the walls
   glassOff?: boolean;                 // hide the glass display cases
   pedestals: (HqRenderCard | null)[]; // length = room.pedestals
   decorations: HqRenderDeco[];        // placed decorations (with slot index)
+  terrain?: HqTerrainFeature[];       // build-mode surfaces, water & raised platforms
+  cursor?: HqBuildCursor | null;      // build-mode selection overlay
   defenders?: HqRenderDefender[];     // cards set to defend the base (figures on bases)
   companion?: HqRenderCompanion | null; // active pet standing in the room
   visitors?: number;                  // ambient NPC guests (0-4), derived from prestige
@@ -157,7 +166,10 @@ export interface HqBaseView extends HqHeaderInfo {
   buildings: HqBaseBuilding[];    // which structures the town has
   defenders: HqRenderDefender[];  // stationed cards, rendered as standees
   decorations?: HqRenderDeco[];   // player-placed grounds decorations (trees, items…)
+  terrain?: HqTerrainFeature[];   // build-mode ponds, hills & paved surfaces
+  cursor?: HqBuildCursor | null;  // build-mode selection overlay
   captured?: boolean;             // show a captured/held banner (red)
+  bannerColor?: number;           // override the castle banner colour (faction/holder)
   companion?: HqRenderCompanion | null; // active pet roaming the grounds
   visitors?: number;              // ambient NPC guests (0-4), derived from prestige
 }
@@ -248,13 +260,20 @@ export async function renderHq(view: HqRenderView): Promise<Buffer | null> {
       layerBackdrop(ctx, view.theme);
       await layerSceneryBackdrop(ctx, mod, view.backdropSprite ?? null); // sky/landscape behind
       if (!view.wallsOff) {
-        await layerWalls(ctx, mod, view.wall, view.wallSprite ?? null);
+        await layerWalls(ctx, mod, view.wall, view.wallSprite ?? null, view.wallpaper ?? null);
         await layerWallDecorations(ctx, mod, view);
       }
       await layerFloor(ctx, mod, view.floor, view.floorSprite ?? null);
+      // Build-mode surfaces sit ON the floor and UNDER the furniture, so a rug or
+      // pond reads as ground the decorations then stand on.
+      if (view.terrain?.length) await paintTerrain(ctx, mod, ROOM_PROJECTOR, view.terrain);
       layerLighting(ctx, view.theme);
       await layerFurniture(ctx, mod, view);
-      await layerHeader(ctx, mod, view);
+      if (view.cursor) {
+        paintGridGuides(ctx, ROOM_PROJECTOR);
+        paintCursor(ctx, ROOM_PROJECTOR, view.cursor);
+      }
+      await drawHqHeader(ctx, mod, view, W);
 
       return await canvas.encode("png");
     } catch {
@@ -277,20 +296,21 @@ const ISLAND_HH = 214;      // half-height
 const TIER_THICK = 30;      // cliff thickness
 const CASTLE_W = 150, CASTLE_H = 138;
 
-interface Pt2 { x: number; y: number }
-function diamond(cx: number, cy: number, hw: number, hh: number): Pt2[] {
-  return [{ x: cx, y: cy - hh }, { x: cx + hw, y: cy }, { x: cx, y: cy + hh }, { x: cx - hw, y: cy }];
+// The outdoor build lattice: a GRID×GRID iso grid laid over the island's top
+// face so the SAME rectangle editor works on the grounds as inside a room.
+// (0,0) is the island's back corner; the grid spans the full diamond.
+const BASE_GRID = 10;
+const BASE_TILE_W = (ISLAND_HW * 2) / BASE_GRID;
+const BASE_TILE_H = (ISLAND_HH * 2) / BASE_GRID;
+function baseProject(gx: number, gy: number): Pt {
+  return {
+    x: BASE_CX + (gx - gy) * (BASE_TILE_W / 2),
+    y: (ISLAND_CY - ISLAND_HH) + (gx + gy) * (BASE_TILE_H / 2),
+  };
 }
-function polyPath(ctx: Ctx, pts: Pt2[]): void {
-  ctx.beginPath(); ctx.moveTo(pts[0]!.x, pts[0]!.y);
-  for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i]!.x, pts[i]!.y);
-  ctx.closePath();
-}
-// Deterministic RNG so a base's scenery is stable between renders.
-function baseRng(seed: number): () => number {
-  let a = seed >>> 0;
-  return () => { a |= 0; a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
-}
+const BASE_PROJECTOR: IsoProjector = { project: baseProject, grid: BASE_GRID, tileW: BASE_TILE_W, tileH: BASE_TILE_H };
+export const HQ_BASE_PROJECTOR = BASE_PROJECTOR;
+export const HQ_BASE_GRID = BASE_GRID;
 
 // A siege overlay painted ON the base scene (no separate VS screen): the castle
 // health drains, defeated defenders dim + get an ✕, the attacker champion
@@ -341,10 +361,13 @@ async function drawBaseDecorations(ctx: Ctx, mod: CanvasMod, view: HqBaseView): 
 // frame of a live siege (so the siege looks identical to the base, just in motion).
 async function paintBaseScene(ctx: Ctx, mod: CanvasMod, view: HqBaseView, siege?: SiegeOverlay): Promise<void> {
   ctx.fillStyle = "#0f1117"; ctx.fillRect(0, 0, W, H); // void backdrop
-  drawIslandTier(ctx, BASE_CX, ISLAND_CY, ISLAND_HW, ISLAND_HH);
+  drawIslandTier(ctx, BASE_CX, ISLAND_CY, ISLAND_HW, ISLAND_HH, { thickness: TIER_THICK });
   drawRiver(ctx);
+  // Player-built grounds: ponds, hills and paving go down before the plateau and
+  // scatter so the castle and trees sit on top of the landscaping.
+  if (view.terrain?.length) await paintTerrain(ctx, mod, BASE_PROJECTOR, view.terrain);
   const plateauCy = ISLAND_CY - 40;
-  drawIslandTier(ctx, BASE_CX, plateauCy, 168, 80, true);
+  drawIslandTier(ctx, BASE_CX, plateauCy, 168, 80, { raised: true });
   drawScatter(ctx, view);
   await drawBaseDecorations(ctx, mod, view); // player-placed grounds items (behind the front row)
   const castleFeetY = plateauCy + 6;
@@ -364,12 +387,16 @@ async function paintBaseScene(ctx: Ctx, mod: CanvasMod, view: HqBaseView, siege?
     if (view.companion) drawCompanion(ctx, BASE_CX + 60, ISLAND_CY + 176, view.companion, 1.05);
   }
   if (siege?.attacker) await drawAttacker(ctx, mod, siege.attacker, siege.advance);
+  if (view.cursor) {
+    paintGridGuides(ctx, BASE_PROJECTOR);
+    paintCursor(ctx, BASE_PROJECTOR, view.cursor);
+  }
   const lg = ctx.createRadialGradient(BASE_CX, 120, 60, BASE_CX, 300, 640);
   lg.addColorStop(0, "rgba(255,244,214,0.10)"); lg.addColorStop(1, "rgba(0,0,0,0)");
   ctx.fillStyle = lg; ctx.fillRect(0, 0, W, H);
   if (siege?.caption) drawMoveCaption(ctx, siege.caption.text, siege.caption.color);
   if (siege?.banner) drawResultBanner(ctx, siege.banner.text, siege.banner.color);
-  await layerHeader(ctx, mod, view);
+  await drawHqHeader(ctx, mod, view, W);
 }
 
 export async function renderBase(view: HqBaseView): Promise<Buffer | null> {
@@ -472,45 +499,12 @@ function drawResultBanner(ctx: Ctx, text: string, color: number): void {
   ctx.restore();
 }
 
-// One terraced slab: grass top (with tile shimmer + rim), and two cliff faces
-// (front-left, front-right) banded dirt→rock for a chunky floating look.
-function drawIslandTier(ctx: Ctx, cx: number, cy: number, hw: number, hh: number, raised = false): void {
-  const [top, right, bottom, left] = diamond(cx, cy, hw, hh) as [Pt2, Pt2, Pt2, Pt2];
-  const thick = raised ? 20 : TIER_THICK;
-  // Cliff faces.
-  ctx.fillStyle = "#5b4327";
-  polyPath(ctx, [left, bottom, { x: bottom.x, y: bottom.y + thick }, { x: left.x, y: left.y + thick }]); ctx.fill();
-  ctx.fillStyle = "#463322";
-  polyPath(ctx, [right, bottom, { x: bottom.x, y: bottom.y + thick }, { x: right.x, y: right.y + thick }]); ctx.fill();
-  // Rock band at the very bottom of each face.
-  ctx.fillStyle = "rgba(0,0,0,0.28)";
-  polyPath(ctx, [{ x: left.x, y: left.y + thick - 6 }, { x: bottom.x, y: bottom.y + thick - 6 }, { x: bottom.x, y: bottom.y + thick }, { x: left.x, y: left.y + thick }]); ctx.fill();
-  polyPath(ctx, [{ x: right.x, y: right.y + thick - 6 }, { x: bottom.x, y: bottom.y + thick - 6 }, { x: bottom.x, y: bottom.y + thick }, { x: right.x, y: right.y + thick }]); ctx.fill();
-  // Grass top.
-  polyPath(ctx, [top, right, bottom, left]);
-  const gg = ctx.createLinearGradient(0, top.y, 0, bottom.y);
-  gg.addColorStop(0, raised ? "#5a8a44" : "#4f7f3c"); gg.addColorStop(1, raised ? "#3f6a32" : "#365c2b");
-  ctx.fillStyle = gg; ctx.fill();
-  // Faint tile shimmer.
-  ctx.save(); polyPath(ctx, [top, right, bottom, left]); ctx.clip();
-  ctx.strokeStyle = "rgba(255,255,255,0.05)"; ctx.lineWidth = 1;
-  const step = hw / 6;
-  for (let i = -6; i <= 6; i++) {
-    ctx.beginPath(); ctx.moveTo(cx + i * step, cy - hh); ctx.lineTo(cx + i * step + hw, cy); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(cx + i * step, cy - hh); ctx.lineTo(cx + i * step - hw, cy); ctx.stroke();
-  }
-  ctx.restore();
-  // Sunlit top rim.
-  ctx.strokeStyle = "rgba(180,220,150,0.5)"; ctx.lineWidth = 2;
-  ctx.beginPath(); ctx.moveTo(left.x, left.y); ctx.lineTo(top.x, top.y); ctx.lineTo(right.x, right.y); ctx.stroke();
-}
-
 // A meandering river across the base tier, clipped to the grass, with a bridge.
 function drawRiver(ctx: Ctx): void {
-  const [top, right, bottom, left] = diamond(BASE_CX, ISLAND_CY, ISLAND_HW, ISLAND_HH) as [Pt2, Pt2, Pt2, Pt2];
+  const [top, right, bottom, left] = diamond(BASE_CX, ISLAND_CY, ISLAND_HW, ISLAND_HH) as [Pt, Pt, Pt, Pt];
   ctx.save();
   polyPath(ctx, [top, right, bottom, left]); ctx.clip();
-  const pts: Pt2[] = [
+  const pts: Pt[] = [
     { x: BASE_CX + 210, y: ISLAND_CY - 150 },
     { x: BASE_CX + 90, y: ISLAND_CY - 40 },
     { x: BASE_CX + 150, y: ISLAND_CY + 60 },
@@ -542,8 +536,7 @@ function drawRiver(ctx: Ctx): void {
 // Seeded pine forests + rocks scattered on the base grass, avoiding the plateau,
 // the river and the very centre.
 function drawScatter(ctx: Ctx, view: HqBaseView): void {
-  let seed = 0; for (const c of (view.displayTitle || "base")) seed = (seed * 31 + c.charCodeAt(0)) | 0;
-  const rnd = baseRng(seed);
+  const rnd = seededRng(hashString(view.displayTitle || "base"));
   const inRiver = (x: number, y: number) => Math.abs((x - BASE_CX) - (ISLAND_CY - y) * 0.4) < 46 && y > ISLAND_CY - 150 && y < ISLAND_CY + 150;
   let placed = 0, tries = 0;
   while (placed < 26 && tries++ < 400) {
@@ -556,30 +549,6 @@ function drawScatter(ctx: Ctx, view: HqBaseView): void {
     if (rnd() < 0.8) drawPine(ctx, x, y, s); else drawRock(ctx, x, y, s);
     placed++;
   }
-}
-
-function drawPine(ctx: Ctx, x: number, y: number, s: number): void {
-  ctx.save();
-  ctx.fillStyle = "rgba(0,0,0,0.22)"; ctx.beginPath(); ellipse(ctx, x, y, 12 * s, 5 * s); ctx.fill();
-  ctx.fillStyle = "#5a3d22"; ctx.fillRect(x - 2 * s, y - 10 * s, 4 * s, 10 * s);
-  for (let i = 0; i < 3; i++) {
-    const ty = y - 6 * s - i * 12 * s, wsp = (16 - i * 3) * s;
-    ctx.fillStyle = i === 0 ? "#2f6b34" : i === 1 ? "#357a3b" : "#3d8a43";
-    ctx.beginPath(); ctx.moveTo(x, ty - 16 * s); ctx.lineTo(x + wsp, ty); ctx.lineTo(x - wsp, ty); ctx.closePath(); ctx.fill();
-    ctx.fillStyle = "rgba(255,255,255,0.12)";
-    ctx.beginPath(); ctx.moveTo(x, ty - 16 * s); ctx.lineTo(x - wsp, ty); ctx.lineTo(x - wsp * 0.4, ty); ctx.closePath(); ctx.fill();
-  }
-  ctx.restore();
-}
-
-function drawRock(ctx: Ctx, x: number, y: number, s: number): void {
-  ctx.save();
-  ctx.fillStyle = "rgba(0,0,0,0.22)"; ctx.beginPath(); ellipse(ctx, x, y, 16 * s, 6 * s); ctx.fill();
-  ctx.fillStyle = "#8b9099"; ctx.beginPath();
-  ctx.moveTo(x - 16 * s, y); ctx.lineTo(x - 8 * s, y - 16 * s); ctx.lineTo(x + 6 * s, y - 18 * s); ctx.lineTo(x + 16 * s, y - 4 * s); ctx.closePath(); ctx.fill();
-  ctx.fillStyle = "#a9aeb6"; ctx.beginPath();
-  ctx.moveTo(x - 8 * s, y - 16 * s); ctx.lineTo(x + 6 * s, y - 18 * s); ctx.lineTo(x + 2 * s, y - 8 * s); ctx.lineTo(x - 4 * s, y - 8 * s); ctx.closePath(); ctx.fill();
-  ctx.restore();
 }
 
 // A clean light-stone castle: central keep + two crenellated towers, front-iso.
@@ -643,7 +612,9 @@ function drawCastleProcedural(ctx: Ctx, cx: number, feetY: number): number {
 // Owner banner (colour + crest) hanging from a pole, with a defence health bar
 // floating above the castle — exactly the "banner + HP bar on top" from the mock.
 function drawBannerAndHealth(ctx: Ctx, cx: number, castleTopY: number, view: HqBaseView, healthFrac?: number): void {
-  const owner = view.captured ? 0xc0392b : 0x3f78c8; // red if captured, else blue (self)
+  // Red when captured; otherwise the caller's colour (an AI faction's crest on a
+  // world territory, or the owner's blue on a player base).
+  const owner = view.captured ? 0xc0392b : (view.bannerColor ?? 0x3f78c8);
   const barY = castleTopY - 54, barW = 96, barH = 9;
   // Health = the siege's remaining castle HP when besieged, else share of posts filled.
   const filled = healthFrac ?? Math.min(1, (view.defenders?.length ?? 0) / Math.max(1, HQ_DEFENDER_SLOTS));
@@ -734,91 +705,6 @@ function drawMoveCaption(ctx: Ctx, text: string, color: number): void {
   ctx.restore();
 }
 
-// ── World map (top-level: bases to raid) ─────────────────────────────────────
-export interface WorldBaseMarker {
-  name: string;
-  defenders: number;
-  maxDefenders: number;
-  held: boolean;      // currently under someone else's flag
-  color: number;      // banner colour (per base)
-}
-export interface HqWorldView extends HqHeaderInfo { markers: WorldBaseMarker[] }
-
-// The world landmass (a big terraced diamond) and the castle anchor slots
-// spread across its top face — DERIVED from the island so they track the canvas.
-const WORLD_IX = W / 2, WORLD_IY = 356, WORLD_IHW = 486, WORLD_IHH = 252;
-const WORLD_ANCHORS: { x: number; y: number }[] = (() => {
-  // (u,v) in island-normalised space (|u|+|v| ≲ 0.8 stays on the top face).
-  const uv: [number, number][] = [
-    [-0.30, -0.44], [0.08, -0.50], [0.46, -0.30],
-    [-0.50, -0.06], [0.14, -0.04], [0.54, 0.06],
-    [-0.22, 0.34], [0.32, 0.30],
-  ];
-  return uv.map(([u, v]) => ({ x: WORLD_IX + u * WORLD_IHW, y: WORLD_IY + v * WORLD_IHH }));
-})();
-
-export async function renderWorldMap(view: HqWorldView): Promise<Buffer | null> {
-  return queueRender("hq-world", async () => {
-    const mod = await getCanvas();
-    if (!mod) return null;
-    try {
-      const canvas = mod.createCanvas(W, H);
-      const ctx = canvas.getContext("2d") as unknown as Ctx;
-      ctx.fillStyle = "#0f1117"; ctx.fillRect(0, 0, W, H);
-      // A big terraced landmass.
-      drawIslandTier(ctx, WORLD_IX, WORLD_IY, WORLD_IHW, WORLD_IHH);
-      const castleImg = await (async () => {
-        const p = spriteForPrefix("building", "castle") ?? spriteForPrefix("building", "keep");
-        return p ? await loadSprite(mod, p).catch(() => null) : null;
-      })();
-      const markers = view.markers.slice(0, WORLD_ANCHORS.length)
-        .map((m, i) => ({ m, a: WORLD_ANCHORS[i]! }))
-        .sort((p, q) => p.a.y - q.a.y);
-      for (const { m, a } of markers) drawMiniCastle(ctx, mod, a.x, a.y, m, castleImg);
-      const lg = ctx.createRadialGradient(W / 2, 120, 60, W / 2, 300, 700);
-      lg.addColorStop(0, "rgba(255,244,214,0.08)"); lg.addColorStop(1, "rgba(0,0,0,0)");
-      ctx.fillStyle = lg; ctx.fillRect(0, 0, W, H);
-      await layerHeader(ctx, mod, view);
-      return await canvas.encode("png");
-    } catch { return null; }
-  });
-}
-
-function drawMiniCastle(ctx: Ctx, _mod: CanvasMod, cx: number, feetY: number, m: WorldBaseMarker, img: unknown): void {
-  ctx.save(); ctx.fillStyle = "rgba(0,0,0,0.34)"; ctx.beginPath(); ellipse(ctx, cx, feetY, 44, 13); ctx.fill(); ctx.restore();
-  if (img) {
-    const iw = Math.max(1, (img as { width: number }).width), ih = Math.max(1, (img as { height: number }).height);
-    const h = 108, w = h * (iw / ih);
-    blit(ctx, img, cx - w / 2, feetY - h, w, h);
-  } else {
-    ctx.fillStyle = "#c3bca7"; ctx.fillRect(cx - 26, feetY - 60, 52, 60);
-    ctx.fillStyle = "#9a927c"; for (let i = 0; i < 4; i++) ctx.fillRect(cx - 26 + i * 15, feetY - 68, 8, 8);
-  }
-  // Banner + health bar above (owner colour / red if held).
-  const topY = feetY - 128;
-  const owner = m.held ? 0xc0392b : m.color;
-  const barW = 74, barH = 8, barY = topY - 4;
-  ctx.fillStyle = "rgba(0,0,0,0.6)"; roundRectPath(ctx, cx - barW / 2 - 2, barY - 2, barW + 4, barH + 4, 5); ctx.fill();
-  ctx.fillStyle = "#203020"; roundRectPath(ctx, cx - barW / 2, barY, barW, barH, 4); ctx.fill();
-  const frac = m.maxDefenders > 0 ? m.defenders / m.maxDefenders : 0;
-  ctx.fillStyle = frac > 0.5 ? "#4fd06a" : frac > 0.25 ? "#e0b83a" : "#d0483a";
-  roundRectPath(ctx, cx - barW / 2, barY, Math.max(2, barW * frac), barH, 4); ctx.fill();
-  // Small pennant.
-  ctx.strokeStyle = "#c9c1a8"; ctx.lineWidth = 2;
-  ctx.beginPath(); ctx.moveTo(cx, barY + 12); ctx.lineTo(cx, topY + 34); ctx.stroke();
-  ctx.fillStyle = hexToRgba(owner, 1);
-  ctx.beginPath(); ctx.moveTo(cx - 12, barY + 12); ctx.lineTo(cx + 12, barY + 12); ctx.lineTo(cx + 12, barY + 30); ctx.lineTo(cx, barY + 24); ctx.lineTo(cx - 12, barY + 30); ctx.closePath(); ctx.fill();
-  // Name plate.
-  ctx.save();
-  ctx.textAlign = "center"; ctx.textBaseline = "middle";
-  const label = m.held ? `${m.name} (held)` : m.name;
-  ctx.font = `bold 13px "${TITLE_FONT}", "DejaVu Sans", Arial, sans-serif`;
-  const lw = Math.min(180, ctx.measureText(label).width + 16);
-  ctx.fillStyle = "rgba(0,0,0,0.66)"; roundRectPath(ctx, cx - lw / 2, feetY + 4, lw, 20, 8); ctx.fill();
-  drawTextWithShadow(ctx, label, cx, feetY + 14, m.held ? "#ff9a8a" : "#ffffff", 13);
-  ctx.restore();
-}
-
 // ── Layers ──────────────────────────────────────────────────────────────────
 function layerBackdrop(ctx: Ctx, theme: HqTheme): void {
   const g = ctx.createLinearGradient(0, 0, 0, H);
@@ -892,24 +778,24 @@ function drawWallFace(
   ctx.beginPath(); ctx.moveTo(bl.x, bl.y); ctx.lineTo(br.x, br.y); ctx.stroke();
 }
 
-// Blit an image to fill a quad by clipping to it and drawing to its bounding
-// box. Good for a seamless wall/floor texture; exact for axis work isn't needed.
-function blitClippedQuad(ctx: Ctx, img: unknown, p: Pt[]): void {
-  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-  for (const q of p) { minX = Math.min(minX, q.x); minY = Math.min(minY, q.y); maxX = Math.max(maxX, q.x); maxY = Math.max(maxY, q.y); }
-  ctx.save();
-  ctx.beginPath();
-  ctx.moveTo(p[0]!.x, p[0]!.y);
-  for (let i = 1; i < p.length; i++) ctx.lineTo(p[i]!.x, p[i]!.y);
-  ctx.closePath(); ctx.clip();
-  blit(ctx, img, minX, minY, maxX - minX, maxY - minY);
-  ctx.restore();
-}
-
-async function layerWalls(ctx: Ctx, mod: CanvasMod, wall: HqWall, spritePath: string | null): Promise<void> {
+async function layerWalls(
+  ctx: Ctx, mod: CanvasMod, wall: HqWall, spritePath: string | null, wallpaper: HqWallpaper | null,
+): Promise<void> {
   const up = (p: Pt): Pt => ({ x: p.x, y: p.y - WALL_H });
   const rBL = project(0, GRID), rBR = project(0, 0);
   const lBL = project(0, 0), lBR = project(GRID, 0);
+  // Wallpaper wins: a real repeating covering papered in iso perspective, with
+  // its own dado rail and skirting.
+  if (wallpaper) {
+    await drawWallpaperFace(ctx, mod, rBL, rBR, up(rBL), up(rBR), wallpaper);
+    await drawWallpaperFace(ctx, mod, lBL, lBR, up(lBL), up(lBR), wallpaper);
+    ctx.strokeStyle = wall.trim; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(up(rBL).x, up(rBL).y); ctx.lineTo(up(rBR).x, up(rBR).y); ctx.lineTo(up(lBR).x, up(lBR).y); ctx.stroke();
+    // The inside corner, so the two papered faces read as a folded room.
+    ctx.strokeStyle = "rgba(0,0,0,0.35)"; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(rBR.x, rBR.y); ctx.lineTo(up(rBR).x, up(rBR).y); ctx.stroke();
+    return;
+  }
   // Art path: blit a seamless wall texture onto each face (uploaded packs).
   const img = spritePath ? await loadSprite(mod, spritePath).catch(() => null) : null;
   if (img) {
@@ -1688,59 +1574,5 @@ function drawDecoration(ctx: Ctx, ox: number, oy: number, scale: number, deco: H
       break;
     }
   }
-  ctx.restore();
-}
-
-// ── Header ─────────────────────────────────────────────────────────────────
-async function layerHeader(ctx: Ctx, mod: CanvasMod, view: HqHeaderInfo): Promise<void> {
-  ctx.save();
-  const g = ctx.createLinearGradient(0, 0, W, 0);
-  g.addColorStop(0, "rgba(0,0,0,0.62)");
-  g.addColorStop(1, "rgba(0,0,0,0.32)");
-  ctx.fillStyle = g;
-  ctx.fillRect(0, 0, W, HEADER_H);
-  ctx.fillStyle = hexToRgba(view.theme.palette.accent, 0.8);
-  ctx.fillRect(0, HEADER_H, W, 2);
-  ctx.restore();
-
-  const av = 46, ax = 18, ay = (HEADER_H - av) / 2;
-  if (view.ownerAvatarUrl) {
-    const img = await loadArt(mod, view.ownerAvatarUrl).catch(() => null);
-    if (img) {
-      ctx.save();
-      ctx.beginPath(); ctx.arc(ax + av / 2, ay + av / 2, av / 2, 0, Math.PI * 2); ctx.clip();
-      const iw = (img as { width: number }).width, ih = (img as { height: number }).height;
-      const sc = Math.max(av / iw, av / ih);
-      blit(ctx, img, ax + (av - iw * sc) / 2, ay + (av - ih * sc) / 2, iw * sc, ih * sc);
-      ctx.restore();
-      ctx.save();
-      ctx.strokeStyle = hexToRgba(view.theme.palette.accent, 1); ctx.lineWidth = 2;
-      ctx.beginPath(); ctx.arc(ax + av / 2, ay + av / 2, av / 2, 0, Math.PI * 2); ctx.stroke();
-      ctx.restore();
-    }
-  }
-
-  ctx.save();
-  ctx.textAlign = "left"; ctx.textBaseline = "middle";
-  const tx = ax + av + 14;
-  // Left-align the banner name (drawTitle centres by default) so a long/custom
-  // HQ name grows rightward instead of clipping the edge.
-  drawTitle(ctx, view.displayTitle, tx, 24, "#ffffff", fitText(ctx, view.displayTitle, 520, 22, 14, TITLE_FONT), "left");
-  drawTextWithShadow(ctx, view.subtitle, tx, 46, "rgba(225,225,230,0.85)", 13, "left");
-  ctx.restore();
-
-  ctx.save();
-  ctx.textAlign = "right"; ctx.textBaseline = "middle";
-  drawTextWithShadow(ctx, `${view.roomEmoji} ${view.roomName}`, W - 18, 22, "rgba(235,235,240,0.9)", 14, "right");
-  const chip = `HQ LV ${view.hqLevel}`;
-  ctx.font = `bold 13px "${TITLE_FONT}", "DejaVu Sans", Arial, sans-serif`;
-  const cw = ctx.measureText(chip).width + 22;
-  const cxp = W - 18 - cw, cyp = 38;
-  ctx.fillStyle = hexToRgba(view.theme.palette.accent, 0.22);
-  roundRectPath(ctx, cxp, cyp, cw, 20, 10); ctx.fill();
-  ctx.strokeStyle = hexToRgba(view.theme.palette.accent, 0.8); ctx.lineWidth = 1;
-  roundRectPath(ctx, cxp, cyp, cw, 20, 10); ctx.stroke();
-  ctx.textAlign = "center";
-  drawTextWithShadow(ctx, chip, cxp + cw / 2, cyp + 10, "#ffffff", 12);
   ctx.restore();
 }

@@ -189,3 +189,65 @@ export const hqBaseReignsTable = pgTable("hq_base_reigns", {
 }));
 
 export type HqBaseReign = typeof hqBaseReignsTable.$inferSelect;
+
+// World territories — the AI-held castles that make the world map a place to
+// conquer rather than a directory of other players. One row per (guild, node);
+// rows are created idempotently from the static blueprint in
+// bot/hq/defs/world.ts the first time a guild opens the map, so the code stays
+// the source of truth for WHERE a territory is and this table only owns WHO
+// holds it. A null `heldByUserId` means the founding AI faction still holds it.
+export const hqWorldNodesTable = pgTable("hq_world_nodes", {
+  id: serial("id").primaryKey(),
+  guildId: text("guild_id").notNull(),
+  nodeId: text("node_id").notNull(),          // blueprint id (defs/world.ts)
+  heldByUserId: text("held_by_user_id"),      // null = still AI-held
+  heldByName: text("held_by_name"),
+  heldSince: timestamp("held_since"),         // start of the current player reign
+  lastTributeAt: timestamp("last_tribute_at"),// tribute accrues from here
+  shieldUntil: timestamp("shield_until"),     // no attacks allowed until this time
+  lastAttackedAt: timestamp("last_attacked_at"),
+  // How many times this territory has changed hands — surfaced as a "contested"
+  // marker on the map.
+  captures: integer("captures").notNull().default(0),
+  stats: jsonb("stats").notNull().default({}),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (t) => ({
+  guildNodeUniq: uniqueIndex("hq_world_nodes_guild_node_uniq").on(t.guildId, t.nodeId),
+  byHolder: index("hq_world_nodes_holder_idx").on(t.guildId, t.heldByUserId),
+}));
+
+export type HqWorldNode = typeof hqWorldNodesTable.$inferSelect;
+
+// Built terrain — the rectangles the in-Discord world editor stamps onto a
+// room's (or the base grounds') isometric lattice: paved patches, ponds, raised
+// decks, grass hills. Purely cosmetic and purely additive; `hq_placements` still
+// owns single-tile decorations, this owns AREAS.
+//
+// A feature is (kind of material) × (rectangle) × (elevation), which is enough
+// to express every brush the editor offers without a table per material.
+export const hqTerrainTable = pgTable("hq_terrain", {
+  id: serial("id").primaryKey(),
+  guildId: text("guild_id").notNull(),
+  userId: text("user_id").notNull(),
+  // Which canvas: a room id from defs/rooms.ts, or "base" for the outdoor grounds.
+  roomId: text("room_id").notNull(),
+  // Material id from defs/surfaces.ts; resolves to the default if ever removed.
+  materialId: text("material_id").notNull(),
+  x: integer("x").notNull(),
+  y: integer("y").notNull(),
+  w: integer("w").notNull().default(1),
+  h: integer("h").notNull().default(1),
+  // Vertical steps of lift (raised/mound) or depth (water). 0 = the material's
+  // own default height.
+  elevation: integer("elevation").notNull().default(0),
+  // Paint order within a room; higher paints later. Lets a player lay a path
+  // over grass without deleting the grass.
+  z: integer("z").notNull().default(0),
+  meta: jsonb("meta").notNull().default({}),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (t) => ({
+  byUserRoom: index("hq_terrain_guild_user_room_idx").on(t.guildId, t.userId, t.roomId),
+}));
+
+export type HqTerrain = typeof hqTerrainTable.$inferSelect;

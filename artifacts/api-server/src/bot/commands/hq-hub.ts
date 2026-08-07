@@ -46,6 +46,15 @@ import {
   tributeOwed, TRIBUTE_PER_HOUR, type SiegeCombatant,
 } from "../hq/siege.js";
 import { simulateSiegeBattle, type SiegeBattleResult } from "../hq/siege-battle.js";
+import {
+  listTerritories, captureTerritory, markTerritoryAttacked, getHeldTerritories,
+  markTerritoryTributesCollected, territoryTributeOwed, buildGarrison, holderLabel,
+  WORLD_SHIELD_MS, WORLD_COOLDOWN_MS, WORLD_MAX_PER_WINDOW, type WorldTerritoryView,
+} from "../hq/world.js";
+import {
+  getTerritory, tierProfile, tierStars, PLAYER_BASE_ANCHORS, HQ_ROUTES,
+} from "../hq/defs/world.js";
+import { renderSiegeCinematic, SIEGE_CINEMATIC_FILE, type SiegeCinematicView } from "../hq/cinematic.js";
 import { getBattleSettings } from "../battle/config-engine.js";
 import { getOwnedBattleCards, type OwnedBattleCard } from "../battle/db.js";
 import { rarityLadderRank } from "../rarity-runtime.js";
@@ -71,12 +80,15 @@ import {
 import { unlockLabel, type UnlockRule } from "../hq/defs/unlock-rules.js";
 import { spriteFor, spriteForPrefix } from "../hq/assets.js";
 import {
-  renderHq, renderBase, renderSiege, renderWorldMap, floorSlot, wallSlot, slotIsWall, slotToTile,
+  renderHq, renderBase, renderSiege, floorSlot, wallSlot, slotIsWall, slotToTile,
   HQ_WALL_SLOT_BASE, HQ_WALL_ANCHOR_COUNT, HQ_DEFENDER_SLOTS, HQ_BASE_DECO_SLOTS,
   type HqRenderView, type HqRenderCard, type HqRenderDeco, type HqRenderDefender,
   type HqBaseView, type HqBaseBuilding, type HqBuildingRole, type SiegePlan,
-  type HqWorldView, type WorldBaseMarker, type HqRenderCompanion,
+  type HqRenderCompanion,
 } from "../hq/render.js";
+import {
+  renderWorldMap, type HqWorldView, type WorldMarker,
+} from "../hq/render-world.js";
 import type { PlayerHq } from "@workspace/db";
 
 const EPHEMERAL = { flags: MessageFlags.Ephemeral } as const;
@@ -215,13 +227,24 @@ export async function handleHqHubComponent(
     await interaction.update(await buildAttackModePicker(guildId, userId, parts[2]!)).catch(() => {});
     return;
   }
-  // World map → pick a base to raid → mode picker.
+  // World map → pick a target → mode picker. `t:<nodeId>` is an AI territory,
+  // `p:<userId>` a member base (a bare value is a legacy member-base id).
   if (action === "raidpick" && interaction.isStringSelectMenu()) {
-    await interaction.update(await buildAttackModePicker(guildId, userId, interaction.values[0]!)).catch(() => {});
+    const value = interaction.values[0]!;
+    if (value.startsWith("t:")) {
+      await interaction.update(await buildTerritoryModePicker(guildId, userId, value.slice(2))).catch(() => {});
+    } else {
+      await interaction.update(await buildAttackModePicker(guildId, userId, value.replace(/^p:/, ""))).catch(() => {});
+    }
     return;
   }
   if (action === "siege" && interaction.isButton()) {
     await runSiege(interaction, guildId, userId, parts[2]!, (parts[3] as SiegeMode) ?? "static");
+    return;
+  }
+  // Assault an AI-held (or member-held) world territory.
+  if (action === "wsiege" && interaction.isButton()) {
+    await runTerritorySiege(interaction, guildId, userId, parts[2]!, (parts[3] as SiegeMode) ?? "cinematic");
     return;
   }
 
@@ -576,28 +599,77 @@ async function renderBaseImage(view: HqBaseView): Promise<AttachmentBuilder | nu
 // ── World map ─────────────────────────────────────────────────────────────────
 const WORLD_COLORS = [0x3f78c8, 0x9b59b6, 0x2ecc71, 0xe67e22, 0x1abc9c, 0xe84393, 0xf1c40f, 0x5865f2];
 
-async function loadWorldBases(guildId: string, userId: string): Promise<{ userId: string; name: string; defenders: number; held: boolean }[]> {
-  const raw = await getGuildBases(guildId, userId, 8).catch(() => []);
-  const out: { userId: string; name: string; defenders: number; held: boolean }[] = [];
+// A member's base on the shared map.
+interface PlayerBaseEntry { userId: string; name: string; defenders: number; held: boolean }
+
+// Everything the World section needs: the AI-held territories that ship with the
+// map, plus the member bases pinned around the southern coast.
+interface WorldSnapshot {
+  territories: WorldTerritoryView[];
+  bases: PlayerBaseEntry[];
+}
+
+async function loadWorld(guildId: string, userId: string): Promise<WorldSnapshot> {
+  const territories = await listTerritories(guildId).catch(() => [] as WorldTerritoryView[]);
+  const raw = await getGuildBases(guildId, userId, PLAYER_BASE_ANCHORS.length).catch(() => []);
+  const bases: PlayerBaseEntry[] = [];
   for (const b of raw) {
     const bhq = await getOrCreateHq(guildId, b.userId);
     const held = !!activeCapture(await getBaseState(guildId, b.userId));
     const name = readHqStats(bhq).title?.trim() || `Rival ${b.userId.slice(-4)}`;
-    out.push({ userId: b.userId, name, defenders: b.defenders, held });
+    bases.push({ userId: b.userId, name, defenders: b.defenders, held });
   }
-  return out;
+  return { territories, bases };
 }
 
 async function renderWorldImage(
   theme: ReturnType<typeof resolveTheme>, avatarUrl: string | null, level: number,
-  bases: { userId: string; name: string; defenders: number; held: boolean }[],
+  world: WorldSnapshot, viewerId: string,
 ): Promise<AttachmentBuilder | null> {
-  const markers: WorldBaseMarker[] = bases.map((b, i) => ({
-    name: b.name, defenders: b.defenders, maxDefenders: HQ_DEFENDER_SLOTS, held: b.held, color: WORLD_COLORS[i % WORLD_COLORS.length]!,
+  const now = Date.now();
+  const markers: WorldMarker[] = world.territories.map(t => ({
+    nodeId: t.territory.id,
+    name: t.territory.name,
+    factionShort: t.faction.short,
+    color: t.heldByUserId === viewerId ? 0x4fd06a : t.heldByUserId ? 0x4aa3ff : t.faction.color,
+    tier: t.territory.tier,
+    biome: t.territory.biome,
+    u: t.territory.u,
+    v: t.territory.v,
+    structure: t.territory.structure,
+    garrison: t.territory.garrison,
+    kind: "territory",
+    held: !!t.heldByUserId,
+    heldByYou: t.heldByUserId === viewerId,
+    shielded: !!t.shieldUntil && t.shieldUntil.getTime() > now,
   }));
+  // Member bases share the map, anchored along the settled coast.
+  world.bases.slice(0, PLAYER_BASE_ANCHORS.length).forEach((b, i) => {
+    const a = PLAYER_BASE_ANCHORS[i]!;
+    markers.push({
+      nodeId: `base:${b.userId}`,
+      name: b.name,
+      factionShort: "Member base",
+      color: b.held ? 0xc0392b : WORLD_COLORS[i % WORLD_COLORS.length]!,
+      tier: Math.max(1, Math.min(4, Math.ceil(b.defenders / 2) + 1)),
+      biome: "plains",
+      u: a.u, v: a.v,
+      structure: "houses",
+      garrison: b.defenders,
+      kind: "base",
+      held: b.held,
+      heldByYou: false,
+      shielded: b.held,
+    });
+  });
+
+  const open = world.territories.filter(t => !t.heldByUserId).length;
   const view: HqWorldView = {
-    ownerAvatarUrl: avatarUrl, displayTitle: "World Map", subtitle: `${bases.length} base${bases.length === 1 ? "" : "s"} to raid`,
-    theme, roomEmoji: "🗺️", roomName: "World", hqLevel: level, markers,
+    ownerAvatarUrl: avatarUrl,
+    displayTitle: "World Map",
+    subtitle: `${open} AI territor${open === 1 ? "y" : "ies"} · ${world.bases.length} member base${world.bases.length === 1 ? "" : "s"}`,
+    theme, roomEmoji: "🗺️", roomName: "World", hqLevel: level,
+    markers, routes: HQ_ROUTES,
   };
   const buf = await renderWorldMap(view).catch(() => null);
   return buf ? new AttachmentBuilder(buf, { name: HQ_FILE }) : null;
@@ -675,13 +747,13 @@ async function buildView(
   const wall = resolveWall(hq.wallId);
   const floor = resolveFloor(hq.floorId);
 
-  // Section picks the image: World = a map of raidable bases; Base = the exterior
-  // town (with defenders); everything else = the interior room.
-  let worldBases: { userId: string; name: string; defenders: number; held: boolean }[] = [];
+  // Section picks the image: World = the campaign map; Base = the exterior town
+  // (with defenders); everything else = the interior room.
+  let world: WorldSnapshot = { territories: [], bases: [] };
   let file: AttachmentBuilder | null;
   if (section === "world") {
-    worldBases = await loadWorldBases(guildId, userId);
-    file = await renderWorldImage(theme, interaction.user.displayAvatarURL(), hq.hqLevel, worldBases);
+    world = await loadWorld(guildId, userId);
+    file = await renderWorldImage(theme, interaction.user.displayAvatarURL(), hq.hqLevel, world, userId);
   } else if (section === "defenders") {
     file = await renderBaseImage(await buildBaseRenderView(guildId, userId, interaction.user.username, interaction.user.displayAvatarURL(), hq));
   } else {
@@ -834,31 +906,68 @@ async function buildView(
     }
 
     case "world": {
-      // Pay out hold-tribute for any bases the viewer holds, then read the
-      // longest-reign board (which includes their live reign).
+      // Pay out hold-tribute for everything the viewer holds — member bases AND
+      // world territories — then read the longest-reign board.
       const tribute = await collectHoldTribute(guildId, userId).catch(() => null);
       const reignLeaders = await getReignLeaders(guildId, 5)
         .catch(() => [] as Awaited<ReturnType<typeof getReignLeaders>>);
       const sovereign = reignLeaders[0];
+      const yours = world.territories.filter(t => t.heldByUserId === userId);
+      const openAi = world.territories.filter(t => !t.heldByUserId);
+
       embed.setTitle("🗺️ World Map").setDescription(
         (tribute ? `${tribute}\n\n` : "") +
+        "Six AI factions already hold this continent. **March on a castle, take it, and it pays you 💠 every hour you keep it** — " +
+        "until a faction's neighbour, or another member, comes to take it back.\n" +
         (sovereign && sovereign.bestSec > 0
-          ? `👑 **Sovereign:** ${sovereign.userId === userId ? "**you**" : `<@${sovereign.userId}>`} — longest hold **${formatReign(sovereign.bestSec)}**${sovereign.active ? " (still holding)" : ""}.\n\n`
-          : "") +
-        (worldBases.length === 0
-          ? "No rival bases to raid yet — once other members station **base defenders**, their castles appear here to attack. **Hold** a base you capture to earn passive 💠 tribute."
-          : "Other players' bases. 🚩 = currently held by a conqueror. Capture one and **hold it** for passive 💠 tribute. Pick one below to lay siege."),
+          ? `\n👑 **Sovereign:** ${sovereign.userId === userId ? "**you**" : `<@${sovereign.userId}>`} — longest hold **${formatReign(sovereign.bestSec)}**${sovereign.active ? " (still holding)" : ""}.`
+          : ""),
       );
-      if (worldBases.length > 0) {
+
+      // Your holdings first — the thing a returning player wants to see.
+      if (yours.length > 0) {
+        embed.addFields({
+          name: `🚩 Your territories (${yours.length})`,
+          value: yours.map(t =>
+            `${t.faction.emoji} **${t.territory.name}** · ${tierProfile(t.territory.tier).label} · +${tierProfile(t.territory.tier).tributePerHour}💠/hr`,
+          ).join("\n").slice(0, 1024),
+        });
+      }
+      if (openAi.length > 0) {
+        embed.addFields({
+          name: `⚔️ Faction-held (${openAi.length})`,
+          value: openAi.slice(0, 8).map(t =>
+            `${t.faction.emoji} **${t.territory.name}** — ${tierStars(t.territory.tier)} · ${t.territory.garrison}🛡️ · ${t.faction.short}`,
+          ).join("\n").slice(0, 1024),
+        });
+      }
+
+      // One picker for every attackable thing on the map. Territories are
+      // prefixed `t:`, member bases `p:`, so the router can tell them apart.
+      const now = Date.now();
+      const options = [
+        ...world.territories
+          .filter(t => t.heldByUserId !== userId)
+          .map(t => ({
+            label: t.territory.name.slice(0, 90),
+            value: `t:${t.territory.id}`,
+            description: `${tierProfile(t.territory.tier).label} · ${t.territory.garrison} defenders · ${holderLabel(t)}`.slice(0, 100),
+            emoji: (t.shieldUntil && t.shieldUntil.getTime() > now) ? "🛡️" : t.faction.emoji,
+          })),
+        ...world.bases.map(b => ({
+          label: b.name.slice(0, 90),
+          value: `p:${b.userId}`,
+          description: `Member base · ${b.defenders} defender${b.defenders === 1 ? "" : "s"}${b.held ? " · held 🚩" : ""}`.slice(0, 100),
+          emoji: "🏠",
+        })),
+      ].slice(0, 25);
+      if (options.length > 0) {
         rows.push(new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
-          new StringSelectMenuBuilder().setCustomId("hq-hub:raidpick").setPlaceholder("Attack a base…")
-            .addOptions(worldBases.slice(0, 25).map(b => ({
-              label: `${b.name}`.slice(0, 90), value: b.userId,
-              description: `${b.defenders} defender${b.defenders === 1 ? "" : "s"}${b.held ? " · held 🚩" : ""}`,
-              emoji: "⚔️",
-            }))),
+          new StringSelectMenuBuilder().setCustomId("hq-hub:raidpick")
+            .setPlaceholder("⚔️ March on a castle…").addOptions(options),
         ));
       }
+
       // Conquest leaderboard — top raiders by career wins, and bases held now.
       const leaders = await getConquestLeaders(guildId, 5).catch(() => []);
       if (leaders.length > 0) {
@@ -1133,7 +1242,10 @@ function activeCapture(state: Awaited<ReturnType<typeof getBaseState>>): { heldB
 const BASE_ROOM_ID = "base";
 
 // ── Base siege (attack/capture mini-game) ─────────────────────────────────────
-type SiegeMode = "classic" | "static" | "live";
+// "cinematic" plays the landscape opening film (camera arrives, gates open, the
+// army musters, your cards fly in) and THEN the battle; the other three are the
+// original fast paths.
+type SiegeMode = "classic" | "static" | "live" | "cinematic";
 const SIEGE_FILE = "siege.png", SIEGE_GIF = "siege.gif";
 type LoadedCtx = Awaited<ReturnType<typeof loadCtx>>;
 
@@ -1221,12 +1333,14 @@ async function buildAttackModePicker(guildId: string, attackerId: string, defend
     "(true stats, moves, specials & passives). Knock out every defender to capture the base.\n\n" +
     `⚔️ Your strength: **${yourP}**  ·  🛡️ Their defence: **${theirP}**\n\n` +
     "**Pick how to watch it:**\n" +
+    "• **Cinematic** — the full opening scene, then the battle\n" +
     "• **Classic** — a text battle report\n• **Static** — a battle image\n• **Live** — an animated battle",
   );
   const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder().setCustomId(`hq-hub:siege:${defenderId}:cinematic`).setLabel("Cinematic").setEmoji("🎥").setStyle(ButtonStyle.Success),
     new ButtonBuilder().setCustomId(`hq-hub:siege:${defenderId}:classic`).setLabel("Classic").setEmoji("📜").setStyle(ButtonStyle.Secondary),
-    new ButtonBuilder().setCustomId(`hq-hub:siege:${defenderId}:static`).setLabel("Static").setEmoji("🖼️").setStyle(ButtonStyle.Primary),
-    new ButtonBuilder().setCustomId(`hq-hub:siege:${defenderId}:live`).setLabel("Live").setEmoji("🎬").setStyle(ButtonStyle.Success),
+    new ButtonBuilder().setCustomId(`hq-hub:siege:${defenderId}:static`).setLabel("Static").setEmoji("🖼️").setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder().setCustomId(`hq-hub:siege:${defenderId}:live`).setLabel("Live").setEmoji("🎬").setStyle(ButtonStyle.Primary),
   );
   return { embeds: [embed], components: [row, backRow("defenders")], files: [] as AttachmentBuilder[] };
 }
@@ -1245,19 +1359,39 @@ const SIEGE_MOVES = ["Siege Strike", "Breach", "Overrun", "Vanguard Charge", "Fi
 // (or null) to surface at the top of the World map. Best-effort — a failed pay
 // never blocks the view.
 async function collectHoldTribute(guildId: string, userId: string): Promise<string | null> {
-  const held = await getHeldBases(guildId, userId).catch(() => []);
-  if (held.length === 0) return null;
   const now = new Date();
   let total = 0;
+  const parts: string[] = [];
+
+  // Member bases the viewer has conquered.
+  const held = await getHeldBases(guildId, userId).catch(() => []);
   const collectedOwners: string[] = [];
   for (const b of held) {
     const owed = tributeOwed(b.since, now);
     if (owed > 0) { total += owed; collectedOwners.push(b.ownerId); }
   }
+  if (collectedOwners.length > 0) {
+    await markTributesCollected(guildId, userId, collectedOwners, now).catch(() => {});
+    parts.push(`**${collectedOwners.length}** base${collectedOwners.length === 1 ? "" : "s"} (+${TRIBUTE_PER_HOUR}/hr each)`);
+  }
+
+  // World territories, which pay by tier — a capital is worth far more than an
+  // outpost, so holding the hard ones matters.
+  const territories = await getHeldTerritories(guildId, userId).catch(() => []);
+  const collectedNodes: string[] = [];
+  for (const t of territories) {
+    const tier = getTerritory(t.nodeId)?.tier ?? 1;
+    const owed = territoryTributeOwed(tier, t.since, now);
+    if (owed > 0) { total += owed; collectedNodes.push(t.nodeId); }
+  }
+  if (collectedNodes.length > 0) {
+    await markTerritoryTributesCollected(guildId, userId, collectedNodes, now).catch(() => {});
+    parts.push(`**${collectedNodes.length}** territor${collectedNodes.length === 1 ? "y" : "ies"}`);
+  }
+
   if (total <= 0) return null;
   await addShards(guildId, userId, total).catch(() => {});
-  await markTributesCollected(guildId, userId, collectedOwners, now).catch(() => {});
-  return `💠 **+${total}** hold-tribute collected from **${collectedOwners.length}** held base${collectedOwners.length === 1 ? "" : "s"} (+${TRIBUTE_PER_HOUR}/hr each).`;
+  return `💠 **+${total}** hold-tribute collected from ${parts.join(" and ")}.`;
 }
 
 // Human "2d 3h", "4h 12m", "37m" from seconds — for reign durations.
@@ -1365,6 +1499,30 @@ async function runSiege(interaction: ButtonInteraction, guildId: string, attacke
   const defenderName = readHqStats(defHq).title?.trim() || "the defenders";
 
   const cx = await loadCtx(guildId);
+
+  // The opening film, before anything is resolved — the ride up to the base, the
+  // gates opening, the garrison mustering, and the raider's cards flying in.
+  if (mode === "cinematic") {
+    const theme = resolveTheme((await getOrCreateHq(guildId, attackerId)).themeId);
+    const squad = await buildAttackerCards(guildId, attackerId, cx.ctx, 5).catch(() => []);
+    const garrisonSize = (await getDefenders(guildId, defenderId).catch(() => new Map())).size;
+    await playCinematic(interaction, {
+      targetName: defenderName,
+      holderName: readHqStats(defHq).title?.trim() ? defenderName : "its garrison",
+      defenderColor: resolveTheme(defHq.themeId).palette.accent,
+      attackerColor: theme.palette.accent,
+      attackerName,
+      cards: squad.slice(0, 5).map(c => {
+        const d = getCardDisplayRarity({ id: c.id, rarity: c.rarity as string }, cx.ctx, cx.settings, cx.displayMap);
+        return { name: c.name, artUrl: toAbsoluteImageUrl(c.imageUrl), rarityColor: d.color };
+      }),
+      garrison: garrisonSize,
+      structure: "castle",
+      mood: "dusk",
+      tagline: readHqStats(defHq).motto ?? "Take the walls, take the base.",
+    }, theme.palette.accent);
+  }
+
   const result = await resolveSiegeOutcome(guildId, attackerId, attackerName, defenderId, defenderName, cx);
 
   // Persist outcome (capture + shield on a win; log either way).
@@ -1423,6 +1581,300 @@ async function runSiege(interaction: ButtonInteraction, guildId: string, attacke
 
   await interaction.editReply({ embeds: [embed], components: [backRow("defenders")], files }).catch(() => {});
   });
+}
+
+// ── World territory siege (the AI campaign) ───────────────────────────────────
+// Attacks on a territory are logged into the SAME hq_base_attacks table as base
+// sieges, keyed `world:<nodeId>`, so the per-target cooldown and the conquest
+// leaderboard cover the campaign without a second log.
+function territoryLogKey(nodeId: string): string { return `world:${nodeId}`; }
+
+async function territoryBlockReason(
+  guildId: string, attackerId: string, view: WorldTerritoryView,
+): Promise<string | null> {
+  if (view.heldByUserId === attackerId) return "You already hold this territory.";
+  if (view.shieldUntil && view.shieldUntil.getTime() > Date.now()) {
+    return `That castle is still shielded after its last battle — it reopens <t:${Math.floor(view.shieldUntil.getTime() / 1000)}:R>.`;
+  }
+  const recent = await recentAttackCount(
+    guildId, attackerId, territoryLogKey(view.territory.id), new Date(Date.now() - WORLD_COOLDOWN_MS),
+  ).catch(() => 0);
+  if (recent >= WORLD_MAX_PER_WINDOW) {
+    return "Your troops need to regroup — you've assaulted this castle too many times recently.";
+  }
+  return null;
+}
+
+async function findTerritory(guildId: string, nodeId: string): Promise<WorldTerritoryView | null> {
+  const all = await listTerritories(guildId).catch(() => [] as WorldTerritoryView[]);
+  return all.find(t => t.territory.id === nodeId) ?? null;
+}
+
+async function buildTerritoryModePicker(guildId: string, attackerId: string, nodeId: string) {
+  const view = await findTerritory(guildId, nodeId);
+  if (!view) {
+    return {
+      embeds: [new EmbedBuilder().setColor(0xc0392b).setDescription("❌ That territory is no longer on the map.")],
+      components: [backRow("world")], files: [] as AttachmentBuilder[],
+    };
+  }
+  const prof = tierProfile(view.territory.tier);
+  const embed = new EmbedBuilder().setColor(view.faction.color)
+    .setTitle(`⚔️ March on ${view.territory.name}`)
+    .setDescription(
+      `_${view.territory.blurb}_\n\n` +
+      `**Holder:** ${view.heldByUserId ? `<@${view.heldByUserId}>` : `${view.faction.emoji} ${view.faction.name}`}\n` +
+      `**Difficulty:** ${tierStars(view.territory.tier)} · ${prof.label}\n` +
+      `**Garrison:** ${view.territory.garrison} defenders at level ~${prof.cardLevel}${prof.starRank > 0 ? ` (${"⭐".repeat(prof.starRank)})` : ""}`,
+    )
+    .addFields(
+      { name: "💠 Capture bounty", value: `**${prof.bounty}**`, inline: true },
+      { name: "💠 Hold tribute", value: `**${prof.tributePerHour}/hr**`, inline: true },
+      { name: "🏳️ Times taken", value: `**${view.captures}**`, inline: true },
+    );
+
+  const blocked = await territoryBlockReason(guildId, attackerId, view);
+  if (blocked) {
+    embed.addFields({ name: "⛔ Not right now", value: blocked });
+    return { embeds: [embed], components: [backRow("world")], files: [] as AttachmentBuilder[] };
+  }
+  embed.addFields({
+    name: "🎬 How do you want to watch it?",
+    value: "**Cinematic** plays the full opening — the ride up to the castle, the gates, your cards arriving — before the battle. The others cut straight to the fight.",
+  });
+  const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder().setCustomId(`hq-hub:wsiege:${nodeId}:cinematic`).setLabel("Cinematic").setEmoji("🎥").setStyle(ButtonStyle.Success),
+    new ButtonBuilder().setCustomId(`hq-hub:wsiege:${nodeId}:classic`).setLabel("Classic").setEmoji("📜").setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder().setCustomId(`hq-hub:wsiege:${nodeId}:static`).setLabel("Static").setEmoji("🖼️").setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder().setCustomId(`hq-hub:wsiege:${nodeId}:live`).setLabel("Live").setEmoji("🎬").setStyle(ButtonStyle.Primary),
+  );
+  return { embeds: [embed], components: [row, backRow("world")], files: [] as AttachmentBuilder[] };
+}
+
+// Which weather a territory fights under — derived from its biome so the film
+// matches the map.
+function moodForBiome(biome: string): SiegeCinematicView["mood"] {
+  switch (biome) {
+    case "snow": return "snow";
+    case "volcanic": return "ash";
+    case "marsh": return "storm";
+    case "forest": return "dawn";
+    case "desert": return "dusk";
+    case "hills": return "dusk";
+    default: return "dusk";
+  }
+}
+
+// Play the opening film into the ephemeral hub message, then hold on it long
+// enough for the GIF to actually run before the caller posts the result.
+async function playCinematic(
+  interaction: ButtonInteraction, view: SiegeCinematicView, accent: number,
+): Promise<void> {
+  const buf = await renderSiegeCinematic(view).catch(() => null);
+  if (!buf) return;
+  const embed = new EmbedBuilder().setColor(accent)
+    .setTitle(`🎥 ${view.attackerName} marches on ${view.targetName}`)
+    .setDescription(`_${view.tagline ?? "The horns sound. The gates are closing."}_`)
+    .setImage(`attachment://${SIEGE_CINEMATIC_FILE}`);
+  await interaction.editReply({
+    embeds: [embed], components: [],
+    files: [new AttachmentBuilder(buf, { name: SIEGE_CINEMATIC_FILE })],
+  }).catch(() => {});
+  // Let the film play out before the result replaces it.
+  await new Promise(resolve => setTimeout(resolve, CINEMATIC_HOLD_MS));
+}
+
+// Roughly the cinematic's own runtime, so the result doesn't cut it off.
+const CINEMATIC_HOLD_MS = 5200;
+
+// The territory as a base scene, so the siege animation reuses the exact same
+// castle/defender/health painter the player-base siege uses.
+function territoryBaseView(
+  view: WorldTerritoryView, theme: ReturnType<typeof resolveTheme>,
+  garrison: OwnedBattleCard[], cx: LoadedCtx,
+): HqBaseView {
+  const basePath = spriteForPrefix("base", "round");
+  const defenders: HqRenderDefender[] = garrison.map((c, slot) => {
+    const d = getCardDisplayRarity({ id: c.id, rarity: c.rarity as string }, cx.ctx, cx.settings, cx.displayMap);
+    return { slot, cardId: c.id, name: c.name, artUrl: toAbsoluteImageUrl(c.imageUrl), rarityColor: d.color, basePath };
+  });
+  return {
+    ownerName: view.faction.name,
+    displayTitle: view.territory.name,
+    ownerAvatarUrl: null,
+    theme,
+    roomEmoji: "🏰",
+    roomName: tierProfile(view.territory.tier).label,
+    hqLevel: view.territory.tier,
+    subtitle: `${holderLabel(view)} · ${tierStars(view.territory.tier)}`,
+    buildings: [{ role: view.territory.structure, spritePath: spriteForPrefix("building", view.territory.structure) }],
+    defenders,
+    captured: !!view.heldByUserId,
+    bannerColor: view.heldByUserId ? 0x4aa3ff : view.faction.color,
+  };
+}
+
+async function runTerritorySiege(
+  interaction: ButtonInteraction, guildId: string, attackerId: string, nodeId: string, mode: SiegeMode,
+): Promise<void> {
+  await interaction.deferUpdate().catch(() => {});
+  // Serialize per TERRITORY: two raiders clicking at once must not both pass the
+  // shield check and each "capture" the same castle.
+  await withHqLock(`hq:world:${guildId}:${nodeId}`, async () => {
+    const view = await findTerritory(guildId, nodeId);
+    if (!view) {
+      await interaction.editReply({
+        embeds: [new EmbedBuilder().setColor(0xc0392b).setDescription("❌ That territory is no longer on the map.")],
+        components: [backRow("world")], files: [],
+      }).catch(() => {});
+      return;
+    }
+    const blocked = await territoryBlockReason(guildId, attackerId, view);
+    if (blocked) {
+      await interaction.editReply({
+        embeds: [new EmbedBuilder().setColor(0xc0392b).setDescription(`❌ ${blocked}`)],
+        components: [backRow("world")], files: [],
+      }).catch(() => {});
+      return;
+    }
+
+    const attackerName = interaction.user.username;
+    const cx = await loadCtx(guildId);
+    const garrison = buildGarrison(view.territory, cx.cards, cx.ctx);
+    if (garrison.length === 0) {
+      await interaction.editReply({
+        embeds: [new EmbedBuilder().setColor(0xc0392b).setDescription(
+          "❌ This server has no cards yet, so the garrison couldn't muster. Add cards and try again.")],
+        components: [backRow("world")], files: [],
+      }).catch(() => {});
+      return;
+    }
+    const attackerCards = await buildAttackerCards(guildId, attackerId, cx.ctx, garrison.length).catch(() => []);
+    if (attackerCards.length === 0) {
+      await interaction.editReply({
+        embeds: [new EmbedBuilder().setColor(0xc0392b).setDescription(
+          "❌ You have no cards to march with. Catch some first.")],
+        components: [backRow("world")], files: [],
+      }).catch(() => {});
+      return;
+    }
+
+    const theme = resolveTheme((await getOrCreateHq(guildId, attackerId)).themeId);
+    const defenderName = holderLabel(view);
+
+    // The opening film, before anything is resolved.
+    if (mode === "cinematic") {
+      const cine: SiegeCinematicView = {
+        targetName: view.territory.name,
+        holderName: defenderName,
+        defenderColor: view.heldByUserId ? 0x4aa3ff : view.faction.color,
+        attackerColor: theme.palette.accent,
+        attackerName,
+        cards: attackerCards.slice(0, 5).map(c => {
+          const d = getCardDisplayRarity({ id: c.id, rarity: c.rarity as string }, cx.ctx, cx.settings, cx.displayMap);
+          return { name: c.name, artUrl: toAbsoluteImageUrl(c.imageUrl), rarityColor: d.color };
+        }),
+        garrison: garrison.length,
+        structure: view.territory.structure,
+        mood: moodForBiome(view.territory.biome),
+        tagline: view.territory.blurb,
+      };
+      await playCinematic(interaction, cine, view.faction.color);
+    }
+
+    // Resolve with the real battle engine; fall back to the power resolver only
+    // if battles are disabled or the engine throws.
+    let result: SiegeOutcome;
+    try {
+      const settings = await getBattleSettings(guildId);
+      if (!settings.enabled) throw new Error("battles disabled");
+      const r = simulateSiegeBattle(attackerCards, garrison, settings, guildId, cx.ctx, {
+        attackerId, attackerName, defenderId: `world:${nodeId}`, defenderName,
+      });
+      result = outcomeFromBattle(r, championRender(attackerCards[0], cx));
+    } catch {
+      const atk = await buildAttackerSquad(guildId, attackerId, cx, garrison.length);
+      const def = garrison.map(c => toSiegeCombatant(c, cx));
+      result = outcomeFromPower(resolveSiege(atk, def), championRender(attackerCards[0], cx), def.length);
+    }
+
+    const prof = tierProfile(view.territory.tier);
+    let previousHolder: string | null = null;
+    if (result.attackerWon) {
+      ({ previousHolder } = await captureTerritory(guildId, nodeId, attackerId, attackerName, WORLD_SHIELD_MS)
+        .catch(() => ({ previousHolder: null })));
+    } else {
+      await markTerritoryAttacked(guildId, nodeId).catch(() => {});
+    }
+    await logSiege(
+      guildId, attackerId, territoryLogKey(nodeId), result.attackerWon,
+      result.attackerPower, result.defenderPower, mode,
+    ).catch(() => {});
+
+    const reward = result.attackerWon ? prof.bounty : Math.round(prof.bounty * 0.12);
+    await addShards(guildId, attackerId, reward).catch(() => {});
+
+    const embed = new EmbedBuilder()
+      .setColor(result.attackerWon ? 0x4fd06a : view.faction.color)
+      .setTitle(result.attackerWon ? `🚩 ${view.territory.name} is yours!` : `🛡️ ${view.territory.name} holds`)
+      .setDescription(
+        result.attackerWon
+          ? `**${attackerName}** broke the ${defenderName} garrison — ${result.summary}.\n` +
+            `You hold this ${prof.label.toLowerCase()} until someone takes it off you, earning **${prof.tributePerHour}💠/hr**. ` +
+            "Collect from the 🗺️ World Map."
+          : `The ${defenderName} garrison threw you back — ${result.summary}.`,
+      )
+      .addFields(
+        { name: "⚔️ Squad power", value: `**${result.attackerPower}**`, inline: true },
+        { name: "🛡️ Garrison power", value: `**${result.defenderPower}**`, inline: true },
+        { name: "💠 Loot", value: `**+${reward}** shards`, inline: true },
+      );
+
+    // Whoever just lost the castle deserves to know.
+    if (previousHolder && previousHolder !== attackerId) {
+      void notifyTerritoryLost(interaction, previousHolder, attackerName, view.territory.name);
+    }
+
+    const files: AttachmentBuilder[] = [];
+    const baseView = territoryBaseView(view, theme, garrison, cx);
+    const plan: SiegePlan = {
+      duels: result.duels,
+      defenderCount: result.defenderCount,
+      captured: result.attackerWon,
+      attacker: result.champ,
+      attackerName, defenderName,
+    };
+    const live = mode !== "static";
+    const buf = await renderSiege(baseView, plan, live, mode === "classic").catch(() => null);
+    if (buf) {
+      const name = live ? SIEGE_GIF : SIEGE_FILE;
+      files.push(new AttachmentBuilder(buf, { name }));
+      embed.setImage(`attachment://${name}`);
+    }
+    if (mode === "classic" && result.logLines.length) {
+      embed.addFields({ name: result.real ? "⚔️ Battle log" : "Duels", value: result.logLines.join("\n").slice(0, 1024) });
+    }
+    await interaction.editReply({ embeds: [embed], components: [backRow("world")], files }).catch(() => {});
+  });
+}
+
+// Best-effort DM to the member who just lost a territory.
+async function notifyTerritoryLost(
+  interaction: ButtonInteraction, holderId: string, attackerName: string, territoryName: string,
+): Promise<void> {
+  try {
+    const guildName = interaction.guild?.name ?? "your server";
+    const user = await interaction.client.users.fetch(holderId);
+    await user.send({
+      embeds: [new EmbedBuilder().setColor(0xc0392b)
+        .setTitle("🚩 You lost a territory!")
+        .setDescription(
+          `**${attackerName}** has taken **${territoryName}** from you in **${guildName}**. ` +
+          "Its tribute now flows to them — retake it from **/hq → 🗺️ World Map** once the shield lifts.")],
+    });
+  } catch {
+    // DMs closed / user unreachable — silently skip.
+  }
 }
 
 // Best-effort DM to a base owner after their base is attacked. Never throws (DMs
