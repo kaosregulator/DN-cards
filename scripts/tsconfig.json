@@ -2,8 +2,13 @@
   "extends": "../tsconfig.base.json",
   "compilerOptions": {
     "outDir": "dist",
-    "rootDir": "src",
+    // No rootDir: these scripts are run with tsx and only ever typechecked, and
+    // the HQ preview harness imports the real renderers out of
+    // artifacts/api-server so it exercises production code rather than a copy.
     "types": ["node"]
   },
-  "include": ["src"]
+  // The api-server type shims cover its untyped native deps (gifencoder,
+  // canvas-sketch-util, …); the preview harness pulls those modules in
+  // transitively, so it needs the same declarations.
+  "include": ["src", "../artifacts/api-server/src/types"]
 }

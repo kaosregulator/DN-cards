@@ -25,7 +25,7 @@ import { rarityLadderRank } from "../rarity-runtime.js";
 import type { Rarity } from "../cards-data.js";
 import { seededRng, hashString } from "./paint.js";
 import {
-  HQ_TERRITORIES, getTerritory, resolveFaction, tierProfile,
+  HQ_TERRITORIES, resolveFaction, tierProfile,
   type HqTerritory, type HqFaction,
 } from "./defs/world.js";
 

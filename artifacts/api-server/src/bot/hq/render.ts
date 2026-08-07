@@ -29,8 +29,8 @@ import { drawAtmosphere, atmospherePreset } from "../animations/atmosphere.js";
 import { queueRender } from "../animations/render-queue.js";
 import { loadSprite, spriteForPrefix } from "./assets.js";
 import {
-  ellipse, blit, imgSize, blitClippedQuad, polyPath, diamond, seededRng, hashString,
-  drawIslandTier, drawPine, drawRock, drawHqHeader, HQ_HEADER_H,
+  ellipse, blit, blitClippedQuad, polyPath, diamond, seededRng, hashString,
+  drawIslandTier, drawPine, drawRock, drawHqHeader,
   type Pt, type HqHeaderInfo,
 } from "./paint.js";
 import {
@@ -49,7 +49,6 @@ import { HQ_GRID, HQ_BASE_GRID } from "./grid.js";
 export type { HqHeaderInfo };
 
 const W = 1120, H = 680;
-const HEADER_H = HQ_HEADER_H;
 
 // ── Isometric projection ───────────────────────────────────────────────────────
 // A GRID×GRID floor. project() maps a lattice point (gx,gy) to screen space; a

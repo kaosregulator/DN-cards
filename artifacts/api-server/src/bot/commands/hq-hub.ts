@@ -69,7 +69,7 @@ import {
   resolveCompanion, companionsByRarityDesc, COMPANION_NONE, HQ_COMPANIONS,
 } from "../hq/defs/companions.js";
 import { resolveTheme, HQ_THEMES } from "../hq/defs/themes.js";
-import { resolveWall, HQ_WALLS } from "../hq/defs/walls.js";
+import { resolveWall } from "../hq/defs/walls.js";
 import { resolveFloor, HQ_FLOORS } from "../hq/defs/floors.js";
 import { resolveBackdrop, HQ_BACKDROPS, DEFAULT_BACKDROP_ID } from "../hq/defs/backdrops.js";
 import {
