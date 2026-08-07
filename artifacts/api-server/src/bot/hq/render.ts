@@ -508,37 +508,39 @@ function parseHex(hex: string): number | null {
 }
 
 /**
- * Subtle blue shield aura around the playable island — a soft elliptical rim,
- * not a large transparent dome. `pulse` (0..1) gently scales opacity/radius so
- * animated frames can breathe.
+ * Subtle blue shield aura around the playable island — a soft luminous rim
+ * hugging the grounds edge, NOT a large transparent dome over the castle.
+ * `pulse` (0..1) gently scales opacity so animated frames can breathe.
  */
 function drawShieldAura(ctx: Ctx, pulse: number): void {
   const p = Math.max(0, Math.min(1, pulse));
-  const rx = ISLAND_HW * (0.92 + p * 0.04);
-  const ry = ISLAND_HH * (0.92 + p * 0.04);
-  const cx = BASE_CX, cy = ISLAND_CY + 8;
+  // Sit just outside the island rim so it reads as a ward around the playable
+  // area rather than a glass bubble covering the castle.
+  const rx = ISLAND_HW * (1.02 + p * 0.02);
+  const ry = ISLAND_HH * (1.04 + p * 0.02);
+  const cx = BASE_CX, cy = ISLAND_CY + 10;
 
   ctx.save();
-  // Soft fill under the grounds edge.
-  const fill = ctx.createRadialGradient(cx, cy, Math.min(rx, ry) * 0.35, cx, cy, Math.max(rx, ry));
+  // Very soft outer glow — almost invisible in the centre.
+  const fill = ctx.createRadialGradient(cx, cy, Math.min(rx, ry) * 0.78, cx, cy, Math.max(rx, ry) * 1.08);
   fill.addColorStop(0, "rgba(80,170,255,0)");
-  fill.addColorStop(0.72, `rgba(70,160,255,${0.04 + p * 0.03})`);
-  fill.addColorStop(1, `rgba(90,180,255,${0.14 + p * 0.08})`);
+  fill.addColorStop(0.82, `rgba(70,160,255,${0.02 + p * 0.02})`);
+  fill.addColorStop(1, `rgba(100,190,255,${0.10 + p * 0.06})`);
   ctx.fillStyle = fill;
-  ctx.beginPath(); ellipse(ctx, cx, cy, rx, ry); ctx.fill();
+  ctx.beginPath(); ellipse(ctx, cx, cy, rx * 1.06, ry * 1.08); ctx.fill();
 
-  // Thin luminous rim.
-  ctx.strokeStyle = `rgba(120,200,255,${0.45 + p * 0.25})`;
-  ctx.lineWidth = 2.5;
-  ctx.shadowColor = "rgba(80,170,255,0.85)";
-  ctx.shadowBlur = 14 + p * 10;
+  // Thin luminous rim hugging the island edge.
+  ctx.strokeStyle = `rgba(140,210,255,${0.40 + p * 0.22})`;
+  ctx.lineWidth = 2;
+  ctx.shadowColor = "rgba(90,180,255,0.75)";
+  ctx.shadowBlur = 10 + p * 8;
   ctx.beginPath(); ellipse(ctx, cx, cy, rx, ry); ctx.stroke();
 
-  // Inner hairline for depth.
+  // Faint inner hairline for a soft double-rim (aura, not dome).
   ctx.shadowBlur = 0;
-  ctx.strokeStyle = `rgba(180,230,255,${0.25 + p * 0.15})`;
+  ctx.strokeStyle = `rgba(190,230,255,${0.18 + p * 0.12})`;
   ctx.lineWidth = 1;
-  ctx.beginPath(); ellipse(ctx, cx, cy, rx * 0.96, ry * 0.96); ctx.stroke();
+  ctx.beginPath(); ellipse(ctx, cx, cy, rx * 0.985, ry * 0.985); ctx.stroke();
   ctx.restore();
 }
 
