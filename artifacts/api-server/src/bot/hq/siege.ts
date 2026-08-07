@@ -87,3 +87,17 @@ export function resolveSiege(
 export const SIEGE_SHIELD_MS = 60 * 60 * 1000;   // 1h shield after a base is taken
 export const SIEGE_COOLDOWN_MS = 15 * 60 * 1000; // per-target attacker cooldown
 export const SIEGE_MAX_PER_WINDOW = 3;           // attacks per target per cooldown window
+
+// Hold-tribute: a captured base pays its current holder a passive shard stipend
+// the whole time they hold it — "shards while you hold". Minted, never drained
+// from anyone; collected pull-based when the holder views the World map. Accrual
+// is capped so a base left unvisited for weeks doesn't dump a jackpot.
+export const TRIBUTE_PER_HOUR = 5;               // shards minted per hour held, per base
+export const TRIBUTE_CAP_HOURS = 48;             // max uncollected accrual (2 days)
+
+// Compute a holder's tribute owed for one held base, given when they last
+// collected (or took it) and the moment of collection. Pure and cap-bounded.
+export function tributeOwed(since: Date, now: Date = new Date()): number {
+  const hours = Math.max(0, (now.getTime() - since.getTime()) / 3_600_000);
+  return Math.floor(Math.min(hours, TRIBUTE_CAP_HOURS) * TRIBUTE_PER_HOUR);
+}

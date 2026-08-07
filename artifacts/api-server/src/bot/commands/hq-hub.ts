@@ -34,7 +34,7 @@ import {
   getUnlockedItemIds, grantUnlock,
   getDefenders, setDefender, clearDefender, getGuildBases,
   getBaseState, applySiegeToBase, logSiege, recentAttackCount, reclaimBase,
-  getConquestLeaders,
+  getConquestLeaders, getHeldBases, markTributesCollected, getReignLeaders,
 } from "../hq/db.js";
 import {
   shopRotation, formatRefreshIn,
@@ -43,7 +43,7 @@ import {
 } from "../hq/shop.js";
 import {
   resolveSiege, SIEGE_SHIELD_MS, SIEGE_COOLDOWN_MS, SIEGE_MAX_PER_WINDOW,
-  type SiegeCombatant,
+  tributeOwed, TRIBUTE_PER_HOUR, type SiegeCombatant,
 } from "../hq/siege.js";
 import { rarityLadderRank } from "../rarity-runtime.js";
 import { withHqLock } from "../hq/lock.js";
@@ -773,10 +773,20 @@ async function buildView(
     }
 
     case "world": {
+      // Pay out hold-tribute for any bases the viewer holds, then read the
+      // longest-reign board (which includes their live reign).
+      const tribute = await collectHoldTribute(guildId, userId).catch(() => null);
+      const reignLeaders = await getReignLeaders(guildId, 5)
+        .catch(() => [] as Awaited<ReturnType<typeof getReignLeaders>>);
+      const sovereign = reignLeaders[0];
       embed.setTitle("🗺️ World Map").setDescription(
-        worldBases.length === 0
-          ? "No rival bases to raid yet — once other members station **base defenders**, their castles appear here to attack."
-          : "Other players' bases. 🚩 = currently held by a conqueror. Pick one below to lay siege.",
+        (tribute ? `${tribute}\n\n` : "") +
+        (sovereign && sovereign.bestSec > 0
+          ? `👑 **Sovereign:** ${sovereign.userId === userId ? "**you**" : `<@${sovereign.userId}>`} — longest hold **${formatReign(sovereign.bestSec)}**${sovereign.active ? " (still holding)" : ""}.\n\n`
+          : "") +
+        (worldBases.length === 0
+          ? "No rival bases to raid yet — once other members station **base defenders**, their castles appear here to attack. **Hold** a base you capture to earn passive 💠 tribute."
+          : "Other players' bases. 🚩 = currently held by a conqueror. Capture one and **hold it** for passive 💠 tribute. Pick one below to lay siege."),
       );
       if (worldBases.length > 0) {
         rows.push(new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
@@ -800,6 +810,16 @@ async function buildView(
           return `${medals[i] ?? "•"} **${name}** — ${l.wins} win${l.wins === 1 ? "" : "s"}${held}${you}`;
         }));
         embed.addFields({ name: "🏆 Conquest leaderboard", value: lines.join("\n").slice(0, 1024) });
+      }
+      // Longest-hold leaderboard — who has clung to a base the longest.
+      if (reignLeaders.length > 0 && reignLeaders.some(r => r.bestSec > 0)) {
+        const crowns = ["👑", "🥈", "🥉", "🏅", "🏅"];
+        const rlines = reignLeaders.filter(r => r.bestSec > 0).map((r, i) => {
+          const you = r.userId === userId ? " · **you**" : "";
+          const live = r.active ? " 🚩" : "";
+          return `${crowns[i] ?? "•"} <@${r.userId}> — **${formatReign(r.bestSec)}**${live}${you}`;
+        });
+        embed.addFields({ name: "👑 Longest hold", value: rlines.join("\n").slice(0, 1024) });
       }
       break;
     }
@@ -1131,6 +1151,35 @@ function backRow(section: Section) {
 // Flavour move names for the classic (move-by-move) siege captions.
 const SIEGE_MOVES = ["Siege Strike", "Breach", "Overrun", "Vanguard Charge", "Final Blow", "Rally", "Flank", "Storm the Gate"];
 
+// "Shards while you hold": mint tribute for every base the viewer currently
+// holds, pull-based, and restart their accrual clock. Returns a short toast
+// (or null) to surface at the top of the World map. Best-effort — a failed pay
+// never blocks the view.
+async function collectHoldTribute(guildId: string, userId: string): Promise<string | null> {
+  const held = await getHeldBases(guildId, userId).catch(() => []);
+  if (held.length === 0) return null;
+  const now = new Date();
+  let total = 0;
+  const collectedOwners: string[] = [];
+  for (const b of held) {
+    const owed = tributeOwed(b.since, now);
+    if (owed > 0) { total += owed; collectedOwners.push(b.ownerId); }
+  }
+  if (total <= 0) return null;
+  await addShards(guildId, userId, total).catch(() => {});
+  await markTributesCollected(guildId, userId, collectedOwners, now).catch(() => {});
+  return `💠 **+${total}** hold-tribute collected from **${collectedOwners.length}** held base${collectedOwners.length === 1 ? "" : "s"} (+${TRIBUTE_PER_HOUR}/hr each).`;
+}
+
+// Human "2d 3h", "4h 12m", "37m" from seconds — for reign durations.
+function formatReign(sec: number): string {
+  const d = Math.floor(sec / 86400), h = Math.floor((sec % 86400) / 3600), m = Math.floor((sec % 3600) / 60);
+  if (d > 0) return `${d}d ${h}h`;
+  if (h > 0) return `${h}h ${m}m`;
+  if (m > 0) return `${m}m`;
+  return "<1m";
+}
+
 async function runSiege(interaction: ButtonInteraction, guildId: string, attackerId: string, defenderId: string, mode: SiegeMode): Promise<void> {
   await interaction.deferUpdate().catch(() => {});
   // Serialize per DEFENDER (the contested base) so every attack on one base runs
@@ -1172,7 +1221,7 @@ async function runSiege(interaction: ButtonInteraction, guildId: string, attacke
     .setDescription(
       `**${attackerName}** ${result.attackerWon ? "stormed" : "failed to take"} the base — ` +
       `duels **${result.attackerWins}–${result.defenderWins}**.` +
-      (result.attackerWon ? "\n🚩 You hold it until it's reclaimed." : "\nThe defenders held the walls."),
+      (result.attackerWon ? `\n🚩 You hold it until it's reclaimed — earning **${TRIBUTE_PER_HOUR}💠/hr** while you do. Collect from the 🗺️ World map.` : "\nThe defenders held the walls."),
     )
     .addFields(
       { name: "⚔️ Squad power", value: `**${result.attackerPower}**`, inline: true },

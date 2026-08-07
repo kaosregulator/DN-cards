@@ -246,9 +246,22 @@ an isometric map (banner + health + name; 🚩 = held), and lets you pick one to
 raid. **Captures persist until reclaimed** — the owner gets a Reclaim button once
 the conqueror's shield lapses.
 
-State is additive: `hq_base_state` (holder + shield) and `hq_base_attacks` (log
-+ cooldown). *Clan co-op attacks are the next step and slot in behind the same
-`resolveSiege` interface.*
+**Shards while you hold.** Every base you hold pays a passive **hold-tribute** of
+`TRIBUTE_PER_HOUR` (5) 💠/hr, minted — never drained from anyone. It's collected
+**pull-based**: opening the 🗺️ World Map pays out everything owed across the
+bases you hold and restarts the clock. Accrual is capped at `TRIBUTE_CAP_HOURS`
+(48h) so a base left unvisited doesn't dump a jackpot (`tributeOwed`, `siege.ts`).
+
+**Longest-hold leaderboard + Sovereign title.** Each hold is timed; when a reign
+ends (recaptured or reclaimed) it's logged to `hq_base_reigns`. The World Map
+shows a **👑 Longest hold** board — each holder's best single reign, combined at
+read time with any still-running reign (`now − held_since`) so a current holder
+ranks live (🚩) — and crowns the #1 as the guild's **Sovereign** (`getReignLeaders`).
+
+State is additive: `hq_base_state` (holder + shield + hold clock), `hq_base_attacks`
+(log + cooldown) and `hq_base_reigns` (completed reigns → leaderboard). *Clan
+co-op attacks are the next step and slot in behind the same `resolveSiege`
+interface.*
 
 ## Admin editor (`/hqadmin`)
 
