@@ -14,7 +14,7 @@ import {
   drawTextWithShadow, fitText, getRarityEffectColor,
 } from "./effects.js";
 import { drawAtmosphere, atmospherePreset } from "./atmosphere.js";
-import { drawArenaBackground } from "./arena-bg.js";
+import { drawArenaBackground, drawImageBackground } from "./arena-bg.js";
 import { drawImpactDebris, physicsShake } from "./physics.js";
 import { extractArtColor } from "../battle/image/vibrant-color.js";
 
@@ -118,7 +118,7 @@ async function renderBattleIdleFrame(
 ): Promise<void> {
   const { ctx, t, mod } = frame;
   const { width, height } = BATTLE_CANVAS;
-  await drawBattleBackground(ctx, mod, width, height, colorA, colorB, t, `${input.attacker.name}-idle`, input.background);
+  await drawBattleBackground(ctx, mod, width, height, colorA, colorB, t, `${input.attacker.name}-idle`, input.background, input.backgroundImage);
 
   const left = { x: 70, y: 45, w: 340, h: 470 };
   const right = { x: 590, y: 45, w: 340, h: 470 };
@@ -146,7 +146,7 @@ async function renderBattleTurnFrame(
   const { width, height } = BATTLE_CANVAS;
 
   // Draw the battlefield background + advancing arena atmosphere (behind cards).
-  await drawBattleBackground(ctx, mod, width, height, colorA, colorB, t, `${input.attacker.name}-turn`, input.background);
+  await drawBattleBackground(ctx, mod, width, height, colorA, colorB, t, `${input.attacker.name}-turn`, input.background, input.backgroundImage);
 
   const left = { x: 70, y: 45, w: 340, h: 470 };
   const right = { x: 590, y: 45, w: 340, h: 470 };
@@ -284,7 +284,14 @@ async function drawBattleBackground(
   t: number,
   seed: string,
   arenaKey?: string | null,
+  backgroundImage?: Buffer | null,
 ): Promise<void> {
+  // A caller-supplied backdrop image (the siege castle) wins over everything:
+  // the fighters trade blows over that scene. Falls through if it can't decode.
+  if (await drawImageBackground(ctx, mod, backgroundImage, width, height)) {
+    drawAtmosphere(ctx, width, height, atmospherePreset("battlefield"), { seed, t, color: colorA, density: 0.4 });
+    return;
+  }
   // Pixel-art arena backdrop, if one is chosen and available. When it draws we
   // skip the gradient (the art IS the background) and layer only a LIGHT
   // procedural atmosphere for depth. Otherwise fall back to the classic

@@ -34,6 +34,13 @@ export interface BattleAnimationInput {
   attackerWon: boolean;    // if this blow ended the battle
   defenderWon: boolean;  // (should not happen on a single hit, but kept for symmetry)
   background?: string | null;
+  /**
+   * Raw PNG bytes to use as the scene backdrop — the fighters dash and trade
+   * blows over THIS image (cover-fit, with a readability wash). Takes precedence
+   * over `background` (a bundled arena key). The HQ siege passes its castle
+   * frame here so the assault plays out on the castle itself.
+   */
+  backgroundImage?: Buffer | null;
 }
 
 export interface VictoryAnimationInput {

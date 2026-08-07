@@ -759,7 +759,10 @@ async function buildTurnFrame(
       moveName: moveLabel(move, actor),
       attackerWon: result.koed || foe.hp <= 0,
       defenderWon: false,
+      // THE difference from a plain battle: the fighters dash and trade blows
+      // over the castle itself — the current siege scene is the battlefield.
       background: null,
+      backgroundImage: s.castleImage,
     }, s.settings.battleAnimationSpeed as AnimationSpeed).catch(() => null);
     s.turnFrame = anim ? Buffer.from(anim.buffer) : null;
     s.turnFrameIsGif = !!anim;

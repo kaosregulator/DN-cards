@@ -108,6 +108,45 @@ export async function drawArenaBackground(
   return true;
 }
 
+// Decoded custom backdrop image, cached by the SAME Buffer instance so one
+// render's frames share a single decode (the caller passes one buffer for the
+// whole animation). WeakMap → no manual eviction; the entry dies with the buffer.
+const imageCache = new WeakMap<object, Promise<LoadedImage | null>>();
+
+/**
+ * Draw an ARBITRARY image (e.g. the siege castle scene) as the backdrop, cover-
+ * fit to (width, height) with the same dark readability wash the arena strips
+ * use, so foreground cards + HUD stay legible. Returns false if it couldn't be
+ * decoded (caller falls back to the arena key / procedural background).
+ */
+export async function drawImageBackground(
+  ctx: Ctx, mod: CanvasMod, image: Buffer | null | undefined, width: number, height: number,
+): Promise<boolean> {
+  if (!image) return false;
+  let p = imageCache.get(image);
+  if (!p) {
+    p = (async () => {
+      try { return await mod.loadImage(image); }
+      catch (err) { logger.debug({ err }, "arena-bg: failed to decode backdrop image"); return null; }
+    })();
+    imageCache.set(image, p);
+  }
+  const img = await p;
+  if (!img) return false;
+
+  const s = Math.max(width / img.width, height / img.height);
+  const dw = img.width * s, dh = img.height * s;
+  const dx = (width - dw) / 2, dy = (height - dh) / 2;
+  ctx.save();
+  (ctx as unknown as {
+    drawImage(img: LoadedImage, dx: number, dy: number, dw: number, dh: number): void;
+  }).drawImage(img, dx, dy, dw, dh);
+  ctx.fillStyle = "rgba(6,8,14,0.42)";
+  ctx.fillRect(0, 0, width, height);
+  ctx.restore();
+  return true;
+}
+
 /** True if the bundled arena assets are present (used to gate UI/features). */
 export function arenaAssetsAvailable(): boolean {
   return manifest() !== null;
