@@ -27,11 +27,16 @@ interface HqManifest {
 }
 
 function resolveHqDir(): string | null {
-  const candidates = [
-    fileURLToPath(new URL("../../../assets/hq/", import.meta.url)),
-    join(process.cwd(), "assets/hq"),
-    join(process.cwd(), "artifacts/api-server/assets/hq"),
-  ];
+  const candidates: string[] = [];
+  // The module-relative path is best in dev/prod ESM, but a non-file import URL
+  // (e.g. a CJS/test bundle where import.meta.url is unset) makes new URL()/
+  // fileURLToPath throw — never let that crash the whole render; just fall
+  // through to the cwd-relative candidates below.
+  try {
+    candidates.push(fileURLToPath(new URL("../../../assets/hq/", import.meta.url)));
+  } catch { /* import.meta.url unusable here — use cwd fallbacks */ }
+  candidates.push(join(process.cwd(), "assets/hq"));
+  candidates.push(join(process.cwd(), "artifacts/api-server/assets/hq"));
   for (const dir of candidates) {
     if (existsSync(join(dir, "manifest.json"))) return dir;
   }

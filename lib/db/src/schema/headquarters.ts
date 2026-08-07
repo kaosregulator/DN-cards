@@ -69,7 +69,7 @@ export const hqUnlocksTable = pgTable("hq_unlocks", {
 }));
 
 export type HqUnlock = typeof hqUnlocksTable.$inferSelect;
-export type HqItemType = "decoration" | "room" | "theme" | "wall" | "floor" | "backdrop";
+export type HqItemType = "decoration" | "room" | "theme" | "wall" | "floor" | "backdrop" | "companion";
 
 // Pinned featured cards for the Trophy Hall — one row per pedestal slot. Unique
 // on (guild, user, slot); repinning a slot upserts. Clicking a featured card in
@@ -139,6 +139,13 @@ export const hqBaseStateTable = pgTable("hq_base_state", {
   heldByName: text("held_by_name"),
   shieldUntil: timestamp("shield_until"),   // no attacks allowed until this time
   lastAttackedAt: timestamp("last_attacked_at"),
+  // When the CURRENT holder took the base — the start of their reign. Null while
+  // the owner holds their own base. Powers "shards while you hold" (tribute
+  // accrues from here) and the longest-reign leaderboard (live reign = now-this).
+  heldSince: timestamp("held_since"),
+  // Last time the holder collected their hold-tribute; tribute accrues between
+  // this and now. Reset to the capture time on each new capture.
+  lastTributeAt: timestamp("last_tribute_at"),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 }, (t) => ({
   guildUserUniq: uniqueIndex("hq_base_state_guild_user_uniq").on(t.guildId, t.userId),
@@ -163,3 +170,22 @@ export const hqBaseAttacksTable = pgTable("hq_base_attacks", {
 }));
 
 export type HqBaseAttack = typeof hqBaseAttacksTable.$inferSelect;
+
+// Reign log — one row per COMPLETED hold. Written when a reign ends (the base is
+// recaptured by someone else or reclaimed by its owner). Powers the longest-hold
+// leaderboard and the "Sovereign" title; combined at read time with any still
+// active reign (now − held_since) so a current holder can top the board live.
+export const hqBaseReignsTable = pgTable("hq_base_reigns", {
+  id: serial("id").primaryKey(),
+  guildId: text("guild_id").notNull(),
+  holderId: text("holder_id").notNull(),
+  holderName: text("holder_name"),
+  baseOwnerId: text("base_owner_id").notNull(),
+  startedAt: timestamp("started_at").notNull(),
+  endedAt: timestamp("ended_at").notNull().defaultNow(),
+  durationSec: integer("duration_sec").notNull().default(0),
+}, (t) => ({
+  byHolder: index("hq_base_reigns_holder_idx").on(t.guildId, t.holderId),
+}));
+
+export type HqBaseReign = typeof hqBaseReignsTable.$inferSelect;

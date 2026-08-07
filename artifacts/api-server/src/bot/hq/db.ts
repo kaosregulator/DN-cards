@@ -8,7 +8,7 @@
 
 import {
   db, playerHqTable, hqUnlocksTable, hqDisplaysTable, hqPlacementsTable, hqDefendersTable,
-  hqBaseStateTable, hqBaseAttacksTable,
+  hqBaseStateTable, hqBaseAttacksTable, hqBaseReignsTable,
   type PlayerHq, type HqItemType, type HqBaseState,
 } from "@workspace/db";
 import { and, eq, gte, sql, desc } from "drizzle-orm";
@@ -162,7 +162,7 @@ export async function getBaseState(guildId: string, userId: string): Promise<HqB
 
 async function upsertBaseState(
   guildId: string, userId: string,
-  patch: Partial<Pick<HqBaseState, "heldByUserId" | "heldByName" | "shieldUntil" | "lastAttackedAt">>,
+  patch: Partial<Pick<HqBaseState, "heldByUserId" | "heldByName" | "shieldUntil" | "lastAttackedAt" | "heldSince" | "lastTributeAt">>,
 ): Promise<void> {
   await db.insert(hqBaseStateTable)
     .values({ guildId, userId, ...patch })
@@ -172,26 +172,85 @@ async function upsertBaseState(
     });
 }
 
+// Close out a reign: log how long `prev`'s holder held `ownerId`'s base, so it
+// counts toward the longest-hold leaderboard. No-op if the base wasn't held.
+async function closeReign(guildId: string, ownerId: string, prev: HqBaseState | null, endedAt: Date): Promise<void> {
+  if (!prev?.heldByUserId) return;
+  const started = prev.heldSince ?? prev.updatedAt ?? endedAt;
+  const durationSec = Math.max(0, Math.round((endedAt.getTime() - started.getTime()) / 1000));
+  await db.insert(hqBaseReignsTable).values({
+    guildId, holderId: prev.heldByUserId, holderName: prev.heldByName ?? null,
+    baseOwnerId: ownerId, startedAt: started, endedAt, durationSec,
+  });
+}
+
 // Apply a resolved siege to the DEFENDER's base: a win flips the holder to the
 // attacker and shields the base; either way the base is marked freshly attacked.
+// A capture closes the outgoing holder's reign and opens the new one (held_since
+// = now) so hold-tribute and the reign board start fresh for the conqueror.
 export async function applySiegeToBase(
   guildId: string, defenderId: string, attackerWon: boolean,
   attackerId: string, attackerName: string, shieldMs: number,
 ): Promise<void> {
   const now = new Date();
   if (attackerWon) {
+    const prev = await getBaseState(guildId, defenderId);
+    // Only close a reign if the base changes hands (a re-capture by the same
+    // holder — e.g. defended-then-retaken edge — keeps their clock running).
+    if (prev?.heldByUserId && prev.heldByUserId !== attackerId) {
+      await closeReign(guildId, defenderId, prev, now).catch(() => {});
+    }
+    const keepClock = prev?.heldByUserId === attackerId;
     await upsertBaseState(guildId, defenderId, {
       heldByUserId: attackerId, heldByName: attackerName,
       shieldUntil: new Date(now.getTime() + shieldMs), lastAttackedAt: now,
+      ...(keepClock ? {} : { heldSince: now, lastTributeAt: now }),
     });
   } else {
     await upsertBaseState(guildId, defenderId, { lastAttackedAt: now });
   }
 }
 
-// The base owner reclaiming their own base clears the conqueror.
+// The base owner reclaiming their own base closes the conqueror's reign and
+// clears the hold clock.
 export async function reclaimBase(guildId: string, userId: string): Promise<void> {
-  await upsertBaseState(guildId, userId, { heldByUserId: null, heldByName: null });
+  const prev = await getBaseState(guildId, userId);
+  await closeReign(guildId, userId, prev, new Date()).catch(() => {});
+  await upsertBaseState(guildId, userId, {
+    heldByUserId: null, heldByName: null, heldSince: null, lastTributeAt: null,
+  });
+}
+
+// Bases a player currently HOLDS (as conqueror), with the clocks tribute accrues
+// from. `lastTributeAt` falls back to `heldSince` (then updatedAt) for rows
+// captured before tribute tracking existed.
+export async function getHeldBases(
+  guildId: string, holderId: string,
+): Promise<{ ownerId: string; since: Date }[]> {
+  const rows = await db.select({
+      ownerId: hqBaseStateTable.userId,
+      lastTributeAt: hqBaseStateTable.lastTributeAt,
+      heldSince: hqBaseStateTable.heldSince,
+      updatedAt: hqBaseStateTable.updatedAt,
+    })
+    .from(hqBaseStateTable)
+    .where(and(eq(hqBaseStateTable.guildId, guildId), eq(hqBaseStateTable.heldByUserId, holderId)));
+  return rows.map(r => ({ ownerId: r.ownerId, since: r.lastTributeAt ?? r.heldSince ?? r.updatedAt }));
+}
+
+// Mark tribute collected for the given held bases (sets last_tribute_at = at),
+// so accrual restarts from now. Only touches bases still held by `holderId`.
+export async function markTributesCollected(
+  guildId: string, holderId: string, ownerIds: string[], at: Date,
+): Promise<void> {
+  if (ownerIds.length === 0) return;
+  await db.update(hqBaseStateTable)
+    .set({ lastTributeAt: at, updatedAt: new Date() })
+    .where(and(
+      eq(hqBaseStateTable.guildId, guildId),
+      eq(hqBaseStateTable.heldByUserId, holderId),
+      sql`${hqBaseStateTable.userId} = ANY(${ownerIds})`,
+    ));
 }
 
 // ── Admin maintenance (used by the HQ admin editor) ───────────────────────────
@@ -207,9 +266,15 @@ export async function clearAllDefenders(guildId: string, userId: string): Promis
 export async function clearAllPlacements(guildId: string, userId: string): Promise<void> {
   await db.delete(hqPlacementsTable).where(and(eq(hqPlacementsTable.guildId, guildId), eq(hqPlacementsTable.userId, userId)));
 }
-// Fully clear a base's siege state (drop any capture and shield).
+// Fully clear a base's siege state (drop any capture and shield). Closes any
+// in-progress reign first so the admin reset still credits time already held.
 export async function resetBaseState(guildId: string, userId: string): Promise<void> {
-  await upsertBaseState(guildId, userId, { heldByUserId: null, heldByName: null, shieldUntil: null, lastAttackedAt: null });
+  const prev = await getBaseState(guildId, userId);
+  await closeReign(guildId, userId, prev, new Date()).catch(() => {});
+  await upsertBaseState(guildId, userId, {
+    heldByUserId: null, heldByName: null, shieldUntil: null, lastAttackedAt: null,
+    heldSince: null, lastTributeAt: null,
+  });
 }
 
 export async function logSiege(
@@ -245,6 +310,51 @@ export async function getConquestLeaders(
     .groupBy(hqBaseStateTable.heldByUserId);
   const holdMap = new Map(holdRows.map(r => [r.userId, r.holding]));
   return winRows.map(r => ({ userId: r.userId, wins: r.wins, holding: holdMap.get(r.userId) ?? 0 }));
+}
+
+// Longest-hold leaderboard: each holder's BEST single reign in this guild,
+// combining completed reigns (hq_base_reigns) with any still-active reign
+// (now − held_since) so a current holder ranks live. Returns holders sorted by
+// their longest reign, capturing whether that best reign is still running.
+export async function getReignLeaders(
+  guildId: string, limit = 5,
+): Promise<{ userId: string; name: string | null; bestSec: number; active: boolean }[]> {
+  const now = Date.now();
+  const best = new Map<string, { name: string | null; bestSec: number; active: boolean }>();
+  const consider = (userId: string, name: string | null, sec: number, active: boolean) => {
+    const cur = best.get(userId);
+    if (!cur || sec > cur.bestSec) best.set(userId, { name: name ?? cur?.name ?? null, bestSec: sec, active });
+    else if (name && !cur.name) cur.name = name;
+  };
+
+  const completed = await db.select({
+      holderId: hqBaseReignsTable.holderId,
+      holderName: hqBaseReignsTable.holderName,
+      bestSec: sql<number>`max(${hqBaseReignsTable.durationSec})::int`,
+    })
+    .from(hqBaseReignsTable)
+    .where(eq(hqBaseReignsTable.guildId, guildId))
+    .groupBy(hqBaseReignsTable.holderId, hqBaseReignsTable.holderName);
+  for (const r of completed) consider(r.holderId, r.holderName, r.bestSec ?? 0, false);
+
+  const active = await db.select({
+      holderId: hqBaseStateTable.heldByUserId,
+      holderName: hqBaseStateTable.heldByName,
+      heldSince: hqBaseStateTable.heldSince,
+      updatedAt: hqBaseStateTable.updatedAt,
+    })
+    .from(hqBaseStateTable)
+    .where(and(eq(hqBaseStateTable.guildId, guildId), sql`${hqBaseStateTable.heldByUserId} is not null`));
+  for (const r of active) {
+    if (!r.holderId) continue;
+    const since = (r.heldSince ?? r.updatedAt)?.getTime() ?? now;
+    consider(r.holderId, r.holderName, Math.max(0, Math.round((now - since) / 1000)), true);
+  }
+
+  return [...best.entries()]
+    .map(([userId, v]) => ({ userId, name: v.name, bestSec: v.bestSec, active: v.active }))
+    .sort((a, b) => b.bestSec - a.bestSec)
+    .slice(0, limit);
 }
 
 // Count a pair's attacks since `since` — powers the per-target attacker cooldown.

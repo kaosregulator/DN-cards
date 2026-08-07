@@ -864,6 +864,23 @@ async function runBootMigrations() {
   `);
   await pool.query(`CREATE INDEX IF NOT EXISTS hq_base_attacks_pair_idx ON hq_base_attacks (guild_id, attacker_id, defender_id, created_at)`);
 
+  // Hold-tribute + reign tracking (shards-while-you-hold, longest-hold board).
+  await pool.query(`ALTER TABLE hq_base_state ADD COLUMN IF NOT EXISTS held_since TIMESTAMP`);
+  await pool.query(`ALTER TABLE hq_base_state ADD COLUMN IF NOT EXISTS last_tribute_at TIMESTAMP`);
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS hq_base_reigns (
+      id            SERIAL PRIMARY KEY,
+      guild_id      TEXT NOT NULL,
+      holder_id     TEXT NOT NULL,
+      holder_name   TEXT,
+      base_owner_id TEXT NOT NULL,
+      started_at    TIMESTAMP NOT NULL,
+      ended_at      TIMESTAMP NOT NULL DEFAULT NOW(),
+      duration_sec  INTEGER NOT NULL DEFAULT 0
+    )
+  `);
+  await pool.query(`CREATE INDEX IF NOT EXISTS hq_base_reigns_holder_idx ON hq_base_reigns (guild_id, holder_id)`);
+
   logger.info("Boot migrations applied");
 }
 

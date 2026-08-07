@@ -32,6 +32,7 @@ import type { HqTheme } from "./defs/themes.js";
 import type { HqWall } from "./defs/walls.js";
 import type { HqFloor } from "./defs/floors.js";
 import type { DecoCategory } from "./defs/decorations.js";
+import type { CompanionKind } from "./defs/companions.js";
 
 const W = 1120, H = 680;
 const HEADER_H = 66;
@@ -88,6 +89,14 @@ export interface HqRenderDeco {
   cardArtUrl?: string | null;
 }
 
+// An earned companion (pet) standing in the scene — drawn procedurally by `kind`.
+export interface HqRenderCompanion {
+  kind: CompanionKind;
+  name: string;
+  body: string;    // hex colour string
+  accent: string;
+}
+
 // A card assigned to defend the base — rendered as an upright "standee" figure
 // (the card art) standing on an isometric base, like tabletop miniatures.
 export interface HqRenderDefender {
@@ -125,6 +134,8 @@ export interface HqRenderView extends HqHeaderInfo {
   pedestals: (HqRenderCard | null)[]; // length = room.pedestals
   decorations: HqRenderDeco[];        // placed decorations (with slot index)
   defenders?: HqRenderDefender[];     // cards set to defend the base (figures on bases)
+  companion?: HqRenderCompanion | null; // active pet standing in the room
+  visitors?: number;                  // ambient NPC guests (0-4), derived from prestige
 }
 
 // ── Exterior "town base" view ──────────────────────────────────────────────────
@@ -147,6 +158,8 @@ export interface HqBaseView extends HqHeaderInfo {
   defenders: HqRenderDefender[];  // stationed cards, rendered as standees
   decorations?: HqRenderDeco[];   // player-placed grounds decorations (trees, items…)
   captured?: boolean;             // show a captured/held banner (red)
+  companion?: HqRenderCompanion | null; // active pet roaming the grounds
+  visitors?: number;              // ambient NPC guests (0-4), derived from prestige
 }
 
 // Placement encoding (stored in hq_placements.slot, so no schema change):
@@ -181,6 +194,40 @@ export function wallSlot(i: number): number { return HQ_WALL_SLOT_BASE + i; }
 export function slotIsWall(slot: number): boolean { return slot >= HQ_WALL_SLOT_BASE; }
 export function slotToTile(slot: number): { gx: number; gy: number } {
   return { gx: slot % GRID, gy: Math.floor(slot / GRID) % GRID };
+}
+
+// Dev/preview utility — lay out companions on a labelled grid so their procedural
+// silhouettes can be eyeballed at a glance (not used by the hub).
+export async function renderCompanionSheet(
+  comps: { name: string; kind: CompanionKind; body: string; accent: string }[],
+): Promise<Buffer | null> {
+  return queueRender("hq-sheet", async () => {
+    const mod = await getCanvas();
+    if (!mod) return null;
+    try {
+      const cols = 4, cellW = 220, cellH = 200, pad = 20;
+      const rows = Math.ceil(comps.length / cols);
+      const cw = cols * cellW + pad * 2, ch = rows * cellH + pad * 2 + 40;
+      const canvas = mod.createCanvas(cw, ch);
+      const ctx = canvas.getContext("2d") as unknown as Ctx;
+      const bg = ctx.createLinearGradient(0, 0, 0, ch);
+      bg.addColorStop(0, "#1b2030"); bg.addColorStop(1, "#0d1017");
+      ctx.fillStyle = bg; ctx.fillRect(0, 0, cw, ch);
+      drawTitle(ctx, "HQ Companions", cw / 2 - 90, 30, "#e8ecf5", 26);
+      for (let i = 0; i < comps.length; i++) {
+        const c = comps[i]!;
+        const gx = i % cols, gy = Math.floor(i / cols);
+        const x = pad + gx * cellW, y = 44 + pad + gy * cellH;
+        ctx.fillStyle = "rgba(255,255,255,0.04)"; roundRectPath(ctx, x + 6, y + 6, cellW - 12, cellH - 12, 14); ctx.fill();
+        const feetY = y + cellH - 46;
+        drawCompanion(ctx, x + cellW / 2, feetY, c, 1.25);
+        ctx.textAlign = "center";
+        drawTitle(ctx, c.name, x + cellW / 2, y + cellH - 22, "#ffffff", 16);
+        ctx.textAlign = "left";
+      }
+      return await canvas.encode("png");
+    } catch { return null; }
+  });
 }
 
 // Where defenders stand — a front arc facing the viewer, centre outwards.
@@ -306,6 +353,16 @@ async function paintBaseScene(ctx: Ctx, mod: CanvasMod, view: HqBaseView, siege?
   const castleTop = await drawCastle(ctx, mod, BASE_CX, castleFeetY, pickCastleSprite(view));
   drawBannerAndHealth(ctx, BASE_CX, castleTop, view, siege?.healthFrac);
   await drawBaseDefenders(ctx, mod, view, siege?.defeated, siege?.flashSlot ?? null);
+  // Ambient life on the grounds — only outside a siege so combat stays readable.
+  if (!siege) {
+    const vis = Math.max(0, Math.min(4, view.visitors ?? 0));
+    const VISITOR_SPOTS = [
+      { x: BASE_CX + 130, y: ISLAND_CY + 168 }, { x: BASE_CX - 250, y: ISLAND_CY + 118 },
+      { x: BASE_CX + 262, y: ISLAND_CY + 104 }, { x: BASE_CX - 120, y: ISLAND_CY + 176 },
+    ];
+    for (let i = 0; i < vis; i++) { const p = VISITOR_SPOTS[i]!; drawVisitor(ctx, p.x, p.y, i + 2, 1.05); }
+    if (view.companion) drawCompanion(ctx, BASE_CX + 60, ISLAND_CY + 176, view.companion, 1.05);
+  }
   if (siege?.attacker) await drawAttacker(ctx, mod, siege.attacker, siege.advance);
   const lg = ctx.createRadialGradient(BASE_CX, 120, 60, BASE_CX, 300, 640);
   lg.addColorStop(0, "rgba(255,244,214,0.10)"); lg.addColorStop(1, "rgba(0,0,0,0)");
@@ -955,6 +1012,22 @@ async function layerFurniture(ctx: Ctx, mod: CanvasMod, view: HqRenderView): Pro
     items.push({ depth: p.y + 1, draw: () => drawDefender(ctx, mod, p.x, p.y, def, view.theme) });
   }
 
+  // Ambient visitors — a few guests off to the sides so the hall feels lived-in.
+  const vis = Math.max(0, Math.min(4, view.visitors ?? 0));
+  const VISITOR_TILES = [{ gx: 6.6, gy: 1.4 }, { gx: 1.4, gy: 6.4 }, { gx: 6.9, gy: 5.2 }, { gx: 1.5, gy: 2.2 }];
+  for (let i = 0; i < vis; i++) {
+    const t = VISITOR_TILES[i]!;
+    const p = project(t.gx, t.gy);
+    items.push({ depth: p.y, draw: async () => { drawVisitor(ctx, p.x, p.y, i + 1, 1); } });
+  }
+
+  // Companion — the pet stands front-and-centre, nearest the viewer.
+  if (view.companion) {
+    const comp = view.companion;
+    const p = project(4.4, 4.4);
+    items.push({ depth: p.y + 2, draw: async () => { drawCompanion(ctx, p.x, p.y, comp, 1); } });
+  }
+
   items.sort((a, b) => a.depth - b.depth);
   for (const it of items) await it.draw();
 }
@@ -1063,6 +1136,217 @@ async function drawDefender(
   ctx.textAlign = "center"; ctx.textBaseline = "middle";
   const size = fitText(ctx, def.name, fw - 8, 13, 9, TITLE_FONT);
   drawTitle(ctx, def.name, cx, fy + fh - 14, "#ffffff", size);
+  ctx.restore();
+}
+
+// ── Companion (pet) — procedural little creature standing in the scene ─────────
+// Drawn by `kind`; feet rest at (cx, feetY). Purely cosmetic. `scale` sizes it
+// (~1.0 in a room, a touch smaller on the sprawling base).
+function drawCompanion(ctx: Ctx, cx: number, feetY: number, comp: HqRenderCompanion, scale = 1): void {
+  const s = scale;
+  const outline = "rgba(0,0,0,0.38)";
+  const fill = (c: string) => { ctx.fillStyle = c; };
+  const stroke = () => { ctx.strokeStyle = outline; ctx.lineWidth = 2 * s; ctx.stroke(); };
+  const eye = (ex: number, ey: number, r: number) => {
+    ctx.beginPath(); ellipse(ctx, ex, ey, r, r); fill("#f7fbff"); ctx.fill();
+    ctx.beginPath(); ellipse(ctx, ex + 0.6 * r, ey, r * 0.5, r * 0.6); fill("#12161c"); ctx.fill();
+  };
+
+  // Contact shadow.
+  ctx.save();
+  fill("rgba(0,0,0,0.30)");
+  ctx.beginPath(); ellipse(ctx, cx, feetY, 26 * s, 8 * s); ctx.fill();
+  ctx.restore();
+
+  ctx.save();
+  ctx.lineJoin = "round";
+  switch (comp.kind) {
+    case "wolf":
+    case "cat": {
+      const big = comp.kind === "wolf";
+      const bodyW = (big ? 52 : 44) * s, bodyH = (big ? 26 : 22) * s;
+      const bcx = cx, bcy = feetY - bodyH - 10 * s;
+      // Legs.
+      fill(comp.body);
+      for (const lx of [-bodyW * 0.32, -bodyW * 0.12, bodyW * 0.12, bodyW * 0.32]) {
+        ctx.beginPath(); roundRectPath(ctx, bcx + lx - 3 * s, bcy + bodyH * 0.3, 6 * s, 20 * s, 3 * s); ctx.fill(); stroke();
+      }
+      // Body.
+      ctx.beginPath(); ellipse(ctx, bcx, bcy, bodyW / 2, bodyH); fill(comp.body); ctx.fill(); stroke();
+      // Tail.
+      ctx.beginPath();
+      ctx.moveTo(bcx - bodyW / 2, bcy);
+      ctx.quadraticCurveTo(bcx - bodyW * 0.85, bcy - (big ? 6 : 22) * s, bcx - bodyW * (big ? 0.7 : 0.55), bcy - (big ? 20 : 34) * s);
+      ctx.lineWidth = (big ? 9 : 5) * s; ctx.strokeStyle = comp.body; ctx.lineCap = "round"; ctx.stroke();
+      ctx.lineCap = "butt";
+      // Head.
+      const hx = bcx + bodyW * 0.42, hy = bcy - bodyH * 0.5;
+      ctx.beginPath(); ellipse(ctx, hx, hy, 15 * s, 14 * s); fill(comp.body); ctx.fill(); stroke();
+      // Ears.
+      fill(comp.accent);
+      for (const dir of [-1, 1]) {
+        ctx.beginPath();
+        ctx.moveTo(hx + dir * 6 * s, hy - 10 * s);
+        ctx.lineTo(hx + dir * (big ? 12 : 14) * s, hy - (big ? 22 : 26) * s);
+        ctx.lineTo(hx + dir * 13 * s, hy - 8 * s);
+        ctx.closePath(); ctx.fill(); stroke();
+      }
+      // Muzzle + eyes.
+      ctx.beginPath(); ellipse(ctx, hx + 8 * s, hy + 3 * s, 6 * s, 5 * s); fill(comp.accent); ctx.fill();
+      eye(hx + 3 * s, hy - 1 * s, 3 * s);
+      eye(hx + 11 * s, hy - 1 * s, 3 * s);
+      break;
+    }
+    case "owl": {
+      const bcx = cx, bcy = feetY - 30 * s;
+      // Feet.
+      fill(comp.accent);
+      for (const dx of [-8, 8]) { ctx.beginPath(); roundRectPath(ctx, bcx + dx * s - 3 * s, feetY - 8 * s, 6 * s, 8 * s, 2 * s); ctx.fill(); }
+      // Body (rounded).
+      ctx.beginPath(); ellipse(ctx, bcx, bcy, 26 * s, 32 * s); fill(comp.body); ctx.fill(); stroke();
+      // Belly.
+      ctx.beginPath(); ellipse(ctx, bcx, bcy + 6 * s, 16 * s, 22 * s); fill(comp.accent); ctx.fill();
+      // Wings.
+      fill(comp.body);
+      for (const dir of [-1, 1]) { ctx.beginPath(); ellipse(ctx, bcx + dir * 24 * s, bcy + 4 * s, 8 * s, 20 * s); ctx.fill(); stroke(); }
+      // Ear tufts.
+      fill(comp.body);
+      for (const dir of [-1, 1]) {
+        ctx.beginPath();
+        ctx.moveTo(bcx + dir * 12 * s, bcy - 26 * s);
+        ctx.lineTo(bcx + dir * 18 * s, bcy - 40 * s);
+        ctx.lineTo(bcx + dir * 20 * s, bcy - 24 * s);
+        ctx.closePath(); ctx.fill(); stroke();
+      }
+      // Big eyes + beak.
+      eye(bcx - 9 * s, bcy - 10 * s, 8 * s);
+      eye(bcx + 9 * s, bcy - 10 * s, 8 * s);
+      ctx.beginPath();
+      ctx.moveTo(bcx, bcy - 4 * s); ctx.lineTo(bcx - 5 * s, bcy + 2 * s); ctx.lineTo(bcx + 5 * s, bcy + 2 * s);
+      ctx.closePath(); fill("#f2b134"); ctx.fill();
+      break;
+    }
+    case "sprite": {
+      const bcx = cx, bcy = feetY - 34 * s;
+      // Glow.
+      ctx.save(); ctx.shadowColor = comp.body; ctx.shadowBlur = 22 * s;
+      ctx.beginPath(); ellipse(ctx, bcx, bcy, 15 * s, 15 * s); fill(comp.body); ctx.fill(); ctx.restore();
+      // Wings.
+      fill(comp.accent);
+      for (const dir of [-1, 1]) {
+        ctx.save(); ctx.globalAlpha = 0.75;
+        ctx.beginPath(); ellipse(ctx, bcx + dir * 16 * s, bcy - 4 * s, 12 * s, 20 * s, dir * 0.5); ctx.fill();
+        ctx.restore();
+      }
+      // Core + face.
+      ctx.beginPath(); ellipse(ctx, bcx, bcy, 12 * s, 13 * s); fill(comp.body); ctx.fill(); stroke();
+      eye(bcx - 4 * s, bcy - 1 * s, 2.6 * s); eye(bcx + 4 * s, bcy - 1 * s, 2.6 * s);
+      // Sparkles.
+      fill("#ffffff");
+      for (const [sx, sy] of [[-20, -18], [22, -10], [8, 20]] as const) {
+        ctx.beginPath(); ellipse(ctx, bcx + sx * s, bcy + sy * s, 2 * s, 2 * s); ctx.fill();
+      }
+      break;
+    }
+    case "slime": {
+      const bcx = cx, bcy = feetY;
+      // Dome body.
+      ctx.beginPath();
+      ctx.moveTo(bcx - 28 * s, bcy);
+      ctx.bezierCurveTo(bcx - 30 * s, bcy - 34 * s, bcx + 30 * s, bcy - 34 * s, bcx + 28 * s, bcy);
+      ctx.closePath();
+      fill(comp.body); ctx.fill(); stroke();
+      // Shine.
+      ctx.save(); ctx.globalAlpha = 0.5; fill(comp.accent);
+      ctx.beginPath(); ellipse(ctx, bcx - 9 * s, bcy - 20 * s, 6 * s, 9 * s, -0.4); ctx.fill(); ctx.restore();
+      eye(bcx - 8 * s, bcy - 14 * s, 4 * s); eye(bcx + 8 * s, bcy - 14 * s, 4 * s);
+      break;
+    }
+    case "golem": {
+      const bcx = cx, bcy = feetY - 26 * s;
+      fill(comp.body); ctx.strokeStyle = outline; ctx.lineWidth = 2 * s;
+      // Legs.
+      for (const dx of [-11, 11]) { ctx.beginPath(); roundRectPath(ctx, bcx + dx * s - 6 * s, feetY - 16 * s, 12 * s, 16 * s, 3 * s); ctx.fill(); ctx.stroke(); }
+      // Torso (chunky block).
+      ctx.beginPath(); roundRectPath(ctx, bcx - 22 * s, bcy - 22 * s, 44 * s, 34 * s, 6 * s); ctx.fill(); ctx.stroke();
+      // Arms.
+      for (const dir of [-1, 1]) { ctx.beginPath(); roundRectPath(ctx, bcx + dir * 22 * s - 6 * s, bcy - 16 * s, 12 * s, 24 * s, 4 * s); ctx.fill(); ctx.stroke(); }
+      // Cracks (accent).
+      ctx.strokeStyle = comp.accent; ctx.lineWidth = 2 * s;
+      ctx.beginPath(); ctx.moveTo(bcx - 6 * s, bcy - 20 * s); ctx.lineTo(bcx - 2 * s, bcy - 8 * s); ctx.lineTo(bcx - 8 * s, bcy + 2 * s); ctx.stroke();
+      // Glowing eyes.
+      ctx.save(); ctx.shadowColor = comp.accent; ctx.shadowBlur = 10 * s; fill(comp.accent);
+      ctx.beginPath(); ellipse(ctx, bcx - 8 * s, bcy - 6 * s, 3.5 * s, 3.5 * s); ctx.fill();
+      ctx.beginPath(); ellipse(ctx, bcx + 8 * s, bcy - 6 * s, 3.5 * s, 3.5 * s); ctx.fill();
+      ctx.restore();
+      break;
+    }
+    case "drake": {
+      const bcx = cx, bcy = feetY - 24 * s;
+      // Tail.
+      ctx.strokeStyle = comp.body; ctx.lineWidth = 8 * s; ctx.lineCap = "round";
+      ctx.beginPath(); ctx.moveTo(bcx - 6 * s, bcy + 6 * s);
+      ctx.quadraticCurveTo(bcx - 40 * s, bcy + 4 * s, bcx - 34 * s, bcy - 20 * s); ctx.stroke(); ctx.lineCap = "butt";
+      // Legs.
+      fill(comp.body);
+      for (const dx of [-8, 8]) { ctx.beginPath(); roundRectPath(ctx, bcx + dx * s - 4 * s, feetY - 14 * s, 8 * s, 14 * s, 3 * s); ctx.fill(); stroke(); }
+      // Body.
+      ctx.beginPath(); ellipse(ctx, bcx, bcy, 24 * s, 18 * s); fill(comp.body); ctx.fill(); stroke();
+      // Wings.
+      fill(comp.accent);
+      ctx.beginPath();
+      ctx.moveTo(bcx - 2 * s, bcy - 10 * s);
+      ctx.lineTo(bcx - 26 * s, bcy - 34 * s);
+      ctx.lineTo(bcx - 4 * s, bcy - 26 * s);
+      ctx.lineTo(bcx + 18 * s, bcy - 36 * s);
+      ctx.lineTo(bcx + 12 * s, bcy - 10 * s);
+      ctx.closePath(); ctx.fill(); stroke();
+      // Neck + head.
+      const hx = bcx + 20 * s, hy = bcy - 20 * s;
+      ctx.strokeStyle = comp.body; ctx.lineWidth = 9 * s; ctx.lineCap = "round";
+      ctx.beginPath(); ctx.moveTo(bcx + 12 * s, bcy - 4 * s); ctx.lineTo(hx, hy); ctx.stroke(); ctx.lineCap = "butt";
+      ctx.beginPath(); ellipse(ctx, hx, hy, 12 * s, 10 * s); fill(comp.body); ctx.fill(); stroke();
+      // Snout + horns.
+      ctx.beginPath(); ellipse(ctx, hx + 9 * s, hy + 2 * s, 6 * s, 5 * s); fill(comp.body); ctx.fill();
+      fill(comp.accent);
+      for (const dir of [0, 1]) { ctx.beginPath(); ctx.moveTo(hx - 2 * s + dir * 6 * s, hy - 8 * s); ctx.lineTo(hx + dir * 6 * s, hy - 18 * s); ctx.lineTo(hx + 3 * s + dir * 6 * s, hy - 8 * s); ctx.closePath(); ctx.fill(); }
+      eye(hx + 4 * s, hy - 1 * s, 2.6 * s);
+      break;
+    }
+  }
+  ctx.restore();
+}
+
+// ── Visitor (ambient NPC) — a small procedural guest admiring the HQ ───────────
+// Not persisted or earned: the hub passes a COUNT derived from prestige and the
+// renderer scatters that many at fixed, out-of-the-way spots so the place feels
+// lived-in. Each is a simple hooded/tunic figure tinted from a seed.
+const VISITOR_TINTS = ["#5b6b8c", "#7a5b8c", "#8c6b5b", "#5b8c76", "#8c8560", "#6b6b6b"];
+function drawVisitor(ctx: Ctx, cx: number, feetY: number, seed: number, scale = 1): void {
+  const s = scale;
+  const tint = VISITOR_TINTS[seed % VISITOR_TINTS.length]!;
+  const skin = "#e6b98f";
+  ctx.save();
+  ctx.lineJoin = "round";
+  // Shadow.
+  ctx.fillStyle = "rgba(0,0,0,0.28)";
+  ctx.beginPath(); ellipse(ctx, cx, feetY, 14 * s, 5 * s); ctx.fill();
+  // Robe/tunic (a trapezium).
+  const bodyH = 34 * s, topW = 16 * s, botW = 26 * s;
+  const topY = feetY - bodyH;
+  ctx.beginPath();
+  ctx.moveTo(cx - topW / 2, topY);
+  ctx.lineTo(cx + topW / 2, topY);
+  ctx.lineTo(cx + botW / 2, feetY);
+  ctx.lineTo(cx - botW / 2, feetY);
+  ctx.closePath();
+  ctx.fillStyle = tint; ctx.fill();
+  ctx.strokeStyle = "rgba(0,0,0,0.32)"; ctx.lineWidth = 1.5 * s; ctx.stroke();
+  // Head.
+  ctx.beginPath(); ellipse(ctx, cx, topY - 7 * s, 7 * s, 7.5 * s); ctx.fillStyle = skin; ctx.fill(); ctx.stroke();
+  // Hair/hood cap.
+  ctx.beginPath(); ctx.arc(cx, topY - 8 * s, 7.5 * s, Math.PI, 0); ctx.closePath();
+  ctx.fillStyle = "rgba(0,0,0,0.4)"; ctx.fill();
   ctx.restore();
 }
 

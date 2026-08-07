@@ -75,6 +75,14 @@ export const HQ_DECORATIONS: HqDecoration[] = [
   { id: "shiny-prism", name: "Shiny Prism", emoji: "✨", rarity: "rare", category: "statue",
     spriteKey: "deco/shiny-prism", unlock: { kind: "shinyOwned", n: 1 }, story: "Refracts the light of a shiny card." },
 
+  // ── Set completion ladder (earned by finishing whole card sets) ───────────────
+  { id: "set-collector-plinth", name: "Set Collector's Plinth", emoji: "🗃️", rarity: "rare", category: "case",
+    spriteKey: "deco/set-collector-plinth", unlock: { kind: "setComplete", n: 3 }, story: "Raised for completing three full card sets." },
+  { id: "curators-gallery", name: "Curator's Gallery", emoji: "🖼️", rarity: "epic", category: "monument",
+    spriteKey: "deco/curators-gallery", unlock: { kind: "setComplete", n: 5 }, story: "A gallery wing opened after five completed sets." },
+  { id: "master-archive", name: "Master Archive", emoji: "📚", rarity: "mythic", category: "monument",
+    spriteKey: "deco/master-archive", unlock: { kind: "setComplete", n: 10 }, story: "The mark of a master archivist — ten sets complete." },
+
   // ── Daily dedication ────────────────────────────────────────────────────────
   { id: "streak-lantern", name: "Streak Lantern", emoji: "🏮", rarity: "uncommon", category: "light",
     spriteKey: "deco/streak-lantern", unlock: { kind: "dailyStreak", n: 7 }, story: "Lit by a 7-day login streak." },

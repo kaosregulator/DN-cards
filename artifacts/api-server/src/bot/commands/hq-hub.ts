@@ -34,7 +34,7 @@ import {
   getUnlockedItemIds, grantUnlock,
   getDefenders, setDefender, clearDefender, getGuildBases,
   getBaseState, applySiegeToBase, logSiege, recentAttackCount, reclaimBase,
-  getConquestLeaders,
+  getConquestLeaders, getHeldBases, markTributesCollected, getReignLeaders,
 } from "../hq/db.js";
 import {
   shopRotation, formatRefreshIn,
@@ -43,15 +43,22 @@ import {
 } from "../hq/shop.js";
 import {
   resolveSiege, SIEGE_SHIELD_MS, SIEGE_COOLDOWN_MS, SIEGE_MAX_PER_WINDOW,
-  type SiegeCombatant,
+  tributeOwed, TRIBUTE_PER_HOUR, type SiegeCombatant,
 } from "../hq/siege.js";
+import { simulateSiegeBattle, type SiegeBattleResult } from "../hq/siege-battle.js";
+import { getBattleSettings } from "../battle/config-engine.js";
+import { getOwnedBattleCards, type OwnedBattleCard } from "../battle/db.js";
 import { rarityLadderRank } from "../rarity-runtime.js";
 import { withHqLock } from "../hq/lock.js";
 import {
   reconcileUnlocks, ownedDecorations, unlockedRooms, unlockedThemes,
   isRoomUnlocked, isThemeUnlocked, unlockedWalls, unlockedFloors,
   isWallUnlocked, isFloorUnlocked, unlockedBackdrops, isBackdropUnlocked,
+  ownedCompanions,
 } from "../hq/engine.js";
+import {
+  resolveCompanion, companionsByRarityDesc, COMPANION_NONE, HQ_COMPANIONS,
+} from "../hq/defs/companions.js";
 import { resolveTheme, HQ_THEMES } from "../hq/defs/themes.js";
 import { resolveWall, HQ_WALLS } from "../hq/defs/walls.js";
 import { resolveFloor, HQ_FLOORS } from "../hq/defs/floors.js";
@@ -68,7 +75,7 @@ import {
   HQ_WALL_SLOT_BASE, HQ_WALL_ANCHOR_COUNT, HQ_DEFENDER_SLOTS, HQ_BASE_DECO_SLOTS,
   type HqRenderView, type HqRenderCard, type HqRenderDeco, type HqRenderDefender,
   type HqBaseView, type HqBaseBuilding, type HqBuildingRole, type SiegePlan,
-  type HqWorldView, type WorldBaseMarker,
+  type HqWorldView, type WorldBaseMarker, type HqRenderCompanion,
 } from "../hq/render.js";
 import type { PlayerHq } from "@workspace/db";
 
@@ -84,14 +91,33 @@ type HubInteraction =
 
 // Player-set personalization lives in the additive `stats` jsonb — no schema
 // change. `title` renames the HQ banner; `motto` is a short tagline in the embed.
-interface HqStats { title?: string; motto?: string; backdropId?: string; wallpaperId?: string; wallsOff?: boolean; glassOff?: boolean }
+interface HqStats { title?: string; motto?: string; backdropId?: string; wallpaperId?: string; wallsOff?: boolean; glassOff?: boolean; companionId?: string }
 function readHqStats(hq: PlayerHq): HqStats {
   const s = hq.stats as HqStats | null | undefined;
-  return { title: s?.title, motto: s?.motto, backdropId: s?.backdropId, wallpaperId: s?.wallpaperId, wallsOff: s?.wallsOff, glassOff: s?.glassOff };
+  return { title: s?.title, motto: s?.motto, backdropId: s?.backdropId, wallpaperId: s?.wallpaperId, wallsOff: s?.wallsOff, glassOff: s?.glassOff, companionId: s?.companionId };
 }
 function hqDisplayTitle(hq: PlayerHq, ownerName: string): string {
   const t = readHqStats(hq).title?.trim();
   return t && t.length > 0 ? t : `${ownerName}'s HQ`;
+}
+// Ambient NPC guests grow with HQ prestige (0 at low levels → 4 for a maxed HQ),
+// so a well-developed Headquarters visibly draws a crowd. Derived, not stored.
+function visitorCount(hqLevel: number): number {
+  return Math.max(0, Math.min(4, Math.floor((hqLevel - 1) / 4)));
+}
+// The active companion in the renderer's shape (null = none). The picker only
+// sets a pet the player owns, so this trusts stats.companionId.
+function companionRenderFor(hq: PlayerHq): HqRenderCompanion | null {
+  const id = readHqStats(hq).companionId;
+  const c = id && id !== COMPANION_NONE ? resolveCompanion(id) : undefined;
+  return c ? { kind: c.kind, name: c.name, body: c.body, accent: c.accent } : null;
+}
+// Set (or clear with null) the active companion, merging into the `stats` jsonb.
+async function setCompanion(guildId: string, userId: string, companionId: string | null): Promise<void> {
+  const hq = await getOrCreateHq(guildId, userId);
+  const stats = { ...readHqStats(hq) };
+  if (companionId) stats.companionId = companionId; else delete stats.companionId;
+  await updateHq(guildId, userId, { stats });
 }
 
 // A placement id is either a plain decoration id or a compound "portrait-frame:<cardId>"
@@ -168,6 +194,19 @@ export async function handleHqHubComponent(
   if (action === "open" && interaction.isStringSelectMenu()) {
     await interaction.deferReply(EPHEMERAL).catch(() => {});
     await replyCardDetail(interaction, guildId, userId, Number(interaction.values[0]));
+    return;
+  }
+
+  // Set (or clear) the active companion — only a pet the player has EARNED.
+  if (action === "companion" && interaction.isStringSelectMenu()) {
+    const choice = interaction.values[0]!;
+    if (choice === COMPANION_NONE) {
+      await setCompanion(guildId, userId, null).catch(() => {});
+    } else {
+      const owned = await getUnlockedItemIds(guildId, userId).catch(() => new Set<string>());
+      if (owned.has(choice) && resolveCompanion(choice)) await setCompanion(guildId, userId, choice).catch(() => {});
+    }
+    await interaction.update(await buildView(interaction, "overview", [])).catch(() => {});
     return;
   }
 
@@ -520,6 +559,7 @@ async function buildRenderView(
     roomName: room.name, roomEmoji: room.emoji, hqLevel: hq.hqLevel,
     subtitle, pedestals, decorations, defenders,
     backdropSprite, wallsOff: !!style.wallsOff, glassOff: !!style.glassOff,
+    companion: companionRenderFor(hq), visitors: visitorCount(hq.hqLevel),
   };
 }
 
@@ -600,6 +640,7 @@ async function buildBaseRenderView(
     roomEmoji: "🏰", roomName: "Base", hqLevel: hq.hqLevel,
     subtitle: capture ? `Base • held by ${capture.heldName}` : `Base • ${defenders.length}/${HQ_DEFENDER_SLOTS} defenders`,
     buildings, defenders, decorations, captured: !!capture,
+    companion: companionRenderFor(hq), visitors: visitorCount(hq.hqLevel),
   };
 }
 
@@ -669,6 +710,14 @@ async function buildView(
           { name: "🚪 Rooms unlocked", value: `**${roomsOpen}** / ${HQ_ROOMS.length}`, inline: true },
           { name: "🎨 Themes", value: `**${unlockedThemes(owned).length}** / ${HQ_THEMES.length}`, inline: true },
         );
+      // Companions + ambient visitors — the HQ's living touches.
+      const pets = ownedCompanions(owned);
+      const activePet = resolveCompanion(stats.companionId);
+      embed.addFields(
+        { name: "🐾 Companion", value: activePet ? `${activePet.emoji} **${activePet.name}**` : (pets.length ? "_none set_" : "_none earned yet_"), inline: true },
+        { name: "👥 Visitors", value: `**${visitorCount(hq.hqLevel)}** roaming`, inline: true },
+        { name: "🐾 Companions earned", value: `**${pets.length}** / ${HQ_COMPANIONS.length}`, inline: true },
+      );
       const nextHint = nextUnlockHint(owned);
       if (nextHint) embed.addFields({ name: "🔓 Next up", value: nextHint, inline: false });
       rows.push(new ActionRowBuilder<ButtonBuilder>().addComponents(
@@ -676,6 +725,18 @@ async function buildView(
           .setLabel(stats.title ? "Rename HQ" : "Name your HQ")
           .setEmoji("✏️").setStyle(ButtonStyle.Secondary),
       ));
+      // Companion picker — choose from the pets you've EARNED (or send it away).
+      if (pets.length > 0) {
+        rows.push(new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
+          new StringSelectMenuBuilder().setCustomId("hq-hub:companion").setPlaceholder("🐾 Choose a companion…")
+            .addOptions([
+              { label: "None", value: COMPANION_NONE, description: "Send your companion away", emoji: "🚫", default: !activePet },
+              ...companionsByRarityDesc(pets.map(p => p.id)).slice(0, 24).map(c => ({
+                label: c.name.slice(0, 90), value: c.id, description: c.rarity, emoji: c.emoji, default: c.id === stats.companionId,
+              })),
+            ]),
+        ));
+      }
       break;
     }
 
@@ -773,10 +834,20 @@ async function buildView(
     }
 
     case "world": {
+      // Pay out hold-tribute for any bases the viewer holds, then read the
+      // longest-reign board (which includes their live reign).
+      const tribute = await collectHoldTribute(guildId, userId).catch(() => null);
+      const reignLeaders = await getReignLeaders(guildId, 5)
+        .catch(() => [] as Awaited<ReturnType<typeof getReignLeaders>>);
+      const sovereign = reignLeaders[0];
       embed.setTitle("🗺️ World Map").setDescription(
-        worldBases.length === 0
-          ? "No rival bases to raid yet — once other members station **base defenders**, their castles appear here to attack."
-          : "Other players' bases. 🚩 = currently held by a conqueror. Pick one below to lay siege.",
+        (tribute ? `${tribute}\n\n` : "") +
+        (sovereign && sovereign.bestSec > 0
+          ? `👑 **Sovereign:** ${sovereign.userId === userId ? "**you**" : `<@${sovereign.userId}>`} — longest hold **${formatReign(sovereign.bestSec)}**${sovereign.active ? " (still holding)" : ""}.\n\n`
+          : "") +
+        (worldBases.length === 0
+          ? "No rival bases to raid yet — once other members station **base defenders**, their castles appear here to attack. **Hold** a base you capture to earn passive 💠 tribute."
+          : "Other players' bases. 🚩 = currently held by a conqueror. Capture one and **hold it** for passive 💠 tribute. Pick one below to lay siege."),
       );
       if (worldBases.length > 0) {
         rows.push(new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
@@ -800,6 +871,16 @@ async function buildView(
           return `${medals[i] ?? "•"} **${name}** — ${l.wins} win${l.wins === 1 ? "" : "s"}${held}${you}`;
         }));
         embed.addFields({ name: "🏆 Conquest leaderboard", value: lines.join("\n").slice(0, 1024) });
+      }
+      // Longest-hold leaderboard — who has clung to a base the longest.
+      if (reignLeaders.length > 0 && reignLeaders.some(r => r.bestSec > 0)) {
+        const crowns = ["👑", "🥈", "🥉", "🏅", "🏅"];
+        const rlines = reignLeaders.filter(r => r.bestSec > 0).map((r, i) => {
+          const you = r.userId === userId ? " · **you**" : "";
+          const live = r.active ? " 🚩" : "";
+          return `${crowns[i] ?? "•"} <@${r.userId}> — **${formatReign(r.bestSec)}**${live}${you}`;
+        });
+        embed.addFields({ name: "👑 Longest hold", value: rlines.join("\n").slice(0, 1024) });
       }
       break;
     }
@@ -1085,6 +1166,34 @@ async function buildDefenderSquad(guildId: string, defenderId: string, cx: Loade
   return out;
 }
 
+// Ladder strength for ordering an attacker's squad "strongest first" without
+// deriving full battle stats (same source of truth as toSiegeCombatant).
+function ladderPowerOf(c: OwnedBattleCard, ctx: LoadedCtx["ctx"]): number {
+  const rank = rarityLadderRank(String(c.effectiveRarityKey ?? c.rarity), ctx);
+  return (rank + 1) * 1000 + c.level * 5 + Math.round((c.worthValue ?? 0) / 25);
+}
+
+// Real-engine squads: OwnedBattleCards (level, star rank, config) so the combat
+// engine can derive true stats. Attacker = strongest `count`; defenders = the
+// STATIONED cards in slot order (what the owner set to guard).
+async function buildAttackerCards(guildId: string, userId: string, ctx: LoadedCtx["ctx"], count: number): Promise<OwnedBattleCard[]> {
+  const owned = await getOwnedBattleCards(guildId, userId, ctx);
+  owned.sort((a, b) => ladderPowerOf(b, ctx) - ladderPowerOf(a, ctx));
+  return owned.slice(0, Math.max(1, count));
+}
+
+async function buildDefenderCards(guildId: string, defenderId: string, ctx: LoadedCtx["ctx"]): Promise<OwnedBattleCard[]> {
+  const map = await getDefenders(guildId, defenderId);
+  const owned = await getOwnedBattleCards(guildId, defenderId, ctx);
+  const byId = new Map(owned.map(c => [c.id, c] as const));
+  const out: OwnedBattleCard[] = [];
+  for (const [, cardId] of [...map.entries()].sort((a, b) => a[0] - b[0])) {
+    const c = byId.get(cardId);
+    if (c) out.push(c);
+  }
+  return out;
+}
+
 // Why a base can't be attacked right now (null = go ahead).
 async function siegeBlockReason(guildId: string, attackerId: string, defenderId: string): Promise<string | null> {
   if (attackerId === defenderId) return "You can't besiege your own base.";
@@ -1108,11 +1217,11 @@ async function buildAttackModePicker(guildId: string, attackerId: string, defend
   const squad = await buildAttackerSquad(guildId, attackerId, cx, defenders.length);
   const yourP = squad.reduce((s, c) => s + c.power, 0), theirP = defenders.reduce((s, c) => s + c.power, 0);
   embed.setDescription(
-    `Send your strongest **${squad.length}** cards against **${defenders.length}** defenders. ` +
-    "Win the most duels to capture the base.\n\n" +
-    `⚔️ Your squad power: **${yourP}**  ·  🛡️ Their defence: **${theirP}**\n\n` +
+    `Your strongest **${squad.length}** cards storm **${defenders.length}** stationed defenders in a **real battle** ` +
+    "(true stats, moves, specials & passives). Knock out every defender to capture the base.\n\n" +
+    `⚔️ Your strength: **${yourP}**  ·  🛡️ Their defence: **${theirP}**\n\n` +
     "**Pick how to watch it:**\n" +
-    "• **Classic** — instant text report\n• **Static** — a battle image\n• **Live** — an animated battle",
+    "• **Classic** — a text battle report\n• **Static** — a battle image\n• **Live** — an animated battle",
   );
   const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder().setCustomId(`hq-hub:siege:${defenderId}:classic`).setLabel("Classic").setEmoji("📜").setStyle(ButtonStyle.Secondary),
@@ -1131,6 +1240,113 @@ function backRow(section: Section) {
 // Flavour move names for the classic (move-by-move) siege captions.
 const SIEGE_MOVES = ["Siege Strike", "Breach", "Overrun", "Vanguard Charge", "Final Blow", "Rally", "Flank", "Storm the Gate"];
 
+// "Shards while you hold": mint tribute for every base the viewer currently
+// holds, pull-based, and restart their accrual clock. Returns a short toast
+// (or null) to surface at the top of the World map. Best-effort — a failed pay
+// never blocks the view.
+async function collectHoldTribute(guildId: string, userId: string): Promise<string | null> {
+  const held = await getHeldBases(guildId, userId).catch(() => []);
+  if (held.length === 0) return null;
+  const now = new Date();
+  let total = 0;
+  const collectedOwners: string[] = [];
+  for (const b of held) {
+    const owed = tributeOwed(b.since, now);
+    if (owed > 0) { total += owed; collectedOwners.push(b.ownerId); }
+  }
+  if (total <= 0) return null;
+  await addShards(guildId, userId, total).catch(() => {});
+  await markTributesCollected(guildId, userId, collectedOwners, now).catch(() => {});
+  return `💠 **+${total}** hold-tribute collected from **${collectedOwners.length}** held base${collectedOwners.length === 1 ? "" : "s"} (+${TRIBUTE_PER_HOUR}/hr each).`;
+}
+
+// Human "2d 3h", "4h 12m", "37m" from seconds — for reign durations.
+function formatReign(sec: number): string {
+  const d = Math.floor(sec / 86400), h = Math.floor((sec % 86400) / 3600), m = Math.floor((sec % 3600) / 60);
+  if (d > 0) return `${d}d ${h}h`;
+  if (h > 0) return `${h}h ${m}m`;
+  if (m > 0) return `${m}m`;
+  return "<1m";
+}
+
+// A card the attacker's champion figure is drawn from, in the render's shape.
+function championRender(card: OwnedBattleCard | undefined, cx: LoadedCtx) {
+  if (!card) return null;
+  const d = getCardDisplayRarity({ id: card.id, rarity: card.rarity }, cx.ctx, cx.settings, cx.displayMap);
+  return { slot: 0, cardId: card.id, name: card.name, artUrl: toAbsoluteImageUrl(card.imageUrl), rarityColor: d.color, basePath: null };
+}
+
+// One resolved siege, normalised so runSiege renders it the same whichever engine
+// produced it: the full turn-based battle engine (preferred) or the power
+// auto-resolver (fallback when battles are disabled / a squad can't be built).
+interface SiegeOutcome {
+  attackerWon: boolean;
+  attackerPower: number;
+  defenderPower: number;
+  defenderCount: number;
+  summary: string;                                            // headline for the embed
+  logLines: string[];                                          // classic-mode recap
+  duels: { slot: number; attackerWon: boolean; move: string }[]; // render plan
+  champ: ReturnType<typeof championRender>;                    // attacker's lead card
+  real: boolean;
+}
+
+// Highlight flashes worth surfacing in the classic-mode recap of a real battle.
+const SIEGE_HIGHLIGHT = new Set(["ko", "ultimate", "crit", "laststand", "shield_break", "counter", "combo"]);
+
+function outcomeFromBattle(r: SiegeBattleResult, champ: ReturnType<typeof championRender>): SiegeOutcome {
+  const cleared = r.defenderFalls.filter(d => d.defeated).length;
+  const total = r.defenderFalls.length;
+  const highlights = r.events.filter(e => e.flash && SIEGE_HIGHLIGHT.has(e.flash)).map(e => e.text);
+  const logLines = (highlights.length >= 3 ? highlights : r.events.map(e => e.text)).slice(-8);
+  return {
+    attackerWon: r.attackerWon, attackerPower: r.attackerPower, defenderPower: r.defenderPower,
+    defenderCount: total,
+    summary: r.attackerWon
+      ? `cleared **${cleared}/${total}** defenders, losing **${r.attackerCardsLost}** card${r.attackerCardsLost === 1 ? "" : "s"}`
+      : `the walls held at **${cleared}/${total}** — your assault was broken`,
+    logLines,
+    duels: r.defenderFalls.map(d => ({ slot: d.slot, attackerWon: d.defeated, move: d.move })),
+    champ, real: true,
+  };
+}
+
+function outcomeFromPower(r: ReturnType<typeof resolveSiege>, champ: ReturnType<typeof championRender>, defenderCount: number): SiegeOutcome {
+  return {
+    attackerWon: r.attackerWon, attackerPower: r.attackerPower, defenderPower: r.defenderPower,
+    defenderCount,
+    summary: `duels **${r.attackerWins}–${r.defenderWins}**`,
+    logLines: r.duels.slice(0, 6).map((d, i) => `**${i + 1}.** ${d.attacker.name} ${d.attackerWon ? "🟢 beat" : "🔴 lost to"} ${d.defender.name}`),
+    duels: r.duels.map((d, i) => ({ slot: i, attackerWon: d.attackerWon, move: SIEGE_MOVES[Math.floor(Math.random() * SIEGE_MOVES.length)]! })),
+    champ, real: false,
+  };
+}
+
+// Resolve a siege — real battle engine first, power auto-resolve as a safety net.
+async function resolveSiegeOutcome(guildId: string, attackerId: string, attackerName: string, defenderId: string, defenderName: string, cx: LoadedCtx): Promise<SiegeOutcome> {
+  try {
+    const settings = await getBattleSettings(guildId);
+    if (settings.enabled) {
+      const defenderCards = await buildDefenderCards(guildId, defenderId, cx.ctx);
+      if (defenderCards.length > 0) {
+        const attackerCards = await buildAttackerCards(guildId, attackerId, cx.ctx, defenderCards.length);
+        if (attackerCards.length > 0) {
+          const r = simulateSiegeBattle(attackerCards, defenderCards, settings, guildId, cx.ctx, { attackerId, attackerName, defenderId, defenderName });
+          return outcomeFromBattle(r, championRender(attackerCards[0], cx));
+        }
+      }
+    }
+  } catch {
+    // Fall through to the power auto-resolver below.
+  }
+  const defenders = await buildDefenderSquad(guildId, defenderId, cx);
+  const squad = await buildAttackerSquad(guildId, attackerId, cx, defenders.length);
+  const champ = squad[0]
+    ? { slot: 0, cardId: squad[0].cardId, name: squad[0].name, artUrl: squad[0].artUrl, rarityColor: squad[0].rarityColor, basePath: null }
+    : null;
+  return outcomeFromPower(resolveSiege(squad, defenders), champ, defenders.length);
+}
+
 async function runSiege(interaction: ButtonInteraction, guildId: string, attackerId: string, defenderId: string, mode: SiegeMode): Promise<void> {
   await interaction.deferUpdate().catch(() => {});
   // Serialize per DEFENDER (the contested base) so every attack on one base runs
@@ -1144,14 +1360,12 @@ async function runSiege(interaction: ButtonInteraction, guildId: string, attacke
     await interaction.editReply({ embeds: [new EmbedBuilder().setColor(0xc0392b).setDescription(`❌ ${blocked}`)], components: [backRow("defenders")], files: [] }).catch(() => {});
     return;
   }
-  const cx = await loadCtx(guildId);
-  const defenders = await buildDefenderSquad(guildId, defenderId, cx);
-  const squad = await buildAttackerSquad(guildId, attackerId, cx, defenders.length);
-  const result = resolveSiege(squad, defenders);
-
   const attackerName = interaction.user.username;
   const defHq = await getOrCreateHq(guildId, defenderId);
   const defenderName = readHqStats(defHq).title?.trim() || "the defenders";
+
+  const cx = await loadCtx(guildId);
+  const result = await resolveSiegeOutcome(guildId, attackerId, attackerName, defenderId, defenderName, cx);
 
   // Persist outcome (capture + shield on a win; log either way).
   await applySiegeToBase(guildId, defenderId, result.attackerWon, attackerId, attackerName, SIEGE_SHIELD_MS).catch(() => {});
@@ -1171,8 +1385,8 @@ async function runSiege(interaction: ButtonInteraction, guildId: string, attacke
     .setTitle(result.attackerWon ? "⚔️ Base Captured!" : "🛡️ Base Defended!")
     .setDescription(
       `**${attackerName}** ${result.attackerWon ? "stormed" : "failed to take"} the base — ` +
-      `duels **${result.attackerWins}–${result.defenderWins}**.` +
-      (result.attackerWon ? "\n🚩 You hold it until it's reclaimed." : "\nThe defenders held the walls."),
+      `${result.summary}.` +
+      (result.attackerWon ? `\n🚩 You hold it until it's reclaimed — earning **${TRIBUTE_PER_HOUR}💠/hr** while you do. Collect from the 🗺️ World map.` : "\nThe defenders held the walls."),
     )
     .addFields(
       { name: "⚔️ Squad power", value: `**${result.attackerPower}**`, inline: true },
@@ -1189,12 +1403,11 @@ async function runSiege(interaction: ButtonInteraction, guildId: string, attacke
   // is the clean cinematic; static is one final frame.
   const files: AttachmentBuilder[] = [];
   const baseView = await buildBaseRenderView(guildId, defenderId, defenderName, null, defHq);
-  const champ = squad[0]; // attacker's strongest, assaulting the castle
   const plan: SiegePlan = {
-    duels: result.duels.map((d, i) => ({ slot: i, attackerWon: d.attackerWon, move: SIEGE_MOVES[Math.floor(Math.random() * SIEGE_MOVES.length)]! })),
-    defenderCount: defenders.length,
+    duels: result.duels,
+    defenderCount: result.defenderCount,
     captured: result.attackerWon,
-    attacker: champ ? { slot: 0, cardId: champ.cardId, name: champ.name, artUrl: champ.artUrl, rarityColor: champ.rarityColor, basePath: null } : null,
+    attacker: result.champ,
     attackerName, defenderName,
   };
   const live = mode !== "static";
@@ -1204,9 +1417,9 @@ async function runSiege(interaction: ButtonInteraction, guildId: string, attacke
     files.push(new AttachmentBuilder(buf, { name }));
     embed.setImage(`attachment://${name}`);
   }
-  const log = result.duels.slice(0, 6).map((d, i) =>
-    `**${i + 1}.** ${d.attacker.name} ${d.attackerWon ? "🟢 beat" : "🔴 lost to"} ${d.defender.name}`).join("\n");
-  if (mode === "classic" && log) embed.addFields({ name: "Duels", value: log.slice(0, 1024) });
+  if (mode === "classic" && result.logLines.length) {
+    embed.addFields({ name: result.real ? "⚔️ Battle log" : "Duels", value: result.logLines.join("\n").slice(0, 1024) });
+  }
 
   await interaction.editReply({ embeds: [embed], components: [backRow("defenders")], files }).catch(() => {});
   });

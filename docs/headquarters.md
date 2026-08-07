@@ -225,12 +225,24 @@ without breaking the base view. See `assets/hq/manifest.json` `_credits`.
 
 Scout another player with `/hq user:@member` — the visit shows their **exterior
 base** and stationed defenders — then **⚔️ Attack** it. The attacker's strongest
-cards duel the defenders; win the most duels to **capture** the base (its banner
-flips red and it's **shielded** for an hour so it can't be farmed), otherwise the
-defenders hold. Combat power is **derived from the guild strength ladder**
-(`rarityLadderRank`), the same source of truth battles and raids use — no new
-balance surface (`bot/hq/siege.ts`). A per-target attacker **cooldown** limits
-repeat hits; captures lazily revert to the owner when the shield expires.
+cards storm the stationed defenders in a **real battle** and must knock out every
+one to **capture** the base (its banner flips red and it's **shielded** for an
+hour so it can't be farmed); if the assault is broken, the walls hold.
+
+**Combat runs the actual battle engine.** `bot/hq/siege-battle.ts`
+(`simulateSiegeBattle`) drives the same turn-based combat as `/battle` —
+headlessly, no click-through — over a **gauntlet**: the attacker's active card
+fights the defender's active card; whoever is knocked out is replaced by their
+side's next card (the survivor keeps its HP) until one side is wiped. True stats,
+movesets, specials, passives, statuses, crits and KOs all apply — stats come from
+the single `get_scaled_stats` entry point (level, star rank, config, and the
+guild strength ladder `rarityLadderRank`), the same source of truth `/battle`
+uses, so there's no separate balance surface. A turn-cap standoff is decided by
+attrition progress, with a dead-even standoff favouring the defender. If the
+battle system is disabled or a squad can't be built, it falls back to the power
+auto-resolver (`bot/hq/siege.ts`, `resolveSiege`). A per-target attacker
+**cooldown** limits repeat hits; captures lazily revert to the owner when the
+shield expires.
 
 Every siege renders **on the castle base scene** (castle + defender cards +
 castle health) — never a separate VS screen. Three ways to watch:
@@ -246,9 +258,48 @@ an isometric map (banner + health + name; 🚩 = held), and lets you pick one to
 raid. **Captures persist until reclaimed** — the owner gets a Reclaim button once
 the conqueror's shield lapses.
 
-State is additive: `hq_base_state` (holder + shield) and `hq_base_attacks` (log
-+ cooldown). *Clan co-op attacks are the next step and slot in behind the same
-`resolveSiege` interface.*
+**Shards while you hold.** Every base you hold pays a passive **hold-tribute** of
+`TRIBUTE_PER_HOUR` (5) 💠/hr, minted — never drained from anyone. It's collected
+**pull-based**: opening the 🗺️ World Map pays out everything owed across the
+bases you hold and restarts the clock. Accrual is capped at `TRIBUTE_CAP_HOURS`
+(48h) so a base left unvisited doesn't dump a jackpot (`tributeOwed`, `siege.ts`).
+
+**Longest-hold leaderboard + Sovereign title.** Each hold is timed; when a reign
+ends (recaptured or reclaimed) it's logged to `hq_base_reigns`. The World Map
+shows a **👑 Longest hold** board — each holder's best single reign, combined at
+read time with any still-running reign (`now − held_since`) so a current holder
+ranks live (🚩) — and crowns the #1 as the guild's **Sovereign** (`getReignLeaders`).
+
+State is additive: `hq_base_state` (holder + shield + hold clock), `hq_base_attacks`
+(log + cooldown) and `hq_base_reigns` (completed reigns → leaderboard). *Clan
+co-op attacks are the next step and slot in behind the same `resolveSiege`
+interface.*
+
+## Companions & visitors (living HQ)
+
+Two touches make a Headquarters feel alive; both render in the interior room AND
+the exterior base.
+
+- **Companions** are EARNED pets. `bot/hq/defs/companions.ts` is a data-driven
+  registry (mirrors the decoration/theme registries): each companion's `kind`
+  picks the procedural creature the renderer draws (`drawCompanion`) and its
+  `body`/`accent` colour it, so a future asset pack can drop in real sprites with
+  no code change. They're granted by the same pull-based `reconcileUnlocks`
+  (itemType `"companion"` in `hq_unlocks`) as every other cosmetic — e.g. the
+  **Scout Pup** for 10 battle wins, the **Wise Owl** for a 50-card collection, the
+  **Ember Drake** from a raid boss. Pick your active pet in **Overview → 🐾 Choose
+  a companion…** (or send it away); the choice lives in the additive
+  `player_hq.stats.companionId` (no schema change) and the pet then stands in your
+  room and roams your grounds.
+- **Visitors** are ambient NPC guests — purely DERIVED, never stored or earned.
+  The count grows with HQ prestige (`visitorCount(hqLevel)`, 0 → 4) so a
+  well-developed Headquarters visibly draws a crowd; the renderer scatters that
+  many procedural figures (`drawVisitor`) at out-of-the-way spots. They stay out
+  of a live siege so combat stays readable.
+
+Set-completion also feeds the earned decorations: finishing **3 / 5 / 10** whole
+card sets unlocks the **Set Collector's Plinth**, **Curator's Gallery** and
+**Master Archive** (`setComplete` milestones in `defs/decorations.ts`).
 
 ## Admin editor (`/hqadmin`)
 

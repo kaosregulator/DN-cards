@@ -26,10 +26,14 @@ export type Ctx = SKRSContext2D & {
   transform(a: number, b: number, c: number, d: number, e: number, f: number): void;
   setTransform(a: number, b: number, c: number, d: number, e: number, f: number): void;
   quadraticCurveTo(cpx: number, cpy: number, x: number, y: number): void;
+  bezierCurveTo(cp1x: number, cp1y: number, cp2x: number, cp2y: number, x: number, y: number): void;
   getImageData(sx: number, sy: number, sw: number, sh: number): { data: Uint8ClampedArray };
   // Additive-blend layers (atmosphere embers/sparks/dust, physics glows) set
   // this; it exists on the spec-complete Skia context but is under-declared.
   globalCompositeOperation: string;
+  // Line styling — spec-complete on the Skia context but under-declared here.
+  lineJoin: string;
+  lineCap: string;
 };
 
 // Horizontal text alignment values accepted by the napi-rs 2D context. Declared
