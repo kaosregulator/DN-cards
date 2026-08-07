@@ -35,7 +35,11 @@ import {
   getDefenders, setDefender, clearDefender, getGuildBases,
   getBaseState, applySiegeToBase, logSiege, recentAttackCount, reclaimBase,
   getConquestLeaders, getHeldBases, markTributesCollected, getReignLeaders,
+  setBaseShield,
 } from "../hq/db.js";
+import {
+  computeFortification, baseTier, nextBaseTier, SHIELD_PRODUCTS, shieldProduct,
+} from "../hq/fortify.js";
 import {
   shopRotation, formatRefreshIn,
   SHOP_AISLES, purchasableInAisle, shopPriceFor,
@@ -45,7 +49,21 @@ import {
   resolveSiege, SIEGE_SHIELD_MS, SIEGE_COOLDOWN_MS, SIEGE_MAX_PER_WINDOW,
   tributeOwed, TRIBUTE_PER_HOUR, type SiegeCombatant,
 } from "../hq/siege.js";
-import { simulateSiegeBattle, type SiegeBattleResult } from "../hq/siege-battle.js";
+import { simulateSiegeBattle, buildSiegeSquad, type SiegeBattleResult } from "../hq/siege-battle.js";
+import {
+  startLiveSiege, handleLiveSiegeComponent, LIVE_SIEGE_IMAGE,
+  isLiveSiegeTargetActive,
+  type LiveSiegeConfig, type LiveSiegeOutcome, type LiveSiegeResultView,
+} from "../hq/live-siege.js";
+import {
+  listTerritories, captureTerritory, markTerritoryAttacked, getHeldTerritories,
+  markTerritoryTributesCollected, territoryTributeOwed, buildGarrison, holderLabel,
+  WORLD_SHIELD_MS, WORLD_COOLDOWN_MS, WORLD_MAX_PER_WINDOW, type WorldTerritoryView,
+} from "../hq/world.js";
+import {
+  getTerritory, tierProfile, tierStars, PLAYER_BASE_ANCHORS, HQ_ROUTES,
+} from "../hq/defs/world.js";
+import { renderSiegeCinematic, SIEGE_CINEMATIC_FILE, type SiegeCinematicView } from "../hq/cinematic.js";
 import { getBattleSettings } from "../battle/config-engine.js";
 import { getOwnedBattleCards, type OwnedBattleCard } from "../battle/db.js";
 import { rarityLadderRank } from "../rarity-runtime.js";
@@ -54,15 +72,27 @@ import {
   reconcileUnlocks, ownedDecorations, unlockedRooms, unlockedThemes,
   isRoomUnlocked, isThemeUnlocked, unlockedWalls, unlockedFloors,
   isWallUnlocked, isFloorUnlocked, unlockedBackdrops, isBackdropUnlocked,
-  ownedCompanions,
+  isWallpaperUnlocked, isSurfaceUnlocked, ownedCompanions,
 } from "../hq/engine.js";
 import {
   resolveCompanion, companionsByRarityDesc, COMPANION_NONE, HQ_COMPANIONS,
 } from "../hq/defs/companions.js";
 import { resolveTheme, HQ_THEMES } from "../hq/defs/themes.js";
-import { resolveWall, HQ_WALLS } from "../hq/defs/walls.js";
+import { resolveWall } from "../hq/defs/walls.js";
 import { resolveFloor, HQ_FLOORS } from "../hq/defs/floors.js";
 import { resolveBackdrop, HQ_BACKDROPS, DEFAULT_BACKDROP_ID } from "../hq/defs/backdrops.js";
+import {
+  resolveWallpaper, HQ_WALLPAPERS, DEFAULT_WALLPAPER_ID,
+} from "../hq/defs/wallpapers.js";
+import { resolveSurface, getSurfaceById, surfacesFor } from "../hq/defs/surfaces.js";
+import {
+  listTerrain, placeTerrain, removeTerrainAt, clearTerrain, describeFeature,
+  BASE_CANVAS_ID, MAX_FEATURES_PER_CANVAS, MAX_RECT_SPAN, MAX_ELEVATION,
+} from "../hq/terrain.js";
+import {
+  readCursor, saveCursor, clampCursor, cursorLabel,
+  type BuildCursor, type StoredBuild,
+} from "../hq/build-state.js";
 import { resolveRoom, HQ_ROOMS, DEFAULT_ROOM_ID } from "../hq/defs/rooms.js";
 import {
   resolveDecoration, decorationsByRarityDesc, HQ_DECORATIONS,
@@ -71,16 +101,20 @@ import {
 import { unlockLabel, type UnlockRule } from "../hq/defs/unlock-rules.js";
 import { spriteFor, spriteForPrefix } from "../hq/assets.js";
 import {
-  renderHq, renderBase, renderSiege, renderWorldMap, floorSlot, wallSlot, slotIsWall, slotToTile,
+  renderHq, renderBase, renderSiege, floorSlot, wallSlot, slotIsWall, slotToTile,
   HQ_WALL_SLOT_BASE, HQ_WALL_ANCHOR_COUNT, HQ_DEFENDER_SLOTS, HQ_BASE_DECO_SLOTS,
+  HQ_GRID, HQ_BASE_GRID,
   type HqRenderView, type HqRenderCard, type HqRenderDeco, type HqRenderDefender,
   type HqBaseView, type HqBaseBuilding, type HqBuildingRole, type SiegePlan,
-  type HqWorldView, type WorldBaseMarker, type HqRenderCompanion,
+  type HqRenderCompanion, type HqBuildCursor,
 } from "../hq/render.js";
+import {
+  renderWorldMap, type HqWorldView, type WorldMarker,
+} from "../hq/render-world.js";
 import type { PlayerHq } from "@workspace/db";
 
 const EPHEMERAL = { flags: MessageFlags.Ephemeral } as const;
-const HQ_FILE = "hq.png";
+export const HQ_FILE = "hq.png";
 const MAX_HQ_NAME = 40;
 const MAX_HQ_MOTTO = 80;
 
@@ -91,10 +125,25 @@ type HubInteraction =
 
 // Player-set personalization lives in the additive `stats` jsonb — no schema
 // change. `title` renames the HQ banner; `motto` is a short tagline in the embed.
-interface HqStats { title?: string; motto?: string; backdropId?: string; wallpaperId?: string; wallsOff?: boolean; glassOff?: boolean; companionId?: string }
+interface HqStats { title?: string; motto?: string; backdropId?: string; wallpaperId?: string; wallsOff?: boolean; glassOff?: boolean; companionId?: string; baseTier?: number }
 function readHqStats(hq: PlayerHq): HqStats {
   const s = hq.stats as HqStats | null | undefined;
-  return { title: s?.title, motto: s?.motto, backdropId: s?.backdropId, wallpaperId: s?.wallpaperId, wallsOff: s?.wallsOff, glassOff: s?.glassOff, companionId: s?.companionId };
+  return { title: s?.title, motto: s?.motto, backdropId: s?.backdropId, wallpaperId: s?.wallpaperId, wallsOff: s?.wallsOff, glassOff: s?.glassOff, companionId: s?.companionId, baseTier: s?.baseTier };
+}
+
+// A base's live fortification (its upgrade tier + the defensive structures it has
+// built on the grounds), as the % that hardens its garrison in a siege. Derived,
+// never stored. Best-effort — any failure means "unfortified" (0%).
+async function baseFortification(guildId: string, userId: string): Promise<ReturnType<typeof computeFortification>> {
+  try {
+    const [features, hq] = await Promise.all([
+      listTerrain(guildId, userId, BASE_CANVAS_ID).catch(() => []),
+      getOrCreateHq(guildId, userId),
+    ]);
+    return computeFortification(features, readHqStats(hq).baseTier);
+  } catch {
+    return computeFortification([], 0);
+  }
 }
 function hqDisplayTitle(hq: PlayerHq, ownerName: string): string {
   const t = readHqStats(hq).title?.trim();
@@ -137,17 +186,19 @@ function placementLabel(itemId: string): { emoji: string; name: string } {
   return { emoji: d?.emoji ?? "•", name: d?.name ?? baseId };
 }
 
-type Section = "overview" | "trophy" | "defenders" | "world" | "decorations" | "shop" | "rooms" | "theme";
+type Section = "overview" | "trophy" | "defenders" | "defenses" | "world" | "build" | "decorations" | "shop" | "rooms" | "theme";
 interface SectionMeta { id: Section; label: string; emoji: string; description: string }
 const SECTIONS: SectionMeta[] = [
   { id: "overview",    label: "Overview",    emoji: "🏠", description: "Your HQ at a glance" },
   { id: "trophy",      label: "Trophy Hall",  emoji: "🏆", description: "Pin your proudest cards on pedestals" },
   { id: "defenders",   label: "Base",        emoji: "🏰", description: "Your town base — station defenders" },
-  { id: "world",       label: "World Map",   emoji: "🗺️", description: "Raid other players' bases" },
+  { id: "defenses",    label: "Defenses",    emoji: "🛡️", description: "Upgrade your base, build walls & buy shields" },
+  { id: "world",       label: "World Map",   emoji: "🗺️", description: "Conquer AI castles & raid rival bases" },
+  { id: "build",       label: "Build",       emoji: "🛠️", description: "Paint surfaces, water, hills & platforms" },
   { id: "decorations", label: "Decorations", emoji: "🎏", description: "Place the cosmetics you've earned" },
   { id: "shop",        label: "Shop",        emoji: "🛒", description: "Buy furniture — rotates daily" },
   { id: "rooms",       label: "Rooms",       emoji: "🚪", description: "Switch & unlock rooms" },
-  { id: "theme",       label: "Style",       emoji: "🎨", description: "Theme, walls & floor" },
+  { id: "theme",       label: "Style",       emoji: "🎨", description: "Theme, wallpaper & floor" },
 ];
 
 // ── Slash entry ───────────────────────────────────────────────────────────────
@@ -190,6 +241,9 @@ export async function handleHqHubComponent(
   const guildId = interaction.guildId;
   const userId = interaction.user.id;
 
+  // Interactive turn-by-turn siege runs its own session/board.
+  if (action === "ls") { await handleLiveSiegeComponent(interaction); return; }
+
   // Open a featured card's detail (works in both own & visit views) → ephemeral.
   if (action === "open" && interaction.isStringSelectMenu()) {
     await interaction.deferReply(EPHEMERAL).catch(() => {});
@@ -215,13 +269,24 @@ export async function handleHqHubComponent(
     await interaction.update(await buildAttackModePicker(guildId, userId, parts[2]!)).catch(() => {});
     return;
   }
-  // World map → pick a base to raid → mode picker.
+  // World map → pick a target → mode picker. `t:<nodeId>` is an AI territory,
+  // `p:<userId>` a member base (a bare value is a legacy member-base id).
   if (action === "raidpick" && interaction.isStringSelectMenu()) {
-    await interaction.update(await buildAttackModePicker(guildId, userId, interaction.values[0]!)).catch(() => {});
+    const value = interaction.values[0]!;
+    if (value.startsWith("t:")) {
+      await interaction.update(await buildTerritoryModePicker(guildId, userId, value.slice(2))).catch(() => {});
+    } else {
+      await interaction.update(await buildAttackModePicker(guildId, userId, value.replace(/^p:/, ""))).catch(() => {});
+    }
     return;
   }
   if (action === "siege" && interaction.isButton()) {
     await runSiege(interaction, guildId, userId, parts[2]!, (parts[3] as SiegeMode) ?? "static");
+    return;
+  }
+  // Assault an AI-held (or member-held) world territory.
+  if (action === "wsiege" && interaction.isButton()) {
+    await runTerritorySiege(interaction, guildId, userId, parts[2]!, (parts[3] as SiegeMode) ?? "cinematic");
     return;
   }
 
@@ -282,6 +347,89 @@ export async function handleHqHubComponent(
     await interaction.update(await buildView(interaction, "defenders", [])).catch(() => {});
     return;
   }
+  // ── Base upgrades + shields (the 🛡️ Defenses panel) ─────────────────────────
+  if (action === "upgrade" && interaction.isButton()) {
+    const notice = await withHqLock(`hq:defenses:${guildId}:${userId}`, async () => {
+      const hq = await getOrCreateHq(guildId, userId);
+      const next = nextBaseTier(readHqStats(hq).baseTier);
+      if (!next) return "🏛️ Your base is already fully upgraded.";
+      if (!(await spendShards(guildId, userId, next.cost).catch(() => false))) {
+        return `💠 Not enough shards — **${next.label}** costs **${next.cost.toLocaleString()}**.`;
+      }
+      try {
+        await updateHq(guildId, userId, { stats: { ...readHqStats(hq), baseTier: next.level } });
+        return `${next.emoji} Base upgraded to **${next.label}** — garrison fortification is now guaranteed **+${next.fortifyPct}%**.`;
+      } catch {
+        await addShards(guildId, userId, next.cost).catch(() => {});
+        return "❌ The upgrade could not be saved; your shards were refunded.";
+      }
+    });
+    await interaction.update(await buildView(interaction, "defenses", [], notice)).catch(() => {});
+    return;
+  }
+  if (action === "buyshield" && interaction.isButton()) {
+    const notice = await withHqLock(`hq:defenses:${guildId}:${userId}`, async () => {
+      const product = shieldProduct(parts[2]!);
+      if (!product) return "That shield is no longer available.";
+      if (!(await spendShards(guildId, userId, product.cost).catch(() => false))) {
+        return `💠 Not enough shards — **${product.label}** costs **${product.cost.toLocaleString()}**.`;
+      }
+      const state = await getBaseState(guildId, userId).catch(() => null);
+      const from = Math.max(Date.now(), state?.shieldUntil?.getTime() ?? 0);
+      const until = new Date(from + product.hours * 3_600_000);
+      try {
+        await setBaseShield(guildId, userId, until);
+        return `🛡️ Shield active until <t:${Math.floor(until.getTime() / 1000)}:R> — your base is locked to attackers.`;
+      } catch {
+        await addShards(guildId, userId, product.cost).catch(() => {});
+        return "❌ The shield could not be saved; your shards were refunded.";
+      }
+    });
+    await interaction.update(await buildView(interaction, "defenses", [], notice)).catch(() => {});
+    return;
+  }
+
+  // ── Build mode: a movable cursor on the isometric lattice ──────────────────
+  if (action === "bmove" && interaction.isButton()) {
+    await nudgeCursor(guildId, userId, parts[2]!);
+    await interaction.update(await buildView(interaction, "build", [])).catch(() => {});
+    return;
+  }
+  if (action === "bsize" && interaction.isButton()) {
+    await cycleCursorSize(guildId, userId, parts[2] === "h" ? "h" : "w");
+    await interaction.update(await buildView(interaction, "build", [])).catch(() => {});
+    return;
+  }
+  if (action === "belev" && interaction.isButton()) {
+    await cycleCursorElevation(guildId, userId);
+    await interaction.update(await buildView(interaction, "build", [])).catch(() => {});
+    return;
+  }
+  if (action === "bmat" && interaction.isStringSelectMenu()) {
+    await setCursorMaterial(guildId, userId, interaction.values[0]!);
+    await interaction.update(await buildView(interaction, "build", [])).catch(() => {});
+    return;
+  }
+  if (action === "bcanvas" && interaction.isStringSelectMenu()) {
+    await setCursorCanvas(guildId, userId, interaction.values[0]!);
+    await interaction.update(await buildView(interaction, "build", [])).catch(() => {});
+    return;
+  }
+  if (action === "bplace" && interaction.isButton()) {
+    const notice = await placeAtCursor(guildId, userId);
+    await interaction.update(await buildView(interaction, "build", [], notice)).catch(() => {});
+    return;
+  }
+  if (action === "bremove" && interaction.isButton()) {
+    const notice = await removeAtCursor(guildId, userId);
+    await interaction.update(await buildView(interaction, "build", [], notice)).catch(() => {});
+    return;
+  }
+  if (action === "bclear" && interaction.isButton()) {
+    const notice = await clearCanvasAtCursor(guildId, userId);
+    await interaction.update(await buildView(interaction, "build", [], notice)).catch(() => {});
+    return;
+  }
 
   // Decorations: choosing one opens a slot picker so the player decides the
   // layout (which slot, swap into an occupied one) — decorating, not auto-fill.
@@ -339,12 +487,12 @@ export async function handleHqHubComponent(
     await interaction.update(await buildView(interaction, "theme", [])).catch(() => {});
     return;
   }
-  // Wallpaper the walls with a (backdrop) scene — reuses the backdrop unlock ledger.
+  // Hang a real repeating wallpaper on the walls.
   if (action === "wallpaper" && interaction.isStringSelectMenu()) {
-    const bd = resolveBackdrop(interaction.values[0]!);
-    if (isBackdropUnlocked(bd, await getUnlockedItemIds(guildId, userId))) {
+    const wp = resolveWallpaper(interaction.values[0]!);
+    if (isWallpaperUnlocked(wp, await getUnlockedItemIds(guildId, userId))) {
       const hq = await getOrCreateHq(guildId, userId);
-      await updateHq(guildId, userId, { stats: { ...readHqStats(hq), wallpaperId: bd.id } }).catch(() => {});
+      await updateHq(guildId, userId, { stats: { ...readHqStats(hq), wallpaperId: wp.id } }).catch(() => {});
     }
     await interaction.update(await buildView(interaction, "theme", [])).catch(() => {});
     return;
@@ -480,25 +628,27 @@ async function loadCtx(guildId: string) {
 // the base's guarding cards (used by the Defenders section and on visits).
 async function buildRenderView(
   guildId: string, userId: string, ownerName: string, ownerAvatarUrl: string | null, hq: PlayerHq,
-  includeDefenders = false,
+  includeDefenders = false, cursor?: BuildCursor,
 ): Promise<HqRenderView> {
   const theme = resolveTheme(hq.themeId);
   const wall = resolveWall(hq.wallId);
   const floor = resolveFloor(hq.floorId);
-  const room = resolveRoom(hq.activeRoomId);
+  // Build mode edits whichever canvas the cursor is on, which may not be the
+  // active room; everything below keys off `room` so the picture matches.
+  const room = resolveRoom(cursor && cursor.canvas !== BASE_ROOM_ID ? cursor.canvas : hq.activeRoomId);
   const style = readHqStats(hq);
   const backdrop = resolveBackdrop(style.backdropId);
   const backdropSprite = backdrop.id === DEFAULT_BACKDROP_ID ? null : spriteForPrefix("backdrop", backdrop.id);
-  // Wallpaper = a scene painted directly onto the wall faces (reuses the backdrop
-  // art). "none" keeps the wall style's own look; otherwise it overrides the
-  // wall texture, so walls-UP can look like the outdoors.
-  const wallpaper = resolveBackdrop(style.wallpaperId);
-  const wallpaperSprite = wallpaper.id === DEFAULT_BACKDROP_ID ? null : spriteForPrefix("backdrop", wallpaper.id);
-  const [{ settings, ctx, displayMap, cards }, displays, placements, defenderMap] = await Promise.all([
+  // Wallpaper = a real repeating covering papered onto the wall faces in iso
+  // perspective. "none" keeps the wall style's own look.
+  const wallpaper = resolveWallpaper(style.wallpaperId);
+  const activeWallpaper = wallpaper.id === DEFAULT_WALLPAPER_ID ? null : wallpaper;
+  const [{ settings, ctx, displayMap, cards }, displays, placements, defenderMap, terrain] = await Promise.all([
     loadCtx(guildId),
     getDisplays(guildId, userId),
     getPlacements(guildId, userId, room.id),
     includeDefenders ? getDefenders(guildId, userId) : Promise.resolve(new Map<number, number>()),
+    listTerrain(guildId, userId, room.id).catch(() => []),
   ]);
 
   const pedestals: (HqRenderCard | null)[] = [];
@@ -554,10 +704,12 @@ async function buildRenderView(
 
   return {
     ownerName, displayTitle: hqDisplayTitle(hq, ownerName), ownerAvatarUrl, theme, wall, floor,
-    wallSprite: wallpaperSprite ?? spriteForPrefix(wall.spritePrefix, "wall"),
+    wallSprite: spriteForPrefix(wall.spritePrefix, "wall"),
     floorSprite: spriteForPrefix(floor.spritePrefix, "tile"),
+    wallpaper: activeWallpaper,
     roomName: room.name, roomEmoji: room.emoji, hqLevel: hq.hqLevel,
-    subtitle, pedestals, decorations, defenders,
+    subtitle, pedestals, decorations, defenders, terrain,
+    cursor: cursor ? cursorOverlay(cursor) : null,
     backdropSprite, wallsOff: !!style.wallsOff, glassOff: !!style.glassOff,
     companion: companionRenderFor(hq), visitors: visitorCount(hq.hqLevel),
   };
@@ -576,28 +728,77 @@ async function renderBaseImage(view: HqBaseView): Promise<AttachmentBuilder | nu
 // ── World map ─────────────────────────────────────────────────────────────────
 const WORLD_COLORS = [0x3f78c8, 0x9b59b6, 0x2ecc71, 0xe67e22, 0x1abc9c, 0xe84393, 0xf1c40f, 0x5865f2];
 
-async function loadWorldBases(guildId: string, userId: string): Promise<{ userId: string; name: string; defenders: number; held: boolean }[]> {
-  const raw = await getGuildBases(guildId, userId, 8).catch(() => []);
-  const out: { userId: string; name: string; defenders: number; held: boolean }[] = [];
+// A member's base on the shared map.
+interface PlayerBaseEntry { userId: string; name: string; defenders: number; held: boolean }
+
+// Everything the World section needs: the AI-held territories that ship with the
+// map, plus the member bases pinned around the southern coast.
+interface WorldSnapshot {
+  territories: WorldTerritoryView[];
+  bases: PlayerBaseEntry[];
+}
+
+async function loadWorld(guildId: string, userId: string): Promise<WorldSnapshot> {
+  const territories = await listTerritories(guildId).catch(() => [] as WorldTerritoryView[]);
+  const raw = await getGuildBases(guildId, userId, PLAYER_BASE_ANCHORS.length).catch(() => []);
+  const bases: PlayerBaseEntry[] = [];
   for (const b of raw) {
     const bhq = await getOrCreateHq(guildId, b.userId);
     const held = !!activeCapture(await getBaseState(guildId, b.userId));
     const name = readHqStats(bhq).title?.trim() || `Rival ${b.userId.slice(-4)}`;
-    out.push({ userId: b.userId, name, defenders: b.defenders, held });
+    bases.push({ userId: b.userId, name, defenders: b.defenders, held });
   }
-  return out;
+  return { territories, bases };
 }
 
 async function renderWorldImage(
   theme: ReturnType<typeof resolveTheme>, avatarUrl: string | null, level: number,
-  bases: { userId: string; name: string; defenders: number; held: boolean }[],
+  world: WorldSnapshot, viewerId: string,
 ): Promise<AttachmentBuilder | null> {
-  const markers: WorldBaseMarker[] = bases.map((b, i) => ({
-    name: b.name, defenders: b.defenders, maxDefenders: HQ_DEFENDER_SLOTS, held: b.held, color: WORLD_COLORS[i % WORLD_COLORS.length]!,
+  const now = Date.now();
+  const markers: WorldMarker[] = world.territories.map(t => ({
+    nodeId: t.territory.id,
+    name: t.territory.name,
+    factionShort: t.faction.short,
+    color: t.heldByUserId === viewerId ? 0x4fd06a : t.heldByUserId ? 0x4aa3ff : t.faction.color,
+    tier: t.territory.tier,
+    biome: t.territory.biome,
+    u: t.territory.u,
+    v: t.territory.v,
+    structure: t.territory.structure,
+    garrison: t.territory.garrison,
+    kind: "territory",
+    held: !!t.heldByUserId,
+    heldByYou: t.heldByUserId === viewerId,
+    shielded: !!t.shieldUntil && t.shieldUntil.getTime() > now,
   }));
+  // Member bases share the map, anchored along the settled coast.
+  world.bases.slice(0, PLAYER_BASE_ANCHORS.length).forEach((b, i) => {
+    const a = PLAYER_BASE_ANCHORS[i]!;
+    markers.push({
+      nodeId: `base:${b.userId}`,
+      name: b.name,
+      factionShort: "Member base",
+      color: b.held ? 0xc0392b : WORLD_COLORS[i % WORLD_COLORS.length]!,
+      tier: Math.max(1, Math.min(4, Math.ceil(b.defenders / 2) + 1)),
+      biome: "plains",
+      u: a.u, v: a.v,
+      structure: "houses",
+      garrison: b.defenders,
+      kind: "base",
+      held: b.held,
+      heldByYou: false,
+      shielded: b.held,
+    });
+  });
+
+  const open = world.territories.filter(t => !t.heldByUserId).length;
   const view: HqWorldView = {
-    ownerAvatarUrl: avatarUrl, displayTitle: "World Map", subtitle: `${bases.length} base${bases.length === 1 ? "" : "s"} to raid`,
-    theme, roomEmoji: "🗺️", roomName: "World", hqLevel: level, markers,
+    ownerAvatarUrl: avatarUrl,
+    displayTitle: "World Map",
+    subtitle: `${open} AI territor${open === 1 ? "y" : "ies"} · ${world.bases.length} member base${world.bases.length === 1 ? "" : "s"}`,
+    theme, roomEmoji: "🗺️", roomName: "World", hqLevel: level,
+    markers, routes: HQ_ROUTES,
   };
   const buf = await renderWorldMap(view).catch(() => null);
   return buf ? new AttachmentBuilder(buf, { name: HQ_FILE }) : null;
@@ -611,11 +812,13 @@ const BASE_BUILDING_ROLES: HqBuildingRole[] = [
 ];
 async function buildBaseRenderView(
   guildId: string, userId: string, ownerName: string, ownerAvatarUrl: string | null, hq: PlayerHq,
+  cursor?: BuildCursor,
 ): Promise<HqBaseView> {
   const theme = resolveTheme(hq.themeId);
-  const [{ settings, ctx, displayMap, cards }, defenderMap] = await Promise.all([
+  const [{ settings, ctx, displayMap, cards }, defenderMap, terrain] = await Promise.all([
     loadCtx(guildId),
     getDefenders(guildId, userId),
+    listTerrain(guildId, userId, BASE_ROOM_ID).catch(() => []),
   ]);
   const basePath = spriteForPrefix("base", "round");
   const defenders: HqRenderDefender[] = [];
@@ -639,7 +842,8 @@ async function buildBaseRenderView(
     ownerName, displayTitle: hqDisplayTitle(hq, ownerName), ownerAvatarUrl, theme,
     roomEmoji: "🏰", roomName: "Base", hqLevel: hq.hqLevel,
     subtitle: capture ? `Base • held by ${capture.heldName}` : `Base • ${defenders.length}/${HQ_DEFENDER_SLOTS} defenders`,
-    buildings, defenders, decorations, captured: !!capture,
+    buildings, defenders, decorations, terrain, captured: !!capture,
+    cursor: cursor ? cursorOverlay(cursor) : null,
     companion: companionRenderFor(hq), visitors: visitorCount(hq.hqLevel),
   };
 }
@@ -675,14 +879,23 @@ async function buildView(
   const wall = resolveWall(hq.wallId);
   const floor = resolveFloor(hq.floorId);
 
-  // Section picks the image: World = a map of raidable bases; Base = the exterior
-  // town (with defenders); everything else = the interior room.
-  let worldBases: { userId: string; name: string; defenders: number; held: boolean }[] = [];
+  // Section picks the image: World = the campaign map; Base = the exterior town
+  // (with defenders); everything else = the interior room.
+  let world: WorldSnapshot = { territories: [], bases: [] };
   let file: AttachmentBuilder | null;
   if (section === "world") {
-    worldBases = await loadWorldBases(guildId, userId);
-    file = await renderWorldImage(theme, interaction.user.displayAvatarURL(), hq.hqLevel, worldBases);
-  } else if (section === "defenders") {
+    world = await loadWorld(guildId, userId);
+    file = await renderWorldImage(theme, interaction.user.displayAvatarURL(), hq.hqLevel, world, userId);
+  } else if (section === "build") {
+    // Build mode renders whichever canvas the cursor is parked on, with the
+    // lattice rulers and the selection rectangle overlaid.
+    const cur = await loadCursor(guildId, userId, hq);
+    file = cur.canvas === BASE_ROOM_ID
+      ? await renderBaseImage(await buildBaseRenderView(
+          guildId, userId, interaction.user.username, interaction.user.displayAvatarURL(), hq, cur))
+      : await renderRoomImage(await buildRenderView(
+          guildId, userId, interaction.user.username, interaction.user.displayAvatarURL(), hq, false, cur));
+  } else if (section === "defenders" || section === "defenses") {
     file = await renderBaseImage(await buildBaseRenderView(guildId, userId, interaction.user.username, interaction.user.displayAvatarURL(), hq));
   } else {
     file = await renderRoomImage(await buildRenderView(guildId, userId, interaction.user.username, interaction.user.displayAvatarURL(), hq));
@@ -833,32 +1046,125 @@ async function buildView(
       break;
     }
 
+    case "defenses": {
+      // The tower-defence + upgrades panel. Fortification (base tier + built
+      // defences) is the % that hardens this base's garrison in a siege.
+      const forti = await baseFortification(guildId, userId);
+      const state = await getBaseState(guildId, userId).catch(() => null);
+      const bal = (await getOrCreateCurrency(guildId, userId).catch(() => ({ shards: 0 }))).shards ?? 0;
+      const next = nextBaseTier(forti.tier.level);
+      const shieldOn = !!state?.shieldUntil && state.shieldUntil.getTime() > Date.now();
+
+      embed.setTitle("🛡️ Base Defenses").setDescription(
+        "Harden your base so its garrison actually **fights back** when raided.\n" +
+        `• **Upgrade** the base for a guaranteed fortification floor.\n` +
+        `• **Build** walls, towers, moats & traps in **🛠️ Build** (on the *Base grounds*) to raise it further.\n` +
+        `• **Buy a shield** to lock out attackers for a while.`,
+      ).addFields(
+        {
+          name: "🏯 Fortification",
+          value: `**+${forti.totalPct}%** to your garrison\n` +
+            `${forti.tier.emoji} ${forti.tier.label} tier: **+${forti.tierPct}%** · 🧱 Built: **+${forti.buildPct}%** (${forti.points} pts)`,
+          inline: false,
+        },
+        { name: "🏰 Base tier", value: `${forti.tier.emoji} **${forti.tier.label}** (Lv ${forti.tier.level})`, inline: true },
+        { name: "🛡️ Shield", value: shieldOn ? `active <t:${Math.floor(state!.shieldUntil!.getTime() / 1000)}:R>` : "_none_", inline: true },
+        { name: "💠 Balance", value: `**${bal.toLocaleString()}**`, inline: true },
+      );
+      if (forti.buildPct === 0) {
+        embed.addFields({ name: "🧱 Tip", value: "Open **🛠️ Build**, switch to the **Base grounds**, and place a **Stone Wall**, **Watchtower**, **Moat** or **Caltrops** — each hardens your garrison." });
+      }
+
+      // Upgrade button (or maxed).
+      const upgradeRow = new ActionRowBuilder<ButtonBuilder>();
+      if (next) {
+        upgradeRow.addComponents(
+          new ButtonBuilder().setCustomId("hq-hub:upgrade")
+            .setLabel(`Upgrade → ${next.label} (+${next.fortifyPct}%) · ${next.cost.toLocaleString()}💠`.slice(0, 80))
+            .setEmoji(next.emoji).setStyle(ButtonStyle.Success).setDisabled(bal < next.cost),
+        );
+      } else {
+        upgradeRow.addComponents(
+          new ButtonBuilder().setCustomId("hq-hub:upgrade").setLabel("Base fully upgraded")
+            .setEmoji("🏛️").setStyle(ButtonStyle.Secondary).setDisabled(true),
+        );
+      }
+      rows.push(upgradeRow);
+
+      // Shield purchase row.
+      rows.push(new ActionRowBuilder<ButtonBuilder>().addComponents(
+        SHIELD_PRODUCTS.map(p => new ButtonBuilder()
+          .setCustomId(`hq-hub:buyshield:${p.id}`)
+          .setLabel(`${p.label} · ${p.cost.toLocaleString()}💠`.slice(0, 80))
+          .setEmoji("🛡️").setStyle(ButtonStyle.Primary).setDisabled(bal < p.cost)),
+      ));
+      if (notice) embed.addFields({ name: "🧾 Result", value: notice.slice(0, 1024) });
+      break;
+    }
+
     case "world": {
-      // Pay out hold-tribute for any bases the viewer holds, then read the
-      // longest-reign board (which includes their live reign).
+      // Pay out hold-tribute for everything the viewer holds — member bases AND
+      // world territories — then read the longest-reign board.
       const tribute = await collectHoldTribute(guildId, userId).catch(() => null);
       const reignLeaders = await getReignLeaders(guildId, 5)
         .catch(() => [] as Awaited<ReturnType<typeof getReignLeaders>>);
       const sovereign = reignLeaders[0];
+      const yours = world.territories.filter(t => t.heldByUserId === userId);
+      const openAi = world.territories.filter(t => !t.heldByUserId);
+
       embed.setTitle("🗺️ World Map").setDescription(
         (tribute ? `${tribute}\n\n` : "") +
+        "Six AI factions already hold this continent. **March on a castle, take it, and it pays you 💠 every hour you keep it** — " +
+        "until a faction's neighbour, or another member, comes to take it back.\n" +
         (sovereign && sovereign.bestSec > 0
-          ? `👑 **Sovereign:** ${sovereign.userId === userId ? "**you**" : `<@${sovereign.userId}>`} — longest hold **${formatReign(sovereign.bestSec)}**${sovereign.active ? " (still holding)" : ""}.\n\n`
-          : "") +
-        (worldBases.length === 0
-          ? "No rival bases to raid yet — once other members station **base defenders**, their castles appear here to attack. **Hold** a base you capture to earn passive 💠 tribute."
-          : "Other players' bases. 🚩 = currently held by a conqueror. Capture one and **hold it** for passive 💠 tribute. Pick one below to lay siege."),
+          ? `\n👑 **Sovereign:** ${sovereign.userId === userId ? "**you**" : `<@${sovereign.userId}>`} — longest hold **${formatReign(sovereign.bestSec)}**${sovereign.active ? " (still holding)" : ""}.`
+          : ""),
       );
-      if (worldBases.length > 0) {
+
+      // Your holdings first — the thing a returning player wants to see.
+      if (yours.length > 0) {
+        embed.addFields({
+          name: `🚩 Your territories (${yours.length})`,
+          value: yours.map(t =>
+            `${t.faction.emoji} **${t.territory.name}** · ${tierProfile(t.territory.tier).label} · +${tierProfile(t.territory.tier).tributePerHour}💠/hr`,
+          ).join("\n").slice(0, 1024),
+        });
+      }
+      if (openAi.length > 0) {
+        embed.addFields({
+          name: `⚔️ Faction-held (${openAi.length})`,
+          value: openAi.slice(0, 8).map(t =>
+            `${t.faction.emoji} **${t.territory.name}** — ${tierStars(t.territory.tier)} · ${t.territory.garrison}🛡️ · ${t.faction.short}`,
+          ).join("\n").slice(0, 1024),
+        });
+      }
+
+      // One picker for every attackable thing on the map. Territories are
+      // prefixed `t:`, member bases `p:`, so the router can tell them apart.
+      const now = Date.now();
+      const options = [
+        ...world.territories
+          .filter(t => t.heldByUserId !== userId)
+          .map(t => ({
+            label: t.territory.name.slice(0, 90),
+            value: `t:${t.territory.id}`,
+            description: `${tierProfile(t.territory.tier).label} · ${t.territory.garrison} defenders · ${holderLabel(t)}`.slice(0, 100),
+            emoji: (t.shieldUntil && t.shieldUntil.getTime() > now) ? "🛡️" : t.faction.emoji,
+          })),
+        ...world.bases.map(b => ({
+          label: b.name.slice(0, 90),
+          value: `p:${b.userId}`,
+          description: `Member base · ${b.defenders} defender${b.defenders === 1 ? "" : "s"}${b.held ? " · held 🚩" : ""}`.slice(0, 100),
+          emoji: "🏠",
+        })),
+      ].slice(0, 25);
+      if (options.length > 0) {
         rows.push(new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
-          new StringSelectMenuBuilder().setCustomId("hq-hub:raidpick").setPlaceholder("Attack a base…")
-            .addOptions(worldBases.slice(0, 25).map(b => ({
-              label: `${b.name}`.slice(0, 90), value: b.userId,
-              description: `${b.defenders} defender${b.defenders === 1 ? "" : "s"}${b.held ? " · held 🚩" : ""}`,
-              emoji: "⚔️",
-            }))),
+          new StringSelectMenuBuilder().setCustomId("hq-hub:raidpick")
+            .setPlaceholder("⚔️ March on a castle…").addOptions(options),
         ));
       }
+
       // Conquest leaderboard — top raiders by career wins, and bases held now.
       const leaders = await getConquestLeaders(guildId, 5).catch(() => []);
       if (leaders.length > 0) {
@@ -882,6 +1188,77 @@ async function buildView(
         });
         embed.addFields({ name: "👑 Longest hold", value: rlines.join("\n").slice(0, 1024) });
       }
+      break;
+    }
+
+    case "build": {
+      const cur = await loadCursor(guildId, userId, hq);
+      const canvasName = cur.canvas === BASE_ROOM_ID ? "Base grounds" : resolveRoom(cur.canvas).name;
+      const grid = gridFor(cur.canvas);
+      const mat = resolveSurface(cur.materialId);
+      const features = await listTerrain(guildId, userId, cur.canvas).catch(() => []);
+
+      embed.setTitle("🛠️ Build Mode").setDescription(
+        `Paint the ground of **${canvasName}** in rectangles. The picture shows the **X/Y rulers** and a ` +
+        "**live cursor** — move it with the arrows, resize it, pick a material, then **Place**.\n\n" +
+        `📍 Cursor: **${cur.w}×${cur.h}** at **(${cur.x}, ${cur.y})** on a **${grid}×${grid}** grid\n` +
+        `🎨 Brush: ${mat.emoji} **${mat.name}** _(${mat.kind})_` +
+        (mat.kind === "flat" ? "" : ` · height **${cur.elevation || mat.height}**`) +
+        `\n🧱 Built here: **${features.length}** / ${MAX_FEATURES_PER_CANVAS}`,
+      );
+      if (features.length > 0) {
+        embed.addFields({
+          name: "Placed surfaces",
+          value: features.slice(-10).reverse().map(describeFeature).join("\n").slice(0, 1024),
+        });
+      }
+      embed.addFields({
+        name: "⌨️ Prefer typing?",
+        value:
+          "`/hqbuild place` drops the brush at exact coordinates, `/hqbuild remove` clears a tile, " +
+          "`/hqbuild list` prints everything you've built, and `/hqbuild wallpaper` re-papers the walls.",
+      });
+      if (notice) embed.addFields({ name: "🧾 Result", value: notice.slice(0, 1024) });
+
+      rows.push(new ActionRowBuilder<ButtonBuilder>().addComponents(
+        new ButtonBuilder().setCustomId("hq-hub:bmove:left").setEmoji("⬅️").setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder().setCustomId("hq-hub:bmove:up").setEmoji("⬆️").setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder().setCustomId("hq-hub:bmove:down").setEmoji("⬇️").setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder().setCustomId("hq-hub:bmove:right").setEmoji("➡️").setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder().setCustomId("hq-hub:bplace").setLabel("Place").setEmoji("✅").setStyle(ButtonStyle.Success),
+      ));
+      rows.push(new ActionRowBuilder<ButtonBuilder>().addComponents(
+        new ButtonBuilder().setCustomId("hq-hub:bsize:w").setLabel(`W ${cur.w}`).setEmoji("↔️").setStyle(ButtonStyle.Primary),
+        new ButtonBuilder().setCustomId("hq-hub:bsize:h").setLabel(`H ${cur.h}`).setEmoji("↕️").setStyle(ButtonStyle.Primary),
+        new ButtonBuilder().setCustomId("hq-hub:belev").setLabel(`Lift ${cur.elevation}`).setEmoji("⛰️")
+          .setStyle(ButtonStyle.Primary).setDisabled(mat.kind === "flat"),
+        new ButtonBuilder().setCustomId("hq-hub:bremove").setLabel("Remove").setEmoji("🗑️").setStyle(ButtonStyle.Danger),
+        new ButtonBuilder().setCustomId("hq-hub:bclear").setLabel("Clear all").setEmoji("🧹")
+          .setStyle(ButtonStyle.Danger).setDisabled(features.length === 0),
+      ));
+      // Only materials the player has earned or bought — the locked ones are
+      // listed in the Shop's Surfaces aisle instead of teasing them here.
+      const space = cur.canvas === BASE_ROOM_ID ? "outdoor" : "indoor";
+      const brushes = surfacesFor(space).filter(s => isSurfaceUnlocked(s, owned));
+      rows.push(new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
+        new StringSelectMenuBuilder().setCustomId("hq-hub:bmat").setPlaceholder("🎨 Pick a material…")
+          .addOptions(brushes.slice(0, 25).map(s => ({
+            label: s.name.slice(0, 90), value: s.id, emoji: s.emoji,
+            description: s.kind, default: s.id === cur.materialId,
+          }))),
+      ));
+      const canvases = [
+        { id: BASE_ROOM_ID, name: "Base grounds", emoji: "🏰" },
+        ...unlockedRooms(owned).map(r => ({ id: r.id, name: r.name, emoji: r.emoji })),
+      ];
+      rows.push(new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
+        new StringSelectMenuBuilder().setCustomId("hq-hub:bcanvas").setPlaceholder("📐 Choose what to build on…")
+          .addOptions(canvases.slice(0, 25).map(c => ({
+            label: c.name.slice(0, 90), value: c.id, emoji: c.emoji,
+            description: c.id === BASE_ROOM_ID ? `${HQ_BASE_GRID}×${HQ_BASE_GRID} outdoor grid` : `${HQ_GRID}×${HQ_GRID} indoor grid`,
+            default: c.id === cur.canvas,
+          }))),
+      ));
       break;
     }
 
@@ -970,17 +1347,21 @@ async function buildView(
       ));
 
       if (aisle === "surfaces") {
-        // Floors & walls — buying grants the style, chosen later in 🎨 Style.
+        // Wallpapers, floors, walls and build materials. Buying grants the
+        // style/brush, applied later in 🎨 Style or 🛠️ Build.
         const surfaces = buyableSurfaces();
         const lines = surfaces.map(s => `${s.emoji} **${s.name}** · ${s.kind} — 💠 **${s.price}**${owned.has(s.id) ? " · ✅ owned" : ""}`);
-        embed.addFields({ name: "🧱 Surfaces — floors & walls", value: lines.join("\n").slice(0, 1024) || "No surfaces for sale." });
+        embed.addFields({
+          name: "🧱 Surfaces — wallpaper, floors, walls & build materials",
+          value: lines.join("\n").slice(0, 1024) || "No surfaces for sale.",
+        });
         const buyable = surfaces.filter(s => !owned.has(s.id));
         if (buyable.length > 0) {
           rows.push(new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
-            new StringSelectMenuBuilder().setCustomId("hq-hub:buysurface").setPlaceholder("Buy a floor or wall…")
+            new StringSelectMenuBuilder().setCustomId("hq-hub:buysurface").setPlaceholder("Buy a surface…")
               .addOptions(buyable.slice(0, 25).map(s => ({
                 label: `${s.name} — ${s.price}`.slice(0, 90), value: s.id,
-                description: `${s.kind} · apply it in 🎨 Style`, emoji: s.emoji,
+                description: `${s.kind} · use it in ${s.usedIn}`.slice(0, 100), emoji: s.emoji,
               }))),
           ));
         }
@@ -1045,12 +1426,12 @@ async function buildView(
     case "theme": {
       const style = readHqStats(hq);
       const backdrop = resolveBackdrop(style.backdropId);
-      const wallpaper = resolveBackdrop(style.wallpaperId);
+      const wallpaper = resolveWallpaper(style.wallpaperId);
       embed.setTitle("🎨 Style").setDescription(
-        "Restyle your whole HQ — the **theme** sets lighting & mood, **floor** reskins the ground, and a " +
-        "**wallpaper** paints a scene right onto the walls (pick an outdoor one to make it *look* like " +
-        "you're outside while the walls stay up). Or toggle the **walls** off entirely and show a " +
-        "**backdrop** behind the room, and hide the display **glass**. New styles unlock as you play.",
+        "Restyle your whole HQ — the **theme** sets lighting & mood, the **floor** reskins the ground, and " +
+        "**wallpaper** hangs a real repeating covering on the walls, complete with dado rail and skirting. " +
+        "Or toggle the **walls** off entirely and show a **backdrop** behind the room, and hide the display " +
+        "**glass**. New styles unlock as you play.",
       );
       const themeLines = HQ_THEMES.map(t => {
         const open = isThemeUnlocked(t, owned);
@@ -1059,7 +1440,7 @@ async function buildView(
       });
       embed.addFields(
         { name: "🎨 Themes", value: themeLines.join("\n").slice(0, 1024) },
-        { name: `🖼️ Wallpaper · ${wallpaper.id === DEFAULT_BACKDROP_ID ? wall.name : wallpaper.name}`, value: styleList(HQ_BACKDROPS, wallpaper.id, b => isBackdropUnlocked(b, owned)), inline: true },
+        { name: `🖼️ Wallpaper · ${wallpaper.id === DEFAULT_WALLPAPER_ID ? wall.name : wallpaper.name}`, value: styleList(HQ_WALLPAPERS, wallpaper.id, w => isWallpaperUnlocked(w, owned)), inline: true },
         { name: `🪵 Floor · ${floor.name}`, value: styleList(HQ_FLOORS, floor.id, f => isFloorUnlocked(f, owned)), inline: true },
         { name: `🌅 Backdrop · ${backdrop.name}`, value: styleList(HQ_BACKDROPS, backdrop.id, b => isBackdropUnlocked(b, owned)), inline: true },
         {
@@ -1088,11 +1469,14 @@ async function buildView(
       // reachable once another category collapses back to its default).
       const styleSelects: { id: string; ph: string; opts: { label: string; value: string; emoji: string; default: boolean }[] }[] = [];
       const openBackdrops = unlockedBackdrops(owned);
-      // Wallpaper reuses the backdrop art — same unlock ledger — but paints it on
-      // the walls. "none" = plain wall. Highest priority (the common ask).
-      if (openBackdrops.length > 1) styleSelects.push({
-        id: "wallpaper", ph: "Wallpaper the walls…",
-        opts: openBackdrops.map(b => ({ label: b.id === DEFAULT_BACKDROP_ID ? "Plain wall" : b.name, value: b.id, emoji: b.emoji, default: b.id === wallpaper.id })),
+      // Wallpaper is the headline restyle, so it gets first claim on a row.
+      const openWallpapers = HQ_WALLPAPERS.filter(w => isWallpaperUnlocked(w, owned));
+      if (openWallpapers.length > 1) styleSelects.push({
+        id: "wallpaper", ph: "Hang wallpaper…",
+        opts: openWallpapers.slice(0, 25).map(w => ({
+          label: w.id === DEFAULT_WALLPAPER_ID ? "Plain wall" : w.name,
+          value: w.id, emoji: w.emoji, default: w.id === wallpaper.id,
+        })),
       });
       if (openBackdrops.length > 1) styleSelects.push({ id: "backdrop", ph: "Backdrop (walls-off)…", opts: openBackdrops.map(b => ({ label: b.name, value: b.id, emoji: b.emoji, default: b.id === backdrop.id })) });
       const openThemes = unlockedThemes(owned);
@@ -1130,10 +1514,147 @@ function activeCapture(state: Awaited<ReturnType<typeof getBaseState>>): { heldB
 
 // Placements under this pseudo-room id decorate the OUTDOOR base (its own grounds
 // layout), separate from the interior rooms.
-const BASE_ROOM_ID = "base";
+const BASE_ROOM_ID = BASE_CANVAS_ID;
+
+// ── Build mode ────────────────────────────────────────────────────────────────
+// The grounds and the interior rooms have different lattice sizes; everything
+// that validates or draws a rectangle asks here rather than hardcoding one.
+function gridFor(canvas: string): number {
+  return canvas === BASE_ROOM_ID ? HQ_BASE_GRID : HQ_GRID;
+}
+
+async function loadCursor(guildId: string, userId: string, hq: PlayerHq): Promise<BuildCursor> {
+  const stored = (hq.stats as { build?: StoredBuild } | null)?.build;
+  // A cursor parked on a room the player can no longer open falls back to the
+  // grounds, which are always available.
+  let canvas = stored?.canvas ?? BASE_ROOM_ID;
+  if (canvas !== BASE_ROOM_ID) {
+    const owned = await getUnlockedItemIds(guildId, userId).catch(() => new Set<string>());
+    if (!isRoomUnlocked(resolveRoom(canvas), owned)) canvas = BASE_ROOM_ID;
+  }
+  return readCursor(stored, canvas, gridFor(canvas));
+}
+
+// The cursor as the renderer's overlay: red when the current brush wouldn't fit,
+// so an invalid placement is visible before the button is pressed.
+function cursorOverlay(cur: BuildCursor): HqBuildCursor {
+  const mat = resolveSurface(cur.materialId);
+  return {
+    x: cur.x, y: cur.y, w: cur.w, h: cur.h,
+    color: mat.kind === "water" ? 0x4aa3ff : mat.kind === "mound" ? 0x7bd06a : 0x2fd4d4,
+    label: cursorLabel(cur),
+    valid: true,
+  };
+}
+
+async function nudgeCursor(guildId: string, userId: string, dir: string): Promise<void> {
+  const hq = await getOrCreateHq(guildId, userId);
+  const cur = await loadCursor(guildId, userId, hq);
+  const moved: BuildCursor = { ...cur };
+  if (dir === "left") moved.x -= 1;
+  else if (dir === "right") moved.x += 1;
+  else if (dir === "up") moved.y -= 1;
+  else if (dir === "down") moved.y += 1;
+  await saveCursor(guildId, userId, clampCursor(moved, gridFor(cur.canvas)));
+}
+
+// Sizes cycle 1→MAX→1 so one button covers grow and reset without a second.
+async function cycleCursorSize(guildId: string, userId: string, axis: "w" | "h"): Promise<void> {
+  const hq = await getOrCreateHq(guildId, userId);
+  const cur = await loadCursor(guildId, userId, hq);
+  const grid = gridFor(cur.canvas);
+  const cap = Math.min(MAX_RECT_SPAN, grid);
+  const next = (cur[axis] % cap) + 1;
+  await saveCursor(guildId, userId, clampCursor({ ...cur, [axis]: next }, grid));
+}
+
+async function cycleCursorElevation(guildId: string, userId: string): Promise<void> {
+  const hq = await getOrCreateHq(guildId, userId);
+  const cur = await loadCursor(guildId, userId, hq);
+  await saveCursor(guildId, userId, { ...cur, elevation: (cur.elevation + 1) % (MAX_ELEVATION + 1) });
+}
+
+async function setCursorMaterial(guildId: string, userId: string, materialId: string): Promise<void> {
+  const mat = getSurfaceById(materialId);
+  if (!mat) return;
+  const owned = await getUnlockedItemIds(guildId, userId).catch(() => new Set<string>());
+  if (!isSurfaceUnlocked(mat, owned)) return;
+  const hq = await getOrCreateHq(guildId, userId);
+  const cur = await loadCursor(guildId, userId, hq);
+  await saveCursor(guildId, userId, { ...cur, materialId });
+}
+
+async function setCursorCanvas(guildId: string, userId: string, canvas: string): Promise<void> {
+  const hq = await getOrCreateHq(guildId, userId);
+  const cur = await loadCursor(guildId, userId, hq);
+  if (canvas !== BASE_ROOM_ID) {
+    const owned = await getUnlockedItemIds(guildId, userId).catch(() => new Set<string>());
+    if (!isRoomUnlocked(resolveRoom(canvas), owned)) return;
+  }
+  await saveCursor(guildId, userId, clampCursor({ ...cur, canvas }, gridFor(canvas)));
+}
+
+async function placeAtCursor(guildId: string, userId: string): Promise<string> {
+  return withHqLock(`hq:build:${guildId}:${userId}`, async () => {
+    const hq = await getOrCreateHq(guildId, userId);
+    const cur = await loadCursor(guildId, userId, hq);
+    const res = await placeTerrain(guildId, userId, cur.canvas, gridFor(cur.canvas), {
+      materialId: cur.materialId, x: cur.x, y: cur.y, w: cur.w, h: cur.h, elevation: cur.elevation,
+    });
+    if (!res.ok) return `❌ ${res.reason}`;
+    return `✅ Placed ${describeFeature(res.feature)}.`;
+  });
+}
+
+async function removeAtCursor(guildId: string, userId: string): Promise<string> {
+  return withHqLock(`hq:build:${guildId}:${userId}`, async () => {
+    const hq = await getOrCreateHq(guildId, userId);
+    const cur = await loadCursor(guildId, userId, hq);
+    const removed = await removeTerrainAt(guildId, userId, cur.canvas, cur.x, cur.y);
+    return removed
+      ? `🗑️ Removed ${describeFeature(removed)}.`
+      : `Nothing built at **(${cur.x}, ${cur.y})**.`;
+  });
+}
+
+/**
+ * Render one build canvas with the cursor overlaid — the shared picture behind
+ * both the visual Build section and every `/hqbuild` reply, so the two halves of
+ * the editor can never drift apart visually.
+ */
+export async function renderBuildCanvas(
+  interaction: HubInteraction, canvas: string, cursor: BuildCursor,
+): Promise<AttachmentBuilder | null> {
+  const guildId = interaction.guildId!;
+  const userId = interaction.user.id;
+  const hq = await getOrCreateHq(guildId, userId);
+  const name = interaction.user.username;
+  const avatar = interaction.user.displayAvatarURL();
+  return canvas === BASE_ROOM_ID
+    ? renderBaseImage(await buildBaseRenderView(guildId, userId, name, avatar, hq, cursor))
+    : renderRoomImage(await buildRenderView(guildId, userId, name, avatar, hq, false, cursor));
+}
+
+/** Persist an HQ's wallpaper choice (shared with `/hqbuild wallpaper`). */
+export async function setHqWallpaper(guildId: string, userId: string, wallpaperId: string): Promise<void> {
+  const hq = await getOrCreateHq(guildId, userId);
+  await updateHq(guildId, userId, { stats: { ...readHqStats(hq), wallpaperId } }).catch(() => {});
+}
+
+async function clearCanvasAtCursor(guildId: string, userId: string): Promise<string> {
+  return withHqLock(`hq:build:${guildId}:${userId}`, async () => {
+    const hq = await getOrCreateHq(guildId, userId);
+    const cur = await loadCursor(guildId, userId, hq);
+    const n = await clearTerrain(guildId, userId, cur.canvas);
+    return n > 0 ? `🧹 Cleared **${n}** built surface${n === 1 ? "" : "s"}.` : "Nothing to clear here.";
+  });
+}
 
 // ── Base siege (attack/capture mini-game) ─────────────────────────────────────
-type SiegeMode = "classic" | "static" | "live";
+// "cinematic" plays the landscape opening film (camera arrives, gates open, the
+// army musters, your cards fly in) and THEN the battle; the other three are the
+// original fast paths.
+type SiegeMode = "classic" | "static" | "live" | "cinematic" | "turn";
 const SIEGE_FILE = "siege.png", SIEGE_GIF = "siege.gif";
 type LoadedCtx = Awaited<ReturnType<typeof loadCtx>>;
 
@@ -1215,18 +1736,24 @@ async function buildAttackModePicker(guildId: string, attackerId: string, defend
   const cx = await loadCtx(guildId);
   const defenders = await buildDefenderSquad(guildId, defenderId, cx);
   const squad = await buildAttackerSquad(guildId, attackerId, cx, defenders.length);
+  const forti = await baseFortification(guildId, defenderId);
   const yourP = squad.reduce((s, c) => s + c.power, 0), theirP = defenders.reduce((s, c) => s + c.power, 0);
   embed.setDescription(
     `Your strongest **${squad.length}** cards storm **${defenders.length}** stationed defenders in a **real battle** ` +
     "(true stats, moves, specials & passives). Knock out every defender to capture the base.\n\n" +
-    `⚔️ Your strength: **${yourP}**  ·  🛡️ Their defence: **${theirP}**\n\n` +
-    "**Pick how to watch it:**\n" +
+    `⚔️ Your strength: **${yourP}**  ·  🛡️ Their defence: **${theirP}**` +
+    (forti.totalPct > 0 ? `  ·  🏯 **+${forti.totalPct}%** ${forti.tier.label} fortifications` : "") + "\n\n" +
+    "**Pick how to fight it:**\n" +
+    "• **Turn-by-Turn** — YOU play it, move by move, like /battle\n" +
+    "• **Cinematic** — the full opening scene, then an auto battle\n" +
     "• **Classic** — a text battle report\n• **Static** — a battle image\n• **Live** — an animated battle",
   );
   const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder().setCustomId(`hq-hub:siege:${defenderId}:turn`).setLabel("Turn-by-Turn").setEmoji("⚔️").setStyle(ButtonStyle.Success),
+    new ButtonBuilder().setCustomId(`hq-hub:siege:${defenderId}:cinematic`).setLabel("Cinematic").setEmoji("🎥").setStyle(ButtonStyle.Secondary),
     new ButtonBuilder().setCustomId(`hq-hub:siege:${defenderId}:classic`).setLabel("Classic").setEmoji("📜").setStyle(ButtonStyle.Secondary),
-    new ButtonBuilder().setCustomId(`hq-hub:siege:${defenderId}:static`).setLabel("Static").setEmoji("🖼️").setStyle(ButtonStyle.Primary),
-    new ButtonBuilder().setCustomId(`hq-hub:siege:${defenderId}:live`).setLabel("Live").setEmoji("🎬").setStyle(ButtonStyle.Success),
+    new ButtonBuilder().setCustomId(`hq-hub:siege:${defenderId}:static`).setLabel("Static").setEmoji("🖼️").setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder().setCustomId(`hq-hub:siege:${defenderId}:live`).setLabel("Live").setEmoji("🎬").setStyle(ButtonStyle.Primary),
   );
   return { embeds: [embed], components: [row, backRow("defenders")], files: [] as AttachmentBuilder[] };
 }
@@ -1245,24 +1772,43 @@ const SIEGE_MOVES = ["Siege Strike", "Breach", "Overrun", "Vanguard Charge", "Fi
 // (or null) to surface at the top of the World map. Best-effort — a failed pay
 // never blocks the view.
 async function collectHoldTribute(guildId: string, userId: string): Promise<string | null> {
-  // Reading owed tribute and advancing its clock is a read-modify-write
+  // Reading owed tribute and advancing its clocks is a read-modify-write
   // sequence. Serialize it per holder so rapid World-map opens cannot both
-  // mint the same interval. Do not advance the clocks if the currency write
+  // mint the same interval. Do not advance any clocks if the currency write
   // fails; the holder can retry instead of silently losing tribute.
   return withHqLock(`hq:tribute:${guildId}:${userId}`, async () => {
-    const held = await getHeldBases(guildId, userId).catch(() => []);
-    if (held.length === 0) return null;
     const now = new Date();
     let total = 0;
+    const parts: string[] = [];
+
+    // Member bases the viewer has conquered.
+    const held = await getHeldBases(guildId, userId).catch(() => []);
     const collectedOwners: string[] = [];
     for (const b of held) {
       const owed = tributeOwed(b.since, now);
       if (owed > 0) { total += owed; collectedOwners.push(b.ownerId); }
     }
+    if (collectedOwners.length > 0) {
+      parts.push(`**${collectedOwners.length}** base${collectedOwners.length === 1 ? "" : "s"} (+${TRIBUTE_PER_HOUR}/hr each)`);
+    }
+
+    // World territories pay by tier — a capital is worth more than an outpost.
+    const territories = await getHeldTerritories(guildId, userId).catch(() => []);
+    const collectedNodes: string[] = [];
+    for (const t of territories) {
+      const tier = getTerritory(t.nodeId)?.tier ?? 1;
+      const owed = territoryTributeOwed(tier, t.since, now);
+      if (owed > 0) { total += owed; collectedNodes.push(t.nodeId); }
+    }
+    if (collectedNodes.length > 0) {
+      parts.push(`**${collectedNodes.length}** territor${collectedNodes.length === 1 ? "y" : "ies"}`);
+    }
+
     if (total <= 0) return null;
     await addShards(guildId, userId, total);
     await markTributesCollected(guildId, userId, collectedOwners, now);
-    return `💠 **+${total}** hold-tribute collected from **${collectedOwners.length}** held base${collectedOwners.length === 1 ? "" : "s"} (+${TRIBUTE_PER_HOUR}/hr each).`;
+    await markTerritoryTributesCollected(guildId, userId, collectedNodes, now);
+    return `💠 **+${total}** hold-tribute collected from ${parts.join(" and ")}.`;
   });
 }
 
@@ -1329,7 +1875,7 @@ function outcomeFromPower(r: ReturnType<typeof resolveSiege>, champ: ReturnType<
 }
 
 // Resolve a siege — real battle engine first, power auto-resolve as a safety net.
-async function resolveSiegeOutcome(guildId: string, attackerId: string, attackerName: string, defenderId: string, defenderName: string, cx: LoadedCtx): Promise<SiegeOutcome> {
+async function resolveSiegeOutcome(guildId: string, attackerId: string, attackerName: string, defenderId: string, defenderName: string, cx: LoadedCtx, defenderBonusPct = 0): Promise<SiegeOutcome> {
   try {
     const settings = await getBattleSettings(guildId);
     if (settings.enabled) {
@@ -1337,7 +1883,7 @@ async function resolveSiegeOutcome(guildId: string, attackerId: string, attacker
       if (defenderCards.length > 0) {
         const attackerCards = await buildAttackerCards(guildId, attackerId, cx.ctx, defenderCards.length);
         if (attackerCards.length > 0) {
-          const r = simulateSiegeBattle(attackerCards, defenderCards, settings, guildId, cx.ctx, { attackerId, attackerName, defenderId, defenderName });
+          const r = simulateSiegeBattle(attackerCards, defenderCards, settings, guildId, cx.ctx, { attackerId, attackerName, defenderId, defenderName }, defenderBonusPct);
           return outcomeFromBattle(r, championRender(attackerCards[0], cx));
         }
       }
@@ -1350,7 +1896,119 @@ async function resolveSiegeOutcome(guildId: string, attackerId: string, attacker
   const champ = squad[0]
     ? { slot: 0, cardId: squad[0].cardId, name: squad[0].name, artUrl: squad[0].artUrl, rarityColor: squad[0].rarityColor, basePath: null }
     : null;
-  return outcomeFromPower(resolveSiege(squad, defenders), champ, defenders.length);
+  return outcomeFromPower(resolveSiege(squad, defenders, Math.random, defenderBonusPct), champ, defenders.length);
+}
+
+// ── Interactive (turn-by-turn) siege launchers ───────────────────────────────
+// Build both sides as live combatants, render the base once, and hand off to the
+// live-siege engine with an applyOutcome callback that commits capture/reward and
+// returns the result screen — shared shape for player bases and AI territories.
+async function launchPlayerLiveSiege(
+  interaction: ButtonInteraction, guildId: string, attackerId: string, attackerName: string,
+  defenderId: string, defenderName: string, defHq: PlayerHq, cx: LoadedCtx,
+): Promise<void> {
+  const fail = (msg: string) => interaction.editReply({
+    embeds: [new EmbedBuilder().setColor(0xc0392b).setDescription(`❌ ${msg}`)],
+    components: [backRow("defenders")], files: [],
+  }).then(() => {}).catch(() => {});
+  const settings = await getBattleSettings(guildId);
+  if (!settings.enabled) { await fail("Battles are disabled here — try another siege mode."); return; }
+  const defenderCards = await buildDefenderCards(guildId, defenderId, cx.ctx);
+  if (defenderCards.length === 0) { await fail("This base has no defenders to fight — try another mode."); return; }
+  const attackerCards = await buildAttackerCards(guildId, attackerId, cx.ctx, defenderCards.length);
+  if (attackerCards.length === 0) { await fail("You have no cards to march with. Catch some first."); return; }
+
+  const forti = await baseFortification(guildId, defenderId);
+  const attackers = buildSiegeSquad(attackerCards, settings, guildId, cx.ctx, 0, attackerId, attackerName);
+  const defenders = buildSiegeSquad(defenderCards, settings, guildId, cx.ctx, 1, defenderId, defenderName, forti.totalPct);
+  const baseImage = await renderBase(await buildBaseRenderView(guildId, defenderId, defenderName, null, defHq)).catch(() => null);
+
+  await startLiveSiege(interaction, {
+    guildId, targetKey: `hq:base:${guildId}:${defenderId}`,
+    starterId: attackerId, attackerName, targetName: defenderName,
+    accent: 0xc0392b, attackers, defenders, settings, baseImage,
+    applyOutcome: (o) => finalizePlayerLiveSiege(interaction, guildId, attackerId, attackerName, defenderId, o, forti.totalPct),
+  });
+}
+
+async function finalizePlayerLiveSiege(
+  interaction: ButtonInteraction, guildId: string, attackerId: string, attackerName: string,
+  defenderId: string, o: LiveSiegeOutcome, fortiPct: number,
+): Promise<LiveSiegeResultView> {
+  await withHqLock(`hq:siege:${guildId}:${defenderId}`, async () => {
+    await applySiegeToBase(guildId, defenderId, o.attackerWon, attackerId, attackerName, SIEGE_SHIELD_MS).catch(() => {});
+  }).catch(() => {});
+  await logSiege(guildId, attackerId, defenderId, o.attackerWon, o.attackerPower, o.defenderPower, "turn").catch(() => {});
+  const reward = o.attackerWon ? Math.min(300, 60 + Math.round(o.defenderPower / 18)) : 20;
+  await addShards(guildId, attackerId, reward).catch(() => {});
+  void notifySiege(interaction, guildId, defenderId, attackerName, o.attackerWon, reward);
+  return {
+    title: o.attackerWon ? "⚔️ Base Captured!" : "🛡️ Base Defended!",
+    description: o.attackerWon
+      ? `You stormed the base in **${o.rounds}** rounds. You hold it until it's reclaimed — earning **${TRIBUTE_PER_HOUR}💠/hr**.`
+      : `The defenders held the walls after **${o.rounds}** rounds.`,
+    color: o.attackerWon ? 0x4fd06a : 0xc0392b,
+    fields: [
+      { name: "⚔️ Squad power", value: `**${o.attackerPower}**`, inline: true },
+      { name: "🛡️ Defence", value: `**${o.defenderPower}**${fortiPct > 0 ? ` · 🏯 +${fortiPct}%` : ""}`, inline: true },
+      { name: "💠 Loot", value: `**+${reward}** shards`, inline: true },
+    ],
+  };
+}
+
+async function launchTerritoryLiveSiege(
+  interaction: ButtonInteraction, guildId: string, attackerId: string, attackerName: string,
+  nodeId: string, view: WorldTerritoryView, theme: ReturnType<typeof resolveTheme>,
+  garrison: OwnedBattleCard[], attackerCards: OwnedBattleCard[], cx: LoadedCtx,
+): Promise<void> {
+  const settings = await getBattleSettings(guildId);
+  if (!settings.enabled) {
+    await interaction.editReply({ embeds: [new EmbedBuilder().setColor(0xc0392b).setDescription("❌ Battles are disabled — try another mode.")], components: [backRow("world")], files: [] }).catch(() => {});
+    return;
+  }
+  const defenderName = holderLabel(view);
+  const attackers = buildSiegeSquad(attackerCards, settings, guildId, cx.ctx, 0, attackerId, attackerName);
+  const defenders = buildSiegeSquad(garrison, settings, guildId, cx.ctx, 1, `world:${nodeId}`, defenderName);
+  const baseImage = await renderBase(territoryBaseView(view, theme, garrison, cx)).catch(() => null);
+
+  await startLiveSiege(interaction, {
+    guildId, targetKey: `hq:world:${guildId}:${nodeId}`,
+    starterId: attackerId, attackerName, targetName: view.territory.name,
+    accent: view.faction.color, attackers, defenders, settings, baseImage,
+    applyOutcome: (o) => finalizeTerritoryLiveSiege(interaction, guildId, attackerId, attackerName, nodeId, view, o),
+  });
+}
+
+async function finalizeTerritoryLiveSiege(
+  interaction: ButtonInteraction, guildId: string, attackerId: string, attackerName: string,
+  nodeId: string, view: WorldTerritoryView, o: LiveSiegeOutcome,
+): Promise<LiveSiegeResultView> {
+  const prof = tierProfile(view.territory.tier);
+  let previousHolder: string | null = null;
+  await withHqLock(`hq:world:${guildId}:${nodeId}`, async () => {
+    if (o.attackerWon) {
+      ({ previousHolder } = await captureTerritory(guildId, nodeId, attackerId, attackerName, WORLD_SHIELD_MS)
+        .catch(() => ({ previousHolder: null })));
+    } else {
+      await markTerritoryAttacked(guildId, nodeId).catch(() => {});
+    }
+  }).catch(() => {});
+  await logSiege(guildId, attackerId, territoryLogKey(nodeId), o.attackerWon, o.attackerPower, o.defenderPower, "turn").catch(() => {});
+  const reward = o.attackerWon ? prof.bounty : Math.round(prof.bounty * 0.12);
+  await addShards(guildId, attackerId, reward).catch(() => {});
+  if (previousHolder && previousHolder !== attackerId) void notifyTerritoryLost(interaction, previousHolder, attackerName, view.territory.name);
+  return {
+    title: o.attackerWon ? `🚩 ${view.territory.name} is yours!` : `🛡️ ${view.territory.name} holds`,
+    description: o.attackerWon
+      ? `You broke the ${holderLabel(view)} garrison in **${o.rounds}** rounds and now hold this ${prof.label.toLowerCase()} — **${prof.tributePerHour}💠/hr**.`
+      : `The ${holderLabel(view)} garrison threw you back after **${o.rounds}** rounds.`,
+    color: o.attackerWon ? 0x4fd06a : view.faction.color,
+    fields: [
+      { name: "⚔️ Squad power", value: `**${o.attackerPower}**`, inline: true },
+      { name: "🛡️ Garrison", value: `**${o.defenderPower}**`, inline: true },
+      { name: "💠 Loot", value: `**+${reward}** shards`, inline: true },
+    ],
+  };
 }
 
 async function runSiege(interaction: ButtonInteraction, guildId: string, attackerId: string, defenderId: string, mode: SiegeMode): Promise<void> {
@@ -1361,6 +2019,14 @@ async function runSiege(interaction: ButtonInteraction, guildId: string, attacke
   // before either writes the base state, double-resolving a capture. The queued
   // siege re-runs the block check AFTER the prior one commits its log + state.
   await withHqLock(`hq:siege:${guildId}:${defenderId}`, async () => {
+  if (isLiveSiegeTargetActive(`hq:base:${guildId}:${defenderId}`)) {
+    await interaction.editReply({
+      embeds: [new EmbedBuilder().setColor(0xc0392b)
+        .setDescription("❌ That base is already under an interactive siege.")],
+      components: [backRow("defenders")], files: [],
+    }).catch(() => {});
+    return;
+  }
   const blocked = await siegeBlockReason(guildId, attackerId, defenderId);
   if (blocked) {
     await interaction.editReply({ embeds: [new EmbedBuilder().setColor(0xc0392b).setDescription(`❌ ${blocked}`)], components: [backRow("defenders")], files: [] }).catch(() => {});
@@ -1371,7 +2037,41 @@ async function runSiege(interaction: ButtonInteraction, guildId: string, attacke
   const defenderName = readHqStats(defHq).title?.trim() || "the defenders";
 
   const cx = await loadCtx(guildId);
-  const result = await resolveSiegeOutcome(guildId, attackerId, attackerName, defenderId, defenderName, cx);
+
+  // Turn-by-turn: hand the assault to the player (its own live board), then bail
+  // out of the auto-resolve path.
+  if (mode === "turn") {
+    await launchPlayerLiveSiege(interaction, guildId, attackerId, attackerName, defenderId, defenderName, defHq, cx);
+    return;
+  }
+
+  // The opening film, before anything is resolved — the ride up to the base, the
+  // gates opening, the garrison mustering, and the raider's cards flying in.
+  if (mode === "cinematic") {
+    const theme = resolveTheme((await getOrCreateHq(guildId, attackerId)).themeId);
+    const squad = await buildAttackerCards(guildId, attackerId, cx.ctx, 5).catch(() => []);
+    const garrisonSize = (await getDefenders(guildId, defenderId).catch(() => new Map())).size;
+    await playCinematic(interaction, {
+      targetName: defenderName,
+      holderName: readHqStats(defHq).title?.trim() ? defenderName : "its garrison",
+      defenderColor: resolveTheme(defHq.themeId).palette.accent,
+      attackerColor: theme.palette.accent,
+      attackerName,
+      cards: squad.slice(0, 5).map(c => {
+        const d = getCardDisplayRarity({ id: c.id, rarity: c.rarity as string }, cx.ctx, cx.settings, cx.displayMap);
+        return { name: c.name, artUrl: toAbsoluteImageUrl(c.imageUrl), rarityColor: d.color };
+      }),
+      garrison: garrisonSize,
+      structure: "castle",
+      mood: "dusk",
+      tagline: readHqStats(defHq).motto ?? "Take the walls, take the base.",
+    }, theme.palette.accent);
+  }
+
+  // The defender's fortification (base tier + built walls/towers/moats) hardens
+  // their garrison — this is where Build mode pays off on defence.
+  const forti = await baseFortification(guildId, defenderId);
+  const result = await resolveSiegeOutcome(guildId, attackerId, attackerName, defenderId, defenderName, cx, forti.totalPct);
 
   // Persist outcome (capture + shield on a win; log either way).
   await applySiegeToBase(guildId, defenderId, result.attackerWon, attackerId, attackerName, SIEGE_SHIELD_MS).catch(() => {});
@@ -1396,7 +2096,7 @@ async function runSiege(interaction: ButtonInteraction, guildId: string, attacke
     )
     .addFields(
       { name: "⚔️ Squad power", value: `**${result.attackerPower}**`, inline: true },
-      { name: "🛡️ Defence power", value: `**${result.defenderPower}**`, inline: true },
+      { name: "🛡️ Defence power", value: `**${result.defenderPower}**${forti.totalPct > 0 ? ` · 🏯 +${forti.totalPct}% fortified` : ""}`, inline: true },
       { name: "💠 Loot", value: `**+${reward}** shards`, inline: true },
     );
 
@@ -1429,6 +2129,315 @@ async function runSiege(interaction: ButtonInteraction, guildId: string, attacke
 
   await interaction.editReply({ embeds: [embed], components: [backRow("defenders")], files }).catch(() => {});
   });
+}
+
+// ── World territory siege (the AI campaign) ───────────────────────────────────
+// Attacks on a territory are logged into the SAME hq_base_attacks table as base
+// sieges, keyed `world:<nodeId>`, so the per-target cooldown and the conquest
+// leaderboard cover the campaign without a second log.
+function territoryLogKey(nodeId: string): string { return `world:${nodeId}`; }
+
+async function territoryBlockReason(
+  guildId: string, attackerId: string, view: WorldTerritoryView,
+): Promise<string | null> {
+  if (view.heldByUserId === attackerId) return "You already hold this territory.";
+  if (view.shieldUntil && view.shieldUntil.getTime() > Date.now()) {
+    return `That castle is still shielded after its last battle — it reopens <t:${Math.floor(view.shieldUntil.getTime() / 1000)}:R>.`;
+  }
+  const recent = await recentAttackCount(
+    guildId, attackerId, territoryLogKey(view.territory.id), new Date(Date.now() - WORLD_COOLDOWN_MS),
+  ).catch(() => 0);
+  if (recent >= WORLD_MAX_PER_WINDOW) {
+    return "Your troops need to regroup — you've assaulted this castle too many times recently.";
+  }
+  return null;
+}
+
+async function findTerritory(guildId: string, nodeId: string): Promise<WorldTerritoryView | null> {
+  const all = await listTerritories(guildId).catch(() => [] as WorldTerritoryView[]);
+  return all.find(t => t.territory.id === nodeId) ?? null;
+}
+
+async function buildTerritoryModePicker(guildId: string, attackerId: string, nodeId: string) {
+  const view = await findTerritory(guildId, nodeId);
+  if (!view) {
+    return {
+      embeds: [new EmbedBuilder().setColor(0xc0392b).setDescription("❌ That territory is no longer on the map.")],
+      components: [backRow("world")], files: [] as AttachmentBuilder[],
+    };
+  }
+  const prof = tierProfile(view.territory.tier);
+  const embed = new EmbedBuilder().setColor(view.faction.color)
+    .setTitle(`⚔️ March on ${view.territory.name}`)
+    .setDescription(
+      `_${view.territory.blurb}_\n\n` +
+      `**Holder:** ${view.heldByUserId ? `<@${view.heldByUserId}>` : `${view.faction.emoji} ${view.faction.name}`}\n` +
+      `**Difficulty:** ${tierStars(view.territory.tier)} · ${prof.label}\n` +
+      `**Garrison:** ${view.territory.garrison} defenders at level ~${prof.cardLevel}${prof.starRank > 0 ? ` (${"⭐".repeat(prof.starRank)})` : ""}`,
+    )
+    .addFields(
+      { name: "💠 Capture bounty", value: `**${prof.bounty}**`, inline: true },
+      { name: "💠 Hold tribute", value: `**${prof.tributePerHour}/hr**`, inline: true },
+      { name: "🏳️ Times taken", value: `**${view.captures}**`, inline: true },
+    );
+
+  const blocked = await territoryBlockReason(guildId, attackerId, view);
+  if (blocked) {
+    embed.addFields({ name: "⛔ Not right now", value: blocked });
+    return { embeds: [embed], components: [backRow("world")], files: [] as AttachmentBuilder[] };
+  }
+  embed.addFields({
+    name: "⚔️ How do you want to fight it?",
+    value: "**Turn-by-Turn** lets YOU command the assault move by move, like `/battle`. **Cinematic** plays the full opening film, then auto-resolves. The others cut straight to the fight.",
+  });
+  const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder().setCustomId(`hq-hub:wsiege:${nodeId}:turn`).setLabel("Turn-by-Turn").setEmoji("⚔️").setStyle(ButtonStyle.Success),
+    new ButtonBuilder().setCustomId(`hq-hub:wsiege:${nodeId}:cinematic`).setLabel("Cinematic").setEmoji("🎥").setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder().setCustomId(`hq-hub:wsiege:${nodeId}:classic`).setLabel("Classic").setEmoji("📜").setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder().setCustomId(`hq-hub:wsiege:${nodeId}:static`).setLabel("Static").setEmoji("🖼️").setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder().setCustomId(`hq-hub:wsiege:${nodeId}:live`).setLabel("Live").setEmoji("🎬").setStyle(ButtonStyle.Primary),
+  );
+  return { embeds: [embed], components: [row, backRow("world")], files: [] as AttachmentBuilder[] };
+}
+
+// Which weather a territory fights under — derived from its biome so the film
+// matches the map.
+function moodForBiome(biome: string): SiegeCinematicView["mood"] {
+  switch (biome) {
+    case "snow": return "snow";
+    case "volcanic": return "ash";
+    case "marsh": return "storm";
+    case "forest": return "dawn";
+    case "desert": return "dusk";
+    case "hills": return "dusk";
+    default: return "dusk";
+  }
+}
+
+// Play the opening film into the ephemeral hub message, then hold on it long
+// enough for the GIF to actually run before the caller posts the result.
+async function playCinematic(
+  interaction: ButtonInteraction, view: SiegeCinematicView, accent: number,
+): Promise<void> {
+  const buf = await renderSiegeCinematic(view).catch(() => null);
+  if (!buf) return;
+  const embed = new EmbedBuilder().setColor(accent)
+    .setTitle(`🎥 ${view.attackerName} marches on ${view.targetName}`)
+    .setDescription(`_${view.tagline ?? "The horns sound. The gates are closing."}_`)
+    .setImage(`attachment://${SIEGE_CINEMATIC_FILE}`);
+  await interaction.editReply({
+    embeds: [embed], components: [],
+    files: [new AttachmentBuilder(buf, { name: SIEGE_CINEMATIC_FILE })],
+  }).catch(() => {});
+  // Let the film play out before the result replaces it.
+  await new Promise(resolve => setTimeout(resolve, CINEMATIC_HOLD_MS));
+}
+
+// Roughly the cinematic's own runtime, so the result doesn't cut it off.
+const CINEMATIC_HOLD_MS = 5200;
+
+// The territory as a base scene, so the siege animation reuses the exact same
+// castle/defender/health painter the player-base siege uses.
+function territoryBaseView(
+  view: WorldTerritoryView, theme: ReturnType<typeof resolveTheme>,
+  garrison: OwnedBattleCard[], cx: LoadedCtx,
+): HqBaseView {
+  const basePath = spriteForPrefix("base", "round");
+  const defenders: HqRenderDefender[] = garrison.map((c, slot) => {
+    const d = getCardDisplayRarity({ id: c.id, rarity: c.rarity as string }, cx.ctx, cx.settings, cx.displayMap);
+    return { slot, cardId: c.id, name: c.name, artUrl: toAbsoluteImageUrl(c.imageUrl), rarityColor: d.color, basePath };
+  });
+  return {
+    ownerName: view.faction.name,
+    displayTitle: view.territory.name,
+    ownerAvatarUrl: null,
+    theme,
+    roomEmoji: "🏰",
+    roomName: tierProfile(view.territory.tier).label,
+    hqLevel: view.territory.tier,
+    subtitle: `${holderLabel(view)} · ${tierStars(view.territory.tier)}`,
+    buildings: [{ role: view.territory.structure, spritePath: spriteForPrefix("building", view.territory.structure) }],
+    defenders,
+    captured: !!view.heldByUserId,
+    bannerColor: view.heldByUserId ? 0x4aa3ff : view.faction.color,
+  };
+}
+
+async function runTerritorySiege(
+  interaction: ButtonInteraction, guildId: string, attackerId: string, nodeId: string, mode: SiegeMode,
+): Promise<void> {
+  await interaction.deferUpdate().catch(() => {});
+  // Serialize per TERRITORY: two raiders clicking at once must not both pass the
+  // shield check and each "capture" the same castle.
+  await withHqLock(`hq:world:${guildId}:${nodeId}`, async () => {
+    if (isLiveSiegeTargetActive(`hq:world:${guildId}:${nodeId}`)) {
+      await interaction.editReply({
+        embeds: [new EmbedBuilder().setColor(0xc0392b)
+          .setDescription("❌ That territory is already under an interactive siege.")],
+        components: [backRow("world")], files: [],
+      }).catch(() => {});
+      return;
+    }
+    const view = await findTerritory(guildId, nodeId);
+    if (!view) {
+      await interaction.editReply({
+        embeds: [new EmbedBuilder().setColor(0xc0392b).setDescription("❌ That territory is no longer on the map.")],
+        components: [backRow("world")], files: [],
+      }).catch(() => {});
+      return;
+    }
+    const blocked = await territoryBlockReason(guildId, attackerId, view);
+    if (blocked) {
+      await interaction.editReply({
+        embeds: [new EmbedBuilder().setColor(0xc0392b).setDescription(`❌ ${blocked}`)],
+        components: [backRow("world")], files: [],
+      }).catch(() => {});
+      return;
+    }
+
+    const attackerName = interaction.user.username;
+    const cx = await loadCtx(guildId);
+    const garrison = buildGarrison(view.territory, cx.cards, cx.ctx);
+    if (garrison.length === 0) {
+      await interaction.editReply({
+        embeds: [new EmbedBuilder().setColor(0xc0392b).setDescription(
+          "❌ This server has no cards yet, so the garrison couldn't muster. Add cards and try again.")],
+        components: [backRow("world")], files: [],
+      }).catch(() => {});
+      return;
+    }
+    const attackerCards = await buildAttackerCards(guildId, attackerId, cx.ctx, garrison.length).catch(() => []);
+    if (attackerCards.length === 0) {
+      await interaction.editReply({
+        embeds: [new EmbedBuilder().setColor(0xc0392b).setDescription(
+          "❌ You have no cards to march with. Catch some first.")],
+        components: [backRow("world")], files: [],
+      }).catch(() => {});
+      return;
+    }
+
+    const theme = resolveTheme((await getOrCreateHq(guildId, attackerId)).themeId);
+    const defenderName = holderLabel(view);
+
+    // Turn-by-turn: the player commands the assault on the territory themselves.
+    if (mode === "turn") {
+      await launchTerritoryLiveSiege(interaction, guildId, attackerId, attackerName, nodeId, view, theme, garrison, attackerCards, cx);
+      return;
+    }
+
+    // The opening film, before anything is resolved.
+    if (mode === "cinematic") {
+      const cine: SiegeCinematicView = {
+        targetName: view.territory.name,
+        holderName: defenderName,
+        defenderColor: view.heldByUserId ? 0x4aa3ff : view.faction.color,
+        attackerColor: theme.palette.accent,
+        attackerName,
+        cards: attackerCards.slice(0, 5).map(c => {
+          const d = getCardDisplayRarity({ id: c.id, rarity: c.rarity as string }, cx.ctx, cx.settings, cx.displayMap);
+          return { name: c.name, artUrl: toAbsoluteImageUrl(c.imageUrl), rarityColor: d.color };
+        }),
+        garrison: garrison.length,
+        structure: view.territory.structure,
+        mood: moodForBiome(view.territory.biome),
+        tagline: view.territory.blurb,
+      };
+      await playCinematic(interaction, cine, view.faction.color);
+    }
+
+    // Resolve with the real battle engine; fall back to the power resolver only
+    // if battles are disabled or the engine throws.
+    let result: SiegeOutcome;
+    try {
+      const settings = await getBattleSettings(guildId);
+      if (!settings.enabled) throw new Error("battles disabled");
+      const r = simulateSiegeBattle(attackerCards, garrison, settings, guildId, cx.ctx, {
+        attackerId, attackerName, defenderId: `world:${nodeId}`, defenderName,
+      });
+      result = outcomeFromBattle(r, championRender(attackerCards[0], cx));
+    } catch {
+      const atk = await buildAttackerSquad(guildId, attackerId, cx, garrison.length);
+      const def = garrison.map(c => toSiegeCombatant(c, cx));
+      result = outcomeFromPower(resolveSiege(atk, def), championRender(attackerCards[0], cx), def.length);
+    }
+
+    const prof = tierProfile(view.territory.tier);
+    let previousHolder: string | null = null;
+    if (result.attackerWon) {
+      ({ previousHolder } = await captureTerritory(guildId, nodeId, attackerId, attackerName, WORLD_SHIELD_MS)
+        .catch(() => ({ previousHolder: null })));
+    } else {
+      await markTerritoryAttacked(guildId, nodeId).catch(() => {});
+    }
+    await logSiege(
+      guildId, attackerId, territoryLogKey(nodeId), result.attackerWon,
+      result.attackerPower, result.defenderPower, mode,
+    ).catch(() => {});
+
+    const reward = result.attackerWon ? prof.bounty : Math.round(prof.bounty * 0.12);
+    await addShards(guildId, attackerId, reward).catch(() => {});
+
+    const embed = new EmbedBuilder()
+      .setColor(result.attackerWon ? 0x4fd06a : view.faction.color)
+      .setTitle(result.attackerWon ? `🚩 ${view.territory.name} is yours!` : `🛡️ ${view.territory.name} holds`)
+      .setDescription(
+        result.attackerWon
+          ? `**${attackerName}** broke the ${defenderName} garrison — ${result.summary}.\n` +
+            `You hold this ${prof.label.toLowerCase()} until someone takes it off you, earning **${prof.tributePerHour}💠/hr**. ` +
+            "Collect from the 🗺️ World Map."
+          : `The ${defenderName} garrison threw you back — ${result.summary}.`,
+      )
+      .addFields(
+        { name: "⚔️ Squad power", value: `**${result.attackerPower}**`, inline: true },
+        { name: "🛡️ Garrison power", value: `**${result.defenderPower}**`, inline: true },
+        { name: "💠 Loot", value: `**+${reward}** shards`, inline: true },
+      );
+
+    // Whoever just lost the castle deserves to know.
+    if (previousHolder && previousHolder !== attackerId) {
+      void notifyTerritoryLost(interaction, previousHolder, attackerName, view.territory.name);
+    }
+
+    const files: AttachmentBuilder[] = [];
+    const baseView = territoryBaseView(view, theme, garrison, cx);
+    const plan: SiegePlan = {
+      duels: result.duels,
+      defenderCount: result.defenderCount,
+      captured: result.attackerWon,
+      attacker: result.champ,
+      attackerName, defenderName,
+    };
+    const live = mode !== "static";
+    const buf = await renderSiege(baseView, plan, live, mode === "classic").catch(() => null);
+    if (buf) {
+      const name = live ? SIEGE_GIF : SIEGE_FILE;
+      files.push(new AttachmentBuilder(buf, { name }));
+      embed.setImage(`attachment://${name}`);
+    }
+    if (mode === "classic" && result.logLines.length) {
+      embed.addFields({ name: result.real ? "⚔️ Battle log" : "Duels", value: result.logLines.join("\n").slice(0, 1024) });
+    }
+    await interaction.editReply({ embeds: [embed], components: [backRow("world")], files }).catch(() => {});
+  });
+}
+
+// Best-effort DM to the member who just lost a territory.
+async function notifyTerritoryLost(
+  interaction: ButtonInteraction, holderId: string, attackerName: string, territoryName: string,
+): Promise<void> {
+  try {
+    const guildName = interaction.guild?.name ?? "your server";
+    const user = await interaction.client.users.fetch(holderId);
+    await user.send({
+      embeds: [new EmbedBuilder().setColor(0xc0392b)
+        .setTitle("🚩 You lost a territory!")
+        .setDescription(
+          `**${attackerName}** has taken **${territoryName}** from you in **${guildName}**. ` +
+          "Its tribute now flows to them — retake it from **/hq → 🗺️ World Map** once the shield lifts.")],
+    });
+  } catch {
+    // DMs closed / user unreachable — silently skip.
+  }
 }
 
 // Best-effort DM to a base owner after their base is attacked. Never throws (DMs
@@ -1835,7 +2844,7 @@ async function buySurface(guildId: string, userId: string, id: string): Promise<
     await addShards(guildId, userId, s.price).catch(() => {}); // refund the race
     return `You already own ${s.emoji} ${s.name} — no charge.`;
   }
-  return `✅ Bought ${s.emoji} **${s.name}** for 💠 ${s.price}! Apply it from **🎨 Style**.`;
+  return `✅ Bought ${s.emoji} **${s.name}** for 💠 ${s.price}! Use it from **${s.usedIn}**.`;
 }
 
 // ── Mystery crate (shard sink → a random furniture piece) ──────────────────────
@@ -1902,4 +2911,12 @@ function nextUnlockHint(owned: Set<string>): string | null {
   if (nextRoom) bits.push(`🚪 **${nextRoom.name}** — ${unlockLabel(nextRoom.unlock)}`);
   if (nextDeco) bits.push(`${nextDeco.emoji} **${nextDeco.name}** — ${unlockLabel(nextDeco.unlock)}`);
   return bits.length ? bits.join("\n") : null;
+}
+
+// Test seam for scripts/src/hq-smoke.ts: build one section's view from a
+// minimal interaction shape, so every section's Discord payload can be checked
+// against the API's limits without a gateway connection.
+export type HqSection = Section;
+export async function __buildViewForTest(interaction: HubInteraction, section: HqSection) {
+  return buildView(interaction, section, []);
 }

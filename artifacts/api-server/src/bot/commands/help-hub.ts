@@ -161,7 +161,10 @@ const PAGES: Record<HelpSection, PageFn> = {
           "`/catalog category:<rarity|event|limited|all>` — browse by type\n" +
           "**/user-hub → Search** — free-text card search (shows ⭐ on cards you own)" },
         { name: "🏠 Headquarters", value:
-          "`/hq` — your personal **Headquarters**: an isometric room you customize. Feature your proudest cards on **Trophy Hall** pedestals, place **decorations** you earn by playing or find as **catch drops**, **buy furniture** from the daily-rotating **🛒 Shop** (shards), and restyle with **themes, walls & floors** as you unlock new rooms.\n" +
+          "`/hq` — your personal **Headquarters**: an isometric room you customize. Feature your proudest cards on **Trophy Hall** pedestals, place **decorations** you earn by playing or find as **catch drops**, **buy furniture** from the daily-rotating **🛒 Shop** (shards), and restyle with **themes, real wallpaper & floors** as you unlock new rooms.\n" +
+          "**/hq → 🗺️ World Map** — a whole continent already held by six **AI factions**. March on a castle, take it, and it pays you 💠 every hour you hold it. Pick **Cinematic** to watch the full opening scene before the battle.\n" +
+          "**/hq → 🛠️ Build** — the world editor: move a cursor around the isometric grid and paint **paving, ponds, hills and raised platforms** in rectangles, indoors or on your grounds.\n" +
+          "`/hqbuild place|remove|list|clear|wallpaper|materials` — the same editor by typing exact coordinates\n" +
           "`/hq user:@member` — visit someone else's HQ and see what they've accomplished" },
         { name: "🏅 Progress & Rank", value:
           "**/user-hub → Progression** — account level & XP across every activity\n" +

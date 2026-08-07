@@ -34,6 +34,8 @@ export type Ctx = SKRSContext2D & {
   // Line styling — spec-complete on the Skia context but under-declared here.
   lineJoin: string;
   lineCap: string;
+  setLineDash(segments: number[]): void;
+  rect(x: number, y: number, w: number, h: number): void;
 };
 
 // Horizontal text alignment values accepted by the napi-rs 2D context. Declared

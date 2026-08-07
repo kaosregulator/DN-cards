@@ -2,9 +2,11 @@
 
 A persistent, per-server **Headquarters**: every player's customizable home and
 showcase, and the answer to *"what has this player accomplished?"* Cards stay the
-centerpiece — the HQ is where you **display** them. Purely additive: four new
-tables (`player_hq`, `hq_unlocks`, `hq_displays`, `hq_placements`) and one new
-`/hq` command. HQ progression is **derived** from the systems you already play
+centerpiece — the HQ is where you **display** them. Purely additive: its own
+tables (`player_hq`, `hq_unlocks`, `hq_displays`, `hq_placements`,
+`hq_defenders`, `hq_base_state`, `hq_base_attacks`, `hq_base_reigns`,
+`hq_world_nodes`, `hq_terrain`) and the `/hq`, `/hqbuild` and `/hqadmin`
+commands. HQ progression is **derived** from the systems you already play
 (collection, battles, raids, achievements, daily streak), so nothing is
 duplicated and existing players are back-filled the first time they open `/hq`.
 
@@ -19,14 +21,15 @@ choose the layout), and personalization (a custom HQ name + motto).
 pnpm --filter @workspace/db push
 ```
 
-On the hosted deployment the four tables are also created idempotently in
+On the hosted deployment every HQ table is also created idempotently in
 `runBootMigrations()` (`artifacts/api-server/src/index.ts`), so a republish
 provisions them with no manual push.
 
 ## Commands (`/hq`)
 
 - `/hq` — open **your** Headquarters (ephemeral, editable). Sections:
-  **Overview**, **Trophy Hall**, **Decorations**, **Rooms**, **Theme**.
+  **Overview**, **Trophy Hall**, **Base**, **World Map**, **Build**,
+  **Decorations**, **Shop**, **Rooms**, **Style**.
   - **Overview → Name your HQ** — set a custom HQ name (shown on the rendered
     banner) and a short motto. Stored in the additive `player_hq.stats` jsonb —
     no schema change.
@@ -44,7 +47,56 @@ provisions them with no manual push.
     `portrait-frame:<cardId>` (so no schema change; the base id `portrait-frame`
     is what ownership/prune checks resolve to). Pick a card → pick a wall spot;
     the renderer pulls the card's live art via `drawCardPortrait`.
+  - **🗺️ World Map** — a continent already held by six AI factions. March on a
+    castle, take it, and it pays 💠 every hour you hold it. See
+    [The world map](#the-world-map-hq--️-world-map).
+  - **🛠️ Build** — the world editor. See [Build mode](#build-mode-the-world-editor).
 - `/hq user:@member` — visit another member's HQ, read-only.
+- `/hqbuild <sub>` — the typed half of the world editor
+  (`place` · `remove` · `clear` · `list` · `wallpaper` · `materials` · `view`).
+
+## Build mode (the world editor)
+
+Slot pickers are fine for hanging a banner, but they are the wrong tool for
+landscaping — you cannot see where anything is going, and a pond is not a slot.
+Build mode adds **areas**: rectangles of ground stamped onto the isometric
+lattice, indoors or on the grounds.
+
+**Two front ends, one editor.** They share the cursor
+(`player_hq.stats.build`), the rows (`hq_terrain`) and the validation
+(`bot/hq/terrain.ts`), so a shape can be lined up with the arrow buttons and
+then fine-tuned by typing, or the other way round.
+
+- **`/hq → 🛠️ Build`** renders the canvas with **X/Y rulers** and a live neon
+  **cursor**, and drives it with buttons: ⬅️⬆️⬇️➡️ to move, `W`/`H` to cycle the
+  brush size, `Lift` for height, then **Place** / **Remove** / **Clear all**.
+  Selects choose the material and which space to build on.
+- **`/hqbuild place material:Pond x:3 y:4 width:3 height:2`** does the same at
+  exact coordinates — the ones printed on the rulers. Every `/hqbuild` reply
+  re-renders the canvas, so a build is never done blind. `/hqbuild list` prints
+  ids for `/hqbuild remove id:<n>`.
+
+**Materials** (`bot/hq/defs/surfaces.ts`) are generic: a `kind` decides how
+`render-terrain.ts` paints the rectangle, so the renderer never hardcodes what
+"water" means.
+
+| Kind | Painted as | Examples |
+| --- | --- | --- |
+| `flat` | A coloured patch on the floor plane | grass, dirt, stone path, sand, snow, marble inlay, red carpet, lava |
+| `water` | Recessed banks, ripple arcs, a specular sheen and a bright shoreline | pond, deep water, hot spring |
+| `raised` | An iso slab with two lit side walls | wood deck, stone plinth, battlement |
+| `mound` | Concentric rings lofted inward into a dome | grass hill, dirt bump, sand dune, rock crag, snow drift |
+
+**Two lattices, one painter.** The interior room is 8×8 and the outdoor grounds
+are 10×10 (`bot/hq/grid.ts`); `paintTerrain` takes an `IsoProjector`, so the same
+code paints a pond in a Trophy Hall and a hill on the grounds. Rectangles are
+depth-sorted by their near corner and then by an explicit `z`, so a deck
+correctly overlaps the paving behind it and a path can be laid *over* grass
+without deleting the grass.
+
+Limits: **8×8** tiles per rectangle, **5** steps of lift/depth, **40** surfaces
+per space. Materials with a `price` are sold in the Shop's Surfaces aisle and
+granted as `itemType: "material"`.
 
 ## The engine is theme-agnostic (data-driven)
 
@@ -55,6 +107,9 @@ lives entirely in data:
 - `bot/hq/defs/themes.ts` — palette, lighting, ambient particles, asset prefix.
 - `bot/hq/defs/rooms.ts` — pedestal count, decoration-slot count, unlock rule.
 - `bot/hq/defs/decorations.ts` — rarity, category, unlock rule, earning story.
+- `bot/hq/defs/wallpapers.ts` — motif, colours, repeat density, dado/skirting.
+- `bot/hq/defs/surfaces.ts` — build materials: kind, colours, texture, height.
+- `bot/hq/defs/world.ts` — AI factions, territories, trade routes, tier economics.
 - `bot/hq/defs/unlock-rules.ts` — one declarative `UnlockRule` union + evaluator.
 
 **Adding a theme/room/decoration = append to a registry.** No engine changes.
@@ -76,11 +131,22 @@ lighting/mood while walls + floor reskin the room itself:
   same unlock-rule contract as walls/floors, reconciled into `hq_unlocks` as
   `itemType: "backdrop"`. The backdrop PNG cover-fits the canvas with a soft
   dark overlay; `none` renders the plain themed backdrop.
-- **Wallpaper** — the same backdrop art can instead be painted _onto the wall
-  faces_ (`stats.wallpaperId`, reusing the backdrop unlock ledger). Pick an
-  outdoor scene and the walls stay **up** but look like the outdoors — this is
-  the everyday "make it feel outside" control; `none` = the plain wall style.
-  Walls-off + backdrop is the fuller open-air variant.
+- `defs/wallpapers.ts` — **real wallpaper**: a repeating motif papered onto the
+  two wall faces *in isometric perspective*, with a dado rail and skirting.
+  Twelve styles ship (stripe, quatrefoil damask, floral, harlequin, chevron,
+  exposed brick, wainscot panels, plaid, neon hex, circuit, starfield, plain).
+  Chosen in 🎨 Style, stored as `stats.wallpaperId`, reconciled into
+  `hq_unlocks` as `itemType: "wallpaper"`.
+
+  Motifs are stamped in the wall's own `(u, v)` parameter space rather than
+  blitted flat, so the pattern follows the wall's perspective at any room size.
+  Dropping `wallpaper/<id>.png` into the art pack replaces the procedural motif
+  with a seamless tile.
+
+  *Migration note:* this replaces the old wallpaper, which stretched a single
+  **backdrop photo** across the walls. Backdrop ids no longer resolve as
+  wallpaper, so an HQ that had one set falls back to the plain wall style until
+  a real wallpaper is picked — the usual resolve-to-default contract.
 
 Everything in the Style section persists to the additive `player_hq.stats` jsonb
 (no schema change): `backdropId`, plus two room-shell toggles — `wallsOff`
@@ -104,17 +170,44 @@ Fantasy, Vehicles, …) is **assets + config only**.
 
 ### Drop-in art specs (for uploaded 2D assets)
 
-Put PNGs under `artifacts/api-server/assets/hq/` with a `manifest.json`
-(`{ "sprites": { "<prefix>/<key>": "<file>.png" } }`). Furniture is the highest
--impact art:
+Drop image files (`.png`, `.webp`, `.jpg`) under
+`artifacts/api-server/assets/hq/` and restart. **No JSON editing is needed** —
+`spriteForPrefix` resolves `<dir>/<prefix>/<key>.<ext>` by convention, so a file
+lands wherever its folder and filename say it should:
 
-- **Furniture / decorations** — square PNG, transparent background, ~256×256,
-  key `deco/<id>` (see each decoration's `spriteKey`). Drawn ~108 px, base-
-  anchored on the floor tile.
-- **Wall faces** — key `<wallPrefix>/wall-left` · `/wall-right` (e.g.
-  `wall/windowed/wall-left`). *(Wall/floor art blitting lands with the pack;
-  procedural styles render today.)*
-- **Floor tiles** — key `<floorPrefix>/tile`.
+| Seam | Where to put the file | Notes |
+| --- | --- | --- |
+| Furniture / decorations | `deco/<decorationId>.png` | Square, transparent, ~256×256. Drawn ~108 px, base-anchored on the tile. |
+| Build materials | `surface/<materialId>.png` | Tiles the rectangle's top face. |
+| Wallpaper | `wallpaper/<wallpaperId>.png` | A **seamless** tile; repeated `repeatX × repeatY` per wall face. |
+| Wall faces | `<wallPrefix>/wall.png` | e.g. `wall/windowed/wall.png`. |
+| Floor tiles | `<floorPrefix>/tile.png` | e.g. `floor/marble/tile.png`. |
+| Buildings | `building/<role>.png` | `castle`, `keep`, `tower`, `cathedral`, `houses`, `village`, `camp`, `hut`, `wall`. Used by the world map, the base scene and the siege cinematic. |
+| Defender bases | `base/round.png` | The disc a card standee stands on. |
+| Backdrops | `backdrop/<backdropId>.png` | Cover-fit behind the room. |
+
+Two escape hatches for cases the convention can't express:
+
+- `manifest.json` still wins when present, so one file can serve several keys or
+  live under a name that doesn't match its key. Regenerate it from whatever is
+  on disk (credits and hand-written aliases preserved) with:
+
+  ```bash
+  pnpm --filter @workspace/scripts run hq:manifest        # add --dry to preview
+  ```
+
+- `HQ_ASSETS_DIR` overrides the pack directory outright, so a deployment can
+  mount an uploaded pack from outside the repo without a rebuild.
+
+Anything not found stays **procedural**, so a partial pack is fine — art can be
+added one seam at a time.
+
+### Previewing art changes
+
+`pnpm --filter @workspace/scripts run hq:preview [outDir]` renders every HQ
+canvas — world map, siege cinematic (as a GIF plus one still per beat), rooms
+with wallpaper and built terrain, and the outdoor grounds — straight to files
+using the real renderers. No database and no Discord.
 
 ## How you get decorations
 
@@ -245,24 +338,103 @@ auto-resolver (`bot/hq/siege.ts`, `resolveSiege`). A per-target attacker
 shield expires.
 
 Every siege renders **on the castle base scene** (castle + defender cards +
-castle health) — never a separate VS screen. Three ways to watch:
+castle health) — never a separate VS screen. Four ways to watch:
 
+- **🎥 Cinematic** — the full opening film, *then* the battle (see below).
 - **Classic** — animated on the castle with **move-by-move captions**
   ("X used <Move>!") and hit flashes as defenders fall.
 - **Static** — a single final frame on the base scene.
 - **Live** — the clean animated siege (health drains, defenders ✕, attacker
   storms the gate) via the shared `encodeAnimation` engine.
 
-**World Map** (`/hq → 🗺️ World Map`) shows the guild's other bases as castles on
-an isometric map (banner + health + name; 🚩 = held), and lets you pick one to
-raid. **Captures persist until reclaimed** — the owner gets a Reclaim button once
-the conqueror's shield lapses.
+### The siege cinematic
+
+`bot/hq/cinematic.ts` renders a **landscape (16:9)** opening film — deliberately
+a different shape from the 1120×680 room, because the shot is a wide
+establishing view of a battlefield, not a diorama. It plays into the ephemeral
+hub message, holds for its own runtime, and is then replaced by the battle
+result. Everything is a pure function of one normalised timeline:
+
+| Beat | `t` | What happens |
+| --- | --- | --- |
+| Arrival | 0.00–0.20 | Fade up, letterbox slides in, camera pushes in on the castle; the target's name and its holder title in. |
+| Muster | 0.20–0.42 | The portcullis lifts, light spills from the gate, and the garrison forms a line outside it. |
+| The cards | 0.42–0.66 | The raider's cards streak in from off-frame with motion trails and slam into a fan, each with a landing shockwave. |
+| Deploy | 0.66–0.86 | The siege line goes up: stakes, pavise shields and braziers, while the ranks finish marching in. |
+| Engage | 0.86–1.00 | Horn-blast flash, a light wipe, and the **THE SIEGE BEGINS** title card. |
+
+The **mood** (`dawn` · `dusk` · `night` · `storm` · `snow` · `ash`) sets the sky,
+the ground, the key light and the weather particles, and is derived from the
+target's biome — so a volcanic citadel fights under falling ash and a frost
+bastion under snow. The castle uses `building/<role>` art when the pack has it
+(with ground-planted banners flanking it, since a sprite's own headroom is
+unknown) and a procedural keep otherwise.
+
+`renderCinematicStill(view, t)` renders any single beat as a PNG. It is the
+fallback when GIF encoding is unavailable or blows the attachment budget, and
+what the preview harness uses to check the beats frame by frame.
+
+## The world map (`/hq → 🗺️ World Map`)
+
+The map used to be a directory of other players' bases, which meant a new or
+quiet server had nothing to attack. It is now a **campaign map that ships
+already conquered**: six AI factions hold a ring of twelve territories across a
+rendered continent, and members take them off the factions (and off each other).
+
+`bot/hq/render-world.ts` draws the whole thing procedurally — ocean and swell,
+a lumpy coastline with a continental shelf and beach, biome regions with
+matching scatter (pines, snowcaps, dunes, reeds, ash vents, hillocks), rivers
+and an inland lake, dusty trade roads between holdings, a compass rose and a
+holdings tally. Every castle flies its current owner's banner and carries a name
+plate with the faction tag, tier and garrison size; plates are laid out in a
+second pass with collision avoidance so a crowded continent stays readable.
+Castles use `building/<role>` art when available and a tier-scaled procedural
+keep otherwise (a palisaded outpost at T1, a walled castle with conical corner
+towers at T6).
+
+**The blueprint is data.** `bot/hq/defs/world.ts` holds the factions, the
+territories (position, biome, tier, garrison, structure, blurb), the trade
+routes, the member-base anchors, and the tier economics:
+
+| Tier | Label | Garrison level | Bounty | Tribute |
+| --- | --- | --- | --- | --- |
+| 1 | Outpost | ~8 | 120 💠 | 4 💠/hr |
+| 2 | Redoubt | ~18 | 220 💠 | 6 💠/hr |
+| 3 | Keep | ~30 | 360 💠 | 9 💠/hr |
+| 4 | Stronghold | ~45 | 540 💠 | 13 💠/hr |
+| 5 | Citadel | ~62 | 780 💠 | 18 💠/hr |
+| 6 | Capital | ~80 | 1100 💠 | 25 💠/hr |
+
+Adding a territory or a faction is an append to that file; `ensureWorld` creates
+the missing `hq_world_nodes` rows on the next map view, so existing servers pick
+it up with no migration. The table owns only **who holds what** — never where a
+castle is.
+
+**The AI garrison is real cards.** There is no AI player and no AI collection,
+so `buildGarrison` synthesises defenders from the guild's own card pool: seeded
+by the territory id (the same castle always fields the same faces, which makes
+scouting meaningful), drawn at or above the tier's rarity floor, and scaled
+through the ordinary level and star-rank knobs. They are plain
+`OwnedBattleCard`s, so `simulateSiegeBattle` fights them with no AI-specific
+branch. The front rank is slightly softer than the captain behind it, so a
+garrison has a shape to break.
+
+Territory attacks are logged into the same `hq_base_attacks` table keyed
+`world:<nodeId>`, so the per-target cooldown and the conquest leaderboard cover
+the campaign without a second log. Sieges are serialized per territory
+(`withHqLock`), so two raiders clicking at once can't both capture the same
+castle.
+
+Member bases still share the map, pinned along the settled southern coast.
+**Captures persist until reclaimed** — a base owner gets a Reclaim button once
+the conqueror's shield lapses, and whoever loses a territory gets a DM.
 
 **Shards while you hold.** Every base you hold pays a passive **hold-tribute** of
-`TRIBUTE_PER_HOUR` (5) 💠/hr, minted — never drained from anyone. It's collected
-**pull-based**: opening the 🗺️ World Map pays out everything owed across the
-bases you hold and restarts the clock. Accrual is capped at `TRIBUTE_CAP_HOURS`
-(48h) so a base left unvisited doesn't dump a jackpot (`tributeOwed`, `siege.ts`).
+`TRIBUTE_PER_HOUR` (5) 💠/hr, and every **world territory** pays its tier's rate
+(4 → 25 💠/hr) — minted, never drained from anyone. It's collected **pull-based**:
+opening the 🗺️ World Map pays out everything owed across both and restarts the
+clocks. Accrual is capped at 48h so a holding left unvisited doesn't dump a
+jackpot (`tributeOwed` in `siege.ts`, `territoryTributeOwed` in `world.ts`).
 
 **Longest-hold leaderboard + Sovereign title.** Each hold is timed; when a reign
 ends (recaptured or reclaimed) it's logged to `hq_base_reigns`. The World Map
@@ -307,8 +479,9 @@ Admin-gated (same check as `/admin` / `/edit-user`). `/hqadmin user:@member`
 opens a panel to fix or reset a member's HQ — all HQ-only data, never the base
 game: **Set HQ level**, **Unlock everything** / **Revoke all unlocks**,
 **Re-sync from progress** (runs the reconcile), **Reset base capture** (clears a
-stuck flag/shield), **Clear defenders**, and **Wipe layout** (placements +
-defenders). Accessors live in `bot/hq/db.ts`; the command is `bot/commands/hq-admin.ts`.
+stuck flag/shield), **Clear defenders**, and **Wipe layout** (placements + built
+terrain + defenders). Accessors live in `bot/hq/db.ts` and `bot/hq/terrain.ts`;
+the command is `bot/commands/hq-admin.ts`.
 
 ## Addon boundaries (ties in without changing the base game)
 
@@ -320,9 +493,32 @@ best-effort catch-drop hook, help text, and boot migrations. Content is all
 registries under `bot/hq/defs/*` and art is drop-in via the manifest, so it stays
 easy to extend or tweak.
 
+## Validation
+
+Plain Node asserts against the real runtime modules — no test framework,
+mirroring `validate:rarity`.
+
+```bash
+pnpm --filter @workspace/scripts run validate:hq   # pure logic, no database
+DATABASE_URL=… pnpm --filter @workspace/scripts run smoke:hq
+```
+
+`validate:hq` covers globally unique **gated** cosmetic ids (they all share one
+`hq_unlocks` ledger, so a collision between two gated items would cross-wire
+them), a world blueprint whose markers actually land on the rendered landmass,
+a monotonic tier ladder with no gaps, deterministic and tier-scaled AI
+garrisons, capped and non-negative tribute, and a build cursor that clamps onto
+whichever grid it is read against.
+
+`smoke:hq` builds **every `/hq` section** for a throwaway player and validates
+the payload Discord would receive: at most five action rows, every select
+carrying 1–25 options, labels and descriptions inside their limits, embed fields
+under 1024 characters, and an image that actually rendered. These are the
+failures a typecheck can't see and that otherwise surface as a 400 from the API
+in production.
+
 ## Future phases (same engine, no rewrite)
 
-Mystery crates · visitors & companions · free-form grid move/rotate · per-room
-featured-card pedestals · admin-uploaded & community art packs via
-`spriteForPrefix` (walls/floors/furniture) · guild HQ · weather / day-night ·
-animated HQ reveals.
+Faction counter-attacks that take territory back · clan co-op sieges behind the
+same `resolveSiege` interface · per-room featured-card pedestals · rotation for
+placed decorations · community art packs · guild HQ · weather / day-night.

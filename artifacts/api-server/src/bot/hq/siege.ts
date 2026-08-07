@@ -49,7 +49,11 @@ export function resolveSiege(
   attackers: SiegeCombatant[],
   defenders: SiegeCombatant[],
   rand: () => number = Math.random,
+  // Fortification: the defender's built defences + base tier, as a % that hardens
+  // every defender's roll (hq/fortify.ts). 0 for an unfortified base / territory.
+  defenderBonusPct = 0,
 ): SiegeResult {
+  const fortify = 1 + Math.max(0, defenderBonusPct) / 100;
   const n = Math.max(attackers.length, defenders.length);
   const duels: SiegeDuel[] = [];
   let attackerWins = 0, defenderWins = 0;
@@ -60,7 +64,7 @@ export function resolveSiege(
     if (!a && !d) continue;
     // A side with no card at this post auto-loses the post.
     const attackerRoll = a ? a.power * (1 + (rand() * 2 - 1) * VARIANCE) : 0;
-    const defenderRoll = d ? d.power * (1 + (rand() * 2 - 1) * VARIANCE) : 0;
+    const defenderRoll = d ? d.power * fortify * (1 + (rand() * 2 - 1) * VARIANCE) : 0;
     const attackerWon = attackerRoll >= defenderRoll;
     if (a && d) duels.push({ attacker: a, defender: d, attackerRoll, defenderRoll, attackerWon });
     if (attackerWon) attackerWins++; else defenderWins++;

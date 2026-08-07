@@ -220,6 +220,87 @@ export function applyItemEffect(item: BattleItem, self: Combatant, foe: Combatan
   return { events, damage, koed: false };
 }
 
+// Whether an item's PRIMARY effect harms its target (so the raid UI aims it at
+// the boss) rather than helping it (aimed at self or a teammate).
+export function isOffensiveItem(item: BattleItem): boolean {
+  return item.effectType === "damage"
+    || item.effectType === "debuff"
+    || (item.effectType === "status" && item.target === "foe");
+}
+
+// Team-aware application: `actor` uses `item` on `target`. Support effects
+// (heal / shield / energy / buff / self-status) benefit `target`; offensive
+// effects (damage / debuff / foe-status) hurt `target`. The log names both
+// sides, so a raid reads "Alice → Bob · Med Kit — restored 120 HP." Uses the
+// same combatant mutations as applyItemEffect. When actor === target the tag
+// collapses to a single name.
+export function applyItemUse(item: BattleItem, actor: Combatant, target: Combatant): ItemOutcome {
+  const events: BattleEvent[] = [];
+  let damage = 0;
+  const flash = (item.animation as BattleEvent["flash"]) ?? undefined;
+  const who = actor === target ? actor.cardName : `${actor.displayName} → ${target.cardName}`;
+  const tag = `${item.emoji} **${who}** · ${item.name}`;
+
+  switch (item.effectType) {
+    case "heal": {
+      const heal = pct(target.stats.maxHealth, item.power);
+      const before = target.hp;
+      const revived = before <= 0;
+      target.hp = Math.min(target.stats.maxHealth, target.hp + heal);
+      events.push({
+        text: revived
+          ? `${tag} — **revived ${target.cardName}** with **${target.hp}** HP!`
+          : `${tag} — restored **${target.hp - before}** HP.`,
+        flash: "heal",
+      });
+      break;
+    }
+    case "shield": {
+      const shield = pct(target.stats.maxHealth, item.power);
+      target.shield += shield;
+      events.push({ text: `${tag} — **${target.cardName}** gains a **${shield}** HP shield.`, flash: "shield" });
+      break;
+    }
+    case "energy": {
+      const before = target.energy;
+      target.energy = Math.min(target.stats.energyMax, target.energy + item.power);
+      events.push({ text: `${tag} — **${target.cardName}** recovers **${target.energy - before}** energy.`, flash });
+      break;
+    }
+    case "damage": {
+      const dmg = pct(target.stats.maxHealth, item.power);
+      const absorbed = Math.min(target.shield, dmg);
+      target.shield -= absorbed;
+      const through = dmg - absorbed;
+      target.hp = Math.max(0, target.hp - through);
+      damage = through;
+      events.push({ text: `${tag} — dealt **${dmg}** damage to ${target.cardName}${absorbed ? ` (${absorbed} absorbed)` : ""}.`, flash: flash ?? "combo" });
+      if (target.hp <= 0) return { events, damage, koed: true };
+      break;
+    }
+    case "debuff": {
+      if (item.power > 0) {
+        const before = target.energy;
+        target.energy = Math.max(0, target.energy - item.power);
+        if (before !== target.energy) events.push({ text: `${tag} — drained **${before - target.energy}** energy from ${target.cardName}.`, flash: flash ?? "freeze" });
+      }
+      if (item.statusKind) {
+        target.status.push(makeStatus(item.statusKind, item.duration, item.power, item.name));
+        events.push({ text: `${tag} — ${target.cardName} is **${labelFor(item.statusKind)}** for ${item.duration} turn(s).`, flash: flash ?? "freeze" });
+      }
+      break;
+    }
+    case "buff":
+    case "status": {
+      const kind = item.statusKind ?? "buff";
+      target.status.push(makeStatus(kind, item.duration, item.power, item.name));
+      events.push({ text: `${tag} — ${target.cardName} gains **${labelFor(kind)}** for ${item.duration} turn(s).`, flash: flash ?? "combo" });
+      break;
+    }
+  }
+  return { events, damage, koed: false };
+}
+
 function makeStatus(kind: StatusKind, turns: number, magnitude: number, label: string): StatusEffect {
   return { kind, turns: Math.max(1, turns), magnitude, label, emoji: emojiFor(kind) };
 }

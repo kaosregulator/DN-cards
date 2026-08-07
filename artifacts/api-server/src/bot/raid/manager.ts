@@ -14,6 +14,10 @@ import { and, eq } from "drizzle-orm";
 import type { Combatant, MoveType } from "../battle/types.js";
 import type { Rarity } from "../cards-data.js";
 import { getBattleSettings, rarityAllowed } from "../battle/config-engine.js";
+import {
+  listBattleItems, getBattleItem, loadGuildBattleItems, applyItemUse, isOffensiveItem,
+  type BattleItem,
+} from "../battle/items.js";
 import { getOwnedBattleCards, getOrCreateProfile } from "../battle/db.js";
 import { getRarityContext } from "../db.js";
 import type { OwnedBattleCard } from "../battle/db.js";
@@ -27,6 +31,8 @@ import { getBossByName, getBossById, getEnabledBosses, getNextBoss, grantRaidFra
 import { raidFrameForBoss } from "../cards/frames.js";
 import { renderAttackFrame } from "../animations/index.js";
 import { renderFatalityCinematic } from "../animations/cinematic/index.js";
+import { getRarityEffectColor } from "../animations/effects.js";
+import { renderSiegeCinematic, SIEGE_CINEMATIC_FILE, type SiegeCinematicView } from "../hq/cinematic.js";
 import type { RenderCard } from "../battle/image/render.js";
 import {
   buildBossCombatant, buildPlayerCombatant, resolveRaidRound,
@@ -50,6 +56,9 @@ const RAID_FATALITY_FILE = "raid-fatality.gif";
 // The boss is "finishable" once it drops to this fraction of max HP: the party
 // can choose to end it with a 💀 Fatality cinematic instead of a normal clear.
 const RAID_FATALITY_HP_FRACTION = 0.10;
+// Each raider carries a small satchel of field items for the whole raid — med
+// kits, shields, grenades — usable on themselves, a teammate, or the boss.
+const RAID_ITEM_USES = 3;
 const RAID_BEAT_MS = 1100;   // hold per animated hit
 const RAID_TICK_MS = 550;    // hold per text-only beat (status ticks)
 const RAID_MAX_ANIM_BEATS = 10; // cap frames per round so big parties stay snappy
@@ -73,6 +82,11 @@ interface RaidSession {
   bossCombatant?: Combatant;
   roundNumber: number;
   pendingActions: Map<string, MoveType>;
+  // Field-item support: how many item uses each member has left for the whole
+  // raid, and who has already spent their action on an item THIS round (so they
+  // can't also attack). Reset per round in resolveRound.
+  itemUsesLeft: Map<string, number>;
+  itemUsedThisRound: Set<string>;
   resolving: boolean;
   recentLog: string[];
   message?: Message;
@@ -154,7 +168,8 @@ export async function startRaid(interaction: ChatInputCommandInteraction, bossNa
   const session: RaidSession = {
     id, guildId, channelId: interaction.channelId!, starterId: interaction.user.id,
     boss, settings, phase: "lobby", party: new Map(), accepted: new Set(), roundNumber: 1,
-    pendingActions: new Map(), resolving: false, recentLog: [],
+    pendingActions: new Map(), itemUsesLeft: new Map(), itemUsedThisRound: new Set(),
+    resolving: false, recentLog: [],
   };
   sessions.set(id, session);
 
@@ -194,6 +209,9 @@ export async function handleRaidComponent(
     case "decline": return handleDecline(interaction as ButtonInteraction, session);
     case "cancel": return handleCancel(interaction as ButtonInteraction, session);
     case "act": return handleAct(interaction as ButtonInteraction, session, parts[3] as MoveType);
+    case "item": return handleItemOpen(interaction as ButtonInteraction, session);
+    case "itemsel": return handleItemSelect(interaction as StringSelectMenuInteraction, session);
+    case "itemtgt": return handleItemTarget(interaction as StringSelectMenuInteraction, session, parts[3]!);
     case "fatality": return handleRaidFatality(interaction as ButtonInteraction, session);
     default:
       await interaction.reply({ content: "Unknown raid action.", ...EPHEMERAL }).catch(() => {});
@@ -293,6 +311,13 @@ async function runIntroCutscene(session: RaidSession): Promise<void> {
   const beats = buildRaidIntroBeats(session.boss);
   const thumb = toAbsoluteImageUrl(session.boss.imageUrl);
 
+  // Opening film first: the same cinematic the HQ siege uses, but the thing on
+  // the ridge is the BOSS and the party's cards fly in — with the intro script
+  // typed over it word-for-word. Best-effort; on any failure we fall straight
+  // through to the classic text cutscene below (which is preserved as-is).
+  await playRaidCinematic(session, beats).catch(() => {});
+  if (session.phase !== "intro" || !session.message) return;
+
   const beatEmbed = (idx: number, withButtons: boolean) => {
     const e = new EmbedBuilder()
       .setTitle(`🐉 ${session.boss.name}`)
@@ -304,8 +329,9 @@ async function runIntroCutscene(session: RaidSession): Promise<void> {
   };
 
   // Beat 1 immediately (buttons hidden), then reveal the rest on a timer. Guard
-  // every edit on the session still being in the intro phase.
-  await session.message.edit({ embeds: [beatEmbed(0, false)], components: [] }).catch(() => {});
+  // every edit on the session still being in the intro phase. `files: []` clears
+  // the cinematic attachment so the text cutscene starts clean.
+  await session.message.edit({ embeds: [beatEmbed(0, false)], components: [], files: [] }).catch(() => {});
   for (let i = 1; i < beats.length; i++) {
     await sleep(INTRO_BEAT_MS);
     if (session.phase !== "intro" || !session.message) return;
@@ -320,6 +346,71 @@ async function runIntroCutscene(session: RaidSession): Promise<void> {
 }
 
 function sleep(ms: number): Promise<void> { return new Promise(r => setTimeout(r, ms)); }
+
+// Roughly the raid cinematic's runtime (see renderSiegeCinematic's boss path),
+// so the film plays out before the text cutscene replaces it.
+const RAID_CINEMATIC_HOLD_MS = 5600;
+
+// A raid's weather, derived from the boss's rarity so bigger bosses arrive under
+// a heavier sky. Deterministic per boss.
+function moodForBoss(boss: RaidBoss): SiegeCinematicView["mood"] {
+  switch (boss.rarity) {
+    case "mythic": return "ash";
+    case "legendary": return "night";
+    case "epic": return "storm";
+    case "rare": return "dusk";
+    default: return "dawn";
+  }
+}
+
+// The party's banner name for the cinematic's attacker caption.
+function partyBannerName(session: RaidSession): string {
+  const starter = session.party.get(session.starterId)?.member.displayName
+    ?? [...session.party.values()][0]?.member.displayName ?? "The Party";
+  return session.party.size <= 1 ? starter : `${starter}'s Party`;
+}
+
+// Render + play the boss-raid opening film into the raid message. Reuses the HQ
+// siege cinematic engine in its "boss" mode. Best-effort — the caller falls
+// through to the classic text cutscene if this returns without posting.
+async function playRaidCinematic(session: RaidSession, beats: string[]): Promise<void> {
+  if (!session.message || session.phase !== "intro") return;
+  const boss = session.boss;
+  const party = [...session.party.values()].map(s => s.member);
+  const view: SiegeCinematicView = {
+    kind: "boss",
+    targetName: boss.name,
+    holderName: `${(boss.rarity as string).toUpperCase()} BOSS`,
+    defenderColor: getRarityEffectColor(boss.rarity as Rarity),
+    attackerColor: 0x4aa3ff,
+    attackerName: partyBannerName(session),
+    cards: party.slice(0, 5).map(m => ({
+      name: m.card.name,
+      artUrl: toAbsoluteImageUrl(m.card.imageUrl),
+      rarityColor: getRarityEffectColor(m.card.rarity as Rarity),
+    })),
+    garrison: 0,
+    structure: "boss",
+    mood: moodForBoss(boss),
+    bossArtUrl: toAbsoluteImageUrl(boss.imageUrl),
+    beats,
+    titleText: "THE RAID BEGINS",
+    tagline: boss.description ?? undefined,
+  };
+
+  const buf = await renderSiegeCinematic(view).catch(() => null);
+  if (!buf || session.phase !== "intro" || !session.message) return;
+  const embed = new EmbedBuilder()
+    .setTitle(`🎥 ${view.attackerName} march on ${boss.name}`)
+    .setColor(0xc0392b)
+    .setDescription(`_The horns sound. The party descends on **${boss.name}**._`)
+    .setImage(`attachment://${SIEGE_CINEMATIC_FILE}`);
+  await session.message.edit({
+    embeds: [embed], components: [],
+    files: [new AttachmentBuilder(buf, { name: SIEGE_CINEMATIC_FILE })],
+  }).catch(() => {});
+  await sleep(RAID_CINEMATIC_HOLD_MS);
+}
 
 function buildIntroComponents(session: RaidSession): ActionRowBuilder<ButtonBuilder>[] {
   return [new ActionRowBuilder<ButtonBuilder>().addComponents(
@@ -382,6 +473,11 @@ async function handleDecline(interaction: ButtonInteraction, session: RaidSessio
 async function commenceFight(session: RaidSession): Promise<void> {
   if (session.timer) { clearTimeout(session.timer); session.timer = undefined; }
   session.phase = "fight";
+  // Field items: preload the guild's item registry and hand every member their
+  // satchel for the fight. Best-effort — a load failure just keeps code defaults.
+  await loadGuildBattleItems(session.guildId).catch(() => {});
+  for (const userId of session.party.keys()) session.itemUsesLeft.set(userId, RAID_ITEM_USES);
+  session.itemUsedThisRound.clear();
   const party = [...session.party.values()].map(s => s.member);
   // Guild rarity ladder so raid stats + boss scaling rank custom/reordered tiers
   // the same way PvP battles do.
@@ -420,6 +516,7 @@ async function handleAct(interaction: ButtonInteraction, session: RaidSession, m
   if (!slot || !slot.combatant) { await interaction.reply({ content: "You're not in this raid.", ...EPHEMERAL }); return; }
   if (slot.combatant.hp <= 0) { await interaction.reply({ content: "💀 Your fighter is down — the rest of the party fights on.", ...EPHEMERAL }); return; }
   if (session.resolving) { await interaction.reply({ content: "The round is resolving — hang on.", ...EPHEMERAL }); return; }
+  if (session.itemUsedThisRound.has(interaction.user.id)) { await interaction.reply({ content: "🎒 You already used an item this round — that was your action.", ...EPHEMERAL }); return; }
 
   session.pendingActions.set(interaction.user.id, move);
   // No ephemeral "locked in" reply — those piled up and shoved the raid board
@@ -432,6 +529,129 @@ async function handleAct(interaction: ButtonInteraction, session: RaidSession, m
     await resolveRound(session);
   } else {
     // Refresh the board in place so everyone sees who has locked in.
+    await renderFight(session);
+  }
+}
+
+// ── Field items (heal a teammate, shield up, grenade the boss) ────────────────
+// A member's item use IS their action for the round: it applies immediately (so
+// you can save a teammate before the boss strikes) and braces them. Each member
+// has RAID_ITEM_USES for the whole raid.
+function canUseItem(session: RaidSession, userId: string): { slot: PartySlot } | { error: string } {
+  if (session.phase !== "fight") return { error: "The raid isn't in a fighting phase." };
+  if (session.resolving) return { error: "The round is resolving — hang on." };
+  const slot = session.party.get(userId);
+  if (!slot || !slot.combatant) return { error: "You're not in this raid." };
+  if (slot.combatant.hp <= 0) return { error: "💀 Your fighter is down — you can't use items." };
+  if (session.itemUsedThisRound.has(userId)) return { error: "🎒 You already used an item this round." };
+  if ((session.itemUsesLeft.get(userId) ?? 0) <= 0) return { error: "🎒 You're out of field items for this raid." };
+  return { slot };
+}
+
+async function handleItemOpen(interaction: ButtonInteraction, session: RaidSession): Promise<void> {
+  const chk = canUseItem(session, interaction.user.id);
+  if ("error" in chk) { await interaction.reply({ content: chk.error, ...EPHEMERAL }); return; }
+  const items = listBattleItems(session.guildId).slice(0, 25);
+  if (items.length === 0) { await interaction.reply({ content: "No usable items are configured on this server.", ...EPHEMERAL }); return; }
+  const left = session.itemUsesLeft.get(interaction.user.id) ?? 0;
+  const menu = new StringSelectMenuBuilder()
+    .setCustomId(`raid:itemsel:${session.id}`)
+    .setPlaceholder("Choose a field item to use")
+    .addOptions(items.map(it => ({
+      label: it.name.slice(0, 100),
+      description: it.description.slice(0, 100),
+      emoji: it.emoji || undefined,
+      value: it.id,
+    })));
+  await interaction.reply({
+    content: `🎒 **Field items** — **${left}** use(s) left this raid.\nSupport items can go to you *or a teammate*; offensive items hit the boss.`,
+    components: [new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(menu)],
+    ...EPHEMERAL,
+  });
+}
+
+async function handleItemSelect(interaction: StringSelectMenuInteraction, session: RaidSession): Promise<void> {
+  const chk = canUseItem(session, interaction.user.id);
+  if ("error" in chk) { await interaction.update({ content: chk.error, components: [] }).catch(() => {}); return; }
+  const item = getBattleItem(interaction.values[0], session.guildId);
+  if (!item) { await interaction.update({ content: "That item is no longer available.", components: [] }).catch(() => {}); return; }
+
+  // Offensive items go straight at the boss — no target to choose.
+  if (isOffensiveItem(item)) { await applyRaidItem(session, interaction, item, BOSS_USER_ID); return; }
+
+  // Support items: choose a target (self or any teammate). Heals may target a
+  // downed ally — they REVIVE them.
+  const canRevive = item.effectType === "heal";
+  const targets = [...session.party.values()].filter(s => s.combatant && (canRevive || s.combatant.hp > 0));
+  const opts = targets.map(s => {
+    const c = s.combatant!;
+    const me = s.member.userId === interaction.user.id;
+    const downed = c.hp <= 0;
+    return {
+      label: `${me ? "Yourself" : s.member.displayName} — ${c.cardName}`.slice(0, 100),
+      description: (downed ? "downed — revive" : `${c.hp}/${c.stats.maxHealth} HP`).slice(0, 100),
+      value: s.member.userId,
+    };
+  });
+  const menu = new StringSelectMenuBuilder()
+    .setCustomId(`raid:itemtgt:${session.id}:${item.id}`)
+    .setPlaceholder(`Who gets the ${item.name}?`.slice(0, 100))
+    .addOptions(opts.slice(0, 25));
+  await interaction.update({
+    content: `${item.emoji} **${item.name}** — ${item.description}\nChoose who to use it on:`,
+    components: [new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(menu)],
+  }).catch(() => {});
+}
+
+async function handleItemTarget(interaction: StringSelectMenuInteraction, session: RaidSession, itemId: string): Promise<void> {
+  const chk = canUseItem(session, interaction.user.id);
+  if ("error" in chk) { await interaction.update({ content: chk.error, components: [] }).catch(() => {}); return; }
+  const item = getBattleItem(itemId, session.guildId);
+  if (!item) { await interaction.update({ content: "That item is no longer available.", components: [] }).catch(() => {}); return; }
+  await applyRaidItem(session, interaction, item, interaction.values[0]!);
+}
+
+// Apply an item from the acting user onto a target (a teammate userId or the
+// boss), consume a use + the round action, log it, then refresh/resolve.
+async function applyRaidItem(
+  session: RaidSession,
+  interaction: ButtonInteraction | StringSelectMenuInteraction,
+  item: BattleItem,
+  targetId: string,
+): Promise<void> {
+  const userId = interaction.user.id;
+  const actor = session.party.get(userId)?.combatant;
+  if (!actor) { await interaction.update({ content: "You're not in this raid.", components: [] }).catch(() => {}); return; }
+
+  const target = targetId === BOSS_USER_ID
+    ? session.bossCombatant
+    : session.party.get(targetId)?.combatant;
+  if (!target) { await interaction.update({ content: "That target is no longer in the fight.", components: [] }).catch(() => {}); return; }
+
+  const outcome = applyItemUse(item, actor, target);
+  // Consume: one satchel use + this round's action (they brace).
+  session.itemUsesLeft.set(userId, Math.max(0, (session.itemUsesLeft.get(userId) ?? 1) - 1));
+  session.itemUsedThisRound.add(userId);
+  session.pendingActions.set(userId, "defend");
+
+  for (const e of outcome.events) session.recentLog.push(e.text);
+  session.recentLog = session.recentLog.slice(-8);
+
+  await interaction.update({
+    content: `${item.emoji} Used **${item.name}**. ${outcome.events[0]?.text ?? ""}`.slice(0, 400),
+    components: [],
+  }).catch(() => {});
+
+  // Grenading the boss can finish it outright.
+  if (targetId === BOSS_USER_ID && (session.bossCombatant?.hp ?? 1) <= 0) {
+    await finishRaid(session, "clear");
+    return;
+  }
+
+  const living = livingSlots(session);
+  if (living.length && living.every(s => session.pendingActions.has(s.member.userId))) {
+    await resolveRound(session);
+  } else {
     await renderFight(session);
   }
 }
@@ -490,6 +710,7 @@ async function resolveRound(session: RaidSession): Promise<void> {
       enrageTurn: session.boss.enrageTurn,
     });
     session.pendingActions.clear();
+    session.itemUsedThisRound.clear();
 
     // Replay the round hit-by-hit through the SHARED battle animation pipeline
     // (boss-intensity attack frames), or fall back to a single log update when
@@ -1041,12 +1262,17 @@ function buildFightEmbeds(
 
 function buildFightComponents(session: RaidSession): ActionRowBuilder<ButtonBuilder>[] {
   const moves: MoveType[] = ["attack", "special", "defend", "charge"];
-  const rows = [new ActionRowBuilder<ButtonBuilder>().addComponents(
+  const row1 = new ActionRowBuilder<ButtonBuilder>().addComponents(
     moves.map(m => new ButtonBuilder()
       .setCustomId(`raid:act:${session.id}:${m}`)
       .setLabel(MOVE_LABEL[m] ?? m)
       .setStyle(m === "attack" ? ButtonStyle.Danger : m === "defend" ? ButtonStyle.Primary : ButtonStyle.Secondary)),
-  )];
+  );
+  // 🎒 Item — heal/shield a teammate, buff yourself, or grenade the boss.
+  row1.addComponents(
+    new ButtonBuilder().setCustomId(`raid:item:${session.id}`).setLabel("Item").setEmoji("🎒").setStyle(ButtonStyle.Success),
+  );
+  const rows = [row1];
   // Once the boss is finishable, offer the optional 💀 Fatality — any living
   // member can take the killing blow for the cinematic. Normal moves still work.
   if (raidFatalityReady(session)) {

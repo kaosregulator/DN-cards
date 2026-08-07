@@ -6,7 +6,11 @@
   "scripts": {
     "hello": "tsx ./src/hello.ts",
     "validate:rarity": "tsx ./src/rarity-runtime-validation.ts",
+    "validate:hq": "tsx ./src/hq-validation.ts",
+    "smoke:hq": "tsx ./src/hq-smoke.ts",
     "sim:battle": "tsx ./src/battle-sim.ts",
+    "hq:preview": "tsx ./src/hq-preview.ts",
+    "hq:manifest": "tsx ./src/hq-manifest.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "migration:snapshot": "tsx ./src/migration-snapshot.ts",
     "migration:compare": "tsx ./src/migration-compare.ts"
