@@ -495,17 +495,27 @@ easy to extend or tweak.
 
 ## Validation
 
+Plain Node asserts against the real runtime modules — no test framework,
+mirroring `validate:rarity`.
+
 ```bash
-pnpm --filter @workspace/scripts run validate:hq
+pnpm --filter @workspace/scripts run validate:hq   # pure logic, no database
+DATABASE_URL=… pnpm --filter @workspace/scripts run smoke:hq
 ```
 
-Plain Node asserts against the real runtime modules (no test framework, mirroring
-`validate:rarity`): globally unique **gated** cosmetic ids — they all share one
-`hq_unlocks` ledger, so a collision between two gated items would cross-wire them
-— a world blueprint whose markers actually land on the rendered landmass, a
-monotonic tier ladder with no gaps, deterministic and tier-scaled AI garrisons,
-capped and non-negative tribute, and a build cursor that clamps onto whichever
-grid it is read against.
+`validate:hq` covers globally unique **gated** cosmetic ids (they all share one
+`hq_unlocks` ledger, so a collision between two gated items would cross-wire
+them), a world blueprint whose markers actually land on the rendered landmass,
+a monotonic tier ladder with no gaps, deterministic and tier-scaled AI
+garrisons, capped and non-negative tribute, and a build cursor that clamps onto
+whichever grid it is read against.
+
+`smoke:hq` builds **every `/hq` section** for a throwaway player and validates
+the payload Discord would receive: at most five action rows, every select
+carrying 1–25 options, labels and descriptions inside their limits, embed fields
+under 1024 characters, and an image that actually rendered. These are the
+failures a typecheck can't see and that otherwise surface as a 400 from the API
+in production.
 
 ## Future phases (same engine, no rewrite)
 

@@ -2633,3 +2633,11 @@ function nextUnlockHint(owned: Set<string>): string | null {
   if (nextDeco) bits.push(`${nextDeco.emoji} **${nextDeco.name}** — ${unlockLabel(nextDeco.unlock)}`);
   return bits.length ? bits.join("\n") : null;
 }
+
+// Test seam for scripts/src/hq-smoke.ts: build one section's view from a
+// minimal interaction shape, so every section's Discord payload can be checked
+// against the API's limits without a gateway connection.
+export type HqSection = Section;
+export async function __buildViewForTest(interaction: HubInteraction, section: HqSection) {
+  return buildView(interaction, section, []);
+}

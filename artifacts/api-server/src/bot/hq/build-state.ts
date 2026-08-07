@@ -35,9 +35,12 @@ export interface StoredBuild {
   elevation?: number;
 }
 
+// A first-time cursor sits in open ground toward the front of the grounds
+// rather than at (0,0) — the lattice origin is the BACK corner, which on the
+// base scene is tucked behind the castle where a new player can't see it.
 export const DEFAULT_CURSOR: BuildCursor = {
   canvas: BASE_CANVAS_ID,
-  x: 0, y: 0, w: 2, h: 2,
+  x: 3, y: 6, w: 2, h: 2,
   materialId: DEFAULT_SURFACE_ID,
   elevation: 0,
 };
@@ -51,8 +54,8 @@ export function readCursor(stored: StoredBuild | undefined, canvas: string, grid
   return {
     canvas,
     w, h,
-    x: clampPos(stored?.x ?? 0, w, grid),
-    y: clampPos(stored?.y ?? 0, h, grid),
+    x: clampPos(stored?.x ?? DEFAULT_CURSOR.x, w, grid),
+    y: clampPos(stored?.y ?? DEFAULT_CURSOR.y, h, grid),
     materialId,
     elevation: Math.max(0, Math.min(MAX_ELEVATION, Math.round(stored?.elevation ?? 0))),
   };

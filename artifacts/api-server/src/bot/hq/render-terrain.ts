@@ -244,39 +244,79 @@ async function paintRaised(
 function paintMound(
   ctx: Ctx, proj: IsoProjector, f: HqTerrainFeature, mat: HqSurface, steps: number,
 ): void {
-  const lift = Math.max(1, steps) * STEP_PX;
-  const rings = 7;
+  // Mounds get a taller step than slabs — a hill you can barely see isn't a hill.
+  const lift = Math.max(1, steps) * STEP_PX * 1.6;
+  const rings = 11;
+
+  // Ground shadow, offset toward the light's away-side so the hill has weight.
   ctx.save();
-  polyPath(ctx, rectQuad(proj, f));
-  ctx.fillStyle = "rgba(0,0,0,0.22)"; ctx.fill();
+  polyPath(ctx, rectQuad(proj, { ...f, x: f.x + 0.12, y: f.y + 0.12 }));
+  ctx.fillStyle = "rgba(0,0,0,0.26)"; ctx.fill();
   ctx.restore();
 
+  // Skirt: the footprint in the darkest tone, so the dome rises out of ground
+  // rather than sitting on top of it.
+  ctx.save();
+  polyPath(ctx, rectQuad(proj, f));
+  ctx.fillStyle = shiftColor(mat.shade, -18); ctx.fill();
+  ctx.restore();
+
+  // Each ring is a smaller rectangle lifted higher than the last. Lifting a
+  // shrunken diamond on its own just stacks flat terraces — the slope only
+  // appears once the BAND between consecutive rings is filled, so every ring
+  // draws its four connecting faces before its own top.
+  let prev: Pt[] | null = null;
   for (let r = 0; r < rings; r++) {
     const t = r / (rings - 1);
-    // Ease the inset so the dome is flatter on top than at the base.
-    const inset = Math.sin(t * Math.PI * 0.5);
-    const h = lift * (1 - Math.cos(t * Math.PI * 0.5));
-    const shrinkW = (f.w / 2) * inset * 0.92;
-    const shrinkH = (f.h / 2) * inset * 0.92;
+    // Ring radius shrinks linearly from the rim (t=0) to the summit (t=1); the
+    // height follows the profile of a hemisphere of that radius. That rises
+    // quickly at the rim and flattens toward the top, which is what reads as a
+    // rounded hill — easing the INSET instead gives a wide plateau with a
+    // cliff-like skirt.
+    const inset = t;
+    const h = lift * Math.sqrt(Math.max(0, 1 - (1 - t) * (1 - t)));
+    const shrinkW = (f.w / 2) * inset * 0.94;
+    const shrinkH = (f.h / 2) * inset * 0.94;
     const quad = rectQuad(proj, {
       x: f.x + shrinkW, y: f.y + shrinkH,
       w: Math.max(0.08, f.w - shrinkW * 2), h: Math.max(0.08, f.h - shrinkH * 2),
     }, h);
+
+    if (prev) {
+      // Corner order from rectQuad is [back, right, front, left]. Draw the far
+      // faces first so the near ones paint over them, and light the far slope
+      // brighter than the near one.
+      const bands: [number, number, number][] = [
+        [0, 1, 26], [3, 0, 14],   // far-right, far-left
+        [1, 2, -18], [2, 3, -34], // near-right, near-left
+      ];
+      for (const [i, j, tint] of bands) {
+        polyPath(ctx, [prev[i]!, prev[j]!, quad[j]!, quad[i]!]);
+        ctx.fillStyle = shiftColor(mat.base, Math.round(tint + t * 22));
+        ctx.fill();
+      }
+    }
+
     polyPath(ctx, quad);
-    ctx.fillStyle = shiftColor(mat.base, Math.round(-16 + t * 30));
+    // A wide tonal range across the rings is what makes the dome read in iso —
+    // subtle shading just looks like a flat patch of a slightly different green.
+    ctx.fillStyle = shiftColor(mat.base, Math.round(-30 + t * 62));
     ctx.fill();
+    prev = quad;
   }
-  // Crest highlight + a speckle of texture on the summit.
-  const crest = rectQuad(proj, {
-    x: f.x + f.w * 0.42, y: f.y + f.h * 0.42, w: Math.max(0.1, f.w * 0.16), h: Math.max(0.1, f.h * 0.16),
-  }, lift);
+
+  // Crest highlight.
   ctx.save();
-  polyPath(ctx, crest);
-  ctx.fillStyle = hexToRgba(0xffffff, 0.12); ctx.fill();
+  polyPath(ctx, rectQuad(proj, {
+    x: f.x + f.w * 0.40, y: f.y + f.h * 0.40,
+    w: Math.max(0.1, f.w * 0.20), h: Math.max(0.1, f.h * 0.20),
+  }, lift));
+  ctx.fillStyle = hexToRgba(0xffffff, 0.16); ctx.fill();
   ctx.restore();
+
   ctx.save();
   polyPath(ctx, rectQuad(proj, f));
-  ctx.strokeStyle = mat.edge; ctx.lineWidth = 1.5; ctx.stroke();
+  ctx.strokeStyle = mat.edge; ctx.lineWidth = 2; ctx.stroke();
   ctx.restore();
 }
 

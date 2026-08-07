@@ -18,7 +18,7 @@
 import {
   db, hqWorldNodesTable, type HqWorldNode,
 } from "@workspace/db";
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 import type { OwnedBattleCard } from "../battle/db.js";
 import type { RarityContext } from "../rarity-runtime.js";
 import { rarityLadderRank } from "../rarity-runtime.js";
@@ -149,7 +149,11 @@ export async function markTerritoryAttacked(guildId: string, nodeId: string): Pr
     });
 }
 
-/** Restart tribute accrual after a holder collects. */
+/**
+ * Restart tribute accrual after a holder collects. `inArray`, not a raw
+ * `= ANY(${ids})` — the raw form binds the whole JS array as one parameter,
+ * which Postgres rejects as a malformed array literal.
+ */
 export async function markTerritoryTributesCollected(
   guildId: string, holderId: string, nodeIds: string[], at: Date,
 ): Promise<void> {
@@ -159,7 +163,7 @@ export async function markTerritoryTributesCollected(
     .where(and(
       eq(hqWorldNodesTable.guildId, guildId),
       eq(hqWorldNodesTable.heldByUserId, holderId),
-      sql`${hqWorldNodesTable.nodeId} = ANY(${nodeIds})`,
+      inArray(hqWorldNodesTable.nodeId, nodeIds),
     ));
 }
 

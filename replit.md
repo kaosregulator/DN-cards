@@ -57,7 +57,7 @@ DN Cards is DarkNight's collectible military trading card game for the Roblox + 
 - HQ renderers: `hq/paint.ts` (shared primitives + header + emoji stripping — the canvas has no emoji font), `hq/render.ts` (isometric room + exterior base + siege), `hq/render-world.ts` (the campaign world map), `hq/render-terrain.ts` (built surfaces, water, hills + the build cursor), `hq/render-wallpaper.ts` (repeating wall coverings in iso perspective), `hq/cinematic.ts` (landscape siege intro GIF).
 - HQ world campaign: `hq/world.ts` (seeds `hq_world_nodes` from the `defs/world.ts` blueprint, capture/tribute, AI garrisons synthesised from the guild card pool as real `OwnedBattleCard`s). Six AI factions hold twelve tiered territories per guild; members take them and hold them for tribute.
 - HQ world editor: `hq/terrain.ts` (rectangle validation + CRUD), `hq/build-state.ts` (the cursor in `player_hq.stats.build`), `hq/build-options.ts` (slash choices — a leaf module so `register.ts` doesn't pull the hub into startup). Visual editor is `/hq → 🛠️ Build`; the typed half is `/hqbuild` (`artifacts/api-server/src/bot/commands/hq-build.ts`).
-- HQ tooling: `pnpm --filter @workspace/scripts run hq:preview` renders every HQ canvas to files; `validate:hq` asserts the registry/blueprint/cursor invariants; `hq:manifest` regenerates the art manifest from disk.
+- HQ tooling: `pnpm --filter @workspace/scripts run hq:preview` renders every HQ canvas to files; `validate:hq` asserts the registry/blueprint/cursor invariants; `smoke:hq` builds every `/hq` section and checks it against Discord's payload limits (needs `DATABASE_URL`); `hq:manifest` regenerates the art manifest from disk.
 
 ### Website vs Discord responsibilities
 
