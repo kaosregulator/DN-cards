@@ -69,7 +69,7 @@ export const hqUnlocksTable = pgTable("hq_unlocks", {
 }));
 
 export type HqUnlock = typeof hqUnlocksTable.$inferSelect;
-export type HqItemType = "decoration" | "room" | "theme" | "wall" | "floor" | "backdrop";
+export type HqItemType = "decoration" | "room" | "theme" | "wall" | "floor" | "backdrop" | "companion";
 
 // Pinned featured cards for the Trophy Hall — one row per pedestal slot. Unique
 // on (guild, user, slot); repinning a slot upserts. Clicking a featured card in

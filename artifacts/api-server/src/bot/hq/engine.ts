@@ -28,6 +28,7 @@ import { HQ_THEMES, DEFAULT_THEME_ID, type HqTheme } from "./defs/themes.js";
 import { HQ_WALLS, DEFAULT_WALL_ID, type HqWall } from "./defs/walls.js";
 import { HQ_FLOORS, DEFAULT_FLOOR_ID, type HqFloor } from "./defs/floors.js";
 import { HQ_BACKDROPS, DEFAULT_BACKDROP_ID, type HqBackdrop } from "./defs/backdrops.js";
+import { HQ_COMPANIONS, type HqCompanion } from "./defs/companions.js";
 import { getUnlockedItemIds, grantUnlock, getOrCreateHq, updateHq } from "./db.js";
 
 async function safe<T>(label: string, fn: () => Promise<T>, fallback: T): Promise<T> {
@@ -113,6 +114,11 @@ export function isBackdropUnlocked(bd: HqBackdrop, owned: Set<string>): boolean 
 export function unlockedBackdrops(owned: Set<string>): HqBackdrop[] {
   return HQ_BACKDROPS.filter(b => isBackdropUnlocked(b, owned));
 }
+// Companions are earned like decorations (no "always" default — you start with
+// no pet); ownership is entirely the ledger.
+export function ownedCompanions(owned: Set<string>): HqCompanion[] {
+  return HQ_COMPANIONS.filter(c => owned.has(c.id));
+}
 
 // HQ level rewards BREADTH of accomplishment: each earned cosmetic and each
 // extra room/theme raises it, with a gentle account-level contribution. Purely a
@@ -122,7 +128,8 @@ export function computeHqLevel(p: HqProgress, owned: Set<string>): number {
   const earnedDecos = HQ_DECORATIONS.filter(d => d.unlock.kind !== "always" && owned.has(d.id)).length;
   const extraRooms = HQ_ROOMS.filter(r => r.unlock.kind !== "always" && owned.has(r.id)).length;
   const extraThemes = HQ_THEMES.filter(t => t.unlock.kind !== "always" && t.id !== DEFAULT_THEME_ID && owned.has(t.id)).length;
-  const level = 1 + earnedDecos + extraRooms + extraThemes + Math.floor(p.accountLevel / 10);
+  const companions = HQ_COMPANIONS.filter(c => owned.has(c.id)).length;
+  const level = 1 + earnedDecos + extraRooms + extraThemes + companions + Math.floor(p.accountLevel / 10);
   return Math.max(1, Math.min(100, level));
 }
 
@@ -173,6 +180,12 @@ export async function reconcileUnlocks(guildId: string, userId: string): Promise
     if (b.unlock.kind === "always") continue;
     if (evalUnlockRule(b.unlock, progress)) {
       await grantUnlock(guildId, userId, b.id, "backdrop", unlockSourceTag(b.unlock)).catch(() => {});
+    }
+  }
+  for (const c of HQ_COMPANIONS) {
+    if (c.unlock.kind === "always") continue;
+    if (evalUnlockRule(c.unlock, progress)) {
+      await grantUnlock(guildId, userId, c.id, "companion", unlockSourceTag(c.unlock)).catch(() => {});
     }
   }
 

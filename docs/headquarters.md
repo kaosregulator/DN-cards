@@ -275,6 +275,32 @@ State is additive: `hq_base_state` (holder + shield + hold clock), `hq_base_atta
 co-op attacks are the next step and slot in behind the same `resolveSiege`
 interface.*
 
+## Companions & visitors (living HQ)
+
+Two touches make a Headquarters feel alive; both render in the interior room AND
+the exterior base.
+
+- **Companions** are EARNED pets. `bot/hq/defs/companions.ts` is a data-driven
+  registry (mirrors the decoration/theme registries): each companion's `kind`
+  picks the procedural creature the renderer draws (`drawCompanion`) and its
+  `body`/`accent` colour it, so a future asset pack can drop in real sprites with
+  no code change. They're granted by the same pull-based `reconcileUnlocks`
+  (itemType `"companion"` in `hq_unlocks`) as every other cosmetic — e.g. the
+  **Scout Pup** for 10 battle wins, the **Wise Owl** for a 50-card collection, the
+  **Ember Drake** from a raid boss. Pick your active pet in **Overview → 🐾 Choose
+  a companion…** (or send it away); the choice lives in the additive
+  `player_hq.stats.companionId` (no schema change) and the pet then stands in your
+  room and roams your grounds.
+- **Visitors** are ambient NPC guests — purely DERIVED, never stored or earned.
+  The count grows with HQ prestige (`visitorCount(hqLevel)`, 0 → 4) so a
+  well-developed Headquarters visibly draws a crowd; the renderer scatters that
+  many procedural figures (`drawVisitor`) at out-of-the-way spots. They stay out
+  of a live siege so combat stays readable.
+
+Set-completion also feeds the earned decorations: finishing **3 / 5 / 10** whole
+card sets unlocks the **Set Collector's Plinth**, **Curator's Gallery** and
+**Master Archive** (`setComplete` milestones in `defs/decorations.ts`).
+
 ## Admin editor (`/hqadmin`)
 
 Admin-gated (same check as `/admin` / `/edit-user`). `/hqadmin user:@member`

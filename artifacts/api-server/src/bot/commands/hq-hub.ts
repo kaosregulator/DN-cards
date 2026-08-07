@@ -54,7 +54,11 @@ import {
   reconcileUnlocks, ownedDecorations, unlockedRooms, unlockedThemes,
   isRoomUnlocked, isThemeUnlocked, unlockedWalls, unlockedFloors,
   isWallUnlocked, isFloorUnlocked, unlockedBackdrops, isBackdropUnlocked,
+  ownedCompanions,
 } from "../hq/engine.js";
+import {
+  resolveCompanion, companionsByRarityDesc, COMPANION_NONE, HQ_COMPANIONS,
+} from "../hq/defs/companions.js";
 import { resolveTheme, HQ_THEMES } from "../hq/defs/themes.js";
 import { resolveWall, HQ_WALLS } from "../hq/defs/walls.js";
 import { resolveFloor, HQ_FLOORS } from "../hq/defs/floors.js";
@@ -71,7 +75,7 @@ import {
   HQ_WALL_SLOT_BASE, HQ_WALL_ANCHOR_COUNT, HQ_DEFENDER_SLOTS, HQ_BASE_DECO_SLOTS,
   type HqRenderView, type HqRenderCard, type HqRenderDeco, type HqRenderDefender,
   type HqBaseView, type HqBaseBuilding, type HqBuildingRole, type SiegePlan,
-  type HqWorldView, type WorldBaseMarker,
+  type HqWorldView, type WorldBaseMarker, type HqRenderCompanion,
 } from "../hq/render.js";
 import type { PlayerHq } from "@workspace/db";
 
@@ -87,14 +91,33 @@ type HubInteraction =
 
 // Player-set personalization lives in the additive `stats` jsonb — no schema
 // change. `title` renames the HQ banner; `motto` is a short tagline in the embed.
-interface HqStats { title?: string; motto?: string; backdropId?: string; wallpaperId?: string; wallsOff?: boolean; glassOff?: boolean }
+interface HqStats { title?: string; motto?: string; backdropId?: string; wallpaperId?: string; wallsOff?: boolean; glassOff?: boolean; companionId?: string }
 function readHqStats(hq: PlayerHq): HqStats {
   const s = hq.stats as HqStats | null | undefined;
-  return { title: s?.title, motto: s?.motto, backdropId: s?.backdropId, wallpaperId: s?.wallpaperId, wallsOff: s?.wallsOff, glassOff: s?.glassOff };
+  return { title: s?.title, motto: s?.motto, backdropId: s?.backdropId, wallpaperId: s?.wallpaperId, wallsOff: s?.wallsOff, glassOff: s?.glassOff, companionId: s?.companionId };
 }
 function hqDisplayTitle(hq: PlayerHq, ownerName: string): string {
   const t = readHqStats(hq).title?.trim();
   return t && t.length > 0 ? t : `${ownerName}'s HQ`;
+}
+// Ambient NPC guests grow with HQ prestige (0 at low levels → 4 for a maxed HQ),
+// so a well-developed Headquarters visibly draws a crowd. Derived, not stored.
+function visitorCount(hqLevel: number): number {
+  return Math.max(0, Math.min(4, Math.floor((hqLevel - 1) / 4)));
+}
+// The active companion in the renderer's shape (null = none). The picker only
+// sets a pet the player owns, so this trusts stats.companionId.
+function companionRenderFor(hq: PlayerHq): HqRenderCompanion | null {
+  const id = readHqStats(hq).companionId;
+  const c = id && id !== COMPANION_NONE ? resolveCompanion(id) : undefined;
+  return c ? { kind: c.kind, name: c.name, body: c.body, accent: c.accent } : null;
+}
+// Set (or clear with null) the active companion, merging into the `stats` jsonb.
+async function setCompanion(guildId: string, userId: string, companionId: string | null): Promise<void> {
+  const hq = await getOrCreateHq(guildId, userId);
+  const stats = { ...readHqStats(hq) };
+  if (companionId) stats.companionId = companionId; else delete stats.companionId;
+  await updateHq(guildId, userId, { stats });
 }
 
 // A placement id is either a plain decoration id or a compound "portrait-frame:<cardId>"
@@ -171,6 +194,19 @@ export async function handleHqHubComponent(
   if (action === "open" && interaction.isStringSelectMenu()) {
     await interaction.deferReply(EPHEMERAL).catch(() => {});
     await replyCardDetail(interaction, guildId, userId, Number(interaction.values[0]));
+    return;
+  }
+
+  // Set (or clear) the active companion — only a pet the player has EARNED.
+  if (action === "companion" && interaction.isStringSelectMenu()) {
+    const choice = interaction.values[0]!;
+    if (choice === COMPANION_NONE) {
+      await setCompanion(guildId, userId, null).catch(() => {});
+    } else {
+      const owned = await getUnlockedItemIds(guildId, userId).catch(() => new Set<string>());
+      if (owned.has(choice) && resolveCompanion(choice)) await setCompanion(guildId, userId, choice).catch(() => {});
+    }
+    await interaction.update(await buildView(interaction, "overview", [])).catch(() => {});
     return;
   }
 
@@ -523,6 +559,7 @@ async function buildRenderView(
     roomName: room.name, roomEmoji: room.emoji, hqLevel: hq.hqLevel,
     subtitle, pedestals, decorations, defenders,
     backdropSprite, wallsOff: !!style.wallsOff, glassOff: !!style.glassOff,
+    companion: companionRenderFor(hq), visitors: visitorCount(hq.hqLevel),
   };
 }
 
@@ -603,6 +640,7 @@ async function buildBaseRenderView(
     roomEmoji: "🏰", roomName: "Base", hqLevel: hq.hqLevel,
     subtitle: capture ? `Base • held by ${capture.heldName}` : `Base • ${defenders.length}/${HQ_DEFENDER_SLOTS} defenders`,
     buildings, defenders, decorations, captured: !!capture,
+    companion: companionRenderFor(hq), visitors: visitorCount(hq.hqLevel),
   };
 }
 
@@ -672,6 +710,14 @@ async function buildView(
           { name: "🚪 Rooms unlocked", value: `**${roomsOpen}** / ${HQ_ROOMS.length}`, inline: true },
           { name: "🎨 Themes", value: `**${unlockedThemes(owned).length}** / ${HQ_THEMES.length}`, inline: true },
         );
+      // Companions + ambient visitors — the HQ's living touches.
+      const pets = ownedCompanions(owned);
+      const activePet = resolveCompanion(stats.companionId);
+      embed.addFields(
+        { name: "🐾 Companion", value: activePet ? `${activePet.emoji} **${activePet.name}**` : (pets.length ? "_none set_" : "_none earned yet_"), inline: true },
+        { name: "👥 Visitors", value: `**${visitorCount(hq.hqLevel)}** roaming`, inline: true },
+        { name: "🐾 Companions earned", value: `**${pets.length}** / ${HQ_COMPANIONS.length}`, inline: true },
+      );
       const nextHint = nextUnlockHint(owned);
       if (nextHint) embed.addFields({ name: "🔓 Next up", value: nextHint, inline: false });
       rows.push(new ActionRowBuilder<ButtonBuilder>().addComponents(
@@ -679,6 +725,18 @@ async function buildView(
           .setLabel(stats.title ? "Rename HQ" : "Name your HQ")
           .setEmoji("✏️").setStyle(ButtonStyle.Secondary),
       ));
+      // Companion picker — choose from the pets you've EARNED (or send it away).
+      if (pets.length > 0) {
+        rows.push(new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
+          new StringSelectMenuBuilder().setCustomId("hq-hub:companion").setPlaceholder("🐾 Choose a companion…")
+            .addOptions([
+              { label: "None", value: COMPANION_NONE, description: "Send your companion away", emoji: "🚫", default: !activePet },
+              ...companionsByRarityDesc(pets.map(p => p.id)).slice(0, 24).map(c => ({
+                label: c.name.slice(0, 90), value: c.id, description: c.rarity, emoji: c.emoji, default: c.id === stats.companionId,
+              })),
+            ]),
+        ));
+      }
       break;
     }
 
