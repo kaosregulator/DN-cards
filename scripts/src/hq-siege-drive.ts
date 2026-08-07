@@ -233,8 +233,15 @@ async function main(): Promise<void> {
   boards.forEach((b, i) => checkBoard(`board ${i}`, b));
   console.log(`  ✓ all ${boards.length} boards are valid Discord payloads`);
 
-  // The two-embed layout must hold for the whole assault, not just the first turn.
-  const assaultBoards = boards.slice(beforeBegin, -1).filter(b => (b.embeds ?? []).length > 0);
+  // Begin Assault first plays the heads/tails coin toss (same flow as /battle):
+  // a couple of single-embed 🪙 boards deciding who strikes first, then combat.
+  const postBegin = boards.slice(beforeBegin, -1).filter(b => (b.embeds ?? []).length > 0);
+  const isCoinBoard = (b: Payload) => /🪙/.test(embedJson(b, 0)?.title ?? "");
+  assert.ok(postBegin.some(isCoinBoard), "the coin toss never played before the assault");
+  console.log("  ✓ coin toss played before the first exchange");
+
+  // The two-embed layout must hold for the whole assault (coin-toss intro aside).
+  const assaultBoards = postBegin.filter(b => !isCoinBoard(b));
   const twoEmbed = assaultBoards.filter(b => (b.embeds ?? []).length === 2).length;
   assert.ok(twoEmbed >= assaultBoards.length - 1,
     `expected the castle+battle pair on every assault board, got ${twoEmbed}/${assaultBoards.length}`);
@@ -273,6 +280,55 @@ async function main(): Promise<void> {
   assert.ok(!isSiegeTargetActive(targetKey), "the target lock should be released when the siege ends");
   console.log("  ✓ outcome is self-consistent and the target lock was released");
   console.log(`  ✓ ${ephemeralReplies} ephemeral reply(ies) — no stray error paths`);
+
+  // ── Send them in (skip / auto-resolve) ──────────────────────────────────────
+  // The other muster exit: hand the whole assault to the AI. It must resolve in
+  // ONE press (no move loop, no board renders) and end on a controls-free result.
+  console.log("Send-off (skip)");
+  const pool = buildSiegeSquad(cards("atk", 6, 60), settings, GUILD, ctx, 0, ATTACKER, "Commander");
+  const skipDefenders = buildSiegeSquad(cards("def", 3, 30), settings, GUILD, ctx, 1, "warden2", "Outpost", 10);
+  const skipKey = `hq:base:${GUILD}:warden2`;
+  let skipOutcome: SiegeOutcome | null = null;
+  await startSiege(makeInteraction() as never, {
+    guildId: GUILD, targetKey: skipKey,
+    starterId: ATTACKER, attackerName: "Commander",
+    targetName: "Outpost", holderName: "Outpost",
+    accent: 0xc0392b,
+    attackers: pool.slice(0, skipDefenders.length), attackerPool: pool, defenders: skipDefenders, settings, siege,
+    baseView: baseView(),
+    champion: { slot: 0, cardId: 100, name: "Vanguard 1", artUrl: null, rarityColor: 0xf1c40f, basePath: null },
+    applyOutcome: async (o: SiegeOutcome): Promise<SiegeResultView> => {
+      skipOutcome = o;
+      return { title: o.attackerWon ? "⚔️ Captured!" : "🛡️ Held!", description: `${o.destructionPct}% destruction.`, color: 0x4fd06a };
+    },
+  } as never);
+  const skipMuster = boards[boards.length - 1]!;
+  const skipIds = ((skipMuster.components ?? []) as { toJSON(): { components: { custom_id?: string }[] } }[])
+    .flatMap(r => r.toJSON().components.map(c => c.custom_id ?? ""));
+  assert.ok(skipIds.some(id => id.includes(":skip:")), "the muster should offer a Send-them-in button");
+  assert.ok(skipIds.some(id => id.includes(":column:")), "the muster should offer a Choose-column button when a roster is available");
+  const beforeSkip = boards.length;
+  await press(`hq-hub:ls:skip:${sessionId(skipMuster)}`);
+  assert.ok(skipOutcome, "the send-off never resolved");
+  const so = skipOutcome as SiegeOutcome;
+  assert.ok(so.turns >= 1, "the send-off counted no turns");
+  // Headless: it resolves without walking the board turn-by-turn.
+  assert.ok(boards.length - beforeSkip <= 3, `a headless siege should not render every turn (produced ${boards.length - beforeSkip} boards)`);
+  const skipFinal = boards[boards.length - 1]!;
+  // The auto result is clean but keeps a single "View Replay" control — the fight
+  // isn't shown inline (they didn't watch it), it's tucked behind the button.
+  const skipFinalIds = ((skipFinal.components ?? []) as { toJSON(): { components: { custom_id?: string }[] } }[])
+    .flatMap(r => r.toJSON().components.map(c => c.custom_id ?? ""));
+  const replayId = skipFinalIds.find(id => id.includes(":replay:"));
+  assert.ok(replayId, "the auto result should offer a View Replay button");
+  assert.ok(!/💨|⚔️ \*\*Warden/.test(embedJson(skipFinal, 0)?.description ?? ""),
+    "the auto result should NOT show the blow-by-blow inline");
+  assert.ok(!isSiegeTargetActive(skipKey), "the send-off should release its target lock");
+  // The replay button reveals the log (ephemerally) without erroring.
+  const beforeReplay = ephemeralReplies;
+  await press(replayId!);
+  assert.ok(ephemeralReplies > beforeReplay, "View Replay should open the recap");
+  console.log(`  ✓ resolved in one press over ${so.turns} turns → "${embedJson(skipFinal, 0)?.title}" (${so.destructionPct}%), View Replay works`);
 
   console.log(`\nSiege played end to end. Boards written to ${OUT}`);
   process.exit(0);

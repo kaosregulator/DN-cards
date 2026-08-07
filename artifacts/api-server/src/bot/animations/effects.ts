@@ -419,6 +419,19 @@ export async function drawCardArt(
     const s = Math.max(w / img.width, h / img.height);
     const dw = img.width * s, dh = img.height * s;
     ctx.drawImage(img, x + (w - dw) / 2, y + (h - dh) / 2, dw, dh);
+  } else if (artUrl) {
+    // The card HAS art configured but it failed to load — don't leave a silent
+    // black hole. Keep the dark fill (as before) and add small words so a player
+    // can flag it. artUrl-less cards (art simply not set) stay plain.
+    const cx = x + w / 2, cy = y + h / 2;
+    const fs = Math.max(9, Math.min(15, Math.round(w * 0.085)));
+    ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    ctx.font = `600 ${fs}px "DejaVu Sans", Arial, sans-serif`;
+    ctx.fillStyle = "rgba(200,205,215,0.72)";
+    ctx.fillText("⚠ image missing", cx, cy - fs * 0.7);
+    ctx.font = `600 ${Math.max(8, fs - 2)}px "DejaVu Sans", Arial, sans-serif`;
+    ctx.fillStyle = "rgba(160,166,178,0.62)";
+    ctx.fillText("please notify staff", cx, cy + fs * 0.7);
   }
   ctx.restore();
 }

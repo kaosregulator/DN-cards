@@ -44,6 +44,7 @@ import {
   listBattleItems, getBattleItem, loadGuildBattleItems, applyItemUse, isOffensiveItem,
 } from "../battle/items.js";
 import { renderBattleTurn, renderAttackFrame, type AnimationSpeed } from "../animations/index.js";
+import { renderCoinFlip } from "../battle/prep-canvas.js";
 import { renderSiegeFrame, type HqBaseView, type SiegeOverlay, type HqRenderDefender } from "./render.js";
 import type { HqSiegeConfig } from "./settings.js";
 import { logger } from "../../lib/logger.js";
@@ -113,7 +114,14 @@ export interface SiegeRuntimeConfig {
   /** Shown under the castle name — the faction or holder being fought. */
   holderName: string;
   accent: number;
-  attackers: Combatant[];       // side 0, strongest first
+  attackers: Combatant[];       // side 0, strongest first — the DEFAULT column
+  /**
+   * The whole roster the commander can march, strongest first (side 0). When
+   * given, the muster board lets the player hand-pick which cards fill the
+   * column instead of always taking the top `attackers.length`. The default
+   * column is `attackers`; a chosen subset replaces it. Omit to lock the column.
+   */
+  attackerPool?: Combatant[];
   defenders: Combatant[];       // side 1, fortified, strongest first
   settings: BattleSettings;
   siege: HqSiegeConfig;
@@ -134,6 +142,16 @@ interface SiegeSession extends SiegeRuntimeConfig {
   di: number;                   // active defender index
   turnNumber: number;
   currentSide: 0 | 1;
+  /** The commander's heads/tails call — call it right and your column strikes first. */
+  coinCall: "heads" | "tails" | null;
+  /** How many cards the column may hold (= the garrison's rank count). */
+  columnSize: number;
+  /**
+   * When true the whole assault is auto-played by the AI with no board renders
+   * or timers — the "send them in and tell me how it went" path. The commander
+   * gets a DM with the result instead of driving the fight.
+   */
+  headless: boolean;
   log: string[];
   message?: Message;
   turnTimer?: NodeJS.Timeout;
@@ -165,12 +183,26 @@ interface SiegeSession extends SiegeRuntimeConfig {
 const sessions = new Map<string, SiegeSession>();
 const activeTargetKeys = new Set<string>();
 
+// ── Replay (auto/skip only) ───────────────────────────────────────────────────
+// A player who chose Auto Skip Mode didn't watch the fight, so the clean result
+// keeps a "View Replay" button that reveals the blow-by-blow. The session is
+// gone by then, so the recap is stashed here under a short-lived id.
+interface SiegeReplay { title: string; scoreLine: string; log: string[]; accent: number; targetName: string; }
+const replays = new Map<string, SiegeReplay>();
+const REPLAY_TTL_MS = 15 * 60 * 1000; // a replay stays viewable for 15 minutes
+// A deliberate beat so the result reads as its own screen, not just the last
+// combat frame flicking to text.
+const RESULT_HOLD_MS = 1300;
+
 /** True while any interactive siege is occupying this base or territory. */
 export function isSiegeTargetActive(targetKey: string): boolean {
   return activeTargetKeys.has(targetKey);
 }
 
 const sleep = (ms: number) => new Promise<void>(r => setTimeout(r, ms));
+// Per-frame pacing — a no-op in a headless (send-them-in) siege so it resolves
+// instantly instead of playing every beat out.
+const pace = (s: SiegeSession) => s.headless ? Promise.resolve() : sleep(frameMs(s));
 
 // Animation pacing follows the guild's battle settings, so a siege moves at the
 // same speed as a battle in that server.
@@ -254,12 +286,23 @@ export async function startSiege(
     c.isAi = true;
     c.aiDifficulty = SIEGE_AI;
   }
+  // The pool is a marching roster the player may re-order into a column; it must
+  // obey the same side-0 / non-AI ownership as the active column.
+  for (const c of config.attackerPool ?? []) {
+    c.isAi = false;
+    c.userId = config.starterId;
+    c.displayName = config.attackerName;
+    c.side = 0;
+  }
 
   const session: SiegeSession = {
     ...config,
     id: randomBytes(4).toString("hex"),
     phase: "muster",
     ai: 0, di: 0, turnNumber: 1, currentSide: 0,
+    coinCall: null,
+    columnSize: config.attackers.length,
+    headless: false,
     log: [],
     processing: false,
     itemUsesLeft: config.siege.itemUses,
@@ -290,6 +333,9 @@ export async function handleSiegeComponent(
 ): Promise<void> {
   const parts = interaction.customId.split(":"); // hq-hub:ls:<action>:<sid>[:extra]
   const action = parts[2];
+  // Replay is answered from the stashed recap, not a live session (which has
+  // already ended by the time the button exists), so it routes first.
+  if (action === "replay") return handleReplay(interaction as ButtonInteraction, parts[3] ?? "");
   const session = sessions.get(parts[3] ?? "");
   if (!session || session.phase === "ended") {
     await interaction.reply({ content: "⌛ This siege has ended.", ...EPHEMERAL }).catch(() => {});
@@ -301,6 +347,10 @@ export async function handleSiegeComponent(
   }
   switch (action) {
     case "begin": return handleBegin(interaction as ButtonInteraction, session);
+    case "skip": return handleSkip(interaction as ButtonInteraction, session);
+    case "coin": return handleCoinCall(interaction as ButtonInteraction, session, parts[4] as "heads" | "tails");
+    case "column": return handleColumnOpen(interaction as ButtonInteraction, session);
+    case "columnsel": return handleColumnSelect(interaction as StringSelectMenuInteraction, session);
     case "equip": return handleEquipOpen(interaction as ButtonInteraction, session);
     case "equipsel": return handleEquipSelect(interaction as StringSelectMenuInteraction, session);
     case "move": return handleMove(interaction as ButtonInteraction, session, parts[4] as MoveType);
@@ -327,7 +377,10 @@ async function musterPayload(s: SiegeSession) {
     .setDescription(
       `**${s.attackerName}** forms up outside **${s.targetName}**, held by **${s.holderName}**.\n\n` +
       `Every card you bring must break a rank of the garrison. Wreck the whole garrison to take the base — ` +
-      `**★** at 50% destruction, **★★** for the capture, **★★★** if you do it without losing a card.`,
+      `**★** at 50% destruction, **★★** for the capture, **★★★** if you do it without losing a card.\n\n` +
+      `🪙 **Call the toss** — guess the coin right and your team strikes first. ` +
+      `⚔️ **Battle** to command the fight yourself, or ⏩ **Auto Skip Mode** to let your captains ` +
+      `auto-resolve the siege and ping you when it's done.`,
     )
     .addFields(
       {
@@ -346,6 +399,13 @@ async function musterPayload(s: SiegeSession) {
         inline: false,
       },
       {
+        name: "🪙 Coin call",
+        value: s.coinCall
+          ? `You called **${s.coinCall === "heads" ? "Heads" : "Tails"}** — win the toss and you strike first.`
+          : "_Not called — the toss will be left to chance._",
+        inline: false,
+      },
+      {
         name: "🎒 Supplies",
         value: item
           ? `${item.emoji} **${item.name}** — ${item.description}\n_Carried by every card in the column._`
@@ -356,11 +416,23 @@ async function musterPayload(s: SiegeSession) {
     .setFooter({ text: `${s.itemUsesLeft} field use${s.itemUsesLeft === 1 ? "" : "s"} · ${s.siege.turnSeconds}s per move once the assault starts` });
   if (s.castleImage) embed.setImage(`attachment://${SIEGE_CASTLE_IMAGE}`);
 
+  const canPick = (s.attackerPool?.length ?? 0) > s.columnSize;
+  const coinBtn = (call: "heads" | "tails", label: string, emoji: string) =>
+    new ButtonBuilder().setCustomId(`hq-hub:ls:coin:${s.id}:${call}`).setLabel(label).setEmoji(emoji)
+      .setStyle(s.coinCall === call ? ButtonStyle.Primary : ButtonStyle.Secondary);
   const rows: ActionRowBuilder<ButtonBuilder>[] = [
     new ActionRowBuilder<ButtonBuilder>().addComponents(
-      new ButtonBuilder().setCustomId(`hq-hub:ls:begin:${s.id}`).setLabel("Begin Assault").setEmoji("⚔️").setStyle(ButtonStyle.Danger),
-      new ButtonBuilder().setCustomId(`hq-hub:ls:equip:${s.id}`).setLabel(item ? "Change item" : "Equip item").setEmoji("🎒").setStyle(ButtonStyle.Success),
+      new ButtonBuilder().setCustomId(`hq-hub:ls:begin:${s.id}`).setLabel("Battle").setEmoji("⚔️").setStyle(ButtonStyle.Danger),
+      new ButtonBuilder().setCustomId(`hq-hub:ls:skip:${s.id}`).setLabel("Auto Skip Mode").setEmoji("⏩").setStyle(ButtonStyle.Success),
       new ButtonBuilder().setCustomId(`hq-hub:ls:concede:${s.id}`).setLabel("Stand down").setEmoji("🏳️").setStyle(ButtonStyle.Secondary),
+    ),
+    new ActionRowBuilder<ButtonBuilder>().addComponents(
+      coinBtn("heads", "Heads", "🪙"),
+      coinBtn("tails", "Tails", "🌙"),
+      ...(canPick
+        ? [new ButtonBuilder().setCustomId(`hq-hub:ls:column:${s.id}`).setLabel("Choose team").setEmoji("🎴").setStyle(ButtonStyle.Secondary)]
+        : []),
+      new ButtonBuilder().setCustomId(`hq-hub:ls:equip:${s.id}`).setLabel(item ? "Change item" : "Equip item").setEmoji("🎒").setStyle(ButtonStyle.Secondary),
     ),
   ];
   return { embeds: [embed], components: rows, files: castleFiles(s) };
@@ -411,17 +483,140 @@ async function handleEquipSelect(interaction: StringSelectMenuInteraction, s: Si
   if (s.message) await s.message.edit(await musterPayload(s)).catch(() => {});
 }
 
+// ── Coin call ─────────────────────────────────────────────────────────────────
+async function handleCoinCall(interaction: ButtonInteraction, s: SiegeSession, call: "heads" | "tails"): Promise<void> {
+  if (s.phase !== "muster") { await interaction.deferUpdate().catch(() => {}); return; }
+  // Tapping the current call clears it (back to chance).
+  s.coinCall = s.coinCall === call ? null : call;
+  await interaction.update(await musterPayload(s)).catch(() => {});
+}
+
+// ── Column selection ──────────────────────────────────────────────────────────
+// The player picks which of their cards march, and in what order, up to the
+// garrison's rank count. Reuses the already-built pool combatants — nothing is
+// committed until Begin Assault / Send them in.
+async function handleColumnOpen(interaction: ButtonInteraction, s: SiegeSession): Promise<void> {
+  if (s.phase !== "muster") { await interaction.reply({ content: "The assault has already begun.", ...EPHEMERAL }).catch(() => {}); return; }
+  const pool = s.attackerPool ?? [];
+  if (pool.length === 0) { await interaction.reply({ content: "Your whole roster is already committed.", ...EPHEMERAL }).catch(() => {}); return; }
+  const chosen = new Set(s.attackers.map(c => c.cardId));
+  const menu = new StringSelectMenuBuilder()
+    .setCustomId(`hq-hub:ls:columnsel:${s.id}`)
+    .setPlaceholder(`Pick up to ${s.columnSize} card${s.columnSize === 1 ? "" : "s"} for the column`)
+    .setMinValues(1)
+    .setMaxValues(Math.min(s.columnSize, pool.length, 25))
+    .addOptions(pool.slice(0, 25).map(c => ({
+      label: c.cardName.slice(0, 100),
+      description: `❤️ ${c.stats.maxHealth} · ⚔️ ${c.stats.attack} · 🛡️ ${c.stats.defense}`.slice(0, 100),
+      value: String(c.cardId),
+      default: chosen.has(c.cardId),
+    })));
+  await interaction.reply({
+    content: `🎴 **Pick your team** — the order you pick is the order they charge the gate. You may bring up to **${s.columnSize}** (one per garrison rank).`,
+    components: [new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(menu)], ...EPHEMERAL,
+  }).catch(() => {});
+}
+
+async function handleColumnSelect(interaction: StringSelectMenuInteraction, s: SiegeSession): Promise<void> {
+  if (s.phase !== "muster") { await interaction.update({ content: "The assault has already begun.", components: [] }).catch(() => {}); return; }
+  const pool = s.attackerPool ?? [];
+  // Respect the click order so the player controls the charge order.
+  const picked = interaction.values
+    .map(id => pool.find(c => c.cardId === Number(id)))
+    .filter((c): c is Combatant => !!c)
+    .slice(0, s.columnSize);
+  if (picked.length === 0) { await interaction.update({ content: "Pick at least one card.", components: [] }).catch(() => {}); return; }
+  s.attackers = picked;
+  // The equipped item lives on each combatant — carry it onto the new column.
+  const item = s.equippedItemId ? getBattleItem(s.equippedItemId, s.guildId) : null;
+  for (const c of s.attackers) {
+    c.itemId = item?.id ?? null;
+    c.item = item ?? null;
+    c.itemChargesRemaining = item?.charges ?? 0;
+    c.itemCooldownRemaining = 0;
+  }
+  s.attackerPower = s.attackers.reduce((sum, c) => sum + powerRating(c.stats), 0);
+  await interaction.update({
+    content: `🎴 Team set: ${picked.map(c => `**${c.cardName}**`).join(" → ")}.`,
+    components: [],
+  }).catch(() => {});
+  if (s.message) await s.message.edit(await musterPayload(s)).catch(() => {});
+}
+
+// ── Send them in (skip / auto-resolve) ────────────────────────────────────────
+// "Sending soldiers off": the captains auto-play the whole siege at speed with no
+// board or timers, then the commander is DM'd the result. Reuses the exact same
+// engine, break-rank and finish/commit path as a hand-driven assault.
+async function handleSkip(interaction: ButtonInteraction, s: SiegeSession): Promise<void> {
+  if (s.phase !== "muster") { await interaction.deferUpdate().catch(() => {}); return; }
+  await interaction.deferUpdate().catch(() => {});
+  s.headless = true;
+  s.phase = "assault";
+  // Coin toss still decides initiative, silently.
+  const call = s.coinCall ?? (Math.random() < 0.5 ? "heads" : "tails");
+  const flip: "heads" | "tails" = Math.random() < 0.5 ? "heads" : "tails";
+  s.currentSide = call === flip ? 0 : 1;
+  pushLog(s, [`📨 **${s.attackerName}** sends the column at **${s.targetName}** and awaits word from the field.`]);
+  // Let the muster message acknowledge the send-off while the fight resolves.
+  if (s.message) {
+    await s.message.edit({
+      embeds: [new EmbedBuilder().setColor(s.accent).setTitle("📨 Column deployed")
+        .setDescription(`Your captains are storming **${s.targetName}**. You'll be pinged the moment it's decided.`)],
+      components: [], files: [],
+    }).catch(() => {});
+  }
+  await startTurn(s);
+}
+
 async function handleBegin(interaction: ButtonInteraction, s: SiegeSession): Promise<void> {
   if (s.phase !== "muster") { await interaction.deferUpdate().catch(() => {}); return; }
   await interaction.deferUpdate().catch(() => {});
   s.phase = "assault";
+  // ── Coin toss → who strikes first ──────────────────────────────────────────
+  // The SAME heads/tails flow as /battle: the toss is random, and calling it
+  // right earns the initiative. No call left it to chance.
+  const firstSide = await playCoinToss(s);
+  s.currentSide = firstSide;
   const lead = s.attackers[0], garrison = s.defenders[0];
   pushLog(s, [
     `⚔️ **${s.attackerName}** throws the column at the walls of **${s.targetName}**.`,
+    firstSide === 0 ? "🎯 Your column seizes the initiative — you move first." : "🛡️ The garrison reacts first.",
     lead && garrison ? `🔹 **${lead.cardName}** meets **${garrison.cardName}** at the gate.` : "",
   ]);
   await refreshCastle(s, true);
   await startTurn(s);
+}
+
+// Play the heads/tails toss and return who moves first. Reuses /battle's coin
+// GIF; a correct call gives the commander (side 0) the opening move.
+async function playCoinToss(s: SiegeSession): Promise<0 | 1> {
+  const flip: "heads" | "tails" = Math.random() < 0.5 ? "heads" : "tails";
+  const call = s.coinCall ?? (Math.random() < 0.5 ? "heads" : "tails");
+  const firstSide: 0 | 1 = call === flip ? 0 : 1;
+  if (!s.message) return firstSide;
+  const anim = await renderCoinFlip(flip).catch(() => null);
+  if (anim) {
+    const coinEmbed = new EmbedBuilder()
+      .setColor(0xf1c40f)
+      .setTitle("🪙 Coin toss…")
+      .setDescription(s.coinCall ? `You called **${s.coinCall === "heads" ? "Heads" : "Tails"}**.` : "_No call — leaving it to fate._")
+      .setImage("attachment://coin.gif");
+    await s.message.edit({
+      content: null, embeds: [coinEmbed],
+      files: [new AttachmentBuilder(Buffer.from(anim.buffer), { name: "coin.gif" })], components: [],
+    }).catch(() => {});
+    await sleep(Math.max(1500, anim.durationMs));
+  }
+  const landed = flip === "heads" ? "Heads 🪙" : "Tails 🌙";
+  const resultEmbed = new EmbedBuilder()
+    .setColor(firstSide === 0 ? 0x4fd06a : s.accent)
+    .setTitle(`🪙 ${landed}`)
+    .setDescription(firstSide === 0
+      ? `You **won the toss** — your column storms the gate first.`
+      : `The toss goes to the defenders — the garrison moves first.`);
+  await s.message.edit({ content: null, embeds: [resultEmbed], files: [], components: [] }).catch(() => {});
+  await sleep(1300);
+  return firstSide;
 }
 
 // ── Turn loop (mirrors battle-manager) ───────────────────────────────────────
@@ -431,10 +626,11 @@ async function startTurn(s: SiegeSession): Promise<void> {
   const actor = active(s, s.currentSide);
   if (!actor) { await finish(s); return; }
 
-  if (actor.isAi) {
-    // The garrison answers on its own, after a beat, exactly like /battle's AI.
+  // The garrison — and, in a headless send-off, BOTH sides — answer on their own,
+  // after a beat, exactly like /battle's AI.
+  if (actor.isAi || s.headless) {
     await render(s);
-    await sleep(frameMs(s));
+    await pace(s);
     const foe = active(s, foeSide(s.currentSide));
     if (!foe) { await finish(s); return; }
     const move = chooseAiMove(actor, foe, s.settings, SIEGE_AI);
@@ -472,7 +668,7 @@ async function applyMove(s: SiegeSession, side: 0 | 1, move: MoveType): Promise<
     // "Winding up" frame, then the resolved blow — the same two-beat rhythm a
     // battle turn has.
     await render(s, { currentMove: `${actor.cardName} → ${moveLabel(move, actor)}…` });
-    await sleep(frameMs(s));
+    await pace(s);
 
     if (!start.skipped) {
       const foePoolBefore = foe.hp + foe.shield;
@@ -482,7 +678,7 @@ async function applyMove(s: SiegeSession, side: 0 | 1, move: MoveType): Promise<
 
       await buildTurnFrame(s, side, move, result, actor, foe, foePoolBefore, selfPoolBefore);
       await render(s);
-      await sleep(frameMs(s));
+      await pace(s);
 
       // The ram keeps working between blows: a rank that refuses to die gets
       // ground down whether or not the commander's swing landed.
@@ -565,7 +761,12 @@ async function buildTurnFrame(
   result: ReturnType<typeof resolveMove>, actor: Combatant, foe: Combatant,
   foePoolBefore: number, selfPoolBefore: number,
 ): Promise<void> {
-  if (!s.siege.turnVisuals) return;
+  if (s.headless || !s.siege.turnVisuals) return;
+  // Only the COMMANDER's blow gets the dash-across-the-castle frame. The
+  // garrison's answer is read off the battlefield itself — HP bars and the
+  // castle's damage update — so the rhythm is: you attack (we see it on the
+  // field), then the view settles back to the castle and the walls answer.
+  if (side !== 0) return;
   const visual = computeMoveVisual(move, result, actor, foe, foePoolBefore, selfPoolBefore);
   if (sceneAnimated(s)) {
     const anim = await renderBattleTurn({
@@ -577,7 +778,10 @@ async function buildTurnFrame(
       moveName: moveLabel(move, actor),
       attackerWon: result.koed || foe.hp <= 0,
       defenderWon: false,
+      // THE difference from a plain battle: the fighters dash and trade blows
+      // over the castle itself — the current siege scene is the battlefield.
       background: null,
+      backgroundImage: s.castleImage,
     }, s.settings.battleAnimationSpeed as AnimationSpeed).catch(() => null);
     s.turnFrame = anim ? Buffer.from(anim.buffer) : null;
     s.turnFrameIsGif = !!anim;
@@ -735,6 +939,21 @@ async function handleConcede(interaction: ButtonInteraction, s: SiegeSession): P
   await finish(s);
 }
 
+// Reveal the stashed blow-by-blow for an auto-resolved siege. Ephemeral, so each
+// viewer gets their own recap and the clean result message is left untouched.
+async function handleReplay(interaction: ButtonInteraction, replayId: string): Promise<void> {
+  const r = replays.get(replayId);
+  if (!r) {
+    await interaction.reply({ content: "⌛ This replay has expired.", ...EPHEMERAL }).catch(() => {});
+    return;
+  }
+  const body = r.log.length ? r.log.slice(-16).join("\n").slice(0, 3800) : "_No blows were recorded._";
+  const embed = new EmbedBuilder().setColor(r.accent)
+    .setTitle(`🔁 Replay — ${r.title}`)
+    .setDescription(`Assault on **${r.targetName}**\n${r.scoreLine}\n${WHITE_LINE}\n${body}`);
+  await interaction.reply({ embeds: [embed], ...EPHEMERAL }).catch(() => {});
+}
+
 // ── Rendering ─────────────────────────────────────────────────────────────────
 
 function pushLog(s: SiegeSession, lines: (string | undefined)[]): void {
@@ -755,7 +974,9 @@ function castleFiles(s: SiegeSession): AttachmentBuilder[] {
 // meter moved a whole step). The buffer is re-sent on every edit — Discord drops
 // attachments that aren't resent — but the expensive canvas work is not redone.
 async function refreshCastle(s: SiegeSession, force = false): Promise<void> {
-  if (!s.baseView) return;
+  // A headless siege renders no intermediate frames; finish() still paints the
+  // final result scene directly.
+  if (!s.baseView || s.headless) return;
   const pct = destructionPct(s);
   const key = `${s.di}:${s.ai}:${Math.floor(pct / 5)}:${s.phase}`;
   if (!force && key === s.castleKey && s.castleImage) return;
@@ -867,7 +1088,7 @@ function buildControls(s: SiegeSession): ActionRowBuilder<ButtonBuilder>[] {
 }
 
 async function render(s: SiegeSession, opts?: { currentMove?: string; turnEndsAt?: number }): Promise<void> {
-  if (!s.message || s.phase === "ended") return;
+  if (!s.message || s.phase === "ended" || s.headless) return;
   await refreshCastle(s);
   const files = castleFiles(s);
   const battleEmbed = buildBattleEmbed(s, opts);
@@ -936,14 +1157,44 @@ async function finish(s: SiegeSession): Promise<void> {
     `**${outcome.defenderCardsLost}**/${s.defenders.length} ranks broken · ` +
     `**${outcome.attackerCardsLost}** card${outcome.attackerCardsLost === 1 ? "" : "s"} lost`;
 
+  // A player who FOUGHT it watched every blow, so their result recaps the log
+  // inline. A player who chose Auto Skip Mode didn't watch — keep their result
+  // clean (outcome only) and tuck the fight behind a "View Replay" button.
+  const components: ActionRowBuilder<ButtonBuilder>[] = [];
   const embed = new EmbedBuilder().setColor(view.color).setTitle(view.title)
-    .setDescription(`${view.description}\n${WHITE_LINE}\n${scoreLine}\n${WHITE_LINE}\n${condensedSiegeLog(s, 6)}`);
+    .setDescription(s.headless
+      ? `${view.description}\n${WHITE_LINE}\n${scoreLine}`
+      : `${view.description}\n${WHITE_LINE}\n${scoreLine}\n${WHITE_LINE}\n${condensedSiegeLog(s, 6)}`);
   if (view.fields?.length) {
     embed.addFields(view.fields.map(f => ({ name: f.name, value: f.value, inline: f.inline ?? true })));
   }
   if (s.castleImage) embed.setImage(`attachment://${SIEGE_CASTLE_IMAGE}`);
+  if (s.headless) {
+    const replayId = randomBytes(4).toString("hex");
+    replays.set(replayId, { title: view.title, scoreLine, log: [...s.log], accent: s.accent, targetName: s.targetName });
+    setTimeout(() => replays.delete(replayId), REPLAY_TTL_MS).unref?.();
+    components.push(new ActionRowBuilder<ButtonBuilder>().addComponents(
+      new ButtonBuilder().setCustomId(`hq-hub:ls:replay:${replayId}`).setLabel("View Replay").setEmoji("🔁").setStyle(ButtonStyle.Secondary),
+    ));
+  }
+  // A distinct beat before the result lands, so it doesn't flash past — only when
+  // a person is watching (a send-off is instant and DM'd).
+  if (!s.headless) await sleep(RESULT_HOLD_MS);
   if (s.message) {
-    await s.message.edit({ embeds: [embed], components: [], files: castleFiles(s) }).catch(() => {});
+    await s.message.edit({ embeds: [embed], components, files: castleFiles(s) }).catch(() => {});
+  }
+  // Send-off ping: the commander walked away, so DM them the result — "your
+  // soldiers are back from the siege". The scene image lives on the (ephemeral)
+  // board message; the DM carries the outcome text.
+  if (s.headless && s.message) {
+    try {
+      const user = await s.message.client.users.fetch(s.starterId);
+      const dm = new EmbedBuilder().setColor(view.color)
+        .setTitle(`📨 ${view.title}`)
+        .setDescription(`Your assault on **${s.targetName}** is finished.\n${WHITE_LINE}\n${view.description}\n${WHITE_LINE}\n${scoreLine}`);
+      if (view.fields?.length) dm.addFields(view.fields.map(f => ({ name: f.name, value: f.value, inline: f.inline ?? true })));
+      await user.send({ embeds: [dm] });
+    } catch { /* DMs closed — the board still shows the result. */ }
   }
   await release(s);
 }

@@ -1666,6 +1666,10 @@ async function clearCanvasAtCursor(guildId: string, userId: string): Promise<str
 // never a per-attack prompt, so every siege in a server looks the same.
 type SiegeMode = HqSiegeConfig["mode"];
 const SIEGE_FILE = "siege.png", SIEGE_GIF = "siege.gif";
+// How many of the attacker's strongest cards to offer as a pickable roster at
+// muster (the column itself is only as wide as the garrison). Capped so the
+// select menu stays within Discord's 25-option limit.
+const SIEGE_COLUMN_POOL = 20;
 type LoadedCtx = Awaited<ReturnType<typeof loadCtx>>;
 
 // A card → siege combatant, power taken from the guild strength ladder (the same
@@ -1937,11 +1941,15 @@ async function launchPlayerSiege(
   if (!settings.enabled) { await fail("Battles are disabled here, so a turn-for-turn siege can't run. An admin can switch the siege style in `/hqadmin`."); return; }
   const defenderCards = await buildDefenderCards(guildId, defenderId, cx.ctx);
   if (defenderCards.length === 0) { await fail("This base has no defenders to fight."); return; }
-  const attackerCards = await buildAttackerCards(guildId, attackerId, cx.ctx, defenderCards.length);
-  if (attackerCards.length === 0) { await fail("You have no cards to march with. Catch some first."); return; }
+  // Build a marching ROSTER (more than the column needs) so the player can pick
+  // which cards form the column at muster; the default column is the strongest N.
+  const poolCards = await buildAttackerCards(guildId, attackerId, cx.ctx, SIEGE_COLUMN_POOL);
+  if (poolCards.length === 0) { await fail("You have no cards to march with. Catch some first."); return; }
+  const attackerCards = poolCards.slice(0, defenderCards.length);
 
   const forti = await baseFortification(guildId, defenderId);
-  const attackers = buildSiegeSquad(attackerCards, settings, guildId, cx.ctx, 0, attackerId, attackerName);
+  const attackerPool = buildSiegeSquad(poolCards, settings, guildId, cx.ctx, 0, attackerId, attackerName);
+  const attackers = attackerPool.slice(0, defenderCards.length);
   const defenders = buildSiegeSquad(defenderCards, settings, guildId, cx.ctx, 1, defenderId, defenderName, forti.totalPct);
   const baseView = await buildBaseRenderView(guildId, defenderId, defenderName, null, defHq).catch(() => null);
 
@@ -1949,7 +1957,7 @@ async function launchPlayerSiege(
     guildId, targetKey: `hq:base:${guildId}:${defenderId}`,
     starterId: attackerId, attackerName, targetName: defenderName,
     holderName: forti.totalPct > 0 ? `${defenderName} · +${forti.totalPct}% fortified` : defenderName,
-    accent: 0xc0392b, attackers, defenders, settings, siege: siegeCfg,
+    accent: 0xc0392b, attackers, attackerPool, defenders, settings, siege: siegeCfg,
     baseView, champion: championFor(attackerCards, cx),
     applyOutcome: (o) => finalizePlayerSiege(interaction, guildId, attackerId, attackerName, defenderId, o, forti.totalPct),
   });
@@ -1999,14 +2007,20 @@ async function launchTerritorySiege(
     return;
   }
   const defenderName = holderLabel(view);
-  const attackers = buildSiegeSquad(attackerCards, settings, guildId, cx.ctx, 0, attackerId, attackerName);
-  const defenders = buildSiegeSquad(garrison, settings, guildId, cx.ctx, 1, `world:${nodeId}`, defenderName);
+  // A pickable roster (strongest cards, capped) so the player can form the column
+  // at muster; the default column is only as wide as the garrison.
+  const poolCards = await buildAttackerCards(guildId, attackerId, cx.ctx, SIEGE_COLUMN_POOL).catch(() => attackerCards);
+  const attackerPool = buildSiegeSquad(poolCards, settings, guildId, cx.ctx, 0, attackerId, attackerName);
+  const attackers = attackerPool.slice(0, garrison.length);
+  // "AI" as the garrison owner so the battle embed tags the defenders as 🤖 AI
+  // (combatantField special-cases it) instead of showing a raw world node id.
+  const defenders = buildSiegeSquad(garrison, settings, guildId, cx.ctx, 1, "AI", defenderName);
 
   await startSiege(interaction, {
     guildId, targetKey: `hq:world:${guildId}:${nodeId}`,
     starterId: attackerId, attackerName, targetName: view.territory.name,
     holderName: defenderName,
-    accent: view.faction.color, attackers, defenders, settings, siege: siegeCfg,
+    accent: view.faction.color, attackers, attackerPool, defenders, settings, siege: siegeCfg,
     baseView: territoryBaseView(view, theme, garrison, cx),
     champion: championFor(attackerCards, cx),
     applyOutcome: (o) => finalizeTerritorySiege(interaction, guildId, attackerId, attackerName, nodeId, view, o),
