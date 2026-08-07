@@ -27,6 +27,8 @@ import { getBossByName, getBossById, getEnabledBosses, getNextBoss, grantRaidFra
 import { raidFrameForBoss } from "../cards/frames.js";
 import { renderAttackFrame } from "../animations/index.js";
 import { renderFatalityCinematic } from "../animations/cinematic/index.js";
+import { getRarityEffectColor } from "../animations/effects.js";
+import { renderSiegeCinematic, SIEGE_CINEMATIC_FILE, type SiegeCinematicView } from "../hq/cinematic.js";
 import type { RenderCard } from "../battle/image/render.js";
 import {
   buildBossCombatant, buildPlayerCombatant, resolveRaidRound,
@@ -293,6 +295,13 @@ async function runIntroCutscene(session: RaidSession): Promise<void> {
   const beats = buildRaidIntroBeats(session.boss);
   const thumb = toAbsoluteImageUrl(session.boss.imageUrl);
 
+  // Opening film first: the same cinematic the HQ siege uses, but the thing on
+  // the ridge is the BOSS and the party's cards fly in — with the intro script
+  // typed over it word-for-word. Best-effort; on any failure we fall straight
+  // through to the classic text cutscene below (which is preserved as-is).
+  await playRaidCinematic(session, beats).catch(() => {});
+  if (session.phase !== "intro" || !session.message) return;
+
   const beatEmbed = (idx: number, withButtons: boolean) => {
     const e = new EmbedBuilder()
       .setTitle(`🐉 ${session.boss.name}`)
@@ -304,8 +313,9 @@ async function runIntroCutscene(session: RaidSession): Promise<void> {
   };
 
   // Beat 1 immediately (buttons hidden), then reveal the rest on a timer. Guard
-  // every edit on the session still being in the intro phase.
-  await session.message.edit({ embeds: [beatEmbed(0, false)], components: [] }).catch(() => {});
+  // every edit on the session still being in the intro phase. `files: []` clears
+  // the cinematic attachment so the text cutscene starts clean.
+  await session.message.edit({ embeds: [beatEmbed(0, false)], components: [], files: [] }).catch(() => {});
   for (let i = 1; i < beats.length; i++) {
     await sleep(INTRO_BEAT_MS);
     if (session.phase !== "intro" || !session.message) return;
@@ -320,6 +330,71 @@ async function runIntroCutscene(session: RaidSession): Promise<void> {
 }
 
 function sleep(ms: number): Promise<void> { return new Promise(r => setTimeout(r, ms)); }
+
+// Roughly the raid cinematic's runtime (see renderSiegeCinematic's boss path),
+// so the film plays out before the text cutscene replaces it.
+const RAID_CINEMATIC_HOLD_MS = 5600;
+
+// A raid's weather, derived from the boss's rarity so bigger bosses arrive under
+// a heavier sky. Deterministic per boss.
+function moodForBoss(boss: RaidBoss): SiegeCinematicView["mood"] {
+  switch (boss.rarity) {
+    case "mythic": return "ash";
+    case "legendary": return "night";
+    case "epic": return "storm";
+    case "rare": return "dusk";
+    default: return "dawn";
+  }
+}
+
+// The party's banner name for the cinematic's attacker caption.
+function partyBannerName(session: RaidSession): string {
+  const starter = session.party.get(session.starterId)?.member.displayName
+    ?? [...session.party.values()][0]?.member.displayName ?? "The Party";
+  return session.party.size <= 1 ? starter : `${starter}'s Party`;
+}
+
+// Render + play the boss-raid opening film into the raid message. Reuses the HQ
+// siege cinematic engine in its "boss" mode. Best-effort — the caller falls
+// through to the classic text cutscene if this returns without posting.
+async function playRaidCinematic(session: RaidSession, beats: string[]): Promise<void> {
+  if (!session.message || session.phase !== "intro") return;
+  const boss = session.boss;
+  const party = [...session.party.values()].map(s => s.member);
+  const view: SiegeCinematicView = {
+    kind: "boss",
+    targetName: boss.name,
+    holderName: `${(boss.rarity as string).toUpperCase()} BOSS`,
+    defenderColor: getRarityEffectColor(boss.rarity as Rarity),
+    attackerColor: 0x4aa3ff,
+    attackerName: partyBannerName(session),
+    cards: party.slice(0, 5).map(m => ({
+      name: m.card.name,
+      artUrl: toAbsoluteImageUrl(m.card.imageUrl),
+      rarityColor: getRarityEffectColor(m.card.rarity as Rarity),
+    })),
+    garrison: 0,
+    structure: "boss",
+    mood: moodForBoss(boss),
+    bossArtUrl: toAbsoluteImageUrl(boss.imageUrl),
+    beats,
+    titleText: "THE RAID BEGINS",
+    tagline: boss.description ?? undefined,
+  };
+
+  const buf = await renderSiegeCinematic(view).catch(() => null);
+  if (!buf || session.phase !== "intro" || !session.message) return;
+  const embed = new EmbedBuilder()
+    .setTitle(`🎥 ${view.attackerName} march on ${boss.name}`)
+    .setColor(0xc0392b)
+    .setDescription(`_The horns sound. The party descends on **${boss.name}**._`)
+    .setImage(`attachment://${SIEGE_CINEMATIC_FILE}`);
+  await session.message.edit({
+    embeds: [embed], components: [],
+    files: [new AttachmentBuilder(buf, { name: SIEGE_CINEMATIC_FILE })],
+  }).catch(() => {});
+  await sleep(RAID_CINEMATIC_HOLD_MS);
+}
 
 function buildIntroComponents(session: RaidSession): ActionRowBuilder<ButtonBuilder>[] {
   return [new ActionRowBuilder<ButtonBuilder>().addComponents(

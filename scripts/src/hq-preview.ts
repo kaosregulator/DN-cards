@@ -134,6 +134,43 @@ async function previewCinematic(): Promise<void> {
   }));
 }
 
+// ── Raid cinematic: the boss variant of the siege film ────────────────────────
+async function previewRaidCinematic(): Promise<void> {
+  console.log("raid cinematic (boss)…");
+  const cards = [
+    { name: "Vanguard Rook", artUrl: null, rarityColor: 0xf1c40f },
+    { name: "Ash Lieutenant", artUrl: null, rarityColor: 0x9b59b6 },
+    { name: "Ironclad", artUrl: null, rarityColor: 0x3498db },
+  ];
+  const boss: Parameters<typeof renderSiegeCinematic>[0] = {
+    kind: "boss",
+    targetName: "Gorehowl the Undying",
+    holderName: "MYTHIC BOSS",
+    defenderColor: 0xe74c3c,
+    attackerColor: 0x4aa3ff,
+    attackerName: "Darknight's Party",
+    cards,
+    garrison: 0,
+    structure: "boss",
+    mood: "ash",
+    bossArtUrl: null,
+    titleText: "THE RAID BEGINS",
+    beats: [
+      "The air is heavy. Something enormous has been waiting for a worthy party.",
+      "\"You bring cards to face ME? Bold. Futile — but bold.\" — Gorehowl the Undying",
+      "Let the Raid Begin! Fight as one — the boss punishes the weakest link.",
+    ],
+    tagline: "A mountain that learned to hate.",
+  };
+  save("raid-cinematic.gif", await renderSiegeCinematic(boss));
+  const beats: [string, number][] = [
+    ["1-arrival", 0.12], ["2-rise", 0.34], ["3-cards", 0.55], ["4-title", 0.9],
+  ];
+  for (const [name, t] of beats) {
+    save(`raid-cinematic-${name}.png`, await renderCinematicStill(boss, t));
+  }
+}
+
 // ── Rooms: real wallpaper + built terrain + the build cursor ──────────────────
 function roomView(overrides: Partial<HqRenderView>): HqRenderView {
   return {
@@ -219,6 +256,7 @@ async function main(): Promise<void> {
   await previewRooms();
   await previewBase();
   await previewCinematic();
+  await previewRaidCinematic();
   console.log("done.");
 }
 

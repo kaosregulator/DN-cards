@@ -60,6 +60,21 @@ export interface SiegeCinematicView {
   mood: "dawn" | "dusk" | "night" | "storm" | "snow" | "ash";
   /** A one-line subtitle under the final title card. */
   tagline?: string;
+  // ── Boss-raid variant ──────────────────────────────────────────────────────
+  // A raid reuses the exact same film — the ride in, the muster, the cards
+  // arriving — but the thing on the ridge is a looming BOSS instead of a castle.
+  /** "base" (default) draws a castle; "boss" draws the raid boss towering ahead. */
+  kind?: "base" | "boss";
+  /** The boss's card art, drawn huge on the ridge when `kind` is "boss". */
+  bossArtUrl?: string | null;
+  /**
+   * Story lines revealed as timed, typewritten lower-third captions over the
+   * film ("word for word"). Markdown is stripped. Used by raids to carry the
+   * existing intro script onto the cinematic.
+   */
+  beats?: string[];
+  /** Overrides the final title-card label (default "THE SIEGE BEGINS"). */
+  titleText?: string;
 }
 
 export const SIEGE_CINEMATIC_FILE = "siege-intro.gif";
@@ -83,12 +98,18 @@ export async function renderCinematicStill(view: SiegeCinematicView, t = 0.92): 
   });
 }
 
-export async function renderSiegeCinematic(view: SiegeCinematicView): Promise<Buffer | null> {
+export async function renderSiegeCinematic(
+  view: SiegeCinematicView,
+  opts?: { durationMs?: number; maxFrames?: number },
+): Promise<Buffer | null> {
+  // A raid carries a longer caption track (the intro script), so give it a
+  // little more runtime + frames so the words have room to land.
+  const raid = view.kind === "boss";
   const res = await encodeAnimation({
     width: W, height: H,
     speed: "normal",
-    durationMs: 4200,
-    maxFrames: 30,
+    durationMs: opts?.durationMs ?? (raid ? 5400 : 4200),
+    maxFrames: opts?.maxFrames ?? (raid ? 36 : 30),
     quality: 24,
     // The scene is broad shapes and gradients, so it survives the downscale and
     // the GIF stays comfortably inside Discord's attachment limit.
@@ -166,8 +187,14 @@ async function paintFrame(ctx: Ctx, mod: CanvasMod, view: SiegeCinematicView, t:
   drawSky(ctx, pal, t);
   drawDistantRange(ctx, pal);
   drawGround(ctx, pal);
-  await drawCastle(ctx, mod, view, pal, t);
-  drawGarrison(ctx, view, t);
+  if (view.kind === "boss") {
+    // A raid: the thing on the ridge is the boss, not a keep. The attacker's
+    // ranks still muster and the cards still fly in — same film, new foe.
+    await drawBoss(ctx, mod, view, pal, t);
+  } else {
+    await drawCastle(ctx, mod, view, pal, t);
+    drawGarrison(ctx, view, t);
+  }
   drawSiegeLine(ctx, view, t);
   drawMarchingRanks(ctx, view, t);
 
@@ -351,6 +378,108 @@ function drawFlankingBanners(
     ctx.beginPath(); ellipse(ctx, x + 13, top + 31, 5, 5); ctx.fill();
     ctx.restore();
   }
+}
+
+// The raid boss looming on the ridge, in place of a castle. It rises out of the
+// ground during MUSTER, framed in its rarity colour with a menacing aura and two
+// burning eyes, so a raid opens on the monster the party is about to face.
+async function drawBoss(
+  ctx: Ctx, mod: CanvasMod, view: SiegeCinematicView, pal: Mood, t: number,
+): Promise<void> {
+  const cx = W / 2, feetY = HORIZON + 24;
+  const color = view.defenderColor;
+  const colorHex = `#${(color >>> 0).toString(16).padStart(6, "0").slice(-6)}`;
+
+  // A broad, dark rise for the boss to stand on — reads as a scorched mound.
+  ctx.save();
+  for (const [halfW, lift, tint] of [[440, 30, -18], [300, 54, -6]] as const) {
+    ctx.fillStyle = shiftColor(pal.groundFar, tint);
+    ctx.beginPath();
+    ctx.moveTo(cx - halfW, feetY + 26);
+    ctx.bezierCurveTo(cx - halfW * 0.5, feetY + 26 - lift, cx + halfW * 0.5, feetY + 26 - lift, cx + halfW, feetY + 26);
+    ctx.closePath(); ctx.fill();
+  }
+  ctx.restore();
+
+  // Long cast shadow.
+  ctx.save();
+  ctx.fillStyle = "rgba(0,0,0,0.42)";
+  ctx.beginPath(); ellipse(ctx, cx, feetY + 8, 210, 26); ctx.fill();
+  ctx.restore();
+
+  // The boss rises during MUSTER (0.16 → 0.46) — camera arrives, boss stands up.
+  const rise = easeInOutCubic(beat(t, 0.14, 0.48));
+  const bh = 320, bw = bh * 0.74;
+  const bx = cx - bw / 2;
+  const sink = (1 - rise) * bh * 0.55;         // starts half-buried in the mound
+  const by = feetY + 10 - bh + sink;
+
+  // Menacing aura swelling as it stands.
+  ctx.save();
+  const aura = ctx.createRadialGradient(cx, by + bh * 0.42, 20, cx, by + bh * 0.42, bw * 1.15);
+  aura.addColorStop(0, hexToRgba(color, 0.42 * rise + 0.08));
+  aura.addColorStop(0.6, hexToRgba(color, 0.16 * rise));
+  aura.addColorStop(1, "rgba(0,0,0,0)");
+  ctx.fillStyle = aura;
+  ctx.beginPath(); ellipse(ctx, cx, by + bh * 0.42, bw * 1.15, bh * 0.62); ctx.fill();
+  ctx.restore();
+
+  // Boss banners flanking, in its colour.
+  drawFlankingBanners(ctx, cx, feetY + 6, bw * 0.62, color, t);
+
+  const img = view.bossArtUrl ? await loadSprite(mod, view.bossArtUrl).catch(() => null) : null;
+
+  // Clip to the mound so the buried portion is hidden as it rises.
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(bx - 40, by - 40, bw + 80, (feetY + 12) - (by - 40));
+  ctx.clip();
+
+  // Backing plate + rim light in the rarity colour.
+  ctx.save();
+  ctx.shadowColor = hexToRgba(color, 0.9);
+  ctx.shadowBlur = 34;
+  roundRectPath(ctx, bx, by, bw, bh, 18);
+  ctx.fillStyle = "#0b0d12"; ctx.fill();
+  ctx.restore();
+
+  ctx.save();
+  roundRectPath(ctx, bx, by, bw, bh, 18);
+  ctx.clip();
+  if (img) {
+    await drawCardArt(ctx, mod, bx, by, bw, bh, view.bossArtUrl!);
+  } else {
+    // No art — a dark monstrous silhouette so the shot still lands.
+    const g = ctx.createLinearGradient(0, by, 0, by + bh);
+    g.addColorStop(0, shiftColor(colorHex, -60));
+    g.addColorStop(1, "#0a0a0d");
+    ctx.fillStyle = g; ctx.fillRect(bx, by, bw, bh);
+  }
+  // Bottom scrim so it sits in the darkness of the mound.
+  const scrim = ctx.createLinearGradient(0, by + bh - 90, 0, by + bh);
+  scrim.addColorStop(0, "rgba(0,0,0,0)");
+  scrim.addColorStop(1, "rgba(0,0,0,0.9)");
+  ctx.fillStyle = scrim; ctx.fillRect(bx, by + bh - 90, bw, 90);
+  ctx.restore();
+
+  // Frame.
+  ctx.save();
+  roundRectPath(ctx, bx, by, bw, bh, 18);
+  ctx.strokeStyle = hexToRgba(color, 0.95); ctx.lineWidth = 4; ctx.stroke();
+  ctx.restore();
+
+  // Two burning eyes that ignite as the boss finishes rising.
+  const glow = clamp01((rise - 0.55) / 0.45) * (0.7 + 0.3 * Math.sin(t * Math.PI * 8));
+  if (glow > 0.02) {
+    ctx.save();
+    ctx.shadowColor = "rgba(255,80,40,0.95)"; ctx.shadowBlur = 22 * glow;
+    ctx.fillStyle = `rgba(255,${90 + Math.floor(60 * glow)},50,${0.85 * glow})`;
+    for (const dir of [-1, 1]) {
+      ctx.beginPath(); ellipse(ctx, cx + dir * bw * 0.14, by + bh * 0.30, 6.5, 4.5); ctx.fill();
+    }
+    ctx.restore();
+  }
+  ctx.restore(); // mound clip
 }
 
 function drawProceduralCastle(ctx: Ctx, cx: number, feetY: number, color: number): number {
@@ -725,7 +854,79 @@ function drawLetterbox(ctx: Ctx, t: number): void {
   ctx.restore();
 }
 
+// Strip Discord markdown + emoji so a line renders cleanly in the canvas font
+// (which has no emoji glyphs — an emoji would show as a tofu box).
+function stripCaption(s: string): string {
+  return s
+    .replace(/[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{2190}-\u{21FF}\u{2B00}-\u{2BFF}\u{FE0F}\u{200D}]/gu, "")
+    .replace(/\*\*|\*|__|_|`|~~/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+// Greedy word-wrap to a pixel width. Caller sets ctx.font first.
+function wrapCaption(ctx: Ctx, text: string, maxWidth: number): string[] {
+  const words = text.split(" ");
+  const lines: string[] = [];
+  let cur = "";
+  for (const w of words) {
+    const next = cur ? `${cur} ${w}` : w;
+    if (ctx.measureText(next).width <= maxWidth || !cur) cur = next;
+    else { lines.push(cur); cur = w; }
+  }
+  if (cur) lines.push(cur);
+  return lines;
+}
+
+// The raid caption track: reveal each story beat in turn as a typewritten
+// lower-third caption, so the party reads the intro "word for word" over the
+// film. One beat on screen at a time; each types in, holds, then fades.
+function drawBeatTrack(ctx: Ctx, beats: string[], t: number): void {
+  const lines = beats.map(stripCaption).filter(Boolean);
+  if (!lines.length) return;
+  const START = 0.09, END = 0.82;
+  const span = (END - START) / lines.length;
+  if (t < START || t > END) return;
+  const idx = Math.min(lines.length - 1, Math.floor((t - START) / span));
+  const local = clamp01((t - (START + idx * span)) / span); // 0→1 within this beat
+
+  const full = lines[idx]!;
+  const reveal = clamp01(local / 0.5);                       // type over first half
+  const shown = full.slice(0, Math.max(1, Math.ceil(full.length * reveal)));
+  const appear = clamp01(local / 0.08);
+  const fade = 1 - clamp01((local - 0.88) / 0.12);
+  const alpha = Math.min(appear, fade);
+  if (alpha <= 0.02) return;
+
+  const fontSize = 23;
+  ctx.save();
+  ctx.font = `bold ${fontSize}px "${TITLE_FONT}", "DejaVu Sans", Arial, sans-serif`;
+  const wrapped = wrapCaption(ctx, shown, W - 240).slice(-2);
+  const lineH = fontSize + 9;
+  const widest = Math.max(...wrapped.map(l => ctx.measureText(l).width));
+  const blockH = wrapped.length * lineH;
+  const cyBottom = H - 64;
+  const topY = cyBottom - blockH;
+
+  // Translucent caption plate.
+  ctx.globalAlpha = alpha * 0.9;
+  ctx.fillStyle = "rgba(0,0,0,0.5)";
+  roundRectPath(ctx, W / 2 - widest / 2 - 22, topY - 14, widest + 44, blockH + 20, 12);
+  ctx.fill();
+
+  ctx.globalAlpha = alpha;
+  wrapped.forEach((line, i) => {
+    const y = topY + i * lineH + lineH / 2;
+    drawTextWithShadow(ctx, line, W / 2, y, "#ffffff", fontSize, "center", TITLE_FONT);
+  });
+  ctx.restore();
+}
+
 function drawCaptions(ctx: Ctx, view: SiegeCinematicView, t: number): void {
+  // Raid caption track (word-by-word intro script), drawn first so the final
+  // title card lands over it.
+  if (view.beats?.length) drawBeatTrack(ctx, view.beats, t);
+
   // Beat 1: where we are.
   const locIn = clamp01((t - 0.06) / 0.10) * (1 - clamp01((t - 0.34) / 0.08));
   if (locIn > 0.02) {
@@ -764,7 +965,7 @@ function drawCaptions(ctx: Ctx, view: SiegeCinematicView, t: number): void {
     ctx.scale(0.86 + 0.14 * e, 0.86 + 0.14 * e);
     ctx.globalAlpha = clamp01(titleP * 3);
     ctx.textAlign = "center"; ctx.textBaseline = "middle";
-    const label = "THE SIEGE BEGINS";
+    const label = view.titleText ?? "THE SIEGE BEGINS";
     ctx.font = `bold 44px "${TITLE_FONT}", "DejaVu Sans", Arial, sans-serif`;
     const bw = ctx.measureText(label).width + 80;
     ctx.fillStyle = "rgba(0,0,0,0.68)";
