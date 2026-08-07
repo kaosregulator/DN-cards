@@ -57,6 +57,23 @@ const SIEGE_AI: AiDifficulty = "elite";
 const MAX_SIEGE_MS = 20 * 60 * 1000;
 const DEFAULT_FRAME_MS = 950;
 
+// ── Siege pressure ────────────────────────────────────────────────────────────
+// A defender that braces gains a shield bigger than a normal hit, and the battle
+// AI rationally braces every turn once it is hurt. In a 1v1 battle that just
+// runs the clock out; in a siege — where the attacker must break EVERY rank to
+// win — it makes a turtling garrison literally unkillable, so a base could never
+// be taken.
+//
+// Siege pressure is the battering ram. Every commander turn a rank survives, the
+// ram bites deeper: chip damage that scales with how long that rank has stalled
+// and IGNORES shields, because bracing does nothing about the wall being
+// undermined. A rank that trades normally dies long before pressure matters; a
+// rank that only turtles gets torn down. The defender's answer is fortification
+// (more HP to grind through), not an infinite guard.
+const PRESSURE_GRACE_TURNS = 2;   // free turns before the ram starts telling
+const PRESSURE_STEP_PCT = 5;      // added % of max HP per stalled turn
+const PRESSURE_MAX_PCT = 25;      // ceiling per turn
+
 /** Top embed: the castle scene. */
 export const SIEGE_CASTLE_IMAGE = "siege-castle.png";
 /** Bottom embed: the per-turn attack frame (`.gif` only when animated). */
@@ -133,8 +150,16 @@ interface SiegeSession extends SiegeRuntimeConfig {
   turnFrameIsGif: boolean;
   /** Item equipped for the whole assault, chosen at muster. */
   equippedItemId: string | null;
-  /** Damage already dealt to the current defender, for the destruction meter. */
+  /** Ranks fully broken, for the destruction meter. */
   defendersBroken: number;
+  /** Commander turns the CURRENT rank has survived — drives siege pressure. */
+  rankStall: number;
+  /**
+   * High-water destruction. A defender that heals (regen, defend, a support
+   * item) would otherwise walk the meter BACKWARDS, which no siege scoreboard
+   * should ever do — ground taken stays taken.
+   */
+  peakDestruction: number;
 }
 
 const sessions = new Map<string, SiegeSession>();
@@ -181,7 +206,9 @@ function destructionPct(s: SiegeSession): number {
   const partial = cur && cur.hp > 0
     ? 1 - Math.max(0, Math.min(1, cur.hp / Math.max(1, cur.stats.maxHealth)))
     : 0;
-  return Math.max(0, Math.min(100, ((s.defendersBroken + partial) / total) * 100));
+  const now = Math.max(0, Math.min(100, ((s.defendersBroken + partial) / total) * 100));
+  s.peakDestruction = Math.max(s.peakDestruction, now);
+  return s.peakDestruction;
 }
 
 // ★ at half the base wrecked, ★★ for taking it, ★★★ for taking it clean.
@@ -213,6 +240,21 @@ export async function startSiege(
   if (config.targetKey) activeTargetKeys.add(config.targetKey);
   await loadGuildBattleItems(config.guildId).catch(() => {});
 
+  // The squad builders are shared with the HEADLESS resolver, which drives both
+  // sides with the AI and therefore marks every combatant `isAi`. In here side 0
+  // is a person: claim it, or `startTurn` would auto-play the commander's turns
+  // and the player would never get a button. Also point the combatant at the
+  // real user so the battle embed mentions them instead of rendering "🤖 AI".
+  for (const c of config.attackers) {
+    c.isAi = false;
+    c.userId = config.starterId;
+    c.displayName = config.attackerName;
+  }
+  for (const c of config.defenders) {
+    c.isAi = true;
+    c.aiDifficulty = SIEGE_AI;
+  }
+
   const session: SiegeSession = {
     ...config,
     id: randomBytes(4).toString("hex"),
@@ -227,6 +269,8 @@ export async function startSiege(
     turnFrame: null, turnFrameIsGif: false,
     equippedItemId: null,
     defendersBroken: 0,
+    rankStall: 0,
+    peakDestruction: 0,
   };
   sessions.set(session.id, session);
   session.ttlTimer = setTimeout(() => { void abandon(session); }, MAX_SIEGE_MS);
@@ -440,6 +484,10 @@ async function applyMove(s: SiegeSession, side: 0 | 1, move: MoveType): Promise<
       await render(s);
       await sleep(frameMs(s));
 
+      // The ram keeps working between blows: a rank that refuses to die gets
+      // ground down whether or not the commander's swing landed.
+      if (side === 0 && foe.hp > 0) applySiegePressure(s, foe);
+
       // A KO breaks a RANK — it does not end the siege. Check the struck side
       // first (a counter can drop the attacker), then the foe.
       if (actor.hp <= 0 && (await breakRank(s, side))) { await finish(s); return; }
@@ -453,6 +501,19 @@ async function applyMove(s: SiegeSession, side: 0 | 1, move: MoveType): Promise<
     logger.error({ err, siege: s.id }, "siege move failed");
     s.processing = false;
   }
+}
+
+// Chip the rank in front of the column, bypassing any shield. Scales with how
+// many commander turns this rank has already survived, so it only ever matters
+// against a stall.
+function applySiegePressure(s: SiegeSession, defender: Combatant): void {
+  s.rankStall++;
+  const stalled = s.rankStall - PRESSURE_GRACE_TURNS;
+  if (stalled <= 0) return;
+  const pct = Math.min(PRESSURE_MAX_PCT, stalled * PRESSURE_STEP_PCT);
+  const chip = Math.max(1, Math.round(defender.stats.maxHealth * (pct / 100)));
+  defender.hp = Math.max(0, defender.hp - chip);
+  pushLog(s, [`🪨 Siege pressure bites — **${defender.cardName}** loses **${chip}** as the wall is undermined.`]);
 }
 
 // Pass the turn to the other side, advance the turn counter and enforce the cap.
@@ -479,6 +540,7 @@ async function breakRank(s: SiegeSession, side: 0 | 1): Promise<boolean> {
       s.di++;
       s.defendersBroken++;
     }
+    s.rankStall = 0; // a fresh rank starts with an unmarked wall
     await refreshCastle(s, true);
     if (s.di >= s.defenders.length) return true;
     const next = s.defenders[s.di]!;
@@ -715,8 +777,10 @@ function currentOverlay(s: SiegeSession, pct: number, banner?: { text: string; c
     banner: banner ?? null,
     destructionPct: pct,
     stars: starsFor(pct, captured, cardsLost),
-    turnLabel: s.phase === "muster"
-      ? "Muster — the column forms up"
+    // The result banner already says how it ended, so the turn strip stands down
+    // once it is up.
+    turnLabel: banner ? null
+      : s.phase === "muster" ? "Muster — the column forms up"
       : `Turn ${s.turnNumber} · ${s.currentSide === 0 ? "your move" : "the garrison answers"}`,
   };
 }

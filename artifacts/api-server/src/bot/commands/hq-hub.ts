@@ -1964,8 +1964,10 @@ async function finalizePlayerSiege(
   }).catch(() => {});
   await logSiege(guildId, attackerId, defenderId, o.attackerWon, o.attackerPower, o.defenderPower, "turn").catch(() => {});
   // A clean three-star assault is worth more than a bloody two-star one.
+  // Stars pay: a clean three-star capture beats a bloody two-star one, and a
+  // failed assault that still wrecked half the base beats one that bounced.
   const base = o.attackerWon ? Math.min(300, 60 + Math.round(o.defenderPower / 18)) : 20;
-  const reward = o.attackerWon ? Math.round(base * (1 + 0.15 * Math.max(0, o.stars - 1))) : base;
+  const reward = Math.round(base * (1 + 0.15 * Math.max(0, o.stars - (o.attackerWon ? 1 : 0))));
   await addShards(guildId, attackerId, reward).catch(() => {});
   void notifySiege(interaction, guildId, defenderId, attackerName, o.attackerWon, reward);
   return {
@@ -2027,7 +2029,7 @@ async function finalizeTerritorySiege(
   }).catch(() => {});
   await logSiege(guildId, attackerId, territoryLogKey(nodeId), o.attackerWon, o.attackerPower, o.defenderPower, "turn").catch(() => {});
   const base = o.attackerWon ? prof.bounty : Math.round(prof.bounty * 0.12);
-  const reward = o.attackerWon ? Math.round(base * (1 + 0.15 * Math.max(0, o.stars - 1))) : base;
+  const reward = Math.round(base * (1 + 0.15 * Math.max(0, o.stars - (o.attackerWon ? 1 : 0))));
   await addShards(guildId, attackerId, reward).catch(() => {});
   if (previousHolder && previousHolder !== attackerId) void notifyTerritoryLost(interaction, previousHolder, attackerName, view.territory.name);
   return {
@@ -2042,6 +2044,32 @@ async function finalizeTerritorySiege(
       { name: "💠 Loot", value: `**+${reward}** shards`, inline: true },
     ],
   };
+}
+
+// The base assault's opening film. Shared by the cinematic auto-siege and the
+// turn-for-turn assault (which rolls it first when the guild has intros on).
+async function playBaseCinematic(
+  interaction: ButtonInteraction, guildId: string, attackerId: string, attackerName: string,
+  defenderId: string, defenderName: string, defHq: PlayerHq, cx: LoadedCtx,
+): Promise<void> {
+  const theme = resolveTheme((await getOrCreateHq(guildId, attackerId)).themeId);
+  const squad = await buildAttackerCards(guildId, attackerId, cx.ctx, 5).catch(() => []);
+  const garrisonSize = (await getDefenders(guildId, defenderId).catch(() => new Map())).size;
+  await playCinematic(interaction, {
+    targetName: defenderName,
+    holderName: readHqStats(defHq).title?.trim() ? defenderName : "its garrison",
+    defenderColor: resolveTheme(defHq.themeId).palette.accent,
+    attackerColor: theme.palette.accent,
+    attackerName,
+    cards: squad.slice(0, 5).map(c => {
+      const d = getCardDisplayRarity({ id: c.id, rarity: c.rarity as string }, cx.ctx, cx.settings, cx.displayMap);
+      return { name: c.name, artUrl: toAbsoluteImageUrl(c.imageUrl), rarityColor: d.color };
+    }),
+    garrison: garrisonSize,
+    structure: "castle",
+    mood: "dusk",
+    tagline: readHqStats(defHq).motto ?? "Take the walls, take the base.",
+  }, theme.palette.accent);
 }
 
 async function runSiege(interaction: ButtonInteraction, guildId: string, attackerId: string, defenderId: string): Promise<void> {
@@ -2074,9 +2102,12 @@ async function runSiege(interaction: ButtonInteraction, guildId: string, attacke
 
   const cx = await loadCtx(guildId);
 
-  // Turn-for-turn: hand the assault to the player (its own live board), then bail
-  // out of the auto-resolve path.
+  // Turn-for-turn: optionally roll the opening film, then hand the assault to the
+  // player (its own live board) and bail out of the auto-resolve path.
   if (mode === "turn") {
+    if (siegeCfg.intro) {
+      await playBaseCinematic(interaction, guildId, attackerId, attackerName, defenderId, defenderName, defHq, cx);
+    }
     await launchPlayerSiege(interaction, guildId, attackerId, attackerName, defenderId, defenderName, defHq, cx, siegeCfg);
     return;
   }
@@ -2084,24 +2115,7 @@ async function runSiege(interaction: ButtonInteraction, guildId: string, attacke
   // The opening film, before anything is resolved — the ride up to the base, the
   // gates opening, the garrison mustering, and the raider's cards flying in.
   if (mode === "cinematic") {
-    const theme = resolveTheme((await getOrCreateHq(guildId, attackerId)).themeId);
-    const squad = await buildAttackerCards(guildId, attackerId, cx.ctx, 5).catch(() => []);
-    const garrisonSize = (await getDefenders(guildId, defenderId).catch(() => new Map())).size;
-    await playCinematic(interaction, {
-      targetName: defenderName,
-      holderName: readHqStats(defHq).title?.trim() ? defenderName : "its garrison",
-      defenderColor: resolveTheme(defHq.themeId).palette.accent,
-      attackerColor: theme.palette.accent,
-      attackerName,
-      cards: squad.slice(0, 5).map(c => {
-        const d = getCardDisplayRarity({ id: c.id, rarity: c.rarity as string }, cx.ctx, cx.settings, cx.displayMap);
-        return { name: c.name, artUrl: toAbsoluteImageUrl(c.imageUrl), rarityColor: d.color };
-      }),
-      garrison: garrisonSize,
-      structure: "castle",
-      mood: "dusk",
-      tagline: readHqStats(defHq).motto ?? "Take the walls, take the base.",
-    }, theme.palette.accent);
+    await playBaseCinematic(interaction, guildId, attackerId, attackerName, defenderId, defenderName, defHq, cx);
   }
 
   // The defender's fortification (base tier + built walls/towers/moats) hardens
@@ -2247,6 +2261,29 @@ function moodForBiome(biome: string): SiegeCinematicView["mood"] {
   }
 }
 
+// The territory assault's opening film, shared by the cinematic auto-siege and
+// the turn-for-turn assault.
+function territoryCinematic(
+  view: WorldTerritoryView, theme: ReturnType<typeof resolveTheme>, attackerName: string,
+  attackerCards: OwnedBattleCard[], garrison: OwnedBattleCard[], cx: LoadedCtx,
+): SiegeCinematicView {
+  return {
+    targetName: view.territory.name,
+    holderName: holderLabel(view),
+    defenderColor: view.heldByUserId ? 0x4aa3ff : view.faction.color,
+    attackerColor: theme.palette.accent,
+    attackerName,
+    cards: attackerCards.slice(0, 5).map(c => {
+      const d = getCardDisplayRarity({ id: c.id, rarity: c.rarity as string }, cx.ctx, cx.settings, cx.displayMap);
+      return { name: c.name, artUrl: toAbsoluteImageUrl(c.imageUrl), rarityColor: d.color };
+    }),
+    garrison: garrison.length,
+    structure: view.territory.structure,
+    mood: moodForBiome(view.territory.biome),
+    tagline: view.territory.blurb,
+  };
+}
+
 // Play the opening film into the ephemeral hub message, then hold on it long
 // enough for the GIF to actually run before the caller posts the result.
 async function playCinematic(
@@ -2356,28 +2393,14 @@ async function runTerritorySiege(
 
     // Turn-by-turn: the player commands the assault on the territory themselves.
     if (mode === "turn") {
+      if (siegeCfg.intro) await playCinematic(interaction, territoryCinematic(view, theme, attackerName, attackerCards, garrison, cx), view.faction.color);
       await launchTerritorySiege(interaction, guildId, attackerId, attackerName, nodeId, view, theme, garrison, attackerCards, cx, siegeCfg);
       return;
     }
 
     // The opening film, before anything is resolved.
     if (mode === "cinematic") {
-      const cine: SiegeCinematicView = {
-        targetName: view.territory.name,
-        holderName: defenderName,
-        defenderColor: view.heldByUserId ? 0x4aa3ff : view.faction.color,
-        attackerColor: theme.palette.accent,
-        attackerName,
-        cards: attackerCards.slice(0, 5).map(c => {
-          const d = getCardDisplayRarity({ id: c.id, rarity: c.rarity as string }, cx.ctx, cx.settings, cx.displayMap);
-          return { name: c.name, artUrl: toAbsoluteImageUrl(c.imageUrl), rarityColor: d.color };
-        }),
-        garrison: garrison.length,
-        structure: view.territory.structure,
-        mood: moodForBiome(view.territory.biome),
-        tagline: view.territory.blurb,
-      };
-      await playCinematic(interaction, cine, view.faction.color);
+      await playCinematic(interaction, territoryCinematic(view, theme, attackerName, attackerCards, garrison, cx), view.faction.color);
     }
 
     // Resolve with the real battle engine; fall back to the power resolver only

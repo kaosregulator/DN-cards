@@ -380,7 +380,11 @@ async function paintBaseScene(ctx: Ctx, mod: CanvasMod, view: HqBaseView, siege?
   // Use a real castle sprite when the pack has one (deterministic pick per base),
   // else the procedural castle. drawCastle returns the top for the banner.
   const castleTop = await drawCastle(ctx, mod, BASE_CX, castleFeetY, pickCastleSprite(view));
-  drawBannerAndHealth(ctx, BASE_CX, castleTop, view, siege?.healthFrac);
+  // The interactive assault has its own destruction scoreboard, which says the
+  // same thing more clearly — two health readouts on one picture just compete.
+  if (siege?.destructionPct === undefined) {
+    drawBannerAndHealth(ctx, BASE_CX, castleTop, view, siege?.healthFrac);
+  }
   await drawBaseDefenders(ctx, mod, view, siege?.defeated, siege?.flashSlot ?? null);
   // Ambient life on the grounds — only outside a siege so combat stays readable.
   if (!siege) {
@@ -505,10 +509,15 @@ function drawDestructionScoreboard(ctx: Ctx, pct: number, stars: number, turnLab
   const panelW = 360, panelH = turnLabel ? 104 : 82;
   const px = W / 2 - panelW / 2, py = HEADER_H + 14;
 
+  // Opaque, not tinted: the castle's own banner and health bar sit right behind
+  // this strip, and a see-through panel let them bleed through the stars.
   ctx.save();
-  ctx.fillStyle = "rgba(0,0,0,0.62)";
+  ctx.shadowColor = "rgba(0,0,0,0.55)"; ctx.shadowBlur = 18; ctx.shadowOffsetY = 4;
+  ctx.fillStyle = "#11151c";
   roundRectPath(ctx, px, py, panelW, panelH, 14); ctx.fill();
-  ctx.strokeStyle = "rgba(226,210,170,0.45)"; ctx.lineWidth = 1.5;
+  ctx.restore();
+  ctx.save();
+  ctx.strokeStyle = "rgba(226,210,170,0.5)"; ctx.lineWidth = 1.5;
   roundRectPath(ctx, px, py, panelW, panelH, 14); ctx.stroke();
   ctx.restore();
 

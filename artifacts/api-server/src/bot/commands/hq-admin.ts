@@ -290,3 +290,11 @@ export async function handleHqAdminModal(interaction: ModalSubmitInteraction): P
   if (interaction.isFromMessage()) await interaction.update(panel).catch(() => {});
   else await interaction.reply({ ...panel, ...EPHEMERAL }).catch(() => {});
 }
+
+// Test seam for scripts/src/hq-smoke.ts: build the server siege panel without an
+// interaction, so its payload can be checked against Discord's limits. The panel
+// is button-driven and was silently unroutable before, which is exactly the kind
+// of breakage a payload check catches.
+export async function __buildServerPanelForTest(guildId: string) {
+  return buildServerPanel(guildId);
+}

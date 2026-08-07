@@ -29,6 +29,10 @@ import { HQ_COMPANIONS } from "../../artifacts/api-server/src/bot/hq/defs/compan
 import { buildGarrison, territoryTributeOwed, WORLD_TRIBUTE_CAP_HOURS } from "../../artifacts/api-server/src/bot/hq/world.js";
 import { readCursor, clampCursor, cursorLabel } from "../../artifacts/api-server/src/bot/hq/build-state.js";
 import { MAX_RECT_SPAN, MAX_ELEVATION } from "../../artifacts/api-server/src/bot/hq/terrain.js";
+import {
+  SIEGE_MODES, SIEGE_LIMITS, DEFAULT_SIEGE_MODE, DEFAULT_SIEGE_CONFIG,
+  resolveSiegeMode, siegeModeMeta,
+} from "../../artifacts/api-server/src/bot/hq/settings.js";
 import { HQ_GRID, HQ_BASE_GRID } from "../../artifacts/api-server/src/bot/hq/grid.js";
 import { buildRarityRankMap, type RarityContext } from "../../artifacts/api-server/src/bot/rarity-runtime.js";
 import { BUILTIN_RARITIES } from "../../artifacts/api-server/src/bot/cards-data.js";
@@ -232,6 +236,28 @@ check("tribute accrues by tier and is capped", () => {
   );
   // A clock in the future can never pay out negative shards.
   assert.equal(territoryTributeOwed(3, new Date(now.getTime() + 3_600_000), now), 0);
+});
+
+console.log("Siege settings");
+
+check("every siege mode resolves and an unknown one falls back to the default", () => {
+  for (const m of SIEGE_MODES) {
+    assert.equal(resolveSiegeMode(m.id), m.id, `mode "${m.id}" did not round-trip`);
+    assert.ok(siegeModeMeta(m.id).label.length > 0, `mode "${m.id}" has no label`);
+    // Discord caps a select option's description at 100 characters.
+    assert.ok(m.blurb.length <= 100, `mode "${m.id}" blurb is too long for a select option`);
+  }
+  assert.equal(resolveSiegeMode("nonsense"), DEFAULT_SIEGE_MODE);
+  assert.equal(resolveSiegeMode(null), DEFAULT_SIEGE_MODE);
+  assert.equal(resolveSiegeMode(undefined), DEFAULT_SIEGE_MODE);
+});
+
+check("the default ruleset is the interactive assault and sits inside its own limits", () => {
+  const d = DEFAULT_SIEGE_CONFIG;
+  assert.equal(d.mode, "turn", "a fresh server should get the turn-for-turn siege");
+  assert.ok(d.turnSeconds >= SIEGE_LIMITS.turnSeconds.min && d.turnSeconds <= SIEGE_LIMITS.turnSeconds.max);
+  assert.ok(d.itemUses >= SIEGE_LIMITS.itemUses.min && d.itemUses <= SIEGE_LIMITS.itemUses.max);
+  assert.ok(d.maxTurns >= SIEGE_LIMITS.maxTurns.min && d.maxTurns <= SIEGE_LIMITS.maxTurns.max);
 });
 
 console.log("Build cursor");
