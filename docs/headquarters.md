@@ -314,6 +314,29 @@ not be treated as freely redistributable. The renderer never depends on them —
 every building has a procedural fallback — so they can be removed at any time
 without breaking the base view. See `assets/hq/manifest.json` `_credits`.
 
+## Who decides how a siege looks
+
+**The server owner, not the attacker.** A siege used to open with "how do you
+want to watch this?", which put a presentation choice in front of a gameplay
+action and meant no two assaults in a server looked alike. One style is now set
+for the whole guild in **`/hqadmin`** (with no `user` option), exactly like
+`/battle`'s animation settings, and every siege runs that way. Members just
+attack.
+
+The panel (`hq_settings`, read through `bot/hq/settings.ts`) holds:
+
+| Setting | Default | What it does |
+| --- | --- | --- |
+| Siege style | **Turn-for-Turn** | `turn` · `cinematic` · `classic` · `live` · `static` |
+| Opening film | On | Roll the landscape cinematic before the assault |
+| Turn clock | 45s | Seconds per move before the column presses on alone |
+| Turn visuals | On | Per-turn attack frames; the STYLE follows `/battle_admin` |
+| Field items | 3 | Item uses per assault |
+| Turn cap | 40 | Turns before the siege is decided on ground taken |
+
+An unknown or removed style degrades to the default rather than throwing, so
+retiring one never breaks a server.
+
 ## Base siege (attack / capture mini-game)
 
 Scout another player with `/hq user:@member` — the visit shows their **exterior
@@ -337,15 +360,80 @@ auto-resolver (`bot/hq/siege.ts`, `resolveSiege`). A per-target attacker
 **cooldown** limits repeat hits; captures lazily revert to the owner when the
 shield expires.
 
-Every siege renders **on the castle base scene** (castle + defender cards +
-castle health) — never a separate VS screen. Four ways to watch:
+## The siege itself (`turn` style)
 
-- **🎥 Cinematic** — the full opening film, *then* the battle (see below).
-- **Classic** — animated on the castle with **move-by-move captions**
-  ("X used <Move>!") and hit flashes as defenders fall.
-- **Static** — a single final frame on the base scene.
-- **Live** — the clean animated siege (health drains, defenders ✕, attacker
-  storms the gate) via the shared `encodeAnimation` engine.
+A siege is a **real battle**, not a summary. It runs the same combat engine, the
+same move set, the same per-turn attack frames and the same timers as `/battle`
+— so anyone who has fought a battle already knows how to storm a castle — with a
+siege layer on top. `bot/hq/siege-runtime.ts` owns it.
+
+**Both sides take turns.** You pick a move, the board re-renders, the garrison
+answers, the board re-renders again. Attack, Special, Defend, Charge, Ultimate,
+Supplies and a read-only Moves reference — the same controls a battle turn has,
+built from the same `availableMoves`.
+
+**A knockout breaks a rank, it does not end the fight.** When a card falls the
+next one on that side steps up and the assault grinds on, so a siege is a column
+against a wall rather than a duel. Only running a whole side out ends it.
+
+**Progress is destruction, not hit points.** Each rank is an equal slice of the
+base and the rank being fought contributes its own missing HP, so the meter moves
+on every good hit and jumps when a rank breaks. It is a **high-water mark** — a
+defender that heals or braces can never walk it backwards. Stars follow Clash:
+
+| Stars | Earned for |
+| --- | --- |
+| ★ | 50% destruction |
+| ★★ | Taking the base |
+| ★★★ | Taking it without losing a card |
+
+Stars pay: loot scales 15% per star above the baseline, and a failed assault that
+still wrecked half the base out-earns one that bounced off the wall.
+
+### Siege pressure (why a turtle can't hold forever)
+
+A braced defender gains a shield larger than a normal hit, and the battle AI
+rationally braces every turn once it is hurt. In a 1v1 battle that just runs the
+clock out and the turn cap decides on HP. In a siege — where the attacker must
+break **every** rank to win — it made a turtling garrison literally unkillable: a
+driven test spent 40 commander turns and broke zero ranks.
+
+**Siege pressure** is the battering ram. Every commander turn a rank survives,
+the ram bites deeper: chip damage that scales with how long that rank has stalled
+and **ignores shields**, because bracing does nothing about a wall being
+undermined (`PRESSURE_GRACE_TURNS` 2, `PRESSURE_STEP_PCT` 5, capped at 25% of max
+HP per turn). A rank that trades normally dies long before pressure matters; a
+rank that only turtles gets torn down. The defender's answer is **fortification**
+— more HP to grind through — not an infinite guard. The same assault now resolves
+in ~17 moves with all three ranks broken.
+
+### The board
+
+Two embeds, matching the split between "what is happening to the castle" and
+"what is happening in the fight":
+
+- **Top — the castle.** The live scene with the destruction scoreboard (three
+  stars, the meter, the turn strip) painted over it, the ranks still holding, and
+  the running siege log. *The picture is the log.* The castle only re-renders
+  when a rank breaks or the meter crosses a 5% step; the cached buffer is re-sent
+  on every edit because Discord drops attachments that aren't resent.
+- **Bottom — the battle.** Both active cards' HP / energy / ultimate built from
+  the very same `combatantField` renderer `/battle` uses, whose turn it is, the
+  turn clock as a Discord relative timestamp, and the per-turn attack frame.
+
+A **muster** board opens the assault (your column, the garrison, the fortification
+you are up against, and the one item the column carries) — the siege equivalent
+of `/battle`'s prep screen. Nothing is committed until it resolves.
+
+## Auto-resolved siege styles
+
+The other four styles skip the interactive fight and render the result on the
+castle base scene — never a separate VS screen:
+
+- **Cinematic** — the full opening film, then an auto-resolved animated siege.
+- **Classic** — animated with **move-by-move captions** and hit flashes.
+- **Static** — a single final frame.
+- **Animated** — the clean animated siege with no captions.
 
 ### The siege cinematic
 
@@ -475,13 +563,16 @@ card sets unlocks the **Set Collector's Plinth**, **Curator's Gallery** and
 
 ## Admin editor (`/hqadmin`)
 
-Admin-gated (same check as `/admin` / `/edit-user`). `/hqadmin user:@member`
-opens a panel to fix or reset a member's HQ — all HQ-only data, never the base
+Admin-gated (same check as `/admin` / `/edit-user`), with two panels:
+
+- **`/hqadmin`** (no user) — the **server siege ruleset** above: style, opening
+  film, turn clock, turn visuals, field items and turn cap.
+- **`/hqadmin user:@member`** — the per-member HQ editor — all HQ-only data, never the base
 game: **Set HQ level**, **Unlock everything** / **Revoke all unlocks**,
 **Re-sync from progress** (runs the reconcile), **Reset base capture** (clears a
 stuck flag/shield), **Clear defenders**, and **Wipe layout** (placements + built
-terrain + defenders). Accessors live in `bot/hq/db.ts` and `bot/hq/terrain.ts`;
-the command is `bot/commands/hq-admin.ts`.
+terrain + defenders). Accessors live in `bot/hq/db.ts`, `bot/hq/terrain.ts` and
+`bot/hq/settings.ts`; the command is `bot/commands/hq-admin.ts`.
 
 ## Addon boundaries (ties in without changing the base game)
 
@@ -510,12 +601,27 @@ a monotonic tier ladder with no gaps, deterministic and tier-scaled AI
 garrisons, capped and non-negative tribute, and a build cursor that clamps onto
 whichever grid it is read against.
 
-`smoke:hq` builds **every `/hq` section** for a throwaway player and validates
-the payload Discord would receive: at most five action rows, every select
-carrying 1–25 options, labels and descriptions inside their limits, embed fields
-under 1024 characters, and an image that actually rendered. These are the
+`smoke:hq` builds **every `/hq` section** plus the `/hqadmin` server panel and
+validates the payload Discord would receive: at most five action rows, every
+select carrying 1–25 options, labels and descriptions inside their limits, embed
+fields under 1024 characters, and an image that actually rendered. These are the
 failures a typecheck can't see and that otherwise surface as a 400 from the API
 in production.
+
+```bash
+DATABASE_URL=… pnpm --filter @workspace/scripts run drive:siege [outDir]
+```
+
+`drive:siege` plays a **whole turn-for-turn assault** headlessly. The runtime
+talks to Discord through only four calls (`editReply`, `fetchReply`,
+`deferUpdate`, `Message#edit`), so a small stand-in for those is enough to run a
+real siege from muster to result with the production combat engine, AI, castle
+renderer and board. It asserts every board is a legal payload, that the
+castle+battle pair holds for the whole assault, that destruction never walks
+backwards, and that the outcome is self-consistent (a capture is 100% and at
+least two stars; a failure can't exceed one star) — then writes the rendered
+frames out. It is what caught the auto-played commander, the reversible
+destruction meter and the unkillable turtling garrison.
 
 ## Future phases (same engine, no rewrite)
 

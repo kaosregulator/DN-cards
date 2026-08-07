@@ -304,6 +304,17 @@ async function runBootMigrations() {
     logger.info("Podium backfill applied from card-name heuristic");
   }
 
+  // `user_currency` has no unique index on (guild_id, user_id) in the Drizzle
+  // schema, but both the production seed below and the corrective data
+  // migration further down upsert into it with `ON CONFLICT(guild_id,user_id)`.
+  // Postgres rejects that without a matching index, so on a FRESH database the
+  // seed threw and aborted the whole boot-migration run — meaning every table
+  // created after it (including hq_settings) never appeared. Create the index
+  // before anything relies on it.
+  await pool.query(
+    "CREATE UNIQUE INDEX IF NOT EXISTS user_currency_guild_user_uniq ON user_currency(guild_id, user_id)",
+  );
+
   // One-time production data seed — runs only when cards table is empty.
   // Executed inside a single transaction: the cards_name_unique constraint is
   // dropped then re-added atomically, so a mid-run failure rolls back completely.
