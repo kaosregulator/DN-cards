@@ -50,6 +50,11 @@ const WALL_ITEM_SCALE = 0.62;
 // How far up the masonry a wall fitting hangs, in tile units. Tuned so the
 // emblem sits ON the wall face rather than hovering above its top edge.
 const WALL_MOUNT_LIFT = 26;
+// A wall fitting has to lie IN the wall's plane, not face the camera. In this
+// projection a wall run rises/falls one unit of TILE_H for every unit of
+// TILE_W, so the plane's on-screen tilt is atan(TILE_H / TILE_W). The two wall
+// faces lean opposite ways, hence the sign.
+const WALL_TILT = Math.atan2(TILE_H, TILE_W);
 
 export interface RoomSuiteView extends HqHeaderInfo {
   layout: SuiteLayout;
@@ -104,6 +109,8 @@ interface Piece {
   flat: boolean;
   /** Standing props get a faint contact shadow; floors, rugs and walls don't. */
   shadow: boolean;
+  /** Radians to lean the art so it lies in its wall's plane (0 = upright). */
+  tilt: number;
 }
 
 export async function renderRoomSuite(view: RoomSuiteView): Promise<Buffer | null> {
@@ -156,7 +163,7 @@ function buildPieces(view: RoomSuiteView, _cam: Cam): Piece[] {
       if (!room) continue;
       out.push({
         depth: gx + gy, sub: 0, sprite: suiteFloorSprite(room.floor),
-        gx, gy, lift: 0, alpha: dim(room.id), scale: 1, flat: true, shadow: false,
+        gx, gy, lift: 0, alpha: dim(room.id), scale: 1, flat: true, shadow: false, tilt: 0,
       });
     }
   }
@@ -172,7 +179,7 @@ function buildPieces(view: RoomSuiteView, _cam: Cam): Piece[] {
     out.push({
       depth: w.x + w.y, sub: 1,
       sprite: suiteWallSprite(w.kind, w.axis),
-      gx: w.x, gy: w.y, lift: 0, alpha: dim(owner?.id ?? null), scale: 1, flat: false, shadow: false,
+      gx: w.x, gy: w.y, lift: 0, alpha: dim(owner?.id ?? null), scale: 1, flat: false, shadow: false, tilt: 0,
     });
   }
 
@@ -188,6 +195,7 @@ function buildPieces(view: RoomSuiteView, _cam: Cam): Piece[] {
       scale: it.scale ?? (it.mount === "floor" ? FLOOR_ITEM_SCALE : it.mount === "wall" ? WALL_ITEM_SCALE : 1),
       flat: it.mount === "rug",
       shadow: it.mount === "floor",
+      tilt: it.mount === "wall" ? ((it.face ?? "n") === "n" ? -WALL_TILT : WALL_TILT) : 0,
     });
   }
 
@@ -300,6 +308,13 @@ async function paintPieces(ctx: Ctx, mod: CanvasMod, pieces: Piece[], cam: Cam):
       : at.y - anc.footY * unit - p.lift * cam.s;
     ctx.save();
     ctx.globalAlpha = p.alpha;
+    if (p.tilt !== 0) {
+      // Rotate about the point the fitting hangs from, so leaning it into the
+      // wall's plane doesn't also slide it along the wall.
+      ctx.translate(at.x, at.y - p.lift * cam.s);
+      ctx.rotate(p.tilt);
+      ctx.translate(-at.x, -(at.y - p.lift * cam.s));
+    }
     // A whisper of contact shadow under STANDING props only. Without it a prop
     // reads as pasted onto the floor; more than a whisper and it fights the
     // shading already baked into the art, so this stays deliberately faint and
