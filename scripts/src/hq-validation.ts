@@ -17,6 +17,9 @@ import {
   HQ_FACTIONS, HQ_TERRITORIES, HQ_ROUTES, PLAYER_BASE_ANCHORS, HQ_CONQUESTS,
   resolveFaction, getTerritory, tierProfile, tierStars, resourceEmoji,
 } from "../../artifacts/api-server/src/bot/hq/defs/world.js";
+import {
+  suitePreset, suiteWalls, validateSuite, roomAt, SUITE_PRESET_IDS,
+} from "../../artifacts/api-server/src/bot/hq/defs/room-suites.js";
 import { HQ_WALLPAPERS, resolveWallpaper, DEFAULT_WALLPAPER_ID } from "../../artifacts/api-server/src/bot/hq/defs/wallpapers.js";
 import { HQ_SURFACES, resolveSurface, surfacesFor } from "../../artifacts/api-server/src/bot/hq/defs/surfaces.js";
 import { HQ_DECORATIONS } from "../../artifacts/api-server/src/bot/hq/defs/decorations.js";
@@ -175,6 +178,32 @@ check("every trade route joins two real territories", () => {
     assert.ok(ids.has(b), `route references unknown territory "${b}"`);
     assert.notEqual(a, b, "a route must join two different territories");
   }
+});
+
+check("every room suite preset is a valid, connected floor", () => {
+  for (const id of SUITE_PRESET_IDS) {
+    const layout = suitePreset(id);
+    const errs = validateSuite(layout);
+    assert.equal(errs.join("; "), "", `preset "${id}" is invalid`);
+    assert.ok(layout.rooms.length >= 1, `preset "${id}" has no rooms`);
+    // The masonry is derived, so it must exist for any floor with rooms — a
+    // layout that solved to zero walls would render as furniture in a void.
+    assert.ok(suiteWalls(layout).length > 0, `preset "${id}" solved to no walls`);
+    // Every item has to land on a tile that belongs to a room, or it would be
+    // drawn standing in the void outside the floor.
+    for (const it of layout.items) {
+      assert.ok(roomAt(layout, it.gx, it.gy), `preset "${id}": item ${it.sprite} at (${it.gx},${it.gy}) is not in a room`);
+    }
+  }
+  // The furnished preset is the one that has to look like a hotel floor.
+  const rooms = suitePreset("rooms");
+  assert.ok(rooms.rooms.length >= 4, "the furnished preset should have several sub-rooms");
+  assert.ok(rooms.cols > rooms.rows, "a suite floor should be landscape");
+});
+
+check("an unknown suite preset falls back instead of throwing", () => {
+  assert.equal(suitePreset("nope").id, "rooms");
+  assert.equal(suitePreset(null).id, "rooms");
 });
 
 check("conquests are quick, low-tier side objectives with a resource", () => {
