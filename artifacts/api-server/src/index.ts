@@ -969,6 +969,17 @@ async function runBootMigrations() {
   `);
   await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS hq_activity_layout_guild_user_uniq ON hq_activity_layout (guild_id, user_id)`);
 
+  // ── Per-guild experience presentation modes (additive; defaults preserve the
+  // current server-rendered behaviour so live guilds are unaffected) ───────────
+  await pool.query(`ALTER TABLE guild_settings ADD COLUMN IF NOT EXISTS hq_presentation text NOT NULL DEFAULT 'discord_png'`);
+  await pool.query(`ALTER TABLE guild_settings ADD COLUMN IF NOT EXISTS hq_fallback text NOT NULL DEFAULT 'discord_png'`);
+  await pool.query(`ALTER TABLE guild_settings ADD COLUMN IF NOT EXISTS battle_presentation text NOT NULL DEFAULT 'discord_embed'`);
+  await pool.query(`ALTER TABLE guild_settings ADD COLUMN IF NOT EXISTS battle_fallback text NOT NULL DEFAULT 'discord_embed'`);
+  await pool.query(`ALTER TABLE guild_settings ADD COLUMN IF NOT EXISTS raid_presentation text NOT NULL DEFAULT 'discord_embed'`);
+  await pool.query(`ALTER TABLE guild_settings ADD COLUMN IF NOT EXISTS raid_fallback text NOT NULL DEFAULT 'discord_embed'`);
+  await pool.query(`ALTER TABLE guild_settings ADD COLUMN IF NOT EXISTS pack_presentation text NOT NULL DEFAULT 'animated_image'`);
+  await pool.query(`ALTER TABLE guild_settings ADD COLUMN IF NOT EXISTS pack_fallback text NOT NULL DEFAULT 'animated_image'`);
+
   logger.info("Boot migrations applied");
 }
 
