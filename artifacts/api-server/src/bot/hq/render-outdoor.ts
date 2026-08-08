@@ -335,7 +335,7 @@ export function drawMockupPine(ctx: Ctx, cx: number, feetY: number, s = 1): void
     ctx.fill();
     ctx.fillStyle = L.c2;
     ctx.beginPath();
-    ctx.ellipse(cx - 4 * s, ty - 10 * s, L.w * 28 * s, 14 * s, -0.3, 0, Math.PI * 2);
+    ellipse(ctx, cx - 4 * s, ty - 10 * s, L.w * 28 * s, 14 * s, -0.3);
     ctx.fill();
   }
   ctx.restore();

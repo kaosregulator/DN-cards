@@ -14,8 +14,8 @@
 import assert from "node:assert/strict";
 
 import {
-  HQ_FACTIONS, HQ_TERRITORIES, HQ_ROUTES, PLAYER_BASE_ANCHORS,
-  resolveFaction, getTerritory, tierProfile, tierStars,
+  HQ_FACTIONS, HQ_TERRITORIES, HQ_ROUTES, PLAYER_BASE_ANCHORS, HQ_CONQUESTS,
+  resolveFaction, getTerritory, tierProfile, tierStars, resourceEmoji,
 } from "../../artifacts/api-server/src/bot/hq/defs/world.js";
 import { HQ_WALLPAPERS, resolveWallpaper, DEFAULT_WALLPAPER_ID } from "../../artifacts/api-server/src/bot/hq/defs/wallpapers.js";
 import { HQ_SURFACES, resolveSurface, surfacesFor } from "../../artifacts/api-server/src/bot/hq/defs/surfaces.js";
@@ -175,6 +175,23 @@ check("every trade route joins two real territories", () => {
     assert.ok(ids.has(b), `route references unknown territory "${b}"`);
     assert.notEqual(a, b, "a route must join two different territories");
   }
+});
+
+check("conquests are quick, low-tier side objectives with a resource", () => {
+  assert.ok(HQ_CONQUESTS.length >= 3, "the map should offer a few conquests to farm");
+  for (const c of HQ_CONQUESTS) {
+    assert.equal(c.category, "conquest", `"${c.id}" is in HQ_CONQUESTS but not categorised`);
+    // A conquest is a QUICK raid — if it grows into a fortress it stops being a
+    // repeatable side objective and should be a territory instead.
+    assert.ok(c.tier <= 3, `conquest "${c.id}" is tier ${c.tier} — too heavy for a mini outpost`);
+    assert.ok(c.garrison >= 1 && c.garrison <= 3, `conquest "${c.id}" fields ${c.garrison} defenders`);
+    assert.ok(c.resource && c.resource.length > 0, `conquest "${c.id}" pays no named resource`);
+    assert.ok(resourceEmoji(c.resource).length > 0, `conquest "${c.id}" has no resource emoji`);
+  }
+  // Conquests must be takeable by anyone: they can never start player-held, and
+  // they ride the same capture/hold pipeline as territories (same id space).
+  const ids = new Set(HQ_TERRITORIES.map(t => t.id));
+  for (const c of HQ_CONQUESTS) assert.ok(ids.has(c.id), `conquest "${c.id}" is not on the map`);
 });
 
 check("tiers span the whole ladder and difficulty rises monotonically", () => {

@@ -409,7 +409,11 @@ function drawZoneLabel(
   const ly = Math.min(c.y - 20, proj(r.x + r.w / 2, r.y).y + 8);
   ctx.fillRect(c.x - tw / 2, ly, tw, th);
   ctx.strokeStyle = focused ? "rgba(100,190,255,0.9)" : "rgba(255,255,255,0.2)";
-  ctx.lineWidth = 1; ctx.strokeRect(c.x - tw / 2, ly, tw, th);
+  // `strokeRect` exists on the Skia context at runtime but is under-declared on
+  // the project's Ctx type (same treatment as drawImage/ellipse elsewhere).
+  ctx.lineWidth = 1;
+  (ctx as unknown as { strokeRect(x: number, y: number, w: number, h: number): void })
+    .strokeRect(c.x - tw / 2, ly, tw, th);
   ctx.fillStyle = "#fff";
   ctx.textAlign = "center"; ctx.textBaseline = "middle";
   ctx.fillText(label, c.x, ly + th / 2);

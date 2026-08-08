@@ -65,7 +65,7 @@ import {
   WORLD_SHIELD_MS, WORLD_COOLDOWN_MS, WORLD_MAX_PER_WINDOW, type WorldTerritoryView,
 } from "../hq/world.js";
 import {
-  getTerritory, tierProfile, tierStars, PLAYER_BASE_ANCHORS, HQ_ROUTES,
+  getTerritory, tierProfile, tierStars, PLAYER_BASE_ANCHORS, HQ_ROUTES, resourceEmoji,
 } from "../hq/defs/world.js";
 import { renderSiegeCinematic, SIEGE_CINEMATIC_FILE, type SiegeCinematicView } from "../hq/cinematic.js";
 import { getBattleSettings } from "../battle/config-engine.js";
@@ -1048,6 +1048,7 @@ async function renderWorldImage(
     structure: t.territory.structure,
     garrison: t.territory.garrison,
     kind: "territory",
+    category: t.territory.category ?? "territory",
     held: !!t.heldByUserId,
     heldByYou: t.heldByUserId === viewerId,
     shielded: !!t.shieldUntil && t.shieldUntil.getTime() > now,
@@ -1072,11 +1073,12 @@ async function renderWorldImage(
     });
   });
 
-  const open = world.territories.filter(t => !t.heldByUserId).length;
+  const openTerr = world.territories.filter(t => !t.heldByUserId && t.territory.category !== "conquest").length;
+  const conquestCount = world.territories.filter(t => t.territory.category === "conquest").length;
   const view: HqWorldView = {
     ownerAvatarUrl: avatarUrl,
     displayTitle: "World Map",
-    subtitle: `${open} AI territor${open === 1 ? "y" : "ies"} · ${world.bases.length} member base${world.bases.length === 1 ? "" : "s"}`,
+    subtitle: `${openTerr} AI territor${openTerr === 1 ? "y" : "ies"} · ${conquestCount} conquest${conquestCount === 1 ? "" : "s"} · ${world.bases.length} base${world.bases.length === 1 ? "" : "s"}`,
     theme, roomEmoji: "🗺️", roomName: "World", hqLevel: level,
     markers, routes: HQ_ROUTES,
   };
@@ -1462,7 +1464,9 @@ async function buildView(
           .map(t => ({
             label: t.territory.name.slice(0, 90),
             value: `t:${t.territory.id}`,
-            description: `${tierProfile(t.territory.tier).label} · ${t.territory.garrison} defenders · ${holderLabel(t)}`.slice(0, 100),
+            description: (t.territory.category === "conquest"
+              ? `Conquest · ${t.territory.garrison} def · pays ${t.territory.resource ?? "shards"} · ${holderLabel(t)}`
+              : `${tierProfile(t.territory.tier).label} · ${t.territory.garrison} defenders · ${holderLabel(t)}`).slice(0, 100),
             emoji: (t.shieldUntil && t.shieldUntil.getTime() > now) ? "🛡️" : t.faction.emoji,
           })),
         ...world.bases.map(b => ({
@@ -2423,16 +2427,22 @@ async function finalizeTerritorySiege(
   const reward = Math.round(base * (1 + 0.15 * Math.max(0, o.stars - (o.attackerWon ? 1 : 0))));
   await addShards(guildId, attackerId, reward).catch(() => {});
   if (previousHolder && previousHolder !== attackerId) void notifyTerritoryLost(interaction, previousHolder, attackerName, view.territory.name);
+  const conquest = view.territory.category === "conquest";
+  const res = view.territory.resource ?? "shards";
   return {
-    title: o.attackerWon ? `🚩 ${view.territory.name} is yours!` : `🛡️ ${view.territory.name} holds`,
+    title: o.attackerWon
+      ? (conquest ? `${resourceEmoji(res)} ${view.territory.name} seized!` : `🚩 ${view.territory.name} is yours!`)
+      : `🛡️ ${view.territory.name} holds`,
     description: o.attackerWon
-      ? `You broke the ${holderLabel(view)} garrison in **${o.turns}** turns and now hold this ${prof.label.toLowerCase()} — **${prof.tributePerHour}💠/hr**.`
+      ? (conquest
+          ? `You cleared the ${holderLabel(view)} in **${o.turns}** turns and now work this outpost — it pays **${prof.tributePerHour}💠/hr** in ${res} while you hold it. Raid, hold, and collect from the 🗺️ World map; a rival can take it back the same way.`
+          : `You broke the ${holderLabel(view)} garrison in **${o.turns}** turns and now hold this ${prof.label.toLowerCase()} — **${prof.tributePerHour}💠/hr**.`)
       : `The ${holderLabel(view)} garrison threw you back after **${o.turns}** turns.`,
     color: o.attackerWon ? 0x4fd06a : view.faction.color,
     fields: [
       { name: "⚔️ Squad power", value: `**${o.attackerPower}**`, inline: true },
       { name: "🛡️ Garrison", value: `**${o.defenderPower}**`, inline: true },
-      { name: "💠 Loot", value: `**+${reward}** shards`, inline: true },
+      { name: conquest ? `${resourceEmoji(res)} Haul` : "💠 Loot", value: `**+${reward}** shards`, inline: true },
     ],
   };
 }
@@ -2608,16 +2618,19 @@ async function buildTerritoryBriefing(guildId: string, attackerId: string, nodeI
     };
   }
   const prof = tierProfile(view.territory.tier);
+  const conquest = view.territory.category === "conquest";
+  const res = view.territory.resource ?? "shards";
   const embed = new EmbedBuilder().setColor(view.faction.color)
-    .setTitle(`⚔️ March on ${view.territory.name}`)
+    .setTitle(conquest ? `${resourceEmoji(res)} Raid ${view.territory.name}` : `⚔️ March on ${view.territory.name}`)
     .setDescription(
       `_${view.territory.blurb}_\n\n` +
+      (conquest ? `**Type:** Conquest — a quick raid; take it and hold it to mine **${res}**.\n` : "") +
       `**Holder:** ${view.heldByUserId ? `<@${view.heldByUserId}>` : `${view.faction.emoji} ${view.faction.name}`}\n` +
       `**Difficulty:** ${tierStars(view.territory.tier)} · ${prof.label}\n` +
       `**Garrison:** ${view.territory.garrison} defenders at level ~${prof.cardLevel}${prof.starRank > 0 ? ` (${"⭐".repeat(prof.starRank)})` : ""}`,
     )
     .addFields(
-      { name: "💠 Capture bounty", value: `**${prof.bounty}**`, inline: true },
+      { name: conquest ? `${resourceEmoji(res)} Seize haul` : "💠 Capture bounty", value: `**${prof.bounty}**`, inline: true },
       { name: "💠 Hold tribute", value: `**${prof.tributePerHour}/hr**`, inline: true },
       { name: "🏳️ Times taken", value: `**${view.captures}**`, inline: true },
     );

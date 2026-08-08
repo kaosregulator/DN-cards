@@ -38,6 +38,19 @@ export const HQ_FACTIONS: HqFaction[] = [
     blurb: "Mercenary engineers who sell the same fort twice." },
   { id: "duskwatch", name: "The Duskwatch", short: "Duskwatch", emoji: "🌙", color: 0x9b59b6, crest: "moon",
     blurb: "Night sentinels holding the ruins nobody else will." },
+
+  // ── Independent operators (CONQUESTS) ──────────────────────────────────────
+  // Not one of the six great factions — small crews squatting on a resource site.
+  // They flag the mini-outposts you can take, hold and mine. Crests are reused
+  // from the set the map renderer already draws.
+  { id: "prospectors", name: "Prospectors' Union", short: "Prospectors", emoji: "⛏️", color: 0x4fd6d6, crest: "star",
+    blurb: "Freelance diggers who follow the glitter and answer to no banner." },
+  { id: "drillers", name: "The Drill Cartel", short: "Drillers", emoji: "🛢️", color: 0xe0a020, crest: "cog",
+    blurb: "Wildcatters tapping the deep seams — loud, rich, and lightly guarded." },
+  { id: "tidewardens", name: "Tidewardens", short: "Tidewardens", emoji: "🌊", color: 0x3aa6e0, crest: "moon",
+    blurb: "Lock-keepers of the coastal gates, taxing every boat that passes." },
+  { id: "freecompany", name: "Free Companies", short: "Free Co.", emoji: "⚔️", color: 0xb7a98a, crest: "skull",
+    blurb: "Sellswords holding a work camp until someone pays them to leave." },
 ];
 
 const FACTION_BY_ID = new Map(HQ_FACTIONS.map(f => [f.id, f]));
@@ -62,6 +75,15 @@ export interface HqTerritory {
   garrison: number;         // defender count (2…6)
   structure: HqBuildingRole;
   blurb: string;
+  // "territory" (default) = one of the six great AI factions' castles.
+  // "conquest" = a small independent resource outpost — a mini side objective
+  // that plays through the exact same capture/hold/tribute flow, but reads and
+  // rewards as a quick raid. Held/lost the same way; it's the framing that
+  // differs. Kept optional so every existing territory stays a "territory".
+  category?: "territory" | "conquest";
+  // Flavour of what a conquest yields (all payouts resolve to shards today —
+  // this is the label shown to the player, e.g. "shards", "oil", "stone").
+  resource?: string;
 }
 
 // A ring of territories that escalates outward: soft targets near the player's
@@ -103,6 +125,26 @@ export const HQ_TERRITORIES: HqTerritory[] = [
   { id: "nightspire", name: "Nightspire", factionId: "duskwatch", tier: 6, biome: "hills",
     u: -0.58, v: -0.06, garrison: 6, structure: "castle",
     blurb: "A black tower older than every banner flying on this map." },
+
+  // ── Conquests (mini side outposts) ─────────────────────────────────────────
+  // Small, lightly-held resource sites tucked into the gaps between the faction
+  // ring. Low tier = a quick fight; take one and hold it to mine its tribute,
+  // until a rival raids it back off you. Same flow as a territory siege.
+  { id: "glimmer-dig", name: "Glimmer Dig", factionId: "prospectors", tier: 2, biome: "hills",
+    u: 0.62, v: -0.02, garrison: 3, structure: "camp", category: "conquest", resource: "shards",
+    blurb: "A diamond scratch-mine. The seams pay out in raw shards to whoever holds the winch." },
+  { id: "frostspar-vein", name: "Frostspar Vein", factionId: "prospectors", tier: 2, biome: "snow",
+    u: -0.20, v: -0.30, garrison: 3, structure: "camp", category: "conquest", resource: "shards",
+    blurb: "Frozen crystal veins. Hard to work, harder to hold — the cold does half the guarding." },
+  { id: "blacksand-derrick", name: "Blacksand Derrick", factionId: "drillers", tier: 2, biome: "desert",
+    u: 0.30, v: 0.10, garrison: 3, structure: "tower", category: "conquest", resource: "oil",
+    blurb: "A lone drill tower over a black seam. Runs day and night for whoever mans the pumps." },
+  { id: "tidewater-gate", name: "Tidewater Gate", factionId: "tidewardens", tier: 1, biome: "marsh",
+    u: -0.02, v: 0.18, garrison: 2, structure: "wall", category: "conquest", resource: "toll",
+    blurb: "A sea-lock on the river mouth. Hold the gate and every boat pays the toll to pass." },
+  { id: "cutstone-quarry", name: "Cutstone Quarry", factionId: "freecompany", tier: 1, biome: "plains",
+    u: -0.52, v: -0.30, garrison: 2, structure: "hut", category: "conquest", resource: "stone",
+    blurb: "A cut-stone pit worked by sellswords. Barely guarded — a good first conquest." },
 ];
 
 const TERRITORY_BY_ID = new Map(HQ_TERRITORIES.map(t => [t.id, t]));
@@ -172,4 +214,22 @@ export function tierProfile(tier: number): TierProfile {
 export function tierStars(tier: number): string {
   const n = Math.max(1, Math.min(6, Math.round(tier)));
   return "★".repeat(n) + "☆".repeat(6 - n);
+}
+
+// ── Conquests ───────────────────────────────────────────────────────────────
+/** True for the mini resource-outpost nodes (vs the six great AI factions). */
+export function isConquest(t: Pick<HqTerritory, "category">): boolean {
+  return t.category === "conquest";
+}
+
+/** Just the conquest blueprints, for pickers and counts. */
+export const HQ_CONQUESTS: HqTerritory[] = HQ_TERRITORIES.filter(isConquest);
+
+// Map a conquest's resource flavour to an emoji, for embeds/select rows. All
+// payouts still resolve to shards today — this is presentation only.
+const RESOURCE_EMOJI: Record<string, string> = {
+  shards: "💠", oil: "🛢️", stone: "🪨", toll: "🪙", timber: "🪵", ore: "⛏️",
+};
+export function resourceEmoji(resource: string | undefined): string {
+  return (resource && RESOURCE_EMOJI[resource]) || "💠";
 }

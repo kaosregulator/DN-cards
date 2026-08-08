@@ -43,6 +43,8 @@ export interface WorldMarker {
   garrison: number;
   /** An AI faction territory, or a member's own base pinned on the coast. */
   kind: "territory" | "base";
+  /** A mini resource outpost (a themed, lighter territory) vs a great-faction castle. */
+  category?: "territory" | "conquest";
   held: boolean;         // taken by a member (vs still AI-held)
   heldByYou: boolean;
   shielded: boolean;
@@ -478,8 +480,9 @@ function drawPlates(ctx: Ctx, entries: { m: WorldMarker; p: Pt }[]): void {
   for (const { m, p } of entries) {
     const name = stripEmoji(m.name);
     const tag = m.heldByYou ? "YOURS"
-      : m.held ? (m.kind === "base" ? "HELD" : "CONQUERED")
+      : m.held ? (m.kind === "base" ? "HELD" : m.category === "conquest" ? "MINED" : "CONQUERED")
       : m.kind === "base" ? "MEMBER BASE"
+      : m.category === "conquest" ? "CONQUEST"
       : stripEmoji(m.factionShort).toUpperCase();
     const sub = `${tag} · T${m.tier} · ${m.garrison} DEF`;
 
