@@ -174,4 +174,53 @@ export const api = {
   saveLayout(layout: HqLayout): Promise<{ ok: boolean; layout: HqLayout; revision: number }> {
     return request("/activity/hq/layout", { method: "POST", body: { layout }, token: tokenRef });
   },
+  battle(): Promise<BattleModel> {
+    return request<BattleModel>("/activity/battle", { token: tokenRef });
+  },
+  raid(): Promise<RaidModel> {
+    return request<RaidModel>("/activity/raid", { token: tokenRef });
+  },
+  packs(): Promise<PackModel> {
+    return request<PackModel>("/activity/packs", { token: tokenRef });
+  },
 };
+
+// ── Play-scene models (mirror bot/activity/read-models.ts) ────────────────────
+
+export interface Combatant {
+  name: string;
+  rarity: string;
+  color: number;
+  hp: number;
+  atk: number;
+  sprite: string;
+}
+
+export interface BattleModel {
+  backdrops: string[];
+  player: Combatant[];
+  opponent: Combatant[];
+}
+
+export interface RaidBossModel {
+  id: number;
+  name: string;
+  rarity: string;
+  color: number;
+  maxHealth: number;
+  enrageTurn: number;
+  sprite: string;
+  defeated: boolean;
+}
+
+export interface RaidModel {
+  backdrops: string[];
+  bosses: RaidBossModel[];
+  progress: { defeated: number; total: number; nextName: string | null; complete: boolean };
+  team: Combatant[];
+}
+
+export interface PackModel {
+  tiers: { id: string; label: string; cost: number; size: number; emoji: string }[];
+  rarities: { key: string; label: string; color: number; weight: number }[];
+}

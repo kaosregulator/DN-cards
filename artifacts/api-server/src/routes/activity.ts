@@ -7,6 +7,7 @@ import { hqAssetsRoot } from "../bot/hq/assets.js";
 import { getActivityLayout, saveActivityLayout, getActivityCatalog, WORLD_TILES } from "../bot/hq/activity-layout.js";
 import { ACTIVITY_FLOORS, GROUND_SPRITE } from "../bot/hq/activity-catalog.js";
 import { HQ_ROOMS } from "../bot/hq/defs/rooms.js";
+import { battleReadModel, raidReadModel, packReadModel } from "../bot/activity/read-models.js";
 import { HOME_GUILD_ID } from "../bot/home-guild.js";
 import { loginRateLimiter } from "../lib/rate-limiters.js";
 import { logger } from "../lib/logger.js";
@@ -275,6 +276,45 @@ router.get("/hq", async (req, res) => {
   } catch (err) {
     logger.error({ err, userId: user.id }, "activity /hq failed");
     res.status(500).json({ error: "Failed to load HQ." });
+  }
+});
+
+// ── Play scenes: read-only projections of real Battle / Raid / Pack state ─────
+
+// GET /api/activity/battle — the player's line-up vs a scaled rival (preview).
+router.get("/battle", async (req, res) => {
+  const user = await requireUser(req, res);
+  if (!user) return;
+  try {
+    res.json(await battleReadModel(HOME_GUILD_ID!, user.id));
+  } catch (err) {
+    logger.error({ err, userId: user.id }, "activity /battle failed");
+    res.status(500).json({ error: "Failed to load battle." });
+  }
+});
+
+// GET /api/activity/raid — real campaign ladder + this player's clear progress.
+router.get("/raid", async (req, res) => {
+  const user = await requireUser(req, res);
+  if (!user) return;
+  try {
+    res.json(await raidReadModel(HOME_GUILD_ID!, user.id));
+  } catch (err) {
+    logger.error({ err, userId: user.id }, "activity /raid failed");
+    res.status(500).json({ error: "Failed to load raid." });
+  }
+});
+
+// GET /api/activity/packs — real tiers + real rarity odds (presentation preview;
+// grants nothing — authoritative opening stays in the bot).
+router.get("/packs", async (req, res) => {
+  const user = await requireUser(req, res);
+  if (!user) return;
+  try {
+    res.json(await packReadModel(HOME_GUILD_ID!));
+  } catch (err) {
+    logger.error({ err, userId: user.id }, "activity /packs failed");
+    res.status(500).json({ error: "Failed to load packs." });
   }
 });
 

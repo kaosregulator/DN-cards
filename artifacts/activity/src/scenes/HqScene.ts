@@ -2,6 +2,7 @@ import Phaser from "phaser";
 import { getContext } from "../core/context";
 import { HqStore } from "../state/hqStore";
 import { HqHud } from "../hud/hqHud";
+import { NavDock } from "../hud/navDock";
 import type { CatalogAsset, HqWorld, LayoutObject } from "../net/api";
 import {
   TILE_W, TILE_H, HALF_H, DEPTH, tileToScreen, screenToTile, snapTile, depthFor,
@@ -25,6 +26,7 @@ export class HqScene extends Phaser.Scene {
   private world!: HqWorld;
   private store!: HqStore;
   private hud!: HqHud;
+  private nav!: NavDock;
 
   private catalogById = new Map<string, CatalogAsset>();
   private floorSpriteById = new Map<string, string>();
@@ -105,7 +107,12 @@ export class HqScene extends Phaser.Scene {
       delay: 2200, loop: true, callback: () => this.wanderNpcs(),
     });
 
-    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.hud?.destroy());
+    this.nav = new NavDock("Hq", (k) => { if (k !== "Hq") this.scene.start(k); });
+
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      this.hud?.destroy();
+      this.nav?.destroy();
+    });
   }
 
   // ── texture helpers ───────────────────────────────────────────────────────
