@@ -319,26 +319,51 @@ export async function startSiege(
   session.ttlTimer = setTimeout(() => { void abandon(session); }, MAX_SIEGE_MS);
 
   await refreshCastle(session);
-  // Keep the message returned by the original edit. Ephemeral interaction
-  // replies can occasionally reject a follow-up fetch even though the edit
-  // itself succeeded; without this reference every later siege render becomes
-  // a silent no-op and the player is left on the muster screen.
-  const posted = await interaction.editReply(await musterPayload(session))
-    .then((message) => {
-      session.message = message as Message;
-      return true;
-    })
-    .catch((err) => {
-      logger.warn({ err, siege: session.id }, "siege muster message edit failed");
-      return false;
-    });
-  if (!posted) { await release(session); return; }
-  if (!session.message) {
-    session.message = await interaction.fetchReply().catch((err) => {
-      logger.warn({ err, siege: session.id }, "siege muster message fetch failed");
-      return undefined;
-    }) as Message | undefined;
+
+  // The siege board MUST live on a real channel message (like /battle and
+  // /raid), NOT the ephemeral /hq hub reply it was launched from.
+  //
+  // Why: the runtime renders every frame — the coin toss, each turn, the result
+  // — with `message.edit()`, and many of those edits fire from BACKGROUND TIMERS
+  // (the AI's answer, the coin animation, the turn clock) with no live
+  // interaction to hand. `Message#edit()` routes through the channel endpoint,
+  // which an ephemeral message has no route on — editing an ephemeral reply only
+  // works through the interaction webhook token (`interaction.editReply`), and
+  // even that expires 15 minutes in, short of a full 20-minute siege. On an
+  // ephemeral board every render after muster silently no-ops, so the coin flip
+  // never shows and the assault freezes on the muster screen. A public channel
+  // message makes `message.edit()` work for the whole siege.
+  const channel = interaction.channel;
+  if (channel?.isSendable()) {
+    session.message = await channel.send(await musterPayload(session))
+      .then((m) => m as Message)
+      .catch((err) => {
+        logger.warn({ err, siege: session.id }, "siege board channel.send failed");
+        return undefined;
+      });
+    // Retire the ephemeral hub board so the commander isn't left on a dead
+    // mode-picker; the live siege is the channel message from here on.
+    if (session.message) {
+      await interaction.editReply({
+        embeds: [new EmbedBuilder().setColor(session.accent)
+          .setTitle(`🏰 Assault on ${session.targetName}`)
+          .setDescription("Your siege is live in this channel. ⬇️")],
+        components: [], files: [],
+      }).catch(() => {});
+    }
   }
+  // Fallback: no sendable channel (rare — e.g. missing Send Messages perms).
+  // Use the ephemeral reply so a board still appears; a long animated siege may
+  // stop updating past the 15-minute token window, but short ones resolve.
+  if (!session.message) {
+    session.message = await interaction.editReply(await musterPayload(session))
+      .then((m) => m as Message)
+      .catch((err) => {
+        logger.warn({ err, siege: session.id }, "siege muster message edit failed");
+        return undefined;
+      });
+  }
+  if (!session.message) { await release(session); return; }
 }
 
 // ── Component routing (hq-hub:ls:<action>:<sid>[:extra]) ──────────────────────
