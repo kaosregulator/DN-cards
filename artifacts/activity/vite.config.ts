@@ -17,8 +17,11 @@ if (Number.isNaN(port) || port <= 0) {
 // root URL mapping to "/", so default to "/".
 const basePath = process.env.BASE_PATH ?? "/";
 
-export default defineConfig({
-  base: basePath,
+export default defineConfig(({ command }) => ({
+  // Replit mounts the development artifact at /activity, while Discord maps
+  // the production Activity host's root URL to /. Keep those contracts
+  // separate so local preview modules resolve without changing Discord URLs.
+  base: command === "serve" && basePath === "/" ? "/activity/" : basePath,
   root: path.resolve(import.meta.dirname),
   resolve: {
     alias: {
@@ -52,4 +55,4 @@ export default defineConfig({
     host: "0.0.0.0",
     allowedHosts: true,
   },
-});
+}));

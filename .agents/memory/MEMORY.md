@@ -44,3 +44,4 @@
 - [Economy optimistic lock pattern](economy-optimistic-lock.md) — consume inventory BEFORE awarding currency/XP; use exact-match UPDATE guard + RETURNING to detect concurrent double-spend; never award if affected rows = 0.
 - [HQ concurrency and derived state](hq-concurrency-and-derived-state.md) — siege/placement mutations need atomic guards, and computed HQ level must be persisted during reconciliation.
 - [Managed artifact secret wiring](artifact-secret-wiring.md) — shared Replit Secrets need explicit name-only `${SECRET_NAME}` references in managed artifact service environments.
+- [Activity preview base paths](activity-preview-base-paths.md) — path-routed local Vite previews need `/activity/` assets, while Discord production mapping must keep `/` assets.

@@ -319,10 +319,26 @@ export async function startSiege(
   session.ttlTimer = setTimeout(() => { void abandon(session); }, MAX_SIEGE_MS);
 
   await refreshCastle(session);
+  // Keep the message returned by the original edit. Ephemeral interaction
+  // replies can occasionally reject a follow-up fetch even though the edit
+  // itself succeeded; without this reference every later siege render becomes
+  // a silent no-op and the player is left on the muster screen.
   const posted = await interaction.editReply(await musterPayload(session))
-    .then(() => true).catch(() => false);
+    .then((message) => {
+      session.message = message as Message;
+      return true;
+    })
+    .catch((err) => {
+      logger.warn({ err, siege: session.id }, "siege muster message edit failed");
+      return false;
+    });
   if (!posted) { await release(session); return; }
-  session.message = await interaction.fetchReply().catch(() => undefined) as Message | undefined;
+  if (!session.message) {
+    session.message = await interaction.fetchReply().catch((err) => {
+      logger.warn({ err, siege: session.id }, "siege muster message fetch failed");
+      return undefined;
+    }) as Message | undefined;
+  }
 }
 
 // ── Component routing (hq-hub:ls:<action>:<sid>[:extra]) ──────────────────────
@@ -594,7 +610,12 @@ async function playCoinToss(s: SiegeSession): Promise<0 | 1> {
   const call = s.coinCall ?? (Math.random() < 0.5 ? "heads" : "tails");
   const firstSide: 0 | 1 = call === flip ? 0 : 1;
   if (!s.message) return firstSide;
-  const anim = await renderCoinFlip(flip).catch(() => null);
+  // Canvas/GIF rendering is best-effort. Never allow a renderer stall to keep
+  // the interaction in the cinematic screen indefinitely.
+  const anim = await Promise.race([
+    renderCoinFlip(flip).catch(() => null),
+    sleep(12_000).then(() => null),
+  ]);
   if (anim) {
     const coinEmbed = new EmbedBuilder()
       .setColor(0xf1c40f)
@@ -604,7 +625,9 @@ async function playCoinToss(s: SiegeSession): Promise<0 | 1> {
     await s.message.edit({
       content: null, embeds: [coinEmbed],
       files: [new AttachmentBuilder(Buffer.from(anim.buffer), { name: "coin.gif" })], components: [],
-    }).catch(() => {});
+    }).catch((err) => {
+      logger.warn({ err, siege: s.id }, "siege coin animation edit failed");
+    });
     await sleep(Math.max(1500, anim.durationMs));
   }
   const landed = flip === "heads" ? "Heads 🪙" : "Tails 🌙";
@@ -614,7 +637,9 @@ async function playCoinToss(s: SiegeSession): Promise<0 | 1> {
     .setDescription(firstSide === 0
       ? `You **won the toss** — your column storms the gate first.`
       : `The toss goes to the defenders — the garrison moves first.`);
-  await s.message.edit({ content: null, embeds: [resultEmbed], files: [], components: [] }).catch(() => {});
+  await s.message.edit({ content: null, embeds: [resultEmbed], files: [], components: [] }).catch((err) => {
+    logger.warn({ err, siege: s.id }, "siege coin result edit failed");
+  });
   await sleep(1300);
   return firstSide;
 }
