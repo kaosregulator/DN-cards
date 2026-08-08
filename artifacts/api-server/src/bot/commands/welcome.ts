@@ -19,7 +19,8 @@ const SITE_ADMIN = `${SITE_URL}/admin`;
 // ── Helper — build the Replit-hosted admin-dashboard URL ─────────────────────
 function dashboardAdminUrl(): string {
   const domain = process.env["REPLIT_DOMAINS"]?.split(",")[0]?.trim();
-  return domain ? `https://${domain}/admin` : SITE_ADMIN;
+  // Dashboard is now served at /dashboard (Activity owns the root for Discord).
+  return domain ? `https://${domain}/dashboard/admin` : SITE_ADMIN;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

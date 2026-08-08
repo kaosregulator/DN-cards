@@ -8,6 +8,7 @@ import { initDiscord } from "./discord/sdk";
 import { startGame } from "./core/game";
 import { initViewport } from "./core/viewport";
 import { isDemo, startDemo } from "./demo/demo";
+import { isInDiscord } from "./discord/env";
 
 function fatal(message: string): void {
   const boot = document.getElementById("boot");
@@ -18,6 +19,15 @@ function fatal(message: string): void {
 
 async function main(): Promise<void> {
   try {
+    // The Activity only runs inside Discord. Outside Discord (and not in the
+    // QA demo harness), redirect the browser to the dashboard so navigating
+    // to the root URL still reaches the right place.
+    if (!isInDiscord() && !isDemo()) {
+      const loc = window.location;
+      const rest = loc.pathname === "/" ? "" : loc.pathname + loc.search;
+      window.location.replace(`/dashboard${rest}`);
+      return;
+    }
     initViewport();
     // Local viewport/QA harness (no Discord, no backend) — opt-in via `?demo`.
     if (isDemo()) {

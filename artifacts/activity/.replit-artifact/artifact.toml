@@ -1,5 +1,5 @@
 kind = "web"
-previewPath = "/activity"
+previewPath = "/"
 title = "DN Cards Activity"
 version = "1.0.0"
 id = "artifacts/activity"
@@ -11,7 +11,7 @@ version = "1.0.0"
 
 [[services]]
 name = "web"
-paths = [ "/activity" ]
+paths = [ "/" ]
 localPort = 5174
 
 [services.development]
