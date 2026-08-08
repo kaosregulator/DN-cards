@@ -50,3 +50,6 @@ Thumbs.db
 
 # Generated HQ preview renders (scripts/hq-preview)
 scripts/hq-preview/
+
+# Local scratch/mockup scripts (never committed)
+scripts/src/scratch-*.ts
