@@ -120,7 +120,7 @@ export function drawProp(
     case "rug": drawRug(ctx, cx, feetY, s, tint); break;
     case "couch": drawCouch(ctx, cx, feetY, s, tint); break;
     case "chair": drawChair(ctx, cx, feetY, s, tint); break;
-    case "table": drawTable(ctx, cx, feetY, s); break;
+    case "table": drawTable(ctx, cx, feetY, s, tint); break;
     case "bed": drawBed(ctx, cx, feetY, s, tint); break;
     case "cabinet": drawCabinet(ctx, cx, feetY, s); break;
     case "bookshelf": drawBookshelf(ctx, cx, feetY, s); break;
@@ -170,26 +170,33 @@ function drawRug(ctx: Ctx, cx: number, cy: number, s: number, tint: number): voi
 }
 
 function drawCouch(ctx: Ctx, cx: number, feetY: number, s: number, tint: number): void {
-  shadow(ctx, cx, feetY, 48 * s, 16 * s);
+  shadow(ctx, cx, feetY, 52 * s, 18 * s);
   const hex = `#${tint.toString(16).padStart(6, "0")}`;
-  const seat = hexToRgba(tint, 0.95);
-  const dark = shiftColor(hex, -40);
-  const mid = shiftColor(hex, -18);
+  const seat = hexToRgba(tint, 0.97);
+  const dark = shiftColor(hex, -45);
+  const mid = shiftColor(hex, -22);
+  const leather = shiftColor(hex, 8);
   // Wooden feet
-  ctx.fillStyle = "#5a3d22";
-  for (const dx of [-28, -10, 10, 28]) ctx.fillRect(cx + dx * s - 2 * s, feetY - 8 * s, 4 * s, 8 * s);
-  // Seat slab (long rectangle in iso)
-  isoBox(ctx, cx, feetY - 12 * s, 44 * s, 20 * s, 12 * s, seat, mid, dark);
-  // Backrest — tall thin slab behind seat
-  isoBox(ctx, cx - 4 * s, feetY - 28 * s, 40 * s, 8 * s, 22 * s, shiftColor(hex, 10), mid, dark);
-  // Two seat cushions with seam
-  isoTop(ctx, cx - 16 * s, feetY - 14 * s, 16 * s, 10 * s, "rgba(255,255,255,0.22)");
-  isoTop(ctx, cx + 14 * s, feetY - 14 * s, 16 * s, 10 * s, "rgba(255,255,255,0.18)");
-  ctx.strokeStyle = "rgba(0,0,0,0.25)"; ctx.lineWidth = 1.5 * s;
-  ctx.beginPath(); ctx.moveTo(cx, feetY - 22 * s); ctx.lineTo(cx, feetY - 8 * s); ctx.stroke();
+  ctx.fillStyle = "#2a1a10";
+  for (const dx of [-30, -12, 12, 30]) ctx.fillRect(cx + dx * s - 2.5 * s, feetY - 6 * s, 5 * s, 6 * s);
+  // Seat slab — long leather sofa
+  isoBox(ctx, cx, feetY - 14 * s, 48 * s, 22 * s, 14 * s, seat, mid, dark);
+  // Backrest
+  isoBox(ctx, cx - 2 * s, feetY - 32 * s, 46 * s, 9 * s, 26 * s, leather, mid, dark);
+  // Cushion seams
+  isoTop(ctx, cx - 18 * s, feetY - 16 * s, 18 * s, 11 * s, "rgba(255,255,255,0.14)");
+  isoTop(ctx, cx + 16 * s, feetY - 16 * s, 18 * s, 11 * s, "rgba(255,255,255,0.10)");
+  ctx.strokeStyle = "rgba(0,0,0,0.35)"; ctx.lineWidth = 1.5 * s;
+  ctx.beginPath(); ctx.moveTo(cx, feetY - 24 * s); ctx.lineTo(cx, feetY - 8 * s); ctx.stroke();
   // Arms
-  isoBox(ctx, cx - 42 * s, feetY - 16 * s, 8 * s, 12 * s, 18 * s, seat, mid, dark);
-  isoBox(ctx, cx + 42 * s, feetY - 16 * s, 8 * s, 12 * s, 18 * s, seat, mid, dark);
+  isoBox(ctx, cx - 46 * s, feetY - 18 * s, 9 * s, 14 * s, 20 * s, seat, mid, dark);
+  isoBox(ctx, cx + 46 * s, feetY - 18 * s, 9 * s, 14 * s, 20 * s, seat, mid, dark);
+  // Leather sheen
+  ctx.fillStyle = "rgba(255,220,200,0.12)";
+  ctx.beginPath();
+  ctx.moveTo(cx - 30 * s, feetY - 40 * s); ctx.lineTo(cx - 10 * s, feetY - 40 * s);
+  ctx.lineTo(cx - 14 * s, feetY - 20 * s); ctx.lineTo(cx - 28 * s, feetY - 20 * s);
+  ctx.closePath(); ctx.fill();
 }
 
 function drawChair(ctx: Ctx, cx: number, feetY: number, s: number, tint: number): void {
@@ -204,18 +211,42 @@ function drawChair(ctx: Ctx, cx: number, feetY: number, s: number, tint: number)
   isoBox(ctx, cx, y - 14 * s, 14 * s, 6 * s, 18 * s, hexToRgba(tint, 0.9), hexToRgba(tint, 0.65), hexToRgba(tint, 0.5));
 }
 
-function drawTable(ctx: Ctx, cx: number, feetY: number, s: number): void {
-  shadow(ctx, cx, feetY, 36 * s, 12 * s);
+function drawTable(ctx: Ctx, cx: number, feetY: number, s: number, tint = 0xc4a06a): void {
+  shadow(ctx, cx, feetY, 40 * s, 14 * s);
   const y = feetY - 18 * s;
-  ctx.fillStyle = "#5a3d22";
-  for (const [dx, dy] of [[-22, 4], [22, 4], [-14, -8], [14, -8]] as const) {
+  ctx.fillStyle = "#3a2a1a";
+  for (const [dx, dy] of [[-24, 4], [24, 4], [-16, -8], [16, -8]] as const) {
     ctx.fillRect(cx + dx * s - 2 * s, y + dy * s, 4 * s, 22 * s);
   }
-  isoBox(ctx, cx, y, 34 * s, 16 * s, 6 * s, "#c4a06a", "#8a6a3f", "#6b4f2c");
-  // Papers / map glow on top
-  isoTop(ctx, cx, y - 1 * s, 16 * s, 8 * s, "rgba(220,230,240,0.9)");
-  ctx.fillStyle = "rgba(80,180,255,0.45)";
-  ctx.beginPath(); ellipse(ctx, cx, y - 8 * s, 10 * s, 6 * s); ctx.fill();
+  isoBox(ctx, cx, y, 40 * s, 18 * s, 7 * s, "#2a2e36", "#1e2228", "#14181e");
+  // Holotable glow when tint is cool/tech
+  const cool = ((tint >> 16) & 0xff) < 120 && ((tint >> 8) & 0xff) > 140;
+  if (cool) {
+    ctx.save();
+    ctx.shadowColor = hexToRgba(tint, 0.9); ctx.shadowBlur = 22 * s;
+    isoTop(ctx, cx, y - 2 * s, 28 * s, 12 * s, hexToRgba(tint, 0.55));
+    // Rising hologram panes
+    ctx.globalAlpha = 0.7;
+    ctx.fillStyle = hexToRgba(tint, 0.45);
+    ctx.beginPath();
+    ctx.moveTo(cx - 18 * s, y - 8 * s); ctx.lineTo(cx + 18 * s, y - 8 * s);
+    ctx.lineTo(cx + 12 * s, y - 48 * s); ctx.lineTo(cx - 12 * s, y - 48 * s);
+    ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = hexToRgba(tint, 0.85); ctx.lineWidth = 1.5 * s;
+    ctx.stroke();
+    // Grid on hologram
+    ctx.strokeStyle = hexToRgba(tint, 0.5); ctx.lineWidth = 1;
+    for (let i = 1; i < 4; i++) {
+      const t = i / 4;
+      const y1 = y - 8 * s - t * 40 * s;
+      ctx.beginPath();
+      ctx.moveTo(cx - 18 * s + t * 6 * s, y1); ctx.lineTo(cx + 18 * s - t * 6 * s, y1);
+      ctx.stroke();
+    }
+    ctx.restore();
+  } else {
+    isoTop(ctx, cx, y - 1 * s, 16 * s, 8 * s, "rgba(220,230,240,0.9)");
+  }
 }
 
 function drawBed(ctx: Ctx, cx: number, feetY: number, s: number, tint: number): void {

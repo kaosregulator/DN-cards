@@ -150,6 +150,8 @@ type HubInteraction =
 interface HqStats {
   title?: string; motto?: string; backdropId?: string; wallpaperId?: string; skyboxId?: string;
   wallsOff?: boolean; glassOff?: boolean; companionId?: string; baseTier?: number;
+  /** Outdoor: hide the two giant diorama sky-walls (dark void behind platform). */
+  giantWallsOff?: boolean;
   editorCategory?: string; editorMode?: string;
   /** Connected HQ floorplan — pass-through so other stats writes don't wipe it. */
   floorplan?: unknown;
@@ -161,6 +163,7 @@ function readHqStats(hq: PlayerHq): HqStats {
   return {
     title: s?.title, motto: s?.motto, backdropId: s?.backdropId, wallpaperId: s?.wallpaperId,
     skyboxId: s?.skyboxId, wallsOff: s?.wallsOff, glassOff: s?.glassOff,
+    giantWallsOff: s?.giantWallsOff,
     companionId: s?.companionId, baseTier: s?.baseTier,
     editorCategory: s?.editorCategory, editorMode: s?.editorMode,
     floorplan: s?.floorplan, build: s?.build, layers: s?.layers,
@@ -746,6 +749,13 @@ export async function handleHqHubComponent(
     await interaction.update(await buildView(interaction, "theme", [])).catch(() => {});
     return;
   }
+  if (action === "togglegiant" && interaction.isButton()) {
+    const hq = await getOrCreateHq(guildId, userId);
+    const s = readHqStats(hq);
+    await updateHq(guildId, userId, { stats: { ...s, giantWallsOff: !s.giantWallsOff } }).catch(() => {});
+    await interaction.update(await buildView(interaction, "theme", [])).catch(() => {});
+    return;
+  }
   if (action === "toggleglass" && interaction.isButton()) {
     const hq = await getOrCreateHq(guildId, userId);
     const s = readHqStats(hq);
@@ -1121,6 +1131,7 @@ async function buildBaseRenderView(
     showGrid: !!cursor, // grid ONLY in Edit Mode
     skybox,
     shieldActive,
+    giantWallsOff: !!stats.giantWallsOff,
     companion: companionRenderFor(hq), visitors: visitorCount(hq.hqLevel),
   };
 }
@@ -1800,10 +1811,11 @@ async function buildView(
       const backdrop = resolveBackdrop(style.backdropId);
       const wallpaper = resolveWallpaper(style.wallpaperId);
       embed.setTitle("🎨 Style").setDescription(
-        "Restyle your whole HQ — the **theme** sets lighting & mood, the **floor** reskins the ground, and " +
-        "**wallpaper** hangs a real repeating covering on the walls, complete with dado rail and skirting. " +
-        "Or toggle the **walls** off entirely and show a **backdrop** behind the room, and hide the display " +
-        "**glass**. New styles unlock as you play.",
+        "Restyle your HQ.\n" +
+        "• **Room walls / floor** — architecture of interior rooms (stone, wood, bunker…)\n" +
+        "• **Giant walls** — the two outdoor diorama sky planes behind your grassy platform (Clouds, Night, Desert…). Not wallpaper.\n" +
+        "• Toggle **Giant walls off** for a dark-void outdoor look (shield still works).\n" +
+        "• **Room walls off** opens an interior to the outdoors.",
       );
       const themeLines = HQ_THEMES.map(t => {
         const open = isThemeUnlocked(t, owned);
@@ -1830,10 +1842,10 @@ async function buildView(
           .setStyle(style.wallsOff ? ButtonStyle.Secondary : ButtonStyle.Primary),
         new ButtonBuilder().setCustomId("hq-hub:preset:outside").setLabel("Outside").setEmoji("🌅")
           .setStyle(style.wallsOff ? ButtonStyle.Primary : ButtonStyle.Secondary),
-        new ButtonBuilder().setCustomId("hq-hub:togglewalls").setLabel(style.wallsOff ? "Walls on" : "Walls off").setEmoji("🧱")
+        new ButtonBuilder().setCustomId("hq-hub:togglewalls").setLabel(style.wallsOff ? "Room walls on" : "Room walls off").setEmoji("🧱")
           .setStyle(ButtonStyle.Secondary),
-        new ButtonBuilder().setCustomId("hq-hub:toggleglass").setLabel(style.glassOff ? "Glass on" : "Glass off").setEmoji("🪟")
-          .setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder().setCustomId("hq-hub:togglegiant").setLabel(style.giantWallsOff ? "Giant walls on" : "Giant walls off").setEmoji("☁️")
+          .setStyle(style.giantWallsOff ? ButtonStyle.Secondary : ButtonStyle.Primary),
       ));
       // Discord caps a message at 5 action rows; nav + the button row already
       // take 2. Offer the reskin selects in priority order, stopping before the

@@ -9,8 +9,6 @@
     "floor/dirt/tile": "floor/dirt.png",
     "floor/sand/tile": "floor/sand.png",
     "floor/marble/tile": "floor/marble.png",
-    "wall/stone/wall": "floor/stone.png",
-    "wall/castle/wall": "floor/stone.png",
     "wall/marble/wall": "wall/marble.png",
 
     "prop/chair": "furniture/chair.png",

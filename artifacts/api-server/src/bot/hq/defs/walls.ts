@@ -38,45 +38,45 @@ export const HQ_WALLS: HqWall[] = [
   // ── Always-on architectural starters ──────────────────────────────────────
   {
     id: "stone", name: "Stone", emoji: "🪨", kind: "stone",
-    leftFace: "#6d7178", rightFace: "#80858c", trim: "#4c5056",
+    leftFace: "#3a3e46", rightFace: "#4a5058", trim: "#1e2228",
     window: false, windowTint: "rgba(0,0,0,0)", motif: "blocks",
     spritePrefix: "wall/stone", unlock: { kind: "always" },
   },
   {
     id: "wood", name: "Wood", emoji: "🪵", kind: "wood",
-    leftFace: "#8a5a32", rightFace: "#a06c3c", trim: "#5c3a1e",
+    leftFace: "#6a4224", rightFace: "#845230", trim: "#3c2814",
     window: false, windowTint: "rgba(0,0,0,0)", motif: "planks",
     spritePrefix: "wall/wood", unlock: { kind: "always" }, price: 400,
   },
   {
     id: "plaster", name: "Plaster", emoji: "🧱", kind: "decorative",
-    leftFace: "#d8cbb0", rightFace: "#ece0c6", trim: "#b7a17a",
+    leftFace: "#c4b8a0", rightFace: "#d8ccb4", trim: "#8a7a5a",
     window: false, windowTint: "rgba(0,0,0,0)", motif: "plain",
     spritePrefix: "wall/plaster", unlock: { kind: "always" },
   },
   {
     id: "windowed", name: "Windowed", emoji: "🪟", kind: "decorative",
-    leftFace: "#33424f", rightFace: "#3f4f5e", trim: "#7fa8c9",
-    window: true, windowTint: "rgba(150,200,255,0.45)", motif: "panels",
+    leftFace: "#2a3540", rightFace: "#364450", trim: "#6a90b0",
+    window: true, windowTint: "rgba(120,180,255,0.35)", motif: "panels",
     spritePrefix: "wall/windowed", unlock: { kind: "always" },
   },
 
   // ── Castle / military architecture ───────────────────────────────────────
   {
     id: "castle", name: "Castle Walls", emoji: "🏰", kind: "castle",
-    leftFace: "#8a8680", rightFace: "#9a968e", trim: "#5a564e",
-    window: true, windowTint: "rgba(40,50,70,0.55)", motif: "blocks",
+    leftFace: "#4a4844", rightFace: "#5a5852", trim: "#2a2824",
+    window: true, windowTint: "rgba(30,40,55,0.55)", motif: "blocks",
     spritePrefix: "wall/castle", unlock: { kind: "accountLevel", n: 5 }, price: 700,
   },
   {
     id: "brick", name: "Brick", emoji: "🧱", kind: "castle",
-    leftFace: "#7a3b32", rightFace: "#8f4a3f", trim: "#5a2a24",
+    leftFace: "#6a3228", rightFace: "#7a3e32", trim: "#4a2018",
     window: false, windowTint: "rgba(0,0,0,0)", motif: "brick",
     spritePrefix: "wall/brick", unlock: { kind: "accountLevel", n: 5 }, price: 600,
   },
   {
     id: "bunker", name: "Bunker Walls", emoji: "🛡️", kind: "bunker",
-    leftFace: "#4a4e52", rightFace: "#5a5e62", trim: "#2e3236",
+    leftFace: "#2e3236", rightFace: "#3e4448", trim: "#1a1e22",
     window: false, windowTint: "rgba(0,0,0,0)", motif: "rivets",
     spritePrefix: "wall/bunker", unlock: { kind: "battleWins", n: 10 }, price: 800,
   },

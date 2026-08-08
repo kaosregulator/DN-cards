@@ -38,6 +38,7 @@ import {
   type HqTerrainFeature, type IsoProjector,
 } from "./render-terrain.js";
 import { paintVoid, paintOpenAtmosphere } from "./render-atmosphere.js";
+import { paintOutdoorMiniverse, drawOutdoorVisitors, OUTDOOR } from "./render-outdoor.js";
 import { drawWallpaperFace } from "./render-wallpaper.js";
 import { drawProp, propKindFor, type PropKind } from "./props.js";
 import { spriteForProp } from "./prop-sprites.js";
@@ -64,7 +65,7 @@ const HEADER_H = HQ_HEADER_H;
 const GRID = HQ_GRID;
 const TILE_W = 116, TILE_H = 58;   // full diamond width/height (2:1 iso)
 const ORIGIN_X = W / 2, ORIGIN_Y = 176; // screen position of lattice corner (0,0)
-const WALL_H = 168;
+const WALL_H = 200;
 
 function project(gx: number, gy: number): Pt {
   return {
@@ -192,10 +193,17 @@ export interface HqBaseView extends HqHeaderInfo {
   visitors?: number;              // ambient NPC guests (0-4), derived from prestige
   /** Optional open atmosphere beyond the grounds (not architectural walls). */
   skybox?: HqSkybox | null;
-  /** Subtle blue aura around the playable area when a shield is active. */
+  /** Soft blue shield around the castle (outdoor). */
   shieldActive?: boolean;
   /** Optional pulse 0..1 for animated shield aura frames. */
   shieldPulse?: number;
+  /**
+   * Outdoor only: when true, skip the two giant diorama sky-walls and leave a
+   * dark void behind the grassy platform (mockup "walls off" look).
+   */
+  giantWallsOff?: boolean;
+  /** Outdoor only: bare platform (no castle / nature) for starter previews. */
+  emptyPlatform?: boolean;
 }
 
 // Placement encoding (stored in hq_placements.slot, so no schema change):
@@ -281,14 +289,14 @@ export async function renderHq(view: HqRenderView): Promise<Buffer | null> {
       const canvas = mod.createCanvas(W, H);
       const ctx = canvas.getContext("2d") as unknown as Ctx;
 
-      // Open isometric framing: dark void + optional atmosphere beyond the room.
-      // Architectural walls stay separate from skybox mood.
+      // Rooms sit in a dark void — architectural walls are the room shell.
+      // (Giant diorama sky-walls are outdoor-only.)
       paintVoid(ctx, W, H);
-      await paintOpenAtmosphere(ctx, mod, view.skybox ?? null, {
-        w: W, h: H, focusX: ORIGIN_X, focusY: ORIGIN_Y + GRID * (TILE_H / 2), radius: 320,
-      });
-      // Legacy theme backdrop / scenery only when walls are opened ("outside").
       if (view.wallsOff) {
+        // "Outside peek" through open room walls — soft atmosphere only.
+        await paintOpenAtmosphere(ctx, mod, view.skybox ?? null, {
+          w: W, h: H, focusX: ORIGIN_X, focusY: ORIGIN_Y + GRID * (TILE_H / 2), radius: 300,
+        });
         await layerSceneryBackdrop(ctx, mod, view.backdropSprite ?? null);
       }
       if (!view.wallsOff) {
@@ -297,7 +305,7 @@ export async function renderHq(view: HqRenderView): Promise<Buffer | null> {
       }
       await layerFloor(ctx, mod, view.floor, view.floorSprite ?? null);
       if (view.terrain?.length) await paintTerrain(ctx, mod, ROOM_PROJECTOR, view.terrain);
-      layerLighting(ctx, view.theme);
+      layerRoomAmbience(ctx, view.theme);
       await layerFurniture(ctx, mod, { ...view, decorations: mergeRoomDecorations(view) });
       if (view.cursor) {
         paintGridGuides(ctx, ROOM_PROJECTOR);
@@ -333,18 +341,16 @@ function mergeRoomDecorations(view: HqRenderView): HqRenderDeco[] {
 }
 
 // ── Exterior town-base renderer ─────────────────────────────────────────────
-// A clean, cohesive PROCEDURAL isometric map (no mismatched building sprites,
-// which stacked into a mess). A tiered grass island with cliff edges, a river,
-// pine forests and rocks, and the player's light-stone castle crowned with an
-// owner BANNER + a defence HEALTH BAR — with the stationed cards shown as framed
-// DEFENDERS out front ("the cards you left to guard"). Drawn entirely on the
-// canvas so it always reads as one artwork, matching the reference map.
-const BASE_CX = W / 2;
-const ISLAND_CY = 388;      // vertical centre of the base tier (centred below the header)
-const ISLAND_HW = 470;      // half-width of the base (top) diamond
-const ISLAND_HH = 214;      // half-height
-const TIER_THICK = 30;      // cliff thickness
-const CASTLE_W = 150, CASTLE_H = 138;
+// Fresh miniverse recreate from the kaos-hq mockups: ONE flat grassy platform,
+// wooden fence, river + bridge, stylized pines, dominant castle. Optional giant
+// diorama sky-walls behind the island (not wallpaper). Shield = soft blue dome
+// around the castle.
+const BASE_CX = OUTDOOR.cx;
+const ISLAND_CY = OUTDOOR.cy;
+const ISLAND_HW = OUTDOOR.hw;
+const ISLAND_HH = OUTDOOR.hh;
+const TIER_THICK = OUTDOOR.thick;
+const CASTLE_W = 180, CASTLE_H = 200;
 
 // The outdoor build lattice: a GRID×GRID iso grid laid over the island's top
 // face so the SAME rectangle editor works on the grounds as inside a room.
@@ -418,68 +424,37 @@ async function drawBaseDecorations(ctx: Ctx, mod: CanvasMod, view: HqBaseView): 
 // The whole base scene in one painter, reused for the static base view AND every
 // frame of a live siege (so the siege looks identical to the base, just in motion).
 async function paintBaseScene(ctx: Ctx, mod: CanvasMod, view: HqBaseView, siege?: SiegeOverlay): Promise<void> {
-  // Open framing: dark void + soft atmosphere beyond the grounds.
-  paintVoid(ctx, W, H);
-  await paintOpenAtmosphere(ctx, mod, view.skybox ?? null, {
-    w: W, h: H, focusX: BASE_CX, focusY: ISLAND_CY - 40, radius: 420,
+  const { castleTop, castleFeetY } = await paintOutdoorMiniverse(ctx, mod, {
+    skybox: view.skybox ?? null,
+    giantWallsOff: view.giantWallsOff ?? false,
+    shieldActive: !!(view.shieldActive && !siege),
+    shieldPulse: view.shieldPulse ?? 0.55,
+    showGrid: view.showGrid ?? !!view.cursor,
+    seed: view.displayTitle || view.ownerName || "base",
+    empty: !!view.emptyPlatform,
   });
-  drawPremiumIsland(ctx, view);
-  drawRiver(ctx);
-  drawWaterfall(ctx);
+
+  // Player-built terrain / decorations on top of the fresh platform.
   if (view.terrain?.length) await paintTerrain(ctx, mod, BASE_PROJECTOR, view.terrain);
-  const plateauCy = ISLAND_CY - 40;
-  drawIslandTier(ctx, BASE_CX, plateauCy, 168, 80, { raised: true, thickness: 26 });
-  await drawScatterSprites(ctx, mod, view);
-  drawPerimeterFence(ctx);
-  drawAnimatedFlags(ctx, view);
   await drawBaseDecorations(ctx, mod, view);
-  const castleFeetY = plateauCy + 6;
-  const castleTop = await drawCastle(ctx, mod, BASE_CX, castleFeetY, pickCastleSprite(view));
-  if (view.shieldActive && !siege) {
-    await drawShieldAura(ctx, mod, view.shieldPulse ?? 0.55);
-  }
+
   if (siege?.destructionPct === undefined) {
     drawBannerAndHealth(ctx, BASE_CX, castleTop, view, siege?.healthFrac);
   }
   await drawBaseDefenders(ctx, mod, view, siege?.defeated, siege?.flashSlot ?? null);
   if (!siege) {
-    const vis = Math.max(0, Math.min(4, view.visitors ?? 0));
-    const VISITOR_SPOTS = [
-      { x: BASE_CX + 130, y: ISLAND_CY + 168 }, { x: BASE_CX - 250, y: ISLAND_CY + 118 },
-      { x: BASE_CX + 262, y: ISLAND_CY + 104 }, { x: BASE_CX - 120, y: ISLAND_CY + 176 },
-    ];
-    for (let i = 0; i < vis; i++) {
-      const p = VISITOR_SPOTS[i]!;
-      const visitorPath = spriteForProp("npc", i + 2);
-      if (visitorPath) {
-        await drawDecoAt(ctx, mod, p.x, p.y, 1.1, {
-          slot: i, category: "statue", name: "Visitor", rarityColor: 0x3a5a8b,
-          spritePath: visitorPath, propKind: "npc", seed: i + 2,
-        }, true);
-      } else {
-        drawProp(ctx, "npc", p.x, p.y, 1.05, 0x3a5a8b, i + 2);
-      }
-    }
-    if (view.companion) drawCompanion(ctx, BASE_CX + 60, ISLAND_CY + 176, view.companion, 1.05);
+    await drawOutdoorVisitors(ctx, mod, Math.max(0, Math.min(4, view.visitors ?? 0)));
+    if (view.companion) drawCompanion(ctx, BASE_CX + 60, ISLAND_CY + 150, view.companion, 1.05);
   }
   if (siege?.attacker) await drawAttacker(ctx, mod, siege.attacker, siege.advance);
-  const showGrid = view.showGrid ?? !!view.cursor;
-  if (showGrid) paintGridGuides(ctx, BASE_PROJECTOR);
   if (view.cursor) paintCursor(ctx, BASE_PROJECTOR, view.cursor);
-  // Warm key light + ambient shadow under the island.
-  const lg = ctx.createRadialGradient(BASE_CX, 140, 40, BASE_CX, 320, 680);
-  lg.addColorStop(0, "rgba(255,236,190,0.14)"); lg.addColorStop(1, "rgba(0,0,0,0)");
-  ctx.fillStyle = lg; ctx.fillRect(0, 0, W, H);
-  ctx.save();
-  ctx.fillStyle = "rgba(0,0,0,0.35)";
-  ctx.beginPath(); ellipse(ctx, BASE_CX, ISLAND_CY + ISLAND_HH + 36, ISLAND_HW * 0.92, 28); ctx.fill();
-  ctx.restore();
   if (siege?.destructionPct !== undefined) {
     drawDestructionScoreboard(ctx, siege.destructionPct, siege.stars ?? 0, siege.turnLabel ?? null);
   }
   if (siege?.caption) drawMoveCaption(ctx, siege.caption.text, siege.caption.color);
   if (siege?.banner) drawResultBanner(ctx, siege.banner.text, siege.banner.color);
   await drawHqHeader(ctx, mod, view, W);
+  void castleFeetY;
 }
 
 /** Multi-tier cliffs so the HQ dominates the open void. */
@@ -1305,26 +1280,32 @@ async function layerFloor(ctx: Ctx, mod: CanvasMod, floor: HqFloor, spritePath: 
 }
 
 function layerLighting(ctx: Ctx, theme: HqTheme): void {
-  // Key light from above-centre.
-  const r = ctx.createRadialGradient(W / 2, 40, 30, W / 2, 240, 640);
-  r.addColorStop(0, theme.palette.light);
+  layerRoomAmbience(ctx, theme);
+}
+
+/** Warm tactical HQ lighting — focused pool on the floor, soft vignette. */
+function layerRoomAmbience(ctx: Ctx, theme: HqTheme): void {
+  // Soft floor pool only — keep walls dark (tactical HQ look).
+  const r = ctx.createRadialGradient(W / 2, ORIGIN_Y + 160, 30, W / 2, ORIGIN_Y + 260, 380);
+  r.addColorStop(0, "rgba(255,180,100,0.10)");
+  r.addColorStop(0.5, "rgba(255,160,80,0.04)");
   r.addColorStop(1, "rgba(0,0,0,0)");
   ctx.fillStyle = r;
   ctx.fillRect(0, 0, W, H);
 
-  // Ambient particles for depth (static frame → fixed phase).
   try {
     drawAtmosphere(ctx, W, H, atmospherePreset(theme.atmosphere), {
-      seed: `hq-${theme.id}`, t: 0.35, color: theme.palette.accent, density: 0.4,
+      seed: `hq-${theme.id}`, t: 0.35, color: theme.palette.accent, density: 0.18,
     });
   } catch { /* never break a render on ambience */ }
 
-  // Vignette to focus the centre.
-  const v = ctx.createRadialGradient(W / 2, H / 2, H * 0.34, W / 2, H / 2, W * 0.72);
+  // Deep vignette so the room reads as a lit stage in the void.
+  const v = ctx.createRadialGradient(W / 2, H / 2 + 40, H * 0.22, W / 2, H / 2, W * 0.68);
   v.addColorStop(0, "rgba(0,0,0,0)");
-  v.addColorStop(1, "rgba(0,0,0,0.5)");
+  v.addColorStop(1, "rgba(0,0,0,0.72)");
   ctx.fillStyle = v;
   ctx.fillRect(0, 0, W, H);
+  void theme;
 }
 
 // Wall-mounted decorations sit on the wall plane, drawn between walls and floor.

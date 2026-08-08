@@ -57,23 +57,33 @@ function hallway(): BlueprintProp[] {
 
 function commandCenter(): BlueprintProp[] {
   return [
-    { gx: 3, gy: 3, kind: "rug", name: "Command Rug", tint: 0x8b1e2d, scale: 1.2, seed: 3 },
-    { gx: 3, gy: 4, kind: "table", name: "Strategy Table", scale: 1.15 },
-    { gx: 1, gy: 5, kind: "chair", name: "Briefing Chair", tint: 0x8b1e2d, seed: 1 },
-    { gx: 5, gy: 5, kind: "chair", name: "Officer Chair", tint: 0x8b1e2d, seed: 2 },
-    { gx: 2, gy: 5, kind: "chair", name: "Staff Chair", tint: 0x6b4f2c, seed: 3 },
-    { gx: 6, gy: 2, kind: "bookshelf", name: "Ops Shelves" },
-    { gx: 1, gy: 2, kind: "cabinet", name: "Comms Cabinet" },
-    { gx: 6, gy: 5, kind: "lamp", name: "Floor Lamp", tint: 0xf0c060 },
-    { gx: 2, gy: 1, kind: "banner", name: "House Banner", tint: 0xc0392b, scale: 0.95 },
-    { gx: 5, gy: 1, kind: "banner", name: "War Banner", tint: 0x3f78c8, scale: 0.95 },
+    // Central tactical rug + holotable (mockup command hub)
+    { gx: 3, gy: 3, kind: "rug", name: "Command Rug", tint: 0x6b1020, scale: 1.35, seed: 3 },
+    { gx: 3, gy: 4, kind: "table", name: "Holotable", scale: 1.35, tint: 0x50d0ff },
+    // Lounge couches
+    { gx: 1, gy: 5, kind: "couch", name: "Ops Sofa", tint: 0x8b1e2d, scale: 1.05 },
+    { gx: 5, gy: 5, kind: "couch", name: "Brief Sofa", tint: 0x8b1e2d, scale: 1.05 },
+    { gx: 3, gy: 6, kind: "couch", name: "Lounge Sofa", tint: 0x6b1020, scale: 0.95 },
+    // Workstations
+    { gx: 1, gy: 2, kind: "chair", name: "Officer Chair", tint: 0x3a3a40, seed: 1 },
+    { gx: 5, gy: 2, kind: "chair", name: "Analyst Chair", tint: 0x3a3a40, seed: 2 },
+    { gx: 6, gy: 3, kind: "cabinet", name: "Comms Terminal" },
+    { gx: 0, gy: 3, kind: "bookshelf", name: "Intel Shelves" },
+    { gx: 6, gy: 1, kind: "bookshelf", name: "Archive" },
+    // Columns + lighting + banners
+    { gx: 0, gy: 1, kind: "statue", name: "Stone Column", seed: 1 },
+    { gx: 6, gy: 5, kind: "statue", name: "Stone Column", seed: 2 },
+    { gx: 2, gy: 1, kind: "banner", name: "House Banner", tint: 0xc0392b, scale: 1.05 },
+    { gx: 4, gy: 1, kind: "banner", name: "War Banner", tint: 0xc0392b, scale: 1.05 },
+    { gx: 6, gy: 6, kind: "lamp", name: "Floor Lamp", tint: 0xff9030 },
+    { gx: 0, gy: 6, kind: "lamp", name: "Sconce Glow", tint: 0xffa040 },
     { gx: 4, gy: 6, kind: "plant", name: "Corner Fern" },
-    { gx: 0, gy: 3, kind: "statue", name: "Stone Column", seed: 1 },
-    { gx: 6, gy: 3, kind: "statue", name: "Stone Column", seed: 2 },
     { gx: 0, gy: 4, kind: "npc", name: "Aide", seed: 0 },
-    { gx: 6, gy: 6, kind: "npc", name: "Scout", seed: 1 },
+    { gx: 5, gy: 4, kind: "npc", name: "Scout", seed: 1 },
     { wall: true, wallIndex: 0, gx: 0, gy: 0, kind: "banner", name: "Wall Banner", tint: 0xc0392b },
+    { wall: true, wallIndex: 2, gx: 0, gy: 0, kind: "banner", name: "Wall Banner", tint: 0xc0392b },
     { wall: true, wallIndex: 3, gx: 0, gy: 0, kind: "emblem", name: "Crest", tint: 0xd4af37 },
+    { wall: true, wallIndex: 5, gx: 0, gy: 0, kind: "lamp", name: "Wall Sconce", tint: 0xff9030 },
   ];
 }
 

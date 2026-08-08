@@ -1,4 +1,4 @@
-// Focused HQ redesign preview — outdoor atmosphere + furnished rooms.
+// Fresh HQ miniverse preview — outdoor giant walls + tactical rooms.
 //   pnpm --filter @workspace/scripts exec tsx src/hq-redesign-preview.ts [outDir]
 
 import { mkdirSync, writeFileSync } from "node:fs";
@@ -8,11 +8,11 @@ import { renderHq, renderBase, type HqRenderView, type HqBaseView } from "../../
 import { resolveTheme } from "../../artifacts/api-server/src/bot/hq/defs/themes.js";
 import { resolveWall } from "../../artifacts/api-server/src/bot/hq/defs/walls.js";
 import { resolveFloor } from "../../artifacts/api-server/src/bot/hq/defs/floors.js";
-import { resolveSkybox, HQ_SKYBOXES } from "../../artifacts/api-server/src/bot/hq/defs/skyboxes.js";
+import { resolveSkybox } from "../../artifacts/api-server/src/bot/hq/defs/skyboxes.js";
 import { HQ_ROOMS } from "../../artifacts/api-server/src/bot/hq/defs/rooms.js";
 import { spriteForPrefix } from "../../artifacts/api-server/src/bot/hq/assets.js";
 
-const outDir = resolve(process.argv[2] ?? "/opt/cursor/artifacts/hq-full-redesign");
+const outDir = resolve(process.argv[2] ?? "/opt/cursor/artifacts/hq-miniverse");
 mkdirSync(outDir, { recursive: true });
 
 const theme = resolveTheme("command");
@@ -29,7 +29,7 @@ function save(name: string, buf: Buffer | null): void {
 }
 
 async function previewOutdoor(): Promise<void> {
-  console.log("outdoor…");
+  console.log("outdoor miniverse…");
   const base = (skyId: string, opts: Partial<HqBaseView> = {}): HqBaseView => ({
     ...header,
     ownerName: "pengu1n",
@@ -43,31 +43,35 @@ async function previewOutdoor(): Promise<void> {
     ...opts,
   });
 
-  save("01-base-sunny-day.png", await renderBase(base("skybox-clouds", { shieldActive: true })));
-  save("01b-base-no-shield.png", await renderBase(base("skybox-clouds")));
-  save("02-base-edit-grid.png", await renderBase(base("skybox-clouds", {
+  // Mockup matches: giant walls ON (sky diorama) + giant walls OFF (void) + shield
+  save("01-outdoor-giant-walls-clouds.png", await renderBase(base("skybox-clouds")));
+  save("02-outdoor-giant-walls-off-shield.png", await renderBase(base("skybox-clouds", {
+    giantWallsOff: true, shieldActive: true,
+  })));
+  save("03-outdoor-empty-platform.png", await renderBase(base("skybox-clouds", {
+    visitors: 0, emptyPlatform: true,
+  })));
+  save("04-outdoor-edit-grid.png", await renderBase(base("skybox-clouds", {
     showGrid: true,
     cursor: { x: 3, y: 4, w: 2, h: 2, color: 0x2fd4d4, label: "Tree · 2×2", valid: true },
   })));
-  save("03-base-night.png", await renderBase(base("skybox-night")));
-  save("04-base-space.png", await renderBase(base("skybox-space")));
-  save("05-base-volcano.png", await renderBase(base("skybox-volcano")));
-  save("06-base-winter.png", await renderBase(base("skybox-winter")));
-  save("07-base-desert.png", await renderBase(base("skybox-desert")));
-  save("08-base-ocean.png", await renderBase(base("skybox-ocean")));
+  save("05-outdoor-night.png", await renderBase(base("skybox-night")));
+  save("06-outdoor-desert.png", await renderBase(base("skybox-desert")));
+  save("07-outdoor-space.png", await renderBase(base("skybox-space", { giantWallsOff: false })));
+  save("08-outdoor-void-no-shield.png", await renderBase(base("skybox-clouds", { giantWallsOff: true })));
 }
 
 async function previewRooms(): Promise<void> {
-  console.log("rooms…");
+  console.log("tactical rooms…");
   const wallFor: Record<string, string> = {
-    entrance: "castle",
-    "trophy-hall": "marble-wall",
+    entrance: "stone",
+    "trophy-hall": "castle",
     atrium: "scifi",
-    "hall-of-fame": "stone",
+    "hall-of-fame": "bunker",
     armory: "bunker",
     barracks: "wood",
-    treasury: "marble-wall",
-    workshop: "wood",
+    treasury: "castle",
+    workshop: "concrete",
     storage: "wood",
     "arcane-vault": "magical",
   };
@@ -76,7 +80,7 @@ async function previewRooms(): Promise<void> {
       ...header,
       ownerName: "pengu1n",
       displayTitle: "Kaos base",
-      subtitle: `${room.name} · furnished blueprint`,
+      subtitle: `${room.name} · furnished default`,
       roomEmoji: room.emoji,
       roomName: room.name,
       roomId: room.id,
@@ -84,38 +88,17 @@ async function previewRooms(): Promise<void> {
       floor: resolveFloor(room.id === "treasury" || room.id === "arcane-vault" ? "marble" : "tile"),
       pedestals: room.pedestals > 0 ? Array.from({ length: room.pedestals }, () => null) : [],
       decorations: [],
-      visitors: 2,
-      skybox: resolveSkybox("skybox-clouds"),
+      visitors: 0,
     };
     save(`room-${room.id}.png`, await renderHq(view));
-  }
-
-  // Same room, different skyboxes — architecture unchanged.
-  console.log("skybox-only atmosphere…");
-  for (const id of ["skybox-clouds", "skybox-night", "skybox-volcano", "skybox-space"]) {
-    const sb = resolveSkybox(id);
-    save(`room-entrance-sky-${sb.id}.png`, await renderHq({
-      ...header,
-      ownerName: "pengu1n",
-      displayTitle: "Kaos base",
-      subtitle: `Command Center · skybox ${sb.name}`,
-      roomEmoji: "🎛️", roomName: "Command Center", roomId: "entrance",
-      wall: resolveWall("castle"),
-      floor: resolveFloor("stone"),
-      pedestals: [],
-      decorations: [],
-      visitors: 2,
-      skybox: sb,
-    }));
   }
 }
 
 async function main(): Promise<void> {
-  console.log(`HQ full redesign preview → ${outDir}`);
-  console.log(`(${HQ_SKYBOXES.length} skyboxes, ${HQ_ROOMS.length} rooms)`);
+  console.log(`HQ miniverse preview → ${outDir}`);
   await previewOutdoor();
   await previewRooms();
   console.log("done.");
 }
 
-void main();
+main().catch(err => { console.error(err); process.exit(1); });

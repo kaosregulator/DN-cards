@@ -33,7 +33,7 @@ export const playerHqTable = pgTable("player_hq", {
   // Active wall & floor styles for the isometric room (resolve through
   // defs/walls.ts and defs/floors.ts; degrade to the default if ever removed).
   wallId: text("wall_id").notNull().default("stone"),
-  floorId: text("floor_id").notNull().default("cobblestone"),
+  floorId: text("floor_id").notNull().default("tile"),
   // Cached HQ level, DERIVED from existing progression by the engine and stored
   // so reads/leaderboards don't recompute the curve. Source of truth stays the
   // underlying systems; this is a convenience cache refreshed on reconcile.

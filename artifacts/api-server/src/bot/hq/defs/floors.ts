@@ -28,8 +28,8 @@ export const HQ_FLOORS: HqFloor[] = [
     grout: "rgba(60,30,10,0.35)", spritePrefix: "floor/wood", unlock: { kind: "always" },
   },
   {
-    id: "tile", name: "Tile", emoji: "◻️", tileA: "#cfd6dc", tileB: "#b9c2ca",
-    grout: "rgba(255,255,255,0.25)", spritePrefix: "floor/tile", unlock: { kind: "always" },
+    id: "tile", name: "Tile", emoji: "◻️", tileA: "#3a4048", tileB: "#2e343c",
+    grout: "rgba(0,0,0,0.45)", spritePrefix: "floor/tile", unlock: { kind: "always" },
   },
   {
     id: "carpet", name: "Carpet", emoji: "🟥", tileA: "#7a3550", tileB: "#6d2e47",
@@ -57,8 +57,8 @@ export const HQ_FLOORS: HqFloor[] = [
     grout: "rgba(150,120,70,0.3)", spritePrefix: "floor/sand", unlock: { kind: "totalCards", n: 25 }, price: 450,
   },
   {
-    id: "cobblestone", name: "Cobblestone", emoji: "🪨", tileA: "#8b8f96", tileB: "#7c8087",
-    grout: "rgba(30,32,36,0.5)", spritePrefix: "floor/cobblestone", unlock: { kind: "always" }, price: 500,
+    id: "cobblestone", name: "Cobblestone", emoji: "🪨", tileA: "#5a5e66", tileB: "#4a4e56",
+    grout: "rgba(20,22,26,0.55)", spritePrefix: "floor/cobblestone", unlock: { kind: "always" }, price: 500,
   },
   {
     id: "brick-floor", name: "Brick Floor", emoji: "🧱", tileA: "#9a5240", tileB: "#8a473a",
@@ -70,7 +70,7 @@ export const HQ_FLOORS: HqFloor[] = [
   },
 ];
 
-export const DEFAULT_FLOOR_ID = "cobblestone";
+export const DEFAULT_FLOOR_ID = "tile";
 
 const FLOOR_BY_ID = new Map<string, HqFloor>(HQ_FLOORS.map(f => [f.id, f]));
 
