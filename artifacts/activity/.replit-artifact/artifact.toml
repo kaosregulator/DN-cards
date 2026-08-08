@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/"
+title = "DN Cards Activity"
+version = "1.0.0"
+id = "artifacts/activity"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/activity" ]
+localPort = 5174
+
+[services.development]
+run = "pnpm --filter @workspace/activity run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/activity", "run", "build" ]
+publicDir = "artifacts/activity/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "5174"
+BASE_PATH = "/"
