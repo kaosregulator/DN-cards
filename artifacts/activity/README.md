@@ -63,8 +63,35 @@ endpoints directly.
 `DISCORD_CLIENT_ID`, `DISCORD_CLIENT_SECRET`, `HOME_GUILD_ID`. The Activity
 backend is dormant until the first two are set — identical to the website OAuth.
 
-## What Phase 1 deliberately does NOT do
+## Scenes (all sharing the Core Runtime)
 
-No HQ world, no battle/raid/pack scenes, no new DB columns, no changes to any
-existing command. Those are Phases 2–12. The presentation-mode / per-guild
-config (`/config experience`) lands in Phase 11 via additive boot migrations.
+- **HqScene** — the live isometric HQ. Real Kenney-pack sprites, per-room tiled
+  floors + rear walls, depth-sorted objects, pan/zoom, click-select, drag-move,
+  rotate/duplicate/delete, undo/redo, build-mode grid + placement ghost, an
+  owned-only object palette, a subtle animated blue perimeter shield, ambient
+  motes, and idle NPC wander. Saves round-trip to the server, which validates
+  every object against the player's unlocks and returns the sanitised layout.
+- **BattleScene** — Street-Fighter choreography (approach → strike → impact →
+  recoil → return) over the player's real card-derived line-up.
+- **RaidScene** — the real campaign ladder + this player's clear progress, a big
+  boss with live HP, team assault, and enrage past the enrage turn.
+- **PackScene** — crate shake → burst → sequential rarity-coloured reveals using
+  the guild's real drop odds. Presentation only — grants nothing.
+
+A shared **NavDock** switches HQ ⇄ Battle ⇄ Raid ⇄ Packs on every scene.
+
+## Authority & fallback
+
+The client is never authoritative. Identity is re-verified server-side on every
+request; placement, currency, ownership and combat resolution stay in the bot.
+Each experience's presentation is a **per-guild** admin choice (`/config` →
+🎞️ Reveals → 🎬 Experiences) with a **primary** mode and a **fallback**; when the
+Activity can't run, the existing PNG/embed/animated render stands. Defaults
+preserve the current server-rendered behaviour, so enabling the Activity is
+strictly opt-in per guild.
+
+## Backend surface (`/api/activity/*`)
+
+`status`, `token`, `@me`, `assets/manifest`, `assets/hq/*`, `hq`, `hq/layout`
+(POST), `battle`, `raid`, `packs`. Extra env for launching: `ACTIVITY_URL` (the
+deployed Activity host) enables the "Open Live HQ" button from `/hq`.
