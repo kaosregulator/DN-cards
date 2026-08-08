@@ -1006,7 +1006,12 @@ async function refreshCastle(s: SiegeSession, force = false): Promise<void> {
   const key = `${s.di}:${s.ai}:${Math.floor(pct / 5)}:${s.phase}`;
   if (!force && key === s.castleKey && s.castleImage) return;
   const overlay = currentOverlay(s, pct);
-  const buf = await renderSiegeFrame(s.baseView, overlay).catch(() => null);
+  // Race against a timeout: canvas image loads can hang indefinitely if a card
+  // image URL stalls. A null result just skips the castle frame this tick.
+  const buf = await Promise.race([
+    renderSiegeFrame(s.baseView, overlay).catch(() => null),
+    sleep(8_000).then(() => null),
+  ]);
   if (buf) { s.castleImage = buf; s.castleKey = key; }
 }
 
