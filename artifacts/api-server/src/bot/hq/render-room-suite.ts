@@ -47,6 +47,9 @@ const TILE_W = 180, TILE_H = 90;
 // they hang on masonry, they don't stand on the ground.
 const FLOOR_ITEM_SCALE = 1.55;
 const WALL_ITEM_SCALE = 0.62;
+// How far up the masonry a wall fitting hangs, in tile units. Tuned so the
+// emblem sits ON the wall face rather than hovering above its top edge.
+const WALL_MOUNT_LIFT = 26;
 
 export interface RoomSuiteView extends HqHeaderInfo {
   layout: SuiteLayout;
@@ -99,6 +102,8 @@ interface Piece {
   scale: number;
   /** Rugs lie flat: anchor them by the middle of their art, not by its feet. */
   flat: boolean;
+  /** Standing props get a faint contact shadow; floors, rugs and walls don't. */
+  shadow: boolean;
 }
 
 export async function renderRoomSuite(view: RoomSuiteView): Promise<Buffer | null> {
@@ -151,7 +156,7 @@ function buildPieces(view: RoomSuiteView, _cam: Cam): Piece[] {
       if (!room) continue;
       out.push({
         depth: gx + gy, sub: 0, sprite: suiteFloorSprite(room.floor),
-        gx, gy, lift: 0, alpha: dim(room.id), scale: 1, flat: true,
+        gx, gy, lift: 0, alpha: dim(room.id), scale: 1, flat: true, shadow: false,
       });
     }
   }
@@ -167,7 +172,7 @@ function buildPieces(view: RoomSuiteView, _cam: Cam): Piece[] {
     out.push({
       depth: w.x + w.y, sub: 1,
       sprite: suiteWallSprite(w.kind, w.axis),
-      gx: w.x, gy: w.y, lift: 0, alpha: dim(owner?.id ?? null), scale: 1, flat: false,
+      gx: w.x, gy: w.y, lift: 0, alpha: dim(owner?.id ?? null), scale: 1, flat: false, shadow: false,
     });
   }
 
@@ -178,10 +183,11 @@ function buildPieces(view: RoomSuiteView, _cam: Cam): Piece[] {
     out.push({
       depth: it.gx + it.gy, sub,
       sprite: it.sprite, gx: it.gx, gy: it.gy,
-      lift: it.lift ?? (it.mount === "wall" ? 44 : 0),
+      lift: it.lift ?? (it.mount === "wall" ? WALL_MOUNT_LIFT : 0),
       alpha: dim(room?.id ?? null),
       scale: it.scale ?? (it.mount === "floor" ? FLOOR_ITEM_SCALE : it.mount === "wall" ? WALL_ITEM_SCALE : 1),
       flat: it.mount === "rug",
+      shadow: it.mount === "floor",
     });
   }
 
@@ -287,11 +293,28 @@ async function paintPieces(ctx: Ctx, mod: CanvasMod, pieces: Piece[], cam: Cam):
     // Standing art puts its FEET on the tile; flat art (floors, rugs) puts its
     // MIDDLE there, because a rug lies across the tile rather than on top of it.
     const x = at.x - anc.footX * unit;
+    // Feet land EXACTLY on the tile point (and flat art on its middle) — no
+    // fudge offset, so nothing hovers above its tile or sinks into it.
     const y = p.flat
-      ? at.y - (anc.midY ?? anc.footY) * unit - p.lift * cam.s
-      : at.y - anc.footY * unit - p.lift * cam.s + TILE_H * 0.18 * cam.s;
+      ? at.y - anc.midY * unit - p.lift * cam.s
+      : at.y - anc.footY * unit - p.lift * cam.s;
     ctx.save();
     ctx.globalAlpha = p.alpha;
+    // A whisper of contact shadow under STANDING props only. Without it a prop
+    // reads as pasted onto the floor; more than a whisper and it fights the
+    // shading already baked into the art, so this stays deliberately faint and
+    // is skipped for flat art (which is already on the ground) and for walls.
+    if (p.shadow) {
+      const rx = Math.max(4, dw * 0.26), ry = Math.max(2, rx * 0.42);
+      ctx.globalAlpha = p.alpha * 0.22;
+      ctx.fillStyle = "#05070c";
+      ctx.beginPath();
+      (ctx as unknown as {
+        ellipse(x: number, y: number, rx: number, ry: number, rot: number, a0: number, a1: number): void;
+      }).ellipse(at.x, at.y, rx, ry, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.globalAlpha = p.alpha;
+    }
     (ctx as unknown as {
       drawImage(i: unknown, x: number, y: number, w: number, h: number): void;
     }).drawImage(img, x, y, dw, dh);
