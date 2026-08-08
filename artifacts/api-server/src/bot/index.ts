@@ -10,6 +10,7 @@ import { handleEditImageButton, handleEditImageModal, handleEditImagePick } from
 import { handleTradeButton } from "./commands/trading.js";
 import { initSpawnManager, initAllGuilds, handleCatchAttempt, handleClaimButtonClick, scheduleNextSpawn, buildPostDecisionEmbed, buildDisabledDecisionRow, markDecisionMade } from "./spawn-manager.js";
 import { handleConfigButton, handleConfigSelect, handleRatesSelect, handlePacksSelect, handleRatesCustomModal, handleExperienceSelect } from "./commands/config-panel.js";
+import { LAUNCH_PREFIX, handleExperienceLaunch } from "./experience.js";
 import { handleSetsHubButton, handleSetsHubSelect, handleSetsHubModal } from "./commands/sets-panel.js";
 import { handleSetAdminHubButton, handleSetAdminHubSelect, handleSetAdminHubWeightSelect, handleSetAdminHubModal } from "./commands/set-admin-hub.js";
 import { handleRarityEditButton, handleRarityEditSelect, handleRarityEditModal, handleRarityHubButton, handleRarityHubSelect, handleRarityHubModal } from "./commands/rarity-admin.js";
@@ -398,6 +399,12 @@ export async function startBot() {
         // ── Echo-Whisper reveal buttons ────────────────────────────────────
         if (isSecretButton(interaction.customId)) {
           await handleSecretButton(interaction);
+          return;
+        }
+
+        // ── Native Activity launch (text-channel LAUNCH_ACTIVITY) ──────────
+        if (action === LAUNCH_PREFIX) {
+          await handleExperienceLaunch(interaction);
           return;
         }
 
