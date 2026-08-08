@@ -1,5 +1,5 @@
 kind = "web"
-previewPath = "/"
+previewPath = "/activity"
 title = "DN Cards Activity"
 version = "1.0.0"
 id = "artifacts/activity"
@@ -29,3 +29,4 @@ to = "/index.html"
 [services.env]
 PORT = "5174"
 BASE_PATH = "/"
+VITE_DISCORD_CLIENT_ID = "${VITE_DISCORD_CLIENT_ID}"

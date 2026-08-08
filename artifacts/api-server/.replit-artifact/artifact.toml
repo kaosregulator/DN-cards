@@ -30,3 +30,8 @@ NODE_ENV = "production"
 
 [services.production.health.startup]
 path = "/api/healthz"
+
+[services.env]
+DISCORD_CLIENT_ID = "${DISCORD_CLIENT_ID}"
+DISCORD_CLIENT_SECRET = "${DISCORD_CLIENT_SECRET}"
+ACTIVITY_URL = "${ACTIVITY_URL}"

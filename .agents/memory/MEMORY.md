@@ -43,3 +43,4 @@
 - [Recycle GIF timing & image fallback](recycle-gif-image-fallback.md) — GIF result edits must wait for the animation duration; external card image URLs can return SVG/error content and the canvas falls back to a dark placeholder.
 - [Economy optimistic lock pattern](economy-optimistic-lock.md) — consume inventory BEFORE awarding currency/XP; use exact-match UPDATE guard + RETURNING to detect concurrent double-spend; never award if affected rows = 0.
 - [HQ concurrency and derived state](hq-concurrency-and-derived-state.md) — siege/placement mutations need atomic guards, and computed HQ level must be persisted during reconciliation.
+- [Managed artifact secret wiring](artifact-secret-wiring.md) — shared Replit Secrets need explicit name-only `${SECRET_NAME}` references in managed artifact service environments.
