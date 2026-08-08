@@ -65,6 +65,7 @@ async function previewWorld(): Promise<void> {
       structure: t.structure,
       garrison: t.garrison,
       kind: "territory",
+      category: t.category ?? "territory",
       held,
       heldByYou,
       shielded: t.id === "coldgate",

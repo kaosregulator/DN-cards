@@ -30,21 +30,27 @@ import { queueRender } from "../animations/render-queue.js";
 import { loadSprite, spriteForPrefix } from "./assets.js";
 import {
   ellipse, blit, blitClippedQuad, polyPath, diamond, seededRng, hashString, stripEmoji,
-  drawIslandTier, drawPine, drawRock, drawHqHeader, HQ_HEADER_H,
+  drawIslandTier, drawPine, drawHqHeader, HQ_HEADER_H,
   type Pt, type HqHeaderInfo,
 } from "./paint.js";
 import {
   paintTerrain, paintCursor, paintGridGuides,
   type HqTerrainFeature, type IsoProjector,
 } from "./render-terrain.js";
+import { paintVoid, paintOpenAtmosphere } from "./render-atmosphere.js";
+import { paintOutdoorMiniverse, drawOutdoorVisitors, OUTDOOR } from "./render-outdoor.js";
 import { drawWallpaperFace } from "./render-wallpaper.js";
+import { drawProp, propKindFor, type PropKind } from "./props.js";
+import { spriteForProp } from "./prop-sprites.js";
 import type { HqWallpaper } from "./defs/wallpapers.js";
 import type { HqTheme } from "./defs/themes.js";
 import type { HqWall } from "./defs/walls.js";
 import type { HqFloor } from "./defs/floors.js";
 import type { DecoCategory } from "./defs/decorations.js";
 import type { CompanionKind } from "./defs/companions.js";
+import type { HqSkybox } from "./defs/skyboxes.js";
 import { HQ_GRID, HQ_BASE_GRID } from "./grid.js";
+import { blueprintAsDecos } from "./defs/room-blueprints.js";
 
 export type { HqHeaderInfo };
 
@@ -59,7 +65,7 @@ const HEADER_H = HQ_HEADER_H;
 const GRID = HQ_GRID;
 const TILE_W = 116, TILE_H = 58;   // full diamond width/height (2:1 iso)
 const ORIGIN_X = W / 2, ORIGIN_Y = 176; // screen position of lattice corner (0,0)
-const WALL_H = 168;
+const WALL_H = 200;
 
 function project(gx: number, gy: number): Pt {
   return {
@@ -94,6 +100,12 @@ export interface HqRenderDeco {
   // Card wall-art: when set, this decoration is a framed portrait of a real card
   // (its art, shrunk into a hanging frame on the wall). rarityColor tints the frame.
   cardArtUrl?: string | null;
+  /** Optional explicit prop kind (blueprints / furniture). */
+  propKind?: PropKind;
+  scale?: number;
+  seed?: number;
+  /** Blueprint props are virtual — not player-owned placements. */
+  fromBlueprint?: boolean;
 }
 
 // An earned companion (pet) standing in the scene — drawn procedurally by `kind`.
@@ -146,6 +158,10 @@ export interface HqRenderView extends HqHeaderInfo {
   defenders?: HqRenderDefender[];     // cards set to defend the base (figures on bases)
   companion?: HqRenderCompanion | null; // active pet standing in the room
   visitors?: number;                  // ambient NPC guests (0-4), derived from prestige
+  /** Optional open atmosphere beyond the room (does NOT replace architectural walls). */
+  skybox?: HqSkybox | null;
+  /** Active room id — used to merge furnished blueprints when placements are sparse. */
+  roomId?: string;
 }
 
 // ── Exterior "town base" view ──────────────────────────────────────────────────
@@ -168,11 +184,26 @@ export interface HqBaseView extends HqHeaderInfo {
   defenders: HqRenderDefender[];  // stationed cards, rendered as standees
   decorations?: HqRenderDeco[];   // player-placed grounds decorations (trees, items…)
   terrain?: HqTerrainFeature[];   // build-mode ponds, hills & paved surfaces
-  cursor?: HqBuildCursor | null;  // build-mode selection overlay
+  cursor?: HqBuildCursor | null;  // build-mode selection overlay — ALSO enables grid guides
+  /** Show edit grid. Defaults to true when cursor is set; false on overview. */
+  showGrid?: boolean;
   captured?: boolean;             // show a captured/held banner (red)
   bannerColor?: number;           // override the castle banner colour (faction/holder)
   companion?: HqRenderCompanion | null; // active pet roaming the grounds
   visitors?: number;              // ambient NPC guests (0-4), derived from prestige
+  /** Optional open atmosphere beyond the grounds (not architectural walls). */
+  skybox?: HqSkybox | null;
+  /** Soft blue shield around the castle (outdoor). */
+  shieldActive?: boolean;
+  /** Optional pulse 0..1 for animated shield aura frames. */
+  shieldPulse?: number;
+  /**
+   * Outdoor only: when true, skip the two giant diorama sky-walls and leave a
+   * dark void behind the grassy platform (mockup "walls off" look).
+   */
+  giantWallsOff?: boolean;
+  /** Outdoor only: bare platform (no castle / nature) for starter previews. */
+  emptyPlatform?: boolean;
 }
 
 // Placement encoding (stored in hq_placements.slot, so no schema change):
@@ -258,18 +289,24 @@ export async function renderHq(view: HqRenderView): Promise<Buffer | null> {
       const canvas = mod.createCanvas(W, H);
       const ctx = canvas.getContext("2d") as unknown as Ctx;
 
-      layerBackdrop(ctx, view.theme);
-      await layerSceneryBackdrop(ctx, mod, view.backdropSprite ?? null); // sky/landscape behind
+      // Rooms sit in a dark void — architectural walls are the room shell.
+      // (Giant diorama sky-walls are outdoor-only.)
+      paintVoid(ctx, W, H);
+      if (view.wallsOff) {
+        // "Outside peek" through open room walls — soft atmosphere only.
+        await paintOpenAtmosphere(ctx, mod, view.skybox ?? null, {
+          w: W, h: H, focusX: ORIGIN_X, focusY: ORIGIN_Y + GRID * (TILE_H / 2), radius: 300,
+        });
+        await layerSceneryBackdrop(ctx, mod, view.backdropSprite ?? null);
+      }
       if (!view.wallsOff) {
         await layerWalls(ctx, mod, view.wall, view.wallSprite ?? null, view.wallpaper ?? null);
-        await layerWallDecorations(ctx, mod, view);
+        await layerWallDecorations(ctx, mod, { ...view, decorations: mergeRoomDecorations(view) });
       }
       await layerFloor(ctx, mod, view.floor, view.floorSprite ?? null);
-      // Build-mode surfaces sit ON the floor and UNDER the furniture, so a rug or
-      // pond reads as ground the decorations then stand on.
       if (view.terrain?.length) await paintTerrain(ctx, mod, ROOM_PROJECTOR, view.terrain);
-      layerLighting(ctx, view.theme);
-      await layerFurniture(ctx, mod, view);
+      layerRoomAmbience(ctx, view.theme);
+      await layerFurniture(ctx, mod, { ...view, decorations: mergeRoomDecorations(view) });
       if (view.cursor) {
         paintGridGuides(ctx, ROOM_PROJECTOR);
         paintCursor(ctx, ROOM_PROJECTOR, view.cursor);
@@ -283,19 +320,37 @@ export async function renderHq(view: HqRenderView): Promise<Buffer | null> {
   });
 }
 
+/** Merge furnished blueprints under player placements so rooms never look empty. */
+function mergeRoomDecorations(view: HqRenderView): HqRenderDeco[] {
+  const placed = view.decorations ?? [];
+  const occupied = new Set(placed.map(d => d.slot));
+  const roomId = view.roomId ?? "entrance";
+  // Always fill gaps from the blueprint so the room tells its story.
+  const bp = blueprintAsDecos(roomId, occupied).map(d => ({
+    slot: d.slot,
+    category: d.category,
+    name: d.name,
+    rarityColor: d.rarityColor,
+    spritePath: d.spritePath,
+    propKind: d.propKind,
+    scale: d.scale,
+    seed: d.seed,
+    fromBlueprint: true,
+  } satisfies HqRenderDeco));
+  return [...bp, ...placed];
+}
+
 // ── Exterior town-base renderer ─────────────────────────────────────────────
-// A clean, cohesive PROCEDURAL isometric map (no mismatched building sprites,
-// which stacked into a mess). A tiered grass island with cliff edges, a river,
-// pine forests and rocks, and the player's light-stone castle crowned with an
-// owner BANNER + a defence HEALTH BAR — with the stationed cards shown as framed
-// DEFENDERS out front ("the cards you left to guard"). Drawn entirely on the
-// canvas so it always reads as one artwork, matching the reference map.
-const BASE_CX = W / 2;
-const ISLAND_CY = 388;      // vertical centre of the base tier (centred below the header)
-const ISLAND_HW = 470;      // half-width of the base (top) diamond
-const ISLAND_HH = 214;      // half-height
-const TIER_THICK = 30;      // cliff thickness
-const CASTLE_W = 150, CASTLE_H = 138;
+// Fresh miniverse recreate from the kaos-hq mockups: ONE flat grassy platform,
+// wooden fence, river + bridge, stylized pines, dominant castle. Optional giant
+// diorama sky-walls behind the island (not wallpaper). Shield = soft blue dome
+// around the castle.
+const BASE_CX = OUTDOOR.cx;
+const ISLAND_CY = OUTDOOR.cy;
+const ISLAND_HW = OUTDOOR.hw;
+const ISLAND_HH = OUTDOOR.hh;
+const TIER_THICK = OUTDOOR.thick;
+const CASTLE_W = 180, CASTLE_H = 200;
 
 // The outdoor build lattice: a GRID×GRID iso grid laid over the island's top
 // face so the SAME rectangle editor works on the grounds as inside a room.
@@ -335,6 +390,9 @@ export interface SiegeOverlay {
 // ships (falls back to procedural when none is bundled).
 const CASTLE_SPRITE_ROLES = ["castle", "keep", "tower"];
 function pickCastleSprite(view: HqBaseView): string | null {
+  // Prefer the premium castle sprite — HQ must dominate the scene.
+  const castle = spriteForPrefix("building", "castle");
+  if (castle) return castle;
   const avail = CASTLE_SPRITE_ROLES.map(r => spriteForPrefix("building", r)).filter((p): p is string => !!p);
   if (avail.length === 0) return null;
   let seed = 0; for (const c of (view.displayTitle || "base")) seed = (seed * 31 + c.charCodeAt(0)) | 0;
@@ -366,50 +424,289 @@ async function drawBaseDecorations(ctx: Ctx, mod: CanvasMod, view: HqBaseView): 
 // The whole base scene in one painter, reused for the static base view AND every
 // frame of a live siege (so the siege looks identical to the base, just in motion).
 async function paintBaseScene(ctx: Ctx, mod: CanvasMod, view: HqBaseView, siege?: SiegeOverlay): Promise<void> {
-  ctx.fillStyle = "#0f1117"; ctx.fillRect(0, 0, W, H); // void backdrop
-  drawIslandTier(ctx, BASE_CX, ISLAND_CY, ISLAND_HW, ISLAND_HH, { thickness: TIER_THICK });
-  drawRiver(ctx);
-  // Player-built grounds: ponds, hills and paving go down before the plateau and
-  // scatter so the castle and trees sit on top of the landscaping.
+  const { castleTop, castleFeetY } = await paintOutdoorMiniverse(ctx, mod, {
+    skybox: view.skybox ?? null,
+    giantWallsOff: view.giantWallsOff ?? false,
+    shieldActive: !!(view.shieldActive && !siege),
+    shieldPulse: view.shieldPulse ?? 0.55,
+    showGrid: view.showGrid ?? !!view.cursor,
+    seed: view.displayTitle || view.ownerName || "base",
+    empty: !!view.emptyPlatform,
+  });
+
+  // Player-built terrain / decorations on top of the fresh platform.
   if (view.terrain?.length) await paintTerrain(ctx, mod, BASE_PROJECTOR, view.terrain);
-  const plateauCy = ISLAND_CY - 40;
-  drawIslandTier(ctx, BASE_CX, plateauCy, 168, 80, { raised: true });
-  drawScatter(ctx, view);
-  await drawBaseDecorations(ctx, mod, view); // player-placed grounds items (behind the front row)
-  const castleFeetY = plateauCy + 6;
-  // Use a real castle sprite when the pack has one (deterministic pick per base),
-  // else the procedural castle. drawCastle returns the top for the banner.
-  const castleTop = await drawCastle(ctx, mod, BASE_CX, castleFeetY, pickCastleSprite(view));
-  // The interactive assault has its own destruction scoreboard, which says the
-  // same thing more clearly — two health readouts on one picture just compete.
+  await drawBaseDecorations(ctx, mod, view);
+
   if (siege?.destructionPct === undefined) {
     drawBannerAndHealth(ctx, BASE_CX, castleTop, view, siege?.healthFrac);
   }
   await drawBaseDefenders(ctx, mod, view, siege?.defeated, siege?.flashSlot ?? null);
-  // Ambient life on the grounds — only outside a siege so combat stays readable.
   if (!siege) {
-    const vis = Math.max(0, Math.min(4, view.visitors ?? 0));
-    const VISITOR_SPOTS = [
-      { x: BASE_CX + 130, y: ISLAND_CY + 168 }, { x: BASE_CX - 250, y: ISLAND_CY + 118 },
-      { x: BASE_CX + 262, y: ISLAND_CY + 104 }, { x: BASE_CX - 120, y: ISLAND_CY + 176 },
-    ];
-    for (let i = 0; i < vis; i++) { const p = VISITOR_SPOTS[i]!; drawVisitor(ctx, p.x, p.y, i + 2, 1.05); }
-    if (view.companion) drawCompanion(ctx, BASE_CX + 60, ISLAND_CY + 176, view.companion, 1.05);
+    await drawOutdoorVisitors(ctx, mod, Math.max(0, Math.min(4, view.visitors ?? 0)));
+    if (view.companion) drawCompanion(ctx, BASE_CX + 60, ISLAND_CY + 150, view.companion, 1.05);
   }
   if (siege?.attacker) await drawAttacker(ctx, mod, siege.attacker, siege.advance);
-  if (view.cursor) {
-    paintGridGuides(ctx, BASE_PROJECTOR);
-    paintCursor(ctx, BASE_PROJECTOR, view.cursor);
-  }
-  const lg = ctx.createRadialGradient(BASE_CX, 120, 60, BASE_CX, 300, 640);
-  lg.addColorStop(0, "rgba(255,244,214,0.10)"); lg.addColorStop(1, "rgba(0,0,0,0)");
-  ctx.fillStyle = lg; ctx.fillRect(0, 0, W, H);
+  if (view.cursor) paintCursor(ctx, BASE_PROJECTOR, view.cursor);
   if (siege?.destructionPct !== undefined) {
     drawDestructionScoreboard(ctx, siege.destructionPct, siege.stars ?? 0, siege.turnLabel ?? null);
   }
   if (siege?.caption) drawMoveCaption(ctx, siege.caption.text, siege.caption.color);
   if (siege?.banner) drawResultBanner(ctx, siege.banner.text, siege.banner.color);
   await drawHqHeader(ctx, mod, view, W);
+  void castleFeetY;
+}
+
+/** Multi-tier cliffs so the HQ dominates the open void. */
+function drawPremiumIsland(ctx: Ctx, view: HqBaseView): void {
+  // Deep rock under-tiers for chunky cliff depth
+  drawIslandTier(ctx, BASE_CX, ISLAND_CY + 36, ISLAND_HW + 48, ISLAND_HH + 22, {
+    thickness: 52, topA: "#2a3a18", topB: "#1e2a10",
+  });
+  drawIslandTier(ctx, BASE_CX, ISLAND_CY + 16, ISLAND_HW + 22, ISLAND_HH + 10, {
+    thickness: 38, topA: "#3a5a28", topB: "#2a4218",
+  });
+  drawIslandTier(ctx, BASE_CX, ISLAND_CY, ISLAND_HW, ISLAND_HH, {
+    thickness: TIER_THICK + 8, topA: "#4f8a3c", topB: "#3a6a2c",
+  });
+  // Cliff face strata
+  ctx.save();
+  const [top, right, bottom, left] = diamond(BASE_CX, ISLAND_CY, ISLAND_HW, ISLAND_HH);
+  const thick = TIER_THICK + 8;
+  for (let i = 1; i <= 4; i++) {
+    const t = i / 5;
+    ctx.strokeStyle = i % 2 === 0 ? "rgba(160,120,70,0.28)" : "rgba(60,40,20,0.35)";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(left!.x, left!.y + thick * t);
+    ctx.lineTo(bottom!.x, bottom!.y + thick * t);
+    ctx.lineTo(right!.x, right!.y + thick * t);
+    ctx.stroke();
+  }
+  // Dirt road from front edge toward the castle plateau
+  ctx.globalAlpha = 0.85;
+  ctx.strokeStyle = "#8a7048"; ctx.lineWidth = 22;
+  (ctx as unknown as { lineCap: string }).lineCap = "round";
+  ctx.beginPath();
+  ctx.moveTo(BASE_CX + 40, ISLAND_CY + ISLAND_HH - 30);
+  ctx.quadraticCurveTo(BASE_CX + 90, ISLAND_CY + 80, BASE_CX + 20, ISLAND_CY - 10);
+  ctx.stroke();
+  ctx.strokeStyle = "#a89060"; ctx.lineWidth = 14;
+  ctx.beginPath();
+  ctx.moveTo(BASE_CX + 40, ISLAND_CY + ISLAND_HH - 30);
+  ctx.quadraticCurveTo(BASE_CX + 90, ISLAND_CY + 80, BASE_CX + 20, ISLAND_CY - 10);
+  ctx.stroke();
+  // Soft grass highlight toward the sun
+  polyPath(ctx, [top!, right!, bottom!, left!]);
+  ctx.clip();
+  const g = ctx.createLinearGradient(BASE_CX - 200, ISLAND_CY - 120, BASE_CX + 200, ISLAND_CY + 120);
+  g.addColorStop(0, "rgba(180,230,120,0.18)");
+  g.addColorStop(1, "rgba(0,0,0,0)");
+  ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+  ctx.restore();
+  void view;
+}
+
+function drawWaterfall(ctx: Ctx): void {
+  // Cascading fall off the back-left cliff into the river source.
+  const x0 = BASE_CX - 210, y0 = ISLAND_CY - 150;
+  ctx.save();
+  for (let i = 0; i < 5; i++) {
+    ctx.strokeStyle = `rgba(180,220,255,${0.35 + i * 0.08})`;
+    ctx.lineWidth = 6 - i * 0.6;
+    ctx.beginPath();
+    ctx.moveTo(x0 - 10 + i * 5, y0);
+    ctx.bezierCurveTo(x0 - 20 + i * 4, y0 + 40, x0 - 30 + i * 3, y0 + 70, x0 - 40 + i * 2, y0 + 100);
+    ctx.stroke();
+  }
+  // Mist at the base
+  ctx.fillStyle = "rgba(200,230,255,0.25)";
+  ctx.beginPath(); ellipse(ctx, x0 - 30, y0 + 105, 36, 10); ctx.fill();
+  ctx.restore();
+}
+
+function drawPerimeterFence(ctx: Ctx): void {
+  // Wooden rail fence around the island rim (mockup look).
+  const pts: Pt[] = [];
+  for (let i = 0; i <= 24; i++) {
+    const t = i / 24;
+    // Trace the diamond rim inset slightly
+    const u = t < 0.25 ? t * 4 : t < 0.5 ? (t - 0.25) * 4 : t < 0.75 ? (t - 0.5) * 4 : (t - 0.75) * 4;
+    let gx: number, gy: number;
+    if (t < 0.25) { gx = u; gy = 0; }
+    else if (t < 0.5) { gx = 1; gy = u; }
+    else if (t < 0.75) { gx = 1 - u; gy = 1; }
+    else { gx = 0; gy = 1 - u; }
+    // Map unit diamond → screen via island extents
+    pts.push({
+      x: BASE_CX + (gx - gy) * ISLAND_HW * 0.92,
+      y: ISLAND_CY + (gx + gy - 1) * ISLAND_HH * 0.92,
+    });
+  }
+  ctx.save();
+  ctx.strokeStyle = "#a07840"; ctx.lineWidth = 3;
+  ctx.beginPath();
+  for (let i = 0; i < pts.length; i++) {
+    const p = pts[i]!;
+    if (i === 0) ctx.moveTo(p.x, p.y); else ctx.lineTo(p.x, p.y);
+  }
+  ctx.closePath(); ctx.stroke();
+  ctx.strokeStyle = "#c49a5a"; ctx.lineWidth = 2;
+  ctx.beginPath();
+  for (let i = 0; i < pts.length; i++) {
+    const p = pts[i]!;
+    if (i === 0) ctx.moveTo(p.x, p.y - 8); else ctx.lineTo(p.x, p.y - 8);
+  }
+  ctx.closePath(); ctx.stroke();
+  // Posts
+  ctx.fillStyle = "#8a6230";
+  for (let i = 0; i < pts.length; i += 2) {
+    const p = pts[i]!;
+    ctx.fillRect(p.x - 2, p.y - 18, 4, 20);
+  }
+  ctx.restore();
+}
+
+function drawAnimatedFlags(ctx: Ctx, view: HqBaseView): void {
+  const color = view.bannerColor ?? 0xc0392b;
+  const poles: { x: number; y: number }[] = [
+    { x: BASE_CX - 200, y: ISLAND_CY - 20 },
+    { x: BASE_CX + 210, y: ISLAND_CY - 10 },
+    { x: BASE_CX - 80, y: ISLAND_CY + 130 },
+  ];
+  for (let i = 0; i < poles.length; i++) {
+    const p = poles[i]!;
+    const wave = Math.sin(i * 1.7) * 4;
+    ctx.save();
+    ctx.strokeStyle = "#c9c1a8"; ctx.lineWidth = 2.5;
+    ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(p.x, p.y - 48); ctx.stroke();
+    ctx.fillStyle = hexToRgba(color, 0.95);
+    ctx.beginPath();
+    ctx.moveTo(p.x, p.y - 48);
+    ctx.quadraticCurveTo(p.x + 18 + wave, p.y - 40, p.x + 28, p.y - 36 + wave * 0.3);
+    ctx.quadraticCurveTo(p.x + 16, p.y - 28, p.x, p.y - 24);
+    ctx.closePath(); ctx.fill();
+    ctx.fillStyle = "rgba(255,255,255,0.9)";
+    ctx.beginPath();
+    ctx.moveTo(p.x + 8, p.y - 40); ctx.lineTo(p.x + 12, p.y - 36); ctx.lineTo(p.x + 8, p.y - 32); ctx.lineTo(p.x + 4, p.y - 36);
+    ctx.closePath(); ctx.fill();
+    ctx.restore();
+  }
+}
+
+async function drawScatterSprites(ctx: Ctx, mod: CanvasMod, view: HqBaseView): Promise<void> {
+  const rnd = seededRng(hashString(view.displayTitle || "base"));
+  const treePath = spriteForPrefix("nature", "tree") ?? spriteForPrefix("nature", "tree-tall");
+  const tallPath = spriteForPrefix("nature", "tree-tall");
+  const bushPath = spriteForPrefix("nature", "bush");
+  const rockPath = spriteForPrefix("nature", "rock");
+  const treeImg = treePath ? await loadSprite(mod, treePath).catch(() => null) : null;
+  const tallImg = tallPath ? await loadSprite(mod, tallPath).catch(() => null) : null;
+  const bushImg = bushPath ? await loadSprite(mod, bushPath).catch(() => null) : null;
+  const rockImg = rockPath ? await loadSprite(mod, rockPath).catch(() => null) : null;
+
+  const inRiver = (x: number, y: number) =>
+    Math.abs((x - BASE_CX) - (ISLAND_CY - y) * 0.4) < 46 && y > ISLAND_CY - 150 && y < ISLAND_CY + 150;
+
+  let placed = 0, tries = 0;
+  while (placed < 32 && tries++ < 500) {
+    const u = rnd() * 2 - 1, v = rnd() * 2 - 1;
+    if (Math.abs(u) + Math.abs(v) > 0.92) continue;
+    if (Math.abs(u) + Math.abs(v) < 0.36) continue;
+    const x = BASE_CX + u * ISLAND_HW, y = ISLAND_CY + v * ISLAND_HH;
+    if (inRiver(x, y)) continue;
+    const roll = rnd();
+    const s = 0.85 + rnd() * 0.55;
+    if (roll < 0.55 && (tallImg || treeImg)) {
+      const img = (rnd() < 0.45 && tallImg) ? tallImg : (treeImg ?? tallImg)!;
+      const iw = Math.max(1, (img as { width: number }).width);
+      const ih = Math.max(1, (img as { height: number }).height);
+      const h = 70 * s, w = h * (iw / ih);
+      ctx.save(); ctx.fillStyle = "rgba(0,0,0,0.25)";
+      ctx.beginPath(); ellipse(ctx, x, y, w * 0.28, 6 * s); ctx.fill(); ctx.restore();
+      blit(ctx, img, x - w / 2, y - h + 4, w, h);
+    } else if (roll < 0.72 && bushImg) {
+      const iw = Math.max(1, (bushImg as { width: number }).width);
+      const ih = Math.max(1, (bushImg as { height: number }).height);
+      const h = 36 * s, w = h * (iw / ih);
+      blit(ctx, bushImg, x - w / 2, y - h + 2, w, h);
+    } else if (roll < 0.88 && rockImg) {
+      const iw = Math.max(1, (rockImg as { width: number }).width);
+      const ih = Math.max(1, (rockImg as { height: number }).height);
+      const h = 28 * s, w = h * (iw / ih);
+      blit(ctx, rockImg, x - w / 2, y - h + 2, w, h);
+    } else if (roll < 0.94) {
+      drawProp(ctx, "flowers", x, y, s * 0.85);
+    } else {
+      drawPine(ctx, x, y, s);
+    }
+    placed++;
+  }
+}
+
+/** @deprecated — replaced by paintOpenAtmosphere; kept as no-op shim for safety. */
+async function paintSkybox(ctx: Ctx, mod: CanvasMod, skybox: HqSkybox | null): Promise<void> {
+  paintVoid(ctx, W, H);
+  await paintOpenAtmosphere(ctx, mod, skybox, {
+    w: W, h: H, focusX: BASE_CX, focusY: ISLAND_CY - 40, radius: 420,
+  });
+}
+
+/**
+ * Subtle blue shield aura around the playable island — a soft luminous rim
+ * hugging the grounds edge, NOT a large transparent dome over the castle.
+ * Soft Kenney puff/flash sprites reinforce the ward when available.
+ * `pulse` (0..1) gently scales opacity so animated frames can breathe.
+ */
+async function drawShieldAura(ctx: Ctx, mod: CanvasMod, pulse: number): Promise<void> {
+  const p = Math.max(0, Math.min(1, pulse));
+  // Sit just outside the island rim so it reads as a ward around the playable
+  // area rather than a glass bubble covering the castle.
+  const rx = ISLAND_HW * (1.02 + p * 0.02);
+  const ry = ISLAND_HH * (1.04 + p * 0.02);
+  const cx = BASE_CX, cy = ISLAND_CY + 10;
+
+  ctx.save();
+  // Soft outer wash — keep it rim-local so it never reads as a glass dome.
+  const fill = ctx.createRadialGradient(cx, cy, Math.min(rx, ry) * 0.88, cx, cy, Math.max(rx, ry) * 1.04);
+  fill.addColorStop(0, "rgba(80,170,255,0)");
+  fill.addColorStop(0.9, `rgba(70,160,255,${0.015 + p * 0.015})`);
+  fill.addColorStop(1, `rgba(100,190,255,${0.08 + p * 0.05})`);
+  ctx.fillStyle = fill;
+  ctx.beginPath(); ellipse(ctx, cx, cy, rx * 1.03, ry * 1.04); ctx.fill();
+
+  // Thin luminous rim hugging the island edge.
+  ctx.strokeStyle = `rgba(140,210,255,${0.45 + p * 0.25})`;
+  ctx.lineWidth = 2.5;
+  ctx.shadowColor = "rgba(90,180,255,0.8)";
+  ctx.shadowBlur = 12 + p * 10;
+  ctx.beginPath(); ellipse(ctx, cx, cy, rx, ry); ctx.stroke();
+
+  // Faint inner hairline for a soft double-rim (aura, not dome).
+  ctx.shadowBlur = 0;
+  ctx.strokeStyle = `rgba(190,230,255,${0.22 + p * 0.12})`;
+  ctx.lineWidth = 1;
+  ctx.beginPath(); ellipse(ctx, cx, cy, rx * 0.985, ry * 0.985); ctx.stroke();
+  ctx.restore();
+
+  // Soft particle accents along the rim (smoke/flash FX from the art pack).
+  const puffPath = spriteForPrefix("fx", "shield-puff");
+  const flashPath = spriteForPrefix("fx", "shield-flash");
+  const puff = puffPath ? await loadSprite(mod, puffPath).catch(() => null) : null;
+  const flash = flashPath ? await loadSprite(mod, flashPath).catch(() => null) : null;
+  if (!puff && !flash) return;
+  ctx.save();
+  ctx.globalCompositeOperation = "screen";
+  for (let i = 0; i < 10; i++) {
+    const a = (i / 10) * Math.PI * 2 + p * 0.4;
+    const x = cx + Math.cos(a) * rx * 0.98;
+    const y = cy + Math.sin(a) * ry * 0.98;
+    const img = (i % 3 === 0 && flash) ? flash : (puff ?? flash)!;
+    const size = 28 + (i % 3) * 8 + p * 6;
+    ctx.globalAlpha = 0.18 + p * 0.12;
+    blit(ctx, img, x - size / 2, y - size / 2, size, size);
+  }
+  ctx.restore();
 }
 
 export async function renderBase(view: HqBaseView): Promise<Buffer | null> {
@@ -640,20 +937,19 @@ function drawRiver(ctx: Ctx): void {
   ctx.restore();
 }
 
-// Seeded pine forests + rocks scattered on the base grass, avoiding the plateau,
-// the river and the very centre.
+// Legacy scatter kept for reference — outdoor scene uses drawScatterSprites.
 function drawScatter(ctx: Ctx, view: HqBaseView): void {
   const rnd = seededRng(hashString(view.displayTitle || "base"));
   const inRiver = (x: number, y: number) => Math.abs((x - BASE_CX) - (ISLAND_CY - y) * 0.4) < 46 && y > ISLAND_CY - 150 && y < ISLAND_CY + 150;
   let placed = 0, tries = 0;
   while (placed < 26 && tries++ < 400) {
     const u = rnd() * 2 - 1, v = rnd() * 2 - 1;
-    if (Math.abs(u) + Math.abs(v) > 0.96) continue;              // inside diamond
+    if (Math.abs(u) + Math.abs(v) > 0.96) continue;
     const x = BASE_CX + u * ISLAND_HW, y = ISLAND_CY + v * ISLAND_HH;
-    if (Math.abs(u) + Math.abs(v) < 0.34) continue;             // keep centre for the castle
+    if (Math.abs(u) + Math.abs(v) < 0.34) continue;
     if (inRiver(x, y)) continue;
     const s = 0.8 + rnd() * 0.5;
-    if (rnd() < 0.8) drawPine(ctx, x, y, s); else drawRock(ctx, x, y, s);
+    if (rnd() < 0.8) drawPine(ctx, x, y, s); else drawProp(ctx, "rock", x, y, s);
     placed++;
   }
 }
@@ -663,15 +959,16 @@ function drawScatter(ctx: Ctx, view: HqBaseView): void {
 // Uses a real castle SPRITE when one is bundled; otherwise a clean procedural
 // castle. Either way the feet sit on the plateau at `feetY`.
 async function drawCastle(ctx: Ctx, mod: CanvasMod, cx: number, feetY: number, spritePath: string | null): Promise<number> {
-  ctx.save(); ctx.fillStyle = "rgba(0,0,0,0.34)"; ctx.beginPath(); ellipse(ctx, cx, feetY, CASTLE_W * 0.62, 18); ctx.fill(); ctx.restore();
+  ctx.save(); ctx.fillStyle = "rgba(0,0,0,0.38)"; ctx.beginPath(); ellipse(ctx, cx, feetY, CASTLE_W * 0.78, 22); ctx.fill(); ctx.restore();
   if (spritePath) {
     const img = await loadSprite(mod, spritePath).catch(() => null);
     if (img) {
       const iw = Math.max(1, (img as { width: number }).width);
       const ih = Math.max(1, (img as { height: number }).height);
-      const h = 250, w = h * (iw / ih);
-      blit(ctx, img, cx - w / 2, feetY - h, w, h);
-      return feetY - h + 24; // banner just above the towers
+      // Larger castle so the HQ dominates the outdoor scene.
+      const h = 310, w = h * (iw / ih);
+      blit(ctx, img, cx - w / 2, feetY - h + 8, w, h);
+      return feetY - h + 40;
     }
   }
   return drawCastleProcedural(ctx, cx, feetY);
@@ -841,7 +1138,7 @@ async function layerSceneryBackdrop(ctx: Ctx, mod: CanvasMod, spritePath: string
 // top-right along the same horizontal parameter u (v=0 base, v=1 top).
 function drawWallFace(
   ctx: Ctx, bl: Pt, br: Pt, tl: Pt, tr: Pt, face: string, trim: string,
-  window: boolean, windowTint: string,
+  window: boolean, windowTint: string, motif: HqWall["motif"] = "plain",
 ): void {
   ctx.save();
   ctx.beginPath();
@@ -864,12 +1161,56 @@ function drawWallFace(
       ctx.closePath();
       ctx.fillStyle = windowTint; ctx.fill();
       ctx.strokeStyle = hexToRgba(0xffffff, 0.28); ctx.lineWidth = 2; ctx.stroke();
-      // Mullion.
       const m0 = bilerp((u0 + u1) / 2, 0.32), m1 = bilerp((u0 + u1) / 2, 0.9);
       ctx.beginPath(); ctx.moveTo(m0.x, m0.y); ctx.lineTo(m1.x, m1.y); ctx.stroke();
     }
+  } else if (motif === "brick" || motif === "blocks") {
+    for (let row = 0; row < 6; row++) {
+      const v0 = row / 6, v1 = (row + 1) / 6;
+      const offset = row % 2 === 0 ? 0 : 0.08;
+      for (let col = 0; col < 4; col++) {
+        const u0 = offset + col / 4, u1 = offset + (col + 0.92) / 4;
+        if (u1 > 1.02) continue;
+        const p00 = bilerp(u0, v0 + 0.02), p10 = bilerp(Math.min(1, u1), v0 + 0.02);
+        const p01 = bilerp(u0, v1 - 0.02), p11 = bilerp(Math.min(1, u1), v1 - 0.02);
+        ctx.beginPath();
+        ctx.moveTo(p00.x, p00.y); ctx.lineTo(p10.x, p10.y); ctx.lineTo(p11.x, p11.y); ctx.lineTo(p01.x, p01.y);
+        ctx.closePath();
+        ctx.strokeStyle = "rgba(0,0,0,0.22)"; ctx.lineWidth = 1; ctx.stroke();
+      }
+    }
+  } else if (motif === "planks") {
+    for (let c = 0; c < 6; c++) {
+      const a = bilerp((c + 0.5) / 6, 0), b = bilerp((c + 0.5) / 6, 1);
+      ctx.strokeStyle = "rgba(0,0,0,0.18)"; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
+    }
+  } else if (motif === "panels" || motif === "rivets") {
+    for (let c = 1; c < 4; c++) {
+      const a = bilerp(c / 4, 0.08), b = bilerp(c / 4, 0.92);
+      ctx.strokeStyle = "rgba(255,255,255,0.12)"; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
+    }
+    if (motif === "rivets") {
+      for (let r = 0; r < 4; r++) for (let c = 0; c < 4; c++) {
+        const p = bilerp((c + 0.5) / 4, (r + 0.5) / 4);
+        ctx.fillStyle = "rgba(200,200,210,0.45)";
+        ctx.beginPath(); ctx.arc(p.x, p.y, 2, 0, Math.PI * 2); ctx.fill();
+      }
+    }
+  } else if (motif === "runes") {
+      ctx.strokeStyle = "rgba(201,162,74,0.35)"; ctx.lineWidth = 1.5;
+      for (let i = 0; i < 5; i++) {
+        const p = bilerp(0.15 + i * 0.15, 0.35 + (i % 2) * 0.2);
+        ctx.beginPath();
+        ctx.moveTo(p.x - 6, p.y - 10);
+        ctx.lineTo(p.x + 6, p.y - 10);
+        ctx.lineTo(p.x + 6, p.y + 10);
+        ctx.lineTo(p.x - 6, p.y + 10);
+        ctx.closePath();
+        ctx.stroke();
+      }
   } else {
-    // Subtle vertical paneling for texture.
     for (let c = 1; c < 4; c++) {
       const a = bilerp(c / 4, 0), b = bilerp(c / 4, 1);
       ctx.strokeStyle = hexToRgba(0x000000, 0.12); ctx.lineWidth = 1.5;
@@ -878,7 +1219,6 @@ function drawWallFace(
   }
   ctx.restore();
 
-  // Top trim + baseboard.
   ctx.strokeStyle = trim; ctx.lineWidth = 3;
   ctx.beginPath(); ctx.moveTo(tl.x, tl.y); ctx.lineTo(tr.x, tr.y); ctx.stroke();
   ctx.lineWidth = 4;
@@ -913,9 +1253,9 @@ async function layerWalls(
     ctx.beginPath(); ctx.moveTo(up(rBL).x, up(rBL).y); ctx.lineTo(up(rBR).x, up(rBR).y); ctx.lineTo(up(lBR).x, up(lBR).y); ctx.stroke();
     return;
   }
-  // Procedural: two shaded faces with trim + optional windows.
-  drawWallFace(ctx, rBL, rBR, up(rBL), up(rBR), wall.rightFace, wall.trim, wall.window, wall.windowTint);
-  drawWallFace(ctx, lBL, lBR, up(lBL), up(lBR), wall.leftFace, wall.trim, wall.window, wall.windowTint);
+  // Procedural: two shaded faces with architectural motif + trim + optional windows.
+  drawWallFace(ctx, rBL, rBR, up(rBL), up(rBR), wall.rightFace, wall.trim, wall.window, wall.windowTint, wall.motif);
+  drawWallFace(ctx, lBL, lBR, up(lBL), up(lBR), wall.leftFace, wall.trim, wall.window, wall.windowTint, wall.motif);
 }
 
 async function layerFloor(ctx: Ctx, mod: CanvasMod, floor: HqFloor, spritePath: string | null): Promise<void> {
@@ -940,26 +1280,32 @@ async function layerFloor(ctx: Ctx, mod: CanvasMod, floor: HqFloor, spritePath: 
 }
 
 function layerLighting(ctx: Ctx, theme: HqTheme): void {
-  // Key light from above-centre.
-  const r = ctx.createRadialGradient(W / 2, 40, 30, W / 2, 240, 640);
-  r.addColorStop(0, theme.palette.light);
+  layerRoomAmbience(ctx, theme);
+}
+
+/** Warm tactical HQ lighting — focused pool on the floor, soft vignette. */
+function layerRoomAmbience(ctx: Ctx, theme: HqTheme): void {
+  // Soft floor pool only — keep walls dark (tactical HQ look).
+  const r = ctx.createRadialGradient(W / 2, ORIGIN_Y + 160, 30, W / 2, ORIGIN_Y + 260, 380);
+  r.addColorStop(0, "rgba(255,180,100,0.10)");
+  r.addColorStop(0.5, "rgba(255,160,80,0.04)");
   r.addColorStop(1, "rgba(0,0,0,0)");
   ctx.fillStyle = r;
   ctx.fillRect(0, 0, W, H);
 
-  // Ambient particles for depth (static frame → fixed phase).
   try {
     drawAtmosphere(ctx, W, H, atmospherePreset(theme.atmosphere), {
-      seed: `hq-${theme.id}`, t: 0.35, color: theme.palette.accent, density: 0.4,
+      seed: `hq-${theme.id}`, t: 0.35, color: theme.palette.accent, density: 0.18,
     });
   } catch { /* never break a render on ambience */ }
 
-  // Vignette to focus the centre.
-  const v = ctx.createRadialGradient(W / 2, H / 2, H * 0.34, W / 2, H / 2, W * 0.72);
+  // Deep vignette so the room reads as a lit stage in the void.
+  const v = ctx.createRadialGradient(W / 2, H / 2 + 40, H * 0.22, W / 2, H / 2, W * 0.68);
   v.addColorStop(0, "rgba(0,0,0,0)");
-  v.addColorStop(1, "rgba(0,0,0,0.5)");
+  v.addColorStop(1, "rgba(0,0,0,0.72)");
   ctx.fillStyle = v;
   ctx.fillRect(0, 0, W, H);
+  void theme;
 }
 
 // Wall-mounted decorations sit on the wall plane, drawn between walls and floor.
@@ -1314,33 +1660,9 @@ function drawCompanion(ctx: Ctx, cx: number, feetY: number, comp: HqRenderCompan
 // Not persisted or earned: the hub passes a COUNT derived from prestige and the
 // renderer scatters that many at fixed, out-of-the-way spots so the place feels
 // lived-in. Each is a simple hooded/tunic figure tinted from a seed.
-const VISITOR_TINTS = ["#5b6b8c", "#7a5b8c", "#8c6b5b", "#5b8c76", "#8c8560", "#6b6b6b"];
+// Ambient NPC guests — drawn as stylized characters (never peg placeholders).
 function drawVisitor(ctx: Ctx, cx: number, feetY: number, seed: number, scale = 1): void {
-  const s = scale;
-  const tint = VISITOR_TINTS[seed % VISITOR_TINTS.length]!;
-  const skin = "#e6b98f";
-  ctx.save();
-  ctx.lineJoin = "round";
-  // Shadow.
-  ctx.fillStyle = "rgba(0,0,0,0.28)";
-  ctx.beginPath(); ellipse(ctx, cx, feetY, 14 * s, 5 * s); ctx.fill();
-  // Robe/tunic (a trapezium).
-  const bodyH = 34 * s, topW = 16 * s, botW = 26 * s;
-  const topY = feetY - bodyH;
-  ctx.beginPath();
-  ctx.moveTo(cx - topW / 2, topY);
-  ctx.lineTo(cx + topW / 2, topY);
-  ctx.lineTo(cx + botW / 2, feetY);
-  ctx.lineTo(cx - botW / 2, feetY);
-  ctx.closePath();
-  ctx.fillStyle = tint; ctx.fill();
-  ctx.strokeStyle = "rgba(0,0,0,0.32)"; ctx.lineWidth = 1.5 * s; ctx.stroke();
-  // Head.
-  ctx.beginPath(); ellipse(ctx, cx, topY - 7 * s, 7 * s, 7.5 * s); ctx.fillStyle = skin; ctx.fill(); ctx.stroke();
-  // Hair/hood cap.
-  ctx.beginPath(); ctx.arc(cx, topY - 8 * s, 7.5 * s, Math.PI, 0); ctx.closePath();
-  ctx.fillStyle = "rgba(0,0,0,0.4)"; ctx.fill();
-  ctx.restore();
+  drawProp(ctx, "npc", cx, feetY, scale, 0x3a5a8b, seed);
 }
 
 // A "standee" silhouette: rounded top, straight sides, flat bottom.
@@ -1414,23 +1736,27 @@ async function drawDecoAt(
   if (deco.spritePath) {
     const img = await loadSprite(mod, deco.spritePath).catch(() => null);
     if (img) {
-      // Preserve the sprite's aspect ratio. Kenney iso furniture is tall
-      // (256×512) and base-anchored at the bottom, so floor items fit to a
-      // target WIDTH and sit their bottom on the tile; wall items (icons like
-      // medals) fit to a target HEIGHT and centre on the anchor.
       const iw = Math.max(1, (img as { width: number }).width);
       const ih = Math.max(1, (img as { height: number }).height);
-      // Small source art = pixel sprite (e.g. 16px figurines): render crisp
-      // (nearest-neighbour) and modestly sized so it doesn't blur or tower.
       const pixel = iw <= 48;
       const smooth = ctx as unknown as { imageSmoothingEnabled: boolean };
       if (pixel) smooth.imageSmoothingEnabled = false;
       if (grounded) {
-        const h = pixel ? 76 * scale : 120 * scale * (ih / iw);
-        const w = pixel ? h * (iw / ih) : 120 * scale;
+        // Pixel figurines → draw as stylized NPCs instead of tiny blurry peeks.
+        if (pixel) {
+          drawProp(ctx, "npc", x, y, scale * (deco.scale ?? 1), deco.rarityColor, deco.seed ?? deco.slot);
+          if (pixel) smooth.imageSmoothingEnabled = true;
+          return;
+        }
+        // Kenney isometric pack is 256×512 with the subject in the lower half —
+        // size so furniture reads clearly on the 7×7 room grid.
+        const kind = deco.propKind ?? propKindFor(deco.category, deco.name);
+        const boost = kind === "rug" ? 1.35 : kind === "npc" ? 1.15 : 1.25;
+        const h = 120 * scale * boost * (ih / iw);
+        const w = 120 * scale * boost;
         ctx.save(); ctx.fillStyle = "rgba(0,0,0,0.28)";
-        ctx.beginPath(); ellipse(ctx, x, y, w * 0.3, w * 0.11); ctx.fill(); ctx.restore();
-        blit(ctx, img, x - w / 2, y - h + 6, w, h); // bottom sits on the tile
+        ctx.beginPath(); ellipse(ctx, x, y, w * 0.28, w * 0.1); ctx.fill(); ctx.restore();
+        blit(ctx, img, x - w / 2, y - h + 6, w, h);
       } else {
         const h = 88 * scale, w = h * (iw / ih);
         blit(ctx, img, x - w / 2, y - h / 2, w, h);
@@ -1439,11 +1765,8 @@ async function drawDecoAt(
       return;
     }
   }
-  if (grounded) {
-    ctx.save(); ctx.fillStyle = "rgba(0,0,0,0.3)";
-    ctx.beginPath(); ellipse(ctx, x, y, 34 * scale, 12 * scale); ctx.fill(); ctx.restore();
-  }
-  drawDecoration(ctx, x, grounded ? y - 30 * scale : y, scale, deco);
+  const kind = deco.propKind ?? propKindFor(deco.category, deco.name);
+  drawProp(ctx, kind, x, y, scale * (deco.scale ?? 1), deco.rarityColor, deco.seed ?? deco.slot + 1);
 }
 
 // A framed card portrait hung on the wall: a shrunk copy of the real card art

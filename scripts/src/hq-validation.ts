@@ -14,9 +14,12 @@
 import assert from "node:assert/strict";
 
 import {
-  HQ_FACTIONS, HQ_TERRITORIES, HQ_ROUTES, PLAYER_BASE_ANCHORS,
-  resolveFaction, getTerritory, tierProfile, tierStars,
+  HQ_FACTIONS, HQ_TERRITORIES, HQ_ROUTES, PLAYER_BASE_ANCHORS, HQ_CONQUESTS,
+  resolveFaction, getTerritory, tierProfile, tierStars, resourceEmoji,
 } from "../../artifacts/api-server/src/bot/hq/defs/world.js";
+import {
+  suitePreset, suiteWalls, validateSuite, roomAt, SUITE_PRESET_IDS,
+} from "../../artifacts/api-server/src/bot/hq/defs/room-suites.js";
 import { HQ_WALLPAPERS, resolveWallpaper, DEFAULT_WALLPAPER_ID } from "../../artifacts/api-server/src/bot/hq/defs/wallpapers.js";
 import { HQ_SURFACES, resolveSurface, surfacesFor } from "../../artifacts/api-server/src/bot/hq/defs/surfaces.js";
 import { HQ_DECORATIONS } from "../../artifacts/api-server/src/bot/hq/defs/decorations.js";
@@ -26,6 +29,8 @@ import { HQ_THEMES } from "../../artifacts/api-server/src/bot/hq/defs/themes.js"
 import { HQ_ROOMS } from "../../artifacts/api-server/src/bot/hq/defs/rooms.js";
 import { HQ_BACKDROPS } from "../../artifacts/api-server/src/bot/hq/defs/backdrops.js";
 import { HQ_COMPANIONS } from "../../artifacts/api-server/src/bot/hq/defs/companions.js";
+import { HQ_SKYBOXES, resolveSkybox, DEFAULT_SKYBOX_ID } from "../../artifacts/api-server/src/bot/hq/defs/skyboxes.js";
+import { createDefaultFloorplan, sharedEdges } from "../../artifacts/api-server/src/bot/hq/defs/floorplan.js";
 import { buildGarrison, territoryTributeOwed, WORLD_TRIBUTE_CAP_HOURS } from "../../artifacts/api-server/src/bot/hq/world.js";
 import { readCursor, clampCursor, cursorLabel } from "../../artifacts/api-server/src/bot/hq/build-state.js";
 import { MAX_RECT_SPAN, MAX_ELEVATION } from "../../artifacts/api-server/src/bot/hq/terrain.js";
@@ -80,6 +85,7 @@ check("no two GATED cosmetics share an id across registries", () => {
   add(HQ_COMPANIONS, "companions");
   add(HQ_WALLPAPERS, "wallpapers");
   add(HQ_SURFACES, "surfaces");
+  add(HQ_SKYBOXES, "skyboxes");
   if (benign.length > 0) console.log(`    (harmless always-unlocked id reuse: ${benign.join(", ")})`);
 });
 
@@ -88,6 +94,34 @@ check("every registry resolves an unknown id to its default instead of throwing"
   assert.equal(resolveWallpaper(null).id, DEFAULT_WALLPAPER_ID);
   assert.ok(resolveSurface("does-not-exist").id);
   assert.ok(resolveSurface(undefined).id);
+  assert.equal(resolveSkybox("does-not-exist").id, DEFAULT_SKYBOX_ID);
+  assert.equal(resolveSkybox(null).id, DEFAULT_SKYBOX_ID);
+});
+
+check("every room declares a purpose, bonuses, and category", () => {
+  for (const r of HQ_ROOMS) {
+    assert.ok(r.blurb.length > 10, `${r.id} missing description`);
+    assert.ok(r.bonuses.length >= 1, `${r.id} needs at least one bonus`);
+    assert.ok(r.category, `${r.id} missing category`);
+    assert.ok(r.sizeLabel, `${r.id} missing sizeLabel`);
+  }
+});
+
+check("skyboxes are optional open atmosphere, not room walls", () => {
+  for (const s of HQ_SKYBOXES) {
+    assert.match(s.skyTop, /^#[0-9a-f]{6}$/i, `${s.id} skyTop`);
+    assert.match(s.skyHorizon, /^#[0-9a-f]{6}$/i, `${s.id} skyHorizon`);
+    assert.ok(s.spriteKey.startsWith("skybox/"), `${s.id} spriteKey should be under skybox/`);
+  }
+});
+
+check("default floorplan is connected (doors join starter zones)", () => {
+  const fp = createDefaultFloorplan();
+  assert.ok(fp.zones.filter(z => z.unlocked).length >= 3, "starter has multiple unlocked zones");
+  assert.ok(fp.openings.some(o => o.kind === "door"), "starter has at least one door");
+  const cc = fp.zones.find(z => z.id === "entrance")!;
+  const hall = fp.zones.find(z => z.id === "hallway-main")!;
+  assert.ok(sharedEdges(cc.rect, hall.rect).length > 0, "CC shares an edge with hallway");
 });
 
 check("wallpapers declare sane repeats and a default that stays plain", () => {
@@ -144,6 +178,49 @@ check("every trade route joins two real territories", () => {
     assert.ok(ids.has(b), `route references unknown territory "${b}"`);
     assert.notEqual(a, b, "a route must join two different territories");
   }
+});
+
+check("every room suite preset is a valid, connected floor", () => {
+  for (const id of SUITE_PRESET_IDS) {
+    const layout = suitePreset(id);
+    const errs = validateSuite(layout);
+    assert.equal(errs.join("; "), "", `preset "${id}" is invalid`);
+    assert.ok(layout.rooms.length >= 1, `preset "${id}" has no rooms`);
+    // The masonry is derived, so it must exist for any floor with rooms — a
+    // layout that solved to zero walls would render as furniture in a void.
+    assert.ok(suiteWalls(layout).length > 0, `preset "${id}" solved to no walls`);
+    // Every item has to land on a tile that belongs to a room, or it would be
+    // drawn standing in the void outside the floor.
+    for (const it of layout.items) {
+      assert.ok(roomAt(layout, it.gx, it.gy), `preset "${id}": item ${it.sprite} at (${it.gx},${it.gy}) is not in a room`);
+    }
+  }
+  // The furnished preset is the one that has to look like a hotel floor.
+  const rooms = suitePreset("rooms");
+  assert.ok(rooms.rooms.length >= 4, "the furnished preset should have several sub-rooms");
+  assert.ok(rooms.cols > rooms.rows, "a suite floor should be landscape");
+});
+
+check("an unknown suite preset falls back instead of throwing", () => {
+  assert.equal(suitePreset("nope").id, "rooms");
+  assert.equal(suitePreset(null).id, "rooms");
+});
+
+check("conquests are quick, low-tier side objectives with a resource", () => {
+  assert.ok(HQ_CONQUESTS.length >= 3, "the map should offer a few conquests to farm");
+  for (const c of HQ_CONQUESTS) {
+    assert.equal(c.category, "conquest", `"${c.id}" is in HQ_CONQUESTS but not categorised`);
+    // A conquest is a QUICK raid — if it grows into a fortress it stops being a
+    // repeatable side objective and should be a territory instead.
+    assert.ok(c.tier <= 3, `conquest "${c.id}" is tier ${c.tier} — too heavy for a mini outpost`);
+    assert.ok(c.garrison >= 1 && c.garrison <= 3, `conquest "${c.id}" fields ${c.garrison} defenders`);
+    assert.ok(c.resource && c.resource.length > 0, `conquest "${c.id}" pays no named resource`);
+    assert.ok(resourceEmoji(c.resource).length > 0, `conquest "${c.id}" has no resource emoji`);
+  }
+  // Conquests must be takeable by anyone: they can never start player-held, and
+  // they ride the same capture/hold pipeline as territories (same id space).
+  const ids = new Set(HQ_TERRITORIES.map(t => t.id));
+  for (const c of HQ_CONQUESTS) assert.ok(ids.has(c.id), `conquest "${c.id}" is not on the map`);
 });
 
 check("tiers span the whole ladder and difficulty rises monotonically", () => {

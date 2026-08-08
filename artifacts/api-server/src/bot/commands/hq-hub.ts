@@ -65,7 +65,7 @@ import {
   WORLD_SHIELD_MS, WORLD_COOLDOWN_MS, WORLD_MAX_PER_WINDOW, type WorldTerritoryView,
 } from "../hq/world.js";
 import {
-  getTerritory, tierProfile, tierStars, PLAYER_BASE_ANCHORS, HQ_ROUTES,
+  getTerritory, tierProfile, tierStars, PLAYER_BASE_ANCHORS, HQ_ROUTES, resourceEmoji,
 } from "../hq/defs/world.js";
 import { renderSiegeCinematic, SIEGE_CINEMATIC_FILE, type SiegeCinematicView } from "../hq/cinematic.js";
 import { getBattleSettings } from "../battle/config-engine.js";
@@ -77,7 +77,18 @@ import {
   isRoomUnlocked, isThemeUnlocked, unlockedWalls, unlockedFloors,
   isWallUnlocked, isFloorUnlocked, unlockedBackdrops, isBackdropUnlocked,
   isWallpaperUnlocked, isSurfaceUnlocked, ownedCompanions,
+  unlockedSkyboxes, isSkyboxUnlocked, snapshotProgress,
 } from "../hq/engine.js";
+import { resolveSkybox, HQ_SKYBOXES } from "../hq/defs/skyboxes.js";
+import { loadBaseState } from "../hq/base-state.js";
+import {
+  OUTDOOR_CATEGORIES, INDOOR_CATEGORIES,
+  paletteForCategory, editorPlace, editorRemove, editorClear,
+  undoEdit, redoEdit, canUndo, canRedo,
+  editorMoveSelected, editorDuplicateSelected, editorRotateSelected,
+  setSelectedFeature, setEditorCategory, setEditorMode,
+  type EditorCategory, type EditorMode,
+} from "../hq/editor.js";
 import {
   resolveCompanion, companionsByRarityDesc, COMPANION_NONE, HQ_COMPANIONS,
 } from "../hq/defs/companions.js";
@@ -115,6 +126,13 @@ import {
 import {
   renderWorldMap, type HqWorldView, type WorldMarker,
 } from "../hq/render-world.js";
+import { renderFloorplan } from "../hq/render-floorplan.js";
+import {
+  loadFloorplan, saveFloorplan, focusZone, claimExpansion, availableExpansions,
+  syncZoneUnlocks, describeConnections, listUnlockedZones, getFocusZone,
+  placeOpening, placeWall, edgeNearCell, resetFloorplanToDefault,
+} from "../hq/floorplan.js";
+import { sharedEdges, FLOORPLAN_EXPANSIONS } from "../hq/defs/floorplan.js";
 import type { PlayerHq } from "@workspace/db";
 
 const EPHEMERAL = { flags: MessageFlags.Ephemeral } as const;
@@ -129,10 +147,27 @@ type HubInteraction =
 
 // Player-set personalization lives in the additive `stats` jsonb — no schema
 // change. `title` renames the HQ banner; `motto` is a short tagline in the embed.
-interface HqStats { title?: string; motto?: string; backdropId?: string; wallpaperId?: string; wallsOff?: boolean; glassOff?: boolean; companionId?: string; baseTier?: number }
+interface HqStats {
+  title?: string; motto?: string; backdropId?: string; wallpaperId?: string; skyboxId?: string;
+  wallsOff?: boolean; glassOff?: boolean; companionId?: string; baseTier?: number;
+  /** Outdoor: hide the two giant diorama sky-walls (dark void behind platform). */
+  giantWallsOff?: boolean;
+  editorCategory?: string; editorMode?: string;
+  /** Connected HQ floorplan — pass-through so other stats writes don't wipe it. */
+  floorplan?: unknown;
+  build?: unknown;
+  layers?: unknown;
+}
 function readHqStats(hq: PlayerHq): HqStats {
   const s = hq.stats as HqStats | null | undefined;
-  return { title: s?.title, motto: s?.motto, backdropId: s?.backdropId, wallpaperId: s?.wallpaperId, wallsOff: s?.wallsOff, glassOff: s?.glassOff, companionId: s?.companionId, baseTier: s?.baseTier };
+  return {
+    title: s?.title, motto: s?.motto, backdropId: s?.backdropId, wallpaperId: s?.wallpaperId,
+    skyboxId: s?.skyboxId, wallsOff: s?.wallsOff, glassOff: s?.glassOff,
+    giantWallsOff: s?.giantWallsOff,
+    companionId: s?.companionId, baseTier: s?.baseTier,
+    editorCategory: s?.editorCategory, editorMode: s?.editorMode,
+    floorplan: s?.floorplan, build: s?.build, layers: s?.layers,
+  };
 }
 
 // A base's live fortification (its upgrade tier + the defensive structures it has
@@ -193,15 +228,15 @@ function placementLabel(itemId: string): { emoji: string; name: string } {
 type Section = "overview" | "trophy" | "defenders" | "defenses" | "world" | "build" | "decorations" | "shop" | "rooms" | "theme";
 interface SectionMeta { id: Section; label: string; emoji: string; description: string }
 const SECTIONS: SectionMeta[] = [
-  { id: "overview",    label: "Overview",    emoji: "🏠", description: "Your HQ at a glance" },
-  { id: "trophy",      label: "Trophy Hall",  emoji: "🏆", description: "Pin your proudest cards on pedestals" },
-  { id: "defenders",   label: "Base",        emoji: "🏰", description: "Your town base — station defenders" },
-  { id: "defenses",    label: "Defenses",    emoji: "🛡️", description: "Upgrade your base, build walls & buy shields" },
+  { id: "overview",    label: "Base",        emoji: "🏰", description: "Base Overview — upgrade, shield, edit, stats" },
+  { id: "build",       label: "Edit Base",   emoji: "🛠️", description: "Unified editor — place, move, rotate, skyboxes" },
+  { id: "rooms",       label: "Floorplan",   emoji: "🚪", description: "Connected HQ — rooms, hallways, expand" },
+  { id: "defenders",   label: "Garrison",    emoji: "🛡️", description: "Station defenders on your grounds" },
+  { id: "defenses",    label: "Upgrades",    emoji: "⬆️", description: "Base upgrade ladder & buyable shields" },
   { id: "world",       label: "World Map",   emoji: "🗺️", description: "Conquer AI castles & raid rival bases" },
-  { id: "build",       label: "Build",       emoji: "🛠️", description: "Paint surfaces, water, hills & platforms" },
+  { id: "trophy",      label: "Trophy Hall", emoji: "🏆", description: "Pin your proudest cards on pedestals" },
   { id: "decorations", label: "Decorations", emoji: "🎏", description: "Place the cosmetics you've earned" },
   { id: "shop",        label: "Shop",        emoji: "🛒", description: "Buy furniture — rotates daily" },
-  { id: "rooms",       label: "Rooms",       emoji: "🚪", description: "Switch & unlock rooms" },
   { id: "theme",       label: "Style",       emoji: "🎨", description: "Theme, wallpaper & floor" },
 ];
 
@@ -371,7 +406,7 @@ export async function handleHqHubComponent(
         return "❌ The upgrade could not be saved; your shards were refunded.";
       }
     });
-    await interaction.update(await buildView(interaction, "defenses", [], notice)).catch(() => {});
+    await interaction.update(await buildView(interaction, "overview", [], notice)).catch(() => {});
     return;
   }
   if (action === "buyshield" && interaction.isButton()) {
@@ -392,7 +427,7 @@ export async function handleHqHubComponent(
         return "❌ The shield could not be saved; your shards were refunded.";
       }
     });
-    await interaction.update(await buildView(interaction, "defenses", [], notice)).catch(() => {});
+    await interaction.update(await buildView(interaction, "overview", [], notice)).catch(() => {});
     return;
   }
 
@@ -423,18 +458,122 @@ export async function handleHqHubComponent(
     return;
   }
   if (action === "bplace" && interaction.isButton()) {
-    const notice = await placeAtCursor(guildId, userId);
+    const hqRow = await getOrCreateHq(guildId, userId);
+    const cur = await loadCursor(guildId, userId, hqRow);
+    const notice = (await editorPlace(guildId, userId, cur)).message;
     await interaction.update(await buildView(interaction, "build", [], notice)).catch(() => {});
     return;
   }
   if (action === "bremove" && interaction.isButton()) {
-    const notice = await removeAtCursor(guildId, userId);
+    const hqRow = await getOrCreateHq(guildId, userId);
+    const cur = await loadCursor(guildId, userId, hqRow);
+    const notice = (await editorRemove(guildId, userId, cur)).message;
     await interaction.update(await buildView(interaction, "build", [], notice)).catch(() => {});
     return;
   }
   if (action === "bclear" && interaction.isButton()) {
-    const notice = await clearCanvasAtCursor(guildId, userId);
+    const hqRow = await getOrCreateHq(guildId, userId);
+    const cur = await loadCursor(guildId, userId, hqRow);
+    const notice = await editorClear(guildId, userId, cur.canvas);
     await interaction.update(await buildView(interaction, "build", [], notice)).catch(() => {});
+    return;
+  }
+  if (action === "bundo" && interaction.isButton()) {
+    const notice = await undoEdit(guildId, userId);
+    await interaction.update(await buildView(interaction, "build", [], notice)).catch(() => {});
+    return;
+  }
+  if (action === "bredo" && interaction.isButton()) {
+    const notice = await redoEdit(guildId, userId);
+    await interaction.update(await buildView(interaction, "build", [], notice)).catch(() => {});
+    return;
+  }
+  if (action === "bcat" && interaction.isStringSelectMenu()) {
+    const val = interaction.values[0]!;
+    if (val.startsWith("canvas:")) {
+      await setCursorCanvas(guildId, userId, val.slice("canvas:".length));
+      await interaction.update(await buildView(interaction, "build", [])).catch(() => {});
+      return;
+    }
+    await setEditorCategory(guildId, userId, val as EditorCategory);
+    const cat = val as EditorCategory;
+    const ownedSet = await getUnlockedItemIds(guildId, userId);
+    const hqRow = await getOrCreateHq(guildId, userId);
+    const cur = await loadCursor(guildId, userId, hqRow);
+    const space = cur.canvas === BASE_ROOM_ID ? "outdoor" as const : "indoor" as const;
+    const palette = paletteForCategory(cat, space, ownedSet);
+    if (palette[0] && ["terrain", "water", "buildings", "defenses", "defense"].includes(cat)) {
+      await setCursorMaterial(guildId, userId, palette[0].id);
+    }
+    await interaction.update(await buildView(interaction, "build", [])).catch(() => {});
+    return;
+  }
+  if (action === "bmode" && interaction.isStringSelectMenu()) {
+    await setEditorMode(guildId, userId, interaction.values[0]! as EditorMode);
+    await interaction.update(await buildView(interaction, "build", [])).catch(() => {});
+    return;
+  }
+  if (action === "bpal" && interaction.isStringSelectMenu()) {
+    const id = interaction.values[0]!;
+    if (HQ_SKYBOXES.some(s => s.id === id)) {
+      const hq = await getOrCreateHq(guildId, userId);
+      if (isSkyboxUnlocked(resolveSkybox(id), await getUnlockedItemIds(guildId, userId))) {
+        await updateHq(guildId, userId, { stats: { ...readHqStats(hq), skyboxId: id } }).catch(() => {});
+      }
+    } else if (getSurfaceById(id)) {
+      await setCursorMaterial(guildId, userId, id);
+    }
+    await interaction.update(await buildView(interaction, "build", [])).catch(() => {});
+    return;
+  }
+  if (action === "bsel" && interaction.isStringSelectMenu()) {
+    setSelectedFeature(guildId, userId, Number(interaction.values[0]));
+    await setEditorMode(guildId, userId, "move");
+    await interaction.update(await buildView(interaction, "build", [], "Selected — use Move arrows, Rotate, or Duplicate.")).catch(() => {});
+    return;
+  }
+  if (action === "bdup" && interaction.isButton()) {
+    const hqRow = await getOrCreateHq(guildId, userId);
+    const cur = await loadCursor(guildId, userId, hqRow);
+    const notice = await editorDuplicateSelected(guildId, userId, cur.canvas);
+    await interaction.update(await buildView(interaction, "build", [], notice)).catch(() => {});
+    return;
+  }
+  if (action === "brot" && interaction.isButton()) {
+    const hqRow = await getOrCreateHq(guildId, userId);
+    const cur = await loadCursor(guildId, userId, hqRow);
+    const notice = await editorRotateSelected(guildId, userId, cur.canvas);
+    await interaction.update(await buildView(interaction, "build", [], notice)).catch(() => {});
+    return;
+  }
+  if (action === "bmobj" && interaction.isButton()) {
+    const hqRow = await getOrCreateHq(guildId, userId);
+    const cur = await loadCursor(guildId, userId, hqRow);
+    const dir = parts[2]!;
+    const dx = dir === "left" ? -1 : dir === "right" ? 1 : 0;
+    const dy = dir === "up" ? -1 : dir === "down" ? 1 : 0;
+    const notice = await editorMoveSelected(guildId, userId, cur.canvas, dx, dy);
+    await interaction.update(await buildView(interaction, "build", [], notice)).catch(() => {});
+    return;
+  }
+  // Overview / Rooms quick-action shortcuts (match Base Overview mockup).
+  if (action === "goto" && interaction.isButton()) {
+    const dest = (parts[2] ?? "overview") as Section;
+    // "Edit this room" parks the shared editor on the active interior canvas.
+    if (dest === "build") {
+      const hqRow = await getOrCreateHq(guildId, userId);
+      const roomId = resolveRoom(hqRow.activeRoomId).id;
+      // From Rooms → edit the interior; from Base Overview → outdoor grounds.
+      // Heuristic: if the previous message was rooms-focused, prefer the room.
+      // Always honour an explicit canvas already set; only force room when the
+      // customId carries :room (hq-hub:goto:build:room).
+      if (parts[3] === "room") {
+        await setCursorCanvas(guildId, userId, roomId);
+      } else if (parts[3] === "base") {
+        await setCursorCanvas(guildId, userId, BASE_ROOM_ID);
+      }
+    }
+    await interaction.update(await buildView(interaction, dest, [])).catch(() => {});
     return;
   }
 
@@ -469,7 +608,95 @@ export async function handleHqHubComponent(
   // Switch room / theme (persisted).
   if (action === "room" && interaction.isStringSelectMenu()) {
     await updateHq(guildId, userId, { activeRoomId: interaction.values[0]! }).catch(() => {});
+    // Keep floorplan focus in sync when jumping via legacy room id.
+    const fp = focusZone(await loadFloorplan(guildId, userId), interaction.values[0]!);
+    await saveFloorplan(guildId, userId, fp).catch(() => {});
     await interaction.update(await buildView(interaction, "rooms", [])).catch(() => {});
+    return;
+  }
+  if (action === "fp-focus" && interaction.isStringSelectMenu()) {
+    const zoneId = interaction.values[0]!;
+    let fp = focusZone(await loadFloorplan(guildId, userId), zoneId);
+    await saveFloorplan(guildId, userId, fp).catch(() => {});
+    const z = getFocusZone(fp);
+    if (z.roomTypeId !== "hallway" && !z.roomTypeId.startsWith("hallway")) {
+      await updateHq(guildId, userId, { activeRoomId: z.roomTypeId }).catch(() => {});
+    }
+    await interaction.update(await buildView(interaction, "rooms", [], `Focused **${z.name}**.`)).catch(() => {});
+    return;
+  }
+  if (action === "fp-expand" && interaction.isStringSelectMenu()) {
+    const expId = interaction.values[0]!;
+    let fp = await loadFloorplan(guildId, userId);
+    const progress = await snapshotProgress(guildId, userId);
+    const ok = availableExpansions(fp, progress).some(e => e.id === expId);
+    if (ok) {
+      fp = claimExpansion(fp, expId);
+      await saveFloorplan(guildId, userId, fp).catch(() => {});
+      const z = getFocusZone(fp);
+      if (z.roomTypeId !== "hallway") {
+        await updateHq(guildId, userId, { activeRoomId: z.roomTypeId }).catch(() => {});
+      }
+      await interaction.update(await buildView(interaction, "rooms", [], `Expanded HQ — **${z.name}** connected with a door.`)).catch(() => {});
+    } else {
+      await interaction.update(await buildView(interaction, "rooms", [], "That wing isn't unlocked yet.")).catch(() => {});
+    }
+    return;
+  }
+  if ((action === "fp-door" || action === "fp-arch") && interaction.isButton()) {
+    let fp = await loadFloorplan(guildId, userId);
+    const focus = getFocusZone(fp);
+    const others = listUnlockedZones(fp).filter(z => z.id !== focus.id);
+    let placed = false;
+    const kind = action === "fp-arch" ? "archway" as const : "door" as const;
+    for (const other of others) {
+      const shared = sharedEdges(focus.rect, other.rect);
+      if (!shared.length) continue;
+      // Prefer an edge that isn't already an opening
+      const key = shared.find(k => !fp.openings.some(o => o.key === k)) ?? shared[0]!;
+      fp = placeOpening(fp, key, kind, focus.id, other.id);
+      placed = true;
+      await saveFloorplan(guildId, userId, fp).catch(() => {});
+      await interaction.update(await buildView(
+        interaction, "rooms", [],
+        `Added **${kind}** between **${focus.name}** and **${other.name}**.`,
+      )).catch(() => {});
+      break;
+    }
+    if (!placed) {
+      await interaction.update(await buildView(
+        interaction, "rooms", [],
+        "No shared wall with a neighbour — expand a wing adjacent to this room first.",
+      )).catch(() => {});
+    }
+    return;
+  }
+  if (action === "fp-wall" && interaction.isButton()) {
+    let fp = await loadFloorplan(guildId, userId);
+    const focus = getFocusZone(fp);
+    // Interior divider: a short wall run down the middle of the focused zone.
+    const r = focus.rect;
+    const midX = r.x + Math.floor(r.w / 2);
+    for (let y = r.y + 1; y < r.y + r.h - 1; y++) {
+      fp = placeWall(fp, edgeNearCell(midX, y, "v"), { kind: "interior", styleId: "wood" });
+    }
+    // Leave a door gap in the middle of the divider
+    const gapY = r.y + Math.floor(r.h / 2);
+    fp = placeOpening(fp, edgeNearCell(midX, gapY, "v"), "door", focus.id, focus.id);
+    await saveFloorplan(guildId, userId, fp).catch(() => {});
+    await interaction.update(await buildView(
+      interaction, "rooms", [],
+      `Placed **interior walls** with a doorway inside **${focus.name}**.`,
+    )).catch(() => {});
+    return;
+  }
+  if (action === "fp-reset" && interaction.isButton()) {
+    await resetFloorplanToDefault(guildId, userId).catch(() => {});
+    await updateHq(guildId, userId, { activeRoomId: DEFAULT_ROOM_ID }).catch(() => {});
+    await interaction.update(await buildView(
+      interaction, "rooms", [],
+      "HQ floorplan **reset** to the premium starter layout (Command Center ↔ Hallway ↔ Trophy Hall). Expand wings anytime.",
+    )).catch(() => {});
     return;
   }
   if (action === "theme" && interaction.isStringSelectMenu()) {
@@ -519,6 +746,13 @@ export async function handleHqHubComponent(
     const hq = await getOrCreateHq(guildId, userId);
     const s = readHqStats(hq);
     await updateHq(guildId, userId, { stats: { ...s, wallsOff: !s.wallsOff } }).catch(() => {});
+    await interaction.update(await buildView(interaction, "theme", [])).catch(() => {});
+    return;
+  }
+  if (action === "togglegiant" && interaction.isButton()) {
+    const hq = await getOrCreateHq(guildId, userId);
+    const s = readHqStats(hq);
+    await updateHq(guildId, userId, { stats: { ...s, giantWallsOff: !s.giantWallsOff } }).catch(() => {});
     await interaction.update(await buildView(interaction, "theme", [])).catch(() => {});
     return;
   }
@@ -709,6 +943,7 @@ async function buildRenderView(
     }
   }
 
+  const skybox = resolveSkybox(style.skyboxId);
   return {
     ownerName, displayTitle: hqDisplayTitle(hq, ownerName), ownerAvatarUrl, theme, wall, floor,
     wallSprite: spriteForPrefix(wall.spritePrefix, "wall"),
@@ -719,6 +954,8 @@ async function buildRenderView(
     cursor: cursor ? cursorOverlay(cursor) : null,
     backdropSprite, wallsOff: !!style.wallsOff, glassOff: !!style.glassOff,
     companion: companionRenderFor(hq), visitors: visitorCount(hq.hqLevel),
+    skybox,
+    roomId: room.id,
   };
 }
 
@@ -729,6 +966,42 @@ async function renderRoomImage(view: HqRenderView): Promise<AttachmentBuilder | 
 
 async function renderBaseImage(view: HqBaseView): Promise<AttachmentBuilder | null> {
   const buf = await renderBase(view).catch(() => null);
+  return buf ? new AttachmentBuilder(buf, { name: HQ_FILE }) : null;
+}
+
+async function renderFloorplanImage(
+  guildId: string, userId: string, ownerName: string, ownerAvatarUrl: string | null, hq: PlayerHq,
+): Promise<AttachmentBuilder | null> {
+  let fp = await loadFloorplan(guildId, userId);
+  const owned = await getUnlockedItemIds(guildId, userId).catch(() => new Set<string>());
+  const ownedRooms = new Set(unlockedRooms(owned).map(r => r.id));
+  fp = syncZoneUnlocks(fp, ownedRooms);
+  // Auto-claim expansion parcels for room types the player has unlocked.
+  for (const exp of FLOORPLAN_EXPANSIONS) {
+    if (ownedRooms.has(exp.roomTypeId) && !fp.claimedExpansions.includes(exp.id)) {
+      fp = claimExpansion(fp, exp.id);
+    }
+  }
+  await saveFloorplan(guildId, userId, fp).catch(() => {});
+  const theme = resolveTheme(hq.themeId);
+  const skybox = resolveSkybox(readHqStats(hq).skyboxId);
+  const focus = getFocusZone(fp);
+  const links = describeConnections(fp);
+  const buf = await renderFloorplan({
+    ownerName,
+    ownerAvatarUrl,
+    displayTitle: hqDisplayTitle(hq, ownerName),
+    subtitle: `Floorplan · ${focus.emoji} ${focus.name}`,
+    theme,
+    roomEmoji: "🚪",
+    roomName: "HQ Floorplan",
+    hqLevel: hq.hqLevel,
+    floorplan: fp,
+    skybox,
+    statusLine: links.length
+      ? `Connections: ${links.slice(0, 3).join(" · ")}`
+      : "Build wings · connect rooms with doors · expand your HQ",
+  }).catch(() => null);
   return buf ? new AttachmentBuilder(buf, { name: HQ_FILE }) : null;
 }
 
@@ -775,6 +1048,7 @@ async function renderWorldImage(
     structure: t.territory.structure,
     garrison: t.territory.garrison,
     kind: "territory",
+    category: t.territory.category ?? "territory",
     held: !!t.heldByUserId,
     heldByYou: t.heldByUserId === viewerId,
     shielded: !!t.shieldUntil && t.shieldUntil.getTime() > now,
@@ -799,11 +1073,12 @@ async function renderWorldImage(
     });
   });
 
-  const open = world.territories.filter(t => !t.heldByUserId).length;
+  const openTerr = world.territories.filter(t => !t.heldByUserId && t.territory.category !== "conquest").length;
+  const conquestCount = world.territories.filter(t => t.territory.category === "conquest").length;
   const view: HqWorldView = {
     ownerAvatarUrl: avatarUrl,
     displayTitle: "World Map",
-    subtitle: `${open} AI territor${open === 1 ? "y" : "ies"} · ${world.bases.length} member base${world.bases.length === 1 ? "" : "s"}`,
+    subtitle: `${openTerr} AI territor${openTerr === 1 ? "y" : "ies"} · ${conquestCount} conquest${conquestCount === 1 ? "" : "s"} · ${world.bases.length} base${world.bases.length === 1 ? "" : "s"}`,
     theme, roomEmoji: "🗺️", roomName: "World", hqLevel: level,
     markers, routes: HQ_ROUTES,
   };
@@ -836,7 +1111,8 @@ async function buildBaseRenderView(
     defenders.push({ slot, cardId: card.id, name: card.name, artUrl: toAbsoluteImageUrl(card.imageUrl), rarityColor: d.color, basePath });
   }
   const buildings: HqBaseBuilding[] = BASE_BUILDING_ROLES.map(role => ({ role, spritePath: spriteForPrefix("building", role) }));
-  const capture = activeCapture(await getBaseState(guildId, userId));
+  const baseState = await getBaseState(guildId, userId).catch(() => null);
+  const capture = activeCapture(baseState);
   // Player-placed grounds decorations (the base is its own decoratable "room").
   const groundsMap = await getPlacements(guildId, userId, BASE_ROOM_ID);
   const decorations: HqRenderDeco[] = [];
@@ -845,12 +1121,19 @@ async function buildBaseRenderView(
     if (!d) continue;
     decorations.push({ slot, category: d.category, name: d.name, rarityColor: rarityColor(d.rarity as Rarity, settings, displayMap), spritePath: spriteFor(theme, d.spriteKey) });
   }
+  const stats = readHqStats(hq);
+  const skybox = resolveSkybox(stats.skyboxId);
+  const shieldActive = !!baseState?.shieldUntil && baseState.shieldUntil.getTime() > Date.now();
   return {
     ownerName, displayTitle: hqDisplayTitle(hq, ownerName), ownerAvatarUrl, theme,
     roomEmoji: "🏰", roomName: "Base", hqLevel: hq.hqLevel,
     subtitle: capture ? `Base • held by ${capture.heldName}` : `Base • ${defenders.length}/${HQ_DEFENDER_SLOTS} defenders`,
     buildings, defenders, decorations, terrain, captured: !!capture,
     cursor: cursor ? cursorOverlay(cursor) : null,
+    showGrid: !!cursor, // grid ONLY in Edit Mode
+    skybox,
+    shieldActive,
+    giantWallsOff: !!stats.giantWallsOff,
     companion: companionRenderFor(hq), visitors: visitorCount(hq.hqLevel),
   };
 }
@@ -886,24 +1169,25 @@ async function buildView(
   const wall = resolveWall(hq.wallId);
   const floor = resolveFloor(hq.floorId);
 
-  // Section picks the image: World = the campaign map; Base = the exterior town
-  // (with defenders); everything else = the interior room.
+  // Section picks the image: Overview/Garrison/Upgrades = outdoor Base Overview
+  // (no edit grid). Edit Base = editor canvas with grid. Rooms = active interior
+  // (or indoor editor when cursor is on a room). World = campaign map.
   let world: WorldSnapshot = { territories: [], bases: [] };
   let file: AttachmentBuilder | null;
   if (section === "world") {
     world = await loadWorld(guildId, userId);
     file = await renderWorldImage(theme, interaction.user.displayAvatarURL(), hq.hqLevel, world, userId);
   } else if (section === "build") {
-    // Build mode renders whichever canvas the cursor is parked on, with the
-    // lattice rulers and the selection rectangle overlaid.
     const cur = await loadCursor(guildId, userId, hq);
     file = cur.canvas === BASE_ROOM_ID
       ? await renderBaseImage(await buildBaseRenderView(
           guildId, userId, interaction.user.username, interaction.user.displayAvatarURL(), hq, cur))
       : await renderRoomImage(await buildRenderView(
           guildId, userId, interaction.user.username, interaction.user.displayAvatarURL(), hq, false, cur));
-  } else if (section === "defenders" || section === "defenses") {
+  } else if (section === "overview" || section === "defenders" || section === "defenses") {
     file = await renderBaseImage(await buildBaseRenderView(guildId, userId, interaction.user.username, interaction.user.displayAvatarURL(), hq));
+  } else if (section === "rooms") {
+    file = await renderFloorplanImage(guildId, userId, interaction.user.username, interaction.user.displayAvatarURL(), hq);
   } else {
     file = await renderRoomImage(await buildRenderView(guildId, userId, interaction.user.username, interaction.user.displayAvatarURL(), hq));
   }
@@ -915,48 +1199,73 @@ async function buildView(
 
   switch (section) {
     case "overview": {
-      const decoOwned = ownedDecorations(owned).length;
-      const roomsOpen = unlockedRooms(owned).length;
-      const stats = readHqStats(hq);
+      // Base Overview — primary hub matching mockup 01: preview, upgrade, shield,
+      // edit, quick stats. Outdoor base image (no edit grid).
+      const base = await loadBaseState(guildId, userId);
+      const stats = base.stats;
       const title = hqDisplayTitle(hq, interaction.user.username);
-      embed.setTitle(`🏠 ${title}`)
+      const qs = base.quickStats;
+      const tier = qs.baseTier;
+      const next = qs.nextTier;
+      const bal = (await getOrCreateCurrency(guildId, userId).catch(() => ({ shards: 0 }))).shards ?? 0;
+      const shieldLine = base.shieldActive && base.shieldUntil
+        ? `Shield Active — protected until <t:${Math.floor(base.shieldUntil.getTime() / 1000)}:R>`
+        : "_No shield — your base can be sieged._";
+
+      embed.setTitle(`🏰 ${title}`)
         .setDescription(
           (stats.motto ? `_“${stats.motto}”_\n\n` : "") +
-          `**${theme.emoji} ${theme.name}** · **HQ Level ${hq.hqLevel}**\n` +
-          `Now viewing **${room.emoji} ${room.name}**. Use the dropdown to decorate, restyle, or feature cards.`,
+          `**Base** · held by **${interaction.user.username}** · **HQ LV ${hq.hqLevel}**\n` +
+          `${tier.emoji} **${tier.label}** · Skybox **${base.skybox.emoji} ${base.skybox.name}**` +
+          (base.shieldActive ? " · 🛡️ *shield aura active*" : ""),
         )
         .addFields(
-          { name: "🎏 Decorations earned", value: `**${decoOwned}** / ${HQ_DECORATIONS.length}`, inline: true },
-          { name: "🚪 Rooms unlocked", value: `**${roomsOpen}** / ${HQ_ROOMS.length}`, inline: true },
-          { name: "🎨 Themes", value: `**${unlockedThemes(owned).length}** / ${HQ_THEMES.length}`, inline: true },
+          {
+            name: "⬆️ Base Upgrade",
+            value:
+              `**HQ Level ${hq.hqLevel}** · ${tier.label}\n` +
+              `❤️ Health **${qs.health.toLocaleString()}** · 🛡️ Defense **${qs.defense.toLocaleString()}**\n` +
+              `📦 Storage **${qs.storage.toLocaleString()}** · 💠 Income **+${qs.incomeBonusPct}%**\n` +
+              `🏯 Fortification **+${qs.fortifyPct}%**`,
+            inline: false,
+          },
+          { name: "🛡️ Buy Shield", value: shieldLine, inline: false },
         );
-      // Companions + ambient visitors — the HQ's living touches.
-      const pets = ownedCompanions(owned);
-      const activePet = resolveCompanion(stats.companionId);
-      embed.addFields(
-        { name: "🐾 Companion", value: activePet ? `${activePet.emoji} **${activePet.name}**` : (pets.length ? "_none set_" : "_none earned yet_"), inline: true },
-        { name: "👥 Visitors", value: `**${visitorCount(hq.hqLevel)}** roaming`, inline: true },
-        { name: "🐾 Companions earned", value: `**${pets.length}** / ${HQ_COMPANIONS.length}`, inline: true },
-      );
-      const nextHint = nextUnlockHint(owned);
-      if (nextHint) embed.addFields({ name: "🔓 Next up", value: nextHint, inline: false });
+      if (notice) embed.addFields({ name: "🧾 Result", value: notice.slice(0, 1024) });
+
+      // Quick Actions — Base Upgrade / Edit Base / Shop / Rooms (mockup IA).
       rows.push(new ActionRowBuilder<ButtonBuilder>().addComponents(
-        new ButtonBuilder().setCustomId("hq-hub:renamehq")
-          .setLabel(stats.title ? "Rename HQ" : "Name your HQ")
-          .setEmoji("✏️").setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder().setCustomId("hq-hub:goto:defenses").setLabel("Base Upgrade").setEmoji("⬆️").setStyle(ButtonStyle.Success),
+        new ButtonBuilder().setCustomId("hq-hub:goto:build:base").setLabel("Edit Base").setEmoji("🛠️").setStyle(ButtonStyle.Primary),
+        new ButtonBuilder().setCustomId("hq-hub:goto:shop").setLabel("Shop").setEmoji("🛒").setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder().setCustomId("hq-hub:goto:rooms").setLabel("Rooms").setEmoji("🚪").setStyle(ButtonStyle.Secondary),
       ));
-      // Companion picker — choose from the pets you've EARNED (or send it away).
-      if (pets.length > 0) {
-        rows.push(new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
-          new StringSelectMenuBuilder().setCustomId("hq-hub:companion").setPlaceholder("🐾 Choose a companion…")
-            .addOptions([
-              { label: "None", value: COMPANION_NONE, description: "Send your companion away", emoji: "🚫", default: !activePet },
-              ...companionsByRarityDesc(pets.map(p => p.id)).slice(0, 24).map(c => ({
-                label: c.name.slice(0, 90), value: c.id, description: c.rarity, emoji: c.emoji, default: c.id === stats.companionId,
-              })),
-            ]),
-        ));
+      // Primary CTA: upgrade (or maxed) — shard costs (live currency), not mockup gems.
+      const cta = new ActionRowBuilder<ButtonBuilder>();
+      if (next) {
+        cta.addComponents(
+          new ButtonBuilder().setCustomId("hq-hub:upgrade")
+            .setLabel(`Upgrade → ${next.label} (+${next.fortifyPct}%) · ${next.cost.toLocaleString()}💠`.slice(0, 80))
+            .setEmoji(next.emoji).setStyle(ButtonStyle.Success).setDisabled(bal < next.cost),
+          new ButtonBuilder().setCustomId("hq-hub:renamehq")
+            .setLabel(stats.title ? "Rename" : "Name HQ").setEmoji("✏️").setStyle(ButtonStyle.Secondary),
+        );
+      } else {
+        cta.addComponents(
+          new ButtonBuilder().setCustomId("hq-hub:upgrade").setLabel("MAX LEVEL").setEmoji("✅")
+            .setStyle(ButtonStyle.Secondary).setDisabled(true),
+          new ButtonBuilder().setCustomId("hq-hub:renamehq")
+            .setLabel(stats.title ? "Rename" : "Name HQ").setEmoji("✏️").setStyle(ButtonStyle.Secondary),
+        );
       }
+      rows.push(cta);
+      // Buy / extend shield — subtle aura appears on the preview when active.
+      rows.push(new ActionRowBuilder<ButtonBuilder>().addComponents(
+        SHIELD_PRODUCTS.slice(0, 3).map(p => new ButtonBuilder()
+          .setCustomId(`hq-hub:buyshield:${p.id}`)
+          .setLabel(`${base.shieldActive ? "Extend" : "Shield"} ${p.hours}h · ${p.cost.toLocaleString()}💠`.slice(0, 80))
+          .setEmoji("🛡️").setStyle(ButtonStyle.Primary).setDisabled(bal < p.cost)),
+      ));
       break;
     }
 
@@ -1155,7 +1464,9 @@ async function buildView(
           .map(t => ({
             label: t.territory.name.slice(0, 90),
             value: `t:${t.territory.id}`,
-            description: `${tierProfile(t.territory.tier).label} · ${t.territory.garrison} defenders · ${holderLabel(t)}`.slice(0, 100),
+            description: (t.territory.category === "conquest"
+              ? `Conquest · ${t.territory.garrison} def · pays ${t.territory.resource ?? "shards"} · ${holderLabel(t)}`
+              : `${tierProfile(t.territory.tier).label} · ${t.territory.garrison} defenders · ${holderLabel(t)}`).slice(0, 100),
             emoji: (t.shieldUntil && t.shieldUntil.getTime() > now) ? "🛡️" : t.faction.emoji,
           })),
         ...world.bases.map(b => ({
@@ -1199,34 +1510,37 @@ async function buildView(
     }
 
     case "build": {
+      // Unified Edit Base — category tabs, tools, undo/redo, skyboxes (mockups 02–03).
       const cur = await loadCursor(guildId, userId, hq);
       const canvasName = cur.canvas === BASE_ROOM_ID ? "Base grounds" : resolveRoom(cur.canvas).name;
       const grid = gridFor(cur.canvas);
       const mat = resolveSurface(cur.materialId);
       const features = await listTerrain(guildId, userId, cur.canvas).catch(() => []);
+      const space = cur.canvas === BASE_ROOM_ID ? "outdoor" as const : "indoor" as const;
+      const stats = readHqStats(hq);
+      const cat = (stats.editorCategory as EditorCategory | undefined)
+        ?? (space === "outdoor" ? "terrain" : "floors");
+      const mode = (stats.editorMode as EditorMode | undefined) ?? "place";
+      const cats = space === "outdoor" ? OUTDOOR_CATEGORIES : INDOOR_CATEGORIES;
+      const palette = paletteForCategory(cat, space, owned);
+      const skybox = resolveSkybox(stats.skyboxId);
 
-      embed.setTitle("🛠️ Build Mode").setDescription(
-        `Paint the ground of **${canvasName}** in rectangles. The picture shows the **X/Y rulers** and a ` +
-        "**live cursor** — move it with the arrows, resize it, pick a material, then **Place**.\n\n" +
-        `📍 Cursor: **${cur.w}×${cur.h}** at **(${cur.x}, ${cur.y})** on a **${grid}×${grid}** grid\n` +
-        `🎨 Brush: ${mat.emoji} **${mat.name}** _(${mat.kind})_` +
-        (mat.kind === "flat" ? "" : ` · height **${cur.elevation || mat.height}**`) +
-        `\n🧱 Built here: **${features.length}** / ${MAX_FEATURES_PER_CANVAS}`,
+      embed.setTitle(`🛠️ Edit Mode · ${canvasName}`).setDescription(
+        `**${mode.toUpperCase()} MODE** — grid is **ON** while editing. Live cursor at ` +
+        `**${cur.w}×${cur.h} @ (${cur.x},${cur.y})** on a **${grid}×${grid}** lattice.\n` +
+        `Brush: ${mat.emoji} **${mat.name}** · Category: **${cat}** · Skybox: ${skybox.emoji} **${skybox.name}**\n` +
+        `Built: **${features.length}** / ${MAX_FEATURES_PER_CANVAS}` +
+        (canUndo(guildId, userId) || canRedo(guildId, userId) ? " · Undo/Redo ready" : ""),
       );
       if (features.length > 0) {
         embed.addFields({
-          name: "Placed surfaces",
-          value: features.slice(-10).reverse().map(describeFeature).join("\n").slice(0, 1024),
+          name: "Placed (select to Move / Rotate / Duplicate)",
+          value: features.slice(-8).reverse().map(describeFeature).join("\n").slice(0, 1024),
         });
       }
-      embed.addFields({
-        name: "⌨️ Prefer typing?",
-        value:
-          "`/hqbuild place` drops the brush at exact coordinates, `/hqbuild remove` clears a tile, " +
-          "`/hqbuild list` prints everything you've built, and `/hqbuild wallpaper` re-papers the walls.",
-      });
       if (notice) embed.addFields({ name: "🧾 Result", value: notice.slice(0, 1024) });
 
+      // Tool row: cursor nudge + place / undo / redo
       rows.push(new ActionRowBuilder<ButtonBuilder>().addComponents(
         new ButtonBuilder().setCustomId("hq-hub:bmove:left").setEmoji("⬅️").setStyle(ButtonStyle.Secondary),
         new ButtonBuilder().setCustomId("hq-hub:bmove:up").setEmoji("⬆️").setStyle(ButtonStyle.Secondary),
@@ -1235,35 +1549,43 @@ async function buildView(
         new ButtonBuilder().setCustomId("hq-hub:bplace").setLabel("Place").setEmoji("✅").setStyle(ButtonStyle.Success),
       ));
       rows.push(new ActionRowBuilder<ButtonBuilder>().addComponents(
-        new ButtonBuilder().setCustomId("hq-hub:bsize:w").setLabel(`W ${cur.w}`).setEmoji("↔️").setStyle(ButtonStyle.Primary),
-        new ButtonBuilder().setCustomId("hq-hub:bsize:h").setLabel(`H ${cur.h}`).setEmoji("↕️").setStyle(ButtonStyle.Primary),
-        new ButtonBuilder().setCustomId("hq-hub:belev").setLabel(`Lift ${cur.elevation}`).setEmoji("⛰️")
-          .setStyle(ButtonStyle.Primary).setDisabled(mat.kind === "flat"),
-        new ButtonBuilder().setCustomId("hq-hub:bremove").setLabel("Remove").setEmoji("🗑️").setStyle(ButtonStyle.Danger),
-        new ButtonBuilder().setCustomId("hq-hub:bclear").setLabel("Clear all").setEmoji("🧹")
+        new ButtonBuilder().setCustomId("hq-hub:bundo").setLabel("Undo").setEmoji("↩️")
+          .setStyle(ButtonStyle.Secondary).setDisabled(!canUndo(guildId, userId)),
+        new ButtonBuilder().setCustomId("hq-hub:bredo").setLabel("Redo").setEmoji("↪️")
+          .setStyle(ButtonStyle.Secondary).setDisabled(!canRedo(guildId, userId)),
+        new ButtonBuilder().setCustomId("hq-hub:brot").setLabel("Rotate").setEmoji("🔄").setStyle(ButtonStyle.Primary),
+        new ButtonBuilder().setCustomId("hq-hub:bdup").setLabel("Duplicate").setEmoji("📋").setStyle(ButtonStyle.Primary),
+        new ButtonBuilder().setCustomId("hq-hub:bclear").setLabel("Clear").setEmoji("🧹")
           .setStyle(ButtonStyle.Danger).setDisabled(features.length === 0),
       ));
-      // Only materials the player has earned or bought — the locked ones are
-      // listed in the Shop's Surfaces aisle instead of teasing them here.
-      const space = cur.canvas === BASE_ROOM_ID ? "outdoor" : "indoor";
-      const brushes = surfacesFor(space).filter(s => isSurfaceUnlocked(s, owned));
-      rows.push(new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
-        new StringSelectMenuBuilder().setCustomId("hq-hub:bmat").setPlaceholder("🎨 Pick a material…")
-          .addOptions(brushes.slice(0, 25).map(s => ({
-            label: s.name.slice(0, 90), value: s.id, emoji: s.emoji,
-            description: s.kind, default: s.id === cur.materialId,
-          }))),
-      ));
+      // Category tabs (+ canvas switchers) and the active palette.
       const canvases = [
         { id: BASE_ROOM_ID, name: "Base grounds", emoji: "🏰" },
         ...unlockedRooms(owned).map(r => ({ id: r.id, name: r.name, emoji: r.emoji })),
       ];
+      const catOpts = [
+        ...cats.map(c => ({
+          label: c.label, value: c.id, emoji: c.emoji, default: c.id === cat,
+          description: "Category tab",
+        })),
+        ...canvases.slice(0, Math.max(0, 25 - cats.length)).map(c => ({
+          label: `Canvas: ${c.name}`.slice(0, 90), value: `canvas:${c.id}`, emoji: c.emoji,
+          default: false, description: "Switch edit canvas",
+        })),
+      ].slice(0, 25);
       rows.push(new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
-        new StringSelectMenuBuilder().setCustomId("hq-hub:bcanvas").setPlaceholder("📐 Choose what to build on…")
-          .addOptions(canvases.slice(0, 25).map(c => ({
-            label: c.name.slice(0, 90), value: c.id, emoji: c.emoji,
-            description: c.id === BASE_ROOM_ID ? `${HQ_BASE_GRID}×${HQ_BASE_GRID} outdoor grid` : `${HQ_GRID}×${HQ_GRID} indoor grid`,
-            default: c.id === cur.canvas,
+        new StringSelectMenuBuilder().setCustomId("hq-hub:bcat").setPlaceholder("📂 Category / canvas…")
+          .addOptions(catOpts),
+      ));
+      const palOpts = palette.length > 0 ? palette : [
+        { id: cur.materialId, label: mat.name, emoji: mat.emoji, kind: mat.kind },
+      ];
+      rows.push(new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
+        new StringSelectMenuBuilder().setCustomId("hq-hub:bpal").setPlaceholder(`🎨 ${cat} palette…`)
+          .addOptions(palOpts.slice(0, 25).map(p => ({
+            label: p.label.slice(0, 90), value: p.id, emoji: p.emoji,
+            description: p.kind.slice(0, 100),
+            default: p.id === cur.materialId || p.id === skybox.id,
           }))),
       ));
       break;
@@ -1413,20 +1735,78 @@ async function buildView(
     }
 
     case "rooms": {
-      embed.setTitle("🚪 Rooms").setDescription("Each room shows off a different side of your journey. Locked rooms open as you play.");
-      const lines = HQ_ROOMS.map(r => {
-        const open = isRoomUnlocked(r, owned);
-        const here = r.id === room.id ? " · 📍 here" : "";
-        return `${open ? r.emoji : "🔒"} **${r.name}**${here} — ${open ? r.blurb : unlockLabel(r.unlock)}`;
-      });
-      embed.addFields({ name: "Rooms", value: lines.join("\n").slice(0, 1024) });
-      const open = unlockedRooms(owned);
-      if (open.length > 1) {
+      // Connected HQ floorplan — zones joined by doors/hallways, expandable wings.
+      let fp = await loadFloorplan(guildId, userId);
+      const ownedRooms = new Set(unlockedRooms(owned).map(r => r.id));
+      fp = syncZoneUnlocks(fp, ownedRooms);
+      const focus = getFocusZone(fp);
+      const focusRoom = resolveRoom(focus.roomTypeId === "hallway" ? hq.activeRoomId : focus.roomTypeId);
+      const links = describeConnections(fp);
+      const progress = await snapshotProgress(guildId, userId).catch(() => null);
+      const expansions = progress ? availableExpansions(fp, progress) : [];
+
+      embed.setTitle(`🚪 HQ Floorplan · Floor ${fp.floor + 1}`)
+        .setDescription(
+          `Design a **connected headquarters** — not isolated boxes.\n` +
+          `Focus: ${focus.emoji} **${focus.name}**` +
+          (focus.unlocked ? "" : " _(locked parcel)_") + `\n\n` +
+          `Add rooms · connect with **doors / archways** · place **interior walls** · expand wings as you progress.\n` +
+          `_Inspired by Sims Build Mode, RimWorld, and Fallout Shelter._`,
+        )
+        .addFields(
+          {
+            name: "🔗 Connections",
+            value: (links.length ? links.map(l => `• ${l}`).join("\n") : "_No doors yet — expand a wing to link rooms._").slice(0, 1024),
+          },
+          {
+            name: "🏠 Zones",
+            value: listUnlockedZones(fp).map(z => {
+              const here = z.id === focus.id ? " · 📍" : "";
+              return `${z.emoji} **${z.name}**${here}`;
+            }).join("\n").slice(0, 1024) || "_none_",
+          },
+        );
+      if (focus.roomTypeId !== "hallway") {
+        const bonusLines = focusRoom.bonuses.map(b => `• **${b.label}:** ${b.value}`).join("\n");
+        embed.addFields({ name: `📊 ${focusRoom.name} bonuses`, value: bonusLines || "_none_" });
+      }
+      const locked = fp.zones.filter(z => !z.unlocked);
+      if (locked.length) {
+        embed.addFields({
+          name: "🔒 Reserved wings",
+          value: locked.slice(0, 8).map(z => `${z.emoji} ${z.name}`).join(" · ").slice(0, 1024),
+        });
+      }
+
+      const zones = listUnlockedZones(fp);
+      if (zones.length > 0) {
         rows.push(new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
-          new StringSelectMenuBuilder().setCustomId("hq-hub:room").setPlaceholder("Switch room…")
-            .addOptions(open.map(r => ({ label: r.name, value: r.id, description: r.blurb.slice(0, 90), emoji: r.emoji, default: r.id === room.id }))),
+          new StringSelectMenuBuilder().setCustomId("hq-hub:fp-focus").setPlaceholder("Focus a room / hallway…")
+            .addOptions(zones.slice(0, 25).map(z => ({
+              label: z.name, value: z.id,
+              description: z.roomTypeId === "hallway" ? "Corridor" : resolveRoom(z.roomTypeId).blurb.slice(0, 100),
+              emoji: z.emoji, default: z.id === focus.id,
+            }))),
         ));
       }
+      if (expansions.length > 0) {
+        rows.push(new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
+          new StringSelectMenuBuilder().setCustomId("hq-hub:fp-expand").setPlaceholder("Expand HQ — claim a wing…")
+            .addOptions(expansions.slice(0, 25).map(e => ({
+              label: e.label, value: e.id,
+              description: `Adds ${e.roomTypeId} and connects with a door`,
+              emoji: e.emoji,
+            }))),
+        ));
+      }
+      rows.push(new ActionRowBuilder<ButtonBuilder>().addComponents(
+        new ButtonBuilder().setCustomId("hq-hub:fp-door").setLabel("Add Door").setEmoji("🚪").setStyle(ButtonStyle.Primary),
+        new ButtonBuilder().setCustomId("hq-hub:fp-arch").setLabel("Add Archway").setEmoji("🏛️").setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder().setCustomId("hq-hub:fp-wall").setLabel("Interior Walls").setEmoji("🧱").setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder().setCustomId("hq-hub:goto:build:room").setLabel("Decorate").setEmoji("🛠️").setStyle(ButtonStyle.Success),
+        new ButtonBuilder().setCustomId("hq-hub:fp-reset").setLabel("Reset HQ").setEmoji("♻️").setStyle(ButtonStyle.Danger),
+      ));
+      if (notice) embed.addFields({ name: "🧾 Result", value: notice.slice(0, 1024) });
       break;
     }
 
@@ -1435,10 +1815,11 @@ async function buildView(
       const backdrop = resolveBackdrop(style.backdropId);
       const wallpaper = resolveWallpaper(style.wallpaperId);
       embed.setTitle("🎨 Style").setDescription(
-        "Restyle your whole HQ — the **theme** sets lighting & mood, the **floor** reskins the ground, and " +
-        "**wallpaper** hangs a real repeating covering on the walls, complete with dado rail and skirting. " +
-        "Or toggle the **walls** off entirely and show a **backdrop** behind the room, and hide the display " +
-        "**glass**. New styles unlock as you play.",
+        "Restyle your HQ.\n" +
+        "• **Room walls / floor** — architecture of interior rooms (stone, wood, bunker…)\n" +
+        "• **Giant walls** — the two outdoor diorama sky planes behind your grassy platform (Clouds, Night, Desert…). Not wallpaper.\n" +
+        "• Toggle **Giant walls off** for a dark-void outdoor look (shield still works).\n" +
+        "• **Room walls off** opens an interior to the outdoors.",
       );
       const themeLines = HQ_THEMES.map(t => {
         const open = isThemeUnlocked(t, owned);
@@ -1465,10 +1846,10 @@ async function buildView(
           .setStyle(style.wallsOff ? ButtonStyle.Secondary : ButtonStyle.Primary),
         new ButtonBuilder().setCustomId("hq-hub:preset:outside").setLabel("Outside").setEmoji("🌅")
           .setStyle(style.wallsOff ? ButtonStyle.Primary : ButtonStyle.Secondary),
-        new ButtonBuilder().setCustomId("hq-hub:togglewalls").setLabel(style.wallsOff ? "Walls on" : "Walls off").setEmoji("🧱")
+        new ButtonBuilder().setCustomId("hq-hub:togglewalls").setLabel(style.wallsOff ? "Room walls on" : "Room walls off").setEmoji("🧱")
           .setStyle(ButtonStyle.Secondary),
-        new ButtonBuilder().setCustomId("hq-hub:toggleglass").setLabel(style.glassOff ? "Glass on" : "Glass off").setEmoji("🪟")
-          .setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder().setCustomId("hq-hub:togglegiant").setLabel(style.giantWallsOff ? "Giant walls on" : "Giant walls off").setEmoji("☁️")
+          .setStyle(style.giantWallsOff ? ButtonStyle.Secondary : ButtonStyle.Primary),
       ));
       // Discord caps a message at 5 action rows; nav + the button row already
       // take 2. Offer the reskin selects in priority order, stopping before the
@@ -2046,16 +2427,22 @@ async function finalizeTerritorySiege(
   const reward = Math.round(base * (1 + 0.15 * Math.max(0, o.stars - (o.attackerWon ? 1 : 0))));
   await addShards(guildId, attackerId, reward).catch(() => {});
   if (previousHolder && previousHolder !== attackerId) void notifyTerritoryLost(interaction, previousHolder, attackerName, view.territory.name);
+  const conquest = view.territory.category === "conquest";
+  const res = view.territory.resource ?? "shards";
   return {
-    title: o.attackerWon ? `🚩 ${view.territory.name} is yours!` : `🛡️ ${view.territory.name} holds`,
+    title: o.attackerWon
+      ? (conquest ? `${resourceEmoji(res)} ${view.territory.name} seized!` : `🚩 ${view.territory.name} is yours!`)
+      : `🛡️ ${view.territory.name} holds`,
     description: o.attackerWon
-      ? `You broke the ${holderLabel(view)} garrison in **${o.turns}** turns and now hold this ${prof.label.toLowerCase()} — **${prof.tributePerHour}💠/hr**.`
+      ? (conquest
+          ? `You cleared the ${holderLabel(view)} in **${o.turns}** turns and now work this outpost — it pays **${prof.tributePerHour}💠/hr** in ${res} while you hold it. Raid, hold, and collect from the 🗺️ World map; a rival can take it back the same way.`
+          : `You broke the ${holderLabel(view)} garrison in **${o.turns}** turns and now hold this ${prof.label.toLowerCase()} — **${prof.tributePerHour}💠/hr**.`)
       : `The ${holderLabel(view)} garrison threw you back after **${o.turns}** turns.`,
     color: o.attackerWon ? 0x4fd06a : view.faction.color,
     fields: [
       { name: "⚔️ Squad power", value: `**${o.attackerPower}**`, inline: true },
       { name: "🛡️ Garrison", value: `**${o.defenderPower}**`, inline: true },
-      { name: "💠 Loot", value: `**+${reward}** shards`, inline: true },
+      { name: conquest ? `${resourceEmoji(res)} Haul` : "💠 Loot", value: `**+${reward}** shards`, inline: true },
     ],
   };
 }
@@ -2231,16 +2618,19 @@ async function buildTerritoryBriefing(guildId: string, attackerId: string, nodeI
     };
   }
   const prof = tierProfile(view.territory.tier);
+  const conquest = view.territory.category === "conquest";
+  const res = view.territory.resource ?? "shards";
   const embed = new EmbedBuilder().setColor(view.faction.color)
-    .setTitle(`⚔️ March on ${view.territory.name}`)
+    .setTitle(conquest ? `${resourceEmoji(res)} Raid ${view.territory.name}` : `⚔️ March on ${view.territory.name}`)
     .setDescription(
       `_${view.territory.blurb}_\n\n` +
+      (conquest ? `**Type:** Conquest — a quick raid; take it and hold it to mine **${res}**.\n` : "") +
       `**Holder:** ${view.heldByUserId ? `<@${view.heldByUserId}>` : `${view.faction.emoji} ${view.faction.name}`}\n` +
       `**Difficulty:** ${tierStars(view.territory.tier)} · ${prof.label}\n` +
       `**Garrison:** ${view.territory.garrison} defenders at level ~${prof.cardLevel}${prof.starRank > 0 ? ` (${"⭐".repeat(prof.starRank)})` : ""}`,
     )
     .addFields(
-      { name: "💠 Capture bounty", value: `**${prof.bounty}**`, inline: true },
+      { name: conquest ? `${resourceEmoji(res)} Seize haul` : "💠 Capture bounty", value: `**${prof.bounty}**`, inline: true },
       { name: "💠 Hold tribute", value: `**${prof.tributePerHour}/hr**`, inline: true },
       { name: "🏳️ Times taken", value: `**${view.captures}**`, inline: true },
     );
@@ -2991,4 +3381,55 @@ function nextUnlockHint(owned: Set<string>): string | null {
 export type HqSection = Section;
 export async function __buildViewForTest(interaction: HubInteraction, section: HqSection) {
   return buildView(interaction, section, []);
+}
+
+/**
+ * `/battle siege` entry — opens the same turn-for-turn siege flow as `/hq`
+ * World Map. Optional `targetUserId` jumps straight to a player-base briefing.
+ */
+export async function buildBattleSiegePicker(
+  guildId: string, attackerId: string, targetUserId?: string | null,
+) {
+  if (targetUserId) {
+    return buildAttackBriefing(guildId, attackerId, targetUserId);
+  }
+  const world = await loadWorld(guildId, attackerId);
+  const siegeCfg = await getSiegeConfig(guildId);
+  const mode = siegeModeMeta(siegeCfg.mode);
+  const embed = new EmbedBuilder()
+    .setColor(0xc0392b)
+    .setTitle("🏰 Lay Siege")
+    .setDescription(
+      "Pick a **player base** or **world territory** to assault.\n" +
+      "Sieges are a **true turn-for-turn mini-battle** on the castle battlefield " +
+      `(same combat engine as \`/battle fight\`) — style: **${mode.emoji} ${mode.label}**.\n` +
+      "_Configured for this server in `/hqadmin`._",
+    );
+  const now = Date.now();
+  const options = [
+    ...world.territories
+      .filter(t => t.heldByUserId !== attackerId)
+      .map(t => ({
+        label: t.territory.name.slice(0, 90),
+        value: `t:${t.territory.id}`,
+        description: `${tierProfile(t.territory.tier).label} · ${t.territory.garrison} defenders · ${holderLabel(t)}`.slice(0, 100),
+        emoji: (t.shieldUntil && t.shieldUntil.getTime() > now) ? "🛡️" : t.faction.emoji,
+      })),
+    ...world.bases.map(b => ({
+      label: b.name.slice(0, 90),
+      value: `p:${b.userId}`,
+      description: `Member base · ${b.defenders} defender${b.defenders === 1 ? "" : "s"}${b.held ? " · held 🚩" : ""}`.slice(0, 100),
+      emoji: "🏠",
+    })),
+  ].slice(0, 25);
+  const components: ActionRowBuilder<StringSelectMenuBuilder | ButtonBuilder>[] = [];
+  if (options.length > 0) {
+    components.push(new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
+      new StringSelectMenuBuilder().setCustomId("hq-hub:raidpick")
+        .setPlaceholder("⚔️ Choose a siege target…").addOptions(options),
+    ));
+  } else {
+    embed.addFields({ name: "No targets", value: "No attackable bases or territories right now — check again later." });
+  }
+  return { embeds: [embed], components, files: [] as AttachmentBuilder[] };
 }

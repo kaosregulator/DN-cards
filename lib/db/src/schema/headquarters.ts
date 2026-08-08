@@ -32,8 +32,8 @@ export const playerHqTable = pgTable("player_hq", {
   activeRoomId: text("active_room_id").notNull().default("trophy-hall"),
   // Active wall & floor styles for the isometric room (resolve through
   // defs/walls.ts and defs/floors.ts; degrade to the default if ever removed).
-  wallId: text("wall_id").notNull().default("plaster"),
-  floorId: text("floor_id").notNull().default("wood"),
+  wallId: text("wall_id").notNull().default("stone"),
+  floorId: text("floor_id").notNull().default("tile"),
   // Cached HQ level, DERIVED from existing progression by the engine and stored
   // so reads/leaderboards don't recompute the curve. Source of truth stays the
   // underlying systems; this is a convenience cache refreshed on reconcile.
@@ -74,7 +74,9 @@ export type HqItemType =
   // Repeating wall coverings (defs/wallpapers.ts) and build-editor ground
   // materials (defs/surfaces.ts). Stored as free text, so adding a kind never
   // needs a migration.
-  | "wallpaper" | "material";
+  | "wallpaper" | "material"
+  // Outdoor enclosing backdrop walls (defs/skyboxes.ts) — not wallpapers.
+  | "skybox";
 
 // Pinned featured cards for the Trophy Hall — one row per pedestal slot. Unique
 // on (guild, user, slot); repinning a slot upserts. Clicking a featured card in

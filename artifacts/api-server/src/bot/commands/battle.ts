@@ -2,13 +2,16 @@
 //
 // Subcommands (kept under one command like the rest of the bot's hubs):
 //   fight [opponent]   → start a challenge (empty opponent = battle the AI)
+//   raid [boss]        → co-op boss raid flow (same as /raid)
+//   siege [target]     → turn-for-turn castle siege (same engine as /hq sieges)
 //   profile [user]     → battle stats card
 //   leaderboard [scope]→ guild or opt-in global rankings
 //   achievements [user]→ unlocked battle achievements
 //   daily              → today's challenges + progress
 //
 // The heavy lifting (the live battle) lives in the battle-manager; this file is
-// the thin command surface + the read-only stat views.
+// the thin command surface + the read-only stat views. Raid/siege branch into
+// the existing raid manager and HQ siege runtime — no second combat engine.
 
 import {
   EmbedBuilder, MessageFlags,
@@ -27,6 +30,8 @@ import { BATTLE_ACHIEVEMENTS, formatAchievementLine } from "../battle/achievemen
 import { getOrCreateDaily } from "../battle/daily-engine.js";
 import { bar } from "../battle/embeds.js";
 import { scheduleReplyDelete } from "../../lib/temp-message.js";
+import { startRaid } from "../raid/manager.js";
+import { buildCampaignEmbed } from "../raid/command.js";
 
 export async function handleBattlesWelcome(interaction: ChatInputCommandInteraction): Promise<void> {
   const embed = new EmbedBuilder()
@@ -34,7 +39,7 @@ export async function handleBattlesWelcome(interaction: ChatInputCommandInteract
     .setTitle("⚔️ Welcome to DN Cards Battles")
     .setDescription("A quick guide to fighting with your cards. Battles are turn-based and played in one message — pick a card, choose moves, and win rewards.")
     .addFields(
-      { name: "🎴 How to start", value: "Use **/battle fight** to battle the AI.\nUse **/battle fight @user** to challenge a real player.\nUse **/battle profile** to see your stats and **/battle leaderboard** to see rankings.", inline: false },
+      { name: "🎴 How to start", value: "Use **/battle fight** to battle the AI.\nUse **/battle fight @user** to challenge a real player.\nUse **/battle raid** for co-op boss raids and **/battle siege** for turn-for-turn castle assaults.\nUse **/battle profile** to see your stats and **/battle leaderboard** to see rankings.", inline: false },
       { name: "⚔️ Picking your fighter", value: "Press **Prepare** to choose a card from your collection. Higher level = stronger stats. You can also pick a second owned card as a **Special Support Card** that gives a bonus effect.", inline: false },
       { name: "🕹️ Moves", value: "**Attack** — basic strike.\n**Special** — your card's signature move (costs energy).\n**Defend** — raise a shield and reduce incoming damage.\n**Charge** — refill energy and boost your next attack.\n**Special Card** — use your support card's effect (has a cooldown).\n**Ultimate** — a powerful guaranteed hit once your meter is full.", inline: false },
       { name: "🏆 Rewards", value: "Win battles to earn **DN Shards** 💠 and **XP** ✨. Winning streaks give bonus shards. Every fight also earns rank points in PvP battles. There is a daily reward cap, so you can't farm forever.", inline: false },
@@ -55,6 +60,8 @@ export async function handleBattleCommand(
   }
   switch (sub) {
     case "fight": return void await cmdFight(interaction);
+    case "raid": return void await cmdRaid(interaction);
+    case "siege": return void await cmdSiege(interaction);
     case "profile": return void await cmdProfile(interaction);
     case "leaderboard": return void await cmdLeaderboard(interaction);
     case "achievements": return void await cmdAchievements(interaction);
@@ -67,6 +74,43 @@ export async function handleBattleCommand(
 async function cmdFight(interaction: ChatInputCommandInteraction) {
   const opponent = interaction.options.getUser("opponent");
   await startChallenge(interaction, opponent);
+}
+
+/** `/battle raid` — thin branch into the co-op raid flow. */
+async function cmdRaid(interaction: ChatInputCommandInteraction) {
+  const boss = interaction.options.getString("boss");
+  if (!boss) {
+    if (!interaction.guild) {
+      await interaction.reply({ content: "Server only.", flags: MessageFlags.Ephemeral });
+      return;
+    }
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+    const embed = await buildCampaignEmbed(interaction.guild.id, interaction.user.id);
+    embed.setFooter({ text: "Start with /battle raid boss:<name> — or /raid start. Cleared bosses stay replayable." });
+    await interaction.editReply({ embeds: [embed] });
+    return;
+  }
+  await startRaid(interaction, boss);
+}
+
+/** `/battle siege` — turn-for-turn castle assault via the HQ siege runtime. */
+async function cmdSiege(interaction: ChatInputCommandInteraction) {
+  if (!interaction.guild) {
+    await interaction.reply({ content: "Sieges only work inside a server.", flags: MessageFlags.Ephemeral });
+    return;
+  }
+  const target = interaction.options.getUser("target");
+  if (target?.bot) {
+    await interaction.reply({ content: "🤖 Bots don't have a base to siege.", flags: MessageFlags.Ephemeral });
+    return;
+  }
+  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+  // Dynamic import avoids a static cycle (hq-hub already imports battle engines).
+  const { buildBattleSiegePicker } = await import("./hq-hub.js");
+  const view = await buildBattleSiegePicker(
+    interaction.guild.id, interaction.user.id, target?.id ?? null,
+  );
+  await interaction.editReply(view);
 }
 
 // Pure embed builder for a member's battle profile — reused by /battle profile

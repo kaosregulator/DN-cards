@@ -528,9 +528,13 @@ function buildLegacyCommands() {
 
 
     // ── /battle (user, Card Battle System) ────────────────────────────────────
-    cmd("battle", "Card battles — challenge players or AI, view stats & leaderboards", s => s
+    cmd("battle", "Card battles — fight, raids, sieges, stats & leaderboards", s => s
       .addSubcommand(sc => sc.setName("fight").setDescription("Start a battle — challenge a player, or leave empty to fight the AI")
         .addUserOption(o => o.setName("opponent").setDescription("Player to challenge (empty = battle the AI)")))
+      .addSubcommand(sc => sc.setName("raid").setDescription("Start a co-op boss raid (same flow as /raid)")
+        .addStringOption(o => o.setName("boss").setDescription("Boss to raid (omit to open the campaign map)").setAutocomplete(true)))
+      .addSubcommand(sc => sc.setName("siege").setDescription("Lay siege to a player base or world territory — turn-for-turn castle battle")
+        .addUserOption(o => o.setName("target").setDescription("Player whose base to siege (omit to pick from the map)")))
       .addSubcommand(sc => sc.setName("profile").setDescription("View a battle profile — record, rank, stats")
         .addUserOption(o => o.setName("user").setDescription("Whose profile to view (default: you)")))
       .addSubcommand(sc => sc.setName("leaderboard").setDescription("Battle rankings")

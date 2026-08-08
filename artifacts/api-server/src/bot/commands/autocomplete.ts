@@ -119,12 +119,12 @@ export async function handleAutocomplete(interaction: AutocompleteInteraction): 
 
   try {
 
-    // ── Raid boss-name autocomplete for /raid start + /raid_admin ────────────
-    if ((cmd === "raid" && focused.name === "boss") ||
+    // ── Raid boss-name autocomplete for /raid start, /battle raid, /raid_admin ─
+    if (((cmd === "raid" || cmd === "battle") && focused.name === "boss") ||
         (cmd === "raidadmin" && focused.name === "name")) {
       if (!interaction.guild) { await interaction.respond([]); return; }
       const { getAllBosses } = await import("../raid/db.js");
-      // /raid start should only surface enabled bosses; admin sees all.
+      // /raid start & /battle raid only surface enabled bosses; admin sees all.
       const bosses = (await getAllBosses(interaction.guild.id))
         .filter(b => cmd === "raidadmin" || b.enabled);
       const q = query.toLowerCase().trim();
