@@ -83,8 +83,12 @@ export class HqHud {
     this.root.appendChild(this.topBar());
     this.root.appendChild(this.modeToggle());
     if (this.editing) {
-      this.root.appendChild(this.tools());
-      this.root.appendChild(this.palette());
+      // Tools + palette live in one bottom "build sheet" that stacks cleanly at
+      // any width — no fragile absolute offsets, thumb-reachable on phones.
+      const sheet = el("div", "hud-build");
+      sheet.appendChild(this.tools());
+      sheet.appendChild(this.palette());
+      this.root.appendChild(sheet);
     }
   }
 
@@ -216,11 +220,15 @@ export class HqHud {
       .hud-btn.danger { background: #4d2230; border-color: #7a3348; color: #ffc2d0; }
       .hud-btn.ok { background: #1f6d43 !important; border-color: #2ea06a !important; }
       .hud-btn.err { background: #6d1f2f !important; border-color: #a02e44 !important; }
-      .hud-tools { position: absolute; top: 62px; right: 12px; display: flex; gap: 6px; flex-wrap: wrap;
-        justify-content: flex-end; max-width: 60vw; }
-      .hud-palette { position: absolute; left: 0; right: 0; bottom: 0; display: flex; gap: 14px;
-        overflow-x: auto; padding: 10px 12px 14px; background: linear-gradient(0deg, rgba(9,13,26,.94), rgba(9,13,26,.5) 70%, transparent);
-        pointer-events: auto; }
+      .hud-build { position: absolute; left: 0; right: 0; bottom: 0; display: flex; flex-direction: column;
+        pointer-events: none; }
+      .hud-tools { display: flex; gap: 8px; padding: 8px 12px; overflow-x: auto;
+        -webkit-overflow-scrolling: touch; pointer-events: auto;
+        background: linear-gradient(0deg, rgba(9,13,26,.7), transparent); }
+      .hud-tools .hud-btn { flex: 0 0 auto; }
+      .hud-palette { display: flex; gap: 14px; overflow-x: auto; -webkit-overflow-scrolling: touch;
+        padding: 8px 12px calc(14px + env(safe-area-inset-bottom, 0px)); pointer-events: auto;
+        background: linear-gradient(0deg, rgba(9,13,26,.96), rgba(9,13,26,.7) 70%, transparent); }
       .hud-pal-group { display: flex; flex-direction: column; gap: 6px; }
       .hud-pal-head { font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: #6b78a8; padding-left: 2px; }
       .hud-pal-row { display: flex; gap: 6px; }
@@ -232,6 +240,29 @@ export class HqHud {
       .hud-pal-item img { max-width: 100%; max-height: 100%; image-rendering: auto;
         filter: drop-shadow(0 2px 3px rgba(0,0,0,.4)); }
       .hud-pal-empty { color: #7a86b0; font-size: 13px; align-self: center; padding: 20px; }
+
+      /* ── Touch / small-viewport adaptations ─────────────────────────────────
+         Same HUD, bigger affordances. Nothing here touches game state — only
+         sizing, reflow, and thumb-reachability. */
+      body.is-touch .hud-btn { min-height: 44px; padding: 11px 16px; }
+      body.is-touch .hud-pal-item { width: 68px; height: 68px; }
+      body.is-touch #hq-hud button { touch-action: manipulation; }
+
+      /* Top bar sits under the safe area; allow it to wrap so nothing is clipped. */
+      body.is-small .hud-top { top: calc(8px + env(safe-area-inset-top, 0px)); left: 8px; right: 96px;
+        flex-wrap: wrap; gap: 6px; padding: 7px 10px; }
+      body.is-small .hud-title { font-size: 12px; width: 100%; }
+      body.is-small .hud-mode { top: calc(8px + env(safe-area-inset-top, 0px)); right: 8px; }
+      body.is-small .hud-mode .hud-btn { padding: 12px 16px; font-size: 14px; }
+
+      /* Build sheet already docks tools above the palette; on phones just make
+         the pieces a touch larger. */
+      body.is-small .hud-palette { gap: 12px; }
+      body.is-small .hud-pal-item { width: 72px; height: 72px; }
+
+      /* Landscape phones are short — keep the palette compact so the world shows. */
+      body.is-small.is-landscape .hud-pal-head { display: none; }
+      body.is-small.is-landscape .hud-pal-item { width: 60px; height: 60px; }
     `;
     document.head.appendChild(s);
   }

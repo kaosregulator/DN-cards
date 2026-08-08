@@ -73,17 +73,20 @@ export class RaidScene extends Phaser.Scene {
     this.add.ellipse(width / 2, height * 0.5, 220, 60, boss.color, 0.3).setDepth(390);
     this.tweens.add({ targets: this.boss, y: this.boss.y - 12, yoyo: true, repeat: -1, duration: 1800, ease: "Sine.InOut" });
 
-    this.bossBar = makeHealthBar(this, width / 2 - 200, 96, 400, boss.maxHealth, boss.color,
+    const barW = Math.min(400, width - 32);
+    this.bossBar = makeHealthBar(this, width / 2 - barW / 2, 96, barW, boss.maxHealth, boss.color,
       `${boss.defeated ? "✓ " : ""}${boss.name} · ${boss.rarity}`);
 
     // player team along the bottom
     this.team = [];
     const n = this.model.team.length;
+    const spacing = Math.min(130, (width - 40) / Math.max(1, n));
+    const teamY = height * 0.86;
     this.model.team.forEach((c: Combatant, i) => {
-      const x = width / 2 + (i - (n - 1) / 2) * 130;
-      const img = this.add.image(x, height * 0.9, c.sprite).setOrigin(0.5, 1).setDepth(500 + i);
-      img.setScale(150 / (img.height || 512));
-      this.add.ellipse(x, height * 0.9, 90, 26, c.color, 0.3).setDepth(490);
+      const x = width / 2 + (i - (n - 1) / 2) * spacing;
+      const img = this.add.image(x, teamY, c.sprite).setOrigin(0.5, 1).setDepth(500 + i);
+      img.setScale(Math.min(150, this.scale.height * 0.2) / (img.height || 512));
+      this.add.ellipse(x, teamY, 90, 26, c.color, 0.3).setDepth(490);
       this.team.push(img);
     });
 
@@ -94,11 +97,11 @@ export class RaidScene extends Phaser.Scene {
   private renderLadder(): void {
     const { width } = this.scale;
     const n = this.model.bosses.length;
-    const y = 44;
+    const y = 50;
     const startX = width / 2 - ((n - 1) * 40) / 2;
-    this.add.text(width / 2, 18, `Campaign · ${this.model.progress.defeated}/${this.model.progress.total} cleared`, {
+    this.add.text(14, 12, `Campaign · ${this.model.progress.defeated}/${this.model.progress.total} cleared`, {
       fontFamily: "system-ui, sans-serif", fontSize: "13px", color: "#c8d4ff",
-    }).setOrigin(0.5).setScrollFactor(0).setDepth(600);
+    }).setOrigin(0, 0).setScrollFactor(0).setDepth(600);
     this.model.bosses.forEach((b, i) => {
       const x = startX + i * 40;
       if (i > 0) this.add.line(0, 0, startX + (i - 1) * 40, y, x, y, 0x3a4c78).setOrigin(0, 0).setLineWidth(2).setDepth(590);
@@ -109,18 +112,19 @@ export class RaidScene extends Phaser.Scene {
   }
 
   private renderControls(boss: RaidBossModel): void {
-    // simple DOM controls: prev/next boss + retreat handled by NavDock
+    // Prev/next pinned to the left/right edges at mid-height — clear of the nav
+    // dock (top on desktop, bottom on mobile) and easy to thumb on a phone.
     const { width, height } = this.scale;
-    const mk = (label: string, x: number, fn: () => void, enabled = true) => {
-      const t = this.add.text(x, height - 30, label, {
-        fontFamily: "system-ui, sans-serif", fontSize: "14px", color: enabled ? "#dbe4ff" : "#5a6690",
-        backgroundColor: "#222c4d", padding: { x: 14, y: 8 },
+    const mk = (label: string, x: number, fn: () => void, enabled: boolean) => {
+      const t = this.add.text(x, height / 2, label, {
+        fontFamily: "system-ui, sans-serif", fontSize: "16px", color: enabled ? "#dbe4ff" : "#48527a",
+        backgroundColor: "#222c4dcc", padding: { x: 14, y: 14 },
       }).setOrigin(0.5).setScrollFactor(0).setDepth(700);
       if (enabled) t.setInteractive({ useHandCursor: true }).on("pointerdown", fn);
       return t;
     };
-    mk("◀ Prev", width / 2 - 90, () => { this.idx = Math.max(0, this.idx - 1); this.renderStage(); }, this.idx > 0);
-    mk("Next ▶", width / 2 + 90, () => {
+    mk("◀", 30, () => { this.idx = Math.max(0, this.idx - 1); this.renderStage(); }, this.idx > 0);
+    mk("▶", width - 30, () => {
       this.idx = Math.min(this.model.bosses.length - 1, this.idx + 1); this.renderStage();
     }, this.idx < this.model.bosses.length - 1);
     void boss;

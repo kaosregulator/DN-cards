@@ -45,11 +45,13 @@ export class PackScene extends Phaser.Scene {
     }).setOrigin(0.5);
 
     const n = this.model.tiers.length;
+    const spacing = Math.min(200, (width - 24) / n);
+    const boxW = Math.min(170, spacing - 14);
     this.model.tiers.forEach((t, i) => {
-      const x = width / 2 + (i - (n - 1) / 2) * 200;
-      const y = height * 0.55;
+      const x = width / 2 + (i - (n - 1) / 2) * spacing;
+      const y = height * 0.52;
       const card = this.add.container(x, y);
-      const box = this.add.rectangle(0, 0, 170, 200, 0x162038).setStrokeStyle(2, 0x33406f);
+      const box = this.add.rectangle(0, 0, boxW, 200, 0x162038).setStrokeStyle(2, 0x33406f);
       const crate = this.add.image(0, -14, "deco/supply-crate").setScale(0.28);
       const title = this.add.text(0, 58, `${t.emoji} ${t.label}`, {
         fontFamily: "system-ui, sans-serif", fontSize: "16px", fontStyle: "bold", color: "#e6ecff",
@@ -98,7 +100,9 @@ export class PackScene extends Phaser.Scene {
   private revealCards(size: number): void {
     const { width, height } = this.scale;
     const rolls = Array.from({ length: size }, () => this.weightedRarity());
-    const cw = 92, gap = 14;
+    // Size cards so the whole pack fits the viewport width (phones included).
+    const gap = 12;
+    const cw = Phaser.Math.Clamp((width - 24 - (size - 1) * gap) / size, 48, 92);
     const totalW = size * cw + (size - 1) * gap;
     const startX = width / 2 - totalW / 2 + cw / 2;
 

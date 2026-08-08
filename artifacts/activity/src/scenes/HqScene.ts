@@ -3,6 +3,7 @@ import { getContext } from "../core/context";
 import { HqStore } from "../state/hqStore";
 import { HqHud } from "../hud/hqHud";
 import { NavDock } from "../hud/navDock";
+import { getViewport } from "../core/viewport";
 import type { CatalogAsset, HqWorld, LayoutObject } from "../net/api";
 import {
   TILE_W, TILE_H, HALF_H, DEPTH, tileToScreen, screenToTile, snapTile, depthFor,
@@ -49,6 +50,11 @@ export class HqScene extends Phaser.Scene {
   private dragObjUid: string | null = null;
   private lastPtr = { x: 0, y: 0 };
   private movedDuringDrag = false;
+
+  // multitouch pinch/pan
+  private pinching = false;
+  private pinchDist = 0;
+  private pinchMid = { x: 0, y: 0 };
 
   constructor() {
     super("Hq");
@@ -112,6 +118,7 @@ export class HqScene extends Phaser.Scene {
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.hud?.destroy();
       this.nav?.destroy();
+      document.body.classList.remove("editing-hq");
     });
   }
 
@@ -288,21 +295,67 @@ export class HqScene extends Phaser.Scene {
 
   // ── camera ──────────────────────────────────────────────────────────────────
   private setupCamera(): void {
+    this.fitCamera();
+    // Keep the framing sensible when the Discord frame resizes / rotates.
+    this.scale.on(Phaser.Scale.Events.RESIZE, () => this.fitCamera(), this);
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () =>
+      this.scale.off(Phaser.Scale.Events.RESIZE, this.fitCamera, this),
+    );
+  }
+
+  // Frame the built area (rooms, or the plot centre) so it fits the current
+  // viewport with margin — the same authoritative world, just fitted to phone
+  // or desktop. Zoom clamps match the pinch limits.
+  private fitCamera(): void {
+    const cam = this.cameras.main;
     const N = this.world.worldTiles;
-    const c = tileToScreen(N / 2, N / 2);
-    this.cameras.main.centerOn(c.x, c.y);
-    this.cameras.main.setZoom(0.62);
+    const rooms = this.store?.layout.rooms ?? [];
+    let minTX = N, minTY = N, maxTX = 0, maxTY = 0;
+    if (rooms.length) {
+      for (const r of rooms) {
+        minTX = Math.min(minTX, r.x); minTY = Math.min(minTY, r.y);
+        maxTX = Math.max(maxTX, r.x + r.w); maxTY = Math.max(maxTY, r.y + r.h);
+      }
+    } else {
+      minTX = N * 0.3; minTY = N * 0.3; maxTX = N * 0.7; maxTY = N * 0.7;
+    }
+    const a = tileToScreen(minTX, minTY);
+    const b = tileToScreen(maxTX, maxTY);
+    const c1 = tileToScreen(maxTX, minTY);
+    const c2 = tileToScreen(minTX, maxTY);
+    const left = Math.min(a.x, b.x, c1.x, c2.x);
+    const right = Math.max(a.x, b.x, c1.x, c2.x);
+    const top = Math.min(a.y, b.y, c1.y, c2.y) - TILE_H * 2;
+    const bottom = Math.max(a.y, b.y, c1.y, c2.y) + TILE_H;
+    const spanX = Math.max(1, right - left);
+    const spanY = Math.max(1, bottom - top);
+    const pad = 1.18;
+    const zoom = Phaser.Math.Clamp(
+      Math.min(this.scale.width / (spanX * pad), this.scale.height / (spanY * pad)),
+      0.26, 1.1,
+    );
+    cam.setZoom(zoom);
+    cam.centerOn((left + right) / 2, (top + bottom) / 2);
   }
 
   private setupInput(): void {
     this.input.mouse?.disableContextMenu();
 
     this.input.on("pointerdown", (ptr: Phaser.Input.Pointer, hits: Phaser.GameObjects.GameObject[]) => {
+      // A second finger down → enter pinch/two-finger-pan; abandon single-touch
+      // gestures so they don't fight.
+      if (this.twoDown()) {
+        this.beginPinch();
+        this.dragging = false;
+        this.dragObjUid = null;
+        return;
+      }
       this.lastPtr = { x: ptr.x, y: ptr.y };
       this.movedDuringDrag = false;
 
       if (this.placingAssetId) {
-        this.placeAtPointer(ptr);
+        // Show the ghost where the finger/cursor landed; commit on release (tap).
+        this.updateGhost(ptr);
         return;
       }
       const objHit = hits.find((h) => h.getData && h.getData("uid"));
@@ -318,14 +371,19 @@ export class HqScene extends Phaser.Scene {
     });
 
     this.input.on("pointermove", (ptr: Phaser.Input.Pointer) => {
+      if (this.twoDown()) {
+        this.updatePinch();
+        return;
+      }
       if (this.placingAssetId) {
-        this.updateGhost(ptr);
+        if (ptr.isDown || !this.getViewportTouch()) this.updateGhost(ptr);
+        if (ptr.isDown) this.movedDuringDrag = this.movedDuringDrag || this.moved(ptr);
         return;
       }
       if (!ptr.isDown) return;
       const dx = ptr.x - this.lastPtr.x;
       const dy = ptr.y - this.lastPtr.y;
-      if (Math.abs(dx) + Math.abs(dy) > 2) this.movedDuringDrag = true;
+      if (Math.abs(dx) + Math.abs(dy) > 3) this.movedDuringDrag = true;
 
       if (this.dragObjUid) {
         this.dragObjectTo(ptr);
@@ -337,23 +395,86 @@ export class HqScene extends Phaser.Scene {
       this.lastPtr = { x: ptr.x, y: ptr.y };
     });
 
-    this.input.on("pointerup", () => {
+    this.input.on("pointerup", (ptr: Phaser.Input.Pointer) => {
+      // Tap-to-place: a release that didn't drag (and isn't a pinch) drops the
+      // selected asset on the tapped tile. Works identically for mouse + touch.
+      if (this.placingAssetId && !this.pinching && !this.movedDuringDrag) {
+        this.placeAtPointer(ptr);
+      }
+      if (!this.twoDown()) {
+        this.pinching = false;
+        this.pinchDist = 0;
+      }
       this.dragging = false;
       this.dragObjUid = null;
     });
 
-    this.input.on("wheel", (_p: Phaser.Input.Pointer, _o: unknown, _dx: number, dy: number) => {
-      const cam = this.cameras.main;
-      const z = Phaser.Math.Clamp(cam.zoom - dy * 0.0011, 0.32, 1.5);
-      cam.setZoom(z);
+    // Desktop wheel zoom, kept as an enhancement.
+    this.input.on("wheel", (ptr: Phaser.Input.Pointer, _o: unknown, _dx: number, dy: number) => {
+      this.zoomAround(ptr.x, ptr.y, this.cameras.main.zoom * (1 - dy * 0.0012));
     });
 
+    // Keyboard shortcuts are a desktop nicety only — every action also has a big
+    // on-screen button, so the Activity is fully playable with no keyboard.
     this.input.keyboard?.on("keydown-R", () => this.rotateSelected());
     this.input.keyboard?.on("keydown-DELETE", () => this.deleteSelected());
     this.input.keyboard?.on("keydown-ESC", () => this.setPlacing(null));
     this.input.keyboard?.on("keydown-Z", (e: KeyboardEvent) => {
       if (e.ctrlKey || e.metaKey) (e.shiftKey ? this.store.redo() : this.store.undo());
     });
+  }
+
+  // ── multitouch helpers ────────────────────────────────────────────────────
+  private twoDown(): boolean {
+    return this.input.pointer1.isDown && this.input.pointer2.isDown;
+  }
+
+  private moved(ptr: Phaser.Input.Pointer): boolean {
+    return Math.abs(ptr.x - this.lastPtr.x) + Math.abs(ptr.y - this.lastPtr.y) > 6;
+  }
+
+  private getViewportTouch(): boolean {
+    return getViewport().touch;
+  }
+
+  private beginPinch(): void {
+    const p1 = this.input.pointer1, p2 = this.input.pointer2;
+    this.pinching = true;
+    this.pinchDist = Phaser.Math.Distance.Between(p1.x, p1.y, p2.x, p2.y);
+    this.pinchMid = { x: (p1.x + p2.x) / 2, y: (p1.y + p2.y) / 2 };
+  }
+
+  private updatePinch(): void {
+    const p1 = this.input.pointer1, p2 = this.input.pointer2;
+    const dist = Phaser.Math.Distance.Between(p1.x, p1.y, p2.x, p2.y);
+    const mid = { x: (p1.x + p2.x) / 2, y: (p1.y + p2.y) / 2 };
+    if (!this.pinching) {
+      this.pinching = true;
+      this.pinchDist = dist;
+      this.pinchMid = mid;
+      return;
+    }
+    const cam = this.cameras.main;
+    // two-finger pan by the midpoint delta
+    cam.scrollX -= (mid.x - this.pinchMid.x) / cam.zoom;
+    cam.scrollY -= (mid.y - this.pinchMid.y) / cam.zoom;
+    // pinch zoom, anchored on the fingers' midpoint
+    if (this.pinchDist > 0) {
+      this.zoomAround(mid.x, mid.y, cam.zoom * (dist / this.pinchDist));
+    }
+    this.pinchDist = dist;
+    this.pinchMid = mid;
+  }
+
+  // Zoom while keeping the world point under (sx,sy) fixed on screen.
+  private zoomAround(sx: number, sy: number, targetZoom: number): void {
+    const cam = this.cameras.main;
+    const z = Phaser.Math.Clamp(targetZoom, 0.24, 1.8);
+    const before = cam.getWorldPoint(sx, sy);
+    cam.setZoom(z);
+    const after = cam.getWorldPoint(sx, sy);
+    cam.scrollX += before.x - after.x;
+    cam.scrollY += before.y - after.y;
   }
 
   private pointerTile(ptr: Phaser.Input.Pointer): { x: number; y: number } {
@@ -365,6 +486,7 @@ export class HqScene extends Phaser.Scene {
   // ── editor actions ──────────────────────────────────────────────────────────
   private setEditing(on: boolean): void {
     this.editing = on;
+    document.body.classList.toggle("editing-hq", on);
     this.setPlacing(null);
     this.select(null);
     this.rebuildWorld();

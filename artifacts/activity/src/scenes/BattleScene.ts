@@ -49,13 +49,14 @@ export class BattleScene extends Phaser.Scene {
     addBackdrop(this, model.backdrops[0] ?? "");
 
     const { width, height } = this.scale;
-    this.add.text(width / 2, 26, "⚔  ARENA", {
-      fontFamily: "system-ui, sans-serif", fontSize: "20px", fontStyle: "bold", color: "#fff",
-    }).setOrigin(0.5).setScrollFactor(0).setDepth(600);
+    this.add.text(14, 12, "⚔  ARENA", {
+      fontFamily: "system-ui, sans-serif", fontSize: "18px", fontStyle: "bold", color: "#fff",
+    }).setOrigin(0, 0).setScrollFactor(0).setDepth(600);
 
     const groundY = height * 0.72;
-    const p = this.makeFighter(model.player[0]!, width * 0.28, groundY, 1, 40, "#7ee0a0");
-    const o = this.makeFighter(model.opponent[0]!, width * 0.72, groundY, -1, width - 40 - 260, "#ff9db2");
+    const barW = Math.min(260, width / 2 - 20);
+    const p = this.makeFighter(model.player[0]!, width * 0.28, groundY, 1, 12, barW);
+    const o = this.makeFighter(model.opponent[0]!, width * 0.72, groundY, -1, width - 12 - barW, barW);
 
     // benched teammates, smaller, behind
     this.renderBench(model.player.slice(1), width * 0.1, groundY - 8, 1);
@@ -64,9 +65,10 @@ export class BattleScene extends Phaser.Scene {
     this.time.delayedCall(700, () => this.loop(p, o));
   }
 
-  private makeFighter(c: Combatant, x: number, y: number, facing: 1 | -1, barX: number, barColor: string): Fighter {
+  private makeFighter(c: Combatant, x: number, y: number, facing: 1 | -1, barX: number, barW: number): Fighter {
     const img = this.add.image(x, y, c.sprite).setOrigin(0.5, 1).setDepth(500 + Math.round(y));
-    const h = 240;
+    // Scale the fighter to the viewport so it's neither tiny nor clipped.
+    const h = Math.min(240, this.scale.height * 0.34);
     img.setScale(h / (img.height || 512));
     img.setFlipX(facing === -1);
     img.setTint(0xffffff);
@@ -74,8 +76,7 @@ export class BattleScene extends Phaser.Scene {
     const glow = this.add.ellipse(x, y, 120, 40, c.color, 0.35).setDepth(400);
     this.tweens.add({ targets: glow, scaleX: 1.1, scaleY: 1.1, yoyo: true, repeat: -1, duration: 1400 });
 
-    const bar = makeHealthBar(this, barX, 70, 260, c.hp, c.color, `${c.name} · ${c.rarity}`);
-    void barColor;
+    const bar = makeHealthBar(this, barX, 70, barW, c.hp, c.color, `${c.name} · ${c.rarity}`);
     return { data: c, img, bar, hp: c.hp, homeX: x, facing };
   }
 

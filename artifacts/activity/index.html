@@ -7,6 +7,10 @@
       content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no"
     />
     <title>DN Cards — Live</title>
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%8F%B0%3C/text%3E%3C/svg%3E"
+    />
     <style>
       html,
       body {
@@ -22,6 +26,17 @@
       #game {
         width: 100vw;
         height: 100vh;
+        /* The game owns every touch gesture — stop the browser from panning,
+           pinch-zooming the page, or firing 300ms tap delays. */
+        touch-action: none;
+        -webkit-user-select: none;
+        user-select: none;
+        -webkit-tap-highlight-color: transparent;
+        overscroll-behavior: none;
+      }
+      #game canvas {
+        touch-action: none;
+        display: block;
       }
       /* Pre-Phaser boot splash so the iframe is never a blank white flash. */
       #boot {

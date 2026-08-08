@@ -17,6 +17,9 @@ export function startGame(session: DiscordSession): Phaser.Game {
     type: Phaser.AUTO,
     parent: "game",
     backgroundColor: "#0b0f1a",
+    // Multi-touch: mouse + up to two fingers, so pinch-to-zoom and two-finger
+    // pan work on phones inside Discord.
+    input: { activePointers: 3, smoothFactor: 0.2 },
     scale: {
       mode: Phaser.Scale.RESIZE,
       autoCenter: Phaser.Scale.CENTER_BOTH,

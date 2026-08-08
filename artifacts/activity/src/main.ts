@@ -6,6 +6,8 @@
 
 import { initDiscord } from "./discord/sdk";
 import { startGame } from "./core/game";
+import { initViewport } from "./core/viewport";
+import { isDemo, startDemo } from "./demo/demo";
 
 function fatal(message: string): void {
   const boot = document.getElementById("boot");
@@ -16,6 +18,13 @@ function fatal(message: string): void {
 
 async function main(): Promise<void> {
   try {
+    initViewport();
+    // Local viewport/QA harness (no Discord, no backend) — opt-in via `?demo`.
+    if (isDemo()) {
+      document.getElementById("boot")?.remove();
+      startDemo();
+      return;
+    }
     const session = await initDiscord();
     startGame(session);
   } catch (err) {
