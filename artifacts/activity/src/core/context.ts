@@ -14,6 +14,7 @@
 import type Phaser from "phaser";
 import { api } from "../net/api";
 import { PlayerState } from "../state/playerState";
+import { AssetManager } from "./assetManager";
 import type { DiscordSession } from "../discord/sdk";
 
 export const CONTEXT_KEY = "dncards.context";
@@ -29,6 +30,8 @@ export interface GameContext {
   api: typeof api;
   /** Authoritative player snapshot cache. */
   playerState: PlayerState;
+  /** Shared asset manager (manifest + lazy texture loading). */
+  assets: AssetManager;
   /** Cross-scene event bus. */
   events: GameEvents;
 }
@@ -38,6 +41,7 @@ export function createContext(session: DiscordSession, events: GameEvents): Game
     session,
     api,
     playerState: new PlayerState(),
+    assets: new AssetManager(),
     events,
   };
 }

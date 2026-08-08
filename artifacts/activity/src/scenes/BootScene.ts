@@ -31,10 +31,15 @@ export class BootScene extends Phaser.Scene {
     }
 
     try {
+      ctx.api.setToken(ctx.session.accessToken);
       const snapshot = await ctx.api.me(ctx.session.accessToken);
       ctx.playerState.set(snapshot);
       ctx.events.emit("player:loaded", snapshot);
-      this.scene.start("Handshake", { ok: true });
+
+      // Load the authoritative live-world state and open the HQ.
+      this.renderStatus("Building your headquarters…");
+      const world = await ctx.api.hq();
+      this.scene.start("Hq", { world });
     } catch (err) {
       const message =
         err instanceof ApiError ? err.message : "Could not reach the DN Cards backend.";

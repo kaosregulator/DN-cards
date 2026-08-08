@@ -122,15 +122,19 @@ export function getActivityAsset(id: string): ActivityAsset | undefined {
   return ASSET_INDEX.get(id);
 }
 
-// Floor / wall surface styles the shell can be built from (map to floor sprites).
+// Floor styles the room shells are tiled with. These map to the isometric BASE
+// tiles (bases/square-*), which are true 2:1 diamonds that tessellate cleanly —
+// exactly what an iso floor needs.
 export const ACTIVITY_FLOORS = [
-  { id: "stone", name: "Stone", sprite: "floor/stone" },
-  { id: "wood", name: "Wood", sprite: "floor/wood" },
-  { id: "marble", name: "Marble", sprite: "floor/marble" },
-  { id: "blue-stone", name: "Blue Stone", sprite: "floor/blue-stone" },
-  { id: "grass", name: "Grass", sprite: "floor/grass" },
-  { id: "dirt", name: "Dirt", sprite: "floor/dirt" },
-  { id: "sand", name: "Sand", sprite: "floor/sand" },
+  { id: "stone", name: "Stone", sprite: "base/square-stone" },
+  { id: "wood", name: "Wood", sprite: "base/square-wood" },
+  { id: "marble", name: "Marble", sprite: "base/square-stone-detail" },
+  { id: "slate", name: "Slate", sprite: "base/square-stone-high" },
+  { id: "grass", name: "Grass", sprite: "base/square-grass" },
+  { id: "dirt", name: "Dirt", sprite: "base/square-dirt" },
 ] as const;
+
+// The ground plane outside every room (the build plot itself).
+export const GROUND_SPRITE = "base/square-grass";
 
 export const ACTIVITY_FLOOR_IDS: Set<string> = new Set(ACTIVITY_FLOORS.map((f) => f.id));

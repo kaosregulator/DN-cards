@@ -5,7 +5,7 @@ import { getPlayerProfile } from "../bot/player/profile.js";
 import { getOrCreateHq } from "../bot/hq/db.js";
 import { hqAssetsRoot } from "../bot/hq/assets.js";
 import { getActivityLayout, saveActivityLayout, getActivityCatalog, WORLD_TILES } from "../bot/hq/activity-layout.js";
-import { ACTIVITY_FLOORS } from "../bot/hq/activity-catalog.js";
+import { ACTIVITY_FLOORS, GROUND_SPRITE } from "../bot/hq/activity-catalog.js";
 import { HQ_ROOMS } from "../bot/hq/defs/rooms.js";
 import { HOME_GUILD_ID } from "../bot/home-guild.js";
 import { loginRateLimiter } from "../lib/rate-limiters.js";
@@ -259,6 +259,7 @@ router.get("/hq", async (req, res) => {
     ]);
     res.json({
       worldTiles: WORLD_TILES,
+      ground: GROUND_SPRITE,
       user: { id: user.id, username: user.username },
       hq: { level: hq.hqLevel, themeId: hq.themeId, shards: profile.economy.shards },
       // Shield strength is derived — surfaced so the client can render the FX.

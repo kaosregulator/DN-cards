@@ -3,6 +3,7 @@ import { CONTEXT_KEY, createContext } from "./context";
 import type { DiscordSession } from "../discord/sdk";
 import { BootScene } from "../scenes/BootScene";
 import { HandshakeScene } from "../scenes/HandshakeScene";
+import { HqScene } from "../scenes/HqScene";
 
 // Core Game Runtime bootstrap. Creates ONE Phaser game that hosts every
 // experience as a scene (Phase 1 ships Boot + Handshake; HQ / Battle / Raid /
@@ -20,7 +21,7 @@ export function startGame(session: DiscordSession): Phaser.Game {
       height: "100%",
     },
     // No physics/heavy plugins yet — HQ world systems opt in when they land.
-    scene: [BootScene, HandshakeScene],
+    scene: [BootScene, HandshakeScene, HqScene],
   });
 
   const ctx = createContext(session, game.events);

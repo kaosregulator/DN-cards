@@ -153,7 +153,7 @@ export function starterLayout(): HqLayout {
     rooms: [
       { id: "r-command", roomId: "entrance", x: 10, y: 4, w: 10, h: 10, floorId: "marble" },
       { id: "r-armory", roomId: "trophy-hall", x: 22, y: 4, w: 8, h: 8, floorId: "wood" },
-      { id: "r-treasury", roomId: "trophy-hall", x: 22, y: 16, w: 8, h: 8, floorId: "blue-stone" },
+      { id: "r-treasury", roomId: "trophy-hall", x: 22, y: 16, w: 8, h: 8, floorId: "slate" },
     ],
     objects,
   };

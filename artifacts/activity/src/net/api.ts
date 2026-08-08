@@ -91,7 +91,68 @@ export interface PlayerSnapshot {
   };
 }
 
+// ── HQ live world (mirrors routes/activity.ts + activity-catalog.ts) ──────────
+
+export interface CatalogAsset {
+  id: string;
+  name: string;
+  sprite: string;
+  category: string;
+  footprint: { w: number; h: number };
+  rotatable: boolean;
+  unlock: string;
+  rooms?: string[];
+  scale?: number;
+  owned: boolean;
+}
+
+export interface LayoutRoom {
+  id: string;
+  roomId: string;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  floorId: string;
+}
+
+export interface LayoutObject {
+  uid: string;
+  assetId: string;
+  x: number;
+  y: number;
+  rot: 0 | 1 | 2 | 3;
+}
+
+export interface HqLayout {
+  version: 1;
+  rooms: LayoutRoom[];
+  objects: LayoutObject[];
+}
+
+export interface HqWorld {
+  worldTiles: number;
+  ground: string;
+  user: { id: string; username: string };
+  hq: { level: number; themeId: string; shards: number };
+  shield: { active: boolean; strength: number };
+  rooms: { id: string; name: string; emoji: string; kind: string; category: string }[];
+  floors: { id: string; name: string; sprite: string }[];
+  catalog: CatalogAsset[];
+  layout: HqLayout;
+  revision: number;
+}
+
+let tokenRef: string | null = null;
+
 export const api = {
+  /** Store the Discord token once so HQ calls don't each thread it through. */
+  setToken(token: string): void {
+    tokenRef = token;
+  },
+  assetBase(): string {
+    return API_BASE;
+  },
   status(): Promise<ActivityStatus> {
     return request<ActivityStatus>("/activity/status");
   },
@@ -103,5 +164,14 @@ export const api = {
   },
   me(token: string): Promise<PlayerSnapshot> {
     return request<PlayerSnapshot>("/activity/@me", { token });
+  },
+  assetManifest(): Promise<{ base: string; sprites: Record<string, string> }> {
+    return request<{ base: string; sprites: Record<string, string> }>("/activity/assets/manifest");
+  },
+  hq(): Promise<HqWorld> {
+    return request<HqWorld>("/activity/hq", { token: tokenRef });
+  },
+  saveLayout(layout: HqLayout): Promise<{ ok: boolean; layout: HqLayout; revision: number }> {
+    return request("/activity/hq/layout", { method: "POST", body: { layout }, token: tokenRef });
   },
 };
