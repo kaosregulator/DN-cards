@@ -25,6 +25,7 @@ import {
   getOrCreateCurrency, spendShards, addShards,
 } from "../db.js";
 import { rarityColor, SHINY_EMOJI, BUILTIN_RARITIES, type Rarity } from "../cards-data.js";
+import { experienceLaunchRow } from "../experience.js";
 import { toAbsoluteImageUrl } from "../image-url.js";
 import { renderCardRevealCanvas, CARD_REVEAL_FILE } from "../cards/card-reveal-canvas.js";
 import { buildCardLevelEmbed } from "../cards/level-command.js";
@@ -263,6 +264,21 @@ export async function handleHqCommand(interaction: ChatInputCommandInteraction):
   const reconcile = await reconcileUnlocks(interaction.guildId, interaction.user.id).catch(() => null);
   const view = await buildView(interaction, "overview", reconcile?.newlyUnlocked ?? []);
   await interaction.editReply(view).catch(() => {});
+
+  // If this guild presents HQ as the Live Activity, offer a launch button as a
+  // separate ephemeral follow-up (keeps it clear of the hub's own component rows
+  // and its 5-row cap). When the guild uses PNG/embed, this is a no-op and the
+  // existing render above stands — the fallback path.
+  try {
+    const settings = await getOrCreateGuildSettings(interaction.guildId);
+    const row = experienceLaunchRow(settings, "hq");
+    if (row) {
+      await interaction.followUp({
+        content: "🎮 **Live HQ is enabled here** — open your headquarters as an interactive Activity:",
+        components: [row], ...EPHEMERAL,
+      }).catch(() => {});
+    }
+  } catch { /* never let the launch affordance break /hq */ }
 }
 
 export async function openHqHubFromButton(interaction: ButtonInteraction): Promise<void> {

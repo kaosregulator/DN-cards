@@ -300,3 +300,33 @@ export const hqSettingsTable = pgTable("hq_settings", {
 }));
 
 export type HqSettings = typeof hqSettingsTable.$inferSelect;
+
+// ─────────────────────────────────────────────────────────────────────────────
+// HQ Activity live-world layout (ADDITIVE — the Phaser Activity's floorplan).
+//
+// The existing HQ tables above hold DERIVED cosmetics + slot placements, which
+// cannot express a free-form isometric floorplan (rooms with x/y/size, wall &
+// door edges, objects at arbitrary tiles with rotation). Rather than fork player
+// HQ data, this single additive table stores ONE authoritative layout blob per
+// (guild, user) that BOTH the Activity and the bot can read. Unlock/ownership is
+// NOT stored here — it stays derived from hq_unlocks; the server validates every
+// saved object against those unlocks before persisting, so the client is never
+// trusted. A null/absent row means "player has never opened the live HQ" and the
+// server seeds a starter layout on first read.
+// ─────────────────────────────────────────────────────────────────────────────
+export const hqActivityLayoutTable = pgTable("hq_activity_layout", {
+  id: serial("id").primaryKey(),
+  guildId: text("guild_id").notNull(),
+  userId: text("user_id").notNull(),
+  // The full floorplan { version, rooms[], objects[] }. Shape lives in
+  // bot/hq/activity-layout.ts (server) and the Activity client's world model.
+  layout: jsonb("layout").notNull().default({}),
+  // Bumped on every server-accepted save; lets clients detect stale writes.
+  revision: integer("revision").notNull().default(0),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (t) => ({
+  guildUserUniq: uniqueIndex("hq_activity_layout_guild_user_uniq").on(t.guildId, t.userId),
+}));
+
+export type HqActivityLayoutRow = typeof hqActivityLayoutTable.$inferSelect;

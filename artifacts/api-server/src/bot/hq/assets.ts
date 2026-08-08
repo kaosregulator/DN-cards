@@ -63,6 +63,16 @@ function assetDir(): string | null {
   return _dir;
 }
 
+/**
+ * Absolute path of the resolved HQ art-pack directory (the folder holding
+ * manifest.json + the category subdirs), or null if no pack is present. Exposed
+ * so the Activity's HTTP layer can serve the SAME art the server-side renderer
+ * uses — one pack, two consumers.
+ */
+export function hqAssetsRoot(): string | null {
+  return assetDir();
+}
+
 function manifest(): { dir: string; manifest: HqManifest } | null {
   const dir = assetDir();
   if (!dir) return null;

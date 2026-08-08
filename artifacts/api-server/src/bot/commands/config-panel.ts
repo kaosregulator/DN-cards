@@ -10,6 +10,10 @@ import { scheduleNextSpawn, clearSpawnTimer, scheduleNextSpawnSecondary, clearSp
 import { RARITY_WEIGHTS, RARITY_LABELS, RARITY_EMOJI, rarityLabel, rarityEmoji, getRarityOrder, type Rarity, type RarityDisplayMap } from "../cards-data.js";
 import type { CustomPack, GuildSettings } from "@workspace/db";
 import { PACK_TIERS, PACK_TIER_META, PACK_DEFAULTS, resolveTierConfig, tierLabel, type PackTier } from "./pack.js";
+import {
+  EXPERIENCES, MODE_LABELS, experienceByKey, getPrimary, getFallback, activityConfigured,
+  type PresentationMode,
+} from "../experience.js";
 
 // Rarity display order defaults to the canonical DB enum key order.
 // Admins can reorder it per-guild via `/rarity` → "Order". Use getRarityOrder(settings)
@@ -376,6 +380,27 @@ export async function handleConfigButton(interaction: ButtonInteraction): Promis
       await interaction.editReply({
         embeds: [buildAnimationEmbed(settings)],
         components: buildAnimationComponents(settings),
+      });
+    }
+    return;
+  } else if (action === "exp") {
+    const settings = await getOrCreateGuildSettings(guildId);
+    if (arg === "back") {
+      // back to the animation sub-panel where the Experiences entry lives
+      await interaction.editReply({
+        embeds: [buildAnimationEmbed(settings)],
+        components: buildAnimationComponents(settings),
+      });
+    } else if (arg === "fallbacks") {
+      await interaction.editReply({
+        embeds: [buildExperienceEmbed(settings, true)],
+        components: buildExperienceFallbackComponents(settings),
+      });
+    } else {
+      // open (primary presentation panel)
+      await interaction.editReply({
+        embeds: [buildExperienceEmbed(settings, false)],
+        components: buildExperienceComponents(settings),
       });
     }
     return;
@@ -810,8 +835,85 @@ function buildAnimationComponents(s: GuildSettings) {
   );
   const backRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder().setCustomId("config:anim:back").setLabel("← Back").setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder().setCustomId("config:exp:open").setLabel("🎬 Experiences").setStyle(ButtonStyle.Primary),
   );
   return [revealRow, toggleRow, speedRow, backRow];
+}
+
+// ── Experiences sub-panel (per-guild presentation modes) ─────────────────────
+// Admins pick how HQ / Battles / Raids / Packs are presented — Live Activity,
+// server-rendered PNG/Embed, animated image, or disabled — each with a fallback.
+
+function buildExperienceEmbed(s: GuildSettings, fallbacks: boolean): EmbedBuilder {
+  const lines = EXPERIENCES.map((e) => {
+    const primary = MODE_LABELS[getPrimary(s, e.key)];
+    const fb = MODE_LABELS[getFallback(s, e.key)];
+    return `${e.emoji} **${e.label}** — ${primary}  ·  fallback: _${fb}_`;
+  });
+  const note = activityConfigured()
+    ? "Live Activity is set up on this deployment. ✅"
+    : "⚠️ Live Activity isn't set up on this deployment yet — those modes fall back until it is.";
+  return new EmbedBuilder()
+    .setTitle(`🎬 Experiences — ${fallbacks ? "Fallbacks" : "Primary presentation"}`)
+    .setColor(0x3355ee)
+    .setDescription(
+      `Choose how each experience is shown. Each has a **primary** mode and a **fallback** used when the primary can't run.\n\n${lines.join("\n")}\n\n${note}`,
+    );
+}
+
+function experienceSelects(s: GuildSettings, fallbacks: boolean): ActionRowBuilder<StringSelectMenuBuilder>[] {
+  return EXPERIENCES.map((e) => {
+    const current = fallbacks ? getFallback(s, e.key) : getPrimary(s, e.key);
+    // Fallback menus never offer "activity" (it's what we fall back FROM).
+    const modes = e.modes.filter((m) => !(fallbacks && m === "activity"));
+    const sel = new StringSelectMenuBuilder()
+      .setCustomId(`${fallbacks ? "cfgexpfb" : "cfgexp"}:${e.key}`)
+      .setPlaceholder(`${e.emoji} ${e.label}`)
+      .addOptions(modes.map((m) => ({
+        label: `${e.label}: ${MODE_LABELS[m]}`,
+        value: m,
+        default: current === m,
+      })));
+    return new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(sel);
+  });
+}
+
+function buildExperienceComponents(s: GuildSettings) {
+  const rows = experienceSelects(s, false);
+  const backRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder().setCustomId("config:exp:back").setLabel("← Back").setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder().setCustomId("config:exp:fallbacks").setLabel("Fallbacks →").setStyle(ButtonStyle.Secondary),
+  );
+  return [...rows, backRow];
+}
+
+function buildExperienceFallbackComponents(s: GuildSettings) {
+  const rows = experienceSelects(s, true);
+  const backRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder().setCustomId("config:exp:open").setLabel("← Primary").setStyle(ButtonStyle.Secondary),
+  );
+  return [...rows, backRow];
+}
+
+export async function handleExperienceSelect(interaction: StringSelectMenuInteraction): Promise<void> {
+  if (!interaction.guild) return;
+  await interaction.deferUpdate();
+  const ok = await ensureAdmin(interaction);
+  if (!ok) return;
+  const guildId = interaction.guild.id;
+  const [prefix, key] = interaction.customId.split(":");
+  const meta = experienceByKey(key ?? "");
+  if (!meta) return;
+  const value = interaction.values[0] as PresentationMode;
+  if (!meta.modes.includes(value)) return;
+  const fallbacks = prefix === "cfgexpfb";
+  const field = fallbacks ? meta.fallbackField : meta.primaryField;
+  await updateGuildSettings(guildId, { [field]: value } as Partial<GuildSettings>);
+  const s = await getOrCreateGuildSettings(guildId);
+  await interaction.editReply({
+    embeds: [buildExperienceEmbed(s, fallbacks)],
+    components: fallbacks ? buildExperienceFallbackComponents(s) : buildExperienceComponents(s),
+  });
 }
 
 function formatSec(sec: number): string {

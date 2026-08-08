@@ -323,6 +323,21 @@ export const guildSettingsTable = pgTable("guild_settings", {
   spawnChannelIdSecondary: text("spawn_channel_id_secondary"),
   activeSetIdSecondary: integer("active_set_id_secondary").references(() => setsTable.id, { onDelete: "set null" }),
   spawnEnabledSecondary: boolean("spawn_enabled_secondary").notNull().default(false),
+  // ── Experience presentation (per-guild, per-experience) ─────────────────────
+  // How each major experience is presented, chosen independently by the server
+  // admin via `/config` → Experiences. Each has a PRIMARY mode and a FALLBACK
+  // used when the primary can't run (e.g. the Activity fails to launch). Values:
+  //   activity | discord_png | discord_embed | animated_image | disabled
+  // Defaults intentionally preserve the CURRENT behaviour (server-rendered), so
+  // migrating a live guild changes nothing until an admin opts into `activity`.
+  hqPresentation: text("hq_presentation").notNull().default("discord_png"),
+  hqFallback: text("hq_fallback").notNull().default("discord_png"),
+  battlePresentation: text("battle_presentation").notNull().default("discord_embed"),
+  battleFallback: text("battle_fallback").notNull().default("discord_embed"),
+  raidPresentation: text("raid_presentation").notNull().default("discord_embed"),
+  raidFallback: text("raid_fallback").notNull().default("discord_embed"),
+  packPresentation: text("pack_presentation").notNull().default("animated_image"),
+  packFallback: text("pack_fallback").notNull().default("animated_image"),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
