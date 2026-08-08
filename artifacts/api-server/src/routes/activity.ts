@@ -1,6 +1,12 @@
 import { Router, type IRouter, type Request, type Response } from "express";
+import { createReadStream, existsSync, readFileSync, statSync } from "node:fs";
+import { join, normalize, extname } from "node:path";
 import { getPlayerProfile } from "../bot/player/profile.js";
 import { getOrCreateHq } from "../bot/hq/db.js";
+import { hqAssetsRoot } from "../bot/hq/assets.js";
+import { getActivityLayout, saveActivityLayout, getActivityCatalog, WORLD_TILES } from "../bot/hq/activity-layout.js";
+import { ACTIVITY_FLOORS } from "../bot/hq/activity-catalog.js";
+import { HQ_ROOMS } from "../bot/hq/defs/rooms.js";
 import { HOME_GUILD_ID } from "../bot/home-guild.js";
 import { loginRateLimiter } from "../lib/rate-limiters.js";
 import { logger } from "../lib/logger.js";
@@ -164,6 +170,123 @@ router.get("/@me", async (req: Request, res: Response) => {
   } catch (err) {
     logger.error({ err, userId: user.id }, "activity /@me snapshot failed");
     res.status(500).json({ error: "Failed to load player state." });
+  }
+});
+
+// ── Auth guard: resolve Bearer → Discord user, or 401 ─────────────────────────
+async function requireUser(
+  req: Request, res: Response,
+): Promise<{ id: string; username: string; avatar: string | null } | null> {
+  if (!oauthConfig().configured || !HOME_GUILD_ID) {
+    res.status(503).json({ error: "Activity backend is not configured." });
+    return null;
+  }
+  const user = await identify(req);
+  if (!user) {
+    res.status(401).json({ error: "Invalid or missing Discord access token." });
+    return null;
+  }
+  return user;
+}
+
+// ── HQ art pack ───────────────────────────────────────────────────────────────
+// The client loads real textures through the Discord proxy from here. Same pack
+// the server-side canvas renderer uses (bot/hq/assets.ts).
+
+const CONTENT_TYPES: Record<string, string> = {
+  ".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg",
+  ".webp": "image/webp", ".gif": "image/gif", ".json": "application/json",
+};
+
+// GET /api/activity/assets/manifest — sprite key → relative path map + base URL.
+router.get("/assets/manifest", (_req, res) => {
+  const root = hqAssetsRoot();
+  if (!root || !existsSync(join(root, "manifest.json"))) {
+    res.status(404).json({ error: "HQ art pack not found." });
+    return;
+  }
+  try {
+    const raw = JSON.parse(readFileSync(join(root, "manifest.json"), "utf8")) as {
+      sprites?: Record<string, string>;
+    };
+    res.json({ base: "/activity/assets/hq", sprites: raw.sprites ?? {} });
+  } catch (err) {
+    logger.error({ err }, "activity: failed to read HQ manifest");
+    res.status(500).json({ error: "Failed to read art manifest." });
+  }
+});
+
+// GET /api/activity/assets/hq/<path> — static art, with a strict traversal guard.
+router.get(/^\/assets\/hq\/(.+)$/, (req, res) => {
+  const root = hqAssetsRoot();
+  if (!root) {
+    res.status(404).end();
+    return;
+  }
+  const rel = normalize(req.params[0] ?? "").replace(/^(\.\.[/\\])+/, "");
+  if (rel.includes("..")) {
+    res.status(400).end();
+    return;
+  }
+  const full = join(root, rel);
+  if (!full.startsWith(root) || !existsSync(full) || !statSync(full).isFile()) {
+    res.status(404).end();
+    return;
+  }
+  const type = CONTENT_TYPES[extname(full).toLowerCase()];
+  if (!type) {
+    res.status(415).end();
+    return;
+  }
+  res.setHeader("Content-Type", type);
+  res.setHeader("Cache-Control", "public, max-age=86400");
+  createReadStream(full).pipe(res);
+});
+
+// ── HQ live world ─────────────────────────────────────────────────────────────
+
+// GET /api/activity/hq — the authoritative live-world state for this player.
+router.get("/hq", async (req, res) => {
+  const user = await requireUser(req, res);
+  if (!user) return;
+  try {
+    const guildId = HOME_GUILD_ID!;
+    const [profile, hq, stored, catalog] = await Promise.all([
+      getPlayerProfile(guildId, user.id),
+      getOrCreateHq(guildId, user.id),
+      getActivityLayout(guildId, user.id),
+      getActivityCatalog(guildId, user.id),
+    ]);
+    res.json({
+      worldTiles: WORLD_TILES,
+      user: { id: user.id, username: user.username },
+      hq: { level: hq.hqLevel, themeId: hq.themeId, shards: profile.economy.shards },
+      // Shield strength is derived — surfaced so the client can render the FX.
+      shield: { active: true, strength: Math.min(100, 40 + hq.hqLevel * 5) },
+      rooms: HQ_ROOMS.map((r) => ({
+        id: r.id, name: r.name, emoji: r.emoji, kind: r.kind, category: r.category,
+      })),
+      floors: ACTIVITY_FLOORS,
+      catalog,
+      layout: stored.layout,
+      revision: stored.revision,
+    });
+  } catch (err) {
+    logger.error({ err, userId: user.id }, "activity /hq failed");
+    res.status(500).json({ error: "Failed to load HQ." });
+  }
+});
+
+// POST /api/activity/hq/layout — persist an edited floorplan (server-validated).
+router.post("/hq/layout", async (req, res) => {
+  const user = await requireUser(req, res);
+  if (!user) return;
+  try {
+    const stored = await saveActivityLayout(HOME_GUILD_ID!, user.id, req.body?.layout);
+    res.json({ ok: true, layout: stored.layout, revision: stored.revision });
+  } catch (err) {
+    logger.error({ err, userId: user.id }, "activity /hq/layout save failed");
+    res.status(500).json({ error: "Failed to save HQ." });
   }
 });
 

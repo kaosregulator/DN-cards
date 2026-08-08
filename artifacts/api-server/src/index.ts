@@ -952,6 +952,23 @@ async function runBootMigrations() {
   `);
   await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS hq_settings_guild_uniq ON hq_settings (guild_id)`);
 
+  // ── HQ Activity live-world layout (additive; Phaser Activity floorplan) ──────
+  // One authoritative floorplan blob per (guild,user). Purely additive — the
+  // existing HQ tables are untouched. Server validates every save against
+  // hq_unlocks before writing, so this never becomes a source of unearned items.
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS hq_activity_layout (
+      id          SERIAL PRIMARY KEY,
+      guild_id    TEXT NOT NULL,
+      user_id     TEXT NOT NULL,
+      layout      JSONB NOT NULL DEFAULT '{}'::jsonb,
+      revision    INTEGER NOT NULL DEFAULT 0,
+      created_at  TIMESTAMP NOT NULL DEFAULT NOW(),
+      updated_at  TIMESTAMP NOT NULL DEFAULT NOW()
+    )
+  `);
+  await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS hq_activity_layout_guild_user_uniq ON hq_activity_layout (guild_id, user_id)`);
+
   logger.info("Boot migrations applied");
 }
 
