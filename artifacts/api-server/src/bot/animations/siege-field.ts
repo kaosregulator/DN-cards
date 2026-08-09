@@ -215,6 +215,41 @@ function sprite(prefix: string, key: string): string | null {
 
 // ── The renderer ─────────────────────────────────────────────────────────────
 
+// Preload every image the scene needs once, up-front, so per-frame drawing is
+// pure CPU. Shared by the animated GIF and the static still.
+async function loadFieldAssets(cmod: CanvasMod, input: SiegeFieldInput): Promise<Assets> {
+  const backdropPath = sprite("backdrop", input.backdropKey || "castles") ?? sprite("backdrop", "grass");
+  const floorPath = sprite("floor", input.floorKey || "stone") ?? sprite("floor", "blue-stone");
+  const atkBasePath = sprite("base", "round-stone-high") ?? sprite("base", "round-stone");
+  const defBasePath = sprite("base", "round-wood-high") ?? sprite("base", "round-stone");
+  const flashPath = sprite("fx", "flash01") ?? sprite("fx", "flash00");
+  const smokePath = sprite("fx", "smoke00") ?? sprite("fx", "white-puff00");
+
+  const benchCards = [...(input.attackerBench ?? []), ...(input.defenderBench ?? [])];
+  const benchUrls = [...new Set(benchCards.map(c => c.artUrl).filter((u): u is string => !!u))];
+
+  const [backdrop, floor, atkBase, defBase, flash, smoke, atkArt, defArt, ...benchLoaded] = await Promise.all([
+    backdropPath ? loadSpritePath(cmod, backdropPath) : null,
+    floorPath ? loadSpritePath(cmod, floorPath) : null,
+    atkBasePath ? loadSpritePath(cmod, atkBasePath) : null,
+    defBasePath ? loadSpritePath(cmod, defBasePath) : null,
+    flashPath ? loadSpritePath(cmod, flashPath) : null,
+    smokePath ? loadSpritePath(cmod, smokePath) : null,
+    loadArt(cmod, input.attacker.artUrl),
+    loadArt(cmod, input.defender.artUrl),
+    ...benchUrls.map(u => loadArt(cmod, u)),
+  ]);
+  const benchImgs = new Map<string, CanvasImage | null>();
+  benchUrls.forEach((u, i) => benchImgs.set(u, benchLoaded[i] ?? null));
+  return { backdrop, floor, atkBase, defBase, flash, smoke, atkArt, defArt, benchImgs };
+}
+
+// The instant the still freezes on: just past the connect, so the strike flash,
+// the slash and the damage number are all up — the move is unmistakable.
+const STILL_T = 0.54;
+// Stills are cheap (no encode), so render them larger/crisper than a GIF frame.
+const STILL_SCALE = 0.85;
+
 export async function renderSiegeField(
   input: SiegeFieldInput,
   speed: AnimationSpeed,
@@ -226,32 +261,7 @@ export async function renderSiegeField(
     ensureFonts(cmod);
 
     try {
-      // Preload every image once, up-front, so per-frame drawing is pure CPU.
-      const backdropPath = sprite("backdrop", input.backdropKey || "castles") ?? sprite("backdrop", "grass");
-      const floorPath = sprite("floor", input.floorKey || "stone") ?? sprite("floor", "blue-stone");
-      const atkBasePath = sprite("base", "round-stone-high") ?? sprite("base", "round-stone");
-      const defBasePath = sprite("base", "round-wood-high") ?? sprite("base", "round-stone");
-      const flashPath = sprite("fx", "flash01") ?? sprite("fx", "flash00");
-      const smokePath = sprite("fx", "smoke00") ?? sprite("fx", "white-puff00");
-
-      const benchCards = [...(input.attackerBench ?? []), ...(input.defenderBench ?? [])];
-      const benchUrls = [...new Set(benchCards.map(c => c.artUrl).filter((u): u is string => !!u))];
-
-      const [backdrop, floor, atkBase, defBase, flash, smoke, atkArt, defArt, ...benchLoaded] = await Promise.all([
-        backdropPath ? loadSpritePath(cmod, backdropPath) : null,
-        floorPath ? loadSpritePath(cmod, floorPath) : null,
-        atkBasePath ? loadSpritePath(cmod, atkBasePath) : null,
-        defBasePath ? loadSpritePath(cmod, defBasePath) : null,
-        flashPath ? loadSpritePath(cmod, flashPath) : null,
-        smokePath ? loadSpritePath(cmod, smokePath) : null,
-        loadArt(cmod, input.attacker.artUrl),
-        loadArt(cmod, input.defender.artUrl),
-        ...benchUrls.map(u => loadArt(cmod, u)),
-      ]);
-      const benchImgs = new Map<string, CanvasImage | null>();
-      benchUrls.forEach((u, i) => benchImgs.set(u, benchLoaded[i] ?? null));
-
-      const assets = { backdrop, floor, atkBase, defBase, flash, smoke, atkArt, defArt, benchImgs };
+      const assets = await loadFieldAssets(cmod, input);
       const { frames, delay } = speedPlan(speed);
 
       const physW = Math.round(FIELD.width * RENDER_SCALE);
@@ -263,14 +273,14 @@ export async function renderSiegeField(
 
       for (let i = 0; i < frames; i++) {
         const t = frames <= 1 ? 1 : i / (frames - 1);
-        const ctx = drawFrame(Konva, input, assets, t);
+        const canvas = drawFrame(Konva, input, assets, t, RENDER_SCALE);
         // Hold a beat on the settled final frame so the loop reads as a clean
         // "strike, then rest" rather than a frantic ping-pong.
         enc.setDelay(i === frames - 1 ? delay * 6 : delay);
         // The cairo 2D context is structurally what gifencoder reads pixels from;
         // its ambient type names the DOM CanvasRenderingContext2D (not in scope
         // for Node source), so bridge with a cast.
-        enc.addFrame(ctx as never);
+        enc.addFrame(canvas.getContext("2d") as never);
       }
       enc.finish();
 
@@ -282,6 +292,27 @@ export async function renderSiegeField(
       return { buffer, width: physW, height: physH, frameCount: frames, durationMs: frames * delay };
     } catch (err) {
       logger.error({ err }, "siege-field: render failed");
+      return null;
+    }
+  });
+}
+
+// A single frozen frame of the same battlefield, as a PNG — for guilds that run
+// battles on static frames (no GIF). It captures the strike at its peak so the
+// move still reads clearly: the acting card lunged in, the impact + damage
+// number are up, the target is recoiling. Same scene, one moment.
+export async function renderSiegeFieldStill(input: SiegeFieldInput): Promise<Buffer | null> {
+  return queueRender("siege-field-still", async () => {
+    const Konva = await loadKonva();
+    const cmod = await loadCanvasMod();
+    if (!Konva || !cmod) return null;
+    ensureFonts(cmod);
+    try {
+      const assets = await loadFieldAssets(cmod, input);
+      const canvas = drawFrame(Konva, input, assets, STILL_T, STILL_SCALE);
+      return canvas.toBuffer("image/png");
+    } catch (err) {
+      logger.error({ err }, "siege-field: still render failed");
       return null;
     }
   });
@@ -302,13 +333,15 @@ const GROUND_Y = 356;              // podium contact line
 const STATION_DX = 232;            // horizontal offset of each station from centre
 const PORTRAIT_W = 150, PORTRAIT_H = 150;
 
+// Returns the composited stage canvas (a `canvas`-package Canvas) — the caller
+// pulls a 2D context for gifencoder or a PNG buffer for a still.
 function drawFrame(
-  Konva: KonvaMod, input: SiegeFieldInput, a: Assets, t: number,
-): unknown {
-  const stage = new Konva.Stage({ width: Math.round(FIELD.width * RENDER_SCALE), height: Math.round(FIELD.height * RENDER_SCALE) });
+  Konva: KonvaMod, input: SiegeFieldInput, a: Assets, t: number, scale: number,
+): { getContext: (id: "2d") => unknown; toBuffer: (mime: "image/png") => Buffer } {
+  const stage = new Konva.Stage({ width: Math.round(FIELD.width * scale), height: Math.round(FIELD.height * scale) });
   // Draw everything in logical (900×470) coordinates; the layer scale shrinks the
-  // whole scene to the physical encode size in one step.
-  const layer = new Konva.Layer({ listening: false, scaleX: RENDER_SCALE, scaleY: RENDER_SCALE });
+  // whole scene to the physical output size in one step.
+  const layer = new Konva.Layer({ listening: false, scaleX: scale, scaleY: scale });
   stage.add(layer);
 
   drawBackground(Konva, layer, a, input.accent);
@@ -373,7 +406,7 @@ function drawFrame(
   if (input.ko && t > 0.72) drawKoStamp(Konva, layer, targetIsDef ? defX : atkX, clamp01((t - 0.72) / 0.28));
 
   layer.draw();
-  return stage.toCanvas().getContext("2d");
+  return stage.toCanvas() as unknown as { getContext: (id: "2d") => unknown; toBuffer: (mime: "image/png") => Buffer };
 }
 
 function roundRectPath(ctx: { beginPath: () => void; moveTo: (x: number, y: number) => void; arcTo: (x1: number, y1: number, x2: number, y2: number, r: number) => void; closePath: () => void }, x: number, y: number, w: number, h: number, r: number): void {

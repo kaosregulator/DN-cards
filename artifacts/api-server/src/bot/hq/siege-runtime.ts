@@ -43,7 +43,7 @@ import { getMoveset } from "../battle/movesets.js";
 import {
   listBattleItems, getBattleItem, loadGuildBattleItems, applyItemUse, isOffensiveItem,
 } from "../battle/items.js";
-import { renderBattleTurn, renderAttackFrame, renderSiegeField, type AnimationSpeed } from "../animations/index.js";
+import { renderBattleTurn, renderAttackFrame, renderSiegeField, renderSiegeFieldStill, type AnimationSpeed } from "../animations/index.js";
 import type { SiegeFieldFighter, SiegeFieldInput, SiegeFieldBenchCard } from "../animations/index.js";
 import { renderCoinFlip } from "../battle/prep-canvas.js";
 import { renderSiegeFrame, type HqBaseView, type SiegeOverlay, type HqRenderDefender } from "./render.js";
@@ -885,20 +885,27 @@ async function buildTurnFrame(
   if (s.headless || !s.siege.turnVisuals) return;
   const visual = computeMoveVisual(move, result, actor, foe, foePoolBefore, selfPoolBefore);
 
-  // NEW: the zoomed-in "Clash" battlefield. BOTH sides now animate move-for-move
-  // on a dedicated arena — the attacker's card dashes right and strikes, the
+  // NEW: the zoomed-in "Clash" battlefield. BOTH sides animate move-for-move on
+  // a dedicated arena — the attacker's card dashes right and strikes, the
   // garrison's card dashes left and answers — so the siege reads as a true
   // clash, not just the commander's blow. The castle scene lives in the top
-  // embed; this is the fight itself. Best-effort: a null result falls through to
-  // the legacy frame below so nothing regresses if the Konva stack is missing.
-  const field = await renderSiegeField(
-    buildFieldInput(s, side, move, visual, actor, foe, foePoolBefore),
-    s.settings.battleAnimationSpeed as AnimationSpeed,
-  ).catch(() => null);
-  if (field) {
-    s.turnFrame = Buffer.from(field.buffer);
-    s.turnFrameIsGif = true;
-    return;
+  // embed; this is the fight itself.
+  //
+  // We honour the guild's battle-visual setting: an ANIMATED guild gets the GIF
+  // battlefield; a CLASSIC (static-frames) guild gets a single frozen strike
+  // frame of the SAME battlefield as a PNG — same look, one moment, no GIF. Both
+  // are best-effort: a null result falls through to the legacy frame below so
+  // nothing regresses if the Konva stack is missing. Animations fully off →
+  // no per-turn frame at all (unchanged).
+  if (sceneAnimated(s) || classicFrames(s)) {
+    const fieldInput = buildFieldInput(s, side, move, visual, actor, foe, foePoolBefore);
+    if (sceneAnimated(s)) {
+      const gif = await renderSiegeField(fieldInput, s.settings.battleAnimationSpeed as AnimationSpeed).catch(() => null);
+      if (gif) { s.turnFrame = Buffer.from(gif.buffer); s.turnFrameIsGif = true; return; }
+    } else {
+      const png = await renderSiegeFieldStill(fieldInput).catch(() => null);
+      if (png) { s.turnFrame = png; s.turnFrameIsGif = false; return; }
+    }
   }
 
   // ── Legacy fallback (commander's blow only) ────────────────────────────────
