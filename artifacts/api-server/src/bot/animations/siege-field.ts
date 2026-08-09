@@ -25,6 +25,7 @@ import GIFEncoder from "gifencoder";
 import { spriteForPrefix } from "../hq/assets.js";
 import { queueRender } from "./render-queue.js";
 import { getRarityEffectColor } from "./effects.js";
+import { extractArtColor } from "../battle/image/vibrant-color.js";
 import type { Rarity } from "../cards-data.js";
 import type { AnimationSpeed, AnimationResult } from "./types.js";
 import { logger } from "../../lib/logger.js";
@@ -167,6 +168,17 @@ function fighterColor(f: SiegeFighterLike): number {
 }
 type SiegeFighterLike = { rarity: string; rarityColor: number | null };
 
+// The active fighter's accent, themed to its actual card art. Mirrors the
+// `/battle` turn renderer: the dominant colour pulled from the artwork wins, so
+// the frame, glow and nameplate all read as "this specific card"; a custom
+// rarity-tier colour, then the rarity effect colour, are the fallbacks. Only the
+// two active fighters get this (extraction loads + quantises the art); bench
+// standees stay on their rarity colour.
+async function resolveFieldColor(f: SiegeFieldFighter): Promise<number> {
+  const art = f.artUrl ? await extractArtColor(f.artUrl).catch(() => null) : null;
+  return art ?? f.rarityColor ?? getRarityEffectColor(f.rarity as Rarity);
+}
+
 // ── Image loading (shared, cached, timeout-guarded) ──────────────────────────
 const imgCache = new Map<string, Promise<CanvasImage | null>>();
 
@@ -241,7 +253,13 @@ async function loadFieldAssets(cmod: CanvasMod, input: SiegeFieldInput): Promise
   ]);
   const benchImgs = new Map<string, CanvasImage | null>();
   benchUrls.forEach((u, i) => benchImgs.set(u, benchLoaded[i] ?? null));
-  return { backdrop, floor, atkBase, defBase, flash, smoke, atkArt, defArt, benchImgs };
+
+  // Theme each active fighter's accent to its card art (see resolveFieldColor).
+  const [atkColor, defColor] = await Promise.all([
+    resolveFieldColor(input.attacker),
+    resolveFieldColor(input.defender),
+  ]);
+  return { backdrop, floor, atkBase, defBase, flash, smoke, atkArt, defArt, benchImgs, atkColor, defColor };
 }
 
 // The instant the still freezes on: just past the connect, so the strike flash,
@@ -326,6 +344,7 @@ interface Assets {
   flash: CanvasImage | null; smoke: CanvasImage | null;
   atkArt: CanvasImage | null; defArt: CanvasImage | null;
   benchImgs: Map<string, CanvasImage | null>;
+  atkColor: number; defColor: number;   // art-themed accent per active fighter
 }
 
 // Station geometry: where each fighter's podium + portrait live at rest.
@@ -383,11 +402,11 @@ function drawFrame(
   drawBench(Konva, layer, 1, input.defenderBench ?? [], a.benchImgs);
 
   drawStation(Konva, layer, {
-    x: atkX, side: 0, base: a.atkBase, art: a.atkArt, fighter: input.attacker,
+    x: atkX, side: 0, base: a.atkBase, art: a.atkArt, fighter: input.attacker, color: a.atkColor,
     bob: bobA, flashWhite: atkFlashWhite, t,
   });
   drawStation(Konva, layer, {
-    x: defX, side: 1, base: a.defBase, art: a.defArt, fighter: input.defender,
+    x: defX, side: 1, base: a.defBase, art: a.defArt, fighter: input.defender, color: a.defColor,
     bob: bobB, flashWhite: defFlashWhite, t,
   });
 
@@ -475,11 +494,11 @@ function drawBackground(Konva: KonvaMod, layer: any, a: Assets, accent: number):
 
 interface StationOpts {
   x: number; side: 0 | 1; base: CanvasImage | null; art: CanvasImage | null;
-  fighter: SiegeFieldFighter; bob: number; flashWhite: number; t: number;
+  fighter: SiegeFieldFighter; color: number; bob: number; flashWhite: number; t: number;
 }
 
 function drawStation(Konva: KonvaMod, layer: any, o: StationOpts): void {
-  const color = fighterColor(o.fighter);
+  const color = o.color;
   const cstr = hex(color);
   const baseW = 148, baseH = 74;
   const baseX = o.x - baseW / 2, baseY = GROUND_Y - baseH * 0.5;
