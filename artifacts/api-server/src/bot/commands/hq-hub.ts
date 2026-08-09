@@ -128,6 +128,11 @@ import {
   renderWorldMap, type HqWorldView, type WorldMarker,
 } from "../hq/render-world.js";
 import { renderFloorplan } from "../hq/render-floorplan.js";
+import { renderRoomSuite } from "../hq/render-room-suite.js";
+import {
+  roomLayout, resolveLayoutRoomId, resolveRoomSize, LAYOUT_ROOM_IDS,
+  ROOM_SIZES, DEFAULT_ROOM_SIZE, type RoomSizeId,
+} from "../hq/defs/room-layouts.js";
 import {
   loadFloorplan, saveFloorplan, focusZone, claimExpansion, availableExpansions,
   syncZoneUnlocks, describeConnections, listUnlockedZones, getFocusZone,
@@ -158,6 +163,8 @@ interface HqStats {
   floorplan?: unknown;
   build?: unknown;
   layers?: unknown;
+  /** Chosen Small/Medium/Large size for the active room's furnished layout. */
+  layoutSize?: RoomSizeId;
 }
 function readHqStats(hq: PlayerHq): HqStats {
   const s = hq.stats as HqStats | null | undefined;
@@ -168,6 +175,7 @@ function readHqStats(hq: PlayerHq): HqStats {
     companionId: s?.companionId, baseTier: s?.baseTier,
     editorCategory: s?.editorCategory, editorMode: s?.editorMode,
     floorplan: s?.floorplan, build: s?.build, layers: s?.layers,
+    layoutSize: s?.layoutSize,
   };
 }
 
@@ -630,6 +638,35 @@ export async function handleHqHubComponent(
     await interaction.update(await buildView(interaction, "rooms", [])).catch(() => {});
     return;
   }
+  // Style section: choose which of the four rooms is active (its furnished
+  // Small/Medium/Large layout is what the preview + editor use). A gated room is
+  // reported rather than switched to, since buildView would otherwise silently
+  // revert it to the always-open Command Center.
+  if (action === "roomlayout" && interaction.isStringSelectMenu()) {
+    const roomId = resolveLayoutRoomId(interaction.values[0]);
+    const owned = await getUnlockedItemIds(guildId, userId).catch(() => new Set<string>());
+    const target = resolveRoom(roomId);
+    if (!isRoomUnlocked(target, owned)) {
+      await interaction.update(await buildView(
+        interaction, "theme", [],
+        `🔒 **${target.name}** isn't unlocked yet — ${unlockLabel(target.unlock)}.`,
+      )).catch(() => {});
+      return;
+    }
+    await updateHq(guildId, userId, { activeRoomId: roomId }).catch(() => {});
+    const fp = focusZone(await loadFloorplan(guildId, userId), roomId);
+    await saveFloorplan(guildId, userId, fp).catch(() => {});
+    await interaction.update(await buildView(interaction, "theme", [])).catch(() => {});
+    return;
+  }
+  // Style section: choose the active room's size variant (persisted in stats).
+  if (action === "layoutsize" && interaction.isStringSelectMenu()) {
+    const size = resolveRoomSize(interaction.values[0]);
+    const hqRow = await getOrCreateHq(guildId, userId);
+    await updateHq(guildId, userId, { stats: { ...readHqStats(hqRow), layoutSize: size } }).catch(() => {});
+    await interaction.update(await buildView(interaction, "theme", [])).catch(() => {});
+    return;
+  }
   if (action === "fp-focus" && interaction.isStringSelectMenu()) {
     const zoneId = interaction.values[0]!;
     let fp = focusZone(await loadFloorplan(guildId, userId), zoneId);
@@ -980,6 +1017,30 @@ async function renderRoomImage(view: HqRenderView): Promise<AttachmentBuilder | 
   return buf ? new AttachmentBuilder(buf, { name: HQ_FILE }) : null;
 }
 
+// Furnished room preview: the chosen room at the chosen size, lit by the active
+// theme. Draws the same mini-world the room-suite renderer paints for the web
+// client, so "pick a room, pick a size, pick a theme" is visible in Discord.
+async function renderRoomSuiteImage(
+  guildId: string, userId: string, ownerName: string, ownerAvatarUrl: string | null, hq: PlayerHq,
+): Promise<AttachmentBuilder | null> {
+  const theme = resolveTheme(hq.themeId);
+  const roomId = resolveLayoutRoomId(hq.activeRoomId);
+  const size = resolveRoomSize(readHqStats(hq).layoutSize);
+  const layout = roomLayout(roomId, size);
+  const buf = await renderRoomSuite({
+    ownerAvatarUrl,
+    displayTitle: hqDisplayTitle(hq, ownerName),
+    subtitle: `${layout.emoji} ${layout.name} — ${layout.blurb}`,
+    theme,
+    roomEmoji: layout.emoji,
+    roomName: layout.name,
+    hqLevel: hq.hqLevel,
+    layout,
+    showLabels: true,
+  }).catch(() => null);
+  return buf ? new AttachmentBuilder(buf, { name: HQ_FILE }) : null;
+}
+
 async function renderBaseImage(view: HqBaseView): Promise<AttachmentBuilder | null> {
   const buf = await renderBase(view).catch(() => null);
   return buf ? new AttachmentBuilder(buf, { name: HQ_FILE }) : null;
@@ -1204,6 +1265,8 @@ async function buildView(
     file = await renderBaseImage(await buildBaseRenderView(guildId, userId, interaction.user.username, interaction.user.displayAvatarURL(), hq));
   } else if (section === "rooms") {
     file = await renderFloorplanImage(guildId, userId, interaction.user.username, interaction.user.displayAvatarURL(), hq);
+  } else if (section === "theme") {
+    file = await renderRoomSuiteImage(guildId, userId, interaction.user.username, interaction.user.displayAvatarURL(), hq);
   } else {
     file = await renderRoomImage(await buildRenderView(guildId, userId, interaction.user.username, interaction.user.displayAvatarURL(), hq));
   }
@@ -1830,11 +1893,15 @@ async function buildView(
       const style = readHqStats(hq);
       const backdrop = resolveBackdrop(style.backdropId);
       const wallpaper = resolveWallpaper(style.wallpaperId);
+      const layoutRoomId = resolveLayoutRoomId(hq.activeRoomId);
+      const layoutRoom = resolveRoom(layoutRoomId);
+      const layoutSize = resolveRoomSize(style.layoutSize);
+      const sizeOpt = ROOM_SIZES.find(s => s.id === layoutSize) ?? ROOM_SIZES[1]!;
       embed.setTitle("🎨 Style").setDescription(
-        "Restyle your HQ.\n" +
-        "• **Room walls / floor** — architecture of interior rooms (stone, wood, bunker…)\n" +
-        "• **Giant walls** — the two outdoor diorama sky planes behind your grassy platform (Clouds, Night, Desert…). Not wallpaper.\n" +
-        "• Toggle **Giant walls off** for a dark-void outdoor look (shield still works).\n" +
+        "Pick a **room**, pick a **size**, pick a **theme** — the preview above is your furnished room.\n" +
+        "• **Room / Size** — swap the room and its Small / Medium / Large layout.\n" +
+        "• **Theme** — re-lights the room (Dungeon, Military Base, City Houses…).\n" +
+        "• **Wallpaper / Floor / Backdrop** — finer reskins.\n" +
         "• **Room walls off** opens an interior to the outdoors.",
       );
       const themeLines = HQ_THEMES.map(t => {
@@ -1843,6 +1910,7 @@ async function buildView(
         return `${open ? t.emoji : "🔒"} **${t.name}**${here}${open ? "" : ` — ${unlockLabel(t.unlock)}`}`;
       });
       embed.addFields(
+        { name: `${layoutRoom.emoji} Room · ${layoutRoom.name}`, value: `Size: ${sizeOpt.emoji} **${sizeOpt.label}** — _${sizeOpt.blurb}_`, inline: false },
         { name: "🎨 Themes", value: themeLines.join("\n").slice(0, 1024) },
         { name: `🖼️ Wallpaper · ${wallpaper.id === DEFAULT_WALLPAPER_ID ? wall.name : wallpaper.name}`, value: styleList(HQ_WALLPAPERS, wallpaper.id, w => isWallpaperUnlocked(w, owned)), inline: true },
         { name: `🪵 Floor · ${floor.name}`, value: styleList(HQ_FLOORS, floor.id, f => isFloorUnlocked(f, owned)), inline: true },
@@ -1872,7 +1940,27 @@ async function buildView(
       // cap so a fully-maxed player never overflows (a dropped select is still
       // reachable once another category collapses back to its default).
       const styleSelects: { id: string; ph: string; opts: { label: string; value: string; emoji: string; default: boolean }[] }[] = [];
+      // Room + Size + Theme are the headline choices, so they get first claim on
+      // the (capped) rows. Room picks default to the always-open Command Center
+      // when a gated room is chosen — the unlock guard higher up handles that.
+      styleSelects.push({
+        id: "roomlayout", ph: "Choose a room…",
+        opts: LAYOUT_ROOM_IDS.map(id => {
+          const r = resolveRoom(id);
+          const open = isRoomUnlocked(r, owned);
+          return { label: open ? r.name : `${r.name} (locked)`, value: id, emoji: open ? r.emoji : "🔒", default: id === layoutRoomId };
+        }),
+      });
+      styleSelects.push({
+        id: "layoutsize", ph: "Choose a size…",
+        opts: ROOM_SIZES.map(s => ({ label: s.label, value: s.id, emoji: s.emoji, default: s.id === layoutSize })),
+      });
       const openBackdrops = unlockedBackdrops(owned);
+      const openThemesFirst = unlockedThemes(owned);
+      if (openThemesFirst.length > 1) styleSelects.push({
+        id: "theme", ph: "Switch theme…",
+        opts: openThemesFirst.slice(0, 25).map(t => ({ label: t.name, value: t.id, emoji: t.emoji, default: t.id === theme.id })),
+      });
       // Wallpaper is the headline restyle, so it gets first claim on a row.
       const openWallpapers = HQ_WALLPAPERS.filter(w => isWallpaperUnlocked(w, owned));
       if (openWallpapers.length > 1) styleSelects.push({
@@ -1883,8 +1971,6 @@ async function buildView(
         })),
       });
       if (openBackdrops.length > 1) styleSelects.push({ id: "backdrop", ph: "Backdrop (walls-off)…", opts: openBackdrops.map(b => ({ label: b.name, value: b.id, emoji: b.emoji, default: b.id === backdrop.id })) });
-      const openThemes = unlockedThemes(owned);
-      if (openThemes.length > 1) styleSelects.push({ id: "theme", ph: "Switch theme…", opts: openThemes.map(t => ({ label: t.name, value: t.id, emoji: t.emoji, default: t.id === theme.id })) });
       const openWalls = unlockedWalls(owned);
       if (openWalls.length > 1) styleSelects.push({ id: "wall", ph: "Change walls…", opts: openWalls.map(w => ({ label: w.name, value: w.id, emoji: w.emoji, default: w.id === wall.id })) });
       const openFloors = unlockedFloors(owned);

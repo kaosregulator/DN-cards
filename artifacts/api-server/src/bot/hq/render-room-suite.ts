@@ -131,12 +131,13 @@ export async function renderRoomSuite(view: RoomSuiteView): Promise<Buffer | nul
       const layer = mod.createCanvas(W, H);
       const lctx = layer.getContext("2d") as unknown as Ctx;
 
+      const mood = roomMood(view);
       const pieces = buildPieces(view, cam);
       await paintPieces(lctx, mod, pieces, cam);
-      tintLayer(lctx);
+      tintLayer(lctx, mood);
       (ctx as unknown as { drawImage(i: unknown, x: number, y: number): void }).drawImage(layer, 0, 0);
 
-      paintTorchlight(ctx);
+      paintTorchlight(ctx, mood);
       if (view.showGrid) paintGrid(ctx, layout, cam, view.cursor ?? null);
       if (view.showLabels !== false) paintRoomLabels(ctx, layout, cam);
 
@@ -348,29 +349,69 @@ function paintBackdrop(ctx: Ctx): void {
   ctx.fillRect(0, 0, W, H);
 }
 
+// ── Theme mood ───────────────────────────────────────────────────────────────
+// The source art is warm sandstone. A theme re-lights the SAME masonry by
+// changing two things: the wash composited over the stone (its colour + how
+// heavy it is) and the colour/strength of the light pools laid back on top.
+// A dungeon reads as cold charcoal under torches; a city of houses reads as
+// warm brick in daylight — no second art pack required.
+interface RoomMood {
+  tint: string;        // rgba wash over the masonry
+  lightColor: string;  // "r,g,b" for the light pools
+  lightAlpha: number;  // strength of the light pools
+}
+
+function hexToRgb(hex: string): [number, number, number] {
+  const h = hex.replace("#", "");
+  const n = parseInt(h.length === 3 ? h.split("").map(c => c + c).join("") : h, 16);
+  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+}
+
+/** Parse the "r,g,b" out of an "rgba(r,g,b,a)" / "rgb(...)" string. */
+function rgbTriplet(s: string, fallback: [number, number, number]): [number, number, number] {
+  const m = s.match(/rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/i);
+  return m ? [Number(m[1]), Number(m[2]), Number(m[3])] : fallback;
+}
+
+function roomMood(view: RoomSuiteView): RoomMood {
+  const theme = view.theme;
+  const lighting = theme?.lighting ?? "night";
+  // Brighter moods get a lighter wash so daytime rooms don't read as caves; a
+  // neon/void room gets the heaviest wash so its own art recedes behind the glow.
+  const alpha = lighting === "dawn" ? 0.20 : lighting === "dusk" ? 0.42
+    : lighting === "neon" ? 0.60 : 0.54;
+  const [tr, tg, tb] = hexToRgb(theme?.palette?.wallBottom ?? "#181d2a");
+  const [lr, lg, lb] = rgbTriplet(theme?.palette?.light ?? "rgba(255,176,92,0.22)", [255, 176, 92]);
+  return {
+    tint: `rgba(${tr},${tg},${tb},${alpha})`,
+    lightColor: `${lr},${lg},${lb}`,
+    lightAlpha: lighting === "dawn" ? 0.26 : lighting === "night" ? 0.22 : 0.18,
+  };
+}
+
 /**
- * Cool the sandstone art to charcoal — masonry only, never the chrome.
+ * Wash the masonry toward the theme's tone — masonry only, never the chrome.
  * Kept under ~0.6 so the stone still shows its own shading: past that the art
  * flattens into a silhouette and the room stops reading as a 3D space.
  */
-function tintLayer(ctx: Ctx): void {
+function tintLayer(ctx: Ctx, mood: RoomMood): void {
   ctx.save();
   ctx.globalCompositeOperation = "source-atop";
-  ctx.fillStyle = "rgba(24,29,42,0.56)";
+  ctx.fillStyle = mood.tint;
   ctx.fillRect(0, 0, W, H);
   ctx.restore();
 }
 
-/** Warm pools so the dark floor still reads as torch-lit, not switched off. */
-function paintTorchlight(ctx: Ctx): void {
+/** Light pools so the floor reads as lit (torches, worklight or daylight). */
+function paintTorchlight(ctx: Ctx, mood: RoomMood): void {
   ctx.save();
   for (const [cx, cy, r, a] of [
-    [W * 0.42, H * 0.50, 430, 0.22],
-    [W * 0.72, H * 0.44, 320, 0.16],
-    [W * 0.22, H * 0.64, 280, 0.13],
+    [W * 0.42, H * 0.50, 430, mood.lightAlpha],
+    [W * 0.72, H * 0.44, 320, mood.lightAlpha * 0.72],
+    [W * 0.22, H * 0.64, 280, mood.lightAlpha * 0.6],
   ] as const) {
     const g = ctx.createRadialGradient(cx, cy, 20, cx, cy, r);
-    g.addColorStop(0, `rgba(255,176,92,${a})`);
+    g.addColorStop(0, `rgba(${mood.lightColor},${a})`);
     g.addColorStop(1, "rgba(0,0,0,0)");
     ctx.fillStyle = g;
     ctx.fillRect(0, 0, W, H);

@@ -49,6 +49,8 @@ export interface HqStatsBlob {
   editorMode?: EditorMode;
   /** Connected HQ floorplan (walls, doors, zones). */
   floorplan?: import("./defs/floorplan.js").FloorplanState;
+  /** Chosen size variant (Small/Medium/Large) for the active room's layout. */
+  layoutSize?: import("./defs/room-layouts.js").RoomSizeId;
 }
 
 export type EditorMode =
@@ -145,6 +147,7 @@ export function readHqStats(hq: PlayerHq): HqStatsBlob {
     editorCategory: s.editorCategory,
     editorMode: s.editorMode,
     floorplan: s.floorplan,
+    layoutSize: s.layoutSize,
   };
 }
 
