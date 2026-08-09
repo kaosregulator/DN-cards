@@ -158,6 +158,11 @@ interface SiegeSession extends SiegeRuntimeConfig {
   turnTimer?: NodeJS.Timeout;
   ttlTimer?: NodeJS.Timeout;
   processing: boolean;
+  // Synchronous input latch: claimed the instant a commander input is accepted,
+  // BEFORE the (awaited) interaction ack, so a burst of rapid clicks can't slip
+  // multiple moves through the `processing` check while the first is still
+  // awaiting deferUpdate. Released when the resulting turn fully resolves.
+  inputPending: boolean;
   itemUsesLeft: number;
   attackerPower: number;
   defenderPower: number;
@@ -306,6 +311,7 @@ export async function startSiege(
     headless: false,
     log: [],
     processing: false,
+    inputPending: false,
     itemUsesLeft: config.siege.itemUses,
     attackerPower: config.attackers.reduce((sum, c) => sum + powerRating(c.stats), 0),
     defenderPower: config.defenders.reduce((sum, c) => sum + powerRating(c.stats), 0),
@@ -1050,23 +1056,31 @@ async function commitItem(
   const item = getBattleItem(itemId, s.guildId);
   const actor = active(s, 0);
   if (!item || !actor) { await interaction.update({ content: "That item can't be used now.", components: [] }).catch(() => {}); return; }
-  if (s.processing || s.itemUsesLeft <= 0 || s.phase !== "assault") {
+  if (s.processing || s.inputPending || s.itemUsesLeft <= 0 || s.phase !== "assault" || s.currentSide !== 0) {
     await interaction.update({ content: "You can't use an item right now.", components: [] }).catch(() => {});
     return;
   }
   const target = targetKey === "def" ? active(s, 1) : s.attackers[Number(targetKey)];
   if (!target) { await interaction.update({ content: "That target is gone.", components: [] }).catch(() => {}); return; }
 
-  const outcome = applyItemUse(item, actor, target);
-  s.itemUsesLeft--;
-  pushLog(s, outcome.events.map(e => e.text));
-  await interaction.update({ content: `${item.emoji} Called up **${item.name}**.`, components: [] }).catch(() => {});
+  // Claim the turn synchronously so a second interaction can't also spend it;
+  // handOver releases it (mirrors applyMove). On any throw we release here.
+  s.processing = true;
+  try {
+    const outcome = applyItemUse(item, actor, target);
+    s.itemUsesLeft--;
+    pushLog(s, outcome.events.map(e => e.text));
+    await interaction.update({ content: `${item.emoji} Called up **${item.name}**.`, components: [] }).catch(() => {});
 
-  // A field item spends the turn; the garrison answers.
-  if (target.hp <= 0 && targetKey === "def") {
-    if (await breakRank(s, 1)) { await finish(s); return; }
+    // A field item spends the turn; the garrison answers.
+    if (target.hp <= 0 && targetKey === "def") {
+      if (await breakRank(s, 1)) { await finish(s); return; }
+    }
+    await handOver(s, 0);
+  } catch (err) {
+    s.processing = false;
+    logger.error({ err, siege: s.id }, "siege item use failed");
   }
-  await handOver(s, 0);
 }
 
 // ── Read-only reference (mirrors /battle's Moves popup) ──────────────────────
@@ -1103,9 +1117,21 @@ async function handleMovesQuickView(interaction: ButtonInteraction, s: SiegeSess
 
 async function handleMove(interaction: ButtonInteraction, s: SiegeSession, move: MoveType): Promise<void> {
   if (s.phase !== "assault") { await interaction.deferUpdate().catch(() => {}); return; }
-  if (s.processing || s.currentSide !== 0) { await interaction.deferUpdate().catch(() => {}); return; }
+  // Reject if a turn is resolving (processing) OR another click already claimed
+  // this turn (inputPending) OR it isn't the commander's turn. inputPending is
+  // set SYNCHRONOUSLY below, before the awaited ack, so a mash of clicks can't
+  // race multiple moves through this gate.
+  if (s.processing || s.inputPending || s.currentSide !== 0) { await interaction.deferUpdate().catch(() => {}); return; }
+  s.inputPending = true;
   await interaction.deferUpdate().catch(() => {});
-  await applyMove(s, 0, move);
+  // applyMove synchronously sets s.processing before its first await, so by the
+  // time this call returns its promise the turn is claimed. Drop the pre-ack
+  // latch immediately — holding it across the whole turn chain (which recurses
+  // through the garrison's answer back to the next commander turn) would leave
+  // the buttons greyed on the player's own turn. `processing` guards the rest.
+  const p = applyMove(s, 0, move);
+  s.inputPending = false;
+  await p;
 }
 
 async function handleConcede(interaction: ButtonInteraction, s: SiegeSession): Promise<void> {
@@ -1257,10 +1283,15 @@ function buildBattleEmbed(s: SiegeSession): EmbedBuilder {
 function buildControls(s: SiegeSession): ActionRowBuilder<ButtonBuilder>[] {
   const actor = active(s, 0);
   if (!actor || s.currentSide !== 0) return [];
+  // While a turn is resolving (or an input is already claimed), grey out every
+  // control so the board visibly locks the instant the commander acts — no more
+  // clickable-looking buttons during the render/answer, which is what let a
+  // player mash "attack" and feel like they were getting extra hits.
+  const busy = s.processing || s.inputPending;
   const avail = availableMoves(actor, s.settings);
   const mk = (move: MoveType, label: string, emoji: string, style: ButtonStyle) =>
     new ButtonBuilder().setCustomId(`hq-hub:ls:move:${s.id}:${move}`).setLabel(label).setEmoji(emoji)
-      .setStyle(style).setDisabled(!avail[move]);
+      .setStyle(style).setDisabled(busy || !avail[move]);
   const row1 = new ActionRowBuilder<ButtonBuilder>().addComponents(
     mk("attack", "Attack", "⚔️", ButtonStyle.Primary),
     mk("special", "Special", "🔥", ButtonStyle.Danger),
@@ -1271,7 +1302,7 @@ function buildControls(s: SiegeSession): ActionRowBuilder<ButtonBuilder>[] {
   const row2 = new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder().setCustomId(`hq-hub:ls:item:${s.id}`)
       .setLabel(`Supplies (${s.itemUsesLeft})`).setEmoji("🎒")
-      .setStyle(ButtonStyle.Success).setDisabled(s.itemUsesLeft <= 0),
+      .setStyle(ButtonStyle.Success).setDisabled(busy || s.itemUsesLeft <= 0),
     new ButtonBuilder().setCustomId(`hq-hub:ls:moves:${s.id}`).setLabel("Moves").setEmoji("📖").setStyle(ButtonStyle.Secondary),
     new ButtonBuilder().setCustomId(`hq-hub:ls:concede:${s.id}`).setLabel("Retreat").setEmoji("🏳️").setStyle(ButtonStyle.Secondary),
   );
