@@ -38,12 +38,12 @@ import { startOfTurn, resolveMove, availableMoves } from "../battle/combat-engin
 import { chooseAiMove } from "../battle/ai-engine.js";
 import { powerRating } from "../battle/stat-engine.js";
 import { bar, WHITE_LINE } from "../battle/embeds.js";
-import { computeMoveVisual, combatantToRenderCard } from "../battle/turn-visual.js";
+import { computeMoveVisual } from "../battle/turn-visual.js";
 import { getMoveset } from "../battle/movesets.js";
 import {
   listBattleItems, getBattleItem, loadGuildBattleItems, applyItemUse, isOffensiveItem,
 } from "../battle/items.js";
-import { renderBattleTurn, renderAttackFrame, renderSiegeField, renderSiegeFieldStill, type AnimationSpeed } from "../animations/index.js";
+import { renderSiegeField, renderSiegeFieldStill, type AnimationSpeed } from "../animations/index.js";
 import type { SiegeFieldFighter, SiegeFieldInput, SiegeFieldBenchCard } from "../animations/index.js";
 import { renderCoinFlip } from "../battle/prep-canvas.js";
 import { renderSiegeFrame, type HqBaseView, type SiegeOverlay, type HqRenderDefender } from "./render.js";
@@ -170,8 +170,15 @@ interface SiegeSession extends SiegeRuntimeConfig {
   castleImage: Buffer | null;
   castleKey: string;
   /** One-shot per-turn attack frame, consumed by the next render. */
+  // The battlefield image currently shown under the board. It PERSISTS across
+  // renders (it is not consumed) so a turn's board can paint immediately with
+  // the last frame while the new one renders in the background.
   turnFrame: Buffer | null;
   turnFrameIsGif: boolean;
+  // Identifies the turn a background render belongs to; a late frame only
+  // patches in if it still matches, so a slow render can't stamp a stale image
+  // onto a newer turn.
+  pendingFrameToken: string | null;
   /** Item equipped for the whole assault, chosen at muster. */
   equippedItemId: string | null;
   /** Ranks fully broken, for the destruction meter. */
@@ -316,7 +323,7 @@ export async function startSiege(
     attackerPower: config.attackers.reduce((sum, c) => sum + powerRating(c.stats), 0),
     defenderPower: config.defenders.reduce((sum, c) => sum + powerRating(c.stats), 0),
     castleImage: null, castleKey: "",
-    turnFrame: null, turnFrameIsGif: false,
+    turnFrame: null, turnFrameIsGif: false, pendingFrameToken: null,
     equippedItemId: null,
     defendersBroken: 0,
     rankStall: 0,
@@ -898,100 +905,37 @@ async function buildTurnFrame(
   foePoolBefore: number, selfPoolBefore: number,
 ): Promise<void> {
   if (s.headless || !s.siege.turnVisuals) return;
+  if (!(sceneAnimated(s) || classicFrames(s))) return; // animations off → no frame
   const visual = computeMoveVisual(move, result, actor, foe, foePoolBefore, selfPoolBefore);
+  const fieldInput = buildFieldInput(s, side, move, visual, actor, foe, foePoolBefore);
+  const token = `${s.turnNumber}:${side}:${actor.cardId}:${foe.cardId}:${foePoolBefore}:${selfPoolBefore}`;
+  s.pendingFrameToken = token;
+  const animated = sceneAnimated(s);
+  const speed = s.settings.battleAnimationSpeed as AnimationSpeed;
 
-  // NEW: the zoomed-in "Clash" battlefield. BOTH sides animate move-for-move on
-  // a dedicated arena — the attacker's card dashes right and strikes, the
-  // garrison's card dashes left and answers — so the siege reads as a true
-  // clash, not just the commander's blow. The castle scene lives in the top
-  // embed; this is the fight itself.
-  //
-  // We honour the guild's battle-visual setting: an ANIMATED guild gets the GIF
-  // battlefield; a CLASSIC (static-frames) guild gets a single frozen strike
-  // frame of the SAME battlefield as a PNG — same look, one moment, no GIF. Both
-  // are best-effort: a null result falls through to the legacy frame below so
-  // nothing regresses if the Konva stack is missing. Animations fully off →
-  // no per-turn frame at all (unchanged).
-  if (sceneAnimated(s) || classicFrames(s)) {
-    const fieldInput = buildFieldInput(s, side, move, visual, actor, foe, foePoolBefore);
-    if (sceneAnimated(s)) {
-      // Render one still first so the new Clash battlefield reaches Discord
-      // immediately. Encoding a full GIF can take several seconds on the first
-      // turn while remote card art and Konva warm up; waiting for it here made
-      // the old castle image appear frozen or made the board feel unresponsive.
-      const still = await Promise.race([
-        renderSiegeFieldStill(fieldInput).catch(() => null),
-        sleep(5_000).then(() => null),
-      ]);
-      const turnToken = `${s.turnNumber}:${side}:${actor.cardId}:${foe.cardId}:${foePoolBefore}:${selfPoolBefore}`;
-      if (still) {
-        s.turnFrame = still;
-        s.turnFrameIsGif = false;
-        // Upgrade the still to the animated battlefield when encoding finishes,
-        // but only if this is still the same turn. A late GIF must never replace
-        // a newer turn's image.
-        void renderSiegeField(fieldInput, s.settings.battleAnimationSpeed as AnimationSpeed)
-          .then((gif) => {
-            if (!gif || s.phase !== "assault" || !s.processing ||
-                s.currentSide !== side ||
-                `${s.turnNumber}:${side}:${active(s, side)?.cardId}:${active(s, foeSide(side))?.cardId}:${foePoolBefore}:${selfPoolBefore}` !== turnToken) {
-              return;
-            }
-            s.turnFrame = Buffer.from(gif.buffer);
-            s.turnFrameIsGif = true;
-            void render(s);
-          })
-          .catch(() => {});
-        return;
-      }
-      // If even the still missed its bound, give the GIF a short final chance.
-      // Otherwise fall through to the existing legacy renderer.
-      const gif = await Promise.race([
-        renderSiegeField(fieldInput, s.settings.battleAnimationSpeed as AnimationSpeed).catch(() => null),
-        sleep(7_000).then(() => null),
-      ]);
-      if (gif) { s.turnFrame = Buffer.from(gif.buffer); s.turnFrameIsGif = true; return; }
-    } else {
-      const png = await Promise.race([
-        renderSiegeFieldStill(fieldInput).catch(() => null),
-        sleep(5_000).then(() => null),
-      ]);
-      if (png) { s.turnFrame = png; s.turnFrameIsGif = false; return; }
+  // FULLY NON-BLOCKING. The turn NEVER awaits a render — this returns at once and
+  // the frame is patched into the board when each stage finishes, so a slow
+  // first render (Konva warm-up + several remote card-art fetches) can no longer
+  // freeze the fight. The board stays interactive; the battlefield image just
+  // catches up a beat later. A still (fast) lands first; animated guilds then
+  // upgrade to the GIF. Each patch only applies if it is STILL this turn's frame
+  // (pendingFrameToken), so a late render can't stamp a stale image on a newer
+  // turn. The previous frame persists in the meantime (render() no longer
+  // consumes it), so the board never blanks between turns.
+  void (async () => {
+    const still = await renderSiegeFieldStill(fieldInput).catch(() => null);
+    if (still && s.pendingFrameToken === token && s.phase !== "ended") {
+      s.turnFrame = still; s.turnFrameIsGif = false;
+      await render(s);
     }
-  }
-
-  // ── Legacy fallback (commander's blow only) ────────────────────────────────
-  // The garrison's answer has no legacy frame, so leave the previous scene up.
-  if (side !== 0) return;
-  if (sceneAnimated(s)) {
-    const anim = await renderBattleTurn({
-      attacker: combatantToRenderCard(actor),
-      defender: combatantToRenderCard(foe),
-      attackerHp: Math.max(0, actor.hp), attackerMaxHp: actor.stats.maxHealth,
-      defenderHp: Math.max(0, foe.hp), defenderMaxHp: foe.stats.maxHealth,
-      damage: visual.damage, isCrit: visual.isCrit, isHit: visual.isHit,
-      moveName: moveLabel(move, actor),
-      attackerWon: result.koed || foe.hp <= 0,
-      defenderWon: false,
-      // THE difference from a plain battle: the fighters dash and trade blows
-      // over the castle itself — the current siege scene is the battlefield.
-      background: null,
-      backgroundImage: s.castleImage,
-    }, s.settings.battleAnimationSpeed as AnimationSpeed).catch(() => null);
-    s.turnFrame = anim ? Buffer.from(anim.buffer) : null;
-    s.turnFrameIsGif = !!anim;
-    void side;
-    return;
-  }
-  if (classicFrames(s)) {
-    s.turnFrame = await renderAttackFrame({
-      attacker: combatantToRenderCard(actor),
-      moveName: moveLabel(move, actor),
-      damage: visual.damage, isCrit: visual.isCrit, isHit: visual.isHit,
-      scene: visual.scene, subtitle: visual.subtitle,
-    }).catch(() => null);
-    s.turnFrameIsGif = false;
-  }
+    if (animated) {
+      const gif = await renderSiegeField(fieldInput, speed).catch(() => null);
+      if (gif && s.pendingFrameToken === token && s.phase !== "ended") {
+        s.turnFrame = Buffer.from(gif.buffer); s.turnFrameIsGif = true;
+        await render(s);
+      }
+    }
+  })();
 }
 
 // ── Items ─────────────────────────────────────────────────────────────────────
@@ -1314,10 +1258,11 @@ async function render(s: SiegeSession, opts?: { currentMove?: string; turnEndsAt
   await refreshCastle(s);
   const files = castleFiles(s);
   const battleEmbed = buildBattleEmbed(s);
-  // The one-shot battlefield frame is consumed by this render only, exactly like
-  // the battle manager's turn animation.
+  // The battlefield frame PERSISTS (it is not consumed): the board can paint the
+  // last frame immediately while the new one renders in the background, so it
+  // never blanks between turns. Discord drops attachments on edit, so the buffer
+  // is re-sent every render — the expensive render is what we avoid repeating.
   const frame = s.turnFrame;
-  s.turnFrame = null;
   if (frame) {
     const name = s.turnFrameIsGif ? SIEGE_TURN_GIF : SIEGE_TURN_PNG;
     battleEmbed.setImage(`attachment://${name}`);
