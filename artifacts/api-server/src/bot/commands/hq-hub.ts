@@ -1391,7 +1391,14 @@ async function buildView(
     file = await renderRoomImage(tview);
   } else if (section === "theme") {
     file = await renderRoomSuiteImage(guildId, userId, interaction.user.username, interaction.user.displayAvatarURL(), hq);
+  } else if (section === "shop") {
+    // The Shop is a self-contained aisle menu; it must NOT render the active
+    // room (which was showing the player's furnished room + trophy cards as a
+    // stray header image). No image — the stall's text/menus stand alone.
+    file = null;
   } else {
+    // Decorations (and any other room-centric section) shows the active room so
+    // you can see where your cosmetics land.
     file = await renderRoomImage(await buildRenderView(guildId, userId, interaction.user.username, interaction.user.displayAvatarURL(), hq));
   }
   const files = file ? [file] : [];
