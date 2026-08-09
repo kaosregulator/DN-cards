@@ -6,6 +6,8 @@
 
 export { renderPackOpening } from "./pack.js";
 export { renderBattleTurn, renderBattleVictory, renderBattleIdle } from "./battle.js";
+export { renderSiegeField } from "./siege-field.js";
+export type { SiegeFieldInput, SiegeFieldFighter } from "./siege-field.js";
 export {
   renderPackCover, renderCardReveal, renderAttackFrame,
   REVEAL_COVER, REVEAL_CARD, REVEAL_ATTACK,

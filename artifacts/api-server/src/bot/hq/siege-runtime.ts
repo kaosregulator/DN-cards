@@ -37,13 +37,14 @@ import type { Combatant, MoveType, AiDifficulty } from "../battle/types.js";
 import { startOfTurn, resolveMove, availableMoves } from "../battle/combat-engine.js";
 import { chooseAiMove } from "../battle/ai-engine.js";
 import { powerRating } from "../battle/stat-engine.js";
-import { combatantField, bar, WHITE_LINE } from "../battle/embeds.js";
+import { bar, WHITE_LINE } from "../battle/embeds.js";
 import { computeMoveVisual, combatantToRenderCard } from "../battle/turn-visual.js";
 import { getMoveset } from "../battle/movesets.js";
 import {
   listBattleItems, getBattleItem, loadGuildBattleItems, applyItemUse, isOffensiveItem,
 } from "../battle/items.js";
-import { renderBattleTurn, renderAttackFrame, type AnimationSpeed } from "../animations/index.js";
+import { renderBattleTurn, renderAttackFrame, renderSiegeField, type AnimationSpeed } from "../animations/index.js";
+import type { SiegeFieldFighter, SiegeFieldInput } from "../animations/index.js";
 import { renderCoinFlip } from "../battle/prep-canvas.js";
 import { renderSiegeFrame, type HqBaseView, type SiegeOverlay, type HqRenderDefender } from "./render.js";
 import type { HqSiegeConfig } from "./settings.js";
@@ -804,6 +805,61 @@ async function breakRank(s: SiegeSession, side: 0 | 1): Promise<boolean> {
   return false;
 }
 
+// Map a live combatant onto the battlefield renderer's fighter view. `hpBefore`
+// is only set for the STRUCK card so the field can animate its HP draining.
+function fieldFighter(c: Combatant, hpBefore?: number): SiegeFieldFighter {
+  return {
+    name: c.cardName,
+    artUrl: c.cardImageUrl,
+    rarity: c.cardRarity,
+    rarityColor: c.cardRarityDisplay?.color ?? null,
+    hp: Math.max(0, c.hp),
+    maxHp: c.stats.maxHealth,
+    hpBefore,
+    energy: c.energy,
+    ultimate: c.ultimate,
+  };
+}
+
+// Pick a battlefield backdrop + floor deterministically from the target, so a
+// given base always storms on the same ground across all its turns (and across
+// player sieges, AI conquests and open territories alike — every mode routes
+// through here).
+const FIELD_BACKDROPS = ["castles", "forest", "desert", "fall", "grass"] as const;
+const FIELD_FLOORS = ["stone", "marble", "dirt", "blue-stone", "cobblestone"] as const;
+function hashStr(s: string): number {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 0x01000193);
+  return h >>> 0;
+}
+
+// side = the side that just moved; attacker is always side 0, defender side 1.
+function buildFieldInput(
+  s: SiegeSession, side: 0 | 1, move: MoveType,
+  visual: ReturnType<typeof computeMoveVisual>, actor: Combatant, foe: Combatant,
+  foePoolBefore: number,
+): SiegeFieldInput {
+  const attackerC = side === 0 ? actor : foe;
+  const defenderC = side === 0 ? foe : actor;
+  // The struck card is always the FOE of whoever moved.
+  const targetBefore = Math.min(foe.stats.maxHealth, Math.max(0, foePoolBefore));
+  const h = hashStr(s.targetName || "siege");
+  return {
+    attacker: fieldFighter(attackerC, attackerC === foe ? targetBefore : undefined),
+    defender: fieldFighter(defenderC, defenderC === foe ? targetBefore : undefined),
+    actingSide: side,
+    moveName: moveLabel(move, actor),
+    damage: visual.damage,
+    isHit: visual.isHit,
+    isCrit: visual.isCrit,
+    ko: foe.hp <= 0,
+    accent: s.accent,
+    turnLabel: `Turn ${s.turnNumber}`,
+    backdropKey: FIELD_BACKDROPS[h % FIELD_BACKDROPS.length]!,
+    floorKey: FIELD_FLOORS[(h >>> 8) % FIELD_FLOORS.length]!,
+  };
+}
+
 // The one-shot attack frame under the battle embed, in whichever style the
 // guild's battle settings use — so a siege turn looks like a battle turn.
 async function buildTurnFrame(
@@ -812,12 +868,27 @@ async function buildTurnFrame(
   foePoolBefore: number, selfPoolBefore: number,
 ): Promise<void> {
   if (s.headless || !s.siege.turnVisuals) return;
-  // Only the COMMANDER's blow gets the dash-across-the-castle frame. The
-  // garrison's answer is read off the battlefield itself — HP bars and the
-  // castle's damage update — so the rhythm is: you attack (we see it on the
-  // field), then the view settles back to the castle and the walls answer.
-  if (side !== 0) return;
   const visual = computeMoveVisual(move, result, actor, foe, foePoolBefore, selfPoolBefore);
+
+  // NEW: the zoomed-in "Clash" battlefield. BOTH sides now animate move-for-move
+  // on a dedicated arena — the attacker's card dashes right and strikes, the
+  // garrison's card dashes left and answers — so the siege reads as a true
+  // clash, not just the commander's blow. The castle scene lives in the top
+  // embed; this is the fight itself. Best-effort: a null result falls through to
+  // the legacy frame below so nothing regresses if the Konva stack is missing.
+  const field = await renderSiegeField(
+    buildFieldInput(s, side, move, visual, actor, foe, foePoolBefore),
+    s.settings.battleAnimationSpeed as AnimationSpeed,
+  ).catch(() => null);
+  if (field) {
+    s.turnFrame = Buffer.from(field.buffer);
+    s.turnFrameIsGif = true;
+    return;
+  }
+
+  // ── Legacy fallback (commander's blow only) ────────────────────────────────
+  // The garrison's answer has no legacy frame, so leave the previous scene up.
+  if (side !== 0) return;
   if (sceneAnimated(s)) {
     const anim = await renderBattleTurn({
       attacker: combatantToRenderCard(actor),
@@ -1061,8 +1132,10 @@ function currentOverlay(s: SiegeSession, pct: number, banner?: { text: string; c
   };
 }
 
-// TOP embed: the castle, the scoreboard and the running log. The picture is the
-// log — the text under it is only the highlights.
+// TOP embed: the castle/base itself — the live scene + the destruction
+// scoreboard. The running log now lives in its own slim strip below (see
+// buildTurnStripEmbed), so this embed is purely "here is the base you're taking
+// apart," sitting above the battlefield.
 function buildCastleEmbed(s: SiegeSession): EmbedBuilder {
   const pct = destructionPct(s);
   const captured = s.di >= s.defenders.length;
@@ -1073,49 +1146,44 @@ function buildCastleEmbed(s: SiegeSession): EmbedBuilder {
     .setTitle(`🏰 ${s.targetName} — ${"★".repeat(stars)}${"☆".repeat(3 - stars)} ${Math.round(pct)}%`)
     .setDescription(
       `${bar(Math.round(pct), 100, 14)} **destruction**\n` +
-      `🛡️ **${ranksLeft}** rank${ranksLeft === 1 ? "" : "s"} still holding · ⚔️ **${Math.max(0, s.attackers.length - s.ai)}** card${s.attackers.length - s.ai === 1 ? "" : "s"} left in your column\n` +
-      `${WHITE_LINE}\n${condensedSiegeLog(s)}`,
+      `🛡️ **${ranksLeft}** rank${ranksLeft === 1 ? "" : "s"} still holding · ⚔️ **${Math.max(0, s.attackers.length - s.ai)}** card${s.attackers.length - s.ai === 1 ? "" : "s"} left in your column`,
     );
   if (s.castleImage) embed.setImage(`attachment://${SIEGE_CASTLE_IMAGE}`);
   return embed;
 }
 
-// The routine "X's attack hits for N" lines are already shown on the attack
-// frame, so the log keeps the notable beats and the last line for context —
-// same treatment /battle gives its log.
+// The routine "X's attack hits for N" lines are already shown on the battlefield
+// frame, so the strip keeps only the notable beats and the last line.
 const ROUTINE_HIT = /^⚔️ .* hits for /u;
-function condensedSiegeLog(s: SiegeSession, max = 6): string {
+function latestSiegeLines(s: SiegeSession, max = 2): string {
   if (s.log.length === 0) return "_The field is quiet…_";
   const notable = s.log.filter((l, i) => i === s.log.length - 1 || !ROUTINE_HIT.test(l));
-  return (notable.length ? notable : s.log).slice(-max).join("\n").slice(0, 3000);
+  return (notable.length ? notable : s.log).slice(-max).join("\n").slice(0, 600);
 }
 
-// BOTTOM embed: the battle itself, built from the SAME combatant field renderer
-// `/battle` uses, so the stat block is identical.
-function buildBattleEmbed(s: SiegeSession, opts?: { currentMove?: string; turnEndsAt?: number }): EmbedBuilder {
-  const atk = active(s, 0);
-  const def = active(s, 1);
-  const embed = new EmbedBuilder().setColor(s.accent);
-  const fields = [];
-  if (atk) fields.push(combatantField(atk, s.currentSide === 0, null));
-  if (def) fields.push(combatantField(def, s.currentSide === 1, null));
-  if (fields.length) embed.addFields(fields);
-
-  const actor = active(s, s.currentSide);
-  const turnLine = s.currentSide === 1
-    ? "🛡️ **The garrison answers…**"
-    : `🔹 <@${s.starterId}> — **your move!**`;
+// MIDDLE embed: the one-line turn-for-turn strip. It sits between the base
+// (above) and the battlefield (below) and does two jobs only — show the latest
+// move, and ping whoever is on the clock. No stat block, no wall of log: the
+// battlefield frame carries the HP/energy, this is just the play-by-play caption
+// and the turn call.
+function buildTurnStripEmbed(s: SiegeSession, opts?: { currentMove?: string; turnEndsAt?: number }): EmbedBuilder {
   const timer = opts?.turnEndsAt ? ` · ends <t:${Math.floor(opts.turnEndsAt / 1000)}:R>` : "";
-  embed.addFields({
-    name: `🎯 Turn ${s.turnNumber}${actor ? ` — ${actor.cardName}` : ""}`,
-    value: turnLine + timer,
-    inline: false,
-  });
-  embed.setFooter({
-    text: opts?.currentMove
-      ?? `🎒 ${s.itemUsesLeft} field use${s.itemUsesLeft === 1 ? "" : "s"} left · a KO breaks a rank, not the siege`,
-  });
-  return embed;
+  const turnCall = opts?.currentMove
+    ? `⚔️ *${opts.currentMove}*`
+    : s.currentSide === 1
+      ? `🛡️ **Garrison's move…**${timer}`
+      : `🔹 <@${s.starterId}> — **your move!**${timer}`;
+  return new EmbedBuilder()
+    .setColor(s.accent)
+    .setDescription(`📜 ${latestSiegeLines(s)}\n${WHITE_LINE}\n**Turn ${s.turnNumber}** · ${turnCall}`)
+    .setFooter({ text: `🎒 ${s.itemUsesLeft} field use${s.itemUsesLeft === 1 ? "" : "s"} left · a KO breaks a rank, not the siege` });
+}
+
+// BOTTOM embed: the battlefield itself — the animated Clash arena. The image is
+// the whole story here (both cards, their HP/energy, the strike), so the embed
+// is deliberately bare: just the frame.
+function buildBattleEmbed(s: SiegeSession): EmbedBuilder {
+  return new EmbedBuilder().setColor(s.accent);
 }
 
 function buildControls(s: SiegeSession): ActionRowBuilder<ButtonBuilder>[] {
@@ -1146,9 +1214,9 @@ async function render(s: SiegeSession, opts?: { currentMove?: string; turnEndsAt
   if (!s.message || s.phase === "ended" || s.headless) return;
   await refreshCastle(s);
   const files = castleFiles(s);
-  const battleEmbed = buildBattleEmbed(s, opts);
-  // The one-shot attack frame is consumed by this render only, exactly like the
-  // battle manager's turn animation.
+  const battleEmbed = buildBattleEmbed(s);
+  // The one-shot battlefield frame is consumed by this render only, exactly like
+  // the battle manager's turn animation.
   const frame = s.turnFrame;
   s.turnFrame = null;
   if (frame) {
@@ -1156,11 +1224,16 @@ async function render(s: SiegeSession, opts?: { currentMove?: string; turnEndsAt
     battleEmbed.setImage(`attachment://${name}`);
     files.push(new AttachmentBuilder(frame, { name }));
   }
+  // Ping the commander only at the START of their turn (the render that arms the
+  // turn clock), so they get exactly one notification per turn instead of one
+  // per intermediate re-render.
+  const ping = opts?.turnEndsAt && s.currentSide === 0 && s.phase === "assault";
   await s.message.edit({
-    content: null,
-    embeds: [buildCastleEmbed(s), battleEmbed],
+    content: ping ? `<@${s.starterId}>` : "",
+    embeds: [buildCastleEmbed(s), buildTurnStripEmbed(s, opts), battleEmbed],
     components: buildControls(s),
     files,
+    allowedMentions: { users: ping ? [s.starterId] : [] },
   }).catch(() => {});
 }
 
@@ -1219,7 +1292,7 @@ async function finish(s: SiegeSession): Promise<void> {
   const embed = new EmbedBuilder().setColor(view.color).setTitle(view.title)
     .setDescription(s.headless
       ? `${view.description}\n${WHITE_LINE}\n${scoreLine}`
-      : `${view.description}\n${WHITE_LINE}\n${scoreLine}\n${WHITE_LINE}\n${condensedSiegeLog(s, 6)}`);
+      : `${view.description}\n${WHITE_LINE}\n${scoreLine}\n${WHITE_LINE}\n${latestSiegeLines(s, 6)}`);
   if (view.fields?.length) {
     embed.addFields(view.fields.map(f => ({ name: f.name, value: f.value, inline: f.inline ?? true })));
   }

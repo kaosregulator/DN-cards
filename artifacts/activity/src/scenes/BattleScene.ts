@@ -5,6 +5,7 @@ import type { BattleModel, Combatant } from "../net/api";
 import {
   addBackdrop, ensureKeys, makeHealthBar, floatDamage, impactFlash, bannerText, centerLabel, type HealthBar,
 } from "./play/common";
+import { RiveFxLayer } from "./play/riveOverlay";
 
 // Reusable Battle Scene. Presents the existing battle line-up with the classic
 // Street-Fighter choreography (approach → strike → impact → recoil → return).
@@ -22,6 +23,9 @@ interface Fighter {
 export class BattleScene extends Phaser.Scene {
   private nav!: NavDock;
   private turn = 0;
+  // Optional Rive FX overlay for signature bursts. Dormant until `.riv` art is
+  // registered via enableRiveFx(); every play() is then a no-op-safe cue.
+  private fx = new RiveFxLayer();
 
   constructor() {
     super("Battle");
@@ -30,7 +34,7 @@ export class BattleScene extends Phaser.Scene {
   async create(): Promise<void> {
     document.getElementById("boot")?.remove();
     this.nav = new NavDock("Battle", (k) => this.scene.start(k === "Hq" ? "Boot" : k));
-    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.nav.destroy());
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => { this.nav.destroy(); this.fx.destroy(); });
 
     const loading = centerLabel(this, "Entering the arena…");
     let model: BattleModel;
@@ -105,10 +109,14 @@ export class BattleScene extends Phaser.Scene {
     this.tweens.add({
       targets: att.img, x: lungeX, duration: 180, ease: "Cubic.In",
       onComplete: () => {
-        const dmg = Math.max(20, Math.round(att.data.atk * Phaser.Math.FloatBetween(0.8, 1.2)));
+        const roll = Phaser.Math.FloatBetween(0.8, 1.2);
+        const dmg = Math.max(20, Math.round(att.data.atk * roll));
         tgt.hp = Math.max(0, tgt.hp - dmg);
         tgt.bar.set(tgt.hp);
         impactFlash(this, tgt.img.x - tgt.facing * 40, tgt.img.y - 120);
+        // Signature burst cue: big hits / knockouts get the Rive flourish when
+        // overlay art is present (otherwise this is a silent no-op).
+        void this.fx.play(tgt.hp <= 0 ? "ko" : roll >= 1.12 ? "crit" : "attack");
         floatDamage(this, tgt.img.x, tgt.img.y - 200, dmg, att.data.color);
         this.cameras.main.shake(120, 0.006);
         // recoil
