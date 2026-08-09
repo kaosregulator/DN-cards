@@ -169,6 +169,8 @@ interface SiegeSession extends SiegeRuntimeConfig {
   /** Cached castle frame; only re-rendered when the siege visibly changes. */
   castleImage: Buffer | null;
   castleKey: string;
+  /** True while a castle frame is rendering in the background (non-blocking). */
+  castleRendering: boolean;
   /** One-shot per-turn attack frame, consumed by the next render. */
   // The battlefield image currently shown under the board. It PERSISTS across
   // renders (it is not consumed) so a turn's board can paint immediately with
@@ -322,7 +324,7 @@ export async function startSiege(
     itemUsesLeft: config.siege.itemUses,
     attackerPower: config.attackers.reduce((sum, c) => sum + powerRating(c.stats), 0),
     defenderPower: config.defenders.reduce((sum, c) => sum + powerRating(c.stats), 0),
-    castleImage: null, castleKey: "",
+    castleImage: null, castleKey: "", castleRendering: false,
     turnFrame: null, turnFrameIsGif: false, pendingFrameToken: null,
     equippedItemId: null,
     defendersBroken: 0,
@@ -647,7 +649,11 @@ async function handleBegin(interaction: ButtonInteraction, s: SiegeSession): Pro
     firstSide === 0 ? "🎯 Your column seizes the initiative — you move first." : "🛡️ The garrison reacts first.",
     lead && garrison ? `🔹 **${lead.cardName}** meets **${garrison.cardName}** at the gate.` : "",
   ]);
-  await refreshCastle(s, true);
+  // Start the assault IMMEDIATELY — do not wait on a castle render here (that
+  // 8s stack after the coin toss is exactly what made the fight look frozen).
+  // The board paints with the muster's castle frame and refreshes in the
+  // background.
+  scheduleCastleRefresh(s, true);
   await startTurn(s);
 }
 
@@ -1149,6 +1155,31 @@ async function refreshCastle(s: SiegeSession, force = false): Promise<void> {
   if (buf) { s.castleImage = buf; s.castleKey = key; }
 }
 
+// Non-blocking castle refresh for the INTERACTIVE path. Never awaited: the board
+// paints immediately with whatever castle frame is already cached (from muster),
+// and when a fresh frame finishes it patches into the board via render(). This
+// is what stops the assault from appearing to freeze after the coin toss while
+// an 8s castle render + the coin animation stack up on the critical path. Only
+// one background render runs at a time (castleRendering).
+function scheduleCastleRefresh(s: SiegeSession, force = false): void {
+  if (!s.baseView || s.headless || s.castleRendering) return;
+  const pct = destructionPct(s);
+  const key = `${s.di}:${s.ai}:${Math.floor(pct / 5)}:${s.phase}`;
+  if (!force && key === s.castleKey && s.castleImage) return;
+  s.castleRendering = true;
+  const overlay = currentOverlay(s, pct);
+  void Promise.race([
+    renderSiegeFrame(s.baseView, overlay).catch(() => null),
+    sleep(8_000).then(() => null),
+  ]).then((buf) => {
+    s.castleRendering = false;
+    if (buf && s.phase !== "ended") {
+      s.castleImage = buf; s.castleKey = key;
+      void render(s); // patch the new castle image into the live board
+    }
+  }).catch(() => { s.castleRendering = false; });
+}
+
 function currentOverlay(s: SiegeSession, pct: number, banner?: { text: string; color: number }): SiegeOverlay {
   const defeated = new Set<number>();
   for (let i = 0; i < s.di && i < s.defenders.length; i++) defeated.add(i);
@@ -1255,7 +1286,9 @@ function buildControls(s: SiegeSession): ActionRowBuilder<ButtonBuilder>[] {
 
 async function render(s: SiegeSession, opts?: { currentMove?: string; turnEndsAt?: number }): Promise<void> {
   if (!s.message || s.phase === "ended" || s.headless) return;
-  await refreshCastle(s);
+  // Castle render is NON-BLOCKING: paint now with the cached frame and let a
+  // fresh one patch in when ready. The board must never wait on canvas work.
+  scheduleCastleRefresh(s);
   const files = castleFiles(s);
   const battleEmbed = buildBattleEmbed(s);
   // The battlefield frame PERSISTS (it is not consumed): the board can paint the
