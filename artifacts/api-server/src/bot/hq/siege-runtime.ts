@@ -44,7 +44,7 @@ import {
   listBattleItems, getBattleItem, loadGuildBattleItems, applyItemUse, isOffensiveItem,
 } from "../battle/items.js";
 import { renderBattleTurn, renderAttackFrame, renderSiegeField, type AnimationSpeed } from "../animations/index.js";
-import type { SiegeFieldFighter, SiegeFieldInput } from "../animations/index.js";
+import type { SiegeFieldFighter, SiegeFieldInput, SiegeFieldBenchCard } from "../animations/index.js";
 import { renderCoinFlip } from "../battle/prep-canvas.js";
 import { renderSiegeFrame, type HqBaseView, type SiegeOverlay, type HqRenderDefender } from "./render.js";
 import type { HqSiegeConfig } from "./settings.js";
@@ -821,6 +821,19 @@ function fieldFighter(c: Combatant, hpBefore?: number): SiegeFieldFighter {
   };
 }
 
+// Each side's roster minus the active card, ordered "next to step up" first,
+// then the fallen — so the battlefield shows the whole column stepping up rank
+// by rank even though only the front pair actually trade blows.
+function benchOf(col: Combatant[], activeIdx: number): SiegeFieldBenchCard[] {
+  const mk = (c: Combatant, fallen: boolean): SiegeFieldBenchCard => ({
+    artUrl: c.cardImageUrl, rarity: c.cardRarity,
+    rarityColor: c.cardRarityDisplay?.color ?? null, fallen,
+  });
+  const upcoming = col.filter((_, i) => i > activeIdx).map(c => mk(c, false));
+  const fallen = col.filter((_, i) => i < activeIdx).map(c => mk(c, true));
+  return [...upcoming, ...fallen];
+}
+
 // Pick a battlefield backdrop + floor deterministically from the target, so a
 // given base always storms on the same ground across all its turns (and across
 // player sieges, AI conquests and open territories alike — every mode routes
@@ -857,6 +870,8 @@ function buildFieldInput(
     turnLabel: `Turn ${s.turnNumber}`,
     backdropKey: FIELD_BACKDROPS[h % FIELD_BACKDROPS.length]!,
     floorKey: FIELD_FLOORS[(h >>> 8) % FIELD_FLOORS.length]!,
+    attackerBench: benchOf(s.attackers, s.ai),
+    defenderBench: benchOf(s.defenders, s.di),
   };
 }
 

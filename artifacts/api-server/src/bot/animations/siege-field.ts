@@ -101,6 +101,15 @@ export interface SiegeFieldFighter {
   ultimate?: number;            // 0..100
 }
 
+// A non-active card in a side's column — drawn as a small standee lining up
+// behind the active fighter, so the 1-v-1 gauntlet reads as a full roster.
+export interface SiegeFieldBenchCard {
+  artUrl: string | null;
+  rarity: string;
+  rarityColor: number | null;
+  fallen: boolean;              // already KO'd (dim + ✗) vs still to step up
+}
+
 export interface SiegeFieldInput {
   attacker: SiegeFieldFighter;   // side 0 — stands on the LEFT
   defender: SiegeFieldFighter;   // side 1 — stands on the RIGHT
@@ -114,6 +123,10 @@ export interface SiegeFieldInput {
   turnLabel?: string | null;     // e.g. "Turn 4"
   backdropKey?: string | null;   // backdrop art key (castles/forest/desert/…)
   floorKey?: string | null;      // floor tile key (stone/marble/dirt/…)
+  // The rest of each side's column, ordered "next to step up" first, then the
+  // fallen — rendered as small standees behind the active fighter.
+  attackerBench?: SiegeFieldBenchCard[];
+  defenderBench?: SiegeFieldBenchCard[];
 }
 
 const FIELD = { width: 900, height: 470 } as const;
@@ -221,7 +234,10 @@ export async function renderSiegeField(
       const flashPath = sprite("fx", "flash01") ?? sprite("fx", "flash00");
       const smokePath = sprite("fx", "smoke00") ?? sprite("fx", "white-puff00");
 
-      const [backdrop, floor, atkBase, defBase, flash, smoke, atkArt, defArt] = await Promise.all([
+      const benchCards = [...(input.attackerBench ?? []), ...(input.defenderBench ?? [])];
+      const benchUrls = [...new Set(benchCards.map(c => c.artUrl).filter((u): u is string => !!u))];
+
+      const [backdrop, floor, atkBase, defBase, flash, smoke, atkArt, defArt, ...benchLoaded] = await Promise.all([
         backdropPath ? loadSpritePath(cmod, backdropPath) : null,
         floorPath ? loadSpritePath(cmod, floorPath) : null,
         atkBasePath ? loadSpritePath(cmod, atkBasePath) : null,
@@ -230,9 +246,12 @@ export async function renderSiegeField(
         smokePath ? loadSpritePath(cmod, smokePath) : null,
         loadArt(cmod, input.attacker.artUrl),
         loadArt(cmod, input.defender.artUrl),
+        ...benchUrls.map(u => loadArt(cmod, u)),
       ]);
+      const benchImgs = new Map<string, CanvasImage | null>();
+      benchUrls.forEach((u, i) => benchImgs.set(u, benchLoaded[i] ?? null));
 
-      const assets = { backdrop, floor, atkBase, defBase, flash, smoke, atkArt, defArt };
+      const assets = { backdrop, floor, atkBase, defBase, flash, smoke, atkArt, defArt, benchImgs };
       const { frames, delay } = speedPlan(speed);
 
       const physW = Math.round(FIELD.width * RENDER_SCALE);
@@ -275,6 +294,7 @@ interface Assets {
   atkBase: CanvasImage | null; defBase: CanvasImage | null;
   flash: CanvasImage | null; smoke: CanvasImage | null;
   atkArt: CanvasImage | null; defArt: CanvasImage | null;
+  benchImgs: Map<string, CanvasImage | null>;
 }
 
 // Station geometry: where each fighter's podium + portrait live at rest.
@@ -323,6 +343,11 @@ function drawFrame(
   // Draw the standing (non-acting first) so the lunging fighter overlaps on top.
   const atkFlashWhite = targetIsDef ? 0 : impact;
   const defFlashWhite = targetIsDef ? impact : 0;
+
+  // Bench standees line up behind each active fighter — drawn first so the
+  // active podium + portrait always sit in front of the roster.
+  drawBench(Konva, layer, 0, input.attackerBench ?? [], a.benchImgs);
+  drawBench(Konva, layer, 1, input.defenderBench ?? [], a.benchImgs);
 
   drawStation(Konva, layer, {
     x: atkX, side: 0, base: a.atkBase, art: a.atkArt, fighter: input.attacker,
@@ -482,6 +507,51 @@ function drawStation(Konva: KonvaMod, layer: any, o: StationOpts): void {
   layer.add(new Konva.Rect({ x: px, y: py, width: pw, height: ph, cornerRadius: 16, fillEnabled: false, stroke: cstr, strokeWidth: 2.5 }));
 
   drawNameplate(Konva, layer, o.x, GROUND_Y + 24, o.fighter, color);
+}
+
+// The roster behind an active fighter: small standees receding toward the
+// side's back edge. Upcoming cards read bright and framed; fallen cards are
+// dimmed with a ✗ so a broken rank stays legible.
+const BENCH_MAX = 3;
+function drawBench(Konva: KonvaMod, layer: any, side: 0 | 1, cards: SiegeFieldBenchCard[], imgs: Map<string, CanvasImage | null>): void {
+  if (cards.length === 0) return;
+  const dir = side === 0 ? -1 : 1;
+  const startX = FIELD.width / 2 + dir * (STATION_DX + 66); // just outside the podium
+  const gap = 46;
+  const y = GROUND_Y - 30;          // stand a touch behind the podium contact line
+  const sz = 42;
+  const shown = cards.slice(0, BENCH_MAX);
+  shown.forEach((c, i) => {
+    const x = startX + dir * i * gap;
+    const color = fighterColor(c);
+    const px = x - sz / 2, py = y - sz;
+    // Contact shadow.
+    layer.add(new Konva.Ellipse({ x, y: y + 4, radiusX: sz * 0.48, radiusY: 6, fill: "rgba(0,0,0,0.34)" }));
+    // Clipped portrait (or coloured chip).
+    const g = new Konva.Group({ clipFunc: (ctx: any) => roundRectPath(ctx, px, py, sz, sz, 8), opacity: c.fallen ? 0.5 : 0.92 });
+    const img = c.artUrl ? imgs.get(c.artUrl) : null;
+    if (img) {
+      const { dw, dh, dx, dy } = cover(img.width, img.height, sz, sz);
+      g.add(new Konva.Image({ image: img, x: px + dx, y: py + dy, width: dw, height: dh }));
+    } else {
+      g.add(new Konva.Rect({ x: px, y: py, width: sz, height: sz, fill: hex(color), opacity: 0.5 }));
+    }
+    if (c.fallen) g.add(new Konva.Rect({ x: px, y: py, width: sz, height: sz, fill: "#05070a", opacity: 0.55 }));
+    layer.add(g);
+    // Frame.
+    layer.add(new Konva.Rect({
+      x: px, y: py, width: sz, height: sz, cornerRadius: 8, fillEnabled: false,
+      stroke: c.fallen ? "#3a4048" : hex(color), strokeWidth: 2, opacity: c.fallen ? 0.7 : 1,
+    }));
+    if (c.fallen) {
+      layer.add(new Konva.Text({ x: px, y: py + sz / 2 - 13, width: sz, align: "center", text: "✗", fontFamily: "Orbitron", fontStyle: "900", fontSize: 26, fill: "#ff5a5a", opacity: 0.92 }));
+    }
+  });
+  // Overflow marker.
+  if (cards.length > BENCH_MAX) {
+    const x = startX + dir * BENCH_MAX * gap;
+    layer.add(new Konva.Text({ x: x - 22, y: y - sz + 8, width: 44, align: "center", text: `+${cards.length - BENCH_MAX}`, fontFamily: "Orbitron", fontStyle: "700", fontSize: 16, fill: "#cfd8e3", shadowColor: "#000", shadowBlur: 3, shadowOpacity: 1 }));
+  }
 }
 
 function drawNameplate(Konva: KonvaMod, layer: any, cx: number, top: number, f: SiegeFieldFighter, color: number): void {
