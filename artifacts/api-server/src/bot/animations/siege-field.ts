@@ -7,17 +7,20 @@
 // the siege analogue of a `/battle` turn frame, but staged as a face-off on a
 // dedicated battlefield instead of over the castle.
 //
-// Rendering is a Konva scene-graph composited per frame and encoded to a GIF —
-// Konva is the leaf renderer here (uses the `canvas`/cairo backend), so it is
-// funnelled through the shared render queue like every other heavy canvas job.
-// Everything is best-effort: a missing native lib, a stalled card image or an
-// oversized encode all resolve to `null`, and the caller silently keeps the old
-// static frame. A siege must never break because a picture failed.
+// The scene is drawn straight onto a 2D context with `@napi-rs/canvas` — the
+// SAME renderer the `/battle` animation layer uses — and encoded to a GIF with
+// gifencoder. It deliberately does NOT use Konva or the cairo `canvas` package:
+// those need a native compile that isn't reliably available on every host (the
+// castle renderer, which uses @napi-rs/canvas, renders fine where the old
+// cairo-backed battlefield came back blank). Everything is best-effort: a
+// missing native lib, a stalled card image or an oversized encode all resolve to
+// `null`, and the caller silently keeps the old static frame. A siege must never
+// break because a picture failed.
 //
 // Assets come from the SAME HQ art pack the base renderer uses (Kenney iso
 // packs, extracted under assets/hq/…): a backdrop, a floor tile and the podium
 // bases. `.riv` overlays can be layered on later via rive-overlay.ts — see that
-// module — but the shipped battle is pure sprite + Konva so it runs headless.
+// module — but the shipped battle is pure sprite + 2D canvas so it runs headless.
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { readFileSync } from "node:fs";
@@ -26,67 +29,12 @@ import { spriteForPrefix } from "../hq/assets.js";
 import { queueRender } from "./render-queue.js";
 import { getRarityEffectColor } from "./effects.js";
 import { extractArtColor } from "../battle/image/vibrant-color.js";
+import { getCanvas, TITLE_FONT_FAMILY, type CanvasMod, type Ctx } from "./engine.js";
 import type { Rarity } from "../cards-data.js";
 import type { AnimationSpeed, AnimationResult } from "./types.js";
 import { logger } from "../../lib/logger.js";
 
-// Lazily-typed module handles. Konva + canvas are native/externalised, so they
-// are imported at call time and typed loosely — we only touch a small, stable
-// slice of each API.
-type KonvaMod = (typeof import("konva"))["default"];
-type CanvasMod = typeof import("canvas");
 type CanvasImage = Awaited<ReturnType<CanvasMod["loadImage"]>>;
-
-let _konva: Promise<KonvaMod | null> | null = null;
-let _canvasMod: Promise<CanvasMod | null> | null = null;
-let _fontsReady = false;
-
-async function loadKonva(): Promise<KonvaMod | null> {
-  if (!_konva) {
-    _konva = (async () => {
-      try {
-        // The backend side-effect import must run before the namespace is used;
-        // it teaches Konva to draw onto a `canvas` (cairo) surface in Node.
-        await import("konva/canvas-backend");
-        const mod = await import("konva");
-        return mod.default;
-      } catch (err) {
-        logger.debug({ err }, "siege-field: konva not available");
-        return null;
-      }
-    })();
-  }
-  return _konva;
-}
-
-async function loadCanvasMod(): Promise<CanvasMod | null> {
-  if (!_canvasMod) {
-    _canvasMod = (async () => {
-      try {
-        return await import("canvas");
-      } catch (err) {
-        logger.debug({ err }, "siege-field: canvas backend not available");
-        return null;
-      }
-    })();
-  }
-  return _canvasMod;
-}
-
-// Register the same display font the rest of the animation layer uses, once, so
-// nameplates and damage numbers match the battle look. Best-effort — falls back
-// to the platform sans if the files are missing.
-function ensureFonts(mod: CanvasMod): void {
-  if (_fontsReady) return;
-  _fontsReady = true;
-  try {
-    const dir = new URL("../../../assets/fonts/", import.meta.url);
-    mod.registerFont(new URL("Orbitron-Bold.ttf", dir).pathname, { family: "Orbitron" });
-    mod.registerFont(new URL("Orbitron-Black.ttf", dir).pathname, { family: "Orbitron", weight: "900" });
-  } catch (err) {
-    logger.debug({ err }, "siege-field: font registration skipped");
-  }
-}
 
 // ── Public input ─────────────────────────────────────────────────────────────
 
@@ -163,10 +111,17 @@ function pulse(t: number, start: number, end: number): number {
 function hex(n: number): string {
   return `#${(n & 0xffffff).toString(16).padStart(6, "0")}`;
 }
+// A colour with alpha, from a packed int — for glows/shadows where Konva used a
+// separate shadowOpacity.
+function rgba(n: number, a: number): string {
+  const r = (n >> 16) & 0xff, g = (n >> 8) & 0xff, b = n & 0xff;
+  return `rgba(${r},${g},${b},${clamp01(a)})`;
+}
 function fighterColor(f: SiegeFighterLike): number {
   return f.rarityColor ?? getRarityEffectColor(f.rarity as Rarity);
 }
 type SiegeFighterLike = { rarity: string; rarityColor: number | null };
+const FONT = TITLE_FONT_FAMILY; // "Orbitron", registered by the engine loader
 
 // The active fighter's accent, themed to its actual card art. Mirrors the
 // `/battle` turn renderer: the dominant colour pulled from the artwork wins, so
@@ -285,10 +240,8 @@ export async function renderSiegeField(
   speed: AnimationSpeed,
 ): Promise<AnimationResult | null> {
   return queueRender("siege-field", async () => {
-    const Konva = await loadKonva();
-    const cmod = await loadCanvasMod();
-    if (!Konva || !cmod) return null;
-    ensureFonts(cmod);
+    const cmod = await getCanvas();
+    if (!cmod) return null;
 
     try {
       const assets = await loadFieldAssets(cmod, input);
@@ -303,14 +256,13 @@ export async function renderSiegeField(
 
       for (let i = 0; i < frames; i++) {
         const t = frames <= 1 ? 1 : i / (frames - 1);
-        const canvas = drawFrame(Konva, input, assets, t, RENDER_SCALE);
+        const ctx = drawFrame(cmod, input, assets, t, RENDER_SCALE);
         // Hold a beat on the settled final frame so the loop reads as a clean
         // "strike, then rest" rather than a frantic ping-pong.
         enc.setDelay(i === frames - 1 ? delay * 6 : delay);
-        // The cairo 2D context is structurally what gifencoder reads pixels from;
-        // its ambient type names the DOM CanvasRenderingContext2D (not in scope
-        // for Node source), so bridge with a cast.
-        enc.addFrame(canvas.getContext("2d") as never);
+        // gifencoder reads pixels via the 2D context's getImageData; the napi-rs
+        // context satisfies that just like the DOM/cairo one, so hand it over.
+        enc.addFrame(ctx as never);
       }
       enc.finish();
 
@@ -333,14 +285,16 @@ export async function renderSiegeField(
 // number are up, the target is recoiling. Same scene, one moment.
 export async function renderSiegeFieldStill(input: SiegeFieldInput): Promise<Buffer | null> {
   return queueRender("siege-field-still", async () => {
-    const Konva = await loadKonva();
-    const cmod = await loadCanvasMod();
-    if (!Konva || !cmod) return null;
-    ensureFonts(cmod);
+    const cmod = await getCanvas();
+    if (!cmod) return null;
     try {
       const assets = await loadFieldAssets(cmod, input);
-      const canvas = drawFrame(Konva, input, assets, STILL_T, STILL_SCALE);
-      return canvas.toBuffer("image/png");
+      const physW = Math.round(FIELD.width * STILL_SCALE);
+      const physH = Math.round(FIELD.height * STILL_SCALE);
+      const canvas = cmod.createCanvas(physW, physH);
+      const ctx = canvas.getContext("2d") as unknown as Ctx;
+      paintFrame(ctx, input, assets, STILL_T, STILL_SCALE);
+      return await canvas.encode("png");
     } catch (err) {
       logger.error({ err }, "siege-field: still render failed");
       return null;
@@ -364,18 +318,25 @@ const GROUND_Y = 356;              // podium contact line
 const STATION_DX = 232;            // horizontal offset of each station from centre
 const PORTRAIT_W = 150, PORTRAIT_H = 150;
 
-// Returns the composited stage canvas (a `canvas`-package Canvas) — the caller
-// pulls a 2D context for gifencoder or a PNG buffer for a still.
-function drawFrame(
-  Konva: KonvaMod, input: SiegeFieldInput, a: Assets, t: number, scale: number,
-): { getContext: (id: "2d") => unknown; toBuffer: (mime: "image/png") => Buffer } {
-  const stage = new Konva.Stage({ width: Math.round(FIELD.width * scale), height: Math.round(FIELD.height * scale) });
-  // Draw everything in logical (900×470) coordinates; the layer scale shrinks the
-  // whole scene to the physical output size in one step.
-  const layer = new Konva.Layer({ listening: false, scaleX: scale, scaleY: scale });
-  stage.add(layer);
+// Build a fresh canvas + context and paint the whole scene at `t`, returning the
+// context (for gifencoder or a PNG buffer). Everything is drawn in logical
+// (900×470) coordinates; a single ctx.scale() shrinks the scene to the physical
+// output size.
+function drawFrame(cmod: CanvasMod, input: SiegeFieldInput, a: Assets, t: number, scale: number): Ctx {
+  const physW = Math.round(FIELD.width * scale);
+  const physH = Math.round(FIELD.height * scale);
+  const canvas = cmod.createCanvas(physW, physH);
+  const ctx = canvas.getContext("2d") as unknown as Ctx;
+  paintFrame(ctx, input, a, t, scale);
+  return ctx;
+}
 
-  drawBackground(Konva, layer, a, input.accent);
+function paintFrame(ctx: Ctx, input: SiegeFieldInput, a: Assets, t: number, scale: number): void {
+  ctx.save();
+  ctx.scale(scale, scale);
+  ctx.textBaseline = "top";
+
+  drawBackground(ctx, a, input.accent);
 
   // Impact timing. The acting side lunges into the middle, connects around
   // t≈0.5, then eases home. The target reacts on connect.
@@ -404,20 +365,20 @@ function drawFrame(
   const atkX = cx - STATION_DX + atkDash + atkKnock + (shake * 0.4);
   const defX = cx + STATION_DX + defDash - defKnock - (shake * 0.4);
 
-  // Draw the standing (non-acting first) so the lunging fighter overlaps on top.
+  // White strike flash overlay on connect, on the struck side.
   const atkFlashWhite = targetIsDef ? 0 : impact;
   const defFlashWhite = targetIsDef ? impact : 0;
 
   // Bench standees line up behind each active fighter — drawn first so the
   // active podium + portrait always sit in front of the roster.
-  drawBench(Konva, layer, 0, input.attackerBench ?? [], a.benchImgs);
-  drawBench(Konva, layer, 1, input.defenderBench ?? [], a.benchImgs);
+  drawBench(ctx, 0, input.attackerBench ?? [], a.benchImgs);
+  drawBench(ctx, 1, input.defenderBench ?? [], a.benchImgs);
 
-  drawStation(Konva, layer, {
+  drawStation(ctx, {
     x: atkX, side: 0, base: a.atkBase, art: a.atkArt, fighter: input.attacker, color: a.atkColor,
     bob: bobA, flashWhite: atkFlashWhite, t,
   });
-  drawStation(Konva, layer, {
+  drawStation(ctx, {
     x: defX, side: 1, base: a.defBase, art: a.defArt, fighter: input.defender, color: a.defColor,
     bob: bobB, flashWhite: defFlashWhite, t,
   });
@@ -426,21 +387,22 @@ function drawFrame(
   if (connected) {
     const targetX = targetIsDef ? defX : atkX;
     const targetY = GROUND_Y - PORTRAIT_H * 0.55;
-    drawImpact(Konva, layer, a, targetX, targetY, impact, input, t);
+    drawImpact(ctx, a, targetX, targetY, impact, input);
   } else if (t >= CONNECT && !input.isHit) {
     const targetX = targetIsDef ? defX : atkX;
-    drawFloatingText(Konva, layer, targetX, GROUND_Y - PORTRAIT_H - 14, "MISS", 0x9aa7b4, clamp01((t - CONNECT) / 0.4));
+    drawFloatingText(ctx, targetX, GROUND_Y - PORTRAIT_H - 14, "MISS", 0x9aa7b4, clamp01((t - CONNECT) / 0.4));
   }
 
-  drawMoveBanner(Konva, layer, input);
-  if (input.turnLabel) drawTurnChip(Konva, layer, input.turnLabel, input.accent);
-  if (input.ko && t > 0.72) drawKoStamp(Konva, layer, targetIsDef ? defX : atkX, clamp01((t - 0.72) / 0.28));
+  drawMoveBanner(ctx, input);
+  if (input.turnLabel) drawTurnChip(ctx, input.turnLabel, input.accent);
+  if (input.ko && t > 0.72) drawKoStamp(ctx, targetIsDef ? defX : atkX, clamp01((t - 0.72) / 0.28));
 
-  layer.draw();
-  return stage.toCanvas() as unknown as { getContext: (id: "2d") => unknown; toBuffer: (mime: "image/png") => Buffer };
+  ctx.restore();
 }
 
-function roundRectPath(ctx: { beginPath: () => void; moveTo: (x: number, y: number) => void; arcTo: (x1: number, y1: number, x2: number, y2: number, r: number) => void; closePath: () => void }, x: number, y: number, w: number, h: number, r: number): void {
+// ── 2D drawing primitives ─────────────────────────────────────────────────────
+
+function roundRectPath(ctx: Ctx, x: number, y: number, w: number, h: number, r: number): void {
   const rr = Math.min(r, w / 2, h / 2);
   ctx.beginPath();
   ctx.moveTo(x + rr, y);
@@ -451,57 +413,122 @@ function roundRectPath(ctx: { beginPath: () => void; moveTo: (x: number, y: numb
   ctx.closePath();
 }
 
-function drawBackground(Konva: KonvaMod, layer: any, a: Assets, accent: number): void {
+function fillRoundRect(ctx: Ctx, x: number, y: number, w: number, h: number, r: number, fill: string): void {
+  roundRectPath(ctx, x, y, w, h, r);
+  ctx.fillStyle = fill;
+  ctx.fill();
+}
+
+function strokeRoundRect(ctx: Ctx, x: number, y: number, w: number, h: number, r: number, stroke: string, lineWidth: number): void {
+  roundRectPath(ctx, x, y, w, h, r);
+  ctx.strokeStyle = stroke;
+  ctx.lineWidth = lineWidth;
+  ctx.stroke();
+}
+
+// The napi 2D context exposes arc() (circles only), so an oval is a scaled
+// circle drawn under a temporary transform.
+function ellipse(ctx: Ctx, x: number, y: number, rx: number, ry: number, fill: string): void {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.scale(1, ry / rx);
+  ctx.beginPath();
+  ctx.arc(0, 0, rx, 0, Math.PI * 2);
+  ctx.fillStyle = fill;
+  ctx.fill();
+  ctx.restore();
+}
+
+interface TextOpts {
+  x: number; y: number; w?: number; align?: "left" | "center" | "right";
+  text: string; size: number; weight?: number | string; fill: string;
+  shadow?: string; shadowBlur?: number; alpha?: number; maxWidth?: number;
+}
+// Konva Text drew top-anchored inside a box [x, x+width] with an align. We mirror
+// that: textBaseline is "top", and centre/right alignment resolves against the box.
+function drawText(ctx: Ctx, o: TextOpts): void {
+  ctx.save();
+  ctx.globalAlpha = o.alpha ?? 1;
+  ctx.fillStyle = o.fill;
+  ctx.font = `${o.weight ?? 700} ${o.size}px "${FONT}"`;
+  ctx.textBaseline = "top";
+  const align = o.align ?? "left";
+  ctx.textAlign = align;
+  if (o.shadow) { ctx.shadowColor = o.shadow; ctx.shadowBlur = o.shadowBlur ?? 0; }
+  let text = o.text;
+  const limit = o.maxWidth ?? o.w;
+  if (limit) text = ellipsize(ctx, text, limit);
+  let x = o.x;
+  if (o.w != null) {
+    if (align === "center") x = o.x + o.w / 2;
+    else if (align === "right") x = o.x + o.w;
+  }
+  ctx.fillText(text, x, o.y);
+  ctx.restore();
+}
+
+// Trim to fit `w`, appending an ellipsis — the napi context has measureText.
+function ellipsize(ctx: Ctx, text: string, w: number): string {
+  if (ctx.measureText(text).width <= w) return text;
+  let s = text;
+  while (s.length > 1 && ctx.measureText(s + "…").width > w) s = s.slice(0, -1);
+  return s + "…";
+}
+
+// A linear vertical gradient from an array of [stop, colour] pairs.
+function vGradient(ctx: Ctx, x0: number, y0: number, y1: number, stops: [number, string][]): ReturnType<Ctx["createLinearGradient"]> {
+  const g = ctx.createLinearGradient(x0, y0, x0, y1);
+  for (const [at, col] of stops) g.addColorStop(at, col);
+  return g;
+}
+
+function drawBackground(ctx: Ctx, a: Assets, accent: number): void {
   // Base wash — always drawn, so a missing backdrop still looks deliberate.
-  layer.add(new Konva.Rect({
-    x: 0, y: 0, width: FIELD.width, height: FIELD.height,
-    fillLinearGradientStartPoint: { x: 0, y: 0 },
-    fillLinearGradientEndPoint: { x: 0, y: FIELD.height },
-    fillLinearGradientColorStops: [0, "#141a24", 0.55, "#1b2430", 1, "#0c1016"],
-  }));
+  ctx.fillStyle = vGradient(ctx, 0, 0, FIELD.height, [[0, "#141a24"], [0.55, "#1b2430"], [1, "#0c1016"]]);
+  ctx.fillRect(0, 0, FIELD.width, FIELD.height);
 
   if (a.backdrop) {
     const { dw, dh, dx, dy } = cover(a.backdrop.width, a.backdrop.height, FIELD.width, FIELD.height * 0.82);
-    layer.add(new Konva.Image({ image: a.backdrop, x: dx, y: dy, width: dw, height: dh, opacity: 0.9 }));
+    ctx.save();
+    ctx.globalAlpha = 0.9;
+    ctx.drawImage(a.backdrop as never, dx, dy, dw, dh);
+    ctx.restore();
     // Darken toward the floor so the fighters pop against it.
-    layer.add(new Konva.Rect({
-      x: 0, y: 0, width: FIELD.width, height: FIELD.height,
-      fillLinearGradientStartPoint: { x: 0, y: 0 },
-      fillLinearGradientEndPoint: { x: 0, y: FIELD.height },
-      fillLinearGradientColorStops: [0, "rgba(8,10,14,0.28)", 0.6, "rgba(8,10,14,0.12)", 1, "rgba(6,8,12,0.72)"],
-    }));
+    ctx.fillStyle = vGradient(ctx, 0, 0, FIELD.height, [
+      [0, "rgba(8,10,14,0.28)"], [0.6, "rgba(8,10,14,0.12)"], [1, "rgba(6,8,12,0.72)"],
+    ]);
+    ctx.fillRect(0, 0, FIELD.width, FIELD.height);
   }
 
   // Ground band: a tiled floor strip along the lower third with a soft top edge.
   const bandTop = GROUND_Y - 44;
   if (a.floor) {
     const tile = 84;
+    ctx.save();
+    ctx.globalAlpha = 0.96;
     for (let x = 0; x < FIELD.width; x += tile) {
-      layer.add(new Konva.Image({ image: a.floor, x, y: bandTop, width: tile, height: FIELD.height - bandTop, opacity: 0.96 }));
+      ctx.drawImage(a.floor as never, x, bandTop, tile, FIELD.height - bandTop);
     }
-    layer.add(new Konva.Rect({
-      x: 0, y: bandTop, width: FIELD.width, height: FIELD.height - bandTop,
-      fillLinearGradientStartPoint: { x: 0, y: bandTop },
-      fillLinearGradientEndPoint: { x: 0, y: FIELD.height },
-      fillLinearGradientColorStops: [0, "rgba(10,12,18,0.5)", 0.4, "rgba(10,12,18,0.05)", 1, "rgba(6,8,12,0.55)"],
-    }));
+    ctx.restore();
+    ctx.fillStyle = vGradient(ctx, 0, bandTop, FIELD.height, [
+      [0, "rgba(10,12,18,0.5)"], [0.4, "rgba(10,12,18,0.05)"], [1, "rgba(6,8,12,0.55)"],
+    ]);
+    ctx.fillRect(0, bandTop, FIELD.width, FIELD.height - bandTop);
   }
 
   // Accent glow along the horizon — ties the field to the siege's colour.
-  layer.add(new Konva.Rect({
-    x: 0, y: bandTop - 10, width: FIELD.width, height: 22, opacity: 0.5,
-    fillLinearGradientStartPoint: { x: 0, y: 0 },
-    fillLinearGradientEndPoint: { x: 0, y: 22 },
-    fillLinearGradientColorStops: [0, "rgba(0,0,0,0)", 1, hex(accent)],
-  }));
+  ctx.save();
+  ctx.globalAlpha = 0.5;
+  ctx.fillStyle = vGradient(ctx, 0, bandTop - 10, bandTop + 12, [[0, "rgba(0,0,0,0)"], [1, hex(accent)]]);
+  ctx.fillRect(0, bandTop - 10, FIELD.width, 22);
+  ctx.restore();
+
   // Vignette.
-  layer.add(new Konva.Rect({
-    x: 0, y: 0, width: FIELD.width, height: FIELD.height,
-    fillRadialGradientStartPoint: { x: FIELD.width / 2, y: FIELD.height / 2 },
-    fillRadialGradientEndPoint: { x: FIELD.width / 2, y: FIELD.height / 2 },
-    fillRadialGradientStartRadius: 260, fillRadialGradientEndRadius: 560,
-    fillRadialGradientColorStops: [0, "rgba(0,0,0,0)", 1, "rgba(0,0,0,0.5)"],
-  }));
+  const vg = ctx.createRadialGradient(FIELD.width / 2, FIELD.height / 2, 260, FIELD.width / 2, FIELD.height / 2, 560);
+  vg.addColorStop(0, "rgba(0,0,0,0)");
+  vg.addColorStop(1, "rgba(0,0,0,0.5)");
+  ctx.fillStyle = vg;
+  ctx.fillRect(0, 0, FIELD.width, FIELD.height);
 }
 
 interface StationOpts {
@@ -509,21 +536,26 @@ interface StationOpts {
   fighter: SiegeFieldFighter; color: number; bob: number; flashWhite: number; t: number;
 }
 
-function drawStation(Konva: KonvaMod, layer: any, o: StationOpts): void {
+function drawStation(ctx: Ctx, o: StationOpts): void {
   const color = o.color;
   const cstr = hex(color);
   const baseW = 148, baseH = 74;
   const baseX = o.x - baseW / 2, baseY = GROUND_Y - baseH * 0.5;
 
   // Contact shadow.
-  layer.add(new Konva.Ellipse({
-    x: o.x, y: GROUND_Y + 12, radiusX: baseW * 0.42, radiusY: 13, fill: "rgba(0,0,0,0.42)",
-  }));
+  ellipse(ctx, o.x, GROUND_Y + 12, baseW * 0.42, 13, "rgba(0,0,0,0.42)");
   // Peg podium.
   if (o.base) {
-    layer.add(new Konva.Image({ image: o.base, x: baseX, y: baseY, width: baseW, height: baseH }));
+    ctx.drawImage(o.base as never, baseX, baseY, baseW, baseH);
   } else {
-    layer.add(new Konva.Ellipse({ x: o.x, y: GROUND_Y, radiusX: baseW * 0.42, radiusY: 20, fill: "#2c3644", stroke: cstr, strokeWidth: 3 }));
+    ellipse(ctx, o.x, GROUND_Y, baseW * 0.42, 20, "#2c3644");
+    ctx.save();
+    ctx.translate(o.x, GROUND_Y);
+    ctx.scale(1, 20 / (baseW * 0.42));
+    ctx.beginPath();
+    ctx.arc(0, 0, baseW * 0.42, 0, Math.PI * 2);
+    ctx.strokeStyle = cstr; ctx.lineWidth = 3; ctx.stroke();
+    ctx.restore();
   }
 
   // Floating portrait: bobs above the podium, tethered by a soft glow beam.
@@ -532,52 +564,61 @@ function drawStation(Konva: KonvaMod, layer: any, o: StationOpts): void {
   const py = GROUND_Y - baseH * 0.35 - ph - 8 + o.bob;
 
   // Glow beam from podium to portrait.
-  layer.add(new Konva.Rect({
-    x: o.x - 26, y: py + ph * 0.5, width: 52, height: (GROUND_Y - (py + ph * 0.5)), opacity: 0.22,
-    fillLinearGradientStartPoint: { x: 0, y: 0 },
-    fillLinearGradientEndPoint: { x: 0, y: (GROUND_Y - (py + ph * 0.5)) },
-    fillLinearGradientColorStops: [0, cstr, 1, "rgba(0,0,0,0)"],
-  }));
+  const beamTop = py + ph * 0.5;
+  const beamH = GROUND_Y - beamTop;
+  ctx.save();
+  ctx.globalAlpha = 0.22;
+  ctx.fillStyle = vGradient(ctx, 0, beamTop, beamTop + beamH, [[0, cstr], [1, "rgba(0,0,0,0)"]]);
+  ctx.fillRect(o.x - 26, beamTop, 52, beamH);
+  ctx.restore();
 
-  // Outer glow.
-  layer.add(new Konva.Rect({
-    x: px, y: py, width: pw, height: ph, cornerRadius: 18, fillEnabled: false,
-    stroke: cstr, strokeWidth: 2, shadowColor: cstr, shadowBlur: 26, shadowOpacity: 0.85,
-  }));
+  // Outer glow (a soft accent halo behind the frame).
+  ctx.save();
+  ctx.shadowColor = rgba(color, 0.85);
+  ctx.shadowBlur = 26;
+  strokeRoundRect(ctx, px, py, pw, ph, 18, cstr, 2);
+  ctx.restore();
 
   // Clipped art (object-fit: cover) or a coloured placeholder.
-  const g = new Konva.Group({
-    clipFunc: (ctx: any) => roundRectPath(ctx, px, py, pw, ph, 16),
-  });
+  ctx.save();
+  roundRectPath(ctx, px, py, pw, ph, 16);
+  ctx.clip();
   if (o.art) {
     const { dw, dh, dx, dy } = cover(o.art.width, o.art.height, pw, ph);
-    g.add(new Konva.Image({ image: o.art, x: px + dx, y: py + dy, width: dw, height: dh }));
+    ctx.drawImage(o.art as never, px + dx, py + dy, dw, dh);
   } else {
-    g.add(new Konva.Rect({ x: px, y: py, width: pw, height: ph, fill: cstr, opacity: 0.5 }));
-    g.add(new Konva.Text({
-      x: px, y: py + ph / 2 - 24, width: pw, align: "center",
-      text: (o.fighter.name[0] || "?").toUpperCase(), fontFamily: "Orbitron", fontStyle: "900",
-      fontSize: 52, fill: "#f5f7fa",
-    }));
+    ctx.save();
+    ctx.globalAlpha = 0.5;
+    ctx.fillStyle = cstr;
+    ctx.fillRect(px, py, pw, ph);
+    ctx.restore();
+    drawText(ctx, {
+      x: px, y: py + ph / 2 - 24, w: pw, align: "center",
+      text: (o.fighter.name[0] || "?").toUpperCase(), weight: 900, size: 52, fill: "#f5f7fa",
+    });
   }
   // White strike flash overlay on connect.
   if (o.flashWhite > 0.01) {
-    g.add(new Konva.Rect({ x: px, y: py, width: pw, height: ph, fill: "#ffffff", opacity: 0.6 * o.flashWhite }));
+    ctx.save();
+    ctx.globalAlpha = 0.6 * o.flashWhite;
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(px, py, pw, ph);
+    ctx.restore();
   }
-  layer.add(g);
+  ctx.restore();
 
-  // Frame border.
-  layer.add(new Konva.Rect({ x: px, y: py, width: pw, height: ph, cornerRadius: 16, fillEnabled: false, stroke: "#0b0e13", strokeWidth: 5 }));
-  layer.add(new Konva.Rect({ x: px, y: py, width: pw, height: ph, cornerRadius: 16, fillEnabled: false, stroke: cstr, strokeWidth: 2.5 }));
+  // Frame border (dark outline, then accent).
+  strokeRoundRect(ctx, px, py, pw, ph, 16, "#0b0e13", 5);
+  strokeRoundRect(ctx, px, py, pw, ph, 16, cstr, 2.5);
 
-  drawNameplate(Konva, layer, o.x, GROUND_Y + 24, o.fighter, color);
+  drawNameplate(ctx, o.x, GROUND_Y + 24, o.fighter, color);
 }
 
 // The roster behind an active fighter: small standees receding toward the
 // side's back edge. Upcoming cards read bright and framed; fallen cards are
 // dimmed with a ✗ so a broken rank stays legible.
 const BENCH_MAX = 3;
-function drawBench(Konva: KonvaMod, layer: any, side: 0 | 1, cards: SiegeFieldBenchCard[], imgs: Map<string, CanvasImage | null>): void {
+function drawBench(ctx: Ctx, side: 0 | 1, cards: SiegeFieldBenchCard[], imgs: Map<string, CanvasImage | null>): void {
   if (cards.length === 0) return;
   const dir = side === 0 ? -1 : 1;
   const startX = FIELD.width / 2 + dir * (STATION_DX + 66); // just outside the podium
@@ -590,132 +631,194 @@ function drawBench(Konva: KonvaMod, layer: any, side: 0 | 1, cards: SiegeFieldBe
     const color = fighterColor(c);
     const px = x - sz / 2, py = y - sz;
     // Contact shadow.
-    layer.add(new Konva.Ellipse({ x, y: y + 4, radiusX: sz * 0.48, radiusY: 6, fill: "rgba(0,0,0,0.34)" }));
+    ellipse(ctx, x, y + 4, sz * 0.48, 6, "rgba(0,0,0,0.34)");
     // Clipped portrait (or coloured chip).
-    const g = new Konva.Group({ clipFunc: (ctx: any) => roundRectPath(ctx, px, py, sz, sz, 8), opacity: c.fallen ? 0.5 : 0.92 });
+    ctx.save();
+    ctx.globalAlpha = c.fallen ? 0.5 : 0.92;
+    roundRectPath(ctx, px, py, sz, sz, 8);
+    ctx.clip();
     const img = c.artUrl ? imgs.get(c.artUrl) : null;
     if (img) {
       const { dw, dh, dx, dy } = cover(img.width, img.height, sz, sz);
-      g.add(new Konva.Image({ image: img, x: px + dx, y: py + dy, width: dw, height: dh }));
+      ctx.drawImage(img as never, px + dx, py + dy, dw, dh);
     } else {
-      g.add(new Konva.Rect({ x: px, y: py, width: sz, height: sz, fill: hex(color), opacity: 0.5 }));
+      ctx.globalAlpha = (c.fallen ? 0.5 : 0.92) * 0.5;
+      ctx.fillStyle = hex(color);
+      ctx.fillRect(px, py, sz, sz);
     }
-    if (c.fallen) g.add(new Konva.Rect({ x: px, y: py, width: sz, height: sz, fill: "#05070a", opacity: 0.55 }));
-    layer.add(g);
-    // Frame.
-    layer.add(new Konva.Rect({
-      x: px, y: py, width: sz, height: sz, cornerRadius: 8, fillEnabled: false,
-      stroke: c.fallen ? "#3a4048" : hex(color), strokeWidth: 2, opacity: c.fallen ? 0.7 : 1,
-    }));
     if (c.fallen) {
-      layer.add(new Konva.Text({ x: px, y: py + sz / 2 - 13, width: sz, align: "center", text: "✗", fontFamily: "Orbitron", fontStyle: "900", fontSize: 26, fill: "#ff5a5a", opacity: 0.92 }));
+      ctx.globalAlpha = 0.55;
+      ctx.fillStyle = "#05070a";
+      ctx.fillRect(px, py, sz, sz);
+    }
+    ctx.restore();
+    // Frame.
+    ctx.save();
+    ctx.globalAlpha = c.fallen ? 0.7 : 1;
+    strokeRoundRect(ctx, px, py, sz, sz, 8, c.fallen ? "#3a4048" : hex(color), 2);
+    ctx.restore();
+    if (c.fallen) {
+      // A drawn cross, not a "✗" glyph — Orbitron lacks U+2717 and the napi
+      // renderer would draw a tofu box for it.
+      const m = sz * 0.28;
+      ctx.save();
+      ctx.globalAlpha = 0.92;
+      ctx.strokeStyle = "#ff5a5a";
+      ctx.lineWidth = 3.5;
+      ctx.lineCap = "round";
+      ctx.beginPath();
+      ctx.moveTo(px + m, py + m); ctx.lineTo(px + sz - m, py + sz - m);
+      ctx.moveTo(px + sz - m, py + m); ctx.lineTo(px + m, py + sz - m);
+      ctx.stroke();
+      ctx.restore();
     }
   });
   // Overflow marker.
   if (cards.length > BENCH_MAX) {
     const x = startX + dir * BENCH_MAX * gap;
-    layer.add(new Konva.Text({ x: x - 22, y: y - sz + 8, width: 44, align: "center", text: `+${cards.length - BENCH_MAX}`, fontFamily: "Orbitron", fontStyle: "700", fontSize: 16, fill: "#cfd8e3", shadowColor: "#000", shadowBlur: 3, shadowOpacity: 1 }));
+    drawText(ctx, { x: x - 22, y: y - sz + 8, w: 44, align: "center", text: `+${cards.length - BENCH_MAX}`, weight: 700, size: 16, fill: "#cfd8e3", shadow: "#000", shadowBlur: 3 });
   }
 }
 
-function drawNameplate(Konva: KonvaMod, layer: any, cx: number, top: number, f: SiegeFieldFighter, color: number): void {
+function drawNameplate(ctx: Ctx, cx: number, top: number, f: SiegeFieldFighter, color: number): void {
   const w = 176, x = cx - w / 2;
   // HP bar.
   const hpFrac = clamp01((f.hpBefore ?? f.hp) / Math.max(1, f.maxHp)); // shown pre-drain; the frame's damage number carries the loss
   const hpNow = clamp01(f.hp / Math.max(1, f.maxHp));
   const barY = top;
-  layer.add(new Konva.Rect({ x, y: barY, width: w, height: 15, cornerRadius: 7, fill: "#10151d", stroke: "#2a333f", strokeWidth: 1 }));
+  fillRoundRect(ctx, x, barY, w, 15, 7, "#10151d");
+  strokeRoundRect(ctx, x, barY, w, 15, 7, "#2a333f", 1);
   // ghost (pre-hit) then live fill.
-  layer.add(new Konva.Rect({ x: x + 2, y: barY + 2, width: (w - 4) * hpFrac, height: 11, cornerRadius: 5, fill: "rgba(220,60,60,0.35)" }));
+  fillRoundRect(ctx, x + 2, barY + 2, (w - 4) * hpFrac, 11, 5, "rgba(220,60,60,0.35)");
   const hpColor = hpNow > 0.5 ? "#4fd06a" : hpNow > 0.22 ? "#f1c40f" : "#e74c3c";
-  layer.add(new Konva.Rect({ x: x + 2, y: barY + 2, width: Math.max(0, (w - 4) * hpNow), height: 11, cornerRadius: 5, fill: hpColor }));
-  layer.add(new Konva.Text({
-    x, y: barY + 1, width: w, align: "center", text: `${Math.max(0, Math.round(f.hp))}/${f.maxHp}`,
-    fontFamily: "Orbitron", fontStyle: "700", fontSize: 10, fill: "#eaf0f6",
-    shadowColor: "#000", shadowBlur: 2, shadowOpacity: 0.9,
-  }));
+  fillRoundRect(ctx, x + 2, barY + 2, Math.max(0, (w - 4) * hpNow), 11, 5, hpColor);
+  drawText(ctx, {
+    x, y: barY + 2, w, align: "center", text: `${Math.max(0, Math.round(f.hp))}/${f.maxHp}`,
+    weight: 700, size: 10, fill: "#eaf0f6", shadow: "rgba(0,0,0,0.9)", shadowBlur: 2,
+  });
 
   // Energy sliver.
   const energy = clamp01((f.energy ?? 0) / 100);
-  layer.add(new Konva.Rect({ x, y: barY + 18, width: w, height: 6, cornerRadius: 3, fill: "#10151d" }));
-  layer.add(new Konva.Rect({ x: x + 1, y: barY + 19, width: (w - 2) * energy, height: 4, cornerRadius: 2, fill: "#38bdf8" }));
+  fillRoundRect(ctx, x, barY + 18, w, 6, 3, "#10151d");
+  fillRoundRect(ctx, x + 1, barY + 19, (w - 2) * energy, 4, 2, "#38bdf8");
 
   // Name.
-  layer.add(new Konva.Text({
-    x, y: barY + 27, width: w, align: "center", text: f.name.toUpperCase(),
-    fontFamily: "Orbitron", fontStyle: "700", fontSize: 13, fill: "#f5f7fa",
-    shadowColor: hex(color), shadowBlur: 8, shadowOpacity: 0.8, ellipsis: true, wrap: "none",
-  }));
+  drawText(ctx, {
+    x, y: barY + 27, w, align: "center", text: f.name.toUpperCase(),
+    weight: 700, size: 13, fill: "#f5f7fa", shadow: rgba(color, 0.8), shadowBlur: 8, maxWidth: w,
+  });
 }
 
-function drawImpact(Konva: KonvaMod, layer: any, a: Assets, x: number, y: number, k: number, input: SiegeFieldInput, t: number): void {
+function drawStar(ctx: Ctx, x: number, y: number, points: number, inner: number, outer: number, fill: string, alpha: number): void {
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.fillStyle = fill;
+  ctx.beginPath();
+  const step = Math.PI / points;
+  for (let i = 0; i < points * 2; i++) {
+    const r = i % 2 === 0 ? outer : inner;
+    const ang = i * step - Math.PI / 2;
+    const sx = x + Math.cos(ang) * r, sy = y + Math.sin(ang) * r;
+    if (i === 0) ctx.moveTo(sx, sy); else ctx.lineTo(sx, sy);
+  }
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
+}
+
+function drawImpact(ctx: Ctx, a: Assets, x: number, y: number, k: number, input: SiegeFieldInput): void {
   const color = input.isCrit ? 0xffd54a : 0xffffff;
   const scale = (input.isCrit ? 1.35 : 1.0) * (0.6 + k * 0.9);
   if (a.flash) {
     const sz = 150 * scale;
-    layer.add(new Konva.Image({ image: a.flash, x: x - sz / 2, y: y - sz / 2, width: sz, height: sz, opacity: k, shadowColor: hex(color), shadowBlur: 30, shadowOpacity: k }));
+    ctx.save();
+    ctx.globalAlpha = k;
+    ctx.shadowColor = rgba(color, k);
+    ctx.shadowBlur = 30;
+    ctx.drawImage(a.flash as never, x - sz / 2, y - sz / 2, sz, sz);
+    ctx.restore();
   } else {
-    layer.add(new Konva.Star({ x, y, numPoints: 8, innerRadius: 18 * scale, outerRadius: 52 * scale, fill: hex(color), opacity: k }));
+    drawStar(ctx, x, y, 8, 18 * scale, 52 * scale, hex(color), k);
   }
   // Slash streak.
-  layer.add(new Konva.Line({
-    points: [x - 60 * scale, y + 34 * scale, x + 60 * scale, y - 34 * scale],
-    stroke: "#ffffff", strokeWidth: 6 * scale, opacity: k * 0.85, lineCap: "round",
-    shadowColor: hex(color), shadowBlur: 16, shadowOpacity: k,
-  }));
+  ctx.save();
+  ctx.globalAlpha = k * 0.85;
+  ctx.strokeStyle = "#ffffff";
+  ctx.lineWidth = 6 * scale;
+  ctx.lineCap = "round";
+  ctx.shadowColor = rgba(color, k);
+  ctx.shadowBlur = 16;
+  ctx.beginPath();
+  ctx.moveTo(x - 60 * scale, y + 34 * scale);
+  ctx.lineTo(x + 60 * scale, y - 34 * scale);
+  ctx.stroke();
+  ctx.restore();
   if (a.smoke) {
     const sz = 120 * scale;
-    layer.add(new Konva.Image({ image: a.smoke, x: x - sz / 2, y: y - sz / 2, width: sz, height: sz, opacity: k * 0.7 }));
+    ctx.save();
+    ctx.globalAlpha = k * 0.7;
+    ctx.drawImage(a.smoke as never, x - sz / 2, y - sz / 2, sz, sz);
+    ctx.restore();
   }
   // Damage number, rising as the strike settles.
   if (input.damage > 0) {
     const rise = (1 - k) * 26;
     const dmgColor = input.isCrit ? 0xffd54a : 0xff5a5a;
-    layer.add(new Konva.Text({
-      x: x - 100, y: y - 62 - rise, width: 200, align: "center",
+    drawText(ctx, {
+      x: x - 100, y: y - 62 - rise, w: 200, align: "center",
       text: `${input.isCrit ? "CRIT " : ""}-${input.damage}`,
-      fontFamily: "Orbitron", fontStyle: "900", fontSize: input.isCrit ? 40 : 34, fill: hex(dmgColor),
-      shadowColor: "#000", shadowBlur: 5, shadowOpacity: 1, opacity: clamp01(k + 0.3),
-    }));
+      weight: 900, size: input.isCrit ? 40 : 34, fill: hex(dmgColor),
+      shadow: "rgba(0,0,0,1)", shadowBlur: 5, alpha: clamp01(k + 0.3),
+    });
   }
 }
 
-function drawFloatingText(Konva: KonvaMod, layer: any, cx: number, y: number, text: string, color: number, k: number): void {
-  layer.add(new Konva.Text({
-    x: cx - 100, y: y - k * 20, width: 200, align: "center", text,
-    fontFamily: "Orbitron", fontStyle: "900", fontSize: 30, fill: hex(color),
-    shadowColor: "#000", shadowBlur: 4, shadowOpacity: 1, opacity: 1 - k,
-  }));
+function drawFloatingText(ctx: Ctx, cx: number, y: number, text: string, color: number, k: number): void {
+  drawText(ctx, {
+    x: cx - 100, y: y - k * 20, w: 200, align: "center", text,
+    weight: 900, size: 30, fill: hex(color), shadow: "rgba(0,0,0,1)", shadowBlur: 4, alpha: 1 - k,
+  });
 }
 
-function drawMoveBanner(Konva: KonvaMod, layer: any, input: SiegeFieldInput): void {
+function drawMoveBanner(ctx: Ctx, input: SiegeFieldInput): void {
   const actor = input.actingSide === 0 ? input.attacker : input.defender;
-  const text = `${actor.name} · ${input.moveName}`;
+  // Bullet (U+2022) not middle-dot (U+00B7): Orbitron ships the former, and
+  // @napi-rs/canvas renders a missing glyph as a tofu box rather than falling
+  // back per-glyph the way the old cairo backend did.
+  const text = `${actor.name} • ${input.moveName}`;
   const w = Math.min(560, 60 + text.length * 12);
   const x = FIELD.width / 2 - w / 2, y = 18;
-  layer.add(new Konva.Rect({
-    x, y, width: w, height: 40, cornerRadius: 20, fill: "rgba(10,14,20,0.72)",
-    stroke: hex(input.accent), strokeWidth: 2, shadowColor: "#000", shadowBlur: 10, shadowOpacity: 0.6,
-  }));
-  layer.add(new Konva.Text({
-    x, y: y + 11, width: w, align: "center", text, fontFamily: "Orbitron", fontStyle: "700",
-    fontSize: 17, fill: "#f5f7fa", ellipsis: true, wrap: "none",
-  }));
+  ctx.save();
+  ctx.shadowColor = "rgba(0,0,0,0.6)";
+  ctx.shadowBlur = 10;
+  fillRoundRect(ctx, x, y, w, 40, 20, "rgba(10,14,20,0.72)");
+  ctx.restore();
+  strokeRoundRect(ctx, x, y, w, 40, 20, hex(input.accent), 2);
+  drawText(ctx, { x, y: y + 12, w, align: "center", text, weight: 700, size: 17, fill: "#f5f7fa", maxWidth: w - 24 });
 }
 
-function drawTurnChip(Konva: KonvaMod, layer: any, label: string, accent: number): void {
+function drawTurnChip(ctx: Ctx, label: string, accent: number): void {
   const w = 30 + label.length * 9;
-  layer.add(new Konva.Rect({ x: 16, y: 16, width: w, height: 28, cornerRadius: 14, fill: "rgba(10,14,20,0.7)", stroke: hex(accent), strokeWidth: 1.5 }));
-  layer.add(new Konva.Text({ x: 16, y: 23, width: w, align: "center", text: label, fontFamily: "Orbitron", fontStyle: "700", fontSize: 13, fill: "#cfe3ff" }));
+  fillRoundRect(ctx, 16, 16, w, 28, 14, "rgba(10,14,20,0.7)");
+  strokeRoundRect(ctx, 16, 16, w, 28, 14, hex(accent), 1.5);
+  drawText(ctx, { x: 16, y: 24, w, align: "center", text: label, weight: 700, size: 13, fill: "#cfe3ff" });
 }
 
-function drawKoStamp(Konva: KonvaMod, layer: any, x: number, k: number): void {
+function drawKoStamp(ctx: Ctx, x: number, k: number): void {
   const s = lerp(1.6, 1.0, easeOut(k));
-  layer.add(new Konva.Text({
-    x: x - 120, y: GROUND_Y - 150, width: 240, align: "center", text: "K.O.",
-    fontFamily: "Orbitron", fontStyle: "900", fontSize: 64 * s, fill: "#ff3b3b",
-    shadowColor: "#000", shadowBlur: 8, shadowOpacity: 1, opacity: clamp01(k * 1.4), rotation: -8,
-  }));
+  const cyStamp = GROUND_Y - 150 + 32;
+  ctx.save();
+  ctx.translate(x, cyStamp);
+  ctx.rotate((-8 * Math.PI) / 180);
+  ctx.globalAlpha = clamp01(k * 1.4);
+  ctx.fillStyle = "#ff3b3b";
+  ctx.font = `900 ${64 * s}px "${FONT}"`;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.shadowColor = "rgba(0,0,0,1)";
+  ctx.shadowBlur = 8;
+  ctx.fillText("K.O.", 0, 0);
+  ctx.restore();
 }
 
 // object-fit: cover — returns the draw dims + offset to fill wxh with the image.
