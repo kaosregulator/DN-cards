@@ -1249,10 +1249,18 @@ function buildTurnStripEmbed(s: SiegeSession, opts?: { currentMove?: string; tur
 }
 
 // BOTTOM embed: the battlefield itself — the animated Clash arena. The image is
-// the whole story here (both cards, their HP/energy, the strike), so the embed
-// is deliberately bare: just the frame.
+// the whole story, but the embed MUST carry at least one content field: Discord
+// rejects a colour-only embed (400), and on the very first turn there is no
+// frame yet — that empty embed silently failing the message edit is exactly what
+// froze the siege right after the coin toss. A title of the two active fighters
+// keeps it valid whether or not a frame is attached, and reads as a scoreboard.
 function buildBattleEmbed(s: SiegeSession): EmbedBuilder {
-  return new EmbedBuilder().setColor(s.accent);
+  const atk = active(s, 0);
+  const def = active(s, 1);
+  const title = atk && def
+    ? `⚔️ ${atk.cardName}  ⚔  ${def.cardName} 🛡️`
+    : "⚔️ The clash at the gate";
+  return new EmbedBuilder().setColor(s.accent).setTitle(title);
 }
 
 function buildControls(s: SiegeSession): ActionRowBuilder<ButtonBuilder>[] {
