@@ -11,6 +11,8 @@
   },
   "dependencies": {
     "@discord/embedded-app-sdk": "^2.1.0",
+    "@rive-app/canvas": "^2.39.2",
+    "konva": "^10.3.0",
     "phaser": "^4.0.0"
   },
   "devDependencies": {

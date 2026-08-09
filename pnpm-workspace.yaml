@@ -38,11 +38,16 @@ minimumReleaseAgeExclude:
 
 onlyBuiltDependencies:
   - '@swc/core'
+  - canvas
   - esbuild
   - msw
   - unrs-resolver
 
 overrides:
+  # Single canvas version across the tree: konva/canvas-backend needs canvas@3,
+  # and color-thief-node's transitive canvas@2 fails to build against current
+  # cairo — dedupe both onto 3.x so only one native binary is compiled.
+  canvas: 3.2.3
   '@esbuild-kit/esm-loader': npm:tsx@^4.21.0
   '@expo/ngrok-bin>@expo/ngrok-bin-darwin-arm64': '-'
   '@expo/ngrok-bin>@expo/ngrok-bin-darwin-x64': '-'
