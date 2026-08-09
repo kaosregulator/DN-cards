@@ -174,9 +174,21 @@ type SiegeFighterLike = { rarity: string; rarityColor: number | null };
 // rarity-tier colour, then the rarity effect colour, are the fallbacks. Only the
 // two active fighters get this (extraction loads + quantises the art); bench
 // standees stay on their rarity colour.
+// Extraction loads + quantises the artwork, so remember the dominant colour per
+// URL for the process — a siege re-renders the same two cards every turn, and
+// without this each turn would re-fetch and re-quantise their art just for the
+// accent.
+const colorCache = new Map<string, number>();
 async function resolveFieldColor(f: SiegeFieldFighter): Promise<number> {
-  const art = f.artUrl ? await extractArtColor(f.artUrl).catch(() => null) : null;
-  return art ?? f.rarityColor ?? getRarityEffectColor(f.rarity as Rarity);
+  const fallback = f.rarityColor ?? getRarityEffectColor(f.rarity as Rarity);
+  if (!f.artUrl) return fallback;
+  const cached = colorCache.get(f.artUrl);
+  if (cached !== undefined) return cached;
+  const art = await extractArtColor(f.artUrl).catch(() => null);
+  const color = art ?? fallback;
+  colorCache.set(f.artUrl, color);
+  if (colorCache.size > 256) { const k = colorCache.keys().next().value; if (k !== undefined) colorCache.delete(k); }
+  return color;
 }
 
 // ── Image loading (shared, cached, timeout-guarded) ──────────────────────────
@@ -206,7 +218,7 @@ function loadArt(mod: CanvasMod, url: string | null): Promise<CanvasImage | null
         // hard timeout so a stalled CDN can never hang a render.
         if (!/^https?:/i.test(url)) return await mod.loadImage(url);
         const ctrl = new AbortController();
-        const timer = setTimeout(() => ctrl.abort(), 6000);
+        const timer = setTimeout(() => ctrl.abort(), 3500);
         try {
           const res = await fetch(url, { signal: ctrl.signal });
           if (!res.ok) return null;

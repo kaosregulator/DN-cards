@@ -279,8 +279,10 @@ export async function handleHqCommand(interaction: ChatInputCommandInteraction):
   }
 
   // Own HQ: reconcile earned unlocks first (self-backfills), then render.
+  // Land on the World map — the first thing a commander sees on /hq is the
+  // conquest board (their base, AI territories, conquests), not the overview.
   const reconcile = await reconcileUnlocks(interaction.guildId, interaction.user.id).catch(() => null);
-  const view = await buildView(interaction, "overview", reconcile?.newlyUnlocked ?? []);
+  const view = await buildView(interaction, "world", reconcile?.newlyUnlocked ?? []);
   await interaction.editReply(view).catch(() => {});
 
   // If this guild presents HQ as the Live Activity, offer a launch button as a
@@ -756,11 +758,13 @@ export async function handleHqHubComponent(
     const z = getFocusZone(fp);
     if (z.roomTypeId !== "hallway" && !z.roomTypeId.startsWith("hallway")) {
       await updateHq(guildId, userId, { activeRoomId: z.roomTypeId }).catch(() => {});
-      // A real room selection should leave the connected floor-plan view and
-      // show that room's furnished preview. Hallways remain on the floor plan
-      // because they have no standalone room suite to render.
+      // A real room selection leaves the floor-plan view for that room. The
+      // Trophy Hall opens on its own Trophy tab (the showcase render + Set/Clear
+      // pedestals — where your cards live); every other room shows its furnished
+      // preview. Hallways stay on the floor plan (no standalone suite).
+      const dest: Section = resolveRoom(z.roomTypeId).kind === "trophy" ? "trophy" : "theme";
       await interaction.update(await buildView(
-        interaction, "theme", [], `Focused **${z.name}**.`,
+        interaction, dest, [], `Focused **${z.name}**.`,
       )).catch(() => {});
       return;
     }
@@ -1376,9 +1380,25 @@ async function buildView(
     file = await renderBaseImage(await buildBaseRenderView(guildId, userId, interaction.user.username, interaction.user.displayAvatarURL(), hq));
   } else if (section === "rooms") {
     file = await renderFloorplanImage(guildId, userId, interaction.user.username, interaction.user.displayAvatarURL(), hq);
+  } else if (section === "trophy") {
+    // Trophy Hall keeps the OLD showcase render — walls + floor + the featured
+    // cards on lit pedestals, and NOTHING else. The new furnished-suite renderer
+    // (used by every other room) has no notion of pinned cards, which is exactly
+    // what made the trophy display vanish. Decorations are stripped so it's a
+    // clean museum: bare room + your cards.
+    const tview = await buildRenderView(guildId, userId, interaction.user.username, interaction.user.displayAvatarURL(), hq);
+    tview.decorations = [];
+    file = await renderRoomImage(tview);
   } else if (section === "theme") {
     file = await renderRoomSuiteImage(guildId, userId, interaction.user.username, interaction.user.displayAvatarURL(), hq);
+  } else if (section === "shop") {
+    // The Shop is a self-contained aisle menu; it must NOT render the active
+    // room (which was showing the player's furnished room + trophy cards as a
+    // stray header image). No image — the stall's text/menus stand alone.
+    file = null;
   } else {
+    // Decorations (and any other room-centric section) shows the active room so
+    // you can see where your cosmetics land.
     file = await renderRoomImage(await buildRenderView(guildId, userId, interaction.user.username, interaction.user.displayAvatarURL(), hq));
   }
   const files = file ? [file] : [];
