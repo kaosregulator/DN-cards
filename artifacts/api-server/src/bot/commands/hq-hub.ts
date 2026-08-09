@@ -130,8 +130,10 @@ import {
 import { renderFloorplan } from "../hq/render-floorplan.js";
 import { renderRoomSuite } from "../hq/render-room-suite.js";
 import {
-  roomLayout, resolveLayoutRoomId, resolveRoomSize, LAYOUT_ROOM_IDS,
-  ROOM_SIZES, DEFAULT_ROOM_SIZE, type RoomSizeId,
+  roomLayout, editedRoomLayout, resolveLayoutRoomId, resolveRoomSize, LAYOUT_ROOM_IDS,
+  ROOM_SIZES, ROOM_FURNITURE, roomFurnitureById, DEFAULT_FURNITURE_ID,
+  readRoomEdits, writeRoomEdits, clampRoomTile,
+  type RoomSizeId, type RoomEdits, type RoomEditItem,
 } from "../hq/defs/room-layouts.js";
 import {
   loadFloorplan, saveFloorplan, focusZone, claimExpansion, availableExpansions,
@@ -165,6 +167,12 @@ interface HqStats {
   layers?: unknown;
   /** Chosen Small/Medium/Large size for the active room's furnished layout. */
   layoutSize?: RoomSizeId;
+  /** Player-placed furniture per (roomId, size). */
+  roomItems?: RoomEdits;
+  /** Room-editor UI state (persisted; Discord interactions are stateless). */
+  roomEditing?: boolean;
+  roomCursor?: { x: number; y: number };
+  roomPaletteId?: string;
 }
 function readHqStats(hq: PlayerHq): HqStats {
   const s = hq.stats as HqStats | null | undefined;
@@ -176,6 +184,8 @@ function readHqStats(hq: PlayerHq): HqStats {
     editorCategory: s?.editorCategory, editorMode: s?.editorMode,
     floorplan: s?.floorplan, build: s?.build, layers: s?.layers,
     layoutSize: s?.layoutSize,
+    roomItems: s?.roomItems, roomEditing: s?.roomEditing,
+    roomCursor: s?.roomCursor, roomPaletteId: s?.roomPaletteId,
   };
 }
 
@@ -667,6 +677,78 @@ export async function handleHqHubComponent(
     await interaction.update(await buildView(interaction, "theme", [])).catch(() => {});
     return;
   }
+  // ── Room editor (edits the furnished suite grid directly) ────────────────────
+  if (action === "redit") {
+    const on = parts[2] === "on";
+    const hqRow = await getOrCreateHq(guildId, userId);
+    const s = readHqStats(hqRow);
+    await updateHq(guildId, userId, {
+      stats: { ...s, roomEditing: on, roomCursor: s.roomCursor ?? { x: 1, y: 1 }, roomPaletteId: s.roomPaletteId ?? DEFAULT_FURNITURE_ID },
+    }).catch(() => {});
+    await interaction.update(await buildView(interaction, "theme", [], on ? "🛠️ Editing — place furniture on the grid." : "💾 Saved your room.")).catch(() => {});
+    return;
+  }
+  if (action === "rpal" && interaction.isStringSelectMenu()) {
+    const hqRow = await getOrCreateHq(guildId, userId);
+    const fid = roomFurnitureById(interaction.values[0])?.id ?? DEFAULT_FURNITURE_ID;
+    await updateHq(guildId, userId, { stats: { ...readHqStats(hqRow), roomPaletteId: fid } }).catch(() => {});
+    await interaction.update(await buildView(interaction, "theme", [])).catch(() => {});
+    return;
+  }
+  if (action === "rmove") {
+    const hqRow = await getOrCreateHq(guildId, userId);
+    const s = readHqStats(hqRow);
+    const roomId = resolveLayoutRoomId(hqRow.activeRoomId);
+    const size = resolveRoomSize(s.layoutSize);
+    const dir = parts[2];
+    const dx = dir === "left" ? -1 : dir === "right" ? 1 : 0;
+    const dy = dir === "up" ? -1 : dir === "down" ? 1 : 0;
+    const c = clampRoomTile(roomId, size, (s.roomCursor?.x ?? 1) + dx, (s.roomCursor?.y ?? 1) + dy);
+    await updateHq(guildId, userId, { stats: { ...s, roomCursor: c } }).catch(() => {});
+    await interaction.update(await buildView(interaction, "theme", [])).catch(() => {});
+    return;
+  }
+  if (action === "rplace" || action === "rdelete" || action === "rclear" || action === "rundo") {
+    const hqRow = await getOrCreateHq(guildId, userId);
+    const s = readHqStats(hqRow);
+    const roomId = resolveLayoutRoomId(hqRow.activeRoomId);
+    const size = resolveRoomSize(s.layoutSize);
+    const cur = clampRoomTile(roomId, size, s.roomCursor?.x ?? 1, s.roomCursor?.y ?? 1);
+    const current = readRoomEdits(s.roomItems, roomId, size);
+    let next = current;
+    let msg = "";
+    if (action === "rplace") {
+      const fid = roomFurnitureById(s.roomPaletteId)?.id ?? DEFAULT_FURNITURE_ID;
+      pushRoomUndo(guildId, userId, current);
+      next = [...current, { fid, gx: cur.x, gy: cur.y }];
+      msg = `Placed **${roomFurnitureById(fid)?.label ?? "item"}** at (${cur.x},${cur.y}).`;
+    } else if (action === "rdelete") {
+      const filtered = current.filter(i => !(i.gx === cur.x && i.gy === cur.y));
+      if (filtered.length === current.length) {
+        await interaction.update(await buildView(interaction, "theme", [], "Nothing of yours to remove there.")).catch(() => {});
+        return;
+      }
+      pushRoomUndo(guildId, userId, current);
+      next = filtered;
+      msg = `Removed your item(s) at (${cur.x},${cur.y}).`;
+    } else if (action === "rclear") {
+      pushRoomUndo(guildId, userId, current);
+      next = [];
+      msg = "Reset the room to its original layout.";
+    } else { // rundo
+      const prev = popRoomUndo(guildId, userId);
+      if (!prev) {
+        await interaction.update(await buildView(interaction, "theme", [], "Nothing to undo.")).catch(() => {});
+        return;
+      }
+      next = prev;
+      msg = "Undid last change.";
+    }
+    const roomItems: RoomEdits = writeRoomEdits(s.roomItems, roomId, size, next);
+    await updateHq(guildId, userId, { stats: { ...s, roomItems } }).catch(() => {});
+    await interaction.update(await buildView(interaction, "theme", [], msg)).catch(() => {});
+    return;
+  }
   if (action === "fp-focus" && interaction.isStringSelectMenu()) {
     const zoneId = interaction.values[0]!;
     let fp = focusZone(await loadFloorplan(guildId, userId), zoneId);
@@ -1017,28 +1099,50 @@ async function renderRoomImage(view: HqRenderView): Promise<AttachmentBuilder | 
   return buf ? new AttachmentBuilder(buf, { name: HQ_FILE }) : null;
 }
 
-// Furnished room preview: the chosen room at the chosen size, lit by the active
-// theme. Draws the same mini-world the room-suite renderer paints for the web
-// client, so "pick a room, pick a size, pick a theme" is visible in Discord.
+// Furnished room preview / editor: the chosen room at the chosen size, lit by
+// the active theme, with the player's own placed furniture merged in. Draws the
+// same mini-world the room-suite renderer paints for the web client, so "pick a
+// room, pick a size, pick a theme, decorate it" is one picture in Discord.
 async function renderRoomSuiteImage(
   guildId: string, userId: string, ownerName: string, ownerAvatarUrl: string | null, hq: PlayerHq,
 ): Promise<AttachmentBuilder | null> {
   const theme = resolveTheme(hq.themeId);
+  const stats = readHqStats(hq);
   const roomId = resolveLayoutRoomId(hq.activeRoomId);
-  const size = resolveRoomSize(readHqStats(hq).layoutSize);
-  const layout = roomLayout(roomId, size);
+  const size = resolveRoomSize(stats.layoutSize);
+  const editing = !!stats.roomEditing;
+  const layout = editedRoomLayout(roomId, size, stats.roomItems);
+  const cursor = editing ? clampRoomTile(roomId, size, stats.roomCursor?.x ?? 0, stats.roomCursor?.y ?? 0) : null;
   const buf = await renderRoomSuite({
     ownerAvatarUrl,
     displayTitle: hqDisplayTitle(hq, ownerName),
-    subtitle: `${layout.emoji} ${layout.name} — ${layout.blurb}`,
+    subtitle: editing
+      ? `🛠️ Editing ${layout.emoji} ${layout.name} — cursor at (${cursor!.x},${cursor!.y})`
+      : `${layout.emoji} ${layout.name} — ${layout.blurb}`,
     theme,
     roomEmoji: layout.emoji,
     roomName: layout.name,
     hqLevel: hq.hqLevel,
     layout,
-    showLabels: true,
+    showLabels: !editing,
+    showGrid: editing,
+    cursor,
   }).catch(() => null);
   return buf ? new AttachmentBuilder(buf, { name: HQ_FILE }) : null;
+}
+
+// One-level-plus undo stack for the room editor, kept in-process (Discord
+// sessions are short-lived) — mirrors editor.ts. Keyed by guild:user.
+const roomUndo = new Map<string, RoomEditItem[][]>();
+function pushRoomUndo(guildId: string, userId: string, items: RoomEditItem[]): void {
+  const k = `${guildId}:${userId}`;
+  const stack = roomUndo.get(k) ?? [];
+  stack.push(items.map(i => ({ ...i })));
+  if (stack.length > 30) stack.shift();
+  roomUndo.set(k, stack);
+}
+function popRoomUndo(guildId: string, userId: string): RoomEditItem[] | null {
+  return roomUndo.get(`${guildId}:${userId}`)?.pop() ?? null;
 }
 
 async function renderBaseImage(view: HqBaseView): Promise<AttachmentBuilder | null> {
@@ -1923,9 +2027,45 @@ async function buildView(
           inline: true,
         },
       );
+      // Room editor mode: the SAME furnished room, now with a grid + cursor. The
+      // player nudges the cursor, picks furniture and places/removes it. Edits
+      // persist per (room, size) and merge over the authored layout.
+      if (style.roomEditing) {
+        const pal = roomFurnitureById(style.roomPaletteId) ?? ROOM_FURNITURE[0]!;
+        const cur = clampRoomTile(layoutRoomId, layoutSize, style.roomCursor?.x ?? 0, style.roomCursor?.y ?? 0);
+        const placed = readRoomEdits(style.roomItems, layoutRoomId, layoutSize);
+        embed.addFields({
+          name: "🛠️ Editing room",
+          value:
+            `Brush: ${pal.emoji} **${pal.label}** · Cursor **(${cur.x},${cur.y})** · Placed **${placed.length}**\n` +
+            "Move the cursor, pick furniture, then **Place**. **Remove** clears your items on that tile.",
+        });
+        if (notice) embed.addFields({ name: "🧾 Result", value: notice.slice(0, 1024) });
+        rows.push(new ActionRowBuilder<ButtonBuilder>().addComponents(
+          new ButtonBuilder().setCustomId("hq-hub:rmove:left").setEmoji("⬅️").setStyle(ButtonStyle.Secondary),
+          new ButtonBuilder().setCustomId("hq-hub:rmove:up").setEmoji("⬆️").setStyle(ButtonStyle.Secondary),
+          new ButtonBuilder().setCustomId("hq-hub:rmove:down").setEmoji("⬇️").setStyle(ButtonStyle.Secondary),
+          new ButtonBuilder().setCustomId("hq-hub:rmove:right").setEmoji("➡️").setStyle(ButtonStyle.Secondary),
+          new ButtonBuilder().setCustomId("hq-hub:rplace").setLabel("Place").setEmoji("✅").setStyle(ButtonStyle.Success),
+        ));
+        rows.push(new ActionRowBuilder<ButtonBuilder>().addComponents(
+          new ButtonBuilder().setCustomId("hq-hub:rdelete").setLabel("Remove").setEmoji("🧽").setStyle(ButtonStyle.Danger),
+          new ButtonBuilder().setCustomId("hq-hub:rundo").setLabel("Undo").setEmoji("↩️").setStyle(ButtonStyle.Secondary),
+          new ButtonBuilder().setCustomId("hq-hub:rclear").setLabel("Reset").setEmoji("♻️").setStyle(ButtonStyle.Secondary).setDisabled(placed.length === 0),
+          new ButtonBuilder().setCustomId("hq-hub:redit:off").setLabel("Done").setEmoji("💾").setStyle(ButtonStyle.Primary),
+        ));
+        rows.push(new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
+          new StringSelectMenuBuilder().setCustomId("hq-hub:rpal").setPlaceholder("Pick furniture…").addOptions(
+            ROOM_FURNITURE.slice(0, 25).map(f => ({ label: f.label, value: f.id, emoji: f.emoji, default: f.id === pal.id })),
+          ),
+        ));
+        break;
+      }
       // Preset + toggle buttons: Inside/Outside set walls in one tap, then
       // individual toggles for finer control. Persisted to player_hq.stats.
       rows.push(new ActionRowBuilder<ButtonBuilder>().addComponents(
+        new ButtonBuilder().setCustomId("hq-hub:redit:on").setLabel("Edit Room").setEmoji("🛠️")
+          .setStyle(ButtonStyle.Success),
         new ButtonBuilder().setCustomId("hq-hub:preset:inside").setLabel("Inside").setEmoji("🏠")
           .setStyle(style.wallsOff ? ButtonStyle.Secondary : ButtonStyle.Primary),
         new ButtonBuilder().setCustomId("hq-hub:preset:outside").setLabel("Outside").setEmoji("🌅")

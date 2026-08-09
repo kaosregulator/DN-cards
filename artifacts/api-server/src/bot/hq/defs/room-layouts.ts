@@ -90,7 +90,7 @@ function commandMedium(): SuiteLayout {
     rooms: [
       room("command", "entrance", "Command Hall", 0, 0, 5, 5, "stone-detail"),
       room("ops", "entrance", "Ops", 5, 0, 3, 3, "stone"),
-      room("supply", "storage", "Supply", 5, 3, 3, 2, "wood"),
+      room("supply", "treasury", "Supply", 5, 3, 3, 2, "wood"),
     ],
     openings: [win(1, 0), win(3, 0), gate(4), doorW(5, 1), archN(6, 3), doorW(5, 4)],
     items: [
@@ -119,8 +119,8 @@ function commandLarge(): SuiteLayout {
     rooms: [
       room("hall", "entrance", "War Hall", 0, 0, 6, 5, "stone-detail"),
       room("corridor", "entrance", "Corridor", 0, 5, 11, 2, "stone"),
-      room("ops", "atrium", "Ops", 6, 0, 5, 3, "stone"),
-      room("briefing", "hall-of-fame", "Briefing", 6, 3, 5, 2, "wood"),
+      room("ops", "entrance", "Ops", 6, 0, 5, 3, "stone"),
+      room("briefing", "entrance", "Briefing", 6, 3, 5, 2, "wood"),
     ],
     openings: [
       win(2, 0), win(4, 0), winBars(8, 0), gate(6),
@@ -173,7 +173,7 @@ function barracksMedium(): SuiteLayout {
     cols: 8, rows: 5,
     rooms: [
       room("mess", "barracks", "Mess Hall", 0, 0, 5, 5, "wood"),
-      room("stores", "storage", "Stores", 5, 0, 3, 5, "stone"),
+      room("stores", "treasury", "Stores", 5, 0, 3, 5, "stone"),
     ],
     openings: [win(1, 0), win(3, 0), gate(4), doorW(5, 2)],
     items: [
@@ -199,7 +199,7 @@ function barracksLarge(): SuiteLayout {
       room("mess", "barracks", "Mess Hall", 0, 0, 6, 5, "wood"),
       room("corridor", "entrance", "Corridor", 0, 5, 11, 2, "stone"),
       room("bunkA", "barracks", "Bunks A", 6, 0, 5, 3, "wood"),
-      room("stores", "storage", "Stores", 6, 3, 5, 2, "stone"),
+      room("stores", "treasury", "Stores", 6, 3, 5, 2, "stone"),
     ],
     openings: [
       win(1, 0), win(3, 0), winBars(8, 0), gate(6),
@@ -430,4 +430,121 @@ export function validateAllLayouts(): { key: string; errors: string[] }[] {
     }
   }
   return out;
+}
+
+// ── Room editor: furniture palette + player edits ─────────────────────────────
+// The same furnished floor is what a player edits. Editing adds/moves/removes
+// SuiteItems on the layout's tiles; the walls, doorways and floor come from the
+// chosen size and are not editable here (that keeps a room from ever becoming an
+// un-enterable box). Player edits are stored per (roomId, size) and merged over
+// the authored items at render time.
+
+export interface RoomFurniture {
+  id: string;
+  label: string;
+  emoji: string;
+  sprite: string;
+  mount: SuiteItem["mount"];
+  scale?: number;
+}
+
+/** The placeable furniture, drawn from the bundled asset pack. */
+export const ROOM_FURNITURE: RoomFurniture[] = [
+  { id: "war-table", label: "War Table", emoji: "🗺️", sprite: "furniture/table-round-items.png", mount: "floor" },
+  { id: "round-table", label: "Round Table", emoji: "🪑", sprite: "furniture/table-round.png", mount: "floor" },
+  { id: "dining-set", label: "Dining Set", emoji: "🍽️", sprite: "furniture/table-round-chairs.png", mount: "floor" },
+  { id: "feast-table", label: "Feast Table", emoji: "🍖", sprite: "furniture/feast-table.png", mount: "floor" },
+  { id: "briefing-table", label: "Briefing Table", emoji: "📋", sprite: "furniture/table-short-chairs.png", mount: "floor" },
+  { id: "desk", label: "Desk", emoji: "🗄️", sprite: "furniture/study-table.png", mount: "floor" },
+  { id: "chair", label: "Chair", emoji: "🪑", sprite: "furniture/chair.png", mount: "floor" },
+  { id: "chest", label: "Treasure Chest", emoji: "🧰", sprite: "furniture/treasure-chest.png", mount: "floor" },
+  { id: "chest-open", label: "Open Chest", emoji: "💰", sprite: "furniture/treasure-chest-open.png", mount: "floor" },
+  { id: "barrel", label: "Barrel", emoji: "🛢️", sprite: "furniture/barrel.png", mount: "floor" },
+  { id: "barrels", label: "Barrels", emoji: "🛢️", sprite: "furniture/barrels.png", mount: "floor" },
+  { id: "stacked-barrels", label: "Stacked Barrels", emoji: "🛢️", sprite: "furniture/stacked-barrels.png", mount: "floor" },
+  { id: "crate", label: "Supply Crate", emoji: "📦", sprite: "furniture/supply-crate.png", mount: "floor" },
+  { id: "crates", label: "Supply Crates", emoji: "📦", sprite: "furniture/supply-crates.png", mount: "floor" },
+  { id: "log-pile", label: "Log Pile", emoji: "🪵", sprite: "furniture/log-pile.png", mount: "floor" },
+  { id: "column", label: "Stone Column", emoji: "🏛️", sprite: "furniture/stone-column.png", mount: "floor" },
+  { id: "column-wood", label: "Wood Column", emoji: "🪵", sprite: "furniture/stone-column-wood.png", mount: "floor" },
+  { id: "command-rug", label: "Command Rug", emoji: "🟥", sprite: "furniture/command-rug.png", mount: "rug", scale: 1.5 },
+  { id: "vault-rug", label: "Vault Rug", emoji: "🟨", sprite: "furniture/vault-rug.png", mount: "rug", scale: 1.4 },
+  { id: "runner", label: "Royal Runner", emoji: "🟪", sprite: "furniture/royal-runner.png", mount: "rug", scale: 1.4 },
+  { id: "woven-rug", label: "Woven Rug", emoji: "🟫", sprite: "furniture/woven-rug.png", mount: "rug", scale: 1.4 },
+  { id: "laurels", label: "Laurels (wall)", emoji: "🥇", sprite: "medals/laurel-wreath.png", mount: "wall" },
+  { id: "medals", label: "Medals (wall)", emoji: "🎖️", sprite: "medals/veteran-medals.png", mount: "wall" },
+  { id: "crown", label: "Crown (wall)", emoji: "👑", sprite: "medals/sovereign-crown.png", mount: "wall" },
+  { id: "crest", label: "Crest (wall)", emoji: "🛡️", sprite: "medals/collectors-crest.png", mount: "wall" },
+];
+
+const FURNITURE_BY_ID = new Map(ROOM_FURNITURE.map(f => [f.id, f]));
+export function roomFurnitureById(id: string | null | undefined): RoomFurniture | undefined {
+  return id ? FURNITURE_BY_ID.get(id) : undefined;
+}
+
+export const DEFAULT_FURNITURE_ID = ROOM_FURNITURE[0]!.id;
+
+/** A player's placed item (a furniture id at a tile). Persisted in stats. */
+export interface RoomEditItem {
+  fid: string;
+  gx: number;
+  gy: number;
+}
+
+/** Per-room, per-size player edits: stats.roomItems[roomId][size]. */
+export type RoomEdits = Partial<Record<string, Partial<Record<RoomSizeId, RoomEditItem[]>>>>;
+
+function editToSuiteItem(e: RoomEditItem): SuiteItem | null {
+  const f = roomFurnitureById(e.fid);
+  if (!f) return null;
+  return {
+    gx: e.gx, gy: e.gy, sprite: f.sprite, mount: f.mount,
+    face: f.mount === "wall" ? "n" : undefined,
+    scale: f.scale, label: f.label,
+  };
+}
+
+/**
+ * The layout to render/edit: the authored size layout, with the player's own
+ * items appended when they've customised this (roomId, size). Authored items are
+ * kept as the base so an untouched room still looks furnished; once a player
+ * places anything, their items stack on top.
+ */
+export function editedRoomLayout(
+  roomId: string | null | undefined,
+  size: string | null | undefined,
+  edits: RoomEdits | undefined,
+): SuiteLayout {
+  const base = roomLayout(roomId, size);
+  const rid = resolveLayoutRoomId(roomId);
+  const sz = resolveRoomSize(size);
+  const mine = edits?.[rid]?.[sz];
+  if (!mine || mine.length === 0) return base;
+  const extra = mine.map(editToSuiteItem).filter((x): x is SuiteItem => x !== null);
+  return { ...base, items: [...base.items, ...extra] };
+}
+
+/** Read one (roomId,size) edit list (never throws). */
+export function readRoomEdits(edits: RoomEdits | undefined, roomId: string, size: RoomSizeId): RoomEditItem[] {
+  return edits?.[resolveLayoutRoomId(roomId)]?.[resolveRoomSize(size)] ?? [];
+}
+
+/** Return a new RoomEdits with `items` set for one (roomId,size). */
+export function writeRoomEdits(
+  edits: RoomEdits | undefined, roomId: string, size: RoomSizeId, items: RoomEditItem[],
+): RoomEdits {
+  const rid = resolveLayoutRoomId(roomId);
+  const sz = resolveRoomSize(size);
+  const next: RoomEdits = { ...(edits ?? {}) };
+  next[rid] = { ...(next[rid] ?? {}), [sz]: items };
+  return next;
+}
+
+/** Clamp a tile to the layout's footprint. */
+export function clampRoomTile(roomId: string, size: RoomSizeId, x: number, y: number): { x: number; y: number } {
+  const l = roomLayout(roomId, size);
+  return {
+    x: Math.max(0, Math.min(l.cols - 1, x)),
+    y: Math.max(0, Math.min(l.rows - 1, y)),
+  };
 }
