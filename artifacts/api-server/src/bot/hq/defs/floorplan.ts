@@ -212,31 +212,17 @@ function boxWalls(r: FloorplanRect, skip: Set<string>, kind: WallKind = "exterio
     .map(k => wall(k, kind));
 }
 
+// The HQ's two side wings — Barracks and Treasury. Both are available from the
+// start (the room set is fixed at four), so they auto-claim as soon as a player
+// opens the Floorplan. Command Center and Trophy Hall are part of the starter
+// floorplan below.
 export const FLOORPLAN_EXPANSIONS: FloorplanExpansion[] = [
-  { id: "exp-armory", label: "Armory Wing", emoji: "⚔️",
-    rect: { x: 1, y: 13, w: 7, h: 6 }, zoneId: "armory", roomTypeId: "armory",
-    unlock: { kind: "battleWins", n: 10 } },
   { id: "exp-barracks", label: "Barracks Wing", emoji: "🏕️",
     rect: { x: 9, y: 13, w: 7, h: 6 }, zoneId: "barracks", roomTypeId: "barracks",
-    unlock: { kind: "battleWins", n: 25 } },
+    unlock: { kind: "always" } },
   { id: "exp-treasury", label: "Treasury Wing", emoji: "💎",
     rect: { x: 17, y: 13, w: 7, h: 6 }, zoneId: "treasury", roomTypeId: "treasury",
-    unlock: { kind: "netWorth", n: 5_000 } },
-  { id: "exp-workshop", label: "Workshop Wing", emoji: "🔧",
-    rect: { x: 25, y: 13, w: 6, h: 6 }, zoneId: "workshop", roomTypeId: "workshop",
-    unlock: { kind: "accountLevel", n: 12 } },
-  { id: "exp-research", label: "Research Lab", emoji: "🔬",
-    rect: { x: 25, y: 5, w: 6, h: 7 }, zoneId: "atrium", roomTypeId: "atrium",
-    unlock: { kind: "collectionUnique", n: 25 } },
-  { id: "exp-war-room", label: "War Room", emoji: "🗺️",
-    rect: { x: 17, y: 1, w: 7, h: 4 }, zoneId: "hall-of-fame", roomTypeId: "hall-of-fame",
-    unlock: { kind: "accountLevel", n: 15 } },
-  { id: "exp-storage", label: "Storage Room", emoji: "📦",
-    rect: { x: 1, y: 1, w: 7, h: 4 }, zoneId: "storage", roomTypeId: "storage",
-    unlock: { kind: "accountLevel", n: 8 } },
-  { id: "exp-arcane", label: "Arcane Vault", emoji: "🔮",
-    rect: { x: 9, y: 1, w: 7, h: 4 }, zoneId: "arcane-vault", roomTypeId: "arcane-vault",
-    unlock: { kind: "accountLevel", n: 18 } },
+    unlock: { kind: "always" } },
 ];
 
 /**
