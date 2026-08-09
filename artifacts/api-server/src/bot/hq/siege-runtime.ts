@@ -319,8 +319,6 @@ export async function startSiege(
   sessions.set(session.id, session);
   session.ttlTimer = setTimeout(() => { void abandon(session); }, MAX_SIEGE_MS);
 
-  await refreshCastle(session);
-
   // The siege board MUST live on a real channel message (like /battle and
   // /raid), NOT the ephemeral /hq hub reply it was launched from.
   //
@@ -365,6 +363,17 @@ export async function startSiege(
       });
   }
   if (!session.message) { await release(session); return; }
+
+  // Post first, render second. Castle/card art can take seconds to decode (or
+  // fail at the remote image boundary); waiting for it before creating the
+  // board made a valid siege look like the button had done nothing. The board
+  // is visible immediately, then receives the rendered castle image.
+  await refreshCastle(session);
+  if (session.message && session.phase === "muster") {
+    await session.message.edit(await musterPayload(session)).catch((err) => {
+      logger.warn({ err, siege: session.id }, "siege muster image edit failed");
+    });
+  }
 }
 
 // ── Component routing (hq-hub:ls:<action>:<sid>[:extra]) ──────────────────────
@@ -900,10 +909,47 @@ async function buildTurnFrame(
   if (sceneAnimated(s) || classicFrames(s)) {
     const fieldInput = buildFieldInput(s, side, move, visual, actor, foe, foePoolBefore);
     if (sceneAnimated(s)) {
-      const gif = await renderSiegeField(fieldInput, s.settings.battleAnimationSpeed as AnimationSpeed).catch(() => null);
+      // Render one still first so the new Clash battlefield reaches Discord
+      // immediately. Encoding a full GIF can take several seconds on the first
+      // turn while remote card art and Konva warm up; waiting for it here made
+      // the old castle image appear frozen or made the board feel unresponsive.
+      const still = await Promise.race([
+        renderSiegeFieldStill(fieldInput).catch(() => null),
+        sleep(5_000).then(() => null),
+      ]);
+      const turnToken = `${s.turnNumber}:${side}:${actor.cardId}:${foe.cardId}:${foePoolBefore}:${selfPoolBefore}`;
+      if (still) {
+        s.turnFrame = still;
+        s.turnFrameIsGif = false;
+        // Upgrade the still to the animated battlefield when encoding finishes,
+        // but only if this is still the same turn. A late GIF must never replace
+        // a newer turn's image.
+        void renderSiegeField(fieldInput, s.settings.battleAnimationSpeed as AnimationSpeed)
+          .then((gif) => {
+            if (!gif || s.phase !== "assault" || !s.processing ||
+                s.currentSide !== side ||
+                `${s.turnNumber}:${side}:${active(s, side)?.cardId}:${active(s, foeSide(side))?.cardId}:${foePoolBefore}:${selfPoolBefore}` !== turnToken) {
+              return;
+            }
+            s.turnFrame = Buffer.from(gif.buffer);
+            s.turnFrameIsGif = true;
+            void render(s);
+          })
+          .catch(() => {});
+        return;
+      }
+      // If even the still missed its bound, give the GIF a short final chance.
+      // Otherwise fall through to the existing legacy renderer.
+      const gif = await Promise.race([
+        renderSiegeField(fieldInput, s.settings.battleAnimationSpeed as AnimationSpeed).catch(() => null),
+        sleep(7_000).then(() => null),
+      ]);
       if (gif) { s.turnFrame = Buffer.from(gif.buffer); s.turnFrameIsGif = true; return; }
     } else {
-      const png = await renderSiegeFieldStill(fieldInput).catch(() => null);
+      const png = await Promise.race([
+        renderSiegeFieldStill(fieldInput).catch(() => null),
+        sleep(5_000).then(() => null),
+      ]);
       if (png) { s.turnFrame = png; s.turnFrameIsGif = false; return; }
     }
   }

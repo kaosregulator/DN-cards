@@ -756,6 +756,13 @@ export async function handleHqHubComponent(
     const z = getFocusZone(fp);
     if (z.roomTypeId !== "hallway" && !z.roomTypeId.startsWith("hallway")) {
       await updateHq(guildId, userId, { activeRoomId: z.roomTypeId }).catch(() => {});
+      // A real room selection should leave the connected floor-plan view and
+      // show that room's furnished preview. Hallways remain on the floor plan
+      // because they have no standalone room suite to render.
+      await interaction.update(await buildView(
+        interaction, "theme", [], `Focused **${z.name}**.`,
+      )).catch(() => {});
+      return;
     }
     await interaction.update(await buildView(interaction, "rooms", [], `Focused **${z.name}**.`)).catch(() => {});
     return;
