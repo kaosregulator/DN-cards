@@ -44,20 +44,20 @@ async function main(): Promise<void> {
   }));
 
   let expanded = starter;
-  for (const id of ["exp-barracks", "exp-treasury"]) {
+  for (const id of ["exp-armory", "exp-barracks", "exp-treasury", "exp-storage"]) {
     expanded = claimExpansion(expanded, id);
   }
-  expanded = focusZone(expanded, "barracks");
+  expanded = focusZone(expanded, "armory");
   save("02-expanded-wings.png", await renderFloorplan({
     ...header,
-    subtitle: "Expanded · Barracks and Treasury connected",
+    subtitle: "Expanded · Armory, Barracks, Treasury, Storage connected",
     floorplan: expanded,
     skybox: resolveSkybox("skybox-night"),
     showGrid: false,
     statusLine: "Doors auto-link adjacent wings",
   }));
 
-  let divided = claimExpansion(createDefaultFloorplan(), "exp-barracks");
+  let divided = claimExpansion(createDefaultFloorplan(), "exp-armory");
   // Interior divider in command center
   for (let y = 6; y <= 11; y++) {
     divided = placeWall(divided, vEdge(6, y), { kind: "interior", styleId: "wood" });

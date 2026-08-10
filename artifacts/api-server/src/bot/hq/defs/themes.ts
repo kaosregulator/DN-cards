@@ -85,58 +85,6 @@ export const HQ_THEMES: HqTheme[] = [
       accent: 0x2fd4d4,
     },
   },
-  // ── Default room themes ─────────────────────────────────────────────────────
-  // The three "starter looks" a floor can wear. Each pairs a palette with a
-  // torch/daylight mood the room-suite renderer reads (see render-room-suite.ts
-  // roomMood) so switching theme visibly re-lights the same furnished floor.
-  {
-    id: "dungeon",
-    name: "Dungeon",
-    emoji: "🏰",
-    lighting: "night",
-    atmosphere: "ember",
-    spritePrefix: "dungeon",
-    unlock: { kind: "always" },
-    palette: {
-      // Cold charcoal masonry, warm torch pools — the classic stone crypt.
-      wallTop: "#2a2c33", wallBottom: "#141519",
-      floorNear: "#33343c", floorFar: "#191a20",
-      glass: "rgba(120,140,170,0.12)", light: "rgba(255,168,86,0.20)",
-      accent: 0x8a94a6,
-    },
-  },
-  {
-    id: "military",
-    name: "Military Base",
-    emoji: "🎖️",
-    lighting: "dusk",
-    atmosphere: "ash",
-    spritePrefix: "military",
-    unlock: { kind: "always" },
-    palette: {
-      // Olive-drab bunker with cool overhead worklight.
-      wallTop: "#3a3d2e", wallBottom: "#20221a",
-      floorNear: "#44483a", floorFar: "#262820",
-      glass: "rgba(150,170,120,0.12)", light: "rgba(200,220,180,0.16)",
-      accent: 0x8a9a4a,
-    },
-  },
-  {
-    id: "city",
-    name: "City Houses",
-    emoji: "🏘️",
-    lighting: "dawn",
-    atmosphere: "none",
-    spritePrefix: "city",
-    unlock: { kind: "always" },
-    palette: {
-      // Warm brick + marble, bright daylight — normal houses, not a crypt.
-      wallTop: "#6a5b4c", wallBottom: "#42382e",
-      floorNear: "#7a6c5a", floorFar: "#4c4236",
-      glass: "rgba(255,240,210,0.14)", light: "rgba(255,236,196,0.22)",
-      accent: 0xc79a5a,
-    },
-  },
 ];
 
 export const DEFAULT_THEME_ID = "command";

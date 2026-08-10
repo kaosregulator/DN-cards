@@ -217,7 +217,7 @@ function emptySuite(): SuiteLayout {
     blurb: "A bare landscape floor inside four walls. Build every room yourself.",
     cols: SUITE_COLS, rows: SUITE_ROWS,
     rooms: [{
-      id: "floor", roomTypeId: "entrance", label: "Open Floor",
+      id: "floor", roomTypeId: "atrium", label: "Open Floor",
       rect: { x: 0, y: 0, w: SUITE_COLS, h: SUITE_ROWS }, floor: "stone",
     }],
     openings: [
@@ -242,13 +242,13 @@ function roomsSuite(): SuiteLayout {
     cols: SUITE_COLS, rows: SUITE_ROWS,
     rooms: [
       // The dominant hall the floor is built around.
-      { id: "command", roomTypeId: "entrance", label: "Command Hall", rect: { x: 0, y: 0, w: 6, h: 5 }, floor: "stone-detail" },
+      { id: "command", roomTypeId: "atrium", label: "Command Hall", rect: { x: 0, y: 0, w: 6, h: 5 }, floor: "stone-detail" },
       // A corridor joining everything, so no room is a dead end.
       { id: "hall", roomTypeId: "entrance", label: "Corridor", rect: { x: 0, y: 5, w: 12, h: 2 }, floor: "stone" },
       // Mini side rooms.
       { id: "vault", roomTypeId: "treasury", label: "Vault", rect: { x: 6, y: 0, w: 3, h: 3 }, floor: "stone-detail" },
       { id: "barracks", roomTypeId: "barracks", label: "Barracks", rect: { x: 9, y: 0, w: 3, h: 3 }, floor: "wood" },
-      { id: "stores", roomTypeId: "treasury", label: "Stores", rect: { x: 6, y: 3, w: 6, h: 2 }, floor: "wood" },
+      { id: "workshop", roomTypeId: "workshop", label: "Workshop", rect: { x: 6, y: 3, w: 6, h: 2 }, floor: "wood" },
     ],
     openings: [
       // Hall ↔ corridor, and every side room onto the corridor or the hall.
@@ -308,7 +308,7 @@ function customSuite(): SuiteLayout {
     blurb: "A starter hall and corridor. The rest of the floor is yours — add, move and resize rooms.",
     cols: SUITE_COLS, rows: SUITE_ROWS,
     rooms: [
-      { id: "command", roomTypeId: "entrance", label: "Command Hall", rect: { x: 0, y: 0, w: 5, h: 4 }, floor: "stone-detail" },
+      { id: "command", roomTypeId: "atrium", label: "Command Hall", rect: { x: 0, y: 0, w: 5, h: 4 }, floor: "stone-detail" },
       { id: "hall", roomTypeId: "entrance", label: "Corridor", rect: { x: 0, y: 4, w: 12, h: 2 }, floor: "stone" },
     ],
     openings: [

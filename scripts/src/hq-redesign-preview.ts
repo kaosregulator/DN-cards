@@ -66,8 +66,14 @@ async function previewRooms(): Promise<void> {
   const wallFor: Record<string, string> = {
     entrance: "stone",
     "trophy-hall": "castle",
+    atrium: "scifi",
+    "hall-of-fame": "bunker",
+    armory: "bunker",
     barracks: "wood",
     treasury: "castle",
+    workshop: "concrete",
+    storage: "wood",
+    "arcane-vault": "magical",
   };
   for (const room of HQ_ROOMS) {
     const view: HqRenderView = {
@@ -79,7 +85,7 @@ async function previewRooms(): Promise<void> {
       roomName: room.name,
       roomId: room.id,
       wall: resolveWall(wallFor[room.id] ?? "stone"),
-      floor: resolveFloor(room.id === "treasury" ? "marble" : "tile"),
+      floor: resolveFloor(room.id === "treasury" || room.id === "arcane-vault" ? "marble" : "tile"),
       pedestals: room.pedestals > 0 ? Array.from({ length: room.pedestals }, () => null) : [],
       decorations: [],
       visitors: 0,

@@ -11,7 +11,6 @@
     "drive:siege": "tsx ./src/hq-siege-drive.ts",
     "sim:battle": "tsx ./src/battle-sim.ts",
     "hq:suite": "tsx ./src/hq-suite-preview.ts",
-    "hq:layouts": "tsx ./src/hq-room-layouts-preview.ts",
     "hq:preview": "tsx ./src/hq-preview.ts",
     "hq:manifest": "tsx ./src/hq-manifest.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit",
