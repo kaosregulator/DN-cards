@@ -413,3 +413,91 @@ export function startCardImageMirror(): void {
   }, RESCAN_INTERVAL_MS);
   timer.unref?.();
 }
+
+// ── Status / on-demand trigger (for the admin hub) ───────────────────────────
+
+export interface MirrorStatus {
+  /** R2 secrets present — the mirror is on. */
+  configured: boolean;
+  /** A pass is running right now. */
+  running: boolean;
+  endpoint: string | null;
+  bucket: string | null;
+  /** Cards with art that are eligible to be mirrored (not archived). */
+  totalWithImages: number;
+  /** Fully backed up and current. */
+  ok: number;
+  /** Waiting to be mirrored (new, changed, or a prior error to retry). */
+  pending: number;
+  /** Last attempt failed to upload — retried on the next pass. */
+  errored: number;
+  /** Source image couldn't be read — retried on the next pass. */
+  sourceMissing: number;
+  /** Thumbnails stored. */
+  thumbs: number;
+  /** Total bytes of full-res copies in R2. */
+  bytes: number;
+  lastMirroredAt: Date | null;
+}
+
+export async function getMirrorStatus(): Promise<MirrorStatus> {
+  const cfg = readConfig();
+  const base: MirrorStatus = {
+    configured: !!cfg, running,
+    endpoint: cfg?.endpoint ?? null, bucket: cfg?.bucket ?? null,
+    totalWithImages: 0, ok: 0, pending: 0, errored: 0, sourceMissing: 0,
+    thumbs: 0, bytes: 0, lastMirroredAt: null,
+  };
+  try {
+    const [total, byStatus, pending] = await Promise.all([
+      pool.query<{ n: string }>(
+        `SELECT count(*)::text AS n FROM cards WHERE image_url IS NOT NULL AND is_archived = false`,
+      ),
+      pool.query<{ status: string; n: string; thumbs: string; bytes: string }>(
+        `SELECT status,
+                count(*)::text AS n,
+                count(thumb_key)::text AS thumbs,
+                COALESCE(sum(bytes), 0)::text AS bytes
+           FROM card_image_backups GROUP BY status`,
+      ),
+      pool.query<{ n: string }>(
+        `SELECT count(*)::text AS n
+           FROM cards c
+           LEFT JOIN card_image_backups b ON b.card_id = c.id
+          WHERE c.image_url IS NOT NULL
+            AND c.is_archived = false
+            AND (b.card_id IS NULL
+                 OR b.source_url IS DISTINCT FROM c.image_url
+                 OR b.status <> 'ok')`,
+      ),
+    ]);
+    const last = await pool.query<{ t: Date | null }>(
+      `SELECT max(mirrored_at) AS t FROM card_image_backups`,
+    );
+    base.totalWithImages = Number(total.rows[0]?.n ?? 0);
+    base.pending = Number(pending.rows[0]?.n ?? 0);
+    for (const r of byStatus.rows) {
+      const n = Number(r.n);
+      if (r.status === "ok") { base.ok = n; base.thumbs = Number(r.thumbs); base.bytes = Number(r.bytes); }
+      else if (r.status === "error") base.errored = n;
+      else if (r.status === "source_missing") base.sourceMissing = n;
+    }
+    base.lastMirroredAt = last.rows[0]?.t ?? null;
+  } catch (err) {
+    // Table may not exist yet on a brand-new DB before the first boot migration.
+    logger.debug({ err }, "card-mirror: status query failed");
+  }
+  return base;
+}
+
+/**
+ * Kick a mirror pass on demand (the admin hub's "Back up now"). Returns why it
+ * couldn't start, if it didn't. The pass itself runs in the background.
+ */
+export function triggerMirrorPass(): { started: boolean; reason?: string } {
+  const cfg = readConfig();
+  if (!cfg) return { started: false, reason: "not_configured" };
+  if (running) return { started: false, reason: "already_running" };
+  void runPass(cfg).catch((err) => logger.error({ err }, "card-mirror: manual pass failed"));
+  return { started: true };
+}
