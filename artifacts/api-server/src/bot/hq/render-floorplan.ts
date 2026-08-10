@@ -76,7 +76,7 @@ function floorColors(zone: FloorplanZone): { a: string; b: string; grout: string
     return { a: "#6a6560", b: "#5a5550", grout: "rgba(0,0,0,0.25)" };
   }
   const floor = resolveFloor(
-    zone.roomTypeId === "treasury" ? "marble"
+    zone.roomTypeId === "treasury" || zone.roomTypeId === "arcane-vault" ? "marble"
       : zone.roomTypeId === "entrance" ? "tile"
         : "wood",
   );

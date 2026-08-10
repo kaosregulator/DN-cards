@@ -49,14 +49,6 @@ export interface HqStatsBlob {
   editorMode?: EditorMode;
   /** Connected HQ floorplan (walls, doors, zones). */
   floorplan?: import("./defs/floorplan.js").FloorplanState;
-  /** Chosen size variant (Small/Medium/Large) for the active room's layout. */
-  layoutSize?: import("./defs/room-layouts.js").RoomSizeId;
-  /** Player-placed furniture per (roomId, size) — the room editor's output. */
-  roomItems?: import("./defs/room-layouts.js").RoomEdits;
-  /** Room editor UI state (persisted so the stateless Discord flow can resume). */
-  roomEditing?: boolean;
-  roomCursor?: { x: number; y: number };
-  roomPaletteId?: string;
 }
 
 export type EditorMode =
@@ -153,11 +145,6 @@ export function readHqStats(hq: PlayerHq): HqStatsBlob {
     editorCategory: s.editorCategory,
     editorMode: s.editorMode,
     floorplan: s.floorplan,
-    layoutSize: s.layoutSize,
-    roomItems: s.roomItems,
-    roomEditing: s.roomEditing,
-    roomCursor: s.roomCursor,
-    roomPaletteId: s.roomPaletteId,
   };
 }
 

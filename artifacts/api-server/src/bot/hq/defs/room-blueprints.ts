@@ -34,8 +34,14 @@ export function roomBlueprint(roomId: string): BlueprintProp[] {
   switch (roomId) {
     case "entrance": return commandCenter();
     case "trophy-hall": return trophyHall();
+    case "atrium": return researchLab();
+    case "hall-of-fame": return warRoom();
+    case "armory": return armory();
     case "barracks": return barracks();
     case "treasury": return treasury();
+    case "workshop": return workshop();
+    case "storage": return storageRoom();
+    case "arcane-vault": return arcaneVault();
     case "hallway": return hallway();
     default: return roomId.startsWith("hallway") ? hallway() : commandCenter();
   }
@@ -98,8 +104,53 @@ function trophyHall(): BlueprintProp[] {
   ];
 }
 
+function researchLab(): BlueprintProp[] {
+  return [
+    { gx: 3, gy: 3, kind: "rug", name: "Lab Mat", tint: 0x2a5a6a },
+    { gx: 2, gy: 3, kind: "table", name: "Workbench", scale: 1.1 },
+    { gx: 5, gy: 3, kind: "table", name: "Analysis Desk" },
+    { gx: 1, gy: 1, kind: "bookshelf", name: "Codex Shelves" },
+    { gx: 6, gy: 1, kind: "bookshelf", name: "Sample Shelves" },
+    { gx: 6, gy: 5, kind: "crystal", name: "Sample Crystal", tint: 0x50d0ff },
+    { gx: 1, gy: 5, kind: "cabinet", name: "Reagent Cabinet" },
+    { gx: 4, gy: 5, kind: "chair", name: "Lab Stool", tint: 0x4a6a7a },
+    { gx: 3, gy: 6, kind: "lamp", name: "Arc Lamp", tint: 0x70e0ff },
+    { gx: 5, gy: 6, kind: "npc", name: "Researcher", seed: 3 },
+    { wall: true, wallIndex: 2, gx: 0, gy: 0, kind: "emblem", name: "Research Seal", tint: 0x2fd4d4 },
+  ];
+}
 
+function warRoom(): BlueprintProp[] {
+  return [
+    { gx: 3, gy: 3, kind: "rug", name: "War Rug", tint: 0x5a1a1a, scale: 1.2, seed: 0 },
+    { gx: 3, gy: 4, kind: "table", name: "War Table", scale: 1.2 },
+    { gx: 1, gy: 5, kind: "chair", name: "General Chair", tint: 0x8b1e2d, seed: 1 },
+    { gx: 5, gy: 5, kind: "chair", name: "Captain Chair", tint: 0x8b1e2d, seed: 2 },
+    { gx: 2, gy: 5, kind: "chair", name: "Lieutenant Chair", tint: 0x8b1e2d, seed: 3 },
+    { gx: 6, gy: 2, kind: "weapon-rack", name: "Arm Rack" },
+    { gx: 1, gy: 2, kind: "banner", name: "Legion Banner", tint: 0xc0392b },
+    { gx: 5, gy: 1, kind: "banner", name: "Scout Banner", tint: 0x3f78c8 },
+    { gx: 0, gy: 4, kind: "cabinet", name: "Maps Cabinet" },
+    { gx: 6, gy: 6, kind: "npc", name: "Strategist", seed: 4 },
+    { gx: 2, gy: 6, kind: "lamp", name: "War Lamp", tint: 0xff9030 },
+    { wall: true, wallIndex: 0, gx: 0, gy: 0, kind: "banner", name: "Wall Standard", tint: 0xc0392b },
+  ];
+}
 
+function armory(): BlueprintProp[] {
+  return [
+    { gx: 3, gy: 3, kind: "rug", name: "Armory Mat", tint: 0x4a4a4a },
+    { gx: 1, gy: 2, kind: "weapon-rack", name: "Sword Rack" },
+    { gx: 5, gy: 2, kind: "weapon-rack", name: "Spear Rack" },
+    { gx: 1, gy: 5, kind: "weapon-rack", name: "Axe Rack" },
+    { gx: 5, gy: 5, kind: "chest", name: "Armor Chest", tint: 0xc0392b },
+    { gx: 3, gy: 5, kind: "table", name: "Polish Bench" },
+    { gx: 6, gy: 3, kind: "statue", name: "Guardian", tint: 0xa0a8b0 },
+    { gx: 3, gy: 1, kind: "banner", name: "Armory Banner", tint: 0x8b7355 },
+    { gx: 4, gy: 6, kind: "npc", name: "Smith", seed: 5 },
+    { wall: true, wallIndex: 5, gx: 0, gy: 0, kind: "emblem", name: "Steel Crest", tint: 0x95a5a6 },
+  ];
+}
 
 function barracks(): BlueprintProp[] {
   return [
@@ -131,8 +182,51 @@ function treasury(): BlueprintProp[] {
   ];
 }
 
+function workshop(): BlueprintProp[] {
+  return [
+    { gx: 3, gy: 3, kind: "table", name: "Craft Bench", scale: 1.2 },
+    { gx: 1, gy: 2, kind: "chest", name: "Parts Crate", tint: 0x8a6a3f },
+    { gx: 5, gy: 2, kind: "chest", name: "Scrap Barrel", tint: 0x6b4f2c },
+    { gx: 1, gy: 5, kind: "cabinet", name: "Tool Cabinet" },
+    { gx: 5, gy: 5, kind: "bookshelf", name: "Blueprint Shelf" },
+    { gx: 6, gy: 3, kind: "lamp", name: "Work Lamp", tint: 0xff9030 },
+    { gx: 3, gy: 5, kind: "chair", name: "Stool", tint: 0x6b4f2c },
+    { gx: 0, gy: 4, kind: "weapon-rack", name: "Tool Rack" },
+    { gx: 4, gy: 6, kind: "npc", name: "Artisan", seed: 4 },
+    { gx: 2, gy: 1, kind: "plant", name: "Oil Plant" },
+  ];
+}
 
+function storageRoom(): BlueprintProp[] {
+  return [
+    { gx: 1, gy: 1, kind: "chest", name: "Crate Stack", tint: 0x8a6a3f, seed: 1 },
+    { gx: 3, gy: 1, kind: "chest", name: "Barrels", tint: 0x6b4f2c, seed: 2 },
+    { gx: 5, gy: 1, kind: "chest", name: "Supply Chests", tint: 0x8a6a3f, seed: 3 },
+    { gx: 1, gy: 4, kind: "chest", name: "Grain Stores", tint: 0xc4a06a, seed: 4 },
+    { gx: 4, gy: 4, kind: "chest", name: "Open Chest", tint: 0xd4af37, seed: 5 },
+    { gx: 5, gy: 4, kind: "cabinet", name: "Spare Cabinet" },
+    { gx: 3, gy: 3, kind: "rug", name: "Warehouse Mat", tint: 0x6a5a4a, seed: 1 },
+    { gx: 6, gy: 5, kind: "lamp", name: "Store Lamp", tint: 0xf0c060 },
+    { gx: 2, gy: 6, kind: "npc", name: "Quartermaster", seed: 5 },
+    { gx: 6, gy: 2, kind: "bookshelf", name: "Inventory Logs" },
+  ];
+}
 
+function arcaneVault(): BlueprintProp[] {
+  return [
+    { gx: 3, gy: 3, kind: "rug", name: "Rune Circle", tint: 0x6a3a9b, scale: 1.2 },
+    { gx: 3, gy: 4, kind: "crystal", name: "Focus Crystal", tint: 0xb06bff, scale: 1.25 },
+    { gx: 1, gy: 2, kind: "bookshelf", name: "Grimoires" },
+    { gx: 5, gy: 2, kind: "bookshelf", name: "Scrolls" },
+    { gx: 1, gy: 5, kind: "lamp", name: "Ward Lamp", tint: 0xb06bff },
+    { gx: 5, gy: 5, kind: "lamp", name: "Ward Lamp", tint: 0x70e0ff },
+    { gx: 6, gy: 3, kind: "statue", name: "Familiar", tint: 0x9b59b6 },
+    { gx: 0, gy: 3, kind: "cabinet", name: "Relic Cabinet" },
+    { gx: 4, gy: 6, kind: "npc", name: "Arcanist", seed: 3 },
+    { gx: 2, gy: 1, kind: "banner", name: "Arcane Banner", tint: 0x9b59b6 },
+    { wall: true, wallIndex: 2, gx: 0, gy: 0, kind: "emblem", name: "Rune Seal", tint: 0xb06bff },
+  ];
+}
 
 /** Convert blueprint props into render-slot decorations (virtual — not persisted). */
 export function blueprintAsDecos(
