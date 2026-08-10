@@ -10,7 +10,7 @@
 
 import {
   ActionRowBuilder, ButtonBuilder, ButtonStyle, MessageFlags,
-  type MessageComponentInteraction,
+  type MessageComponentInteraction, type ChatInputCommandInteraction,
 } from "discord.js";
 import type { GuildSettings } from "@workspace/db";
 
@@ -169,6 +169,36 @@ export async function handleExperienceLaunch(interaction: MessageComponentIntera
       content: url
         ? `🎮 Couldn't open the in-Discord Activity here. You can open it in a browser instead: ${url}`
         : "🎮 The Live Activity isn't available right now. Your server's fallback presentation still works.",
+      flags: MessageFlags.Ephemeral,
+    }).catch(() => {});
+  }
+}
+
+/**
+ * `/siege` — an UNCONDITIONAL Activity launcher used as a backup / diagnostic.
+ *
+ * Unlike the `/hq` launch button, this bypasses every gate — it does NOT read
+ * `hqPresentation`, and it does NOT require DISCORD_CLIENT_ID to be set on the
+ * bot. It simply asks Discord to open the Activity via the native LAUNCH_ACTIVITY
+ * response. That isolates ONE question: can Discord open this app's Activity at
+ * all? If this works but the `/hq` button never appears, the fault is the
+ * per-guild presentation setting; if even this fails, the fault is the Discord
+ * app's Activity configuration (Activities not enabled / no entry point), not
+ * our command code.
+ *
+ * NOTE: `launchActivity()` IS the interaction response (callback type 12), so we
+ * must NOT defer first — call it as the very first reply, then fall back to an
+ * ephemeral message if the host refuses.
+ */
+export async function handleSiegeLaunchCommand(interaction: ChatInputCommandInteraction): Promise<void> {
+  try {
+    await interaction.launchActivity();
+  } catch {
+    const url = activityUrl();
+    await interaction.reply({
+      content: url
+        ? `🎮 Couldn't open the in-Discord Activity. Open it in a browser instead: ${url}\n_(If this keeps failing, check that Activities are enabled for this app in the Discord Developer Portal.)_`
+        : "🎮 The Live Activity couldn't launch. This usually means Activities aren't enabled for this app (Developer Portal → Activities → Settings → enable an entry point).",
       flags: MessageFlags.Ephemeral,
     }).catch(() => {});
   }

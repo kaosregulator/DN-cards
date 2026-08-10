@@ -10,7 +10,7 @@ import { handleEditImageButton, handleEditImageModal, handleEditImagePick } from
 import { handleTradeButton } from "./commands/trading.js";
 import { initSpawnManager, initAllGuilds, handleCatchAttempt, handleClaimButtonClick, scheduleNextSpawn, buildPostDecisionEmbed, buildDisabledDecisionRow, markDecisionMade } from "./spawn-manager.js";
 import { handleConfigButton, handleConfigSelect, handleRatesSelect, handlePacksSelect, handleRatesCustomModal, handleExperienceSelect } from "./commands/config-panel.js";
-import { LAUNCH_PREFIX, handleExperienceLaunch } from "./experience.js";
+import { LAUNCH_PREFIX, handleExperienceLaunch, handleSiegeLaunchCommand } from "./experience.js";
 import { handleSetsHubButton, handleSetsHubSelect, handleSetsHubModal } from "./commands/sets-panel.js";
 import { handleSetAdminHubButton, handleSetAdminHubSelect, handleSetAdminHubWeightSelect, handleSetAdminHubModal } from "./commands/set-admin-hub.js";
 import { handleRarityEditButton, handleRarityEditSelect, handleRarityEditModal, handleRarityHubButton, handleRarityHubSelect, handleRarityHubModal } from "./commands/rarity-admin.js";
@@ -848,6 +848,8 @@ export async function startBot() {
       } else if (cmd === "hqbuild") {
         const { handleHqBuildCommand } = await import("./commands/hq-build.js");
         await handleHqBuildCommand(interaction);
+      } else if (cmd === "siege") {
+        await handleSiegeLaunchCommand(interaction);
       } else if (USER_HUB_COMMANDS.has(cmd)) {
         // Flattened player commands (/burn, /daily, …) + standalone player
         // commands that carry their own subcommands (/sets, /rep, …).
@@ -879,7 +881,7 @@ export async function startBot() {
     "battle", "battleadmin", "market", "squad", "raid", "raidadmin",
     "giveaway",
     "whisper", "adminsecret", "echo", "afk", "afksetup", "begin", "show_shiny",
-    "collection_hub", "hq", "hqadmin", "hqbuild",
+    "collection_hub", "hq", "hqadmin", "hqbuild", "siege",
     "valuehelp", "valuelist", "info_mttv", "giveall", "editpack", "postcalculator",
     "massrole",
   ]);

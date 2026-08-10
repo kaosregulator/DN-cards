@@ -81,6 +81,10 @@ function buildLegacyCommands() {
     cmd("hq", "Your Headquarters — trophies, displays & customization", s => s
       .addUserOption(o => o.setName("user").setDescription("Visit another member's Headquarters"))),
 
+    // Backup / diagnostic launcher: opens the Live HQ Activity directly via
+    // Discord's native LAUNCH_ACTIVITY, bypassing the /hq presentation setting.
+    cmd("siege", "Launch the Live HQ Activity directly (backup launcher)", s => s),
+
     cmd("hqadmin", "Admin: server siege settings, or edit one member's Headquarters", s => s
       .addUserOption(o => o.setName("user").setDescription("Edit this member's HQ (leave empty for server siege settings)"))),
 
