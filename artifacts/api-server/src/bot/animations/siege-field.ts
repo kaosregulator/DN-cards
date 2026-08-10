@@ -25,7 +25,7 @@
 import { readFileSync } from "node:fs";
 import { spriteForPrefix } from "../hq/assets.js";
 import { queueRender } from "./render-queue.js";
-import { getRarityEffectColor } from "./effects.js";
+import { getRarityEffectColor, loadArt as loadArtShared } from "./effects.js";
 import { extractArtColor } from "../battle/image/vibrant-color.js";
 import { encodeAnimation, getCanvas, TITLE_FONT_FAMILY, type CanvasMod, type Ctx } from "./engine.js";
 import type { Rarity } from "../cards-data.js";
@@ -171,30 +171,16 @@ function loadSpritePath(mod: CanvasMod, path: string): Promise<CanvasImage | nul
   return p;
 }
 
+// Card art loads through the SAME shared loader `/battle` and `/raid` use
+// (effects.ts `loadArt`). That path knows how to pull a card straight from
+// object storage / GCS instead of round-tripping the app's own public URL — the
+// server-side fetch of its own `…/api/storage/objects/…` link is exactly what
+// failed on the old siege-only loader, leaving every fighter as a blank
+// placeholder box (the "missing images" a siege showed). It also owns its own
+// cache + decode-from-disk workaround, so a siege that re-renders the same two
+// cards every turn never re-fetches them.
 function loadArt(mod: CanvasMod, url: string | null): Promise<CanvasImage | null> {
-  if (!url) return Promise.resolve(null);
-  const key = `u:${url}`;
-  let p = imgCache.get(key);
-  if (!p) {
-    p = (async () => {
-      try {
-        // Local paths / data URIs decode directly; remote art is fetched with a
-        // hard timeout so a stalled CDN can never hang a render.
-        if (!/^https?:/i.test(url)) return await mod.loadImage(url);
-        const ctrl = new AbortController();
-        const timer = setTimeout(() => ctrl.abort(), 3500);
-        try {
-          const res = await fetch(url, { signal: ctrl.signal });
-          if (!res.ok) return null;
-          const buf = Buffer.from(await res.arrayBuffer());
-          return await mod.loadImage(buf);
-        } finally { clearTimeout(timer); }
-      } catch (err) { logger.debug({ err, url }, "siege-field: art fetch failed"); return null; }
-    })();
-    imgCache.set(key, p);
-    if (imgCache.size > 96) { const k = imgCache.keys().next().value; if (k !== undefined) imgCache.delete(k); }
-  }
-  return p;
+  return loadArtShared(mod, url) as Promise<CanvasImage | null>;
 }
 
 function sprite(prefix: string, key: string): string | null {
@@ -348,6 +334,12 @@ function paintFrame(ctx: Ctx, input: SiegeFieldInput, a: Assets, t: number, scal
   const reach = 170;
   const atkDash = acting === 0 ? advance * reach : 0;
   const defDash = acting === 1 ? -advance * reach : 0;
+  // Anticipation coil: the acting fighter pulls a touch AWAY from the foe just
+  // before it springs in, so the lunge lands with weight instead of sliding. A
+  // quick 0→1→0 pulse over the wind-up window, opposite the dash direction.
+  const windup = pulse(t, 0.0, 0.16) * 16;
+  const atkWindup = acting === 0 ? -windup : 0;
+  const defWindup = acting === 1 ? windup : 0;
   // The struck fighter is knocked back a touch and flashes white on connect.
   const targetIsDef = acting === 0;
   const atkKnock = (!targetIsDef && connected) ? impact * 22 : 0;
@@ -357,8 +349,8 @@ function paintFrame(ctx: Ctx, input: SiegeFieldInput, a: Assets, t: number, scal
   const bobA = Math.sin(t * Math.PI * 2) * 5;
   const bobB = Math.sin(t * Math.PI * 2 + Math.PI) * 5;
 
-  const atkX = cx - STATION_DX + atkDash + atkKnock + (shake * 0.4);
-  const defX = cx + STATION_DX + defDash - defKnock - (shake * 0.4);
+  const atkX = cx - STATION_DX + atkDash + atkWindup + atkKnock + (shake * 0.4);
+  const defX = cx + STATION_DX + defDash + defWindup - defKnock - (shake * 0.4);
 
   // White strike flash overlay on connect, on the struck side.
   const atkFlashWhite = targetIsDef ? 0 : impact;
@@ -368,6 +360,16 @@ function paintFrame(ctx: Ctx, input: SiegeFieldInput, a: Assets, t: number, scal
   // active podium + portrait always sit in front of the roster.
   drawBench(ctx, 0, input.attackerBench ?? [], a.benchImgs);
   drawBench(ctx, 1, input.defenderBench ?? [], a.benchImgs);
+
+  // Speed streaks stream off the charging fighter while it closes the gap — the
+  // motion-blur that sells the dash. Strongest mid-lunge, gone by the recoil.
+  const streakK = advance * clamp01(1 - lungeOut * 2.2);
+  if (streakK > 0.02) {
+    const actingX = acting === 0 ? atkX : defX;
+    const actingDir = acting === 0 ? 1 : -1;
+    const actingColor = acting === 0 ? a.atkColor : a.defColor;
+    drawDashStreak(ctx, actingX, actingDir, streakK, actingColor);
+  }
 
   drawStation(ctx, {
     x: atkX, side: 0, base: a.atkBase, art: a.atkArt, fighter: input.attacker, color: a.atkColor,
@@ -721,6 +723,47 @@ function drawStar(ctx: Ctx, x: number, y: number, points: number, inner: number,
   ctx.restore();
 }
 
+// Motion-blur speed lines trailing the charging fighter. `dir` is +1 when it
+// moves right (attacker) / −1 when it moves left (defender); the streaks stream
+// out BEHIND it. Cheap: a handful of tapered accent lines, no image work.
+function drawDashStreak(ctx: Ctx, x: number, dir: number, k: number, color: number): void {
+  const bandTop = GROUND_Y - 165, bandBot = GROUND_Y - 55;
+  const tailX = x - dir * (PORTRAIT_W * 0.34);
+  const lines = 5;
+  ctx.save();
+  ctx.lineCap = "round";
+  for (let i = 0; i < lines; i++) {
+    const f = i / (lines - 1);                       // 0..1 top→bottom
+    const y = lerp(bandTop, bandBot, f);
+    // Longer, brighter near the vertical centre of the portrait.
+    const centre = 1 - Math.abs(f - 0.5) * 2;         // 0 at edges, 1 in middle
+    const len = (36 + centre * 64) * k;
+    if (len < 4) continue;
+    const x0 = tailX - dir * (6 + f * 10);            // slight rake
+    const x1 = x0 - dir * len;
+    const alpha = k * (0.22 + centre * 0.4);
+    // Accent body.
+    ctx.globalAlpha = alpha;
+    ctx.strokeStyle = hex(color);
+    ctx.lineWidth = 2 + centre * 3;
+    ctx.beginPath();
+    ctx.moveTo(x0, y);
+    ctx.lineTo(x1, y);
+    ctx.stroke();
+    // White hot core on the strongest lines.
+    if (centre > 0.5) {
+      ctx.globalAlpha = alpha * 0.9;
+      ctx.strokeStyle = "#ffffff";
+      ctx.lineWidth = 1.4;
+      ctx.beginPath();
+      ctx.moveTo(x0, y);
+      ctx.lineTo(lerp(x0, x1, 0.7), y);
+      ctx.stroke();
+    }
+  }
+  ctx.restore();
+}
+
 function drawImpact(ctx: Ctx, a: Assets, x: number, y: number, k: number, input: SiegeFieldInput): void {
   const color = input.isCrit ? 0xffd54a : 0xffffff;
   const scale = (input.isCrit ? 1.35 : 1.0) * (0.6 + k * 0.9);
@@ -735,6 +778,36 @@ function drawImpact(ctx: Ctx, a: Assets, x: number, y: number, k: number, input:
   } else {
     drawStar(ctx, x, y, 8, 18 * scale, 52 * scale, hex(color), k);
   }
+  // Shockwave ring — an expanding hoop that reads as the force of the blow
+  // landing, brightest at the moment of contact.
+  ctx.save();
+  ctx.globalAlpha = k * 0.85;
+  ctx.strokeStyle = hex(color);
+  ctx.lineWidth = (5 * scale) * (0.4 + k * 0.6);
+  ctx.shadowColor = rgba(color, k);
+  ctx.shadowBlur = 18;
+  ctx.beginPath();
+  ctx.arc(x, y, (26 + (1 - k) * 62) * scale, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.restore();
+  // Radial spark burst from the point of contact.
+  const sparks = input.isCrit ? 9 : 6;
+  ctx.save();
+  ctx.globalAlpha = k * 0.8;
+  ctx.strokeStyle = "#ffffff";
+  ctx.lineWidth = 2.4 * scale;
+  ctx.lineCap = "round";
+  ctx.shadowColor = rgba(color, k);
+  ctx.shadowBlur = 10;
+  for (let i = 0; i < sparks; i++) {
+    const ang = (i / sparks) * Math.PI * 2 + k * 0.6;
+    const r0 = 18 * scale, r1 = (46 + k * 40) * scale;
+    ctx.beginPath();
+    ctx.moveTo(x + Math.cos(ang) * r0, y + Math.sin(ang) * r0);
+    ctx.lineTo(x + Math.cos(ang) * r1, y + Math.sin(ang) * r1);
+    ctx.stroke();
+  }
+  ctx.restore();
   // Slash streak.
   ctx.save();
   ctx.globalAlpha = k * 0.85;
