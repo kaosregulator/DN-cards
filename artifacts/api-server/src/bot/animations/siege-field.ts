@@ -8,14 +8,13 @@
 // dedicated battlefield instead of over the castle.
 //
 // The scene is drawn straight onto a 2D context with `@napi-rs/canvas` — the
-// SAME renderer the `/battle` animation layer uses — and encoded to a GIF with
-// gifencoder. It deliberately does NOT use Konva or the cairo `canvas` package:
-// those need a native compile that isn't reliably available on every host (the
-// castle renderer, which uses @napi-rs/canvas, renders fine where the old
-// cairo-backed battlefield came back blank). Everything is best-effort: a
-// missing native lib, a stalled card image or an oversized encode all resolve to
-// `null`, and the caller silently keeps the old static frame. A siege must never
-// break because a picture failed.
+// SAME renderer the `/battle` animation layer uses — and GIFs go through the
+// shared `encodeAnimation` helper (frame planning + coalescing) so /hq turn
+// GIFs encode like /battle. It deliberately does NOT use Konva or the cairo
+// `canvas` package. Everything is best-effort: a missing native lib, a stalled
+// card image or an oversized encode all resolve to `null`, and the caller
+// silently keeps the old static frame. A siege must never break because a
+// picture failed.
 //
 // Assets come from the SAME HQ art pack the base renderer uses (Kenney iso
 // packs, extracted under assets/hq/…): a backdrop, a floor tile and the podium
@@ -24,12 +23,11 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { readFileSync } from "node:fs";
-import GIFEncoder from "gifencoder";
 import { spriteForPrefix } from "../hq/assets.js";
 import { queueRender } from "./render-queue.js";
 import { getRarityEffectColor } from "./effects.js";
 import { extractArtColor } from "../battle/image/vibrant-color.js";
-import { getCanvas, TITLE_FONT_FAMILY, type CanvasMod, type Ctx } from "./engine.js";
+import { encodeAnimation, getCanvas, TITLE_FONT_FAMILY, type CanvasMod, type Ctx } from "./engine.js";
 import type { Rarity } from "../cards-data.js";
 import type { AnimationSpeed, AnimationResult } from "./types.js";
 import { logger } from "../../lib/logger.js";
@@ -83,15 +81,26 @@ const MAX_BYTES = 8_000_000;
 // Physical pixels per logical unit at encode time. GIF encoding (NeuQuant) costs
 // scale with pixel COUNT, and it dominates a turn's render time — drawing stays
 // at the full logical resolution (crisp art + text) while the encoded frame is
-// shrunk to keep a turn snappy. 0.62 keeps the field comfortably above Discord's
-// inline display width.
-const RENDER_SCALE = 0.62;
+// shrunk to keep a turn snappy. 0.6 matches /battle turn GIFs so Discord inline
+// display and encode cost stay in the same ballpark.
+const RENDER_SCALE = 0.6;
 
-function speedPlan(speed: AnimationSpeed): { frames: number; delay: number } {
+// Target play-through length by guild speed — same ballpark as renderBattleTurn
+// (~1800ms) so /hq and /battle feel like one system. encodeAnimation plans fps
+// + coalesces identical hold frames.
+function speedDurationMs(speed: AnimationSpeed): number {
   switch (speed) {
-    case "fast": return { frames: 16, delay: 60 };
-    case "slow": return { frames: 26, delay: 82 };
-    default: return { frames: 22, delay: 70 };
+    case "fast": return 1400;
+    case "slow": return 2200;
+    default: return 1800;
+  }
+}
+
+function speedMaxFrames(speed: AnimationSpeed): number {
+  switch (speed) {
+    case "fast": return 16;
+    case "slow": return 22;
+    default: return 18;
   }
 }
 
@@ -239,44 +248,40 @@ export async function renderSiegeField(
   input: SiegeFieldInput,
   speed: AnimationSpeed,
 ): Promise<AnimationResult | null> {
-  return queueRender("siege-field", async () => {
-    const cmod = await getCanvas();
-    if (!cmod) return null;
+  // Shared encode path with /battle: frame planning, NeuQuant quality, and
+  // consecutive-frame coalescing. One queue slot via encodeAnimation("gif").
+  const cmod = await getCanvas();
+  if (!cmod) return null;
 
-    try {
-      const assets = await loadFieldAssets(cmod, input);
-      const { frames, delay } = speedPlan(speed);
+  let assets: Assets;
+  try {
+    assets = await loadFieldAssets(cmod, input);
+  } catch (err) {
+    logger.error({ err }, "siege-field: asset load failed");
+    return null;
+  }
 
-      const physW = Math.round(FIELD.width * RENDER_SCALE);
-      const physH = Math.round(FIELD.height * RENDER_SCALE);
-      const enc = new GIFEncoder(physW, physH);
-      enc.start();
-      enc.setRepeat(0);
-      enc.setQuality(26);
-
-      for (let i = 0; i < frames; i++) {
-        const t = frames <= 1 ? 1 : i / (frames - 1);
-        const ctx = drawFrame(cmod, input, assets, t, RENDER_SCALE);
-        // Hold a beat on the settled final frame so the loop reads as a clean
-        // "strike, then rest" rather than a frantic ping-pong.
-        enc.setDelay(i === frames - 1 ? delay * 6 : delay);
-        // gifencoder reads pixels via the 2D context's getImageData; the napi-rs
-        // context satisfies that just like the DOM/cairo one, so hand it over.
-        enc.addFrame(ctx as never);
-      }
-      enc.finish();
-
-      const buffer: Buffer = enc.out.getData();
-      if (buffer.length > MAX_BYTES) {
-        logger.debug({ bytes: buffer.length }, "siege-field: encoded GIF too large, dropping");
-        return null;
-      }
-      return { buffer, width: physW, height: physH, frameCount: frames, durationMs: frames * delay };
-    } catch (err) {
-      logger.error({ err }, "siege-field: render failed");
-      return null;
-    }
+  const result = await encodeAnimation({
+    width: FIELD.width,
+    height: FIELD.height,
+    speed,
+    durationMs: speedDurationMs(speed),
+    maxFrames: speedMaxFrames(speed),
+    quality: 26,
+    renderScale: RENDER_SCALE,
+    render: ({ ctx, t }) => {
+      // encodeAnimation already applied renderScale on the context; paint in
+      // logical coords (paintFrame scales again — pass 1 so we don't double).
+      paintFrame(ctx, input, assets, t, 1);
+    },
   });
+
+  if (!result) return null;
+  if (result.buffer.length > MAX_BYTES) {
+    logger.debug({ bytes: result.buffer.length }, "siege-field: encoded GIF too large, dropping");
+    return null;
+  }
+  return result;
 }
 
 // A single frozen frame of the same battlefield, as a PNG — for guilds that run
@@ -318,19 +323,9 @@ const GROUND_Y = 356;              // podium contact line
 const STATION_DX = 232;            // horizontal offset of each station from centre
 const PORTRAIT_W = 150, PORTRAIT_H = 150;
 
-// Build a fresh canvas + context and paint the whole scene at `t`, returning the
-// context (for gifencoder or a PNG buffer). Everything is drawn in logical
-// (900×470) coordinates; a single ctx.scale() shrinks the scene to the physical
-// output size.
-function drawFrame(cmod: CanvasMod, input: SiegeFieldInput, a: Assets, t: number, scale: number): Ctx {
-  const physW = Math.round(FIELD.width * scale);
-  const physH = Math.round(FIELD.height * scale);
-  const canvas = cmod.createCanvas(physW, physH);
-  const ctx = canvas.getContext("2d") as unknown as Ctx;
-  paintFrame(ctx, input, a, t, scale);
-  return ctx;
-}
-
+// Paint the whole scene at `t`. Everything is drawn in logical (900×470)
+// coordinates; callers apply any physical `scale` themselves (still PNG) or via
+// encodeAnimation's renderScale (GIF).
 function paintFrame(ctx: Ctx, input: SiegeFieldInput, a: Assets, t: number, scale: number): void {
   ctx.save();
   ctx.scale(scale, scale);

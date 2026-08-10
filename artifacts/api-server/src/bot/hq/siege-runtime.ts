@@ -171,16 +171,11 @@ interface SiegeSession extends SiegeRuntimeConfig {
   castleKey: string;
   /** True while a castle frame is rendering in the background (non-blocking). */
   castleRendering: boolean;
-  /** One-shot per-turn attack frame, consumed by the next render. */
   // The battlefield image currently shown under the board. It PERSISTS across
-  // renders (it is not consumed) so a turn's board can paint immediately with
-  // the last frame while the new one renders in the background.
+  // renders (it is not consumed) so wind-up / garrison beats can keep the last
+  // strike on screen — matching /battle's resting VS image between turns.
   turnFrame: Buffer | null;
   turnFrameIsGif: boolean;
-  // Identifies the turn a background render belongs to; a late frame only
-  // patches in if it still matches, so a slow render can't stamp a stale image
-  // onto a newer turn.
-  pendingFrameToken: string | null;
   /** Item equipped for the whole assault, chosen at muster. */
   equippedItemId: string | null;
   /** Ranks fully broken, for the destruction meter. */
@@ -325,7 +320,7 @@ export async function startSiege(
     attackerPower: config.attackers.reduce((sum, c) => sum + powerRating(c.stats), 0),
     defenderPower: config.defenders.reduce((sum, c) => sum + powerRating(c.stats), 0),
     castleImage: null, castleKey: "", castleRendering: false,
-    turnFrame: null, turnFrameIsGif: false, pendingFrameToken: null,
+    turnFrame: null, turnFrameIsGif: false,
     equippedItemId: null,
     defendersBroken: 0,
     rankStall: 0,
@@ -745,9 +740,9 @@ async function applyMove(s: SiegeSession, side: 0 | 1, move: MoveType): Promise<
     }
 
     // "Winding up" frame, then the resolved blow — the same two-beat rhythm a
-    // battle turn has.
+    // battle turn has. Encode runs in parallel with the wind-up sleep so the
+    // heavier siege-field canvas doesn't add a full extra beat on top of pace().
     await render(s, { currentMove: `${actor.cardName} → ${moveLabel(move, actor)}…` });
-    await pace(s);
 
     if (!start.skipped) {
       const foePoolBefore = foe.hp + foe.shield;
@@ -755,9 +750,17 @@ async function applyMove(s: SiegeSession, side: 0 | 1, move: MoveType): Promise<
       const result = resolveMove(s.settings, actor, foe, move);
       pushLog(s, result.events.map(e => e.text));
 
-      await buildTurnFrame(s, side, move, result, actor, foe, foePoolBefore, selfPoolBefore);
+      // Await the FINAL turn visual (PNG or GIF) before the board edit — same
+      // rhythm as /battle and /raid. Never still→GIF upgrade mid-message: Discord
+      // reloads the attachment on every edit and restarts looping GIFs, which is
+      // what made /hq sieges feel choppy. Pace overlaps the encode so the board
+      // still breathes during wind-up without serializing two full waits.
+      const [, holdMs] = await Promise.all([
+        pace(s),
+        buildTurnFrame(s, side, move, result, actor, foe, foePoolBefore, selfPoolBefore),
+      ]);
       await render(s);
-      await pace(s);
+      await (s.headless ? Promise.resolve() : sleep(Math.max(frameMs(s), holdMs)));
 
       // The ram keeps working between blows: a rank that refuses to die gets
       // ground down whether or not the commander's swing landed.
@@ -768,6 +771,7 @@ async function applyMove(s: SiegeSession, side: 0 | 1, move: MoveType): Promise<
       if (actor.hp <= 0 && (await breakRank(s, side))) { await finish(s); return; }
       if (foe.hp <= 0 && (await breakRank(s, foeSide(side)))) { await finish(s); return; }
     } else {
+      await pace(s);
       await render(s);
     }
 
@@ -903,45 +907,54 @@ function buildFieldInput(
   };
 }
 
-// The one-shot attack frame under the battle embed, in whichever style the
+// Build the one-shot attack frame under the battle embed, in whichever style the
 // guild's battle settings use — so a siege turn looks like a battle turn.
+//
+// Mirrors /battle `applyMove`: AWAIT the final buffer, then the caller does ONE
+// `message.edit`. Classic = PNG only. Animated = GIF only (still is fallback if
+// the GIF encode fails). Returns how long Discord should be left alone so a GIF
+// can play through once before the next board edit.
 async function buildTurnFrame(
   s: SiegeSession, side: 0 | 1, move: MoveType,
   result: ReturnType<typeof resolveMove>, actor: Combatant, foe: Combatant,
   foePoolBefore: number, selfPoolBefore: number,
-): Promise<void> {
-  if (s.headless || !s.siege.turnVisuals) return;
-  if (!(sceneAnimated(s) || classicFrames(s))) return; // animations off → no frame
+): Promise<number> {
+  if (s.headless || !s.siege.turnVisuals) return 0;
+  if (!(sceneAnimated(s) || classicFrames(s))) return 0; // animations off → no frame
   const visual = computeMoveVisual(move, result, actor, foe, foePoolBefore, selfPoolBefore);
   const fieldInput = buildFieldInput(s, side, move, visual, actor, foe, foePoolBefore);
-  const token = `${s.turnNumber}:${side}:${actor.cardId}:${foe.cardId}:${foePoolBefore}:${selfPoolBefore}`;
-  s.pendingFrameToken = token;
   const animated = sceneAnimated(s);
   const speed = s.settings.battleAnimationSpeed as AnimationSpeed;
 
-  // FULLY NON-BLOCKING. The turn NEVER awaits a render — this returns at once and
-  // the frame is patched into the board when each stage finishes, so a slow
-  // first render (Konva warm-up + several remote card-art fetches) can no longer
-  // freeze the fight. The board stays interactive; the battlefield image just
-  // catches up a beat later. A still (fast) lands first; animated guilds then
-  // upgrade to the GIF. Each patch only applies if it is STILL this turn's frame
-  // (pendingFrameToken), so a late render can't stamp a stale image on a newer
-  // turn. The previous frame persists in the meantime (render() no longer
-  // consumes it), so the board never blanks between turns.
-  void (async () => {
-    const still = await renderSiegeFieldStill(fieldInput).catch(() => null);
-    if (still && s.pendingFrameToken === token && s.phase !== "ended") {
-      s.turnFrame = still; s.turnFrameIsGif = false;
-      await render(s);
+  // Cap waits so a stalled canvas / remote art fetch can't freeze the assault
+  // forever (same idea as the coin-toss race).
+  const GIF_BUDGET_MS = 12_000;
+  const STILL_BUDGET_MS = 8_000;
+
+  if (animated) {
+    const gif = await Promise.race([
+      renderSiegeField(fieldInput, speed).catch(() => null),
+      sleep(GIF_BUDGET_MS).then(() => null),
+    ]);
+    if (gif) {
+      s.turnFrame = Buffer.from(gif.buffer);
+      s.turnFrameIsGif = true;
+      // Hold for one play-through (capped) so Discord's client can finish the
+      // strike before the garrison's answer rewrites the message.
+      return Math.min(2400, Math.max(frameMs(s), gif.durationMs));
     }
-    if (animated) {
-      const gif = await renderSiegeField(fieldInput, speed).catch(() => null);
-      if (gif && s.pendingFrameToken === token && s.phase !== "ended") {
-        s.turnFrame = Buffer.from(gif.buffer); s.turnFrameIsGif = true;
-        await render(s);
-      }
-    }
-  })();
+    // GIF failed — fall through to a peak-strike PNG rather than leaving a stale frame.
+  }
+
+  const still = await Promise.race([
+    renderSiegeFieldStill(fieldInput).catch(() => null),
+    sleep(STILL_BUDGET_MS).then(() => null),
+  ]);
+  if (still) {
+    s.turnFrame = still;
+    s.turnFrameIsGif = false;
+  }
+  return 0;
 }
 
 // ── Items ─────────────────────────────────────────────────────────────────────
@@ -1157,10 +1170,12 @@ async function refreshCastle(s: SiegeSession, force = false): Promise<void> {
 
 // Non-blocking castle refresh for the INTERACTIVE path. Never awaited: the board
 // paints immediately with whatever castle frame is already cached (from muster),
-// and when a fresh frame finishes it patches into the board via render(). This
-// is what stops the assault from appearing to freeze after the coin toss while
-// an 8s castle render + the coin animation stack up on the critical path. Only
-// one background render runs at a time (castleRendering).
+// and when a fresh frame finishes it only UPDATES THE BUFFER — it does NOT call
+// render(). Re-editing the live message restarts any looping turn GIF (Discord
+// reloads attachments on edit), which is exactly the choppiness /hq had. Rank
+// breaks still await refreshCastle() on the critical path; every other board
+// edit picks up the newer castle on the next intentional render. Only one
+// background render runs at a time (castleRendering).
 function scheduleCastleRefresh(s: SiegeSession, force = false): void {
   if (!s.baseView || s.headless || s.castleRendering) return;
   const pct = destructionPct(s);
@@ -1175,7 +1190,6 @@ function scheduleCastleRefresh(s: SiegeSession, force = false): void {
     s.castleRendering = false;
     if (buf && s.phase !== "ended") {
       s.castleImage = buf; s.castleKey = key;
-      void render(s); // patch the new castle image into the live board
     }
   }).catch(() => { s.castleRendering = false; });
 }
@@ -1294,15 +1308,15 @@ function buildControls(s: SiegeSession): ActionRowBuilder<ButtonBuilder>[] {
 
 async function render(s: SiegeSession, opts?: { currentMove?: string; turnEndsAt?: number }): Promise<void> {
   if (!s.message || s.phase === "ended" || s.headless) return;
-  // Castle render is NON-BLOCKING: paint now with the cached frame and let a
-  // fresh one patch in when ready. The board must never wait on canvas work.
+  // Castle encode is NON-BLOCKING and does not re-edit the message when done —
+  // only the buffer is refreshed. Mid-turn message.edits restart Discord GIFs.
   scheduleCastleRefresh(s);
   const files = castleFiles(s);
   const battleEmbed = buildBattleEmbed(s);
-  // The battlefield frame PERSISTS (it is not consumed): the board can paint the
-  // last frame immediately while the new one renders in the background, so it
-  // never blanks between turns. Discord drops attachments on edit, so the buffer
-  // is re-sent every render — the expensive render is what we avoid repeating.
+  // The battlefield frame PERSISTS (it is not consumed): wind-up / next-turn
+  // boards keep the last strike visible like /battle's resting VS image.
+  // Discord drops attachments on edit, so the buffer is re-sent every render —
+  // the expensive canvas work is what we avoid repeating.
   const frame = s.turnFrame;
   if (frame) {
     const name = s.turnFrameIsGif ? SIEGE_TURN_GIF : SIEGE_TURN_PNG;
