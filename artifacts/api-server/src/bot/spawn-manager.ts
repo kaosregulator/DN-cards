@@ -861,6 +861,12 @@ async function launchMiniGameForCatch(guildId: string, spawn: ActiveSpawn, userI
     .map(c => ({ name: c.name, url: toAbsoluteImageUrl(c.imageUrl) }))
     .sort(() => Math.random() - 0.5)
     .slice(0, 12);
+  // The catcher's Discord avatar for the wild-encounter intro (best-effort).
+  let avatarUrl: string | null = null;
+  try {
+    const user = await botClient?.users.fetch(userId);
+    avatarUrl = user?.displayAvatarURL({ extension: "png", size: 128 }) ?? null;
+  } catch { /* avatar is best-effort */ }
   const { startMiniGame } = await import("./minigame/manager.js");
   return await startMiniGame({
     guildId,
@@ -870,6 +876,7 @@ async function launchMiniGameForCatch(guildId: string, spawn: ActiveSpawn, userI
     rarityLabel: display.label,
     rarityColor: display.color ?? 0x00b894,
     cardArtUrl: toAbsoluteImageUrl(card.imageUrl),
+    avatarUrl,
     decoyArt,
     spawnMessage: spawn.message,
     animate: (settings as unknown as { miniGameAnimationEnabled?: boolean }).miniGameAnimationEnabled ?? true,

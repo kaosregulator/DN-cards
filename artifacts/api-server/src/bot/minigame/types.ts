@@ -43,6 +43,12 @@ export interface MiniGameSession {
   cardArtUrl: string | null;
   gameKey: GameKey;
   animate: boolean;
+  // "encounter" = the Pokémon-style wild opener + joke menu is showing;
+  // "playing" = the actual game is running. The opener transitions to the game
+  // on any menu click (or on encounter timeout).
+  phase: "encounter" | "playing";
+  // The catcher's Discord avatar URL, drawn into the wild-encounter intro.
+  avatarUrl: string | null;
   // Real card art from the guild pool (excludes the caught card) — used by games
   // that show decoy/other cards (Memory Match, Choose-a-Card). May be empty.
   decoyArt: { name: string; url: string | null }[];
