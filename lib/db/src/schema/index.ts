@@ -1,4 +1,5 @@
 export * from "./cards";
+export * from "./mini-games";
 export * from "./news";
 export * from "./suggestions";
 export * from "./battles";

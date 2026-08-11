@@ -223,6 +223,25 @@ export async function startBot() {
         return;
       }
 
+      // ── Wild Mini-Game gameplay buttons (mg:* customIds) ───────────────────
+      // Routed early so the encounter owns its own buttons. `mg:` is distinct
+      // from the `minigames:` admin panel prefix below.
+      if (interaction.isButton() && interaction.customId.startsWith("mg:")) {
+        const { handleMiniGameInteraction } = await import("./minigame/manager.js");
+        await handleMiniGameInteraction(interaction);
+        return;
+      }
+
+      // ── Wild Mini-Games admin panel (minigames:* buttons/selects/modals) ───
+      if (
+        (interaction.isMessageComponent() || interaction.isModalSubmit()) &&
+        interaction.customId.startsWith("minigames:")
+      ) {
+        const { handleMiniGamesInteraction } = await import("./commands/minigames-panel.js");
+        await handleMiniGamesInteraction(interaction);
+        return;
+      }
+
       // ── String select menus (config panel + setup panel) ──────────────────
       if (interaction.isStringSelectMenu()) {
         if (interaction.customId.startsWith("help:")) {

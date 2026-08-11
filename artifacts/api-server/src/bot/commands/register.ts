@@ -230,6 +230,8 @@ function buildLegacyCommands() {
     // ── Quick Admin Slash Commands ────────────────────────────────────────────
     adminCmd("config", "Open the server config panel — visual toggles for catch mode, intervals, etc.", s => s),
 
+    adminCmd("minigames", "Wild Mini-Games — schedule game encounters that gate the next catch", s => s),
+
     adminCmd("adminhub", "Quick hub — manage admins, timeouts, and see server state", s => s),
 
     adminCmd("sethub", "Clickable set manager — create sets, add cards, activate spawn pool, export with one click", s => s),
@@ -790,7 +792,7 @@ export const USER_HUB_COMMANDS = new Set([
 ]);
 
 export const ADMIN_HUB_COMMANDS = new Set([
-  "setup", "config", "adminhub", "sethub", "set_admin", "deletecard",
+  "setup", "config", "minigames", "adminhub", "sethub", "set_admin", "deletecard",
   "welcomeadmin", "adminhelp", "drop", "massdrop", "give", "giveshards",
   "takeback", "takeshards", "addcard", "createcardfrommttv", "createcardfrom", "library", "editcard", "editimage", "dashboard", "collectorrole",
   "battleforceend",

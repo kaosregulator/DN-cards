@@ -52,6 +52,12 @@ export async function handleAdminCommand(
     await handleConfigCommand(interaction);
     return;
   }
+  // /minigames opens its own ephemeral panel (no defer here).
+  if (cmd === "minigames") {
+    const { handleMiniGamesCommand } = await import("./minigames-panel.js");
+    await handleMiniGamesCommand(interaction);
+    return;
+  }
   if (cmd === "setup") {
     const { handleSetupCommand } = await import("./setup-wizard.js");
     await handleSetupCommand(interaction);
