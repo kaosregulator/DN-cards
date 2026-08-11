@@ -37,6 +37,9 @@ import {
 import { toAbsoluteImageUrl } from "./image-url.js";
 import { applyEmbedOverride } from "./embed-overrides.js";
 import { logger } from "../lib/logger.js";
+import {
+  isMiniGameArmed, consumeMiniGameArm, initMiniGameSchedules,
+} from "./minigame/scheduler.js";
 import type { Card, AcquisitionSource, GuildSettings } from "@workspace/db";
 import type { CardProgressionGrant } from "./cards/progression.js";
 
@@ -818,6 +821,82 @@ async function awardSpawn(guildId: string, spawnId: string, userId: string, deli
   }, POST_CATCH_LINGER_MS);
   if (spawn.resolveTimer) { clearTimeout(spawn.resolveTimer); spawn.resolveTimer = null; }
 
+  // ── Wild Mini-Game interception ─────────────────────────────────────────────
+  // If a mini-game is armed, the catcher truly caught the card — but it isn't
+  // awarded yet. A "wild" mini-game pops out: win → the card is granted (the same
+  // grantCatch below), lose → it escapes and nothing is granted. Consuming the arm
+  // ensures only this one catch triggers it; the schedule re-arms after it
+  // resolves. Any failure here falls through to the normal instant grant, so a
+  // broken game never costs the player their catch.
+  try {
+    if (await isMiniGameArmed(guildId)) {
+      await consumeMiniGameArm(guildId);
+      const launched = await launchMiniGameForCatch(guildId, spawn, userId);
+      if (launched) return true;
+    }
+  } catch (err) {
+    logger.warn({ err, guildId }, "mini-game interception failed — granting card normally");
+  }
+
+  await grantCatch(guildId, spawn, userId, delivery);
+  return true;
+}
+
+// Launch a wild mini-game for a just-caught card. Returns true when a game
+// actually took over the spawn message (the card is granted later via the win
+// callback); false → the caller should grant normally.
+async function launchMiniGameForCatch(guildId: string, spawn: ActiveSpawn, userId: string): Promise<boolean> {
+  const settings = await getOrCreateGuildSettings(guildId);
+  const cards = await getAllCardsCached(guildId);
+  const rawCard = cards.find(c => c.id === spawn.cardId);
+  if (!rawCard) return false;
+  const ctx = await getRarityContext(guildId);
+  const card = applyRarityContext(rawCard, ctx);
+  const displayMap = await getRarityDisplayOverrides(guildId);
+  const display = getCardDisplayRarity(card, ctx, settings, displayMap);
+  // Other cards from the guild pool (with art) for games that show decoys /
+  // other cards — Memory Match, Choose-a-Card. Shuffled, capped, caught excluded.
+  const decoyArt = cards
+    .filter(c => c.id !== card.id && c.imageUrl && !c.isArchived)
+    .map(c => ({ name: c.name, url: toAbsoluteImageUrl(c.imageUrl) }))
+    .sort(() => Math.random() - 0.5)
+    .slice(0, 12);
+  // The catcher's Discord avatar for the wild-encounter intro (best-effort).
+  let avatarUrl: string | null = null;
+  try {
+    const user = await botClient?.users.fetch(userId);
+    avatarUrl = user?.displayAvatarURL({ extension: "png", size: 128 }) ?? null;
+  } catch { /* avatar is best-effort */ }
+  const { startMiniGame } = await import("./minigame/manager.js");
+  return await startMiniGame({
+    guildId,
+    channelId: spawn.channelId,
+    userId,
+    card,
+    rarityLabel: display.label,
+    rarityColor: display.color ?? 0x00b894,
+    cardArtUrl: toAbsoluteImageUrl(card.imageUrl),
+    avatarUrl,
+    decoyArt,
+    spawnMessage: spawn.message,
+    animate: (settings as unknown as { miniGameAnimationEnabled?: boolean }).miniGameAnimationEnabled ?? true,
+    selection: (settings as unknown as { miniGameSelection?: string }).miniGameSelection ?? "shuffle",
+    onWin: () => grantCatch(guildId, spawn, userId),
+    onLose: () => escapeAfterMiniGame(spawn),
+  });
+}
+
+// On a mini-game loss the card escapes: the game already rendered the "escaped"
+// screen on the message, so just clean it up after a short beat.
+async function escapeAfterMiniGame(spawn: ActiveSpawn): Promise<void> {
+  setTimeout(() => { spawn.message.delete().catch(() => { /* deleted / no perms */ }); }, 8000);
+}
+
+// Grant a caught card to a user: write the collection row, mark the spawn log,
+// run best-effort side effects (wishlist/HQ/quests/XP), and edit the spawn
+// message into the catch preview. Extracted from awardSpawn so a wild mini-game
+// can wedge between "winner determined" and "card granted" (win → this runs).
+async function grantCatch(guildId: string, spawn: ActiveSpawn, userId: string, delivery?: CatchDelivery): Promise<void> {
   // Parallel: write collection row + mark spawn log. Both independent DB calls.
   // The catch also rolls variable acquisition progression (Star/Level) for this
   // spawn's source — or applies an admin-forced Star/Level — through the shared
@@ -924,8 +1003,6 @@ async function awardSpawn(guildId: string, spawnId: string, userId: string, deli
       spawn.message.delete().catch(() => { /* may be deleted / no perms */ });
     }, 6_000);
   } catch { /* deleted or lacking edit perms */ }
-
-  return true;
 }
 
 // Public: button-click claim. Returns success/false.
@@ -1061,6 +1138,10 @@ export async function initAllGuilds(client: Client) {
     // Re-arm any scheduled spawn boost so it survives a restart.
     if (settings.spawnBoostEndsAt) await armBoostTransition(guildId);
   }
+  // Re-arm Wild Mini-Game schedules from persisted state (survives restart).
+  await initMiniGameSchedules([...client.guilds.cache.keys()]).catch(err => {
+    logger.debug({ err }, "initMiniGameSchedules failed (non-fatal)");
+  });
 }
 
 // Build the "CLAIMED" version of a spawn embed — keeps the image, replaces

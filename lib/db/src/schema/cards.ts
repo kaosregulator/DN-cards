@@ -338,6 +338,27 @@ export const guildSettingsTable = pgTable("guild_settings", {
   raidFallback: text("raid_fallback").notNull().default("discord_embed"),
   packPresentation: text("pack_presentation").notNull().default("animated_image"),
   packFallback: text("pack_fallback").notNull().default("animated_image"),
+  // ── Wild Mini-Games ─────────────────────────────────────────────────────────
+  // An admin-controlled layer of "wild" encounters: when a mini-game is armed on
+  // a schedule, the NEXT successful catch does not immediately award the card —
+  // instead a mini-game pops out (like a wild Pokémon). Win → the card is granted;
+  // lose → it escapes. Then normal spawns resume until the next scheduled game.
+  // Off by default so existing guilds keep the instant-award catch flow unchanged.
+  miniGameEnabled: boolean("mini_game_enabled").notNull().default(false),
+  // Cadence for arming the next game: "minutes" | "hourly" | "daily" | "weekly".
+  miniGameCadence: text("mini_game_cadence").notNull().default("daily"),
+  // Interval in minutes, used only when cadence = "minutes".
+  miniGameIntervalMinutes: integer("mini_game_interval_minutes").notNull().default(1440),
+  // Which game to spawn: "shuffle" (random each time) or a specific game key
+  // (e.g. "reaction", "dice"). Unknown/removed keys fall back to shuffle.
+  miniGameSelection: text("mini_game_selection").notNull().default("shuffle"),
+  // When the next game arms (a game becomes "waiting for the next catch").
+  // Persisted so the schedule survives a bot restart, like spawnBoostEndsAt.
+  miniGameNextArmAt: timestamp("mini_game_next_arm_at"),
+  // True while a game is armed and waiting for the next catch to trigger it.
+  miniGameArmed: boolean("mini_game_armed").notNull().default(false),
+  // Play the animated intro/menu canvas (best-effort). Off = static PNG intro.
+  miniGameAnimationEnabled: boolean("mini_game_animation_enabled").notNull().default(true),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
