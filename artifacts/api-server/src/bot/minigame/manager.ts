@@ -71,20 +71,18 @@ function armTimeout(session: MiniGameSession, timeoutMs: number): void {
   session.timer = setTimeout(() => { void onTimeoutFired(session.id); }, timeoutMs);
 }
 
-// Build the joke battle-menu button rows for the encounter phase.
+// Build the joke battle-menu button row for the encounter phase. The full joke
+// text is drawn in the on-canvas menu box; the buttons are numbered 1–4 to match
+// that list (classic "pick option N").
 function encounterMenuRows(sessionId: string, menu: { action: string; label: string }[]): ActionRowBuilder<ButtonBuilder>[] {
-  const rows: ActionRowBuilder<ButtonBuilder>[] = [];
-  for (let i = 0; i < menu.length; i += 2) {
-    const row = new ActionRowBuilder<ButtonBuilder>();
-    for (const m of menu.slice(i, i + 2)) {
-      row.addComponents(new ButtonBuilder()
-        .setCustomId(`mg:${sessionId}:${m.action}`)
-        .setLabel(m.label.slice(0, 78))
-        .setStyle(ButtonStyle.Secondary));
-    }
-    rows.push(row);
-  }
-  return rows;
+  const row = new ActionRowBuilder<ButtonBuilder>();
+  menu.forEach((m, i) => {
+    row.addComponents(new ButtonBuilder()
+      .setCustomId(`mg:${sessionId}:${m.action}`)
+      .setLabel(`${i + 1}`)
+      .setStyle(ButtonStyle.Secondary));
+  });
+  return [row];
 }
 
 // Launch a mini-game on the caught card. Opens with the Pokémon-style wild
@@ -119,20 +117,22 @@ export async function startMiniGame(opts: StartMiniGameOpts): Promise<boolean> {
     session.logId = await logMiniGameStart(opts.guildId, opts.channelId, opts.userId, opts.card.id, game.key);
 
     // ── Wild encounter opener ────────────────────────────────────────────────
+    const menu = pickMenu();
+    session.state.__menu = menu;
     const encInput = {
       cardArtUrl: opts.cardArtUrl, cardName: opts.card.name,
       rarityLabel: opts.rarityLabel, rarityColor: opts.rarityColor, avatarUrl: opts.avatarUrl ?? null,
+      menuLabels: menu.map(m => m.label),
     };
     const encImage = opts.animate
       ? await renderWildEncounterIntro(encInput)
       : await renderWildEncounterStill(encInput);
     const encName = opts.animate && encImage ? ENCOUNTER_GIF_FILE : ENCOUNTER_PNG_FILE;
-    const menu = pickMenu();
-    session.state.__menu = menu;
 
+    const menuList = menu.map((m, i) => `**${i + 1}.** ${m.label}`).join("\n");
     const embed = new EmbedBuilder()
       .setTitle(`⚔️ A WILD ${opts.card.name.toUpperCase()} APPEARED!`)
-      .setDescription("**Prepare for battle!** What do you do?\n*(choose an option…)*")
+      .setDescription(`**Prepare for battle!** What do you do?\n${menuList}`)
       .setColor(opts.rarityColor)
       .setTimestamp();
     const files: AttachmentBuilder[] = [];
