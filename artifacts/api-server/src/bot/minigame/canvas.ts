@@ -30,6 +30,7 @@ import { logger } from "../../lib/logger.js";
 export const MG_CANVAS = { width: 1000, height: 560 } as const;
 export const MG_FILE = "minigame.png";
 export const MG_GIF_FILE = "minigame.gif";
+export const MG_MEMORY_FILE = "minigame-memory.png";
 
 export interface MiniGameScreenSpec {
   // Accent/theme color for banner + glow + left bar (hex int).
@@ -69,11 +70,18 @@ function drawSafe(s: string): string {
     .trim();
 }
 
-// Draw the whole scene once. `pulse` (0→1) drives the glow/scan animation so the
-// same paint routine serves both the still PNG and the animated GIF frames.
-async function paint(ctx: Ctx, mod: CanvasMod, spec: MiniGameScreenSpec, pulse: number): Promise<void> {
+interface PaintAnim {
+  pulse: number;         // 0→1 glow/scan pulse
+  cardShiftX?: number;   // horizontal card offset (escaping-card motion)
+  speedLines?: boolean;  // draw motion streaks behind the card
+}
+
+// Draw the whole scene once. `anim` drives the glow/scan/motion so the same paint
+// routine serves the still PNG, the pulsing intro GIF, and the chase motion GIF.
+async function paint(ctx: Ctx, mod: CanvasMod, spec: MiniGameScreenSpec, anim: PaintAnim): Promise<void> {
   const { width, height } = MG_CANVAS;
   const accent = spec.theme;
+  const pulse = anim.pulse;
 
   // Background: theme-tinted gradient + arena atmosphere (fog/dust/embers).
   drawGradientBackground(ctx, width, height, [
@@ -99,7 +107,25 @@ async function paint(ctx: Ctx, mod: CanvasMod, spec: MiniGameScreenSpec, pulse: 
   ctx.restore();
 
   // ── Card on the right ──────────────────────────────────────────────────────
-  const cw = 300, ch = 420, cx = width - cw - 70, cy = (height - ch) / 2;
+  const cw = 300, ch = 420, cx0 = width - cw - 70, cy = (height - ch) / 2;
+  const cx = cx0 + (anim.cardShiftX ?? 0);
+  // Motion streaks trailing the escaping card (drawn behind it).
+  if (anim.speedLines) {
+    ctx.save();
+    ctx.strokeStyle = hexToRgba(accent, 0.5);
+    ctx.lineCap = "round";
+    for (let i = 0; i < 9; i++) {
+      const ly2 = cy + 24 + (ch - 48) * (i / 8);
+      const len = 60 + (i % 3) * 40 + pulse * 40;
+      ctx.lineWidth = 2 + (i % 2);
+      ctx.globalAlpha = 0.25 + 0.5 * ((i % 3) / 2);
+      ctx.beginPath();
+      ctx.moveTo(cx - 20, ly2);
+      ctx.lineTo(cx - 20 - len, ly2);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
   const glow = 0.55 + 0.4 * pulse;
   drawRarityGlow(ctx, cx, cy, cw, ch, spec.rarityColor, glow);
   if (spec.hideCardArt) {
@@ -197,7 +223,7 @@ export async function renderMiniGameStill(spec: MiniGameScreenSpec): Promise<Buf
       const { width, height } = MG_CANVAS;
       const canvas = mod.createCanvas(width, height);
       const ctx = canvas.getContext("2d") as unknown as Ctx;
-      await paint(ctx, mod, spec, 0.35);
+      await paint(ctx, mod, spec, { pulse: 0.35 });
       return await canvas.encode("png");
     } catch (err) {
       logger.debug({ err }, "minigame still canvas: render failed");
@@ -217,7 +243,121 @@ export async function renderMiniGameIntro(
     render: async ({ ctx, mod, t }) => {
       // Ping-pong the pulse so the loop breathes rather than jumping.
       const pulse = t < 0.5 ? t * 2 : (1 - t) * 2;
-      await paint(ctx as unknown as Ctx, mod, spec, pulse);
+      await paint(ctx as unknown as Ctx, mod, spec, { pulse });
+    },
+  });
+  return result?.buffer ?? null;
+}
+
+// ── Memory Match board ───────────────────────────────────────────────────────
+export interface MemoryCell {
+  state: "down" | "up" | "matched";
+  artUrl: string | null;
+  rarityColor: number;
+}
+export interface MemoryBoardInput {
+  theme: number;
+  title: string;
+  subtitle: string;
+  cols: number;
+  cells: MemoryCell[];
+}
+
+// Draw a small facedown DN card back at (x,y,w,h).
+function drawCardBack(ctx: Ctx, x: number, y: number, w: number, h: number, accent: number): void {
+  ctx.save();
+  roundRectPath(ctx, x, y, w, h, 12);
+  ctx.clip();
+  const g = ctx.createLinearGradient(x, y, x + w, y + h);
+  g.addColorStop(0, hexToRgba(accent, 0.35));
+  g.addColorStop(1, "#0a0a10");
+  ctx.fillStyle = g;
+  ctx.fillRect(x, y, w, h);
+  ctx.restore();
+  drawTitle(ctx, "DN", x + w / 2, y + h / 2 - 6, "#ffffff", Math.round(w * 0.28));
+  drawTextWithShadow(ctx, "CARDS", x + w / 2, y + h / 2 + Math.round(h * 0.14), hexToRgba(accent, 1), Math.round(w * 0.11));
+  drawCardFrame(ctx, x, y, w, h, accent, 4);
+}
+
+// Render the memory board: a grid of small cards, each facedown, face-up (real
+// card art), or matched (dimmed with a ✓). Positions are numbered 1..n to map to
+// the flip buttons.
+export async function renderMemoryBoard(input: MemoryBoardInput): Promise<Buffer | null> {
+  return queueRender("minigame-memory", async () => {
+    const mod = await getCanvas();
+    if (!mod) return null;
+    try {
+      const { width, height } = MG_CANVAS;
+      const canvas = mod.createCanvas(width, height);
+      const ctx = canvas.getContext("2d") as unknown as Ctx;
+      const accent = input.theme;
+
+      drawGradientBackground(ctx, width, height, [
+        [0, hexToRgba(accent, 0.3)], [0.55, "#0b0d12"], [1, "#050507"],
+      ], 0.3);
+      drawAtmosphere(ctx, width, height, atmospherePreset("arena"), { seed: "memory-mg", color: accent, density: 0.4 });
+
+      drawTitle(ctx, drawSafe(input.title), width / 2, 40, "#ffffff", 34);
+      drawTextWithShadow(ctx, drawSafe(input.subtitle), width / 2, 74, hexToRgba(accent, 1), 20);
+
+      const n = input.cells.length;
+      const cols = input.cols;
+      const rows = Math.ceil(n / cols);
+      const gap = 22;
+      const areaTop = 104, areaBottom = height - 28;
+      const availH = areaBottom - areaTop;
+      const ch = Math.min(190, Math.floor((availH - (rows - 1) * gap) / rows));
+      const cw = Math.round(ch * 0.72);
+      const gridW = cols * cw + (cols - 1) * gap;
+      const x0 = Math.round((width - gridW) / 2);
+      const gridH = rows * ch + (rows - 1) * gap;
+      const y0 = Math.round(areaTop + (availH - gridH) / 2);
+
+      for (let i = 0; i < n; i++) {
+        const cell = input.cells[i]!;
+        const col = i % cols, row = Math.floor(i / cols);
+        const x = x0 + col * (cw + gap);
+        const y = y0 + row * (ch + gap);
+        if (cell.state === "down") {
+          drawCardBack(ctx, x, y, cw, ch, accent);
+          drawTextWithShadow(ctx, String(i + 1), x + cw / 2, y + ch + 16, "rgba(255,255,255,0.75)", 18);
+        } else {
+          const col2 = cell.rarityColor;
+          drawRarityGlow(ctx, x, y, cw, ch, col2, cell.state === "matched" ? 0.4 : 0.75);
+          await drawCardArt(ctx, mod, x, y, cw, ch, cell.artUrl);
+          drawCardFrame(ctx, x, y, cw, ch, cell.state === "matched" ? 0x2ecc71 : col2, 5);
+          if (cell.state === "matched") {
+            ctx.save();
+            roundRectPath(ctx, x, y, cw, ch, 12); ctx.clip();
+            ctx.fillStyle = "rgba(0,0,0,0.4)"; ctx.fillRect(x, y, cw, ch);
+            ctx.restore();
+            drawTitle(ctx, "✓", x + cw / 2, y + ch / 2, "#2ecc71", Math.round(cw * 0.5));
+          }
+        }
+      }
+      return await canvas.encode("png");
+    } catch (err) {
+      logger.debug({ err }, "memory board canvas: render failed");
+      return null;
+    }
+  });
+}
+
+// The "card is escaping" motion GIF (Chase): the card lunges toward the edge and
+// snaps back, trailing speed lines — a looping struggle-to-flee. Loops forever.
+export async function renderChaseIntro(
+  spec: MiniGameScreenSpec, speed: AnimationSpeed = "normal",
+): Promise<Buffer | null> {
+  const { width, height } = MG_CANVAS;
+  const result = await encodeAnimation({
+    width, height, speed, durationMs: 1600, maxFrames: 20, quality: 18, renderScale: 0.5,
+    render: async ({ ctx, mod, t }) => {
+      // Ease the card outward then back — like it keeps trying to bolt.
+      const lunge = Math.sin(t * Math.PI * 2);
+      const cardShiftX = Math.max(0, lunge) * 46;
+      await paint(ctx as unknown as Ctx, mod, spec, {
+        pulse: 0.4 + 0.6 * Math.abs(lunge), cardShiftX, speedLines: true,
+      });
     },
   });
   return result?.buffer ?? null;

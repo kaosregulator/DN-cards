@@ -854,6 +854,13 @@ async function launchMiniGameForCatch(guildId: string, spawn: ActiveSpawn, userI
   const card = applyRarityContext(rawCard, ctx);
   const displayMap = await getRarityDisplayOverrides(guildId);
   const display = getCardDisplayRarity(card, ctx, settings, displayMap);
+  // Other cards from the guild pool (with art) for games that show decoys /
+  // other cards — Memory Match, Choose-a-Card. Shuffled, capped, caught excluded.
+  const decoyArt = cards
+    .filter(c => c.id !== card.id && c.imageUrl && !c.isArchived)
+    .map(c => ({ name: c.name, url: toAbsoluteImageUrl(c.imageUrl) }))
+    .sort(() => Math.random() - 0.5)
+    .slice(0, 12);
   const { startMiniGame } = await import("./minigame/manager.js");
   return await startMiniGame({
     guildId,
@@ -863,6 +870,7 @@ async function launchMiniGameForCatch(guildId: string, spawn: ActiveSpawn, userI
     rarityLabel: display.label,
     rarityColor: display.color ?? 0x00b894,
     cardArtUrl: toAbsoluteImageUrl(card.imageUrl),
+    decoyArt,
     spawnMessage: spawn.message,
     animate: (settings as unknown as { miniGameAnimationEnabled?: boolean }).miniGameAnimationEnabled ?? true,
     selection: (settings as unknown as { miniGameSelection?: string }).miniGameSelection ?? "shuffle",

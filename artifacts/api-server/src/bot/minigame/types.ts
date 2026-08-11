@@ -13,7 +13,10 @@ import type { Card } from "@workspace/db";
 
 // Every implemented game key. The admin's `miniGameSelection` is either
 // "shuffle" or one of these.
-export type GameKey = "reaction" | "choose" | "dice" | "aim" | "code";
+export type GameKey =
+  | "reaction" | "choose" | "dice" | "aim" | "code"
+  | "chase" | "memory" | "battle" | "puzzle" | "map"
+  | "radar" | "mission" | "crate" | "firstreact" | "auction";
 
 // Rendered screen (embed + optional canvas attachment) for a game step.
 export interface MiniGameRender {
@@ -40,6 +43,9 @@ export interface MiniGameSession {
   cardArtUrl: string | null;
   gameKey: GameKey;
   animate: boolean;
+  // Real card art from the guild pool (excludes the caught card) — used by games
+  // that show decoy/other cards (Memory Match, Choose-a-Card). May be empty.
+  decoyArt: { name: string; url: string | null }[];
   logId: number | null;
   message: Message | null;
   // Per-game scratch state (answer index, roll target, sequence, …).

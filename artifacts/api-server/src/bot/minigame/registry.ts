@@ -7,6 +7,16 @@ import { chooseCardGame } from "./games/choose-card.js";
 import { diceGame } from "./games/dice.js";
 import { aimGame } from "./games/aim-radar.js";
 import { codeBreakGame } from "./games/code-break.js";
+import { chaseGame } from "./games/chase.js";
+import { memoryGame } from "./games/memory.js";
+import { battleGame } from "./games/battle-to-claim.js";
+import { puzzleGame } from "./games/puzzle.js";
+import { mapGame } from "./games/map.js";
+import { radarGame } from "./games/radar-scan.js";
+import { missionGame } from "./games/mission.js";
+import { crateGame } from "./games/mystery-crate.js";
+import { firstReactGame } from "./games/first-to-react.js";
+import { auctionGame } from "./games/auction.js";
 
 export const GAMES: Record<GameKey, MiniGameDefinition> = {
   reaction: reactionGame,
@@ -14,6 +24,16 @@ export const GAMES: Record<GameKey, MiniGameDefinition> = {
   dice: diceGame,
   aim: aimGame,
   code: codeBreakGame,
+  chase: chaseGame,
+  memory: memoryGame,
+  battle: battleGame,
+  puzzle: puzzleGame,
+  map: mapGame,
+  radar: radarGame,
+  mission: missionGame,
+  crate: crateGame,
+  firstreact: firstReactGame,
+  auction: auctionGame,
 };
 
 export const GAME_KEYS = Object.keys(GAMES) as GameKey[];

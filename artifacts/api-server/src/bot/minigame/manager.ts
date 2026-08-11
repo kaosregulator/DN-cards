@@ -30,6 +30,7 @@ export interface StartMiniGameOpts {
   rarityLabel: string;
   rarityColor: number;
   cardArtUrl: string | null;
+  decoyArt?: { name: string; url: string | null }[];
   spawnMessage: Message;
   animate: boolean;
   selection: string;
@@ -73,6 +74,7 @@ export async function startMiniGame(opts: StartMiniGameOpts): Promise<boolean> {
     cardArtUrl: opts.cardArtUrl,
     gameKey: game.key,
     animate: opts.animate,
+    decoyArt: opts.decoyArt ?? [],
     logId: null,
     message: opts.spawnMessage,
     state: {},
