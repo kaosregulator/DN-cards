@@ -71,6 +71,9 @@ export async function getCanvas(): Promise<CanvasMod | null> {
 // text stays on the system sans. Orbitron is a bundled OFL font — registering it
 // with @napi-rs/canvas makes `ctx.font = '... "Orbitron" ...'` resolve.
 export const TITLE_FONT_FAMILY = "Orbitron";
+// A bundled OFL bitmap font (Press Start 2P) for the retro Game Boy / Pokémon
+// look — used by the wild-encounter intro's boxes, name/HP header and dialogue.
+export const PIXEL_FONT_FAMILY = "Early GameBoy";
 let _fontsRegistered = false;
 
 // Resolve the bundled fonts dir across dev (tsx from src) and prod (bundled
@@ -96,7 +99,14 @@ function registerFonts(mod: CanvasMod): void {
     if (!reg || !fontsDir) return;
     reg.registerFromPath(join(fontsDir, "Orbitron-Black.ttf"), TITLE_FONT_FAMILY);
     reg.registerFromPath(join(fontsDir, "Orbitron-Bold.ttf"), TITLE_FONT_FAMILY);
-    logger.info({ fontsDir }, "animation engine: registered Orbitron title font");
+    // Optional bitmap font — best-effort; text falls back to the title/system font.
+    // Early GameBoy is the preferred pixel face; Press Start 2P is a fallback.
+    if (existsSync(join(fontsDir, "EarlyGameBoy.ttf"))) {
+      reg.registerFromPath(join(fontsDir, "EarlyGameBoy.ttf"), PIXEL_FONT_FAMILY);
+    } else if (existsSync(join(fontsDir, "PressStart2P-Regular.ttf"))) {
+      reg.registerFromPath(join(fontsDir, "PressStart2P-Regular.ttf"), PIXEL_FONT_FAMILY);
+    }
+    logger.info({ fontsDir }, "animation engine: registered Orbitron + pixel fonts");
   } catch (err) {
     // Non-fatal: titles fall back to the system sans if registration fails.
     logger.debug({ err }, "animation engine: font registration skipped");
