@@ -1,13 +1,15 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // Wild-encounter intro — the Pokémon-style "A WILD CARD APPEARED!" opener that
 // plays BEFORE any game. Composites the user-supplied pixel-art assets
-// (assets/minigame/): a clean sunset Background, two grass platforms, the DN
-// trainer figure (holding his special cards) sliding in from the left, the caught
-// card (the REAL spawned card's art in its DN frame) sliding in from the right,
-// an enemy name/HP box top-left, the wide dialogue box ("A WILD <card>
-// APPEARED!"), and the joke menu box listing the shuffled options. Reuses the
-// shared animation engine. Best-effort: any missing asset falls back to a drawn
-// stand-in; a null render lets the flow fall back to text only.
+// (assets/minigame/): a clean sunset Background, TWO DISTINCT grass islands (a
+// clean island for the enemy side + a card-strewn island for the player side),
+// the DN trainer figure (holding his special cards) sliding in from the left,
+// the caught card (the REAL spawned card's art in its DN frame) sliding in from
+// the right, an enemy name/HP box top-left, a pixel pokéball tray bottom-left,
+// the joke menu box (bottom-right) and the wide dialogue box. All text is drawn
+// in the bundled Press Start 2P bitmap font for the retro Game Boy look. Reuses
+// the shared animation engine. Best-effort: any missing asset falls back to a
+// drawn stand-in; a null render lets the flow fall back to text only.
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { existsSync, readFileSync } from "node:fs";
@@ -15,10 +17,10 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
   getCanvas, hexToRgba, roundRectPath, encodeAnimation, clamp01, easeInOutCubic, lerp,
-  type Ctx, type CanvasMod,
+  PIXEL_FONT_FAMILY, type Ctx, type CanvasMod,
 } from "../animations/engine.js";
 import { queueRender } from "../animations/render-queue.js";
-import { drawCardArt, drawCardFrame, drawRarityGlow, drawTextWithShadow, drawTitle, fitText, TITLE_FONT } from "../animations/effects.js";
+import { drawCardArt, drawCardFrame, drawRarityGlow, fitText } from "../animations/effects.js";
 import type { AnimationSpeed } from "../animations/types.js";
 import { logger } from "../../lib/logger.js";
 
@@ -27,6 +29,9 @@ type Img = import("@napi-rs/canvas").Image;
 export const ENCOUNTER_CANVAS = { width: 1000, height: 560 } as const;
 export const ENCOUNTER_GIF_FILE = "wild-encounter.gif";
 export const ENCOUNTER_PNG_FILE = "wild-encounter.png";
+
+// The bitmap font, with graceful fallbacks if it isn't registered.
+const PIXEL_STACK = `"${PIXEL_FONT_FAMILY}", "DejaVu Sans", Arial, sans-serif`;
 
 export interface WildEncounterInput {
   cardArtUrl: string | null;
@@ -67,6 +72,25 @@ function safe(s: string): string {
   return s.replace(/[\u{1F000}-\u{1FAFF}\u{FE00}-\u{FE0F}\u{2190}-\u{27BF}\u{2B00}-\u{2BFF}]/gu, "").replace(/\s{2,}/g, " ").trim();
 }
 
+// Crisp pixel-font text with a 2px drop shadow (no heavy outline — keeps the
+// blocky glyphs legible at small sizes). Positions are TOP-anchored by default.
+type PixAlign = "left" | "right" | "center";
+function drawPixelText(
+  ctx: Ctx, text: string, x: number, y: number,
+  color: string, size: number, align: PixAlign = "left",
+  baseline: "top" | "middle" = "top",
+): void {
+  ctx.save();
+  ctx.textAlign = align;
+  ctx.textBaseline = baseline;
+  ctx.font = `${size}px ${PIXEL_STACK}`;
+  ctx.fillStyle = "rgba(0,0,0,0.82)";
+  ctx.fillText(text, x + 2, y + 2);
+  ctx.fillStyle = color;
+  ctx.fillText(text, x, y);
+  ctx.restore();
+}
+
 // Cover-fit an image across a rect (crops overflow, like CSS background-size:cover).
 function drawCover(ctx: Ctx, img: Img, x: number, y: number, w: number, h: number): void {
   const s = Math.max(w / img.width, h / img.height);
@@ -88,11 +112,35 @@ function drawFallbackPlatform(ctx: Ctx, cx: number, cy: number, rx: number, ry: 
   ctx.beginPath(); e.ellipse(cx, cy - ry * 0.25, rx * 0.9, ry * 0.7, 0, 0, Math.PI * 2); ctx.fillStyle = "#6ab04c"; ctx.fill(); ctx.restore();
 }
 
+// A single pixel-art pokéball.
+function drawPokeball(ctx: Ctx, cx: number, cy: number, r: number): void {
+  const arc = (rad: number, a0: number, a1: number, fill: string) => {
+    ctx.beginPath(); ctx.moveTo(cx, cy);
+    ctx.arc(cx, cy, rad, a0, a1); ctx.closePath();
+    ctx.fillStyle = fill; ctx.fill();
+  };
+  ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fillStyle = "#141418"; ctx.fill(); // outline
+  arc(r - 2, Math.PI, 0, "#e02626");        // top red half
+  arc(r - 2, 0, Math.PI, "#f0f0f0");        // bottom white half
+  ctx.fillStyle = "#141418"; ctx.fillRect(cx - (r - 2), cy - 2, (r - 2) * 2, 4); // band
+  ctx.beginPath(); ctx.arc(cx, cy, 5, 0, Math.PI * 2); ctx.fillStyle = "#141418"; ctx.fill();
+  ctx.beginPath(); ctx.arc(cx, cy, 3, 0, Math.PI * 2); ctx.fillStyle = "#f5f5f5"; ctx.fill();
+}
+
+// The trainer's pokéball tray (bottom-left) — a dark rounded bar of balls.
+function drawPokeballTray(ctx: Ctx, x: number, y: number, w: number, h: number, n: number): void {
+  roundRectPath(ctx, x, y, w, h, 9);
+  ctx.fillStyle = "rgba(38,38,46,0.96)"; ctx.fill();
+  ctx.lineWidth = 2; ctx.strokeStyle = "rgba(96,96,112,0.9)"; ctx.stroke();
+  const r = Math.round(h * 0.32), gap = w / n;
+  for (let i = 0; i < n; i++) drawPokeball(ctx, Math.round(x + gap * (i + 0.5)), Math.round(y + h / 2), r);
+}
+
 async function paint(ctx: Ctx, mod: CanvasMod, input: WildEncounterInput, t: number): Promise<void> {
   const { width, height } = ENCOUNTER_CANVAS;
   const accent = input.rarityColor;
-  const [bg, platform, textbox, menubox, trainer] = await Promise.all([
-    localImg(mod, "background.png"), localImg(mod, "platform.png"),
+  const [bg, enemyIsland, playerIsland, textbox, menubox, trainer] = await Promise.all([
+    localImg(mod, "background.png"), localImg(mod, "island2.png"), localImg(mod, "island1.png"),
     localImg(mod, "textbox.png"), localImg(mod, "menubox.png"), localImg(mod, "trainer.png"),
   ]);
 
@@ -108,40 +156,49 @@ async function paint(ctx: Ctx, mod: CanvasMod, input: WildEncounterInput, t: num
   // Slower slide-in (eases over the first ~72% of the timeline).
   const slide = easeInOutCubic(clamp01(t / 0.72));
 
-  // Enemy platform (upper-right) + the wild card sliding in from the right.
-  const epx = 700, epy = 288;
-  if (platform) drawImgBottom(ctx, platform, epx, epy + 34, 330);
-  else drawFallbackPlatform(ctx, epx, epy, 165, 42);
-  const cw = 150, ch = 210;
-  const cardX = lerp(width + 90, epx - cw / 2, slide);
-  const cardY = epy - ch + 12;
+  // Enemy island (upper-right) + the wild card, centered on its island, sliding
+  // in from the right. Raised so it sits clearly ABOVE the menu box, per ref.
+  const epx = 700, epBottom = 286;
+  if (enemyIsland) drawImgBottom(ctx, enemyIsland, epx, epBottom, 350);
+  else drawFallbackPlatform(ctx, epx, epBottom - 20, 172, 44);
+  const cw = 152, ch = 214, cardBottom = 280;
+  const cardCx = lerp(width + 100, epx, slide);
+  const cardX = cardCx - cw / 2, cardY = cardBottom - ch;
   drawRarityGlow(ctx, cardX, cardY, cw, ch, accent, 0.85);
   await drawCardArt(ctx, mod, cardX, cardY, cw, ch, input.cardArtUrl);
   drawCardFrame(ctx, cardX, cardY, cw, ch, accent, 6);
 
-  // Player platform (lower-left) + the trainer figure sliding in from the left.
-  const ppx = 252, ppy = 452;
-  if (platform) drawImgBottom(ctx, platform, ppx, ppy + 24, 430);
-  else drawFallbackPlatform(ctx, ppx, ppy, 165, 40);
-  const figX = lerp(-190, ppx, slide);
-  if (trainer) drawImgBottom(ctx, trainer, figX, ppy + 4, 286);
+  // Player side + the trainer sliding in from the left. The figure is large
+  // (foreground); its grass island is ALMOST HIDDEN — pushed well below the frame
+  // so only a hill of grass peeks out at the feet, mostly behind the figure and
+  // the dialogue box — mirroring the reference mockup.
+  const ppx = 170, ppBottom = 656;
+  if (playerIsland) drawImgBottom(ctx, playerIsland, ppx, ppBottom, 560);
+  else drawFallbackPlatform(ctx, ppx, 520, 180, 40);
+  const figCx = lerp(-210, 242, slide);
+  if (trainer) drawImgBottom(ctx, trainer, figCx, 540, 322);
 
-  // Enemy name/HP box — top left (fades in with the slide).
+  // Enemy name/HP box — top-left (fades in with the slide).
   ctx.save();
   ctx.globalAlpha = slide;
-  const bx = 30, by = 22, bw = 420, bh = 92;
-  roundRectPath(ctx, bx, by, bw, bh, 12);
-  ctx.fillStyle = "rgba(20,18,16,0.88)"; ctx.fill();
-  ctx.lineWidth = 3; ctx.strokeStyle = hexToRgba(accent, 0.9); ctx.stroke();
-  ctx.restore();
-  drawTitle(ctx, safe(input.cardName), bx + 18, by + 30, "#ffffff",
-    fitText(ctx, safe(input.cardName), bw - 150, 25, 13, TITLE_FONT), "left");
-  drawTextWithShadow(ctx, safe(input.rarityLabel).toUpperCase(), bx + bw - 18, by + 30, hexToRgba(accent, 1), 17, "right");
-  const hbx = bx + 58, hby = by + 56, hbw = bw - 86, hbh = 15;
-  drawTextWithShadow(ctx, "HP", bx + 18, hby + hbh / 2, "#ffcf3f", 15, "left");
+  const bx = 28, by = 20, bw = 420, bh = 92;
+  roundRectPath(ctx, bx, by, bw, bh, 11);
+  ctx.fillStyle = "rgba(20,18,16,0.9)"; ctx.fill();
+  ctx.lineWidth = 3; ctx.strokeStyle = hexToRgba(accent, 0.95); ctx.stroke();
+  const name = safe(input.cardName).toUpperCase();
+  drawPixelText(ctx, name, bx + 16, by + 22, "#ffffff",
+    fitText(ctx, name, bw - 150, 15, 9, PIXEL_FONT_FAMILY));
+  const rarity = safe(input.rarityLabel).toUpperCase();
+  drawPixelText(ctx, rarity, bx + bw - 14, by + 24, hexToRgba(accent, 1),
+    fitText(ctx, rarity, 120, 12, 8, PIXEL_FONT_FAMILY), "right");
+  const hbx = bx + 52, hby = by + 52, hbw = bw - 68, hbh = 16;
+  drawPixelText(ctx, "HP", bx + 16, hby + 3, "#ffcf3f", 13);
   roundRectPath(ctx, hbx, hby, hbw, hbh, 7); ctx.fillStyle = "#2b2b2b"; ctx.fill();
   ctx.save(); roundRectPath(ctx, hbx + 2, hby + 2, hbw - 4, hbh - 4, 5); ctx.clip();
   ctx.fillStyle = "#4caf50"; ctx.fillRect(hbx + 2, hby + 2, hbw - 4, hbh - 4); ctx.restore();
+  // The trainer's pokéball tray, bottom-left.
+  drawPokeballTray(ctx, 26, 420, 258, 40, 6);
+  ctx.restore();
 
   // Menu box (bottom-right) listing the shuffled joke options, then the wide
   // dialogue box (bottom) — both fade up after the combatants are in.
@@ -149,25 +206,26 @@ async function paint(ctx: Ctx, mod: CanvasMod, input: WildEncounterInput, t: num
   if (uiAlpha > 0) {
     ctx.save();
     ctx.globalAlpha = uiAlpha;
-    // Joke menu box.
-    const mx = 622, my = 302, mw = 358, mh = 150;
+    // Joke menu box (the asset carries its own ▶ cursor beside the first option).
+    const mx = 636, my = 300, mw = 344, mh = 150;
     if (menubox) ctx.drawImage(menubox, mx, my, mw, mh);
     else { roundRectPath(ctx, mx, my, mw, mh, 12); ctx.fillStyle = "rgba(240,238,230,0.96)"; ctx.fill(); ctx.lineWidth = 4; ctx.strokeStyle = "#2b2b33"; ctx.stroke(); }
-    const opts = (input.menuLabels ?? []).slice(0, 4);
-    const lineH = 30, tx = mx + 46, ty0 = my + 34;
+    const opts = ((input.menuLabels && input.menuLabels.length ? input.menuLabels : ["ENGAGE", "THROW CARD", "CARD INFO", "RUN"])).slice(0, 4);
+    const lineH = 28, tx = mx + 56, ty0 = my + 33; // first line aligned to the baked ▶ cursor
     opts.forEach((label, k) => {
-      const y = ty0 + k * lineH;
-      if (k === 0) drawTextWithShadow(ctx, "▶", mx + 24, y, "#2b2b33", 16, "left");
-      const line = `${k + 1}. ${label}`;
-      drawTextWithShadow(ctx, line, tx, y, "#2b2b33", fitText(ctx, line, mw - 66, 16, 11), "left");
+      const line = label.toUpperCase();
+      drawPixelText(ctx, line, tx, ty0 + k * lineH, "#2b2b33",
+        fitText(ctx, line, mw - 80, 12, 8, PIXEL_FONT_FAMILY));
     });
 
     // Wide dialogue box.
-    const dx = 20, dw = width - 40, dh = 88, dy = height - dh - 8;
+    const dx = 20, dw = width - 40, dh = 86, dy = height - dh - 8;
     if (textbox) ctx.drawImage(textbox, dx, dy, dw, dh);
     else { roundRectPath(ctx, dx, dy, dw, dh, 12); ctx.fillStyle = "rgba(245,242,235,0.96)"; ctx.fill(); ctx.lineWidth = 4; ctx.strokeStyle = "#2b2b33"; ctx.stroke(); }
-    drawTextWithShadow(ctx, `A WILD ${safe(input.cardName).toUpperCase()} APPEARED!`, dx + 44, dy + 34, "#2b2b33", 24, "left");
-    drawTextWithShadow(ctx, "PREPARE FOR BATTLE!  —  Choose your move…", dx + 44, dy + 64, "#7a4a2a", 19, "left");
+    const line1 = `A WILD ${name} APPEARED!`;
+    drawPixelText(ctx, line1, dx + 40, dy + 26, "#2b2b33",
+      fitText(ctx, line1, dw - 96, 16, 9, PIXEL_FONT_FAMILY));
+    drawPixelText(ctx, "PREPARE FOR BATTLE!", dx + 40, dy + 54, "#7a4a2a", 13);
     ctx.restore();
   }
 }
