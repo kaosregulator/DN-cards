@@ -30,6 +30,18 @@ import { logger } from "../../lib/logger.js";
 export const THEATER_ADDON_ENABLED =
   process.env["THEATER_ADDON_ENABLED"] === "1";
 
+// Mark add-on mode for the Theater's own config (read the first time any Theater
+// module loads). This makes the Theater refuse to borrow the DN-Cards Discord
+// Application for its embedded Activity: its Activity credentials come only from
+// its own THEATER_CLIENT_ID / THEATER_CLIENT_SECRET (a separate Application),
+// so the host's game Activity is never touched. Set here, at host module load,
+// so it is in place before the first dynamic import of any Theater code. This
+// only sets a brand-new variable the host itself never reads — it never mutates
+// any DISCORD_* / PUBLIC_BASE_URL value the host depends on.
+if (THEATER_ADDON_ENABLED) {
+  process.env["THEATER_ADDON"] = "1";
+}
+
 // Absolute directory of the add-on. Overridable for non-standard layouts; by
 // default it sits at <repo>/addons/theater and the server runs from the repo
 // root (process.cwd()), matching the Replit/VM deployment.

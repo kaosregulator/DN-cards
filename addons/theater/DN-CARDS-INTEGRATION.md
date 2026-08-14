@@ -20,12 +20,44 @@ When enabled, at bot startup the host:
    (`HOME_GUILD_ID`) — never globally, never to other guilds.
 3. Starts the Theater's **own** Express server + WebSocket sync on its own port
    (`THEATER_PORT`) and attaches the Theater's interaction handlers to the shared
-   client (one bot token → one Discord Activity).
+   DN-Cards bot client.
 
 The Theater's own code (`addons/theater/src/**`) is imported at runtime and is
 **never bundled** into the DN-Cards api-server build, so its dependencies
 (Express 4, `ws`, `@discord/embedded-app-sdk`, its own `@napi-rs/canvas`, …) stay
 fully isolated in `addons/theater/node_modules`.
+
+## Credentials & the embedded Activity (important)
+
+The add-on **reuses the existing DN-Cards infrastructure and credentials** — you
+do not re-enter any tokens. The shared bot gateway, `DISCORD_BOT_TOKEN`, and
+`SESSION_SECRET` already in the Replit environment are used as-is.
+
+The one thing it deliberately does **not** reuse is the DN-Cards Discord
+**Application** for the embedded Activity iframe. A Discord Application can own
+only **one** embedded Activity, and DN-Cards already uses its Application for the
+Phaser game Activity. So the Theater runs in add-on mode (`THEATER_ADDON=1`, set
+automatically) which means:
+
+- The Theater **never** targets the DN-Cards Application for its Activity. Until
+  a separate Theater Application is configured, `/theater` still posts its live
+  control panel, seating, sync, and `/host` uploader — it just omits the
+  "Open Theater" embedded-launch button. **The Phaser Activity and the website
+  are never touched.**
+- To turn the embedded Activity on later, create **one** new Discord Application
+  (keep the existing DN-Cards bot token), enable Activities on it, map its
+  Activity URL to the Theater's own endpoint, and set:
+  ```
+  THEATER_CLIENT_ID=…            # the NEW Application's Client ID
+  THEATER_CLIENT_SECRET=…        # the NEW Application's Client Secret
+  THEATER_PUBLIC_BASE_URL=https://…   # the Theater's own public URL (its port)
+  ```
+  That is the only additional configuration needed; the DN-Cards bot posts the
+  invite that launches the new Application's Activity.
+
+Standalone mode (running this folder on its own, no `THEATER_ADDON`) is
+unchanged: it still reads `DISCORD_CLIENT_ID` / `DISCORD_CLIENT_SECRET` /
+`PUBLIC_BASE_URL` exactly as it always did.
 
 Commands / custom-id prefixes the add-on owns: `watch`, `join`, `theater`,
 `library`, `theater-settings` and `w:`, `ps:`, `t:ctl:`, `set:`, `join:`.
@@ -40,22 +72,23 @@ instead of running.
    npm install
    npm run build          # builds the Activity → addons/theater/dist/public
    ```
-2. Set env vars for the DN-Cards process (in addition to the existing
-   `HOME_GUILD_ID`):
+2. Set env vars for the DN-Cards process. Existing DN-Cards values
+   (`DISCORD_BOT_TOKEN`, `SESSION_SECRET`, `HOME_GUILD_ID`) are reused
+   automatically — you only add:
    ```
    THEATER_ADDON_ENABLED=1
-   THEATER_PORT=8080                 # a publicly-exposed port for the Activity
-   DISCORD_CLIENT_ID=…               # same Application as the DN-Cards bot
-   DISCORD_CLIENT_SECRET=…
-   PUBLIC_BASE_URL=https://…         # the public HTTPS URL that maps to THEATER_PORT
-   SESSION_SECRET=…
+   THEATER_PORT=8080                 # a publicly-exposed port for the Theater
    MEDIA_DIR=…                       # where movies live (see .env.example)
    ```
-   See `addons/theater/.env.example` for the full list and defaults.
-3. In the Discord Developer Portal, enable Activities for the Application and set
-   the URL mapping (`/` → your `PUBLIC_BASE_URL`).
-4. Restart DN-Cards. The Theater commands appear in the home guild; everything
-   else is unchanged.
+   The embedded Activity stays off until you also add a separate Theater
+   Application (see "Credentials & the embedded Activity" above):
+   ```
+   THEATER_CLIENT_ID=…               # NEW Application's Client ID
+   THEATER_CLIENT_SECRET=…           # NEW Application's Client Secret
+   THEATER_PUBLIC_BASE_URL=https://… # the Theater's own public URL
+   ```
+3. Restart DN-Cards. The Theater commands appear in the home guild; the website
+   and Phaser Activity are unchanged.
 
 ## Disable it
 
