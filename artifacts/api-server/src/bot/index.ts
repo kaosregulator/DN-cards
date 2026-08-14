@@ -54,6 +54,10 @@ import {
 import { MessageFlags, EmbedBuilder } from "discord.js";
 import { createSetupLink } from "../lib/setup-link.js";
 import { setBotClient } from "./client-holder.js";
+// ── DarkNight Theater add-on (optional, opt-in via THEATER_ADDON_ENABLED) ─────
+import {
+  THEATER_ADDON_ENABLED, loadTheaterCommands, commandsBodyForGuild, startTheaterAddon,
+} from "./integrations/theater-addon.js";
 // ── AFK Secretary & Whitelist Access System ──────────────────────────────────
 import { handleAfkCommand, handleAfkSetupCommand } from "./afk/commands.js";
 import { handleAfkInteraction } from "./afk/interactions.js";
@@ -118,6 +122,10 @@ export async function startBot() {
     GatewayIntentBits.GuildMembers,
   ];
   if (afkPresenceEnabled) intents.push(GatewayIntentBits.GuildPresences);
+  // The Theater add-on needs to see who is in voice channels. Non-privileged
+  // intent, added only when the add-on is enabled so DN-Cards is otherwise
+  // byte-for-byte unchanged.
+  if (THEATER_ADDON_ENABLED) intents.push(GatewayIntentBits.GuildVoiceStates);
 
   const client = new Client({
     intents,
@@ -153,6 +161,10 @@ export async function startBot() {
     startMarketMaintenance();
     startGiveawayMaintenance();
     await registerCommands(c.user.id, token, client);
+    // Optional DarkNight Theater add-on: runs its own web server + interaction
+    // handlers in-process, sharing this bot client. No-op unless enabled, and
+    // isolated so any failure leaves DN-Cards fully operational.
+    await startTheaterAddon(client);
     // AFK Secretary: start the timed auto-remove sweeper (clears "timed" AFKs
     // once their countdown elapses; presence/messages can't cover this).
     startAfkSweeper(client);
@@ -172,8 +184,11 @@ export async function startBot() {
     logger.info({ guildId: guild.id, name: guild.name }, "Bot joined guild");
     scheduleNextSpawn(guild.id);
     const rest = new REST().setToken(token);
+    // Theater commands are appended for the home guild only (no-op elsewhere and
+    // when the add-on is disabled).
+    const joinBody = commandsBodyForGuild(buildCommands(), guild.id, HOME_GUILD_ID);
     await rest
-      .put(Routes.applicationGuildCommands(client.user!.id, guild.id), { body: buildCommands() })
+      .put(Routes.applicationGuildCommands(client.user!.id, guild.id), { body: joinBody })
       .catch(err => logger.error({ err, guildId: guild.id }, "Failed to register guild commands on join"));
 
     // DM the server owner a one-time dashboard setup link. Best-effort —
@@ -975,16 +990,24 @@ async function registerCommands(appId: string, token: string, client: Client) {
   const rest = new REST().setToken(token);
   const commands = buildCommands();
 
+  // Preload the optional Theater command definitions (no-op when disabled) so
+  // they can be appended to the home guild's body below.
+  const { HOME_GUILD_ID } = await import("./home-guild.js");
+  await loadTheaterCommands();
+
   // Wipe ALL global commands — eliminates any old /card or duplicated globals
   await rest
     .put(Routes.applicationCommands(appId), { body: [] })
     .then(() => logger.info("Global slash commands cleared"))
     .catch(err => logger.error({ err }, "Failed to clear global commands"));
 
-  // Register guild-specific only — instant effect, no 1-hour propagation
+  // Register guild-specific only — instant effect, no 1-hour propagation.
+  // Theater commands (if enabled) are appended ONLY to the home guild; every
+  // other guild receives the unchanged DN-Cards command set.
   for (const [, guild] of client.guilds.cache) {
+    const body = commandsBodyForGuild(commands, guild.id, HOME_GUILD_ID);
     await rest
-      .put(Routes.applicationGuildCommands(appId, guild.id), { body: commands })
+      .put(Routes.applicationGuildCommands(appId, guild.id), { body })
       .then(() => logger.info({ guildId: guild.id }, "Guild slash commands registered"))
       .catch(err => logger.error({ err, guildId: guild.id }, "Guild command registration failed"));
   }

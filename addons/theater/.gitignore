@@ -1,0 +1,12 @@
+node_modules/
+dist/
+data/*.json
+!data/.gitkeep
+# Uploaded / local movie files (keep the folder, ignore the videos)
+media/*
+!media/.gitkeep
+.env
+.env.local
+*.log
+.DS_Store
+.vite/
