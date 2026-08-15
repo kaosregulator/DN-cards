@@ -34,7 +34,7 @@ import {
   SHINY_EMOJI, SHINY_MULTIPLIER, getShinyMultiplier,
   type Rarity,
 } from "./cards-data.js";
-import { toAbsoluteImageUrl } from "./image-url.js";
+import { toAbsoluteImageUrl, isAnimatedCard } from "./image-url.js";
 import { applyEmbedOverride } from "./embed-overrides.js";
 import { logger } from "../lib/logger.js";
 import {
@@ -626,6 +626,21 @@ function startProgressiveReveal(
     const s = activeSpawns.get(guildId)?.get(spawnId);
     if (!s || s.caught || Date.now() >= s.expiresAt.getTime()) return; // stop
     const progress = Math.min(1, step / steps);
+    // Reveal-then-swap (Option C): once an animated-GIF card is fully revealed,
+    // drop the flattened canvas frame and show the live looping GIF so the card's
+    // own animation plays out. The hidden phase still used the reveal frames, so
+    // the guessing game is preserved — only the final, fully-revealed image
+    // becomes the real animated art.
+    if (progress >= 1 && isAnimatedCard(card)) {
+      const s2 = activeSpawns.get(guildId)?.get(spawnId);
+      if (!s2 || s2.caught || Date.now() >= s2.expiresAt.getTime()) return;
+      try {
+        const embed = await buildSpawnEmbed(card, windowSeconds, s2.catchMode, guildId, s2.hintLevel, null, s2.appearMessage);
+        await s2.message.edit({ embeds: [embed], attachments: [], files: [] });
+        s2.revealFile = null; // subsequent hint edits keep the live GIF, not the attachment
+      } catch { /* deleted / no perms / rate-limited — skip */ }
+      return; // fully revealed; nothing more to animate
+    }
     const frame = await session.renderFrame(progress);
     // Re-check after the async render — a catch/expire may have landed meanwhile.
     const s2 = activeSpawns.get(guildId)?.get(spawnId);
