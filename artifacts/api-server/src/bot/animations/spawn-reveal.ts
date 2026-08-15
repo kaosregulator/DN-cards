@@ -57,6 +57,7 @@ export interface SpawnRevealInput {
   rarityLabel: string;
   rarityColor?: number | null;
   mode?: RevealMode;      // overrides the rarity-derived default
+  appearMessage?: string; // headline drawn at the top (matches the embed title)
 }
 
 // Canvas geometry — a compact framed portrait. The spawn embed already carries
@@ -158,6 +159,7 @@ export async function createSpawnRevealSession(input: SpawnRevealInput): Promise
 
   const mode = input.mode ?? revealModeForRarity(input.rarity);
   const color = input.rarityColor ?? getRarityEffectColor(input.rarity);
+  const appearMessage = input.appearMessage ?? "A DN CARD APPEARS";
 
   // Cover-fit the art once; per-frame effects run on this buffer.
   let base: Buffer;
@@ -181,7 +183,9 @@ export async function createSpawnRevealSession(input: SpawnRevealInput): Promise
       [0.55, "#0c0e14"],
       [1, "#07080d"],
     ], 0.32);
-    drawTextWithShadow(ctx, "A DN CARD APPEARS", WIDTH / 2, 34, "#d7dbe6", 20);
+    // Fit the (variable-length) headline into the top band so longer lines
+    // shrink to stay on one line instead of overflowing the card.
+    drawTextWithShadow(ctx, appearMessage, WIDTH / 2, 34, "#d7dbe6", fitText(ctx, appearMessage, WIDTH - 44, 20, 12));
     drawRarityGlow(ctx, PANEL.x, PANEL.y, PANEL.w, PANEL.h, color, 0.35 + 0.5 * progress);
 
     ctx.save();
