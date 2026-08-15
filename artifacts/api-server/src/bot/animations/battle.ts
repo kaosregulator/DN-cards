@@ -328,8 +328,8 @@ async function drawBattleCard(
 ): Promise<void> {
   const color = card.rarityColor ?? getRarityEffectColor(card.rarity);
   drawRarityGlow(ctx, x, y, w, h, color, 0.6);
-  await drawCardArt(ctx, mod, x + 8, y + 8, w - 16, h - 16, card.artUrl);
-  drawCardFrame(ctx, x, y, w, h, color, 7);
+  await drawCardArt(ctx, mod, x + 8, y + 8, w - 16, h - 16, card.artUrl, card.rarity);
+  drawCardFrame(ctx, x, y, w, h, color, 7, card.rarity);
   if (card.rarity === "legendary" || card.rarity === "mythic") {
     drawRarityGlow(ctx, x, y, w, h, color, 0.3);
   }

@@ -23,6 +23,7 @@ import { consumeCooldown } from "../../lib/cooldowns.js";
 import { scheduleMessageDelete } from "../../lib/temp-message.js";
 import { renderBattleImage, type RenderCard } from "./image/render.js";
 import { renderAttackFrame, renderBattleVictory, renderBattleTurn, renderBattleIdle } from "../animations/index.js";
+import { withGuildFrames } from "../animations/card-frames.js";
 import type { BattleAnimationInput } from "../animations/index.js";
 import { DEFAULT_SCENE_ARENA, isSceneArenaKey, SCENE_ARENAS, SCENE_ARENA_KEYS, sceneArenaLabel } from "./scene-arenas.js";
 import { arenaAssetsAvailable } from "../animations/arena-bg.js";
@@ -830,9 +831,9 @@ async function beginCombat(rt: BattleRuntime) {
     // chosen arena) that stays alive between turns because Discord loops the GIF.
     // Classic / Off modes use the cheap static VS image below.
     if (sceneAnimated(rt)) {
-      const idle = await renderBattleIdle(
+      const idle = await withGuildFrames(await getOrCreateGuildSettings(rt.guildId).catch(() => null), () => renderBattleIdle(
         buildAnimInput(rt, 0), rt.settings.battleAnimationSpeed as AnimationSpeed,
-      ).catch(() => null);
+      )).catch(() => null);
       if (idle) { rt.vsImage = Buffer.from(idle.buffer); rt.vsImageIsGif = true; }
     }
     // Classic / Off modes (or a failed GIF render): the static VS image.
@@ -1049,17 +1050,19 @@ async function applyMove(rt: BattleRuntime, side: 0 | 1, move: MoveType) {
         // the living arena, impact FX fire on contact, the foe recoils, HP
         // drains. The GIF loops between turns, keeping the scene alive.
         const ended = result.koed || foe.hp <= 0;
-        const anim = await renderBattleTurn(
+        const frameGs = await getOrCreateGuildSettings(rt.guildId).catch(() => null);
+        const anim = await withGuildFrames(frameGs, () => renderBattleTurn(
           buildAnimInput(rt, side, {
             moveName: moveLabel(move), damage: visual.damage,
             isCrit: visual.isCrit, isHit: visual.isHit, ended,
           }),
           rt.settings.battleAnimationSpeed as AnimationSpeed,
-        ).catch(() => null);
+        )).catch(() => null);
         rt.turnAnimation = anim ? Buffer.from(anim.buffer) : null;
       } else if (rt.settings.battleAnimationEnabled) {
         // CLASSIC mode: the lighter single-frame attack card (pre-arena style).
-        rt.turnAnimation = await renderAttackFrame({
+        const frameGs = await getOrCreateGuildSettings(rt.guildId).catch(() => null);
+        rt.turnAnimation = await withGuildFrames(frameGs, () => renderAttackFrame({
           attacker: combatantToRenderCard(rt, actor),
           moveName: moveLabel(move),
           damage: visual.damage,
@@ -1067,7 +1070,7 @@ async function applyMove(rt: BattleRuntime, side: 0 | 1, move: MoveType) {
           isHit: visual.isHit,
           scene: visual.scene,
           subtitle: visual.subtitle,
-        }).catch(() => null);
+        })).catch(() => null);
       }
 
       await renderCombat(rt);
@@ -1167,11 +1170,12 @@ async function finishBattle(rt: BattleRuntime, winnerSide: 0 | 1 | null, reason:
     }).catch(() => null);
     if (cine) { rt.vsImage = cine.buffer; rt.vsImageIsGif = true; }
   } else if (winner && rt.settings.battleAnimationEnabled && rt.a && rt.b) {
-    const victory = await renderBattleVictory({
-      winner: combatantToRenderCard(rt, winner),
-      loser: combatantToRenderCard(rt, winnerSide === 0 ? rt.b : rt.a),
+    const w = winner, la = rt.a, lb = rt.b; // narrowed non-null captures for the closure below
+    const victory = await withGuildFrames(await getOrCreateGuildSettings(rt.guildId).catch(() => null), () => renderBattleVictory({
+      winner: combatantToRenderCard(rt, w),
+      loser: combatantToRenderCard(rt, winnerSide === 0 ? lb : la),
       background: rt.sceneArenaKey,
-    }, rt.settings.battleAnimationSpeed as AnimationSpeed).catch(() => null);
+    }, rt.settings.battleAnimationSpeed as AnimationSpeed)).catch(() => null);
     if (victory) { rt.vsImage = victory.buffer; rt.vsImageIsGif = true; }
   }
 
