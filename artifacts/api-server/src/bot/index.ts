@@ -403,6 +403,9 @@ export async function startBot() {
         } else if (interaction.customId.startsWith("config:boost:")) {
           const { handleConfigBoostModal } = await import("./commands/config-panel.js");
           await handleConfigBoostModal(interaction);
+        } else if (interaction.customId === "config:shiny:name") {
+          const { handleShinyNameModal } = await import("./commands/config-panel.js");
+          await handleShinyNameModal(interaction);
         } else if (interaction.customId.startsWith("gwhub:")) {
           await handleGiveawayHubComponent(interaction);
         } else if (interaction.customId.startsWith("collhub:")) {

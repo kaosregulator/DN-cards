@@ -7,7 +7,7 @@ import { getScaledStats } from "./battle/stat-engine.js";
 import { effectiveRarityKey, rarityLadderRank } from "./rarity-runtime.js";
 import { getCardProgress } from "./cards/leveling.js";
 import { getBattleSettings } from "./battle/config-engine.js";
-import { renderCardReveal, createSpawnRevealSession, renderShinyReveal, type RevealStats, type RevealMode, type SpawnRevealSession } from "./animations/index.js";
+import { renderCardReveal, createSpawnRevealSession, renderShinyReveal, renderCardEntrance, resolveEntranceType, type RevealStats, type RevealMode, type SpawnRevealSession, type EntranceSkin } from "./animations/index.js";
 import type { AnimationSpeed } from "./animations/types.js";
 import type { RenderCard } from "./battle/image/render.js";
 import {
@@ -91,6 +91,12 @@ interface ActiveSpawn {
 
 // Attachment name for the progressive spawn reveal frame.
 const SPAWN_REVEAL_FILE = "spawn-reveal.png";
+// Attachment name for the card-entrance pre-intro GIF (image-only spawns).
+const SPAWN_ENTRANCE_FILE = "spawn-entrance.gif";
+// How long the entrance GIF plays before the spawn message settles onto the
+// plain card image (a GIF card settles onto its own live animation). Matches the
+// entrance's motion+hold length with a little slack.
+const ENTRANCE_HOLD_MS = 2000;
 // Minimum spacing between reveal edits (keeps well under Discord's edit rate
 // limits) and the cap on how many reveal steps a single spawn plays.
 const REVEAL_MIN_INTERVAL_MS = 3000;
@@ -486,12 +492,37 @@ async function doSingleSpawn(guildId: string, forcedCardId?: number, isForced = 
     if (revealSession) revealBuffer = await revealSession.renderFrame(0);
     if (!revealBuffer) revealSession = null;
   }
-  const revealFile = revealBuffer ? SPAWN_REVEAL_FILE : null;
+
+  // ── Card entrance pre-intro ─────────────────────────────────────────────────
+  // Only for image-only spawns (reveal "off"): a short "the card enters" GIF
+  // (fly/teleport/bounce/warp/flip) plays first, then the message settles onto
+  // the plain card image. Also covers spawns that lead into a wild mini-game
+  // (the game triggers on the catch, after this intro has shown). Best-effort.
+  let entranceBuffer: Buffer | null = null;
+  if (revealMode === "off") {
+    const entranceType = resolveEntranceType(settings.spawnEntranceAnimation);
+    if (entranceType) {
+      entranceBuffer = await renderCardEntrance({
+        artUrl: toAbsoluteImageUrl(card.imageUrl),
+        rarity: card.rarity as Rarity,
+        rarityColor: spawnDisplayRarity.color,
+        type: entranceType,
+        skin: (settings.spawnEntranceSkin as EntranceSkin) ?? "rarity",
+        speed: (settings.packAnimationSpeed as "slow" | "normal" | "fast") ?? "normal",
+      }).catch(() => null);
+    }
+  }
+
+  // The opening image: the reveal frame (hidden phase) OR the entrance GIF OR
+  // nothing (plain card image via the embed). Routed through one attachment slot.
+  const introBuffer = revealBuffer ?? entranceBuffer;
+  const introFile = revealBuffer ? SPAWN_REVEAL_FILE : (entranceBuffer ? SPAWN_ENTRANCE_FILE : null);
+  const revealFile = introFile;
 
   const embed = await buildSpawnEmbed(card, settings.catchWindowSeconds, mode, guildId, 0, revealFile, appearMessage);
   const spawnLog = await logSpawn(guildId, channelId, card.id, isForced);
   const components = mode === "type" ? [] : [buildClaimRow(guildId, spawnId)];
-  const files = revealBuffer ? [new AttachmentBuilder(revealBuffer, { name: SPAWN_REVEAL_FILE })] : [];
+  const files = introBuffer ? [new AttachmentBuilder(introBuffer, { name: introFile! })] : [];
   let message: Message;
   try {
     message = await channel.send({ embeds: [embed], components, files });
@@ -593,6 +624,21 @@ async function doSingleSpawn(guildId: string, forcedCardId?: number, isForced = 
   // ── Kick off the progressive reveal across the catch window ─────────────────
   if (revealSession) {
     startProgressiveReveal(guildId, spawnId, revealSession, card, settings.catchWindowSeconds);
+  }
+
+  // ── Settle the entrance intro onto the plain card image ─────────────────────
+  // After the entrance GIF has played, edit the spawn to the plain image (a GIF
+  // card settles onto its own live animation). Skipped if already caught.
+  if (entranceBuffer) {
+    setTimeout(async () => {
+      const s = activeSpawns.get(guildId)?.get(spawnId);
+      if (!s || s.caught || Date.now() >= s.expiresAt.getTime()) return;
+      try {
+        const settled = await buildSpawnEmbed(card, settings.catchWindowSeconds, s.catchMode, guildId, s.hintLevel, null, s.appearMessage);
+        await s.message.edit({ embeds: [settled], attachments: [], files: [] });
+        s.revealFile = null; // later hint edits keep the plain image, not the intro attachment
+      } catch { /* deleted / no perms — leave the intro up */ }
+    }, ENTRANCE_HOLD_MS);
   }
 }
 
