@@ -365,6 +365,15 @@ export async function loadArt(mod: CanvasMod, url: string | null | undefined): P
   })();
 
   artCache.set(url, promise);
+  // Never cache a FAILURE. A transient miss (network blip, image-load timeout,
+  // object-storage hiccup) resolves to null; if we kept that promise the card's
+  // art would stay a permanent black hole on every future canvas render even
+  // though the embed — which re-fetches the public URL each time — shows it
+  // fine. Evict the entry the moment it resolves null so the next render retries.
+  promise.then(
+    img => { if (img === null) artCache.delete(url); },
+    () => { artCache.delete(url); },
+  );
   // Evict oldest insertion once over capacity (Map preserves insertion order).
   if (artCache.size > ART_CACHE_MAX) {
     const oldest = artCache.keys().next().value;
@@ -396,6 +405,12 @@ export async function loadArtBuffer(url: string | null | undefined): Promise<Buf
   })();
 
   artBufferCache.set(url, promise);
+  // Same as loadArt: don't let a transient failure poison the cache. Evict on a
+  // null/failed resolution so the reveal (blur/silhouette) retries next time.
+  promise.then(
+    buf => { if (buf === null) artBufferCache.delete(url); },
+    () => { artBufferCache.delete(url); },
+  );
   if (artBufferCache.size > ART_CACHE_MAX) {
     const oldest = artBufferCache.keys().next().value;
     if (oldest !== undefined) artBufferCache.delete(oldest);

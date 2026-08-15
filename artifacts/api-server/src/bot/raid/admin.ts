@@ -266,6 +266,23 @@ export async function handleRaidAdminCommand(interaction: ChatInputCommandIntera
     }
 
     if (Object.keys(patch).length === 0) { await interaction.editReply("Nothing to change — pass at least one field to edit."); return; }
+
+    // Keep the linked boss card in sync with the boss's own art/description.
+    // Without this, editing a boss's image updates the raid boss but leaves its
+    // reward card pointing at the old (or missing) image — so the card "loses"
+    // its picture everywhere the card art is rendered (battles, sieges, packs).
+    // Only when we didn't just backfill a fresh card (that already used the new
+    // image) and there is an existing card to update.
+    if (!backfilled && boss.cardId != null && (patch.imageUrl != null || patch.description != null)) {
+      const { updateCard } = await import("../db.js");
+      const cardPatch: { imageUrl?: string; description?: string } = {};
+      if (patch.imageUrl != null) cardPatch.imageUrl = patch.imageUrl;
+      if (patch.description != null) cardPatch.description = patch.description;
+      await updateCard(boss.cardId, cardPatch).catch((err: unknown) => {
+        logger.warn({ err, bossId: boss.id, cardId: boss.cardId }, "Failed to sync boss card art on edit");
+      });
+    }
+
     const updated = await updateBoss(boss.id, patch);
     await interaction.editReply({
       content: `✅ Updated **${boss.name}**.` + (backfilled ? " (Auto-created its missing boss card.)" : ""),

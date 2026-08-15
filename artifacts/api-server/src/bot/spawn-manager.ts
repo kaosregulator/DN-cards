@@ -84,6 +84,9 @@ interface ActiveSpawn {
   // explicit Star/Level that overrides the roll (admin /drop star:… level:…).
   source: AcquisitionSource;
   forcedProgression: CardProgressionGrant | null;
+  // The randomly-chosen "a card appeared" headline, fixed for the lifetime of
+  // this spawn so every re-render (hint bump, reveal frame) keeps the same line.
+  appearMessage: string;
 }
 
 // Attachment name for the progressive spawn reveal frame.
@@ -113,6 +116,27 @@ const ESCAPE_QUIPS: readonly string[] = [
   "It saw the chat and noped out. \ud83d\ude45",
   "Tactical retreat. Better luck next drop. \u26f0\ufe0f",
 ];
+
+// Spawn "a card appeared" headlines. One is picked at random per spawn and used
+// for BOTH the embed title and the animated reveal canvas so the two always
+// match. Deliberately never name or hint the card — the whole point is to guess
+// it. Mirrors the ESCAPE_QUIPS pattern (pick one at random, no fixed order).
+const SPAWN_APPEAR_MESSAGES: readonly string[] = [
+  "🎴 A mystery card has appeared… what is it?",
+  "👀 Something is hiding… take your guess!",
+  "🔍 Can you figure out what card this is?",
+  "🎯 A hidden card is up for grabs!",
+  "🕵️ Think you know your cards? Prove it!",
+  "🎴 What card is hiding? Start guessing!",
+  "👀 I know the card… do you?",
+  "🧩 A mystery has appeared. Name the card!",
+  "🔥 The guessing starts now! What card is it?",
+  "😈 Something's hiding… who can guess it first?",
+];
+
+function pickSpawnAppearMessage(): string {
+  return SPAWN_APPEAR_MESSAGES[Math.floor(Math.random() * SPAWN_APPEAR_MESSAGES.length)]!;
+}
 
 // Wishlist teases — shown when a card on someone's wishlist spawns. These must
 // NEVER name the card: the whole point is you have to type its name to catch it,
@@ -442,6 +466,10 @@ async function doSingleSpawn(guildId: string, forcedCardId?: number, isForced = 
   // revealed frame until the timer expires or the card is caught. The style is
   // the admin's `spawnRevealMode` (auto = by rarity), and "off" skips it. Fully
   // best-effort: no session just shows the plain card image, exactly as before.
+  // One random "a card appeared" headline, shared by the embed title and the
+  // reveal canvas so both always show the same line for this spawn.
+  const appearMessage = pickSpawnAppearMessage();
+
   const revealMode = (settings as unknown as { spawnRevealMode?: string }).spawnRevealMode ?? "auto";
   let revealSession: SpawnRevealSession | null = null;
   let revealBuffer: Buffer | null = null;
@@ -452,6 +480,7 @@ async function doSingleSpawn(guildId: string, forcedCardId?: number, isForced = 
       rarityLabel: spawnDisplayRarity.label,
       rarityColor: spawnDisplayRarity.color,
       mode: revealMode === "auto" ? undefined : (revealMode as RevealMode),
+      appearMessage,
     });
     // Frame 0 = fully hidden (blank/blurred/silhouette) — the spawn opens on it.
     if (revealSession) revealBuffer = await revealSession.renderFrame(0);
@@ -459,7 +488,7 @@ async function doSingleSpawn(guildId: string, forcedCardId?: number, isForced = 
   }
   const revealFile = revealBuffer ? SPAWN_REVEAL_FILE : null;
 
-  const embed = await buildSpawnEmbed(card, settings.catchWindowSeconds, mode, guildId, 0, revealFile);
+  const embed = await buildSpawnEmbed(card, settings.catchWindowSeconds, mode, guildId, 0, revealFile, appearMessage);
   const spawnLog = await logSpawn(guildId, channelId, card.id, isForced);
   const components = mode === "type" ? [] : [buildClaimRow(guildId, spawnId)];
   const files = revealBuffer ? [new AttachmentBuilder(revealBuffer, { name: SPAWN_REVEAL_FILE })] : [];
@@ -520,6 +549,7 @@ async function doSingleSpawn(guildId: string, forcedCardId?: number, isForced = 
     revealTimer: null,
     source: isForced ? "drop" : "spawn",
     forcedProgression: opts?.progression ?? null,
+    appearMessage,
   };
 
   let guildSpawns = activeSpawns.get(guildId);
@@ -602,7 +632,7 @@ function startProgressiveReveal(
     if (!s2 || s2.caught || Date.now() >= s2.expiresAt.getTime()) return;
     if (frame) {
       try {
-        const embed = await buildSpawnEmbed(card, windowSeconds, s2.catchMode, guildId, s2.hintLevel, s2.revealFile);
+        const embed = await buildSpawnEmbed(card, windowSeconds, s2.catchMode, guildId, s2.hintLevel, s2.revealFile, s2.appearMessage);
         await s2.message.edit({
           embeds: [embed],
           attachments: [],
@@ -692,7 +722,7 @@ async function bumpSpawnHints(spawns: ActiveSpawn[], guildId: string): Promise<v
     if (!card) continue;
     // Pass revealFile so the hint edit keeps referencing the reveal GIF (the
     // attachment persists across edits when `files`/`attachments` are omitted).
-    const embed = await buildSpawnEmbed(card, settings.catchWindowSeconds, spawn.catchMode, guildId, spawn.hintLevel, spawn.revealFile);
+    const embed = await buildSpawnEmbed(card, settings.catchWindowSeconds, spawn.catchMode, guildId, spawn.hintLevel, spawn.revealFile, spawn.appearMessage);
     await spawn.message.edit({ embeds: [embed] }).catch(() => { /* deleted / no perms */ });
   }
 }
@@ -1188,7 +1218,7 @@ async function buildClaimedEmbed(
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
-async function buildSpawnEmbed(card: Card, windowSeconds: number, mode: "type" | "button" | "both" = "type", guildId: string | null = null, hintLevel = 0, revealFile: string | null = null): Promise<EmbedBuilder> {
+async function buildSpawnEmbed(card: Card, windowSeconds: number, mode: "type" | "button" | "both" = "type", guildId: string | null = null, hintLevel = 0, revealFile: string | null = null, appearMessage: string = SPAWN_APPEAR_MESSAGES[0]!): Promise<EmbedBuilder> {
   const rarity = card.rarity as Rarity;
   const cardType = card.cardType;
   const settings = guildId ? await getOrCreateGuildSettings(guildId) : null;
@@ -1207,7 +1237,7 @@ async function buildSpawnEmbed(card: Card, windowSeconds: number, mode: "type" |
 
   const hintText = buildHintLines(card.name, hintLevel);
   const embed = new EmbedBuilder()
-    .setTitle(`${displayRarity.emoji} A DN Card has appeared!`)
+    .setTitle(appearMessage)
     .setColor(displayRarity.color)
     .setDescription(
       `${badges.length > 0 ? badges.join("\n") + "\n\n" : ""}${howTo}\n\n${hintText}`,
