@@ -42,6 +42,16 @@ async function runBootMigrations() {
   await pool.query(`ALTER TABLE cards ADD COLUMN IF NOT EXISTS preview_animation text`);
   await pool.query(`ALTER TABLE cards ADD COLUMN IF NOT EXISTS preview_bg_color text`);
   await pool.query(`ALTER TABLE cards ADD COLUMN IF NOT EXISTS display_orientation text`);
+  // Animated-GIF card flag (see cards.isAnimated). Backfill existing rows whose
+  // image URL clearly ends in .gif so current GIF cards animate without a re-save.
+  await pool.query(`ALTER TABLE cards ADD COLUMN IF NOT EXISTS is_animated boolean NOT NULL DEFAULT false`);
+  await pool.query(`UPDATE cards SET is_animated = true WHERE is_animated = false AND image_url ~* '\\.gif(\\?|#|$)'`);
+  // Card entrance animation + Shiny Hub settings (see guildSettings schema).
+  await pool.query(`ALTER TABLE guild_settings ADD COLUMN IF NOT EXISTS spawn_entrance_animation text NOT NULL DEFAULT 'off'`);
+  await pool.query(`ALTER TABLE guild_settings ADD COLUMN IF NOT EXISTS spawn_entrance_skin text NOT NULL DEFAULT 'rarity'`);
+  await pool.query(`ALTER TABLE guild_settings ADD COLUMN IF NOT EXISTS shiny_animation_style text NOT NULL DEFAULT 'classic'`);
+  await pool.query(`ALTER TABLE guild_settings ADD COLUMN IF NOT EXISTS shiny_value_multiplier real NOT NULL DEFAULT 2`);
+  await pool.query(`ALTER TABLE guild_settings ADD COLUMN IF NOT EXISTS shiny_name text`);
   await pool.query(`ALTER TABLE card_display_overrides ADD COLUMN IF NOT EXISTS display_category text`);
 
   // Uploadable trophy/showcase backgrounds for /user-hub "Show Card".
