@@ -7,7 +7,7 @@ import { getScaledStats } from "./battle/stat-engine.js";
 import { effectiveRarityKey, rarityLadderRank } from "./rarity-runtime.js";
 import { getCardProgress } from "./cards/leveling.js";
 import { getBattleSettings } from "./battle/config-engine.js";
-import { renderCardReveal, createSpawnRevealSession, renderShinyReveal, renderCardEntrance, resolveEntranceType, type RevealStats, type RevealMode, type SpawnRevealSession, type EntranceSkin } from "./animations/index.js";
+import { renderCardReveal, createSpawnRevealSession, renderShinyReveal, renderCardEntrance, resolveEntranceType, resolveShinyStyle, type RevealStats, type RevealMode, type SpawnRevealSession, type EntranceSkin } from "./animations/index.js";
 import type { AnimationSpeed } from "./animations/types.js";
 import type { RenderCard } from "./battle/image/render.js";
 import {
@@ -876,9 +876,10 @@ async function buildCatchPreview(
     let canvas: Buffer | null = null;
     let fileName = CATCH_STAT_FILE;
     if (isShiny && shinyAnimEnabled) {
+      const shinyStyle = resolveShinyStyle((settings as unknown as { shinyAnimationStyle?: string }).shinyAnimationStyle);
       canvas = await renderShinyReveal({
         artUrl: renderCard.artUrl, rarity: renderCard.rarity, rarityLabel: display.label,
-        rarityColor: display.color, name: card.name, speed,
+        rarityColor: display.color, name: card.name, speed, style: shinyStyle,
       });
       if (canvas) fileName = CATCH_SHINY_FILE;
     }

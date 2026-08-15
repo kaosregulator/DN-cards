@@ -24,7 +24,7 @@ import { applyEmbedOverride } from "../embed-overrides.js";
 import { toAbsoluteImageUrl } from "../image-url.js";
 import { logger } from "../../lib/logger.js";
 import type { Card, CustomPack, GuildSettings } from "@workspace/db";
-import { renderPackOpening, renderPackCover, renderCardReveal, renderShinyReveal, type RevealStats, type AnimationSpeed } from "../animations/index.js";
+import { renderPackOpening, renderPackCover, renderCardReveal, renderShinyReveal, resolveShinyStyle, type RevealStats, type AnimationSpeed } from "../animations/index.js";
 import { getBattleSettings } from "../battle/config-engine.js";
 import { getScaledStats } from "../battle/stat-engine.js";
 import type { CardProgressionGrant } from "../cards/progression.js";
@@ -276,6 +276,7 @@ async function playPackReveal(opts: {
   shinies: boolean[];
   grants?: (CardProgressionGrant | null)[];
   shinyAnimEnabled?: boolean;
+  shinyStyle?: import("../animations/index.js").ShinyStyle;
   summaryEmbed: EmbedBuilder;
   speed: AnimationSpeed;
 }): Promise<void> {
@@ -356,7 +357,7 @@ async function playPackReveal(opts: {
       if (shiny && opts.shinyAnimEnabled) {
         buf = await renderShinyReveal({
           artUrl: rc.artUrl, rarity: rc.rarity, rarityLabel: rc.rarityLabel,
-          rarityColor: rc.rarityColor, name: rc.name, speed: opts.speed,
+          rarityColor: rc.rarityColor, name: rc.name, speed: opts.speed, style: opts.shinyStyle,
         });
         if (buf) fname = "pack-reveal-shiny.gif";
       }
@@ -832,6 +833,7 @@ export async function handleCustomPack(
       renderCards: cards.map(c => cardToRenderCard(c, ctxFresh, displayMap, settings)),
       cards, shinies, grants,
       shinyAnimEnabled: (settings as unknown as { shinyAnimationEnabled?: boolean }).shinyAnimationEnabled ?? true,
+      shinyStyle: resolveShinyStyle((settings as unknown as { shinyAnimationStyle?: string }).shinyAnimationStyle),
       summaryEmbed: embed,
       speed: settings.packAnimationSpeed as AnimationSpeed,
     });
@@ -953,6 +955,7 @@ export async function handlePack(interaction: PackInteraction, tierOverride?: st
       renderCards: cards.map(c => cardToRenderCard(c, null, displayMap, settings)),
       cards, shinies, grants,
       shinyAnimEnabled: (settings as unknown as { shinyAnimationEnabled?: boolean }).shinyAnimationEnabled ?? true,
+      shinyStyle: resolveShinyStyle((settings as unknown as { shinyAnimationStyle?: string }).shinyAnimationStyle),
       summaryEmbed,
       speed: settings.packAnimationSpeed as AnimationSpeed,
     });
