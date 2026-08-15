@@ -10,6 +10,7 @@
 
 import { AttachmentBuilder } from "discord.js";
 import { renderCardReveal, type RevealStats, type RevealInfo } from "../animations/index.js";
+import { withGuildFrames } from "../animations/card-frames.js";
 import type { RenderCard } from "../battle/image/render.js";
 import {
   getAllCardsCached, getRarityContext, getOrCreateGuildSettings,
@@ -71,7 +72,7 @@ export async function renderCardRevealCanvas(
       cardType: card.cardType,
       artUrl: toAbsoluteImageUrl(card.imageUrl),
     };
-    const canvas = await renderCardReveal({ card: renderCard, stats, info: opts.info ?? null, shiny: !!opts.shiny, index: 1, total: 1 });
+    const canvas = await withGuildFrames(settings, () => renderCardReveal({ card: renderCard, stats, info: opts.info ?? null, shiny: !!opts.shiny, index: 1, total: 1 }));
     if (!canvas) return null;
     return { file: new AttachmentBuilder(canvas, { name: CARD_REVEAL_FILE }), color };
   } catch (err) {

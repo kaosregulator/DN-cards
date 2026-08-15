@@ -8,6 +8,7 @@ import {
   clamp01, type CanvasMod, type Ctx, type TextAlign,
 } from "./engine.js";
 import { ObjectStorageService } from "../../lib/objectStorage.js";
+import { frameArtWindow, drawFrameOverlay } from "./card-frames.js";
 import { logger } from "../../lib/logger.js";
 
 export interface Particle {
@@ -423,8 +424,14 @@ export async function drawCardArt(
   mod: CanvasMod,
   x: number, y: number, w: number, h: number,
   artUrl: string | null | undefined,
+  rarity?: Rarity | string | null,
 ): Promise<void> {
   const img = await loadArt(mod, artUrl);
+  // When an image frame is active for this rarity, inset the art into the
+  // frame's transparent window so the ornate border sits around it. Otherwise
+  // the art fills the whole rect exactly as before.
+  const win = frameArtWindow(x, y, w, h, rarity);
+  x = win.x; y = win.y; w = win.w; h = win.h;
   ctx.save();
   roundRectPath(ctx, x, y, w, h, 14);
   ctx.clip();
@@ -455,7 +462,12 @@ export function drawCardFrame(
   ctx: Ctx,
   x: number, y: number, w: number, h: number,
   color: number, thickness = 6,
+  rarity?: Rarity | string | null,
 ): void {
+  // When an image frame is active for this rarity, draw it over the card rect
+  // and skip the drawn border entirely. Falls through to the drawn border when
+  // frames are off, unmapped, or unavailable.
+  if (drawFrameOverlay(ctx, x, y, w, h, rarity)) return;
   ctx.save();
   ctx.lineWidth = thickness;
   ctx.strokeStyle = hexToRgba(color, 1);

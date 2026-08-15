@@ -8,6 +8,7 @@ import { effectiveRarityKey, rarityLadderRank } from "./rarity-runtime.js";
 import { getCardProgress } from "./cards/leveling.js";
 import { getBattleSettings } from "./battle/config-engine.js";
 import { renderCardReveal, createSpawnRevealSession, renderShinyReveal, renderCardEntrance, resolveEntranceType, resolveShinyStyle, type RevealStats, type RevealMode, type SpawnRevealSession, type EntranceSkin } from "./animations/index.js";
+import { withGuildFrames } from "./animations/card-frames.js";
 import type { AnimationSpeed } from "./animations/types.js";
 import type { RenderCard } from "./battle/image/render.js";
 import {
@@ -502,14 +503,14 @@ async function doSingleSpawn(guildId: string, forcedCardId?: number, isForced = 
   if (revealMode === "off") {
     const entranceType = resolveEntranceType(settings.spawnEntranceAnimation);
     if (entranceType) {
-      entranceBuffer = await renderCardEntrance({
+      entranceBuffer = await withGuildFrames(settings, () => renderCardEntrance({
         artUrl: toAbsoluteImageUrl(card.imageUrl),
         rarity: card.rarity as Rarity,
         rarityColor: spawnDisplayRarity.color,
         type: entranceType,
         skin: (settings.spawnEntranceSkin as EntranceSkin) ?? "rarity",
         speed: (settings.packAnimationSpeed as "slow" | "normal" | "fast") ?? "normal",
-      }).catch(() => null);
+      })).catch(() => null);
     }
   }
 
@@ -877,14 +878,14 @@ async function buildCatchPreview(
     let fileName = CATCH_STAT_FILE;
     if (isShiny && shinyAnimEnabled) {
       const shinyStyle = resolveShinyStyle((settings as unknown as { shinyAnimationStyle?: string }).shinyAnimationStyle);
-      canvas = await renderShinyReveal({
+      canvas = await withGuildFrames(settings, () => renderShinyReveal({
         artUrl: renderCard.artUrl, rarity: renderCard.rarity, rarityLabel: display.label,
         rarityColor: display.color, name: card.name, speed, style: shinyStyle,
-      });
+      }));
       if (canvas) fileName = CATCH_SHINY_FILE;
     }
     if (!canvas) {
-      canvas = await renderCardReveal({ card: renderCard, stats: revealStats, shiny: isShiny, index: 1, total: 1, statLabel });
+      canvas = await withGuildFrames(settings, () => renderCardReveal({ card: renderCard, stats: revealStats, shiny: isShiny, index: 1, total: 1, statLabel }));
     }
     return { statsLine, canvas, fileName, color, rarityLabel: display.label };
   } catch (err) {

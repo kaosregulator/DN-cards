@@ -25,6 +25,7 @@ import { toAbsoluteImageUrl } from "../image-url.js";
 import { logger } from "../../lib/logger.js";
 import type { Card, CustomPack, GuildSettings } from "@workspace/db";
 import { renderPackOpening, renderPackCover, renderCardReveal, renderShinyReveal, resolveShinyStyle, type RevealStats, type AnimationSpeed } from "../animations/index.js";
+import { withGuildFrames } from "../animations/card-frames.js";
 import { getBattleSettings } from "../battle/config-engine.js";
 import { getScaledStats } from "../battle/stat-engine.js";
 import type { CardProgressionGrant } from "../cards/progression.js";
@@ -277,6 +278,7 @@ async function playPackReveal(opts: {
   grants?: (CardProgressionGrant | null)[];
   shinyAnimEnabled?: boolean;
   shinyStyle?: import("../animations/index.js").ShinyStyle;
+  frameSettings?: GuildSettings | null;
   summaryEmbed: EmbedBuilder;
   speed: AnimationSpeed;
 }): Promise<void> {
@@ -355,17 +357,17 @@ async function playPackReveal(opts: {
       let buf: Buffer | null = null;
       let fname = REVEAL_FILE;
       if (shiny && opts.shinyAnimEnabled) {
-        buf = await renderShinyReveal({
+        buf = await withGuildFrames(opts.frameSettings, () => renderShinyReveal({
           artUrl: rc.artUrl, rarity: rc.rarity, rarityLabel: rc.rarityLabel,
           rarityColor: rc.rarityColor, name: rc.name, speed: opts.speed, style: opts.shinyStyle,
-        });
+        }));
         if (buf) fname = "pack-reveal-shiny.gif";
       }
       if (!buf) {
-        buf = await renderCardReveal({
+        buf = await withGuildFrames(opts.frameSettings, () => renderCardReveal({
           card: rc, stats: statsFor(opts.cards[i]!, i), shiny,
           index: i + 1, total: opts.renderCards.length, statLabel: statLabelFor(i),
-        });
+        }));
       }
       if (!buf) continue; // skip a bad frame, keep the sequence going
       const color = rc.rarityColor ?? opts.tierColor;
@@ -834,6 +836,7 @@ export async function handleCustomPack(
       cards, shinies, grants,
       shinyAnimEnabled: (settings as unknown as { shinyAnimationEnabled?: boolean }).shinyAnimationEnabled ?? true,
       shinyStyle: resolveShinyStyle((settings as unknown as { shinyAnimationStyle?: string }).shinyAnimationStyle),
+      frameSettings: settings,
       summaryEmbed: embed,
       speed: settings.packAnimationSpeed as AnimationSpeed,
     });
@@ -956,6 +959,7 @@ export async function handlePack(interaction: PackInteraction, tierOverride?: st
       cards, shinies, grants,
       shinyAnimEnabled: (settings as unknown as { shinyAnimationEnabled?: boolean }).shinyAnimationEnabled ?? true,
       shinyStyle: resolveShinyStyle((settings as unknown as { shinyAnimationStyle?: string }).shinyAnimationStyle),
+      frameSettings: settings,
       summaryEmbed,
       speed: settings.packAnimationSpeed as AnimationSpeed,
     });

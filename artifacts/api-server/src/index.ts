@@ -52,6 +52,14 @@ async function runBootMigrations() {
   await pool.query(`ALTER TABLE guild_settings ADD COLUMN IF NOT EXISTS shiny_animation_style text NOT NULL DEFAULT 'classic'`);
   await pool.query(`ALTER TABLE guild_settings ADD COLUMN IF NOT EXISTS shiny_value_multiplier real NOT NULL DEFAULT 2`);
   await pool.query(`ALTER TABLE guild_settings ADD COLUMN IF NOT EXISTS shiny_name text`);
+  // Card Frames (see guildSettings schema). Off by default; per-rarity frame colour.
+  await pool.query(`ALTER TABLE guild_settings ADD COLUMN IF NOT EXISTS card_frames_enabled boolean NOT NULL DEFAULT false`);
+  await pool.query(`ALTER TABLE guild_settings ADD COLUMN IF NOT EXISTS card_frame_common text`);
+  await pool.query(`ALTER TABLE guild_settings ADD COLUMN IF NOT EXISTS card_frame_uncommon text`);
+  await pool.query(`ALTER TABLE guild_settings ADD COLUMN IF NOT EXISTS card_frame_rare text`);
+  await pool.query(`ALTER TABLE guild_settings ADD COLUMN IF NOT EXISTS card_frame_epic text`);
+  await pool.query(`ALTER TABLE guild_settings ADD COLUMN IF NOT EXISTS card_frame_legendary text`);
+  await pool.query(`ALTER TABLE guild_settings ADD COLUMN IF NOT EXISTS card_frame_mythic text`);
   await pool.query(`ALTER TABLE card_display_overrides ADD COLUMN IF NOT EXISTS display_category text`);
 
   // Uploadable trophy/showcase backgrounds for /user-hub "Show Card".

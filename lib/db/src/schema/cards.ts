@@ -286,6 +286,19 @@ export const guildSettingsTable = pgTable("guild_settings", {
   // Per-guild nickname for shinies (like custom rarity names). Null/empty =
   // "Shiny". Read via getShinyName (trimmed, capped at 32 chars).
   shinyName: text("shiny_name"),
+  // ── Card Frames ────────────────────────────────────────────────────────────
+  // Opt-in image frames drawn around card art everywhere it renders. Off by
+  // default → the current thin drawn border is used unchanged. When on, each
+  // rarity draws the assigned frame colour ("grey" | "blue" | "red" | "gold" |
+  // "rainbow"); a null rarity column falls back to the drawn border for that
+  // rarity. The frame image auto-scales to any card size/aspect.
+  cardFramesEnabled: boolean("card_frames_enabled").notNull().default(false),
+  cardFrameCommon: text("card_frame_common"),
+  cardFrameUncommon: text("card_frame_uncommon"),
+  cardFrameRare: text("card_frame_rare"),
+  cardFrameEpic: text("card_frame_epic"),
+  cardFrameLegendary: text("card_frame_legendary"),
+  cardFrameMythic: text("card_frame_mythic"),
   // ── Scheduled spawn boost (temporary spawn-rate change) ─────────────────────
   // A temporary multiplier on the spawn RATE for busy/quiet periods, applied on
   // top of the base interval without changing it. 100 = normal, 200 = double the

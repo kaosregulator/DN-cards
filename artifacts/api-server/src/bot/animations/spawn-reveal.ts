@@ -229,7 +229,7 @@ export async function createSpawnRevealSession(input: SpawnRevealInput): Promise
     }
     ctx.restore();
 
-    drawCardFrame(ctx, PANEL.x, PANEL.y, PANEL.w, PANEL.h, color, 6);
+    drawCardFrame(ctx, PANEL.x, PANEL.y, PANEL.w, PANEL.h, color, 6, input.rarity);
     drawRarityBadge(ctx, PANEL.x + PANEL.w - 12, PANEL.y + 12, input.rarityLabel, color);
   };
 
@@ -503,12 +503,12 @@ export async function renderShinyReveal(input: ShinyRevealInput): Promise<Buffer
         // Card art + the style's on-card overlay stack.
         ctx.save();
         clipPanel(ctx);
-        await drawCardArt(ctx, m, PANEL.x, PANEL.y, PANEL.w, PANEL.h, input.artUrl);
+        await drawCardArt(ctx, m, PANEL.x, PANEL.y, PANEL.w, PANEL.h, input.artUrl, input.rarity);
         spec.overlay(ctx, PANEL.x, PANEL.y, PANEL.w, PANEL.h, t);
         ctx.restore();
 
         const frameCol = input.style === "rainbow" ? glow : spec.frameColor(t);
-        drawCardFrame(ctx, PANEL.x, PANEL.y, PANEL.w, PANEL.h, frameCol, 6);
+        drawCardFrame(ctx, PANEL.x, PANEL.y, PANEL.w, PANEL.h, frameCol, 6, input.rarity);
         drawRarityBadge(ctx, PANEL.x + PANEL.w - 12, PANEL.y + 12, input.rarityLabel, color);
 
         // Name below the card.
@@ -593,13 +593,13 @@ export async function renderShinyShowcase(input: ShinyShowcaseInput): Promise<Bu
         ctx.clip();
         ctx.fillStyle = "#0b0c11";
         ctx.fillRect(P.x, P.y, P.w, P.h);
-        await drawCardArt(ctx, m, P.x, P.y, P.w, P.h, input.artUrl);
+        await drawCardArt(ctx, m, P.x, P.y, P.w, P.h, input.artUrl, input.rarity);
         drawFoilOverlay(ctx, P.x, P.y, P.w, P.h, t);
         drawHoloSparkles(ctx, P.x, P.y, P.w, P.h, t, 30);
         drawShineSweep(ctx, P.x, P.y, P.w, P.h, t, 0xffffff);
         ctx.restore();
 
-        drawCardFrame(ctx, P.x, P.y, P.w, P.h, gold, 6);
+        drawCardFrame(ctx, P.x, P.y, P.w, P.h, gold, 6, input.rarity);
         drawRarityBadge(ctx, P.x + P.w - 12, P.y + 12, input.rarityLabel, color);
 
         // Name below the card.

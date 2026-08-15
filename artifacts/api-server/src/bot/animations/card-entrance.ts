@@ -278,7 +278,7 @@ function drawEntranceFx(ctx: Ctx, type: EntranceType, t: number, accent: number)
 
 async function drawEntranceCard(
   ctx: Ctx, mod: CanvasMod, artUrl: string | null | undefined,
-  pose: Pose, color: number, accent: number,
+  pose: Pose, color: number, accent: number, rarity: Rarity,
 ): Promise<void> {
   ctx.save();
   ctx.globalAlpha = clamp01(pose.alpha);
@@ -291,9 +291,9 @@ async function drawEntranceCard(
   if (pose.flipBack) {
     drawCardBack(ctx, CARD_W, CARD_H, accent);
   } else {
-    await drawCardArt(ctx, mod, 0, 0, CARD_W, CARD_H, artUrl);
+    await drawCardArt(ctx, mod, 0, 0, CARD_W, CARD_H, artUrl, rarity);
   }
-  drawCardFrame(ctx, 0, 0, CARD_W, CARD_H, color, 6);
+  drawCardFrame(ctx, 0, 0, CARD_W, CARD_H, color, 6, rarity);
   ctx.restore();
 }
 
@@ -321,7 +321,7 @@ export async function renderCardEntrance(input: CardEntranceInput): Promise<Buff
         const mt = clamp01(t / MOTION_END); // motion progress (holds at 1 during the tail)
         skin.background(ctx);
         drawEntranceFx(ctx, input.type, mt, skin.accent);
-        await drawEntranceCard(ctx, m, input.artUrl, poseFor(input.type, mt), color, skin.accent);
+        await drawEntranceCard(ctx, m, input.artUrl, poseFor(input.type, mt), color, skin.accent, input.rarity);
         skin.overlay(ctx, mt);
       },
     });
