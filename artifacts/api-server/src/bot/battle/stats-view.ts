@@ -38,6 +38,33 @@ export function battleStatsButtonRow(cardId: number): ActionRowBuilder<ButtonBui
   );
 }
 
+// "View animation" — shown on /info for cards whose art is an animated GIF.
+// The /info hero is a rendered canvas (a still), so this button surfaces the
+// live, looping GIF that Discord animates natively. See index.ts `cardgif`.
+export function cardAnimationButtonId(cardId: number): string {
+  return `cardgif:${cardId}`;
+}
+
+// The /info button row: always Battle Stats; adds ▶️ View Animation when the
+// card's art is an animated GIF so the canvas hero doesn't hide the animation.
+export function infoButtonRow(cardId: number, animated: boolean): ActionRowBuilder<ButtonBuilder> {
+  const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder()
+      .setCustomId(battleStatsButtonId(cardId))
+      .setLabel("⚔️ Battle Stats")
+      .setStyle(ButtonStyle.Secondary),
+  );
+  if (animated) {
+    row.addComponents(
+      new ButtonBuilder()
+        .setCustomId(cardAnimationButtonId(cardId))
+        .setLabel("▶️ View Animation")
+        .setStyle(ButtonStyle.Primary),
+    );
+  }
+  return row;
+}
+
 // Quick-jump: renders the exact same embed `/level name:<card>` would, without
 // the player having to type the command. Purely additive — reuses
 // `buildCardLevelEmbed` from the cards module (see level-command.ts).

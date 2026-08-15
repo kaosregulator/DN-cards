@@ -4,6 +4,8 @@ import {
   burnCard, getOrCreateCurrency, getAllCards, getAllCardsCached,
   getRarityContext, applyRarityContextAll, effectiveRarityKey,
 } from "./db.js";
+import { toAbsoluteImageUrl } from "./image-url.js";
+import { rarityColor } from "./cards-data.js";
 import { runIsolationSelfCheck } from "./isolation-check.js";
 import { handleEditCardSelect, handleEditCardModal } from "./commands/edit-card.js";
 import { handleEditImageButton, handleEditImageModal, handleEditImagePick } from "./commands/edit-image.js";
@@ -569,6 +571,28 @@ export async function startBot() {
             files: reveal ? [reveal.file] : [],
             flags: MessageFlags.Ephemeral,
           });
+          return;
+        }
+
+        // ── View Animation (from /info) — show the live animated GIF ───────
+        // The /info hero is a rendered canvas (a still frame), which flattens a
+        // GIF card. This surfaces the raw animated art so Discord loops it.
+        if (action === "cardgif") {
+          if (!interaction.guild) return;
+          const guildId = interaction.guild.id;
+          const cardId = parseInt(parts[1], 10);
+          const cards = await getAllCardsCached(guildId);
+          const card = cards.find(c => c.id === cardId);
+          const gif = card ? toAbsoluteImageUrl(card.imageUrl) : null;
+          if (!card || !gif) {
+            await interaction.reply({ content: "❌ No animation available for this card.", flags: MessageFlags.Ephemeral });
+            return;
+          }
+          const embed = new EmbedBuilder()
+            .setTitle(`🎬 ${card.name}`)
+            .setColor(rarityColor(card.rarity as import("./cards-data.js").Rarity))
+            .setImage(gif);
+          await interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
           return;
         }
 

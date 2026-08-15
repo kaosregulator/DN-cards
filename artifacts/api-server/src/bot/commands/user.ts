@@ -36,7 +36,7 @@ import {
 import { handleTrade, handleAccept, handleDecline, handleListTrades, handleGift, handleTradeHistory } from "./trading.js";
 import { handleDaily, handleAchievementsCommand } from "./daily.js";
 import { ACHIEVEMENTS, getAchievement, getUnlockedKeys, getRecentUnlocks } from "../achievements.js";
-import { toAbsoluteImageUrl } from "../image-url.js";
+import { toAbsoluteImageUrl, isAnimatedCard } from "../image-url.js";
 import { handlePack, handlePackPrompt, handlePackStats, tierLabel } from "./pack.js";
 import { handleTradein } from "./tradein.js";
 import { handleWishlist } from "./wishlist.js";
@@ -45,7 +45,7 @@ import { handleBattlesWelcome } from "./battle.js";
 import { checkAchievements, formatUnlockLine } from "../achievements.js";
 import { runPaginator, type PaginatorView } from "../components/paginator.js";
 import { chunkLines } from "../components/field-chunker.js";
-import { battleStatsButtonRow } from "../battle/stats-view.js";
+import { infoButtonRow } from "../battle/stats-view.js";
 import { scheduleReplyDelete } from "../../lib/temp-message.js";
 
 // Display order for rarity drill-downs (rarest → most common). Used by the
@@ -435,7 +435,7 @@ export async function handleUserCommand(
     });
     if (reveal) {
       embed.setImage(`attachment://${CARD_REVEAL_FILE}`);
-      await interaction.editReply({ embeds: [embed], components: [battleStatsButtonRow(card.id)], files: [reveal.file] });
+      await interaction.editReply({ embeds: [embed], components: [infoButtonRow(card.id, isAnimatedCard(card))], files: [reveal.file] });
     } else {
       // Canvas unavailable — fall back to the plain art AND restore the detail
       // fields so no info is lost.
@@ -448,7 +448,7 @@ export async function handleUserCommand(
         { name: "🔥 Burn Value", value: `${card.burnValue.toLocaleString()} shards`, inline: true },
         { name: "Total Caught", value: card.totalMinted.toLocaleString(), inline: true },
       );
-      await interaction.editReply({ embeds: [embed], components: [battleStatsButtonRow(card.id)] });
+      await interaction.editReply({ embeds: [embed], components: [infoButtonRow(card.id, isAnimatedCard(card))] });
     }
     // Public lookup — tidy the channel after 40s (the Battle Stats button opens
     // its own ephemeral, so nothing important is lost).
