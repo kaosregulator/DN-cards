@@ -43,6 +43,37 @@ const FILE_STEM: Record<FrameColor, string> = {
 // the ornate border sits around it, and the whole frame fits the card's rect.
 export const FRAME_INSET = { left: 0.165, right: 0.163, top: 0.079, bottom: 0.079 } as const;
 
+// ── Progression (level) frames ───────────────────────────────────────────────
+// A separate, unlock-and-equip cosmetic keyed by a card's LEVEL rather than its
+// rarity. Tiers switch at level 1 / 50 / 100 (see progressionTierForLevel). When
+// a card has an equipped progression frame it OVERRIDES the rarity frame; the
+// look reflects how far the card has been levelled, so it travels with the card
+// through trades and reads as a flex. Assets: DN_Progress_Frame_L1/L50/L100.
+export type ProgTier = "l1" | "l50" | "l100";
+export const PROG_TIERS: readonly ProgTier[] = ["l1", "l50", "l100"];
+
+const PROG_FILE_STEM: Record<ProgTier, string> = {
+  l1: "DN_Progress_Frame_L1",
+  l50: "DN_Progress_Frame_L50",
+  l100: "DN_Progress_Frame_L100",
+};
+
+// The transparent window differs per progression frame (measured from the art),
+// so each tier carries its own insets — the ornate L100 has thicker side rails.
+const PROG_INSET: Record<ProgTier, { left: number; right: number; top: number; bottom: number }> = {
+  l1:   { left: 0.100, right: 0.098, top: 0.097, bottom: 0.151 },
+  l50:  { left: 0.103, right: 0.103, top: 0.091, bottom: 0.137 },
+  l100: { left: 0.158, right: 0.147, top: 0.107, bottom: 0.142 },
+};
+
+// Which progression tier a level qualifies for. Level 100 = top tier; 50–99 =
+// mid; anything below = base. (A card is always at least level 1.)
+export function progressionTierForLevel(level: number): ProgTier {
+  if (level >= 100) return "l100";
+  if (level >= 50) return "l50";
+  return "l1";
+}
+
 // Per-rarity → frame colour, resolved for one guild. Only mapped rarities appear.
 export type FrameMap = Partial<Record<Rarity, FrameColor>>;
 
@@ -103,6 +134,61 @@ function pickSize(targetW: number): FrameSize {
   if (targetW <= 150) return "128";
   if (targetW <= 300) return "256";
   return "full";
+}
+
+// ── Progression-frame image loading (shares the decoded cache) ────────────────
+function progFileFor(tier: ProgTier, size: FrameSize): string | null {
+  const dir = resolveFramesDir();
+  if (!dir) return null;
+  const suffix = size === "full" ? "" : size === "256" ? "_256px" : "_128px";
+  const p = join(dir, `${PROG_FILE_STEM[tier]}${suffix}.png`);
+  return existsSync(p) ? p : join(dir, `${PROG_FILE_STEM[tier]}.png`);
+}
+
+async function loadProgFrame(mod: CanvasMod, tier: ProgTier, size: FrameSize): Promise<LoadedImage | null> {
+  const key = `prog:${tier}:${size}`;
+  if (decoded.has(key)) return decoded.get(key)!;
+  const inflight = loading.get(key);
+  if (inflight) return inflight;
+  const p = (async () => {
+    try {
+      const file = progFileFor(tier, size);
+      if (!file) return null;
+      const img = await mod.loadImage(file);
+      decoded.set(key, img);
+      return img;
+    } catch (err) {
+      logger.debug({ err, tier, size }, "card-frames: failed to load progression frame");
+      decoded.set(key, null);
+      return null;
+    } finally {
+      loading.delete(key);
+    }
+  })();
+  loading.set(key, p);
+  return p;
+}
+
+// Preload every progression frame (all tiers × sizes). Best-effort.
+export async function preloadProgressionFrames(): Promise<void> {
+  const mod = await getCanvas();
+  if (!mod) return;
+  await Promise.all(PROG_TIERS.flatMap(t => (["full", "256", "128"] as FrameSize[]).map(s => loadProgFrame(mod, t, s))));
+}
+
+// The art window inside the card rect for a progression tier (else the rect).
+export function progressionArtWindow(x: number, y: number, w: number, h: number, tier: ProgTier): { x: number; y: number; w: number; h: number } {
+  const ins = PROG_INSET[tier];
+  return { x: x + w * ins.left, y: y + h * ins.top, w: w * (1 - ins.left - ins.right), h: h * (1 - ins.top - ins.bottom) };
+}
+
+// Draw a progression frame over the card rect. Returns true if drawn (a preload
+// must have run, or the sync cache is empty and it no-ops → false).
+export function drawProgressionOverlay(ctx: Ctx, x: number, y: number, w: number, h: number, tier: ProgTier): boolean {
+  const size = pickSize(w);
+  const img = decoded.get(`prog:${tier}:${size}`) ?? decoded.get(`prog:${tier}:full`) ?? decoded.get(`prog:${tier}:256`) ?? decoded.get(`prog:${tier}:128`);
+  if (!img) return false;
+  try { ctx.drawImage(img, x, y, w, h); return true; } catch { return false; }
 }
 
 // Build a guild's frame map from its settings. Returns null when frames are off
