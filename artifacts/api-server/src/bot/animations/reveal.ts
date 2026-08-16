@@ -138,8 +138,8 @@ export async function renderCardReveal(input: CardRevealInput): Promise<Buffer |
     // Card art panel with rarity glow + frame.
     const cw = 300, ch = 300, cx = (width - cw) / 2, cy = 66;
     drawRarityGlow(ctx, cx, cy, cw, ch, color, shiny ? 0.85 : 0.6);
-    await drawCardArt(ctx, mod, cx, cy, cw, ch, card.artUrl, card.rarity);
-    drawCardFrame(ctx, cx, cy, cw, ch, color, 6, card.rarity);
+    await drawCardArt(ctx, mod, cx, cy, cw, ch, card.artUrl, card.rarity, card.progTier);
+    drawCardFrame(ctx, cx, cy, cw, ch, color, 6, card.rarity, card.progTier);
     if (shiny) {
       drawFoilOverlay(ctx, cx, cy, cw, ch, 0.5);
       drawHoloSparkles(ctx, cx, cy, cw, ch, 0.5, 22);
@@ -368,8 +368,8 @@ export async function renderAttackFrame(input: AttackFrameInput): Promise<Buffer
     // Attacker card on the left, lunging toward the impact.
     const cw = 240, ch = 336, cx = 44, cy = (height - ch) / 2;
     drawRarityGlow(ctx, cx, cy, cw, ch, accent, boss ? 1 : scene === "ultimate" ? 0.95 : 0.7);
-    await drawCardArt(ctx, mod, cx, cy, cw, ch, attacker.artUrl, attacker.rarity);
-    drawCardFrame(ctx, cx, cy, cw, ch, rarityColor, boss ? 8 : 6, attacker.rarity);
+    await drawCardArt(ctx, mod, cx, cy, cw, ch, attacker.artUrl, attacker.rarity, attacker.progTier);
+    drawCardFrame(ctx, cx, cy, cw, ch, rarityColor, boss ? 8 : 6, attacker.rarity, attacker.progTier);
     drawRarityBadge(ctx, cx + cw - 12, cy + 12, attacker.rarityLabel, rarityColor);
     drawTextWithShadow(ctx, attacker.name, cx + cw / 2, cy + ch + 22, "#ffffff", fitText(ctx, attacker.name, cw + 40, 22));
 

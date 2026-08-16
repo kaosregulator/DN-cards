@@ -130,3 +130,18 @@ export function resolveActiveFrame(
 export function isFrameUnlocked(frame: Frame, level: number): boolean {
   return level >= frame.unlockLevel;
 }
+
+// Map an EXPLICITLY equipped per-rarity level frame to its progression-image
+// tier (the visual level frame drawn on the card). Returns null when nothing is
+// equipped, or the equipped frame is an account/raid frame — those keep their
+// own presentation and never override with a level image. Because the tiers are
+// keyed on the frame's unlock level (1 / 50 / 100), the image reflects how far
+// the card was levelled to earn that frame.
+export function progTierForFrameId(
+  equippedId: string | null | undefined,
+): "l1" | "l50" | "l100" | null {
+  if (!equippedId) return null;
+  const f = FRAME_BY_ID.get(equippedId);
+  if (!f || f.account) return null;
+  return f.unlockLevel >= 100 ? "l100" : f.unlockLevel >= 50 ? "l50" : "l1";
+}

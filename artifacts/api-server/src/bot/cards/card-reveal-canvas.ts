@@ -10,7 +10,9 @@
 
 import { AttachmentBuilder } from "discord.js";
 import { renderCardReveal, type RevealStats, type RevealInfo } from "../animations/index.js";
-import { withGuildFrames } from "../animations/card-frames.js";
+import { withGuildFrames, preloadProgressionFrames } from "../animations/card-frames.js";
+import { getCardProgress } from "./leveling.js";
+import { progTierForFrameId } from "./frames.js";
 import type { RenderCard } from "../battle/image/render.js";
 import {
   getAllCardsCached, getRarityContext, getOrCreateGuildSettings,
@@ -63,6 +65,15 @@ export async function renderCardRevealCanvas(
       };
     }
 
+    // Equipped progression (level) frame, if this viewer owns the card and has
+    // equipped one — overrides the rarity frame with the level-tier image.
+    let progTier: import("../animations/card-frames.js").ProgTier | null = null;
+    if (opts.userId) {
+      const prog = await getCardProgress(guildId, opts.userId, card.id).catch(() => null);
+      progTier = progTierForFrameId(prog?.equippedFrame ?? null);
+      if (progTier) await preloadProgressionFrames();
+    }
+
     const renderCard: RenderCard = {
       name: card.name,
       rarity: card.rarity as Rarity,
@@ -71,6 +82,7 @@ export async function renderCardRevealCanvas(
       cardId: card.id,
       cardType: card.cardType,
       artUrl: toAbsoluteImageUrl(card.imageUrl),
+      progTier,
     };
     const canvas = await withGuildFrames(settings, () => renderCardReveal({ card: renderCard, stats, info: opts.info ?? null, shiny: !!opts.shiny, index: 1, total: 1 }));
     if (!canvas) return null;

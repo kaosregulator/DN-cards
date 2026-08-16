@@ -44,6 +44,8 @@ export interface RenderCard {
   artUrl?: string | null;      // character artwork
   attack?: number | null;      // shown under the name
   special?: string | null;     // signature move name, shown under the name
+  // Equipped progression (level) frame tier — overrides the rarity frame when set.
+  progTier?: import("../../animations/card-frames.js").ProgTier | null;
 }
 
 export interface RenderOpts {
