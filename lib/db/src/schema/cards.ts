@@ -87,6 +87,44 @@ export const insertCardSchema = createInsertSchema(cardsTable).omit({ id: true, 
 export type InsertCard = z.infer<typeof insertCardSchema>;
 export type Card = typeof cardsTable.$inferSelect;
 
+// ── Card Image Backups (off-site R2 mirror catalogue) ────────────────────────
+// One row per card whose art has been mirrored to the owned, off-site object
+// store (Cloudflare R2). This table is ONLY a catalogue — the originals in the
+// primary bucket are never modified or deleted. It exists so the boot-time
+// mirror can tell, cheaply, which cards are already backed up (and skip them)
+// and which changed (source_url differs → re-mirror). Populated entirely by the
+// background mirror; nothing in the game reads it yet, so it is safe to add.
+export const cardImageBackupsTable = pgTable("card_image_backups", {
+  cardId: integer("card_id")
+    .primaryKey()
+    .references(() => cardsTable.id, { onDelete: "cascade" }),
+  guildId: text("guild_id").notNull(),
+  // The card's imageUrl at the time it was mirrored. When the card's art
+  // changes, this no longer matches cards.image_url and the card is re-mirrored.
+  sourceUrl: text("source_url"),
+  // Object keys in the R2 bucket. Full-res is the durable copy; thumb is the
+  // lower-res WebP for cheap display. thumbKey is null if the thumbnail step
+  // failed (the full-res copy still stands on its own).
+  fullKey: text("full_key").notNull(),
+  thumbKey: text("thumb_key"),
+  // sha256 of the source bytes, so an unchanged image is never re-uploaded even
+  // if the URL string churns.
+  checksum: text("checksum"),
+  bytes: integer("bytes"),
+  thumbBytes: integer("thumb_bytes"),
+  contentType: text("content_type"),
+  // ok | source_missing | error — errors are retried on the next boot pass.
+  status: text("status").notNull().default("ok"),
+  error: text("error"),
+  mirroredAt: timestamp("mirrored_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (t) => ({
+  byGuild: index("card_image_backups_guild_idx").on(t.guildId),
+  byStatus: index("card_image_backups_status_idx").on(t.status),
+}));
+
+export type CardImageBackup = typeof cardImageBackupsTable.$inferSelect;
+
 // ── User Collections ──────────────────────────────────────────────────────────
 export const collectionsTable = pgTable("collections", {
   id: serial("id").primaryKey(),

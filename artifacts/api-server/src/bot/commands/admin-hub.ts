@@ -9,6 +9,7 @@ import {
   setUserTimeout, clearUserTimeout, listActiveTimeouts,
   getOrCreateGuildSettings,
 } from "../db.js";
+import { getMirrorStatus, triggerMirrorPass, type MirrorStatus } from "../../lib/cardMirror.js";
 
 // ── Public entry: /admin_hub command opens the ephemeral hub ──────────────────
 export async function handleAdminHubCommand(interaction: ChatInputCommandInteraction): Promise<void> {
@@ -47,6 +48,35 @@ export async function handleAdminHubButton(interaction: ButtonInteraction): Prom
   if (action === "setchannels") {
     const { handleSetChannels } = await import("./setchannels.js");
     await handleSetChannels(interaction);
+    return;
+  }
+
+  // ── Card backup (R2 mirror) status panel ──
+  // "mirrorstatus" (from the hub) opens a SEPARATE ephemeral panel; "mirrorrun"
+  // and "mirrorrefresh" (on that panel) update it in place.
+  if (action === "mirrorstatus" || action === "mirrorrun" || action === "mirrorrefresh") {
+    if (action === "mirrorstatus") {
+      // Fresh ephemeral panel so the hub message stays intact.
+      await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+    } else {
+      await interaction.deferUpdate();
+    }
+    const ok = await ensureAdmin(interaction);
+    if (!ok) return;
+    let note: string | undefined;
+    if (action === "mirrorrun") {
+      const r = triggerMirrorPass();
+      note = r.started
+        ? "🚀 Backup pass started — refresh in a moment to watch the numbers move."
+        : r.reason === "already_running"
+          ? "⏳ A backup pass is already running."
+          : "⚠️ Off-site backup isn't configured yet — add the `R2_*` secrets in Replit.";
+    }
+    const status = await getMirrorStatus();
+    await interaction.editReply({
+      embeds: [buildMirrorEmbed(status, note)],
+      components: buildMirrorComponents(status),
+    });
     return;
   }
 
@@ -205,8 +235,79 @@ function buildHubComponents() {
   );
   const row2 = new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder().setCustomId("adminhub:setchannels").setLabel("📡 Set Channels").setStyle(ButtonStyle.Primary),
+    new ButtonBuilder().setCustomId("adminhub:mirrorstatus").setLabel("🗄️ Backup Status").setStyle(ButtonStyle.Secondary),
   );
   return [row1, row2];
+}
+
+// ── Card image backup (R2 mirror) status panel ───────────────────────────────
+
+function fmtBytes(n: number): string {
+  if (n <= 0) return "0 B";
+  const units = ["B", "KB", "MB", "GB", "TB"];
+  const i = Math.min(units.length - 1, Math.floor(Math.log(n) / Math.log(1024)));
+  return `${(n / Math.pow(1024, i)).toFixed(i === 0 ? 0 : 1)} ${units[i]}`;
+}
+
+function progressBar(done: number, total: number, width = 16): string {
+  if (total <= 0) return "▱".repeat(width);
+  const filled = Math.round((done / total) * width);
+  return "▰".repeat(filled) + "▱".repeat(width - filled);
+}
+
+function buildMirrorEmbed(s: MirrorStatus, note?: string): EmbedBuilder {
+  const done = s.ok;
+  const total = s.totalWithImages;
+  const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+  const embed = new EmbedBuilder()
+    .setTitle("🗄️ Card Art — Off-site Backup")
+    .setColor(s.configured ? (s.pending === 0 && total > 0 ? 0x57f287 : 0x5865f2) : 0x9aa0a8);
+
+  if (!s.configured) {
+    embed.setDescription(
+      "**Off-site backup is not turned on yet.**\n\n" +
+      "It safely copies every card's art (plus a low-res thumbnail) to your own Cloudflare R2 bucket — " +
+      "read-only on the originals, nothing is ever lost.\n\n" +
+      "Add these secrets in **Replit → Tools → Secrets**, then reboot:\n" +
+      "`R2_ACCESS_KEY_ID` · `R2_SECRET_ACCESS_KEY` · `R2_BUCKET` · `R2_ACCOUNT_ID`\n\n" +
+      "_Full guide: `docs/CARD_IMAGE_MIRROR.md`._",
+    );
+    if (total > 0) embed.addFields({ name: "Cards with art", value: `**${total}** ready to back up once enabled`, inline: false });
+    return embed;
+  }
+
+  embed.setDescription(
+    `${progressBar(done, total)}  **${pct}%**\n` +
+    `**${done}** / **${total}** cards backed up${s.running ? " · ⏳ _a pass is running…_" : ""}`,
+  );
+  embed.addFields(
+    { name: "✅ Backed up", value: `**${done}**`, inline: true },
+    { name: "⏳ Pending", value: `**${s.pending}**`, inline: true },
+    { name: "🖼️ Thumbnails", value: `**${s.thumbs}**`, inline: true },
+    { name: "💾 Stored", value: `**${fmtBytes(s.bytes)}**`, inline: true },
+    { name: "⚠️ Errors", value: `**${s.errored}**${s.errored ? " _(retried)_" : ""}`, inline: true },
+    { name: "🚫 Missing source", value: `**${s.sourceMissing}**`, inline: true },
+  );
+  if (s.lastMirroredAt) {
+    embed.addFields({
+      name: "🕒 Last backup",
+      value: `<t:${Math.floor(s.lastMirroredAt.getTime() / 1000)}:R>`,
+      inline: false,
+    });
+  }
+  embed.setFooter({ text: `${s.bucket ?? "R2"} · new & changed art is backed up automatically every 30 min` });
+  if (note) embed.addFields({ name: "​", value: note, inline: false });
+  return embed;
+}
+
+function buildMirrorComponents(s: MirrorStatus): ActionRowBuilder<ButtonBuilder>[] {
+  const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder().setCustomId("adminhub:mirrorrefresh").setLabel("🔄 Refresh").setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder().setCustomId("adminhub:mirrorrun")
+      .setLabel("🚀 Back up now").setStyle(ButtonStyle.Success)
+      .setDisabled(!s.configured || s.running || s.pending === 0),
+  );
+  return [row];
 }
 
 function buildAddAdminModal(): ModalBuilder {

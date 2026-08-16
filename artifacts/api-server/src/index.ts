@@ -3,6 +3,7 @@ import { logger } from "./lib/logger";
 import { startBot } from "./bot/index";
 import { pool } from "@workspace/db";
 import { SEED_SQL } from "./lib/seedData.js";
+import { startCardImageMirror } from "./lib/cardMirror.js";
 
 // Idempotent runtime migrations. Drizzle `db push` only runs against dev;
 // production gets schema changes applied here on boot. Each statement uses
@@ -998,6 +999,30 @@ async function runBootMigrations() {
   await pool.query(`ALTER TABLE guild_settings ADD COLUMN IF NOT EXISTS pack_presentation text NOT NULL DEFAULT 'animated_image'`);
   await pool.query(`ALTER TABLE guild_settings ADD COLUMN IF NOT EXISTS pack_fallback text NOT NULL DEFAULT 'animated_image'`);
 
+  // ── Card image backups (off-site R2 mirror catalogue) ───────────────────────
+  // Additive catalogue for the background card-art mirror. Creating it changes
+  // nothing on its own; the mirror only runs when R2_* secrets are present.
+  // Originals are never touched — this table just records what has been copied.
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS card_image_backups (
+      card_id      INTEGER PRIMARY KEY REFERENCES cards(id) ON DELETE CASCADE,
+      guild_id     TEXT NOT NULL,
+      source_url   TEXT,
+      full_key     TEXT NOT NULL,
+      thumb_key    TEXT,
+      checksum     TEXT,
+      bytes        INTEGER,
+      thumb_bytes  INTEGER,
+      content_type TEXT,
+      status       TEXT NOT NULL DEFAULT 'ok',
+      error        TEXT,
+      mirrored_at  TIMESTAMP NOT NULL DEFAULT NOW(),
+      updated_at   TIMESTAMP NOT NULL DEFAULT NOW()
+    )
+  `);
+  await pool.query(`CREATE INDEX IF NOT EXISTS card_image_backups_guild_idx ON card_image_backups (guild_id)`);
+  await pool.query(`CREATE INDEX IF NOT EXISTS card_image_backups_status_idx ON card_image_backups (status)`);
+
   logger.info("Boot migrations applied");
 }
 
@@ -1045,6 +1070,14 @@ async function main() {
   startBot().catch((err) => {
     logger.error({ err }, "Bot startup failed");
   });
+
+  // Background off-site card-art mirror. No-op unless the R2_* secrets are set,
+  // so this is inert until you opt in — and it only ever READS the originals.
+  try {
+    startCardImageMirror();
+  } catch (err) {
+    logger.error({ err }, "card-mirror: failed to start (non-fatal)");
+  }
 }
 
 main();
