@@ -37,6 +37,8 @@ export interface OwnedBattleCard {
   // on top of level scaling. Defaults to 0 for non-owner pools (e.g. AI).
   starRank: number;
   config: BattleCardConfig | null;
+  // Equipped progression (level) frame id from card_progress; null = none.
+  equippedFrame?: string | null;
   // Source-of-truth rarity context (Stage-1 profile + Stage-2 custom tiers).
   // `effectiveRarityKey` is the built-in rarity key or `custom:<slug>` for a
   // custom tier; `displayRarity` is the label/emoji to show in the picker.
@@ -71,6 +73,7 @@ export async function getOwnedBattleCards(
       // Left-joined so a card the user has never battled still returns (level 1).
       level: cardProgressTable.level,
       starRank: cardProgressTable.starRank,
+      equippedFrame: cardProgressTable.equippedFrame,
     })
       .from(collectionsTable)
       .innerJoin(cardsTable, eq(collectionsTable.cardId, cardsTable.id))
@@ -100,6 +103,7 @@ export async function getOwnedBattleCards(
       owned: r.count + r.shinyCount,
       level: r.level ?? 1,
       starRank: r.starRank ?? 0,
+      equippedFrame: r.equippedFrame ?? null,
       config: cfgMap.get(r.id) ?? null,
       effectiveRarityKey: effectiveKey,
       displayRarity: { label: display.label, emoji: display.emoji },

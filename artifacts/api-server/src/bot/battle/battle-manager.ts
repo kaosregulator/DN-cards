@@ -37,6 +37,7 @@ import type { BattleSettings } from "@workspace/db";
 import type { Combatant, MoveType, AiDifficulty, Rarity, TurnResult } from "./types.js";
 import { AI_DIFFICULTIES } from "./types.js";
 import { getBattleSettings, rarityAllowed, typeAllowed } from "./config-engine.js";
+import { progTierForFrameId } from "../cards/frames.js";
 import { getScaledStats, powerRating } from "./stat-engine.js";
 import { inferMoveset, getMoveset, loadGuildMovesets } from "./movesets.js";
 import { getPassive, loadGuildPassives, applyBattleStartPassive } from "./passives.js";
@@ -283,6 +284,7 @@ function buildCombatant(
     cardId: card.id, cardName: card.name, cardRarity: battleRarity,
     cardType: card.cardType, cardImageUrl: toAbsoluteImageUrl(card.imageUrl),
     cardRarityDisplay: card.displayRarity,
+    progTier: progTierForFrameId(card.equippedFrame),
     moveset,
     // Snapshot the guild-scoped moveset definition (custom or default) up-front.
     movesetDef: getMoveset(moveset, rt.guildId),
@@ -1384,6 +1386,7 @@ function combatantToRenderCard(rt: BattleRuntime, c: Combatant): RenderCard {
     artUrl: c.cardImageUrl,
     attack: c.stats.attack,
     special: getMoveset(c.moveset)?.name ?? null,
+    progTier: c.progTier,
   };
 }
 

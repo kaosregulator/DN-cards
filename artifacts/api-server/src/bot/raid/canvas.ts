@@ -49,6 +49,7 @@ export interface RaidIntroPartyCard {
   imageUrl: string | null;
   rarity: Rarity;
   rarityColor?: number | null;
+  progTier?: import("../animations/card-frames.js").ProgTier | null;
   stars: number; // card stars shown under the frame
 }
 
@@ -126,8 +127,8 @@ export async function renderRaidIntro(
       const px = px0 + i * (cw + gap);
       const color = p.rarityColor ?? getRarityEffectColor(p.rarity);
       drawRarityGlow(ctx, px, py, cw, ch, color, 0.5);
-      await drawCardArt(ctx, mod, px, py, cw, ch, p.imageUrl, p.rarity);
-      drawCardFrame(ctx, px, py, cw, ch, color, 5, p.rarity);
+      await drawCardArt(ctx, mod, px, py, cw, ch, p.imageUrl, p.rarity, p.progTier);
+      drawCardFrame(ctx, px, py, cw, ch, color, 5, p.rarity, p.progTier);
       drawTextWithShadow(ctx, p.name, px + cw / 2, py + ch + 18, "#ffffff", fitText(ctx, p.name, cw + 14, 17));
       if (p.stars > 0) drawTextWithShadow(ctx, "★".repeat(Math.min(5, p.stars)), px + cw / 2, py + ch + 40, "#ffd54a", 16);
     }
@@ -230,6 +231,7 @@ export interface RaidWipePartyCard {
   imageUrl: string | null;
   rarity: Rarity;
   rarityColor?: number | null;
+  progTier?: import("../animations/card-frames.js").ProgTier | null;
   downed: boolean; // struck with a red ✗ when true
 }
 
@@ -285,8 +287,8 @@ export async function renderRaidWipeScene(
       const px = startX + i * (cw + gap);
       const color = p.rarityColor ?? getRarityEffectColor(p.rarity);
       drawRarityGlow(ctx, px, rowY, cw, ch, p.downed ? 0xe74c3c : color, p.downed ? 0.3 : 0.6);
-      await drawCardArt(ctx, mod, px, rowY, cw, ch, p.imageUrl, p.rarity);
-      drawCardFrame(ctx, px, rowY, cw, ch, p.downed ? 0x8a1f1f : color, 5, p.rarity);
+      await drawCardArt(ctx, mod, px, rowY, cw, ch, p.imageUrl, p.rarity, p.progTier);
+      drawCardFrame(ctx, px, rowY, cw, ch, p.downed ? 0x8a1f1f : color, 5, p.rarity, p.progTier);
       if (p.downed) {
         ctx.save();
         roundRectPath(ctx, px, rowY, cw, ch, 12);

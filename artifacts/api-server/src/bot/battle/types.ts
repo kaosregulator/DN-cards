@@ -58,6 +58,9 @@ export interface Combatant {
   // Source-of-truth display rarity (custom tiers / profile overrides) from /rarity.
   // Used by embeds and the VS image so the UI shows the guild's actual rarity names.
   cardRarityDisplay?: { label: string; emoji: string; color?: number | null };
+  // Equipped progression (level) frame tier for this owner's card — drawn over
+  // the rarity frame in battle renders. Null/undefined = no progression frame.
+  progTier?: import("../animations/card-frames.js").ProgTier | null;
   // Signature moveset key (see movesets engine) driving the "Special" move.
   // Optional so non-battle Combatant constructions stay valid; null → generic.
   moveset?: string | null;

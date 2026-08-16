@@ -21,6 +21,7 @@ import {
   type BattleItem,
 } from "../battle/items.js";
 import { getOwnedBattleCards, getOrCreateProfile } from "../battle/db.js";
+import { progTierForFrameId } from "../cards/frames.js";
 import { getRarityContext } from "../db.js";
 import type { OwnedBattleCard } from "../battle/db.js";
 import { bar, WHITE_LINE } from "../battle/embeds.js";
@@ -502,6 +503,7 @@ async function commenceFight(session: RaidSession): Promise<void> {
       name: m.card.name,
       imageUrl: toAbsoluteImageUrl(m.card.imageUrl),
       rarity: m.card.rarity as Rarity,
+      progTier: progTierForFrameId(m.card.equippedFrame),
       stars: m.cardStars,
     })),
   )).catch(() => null);
@@ -960,6 +962,7 @@ async function finishRaid(session: RaidSession, outcome: "clear" | "wipe" | "tim
           name: s.member.card.name,
           imageUrl: toAbsoluteImageUrl(s.member.card.imageUrl),
           rarity: s.member.card.rarity as Rarity,
+          progTier: progTierForFrameId(s.member.card.equippedFrame),
           downed: (s.combatant?.hp ?? 0) <= 0,
         })),
         damageDealt, damageTaken,

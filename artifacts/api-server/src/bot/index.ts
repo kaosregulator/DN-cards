@@ -145,6 +145,9 @@ export async function startBot() {
     // ("Load Defaults" button) or `/sets_admin load file:<.json>`. Keeps fresh
     // servers free to load only their own custom roster.
     await initAllGuilds(client);
+    // Warm the progression (level) frame image cache so the synchronous draw
+    // hooks find them ready on every render surface (battles, siege, raid, …).
+    void (await import("./animations/card-frames.js")).preloadProgressionFrames().catch(() => {});
     // ⚠️ REPLIT SAFETY REVIEW ⚠️ Cross-server data-isolation canary. Read-only;
     // shouts in the logs ([ISOLATION]/[REPLIT]) if it spots orphaned cards, a
     // mass-deleted home roster, or cross-guild collection contamination.
