@@ -25,6 +25,7 @@ import {
   drawTextWithShadow, drawTitle, fitText, TITLE_FONT,
 } from "../animations/effects.js";
 import type { AnimationSpeed } from "../animations/types.js";
+import type { Rarity } from "../cards-data.js";
 import { logger } from "../../lib/logger.js";
 
 export const MG_CANVAS = { width: 1000, height: 560 } as const;
@@ -53,6 +54,8 @@ export interface MiniGameScreenSpec {
   cardName: string;
   rarityLabel: string;
   rarityColor: number;
+  // Rarity key for the image-frame mapping (falls back to color-only when absent).
+  rarity?: Rarity;
   // Hide the real art (Choose-a-Card / Code Break) — show a facedown DN back
   // with a badge instead.
   hideCardArt?: boolean;
@@ -140,9 +143,9 @@ async function paint(ctx: Ctx, mod: CanvasMod, spec: MiniGameScreenSpec, anim: P
     drawTitle(ctx, "DN", cx + cw / 2, cy + ch / 2 - 8, "#ffffff", 64);
     drawTextWithShadow(ctx, "CARDS", cx + cw / 2, cy + ch / 2 + 34, hexToRgba(accent, 1), 22);
   } else {
-    await drawCardArt(ctx, mod, cx, cy, cw, ch, spec.cardArtUrl);
+    await drawCardArt(ctx, mod, cx, cy, cw, ch, spec.cardArtUrl, spec.rarity);
   }
-  drawCardFrame(ctx, cx, cy, cw, ch, spec.rarityColor, 8);
+  drawCardFrame(ctx, cx, cy, cw, ch, spec.rarityColor, 8, spec.rarity);
   if (spec.cardBadge) drawRarityBadge(ctx, cx + cw - 14, cy + 16, drawSafe(spec.cardBadge), spec.rarityColor);
   drawEmbers(ctx, cx - 16, cy, cw + 32, ch, { color: accent, count: 22, seed: `${spec.cardName}-aura` });
   drawTextWithShadow(ctx, drawSafe(spec.cardName), cx + cw / 2, cy + ch + 20, "#ffffff",
@@ -254,6 +257,7 @@ export interface MemoryCell {
   state: "down" | "up" | "matched";
   artUrl: string | null;
   rarityColor: number;
+  rarity?: Rarity;
 }
 export interface MemoryBoardInput {
   theme: number;
@@ -324,8 +328,8 @@ export async function renderMemoryBoard(input: MemoryBoardInput): Promise<Buffer
         } else {
           const col2 = cell.rarityColor;
           drawRarityGlow(ctx, x, y, cw, ch, col2, cell.state === "matched" ? 0.4 : 0.75);
-          await drawCardArt(ctx, mod, x, y, cw, ch, cell.artUrl);
-          drawCardFrame(ctx, x, y, cw, ch, cell.state === "matched" ? 0x2ecc71 : col2, 5);
+          await drawCardArt(ctx, mod, x, y, cw, ch, cell.artUrl, cell.rarity);
+          drawCardFrame(ctx, x, y, cw, ch, cell.state === "matched" ? 0x2ecc71 : col2, 5, cell.rarity);
           if (cell.state === "matched") {
             ctx.save();
             roundRectPath(ctx, x, y, cw, ch, 12); ctx.clip();

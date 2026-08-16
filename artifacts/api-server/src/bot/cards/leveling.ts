@@ -88,16 +88,17 @@ export async function getCardProgress(
 // canvases. Missing rows are simply absent (caller defaults to star 0 / Lv 1).
 export async function getCardProgressBatch(
   guildId: string, userId: string,
-): Promise<Map<number, { starRank: number; level: number; xp: number }>> {
+): Promise<Map<number, { starRank: number; level: number; xp: number; equippedFrame: string | null }>> {
   const rows = await db.select({
     cardId: cardProgressTable.cardId,
     starRank: cardProgressTable.starRank,
     level: cardProgressTable.level,
     xp: cardProgressTable.xp,
+    equippedFrame: cardProgressTable.equippedFrame,
   }).from(cardProgressTable)
     .where(and(eq(cardProgressTable.guildId, guildId), eq(cardProgressTable.userId, userId)));
-  const map = new Map<number, { starRank: number; level: number; xp: number }>();
-  for (const r of rows) map.set(r.cardId, { starRank: r.starRank ?? 0, level: r.level ?? 1, xp: r.xp ?? 0 });
+  const map = new Map<number, { starRank: number; level: number; xp: number; equippedFrame: string | null }>();
+  for (const r of rows) map.set(r.cardId, { starRank: r.starRank ?? 0, level: r.level ?? 1, xp: r.xp ?? 0, equippedFrame: r.equippedFrame ?? null });
   return map;
 }
 

@@ -173,8 +173,8 @@ export function cardSpotlight(opts: {
     // Breathing halo behind the card.
     const pulse = 0.55 + 0.25 * Math.sin(t * Math.PI * 4);
     drawRarityGlow(ctx, x, y, opts.w, opts.h, color, pulse);
-    await drawCardArt(ctx, mod, x, y, opts.w, opts.h, opts.card.artUrl);
-    drawCardFrame(ctx, x, y, opts.w, opts.h, color, 7);
+    await drawCardArt(ctx, mod, x, y, opts.w, opts.h, opts.card.artUrl, opts.card.rarity);
+    drawCardFrame(ctx, x, y, opts.w, opts.h, color, 7, opts.card.rarity);
     // Shimmer sweep across the art.
     drawFoilOverlay(ctx as unknown as Ctx, x, y, opts.w, opts.h, (t * 1.6) % 1);
     // Name plate.
@@ -209,8 +209,8 @@ export function defeatEffect(opts: {
       // Pre-defeat: the doomed card, dimmed and trembling.
       const tremble = Math.sin(t * 80) * 2;
       ctx.globalAlpha = 0.85;
-      await drawCardArt(ctx, mod, x + tremble, y, w, h, opts.card.artUrl);
-      drawCardFrame(ctx, x + tremble, y, w, h, opts.color, 6);
+      await drawCardArt(ctx, mod, x + tremble, y, w, h, opts.card.artUrl, opts.card.rarity);
+      drawCardFrame(ctx, x + tremble, y, w, h, opts.color, 6, opts.card.rarity);
       ctx.fillStyle = "rgba(0,0,0,0.25)";
       ctx.fillRect(x + tremble, y, w, h);
       ctx.restore();
@@ -222,8 +222,8 @@ export function defeatEffect(opts: {
         // Card fades as debris + shockwave rings blow outward.
         if (p < 0.5) {
           ctx.globalAlpha = 1 - p / 0.5;
-          await drawCardArt(ctx, mod, x, y, w, h, opts.card.artUrl);
-          drawCardFrame(ctx, x, y, w, h, opts.color, 6);
+          await drawCardArt(ctx, mod, x, y, w, h, opts.card.artUrl, opts.card.rarity);
+          drawCardFrame(ctx, x, y, w, h, opts.color, 6, opts.card.rarity);
         }
         ctx.globalAlpha = 1;
         ring(ctx, cx, cy, p, Math.max(w, h) * 1.6, opts.color);
@@ -239,8 +239,8 @@ export function defeatEffect(opts: {
         // The card breaks into tinted shards that scatter and fall.
         if (p < 0.35) {
           ctx.globalAlpha = 1 - p / 0.35;
-          await drawCardArt(ctx, mod, x, y, w, h, opts.card.artUrl);
-          drawCardFrame(ctx, x, y, w, h, opts.color, 6);
+          await drawCardArt(ctx, mod, x, y, w, h, opts.card.artUrl, opts.card.rarity);
+          drawCardFrame(ctx, x, y, w, h, opts.color, 6, opts.card.rarity);
         }
         ctx.globalAlpha = 1;
         const shards = await simulateDebris(cx, cy, {
@@ -255,7 +255,7 @@ export function defeatEffect(opts: {
         // Card dissolves upward inside an expanding energy burst.
         if (p < 0.6) {
           ctx.globalAlpha = (1 - p / 0.6) * 0.9;
-          await drawCardArt(ctx, mod, x, y - p * 40, w, h, opts.card.artUrl);
+          await drawCardArt(ctx, mod, x, y - p * 40, w, h, opts.card.artUrl, opts.card.rarity);
         }
         ctx.globalAlpha = 1;
         ctx.save();
@@ -285,8 +285,8 @@ export function defeatEffect(opts: {
           ctx.translate(cx, y + h);
           ctx.scale(1 + p * 0.1, squash);
           ctx.translate(-cx, -(y + h));
-          await drawCardArt(ctx, mod, x, y + sink, w, h, opts.card.artUrl);
-          drawCardFrame(ctx, x, y + sink, w, h, opts.color, 6);
+          await drawCardArt(ctx, mod, x, y + sink, w, h, opts.card.artUrl, opts.card.rarity);
+          drawCardFrame(ctx, x, y + sink, w, h, opts.color, 6, opts.card.rarity);
           ctx.restore();
         }
         ctx.globalAlpha = 1;

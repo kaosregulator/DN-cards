@@ -21,6 +21,7 @@ import {
 } from "../animations/engine.js";
 import { queueRender } from "../animations/render-queue.js";
 import { drawCardArt, drawCardFrame, drawRarityGlow, fitText } from "../animations/effects.js";
+import type { Rarity } from "../cards-data.js";
 import type { AnimationSpeed } from "../animations/types.js";
 import { logger } from "../../lib/logger.js";
 
@@ -38,6 +39,7 @@ export interface WildEncounterInput {
   cardName: string;
   rarityLabel: string;
   rarityColor: number;
+  rarity?: Rarity;
   avatarUrl: string | null;       // kept for compat; the figure sprite is the player
   menuLabels?: string[];          // the shuffled joke options shown in the menu box
 }
@@ -165,8 +167,8 @@ async function paint(ctx: Ctx, mod: CanvasMod, input: WildEncounterInput, t: num
   const cardCx = lerp(width + 100, epx, slide);
   const cardX = cardCx - cw / 2, cardY = cardBottom - ch;
   drawRarityGlow(ctx, cardX, cardY, cw, ch, accent, 0.85);
-  await drawCardArt(ctx, mod, cardX, cardY, cw, ch, input.cardArtUrl);
-  drawCardFrame(ctx, cardX, cardY, cw, ch, accent, 6);
+  await drawCardArt(ctx, mod, cardX, cardY, cw, ch, input.cardArtUrl, input.rarity);
+  drawCardFrame(ctx, cardX, cardY, cw, ch, accent, 6, input.rarity);
 
   // Player side + the trainer sliding in from the left. The figure is large
   // (foreground); its grass island is ALMOST HIDDEN — pushed well below the frame

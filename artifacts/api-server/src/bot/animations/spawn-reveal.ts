@@ -21,7 +21,7 @@ import type { Rarity } from "../cards-data.js";
 import type { AnimationSpeed } from "./types.js";
 import {
   getCanvas, encodeAnimation, drawGradientBackground, hexToRgba, roundRectPath,
-  clamp01, type Ctx,
+  clamp01, lerp, type Ctx,
 } from "./engine.js";
 import { queueRender } from "./render-queue.js";
 import {
@@ -229,7 +229,7 @@ export async function createSpawnRevealSession(input: SpawnRevealInput): Promise
     }
     ctx.restore();
 
-    drawCardFrame(ctx, PANEL.x, PANEL.y, PANEL.w, PANEL.h, color, 6);
+    drawCardFrame(ctx, PANEL.x, PANEL.y, PANEL.w, PANEL.h, color, 6, input.rarity);
     drawRarityBadge(ctx, PANEL.x + PANEL.w - 12, PANEL.y + 12, input.rarityLabel, color);
   };
 
@@ -267,6 +267,17 @@ export async function createSpawnRevealSession(input: SpawnRevealInput): Promise
 // a shiny is instantly recognisable. Reuses the same canvas+gifencoder pipeline
 // and the existing holo/foil/shine effect helpers. Best-effort → null (caller
 // falls back to the static shiny canvas + ✨ badge).
+// Shiny reveal styles. "classic" is the original gold shine; the rest are the
+// admin-selectable looks configured in the Shiny Hub. "random" is resolved to a
+// concrete style at call time (see resolveShinyStyle).
+export type ShinyStyle = "classic" | "holofoil" | "rainbow" | "cosmic" | "prism" | "radiance";
+const SHINY_STYLES: readonly ShinyStyle[] = ["classic", "holofoil", "rainbow", "cosmic", "prism", "radiance"];
+
+export function resolveShinyStyle(value: string | null | undefined): ShinyStyle {
+  if (value === "random") return SHINY_STYLES[Math.floor(Math.random() * SHINY_STYLES.length)]!;
+  return (SHINY_STYLES as readonly string[]).includes(value ?? "") ? (value as ShinyStyle) : "classic";
+}
+
 export interface ShinyRevealInput {
   artUrl: string | null | undefined;
   rarity: Rarity;
@@ -274,6 +285,191 @@ export interface ShinyRevealInput {
   rarityColor?: number | null;
   name: string;
   speed?: AnimationSpeed;
+  style?: ShinyStyle;
+}
+
+// HSL → {r,g,b} in 0..255, shared by the rainbow/prism hue-cycling helpers.
+function hslRgb(h: number, s: number, l: number): [number, number, number] {
+  h = ((h % 360) + 360) % 360; s /= 100; l /= 100;
+  const c = (1 - Math.abs(2 * l - 1)) * s;
+  const x = c * (1 - Math.abs(((h / 60) % 2) - 1));
+  const m = l - c / 2;
+  let r = 0, g = 0, b = 0;
+  if (h < 60) { r = c; g = x; } else if (h < 120) { r = x; g = c; }
+  else if (h < 180) { g = c; b = x; } else if (h < 240) { g = x; b = c; }
+  else if (h < 300) { r = x; b = c; } else { r = c; b = x; }
+  return [Math.round((r + m) * 255), Math.round((g + m) * 255), Math.round((b + m) * 255)];
+}
+function hsla(h: number, s: number, l: number, a: number): string {
+  const [r, g, b] = hslRgb(h, s, l);
+  return `rgba(${r}, ${g}, ${b}, ${a})`;
+}
+function hslHex(h: number, s: number, l: number): number {
+  const [r, g, b] = hslRgb(h, s, l);
+  return (r << 16) | (g << 8) | b;
+}
+
+// Diagonal multi-band rainbow sheen sweeping across the card (rainbow / holo).
+function drawRainbowSweep(ctx: Ctx, x: number, y: number, w: number, h: number, t: number, alpha = 0.5): void {
+  ctx.save();
+  roundRectPath(ctx, x, y, w, h, 18);
+  ctx.clip();
+  (ctx as unknown as { globalCompositeOperation: string }).globalCompositeOperation = "screen";
+  const offset = (t * 1.6 - 0.3) * (w + h);
+  const g = ctx.createLinearGradient(x + offset - h, y, x + offset, y + h);
+  for (let i = 0; i <= 6; i++) g.addColorStop(i / 6, hsla(i * 60 + t * 360, 90, 60, alpha * (i % 2 ? 0.5 : 0.9)));
+  ctx.fillStyle = g;
+  ctx.fillRect(x, y, w, h);
+  ctx.restore();
+}
+
+// A dense twinkling starfield (cosmic).
+function drawStarfield(ctx: Ctx, x: number, y: number, w: number, h: number, t: number, count = 60): void {
+  ctx.save();
+  roundRectPath(ctx, x, y, w, h, 18);
+  ctx.clip();
+  const seed = (n: number) => ((Math.sin(n * 127.1) * 43758.5453) % 1 + 1) % 1;
+  for (let i = 0; i < count; i++) {
+    const sx = x + seed(i) * w, sy = y + seed(i + 313) * h;
+    const tw = Math.sin(t * Math.PI * 2 + i * 0.7) * 0.5 + 0.5;
+    ctx.globalAlpha = 0.25 + tw * 0.75;
+    ctx.fillStyle = i % 7 === 0 ? "#bfeaff" : "#ffffff";
+    ctx.beginPath();
+    ctx.arc(sx, sy, 0.6 + tw * 1.8, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.restore();
+  ctx.globalAlpha = 1;
+}
+
+// Radiating light beams from the card centre (prism = multicolour, radiance = gold rays).
+function drawRays(ctx: Ctx, cx: number, cy: number, t: number, opts: { count: number; len: number; prism?: boolean; color?: number }): void {
+  ctx.save();
+  (ctx as unknown as { globalCompositeOperation: string }).globalCompositeOperation = "screen";
+  const spin = t * Math.PI * (opts.prism ? 0.6 : 0.4);
+  for (let i = 0; i < opts.count; i++) {
+    const ang = (i / opts.count) * Math.PI * 2 + spin;
+    const pulse = 0.5 + 0.5 * Math.sin(t * Math.PI * 2 + i);
+    const len = opts.len * (0.7 + 0.3 * pulse);
+    const stroke = opts.prism ? hsla((i / opts.count) * 360 + t * 200, 95, 62, 0.22 + pulse * 0.18) : hexToRgba(opts.color ?? 0xf1c40f, 0.16 + pulse * 0.2);
+    ctx.strokeStyle = stroke;
+    ctx.lineWidth = opts.prism ? 3 : 6;
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.lineTo(cx + Math.cos(ang) * len, cy + Math.sin(ang) * len);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+// Per-style config: backdrop, the glow/frame colour, title, behind-card aura and
+// the on-card overlay stack. Keeps renderShinyReveal a single, shared pipeline.
+interface ShinyStyleSpec {
+  title: string;
+  titleColor: (t: number) => string;
+  frameColor: (t: number) => number;
+  glowColor: number;
+  background: (ctx: Ctx, t: number) => void;
+  aura?: (ctx: Ctx, t: number) => void;                                   // behind the card
+  overlay: (ctx: Ctx, x: number, y: number, w: number, h: number, t: number) => void; // clipped on the card
+}
+
+const GOLD = 0xf1c40f;
+
+function shinyStyleSpec(style: ShinyStyle): ShinyStyleSpec {
+  switch (style) {
+    case "holofoil":
+      return {
+        title: "✨ HOLO FOIL ✨",
+        titleColor: () => "#c9fff4",
+        frameColor: () => 0x8fe9df,
+        glowColor: 0x5fe6d6,
+        background: (ctx) => drawGradientBackground(ctx, WIDTH, HEIGHT, [[0, "rgba(95,230,214,0.28)"], [0.5, "#08110f"], [1, "#050807"]], 0.4),
+        overlay: (ctx, x, y, w, h, t) => {
+          drawFoilOverlay(ctx, x, y, w, h, t);
+          drawRainbowSweep(ctx, x, y, w, h, (t + 0.5) % 1, 0.35);
+          drawHoloSparkles(ctx, x, y, w, h, t, 22);
+          drawShineSweep(ctx, x, y, w, h, t, 0xd6fff7);
+        },
+      };
+    case "rainbow":
+      return {
+        title: "🌈 RAINBOW SHINY 🌈",
+        titleColor: (t) => hsla(t * 360, 90, 70, 1),
+        frameColor: (t) => 0xffffff, // recoloured per-frame in the render via aura ring
+        glowColor: 0xff5fd0,
+        background: (ctx, t) => drawGradientBackground(ctx, WIDTH, HEIGHT, [[0, hsla(t * 360, 80, 22, 1)], [0.5, "#0a0810"], [1, "#060409"]], 0.5),
+        overlay: (ctx, x, y, w, h, t) => {
+          drawRainbowSweep(ctx, x, y, w, h, t, 0.6);
+          drawRainbowSweep(ctx, x, y, w, h, (t + 0.33) % 1, 0.4);
+          drawHoloSparkles(ctx, x, y, w, h, t, 30);
+        },
+      };
+    case "cosmic":
+      return {
+        title: "🌌 COSMIC SHINY 🌌",
+        titleColor: () => "#cbb8ff",
+        frameColor: () => 0x8a7bff,
+        glowColor: 0x7b6cff,
+        background: (ctx) => drawGradientBackground(ctx, WIDTH, HEIGHT, [[0, "rgba(90,60,180,0.30)"], [0.45, "#0b0a1f"], [1, "#050410"]], 1.2),
+        aura: (ctx, t) => {
+          // Two drifting nebula glows.
+          for (const [ox, oy, hue] of [[-70, -40, 265], [80, 60, 300]] as const) {
+            const g = ctx.createRadialGradient(WIDTH / 2 + ox, HEIGHT / 2 + oy, 10, WIDTH / 2 + ox, HEIGHT / 2 + oy, 220);
+            g.addColorStop(0, hsla(hue + t * 30, 80, 60, 0.22));
+            g.addColorStop(1, "rgba(0,0,0,0)");
+            ctx.fillStyle = g; ctx.fillRect(0, 0, WIDTH, HEIGHT);
+          }
+        },
+        overlay: (ctx, x, y, w, h, t) => {
+          drawStarfield(ctx, x, y, w, h, t, 70);
+          drawShineSweep(ctx, x, y, w, h, t, 0xbfa8ff);
+        },
+      };
+    case "prism":
+      return {
+        title: "🔷 PRISM SHINY 🔷",
+        titleColor: (t) => hsla(t * 360 + 180, 90, 72, 1),
+        frameColor: () => 0xffffff,
+        glowColor: 0x66ccff,
+        background: (ctx) => drawGradientBackground(ctx, WIDTH, HEIGHT, [[0, "rgba(120,220,255,0.18)"], [0.5, "#0a0d16"], [1, "#05070d"]], 0.6),
+        aura: (ctx, t) => drawRays(ctx, WIDTH / 2, HEIGHT / 2, t, { count: 16, len: 300, prism: true }),
+        overlay: (ctx, x, y, w, h, t) => {
+          drawFoilOverlay(ctx, x, y, w, h, t);
+          drawRainbowSweep(ctx, x, y, w, h, t, 0.45);
+          drawShineSweep(ctx, x, y, w, h, (t + 0.5) % 1, 0xffffff);
+          drawHoloSparkles(ctx, x, y, w, h, t, 18);
+        },
+      };
+    case "radiance":
+      return {
+        title: "☀️ GOLD RADIANCE ☀️",
+        titleColor: () => "#ffe9a8",
+        frameColor: () => GOLD,
+        glowColor: GOLD,
+        background: (ctx) => drawGradientBackground(ctx, WIDTH, HEIGHT, [[0, "rgba(241,196,15,0.34)"], [0.5, "#171003"], [1, "#0a0702"]], 0.5),
+        aura: (ctx, t) => drawRays(ctx, WIDTH / 2, HEIGHT / 2, t, { count: 20, len: 320, color: 0xffcf4d }),
+        overlay: (ctx, x, y, w, h, t) => {
+          drawFoilOverlay(ctx, x, y, w, h, t);
+          drawShineSweep(ctx, x, y, w, h, t, 0xfff2c4);
+          drawHoloSparkles(ctx, x, y, w, h, t, 20);
+        },
+      };
+    case "classic":
+    default:
+      return {
+        title: "✨ SHINY! ✨",
+        titleColor: () => "#ffe27a",
+        frameColor: () => GOLD,
+        glowColor: GOLD,
+        background: (ctx) => drawGradientBackground(ctx, WIDTH, HEIGHT, [[0, hexToRgba(GOLD, 0.32)], [0.5, "#141007"], [1, "#0a0803"]], 0.32),
+        overlay: (ctx, x, y, w, h, t) => {
+          drawFoilOverlay(ctx, x, y, w, h, t);
+          drawHoloSparkles(ctx, x, y, w, h, t, 28);
+          drawShineSweep(ctx, x, y, w, h, t, 0xffffff);
+        },
+      };
+  }
 }
 
 export async function renderShinyReveal(input: ShinyRevealInput): Promise<Buffer | null> {
@@ -284,7 +480,7 @@ export async function renderShinyReveal(input: ShinyRevealInput): Promise<Buffer
   if (!probe) return null;
 
   const color = input.rarityColor ?? getRarityEffectColor(input.rarity);
-  const gold = 0xf1c40f;
+  const spec = shinyStyleSpec(input.style ?? "classic");
   try {
     const result = await encodeAnimation({
       width: WIDTH,
@@ -294,28 +490,25 @@ export async function renderShinyReveal(input: ShinyRevealInput): Promise<Buffer
       maxFrames: 24,
       quality: 20,
       render: async ({ ctx, t, mod: m }) => {
-        // Warm, shiny gold-tinted backdrop.
-        drawGradientBackground(ctx, WIDTH, HEIGHT, [
-          [0, hexToRgba(gold, 0.32)],
-          [0.5, "#141007"],
-          [1, "#0a0803"],
-        ], 0.32);
-        drawTitle(ctx, "✨ SHINY! ✨", WIDTH / 2, 36, "#ffe27a", 26);
+        spec.background(ctx, t);
+        drawTitle(ctx, spec.title, WIDTH / 2, 36, spec.titleColor(t), 26);
 
-        // Pulsing glow behind the card.
+        // Behind-card aura (rays / nebula), then a pulsing rarity glow.
+        spec.aura?.(ctx, t);
         const pulse = 0.7 + 0.3 * Math.sin(t * Math.PI * 2);
-        drawRarityGlow(ctx, PANEL.x, PANEL.y, PANEL.w, PANEL.h, gold, pulse);
+        // Rainbow style cycles the glow hue for a shifting halo.
+        const glow = input.style === "rainbow" ? hslHex(t * 360, 90, 55) : spec.glowColor;
+        drawRarityGlow(ctx, PANEL.x, PANEL.y, PANEL.w, PANEL.h, glow, pulse);
 
-        // Card art + animated holo/foil/shine layered on top.
+        // Card art + the style's on-card overlay stack.
         ctx.save();
         clipPanel(ctx);
-        await drawCardArt(ctx, m, PANEL.x, PANEL.y, PANEL.w, PANEL.h, input.artUrl);
-        drawFoilOverlay(ctx, PANEL.x, PANEL.y, PANEL.w, PANEL.h, t);
-        drawHoloSparkles(ctx, PANEL.x, PANEL.y, PANEL.w, PANEL.h, t, 28);
-        drawShineSweep(ctx, PANEL.x, PANEL.y, PANEL.w, PANEL.h, t, 0xffffff);
+        await drawCardArt(ctx, m, PANEL.x, PANEL.y, PANEL.w, PANEL.h, input.artUrl, input.rarity);
+        spec.overlay(ctx, PANEL.x, PANEL.y, PANEL.w, PANEL.h, t);
         ctx.restore();
 
-        drawCardFrame(ctx, PANEL.x, PANEL.y, PANEL.w, PANEL.h, gold, 6);
+        const frameCol = input.style === "rainbow" ? glow : spec.frameColor(t);
+        drawCardFrame(ctx, PANEL.x, PANEL.y, PANEL.w, PANEL.h, frameCol, 6, input.rarity);
         drawRarityBadge(ctx, PANEL.x + PANEL.w - 12, PANEL.y + 12, input.rarityLabel, color);
 
         // Name below the card.
@@ -400,13 +593,13 @@ export async function renderShinyShowcase(input: ShinyShowcaseInput): Promise<Bu
         ctx.clip();
         ctx.fillStyle = "#0b0c11";
         ctx.fillRect(P.x, P.y, P.w, P.h);
-        await drawCardArt(ctx, m, P.x, P.y, P.w, P.h, input.artUrl);
+        await drawCardArt(ctx, m, P.x, P.y, P.w, P.h, input.artUrl, input.rarity);
         drawFoilOverlay(ctx, P.x, P.y, P.w, P.h, t);
         drawHoloSparkles(ctx, P.x, P.y, P.w, P.h, t, 30);
         drawShineSweep(ctx, P.x, P.y, P.w, P.h, t, 0xffffff);
         ctx.restore();
 
-        drawCardFrame(ctx, P.x, P.y, P.w, P.h, gold, 6);
+        drawCardFrame(ctx, P.x, P.y, P.w, P.h, gold, 6, input.rarity);
         drawRarityBadge(ctx, P.x + P.w - 12, P.y + 12, input.rarityLabel, color);
 
         // Name below the card.

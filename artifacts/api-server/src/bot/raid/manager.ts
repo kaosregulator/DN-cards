@@ -13,12 +13,15 @@ import type { BattleSettings, RaidBoss } from "@workspace/db";
 import { and, eq } from "drizzle-orm";
 import type { Combatant, MoveType } from "../battle/types.js";
 import type { Rarity } from "../cards-data.js";
+import { withGuildFrames } from "../animations/card-frames.js";
+import { getOrCreateGuildSettings } from "../db.js";
 import { getBattleSettings, rarityAllowed } from "../battle/config-engine.js";
 import {
   listBattleItems, getBattleItem, loadGuildBattleItems, applyItemUse, isOffensiveItem,
   type BattleItem,
 } from "../battle/items.js";
 import { getOwnedBattleCards, getOrCreateProfile } from "../battle/db.js";
+import { progTierForFrameId } from "../cards/frames.js";
 import { getRarityContext } from "../db.js";
 import type { OwnedBattleCard } from "../battle/db.js";
 import { bar, WHITE_LINE } from "../battle/embeds.js";
@@ -489,7 +492,7 @@ async function commenceFight(session: RaidSession): Promise<void> {
 
   // VS arena canvas: boss (prominent) vs the party's cards on the battlefield.
   // Rendered once and reused as the fight image every round. Best-effort.
-  session.introImage = await renderRaidIntro(
+  session.introImage = await withGuildFrames(await getOrCreateGuildSettings(session.guildId).catch(() => null), () => renderRaidIntro(
     {
       name: session.boss.name,
       imageUrl: toAbsoluteImageUrl(session.boss.imageUrl),
@@ -500,9 +503,10 @@ async function commenceFight(session: RaidSession): Promise<void> {
       name: m.card.name,
       imageUrl: toAbsoluteImageUrl(m.card.imageUrl),
       rarity: m.card.rarity as Rarity,
+      progTier: progTierForFrameId(m.card.equippedFrame),
       stars: m.cardStars,
     })),
-  ).catch(() => null);
+  )).catch(() => null);
 
   session.recentLog = [`⚔️ The party descends on **${session.boss.name}**! Choose your actions.`];
   await renderFight(session);
@@ -922,7 +926,7 @@ async function finishRaid(session: RaidSession, outcome: "clear" | "wipe" | "tim
       const soloAvatarUrl = session.party.size === 1
         ? ([...session.party.values()][0]?.member.avatarUrl ?? null)
         : null;
-      endImage = await renderCampaignProgress({
+      endImage = await withGuildFrames(await getOrCreateGuildSettings(session.guildId).catch(() => null), () => renderCampaignProgress({
         defeatedBoss: {
           name: boss.name, imageUrl: toAbsoluteImageUrl(boss.imageUrl),
           rarity: boss.rarity as Rarity, battlefieldUrl: toAbsoluteImageUrl(boss.battlefieldUrl),
@@ -936,7 +940,7 @@ async function finishRaid(session: RaidSession, outcome: "clear" | "wipe" | "tim
           : null,
         isFinaleNext: prog.isFinaleNext,
         isComplete: prog.isComplete,
-      }).catch(() => null);
+      })).catch(() => null);
       if (endImage) endFile = RAID_CAMPAIGN_FILE;
     } catch { /* non-fatal — plain end embed */ }
   } else {
@@ -947,7 +951,7 @@ async function finishRaid(session: RaidSession, outcome: "clear" | "wipe" | "tim
         (sum, s) => sum + (s.combatant ? Math.max(0, s.combatant.stats.maxHealth - Math.max(0, s.combatant.hp)) : 0), 0,
       );
       storyLine = buildRaidWipeLine(boss);
-      endImage = await renderRaidWipeScene(
+      endImage = await withGuildFrames(await getOrCreateGuildSettings(session.guildId).catch(() => null), () => renderRaidWipeScene(
         {
           name: boss.name,
           imageUrl: toAbsoluteImageUrl(boss.imageUrl),
@@ -958,10 +962,11 @@ async function finishRaid(session: RaidSession, outcome: "clear" | "wipe" | "tim
           name: s.member.card.name,
           imageUrl: toAbsoluteImageUrl(s.member.card.imageUrl),
           rarity: s.member.card.rarity as Rarity,
+          progTier: progTierForFrameId(s.member.card.equippedFrame),
           downed: (s.combatant?.hp ?? 0) <= 0,
         })),
         damageDealt, damageTaken,
-      ).catch(() => null);
+      )).catch(() => null);
       if (endImage) endFile = RAID_WIPE_FILE;
     } catch { /* non-fatal — plain end embed */ }
   }

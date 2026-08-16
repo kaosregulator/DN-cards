@@ -7,6 +7,9 @@ import {
   renderMiniGameStill, renderMiniGameIntro, MG_FILE, MG_GIF_FILE,
   type MiniGameScreenSpec,
 } from "../canvas.js";
+import { withGuildFrames } from "../../animations/card-frames.js";
+import { getOrCreateGuildSettings } from "../../db.js";
+import type { Rarity } from "../../cards-data.js";
 
 export interface ButtonSpec {
   action: string;
@@ -43,9 +46,14 @@ export async function renderScreen(
   opts: { animateIntro?: boolean; buttons?: ButtonSpec[]; description?: string; title?: string },
 ): Promise<MiniGameRender> {
   const wantGif = !!opts.animateIntro && session.animate;
-  const image = wantGif
-    ? await renderMiniGameIntro(spec)
-    : await renderMiniGameStill(spec);
+  // Default the spec's frame rarity to the caught card's rarity (source of truth)
+  // and render inside the guild's frame scope, so image frames apply to every
+  // mini-game screen when enabled.
+  const framedSpec = spec.rarity ? spec : { ...spec, rarity: session.card.rarity as Rarity };
+  const settings = await getOrCreateGuildSettings(session.guildId).catch(() => null);
+  const image = await withGuildFrames(settings, () => wantGif
+    ? renderMiniGameIntro(framedSpec)
+    : renderMiniGameStill(framedSpec));
   const imageName = wantGif && image ? MG_GIF_FILE : MG_FILE;
   return {
     title: opts.title ?? `${spec.icon ?? "🎯"} ${spec.title} ${spec.titleTail ?? ""}`.trim(),

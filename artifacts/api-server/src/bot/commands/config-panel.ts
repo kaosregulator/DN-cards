@@ -7,9 +7,10 @@ import {
 } from "discord.js";
 import { getOrCreateGuildSettings, updateGuildSettings, isAdmin, getActiveSet, getActiveSetSecondary, getRarityDisplayOverrides, createCustomPack, listCustomPacks, getCustomPack, updateCustomPack, deleteCustomPack, getDistinctCardTypes } from "../db.js";
 import { scheduleNextSpawn, clearSpawnTimer, scheduleNextSpawnSecondary, clearSpawnTimerSecondary, applySpawnBoostChange } from "../spawn-manager.js";
-import { RARITY_WEIGHTS, RARITY_LABELS, RARITY_EMOJI, rarityLabel, rarityEmoji, getRarityOrder, type Rarity, type RarityDisplayMap } from "../cards-data.js";
+import { RARITY_WEIGHTS, RARITY_LABELS, RARITY_EMOJI, rarityLabel, rarityEmoji, getRarityOrder, getShinyName, getShinyMultiplier, SHINY_EMOJI, type Rarity, type RarityDisplayMap } from "../cards-data.js";
 import type { CustomPack, GuildSettings } from "@workspace/db";
 import { PACK_TIERS, PACK_TIER_META, PACK_DEFAULTS, resolveTierConfig, tierLabel, type PackTier } from "./pack.js";
+import { FRAME_COLORS } from "../animations/card-frames.js";
 import {
   EXPERIENCES, MODE_LABELS, experienceByKey, getPrimary, getFallback, activityConfigured,
   type PresentationMode,
@@ -90,6 +91,21 @@ export async function handleConfigSelect(interaction: StringSelectMenuInteractio
   const action = interaction.customId;
   const value = interaction.values[0];
 
+  // ── Card Frames selects (own sub-panel, per-rarity state) ──────────────────
+  if (action === "config_frame_rarity") {
+    const [settings, displayMap] = await Promise.all([getOrCreateGuildSettings(guildId), getRarityDisplayOverrides(guildId)]);
+    await interaction.editReply({ embeds: [buildFramesEmbed(settings, value!, displayMap)], components: buildFramesComponents(settings, value!, displayMap) });
+    return;
+  }
+  if (action.startsWith("config_frame_color:")) {
+    const rarity = action.slice("config_frame_color:".length);
+    const col = frameColumnFor(rarity);
+    if (col) await updateGuildSettings(guildId, { [col]: value === "none" ? null : value } as Partial<GuildSettings>);
+    const [settings, displayMap] = await Promise.all([getOrCreateGuildSettings(guildId), getRarityDisplayOverrides(guildId)]);
+    await interaction.editReply({ embeds: [buildFramesEmbed(settings, rarity, displayMap)], components: buildFramesComponents(settings, rarity, displayMap) });
+    return;
+  }
+
   const patch: Partial<GuildSettings> = {};
   if (action === "config_mode") {
     patch.catchMode = value;
@@ -109,6 +125,21 @@ export async function handleConfigSelect(interaction: StringSelectMenuInteractio
     if (["auto", "blur", "puzzle", "silhouette", "off"].includes(value!)) {
       (patch as Record<string, string>).spawnRevealMode = value!;
     }
+  } else if (action === "config_entrance") {
+    if (["off", "random", "flyin", "teleport", "bounce", "warp", "flip"].includes(value!)) {
+      (patch as Record<string, string>).spawnEntranceAnimation = value!;
+    }
+  } else if (action === "config_entrance_skin") {
+    if (["rarity", "tactical", "holo"].includes(value!)) {
+      (patch as Record<string, string>).spawnEntranceSkin = value!;
+    }
+  } else if (action === "config_shiny_style") {
+    if (["classic", "holofoil", "rainbow", "cosmic", "prism", "radiance", "random"].includes(value!)) {
+      (patch as Record<string, string>).shinyAnimationStyle = value!;
+    }
+  } else if (action === "config_shiny_mult") {
+    const m = Number(value);
+    if (Number.isFinite(m) && m >= 0.1 && m <= 100) (patch as Record<string, number>).shinyValueMultiplier = m;
   } else if (action === "config_recycle_scrap_mult") {
     patch.recycleScrapMultiplier = parseInt(value!, 10);
   } else if (action === "config_recycle_copies") {
@@ -130,6 +161,16 @@ export async function handleConfigSelect(interaction: StringSelectMenuInteractio
   // so re-render that panel instead of bouncing back to the main config panel.
   if (action === "config_reveal_mode" || action === "config_anim_speed") {
     await interaction.editReply({ embeds: [buildAnimationEmbed(settings)], components: buildAnimationComponents(settings) });
+    return;
+  }
+  // Card-entrance selects live on their own sub-panel — stay there.
+  if (action === "config_entrance" || action === "config_entrance_skin") {
+    await interaction.editReply({ embeds: [buildEntranceEmbed(settings)], components: buildEntranceComponents(settings) });
+    return;
+  }
+  // Shiny Hub selects live on the Shiny Hub sub-panel — stay there.
+  if (action === "config_shiny_style" || action === "config_shiny_mult") {
+    await interaction.editReply({ embeds: [buildShinyEmbed(settings)], components: buildShinyComponents(settings) });
     return;
   }
   // Cards-per-spawn lives on the Drops & Spawn Rate sub-panel — stay there.
@@ -202,6 +243,13 @@ export async function handleConfigButton(interaction: ButtonInteraction): Promis
     return;
   }
 
+  // Shiny nickname — showModal must be the first response (auth runs in submit).
+  if (action === "shiny" && arg === "name") {
+    const settings = await getOrCreateGuildSettings(guildId);
+    await interaction.showModal(buildShinyNameModal(settings));
+    return;
+  }
+
   // ── All other paths: ACK immediately, then do DB work. ──
   await interaction.deferUpdate();
   const ok = await ensureAdmin(interaction);
@@ -223,14 +271,16 @@ export async function handleConfigButton(interaction: ButtonInteraction): Promis
     const s = await getOrCreateGuildSettings(guildId);
     if (arg === "packanim") {
       await updateGuildSettings(guildId, { packAnimationEnabled: !s.packAnimationEnabled });
+      const fresh = await getOrCreateGuildSettings(guildId);
+      await interaction.editReply({ embeds: [buildAnimationEmbed(fresh)], components: buildAnimationComponents(fresh) });
     } else {
       await updateGuildSettings(guildId, {
         shinyAnimationEnabled: !((s as unknown as { shinyAnimationEnabled?: boolean }).shinyAnimationEnabled ?? true),
       } as Partial<GuildSettings>);
+      // The shiny-anim toggle now lives on the Shiny Hub sub-panel — stay there.
+      const fresh = await getOrCreateGuildSettings(guildId);
+      await interaction.editReply({ embeds: [buildShinyEmbed(fresh)], components: buildShinyComponents(fresh) });
     }
-    // Stay on the Animation & Reveals sub-panel after toggling.
-    const fresh = await getOrCreateGuildSettings(guildId);
-    await interaction.editReply({ embeds: [buildAnimationEmbed(fresh)], components: buildAnimationComponents(fresh) });
     return;
   } else if (action === "channel" && arg === "spawn") {
     await updateGuildSettings(guildId, { spawnChannelId: interaction.channelId });
@@ -381,6 +431,36 @@ export async function handleConfigButton(interaction: ButtonInteraction): Promis
         embeds: [buildAnimationEmbed(settings)],
         components: buildAnimationComponents(settings),
       });
+    }
+    return;
+  } else if (action === "entrance") {
+    const settings = await getOrCreateGuildSettings(guildId);
+    if (arg === "back") {
+      // back to the Animation & Reveals sub-panel where the entry button lives
+      await interaction.editReply({ embeds: [buildAnimationEmbed(settings)], components: buildAnimationComponents(settings) });
+    } else {
+      await interaction.editReply({ embeds: [buildEntranceEmbed(settings)], components: buildEntranceComponents(settings) });
+    }
+    return;
+  } else if (action === "shiny") {
+    const settings = await getOrCreateGuildSettings(guildId);
+    if (arg === "back") {
+      await interaction.editReply({ embeds: [buildAnimationEmbed(settings)], components: buildAnimationComponents(settings) });
+    } else {
+      await interaction.editReply({ embeds: [buildShinyEmbed(settings)], components: buildShinyComponents(settings) });
+    }
+    return;
+  } else if (action === "frames") {
+    if (arg === "toggle") {
+      const s = await getOrCreateGuildSettings(guildId);
+      await updateGuildSettings(guildId, { cardFramesEnabled: !((s as unknown as { cardFramesEnabled?: boolean }).cardFramesEnabled ?? false) } as Partial<GuildSettings>);
+    }
+    const settings = await getOrCreateGuildSettings(guildId);
+    if (arg === "back") {
+      await interaction.editReply({ embeds: [buildAnimationEmbed(settings)], components: buildAnimationComponents(settings) });
+    } else {
+      const displayMap = await getRarityDisplayOverrides(guildId);
+      await interaction.editReply({ embeds: [buildFramesEmbed(settings, "common", displayMap)], components: buildFramesComponents(settings, "common", displayMap) });
     }
     return;
   } else if (action === "exp") {
@@ -767,8 +847,33 @@ function shinyAnimOf(s: GuildSettings): boolean {
   return (s as unknown as { shinyAnimationEnabled?: boolean }).shinyAnimationEnabled ?? true;
 }
 
+// ── Card-entrance labels ─────────────────────────────────────────────────────
+const ENTRANCE_LABELS: Record<string, string> = {
+  off: "Off", random: "Random each spawn",
+  flyin: "Fly In", teleport: "Teleport In", bounce: "Bounce In", warp: "Warp In", flip: "Flip In",
+};
+const ENTRANCE_SKIN_LABELS: Record<string, string> = {
+  rarity: "Rarity-colored", tactical: "Deploy Sequence (tactical)", holo: "Holo Drop",
+};
+function entranceOf(s: GuildSettings): string {
+  return (s as unknown as { spawnEntranceAnimation?: string }).spawnEntranceAnimation ?? "off";
+}
+function entranceSkinOf(s: GuildSettings): string {
+  return (s as unknown as { spawnEntranceSkin?: string }).spawnEntranceSkin ?? "rarity";
+}
+
+// ── Shiny Hub labels ─────────────────────────────────────────────────────────
+const SHINY_STYLE_LABELS: Record<string, string> = {
+  classic: "Classic Gold", holofoil: "Holo Foil", rainbow: "Rainbow",
+  cosmic: "Cosmic", prism: "Prism", radiance: "Gold Radiance", random: "Random each time",
+};
+function shinyStyleOf(s: GuildSettings): string {
+  return (s as unknown as { shinyAnimationStyle?: string }).shinyAnimationStyle ?? "classic";
+}
+
 function buildAnimationEmbed(s: GuildSettings): EmbedBuilder {
   const revealMode = revealModeOf(s);
+  const entrance = entranceOf(s);
   return new EmbedBuilder()
     .setTitle("🎞️ Animation & Reveal Settings")
     .setColor(0x5865f2)
@@ -777,7 +882,8 @@ function buildAnimationEmbed(s: GuildSettings): EmbedBuilder {
       "**Catch Mode** picks how it's caught. **Auto** uses our method (Blur for low " +
       "rarities → Puzzle → Silhouette for the rarest). You can also force one style, or " +
       "turn it off.\n\n" +
-      "**Shiny Animation** plays a sparkle/shine effect on shiny catches & pulls. " +
+      "**🎬 Card Entrance** plays a short \"the card arrives\" intro **only when Spawn Reveal " +
+      "is Off** (image-only). **✨ Shiny Hub** sets shiny worth, nickname & animation. " +
       "**Pack Animation** governs the pack-opening reveal frames.",
     )
     .addFields(
@@ -787,8 +893,10 @@ function buildAnimationEmbed(s: GuildSettings): EmbedBuilder {
         inline: true,
       },
       {
-        name: "🌟 Shiny Animation",
-        value: shinyAnimOf(s) ? "🟢 ON" : "🔴 OFF",
+        name: "🎬 Card Entrance",
+        value: entrance === "off"
+          ? "🔴 OFF"
+          : `🟢 ${ENTRANCE_LABELS[entrance] ?? entrance}` + (revealMode === "off" ? "" : "\n_(needs Reveal = Off)_"),
         inline: true,
       },
       {
@@ -813,16 +921,6 @@ function buildAnimationComponents(s: GuildSettings) {
         { label: "Off — plain image", value: "off", emoji: "🚫", default: revealMode === "off" },
       ]),
   );
-  const toggleRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
-    new ButtonBuilder()
-      .setCustomId("config:toggle:shinyanim")
-      .setLabel(shinyAnimOf(s) ? "🌟 Shiny Anim ON" : "🌟 Shiny Anim OFF")
-      .setStyle(ButtonStyle.Secondary),
-    new ButtonBuilder()
-      .setCustomId("config:toggle:packanim")
-      .setLabel(s.packAnimationEnabled ? "🎴 Pack Anim ON" : "🎴 Pack Anim OFF")
-      .setStyle(ButtonStyle.Secondary),
-  );
   const speedRow = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
     new StringSelectMenuBuilder()
       .setCustomId("config_anim_speed")
@@ -833,11 +931,247 @@ function buildAnimationComponents(s: GuildSettings) {
         { label: "Fast", value: "fast", emoji: "🚀", default: s.packAnimationSpeed === "fast" },
       ]),
   );
+  const subRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder()
+      .setCustomId("config:toggle:packanim")
+      .setLabel(s.packAnimationEnabled ? "🎴 Pack Anim ON" : "🎴 Pack Anim OFF")
+      .setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder().setCustomId("config:entrance:open").setLabel("🎬 Card Entrance").setStyle(ButtonStyle.Primary),
+    new ButtonBuilder().setCustomId("config:shiny:open").setLabel("✨ Shiny Hub").setStyle(ButtonStyle.Primary),
+    new ButtonBuilder().setCustomId("config:frames:open").setLabel("🖼️ Card Frames").setStyle(ButtonStyle.Primary),
+  );
   const backRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder().setCustomId("config:anim:back").setLabel("← Back").setStyle(ButtonStyle.Secondary),
     new ButtonBuilder().setCustomId("config:exp:open").setLabel("🎬 Experiences").setStyle(ButtonStyle.Primary),
   );
-  return [revealRow, toggleRow, speedRow, backRow];
+  return [revealRow, speedRow, subRow, backRow];
+}
+
+// ── Card Entrance sub-panel ──────────────────────────────────────────────────
+function buildEntranceEmbed(s: GuildSettings): EmbedBuilder {
+  const entrance = entranceOf(s);
+  const skin = entranceSkinOf(s);
+  const revealOff = revealModeOf(s) === "off";
+  return new EmbedBuilder()
+    .setTitle("🎬 Card Entrance Animation")
+    .setColor(0x00b894)
+    .setDescription(
+      "A short intro that plays as a card **arrives**, then settles onto the card image — " +
+      "separate from the reveal styles and mini-games.\n\n" +
+      "⚠️ **Only plays when Spawn Reveal is set to _Off_ (plain image).** The Blur / Puzzle / " +
+      "Silhouette reveals already have their own presentation.\n\n" +
+      "**Skin** is the look drawn behind the card: **Rarity-colored** tints it by the card's " +
+      "rarity; **Deploy Sequence** is a tactical amber HUD; **Holo Drop** is a cyan/magenta prism.",
+    )
+    .addFields(
+      { name: "Entrance", value: entrance === "off" ? "🔴 OFF" : `🟢 ${ENTRANCE_LABELS[entrance] ?? entrance}`, inline: true },
+      { name: "Skin", value: ENTRANCE_SKIN_LABELS[skin] ?? skin, inline: true },
+      { name: "Status", value: revealOff ? "🟢 Active (Reveal is Off)" : "⚠️ Idle — set Spawn Reveal to **Off** to use", inline: false },
+    );
+}
+
+function buildEntranceComponents(s: GuildSettings) {
+  const entrance = entranceOf(s);
+  const skin = entranceSkinOf(s);
+  const typeRow = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
+    new StringSelectMenuBuilder()
+      .setCustomId("config_entrance")
+      .setPlaceholder("🎬 Entrance animation")
+      .addOptions([
+        { label: "Off", value: "off", emoji: "🚫", default: entrance === "off" },
+        { label: "Random each spawn", value: "random", emoji: "🎲", default: entrance === "random" },
+        { label: "Fly In", value: "flyin", emoji: "🛬", default: entrance === "flyin" },
+        { label: "Teleport In", value: "teleport", emoji: "✨", default: entrance === "teleport" },
+        { label: "Bounce In", value: "bounce", emoji: "🏀", default: entrance === "bounce" },
+        { label: "Warp In", value: "warp", emoji: "🌀", default: entrance === "warp" },
+        { label: "Flip In", value: "flip", emoji: "🔄", default: entrance === "flip" },
+      ]),
+  );
+  const skinRow = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
+    new StringSelectMenuBuilder()
+      .setCustomId("config_entrance_skin")
+      .setPlaceholder("🎨 Entrance skin")
+      .addOptions([
+        { label: "Rarity-colored (default)", value: "rarity", emoji: "🎨", default: skin === "rarity" },
+        { label: "Deploy Sequence (tactical)", value: "tactical", emoji: "🎖️", default: skin === "tactical" },
+        { label: "Holo Drop (prism)", value: "holo", emoji: "🔮", default: skin === "holo" },
+      ]),
+  );
+  const backRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder().setCustomId("config:entrance:back").setLabel("← Back").setStyle(ButtonStyle.Secondary),
+  );
+  return [typeRow, skinRow, backRow];
+}
+
+// ── Shiny Hub sub-panel ──────────────────────────────────────────────────────
+function buildShinyEmbed(s: GuildSettings): EmbedBuilder {
+  const name = getShinyName(s);
+  const mult = getShinyMultiplier(s);
+  const style = shinyStyleOf(s);
+  return new EmbedBuilder()
+    .setTitle(`${SHINY_EMOJI} Shiny Hub`)
+    .setColor(0xf1c40f)
+    .setDescription(
+      `Everything about **${name}** cards. Every catch & pull has a **0.5%** chance to mint one.\n\n` +
+      "**Nickname** renames shinies everywhere (like custom rarity names). **Worth** multiplies a " +
+      "shiny's value & burn vs. a normal copy. **Animation** is the reveal played on a shiny catch/pull.",
+    )
+    .addFields(
+      { name: "🏷️ Nickname", value: name, inline: true },
+      { name: "💠 Worth", value: `×${mult}`, inline: true },
+      { name: "🎞️ Animation", value: shinyAnimOf(s) ? `🟢 ${SHINY_STYLE_LABELS[style] ?? style}` : "🔴 OFF", inline: true },
+    );
+}
+
+function buildShinyComponents(s: GuildSettings) {
+  const style = shinyStyleOf(s);
+  const mult = getShinyMultiplier(s);
+  const styleRow = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
+    new StringSelectMenuBuilder()
+      .setCustomId("config_shiny_style")
+      .setPlaceholder("🎞️ Shiny animation style")
+      .addOptions([
+        { label: "Classic Gold (original)", value: "classic", emoji: "🌟", default: style === "classic" },
+        { label: "Holo Foil", value: "holofoil", emoji: "🪙", default: style === "holofoil" },
+        { label: "Rainbow", value: "rainbow", emoji: "🌈", default: style === "rainbow" },
+        { label: "Cosmic", value: "cosmic", emoji: "🌌", default: style === "cosmic" },
+        { label: "Prism", value: "prism", emoji: "🔷", default: style === "prism" },
+        { label: "Gold Radiance", value: "radiance", emoji: "☀️", default: style === "radiance" },
+        { label: "Random each time", value: "random", emoji: "🎲", default: style === "random" },
+      ]),
+  );
+  const multOptions = [1.5, 2, 3, 5, 10].map(m => ({
+    label: `×${m}`, value: String(m), emoji: "💠", default: Math.abs(mult - m) < 1e-9,
+  }));
+  const multRow = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
+    new StringSelectMenuBuilder()
+      .setCustomId("config_shiny_mult")
+      .setPlaceholder("💠 Shiny worth multiplier")
+      .addOptions(multOptions),
+  );
+  const btnRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder()
+      .setCustomId("config:toggle:shinyanim")
+      .setLabel(shinyAnimOf(s) ? "🎞️ Animation ON" : "🎞️ Animation OFF")
+      .setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder().setCustomId("config:shiny:name").setLabel("🏷️ Nickname").setStyle(ButtonStyle.Primary),
+  );
+  const backRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder().setCustomId("config:shiny:back").setLabel("← Back").setStyle(ButtonStyle.Secondary),
+  );
+  return [styleRow, multRow, btnRow, backRow];
+}
+
+function buildShinyNameModal(s: GuildSettings): ModalBuilder {
+  return new ModalBuilder()
+    .setCustomId("config:shiny:name")
+    .setTitle("Shiny Nickname")
+    .addComponents(
+      new ActionRowBuilder<TextInputBuilder>().addComponents(
+        new TextInputBuilder()
+          .setCustomId("name")
+          .setLabel("Nickname for shinies (blank = Shiny)")
+          .setStyle(TextInputStyle.Short)
+          .setMaxLength(32)
+          .setRequired(false)
+          .setValue(getShinyName(s) === "Shiny" ? "" : getShinyName(s)),
+      ),
+    );
+}
+
+export async function handleShinyNameModal(interaction: ModalSubmitInteraction): Promise<void> {
+  if (!interaction.guild) return;
+  await interaction.deferUpdate();
+  const ok = await ensureAdmin(interaction);
+  if (!ok) {
+    await interaction.followUp({ content: "❌ Admins only.", flags: MessageFlags.Ephemeral });
+    return;
+  }
+  const guildId = interaction.guild.id;
+  const raw = interaction.fields.getTextInputValue("name").trim().slice(0, 32);
+  await updateGuildSettings(guildId, { shinyName: raw || null } as Partial<GuildSettings>);
+  const fresh = await getOrCreateGuildSettings(guildId);
+  await interaction.editReply({ embeds: [buildShinyEmbed(fresh)], components: buildShinyComponents(fresh) });
+}
+
+// ── Card Frames sub-panel ────────────────────────────────────────────────────
+const FRAME_COLUMN: Record<string, keyof GuildSettings> = {
+  common: "cardFrameCommon" as keyof GuildSettings,
+  uncommon: "cardFrameUncommon" as keyof GuildSettings,
+  rare: "cardFrameRare" as keyof GuildSettings,
+  epic: "cardFrameEpic" as keyof GuildSettings,
+  legendary: "cardFrameLegendary" as keyof GuildSettings,
+  mythic: "cardFrameMythic" as keyof GuildSettings,
+};
+function frameColumnFor(rarity: string): keyof GuildSettings | undefined {
+  return FRAME_COLUMN[rarity];
+}
+const FRAME_COLOR_META: Record<string, { label: string; emoji: string }> = {
+  grey: { label: "Grey", emoji: "🩶" },
+  blue: { label: "Blue", emoji: "🟦" },
+  red: { label: "Red", emoji: "🟥" },
+  gold: { label: "Gold", emoji: "🟨" },
+  rainbow: { label: "Rainbow", emoji: "🌈" },
+};
+function framesEnabledOf(s: GuildSettings): boolean {
+  return (s as unknown as { cardFramesEnabled?: boolean }).cardFramesEnabled ?? false;
+}
+function frameOf(s: GuildSettings, rarity: string): string | null {
+  const col = frameColumnFor(rarity);
+  const v = col ? (s[col] as unknown) : null;
+  return typeof v === "string" && v ? v : null;
+}
+
+function buildFramesEmbed(s: GuildSettings, active: string, displayMap?: RarityDisplayMap | null): EmbedBuilder {
+  const enabled = framesEnabledOf(s);
+  const rows = getRarityOrder(s).map((r) => {
+    const fc = frameOf(s, r);
+    const cur = fc ? `${FRAME_COLOR_META[fc]?.emoji ?? ""} ${FRAME_COLOR_META[fc]?.label ?? fc}` : "— drawn border";
+    const arrow = r === active ? "▸ " : "  ";
+    return `${arrow}${rarityEmoji(r, s, displayMap)} **${rarityLabel(r, s, displayMap)}** → ${cur}`;
+  });
+  return new EmbedBuilder()
+    .setTitle("🖼️ Card Frames")
+    .setColor(enabled ? 0xffd54a : 0x808790)
+    .setDescription(
+      (enabled ? "🟢 **Frames ON** — mapped rarities use their image frame everywhere a card renders."
+               : "🔴 **Frames OFF** — every card uses the current drawn border (nothing changes).") +
+      "\n\nPick a rarity, then choose its frame. **— drawn border** keeps the classic thin border for that rarity. " +
+      "Frames auto-scale to any card size.\n\n" + rows.join("\n"),
+    );
+}
+
+function buildFramesComponents(s: GuildSettings, active: string, displayMap?: RarityDisplayMap | null) {
+  const enabled = framesEnabledOf(s);
+  const order = getRarityOrder(s);
+  const rarityRow = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
+    new StringSelectMenuBuilder()
+      .setCustomId("config_frame_rarity")
+      .setPlaceholder("🎯 Rarity to configure")
+      .addOptions(order.map(r => ({
+        label: rarityLabel(r, s, displayMap), emoji: rarityEmoji(r, s, displayMap), value: r, default: r === active,
+      }))),
+  );
+  const cur = frameOf(s, active);
+  const colorRow = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
+    new StringSelectMenuBuilder()
+      .setCustomId(`config_frame_color:${active}`)
+      .setPlaceholder(`🖼️ Frame for ${rarityLabel(active as Rarity, s, displayMap)}`)
+      .addOptions([
+        { label: "— Drawn border (default)", value: "none", emoji: "➖", default: cur === null },
+        ...FRAME_COLORS.map(c => ({
+          label: FRAME_COLOR_META[c]!.label, emoji: FRAME_COLOR_META[c]!.emoji, value: c, default: cur === c,
+        })),
+      ]),
+  );
+  const btnRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder()
+      .setCustomId("config:frames:toggle")
+      .setLabel(enabled ? "🟢 Frames ON" : "🔴 Frames OFF")
+      .setStyle(enabled ? ButtonStyle.Success : ButtonStyle.Secondary),
+    new ButtonBuilder().setCustomId("config:frames:back").setLabel("← Back").setStyle(ButtonStyle.Secondary),
+  );
+  return [rarityRow, colorRow, btnRow];
 }
 
 // ── Experiences sub-panel (per-guild presentation modes) ─────────────────────

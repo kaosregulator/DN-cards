@@ -8,6 +8,7 @@ import {
   clamp01, type CanvasMod, type Ctx, type TextAlign,
 } from "./engine.js";
 import { ObjectStorageService } from "../../lib/objectStorage.js";
+import { frameArtWindow, drawFrameOverlay, progressionArtWindow, drawProgressionOverlay, type ProgTier } from "./card-frames.js";
 import { logger } from "../../lib/logger.js";
 
 export interface Particle {
@@ -423,8 +424,16 @@ export async function drawCardArt(
   mod: CanvasMod,
   x: number, y: number, w: number, h: number,
   artUrl: string | null | undefined,
+  rarity?: Rarity | string | null,
+  progTier?: ProgTier | null,
 ): Promise<void> {
   const img = await loadArt(mod, artUrl);
+  // When an image frame is active, inset the art into the frame's transparent
+  // window so the ornate border sits around it. A card's equipped progression
+  // (level) frame takes priority over the rarity frame; otherwise the art fills
+  // the whole rect exactly as before.
+  const win = progTier ? progressionArtWindow(x, y, w, h, progTier) : frameArtWindow(x, y, w, h, rarity);
+  x = win.x; y = win.y; w = win.w; h = win.h;
   ctx.save();
   roundRectPath(ctx, x, y, w, h, 14);
   ctx.clip();
@@ -455,7 +464,13 @@ export function drawCardFrame(
   ctx: Ctx,
   x: number, y: number, w: number, h: number,
   color: number, thickness = 6,
+  rarity?: Rarity | string | null,
+  progTier?: ProgTier | null,
 ): void {
+  // A card's equipped progression (level) frame wins; then the rarity image
+  // frame; otherwise fall through to the drawn border (frames off/unmapped).
+  if (progTier && drawProgressionOverlay(ctx, x, y, w, h, progTier)) return;
+  if (drawFrameOverlay(ctx, x, y, w, h, rarity)) return;
   ctx.save();
   ctx.lineWidth = thickness;
   ctx.strokeStyle = hexToRgba(color, 1);

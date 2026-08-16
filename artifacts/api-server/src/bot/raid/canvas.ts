@@ -49,6 +49,7 @@ export interface RaidIntroPartyCard {
   imageUrl: string | null;
   rarity: Rarity;
   rarityColor?: number | null;
+  progTier?: import("../animations/card-frames.js").ProgTier | null;
   stars: number; // card stars shown under the frame
 }
 
@@ -108,8 +109,8 @@ export async function renderRaidIntro(
       color: accent, count: 24, power: 15, spread: 0.7, steps: 16, seed: `${boss.name}-stomp`,
     });
     drawRarityGlow(ctx, bx, by, bw, bh, accent, 0.95);
-    await drawCardArt(ctx, mod, bx, by, bw, bh, boss.imageUrl);
-    drawCardFrame(ctx, bx, by, bw, bh, accent, 8);
+    await drawCardArt(ctx, mod, bx, by, bw, bh, boss.imageUrl, boss.rarity);
+    drawCardFrame(ctx, bx, by, bw, bh, accent, 8, boss.rarity);
     drawRarityBadge(ctx, bx + bw - 14, by + 16, "BOSS", accent);
     drawTitle(ctx, boss.name, bx + bw / 2, by + bh + 26, "#ffffff", fitText(ctx, boss.name, bw + 60, 28, 12, TITLE_FONT));
 
@@ -126,8 +127,8 @@ export async function renderRaidIntro(
       const px = px0 + i * (cw + gap);
       const color = p.rarityColor ?? getRarityEffectColor(p.rarity);
       drawRarityGlow(ctx, px, py, cw, ch, color, 0.5);
-      await drawCardArt(ctx, mod, px, py, cw, ch, p.imageUrl);
-      drawCardFrame(ctx, px, py, cw, ch, color, 5);
+      await drawCardArt(ctx, mod, px, py, cw, ch, p.imageUrl, p.rarity, p.progTier);
+      drawCardFrame(ctx, px, py, cw, ch, color, 5, p.rarity, p.progTier);
       drawTextWithShadow(ctx, p.name, px + cw / 2, py + ch + 18, "#ffffff", fitText(ctx, p.name, cw + 14, 17));
       if (p.stars > 0) drawTextWithShadow(ctx, "★".repeat(Math.min(5, p.stars)), px + cw / 2, py + ch + 40, "#ffd54a", 16);
     }
@@ -194,8 +195,8 @@ export async function renderRaidGallery(bosses: GalleryBoss[]): Promise<Buffer |
       const y = padTop + row * (ch + gap + 26);
       const color = getRarityEffectColor(b.rarity);
       drawRarityGlow(ctx, x, y, cw, ch, b.defeated ? 0x2ecc71 : color, b.defeated ? 0.35 : 0.55);
-      await drawCardArt(ctx, mod, x, y, cw, ch, b.imageUrl);
-      drawCardFrame(ctx, x, y, cw, ch, b.defeated ? 0x2ecc71 : color, 6);
+      await drawCardArt(ctx, mod, x, y, cw, ch, b.imageUrl, b.rarity);
+      drawCardFrame(ctx, x, y, cw, ch, b.defeated ? 0x2ecc71 : color, 6, b.rarity);
       if (b.defeated) {
         // Dim the portrait, then strike it with a bold red ✗.
         ctx.save();
@@ -230,6 +231,7 @@ export interface RaidWipePartyCard {
   imageUrl: string | null;
   rarity: Rarity;
   rarityColor?: number | null;
+  progTier?: import("../animations/card-frames.js").ProgTier | null;
   downed: boolean; // struck with a red ✗ when true
 }
 
@@ -263,8 +265,8 @@ export async function renderRaidWipeScene(
     // readout both fit above the party row with no overlap.
     const bw = 230, bh = 210, bx = (width - bw) / 2, by = 54;
     drawRarityGlow(ctx, bx, by, bw, bh, accent, 1);
-    await drawCardArt(ctx, mod, bx, by, bw, bh, boss.imageUrl);
-    drawCardFrame(ctx, bx, by, bw, bh, accent, 7);
+    await drawCardArt(ctx, mod, bx, by, bw, bh, boss.imageUrl, boss.rarity);
+    drawCardFrame(ctx, bx, by, bw, bh, accent, 7, boss.rarity);
     drawRarityBadge(ctx, bx + bw - 12, by + 14, "VICTOR", accent);
     drawTitle(ctx, boss.name, width / 2, by + bh + 24, "#ffffff", fitText(ctx, boss.name, bw + 200, 26, 12, TITLE_FONT));
 
@@ -285,8 +287,8 @@ export async function renderRaidWipeScene(
       const px = startX + i * (cw + gap);
       const color = p.rarityColor ?? getRarityEffectColor(p.rarity);
       drawRarityGlow(ctx, px, rowY, cw, ch, p.downed ? 0xe74c3c : color, p.downed ? 0.3 : 0.6);
-      await drawCardArt(ctx, mod, px, rowY, cw, ch, p.imageUrl);
-      drawCardFrame(ctx, px, rowY, cw, ch, p.downed ? 0x8a1f1f : color, 5);
+      await drawCardArt(ctx, mod, px, rowY, cw, ch, p.imageUrl, p.rarity, p.progTier);
+      drawCardFrame(ctx, px, rowY, cw, ch, p.downed ? 0x8a1f1f : color, 5, p.rarity, p.progTier);
       if (p.downed) {
         ctx.save();
         roundRectPath(ctx, px, rowY, cw, ch, 12);
@@ -396,8 +398,8 @@ export async function renderCampaignProgress(input: CampaignProgressInput): Prom
       // Left: the boss just beaten.
       const cw = 300, ch = 384, cx = 56, cy = 96;
       drawRarityGlow(ctx, cx, cy, cw, ch, green, 0.5);
-      await drawCardArt(ctx, mod, cx, cy, cw, ch, input.defeatedBoss.imageUrl);
-      drawCardFrame(ctx, cx, cy, cw, ch, green, 7);
+      await drawCardArt(ctx, mod, cx, cy, cw, ch, input.defeatedBoss.imageUrl, input.defeatedBoss.rarity);
+      drawCardFrame(ctx, cx, cy, cw, ch, green, 7, input.defeatedBoss.rarity);
       // DEFEATED stamp
       ctx.save();
       roundRectPath(ctx, cx, cy, cw, ch, 14); ctx.clip();
@@ -434,8 +436,8 @@ export async function renderCampaignProgress(input: CampaignProgressInput): Prom
         drawTextWithShadow(ctx, input.isFinaleNext ? "FINAL BOSS UNLOCKED" : "NEXT BOSS", rx, y, hexToRgba(bannerColor, 1), 20, "left"); y += 12;
         const nw = 96, nh = 122, ny = y;
         drawRarityGlow(ctx, rx, ny, nw, nh, getRarityEffectColor(input.next.rarity), 0.5);
-        await drawCardArt(ctx, mod, rx, ny, nw, nh, input.next.imageUrl);
-        drawCardFrame(ctx, rx, ny, nw, nh, getRarityEffectColor(input.next.rarity), 5);
+        await drawCardArt(ctx, mod, rx, ny, nw, nh, input.next.imageUrl, input.next.rarity);
+        drawCardFrame(ctx, rx, ny, nw, nh, getRarityEffectColor(input.next.rarity), 5, input.next.rarity);
         drawTextWithShadow(ctx, input.next.name, rx + nw + 18, ny + nh / 2, "#ffffff", fitText(ctx, input.next.name, rw - nw - 24, 26), "left");
       }
 

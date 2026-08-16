@@ -51,6 +51,7 @@ import {
 import { getCardProgress, getCardProgressBatch, MAX_LEVEL } from "./leveling.js";
 import { isCardLocked, setCardLocked } from "./locks.js";
 import type { Rarity } from "../cards-data.js";
+import { withGuildFrames } from "../animations/card-frames.js";
 import { logger } from "../../lib/logger.js";
 
 const EPHEMERAL = { flags: MessageFlags.Ephemeral } as const;
@@ -171,8 +172,8 @@ export async function renderFusionHubCanvas(
         const ready = c.star < MAX_STAR && c.count >= copiesPerStar;
 
         drawRarityGlow(ctx, x, y, cw, ch, ready ? 0xffd54a : color, ready ? 0.75 : 0.5);
-        await drawCardArt(ctx, mod, x, y, cw, ch, toAbsoluteImageUrl(c.imageUrl));
-        drawCardFrame(ctx, x, y, cw, ch, ready ? 0xffd54a : color, 5);
+        await drawCardArt(ctx, mod, x, y, cw, ch, toAbsoluteImageUrl(c.imageUrl), c.rarity);
+        drawCardFrame(ctx, x, y, cw, ch, ready ? 0xffd54a : color, 5, c.rarity);
         drawRarityBadge(ctx, x + cw - 10, y + 10, c.rarityLabel, color);
         drawTextWithShadow(ctx, `#${i + 1}`, x + 14, y + 18, "#ffffff", 16);
         if (ready) drawTextWithShadow(ctx, "READY", x + cw / 2, y + ch - 16, "#ffd54a", 15);
@@ -231,7 +232,8 @@ async function buildFusionHubMessage(guildId: string, userId: string) {
     .setFooter({ text: `⚙️ Scrap: ${scrap.toLocaleString()}  ·  ★ +8% battle stats per star` });
 
   // Render the top-5-dupes hub board; fall back to the embed alone if canvas is off.
-  const hub = await renderFusionHubCanvas(guildId, userId, entries, scrap, cfg.copiesPerStar).catch(() => null);
+  const hubFrames = await getOrCreateGuildSettings(guildId).catch(() => null);
+  const hub = await withGuildFrames(hubFrames, () => renderFusionHubCanvas(guildId, userId, entries, scrap, cfg.copiesPerStar)).catch(() => null);
   const files: AttachmentBuilder[] = [];
   if (hub) {
     embed.setImage(`attachment://${HUB_FILE}`);
@@ -364,8 +366,8 @@ export async function renderFusionAnimation(
       const scale = lerp(0.92, 1.06, charge);
       const cw = baseW * scale, ch = baseH * scale;
       drawRarityGlow(ctx, cx - cw / 2, cy - ch / 2, cw, ch, color, 0.5 + charge * 0.6);
-      await drawCardArt(ctx, mod, cx - cw / 2, cy - ch / 2, cw, ch, artUrl);
-      drawCardFrame(ctx, cx - cw / 2, cy - ch / 2, cw, ch, color, 6);
+      await drawCardArt(ctx, mod, cx - cw / 2, cy - ch / 2, cw, ch, artUrl, entry.rarity);
+      drawCardFrame(ctx, cx - cw / 2, cy - ch / 2, cw, ch, color, 6, entry.rarity);
 
       // Duplicate "ghost" cards spiral inward and shatter into scrap energy.
       const dupes = Math.min(4, Math.max(2, entry.count - 1));
@@ -381,7 +383,7 @@ export async function renderFusionAnimation(
           ctx.save();
           ctx.globalAlpha = 0.85 * (1 - inflow);
           drawRarityGlow(ctx, gx - gw / 2, gy - gh / 2, gw, gh, scrapColor, 0.6);
-          await drawCardArt(ctx, mod, gx - gw / 2, gy - gh / 2, gw, gh, artUrl);
+          await drawCardArt(ctx, mod, gx - gw / 2, gy - gh / 2, gw, gh, artUrl, entry.rarity);
           ctx.restore();
         }
       }
@@ -597,7 +599,8 @@ async function handleFuseButton(interaction: ButtonInteraction): Promise<void> {
 
   // Success — play the premium fuse animation, falling back to a static embed.
   const fused = { ...entry, star: res.toStar };
-  const anim = await renderFusionAnimation(fused, res.fromStar, res.toStar).catch(() => null);
+  const animFrames = await getOrCreateGuildSettings(guildId).catch(() => null);
+  const anim = await withGuildFrames(animFrames, () => renderFusionAnimation(fused, res.fromStar, res.toStar)).catch(() => null);
 
   const embed = new EmbedBuilder()
     .setColor(entry.rarityColor ?? 0x2ecc71)

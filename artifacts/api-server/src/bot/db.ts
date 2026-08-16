@@ -14,6 +14,7 @@ import {
 } from "@workspace/db";
 import { eq, and, or, sql, desc, inArray, isNull, type SQL } from "drizzle-orm";
 import { fuzzyFindCard, bumpCardsSearchVersion } from "./search/fuse-service.js";
+import { detectAnimatedImage } from "./image-url.js";
 import type { Card, CardEvent, CardSet, CalculatorMessage, CustomPack, CustomPackCard, CustomRarity, GuildSettings, RarityProfile, Trade } from "@workspace/db";
 import {
   DEFAULT_CARDS, SHINY_RATE, SHINY_MULTIPLIER, getRarityOrder, type Rarity,
@@ -641,7 +642,7 @@ export async function getCardsInSet(setId: number, viewerGuildId?: string | null
     worthValue: cardsTable.worthValue, burnValue: cardsTable.burnValue,
     isLimitedEdition: cardsTable.isLimitedEdition, isEventExclusive: cardsTable.isEventExclusive,
     maxCopies: cardsTable.maxCopies, totalMinted: cardsTable.totalMinted,
-    imageUrl: cardsTable.imageUrl, flavor: cardsTable.flavor,
+    imageUrl: cardsTable.imageUrl, isAnimated: cardsTable.isAnimated, flavor: cardsTable.flavor,
     droppable: cardsTable.droppable, inPacks: cardsTable.inPacks,
     isArchived: cardsTable.isArchived, isBossCard: cardsTable.isBossCard,
     podiumPlace: cardsTable.podiumPlace,
@@ -670,7 +671,7 @@ export async function getUnassignedCards(viewerGuildId?: string | null): Promise
     worthValue: cardsTable.worthValue, burnValue: cardsTable.burnValue,
     isLimitedEdition: cardsTable.isLimitedEdition, isEventExclusive: cardsTable.isEventExclusive,
     maxCopies: cardsTable.maxCopies, totalMinted: cardsTable.totalMinted,
-    imageUrl: cardsTable.imageUrl, flavor: cardsTable.flavor,
+    imageUrl: cardsTable.imageUrl, isAnimated: cardsTable.isAnimated, flavor: cardsTable.flavor,
     droppable: cardsTable.droppable, inPacks: cardsTable.inPacks,
     isArchived: cardsTable.isArchived, isBossCard: cardsTable.isBossCard,
     podiumPlace: cardsTable.podiumPlace,
@@ -1090,8 +1091,11 @@ export async function addCard(values: {
   maxCopies?: number; imageUrl?: string; flavor?: string; droppable?: boolean;
   inPacks?: boolean; isBossCard?: boolean;
 }, guildId: string) {
+  // Flag animated-GIF art so render paths route it to the live GIF instead of a
+  // flattened canvas frame. Best-effort — a failed sniff just leaves it false.
+  const isAnimated = await detectAnimatedImage(values.imageUrl).catch(() => false);
   try {
-    const [card] = await db.insert(cardsTable).values({ ...values as any, guildId }).returning();
+    const [card] = await db.insert(cardsTable).values({ ...values as any, isAnimated, guildId }).returning();
     await db.update(cardsTable).set({ totalMinted: 0 }).where(eq(cardsTable.id, card.id));
     invalidateCardCache();
     return card;
@@ -1103,7 +1107,7 @@ export async function addCard(values: {
       const maxRow = await db.select({ max: sql<number>`MAX(id)` }).from(cardsTable);
       const nextId = (maxRow[0]?.max ?? 0) + 1;
       await db.execute(sql`SELECT setval(pg_get_serial_sequence('cards', 'id'), ${nextId}, true)`);
-      const [card] = await db.insert(cardsTable).values({ id: nextId, ...values as any, guildId }).returning();
+      const [card] = await db.insert(cardsTable).values({ id: nextId, ...values as any, isAnimated, guildId }).returning();
       await db.update(cardsTable).set({ totalMinted: 0 }).where(eq(cardsTable.id, card.id));
       invalidateCardCache();
       return card;
@@ -1135,7 +1139,14 @@ export async function updateCard(cardId: number, values: Partial<{
   isLimitedEdition: boolean; isEventExclusive: boolean; isArchived: boolean; inPacks: boolean;
   maxCopies: number | null; totalMinted: number; imageUrl: string | null; flavor: string | null; droppable: boolean;
 }>) {
-  const [updated] = await db.update(cardsTable).set(values as any).where(eq(cardsTable.id, cardId)).returning();
+  // Re-sniff the animated flag whenever the image changes so a card swapped to
+  // (or away from) a GIF updates how it's rendered. Only when imageUrl is in the
+  // patch — other edits leave the existing flag untouched.
+  const patch: Record<string, unknown> = { ...values };
+  if ("imageUrl" in values) {
+    patch["isAnimated"] = await detectAnimatedImage(values.imageUrl).catch(() => false);
+  }
+  const [updated] = await db.update(cardsTable).set(patch as any).where(eq(cardsTable.id, cardId)).returning();
   invalidateCardCache();
   // `droppable` / `isArchived` flips change whether this card belongs in any
   // guild's active-set spawn pool. Blow the per-guild cache so the next

@@ -15,7 +15,9 @@ export {
 export type {
   PackCoverInput, CardRevealInput, RevealStats, RevealInfo, AttackFrameInput, AttackScene,
 } from "./reveal.js";
-export { createSpawnRevealSession, renderShinyReveal, renderShinyShowcase, revealModeForRarity } from "./spawn-reveal.js";
-export type { SpawnRevealInput, SpawnRevealSession, ShinyRevealInput, ShinyShowcaseInput, RevealMode } from "./spawn-reveal.js";
+export { createSpawnRevealSession, renderShinyReveal, renderShinyShowcase, revealModeForRarity, resolveShinyStyle } from "./spawn-reveal.js";
+export type { SpawnRevealInput, SpawnRevealSession, ShinyRevealInput, ShinyShowcaseInput, RevealMode, ShinyStyle } from "./spawn-reveal.js";
+export { renderCardEntrance, resolveEntranceType } from "./card-entrance.js";
+export type { CardEntranceInput, EntranceType, EntranceSkin } from "./card-entrance.js";
 export type { AnimationSettings, AnimationSpeed, AnimationResult } from "./types.js";
 export type { PackAnimationInput, BattleAnimationInput, VictoryAnimationInput } from "./types.js";

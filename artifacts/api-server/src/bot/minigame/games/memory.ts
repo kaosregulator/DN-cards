@@ -5,6 +5,9 @@ import { ButtonStyle } from "discord.js";
 import type { MiniGameDefinition, MiniGameSession, MiniGameOutcome, MiniGameRender } from "../types.js";
 import { buildRows, winScreen, loseScreen, type ButtonSpec } from "./shared.js";
 import { renderMemoryBoard, MG_MEMORY_FILE, type MemoryCell } from "../canvas.js";
+import { withGuildFrames } from "../../animations/card-frames.js";
+import { getOrCreateGuildSettings } from "../../db.js";
+import type { Rarity } from "../../cards-data.js";
 
 const THEME = 0x8b5cf6;
 
@@ -42,14 +45,15 @@ function setup(session: MiniGameSession): MemState {
 }
 
 async function renderBoard(session: MiniGameSession, st: MemState, note: string): Promise<MiniGameRender> {
-  const memCells: MemoryCell[] = st.cells.map(c => ({ state: c.state, artUrl: c.artUrl, rarityColor: c.color }));
-  const image = await renderMemoryBoard({
+  const memCells: MemoryCell[] = st.cells.map(c => ({ state: c.state, artUrl: c.artUrl, rarityColor: c.color, rarity: session.card.rarity as Rarity }));
+  const settings = await getOrCreateGuildSettings(session.guildId).catch(() => null);
+  const image = await withGuildFrames(settings, () => renderMemoryBoard({
     theme: THEME,
     title: "CARD FIELD ACTIVE",
     subtitle: `Match the pairs to claim · Moves left: ${st.maxMoves - st.moves}`,
     cols: st.cols,
     cells: memCells,
-  });
+  }));
   const buttons: ButtonSpec[] = st.cells.map((c, i) => ({
     action: `flip:${i}`,
     label: String(i + 1),

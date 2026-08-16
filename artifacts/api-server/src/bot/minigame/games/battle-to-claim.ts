@@ -5,6 +5,9 @@ import { ButtonStyle } from "discord.js";
 import type { MiniGameDefinition, MiniGameSession, MiniGameOutcome, MiniGameRender } from "../types.js";
 import { renderScreen, winScreen, loseScreen, type ButtonSpec } from "./shared.js";
 import { renderMiniGameStill, MG_FILE } from "../canvas.js";
+import { withGuildFrames } from "../../animations/card-frames.js";
+import { getOrCreateGuildSettings } from "../../db.js";
+import type { Rarity } from "../../cards-data.js";
 import { buildRows } from "./shared.js";
 
 const THEME = 0xe23b3b;
@@ -75,7 +78,8 @@ export const battleGame: MiniGameDefinition = {
     if (st.myHp <= 0) {
       return { done: true, win: false, render: await loseScreen(session, "Your card was downed — the hostile escaped with the prize.") };
     }
-    const image = await renderMiniGameStill(spec(session, st));
+    const __frSet = await getOrCreateGuildSettings(session.guildId).catch(() => null);
+    const image = await withGuildFrames(__frSet, () => renderMiniGameStill({ ...spec(session, st), rarity: session.card.rarity as Rarity }));
     const note = dmg === 0 ? "💨 Your heavy swing missed!" : `You hit for ${dmg}.`;
     return {
       done: false,

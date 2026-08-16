@@ -43,6 +43,11 @@ export const cardsTable = pgTable("cards", {
   maxCopies: integer("max_copies"),
   totalMinted: integer("total_minted").notNull().default(0),
   imageUrl: text("image_url"),
+  // True when imageUrl is an animated GIF. Detected (byte-sniffed) at card
+  // create/edit time; render paths that composite art onto a canvas would
+  // otherwise flatten a GIF to its first frame, so they use this flag to route
+  // animated cards to the live GIF instead (spawns, /info play button).
+  isAnimated: boolean("is_animated").notNull().default(false),
   flavor: text("flavor"),
   droppable: boolean("droppable").notNull().default(true),
   inPacks: boolean("in_packs").notNull().default(true),
@@ -257,9 +262,43 @@ export const guildSettingsTable = pgTable("guild_settings", {
   // admin can force one style for every spawn. "off" shows the plain card image.
   // Values: "auto" | "blur" | "puzzle" | "silhouette" | "off".
   spawnRevealMode: text("spawn_reveal_mode").notNull().default("auto"),
+  // ── Card entrance animation (spawn pre-intro) ──────────────────────────────
+  // A short "the card enters" motion played BEFORE the plain card image, only
+  // when spawnRevealMode is "off" (image-only) — the reveal styles already have
+  // their own presentation. Also plays on image-only spawns that lead into a
+  // wild mini-game. Values: "off" | "random" | "flyin" | "teleport" |
+  // "bounce" | "warp" | "flip".
+  spawnEntranceAnimation: text("spawn_entrance_animation").notNull().default("off"),
+  // The look drawn behind the entering card. "rarity" tints the backdrop by the
+  // card's rarity colour (default); "tactical" = amber HUD w/ scanlines;
+  // "holo" = cyan/magenta prism. Values: "rarity" | "tactical" | "holo".
+  spawnEntranceSkin: text("spawn_entrance_skin").notNull().default("rarity"),
+  // ── Shiny Hub ──────────────────────────────────────────────────────────────
   // Play a sparkle/shine animation when a shiny is caught or pulled, so a shiny
   // is instantly recognisable. Off falls back to the static ✨ badge + canvas.
   shinyAnimationEnabled: boolean("shiny_animation_enabled").notNull().default(true),
+  // Which shiny reveal style plays. "classic" = the original gold shine; plus
+  // "holofoil" | "rainbow" | "cosmic" | "prism" | "radiance" | "random".
+  shinyAnimationStyle: text("shiny_animation_style").notNull().default("classic"),
+  // How much more a shiny copy is worth / burns for vs. a normal copy. Stored as
+  // a real multiplier (2 = double). Read via getShinyMultiplier (clamped 0.1–100).
+  shinyValueMultiplier: real("shiny_value_multiplier").notNull().default(2),
+  // Per-guild nickname for shinies (like custom rarity names). Null/empty =
+  // "Shiny". Read via getShinyName (trimmed, capped at 32 chars).
+  shinyName: text("shiny_name"),
+  // ── Card Frames ────────────────────────────────────────────────────────────
+  // Opt-in image frames drawn around card art everywhere it renders. Off by
+  // default → the current thin drawn border is used unchanged. When on, each
+  // rarity draws the assigned frame colour ("grey" | "blue" | "red" | "gold" |
+  // "rainbow"); a null rarity column falls back to the drawn border for that
+  // rarity. The frame image auto-scales to any card size/aspect.
+  cardFramesEnabled: boolean("card_frames_enabled").notNull().default(false),
+  cardFrameCommon: text("card_frame_common"),
+  cardFrameUncommon: text("card_frame_uncommon"),
+  cardFrameRare: text("card_frame_rare"),
+  cardFrameEpic: text("card_frame_epic"),
+  cardFrameLegendary: text("card_frame_legendary"),
+  cardFrameMythic: text("card_frame_mythic"),
   // ── Scheduled spawn boost (temporary spawn-rate change) ─────────────────────
   // A temporary multiplier on the spawn RATE for busy/quiet periods, applied on
   // top of the base interval without changing it. 100 = normal, 200 = double the

@@ -7,6 +7,9 @@ import { buildRows, winScreen, loseScreen, type ButtonSpec } from "./shared.js";
 import {
   renderChaseIntro, renderMiniGameStill, MG_FILE, MG_GIF_FILE, type MiniGameScreenSpec,
 } from "../canvas.js";
+import { withGuildFrames } from "../../animations/card-frames.js";
+import { getOrCreateGuildSettings } from "../../db.js";
+import type { Rarity } from "../../cards-data.js";
 
 const THEME = 0xf1c40f; // gold, like the mockup
 const DIRS: { action: string; label: string; emoji: string; arrow: string }[] = [
@@ -41,6 +44,7 @@ function specFor(session: MiniGameSession, st: ChaseState): MiniGameScreenSpec {
     statusValue: seqArrows(st),
     cardArtUrl: session.cardArtUrl,
     cardName: session.card.name,
+    rarity: session.card.rarity as Rarity,
     rarityLabel: session.rarityLabel,
     rarityColor: session.rarityColor,
   };
@@ -58,7 +62,8 @@ export const chaseGame: MiniGameDefinition = {
     session.state.chase = st;
     const spec = specFor(session, st);
     // Animated escaping-card GIF for the opening frame.
-    const image = session.animate ? await renderChaseIntro(spec) : await renderMiniGameStill(spec);
+    const settings = await getOrCreateGuildSettings(session.guildId).catch(() => null);
+    const image = await withGuildFrames(settings, () => session.animate ? renderChaseIntro(spec) : renderMiniGameStill(spec));
     return {
       title: "🏃 THE CARD IS ESCAPING!",
       description:
@@ -82,7 +87,8 @@ export const chaseGame: MiniGameDefinition = {
       return { done: true, win: true, render: await winScreen(session, "You ran it down — the card is caught!") };
     }
     // Correct so far — show a still frame with progress and keep going.
-    const image = await renderMiniGameStill(specFor(session, st));
+    const chaseSettings = await getOrCreateGuildSettings(session.guildId).catch(() => null);
+    const image = await withGuildFrames(chaseSettings, () => renderMiniGameStill(specFor(session, st)));
     return {
       done: false,
       render: {

@@ -15,6 +15,9 @@ import {
 import { nanoid } from "nanoid";
 import type { Card } from "@workspace/db";
 import { pickGame, GAMES } from "./registry.js";
+import { withGuildFrames } from "../animations/card-frames.js";
+import { getOrCreateGuildSettings } from "../db.js";
+import type { Rarity } from "../cards-data.js";
 import { logMiniGameStart, logMiniGameResolve } from "./db.js";
 import { rearmAfterResolve } from "./scheduler.js";
 import {
@@ -121,12 +124,14 @@ export async function startMiniGame(opts: StartMiniGameOpts): Promise<boolean> {
     session.state.__menu = menu;
     const encInput = {
       cardArtUrl: opts.cardArtUrl, cardName: opts.card.name,
-      rarityLabel: opts.rarityLabel, rarityColor: opts.rarityColor, avatarUrl: opts.avatarUrl ?? null,
+      rarityLabel: opts.rarityLabel, rarityColor: opts.rarityColor,
+      rarity: opts.card.rarity as Rarity, avatarUrl: opts.avatarUrl ?? null,
       menuLabels: menu.map(m => m.label),
     };
-    const encImage = opts.animate
-      ? await renderWildEncounterIntro(encInput)
-      : await renderWildEncounterStill(encInput);
+    const encSettings = await getOrCreateGuildSettings(opts.guildId).catch(() => null);
+    const encImage = await withGuildFrames(encSettings, () => opts.animate
+      ? renderWildEncounterIntro(encInput)
+      : renderWildEncounterStill(encInput));
     const encName = opts.animate && encImage ? ENCOUNTER_GIF_FILE : ENCOUNTER_PNG_FILE;
 
     const menuList = menu.map((m, i) => `**${i + 1}.** ${m.label}`).join("\n");

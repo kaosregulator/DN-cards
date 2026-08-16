@@ -23,6 +23,7 @@ import { consumeCooldown } from "../../lib/cooldowns.js";
 import { scheduleMessageDelete } from "../../lib/temp-message.js";
 import { renderBattleImage, type RenderCard } from "./image/render.js";
 import { renderAttackFrame, renderBattleVictory, renderBattleTurn, renderBattleIdle } from "../animations/index.js";
+import { withGuildFrames } from "../animations/card-frames.js";
 import type { BattleAnimationInput } from "../animations/index.js";
 import { DEFAULT_SCENE_ARENA, isSceneArenaKey, SCENE_ARENAS, SCENE_ARENA_KEYS, sceneArenaLabel } from "./scene-arenas.js";
 import { arenaAssetsAvailable } from "../animations/arena-bg.js";
@@ -36,6 +37,7 @@ import type { BattleSettings } from "@workspace/db";
 import type { Combatant, MoveType, AiDifficulty, Rarity, TurnResult } from "./types.js";
 import { AI_DIFFICULTIES } from "./types.js";
 import { getBattleSettings, rarityAllowed, typeAllowed } from "./config-engine.js";
+import { progTierForFrameId } from "../cards/frames.js";
 import { getScaledStats, powerRating } from "./stat-engine.js";
 import { inferMoveset, getMoveset, loadGuildMovesets } from "./movesets.js";
 import { getPassive, loadGuildPassives, applyBattleStartPassive } from "./passives.js";
@@ -282,6 +284,7 @@ function buildCombatant(
     cardId: card.id, cardName: card.name, cardRarity: battleRarity,
     cardType: card.cardType, cardImageUrl: toAbsoluteImageUrl(card.imageUrl),
     cardRarityDisplay: card.displayRarity,
+    progTier: progTierForFrameId(card.equippedFrame),
     moveset,
     // Snapshot the guild-scoped moveset definition (custom or default) up-front.
     movesetDef: getMoveset(moveset, rt.guildId),
@@ -636,13 +639,14 @@ async function onReady(rt: BattleRuntime, interaction: ButtonInteraction) {
   const move = getMoveset(card.config?.moveset ?? inferMoveset(card.cardType, effRarity));
   const special = getEffectDef(card.config?.specialEffect ?? inferSpecialEffect(card.cardType, effRarity));
   const item = getBattleItem(prep.itemId, rt.guildId);
-  const img = await renderCardConfirm(
+  const confirmFrames = await getOrCreateGuildSettings(rt.guildId).catch(() => null);
+  const img = await withGuildFrames(confirmFrames, () => renderCardConfirm(
     stat,
     move ? { name: move.name, emoji: move.emoji, description: move.description } : null,
     special ? { name: special.label, emoji: special.emoji, description: special.description } : null,
     item ? item.name : null,
     prep.coin,
-  ).catch(() => null);
+  )).catch(() => null);
 
   const embed = new EmbedBuilder().setColor(stat.rarityColor ?? 0xed4245)
     .setTitle("Confirm your fighter")
@@ -718,7 +722,8 @@ async function renderPersonalPrepView(
   const key = selectedId ?? 0;
   if (!prep?.boardImage || prep.boardKey !== key) {
     const top5 = eligible.slice(0, 5).map(c => prepStatFor(rt, c));
-    const img = await renderPrepBoard(rt.prep.has(userId) ? (userIdName(rt, userId)) : "Fighter", top5, selectedId).catch(() => null);
+    const prepFrames = await getOrCreateGuildSettings(rt.guildId).catch(() => null);
+    const img = await withGuildFrames(prepFrames, () => renderPrepBoard(rt.prep.has(userId) ? (userIdName(rt, userId)) : "Fighter", top5, selectedId)).catch(() => null);
     if (prep) { prep.boardImage = img; prep.boardKey = key; }
   }
 
@@ -830,9 +835,9 @@ async function beginCombat(rt: BattleRuntime) {
     // chosen arena) that stays alive between turns because Discord loops the GIF.
     // Classic / Off modes use the cheap static VS image below.
     if (sceneAnimated(rt)) {
-      const idle = await renderBattleIdle(
+      const idle = await withGuildFrames(await getOrCreateGuildSettings(rt.guildId).catch(() => null), () => renderBattleIdle(
         buildAnimInput(rt, 0), rt.settings.battleAnimationSpeed as AnimationSpeed,
-      ).catch(() => null);
+      )).catch(() => null);
       if (idle) { rt.vsImage = Buffer.from(idle.buffer); rt.vsImageIsGif = true; }
     }
     // Classic / Off modes (or a failed GIF render): the static VS image.
@@ -1049,17 +1054,19 @@ async function applyMove(rt: BattleRuntime, side: 0 | 1, move: MoveType) {
         // the living arena, impact FX fire on contact, the foe recoils, HP
         // drains. The GIF loops between turns, keeping the scene alive.
         const ended = result.koed || foe.hp <= 0;
-        const anim = await renderBattleTurn(
+        const frameGs = await getOrCreateGuildSettings(rt.guildId).catch(() => null);
+        const anim = await withGuildFrames(frameGs, () => renderBattleTurn(
           buildAnimInput(rt, side, {
             moveName: moveLabel(move), damage: visual.damage,
             isCrit: visual.isCrit, isHit: visual.isHit, ended,
           }),
           rt.settings.battleAnimationSpeed as AnimationSpeed,
-        ).catch(() => null);
+        )).catch(() => null);
         rt.turnAnimation = anim ? Buffer.from(anim.buffer) : null;
       } else if (rt.settings.battleAnimationEnabled) {
         // CLASSIC mode: the lighter single-frame attack card (pre-arena style).
-        rt.turnAnimation = await renderAttackFrame({
+        const frameGs = await getOrCreateGuildSettings(rt.guildId).catch(() => null);
+        rt.turnAnimation = await withGuildFrames(frameGs, () => renderAttackFrame({
           attacker: combatantToRenderCard(rt, actor),
           moveName: moveLabel(move),
           damage: visual.damage,
@@ -1067,7 +1074,7 @@ async function applyMove(rt: BattleRuntime, side: 0 | 1, move: MoveType) {
           isHit: visual.isHit,
           scene: visual.scene,
           subtitle: visual.subtitle,
-        }).catch(() => null);
+        })).catch(() => null);
       }
 
       await renderCombat(rt);
@@ -1167,11 +1174,12 @@ async function finishBattle(rt: BattleRuntime, winnerSide: 0 | 1 | null, reason:
     }).catch(() => null);
     if (cine) { rt.vsImage = cine.buffer; rt.vsImageIsGif = true; }
   } else if (winner && rt.settings.battleAnimationEnabled && rt.a && rt.b) {
-    const victory = await renderBattleVictory({
-      winner: combatantToRenderCard(rt, winner),
-      loser: combatantToRenderCard(rt, winnerSide === 0 ? rt.b : rt.a),
+    const w = winner, la = rt.a, lb = rt.b; // narrowed non-null captures for the closure below
+    const victory = await withGuildFrames(await getOrCreateGuildSettings(rt.guildId).catch(() => null), () => renderBattleVictory({
+      winner: combatantToRenderCard(rt, w),
+      loser: combatantToRenderCard(rt, winnerSide === 0 ? lb : la),
       background: rt.sceneArenaKey,
-    }, rt.settings.battleAnimationSpeed as AnimationSpeed).catch(() => null);
+    }, rt.settings.battleAnimationSpeed as AnimationSpeed)).catch(() => null);
     if (victory) { rt.vsImage = victory.buffer; rt.vsImageIsGif = true; }
   }
 
@@ -1378,6 +1386,7 @@ function combatantToRenderCard(rt: BattleRuntime, c: Combatant): RenderCard {
     artUrl: c.cardImageUrl,
     attack: c.stats.attack,
     special: getMoveset(c.moveset)?.name ?? null,
+    progTier: c.progTier,
   };
 }
 

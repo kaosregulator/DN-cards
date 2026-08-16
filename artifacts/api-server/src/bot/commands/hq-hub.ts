@@ -72,6 +72,9 @@ import { renderSiegeCinematic, SIEGE_CINEMATIC_FILE, type SiegeCinematicView } f
 import { getBattleSettings } from "../battle/config-engine.js";
 import { getOwnedBattleCards, type OwnedBattleCard } from "../battle/db.js";
 import { rarityLadderRank } from "../rarity-runtime.js";
+import { withGuildFrames } from "../animations/card-frames.js";
+import { getCardProgressBatch } from "../cards/leveling.js";
+import { progTierForFrameId } from "../cards/frames.js";
 import { withHqLock } from "../hq/lock.js";
 import {
   reconcileUnlocks, ownedDecorations, unlockedRooms, unlockedThemes,
@@ -911,13 +914,15 @@ async function buildRenderView(
   // perspective. "none" keeps the wall style's own look.
   const wallpaper = resolveWallpaper(style.wallpaperId);
   const activeWallpaper = wallpaper.id === DEFAULT_WALLPAPER_ID ? null : wallpaper;
-  const [{ settings, ctx, displayMap, cards }, displays, placements, defenderMap, terrain] = await Promise.all([
+  const [{ settings, ctx, displayMap, cards }, displays, placements, defenderMap, terrain, progress] = await Promise.all([
     loadCtx(guildId),
     getDisplays(guildId, userId),
     getPlacements(guildId, userId, room.id),
     includeDefenders ? getDefenders(guildId, userId) : Promise.resolve(new Map<number, number>()),
     listTerrain(guildId, userId, room.id).catch(() => []),
+    getCardProgressBatch(guildId, userId).catch(() => new Map()),
   ]);
+  const progTierOf = (cardId: number) => progTierForFrameId(progress.get(cardId)?.equippedFrame ?? null);
 
   const pedestals: (HqRenderCard | null)[] = [];
   for (let slot = 0; slot < room.pedestals; slot++) {
@@ -927,7 +932,7 @@ async function buildRenderView(
     const d = getCardDisplayRarity(card, ctx, settings, displayMap);
     pedestals.push({
       cardId: card.id, name: card.name, artUrl: toAbsoluteImageUrl(card.imageUrl),
-      rarityLabel: d.label, rarityColor: d.color,
+      rarityLabel: d.label, rarityColor: d.color, rarity: card.rarity as Rarity, progTier: progTierOf(card.id),
     });
   }
 
@@ -966,7 +971,7 @@ async function buildRenderView(
       const card = cards.find(c => c.id === cardId);
       if (!card) continue;
       const d = getCardDisplayRarity(card, ctx, settings, displayMap);
-      defenders.push({ slot, cardId: card.id, name: card.name, artUrl: toAbsoluteImageUrl(card.imageUrl), rarityColor: d.color, basePath });
+      defenders.push({ slot, cardId: card.id, name: card.name, artUrl: toAbsoluteImageUrl(card.imageUrl), rarityColor: d.color, rarity: card.rarity as Rarity, progTier: progTierOf(card.id), basePath });
     }
   }
 
@@ -986,13 +991,15 @@ async function buildRenderView(
   };
 }
 
-async function renderRoomImage(view: HqRenderView): Promise<AttachmentBuilder | null> {
-  const buf = await renderHq(view).catch(() => null);
+async function renderRoomImage(guildId: string, view: HqRenderView): Promise<AttachmentBuilder | null> {
+  const frames = await getOrCreateGuildSettings(guildId).catch(() => null);
+  const buf = await withGuildFrames(frames, () => renderHq(view)).catch(() => null);
   return buf ? new AttachmentBuilder(buf, { name: HQ_FILE }) : null;
 }
 
-async function renderBaseImage(view: HqBaseView): Promise<AttachmentBuilder | null> {
-  const buf = await renderBase(view).catch(() => null);
+async function renderBaseImage(guildId: string, view: HqBaseView): Promise<AttachmentBuilder | null> {
+  const frames = await getOrCreateGuildSettings(guildId).catch(() => null);
+  const buf = await withGuildFrames(frames, () => renderBase(view)).catch(() => null);
   return buf ? new AttachmentBuilder(buf, { name: HQ_FILE }) : null;
 }
 
@@ -1124,10 +1131,11 @@ async function buildBaseRenderView(
   cursor?: BuildCursor,
 ): Promise<HqBaseView> {
   const theme = resolveTheme(hq.themeId);
-  const [{ settings, ctx, displayMap, cards }, defenderMap, terrain] = await Promise.all([
+  const [{ settings, ctx, displayMap, cards }, defenderMap, terrain, baseProgress] = await Promise.all([
     loadCtx(guildId),
     getDefenders(guildId, userId),
     listTerrain(guildId, userId, BASE_ROOM_ID).catch(() => []),
+    getCardProgressBatch(guildId, userId).catch(() => new Map()),
   ]);
   const basePath = spriteForPrefix("base", "round");
   const defenders: HqRenderDefender[] = [];
@@ -1135,7 +1143,7 @@ async function buildBaseRenderView(
     const card = cards.find(c => c.id === cardId);
     if (!card) continue;
     const d = getCardDisplayRarity(card, ctx, settings, displayMap);
-    defenders.push({ slot, cardId: card.id, name: card.name, artUrl: toAbsoluteImageUrl(card.imageUrl), rarityColor: d.color, basePath });
+    defenders.push({ slot, cardId: card.id, name: card.name, artUrl: toAbsoluteImageUrl(card.imageUrl), rarityColor: d.color, rarity: card.rarity as Rarity, progTier: progTierForFrameId(baseProgress.get(card.id)?.equippedFrame ?? null), basePath });
   }
   const buildings: HqBaseBuilding[] = BASE_BUILDING_ROLES.map(role => ({ role, spritePath: spriteForPrefix("building", role) }));
   const baseState = await getBaseState(guildId, userId).catch(() => null);
@@ -1207,18 +1215,18 @@ async function buildView(
   } else if (section === "build") {
     const cur = await loadCursor(guildId, userId, hq);
     file = cur.canvas === BASE_ROOM_ID
-      ? await renderBaseImage(await buildBaseRenderView(
+      ? await renderBaseImage(guildId, await buildBaseRenderView(
           guildId, userId, interaction.user.username, interaction.user.displayAvatarURL(), hq, cur))
-      : await renderRoomImage(await buildRenderView(
+      : await renderRoomImage(guildId, await buildRenderView(
           guildId, userId, interaction.user.username, interaction.user.displayAvatarURL(), hq, false, cur));
   } else if (section === "overview" || section === "defenders" || section === "defenses") {
-    file = await renderBaseImage(await buildBaseRenderView(guildId, userId, interaction.user.username, interaction.user.displayAvatarURL(), hq));
+    file = await renderBaseImage(guildId, await buildBaseRenderView(guildId, userId, interaction.user.username, interaction.user.displayAvatarURL(), hq));
   } else if (section === "rooms") {
     file = await renderFloorplanImage(guildId, userId, interaction.user.username, interaction.user.displayAvatarURL(), hq);
   } else {
     // Decorations (and any other room-centric section) shows the active room so
     // you can see where your cosmetics land.
-    file = await renderRoomImage(await buildRenderView(guildId, userId, interaction.user.username, interaction.user.displayAvatarURL(), hq));
+    file = await renderRoomImage(guildId, await buildRenderView(guildId, userId, interaction.user.username, interaction.user.displayAvatarURL(), hq));
   }
   const files = file ? [file] : [];
 
@@ -2048,8 +2056,8 @@ export async function renderBuildCanvas(
   const name = interaction.user.username;
   const avatar = interaction.user.displayAvatarURL();
   return canvas === BASE_ROOM_ID
-    ? renderBaseImage(await buildBaseRenderView(guildId, userId, name, avatar, hq, cursor))
-    : renderRoomImage(await buildRenderView(guildId, userId, name, avatar, hq, false, cursor));
+    ? renderBaseImage(guildId, await buildBaseRenderView(guildId, userId, name, avatar, hq, cursor))
+    : renderRoomImage(guildId, await buildRenderView(guildId, userId, name, avatar, hq, false, cursor));
 }
 
 /** Persist an HQ's wallpaper choice (shared with `/hqbuild wallpaper`). */
@@ -2248,7 +2256,7 @@ function formatReign(sec: number): string {
 function championRender(card: OwnedBattleCard | undefined, cx: LoadedCtx) {
   if (!card) return null;
   const d = getCardDisplayRarity({ id: card.id, rarity: card.rarity }, cx.ctx, cx.settings, cx.displayMap);
-  return { slot: 0, cardId: card.id, name: card.name, artUrl: toAbsoluteImageUrl(card.imageUrl), rarityColor: d.color, basePath: null };
+  return { slot: 0, cardId: card.id, name: card.name, artUrl: toAbsoluteImageUrl(card.imageUrl), rarityColor: d.color, rarity: card.rarity as Rarity, basePath: null };
 }
 
 // One resolved siege, normalised so runSiege renders it the same whichever engine
@@ -2317,7 +2325,7 @@ async function resolveSiegeOutcome(guildId: string, attackerId: string, attacker
   const defenders = await buildDefenderSquad(guildId, defenderId, cx);
   const squad = await buildAttackerSquad(guildId, attackerId, cx, defenders.length);
   const champ = squad[0]
-    ? { slot: 0, cardId: squad[0].cardId, name: squad[0].name, artUrl: squad[0].artUrl, rarityColor: squad[0].rarityColor, basePath: null }
+    ? { slot: 0, cardId: squad[0].cardId, name: squad[0].name, artUrl: squad[0].artUrl, rarityColor: squad[0].rarityColor, rarity: squad[0].rarity as Rarity, basePath: null }
     : null;
   return outcomeFromPower(resolveSiege(squad, defenders, Math.random, defenderBonusPct), champ, defenders.length);
 }
@@ -2597,7 +2605,8 @@ async function runSiege(interaction: ButtonInteraction, guildId: string, attacke
     attackerName, defenderName,
   };
   const live = mode !== "static";
-  const buf = await renderSiege(baseView, plan, live, mode === "classic").catch(() => null);
+  const siegeFrames = await getOrCreateGuildSettings(guildId).catch(() => null);
+  const buf = await withGuildFrames(siegeFrames, () => renderSiege(baseView, plan, live, mode === "classic")).catch(() => null);
   if (buf) {
     const name = live ? SIEGE_GIF : SIEGE_FILE;
     files.push(new AttachmentBuilder(buf, { name }));
@@ -2899,7 +2908,8 @@ async function runTerritorySiege(
       attackerName, defenderName,
     };
     const live = mode !== "static";
-    const buf = await renderSiege(baseView, plan, live, mode === "classic").catch(() => null);
+    const siegeFrames = await getOrCreateGuildSettings(guildId).catch(() => null);
+  const buf = await withGuildFrames(siegeFrames, () => renderSiege(baseView, plan, live, mode === "classic")).catch(() => null);
     if (buf) {
       const name = live ? SIEGE_GIF : SIEGE_FILE;
       files.push(new AttachmentBuilder(buf, { name }));
@@ -2966,7 +2976,7 @@ async function buildVisitView(guildId: string, targetId: string, targetName: str
   if (!isRoomUnlocked(resolveRoom(hq.activeRoomId), owned)) hq.activeRoomId = DEFAULT_ROOM_ID;
   // A visitor scouts the EXTERIOR base — its buildings and stationed defenders —
   // because that's what an attacker would face.
-  const file = await renderBaseImage(await buildBaseRenderView(guildId, targetId, targetName, targetAvatar, hq));
+  const file = await renderBaseImage(guildId, await buildBaseRenderView(guildId, targetId, targetName, targetAvatar, hq));
   const theme = resolveTheme(hq.themeId);
   const stats = readHqStats(hq);
   const defenders = await getDefenders(guildId, targetId);
