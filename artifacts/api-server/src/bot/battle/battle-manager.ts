@@ -637,13 +637,14 @@ async function onReady(rt: BattleRuntime, interaction: ButtonInteraction) {
   const move = getMoveset(card.config?.moveset ?? inferMoveset(card.cardType, effRarity));
   const special = getEffectDef(card.config?.specialEffect ?? inferSpecialEffect(card.cardType, effRarity));
   const item = getBattleItem(prep.itemId, rt.guildId);
-  const img = await renderCardConfirm(
+  const confirmFrames = await getOrCreateGuildSettings(rt.guildId).catch(() => null);
+  const img = await withGuildFrames(confirmFrames, () => renderCardConfirm(
     stat,
     move ? { name: move.name, emoji: move.emoji, description: move.description } : null,
     special ? { name: special.label, emoji: special.emoji, description: special.description } : null,
     item ? item.name : null,
     prep.coin,
-  ).catch(() => null);
+  )).catch(() => null);
 
   const embed = new EmbedBuilder().setColor(stat.rarityColor ?? 0xed4245)
     .setTitle("Confirm your fighter")
@@ -719,7 +720,8 @@ async function renderPersonalPrepView(
   const key = selectedId ?? 0;
   if (!prep?.boardImage || prep.boardKey !== key) {
     const top5 = eligible.slice(0, 5).map(c => prepStatFor(rt, c));
-    const img = await renderPrepBoard(rt.prep.has(userId) ? (userIdName(rt, userId)) : "Fighter", top5, selectedId).catch(() => null);
+    const prepFrames = await getOrCreateGuildSettings(rt.guildId).catch(() => null);
+    const img = await withGuildFrames(prepFrames, () => renderPrepBoard(rt.prep.has(userId) ? (userIdName(rt, userId)) : "Fighter", top5, selectedId)).catch(() => null);
     if (prep) { prep.boardImage = img; prep.boardKey = key; }
   }
 

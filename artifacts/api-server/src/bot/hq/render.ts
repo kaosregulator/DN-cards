@@ -25,6 +25,8 @@ import {
   drawCardArt, drawCardFrame, drawRarityGlow,
   drawTextWithShadow, drawTitle, fitText, TITLE_FONT,
 } from "../animations/effects.js";
+import { drawFrameOverlay } from "../animations/card-frames.js";
+import type { Rarity } from "../cards-data.js";
 import { drawAtmosphere, atmospherePreset } from "../animations/atmosphere.js";
 import { queueRender } from "../animations/render-queue.js";
 import { loadSprite, spriteForPrefix } from "./assets.js";
@@ -89,6 +91,7 @@ export interface HqRenderCard {
   artUrl: string | null;
   rarityLabel: string;
   rarityColor: number;
+  rarity?: Rarity;
 }
 
 export interface HqRenderDeco {
@@ -124,6 +127,7 @@ export interface HqRenderDefender {
   name: string;
   artUrl: string | null;
   rarityColor: number;
+  rarity?: Rarity;
   basePath: string | null; // base sprite (CC0); procedural disc when null
 }
 
@@ -790,9 +794,11 @@ async function drawAttacker(ctx: Ctx, mod: CanvasMod, def: HqRenderDefender, adv
   ctx.save(); ctx.shadowColor = hexToRgba(def.rarityColor, 0.7); ctx.shadowBlur = 14;
   roundRectPath(ctx, x, y, cw, ch, 8); ctx.fillStyle = "#0d0f14"; ctx.fill(); ctx.restore();
   ctx.save(); roundRectPath(ctx, x, y, cw, ch, 8); ctx.clip();
-  await drawCardArt(ctx, mod, x, y, cw, ch, def.artUrl);
+  await drawCardArt(ctx, mod, x, y, cw, ch, def.artUrl, def.rarity);
   ctx.restore();
-  ctx.save(); roundRectPath(ctx, x, y, cw, ch, 8); ctx.strokeStyle = hexToRgba(def.rarityColor, 0.95); ctx.lineWidth = 3; ctx.stroke(); ctx.restore();
+  if (!drawFrameOverlay(ctx, x, y, cw, ch, def.rarity)) {
+    ctx.save(); roundRectPath(ctx, x, y, cw, ch, 8); ctx.strokeStyle = hexToRgba(def.rarityColor, 0.95); ctx.lineWidth = 3; ctx.stroke(); ctx.restore();
+  }
   ctx.save(); ctx.textAlign = "center"; ctx.textBaseline = "middle";
   drawTextWithShadow(ctx, "⚔️", x + cw / 2, y - 8, "#ffffff", 20);
   ctx.restore();
@@ -1069,14 +1075,16 @@ async function drawBaseDefenders(ctx: Ctx, mod: CanvasMod, view: HqBaseView, def
     roundRectPath(ctx, x, y, cw, ch, 8); ctx.fillStyle = "#0d0f14"; ctx.fill();
     ctx.restore();
     ctx.save(); roundRectPath(ctx, x, y, cw, ch, 8); ctx.clip();
-    await drawCardArt(ctx, mod, x, y, cw, ch, def.artUrl);
+    await drawCardArt(ctx, mod, x, y, cw, ch, def.artUrl, def.rarity);
     const g = ctx.createLinearGradient(0, y + ch - 28, 0, y + ch);
     g.addColorStop(0, "rgba(0,0,0,0)"); g.addColorStop(1, "rgba(0,0,0,0.82)");
     ctx.fillStyle = g; ctx.fillRect(x, y + ch - 28, cw, 28);
     if (down) { ctx.fillStyle = "rgba(0,0,0,0.6)"; ctx.fillRect(x, y, cw, ch); } // knocked out
     ctx.restore();
-    ctx.save(); roundRectPath(ctx, x, y, cw, ch, 8);
-    ctx.strokeStyle = hexToRgba(down ? 0x555a63 : def.rarityColor, 0.95); ctx.lineWidth = 3; ctx.stroke(); ctx.restore();
+    if (!drawFrameOverlay(ctx, x, y, cw, ch, def.rarity)) {
+      ctx.save(); roundRectPath(ctx, x, y, cw, ch, 8);
+      ctx.strokeStyle = hexToRgba(down ? 0x555a63 : def.rarityColor, 0.95); ctx.lineWidth = 3; ctx.stroke(); ctx.restore();
+    }
     ctx.save(); ctx.textAlign = "center"; ctx.textBaseline = "middle";
     drawTitle(ctx, def.name, x + cw / 2, y + ch - 12, down ? "#9aa0a8" : "#ffffff", fitText(ctx, def.name, cw - 8, 12, 9, TITLE_FONT));
     if (down) { // red ✕ over the fallen defender
@@ -1401,8 +1409,8 @@ async function drawPedestal(
   }
 
   drawRarityGlow(ctx, cardX, cardTop, cardW, cardH, card.rarityColor, 0.55);
-  await drawCardArt(ctx, mod, cardX, cardTop, cardW, cardH, card.artUrl);
-  drawCardFrame(ctx, cardX, cardTop, cardW, cardH, card.rarityColor, 5);
+  await drawCardArt(ctx, mod, cardX, cardTop, cardW, cardH, card.artUrl, card.rarity);
+  drawCardFrame(ctx, cardX, cardTop, cardW, cardH, card.rarityColor, 5, card.rarity);
   if (!glassOff) drawGlassCase(ctx, cardX, cardTop, cardW, cardH, theme, card.rarityColor);
 
   // Nameplate on the plinth.

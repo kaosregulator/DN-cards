@@ -93,8 +93,8 @@ export async function renderPrepBoard(
         const picked = c.cardId === selectedId;
 
         drawRarityGlow(ctx, x, y, cw, ch, picked ? 0xffd54a : color, picked ? 0.85 : 0.5);
-        await drawCardArt(ctx, mod, x, y, cw, ch, toAbsoluteImageUrl(c.imageUrl));
-        drawCardFrame(ctx, x, y, cw, ch, picked ? 0xffd54a : color, picked ? 6 : 5);
+        await drawCardArt(ctx, mod, x, y, cw, ch, toAbsoluteImageUrl(c.imageUrl), c.rarity as Rarity);
+        drawCardFrame(ctx, x, y, cw, ch, picked ? 0xffd54a : color, picked ? 6 : 5, c.rarity as Rarity);
         drawRarityBadge(ctx, x + cw - 10, y + 10, c.rarityLabel, color);
         drawTextWithShadow(ctx, `#${i + 1}`, x + 15, y + 18, "#ffffff", 15);
         if (picked) drawTextWithShadow(ctx, "PICKED", x + cw / 2, y + ch - 16, "#ffd54a", 16);
@@ -169,8 +169,8 @@ export async function renderCardConfirm(
       // Big card art on the left.
       const cw = 240, chh = 320, cx = 54, cy = 100;
       drawRarityGlow(ctx, cx, cy, cw, chh, color, 0.7);
-      await drawCardArt(ctx, mod, cx, cy, cw, chh, toAbsoluteImageUrl(card.imageUrl));
-      drawCardFrame(ctx, cx, cy, cw, chh, color, 6);
+      await drawCardArt(ctx, mod, cx, cy, cw, chh, toAbsoluteImageUrl(card.imageUrl), card.rarity as Rarity);
+      drawCardFrame(ctx, cx, cy, cw, chh, color, 6, card.rarity as Rarity);
       drawRarityBadge(ctx, cx + cw - 10, cy + 12, card.rarityLabel, color);
 
       drawTitle(ctx, "READY TO FIGHT?", 54, 46, "#ffffff", 30, "left");

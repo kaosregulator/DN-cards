@@ -93,16 +93,16 @@ export async function handleConfigSelect(interaction: StringSelectMenuInteractio
 
   // ── Card Frames selects (own sub-panel, per-rarity state) ──────────────────
   if (action === "config_frame_rarity") {
-    const settings = await getOrCreateGuildSettings(guildId);
-    await interaction.editReply({ embeds: [buildFramesEmbed(settings, value!)], components: buildFramesComponents(settings, value!) });
+    const [settings, displayMap] = await Promise.all([getOrCreateGuildSettings(guildId), getRarityDisplayOverrides(guildId)]);
+    await interaction.editReply({ embeds: [buildFramesEmbed(settings, value!, displayMap)], components: buildFramesComponents(settings, value!, displayMap) });
     return;
   }
   if (action.startsWith("config_frame_color:")) {
     const rarity = action.slice("config_frame_color:".length);
     const col = frameColumnFor(rarity);
     if (col) await updateGuildSettings(guildId, { [col]: value === "none" ? null : value } as Partial<GuildSettings>);
-    const settings = await getOrCreateGuildSettings(guildId);
-    await interaction.editReply({ embeds: [buildFramesEmbed(settings, rarity)], components: buildFramesComponents(settings, rarity) });
+    const [settings, displayMap] = await Promise.all([getOrCreateGuildSettings(guildId), getRarityDisplayOverrides(guildId)]);
+    await interaction.editReply({ embeds: [buildFramesEmbed(settings, rarity, displayMap)], components: buildFramesComponents(settings, rarity, displayMap) });
     return;
   }
 
@@ -459,7 +459,8 @@ export async function handleConfigButton(interaction: ButtonInteraction): Promis
     if (arg === "back") {
       await interaction.editReply({ embeds: [buildAnimationEmbed(settings)], components: buildAnimationComponents(settings) });
     } else {
-      await interaction.editReply({ embeds: [buildFramesEmbed(settings, "common")], components: buildFramesComponents(settings, "common") });
+      const displayMap = await getRarityDisplayOverrides(guildId);
+      await interaction.editReply({ embeds: [buildFramesEmbed(settings, "common", displayMap)], components: buildFramesComponents(settings, "common", displayMap) });
     }
     return;
   } else if (action === "exp") {
@@ -1121,13 +1122,13 @@ function frameOf(s: GuildSettings, rarity: string): string | null {
   return typeof v === "string" && v ? v : null;
 }
 
-function buildFramesEmbed(s: GuildSettings, active: string): EmbedBuilder {
+function buildFramesEmbed(s: GuildSettings, active: string, displayMap?: RarityDisplayMap | null): EmbedBuilder {
   const enabled = framesEnabledOf(s);
   const rows = getRarityOrder(s).map((r) => {
     const fc = frameOf(s, r);
     const cur = fc ? `${FRAME_COLOR_META[fc]?.emoji ?? ""} ${FRAME_COLOR_META[fc]?.label ?? fc}` : "— drawn border";
     const arrow = r === active ? "▸ " : "  ";
-    return `${arrow}${rarityEmoji(r, s)} **${rarityLabel(r, s)}** → ${cur}`;
+    return `${arrow}${rarityEmoji(r, s, displayMap)} **${rarityLabel(r, s, displayMap)}** → ${cur}`;
   });
   return new EmbedBuilder()
     .setTitle("🖼️ Card Frames")
@@ -1140,7 +1141,7 @@ function buildFramesEmbed(s: GuildSettings, active: string): EmbedBuilder {
     );
 }
 
-function buildFramesComponents(s: GuildSettings, active: string) {
+function buildFramesComponents(s: GuildSettings, active: string, displayMap?: RarityDisplayMap | null) {
   const enabled = framesEnabledOf(s);
   const order = getRarityOrder(s);
   const rarityRow = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
@@ -1148,14 +1149,14 @@ function buildFramesComponents(s: GuildSettings, active: string) {
       .setCustomId("config_frame_rarity")
       .setPlaceholder("🎯 Rarity to configure")
       .addOptions(order.map(r => ({
-        label: rarityLabel(r, s), emoji: rarityEmoji(r, s), value: r, default: r === active,
+        label: rarityLabel(r, s, displayMap), emoji: rarityEmoji(r, s, displayMap), value: r, default: r === active,
       }))),
   );
   const cur = frameOf(s, active);
   const colorRow = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
     new StringSelectMenuBuilder()
       .setCustomId(`config_frame_color:${active}`)
-      .setPlaceholder(`🖼️ Frame for ${rarityLabel(active as Rarity, s)}`)
+      .setPlaceholder(`🖼️ Frame for ${rarityLabel(active as Rarity, s, displayMap)}`)
       .addOptions([
         { label: "— Drawn border (default)", value: "none", emoji: "➖", default: cur === null },
         ...FRAME_COLORS.map(c => ({

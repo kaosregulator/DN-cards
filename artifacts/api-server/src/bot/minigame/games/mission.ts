@@ -4,6 +4,9 @@ import { ButtonStyle } from "discord.js";
 import type { MiniGameDefinition, MiniGameSession, MiniGameOutcome, MiniGameRender } from "../types.js";
 import { renderScreen, winScreen, loseScreen, type ButtonSpec } from "./shared.js";
 import { renderMiniGameStill, MG_FILE } from "../canvas.js";
+import { withGuildFrames } from "../../animations/card-frames.js";
+import { getOrCreateGuildSettings } from "../../db.js";
+import type { Rarity } from "../../cards-data.js";
 import { buildRows } from "./shared.js";
 
 const THEME = 0xf97316;
@@ -65,7 +68,8 @@ export const missionGame: MiniGameDefinition = {
     if (st.stage >= STAGES.length) {
       return { done: true, win: true, render: await winScreen(session, "Mission complete — card acquired!") };
     }
-    const image = await renderMiniGameStill(spec(session, st.stage));
+    const __frSet = await getOrCreateGuildSettings(session.guildId).catch(() => null);
+    const image = await withGuildFrames(__frSet, () => renderMiniGameStill({ ...spec(session, st.stage), rarity: session.card.rarity as Rarity }));
     return {
       done: false,
       render: {

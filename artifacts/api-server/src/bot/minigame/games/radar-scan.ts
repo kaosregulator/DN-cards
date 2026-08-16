@@ -1,6 +1,9 @@
 // 📡 Radar Scan — narrow down the contact's position with a hot/cold search.
 // Each scan tells you higher/lower; pinpoint it within your attempts to capture.
 import { ButtonStyle } from "discord.js";
+import { withGuildFrames } from "../../animations/card-frames.js";
+import { getOrCreateGuildSettings } from "../../db.js";
+import type { Rarity } from "../../cards-data.js";
 import type { MiniGameDefinition, MiniGameSession, MiniGameOutcome, MiniGameRender } from "../types.js";
 import { renderScreen, winScreen, loseScreen, type ButtonSpec } from "./shared.js";
 
@@ -62,7 +65,8 @@ export const radarGame: MiniGameDefinition = {
     }
     const { renderMiniGameStill, MG_FILE } = await import("../canvas.js");
     const { buildRows } = await import("./shared.js");
-    const image = await renderMiniGameStill(spec(session, st));
+    const __frSet = await getOrCreateGuildSettings(session.guildId).catch(() => null);
+    const image = await withGuildFrames(__frSet, () => renderMiniGameStill({ ...spec(session, st), rarity: session.card.rarity as Rarity }));
     return {
       done: false,
       render: {

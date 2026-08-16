@@ -47,6 +47,8 @@ import { renderSiegeField, renderSiegeFieldStill, type AnimationSpeed } from "..
 import type { SiegeFieldFighter, SiegeFieldInput, SiegeFieldBenchCard } from "../animations/index.js";
 import { renderCoinFlip } from "../battle/prep-canvas.js";
 import { renderSiegeFrame, type HqBaseView, type SiegeOverlay, type HqRenderDefender } from "./render.js";
+import { withGuildFrames } from "../animations/card-frames.js";
+import { getOrCreateGuildSettings } from "../db.js";
 import type { HqSiegeConfig } from "./settings.js";
 import { logger } from "../../lib/logger.js";
 
@@ -1159,10 +1161,12 @@ async function refreshCastle(s: SiegeSession, force = false): Promise<void> {
   const key = `${s.di}:${s.ai}:${Math.floor(pct / 5)}:${s.phase}`;
   if (!force && key === s.castleKey && s.castleImage) return;
   const overlay = currentOverlay(s, pct);
+  const bvC = s.baseView;
+  const castleFrames = await getOrCreateGuildSettings(s.guildId).catch(() => null);
   // Race against a timeout: canvas image loads can hang indefinitely if a card
   // image URL stalls. A null result just skips the castle frame this tick.
   const buf = await Promise.race([
-    renderSiegeFrame(s.baseView, overlay).catch(() => null),
+    withGuildFrames(castleFrames, () => renderSiegeFrame(bvC, overlay)).catch(() => null),
     sleep(8_000).then(() => null),
   ]);
   if (buf) { s.castleImage = buf; s.castleKey = key; }
@@ -1183,10 +1187,11 @@ function scheduleCastleRefresh(s: SiegeSession, force = false): void {
   if (!force && key === s.castleKey && s.castleImage) return;
   s.castleRendering = true;
   const overlay = currentOverlay(s, pct);
-  void Promise.race([
-    renderSiegeFrame(s.baseView, overlay).catch(() => null),
+  const bvS = s.baseView;
+  void getOrCreateGuildSettings(s.guildId).catch(() => null).then((schedFrames) => Promise.race([
+    withGuildFrames(schedFrames, () => renderSiegeFrame(bvS, overlay)).catch(() => null),
     sleep(8_000).then(() => null),
-  ]).then((buf) => {
+  ])).then((buf) => {
     s.castleRendering = false;
     if (buf && s.phase !== "ended") {
       s.castleImage = buf; s.castleKey = key;
@@ -1375,7 +1380,9 @@ async function finish(s: SiegeSession): Promise<void> {
     const banner = captured
       ? { text: `${s.attackerName} CAPTURED ${s.targetName}`, color: 0xc0392b }
       : { text: `${s.targetName} HELD`, color: 0x4fd06a };
-    const buf = await renderSiegeFrame(s.baseView, currentOverlay(s, pct, banner)).catch(() => null);
+    const liveFrames = await getOrCreateGuildSettings(s.guildId).catch(() => null);
+    const bvF = s.baseView; // narrowed non-null capture for the closure
+    const buf = await withGuildFrames(liveFrames, () => renderSiegeFrame(bvF, currentOverlay(s, pct, banner))).catch(() => null);
     if (buf) s.castleImage = buf;
   }
 
