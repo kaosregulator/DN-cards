@@ -73,6 +73,8 @@ import { getBattleSettings } from "../battle/config-engine.js";
 import { getOwnedBattleCards, type OwnedBattleCard } from "../battle/db.js";
 import { rarityLadderRank } from "../rarity-runtime.js";
 import { withGuildFrames } from "../animations/card-frames.js";
+import { getCardProgressBatch } from "../cards/leveling.js";
+import { progTierForFrameId } from "../cards/frames.js";
 import { withHqLock } from "../hq/lock.js";
 import {
   reconcileUnlocks, ownedDecorations, unlockedRooms, unlockedThemes,
@@ -912,13 +914,15 @@ async function buildRenderView(
   // perspective. "none" keeps the wall style's own look.
   const wallpaper = resolveWallpaper(style.wallpaperId);
   const activeWallpaper = wallpaper.id === DEFAULT_WALLPAPER_ID ? null : wallpaper;
-  const [{ settings, ctx, displayMap, cards }, displays, placements, defenderMap, terrain] = await Promise.all([
+  const [{ settings, ctx, displayMap, cards }, displays, placements, defenderMap, terrain, progress] = await Promise.all([
     loadCtx(guildId),
     getDisplays(guildId, userId),
     getPlacements(guildId, userId, room.id),
     includeDefenders ? getDefenders(guildId, userId) : Promise.resolve(new Map<number, number>()),
     listTerrain(guildId, userId, room.id).catch(() => []),
+    getCardProgressBatch(guildId, userId).catch(() => new Map()),
   ]);
+  const progTierOf = (cardId: number) => progTierForFrameId(progress.get(cardId)?.equippedFrame ?? null);
 
   const pedestals: (HqRenderCard | null)[] = [];
   for (let slot = 0; slot < room.pedestals; slot++) {
@@ -928,7 +932,7 @@ async function buildRenderView(
     const d = getCardDisplayRarity(card, ctx, settings, displayMap);
     pedestals.push({
       cardId: card.id, name: card.name, artUrl: toAbsoluteImageUrl(card.imageUrl),
-      rarityLabel: d.label, rarityColor: d.color, rarity: card.rarity as Rarity,
+      rarityLabel: d.label, rarityColor: d.color, rarity: card.rarity as Rarity, progTier: progTierOf(card.id),
     });
   }
 
@@ -967,7 +971,7 @@ async function buildRenderView(
       const card = cards.find(c => c.id === cardId);
       if (!card) continue;
       const d = getCardDisplayRarity(card, ctx, settings, displayMap);
-      defenders.push({ slot, cardId: card.id, name: card.name, artUrl: toAbsoluteImageUrl(card.imageUrl), rarityColor: d.color, rarity: card.rarity as Rarity, basePath });
+      defenders.push({ slot, cardId: card.id, name: card.name, artUrl: toAbsoluteImageUrl(card.imageUrl), rarityColor: d.color, rarity: card.rarity as Rarity, progTier: progTierOf(card.id), basePath });
     }
   }
 
@@ -1127,10 +1131,11 @@ async function buildBaseRenderView(
   cursor?: BuildCursor,
 ): Promise<HqBaseView> {
   const theme = resolveTheme(hq.themeId);
-  const [{ settings, ctx, displayMap, cards }, defenderMap, terrain] = await Promise.all([
+  const [{ settings, ctx, displayMap, cards }, defenderMap, terrain, baseProgress] = await Promise.all([
     loadCtx(guildId),
     getDefenders(guildId, userId),
     listTerrain(guildId, userId, BASE_ROOM_ID).catch(() => []),
+    getCardProgressBatch(guildId, userId).catch(() => new Map()),
   ]);
   const basePath = spriteForPrefix("base", "round");
   const defenders: HqRenderDefender[] = [];
@@ -1138,7 +1143,7 @@ async function buildBaseRenderView(
     const card = cards.find(c => c.id === cardId);
     if (!card) continue;
     const d = getCardDisplayRarity(card, ctx, settings, displayMap);
-    defenders.push({ slot, cardId: card.id, name: card.name, artUrl: toAbsoluteImageUrl(card.imageUrl), rarityColor: d.color, rarity: card.rarity as Rarity, basePath });
+    defenders.push({ slot, cardId: card.id, name: card.name, artUrl: toAbsoluteImageUrl(card.imageUrl), rarityColor: d.color, rarity: card.rarity as Rarity, progTier: progTierForFrameId(baseProgress.get(card.id)?.equippedFrame ?? null), basePath });
   }
   const buildings: HqBaseBuilding[] = BASE_BUILDING_ROLES.map(role => ({ role, spritePath: spriteForPrefix("building", role) }));
   const baseState = await getBaseState(guildId, userId).catch(() => null);
