@@ -8,6 +8,10 @@ import { getActivityLayout, saveActivityLayout, getActivityCatalog, WORLD_TILES 
 import { ACTIVITY_FLOORS, GROUND_SPRITE } from "../bot/hq/activity-catalog.js";
 import { HQ_ROOMS } from "../bot/hq/defs/rooms.js";
 import { battleReadModel, raidReadModel, packReadModel } from "../bot/activity/read-models.js";
+import { duelReadModel } from "../bot/activity/duel-model.js";
+import { getCardById } from "../bot/db.js";
+import { toAbsoluteImageUrl } from "../bot/image-url.js";
+import { ObjectStorageService } from "../lib/objectStorage";
 import { HOME_GUILD_ID } from "../bot/home-guild.js";
 import { loginRateLimiter } from "../lib/rate-limiters.js";
 import { logger } from "../lib/logger.js";
@@ -315,6 +319,69 @@ router.get("/packs", async (req, res) => {
   } catch (err) {
     logger.error({ err, userId: user.id }, "activity /packs failed");
     res.status(500).json({ error: "Failed to load packs." });
+  }
+});
+
+// ── Battle Phaser: a true Yu-Gi-Oh style duel using the player's REAL cards ────
+
+// GET /api/activity/duel — the player's real-card deck vs a scaled AI deck.
+// Read-only projection: presents & resolves client-side, grants/spends nothing.
+router.get("/duel", async (req, res) => {
+  const user = await requireUser(req, res);
+  if (!user) return;
+  try {
+    res.json(await duelReadModel(HOME_GUILD_ID!, user.id, user.username));
+  } catch (err) {
+    logger.error({ err, userId: user.id }, "activity /duel failed");
+    res.status(500).json({ error: "Failed to load duel." });
+  }
+});
+
+// GET /api/activity/card-art/:id — proxy a single card's image THROUGH our own
+// origin so it loads inside Discord's iframe (the CSP blocks arbitrary hosts).
+// Handles both object-storage cards (/objects/...) and absolute external URLs.
+const _artStorage = new ObjectStorageService();
+router.get(/^\/card-art\/(\d+)$/, async (req: Request, res: Response) => {
+  const id = Number(req.params[0]);
+  if (!Number.isInteger(id) || id <= 0) {
+    res.status(400).end();
+    return;
+  }
+  try {
+    const card = await getCardById(id, HOME_GUILD_ID);
+    const raw = card?.imageUrl ?? null;
+    if (!raw) {
+      res.status(404).end();
+      return;
+    }
+    res.setHeader("Cache-Control", "public, max-age=86400");
+
+    // Object-storage card → stream from GCS via the storage service.
+    if (raw.startsWith("/objects/")) {
+      const file = await _artStorage.getObjectEntityFile(raw);
+      const [meta] = await file.getMetadata();
+      res.setHeader("Content-Type", (meta.contentType as string) || "image/png");
+      file.createReadStream().on("error", () => res.status(502).end()).pipe(res);
+      return;
+    }
+
+    // Absolute external URL → server-side fetch and pipe (keeps it same-origin).
+    const abs = toAbsoluteImageUrl(raw);
+    if (!abs) {
+      res.status(404).end();
+      return;
+    }
+    const upstream = await fetch(abs);
+    if (!upstream.ok || !upstream.body) {
+      res.status(502).end();
+      return;
+    }
+    res.setHeader("Content-Type", upstream.headers.get("content-type") ?? "image/png");
+    const buf = Buffer.from(await upstream.arrayBuffer());
+    res.end(buf);
+  } catch (err) {
+    logger.error({ err, id }, "activity /card-art failed");
+    res.status(502).end();
   }
 });
 
