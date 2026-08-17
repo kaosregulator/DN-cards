@@ -92,6 +92,26 @@ describe("world maps", () => {
     }
   });
 
+  // People must stand on the ground, not on top of a roof, wall or tree.
+  it("no NPC stands on solid scenery", () => {
+    for (const map of allMaps) {
+      for (const npc of map.npcs) {
+        const ch = map.grid[npc.y]?.[npc.x];
+        const kind = (LEGEND[ch ?? "."] ?? "grass") as TileKind;
+        expect(SOLID.has(kind), `${map.id}: "${npc.name}" stands on ${kind} at ${npc.x},${npc.y}`).toBe(false);
+      }
+    }
+  });
+
+  it("signs are placed on real tiles inside the map", () => {
+    for (const map of allMaps) {
+      for (const s of map.signs ?? []) {
+        expect(map.grid[s.y], `${map.id}: sign off-map at ${s.x},${s.y}`).toBeTruthy();
+        expect(s.x, `${map.id}: sign off-map at ${s.x},${s.y}`).toBeLessThan(map.grid[0]!.length);
+      }
+    }
+  });
+
   it("NPCs and doors never occupy the same tile", () => {
     for (const map of allMaps) {
       for (const npc of map.npcs) {

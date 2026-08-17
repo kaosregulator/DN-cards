@@ -133,7 +133,7 @@ const CITY: MapDef = {
       ],
     },
     {
-      id: "city_rival", x: 16, y: 12, name: "Street Duelist", colors: C.red, duelist: true, face: "left",
+      id: "city_rival", x: 16, y: 11, name: "Street Duelist", colors: C.red, duelist: true, face: "left",
       lines: ["You've got the look of a duelist.", "Show me what your deck can do!"],
       defeatedLines: ["You're strong. Try the Dojo master next."],
     },
