@@ -146,5 +146,24 @@ Out of scope (documented, not ported): Fusion/Ritual/Synchro/Xyz/Link summons,
 Pendulum, counters, coin/dice declaration spells, missed timing — none apply to
 the server's monster-image card set.
 
-_The battle system is **not** considered complete until the P0/P1 rows above are
-implemented and covered by tests._
+## Implementation status (updated)
+
+All P0 and P1 backlog items are now **implemented and covered by tests**
+(`src/duel/__tests__/*`, 45 tests incl. a 150-game simulation):
+
+- ✅ Effect + chain core — response windows for attack & summon, single-link
+  chain, negation, `continuePending` resolution (`engine.ts`).
+- ✅ Targeting + special summon + continuous-modifier recomputation.
+- ✅ Spell/Trap library with real effects + initials (`cards.ts`): PoG, DH, RG,
+  MST, FIS, BoM, MR, RC, FM, AoD (equip), WF (continuous), MF, MC, SA, NA, TH,
+  CoH. Monsters remain the server's real cards.
+- ✅ Equip / Continuous / Field spells; flip effects.
+- ✅ AI plays targeted removal / reborn and answers chain windows.
+- ✅ UI: target selection, set-card activation, response prompts, chain fx.
+
+Remaining (documented, intentionally out of scope for the server's monster-image
+card set): Fusion/Ritual/Synchro/Xyz/Link/Pendulum summons, counters, coin/dice
+declaration effects, missed-timing, and multi-link counter-chains (Seven Tools).
+Quick-Play spell-speed and Damage-Step sub-windows are P2 follow-ups.
+
+The battle system's P0/P1 scope is **complete**.

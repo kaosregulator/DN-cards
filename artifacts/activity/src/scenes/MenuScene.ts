@@ -43,13 +43,49 @@ export class MenuScene extends Phaser.Scene {
     }
 
     const btnW = Math.min(340, W - 48);
-    this.bigButton(W / 2, H * 0.46, btnW, "⚔  Battle Phaser", "A true Yu-Gi-Oh duel with your cards vs the AI", 0x2b57b8, () => this.scene.start("Duel", { returnTo: "Menu" }));
-    this.bigButton(W / 2, H * 0.63, btnW, "🗺  Explore Battle City", "Walk the world, visit the Card Shop, duel rivals", 0x2f8f5a, () => this.scene.start("World"));
+    this.bigButton(W / 2, H * 0.42, btnW, "⚔  Battle Phaser", "A true Yu-Gi-Oh duel with your cards vs the AI", 0x2b57b8, () => this.scene.start("Duel", { returnTo: "Menu" }));
+    this.bigButton(W / 2, H * 0.575, btnW, "🗺  Explore Battle City", "Top-down world — Card Shop, Route 1, duel rivals", 0x2f8f5a, () => this.scene.start("World"));
+    this.bigButton(W / 2, H * 0.73, btnW, "🌐  Battle City 3D", "Walk a 3D plaza and challenge duelists (Beta)", 0x8a5cd0, () => this.launch3d());
 
     this.add.text(W / 2, H - 20, "Your cards · your art · true Yu-Gi-Oh rules", {
       fontFamily: "system-ui, sans-serif", fontSize: "12px", color: "#5f6b96",
     }).setOrigin(0.5);
   };
+
+  /** Launch the Babylon 3D world (lazy-loaded). Hides the Phaser canvas while
+   *  the 3D world runs, and hands off to the duel or back to the menu. */
+  private launch3d(): void {
+    const canvas = this.game.canvas as HTMLCanvasElement;
+    const prevVis = canvas.style.visibility;
+    canvas.style.visibility = "hidden";
+    this.scene.pause();
+    const restore = () => { canvas.style.visibility = prevVis; this.scene.resume(); };
+    const api = getContext(this).api;
+    import("../world3d/babylonWorld")
+      .then(({ startBabylonWorld }) => {
+        const world = startBabylonWorld({
+          onExit: () => { world.dispose(); restore(); this.scene.start("Menu"); },
+          onDuel: async (name) => {
+            let setup;
+            try {
+              setup = await api.duel();
+              setup = { ...setup, opponent: { ...setup.opponent, name } };
+            } catch { setup = undefined; }
+            world.dispose();
+            restore();
+            this.scene.start("Duel", { setup, returnTo: "Menu" });
+          },
+        });
+      })
+      .catch(() => { restore(); this.flash3dError(); });
+  }
+
+  private flash3dError(): void {
+    const { width: W, height: H } = this.scale;
+    this.add.text(W / 2, H * 0.86, "Couldn't load the 3D world.", {
+      fontFamily: "system-ui, sans-serif", fontSize: "13px", color: "#ff9db2",
+    }).setOrigin(0.5);
+  }
 
   private bigButton(x: number, y: number, w: number, title: string, sub: string, color: number, onClick: () => void): void {
     const h = 74;

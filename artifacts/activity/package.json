@@ -12,6 +12,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
+    "@babylonjs/core": "^7.54.3",
     "@discord/embedded-app-sdk": "^2.1.0",
     "@rive-app/canvas": "^2.39.2",
     "konva": "^10.3.0",
