@@ -44,7 +44,7 @@ import {
   listBattleItems, getBattleItem, loadGuildBattleItems, applyItemUse, isOffensiveItem,
 } from "../battle/items.js";
 import { renderSiegeField, renderSiegeFieldStill, type AnimationSpeed } from "../animations/index.js";
-import type { SiegeFieldFighter, SiegeFieldInput, SiegeFieldBenchCard } from "../animations/index.js";
+import type { SiegeFieldFighter, SiegeFieldInput, SiegeFieldBenchCard, SiegeFieldLineupCard } from "../animations/index.js";
 import { renderCoinFlip } from "../battle/prep-canvas.js";
 import { renderSiegeFrame, type HqBaseView, type SiegeOverlay, type HqRenderDefender } from "./render.js";
 import { withGuildFrames } from "../animations/card-frames.js";
@@ -868,6 +868,26 @@ function benchOf(col: Combatant[], activeIdx: number): SiegeFieldBenchCard[] {
   return [...upcoming, ...fallen];
 }
 
+// The whole side as a battle line for the renderer, ordered ACTIVE-first then
+// upcoming then fallen — so every card shows on its own stand. `struckBefore` is
+// the active card's pre-hit HP, set only on the side that just took the blow, so
+// its front plaque animates the drain.
+function lineupOf(col: Combatant[], activeIdx: number, struckBefore?: number): SiegeFieldLineupCard[] {
+  const mk = (c: Combatant, active: boolean, fallen: boolean): SiegeFieldLineupCard => ({
+    name: c.cardName, artUrl: c.cardImageUrl, rarity: c.cardRarity,
+    rarityColor: c.cardRarityDisplay?.color ?? null,
+    hp: Math.max(0, c.hp), maxHp: c.stats.maxHealth,
+    hpBefore: active && struckBefore != null ? struckBefore : undefined,
+    energy: c.energy, fallen, active,
+  });
+  const out: SiegeFieldLineupCard[] = [];
+  const activeCard = col[activeIdx];
+  if (activeCard) out.push(mk(activeCard, true, activeCard.hp <= 0));
+  for (let i = activeIdx + 1; i < col.length; i++) out.push(mk(col[i]!, false, col[i]!.hp <= 0));
+  for (let i = 0; i < activeIdx; i++) out.push(mk(col[i]!, false, true));
+  return out;
+}
+
 // Pick a battlefield backdrop + floor deterministically from the target, so a
 // given base always storms on the same ground across all its turns (and across
 // player sieges, AI conquests and open territories alike — every mode routes
@@ -906,6 +926,10 @@ function buildFieldInput(
     floorKey: FIELD_FLOORS[(h >>> 8) % FIELD_FLOORS.length]!,
     attackerBench: benchOf(s.attackers, s.ai),
     defenderBench: benchOf(s.defenders, s.di),
+    // Full battle lines — the renderer draws every card on its own stand. The
+    // struck side (the one NOT moving) carries the pre-hit HP on its front card.
+    attackerLineup: lineupOf(s.attackers, s.ai, side === 1 ? targetBefore : undefined),
+    defenderLineup: lineupOf(s.defenders, s.di, side === 0 ? targetBefore : undefined),
   };
 }
 
