@@ -10,20 +10,46 @@
 export type DuelAttribute = "EARTH" | "WIND" | "WATER" | "FIRE" | "LIGHT" | "DARK" | "DIVINE";
 export type DuelCardKind = "monster" | "spell" | "trap";
 
-// Effect vocabulary — mirrors bot/activity/duel-model.ts. Data-driven so the
-// engine handles new cards without new code.
+// Effect vocabulary. The MONSTER effects (first block) mirror
+// bot/activity/duel-model.ts — the server sends those. The SPELL/TRAP effects
+// (second block) are defined by the client card library (duel/cards.ts) using
+// real Yu-Gi-Oh effects, so the server never needs to know about them.
 export type DuelEffect =
+  // ── Monster (continuous / on-summon / battle) ──
   | { kind: "pierce" }
   | { kind: "gainAtk"; amount: number }
   | { kind: "drawOnSummon"; count: number }
   | { kind: "burn"; amount: number }
   | { kind: "doubleAttack" }
+  | { kind: "flip:destroy" }              // flip effect: destroy 1 opponent monster (targeted)
+  // ── Spell ──
   | { kind: "spell:draw"; count: number }
   | { kind: "spell:boost"; amount: number }
   | { kind: "spell:heal"; amount: number }
-  | { kind: "trap:mirror" }
-  | { kind: "trap:cylinder" }
-  | { kind: "trap:trapHole"; threshold: number };
+  | { kind: "spell:destroyTarget" }        // destroy 1 target monster
+  | { kind: "spell:destroySpellTrap" }     // destroy 1 target spell/trap (MST)
+  | { kind: "spell:destroyAll" }           // Dark Hole — all monsters both sides
+  | { kind: "spell:destroyAllOpp" }        // Raigeki — all opponent monsters
+  | { kind: "spell:fissure" }              // destroy opponent's lowest-ATK monster
+  | { kind: "spell:flipTarget" }           // Book of Moon — flip 1 face-up monster face-down
+  | { kind: "spell:reborn" }               // Monster Reborn — SS 1 from any graveyard (targeted)
+  // ── Equip / Continuous / Field (persistent) ──
+  | { kind: "equip:atk"; atk: number; def?: number }   // attach to a monster
+  | { kind: "continuous:allyAtk"; amount: number }     // all your monsters +ATK while on field
+  | { kind: "field:attrBoost"; attribute: DuelAttribute; amount: number } // attribute-wide aura
+  // ── Trap ──
+  | { kind: "trap:mirror" }                // Mirror Force — destroy all attacking monsters
+  | { kind: "trap:cylinder" }              // Magic Cylinder — negate + burn attacker ATK
+  | { kind: "trap:sakuretsu" }             // Sakuretsu Armor — destroy the attacker
+  | { kind: "trap:negateAttack" }          // Negate Attack — negate + end Battle Phase
+  | { kind: "trap:trapHole"; threshold: number } // destroy a just-summoned monster ATK ≥ threshold
+  | { kind: "trap:reborn" };               // Call of the Haunted — SS 1 from your graveyard (targeted)
+
+/** A reference to a card the player/AI picked as an effect's target. */
+export type TargetRef =
+  | { side: PlayerId; kind: "monster"; zone: number }
+  | { side: PlayerId; kind: "spellTrap"; zone: number }
+  | { side: PlayerId; kind: "grave"; index: number };
 
 /** A card as delivered by the backend deck (immutable template). */
 export interface DuelCard {
@@ -69,6 +95,8 @@ export interface FieldMonster {
 export interface FieldSpellTrap {
   card: DuelCard;
   faceUp: boolean;
+  /** For equip spells: the monster this card is attached to. */
+  equipTarget?: { side: PlayerId; zone: number };
 }
 
 export type PlayerId = "player" | "opponent";
@@ -87,6 +115,26 @@ export interface PlayerBoard {
 
 export type Phase = "DRAW" | "STANDBY" | "MAIN1" | "BATTLE" | "MAIN2" | "END";
 
+/** A single activated card waiting on the chain (resolves LIFO). */
+export interface ChainLink {
+  who: PlayerId;
+  card: DuelCard;
+  effect: DuelEffect;
+  targets: TargetRef[];
+  negated?: boolean;
+}
+
+/** What resumes once the current chain finishes resolving. */
+export type PendingAction =
+  | { type: "battle"; attackerSide: PlayerId; attacker: number; target: number | "direct"; negated: boolean; endBattlePhase?: boolean }
+  | { type: "summonTrigger"; who: PlayerId; zone: number };
+
+/** An open priority window: `responder` may activate a set card or pass. */
+export interface ResponseWindow {
+  responder: PlayerId;
+  passes: number; // consecutive passes; two in a row closes the window
+}
+
 export interface DuelState {
   player: PlayerBoard;
   opponent: PlayerBoard;
@@ -96,6 +144,10 @@ export interface DuelState {
   startingLp: number;
   winner: PlayerId | null;
   log: string[];
+  // Chain / priority machinery (P0 mechanic).
+  chain: ChainLink[];
+  pending: PendingAction | null;
+  awaiting: ResponseWindow | null;
 }
 
 // ── Events — the engine's narration, so the scene can animate deterministically.
@@ -105,10 +157,15 @@ export type DuelEvent =
   | { t: "phase"; phase: Phase; who: PlayerId }
   | { t: "turn"; who: PlayerId; turnCount: number }
   | { t: "summon"; who: PlayerId; zone: number; card: DuelCard; position: MonsterPosition; tributes: number }
+  | { t: "specialSummon"; who: PlayerId; zone: number; card: DuelCard }
   | { t: "flip"; who: PlayerId; zone: number }
   | { t: "positionChange"; who: PlayerId; zone: number; position: MonsterPosition }
   | { t: "setSpellTrap"; who: PlayerId; zone: number; card: DuelCard }
   | { t: "activate"; who: PlayerId; card: DuelCard; text: string }
+  | { t: "chainResolve"; who: PlayerId; card: DuelCard }
+  | { t: "negate"; text: string }
+  | { t: "equip"; who: PlayerId; card: DuelCard; zone: number }
+  | { t: "window"; responder: PlayerId }
   | { t: "attackDeclare"; who: PlayerId; fromZone: number; toZone: number | "direct" }
   | { t: "clash"; who: PlayerId; fromZone: number; toZone: number | "direct" }
   | { t: "destroy"; who: PlayerId; zone: number; card: DuelCard }
