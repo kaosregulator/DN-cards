@@ -12,6 +12,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { isInDiscord } from "../discord/env";
+import type { DuelSetup } from "../duel/types";
 
 function resolveBase(): string {
   const override = import.meta.env.VITE_API_BASE?.trim();
@@ -182,6 +183,14 @@ export const api = {
   },
   packs(): Promise<PackModel> {
     return request<PackModel>("/activity/packs", { token: tokenRef });
+  },
+  /** Battle Phaser: a true Yu-Gi-Oh style duel deck built from real cards. */
+  duel(): Promise<DuelSetup> {
+    return request<DuelSetup>("/activity/duel", { token: tokenRef });
+  },
+  /** Absolute URL for a card's proxied art (loads inside Discord's CSP). */
+  cardArtUrl(cardId: number): string {
+    return `${API_BASE}/activity/card-art/${cardId}`;
   },
 };
 

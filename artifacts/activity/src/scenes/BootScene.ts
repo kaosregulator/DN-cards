@@ -2,31 +2,24 @@ import Phaser from "phaser";
 import { getContext } from "../core/context";
 import { ApiError } from "../net/api";
 
-// BootScene — loads the AUTHORITATIVE player snapshot from the backend, then
-// hands off to HandshakeScene. This is the moment Phase 1 proves the pipeline:
-//   Discord → Activity → Phaser → API → real player data.
-//
-// It loads no art yet (asset packs arrive with the HQ renderer in later phases);
-// keeping boot lean is the performance contract from the brief.
+// BootScene — loads the AUTHORITATIVE player snapshot (identity + economy) so the
+// Menu can greet the real player, then hands off to the Menu. Art and duel decks
+// load lazily inside the Duel scene. Outside Discord (local dev) there's no
+// token, so we go straight to the Menu with whatever we have.
 export class BootScene extends Phaser.Scene {
   constructor() {
     super("Boot");
   }
 
   async create(): Promise<void> {
-    // Remove the pre-Phaser HTML splash now that the canvas owns the frame.
     document.getElementById("boot")?.remove();
-
     const ctx = getContext(this);
     this.renderStatus("Loading your DN Cards…");
 
-    // Local-dev bypass: no Discord frame → no token. Say so plainly instead of
-    // faking a login. Inside Discord this branch never runs.
     if (!ctx.session.inDiscord || !ctx.session.accessToken) {
-      this.scene.start("Handshake", {
-        error:
-          "Open this from Discord to load your account. (Running outside Discord — no token.)",
-      });
+      // No Discord frame → no token. Still let the player into the Menu (the
+      // Duel scene will surface a friendly message if the backend isn't reachable).
+      this.scene.start("Menu");
       return;
     }
 
@@ -35,25 +28,23 @@ export class BootScene extends Phaser.Scene {
       const snapshot = await ctx.api.me(ctx.session.accessToken);
       ctx.playerState.set(snapshot);
       ctx.events.emit("player:loaded", snapshot);
-
-      // Load the authoritative live-world state and open the HQ.
-      this.renderStatus("Building your headquarters…");
-      const world = await ctx.api.hq();
-      this.scene.start("Hq", { world });
     } catch (err) {
       const message =
         err instanceof ApiError ? err.message : "Could not reach the DN Cards backend.";
-      this.scene.start("Handshake", { error: message });
+      this.renderStatus(message + "\nStarting anyway…");
     }
+    this.scene.start("Menu");
   }
 
   private renderStatus(text: string): void {
     const { width, height } = this.scale;
+    this.children.removeAll(true);
     this.add
       .text(width / 2, height / 2, text, {
         fontFamily: "system-ui, sans-serif",
         fontSize: "18px",
         color: "#9db2ff",
+        align: "center",
       })
       .setOrigin(0.5);
   }
