@@ -33,10 +33,13 @@ function shuffle<T>(arr: T[]): T[] {
 }
 
 function makeBoard(id: PlayerId, name: string, deck: DuelCard[], startingLp: number, handSize: number): PlayerBoard {
-  const shuffled = shuffle(deck);
+  // Fusion monsters never sit in the main Deck — they wait in the Extra Deck.
+  const extraDeck = deck.filter((c) => c.fusionMinLevelSum != null);
+  const main = deck.filter((c) => c.fusionMinLevelSum == null);
+  const shuffled = shuffle(main);
   const hand = shuffled.splice(0, handSize);
   return {
-    id, name, lp: startingLp, deck: shuffled, hand,
+    id, name, lp: startingLp, deck: shuffled, extraDeck, hand,
     monsters: Array<FieldMonster | null>(ZONES).fill(null),
     spellTraps: Array<FieldSpellTrap | null>(ZONES).fill(null),
     graveyard: [], hasNormalSummoned: false,
@@ -216,12 +219,7 @@ export function summonMonster(
   const need = tributesNeeded(card.level);
   if (tributeZones.length !== need) { log(state, events, `Select ${need} tribute(s).`); return events; }
   for (const z of tributeZones) if (!b.monsters[z]) { log(state, events, "Invalid tribute."); return events; }
-  for (const z of tributeZones) {
-    const m = b.monsters[z]!;
-    b.graveyard.push(m.card);
-    events.push({ t: "destroy", who, zone: z, card: m.card });
-    b.monsters[z] = null;
-  }
+  for (const z of tributeZones) destroyMonster(state, who, z, events);
   const zone = emptyMonsterZone(b);
   if (zone < 0) { log(state, events, "No open Monster Zone."); return events; }
   b.hand.splice(handIndex, 1);
@@ -310,11 +308,8 @@ function applyFlipEffect(state: DuelState, who: PlayerId, zone: number, events: 
   const target = weakestMonsterZone(foe);
   if (target < 0) return;
   const t = foe.monsters[target]!;
-  foe.graveyard.push(t.card);
   events.push({ t: "activate", who, card: m.card, text: `${m.card.name} flip: destroy ${t.card.name}.` });
-  events.push({ t: "destroy", who: foe.id, zone: target, card: t.card });
-  foe.monsters[target] = null;
-  recomputeContinuous(state);
+  destroyMonster(state, foe.id, target, events);
 }
 function weakestMonsterZone(b: PlayerBoard): number {
   let best = -1, bestAtk = Infinity;
@@ -459,6 +454,28 @@ export function resolveEffect(
       }
       break;
     }
+    case "spell:fusion": {
+      // Polymerization: send the two targeted monsters you control to the GY,
+      // then Fusion Summon the best Extra Deck monster their Levels allow.
+      const mats = targets
+        .filter((t): t is Extract<TargetRef, { kind: "monster" }> => t.kind === "monster" && t.side === who)
+        .map((t) => ({ t, m: me.monsters[t.zone] }))
+        .filter((x) => x.m);
+      if (mats.length < 2) { log(state, events, "Fusion needs 2 monsters you control."); break; }
+      const levelSum = mats.reduce((n, x) => n + x.m!.card.level, 0);
+      const pick = bestExtraDeckFusion(me, levelSum);
+      if (!pick) { log(state, events, "No Fusion Monster matches those materials."); break; }
+      const materialCards = mats.map((x) => x.m!.card);
+      for (const x of mats) {
+        me.graveyard.push(x.m!.card);
+        events.push({ t: "destroy", who, zone: x.t.zone, card: x.m!.card });
+        me.monsters[x.t.zone] = null;
+      }
+      me.extraDeck.splice(me.extraDeck.indexOf(pick), 1);
+      const zone = specialSummon(state, who, pick, "attack", events);
+      if (zone >= 0) events.push({ t: "fusion", who, zone, card: pick, materials: materialCards });
+      break;
+    }
     case "spell:reborn":
     case "trap:reborn": {
       const t = targets[0];
@@ -484,12 +501,25 @@ function destroyMonster(state: DuelState, side: PlayerId, zone: number, events: 
   b.graveyard.push(m.card);
   events.push({ t: "destroy", who: side, zone, card: m.card });
   b.monsters[zone] = null;
+  onSentToGrave(state, side, m.card, events);
   recomputeContinuous(state);
+}
+
+/** Death triggers — Sangan / Witch search the Deck when sent to the Graveyard. */
+export function onSentToGrave(state: DuelState, side: PlayerId, card: DuelCard, events: DuelEvent[]): void {
+  const eff = card.effect;
+  if (eff?.kind !== "searchOnDeath") return;
+  const b = boardOf(state, side);
+  const idx = b.deck.findIndex((c) => c.kind === "monster" && c.atk <= eff.maxAtk);
+  if (idx < 0) return;
+  const found = b.deck.splice(idx, 1)[0]!;
+  b.hand.push(found);
+  events.push({ t: "activate", who: side, card, text: `${card.name}: search ${found.name}` });
+  events.push({ t: "search", who: side, card: found });
 }
 function destroyAllMonsters(state: DuelState, side: PlayerId, events: DuelEvent[]): void {
   const b = boardOf(state, side);
-  b.monsters.forEach((m, z) => { if (m) { b.graveyard.push(m.card); events.push({ t: "destroy", who: side, zone: z, card: m.card }); b.monsters[z] = null; } });
-  recomputeContinuous(state);
+  b.monsters.forEach((m, z) => { if (m) destroyMonster(state, side, z, events); });
 }
 function destroySpellTrap(state: DuelState, side: PlayerId, zone: number, events: DuelEvent[]): void {
   const b = boardOf(state, side);
@@ -500,6 +530,13 @@ function destroySpellTrap(state: DuelState, side: PlayerId, zone: number, events
   b.spellTraps[zone] = null;
   recomputeContinuous(state);
 }
+/** Strongest Extra Deck Fusion this material Level sum can summon. */
+export function bestExtraDeckFusion(b: PlayerBoard, levelSum: number): DuelCard | null {
+  const legal = b.extraDeck.filter((c) => levelSum >= (c.fusionMinLevelSum ?? 99));
+  if (!legal.length) return null;
+  return legal.reduce((a, c) => (c.atk > a.atk ? c : a));
+}
+
 function weakestFaceUpZone(b: PlayerBoard): number {
   let best = -1, bestAtk = Infinity;
   b.monsters.forEach((m, z) => { if (m && m.faceUp && effAtk(m) < bestAtk) { bestAtk = effAtk(m); best = z; } });
@@ -634,11 +671,11 @@ function applyTrapResponse(state: DuelState, responder: PlayerId, eff: DuelEffec
       case "trap:mirror":
         events.push({ t: "negate", text: "Mirror Force!" });
         atkBoard.monsters.forEach((m, z) => {
-          if (m && m.faceUp && m.position === "attack") { atkBoard.graveyard.push(m.card); events.push({ t: "destroy", who: pending.attackerSide, zone: z, card: m.card }); atkBoard.monsters[z] = null; }
+          if (m && m.faceUp && m.position === "attack") destroyMonster(state, pending.attackerSide, z, events);
         });
         pending.negated = true; recomputeContinuous(state); break;
       case "trap:sakuretsu":
-        if (attacker) { atkBoard.graveyard.push(attacker.card); events.push({ t: "destroy", who: pending.attackerSide, zone: pending.attacker, card: attacker.card }); atkBoard.monsters[pending.attacker] = null; }
+        if (attacker) destroyMonster(state, pending.attackerSide, pending.attacker, events);
         pending.negated = true; recomputeContinuous(state); break;
       case "trap:cylinder":
         if (attacker) { events.push({ t: "negate", text: "Magic Cylinder!" }); dealDamage(state, events, pending.attackerSide, effAtk(attacker), "reflected attack"); }
@@ -652,7 +689,7 @@ function applyTrapResponse(state: DuelState, responder: PlayerId, eff: DuelEffec
     if (eff.kind === "trap:trapHole") {
       const b = boardOf(state, pending.who);
       const m = b.monsters[pending.zone];
-      if (m) { b.graveyard.push(m.card); events.push({ t: "destroy", who: pending.who, zone: pending.zone, card: m.card }); b.monsters[pending.zone] = null; recomputeContinuous(state); }
+      if (m) destroyMonster(state, pending.who, pending.zone, events);
     }
   }
 }
@@ -697,21 +734,19 @@ function resolveBattle(state: DuelState, who: PlayerId, fromZone: number, target
   if (defender.position === "attack") {
     const defVal = effAtk(defender);
     if (atkVal > defVal) {
-      foe.graveyard.push(defender.card); events.push({ t: "destroy", who: foe.id, zone: target as number, card: defender.card }); foe.monsters[target as number] = null;
+      destroyMonster(state, foe.id, target as number, events);
       dealDamage(state, events, foe.id, atkVal - defVal, "battle damage");
     } else if (atkVal < defVal) {
-      b.graveyard.push(attacker.card); events.push({ t: "destroy", who, zone: fromZone, card: attacker.card }); b.monsters[fromZone] = null;
+      destroyMonster(state, who, fromZone, events);
       dealDamage(state, events, who, defVal - atkVal, "battle damage");
     } else {
-      foe.graveyard.push(defender.card); b.graveyard.push(attacker.card);
-      events.push({ t: "destroy", who: foe.id, zone: target as number, card: defender.card });
-      events.push({ t: "destroy", who, zone: fromZone, card: attacker.card });
-      foe.monsters[target as number] = null; b.monsters[fromZone] = null;
+      destroyMonster(state, foe.id, target as number, events);
+      destroyMonster(state, who, fromZone, events);
     }
   } else {
     const defVal = effDef(defender);
     if (atkVal > defVal) {
-      foe.graveyard.push(defender.card); events.push({ t: "destroy", who: foe.id, zone: target as number, card: defender.card }); foe.monsters[target as number] = null;
+      destroyMonster(state, foe.id, target as number, events);
       if (attacker.card.effect?.kind === "pierce") dealDamage(state, events, foe.id, atkVal - defVal, "piercing damage");
     } else if (atkVal < defVal) {
       dealDamage(state, events, who, defVal - atkVal, "battle damage");

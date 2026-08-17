@@ -397,7 +397,8 @@ export class DuelScene extends Phaser.Scene {
       if (this.mode === "spellTarget" && this.spellCtx?.spec.area === "monster"
         && this.legalTargetSides(this.spellCtx.spec).includes(who)
         && (!this.spellCtx.spec.faceUpOnly || m.faceUp)) {
-        this.highlight(x, y, cw, ch, 0x35c48a);
+        const picked = this.spellCtx.picked.some((p) => p.kind === "monster" && p.side === who && p.zone === z);
+        this.highlight(x, y, cw, ch, picked ? 0xffd75e : 0x35c48a);
         card.setInteractive(new Phaser.Geom.Rectangle(-cw / 2, -ch / 2, cw, ch), Phaser.Geom.Rectangle.Contains);
         card.on("pointerdown", () => this.onTargetTap(who, "monster", z));
       }
@@ -558,8 +559,13 @@ export class DuelScene extends Phaser.Scene {
   private onTargetTap(side: PlayerId, area: "monster" | "spellTrap", zone: number): void {
     const ctx = this.spellCtx; if (!ctx) return;
     const ref: TargetRef = { side, kind: area, zone } as TargetRef;
-    ctx.picked = [ref];
-    this.finishSpell(ctx);
+    // Toggle selection so multi-target effects (Fusion) can pick two.
+    const at = ctx.picked.findIndex((p) => p.kind === area && p.side === side && "zone" in p && p.zone === zone);
+    if (at >= 0) ctx.picked.splice(at, 1);
+    else ctx.picked.push(ref);
+    if (ctx.picked.length >= ctx.spec.count) { this.finishSpell(ctx); return; }
+    this.flash(`Select ${ctx.spec.count - ctx.picked.length} more target(s).`);
+    this.renderBoard();
   }
 
   private finishSpell(ctx: NonNullable<DuelScene["spellCtx"]>): void {
@@ -800,6 +806,8 @@ export class DuelScene extends Phaser.Scene {
         case "draw": if (e.who === "player") this.flash(`Draw: ${e.card.name}`); await this.wait(90); break;
         case "summon": this.flash(`${who(e.who)} ${e.position === "set" ? "sets" : "summons"} ${e.card.name}`); await this.spawnAnim(e.who, e.zone, e.card, e.position); break;
         case "specialSummon": this.flash(`${who(e.who)} Special Summons ${e.card.name}`); await this.spawnAnim(e.who, e.zone, e.card, "attack"); break;
+        case "fusion": await this.fusionAnim(e.who, e.zone, e.card, e.materials); break;
+        case "search": this.flash(`Searched: ${e.card.name}`); await this.wait(240); break;
         case "flip": await this.wait(160); break;
         case "activate": this.flash(e.text); this.pulseCenter(e.card.color); await this.wait(360); break;
         case "chainResolve": this.pulseCenter(e.card.color); await this.wait(120); break;
@@ -871,6 +879,32 @@ export class DuelScene extends Phaser.Scene {
     this.cameras.main.shake(90, 0.004);
     await this.wait(150);
     face.destroy();
+  }
+
+  /** Fusion Summon: the materials spiral into a vortex that bursts into the
+   *  new monster — the classic Polymerization beat. */
+  private async fusionAnim(who: PlayerId, zone: number, card: DuelCard, materials: DuelCard[]): Promise<void> {
+    const { x, y } = this.zonePos(who, zone);
+    this.flash(`Fusion Summon! ${materials.map((m) => m.name).join(" + ")}`);
+    // Swirling material motes.
+    const motes: Phaser.GameObjects.Arc[] = [];
+    for (let i = 0; i < 14; i++) {
+      const a = (i / 14) * Math.PI * 2;
+      const r = this.cardW() * 1.6;
+      const p = this.add.circle(x + Math.cos(a) * r, y + Math.sin(a) * r, 5, i % 2 ? 0x8a5cd0 : 0x5ad0c0, 0.95).setDepth(1500);
+      motes.push(p); this.fx.add(p);
+      this.tweens.add({ targets: p, x, y, duration: 620, delay: i * 18, ease: "Cubic.In" });
+    }
+    // Vortex ring.
+    const ring = this.add.circle(x, y, 6, 0xffffff, 0).setStrokeStyle(3, 0xb08aff, 0.9).setDepth(1520);
+    this.fx.add(ring);
+    this.tweens.add({ targets: ring, radius: this.cardW() * 1.4, duration: 640, ease: "Cubic.Out" });
+    await this.wait(680);
+    motes.forEach((m) => m.destroy());
+    ring.destroy();
+    this.cameras.main.flash(180, 190, 150, 255);
+    this.cameras.main.shake(180, 0.006);
+    await this.spawnAnim(who, zone, card, "attack");
   }
 
   private impact(x: number, y: number): void {

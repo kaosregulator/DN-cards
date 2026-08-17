@@ -6,7 +6,7 @@
 
 import {
   boardOf, foeOf, effAtk, effDef, tributesNeeded, hasAnyMonster, monstersThatCanAttack,
-  responseOptions,
+  responseOptions, bestExtraDeckFusion,
 } from "./engine";
 import { targetSpecFor } from "./effects";
 import type { DuelState, MonsterPosition, TargetRef, PlayerId } from "./types";
@@ -105,6 +105,22 @@ function pickSpell(state: DuelState): AiAction | null {
     const targets = () => targetsFor(state, eff.kind);
     switch (eff.kind) {
       case "spell:draw": return { type: "activateSpell", handIndex: i, targets: [] };
+      case "spell:fusion": {
+        // Fuse the two biggest monsters we control if that clears the bar.
+        const owned = me.monsters
+          .map((m, z) => ({ m, z })).filter((x) => x.m)
+          .sort((a, b) => b.m!.card.level - a.m!.card.level)
+          .slice(0, 2);
+        if (owned.length < 2) break;
+        const levelSum = owned.reduce((n, x) => n + x.m!.card.level, 0);
+        const pick = bestExtraDeckFusion(me, levelSum);
+        // Only worth it if the Fusion beats both materials.
+        if (!pick || pick.atk <= Math.max(...owned.map((x) => effAtk(x.m!)))) break;
+        return {
+          type: "activateSpell", handIndex: i,
+          targets: owned.map((x) => ({ side: AI, kind: "monster", zone: x.z }) as TargetRef),
+        };
+      }
       case "spell:destroyAllOpp": if (foeMonsters >= 1) return act(i); break;
       case "spell:destroyAll": if (foeMonsters > myMonsters) return act(i); break;
       case "spell:fissure": if (foeMonsters >= 1) return act(i); break;

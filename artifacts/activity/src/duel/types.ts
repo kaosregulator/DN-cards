@@ -23,6 +23,7 @@ export type DuelEffect =
   | { kind: "doubleAttack" }
   | { kind: "flip:destroy" }              // flip effect: destroy 1 opponent monster (targeted)
   | { kind: "negateTraps" }               // Jinzo — Trap Cards cannot be activated
+  | { kind: "searchOnDeath"; maxAtk: number } // Sangan/Witch — search the Deck when sent to the GY
   // ── Spell ──
   | { kind: "spell:draw"; count: number }
   | { kind: "spell:boost"; amount: number }
@@ -34,6 +35,7 @@ export type DuelEffect =
   | { kind: "spell:fissure" }              // destroy opponent's lowest-ATK monster
   | { kind: "spell:flipTarget" }           // Book of Moon — flip 1 face-up monster face-down
   | { kind: "spell:reborn" }               // Monster Reborn — SS 1 from any graveyard (targeted)
+  | { kind: "spell:fusion" }               // Polymerization — fuse 2 of your monsters into an Extra Deck Fusion
   // ── Equip / Continuous / Field (persistent) ──
   | { kind: "equip:atk"; atk: number; def?: number }   // attach to a monster
   | { kind: "continuous:allyAtk"; amount: number }     // all your monsters +ATK while on field
@@ -75,6 +77,8 @@ export interface DuelCard {
   race?: string;
   /** Spell/Trap sub-type: Normal / Quick-Play / Continuous / Equip / Counter. */
   sub?: string;
+  /** Fusion monsters live in the Extra Deck and need this material Level sum. */
+  fusionMinLevelSum?: number;
 }
 
 export interface DuelSetup {
@@ -115,6 +119,8 @@ export interface PlayerBoard {
   name: string;
   lp: number;
   deck: DuelCard[];
+  /** Fusion monsters, summonable only by Polymerization. */
+  extraDeck: DuelCard[];
   hand: DuelCard[];
   monsters: (FieldMonster | null)[]; // length 5
   spellTraps: (FieldSpellTrap | null)[]; // length 5
@@ -167,6 +173,8 @@ export type DuelEvent =
   | { t: "turn"; who: PlayerId; turnCount: number }
   | { t: "summon"; who: PlayerId; zone: number; card: DuelCard; position: MonsterPosition; tributes: number }
   | { t: "specialSummon"; who: PlayerId; zone: number; card: DuelCard }
+  | { t: "fusion"; who: PlayerId; zone: number; card: DuelCard; materials: DuelCard[] }
+  | { t: "search"; who: PlayerId; card: DuelCard }
   | { t: "flip"; who: PlayerId; zone: number }
   | { t: "positionChange"; who: PlayerId; zone: number; position: MonsterPosition }
   | { t: "setSpellTrap"; who: PlayerId; zone: number; card: DuelCard }

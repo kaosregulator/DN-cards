@@ -23,6 +23,8 @@ export interface YgoMonster {
   def: number;
   description: string;    // the real card text
   effect: DuelEffect | null;
+  /** Fusion monsters: the material Level sum needed to summon them. */
+  fusionMinLevelSum?: number;
 }
 
 // ── Monsters, ordered low → high power. Binding picks by tier. ───────────────
@@ -55,7 +57,7 @@ export const YGO_MONSTERS: YgoMonster[] = [
   {
     key: 26202165, name: "Sangan", level: 3, attribute: "DARK", race: "Fiend", atk: 1000, def: 600,
     description: "If this card is sent from the field to the Graveyard: Add 1 monster with 1500 or less ATK from your Deck to your hand.",
-    effect: { kind: "drawOnSummon", count: 1 },
+    effect: { kind: "searchOnDeath", maxAtk: 1500 },
   },
   {
     key: 78193831, name: "Silver Fang", level: 3, attribute: "EARTH", race: "Beast", atk: 1200, def: 800,
@@ -90,7 +92,7 @@ export const YGO_MONSTERS: YgoMonster[] = [
   {
     key: 76922029, name: "Witch of the Black Forest", level: 4, attribute: "DARK", race: "Spellcaster", atk: 1100, def: 1200,
     description: "If this card is sent from the field to the Graveyard: Add 1 monster with 1500 or less DEF from your Deck to your hand.",
-    effect: { kind: "drawOnSummon", count: 1 },
+    effect: { kind: "searchOnDeath", maxAtk: 1500 },
   },
   {
     key: 76812113, name: "Feral Imp", level: 4, attribute: "DARK", race: "Fiend", atk: 1300, def: 1400,
@@ -217,6 +219,11 @@ export interface YgoSpellTrap {
 
 export const YGO_SPELLS: YgoSpellTrap[] = [
   {
+    key: 24094653, name: "Polymerization", kind: "spell", sub: "Normal",
+    description: "Fusion Summon 1 Fusion Monster from your Extra Deck, using monsters from your field as Fusion Material.",
+    effect: { kind: "spell:fusion" },
+  },
+  {
     key: 55144522, name: "Pot of Greed", kind: "spell", sub: "Normal",
     description: "Draw 2 cards.",
     effect: { kind: "spell:draw", count: 2 },
@@ -336,4 +343,41 @@ function hashId(id: number): number {
   let h = (id * 2654435761) >>> 0;
   h ^= h >>> 13; h = (h * 1274126177) >>> 0; h ^= h >>> 16;
   return h >>> 0;
+}
+
+// ── Fusion monsters (Extra Deck) ─────────────────────────────────────────────
+// Summoned only with Polymerization, by fusing two monsters you control whose
+// Levels add up to at least `fusionMinLevelSum`.
+export const YGO_FUSIONS: YgoMonster[] = [
+  {
+    key: 32491822, name: "Flame Swordsman", level: 5, attribute: "FIRE", race: "Warrior",
+    atk: 1800, def: 1600, fusionMinLevelSum: 6,
+    description: "\"Flame Manipulator\" + \"Masaki the Legendary Swordsman\"",
+    effect: null,
+  },
+  {
+    key: 58528964, name: "Dark Paladin", level: 8, attribute: "DARK", race: "Spellcaster",
+    atk: 2900, def: 2400, fusionMinLevelSum: 10,
+    description: "\"Dark Magician\" + \"Buster Blader\". Must be Fusion Summoned. This card gains 500 ATK for each Dragon monster on the field and in either GY.",
+    effect: { kind: "pierce" },
+  },
+  {
+    key: 23995346, name: "Blue-Eyes Ultimate Dragon", level: 12, attribute: "LIGHT", race: "Dragon",
+    atk: 4500, def: 3800, fusionMinLevelSum: 14,
+    description: "\"Blue-Eyes White Dragon\" + \"Blue-Eyes White Dragon\" + \"Blue-Eyes White Dragon\". Must be Fusion Summoned.",
+    effect: { kind: "doubleAttack" },
+  },
+  {
+    key: 25833572, name: "Gaia the Dragon Champion", level: 7, attribute: "WIND", race: "Dragon",
+    atk: 2600, def: 2100, fusionMinLevelSum: 12,
+    description: "\"Gaia The Fierce Knight\" + \"Curse of Dragon\"",
+    effect: { kind: "pierce" },
+  },
+];
+
+/** Best Fusion the given material Level sum can summon, if any. */
+export function bestFusionFor(levelSum: number): YgoMonster | null {
+  const legal = YGO_FUSIONS.filter((f) => levelSum >= (f.fusionMinLevelSum ?? 99));
+  if (!legal.length) return null;
+  return legal.reduce((a, b) => (b.atk > a.atk ? b : a));
 }

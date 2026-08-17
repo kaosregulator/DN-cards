@@ -21,6 +21,7 @@ export function targetSpecFor(effect: DuelEffect | null): TargetSpec | null {
     case "spell:destroySpellTrap": return { area: "spellTrap", side: "any", count: 1 };
     case "spell:flipTarget": return { area: "monster", side: "any", count: 1, faceUpOnly: true };
     case "spell:reborn": return { area: "grave", side: "any", count: 1 };
+    case "spell:fusion": return { area: "monster", side: "own", count: 2 };
     case "trap:reborn": return { area: "grave", side: "own", count: 1 };
     case "equip:atk": return { area: "monster", side: "own", count: 1 };
     case "flip:destroy": return { area: "monster", side: "opp", count: 1 };

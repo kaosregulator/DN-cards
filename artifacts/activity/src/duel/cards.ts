@@ -12,7 +12,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import type { DuelCard, DuelSetup } from "./types";
-import { YGO_SPELLS, YGO_TRAPS, templateForTier, type YgoSpellTrap } from "./ygo-cards";
+import { YGO_SPELLS, YGO_TRAPS, YGO_FUSIONS, templateForTier, type YgoSpellTrap, type YgoMonster } from "./ygo-cards";
 
 const SPELL_COLOR = 0x1e9e5a;
 const TRAP_COLOR = 0x9b2fae;
@@ -84,6 +84,34 @@ export function buildSupport(count: number): DuelCard[] {
 }
 
 /**
+ * An Extra Deck of Fusion monsters. They wear the art of the deck's own cards
+ * where one is available, so a Fusion Summon still shows your artwork.
+ */
+export function buildExtraDeck(artSource: DuelCard[]): DuelCard[] {
+  return YGO_FUSIONS.map((f: YgoMonster, i) => {
+    const donor = artSource[i % Math.max(1, artSource.length)];
+    return {
+      uid: `fus${i}-${Math.random().toString(36).slice(2, 7)}`,
+      cardId: donor?.cardId ?? null,
+      name: donor?.name ?? f.name,
+      kind: "monster" as const,
+      art: donor?.art ?? null,
+      rarity: "Fusion",
+      color: 0x8a5cd0,
+      attribute: f.attribute,
+      level: f.level,
+      atk: f.atk,
+      def: f.def,
+      desc: f.description,
+      effect: f.effect,
+      realName: f.name,
+      race: f.race,
+      fusionMinLevelSum: f.fusionMinLevelSum,
+    };
+  });
+}
+
+/**
  * Keep the real monsters from a server deck (binding each to a real Yu-Gi-Oh
  * card) and fill the support slots from the real Spell/Trap library.
  */
@@ -96,7 +124,9 @@ export function enrichDeck(deck: DuelCard[]): DuelCard[] {
   const bound = monsters.map((c) => bindMonster(c, tierOf.get(c.uid) ?? 0.5));
 
   const supportCount = Math.max(6, Math.round(deck.length * 0.18));
-  return shuffle([...bound, ...buildSupport(supportCount)]);
+  // Fusions are separated into the Extra Deck by the engine (they carry
+  // fusionMinLevelSum), so they can ride along in the same list here.
+  return [...shuffle([...bound, ...buildSupport(supportCount)]), ...buildExtraDeck(bound)];
 }
 
 export function enrichSetup(setup: DuelSetup): DuelSetup {
