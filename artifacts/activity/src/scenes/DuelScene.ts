@@ -20,8 +20,10 @@ import { makeCardFace, makeCardBack, artKey } from "../ui/card";
 
 interface DuelSceneData {
   setup?: DuelSetup;
-  returnTo?: string; // scene key to return to on exit (e.g. "World" or "Menu")
-  pvp?: boolean;     // local hot-seat pass-and-play (no AI)
+  returnTo?: string;      // scene key to return to on exit (e.g. "World" or "Menu")
+  pvp?: boolean;          // local hot-seat pass-and-play (no AI)
+  npcId?: string;         // world duelist being challenged (marks them beaten on a win)
+  opponentName?: string;  // display name override for the AI side
 }
 
 type Mode = "idle" | "tribute" | "attackTarget" | "spellTarget" | "busy";
@@ -58,9 +60,13 @@ export class DuelScene extends Phaser.Scene {
   init(data: DuelSceneData): void {
     this.returnTo = data?.returnTo ?? "Menu";
     this.pvp = !!data?.pvp;
+    this.npcId = data?.npcId ?? null;
+    this.opponentName = data?.opponentName ?? null;
     if (data?.setup) this.pendingSetup = data.setup;
   }
   private pendingSetup: DuelSetup | null = null;
+  private npcId: string | null = null;
+  private opponentName: string | null = null;
 
   /** The side shown at the bottom / currently controlled. */
   private get foe(): PlayerId { return otherId(this.viewer); }
@@ -87,6 +93,7 @@ export class DuelScene extends Phaser.Scene {
     }
     // Swap the deck's support slots for the tested spell/trap library.
     setup = enrichSetup(setup);
+    if (this.opponentName) setup = { ...setup, opponent: { ...setup.opponent, name: this.opponentName } };
     await this.preloadArt(setup);
     loading.destroy();
 
@@ -855,7 +862,10 @@ export class DuelScene extends Phaser.Scene {
   }
 
   private exit(): void {
-    this.scene.start(this.returnTo, { duelWon: this.state?.winner === "player" });
+    this.scene.start(this.returnTo, {
+      duelWon: this.state?.winner === "player",
+      npcId: this.npcId ?? undefined,
+    });
   }
 }
 

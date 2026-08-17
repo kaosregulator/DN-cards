@@ -11,6 +11,7 @@ import { CONTEXT_KEY, createContext } from "../core/context";
 import { MenuScene } from "../scenes/MenuScene";
 import { DuelScene } from "../scenes/DuelScene";
 import { WorldScene } from "../scenes/WorldScene";
+import { ShopScene } from "../scenes/ShopScene";
 import type { DuelSetup, DuelCard, DuelAttribute } from "../duel/types";
 
 export function isDemo(): boolean {
@@ -54,6 +55,7 @@ class DemoLauncher extends Phaser.Scene {
   create(): void {
     if (/demo=pvp/.test(location.search)) this.scene.start("Duel", { setup: { ...mockSetup(), player: { name: "Player 1", deck: mockDeck() }, opponent: { name: "Player 2", deck: mockDeck() } }, returnTo: "Menu", pvp: true });
     else if (/demo=duel/.test(location.search)) this.scene.start("Duel", { setup: mockSetup(), returnTo: "Menu" });
+    else if (/demo=shop/.test(location.search)) this.scene.start("Shop", { returnTo: "Menu" });
     else if (/demo=world/.test(location.search)) this.scene.start("World");
     else this.scene.start("Menu");
   }
@@ -68,13 +70,27 @@ export function startDemo(): Phaser.Game {
     scale: {
       mode: Phaser.Scale.RESIZE, autoCenter: Phaser.Scale.CENTER_BOTH, width: "100%", height: "100%",
     },
-    scene: [DemoLauncher, MenuScene, DuelScene, WorldScene],
+    scene: [DemoLauncher, MenuScene, WorldScene, ShopScene, DuelScene],
   });
 
   const ctx = createContext({ accessToken: "demo", inDiscord: false }, game.events);
-  // Serve the mock duel setup instead of hitting the backend.
+  // Serve mock data instead of hitting the backend.
   ctx.api.duel = async () => mockSetup();
   ctx.api.cardArtUrl = () => "";
+  ctx.api.shop = async () => ({
+    shards: 4200,
+    cards: NAMES.map((n, i) => {
+      const level = 1 + (i % 8);
+      const atk = 800 + level * 220;
+      return {
+        cardId: 1000 + i, name: n, art: null, rarity: ["Common", "Uncommon", "Rare", "Epic", "Legendary"][i % 5]!,
+        color: [0x95a5a6, 0x2ecc71, 0x3498db, 0x9b59b6, 0xf39c12][i % 5]!,
+        level, atk, def: Math.round(atk * 0.8), attribute: ATTRS[i % ATTRS.length]!,
+        desc: "A mock catalogue card used by the local demo harness.",
+        price: 100 + i * 45, owned: i % 3 === 0 ? 1 + (i % 2) : 0,
+      };
+    }),
+  });
 
   game.registry.set(CONTEXT_KEY, ctx);
   return game;
