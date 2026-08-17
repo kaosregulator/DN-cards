@@ -161,9 +161,27 @@ All P0 and P1 backlog items are now **implemented and covered by tests**
 - ✅ AI plays targeted removal / reborn and answers chain windows.
 - ✅ UI: target selection, set-card activation, response prompts, chain fx.
 
+### Since the first pass
+
+- ✅ **Real Yu-Gi-Oh card data** (`ygo-cards.ts`) — 34 monsters, 12 spells and 6
+  traps with their true names, card text, Level/Attribute/Type/ATK/DEF and
+  effects. Server cards bind to them deterministically by id + power tier, so
+  the duel plays by the real game's numbers while showing your artwork.
+- ✅ **Fusion Summoning** — Polymerization + an Extra Deck (Flame Swordsman,
+  Dark Paladin, Gaia the Dragon Champion, Blue-Eyes Ultimate Dragon), material
+  Level-sum requirements, and a vortex Fusion animation.
+- ✅ **Search effects** — Sangan / Witch of the Black Forest add a monster from
+  the Deck when sent to the Graveyard. All destruction paths were routed through
+  one trigger-aware helper so death triggers fire wherever a monster dies.
+- ✅ **Jinzo** — "Trap Cards cannot be activated" closes every trap window.
+- ✅ **Presentation** — tilted perspective playmat, LP plates with draining
+  bars, phase strip, Deck/GY columns, fanned hand, monster spawn animations,
+  VS intro, and a battle transition from the overworld.
+
 Remaining (documented, intentionally out of scope for the server's monster-image
-card set): Fusion/Ritual/Synchro/Xyz/Link/Pendulum summons, counters, coin/dice
+card set): Ritual/Synchro/Xyz/Link/Pendulum summons, counters, coin/dice
 declaration effects, missed-timing, and multi-link counter-chains (Seven Tools).
 Quick-Play spell-speed and Damage-Step sub-windows are P2 follow-ups.
 
-The battle system's P0/P1 scope is **complete**.
+The battle system's P0/P1 scope is **complete**, and the surrounding game
+(overworld, shop, encounters) is built and covered by tests.
