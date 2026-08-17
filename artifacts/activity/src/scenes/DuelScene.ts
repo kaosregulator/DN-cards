@@ -10,6 +10,8 @@ import { planNextAction, planResponse } from "../duel/ai";
 import { targetSpecFor, isPersistentSpell, trapIsMainPhase, type TargetSpec } from "../duel/effects";
 import { enrichSetup } from "../duel/cards";
 import { makeCardFace, makeCardBack, artKey } from "../ui/card";
+import { makeField, zoneU, SIDE_U, ROW_Z, type FieldLayout } from "../ui/field";
+import { LpPanel } from "../ui/lpPanel";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // DuelScene — the true Yu-Gi-Oh style board. Presents a real duel driven by the
@@ -36,7 +38,6 @@ export class DuelScene extends Phaser.Scene {
   private fx!: Phaser.GameObjects.Container;    // transient effects
   private ui!: Phaser.GameObjects.Container;    // persistent HUD
 
-  private lpText: Record<PlayerId, Phaser.GameObjects.Text> = {} as never;
   private phaseText!: Phaser.GameObjects.Text;
   private msgText!: Phaser.GameObjects.Text;
   private turnBanner!: Phaser.GameObjects.Text;
@@ -165,29 +166,67 @@ export class DuelScene extends Phaser.Scene {
   // ── Layout helpers ──────────────────────────────────────────────────────────
   private get W(): number { return this.scale.width; }
   private get H(): number { return this.scale.height; }
-  private cardW(): number { return Math.max(46, Math.min(84, this.W / 7.4)); }
-  private zoneXs(): number[] {
-    const cw = this.cardW();
-    const gap = cw * 1.16;
-    const startX = this.W / 2 - 2 * gap;
-    return [0, 1, 2, 3, 4].map((i) => startX + i * gap);
+
+  /** The tilted playmat's projection, rebuilt whenever the frame resizes. */
+  private field!: FieldLayout;
+  private ensureField(): FieldLayout {
+    this.field = makeField(this.W, this.H);
+    return this.field;
   }
-  private rowY(row: "oppST" | "oppMon" | "pMon" | "pST"): number {
-    const map = { oppST: 0.135, oppMon: 0.30, pMon: 0.545, pST: 0.71 };
-    return this.H * map[row];
+  /** Depth of a board row, from the VIEWER's perspective. */
+  private rowDepth(who: PlayerId, kind: "mon" | "st"): number {
+    const mine = who === this.viewer;
+    if (kind === "mon") return mine ? ROW_Z.playerMon : ROW_Z.oppMon;
+    return mine ? ROW_Z.playerST : ROW_Z.oppST;
   }
+  private slotAt(who: PlayerId, kind: "mon" | "st", zone: number): { x: number; y: number; w: number; h: number; s: number } {
+    const z = this.rowDepth(who, kind);
+    const p = this.field.project(zoneU(zone), z);
+    const size = this.field.cardSize(z);
+    const shrink = kind === "st" ? 0.92 : 1;
+    return { x: p.x, y: p.y, w: size.w * shrink, h: size.h * shrink, s: p.s };
+  }
+  private cardW(): number { return this.field.cardSize(ROW_Z.playerMon).w; }
 
   // ── Persistent HUD ────────────────────────────────────────────────────────
-  private buildHud(): void {
-    const mk = (txt: string, size: number, color: string) =>
-      this.add.text(0, 0, txt, { fontFamily: "system-ui, sans-serif", fontSize: `${size}px`, color, fontStyle: "bold" });
+  private lpPanels: Partial<Record<PlayerId, LpPanel>> = {};
+  private phasePills: Array<{ key: string; bg: Phaser.GameObjects.Rectangle; tx: Phaser.GameObjects.Text }> = [];
 
-    this.lpText.opponent = mk("", 18, "#ff9db2");
-    this.lpText.player = mk("", 18, "#8ef0bd");
-    this.phaseText = mk("", 14, "#9db2ff");
+  private buildHud(): void {
+    this.ui.removeAll(true);
+    this.lpPanels.player?.destroy();
+    this.lpPanels.opponent?.destroy();
+    this.phasePills = [];
+
+    // Corner LP plates (viewer bottom-left, foe top-right).
+    this.lpPanels[this.viewer] = new LpPanel(this, {
+      name: boardOf(this.state, this.viewer).name, maxLp: this.state.startingLp,
+      accent: 0x35c48a, align: "left",
+    });
+    this.lpPanels[this.foe] = new LpPanel(this, {
+      name: boardOf(this.state, this.foe).name, maxLp: this.state.startingLp,
+      accent: 0xe0556f, align: "right",
+    });
+    this.ui.add([this.lpPanels[this.viewer]!.container, this.lpPanels[this.foe]!.container]);
+
+    // Phase strip.
+    const phases = ["DRAW", "STANDBY", "MAIN1", "BATTLE", "MAIN2", "END"];
+    const short: Record<string, string> = { DRAW: "DP", STANDBY: "SP", MAIN1: "M1", BATTLE: "BP", MAIN2: "M2", END: "EP" };
+    for (const p of phases) {
+      const bg = this.add.rectangle(0, 0, 30, 18, 0x1b2340).setStrokeStyle(1, 0x3a4a80);
+      const tx = this.add.text(0, 0, short[p]!, {
+        fontFamily: "system-ui, sans-serif", fontSize: "10px", color: "#7d8bb8", fontStyle: "bold",
+      }).setOrigin(0.5);
+      this.phasePills.push({ key: p, bg, tx });
+      this.ui.add([bg, tx]);
+    }
+
+    this.phaseText = this.add.text(0, 0, "", {
+      fontFamily: "system-ui, sans-serif", fontSize: "12px", color: "#9db2ff", fontStyle: "bold",
+    }).setOrigin(0.5, 0);
     this.msgText = this.add.text(0, 0, "", {
       fontFamily: "system-ui, sans-serif", fontSize: "13px", color: "#c9d4ff",
-    });
+    }).setOrigin(0.5);
     this.turnBanner = this.add.text(0, 0, "", {
       fontFamily: "system-ui, sans-serif", fontSize: "34px", color: "#fff", fontStyle: "bold",
       stroke: "#000", strokeThickness: 6,
@@ -196,19 +235,26 @@ export class DuelScene extends Phaser.Scene {
     this.primaryBtn = this.makeButton("Next", 0x2b57b8, () => this.onPrimary());
     this.endBtn = this.makeButton("End Turn", 0x8a3550, () => this.onEndTurn());
 
-    this.ui.add([this.lpText.opponent, this.lpText.player, this.phaseText, this.msgText, this.primaryBtn, this.endBtn]);
+    this.ui.add([this.phaseText, this.msgText, this.primaryBtn, this.endBtn]);
     this.add.existing(this.turnBanner);
     this.layoutHud();
   }
 
   private layoutHud(): void {
-    this.lpText.opponent.setPosition(12, 10);
-    this.lpText.player.setPosition(12, this.H - 30);
-    this.phaseText.setPosition(this.W / 2, 12).setOrigin(0.5, 0);
-    this.msgText.setPosition(this.W / 2, this.H * 0.47).setOrigin(0.5);
+    this.lpPanels[this.foe]?.place(this.W - 10, 8);
+    this.lpPanels[this.viewer]?.place(10, this.H - 68);
+    // Phase strip runs down the right edge of the mat.
+    const px = this.W - 22;
+    const py = this.H * 0.20;
+    this.phasePills.forEach((p, i) => {
+      p.bg.setPosition(px, py + i * 22);
+      p.tx.setPosition(px, py + i * 22);
+    });
+    this.phaseText.setPosition(this.W / 2, 8);
+    this.msgText.setPosition(this.W / 2, this.H * 0.70);
     this.turnBanner.setPosition(this.W / 2, this.H / 2);
-    this.positionButton(this.primaryBtn, this.W - 12, this.H - 74, 1, 0);
-    this.positionButton(this.endBtn, this.W - 12, this.H - 36, 1, 0);
+    this.positionButton(this.primaryBtn, this.W - 12, this.H - 78, 1, 0);
+    this.positionButton(this.endBtn, this.W - 12, this.H - 40, 1, 0);
   }
 
   private makeButton(label: string, color: number, onClick: () => void): Phaser.GameObjects.Container {
@@ -244,38 +290,75 @@ export class DuelScene extends Phaser.Scene {
   // ── Rendering the field + hand ──────────────────────────────────────────────
   private renderBoard(): void {
     this.board.removeAll(true);
-    const xs = this.zoneXs();
-    const cw = this.cardW(), ch = cw * 1.42;
+    this.ensureField();
+    this.drawMat();
 
-    // Field divider glow.
-    const g = this.add.graphics();
-    g.fillStyle(0x101830, 0.5); g.fillRect(0, this.H * 0.42, this.W, this.H * 0.02);
-    this.board.add(g);
+    // Far side first so nearer cards overlap correctly.
+    this.renderSpellRow(this.foe);
+    this.renderMonsterRow(this.foe);
+    this.renderMonsterRow(this.viewer);
+    this.renderSpellRow(this.viewer);
+    this.renderSideColumns();
 
-    // Foe zones (top), viewer zones (bottom).
-    this.renderMonsterRow(this.foe, xs, this.rowY("oppMon"), cw, ch, true);
-    this.renderSpellRow(this.foe, xs, this.rowY("oppST"), cw, ch);
-    this.renderSpellRow(this.viewer, xs, this.rowY("pST"), cw, ch);
-    this.renderMonsterRow(this.viewer, xs, this.rowY("pMon"), cw, ch, false);
-
-    // Deck / graveyard counts.
-    const dText = (b: PlayerId, y: number) => {
-      const bd = boardOf(this.state, b);
-      this.board.add(this.add.text(this.W - 10, y, `Deck ${bd.deck.length}  GY ${bd.graveyard.length}`, {
-        fontFamily: "monospace", fontSize: "11px", color: "#5f6b96",
-      }).setOrigin(1, 0.5));
-    };
-    dText(this.foe, this.rowY("oppST") - ch / 2 - 12);
-    dText(this.viewer, this.rowY("pST") + ch / 2 + 12);
-
-    this.renderHand(cw, ch);
+    this.renderHand();
     this.updateHud();
   }
 
-  private renderMonsterRow(who: PlayerId, xs: number[], y: number, cw: number, ch: number, top: boolean): void {
+  /** The tilted playmat: a trapezoid with a centre line and zone guides. */
+  private drawMat(): void {
+    const f = this.field;
+    const c = f.corners();
+    const g = this.add.graphics().setDepth(-10);
+    // Mat body with a soft gradient feel (two stacked fills).
+    g.fillStyle(0x101a33, 0.95);
+    g.fillPoints(c.map((p) => new Phaser.Math.Vector2(p.x, p.y)), true);
+    g.lineStyle(2, 0x3f5590, 0.85);
+    g.strokePoints(c.map((p) => new Phaser.Math.Vector2(p.x, p.y)), true, true);
+    // Centre divider along the mat's midline.
+    const l = f.project(-0.02, ROW_Z.centre), r = f.project(1.02, ROW_Z.centre);
+    g.lineStyle(2, 0x5a7ad0, 0.5);
+    g.lineBetween(l.x, l.y, r.x, r.y);
+    // Faint horizon glow behind the far edge.
+    g.fillStyle(0x2b57b8, 0.10);
+    g.fillEllipse(f.cx, c[0]!.y, (c[1]!.x - c[0]!.x) * 1.2, 46);
+    this.board.add(g);
+  }
+
+  /** Deck / Graveyard columns flanking each side of the mat. */
+  private renderSideColumns(): void {
+    for (const who of [this.foe, this.viewer] as PlayerId[]) {
+      const b = boardOf(this.state, who);
+      const z = this.rowDepth(who, "mon");
+      const size = this.field.cardSize(z);
+      const mine = who === this.viewer;
+      const slots: Array<[number, string, number]> = [
+        [SIDE_U.right, "DECK", b.deck.length],
+        [SIDE_U.left, "GY", b.graveyard.length],
+      ];
+      for (const [u, label, count] of slots) {
+        const p = this.field.project(u, z);
+        const g = this.add.graphics();
+        g.lineStyle(1.5, 0x3a4a80, 0.8);
+        g.strokeRoundedRect(p.x - size.w / 2, p.y - size.h / 2, size.w, size.h, 5);
+        if (count > 0) {
+          g.fillStyle(label === "DECK" ? 0x241132 : 0x2a1a1a, 0.9);
+          g.fillRoundedRect(p.x - size.w / 2, p.y - size.h / 2, size.w, size.h, 5);
+          g.lineStyle(1.5, label === "DECK" ? 0x7b46b0 : 0x8a5555, 0.9);
+          g.strokeRoundedRect(p.x - size.w / 2, p.y - size.h / 2, size.w, size.h, 5);
+        }
+        this.board.add(g);
+        this.board.add(this.add.text(p.x, p.y, `${label}\n${count}`, {
+          fontFamily: "monospace", fontSize: `${Math.max(7, Math.round(size.w / 4.2))}px`,
+          color: mine ? "#9db2ff" : "#c08a9a", align: "center",
+        }).setOrigin(0.5));
+      }
+    }
+  }
+
+  private renderMonsterRow(who: PlayerId): void {
     const b = boardOf(this.state, who);
     for (let z = 0; z < 5; z++) {
-      const x = xs[z]!;
+      const { x, y, w: cw, h: ch } = this.slotAt(who, "mon", z);
       this.board.add(this.zoneSlot(x, y, cw, ch, 0x2b3960));
       const m = b.monsters[z];
       if (!m) continue;
@@ -288,6 +371,8 @@ export class DuelScene extends Phaser.Scene {
       // Defense position → rotate 90°.
       if (m.position !== "attack") card.setAngle(90);
       card.setPosition(x, y);
+      // Nearer rows draw over farther ones.
+      card.setDepth(Math.round(y));
       this.board.add(card);
 
       // Interactions on own monsters.
@@ -316,19 +401,18 @@ export class DuelScene extends Phaser.Scene {
         card.setInteractive(new Phaser.Geom.Rectangle(-cw / 2, -ch / 2, cw, ch), Phaser.Geom.Rectangle.Contains);
         card.on("pointerdown", () => this.onTargetTap(who, "monster", z));
       }
-      void top;
     }
   }
 
-  private renderSpellRow(who: PlayerId, xs: number[], y: number, cw: number, ch: number): void {
+  private renderSpellRow(who: PlayerId): void {
     const b = boardOf(this.state, who);
     for (let z = 0; z < 5; z++) {
-      const x = xs[z]!;
-      this.board.add(this.zoneSlot(x, y, cw * 0.94, ch * 0.94, 0x2a2350));
+      const { x, y, w: cw, h: ch } = this.slotAt(who, "st", z);
+      this.board.add(this.zoneSlot(x, y, cw, ch, 0x2a2350));
       const s = b.spellTraps[z];
       if (!s) continue;
       const card = s.faceUp ? makeCardFace(this, s.card, cw, ch) : makeCardBack(this, cw, ch);
-      card.setPosition(x, y).setScale(0.94);
+      card.setPosition(x, y).setDepth(Math.round(y));
       this.board.add(card);
       const hit = () => card.setInteractive(new Phaser.Geom.Rectangle(-cw / 2, -ch / 2, cw, ch), Phaser.Geom.Rectangle.Contains);
       // The viewer may activate their own set cards during a Main Phase.
@@ -344,29 +428,34 @@ export class DuelScene extends Phaser.Scene {
     }
   }
 
-  private renderHand(cw: number, ch: number): void {
+  private renderHand(): void {
     const b = boardOf(this.state, this.viewer);
-    const hw = cw * 1.16, hh = hw * 1.42;
+    const hw = this.cardW() * 1.2, hh = hw * 1.42;
     const n = b.hand.length;
     const maxSpan = this.W - 24;
     const spacing = Math.min(hw * 1.05, n > 0 ? maxSpan / n : hw);
     const totalW = spacing * (n - 1);
     const startX = this.W / 2 - totalW / 2;
-    const y = this.H - hh / 2 - 6;
+    const y = this.H - hh / 2 - 16;
+    // Fan the hand on a gentle arc, like cards held in front of you.
+    const mid = (n - 1) / 2;
     for (let i = 0; i < n; i++) {
       const card = b.hand[i]!;
+      const off = i - mid;
       const x = startX + i * spacing;
+      const arc = Math.abs(off) * Math.abs(off) * 1.1;   // dip at the edges
+      const baseY = y + arc;
       const face = makeCardFace(this, card, hw, hh);
-      face.setPosition(x, y);
+      face.setPosition(x, baseY).setAngle(off * 2.4).setDepth(900 + i);
       this.board.add(face);
       const myTurn = this.state.turn === this.viewer && this.mode === "idle";
       if (myTurn) {
         face.setInteractive(new Phaser.Geom.Rectangle(-hw / 2, -hh / 2, hw, hh), Phaser.Geom.Rectangle.Contains);
-        face.on("pointerover", () => face.setY(y - 14));
-        face.on("pointerout", () => face.setY(y));
+        face.on("pointerover", () => { face.setY(baseY - 18).setDepth(980).setScale(1.06); });
+        face.on("pointerout", () => { face.setY(baseY).setDepth(900 + i).setScale(1); });
         face.on("pointerdown", () => this.onHandTap(i));
       } else {
-        face.setAlpha(0.9);
+        face.setAlpha(0.92);
       }
     }
   }
@@ -388,12 +477,19 @@ export class DuelScene extends Phaser.Scene {
 
   // ── HUD update ──────────────────────────────────────────────────────────────
   private updateHud(): void {
-    const top = boardOf(this.state, this.foe), bottom = boardOf(this.state, this.viewer);
-    this.lpText[this.foe].setText(`${top.name}   LP ${top.lp}`).setPosition(12, 10);
-    this.lpText[this.viewer].setText(`${bottom.name}   LP ${bottom.lp}`).setPosition(12, this.H - 30);
+    this.lpPanels[this.viewer]?.setName(boardOf(this.state, this.viewer).name);
+    this.lpPanels[this.foe]?.setName(boardOf(this.state, this.foe).name);
+    this.lpPanels[this.viewer]?.set(boardOf(this.state, this.viewer).lp);
+    this.lpPanels[this.foe]?.set(boardOf(this.state, this.foe).lp);
     const yourTurn = this.state.turn === this.viewer;
-    const whoseTurn = this.pvp ? boardOf(this.state, this.state.turn).name : (yourTurn ? "Your" : "Foe");
-    this.phaseText.setText(`${this.pvp ? whoseTurn : (yourTurn ? "Your" : "Foe")} turn · ${phaseName(this.state.phase)}`);
+    const whose = this.pvp ? `${boardOf(this.state, this.state.turn).name}'s` : (yourTurn ? "Your" : "Foe's");
+    this.phaseText.setText(`${whose} turn · ${phaseName(this.state.phase)}`);
+    // Light the current phase pill.
+    for (const p of this.phasePills) {
+      const on = p.key === this.state.phase;
+      p.bg.setFillStyle(on ? 0x2b57b8 : 0x1b2340).setStrokeStyle(1, on ? 0x8fb0ff : 0x3a4a80);
+      p.tx.setColor(on ? "#ffffff" : "#7d8bb8");
+    }
   }
 
   private refreshControls(): void {
@@ -550,12 +646,27 @@ export class DuelScene extends Phaser.Scene {
     }
   }
 
+  /** Highlight the foe's half of the mat as a direct-attack target. */
   private showDirectTarget(): void {
+    const f = this.field;
+    const zST = this.rowDepth(this.foe, "st");
+    const zMon = this.rowDepth(this.foe, "mon");
+    const far = f.cardSize(zST), near = f.cardSize(zMon);
+    const a = f.project(-0.03, zST), b = f.project(1.03, zST);
+    const c = f.project(1.05, zMon), d = f.project(-0.05, zMon);
+    const pts = [
+      new Phaser.Math.Vector2(a.x, a.y - far.h / 2), new Phaser.Math.Vector2(b.x, b.y - far.h / 2),
+      new Phaser.Math.Vector2(c.x, c.y + near.h / 2), new Phaser.Math.Vector2(d.x, d.y + near.h / 2),
+    ];
     const g = this.add.graphics().setDepth(60);
-    g.fillStyle(0xff5a6a, 0.10); g.fillRect(0, this.rowY("oppST") - this.cardW(), this.W, this.cardW() * 2);
-    g.lineStyle(2, 0xff5a6a, 0.8); g.strokeRect(6, this.rowY("oppST") - this.cardW() * 0.9, this.W - 12, this.cardW() * 1.8);
+    g.fillStyle(0xff5a6a, 0.12); g.fillPoints(pts, true);
+    g.lineStyle(2, 0xff5a6a, 0.85); g.strokePoints(pts, true, true);
     this.board.add(g);
-    const zone = new Phaser.GameObjects.Zone(this, this.W / 2, this.rowY("oppMon"), this.W, this.cardW() * 2);
+    const label = this.add.text(f.cx, (a.y + c.y) / 2, "DIRECT ATTACK", {
+      fontFamily: "system-ui, sans-serif", fontSize: "13px", color: "#ffd3da", fontStyle: "bold",
+    }).setOrigin(0.5).setDepth(61);
+    this.board.add(label);
+    const zone = new Phaser.GameObjects.Zone(this, f.cx, (a.y + c.y) / 2, this.W, Math.abs(c.y - a.y) + near.h);
     this.add.existing(zone);
     zone.setInteractive();
     zone.on("pointerdown", () => this.resolvePlayerAttack("direct"));
@@ -710,14 +821,14 @@ export class DuelScene extends Phaser.Scene {
 
   // ── Effects ──────────────────────────────────────────────────────────────────
   private zonePos(who: PlayerId, zone: number): { x: number; y: number } {
-    const xs = this.zoneXs();
-    const y = who === this.viewer ? this.rowY("pMon") : this.rowY("oppMon");
-    return { x: xs[zone] ?? this.W / 2, y };
+    const s = this.slotAt(who, "mon", Phaser.Math.Clamp(zone, 0, 4));
+    return { x: s.x, y: s.y };
   }
   private async attackAnim(who: PlayerId, fromZone: number, to: number | "direct"): Promise<void> {
     const from = this.zonePos(who, fromZone);
+    const foeRow = this.field.project(0.5, this.rowDepth(otherId(who), "mon"));
     const target = to === "direct"
-      ? { x: this.W / 2, y: who === this.viewer ? this.rowY("oppMon") : this.rowY("pMon") }
+      ? { x: foeRow.x, y: foeRow.y }
       : this.zonePos(otherId(who), to);
     const streak = this.add.graphics().setDepth(1500);
     streak.lineStyle(4, 0xfff2a8, 0.9);
@@ -785,10 +896,8 @@ export class DuelScene extends Phaser.Scene {
     this.fx.add(t);
     this.tweens.add({ targets: t, y: y - 40, alpha: 0, scale: 1.3, duration: 850, ease: "Cubic.Out", onComplete: () => t.destroy() });
   }
-  private tweenLp(who: PlayerId): void {
-    // LP text reflects state on next updateHud; do a quick color pop.
-    const txt = this.lpText[who];
-    this.tweens.add({ targets: txt, scale: 1.25, duration: 120, yoyo: true });
+  private tweenLp(_who: PlayerId): void {
+    // The LP panels animate their own counter + bar from the new state.
     this.updateHud();
   }
   private pulseCenter(color: number): void {

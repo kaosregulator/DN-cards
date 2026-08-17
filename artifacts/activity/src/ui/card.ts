@@ -37,23 +37,42 @@ export function makeCardFace(
   g.fillStyle(bg, 0.16); roundRect(g, -w / 2 + 3, -h / 2 + 3, w - 6, h - 6, 5);
   c.add(g);
 
-  // Name bar — YOUR card's name, with the real Yu-Gi-Oh card it plays as
-  // printed underneath (only when the card is big enough to read it).
-  const name = scene.add.text(0, -h / 2 + 3, fit(card.name, Math.floor(w / 6)), {
-    fontFamily: "system-ui, sans-serif", fontSize: `${Math.max(8, Math.round(w / 11))}px`,
+  // ── Vertical flow: name → real-card subtitle → stars → art → stats ──
+  const pad = Math.max(3, w * 0.035);
+  let cursor = -h / 2 + pad;
+
+  // YOUR card's name.
+  const nameFs = Math.max(7, Math.round(w / 10.5));
+  c.add(scene.add.text(0, cursor, fit(card.name, Math.floor(w / (nameFs * 0.52))), {
+    fontFamily: "system-ui, sans-serif", fontSize: `${nameFs}px`,
     color: "#f4ead0", fontStyle: "bold",
-  }).setOrigin(0.5, 0);
-  c.add(name);
-  if (card.realName && card.realName !== card.name && w >= 70) {
-    c.add(scene.add.text(0, -h / 2 + 3 + Math.round(w / 10), fit(card.realName, Math.floor(w / 5)), {
-      fontFamily: "system-ui, sans-serif", fontSize: `${Math.max(6, Math.round(w / 15))}px`,
-      color: "#9db2ff",
+  }).setOrigin(0.5, 0));
+  cursor += nameFs * 1.12;
+
+  // The real Yu-Gi-Oh card it plays as (only when there's room to read it).
+  const showReal = !!card.realName && card.realName !== card.name && w >= 62;
+  if (showReal) {
+    const subFs = Math.max(6, Math.round(w / 15));
+    c.add(scene.add.text(0, cursor, fit(card.realName!, Math.floor(w / (subFs * 0.5))), {
+      fontFamily: "system-ui, sans-serif", fontSize: `${subFs}px`, color: "#9db2ff",
     }).setOrigin(0.5, 0).setAlpha(0.95));
+    cursor += subFs * 1.15;
   }
 
-  // Art window.
-  const artY = -h * 0.06;
-  const artW = w - 12, artH = h * 0.5;
+  // Level stars.
+  if (card.kind === "monster" && card.level > 0) {
+    const starFs = Math.max(6, Math.round(w / 16));
+    c.add(scene.add.text(0, cursor, fit("★".repeat(Math.min(12, card.level)), Math.floor(w / (starFs * 0.62))), {
+      fontSize: `${starFs}px`, color: "#ffd75e",
+    }).setOrigin(0.5, 0).setAlpha(0.95));
+    cursor += starFs * 1.1;
+  }
+
+  // Art window fills what's left above the stat footer.
+  const footerH = Math.max(11, w * 0.16);
+  const artW = w - pad * 2;
+  const artH = Math.max(10, (h / 2 - pad - footerH) - cursor);
+  const artY = cursor + artH / 2;
   const key = card.cardId != null ? artKey(card.cardId) : null;
   if (key && scene.textures.exists(key)) {
     const img = scene.add.image(0, artY, key);
@@ -86,20 +105,20 @@ export function makeCardFace(
     }
   }
 
-  // Stat / type footer.
+  // Stat / type footer — shrunk to fit the card's width so it never overflows.
   if (card.kind === "monster") {
-    // Level stars — sit just above the art window.
-    const stars = "★".repeat(Math.min(12, card.level));
-    c.add(scene.add.text(0, artY - artH / 2 - 3, fit(stars, Math.floor(w / 6)), {
-      fontSize: `${Math.max(7, Math.round(w / 16))}px`, color: "#ffd75e",
-    }).setOrigin(0.5, 1).setAlpha(0.95));
-    const atkDef = scene.add.text(0, h / 2 - 4, `ATK ${card.atk}  DEF ${card.def}`, {
-      fontFamily: "monospace", fontSize: `${Math.max(8, Math.round(w / 12))}px`, color: "#ffe9b0", fontStyle: "bold",
-    }).setOrigin(0.5, 1);
-    c.add(atkDef);
+    const long = `ATK ${card.atk}  DEF ${card.def}`;
+    const short = `${card.atk}/${card.def}`;
+    const label = fitsAt(long, w - pad * 2, w / 12) ? long : short;
+    const fs = Math.max(7, Math.min(Math.round(w / 12), Math.floor((w - pad * 2) / (label.length * 0.62))));
+    c.add(scene.add.text(0, h / 2 - pad, label, {
+      fontFamily: "monospace", fontSize: `${fs}px`, color: "#ffe9b0", fontStyle: "bold",
+    }).setOrigin(0.5, 1));
   } else {
-    c.add(scene.add.text(0, h / 2 - 4, card.kind === "spell" ? "SPELL" : "TRAP", {
-      fontFamily: "system-ui, sans-serif", fontSize: `${Math.max(8, Math.round(w / 12))}px`,
+    const label = card.sub ? `${card.sub.toUpperCase()} ${card.kind === "spell" ? "SPELL" : "TRAP"}` : (card.kind === "spell" ? "SPELL" : "TRAP");
+    const fs = Math.max(6, Math.min(Math.round(w / 13), Math.floor((w - pad * 2) / (label.length * 0.6))));
+    c.add(scene.add.text(0, h / 2 - pad, label, {
+      fontFamily: "system-ui, sans-serif", fontSize: `${fs}px`,
       color: card.kind === "spell" ? "#8ef0bd" : "#e5a6f5", fontStyle: "bold",
     }).setOrigin(0.5, 1));
   }
@@ -124,8 +143,14 @@ export function makeCardBack(scene: Phaser.Scene, w: number, h: number): Phaser.
 }
 
 function fit(s: string, max: number): string {
+  if (max < 1) return "";
   if (s.length <= max) return s;
   return s.slice(0, Math.max(1, max - 1)) + "…";
+}
+
+/** Rough width test for a monospace-ish label at a given font size. */
+function fitsAt(s: string, maxW: number, fontSize: number): boolean {
+  return s.length * fontSize * 0.62 <= maxW;
 }
 
 /** Pull the "(XYZ)" initials out of a library card name, if present. */

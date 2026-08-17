@@ -93,5 +93,7 @@ export function startDemo(): Phaser.Game {
   });
 
   game.registry.set(CONTEXT_KEY, ctx);
+  // Demo-only handle so the automated screenshot/QA harness can drive the game.
+  (window as unknown as { __duelGame?: Phaser.Game }).__duelGame = game;
   return game;
 }
