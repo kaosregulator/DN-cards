@@ -266,7 +266,7 @@ function applyOnSummon(state: DuelState, who: PlayerId, zone: number, events: Du
   recomputeContinuous(state);
   // Open a summon response window for the opponent (Trap Hole).
   const foe = foeOf(state, who);
-  const canRespond = foe.spellTraps.some((st) =>
+  const canRespond = !trapsNegated(state) && foe.spellTraps.some((st) =>
     st && !st.faceUp && trapReactsToSummon(st.card.effect) && summonTrapThresholdMet(st.card.effect, effAtk(m)));
   if (canRespond) {
     state.pending = { type: "summonTrigger", who, zone };
@@ -400,6 +400,7 @@ export function activateSetCard(
   const isSlowTrap = trapIsMainPhase(eff);
   const isSpell = st.card.kind === "spell";
   if (!isSlowTrap && !isSpell) { log(state, events, "That Trap can only respond to an action."); return events; }
+  if (st.card.kind === "trap" && trapsNegated(state)) { log(state, events, "Trap Cards cannot be activated."); return events; }
   if (state.turn !== who) { log(state, events, "Activate on your turn."); return events; }
   const spec = targetSpecFor(eff);
   if (spec && targets.length !== spec.count) { log(state, events, `Select ${spec.count} target(s).`); return events; }
@@ -544,8 +545,10 @@ export function declareAttack(
   attacker.hasAttacked++;
   state.pending = { type: "battle", attackerSide: who, attacker: fromZone, target, negated: false };
 
-  // Defender's response window (battle traps).
-  const canRespond = foe.spellTraps.some((st) => st && !st.faceUp && trapReactsToAttack(st.card.effect));
+  // Defender's response window (battle traps) — blocked entirely while a
+  // "Trap Cards cannot be activated" monster (Jinzo) is face-up.
+  const canRespond = !trapsNegated(state)
+    && foe.spellTraps.some((st) => st && !st.faceUp && trapReactsToAttack(st.card.effect));
   if (canRespond) {
     state.awaiting = { responder: foe.id, passes: 0 };
     events.push({ t: "window", responder: foe.id });
@@ -559,9 +562,21 @@ export function declareAttack(
 
 export interface ResponseOption { zone: number; card: DuelCard; effect: DuelEffect; }
 
+/** True if either player controls a face-up "Trap Cards cannot be activated"
+ *  monster (Jinzo). Traps are then unusable for BOTH players, as in the real game. */
+export function trapsNegated(state: DuelState): boolean {
+  for (const id of ["player", "opponent"] as PlayerId[]) {
+    for (const m of boardOf(state, id).monsters) {
+      if (m && m.faceUp && m.card.effect?.kind === "negateTraps") return true;
+    }
+  }
+  return false;
+}
+
 /** Set cards the awaiting responder can legally activate right now. */
 export function responseOptions(state: DuelState): ResponseOption[] {
   if (!state.awaiting || !state.pending) return [];
+  if (trapsNegated(state)) return [];
   const b = boardOf(state, state.awaiting.responder);
   const out: ResponseOption[] = [];
   b.spellTraps.forEach((st, zone) => {

@@ -22,6 +22,7 @@ export type DuelEffect =
   | { kind: "burn"; amount: number }
   | { kind: "doubleAttack" }
   | { kind: "flip:destroy" }              // flip effect: destroy 1 opponent monster (targeted)
+  | { kind: "negateTraps" }               // Jinzo — Trap Cards cannot be activated
   // ── Spell ──
   | { kind: "spell:draw"; count: number }
   | { kind: "spell:boost"; amount: number }
@@ -55,6 +56,7 @@ export type TargetRef =
 export interface DuelCard {
   uid: string;
   cardId: number | null;
+  /** Display name — the SERVER card's own name (your art, your naming). */
   name: string;
   kind: DuelCardKind;
   art: string | null;
@@ -64,8 +66,15 @@ export interface DuelCard {
   level: number;
   atk: number;
   def: number;
+  /** The REAL Yu-Gi-Oh card text this card plays as. */
   desc: string;
   effect: DuelEffect | null;
+  /** The real Yu-Gi-Oh card this one is bound to (name shown as a subtitle). */
+  realName?: string;
+  /** Real card Type line: Dragon / Spellcaster / Warrior … (monsters). */
+  race?: string;
+  /** Spell/Trap sub-type: Normal / Quick-Play / Continuous / Equip / Counter. */
+  sub?: string;
 }
 
 export interface DuelSetup {

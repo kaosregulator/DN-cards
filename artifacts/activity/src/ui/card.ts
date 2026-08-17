@@ -37,12 +37,19 @@ export function makeCardFace(
   g.fillStyle(bg, 0.16); roundRect(g, -w / 2 + 3, -h / 2 + 3, w - 6, h - 6, 5);
   c.add(g);
 
-  // Name bar.
-  const name = scene.add.text(0, -h / 2 + 4, fit(card.name, Math.floor(w / 6)), {
+  // Name bar — YOUR card's name, with the real Yu-Gi-Oh card it plays as
+  // printed underneath (only when the card is big enough to read it).
+  const name = scene.add.text(0, -h / 2 + 3, fit(card.name, Math.floor(w / 6)), {
     fontFamily: "system-ui, sans-serif", fontSize: `${Math.max(8, Math.round(w / 11))}px`,
     color: "#f4ead0", fontStyle: "bold",
   }).setOrigin(0.5, 0);
   c.add(name);
+  if (card.realName && card.realName !== card.name && w >= 70) {
+    c.add(scene.add.text(0, -h / 2 + 3 + Math.round(w / 10), fit(card.realName, Math.floor(w / 5)), {
+      fontFamily: "system-ui, sans-serif", fontSize: `${Math.max(6, Math.round(w / 15))}px`,
+      color: "#9db2ff",
+    }).setOrigin(0.5, 0).setAlpha(0.95));
+  }
 
   // Art window.
   const artY = -h * 0.06;
@@ -81,11 +88,11 @@ export function makeCardFace(
 
   // Stat / type footer.
   if (card.kind === "monster") {
-    // Level stars (top).
+    // Level stars — sit just above the art window.
     const stars = "★".repeat(Math.min(12, card.level));
-    c.add(scene.add.text(0, -h / 2 + 4 + Math.round(w / 10), fit(stars, Math.floor(w / 6)), {
+    c.add(scene.add.text(0, artY - artH / 2 - 3, fit(stars, Math.floor(w / 6)), {
       fontSize: `${Math.max(7, Math.round(w / 16))}px`, color: "#ffd75e",
-    }).setOrigin(0.5, 0).setAlpha(0.9));
+    }).setOrigin(0.5, 1).setAlpha(0.95));
     const atkDef = scene.add.text(0, h / 2 - 4, `ATK ${card.atk}  DEF ${card.def}`, {
       fontFamily: "monospace", fontSize: `${Math.max(8, Math.round(w / 12))}px`, color: "#ffe9b0", fontStyle: "bold",
     }).setOrigin(0.5, 1);
