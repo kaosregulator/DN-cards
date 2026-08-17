@@ -1,97 +1,76 @@
 # DN Cards Activity (Phaser 4 · Discord Embedded App)
 
-The **single reusable game client** for DN Cards, run as a Discord Activity
-inside Discord. Phase 1 ships the foundation only:
+The DN Cards Discord Activity — a **true Yu-Gi-Oh style live duel** and a
+**top-down open world**, run inside Discord as an Embedded App (iframe).
 
 ```
-Discord → Activity (iframe) → Phaser 4 → /api/activity → real player data
+Discord → Activity (iframe) → Phaser 4 → /api/activity → real cards + player data
 ```
 
-It is **presentation-only** and **non-authoritative**. It sends a Discord OAuth
-access token; the backend (`artifacts/api-server/src/routes/activity.ts`) decides
-who the caller is and returns their authoritative snapshot. The existing bot,
-PNG renderers, embeds, and database are untouched.
+It uses **the server's own cards** (art + names) as the duel monsters, while the
+rules, stats and moves are derived/played client-side. It is **presentation-only
+and non-authoritative**: it sends a Discord OAuth access token and the backend
+(`artifacts/api-server/src/routes/activity.ts`) decides who the caller is. The
+authoritative `/battle` combat, economy, packs, sieges and database are
+untouched — a duel here spends and grants nothing.
+
+Launch it from Discord with **`/battle phaser`**.
 
 ## Structure
 
 ```
 src/
   main.ts                # entry: Discord handshake → start Phaser
-  discord/
-    env.ts               # in-Discord detection (frame_id)
-    sdk.ts               # Embedded App SDK init + auth handshake
+  discord/               # in-Discord detection + Embedded App SDK auth
   net/
-    api.ts               # the ONE backend client (proxy-aware)
+    api.ts               # the ONE backend client (proxy-aware) + duel()/cardArtUrl()
   core/
-    game.ts              # Phaser game bootstrap (scene host)
+    game.ts              # Phaser game bootstrap (Boot → Menu → Duel/World)
     context.ts           # GameContext seam shared by every scene
-  state/
-    playerState.ts       # authoritative-snapshot read model
+    viewport.ts          # responsive/mobile-touch awareness
+  duel/                  # framework-free duel engine (the rules)
+    types.ts             # cards, board, phases, events
+    engine.ts            # phases, tribute summon, combat math, traps, effects
+    ai.ts                # one-action-at-a-time opponent planner
+  ui/
+    card.ts              # card renderer (server art via proxy + procedural)
   scenes/
-    BootScene.ts         # loads /api/activity/@me
-    HandshakeScene.ts    # Phase-1 test scene: renders real data
+    BootScene.ts         # load the real player snapshot
+    MenuScene.ts         # choose the duel or the open world
+    DuelScene.ts         # the playable Yu-Gi-Oh board (+ AI loop)
+    WorldScene.ts        # Battle City open world + duelist challenges
+  demo/demo.ts           # `?demo` local harness (no Discord/backend)
 ```
 
-Later phases add `HqScene`, `BattleScene`, `RaidScene`, `PackScene`, plus the
-asset / animation / audio / input managers slotted into `core/`.
+## The duel
 
-## Local development
+- **Turn structure:** Draw → Standby → Main 1 → Battle → Main 2 → End.
+- **Summoning:** Normal Summon once per turn; Lv ≤4 free, Lv 5–6 one tribute,
+  Lv 7+ two tributes; face-up Attack or face-down Set (Defense).
+- **Combat:** attacker ATK vs target ATK (Attack pos) or DEF (Defense pos), with
+  piercing damage and direct attacks; face-downs flip on contact.
+- **Spells/Traps:** classic support (draw, team ATK boost, heal; Mirror Force,
+  Reflect Cylinder, Trap Hole) drawn procedurally so nothing depends on an
+  external image host (Discord's CSP blocks those).
+- **Cards:** a monster's ATK/DEF/Level/Attribute are derived on the backend from
+  each DN card's worth/rarity/type; the art is the card's own image, streamed
+  through `/activity/card-art/:id` so it loads inside the iframe.
 
-```bash
-pnpm --filter @workspace/activity run dev
+## Backend surface used
+
+- `GET /activity/@me` — player snapshot (identity + economy).
+- `GET /activity/duel` — the player's real-card deck + a scaled AI deck.
+- `GET /activity/card-art/:id` — proxied card image (object-storage or external).
+
+## Local dev
+
+```
+pnpm --filter @workspace/activity run dev     # vite dev server
+# open http://localhost:5174/?demo            # menu, no Discord/backend
+# open http://localhost:5174/?demo=duel       # jump straight into a duel
+# open http://localhost:5174/?demo=world      # jump straight into the world
 ```
 
-Outside Discord there is no `frame_id`, so the client runs in **dev bypass**:
-it starts Phaser and shows a "open from Discord" notice instead of faking a
-login. Point `VITE_API_BASE` at a running api-server if you want to exercise the
-endpoints directly.
-
-## Discord Developer Portal setup (to run in-frame)
-
-1. Reuse the **existing** DN Cards Discord application (the one already using
-   `DISCORD_CLIENT_ID` / `DISCORD_CLIENT_SECRET`).
-2. **Activities → Enable Activities.**
-3. **URL Mappings:**
-   - `/` → the deployed Activity host (this package).
-   - `/api` → the api-server host. The client calls it via `/.proxy/api`.
-4. **OAuth2 redirect** already covered by the shared app; scopes used:
-   `identify`, `guilds.members.read`.
-5. Build-time env for this package: `VITE_DISCORD_CLIENT_ID` = the app's client id.
-
-## Backend env (already used by routes/oauth.ts)
-
-`DISCORD_CLIENT_ID`, `DISCORD_CLIENT_SECRET`, `HOME_GUILD_ID`. The Activity
-backend is dormant until the first two are set — identical to the website OAuth.
-
-## Scenes (all sharing the Core Runtime)
-
-- **HqScene** — the live isometric HQ. Real Kenney-pack sprites, per-room tiled
-  floors + rear walls, depth-sorted objects, pan/zoom, click-select, drag-move,
-  rotate/duplicate/delete, undo/redo, build-mode grid + placement ghost, an
-  owned-only object palette, a subtle animated blue perimeter shield, ambient
-  motes, and idle NPC wander. Saves round-trip to the server, which validates
-  every object against the player's unlocks and returns the sanitised layout.
-- **BattleScene** — Street-Fighter choreography (approach → strike → impact →
-  recoil → return) over the player's real card-derived line-up.
-- **RaidScene** — the real campaign ladder + this player's clear progress, a big
-  boss with live HP, team assault, and enrage past the enrage turn.
-- **PackScene** — crate shake → burst → sequential rarity-coloured reveals using
-  the guild's real drop odds. Presentation only — grants nothing.
-
-A shared **NavDock** switches HQ ⇄ Battle ⇄ Raid ⇄ Packs on every scene.
-
-## Authority & fallback
-
-The client is never authoritative. Identity is re-verified server-side on every
-request; placement, currency, ownership and combat resolution stay in the bot.
-Each experience's presentation is a **per-guild** admin choice (`/config` →
-🎞️ Reveals → 🎬 Experiences) with a **primary** mode and a **fallback**; when the
-Activity can't run, the existing PNG/embed/animated render stands. Defaults
-preserve the current server-rendered behaviour, so enabling the Activity is
-strictly opt-in per guild.
-
-## Backend surface (`/api/activity/*`)
-
-`status`, `token`, `@me`, `assets/manifest`, `assets/hq/*`, `hq`, `hq/layout`
-(POST), `battle`, `raid`, `packs`. Extra env for launching: `ACTIVITY_URL` (the
-deployed Activity host) enables the "Open Live HQ" button from `/hq`.
+Outside Discord the app redirects to `/dashboard`; the `?demo` harness bypasses
+that with a mock deck so the board, world, touch controls and responsive HUD can
+be exercised on desktop and mobile viewports.
