@@ -1,6 +1,6 @@
 import Phaser from "phaser";
 import { getContext } from "../core/context";
-import type { DuelSetup, DuelState, DuelEvent, MonsterPosition, PlayerId, TargetRef, DuelEffect } from "../duel/types";
+import type { DuelSetup, DuelState, DuelEvent, MonsterPosition, PlayerId, TargetRef, DuelEffect, DuelCard } from "../duel/types";
 import {
   createDuel, nextPhase, endTurn, summonMonster, setSpellTrap, activateSpellFromHand,
   activateSetCard, changePosition, declareAttack, canNormalSummon, canActivateFromHand,
@@ -96,8 +96,40 @@ export class DuelScene extends Phaser.Scene {
     this.renderBoard();
     this.scale.on(Phaser.Scale.Events.RESIZE, this.onResize, this);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.scale.off(Phaser.Scale.Events.RESIZE, this.onResize, this));
+    await this.duelIntro();
     this.showTurnBanner(this.pvp ? `${this.state.player.name}'s Turn` : "Your Turn");
     this.refreshControls();
+  }
+
+  /** "DUEL START" VS splash before the first turn. */
+  private async duelIntro(): Promise<void> {
+    this.mode = "busy";
+    const overlay = this.add.container(0, 0).setDepth(3400);
+    overlay.add(this.add.rectangle(0, 0, this.W, this.H, 0x05070f, 0.86).setOrigin(0));
+    const p = this.add.text(this.W / 2, this.H * 0.4, this.state.player.name, {
+      fontFamily: "system-ui, sans-serif", fontSize: "26px", color: "#8ef0bd", fontStyle: "bold",
+    }).setOrigin(0.5).setAlpha(0);
+    const vs = this.add.text(this.W / 2, this.H * 0.5, "VS", {
+      fontFamily: "system-ui, sans-serif", fontSize: "52px", color: "#ffd75e", fontStyle: "bold", stroke: "#000", strokeThickness: 6,
+    }).setOrigin(0.5).setScale(0.4).setAlpha(0);
+    const o = this.add.text(this.W / 2, this.H * 0.6, this.state.opponent.name, {
+      fontFamily: "system-ui, sans-serif", fontSize: "26px", color: "#ff9db2", fontStyle: "bold",
+    }).setOrigin(0.5).setAlpha(0);
+    const go = this.add.text(this.W / 2, this.H * 0.74, "⚔  DUEL START", {
+      fontFamily: "system-ui, sans-serif", fontSize: "22px", color: "#e6ecff", fontStyle: "bold",
+    }).setOrigin(0.5).setAlpha(0);
+    overlay.add([p, vs, o, go]);
+    const tw = (t: Phaser.GameObjects.GameObject, d: number, extra: Record<string, unknown> = {}) =>
+      new Promise<void>((res) => this.tweens.add({ targets: t, alpha: 1, duration: 220, delay: d, ease: "Cubic.Out", ...extra, onComplete: () => res() }));
+    await tw(p, 60, { x: { from: this.W / 2 - 40, to: this.W / 2 } });
+    await tw(o, 0, { x: { from: this.W / 2 + 40, to: this.W / 2 } });
+    this.cameras.main.shake(180, 0.004);
+    await tw(vs, 0, { scale: 1, ease: "Back.Out", duration: 260 });
+    await tw(go, 120);
+    await this.wait(520);
+    await new Promise<void>((res) => this.tweens.add({ targets: overlay, alpha: 0, duration: 320, onComplete: () => res() }));
+    overlay.destroy(true);
+    this.mode = "idle";
   }
 
   private onResize = (): void => { if (this.state) { this.layoutHud(); this.renderBoard(); } };
@@ -648,8 +680,8 @@ export class DuelScene extends Phaser.Scene {
           await this.wait(this.pvp ? 0 : 300); break;
         case "phase": this.phaseText.setText(`${e.who === "player" ? "Your" : "Foe"} turn · ${phaseName(e.phase)}`); break;
         case "draw": if (e.who === "player") this.flash(`Draw: ${e.card.name}`); await this.wait(90); break;
-        case "summon": this.flash(`${who(e.who)} ${e.position === "set" ? "sets" : "summons"} ${e.card.name}`); await this.wait(260); break;
-        case "specialSummon": this.flash(`${who(e.who)} Special Summons ${e.card.name}`); this.pulseCenter(e.card.color); await this.wait(320); break;
+        case "summon": this.flash(`${who(e.who)} ${e.position === "set" ? "sets" : "summons"} ${e.card.name}`); await this.spawnAnim(e.who, e.zone, e.card, e.position); break;
+        case "specialSummon": this.flash(`${who(e.who)} Special Summons ${e.card.name}`); await this.spawnAnim(e.who, e.zone, e.card, "attack"); break;
         case "flip": await this.wait(160); break;
         case "activate": this.flash(e.text); this.pulseCenter(e.card.color); await this.wait(360); break;
         case "chainResolve": this.pulseCenter(e.card.color); await this.wait(120); break;
@@ -693,6 +725,36 @@ export class DuelScene extends Phaser.Scene {
     streak.destroy(); orb.destroy();
     await this.wait(120);
   }
+  /** Monster spawn flourish: a light column, shockwave ring, and the card
+   *  slamming into its zone with a flash — the "monster appears" beat. */
+  private async spawnAnim(who: PlayerId, zone: number, card: DuelCard, position: MonsterPosition): Promise<void> {
+    const { x, y } = this.zonePos(who, zone);
+    const cw = this.cardW(), ch = cw * 1.42;
+    // Light column rising from the zone.
+    const beam = this.add.rectangle(x, y, cw * 0.5, ch * 3, card.color, 0.35).setDepth(1450).setOrigin(0.5, 0.5);
+    beam.setScale(1, 0);
+    this.fx.add(beam);
+    this.tweens.add({ targets: beam, scaleY: 1, alpha: 0, duration: 420, ease: "Cubic.Out", onComplete: () => beam.destroy() });
+    // Card slams in from above, scaling down with a flash.
+    const face = position === "set" ? makeCardBack(this, cw, ch) : makeCardFace(this, card, cw, ch);
+    face.setPosition(x, y - 40).setScale(1.8).setAlpha(0).setDepth(1600);
+    if (position !== "attack") face.setAngle(90);
+    this.fx.add(face);
+    const flash = this.add.circle(x, y, cw * 0.2, 0xffffff, 0.9).setDepth(1590);
+    this.fx.add(flash);
+    this.tweens.add({ targets: flash, radius: cw * 1.3, alpha: 0, duration: 380, ease: "Cubic.Out", onComplete: () => flash.destroy() });
+    await new Promise<void>((res) => {
+      this.tweens.add({
+        targets: face, y, scale: position !== "attack" ? 1 : 1, alpha: 1, duration: 260, ease: "Back.Out",
+        onComplete: () => res(),
+      });
+    });
+    this.impact(x, y);
+    this.cameras.main.shake(90, 0.004);
+    await this.wait(150);
+    face.destroy();
+  }
+
   private impact(x: number, y: number): void {
     const ring = this.add.circle(x, y, 6, 0xffffff, 0.9).setDepth(1700);
     this.fx.add(ring);

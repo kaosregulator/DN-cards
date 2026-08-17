@@ -192,7 +192,30 @@ export const api = {
   cardArtUrl(cardId: number): string {
     return `${API_BASE}/activity/card-art/${cardId}`;
   },
+  /** Card Shop interior: the server's real cards (our art) + prices. */
+  shop(): Promise<ShopModel> {
+    return request<ShopModel>("/activity/shop", { token: tokenRef });
+  },
 };
+
+export interface ShopCard {
+  cardId: number;
+  name: string;
+  art: string | null;
+  rarity: string;
+  color: number;
+  level: number;
+  atk: number;
+  def: number;
+  attribute: string;
+  desc: string;
+  price: number;
+  owned: number;
+}
+export interface ShopModel {
+  shards: number;
+  cards: ShopCard[];
+}
 
 // ── Play-scene models (mirror bot/activity/read-models.ts) ────────────────────
 

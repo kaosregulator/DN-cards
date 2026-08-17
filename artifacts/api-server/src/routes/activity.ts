@@ -8,7 +8,7 @@ import { getActivityLayout, saveActivityLayout, getActivityCatalog, WORLD_TILES 
 import { ACTIVITY_FLOORS, GROUND_SPRITE } from "../bot/hq/activity-catalog.js";
 import { HQ_ROOMS } from "../bot/hq/defs/rooms.js";
 import { battleReadModel, raidReadModel, packReadModel } from "../bot/activity/read-models.js";
-import { duelReadModel } from "../bot/activity/duel-model.js";
+import { duelReadModel, shopReadModel } from "../bot/activity/duel-model.js";
 import { getCardById } from "../bot/db.js";
 import { toAbsoluteImageUrl } from "../bot/image-url.js";
 import { ObjectStorageService } from "../lib/objectStorage";
@@ -334,6 +334,18 @@ router.get("/duel", async (req, res) => {
   } catch (err) {
     logger.error({ err, userId: user.id }, "activity /duel failed");
     res.status(500).json({ error: "Failed to load duel." });
+  }
+});
+
+// GET /api/activity/shop — real server cards (our art) for the Card Shop interior.
+router.get("/shop", async (req, res) => {
+  const user = await requireUser(req, res);
+  if (!user) return;
+  try {
+    res.json(await shopReadModel(HOME_GUILD_ID!, user.id));
+  } catch (err) {
+    logger.error({ err, userId: user.id }, "activity /shop failed");
+    res.status(500).json({ error: "Failed to load shop." });
   }
 });
 

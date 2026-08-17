@@ -112,7 +112,7 @@ function effectFor(level: number, rank: number, atk: number): DuelEffect | null 
   return null;
 }
 
-function toMonster(card: {
+export function toMonster(card: {
   id: number; name: string; rarity: string; cardType?: string | null;
   description?: string | null; flavor?: string | null; worthValue: number;
   imageUrl?: string | null;
@@ -255,4 +255,47 @@ function fromDuel(d: DuelCard) {
     id: d.cardId ?? 0, name: d.name, rarity: "common", cardType: "vehicle",
     description: d.desc, flavor: null, worthValue: 100, imageUrl: null,
   };
+}
+
+// ── Shop read-model ───────────────────────────────────────────────────────────
+// The Card Shop interior browses the server's REAL cards (our art + names) with
+// their derived duel stats and a shard price. Read-only — buying is a later,
+// authoritative bot flow; this powers the shelves and the card inspector.
+export interface ShopCard {
+  cardId: number;
+  name: string;
+  art: string | null;
+  rarity: string;
+  color: number;
+  level: number;
+  atk: number;
+  def: number;
+  attribute: DuelAttribute;
+  desc: string;
+  price: number;   // shards
+  owned: number;   // how many the player owns (0 = not yet owned)
+}
+
+export async function shopReadModel(guildId: string, userId: string): Promise<{ shards: number; cards: ShopCard[] }> {
+  const [pool, coll] = await Promise.all([
+    getAllCards(guildId),
+    getUserCollection(guildId, userId),
+  ]);
+  const ownedById = new Map<number, number>();
+  for (const c of coll) ownedById.set(c.id, (c.count ?? 0) + (c.shinyCount ?? 0));
+
+  const cards: ShopCard[] = pool
+    .filter((c) => c.imageUrl && !c.isArchived)
+    .sort((a, b) => a.worthValue - b.worthValue)
+    .slice(0, 60)
+    .map((c) => {
+      const m = toMonster(c);
+      return {
+        cardId: c.id, name: c.name, art: m.art, rarity: m.rarity, color: m.color,
+        level: m.level, atk: m.atk, def: m.def, attribute: m.attribute, desc: m.desc,
+        price: Math.max(50, Math.round(c.worthValue * 1.25)),
+        owned: ownedById.get(c.id) ?? 0,
+      };
+    });
+  return { shards: 0, cards };
 }
