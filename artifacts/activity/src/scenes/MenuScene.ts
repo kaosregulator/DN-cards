@@ -43,11 +43,13 @@ export class MenuScene extends Phaser.Scene {
     }
 
     const btnW = Math.min(340, W - 48);
-    this.bigButton(W / 2, H * 0.42, btnW, "⚔  Battle Phaser", "A true Yu-Gi-Oh duel with your cards vs the AI", 0x2b57b8, () => this.scene.start("Duel", { returnTo: "Menu" }));
-    this.bigButton(W / 2, H * 0.575, btnW, "🗺  Explore Battle City", "Top-down world — Card Shop, Route 1, duel rivals", 0x2f8f5a, () => this.scene.start("World"));
-    this.bigButton(W / 2, H * 0.73, btnW, "🌐  Battle City 3D", "Walk a 3D plaza and challenge duelists (Beta)", 0x8a5cd0, () => this.launch3d());
+    const bh = 62;
+    this.bigButton(W / 2, H * 0.375, btnW, bh, "⚔  Duel the AI", "A true Yu-Gi-Oh duel — your cards vs the AI", 0x2b57b8, () => this.scene.start("Duel", { returnTo: "Menu" }));
+    this.bigButton(W / 2, H * 0.515, btnW, bh, "👥  Local PvP", "Pass & play — two duelists, one device", 0xb8792b, () => this.launchPvp());
+    this.bigButton(W / 2, H * 0.655, btnW, bh, "🗺  Explore Battle City", "Top-down world — Card Shop, Route 1, rivals", 0x2f8f5a, () => this.scene.start("World"));
+    this.bigButton(W / 2, H * 0.795, btnW, bh, "🌐  Battle City 3D", "Walk a 3D plaza, challenge duelists (Beta)", 0x8a5cd0, () => this.launch3d());
 
-    this.add.text(W / 2, H - 20, "Your cards · your art · true Yu-Gi-Oh rules", {
+    this.add.text(W / 2, H - 16, "Your cards · your art · true Yu-Gi-Oh rules", {
       fontFamily: "system-ui, sans-serif", fontSize: "12px", color: "#5f6b96",
     }).setOrigin(0.5);
   };
@@ -87,15 +89,31 @@ export class MenuScene extends Phaser.Scene {
     }).setOrigin(0.5);
   }
 
-  private bigButton(x: number, y: number, w: number, title: string, sub: string, color: number, onClick: () => void): void {
-    const h = 74;
+  /** Local hot-seat PvP: fetch a deck, name the two duelists, start pass-and-play. */
+  private launchPvp(): void {
+    const api = getContext(this).api;
+    (async () => {
+      let setup;
+      try {
+        setup = await api.duel();
+        setup = {
+          ...setup,
+          player: { ...setup.player, name: "Player 1" },
+          opponent: { ...setup.opponent, name: "Player 2" },
+        };
+      } catch { setup = undefined; }
+      this.scene.start("Duel", { setup, returnTo: "Menu", pvp: true });
+    })();
+  }
+
+  private bigButton(x: number, y: number, w: number, h: number, title: string, sub: string, color: number, onClick: () => void): void {
     const c = this.add.container(x, y);
     const g = this.add.graphics();
     g.fillStyle(color, 0.92); g.fillRoundedRect(-w / 2, -h / 2, w, h, 14);
     g.lineStyle(2, 0xffffff, 0.22); g.strokeRoundedRect(-w / 2, -h / 2, w, h, 14);
     c.add(g);
-    c.add(this.add.text(0, -12, title, { fontFamily: "system-ui, sans-serif", fontSize: "22px", color: "#fff", fontStyle: "bold" }).setOrigin(0.5));
-    c.add(this.add.text(0, 16, sub, { fontFamily: "system-ui, sans-serif", fontSize: "12.5px", color: "#e6ecff" }).setOrigin(0.5).setAlpha(0.85));
+    c.add(this.add.text(0, -11, title, { fontFamily: "system-ui, sans-serif", fontSize: "20px", color: "#fff", fontStyle: "bold" }).setOrigin(0.5));
+    c.add(this.add.text(0, 14, sub, { fontFamily: "system-ui, sans-serif", fontSize: "12px", color: "#e6ecff" }).setOrigin(0.5).setAlpha(0.85));
     c.setSize(w, h).setInteractive(new Phaser.Geom.Rectangle(-w / 2, -h / 2, w, h), Phaser.Geom.Rectangle.Contains);
     c.on("pointerover", () => c.setScale(1.03));
     c.on("pointerout", () => c.setScale(1));

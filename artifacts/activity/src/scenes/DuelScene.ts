@@ -4,7 +4,7 @@ import type { DuelSetup, DuelState, DuelEvent, MonsterPosition, PlayerId, Target
 import {
   createDuel, nextPhase, endTurn, summonMonster, setSpellTrap, activateSpellFromHand,
   activateSetCard, changePosition, declareAttack, canNormalSummon, canActivateFromHand,
-  tributesNeeded, boardOf, effAtk, effDef, responseOptions, respondToWindow, passWindow,
+  tributesNeeded, boardOf, effAtk, effDef, responseOptions, respondToWindow, passWindow, otherId,
 } from "../duel/engine";
 import { planNextAction, planResponse } from "../duel/ai";
 import { targetSpecFor, isPersistentSpell, trapIsMainPhase, type TargetSpec } from "../duel/effects";
@@ -21,6 +21,7 @@ import { makeCardFace, makeCardBack, artKey } from "../ui/card";
 interface DuelSceneData {
   setup?: DuelSetup;
   returnTo?: string; // scene key to return to on exit (e.g. "World" or "Menu")
+  pvp?: boolean;     // local hot-seat pass-and-play (no AI)
 }
 
 type Mode = "idle" | "tribute" | "attackTarget" | "spellTarget" | "busy";
@@ -47,13 +48,23 @@ export class DuelScene extends Phaser.Scene {
   // Spell targeting.
   private spellCtx: { handIndex: number; setZone: number | null; effect: DuelEffect; spec: TargetSpec; picked: TargetRef[] } | null = null;
 
+  // Local hot-seat PvP: no AI, board flips to whoever's turn it is.
+  private pvp = false;
+  private viewer: PlayerId = "player"; // side rendered at the bottom + controlled now
+  private controlledTurn: PlayerId = "player";
+
   constructor() { super("Duel"); }
 
   init(data: DuelSceneData): void {
     this.returnTo = data?.returnTo ?? "Menu";
+    this.pvp = !!data?.pvp;
     if (data?.setup) this.pendingSetup = data.setup;
   }
   private pendingSetup: DuelSetup | null = null;
+
+  /** The side shown at the bottom / currently controlled. */
+  private get foe(): PlayerId { return otherId(this.viewer); }
+  private setViewer(): void { this.viewer = this.pvp ? this.state.turn : "player"; this.controlledTurn = this.state.turn; }
 
   async create(): Promise<void> {
     document.getElementById("boot")?.remove();
@@ -80,11 +91,12 @@ export class DuelScene extends Phaser.Scene {
     loading.destroy();
 
     this.state = createDuel(setup);
+    this.setViewer();
     this.buildHud();
     this.renderBoard();
     this.scale.on(Phaser.Scale.Events.RESIZE, this.onResize, this);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.scale.off(Phaser.Scale.Events.RESIZE, this.onResize, this));
-    this.showTurnBanner("Your Turn");
+    this.showTurnBanner(this.pvp ? `${this.state.player.name}'s Turn` : "Your Turn");
     this.refreshControls();
   }
 
@@ -201,12 +213,11 @@ export class DuelScene extends Phaser.Scene {
     g.fillStyle(0x101830, 0.5); g.fillRect(0, this.H * 0.42, this.W, this.H * 0.02);
     this.board.add(g);
 
-    // Opponent zones (top).
-    this.renderMonsterRow("opponent", xs, this.rowY("oppMon"), cw, ch, true);
-    this.renderSpellRow("opponent", xs, this.rowY("oppST"), cw, ch);
-    // Player zones (bottom).
-    this.renderSpellRow("player", xs, this.rowY("pST"), cw, ch);
-    this.renderMonsterRow("player", xs, this.rowY("pMon"), cw, ch, false);
+    // Foe zones (top), viewer zones (bottom).
+    this.renderMonsterRow(this.foe, xs, this.rowY("oppMon"), cw, ch, true);
+    this.renderSpellRow(this.foe, xs, this.rowY("oppST"), cw, ch);
+    this.renderSpellRow(this.viewer, xs, this.rowY("pST"), cw, ch);
+    this.renderMonsterRow(this.viewer, xs, this.rowY("pMon"), cw, ch, false);
 
     // Deck / graveyard counts.
     const dText = (b: PlayerId, y: number) => {
@@ -215,8 +226,8 @@ export class DuelScene extends Phaser.Scene {
         fontFamily: "monospace", fontSize: "11px", color: "#5f6b96",
       }).setOrigin(1, 0.5));
     };
-    dText("opponent", this.rowY("oppST") - ch / 2 - 12);
-    dText("player", this.rowY("pST") + ch / 2 + 12);
+    dText(this.foe, this.rowY("oppST") - ch / 2 - 12);
+    dText(this.viewer, this.rowY("pST") + ch / 2 + 12);
 
     this.renderHand(cw, ch);
     this.updateHud();
@@ -241,18 +252,18 @@ export class DuelScene extends Phaser.Scene {
       this.board.add(card);
 
       // Interactions on own monsters.
-      if (who === "player" && this.state.turn === "player") {
+      if (who === this.viewer && this.state.turn === this.viewer) {
         card.setInteractive(new Phaser.Geom.Rectangle(-cw / 2, -ch / 2, cw, ch), Phaser.Geom.Rectangle.Contains);
         card.on("pointerdown", () => this.onOwnMonsterTap(z));
       }
-      // Attack-target selection highlights opponent monsters.
-      if (this.mode === "attackTarget" && who === "opponent") {
+      // Attack-target selection highlights the foe's monsters.
+      if (this.mode === "attackTarget" && who === this.foe) {
         this.highlight(x, y, cw, ch, 0xff5a6a);
         card.setInteractive(new Phaser.Geom.Rectangle(-cw / 2, -ch / 2, cw, ch), Phaser.Geom.Rectangle.Contains);
         card.on("pointerdown", () => this.resolvePlayerAttack(z));
       }
       // Tribute selection highlights own monsters.
-      if (this.mode === "tribute" && who === "player") {
+      if (this.mode === "tribute" && who === this.viewer) {
         const picked = this.tributePick.includes(z);
         this.highlight(x, y, cw, ch, picked ? 0x2ecc71 : 0xffd75e);
         card.setInteractive(new Phaser.Geom.Rectangle(-cw / 2, -ch / 2, cw, ch), Phaser.Geom.Rectangle.Contains);
@@ -281,8 +292,8 @@ export class DuelScene extends Phaser.Scene {
       card.setPosition(x, y).setScale(0.94);
       this.board.add(card);
       const hit = () => card.setInteractive(new Phaser.Geom.Rectangle(-cw / 2, -ch / 2, cw, ch), Phaser.Geom.Rectangle.Contains);
-      // Player may activate their own set cards during a Main Phase.
-      if (who === "player" && !s.faceUp && this.mode === "idle" && this.state.turn === "player") {
+      // The viewer may activate their own set cards during a Main Phase.
+      if (who === this.viewer && !s.faceUp && this.mode === "idle" && this.state.turn === this.viewer) {
         hit(); card.on("pointerdown", () => this.onOwnSpellTrapTap(z));
       }
       // Spell targeting highlights legal spell/trap targets (e.g. MST).
@@ -295,7 +306,7 @@ export class DuelScene extends Phaser.Scene {
   }
 
   private renderHand(cw: number, ch: number): void {
-    const b = this.state.player;
+    const b = boardOf(this.state, this.viewer);
     const hw = cw * 1.16, hh = hw * 1.42;
     const n = b.hand.length;
     const maxSpan = this.W - 24;
@@ -309,7 +320,7 @@ export class DuelScene extends Phaser.Scene {
       const face = makeCardFace(this, card, hw, hh);
       face.setPosition(x, y);
       this.board.add(face);
-      const myTurn = this.state.turn === "player" && this.mode === "idle";
+      const myTurn = this.state.turn === this.viewer && this.mode === "idle";
       if (myTurn) {
         face.setInteractive(new Phaser.Geom.Rectangle(-hw / 2, -hh / 2, hw, hh), Phaser.Geom.Rectangle.Contains);
         face.on("pointerover", () => face.setY(y - 14));
@@ -338,13 +349,16 @@ export class DuelScene extends Phaser.Scene {
 
   // ── HUD update ──────────────────────────────────────────────────────────────
   private updateHud(): void {
-    this.lpText.opponent.setText(`${this.state.opponent.name}   LP ${this.state.opponent.lp}`);
-    this.lpText.player.setText(`${this.state.player.name}   LP ${this.state.player.lp}`);
-    this.phaseText.setText(`${this.state.turn === "player" ? "Your" : "Foe"} turn · ${phaseName(this.state.phase)}`);
+    const top = boardOf(this.state, this.foe), bottom = boardOf(this.state, this.viewer);
+    this.lpText[this.foe].setText(`${top.name}   LP ${top.lp}`).setPosition(12, 10);
+    this.lpText[this.viewer].setText(`${bottom.name}   LP ${bottom.lp}`).setPosition(12, this.H - 30);
+    const yourTurn = this.state.turn === this.viewer;
+    const whoseTurn = this.pvp ? boardOf(this.state, this.state.turn).name : (yourTurn ? "Your" : "Foe");
+    this.phaseText.setText(`${this.pvp ? whoseTurn : (yourTurn ? "Your" : "Foe")} turn · ${phaseName(this.state.phase)}`);
   }
 
   private refreshControls(): void {
-    const myTurn = this.state.turn === "player" && !this.state.winner;
+    const myTurn = this.state.turn === this.viewer && !this.state.winner;
     this.setButtonEnabled(this.endBtn, myTurn && this.mode === "idle");
     this.setButtonEnabled(this.primaryBtn, myTurn && this.mode === "idle");
     if (this.state.phase === "MAIN1") this.setButtonLabel(this.primaryBtn, "To Battle");
@@ -354,21 +368,19 @@ export class DuelScene extends Phaser.Scene {
 
   // ── Player input ─────────────────────────────────────────────────────────────
   private onPrimary(): void {
-    if (this.state.turn !== "player" || this.mode !== "idle") return;
-    if (this.state.phase === "MAIN1") this.applyPlayer(nextPhase(this.state)); // → BATTLE
-    else if (this.state.phase === "BATTLE") this.applyPlayer(nextPhase(this.state)); // → MAIN2
-    else this.applyPlayer(nextPhase(this.state));
+    if (this.state.turn !== this.viewer || this.mode !== "idle") return;
+    this.applyPlayer(nextPhase(this.state));
   }
   private onEndTurn(): void {
-    if (this.state.turn !== "player" || this.mode !== "idle") return;
+    if (this.state.turn !== this.viewer || this.mode !== "idle") return;
     this.applyPlayer(endTurn(this.state), true);
   }
 
   private onHandTap(i: number): void {
-    const card = this.state.player.hand[i];
+    const card = boardOf(this.state, this.viewer).hand[i];
     if (!card) return;
     if (card.kind === "monster") {
-      const chk = canNormalSummon(this.state, "player", i);
+      const chk = canNormalSummon(this.state, this.viewer, i);
       if (!chk.ok) { this.flash(chk.reason ?? "Can't summon."); return; }
       const need = tributesNeeded(card.level);
       const opts: Array<[string, () => void]> = [
@@ -381,13 +393,13 @@ export class DuelScene extends Phaser.Scene {
       if (card.kind === "spell") {
         const spec = targetSpecFor(card.effect);
         opts.push(["Activate", () => {
-          const chk = canActivateFromHand(this.state, "player", i);
+          const chk = canActivateFromHand(this.state, this.viewer, i);
           if (!chk.ok) { this.flash(chk.reason ?? "Can't activate."); return; }
           if (spec) this.beginSpellTarget(i, null, card.effect!, spec);
-          else this.applyPlayer(activateSpellFromHand(this.state, "player", i));
+          else this.applyPlayer(activateSpellFromHand(this.state, this.viewer, i));
         }]);
       }
-      opts.push([card.kind === "trap" ? "Set Trap" : "Set", () => this.applyPlayer(setSpellTrap(this.state, "player", i))]);
+      opts.push([card.kind === "trap" ? "Set Trap" : "Set", () => this.applyPlayer(setSpellTrap(this.state, this.viewer, i))]);
       this.actionMenu(`${card.name}\n${card.desc}`, opts);
     }
   }
@@ -403,9 +415,9 @@ export class DuelScene extends Phaser.Scene {
   }
 
   private legalTargetSides(spec: TargetSpec): PlayerId[] {
-    if (spec.side === "own") return ["player"];
-    if (spec.side === "opp") return ["opponent"];
-    return ["player", "opponent"];
+    if (spec.side === "own") return [this.viewer];
+    if (spec.side === "opp") return [this.foe];
+    return [this.viewer, this.foe];
   }
 
   private onTargetTap(side: PlayerId, area: "monster" | "spellTrap", zone: number): void {
@@ -417,8 +429,8 @@ export class DuelScene extends Phaser.Scene {
 
   private finishSpell(ctx: NonNullable<DuelScene["spellCtx"]>): void {
     this.mode = "idle"; this.spellCtx = null;
-    if (ctx.setZone != null) this.applyPlayer(activateSetCard(this.state, "player", ctx.setZone, ctx.picked));
-    else this.applyPlayer(activateSpellFromHand(this.state, "player", ctx.handIndex, ctx.picked));
+    if (ctx.setZone != null) this.applyPlayer(activateSetCard(this.state, this.viewer, ctx.setZone, ctx.picked));
+    else this.applyPlayer(activateSpellFromHand(this.state, this.viewer, ctx.handIndex, ctx.picked));
   }
 
   private pickGraveTarget(handIndex: number, setZone: number | null, effect: DuelEffect, spec: TargetSpec): void {
@@ -427,10 +439,10 @@ export class DuelScene extends Phaser.Scene {
     for (const side of sides) {
       boardOf(this.state, side).graveyard.forEach((c, idx) => {
         if (c.kind !== "monster") return;
-        choices.push([`${side === "player" ? "Your" : "Foe"} GY: ${c.name} (${c.atk})`, () => {
+        choices.push([`${side === this.viewer ? "Your" : "Foe"} GY: ${c.name} (${c.atk})`, () => {
           const picked: TargetRef[] = [{ side, kind: "grave", index: idx }];
-          if (setZone != null) this.applyPlayer(activateSetCard(this.state, "player", setZone, picked));
-          else this.applyPlayer(activateSpellFromHand(this.state, "player", handIndex, picked));
+          if (setZone != null) this.applyPlayer(activateSetCard(this.state, this.viewer, setZone, picked));
+          else this.applyPlayer(activateSpellFromHand(this.state, this.viewer, handIndex, picked));
         }]);
       });
     }
@@ -441,23 +453,22 @@ export class DuelScene extends Phaser.Scene {
 
   private onOwnSpellTrapTap(zone: number): void {
     if (this.mode !== "idle") return;
-    if (this.state.turn !== "player" || (this.state.phase !== "MAIN1" && this.state.phase !== "MAIN2")) return;
-    const st = this.state.player.spellTraps[zone];
+    if (this.state.turn !== this.viewer || (this.state.phase !== "MAIN1" && this.state.phase !== "MAIN2")) return;
+    const st = boardOf(this.state, this.viewer).spellTraps[zone];
     if (!st || st.faceUp) return;
     const eff = st.card.effect;
     const canPlay = eff && (st.card.kind === "spell" || trapIsMainPhase(eff));
     if (!canPlay) { this.flash("That Trap can only respond to an attack or summon."); return; }
     this.actionMenu(`${st.card.name}\n${st.card.desc}`, [["Activate", () => {
       const spec = targetSpecFor(eff);
-      if (isPersistentSpell(eff) && spec) this.beginSpellTarget(-1, zone, eff!, spec);
-      else if (spec) this.beginSpellTarget(-1, zone, eff!, spec);
-      else this.applyPlayer(activateSetCard(this.state, "player", zone, []));
+      if (spec) this.beginSpellTarget(-1, zone, eff!, spec);
+      else this.applyPlayer(activateSetCard(this.state, this.viewer, zone, []));
     }]]);
   }
 
   private beginSummon(handIndex: number, position: MonsterPosition, need: number): void {
     if (need === 0) {
-      this.applyPlayer(summonMonster(this.state, "player", handIndex, position, []));
+      this.applyPlayer(summonMonster(this.state, this.viewer, handIndex, position, []));
       return;
     }
     this.mode = "tribute";
@@ -475,7 +486,7 @@ export class DuelScene extends Phaser.Scene {
       const { handIndex, position } = ctx;
       const picks = [...this.tributePick];
       this.mode = "idle"; this.tributeContext = null; this.tributePick = [];
-      this.applyPlayer(summonMonster(this.state, "player", handIndex, position, picks));
+      this.applyPlayer(summonMonster(this.state, this.viewer, handIndex, position, picks));
     } else {
       this.renderBoard();
     }
@@ -483,20 +494,20 @@ export class DuelScene extends Phaser.Scene {
 
   private onOwnMonsterTap(z: number): void {
     if (this.mode !== "idle") return;
-    const m = this.state.player.monsters[z]; if (!m) return;
+    const m = boardOf(this.state, this.viewer).monsters[z]; if (!m) return;
     if (this.state.phase === "BATTLE") {
       if (!m.faceUp || m.position !== "attack") { this.flash("Only face-up ATK monsters attack."); return; }
       const maxA = m.card.effect?.kind === "doubleAttack" ? 2 : 1;
       if (m.hasAttacked >= maxA) { this.flash("Already attacked."); return; }
       this.attacker = z;
-      // Direct attack allowed only if opponent has no monsters.
-      const canDirect = !this.state.opponent.monsters.some((x) => x !== null);
+      // Direct attack allowed only if the foe has no monsters.
+      const canDirect = !boardOf(this.state, this.foe).monsters.some((x) => x !== null);
       this.mode = "attackTarget";
       this.flash(canDirect ? "Tap a foe monster, or the foe's field to attack directly." : "Tap a foe monster to attack.");
       this.renderBoard();
       if (canDirect) this.showDirectTarget();
     } else if (this.state.phase === "MAIN1" || this.state.phase === "MAIN2") {
-      this.applyPlayer(changePosition(this.state, "player", z));
+      this.applyPlayer(changePosition(this.state, this.viewer, z));
     }
   }
 
@@ -516,7 +527,7 @@ export class DuelScene extends Phaser.Scene {
     if (this.attacker == null) return;
     const from = this.attacker;
     this.attacker = null; this.mode = "idle";
-    this.applyPlayer(declareAttack(this.state, "player", from, target));
+    this.applyPlayer(declareAttack(this.state, this.viewer, from, target));
   }
 
   // ── Applying engine results ──────────────────────────────────────────────────
@@ -527,23 +538,27 @@ export class DuelScene extends Phaser.Scene {
       .then(() => {
         this.renderBoard();
         if (this.state.winner) { this.onWin(); return; }
+        // Hot-seat: the turn passed to the other human → device-pass gate.
+        if (this.pvp && this.state.turn !== this.controlledTurn) { this.passDeviceGate(); return; }
         this.mode = "idle";
         this.refreshControls();
-        if (endedTurn || this.state.turn === "opponent") this.runAiTurn();
+        if (!this.pvp && (endedTurn || this.state.turn === "opponent")) this.runAiTurn();
       });
   }
 
-  /** Drive any open response window to completion (AI auto, player prompt). */
+  /** Drive any open response window to completion. In vs-AI the AI answers its
+   *  own windows; the human is prompted for theirs. In hot-seat both are human. */
   private async resolveWindows(): Promise<void> {
     let guard = 0;
     while (this.state.awaiting && !this.state.winner && guard++ < 12) {
       const responder = this.state.awaiting.responder;
       let events: DuelEvent[];
-      if (responder === "opponent") {
+      if (!this.pvp && responder === "opponent") {
         const r = planResponse(this.state);
         events = r ? respondToWindow(this.state, r.zone, r.targets) : passWindow(this.state);
       } else {
-        const choice = await this.promptResponse();
+        const who = boardOf(this.state, responder).name;
+        const choice = await this.promptResponse(who);
         events = choice != null ? respondToWindow(this.state, choice, []) : passWindow(this.state);
       }
       await this.playEvents(events);
@@ -551,15 +566,43 @@ export class DuelScene extends Phaser.Scene {
     }
   }
 
-  /** Ask the player whether to activate one of their set cards in response. */
-  private promptResponse(): Promise<number | null> {
+  /** Full-screen "pass the device to <name>" gate between hot-seat turns. */
+  private passDeviceGate(): void {
+    this.mode = "busy";
+    this.setViewer();
+    this.renderBoard();
+    const name = boardOf(this.state, this.state.turn).name;
+    const overlay = this.add.container(0, 0).setDepth(3200);
+    overlay.add(this.add.rectangle(0, 0, this.W, this.H, 0x05070f, 0.92).setOrigin(0).setInteractive());
+    overlay.add(this.add.text(this.W / 2, this.H / 2 - 40, "🔄 Pass the device", {
+      fontFamily: "system-ui, sans-serif", fontSize: "22px", color: "#9db2ff", fontStyle: "bold",
+    }).setOrigin(0.5));
+    overlay.add(this.add.text(this.W / 2, this.H / 2, `${name}'s turn`, {
+      fontFamily: "system-ui, sans-serif", fontSize: "30px", color: "#fff", fontStyle: "bold",
+    }).setOrigin(0.5));
+    const btn = this.add.text(this.W / 2, this.H / 2 + 56, "Ready ▶", {
+      fontFamily: "system-ui, sans-serif", fontSize: "18px", color: "#fff", fontStyle: "bold",
+      backgroundColor: "#2b57b8", padding: { x: 22, y: 10 },
+    }).setOrigin(0.5).setInteractive();
+    overlay.add(btn);
+    btn.once("pointerdown", () => {
+      overlay.destroy(true);
+      this.mode = "idle";
+      this.showTurnBanner(`${name}'s Turn`);
+      this.refreshControls();
+      this.renderBoard();
+    });
+  }
+
+  /** Ask a human whether to activate one of their set cards in response. */
+  private promptResponse(name?: string): Promise<number | null> {
     const opts = responseOptions(this.state);
     if (opts.length === 0) return Promise.resolve(null);
     return new Promise((resolve) => {
       const choices: Array<[string, () => void]> = opts.map((o) => [
         `Activate ${o.card.name}`, () => resolve(o.zone),
       ]);
-      this.actionMenu("Respond to the opponent?", choices, () => resolve(null));
+      this.actionMenu(name ? `${name} — respond?` : "Respond to the opponent?", choices, () => resolve(null));
     });
   }
 
@@ -600,7 +643,9 @@ export class DuelScene extends Phaser.Scene {
   private async playEvents(events: DuelEvent[]): Promise<void> {
     for (const e of events) {
       switch (e.t) {
-        case "turn": this.showTurnBanner(e.who === "player" ? "Your Turn" : `${this.state.opponent.name}'s Turn`); await this.wait(300); break;
+        case "turn":
+          if (!this.pvp) this.showTurnBanner(e.who === "player" ? "Your Turn" : `${this.state.opponent.name}'s Turn`);
+          await this.wait(this.pvp ? 0 : 300); break;
         case "phase": this.phaseText.setText(`${e.who === "player" ? "Your" : "Foe"} turn · ${phaseName(e.phase)}`); break;
         case "draw": if (e.who === "player") this.flash(`Draw: ${e.card.name}`); await this.wait(90); break;
         case "summon": this.flash(`${who(e.who)} ${e.position === "set" ? "sets" : "summons"} ${e.card.name}`); await this.wait(260); break;
@@ -627,14 +672,14 @@ export class DuelScene extends Phaser.Scene {
   // ── Effects ──────────────────────────────────────────────────────────────────
   private zonePos(who: PlayerId, zone: number): { x: number; y: number } {
     const xs = this.zoneXs();
-    const y = who === "player" ? this.rowY("pMon") : this.rowY("oppMon");
+    const y = who === this.viewer ? this.rowY("pMon") : this.rowY("oppMon");
     return { x: xs[zone] ?? this.W / 2, y };
   }
   private async attackAnim(who: PlayerId, fromZone: number, to: number | "direct"): Promise<void> {
     const from = this.zonePos(who, fromZone);
     const target = to === "direct"
-      ? { x: this.W / 2, y: who === "player" ? this.rowY("oppMon") : this.rowY("pMon") }
-      : this.zonePos(who === "player" ? "opponent" : "player", to);
+      ? { x: this.W / 2, y: who === this.viewer ? this.rowY("oppMon") : this.rowY("pMon") }
+      : this.zonePos(otherId(who), to);
     const streak = this.add.graphics().setDepth(1500);
     streak.lineStyle(4, 0xfff2a8, 0.9);
     streak.lineBetween(from.x, from.y, target.x, target.y);
@@ -664,7 +709,7 @@ export class DuelScene extends Phaser.Scene {
     }
   }
   private damageNumber(who: PlayerId, amount: number): void {
-    const y = who === "player" ? this.H - 60 : 50;
+    const y = who === this.viewer ? this.H - 60 : 50;
     const t = this.add.text(this.W / 2, y, `-${amount}`, {
       fontFamily: "system-ui, sans-serif", fontSize: "30px", color: "#ff6a7a", fontStyle: "bold", stroke: "#000", strokeThickness: 5,
     }).setOrigin(0.5).setDepth(2000);
@@ -735,10 +780,11 @@ export class DuelScene extends Phaser.Scene {
   private onWin(): void {
     this.mode = "busy";
     const won = this.state.winner === "player";
+    const winnerName = boardOf(this.state, this.state.winner!).name;
     const overlay = this.add.container(0, 0).setDepth(3000);
     overlay.add(this.add.rectangle(0, 0, this.W, this.H, 0x000000, 0.7).setOrigin(0).setInteractive());
-    overlay.add(this.add.text(this.W / 2, this.H / 2 - 30, won ? "🏆 VICTORY" : "💀 DEFEAT", {
-      fontFamily: "system-ui, sans-serif", fontSize: "44px", color: won ? "#ffd75e" : "#ff6a7a", fontStyle: "bold", stroke: "#000", strokeThickness: 6,
+    overlay.add(this.add.text(this.W / 2, this.H / 2 - 30, this.pvp ? `🏆 ${winnerName} WINS` : (won ? "🏆 VICTORY" : "💀 DEFEAT"), {
+      fontFamily: "system-ui, sans-serif", fontSize: this.pvp ? "34px" : "44px", color: (this.pvp || won) ? "#ffd75e" : "#ff6a7a", fontStyle: "bold", stroke: "#000", strokeThickness: 6,
     }).setOrigin(0.5));
     overlay.add(this.add.text(this.W / 2, this.H / 2 + 24, "Tap to continue", {
       fontFamily: "system-ui, sans-serif", fontSize: "16px", color: "#c9d4ff",

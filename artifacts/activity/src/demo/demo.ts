@@ -52,7 +52,8 @@ function mockSetup(): DuelSetup {
 class DemoLauncher extends Phaser.Scene {
   constructor() { super("DemoLauncher"); }
   create(): void {
-    if (/demo=duel/.test(location.search)) this.scene.start("Duel", { setup: mockSetup(), returnTo: "Menu" });
+    if (/demo=pvp/.test(location.search)) this.scene.start("Duel", { setup: { ...mockSetup(), player: { name: "Player 1", deck: mockDeck() }, opponent: { name: "Player 2", deck: mockDeck() } }, returnTo: "Menu", pvp: true });
+    else if (/demo=duel/.test(location.search)) this.scene.start("Duel", { setup: mockSetup(), returnTo: "Menu" });
     else if (/demo=world/.test(location.search)) this.scene.start("World");
     else this.scene.start("Menu");
   }
