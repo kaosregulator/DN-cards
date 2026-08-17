@@ -64,8 +64,19 @@ export function makeCardFace(
     p.fillStyle(border, 0.30); p.fillRect(-artW / 2, artY - artH / 2, artW, artH);
     p.lineStyle(1, border, 0.6); p.strokeRect(-artW / 2, artY - artH / 2, artW, artH);
     c.add(p);
-    const glyph = card.kind === "spell" ? "✦" : card.kind === "trap" ? "▲" : "★";
-    c.add(scene.add.text(0, artY, glyph, { fontSize: `${Math.round(artH * 0.6)}px`, color: "#" + border.toString(16).padStart(6, "0") }).setOrigin(0.5));
+    // Spell/Trap "blank" cards show their INITIALS (e.g. "MST") so they read at a
+    // glance; monsters without art fall back to a star.
+    const initials = card.kind !== "monster" ? extractInitials(card.name) : null;
+    if (initials) {
+      c.add(scene.add.text(0, artY, initials, {
+        fontFamily: "system-ui, sans-serif", fontStyle: "bold",
+        fontSize: `${Math.round(artH * (initials.length > 2 ? 0.4 : 0.5))}px`,
+        color: "#" + border.toString(16).padStart(6, "0"),
+      }).setOrigin(0.5));
+    } else {
+      const glyph = card.kind === "spell" ? "✦" : card.kind === "trap" ? "▲" : "★";
+      c.add(scene.add.text(0, artY, glyph, { fontSize: `${Math.round(artH * 0.6)}px`, color: "#" + border.toString(16).padStart(6, "0") }).setOrigin(0.5));
+    }
   }
 
   // Stat / type footer.
@@ -108,4 +119,10 @@ export function makeCardBack(scene: Phaser.Scene, w: number, h: number): Phaser.
 function fit(s: string, max: number): string {
   if (s.length <= max) return s;
   return s.slice(0, Math.max(1, max - 1)) + "…";
+}
+
+/** Pull the "(XYZ)" initials out of a library card name, if present. */
+function extractInitials(name: string): string | null {
+  const m = /\(([A-Za-z]{1,4})\)\s*$/.exec(name);
+  return m ? m[1]!.toUpperCase() : null;
 }
