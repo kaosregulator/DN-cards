@@ -172,8 +172,11 @@ export class ShopScene extends Phaser.Scene {
     g.lineStyle(2, card.color, 0.95); g.strokeRoundedRect(-w / 2, -h / 2, w, h, 8);
     c.add(g);
 
-    // Art window.
-    const aw = w - 12, ah = h * 0.50, ay = -h / 2 + 7 + ah / 2;
+    // Art window — sized to leave room for the name, stars and three stat lines.
+    const aw = w - 12;
+    const reserve = Math.max(11, Math.round(w / 10)) * 3 + Math.round(w / 11) * 1.2 + Math.round(w / 15) * 1.2 + 14;
+    const ah = Math.max(24, h - reserve - 12);
+    const ay = -h / 2 + 7 + ah / 2;
     const key = artKey(card.cardId);
     if (this.textures.exists(key)) {
       const img = this.add.image(0, ay, key);
@@ -192,24 +195,31 @@ export class ShopScene extends Phaser.Scene {
       c.add(this.add.text(0, ay, "★", { fontSize: `${Math.round(ah * 0.5)}px`, color: "#" + card.color.toString(16).padStart(6, "0") }).setOrigin(0.5));
     }
 
-    // Name + stats.
-    c.add(this.add.text(0, ay + ah / 2 + 6, fit(card.name, Math.floor(w / 6.2)), {
-      fontFamily: "system-ui, sans-serif", fontSize: `${Math.max(9, Math.round(w / 11))}px`,
+    // Name + level, flowing down from under the art.
+    const nameFs = Math.max(9, Math.round(w / 11));
+    c.add(this.add.text(0, ay + ah / 2 + 6, fit(card.name, Math.floor(w / (nameFs * 0.55))), {
+      fontFamily: "system-ui, sans-serif", fontSize: `${nameFs}px`,
       color: "#f4ead0", fontStyle: "bold",
     }).setOrigin(0.5, 0));
-    c.add(this.add.text(0, ay + ah / 2 + 22, "★".repeat(Math.min(8, card.level)), {
-      fontSize: `${Math.max(7, Math.round(w / 15))}px`, color: "#ffd75e",
+    const starFs = Math.max(7, Math.round(w / 15));
+    c.add(this.add.text(0, ay + ah / 2 + 8 + nameFs * 1.15, "★".repeat(Math.min(8, card.level)), {
+      fontSize: `${starFs}px`, color: "#ffd75e",
     }).setOrigin(0.5, 0));
-    c.add(this.add.text(0, h / 2 - 34, `ATK ${card.atk}`, {
-      fontFamily: "monospace", fontSize: `${Math.max(9, Math.round(w / 12))}px`, color: "#ffe9b0", fontStyle: "bold",
-    }).setOrigin(0.5, 0));
-    c.add(this.add.text(0, h / 2 - 22, `DEF ${card.def}`, {
-      fontFamily: "monospace", fontSize: `${Math.max(8, Math.round(w / 14))}px`, color: "#c9b98a",
-    }).setOrigin(0.5, 0));
-    c.add(this.add.text(0, h / 2 - 9, card.owned > 0 ? `✔ owned ×${card.owned}` : `💠 ${card.price}`, {
+
+    // Stats stacked up from the bottom edge so the lines never collide.
+    const lineH = Math.max(11, Math.round(w / 10));
+    const bottom = h / 2 - 6;
+    const statFs = Math.max(8, Math.round(w / 12.5));
+    c.add(this.add.text(0, bottom, card.owned > 0 ? `✔ owned ×${card.owned}` : `💠 ${card.price}`, {
       fontFamily: "system-ui, sans-serif", fontSize: `${Math.max(8, Math.round(w / 14))}px`,
       color: card.owned > 0 ? "#8ef0bd" : "#9db2ff",
-    }).setOrigin(0.5, 1).setY(h / 2 - 6));
+    }).setOrigin(0.5, 1));
+    c.add(this.add.text(0, bottom - lineH, `DEF ${card.def}`, {
+      fontFamily: "monospace", fontSize: `${Math.max(8, Math.round(w / 14))}px`, color: "#c9b98a",
+    }).setOrigin(0.5, 1));
+    c.add(this.add.text(0, bottom - lineH * 2, `ATK ${card.atk}`, {
+      fontFamily: "monospace", fontSize: `${statFs}px`, color: "#ffe9b0", fontStyle: "bold",
+    }).setOrigin(0.5, 1));
 
     c.setSize(w, h).setInteractive(new Phaser.Geom.Rectangle(-w / 2, -h / 2, w, h), Phaser.Geom.Rectangle.Contains);
     c.on("pointerdown", () => { if (!this.dragged) this.inspect(card); });

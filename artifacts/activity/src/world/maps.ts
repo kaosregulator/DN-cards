@@ -153,17 +153,19 @@ const SHOP: MapDef = {
   name: "Card Shop",
   ambient: 0xffe8c0,
   indoor: true,
+  // The shopkeeper stands in the aisle IN FRONT of the counter so you can walk
+  // up and talk to them (you can't talk across a solid counter tile).
   grid: [
     "##############",
     "#SSSSS##SSSSS#",
-    "#............#",
-    "#..CCCCCCCC..#",
-    "#..CCCCCCCC..#",
-    "#............#",
-    "#.rr......rr.#",
-    "#.rr......rr.#",
-    "#............#",
-    "#....f..f....#",
+    "#ffffffffffff#",
+    "#ffCCCCCCCCff#",
+    "#ffffffffffff#",
+    "#ffffffffffff#",
+    "#frrffffffrrf#",
+    "#frrffffffrrf#",
+    "#ffffffffffff#",
+    "#ffffffffffff#",
     "######DD######",
   ],
   spawns: { enter: { x: 6, y: 9, face: "up" } },
@@ -173,8 +175,8 @@ const SHOP: MapDef = {
   ],
   npcs: [
     {
-      id: "shopkeeper", x: 6, y: 2, name: "Shopkeeper", colors: C.gold, role: "shop", face: "down",
-      lines: ["Welcome! Take a look at everything we carry."],
+      id: "shopkeeper", x: 6, y: 4, name: "Shopkeeper", colors: C.gold, role: "shop", face: "down",
+      lines: ["Welcome to the Card Shop!", "Every card the server stocks is on these shelves — take a look."],
     },
     {
       id: "shop_duelist", x: 2, y: 7, name: "Rex the Duelist", colors: C.purple, duelist: true, face: "right",
@@ -182,7 +184,7 @@ const SHOP: MapDef = {
       defeatedLines: ["Fine, fine — you know how to use those cards."],
     },
   ],
-  signs: [{ x: 9, y: 2, text: "🛒 Talk to the shopkeeper to browse cards" }],
+  signs: [{ x: 10, y: 5, text: "🛒 Talk to the shopkeeper" }],
 };
 
 // ── 🏟 Arena interior ─────────────────────────────────────────────────────────
@@ -194,12 +196,12 @@ const ARENA: MapDef = {
   grid: [
     "################",
     "#oooooooooooooo#",
-    "#o............o#",
-    "#o..cccccccc..o#",
-    "#o..cccccccc..o#",
-    "#o..cccccccc..o#",
-    "#o..cccccccc..o#",
-    "#o............o#",
+    "#oooooooooooooo#",
+    "#oooccccccccooo#",
+    "#oooccccccccooo#",
+    "#oooccccccccooo#",
+    "#oooccccccccooo#",
+    "#oooooooooooooo#",
     "#oooooooooooooo#",
     "#######DD#######",
   ],
@@ -230,11 +232,11 @@ const DOJO: MapDef = {
   grid: [
     "############",
     "#ffffffffff#",
-    "#f.SS..SS.f#",
-    "#f........f#",
-    "#f..cccc..f#",
-    "#f..cccc..f#",
-    "#f........f#",
+    "#ffSSffSSff#",
+    "#ffffffffff#",
+    "#ffFccccFff#",
+    "#ffFccccFff#",
+    "#ffffffffff#",
     "#ffffffffff#",
     "#####DD#####",
   ],

@@ -63,7 +63,18 @@ export class WorldScene extends Phaser.Scene {
     document.getElementById("boot")?.remove();
     ensureTileTextures(this);
     this.cursors = this.input.keyboard!.createCursorKeys();
-    this.keys = this.input.keyboard!.addKeys("W,A,S,D,E,SPACE,ESC") as Record<string, Phaser.Input.Keyboard.Key>;
+    this.keys = this.input.keyboard!.addKeys("W,A,S,D") as Record<string, Phaser.Input.Keyboard.Key>;
+    // Discrete actions are event-driven (polling JustDown is unreliable);
+    // movement stays polled from held keys / the touch pad.
+    const kb = this.input.keyboard!;
+    kb.on("keydown-E", this.onActionKey, this);
+    kb.on("keydown-SPACE", this.onActionKey, this);
+    kb.on("keydown-ESC", this.onMenuKey, this);
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      kb.off("keydown-E", this.onActionKey, this);
+      kb.off("keydown-SPACE", this.onActionKey, this);
+      kb.off("keydown-ESC", this.onMenuKey, this);
+    });
 
     this.groundLayer = this.add.container(0, 0).setDepth(0);
     this.objectLayer = this.add.container(0, 0).setDepth(10);
@@ -201,14 +212,19 @@ export class WorldScene extends Phaser.Scene {
   private layoutHud(): void { /* HUD is top-left anchored; nothing to reflow yet */ }
 
   // ── Movement ────────────────────────────────────────────────────────────────
+  /** E / Space — talk, advance dialogue, interact. */
+  private onActionKey = (): void => {
+    if (!this.player) return;
+    this.onAction();
+  };
+  private onMenuKey = (): void => {
+    if (this.dialogue.isOpen) { this.dialogue.close(); this.locked = false; return; }
+    this.openPauseMenu();
+  };
+
   update(): void {
     if (this.locked || this.moving || !this.player) return;
     if (this.dialogue.isOpen) return;
-
-    if (Phaser.Input.Keyboard.JustDown(this.keys.E) || Phaser.Input.Keyboard.JustDown(this.keys.SPACE)) {
-      this.onAction(); return;
-    }
-    if (Phaser.Input.Keyboard.JustDown(this.keys.ESC)) { this.openPauseMenu(); return; }
 
     let dx = 0, dy = 0;
     const p = this.pad.direction();
