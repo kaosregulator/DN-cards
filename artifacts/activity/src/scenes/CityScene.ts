@@ -37,59 +37,59 @@ interface CityNpc {
 }
 interface DoorDef { tx: number; ty: number; to: "shop"; label: string; }
 
-// ── The authored plaza ───────────────────────────────────────────────────────
-const GRID = 24;
+// ── The authored plaza — a tight, fully-paved little town square ──────────────
+const GRID = 20;
 const BUILDINGS: BuildingDef[] = [
-  { key: "building1", tx: 5, ty: 5, scale: 1.15, foot: [3, 3], label: "🏪 Card Emporium" },
-  { key: "building6", tx: 5, ty: 16, scale: 1.15, foot: [3, 3], label: "⛪ Duel Chapel" },
-  { key: "building11", tx: 17, ty: 5, scale: 1.2, foot: [3, 3], label: "⚒ The Forge" },
-  { key: "building2", tx: 17, ty: 16, scale: 1.1, foot: [3, 3], label: "🏠 Inn" },
-  { key: "building3", tx: 11, ty: 2, scale: 1.0, foot: [3, 2] },
-  { key: "building7", tx: 2, ty: 11, scale: 1.0, foot: [2, 3] },
-  { key: "building5", tx: 21, ty: 11, scale: 1.0, foot: [2, 3] },
+  { key: "building1", tx: 4, ty: 4, scale: 0.82, foot: [3, 2], label: "🏪 Card Emporium" },
+  { key: "building6", tx: 15, ty: 4, scale: 0.82, foot: [3, 2], label: "⛪ Chapel" },
+  { key: "building2", tx: 4, ty: 15, scale: 0.8, foot: [3, 2], label: "🏠 Inn" },
+  { key: "building11", tx: 15, ty: 15, scale: 0.85, foot: [3, 2], label: "⚒ The Forge" },
+  { key: "building3", tx: 10, ty: 3, scale: 0.72, foot: [3, 2] },
+  { key: "building7", tx: 3, ty: 10, scale: 0.72, foot: [2, 3] },
+  { key: "building5", tx: 16, ty: 10, scale: 0.72, foot: [2, 3] },
 ];
 const PROPS: PropDef[] = [
-  { key: "barrel", tx: 8, ty: 8, scale: 0.34, solid: true },
-  { key: "crate_intact", tx: 9, ty: 8, scale: 0.34, solid: true },
-  { key: "crate_damaged", tx: 15, ty: 9, scale: 0.34, solid: true },
-  { key: "barrel", tx: 16, ty: 15, scale: 0.34, solid: true },
-  { key: "chest_closed", tx: 8, ty: 15, scale: 0.32, solid: true },
-  { key: "crate_intact", tx: 15, ty: 16, scale: 0.34, solid: true },
+  { key: "barrel", tx: 6, ty: 4, scale: 0.26, solid: true },
+  { key: "crate_intact", tx: 13, ty: 4, scale: 0.26, solid: true },
+  { key: "crate_damaged", tx: 6, ty: 15, scale: 0.26, solid: true },
+  { key: "barrel", tx: 13, ty: 15, scale: 0.26, solid: true },
+  { key: "chest_closed", tx: 8, ty: 6, scale: 0.24, solid: true },
 ];
 const NPCS: CityNpc[] = [
   {
-    id: "city_shopkeeper", key: "gnome_merchant", tx: 8, ty: 6, name: "Merchant Rowe", role: "shop",
+    id: "city_shopkeeper", key: "gnome_merchant", tx: 6, ty: 6, name: "Merchant Rowe", role: "shop",
     lines: ["Welcome to the Card Emporium!", "Every card in the realm is on my shelves — step inside and browse."],
   },
   {
-    id: "city_knight", key: "battleworn_knight", tx: 12, ty: 12, name: "Sir Garan", duelist: true,
+    id: "city_knight", key: "battleworn_knight", tx: 11, ty: 11, name: "Sir Garan", duelist: true,
     lines: ["A new challenger walks the plaza.", "Draw your deck — let us duel!"],
     defeatedLines: ["You fight well. The Forge master will want a match."],
   },
   {
-    id: "city_archer", key: "forest_archer", tx: 18, ty: 12, name: "Archer Lyn",
-    lines: ["The Forge to the north hides a fierce duelist.", "Tributes win games — never summon your big monsters for free."],
+    id: "city_archer", key: "forest_archer", tx: 8, ty: 12, name: "Archer Lyn",
+    lines: ["The Forge to the south hides a fierce duelist.", "Tributes win games — never summon your big monsters for free."],
   },
   {
-    id: "city_smith", key: "monster_hunter", tx: 17, ty: 8, name: "Forge Master", duelist: true,
+    id: "city_smith", key: "monster_hunter", tx: 13, ty: 13, name: "Forge Master", duelist: true,
     lines: ["You reached my Forge.", "Beat me and the plaza is yours to rule."],
     defeatedLines: ["Steel sharpens steel. Well fought, duelist."],
   },
 ];
-const DOORS: DoorDef[] = [{ tx: 6, ty: 7, to: "shop", label: "▼ Enter" }];
-const SPAWN = { tx: 11, ty: 14, face: "up" as Facing };
+const DOORS: DoorDef[] = [{ tx: 5, ty: 6, to: "shop", label: "▼ Enter" }];
+const SPAWN = { tx: 10, ty: 13, face: "up" as Facing };
 
-// Environmental decoration (procedural iso art), placed on grass / plaza edges.
-const TREES: Array<[number, number]> = [[3, 3], [20, 4], [3, 20], [21, 20], [2, 8], [22, 8], [9, 3], [14, 3], [3, 14], [21, 15]];
-const LAMPS: Array<[number, number]> = [[8, 7], [15, 7], [8, 14], [15, 14]];
-const BENCHES: Array<[number, number]> = [[10, 13], [13, 8], [9, 9], [14, 12]];
-const FOUNTAIN: [number, number] = [11.5, 10.5];
+// Environmental decoration (procedural iso art) filling the paved square.
+const TREES: Array<[number, number]> = [[2, 2], [17, 2], [2, 17], [17, 17], [7, 7], [12, 7], [7, 12], [12, 12], [10, 5], [10, 15]];
+const LAMPS: Array<[number, number]> = [[7, 8], [12, 8], [7, 11], [12, 11], [9, 6], [10, 14]];
+const BENCHES: Array<[number, number]> = [[8, 11], [11, 8], [8, 8], [11, 11]];
+const FOUNTAIN: [number, number] = [9.5, 9.5];
 
-// Central fountain footprint (water) + a cobble plaza ring around the middle.
+// Fully-paved plaza (cobblestone), grass only at the outer border, water at the
+// fountain footprint in the very centre.
 function groundAt(tx: number, ty: number): Ground {
-  if (tx >= 11 && tx <= 12 && ty >= 10 && ty <= 11) return "water";
-  if (tx >= 8 && tx <= 15 && ty >= 7 && ty <= 14) return "cobble";
-  return "grass";
+  if (tx >= 9 && tx <= 10 && ty >= 9 && ty <= 10) return "water";
+  if (tx < 2 || tx >= GRID - 2 || ty < 2 || ty >= GRID - 2) return "grass";
+  return "cobble";
 }
 
 export class CityScene extends Phaser.Scene {
@@ -271,7 +271,7 @@ export class CityScene extends Phaser.Scene {
       this.addObject(img, p.y + dz);
       return img;
     };
-    place("fx:fountain", FOUNTAIN[0], FOUNTAIN[1], 0.86, 6);
+    place("fx:fountain", FOUNTAIN[0], FOUNTAIN[1], 0.86, 6).setScale(0.78);
     for (const [tx, ty] of TREES) place("fx:tree", tx, ty, 0.92, 12);
     for (const [tx, ty] of BENCHES) place("fx:bench", tx, ty, 0.86, 8);
     for (const [tx, ty] of LAMPS) place("fx:lamp", tx, ty, 0.95, 14);
@@ -334,7 +334,7 @@ export class CityScene extends Phaser.Scene {
   private buildNpcs(): void {
     for (const n of NPCS) {
       const p = this.iso(n.tx, n.ty);
-      const img = this.add.image(p.x, p.y + TILE_H * 0.3, `cn:${n.key}`).setOrigin(0.5, 1).setScale(0.28);
+      const img = this.add.image(p.x, p.y + TILE_H * 0.3, `cn:${n.key}`).setOrigin(0.5, 1).setScale(0.22);
       this.addObject(img, p.y + 20);
       const beaten = gameState.isDefeated(n.id);
       const tag = n.role === "shop" ? "🛒" : n.duelist ? (beaten ? "✔" : "⚔") : "💬";
