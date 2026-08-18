@@ -1,8 +1,8 @@
 import Phaser from "phaser";
 import { getContext } from "../core/context";
-import { TILE, TILE_KEY, SOLID, ensureTileTextures, ensureCharTexture, CHAR_KEY, charFrame, type TileKind } from "../world/tiles";
+import { SOLID, ensureCharTexture, CHAR_KEY, charFrame, type TileKind } from "../world/tiles";
 import { preloadCharSheets, composeChar, heroMap, npcMap, npcRowFor } from "../world/charSprites";
-import { preloadTilesets, buildTilesetTextures } from "../world/tileset";
+import { ensureIsoTextures, isRaised, isoOrigin, ISO_KEY, ISO_W, ISO_H, ISO_LIFT } from "../world/isoTiles";
 import { LEGEND, getMap, TOTAL_DUELISTS, type MapDef, type NpcDef, type DoorDef } from "../world/maps";
 import { gameState } from "../state/gameState";
 import { DialogueBox } from "../ui/dialogue";
@@ -17,6 +17,10 @@ import { TouchPad } from "../ui/touchPad";
 // ─────────────────────────────────────────────────────────────────────────────
 
 type Facing = "down" | "left" | "right" | "up";
+
+// Characters are drawn larger than a tile so they read as the focal actors on
+// the isometric board (like the reference client's big overworld sprites).
+const CHAR_SCALE = 1.6;
 
 interface NpcView { def: NpcDef; sprite: Phaser.GameObjects.Sprite; }
 
@@ -38,6 +42,12 @@ export class WorldScene extends Phaser.Scene {
   private npcs: NpcView[] = [];
   private groundLayer!: Phaser.GameObjects.Container;
   private objectLayer!: Phaser.GameObjects.Container;
+  // Isometric world origin (set per map so the grid sits fully on-screen).
+  private isoOX = 0;
+  private isoOY = 0;
+  private isoScreen(tx: number, ty: number): { x: number; y: number } {
+    return { x: this.isoOX + (tx - ty) * (ISO_W / 2), y: this.isoOY + (tx + ty) * (ISO_H / 2) };
+  }
   private hud!: Phaser.GameObjects.Container;
 
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
@@ -65,15 +75,11 @@ export class WorldScene extends Phaser.Scene {
     // Bundled, same-origin character sheets (CSP-safe). If a load fails the
     // world silently falls back to the procedural walkers / tiles.
     preloadCharSheets(this);
-    preloadTilesets(this);
   }
 
   create(): void {
     document.getElementById("boot")?.remove();
-    // Real tileset tiles claim their keys first; the procedural pass then fills
-    // only the kinds the tilesets don't cover (doors, roofs, fences, …).
-    buildTilesetTextures(this);
-    ensureTileTextures(this);
+    ensureIsoTextures(this);
     this.cursors = this.input.keyboard!.createCursorKeys();
     this.keys = this.input.keyboard!.addKeys("W,A,S,D") as Record<string, Phaser.Input.Keyboard.Key>;
     // Discrete actions are event-driven (polling JustDown is unreliable);
@@ -128,36 +134,53 @@ export class WorldScene extends Phaser.Scene {
     const g = this.map.grid;
     const h = g.length, w = g[0]!.length;
 
-    // Tiles.
+    // Isometric world origin: shift right so the leftmost column lands at x≈0,
+    // with headroom above for raised blocks.
+    this.isoOX = h * (ISO_W / 2);
+    this.isoOY = ISO_LIFT + ISO_H;
+
+    // Tiles — flat floor into the ground layer (drawn back-to-front), raised
+    // blocks (walls, trees, buildings, furniture) into the depth-sorted object
+    // layer so the player passes correctly in front of / behind them.
     this.solid = [];
     for (let y = 0; y < h; y++) {
       this.solid[y] = [];
       for (let x = 0; x < w; x++) {
         const ch = g[y]![x] ?? ".";
         const kind = (LEGEND[ch] ?? "grass") as TileKind;
-        const img = this.add.image(x * TILE + TILE / 2, y * TILE + TILE / 2, TILE_KEY(kind));
-        if (this.map.ambient !== 0xffffff) img.setTint(this.map.ambient);
-        this.groundLayer.add(img);
         this.solid[y]![x] = SOLID.has(kind);
+        const p = this.isoScreen(x, y);
+        const img = this.add.image(p.x, p.y, ISO_KEY(kind));
+        if (this.map.ambient !== 0xffffff) img.setTint(this.map.ambient);
+        if (isRaised(kind)) {
+          const o = isoOrigin(kind);
+          img.setOrigin(o.ox, o.oy).setDepth(p.y);
+          this.objectLayer.add(img);
+        } else {
+          img.setOrigin(0.5, 0.5);
+          this.groundLayer.add(img);
+        }
       }
     }
-    // Doors are walkable and register a transition.
+    // Doors are walkable and register a transition (label floats above the tile).
     for (const d of this.map.doors) {
       this.doorAt.set(`${d.x},${d.y}`, d);
       if (this.solid[d.y]) this.solid[d.y]![d.x] = false;
       if (d.label) {
-        this.objectLayer.add(this.add.text(d.x * TILE + TILE / 2, d.y * TILE - 6, d.label, {
+        const p = this.isoScreen(d.x, d.y);
+        this.objectLayer.add(this.add.text(p.x, p.y - ISO_H, d.label, {
           fontFamily: "system-ui, sans-serif", fontSize: "11px", color: "#ffe9b0",
           backgroundColor: "#00000099", padding: { x: 4, y: 2 },
-        }).setOrigin(0.5, 1).setDepth(5));
+        }).setOrigin(0.5, 1).setDepth(90000));
       }
     }
     // Signs.
     for (const s of this.map.signs ?? []) {
-      this.objectLayer.add(this.add.text(s.x * TILE + TILE / 2, s.y * TILE, s.text, {
+      const p = this.isoScreen(s.x, s.y);
+      this.objectLayer.add(this.add.text(p.x, p.y - ISO_H / 2, s.text, {
         fontFamily: "system-ui, sans-serif", fontSize: "11px", color: "#e6ecff",
         backgroundColor: "#0a0d1699", padding: { x: 5, y: 3 },
-      }).setOrigin(0.5).setDepth(5));
+      }).setOrigin(0.5).setDepth(90000));
     }
 
     // NPCs — real townsfolk sprites (varied by id), procedural fallback.
@@ -166,15 +189,16 @@ export class WorldScene extends Phaser.Scene {
         ensureCharTexture(this, n.id, n.colors);
       }
       const beaten = gameState.isDefeated(n.id);
-      const spr = this.add.sprite(n.x * TILE + TILE / 2, n.y * TILE + TILE / 2 - 4, CHAR_KEY(n.id), charFrame(n.face ?? "down", 0));
-      spr.setDepth(20 + n.y);
+      const p = this.isoScreen(n.x, n.y);
+      const spr = this.add.sprite(p.x, p.y - ISO_H * 0.25, CHAR_KEY(n.id), charFrame(n.face ?? "down", 0))
+        .setOrigin(0.5, 0.86).setScale(CHAR_SCALE).setDepth(p.y);
       this.objectLayer.add(spr);
       // Name plate + duelist marker.
       const tag = n.role === "shop" ? "🛒" : n.duelist ? (beaten ? "✔" : "⚔") : "";
-      this.objectLayer.add(this.add.text(spr.x, spr.y - 22, `${tag} ${n.name}`.trim(), {
+      this.objectLayer.add(this.add.text(p.x, p.y - ISO_H * 0.25 - 40, `${tag} ${n.name}`.trim(), {
         fontFamily: "system-ui, sans-serif", fontSize: "10px", color: beaten ? "#8ef0bd" : "#ffe9b0",
         backgroundColor: "#00000088", padding: { x: 3, y: 1 },
-      }).setOrigin(0.5, 1).setDepth(400));
+      }).setOrigin(0.5, 1).setDepth(90000));
       this.solid[n.y]![n.x] = true; // can't walk through people
       this.npcs.push({ def: n, sprite: spr });
     }
@@ -188,25 +212,24 @@ export class WorldScene extends Phaser.Scene {
       : (this.map.spawns[this.spawnId] ?? Object.values(this.map.spawns)[0]!);
     this.tileX = sp.x; this.tileY = sp.y;
     this.facing = (sp.face as Facing) ?? "down";
-    this.player = this.add.sprite(
-      this.tileX * TILE + TILE / 2, this.tileY * TILE + TILE / 2 - 4,
-      CHAR_KEY("player"), charFrame(this.facing, 0),
-    ).setDepth(500);
+    const pp = this.isoScreen(this.tileX, this.tileY);
+    this.player = this.add.sprite(pp.x, pp.y - ISO_H * 0.25, CHAR_KEY("player"), charFrame(this.facing, 0))
+      .setOrigin(0.5, 0.86).setScale(CHAR_SCALE).setDepth(pp.y);
     this.objectLayer.add(this.player);
+    this.objectLayer.sort("depth");
 
-    // Camera.
+    // Camera — bounds cover the whole diamond, follow the player.
     const cam = this.cameras.main;
-    cam.setBounds(0, 0, w * TILE, h * TILE);
+    const worldW = this.isoOX + (w - 1) * (ISO_W / 2) + ISO_W;
+    const worldH = this.isoOY + (w + h - 2) * (ISO_H / 2) + ISO_H + ISO_LIFT;
+    cam.setBounds(-ISO_W, -(ISO_LIFT + ISO_H), worldW + ISO_W * 2, worldH + ISO_LIFT + ISO_H * 3);
     cam.startFollow(this.player, true, 0.15, 0.15);
     cam.setBackgroundColor(this.map.indoor ? "#120d18" : "#0a1020");
-    // Zoom to show roughly a fixed window of tiles, so phones and desktops see a
-    // comparable slice of the world (small interiors just fill the frame).
-    const TILES_TALL = 15;
-    const wanted = this.scale.height / (TILES_TALL * TILE);
-    // Never zoom out past the map edges on either axis.
-    const minFit = Math.max(this.scale.width / (w * TILE), this.scale.height / (h * TILE));
-    const zoom = Phaser.Math.Clamp(Math.max(wanted, minFit), 0.9, 2.6);
-    cam.setZoom(Number.isFinite(zoom) && zoom > 0 ? zoom : 1.4);
+    // Zoom so a comparable slice shows on phones and desktops.
+    const ROWS_TALL = 16;
+    const wanted = this.scale.height / (ROWS_TALL * ISO_H);
+    const zoom = Phaser.Math.Clamp(wanted, 0.7, 2.2);
+    cam.setZoom(Number.isFinite(zoom) && zoom > 0 ? zoom : 1.2);
 
     this.buildHud();
     this.pad.layout();
@@ -269,15 +292,18 @@ export class WorldScene extends Phaser.Scene {
     this.player.setFrame(charFrame(this.facing, this.walkFrame));
     this.tileX = nx; this.tileY = ny;
     gameState.lastX = nx; gameState.lastY = ny; gameState.lastFace = this.facing;
+    const p = this.isoScreen(nx, ny);
     this.tweens.add({
       targets: this.player,
-      x: nx * TILE + TILE / 2,
-      y: ny * TILE + TILE / 2 - 4,
-      duration: 140,
+      x: p.x,
+      y: p.y - ISO_H * 0.25,
+      duration: 150,
       ease: "Linear",
+      onUpdate: () => { this.player.setDepth(this.player.y + ISO_H * 0.25); this.objectLayer.sort("depth"); },
       onComplete: () => {
         this.moving = false;
-        this.player.setDepth(500);
+        this.player.setDepth(p.y);
+        this.objectLayer.sort("depth");
         this.updateHint();
       },
     });
