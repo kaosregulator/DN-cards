@@ -1,6 +1,6 @@
 import Phaser from "phaser";
 import { getContext } from "../core/context";
-import type { DuelSetup, DuelState, DuelEvent, MonsterPosition, PlayerId, TargetRef, DuelEffect, DuelCard } from "../duel/types";
+import type { DuelSetup, DuelState, DuelEvent, MonsterPosition, PlayerId, TargetRef, DuelEffect, DuelCard, FieldMonster } from "../duel/types";
 import {
   createDuel, nextPhase, endTurn, summonMonster, setSpellTrap, activateSpellFromHand,
   activateSetCard, changePosition, declareAttack, canNormalSummon, canActivateFromHand,
@@ -13,6 +13,7 @@ import { DuelSocket, type MatchInfo } from "../net/duelSocket";
 import { targetSpecFor, isPersistentSpell, trapIsMainPhase, type TargetSpec } from "../duel/effects";
 import { enrichSetup } from "../duel/cards";
 import { makeCardFace, makeCardBack, artKey } from "../ui/card";
+import { makeMonsterAvatar } from "../ui/monsterAvatar";
 import { makeField, zoneU, SIDE_U, ROW_Z, type FieldLayout } from "../ui/field";
 import { LpPanel } from "../ui/lpPanel";
 
@@ -42,6 +43,11 @@ export class DuelScene extends Phaser.Scene {
   private board!: Phaser.GameObjects.Container; // rebuilt every render
   private fx!: Phaser.GameObjects.Container;    // transient effects
   private ui!: Phaser.GameObjects.Container;    // persistent HUD
+
+  // Living monster avatars standing on the field (rebuilt every render).
+  private avatars: Array<{ c: Phaser.GameObjects.Container; baseY: number; phase: number; bob: number }> = [];
+  private avatarByZone = new Map<string, Phaser.GameObjects.Container>();
+  private seenMonsters = new Set<string>(); // uids that have already "entered"
 
   private phaseText!: Phaser.GameObjects.Text;
   private msgText!: Phaser.GameObjects.Text;
@@ -126,6 +132,9 @@ export class DuelScene extends Phaser.Scene {
     loading.destroy();
 
     this.state = createDuel(setup);
+    // QA aid: `?demo=duel&demoField` pre-populates both fields so the board and
+    // monster avatars can be screenshotted without playing a full turn.
+    if (typeof location !== "undefined" && /[?&]demoField/.test(location.search)) this.debugFillField();
     if (this.online) this.bindSocket();
     this.setViewer();
     this.buildHud();
@@ -170,6 +179,31 @@ export class DuelScene extends Phaser.Scene {
   }
 
   private onResize = (): void => { if (this.state) { this.layoutHud(); this.renderBoard(); } };
+
+  /** QA-only: drop a few monsters onto both fields in varied positions. */
+  private debugFillField(): void {
+    const mk = (card: DuelCard, position: MonsterPosition, faceUp: boolean): FieldMonster => ({
+      card, position, atkMod: 0, defMod: 0, turnBoost: 0, hasAttacked: 0, summonedThisTurn: false, faceUp,
+    });
+    const specs: Array<[MonsterPosition, boolean]> = [["attack", true], ["defense", true], ["set", false], ["attack", true], ["defense", true]];
+    for (const who of ["player", "opponent"] as PlayerId[]) {
+      const b = boardOf(this.state, who);
+      const pool = b.deck.filter((c) => c.kind === "monster");
+      for (let z = 0; z < specs.length; z++) {
+        const card = pool[z + (who === "opponent" ? 5 : 0)];
+        if (card) b.monsters[z] = mk(card, specs[z]![0], specs[z]![1]);
+      }
+    }
+  }
+
+  /** Idle-breathe every monster avatar (time-based so a board rebuild doesn't
+   *  restart the motion). Avatars flagged "busy" are mid-lunge and left alone. */
+  update(time: number): void {
+    for (const a of this.avatars) {
+      if (a.c.getData("busy")) continue;
+      a.c.y = a.baseY + Math.sin(time / 420 + a.phase) * a.bob;
+    }
+  }
 
   // ── Art preload ───────────────────────────────────────────────────────────
   private preloadArt(setup: DuelSetup): Promise<void> {
@@ -319,6 +353,8 @@ export class DuelScene extends Phaser.Scene {
   // ── Rendering the field + hand ──────────────────────────────────────────────
   private renderBoard(): void {
     this.board.removeAll(true);
+    this.avatars = [];
+    this.avatarByZone.clear();
     this.ensureField();
     this.drawMat();
 
@@ -403,6 +439,23 @@ export class DuelScene extends Phaser.Scene {
       // Nearer rows draw over farther ones.
       card.setDepth(Math.round(y));
       this.board.add(card);
+
+      // A living creature token stands on each face-up monster.
+      if (m.faceUp) {
+        const defending = m.position !== "attack";
+        const av = makeMonsterAvatar(this, m.card, cw * 1.0, ch * 0.82, defending);
+        const ay = y - ch * 0.16;
+        av.setPosition(x, ay).setDepth(Math.round(y) + 1);
+        this.board.add(av);
+        this.avatarByZone.set(`${who}:${z}`, av);
+        this.avatars.push({ c: av, baseY: ay, phase: z * 1.7 + (who === this.viewer ? 0 : 3), bob: ch * 0.03 });
+        // New monsters pop onto the field once.
+        if (!this.seenMonsters.has(m.card.uid)) {
+          this.seenMonsters.add(m.card.uid);
+          av.setScale(0.2).setAlpha(0);
+          this.tweens.add({ targets: av, scale: 1, alpha: 1, duration: 300, ease: "Back.Out" });
+        }
+      }
 
       // Interactions on own monsters.
       if (who === this.viewer && this.state.turn === this.viewer) {
@@ -940,6 +993,17 @@ export class DuelScene extends Phaser.Scene {
     const target = to === "direct"
       ? { x: foeRow.x, y: foeRow.y }
       : this.zonePos(otherId(who), to);
+    // The attacking creature lunges a third of the way toward its target.
+    const attacker = this.avatarByZone.get(`${who}:${fromZone}`);
+    if (attacker) {
+      attacker.setData("busy", true);
+      const restY = attacker.y;
+      await new Promise<void>((res) => this.tweens.add({
+        targets: attacker, x: from.x + (target.x - from.x) * 0.34, y: restY + (target.y - from.y) * 0.34,
+        duration: 150, ease: "Quad.In", yoyo: true, hold: 40,
+        onComplete: () => { attacker.setPosition(from.x, restY); attacker.setData("busy", false); res(); },
+      }));
+    }
     const streak = this.add.graphics().setDepth(1500);
     streak.lineStyle(4, 0xfff2a8, 0.9);
     streak.lineBetween(from.x, from.y, target.x, target.y);
@@ -947,10 +1011,20 @@ export class DuelScene extends Phaser.Scene {
     const orb = this.add.circle(from.x, from.y, 8, 0xffd75e).setDepth(1600);
     this.fx.add(orb);
     await new Promise<void>((res) => {
-      this.tweens.add({ targets: orb, x: target.x, y: target.y, duration: 240, ease: "Quad.In", onComplete: () => res() });
+      this.tweens.add({ targets: orb, x: target.x, y: target.y, duration: 220, ease: "Quad.In", onComplete: () => res() });
     });
     this.impact(target.x, target.y);
     streak.destroy(); orb.destroy();
+    // The struck creature recoils and flashes.
+    const defender = to !== "direct" ? this.avatarByZone.get(`${otherId(who)}:${to}`) : undefined;
+    if (defender) {
+      defender.setData("busy", true);
+      const ry = defender.y;
+      this.tweens.add({
+        targets: defender, y: ry + 6, duration: 70, yoyo: true, repeat: 1,
+        onComplete: () => { defender.setPosition(defender.x, ry); defender.setData("busy", false); },
+      });
+    }
     await this.wait(120);
   }
   /** Monster spawn flourish: a light column, shockwave ring, and the card
