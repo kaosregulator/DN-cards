@@ -123,12 +123,14 @@ const SCENE_PREFIX = "siege-scene";
 // this quad; the sprite's gold frame + base rail then occlude it exactly like a
 // real card seated in the stand. Corners: top-left, top-right, bottom-left
 // (bottom-right is derived — an iso rectangle projects to a parallelogram).
+// Both stands are the SAME sprite shape (the red is a recolour of the blue), so
+// they face the SAME direction and share one plaque quad.
 const PLAQUE_QUAD = {
-  blue: { tl: [0.268, 0.101], tr: [0.577, 0.216], bl: [0.341, 0.640] },
-  red:  { tl: [0.428, 0.190], tr: [0.742, 0.077], bl: [0.428, 0.642] },
+  blue: { tl: [0.300, 0.129], tr: [0.649, 0.083], bl: [0.381, 0.749] },
+  red:  { tl: [0.300, 0.129], tr: [0.649, 0.083], bl: [0.381, 0.749] },
 } as const;
-// Drawn stand size (full-scale reference; each slot scales this down).
-const STAND_W = 234, STAND_H = 318;
+// Drawn stand size (matches the sprite aspect; each slot scales this down).
+const STAND_W = 228, STAND_H = 298;
 
 // Target play-through length by guild speed — same ballpark as renderBattleTurn
 // (~1800ms) so /hq and /battle feel like one system. encodeAnimation plans fps
@@ -375,12 +377,12 @@ const LINE_MAX = 4;                 // cards per side
 // Per-rank slot for the LEFT side, {dx from centre, base contact Y, size}.
 // depth 0 = inner (active), depth 3 = flank.
 const SLOTS: readonly { dx: number; baseY: number; scale: number }[] = [
-  { dx: 148, baseY: 388, scale: 0.44 },
-  { dx: 201, baseY: 376, scale: 0.45 },
-  { dx: 262, baseY: 382, scale: 0.47 },
-  { dx: 338, baseY: 426, scale: 0.51 },
+  { dx: 128, baseY: 388, scale: 0.40 },
+  { dx: 216, baseY: 394, scale: 0.42 },
+  { dx: 304, baseY: 402, scale: 0.44 },
+  { dx: 392, baseY: 414, scale: 0.47 },
 ];
-const GROUND_Y = 426;               // flank contact line (used by ambient FX)
+const GROUND_Y = 414;               // flank contact line (used by ambient FX)
 
 function standCentre(side: 0 | 1, depth: number): { cx: number; baseY: number; scale: number } {
   const dir = side === 0 ? -1 : 1;
