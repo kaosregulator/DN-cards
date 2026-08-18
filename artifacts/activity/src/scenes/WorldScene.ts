@@ -2,6 +2,7 @@ import Phaser from "phaser";
 import { getContext } from "../core/context";
 import { TILE, TILE_KEY, SOLID, ensureTileTextures, ensureCharTexture, CHAR_KEY, charFrame, type TileKind } from "../world/tiles";
 import { preloadCharSheets, composeCharFromSheet } from "../world/charSprites";
+import { preloadTilesets, buildTilesetTextures } from "../world/tileset";
 import { LEGEND, getMap, TOTAL_DUELISTS, type MapDef, type NpcDef, type DoorDef } from "../world/maps";
 import { gameState } from "../state/gameState";
 import { DialogueBox } from "../ui/dialogue";
@@ -62,12 +63,16 @@ export class WorldScene extends Phaser.Scene {
 
   preload(): void {
     // Bundled, same-origin character sheets (CSP-safe). If a load fails the
-    // world silently falls back to the procedural walkers.
+    // world silently falls back to the procedural walkers / tiles.
     preloadCharSheets(this);
+    preloadTilesets(this);
   }
 
   create(): void {
     document.getElementById("boot")?.remove();
+    // Real tileset tiles claim their keys first; the procedural pass then fills
+    // only the kinds the tilesets don't cover (doors, roofs, fences, …).
+    buildTilesetTextures(this);
     ensureTileTextures(this);
     this.cursors = this.input.keyboard!.createCursorKeys();
     this.keys = this.input.keyboard!.addKeys("W,A,S,D") as Record<string, Phaser.Input.Keyboard.Key>;
