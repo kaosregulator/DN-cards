@@ -1,14 +1,15 @@
 // ─────────────────────────────────────────────────────────────────────────────
-// CityScene — a hand-authored isometric town plaza built from REAL detailed
-// art (SpriteCook CC0 isometric buildings, props, textures, and characters),
-// NOT a procedural tile grid. Buildings, a fountain, props and NPCs are placed
-// by hand on an isometric ground; the player walks around with a close camera,
-// proper depth/occlusion, and can enter the shop, talk to NPCs and start duels
-// — reusing the existing Shop and Duel scenes untouched.
+// CityScene — Starting Town.
 //
-// Assets ship from public/world/city/ (same-origin, CSP-safe). All the game
-// systems (duel engine, DN Cards, shop, dialogue, progression, Discord) are
-// untouched; only the world PRESENTATION lives here.
+// KEEP THE BONES: player movement, camera follow, NPCs, dialogue, doors,
+// Shop / Duel transitions, mobile TouchPad, Discord Activity integration.
+//
+// REPLACE THE WORLD: this is NOT a procedural tile-grid of extruded cubes,
+// and NOT the previous Domino Plaza / medieval fantasy asset dump.
+// Terrain still uses isometric ground tiles. Buildings, trees, landmarks and
+// props are large FLARE world objects placed from an authored map (a cropped
+// Black Oak City region + plaza overlays). The player walks around a little
+// RPG town, not across a grid prototype.
 // ─────────────────────────────────────────────────────────────────────────────
 
 import Phaser from "phaser";
@@ -19,89 +20,53 @@ import { TouchPad } from "../ui/touchPad";
 import { preloadCharSheets, composeChar, heroMap } from "../world/charSprites";
 import { ensureCharTexture, CHAR_KEY, charFrame } from "../world/tiles";
 
-const TILE_W = 128, TILE_H = 64;                 // 2:1 isometric ground diamond
-const asset = (p: string): string => `${import.meta.env.BASE_URL}world/city/${p}`;
+const asset = (p: string): string => `${import.meta.env.BASE_URL}world/town/${p}`;
 
 type Facing = "down" | "left" | "right" | "up";
-type Ground = "grass" | "cobble" | "water";
 
-interface BuildingDef {
-  key: string; tx: number; ty: number;     // anchor cell (front-centre)
-  scale: number; foot: [number, number];   // footprint w×h in cells (solid)
-  label?: string;
+interface TileMeta { w: number; h: number; ox: number; oy: number; }
+interface OverlayDef {
+  kind: string; tile: number; tx: number; ty: number;
+  foot: [number, number]; label?: string; solid?: boolean;
 }
-interface PropDef { key: string; tx: number; ty: number; scale: number; solid?: boolean; }
-interface CityNpc {
+interface TownNpc {
   id: string; key: string; tx: number; ty: number; name: string;
   lines: string[]; duelist?: boolean; role?: "shop"; defeatedLines?: string[];
 }
 interface DoorDef { tx: number; ty: number; to: "shop"; label: string; }
-
-// ── The authored plaza ───────────────────────────────────────────────────────
-const GRID = 24;
-const BUILDINGS: BuildingDef[] = [
-  { key: "building1", tx: 5, ty: 5, scale: 1.15, foot: [3, 3], label: "🏪 Card Emporium" },
-  { key: "building6", tx: 5, ty: 16, scale: 1.15, foot: [3, 3], label: "⛪ Duel Chapel" },
-  { key: "building11", tx: 17, ty: 5, scale: 1.2, foot: [3, 3], label: "⚒ The Forge" },
-  { key: "building2", tx: 17, ty: 16, scale: 1.1, foot: [3, 3], label: "🏠 Inn" },
-  { key: "building3", tx: 11, ty: 2, scale: 1.0, foot: [3, 2] },
-  { key: "building7", tx: 2, ty: 11, scale: 1.0, foot: [2, 3] },
-  { key: "building5", tx: 21, ty: 11, scale: 1.0, foot: [2, 3] },
-];
-const PROPS: PropDef[] = [
-  { key: "barrel", tx: 8, ty: 8, scale: 0.34, solid: true },
-  { key: "crate_intact", tx: 9, ty: 8, scale: 0.34, solid: true },
-  { key: "crate_damaged", tx: 15, ty: 9, scale: 0.34, solid: true },
-  { key: "barrel", tx: 16, ty: 15, scale: 0.34, solid: true },
-  { key: "chest_closed", tx: 8, ty: 15, scale: 0.32, solid: true },
-  { key: "crate_intact", tx: 15, ty: 16, scale: 0.34, solid: true },
-];
-const NPCS: CityNpc[] = [
-  {
-    id: "city_shopkeeper", key: "gnome_merchant", tx: 8, ty: 6, name: "Merchant Rowe", role: "shop",
-    lines: ["Welcome to the Card Emporium!", "Every card in the realm is on my shelves — step inside and browse."],
-  },
-  {
-    id: "city_knight", key: "battleworn_knight", tx: 12, ty: 12, name: "Sir Garan", duelist: true,
-    lines: ["A new challenger walks the plaza.", "Draw your deck — let us duel!"],
-    defeatedLines: ["You fight well. The Forge master will want a match."],
-  },
-  {
-    id: "city_archer", key: "forest_archer", tx: 18, ty: 12, name: "Archer Lyn",
-    lines: ["The Forge to the north hides a fierce duelist.", "Tributes win games — never summon your big monsters for free."],
-  },
-  {
-    id: "city_smith", key: "monster_hunter", tx: 17, ty: 8, name: "Forge Master", duelist: true,
-    lines: ["You reached my Forge.", "Beat me and the plaza is yours to rule."],
-    defeatedLines: ["Steel sharpens steel. Well fought, duelist."],
-  },
-];
-const DOORS: DoorDef[] = [{ tx: 6, ty: 7, to: "shop", label: "▼ Enter" }];
-const SPAWN = { tx: 11, ty: 14, face: "up" as Facing };
-
-// Environmental decoration (procedural iso art), placed on grass / plaza edges.
-const TREES: Array<[number, number]> = [[3, 3], [20, 4], [3, 20], [21, 20], [2, 8], [22, 8], [9, 3], [14, 3], [3, 14], [21, 15]];
-const LAMPS: Array<[number, number]> = [[8, 7], [15, 7], [8, 14], [15, 14]];
-const BENCHES: Array<[number, number]> = [[10, 13], [13, 8], [9, 9], [14, 12]];
-const FOUNTAIN: [number, number] = [11.5, 10.5];
-
-// Central fountain footprint (water) + a cobble plaza ring around the middle.
-function groundAt(tx: number, ty: number): Ground {
-  if (tx >= 11 && tx <= 12 && ty >= 10 && ty <= 11) return "water";
-  if (tx >= 8 && tx <= 15 && ty >= 7 && ty <= 14) return "cobble";
-  return "grass";
+interface TownData {
+  id: string; name: string;
+  tileWidth: number; tileHeight: number;
+  width: number; height: number;
+  background: number[][];
+  object: number[][];
+  solid: boolean[][];
+  tiles: Record<string, TileMeta>;
+  overlays: OverlayDef[];
+  spawn: { tx: number; ty: number; face: Facing };
+  doors: DoorDef[];
+  npcs: TownNpc[];
+  cameraZoom?: number;
 }
 
 export class CityScene extends Phaser.Scene {
-  private isoOX = 0; private isoOY = 0;
+  private town!: TownData;
+  private TILE_W = 64;
+  private TILE_H = 32;
+  private isoOX = 0;
+  private isoOY = 0;
+
   private solid: boolean[][] = [];
   private player!: Phaser.GameObjects.Sprite;
   private facing: Facing = "up";
-  private tileX = SPAWN.tx; private tileY = SPAWN.ty;
-  private moving = false; private locked = false; private walkFrame: 0 | 1 = 0;
-  private npcSprites: Array<{ def: CityNpc; sprite: Phaser.GameObjects.GameObject }> = [];
+  private tileX = 0;
+  private tileY = 0;
+  private moving = false;
+  private locked = false;
+  private walkFrame: 0 | 1 = 0;
+
+  private npcSprites: Array<{ def: TownNpc; sprite: Phaser.GameObjects.Image }> = [];
   private doorAt = new Map<string, DoorDef>();
-  private objects: Phaser.GameObjects.GameObject[] = [];
   private world!: Phaser.GameObjects.Layer;
   private hud!: Phaser.GameObjects.Container;
   private hint!: Phaser.GameObjects.Text;
@@ -114,235 +79,245 @@ export class CityScene extends Phaser.Scene {
 
   init(data: { spawn?: string; duelWon?: boolean; npcId?: string }): void {
     if (data?.duelWon !== undefined && data.npcId && data.duelWon) gameState.defeat(data.npcId);
-    // Returning from the shop or a duel restores the exact spot; a fresh entry
-    // from the menu starts at the plaza spawn.
-    if (gameState.lastMap === "cityplaza") {
-      this.tileX = gameState.lastX || SPAWN.tx; this.tileY = gameState.lastY || SPAWN.ty;
-      this.facing = (gameState.lastFace as Facing) || SPAWN.face;
-    } else {
-      this.tileX = SPAWN.tx; this.tileY = SPAWN.ty; this.facing = SPAWN.face;
-      gameState.lastMap = "cityplaza"; gameState.lastX = SPAWN.tx; gameState.lastY = SPAWN.ty; gameState.lastFace = SPAWN.face;
-    }
   }
 
   preload(): void {
     preloadCharSheets(this);
-    for (const t of ["grass", "dirt", "water"]) if (!this.textures.exists(`ct:${t}`)) this.load.image(`ct:${t}`, asset(`ground/${t}.png`));
-    for (const b of BUILDINGS) if (!this.textures.exists(`cb:${b.key}`)) this.load.image(`cb:${b.key}`, asset(`buildings/${b.key}.png`));
-    for (const p of new Set(PROPS.map((p) => p.key))) if (!this.textures.exists(`cp:${p}`)) this.load.image(`cp:${p}`, asset(`props/${p}.png`));
-    for (const n of NPCS) if (!this.textures.exists(`cn:${n.key}`)) this.load.image(`cn:${n.key}`, asset(`npc/${n.key}.png`));
-  }
-
-  private iso(tx: number, ty: number): { x: number; y: number } {
-    return { x: this.isoOX + (tx - ty) * (TILE_W / 2), y: this.isoOY + (tx + ty) * (TILE_H / 2) };
+    this.load.json("starting_town", asset("starting_town.json"));
+    // Tile PNGs are queued after JSON arrives in create via a second load pass
+    // if needed — but Vite public JSON is available sync after load completes.
+    // We also preload NPC sheets here by known keys.
+    for (const k of ["villager_m", "villager_m2", "villager_f", "villager_f2", "trader"]) {
+      const key = `tnpc:${k}`;
+      if (!this.textures.exists(key)) this.load.image(key, asset(`npc/${k}.png`));
+      if (!this.cache.json.exists(`tnpcmeta:${k}`)) this.load.json(`tnpcmeta:${k}`, asset(`npc/${k}.json`));
+    }
   }
 
   create(): void {
     document.getElementById("boot")?.remove();
-    this.isoOX = GRID * (TILE_W / 2);
-    this.isoOY = TILE_H;
-    this.makeGroundTiles();
-    this.makeDecorTextures();
+    this.town = this.cache.json.get("starting_town") as TownData;
+    if (!this.town) {
+      console.error("Starting Town map missing");
+      this.scene.start("Menu");
+      return;
+    }
+    this.TILE_W = this.town.tileWidth || 64;
+    this.TILE_H = this.town.tileHeight || 32;
+
+    // Queue every tile texture used by the map, then finish building once loaded.
+    const needed = new Set<number>();
+    for (const row of this.town.background) for (const id of row) if (id) needed.add(id);
+    for (const row of this.town.object) for (const id of row) if (id) needed.add(id);
+    for (const o of this.town.overlays ?? []) needed.add(o.tile);
+
+    let pending = 0;
+    for (const id of needed) {
+      const key = `ft:${id}`;
+      if (this.textures.exists(key)) continue;
+      pending++;
+      this.load.image(key, asset(`tiles/t${id}.png`));
+    }
+
+    const finish = (): void => this.finishCreate();
+    if (pending > 0) {
+      this.load.once(Phaser.Loader.Events.COMPLETE, finish);
+      this.load.start();
+    } else {
+      finish();
+    }
+  }
+
+  private finishCreate(): void {
+    const T = this.town;
+    this.isoOX = T.height * (this.TILE_W / 2);
+    this.isoOY = this.TILE_H * 2;
+
+    // Restore position if we were already in Starting Town.
+    if (gameState.lastMap === "starting_town" || gameState.lastMap === "cityplaza") {
+      this.tileX = gameState.lastX || T.spawn.tx;
+      this.tileY = gameState.lastY || T.spawn.ty;
+      this.facing = (gameState.lastFace as Facing) || T.spawn.face;
+    } else {
+      this.tileX = T.spawn.tx;
+      this.tileY = T.spawn.ty;
+      this.facing = T.spawn.face;
+    }
+    gameState.lastMap = "starting_town";
+    gameState.lastX = this.tileX;
+    gameState.lastY = this.tileY;
+    gameState.lastFace = this.facing;
+
+    this.solid = T.solid.map((r) => r.slice());
+    this.doorAt.clear();
+    for (const d of T.doors) {
+      this.doorAt.set(`${d.tx},${d.ty}`, d);
+      if (this.solid[d.ty]) this.solid[d.ty]![d.tx] = false;
+    }
 
     this.world = this.add.layer();
     this.hud = this.add.container(0, 0).setScrollFactor(0).setDepth(100000);
 
     this.buildGround();
-    this.buildSolids();
-    this.buildBuildingsAndProps();
-    this.buildDecor();
+    this.buildObjects();
+    this.buildOverlays();
     this.buildNpcs();
     this.buildPlayer();
 
     this.dialogue = new DialogueBox(this);
     this.pad = new TouchPad(this, { onAction: () => this.onAction(), onMenu: () => this.openPause() });
     this.hint = this.add.text(0, 0, "", {
-      fontFamily: "system-ui, sans-serif", fontSize: "12px", color: "#fff", backgroundColor: "#000000bb", padding: { x: 6, y: 3 },
+      fontFamily: "system-ui, sans-serif", fontSize: "12px", color: "#fff",
+      backgroundColor: "#000000bb", padding: { x: 6, y: 3 },
     }).setOrigin(0.5, 1).setDepth(99000).setVisible(false);
 
     this.cursors = this.input.keyboard!.createCursorKeys();
     this.keys = this.input.keyboard!.addKeys("W,A,S,D") as Record<string, Phaser.Input.Keyboard.Key>;
     const kb = this.input.keyboard!;
-    kb.on("keydown-E", this.onAction, this); kb.on("keydown-SPACE", this.onAction, this); kb.on("keydown-ESC", this.openPause, this);
+    kb.on("keydown-E", this.onAction, this);
+    kb.on("keydown-SPACE", this.onAction, this);
+    kb.on("keydown-ESC", this.openPause, this);
 
     const cam = this.cameras.main;
-    cam.setBackgroundColor("#243a2a");
-    cam.startFollow(this.player, true, 0.15, 0.15);
-    cam.setZoom(1);
+    cam.setBackgroundColor("#1a2a22");
+    cam.startFollow(this.player, true, 0.14, 0.14);
+    // Close RPG exploration camera — character + nearby buildings have weight.
+    cam.setZoom(T.cameraZoom ?? 1.35);
+    const worldW = this.isoOX + (T.width - 1) * (this.TILE_W / 2) + this.TILE_W * 2;
+    const worldH = this.isoOY + (T.width + T.height) * (this.TILE_H / 2) + 800;
+    cam.setBounds(-this.TILE_W * 2, -400, worldW + this.TILE_W * 4, worldH);
 
     this.buildHud();
     this.pad.layout();
     cam.fadeIn(280, 0, 0, 0);
+
     this.scale.on(Phaser.Scale.Events.RESIZE, this.onResize, this);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.scale.off(Phaser.Scale.Events.RESIZE, this.onResize, this);
-      kb.off("keydown-E", this.onAction, this); kb.off("keydown-SPACE", this.onAction, this); kb.off("keydown-ESC", this.openPause, this);
-      this.pad.destroy(); this.dialogue.destroy();
+      kb.off("keydown-E", this.onAction, this);
+      kb.off("keydown-SPACE", this.onAction, this);
+      kb.off("keydown-ESC", this.openPause, this);
+      this.pad.destroy();
+      this.dialogue.destroy();
     });
   }
 
   private onResize = (): void => { this.pad.layout(); this.buildHud(); };
 
-  // ── Ground ──────────────────────────────────────────────────────────────────
-  /** Build diamond-masked ground tiles from the seamless textures (once). */
-  private makeGroundTiles(): void {
-    const carve = (key: string, srcKey: string, tint?: [number, number, number]) => {
-      if (this.textures.exists(key)) return;
-      const src = this.textures.get(srcKey).getSourceImage() as CanvasImageSource;
-      const c = document.createElement("canvas"); c.width = TILE_W; c.height = TILE_H;
-      const ctx = c.getContext("2d"); if (!ctx) return;
-      ctx.beginPath(); ctx.moveTo(TILE_W / 2, 0); ctx.lineTo(TILE_W, TILE_H / 2); ctx.lineTo(TILE_W / 2, TILE_H); ctx.lineTo(0, TILE_H / 2); ctx.closePath(); ctx.clip();
-      ctx.drawImage(src, 0, 0, (src as HTMLImageElement).width || 256, (src as HTMLImageElement).height || 256, 0, 0, TILE_W, TILE_H);
-      if (tint) { ctx.globalCompositeOperation = "multiply"; ctx.fillStyle = `rgb(${tint[0]},${tint[1]},${tint[2]})`; ctx.fillRect(0, 0, TILE_W, TILE_H); ctx.globalCompositeOperation = "source-over"; }
-      // Soft diamond edge.
-      ctx.strokeStyle = "rgba(0,0,0,0.18)"; ctx.lineWidth = 1;
-      ctx.beginPath(); ctx.moveTo(TILE_W / 2, 0); ctx.lineTo(TILE_W, TILE_H / 2); ctx.lineTo(TILE_W / 2, TILE_H); ctx.lineTo(0, TILE_H / 2); ctx.closePath(); ctx.stroke();
-      this.textures.addCanvas(key, c);
+  private iso(tx: number, ty: number): { x: number; y: number } {
+    return {
+      x: this.isoOX + (tx - ty) * (this.TILE_W / 2),
+      y: this.isoOY + (tx + ty) * (this.TILE_H / 2),
     };
-    carve("gt:grass", "ct:grass");
-    carve("gt:cobble", "ct:dirt", [150, 150, 160]);
-    carve("gt:water", "ct:water");
   }
 
-  /** Procedural isometric decoration textures (fountain, tree, lamp, bench). */
-  private makeDecorTextures(): void {
-    const tex = (key: string, w: number, h: number, draw: (c: CanvasRenderingContext2D) => void) => {
-      if (this.textures.exists(key)) return;
-      const cv = document.createElement("canvas"); cv.width = w; cv.height = h;
-      const ctx = cv.getContext("2d"); if (!ctx) return;
-      draw(ctx); this.textures.addCanvas(key, cv);
-    };
-    const ell = (c: CanvasRenderingContext2D, x: number, y: number, rx: number, ry: number, fill: string, stroke?: string) => {
-      c.beginPath(); c.ellipse(x, y, rx, ry, 0, 0, Math.PI * 2); c.fillStyle = fill; c.fill();
-      if (stroke) { c.strokeStyle = stroke; c.lineWidth = 2; c.stroke(); }
-    };
-    // Fountain — stone basin, water, tiered spout.
-    tex("fx:fountain", 180, 170, (c) => {
-      ell(c, 90, 150, 12, 5, "rgba(0,0,0,0.28)");
-      ell(c, 90, 128, 78, 32, "#9aa1ad", "#5e646f");        // outer basin rim
-      ell(c, 90, 126, 64, 25, "#3f7fbf");                    // water
-      ell(c, 90, 122, 48, 17, "#6fb0e0");                    // water highlight
-      c.fillStyle = "#aeb5c0"; c.fillRect(76, 70, 28, 58);   // pedestal
-      c.strokeStyle = "#5e646f"; c.lineWidth = 1.5; c.strokeRect(76, 70, 28, 58);
-      ell(c, 90, 70, 40, 15, "#9aa1ad", "#5e646f");          // mid basin rim
-      ell(c, 90, 68, 30, 10, "#4f95d0");                     // mid water
-      c.fillStyle = "#aeb5c0"; c.fillRect(84, 34, 12, 34);   // upper stem
-      ell(c, 90, 34, 20, 8, "#9aa1ad", "#5e646f");           // top basin
-      ell(c, 90, 33, 13, 5, "#6fb0e0");
-      c.strokeStyle = "rgba(150,210,255,0.7)"; c.lineWidth = 2;              // falling water
-      for (const dx of [-22, 0, 22]) { c.beginPath(); c.moveTo(90 + dx, 40); c.lineTo(90 + dx * 1.4, 112); c.stroke(); }
-      c.fillStyle = "rgba(190,230,255,0.9)";
-      for (let i = 0; i < 10; i++) c.fillRect(60 + i * 7, 118 + (i % 3) * 4, 2, 2);
-    });
-    // Tree — layered canopy on a trunk.
-    tex("fx:tree", 100, 132, (c) => {
-      ell(c, 50, 124, 26, 8, "rgba(0,0,0,0.28)");
-      c.fillStyle = "#6b4a2f"; c.fillRect(43, 84, 14, 40);
-      ell(c, 50, 66, 40, 34, "#1f5f33");
-      ell(c, 34, 58, 26, 24, "#2b7a42");
-      ell(c, 64, 54, 24, 22, "#358a4d");
-      ell(c, 48, 44, 24, 22, "#3f9a58");
-      ell(c, 42, 40, 10, 9, "#5fb56f");
-    });
-    // Lamp post — pole + glowing lantern.
-    tex("fx:lamp", 40, 108, (c) => {
-      ell(c, 20, 102, 12, 5, "rgba(0,0,0,0.28)");
-      c.fillStyle = "#2b2f3d"; c.fillRect(17, 22, 6, 80);
-      ell(c, 20, 100, 10, 4, "#3a3f52");
-      c.fillStyle = "#1b1f2c"; c.fillRect(11, 12, 18, 12);
-      ell(c, 20, 16, 11, 8, "rgba(255,222,120,0.35)");
-      c.fillStyle = "#ffe08a"; ell(c, 20, 16, 6, 5, "#ffe08a");
-      c.fillStyle = "#141824"; c.fillRect(14, 8, 12, 4);
-    });
-    // Bench — wooden slats, iso.
-    tex("fx:bench", 96, 60, (c) => {
-      ell(c, 48, 52, 34, 7, "rgba(0,0,0,0.25)");
-      c.fillStyle = "#7a5738"; c.fillRect(14, 30, 68, 10);
-      c.fillStyle = "#8a6742"; c.fillRect(14, 30, 68, 4);
-      c.fillStyle = "#6b4a2f"; c.fillRect(18, 40, 6, 12); c.fillRect(72, 40, 6, 12);
-      c.fillStyle = "#7a5738"; c.fillRect(16, 14, 68, 8);
-    });
+  private meta(id: number): TileMeta | null {
+    const m = this.town.tiles[String(id)] ?? this.town.tiles[id as unknown as string];
+    return m ?? null;
   }
 
-  private buildDecor(): void {
-    const place = (key: string, tx: number, ty: number, oy = 0.9, dz = 8) => {
-      const p = this.iso(tx, ty);
-      const img = this.add.image(p.x, p.y + TILE_H * 0.3, key).setOrigin(0.5, oy);
-      this.addObject(img, p.y + dz);
-      return img;
-    };
-    place("fx:fountain", FOUNTAIN[0], FOUNTAIN[1], 0.86, 6);
-    for (const [tx, ty] of TREES) place("fx:tree", tx, ty, 0.92, 12);
-    for (const [tx, ty] of BENCHES) place("fx:bench", tx, ty, 0.86, 8);
-    for (const [tx, ty] of LAMPS) place("fx:lamp", tx, ty, 0.95, 14);
+  private placeTile(id: number, tx: number, ty: number, depthBoost = 0): Phaser.GameObjects.Image | null {
+    if (!id || !this.textures.exists(`ft:${id}`)) return null;
+    const m = this.meta(id);
+    const p = this.iso(tx, ty);
+    const img = this.add.image(p.x, p.y, `ft:${id}`);
+    if (m && m.w > 0 && m.h > 0) {
+      // FLARE anchor (ox, oy) is the feet / ground contact inside the sprite.
+      img.setOrigin(m.ox / m.w, m.oy / m.h);
+    } else {
+      img.setOrigin(0.5, 1);
+    }
+    const depth = p.y + depthBoost;
+    img.setDepth(depth);
+    this.world.add(img);
+    return img;
   }
 
   private buildGround(): void {
     const gl = this.add.layer().setDepth(-100000);
-    for (let ty = 0; ty < GRID; ty++) {
-      for (let tx = 0; tx < GRID; tx++) {
-        const g = groundAt(tx, ty);
-        const key = g === "water" ? "gt:water" : g === "cobble" ? "gt:cobble" : "gt:grass";
+    for (let ty = 0; ty < this.town.height; ty++) {
+      for (let tx = 0; tx < this.town.width; tx++) {
+        const id = this.town.background[ty]![tx]!;
+        if (!id || !this.textures.exists(`ft:${id}`)) continue;
+        const m = this.meta(id);
         const p = this.iso(tx, ty);
-        gl.add(this.add.image(p.x, p.y, key).setOrigin(0.5, 0.5));
+        const img = this.add.image(p.x, p.y, `ft:${id}`);
+        if (m) img.setOrigin(m.ox / m.w, m.oy / m.h);
+        else img.setOrigin(0.5, 0.5);
+        gl.add(img);
       }
     }
   }
 
-  private buildSolids(): void {
-    this.solid = Array.from({ length: GRID }, () => Array<boolean>(GRID).fill(false));
-    const mark = (tx: number, ty: number) => { if (ty >= 0 && ty < GRID && tx >= 0 && tx < GRID) this.solid[ty]![tx] = true; };
-    // Map border.
-    for (let i = 0; i < GRID; i++) { mark(0, i); mark(GRID - 1, i); mark(i, 0); mark(i, GRID - 1); }
-    // Building footprints.
-    for (const b of BUILDINGS) for (let dx = 0; dx < b.foot[0]; dx++) for (let dy = 0; dy < b.foot[1]; dy++) mark(b.tx - Math.floor(b.foot[0] / 2) + dx, b.ty - b.foot[1] + 1 + dy);
-    // Fountain water.
-    for (let ty = 0; ty < GRID; ty++) for (let tx = 0; tx < GRID; tx++) if (groundAt(tx, ty) === "water") mark(tx, ty);
-    // Props + decoration.
-    for (const p of PROPS) if (p.solid) mark(p.tx, p.ty);
-    for (const [tx, ty] of TREES) mark(tx, ty);
-    for (const [tx, ty] of LAMPS) mark(tx, ty);
-    for (const [tx, ty] of BENCHES) mark(tx, ty);
-    // NPCs stand on solid tiles (can't walk through people); doors are open.
-    for (const n of NPCS) mark(n.tx, n.ty);
-    for (const d of DOORS) { this.doorAt.set(`${d.tx},${d.ty}`, d); if (this.solid[d.ty]) this.solid[d.ty]![d.tx] = false; }
-  }
-
-  private addObject(o: Phaser.GameObjects.GameObject & { setDepth: (d: number) => void }, depth: number): void {
-    o.setDepth(depth); this.world.add(o); this.objects.push(o);
-  }
-
-  private buildBuildingsAndProps(): void {
-    for (const b of BUILDINGS) {
-      const p = this.iso(b.tx, b.ty);
-      const img = this.add.image(p.x, p.y + TILE_H * 0.4, `cb:${b.key}`).setOrigin(0.5, 1).setScale(b.scale);
-      this.addObject(img, p.y + 40);
-      if (b.label) {
-        const t = this.add.text(p.x, p.y - img.displayHeight * 0.9, b.label, {
-          fontFamily: "system-ui, sans-serif", fontSize: "12px", color: "#ffe9b0", backgroundColor: "#00000099", padding: { x: 5, y: 2 },
-        }).setOrigin(0.5, 1);
-        this.addObject(t, 99000);
+  private buildObjects(): void {
+    // Object layer = large world pieces (trees, cliffs, structures) depth-sorted.
+    for (let ty = 0; ty < this.town.height; ty++) {
+      for (let tx = 0; tx < this.town.width; tx++) {
+        const id = this.town.object[ty]![tx]!;
+        if (!id) continue;
+        this.placeTile(id, tx, ty, 4);
       }
     }
-    for (const pr of PROPS) {
-      const p = this.iso(pr.tx, pr.ty);
-      const img = this.add.image(p.x, p.y + TILE_H * 0.35, `cp:${pr.key}`).setOrigin(0.5, 1).setScale(pr.scale);
-      this.addObject(img, p.y + 10);
+  }
+
+  private buildOverlays(): void {
+    for (const o of this.town.overlays ?? []) {
+      const img = this.placeTile(o.tile, o.tx, o.ty, 8);
+      if (img && o.label) {
+        const p = this.iso(o.tx, o.ty);
+        const t = this.add.text(p.x, p.y - (img.displayHeight * 0.55), o.label, {
+          fontFamily: "system-ui, sans-serif", fontSize: "12px", color: "#ffe9b0",
+          backgroundColor: "#00000099", padding: { x: 5, y: 2 },
+        }).setOrigin(0.5, 1).setDepth(99000);
+        this.world.add(t);
+      }
+    }
+    for (const d of this.town.doors) {
+      const p = this.iso(d.tx, d.ty);
+      const t = this.add.text(p.x, p.y - this.TILE_H, d.label, {
+        fontFamily: "system-ui, sans-serif", fontSize: "11px", color: "#ffe9b0",
+        backgroundColor: "#00000099", padding: { x: 4, y: 2 },
+      }).setOrigin(0.5, 1).setDepth(99000);
+      this.world.add(t);
     }
   }
 
   private buildNpcs(): void {
-    for (const n of NPCS) {
+    this.npcSprites = [];
+    for (const n of this.town.npcs) {
       const p = this.iso(n.tx, n.ty);
-      const img = this.add.image(p.x, p.y + TILE_H * 0.3, `cn:${n.key}`).setOrigin(0.5, 1).setScale(0.28);
-      this.addObject(img, p.y + 20);
+      const tex = `tnpc:${n.key}`;
+      const meta = this.cache.json.get(`tnpcmeta:${n.key}`) as { frameW: number; frameH: number; originY?: number } | undefined;
+      let sprite: Phaser.GameObjects.Image;
+      if (this.textures.exists(tex) && meta) {
+        // Idle strip: down|left|right|up — show "down" by default via crop.
+        if (!this.textures.exists(`${tex}:down`)) {
+          const src = this.textures.get(tex).getSourceImage() as HTMLImageElement;
+          for (let i = 0; i < 4; i++) {
+            const c = document.createElement("canvas");
+            c.width = meta.frameW; c.height = meta.frameH;
+            const ctx = c.getContext("2d");
+            if (ctx) ctx.drawImage(src, i * meta.frameW, 0, meta.frameW, meta.frameH, 0, 0, meta.frameW, meta.frameH);
+            this.textures.addCanvas(`${tex}:${["down", "left", "right", "up"][i]}`, c);
+          }
+        }
+        sprite = this.add.image(p.x, p.y, `${tex}:down`).setOrigin(0.5, meta.originY ?? 0.9);
+      } else {
+        sprite = this.add.image(p.x, p.y, tex).setOrigin(0.5, 0.9).setScale(0.55);
+      }
+      sprite.setDepth(p.y + 10);
+      this.world.add(sprite);
+
       const beaten = gameState.isDefeated(n.id);
       const tag = n.role === "shop" ? "🛒" : n.duelist ? (beaten ? "✔" : "⚔") : "💬";
-      const plate = this.add.text(p.x, p.y - img.displayHeight * 0.72, `${tag} ${n.name}`, {
-        fontFamily: "system-ui, sans-serif", fontSize: "11px", color: beaten ? "#8ef0bd" : "#ffe9b0", backgroundColor: "#00000099", padding: { x: 4, y: 1 },
-      }).setOrigin(0.5, 1);
-      this.addObject(plate, 99000);
-      this.npcSprites.push({ def: n, sprite: img });
+      const plate = this.add.text(p.x, p.y - sprite.displayHeight * 0.85, `${tag} ${n.name}`, {
+        fontFamily: "system-ui, sans-serif", fontSize: "11px",
+        color: beaten ? "#8ef0bd" : "#ffe9b0",
+        backgroundColor: "#00000099", padding: { x: 4, y: 1 },
+      }).setOrigin(0.5, 1).setDepth(99000);
+      this.world.add(plate);
+      this.npcSprites.push({ def: n, sprite });
+      this.solid[n.ty]![n.tx] = true;
     }
   }
 
@@ -351,16 +326,19 @@ export class CityScene extends Phaser.Scene {
       ensureCharTexture(this, "player", { body: 0x2f6bd0, trim: 0xffe08a, skin: 0xe8b98c, hair: 0x2a1e14 });
     }
     const p = this.iso(this.tileX, this.tileY);
-    this.player = this.add.sprite(p.x, p.y, CHAR_KEY("player"), charFrame(this.facing, 0)).setOrigin(0.5, 0.82).setScale(2.6);
-    this.addObject(this.player, p.y);
+    // Substantial on-screen character to match close camera / FLARE object scale.
+    this.player = this.add.sprite(p.x, p.y, CHAR_KEY("player"), charFrame(this.facing, 0))
+      .setOrigin(0.5, 0.86).setScale(2.8);
+    this.player.setDepth(p.y + 12);
+    this.world.add(this.player);
+    this.world.sort("depth");
   }
 
-  // ── HUD ─────────────────────────────────────────────────────────────────────
   private buildHud(): void {
     this.hud.removeAll(true);
-    const W = this.scale.width, H = this.scale.height;
+    const W = this.scale.width;
     const snap = getContext(this).playerState.get();
-    const name = snap?.user.username ?? "Duelist";
+    const name = snap?.user.username ?? "Traveler";
     const shards = snap?.player.shards ?? 0;
     const card = this.add.container(8, 8);
     const g = this.add.graphics();
@@ -368,28 +346,41 @@ export class CityScene extends Phaser.Scene {
     g.lineStyle(2, 0x3a5db0, 0.95); g.strokeRoundedRect(0, 0, 210, 50, 10);
     card.add(g);
     card.add(this.add.circle(27, 25, 17, 0x2b57b8, 0.5).setStrokeStyle(2, 0x8fb0ff, 1));
-    card.add(this.add.text(27, 25, (name[0] ?? "?").toUpperCase(), { fontFamily: "system-ui, sans-serif", fontSize: "17px", color: "#fff", fontStyle: "bold" }).setOrigin(0.5));
-    card.add(this.add.text(50, 8, name, { fontFamily: "system-ui, sans-serif", fontSize: "13px", color: "#fff", fontStyle: "bold" }).setOrigin(0, 0));
-    card.add(this.add.text(50, 28, `💠 ${shards.toLocaleString()}`, { fontFamily: "system-ui, sans-serif", fontSize: "12px", color: "#9fe0ff", fontStyle: "bold" }).setOrigin(0, 0));
+    card.add(this.add.text(27, 25, (name[0] ?? "?").toUpperCase(), {
+      fontFamily: "system-ui, sans-serif", fontSize: "17px", color: "#fff", fontStyle: "bold",
+    }).setOrigin(0.5));
+    card.add(this.add.text(50, 8, name, {
+      fontFamily: "system-ui, sans-serif", fontSize: "13px", color: "#fff", fontStyle: "bold",
+    }).setOrigin(0, 0));
+    card.add(this.add.text(50, 28, `💠 ${shards.toLocaleString()}`, {
+      fontFamily: "system-ui, sans-serif", fontSize: "12px", color: "#9fe0ff", fontStyle: "bold",
+    }).setOrigin(0, 0));
     this.hud.add(card);
-    const bt = this.add.text(W / 2, 14, "DOMINO PLAZA", { fontFamily: "system-ui, sans-serif", fontSize: "14px", color: "#bfe0ff", fontStyle: "bold" }).setOrigin(0.5, 0);
+
+    const title = this.town?.name?.toUpperCase() ?? "STARTING TOWN";
+    const bt = this.add.text(W / 2, 14, title, {
+      fontFamily: "system-ui, sans-serif", fontSize: "14px", color: "#bfe0ff", fontStyle: "bold",
+    }).setOrigin(0.5, 0);
     const bw = bt.width + 26;
     const bg = this.add.graphics();
-    bg.fillStyle(0x101a33, 0.85); bg.fillRoundedRect(W / 2 - bw / 2, 10, bw, 26, 8); bg.lineStyle(1.5, 0x3a5db0, 0.8); bg.strokeRoundedRect(W / 2 - bw / 2, 10, bw, 26, 8);
+    bg.fillStyle(0x101a33, 0.85); bg.fillRoundedRect(W / 2 - bw / 2, 10, bw, 26, 8);
+    bg.lineStyle(1.5, 0x3a5db0, 0.8); bg.strokeRoundedRect(W / 2 - bw / 2, 10, bw, 26, 8);
     this.hud.add(bg); this.hud.add(bt);
-    void H;
   }
 
-  // ── Movement ────────────────────────────────────────────────────────────────
   update(): void {
-    if (this.locked || this.moving || !this.player || this.dialogue.isOpen) return;
+    if (this.locked || this.moving || !this.player || this.dialogue?.isOpen) return;
     let dx = 0, dy = 0;
     const pd = this.pad.direction();
     if (this.cursors.left.isDown || this.keys.A.isDown || pd.x < 0) dx = -1;
     else if (this.cursors.right.isDown || this.keys.D.isDown || pd.x > 0) dx = 1;
     else if (this.cursors.up.isDown || this.keys.W.isDown || pd.y < 0) dy = -1;
     else if (this.cursors.down.isDown || this.keys.S.isDown || pd.y > 0) dy = 1;
-    if (!dx && !dy) { this.player.setFrame(charFrame(this.facing, 0)); this.updateHint(); return; }
+    if (!dx && !dy) {
+      this.player.setFrame(charFrame(this.facing, 0));
+      this.updateHint();
+      return;
+    }
     this.facing = dx < 0 ? "left" : dx > 0 ? "right" : dy < 0 ? "up" : "down";
     this.tryStep(dx, dy);
   }
@@ -398,7 +389,11 @@ export class CityScene extends Phaser.Scene {
     const nx = this.tileX + dx, ny = this.tileY + dy;
     const door = this.doorAt.get(`${nx},${ny}`);
     if (door) { this.enterShop(); return; }
-    if (!this.walkable(nx, ny)) { this.player.setFrame(charFrame(this.facing, 0)); this.updateHint(); return; }
+    if (!this.walkable(nx, ny)) {
+      this.player.setFrame(charFrame(this.facing, 0));
+      this.updateHint();
+      return;
+    }
     this.moving = true;
     this.walkFrame = this.walkFrame === 0 ? 1 : 0;
     this.player.setFrame(charFrame(this.facing, this.walkFrame));
@@ -407,21 +402,32 @@ export class CityScene extends Phaser.Scene {
     const p = this.iso(nx, ny);
     this.tweens.add({
       targets: this.player, x: p.x, y: p.y, duration: 150, ease: "Linear",
-      onUpdate: () => { this.player.setDepth(this.player.y); this.world.sort("depth"); },
-      onComplete: () => { this.moving = false; this.player.setDepth(p.y); this.world.sort("depth"); this.updateHint(); },
+      onUpdate: () => { this.player.setDepth(this.player.y + 12); this.world.sort("depth"); },
+      onComplete: () => {
+        this.moving = false;
+        this.player.setDepth(p.y + 12);
+        this.world.sort("depth");
+        this.updateHint();
+      },
     });
   }
 
   private walkable(x: number, y: number): boolean {
-    if (y < 0 || y >= GRID || x < 0 || x >= GRID) return false;
+    if (y < 0 || y >= this.solid.length || x < 0 || x >= (this.solid[0]?.length ?? 0)) return false;
     return !this.solid[y]![x];
   }
 
   private facingTile(): { x: number; y: number } {
     const d = this.facing;
-    return { x: this.tileX + (d === "left" ? -1 : d === "right" ? 1 : 0), y: this.tileY + (d === "up" ? -1 : d === "down" ? 1 : 0) };
+    return {
+      x: this.tileX + (d === "left" ? -1 : d === "right" ? 1 : 0),
+      y: this.tileY + (d === "up" ? -1 : d === "down" ? 1 : 0),
+    };
   }
-  private npcAt(x: number, y: number): CityNpc | null { return this.npcSprites.find((n) => n.def.tx === x && n.def.ty === y)?.def ?? null; }
+
+  private npcAt(x: number, y: number): TownNpc | null {
+    return this.npcSprites.find((n) => n.def.tx === x && n.def.ty === y)?.def ?? null;
+  }
 
   private updateHint(): void {
     const t = this.facingTile();
@@ -429,13 +435,14 @@ export class CityScene extends Phaser.Scene {
     const door = this.doorAt.get(`${t.x},${t.y}`);
     if (npc) {
       const verb = npc.role === "shop" ? "talk" : npc.duelist && !gameState.isDefeated(npc.id) ? "duel" : "talk";
-      this.hint.setText(`E to ${verb}`).setPosition(this.player.x, this.player.y - 60).setVisible(true);
+      this.hint.setText(`E to ${verb}`).setPosition(this.player.x, this.player.y - 70).setVisible(true);
     } else if (door) {
-      this.hint.setText("E to enter").setPosition(this.player.x, this.player.y - 60).setVisible(true);
-    } else this.hint.setVisible(false);
+      this.hint.setText("E to enter").setPosition(this.player.x, this.player.y - 70).setVisible(true);
+    } else {
+      this.hint.setVisible(false);
+    }
   }
 
-  // ── Interaction ───────────────────────────────────────────────────────────────
   private onAction = (): void => {
     if (this.dialogue.isOpen) { this.dialogue.advance(); return; }
     if (this.locked) return;
@@ -446,12 +453,13 @@ export class CityScene extends Phaser.Scene {
     if (npc) this.interact(npc);
   };
 
-  private interact(def: CityNpc): void {
+  private interact(def: TownNpc): void {
     const beaten = gameState.isDefeated(def.id);
     const lines = beaten && def.defeatedLines?.length ? def.defeatedLines : def.lines;
     this.locked = true;
     this.dialogue.show(def.name, lines, () => {
-      this.locked = false; this.hint.setVisible(false);
+      this.locked = false;
+      this.hint.setVisible(false);
       if (def.role === "shop") { this.enterShop(); return; }
       if (def.duelist && !beaten) this.startDuel(def);
     });
@@ -459,10 +467,12 @@ export class CityScene extends Phaser.Scene {
 
   private enterShop(): void {
     this.cameras.main.fadeOut(220, 0, 0, 0);
-    this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => this.scene.start("Shop", { returnTo: "City" }));
+    this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {
+      this.scene.start("Shop", { returnTo: "City" });
+    });
   }
 
-  private async startDuel(def: CityNpc): Promise<void> {
+  private async startDuel(def: TownNpc): Promise<void> {
     this.locked = true;
     const cam = this.cameras.main;
     for (let i = 0; i < 3; i++) { cam.flash(90, 255, 255, 255); await this.wait(150); }
@@ -481,8 +491,13 @@ export class CityScene extends Phaser.Scene {
     if (this.dialogue.isOpen) { this.dialogue.close(); this.locked = false; return; }
     if (this.locked) return;
     this.locked = true;
-    this.dialogue.choice("Pause", [["Resume", () => { this.locked = false; }], ["Main Menu", () => this.scene.start("Menu")]], () => { this.locked = false; });
+    this.dialogue.choice("Pause", [
+      ["Resume", () => { this.locked = false; }],
+      ["Main Menu", () => this.scene.start("Menu")],
+    ], () => { this.locked = false; });
   };
 
-  private wait(ms: number): Promise<void> { return new Promise((res) => this.time.delayedCall(ms, res)); }
+  private wait(ms: number): Promise<void> {
+    return new Promise((res) => this.time.delayedCall(ms, res));
+  }
 }

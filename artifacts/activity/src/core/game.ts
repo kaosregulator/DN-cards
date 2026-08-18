@@ -13,7 +13,8 @@ import { CityScene } from "../scenes/CityScene";
 // experience as a scene:
 //   Boot  → loads the real player snapshot
 //   Menu  → title screen: adventure, duel, PvP, 3D world
-//   World → tile-based overworld (rooms, doors, NPCs, duelist encounters)
+//   City  → Starting Town (FLARE-authored isometric world objects + gameplay)
+//   World → legacy tile-grid overworld (kept for routes / expansion)
 //   Shop  → the Card Shop counter screen (browse the server's real cards)
 //   Matchmaking → finds an online opponent
 //   Duel  → the true Yu-Gi-Oh style duel (real cards, real art)

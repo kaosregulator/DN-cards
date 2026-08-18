@@ -1,0 +1,17 @@
+Starting Town — world art credits
+
+Isometric grassland tiles, structures, trees and NPC sprites:
+  FLARE Game / FLARE Game Art (flareteam)
+  https://github.com/flareteam/flare-game
+  https://github.com/flareteam/flare-game-art-src
+  License: CC-BY-SA 3.0
+  https://creativecommons.org/licenses/by-sa/3.0/
+
+Map construction is based on a cropped region of the Empyrean
+campaign "Black Oak City" map, with authored landmark overlays
+(shop building, well, plaza props) and DN Cards gameplay NPCs.
+
+Player walk cycle may also use the project's Town RPG Pack (ansimuz, CC0)
+as a fallback when FLARE hero frames are unavailable.
+
+All art ships same-origin under public/world/town/ for Discord Activity CSP.

@@ -9,5 +9,8 @@ tiles-world.png, tiles-exterior.png, tiles-interior.png, tiles-dungeon.png
   finalbossblues.itch.io/openrtp-tiles
   CC0 1.0 — http://creativecommons.org/publicdomain/zero/1.0/
 
+Starting Town (public/world/town/) — see town/CREDITS.txt
+  FLARE grassland tiles + NPC sprites (flareteam), CC-BY-SA 3.0
+
 These ship as real, same-origin files (not inlined) so Discord's Activity CSP
 (img-src 'self') serves them without an external request.
