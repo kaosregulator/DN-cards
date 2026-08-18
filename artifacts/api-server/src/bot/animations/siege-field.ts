@@ -364,27 +364,28 @@ interface Assets {
   atkColor: number; defColor: number;   // art-themed accent per active fighter
 }
 
-// Battle-line geometry — each side is a VERTICAL COLUMN of four cards receding
-// into the distance: the front card (depth 0) is big and low near the viewer,
-// each rank behind it steps UP toward the horizon, smaller and drifting toward
-// the centre line (a one-point-perspective file). Left column vs right column.
+// Battle-line geometry — four card slots per side laid out in the shallow ARC of
+// the reference board: the inner card (depth 0, nearest the centre line) is the
+// active front-line fighter, then the line curves OUTWARD to the flank, which
+// sits lower and larger. Each side is a clear, spaced group; the arena's centre
+// medallion shows in the gap between them. Measured off the mockup (1536×1024)
+// and scaled to this 900×600 frame.
 const PORTRAIT_W = 150, PORTRAIT_H = 150;
-const LINE_MAX = 4;                 // cards per column
-// Front (near) and back (far) anchors of a LEFT column, as {dx from centre, baseY, scale}.
-const COL_FRONT = { dx: 268, baseY: 556, scale: 0.62 };
-const COL_BACK  = { dx: 150, baseY: 388, scale: 0.325 };
-const GROUND_Y = COL_FRONT.baseY;   // front contact line (used by ambient FX)
+const LINE_MAX = 4;                 // cards per side
+// Per-rank slot for the LEFT side, {dx from centre, base contact Y, size}.
+// depth 0 = inner (active), depth 3 = flank.
+const SLOTS: readonly { dx: number; baseY: number; scale: number }[] = [
+  { dx: 148, baseY: 388, scale: 0.44 },
+  { dx: 201, baseY: 376, scale: 0.45 },
+  { dx: 262, baseY: 382, scale: 0.47 },
+  { dx: 338, baseY: 426, scale: 0.51 },
+];
+const GROUND_Y = 426;               // flank contact line (used by ambient FX)
 
-// Interpolate a card's stand placement along its column (depth 0 = front/near).
 function standCentre(side: 0 | 1, depth: number): { cx: number; baseY: number; scale: number } {
   const dir = side === 0 ? -1 : 1;
-  const t = LINE_MAX > 1 ? depth / (LINE_MAX - 1) : 0;   // 0 front → 1 back
-  const dx = lerp(COL_FRONT.dx, COL_BACK.dx, t);
-  return {
-    cx: FIELD.width / 2 + dir * dx,
-    baseY: lerp(COL_FRONT.baseY, COL_BACK.baseY, t),
-    scale: lerp(COL_FRONT.scale, COL_BACK.scale, t),
-  };
+  const s = SLOTS[Math.min(depth, SLOTS.length - 1)]!;
+  return { cx: FIELD.width / 2 + dir * s.dx, baseY: s.baseY, scale: s.scale };
 }
 
 // Plaque-centre Y for a given rank (where its impact FX / damage number land).
@@ -436,7 +437,9 @@ function paintFrame(ctx: Ctx, input: SiegeFieldInput, a: Assets, t: number, scal
   const foePos = standCentre(targetSide, focusDepth);
   const actingSlot = standCentre(acting, 0);
   const towardFoe = foePos.cx - actingSlot.cx;
-  const swipeToX = actingSlot.cx + towardFoe * 0.78;   // stop short of the target card
+  // A clear DASH forward toward the target (like a /battle lunge) — most of the
+  // way there, then back to its slot; not a full teleport across the board.
+  const swipeToX = actingSlot.cx + towardFoe * 0.62;
   const anim: Anim = { t, advance, connected, impact, acting, swipeToX };
 
   // The floor slots (a mini board) both lines stand on.
@@ -492,13 +495,12 @@ function drawLine(ctx: Ctx, side: 0 | 1, cards: SiegeFieldLineupCard[], a: Asset
     const pos = standCentre(side, d);
     let slideX = 0, flash = 0, bob = 0, lift = 0, scaleMul = 1;
     if (card.active && anim.acting === side) {
-      // The acting card LEAPS across the field to its target and back: it slides
-      // the full horizontal distance while arcing UP (a jump) and swelling a
-      // touch as it nears the viewer at the peak of the leap.
+      // The acting card DASHES forward toward its target and back — a clear
+      // lunge with a small lift and a touch of swell at the peak.
       const prog = anim.advance;
       slideX = (anim.swipeToX - pos.cx) * prog;
-      lift = -Math.sin(prog * Math.PI) * 46;
-      scaleMul = 1 + 0.12 * Math.sin(prog * Math.PI);
+      lift = -Math.sin(prog * Math.PI) * 16;
+      scaleMul = 1 + 0.06 * Math.sin(prog * Math.PI);
     } else if (card.active) {
       bob = Math.sin(anim.t * Math.PI * 2 + (side === 1 ? Math.PI : 0)) * 2.5;
     }
