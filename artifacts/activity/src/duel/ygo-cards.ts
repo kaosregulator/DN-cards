@@ -283,6 +283,39 @@ export const YGO_SPELLS: YgoSpellTrap[] = [
     description: "During your Battle Phase, all monsters you control gain 200 ATK.",
     effect: { kind: "continuous:allyAtk", amount: 400 },
   },
+  // ── Field Spells: the canonical Attribute-boosting Fields. Each stays face-up
+  //    in a Spell/Trap Zone and raises the ATK of your matching-Attribute
+  //    monsters while it's on the field. ─────────────────────────────────────
+  {
+    key: 19384334, name: "Molten Destruction", kind: "spell", sub: "Field",
+    description: "All FIRE monsters you control gain 500 ATK.",
+    effect: { kind: "field:attrBoost", attribute: "FIRE", amount: 500 },
+  },
+  {
+    key: 82999629, name: "Umiiruka", kind: "spell", sub: "Field",
+    description: "All WATER monsters you control gain 500 ATK.",
+    effect: { kind: "field:attrBoost", attribute: "WATER", amount: 500 },
+  },
+  {
+    key: 45778932, name: "Rising Air Current", kind: "spell", sub: "Field",
+    description: "All WIND monsters you control gain 500 ATK.",
+    effect: { kind: "field:attrBoost", attribute: "WIND", amount: 500 },
+  },
+  {
+    key: 56594520, name: "Gaia Power", kind: "spell", sub: "Field",
+    description: "All EARTH monsters you control gain 500 ATK.",
+    effect: { kind: "field:attrBoost", attribute: "EARTH", amount: 500 },
+  },
+  {
+    key: 81777047, name: "Luminous Spark", kind: "spell", sub: "Field",
+    description: "All LIGHT monsters you control gain 500 ATK.",
+    effect: { kind: "field:attrBoost", attribute: "LIGHT", amount: 500 },
+  },
+  {
+    key: 18161786, name: "Mystic Plasma Zone", kind: "spell", sub: "Field",
+    description: "All DARK monsters you control gain 500 ATK.",
+    effect: { kind: "field:attrBoost", attribute: "DARK", amount: 500 },
+  },
 ];
 
 export const YGO_TRAPS: YgoSpellTrap[] = [

@@ -337,9 +337,17 @@ export function setSpellTrap(state: DuelState, who: PlayerId, handIndex: number)
 export function canActivateFromHand(state: DuelState, who: PlayerId, handIndex: number): { ok: boolean; reason?: string } {
   const b = boardOf(state, who);
   if (state.awaiting) return { ok: false, reason: "Resolve the current effect first." };
-  if (state.turn !== who || (state.phase !== "MAIN1" && state.phase !== "MAIN2")) return { ok: false, reason: "Activate Spells in a Main Phase." };
+  if (state.turn !== who) return { ok: false, reason: "Activate Spells on your turn." };
   const card = b.hand[handIndex];
   if (!card || card.kind !== "spell" || !card.effect) return { ok: false, reason: "That isn't a Spell." };
+  // Normal Spells are Main-Phase only; Quick-Play Spells also fire in the
+  // Battle Phase (spell speed 2), so you can pump an attacker or clear a
+  // threat mid-combat.
+  const inMain = state.phase === "MAIN1" || state.phase === "MAIN2";
+  const quickInBattle = state.phase === "BATTLE" && card.sub === "Quick-Play";
+  if (!inMain && !quickInBattle) {
+    return { ok: false, reason: "Activate Spells in a Main Phase (Quick-Play also in Battle)." };
+  }
   return { ok: true };
 }
 

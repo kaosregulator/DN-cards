@@ -279,3 +279,16 @@ describe("search effects (Sangan / Witch)", () => {
     expect(s.player.deck.length).toBe(1);
   });
 });
+
+describe("Field Spell library", () => {
+  it("provides an Attribute-boost Field Spell for all six real Attributes", () => {
+    const fields = YGO_SPELLS.filter((s) => s.effect?.kind === "field:attrBoost");
+    expect(fields.length).toBe(6);
+    const attrs = new Set(fields.map((f) => (f.effect as { attribute: string }).attribute));
+    for (const a of ["FIRE", "WATER", "WIND", "EARTH", "LIGHT", "DARK"]) {
+      expect(attrs.has(a), `missing Field Spell for ${a}`).toBe(true);
+    }
+    // They ship in the support library so decks actually draw them.
+    expect(SPELL_LIBRARY.some((c) => c.effect?.kind === "field:attrBoost")).toBe(true);
+  });
+});

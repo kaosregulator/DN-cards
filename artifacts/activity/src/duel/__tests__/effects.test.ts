@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach } from "vitest";
 import {
   createDuel, activateSpellFromHand, activateSetCard, summonMonster,
   declareAttack, respondToWindow, passWindow, responseOptions, recomputeContinuous,
-  boardOf, effAtk, changePosition, nextPhase,
+  boardOf, effAtk, changePosition, nextPhase, canActivateFromHand,
 } from "../engine";
 import type { DuelState, FieldMonster, MonsterPosition, PlayerId, DuelCard } from "../types";
 import { monster, spell, trap, setupWith, freezeRandom } from "./helpers";
@@ -273,5 +273,83 @@ describe("flip effect", () => {
     place(s, "opponent", 0, 3000);
     changePosition(s, "player", 0); // flip summon
     expect(s.opponent.monsters[0]).toBeNull();
+  });
+});
+
+describe("Field Spells (attribute auras)", () => {
+  beforeEach(() => freezeRandom(0));
+
+  const face = (c: DuelCard): FieldMonster => ({
+    card: c, position: "attack", atkMod: 0, defMod: 0, turnBoost: 0,
+    hasAttacked: 0, summonedThisTurn: false, faceUp: true,
+  });
+
+  it("boosts only your matching-Attribute monsters and stays on the field", () => {
+    const s = createDuel(setupWith([], []));
+    const fire = face(monster("Flamer", 1500, 1000, 4, null, "FIRE"));
+    const water = face(monster("Splash", 1500, 1000, 4, null, "WATER"));
+    boardOf(s, "player").monsters[0] = fire;
+    boardOf(s, "player").monsters[1] = water;
+    recomputeContinuous(s);
+    expect(effAtk(fire)).toBe(1500);
+
+    s.player.hand = [spell("Molten Destruction", { kind: "field:attrBoost", attribute: "FIRE", amount: 500 })];
+    activateSpellFromHand(s, "player", 0);
+
+    expect(effAtk(fire)).toBe(2000);   // FIRE gains 500
+    expect(effAtk(water)).toBe(1500);  // WATER untouched
+    // Field Spell is persistent — it occupies a Spell/Trap zone, not the GY.
+    expect(boardOf(s, "player").spellTraps.filter(Boolean).length).toBe(1);
+    expect(boardOf(s, "player").graveyard.length).toBe(0);
+  });
+
+  it("does not boost the opponent's monsters", () => {
+    const s = createDuel(setupWith([], []));
+    const enemyFire = face(monster("EnemyFlame", 1500, 1000, 4, null, "FIRE"));
+    boardOf(s, "opponent").monsters[0] = enemyFire;
+    s.player.hand = [spell("Molten Destruction", { kind: "field:attrBoost", attribute: "FIRE", amount: 500 })];
+    activateSpellFromHand(s, "player", 0);
+    recomputeContinuous(s);
+    expect(effAtk(enemyFire)).toBe(1500);
+  });
+
+  it("the aura is removed when the Field Spell leaves the field", () => {
+    const s = createDuel(setupWith([], []));
+    const fire = face(monster("Flamer", 1500, 1000, 4, null, "FIRE"));
+    boardOf(s, "player").monsters[0] = fire;
+    s.player.hand = [spell("Molten Destruction", { kind: "field:attrBoost", attribute: "FIRE", amount: 500 })];
+    activateSpellFromHand(s, "player", 0);
+    expect(effAtk(fire)).toBe(2000);
+    boardOf(s, "player").spellTraps.fill(null);
+    recomputeContinuous(s);
+    expect(effAtk(fire)).toBe(1500);
+  });
+});
+
+describe("Quick-Play spell speed", () => {
+  beforeEach(() => freezeRandom(0));
+
+  const withSub = (c: DuelCard, sub: string): DuelCard => ({ ...c, sub });
+
+  it("a Quick-Play spell can activate in the Battle Phase; a Normal spell cannot", () => {
+    const s = createDuel(setupWith([], []));
+    s.phase = "BATTLE";
+    s.player.hand = [
+      withSub(spell("Rush Recklessly", { kind: "spell:boost", amount: 700 }), "Quick-Play"),
+      withSub(spell("Pot of Greed", { kind: "spell:draw", count: 2 }), "Normal"),
+    ];
+    expect(canActivateFromHand(s, "player", 0).ok).toBe(true);   // Quick-Play OK in Battle
+    expect(canActivateFromHand(s, "player", 1).ok).toBe(false);  // Normal is Main-Phase only
+  });
+
+  it("both Quick-Play and Normal spells still activate in a Main Phase", () => {
+    const s = createDuel(setupWith([], []));
+    s.phase = "MAIN1";
+    s.player.hand = [
+      withSub(spell("Rush Recklessly", { kind: "spell:boost", amount: 700 }), "Quick-Play"),
+      withSub(spell("Pot of Greed", { kind: "spell:draw", count: 2 }), "Normal"),
+    ];
+    expect(canActivateFromHand(s, "player", 0).ok).toBe(true);
+    expect(canActivateFromHand(s, "player", 1).ok).toBe(true);
   });
 });
