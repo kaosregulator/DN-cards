@@ -1,7 +1,7 @@
 import Phaser from "phaser";
 import { getContext } from "../core/context";
 import { TILE, TILE_KEY, SOLID, ensureTileTextures, ensureCharTexture, CHAR_KEY, charFrame, type TileKind } from "../world/tiles";
-import { preloadCharSheets, composeCharFromSheet } from "../world/charSprites";
+import { preloadCharSheets, composeChar, heroMap, npcMap, npcRowFor } from "../world/charSprites";
 import { preloadTilesets, buildTilesetTextures } from "../world/tileset";
 import { LEGEND, getMap, TOTAL_DUELISTS, type MapDef, type NpcDef, type DoorDef } from "../world/maps";
 import { gameState } from "../state/gameState";
@@ -160,9 +160,11 @@ export class WorldScene extends Phaser.Scene {
       }).setOrigin(0.5).setDepth(5));
     }
 
-    // NPCs.
+    // NPCs — real townsfolk sprites (varied by id), procedural fallback.
     for (const n of this.map.npcs) {
-      ensureCharTexture(this, n.id, n.colors);
+      if (!composeChar(this, n.id, "npc", npcMap(npcRowFor(n.id)))) {
+        ensureCharTexture(this, n.id, n.colors);
+      }
       const beaten = gameState.isDefeated(n.id);
       const spr = this.add.sprite(n.x * TILE + TILE / 2, n.y * TILE + TILE / 2 - 4, CHAR_KEY(n.id), charFrame(n.face ?? "down", 0));
       spr.setDepth(20 + n.y);
@@ -178,7 +180,7 @@ export class WorldScene extends Phaser.Scene {
     }
 
     // Player — the real animated hero sheet when it loaded, else procedural.
-    if (!composeCharFromSheet(this, "player", "hero")) {
+    if (!composeChar(this, "player", "hero", heroMap())) {
       ensureCharTexture(this, "player", { body: 0x2f6bd0, trim: 0xffe08a, skin: 0xe8b98c, hair: 0x2a1e14 });
     }
     const sp = this.spawnId === "__restore"
