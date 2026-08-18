@@ -261,14 +261,15 @@ export class DuelScene extends Phaser.Scene {
     this.lpPanels.opponent?.destroy();
     this.phasePills = [];
 
-    // Corner LP plates (viewer bottom-left, foe top-right).
+    // Corner LP plates (viewer bottom-left, foe top-right). Narrower on phones.
+    const lpW = this.W < 520 ? 150 : 196;
     this.lpPanels[this.viewer] = new LpPanel(this, {
       name: boardOf(this.state, this.viewer).name, maxLp: this.state.startingLp,
-      accent: 0x35c48a, align: "left",
+      accent: 0x35c48a, align: "left", width: lpW,
     });
     this.lpPanels[this.foe] = new LpPanel(this, {
       name: boardOf(this.state, this.foe).name, maxLp: this.state.startingLp,
-      accent: 0xe0556f, align: "right",
+      accent: 0xe0556f, align: "right", width: lpW,
     });
     this.ui.add([this.lpPanels[this.viewer]!.container, this.lpPanels[this.foe]!.container]);
 
@@ -304,7 +305,7 @@ export class DuelScene extends Phaser.Scene {
   }
 
   private layoutHud(): void {
-    this.lpPanels[this.foe]?.place(this.W - 10, 8);
+    this.lpPanels[this.foe]?.place(this.W - 8, 8);
     this.lpPanels[this.viewer]?.place(10, this.H - 68);
     // Phase strip runs down the right edge of the mat.
     const px = this.W - 22;
@@ -314,10 +315,21 @@ export class DuelScene extends Phaser.Scene {
       p.tx.setPosition(px, py + i * 22);
     });
     this.phaseText.setPosition(this.W / 2, 8);
-    this.msgText.setPosition(this.W / 2, this.H * 0.70);
     this.turnBanner.setPosition(this.W / 2, this.H / 2);
-    this.positionButton(this.primaryBtn, this.W - 12, this.H - 78, 1, 0);
-    this.positionButton(this.endBtn, this.W - 12, this.H - 40, 1, 0);
+    // On a narrow (portrait) screen the hand fills the bottom-right, so the
+    // action buttons move up into the open band between the mat and the hand,
+    // sitting side by side instead of stacked in the corner.
+    const narrow = this.W < 520;
+    if (narrow) {
+      const yb = this.H * 0.62;
+      this.positionButton(this.primaryBtn, this.W / 2 - 6, yb, 1, 0);
+      this.positionButton(this.endBtn, this.W / 2 + 124, yb, 1, 0);
+      this.msgText.setPosition(this.W / 2, this.H * 0.55);
+    } else {
+      this.positionButton(this.primaryBtn, this.W - 12, this.H - 78, 1, 0);
+      this.positionButton(this.endBtn, this.W - 12, this.H - 40, 1, 0);
+      this.msgText.setPosition(this.W / 2, this.H * 0.70);
+    }
   }
 
   private makeButton(label: string, color: number, onClick: () => void): Phaser.GameObjects.Container {
@@ -513,7 +525,9 @@ export class DuelScene extends Phaser.Scene {
 
   private renderHand(): void {
     const b = boardOf(this.state, this.viewer);
-    const hw = this.cardW() * 1.2, hh = hw * 1.42;
+    // Slightly smaller hand cards on narrow screens so all five fan within the
+    // viewport with margin to spare.
+    const hw = this.cardW() * (this.W < 520 ? 1.0 : 1.2), hh = hw * 1.42;
     const n = b.hand.length;
     const maxSpan = this.W - 24;
     const spacing = Math.min(hw * 1.05, n > 0 ? maxSpan / n : hw);

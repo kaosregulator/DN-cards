@@ -15,6 +15,8 @@ export interface LpPanelOpts {
   accent: number;
   /** "left" pins the avatar on the left, "right" mirrors the layout. */
   align: "left" | "right";
+  /** Overall panel width (defaults to 196; use a smaller value on phones). */
+  width?: number;
 }
 
 export class LpPanel {
@@ -25,12 +27,13 @@ export class LpPanel {
   private lpText!: Phaser.GameObjects.Text;
   private nameText!: Phaser.GameObjects.Text;
   private shownLp: number;
-  private w = 196;
+  private w: number;
   private h = 56;
 
   constructor(scene: Phaser.Scene, opts: LpPanelOpts) {
     this.scene = scene;
     this.opts = opts;
+    this.w = opts.width ?? 196;
     this.shownLp = opts.maxLp;
     this.container = scene.add.container(0, 0);
     this.build();

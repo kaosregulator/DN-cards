@@ -48,8 +48,10 @@ export function makeField(width: number, height: number): FieldLayout {
   const sFar = 0.66;
   const sNear = 1.0;
 
-  // Mat width at scale 1, sized so five zones + both side columns fit.
-  const matW = Math.min(width * 0.96, height * 1.2);
+  // Mat width at scale 1, sized so five zones + both side columns fit. On a
+  // narrow (portrait) screen we pull it in so the near-edge cards and the side
+  // Deck/GY columns clear the viewport edges and the phase strip.
+  const matW = Math.min(width * (width < 520 ? 0.84 : 0.96), height * 1.2);
   // Base card width at the near edge.
   const baseCardW = Math.min(matW / 7.4, height * 0.105);
 

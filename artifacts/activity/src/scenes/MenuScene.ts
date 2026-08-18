@@ -57,7 +57,7 @@ export class MenuScene extends Phaser.Scene {
     // ── Title ──
     const titleY = H * (narrow ? 0.13 : 0.15);
     const title = this.add.text(W / 2, titleY, "DN CARDS", {
-      fontFamily: "system-ui, sans-serif", fontSize: `${Math.min(58, W / 7.2)}px`,
+      fontFamily: "system-ui, sans-serif", fontSize: `${Math.min(56, W / 8.2)}px`,
       color: "#ffe9b0", fontStyle: "bold", stroke: "#2a1c4a", strokeThickness: 8,
     }).setOrigin(0.5);
     const sub = this.add.text(W / 2, titleY + Math.min(42, W / 11), "D U E L   A D V E N T U R E", {

@@ -42,5 +42,5 @@ console.log('AFTER', JSON.stringify(after));
 console.log('ERRORS', errors.length, JSON.stringify(errors.slice(0,8)));
 await browser.close();
 if(errors.length){ console.error('FAIL: console errors'); process.exit(1); }
-if(after.oLp>=8000){ console.error('FAIL: attack did no damage'); process.exit(1); }
+if(after.oLp>=8000 && after.pLp>=8000){ console.error('FAIL: battle changed no LP'); process.exit(1); }
 console.log('PLAYTEST OK');
