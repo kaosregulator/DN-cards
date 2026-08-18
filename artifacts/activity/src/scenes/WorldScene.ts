@@ -1,6 +1,7 @@
 import Phaser from "phaser";
 import { getContext } from "../core/context";
 import { TILE, TILE_KEY, SOLID, ensureTileTextures, ensureCharTexture, CHAR_KEY, charFrame, type TileKind } from "../world/tiles";
+import { preloadCharSheets, composeCharFromSheet } from "../world/charSprites";
 import { LEGEND, getMap, TOTAL_DUELISTS, type MapDef, type NpcDef, type DoorDef } from "../world/maps";
 import { gameState } from "../state/gameState";
 import { DialogueBox } from "../ui/dialogue";
@@ -57,6 +58,12 @@ export class WorldScene extends Phaser.Scene {
     }
     this.mapId = data?.map ?? gameState.lastMap ?? "city";
     this.spawnId = data?.spawn ?? "start";
+  }
+
+  preload(): void {
+    // Bundled, same-origin character sheets (CSP-safe). If a load fails the
+    // world silently falls back to the procedural walkers.
+    preloadCharSheets(this);
   }
 
   create(): void {
@@ -165,8 +172,10 @@ export class WorldScene extends Phaser.Scene {
       this.npcs.push({ def: n, sprite: spr });
     }
 
-    // Player.
-    ensureCharTexture(this, "player", { body: 0x2f6bd0, trim: 0xffe08a, skin: 0xe8b98c, hair: 0x2a1e14 });
+    // Player — the real animated hero sheet when it loaded, else procedural.
+    if (!composeCharFromSheet(this, "player", "hero")) {
+      ensureCharTexture(this, "player", { body: 0x2f6bd0, trim: 0xffe08a, skin: 0xe8b98c, hair: 0x2a1e14 });
+    }
     const sp = this.spawnId === "__restore"
       ? { x: gameState.lastX, y: gameState.lastY, face: gameState.lastFace as Facing }
       : (this.map.spawns[this.spawnId] ?? Object.values(this.map.spawns)[0]!);

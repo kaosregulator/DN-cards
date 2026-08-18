@@ -1,0 +1,13 @@
+World art assets — all Creative Commons Zero (CC0 1.0), free for any use.
+
+hero.png, npc.png
+  "Town RPG Pack" by Luis Zuno (@ansimuz) — ansimuz.com
+  CC0 1.0 — http://creativecommons.org/publicdomain/zero/1.0/
+
+tiles-world.png, tiles-exterior.png, tiles-interior.png, tiles-dungeon.png
+  "Open RPG Fantasy Tilesets" by finalbossblues (Pioneer Valley Games)
+  finalbossblues.itch.io/openrtp-tiles
+  CC0 1.0 — http://creativecommons.org/publicdomain/zero/1.0/
+
+These ship as real, same-origin files (not inlined) so Discord's Activity CSP
+(img-src 'self') serves them without an external request.
