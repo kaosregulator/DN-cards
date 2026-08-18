@@ -13,6 +13,7 @@
 
 import type { DuelCard, DuelSetup } from "./types";
 import { YGO_SPELLS, YGO_TRAPS, YGO_FUSIONS, templateForTier, type YgoSpellTrap, type YgoMonster } from "./ygo-cards";
+import { shuffle, rng } from "./rng";
 
 const SPELL_COLOR = 0x1e9e5a;
 const TRAP_COLOR = 0x9b2fae;
@@ -63,22 +64,13 @@ export function bindMonster(card: DuelCard, tier: number): DuelCard {
   };
 }
 
-function shuffle<T>(a: T[]): T[] {
-  const r = [...a];
-  for (let i = r.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [r[i], r[j]] = [r[j]!, r[i]!];
-  }
-  return r;
-}
-
 /** Build a support sub-deck: a spread of real spells + traps with unique uids. */
 export function buildSupport(count: number): DuelCard[] {
   const pool = shuffle(SPELL_TRAP_LIBRARY);
   const out: DuelCard[] = [];
   for (let i = 0; i < count; i++) {
     const base = pool[i % pool.length]!;
-    out.push({ ...base, uid: `${base.uid}#${i}-${Math.random().toString(36).slice(2, 7)}` });
+    out.push({ ...base, uid: `${base.uid}#${i}-${rng().toString(36).slice(2, 7)}` });
   }
   return out;
 }
@@ -91,7 +83,7 @@ export function buildExtraDeck(artSource: DuelCard[]): DuelCard[] {
   return YGO_FUSIONS.map((f: YgoMonster, i) => {
     const donor = artSource[i % Math.max(1, artSource.length)];
     return {
-      uid: `fus${i}-${Math.random().toString(36).slice(2, 7)}`,
+      uid: `fus${i}-${rng().toString(36).slice(2, 7)}`,
       cardId: donor?.cardId ?? null,
       name: donor?.name ?? f.name,
       kind: "monster" as const,

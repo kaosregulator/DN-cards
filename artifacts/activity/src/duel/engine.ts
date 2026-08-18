@@ -22,15 +22,7 @@ import {
 import {
   targetSpecFor, isPersistentSpell, trapReactsToAttack, trapReactsToSummon, trapIsMainPhase,
 } from "./effects";
-
-function shuffle<T>(arr: T[]): T[] {
-  const a = [...arr];
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [a[i], a[j]] = [a[j]!, a[i]!];
-  }
-  return a;
-}
+import { shuffle, setSeed } from "./rng";
 
 function makeBoard(id: PlayerId, name: string, deck: DuelCard[], startingLp: number, handSize: number): PlayerBoard {
   // Fusion monsters never sit in the main Deck — they wait in the Extra Deck.
@@ -46,7 +38,12 @@ function makeBoard(id: PlayerId, name: string, deck: DuelCard[], startingLp: num
   };
 }
 
-export function createDuel(setup: DuelSetup): DuelState {
+/**
+ * Build a fresh duel. Pass a `seed` to make every shuffle deterministic — online
+ * duels do, so both clients derive the identical opening state from one setup.
+ */
+export function createDuel(setup: DuelSetup, seed?: number): DuelState {
+  if (seed !== undefined) setSeed(seed);
   const player = makeBoard("player", setup.player.name, setup.player.deck, setup.startingLp, setup.handSize);
   const opponent = makeBoard("opponent", setup.opponent.name, setup.opponent.deck, setup.startingLp, setup.handSize);
   return {
