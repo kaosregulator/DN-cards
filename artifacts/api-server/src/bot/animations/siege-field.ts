@@ -123,11 +123,13 @@ const SCENE_PREFIX = "siege-scene";
 // this quad; the sprite's gold frame + base rail then occlude it exactly like a
 // real card seated in the stand. Corners: top-left, top-right, bottom-left
 // (bottom-right is derived — an iso rectangle projects to a parallelogram).
-// Both stands are the SAME sprite shape (the red is a recolour of the blue), so
-// they face the SAME direction and share one plaque quad.
+// The two stands are MIRROR-facing (the red is a horizontal flip + recolour of
+// the blue): blue sits on the left facing inward-right, red sits on the right
+// facing inward-left, like two opponents across the field. Each has its own
+// plaque quad — the red's is the horizontal mirror of the blue's.
 const PLAQUE_QUAD = {
   blue: { tl: [0.300, 0.129], tr: [0.649, 0.083], bl: [0.381, 0.749] },
-  red:  { tl: [0.300, 0.129], tr: [0.649, 0.083], bl: [0.381, 0.749] },
+  red:  { tl: [0.351, 0.083], tr: [0.700, 0.129], bl: [0.270, 0.703] },
 } as const;
 // Drawn stand size (matches the sprite aspect; each slot scales this down).
 const STAND_W = 228, STAND_H = 298;
