@@ -264,7 +264,7 @@ const ROUTE1: MapDef = {
   grid: [
     "TTTTTT====TTTTTTTTTTTTTTTT",
     "T,,,,,====,,,,,,,,,,,,,,,T",
-    "T,,TT,====,,TT,,,,,,TT,,,T",
+    "T,,DT,====,,TT,,,,,,TT,,,T",
     "T,,TT,====,,TT,,,,,,TT,,,T",
     "T,,,,,====,,,,,,,,,,,,,,,T",
     "T,,,,,====,,,,~~~~,,,,,,,T",
@@ -281,12 +281,14 @@ const ROUTE1: MapDef = {
   spawns: {
     fromCity:    { x: 7, y: 1, face: "down" },
     fromNewCity: { x: 24, y: 9, face: "left" },
+    fromCave:    { x: 3, y: 1, face: "down" },
   },
   doors: [
     { x: 6, y: 0, to: "city", spawn: "fromRoute1", label: "▲ Battle City" },
     { x: 7, y: 0, to: "city", spawn: "fromRoute1" },
     { x: 8, y: 0, to: "city", spawn: "fromRoute1" },
     { x: 9, y: 0, to: "city", spawn: "fromRoute1" },
+    { x: 3, y: 2, to: "cave", spawn: "enter", label: "🕳 Cave" },
     { x: 25, y: 9, to: "newcity", spawn: "fromRoute", label: "New City ▶" },
     { x: 25, y: 10, to: "newcity", spawn: "fromRoute" },
   ],
@@ -315,7 +317,7 @@ const NEWCITY: MapDef = {
     "T..................T",
     "T..RRRRRRRRRRRRRR..T",
     "T..RRRRRRRRRRRRRR..T",
-    "T..BBBBBBBBBBBBBB..T",
+    "T..BBBBBBDBBBBBBB..T",
     "T..................T",
     "==,,,,,,,,,,,,,,,,,T",
     "==================,T",
@@ -327,10 +329,14 @@ const NEWCITY: MapDef = {
     "T..................T",
     "TTTTTTTTTTTTTTTTTTTT",
   ],
-  spawns: { fromRoute: { x: 1, y: 6, face: "right" } },
+  spawns: {
+    fromRoute: { x: 1, y: 6, face: "right" },
+    fromAcademy: { x: 9, y: 5, face: "down" },
+  },
   doors: [
     { x: 0, y: 6, to: "route1", spawn: "fromNewCity", label: "◀ Route 1" },
     { x: 0, y: 7, to: "route1", spawn: "fromNewCity" },
+    { x: 9, y: 4, to: "academy", spawn: "enter", label: "🎓 Duel Academy" },
   ],
   npcs: [
     {
@@ -346,8 +352,81 @@ const NEWCITY: MapDef = {
   signs: [{ x: 10, y: 8, text: "🏙 NEW CITY — home of the Champion" }],
 };
 
+// ── 🎓 Duel Academy (New City interior) ───────────────────────────────────────
+const ACADEMY: MapDef = {
+  id: "academy",
+  name: "Duel Academy",
+  ambient: 0xffe8c0,
+  indoor: true,
+  grid: [
+    "##############",
+    "#SSSSSSSSSSSS#",
+    "#ffffffffffff#",
+    "#ffccccccccff#",
+    "#ffccccccccff#",
+    "#ffccccccccff#",
+    "#ffccccccccff#",
+    "#CCffffffffCC#",
+    "#ffffffffffff#",
+    "#ffffffffffff#",
+    "######DD######",
+  ],
+  spawns: { enter: { x: 6, y: 9, face: "up" } },
+  doors: [
+    { x: 6, y: 10, to: "newcity", spawn: "fromAcademy", label: "▼ Exit" },
+    { x: 7, y: 10, to: "newcity", spawn: "fromAcademy" },
+  ],
+  npcs: [
+    {
+      id: "professor", x: 6, y: 3, name: "Professor Banner", colors: C.purple, duelist: true, face: "down",
+      lines: ["Welcome to the Duel Academy.", "A duelist never stops learning — let me test your technique."],
+      defeatedLines: ["Textbook play. You've earned top marks."],
+    },
+    {
+      id: "academy_student", x: 3, y: 8, name: "Academy Student", colors: C.blue, face: "right",
+      lines: ["Fusion monsters need Polymerization and the right materials.", "The Professor hasn't lost a class duel in years!"],
+    },
+  ],
+  signs: [{ x: 9, y: 8, text: "🎓 DUEL ACADEMY — study, then duel" }],
+};
+
+// ── 🕳 Ancient Cave (Route 1 dungeon) ─────────────────────────────────────────
+const CAVE: MapDef = {
+  id: "cave",
+  name: "Ancient Cave",
+  ambient: 0x9fb0d8,
+  indoor: true,
+  grid: [
+    "##############",
+    "#oooooooooooo#",
+    "#oo~~oooooooo#",
+    "#oo~~oooooooo#",
+    "#oooooooooooo#",
+    "#oooooooooooo#",
+    "#oooooooooooo#",
+    "#oo~~~~~~~~oo#",
+    "#oooooooooooo#",
+    "#oooooooooooo#",
+    "######DD######",
+  ],
+  spawns: { enter: { x: 6, y: 9, face: "up" } },
+  doors: [
+    { x: 6, y: 10, to: "route1", spawn: "fromCave", label: "▼ Exit" },
+    { x: 7, y: 10, to: "route1", spawn: "fromCave" },
+  ],
+  npcs: [
+    {
+      id: "cave_guardian", x: 6, y: 2, name: "Cave Guardian", colors: C.teal, duelist: true, face: "down",
+      lines: ["Few reach the heart of the cave.", "Defeat me and the depths are yours, duelist."],
+      defeatedLines: ["The old stones acknowledge your strength."],
+    },
+  ],
+  signs: [{ x: 10, y: 5, text: "🕳 A cold draft rises from the depths" }],
+};
+
 export const MAPS: Record<string, MapDef> = {
   city: CITY, shop: SHOP, arena: ARENA, dojo: DOJO, route1: ROUTE1, newcity: NEWCITY,
+  academy: ACADEMY, cave: CAVE,
 };
 
 export function getMap(id: string): MapDef { return MAPS[id] ?? CITY; }

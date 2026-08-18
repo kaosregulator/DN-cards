@@ -57,7 +57,10 @@ class DemoLauncher extends Phaser.Scene {
     if (/demo=pvp/.test(location.search)) this.scene.start("Duel", { setup: { ...mockSetup(), player: { name: "Player 1", deck: mockDeck() }, opponent: { name: "Player 2", deck: mockDeck() } }, returnTo: "Menu", pvp: true });
     else if (/demo=duel/.test(location.search)) this.scene.start("Duel", { setup: mockSetup(), returnTo: "Menu" });
     else if (/demo=shop/.test(location.search)) this.scene.start("Shop", { returnTo: "Menu" });
-    else if (/demo=world/.test(location.search)) this.scene.start("World");
+    else if (/demo=world/.test(location.search)) {
+      const m = /demo=world:([a-z0-9]+)/.exec(location.search);
+      this.scene.start("World", m ? { map: m[1], spawn: "enter" } : undefined);
+    }
     else this.scene.start("Menu");
   }
 }
