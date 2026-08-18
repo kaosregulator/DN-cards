@@ -7,6 +7,9 @@ import {
   tributesNeeded, boardOf, effAtk, effDef, responseOptions, respondToWindow, passWindow, otherId,
 } from "../duel/engine";
 import { planNextAction, planResponse } from "../duel/ai";
+import { applyAction, type DuelAction } from "../duel/actions";
+import { setSeed } from "../duel/rng";
+import { DuelSocket, type MatchInfo } from "../net/duelSocket";
 import { targetSpecFor, isPersistentSpell, trapIsMainPhase, type TargetSpec } from "../duel/effects";
 import { enrichSetup } from "../duel/cards";
 import { makeCardFace, makeCardBack, artKey } from "../ui/card";
@@ -26,6 +29,8 @@ interface DuelSceneData {
   pvp?: boolean;          // local hot-seat pass-and-play (no AI)
   npcId?: string;         // world duelist being challenged (marks them beaten on a win)
   opponentName?: string;  // display name override for the AI side
+  /** Online PvP: a live match handed over by the matchmaking socket. */
+  online?: { socket: DuelSocket; match: MatchInfo };
 }
 
 type Mode = "idle" | "tribute" | "attackTarget" | "spellTarget" | "busy";
@@ -53,6 +58,11 @@ export class DuelScene extends Phaser.Scene {
 
   // Local hot-seat PvP: no AI, board flips to whoever's turn it is.
   private pvp = false;
+  // Online PvP: we control exactly one side and relay every move.
+  private socket: DuelSocket | null = null;
+  private online = false;
+  /** The side THIS client controls in an online duel. */
+  private mySide: PlayerId = "player";
   private viewer: PlayerId = "player"; // side rendered at the bottom + controlled now
   private controlledTurn: PlayerId = "player";
 
@@ -61,17 +71,31 @@ export class DuelScene extends Phaser.Scene {
   init(data: DuelSceneData): void {
     this.returnTo = data?.returnTo ?? "Menu";
     this.pvp = !!data?.pvp;
+    this.online = !!data?.online;
+    if (data?.online) {
+      this.socket = data.online.socket;
+      this.onlineMatch = data.online.match;
+      this.mySide = data.online.match.youAre;
+    }
     this.npcId = data?.npcId ?? null;
     this.opponentName = data?.opponentName ?? null;
     if (data?.setup) this.pendingSetup = data.setup;
   }
   private pendingSetup: DuelSetup | null = null;
+  private onlineMatch: MatchInfo | null = null;
   private npcId: string | null = null;
   private opponentName: string | null = null;
 
   /** The side shown at the bottom / currently controlled. */
   private get foe(): PlayerId { return otherId(this.viewer); }
-  private setViewer(): void { this.viewer = this.pvp ? this.state.turn : "player"; this.controlledTurn = this.state.turn; }
+  private setViewer(): void {
+    this.viewer = this.online ? this.mySide : this.pvp ? this.state.turn : "player";
+    this.controlledTurn = this.state.turn;
+  }
+  /** True when it is this client's move (online) / the viewer's move otherwise. */
+  private get myTurn(): boolean {
+    return this.online ? this.state.turn === this.mySide : this.state.turn === this.viewer;
+  }
 
   async create(): Promise<void> {
     document.getElementById("boot")?.remove();
@@ -82,7 +106,7 @@ export class DuelScene extends Phaser.Scene {
 
     const loading = this.centerMsg("Shuffling the deck…");
 
-    let setup = this.pendingSetup;
+    let setup = this.onlineMatch?.setup ?? this.pendingSetup;
     if (!setup) {
       try {
         setup = await getContext(this).api.duel();
@@ -92,6 +116,9 @@ export class DuelScene extends Phaser.Scene {
         return;
       }
     }
+    // Online: seed FIRST so deck-building and the opening draw are identical on
+    // both clients — from here the two boards advance in lockstep.
+    if (this.onlineMatch) setSeed(this.onlineMatch.seed);
     // Swap the deck's support slots for the tested spell/trap library.
     setup = enrichSetup(setup);
     if (this.opponentName) setup = { ...setup, opponent: { ...setup.opponent, name: this.opponentName } };
@@ -99,13 +126,15 @@ export class DuelScene extends Phaser.Scene {
     loading.destroy();
 
     this.state = createDuel(setup);
+    if (this.online) this.bindSocket();
     this.setViewer();
     this.buildHud();
     this.renderBoard();
     this.scale.on(Phaser.Scale.Events.RESIZE, this.onResize, this);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.scale.off(Phaser.Scale.Events.RESIZE, this.onResize, this));
     await this.duelIntro();
-    this.showTurnBanner(this.pvp ? `${this.state.player.name}'s Turn` : "Your Turn");
+    this.showTurnBanner(this.online ? (this.myTurn ? "Your Turn" : "Opponent's Turn")
+      : this.pvp ? `${this.state.player.name}'s Turn` : "Your Turn");
     this.refreshControls();
   }
 
@@ -494,7 +523,7 @@ export class DuelScene extends Phaser.Scene {
   }
 
   private refreshControls(): void {
-    const myTurn = this.state.turn === this.viewer && !this.state.winner;
+    const myTurn = this.myTurn && !this.state.winner;
     this.setButtonEnabled(this.endBtn, myTurn && this.mode === "idle");
     this.setButtonEnabled(this.primaryBtn, myTurn && this.mode === "idle");
     if (this.state.phase === "MAIN1") this.setButtonLabel(this.primaryBtn, "To Battle");
@@ -505,11 +534,11 @@ export class DuelScene extends Phaser.Scene {
   // ── Player input ─────────────────────────────────────────────────────────────
   private onPrimary(): void {
     if (this.state.turn !== this.viewer || this.mode !== "idle") return;
-    this.applyPlayer(nextPhase(this.state));
+    this.doAction({ k: "phase" });
   }
   private onEndTurn(): void {
     if (this.state.turn !== this.viewer || this.mode !== "idle") return;
-    this.applyPlayer(endTurn(this.state), true);
+    this.doAction({ k: "endTurn" }, true);
   }
 
   private onHandTap(i: number): void {
@@ -532,10 +561,10 @@ export class DuelScene extends Phaser.Scene {
           const chk = canActivateFromHand(this.state, this.viewer, i);
           if (!chk.ok) { this.flash(chk.reason ?? "Can't activate."); return; }
           if (spec) this.beginSpellTarget(i, null, card.effect!, spec);
-          else this.applyPlayer(activateSpellFromHand(this.state, this.viewer, i));
+          else this.doAction({ k: "activateHand", handIndex: i, targets: [] });
         }]);
       }
-      opts.push([card.kind === "trap" ? "Set Trap" : "Set", () => this.applyPlayer(setSpellTrap(this.state, this.viewer, i))]);
+      opts.push([card.kind === "trap" ? "Set Trap" : "Set", () => this.doAction({ k: "set", handIndex: i })]);
       this.actionMenu(`${card.name}\n${card.desc}`, opts);
     }
   }
@@ -570,8 +599,8 @@ export class DuelScene extends Phaser.Scene {
 
   private finishSpell(ctx: NonNullable<DuelScene["spellCtx"]>): void {
     this.mode = "idle"; this.spellCtx = null;
-    if (ctx.setZone != null) this.applyPlayer(activateSetCard(this.state, this.viewer, ctx.setZone, ctx.picked));
-    else this.applyPlayer(activateSpellFromHand(this.state, this.viewer, ctx.handIndex, ctx.picked));
+    if (ctx.setZone != null) this.doAction({ k: "activateSet", zone: ctx.setZone, targets: ctx.picked });
+    else this.doAction({ k: "activateHand", handIndex: ctx.handIndex, targets: ctx.picked });
   }
 
   private pickGraveTarget(handIndex: number, setZone: number | null, effect: DuelEffect, spec: TargetSpec): void {
@@ -582,8 +611,8 @@ export class DuelScene extends Phaser.Scene {
         if (c.kind !== "monster") return;
         choices.push([`${side === this.viewer ? "Your" : "Foe"} GY: ${c.name} (${c.atk})`, () => {
           const picked: TargetRef[] = [{ side, kind: "grave", index: idx }];
-          if (setZone != null) this.applyPlayer(activateSetCard(this.state, this.viewer, setZone, picked));
-          else this.applyPlayer(activateSpellFromHand(this.state, this.viewer, handIndex, picked));
+          if (setZone != null) this.doAction({ k: "activateSet", zone: setZone, targets: picked });
+          else this.doAction({ k: "activateHand", handIndex, targets: picked });
         }]);
       });
     }
@@ -603,13 +632,13 @@ export class DuelScene extends Phaser.Scene {
     this.actionMenu(`${st.card.name}\n${st.card.desc}`, [["Activate", () => {
       const spec = targetSpecFor(eff);
       if (spec) this.beginSpellTarget(-1, zone, eff!, spec);
-      else this.applyPlayer(activateSetCard(this.state, this.viewer, zone, []));
+      else this.doAction({ k: "activateSet", zone, targets: [] });
     }]]);
   }
 
   private beginSummon(handIndex: number, position: MonsterPosition, need: number): void {
     if (need === 0) {
-      this.applyPlayer(summonMonster(this.state, this.viewer, handIndex, position, []));
+      this.doAction({ k: "summon", handIndex, position, tributeZones: [] });
       return;
     }
     this.mode = "tribute";
@@ -627,7 +656,7 @@ export class DuelScene extends Phaser.Scene {
       const { handIndex, position } = ctx;
       const picks = [...this.tributePick];
       this.mode = "idle"; this.tributeContext = null; this.tributePick = [];
-      this.applyPlayer(summonMonster(this.state, this.viewer, handIndex, position, picks));
+      this.doAction({ k: "summon", handIndex, position, tributeZones: picks });
     } else {
       this.renderBoard();
     }
@@ -648,7 +677,7 @@ export class DuelScene extends Phaser.Scene {
       this.renderBoard();
       if (canDirect) this.showDirectTarget();
     } else if (this.state.phase === "MAIN1" || this.state.phase === "MAIN2") {
-      this.applyPlayer(changePosition(this.state, this.viewer, z));
+      this.doAction({ k: "changePos", zone: z });
     }
   }
 
@@ -683,7 +712,69 @@ export class DuelScene extends Phaser.Scene {
     if (this.attacker == null) return;
     const from = this.attacker;
     this.attacker = null; this.mode = "idle";
-    this.applyPlayer(declareAttack(this.state, this.viewer, from, target));
+    this.doAction({ k: "attack", fromZone: from, target });
+  }
+
+  // ── Actions ─────────────────────────────────────────────────────────────────
+  /** Perform one of OUR moves: apply it locally, and online, relay it. */
+  private doAction(action: DuelAction, endedTurn = false): void {
+    if (this.online && !this.myTurn && action.k !== "respond" && action.k !== "pass") return;
+    const events = applyAction(this.state, this.viewer, action);
+    if (this.online) this.socket?.sendAction(action);
+    this.applyPlayer(events, endedTurn);
+  }
+
+  /** Listen for the opponent's moves and replay them on our board. */
+  private bindSocket(): void {
+    const sock = this.socket;
+    if (!sock) return;
+    sock.setHandlers({
+      onAction: (action) => { this.remoteQueue.push(action); void this.pumpRemote(); },
+      onOpponentLeft: () => this.onOpponentLeft(),
+      onError: () => this.onOpponentLeft("Lost the connection."),
+      onClose: () => this.onOpponentLeft("Lost the connection."),
+    });
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => sock.close());
+  }
+  private remoteQueue: DuelAction[] = [];
+  private remoteBusy = false;
+
+  /** Drain queued opponent moves one at a time so each gets its animation. */
+  private async pumpRemote(): Promise<void> {
+    if (this.remoteBusy) return;
+    this.remoteBusy = true;
+    // Never interleave with one of our own animations.
+    let guard = 0;
+    while (this.mode === "busy" && guard++ < 300) await this.wait(50);
+    while (this.remoteQueue.length && !this.state.winner) {
+      const action = this.remoteQueue.shift()!;
+      this.mode = "busy";
+      const events = applyAction(this.state, this.foe, action);
+      await this.playEvents(events);
+      await this.resolveWindows();
+      this.renderBoard();
+      if (this.state.winner) break;
+      await this.wait(220);
+    }
+    this.remoteBusy = false;
+    if (this.state.winner) { this.onWin(); return; }
+    this.mode = "idle";
+    this.refreshControls();
+    this.renderBoard();
+  }
+
+  private onOpponentLeft(message = "Your opponent left the duel."): void {
+    if (this.state?.winner) return;
+    this.socket?.close();
+    this.socket = null;
+    this.mode = "busy";
+    this.flash(message);
+    const overlay = this.add.container(0, 0).setDepth(3100);
+    overlay.add(this.add.rectangle(0, 0, this.W, this.H, 0x000000, 0.7).setOrigin(0).setInteractive());
+    overlay.add(this.add.text(this.W / 2, this.H / 2, `${message}\n\nTap to continue`, {
+      fontFamily: "system-ui, sans-serif", fontSize: "20px", color: "#ffd3da", align: "center",
+    }).setOrigin(0.5));
+    this.input.once("pointerdown", () => this.exit());
   }
 
   // ── Applying engine results ──────────────────────────────────────────────────
@@ -695,9 +786,10 @@ export class DuelScene extends Phaser.Scene {
         this.renderBoard();
         if (this.state.winner) { this.onWin(); return; }
         // Hot-seat: the turn passed to the other human → device-pass gate.
-        if (this.pvp && this.state.turn !== this.controlledTurn) { this.passDeviceGate(); return; }
+        if (this.pvp && !this.online && this.state.turn !== this.controlledTurn) { this.passDeviceGate(); return; }
         this.mode = "idle";
         this.refreshControls();
+        if (this.online) { void this.pumpRemote(); return; }
         if (!this.pvp && (endedTurn || this.state.turn === "opponent")) this.runAiTurn();
       });
   }
@@ -709,13 +801,23 @@ export class DuelScene extends Phaser.Scene {
     while (this.state.awaiting && !this.state.winner && guard++ < 12) {
       const responder = this.state.awaiting.responder;
       let events: DuelEvent[];
-      if (!this.pvp && responder === "opponent") {
+      if (this.online && responder !== this.mySide) {
+        // The opponent answers their own window; wait for their relayed move.
+        break;
+      }
+      if (!this.pvp && !this.online && responder === "opponent") {
         const r = planResponse(this.state);
         events = r ? respondToWindow(this.state, r.zone, r.targets) : passWindow(this.state);
       } else {
         const who = boardOf(this.state, responder).name;
         const choice = await this.promptResponse(who);
-        events = choice != null ? respondToWindow(this.state, choice, []) : passWindow(this.state);
+        if (choice != null) {
+          events = respondToWindow(this.state, choice, []);
+          if (this.online) this.socket?.sendAction({ k: "respond", zone: choice });
+        } else {
+          events = passWindow(this.state);
+          if (this.online) this.socket?.sendAction({ k: "pass" });
+        }
       }
       await this.playEvents(events);
       this.renderBoard();
@@ -1005,6 +1107,8 @@ export class DuelScene extends Phaser.Scene {
   }
 
   private exit(): void {
+    this.socket?.close();
+    this.socket = null;
     this.scene.start(this.returnTo, {
       duelWon: this.state?.winner === "player",
       npcId: this.npcId ?? undefined,

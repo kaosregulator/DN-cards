@@ -6,6 +6,7 @@ import { MenuScene } from "../scenes/MenuScene";
 import { DuelScene } from "../scenes/DuelScene";
 import { WorldScene } from "../scenes/WorldScene";
 import { ShopScene } from "../scenes/ShopScene";
+import { MatchmakingScene } from "../scenes/MatchmakingScene";
 
 // Core Game Runtime bootstrap. Creates ONE Phaser 4 game hosting every
 // experience as a scene:
@@ -13,6 +14,7 @@ import { ShopScene } from "../scenes/ShopScene";
 //   Menu  → title screen: adventure, duel, PvP, 3D world
 //   World → tile-based overworld (rooms, doors, NPCs, duelist encounters)
 //   Shop  → the Card Shop counter screen (browse the server's real cards)
+//   Matchmaking → finds an online opponent
 //   Duel  → the true Yu-Gi-Oh style duel (real cards, real art)
 // The shared GameContext is placed in the registry before the first scene runs.
 export function startGame(session: DiscordSession): Phaser.Game {
@@ -29,7 +31,7 @@ export function startGame(session: DiscordSession): Phaser.Game {
       width: "100%",
       height: "100%",
     },
-    scene: [BootScene, MenuScene, WorldScene, ShopScene, DuelScene],
+    scene: [BootScene, MenuScene, WorldScene, ShopScene, MatchmakingScene, DuelScene],
   });
 
   const ctx = createContext(session, game.events);

@@ -12,6 +12,7 @@ import { MenuScene } from "../scenes/MenuScene";
 import { DuelScene } from "../scenes/DuelScene";
 import { WorldScene } from "../scenes/WorldScene";
 import { ShopScene } from "../scenes/ShopScene";
+import { MatchmakingScene } from "../scenes/MatchmakingScene";
 import type { DuelSetup, DuelCard, DuelAttribute } from "../duel/types";
 
 export function isDemo(): boolean {
@@ -70,10 +71,10 @@ export function startDemo(): Phaser.Game {
     scale: {
       mode: Phaser.Scale.RESIZE, autoCenter: Phaser.Scale.CENTER_BOTH, width: "100%", height: "100%",
     },
-    scene: [DemoLauncher, MenuScene, WorldScene, ShopScene, DuelScene],
+    scene: [DemoLauncher, MenuScene, WorldScene, ShopScene, MatchmakingScene, DuelScene],
   });
 
-  const ctx = createContext({ accessToken: "demo", inDiscord: false }, game.events);
+  const ctx = createContext({ accessToken: "demo", inDiscord: false, instanceId: "demo" }, game.events);
   // Serve mock data instead of hitting the backend.
   ctx.api.duel = async () => mockSetup();
   ctx.api.cardArtUrl = () => "";

@@ -48,6 +48,9 @@ export class DuelSocket {
 
   constructor(handlers: DuelSocketHandlers) { this.handlers = handlers; }
 
+  /** Hand the socket to a new owner (the matchmaking screen → the duel). */
+  setHandlers(handlers: DuelSocketHandlers): void { this.handlers = handlers; }
+
   /** Connect and join the matchmaking room for this Activity instance. */
   connect(token: string, room: string, name: string): void {
     let ws: WebSocket;

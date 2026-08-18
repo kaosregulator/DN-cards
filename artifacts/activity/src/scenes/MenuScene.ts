@@ -79,9 +79,9 @@ export class MenuScene extends Phaser.Scene {
 
     // ── Buttons ──
     const btnW = Math.min(330, W - 44);
-    const bh = narrow ? 56 : 62;
-    const gap = bh + 14;
-    const firstY = H * (narrow ? 0.42 : 0.44);
+    const bh = narrow ? 48 : 54;
+    const gap = bh + 11;
+    const firstY = H * (narrow ? 0.38 : 0.40);
     const hasRun = beaten > 0 || gameState.lastMap !== "city";
 
     this.button(W / 2, firstY, btnW, bh,
@@ -93,10 +93,14 @@ export class MenuScene extends Phaser.Scene {
       "Jump straight into a duel vs the AI", 0x2b57b8,
       () => this.go("Duel", { returnTo: "Menu" }));
 
-    this.button(W / 2, firstY + gap * 2, btnW, bh, "👥  Local PvP",
+    this.button(W / 2, firstY + gap * 2, btnW, bh, "🌐  Online Duel",
+      "Match against another player in this Activity", 0xa8324f,
+      () => this.go("Matchmaking"));
+
+    this.button(W / 2, firstY + gap * 3, btnW, bh, "👥  Local PvP",
       "Pass & play — two duelists, one device", 0xb8792b, () => this.launchPvp());
 
-    this.button(W / 2, firstY + gap * 3, btnW, bh, "🌐  3D Battle City",
+    this.button(W / 2, firstY + gap * 4, btnW, bh, "🧭  3D Battle City",
       "Walk a 3D plaza and challenge duelists", 0x8a5cd0, () => this.launch3d());
 
     this.ui.add(this.add.text(W / 2, H - 14, "Your cards · your art · true Yu-Gi-Oh rules", {
