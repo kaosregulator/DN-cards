@@ -77,7 +77,13 @@ const NPCS: CityNpc[] = [
   },
 ];
 const DOORS: DoorDef[] = [{ tx: 6, ty: 7, to: "shop", label: "▼ Enter" }];
-const SPAWN = { tx: 11, ty: 13, face: "up" as Facing };
+const SPAWN = { tx: 11, ty: 14, face: "up" as Facing };
+
+// Environmental decoration (procedural iso art), placed on grass / plaza edges.
+const TREES: Array<[number, number]> = [[3, 3], [20, 4], [3, 20], [21, 20], [2, 8], [22, 8], [9, 3], [14, 3], [3, 14], [21, 15]];
+const LAMPS: Array<[number, number]> = [[8, 7], [15, 7], [8, 14], [15, 14]];
+const BENCHES: Array<[number, number]> = [[10, 13], [13, 8], [9, 9], [14, 12]];
+const FOUNTAIN: [number, number] = [11.5, 10.5];
 
 // Central fountain footprint (water) + a cobble plaza ring around the middle.
 function groundAt(tx: number, ty: number): Ground {
@@ -136,6 +142,7 @@ export class CityScene extends Phaser.Scene {
     this.isoOX = GRID * (TILE_W / 2);
     this.isoOY = TILE_H;
     this.makeGroundTiles();
+    this.makeDecorTextures();
 
     this.world = this.add.layer();
     this.hud = this.add.container(0, 0).setScrollFactor(0).setDepth(100000);
@@ -143,6 +150,7 @@ export class CityScene extends Phaser.Scene {
     this.buildGround();
     this.buildSolids();
     this.buildBuildingsAndProps();
+    this.buildDecor();
     this.buildNpcs();
     this.buildPlayer();
 
@@ -196,6 +204,79 @@ export class CityScene extends Phaser.Scene {
     carve("gt:water", "ct:water");
   }
 
+  /** Procedural isometric decoration textures (fountain, tree, lamp, bench). */
+  private makeDecorTextures(): void {
+    const tex = (key: string, w: number, h: number, draw: (c: CanvasRenderingContext2D) => void) => {
+      if (this.textures.exists(key)) return;
+      const cv = document.createElement("canvas"); cv.width = w; cv.height = h;
+      const ctx = cv.getContext("2d"); if (!ctx) return;
+      draw(ctx); this.textures.addCanvas(key, cv);
+    };
+    const ell = (c: CanvasRenderingContext2D, x: number, y: number, rx: number, ry: number, fill: string, stroke?: string) => {
+      c.beginPath(); c.ellipse(x, y, rx, ry, 0, 0, Math.PI * 2); c.fillStyle = fill; c.fill();
+      if (stroke) { c.strokeStyle = stroke; c.lineWidth = 2; c.stroke(); }
+    };
+    // Fountain — stone basin, water, tiered spout.
+    tex("fx:fountain", 180, 170, (c) => {
+      ell(c, 90, 150, 12, 5, "rgba(0,0,0,0.28)");
+      ell(c, 90, 128, 78, 32, "#9aa1ad", "#5e646f");        // outer basin rim
+      ell(c, 90, 126, 64, 25, "#3f7fbf");                    // water
+      ell(c, 90, 122, 48, 17, "#6fb0e0");                    // water highlight
+      c.fillStyle = "#aeb5c0"; c.fillRect(76, 70, 28, 58);   // pedestal
+      c.strokeStyle = "#5e646f"; c.lineWidth = 1.5; c.strokeRect(76, 70, 28, 58);
+      ell(c, 90, 70, 40, 15, "#9aa1ad", "#5e646f");          // mid basin rim
+      ell(c, 90, 68, 30, 10, "#4f95d0");                     // mid water
+      c.fillStyle = "#aeb5c0"; c.fillRect(84, 34, 12, 34);   // upper stem
+      ell(c, 90, 34, 20, 8, "#9aa1ad", "#5e646f");           // top basin
+      ell(c, 90, 33, 13, 5, "#6fb0e0");
+      c.strokeStyle = "rgba(150,210,255,0.7)"; c.lineWidth = 2;              // falling water
+      for (const dx of [-22, 0, 22]) { c.beginPath(); c.moveTo(90 + dx, 40); c.lineTo(90 + dx * 1.4, 112); c.stroke(); }
+      c.fillStyle = "rgba(190,230,255,0.9)";
+      for (let i = 0; i < 10; i++) c.fillRect(60 + i * 7, 118 + (i % 3) * 4, 2, 2);
+    });
+    // Tree — layered canopy on a trunk.
+    tex("fx:tree", 100, 132, (c) => {
+      ell(c, 50, 124, 26, 8, "rgba(0,0,0,0.28)");
+      c.fillStyle = "#6b4a2f"; c.fillRect(43, 84, 14, 40);
+      ell(c, 50, 66, 40, 34, "#1f5f33");
+      ell(c, 34, 58, 26, 24, "#2b7a42");
+      ell(c, 64, 54, 24, 22, "#358a4d");
+      ell(c, 48, 44, 24, 22, "#3f9a58");
+      ell(c, 42, 40, 10, 9, "#5fb56f");
+    });
+    // Lamp post — pole + glowing lantern.
+    tex("fx:lamp", 40, 108, (c) => {
+      ell(c, 20, 102, 12, 5, "rgba(0,0,0,0.28)");
+      c.fillStyle = "#2b2f3d"; c.fillRect(17, 22, 6, 80);
+      ell(c, 20, 100, 10, 4, "#3a3f52");
+      c.fillStyle = "#1b1f2c"; c.fillRect(11, 12, 18, 12);
+      ell(c, 20, 16, 11, 8, "rgba(255,222,120,0.35)");
+      c.fillStyle = "#ffe08a"; ell(c, 20, 16, 6, 5, "#ffe08a");
+      c.fillStyle = "#141824"; c.fillRect(14, 8, 12, 4);
+    });
+    // Bench — wooden slats, iso.
+    tex("fx:bench", 96, 60, (c) => {
+      ell(c, 48, 52, 34, 7, "rgba(0,0,0,0.25)");
+      c.fillStyle = "#7a5738"; c.fillRect(14, 30, 68, 10);
+      c.fillStyle = "#8a6742"; c.fillRect(14, 30, 68, 4);
+      c.fillStyle = "#6b4a2f"; c.fillRect(18, 40, 6, 12); c.fillRect(72, 40, 6, 12);
+      c.fillStyle = "#7a5738"; c.fillRect(16, 14, 68, 8);
+    });
+  }
+
+  private buildDecor(): void {
+    const place = (key: string, tx: number, ty: number, oy = 0.9, dz = 8) => {
+      const p = this.iso(tx, ty);
+      const img = this.add.image(p.x, p.y + TILE_H * 0.3, key).setOrigin(0.5, oy);
+      this.addObject(img, p.y + dz);
+      return img;
+    };
+    place("fx:fountain", FOUNTAIN[0], FOUNTAIN[1], 0.86, 6);
+    for (const [tx, ty] of TREES) place("fx:tree", tx, ty, 0.92, 12);
+    for (const [tx, ty] of BENCHES) place("fx:bench", tx, ty, 0.86, 8);
+    for (const [tx, ty] of LAMPS) place("fx:lamp", tx, ty, 0.95, 14);
+  }
+
   private buildGround(): void {
     const gl = this.add.layer().setDepth(-100000);
     for (let ty = 0; ty < GRID; ty++) {
@@ -217,8 +298,11 @@ export class CityScene extends Phaser.Scene {
     for (const b of BUILDINGS) for (let dx = 0; dx < b.foot[0]; dx++) for (let dy = 0; dy < b.foot[1]; dy++) mark(b.tx - Math.floor(b.foot[0] / 2) + dx, b.ty - b.foot[1] + 1 + dy);
     // Fountain water.
     for (let ty = 0; ty < GRID; ty++) for (let tx = 0; tx < GRID; tx++) if (groundAt(tx, ty) === "water") mark(tx, ty);
-    // Props.
+    // Props + decoration.
     for (const p of PROPS) if (p.solid) mark(p.tx, p.ty);
+    for (const [tx, ty] of TREES) mark(tx, ty);
+    for (const [tx, ty] of LAMPS) mark(tx, ty);
+    for (const [tx, ty] of BENCHES) mark(tx, ty);
     // NPCs stand on solid tiles (can't walk through people); doors are open.
     for (const n of NPCS) mark(n.tx, n.ty);
     for (const d of DOORS) { this.doorAt.set(`${d.tx},${d.ty}`, d); if (this.solid[d.ty]) this.solid[d.ty]![d.tx] = false; }
