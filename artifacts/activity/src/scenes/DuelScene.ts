@@ -474,6 +474,11 @@ export class DuelScene extends Phaser.Scene {
         card.setInteractive(new Phaser.Geom.Rectangle(-cw / 2, -ch / 2, cw, ch), Phaser.Geom.Rectangle.Contains);
         card.on("pointerdown", () => this.onOwnMonsterTap(z));
       }
+      // Idle: tap a foe's face-up monster to inspect its real card text.
+      if (this.mode === "idle" && who === this.foe && m.faceUp) {
+        card.setInteractive(new Phaser.Geom.Rectangle(-cw / 2, -ch / 2, cw, ch), Phaser.Geom.Rectangle.Contains);
+        card.on("pointerdown", () => this.inspectCard(m.card));
+      }
       // Attack-target selection highlights the foe's monsters.
       if (this.mode === "attackTarget" && who === this.foe) {
         this.highlight(x, y, cw, ch, 0xff5a6a);
@@ -618,6 +623,7 @@ export class DuelScene extends Phaser.Scene {
       const opts: Array<[string, () => void]> = [
         ["Summon (ATK)", () => this.beginSummon(i, "attack", need)],
         ["Set (DEF)", () => this.beginSummon(i, "set", need)],
+        ["🔍 Inspect", () => this.inspectCard(card)],
       ];
       this.actionMenu(card.name + (need ? `  ·  needs ${need} tribute${need > 1 ? "s" : ""}` : ""), opts);
     } else {
@@ -632,6 +638,7 @@ export class DuelScene extends Phaser.Scene {
         }]);
       }
       opts.push([card.kind === "trap" ? "Set Trap" : "Set", () => this.doAction({ k: "set", handIndex: i })]);
+      opts.push(["🔍 Inspect", () => this.inspectCard(card)]);
       this.actionMenu(`${card.name}\n${card.desc}`, opts);
     }
   }
@@ -987,7 +994,7 @@ export class DuelScene extends Phaser.Scene {
         case "attackDeclare": this.flash(`${who(e.who)} attacks!`); await this.wait(140); break;
         case "clash": await this.attackAnim(e.who, e.fromZone, e.toZone); break;
         case "destroy": this.destroyBurst(e.who, e.zone); await this.wait(200); break;
-        case "damage": this.damageNumber(e.who, e.amount); this.tweenLp(e.who); await this.wait(260); break;
+        case "damage": this.damageNumber(e.who, e.amount); this.tweenLp(e.who); this.damageJuice(e.amount); await this.wait(260); break;
         case "heal": this.tweenLp(e.who); this.flash(`+${e.amount} LP`); await this.wait(200); break;
         case "deckout": this.flash(`${who(e.who)} decked out!`); await this.wait(300); break;
         case "log": break;
@@ -1120,6 +1127,15 @@ export class DuelScene extends Phaser.Scene {
     this.fx.add(t);
     this.tweens.add({ targets: t, y: y - 40, alpha: 0, scale: 1.3, duration: 850, ease: "Cubic.Out", onComplete: () => t.destroy() });
   }
+  /** Shake + red vignette flash on damage, scaled by how big the hit was. */
+  private damageJuice(amount: number): void {
+    const mag = Phaser.Math.Clamp(amount / 4000, 0.05, 0.5);
+    this.cameras.main.shake(180 + mag * 240, 0.003 + mag * 0.006);
+    const flash = this.add.rectangle(0, 0, this.W, this.H, 0xff2b3a, 0.28 * (0.4 + mag)).setOrigin(0).setDepth(2400);
+    this.fx.add(flash);
+    this.tweens.add({ targets: flash, alpha: 0, duration: 260, ease: "Cubic.Out", onComplete: () => flash.destroy() });
+  }
+
   private tweenLp(_who: PlayerId): void {
     // The LP panels animate their own counter + bar from the new state.
     this.updateHud();
@@ -1161,6 +1177,61 @@ export class DuelScene extends Phaser.Scene {
       overlay.add([rowBg, rowTxt]);
       oy += 46;
     }
+  }
+
+  /** Full-screen card inspector: a big card face + its real Yu-Gi-Oh type line
+   *  and rules text. Dismissed with a tap. */
+  private inspectCard(card: DuelCard): void {
+    const overlay = this.add.container(0, 0).setDepth(3200);
+    const bg = this.add.rectangle(0, 0, this.W, this.H, 0x05070f, 0.78).setOrigin(0).setInteractive();
+    overlay.add(bg);
+
+    const cw = Math.min(230, this.W * 0.52), ch = cw * 1.42;
+    const cardY = Math.min(this.H * 0.34, this.H / 2 - 30);
+    const face = makeCardFace(this, card, cw, ch);
+    face.setPosition(this.W / 2, cardY);
+    overlay.add(face);
+
+    const typeLine = card.kind === "monster"
+      ? [card.attribute, card.race, card.level > 0 ? `Level ${card.level}` : null].filter(Boolean).join("  ·  ")
+      : `${card.sub ?? "Normal"} ${card.kind === "spell" ? "Spell" : "Trap"}`;
+    const stat = card.kind === "monster" ? `ATK ${card.atk}    DEF ${card.def}` : "";
+    const panelW = Math.min(340, this.W - 28);
+    let ty = cardY + ch / 2 + 14;
+
+    const name = this.add.text(this.W / 2, ty, card.name, {
+      fontFamily: "system-ui, sans-serif", fontSize: "17px", color: "#ffe9b0", fontStyle: "bold",
+      align: "center", wordWrap: { width: panelW },
+    }).setOrigin(0.5, 0);
+    overlay.add(name); ty += name.height + 2;
+
+    if (card.realName && card.realName !== card.name) {
+      const rn = this.add.text(this.W / 2, ty, `plays as “${card.realName}”`, {
+        fontFamily: "system-ui, sans-serif", fontSize: "12px", color: "#9db2ff", align: "center",
+      }).setOrigin(0.5, 0);
+      overlay.add(rn); ty += rn.height + 4;
+    }
+    const type = this.add.text(this.W / 2, ty, typeLine, {
+      fontFamily: "system-ui, sans-serif", fontSize: "12px", color: "#c9d4ff", align: "center",
+    }).setOrigin(0.5, 0);
+    overlay.add(type); ty += type.height + 4;
+    if (stat) {
+      const st = this.add.text(this.W / 2, ty, stat, {
+        fontFamily: "monospace", fontSize: "14px", color: "#ffe9b0", fontStyle: "bold",
+      }).setOrigin(0.5, 0);
+      overlay.add(st); ty += st.height + 6;
+    }
+    const desc = this.add.text(this.W / 2, ty, card.desc || "", {
+      fontFamily: "system-ui, sans-serif", fontSize: "12.5px", color: "#dbe4ff",
+      align: "center", wordWrap: { width: panelW }, lineSpacing: 2,
+    }).setOrigin(0.5, 0);
+    overlay.add(desc);
+
+    const hint = this.add.text(this.W / 2, this.H - 16, "tap anywhere to close", {
+      fontFamily: "system-ui, sans-serif", fontSize: "11px", color: "#7d8bb8",
+    }).setOrigin(0.5, 1);
+    overlay.add(hint);
+    bg.on("pointerdown", () => overlay.destroy(true));
   }
 
   private flash(text: string): void {
