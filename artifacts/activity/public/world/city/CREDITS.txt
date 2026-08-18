@@ -1,0 +1,16 @@
+Domino Plaza — world art credits
+
+Isometric buildings, props, ground textures and character art:
+  SpriteCook Free Game Assets — https://github.com/SpriteCook/spritecook-free-game-assets
+  License: CC0 1.0 (public domain) — free for any use, no attribution required.
+  (Credited here voluntarily.)
+
+Files used:
+  buildings/  — isometric-buildings (building1,2,3,5,6,7,11)
+  props/      — game-asset-pack (barrel, crates, chests, doors)
+  ground/     — stylized-seamless-textures (grass, dirt, water), diamond-masked at runtime
+  npc/        — detailed-characters-anime (merchant, knight, archer, hunter)
+
+The player walk sprite is the project's own procedural/town-pack character.
+All assets ship same-origin (public/world/city/) so Discord's Activity CSP
+(img-src 'self') serves them with no external request.

@@ -87,7 +87,7 @@ export class MenuScene extends Phaser.Scene {
     this.button(W / 2, firstY, btnW, bh,
       hasRun ? "▶  Continue Adventure" : "▶  Start Adventure",
       hasRun ? `${gameState.lastMap === "city" ? "Battle City" : gameState.lastMap} · ${beaten}/${TOTAL_DUELISTS} duelists beaten` : "Explore the world, duel everyone",
-      0x2f8f5a, () => this.go("World"));
+      0x2f8f5a, () => this.go("City"));
 
     this.button(W / 2, firstY + gap, btnW, bh, "⚔  Quick Duel",
       "Jump straight into a duel vs the AI", 0x2b57b8,

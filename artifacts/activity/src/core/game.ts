@@ -7,6 +7,7 @@ import { DuelScene } from "../scenes/DuelScene";
 import { WorldScene } from "../scenes/WorldScene";
 import { ShopScene } from "../scenes/ShopScene";
 import { MatchmakingScene } from "../scenes/MatchmakingScene";
+import { CityScene } from "../scenes/CityScene";
 
 // Core Game Runtime bootstrap. Creates ONE Phaser 4 game hosting every
 // experience as a scene:
@@ -31,7 +32,7 @@ export function startGame(session: DiscordSession): Phaser.Game {
       width: "100%",
       height: "100%",
     },
-    scene: [BootScene, MenuScene, WorldScene, ShopScene, MatchmakingScene, DuelScene],
+    scene: [BootScene, MenuScene, CityScene, WorldScene, ShopScene, MatchmakingScene, DuelScene],
   });
 
   const ctx = createContext(session, game.events);

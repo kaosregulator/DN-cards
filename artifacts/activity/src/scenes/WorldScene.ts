@@ -22,6 +22,16 @@ type Facing = "down" | "left" | "right" | "up";
 // the isometric board (like the reference client's big overworld sprites).
 const CHAR_SCALE = 1.6;
 
+/** Duelist rank shown on the HUD player card, derived from level. */
+function rankName(level: number): string {
+  if (level >= 50) return "CHAMPION";
+  if (level >= 35) return "MASTER";
+  if (level >= 20) return "EXPERT";
+  if (level >= 10) return "DUELIST";
+  if (level >= 5) return "ROOKIE";
+  return "BEGINNER";
+}
+
 interface NpcView { def: NpcDef; sprite: Phaser.GameObjects.Sprite; }
 
 export class WorldScene extends Phaser.Scene {
@@ -225,30 +235,129 @@ export class WorldScene extends Phaser.Scene {
     cam.setBounds(-ISO_W, -(ISO_LIFT + ISO_H), worldW + ISO_W * 2, worldH + ISO_LIFT + ISO_H * 3);
     cam.startFollow(this.player, true, 0.15, 0.15);
     cam.setBackgroundColor(this.map.indoor ? "#120d18" : "#0a1020");
-    // Zoom so a comparable slice shows on phones and desktops.
-    const ROWS_TALL = 16;
-    const wanted = this.scale.height / (ROWS_TALL * ISO_H);
-    const zoom = Phaser.Math.Clamp(wanted, 0.7, 2.2);
-    cam.setZoom(Number.isFinite(zoom) && zoom > 0 ? zoom : 1.2);
+    // Render at 1× so the fixed (scrollFactor-0) HUD isn't scaled by camera
+    // zoom; character sprites are already drawn larger via CHAR_SCALE.
+    cam.setZoom(1);
 
     this.buildHud();
     this.pad.layout();
   }
 
+  // ── HUD (ygoevolution-style overlay) ─────────────────────────────────────────
   private buildHud(): void {
-    const label = this.add.text(10, 8, `📍 ${this.map.name}`, {
-      fontFamily: "system-ui, sans-serif", fontSize: "15px", color: "#fff", fontStyle: "bold",
-      stroke: "#000", strokeThickness: 4,
-    }).setScrollFactor(0);
+    this.hud.removeAll(true);
+    const W = this.scale.width, H = this.scale.height;
+    const narrow = W < 560;
+    const snap = getContext(this).playerState.get();
+    const name = snap?.user.username ?? "Duelist";
+    const level = snap?.player.level ?? 1;
+    const shards = snap?.player.shards ?? 0;
     const beaten = gameState.defeatedCount();
-    const prog = this.add.text(10, 28, `⚔ Duelists beaten: ${beaten}/${TOTAL_DUELISTS}`, {
-      fontFamily: "system-ui, sans-serif", fontSize: "11px", color: "#c9d4ff",
-      stroke: "#000", strokeThickness: 3,
-    }).setScrollFactor(0);
-    this.hud.add([label, prog]);
-    this.layoutHud();
+
+    // Player card (top-left): avatar, name + rank, duel progress + shards.
+    const cardW = narrow ? 178 : 226, cardH = 54;
+    const card = this.add.container(8, 8);
+    const cg = this.add.graphics();
+    cg.fillStyle(0x0b1020, 0.9); cg.fillRoundedRect(0, 0, cardW, cardH, 10);
+    cg.lineStyle(2, 0x3a5db0, 0.95); cg.strokeRoundedRect(0, 0, cardW, cardH, 10);
+    card.add(cg);
+    card.add(this.add.circle(29, cardH / 2, 18, 0x2b57b8, 0.5).setStrokeStyle(2, 0x8fb0ff, 1));
+    card.add(this.add.text(29, cardH / 2, (name[0] ?? "?").toUpperCase(), {
+      fontFamily: "system-ui, sans-serif", fontSize: "18px", color: "#fff", fontStyle: "bold",
+    }).setOrigin(0.5));
+    card.add(this.add.text(54, 8, name, {
+      fontFamily: "system-ui, sans-serif", fontSize: "13px", color: "#fff", fontStyle: "bold",
+    }).setOrigin(0, 0));
+    const rank = rankName(level);
+    const rw = 8 + rank.length * 6.4;
+    const rg = this.add.graphics();
+    rg.fillStyle(0xc9a24f, 0.95); rg.fillRoundedRect(cardW - rw - 8, 8, rw, 15, 4);
+    card.add(rg);
+    card.add(this.add.text(cardW - rw / 2 - 8, 15, rank, {
+      fontFamily: "system-ui, sans-serif", fontSize: "9px", color: "#1a1408", fontStyle: "bold",
+    }).setOrigin(0.5));
+    card.add(this.add.text(54, 30, `⚔ ${beaten}/${TOTAL_DUELISTS}`, {
+      fontFamily: "system-ui, sans-serif", fontSize: "11px", color: "#ffd75e", fontStyle: "bold",
+    }).setOrigin(0, 0));
+    card.add(this.add.text(54 + (narrow ? 62 : 74), 30, `💠 ${shards.toLocaleString()}`, {
+      fontFamily: "system-ui, sans-serif", fontSize: "11px", color: "#9fe0ff", fontStyle: "bold",
+    }).setOrigin(0, 0));
+    this.hud.add(card);
+
+    // Area banner (top-centre).
+    const banner = this.add.container(W / 2, 12);
+    const bt = this.add.text(0, 8, this.map.name.toUpperCase(), {
+      fontFamily: "system-ui, sans-serif", fontSize: narrow ? "12px" : "14px", color: "#bfe0ff", fontStyle: "bold",
+    }).setOrigin(0.5, 0);
+    const bw = bt.width + 28;
+    const bg = this.add.graphics();
+    bg.fillStyle(0x101a33, 0.85); bg.fillRoundedRect(-bw / 2, 4, bw, 26, 8);
+    bg.lineStyle(1.5, 0x3a5db0, 0.8); bg.strokeRoundedRect(-bw / 2, 4, bw, 26, 8);
+    banner.add([bg, bt]);
+    this.hud.add(banner);
+
+    // Top-right quick buttons.
+    let bx = W - 8;
+    for (const [label, fn] of [
+      ["☰ MENU", () => this.openPauseMenu()],
+      ["🛒 SHOP", () => this.openShop()],
+      ["🗺 MAP", () => this.flashMap()],
+    ] as Array<[string, () => void]>) {
+      const b = this.hudPill(label, fn);
+      b.x = bx - (b.getData("w") as number); b.y = 8;
+      bx -= (b.getData("w") as number) + 6;
+      this.hud.add(b);
+    }
+    this.hud.add(this.add.text(bx - 6, 18, "● 1 online", {
+      fontFamily: "system-ui, sans-serif", fontSize: "11px", color: "#8ef0bd",
+    }).setOrigin(1, 0.5));
+
+    // Chat bar (bottom-left) — presentation shell for now (no networked chat yet).
+    if (!narrow || H > 620) {
+      const chW = Math.min(360, W - 16), chH = 40;
+      const chat = this.add.container(8, H - chH - 8);
+      const chg = this.add.graphics();
+      chg.fillStyle(0x0a0d16, 0.72); chg.fillRoundedRect(0, 0, chW, chH, 8);
+      chg.lineStyle(1, 0x2f3c66, 0.9); chg.strokeRoundedRect(0, 0, chW, chH, 8);
+      chat.add(chg);
+      chg.fillStyle(0x2b57b8, 0.9); chg.fillRoundedRect(6, 6, 52, 15, 4);
+      chat.add(this.add.text(32, 13, "WORLD", { fontFamily: "system-ui, sans-serif", fontSize: "9px", color: "#fff", fontStyle: "bold" }).setOrigin(0.5));
+      chat.add(this.add.text(70, 13, "LOCAL", { fontFamily: "system-ui, sans-serif", fontSize: "9px", color: "#6a7aa8", fontStyle: "bold" }).setOrigin(0, 0.5));
+      chat.add(this.add.text(10, 28, "Press Enter — message everyone", {
+        fontFamily: "system-ui, sans-serif", fontSize: "11px", color: "#5f6b96",
+      }).setOrigin(0, 0.5));
+      this.hud.add(chat);
+    }
   }
-  private layoutHud(): void { /* HUD is top-left anchored; nothing to reflow yet */ }
+
+  /** A small rounded HUD button. Stores its width in data("w"). */
+  private hudPill(label: string, onClick: () => void): Phaser.GameObjects.Container {
+    const c = this.add.container(0, 0);
+    const t = this.add.text(0, 0, label, {
+      fontFamily: "system-ui, sans-serif", fontSize: "12px", color: "#dbe4ff", fontStyle: "bold",
+    }).setOrigin(0, 0.5);
+    const w = t.width + 20, h = 26;
+    const g = this.add.graphics();
+    g.fillStyle(0x1b2340, 0.92); g.fillRoundedRect(0, 0, w, h, 7);
+    g.lineStyle(1.5, 0x3a5db0, 0.9); g.strokeRoundedRect(0, 0, w, h, 7);
+    t.setPosition(10, h / 2);
+    c.add([g, t]);
+    c.setData("w", w);
+    c.setSize(w, h).setInteractive(new Phaser.Geom.Rectangle(0, 0, w, h), Phaser.Geom.Rectangle.Contains);
+    c.on("pointerdown", onClick);
+    c.on("pointerover", () => c.setAlpha(0.85));
+    c.on("pointerout", () => c.setAlpha(1));
+    return c;
+  }
+
+  private flashMap(): void {
+    const beaten = gameState.defeatedCount();
+    this.hint.setText(`${this.map.name} · ${beaten}/${TOTAL_DUELISTS} duelists beaten`)
+      .setPosition(this.player.x, this.player.y - 40).setVisible(true);
+    this.time.delayedCall(1800, () => this.hint.setVisible(false));
+  }
+
+  private layoutHud(): void { if (this.map) this.buildHud(); }
 
   // ── Movement ────────────────────────────────────────────────────────────────
   /** E / Space — talk, advance dialogue, interact. */
