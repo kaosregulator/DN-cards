@@ -67,10 +67,11 @@ export interface SiegeFieldLineupCard {
   rarityColor: number | null;
   hp: number;                   // AFTER the move
   maxHp: number;
-  hpBefore?: number;            // BEFORE the move — only set on the struck card
+  hpBefore?: number;            // BEFORE the move — only set on the struck FOCUS card
   energy?: number;
   fallen: boolean;              // KO'd — dim + broken
-  active: boolean;              // the card taking / receiving this turn's blow
+  active: boolean;              // the front rank of this side (drives the slide)
+  struck?: boolean;             // took this turn's blow (white flash + knockback)
 }
 
 export interface SiegeFieldInput {
@@ -96,6 +97,7 @@ export interface SiegeFieldInput {
   // are still used for the HUD life-plates. Absent → legacy single-stand look.
   attackerLineup?: SiegeFieldLineupCard[];
   defenderLineup?: SiegeFieldLineupCard[];
+  aoe?: boolean;                 // team ultimate — the whole enemy line is struck
 }
 
 const FIELD = { width: 900, height: 470 } as const;
@@ -389,6 +391,12 @@ function standCentre(side: 0 | 1, depth: number): { cx: number; baseY: number; s
   };
 }
 
+// Plaque-centre Y for a given rank (where its impact FX / damage number land).
+function plaqueCyAt(depth: number): number {
+  const scale = STAND_SCALES[Math.min(depth, STAND_SCALES.length - 1)]!;
+  return (STAND_GROUND_Y - depth * STAND_RISE) - STAND_H * scale * 0.52;
+}
+
 function lineupFromFighter(f: SiegeFieldFighter): SiegeFieldLineupCard {
   return { name: f.name, artUrl: f.artUrl, rarity: f.rarity, rarityColor: f.rarityColor,
     hp: f.hp, maxHp: f.maxHp, hpBefore: f.hpBefore, energy: f.energy, fallen: false, active: true };
@@ -433,14 +441,20 @@ function paintFrame(ctx: Ctx, input: SiegeFieldInput, a: Assets, t: number, scal
   drawLine(ctx, 0, atkLine, a, anim);
   drawLine(ctx, 1, defLine, a, anim);
 
-  // Strike FX + damage number over the struck (foe front) card, on connect.
-  const foeFront = standCentre(targetSide, 0);
+  // Strike FX + damage number over the struck FOCUS card (the chosen target,
+  // which may be any rank — not always the front), on connect.
+  const foeLine = targetSide === 0 ? atkLine : defLine;
+  let focusDepth = foeLine.findIndex(c => c.hpBefore != null);
+  if (focusDepth < 0) focusDepth = foeLine.findIndex(c => c.struck);
+  if (focusDepth < 0) focusDepth = 0;
+  const foePos = standCentre(targetSide, focusDepth);
   const foeDir = targetSide === 0 ? -1 : 1;
-  const targetX = foeFront.cx + foeDir * impact * 16;
+  const targetX = foePos.cx + foeDir * impact * 16;
+  const targetY = plaqueCyAt(focusDepth);
   if (connected) {
-    drawImpact(ctx, a, targetX, PLAQUE_CY, impact, input);
+    drawImpact(ctx, a, targetX, targetY, impact, input);
   } else if (t >= CONNECT && !input.isHit) {
-    drawFloatingText(ctx, targetX, PLAQUE_CY - 56, "MISS", 0x9aa7b4, clamp01((t - CONNECT) / 0.4));
+    drawFloatingText(ctx, targetX, targetY - 56, "MISS", 0x9aa7b4, clamp01((t - CONNECT) / 0.4));
   }
 
   // HUD: the two life-plates + the VS crest, then the play-by-play + turn call.
@@ -460,6 +474,7 @@ function drawLine(ctx: Ctx, side: 0 | 1, cards: SiegeFieldLineupCard[], a: Asset
   const color = side === 0 ? a.atkColor : a.defColor;
   const dir = side === 0 ? -1 : 1;
   const n = Math.min(cards.length, LINE_MAX);
+  const struckThisTurn = anim.acting !== side && anim.connected;
   for (let d = n - 1; d >= 0; d--) {
     const card = cards[d]!;
     const pos = standCentre(side, d);
@@ -467,8 +482,10 @@ function drawLine(ctx: Ctx, side: 0 | 1, cards: SiegeFieldLineupCard[], a: Asset
     if (card.active) {
       bob = Math.sin(anim.t * Math.PI * 2 + (side === 1 ? Math.PI : 0)) * 3;
       if (anim.acting === side) slideX = -dir * anim.advance * anim.reach;   // charge toward the foe
-      else if (anim.connected) { flash = anim.impact; slideX = dir * anim.impact * 16; } // struck → knock back
     }
+    // Any struck card (the focus, or every card on an AoE) flashes white and is
+    // knocked back on connect.
+    if (struckThisTurn && card.struck && !card.fallen) { flash = anim.impact; slideX += dir * anim.impact * 14; }
     const art = card.artUrl ? a.artByUrl.get(card.artUrl) ?? null : null;
     drawStand(ctx, { cx: pos.cx + slideX, baseY: pos.baseY + bob, scale: pos.scale, side, stand, art, color, card, flashWhite: flash });
   }

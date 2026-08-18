@@ -10,6 +10,7 @@
     "smoke:hq": "tsx ./src/hq-smoke.ts",
     "drive:siege": "tsx ./src/hq-siege-drive.ts",
     "sim:battle": "tsx ./src/battle-sim.ts",
+    "sim:team": "tsx ./src/team-battle-sim.ts",
     "hq:suite": "tsx ./src/hq-suite-preview.ts",
     "hq:preview": "tsx ./src/hq-preview.ts",
     "hq:manifest": "tsx ./src/hq-manifest.ts",

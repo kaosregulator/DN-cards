@@ -322,6 +322,41 @@ export function resolveMove(
   return { events, koed };
 }
 
+// Team / AoE ultimate — the "full bar" pay-off in a team battle. Once an actor's
+// meter is charged it can spend it on the whole enemy line at once: the chosen
+// FOCUS card takes the full ultimate blow (enough to wipe it), every other living
+// foe takes a splash. Returns which foes fell, aligned to the `foes` array, so a
+// team fight can advance every rank that dropped. Damage is guaranteed to land
+// (like a single-target ultimate) but survivors may still counter.
+export function resolveTeamUltimate(
+  settings: BattleSettings, actor: Combatant, foes: Combatant[], focusIdx: number,
+): { events: BattleEvent[]; koed: boolean[] } {
+  const events: BattleEvent[] = [];
+  const koed = foes.map(() => false);
+  if (actor.ultimate < actor.stats.ultimateMax) {
+    events.push({ text: `⚠️ **${actor.cardName}**'s ultimate isn't charged yet.` });
+    return { events, koed };
+  }
+  actor.ultimate = 0;
+  events.push({ text: `💀 **${actor.cardName}** unleashes a **TEAM ULTIMATE** on the whole line!`, flash: "ultimate" });
+  const focusPct = settings.ultimateDamagePct;
+  const splashPct = Math.max(20, Math.round(settings.ultimateDamagePct * 0.5));
+  for (let i = 0; i < foes.length; i++) {
+    const f = foes[i]!;
+    if (f.hp <= 0) continue;
+    const isFocus = i === focusIdx;
+    const r = strike(actor, f, settings, {
+      powerPct: isFocus ? focusPct : splashPct,
+      label: isFocus ? "team ultimate" : "ultimate blast",
+      guaranteedHit: true, ultimate: true,
+    });
+    events.push(...r.events);
+    if (f.hp <= 0) koed[i] = true;
+  }
+  if (actor.hp < 0) actor.hp = 0;
+  return { events, koed };
+}
+
 // Which moves are legal right now (for button enable/disable + AI).
 export function availableMoves(actor: Combatant, settings: BattleSettings): Record<MoveType, boolean> {
   const specialCost = (actor.movesetDef ?? getMoveset(actor.moveset))?.energyCost ?? settings.specialCost;

@@ -34,7 +34,7 @@ import {
 import { randomBytes } from "crypto";
 import type { BattleSettings } from "@workspace/db";
 import type { Combatant, MoveType, AiDifficulty } from "../battle/types.js";
-import { startOfTurn, resolveMove, availableMoves } from "../battle/combat-engine.js";
+import { startOfTurn, resolveMove, resolveTeamUltimate, availableMoves } from "../battle/combat-engine.js";
 import { chooseAiMove } from "../battle/ai-engine.js";
 import { powerRating } from "../battle/stat-engine.js";
 import { bar, WHITE_LINE } from "../battle/embeds.js";
@@ -417,6 +417,7 @@ export async function handleSiegeComponent(
     case "equip": return handleEquipOpen(interaction as ButtonInteraction, session);
     case "equipsel": return handleEquipSelect(interaction as StringSelectMenuInteraction, session);
     case "move": return handleMove(interaction as ButtonInteraction, session, parts[4] as MoveType);
+    case "tgt": return handleMoveTarget(interaction as StringSelectMenuInteraction, session, parts[4] as MoveType);
     case "item": return handleItemOpen(interaction as ButtonInteraction, session);
     case "itemsel": return handleItemSelect(interaction as StringSelectMenuInteraction, session);
     case "itemtgt": return handleItemTarget(interaction as StringSelectMenuInteraction, session, parts[4]!);
@@ -723,13 +724,22 @@ async function startTurn(s: SiegeSession): Promise<void> {
   await render(s, { turnEndsAt: Date.now() + ms });
 }
 
-async function applyMove(s: SiegeSession, side: 0 | 1, move: MoveType): Promise<void> {
+async function applyMove(s: SiegeSession, side: 0 | 1, move: MoveType, opts?: { targetIdx?: number }): Promise<void> {
   if (s.phase !== "assault" || s.processing) return;
   s.processing = true;
   clearTurnTimer(s);
   try {
     const actor = active(s, side);
-    const foe = active(s, foeSide(side));
+    // Whom does this blow land on? The mover picks any LIVING enemy card
+    // ("this card attacks this card"); an out-of-range / dead / unset pick
+    // falls back to the front rank, so the AI and the turn-timer path resolve
+    // exactly as before.
+    const fs = foeSide(side);
+    const foeCol = fs === 1 ? s.defenders : s.attackers;
+    const defaultTargetIdx = fs === 1 ? s.di : s.ai;
+    let targetIdx = opts?.targetIdx;
+    if (targetIdx == null || !foeCol[targetIdx] || foeCol[targetIdx]!.hp <= 0) targetIdx = defaultTargetIdx;
+    const foe = foeCol[targetIdx];
     if (!actor || !foe) { await finish(s); return; }
 
     // Start-of-turn ticks (DoT / regen / freeze / energy regen).
@@ -749,7 +759,20 @@ async function applyMove(s: SiegeSession, side: 0 | 1, move: MoveType): Promise<
     if (!start.skipped) {
       const foePoolBefore = foe.hp + foe.shield;
       const selfPoolBefore = actor.hp + actor.shield;
-      const result = resolveMove(s.settings, actor, foe, move);
+
+      // A charged ULTIMATE with 2+ enemy cards still standing detonates on the
+      // WHOLE line — the "full bar" team wipe: the chosen card takes the full
+      // blow, every other living foe takes a splash. Otherwise the move resolves
+      // on the single chosen target.
+      const livingFoes = foeCol.filter(c => c.hp > 0).length;
+      const teamUlt = move === "ultimate" && actor.ultimate >= actor.stats.ultimateMax && livingFoes > 1;
+      let result: ReturnType<typeof resolveMove>;
+      if (teamUlt) {
+        const tu = resolveTeamUltimate(s.settings, actor, foeCol, targetIdx);
+        result = { events: tu.events, koed: !!tu.koed[targetIdx] };
+      } else {
+        result = resolveMove(s.settings, actor, foe, move);
+      }
       pushLog(s, result.events.map(e => e.text));
 
       // Await the FINAL turn visual (PNG or GIF) before the board edit — same
@@ -759,19 +782,22 @@ async function applyMove(s: SiegeSession, side: 0 | 1, move: MoveType): Promise<
       // still breathes during wind-up without serializing two full waits.
       const [, holdMs] = await Promise.all([
         pace(s),
-        buildTurnFrame(s, side, move, result, actor, foe, foePoolBefore, selfPoolBefore),
+        buildTurnFrame(s, side, move, result, actor, foe, foePoolBefore, selfPoolBefore, targetIdx, teamUlt),
       ]);
       await render(s);
       await (s.headless ? Promise.resolve() : sleep(Math.max(frameMs(s), holdMs)));
 
       // The ram keeps working between blows: a rank that refuses to die gets
-      // ground down whether or not the commander's swing landed.
-      if (side === 0 && foe.hp > 0) applySiegePressure(s, foe);
+      // ground down whether or not the commander's swing landed (single-target
+      // attacker moves only — a team ultimate has already done plenty).
+      if (side === 0 && foe.hp > 0 && !teamUlt) applySiegePressure(s, foe);
 
-      // A KO breaks a RANK — it does not end the siege. Check the struck side
-      // first (a counter can drop the attacker), then the foe.
+      // A KO breaks a RANK — it does not end the siege. Check the mover (a
+      // counter can drop it), then advance the foe line past ANY card that fell
+      // (targeting + AoE can drop out-of-order ranks; breakRank skips the dead
+      // and reports a wipe).
       if (actor.hp <= 0 && (await breakRank(s, side))) { await finish(s); return; }
-      if (foe.hp <= 0 && (await breakRank(s, foeSide(side)))) { await finish(s); return; }
+      if (foeCol.some(c => c.hp <= 0) && (await breakRank(s, fs))) { await finish(s); return; }
     } else {
       await pace(s);
       await render(s);
@@ -872,19 +898,26 @@ function benchOf(col: Combatant[], activeIdx: number): SiegeFieldBenchCard[] {
 // upcoming then fallen — so every card shows on its own stand. `struckBefore` is
 // the active card's pre-hit HP, set only on the side that just took the blow, so
 // its front plaque animates the drain.
-function lineupOf(col: Combatant[], activeIdx: number, struckBefore?: number): SiegeFieldLineupCard[] {
-  const mk = (c: Combatant, active: boolean, fallen: boolean): SiegeFieldLineupCard => ({
+// `struck` marks which card(s) took this turn's blow: the focus card at column
+// index `idx` carries its pre-hit HP (`before`) so its plaque animates the
+// drain, and with `aoe` every living card flashes (a team-ultimate splash).
+function lineupOf(
+  col: Combatant[], activeIdx: number,
+  struck?: { idx: number; before: number; aoe: boolean },
+): SiegeFieldLineupCard[] {
+  const mk = (c: Combatant, colIdx: number, active: boolean, fallen: boolean): SiegeFieldLineupCard => ({
     name: c.cardName, artUrl: c.cardImageUrl, rarity: c.cardRarity,
     rarityColor: c.cardRarityDisplay?.color ?? null,
     hp: Math.max(0, c.hp), maxHp: c.stats.maxHealth,
-    hpBefore: active && struckBefore != null ? struckBefore : undefined,
+    hpBefore: struck && colIdx === struck.idx ? struck.before : undefined,
     energy: c.energy, fallen, active,
+    struck: struck ? (struck.aoe || colIdx === struck.idx) : false,
   });
   const out: SiegeFieldLineupCard[] = [];
   const activeCard = col[activeIdx];
-  if (activeCard) out.push(mk(activeCard, true, activeCard.hp <= 0));
-  for (let i = activeIdx + 1; i < col.length; i++) out.push(mk(col[i]!, false, col[i]!.hp <= 0));
-  for (let i = 0; i < activeIdx; i++) out.push(mk(col[i]!, false, true));
+  if (activeCard) out.push(mk(activeCard, activeIdx, true, activeCard.hp <= 0));
+  for (let i = activeIdx + 1; i < col.length; i++) out.push(mk(col[i]!, i, false, col[i]!.hp <= 0));
+  for (let i = 0; i < activeIdx; i++) out.push(mk(col[i]!, i, false, true));
   return out;
 }
 
@@ -904,12 +937,13 @@ function hashStr(s: string): number {
 function buildFieldInput(
   s: SiegeSession, side: 0 | 1, move: MoveType,
   visual: ReturnType<typeof computeMoveVisual>, actor: Combatant, foe: Combatant,
-  foePoolBefore: number,
+  foePoolBefore: number, targetIdx: number, aoe: boolean,
 ): SiegeFieldInput {
   const attackerC = side === 0 ? actor : foe;
   const defenderC = side === 0 ? foe : actor;
-  // The struck card is always the FOE of whoever moved.
+  // The struck card is the chosen FOE of whoever moved (its column index).
   const targetBefore = Math.min(foe.stats.maxHealth, Math.max(0, foePoolBefore));
+  const struck = { idx: targetIdx, before: targetBefore, aoe };
   const h = hashStr(s.targetName || "siege");
   return {
     attacker: fieldFighter(attackerC, attackerC === foe ? targetBefore : undefined),
@@ -926,10 +960,11 @@ function buildFieldInput(
     floorKey: FIELD_FLOORS[(h >>> 8) % FIELD_FLOORS.length]!,
     attackerBench: benchOf(s.attackers, s.ai),
     defenderBench: benchOf(s.defenders, s.di),
-    // Full battle lines — the renderer draws every card on its own stand. The
-    // struck side (the one NOT moving) carries the pre-hit HP on its front card.
-    attackerLineup: lineupOf(s.attackers, s.ai, side === 1 ? targetBefore : undefined),
-    defenderLineup: lineupOf(s.defenders, s.di, side === 0 ? targetBefore : undefined),
+    // Full battle lines — the renderer draws every card on its own stand. Only
+    // the mover's FOE line carries the struck marker (the chosen target card).
+    attackerLineup: lineupOf(s.attackers, s.ai, side === 1 ? struck : undefined),
+    defenderLineup: lineupOf(s.defenders, s.di, side === 0 ? struck : undefined),
+    aoe,
   };
 }
 
@@ -943,12 +978,12 @@ function buildFieldInput(
 async function buildTurnFrame(
   s: SiegeSession, side: 0 | 1, move: MoveType,
   result: ReturnType<typeof resolveMove>, actor: Combatant, foe: Combatant,
-  foePoolBefore: number, selfPoolBefore: number,
+  foePoolBefore: number, selfPoolBefore: number, targetIdx: number, aoe: boolean,
 ): Promise<number> {
   if (s.headless || !s.siege.turnVisuals) return 0;
   if (!(sceneAnimated(s) || classicFrames(s))) return 0; // animations off → no frame
   const visual = computeMoveVisual(move, result, actor, foe, foePoolBefore, selfPoolBefore);
-  const fieldInput = buildFieldInput(s, side, move, visual, actor, foe, foePoolBefore);
+  const fieldInput = buildFieldInput(s, side, move, visual, actor, foe, foePoolBefore, targetIdx, aoe);
   const animated = sceneAnimated(s);
   const speed = s.settings.battleAnimationSpeed as AnimationSpeed;
 
@@ -1104,23 +1139,63 @@ async function handleMovesQuickView(interaction: ButtonInteraction, s: SiegeSess
   await interaction.reply({ embeds: [embed], ...EPHEMERAL }).catch(() => {});
 }
 
+// Offensive moves let the commander pick WHICH enemy card to strike ("this card
+// attacks this card"). A charged Ultimate against 2+ ranks is the team wipe —
+// the picked card is the FOCUS, the rest take splash.
+function isTargetedMove(move: MoveType): boolean {
+  return move === "attack" || move === "special" || move === "ultimate";
+}
+
 async function handleMove(interaction: ButtonInteraction, s: SiegeSession, move: MoveType): Promise<void> {
   if (s.phase !== "assault") { await interaction.deferUpdate().catch(() => {}); return; }
   // Reject if a turn is resolving (processing) OR another click already claimed
-  // this turn (inputPending) OR it isn't the commander's turn. inputPending is
-  // set SYNCHRONOUSLY below, before the awaited ack, so a mash of clicks can't
-  // race multiple moves through this gate.
+  // this turn (inputPending) OR it isn't the commander's turn.
   if (s.processing || s.inputPending || s.currentSide !== 0) { await interaction.deferUpdate().catch(() => {}); return; }
+
+  // Offensive move with more than one enemy rank standing → open a target
+  // picker (ephemeral, mirroring the field-item flow). One rank left, or a
+  // non-targeted move, resolves straight away against the front.
+  const living = s.defenders.map((c, i) => ({ c, i })).filter(x => x.c.hp > 0);
+  if (isTargetedMove(move) && living.length > 1) {
+    const isUlt = move === "ultimate";
+    const menu = new StringSelectMenuBuilder()
+      .setCustomId(`hq-hub:ls:tgt:${s.id}:${move}`)
+      .setPlaceholder(isUlt ? "Focus the TEAM ULTIMATE on…" : "Strike which enemy card?")
+      .addOptions(living.map(({ c, i }) => ({
+        label: `${i === s.di ? "▶ " : ""}${c.cardName}`.slice(0, 100),
+        description: `${Math.max(0, c.hp)}/${c.stats.maxHealth} HP${i === s.di ? " · front rank" : ""}`.slice(0, 100),
+        value: String(i),
+      })));
+    await interaction.reply({
+      content: isUlt
+        ? "💀 **Team Ultimate** — your whole line blasts the enemy. Pick the card to **wipe** (the rest take splash):"
+        : "🎯 **Choose your target** — strike any enemy rank:",
+      components: [new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(menu)], ...EPHEMERAL,
+    }).catch(() => {});
+    return;
+  }
+
   s.inputPending = true;
   await interaction.deferUpdate().catch(() => {});
-  // applyMove synchronously sets s.processing before its first await, so by the
-  // time this call returns its promise the turn is claimed. Drop the pre-ack
-  // latch immediately — holding it across the whole turn chain (which recurses
-  // through the garrison's answer back to the next commander turn) would leave
-  // the buttons greyed on the player's own turn. `processing` guards the rest.
-  const p = applyMove(s, 0, move);
+  const p = applyMove(s, 0, move, { targetIdx: living[0]?.i });
   s.inputPending = false;
   await p;
+}
+
+// The commander picked a target card for an offensive move → resolve it.
+async function handleMoveTarget(interaction: StringSelectMenuInteraction, s: SiegeSession, move: MoveType): Promise<void> {
+  if (s.phase !== "assault" || s.processing || s.currentSide !== 0) {
+    await interaction.update({ content: "That moment has passed.", components: [] }).catch(() => {});
+    return;
+  }
+  const targetIdx = Number(interaction.values[0]);
+  const target = s.defenders[targetIdx];
+  if (!target || target.hp <= 0) {
+    await interaction.update({ content: "That rank is already down — pick another.", components: [] }).catch(() => {});
+    return;
+  }
+  await interaction.update({ content: `🎯 Locked on **${target.cardName}**.`, components: [] }).catch(() => {});
+  await applyMove(s, 0, move, { targetIdx });
 }
 
 async function handleConcede(interaction: ButtonInteraction, s: SiegeSession): Promise<void> {
