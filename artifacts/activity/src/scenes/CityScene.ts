@@ -179,13 +179,18 @@ export class CityScene extends Phaser.Scene {
     kb.on("keydown-ESC", this.openPause, this);
 
     const cam = this.cameras.main;
-    cam.setBackgroundColor("#1a2a22");
+    // Grass-tinted backdrop so any overscan past the authored diamond never reads as a black void.
+    cam.setBackgroundColor("#2f4a34");
     cam.startFollow(this.player, true, 0.14, 0.14);
     // Close RPG exploration camera — character + nearby buildings have weight.
     cam.setZoom(T.cameraZoom ?? 1.75);
-    const worldW = this.isoOX + (T.width - 1) * (this.TILE_W / 2) + this.TILE_W * 2;
-    const worldH = this.isoOY + (T.width + T.height) * (this.TILE_H / 2) + 800;
-    cam.setBounds(-this.TILE_W * 2, -400, worldW + this.TILE_W * 4, worldH);
+    // Clamp to the authored isometric diamond (plus a small margin), not a huge empty rectangle.
+    const margin = this.TILE_W * 1.5;
+    const minX = this.isoOX + (0 - (T.height - 1)) * (this.TILE_W / 2) - margin;
+    const maxX = this.isoOX + ((T.width - 1) - 0) * (this.TILE_W / 2) + margin;
+    const minY = this.isoOY - margin;
+    const maxY = this.isoOY + ((T.width - 1) + (T.height - 1)) * (this.TILE_H / 2) + margin + 120;
+    cam.setBounds(minX, minY, maxX - minX, maxY - minY);
 
     this.buildHud();
     this.pad.layout();
