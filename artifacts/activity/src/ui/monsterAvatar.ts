@@ -60,9 +60,12 @@ export function makeMonsterAvatar(
   const g = scene.add.graphics();
   const pal = paletteFor(card);
   const arche = archetypeFor(card);
-  // Subtle coloured glow so the token separates from the card behind it.
-  for (const [rf, a] of [[1.0, 0.05], [0.66, 0.08]] as const) {
-    g.fillStyle(pal.body, a);
+  const boss = card.level >= 7; // level 7+ get extra presence
+  // Coloured glow so the token separates from the card behind it (bosses glow more).
+  const aura: ReadonlyArray<readonly [number, number]> = boss
+    ? [[1.15, 0.07], [0.8, 0.1], [0.5, 0.13]] : [[1.0, 0.05], [0.66, 0.08]];
+  for (const [rf, a] of aura) {
+    g.fillStyle(boss ? pal.light : pal.body, a);
     g.fillEllipse(0, -h * 0.04, w * 0.98 * rf, h * 0.9 * rf);
   }
   // Ground shadow.
@@ -72,6 +75,19 @@ export function makeMonsterAvatar(
   // coloured creature.
   drawCreature(g, arche, w * 1.1, h * 1.1, { ...pal, body: pal.dark, light: pal.dark }, card.level, defending, true);
   drawCreature(g, arche, w, h, pal, card.level, defending);
+  // Soft volume shading: a top-left sheen and a lower shadow.
+  g.fillStyle(pal.light, 0.16); g.fillEllipse(-w * 0.1, -h * 0.18, w * 0.44, h * 0.3);
+  g.fillStyle(0x0a0d16, 0.12); g.fillEllipse(0, h * 0.18, w * 0.58, h * 0.26);
+  // Bosses wear a small gold crown.
+  if (boss) {
+    g.fillStyle(0xffe08a, 0.95);
+    const cy = -h * 0.44;
+    for (let i = -2; i <= 2; i++) {
+      const x = i * w * 0.1;
+      g.fillTriangle(x - w * 0.04, cy, x + w * 0.04, cy, x, cy - h * 0.1 - (i === 0 ? h * 0.04 : 0));
+    }
+    g.fillStyle(0xffd75e, 0.9); g.fillRect(-w * 0.24, cy, w * 0.48, h * 0.03);
+  }
   c.add(g);
   c.setSize(w, h);
   c.setData("arche", arche);
