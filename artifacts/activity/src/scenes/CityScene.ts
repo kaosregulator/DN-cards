@@ -23,7 +23,7 @@ const TILE_W = 128, TILE_H = 64;                 // 2:1 isometric ground diamond
 const asset = (p: string): string => `${import.meta.env.BASE_URL}world/city/${p}`;
 
 type Facing = "down" | "left" | "right" | "up";
-type Ground = "grass" | "cobble" | "water";
+type Ground = "grass" | "cobble" | "water" | "path";
 
 interface BuildingDef {
   key: string; tx: number; ty: number;     // anchor cell (front-centre)
@@ -89,6 +89,9 @@ const FOUNTAIN: [number, number] = [9.5, 9.5];
 function groundAt(tx: number, ty: number): Ground {
   if (tx >= 9 && tx <= 10 && ty >= 9 && ty <= 10) return "water";
   if (tx < 2 || tx >= GRID - 2 || ty < 2 || ty >= GRID - 2) return "grass";
+  // Two main avenues cross at the fountain, so the square reads as designed
+  // streets rather than one flat field.
+  if (tx === 9 || tx === 10 || ty === 9 || ty === 10) return "path";
   return "cobble";
 }
 
@@ -201,6 +204,7 @@ export class CityScene extends Phaser.Scene {
     };
     carve("gt:grass", "ct:grass");
     carve("gt:cobble", "ct:dirt", [150, 150, 160]);
+    carve("gt:path", "ct:dirt", [208, 192, 165]);
     carve("gt:water", "ct:water");
   }
 
@@ -262,6 +266,14 @@ export class CityScene extends Phaser.Scene {
       c.fillStyle = "#6b4a2f"; c.fillRect(18, 40, 6, 12); c.fillRect(72, 40, 6, 12);
       c.fillStyle = "#7a5738"; c.fillRect(16, 14, 68, 8);
     });
+    // Signpost — a post with a board (label drawn separately as a Text).
+    tex("fx:sign", 56, 76, (c) => {
+      ell(c, 28, 70, 14, 5, "rgba(0,0,0,0.25)");
+      c.fillStyle = "#6b4a2f"; c.fillRect(24, 26, 8, 46);
+      c.fillStyle = "#8a6742"; c.fillRect(6, 8, 44, 22);
+      c.fillStyle = "#6b4a2f"; c.lineWidth = 2; c.strokeStyle = "#513723"; c.strokeRect(6, 8, 44, 22);
+      c.fillStyle = "#c9a24f"; c.fillRect(10, 12, 36, 3); c.fillRect(10, 20, 28, 3);
+    });
   }
 
   private buildDecor(): void {
@@ -282,7 +294,7 @@ export class CityScene extends Phaser.Scene {
     for (let ty = 0; ty < GRID; ty++) {
       for (let tx = 0; tx < GRID; tx++) {
         const g = groundAt(tx, ty);
-        const key = g === "water" ? "gt:water" : g === "cobble" ? "gt:cobble" : "gt:grass";
+        const key = g === "water" ? "gt:water" : g === "cobble" ? "gt:cobble" : g === "path" ? "gt:path" : "gt:grass";
         const p = this.iso(tx, ty);
         gl.add(this.add.image(p.x, p.y, key).setOrigin(0.5, 0.5));
       }
@@ -318,8 +330,12 @@ export class CityScene extends Phaser.Scene {
       const img = this.add.image(p.x, p.y + TILE_H * 0.4, `cb:${b.key}`).setOrigin(0.5, 1).setScale(b.scale);
       this.addObject(img, p.y + 40);
       if (b.label) {
-        const t = this.add.text(p.x, p.y - img.displayHeight * 0.9, b.label, {
-          fontFamily: "system-ui, sans-serif", fontSize: "12px", color: "#ffe9b0", backgroundColor: "#00000099", padding: { x: 5, y: 2 },
+        // A physical signpost in front of the building carries its name.
+        const sp = this.iso(b.tx, b.ty + 1);
+        const sign = this.add.image(sp.x, sp.y + TILE_H * 0.2, "fx:sign").setOrigin(0.5, 0.92);
+        this.addObject(sign, sp.y + 6);
+        const t = this.add.text(sp.x, sp.y - 40, b.label, {
+          fontFamily: "system-ui, sans-serif", fontSize: "11px", color: "#ffe9b0", backgroundColor: "#00000099", padding: { x: 5, y: 2 },
         }).setOrigin(0.5, 1);
         this.addObject(t, 99000);
       }
@@ -334,11 +350,15 @@ export class CityScene extends Phaser.Scene {
   private buildNpcs(): void {
     for (const n of NPCS) {
       const p = this.iso(n.tx, n.ty);
-      const img = this.add.image(p.x, p.y + TILE_H * 0.3, `cn:${n.key}`).setOrigin(0.5, 1).setScale(0.22);
-      this.addObject(img, p.y + 20);
+      // The source art is ~944px; render it at town scale (~85px tall) so NPCs
+      // read as standing people, not building-sized statues.
+      const img = this.add.image(p.x, p.y + TILE_H * 0.28, `cn:${n.key}`).setOrigin(0.5, 1).setScale(0.09);
+      this.addObject(img, p.y + 16);
+      // Gentle idle bob so they feel alive rather than frozen.
+      this.tweens.add({ targets: img, y: img.y - 3, duration: 1000 + Math.random() * 500, yoyo: true, repeat: -1, ease: "Sine.InOut" });
       const beaten = gameState.isDefeated(n.id);
       const tag = n.role === "shop" ? "🛒" : n.duelist ? (beaten ? "✔" : "⚔") : "💬";
-      const plate = this.add.text(p.x, p.y - img.displayHeight * 0.72, `${tag} ${n.name}`, {
+      const plate = this.add.text(p.x, p.y - img.displayHeight - 6, `${tag} ${n.name}`, {
         fontFamily: "system-ui, sans-serif", fontSize: "11px", color: beaten ? "#8ef0bd" : "#ffe9b0", backgroundColor: "#00000099", padding: { x: 4, y: 1 },
       }).setOrigin(0.5, 1);
       this.addObject(plate, 99000);
