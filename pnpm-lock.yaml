@@ -324,6 +324,9 @@ importers:
       simplex-noise:
         specifier: ^4.0.3
         version: 4.0.3
+      ws:
+        specifier: ^8.21.0
+        version: 8.21.0
       zod:
         specifier: 'catalog:'
         version: 3.25.76
@@ -352,6 +355,9 @@ importers:
       '@types/node':
         specifier: 'catalog:'
         version: 25.6.2
+      '@types/ws':
+        specifier: ^8.5.13
+        version: 8.18.1
       esbuild:
         specifier: 0.27.3
         version: 0.27.3
@@ -364,6 +370,9 @@ importers:
       thread-stream:
         specifier: 3.1.0
         version: 3.1.0
+      vitest:
+        specifier: ^2.1.9
+        version: 2.1.9(@types/node@25.6.2)(lightningcss@1.32.0)
 
   artifacts/dashboard:
     devDependencies:

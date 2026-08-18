@@ -1,5 +1,6 @@
 import app from "./app";
 import { logger } from "./lib/logger";
+import { attachDuelSocket } from "./lib/duel-net";
 import { startBot } from "./bot/index";
 import { pool } from "@workspace/db";
 import { SEED_SQL } from "./lib/seedData.js";
@@ -1021,17 +1022,25 @@ async function main() {
   // Autoscale creates the new instance while the old one is still running;
   // awaiting DDL migrations before listen caused ALTER TABLE to block on
   // the old instance's connections, making the probe time out.
-  await new Promise<void>((resolve, reject) => {
-    app.listen(port, (err) => {
+  const server = await new Promise<import("node:http").Server>((resolve, reject) => {
+    const s = app.listen(port, (err) => {
       if (err) {
         logger.error({ err }, "Error listening on port");
         reject(err);
         return;
       }
       logger.info({ port }, "Server listening");
-      resolve();
+      resolve(s);
     });
   });
+
+  // Online PvP relay for the Discord Activity. Attaching to the same HTTP
+  // server means it rides the existing host/port (and Discord's proxy).
+  try {
+    attachDuelSocket(server);
+  } catch (err) {
+    logger.error({ err }, "Failed to attach duel PvP socket — server continues");
+  }
 
   // Run idempotent boot migrations after the server is accepting traffic.
   // Failures are logged but non-fatal: every statement uses IF NOT EXISTS /
