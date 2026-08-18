@@ -182,7 +182,7 @@ export class CityScene extends Phaser.Scene {
     cam.setBackgroundColor("#1a2a22");
     cam.startFollow(this.player, true, 0.14, 0.14);
     // Close RPG exploration camera — character + nearby buildings have weight.
-    cam.setZoom(T.cameraZoom ?? 1.35);
+    cam.setZoom(T.cameraZoom ?? 1.75);
     const worldW = this.isoOX + (T.width - 1) * (this.TILE_W / 2) + this.TILE_W * 2;
     const worldH = this.isoOY + (T.width + T.height) * (this.TILE_H / 2) + 800;
     cam.setBounds(-this.TILE_W * 2, -400, worldW + this.TILE_W * 4, worldH);
@@ -328,7 +328,7 @@ export class CityScene extends Phaser.Scene {
     const p = this.iso(this.tileX, this.tileY);
     // Substantial on-screen character to match close camera / FLARE object scale.
     this.player = this.add.sprite(p.x, p.y, CHAR_KEY("player"), charFrame(this.facing, 0))
-      .setOrigin(0.5, 0.86).setScale(2.8);
+      .setOrigin(0.5, 0.86).setScale(3.4);
     this.player.setDepth(p.y + 12);
     this.world.add(this.player);
     this.world.sort("depth");
