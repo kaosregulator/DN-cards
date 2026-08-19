@@ -7,8 +7,6 @@ import { DuelScene } from "../scenes/DuelScene";
 import { WorldScene } from "../scenes/WorldScene";
 import { ShopScene } from "../scenes/ShopScene";
 import { MatchmakingScene } from "../scenes/MatchmakingScene";
-import { CityScene } from "../scenes/CityScene";
-import { InteriorScene } from "../scenes/InteriorScene";
 
 // Core Game Runtime bootstrap. Creates ONE Phaser 4 game hosting every
 // experience as a scene:
@@ -24,6 +22,7 @@ export function startGame(session: DiscordSession): Phaser.Game {
     type: Phaser.AUTO,
     parent: "game",
     backgroundColor: "#0a0d16",
+    pixelArt: true,
     // Multi-touch: mouse + up to two fingers so on-screen controls and taps work
     // on phones inside Discord.
     input: { activePointers: 3, smoothFactor: 0.2 },
@@ -33,7 +32,9 @@ export function startGame(session: DiscordSession): Phaser.Game {
       width: "100%",
       height: "100%",
     },
-    scene: [BootScene, MenuScene, CityScene, InteriorScene, WorldScene, ShopScene, MatchmakingScene, DuelScene],
+    // Arcade physics drives the tile-based overworld (movement + tile collisions).
+    physics: { default: "arcade", arcade: { gravity: { x: 0, y: 0 }, debug: false } },
+    scene: [BootScene, MenuScene, WorldScene, ShopScene, MatchmakingScene, DuelScene],
   });
 
   const ctx = createContext(session, game.events);

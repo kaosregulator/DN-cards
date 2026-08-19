@@ -1,7 +1,6 @@
 import Phaser from "phaser";
 import { getContext } from "../core/context";
 import { gameState } from "../state/gameState";
-import { TOTAL_DUELISTS } from "../world/maps";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // MenuScene — the game's TITLE SCREEN and hub. Animated starfield + drifting
@@ -82,12 +81,12 @@ export class MenuScene extends Phaser.Scene {
     const bh = narrow ? 48 : 54;
     const gap = bh + 11;
     const firstY = H * (narrow ? 0.38 : 0.40);
-    const hasRun = beaten > 0 || gameState.lastMap !== "city";
+    const hasRun = beaten > 0;
 
     this.button(W / 2, firstY, btnW, bh,
       hasRun ? "▶  Continue Adventure" : "▶  Start Adventure",
-      hasRun ? `${gameState.lastMap === "city" ? "Battle City" : gameState.lastMap} · ${beaten}/${TOTAL_DUELISTS} duelists beaten` : "Explore the world, duel everyone",
-      0x2f8f5a, () => this.go("City"));
+      hasRun ? `${beaten} duelist${beaten === 1 ? "" : "s"} beaten · explore DN City` : "Explore DN City, the Village & duel everyone",
+      0x2f8f5a, () => this.go("World"));
 
     this.button(W / 2, firstY + gap, btnW, bh, "⚔  Quick Duel",
       "Jump straight into a duel vs the AI", 0x2b57b8,
@@ -99,9 +98,6 @@ export class MenuScene extends Phaser.Scene {
 
     this.button(W / 2, firstY + gap * 3, btnW, bh, "👥  Local PvP",
       "Pass & play — two duelists, one device", 0xb8792b, () => this.launchPvp());
-
-    this.button(W / 2, firstY + gap * 4, btnW, bh, "🧭  3D Battle City",
-      "Walk a 3D plaza and challenge duelists", 0x8a5cd0, () => this.launch3d());
 
     this.ui.add(this.add.text(W / 2, H - 14, "Your cards · your art · true Yu-Gi-Oh rules", {
       fontFamily: "system-ui, sans-serif", fontSize: "11px", color: "#5f6b96",
@@ -142,41 +138,6 @@ export class MenuScene extends Phaser.Scene {
       } catch { setup = undefined; }
       this.go("Duel", { setup, returnTo: "Menu", pvp: true });
     })();
-  }
-
-  /** Launch the Babylon 3D world (lazy-loaded). Hides the Phaser canvas while
-   *  the 3D world runs, and hands off to the duel or back to the menu. */
-  private launch3d(): void {
-    const canvas = this.game.canvas as HTMLCanvasElement;
-    const prevVis = canvas.style.visibility;
-    canvas.style.visibility = "hidden";
-    this.scene.pause();
-    const restore = () => { canvas.style.visibility = prevVis; this.scene.resume(); };
-    const api = getContext(this).api;
-    import("../world3d/babylonWorld")
-      .then(({ startBabylonWorld }) => {
-        const world = startBabylonWorld({
-          onExit: () => { world.dispose(); restore(); this.scene.start("Menu"); },
-          onDuel: async (name) => {
-            let setup;
-            try {
-              setup = await api.duel();
-              setup = { ...setup, opponent: { ...setup.opponent, name } };
-            } catch { setup = undefined; }
-            world.dispose();
-            restore();
-            this.scene.start("Duel", { setup, returnTo: "Menu" });
-          },
-        });
-      })
-      .catch(() => { restore(); this.flash3dError(); });
-  }
-
-  private flash3dError(): void {
-    const { width: W, height: H } = this.scale;
-    this.ui.add(this.add.text(W / 2, H - 34, "Couldn't load the 3D world.", {
-      fontFamily: "system-ui, sans-serif", fontSize: "12px", color: "#ff9db2",
-    }).setOrigin(0.5));
   }
 
   private button(x: number, y: number, w: number, h: number, title: string, sub: string, color: number, onClick: () => void): void {
