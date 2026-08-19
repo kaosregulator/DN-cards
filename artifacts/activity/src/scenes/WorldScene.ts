@@ -1,533 +1,518 @@
 import Phaser from "phaser";
 import { getContext } from "../core/context";
-import { SOLID, ensureCharTexture, CHAR_KEY, charFrame, type TileKind } from "../world/tiles";
-import { preloadCharSheets, composeChar, heroMap, npcMap, npcRowFor } from "../world/charSprites";
-import { ensureIsoTextures, isRaised, isoOrigin, ISO_KEY, ISO_W, ISO_H, ISO_LIFT } from "../world/isoTiles";
-import { LEGEND, getMap, TOTAL_DUELISTS, type MapDef, type NpcDef, type DoorDef } from "../world/maps";
-import { gameState } from "../state/gameState";
-import { DialogueBox } from "../ui/dialogue";
-import { TouchPad } from "../ui/touchPad";
+import { WorldHud } from "../hud/worldHud";
+import {
+  MAPS, START_MAP, type MapDef, type MapKey,
+  type WorldManifest,
+} from "../world/worldMaps";
 
 // ─────────────────────────────────────────────────────────────────────────────
-// WorldScene — the explorable overworld. Classic Game-Boy structure: tile maps
-// bigger than the screen, a camera that follows the walker, solid-tile
-// collision, doors that swap rooms behind a screen wipe, NPCs you walk up to
-// and talk with, duelists that launch the card duel, and a shopkeeper that
-// opens the card shop screen.
+// WorldScene — the Phaser 4 top-down overworld, built on the WorkAdventure map
+// system. It loads a real Tiled (.tmj) map + its tilesets, renders every layer in
+// WorkAdventure order (Floor → Wall → Details → [player] → Above), gives the
+// player a walking avatar with collisions, follows with the camera, and connects
+// the maps to the real card game: portals and duelist encounters hand off to the
+// existing DuelScene / ShopScene / MatchmakingScene (the PR #106 battle side).
+//
+// One scene instance is reused for every location: scene.restart({ mapKey }).
 // ─────────────────────────────────────────────────────────────────────────────
 
-type Facing = "down" | "left" | "right" | "up";
+const CHAR_KEY = "duelist";
+const CHAR_FW = 32;
+const CHAR_FH = 48;
+const SPEED = 165;
 
-// Characters are drawn larger than a tile so they read as the focal actors on
-// the isometric board (like the reference client's big overworld sprites).
-const CHAR_SCALE = 1.6;
+// Layers whose (case-insensitive) name starts with one of these render ABOVE the
+// player; everything else renders below. Covers the WorkAdventure conventions
+// across all the source maps: "above*", "roof*", "sign*", overlays and lights.
+const ABOVE_PREFIXES = ["above", "roof", "sign", "silent", "overlay", "lights", "light"];
 
-/** Duelist rank shown on the HUD player card, derived from level. */
-function rankName(level: number): string {
-  if (level >= 50) return "CHAMPION";
-  if (level >= 35) return "MASTER";
-  if (level >= 20) return "EXPERT";
-  if (level >= 10) return "DUELIST";
-  if (level >= 5) return "ROOKIE";
-  return "BEGINNER";
+// Names (case-insensitive, exact) treated as the invisible collision layer. The
+// starter kit uses "collisions"; the village map uses "collision".
+const COLLISION_NAMES = ["collisions", "collision"];
+
+// A single thing the player can walk up to and interact with — either a portal
+// (navigate / open a battle-side scene) or an enemy encounter (start a duel).
+interface Interactable {
+  x: number;
+  y: number;
+  /** Prompt shown when the player is in range, e.g. "Enter Card Shop" / "Duel Rookie Rival". */
+  prompt: string;
+  /** What interacting does. */
+  trigger: () => void;
+  ring: Phaser.GameObjects.Arc;
+  glyph: Phaser.GameObjects.Text;
+  label: Phaser.GameObjects.Text;
 }
 
-interface NpcView { def: NpcDef; sprite: Phaser.GameObjects.Sprite; }
+function assetUrl(rel: string): string {
+  // Vite serves public/ at BASE_URL ("/" here, preserved through the Discord proxy).
+  return `${import.meta.env.BASE_URL}${rel}`;
+}
 
 export class WorldScene extends Phaser.Scene {
-  private mapId = "city";
-  private spawnId = "start";
+  private mapKey: MapKey = START_MAP;
+  private def!: MapDef;
 
-  private map!: MapDef;
-  private solid: boolean[][] = [];
-  private doorAt = new Map<string, DoorDef>();
-
-  private player!: Phaser.GameObjects.Sprite;
-  private facing: Facing = "down";
-  private tileX = 0;
-  private tileY = 0;
-  private moving = false;
-  private walkFrame: 0 | 1 = 0;
-
-  private npcs: NpcView[] = [];
-  private groundLayer!: Phaser.GameObjects.Container;
-  private objectLayer!: Phaser.GameObjects.Container;
-  // Isometric world origin (set per map so the grid sits fully on-screen).
-  private isoOX = 0;
-  private isoOY = 0;
-  private isoScreen(tx: number, ty: number): { x: number; y: number } {
-    return { x: this.isoOX + (tx - ty) * (ISO_W / 2), y: this.isoOY + (tx + ty) * (ISO_H / 2) };
-  }
-  private hud!: Phaser.GameObjects.Container;
-
+  private player!: Phaser.Physics.Arcade.Sprite;
+  private collisionLayer: Phaser.Tilemaps.TilemapLayer | null = null;
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
-  private keys!: Record<string, Phaser.Input.Keyboard.Key>;
-  private pad!: TouchPad;
-  private dialogue!: DialogueBox;
-  private locked = false;
-  private hint!: Phaser.GameObjects.Text;
+  private wasd!: Record<"up" | "down" | "left" | "right" | "interact", Phaser.Input.Keyboard.Key>;
 
-  constructor() { super("World"); }
+  private hud!: WorldHud;
 
-  init(data: { map?: string; spawn?: string; duelWon?: boolean; npcId?: string }): void {
-    // Returning from a duel: record the result and restore where we were.
-    if (data && data.duelWon !== undefined) {
-      if (data.npcId && data.duelWon) gameState.defeat(data.npcId);
-      this.mapId = gameState.lastMap ?? "city";
-      this.spawnId = "__restore";
+  private interactables: Interactable[] = [];
+  private activeInteractable: Interactable | null = null;
+  private facing: "down" | "left" | "right" | "up" = "down";
+  private transitioning = false;
+  private ready = false;
+
+  // Touch dpad direction (‑1..1) fed by the on-screen control.
+  private touchDir = { x: 0, y: 0 };
+
+  constructor() {
+    super("World");
+  }
+
+  init(data: { mapKey?: MapKey }): void {
+    this.mapKey = data?.mapKey ?? START_MAP;
+    this.def = MAPS[this.mapKey];
+    this.transitioning = false;
+    this.ready = false;
+    this.interactables = [];
+    this.activeInteractable = null;
+    this.collisionLayer = null;
+    this.touchDir = { x: 0, y: 0 };
+    this.facing = "down";
+  }
+
+  async create(): Promise<void> {
+    document.getElementById("boot")?.remove();
+    this.cameras.main.setBackgroundColor("#10151f");
+
+    // Loading label — the bigger maps (the village) take a few seconds to stream
+    // their tilesets, so show progress instead of a black frame.
+    const loading = this.add
+      .text(this.scale.width / 2, this.scale.height / 2, `Entering ${this.def.name}…`, {
+        fontFamily: "system-ui, sans-serif", fontSize: "18px", color: "#9db2ff",
+      })
+      .setOrigin(0.5)
+      .setScrollFactor(0)
+      .setDepth(100000);
+
+    let map: Phaser.Tilemaps.Tilemap;
+    try {
+      map = await this.loadMap(this.mapKey);
+    } catch (err) {
+      loading.destroy();
+      this.add
+        .text(this.scale.width / 2, this.scale.height / 2, "Couldn't load the world map.", {
+          fontFamily: "system-ui, sans-serif", fontSize: "16px", color: "#ff9db2",
+        })
+        .setOrigin(0.5)
+        .setScrollFactor(0);
+      // eslint-disable-next-line no-console
+      console.error("[World] map load failed:", err);
       return;
     }
-    this.mapId = data?.map ?? gameState.lastMap ?? "city";
-    this.spawnId = data?.spawn ?? "start";
-  }
 
-  preload(): void {
-    // Bundled, same-origin character sheets (CSP-safe). If a load fails the
-    // world silently falls back to the procedural walkers / tiles.
-    preloadCharSheets(this);
-  }
+    loading.destroy();
 
-  create(): void {
-    document.getElementById("boot")?.remove();
-    ensureIsoTextures(this);
-    this.cursors = this.input.keyboard!.createCursorKeys();
-    this.keys = this.input.keyboard!.addKeys("W,A,S,D") as Record<string, Phaser.Input.Keyboard.Key>;
-    // Discrete actions are event-driven (polling JustDown is unreliable);
-    // movement stays polled from held keys / the touch pad.
-    const kb = this.input.keyboard!;
-    kb.on("keydown-E", this.onActionKey, this);
-    kb.on("keydown-SPACE", this.onActionKey, this);
-    kb.on("keydown-ESC", this.onMenuKey, this);
+    // The physics world must span the whole map, or setCollideWorldBounds clamps
+    // the player to the (tiny) default canvas-sized bounds.
+    this.physics.world.setBounds(0, 0, map.widthInPixels, map.heightInPixels);
+
+    const { spawnX, spawnY } = this.buildMap(map);
+    this.createPlayer(spawnX, spawnY);
+    if (this.collisionLayer) this.physics.add.collider(this.player, this.collisionLayer);
+
+    this.setupCamera(map);
+    this.setupInput();
+    this.placeInteractables(map, spawnX, spawnY);
+
+    // DOM HUD: location banner, player chip, mobile dpad + interact button.
+    const snap = getContext(this).playerState.get();
+    this.hud = new WorldHud({
+      title: this.def.name,
+      subtitle: this.def.subtitle,
+      player: snap
+        ? { name: snap.user.username, level: snap.player.level, shards: snap.player.shards }
+        : null,
+      onDir: (x, y) => { this.touchDir = { x, y }; },
+      onInteract: () => this.tryInteract(),
+      onMenu: () => this.leaveToMenu(),
+    });
+    this.ready = true;
+
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
-      kb.off("keydown-E", this.onActionKey, this);
-      kb.off("keydown-SPACE", this.onActionKey, this);
-      kb.off("keydown-ESC", this.onMenuKey, this);
-    });
-
-    this.groundLayer = this.add.container(0, 0).setDepth(0);
-    this.objectLayer = this.add.container(0, 0).setDepth(10);
-    this.hud = this.add.container(0, 0).setDepth(1000).setScrollFactor(0);
-
-    this.dialogue = new DialogueBox(this);
-    this.pad = new TouchPad(this, {
-      onAction: () => this.onAction(),
-      onMenu: () => this.openPauseMenu(),
-    });
-    this.hint = this.add.text(0, 0, "", {
-      fontFamily: "system-ui, sans-serif", fontSize: "12px", color: "#fff",
-      backgroundColor: "#000000bb", padding: { x: 6, y: 3 },
-    }).setOrigin(0.5, 1).setDepth(900).setVisible(false);
-
-    this.buildMap();
-    this.cameras.main.fadeIn(260, 0, 0, 0);
-
-    this.scale.on(Phaser.Scale.Events.RESIZE, this.onResize, this);
-    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
-      this.scale.off(Phaser.Scale.Events.RESIZE, this.onResize, this);
-      this.pad.destroy();
-      this.dialogue.destroy();
+      this.hud?.destroy();
     });
   }
 
-  private onResize = (): void => { this.pad.layout(); this.layoutHud(); };
+  // ── map loading (two-stage: tmj + manifest, then tileset images) ────────────
+  private async loadMap(key: MapKey): Promise<Phaser.Tilemaps.Tilemap> {
+    // Stage 1: the map JSON, the tileset manifest, and the character sheet.
+    if (!this.cache.json.has("world-manifest")) {
+      this.load.json("world-manifest", assetUrl("world/maps/_manifest.json"));
+    }
+    if (!this.cache.tilemap.has(key)) {
+      this.load.tilemapTiledJSON(key, assetUrl(`world/maps/${key}.tmj`));
+    }
+    if (!this.textures.exists(CHAR_KEY)) {
+      this.load.spritesheet(CHAR_KEY, assetUrl("world/characters/duelist.png"), {
+        frameWidth: CHAR_FW, frameHeight: CHAR_FH,
+      });
+    }
+    await this.runLoader();
 
-  // ── Map construction ────────────────────────────────────────────────────────
-  private buildMap(): void {
-    this.groundLayer.removeAll(true);
-    this.objectLayer.removeAll(true);
-    this.hud.removeAll(true);
-    this.npcs = [];
-    this.doorAt.clear();
+    const manifest = this.cache.json.get("world-manifest") as WorldManifest;
+    const entry = manifest?.[key];
+    if (!entry) throw new Error(`no manifest entry for map "${key}"`);
 
-    this.map = getMap(this.mapId);
-    gameState.lastMap = this.mapId;
-    const g = this.map.grid;
-    const h = g.length, w = g[0]!.length;
+    // Stage 2: every tileset image this map references.
+    for (const ts of entry.tilesets) {
+      const imgKey = `${key}__${ts.name}`;
+      if (!this.textures.exists(imgKey)) this.load.image(imgKey, assetUrl(ts.image));
+    }
+    await this.runLoader();
 
-    // Isometric world origin: shift right so the leftmost column lands at x≈0,
-    // with headroom above for raised blocks.
-    this.isoOX = h * (ISO_W / 2);
-    this.isoOY = ISO_LIFT + ISO_H;
+    const map = this.make.tilemap({ key });
+    // Register each tileset against its loaded image, keyed by explicit firstgid.
+    for (const ts of entry.tilesets) {
+      map.addTilesetImage(
+        ts.name, `${key}__${ts.name}`, ts.tilewidth, ts.tileheight, ts.margin, ts.spacing, ts.firstgid,
+      );
+    }
+    return map;
+  }
 
-    // Tiles — flat floor into the ground layer (drawn back-to-front), raised
-    // blocks (walls, trees, buildings, furniture) into the depth-sorted object
-    // layer so the player passes correctly in front of / behind them.
-    this.solid = [];
-    for (let y = 0; y < h; y++) {
-      this.solid[y] = [];
-      for (let x = 0; x < w; x++) {
-        const ch = g[y]![x] ?? ".";
-        const kind = (LEGEND[ch] ?? "grass") as TileKind;
-        this.solid[y]![x] = SOLID.has(kind);
-        const p = this.isoScreen(x, y);
-        const img = this.add.image(p.x, p.y, ISO_KEY(kind));
-        if (this.map.ambient !== 0xffffff) img.setTint(this.map.ambient);
-        if (isRaised(kind)) {
-          const o = isoOrigin(kind);
-          img.setOrigin(o.ox, o.oy).setDepth(p.y);
-          this.objectLayer.add(img);
-        } else {
-          img.setOrigin(0.5, 0.5);
-          this.groundLayer.add(img);
+  private runLoader(): Promise<void> {
+    return new Promise((resolve) => {
+      this.load.once(Phaser.Loader.Events.COMPLETE, () => resolve());
+      this.load.start();
+    });
+  }
+
+  // ── layer rendering ─────────────────────────────────────────────────────────
+  private buildMap(map: Phaser.Tilemaps.Tilemap): { spawnX: number; spawnY: number } {
+    const tilesets = map.tilesets;
+    let spawn: { x: number; y: number } | null = null;
+
+    for (let index = 0; index < map.layers.length; index++) {
+      const ld = map.layers[index]!;
+      const name = ld.name ?? "";
+      const lower = name.toLowerCase();
+
+      if (lower === "start") {
+        spawn = this.findSpawn(ld, map);
+        continue; // start markers are logic-only, never drawn
+      }
+      if (COLLISION_NAMES.includes(lower)) {
+        const layer = this.makeLayer(map, index, tilesets);
+        if (layer) {
+          layer.setVisible(false);
+          layer.setCollisionByExclusion([-1], true);
+          this.collisionLayer = layer;
+        }
+        continue;
+      }
+
+      const layer = this.makeLayer(map, index, tilesets);
+      if (!layer) continue;
+      const isAbove = ABOVE_PREFIXES.some((p) => lower.startsWith(p));
+      layer.setDepth(isAbove ? 1000 + index : index);
+      if (typeof ld.alpha === "number") layer.setAlpha(ld.alpha);
+    }
+
+    const cx = (map.widthInPixels || map.width * map.tileWidth) / 2;
+    const cy = (map.heightInPixels || map.height * map.tileHeight) / 2;
+
+    // The big hub map's `start` marker sits inside a cramped office; spawn in the
+    // open plaza instead (nearest walkable tile to the map centre).
+    if (this.def.spawn === "center") {
+      const open = this.nearestWalkable(map, cx, cy);
+      if (open) return { spawnX: open.x, spawnY: open.y };
+    }
+    return { spawnX: spawn ? spawn.x : cx, spawnY: spawn ? spawn.y : cy };
+  }
+
+  // Spiral out from a pixel point to the nearest walkable tile centre.
+  private nearestWalkable(
+    map: Phaser.Tilemaps.Tilemap, px: number, py: number,
+  ): { x: number; y: number } | null {
+    const tw = map.tileWidth, th = map.tileHeight;
+    const stx = Math.floor(px / tw), sty = Math.floor(py / th);
+    for (let r = 0; r <= 40; r++) {
+      for (let dy = -r; dy <= r; dy++) {
+        for (let dx = -r; dx <= r; dx++) {
+          if (Math.max(Math.abs(dx), Math.abs(dy)) !== r) continue; // ring only
+          const tx = stx + dx, ty = sty + dy;
+          if (tx < 0 || ty < 0 || tx >= map.width || ty >= map.height) continue;
+          const t = this.collisionLayer?.getTileAt(tx, ty);
+          if (!t || t.index < 0) return { x: tx * tw + tw / 2, y: ty * th + th / 2 };
         }
       }
     }
-    // Doors are walkable and register a transition (label floats above the tile).
-    for (const d of this.map.doors) {
-      this.doorAt.set(`${d.x},${d.y}`, d);
-      if (this.solid[d.y]) this.solid[d.y]![d.x] = false;
-      if (d.label) {
-        const p = this.isoScreen(d.x, d.y);
-        this.objectLayer.add(this.add.text(p.x, p.y - ISO_H, d.label, {
-          fontFamily: "system-ui, sans-serif", fontSize: "11px", color: "#ffe9b0",
-          backgroundColor: "#00000099", padding: { x: 4, y: 2 },
-        }).setOrigin(0.5, 1).setDepth(90000));
+    return null;
+  }
+
+  // createLayer's return type is a TilemapLayer | TilemapGPULayer union; with the
+  // gpu flag false (the default) it is always a standard TilemapLayer, which is
+  // what arcade collision + tile queries need. Narrow it here in one place.
+  private makeLayer(
+    map: Phaser.Tilemaps.Tilemap, index: number, tilesets: Phaser.Tilemaps.Tileset[],
+  ): Phaser.Tilemaps.TilemapLayer | null {
+    const layer = map.createLayer(index, tilesets, 0, 0, false);
+    return (layer as Phaser.Tilemaps.TilemapLayer) ?? null;
+  }
+
+  private findSpawn(ld: Phaser.Tilemaps.LayerData, map: Phaser.Tilemaps.Tilemap): { x: number; y: number } | null {
+    for (let y = 0; y < ld.height; y++) {
+      for (let x = 0; x < ld.width; x++) {
+        const t = ld.data[y]?.[x];
+        if (t && t.index >= 0) {
+          return { x: x * map.tileWidth + map.tileWidth / 2, y: y * map.tileHeight + map.tileHeight / 2 };
+        }
       }
     }
-    // Signs.
-    for (const s of this.map.signs ?? []) {
-      const p = this.isoScreen(s.x, s.y);
-      this.objectLayer.add(this.add.text(p.x, p.y - ISO_H / 2, s.text, {
-        fontFamily: "system-ui, sans-serif", fontSize: "11px", color: "#e6ecff",
-        backgroundColor: "#0a0d1699", padding: { x: 5, y: 3 },
-      }).setOrigin(0.5).setDepth(90000));
-    }
+    return null;
+  }
 
-    // NPCs — real townsfolk sprites (varied by id), procedural fallback.
-    for (const n of this.map.npcs) {
-      if (!composeChar(this, n.id, "npc", npcMap(npcRowFor(n.id)))) {
-        ensureCharTexture(this, n.id, n.colors);
-      }
-      const beaten = gameState.isDefeated(n.id);
-      const p = this.isoScreen(n.x, n.y);
-      const spr = this.add.sprite(p.x, p.y - ISO_H * 0.25, CHAR_KEY(n.id), charFrame(n.face ?? "down", 0))
-        .setOrigin(0.5, 0.86).setScale(CHAR_SCALE).setDepth(p.y);
-      this.objectLayer.add(spr);
-      // Name plate + duelist marker.
-      const tag = n.role === "shop" ? "🛒" : n.duelist ? (beaten ? "✔" : "⚔") : "";
-      this.objectLayer.add(this.add.text(p.x, p.y - ISO_H * 0.25 - 40, `${tag} ${n.name}`.trim(), {
-        fontFamily: "system-ui, sans-serif", fontSize: "10px", color: beaten ? "#8ef0bd" : "#ffe9b0",
-        backgroundColor: "#00000088", padding: { x: 3, y: 1 },
-      }).setOrigin(0.5, 1).setDepth(90000));
-      this.solid[n.y]![n.x] = true; // can't walk through people
-      this.npcs.push({ def: n, sprite: spr });
-    }
+  // ── player ──────────────────────────────────────────────────────────────────
+  private createPlayer(x: number, y: number): void {
+    this.ensureAnims();
+    this.player = this.physics.add.sprite(x, y, CHAR_KEY, 1);
+    this.player.setDepth(500);
+    // A slim body around the feet so the avatar tucks behind furniture nicely.
+    const body = this.player.body as Phaser.Physics.Arcade.Body;
+    body.setSize(18, 14).setOffset((CHAR_FW - 18) / 2, CHAR_FH - 16);
+    this.player.setCollideWorldBounds(true);
+    this.player.anims.play("idle-down");
+  }
 
-    // Player — the real animated hero sheet when it loaded, else procedural.
-    if (!composeChar(this, "player", "hero", heroMap())) {
-      ensureCharTexture(this, "player", { body: 0x2f6bd0, trim: 0xffe08a, skin: 0xe8b98c, hair: 0x2a1e14 });
+  private ensureAnims(): void {
+    if (this.anims.exists("walk-down")) return;
+    const dirs: [string, number][] = [["down", 0], ["left", 3], ["right", 6], ["up", 9]];
+    for (const [dir, start] of dirs) {
+      this.anims.create({
+        key: `walk-${dir}`,
+        frames: this.anims.generateFrameNumbers(CHAR_KEY, { start, end: start + 2 }),
+        frameRate: 8,
+        repeat: -1,
+      });
+      this.anims.create({ key: `idle-${dir}`, frames: [{ key: CHAR_KEY, frame: start + 1 }], frameRate: 1 });
     }
-    const sp = this.spawnId === "__restore"
-      ? { x: gameState.lastX, y: gameState.lastY, face: gameState.lastFace as Facing }
-      : (this.map.spawns[this.spawnId] ?? Object.values(this.map.spawns)[0]!);
-    this.tileX = sp.x; this.tileY = sp.y;
-    this.facing = (sp.face as Facing) ?? "down";
-    const pp = this.isoScreen(this.tileX, this.tileY);
-    this.player = this.add.sprite(pp.x, pp.y - ISO_H * 0.25, CHAR_KEY("player"), charFrame(this.facing, 0))
-      .setOrigin(0.5, 0.86).setScale(CHAR_SCALE).setDepth(pp.y);
-    this.objectLayer.add(this.player);
-    this.objectLayer.sort("depth");
+  }
 
-    // Camera — bounds cover the whole diamond, follow the player.
+  // ── camera ──────────────────────────────────────────────────────────────────
+  private setupCamera(map: Phaser.Tilemaps.Tilemap): void {
     const cam = this.cameras.main;
-    const worldW = this.isoOX + (w - 1) * (ISO_W / 2) + ISO_W;
-    const worldH = this.isoOY + (w + h - 2) * (ISO_H / 2) + ISO_H + ISO_LIFT;
-    cam.setBounds(-ISO_W, -(ISO_LIFT + ISO_H), worldW + ISO_W * 2, worldH + ISO_LIFT + ISO_H * 3);
-    cam.startFollow(this.player, true, 0.15, 0.15);
-    cam.setBackgroundColor(this.map.indoor ? "#120d18" : "#0a1020");
-    // Render at 1× so the fixed (scrollFactor-0) HUD isn't scaled by camera
-    // zoom; character sprites are already drawn larger via CHAR_SCALE.
-    cam.setZoom(1);
-
-    this.buildHud();
-    this.pad.layout();
+    cam.setBounds(0, 0, map.widthInPixels, map.heightInPixels);
+    cam.startFollow(this.player, true, 0.12, 0.12);
+    cam.setZoom(this.pickZoom());
+    cam.roundPixels = true;
+    this.scale.on(Phaser.Scale.Events.RESIZE, this.onResize, this);
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () =>
+      this.scale.off(Phaser.Scale.Events.RESIZE, this.onResize, this),
+    );
   }
 
-  // ── HUD (ygoevolution-style overlay) ─────────────────────────────────────────
-  private buildHud(): void {
-    this.hud.removeAll(true);
-    const W = this.scale.width, H = this.scale.height;
-    const narrow = W < 560;
-    const snap = getContext(this).playerState.get();
-    const name = snap?.user.username ?? "Duelist";
-    const level = snap?.player.level ?? 1;
-    const shards = snap?.player.shards ?? 0;
-    const beaten = gameState.defeatedCount();
+  private pickZoom(): number {
+    // Fit ~15 tiles across the smaller screen dimension so the world feels roomy
+    // on desktop and readable on a phone.
+    const min = Math.min(this.scale.width, this.scale.height);
+    return Phaser.Math.Clamp(Math.round((min / (15 * 32)) * 100) / 100, 1.4, 3.2);
+  }
 
-    // Player card (top-left): avatar, name + rank, duel progress + shards.
-    const cardW = narrow ? 178 : 226, cardH = 54;
-    const card = this.add.container(8, 8);
-    const cg = this.add.graphics();
-    cg.fillStyle(0x0b1020, 0.9); cg.fillRoundedRect(0, 0, cardW, cardH, 10);
-    cg.lineStyle(2, 0x3a5db0, 0.95); cg.strokeRoundedRect(0, 0, cardW, cardH, 10);
-    card.add(cg);
-    card.add(this.add.circle(29, cardH / 2, 18, 0x2b57b8, 0.5).setStrokeStyle(2, 0x8fb0ff, 1));
-    card.add(this.add.text(29, cardH / 2, (name[0] ?? "?").toUpperCase(), {
-      fontFamily: "system-ui, sans-serif", fontSize: "18px", color: "#fff", fontStyle: "bold",
-    }).setOrigin(0.5));
-    card.add(this.add.text(54, 8, name, {
-      fontFamily: "system-ui, sans-serif", fontSize: "13px", color: "#fff", fontStyle: "bold",
-    }).setOrigin(0, 0));
-    const rank = rankName(level);
-    const rw = 8 + rank.length * 6.4;
-    const rg = this.add.graphics();
-    rg.fillStyle(0xc9a24f, 0.95); rg.fillRoundedRect(cardW - rw - 8, 8, rw, 15, 4);
-    card.add(rg);
-    card.add(this.add.text(cardW - rw / 2 - 8, 15, rank, {
-      fontFamily: "system-ui, sans-serif", fontSize: "9px", color: "#1a1408", fontStyle: "bold",
-    }).setOrigin(0.5));
-    card.add(this.add.text(54, 30, `⚔ ${beaten}/${TOTAL_DUELISTS}`, {
-      fontFamily: "system-ui, sans-serif", fontSize: "11px", color: "#ffd75e", fontStyle: "bold",
-    }).setOrigin(0, 0));
-    card.add(this.add.text(54 + (narrow ? 62 : 74), 30, `💠 ${shards.toLocaleString()}`, {
-      fontFamily: "system-ui, sans-serif", fontSize: "11px", color: "#9fe0ff", fontStyle: "bold",
-    }).setOrigin(0, 0));
-    this.hud.add(card);
+  private onResize(): void {
+    this.cameras.main.setZoom(this.pickZoom());
+  }
 
-    // Area banner (top-centre).
-    const banner = this.add.container(W / 2, 12);
-    const bt = this.add.text(0, 8, this.map.name.toUpperCase(), {
-      fontFamily: "system-ui, sans-serif", fontSize: narrow ? "12px" : "14px", color: "#bfe0ff", fontStyle: "bold",
-    }).setOrigin(0.5, 0);
-    const bw = bt.width + 28;
-    const bg = this.add.graphics();
-    bg.fillStyle(0x101a33, 0.85); bg.fillRoundedRect(-bw / 2, 4, bw, 26, 8);
-    bg.lineStyle(1.5, 0x3a5db0, 0.8); bg.strokeRoundedRect(-bw / 2, 4, bw, 26, 8);
-    banner.add([bg, bt]);
-    this.hud.add(banner);
-
-    // Top-right quick buttons.
-    let bx = W - 8;
-    for (const [label, fn] of [
-      ["☰ MENU", () => this.openPauseMenu()],
-      ["🛒 SHOP", () => this.openShop()],
-      ["🗺 MAP", () => this.flashMap()],
-    ] as Array<[string, () => void]>) {
-      const b = this.hudPill(label, fn);
-      b.x = bx - (b.getData("w") as number); b.y = 8;
-      bx -= (b.getData("w") as number) + 6;
-      this.hud.add(b);
-    }
-    this.hud.add(this.add.text(bx - 6, 18, "● 1 online", {
-      fontFamily: "system-ui, sans-serif", fontSize: "11px", color: "#8ef0bd",
-    }).setOrigin(1, 0.5));
-
-    // Chat bar (bottom-left) — presentation shell for now (no networked chat yet).
-    if (!narrow || H > 620) {
-      const chW = Math.min(360, W - 16), chH = 40;
-      const chat = this.add.container(8, H - chH - 8);
-      const chg = this.add.graphics();
-      chg.fillStyle(0x0a0d16, 0.72); chg.fillRoundedRect(0, 0, chW, chH, 8);
-      chg.lineStyle(1, 0x2f3c66, 0.9); chg.strokeRoundedRect(0, 0, chW, chH, 8);
-      chat.add(chg);
-      chg.fillStyle(0x2b57b8, 0.9); chg.fillRoundedRect(6, 6, 52, 15, 4);
-      chat.add(this.add.text(32, 13, "WORLD", { fontFamily: "system-ui, sans-serif", fontSize: "9px", color: "#fff", fontStyle: "bold" }).setOrigin(0.5));
-      chat.add(this.add.text(70, 13, "LOCAL", { fontFamily: "system-ui, sans-serif", fontSize: "9px", color: "#6a7aa8", fontStyle: "bold" }).setOrigin(0, 0.5));
-      chat.add(this.add.text(10, 28, "Press Enter — message everyone", {
-        fontFamily: "system-ui, sans-serif", fontSize: "11px", color: "#5f6b96",
-      }).setOrigin(0, 0.5));
-      this.hud.add(chat);
+  // ── input ─────────────────────────────────────────────────────────────────
+  private setupInput(): void {
+    const kb = this.input.keyboard;
+    if (kb) {
+      this.cursors = kb.createCursorKeys();
+      this.wasd = {
+        up: kb.addKey(Phaser.Input.Keyboard.KeyCodes.W),
+        down: kb.addKey(Phaser.Input.Keyboard.KeyCodes.S),
+        left: kb.addKey(Phaser.Input.Keyboard.KeyCodes.A),
+        right: kb.addKey(Phaser.Input.Keyboard.KeyCodes.D),
+        interact: kb.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE),
+      };
+      kb.on("keydown-E", () => this.tryInteract());
+      kb.on("keydown-SPACE", () => this.tryInteract());
     }
   }
 
-  /** A small rounded HUD button. Stores its width in data("w"). */
-  private hudPill(label: string, onClick: () => void): Phaser.GameObjects.Container {
-    const c = this.add.container(0, 0);
-    const t = this.add.text(0, 0, label, {
-      fontFamily: "system-ui, sans-serif", fontSize: "12px", color: "#dbe4ff", fontStyle: "bold",
-    }).setOrigin(0, 0.5);
-    const w = t.width + 20, h = 26;
-    const g = this.add.graphics();
-    g.fillStyle(0x1b2340, 0.92); g.fillRoundedRect(0, 0, w, h, 7);
-    g.lineStyle(1.5, 0x3a5db0, 0.9); g.strokeRoundedRect(0, 0, w, h, 7);
-    t.setPosition(10, h / 2);
-    c.add([g, t]);
-    c.setData("w", w);
-    c.setSize(w, h).setInteractive(new Phaser.Geom.Rectangle(0, 0, w, h), Phaser.Geom.Rectangle.Contains);
-    c.on("pointerdown", onClick);
-    c.on("pointerover", () => c.setAlpha(0.85));
-    c.on("pointerout", () => c.setAlpha(1));
-    return c;
-  }
-
-  private flashMap(): void {
-    const beaten = gameState.defeatedCount();
-    this.hint.setText(`${this.map.name} · ${beaten}/${TOTAL_DUELISTS} duelists beaten`)
-      .setPosition(this.player.x, this.player.y - 40).setVisible(true);
-    this.time.delayedCall(1800, () => this.hint.setVisible(false));
-  }
-
-  private layoutHud(): void { if (this.map) this.buildHud(); }
-
-  // ── Movement ────────────────────────────────────────────────────────────────
-  /** E / Space — talk, advance dialogue, interact. */
-  private onActionKey = (): void => {
-    if (!this.player) return;
-    this.onAction();
-  };
-  private onMenuKey = (): void => {
-    if (this.dialogue.isOpen) { this.dialogue.close(); this.locked = false; return; }
-    this.openPauseMenu();
-  };
-
-  update(): void {
-    if (this.locked || this.moving || !this.player) return;
-    if (this.dialogue.isOpen) return;
-
-    let dx = 0, dy = 0;
-    const p = this.pad.direction();
-    if (this.cursors.left.isDown || this.keys.A.isDown || p.x < 0) dx = -1;
-    else if (this.cursors.right.isDown || this.keys.D.isDown || p.x > 0) dx = 1;
-    else if (this.cursors.up.isDown || this.keys.W.isDown || p.y < 0) dy = -1;
-    else if (this.cursors.down.isDown || this.keys.S.isDown || p.y > 0) dy = 1;
-    if (!dx && !dy) { this.player.setFrame(charFrame(this.facing, 0)); this.updateHint(); return; }
-
-    this.facing = dx < 0 ? "left" : dx > 0 ? "right" : dy < 0 ? "up" : "down";
-    this.tryStep(dx, dy);
-  }
-
-  private tryStep(dx: number, dy: number): void {
-    const nx = this.tileX + dx, ny = this.tileY + dy;
-    // Door first — stepping onto it travels.
-    const door = this.doorAt.get(`${nx},${ny}`);
-    if (door) { this.travel(door); return; }
-    if (!this.walkable(nx, ny)) {
-      this.player.setFrame(charFrame(this.facing, 0));
-      this.updateHint();
-      return;
-    }
-    this.moving = true;
-    this.walkFrame = this.walkFrame === 0 ? 1 : 0;
-    this.player.setFrame(charFrame(this.facing, this.walkFrame));
-    this.tileX = nx; this.tileY = ny;
-    gameState.lastX = nx; gameState.lastY = ny; gameState.lastFace = this.facing;
-    const p = this.isoScreen(nx, ny);
-    this.tweens.add({
-      targets: this.player,
-      x: p.x,
-      y: p.y - ISO_H * 0.25,
-      duration: 150,
-      ease: "Linear",
-      onUpdate: () => { this.player.setDepth(this.player.y + ISO_H * 0.25); this.objectLayer.sort("depth"); },
-      onComplete: () => {
-        this.moving = false;
-        this.player.setDepth(p.y);
-        this.objectLayer.sort("depth");
-        this.updateHint();
-      },
+  // ── interactables (portals + encounters) ────────────────────────────────────
+  private placeInteractables(map: Phaser.Tilemaps.Tilemap, spawnX: number, spawnY: number): void {
+    const portals = this.def.portals;
+    const encounters = this.def.encounters ?? [];
+    // One spread of walkable spots around spawn; portals take the inner slots,
+    // encounters the outer ones so enemies ring the plaza a little further out.
+    const spots = this.walkableRing(map, spawnX, spawnY, portals.length + encounters.length);
+    portals.forEach((def, i) => {
+      const p = spots[i] ?? { x: spawnX + (i + 1) * 48, y: spawnY };
+      const verb = def.action.kind === "map" ? "Enter" : def.action.kind === "shop" ? "Open" : "Go to";
+      this.interactables.push(
+        this.makeInteractable(p.x, p.y, def.glyph, def.label, def.color, `${verb} ${def.label}`,
+          () => this.runAction(def.action)),
+      );
+    });
+    encounters.forEach((def, i) => {
+      const p = spots[portals.length + i];
+      if (!p) return;
+      const it = this.makeInteractable(
+        p.x, p.y, def.glyph, def.name, def.color, `Duel ${def.name}`, () => this.startDuel(def.name),
+      );
+      // Bob the enemy so it reads as a character rather than a signpost.
+      this.tweens.add({ targets: it.glyph, y: it.glyph.y - 4, yoyo: true, repeat: -1, duration: 700, ease: "Sine.InOut" });
+      this.interactables.push(it);
     });
   }
 
-  private walkable(x: number, y: number): boolean {
-    if (y < 0 || y >= this.solid.length) return false;
-    const row = this.solid[y]!;
-    if (x < 0 || x >= row.length) return false;
-    return !row[x];
-  }
-
-  /** Show a prompt when facing something interactive. */
-  private updateHint(): void {
-    const t = this.facingTile();
-    const npc = this.npcAt(t.x, t.y);
-    if (npc) {
-      const verb = npc.def.role === "shop" ? "browse" : npc.def.duelist && !gameState.isDefeated(npc.def.id) ? "duel" : "talk";
-      this.hint.setText(`E to ${verb}`)
-        .setPosition(this.player.x, this.player.y - 30).setVisible(true);
-    } else {
-      this.hint.setVisible(false);
-    }
-  }
-
-  private facingTile(): { x: number; y: number } {
-    const d = this.facing;
-    return {
-      x: this.tileX + (d === "left" ? -1 : d === "right" ? 1 : 0),
-      y: this.tileY + (d === "up" ? -1 : d === "down" ? 1 : 0),
+  // Spiral outward from spawn collecting walkable, well-spaced tile centres.
+  private walkableRing(
+    map: Phaser.Tilemaps.Tilemap, sx: number, sy: number, count: number,
+  ): { x: number; y: number }[] {
+    const tw = map.tileWidth, th = map.tileHeight;
+    const stx = Math.floor(sx / tw), sty = Math.floor(sy / th);
+    const out: { x: number; y: number }[] = [];
+    const minGap = 3; // tiles between beacons
+    const isWalkable = (tx: number, ty: number): boolean => {
+      if (tx < 0 || ty < 0 || tx >= map.width || ty >= map.height) return false;
+      const t = this.collisionLayer?.getTileAt(tx, ty);
+      return !t || t.index < 0;
     };
-  }
-  private npcAt(x: number, y: number): NpcView | null {
-    return this.npcs.find((n) => n.def.x === x && n.def.y === y) ?? null;
-  }
-
-  // ── Interaction ─────────────────────────────────────────────────────────────
-  private onAction(): void {
-    if (this.locked || this.dialogue.isOpen) { this.dialogue.advance(); return; }
-    const t = this.facingTile();
-    const npc = this.npcAt(t.x, t.y);
-    if (!npc) return;
-    this.interact(npc);
-  }
-
-  private interact(npc: NpcView): void {
-    const def = npc.def;
-    // Face the player.
-    const dx = this.tileX - def.x, dy = this.tileY - def.y;
-    const face: Facing = dx < 0 ? "left" : dx > 0 ? "right" : dy < 0 ? "up" : "down";
-    npc.sprite.setFrame(charFrame(face, 0));
-
-    const beaten = gameState.isDefeated(def.id);
-    const lines = beaten && def.defeatedLines?.length ? def.defeatedLines : def.lines;
-    this.locked = true;
-    this.dialogue.show(def.name, lines, () => {
-      this.locked = false;
-      this.hint.setVisible(false);
-      if (def.role === "shop") { this.openShop(); return; }
-      if (def.duelist && !beaten) this.startDuel(def);
-    });
-  }
-
-  private openShop(): void {
-    this.cameras.main.fadeOut(220, 0, 0, 0);
-    this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {
-      this.scene.start("Shop", { returnTo: "World" });
-    });
-  }
-
-  /** Battle transition — the classic flash + wipe into the duel scene. */
-  private async startDuel(def: NpcDef): Promise<void> {
-    this.locked = true;
-    const cam = this.cameras.main;
-    // Triple flash, then a zoom-punch and fade — Game-Boy encounter feel.
-    for (let i = 0; i < 3; i++) {
-      cam.flash(90, 255, 255, 255);
-      await this.wait(150);
+    for (let r = 2; r <= 24 && out.length < count; r++) {
+      for (let a = 0; a < 360 && out.length < count; a += 20) {
+        const tx = stx + Math.round(Math.cos((a * Math.PI) / 180) * r);
+        const ty = sty + Math.round(Math.sin((a * Math.PI) / 180) * r);
+        if (!isWalkable(tx, ty)) continue;
+        const px = tx * tw + tw / 2, py = ty * th + th / 2;
+        if (Math.hypot(px - sx, py - sy) < minGap * tw) continue;
+        if (out.some((o) => Math.hypot(o.x - px, o.y - py) < minGap * tw)) continue;
+        out.push({ x: px, y: py });
+      }
     }
-    this.tweens.add({ targets: cam, zoom: cam.zoom * 1.6, duration: 420, ease: "Cubic.In" });
-    cam.fadeOut(420, 0, 0, 0);
-    let setup;
-    try {
-      const api = getContext(this).api;
-      setup = await api.duel();
-      setup = { ...setup, opponent: { ...setup.opponent, name: def.name } };
-    } catch { setup = undefined; }
-    await this.wait(440);
-    this.scene.start("Duel", { setup, returnTo: "World", npcId: def.id, opponentName: def.name });
+    return out;
   }
 
-  private travel(door: DoorDef): void {
-    this.locked = true;
-    this.hint.setVisible(false);
-    const cam = this.cameras.main;
-    cam.fadeOut(200, 0, 0, 0);
-    cam.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {
-      this.mapId = door.to;
-      this.spawnId = door.spawn;
-      this.buildMap();
-      cam.fadeIn(240, 0, 0, 0);
-      this.locked = false;
+  private makeInteractable(
+    x: number, y: number, glyph: string, label: string, color: number, prompt: string, trigger: () => void,
+  ): Interactable {
+    const ring = this.add.circle(x, y, 15, color, 0.28).setDepth(430);
+    ring.setStrokeStyle(2, color, 0.9);
+    this.tweens.add({
+      targets: ring, scale: 1.25, alpha: 0.5, yoyo: true, repeat: -1, duration: 900, ease: "Sine.InOut",
+    });
+    const glyphText = this.add.text(x, y - 1, glyph, { fontSize: "16px" }).setOrigin(0.5).setDepth(431);
+    const labelText = this.add
+      .text(x, y - 26, label, {
+        fontFamily: "system-ui, sans-serif", fontSize: "11px", color: "#eaf0ff",
+        backgroundColor: "#141a2ecc", padding: { x: 6, y: 3 },
+      })
+      .setOrigin(0.5)
+      .setDepth(432);
+    return { x, y, prompt, trigger, ring, glyph: glyphText, label: labelText };
+  }
+
+  // ── interaction / transitions ───────────────────────────────────────────────
+  private tryInteract(): void {
+    if (this.transitioning || !this.activeInteractable) return;
+    this.activeInteractable.trigger();
+  }
+
+  // Dispatch a portal action to the right real scene (the PR #106 battle side).
+  private runAction(action: import("../world/worldMaps").WorldAction): void {
+    switch (action.kind) {
+      case "map": this.goToMap(action.to); break;
+      case "duel": void this.startDuel(); break;
+      case "shop": this.fadeThen(() => this.scene.start("Shop", { returnTo: "World" })); break;
+      case "pvp": this.fadeThen(() => this.scene.start("Matchmaking")); break;
+      case "menu": this.leaveToMenu(); break;
+    }
+  }
+
+  // Start a real Yu-Gi-Oh duel vs the AI. Pulls a deck setup from the backend
+  // (falls back to DuelScene's default when offline) and names the opponent.
+  private async startDuel(opponentName = "Duelist"): Promise<void> {
+    if (this.transitioning) return;
+    this.transitioning = true;
+    this.cameras.main.flash(90, 255, 255, 255);
+    let setup: import("../duel/types").DuelSetup | undefined;
+    try {
+      const s = await getContext(this).api.duel();
+      setup = { ...s, opponent: { ...s.opponent, name: opponentName } };
+    } catch {
+      setup = undefined;
+    }
+    this.cameras.main.fadeOut(220, 6, 9, 16);
+    this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {
+      this.scene.start("Duel", { setup, returnTo: "World", opponentName });
     });
   }
 
-  private openPauseMenu(): void {
-    if (this.locked) return;
-    this.locked = true;
-    this.dialogue.choice("Pause", [
-      ["Resume", () => { this.locked = false; }],
-      ["Main Menu", () => { this.scene.start("Menu"); }],
-    ], () => { this.locked = false; });
+  private fadeThen(go: () => void): void {
+    this.transitioning = true;
+    this.cameras.main.fadeOut(200, 6, 9, 16);
+    this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, go);
   }
 
-  private wait(ms: number): Promise<void> {
-    return new Promise((res) => this.time.delayedCall(ms, res));
+  private leaveToMenu(): void {
+    this.fadeThen(() => this.scene.start("Menu"));
+  }
+
+  private goToMap(to: MapKey): void {
+    this.transitioning = true;
+    this.cameras.main.fadeOut(220, 6, 9, 16);
+    this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {
+      this.scene.restart({ mapKey: to });
+    });
+  }
+
+  // ── per-frame ─────────────────────────────────────────────────────────────
+  update(): void {
+    if (!this.ready || this.transitioning || !this.player?.body) return;
+
+    let vx = 0, vy = 0;
+    if (this.cursors) {
+      if (this.cursors.left?.isDown || this.wasd.left.isDown) vx -= 1;
+      if (this.cursors.right?.isDown || this.wasd.right.isDown) vx += 1;
+      if (this.cursors.up?.isDown || this.wasd.up.isDown) vy -= 1;
+      if (this.cursors.down?.isDown || this.wasd.down.isDown) vy += 1;
+    }
+    vx += this.touchDir.x;
+    vy += this.touchDir.y;
+
+    const len = Math.hypot(vx, vy);
+    if (len > 0) { vx /= len; vy /= len; }
+    this.player.setVelocity(vx * SPEED, vy * SPEED);
+
+    if (len > 0.01) {
+      // Face the dominant axis.
+      if (Math.abs(vx) > Math.abs(vy)) this.facing = vx < 0 ? "left" : "right";
+      else this.facing = vy < 0 ? "up" : "down";
+      this.player.anims.play(`walk-${this.facing}`, true);
+    } else {
+      this.player.anims.play(`idle-${this.facing}`, true);
+    }
+    this.player.setDepth(500); // stays between below-layers and Above
+
+    this.updateProximity();
+  }
+
+  private updateProximity(): void {
+    let nearest: Interactable | null = null;
+    let best = Infinity;
+    for (const it of this.interactables) {
+      const d = Math.hypot(it.x - this.player.x, it.y - this.player.y);
+      if (d < 40 && d < best) { best = d; nearest = it; }
+    }
+    if (nearest !== this.activeInteractable) {
+      this.activeInteractable = nearest;
+      this.hud?.setPrompt(nearest ? nearest.prompt : null);
+    }
   }
 }
