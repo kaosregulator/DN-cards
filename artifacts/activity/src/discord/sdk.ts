@@ -21,6 +21,11 @@ export interface DiscordSession {
   accessToken: string;
   /** True when we handshook a real Discord frame; false in local dev bypass. */
   inDiscord: boolean;
+  /**
+   * This Activity instance's id. Everyone who launched the SAME Activity shares
+   * it, which makes it the natural matchmaking room key for online PvP.
+   */
+  instanceId: string | null;
 }
 
 // Scopes mirror routes/oauth.ts so the same Discord app works for both surfaces.
@@ -45,7 +50,7 @@ export async function initDiscord(): Promise<DiscordSession> {
   const clientId = import.meta.env.VITE_DISCORD_CLIENT_ID?.trim();
 
   if (!isInDiscord()) {
-    return { accessToken: "", inDiscord: false };
+    return { accessToken: "", inDiscord: false, instanceId: null };
   }
   if (!clientId) {
     throw new Error("VITE_DISCORD_CLIENT_ID is not set — cannot start the Activity.");
@@ -69,5 +74,5 @@ export async function initDiscord(): Promise<DiscordSession> {
   // 3) Complete the handshake so the SDK is authenticated for RPC calls.
   await sdk.commands.authenticate({ access_token });
 
-  return { accessToken: access_token, inDiscord: true };
+  return { accessToken: access_token, inDiscord: true, instanceId: sdk.instanceId ?? null };
 }

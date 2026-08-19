@@ -546,7 +546,8 @@ function buildLegacyCommands() {
           { name: "Rank points", value: "rank" }, { name: "Wins", value: "wins" }, { name: "Best streak", value: "streak" })))
       .addSubcommand(sc => sc.setName("achievements").setDescription("View unlocked battle achievements")
         .addUserOption(o => o.setName("user").setDescription("Whose achievements to view (default: you)")))
-      .addSubcommand(sc => sc.setName("daily").setDescription("View today's battle challenges and progress"))),
+      .addSubcommand(sc => sc.setName("daily").setDescription("View today's battle challenges and progress"))
+      .addSubcommand(sc => sc.setName("phaser").setDescription("Battle Phaser — a live Yu-Gi-Oh style duel & open world (Discord Activity)"))),
 
     // ── /battle_admin (admin, Battle System configuration) ─────────────────────
     adminCmd("battleadmin", "Battle system hub — setup wizard, rules, rewards, cards, seasons", s => s

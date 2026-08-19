@@ -14,9 +14,10 @@
 // the existing raid manager and HQ siege runtime — no second combat engine.
 
 import {
-  EmbedBuilder, MessageFlags,
+  EmbedBuilder, MessageFlags, ActionRowBuilder, ButtonBuilder, ButtonStyle,
   type ChatInputCommandInteraction,
 } from "discord.js";
+import { LAUNCH_PREFIX, activityConfigured, activityUrl } from "../experience.js";
 import { db, battleSettingsTable, battleAchievementsTable } from "@workspace/db";
 import { and, eq } from "drizzle-orm";
 import { getBattleSettings } from "../battle/config-engine.js";
@@ -45,6 +46,7 @@ export async function handleBattlesWelcome(interaction: ChatInputCommandInteract
       { name: "🏆 Rewards", value: "Win battles to earn **DN Shards** 💠 and **XP** ✨. Winning streaks give bonus shards. Every fight also earns rank points in PvP battles. There is a daily reward cap, so you can't farm forever.", inline: false },
       { name: "🤖 AI Arenas", value: "Fighting the AI lets you pick an arena. Higher arenas have tougher AI and bigger rewards. Picking an arena too hard for your card level is a fast way to lose — level up first!", inline: false },
       { name: "💰 Staking (PvP)", value: "If staking is enabled, both players can stake their battle card. The winner takes both cards. Only stake what you're willing to lose!", inline: false },
+      { name: "🎮 Battle Phaser (NEW)", value: "Use **/battle phaser** to launch a live **Yu-Gi-Oh style duel** Activity — your cards become real monsters with ATK/DEF, tribute summons and spell/traps — plus a top-down world to explore and challenge duelists. Runs on desktop and mobile.", inline: false },
     )
     .setFooter({ text: "Tip: level up your cards with /daily and card battles to climb arenas faster!" });
 
@@ -66,6 +68,7 @@ export async function handleBattleCommand(
     case "leaderboard": return void await cmdLeaderboard(interaction);
     case "achievements": return void await cmdAchievements(interaction);
     case "daily": return void await cmdDaily(interaction);
+    case "phaser": return void await cmdPhaser(interaction);
     default:
       await interaction.reply({ content: "Unknown battle command.", flags: MessageFlags.Ephemeral });
   }
@@ -74,6 +77,48 @@ export async function handleBattleCommand(
 async function cmdFight(interaction: ChatInputCommandInteraction) {
   const opponent = interaction.options.getUser("opponent");
   await startChallenge(interaction, opponent);
+}
+
+/**
+ * `/battle phaser` — launch the Battle Phaser Discord Activity: a true
+ * Yu-Gi-Oh style live duel that uses this server's OWN cards (art + names) plus
+ * a top-down open world to explore and challenge duelists. This is purely a
+ * presentation layer — the authoritative `/battle fight` combat, economy, packs
+ * and sieges are untouched. The Activity opens IN Discord via the native
+ * LAUNCH_ACTIVITY callback (same mechanism the HQ/Battle live experiences use).
+ */
+async function cmdPhaser(interaction: ChatInputCommandInteraction) {
+  const embed = new EmbedBuilder()
+    .setColor(0x2b57b8)
+    .setTitle("🎮 Battle Phaser — Live Duel")
+    .setDescription(
+      "A **true Yu-Gi-Oh style duel** played live inside Discord, using **your own cards** — the server's card art and names become real monsters with ATK/DEF, Levels, Attributes, tribute summons, and spell/trap plays.",
+    )
+    .addFields(
+      { name: "⚔️ Duel the AI", value: "A full duel board: summon monsters, set traps, enter the Battle Phase and attack. Rules & moves are the classic dueling ruleset.", inline: false },
+      { name: "🗺️ Explore Battle City", value: "Walk a top-down world — visit the Card Shop, take Route 1 to New City, and challenge duelists you meet.", inline: false },
+      { name: "🎴 Your cards", value: "Your collection builds your deck; a rival deck is drawn from the server's card pool. Nothing is spent or granted — it's a live match, not a wager.", inline: false },
+    )
+    .setFooter({ text: "Works on desktop and mobile. Tip: your classic /battle fight, raids, sieges and packs are all still here." });
+
+  const row = new ActionRowBuilder<ButtonBuilder>();
+  if (activityConfigured()) {
+    row.addComponents(
+      new ButtonBuilder()
+        .setStyle(ButtonStyle.Primary)
+        .setCustomId(`${LAUNCH_PREFIX}:phaser`)
+        .setEmoji("🎮")
+        .setLabel("Launch Battle Phaser"),
+    );
+    const url = activityUrl();
+    if (url) row.addComponents(new ButtonBuilder().setStyle(ButtonStyle.Link).setURL(url).setLabel("Open in browser"));
+  }
+
+  await interaction.reply({
+    embeds: [embed],
+    components: row.components.length ? [row] : [],
+    flags: MessageFlags.Ephemeral,
+  }).catch(() => {});
 }
 
 /** `/battle raid` — thin branch into the co-op raid flow. */
