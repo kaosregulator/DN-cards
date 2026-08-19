@@ -16,12 +16,20 @@ if (Number.isNaN(port) || port <= 0) {
 // BASE_PATH affects built asset paths. The Discord proxy maps the Activity's
 // root URL mapping to "/", so default to "/".
 const basePath = process.env.BASE_PATH ?? "/";
+// Managed artifact services reliably resolve a secret when the runtime env key
+// has the same name. The Discord application ID is public configuration, so
+// expose that server-side build value through Vite's existing client constant.
+const discordClientId =
+  process.env.DISCORD_CLIENT_ID ?? process.env.VITE_DISCORD_CLIENT_ID ?? "";
 
 export default defineConfig(({ command: _command }) => ({
   // Activity is now served at "/" in both development and production.
   // The Discord proxy URL mapping "/" → this host preserves the full path,
   // so API calls at /.proxy/api/... resolve to /api/... on the backend.
   base: basePath,
+  define: {
+    "import.meta.env.VITE_DISCORD_CLIENT_ID": JSON.stringify(discordClientId),
+  },
   root: path.resolve(import.meta.dirname),
   resolve: {
     alias: {

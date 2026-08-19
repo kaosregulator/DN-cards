@@ -15,6 +15,7 @@ import { ObjectStorageService } from "../lib/objectStorage";
 import { HOME_GUILD_ID } from "../bot/home-guild.js";
 import { loginRateLimiter } from "../lib/rate-limiters.js";
 import { logger } from "../lib/logger.js";
+import { resolvedEnv } from "../lib/runtime-env.js";
 
 /**
  * activity.ts — backend for the DN Cards **Discord Activity** (Phaser client).
@@ -41,8 +42,8 @@ import { logger } from "../lib/logger.js";
 const DISCORD_API = "https://discord.com/api";
 
 function oauthConfig() {
-  const clientId = process.env["DISCORD_CLIENT_ID"]?.trim();
-  const clientSecret = process.env["DISCORD_CLIENT_SECRET"]?.trim();
+  const clientId = resolvedEnv("DISCORD_CLIENT_ID");
+  const clientSecret = resolvedEnv("DISCORD_CLIENT_SECRET");
   return { clientId, clientSecret, configured: !!(clientId && clientSecret) };
 }
 

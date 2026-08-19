@@ -33,6 +33,26 @@ const SCOPES = ["identify", "guilds.members.read"] as const;
 
 let sdk: DiscordSDK | null = null;
 
+const DISCORD_CLIENT_ID_RE = /^\d{15,22}$/;
+
+async function withTimeout<T>(
+  operation: Promise<T>,
+  timeoutMs: number,
+  timeoutMessage: string,
+): Promise<T> {
+  let timeout: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      operation,
+      new Promise<never>((_resolve, reject) => {
+        timeout = setTimeout(() => reject(new Error(timeoutMessage)), timeoutMs);
+      }),
+    ]);
+  } finally {
+    if (timeout) clearTimeout(timeout);
+  }
+}
+
 /** The live SDK instance once `initDiscord` has run inside Discord (else null). */
 export function getSdk(): DiscordSDK | null {
   return sdk;
@@ -55,24 +75,45 @@ export async function initDiscord(): Promise<DiscordSession> {
   if (!clientId) {
     throw new Error("VITE_DISCORD_CLIENT_ID is not set — cannot start the Activity.");
   }
+  if (!DISCORD_CLIENT_ID_RE.test(clientId)) {
+    throw new Error(
+      "The Discord Activity client ID is invalid. Publish again after fixing the Activity environment configuration.",
+    );
+  }
 
   sdk = new DiscordSDK(clientId);
-  await sdk.ready();
+  await withTimeout(
+    sdk.ready(),
+    10_000,
+    "Discord did not finish connecting to the Activity. Close it, reopen it, and try again.",
+  );
 
   // 1) Ask Discord for a one-time OAuth code scoped to this user + app.
-  const { code } = await sdk.commands.authorize({
-    client_id: clientId,
-    response_type: "code",
-    state: "",
-    prompt: "none",
-    scope: [...SCOPES],
-  });
+  const { code } = await withTimeout(
+    sdk.commands.authorize({
+      client_id: clientId,
+      response_type: "code",
+      state: "",
+      prompt: "none",
+      scope: [...SCOPES],
+    }),
+    15_000,
+    "Discord authorization timed out. Close the Activity and try launching it again.",
+  );
 
   // 2) Only our server can exchange the code (it holds the client secret).
-  const { access_token } = await api.exchangeToken(code);
+  const { access_token } = await withTimeout(
+    api.exchangeToken(code),
+    15_000,
+    "The DN Cards server did not complete Discord authorization in time. Try again shortly.",
+  );
 
   // 3) Complete the handshake so the SDK is authenticated for RPC calls.
-  await sdk.commands.authenticate({ access_token });
+  await withTimeout(
+    sdk.commands.authenticate({ access_token }),
+    10_000,
+    "Discord authentication timed out. Close the Activity and try launching it again.",
+  );
 
   return { accessToken: access_token, inDiscord: true, instanceId: sdk.instanceId ?? null };
 }

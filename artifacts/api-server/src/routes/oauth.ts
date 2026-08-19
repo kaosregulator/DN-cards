@@ -3,6 +3,7 @@ import crypto from "node:crypto";
 import { db, collectionsTable } from "@workspace/db";
 import { and, eq } from "drizzle-orm";
 import { HOME_GUILD_ID } from "../bot/home-guild.js";
+import { resolvedEnv } from "../lib/runtime-env.js";
 import { loginRateLimiter } from "../lib/rate-limiters.js";
 
 /**
@@ -42,8 +43,8 @@ const DISCORD_API = "https://discord.com/api";
 const SCOPES = ["identify", "guilds.members.read"];
 
 function oauthConfig() {
-  const clientId = process.env["DISCORD_CLIENT_ID"]?.trim();
-  const clientSecret = process.env["DISCORD_CLIENT_SECRET"]?.trim();
+  const clientId = resolvedEnv("DISCORD_CLIENT_ID");
+  const clientSecret = resolvedEnv("DISCORD_CLIENT_SECRET");
   return { clientId, clientSecret, configured: !!(clientId && clientSecret) };
 }
 

@@ -13,6 +13,7 @@ import {
   type MessageComponentInteraction,
 } from "discord.js";
 import type { GuildSettings } from "@workspace/db";
+import { resolvedEnv, resolvedHttpUrl } from "../lib/runtime-env.js";
 
 export type PresentationMode =
   | "activity" | "discord_png" | "discord_embed" | "animated_image" | "disabled";
@@ -108,12 +109,12 @@ export function resolvePresentation(
  * ACTIVITY_URL is the optional browser fallback, not a requirement.
  */
 export function activityConfigured(): boolean {
-  return !!process.env["DISCORD_CLIENT_ID"]?.trim();
+  return resolvedEnv("DISCORD_CLIENT_ID") !== null;
 }
 
 /** The Activity launch URL, if configured (used by feature commands' buttons). */
 export function activityUrl(): string | null {
-  return process.env["ACTIVITY_URL"]?.trim() || null;
+  return resolvedHttpUrl("ACTIVITY_URL");
 }
 
 // custom_id prefix for the NATIVE launch button. Clicking it makes the bot
@@ -141,7 +142,7 @@ export function experienceLaunchRow(
   // Native launch only needs the Discord app (Activities enabled on it); it does
   // NOT require ACTIVITY_URL — that's just the browser fallback.
   if (getPrimary(settings, key) !== "activity") return null;
-  if (!process.env["DISCORD_CLIENT_ID"]?.trim()) return null;
+  if (!activityConfigured()) return null;
   const meta = experienceByKey(key)!;
 
   const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
@@ -155,14 +156,10 @@ export function experienceLaunchRow(
   // Optional browser fallback link (kept if useful; never the primary path).
   const url = activityUrl();
   if (url) {
-    let target = url;
-    try {
-      const u = new URL(url);
-      u.searchParams.set("exp", key);
-      target = u.toString();
-    } catch { /* non-URL env value — use as-is */ }
+    const u = new URL(url);
+    u.searchParams.set("exp", key);
     row.addComponents(
-      new ButtonBuilder().setStyle(ButtonStyle.Link).setURL(target).setLabel("Open in browser"),
+      new ButtonBuilder().setStyle(ButtonStyle.Link).setURL(u.toString()).setLabel("Open in browser"),
     );
   }
   return row;

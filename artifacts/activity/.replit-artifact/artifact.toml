@@ -29,4 +29,4 @@ to = "/index.html"
 [services.env]
 PORT = "5174"
 BASE_PATH = "/"
-VITE_DISCORD_CLIENT_ID = "${VITE_DISCORD_CLIENT_ID}"
+DISCORD_CLIENT_ID = "${DISCORD_CLIENT_ID}"
