@@ -39,23 +39,31 @@ export const MODE_LABELS: Record<PresentationMode, string> = {
 
 export const EXPERIENCES: ExperienceMeta[] = [
   {
+    // Headquarters is a Discord-native experience only. The old HQ Phaser
+    // Activity was removed, so "activity" is intentionally NOT an option here —
+    // /hq renders as a Discord PNG/embed hub and never launches the Activity.
     key: "hq", label: "Headquarters", emoji: "🏰",
-    modes: ["activity", "discord_png", "disabled"],
+    modes: ["discord_png", "disabled"],
     primaryField: "hqPresentation", fallbackField: "hqFallback",
   },
   {
+    // Battle IS the Live Activity — launching it opens the walkable world +
+    // real duel. This is the only experience that maps to the Phaser Activity.
     key: "battle", label: "Battles", emoji: "⚔️",
     modes: ["activity", "discord_embed", "discord_png", "disabled"],
     primaryField: "battlePresentation", fallbackField: "battleFallback",
   },
   {
+    // Raids and Pack openings have no dedicated scene in the Activity (it only
+    // hosts the world + duel). "activity" is intentionally omitted so their
+    // launch buttons never open the wrong scene — they stay Discord-native.
     key: "raid", label: "Raids", emoji: "🐉",
-    modes: ["activity", "discord_embed", "discord_png", "disabled"],
+    modes: ["discord_embed", "discord_png", "disabled"],
     primaryField: "raidPresentation", fallbackField: "raidFallback",
   },
   {
     key: "pack", label: "Pack Openings", emoji: "🎁",
-    modes: ["activity", "animated_image", "discord_embed", "disabled"],
+    modes: ["animated_image", "discord_embed", "disabled"],
     primaryField: "packPresentation", fallbackField: "packFallback",
   },
 ];
@@ -67,7 +75,10 @@ export function experienceByKey(key: string): ExperienceMeta | undefined {
 export function getPrimary(settings: GuildSettings, key: ExperienceKey): PresentationMode {
   const meta = experienceByKey(key)!;
   const v = settings[meta.primaryField] as PresentationMode;
-  return meta.modes.includes(v) ? v : meta.modes[1] ?? "disabled";
+  if (meta.modes.includes(v)) return v;
+  // Default when the stored value isn't valid for this experience (e.g. a guild
+  // that had HQ set to the now-removed "activity"): the first non-activity mode.
+  return meta.modes.find((m) => m !== "activity") ?? "disabled";
 }
 
 export function getFallback(settings: GuildSettings, key: ExperienceKey): PresentationMode {
@@ -124,6 +135,9 @@ export const LAUNCH_PREFIX = "explaunch";
 export function experienceLaunchRow(
   settings: GuildSettings, key: ExperienceKey,
 ): ActionRowBuilder<ButtonBuilder> | null {
+  // Headquarters has no Live Activity anymore (the old HQ Phaser game was
+  // removed) — /hq is a Discord-only hub, so never offer an Activity launch.
+  if (key === "hq") return null;
   // Native launch only needs the Discord app (Activities enabled on it); it does
   // NOT require ACTIVITY_URL — that's just the browser fallback.
   if (getPrimary(settings, key) !== "activity") return null;
