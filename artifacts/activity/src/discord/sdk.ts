@@ -28,9 +28,10 @@ export interface DiscordSession {
   instanceId: string | null;
 }
 
-// The Activity only needs the user's identity. Keep the embedded authorization
-// request minimal instead of asking for an unrelated guild-member scope.
-const SCOPES = ["identify"] as const;
+// Match Discord's embedded-Activity authorization flow. The client uses
+// `identify` to resolve the player and `guilds.members.read` for the Activity's
+// guild context; application-install scopes do not belong in this request.
+const SCOPES = ["identify", "guilds.members.read"] as const;
 
 let sdk: DiscordSDK | null = null;
 
@@ -116,8 +117,8 @@ export async function initDiscord(): Promise<DiscordSession> {
       prompt: "none",
       scope: [...SCOPES],
     }),
-    15_000,
-    "Discord authorization timed out. Close the Activity and try launching it again.",
+    120_000,
+    "Discord authorization timed out after two minutes. Close the Activity and try launching it again.",
     ));
   } catch (err) {
     throw new Error(`Discord authorization failed: ${describeDiscordError(err)}`);
