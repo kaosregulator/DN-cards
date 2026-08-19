@@ -113,15 +113,20 @@ export async function initDiscord(): Promise<DiscordSession> {
   // 1) Ask Discord for a one-time OAuth code scoped to this user + app.
   let code: string;
   try {
-    ({ code } = await withTimeout(
-    sdk.commands.authorize({
+    // SDK 2.5.0's TypeScript definition predates Discord's required
+    // redirect_uri validation, but the command transport forwards unknown
+    // fields unchanged. Keep the runtime field while staying compatible with
+    // the installed SDK types.
+    const authorizeInput = {
       client_id: clientId,
-      response_type: "code",
+      response_type: "code" as const,
       state: "",
-      prompt: "none",
+      prompt: "none" as const,
       redirect_uri: OAUTH_REDIRECT_URI,
       scope: [...SCOPES],
-    }),
+    } as unknown as Parameters<typeof sdk.commands.authorize>[0];
+    ({ code } = await withTimeout(
+    sdk.commands.authorize(authorizeInput),
     120_000,
     "Discord authorization timed out after two minutes. Close the Activity and try launching it again.",
     ));
