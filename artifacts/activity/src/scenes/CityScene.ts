@@ -16,7 +16,7 @@ import { getContext } from "../core/context";
 import { gameState } from "../state/gameState";
 import { DialogueBox } from "../ui/dialogue";
 import { TouchPad } from "../ui/touchPad";
-import { preloadCharSheets, composeChar, heroMap } from "../world/charSprites";
+import { preloadCharSheets, composeChar, heroMap, npcMap } from "../world/charSprites";
 import { ensureCharTexture, CHAR_KEY, charFrame } from "../world/tiles";
 
 const TILE_W = 128, TILE_H = 64;                 // 2:1 isometric ground diamond
@@ -24,6 +24,9 @@ const asset = (p: string): string => `${import.meta.env.BASE_URL}world/city/${p}
 
 type Facing = "down" | "left" | "right" | "up";
 type Ground = "grass" | "cobble" | "water" | "path";
+
+// rpgwalk sheet row per facing (8 walk frames each).
+const RPG_ROW: Record<Facing, number> = { down: 0, up: 1, left: 2, right: 3 };
 
 interface BuildingDef {
   key: string; tx: number; ty: number;     // anchor cell (front-centre)
@@ -84,6 +87,9 @@ const LAMPS: Array<[number, number]> = [[7, 8], [12, 8], [7, 11], [12, 11], [9, 
 const BENCHES: Array<[number, number]> = [[8, 11], [11, 8], [8, 8], [11, 11]];
 const FOUNTAIN: [number, number] = [9.5, 9.5];
 
+// Townsfolk that wander the square so it feels alive (open plaza cells).
+const WANDERERS: Array<[number, number]> = [[7, 9], [6, 11], [13, 10], [9, 12], [11, 6]];
+
 // Fully-paved plaza (cobblestone), grass only at the outer border, water at the
 // fountain footprint in the very centre.
 function groundAt(tx: number, ty: number): Ground {
@@ -99,10 +105,12 @@ export class CityScene extends Phaser.Scene {
   private isoOX = 0; private isoOY = 0;
   private solid: boolean[][] = [];
   private player!: Phaser.GameObjects.Sprite;
+  private playerRpg = false;
   private facing: Facing = "up";
   private tileX = SPAWN.tx; private tileY = SPAWN.ty;
   private moving = false; private locked = false; private walkFrame: 0 | 1 = 0;
   private npcSprites: Array<{ def: CityNpc; sprite: Phaser.GameObjects.GameObject }> = [];
+  private wanderers: Array<{ spr: Phaser.GameObjects.Sprite; tx: number; ty: number; home: [number, number]; facing: Facing; moving: boolean; cd: number; wf: 0 | 1 }> = [];
   private doorAt = new Map<string, DoorDef>();
   private objects: Phaser.GameObjects.GameObject[] = [];
   private world!: Phaser.GameObjects.Layer;
@@ -130,6 +138,9 @@ export class CityScene extends Phaser.Scene {
 
   preload(): void {
     preloadCharSheets(this);
+    // Real animated RPG walk sheet (CC0) for the player: 24×32 frames, 8 walk
+    // frames per row, rows = down/up/left/right.
+    if (!this.textures.exists("rpgwalk")) this.load.spritesheet("rpgwalk", asset("hero_walk.png"), { frameWidth: 24, frameHeight: 32 });
     for (const t of ["grass", "dirt", "water"]) if (!this.textures.exists(`ct:${t}`)) this.load.image(`ct:${t}`, asset(`ground/${t}.png`));
     for (const b of BUILDINGS) if (!this.textures.exists(`cb:${b.key}`)) this.load.image(`cb:${b.key}`, asset(`buildings/${b.key}.png`));
     for (const p of new Set(PROPS.map((p) => p.key))) if (!this.textures.exists(`cp:${p}`)) this.load.image(`cp:${p}`, asset(`props/${p}.png`));
@@ -155,6 +166,7 @@ export class CityScene extends Phaser.Scene {
     this.buildBuildingsAndProps();
     this.buildDecor();
     this.buildNpcs();
+    this.buildWanderers();
     this.buildPlayer();
 
     this.dialogue = new DialogueBox(this);
@@ -366,13 +378,70 @@ export class CityScene extends Phaser.Scene {
     }
   }
 
-  private buildPlayer(): void {
-    if (!composeChar(this, "player", "hero", heroMap())) {
-      ensureCharTexture(this, "player", { body: 0x2f6bd0, trim: 0xffe08a, skin: 0xe8b98c, hair: 0x2a1e14 });
+  private buildWanderers(): void {
+    WANDERERS.forEach(([tx, ty], i) => {
+      const key = `wander${i}`;
+      if (!composeChar(this, key, "npc", npcMap(i % 4))) ensureCharTexture(this, key, { body: 0x5a6bd0, trim: 0xffe08a, skin: 0xe8b98c, hair: 0x3a2a1e });
+      const p = this.iso(tx, ty);
+      const spr = this.add.sprite(p.x, p.y, CHAR_KEY(key), charFrame("down", 0)).setOrigin(0.5, 0.82).setScale(2.2);
+      this.addObject(spr, p.y);
+      this.wanderers.push({ spr, tx, ty, home: [tx, ty], facing: "down", moving: false, cd: this.time.now + Math.random() * 1500, wf: 0 });
+    });
+  }
+
+  /** Simple wander AI — each idle townsperson occasionally steps to a nearby
+   *  walkable cell within a small radius of home, with walk-frame animation. */
+  private stepWanderers(): void {
+    const now = this.time.now;
+    for (const w of this.wanderers) {
+      if (w.moving || now < w.cd) continue;
+      const dirs: Array<[number, number, Facing]> = [[0, -1, "up"], [0, 1, "down"], [-1, 0, "left"], [1, 0, "right"]];
+      const [dx, dy, face] = dirs[Math.floor(Math.random() * 4)]!;
+      w.cd = now + 600 + Math.random() * 1600;
+      w.facing = face; w.spr.setFrame(charFrame(face, 0));
+      const nx = w.tx + dx, ny = w.ty + dy;
+      if (Math.abs(nx - w.home[0]) > 3 || Math.abs(ny - w.home[1]) > 3) continue;
+      if (!this.walkable(nx, ny) || (nx === this.tileX && ny === this.tileY)) continue;
+      if (this.wanderers.some((o) => o !== w && o.tx === nx && o.ty === ny)) continue;
+      w.moving = true; w.tx = nx; w.ty = ny; w.wf = w.wf === 0 ? 1 : 0;
+      w.spr.setFrame(charFrame(face, w.wf));
+      const p = this.iso(nx, ny);
+      this.tweens.add({
+        targets: w.spr, x: p.x, y: p.y, duration: 260, ease: "Linear",
+        onUpdate: () => w.spr.setDepth(w.spr.y),
+        onComplete: () => { w.moving = false; w.spr.setDepth(p.y); w.spr.setFrame(charFrame(w.facing, 0)); this.world.sort("depth"); },
+      });
     }
+  }
+
+  private buildPlayer(): void {
     const p = this.iso(this.tileX, this.tileY);
-    this.player = this.add.sprite(p.x, p.y, CHAR_KEY("player"), charFrame(this.facing, 0)).setOrigin(0.5, 0.82).setScale(2.6);
+    this.playerRpg = this.textures.exists("rpgwalk");
+    if (this.playerRpg) {
+      for (const [face, row] of Object.entries(RPG_ROW)) {
+        const key = `pw-${face}`;
+        if (!this.anims.exists(key)) {
+          this.anims.create({ key, frames: this.anims.generateFrameNumbers("rpgwalk", { start: row * 8, end: row * 8 + 7 }), frameRate: 12, repeat: -1 });
+        }
+      }
+      this.player = this.add.sprite(p.x, p.y, "rpgwalk", RPG_ROW[this.facing] * 8).setOrigin(0.5, 0.86).setScale(1.7);
+    } else {
+      if (!composeChar(this, "player", "hero", heroMap())) {
+        ensureCharTexture(this, "player", { body: 0x2f6bd0, trim: 0xffe08a, skin: 0xe8b98c, hair: 0x2a1e14 });
+      }
+      this.player = this.add.sprite(p.x, p.y, CHAR_KEY("player"), charFrame(this.facing, 0)).setOrigin(0.5, 0.82).setScale(2.6);
+    }
     this.addObject(this.player, p.y);
+  }
+
+  /** Set the player's pose for the current facing, walking or idle. */
+  private playerPose(moving: boolean): void {
+    if (this.playerRpg) {
+      if (moving) this.player.anims.play(`pw-${this.facing}`, true);
+      else { this.player.anims.stop(); this.player.setFrame(RPG_ROW[this.facing] * 8); }
+    } else {
+      this.player.setFrame(charFrame(this.facing, moving ? this.walkFrame : 0));
+    }
   }
 
   // ── HUD ─────────────────────────────────────────────────────────────────────
@@ -402,6 +471,7 @@ export class CityScene extends Phaser.Scene {
 
   // ── Movement ────────────────────────────────────────────────────────────────
   update(): void {
+    if (!this.dialogue.isOpen && this.wanderers.length) this.stepWanderers();
     if (this.locked || this.moving || !this.player || this.dialogue.isOpen) return;
     let dx = 0, dy = 0;
     const pd = this.pad.direction();
@@ -409,7 +479,7 @@ export class CityScene extends Phaser.Scene {
     else if (this.cursors.right.isDown || this.keys.D.isDown || pd.x > 0) dx = 1;
     else if (this.cursors.up.isDown || this.keys.W.isDown || pd.y < 0) dy = -1;
     else if (this.cursors.down.isDown || this.keys.S.isDown || pd.y > 0) dy = 1;
-    if (!dx && !dy) { this.player.setFrame(charFrame(this.facing, 0)); this.updateHint(); return; }
+    if (!dx && !dy) { this.playerPose(false); this.updateHint(); return; }
     this.facing = dx < 0 ? "left" : dx > 0 ? "right" : dy < 0 ? "up" : "down";
     this.tryStep(dx, dy);
   }
@@ -418,10 +488,10 @@ export class CityScene extends Phaser.Scene {
     const nx = this.tileX + dx, ny = this.tileY + dy;
     const door = this.doorAt.get(`${nx},${ny}`);
     if (door) { this.enterShop(); return; }
-    if (!this.walkable(nx, ny)) { this.player.setFrame(charFrame(this.facing, 0)); this.updateHint(); return; }
+    if (!this.walkable(nx, ny)) { this.playerPose(false); this.updateHint(); return; }
     this.moving = true;
     this.walkFrame = this.walkFrame === 0 ? 1 : 0;
-    this.player.setFrame(charFrame(this.facing, this.walkFrame));
+    this.playerPose(true);
     this.tileX = nx; this.tileY = ny;
     gameState.lastX = nx; gameState.lastY = ny; gameState.lastFace = this.facing;
     const p = this.iso(nx, ny);
