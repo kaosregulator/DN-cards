@@ -32,10 +32,6 @@ export interface DiscordSession {
 // `identify` to resolve the player and `guilds.members.read` for the Activity's
 // guild context; application-install scopes do not belong in this request.
 const SCOPES = ["identify", "guilds.members.read"] as const;
-// Discord Activities use a placeholder redirect URI. The Embedded App SDK
-// intercepts the OAuth redirect and returns control to the Activity frame.
-// This exact value must also exist under Developer Portal → OAuth2 → Redirects.
-const OAUTH_REDIRECT_URI = "https://127.0.0.1";
 
 let sdk: DiscordSDK | null = null;
 
@@ -111,24 +107,25 @@ export async function initDiscord(): Promise<DiscordSession> {
   );
 
   // 1) Ask Discord for a one-time OAuth code scoped to this user + app.
+  //
+  // The Embedded App SDK's `authorize` command does NOT take a redirect_uri
+  // (per Discord's docs: client_id, response_type, state, prompt, scope only).
+  // Passing one — a loopback address especially — makes Discord reject the RPC
+  // flow with "REDIRECT URI CANNOT BE USED IN THE RPC OAUTH2 AUTHORIZATION
+  // FLOW". Discord returns control to the Activity frame itself; there is no
+  // browser redirect to configure.
   let code: string;
   try {
-    // SDK 2.5.0's TypeScript definition predates Discord's required
-    // redirect_uri validation, but the command transport forwards unknown
-    // fields unchanged. Keep the runtime field while staying compatible with
-    // the installed SDK types.
-    const authorizeInput = {
-      client_id: clientId,
-      response_type: "code" as const,
-      state: "",
-      prompt: "none" as const,
-      redirect_uri: OAUTH_REDIRECT_URI,
-      scope: [...SCOPES],
-    } as unknown as Parameters<typeof sdk.commands.authorize>[0];
     ({ code } = await withTimeout(
-    sdk.commands.authorize(authorizeInput),
-    120_000,
-    "Discord authorization timed out after two minutes. Close the Activity and try launching it again.",
+      sdk.commands.authorize({
+        client_id: clientId,
+        response_type: "code",
+        state: "",
+        prompt: "none",
+        scope: [...SCOPES],
+      }),
+      120_000,
+      "Discord authorization timed out after two minutes. Close the Activity and try launching it again.",
     ));
   } catch (err) {
     throw new Error(`Discord authorization failed: ${describeDiscordError(err)}`);
