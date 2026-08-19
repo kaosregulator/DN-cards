@@ -12,3 +12,5 @@ On Autoscale rolling deploys, the old instance stays live while the new one boot
 **How to apply:** wrap `app.listen` in a `Promise<void>`, resolve on success, then kick off `runBootMigrations().catch(log)` and `startBot().catch(log)` without `await`.
 
 **Symptom pattern:** build logs end at "Waiting for service to be ready" with no error; two or more consecutive failures after a codebase change that added a new boot migration.
+
+**Distinguishing a transient platform failure:** if listen-first is already in place, the production bundle serves 200 on /api/healthz instantly when run locally, AND `fetchDeploymentLogs` shows zero runtime logs in the promote window (the new VM never even started logging), the failure is on Replit's side — just republish; don't chase code changes.
