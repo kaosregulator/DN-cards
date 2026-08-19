@@ -14,6 +14,7 @@ import { WorldScene } from "../scenes/WorldScene";
 import { ShopScene } from "../scenes/ShopScene";
 import { MatchmakingScene } from "../scenes/MatchmakingScene";
 import { CityScene } from "../scenes/CityScene";
+import { InteriorScene } from "../scenes/InteriorScene";
 import type { DuelSetup, DuelCard, DuelAttribute } from "../duel/types";
 
 export function isDemo(): boolean {
@@ -58,6 +59,7 @@ class DemoLauncher extends Phaser.Scene {
     if (/demo=pvp/.test(location.search)) this.scene.start("Duel", { setup: { ...mockSetup(), player: { name: "Player 1", deck: mockDeck() }, opponent: { name: "Player 2", deck: mockDeck() } }, returnTo: "Menu", pvp: true });
     else if (/demo=duel/.test(location.search)) this.scene.start("Duel", { setup: mockSetup(), returnTo: "Menu" });
     else if (/demo=shop/.test(location.search)) this.scene.start("Shop", { returnTo: "Menu" });
+    else if (/demo=interior/.test(location.search)) this.scene.start("Interior");
     else if (/demo=city/.test(location.search)) this.scene.start("City");
     else if (/demo=world/.test(location.search)) {
       const m = /demo=world:([a-z0-9]+)/.exec(location.search);
@@ -76,7 +78,7 @@ export function startDemo(): Phaser.Game {
     scale: {
       mode: Phaser.Scale.RESIZE, autoCenter: Phaser.Scale.CENTER_BOTH, width: "100%", height: "100%",
     },
-    scene: [DemoLauncher, MenuScene, CityScene, WorldScene, ShopScene, MatchmakingScene, DuelScene],
+    scene: [DemoLauncher, MenuScene, CityScene, InteriorScene, WorldScene, ShopScene, MatchmakingScene, DuelScene],
   });
 
   const ctx = createContext({ accessToken: "demo", inDiscord: false, instanceId: "demo" }, game.events);

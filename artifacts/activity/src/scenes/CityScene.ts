@@ -549,7 +549,7 @@ export class CityScene extends Phaser.Scene {
 
   private enterShop(): void {
     this.cameras.main.fadeOut(220, 0, 0, 0);
-    this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => this.scene.start("Shop", { returnTo: "City" }));
+    this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => this.scene.start("Interior"));
   }
 
   private async startDuel(def: CityNpc): Promise<void> {
