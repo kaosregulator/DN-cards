@@ -32,6 +32,10 @@ export interface DiscordSession {
 // `identify` to resolve the player and `guilds.members.read` for the Activity's
 // guild context; application-install scopes do not belong in this request.
 const SCOPES = ["identify", "guilds.members.read"] as const;
+// Discord Activities use a placeholder redirect URI. The Embedded App SDK
+// intercepts the OAuth redirect and returns control to the Activity frame.
+// This exact value must also exist under Developer Portal → OAuth2 → Redirects.
+const OAUTH_REDIRECT_URI = "https://127.0.0.1";
 
 let sdk: DiscordSDK | null = null;
 
@@ -115,6 +119,7 @@ export async function initDiscord(): Promise<DiscordSession> {
       response_type: "code",
       state: "",
       prompt: "none",
+      redirect_uri: OAUTH_REDIRECT_URI,
       scope: [...SCOPES],
     }),
     120_000,
