@@ -29,7 +29,7 @@ export interface MiniMapOpts {
 }
 
 const MINI_R = 58;
-const VIEW_TILES = 22;
+const VIEW_TILES = 16; // tighter crop so walking clearly scrolls the compass
 const TILE = 32;
 const TERRAIN_STEP = 2;
 
