@@ -31,6 +31,10 @@ NODE_ENV = "production"
 [services.production.health.startup]
 path = "/api/healthz"
 
-[services.env]
-DISCORD_CLIENT_ID = "${DISCORD_CLIENT_ID}"
-DISCORD_CLIENT_SECRET = "${DISCORD_CLIENT_SECRET}"
+# DISCORD_CLIENT_ID / DISCORD_CLIENT_SECRET are provided directly as Replit
+# Secrets and injected into the process by name — exactly like DISCORD_BOT_TOKEN
+# and HOME_GUILD_ID. They must NOT be re-declared here as "${...}" templates:
+# when the deploy doesn't substitute the template, the process receives the
+# literal "${DISCORD_CLIENT_SECRET}" string, which the server correctly treats
+# as unset (→ "Activity backend is not configured"). Leaving them out lets the
+# real Secret values flow through.
