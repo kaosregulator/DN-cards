@@ -1239,10 +1239,13 @@ export class DuelScene extends Phaser.Scene {
       overlay.destroy(true);
     });
     overlay.add(bg);
-    const rowH = isTouchUi() ? 48 : 40;
+    // Tall rows + gap ≥ hit height so padded targets never steal a neighbour's tap
+    // (that bug made "Summon ATK" fire "Set" because Set was drawn later / on top).
+    const rowH = isTouchUi() ? 52 : 42;
+    const rowGap = isTouchUi() ? 14 : 10;
     const panelW = Math.min(360, this.W - 28);
     const rows = options.length + 1;
-    const panelH = 70 + rows * (rowH + 8);
+    const panelH = 74 + rows * (rowH + rowGap);
     const px = this.W / 2, py = this.H / 2;
     const panel = this.add.graphics();
     panel.fillStyle(0x141a2e, 0.98); panel.fillRoundedRect(px - panelW / 2, py - panelH / 2, panelW, panelH, 12);
@@ -1257,22 +1260,31 @@ export class DuelScene extends Phaser.Scene {
     let cancelled = true;
     let oy = py - panelH / 2 + 64;
     const all: Array<[string, () => void]> = [...options, [cancelLabel, () => { }]];
-    for (const [label, fn] of all) {
+    // Draw top→bottom but give each row an exact (unpadded) hit box so rows can't
+    // overlap. Use pointerdown for menus — one clear press, no drag ambiguity.
+    all.forEach(([label, fn], idx) => {
       const isCancel = label === cancelLabel;
-      const rowBg = this.add.rectangle(px, oy + rowH / 2, panelW - 24, rowH, isCancel ? 0x2a2f45 : 0x24407e, 1)
-        .setStrokeStyle(1, 0x4a5a90);
-      const rowTxt = this.add.text(px, oy + rowH / 2, label, {
+      const cy = oy + rowH / 2;
+      const rowBg = this.add.rectangle(px, cy, panelW - 24, rowH, isCancel ? 0x2a2f45 : 0x24407e, 1)
+        .setStrokeStyle(1, 0x4a5a90)
+        .setDepth(10 + idx);
+      const rowTxt = this.add.text(px, cy, label, {
         fontFamily: "system-ui, sans-serif", fontSize: isTouchUi() ? "15px" : "14px", color: "#fff", fontStyle: "bold",
-      }).setOrigin(0.5);
-      onTap(rowBg, padHit(-(panelW - 24) / 2, -rowH / 2, panelW - 24, rowH, 10), () => {
+      }).setOrigin(0.5).setDepth(11 + idx);
+      // Exact hit — no padHit. Dense vertical lists must not overlap.
+      rowBg.setInteractive(
+        new Phaser.Geom.Rectangle(-(panelW - 24) / 2, -rowH / 2, panelW - 24, rowH),
+        Phaser.Geom.Rectangle.Contains,
+      );
+      rowBg.on("pointerdown", () => {
         cancelled = false;
         overlay.destroy(true);
         if (isCancel) onCancel?.();
         else fn();
       });
       overlay.add([rowBg, rowTxt]);
-      oy += rowH + 8;
-    }
+      oy += rowH + rowGap;
+    });
   }
 
   /** Full-screen card inspector: a big card face + its real Yu-Gi-Oh type line
