@@ -82,8 +82,20 @@ router.post("/token", loginRateLimiter, async (req, res) => {
       }),
     });
     if (!tokenRes.ok) {
-      logger.warn({ status: tokenRes.status }, "activity token exchange failed");
-      res.status(502).json({ error: "Discord token exchange failed." });
+      // Surface Discord's OAuth error (e.g. invalid_client / invalid_grant) so a
+      // misconfiguration is diagnosable from the Activity screen and the logs.
+      // These are OAuth error codes, not secrets.
+      let detail = "";
+      try {
+        const body = (await tokenRes.json()) as { error?: string; error_description?: string };
+        detail = [body.error, body.error_description].filter(Boolean).join(": ");
+      } catch {
+        detail = (await tokenRes.text().catch(() => "")).slice(0, 200);
+      }
+      logger.warn({ status: tokenRes.status, detail }, "activity token exchange failed");
+      res.status(502).json({
+        error: `Discord token exchange failed (${tokenRes.status})${detail ? `: ${detail}` : ""}`,
+      });
       return;
     }
     const token = (await tokenRes.json()) as { access_token?: string };
