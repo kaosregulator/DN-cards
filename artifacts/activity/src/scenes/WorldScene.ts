@@ -6,9 +6,24 @@ import {
   MAPS, START_MAP, type MapDef, type MapKey,
   type WorldManifest,
 } from "../world/worldMaps";
-import { type AvatarDef, avatarById, buildAvatarAnims, avatarAnim } from "../world/avatars";
+import { AVATARS, type AvatarDef, avatarById, buildAvatarAnims, avatarAnim } from "../world/avatars";
 import { Pet, loadPetTextures } from "../world/pets";
+import { Ambient } from "../world/ambient";
 import { getAvatarId, getPetId } from "../state/profile";
+
+// Dog breeds used to populate a map with stray/companion dogs (kept small so the
+// world only streams a few extra sheets). The player's own pet is added too.
+const AMBIENT_BREEDS = ["akita", "great-dane", "siberian-husky"];
+
+// The NPC character sheets, de-duplicated by texture (each sheet holds 4 people).
+function uniqueNpcSheets(): AvatarDef[] {
+  const seen = new Set<string>();
+  const out: AvatarDef[] = [];
+  for (const a of AVATARS) {
+    if (a.layout === "npc3" && !seen.has(a.texKey)) { seen.add(a.texKey); out.push(a); }
+  }
+  return out;
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // WorldScene — the Phaser 4 top-down overworld, built on the WorkAdventure map
@@ -76,6 +91,7 @@ export class WorldScene extends Phaser.Scene {
   private pet: Pet | null = null;
   private petNear = false;
   private lastPrompt: string | null = null;
+  private ambient: Ambient | null = null;
   private collisionLayer: Phaser.Tilemaps.TilemapLayer | null = null;
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
   private wasd!: Record<"up" | "down" | "left" | "right" | "interact", Phaser.Input.Keyboard.Key>;
@@ -110,6 +126,7 @@ export class WorldScene extends Phaser.Scene {
     this.pet = null;
     this.petNear = false;
     this.lastPrompt = null;
+    this.ambient = null;
     this.transitioning = false;
     this.ready = false;
     this.interactables = [];
@@ -174,6 +191,24 @@ export class WorldScene extends Phaser.Scene {
     this.setupInput();
     this.placeInteractables(map, spawnX, spawnY);
 
+    // Populate the map with pacing NPCs, lakeside watchers, office folk and stray
+    // dogs — placed procedurally in sensible spots, kept clear of the beacons.
+    const avoid = [{ x: spawnX, y: spawnY }, ...this.interactables.map((it) => ({ x: it.x, y: it.y }))];
+    const seed = Array.from(this.mapKey).reduce((h, c) => ((h * 31) + c.charCodeAt(0)) | 0, 7);
+    this.ambient = new Ambient({
+      scene: this,
+      tw: map.tileWidth, th: map.tileHeight, mapW: map.width, mapH: map.height,
+      isWalkable: (tx, ty) => {
+        const t = this.collisionLayer?.getTileAt(tx, ty);
+        return !t || t.index < 0;
+      },
+      classify: (tx, ty) => this.classifyTile(tx, ty),
+      avoid,
+      npcDefs: AVATARS.filter((a) => a.layout === "npc3"),
+      breeds: [...AMBIENT_BREEDS, ...(this.petId ? [this.petId] : [])],
+      seed,
+    });
+
     // DOM HUD: location banner, player chip, mobile dpad + interact button.
     const snap = getContext(this).playerState.get();
     this.hud = new WorldHud({
@@ -208,6 +243,8 @@ export class WorldScene extends Phaser.Scene {
       this.miniMap = null;
       this.pet?.destroy();
       this.pet = null;
+      this.ambient?.destroy();
+      this.ambient = null;
     });
   }
 
@@ -258,6 +295,13 @@ export class WorldScene extends Phaser.Scene {
       });
     }
     if (this.petId) loadPetTextures(this, this.petId);
+    // Ambient life: the NPC sheets + a few dog breeds to scatter around the map.
+    for (const def of uniqueNpcSheets()) {
+      if (!this.textures.exists(def.texKey)) {
+        this.load.spritesheet(def.texKey, assetUrl(def.url), { frameWidth: def.fw, frameHeight: def.fh });
+      }
+    }
+    for (const breed of AMBIENT_BREEDS) loadPetTextures(this, breed);
     await this.runLoader();
 
     const manifest = this.cache.json.get("world-manifest") as WorldManifest;
