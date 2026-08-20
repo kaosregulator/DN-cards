@@ -6,6 +6,8 @@ import {
   MAPS, START_MAP, type MapDef, type MapKey,
   type WorldManifest,
 } from "../world/worldMaps";
+import { type AvatarDef, avatarById, buildAvatarAnims, avatarAnim } from "../world/avatars";
+import { getAvatarId } from "../state/profile";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // WorldScene — the Phaser 4 top-down overworld, built on the WorkAdventure map
@@ -18,9 +20,6 @@ import {
 // One scene instance is reused for every location: scene.restart({ mapKey }).
 // ─────────────────────────────────────────────────────────────────────────────
 
-const CHAR_KEY = "duelist";
-const CHAR_FW = 32;
-const CHAR_FH = 48;
 const SPEED = 165;
 
 // Layers whose (case-insensitive) name starts with one of these render ABOVE the
@@ -71,6 +70,7 @@ export class WorldScene extends Phaser.Scene {
   private def!: MapDef;
 
   private player!: Phaser.Physics.Arcade.Sprite;
+  private avatar!: AvatarDef;
   private collisionLayer: Phaser.Tilemaps.TilemapLayer | null = null;
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
   private wasd!: Record<"up" | "down" | "left" | "right" | "interact", Phaser.Input.Keyboard.Key>;
@@ -100,6 +100,7 @@ export class WorldScene extends Phaser.Scene {
   init(data: { mapKey?: MapKey }): void {
     this.mapKey = data?.mapKey ?? START_MAP;
     this.def = MAPS[this.mapKey];
+    this.avatar = avatarById(getAvatarId());
     this.transitioning = false;
     this.ready = false;
     this.interactables = [];
@@ -234,9 +235,9 @@ export class WorldScene extends Phaser.Scene {
     if (!this.cache.tilemap.has(key)) {
       this.load.tilemapTiledJSON(key, assetUrl(`world/maps/${key}.tmj`));
     }
-    if (!this.textures.exists(CHAR_KEY)) {
-      this.load.spritesheet(CHAR_KEY, assetUrl("world/characters/duelist.png"), {
-        frameWidth: CHAR_FW, frameHeight: CHAR_FH,
+    if (!this.textures.exists(this.avatar.texKey)) {
+      this.load.spritesheet(this.avatar.texKey, assetUrl(this.avatar.url), {
+        frameWidth: this.avatar.fw, frameHeight: this.avatar.fh,
       });
     }
     await this.runLoader();
@@ -364,28 +365,16 @@ export class WorldScene extends Phaser.Scene {
 
   // ── player ──────────────────────────────────────────────────────────────────
   private createPlayer(x: number, y: number): void {
-    this.ensureAnims();
-    this.player = this.physics.add.sprite(x, y, CHAR_KEY, 1);
+    buildAvatarAnims(this, this.avatar);
+    this.player = this.physics.add.sprite(x, y, this.avatar.texKey, 1);
     this.player.setDepth(500);
     // A slim body around the feet so the avatar tucks behind furniture nicely.
     const body = this.player.body as Phaser.Physics.Arcade.Body;
-    body.setSize(18, 14).setOffset((CHAR_FW - 18) / 2, CHAR_FH - 16);
+    body.setSize(18, 14).setOffset((this.avatar.fw - 18) / 2, this.avatar.fh - 16);
     this.player.setCollideWorldBounds(true);
-    this.player.anims.play("idle-down");
-  }
-
-  private ensureAnims(): void {
-    if (this.anims.exists("walk-down")) return;
-    const dirs: [string, number][] = [["down", 0], ["left", 3], ["right", 6], ["up", 9]];
-    for (const [dir, start] of dirs) {
-      this.anims.create({
-        key: `walk-${dir}`,
-        frames: this.anims.generateFrameNumbers(CHAR_KEY, { start, end: start + 2 }),
-        frameRate: 8,
-        repeat: -1,
-      });
-      this.anims.create({ key: `idle-${dir}`, frames: [{ key: CHAR_KEY, frame: start + 1 }], frameRate: 1 });
-    }
+    const a = avatarAnim(this.avatar, "down", false);
+    this.player.anims.play(a.key);
+    this.player.setFlipX(a.flipX);
   }
 
   // ── camera ──────────────────────────────────────────────────────────────────
@@ -593,10 +582,10 @@ export class WorldScene extends Phaser.Scene {
       // Face the dominant axis.
       if (Math.abs(vx) > Math.abs(vy)) this.facing = vx < 0 ? "left" : "right";
       else this.facing = vy < 0 ? "up" : "down";
-      this.player.anims.play(`walk-${this.facing}`, true);
-    } else {
-      this.player.anims.play(`idle-${this.facing}`, true);
     }
+    const a = avatarAnim(this.avatar, this.facing, moving);
+    this.player.anims.play(a.key, true);
+    this.player.setFlipX(a.flipX);
     this.player.setDepth(500); // stays between below-layers and Above
 
     this.updateProximity();

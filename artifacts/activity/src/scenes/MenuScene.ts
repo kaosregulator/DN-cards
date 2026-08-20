@@ -3,6 +3,7 @@ import { getContext } from "../core/context";
 import { gameState } from "../state/gameState";
 import { onTap, padHit, isTouchUi } from "../ui/tap";
 import { music } from "../audio/music";
+import { CharacterPicker } from "../hud/characterPicker";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // MenuScene — the game's TITLE SCREEN and hub. Animated starfield + drifting
@@ -130,6 +131,9 @@ export class MenuScene extends Phaser.Scene {
 
     this.button(W / 2, firstY + gap * 3, btnW, bh, "👥  Local PvP",
       "Pass & play — two duelists, one device", 0xb8792b, () => this.launchPvp());
+
+    this.button(W / 2, firstY + gap * 4, btnW, bh, "🧍  Choose Character & Pet",
+      "Pick your avatar and a pet companion", 0x6d4bd0, () => new CharacterPicker());
 
     this.ui.add(this.add.text(W / 2, H - 14, "Your cards · your art · true Yu-Gi-Oh rules", {
       fontFamily: "system-ui, sans-serif", fontSize: "11px", color: "#5f6b96",
