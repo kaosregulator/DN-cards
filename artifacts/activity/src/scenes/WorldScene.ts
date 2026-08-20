@@ -32,6 +32,15 @@ const ABOVE_PREFIXES = ["above", "roof", "sign", "silent", "overlay", "lights", 
 // starter kit uses "collisions"; the village map uses "collision".
 const COLLISION_NAMES = ["collisions", "collision"];
 
+// Minimap terrain categories by tileset name: 1 = water, 2 = trees/foliage,
+// 0 = everything else (ground). Buildings (3) are decided by the collision layer.
+function categoryForTileset(name: string): 0 | 1 | 2 | 3 {
+  const n = name.toLowerCase();
+  if (/water/.test(n)) return 1;
+  if (/tree|flower|plant|bush|foliage|garden/.test(n)) return 2;
+  return 0;
+}
+
 // A single thing the player can walk up to and interact with — either a portal
 // (navigate / open a battle-side scene) or an enemy encounter (start a duel).
 interface Interactable {
@@ -70,6 +79,11 @@ export class WorldScene extends Phaser.Scene {
   private miniMap: MiniMap | null = null;
   private mapPixels = { w: 0, h: 0 };
 
+  // Terrain classification for the minimap (water / trees / buildings). Visual
+  // tile layers are scanned per cell; gid ranges map to a category by tileset.
+  private visualLayers: Phaser.Tilemaps.TilemapLayer[] = [];
+  private gidCats: { first: number; last: number; cat: 0 | 1 | 2 | 3 }[] = [];
+
   private interactables: Interactable[] = [];
   private activeInteractable: Interactable | null = null;
   private facing: "down" | "left" | "right" | "up" = "down";
@@ -95,6 +109,8 @@ export class WorldScene extends Phaser.Scene {
     this.facing = "down";
     this.miniMap = null;
     this.mapPixels = { w: 0, h: 0 };
+    this.visualLayers = [];
+    this.gidCats = [];
   }
 
   async create(): Promise<void> {
@@ -165,6 +181,7 @@ export class WorldScene extends Phaser.Scene {
       subtitle: this.def.subtitle,
       getPlayer: () => ({ x: this.player.x, y: this.player.y, facing: this.facing }),
       getPois: () => this.poisForMap(),
+      classify: (tx, ty) => this.classifyTile(tx, ty),
     });
     this.ready = true;
 
@@ -186,6 +203,26 @@ export class WorldScene extends Phaser.Scene {
       color: it.mapColor,
       kind: it.mapKind,
     }));
+  }
+
+  // Terrain category at a tile for the minimap: 1 water, 2 trees, 3 building, 0 ground.
+  private classifyTile(tx: number, ty: number): 0 | 1 | 2 | 3 {
+    let water = false, tree = false;
+    for (const layer of this.visualLayers) {
+      const t = layer.getTileAt(tx, ty);
+      if (!t || t.index < 0) continue;
+      const cat = this.gidCat(t.index);
+      if (cat === 1) water = true;
+      else if (cat === 2) tree = true;
+    }
+    const bt = this.collisionLayer?.getTileAt(tx, ty);
+    const blocked = !!bt && bt.index >= 0;
+    return water ? 1 : tree ? 2 : blocked ? 3 : 0;
+  }
+
+  private gidCat(gid: number): 0 | 1 | 2 | 3 {
+    for (const r of this.gidCats) if (gid >= r.first && gid <= r.last) return r.cat;
+    return 0;
   }
 
   // ── map loading (two-stage: tmj + manifest, then tileset images) ────────────
@@ -222,6 +259,13 @@ export class WorldScene extends Phaser.Scene {
         ts.name, `${key}__${ts.name}`, ts.tilewidth, ts.tileheight, ts.margin, ts.spacing, ts.firstgid,
       );
     }
+    // Classify each tileset's gid range so the minimap can tell water / trees /
+    // ground apart (buildings come from the collision layer, not tileset name).
+    this.gidCats = entry.tilesets.map((ts) => ({
+      first: ts.firstgid,
+      last: ts.firstgid + ts.tilecount - 1,
+      cat: categoryForTileset(ts.name),
+    }));
     return map;
   }
 
@@ -261,6 +305,7 @@ export class WorldScene extends Phaser.Scene {
       const isAbove = ABOVE_PREFIXES.some((p) => lower.startsWith(p));
       layer.setDepth(isAbove ? 1000 + index : index);
       if (typeof ld.alpha === "number") layer.setAlpha(ld.alpha);
+      this.visualLayers.push(layer);
     }
 
     const cx = (map.widthInPixels || map.width * map.tileWidth) / 2;
