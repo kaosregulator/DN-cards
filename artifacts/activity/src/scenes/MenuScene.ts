@@ -2,6 +2,7 @@ import Phaser from "phaser";
 import { getContext } from "../core/context";
 import { gameState } from "../state/gameState";
 import { onTap, padHit, isTouchUi } from "../ui/tap";
+import { music } from "../audio/music";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // MenuScene — the game's TITLE SCREEN and hub. Animated starfield + drifting
@@ -31,6 +32,9 @@ export class MenuScene extends Phaser.Scene {
     this.cameras.main.setBackgroundColor("#080b14");
     this.cameras.main.fadeIn(300, 0, 0, 0);
     this.leaving = false;
+    // "Journey" (by TomMusic) opens the title screen — plays immediately, and
+    // keeps playing across the world/duels until the player changes it.
+    music.start("journey");
     this.bg = this.add.container(0, 0).setDepth(0);
     this.ui = this.add.container(0, 0).setDepth(10);
     this.build();

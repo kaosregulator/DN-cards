@@ -7,6 +7,7 @@
 import { initDiscord } from "./discord/sdk";
 import { startGame } from "./core/game";
 import { initViewport } from "./core/viewport";
+import { initBrightness } from "./hud/brightness";
 import { isDemo, startDemo } from "./demo/demo";
 import { isInDiscord } from "./discord/env";
 
@@ -29,6 +30,7 @@ async function main(): Promise<void> {
       return;
     }
     initViewport();
+    initBrightness();
     // Local viewport/QA harness (no Discord, no backend) — opt-in via `?demo`.
     if (isDemo()) {
       document.getElementById("boot")?.remove();
