@@ -26,6 +26,12 @@ export interface MiniMapOpts {
   subtitle: string;
   getPlayer: () => { x: number; y: number; facing: "down" | "left" | "right" | "up" };
   getPois: () => MiniMapPoi[];
+  /**
+   * Classify a tile for the terrain bake so the map reads at a glance:
+   * 0 = ground, 1 = water, 2 = trees/foliage, 3 = building/wall. Optional —
+   * without it the minimap falls back to walls-vs-grass from the collision layer.
+   */
+  classify?: (tileX: number, tileY: number) => 0 | 1 | 2 | 3;
 }
 
 const MINI_R = 58;
@@ -181,17 +187,29 @@ export class MiniMap {
     const ctx = c.getContext("2d")!;
     const img = ctx.createImageData(tw, th);
     const data = img.data;
+    const classify = this.opts.classify;
     for (let ty = 0; ty < th; ty++) {
       for (let tx = 0; tx < tw; tx++) {
-        const tile = collision?.getTileAt(tx * TERRAIN_STEP, ty * TERRAIN_STEP);
-        const blocked = !!tile && tile.index >= 0;
+        const gx = tx * TERRAIN_STEP, gy = ty * TERRAIN_STEP;
         const i = (ty * tw + tx) * 4;
-        if (blocked) {
-          data[i] = 0x5a; data[i + 1] = 0x4a; data[i + 2] = 0x38; data[i + 3] = 255;
+        const shade = ((tx + ty) & 1) === 0 ? 0 : 8;
+        // Category: 0 ground · 1 water · 2 trees · 3 building. Prefer the rich
+        // classifier; fall back to walls-vs-grass from the collision layer.
+        let cat: 0 | 1 | 2 | 3;
+        if (classify) {
+          cat = classify(gx, gy);
         } else {
-          const shade = ((tx + ty) & 1) === 0 ? 0 : 8;
-          data[i] = 0x3a + shade; data[i + 1] = 0x6e + shade; data[i + 2] = 0x3a; data[i + 3] = 255;
+          const tile = collision?.getTileAt(gx, gy);
+          cat = tile && tile.index >= 0 ? 3 : 0;
         }
+        let r: number, g: number, b: number;
+        switch (cat) {
+          case 1: r = 0x2c + shade; g = 0x6a + shade; b = 0xb4; break; // water — blue
+          case 2: r = 0x22; g = 0x54 + shade; b = 0x28; break;          // trees — deep green
+          case 3: r = 0x6b; g = 0x6b; b = 0x74 + shade; break;          // building — grey
+          default: r = 0x3a + shade; g = 0x6e + shade; b = 0x3a; break; // ground — grass
+        }
+        data[i] = r; data[i + 1] = g; data[i + 2] = b; data[i + 3] = 255;
       }
     }
     ctx.putImageData(img, 0, 0);
@@ -215,8 +233,10 @@ export class MiniMap {
       `<div class="mm-legend">` +
       `<div class="mm-leg-h">LEGEND</div>` +
       `<div class="mm-leg-grid">` +
-      `<span>▲ You</span><span>🏠 Village / NPC</span><span>🃏 Shop / Services</span>` +
-      `<span>⚔️ Duel Arena</span><span>🌐 Online / Portal</span><span>● Point of interest</span>` +
+      `<span>▲ You</span><span>🃏 Shop / Services</span><span>⚔️ Duel Arena</span>` +
+      `<span><i class="mm-sw" style="background:#2c6ab4"></i> Water</span>` +
+      `<span><i class="mm-sw" style="background:#225428"></i> Trees</span>` +
+      `<span><i class="mm-sw" style="background:#6b6b74"></i> Buildings</span>` +
       `</div></div>` +
       `<div class="mm-tip">★ Tip: Press M to open the full world map</div>` +
       `</div>`;
@@ -378,6 +398,8 @@ export class MiniMap {
       .mm-leg-grid {
         display: grid; grid-template-columns: 1fr 1fr; gap: 6px 12px; font-size: 12px;
       }
+      .mm-sw { display: inline-block; width: 9px; height: 9px; border-radius: 2px;
+        vertical-align: middle; margin-right: 3px; }
       .mm-tip { text-align: center; font-size: 11px; color: #ffe9b0; padding-top: 4px; }
     `;
     document.head.appendChild(s);

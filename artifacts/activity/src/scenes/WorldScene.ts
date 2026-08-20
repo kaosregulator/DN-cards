@@ -6,6 +6,24 @@ import {
   MAPS, START_MAP, type MapDef, type MapKey,
   type WorldManifest,
 } from "../world/worldMaps";
+import { AVATARS, type AvatarDef, avatarById, buildAvatarAnims, avatarAnim } from "../world/avatars";
+import { Pet, loadPetTextures } from "../world/pets";
+import { Ambient } from "../world/ambient";
+import { getAvatarId, getPetId } from "../state/profile";
+
+// Dog breeds used to populate a map with stray/companion dogs (kept small so the
+// world only streams a few extra sheets). The player's own pet is added too.
+const AMBIENT_BREEDS = ["akita", "great-dane", "siberian-husky"];
+
+// The NPC character sheets, de-duplicated by texture (each sheet holds 4 people).
+function uniqueNpcSheets(): AvatarDef[] {
+  const seen = new Set<string>();
+  const out: AvatarDef[] = [];
+  for (const a of AVATARS) {
+    if (a.layout === "npc3" && !seen.has(a.texKey)) { seen.add(a.texKey); out.push(a); }
+  }
+  return out;
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // WorldScene — the Phaser 4 top-down overworld, built on the WorkAdventure map
@@ -18,9 +36,6 @@ import {
 // One scene instance is reused for every location: scene.restart({ mapKey }).
 // ─────────────────────────────────────────────────────────────────────────────
 
-const CHAR_KEY = "duelist";
-const CHAR_FW = 32;
-const CHAR_FH = 48;
 const SPEED = 165;
 
 // Layers whose (case-insensitive) name starts with one of these render ABOVE the
@@ -31,6 +46,15 @@ const ABOVE_PREFIXES = ["above", "roof", "sign", "silent", "overlay", "lights", 
 // Names (case-insensitive, exact) treated as the invisible collision layer. The
 // starter kit uses "collisions"; the village map uses "collision".
 const COLLISION_NAMES = ["collisions", "collision"];
+
+// Minimap terrain categories by tileset name: 1 = water, 2 = trees/foliage,
+// 0 = everything else (ground). Buildings (3) are decided by the collision layer.
+function categoryForTileset(name: string): 0 | 1 | 2 | 3 {
+  const n = name.toLowerCase();
+  if (/water/.test(n)) return 1;
+  if (/tree|flower|plant|bush|foliage|garden/.test(n)) return 2;
+  return 0;
+}
 
 // A single thing the player can walk up to and interact with — either a portal
 // (navigate / open a battle-side scene) or an enemy encounter (start a duel).
@@ -62,6 +86,13 @@ export class WorldScene extends Phaser.Scene {
   private def!: MapDef;
 
   private player!: Phaser.Physics.Arcade.Sprite;
+  private playerShadow!: Phaser.GameObjects.Ellipse;
+  private avatar!: AvatarDef;
+  private petId: string | null = null;
+  private pet: Pet | null = null;
+  private petNear = false;
+  private lastPrompt: string | null = null;
+  private ambient: Ambient | null = null;
   private collisionLayer: Phaser.Tilemaps.TilemapLayer | null = null;
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
   private wasd!: Record<"up" | "down" | "left" | "right" | "interact", Phaser.Input.Keyboard.Key>;
@@ -69,6 +100,11 @@ export class WorldScene extends Phaser.Scene {
   private hud!: WorldHud;
   private miniMap: MiniMap | null = null;
   private mapPixels = { w: 0, h: 0 };
+
+  // Terrain classification for the minimap (water / trees / buildings). Visual
+  // tile layers are scanned per cell; gid ranges map to a category by tileset.
+  private visualLayers: Phaser.Tilemaps.TilemapLayer[] = [];
+  private gidCats: { first: number; last: number; cat: 0 | 1 | 2 | 3 }[] = [];
 
   private interactables: Interactable[] = [];
   private activeInteractable: Interactable | null = null;
@@ -86,6 +122,12 @@ export class WorldScene extends Phaser.Scene {
   init(data: { mapKey?: MapKey }): void {
     this.mapKey = data?.mapKey ?? START_MAP;
     this.def = MAPS[this.mapKey];
+    this.avatar = avatarById(getAvatarId());
+    this.petId = getPetId();
+    this.pet = null;
+    this.petNear = false;
+    this.lastPrompt = null;
+    this.ambient = null;
     this.transitioning = false;
     this.ready = false;
     this.interactables = [];
@@ -95,6 +137,8 @@ export class WorldScene extends Phaser.Scene {
     this.facing = "down";
     this.miniMap = null;
     this.mapPixels = { w: 0, h: 0 };
+    this.visualLayers = [];
+    this.gidCats = [];
   }
 
   async create(): Promise<void> {
@@ -138,9 +182,33 @@ export class WorldScene extends Phaser.Scene {
     this.createPlayer(spawnX, spawnY);
     if (this.collisionLayer) this.physics.add.collider(this.player, this.collisionLayer);
 
+    // Companion pet (if chosen) — trails the player and reacts when played with.
+    if (this.petId && this.textures.exists(`pet-${this.petId}-idle`)) {
+      this.pet = new Pet(this, this.petId, spawnX - 26, spawnY + 10,
+        () => ({ x: this.player.x, y: this.player.y }));
+    }
+
     this.setupCamera(map);
     this.setupInput();
     this.placeInteractables(map, spawnX, spawnY);
+
+    // Populate the map with pacing NPCs, lakeside watchers, office folk and stray
+    // dogs — placed procedurally in sensible spots, kept clear of the beacons.
+    const avoid = [{ x: spawnX, y: spawnY }, ...this.interactables.map((it) => ({ x: it.x, y: it.y }))];
+    const seed = Array.from(this.mapKey).reduce((h, c) => ((h * 31) + c.charCodeAt(0)) | 0, 7);
+    this.ambient = new Ambient({
+      scene: this,
+      tw: map.tileWidth, th: map.tileHeight, mapW: map.width, mapH: map.height,
+      isWalkable: (tx, ty) => {
+        const t = this.collisionLayer?.getTileAt(tx, ty);
+        return !t || t.index < 0;
+      },
+      classify: (tx, ty) => this.classifyTile(tx, ty),
+      avoid,
+      npcDefs: AVATARS.filter((a) => a.layout === "npc3"),
+      breeds: [...AMBIENT_BREEDS, ...(this.petId ? [this.petId] : [])],
+      seed,
+    });
 
     // DOM HUD: location banner, player chip, mobile dpad + interact button.
     const snap = getContext(this).playerState.get();
@@ -165,6 +233,7 @@ export class WorldScene extends Phaser.Scene {
       subtitle: this.def.subtitle,
       getPlayer: () => ({ x: this.player.x, y: this.player.y, facing: this.facing }),
       getPois: () => this.poisForMap(),
+      classify: (tx, ty) => this.classifyTile(tx, ty),
     });
     this.ready = true;
 
@@ -173,6 +242,10 @@ export class WorldScene extends Phaser.Scene {
       this.hud?.destroy();
       this.miniMap?.destroy();
       this.miniMap = null;
+      this.pet?.destroy();
+      this.pet = null;
+      this.ambient?.destroy();
+      this.ambient = null;
     });
   }
 
@@ -188,6 +261,26 @@ export class WorldScene extends Phaser.Scene {
     }));
   }
 
+  // Terrain category at a tile for the minimap: 1 water, 2 trees, 3 building, 0 ground.
+  private classifyTile(tx: number, ty: number): 0 | 1 | 2 | 3 {
+    let water = false, tree = false;
+    for (const layer of this.visualLayers) {
+      const t = layer.getTileAt(tx, ty);
+      if (!t || t.index < 0) continue;
+      const cat = this.gidCat(t.index);
+      if (cat === 1) water = true;
+      else if (cat === 2) tree = true;
+    }
+    const bt = this.collisionLayer?.getTileAt(tx, ty);
+    const blocked = !!bt && bt.index >= 0;
+    return water ? 1 : tree ? 2 : blocked ? 3 : 0;
+  }
+
+  private gidCat(gid: number): 0 | 1 | 2 | 3 {
+    for (const r of this.gidCats) if (gid >= r.first && gid <= r.last) return r.cat;
+    return 0;
+  }
+
   // ── map loading (two-stage: tmj + manifest, then tileset images) ────────────
   private async loadMap(key: MapKey): Promise<Phaser.Tilemaps.Tilemap> {
     // Stage 1: the map JSON, the tileset manifest, and the character sheet.
@@ -197,11 +290,19 @@ export class WorldScene extends Phaser.Scene {
     if (!this.cache.tilemap.has(key)) {
       this.load.tilemapTiledJSON(key, assetUrl(`world/maps/${key}.tmj`));
     }
-    if (!this.textures.exists(CHAR_KEY)) {
-      this.load.spritesheet(CHAR_KEY, assetUrl("world/characters/duelist.png"), {
-        frameWidth: CHAR_FW, frameHeight: CHAR_FH,
+    if (!this.textures.exists(this.avatar.texKey)) {
+      this.load.spritesheet(this.avatar.texKey, assetUrl(this.avatar.url), {
+        frameWidth: this.avatar.fw, frameHeight: this.avatar.fh,
       });
     }
+    if (this.petId) loadPetTextures(this, this.petId);
+    // Ambient life: the NPC sheets + a few dog breeds to scatter around the map.
+    for (const def of uniqueNpcSheets()) {
+      if (!this.textures.exists(def.texKey)) {
+        this.load.spritesheet(def.texKey, assetUrl(def.url), { frameWidth: def.fw, frameHeight: def.fh });
+      }
+    }
+    for (const breed of AMBIENT_BREEDS) loadPetTextures(this, breed);
     await this.runLoader();
 
     const manifest = this.cache.json.get("world-manifest") as WorldManifest;
@@ -222,6 +323,13 @@ export class WorldScene extends Phaser.Scene {
         ts.name, `${key}__${ts.name}`, ts.tilewidth, ts.tileheight, ts.margin, ts.spacing, ts.firstgid,
       );
     }
+    // Classify each tileset's gid range so the minimap can tell water / trees /
+    // ground apart (buildings come from the collision layer, not tileset name).
+    this.gidCats = entry.tilesets.map((ts) => ({
+      first: ts.firstgid,
+      last: ts.firstgid + ts.tilecount - 1,
+      cat: categoryForTileset(ts.name),
+    }));
     return map;
   }
 
@@ -261,6 +369,7 @@ export class WorldScene extends Phaser.Scene {
       const isAbove = ABOVE_PREFIXES.some((p) => lower.startsWith(p));
       layer.setDepth(isAbove ? 1000 + index : index);
       if (typeof ld.alpha === "number") layer.setAlpha(ld.alpha);
+      this.visualLayers.push(layer);
     }
 
     const cx = (map.widthInPixels || map.width * map.tileWidth) / 2;
@@ -319,28 +428,18 @@ export class WorldScene extends Phaser.Scene {
 
   // ── player ──────────────────────────────────────────────────────────────────
   private createPlayer(x: number, y: number): void {
-    this.ensureAnims();
-    this.player = this.physics.add.sprite(x, y, CHAR_KEY, 1);
+    buildAvatarAnims(this, this.avatar);
+    this.player = this.physics.add.sprite(x, y, this.avatar.texKey, 1);
     this.player.setDepth(500);
+    // Ground shadow so the player reads as grounded like the NPCs/pets.
+    this.playerShadow = this.add.ellipse(x, y + this.avatar.fh / 2 - 4, 20, 8, 0x000000, 0.28).setDepth(499);
     // A slim body around the feet so the avatar tucks behind furniture nicely.
     const body = this.player.body as Phaser.Physics.Arcade.Body;
-    body.setSize(18, 14).setOffset((CHAR_FW - 18) / 2, CHAR_FH - 16);
+    body.setSize(18, 14).setOffset((this.avatar.fw - 18) / 2, this.avatar.fh - 16);
     this.player.setCollideWorldBounds(true);
-    this.player.anims.play("idle-down");
-  }
-
-  private ensureAnims(): void {
-    if (this.anims.exists("walk-down")) return;
-    const dirs: [string, number][] = [["down", 0], ["left", 3], ["right", 6], ["up", 9]];
-    for (const [dir, start] of dirs) {
-      this.anims.create({
-        key: `walk-${dir}`,
-        frames: this.anims.generateFrameNumbers(CHAR_KEY, { start, end: start + 2 }),
-        frameRate: 8,
-        repeat: -1,
-      });
-      this.anims.create({ key: `idle-${dir}`, frames: [{ key: CHAR_KEY, frame: start + 1 }], frameRate: 1 });
-    }
+    const a = avatarAnim(this.avatar, "down", false);
+    this.player.anims.play(a.key);
+    this.player.setFlipX(a.flipX);
   }
 
   // ── camera ──────────────────────────────────────────────────────────────────
@@ -469,8 +568,9 @@ export class WorldScene extends Phaser.Scene {
 
   // ── interaction / transitions ───────────────────────────────────────────────
   private tryInteract(): void {
-    if (this.transitioning || !this.activeInteractable) return;
-    this.activeInteractable.trigger();
+    if (this.transitioning) return;
+    if (this.activeInteractable) { this.activeInteractable.trigger(); return; }
+    if (this.petNear && this.pet) this.pet.react();
   }
 
   // Dispatch a portal action to the right real scene (the PR #106 battle side).
@@ -548,12 +648,14 @@ export class WorldScene extends Phaser.Scene {
       // Face the dominant axis.
       if (Math.abs(vx) > Math.abs(vy)) this.facing = vx < 0 ? "left" : "right";
       else this.facing = vy < 0 ? "up" : "down";
-      this.player.anims.play(`walk-${this.facing}`, true);
-    } else {
-      this.player.anims.play(`idle-${this.facing}`, true);
     }
+    const a = avatarAnim(this.avatar, this.facing, moving);
+    this.player.anims.play(a.key, true);
+    this.player.setFlipX(a.flipX);
     this.player.setDepth(500); // stays between below-layers and Above
+    this.playerShadow.setPosition(this.player.x, this.player.y + this.avatar.fh / 2 - 4);
 
+    this.pet?.update();
     this.updateProximity();
     this.miniMap?.update();
   }
@@ -565,9 +667,19 @@ export class WorldScene extends Phaser.Scene {
       const d = Math.hypot(it.x - this.player.x, it.y - this.player.y);
       if (d < 40 && d < best) { best = d; nearest = it; }
     }
-    if (nearest !== this.activeInteractable) {
-      this.activeInteractable = nearest;
-      this.hud?.setPrompt(nearest ? nearest.prompt : null);
+    this.activeInteractable = nearest;
+
+    // The pet is a fallback prompt: only offered when no portal/encounter is in
+    // range, so playing with the dog never steals a duel or shop interaction.
+    this.petNear = false;
+    if (!nearest && this.pet) {
+      const p = this.pet.sprite;
+      this.petNear = Math.hypot(p.x - this.player.x, p.y - this.player.y) < 46;
+    }
+    const prompt = nearest ? nearest.prompt : this.petNear ? `Play with ${this.pet!.name}` : null;
+    if (prompt !== this.lastPrompt) {
+      this.lastPrompt = prompt;
+      this.hud?.setPrompt(prompt);
     }
   }
 }

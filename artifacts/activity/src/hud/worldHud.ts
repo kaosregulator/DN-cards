@@ -3,6 +3,8 @@
 // button) for phones inside Discord. Desktop uses WASD/arrows + Space/E, so the
 // joystick only shows on coarse-pointer / small viewports (CSS-gated).
 
+import { SettingsPanel } from "./settingsPanel";
+
 export interface WorldHudPlayer {
   name: string;
   level: number;
@@ -27,6 +29,7 @@ export class WorldHud {
   private joyId: number | null = null;
   private joyCenter = { x: 0, y: 0 };
   private unbound: Array<() => void> = [];
+  private readonly settings: SettingsPanel;
 
   constructor(opts: WorldHudOpts) {
     this.onDir = opts.onDir;
@@ -43,12 +46,15 @@ export class WorldHud {
       `<div class="wh-sub">${esc(opts.subtitle)}</div>`;
     this.root.appendChild(banner);
 
-    // Menu button (top-left, under the banner) — back to the title screen.
+    // Menu button (top-left, under the banner) — opens the Settings dropdown
+    // (brightness, music, Main Menu / Invite / Quit) instead of jumping straight
+    // to the title screen.
+    this.settings = new SettingsPanel({ onReturnMenu: opts.onMenu });
     const menu = document.createElement("button");
     menu.className = "wh-menu";
     menu.setAttribute("aria-label", "Menu");
     menu.innerHTML = "☰ Menu";
-    menu.addEventListener("click", (e) => { e.preventDefault(); opts.onMenu(); });
+    menu.addEventListener("click", (e) => { e.preventDefault(); e.stopPropagation(); this.settings.toggle(); });
     this.root.appendChild(menu);
 
     // Player chip sits under the banner (left) so the top-right is free for the
@@ -116,6 +122,7 @@ export class WorldHud {
     this.resetJoy();
     for (const off of this.unbound) off();
     this.unbound = [];
+    this.settings.destroy();
     this.root.remove();
   }
 
