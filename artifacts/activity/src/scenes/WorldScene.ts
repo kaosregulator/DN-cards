@@ -86,6 +86,7 @@ export class WorldScene extends Phaser.Scene {
   private def!: MapDef;
 
   private player!: Phaser.Physics.Arcade.Sprite;
+  private playerShadow!: Phaser.GameObjects.Ellipse;
   private avatar!: AvatarDef;
   private petId: string | null = null;
   private pet: Pet | null = null;
@@ -430,6 +431,8 @@ export class WorldScene extends Phaser.Scene {
     buildAvatarAnims(this, this.avatar);
     this.player = this.physics.add.sprite(x, y, this.avatar.texKey, 1);
     this.player.setDepth(500);
+    // Ground shadow so the player reads as grounded like the NPCs/pets.
+    this.playerShadow = this.add.ellipse(x, y + this.avatar.fh / 2 - 4, 20, 8, 0x000000, 0.28).setDepth(499);
     // A slim body around the feet so the avatar tucks behind furniture nicely.
     const body = this.player.body as Phaser.Physics.Arcade.Body;
     body.setSize(18, 14).setOffset((this.avatar.fw - 18) / 2, this.avatar.fh - 16);
@@ -650,6 +653,7 @@ export class WorldScene extends Phaser.Scene {
     this.player.anims.play(a.key, true);
     this.player.setFlipX(a.flipX);
     this.player.setDepth(500); // stays between below-layers and Above
+    this.playerShadow.setPosition(this.player.x, this.player.y + this.avatar.fh / 2 - 4);
 
     this.pet?.update();
     this.updateProximity();

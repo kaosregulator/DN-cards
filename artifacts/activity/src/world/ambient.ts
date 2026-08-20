@@ -155,6 +155,19 @@ export class Ambient {
     return null;
   }
 
+  // A soft ground shadow to anchor a character and keep it from blending into the
+  // grass. Returned so pacing tweens can carry it along with the sprite.
+  private shadow(x: number, y: number, w: number, h: number, depth: number): Phaser.GameObjects.Ellipse {
+    const s = this.opts.scene.add.ellipse(x, y, w, h, 0x000000, 0.26).setDepth(depth - 1);
+    this.objs.push(s);
+    return s;
+  }
+
+  private outline(spr: Phaser.GameObjects.Sprite): void {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    try { (spr as any).postFX?.addGlow(0x101418, 3, 0, false, 0.08, 8); } catch { /* canvas fallback */ }
+  }
+
   private depthFor(y: number): number {
     // Under the player (500), above the floor layers; a little y-sorting so nearer
     // characters sit in front of farther ones.
@@ -164,23 +177,29 @@ export class Ambient {
   private idleNpc(def: AvatarDef, x: number, y: number, face: Dir): void {
     const { scene } = this.opts;
     buildAvatarAnims(scene, def);
+    const d = this.depthFor(y);
+    this.shadow(x, y + 20, 22, 8, d);
     const spr = scene.add.sprite(x, y, def.texKey, 1);
     const a = avatarAnim(def, face, false);
     spr.play(a.key);
     spr.setFlipX(a.flipX);
-    spr.setDepth(this.depthFor(y));
+    spr.setDepth(d);
+    this.outline(spr);
     this.objs.push(spr);
   }
 
   private pacer(def: AvatarDef, x: number, y: number, horiz: boolean, span: number): void {
     const { scene } = this.opts;
     buildAvatarAnims(scene, def);
+    const d = this.depthFor(y);
+    const shadow = this.shadow(x, y + 20, 22, 8, d);
     const spr = scene.add.sprite(x, y, def.texKey, 1);
-    spr.setDepth(this.depthFor(y));
+    spr.setDepth(d);
+    this.outline(spr);
     this.objs.push(spr);
     const dir: Dir = horiz ? "right" : "down";
-    const setFace = (d: Dir): void => {
-      const a = avatarAnim(def, d, true);
+    const setFace = (dr: Dir): void => {
+      const a = avatarAnim(def, dr, true);
       spr.play(a.key, true);
       spr.setFlipX(a.flipX);
     };
@@ -189,6 +208,7 @@ export class Ambient {
     scene.tweens.add({
       targets: spr, ...to, duration: (span / 40) * 1000, yoyo: true, repeat: -1,
       ease: "Linear",
+      onUpdate: () => shadow.setPosition(spr.x, spr.y + 20),
       onYoyo: () => setFace(horiz ? "left" : "up"),
       onRepeat: () => setFace(horiz ? "right" : "down"),
     });
@@ -199,10 +219,13 @@ export class Ambient {
     const { scene } = this.opts;
     buildPetAnims(scene, breed);
     const pose = ["sitting", "sleeping", "lying-down"][Math.floor(rand() * 3)]!;
+    const d = this.depthFor(y);
+    this.shadow(x, y + 4, 26, 10, d);
     const spr = scene.add.sprite(x, y, this.petTex(breed, pose), 0);
-    spr.setOrigin(0.5, 0.72).setScale(0.58).setDepth(this.depthFor(y));
+    spr.setOrigin(0.5, 0.72).setScale(0.58).setDepth(d);
     spr.play(this.petTex(breed, pose));
     spr.setFlipX(rand() < 0.5);
+    this.outline(spr);
     this.makePettable(spr, breed, () => this.petTex(breed, pose));
     this.objs.push(spr);
   }
@@ -212,13 +235,17 @@ export class Ambient {
     const { scene, tw } = this.opts;
     buildPetAnims(scene, breed);
     const span = (2 + Math.floor(rand() * 2)) * tw;
+    const d = this.depthFor(y);
+    const shadow = this.shadow(x, y + 4, 26, 10, d);
     const spr = scene.add.sprite(x, y, this.petTex(breed, "walk"), 0);
-    spr.setOrigin(0.5, 0.72).setScale(0.58).setDepth(this.depthFor(y));
+    spr.setOrigin(0.5, 0.72).setScale(0.58).setDepth(d);
     spr.play(this.petTex(breed, "walk"));
+    this.outline(spr);
     this.makePettable(spr, breed, () => this.petTex(breed, "walk"));
     this.objs.push(spr);
     scene.tweens.add({
       targets: spr, x: x + span, duration: (span / 55) * 1000, yoyo: true, repeat: -1, ease: "Linear",
+      onUpdate: () => shadow.setPosition(spr.x, spr.y + 4),
       onYoyo: () => spr.setFlipX(true),
       onRepeat: () => spr.setFlipX(false),
     });
