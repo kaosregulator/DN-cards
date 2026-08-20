@@ -47,11 +47,15 @@ function buildList(): AvatarDef[] {
       fw: 32, fh: 48, layout: "duelist", charIndex: 0,
     },
   ];
+  // Running per-gender counter so every NPC gets a unique, on-theme label
+  // ("Ms. Duelist 3", "Mr. Duelist 7") instead of colliding "Ms. Female 1" x2.
+  let fem = 0, masc = 0;
   for (const { file, gender } of NPC_FILES) {
     for (let ci = 0; ci < 4; ci++) {
+      const n = gender === "female" ? ++fem : ++masc;
       list.push({
         id: `${file.toLowerCase()}-${ci}`,
-        name: `${gender === "female" ? "Ms." : "Mr."} ${file.replace(/\d/, "")} ${ci + 1}`,
+        name: `${gender === "female" ? "Ms." : "Mr."} Duelist ${n}`,
         gender,
         texKey: `npc-${file}`,
         url: `world/characters/npc/${file}.png`,
