@@ -1,6 +1,7 @@
 import Phaser from "phaser";
 import { getContext } from "../core/context";
 import { gameState } from "../state/gameState";
+import { onTap, padHit, isTouchUi } from "../ui/tap";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // MenuScene — the game's TITLE SCREEN and hub. Animated starfield + drifting
@@ -8,7 +9,11 @@ import { gameState } from "../state/gameState";
 //   ▶ Adventure   — the open world (continues where you left off)
 //   ⚔ Quick Duel  — straight into a duel vs the AI
 //   👥 Local PvP   — pass-and-play on one device
-//   🌐 3D World    — the Babylon plaza
+//   🌐 Online Duel — matchmaking
+//
+// Layout is rebuilt only when the viewport size class changes meaningfully;
+// button taps use pointerup confirmation so fingers on tablets/iPads don't
+// feel "frozen" after a resize or a hover fight.
 // ─────────────────────────────────────────────────────────────────────────────
 
 export class MenuScene extends Phaser.Scene {
@@ -16,6 +21,8 @@ export class MenuScene extends Phaser.Scene {
   private ui!: Phaser.GameObjects.Container;
   private stars: Phaser.GameObjects.Arc[] = [];
   private motes: Phaser.GameObjects.Rectangle[] = [];
+  private leaving = false;
+  private lastBuildKey = "";
 
   constructor() { super("Menu"); }
 
@@ -23,30 +30,51 @@ export class MenuScene extends Phaser.Scene {
     document.getElementById("boot")?.remove();
     this.cameras.main.setBackgroundColor("#080b14");
     this.cameras.main.fadeIn(300, 0, 0, 0);
+    this.leaving = false;
     this.bg = this.add.container(0, 0).setDepth(0);
     this.ui = this.add.container(0, 0).setDepth(10);
     this.build();
-    this.scale.on(Phaser.Scale.Events.RESIZE, this.build, this);
-    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.scale.off(Phaser.Scale.Events.RESIZE, this.build, this));
+    this.scale.on(Phaser.Scale.Events.RESIZE, this.onResize, this);
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      this.scale.off(Phaser.Scale.Events.RESIZE, this.onResize, this);
+    });
+  }
+
+  private onResize = (): void => {
+    // Only rebuild when the layout class actually changes — Discord's iframe
+    // emits noisy resize events that used to destroy buttons mid-tap.
+    const key = this.buildKey();
+    if (key !== this.lastBuildKey) this.build();
+  };
+
+  private buildKey(): string {
+    const W = this.scale.width, H = this.scale.height;
+    // Bucket by ~40px so tiny jitter doesn't thrash the UI.
+    return `${Math.round(W / 40)}x${Math.round(H / 40)}:${W < 560 ? "n" : "w"}`;
   }
 
   private build = (): void => {
+    this.lastBuildKey = this.buildKey();
     this.bg.removeAll(true);
     this.ui.removeAll(true);
     this.stars = []; this.motes = [];
     const W = this.scale.width, H = this.scale.height;
     const narrow = W < 560;
+    const touch = isTouchUi();
+    // Fewer decorative objects on phones/tablets — keeps the title screen snappy.
+    const starCount = touch || narrow ? 28 : 60;
+    const moteCount = touch || narrow ? 4 : 7;
 
     // ── Backdrop: gradient, stars, drifting card silhouettes ──
     const g = this.add.graphics();
     g.fillGradientStyle(0x1a1440, 0x14203f, 0x080b14, 0x080b14, 1);
     g.fillRect(0, 0, W, H);
     this.bg.add(g);
-    for (let i = 0; i < 60; i++) {
+    for (let i = 0; i < starCount; i++) {
       const s = this.add.circle(Math.random() * W, Math.random() * H, Math.random() * 1.5 + 0.4, 0xbcd0ff, Math.random() * 0.6 + 0.15);
       this.stars.push(s); this.bg.add(s);
     }
-    for (let i = 0; i < 7; i++) {
+    for (let i = 0; i < moteCount; i++) {
       const cw = 34 + Math.random() * 26;
       const m = this.add.rectangle(Math.random() * W, Math.random() * H, cw, cw * 1.42, 0x6a7ad0, 0.07)
         .setStrokeStyle(1, 0x8fa4ff, 0.10).setAngle(Math.random() * 40 - 20);
@@ -78,8 +106,8 @@ export class MenuScene extends Phaser.Scene {
 
     // ── Buttons ──
     const btnW = Math.min(330, W - 44);
-    const bh = narrow ? 48 : 54;
-    const gap = bh + 11;
+    const bh = narrow || touch ? 52 : 54;
+    const gap = bh + 12;
     const firstY = H * (narrow ? 0.38 : 0.40);
     const hasRun = beaten > 0;
 
@@ -107,24 +135,28 @@ export class MenuScene extends Phaser.Scene {
   update(_t: number, delta: number): void {
     // Gentle parallax drift so the title screen breathes.
     const H = this.scale.height, W = this.scale.width;
+    const step = Math.min(delta, 50); // clamp so a hitch doesn't teleport stars
     for (const s of this.stars) {
-      s.y += (delta / 1000) * 6;
+      s.y += (step / 1000) * 6;
       if (s.y > H) { s.y = -2; s.x = Math.random() * W; }
     }
     for (const m of this.motes) {
-      m.y -= (delta / 1000) * 10;
-      m.angle += (delta / 1000) * 4;
+      m.y -= (step / 1000) * 10;
+      m.angle += (step / 1000) * 4;
       if (m.y < -60) { m.y = H + 60; m.x = Math.random() * W; }
     }
   }
 
   private go(scene: string, data?: object): void {
+    if (this.leaving) return;
+    this.leaving = true;
     this.cameras.main.fadeOut(200, 0, 0, 0);
     this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => this.scene.start(scene, data));
   }
 
   /** Local hot-seat PvP: fetch a deck, name the two duelists, pass-and-play. */
   private launchPvp(): void {
+    if (this.leaving) return;
     const api = getContext(this).api;
     (async () => {
       let setup;
@@ -153,10 +185,11 @@ export class MenuScene extends Phaser.Scene {
     c.add(this.add.text(0, 13, sub, {
       fontFamily: "system-ui, sans-serif", fontSize: "11.5px", color: "#eef2ff",
     }).setOrigin(0.5).setAlpha(0.86));
-    c.setSize(w, h).setInteractive(new Phaser.Geom.Rectangle(-w / 2, -h / 2, w, h), Phaser.Geom.Rectangle.Contains);
-    c.on("pointerover", () => c.setScale(1.035));
-    c.on("pointerout", () => c.setScale(1));
-    c.on("pointerdown", () => { c.setScale(0.97); onClick(); });
+    c.setSize(w, h);
+    onTap(c, padHit(-w / 2, -h / 2, w, h, 14), () => {
+      c.setScale(0.97);
+      onClick();
+    }, { hoverScale: 1.035 });
     this.ui.add(c);
   }
 }

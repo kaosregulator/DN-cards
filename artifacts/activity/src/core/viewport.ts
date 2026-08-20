@@ -17,15 +17,20 @@ export interface Viewport {
 }
 
 const SMALL_MAX = 820;
+/** Tablets (iPad portrait ~768, landscape ~1024) still count as touch-first. */
+const TABLET_MAX = 1180;
 
 export function readViewport(): Viewport {
   const w = window.innerWidth;
   const h = window.innerHeight;
-  const touch =
-    (window.matchMedia?.("(pointer: coarse)").matches ?? false) ||
-    "ontouchstart" in window ||
-    navigator.maxTouchPoints > 0;
-  return { w, h, small: Math.min(w, h) <= 640 || w <= SMALL_MAX, touch, portrait: h >= w };
+  // Prefer media queries — `maxTouchPoints > 0` alone is true on many desktop
+  // Chromes / VMs and was forcing touch padding that broke dense menus.
+  const coarse = window.matchMedia?.("(pointer: coarse)").matches ?? false;
+  const noHover = window.matchMedia?.("(hover: none)").matches ?? false;
+  const touch = coarse || noHover;
+  const shortSide = Math.min(w, h);
+  const small = shortSide <= 640 || w <= SMALL_MAX || (touch && shortSide <= TABLET_MAX);
+  return { w, h, small, touch, portrait: h >= w };
 }
 
 let current = readViewport();
