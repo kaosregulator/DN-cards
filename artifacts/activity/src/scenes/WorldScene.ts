@@ -7,7 +7,8 @@ import {
   type WorldManifest,
 } from "../world/worldMaps";
 import { type AvatarDef, avatarById, buildAvatarAnims, avatarAnim } from "../world/avatars";
-import { getAvatarId } from "../state/profile";
+import { Pet, loadPetTextures } from "../world/pets";
+import { getAvatarId, getPetId } from "../state/profile";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // WorldScene — the Phaser 4 top-down overworld, built on the WorkAdventure map
@@ -71,6 +72,10 @@ export class WorldScene extends Phaser.Scene {
 
   private player!: Phaser.Physics.Arcade.Sprite;
   private avatar!: AvatarDef;
+  private petId: string | null = null;
+  private pet: Pet | null = null;
+  private petNear = false;
+  private lastPrompt: string | null = null;
   private collisionLayer: Phaser.Tilemaps.TilemapLayer | null = null;
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
   private wasd!: Record<"up" | "down" | "left" | "right" | "interact", Phaser.Input.Keyboard.Key>;
@@ -101,6 +106,10 @@ export class WorldScene extends Phaser.Scene {
     this.mapKey = data?.mapKey ?? START_MAP;
     this.def = MAPS[this.mapKey];
     this.avatar = avatarById(getAvatarId());
+    this.petId = getPetId();
+    this.pet = null;
+    this.petNear = false;
+    this.lastPrompt = null;
     this.transitioning = false;
     this.ready = false;
     this.interactables = [];
@@ -155,6 +164,12 @@ export class WorldScene extends Phaser.Scene {
     this.createPlayer(spawnX, spawnY);
     if (this.collisionLayer) this.physics.add.collider(this.player, this.collisionLayer);
 
+    // Companion pet (if chosen) — trails the player and reacts when played with.
+    if (this.petId && this.textures.exists(`pet-${this.petId}-idle`)) {
+      this.pet = new Pet(this, this.petId, spawnX - 26, spawnY + 10,
+        () => ({ x: this.player.x, y: this.player.y }));
+    }
+
     this.setupCamera(map);
     this.setupInput();
     this.placeInteractables(map, spawnX, spawnY);
@@ -191,6 +206,8 @@ export class WorldScene extends Phaser.Scene {
       this.hud?.destroy();
       this.miniMap?.destroy();
       this.miniMap = null;
+      this.pet?.destroy();
+      this.pet = null;
     });
   }
 
@@ -240,6 +257,7 @@ export class WorldScene extends Phaser.Scene {
         frameWidth: this.avatar.fw, frameHeight: this.avatar.fh,
       });
     }
+    if (this.petId) loadPetTextures(this, this.petId);
     await this.runLoader();
 
     const manifest = this.cache.json.get("world-manifest") as WorldManifest;
@@ -503,8 +521,9 @@ export class WorldScene extends Phaser.Scene {
 
   // ── interaction / transitions ───────────────────────────────────────────────
   private tryInteract(): void {
-    if (this.transitioning || !this.activeInteractable) return;
-    this.activeInteractable.trigger();
+    if (this.transitioning) return;
+    if (this.activeInteractable) { this.activeInteractable.trigger(); return; }
+    if (this.petNear && this.pet) this.pet.react();
   }
 
   // Dispatch a portal action to the right real scene (the PR #106 battle side).
@@ -588,6 +607,7 @@ export class WorldScene extends Phaser.Scene {
     this.player.setFlipX(a.flipX);
     this.player.setDepth(500); // stays between below-layers and Above
 
+    this.pet?.update();
     this.updateProximity();
     this.miniMap?.update();
   }
@@ -599,9 +619,19 @@ export class WorldScene extends Phaser.Scene {
       const d = Math.hypot(it.x - this.player.x, it.y - this.player.y);
       if (d < 40 && d < best) { best = d; nearest = it; }
     }
-    if (nearest !== this.activeInteractable) {
-      this.activeInteractable = nearest;
-      this.hud?.setPrompt(nearest ? nearest.prompt : null);
+    this.activeInteractable = nearest;
+
+    // The pet is a fallback prompt: only offered when no portal/encounter is in
+    // range, so playing with the dog never steals a duel or shop interaction.
+    this.petNear = false;
+    if (!nearest && this.pet) {
+      const p = this.pet.sprite;
+      this.petNear = Math.hypot(p.x - this.player.x, p.y - this.player.y) < 46;
+    }
+    const prompt = nearest ? nearest.prompt : this.petNear ? `Play with ${this.pet!.name}` : null;
+    if (prompt !== this.lastPrompt) {
+      this.lastPrompt = prompt;
+      this.hud?.setPrompt(prompt);
     }
   }
 }
