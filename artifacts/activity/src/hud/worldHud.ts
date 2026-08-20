@@ -22,9 +22,11 @@ export class WorldHud {
   private readonly root: HTMLDivElement;
   private readonly promptEl: HTMLDivElement;
   private readonly onDir: (x: number, y: number) => void;
+  private readonly joyEl: HTMLElement;
 
   private joyId: number | null = null;
   private joyCenter = { x: 0, y: 0 };
+  private unbound: Array<() => void> = [];
 
   constructor(opts: WorldHudOpts) {
     this.onDir = opts.onDir;
@@ -46,10 +48,11 @@ export class WorldHud {
     menu.className = "wh-menu";
     menu.setAttribute("aria-label", "Menu");
     menu.innerHTML = "☰ Menu";
-    menu.onclick = () => opts.onMenu();
+    menu.addEventListener("click", (e) => { e.preventDefault(); opts.onMenu(); });
     this.root.appendChild(menu);
 
-    // Player chip (top-right).
+    // Player chip sits under the banner (left) so the top-right is free for the
+    // Phaser minimap compass.
     if (opts.player) {
       const chip = document.createElement("div");
       chip.className = "wh-chip";
@@ -72,13 +75,24 @@ export class WorldHud {
     act.className = "wh-interact";
     act.setAttribute("aria-label", "Interact");
     act.innerHTML = "⚡";
-    act.onclick = () => opts.onInteract();
+    act.addEventListener("click", (e) => { e.preventDefault(); opts.onInteract(); });
     this.root.appendChild(act);
 
     // Thumb joystick (touch only, gated by CSS).
-    this.root.appendChild(this.buildJoystick());
+    this.joyEl = this.buildJoystick();
+    this.root.appendChild(this.joyEl);
 
     document.body.appendChild(this.root);
+
+    // Safety nets: if pointer capture is lost (Discord iframe blur, OS gesture,
+    // tab switch) without a pointerup, the avatar used to keep running forever.
+    const forceStop = () => this.resetJoy();
+    window.addEventListener("blur", forceStop);
+    document.addEventListener("visibilitychange", forceStop);
+    this.unbound.push(
+      () => window.removeEventListener("blur", forceStop),
+      () => document.removeEventListener("visibilitychange", forceStop),
+    );
   }
 
   setPrompt(text: string | null): void {
@@ -90,7 +104,18 @@ export class WorldHud {
     this.promptEl.style.display = "block";
   }
 
+  /** Hard-stop movement — call on scene leave / pause. */
+  resetJoy(): void {
+    const knob = this.joyEl?.querySelector(".wh-knob") as HTMLElement | null;
+    if (knob) knob.style.transform = "translate(0px, 0px)";
+    this.joyId = null;
+    this.onDir(0, 0);
+  }
+
   destroy(): void {
+    this.resetJoy();
+    for (const off of this.unbound) off();
+    this.unbound = [];
     this.root.remove();
   }
 
@@ -103,8 +128,8 @@ export class WorldHud {
 
     const R = 46; // travel radius
     const setFromPointer = (clientX: number, clientY: number) => {
-      let dx = clientX - this.joyCenter.x;
-      let dy = clientY - this.joyCenter.y;
+      const dx = clientX - this.joyCenter.x;
+      const dy = clientY - this.joyCenter.y;
       const d = Math.hypot(dx, dy) || 1;
       const clamped = Math.min(d, R);
       const nx = (dx / d) * clamped;
@@ -124,7 +149,7 @@ export class WorldHud {
       const rect = base.getBoundingClientRect();
       this.joyCenter = { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
       this.joyId = e.pointerId;
-      base.setPointerCapture(e.pointerId);
+      try { base.setPointerCapture(e.pointerId); } catch { /* older WebViews */ }
       setFromPointer(e.clientX, e.clientY);
       e.preventDefault();
     });
@@ -135,6 +160,16 @@ export class WorldHud {
     const end = (e: PointerEvent) => { if (this.joyId === e.pointerId) reset(); };
     base.addEventListener("pointerup", end);
     base.addEventListener("pointercancel", end);
+    // Capture lost without up/cancel (common on iOS/Android in iframes).
+    base.addEventListener("lostpointercapture", () => { if (this.joyId != null) reset(); });
+    // Window-level safety: finger released outside the pad / off the iframe.
+    const winUp = (e: PointerEvent) => { if (this.joyId === e.pointerId) reset(); };
+    window.addEventListener("pointerup", winUp);
+    window.addEventListener("pointercancel", winUp);
+    this.unbound.push(
+      () => window.removeEventListener("pointerup", winUp),
+      () => window.removeEventListener("pointercancel", winUp),
+    );
     return base;
   }
 
@@ -153,16 +188,19 @@ export class WorldHud {
       .wh-title { font-size: 15px; font-weight: 700; color: #eaf0ff; letter-spacing: .3px; }
       .wh-sub { font-size: 11px; color: #8b97c4; margin-top: 1px; }
 
-      .wh-menu { position: fixed; top: 62px; left: 12px; padding: 6px 12px; cursor: pointer;
+      .wh-menu { position: fixed; top: 62px; left: 12px; padding: 8px 14px; cursor: pointer;
         background: rgba(12,17,32,.72); backdrop-filter: blur(8px); color: #dbe4ff;
         border: 1px solid #24305a; border-radius: 999px; font-size: 12px; font-weight: 600;
-        font-family: inherit; box-shadow: 0 6px 24px rgba(0,0,0,.35); }
+        font-family: inherit; box-shadow: 0 6px 24px rgba(0,0,0,.35);
+        touch-action: manipulation; -webkit-tap-highlight-color: transparent; min-height: 36px; }
       .wh-menu:hover { color: #fff; background: #263255; }
 
-      .wh-chip { position: fixed; top: 10px; right: 12px; display: flex; align-items: center; gap: 8px;
+      /* Left column under the menu — keeps top-right clear for the minimap. */
+      .wh-chip { position: fixed; top: 104px; left: 12px; display: flex; align-items: center; gap: 8px;
         padding: 6px 10px; background: rgba(12,17,32,.72); backdrop-filter: blur(8px);
         border: 1px solid #24305a; border-radius: 999px; box-shadow: 0 6px 24px rgba(0,0,0,.35);
-        color: #dbe4ff; font-size: 12px; font-weight: 600; }
+        color: #dbe4ff; font-size: 12px; font-weight: 600; max-width: min(240px, 42vw); }
+      body.is-small .wh-chip .wh-name { max-width: 72px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
       .wh-av { font-size: 15px; }
       .wh-lvl { color: #9fd8ff; }
       .wh-shard { color: #ffd98a; }
@@ -177,7 +215,8 @@ export class WorldHud {
         bottom: calc(20px + env(safe-area-inset-bottom,0px)); width: 62px; height: 62px;
         border-radius: 50%; border: none; cursor: pointer; font-size: 26px; color: #fff;
         background: radial-gradient(circle at 35% 30%, #5573ff, #2b3fd0);
-        box-shadow: 0 8px 24px rgba(43,63,208,.5); transition: transform .08s; }
+        box-shadow: 0 8px 24px rgba(43,63,208,.5); transition: transform .08s;
+        touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
       .wh-interact:active { transform: scale(.92); }
 
       .wh-joy { position: fixed; left: calc(20px + env(safe-area-inset-left,0px));

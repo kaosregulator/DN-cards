@@ -1,6 +1,7 @@
 import Phaser from "phaser";
 import { getContext } from "../core/context";
 import { WorldHud } from "../hud/worldHud";
+import { MiniMap, type MiniMapPoi } from "../hud/miniMap";
 import {
   MAPS, START_MAP, type MapDef, type MapKey,
   type WorldManifest,
@@ -43,6 +44,12 @@ interface Interactable {
   ring: Phaser.GameObjects.Arc;
   glyph: Phaser.GameObjects.Text;
   label: Phaser.GameObjects.Text;
+  /** Stable id for the minimap legend. */
+  id: string;
+  mapGlyph: string;
+  mapColor: number;
+  mapKind: "portal" | "encounter";
+  mapLabel: string;
 }
 
 function assetUrl(rel: string): string {
@@ -60,6 +67,8 @@ export class WorldScene extends Phaser.Scene {
   private wasd!: Record<"up" | "down" | "left" | "right" | "interact", Phaser.Input.Keyboard.Key>;
 
   private hud!: WorldHud;
+  private miniMap: MiniMap | null = null;
+  private mapPixels = { w: 0, h: 0 };
 
   private interactables: Interactable[] = [];
   private activeInteractable: Interactable | null = null;
@@ -84,6 +93,8 @@ export class WorldScene extends Phaser.Scene {
     this.collisionLayer = null;
     this.touchDir = { x: 0, y: 0 };
     this.facing = "down";
+    this.miniMap = null;
+    this.mapPixels = { w: 0, h: 0 };
   }
 
   async create(): Promise<void> {
@@ -121,6 +132,7 @@ export class WorldScene extends Phaser.Scene {
     // The physics world must span the whole map, or setCollideWorldBounds clamps
     // the player to the (tiny) default canvas-sized bounds.
     this.physics.world.setBounds(0, 0, map.widthInPixels, map.heightInPixels);
+    this.mapPixels = { w: map.widthInPixels, h: map.heightInPixels };
 
     const { spawnX, spawnY } = this.buildMap(map);
     this.createPlayer(spawnX, spawnY);
@@ -142,11 +154,38 @@ export class WorldScene extends Phaser.Scene {
       onInteract: () => this.tryInteract(),
       onMenu: () => this.leaveToMenu(),
     });
+
+    // True top-right compass minimap — follows the player, click / M to expand.
+    this.miniMap = new MiniMap({
+      scene: this,
+      mapW: map.widthInPixels,
+      mapH: map.heightInPixels,
+      collision: this.collisionLayer,
+      title: this.def.name,
+      subtitle: this.def.subtitle,
+      getPlayer: () => ({ x: this.player.x, y: this.player.y, facing: this.facing }),
+      getPois: () => this.poisForMap(),
+    });
     this.ready = true;
 
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      this.touchDir = { x: 0, y: 0 };
       this.hud?.destroy();
+      this.miniMap?.destroy();
+      this.miniMap = null;
     });
+  }
+
+  private poisForMap(): MiniMapPoi[] {
+    return this.interactables.map((it) => ({
+      id: it.id,
+      x: it.x,
+      y: it.y,
+      label: it.mapLabel,
+      glyph: it.mapGlyph,
+      color: it.mapColor,
+      kind: it.mapKind,
+    }));
   }
 
   // ── map loading (two-stage: tmj + manifest, then tileset images) ────────────
@@ -356,20 +395,24 @@ export class WorldScene extends Phaser.Scene {
       const p = spots[i] ?? { x: spawnX + (i + 1) * 48, y: spawnY };
       const verb = def.action.kind === "map" ? "Enter" : def.action.kind === "shop" ? "Open" : "Go to";
       this.interactables.push(
-        this.makeInteractable(p.x, p.y, def.glyph, def.label, def.color, `${verb} ${def.label}`,
-          () => this.runAction(def.action)),
+        this.makeInteractable(
+          def.id, p.x, p.y, def.glyph, def.label, def.color, `${verb} ${def.label}`,
+          "portal", () => this.runAction(def.action),
+        ),
       );
     });
     encounters.forEach((def, i) => {
       const p = spots[portals.length + i];
       if (!p) return;
       const it = this.makeInteractable(
-        p.x, p.y, def.glyph, def.name, def.color, `Duel ${def.name}`, () => this.startDuel(def.name),
+        def.id, p.x, p.y, def.glyph, def.name, def.color, `Duel ${def.name}`,
+        "encounter", () => this.startDuel(def.name),
       );
       // Bob the enemy so it reads as a character rather than a signpost.
       this.tweens.add({ targets: it.glyph, y: it.glyph.y - 4, yoyo: true, repeat: -1, duration: 700, ease: "Sine.InOut" });
       this.interactables.push(it);
     });
+    this.miniMap?.refreshPois();
   }
 
   // Spiral outward from spawn collecting walkable, well-spaced tile centres.
@@ -400,7 +443,10 @@ export class WorldScene extends Phaser.Scene {
   }
 
   private makeInteractable(
-    x: number, y: number, glyph: string, label: string, color: number, prompt: string, trigger: () => void,
+    id: string,
+    x: number, y: number, glyph: string, label: string, color: number, prompt: string,
+    kind: "portal" | "encounter",
+    trigger: () => void,
   ): Interactable {
     const ring = this.add.circle(x, y, 15, color, 0.28).setDepth(430);
     ring.setStrokeStyle(2, color, 0.9);
@@ -415,7 +461,10 @@ export class WorldScene extends Phaser.Scene {
       })
       .setOrigin(0.5)
       .setDepth(432);
-    return { x, y, prompt, trigger, ring, glyph: glyphText, label: labelText };
+    return {
+      id, x, y, prompt, trigger, ring, glyph: glyphText, label: labelText,
+      mapGlyph: glyph, mapColor: color, mapKind: kind, mapLabel: label,
+    };
   }
 
   // ── interaction / transitions ───────────────────────────────────────────────
@@ -483,14 +532,19 @@ export class WorldScene extends Phaser.Scene {
       if (this.cursors.up?.isDown || this.wasd.up.isDown) vy -= 1;
       if (this.cursors.down?.isDown || this.wasd.down.isDown) vy += 1;
     }
+    // Touch stick is analogue — don't renormalize away its magnitude, but clamp
+    // the combined vector so keyboard + stick never exceed full SPEED.
     vx += this.touchDir.x;
     vy += this.touchDir.y;
 
     const len = Math.hypot(vx, vy);
-    if (len > 0) { vx /= len; vy /= len; }
+    if (len > 1) { vx /= len; vy /= len; }
+    // Snap near-zero so a sticky 0.01 residue can't keep the walk anim going.
+    if (len < 0.04) { vx = 0; vy = 0; }
     this.player.setVelocity(vx * SPEED, vy * SPEED);
 
-    if (len > 0.01) {
+    const moving = Math.hypot(vx, vy) > 0.01;
+    if (moving) {
       // Face the dominant axis.
       if (Math.abs(vx) > Math.abs(vy)) this.facing = vx < 0 ? "left" : "right";
       else this.facing = vy < 0 ? "up" : "down";
@@ -501,6 +555,7 @@ export class WorldScene extends Phaser.Scene {
     this.player.setDepth(500); // stays between below-layers and Above
 
     this.updateProximity();
+    this.miniMap?.update();
   }
 
   private updateProximity(): void {

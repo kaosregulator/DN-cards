@@ -17,15 +17,20 @@ export interface Viewport {
 }
 
 const SMALL_MAX = 820;
+/** Tablets (iPad portrait ~768, landscape ~1024) still count as touch-first. */
+const TABLET_MAX = 1180;
 
 export function readViewport(): Viewport {
   const w = window.innerWidth;
   const h = window.innerHeight;
   const touch =
     (window.matchMedia?.("(pointer: coarse)").matches ?? false) ||
+    (window.matchMedia?.("(hover: none)").matches ?? false) ||
     "ontouchstart" in window ||
     navigator.maxTouchPoints > 0;
-  return { w, h, small: Math.min(w, h) <= 640 || w <= SMALL_MAX, touch, portrait: h >= w };
+  const shortSide = Math.min(w, h);
+  const small = shortSide <= 640 || w <= SMALL_MAX || (touch && shortSide <= TABLET_MAX);
+  return { w, h, small, touch, portrait: h >= w };
 }
 
 let current = readViewport();

@@ -66,15 +66,26 @@ class DemoLauncher extends Phaser.Scene {
 }
 
 export function startDemo(): Phaser.Game {
+  const coarse =
+    (typeof window !== "undefined" && window.matchMedia?.("(pointer: coarse)").matches) ||
+    (typeof navigator !== "undefined" && navigator.maxTouchPoints > 0);
   const game = new Phaser.Game({
     type: Phaser.AUTO,
     parent: "game",
     backgroundColor: "#0a0d16",
-    input: { activePointers: 3, smoothFactor: 0.2 },
+    pixelArt: true,
+    fps: { target: coarse ? 50 : 60, smoothStep: true },
+    render: {
+      antialias: false,
+      powerPreference: coarse ? "high-performance" : "default",
+      roundPixels: true,
+      desynchronized: true,
+    },
+    input: { activePointers: 3, smoothFactor: coarse ? 0 : 0.15 },
     scale: {
       mode: Phaser.Scale.RESIZE, autoCenter: Phaser.Scale.CENTER_BOTH, width: "100%", height: "100%",
     },
-    physics: { default: "arcade", arcade: { gravity: { x: 0, y: 0 }, debug: false } },
+    physics: { default: "arcade", arcade: { gravity: { x: 0, y: 0 }, debug: false, fps: coarse ? 50 : 60 } },
     scene: [DemoLauncher, MenuScene, WorldScene, ShopScene, MatchmakingScene, DuelScene],
   });
 

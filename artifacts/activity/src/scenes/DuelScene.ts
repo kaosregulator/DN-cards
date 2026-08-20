@@ -16,6 +16,7 @@ import { makeCardFace, makeCardBack, artKey } from "../ui/card";
 import { makeMonsterAvatar } from "../ui/monsterAvatar";
 import { makeField, zoneU, SIDE_U, ROW_Z, type FieldLayout } from "../ui/field";
 import { LpPanel } from "../ui/lpPanel";
+import { onTap, padHit, isTouchUi } from "../ui/tap";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // DuelScene — the true Yu-Gi-Oh style board. Presents a real duel driven by the
@@ -54,6 +55,7 @@ export class DuelScene extends Phaser.Scene {
   private turnBanner!: Phaser.GameObjects.Text;
   private primaryBtn!: Phaser.GameObjects.Container;
   private endBtn!: Phaser.GameObjects.Container;
+  private cancelBtn: Phaser.GameObjects.Container | null = null;
 
   private mode: Mode = "idle";
   private tributePick: number[] = [];
@@ -333,13 +335,13 @@ export class DuelScene extends Phaser.Scene {
   }
 
   private makeButton(label: string, color: number, onClick: () => void): Phaser.GameObjects.Container {
-    const w = 118, h = 32;
+    const w = isTouchUi() ? 132 : 118, h = isTouchUi() ? 40 : 32;
     const c = this.add.container(0, 0);
     const g = this.add.graphics();
     g.fillStyle(color, 1); g.fillRoundedRect(-w, 0, w, h, 8);
     g.lineStyle(1.5, 0xffffff, 0.25); g.strokeRoundedRect(-w, 0, w, h, 8);
     const t = this.add.text(-w / 2, h / 2, label, {
-      fontFamily: "system-ui, sans-serif", fontSize: "14px", color: "#fff", fontStyle: "bold",
+      fontFamily: "system-ui, sans-serif", fontSize: isTouchUi() ? "15px" : "14px", color: "#fff", fontStyle: "bold",
     }).setOrigin(0.5);
     c.add([g, t]);
     c.setData("label", t);
@@ -347,8 +349,7 @@ export class DuelScene extends Phaser.Scene {
     c.setData("color", color);
     c.setData("w", w); c.setData("h", h);
     c.setSize(w, h);
-    c.setInteractive(new Phaser.Geom.Rectangle(-w, 0, w, h), Phaser.Geom.Rectangle.Contains);
-    c.on("pointerdown", onClick);
+    onTap(c, padHit(-w, 0, w, h, 12), onClick);
     return c;
   }
   private positionButton(c: Phaser.GameObjects.Container, x: number, y: number, _ox: number, _oy: number): void {
@@ -359,7 +360,12 @@ export class DuelScene extends Phaser.Scene {
   }
   private setButtonEnabled(c: Phaser.GameObjects.Container, on: boolean): void {
     c.setAlpha(on ? 1 : 0.4);
-    if (on) c.setInteractive(); else c.disableInteractive();
+    if (on) {
+      const w = c.getData("w") as number, h = c.getData("h") as number;
+      c.setInteractive(padHit(-w, 0, w, h, 12), Phaser.Geom.Rectangle.Contains);
+    } else {
+      c.disableInteractive();
+    }
   }
 
   // ── Rendering the field + hand ──────────────────────────────────────────────
@@ -470,27 +476,24 @@ export class DuelScene extends Phaser.Scene {
       }
 
       // Interactions on own monsters.
-      if (who === this.viewer && this.state.turn === this.viewer) {
-        card.setInteractive(new Phaser.Geom.Rectangle(-cw / 2, -ch / 2, cw, ch), Phaser.Geom.Rectangle.Contains);
-        card.on("pointerdown", () => this.onOwnMonsterTap(z));
+      const hitPad = padHit(-cw / 2, -ch / 2, cw, ch, 14);
+      if (who === this.viewer && this.state.turn === this.viewer && this.mode === "idle") {
+        onTap(card, hitPad, () => this.onOwnMonsterTap(z));
       }
       // Idle: tap a foe's face-up monster to inspect its real card text.
       if (this.mode === "idle" && who === this.foe && m.faceUp) {
-        card.setInteractive(new Phaser.Geom.Rectangle(-cw / 2, -ch / 2, cw, ch), Phaser.Geom.Rectangle.Contains);
-        card.on("pointerdown", () => this.inspectCard(m.card));
+        onTap(card, hitPad, () => this.inspectCard(m.card));
       }
       // Attack-target selection highlights the foe's monsters.
       if (this.mode === "attackTarget" && who === this.foe) {
         this.highlight(x, y, cw, ch, 0xff5a6a);
-        card.setInteractive(new Phaser.Geom.Rectangle(-cw / 2, -ch / 2, cw, ch), Phaser.Geom.Rectangle.Contains);
-        card.on("pointerdown", () => this.resolvePlayerAttack(z));
+        onTap(card, hitPad, () => this.resolvePlayerAttack(z));
       }
       // Tribute selection highlights own monsters.
       if (this.mode === "tribute" && who === this.viewer) {
         const picked = this.tributePick.includes(z);
         this.highlight(x, y, cw, ch, picked ? 0x2ecc71 : 0xffd75e);
-        card.setInteractive(new Phaser.Geom.Rectangle(-cw / 2, -ch / 2, cw, ch), Phaser.Geom.Rectangle.Contains);
-        card.on("pointerdown", () => this.toggleTribute(z));
+        onTap(card, hitPad, () => this.toggleTribute(z));
       }
       // Spell targeting highlights legal monster targets.
       if (this.mode === "spellTarget" && this.spellCtx?.spec.area === "monster"
@@ -498,8 +501,7 @@ export class DuelScene extends Phaser.Scene {
         && (!this.spellCtx.spec.faceUpOnly || m.faceUp)) {
         const picked = this.spellCtx.picked.some((p) => p.kind === "monster" && p.side === who && p.zone === z);
         this.highlight(x, y, cw, ch, picked ? 0xffd75e : 0x35c48a);
-        card.setInteractive(new Phaser.Geom.Rectangle(-cw / 2, -ch / 2, cw, ch), Phaser.Geom.Rectangle.Contains);
-        card.on("pointerdown", () => this.onTargetTap(who, "monster", z));
+        onTap(card, hitPad, () => this.onTargetTap(who, "monster", z));
       }
     }
   }
@@ -514,16 +516,21 @@ export class DuelScene extends Phaser.Scene {
       const card = s.faceUp ? makeCardFace(this, s.card, cw, ch) : makeCardBack(this, cw, ch);
       card.setPosition(x, y).setDepth(Math.round(y));
       this.board.add(card);
-      const hit = () => card.setInteractive(new Phaser.Geom.Rectangle(-cw / 2, -ch / 2, cw, ch), Phaser.Geom.Rectangle.Contains);
+      const hitPad = padHit(-cw / 2, -ch / 2, cw, ch, 14);
       // The viewer may activate their own set cards during a Main Phase.
       if (who === this.viewer && !s.faceUp && this.mode === "idle" && this.state.turn === this.viewer) {
-        hit(); card.on("pointerdown", () => this.onOwnSpellTrapTap(z));
+        onTap(card, hitPad, () => this.onOwnSpellTrapTap(z));
+      }
+      // During a response window, tapping your own set trap opens the response
+      // flow for that zone when it's a legal option — so traps aren't menu-only.
+      if (who === this.viewer && !s.faceUp && this.state.awaiting?.responder === this.viewer && this.mode === "idle") {
+        onTap(card, hitPad, () => this.tryRespondWithZone(z));
       }
       // Spell targeting highlights legal spell/trap targets (e.g. MST).
       if (this.mode === "spellTarget" && this.spellCtx?.spec.area === "spellTrap"
         && this.legalTargetSides(this.spellCtx.spec).includes(who)) {
         this.highlight(x, y, cw, ch, 0x35c48a);
-        hit(); card.on("pointerdown", () => this.onTargetTap(who, "spellTrap", z));
+        onTap(card, hitPad, () => this.onTargetTap(who, "spellTrap", z));
       }
     }
   }
@@ -538,9 +545,10 @@ export class DuelScene extends Phaser.Scene {
     const spacing = Math.min(hw * 1.05, n > 0 ? maxSpan / n : hw);
     const totalW = spacing * (n - 1);
     const startX = this.W / 2 - totalW / 2;
-    const y = this.H - hh / 2 - 16;
+    const y = this.H - hh / 2 - (isTouchUi() ? 20 : 16);
     // Fan the hand on a gentle arc, like cards held in front of you.
     const mid = (n - 1) / 2;
+    const touch = isTouchUi();
     for (let i = 0; i < n; i++) {
       const card = b.hand[i]!;
       const off = i - mid;
@@ -552,14 +560,17 @@ export class DuelScene extends Phaser.Scene {
       this.board.add(face);
       const myTurn = this.state.turn === this.viewer && this.mode === "idle";
       if (myTurn) {
-        face.setInteractive(new Phaser.Geom.Rectangle(-hw / 2, -hh / 2, hw, hh), Phaser.Geom.Rectangle.Contains);
-        face.on("pointerover", () => { face.setY(baseY - 18).setDepth(980).setScale(1.06); });
-        face.on("pointerout", () => { face.setY(baseY).setDepth(900 + i).setScale(1); });
-        face.on("pointerdown", () => this.onHandTap(i));
+        // Extra pad on touch so overlapping fans still register.
+        onTap(face, padHit(-hw / 2, -hh / 2, hw, hh, touch ? 18 : 10), () => this.onHandTap(i));
+        if (!touch) {
+          face.on("pointerover", () => { face.setY(baseY - 18).setDepth(980).setScale(1.06); });
+          face.on("pointerout", () => { face.setY(baseY).setDepth(900 + i).setScale(1); });
+        }
       } else {
         face.setAlpha(0.92);
       }
     }
+    this.syncCancelButton();
   }
 
   private zoneSlot(x: number, y: number, w: number, h: number, color: number): Phaser.GameObjects.Graphics {
@@ -601,6 +612,47 @@ export class DuelScene extends Phaser.Scene {
     if (this.state.phase === "MAIN1") this.setButtonLabel(this.primaryBtn, "To Battle");
     else if (this.state.phase === "BATTLE") this.setButtonLabel(this.primaryBtn, "End Battle");
     else this.setButtonLabel(this.primaryBtn, "Next Phase");
+    this.syncCancelButton();
+  }
+
+  /** Escape hatch for tribute / attack / spell targeting — used to get stuck. */
+  private syncCancelButton(): void {
+    const need = this.mode === "tribute" || this.mode === "attackTarget" || this.mode === "spellTarget";
+    if (!need) {
+      this.cancelBtn?.destroy(true);
+      this.cancelBtn = null;
+      return;
+    }
+    if (this.cancelBtn) return;
+    const label = this.mode === "attackTarget" ? "Cancel Attack" : "Cancel";
+    const btn = this.makeButton(label, 0x5a3a4a, () => this.cancelSelection());
+    btn.setPosition(this.W / 2 + 60, isTouchUi() ? 56 : 48);
+    btn.setDepth(1200);
+    this.ui.add(btn);
+    this.cancelBtn = btn;
+  }
+
+  private cancelSelection(): void {
+    this.mode = "idle";
+    this.tributePick = [];
+    this.tributeContext = null;
+    this.attacker = null;
+    this.spellCtx = null;
+    this.flash("Cancelled.");
+    this.refreshControls();
+    this.renderBoard();
+  }
+
+  /** Activate a set card as a response when the engine is waiting on us. */
+  private tryRespondWithZone(zone: number): void {
+    if (!this.state.awaiting || this.state.awaiting.responder !== this.viewer) return;
+    const opts = responseOptions(this.state);
+    if (!opts.some((o) => o.zone === zone)) {
+      this.flash("That card can't respond right now.");
+      return;
+    }
+    // Close any open response menu by resolving through doAction directly.
+    this.doAction({ k: "respond", zone });
   }
 
   // ── Player input ─────────────────────────────────────────────────────────────
@@ -614,6 +666,7 @@ export class DuelScene extends Phaser.Scene {
   }
 
   private onHandTap(i: number): void {
+    if (this.mode !== "idle") return;
     const card = boardOf(this.state, this.viewer).hand[i];
     if (!card) return;
     if (card.kind === "monster") {
@@ -637,7 +690,15 @@ export class DuelScene extends Phaser.Scene {
           else this.doAction({ k: "activateHand", handIndex: i, targets: [] });
         }]);
       }
-      opts.push([card.kind === "trap" ? "Set Trap" : "Set", () => this.doAction({ k: "set", handIndex: i })]);
+      // Trap (and spell) set — validate Main Phase up front so the player isn't
+      // left wondering why the card "did nothing".
+      opts.push([card.kind === "trap" ? "Set Trap" : "Set", () => {
+        if (this.state.phase !== "MAIN1" && this.state.phase !== "MAIN2") {
+          this.flash("Set cards in a Main Phase.");
+          return;
+        }
+        this.doAction({ k: "set", handIndex: i });
+      }]);
       opts.push(["🔍 Inspect", () => this.inspectCard(card)]);
       this.actionMenu(`${card.name}\n${card.desc}`, opts);
     }
@@ -777,8 +838,8 @@ export class DuelScene extends Phaser.Scene {
     this.board.add(label);
     const zone = new Phaser.GameObjects.Zone(this, f.cx, (a.y + c.y) / 2, this.W, Math.abs(c.y - a.y) + near.h);
     this.add.existing(zone);
-    zone.setInteractive();
-    zone.on("pointerdown", () => this.resolvePlayerAttack("direct"));
+    onTap(zone, padHit(-this.W / 2, -(Math.abs(c.y - a.y) + near.h) / 2, this.W, Math.abs(c.y - a.y) + near.h, 8),
+      () => this.resolvePlayerAttack("direct"));
     this.board.add(zone);
   }
 
@@ -793,7 +854,16 @@ export class DuelScene extends Phaser.Scene {
   /** Perform one of OUR moves: apply it locally, and online, relay it. */
   private doAction(action: DuelAction, endedTurn = false): void {
     if (this.online && !this.myTurn && action.k !== "respond" && action.k !== "pass") return;
+    if (this.mode === "busy" && action.k !== "respond" && action.k !== "pass") return;
     const events = applyAction(this.state, this.viewer, action);
+    // Pure rejection (only log text, no board change) — surface it so the
+    // player isn't left thinking the tap was ignored.
+    const changed = events.some((e) => e.t !== "log");
+    if (!changed) {
+      const msg = events.find((e) => e.t === "log");
+      this.flash(msg && msg.t === "log" ? msg.text : "Can't do that.");
+      return;
+    }
     if (this.online) this.socket?.sendAction(action);
     this.applyPlayer(events, endedTurn);
   }
@@ -934,7 +1004,14 @@ export class DuelScene extends Phaser.Scene {
       const choices: Array<[string, () => void]> = opts.map((o) => [
         `Activate ${o.card.name}`, () => resolve(o.zone),
       ]);
-      this.actionMenu(name ? `${name} — respond?` : "Respond to the opponent?", choices, () => resolve(null));
+      // Bigger, clearer Pass affordance — this used to feel like the only way
+      // out of a turn when Activate taps missed.
+      this.actionMenu(
+        name ? `${name} — respond?` : "Respond to the opponent?",
+        choices,
+        () => resolve(null),
+        "Pass",
+      );
     });
   }
 
@@ -1147,35 +1224,54 @@ export class DuelScene extends Phaser.Scene {
   }
 
   // ── Small UI bits ────────────────────────────────────────────────────────────
-  private actionMenu(title: string, options: Array<[string, () => void]>, onCancel?: () => void): void {
+  private actionMenu(
+    title: string,
+    options: Array<[string, () => void]>,
+    onCancel?: () => void,
+    cancelLabel = "Cancel",
+  ): void {
     const overlay = this.add.container(0, 0).setDepth(2500);
-    const bg = this.add.rectangle(0, 0, this.W, this.H, 0x000000, 0.5).setOrigin(0).setInteractive();
+    const bg = this.add.rectangle(0, 0, this.W, this.H, 0x000000, 0.5).setOrigin(0);
+    // Dimmer closes on a confirmed tap (not a drag) so scrolling fingers don't
+    // accidentally dismiss the menu mid-decision.
+    onTap(bg, new Phaser.Geom.Rectangle(0, 0, this.W, this.H), () => {
+      if (cancelled) onCancel?.();
+      overlay.destroy(true);
+    });
     overlay.add(bg);
-    const panelW = Math.min(340, this.W - 40);
+    const rowH = isTouchUi() ? 48 : 40;
+    const panelW = Math.min(360, this.W - 28);
     const rows = options.length + 1;
-    const panelH = 66 + rows * 46;
+    const panelH = 70 + rows * (rowH + 8);
     const px = this.W / 2, py = this.H / 2;
     const panel = this.add.graphics();
     panel.fillStyle(0x141a2e, 0.98); panel.fillRoundedRect(px - panelW / 2, py - panelH / 2, panelW, panelH, 12);
     panel.lineStyle(1.5, 0x3a4a80, 1); panel.strokeRoundedRect(px - panelW / 2, py - panelH / 2, panelW, panelH, 12);
     overlay.add(panel);
-    overlay.add(this.add.text(px, py - panelH / 2 + 12, title, {
+    // Keep panel taps from falling through to the dimmer.
+    const panelHit = this.add.rectangle(px, py, panelW, panelH, 0x000000, 0).setInteractive();
+    overlay.add(panelHit);
+    overlay.add(this.add.text(px, py - panelH / 2 + 14, title, {
       fontFamily: "system-ui, sans-serif", fontSize: "14px", color: "#e6ecff", fontStyle: "bold", align: "center", wordWrap: { width: panelW - 24 },
     }).setOrigin(0.5, 0));
     let cancelled = true;
-    const close = () => { if (cancelled) onCancel?.(); overlay.destroy(true); };
-    bg.on("pointerdown", close);
-    let oy = py - panelH / 2 + 60;
-    const all: Array<[string, () => void]> = [...options, ["Cancel", () => { }]];
+    let oy = py - panelH / 2 + 64;
+    const all: Array<[string, () => void]> = [...options, [cancelLabel, () => { }]];
     for (const [label, fn] of all) {
-      const rowBg = this.add.rectangle(px, oy + 18, panelW - 24, 38, label === "Cancel" ? 0x2a2f45 : 0x24407e, 1)
-        .setStrokeStyle(1, 0x4a5a90).setInteractive();
-      const rowTxt = this.add.text(px, oy + 18, label, {
-        fontFamily: "system-ui, sans-serif", fontSize: "14px", color: "#fff", fontStyle: "bold",
+      const isCancel = label === cancelLabel;
+      const rowBg = this.add.rectangle(px, oy + rowH / 2, panelW - 24, rowH, isCancel ? 0x2a2f45 : 0x24407e, 1)
+        .setStrokeStyle(1, 0x4a5a90);
+      const rowTxt = this.add.text(px, oy + rowH / 2, label, {
+        fontFamily: "system-ui, sans-serif", fontSize: isTouchUi() ? "15px" : "14px", color: "#fff", fontStyle: "bold",
       }).setOrigin(0.5);
-      rowBg.on("pointerdown", () => { cancelled = false; overlay.destroy(true); fn(); });
+      onTap(rowBg, padHit(-(panelW - 24) / 2, -rowH / 2, panelW - 24, rowH, 10), () => {
+        cancelled = false;
+        overlay.destroy(true);
+        if (isCancel) onCancel?.();
+        else fn();
+      });
       overlay.add([rowBg, rowTxt]);
-      oy += 46;
+      oy += rowH + 8;
     }
   }
 
@@ -1231,7 +1327,7 @@ export class DuelScene extends Phaser.Scene {
       fontFamily: "system-ui, sans-serif", fontSize: "11px", color: "#7d8bb8",
     }).setOrigin(0.5, 1);
     overlay.add(hint);
-    bg.on("pointerdown", () => overlay.destroy(true));
+    onTap(bg, new Phaser.Geom.Rectangle(0, 0, this.W, this.H), () => overlay.destroy(true));
   }
 
   private flash(text: string): void {
