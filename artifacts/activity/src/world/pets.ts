@@ -94,6 +94,7 @@ function shuffle<T>(arr: T[]): T[] {
 export class Pet {
   readonly sprite: Phaser.Physics.Arcade.Sprite;
   readonly name: string;
+  private shadow: Phaser.GameObjects.Ellipse;
   private reacting = false;
   private bag: string[] = [];
   private facingLeft = false;
@@ -110,6 +111,11 @@ export class Pet {
     this.sprite.setOrigin(0.5, 0.72); // art sits low in the 100px frame; anchor near the paws
     this.sprite.setScale(0.6); // the dog fills ~half the 100px frame, so ~0.6 reads dog-sized next to the player
     this.sprite.setDepth(499); // just beneath the player (500)
+    // A soft ground shadow so a tan dog doesn't vanish into green grass, and a
+    // faint dark outline (WebGL only — a harmless no-op on the canvas fallback).
+    this.shadow = scene.add.ellipse(x, y + 3, 30, 11, 0x000000, 0.28).setDepth(498);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    try { (this.sprite as any).postFX?.addGlow(0x101418, 3, 0, false, 0.08, 8); } catch { /* canvas */ }
     const body = this.sprite.body as Phaser.Physics.Arcade.Body;
     body.setAllowGravity(false);
     this.play("idle");
@@ -129,6 +135,7 @@ export class Pet {
   }
 
   update(): void {
+    this.shadow.setPosition(this.sprite.x, this.sprite.y + 3);
     const body = this.sprite.body as Phaser.Physics.Arcade.Body;
     if (this.reacting) { body.setVelocity(0, 0); return; }
     const t = this.getTarget();
@@ -161,6 +168,7 @@ export class Pet {
   }
 
   destroy(): void {
+    this.shadow.destroy();
     this.sprite.destroy();
   }
 }
