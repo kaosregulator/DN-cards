@@ -108,7 +108,7 @@ export class Pet {
     buildPetAnims(scene, breed);
     this.sprite = scene.physics.add.sprite(x, y, petTex(breed, "idle"), 0);
     this.sprite.setOrigin(0.5, 0.72); // art sits low in the 100px frame; anchor near the paws
-    this.sprite.setScale(0.36); // 100px art → ~36px on screen so it isn't a giant
+    this.sprite.setScale(0.6); // the dog fills ~half the 100px frame, so ~0.6 reads dog-sized next to the player
     this.sprite.setDepth(499); // just beneath the player (500)
     const body = this.sprite.body as Phaser.Physics.Arcade.Body;
     body.setAllowGravity(false);

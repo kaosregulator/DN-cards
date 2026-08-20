@@ -200,7 +200,7 @@ export class Ambient {
     buildPetAnims(scene, breed);
     const pose = ["sitting", "sleeping", "lying-down"][Math.floor(rand() * 3)]!;
     const spr = scene.add.sprite(x, y, this.petTex(breed, pose), 0);
-    spr.setOrigin(0.5, 0.72).setScale(0.34).setDepth(this.depthFor(y));
+    spr.setOrigin(0.5, 0.72).setScale(0.58).setDepth(this.depthFor(y));
     spr.play(this.petTex(breed, pose));
     spr.setFlipX(rand() < 0.5);
     this.makePettable(spr, breed, () => this.petTex(breed, pose));
@@ -213,7 +213,7 @@ export class Ambient {
     buildPetAnims(scene, breed);
     const span = (2 + Math.floor(rand() * 2)) * tw;
     const spr = scene.add.sprite(x, y, this.petTex(breed, "walk"), 0);
-    spr.setOrigin(0.5, 0.72).setScale(0.34).setDepth(this.depthFor(y));
+    spr.setOrigin(0.5, 0.72).setScale(0.58).setDepth(this.depthFor(y));
     spr.play(this.petTex(breed, "walk"));
     this.makePettable(spr, breed, () => this.petTex(breed, "walk"));
     this.objs.push(spr);
