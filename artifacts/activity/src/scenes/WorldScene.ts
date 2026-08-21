@@ -234,6 +234,7 @@ export class WorldScene extends Phaser.Scene {
       getPlayer: () => ({ x: this.player.x, y: this.player.y, facing: this.facing }),
       getPois: () => this.poisForMap(),
       classify: (tx, ty) => this.classifyTile(tx, ty),
+      mapImageUrl: assetUrl(`world/maps/minimaps/${this.mapKey}.jpg`),
     });
     this.ready = true;
 

@@ -32,6 +32,12 @@ export interface MiniMapOpts {
    * without it the minimap falls back to walls-vs-grass from the collision layer.
    */
   classify?: (tileX: number, tileY: number) => 0 | 1 | 2 | 3;
+  /**
+   * URL of a pre-rendered image of the whole map (real terrain). When it loads,
+   * the minimap shows this instead of the colored terrain bake. The classify
+   * bake stays as an instant fallback until the image is ready.
+   */
+  mapImageUrl?: string;
 }
 
 const MINI_R = 58;
@@ -45,7 +51,8 @@ export class MiniMap {
   private root: HTMLDivElement;
   private canvas: HTMLCanvasElement;
   private ctx: CanvasRenderingContext2D;
-  private terrain: HTMLCanvasElement;
+  private terrain: CanvasImageSource;
+  private usingImage = false;
   private expanded = false;
   private overlay: HTMLDivElement | null = null;
   private destroyed = false;
@@ -59,6 +66,17 @@ export class MiniMap {
 
     this.injectStyles();
     this.terrain = this.bakeTerrain();
+    // Swap in the real rendered map once it loads (bake stays as the fallback).
+    if (opts.mapImageUrl) {
+      const img = new Image();
+      img.onload = () => {
+        this.terrain = img;
+        this.usingImage = true;
+        this.paint();
+        if (this.expanded) this.paintOverlay();
+      };
+      img.src = opts.mapImageUrl;
+    }
 
     this.root = document.createElement("div");
     this.root.id = "mini-map";
@@ -136,7 +154,7 @@ export class MiniMap {
     const oy = R - p.y * this.scalePx;
     ctx.fillStyle = "#1a2a1a";
     ctx.fillRect(0, 0, d, d);
-    ctx.imageSmoothingEnabled = false;
+    ctx.imageSmoothingEnabled = this.usingImage;
     ctx.drawImage(this.terrain, ox, oy, drawW, drawH);
 
     // POIs
@@ -233,10 +251,8 @@ export class MiniMap {
       `<div class="mm-legend">` +
       `<div class="mm-leg-h">LEGEND</div>` +
       `<div class="mm-leg-grid">` +
-      `<span>▲ You</span><span>🃏 Shop / Services</span><span>⚔️ Duel Arena</span>` +
-      `<span><i class="mm-sw" style="background:#2c6ab4"></i> Water</span>` +
-      `<span><i class="mm-sw" style="background:#225428"></i> Trees</span>` +
-      `<span><i class="mm-sw" style="background:#6b6b74"></i> Buildings</span>` +
+      `<span>▲ You</span><span>🃏 Shop / Services</span>` +
+      `<span>⚔️ Duel Arena</span><span>🕳️ Cave / Portals</span>` +
       `</div></div>` +
       `<div class="mm-tip">★ Tip: Press M to open the full world map</div>` +
       `</div>`;
@@ -279,7 +295,7 @@ export class MiniMap {
     const drawH = this.opts.mapH * fullScale;
     const ox = (size - drawW) / 2;
     const oy = (size - drawH) / 2;
-    ctx.imageSmoothingEnabled = false;
+    ctx.imageSmoothingEnabled = this.usingImage;
     ctx.drawImage(this.terrain, ox, oy, drawW, drawH);
 
     for (const poi of this.opts.getPois()) {
