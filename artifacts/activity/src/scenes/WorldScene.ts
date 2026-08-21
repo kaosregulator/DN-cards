@@ -9,6 +9,7 @@ import {
 import { AVATARS, type AvatarDef, avatarById, buildAvatarAnims, avatarAnim } from "../world/avatars";
 import { Pet, loadPetTextures } from "../world/pets";
 import { Ambient } from "../world/ambient";
+import { RoofFade } from "../world/roofFade";
 import { HmNpcs, DialogBox, type HmNpcDef } from "../world/hmNpcs";
 import { HmItems, foragedToast, type HmItemHit } from "../world/hmItems";
 import { getAvatarId, getPetId } from "../state/profile";
@@ -16,6 +17,16 @@ import { getAvatarId, getPetId } from "../state/profile";
 // Dog breeds used to populate a map with stray/companion dogs (kept small so the
 // world only streams a few extra sheets). The player's own pet is added too.
 const AMBIENT_BREEDS = ["akita", "great-dane", "siberian-husky"];
+
+// User zoom multiplier, persisted so it carries between maps and sessions.
+const ZOOM_KEY = "dn.zoom";
+function loadZoomMult(): number {
+  try { const v = Number(localStorage.getItem(ZOOM_KEY)); return v >= 0.3 && v <= 3 ? v : 1; }
+  catch { return 1; }
+}
+function saveZoomMult(v: number): void {
+  try { localStorage.setItem(ZOOM_KEY, String(v)); } catch { /* private mode */ }
+}
 
 // The NPC character sheets, de-duplicated by texture (each sheet holds 4 people).
 function uniqueNpcSheets(): AvatarDef[] {
@@ -107,6 +118,8 @@ export class WorldScene extends Phaser.Scene {
   // tile layers are scanned per cell; gid ranges map to a category by tileset.
   private visualLayers: Phaser.Tilemaps.TilemapLayer[] = [];
   private gidCats: { first: number; last: number; cat: 0 | 1 | 2 | 3 }[] = [];
+  private roofLayers: Phaser.Tilemaps.TilemapLayer[] = [];
+  private roofFade: RoofFade | null = null;
 
   private interactables: Interactable[] = [];
   private activeInteractable: Interactable | null = null;
@@ -124,6 +137,9 @@ export class WorldScene extends Phaser.Scene {
   private exitArmed = false; // suppress exit re-trigger until the player steps clear
   private isHm = false;
   private playerScale = 1;
+  private zoomMult = 1;      // user zoom (buttons / wheel / pinch), persisted
+  private pinchDist = 0;     // last two-finger distance while pinch-zooming
+  private zoomEl: HTMLDivElement | null = null;
   private npcs: HmNpcs | null = null;
   private dialog: DialogBox | null = null;
   private npcNear: HmNpcDef | null = null;
@@ -140,6 +156,9 @@ export class WorldScene extends Phaser.Scene {
     this.spawnOverride = data?.spawnAt ?? null;
     this.tileW = this.def.tile ?? 32;
     this.isHm = !!(this.def.bgImage || this.def.bgChunks);
+    this.zoomMult = loadZoomMult();
+    this.pinchDist = 0;
+    this.zoomEl = null;
     this.bgObjects = [];
     this.exitArmed = false;
     this.npcs = null;
@@ -165,6 +184,8 @@ export class WorldScene extends Phaser.Scene {
     this.mapPixels = { w: 0, h: 0 };
     this.visualLayers = [];
     this.gidCats = [];
+    this.roofLayers = [];
+    this.roofFade = null;
   }
 
   async create(): Promise<void> {
@@ -207,6 +228,9 @@ export class WorldScene extends Phaser.Scene {
     this.drawHmBackground(map);
 
     const { spawnX, spawnY } = this.buildMap(map);
+    if (this.roofLayers.length) {
+      this.roofFade = new RoofFade(this.roofLayers, map.width, map.height, map.tileWidth, map.tileHeight);
+    }
     this.createPlayer(spawnX, spawnY);
     if (this.collisionLayer) this.physics.add.collider(this.player, this.collisionLayer);
 
@@ -214,12 +238,13 @@ export class WorldScene extends Phaser.Scene {
     if (this.petId && this.textures.exists(`pet-${this.petId}-idle`)) {
       this.pet = new Pet(this, this.petId, spawnX - 26, spawnY + 10,
         () => ({ x: this.player.x, y: this.player.y }));
-      // Proportion the dog to the map's art on Harvest Moon (20px-tile) maps.
-      if (this.isHm) this.pet.sprite.setScale(0.4);
+      // Proportion the dog to native Jack on Harvest Moon maps.
+      if (this.isHm) this.pet.sprite.setScale(0.6);
     }
 
     this.setupCamera(map);
     this.setupInput();
+    this.createZoomControls();
     this.placeInteractables(map, spawnX, spawnY);
 
     // Populate the map with pacing NPCs, lakeside watchers, office folk and stray
@@ -293,6 +318,8 @@ export class WorldScene extends Phaser.Scene {
       this.dialog?.destroy();
       this.dialog = null;
       this.npcs = null;
+      this.zoomEl?.remove();
+      this.zoomEl = null;
     });
   }
 
@@ -485,6 +512,8 @@ export class WorldScene extends Phaser.Scene {
       layer.setDepth(isAbove ? 1000 + index : index);
       if (typeof ld.alpha === "number") layer.setAlpha(ld.alpha);
       this.visualLayers.push(layer);
+      // Roofs / canopies fade when the player is under them (not signs/lights).
+      if (lower.startsWith("roof") || lower.startsWith("above")) this.roofLayers.push(layer);
     }
 
     const tw = map.tileWidth, th = map.tileHeight;
@@ -556,9 +585,10 @@ export class WorldScene extends Phaser.Scene {
     buildAvatarAnims(this, this.avatar);
     this.player = this.physics.add.sprite(x, y, this.avatar.texKey, 1);
     this.player.setDepth(500);
-    // Proportion the avatar to the map's art: on Harvest Moon (20px-tile) maps the
-    // player stands ~1.7 tiles tall regardless of the source sheet's size.
-    const s = this.isHm ? (this.tileW * 1.7) / this.avatar.fh : 1;
+    // Render the avatar at the size it was drawn for: Jack is native in the
+    // Harvest Moon world (as in the source game), our avatar native elsewhere.
+    // The camera zoom — not a shrunk sprite — controls how much world you see.
+    const s = 1;
     this.playerScale = s;
     this.player.setScale(s);
     // Ground shadow so the player reads as grounded like the NPCs/pets.
@@ -577,25 +607,69 @@ export class WorldScene extends Phaser.Scene {
     const cam = this.cameras.main;
     cam.setBounds(0, 0, map.widthInPixels, map.heightInPixels);
     cam.startFollow(this.player, true, 0.12, 0.12);
-    cam.setZoom(this.pickZoom());
     cam.roundPixels = true;
+    this.applyZoom();
     this.scale.on(Phaser.Scale.Events.RESIZE, this.onResize, this);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () =>
       this.scale.off(Phaser.Scale.Events.RESIZE, this.onResize, this),
     );
   }
 
-  private pickZoom(): number {
-    // Fit ~15 tiles across the smaller screen dimension so the world feels roomy
-    // on desktop and readable on a phone. Scales with the map's tile size (HM
-    // maps use 20px tiles, so they need a higher zoom to show the same span).
+  // The base zoom before the user's adjustment. Harvest Moon maps render at their
+  // native scale (as the source game does — Jack full size, world zoomed out);
+  // the WA maps keep their tighter ~15-tile fit.
+  private baseZoom(): number {
     const min = Math.min(this.scale.width, this.scale.height);
-    const lo = this.tileW <= 24 ? 1.8 : 1.4, hi = this.tileW <= 24 ? 4.2 : 3.2;
-    return Phaser.Math.Clamp(Math.round((min / (15 * this.tileW)) * 100) / 100, lo, hi);
+    if (this.isHm) return 1;
+    return Phaser.Math.Clamp(min / (15 * this.tileW), 1.4, 3.2);
+  }
+
+  private applyZoom(): void {
+    const sw = this.scale.width, sh = this.scale.height;
+    const fit = Math.min(sw / (this.mapPixels.w || sw), sh / (this.mapPixels.h || sh));
+    // Don't let the player zoom all the way out to the whole map — keep ~1.3× the
+    // full-map fit as the floor. Cap the zoom-in so pixels never balloon.
+    const minZoom = Math.max(fit * 1.3, 0.3);
+    const maxZoom = this.baseZoom() * 2.4;
+    const z = Phaser.Math.Clamp(this.baseZoom() * this.zoomMult, minZoom, maxZoom);
+    this.cameras.main.setZoom(z);
+  }
+
+  /** Adjust the user zoom multiplier (buttons / wheel / pinch) and re-apply. */
+  private setZoomMult(v: number): void {
+    this.zoomMult = Phaser.Math.Clamp(v, 0.3, 3);
+    saveZoomMult(this.zoomMult);
+    this.applyZoom();
+  }
+
+  // On-screen + / − zoom buttons (works on every device; complements wheel/pinch).
+  private createZoomControls(): void {
+    if (document.getElementById("zoom-ctl")) document.getElementById("zoom-ctl")!.remove();
+    if (!document.getElementById("zoom-ctl-style")) {
+      const st = document.createElement("style");
+      st.id = "zoom-ctl-style";
+      st.textContent = `
+        #zoom-ctl{position:fixed;right:calc(12px + env(safe-area-inset-right,0px));
+          top:50%;transform:translateY(-50%);z-index:19;display:flex;flex-direction:column;gap:8px;}
+        #zoom-ctl button{width:40px;height:40px;border-radius:12px;border:1px solid #2f3b66;
+          background:rgba(18,24,44,.9);color:#e6ecff;font:700 22px system-ui,sans-serif;line-height:1;
+          cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,.4);-webkit-tap-highlight-color:transparent;
+          touch-action:manipulation;}
+        #zoom-ctl button:active{transform:scale(.92);}`;
+      document.head.appendChild(st);
+    }
+    const el = document.createElement("div");
+    el.id = "zoom-ctl";
+    el.innerHTML = `<button type="button" aria-label="Zoom in">＋</button><button type="button" aria-label="Zoom out">−</button>`;
+    const [zin, zout] = Array.from(el.querySelectorAll("button"));
+    zin!.addEventListener("click", (e) => { e.preventDefault(); this.setZoomMult(this.zoomMult * 1.18); });
+    zout!.addEventListener("click", (e) => { e.preventDefault(); this.setZoomMult(this.zoomMult * 0.85); });
+    document.body.appendChild(el);
+    this.zoomEl = el;
   }
 
   private onResize(): void {
-    this.cameras.main.setZoom(this.pickZoom());
+    this.applyZoom();
   }
 
   // ── input ─────────────────────────────────────────────────────────────────
@@ -612,7 +686,15 @@ export class WorldScene extends Phaser.Scene {
       };
       kb.on("keydown-E", () => this.tryInteract());
       kb.on("keydown-SPACE", () => this.tryInteract());
+      // Keyboard zoom: -/_ out, =/+ in.
+      kb.on("keydown-MINUS", () => this.setZoomMult(this.zoomMult * 0.85));
+      kb.on("keydown-PLUS", () => this.setZoomMult(this.zoomMult * 1.15));
     }
+    // Mouse wheel / trackpad two-finger scroll → zoom (Ctrl+wheel is a pinch on
+    // Mac trackpads; both come through here).
+    this.input.on("wheel", (_p: unknown, _o: unknown, _dx: number, dy: number) => {
+      this.setZoomMult(this.zoomMult * (dy > 0 ? 0.9 : 1.1));
+    });
   }
 
   // ── interactables (portals + encounters) ────────────────────────────────────
@@ -832,6 +914,22 @@ export class WorldScene extends Phaser.Scene {
   update(): void {
     if (!this.ready || this.transitioning || !this.player?.body) return;
 
+    // Pinch-to-zoom (touch / trackpad): two active pointers → change zoom by the
+    // change in finger distance, and don't also walk the player.
+    const p1 = this.input.pointer1, p2 = this.input.pointer2;
+    if (p1?.isDown && p2?.isDown) {
+      const dist = Phaser.Math.Distance.Between(p1.x, p1.y, p2.x, p2.y);
+      if (this.pinchDist > 0 && dist > 0) this.setZoomMult(this.zoomMult * (dist / this.pinchDist));
+      this.pinchDist = dist;
+      this.player.setVelocity(0, 0);
+      const a = avatarAnim(this.avatar, this.facing, false);
+      this.player.anims.play(a.key, true);
+      this.playerShadow.setPosition(this.player.x, this.player.y + (this.avatar.fh / 2 - 4) * this.playerScale);
+      this.miniMap?.update();
+      return;
+    }
+    this.pinchDist = 0;
+
     // Freeze the player while a conversation is open.
     if (this.dialog?.isOpen) {
       this.player.setVelocity(0, 0);
@@ -874,6 +972,7 @@ export class WorldScene extends Phaser.Scene {
     this.playerShadow.setPosition(this.player.x, this.player.y + (this.avatar.fh / 2 - 4) * this.playerScale);
 
     this.pet?.update();
+    this.roofFade?.update(this.player.x, this.player.y);
     this.checkExits();
     this.updateProximity();
     this.miniMap?.update();
