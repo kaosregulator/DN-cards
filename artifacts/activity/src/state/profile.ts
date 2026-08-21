@@ -25,3 +25,19 @@ export function setPetId(id: string | null): void {
     else localStorage.removeItem(PET_KEY);
   } catch { /* private mode */ }
 }
+
+// ── Harvest Moon foraging bag (item id → count), persisted locally ──
+const BAG_KEY = "dn.hm.bag";
+
+export function getBag(): Record<string, number> {
+  try { return JSON.parse(localStorage.getItem(BAG_KEY) || "{}") as Record<string, number>; }
+  catch { return {}; }
+}
+
+/** Add one of an item to the bag; returns the new count for that item. */
+export function addForaged(id: string): number {
+  const bag = getBag();
+  bag[id] = (bag[id] ?? 0) + 1;
+  try { localStorage.setItem(BAG_KEY, JSON.stringify(bag)); } catch { /* private mode */ }
+  return bag[id]!;
+}

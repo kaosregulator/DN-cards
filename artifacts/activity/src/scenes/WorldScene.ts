@@ -10,6 +10,7 @@ import { AVATARS, type AvatarDef, avatarById, buildAvatarAnims, avatarAnim } fro
 import { Pet, loadPetTextures } from "../world/pets";
 import { Ambient } from "../world/ambient";
 import { HmNpcs, DialogBox, type HmNpcDef } from "../world/hmNpcs";
+import { HmItems, foragedToast, type HmItemHit } from "../world/hmItems";
 import { getAvatarId, getPetId } from "../state/profile";
 
 // Dog breeds used to populate a map with stray/companion dogs (kept small so the
@@ -126,6 +127,8 @@ export class WorldScene extends Phaser.Scene {
   private npcs: HmNpcs | null = null;
   private dialog: DialogBox | null = null;
   private npcNear: HmNpcDef | null = null;
+  private items: HmItems | null = null;
+  private itemNear: HmItemHit | null = null;
 
   constructor() {
     super("World");
@@ -142,6 +145,8 @@ export class WorldScene extends Phaser.Scene {
     this.npcs = null;
     this.dialog = null;
     this.npcNear = null;
+    this.items = null;
+    this.itemNear = null;
     // In the Harvest Moon world the player is Jack; elsewhere it's the chosen avatar.
     this.avatar = this.isHm ? avatarById("jack") : avatarById(getAvatarId());
     this.petId = getPetId();
@@ -239,6 +244,13 @@ export class WorldScene extends Phaser.Scene {
     if (this.isHm) {
       this.npcs = new HmNpcs(this, this.mapKey, this.tileW);
       this.dialog = new DialogBox(() => { /* closed */ });
+      // Foraging: scatter wild berries/flowers/mushrooms on the outdoor maps + caves.
+      this.items = new HmItems(
+        this, this.mapKey, this.tileW,
+        (tx, ty) => { const t = this.collisionLayer?.getTileAt(tx, ty); return !t || t.index < 0; },
+        map.width, map.height, seed ^ 0x9e3779b9,
+        { tx: Math.round(spawnX / this.tileW), ty: Math.round(spawnY / this.tileW) },
+      );
     }
 
     // DOM HUD: location banner, player chip, mobile dpad + interact button.
@@ -357,6 +369,9 @@ export class WorldScene extends Phaser.Scene {
     }
     if (this.petId) loadPetTextures(this, this.petId);
     for (const s of HmNpcs.spritesForMap(key)) {
+      if (!this.textures.exists(s.key)) this.load.image(s.key, assetUrl(s.url));
+    }
+    for (const s of HmItems.spritesForMap(key)) {
       if (!this.textures.exists(s.key)) this.load.image(s.key, assetUrl(s.url));
     }
     // Background art: one image, or chunks for maps beyond the GPU texture cap.
@@ -715,6 +730,12 @@ export class WorldScene extends Phaser.Scene {
     if (this.dialog?.isOpen) { this.dialog.advance(); return; }
     if (this.activeInteractable) { this.activeInteractable.trigger(); return; }
     if (this.npcNear && this.dialog) { this.dialog.open(this.npcNear.name, this.npcNear.lines); return; }
+    if (this.itemNear && this.items) {
+      const got = this.items.collect(this.itemNear);
+      this.itemNear = null;
+      foragedToast(got.name, got.count);
+      return;
+    }
     if (this.petNear && this.pet) this.pet.react();
   }
 
@@ -873,13 +894,18 @@ export class WorldScene extends Phaser.Scene {
     if (!nearest && this.npcs) {
       this.npcNear = this.npcs.nearest(this.player.x, this.player.y, this.tileW * 1.8);
     }
+    this.itemNear = null;
+    if (!nearest && !this.npcNear && this.items) {
+      this.itemNear = this.items.nearest(this.player.x, this.player.y, this.tileW * 1.3);
+    }
     this.petNear = false;
-    if (!nearest && !this.npcNear && this.pet) {
+    if (!nearest && !this.npcNear && !this.itemNear && this.pet) {
       const p = this.pet.sprite;
       this.petNear = Math.hypot(p.x - this.player.x, p.y - this.player.y) < 46;
     }
     const prompt = nearest ? nearest.prompt
       : this.npcNear ? `Talk to ${this.npcNear.name}`
+      : this.itemNear ? `Pick ${this.itemNear.def.name}`
       : this.petNear ? `Play with ${this.pet!.name}` : null;
     if (prompt !== this.lastPrompt) {
       this.lastPrompt = prompt;
