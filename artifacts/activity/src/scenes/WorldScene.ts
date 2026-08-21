@@ -9,6 +9,8 @@ import {
 import { AVATARS, type AvatarDef, avatarById, buildAvatarAnims, avatarAnim } from "../world/avatars";
 import { Pet, loadPetTextures } from "../world/pets";
 import { Ambient } from "../world/ambient";
+import { HmNpcs, DialogBox, type HmNpcDef } from "../world/hmNpcs";
+import { HmItems, foragedToast, type HmItemHit } from "../world/hmItems";
 import { getAvatarId, getPetId } from "../state/profile";
 
 // Dog breeds used to populate a map with stray/companion dogs (kept small so the
@@ -115,14 +117,38 @@ export class WorldScene extends Phaser.Scene {
   // Touch dpad direction (‑1..1) fed by the on-screen control.
   private touchDir = { x: 0, y: 0 };
 
+  // ── Harvest Moon (image-backed) map support ──
+  private tileW = 32;
+  private spawnOverride: { tx: number; ty: number } | null = null;
+  private bgObjects: Phaser.GameObjects.Image[] = [];
+  private exitArmed = false; // suppress exit re-trigger until the player steps clear
+  private isHm = false;
+  private playerScale = 1;
+  private npcs: HmNpcs | null = null;
+  private dialog: DialogBox | null = null;
+  private npcNear: HmNpcDef | null = null;
+  private items: HmItems | null = null;
+  private itemNear: HmItemHit | null = null;
+
   constructor() {
     super("World");
   }
 
-  init(data: { mapKey?: MapKey }): void {
+  init(data: { mapKey?: MapKey; spawnAt?: { tx: number; ty: number } }): void {
     this.mapKey = data?.mapKey ?? START_MAP;
     this.def = MAPS[this.mapKey];
-    this.avatar = avatarById(getAvatarId());
+    this.spawnOverride = data?.spawnAt ?? null;
+    this.tileW = this.def.tile ?? 32;
+    this.isHm = !!(this.def.bgImage || this.def.bgChunks);
+    this.bgObjects = [];
+    this.exitArmed = false;
+    this.npcs = null;
+    this.dialog = null;
+    this.npcNear = null;
+    this.items = null;
+    this.itemNear = null;
+    // In the Harvest Moon world the player is Jack; elsewhere it's the chosen avatar.
+    this.avatar = this.isHm ? avatarById("jack") : avatarById(getAvatarId());
     this.petId = getPetId();
     this.pet = null;
     this.petNear = false;
@@ -177,6 +203,8 @@ export class WorldScene extends Phaser.Scene {
     // the player to the (tiny) default canvas-sized bounds.
     this.physics.world.setBounds(0, 0, map.widthInPixels, map.heightInPixels);
     this.mapPixels = { w: map.widthInPixels, h: map.heightInPixels };
+    this.tileW = map.tileWidth;
+    this.drawHmBackground(map);
 
     const { spawnX, spawnY } = this.buildMap(map);
     this.createPlayer(spawnX, spawnY);
@@ -186,6 +214,8 @@ export class WorldScene extends Phaser.Scene {
     if (this.petId && this.textures.exists(`pet-${this.petId}-idle`)) {
       this.pet = new Pet(this, this.petId, spawnX - 26, spawnY + 10,
         () => ({ x: this.player.x, y: this.player.y }));
+      // Proportion the dog to the map's art on Harvest Moon (20px-tile) maps.
+      if (this.isHm) this.pet.sprite.setScale(0.4);
     }
 
     this.setupCamera(map);
@@ -196,7 +226,7 @@ export class WorldScene extends Phaser.Scene {
     // dogs — placed procedurally in sensible spots, kept clear of the beacons.
     const avoid = [{ x: spawnX, y: spawnY }, ...this.interactables.map((it) => ({ x: it.x, y: it.y }))];
     const seed = Array.from(this.mapKey).reduce((h, c) => ((h * 31) + c.charCodeAt(0)) | 0, 7);
-    this.ambient = new Ambient({
+    if (this.def.ambient !== false) this.ambient = new Ambient({
       scene: this,
       tw: map.tileWidth, th: map.tileHeight, mapW: map.width, mapH: map.height,
       isWalkable: (tx, ty) => {
@@ -209,6 +239,19 @@ export class WorldScene extends Phaser.Scene {
       breeds: [...AMBIENT_BREEDS, ...(this.petId ? [this.petId] : [])],
       seed,
     });
+
+    // Harvest Moon townsfolk + a dialog box for talking to them.
+    if (this.isHm) {
+      this.npcs = new HmNpcs(this, this.mapKey, this.tileW);
+      this.dialog = new DialogBox(() => { /* closed */ });
+      // Foraging: scatter wild berries/flowers/mushrooms on the outdoor maps + caves.
+      this.items = new HmItems(
+        this, this.mapKey, this.tileW,
+        (tx, ty) => { const t = this.collisionLayer?.getTileAt(tx, ty); return !t || t.index < 0; },
+        map.width, map.height, seed ^ 0x9e3779b9,
+        { tx: Math.round(spawnX / this.tileW), ty: Math.round(spawnY / this.tileW) },
+      );
+    }
 
     // DOM HUD: location banner, player chip, mobile dpad + interact button.
     const snap = getContext(this).playerState.get();
@@ -234,6 +277,7 @@ export class WorldScene extends Phaser.Scene {
       getPlayer: () => ({ x: this.player.x, y: this.player.y, facing: this.facing }),
       getPois: () => this.poisForMap(),
       classify: (tx, ty) => this.classifyTile(tx, ty),
+      mapImageUrl: assetUrl(this.def.mapImage ?? `world/maps/minimaps/${this.mapKey}.jpg`),
     });
     this.ready = true;
 
@@ -246,6 +290,9 @@ export class WorldScene extends Phaser.Scene {
       this.pet = null;
       this.ambient?.destroy();
       this.ambient = null;
+      this.dialog?.destroy();
+      this.dialog = null;
+      this.npcs = null;
     });
   }
 
@@ -281,8 +328,76 @@ export class WorldScene extends Phaser.Scene {
     return 0;
   }
 
-  // ── map loading (two-stage: tmj + manifest, then tileset images) ────────────
+  // Draw a Harvest Moon map's background art (single image, or chunks placed at
+  // their offsets) beneath everything else.
+  private drawHmBackground(map: Phaser.Tilemaps.Tilemap): void {
+    const hmKey = this.mapKey.replace(/^hm-/, "");
+    const add = (texKey: string, x: number, y: number): void => {
+      if (!this.textures.exists(texKey)) return;
+      const img = this.add.image(x, y, texKey).setOrigin(0, 0).setDepth(-100);
+      this.bgObjects.push(img);
+    };
+    if (this.def.bgImage) add(`hmbg-${hmKey}`, 0, 0);
+    for (const c of this.def.bgChunks ?? []) add(`hmbg-${hmKey}-${c.x}-${c.y}`, c.x, c.y);
+    // Detail overlay (trees/rocks/springs) sits just above the base ground.
+    if (this.def.bgOverlay && this.textures.exists(`hmov-${hmKey}`)) {
+      this.bgObjects.push(this.add.image(0, 0, `hmov-${hmKey}`).setOrigin(0, 0).setDepth(-50));
+    }
+    void map;
+  }
+
+  // ── map loading ─────────────────────────────────────────────────────────────
   private async loadMap(key: MapKey): Promise<Phaser.Tilemaps.Tilemap> {
+    if (this.def.bgImage || this.def.bgChunks) return this.loadHmMap(key);
+    return this.loadTiledMap(key);
+  }
+
+  // Harvest Moon maps: a full background image (or chunks) + a light collision-only
+  // Tiled map. The player + collision run on the tmj; the art is drawn as images.
+  private async loadHmMap(key: MapKey): Promise<Phaser.Tilemaps.Tilemap> {
+    const hmKey = key.replace(/^hm-/, "");
+    if (!this.textures.exists("hm-collide")) {
+      this.load.image("hm-collide", assetUrl("world/hm/collide.png"));
+    }
+    if (!this.cache.tilemap.has(key)) {
+      this.load.tilemapTiledJSON(key, assetUrl(`world/hm/maps/${hmKey}.tmj`));
+    }
+    if (!this.textures.exists(this.avatar.texKey)) {
+      this.load.spritesheet(this.avatar.texKey, assetUrl(this.avatar.url), {
+        frameWidth: this.avatar.fw, frameHeight: this.avatar.fh,
+      });
+    }
+    if (this.petId) loadPetTextures(this, this.petId);
+    for (const s of HmNpcs.spritesForMap(key)) {
+      if (!this.textures.exists(s.key)) this.load.image(s.key, assetUrl(s.url));
+    }
+    for (const s of HmItems.spritesForMap(key)) {
+      if (!this.textures.exists(s.key)) this.load.image(s.key, assetUrl(s.url));
+    }
+    // Background art: one image, or chunks for maps beyond the GPU texture cap.
+    const bgKeys: string[] = [];
+    if (this.def.bgImage) {
+      const k = `hmbg-${hmKey}`; bgKeys.push(k);
+      if (!this.textures.exists(k)) this.load.image(k, assetUrl(this.def.bgImage));
+    }
+    for (const c of this.def.bgChunks ?? []) {
+      const k = `hmbg-${hmKey}-${c.x}-${c.y}`;
+      if (!this.textures.exists(k)) this.load.image(k, assetUrl(c.url));
+    }
+    if (this.def.bgOverlay) {
+      const k = `hmov-${hmKey}`;
+      if (!this.textures.exists(k)) this.load.image(k, assetUrl(this.def.bgOverlay));
+    }
+    await this.runLoader();
+
+    const map = this.make.tilemap({ key });
+    map.addTilesetImage("collide", "hm-collide", this.def.tile ?? 20, this.def.tile ?? 20, 0, 0, 1);
+    this.gidCats = [];
+    return map;
+  }
+
+  // ── WorkAdventure maps (two-stage: tmj + manifest, then tileset images) ──────
+  private async loadTiledMap(key: MapKey): Promise<Phaser.Tilemaps.Tilemap> {
     // Stage 1: the map JSON, the tileset manifest, and the character sheet.
     if (!this.cache.json.has("world-manifest")) {
       this.load.json("world-manifest", assetUrl("world/maps/_manifest.json"));
@@ -372,8 +487,18 @@ export class WorldScene extends Phaser.Scene {
       this.visualLayers.push(layer);
     }
 
-    const cx = (map.widthInPixels || map.width * map.tileWidth) / 2;
-    const cy = (map.heightInPixels || map.height * map.tileHeight) / 2;
+    const tw = map.tileWidth, th = map.tileHeight;
+    const cx = (map.widthInPixels || map.width * tw) / 2;
+    const cy = (map.heightInPixels || map.height * th) / 2;
+
+    // Arrival spawn (coming through a door/exit) wins — nudged to the nearest
+    // walkable tile so we never drop the player inside a wall.
+    const override = this.spawnOverride ?? this.def.spawnTile ?? null;
+    if (override) {
+      const px = override.tx * tw + tw / 2, py = override.ty * th + th / 2;
+      const open = this.nearestWalkable(map, px, py) ?? { x: px, y: py };
+      return { spawnX: open.x, spawnY: open.y };
+    }
 
     // The big hub map's `start` marker sits inside a cramped office; spawn in the
     // open plaza instead (nearest walkable tile to the map centre).
@@ -431,8 +556,13 @@ export class WorldScene extends Phaser.Scene {
     buildAvatarAnims(this, this.avatar);
     this.player = this.physics.add.sprite(x, y, this.avatar.texKey, 1);
     this.player.setDepth(500);
+    // Proportion the avatar to the map's art: on Harvest Moon (20px-tile) maps the
+    // player stands ~1.7 tiles tall regardless of the source sheet's size.
+    const s = this.isHm ? (this.tileW * 1.7) / this.avatar.fh : 1;
+    this.playerScale = s;
+    this.player.setScale(s);
     // Ground shadow so the player reads as grounded like the NPCs/pets.
-    this.playerShadow = this.add.ellipse(x, y + this.avatar.fh / 2 - 4, 20, 8, 0x000000, 0.28).setDepth(499);
+    this.playerShadow = this.add.ellipse(x, y + (this.avatar.fh / 2 - 4) * s, 20 * s, 8 * s, 0x000000, 0.28).setDepth(499);
     // A slim body around the feet so the avatar tucks behind furniture nicely.
     const body = this.player.body as Phaser.Physics.Arcade.Body;
     body.setSize(18, 14).setOffset((this.avatar.fw - 18) / 2, this.avatar.fh - 16);
@@ -457,9 +587,11 @@ export class WorldScene extends Phaser.Scene {
 
   private pickZoom(): number {
     // Fit ~15 tiles across the smaller screen dimension so the world feels roomy
-    // on desktop and readable on a phone.
+    // on desktop and readable on a phone. Scales with the map's tile size (HM
+    // maps use 20px tiles, so they need a higher zoom to show the same span).
     const min = Math.min(this.scale.width, this.scale.height);
-    return Phaser.Math.Clamp(Math.round((min / (15 * 32)) * 100) / 100, 1.4, 3.2);
+    const lo = this.tileW <= 24 ? 1.8 : 1.4, hi = this.tileW <= 24 ? 4.2 : 3.2;
+    return Phaser.Math.Clamp(Math.round((min / (15 * this.tileW)) * 100) / 100, lo, hi);
   }
 
   private onResize(): void {
@@ -485,23 +617,33 @@ export class WorldScene extends Phaser.Scene {
 
   // ── interactables (portals + encounters) ────────────────────────────────────
   private placeInteractables(map: Phaser.Tilemaps.Tilemap, spawnX: number, spawnY: number): void {
-    const portals = this.def.portals;
     const encounters = this.def.encounters ?? [];
-    // One spread of walkable spots around spawn; portals take the inner slots,
-    // encounters the outer ones so enemies ring the plaza a little further out.
-    const spots = this.walkableRing(map, spawnX, spawnY, portals.length + encounters.length);
-    portals.forEach((def, i) => {
-      const p = spots[i] ?? { x: spawnX + (i + 1) * 48, y: spawnY };
+    // Portals with a fixed tile (e.g. the cave mouth) are placed exactly; the
+    // rest share a spread of walkable spots around spawn, with encounters ringing
+    // a little further out.
+    const fixedPortals = this.def.portals.filter((p) => p.at);
+    const ringPortals = this.def.portals.filter((p) => !p.at);
+    const spots = this.walkableRing(map, spawnX, spawnY, ringPortals.length + encounters.length);
+    const tw = map.tileWidth, th = map.tileHeight;
+    const addPortal = (def: import("../world/worldMaps").PortalDef, x: number, y: number): void => {
+      if (def.art === "cave") this.drawCaveMouth(x, y);
       const verb = def.action.kind === "map" ? "Enter" : def.action.kind === "shop" ? "Open" : "Go to";
       this.interactables.push(
         this.makeInteractable(
-          def.id, p.x, p.y, def.glyph, def.label, def.color, `${verb} ${def.label}`,
+          def.id, x, y, def.glyph, def.label, def.color, `${verb} ${def.label}`,
           "portal", () => this.runAction(def.action),
         ),
       );
+    };
+    ringPortals.forEach((def, i) => {
+      const p = spots[i] ?? { x: spawnX + (i + 1) * 48, y: spawnY };
+      addPortal(def, p.x, p.y);
     });
+    for (const def of fixedPortals) {
+      addPortal(def, def.at!.tx * tw + tw / 2, def.at!.ty * th + th / 2);
+    }
     encounters.forEach((def, i) => {
-      const p = spots[portals.length + i];
+      const p = spots[ringPortals.length + i];
       if (!p) return;
       const it = this.makeInteractable(
         def.id, p.x, p.y, def.glyph, def.name, def.color, `Duel ${def.name}`,
@@ -566,17 +708,41 @@ export class WorldScene extends Phaser.Scene {
     };
   }
 
+  // A little cave mouth: a rocky mound with a dark opening, drawn under the beacon
+  // so the entrance reads as a real doorway into the hillside.
+  private drawCaveMouth(x: number, y: number): void {
+    const g = this.add.graphics().setDepth(420);
+    // rocky mound
+    g.fillStyle(0x3b3a44, 1); g.fillEllipse(x, y + 4, 60, 42);
+    g.fillStyle(0x4a4956, 1); g.fillEllipse(x, y - 2, 54, 34);
+    // dark opening
+    g.fillStyle(0x0a0a10, 1); g.fillEllipse(x, y + 2, 30, 30);
+    g.fillStyle(0x05050a, 1); g.fillEllipse(x, y + 6, 22, 20);
+    // a couple of boulders at the base
+    g.fillStyle(0x33323c, 1);
+    g.fillCircle(x - 26, y + 12, 7); g.fillCircle(x + 25, y + 13, 8); g.fillCircle(x + 14, y + 18, 5);
+  }
+
   // ── interaction / transitions ───────────────────────────────────────────────
   private tryInteract(): void {
     if (this.transitioning) return;
+    // An open conversation advances / closes first.
+    if (this.dialog?.isOpen) { this.dialog.advance(); return; }
     if (this.activeInteractable) { this.activeInteractable.trigger(); return; }
+    if (this.npcNear && this.dialog) { this.dialog.open(this.npcNear.name, this.npcNear.lines); return; }
+    if (this.itemNear && this.items) {
+      const got = this.items.collect(this.itemNear);
+      this.itemNear = null;
+      foragedToast(got.name, got.count);
+      return;
+    }
     if (this.petNear && this.pet) this.pet.react();
   }
 
   // Dispatch a portal action to the right real scene (the PR #106 battle side).
   private runAction(action: import("../world/worldMaps").WorldAction): void {
     switch (action.kind) {
-      case "map": this.goToMap(action.to); break;
+      case "map": this.goToMap(action.to, action.spawnAt); break;
       case "duel": void this.startDuel(); break;
       case "shop": this.fadeThen(() => this.scene.start("Shop", { returnTo: "World" })); break;
       case "pvp": this.fadeThen(() => this.scene.start("Matchmaking")); break;
@@ -613,17 +779,69 @@ export class WorldScene extends Phaser.Scene {
     this.fadeThen(() => this.scene.start("Menu"));
   }
 
-  private goToMap(to: MapKey): void {
+  private goToMap(to: MapKey, spawnAt?: { tx: number; ty: number }): void {
     this.transitioning = true;
     this.cameras.main.fadeOut(220, 6, 9, 16);
     this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {
-      this.scene.restart({ mapKey: to });
+      this.scene.restart({ mapKey: to, spawnAt });
     });
+  }
+
+  // Harvest Moon doors/edges: walking onto an exit region moves to the linked map.
+  // The exit is "armed" only after the player has stepped clear of every exit, so
+  // arriving on top of a door doesn't immediately bounce you back.
+  private checkExits(): void {
+    const exits = this.def.hmExits;
+    if (!exits || !exits.length) return;
+    const tw = this.tileW;
+    const ptx = this.player.x / tw, pty = this.player.y / tw;
+    let onAny = false;
+    for (const e of exits) {
+      const pad = 0.5;
+      if (ptx >= e.tx - pad && ptx <= e.tx + e.w + pad && pty >= e.ty - pad && pty <= e.ty + e.h + pad) {
+        onAny = true;
+        if (this.exitArmed) { this.takeExit(e); return; }
+      }
+    }
+    if (!onAny) this.exitArmed = true;
+  }
+
+  private takeExit(e: import("../world/worldMaps").MapExit): void {
+    // Arrival tile: an explicit spawnAt, else the target's reciprocal exit back to
+    // this map, nudged a couple tiles inward so we don't land on the doorway.
+    let spawn = e.spawnAt;
+    if (!spawn) {
+      const back = MAPS[e.to]?.hmExits?.find((x) => x.to === this.mapKey);
+      if (back) spawn = this.nudgeInward(e.to, back);
+    }
+    this.goToMap(e.to, spawn);
+  }
+
+  // Move a spawn tile toward the target map's interior so the player steps off the
+  // edge exit rather than straight back onto it.
+  private nudgeInward(mapKey: MapKey, exit: { tx: number; ty: number; w: number; h: number }): { tx: number; ty: number } {
+    const def = MAPS[mapKey];
+    const w = def?.gridW ?? 9999, h = def?.gridH ?? 9999;
+    let tx = exit.tx + Math.floor(exit.w / 2), ty = exit.ty + Math.floor(exit.h / 2);
+    if (exit.tx <= 1) tx += 2; else if (exit.tx + exit.w >= w - 2) tx -= 2;
+    if (exit.ty <= 1) ty += 2; else if (exit.ty + exit.h >= h - 2) ty -= 2;
+    return { tx, ty };
   }
 
   // ── per-frame ─────────────────────────────────────────────────────────────
   update(): void {
     if (!this.ready || this.transitioning || !this.player?.body) return;
+
+    // Freeze the player while a conversation is open.
+    if (this.dialog?.isOpen) {
+      this.player.setVelocity(0, 0);
+      const a = avatarAnim(this.avatar, this.facing, false);
+      this.player.anims.play(a.key, true);
+      this.player.setFlipX(a.flipX);
+      this.pet?.update();
+      this.miniMap?.update();
+      return;
+    }
 
     let vx = 0, vy = 0;
     if (this.cursors) {
@@ -653,9 +871,10 @@ export class WorldScene extends Phaser.Scene {
     this.player.anims.play(a.key, true);
     this.player.setFlipX(a.flipX);
     this.player.setDepth(500); // stays between below-layers and Above
-    this.playerShadow.setPosition(this.player.x, this.player.y + this.avatar.fh / 2 - 4);
+    this.playerShadow.setPosition(this.player.x, this.player.y + (this.avatar.fh / 2 - 4) * this.playerScale);
 
     this.pet?.update();
+    this.checkExits();
     this.updateProximity();
     this.miniMap?.update();
   }
@@ -669,14 +888,25 @@ export class WorldScene extends Phaser.Scene {
     }
     this.activeInteractable = nearest;
 
-    // The pet is a fallback prompt: only offered when no portal/encounter is in
-    // range, so playing with the dog never steals a duel or shop interaction.
+    // Fallback prompts when no portal/encounter is in range: townsfolk first, then
+    // the pet — so talking or playing never steals a duel/shop interaction.
+    this.npcNear = null;
+    if (!nearest && this.npcs) {
+      this.npcNear = this.npcs.nearest(this.player.x, this.player.y, this.tileW * 1.8);
+    }
+    this.itemNear = null;
+    if (!nearest && !this.npcNear && this.items) {
+      this.itemNear = this.items.nearest(this.player.x, this.player.y, this.tileW * 1.3);
+    }
     this.petNear = false;
-    if (!nearest && this.pet) {
+    if (!nearest && !this.npcNear && !this.itemNear && this.pet) {
       const p = this.pet.sprite;
       this.petNear = Math.hypot(p.x - this.player.x, p.y - this.player.y) < 46;
     }
-    const prompt = nearest ? nearest.prompt : this.petNear ? `Play with ${this.pet!.name}` : null;
+    const prompt = nearest ? nearest.prompt
+      : this.npcNear ? `Talk to ${this.npcNear.name}`
+      : this.itemNear ? `Pick ${this.itemNear.def.name}`
+      : this.petNear ? `Play with ${this.pet!.name}` : null;
     if (prompt !== this.lastPrompt) {
       this.lastPrompt = prompt;
       this.hud?.setPrompt(prompt);

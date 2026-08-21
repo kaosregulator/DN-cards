@@ -25,10 +25,19 @@ export interface AvatarDef {
   url: string;
   fw: number;
   fh: number;
-  layout: "duelist" | "npc3";
+  layout: "duelist" | "npc3" | "jack";
   /** Which character within an npc3 sheet (0–3). Ignored for "duelist". */
   charIndex: number;
 }
+
+// Jack — the Harvest Moon farmer, used as the player only inside the HM world.
+// Sheet is 2×4 frames of 80×120: down [0,1], up [2,3], left [4,5], right [6,7].
+// Kept out of the character picker (avatarById resolves it by id).
+export const JACK: AvatarDef = {
+  id: "jack", name: "Jack", gender: "male",
+  texKey: "jack", url: "world/hm/chars/jack-walking.png",
+  fw: 80, fh: 120, layout: "jack", charIndex: 0,
+};
 
 const NPC_FILES: { file: string; gender: "male" | "female" }[] = [
   { file: "Female1", gender: "female" },
@@ -69,6 +78,7 @@ function buildList(): AvatarDef[] {
 export const AVATARS: AvatarDef[] = buildList();
 
 export function avatarById(id: string): AvatarDef {
+  if (id === "jack") return JACK;
   return AVATARS.find((a) => a.id === id) ?? AVATARS[0]!;
 }
 
@@ -101,7 +111,14 @@ export function buildAvatarAnims(scene: Phaser.Scene, def: AvatarDef): void {
       repeat,
     });
   };
-  if (def.layout === "duelist") {
+  if (def.layout === "jack") {
+    const dirs = { down: [0, 1], up: [2, 3], left: [4, 5], right: [6, 7] } as const;
+    for (const dir of ["down", "up", "left", "right"] as const) {
+      const f = dirs[dir];
+      mk(`walk-${dir}`, [...f], -1, 6);
+      mk(`idle-${dir}`, [f[0]], -1, 1);
+    }
+  } else if (def.layout === "duelist") {
     for (const dir of ["down", "left", "right", "up"] as const) {
       const f = duelistFrames(dir);
       mk(`walk-${dir}`, f.walk, -1, 8);
@@ -119,7 +136,8 @@ export function buildAvatarAnims(scene: Phaser.Scene, def: AvatarDef): void {
 /** The anim key + horizontal flip to show for a facing / motion state. */
 export function avatarAnim(def: AvatarDef, facing: Dir, moving: boolean): { key: string; flipX: boolean } {
   const verb = moving ? "walk" : "idle";
-  if (def.layout === "duelist") {
+  if (def.layout === "duelist" || def.layout === "jack") {
+    // jack has distinct left/right frames — no mirroring needed.
     return { key: `${def.id}__${verb}-${facing}`, flipX: false };
   }
   // npc3: left/right share the "side" row; mirror for right.
