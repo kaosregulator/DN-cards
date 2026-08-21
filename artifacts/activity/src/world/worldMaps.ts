@@ -11,15 +11,30 @@
 // (Named worldMaps to avoid clashing with world/maps.ts, the duel-side map data.)
 // ─────────────────────────────────────────────────────────────────────────────
 
-export type MapKey = "world" | "village" | "card-shop" | "duel-hall" | "cave";
+import { HM_MAPS } from "./hmMaps";
+
+// Core map keys are the WA maps + the cave; Harvest Moon maps add many more keys
+// at runtime (hm-town, hm-crossroads, …), so the key type is a plain string.
+export type MapKey = string;
 
 /** What a portal / encounter does when the player interacts with it. */
 export type WorldAction =
-  | { kind: "map"; to: MapKey } // walk into another world map
+  | { kind: "map"; to: MapKey; spawnAt?: { tx: number; ty: number } } // walk into another map
   | { kind: "duel" } // start a real AI duel (DuelScene)
   | { kind: "shop" } // open the Card Shop counter (ShopScene)
   | { kind: "pvp" } // find an online opponent (MatchmakingScene)
   | { kind: "menu" }; // back to the title menu
+
+/** A reciprocal door/edge exit that auto-transitions when walked onto (HM maps). */
+export interface MapExit {
+  to: MapKey;
+  tx: number;
+  ty: number;
+  w: number;
+  h: number;
+  /** Explicit arrival tile in the target (else the reciprocal exit is used). */
+  spawnAt?: { tx: number; ty: number };
+}
 
 export interface PortalDef {
   id: string;
@@ -54,6 +69,24 @@ export interface MapDef {
   encounters?: EncounterDef[];
   /** Ambient NPCs/dogs are scattered by default; set false for tight interiors. */
   ambient?: boolean;
+  // ── Harvest Moon (image-backed) maps ──
+  /** Tile size in px (default 32; HM maps are 20). */
+  tile?: number;
+  /** Map grid size in tiles (HM maps — used to nudge arrival spawns inward). */
+  gridW?: number;
+  gridH?: number;
+  /** Full background image drawn in-scene (small HM maps). */
+  bgImage?: string;
+  /** Background sliced into chunks for maps larger than the GPU texture cap. */
+  bgChunks?: { url: string; x: number; y: number; w: number; h: number }[];
+  /** Scale the player/pet to match the map's native art (HM ≈ 0.6). */
+  avatarScale?: number;
+  /** Reciprocal door/edge exits — auto-transition when walked onto. */
+  hmExits?: MapExit[];
+  /** Explicit default spawn tile (used by HM maps / direct loads). */
+  spawnTile?: { tx: number; ty: number };
+  /** Map picture for the minimap (HM maps reuse their background). */
+  mapImage?: string;
 }
 
 export const MAPS: Record<MapKey, MapDef> = {
@@ -127,14 +160,49 @@ export const MAPS: Record<MapKey, MapDef> = {
   cave: {
     key: "cave",
     name: "Mystery Cave",
-    subtitle: "A new world · under construction",
+    subtitle: "A passage between worlds",
     spawn: "start",
     ambient: false,
     portals: [
       { id: "tovillage", label: "Leave Cave", glyph: "🚪", color: 0x9aa4b2, action: { kind: "map", to: "village" } },
+      // The far side of the cave opens onto the Harvest Moon world — you step out
+      // of the mountain cave up in the Mountains.
+      { id: "toharvest", label: "Deeper Passage →", glyph: "🌄", color: 0x7bb26a,
+        at: { tx: 15, ty: 3 }, art: "cave",
+        action: { kind: "map", to: "hm-town", spawnAt: { tx: 96, ty: 124 } } },
     ],
   },
 };
+
+// ── Harvest Moon world (mimikim/harvest-moon-phaser3-game), image-backed maps ──
+// Generated registry → MapDef. Exits become reciprocal auto-transitions. The
+// mountain cave (originally "cave2", which has no room) is remapped to loop back
+// to our Mystery Cave, so the cave you emerged from also takes you home.
+const HM_KEYS = new Set(HM_MAPS.map((m) => `hm-${m.key}`));
+for (const m of HM_MAPS) {
+  const exits: MapExit[] = m.exits
+    .map((e) => e.to === "cave2"
+      ? { to: "cave", tx: e.tx, ty: e.ty, w: e.w, h: e.h, spawnAt: { tx: 15, ty: 4 } }
+      : { to: `hm-${e.to}`, tx: e.tx, ty: e.ty, w: e.w, h: e.h })
+    .filter((e) => e.to === "cave" || HM_KEYS.has(e.to));
+  MAPS[`hm-${m.key}`] = {
+    key: `hm-${m.key}`,
+    name: m.name,
+    subtitle: m.subtitle,
+    spawn: "start",
+    ambient: false,
+    portals: [],
+    tile: m.tile,
+    gridW: m.w,
+    gridH: m.h,
+    bgImage: m.bg ?? undefined,
+    bgChunks: m.chunks ?? undefined,
+    mapImage: m.mapImage,
+    avatarScale: 0.85,
+    spawnTile: m.spawn,
+    hmExits: exits,
+  };
+}
 
 export const START_MAP: MapKey = "world";
 

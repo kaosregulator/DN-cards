@@ -115,13 +115,23 @@ export class WorldScene extends Phaser.Scene {
   // Touch dpad direction (‑1..1) fed by the on-screen control.
   private touchDir = { x: 0, y: 0 };
 
+  // ── Harvest Moon (image-backed) map support ──
+  private tileW = 32;
+  private spawnOverride: { tx: number; ty: number } | null = null;
+  private bgObjects: Phaser.GameObjects.Image[] = [];
+  private exitArmed = false; // suppress exit re-trigger until the player steps clear
+
   constructor() {
     super("World");
   }
 
-  init(data: { mapKey?: MapKey }): void {
+  init(data: { mapKey?: MapKey; spawnAt?: { tx: number; ty: number } }): void {
     this.mapKey = data?.mapKey ?? START_MAP;
     this.def = MAPS[this.mapKey];
+    this.spawnOverride = data?.spawnAt ?? null;
+    this.tileW = this.def.tile ?? 32;
+    this.bgObjects = [];
+    this.exitArmed = false;
     this.avatar = avatarById(getAvatarId());
     this.petId = getPetId();
     this.pet = null;
@@ -177,6 +187,8 @@ export class WorldScene extends Phaser.Scene {
     // the player to the (tiny) default canvas-sized bounds.
     this.physics.world.setBounds(0, 0, map.widthInPixels, map.heightInPixels);
     this.mapPixels = { w: map.widthInPixels, h: map.heightInPixels };
+    this.tileW = map.tileWidth;
+    this.drawHmBackground(map);
 
     const { spawnX, spawnY } = this.buildMap(map);
     this.createPlayer(spawnX, spawnY);
@@ -186,6 +198,8 @@ export class WorldScene extends Phaser.Scene {
     if (this.petId && this.textures.exists(`pet-${this.petId}-idle`)) {
       this.pet = new Pet(this, this.petId, spawnX - 26, spawnY + 10,
         () => ({ x: this.player.x, y: this.player.y }));
+      // Proportion the dog to the map's art on Harvest Moon (20px-tile) maps.
+      if (this.def.avatarScale) this.pet.sprite.setScale(0.6 * this.def.avatarScale);
     }
 
     this.setupCamera(map);
@@ -234,7 +248,7 @@ export class WorldScene extends Phaser.Scene {
       getPlayer: () => ({ x: this.player.x, y: this.player.y, facing: this.facing }),
       getPois: () => this.poisForMap(),
       classify: (tx, ty) => this.classifyTile(tx, ty),
-      mapImageUrl: assetUrl(`world/maps/minimaps/${this.mapKey}.jpg`),
+      mapImageUrl: assetUrl(this.def.mapImage ?? `world/maps/minimaps/${this.mapKey}.jpg`),
     });
     this.ready = true;
 
@@ -282,8 +296,62 @@ export class WorldScene extends Phaser.Scene {
     return 0;
   }
 
-  // ── map loading (two-stage: tmj + manifest, then tileset images) ────────────
+  // Draw a Harvest Moon map's background art (single image, or chunks placed at
+  // their offsets) beneath everything else.
+  private drawHmBackground(map: Phaser.Tilemaps.Tilemap): void {
+    const hmKey = this.mapKey.replace(/^hm-/, "");
+    const add = (texKey: string, x: number, y: number): void => {
+      if (!this.textures.exists(texKey)) return;
+      const img = this.add.image(x, y, texKey).setOrigin(0, 0).setDepth(-100);
+      this.bgObjects.push(img);
+    };
+    if (this.def.bgImage) add(`hmbg-${hmKey}`, 0, 0);
+    for (const c of this.def.bgChunks ?? []) add(`hmbg-${hmKey}-${c.x}-${c.y}`, c.x, c.y);
+    void map;
+  }
+
+  // ── map loading ─────────────────────────────────────────────────────────────
   private async loadMap(key: MapKey): Promise<Phaser.Tilemaps.Tilemap> {
+    if (this.def.bgImage || this.def.bgChunks) return this.loadHmMap(key);
+    return this.loadTiledMap(key);
+  }
+
+  // Harvest Moon maps: a full background image (or chunks) + a light collision-only
+  // Tiled map. The player + collision run on the tmj; the art is drawn as images.
+  private async loadHmMap(key: MapKey): Promise<Phaser.Tilemaps.Tilemap> {
+    const hmKey = key.replace(/^hm-/, "");
+    if (!this.textures.exists("hm-collide")) {
+      this.load.image("hm-collide", assetUrl("world/hm/collide.png"));
+    }
+    if (!this.cache.tilemap.has(key)) {
+      this.load.tilemapTiledJSON(key, assetUrl(`world/hm/maps/${hmKey}.tmj`));
+    }
+    if (!this.textures.exists(this.avatar.texKey)) {
+      this.load.spritesheet(this.avatar.texKey, assetUrl(this.avatar.url), {
+        frameWidth: this.avatar.fw, frameHeight: this.avatar.fh,
+      });
+    }
+    if (this.petId) loadPetTextures(this, this.petId);
+    // Background art: one image, or chunks for maps beyond the GPU texture cap.
+    const bgKeys: string[] = [];
+    if (this.def.bgImage) {
+      const k = `hmbg-${hmKey}`; bgKeys.push(k);
+      if (!this.textures.exists(k)) this.load.image(k, assetUrl(this.def.bgImage));
+    }
+    for (const c of this.def.bgChunks ?? []) {
+      const k = `hmbg-${hmKey}-${c.x}-${c.y}`;
+      if (!this.textures.exists(k)) this.load.image(k, assetUrl(c.url));
+    }
+    await this.runLoader();
+
+    const map = this.make.tilemap({ key });
+    map.addTilesetImage("collide", "hm-collide", this.def.tile ?? 20, this.def.tile ?? 20, 0, 0, 1);
+    this.gidCats = [];
+    return map;
+  }
+
+  // ── WorkAdventure maps (two-stage: tmj + manifest, then tileset images) ──────
+  private async loadTiledMap(key: MapKey): Promise<Phaser.Tilemaps.Tilemap> {
     // Stage 1: the map JSON, the tileset manifest, and the character sheet.
     if (!this.cache.json.has("world-manifest")) {
       this.load.json("world-manifest", assetUrl("world/maps/_manifest.json"));
@@ -373,8 +441,18 @@ export class WorldScene extends Phaser.Scene {
       this.visualLayers.push(layer);
     }
 
-    const cx = (map.widthInPixels || map.width * map.tileWidth) / 2;
-    const cy = (map.heightInPixels || map.height * map.tileHeight) / 2;
+    const tw = map.tileWidth, th = map.tileHeight;
+    const cx = (map.widthInPixels || map.width * tw) / 2;
+    const cy = (map.heightInPixels || map.height * th) / 2;
+
+    // Arrival spawn (coming through a door/exit) wins — nudged to the nearest
+    // walkable tile so we never drop the player inside a wall.
+    const override = this.spawnOverride ?? this.def.spawnTile ?? null;
+    if (override) {
+      const px = override.tx * tw + tw / 2, py = override.ty * th + th / 2;
+      const open = this.nearestWalkable(map, px, py) ?? { x: px, y: py };
+      return { spawnX: open.x, spawnY: open.y };
+    }
 
     // The big hub map's `start` marker sits inside a cramped office; spawn in the
     // open plaza instead (nearest walkable tile to the map centre).
@@ -432,8 +510,12 @@ export class WorldScene extends Phaser.Scene {
     buildAvatarAnims(this, this.avatar);
     this.player = this.physics.add.sprite(x, y, this.avatar.texKey, 1);
     this.player.setDepth(500);
+    // Proportion the avatar to the map's art (Harvest Moon tiles are 20px, so the
+    // 32×48 avatar is scaled down to sit right next to their townsfolk-scale art).
+    const s = this.def.avatarScale ?? 1;
+    this.player.setScale(s);
     // Ground shadow so the player reads as grounded like the NPCs/pets.
-    this.playerShadow = this.add.ellipse(x, y + this.avatar.fh / 2 - 4, 20, 8, 0x000000, 0.28).setDepth(499);
+    this.playerShadow = this.add.ellipse(x, y + (this.avatar.fh / 2 - 4) * s, 20 * s, 8 * s, 0x000000, 0.28).setDepth(499);
     // A slim body around the feet so the avatar tucks behind furniture nicely.
     const body = this.player.body as Phaser.Physics.Arcade.Body;
     body.setSize(18, 14).setOffset((this.avatar.fw - 18) / 2, this.avatar.fh - 16);
@@ -458,9 +540,11 @@ export class WorldScene extends Phaser.Scene {
 
   private pickZoom(): number {
     // Fit ~15 tiles across the smaller screen dimension so the world feels roomy
-    // on desktop and readable on a phone.
+    // on desktop and readable on a phone. Scales with the map's tile size (HM
+    // maps use 20px tiles, so they need a higher zoom to show the same span).
     const min = Math.min(this.scale.width, this.scale.height);
-    return Phaser.Math.Clamp(Math.round((min / (15 * 32)) * 100) / 100, 1.4, 3.2);
+    const lo = this.tileW <= 24 ? 1.8 : 1.4, hi = this.tileW <= 24 ? 4.2 : 3.2;
+    return Phaser.Math.Clamp(Math.round((min / (15 * this.tileW)) * 100) / 100, lo, hi);
   }
 
   private onResize(): void {
@@ -602,7 +686,7 @@ export class WorldScene extends Phaser.Scene {
   // Dispatch a portal action to the right real scene (the PR #106 battle side).
   private runAction(action: import("../world/worldMaps").WorldAction): void {
     switch (action.kind) {
-      case "map": this.goToMap(action.to); break;
+      case "map": this.goToMap(action.to, action.spawnAt); break;
       case "duel": void this.startDuel(); break;
       case "shop": this.fadeThen(() => this.scene.start("Shop", { returnTo: "World" })); break;
       case "pvp": this.fadeThen(() => this.scene.start("Matchmaking")); break;
@@ -639,12 +723,53 @@ export class WorldScene extends Phaser.Scene {
     this.fadeThen(() => this.scene.start("Menu"));
   }
 
-  private goToMap(to: MapKey): void {
+  private goToMap(to: MapKey, spawnAt?: { tx: number; ty: number }): void {
     this.transitioning = true;
     this.cameras.main.fadeOut(220, 6, 9, 16);
     this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {
-      this.scene.restart({ mapKey: to });
+      this.scene.restart({ mapKey: to, spawnAt });
     });
+  }
+
+  // Harvest Moon doors/edges: walking onto an exit region moves to the linked map.
+  // The exit is "armed" only after the player has stepped clear of every exit, so
+  // arriving on top of a door doesn't immediately bounce you back.
+  private checkExits(): void {
+    const exits = this.def.hmExits;
+    if (!exits || !exits.length) return;
+    const tw = this.tileW;
+    const ptx = this.player.x / tw, pty = this.player.y / tw;
+    let onAny = false;
+    for (const e of exits) {
+      const pad = 0.5;
+      if (ptx >= e.tx - pad && ptx <= e.tx + e.w + pad && pty >= e.ty - pad && pty <= e.ty + e.h + pad) {
+        onAny = true;
+        if (this.exitArmed) { this.takeExit(e); return; }
+      }
+    }
+    if (!onAny) this.exitArmed = true;
+  }
+
+  private takeExit(e: import("../world/worldMaps").MapExit): void {
+    // Arrival tile: an explicit spawnAt, else the target's reciprocal exit back to
+    // this map, nudged a couple tiles inward so we don't land on the doorway.
+    let spawn = e.spawnAt;
+    if (!spawn) {
+      const back = MAPS[e.to]?.hmExits?.find((x) => x.to === this.mapKey);
+      if (back) spawn = this.nudgeInward(e.to, back);
+    }
+    this.goToMap(e.to, spawn);
+  }
+
+  // Move a spawn tile toward the target map's interior so the player steps off the
+  // edge exit rather than straight back onto it.
+  private nudgeInward(mapKey: MapKey, exit: { tx: number; ty: number; w: number; h: number }): { tx: number; ty: number } {
+    const def = MAPS[mapKey];
+    const w = def?.gridW ?? 9999, h = def?.gridH ?? 9999;
+    let tx = exit.tx + Math.floor(exit.w / 2), ty = exit.ty + Math.floor(exit.h / 2);
+    if (exit.tx <= 1) tx += 2; else if (exit.tx + exit.w >= w - 2) tx -= 2;
+    if (exit.ty <= 1) ty += 2; else if (exit.ty + exit.h >= h - 2) ty -= 2;
+    return { tx, ty };
   }
 
   // ── per-frame ─────────────────────────────────────────────────────────────
@@ -679,9 +804,10 @@ export class WorldScene extends Phaser.Scene {
     this.player.anims.play(a.key, true);
     this.player.setFlipX(a.flipX);
     this.player.setDepth(500); // stays between below-layers and Above
-    this.playerShadow.setPosition(this.player.x, this.player.y + this.avatar.fh / 2 - 4);
+    this.playerShadow.setPosition(this.player.x, this.player.y + (this.avatar.fh / 2 - 4) * (this.def.avatarScale ?? 1));
 
     this.pet?.update();
+    this.checkExits();
     this.updateProximity();
     this.miniMap?.update();
   }
