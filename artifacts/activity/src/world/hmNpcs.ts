@@ -63,7 +63,8 @@ export class HmNpcs {
       const key = `hmnpc-${def.sprite}`;
       if (!meta || !scene.textures.exists(key)) continue;
       const x = def.tx * tile + tile / 2, y = def.ty * tile + tile / 2;
-      const scale = (tile * 1.8) / meta.h;
+      // Native size (as in the source game), so townsfolk match Jack's scale.
+      const scale = 1;
       const spr = scene.add.image(x, y, key).setOrigin(0.5, 0.88).setScale(scale).setDepth(460);
       scene.add.ellipse(x, y + 2, tile * 0.9, tile * 0.4, 0x000000, 0.22).setDepth(459);
       scene.add.text(x, y - meta.h * scale * 0.9, def.name, {
