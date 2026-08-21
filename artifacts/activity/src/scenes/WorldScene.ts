@@ -9,6 +9,7 @@ import {
 import { AVATARS, type AvatarDef, avatarById, buildAvatarAnims, avatarAnim } from "../world/avatars";
 import { Pet, loadPetTextures } from "../world/pets";
 import { Ambient } from "../world/ambient";
+import { HmNpcs, DialogBox, type HmNpcDef } from "../world/hmNpcs";
 import { getAvatarId, getPetId } from "../state/profile";
 
 // Dog breeds used to populate a map with stray/companion dogs (kept small so the
@@ -122,6 +123,9 @@ export class WorldScene extends Phaser.Scene {
   private exitArmed = false; // suppress exit re-trigger until the player steps clear
   private isHm = false;
   private playerScale = 1;
+  private npcs: HmNpcs | null = null;
+  private dialog: DialogBox | null = null;
+  private npcNear: HmNpcDef | null = null;
 
   constructor() {
     super("World");
@@ -135,6 +139,9 @@ export class WorldScene extends Phaser.Scene {
     this.isHm = !!(this.def.bgImage || this.def.bgChunks);
     this.bgObjects = [];
     this.exitArmed = false;
+    this.npcs = null;
+    this.dialog = null;
+    this.npcNear = null;
     // In the Harvest Moon world the player is Jack; elsewhere it's the chosen avatar.
     this.avatar = this.isHm ? avatarById("jack") : avatarById(getAvatarId());
     this.petId = getPetId();
@@ -228,6 +235,12 @@ export class WorldScene extends Phaser.Scene {
       seed,
     });
 
+    // Harvest Moon townsfolk + a dialog box for talking to them.
+    if (this.isHm) {
+      this.npcs = new HmNpcs(this, this.mapKey, this.tileW);
+      this.dialog = new DialogBox(() => { /* closed */ });
+    }
+
     // DOM HUD: location banner, player chip, mobile dpad + interact button.
     const snap = getContext(this).playerState.get();
     this.hud = new WorldHud({
@@ -265,6 +278,9 @@ export class WorldScene extends Phaser.Scene {
       this.pet = null;
       this.ambient?.destroy();
       this.ambient = null;
+      this.dialog?.destroy();
+      this.dialog = null;
+      this.npcs = null;
     });
   }
 
@@ -336,6 +352,9 @@ export class WorldScene extends Phaser.Scene {
       });
     }
     if (this.petId) loadPetTextures(this, this.petId);
+    for (const s of HmNpcs.spritesForMap(key)) {
+      if (!this.textures.exists(s.key)) this.load.image(s.key, assetUrl(s.url));
+    }
     // Background art: one image, or chunks for maps beyond the GPU texture cap.
     const bgKeys: string[] = [];
     if (this.def.bgImage) {
@@ -684,7 +703,10 @@ export class WorldScene extends Phaser.Scene {
   // ── interaction / transitions ───────────────────────────────────────────────
   private tryInteract(): void {
     if (this.transitioning) return;
+    // An open conversation advances / closes first.
+    if (this.dialog?.isOpen) { this.dialog.advance(); return; }
     if (this.activeInteractable) { this.activeInteractable.trigger(); return; }
+    if (this.npcNear && this.dialog) { this.dialog.open(this.npcNear.name, this.npcNear.lines); return; }
     if (this.petNear && this.pet) this.pet.react();
   }
 
@@ -781,6 +803,17 @@ export class WorldScene extends Phaser.Scene {
   update(): void {
     if (!this.ready || this.transitioning || !this.player?.body) return;
 
+    // Freeze the player while a conversation is open.
+    if (this.dialog?.isOpen) {
+      this.player.setVelocity(0, 0);
+      const a = avatarAnim(this.avatar, this.facing, false);
+      this.player.anims.play(a.key, true);
+      this.player.setFlipX(a.flipX);
+      this.pet?.update();
+      this.miniMap?.update();
+      return;
+    }
+
     let vx = 0, vy = 0;
     if (this.cursors) {
       if (this.cursors.left?.isDown || this.wasd.left.isDown) vx -= 1;
@@ -826,14 +859,20 @@ export class WorldScene extends Phaser.Scene {
     }
     this.activeInteractable = nearest;
 
-    // The pet is a fallback prompt: only offered when no portal/encounter is in
-    // range, so playing with the dog never steals a duel or shop interaction.
+    // Fallback prompts when no portal/encounter is in range: townsfolk first, then
+    // the pet — so talking or playing never steals a duel/shop interaction.
+    this.npcNear = null;
+    if (!nearest && this.npcs) {
+      this.npcNear = this.npcs.nearest(this.player.x, this.player.y, this.tileW * 1.8);
+    }
     this.petNear = false;
-    if (!nearest && this.pet) {
+    if (!nearest && !this.npcNear && this.pet) {
       const p = this.pet.sprite;
       this.petNear = Math.hypot(p.x - this.player.x, p.y - this.player.y) < 46;
     }
-    const prompt = nearest ? nearest.prompt : this.petNear ? `Play with ${this.pet!.name}` : null;
+    const prompt = nearest ? nearest.prompt
+      : this.npcNear ? `Talk to ${this.npcNear.name}`
+      : this.petNear ? `Play with ${this.pet!.name}` : null;
     if (prompt !== this.lastPrompt) {
       this.lastPrompt = prompt;
       this.hud?.setPrompt(prompt);
