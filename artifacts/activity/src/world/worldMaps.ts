@@ -77,6 +77,8 @@ export interface MapDef {
   gridH?: number;
   /** Full background image drawn in-scene (small HM maps). */
   bgImage?: string;
+  /** Full-map detail overlay drawn above the base ground (trees/rocks/springs). */
+  bgOverlay?: string;
   /** Background sliced into chunks for maps larger than the GPU texture cap. */
   bgChunks?: { url: string; x: number; y: number; w: number; h: number }[];
   /** Scale the player/pet to match the map's native art (HM ≈ 0.6). */
@@ -197,6 +199,7 @@ for (const m of HM_MAPS) {
     gridH: m.h,
     bgImage: m.bg ?? undefined,
     bgChunks: m.chunks ?? undefined,
+    bgOverlay: m.overlay ?? undefined,
     mapImage: m.mapImage,
     avatarScale: 0.85,
     spawnTile: m.spawn,

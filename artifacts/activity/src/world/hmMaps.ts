@@ -5,7 +5,7 @@ export interface HmChunk { url: string; x: number; y: number; w: number; h: numb
 export interface HmMapDef {
   key: string; name: string; subtitle: string;
   w: number; h: number; tile: number;
-  bg: string | null; chunks: HmChunk[] | null; mapImage: string;
+  bg: string | null; chunks: HmChunk[] | null; overlay: string | null; mapImage: string;
   spawn: { tx: number; ty: number }; exits: HmExit[];
 }
 export const HM_MAPS: HmMapDef[] = [
@@ -18,6 +18,7 @@ export const HM_MAPS: HmMapDef[] = [
     "tile": 20,
     "bg": "world/hm/bg/animal-shop.png",
     "chunks": null,
+    "overlay": null,
     "mapImage": "world/hm/minimap/animal-shop.jpg",
     "spawn": {
       "tx": 32,
@@ -42,6 +43,7 @@ export const HM_MAPS: HmMapDef[] = [
     "tile": 20,
     "bg": "world/hm/bg/bar.png",
     "chunks": null,
+    "overlay": null,
     "mapImage": "world/hm/minimap/bar.jpg",
     "spawn": {
       "tx": 32,
@@ -73,6 +75,7 @@ export const HM_MAPS: HmMapDef[] = [
     "tile": 20,
     "bg": "world/hm/bg/bedroom-bar.png",
     "chunks": null,
+    "overlay": null,
     "mapImage": "world/hm/minimap/bedroom-bar.jpg",
     "spawn": {
       "tx": 32,
@@ -97,6 +100,7 @@ export const HM_MAPS: HmMapDef[] = [
     "tile": 20,
     "bg": "world/hm/bg/bedroom-florist.png",
     "chunks": null,
+    "overlay": null,
     "mapImage": "world/hm/minimap/bedroom-florist.jpg",
     "spawn": {
       "tx": 32,
@@ -121,6 +125,7 @@ export const HM_MAPS: HmMapDef[] = [
     "tile": 20,
     "bg": "world/hm/bg/bedroom-manor.png",
     "chunks": null,
+    "overlay": null,
     "mapImage": "world/hm/minimap/bedroom-manor.jpg",
     "spawn": {
       "tx": 32,
@@ -145,6 +150,7 @@ export const HM_MAPS: HmMapDef[] = [
     "tile": 20,
     "bg": "world/hm/bg/bedroom-restaurant.png",
     "chunks": null,
+    "overlay": null,
     "mapImage": "world/hm/minimap/bedroom-restaurant.jpg",
     "spawn": {
       "tx": 32,
@@ -169,6 +175,7 @@ export const HM_MAPS: HmMapDef[] = [
     "tile": 20,
     "bg": "world/hm/bg/bedroom-tools.png",
     "chunks": null,
+    "overlay": null,
     "mapImage": "world/hm/minimap/bedroom-tools.jpg",
     "spawn": {
       "tx": 32,
@@ -193,6 +200,7 @@ export const HM_MAPS: HmMapDef[] = [
     "tile": 20,
     "bg": "world/hm/bg/church.png",
     "chunks": null,
+    "overlay": null,
     "mapImage": "world/hm/minimap/church.jpg",
     "spawn": {
       "tx": 32,
@@ -217,6 +225,7 @@ export const HM_MAPS: HmMapDef[] = [
     "tile": 20,
     "bg": "world/hm/bg/florist.png",
     "chunks": null,
+    "overlay": null,
     "mapImage": "world/hm/minimap/florist.jpg",
     "spawn": {
       "tx": 32,
@@ -248,6 +257,7 @@ export const HM_MAPS: HmMapDef[] = [
     "tile": 20,
     "bg": "world/hm/bg/fortuneteller.png",
     "chunks": null,
+    "overlay": null,
     "mapImage": "world/hm/minimap/fortuneteller.jpg",
     "spawn": {
       "tx": 28,
@@ -272,6 +282,7 @@ export const HM_MAPS: HmMapDef[] = [
     "tile": 20,
     "bg": "world/hm/bg/manor.png",
     "chunks": null,
+    "overlay": null,
     "mapImage": "world/hm/minimap/manor.jpg",
     "spawn": {
       "tx": 54,
@@ -303,6 +314,7 @@ export const HM_MAPS: HmMapDef[] = [
     "tile": 20,
     "bg": "world/hm/bg/manor-hallway.png",
     "chunks": null,
+    "overlay": null,
     "mapImage": "world/hm/minimap/manor-hallway.jpg",
     "spawn": {
       "tx": 32,
@@ -334,6 +346,7 @@ export const HM_MAPS: HmMapDef[] = [
     "tile": 20,
     "bg": "world/hm/bg/restaurant.png",
     "chunks": null,
+    "overlay": null,
     "mapImage": "world/hm/minimap/restaurant.jpg",
     "spawn": {
       "tx": 32,
@@ -365,6 +378,7 @@ export const HM_MAPS: HmMapDef[] = [
     "tile": 20,
     "bg": "world/hm/bg/tools.png",
     "chunks": null,
+    "overlay": null,
     "mapImage": "world/hm/minimap/tools.jpg",
     "spawn": {
       "tx": 32,
@@ -439,6 +453,7 @@ export const HM_MAPS: HmMapDef[] = [
         "h": 960
       }
     ],
+    "overlay": null,
     "mapImage": "world/hm/minimap/town.jpg",
     "spawn": {
       "tx": 96,
@@ -519,6 +534,7 @@ export const HM_MAPS: HmMapDef[] = [
     "tile": 20,
     "bg": "world/hm/bg/crossroads.png",
     "chunks": null,
+    "overlay": null,
     "mapImage": "world/hm/minimap/crossroads.jpg",
     "spawn": {
       "tx": 32,
@@ -557,6 +573,7 @@ export const HM_MAPS: HmMapDef[] = [
     "tile": 20,
     "bg": "world/hm/bg/mountain-home.png",
     "chunks": null,
+    "overlay": null,
     "mapImage": "world/hm/minimap/mountain-home.jpg",
     "spawn": {
       "tx": 32,
@@ -581,6 +598,7 @@ export const HM_MAPS: HmMapDef[] = [
     "tile": 20,
     "bg": "world/hm/bg/mountains.png",
     "chunks": null,
+    "overlay": "world/hm/overlay/mountains.png",
     "mapImage": "world/hm/minimap/mountains.jpg",
     "spawn": {
       "tx": 96,
@@ -619,6 +637,7 @@ export const HM_MAPS: HmMapDef[] = [
     "tile": 20,
     "bg": "world/hm/bg/cave1.png",
     "chunks": null,
+    "overlay": null,
     "mapImage": "world/hm/minimap/cave1.jpg",
     "spawn": {
       "tx": 32,
@@ -650,6 +669,7 @@ export const HM_MAPS: HmMapDef[] = [
     "tile": 20,
     "bg": "world/hm/bg/coop.png",
     "chunks": null,
+    "overlay": null,
     "mapImage": "world/hm/minimap/coop.jpg",
     "spawn": {
       "tx": 32,
@@ -674,6 +694,7 @@ export const HM_MAPS: HmMapDef[] = [
     "tile": 20,
     "bg": "world/hm/bg/cow-shed.png",
     "chunks": null,
+    "overlay": null,
     "mapImage": "world/hm/minimap/cow-shed.jpg",
     "spawn": {
       "tx": 32,
@@ -698,6 +719,7 @@ export const HM_MAPS: HmMapDef[] = [
     "tile": 20,
     "bg": "world/hm/bg/farm.png",
     "chunks": null,
+    "overlay": null,
     "mapImage": "world/hm/minimap/farm.jpg",
     "spawn": {
       "tx": 74,
@@ -750,6 +772,7 @@ export const HM_MAPS: HmMapDef[] = [
     "tile": 20,
     "bg": "world/hm/bg/home.png",
     "chunks": null,
+    "overlay": null,
     "mapImage": "world/hm/minimap/home.jpg",
     "spawn": {
       "tx": 52,
@@ -774,6 +797,7 @@ export const HM_MAPS: HmMapDef[] = [
     "tile": 20,
     "bg": "world/hm/bg/tool-shed.png",
     "chunks": null,
+    "overlay": null,
     "mapImage": "world/hm/minimap/tool-shed.jpg",
     "spawn": {
       "tx": 32,

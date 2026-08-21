@@ -327,6 +327,10 @@ export class WorldScene extends Phaser.Scene {
     };
     if (this.def.bgImage) add(`hmbg-${hmKey}`, 0, 0);
     for (const c of this.def.bgChunks ?? []) add(`hmbg-${hmKey}-${c.x}-${c.y}`, c.x, c.y);
+    // Detail overlay (trees/rocks/springs) sits just above the base ground.
+    if (this.def.bgOverlay && this.textures.exists(`hmov-${hmKey}`)) {
+      this.bgObjects.push(this.add.image(0, 0, `hmov-${hmKey}`).setOrigin(0, 0).setDepth(-50));
+    }
     void map;
   }
 
@@ -364,6 +368,10 @@ export class WorldScene extends Phaser.Scene {
     for (const c of this.def.bgChunks ?? []) {
       const k = `hmbg-${hmKey}-${c.x}-${c.y}`;
       if (!this.textures.exists(k)) this.load.image(k, assetUrl(c.url));
+    }
+    if (this.def.bgOverlay) {
+      const k = `hmov-${hmKey}`;
+      if (!this.textures.exists(k)) this.load.image(k, assetUrl(this.def.bgOverlay));
     }
     await this.runLoader();
 

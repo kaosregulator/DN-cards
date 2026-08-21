@@ -70,6 +70,7 @@ for (const file of files) {
   const MAX_TEX = 4096, CHUNK = 2000;
   const bgSrc = join(HM, 'public/images/background', tsimg);
   let chunks = null;
+  let overlayUrl = null;
   if (existsSync(bgSrc)) {
     const meta = await sharp(bgSrc).metadata();
     if (meta.width > MAX_TEX || meta.height > MAX_TEX) {
@@ -89,7 +90,18 @@ for (const file of files) {
     // a downscaled minimap picture (single image even when the bg is chunked)
     mkdirSync(OUT_BG + '../minimap', { recursive: true });
     const s = Math.min(1, 700 / Math.max(meta.width, meta.height));
-    await sharp(bgSrc).resize(Math.round(meta.width * s), Math.round(meta.height * s)).jpeg({ quality: 82 }).toFile(PUB + `world/hm/minimap/${key}.jpg`);
+    let mmSrc = bgSrc;
+    // Some outdoor maps use a bare ground image + a full-map "-items" overlay
+    // holding the trees/rocks/springs. Copy the overlay and fold it into the
+    // minimap so both read correctly.
+    const overlaySrc = join(HM, 'public/images/background', tsimg.replace('-bare', '-items'));
+    if (tsimg.includes('-bare') && existsSync(overlaySrc)) {
+      mkdirSync(OUT_BG + '../overlay', { recursive: true });
+      copyFileSync(overlaySrc, PUB + `world/hm/overlay/${key}.png`);
+      overlayUrl = `world/hm/overlay/${key}.png`;
+      mmSrc = await sharp(bgSrc).composite([{ input: overlaySrc }]).png().toBuffer();
+    }
+    await sharp(mmSrc).resize(Math.round(meta.width * s), Math.round(meta.height * s)).jpeg({ quality: 82 }).toFile(PUB + `world/hm/minimap/${key}.jpg`);
   } else console.warn('  ! missing bg', tsimg, 'for', key);
 
   // collision grid from the blocked layer
@@ -122,7 +134,7 @@ for (const file of files) {
   };
   writeFileSync(OUT_MAP + `${key}.tmj`, JSON.stringify(tmj));
 
-  registry.push({ key, name: NAMES[key] || key, subtitle: SUB[key] || 'Harvest Moon', w: W, h: H, tile: TS, bg: chunks ? null : `world/hm/bg/${key}.png`, chunks, mapImage: `world/hm/minimap/${key}.jpg`, spawn: { tx: sx, ty: sy }, exits });
+  registry.push({ key, name: NAMES[key] || key, subtitle: SUB[key] || 'Harvest Moon', w: W, h: H, tile: TS, bg: chunks ? null : `world/hm/bg/${key}.png`, chunks, overlay: overlayUrl, mapImage: `world/hm/minimap/${key}.jpg`, spawn: { tx: sx, ty: sy }, exits });
   console.log('converted', key.padEnd(20), `${W}x${H}`, 'exits='+exits.length);
 }
 
@@ -137,7 +149,7 @@ export interface HmChunk { url: string; x: number; y: number; w: number; h: numb
 export interface HmMapDef {
   key: string; name: string; subtitle: string;
   w: number; h: number; tile: number;
-  bg: string | null; chunks: HmChunk[] | null; mapImage: string;
+  bg: string | null; chunks: HmChunk[] | null; overlay: string | null; mapImage: string;
   spawn: { tx: number; ty: number }; exits: HmExit[];
 }
 export const HM_MAPS: HmMapDef[] = ${JSON.stringify(registry, null, 2)};
