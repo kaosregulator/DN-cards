@@ -8,10 +8,11 @@
 //   • 👤 User   — pick a member (native user select) → previews retarget to their avatar
 //   • 🏠 Server — pick a shared server → previews retarget to your server avatar there
 //   • 🖼️ Image  — paste an image URL (device uploads use the /emojimoji image: option)
-//   • ✅ Send    — post the highlighted animation to the channel
+//   • ✅ Send    — post the highlighted animation to the channel, as the user
 //
-// The animation effects themselves are our own canvas transforms + pack-extracted
-// overlays (see effects.ts) — nothing streamed from a third-party service.
+// The animations are templates extracted from the uploaded emoji packs and
+// replayed over the target image (see effects.ts). Send posts the gif through a
+// channel webhook wearing the member's name + avatar, so it reads as theirs.
 // ─────────────────────────────────────────────────────────────────────────────
 
 import {
@@ -21,6 +22,7 @@ import {
   type ChatInputCommandInteraction, type StringSelectMenuInteraction,
   type UserSelectMenuInteraction, type ButtonInteraction, type ModalSubmitInteraction,
   type MessageComponentInteraction, type Interaction, type TextBasedChannel,
+  type Webhook, type Collection,
 } from "discord.js";
 import sharp from "sharp";
 import { EMOJI_EFFECTS, renderEmojiGif } from "./effects.js";
@@ -319,15 +321,58 @@ async function sendSelected(interaction: ButtonInteraction, s: Session, tok: str
   await interaction.deferUpdate();
   const gif = await previewFor(s, s.selected);
   if (!gif) { await interaction.editReply({ content: "❌ Couldn't render that one — pick another.", embeds: [], files: [], components: [] }); return; }
+  const file = new AttachmentBuilder(gif, { name: "emojimoji.gif" });
   try {
-    await channel.send({
-      content: `${eff?.emoji ?? "🪄"} emojimoji by <@${interaction.user.id}>`,
-      files: [new AttachmentBuilder(gif, { name: "emojimoji.gif" })],
-    });
-    await interaction.editReply({ content: `✅ Sent **${eff?.name ?? "your animation"}** to the channel!`, embeds: [], files: [], components: [] });
+    // Post the gif on its own AS THE USER (webhook impersonation) — no bot name,
+    // no caption, so it reads like an emoji the member dropped in the channel.
+    const asUser = await postAsUser(interaction, file);
+    if (!asUser) {
+      // No webhook permission — fall back to a plain bot post of just the gif.
+      await channel.send({ files: [file] });
+    }
+    await interaction.editReply({ content: `✅ Sent **${eff?.name ?? "your animation"}**!`, embeds: [], files: [], components: [] });
     sessions.delete(tok);
   } catch (err) {
     logger.error({ err }, "emojimoji: send failed");
     await interaction.editReply({ content: "❌ Couldn't post it — do I have permission to send here?" });
+  }
+}
+
+const WEBHOOK_NAME = "Emojimoji";
+
+interface WebhookHost {
+  fetchWebhooks(): Promise<Collection<string, Webhook>>;
+  createWebhook(options: { name: string }): Promise<Webhook>;
+}
+
+// Post the gif AS the invoking member — a channel webhook wearing their display
+// name + avatar — so it appears to come from them, not the bot. Returns true on
+// success, or null when webhooks aren't available (missing Manage Webhooks, DMs,
+// unsupported channel) so the caller can fall back to a plain post.
+async function postAsUser(interaction: ButtonInteraction, file: AttachmentBuilder): Promise<boolean | null> {
+  const ch = interaction.channel as unknown as {
+    isThread?: () => boolean; id: string; parent?: unknown;
+  } | null;
+  if (!ch || !interaction.guild) return null;
+
+  // Webhooks live on the parent channel; posts into a thread pass threadId.
+  let host = ch as unknown as WebhookHost | null;
+  let threadId: string | undefined;
+  if (typeof ch.isThread === "function" && ch.isThread()) { host = (ch.parent as WebhookHost) ?? null; threadId = ch.id; }
+  if (!host || typeof host.fetchWebhooks !== "function" || typeof host.createWebhook !== "function") return null;
+
+  const member = await interaction.guild.members.fetch(interaction.user.id).catch(() => null);
+  const username = (member?.displayName ?? interaction.user.username).slice(0, 80);
+  const avatarURL = (member ?? interaction.user).displayAvatarURL({ extension: "png", size: 128 });
+
+  try {
+    const hooks = await host.fetchWebhooks();
+    let hook = hooks.find((w) => w.owner?.id === interaction.client.user?.id && w.name === WEBHOOK_NAME && !!w.token);
+    if (!hook) hook = await host.createWebhook({ name: WEBHOOK_NAME });
+    await hook.send({ username, avatarURL, files: [file], ...(threadId ? { threadId } : {}) });
+    return true;
+  } catch (err) {
+    logger.warn({ err }, "emojimoji: webhook post unavailable, using fallback");
+    return null;
   }
 }

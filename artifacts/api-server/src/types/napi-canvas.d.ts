@@ -17,10 +17,15 @@ declare module "@napi-rs/canvas" {
     textAlign: "left" | "right" | "center" | "start" | "end";
     textBaseline: "top" | "middle" | "bottom" | "alphabetic" | "hanging" | "ideographic";
     globalAlpha: number;
+    globalCompositeOperation: string;
     shadowColor: string;
     shadowBlur: number;
 
     save(): void;
+    scale(x: number, y: number): void;
+    clearRect(x: number, y: number, w: number, h: number): void;
+    getImageData(sx: number, sy: number, sw: number, sh: number): { data: Uint8ClampedArray; width: number; height: number };
+    putImageData(data: { data: Uint8ClampedArray; width: number; height: number }, dx: number, dy: number): void;
     restore(): void;
     translate(x: number, y: number): void;
     rotate(angle: number): void;

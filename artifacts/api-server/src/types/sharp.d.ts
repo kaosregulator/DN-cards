@@ -1,6 +1,18 @@
 declare module "sharp" {
-  function sharp(input: Buffer | ArrayBuffer | Uint8Array | string): sharp.Sharp;
+  function sharp(input?: Buffer | ArrayBuffer | Uint8Array | string, options?: sharp.InputOptions): sharp.Sharp;
   namespace sharp {
+    interface InputOptions {
+      raw?: { width: number; height: number; channels: 1 | 2 | 3 | 4 };
+      animated?: boolean;
+      pageHeight?: number;
+      page?: number;
+    }
+    interface GifOptions {
+      delay?: number | number[];
+      loop?: number;
+      colours?: number;
+      dither?: number;
+    }
     interface ResizeOptions {
       withoutEnlargement?: boolean;
       fit?: "cover" | "contain" | "fill" | "inside" | "outside";
@@ -15,6 +27,10 @@ declare module "sharp" {
       resize(options: { width?: number; height?: number } & ResizeOptions): Sharp;
       webp(options?: WebpOptions): Sharp;
       png(options?: { quality?: number; compressionLevel?: number }): Sharp;
+      gif(options?: GifOptions): Sharp;
+      ensureAlpha(alpha?: number): Sharp;
+      raw(): Sharp;
+      metadata(): Promise<{ width?: number; height?: number; pages?: number; pageHeight?: number; delay?: number[] }>;
       toBuffer(): Promise<Buffer>;
     }
   }
