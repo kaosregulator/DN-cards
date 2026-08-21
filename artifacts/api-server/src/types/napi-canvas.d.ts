@@ -35,6 +35,7 @@ declare module "@napi-rs/canvas" {
     clip(): void;
     fillRect(x: number, y: number, w: number, h: number): void;
     drawImage(img: Image, x: number, y: number, w: number, h: number): void;
+    drawImage(img: Image, sx: number, sy: number, sw: number, sh: number, dx: number, dy: number, dw: number, dh: number): void;
     fillText(text: string, x: number, y: number): void;
     strokeText(text: string, x: number, y: number): void;
     measureText(text: string): { width: number };

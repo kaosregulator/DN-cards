@@ -228,6 +228,18 @@ export async function startBot() {
         return;
       }
 
+      // ── Emojimoji picker (emojimoji:* buttons/selects/modals) ──────────────
+      // One router owns every component + modal it namespaced (board buttons,
+      // number/page/source controls, user & server pickers, image-URL modal).
+      if (
+        (interaction.isMessageComponent() || interaction.isModalSubmit()) &&
+        interaction.customId.startsWith("emojimoji:")
+      ) {
+        const { handleEmojimojiInteraction } = await import("./emojimoji/command.js");
+        await handleEmojimojiInteraction(interaction);
+        return;
+      }
+
       // ── Wild Mini-Game gameplay buttons (mg:* customIds) ───────────────────
       // Routed early so the encounter owns its own buttons. `mg:` is distinct
       // from the `minigames:` admin panel prefix below.
@@ -875,6 +887,9 @@ export async function startBot() {
         await handleAdminSecretCommand(interaction);
       } else if (cmd === "echo") {
         await handleEchoCommand(interaction);
+      } else if (cmd === "emojimoji") {
+        const { handleEmojimoji } = await import("./emojimoji/command.js");
+        await handleEmojimoji(interaction);
       } else if (cmd === "afk") {
         await handleAfkCommand(interaction);
       } else if (cmd === "afksetup") {
