@@ -156,7 +156,7 @@ overrides:
 
 patchedDependencies:
   gifencoder@2.0.1:
-    hash: 4cb66815cfcdddcd34dc168f9e345496a4fb844b81c95d85124bd68d92119152
+    hash: 9a8d6b2c2b14218a69102d0c60b113af9f343a7e47505e1489e7002f3aa940ab
     path: patches/gifencoder@2.0.1.patch
 
 importers:
@@ -227,7 +227,7 @@ importers:
         version: 7.3.3(@types/node@25.6.2)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.21.0)(yaml@2.8.4)
       vitest:
         specifier: ^4.1.11
-        version: 4.1.11(@types/node@25.6.2)(vite@7.3.3(@types/node@25.6.2)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.21.0)(yaml@2.8.4))
+        version: 4.1.11(@types/node@25.6.2)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.21.0)(yaml@2.8.4)
 
   artifacts/api-server:
     dependencies:
@@ -293,7 +293,7 @@ importers:
         version: 7.4.2
       gifencoder:
         specifier: ^2.0.1
-        version: 2.0.1(patch_hash=4cb66815cfcdddcd34dc168f9e345496a4fb844b81c95d85124bd68d92119152)
+        version: 2.0.1(patch_hash=9a8d6b2c2b14218a69102d0c60b113af9f343a7e47505e1489e7002f3aa940ab)
       gl-matrix:
         specifier: ^3.4.4
         version: 3.4.4
@@ -375,7 +375,7 @@ importers:
         version: 3.1.0
       vitest:
         specifier: ^4.1.11
-        version: 4.1.11(@types/node@25.6.2)(vite@7.3.3(@types/node@25.6.2)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.21.0)(yaml@2.8.4))
+        version: 4.1.11(@types/node@25.6.2)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.21.0)(yaml@2.8.4)
 
   artifacts/dashboard:
     devDependencies:
@@ -4486,7 +4486,6 @@ packages:
       '@vitest/ui': 4.1.11
       happy-dom: '*'
       jsdom: '*'
-      vite: ^6.0.0 || ^7.0.0 || ^8.0.0
     peerDependenciesMeta:
       '@edge-runtime/vm':
         optional: true
@@ -7077,7 +7076,7 @@ snapshots:
     dependencies:
       resolve-pkg-maps: 1.0.0
 
-  gifencoder@2.0.1(patch_hash=4cb66815cfcdddcd34dc168f9e345496a4fb844b81c95d85124bd68d92119152):
+  gifencoder@2.0.1(patch_hash=9a8d6b2c2b14218a69102d0c60b113af9f343a7e47505e1489e7002f3aa940ab):
     dependencies:
       canvas: 3.2.3
 
@@ -8327,7 +8326,7 @@ snapshots:
       tsx: 4.21.0
       yaml: 2.8.4
 
-  vitest@4.1.11(@types/node@25.6.2)(vite@7.3.3(@types/node@25.6.2)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.21.0)(yaml@2.8.4)):
+  vitest@4.1.11(@types/node@25.6.2)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.21.0)(yaml@2.8.4):
     dependencies:
       '@vitest/expect': 4.1.11
       '@vitest/mocker': 4.1.11(vite@7.3.3(@types/node@25.6.2)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.21.0)(yaml@2.8.4))
@@ -8352,7 +8351,17 @@ snapshots:
     optionalDependencies:
       '@types/node': 25.6.2
     transitivePeerDependencies:
+      - jiti
+      - less
+      - lightningcss
       - msw
+      - sass
+      - sass-embedded
+      - stylus
+      - sugarss
+      - terser
+      - tsx
+      - yaml
 
   web-streams-polyfill@3.3.3: {}
 
