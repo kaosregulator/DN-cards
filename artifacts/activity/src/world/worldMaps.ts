@@ -11,7 +11,7 @@
 // (Named worldMaps to avoid clashing with world/maps.ts, the duel-side map data.)
 // ─────────────────────────────────────────────────────────────────────────────
 
-export type MapKey = "world" | "village" | "card-shop" | "duel-hall";
+export type MapKey = "world" | "village" | "card-shop" | "duel-hall" | "cave";
 
 /** What a portal / encounter does when the player interacts with it. */
 export type WorldAction =
@@ -27,6 +27,11 @@ export interface PortalDef {
   glyph: string;
   color: number;
   action: WorldAction;
+  /** Fixed tile placement. When set, the portal sits here instead of being
+   *  auto-arranged in the ring around spawn (used for the cave entrance). */
+  at?: { tx: number; ty: number };
+  /** Optional world art drawn under the beacon, e.g. a cave mouth. */
+  art?: "cave";
 }
 
 // A duelist you can walk up to and challenge. Every encounter starts a real duel
@@ -47,6 +52,8 @@ export interface MapDef {
   spawn: "start" | "center";
   portals: PortalDef[];
   encounters?: EncounterDef[];
+  /** Ambient NPCs/dogs are scattered by default; set false for tight interiors. */
+  ambient?: boolean;
 }
 
 export const MAPS: Record<MapKey, MapDef> = {
@@ -80,6 +87,9 @@ export const MAPS: Record<MapKey, MapDef> = {
       { id: "toworld", label: "To City", glyph: "🚪", color: 0x9aa4b2, action: { kind: "map", to: "world" } },
       { id: "cardshop", label: "Card Shop", glyph: "🃏", color: 0xffb020, action: { kind: "shop" } },
       { id: "arena", label: "Duel Arena", glyph: "⚔️", color: 0xff4d6d, action: { kind: "duel" } },
+      // The cave mouth by the lakeside fire pit — a doorway into a new area.
+      { id: "cave", label: "Mystery Cave", glyph: "🕳️", color: 0x7d6b8f,
+        at: { tx: 195, ty: 101 }, art: "cave", action: { kind: "map", to: "cave" } },
       { id: "menu", label: "Main Menu", glyph: "🏠", color: 0x9aa4b2, action: { kind: "menu" } },
     ],
     encounters: [
@@ -112,6 +122,16 @@ export const MAPS: Record<MapKey, MapDef> = {
     encounters: [
       { id: "hall-a", name: "Tournament Rival", glyph: "🥷", color: 0xa855f7 },
       { id: "hall-b", name: "Hall Veteran", glyph: "🛡️", color: 0xef4444 },
+    ],
+  },
+  cave: {
+    key: "cave",
+    name: "Mystery Cave",
+    subtitle: "A new world · under construction",
+    spawn: "start",
+    ambient: false,
+    portals: [
+      { id: "tovillage", label: "Leave Cave", glyph: "🚪", color: 0x9aa4b2, action: { kind: "map", to: "village" } },
     ],
   },
 };

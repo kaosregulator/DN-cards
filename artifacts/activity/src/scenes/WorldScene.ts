@@ -196,7 +196,7 @@ export class WorldScene extends Phaser.Scene {
     // dogs — placed procedurally in sensible spots, kept clear of the beacons.
     const avoid = [{ x: spawnX, y: spawnY }, ...this.interactables.map((it) => ({ x: it.x, y: it.y }))];
     const seed = Array.from(this.mapKey).reduce((h, c) => ((h * 31) + c.charCodeAt(0)) | 0, 7);
-    this.ambient = new Ambient({
+    if (this.def.ambient !== false) this.ambient = new Ambient({
       scene: this,
       tw: map.tileWidth, th: map.tileHeight, mapW: map.width, mapH: map.height,
       isWalkable: (tx, ty) => {
@@ -485,23 +485,33 @@ export class WorldScene extends Phaser.Scene {
 
   // ── interactables (portals + encounters) ────────────────────────────────────
   private placeInteractables(map: Phaser.Tilemaps.Tilemap, spawnX: number, spawnY: number): void {
-    const portals = this.def.portals;
     const encounters = this.def.encounters ?? [];
-    // One spread of walkable spots around spawn; portals take the inner slots,
-    // encounters the outer ones so enemies ring the plaza a little further out.
-    const spots = this.walkableRing(map, spawnX, spawnY, portals.length + encounters.length);
-    portals.forEach((def, i) => {
-      const p = spots[i] ?? { x: spawnX + (i + 1) * 48, y: spawnY };
+    // Portals with a fixed tile (e.g. the cave mouth) are placed exactly; the
+    // rest share a spread of walkable spots around spawn, with encounters ringing
+    // a little further out.
+    const fixedPortals = this.def.portals.filter((p) => p.at);
+    const ringPortals = this.def.portals.filter((p) => !p.at);
+    const spots = this.walkableRing(map, spawnX, spawnY, ringPortals.length + encounters.length);
+    const tw = map.tileWidth, th = map.tileHeight;
+    const addPortal = (def: import("../world/worldMaps").PortalDef, x: number, y: number): void => {
+      if (def.art === "cave") this.drawCaveMouth(x, y);
       const verb = def.action.kind === "map" ? "Enter" : def.action.kind === "shop" ? "Open" : "Go to";
       this.interactables.push(
         this.makeInteractable(
-          def.id, p.x, p.y, def.glyph, def.label, def.color, `${verb} ${def.label}`,
+          def.id, x, y, def.glyph, def.label, def.color, `${verb} ${def.label}`,
           "portal", () => this.runAction(def.action),
         ),
       );
+    };
+    ringPortals.forEach((def, i) => {
+      const p = spots[i] ?? { x: spawnX + (i + 1) * 48, y: spawnY };
+      addPortal(def, p.x, p.y);
     });
+    for (const def of fixedPortals) {
+      addPortal(def, def.at!.tx * tw + tw / 2, def.at!.ty * th + th / 2);
+    }
     encounters.forEach((def, i) => {
-      const p = spots[portals.length + i];
+      const p = spots[ringPortals.length + i];
       if (!p) return;
       const it = this.makeInteractable(
         def.id, p.x, p.y, def.glyph, def.name, def.color, `Duel ${def.name}`,
@@ -564,6 +574,21 @@ export class WorldScene extends Phaser.Scene {
       id, x, y, prompt, trigger, ring, glyph: glyphText, label: labelText,
       mapGlyph: glyph, mapColor: color, mapKind: kind, mapLabel: label,
     };
+  }
+
+  // A little cave mouth: a rocky mound with a dark opening, drawn under the beacon
+  // so the entrance reads as a real doorway into the hillside.
+  private drawCaveMouth(x: number, y: number): void {
+    const g = this.add.graphics().setDepth(420);
+    // rocky mound
+    g.fillStyle(0x3b3a44, 1); g.fillEllipse(x, y + 4, 60, 42);
+    g.fillStyle(0x4a4956, 1); g.fillEllipse(x, y - 2, 54, 34);
+    // dark opening
+    g.fillStyle(0x0a0a10, 1); g.fillEllipse(x, y + 2, 30, 30);
+    g.fillStyle(0x05050a, 1); g.fillEllipse(x, y + 6, 22, 20);
+    // a couple of boulders at the base
+    g.fillStyle(0x33323c, 1);
+    g.fillCircle(x - 26, y + 12, 7); g.fillCircle(x + 25, y + 13, 8); g.fillCircle(x + 14, y + 18, 5);
   }
 
   // ── interaction / transitions ───────────────────────────────────────────────
