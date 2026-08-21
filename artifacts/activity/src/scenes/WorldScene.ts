@@ -9,6 +9,7 @@ import {
 import { AVATARS, type AvatarDef, avatarById, buildAvatarAnims, avatarAnim } from "../world/avatars";
 import { Pet, loadPetTextures } from "../world/pets";
 import { Ambient } from "../world/ambient";
+import { RoofFade } from "../world/roofFade";
 import { HmNpcs, DialogBox, type HmNpcDef } from "../world/hmNpcs";
 import { HmItems, foragedToast, type HmItemHit } from "../world/hmItems";
 import { getAvatarId, getPetId } from "../state/profile";
@@ -117,6 +118,8 @@ export class WorldScene extends Phaser.Scene {
   // tile layers are scanned per cell; gid ranges map to a category by tileset.
   private visualLayers: Phaser.Tilemaps.TilemapLayer[] = [];
   private gidCats: { first: number; last: number; cat: 0 | 1 | 2 | 3 }[] = [];
+  private roofLayers: Phaser.Tilemaps.TilemapLayer[] = [];
+  private roofFade: RoofFade | null = null;
 
   private interactables: Interactable[] = [];
   private activeInteractable: Interactable | null = null;
@@ -181,6 +184,8 @@ export class WorldScene extends Phaser.Scene {
     this.mapPixels = { w: 0, h: 0 };
     this.visualLayers = [];
     this.gidCats = [];
+    this.roofLayers = [];
+    this.roofFade = null;
   }
 
   async create(): Promise<void> {
@@ -223,6 +228,9 @@ export class WorldScene extends Phaser.Scene {
     this.drawHmBackground(map);
 
     const { spawnX, spawnY } = this.buildMap(map);
+    if (this.roofLayers.length) {
+      this.roofFade = new RoofFade(this.roofLayers, map.width, map.height, map.tileWidth, map.tileHeight);
+    }
     this.createPlayer(spawnX, spawnY);
     if (this.collisionLayer) this.physics.add.collider(this.player, this.collisionLayer);
 
@@ -504,6 +512,8 @@ export class WorldScene extends Phaser.Scene {
       layer.setDepth(isAbove ? 1000 + index : index);
       if (typeof ld.alpha === "number") layer.setAlpha(ld.alpha);
       this.visualLayers.push(layer);
+      // Roofs / canopies fade when the player is under them (not signs/lights).
+      if (lower.startsWith("roof") || lower.startsWith("above")) this.roofLayers.push(layer);
     }
 
     const tw = map.tileWidth, th = map.tileHeight;
@@ -962,6 +972,7 @@ export class WorldScene extends Phaser.Scene {
     this.playerShadow.setPosition(this.player.x, this.player.y + (this.avatar.fh / 2 - 4) * this.playerScale);
 
     this.pet?.update();
+    this.roofFade?.update(this.player.x, this.player.y);
     this.checkExits();
     this.updateProximity();
     this.miniMap?.update();
