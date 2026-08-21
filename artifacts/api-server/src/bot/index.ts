@@ -249,7 +249,10 @@ export async function startBot() {
 
       // ── String select menus (config panel + setup panel) ──────────────────
       if (interaction.isStringSelectMenu()) {
-        if (interaction.customId.startsWith("help:")) {
+        if (interaction.customId.startsWith("emojimoji:")) {
+          const { handleEmojimojiSelect } = await import("./emojimoji/command.js");
+          return void await handleEmojimojiSelect(interaction);
+        } else if (interaction.customId.startsWith("help:")) {
           await handleHelpHubComponent(interaction);
         } else if (interaction.customId.startsWith("user-hub:")) {
           const { handleUserHubComponent } = await import("./commands/user-hub.js");
@@ -422,6 +425,13 @@ export async function startBot() {
       if (interaction.isButton()) {
         const parts = interaction.customId.split(":");
         const action = parts[0];
+
+        // ── Emojimoji "Send" button ────────────────────────────────────────
+        if (interaction.customId.startsWith("emojimoji:")) {
+          const { handleEmojimojiButton } = await import("./emojimoji/command.js");
+          await handleEmojimojiButton(interaction);
+          return;
+        }
 
         // ── Echo-Whisper reveal buttons ────────────────────────────────────
         if (isSecretButton(interaction.customId)) {
@@ -875,6 +885,9 @@ export async function startBot() {
         await handleAdminSecretCommand(interaction);
       } else if (cmd === "echo") {
         await handleEchoCommand(interaction);
+      } else if (cmd === "emojimoji") {
+        const { handleEmojimoji } = await import("./emojimoji/command.js");
+        await handleEmojimoji(interaction);
       } else if (cmd === "afk") {
         await handleAfkCommand(interaction);
       } else if (cmd === "afksetup") {

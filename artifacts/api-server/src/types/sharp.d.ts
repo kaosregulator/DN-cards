@@ -14,6 +14,7 @@ declare module "sharp" {
       resize(width: number | null, height?: number | null, options?: ResizeOptions): Sharp;
       resize(options: { width?: number; height?: number } & ResizeOptions): Sharp;
       webp(options?: WebpOptions): Sharp;
+      png(options?: { quality?: number; compressionLevel?: number }): Sharp;
       toBuffer(): Promise<Buffer>;
     }
   }
