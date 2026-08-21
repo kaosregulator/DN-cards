@@ -91,6 +91,25 @@ async function previewFor(s: Session, effectId: string): Promise<Buffer | null> 
   return gif;
 }
 
+// Fire-and-forget: render every not-yet-cached effect for the current target in
+// the background (bounded concurrency) so paging and Send never wait on a render.
+const prewarming = new Set<string>();
+function prewarm(s: Session): void {
+  if (!s.src) return;
+  const tag = `${s.userId}:${s.version}`;
+  if (prewarming.has(tag)) return;
+  prewarming.add(tag);
+  void (async () => {
+    const pending = EMOJI_EFFECTS.filter((e) => !s.cache.has(`${s.version}:${e.id}`));
+    const LIMIT = 4;
+    for (let i = 0; i < pending.length; i += LIMIT) {
+      if (s.version !== Number(tag.split(":")[1])) break; // target changed — abandon
+      await Promise.all(pending.slice(i, i + LIMIT).map((e) => previewFor(s, e.id).catch(() => null)));
+    }
+    prewarming.delete(tag);
+  })();
+}
+
 // ── screen builders ──────────────────────────────────────────────────────────
 type Screen = Parameters<ButtonInteraction["editReply"]>[0];
 
@@ -101,11 +120,14 @@ async function buildBoard(s: Session, tok: string): Promise<Screen> {
   const effs = pageEffects(s.page);
   if (!effs.some((e) => e.id === s.selected)) s.selected = effs[0]!.id;
 
+  // Render this page's previews in parallel (they land in the cache), then lay
+  // out the embeds. Parallel render keeps the board snappy even at 5 per page.
+  const gifs = await Promise.all(effs.map((eff) => previewFor(s, eff.id)));
   const files: AttachmentBuilder[] = [];
   const embeds: EmbedBuilder[] = [];
   for (let i = 0; i < effs.length; i++) {
     const eff = effs[i]!;
-    const gif = await previewFor(s, eff.id);
+    const gif = gifs[i];
     const name = `p${i}.gif`;
     const isSel = eff.id === s.selected;
     const embed = new EmbedBuilder()
@@ -116,6 +138,7 @@ async function buildBoard(s: Session, tok: string): Promise<Screen> {
     if (gif) { files.push(new AttachmentBuilder(gif, { name })); embed.setImage(`attachment://${name}`); }
     embeds.push(embed);
   }
+  prewarm(s); // fill the rest of the pages into cache so ◀ ▶ and Send are instant
 
   const numRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
     ...effs.map((eff, i) =>
