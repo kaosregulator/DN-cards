@@ -120,6 +120,8 @@ export class WorldScene extends Phaser.Scene {
   private spawnOverride: { tx: number; ty: number } | null = null;
   private bgObjects: Phaser.GameObjects.Image[] = [];
   private exitArmed = false; // suppress exit re-trigger until the player steps clear
+  private isHm = false;
+  private playerScale = 1;
 
   constructor() {
     super("World");
@@ -130,9 +132,11 @@ export class WorldScene extends Phaser.Scene {
     this.def = MAPS[this.mapKey];
     this.spawnOverride = data?.spawnAt ?? null;
     this.tileW = this.def.tile ?? 32;
+    this.isHm = !!(this.def.bgImage || this.def.bgChunks);
     this.bgObjects = [];
     this.exitArmed = false;
-    this.avatar = avatarById(getAvatarId());
+    // In the Harvest Moon world the player is Jack; elsewhere it's the chosen avatar.
+    this.avatar = this.isHm ? avatarById("jack") : avatarById(getAvatarId());
     this.petId = getPetId();
     this.pet = null;
     this.petNear = false;
@@ -199,7 +203,7 @@ export class WorldScene extends Phaser.Scene {
       this.pet = new Pet(this, this.petId, spawnX - 26, spawnY + 10,
         () => ({ x: this.player.x, y: this.player.y }));
       // Proportion the dog to the map's art on Harvest Moon (20px-tile) maps.
-      if (this.def.avatarScale) this.pet.sprite.setScale(0.6 * this.def.avatarScale);
+      if (this.isHm) this.pet.sprite.setScale(0.4);
     }
 
     this.setupCamera(map);
@@ -510,9 +514,10 @@ export class WorldScene extends Phaser.Scene {
     buildAvatarAnims(this, this.avatar);
     this.player = this.physics.add.sprite(x, y, this.avatar.texKey, 1);
     this.player.setDepth(500);
-    // Proportion the avatar to the map's art (Harvest Moon tiles are 20px, so the
-    // 32×48 avatar is scaled down to sit right next to their townsfolk-scale art).
-    const s = this.def.avatarScale ?? 1;
+    // Proportion the avatar to the map's art: on Harvest Moon (20px-tile) maps the
+    // player stands ~1.7 tiles tall regardless of the source sheet's size.
+    const s = this.isHm ? (this.tileW * 1.7) / this.avatar.fh : 1;
+    this.playerScale = s;
     this.player.setScale(s);
     // Ground shadow so the player reads as grounded like the NPCs/pets.
     this.playerShadow = this.add.ellipse(x, y + (this.avatar.fh / 2 - 4) * s, 20 * s, 8 * s, 0x000000, 0.28).setDepth(499);
@@ -804,7 +809,7 @@ export class WorldScene extends Phaser.Scene {
     this.player.anims.play(a.key, true);
     this.player.setFlipX(a.flipX);
     this.player.setDepth(500); // stays between below-layers and Above
-    this.playerShadow.setPosition(this.player.x, this.player.y + (this.avatar.fh / 2 - 4) * (this.def.avatarScale ?? 1));
+    this.playerShadow.setPosition(this.player.x, this.player.y + (this.avatar.fh / 2 - 4) * this.playerScale);
 
     this.pet?.update();
     this.checkExits();
