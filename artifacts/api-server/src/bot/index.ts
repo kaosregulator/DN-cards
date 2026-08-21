@@ -228,6 +228,18 @@ export async function startBot() {
         return;
       }
 
+      // ── Emojimoji picker (emojimoji:* buttons/selects/modals) ──────────────
+      // One router owns every component + modal it namespaced (board buttons,
+      // number/page/source controls, user & server pickers, image-URL modal).
+      if (
+        (interaction.isMessageComponent() || interaction.isModalSubmit()) &&
+        interaction.customId.startsWith("emojimoji:")
+      ) {
+        const { handleEmojimojiInteraction } = await import("./emojimoji/command.js");
+        await handleEmojimojiInteraction(interaction);
+        return;
+      }
+
       // ── Wild Mini-Game gameplay buttons (mg:* customIds) ───────────────────
       // Routed early so the encounter owns its own buttons. `mg:` is distinct
       // from the `minigames:` admin panel prefix below.
@@ -249,10 +261,7 @@ export async function startBot() {
 
       // ── String select menus (config panel + setup panel) ──────────────────
       if (interaction.isStringSelectMenu()) {
-        if (interaction.customId.startsWith("emojimoji:")) {
-          const { handleEmojimojiSelect } = await import("./emojimoji/command.js");
-          return void await handleEmojimojiSelect(interaction);
-        } else if (interaction.customId.startsWith("help:")) {
+        if (interaction.customId.startsWith("help:")) {
           await handleHelpHubComponent(interaction);
         } else if (interaction.customId.startsWith("user-hub:")) {
           const { handleUserHubComponent } = await import("./commands/user-hub.js");
@@ -425,13 +434,6 @@ export async function startBot() {
       if (interaction.isButton()) {
         const parts = interaction.customId.split(":");
         const action = parts[0];
-
-        // ── Emojimoji "Send" button ────────────────────────────────────────
-        if (interaction.customId.startsWith("emojimoji:")) {
-          const { handleEmojimojiButton } = await import("./emojimoji/command.js");
-          await handleEmojimojiButton(interaction);
-          return;
-        }
 
         // ── Echo-Whisper reveal buttons ────────────────────────────────────
         if (isSecretButton(interaction.customId)) {
