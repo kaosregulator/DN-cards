@@ -198,9 +198,20 @@ export async function handleEmojimojiInteraction(interaction: Interaction): Prom
 
     // Native user picker result.
     if (interaction.isUserSelectMenu()) {
-      const user = interaction.users.first();
-      if (user) retarget(s, user.displayAvatarURL({ extension: "png", size: 256 }), `@${user.username}`);
       await interaction.deferUpdate();
+      const userId = interaction.values[0];
+      const user = interaction.users.first()
+        ?? (userId ? await interaction.client.users.fetch(userId).catch(() => null) : null);
+      if (!user) {
+        await interaction.editReply({
+          content: "❌ I couldn't read that member. Please choose them again.",
+          embeds: [],
+          files: [],
+          components: [],
+        });
+        return;
+      }
+      retarget(s, user.displayAvatarURL({ extension: "png", size: 256 }), `@${user.username}`);
       await interaction.editReply(await buildBoard(s, tok));
       return;
     }
