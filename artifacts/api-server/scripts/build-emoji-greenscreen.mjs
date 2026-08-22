@@ -23,6 +23,17 @@ const CAP = 16;                    // frames kept per template (emoji-sized)
 const META = {
   tv: { name: "On TV", emoji: "📺", desc: "Playing on the screen" },
   scared: { name: "The Door", emoji: "😱", desc: "Revealed behind the door" },
+  explode: { name: "Explode", emoji: "💥", desc: "Blown up" },
+  lick: { name: "Lick", emoji: "👅", desc: "Screen lick" },
+  "throw-c4": { name: "Throw C4", emoji: "🧨", desc: "Toss the C4, then boom" },
+  thuglife: { name: "Thug Life", emoji: "🕶️", desc: "Thug life" },
+  wild: { name: "Get The Camera", emoji: "📸", desc: "O MY GOD, quick get the camera" },
+  taptap: { name: "Tap Tap", emoji: "👆", desc: "Tap tap" },
+  minecraft: { name: "Minecraft TNT", emoji: "⛏️", desc: "TNT goes boom" },
+  ask: { name: "Press Ask", emoji: "🎤", desc: "Any comment?" },
+  explosion: { name: "Explosion", emoji: "🔥", desc: "Walk away from the blast" },
+  loading: { name: "Loading", emoji: "⏳", desc: "Loading bar" },
+  runnnn: { name: "Run", emoji: "🏃", desc: "Run for it" },
 };
 const title = (s) => s.replace(/[-_]/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 
@@ -40,10 +51,11 @@ async function framesOf(p) {
 }
 const r3 = (n) => Math.round(n * 1000) / 1000;
 
-const files = existsSync(SRC) ? readdirSync(SRC).filter((f) => f.endsWith(".gif")).sort() : [];
+// GIFs animate; PNG/JPG are single-frame stills (still emoji with the user in the slot).
+const files = existsSync(SRC) ? readdirSync(SRC).filter((f) => /\.(gif|png|jpe?g)$/i.test(f)).sort() : [];
 const greenEffects = [];
 for (const file of files) {
-  const id = file.replace(/\.gif$/, "").replace(/[^a-z0-9-]/gi, "-").toLowerCase();
+  const id = file.replace(/\.(gif|png|jpe?g)$/i, "").replace(/[^a-z0-9-]/gi, "-").toLowerCase();
   const { frames, delay } = await framesOf(join(SRC, file));
 
   // slot = union of every green pixel (where the user shows over the run)
