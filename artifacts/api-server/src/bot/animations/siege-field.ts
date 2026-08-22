@@ -368,34 +368,34 @@ interface Assets {
   atkColor: number; defColor: number;   // art-themed accent per active fighter
 }
 
-// Battle-line geometry — four card slots per side laid out in the shallow ARC of
-// the reference board: the inner card (depth 0, nearest the centre line) is the
-// active front-line fighter, then the line curves OUTWARD to the flank, which
-// sits lower and larger. Each side is a clear, spaced group; the arena's centre
-// medallion shows in the gap between them. Measured off the mockup (1536×1024)
-// and scaled to this 900×600 frame.
+// Battle-line geometry — each side is a VERTICAL COLUMN running the full height
+// of the field (a party roster on the flank): four card stands stacked top to
+// bottom, blue on the left facing inward, red on the right facing inward. The
+// middle is left open as the CLASH STAGE — on a card's turn it steps into the
+// centre and duels its target like a /battle, then returns to its slot.
 const PORTRAIT_W = 150, PORTRAIT_H = 150;
-const LINE_MAX = 4;                 // cards per side
-// Per-rank slot for the LEFT side, {dx from centre, base contact Y, size}.
-// depth 0 = inner (active), depth 3 = flank.
-const SLOTS: readonly { dx: number; baseY: number; scale: number }[] = [
-  { dx: 128, baseY: 388, scale: 0.40 },
-  { dx: 216, baseY: 394, scale: 0.42 },
-  { dx: 304, baseY: 402, scale: 0.44 },
-  { dx: 392, baseY: 414, scale: 0.47 },
-];
-const GROUND_Y = 414;               // flank contact line (used by ambient FX)
+const LINE_MAX = 4;                 // cards per column
+const COL_X = 118;                  // column centre x (left); right = width − COL_X
+const COL_TOP_Y = 214, COL_BOT_Y = 548;  // base-contact Y of the top and bottom slot
+const COL_SCALE = 0.40;             // roster card size
+const GROUND_Y = COL_BOT_Y;         // bottom contact line (used by ambient FX)
+// Where a card of `side` stands when it steps into the centre to fight.
+const CLASH_Y = 372, CLASH_DX = 96, CLASH_SCALE = 0.60;
 
 function standCentre(side: 0 | 1, depth: number): { cx: number; baseY: number; scale: number } {
-  const dir = side === 0 ? -1 : 1;
-  const s = SLOTS[Math.min(depth, SLOTS.length - 1)]!;
-  return { cx: FIELD.width / 2 + dir * s.dx, baseY: s.baseY, scale: s.scale };
+  const cx = side === 0 ? COL_X : FIELD.width - COL_X;
+  const t = LINE_MAX > 1 ? depth / (LINE_MAX - 1) : 0;   // 0 top → 1 bottom
+  return { cx, baseY: lerp(COL_TOP_Y, COL_BOT_Y, t), scale: COL_SCALE };
 }
 
-// Plaque-centre Y for a given rank (where its impact FX / damage number land).
-function plaqueCyAt(depth: number): number {
-  const p = standCentre(0, depth);
-  return p.baseY - STAND_H * p.scale * 0.52;
+// Centre-stage placement for a card of `side` while it is fighting.
+function clashCentre(side: 0 | 1): { cx: number; baseY: number; scale: number } {
+  return { cx: FIELD.width / 2 + (side === 0 ? -CLASH_DX : CLASH_DX), baseY: CLASH_Y, scale: CLASH_SCALE };
+}
+
+// Plaque-centre Y for a card sitting at the clash stage (impact FX land here).
+function plaqueCyAt(_depth: number): number {
+  return CLASH_Y - STAND_H * CLASH_SCALE * 0.52;
 }
 
 function lineupFromFighter(f: SiegeFieldFighter): SiegeFieldLineupCard {
@@ -403,14 +403,15 @@ function lineupFromFighter(f: SiegeFieldFighter): SiegeFieldLineupCard {
     hp: f.hp, maxHp: f.maxHp, hpBefore: f.hpBefore, energy: f.energy, fallen: false, active: true };
 }
 
-interface Anim {
-  t: number; advance: number; connected: boolean; impact: number; acting: 0 | 1;
-  swipeToX: number;      // the X the acting card swipes to at the peak of its charge
+// Smoothstep 0→1 as t goes a→b.
+function smooth01(t: number, a: number, b: number): number {
+  const x = clamp01((t - a) / (b - a));
+  return x * x * (3 - 2 * x);
 }
 
-// Paint the whole scene at `t`. Everything is drawn in logical (900×470)
-// coordinates; callers apply any physical `scale` themselves (still PNG) or via
-// encodeAnimation's renderScale (GIF).
+// Paint the whole scene at `t`. Two vertical roster columns (blue left, red
+// right); on a turn the acting card and its target STEP INTO THE CENTRE, clash
+// like a /battle, then return to their column slots.
 function paintFrame(ctx: Ctx, input: SiegeFieldInput, a: Assets, t: number, scale: number): void {
   ctx.save();
   ctx.scale(scale, scale);
@@ -418,63 +419,90 @@ function paintFrame(ctx: Ctx, input: SiegeFieldInput, a: Assets, t: number, scal
 
   drawArena(ctx, a, input.accent);
 
-  // Impact timing. The acting card SWIPES all the way across the field to the
-  // target, connects around t≈0.5, then slides back to its slot.
-  const LUNGE_IN_END = 0.46, CONNECT = 0.5, LUNGE_OUT_END = 0.92;
-  const lungeIn = clamp01((t - 0.10) / (LUNGE_IN_END - 0.10));
-  const lungeOut = clamp01((t - CONNECT) / (LUNGE_OUT_END - CONNECT));
-  const advance = easeInOut(lungeIn) * (1 - easeOut(lungeOut)); // 0→1→0
-  const connected = t >= CONNECT && input.isHit;
-  const impact = pulse(t, CONNECT - 0.02, CONNECT + 0.22);      // flash / shake window
   const acting = input.actingSide;
   const targetSide: 0 | 1 = acting === 0 ? 1 : 0;
-
   const atkLine = (input.attackerLineup && input.attackerLineup.length ? input.attackerLineup : [lineupFromFighter(input.attacker)]);
   const defLine = (input.defenderLineup && input.defenderLineup.length ? input.defenderLineup : [lineupFromFighter(input.defender)]);
+  const lineOf = (s: 0 | 1) => (s === 0 ? atkLine : defLine);
 
-  // Which enemy card is struck (any rank), and where the acting card swipes to —
-  // just short of the target so it reads as crossing the whole field.
-  const foeLine = targetSide === 0 ? atkLine : defLine;
+  // Which enemy rank is struck (any card in the foe column).
+  const foeLine = lineOf(targetSide);
   let focusDepth = foeLine.findIndex(c => c.hpBefore != null);
   if (focusDepth < 0) focusDepth = foeLine.findIndex(c => c.struck);
   if (focusDepth < 0) focusDepth = 0;
-  const foePos = standCentre(targetSide, focusDepth);
-  const actingSlot = standCentre(acting, 0);
-  const towardFoe = foePos.cx - actingSlot.cx;
-  // A clear DASH forward toward the target (like a /battle lunge) — most of the
-  // way there, then back to its slot; not a full teleport across the board.
-  const swipeToX = actingSlot.cx + towardFoe * 0.62;
-  const anim: Anim = { t, advance, connected, impact, acting, swipeToX };
 
-  // The floor slots (a mini board) both lines stand on.
-  drawFloorPanel(ctx, 0);
-  drawFloorPanel(ctx, 1);
+  // Clash timing: step to centre (0→0.26), duel (~0.5), step home (0.72→1).
+  const presence = smooth01(t, 0, 0.26) * (1 - smooth01(t, 0.72, 1.0));
+  const connected = t >= 0.5 && input.isHit;
+  const impact = pulse(t, 0.48, 0.72);
+  const dashAdv = pulse(t, 0.34, 0.64);            // the acting card's lunge at centre
+  const actClash = clashCentre(acting);
+  const tgtClash = clashCentre(targetSide);
+  const dashX = (tgtClash.cx - actClash.cx) * 0.42 * dashAdv;
 
-  // Speed streaks stream off the charging card as it crosses the field.
-  const streakK = advance * clamp01(1 - lungeOut * 2.2);
-  if (streakK > 0.02) {
-    const actingDir = acting === 0 ? 1 : -1;
-    const chargeX = lerp(actingSlot.cx, swipeToX, advance);
-    drawDashStreak(ctx, chargeX, actingDir, streakK, acting === 0 ? a.atkColor : a.defColor);
+  const actingDepth = Math.max(0, lineOf(acting).findIndex(c => c.active));
+  const isActing = (s: 0 | 1, d: number) => s === acting && d === (actingDepth < 0 ? 0 : actingDepth);
+  const isTarget = (s: 0 | 1, d: number) => s === targetSide && d === focusDepth;
+
+  // Placement for a card: its column slot, or interpolated toward the clash
+  // centre if it's one of the two fighters.
+  const place = (s: 0 | 1, d: number): { cx: number; baseY: number; scale: number; flash: number } => {
+    const slot = standCentre(s, d);
+    if (!isActing(s, d) && !isTarget(s, d)) return { ...slot, flash: 0 };
+    const c = clashCentre(s);
+    let cx = lerp(slot.cx, c.cx, presence);
+    const baseY = lerp(slot.baseY, c.baseY, presence);
+    const sc = lerp(slot.scale, c.scale, presence);
+    let flash = 0;
+    if (isActing(s, d)) cx += dashX;
+    if (isTarget(s, d) && connected) { flash = impact; cx += (targetSide === 0 ? -1 : 1) * impact * 12; }
+    return { cx, baseY, scale: sc, flash };
+  };
+
+  const drawOne = (s: 0 | 1, d: number) => {
+    const line = lineOf(s);
+    const card = line[d]; if (!card) return;
+    const stand = s === 0 ? a.standBlue : a.standRed;
+    const color = s === 0 ? a.atkColor : a.defColor;
+    const pos = place(s, d);
+    const art = card.artUrl ? a.artByUrl.get(card.artUrl) ?? null : null;
+    drawStand(ctx, { cx: pos.cx, baseY: pos.baseY, scale: pos.scale, side: s, stand, art, color, card, flashWhite: pos.flash });
+  };
+
+  // Roster first (everyone NOT in the centre), top→bottom so lower cards overlap.
+  for (const s of [0, 1] as const) {
+    for (let d = 0; d < Math.min(lineOf(s).length, LINE_MAX); d++) {
+      if (!isActing(s, d) && !isTarget(s, d)) drawOne(s, d);
+    }
   }
+  // A soft spotlight on the centre stage while the fighters are out there.
+  if (presence > 0.05) {
+    ctx.save();
+    ctx.globalAlpha = 0.5 * presence;
+    const g = ctx.createRadialGradient(FIELD.width / 2, CLASH_Y - 40, 40, FIELD.width / 2, CLASH_Y - 40, 340);
+    g.addColorStop(0, "rgba(0,0,0,0)"); g.addColorStop(1, "rgba(4,6,12,0.7)");
+    ctx.fillStyle = g; ctx.fillRect(0, 0, FIELD.width, FIELD.height);
+    ctx.restore();
+  }
+  // Dash streak behind the lunging fighter.
+  if (dashAdv > 0.05 && presence > 0.4) {
+    const ax = lerp(standCentre(acting, actingDepth).cx, actClash.cx, presence) + dashX;
+    drawDashStreak(ctx, ax, acting === 0 ? 1 : -1, dashAdv * presence, acting === 0 ? a.atkColor : a.defColor);
+  }
+  // The two fighters, on top — target first, acting frontmost.
+  drawOne(targetSide, focusDepth);
+  drawOne(acting, actingDepth);
 
-  // Both battle lines — the NON-acting line first, then the acting line, so the
-  // acting card (drawn last within its line) passes in FRONT of the foe ranks as
-  // it swipes across the field.
-  drawLine(ctx, targetSide, targetSide === 0 ? atkLine : defLine, a, anim);
-  drawLine(ctx, acting, acting === 0 ? atkLine : defLine, a, anim);
-
-  // Strike FX + damage number over the struck FOCUS card (any rank), on connect.
-  const foeDir = targetSide === 0 ? -1 : 1;
-  const targetX = foePos.cx + foeDir * impact * 16;
-  const targetY = plaqueCyAt(focusDepth);
+  // Strike FX + damage number over the struck fighter at the clash stage.
+  const tp = place(targetSide, focusDepth);
+  const targetX = tp.cx, targetY = tp.baseY - STAND_H * tp.scale * 0.52;
   if (connected) {
     drawImpact(ctx, a, targetX, targetY, impact, input);
-  } else if (t >= CONNECT && !input.isHit) {
-    drawFloatingText(ctx, targetX, targetY - 56, "MISS", 0x9aa7b4, clamp01((t - CONNECT) / 0.4));
+  } else if (t >= 0.5 && !input.isHit) {
+    drawFloatingText(ctx, targetX, targetY - 56, "MISS", 0x9aa7b4, clamp01((t - 0.5) / 0.4));
   }
 
-  // HUD: the two life-plates + the VS crest, then the play-by-play + turn call.
+  // HUD: life-plates + VS crest + play-by-play + turn bar.
   drawLifePlate(ctx, 0, input.attacker, a.atkArt, a.atkColor);
   drawLifePlate(ctx, 1, input.defender, a.defArt, a.defColor);
   drawVsCrest(ctx);
@@ -483,65 +511,6 @@ function paintFrame(ctx: Ctx, input: SiegeFieldInput, a: Assets, t: number, scal
   if (input.ko && t > 0.72) drawKoStamp(ctx, targetX, clamp01((t - 0.72) / 0.28));
 
   ctx.restore();
-}
-
-// Draw one side's whole battle line — a lined-up rank of four floor slots. The
-// deepest rank is drawn first; the active card is drawn last (on top) so it
-// leads the swipe. Rendered deepest-first so nearer cards overlap farther ones.
-function drawLine(ctx: Ctx, side: 0 | 1, cards: SiegeFieldLineupCard[], a: Assets, anim: Anim): void {
-  const stand = side === 0 ? a.standBlue : a.standRed;
-  const color = side === 0 ? a.atkColor : a.defColor;
-  const dir = side === 0 ? -1 : 1;
-  const n = Math.min(cards.length, LINE_MAX);
-  const struckThisTurn = anim.acting !== side && anim.connected;
-  for (let d = n - 1; d >= 0; d--) {
-    const card = cards[d]!;
-    const pos = standCentre(side, d);
-    let slideX = 0, flash = 0, bob = 0, lift = 0, scaleMul = 1;
-    if (card.active && anim.acting === side) {
-      // The acting card DASHES forward toward its target and back — a clear
-      // lunge with a small lift and a touch of swell at the peak.
-      const prog = anim.advance;
-      slideX = (anim.swipeToX - pos.cx) * prog;
-      lift = -Math.sin(prog * Math.PI) * 16;
-      scaleMul = 1 + 0.06 * Math.sin(prog * Math.PI);
-    } else if (card.active) {
-      bob = Math.sin(anim.t * Math.PI * 2 + (side === 1 ? Math.PI : 0)) * 2.5;
-    }
-    // Any struck card (the focus, or every card on an AoE) flashes white and is
-    // knocked back on connect.
-    if (struckThisTurn && card.struck && !card.fallen) { flash = anim.impact; slideX += dir * anim.impact * 14; }
-    const art = card.artUrl ? a.artByUrl.get(card.artUrl) ?? null : null;
-    drawStand(ctx, { cx: pos.cx + slideX, baseY: pos.baseY + bob + lift, scale: pos.scale * scaleMul, side, stand, art, color, card, flashWhite: flash });
-  }
-}
-
-// A mini floor board: four iso tile pads per side, the slots the rank stands on.
-function drawFloorPanel(ctx: Ctx, side: 0 | 1): void {
-  const theme = side === 0 ? BLUE : RED;
-  for (let d = 0; d < LINE_MAX; d++) {
-    const pos = standCentre(side, d);
-    const w = STAND_W * pos.scale * 0.86, h = 30 * pos.scale + 16;
-    const cx = pos.cx, cy = pos.baseY + 2;
-    // Iso diamond pad.
-    ctx.save();
-    ctx.beginPath();
-    ctx.moveTo(cx, cy - h / 2);
-    ctx.lineTo(cx + w / 2, cy);
-    ctx.lineTo(cx, cy + h / 2);
-    ctx.lineTo(cx - w / 2, cy);
-    ctx.closePath();
-    ctx.fillStyle = "rgba(12,16,24,0.42)";
-    ctx.fill();
-    ctx.strokeStyle = rgba(theme, 0.55);
-    ctx.lineWidth = 2;
-    ctx.stroke();
-    // Inner glow line.
-    ctx.strokeStyle = rgba(GOLD, 0.25);
-    ctx.lineWidth = 1;
-    ctx.stroke();
-    ctx.restore();
-  }
 }
 
 // ── 2D drawing primitives ─────────────────────────────────────────────────────
