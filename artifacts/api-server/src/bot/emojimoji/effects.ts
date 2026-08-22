@@ -28,6 +28,7 @@ interface Template {
   layers: Layer[];
   bb?: number[];                  // per-effect subject slot [x0,y0,x1,y1] (else manifest.base.bb)
   pivot?: number[];               // per-effect transform pivot (else manifest.base.pivot)
+  hueCycle?: boolean;             // cycle the user image's colours over the loop (rainbow)
 }
 interface Manifest { tile: number; base: { bb: number[]; pivot: number[] }; effects: Template[] }
 
@@ -108,6 +109,17 @@ export async function renderEmojiGif(image: Buffer, effectId: string): Promise<B
           ctx.translate(cx, cy); ctx.rotate(th); ctx.scale(sx, sy); ctx.translate(-px, -py);
         }
         ctx.drawImage(user, 0, 0, user.width, user.height, bx0, by0, bw, bh);
+        if (tpl.hueCycle) {
+          // Cycle the image's colours: tint to a rotating hue, masked to the
+          // image's own alpha so the transparent background stays transparent.
+          const hue = Math.floor((f / tpl.frames) * 360);
+          ctx.globalCompositeOperation = "color";
+          ctx.fillStyle = `hsl(${hue},100%,50%)`;
+          ctx.fillRect(bx0, by0, bw, bh);
+          ctx.globalCompositeOperation = "destination-in";
+          ctx.drawImage(user, 0, 0, user.width, user.height, bx0, by0, bw, bh);
+          ctx.globalCompositeOperation = "source-over";
+        }
         ctx.restore();
       } else if (L.sheet) {
         const sheet = sheets.get(L.sheet);
