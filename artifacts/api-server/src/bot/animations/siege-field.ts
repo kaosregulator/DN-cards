@@ -374,18 +374,26 @@ interface Assets {
 // middle is left open as the CLASH STAGE — on a card's turn it steps into the
 // centre and duels its target like a /battle, then returns to its slot.
 const PORTRAIT_W = 150, PORTRAIT_H = 150;
-const LINE_MAX = 4;                 // cards per column
-const COL_X = 118;                  // column centre x (left); right = width − COL_X
-const COL_TOP_Y = 214, COL_BOT_Y = 548;  // base-contact Y of the top and bottom slot
-const COL_SCALE = 0.40;             // roster card size
-const GROUND_Y = COL_BOT_Y;         // bottom contact line (used by ambient FX)
+const LINE_MAX = 4;                 // cards per team
+const COL_SCALE = 0.56;             // roster card size — big enough to read as fighters
+// LEFT-side team ZONE: a tall vertical formation set INWARD from the wall, the
+// middle ranks bulging toward centre (a soft ")") and the flanks pulled back, so
+// it reads as fighters deployed on the battlefield — not stands on the wall. The
+// right team mirrors each cx about the centre line. Positions are tuned visually.
+const FORMATION: readonly { cx: number; baseY: number }[] = [
+  { cx: 236, baseY: 250 },   // top flank
+  { cx: 318, baseY: 356 },   // upper-middle, bulged in
+  { cx: 318, baseY: 460 },   // lower-middle, bulged in
+  { cx: 236, baseY: 566 },   // bottom flank
+];
+const GROUND_Y = 566;               // bottom contact line (used by ambient FX)
 // Where a card of `side` stands when it steps into the centre to fight.
-const CLASH_Y = 372, CLASH_DX = 96, CLASH_SCALE = 0.60;
+const CLASH_Y = 372, CLASH_DX = 104, CLASH_SCALE = 0.74;
 
 function standCentre(side: 0 | 1, depth: number): { cx: number; baseY: number; scale: number } {
-  const cx = side === 0 ? COL_X : FIELD.width - COL_X;
-  const t = LINE_MAX > 1 ? depth / (LINE_MAX - 1) : 0;   // 0 top → 1 bottom
-  return { cx, baseY: lerp(COL_TOP_Y, COL_BOT_Y, t), scale: COL_SCALE };
+  const f = FORMATION[Math.min(depth, FORMATION.length - 1)]!;
+  const cx = side === 0 ? f.cx : FIELD.width - f.cx;
+  return { cx, baseY: f.baseY, scale: COL_SCALE };
 }
 
 // Centre-stage placement for a card of `side` while it is fighting.
