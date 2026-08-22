@@ -368,35 +368,55 @@ interface Assets {
   atkColor: number; defColor: number;   // art-themed accent per active fighter
 }
 
-// Battle-line geometry — each side is a VERTICAL COLUMN running the full height
-// of the field (a party roster on the flank): four card stands stacked top to
-// bottom, blue on the left facing inward, red on the right facing inward. The
-// middle is left open as the CLASH STAGE — on a card's turn it steps into the
-// centre and duels its target like a /battle, then returns to its slot.
+// Battle-line geometry — the stone tile court is a game board and the eight
+// cards are pieces standing on it: four blue squares on the left half, four red
+// on the right, each piece on its own square with floor visible around its base.
+// The middle of the board is left open as the CLASH STAGE — on a card's turn it
+// steps into the centre and duels its target like a /battle, then returns.
 const PORTRAIT_W = 150, PORTRAIT_H = 150;
 const LINE_MAX = 4;                 // pieces per team
-// The four cards per team sit on the STONE TILE FLOOR in a shallow HORIZONTAL
-// ARC (side by side, matching the reference mockup) — blue arc on the left half
-// of the floor, red arc on the right half, the centre kept open for the clash.
-// {cx, baseY (base contact), scale}. index 0 = outer flank … index 3 = inner
-// (nearest the centre line). The right team mirrors each cx about the centre.
-// Measured off the reference green-screen mockup: the flank card is largest and
-// lowest (nearest the viewer); the arc recedes toward the centre line, so inner
-// cards are smaller and higher. index 0 = outer flank … index 3 = inner.
-const FORMATION: readonly { cx: number; baseY: number; scale: number }[] = [
-  { cx: 113, baseY: 510, scale: 0.85 },  // outer flank
-  { cx: 188, baseY: 478, scale: 0.80 },
-  { cx: 245, baseY: 423, scale: 0.65 },
-  { cx: 291, baseY: 391, scale: 0.57 },  // inner, nearest centre
+// ── THE BOARD ────────────────────────────────────────────────────────────────
+// The stone tile court is the battlefield, and the eight cards are physical
+// pieces standing on it. Placement is therefore expressed in BOARD coordinates
+// and projected onto the floor — never picked as raw screen x/y.
+//
+// The court, measured off arena.png (1200x800 drawn into 900x600 — an exact 3:2
+// fit, so no crop and the measurements transfer 1:1), is a trapezoid:
+//   near edge  y = 515, spanning +/-390 from the centre line
+//   far  edge  y = 290 (the wall base), spanning +/-270
+//
+//   u = FILE  (-1 = outer edge of your half, 0 = the centre line)
+//   v = RANK  ( 0 = near edge of the court, 1 = far edge against the wall)
+//
+// boardSpot() projects a square onto the floor; the trapezoid supplies the
+// perspective, so a piece never has to be nudged in screen space to look seated.
+const BOARD = { nearY: 515, farY: 290, nearHalf: 390, farHalf: 270 };
+
+function boardSpot(u: number, v: number, scale: number): { cx: number; baseY: number; scale: number } {
+  const baseY = BOARD.nearY + (BOARD.farY - BOARD.nearY) * v;
+  const half = BOARD.nearHalf + (BOARD.farHalf - BOARD.nearHalf) * v;
+  return { cx: FIELD.width / 2 + u * half, baseY, scale };
+}
+
+// Four board squares per team: two ranks x two files. The far rank is set back
+// far enough that its stands' BASES sit above the near rank's TOPS, so all four
+// pieces are fully visible with bare floor between them — no stacking, no arc,
+// no card shoved against a wall. Blue takes the left half of the court, red the
+// right (u is mirrored), and the middle of the board stays open for combat.
+const NEAR_V = 0.013, FAR_V = 0.813, NEAR_S = 0.55, FAR_S = 0.42;
+const FILE_SLOTS: readonly { u: number; v: number; s: number }[] = [
+  { u: -0.330, v: NEAR_V, s: NEAR_S },  // 0 - near rank, inner file (front line, by the centre)
+  { u: -0.793, v: NEAR_V, s: NEAR_S },  // 1 - near rank, outer file
+  { u: -0.320, v: FAR_V, s: FAR_S },    // 2 - far  rank, inner file
+  { u: -0.799, v: FAR_V, s: FAR_S },    // 3 - far  rank, outer file
 ];
 const GROUND_Y = 510;               // front contact line (used by ambient FX)
 // Where a card of `side` stands when it steps into the centre to fight.
 const CLASH_Y = 372, CLASH_DX = 104, CLASH_SCALE = 0.74;
 
 function standCentre(side: 0 | 1, depth: number): { cx: number; baseY: number; scale: number } {
-  const f = FORMATION[Math.min(depth, FORMATION.length - 1)]!;
-  const cx = side === 0 ? f.cx : FIELD.width - f.cx;
-  return { cx, baseY: f.baseY, scale: f.scale };
+  const f = FILE_SLOTS[Math.min(depth, FILE_SLOTS.length - 1)]!;
+  return boardSpot(side === 0 ? f.u : -f.u, f.v, f.s);
 }
 
 // Centre-stage placement for a card of `side` while it is fighting.
