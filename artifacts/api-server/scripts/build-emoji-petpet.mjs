@@ -50,9 +50,13 @@ for (const file of files) {
   for (const F of frames) for (let i = 0; i < S * S; i++) { const j = i * 4; if (F[j + 3] > 40) { opaquePx++; if (isGreen(F[j], F[j + 1], F[j + 2])) greenPx++; } }
   const keyGreen = opaquePx > 0 && greenPx / opaquePx > 0.25;
 
-  const sheet = Buffer.alloc(S * S * frames.length * 4, 0);
-  for (let f = 0; f < frames.length; f++) {
-    const F = frames[f], base = f * S * S * 4;
+  // The hand presses down f0→f(n-1); ping-pong the frames so the loop shows the
+  // press AND the release smoothly (like the example), then loops seamlessly.
+  const seq = frames.length > 1 ? [...frames.keys(), ...[...frames.keys()].slice(1, -1).reverse()] : [0];
+
+  const sheet = Buffer.alloc(S * S * seq.length * 4, 0);
+  for (let f = 0; f < seq.length; f++) {
+    const F = frames[seq[f]], base = f * S * S * 4;
     for (let i = 0; i < S * S; i++) {
       const j = i * 4;
       if (F[j + 3] <= 40) continue;
@@ -61,29 +65,28 @@ for (const file of files) {
     }
   }
   const sheetFile = `${OUTREL}/${id}.front.png`;
-  await sharp(sheet, { raw: { width: S, height: S * frames.length, channels: 4 } }).png().toFile(join(HERE, sheetFile));
+  await sharp(sheet, { raw: { width: S, height: S * seq.length, channels: 4 } }).png().toFile(join(HERE, sheetFile));
 
-  // Classic petpet squish, bottom-anchored, peaking mid-loop (when the hand is
-  // down). tri: 0 → 1 → 0 across the frames.
-  const bb = [Math.round(S * 0.08), Math.round(S * 0.12), Math.round(S * 0.92), Math.round(S * 0.98)];
+  // Squish is bottom-anchored and tracks how far the hand has pressed: 0 at the
+  // raised frame, max at the fully-pressed frame.
+  const bb = [Math.round(S * 0.10), Math.round(S * 0.14), Math.round(S * 0.90), Math.round(S * 0.98)];
   const cx = (bb[0] + bb[2]) / 2, bottom = bb[3];
-  const transforms = frames.map((_, i) => {
-    const phase = frames.length > 1 ? i / (frames.length - 1) : 0;
-    const tri = 1 - Math.abs(2 * phase - 1);
-    const sx = 1 + 0.12 * tri;   // widen
-    const sy = 1 - 0.20 * tri;   // shorten
+  const transforms = seq.map((srcIdx) => {
+    const amt = frames.length > 1 ? srcIdx / (frames.length - 1) : 0;   // 0 raised → 1 pressed
+    const sx = 1 + 0.12 * amt;   // widen
+    const sy = 1 - 0.22 * amt;   // shorten
     return [0, r3(sx), r3(sy), r3(cx), r3(bottom)];
   });
 
   const meta = META[id] ?? { name: title(id), emoji: "🫳", desc: "Petpet" };
   petEffects.push({
     id, name: meta.name, emoji: meta.emoji, desc: meta.desc, pack: "petpet",
-    frames: frames.length, delayMs: Math.max(20, Math.round(delay / 10) * 10),
+    frames: seq.length, delayMs: 40,   // snappy, ~matches the example's rhythm
     transforms,
     layers: [{ kind: "base" }, { kind: "overlay", sheet: sheetFile }],
     bb, pivot: [r3(cx), r3(bottom)],
   });
-  console.log(`${id.padEnd(14)} petpet frames=${frames.length} keyGreen=${keyGreen} delay=${delay}`);
+  console.log(`${id.padEnd(14)} petpet frames=${seq.length} keyGreen=${keyGreen} delay=40`);
 }
 
 const manifestPath = join(HERE, "packs.json");
