@@ -97,7 +97,16 @@ export async function renderEmojiGif(image: Buffer, effectId: string): Promise<B
         const t = tpl.transforms?.[f];
         if (t && t[1] <= 0.001) continue; // scale 0 → user hidden this frame
         ctx.save();
-        if (t) { const [th, sc, cx, cy] = t; ctx.translate(cx, cy); ctx.rotate(th); ctx.scale(sc, sc); ctx.translate(-px, -py); }
+        if (t) {
+          // [theta, sx, sy, cx, cy] (non-uniform, e.g. petpet squish) or the
+          // shorter [theta, scale, cx, cy] (uniform).
+          const th = t[0]!;
+          const sx = t.length >= 5 ? t[1]! : t[1]!;
+          const sy = t.length >= 5 ? t[2]! : t[1]!;
+          const cx = t.length >= 5 ? t[3]! : t[2]!;
+          const cy = t.length >= 5 ? t[4]! : t[3]!;
+          ctx.translate(cx, cy); ctx.rotate(th); ctx.scale(sx, sy); ctx.translate(-px, -py);
+        }
         ctx.drawImage(user, 0, 0, user.width, user.height, bx0, by0, bw, bh);
         ctx.restore();
       } else if (L.sheet) {
