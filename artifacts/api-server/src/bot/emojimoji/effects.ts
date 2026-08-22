@@ -10,14 +10,14 @@
 // never used; the user's image is what gets animated.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import sharp from "sharp";
+import GIFEncoder from "gifencoder";
 import { existsSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { join } from "node:path";
 import type { Image } from "@napi-rs/canvas";
 import { getCanvas, type Ctx, type CanvasMod } from "../animations/engine.js";
 
-const OUT = 96; // sent/preview size — emoji-scale, not sticker-scale
+const OUT = 96;          // sent/preview size — emoji-scale, not sticker-scale
 
 // ── template data (generated) ────────────────────────────────────────────────
 interface Layer { kind: "overlay" | "base"; sheet?: string }
@@ -26,6 +26,8 @@ interface Template {
   frames: number; delayMs: number;
   transforms: number[][] | null;  // per-frame [theta, scale, cx, cy] for the base layer
   layers: Layer[];
+  bb?: number[];                  // per-effect subject slot [x0,y0,x1,y1] (else manifest.base.bb)
+  pivot?: number[];               // per-effect transform pivot (else manifest.base.pivot)
 }
 interface Manifest { tile: number; base: { bb: number[]; pivot: number[] }; effects: Template[] }
 
@@ -78,18 +80,23 @@ export async function renderEmojiGif(image: Buffer, effectId: string): Promise<B
   const sheets = new Map<string, Image | null>();
   for (const L of tpl.layers) if (L.kind === "overlay" && L.sheet && !sheets.has(L.sheet)) sheets.set(L.sheet, await loadSheet(mod, L.sheet));
 
-  const [bx0, by0, bx1, by1] = BASE_BB;
+  const [bx0, by0, bx1, by1] = tpl.bb ?? BASE_BB;
   const bw = bx1 - bx0, bh = by1 - by0;
-  const [px, py] = PIVOT;
+  const [px, py] = tpl.pivot ?? PIVOT;
 
-  const stacked = Buffer.alloc(OUT * OUT * tpl.frames * 4, 0);
+  // Compose every frame first (with real alpha), so we can choose a transparent
+  // key colour that is FAR from the actual content — otherwise gifencoder maps
+  // the key to a near-by content colour (pink/red) and the background leaks.
+  const frames: Ctx[] = [];
+  const content = new Set<number>();
   for (let f = 0; f < tpl.frames; f++) {
     const cell = mod.createCanvas(TILE, TILE);
     const ctx = cell.getContext("2d") as unknown as Ctx;
     for (const L of tpl.layers) {
       if (L.kind === "base") {
-        ctx.save();
         const t = tpl.transforms?.[f];
+        if (t && t[1] <= 0.001) continue; // scale 0 → user hidden this frame
+        ctx.save();
         if (t) { const [th, sc, cx, cy] = t; ctx.translate(cx, cy); ctx.rotate(th); ctx.scale(sc, sc); ctx.translate(-px, -py); }
         ctx.drawImage(user, 0, 0, user.width, user.height, bx0, by0, bw, bh);
         ctx.restore();
@@ -98,18 +105,55 @@ export async function renderEmojiGif(image: Buffer, effectId: string): Promise<B
         if (sheet) ctx.drawImage(sheet, 0, f * TILE, TILE, TILE, 0, 0, TILE, TILE);
       }
     }
-    // downscale this frame into the output buffer
     const outCell = mod.createCanvas(OUT, OUT);
     const octx = outCell.getContext("2d") as unknown as Ctx;
     octx.drawImage(cell as unknown as Image, 0, 0, TILE, TILE, 0, 0, OUT, OUT);
-    const data = octx.getImageData(0, 0, OUT, OUT).data;
-    stacked.set(data, f * OUT * OUT * 4);
+    const d = octx.getImageData(0, 0, OUT, OUT).data;
+    for (let i = 0; i < d.length; i += 4) if (d[i + 3]! >= 128) content.add(((d[i]! >> 4) << 8) | ((d[i + 1]! >> 4) << 4) | (d[i + 2]! >> 4));
+    frames.push(octx);
   }
+  const [kr, kg, kb] = pickKey(content);
+  const keyInt = (kr << 16) | (kg << 8) | kb;
 
-  // assemble a real-alpha animated GIF (binary transparency — no colour key)
-  try {
-    return await sharp(stacked, { raw: { width: OUT, height: OUT * tpl.frames, channels: 4 }, animated: true, pageHeight: OUT })
-      .gif({ delay: Array(tpl.frames).fill(tpl.delayMs), loop: 0 })
-      .toBuffer();
-  } catch { return null; }
+  const enc = new GIFEncoder(OUT, OUT);
+  enc.start();
+  enc.setRepeat(0);
+  enc.setQuality(5);            // finer NeuQuant sampling so the key survives quantization
+  enc.setDelay(tpl.delayMs);
+  enc.setTransparent(keyInt);
+  for (const octx of frames) {
+    const img = octx.getImageData(0, 0, OUT, OUT);
+    const d = img.data;
+    // Hard 1-bit alpha: gifencoder forces every alpha==0 pixel to the transparent
+    // palette index, so keep transparent areas at alpha 0 (with the content-far
+    // key colour so they cluster into one palette entry). Opaque elsewhere.
+    for (let i = 0; i < d.length; i += 4) {
+      if (d[i + 3]! < 128) { d[i] = kr; d[i + 1] = kg; d[i + 2] = kb; d[i + 3] = 0; }
+      else d[i + 3] = 255;
+    }
+    octx.putImageData(img, 0, 0);
+    enc.addFrame(octx as never);
+  }
+  enc.finish();
+  return enc.out.getData();
+}
+
+// Candidate key colours; pick the one whose nearest content colour is farthest.
+const KEY_CANDIDATES: [number, number, number][] = [
+  [255, 0, 255], [0, 255, 0], [0, 255, 255], [255, 255, 0], [0, 0, 255],
+  [255, 128, 0], [128, 0, 255], [0, 255, 128], [255, 0, 128], [128, 255, 0],
+];
+function pickKey(content: Set<number>): [number, number, number] {
+  let best: [number, number, number] = KEY_CANDIDATES[0]!, bestDist = -1;
+  for (const cand of KEY_CANDIDATES) {
+    let near = Infinity;
+    for (const c of content) {
+      const r = ((c >> 8) & 0xf) * 17, g = ((c >> 4) & 0xf) * 17, b = (c & 0xf) * 17;
+      const dr = r - cand[0], dg = g - cand[1], db = b - cand[2];
+      const dist = dr * dr + dg * dg + db * db;
+      if (dist < near) near = dist;
+    }
+    if (near > bestDist) { bestDist = near; best = cand; }
+  }
+  return best;
 }
