@@ -25,20 +25,22 @@ import {
   type Webhook, type Collection,
 } from "discord.js";
 import sharp from "sharp";
-import { EMOJI_EFFECTS, renderEmojiGif } from "./effects.js";
+import { EMOJI_EFFECTS, renderEmojiGif, SRC_MAX } from "./effects.js";
 import { logger } from "../../lib/logger.js";
 
 const PER_PAGE = 5;
 const PAGES = Math.max(1, Math.ceil(EMOJI_EFFECTS.length / PER_PAGE));
 const NUM_EMOJI = ["1️⃣", "2️⃣", "3️⃣", "4️⃣", "5️⃣"];
 const TTL = 10 * 60 * 1000;
+/** Discord CDN avatar size — nearest power-of-two ≥ SRC_MAX so we don't fetch soft 256s. */
+const AVATAR_SIZE = 512;
 
 interface Session {
   userId: string;
   expires: number;
   targetUrl: string;
   targetLabel: string;         // human label of the current target, e.g. "@Alice"
-  src: Buffer | null;          // fetched + flattened source frame
+  src: Buffer | null;          // fetched + normalized source frame
   version: number;             // bumps whenever the target changes (cache key)
   page: number;
   selected: string;            // effect id currently highlighted
@@ -49,6 +51,9 @@ const sessions = new Map<string, Session>();
 function token(): string { return Math.random().toString(36).slice(2, 10); }
 function sweep(): void { const now = Date.now(); for (const [k, s] of sessions) if (s.expires < now) sessions.delete(k); }
 function pageEffects(page: number) { return EMOJI_EFFECTS.slice(page * PER_PAGE, page * PER_PAGE + PER_PAGE); }
+function avatarUrl(user: { displayAvatarURL: (o: { extension: "png"; size: number }) => string }): string {
+  return user.displayAvatarURL({ extension: "png", size: AVATAR_SIZE });
+}
 
 // ── source resolution ────────────────────────────────────────────────────────
 function resolveSource(interaction: ChatInputCommandInteraction): { url: string; label: string } | null {
@@ -58,20 +63,33 @@ function resolveSource(interaction: ChatInputCommandInteraction): { url: string;
     return { url: att.url, label: "your upload" };
   }
   const user = interaction.options.getUser("user");
-  if (user) return { url: user.displayAvatarURL({ extension: "png", size: 256 }), label: `@${user.username}` };
+  if (user) return { url: avatarUrl(user), label: `@${user.username}` };
   const url = interaction.options.getString("url");
   if (url) return /^https?:\/\//i.test(url) ? { url, label: "that image" } : null;
-  return { url: interaction.user.displayAvatarURL({ extension: "png", size: 256 }), label: "your avatar" };
+  return { url: avatarUrl(interaction.user), label: "your avatar" };
 }
 
-// Download the source and flatten it to a single 256px PNG frame for the encoder.
+/** Normalize a source buffer: keep native size when already ≤ SRC_MAX, never
+ *  upscale, only downscale large inputs, always emit PNG with alpha. */
+export async function normalizeSource(buf: Buffer): Promise<Buffer> {
+  const meta = await sharp(buf).metadata();
+  const w = meta.width ?? 1, h = meta.height ?? 1;
+  const longest = Math.max(w, h);
+  let pipeline = sharp(buf).ensureAlpha();
+  if (longest > SRC_MAX) {
+    pipeline = pipeline.resize(SRC_MAX, SRC_MAX, { fit: "inside", withoutEnlargement: true });
+  }
+  return pipeline.png().toBuffer();
+}
+
+// Download the source and normalize it for the encoder (see normalizeSource).
 async function fetchImage(url: string): Promise<Buffer | null> {
   try {
     const res = await fetch(url);
     if (!res.ok) return null;
     const buf = Buffer.from(await res.arrayBuffer());
     if (buf.length > 12_000_000) return null;
-    return await sharp(buf).resize(256, 256, { fit: "inside", withoutEnlargement: true }).png().toBuffer();
+    return await normalizeSource(buf);
   } catch { return null; }
 }
 
@@ -91,19 +109,26 @@ async function previewFor(s: Session, effectId: string): Promise<Buffer | null> 
   return gif;
 }
 
-// Fire-and-forget: render every not-yet-cached effect for the current target in
-// the background (bounded concurrency) so paging and Send never wait on a render.
+// Fire-and-forget: render not-yet-cached effects in the background (bounded
+// concurrency) so paging and Send rarely wait. Adjacent pages are prioritized.
 const prewarming = new Set<string>();
 function prewarm(s: Session): void {
   if (!s.src) return;
-  const tag = `${s.userId}:${s.version}`;
+  const version = s.version;
+  const tag = `${s.userId}:${version}`;
   if (prewarming.has(tag)) return;
   prewarming.add(tag);
   void (async () => {
-    const pending = EMOJI_EFFECTS.filter((e) => !s.cache.has(`${s.version}:${e.id}`));
-    const LIMIT = 4;
+    const cached = (id: string) => s.cache.has(`${version}:${id}`);
+    const near = [s.page - 1, s.page + 1]
+      .filter((p) => p >= 0 && p < PAGES)
+      .flatMap((p) => pageEffects(p))
+      .filter((e) => !cached(e.id));
+    const rest = EMOJI_EFFECTS.filter((e) => !cached(e.id) && !near.some((n) => n.id === e.id));
+    const pending = [...near, ...rest];
+    const LIMIT = 3; // keep CPU calm while prewarming larger 128px GIFs
     for (let i = 0; i < pending.length; i += LIMIT) {
-      if (s.version !== Number(tag.split(":")[1])) break; // target changed — abandon
+      if (s.version !== version) break; // target changed — abandon
       await Promise.all(pending.slice(i, i + LIMIT).map((e) => previewFor(s, e.id).catch(() => null)));
     }
     prewarming.delete(tag);
@@ -113,33 +138,7 @@ function prewarm(s: Session): void {
 // ── screen builders ──────────────────────────────────────────────────────────
 type Screen = Parameters<ButtonInteraction["editReply"]>[0];
 
-async function buildBoard(s: Session, tok: string): Promise<Screen> {
-  if (!(await ensureSrc(s))) {
-    return { content: "❌ Couldn't read that image. Try a PNG/JPG/GIF, a member, or a valid image URL.", embeds: [], components: [], files: [] };
-  }
-  const effs = pageEffects(s.page);
-  if (!effs.some((e) => e.id === s.selected)) s.selected = effs[0]!.id;
-
-  // Render this page's previews in parallel (they land in the cache), then lay
-  // out the embeds. Parallel render keeps the board snappy even at 5 per page.
-  const gifs = await Promise.all(effs.map((eff) => previewFor(s, eff.id)));
-  const files: AttachmentBuilder[] = [];
-  const embeds: EmbedBuilder[] = [];
-  for (let i = 0; i < effs.length; i++) {
-    const eff = effs[i]!;
-    const gif = gifs[i];
-    const name = `p${i}.gif`;
-    const isSel = eff.id === s.selected;
-    const embed = new EmbedBuilder()
-      .setColor(isSel ? 0x57f287 : 0x2b2d31)
-      .setTitle(`${NUM_EMOJI[i]} ${eff.emoji} ${eff.name}${isSel ? "  ✅" : ""}`)
-      .setDescription(eff.desc);
-    if (i === 0) embed.setAuthor({ name: `Emojimoji · target: ${s.targetLabel} · page ${s.page + 1}/${PAGES}` });
-    if (gif) { files.push(new AttachmentBuilder(gif, { name })); embed.setImage(`attachment://${name}`); }
-    embeds.push(embed);
-  }
-  prewarm(s); // fill the rest of the pages into cache so ◀ ▶ and Send are instant
-
+function boardComponents(s: Session, tok: string, effs: typeof EMOJI_EFFECTS) {
   const numRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
     ...effs.map((eff, i) =>
       new ButtonBuilder()
@@ -158,10 +157,71 @@ async function buildBoard(s: Session, tok: string): Promise<Screen> {
     new ButtonBuilder().setCustomId(`emojimoji:image:${tok}`).setEmoji("🖼️").setLabel("Image").setStyle(ButtonStyle.Secondary),
     new ButtonBuilder().setCustomId(`emojimoji:send:${tok}`).setEmoji("✅").setLabel("Send").setStyle(ButtonStyle.Success),
   );
+  return [numRow, pageRow, srcRow];
+}
+
+function boardEmbeds(s: Session, effs: typeof EMOJI_EFFECTS, gifs: (Buffer | null | undefined)[]): EmbedBuilder[] {
+  const embeds: EmbedBuilder[] = [];
+  for (let i = 0; i < effs.length; i++) {
+    const eff = effs[i]!;
+    const gif = gifs[i];
+    const name = `p${i}.gif`;
+    const isSel = eff.id === s.selected;
+    const embed = new EmbedBuilder()
+      .setColor(isSel ? 0x57f287 : 0x2b2d31)
+      .setTitle(`${NUM_EMOJI[i]} ${eff.emoji} ${eff.name}${isSel ? "  ✅" : ""}`)
+      .setDescription(eff.desc);
+    if (i === 0) embed.setAuthor({ name: `Emojimoji · target: ${s.targetLabel} · page ${s.page + 1}/${PAGES}` });
+    if (gif) embed.setImage(`attachment://${name}`);
+    embeds.push(embed);
+  }
+  return embeds;
+}
+
+function boardFiles(gifs: (Buffer | null | undefined)[]): AttachmentBuilder[] {
+  const files: AttachmentBuilder[] = [];
+  for (let i = 0; i < gifs.length; i++) {
+    const gif = gifs[i];
+    if (gif) files.push(new AttachmentBuilder(gif, { name: `p${i}.gif` }));
+  }
+  return files;
+}
+
+async function buildBoard(s: Session, tok: string): Promise<Screen> {
+  if (!(await ensureSrc(s))) {
+    return { content: "❌ Couldn't read that image. Try a PNG/JPG/GIF, a member, or a valid image URL.", embeds: [], components: [], files: [] };
+  }
+  const effs = pageEffects(s.page);
+  if (!effs.some((e) => e.id === s.selected)) s.selected = effs[0]!.id;
+
+  // Render this page's previews (cache hits are instant). Promise.all overlaps
+  // sheet I/O; GIF encode itself is CPU-bound on the main thread.
+  const gifs = await Promise.all(effs.map((eff) => previewFor(s, eff.id)));
+  prewarm(s); // adjacent pages first, then the rest — ◀ ▶ and Send stay instant
 
   return {
     content: `🪄 **Emojimoji** — pick a number to highlight an animation, page through with ◀ ▶, then **Send**. Change the target with 👤 / 🏠 / 🖼️.`,
-    embeds, files, components: [numRow, pageRow, srcRow],
+    embeds: boardEmbeds(s, effs, gifs),
+    files: boardFiles(gifs),
+    components: boardComponents(s, tok, effs),
+  };
+}
+
+/** Selection-only update: refresh embed colours / buttons without re-uploading
+ *  GIFs when every preview on this page is already cached. Existing message
+ *  attachments are retained by id so Discord doesn't drop the images. */
+function buildBoardChrome(s: Session, tok: string, interaction: ButtonInteraction): Screen | null {
+  const effs = pageEffects(s.page);
+  if (!effs.some((e) => e.id === s.selected)) s.selected = effs[0]!.id;
+  if (effs.some((e) => !s.cache.has(`${s.version}:${e.id}`))) return null;
+  // Rebuild embeds pointing at the same attachment://pN.gif names already on the message.
+  const gifs = effs.map((e) => s.cache.get(`${s.version}:${e.id}`) ?? null);
+  const keep = [...interaction.message.attachments.values()].map((a) => ({ id: a.id }));
+  return {
+    content: `🪄 **Emojimoji** — pick a number to highlight an animation, page through with ◀ ▶, then **Send**. Change the target with 👤 / 🏠 / 🖼️.`,
+    embeds: boardEmbeds(s, effs, gifs),
+    components: boardComponents(s, tok, effs),
+    ...(keep.length ? { attachments: keep } : {}),
   };
 }
 
@@ -189,6 +249,24 @@ export async function handleEmojimoji(interaction: ChatInputCommandInteraction):
   });
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
   const s = sessions.get(tok)!;
+
+  // Progressive first paint: show the selected effect as soon as it's ready,
+  // then fill the rest of the page. Feels much snappier on a cold cache.
+  if (!(await ensureSrc(s))) {
+    await interaction.editReply({ content: "❌ Couldn't read that image. Try a PNG/JPG/GIF, a member, or a valid image URL.", embeds: [], components: [], files: [] });
+    return;
+  }
+  const effs = pageEffects(s.page);
+  if (!effs.some((e) => e.id === s.selected)) s.selected = effs[0]!.id;
+  const firstId = s.selected;
+  const firstGif = await previewFor(s, firstId);
+  const partialGifs = effs.map((e) => (e.id === firstId ? firstGif : null));
+  await interaction.editReply({
+    content: `🪄 **Emojimoji** — pick a number to highlight an animation, page through with ◀ ▶, then **Send**. Change the target with 👤 / 🏠 / 🖼️.`,
+    embeds: boardEmbeds(s, effs, partialGifs),
+    files: boardFiles(partialGifs),
+    components: boardComponents(s, tok, effs),
+  });
   await interaction.editReply(await buildBoard(s, tok));
 }
 
@@ -236,7 +314,7 @@ export async function handleEmojimojiInteraction(interaction: Interaction): Prom
         });
         return;
       }
-      retarget(s, user.displayAvatarURL({ extension: "png", size: 256 }), `@${user.username}`);
+      retarget(s, avatarUrl(user), `@${user.username}`);
       await interaction.editReply(await buildBoard(s, tok));
       return;
     }
@@ -246,7 +324,9 @@ export async function handleEmojimojiInteraction(interaction: Interaction): Prom
       const guildId = interaction.values[0]!;
       const guild = interaction.client.guilds.cache.get(guildId);
       const member = guild ? await guild.members.fetch(interaction.user.id).catch(() => null) : null;
-      const url = member?.displayAvatarURL({ extension: "png", size: 256 }) ?? guild?.iconURL({ extension: "png", size: 256 }) ?? null;
+      const url = member
+        ? avatarUrl(member)
+        : (guild?.iconURL({ extension: "png", size: AVATAR_SIZE }) ?? null);
       if (url) retarget(s, url, `🏠 ${guild?.name ?? "server"}`);
       await interaction.deferUpdate();
       await interaction.editReply(await buildBoard(s, tok));
@@ -261,7 +341,8 @@ export async function handleEmojimojiInteraction(interaction: Interaction): Prom
         const eff = pageEffects(s.page)[idx];
         if (eff) s.selected = eff.id;
         await interaction.deferUpdate();
-        await interaction.editReply(await buildBoard(s, tok));
+        const chrome = buildBoardChrome(s, tok, interaction);
+        await interaction.editReply(chrome ?? await buildBoard(s, tok));
         return;
       }
       case "page": {
