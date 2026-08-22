@@ -374,26 +374,28 @@ interface Assets {
 // middle is left open as the CLASH STAGE — on a card's turn it steps into the
 // centre and duels its target like a /battle, then returns to its slot.
 const PORTRAIT_W = 150, PORTRAIT_H = 150;
-const LINE_MAX = 4;                 // cards per team
-const COL_SCALE = 0.56;             // roster card size — big enough to read as fighters
-// LEFT-side team ZONE: a tall vertical formation set INWARD from the wall, the
-// middle ranks bulging toward centre (a soft ")") and the flanks pulled back, so
-// it reads as fighters deployed on the battlefield — not stands on the wall. The
-// right team mirrors each cx about the centre line. Positions are tuned visually.
-const FORMATION: readonly { cx: number; baseY: number }[] = [
-  { cx: 236, baseY: 250 },   // top flank
-  { cx: 318, baseY: 356 },   // upper-middle, bulged in
-  { cx: 318, baseY: 460 },   // lower-middle, bulged in
-  { cx: 236, baseY: 566 },   // bottom flank
+const LINE_MAX = 4;                 // pieces per team
+// The playable battlefield is the STONE TILE FLOOR (roughly y 260→525 in this
+// frame) — NOT the whole image. The four cards are placed on the tiles like
+// chess pieces in a file: one shared X per team (blue left, red right), bases on
+// the floor, and — because the board recedes — each rank further BACK is drawn a
+// little higher and smaller. The centre column stays open for the clash.
+const LANE_X = 250;                 // file X for the left team; right team = width − LANE_X
+// index 0 = FRONT piece (nearest the viewer, largest), index 3 = BACK piece.
+const FORMATION: readonly { cx: number; baseY: number; scale: number }[] = [
+  { cx: 236, baseY: 516, scale: 0.44 },  // front piece, near tiles
+  { cx: 248, baseY: 452, scale: 0.40 },
+  { cx: 260, baseY: 394, scale: 0.36 },
+  { cx: 272, baseY: 342, scale: 0.32 },  // back piece, mid-floor
 ];
-const GROUND_Y = 566;               // bottom contact line (used by ambient FX)
+const GROUND_Y = 512;               // front contact line (used by ambient FX)
 // Where a card of `side` stands when it steps into the centre to fight.
 const CLASH_Y = 372, CLASH_DX = 104, CLASH_SCALE = 0.74;
 
 function standCentre(side: 0 | 1, depth: number): { cx: number; baseY: number; scale: number } {
   const f = FORMATION[Math.min(depth, FORMATION.length - 1)]!;
   const cx = side === 0 ? f.cx : FIELD.width - f.cx;
-  return { cx, baseY: f.baseY, scale: COL_SCALE };
+  return { cx, baseY: f.baseY, scale: f.scale };
 }
 
 // Centre-stage placement for a card of `side` while it is fighting.
@@ -479,7 +481,8 @@ function paintFrame(ctx: Ctx, input: SiegeFieldInput, a: Assets, t: number, scal
 
   // Roster first (everyone NOT in the centre), top→bottom so lower cards overlap.
   for (const s of [0, 1] as const) {
-    for (let d = 0; d < Math.min(lineOf(s).length, LINE_MAX); d++) {
+    // Back pieces first, front piece last, so nearer cards overlap farther ones.
+    for (let d = Math.min(lineOf(s).length, LINE_MAX) - 1; d >= 0; d--) {
       if (!isActing(s, d) && !isTarget(s, d)) drawOne(s, d);
     }
   }
