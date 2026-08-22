@@ -375,20 +375,21 @@ interface Assets {
 // centre and duels its target like a /battle, then returns to its slot.
 const PORTRAIT_W = 150, PORTRAIT_H = 150;
 const LINE_MAX = 4;                 // pieces per team
-// The playable battlefield is the STONE TILE FLOOR (roughly y 260→525 in this
-// frame) — NOT the whole image. The four cards are placed on the tiles like
-// chess pieces in a file: one shared X per team (blue left, red right), bases on
-// the floor, and — because the board recedes — each rank further BACK is drawn a
-// little higher and smaller. The centre column stays open for the clash.
-const LANE_X = 250;                 // file X for the left team; right team = width − LANE_X
-// index 0 = FRONT piece (nearest the viewer, largest), index 3 = BACK piece.
+// The four cards per team sit on the STONE TILE FLOOR in a shallow HORIZONTAL
+// ARC (side by side, matching the reference mockup) — blue arc on the left half
+// of the floor, red arc on the right half, the centre kept open for the clash.
+// {cx, baseY (base contact), scale}. index 0 = outer flank … index 3 = inner
+// (nearest the centre line). The right team mirrors each cx about the centre.
+// Measured off the reference green-screen mockup: the flank card is largest and
+// lowest (nearest the viewer); the arc recedes toward the centre line, so inner
+// cards are smaller and higher. index 0 = outer flank … index 3 = inner.
 const FORMATION: readonly { cx: number; baseY: number; scale: number }[] = [
-  { cx: 236, baseY: 516, scale: 0.44 },  // front piece, near tiles
-  { cx: 248, baseY: 452, scale: 0.40 },
-  { cx: 260, baseY: 394, scale: 0.36 },
-  { cx: 272, baseY: 342, scale: 0.32 },  // back piece, mid-floor
+  { cx: 113, baseY: 510, scale: 0.85 },  // outer flank
+  { cx: 188, baseY: 478, scale: 0.80 },
+  { cx: 245, baseY: 423, scale: 0.65 },
+  { cx: 291, baseY: 391, scale: 0.57 },  // inner, nearest centre
 ];
-const GROUND_Y = 512;               // front contact line (used by ambient FX)
+const GROUND_Y = 510;               // front contact line (used by ambient FX)
 // Where a card of `side` stands when it steps into the centre to fight.
 const CLASH_Y = 372, CLASH_DX = 104, CLASH_SCALE = 0.74;
 
