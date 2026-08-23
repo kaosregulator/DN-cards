@@ -1,5 +1,8 @@
 import type { ChatInputCommandInteraction } from "discord.js";
-import { EmbedBuilder, MessageFlags } from "discord.js";
+import { EmbedBuilder, MessageFlags, AttachmentBuilder } from "discord.js";
+import { readFileSync, existsSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { join } from "node:path";
 import { applyEmbedOverride } from "../embed-overrides.js";
 import { getOrCreateGuildSettings, isAdmin } from "../db.js";
 import { getShinyName } from "../cards-data.js";
@@ -10,6 +13,22 @@ import { BRAND_NAME } from "../help-banners.js";
 // full-width animated stripe between embeds in Discord.
 const DIVIDER_GIF =
   "https://user-images.githubusercontent.com/73097560/115834477-dbab4500-a447-11eb-908a-139a6edaec5c.gif";
+
+// The Dex N Cards banner + circle logo (bundled under assets/brand/). Resolved
+// with the same URL-relative-then-cwd fallback the font loader uses, so it works
+// from both the bundled build and a source run. Best-effort — a missing file
+// just falls back to the divider GIF, so /welcome always posts.
+function brandAsset(name: string): Buffer | null {
+  const candidates = [
+    fileURLToPath(new URL(`../../../assets/brand/${name}`, import.meta.url)),
+    join(process.cwd(), `assets/brand/${name}`),
+    join(process.cwd(), `artifacts/api-server/assets/brand/${name}`),
+  ];
+  for (const p of candidates) {
+    try { if (existsSync(p)) return readFileSync(p); } catch { /* try next */ }
+  }
+  return null;
+}
 
 const BRAND_COLOR  = 0xe63946;   // DarkNight red
 const ADMIN_COLOR  = 0xeb459e;   // pink for admin embeds
@@ -55,6 +74,15 @@ export async function handleWelcome(interaction: ChatInputCommandInteraction): P
   const guildId   = interaction.guildId;
   const guildName = interaction.guild?.name ?? "this server";
 
+  // Brand art: the Dex N Cards banner as the hero image, the circle logo as the
+  // thumbnail. Attached once to this message; both fall back gracefully.
+  const files: AttachmentBuilder[] = [];
+  const bannerBuf = brandAsset("banner.png");
+  const logoBuf = brandAsset("logo.png");
+  if (bannerBuf) files.push(new AttachmentBuilder(bannerBuf, { name: "brand-banner.png" }));
+  if (logoBuf) files.push(new AttachmentBuilder(logoBuf, { name: "brand-logo.png" }));
+  const heroImage = bannerBuf ? "attachment://brand-banner.png" : DIVIDER_GIF;
+
   // ── 1 · Welcome ─────────────────────────────────────────────────────────────
   const welcome = new EmbedBuilder()
     .setColor(BRAND_COLOR)
@@ -63,10 +91,11 @@ export async function handleWelcome(interaction: ChatInputCommandInteraction): P
       `Welcome to **${guildName}** — DarkNight's military collectible card game. Tanks, jets, warships, bosses, and the odd cursed community card drop right here in chat.\n\n` +
       "**When a card spawns, just type its name to catch it.** That's the core loop — then hoard, battle, trade, and climb the leaderboard.",
     )
-    .setImage(DIVIDER_GIF);
+    .setImage(heroImage);
+  if (logoBuf) welcome.setThumbnail("attachment://brand-logo.png");
 
   await applyEmbedOverride(welcome, {
-    guildId, key: "welcome", defaultImageUrl: DIVIDER_GIF,
+    guildId, key: "welcome", defaultImageUrl: heroImage,
     ctx: { guild: guildName, username: interaction.user.username, userId: interaction.user.id },
   });
 
@@ -160,7 +189,7 @@ export async function handleWelcome(interaction: ChatInputCommandInteraction): P
     .setFooter({ text: `🌐 ${SITE_URL}  ·  Run /help for the complete guide` })
     .setImage(DIVIDER_GIF);
 
-  await interaction.editReply({ embeds: [welcome, rules, info, collecting, trades, battling, sieges] });
+  await interaction.editReply({ embeds: [welcome, rules, info, collecting, trades, battling, sieges], files });
 
 }
 
