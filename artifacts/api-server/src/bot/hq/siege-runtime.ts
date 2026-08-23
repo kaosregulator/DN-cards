@@ -34,7 +34,8 @@ import { renderSiegeField, renderSiegeFieldStill, type AnimationSpeed } from "..
 import { renderCardClash, renderCardClashStill } from "../animations/index.js";
 import type { SiegeFieldInput } from "../animations/index.js";
 import {
-  buildSiegeBattle, startTurn as engineStartTurn, endTurn as engineEndTurn,
+  buildSiegeBattle, startTurn as engineStartTurn, enterMainPhase as engineEnterMain,
+  endTurn as engineEndTurn,
   resolveAction, checkAction, chooseSiegeAction, legalActions,
   toSiegeRoster, toFieldInput, toClashInput, summariseResult, describeAction,
   livingSlots, formationEmpty, lpExposed, canReinforce, otherSide as engineOtherSide,
@@ -61,6 +62,13 @@ const FORMATION_SIZE = 4;
 // Hard stop so a walked-away siege can never pin its target forever.
 const MAX_SIEGE_MS = 20 * 60 * 1000;
 const DEFAULT_FRAME_MS = 950;
+/**
+ * Discord doesn't publish a hard "max edits" for channel messages, but long
+ * sieges that re-edit the same message dozens of times get flaky (rate limits,
+ * stale attachment URLs, clients that stop refreshing). After this many edits
+ * we post a fresh board message and continue there.
+ */
+const MAX_BOARD_EDITS = 48;
 
 // ── Siege pressure ────────────────────────────────────────────────────────────
 // A defender that braces gains a shield bigger than a normal hit, and the battle
@@ -215,6 +223,13 @@ interface SiegeSession extends SiegeRuntimeConfig {
    * should ever do — ground taken stays taken.
    */
   peakDestruction: number;
+  /**
+   * Locked for the whole fight from guild battle settings — either the entire
+   * presentation is LIVE (GIF) or STATIC (PNG). Never mixed mid-siege.
+   */
+  liveVisuals: boolean;
+  /** Discord message.edit count — rollover to a fresh message before soft limits. */
+  editCount: number;
 }
 
 const sessions = new Map<string, SiegeSession>();
@@ -246,9 +261,15 @@ const pace = (s: SiegeSession) => s.headless ? Promise.resolve() : sleep(frameMs
 function frameMs(s: SiegeSession): number {
   return Math.max(120, Math.min(4000, s.settings.frameDelayMs ?? DEFAULT_FRAME_MS));
 }
-// The heavy animated arena scene, vs the lighter single-frame attack card.
+/**
+ * LIVE vs STATIC — locked on the session for the whole fight (same convention
+ * as /battle arena scenes). Never mix GIF and PNG mid-siege.
+ */
 function sceneAnimated(s: SiegeSession): boolean {
-  return s.siege.turnVisuals && s.settings.battleAnimationEnabled && s.settings.battleSceneAnimated;
+  return s.liveVisuals;
+}
+function resolveLiveVisuals(settings: BattleSettings, siege: HqSiegeConfig): boolean {
+  return !!(siege.turnVisuals && settings.battleAnimationEnabled && settings.battleSceneAnimated);
 }
 
 // ── Destruction & stars ───────────────────────────────────────────────────────
@@ -375,6 +396,8 @@ export async function startSiege(
     defendersBroken: 0,
     rankStall: 0,
     peakDestruction: 0,
+    liveVisuals: resolveLiveVisuals(config.settings, config.siege),
+    editCount: 0,
   };
   sessions.set(session.id, session);
   session.ttlTimer = setTimeout(() => { void abandon(session); }, MAX_SIEGE_MS);
@@ -521,6 +544,8 @@ export async function handleSiegeComponent(
     case "itemsel": return handleItemSelect(interaction as StringSelectMenuInteraction, session);
     case "itemtgt": return handleItemTarget(interaction as StringSelectMenuInteraction, session, parts[4]!);
     case "moves": return handleMovesQuickView(interaction as ButtonInteraction, session);
+    case "more": return handleMoreOpen(interaction as ButtonInteraction, session);
+    case "moresel": return handleMoreSelect(interaction as StringSelectMenuInteraction, session);
     case "concede": return handleConcede(interaction as ButtonInteraction, session);
     default:
       await interaction.reply({ content: "Unknown siege action.", ...EPHEMERAL }).catch(() => {});
@@ -788,25 +813,28 @@ async function playCoinToss(s: SiegeSession): Promise<0 | 1> {
   const call = s.coinCall ?? (Math.random() < 0.5 ? "heads" : "tails");
   const firstSide: 0 | 1 = call === flip ? 0 : 1;
   if (!s.message) return firstSide;
-  // Canvas/GIF rendering is best-effort. Never allow a renderer stall to keep
-  // the interaction in the cinematic screen indefinitely.
-  const anim = await Promise.race([
-    renderCoinFlip(flip).catch(() => null),
-    sleep(12_000).then(() => null),
-  ]);
-  if (anim) {
-    const coinEmbed = new EmbedBuilder()
-      .setColor(0xf1c40f)
-      .setTitle("🪙 Coin toss…")
-      .setDescription(s.coinCall ? `You called **${s.coinCall === "heads" ? "Heads" : "Tails"}**.` : "_No call — leaving it to fate._")
-      .setImage("attachment://coin.gif");
-    await s.message.edit({
-      content: null, embeds: [coinEmbed],
-      files: [new AttachmentBuilder(Buffer.from(anim.buffer), { name: "coin.gif" })], components: [],
-    }).catch((err) => {
-      logger.warn({ err, siege: s.id }, "siege coin animation edit failed");
-    });
-    await sleep(Math.max(1500, anim.durationMs));
+  // LIVE presentation may play the coin GIF; STATIC stays text-only so the
+  // whole fight never mixes GIF + still styles.
+  if (sceneAnimated(s)) {
+    const anim = await Promise.race([
+      renderCoinFlip(flip).catch(() => null),
+      sleep(12_000).then(() => null),
+    ]);
+    if (anim) {
+      const coinEmbed = new EmbedBuilder()
+        .setColor(0xf1c40f)
+        .setTitle("🪙 Coin toss…")
+        .setDescription(s.coinCall ? `You called **${s.coinCall === "heads" ? "Heads" : "Tails"}**.` : "_No call — leaving it to fate._")
+        .setImage("attachment://coin.gif");
+      await s.message.edit({
+        content: null, embeds: [coinEmbed],
+        files: [new AttachmentBuilder(Buffer.from(anim.buffer), { name: "coin.gif" })], components: [],
+      }).catch((err) => {
+        logger.warn({ err, siege: s.id }, "siege coin animation edit failed");
+      });
+      s.editCount++;
+      await sleep(Math.max(1500, anim.durationMs));
+    }
   }
   const landed = flip === "heads" ? "Heads 🪙" : "Tails 🌙";
   const resultEmbed = new EmbedBuilder()
@@ -818,7 +846,8 @@ async function playCoinToss(s: SiegeSession): Promise<0 | 1> {
   await s.message.edit({ content: null, embeds: [resultEmbed], files: [], components: [] }).catch((err) => {
     logger.warn({ err, siege: s.id }, "siege coin result edit failed");
   });
-  await sleep(1300);
+  s.editCount++;
+  await sleep(sceneAnimated(s) ? 1300 : 800);
   return firstSide;
 }
 
@@ -834,7 +863,7 @@ async function playCoinToss(s: SiegeSession): Promise<0 | 1> {
 async function startTurn(s: SiegeSession): Promise<void> {
   if (s.phase !== "assault") return;
 
-  // Status ticks, energy regen, card cooldowns and the hand refill.
+  // Status ticks, energy regen, card cooldowns and the hand refill (DRAW → MAIN).
   const opening = engineStartTurn(s.battle);
   pushLog(s, opening.events.map(e => e.text));
 
@@ -859,10 +888,27 @@ async function startTurn(s: SiegeSession): Promise<void> {
     }
   }
 
+  // Present DRAW while engine is still in DRAW (no combat buttons), then open MAIN.
+  if (!s.headless) {
+    await presentPhase(s, "draw", {
+      moveName: "Draw Phase",
+      drawnCards: (opening.drawnCards ?? []).map(c => ({ name: c.name, emoji: c.emoji })),
+    });
+    await pace(s);
+  }
+  const mainBeat = engineEnterMain(s.battle);
+  pushLog(s, mainBeat.events.map(e => e.text));
+  if (!s.headless) {
+    await presentPhase(s, "main", {
+      moveName: s.battle.activeSide === 0 ? "Your move" : "Enemy turn",
+    });
+  } else {
+    await refreshRestingFrame(s);
+  }
+
   // The garrison — and, in a headless send-off, BOTH sides — answer on their own.
   if (team.isAi || s.headless) {
-    await refreshRestingFrame(s);
-    await render(s);
+    if (s.headless) await render(s);
     await pace(s);
     const action = chooseSiegeAction(s.battle, SIEGE_AI_SKILL);
     await applySiegeAction(s, action);
@@ -875,7 +921,6 @@ async function startTurn(s: SiegeSession): Promise<void> {
     pushLog(s, ["⏱️ The commander hesitated — the line presses on regardless."]);
     void applySiegeAction(s, autoAction(s));
   }, ms);
-  await refreshRestingFrame(s);
   await render(s, { turnEndsAt: Date.now() + ms });
 }
 
@@ -986,12 +1031,71 @@ async function advanceTurn(s: SiegeSession): Promise<void> {
   s.turnNumber = s.battle.turn;
   s.currentSide = s.battle.activeSide;
 
+  const reinforced = closing.events.some(e => e.event === "deploy" || e.event === "wipe");
+  if (!s.headless && reinforced && !closing.battleOver) {
+    // Brief REINFORCE beat — presentation overlay only; engine phase unchanged.
+    await presentPhase(s, "reinforce", { moveName: "Reinforcements!" });
+    await pace(s);
+  }
+
   if (closing.battleOver || s.battle.phase === "ended") {
+    if (!s.headless) {
+      await presentPhase(s, "end", {
+        moveName: s.battle.winner === 0 ? `${s.attackerName} wins!` : `${s.targetName} holds!`,
+      });
+      await pace(s);
+    }
     await finish(s);
     return;
   }
   s.processing = false;
   await startTurn(s);
+}
+
+/**
+ * Present a phase beat on the Siege field. LIVE = GIF (when enabled for the
+ * whole fight); STATIC = crisp PNG. Never mixes mid-siege.
+ */
+async function presentPhase(
+  s: SiegeSession,
+  phase: "draw" | "main" | "battle" | "reinforce" | "end",
+  opts?: { moveName?: string; drawnCards?: { name: string; emoji: string }[] },
+): Promise<void> {
+  if (!s.siege.turnVisuals) {
+    await render(s, { currentMove: opts?.moveName });
+    return;
+  }
+  const input = toFieldInput(s.battle, {
+    actingSide: s.battle.activeSide,
+    actorSlot: s.actorSlot,
+    targetSlot: s.targetSlot ?? undefined,
+    moveName: opts?.moveName ?? "",
+    damage: 0, isHit: false, isCrit: false, ko: false,
+    accent: s.accent,
+    backdropKey: fieldBackdropKey(s),
+    floorKey: fieldFloorKey(s),
+    phase,
+    drawnCards: opts?.drawnCards,
+  });
+  const phaseSpeed: AnimationSpeed = "fast";
+  // Phase beats always encode at "fast" in LIVE mode — snappy transitions, lower
+  // encode cost. Combat beats (buildTurnFrames) still use the guild speed.
+  if (sceneAnimated(s)) {
+    const gif = await renderSiegeField(input, phaseSpeed).catch(() => null);
+    if (gif) { s.turnFrame = gif.buffer; s.turnFrameIsGif = true; }
+    else s.turnFrameIsGif = false;
+  } else {
+    s.turnFrameIsGif = false;
+  }
+  if (!s.turnFrameIsGif) {
+    const png = await renderSiegeFieldStill(input).catch(() => null);
+    if (png) { s.turnFrame = png; s.turnFrameIsGif = false; }
+  }
+  s.inClash = false;
+  await render(s, { currentMove: opts?.moveName });
+  if (sceneAnimated(s) && !s.headless) {
+    await sleep(Math.min(frameMs(s) + 150, phase === "draw" ? 1000 : 750));
+  }
 }
 
 /** How many of a side's cards have been destroyed, board and reserves alike. */
@@ -1073,6 +1177,10 @@ function restingFieldInput(s: SiegeSession): SiegeFieldInput {
     accent: s.accent,
     backdropKey: fieldBackdropKey(s),
     floorKey: fieldFloorKey(s),
+    phase: s.battle.phase === "draw" ? "draw"
+      : s.battle.phase === "reinforce" ? "reinforce"
+      : s.battle.phase === "ended" ? "end"
+      : "main",
   });
 }
 
@@ -1090,7 +1198,7 @@ async function buildTurnFrames(
   const speed = animationSpeed(s);
   let hold = 0;
 
-  const fieldInput = toFieldInput(s.battle, proj);
+  const fieldInput = toFieldInput(s.battle, { ...proj, phase: "battle" });
   if (sceneAnimated(s)) {
     const gif = await renderSiegeField(fieldInput, speed).catch(() => null);
     if (gif) { s.turnFrame = gif.buffer; s.turnFrameIsGif = true; hold = gif.durationMs; }
@@ -1195,6 +1303,78 @@ async function commitItem(
     targetSide: targetKey === "def" ? 1 : 0,
     targetSlot: targetKey === "def" ? (s.targetSlot ?? 0) : Number(targetKey),
   });
+}
+
+// ── Read-only reference (mirrors /battle's Moves popup) ──────────────────────
+/** Compact overflow menu — Moves guide + Retreat stay available without crowding the board. */
+async function handleMoreOpen(interaction: ButtonInteraction, s: SiegeSession): Promise<void> {
+  const menu = new StringSelectMenuBuilder()
+    .setCustomId(`hq-hub:ls:moresel:${s.id}`)
+    .setPlaceholder("More siege options…")
+    .addOptions([
+      { label: "Moves guide", value: "moves", emoji: "📖", description: "See what each move does" },
+      { label: "Retreat", value: "concede", emoji: "🏳️", description: "End the siege and withdraw" },
+    ]);
+  await interaction.reply({
+    content: "⋯ **More** — pick an option:",
+    components: [new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(menu)],
+    ...EPHEMERAL,
+  }).catch(() => {});
+}
+
+async function handleMoreSelect(interaction: StringSelectMenuInteraction, s: SiegeSession): Promise<void> {
+  const choice = interaction.values[0];
+  if (choice === "moves") {
+    const actor = active(s, 0);
+    if (!actor) {
+      await interaction.update({ content: "No card is leading the column.", components: [] }).catch(() => {});
+      return;
+    }
+    const ms = actor.movesetDef ?? getMoveset(actor.moveset);
+    const item = actor.item ?? getBattleItem(actor.itemId, s.guildId);
+    const embed = new EmbedBuilder()
+      .setColor(0x5865f2)
+      .setTitle(`📖 ${actor.cardName} — Move Set`)
+      .setDescription("*Quick reference for this assault — only you can see this.*")
+      .addFields(
+        {
+          name: "🔥 Special",
+          value: ms ? `${ms.emoji} **${ms.name}** — ${ms.description}\n⚡ ${ms.energyCost} energy` : "_None assigned._",
+        },
+        {
+          name: "🎒 Item",
+          value: item ? `${item.emoji} **${item.name}** — ${item.description}` : "_No item equipped._",
+        },
+        {
+          name: "🏰 Siege rules",
+          value: "A KO breaks one rank — not the siege. Draw Phase fills your Siege Cards; Main Phase is when you act.",
+        },
+      );
+    await interaction.update({ content: null, embeds: [embed], components: [] }).catch(() => {});
+    return;
+  }
+  if (choice === "concede") {
+    await interaction.update({ content: "🏳️ Sounding the retreat…", components: [] }).catch(() => {});
+    if (s.phase === "muster") {
+      pushLog(s, ["🏳️ The column stands down."]);
+      if (s.message) {
+        await s.message.edit({
+          embeds: [new EmbedBuilder().setColor(0x9aa0a8).setTitle("🏳️ Stood down")
+            .setDescription(`No assault was made on **${s.targetName}**.`)],
+          components: [], files: [],
+        }).catch(() => {});
+      }
+      await release(s);
+      return;
+    }
+    s.battle.teams[0].lp = 0;
+    s.battle.winner = 1;
+    s.battle.phase = "ended";
+    pushLog(s, ["🏳️ You sound the retreat."]);
+    await finish(s);
+    return;
+  }
+  await interaction.update({ content: "Unknown option.", components: [] }).catch(() => {});
 }
 
 // ── Read-only reference (mirrors /battle's Moves popup) ──────────────────────
@@ -1663,6 +1843,8 @@ function buildControls(s: SiegeSession): ActionRowBuilder<ButtonBuilder>[] {
     new ButtonBuilder().setCustomId(`hq-hub:ls:move:${s.id}:${move}`).setLabel(label).setEmoji(emoji)
       .setStyle(style).setDisabled(busy || !avail[move]);
 
+  // Clean two-row board: core moves up top, essentials below. Secondary tools
+  // (Moves guide / Break Through when illegal / etc.) live under More.
   const row1 = new ActionRowBuilder<ButtonBuilder>().addComponents(
     mk("attack", "Attack", "⚔️", ButtonStyle.Primary),
     mk("special", "Special", "🔥", ButtonStyle.Danger),
@@ -1671,31 +1853,38 @@ function buildControls(s: SiegeSession): ActionRowBuilder<ButtonBuilder>[] {
     mk("charge", "Charge", "⚡", ButtonStyle.Secondary),
   );
 
-  // Siege Battle actions only — Card Clash is an automatic cinematic, not a button.
   const canBreakThrough = checkAction(s.battle, { kind: "direct_lp", actorSlot: s.actorSlot }).ok;
   const playable = team.hand.filter(c =>
     checkAction(s.battle, { kind: "siege_card", actorSlot: s.actorSlot, cardId: c.id }).ok).length;
 
-  const row2 = new ActionRowBuilder<ButtonBuilder>().addComponents(
-    new ButtonBuilder().setCustomId(`hq-hub:ls:fighter:${s.id}`)
-      .setLabel(actor.cardName.slice(0, 24)).setEmoji("🎖️")
-      .setStyle(ButtonStyle.Secondary).setDisabled(busy || livingSlots(team).length < 2),
+  const row2Btns: ButtonBuilder[] = [
     new ButtonBuilder().setCustomId(`hq-hub:ls:cards:${s.id}`)
-      .setLabel(`Cards (${playable}/${team.hand.length})`).setEmoji("🃏")
+      .setLabel(`Cards ${playable}/${team.hand.length}`).setEmoji("🃏")
       .setStyle(ButtonStyle.Primary).setDisabled(busy || team.hand.length === 0),
+    new ButtonBuilder().setCustomId(`hq-hub:ls:fighter:${s.id}`)
+      .setLabel("Fighter").setEmoji("🎖️")
+      .setStyle(ButtonStyle.Secondary).setDisabled(busy || livingSlots(team).length < 2),
     new ButtonBuilder().setCustomId(`hq-hub:ls:item:${s.id}`)
-      .setLabel(`Supplies (${team.itemUsesLeft})`).setEmoji("🎒")
+      .setLabel("Bag").setEmoji("🎒")
       .setStyle(ButtonStyle.Success).setDisabled(busy || team.itemUsesLeft <= 0),
-    new ButtonBuilder().setCustomId(`hq-hub:ls:lp:${s.id}`)
-      .setLabel("Break Through").setEmoji("🎯")
-      .setStyle(ButtonStyle.Danger).setDisabled(busy || !canBreakThrough),
+  ];
+  if (canBreakThrough) {
+    row2Btns.push(
+      new ButtonBuilder().setCustomId(`hq-hub:ls:lp:${s.id}`)
+        .setLabel("Break Through").setEmoji("🎯")
+        .setStyle(ButtonStyle.Danger).setDisabled(busy),
+    );
+  }
+  row2Btns.push(
+    new ButtonBuilder().setCustomId(`hq-hub:ls:more:${s.id}`)
+      .setLabel("More").setEmoji("⋯")
+      .setStyle(ButtonStyle.Secondary).setDisabled(busy),
   );
 
-  const row3 = new ActionRowBuilder<ButtonBuilder>().addComponents(
-    new ButtonBuilder().setCustomId(`hq-hub:ls:moves:${s.id}`).setLabel("Moves").setEmoji("📖").setStyle(ButtonStyle.Secondary),
-    new ButtonBuilder().setCustomId(`hq-hub:ls:concede:${s.id}`).setLabel("Retreat").setEmoji("🏳️").setStyle(ButtonStyle.Secondary),
-  );
-  return [row1, row2, row3];
+  return [
+    row1,
+    new ActionRowBuilder<ButtonBuilder>().addComponents(...row2Btns.slice(0, 5)),
+  ];
 }
 
 async function render(s: SiegeSession, opts?: { currentMove?: string; turnEndsAt?: number }): Promise<void> {
@@ -1717,13 +1906,67 @@ async function render(s: SiegeSession, opts?: { currentMove?: string; turnEndsAt
   // turn clock), so they get exactly one notification per turn instead of one
   // per intermediate re-render.
   const ping = opts?.turnEndsAt && s.currentSide === 0 && s.phase === "assault";
-  await s.message.edit({
+  const payload = {
     content: ping ? `<@${s.starterId}>` : "",
     embeds: [battleEmbed, buildTurnStripEmbed(s, opts)],
     components: buildControls(s),
     files,
     allowedMentions: { users: ping ? [s.starterId] : [] },
-  }).catch(() => {});
+  };
+
+  // Soft Discord edit budget: long sieges rollover onto a fresh channel message
+  // with the same board so the fight can keep going past flaky edit limits.
+  if (s.editCount >= MAX_BOARD_EDITS) {
+    await rolloverBoardMessage(s, payload);
+    return;
+  }
+
+  const ok = await s.message.edit(payload).then(() => true).catch((err) => {
+    logger.warn({ err, siege: s.id, edits: s.editCount }, "siege board edit failed");
+    return false;
+  });
+  if (ok) {
+    s.editCount++;
+    return;
+  }
+  // Edit failed (rate limit / unknown message) — try a fresh board message.
+  await rolloverBoardMessage(s, payload);
+}
+
+/** Post a fresh Siege board message and point the session at it. */
+async function rolloverBoardMessage(
+  s: SiegeSession,
+  payload: {
+    content: string;
+    embeds: EmbedBuilder[];
+    components: ActionRowBuilder<ButtonBuilder>[];
+    files: AttachmentBuilder[];
+    allowedMentions: { users: string[] };
+  },
+): Promise<void> {
+  const channel = s.message?.channel;
+  if (!channel || !("send" in channel) || typeof channel.send !== "function") return;
+  try {
+    const prev = s.message;
+    if (prev) {
+      await prev.edit({
+        content: "",
+        embeds: [new EmbedBuilder().setColor(s.accent)
+          .setDescription(`↗️ Siege Battle continues below — turn **${s.turnNumber}**.`)],
+        components: [], files: [],
+      }).catch(() => {});
+    }
+    const next = await channel.send({
+      ...payload,
+      content: payload.content || `⚔️ **Siege Battle** continues — <@${s.starterId}>`,
+      allowedMentions: { users: [s.starterId] },
+    }) as Message;
+    s.message = next;
+    s.editCount = 1;
+    logger.info({ siege: s.id, turn: s.turnNumber }, "siege board rolled over to a fresh message");
+  } catch (err) {
+    logger.warn({ err, siege: s.id }, "siege board rollover failed");
+  }
 }
 
 // ── Finish ────────────────────────────────────────────────────────────────────

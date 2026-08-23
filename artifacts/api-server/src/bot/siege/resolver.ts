@@ -9,9 +9,10 @@
 // engine.
 //
 // Order of business for a normal turn:
-//   startTurn()     — status ticks → DRAW PHASE (refill hand) → MAIN PHASE
-//   resolveAction() — the chosen action (legal only in MAIN / reinforce)
-//   endTurn()       — hand over, deploy reinforcements, check for a winner
+//   startTurn()      — status ticks → DRAW PHASE (refill hand); stays in DRAW
+//   enterMainPhase() — DRAW → MAIN so combat actions become legal
+//   resolveAction()  — the chosen action (legal only in MAIN / reinforce)
+//   endTurn()        — hand over, deploy reinforcements, check for a winner
 // ─────────────────────────────────────────────────────────────────────────────
 
 import type { Combatant, MoveType } from "../battle/types.js";
@@ -69,7 +70,9 @@ function clampBoard(state: SiegeBattleState): void {
  * Begin the acting side's turn:
  *   1. Tick living cards (DoT, regen, energy) and Siege Card cooldowns
  *   2. DRAW PHASE — move cards from drawPile → hand (reshuffle discard if dry)
- *   3. Transition into MAIN PHASE so combat actions become legal
+ *
+ * Leaves `state.phase === "draw"` so Discord can show the draw cinematic before
+ * combat buttons unlock. Call `enterMainPhase` next.
  *
  * Returns the events plus which of its own cards died to damage-over-time.
  * Combat actions are illegal while `state.phase === "draw"`.
@@ -111,7 +114,7 @@ export function startTurn(state: SiegeBattleState): SiegeTurnResult {
     else delete team.cardCooldowns[id];
   }
 
-  const drawn = refillHand(team);
+  const drawn: SiegeCard[] = refillHand(team);
   if (drawn.length > 0) {
     events.push({
       text: `🃏 Drew **${drawn.length}** Siege Battle Card${drawn.length === 1 ? "" : "s"}`
@@ -126,16 +129,30 @@ export function startTurn(state: SiegeBattleState): SiegeTurnResult {
     });
   }
 
-  // ── MAIN PHASE ────────────────────────────────────────────────────────────
-  state.phase = "main";
-  events.push({
-    text: `⚔️ **Main Phase** — **${team.name}** chooses an action.`,
-    event: "phase", actorSide: team.side,
-  });
-
   clampBoard(state);
   pushEvents(state, events);
-  return { events, destroyed, struck: [], damageDealt: 0, lpDamage: 0, battleOver: false };
+  return { events, destroyed, struck: [], damageDealt: 0, lpDamage: 0, battleOver: false, drawnCards: drawn };
+}
+
+/**
+ * Leave DRAW and open MAIN so combat actions become legal. Idempotent if already
+ * in MAIN; no-op if the battle ended.
+ */
+export function enterMainPhase(state: SiegeBattleState): SiegeTurnResult {
+  if (state.phase === "ended") {
+    return { events: [], destroyed: [], struck: [], damageDealt: 0, lpDamage: 0, battleOver: true };
+  }
+  if (state.phase === "main") {
+    return { events: [], destroyed: [], struck: [], damageDealt: 0, lpDamage: 0, battleOver: false };
+  }
+  const team = teamOf(state, state.activeSide);
+  state.phase = "main";
+  const events: SiegeBattleEvent[] = [{
+    text: `⚔️ **Main Phase** — **${team.name}** chooses an action.`,
+    event: "phase", actorSide: team.side,
+  }];
+  pushEvents(state, events);
+  return { events, destroyed: [], struck: [], damageDealt: 0, lpDamage: 0, battleOver: false };
 }
 
 /**

@@ -187,4 +187,6 @@ export interface SiegeTurnResult {
    * rejected action.
    */
   rejected?: boolean;
+  /** Cards drawn during a DRAW-phase startTurn (for the draw cinematic). */
+  drawnCards?: SiegeCard[];
 }

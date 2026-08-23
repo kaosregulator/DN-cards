@@ -85,6 +85,10 @@ export interface SiegeFieldInput {
   ko: boolean;                   // did the target fall?
   accent: number;                // siege accent colour
   turnLabel?: string | null;     // e.g. "Turn 4"
+  /** Current Siege phase chip — drives the cinematic overlay, not combat math. */
+  phase?: "draw" | "main" | "battle" | "reinforce" | "end";
+  /** Cards just drawn (DRAW cinematic). */
+  drawnCards?: { name: string; emoji: string }[];
   backdropKey?: string | null;   // backdrop art key (castles/forest/desert/…)
   floorKey?: string | null;      // floor tile key (stone/marble/dirt/…)
   // The rest of each side's column, ordered "next to step up" first, then the
@@ -139,17 +143,18 @@ const STAND_W = 228, STAND_H = 298;
 // + coalesces identical hold frames.
 function speedDurationMs(speed: AnimationSpeed): number {
   switch (speed) {
-    case "fast": return 1400;
-    case "slow": return 2200;
-    default: return 1800;
+    case "fast": return 1100;
+    case "slow": return 1800;
+    default: return 1400;
   }
 }
 
 function speedMaxFrames(speed: AnimationSpeed): number {
+  // Keep GIFs snappy for Discord size + encode cost on the larger 1200×800 field.
   switch (speed) {
-    case "fast": return 16;
-    case "slow": return 22;
-    default: return 18;
+    case "fast": return 12;
+    case "slow": return 16;
+    default: return 14;
   }
 }
 
@@ -315,7 +320,7 @@ export async function renderSiegeField(
     speed,
     durationMs: speedDurationMs(speed),
     maxFrames: speedMaxFrames(speed),
-    quality: 26,
+    quality: 28,
     renderScale: RENDER_SCALE,
     render: ({ ctx, t }) => {
       // encodeAnimation already applied renderScale on the context; paint in
@@ -535,12 +540,17 @@ function paintFrame(ctx: Ctx, input: SiegeFieldInput, a: Assets, t: number, scal
     drawFloatingText(ctx, targetX, targetY - 56, "MISS", 0x9aa7b4, clamp01((t - 0.5) / 0.4));
   }
 
-  // HUD: life-plates + VS crest + play-by-play + turn bar.
+  // HUD: life-plates + VS crest + play-by-play + turn bar + phase chip strip.
   drawLifePlate(ctx, 0, input.attacker, a.atkArt, a.atkColor);
   drawLifePlate(ctx, 1, input.defender, a.defArt, a.defColor);
   drawVsCrest(ctx);
+  drawPhaseChips(ctx, input);
   drawMoveBanner(ctx, input);
   drawTurnBar(ctx, input);
+  if (input.phase === "draw") drawDrawReveal(ctx, input, t);
+  if (input.phase === "main") drawMainBanner(ctx, input, t);
+  if (input.phase === "reinforce") drawReinforceBanner(ctx, t);
+  if (input.phase === "end") drawEndBanner(ctx, input, t);
   if (input.ko && t > 0.72) drawKoStamp(ctx, targetX, clamp01((t - 0.72) / 0.28));
 
   ctx.restore();
@@ -882,6 +892,130 @@ function drawVsCrest(ctx: Ctx): void {
   ctx.lineWidth = 3; ctx.strokeStyle = hex(GOLD); ctx.stroke();
   ctx.restore();
   drawText(ctx, { x: cx - 40, y: cy - 13, w: 80, align: "center", text: "VS", weight: 900, size: 26, fill: hex(GOLD), shadow: "rgba(0,0,0,0.9)", shadowBlur: 3 });
+}
+
+// Phase chip strip under the VS crest — DRAW / MAIN / BATTLE / REINFORCE / END.
+function drawPhaseChips(ctx: Ctx, input: SiegeFieldInput): void {
+  const phases: NonNullable<SiegeFieldInput["phase"]>[] = ["draw", "main", "battle", "reinforce", "end"];
+  const labels = ["DRAW", "MAIN", "BATTLE", "REINFORCE", "END"];
+  const active = input.phase ?? "main";
+  const totalW = 560, h = 24, y = 72;
+  const x0 = (FIELD.width - totalW) / 2;
+  const cw = totalW / phases.length;
+  for (let i = 0; i < phases.length; i++) {
+    const on = phases[i] === active;
+    const x = x0 + i * cw + 2;
+    fillRoundRect(ctx, x, y, cw - 4, h, 7, on ? "rgba(241,196,15,0.95)" : "rgba(8,12,20,0.82)");
+    strokeRoundRect(ctx, x, y, cw - 4, h, 7, on ? hex(GOLD) : "rgba(148,163,184,0.28)", on ? 1.8 : 1);
+    drawText(ctx, {
+      x, y: y + 5, w: cw - 4, align: "center",
+      text: labels[i]!, weight: 800, size: 11,
+      fill: on ? "#1a1408" : "rgba(226,232,240,0.72)",
+      shadow: on ? undefined : "rgba(0,0,0,0.8)", shadowBlur: on ? 0 : 2,
+    });
+  }
+}
+
+/** DRAW cinematic: newly drawn Siege Battle Cards fan up from the bottom. */
+function drawDrawReveal(ctx: Ctx, input: SiegeFieldInput, t: number): void {
+  const cards = input.drawnCards ?? [];
+  const rise = easeOut(clamp01(t / 0.55));
+  const y = FIELD.height - 118 + (1 - rise) * 70;
+  const titleAlpha = clamp01(t * 2);
+  // Soft vignette so the draw fan reads against the busy field.
+  ctx.save();
+  ctx.globalAlpha = 0.28 * titleAlpha;
+  fillRoundRect(ctx, 40, FIELD.height - 200, FIELD.width - 80, 160, 18, "rgba(2,6,14,0.92)");
+  ctx.restore();
+  ctx.save();
+  ctx.globalAlpha = 0.65 * titleAlpha;
+  fillRoundRect(ctx, FIELD.width / 2 - 170, 108, 340, 38, 10, "rgba(8,12,20,0.9)");
+  strokeRoundRect(ctx, FIELD.width / 2 - 170, 108, 340, 38, 10, hex(GOLD), 1.4);
+  ctx.restore();
+  drawText(ctx, {
+    x: FIELD.width / 2 - 170, y: 118, w: 340, align: "center",
+    text: cards.length ? `DRAWING ${cards.length} CARD${cards.length === 1 ? "" : "S"}` : "DRAW PHASE",
+    weight: 900, size: 16, fill: "#f8fafc", shadow: "rgba(0,0,0,0.9)", shadowBlur: 3,
+  });
+  if (cards.length === 0) return;
+  const n = Math.min(cards.length, 5);
+  const gap = 118;
+  const startX = FIELD.width / 2 - ((n - 1) * gap) / 2;
+  for (let i = 0; i < n; i++) {
+    const c = cards[i]!;
+    const appear = easeOut(clamp01((t - i * 0.08) / 0.4));
+    const x = startX + i * gap;
+    const cy = y - appear * 8;
+    const tilt = (i - (n - 1) / 2) * 0.04;
+    ctx.save();
+    ctx.globalAlpha = appear;
+    ctx.translate(x, cy + 36);
+    ctx.rotate(tilt);
+    fillRoundRect(ctx, -52, -36, 104, 72, 10, "rgba(15,23,42,0.96)");
+    strokeRoundRect(ctx, -52, -36, 104, 72, 10, hex(GOLD), 1.8);
+    drawText(ctx, {
+      x: -48, y: -24, w: 96, align: "center",
+      text: c.emoji, weight: 700, size: 22, fill: "#fff",
+    });
+    drawText(ctx, {
+      x: -48, y: 6, w: 96, align: "center",
+      text: c.name.slice(0, 12), weight: 800, size: 11, fill: "#e2e8f0",
+      maxWidth: 96,
+    });
+    ctx.restore();
+  }
+}
+
+/** MAIN cinematic: pulse the command strip so it feels like "your turn" unlocks. */
+function drawMainBanner(ctx: Ctx, input: SiegeFieldInput, t: number): void {
+  const pulse = 0.55 + 0.35 * Math.sin(t * Math.PI * 2);
+  const label = (input.moveName || "MAIN PHASE").toUpperCase();
+  const y = 110;
+  ctx.save();
+  ctx.globalAlpha = pulse;
+  fillRoundRect(ctx, FIELD.width / 2 - 200, y, 400, 40, 12, "rgba(59,130,246,0.9)");
+  strokeRoundRect(ctx, FIELD.width / 2 - 200, y, 400, 40, 12, "#bfdbfe", 2);
+  ctx.restore();
+  drawText(ctx, {
+    x: FIELD.width / 2 - 200, y: y + 10, w: 400, align: "center",
+    text: label.slice(0, 36),
+    weight: 900, size: 17, fill: "#f8fafc", shadow: "rgba(0,0,0,0.85)", shadowBlur: 3,
+  });
+}
+
+function drawReinforceBanner(ctx: Ctx, t: number): void {
+  const pulseA = 0.55 + 0.35 * Math.sin(t * Math.PI * 2);
+  const y = 110;
+  // Sweeping light bar behind the banner.
+  const sweep = ((t * 1.4) % 1);
+  ctx.save();
+  ctx.globalAlpha = 0.25;
+  fillRoundRect(ctx, 80 + sweep * (FIELD.width - 360), y - 8, 200, 56, 14, "rgba(125,211,252,0.9)");
+  ctx.restore();
+  ctx.save();
+  ctx.globalAlpha = pulseA;
+  fillRoundRect(ctx, FIELD.width / 2 - 220, y, 440, 44, 12, "rgba(14,165,233,0.92)");
+  strokeRoundRect(ctx, FIELD.width / 2 - 220, y, 440, 44, 12, "#e0f2fe", 2);
+  ctx.restore();
+  drawText(ctx, {
+    x: FIELD.width / 2 - 220, y: y + 10, w: 440, align: "center",
+    text: "REINFORCEMENTS DEPLOYING",
+    weight: 900, size: 18, fill: "#f8fafc", shadow: "rgba(0,0,0,0.85)", shadowBlur: 3,
+  });
+}
+
+function drawEndBanner(ctx: Ctx, input: SiegeFieldInput, t: number): void {
+  const appear = easeOut(clamp01(t / 0.4));
+  ctx.save();
+  ctx.globalAlpha = appear;
+  fillRoundRect(ctx, FIELD.width / 2 - 220, 118, 440, 56, 14, "rgba(15,23,42,0.94)");
+  strokeRoundRect(ctx, FIELD.width / 2 - 220, 118, 440, 56, 14, hex(GOLD), 2.2);
+  drawText(ctx, {
+    x: FIELD.width / 2 - 220, y: 134, w: 440, align: "center",
+    text: (input.moveName || "SIEGE COMPLETE").toUpperCase().slice(0, 40),
+    weight: 900, size: 20, fill: "#fef3c7", shadow: "rgba(0,0,0,0.9)", shadowBlur: 3,
+  });
+  ctx.restore();
 }
 
 // The bottom turn bar — "PLAYER TURN" (blue, left) / "TURN N" plate (centre) /

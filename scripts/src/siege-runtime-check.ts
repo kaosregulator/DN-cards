@@ -23,7 +23,7 @@ for (const name of ["startSiege", "handleSiegeComponent", "isSiegeTargetActive"]
 // The siege engine surface the runtime and adapter depend on.
 const siege = await import(`${base}/siege/index.js`) as any;
 for (const name of [
-  "buildSiegeBattle", "startTurn", "endTurn", "resolveAction", "checkAction",
+  "buildSiegeBattle", "startTurn", "enterMainPhase", "endTurn", "resolveAction", "checkAction",
   "chooseSiegeAction", "legalActions", "toSiegeRoster", "toFieldInput",
   "toClashInput", "summariseResult", "describeAction", "getSiegeCard",
   "listSiegeCards", "buildSiegeDeck", "defaultMaxTurns",
@@ -49,7 +49,7 @@ for (const c of cards) {
 // isSiegeTargetActive is a safe query on an unknown key.
 assert.equal(runtime.isSiegeTargetActive("nope"), false, "unknown target must read as inactive");
 
-// Draw / Main phase contract: startTurn leaves MAIN; combat is illegal on DRAW.
+// Draw / Main phase contract: startTurn stays in DRAW; enterMainPhase opens MAIN.
 {
   const { deriveStats, applyStatOverrides } = await import(`${base}/battle/stat-engine.js`) as any;
   const { inferSpecialEffect } = await import(`${base}/battle/special-cards.js`) as any;
@@ -88,8 +88,13 @@ assert.equal(runtime.isSiegeTargetActive("nope"), false, "unknown target must re
   assert.equal(state.phase, "draw", "fresh battle starts in DRAW");
   const blocked = siege.checkAction(state, { kind: "move", actorSlot: 0, move: "attack", targetSlot: 0 });
   assert.equal(blocked.ok, false, "combat actions must be illegal during DRAW");
-  siege.startTurn(state);
-  assert.equal(state.phase, "main", "startTurn must transition DRAW → MAIN");
+  const opening = siege.startTurn(state);
+  assert.equal(state.phase, "draw", "startTurn must stay in DRAW for the draw beat");
+  assert.ok(Array.isArray(opening.drawnCards), "startTurn must report drawnCards");
+  assert.equal(siege.checkAction(state, { kind: "move", actorSlot: 0, move: "attack", targetSlot: 0 }).ok, false,
+    "combat still illegal after draw refill");
+  siege.enterMainPhase(state);
+  assert.equal(state.phase, "main", "enterMainPhase must open MAIN");
   const legal = siege.legalActions(state);
   assert.ok(legal.length > 0, "MAIN phase must expose legal actions");
   console.log("✅ draw/main phase contract held.");

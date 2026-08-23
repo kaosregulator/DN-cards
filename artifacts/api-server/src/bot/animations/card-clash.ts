@@ -155,7 +155,7 @@ export async function renderCardClash(
       speed,
       durationMs: 2000,
       maxFrames: 18,
-      quality: 26,
+      quality: 28,
       renderScale: RENDER_SCALE,
       // encodeAnimation already applied renderScale to the context, so paint in
       // logical coordinates (pass 1 so paintClash does not scale twice).

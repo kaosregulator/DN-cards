@@ -23,7 +23,7 @@ const { inferSpecialEffect } = await import(`${base}/battle/special-cards.js`) a
 const siege = await import(`${base}/siege/index.js`) as any;
 
 const {
-  buildSiegeBattle, startTurn, endTurn, resolveAction, chooseSiegeAction,
+  buildSiegeBattle, startTurn, enterMainPhase, endTurn, resolveAction, chooseSiegeAction,
   legalActions, checkAction, lpExposed, formationEmpty, canReinforce,
   livingSlots, getSiegeCard, DEFAULT_SIEGE_CARDS, FORMATION_SIZE,
 } = siege;
@@ -105,10 +105,14 @@ function simulate(settings: Any, m: Metrics, size = 7, maxTurns?: number): { win
     if (defended && directs.length > 0) m.lpViolations++;
 
     const st = startTurn(state);
-    assert.equal(state.phase, "main", "startTurn must leave the battle in MAIN phase");
+    assert.equal(state.phase, "draw", "startTurn must leave the battle in DRAW phase");
     assert.ok(st.events.some((e: Any) => e.event === "draw" || e.event === "phase"),
       "startTurn must emit draw/phase events");
-    // Combat actions are illegal before MAIN (DRAW is already over after startTurn).
+    // Combat actions are illegal before MAIN.
+    assert.equal(checkAction(state, { kind: "move", actorSlot: 0, move: "attack", targetSlot: 0 }).ok, false,
+      "combat must be illegal during DRAW");
+    enterMainPhase(state);
+    assert.equal(state.phase, "main", "enterMainPhase must open MAIN");
     m.kos += st.destroyed.length;
 
     const lpBefore = foes.lp;
