@@ -132,8 +132,9 @@ const SCENE_PREFIX = "siege-scene";
 // facing inward-left, like two opponents across the field. Each has its own
 // plaque quad — the red's is the horizontal mirror of the blue's.
 const PLAQUE_QUAD = {
-  blue: { tl: [0.300, 0.129], tr: [0.649, 0.083], bl: [0.381, 0.749] },
-  red:  { tl: [0.351, 0.083], tr: [0.700, 0.129], bl: [0.270, 0.703] },
+  // Measured against stand-blue/red gold-frame interiors so card art seats cleanly.
+  blue: { tl: [0.305, 0.118], tr: [0.655, 0.078], bl: [0.378, 0.620] },
+  red:  { tl: [0.345, 0.078], tr: [0.695, 0.118], bl: [0.275, 0.580] },
 } as const;
 // Drawn stand size (matches the sprite aspect; each slot scales this down).
 const STAND_W = 228, STAND_H = 298;
@@ -385,9 +386,7 @@ const LINE_MAX = 4;                 // pieces per team
 // pieces standing on it. Placement is therefore expressed in BOARD coordinates
 // and projected onto the floor — never picked as raw screen x/y.
 //
-// The court, measured off arena.png at native 1200×800 (the FIELD size). Earlier
-// the scene was letterboxed into 900×600; coordinates below are the 4/3 scale-up
-// of those measurements so every stand still seats on the stone.
+// The court, measured off arena.png at native 1200×800 (the FIELD size):
 //   near edge  y ≈ 687, spanning +/-520 from the centre line
 //   far  edge  y ≈ 387 (the wall base), spanning +/-360
 //
@@ -404,35 +403,23 @@ function boardSpot(u: number, v: number, scale: number): { cx: number; baseY: nu
   return { cx: FIELD.width / 2 + u * half, baseY, scale };
 }
 
-// Four board squares per team: two ranks x two files. The far rank is set back
-// far enough that its stands' BASES sit above the near rank's TOPS, so all four
-// pieces are fully visible with bare floor between them — no stacking, no arc,
-// no card shoved against a wall. Blue takes the left half of the court, red the
-// right (u is mirrored), and the middle of the board stays open for combat.
-const NEAR_V = 0.013, FAR_V = 0.813, NEAR_S = 0.55, FAR_S = 0.42;
+// One facing BATTLE LINE per side (not a 2×2 cluster). Cards stand along a
+// shallow diagonal that hugs the centre lane — front near the camera/midfield,
+// rear set back toward the wall — so left faces right across open stone.
+// Tuned against arena.png floor seams (see scripts/src/siege-layout-calibrate.ts).
 const FILE_SLOTS: readonly { u: number; v: number; s: number }[] = [
-  { u: -0.330, v: NEAR_V, s: NEAR_S },  // 0 - near rank, inner file (front line, by the centre)
-  { u: -0.793, v: NEAR_V, s: NEAR_S },  // 1 - near rank, outer file
-  { u: -0.320, v: FAR_V, s: FAR_S },    // 2 - far  rank, inner file
-  { u: -0.799, v: FAR_V, s: FAR_S },    // 3 - far  rank, outer file
+  { u: -0.22, v: 0.06, s: 0.62 }, // 0 — front rank (nearest the clash lane)
+  { u: -0.40, v: 0.28, s: 0.54 }, // 1
+  { u: -0.56, v: 0.50, s: 0.46 }, // 2
+  { u: -0.70, v: 0.72, s: 0.40 }, // 3 — rear rank
 ];
 const GROUND_Y = 680;               // front contact line (used by ambient FX)
-// Where a card of `side` stands when it steps into the centre to fight.
-const CLASH_Y = 496, CLASH_DX = 139, CLASH_SCALE = 0.74;
+/** How far (in screen px at scale 1) the acting stand slides toward the foe. */
+const SLIDE_PX = 118;
 
 function standCentre(side: 0 | 1, depth: number): { cx: number; baseY: number; scale: number } {
   const f = FILE_SLOTS[Math.min(depth, FILE_SLOTS.length - 1)]!;
   return boardSpot(side === 0 ? f.u : -f.u, f.v, f.s);
-}
-
-// Centre-stage placement for a card of `side` while it is fighting.
-function clashCentre(side: 0 | 1): { cx: number; baseY: number; scale: number } {
-  return { cx: FIELD.width / 2 + (side === 0 ? -CLASH_DX : CLASH_DX), baseY: CLASH_Y, scale: CLASH_SCALE };
-}
-
-// Plaque-centre Y for a card sitting at the clash stage (impact FX land here).
-function plaqueCyAt(_depth: number): number {
-  return CLASH_Y - STAND_H * CLASH_SCALE * 0.52;
 }
 
 function lineupFromFighter(f: SiegeFieldFighter): SiegeFieldLineupCard {
@@ -446,9 +433,14 @@ function smooth01(t: number, a: number, b: number): number {
   return x * x * (3 - 2 * x);
 }
 
-// Paint the whole scene at `t`. Two vertical roster columns (blue left, red
-// right); on a turn the acting card and its target STEP INTO THE CENTRE, clash
-// like a /battle, then return to their column slots.
+/**
+ * Paint the whole scene at `t`.
+ *
+ * Formation: two facing battle lines (blue left, red right) on the stone court.
+ * Attack motion mirrors /battle — the acting stand SLIDES toward the foe, impact
+ * lands, then it slides home. Cards never leave their line slots for a midcourt
+ * duel; the optional Card Clash screen handles the close-up attack beat.
+ */
 function paintFrame(ctx: Ctx, input: SiegeFieldInput, a: Assets, t: number, scale: number): void {
   ctx.save();
   ctx.scale(scale, scale);
@@ -468,32 +460,36 @@ function paintFrame(ctx: Ctx, input: SiegeFieldInput, a: Assets, t: number, scal
   if (focusDepth < 0) focusDepth = foeLine.findIndex(c => c.struck);
   if (focusDepth < 0) focusDepth = 0;
 
-  // Clash timing: step to centre (0→0.26), duel (~0.5), step home (0.72→1).
-  const presence = smooth01(t, 0, 0.26) * (1 - smooth01(t, 0.72, 1.0));
-  const connected = t >= 0.5 && input.isHit;
-  const impact = pulse(t, 0.48, 0.72);
-  const dashAdv = pulse(t, 0.34, 0.64);            // the acting card's lunge at centre
-  const actClash = clashCentre(acting);
-  const tgtClash = clashCentre(targetSide);
-  const dashX = (tgtClash.cx - actClash.cx) * 0.42 * dashAdv;
+  // /battle-style timing: idle → lunge → hit → return home. Cards stay seated
+  // on their stands; only the acting piece slides along X toward the foe.
+  const combatBeat = input.phase === "battle" || input.isHit || input.damage > 0 || input.ko;
+  const lungeT = combatBeat ? smooth01(t, 0.18, 0.40) : 0;
+  const afterT = combatBeat ? smooth01(t, 0.55, 0.92) : 0;
+  const connected = combatBeat && t >= 0.40 && input.isHit;
+  const impact = combatBeat ? pulse(t, 0.40, 0.68) : 0;
+  const slideAmt = !combatBeat ? 0
+    : lungeT < 1
+      ? lerp(0, SLIDE_PX, easeOut(lungeT))
+      : lerp(SLIDE_PX, 0, easeOut(afterT));
+  const toward = acting === 0 ? 1 : -1;
 
   const actingDepth = Math.max(0, lineOf(acting).findIndex(c => c.active));
   const isActing = (s: 0 | 1, d: number) => s === acting && d === (actingDepth < 0 ? 0 : actingDepth);
   const isTarget = (s: 0 | 1, d: number) => s === targetSide && d === focusDepth;
 
-  // Placement for a card: its column slot, or interpolated toward the clash
-  // centre if it's one of the two fighters.
   const place = (s: 0 | 1, d: number): { cx: number; baseY: number; scale: number; flash: number } => {
     const slot = standCentre(s, d);
-    if (!isActing(s, d) && !isTarget(s, d)) return { ...slot, flash: 0 };
-    const c = clashCentre(s);
-    let cx = lerp(slot.cx, c.cx, presence);
-    const baseY = lerp(slot.baseY, c.baseY, presence);
-    const sc = lerp(slot.scale, c.scale, presence);
+    let cx = slot.cx;
     let flash = 0;
-    if (isActing(s, d)) cx += dashX;
-    if (isTarget(s, d) && connected) { flash = impact; cx += (targetSide === 0 ? -1 : 1) * impact * 12; }
-    return { cx, baseY, scale: sc, flash };
+    if (isActing(s, d) && combatBeat) {
+      cx += toward * slideAmt * slot.scale;
+    }
+    if (isTarget(s, d) && connected) {
+      flash = impact;
+      // Recoil away from the attacker — same feel as /battle defender knockback.
+      cx += (targetSide === 0 ? -1 : 1) * impact * 28 * slot.scale;
+    }
+    return { cx, baseY: slot.baseY, scale: slot.scale, flash };
   };
 
   const drawOne = (s: 0 | 1, d: number) => {
@@ -506,38 +502,31 @@ function paintFrame(ctx: Ctx, input: SiegeFieldInput, a: Assets, t: number, scal
     drawStand(ctx, { cx: pos.cx, baseY: pos.baseY, scale: pos.scale, side: s, stand, art, color, card, flashWhite: pos.flash });
   };
 
-  // Roster first (everyone NOT in the centre), top→bottom so lower cards overlap.
+  // Far ranks first so nearer stands overlap correctly along the line.
   for (const s of [0, 1] as const) {
-    // Back pieces first, front piece last, so nearer cards overlap farther ones.
     for (let d = Math.min(lineOf(s).length, LINE_MAX) - 1; d >= 0; d--) {
       if (!isActing(s, d) && !isTarget(s, d)) drawOne(s, d);
     }
   }
-  // A soft spotlight on the centre stage while the fighters are out there.
-  if (presence > 0.05) {
-    ctx.save();
-    ctx.globalAlpha = 0.5 * presence;
-    const g = ctx.createRadialGradient(FIELD.width / 2, CLASH_Y - 40, 40, FIELD.width / 2, CLASH_Y - 40, 340);
-    g.addColorStop(0, "rgba(0,0,0,0)"); g.addColorStop(1, "rgba(4,6,12,0.7)");
-    ctx.fillStyle = g; ctx.fillRect(0, 0, FIELD.width, FIELD.height);
-    ctx.restore();
+
+  // Dash streak behind the lunging fighter (while sliding, not teleporting).
+  if (slideAmt > 8 && lungeT > 0.15 && afterT < 0.85) {
+    const ap = place(acting, actingDepth);
+    drawDashStreak(ctx, ap.cx, toward, clamp01(slideAmt / SLIDE_PX), acting === 0 ? a.atkColor : a.defColor);
   }
-  // Dash streak behind the lunging fighter.
-  if (dashAdv > 0.05 && presence > 0.4) {
-    const ax = lerp(standCentre(acting, actingDepth).cx, actClash.cx, presence) + dashX;
-    drawDashStreak(ctx, ax, acting === 0 ? 1 : -1, dashAdv * presence, acting === 0 ? a.atkColor : a.defColor);
-  }
-  // The two fighters, on top — target first, acting frontmost.
+
+  // Target then actor on top so the strike reads in front of the lines.
   drawOne(targetSide, focusDepth);
   drawOne(acting, actingDepth);
 
-  // Strike FX + damage number over the struck fighter at the clash stage.
+  // Strike FX + damage / MISS over the struck fighter — at their HOME line slot
+  // (plus recoil), never a midcourt stage.
   const tp = place(targetSide, focusDepth);
   const targetX = tp.cx, targetY = tp.baseY - STAND_H * tp.scale * 0.52;
   if (connected) {
     drawImpact(ctx, a, targetX, targetY, impact, input);
-  } else if (t >= 0.5 && !input.isHit) {
-    drawFloatingText(ctx, targetX, targetY - 56, "MISS", 0x9aa7b4, clamp01((t - 0.5) / 0.4));
+  } else if (combatBeat && t >= 0.40 && !input.isHit) {
+    drawFloatingText(ctx, targetX, targetY - 56, "MISS", 0x9aa7b4, clamp01((t - 0.40) / 0.4));
   }
 
   // HUD: life-plates + VS crest + play-by-play + turn bar + phase chip strip.
@@ -704,11 +693,10 @@ interface StandOpts {
   color: number; card: SiegeFieldLineupCard; flashWhite: number;
 }
 
-// Draw one card stand: the card art is laid into the plaque FIRST (clipped to the
-// plaque parallelogram), then the ornate stand sprite is drawn over it — the
-// sprite's gold frame + base rail occlude the art exactly like a seated card. A
-// missing stand sprite falls back to a framed floating portrait (legacy look).
-// Active cards get an accent ring; fallen cards are dimmed and marked broken.
+// Draw one card stand: ornate 3D stand first, then seat the card art INTO the
+// plaque parallelogram on top so art always reads cleanly (works whether the
+// sprite's plaque is transparent or an opaque fill). Active cards get an accent
+// aura; fallen cards are dimmed and marked broken.
 function drawStand(ctx: Ctx, o: StandOpts): void {
   const color = o.color;
   const dw = STAND_W * o.scale, dh = STAND_H * o.scale;
@@ -728,28 +716,36 @@ function drawStand(ctx: Ctx, o: StandOpts): void {
   const BR = { x: TR.x + (BL.x - TL.x), y: TR.y + (BL.y - TL.y) };
   const quadPath = () => { ctx.beginPath(); ctx.moveTo(TL.x, TL.y); ctx.lineTo(TR.x, TR.y); ctx.lineTo(BR.x, BR.y); ctx.lineTo(BL.x, BL.y); ctx.closePath(); };
 
-  // Active card: a soft accent aura behind the whole stand so the current
-  // fighter reads at a glance.
+  // Active card: soft accent aura behind the whole stand.
   if (o.card.active) {
     ctx.save(); ctx.globalAlpha = 0.55; ctx.shadowColor = rgba(color, 0.95); ctx.shadowBlur = 26;
     quadPath(); ctx.strokeStyle = rgba(color, 0.35); ctx.lineWidth = 3; ctx.stroke(); ctx.restore();
   }
 
-  // Card art laid into the plaque parallelogram, behind the stand.
-  ctx.save();
-  quadPath(); ctx.clip();
-  ctx.fillStyle = "#0b1220"; ctx.fill();                        // backing while art loads
-  if (o.art) drawArtInQuad(ctx, o.art, TL, TR, BL);
-  else drawText(ctx, { x: (TL.x + BR.x) / 2 - 40, y: (TL.y + BR.y) / 2 - 24 * o.scale, w: 80, align: "center",
-    text: (o.card.name[0] || "?").toUpperCase(), weight: 900, size: 46 * o.scale, fill: rgba(color, 0.9) });
-  if (fallen) { ctx.globalAlpha = 0.62; ctx.fillStyle = "#05070c"; ctx.fill(); }   // dim the dead
-  if (o.flashWhite > 0.01) { ctx.globalAlpha = 0.6 * o.flashWhite; ctx.fillStyle = "#ffffff"; ctx.fill(); }
-  ctx.restore();
-
-  // The ornate stand over the art (desaturated a touch when fallen).
+  // Ornate 3D stand body (desaturated a touch when fallen).
   if (fallen) ctx.save(), ctx.globalAlpha = 0.72;
   ctx.drawImage(o.stand as never, sx, sy, dw, dh);
   if (fallen) ctx.restore();
+
+  // Card art seated into the gold plaque — drawn ON TOP of the stand so it
+  // always lies clean over the frame regardless of sprite transparency.
+  ctx.save();
+  quadPath(); ctx.clip();
+  ctx.fillStyle = "#0b1220"; ctx.fill();
+  if (o.art) drawArtInQuad(ctx, o.art, TL, TR, BL);
+  else drawText(ctx, { x: (TL.x + BR.x) / 2 - 40, y: (TL.y + BR.y) / 2 - 24 * o.scale, w: 80, align: "center",
+    text: (o.card.name[0] || "?").toUpperCase(), weight: 900, size: 46 * o.scale, fill: rgba(color, 0.9) });
+  if (fallen) { ctx.globalAlpha = 0.55; ctx.fillStyle = "#05070c"; ctx.fill(); }
+  if (o.flashWhite > 0.01) { ctx.globalAlpha = 0.6 * o.flashWhite; ctx.fillStyle = "#ffffff"; ctx.fill(); }
+  ctx.restore();
+
+  // Thin gold rim on top of the art so the plaque edge stays crisp.
+  ctx.save();
+  quadPath();
+  ctx.strokeStyle = "rgba(232,193,90,0.85)";
+  ctx.lineWidth = Math.max(1.2, 1.6 * o.scale);
+  ctx.stroke();
+  ctx.restore();
 
   // Broken-rank cross on the fallen.
   if (fallen) {
@@ -758,7 +754,7 @@ function drawStand(ctx: Ctx, o: StandOpts): void {
     ctx.beginPath(); ctx.moveTo(mx - r, my - r); ctx.lineTo(mx + r, my + r); ctx.moveTo(mx + r, my - r); ctx.lineTo(mx - r, my + r); ctx.stroke(); ctx.restore();
   }
 
-  // Per-stand HP bar under the base, so every card on the board shows its life.
+  // Per-stand HP bar under the base.
   drawStandHp(ctx, o.cx, o.baseY + 6 * o.scale, dw * 0.82, o.card, color, fallen);
 }
 

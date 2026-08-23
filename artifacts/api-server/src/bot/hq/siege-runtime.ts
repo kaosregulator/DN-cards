@@ -1009,14 +1009,16 @@ async function applySiegeAction(s: SiegeSession, action: SiegeAction | null): Pr
   }
 }
 
-/** Card Clash plays automatically for combat beats — never as a menu option. */
+/** Attack screen (Card Clash) — plays for combat actions like /battle turn GIFs. */
 function shouldPlayClashCinematic(action: SiegeAction, result: SiegeTurnResult): boolean {
   if (result.destroyed.length > 0) return true;
   if (result.events.some(e => e.ko || e.event === "ko")) return true;
   if (result.damageDealt > 0 || result.lpDamage > 0) return true;
   if (action.kind === "siege_card") return true;
   if (action.kind === "direct_lp") return true;
+  if (action.kind === "item") return true;
   if (action.kind === "move") {
+    // Offensive / decisive moves get the attack screen; charge/defend stay on field.
     return action.move === "attack" || action.move === "special" || action.move === "ultimate";
   }
   return false;

@@ -197,18 +197,23 @@ function paintClash(ctx: Ctx, input: CardClashInput, a: ClashAssets, t: number, 
 
   drawBackdrop(ctx, input);
 
-  // Impact timing: wind-up → connect at 0.44 → settle.
-  const connect = 0.44;
-  const windUp = clamp01(t / connect);
-  const impact = t < connect ? 0 : Math.max(0, 1 - (t - connect) / 0.34);
-  const lunge = Math.sin(windUp * Math.PI) * 26;
+  // /battle-style timing: idle → lunge → connect → return (same feel as main battles).
+  const lungeT = clamp01((t - 0.18) / 0.22);
+  const hitT = clamp01((t - 0.40) / 0.15);
+  const afterT = clamp01((t - 0.55) / 0.40);
+  const ease = (x: number) => x * x * (3 - 2 * x);
+  const lungeAmt = lungeT < 1 ? lerp(0, 110, ease(lungeT)) : lerp(110, 0, ease(afterT));
+  const impact = input.isHit ? (hitT > 0 ? Math.max(0, 1 - hitT) : 0) : 0;
+  const recoil = input.isHit && hitT > 0 ? lerp(0, 36, ease(Math.min(1, hitT * 1.4))) : 0;
 
   drawCommanderPlate(ctx, 0, input.attackerCommander, BLUE);
   drawCommanderPlate(ctx, 1, input.defenderCommander, RED);
   drawTurnHeader(ctx, input);
 
-  const atkX = CARD.leftCx + (input.actingSide === 0 ? lunge : -impact * 14);
-  const defX = CARD.rightCx + (input.actingSide === 1 ? -lunge : impact * 14);
+  const atkForward = input.actingSide === 0 ? lungeAmt : 0;
+  const defForward = input.actingSide === 1 ? -lungeAmt : 0;
+  const atkX = CARD.leftCx + atkForward - (input.actingSide === 1 ? recoil : 0);
+  const defX = CARD.rightCx + defForward + (input.actingSide === 0 ? recoil : 0);
   const struckSide: 0 | 1 = input.actingSide === 0 ? 1 : 0;
 
   drawFeatureCard(ctx, atkX, CARD.cy, input.attacker, a.atkArt, BLUE, 0,
@@ -222,7 +227,7 @@ function paintClash(ctx: Ctx, input: CardClashInput, a: ClashAssets, t: number, 
   drawHand(ctx, input, a, t);
   drawEnergyMeter(ctx, input);
 
-  if (input.ko && t > connect) drawKoStamp(ctx, struckSide === 0 ? atkX : defX, impact);
+  if (input.ko && t > 0.40) drawKoStamp(ctx, struckSide === 0 ? atkX : defX, Math.max(impact, hitT));
 
   ctx.restore();
 }
@@ -445,19 +450,29 @@ function drawVsBurst(ctx: Ctx, input: CardClashInput, t: number, impact: number)
   drawText(ctx, { x: -60, y: -22, w: 120, align: "center", text: "VS", size: 44, weight: 900, fill: hex(GOLD), shadow: "rgba(0,0,0,0.8)", shadowBlur: 10 });
   ctx.restore();
 
-  // Floating damage number over the struck card.
-  if (t > 0.46 && input.isHit && input.damage > 0) {
-    const k = clamp01((t - 0.46) / 0.5);
+  // Floating damage number over the struck card — or MISS / DODGED like /battle.
+  if (t > 0.42) {
+    const k = clamp01((t - 0.42) / 0.5);
     const tx = input.actingSide === 0 ? CARD.rightCx : CARD.leftCx;
     ctx.save();
     ctx.globalAlpha = 1 - k * 0.85;
-    drawText(ctx, {
-      x: tx - 110, y: 168 - k * 46, w: 220, align: "center",
-      text: `-${input.damage.toLocaleString()}${input.isCrit ? "!" : ""}`,
-      size: input.isCrit ? 46 : 38, weight: 900,
-      fill: input.isCrit ? "#ffd166" : "#ff6b6b",
-      shadow: "rgba(0,0,0,0.9)", shadowBlur: 10,
-    });
+    if (input.isHit && input.damage > 0) {
+      drawText(ctx, {
+        x: tx - 110, y: 168 - k * 46, w: 220, align: "center",
+        text: `-${input.damage.toLocaleString()}${input.isCrit ? "!" : ""}`,
+        size: input.isCrit ? 46 : 38, weight: 900,
+        fill: input.isCrit ? "#ffd166" : "#ff6b6b",
+        shadow: "rgba(0,0,0,0.9)", shadowBlur: 10,
+      });
+    } else if (!input.isHit) {
+      drawText(ctx, {
+        x: tx - 110, y: 168 - k * 36, w: 220, align: "center",
+        text: "MISS",
+        size: 36, weight: 900,
+        fill: "#9aa7b4",
+        shadow: "rgba(0,0,0,0.9)", shadowBlur: 10,
+      });
+    }
     ctx.restore();
   }
 
