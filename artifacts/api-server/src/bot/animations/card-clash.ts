@@ -19,9 +19,15 @@
 
 import { readFileSync } from "node:fs";
 import { spriteForPrefix } from "../hq/assets.js";
-import { loadArt as loadArtShared } from "./effects.js";
 import {
-  encodeAnimation, getCanvas, clamp01, lerp, TITLE_FONT_FAMILY,
+  loadArt as loadArtShared,
+  createBurst, drawParticles, drawDamageNumber, drawScreenFlash,
+} from "./effects.js";
+import { drawAtmosphere, atmospherePreset } from "./atmosphere.js";
+import { drawImpactDebris, physicsShake } from "./physics.js";
+import {
+  encodeAnimation, getCanvas, clamp01, lerp, easeInOutCubic, easeOutBack,
+  TITLE_FONT_FAMILY, hexToRgba,
   type CanvasMod, type Ctx,
 } from "./engine.js";
 import type { AnimationSpeed, AnimationResult } from "./types.js";
@@ -138,8 +144,8 @@ async function loadClashAssets(cmod: CanvasMod, input: CardClashInput): Promise<
 
 // ── Public entry points ──────────────────────────────────────────────────────
 
-/** The moment the still freezes on — just past impact, so the hit reads. */
-const STILL_T = 0.56;
+/** The moment the still freezes on — just past impact / dodge peak. */
+const STILL_T = 0.54;
 const STILL_SCALE = 0.85;
 
 export async function renderCardClash(
@@ -153,13 +159,13 @@ export async function renderCardClash(
       width: FIELD.width,
       height: FIELD.height,
       speed,
-      durationMs: 2000,
-      maxFrames: 18,
+      durationMs: speed === "fast" ? 1600 : speed === "slow" ? 2400 : 2000,
+      maxFrames: speed === "fast" ? 14 : speed === "slow" ? 20 : 18,
       quality: 28,
       renderScale: RENDER_SCALE,
       // encodeAnimation already applied renderScale to the context, so paint in
       // logical coordinates (pass 1 so paintClash does not scale twice).
-      render: ({ ctx, t }) => { paintClash(ctx, input, assets, t, 1); },
+      render: async ({ ctx, t }) => { await paintClash(ctx, input, assets, t, 1); },
     });
     if (!result) return null;
     if (result.buffer.length > MAX_BYTES) {
@@ -181,7 +187,7 @@ export async function renderCardClashStill(input: CardClashInput): Promise<Buffe
     const w = Math.round(FIELD.width * STILL_SCALE), h = Math.round(FIELD.height * STILL_SCALE);
     const canvas = cmod.createCanvas(w, h);
     const ctx = canvas.getContext("2d") as unknown as Ctx;
-    paintClash(ctx, input, assets, STILL_T, STILL_SCALE);
+    await paintClash(ctx, input, assets, STILL_T, STILL_SCALE);
     return await canvas.encode("png");
   } catch (err) {
     logger.warn({ err }, "card clash still failed");
@@ -191,48 +197,157 @@ export async function renderCardClashStill(input: CardClashInput): Promise<Buffe
 
 // ── Painting ─────────────────────────────────────────────────────────────────
 
-function paintClash(ctx: Ctx, input: CardClashInput, a: ClashAssets, t: number, scale: number): void {
+/**
+ * Card Clash combat beat — same visual vocabulary as /battle:
+ * idle → lunge → projectile/connect → recoil/flash/particles/debris → return.
+ * MISS is a dodge/whiff, not a text-only label. CRIT and KO hit harder.
+ */
+async function paintClash(ctx: Ctx, input: CardClashInput, a: ClashAssets, t: number, scale: number): Promise<void> {
   ctx.save();
   ctx.scale(scale, scale);
 
-  drawBackdrop(ctx, input);
+  drawBackdrop(ctx, input, t);
 
-  // /battle-style timing: idle → lunge → connect → return (same feel as main battles).
+  // Same phase windows as battle.ts: idle → lunge → hit → aftermath.
   const lungeT = clamp01((t - 0.18) / 0.22);
   const hitT = clamp01((t - 0.40) / 0.15);
   const afterT = clamp01((t - 0.55) / 0.40);
-  const ease = (x: number) => x * x * (3 - 2 * x);
-  const lungeAmt = lungeT < 1 ? lerp(0, 110, ease(lungeT)) : lerp(110, 0, ease(afterT));
-  const impact = input.isHit ? (hitT > 0 ? Math.max(0, 1 - hitT) : 0) : 0;
-  const recoil = input.isHit && hitT > 0 ? lerp(0, 36, ease(Math.min(1, hitT * 1.4))) : 0;
+  const lungePeak = input.isHit ? (input.isCrit || input.ko ? 128 : 118) : 108;
+  const lungeAmt = lungeT < 1
+    ? lerp(0, lungePeak, easeInOutCubic(lungeT))
+    : lerp(lungePeak, 0, easeInOutCubic(afterT));
+
+  const shakeIntensity = !input.isHit || hitT <= 0 || hitT >= 1 ? 0
+    : input.ko ? 18 : input.isCrit ? 14 : 8;
+  const shake = shakeIntensity > 0
+    ? await physicsShake(shakeIntensity, hitT, `${input.attacker.name}-clash`)
+    : { dx: 0, dy: 0 };
 
   drawCommanderPlate(ctx, 0, input.attackerCommander, BLUE);
   drawCommanderPlate(ctx, 1, input.defenderCommander, RED);
   drawTurnHeader(ctx, input);
 
-  const atkForward = input.actingSide === 0 ? lungeAmt : 0;
-  const defForward = input.actingSide === 1 ? -lungeAmt : 0;
-  const atkX = CARD.leftCx + atkForward - (input.actingSide === 1 ? recoil : 0);
-  const defX = CARD.rightCx + defForward + (input.actingSide === 0 ? recoil : 0);
-  const struckSide: 0 | 1 = input.actingSide === 0 ? 1 : 0;
+  // Combat subjects shake on impact; HUD stays framed.
+  ctx.save();
+  ctx.translate(shake.dx, shake.dy);
 
-  drawFeatureCard(ctx, atkX, CARD.cy, input.attacker, a.atkArt, BLUE, 0,
-    struckSide === 0 ? impact : 0, input, t);
-  drawFeatureCard(ctx, defX, CARD.cy, input.defender, a.defArt, RED, 1,
-    struckSide === 1 ? impact : 0, input, t);
+  const actingLeft = input.actingSide === 0;
+  const struckSide: 0 | 1 = actingLeft ? 1 : 0;
+  const atkLunge = actingLeft ? lungeAmt : 0;
+  const defLunge = actingLeft ? 0 : -lungeAmt;
 
-  drawVsBurst(ctx, input, t, impact);
+  // Hit: defender recoils hard. Miss: defender dodges aside + up (whiff).
+  const hitRecoil = input.isHit && hitT > 0
+    ? lerp(0, input.ko ? 52 : input.isCrit ? 44 : 36, easeOutBack(Math.min(1, hitT * 1.15)))
+    : 0;
+  const dodgeAmt = !input.isHit && hitT > 0
+    ? lerp(0, 48, easeOutBack(Math.min(1, hitT * 1.2)))
+    : 0;
+  const dodgeY = !input.isHit && hitT > 0
+    ? lerp(0, -28, easeOutBack(Math.min(1, hitT)))
+    : 0;
+  // Attacker slight settle after connect / miss.
+  const atkSettle = (hitT > 0 ? lerp(0, 12, easeOutBack(Math.min(1, hitT))) : 0);
+
+  const atkX = CARD.leftCx + atkLunge
+    - (actingLeft ? atkSettle : hitRecoil)
+    - (!actingLeft && !input.isHit ? dodgeAmt : 0);
+  const defX = CARD.rightCx + defLunge
+    + (!actingLeft ? atkSettle : hitRecoil)
+    + (actingLeft && !input.isHit ? dodgeAmt : 0);
+  const atkY = CARD.cy + (!actingLeft && !input.isHit ? dodgeY : 0);
+  const defY = CARD.cy + (actingLeft && !input.isHit ? dodgeY : 0);
+
+  const impactFlash = input.isHit && hitT > 0 ? Math.max(0, 1 - hitT) : 0;
+
+  drawFeatureCard(ctx, atkX, atkY, input.attacker, a.atkArt, BLUE, 0,
+    struckSide === 0 ? impactFlash : 0, input, t);
+  drawFeatureCard(ctx, defX, defY, input.defender, a.defArt, RED, 1,
+    struckSide === 1 ? impactFlash : 0, input, t);
+
+  // Motion streak behind the lunging attacker (live readability).
+  if (lungeAmt > 8 && afterT < 0.85) {
+    const ax = actingLeft ? atkX : defX;
+    const ay = actingLeft ? atkY : defY;
+    drawLungeStreak(ctx, ax, ay, actingLeft ? 1 : -1, clamp01(lungeAmt / lungePeak),
+      actingLeft ? BLUE : RED);
+  }
+
+  // Projectile spark racing toward the target during connect window.
+  if (lungeT >= 1 && hitT > 0 && hitT < 1) {
+    const fromX = actingLeft ? atkX + CARD.w * 0.35 : defX - CARD.w * 0.35;
+    const toX = actingLeft ? defX - CARD.w * 0.2 : atkX + CARD.w * 0.2;
+    const px = lerp(fromX, toX, hitT);
+    const py = (actingLeft ? atkY : defY);
+    const size = 6 + hitT * (input.isCrit ? 28 : 20);
+    ctx.save();
+    ctx.fillStyle = hexToRgba(input.accent || (actingLeft ? BLUE : RED), 1 - hitT * 0.45);
+    ctx.shadowColor = hexToRgba(GOLD, 0.9);
+    ctx.shadowBlur = 18;
+    ctx.beginPath();
+    ctx.arc(px, py, size, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  const impactCx = actingLeft ? defX : atkX;
+  const impactCy = actingLeft ? defY : atkY;
+
+  if (input.isHit && hitT > 0 && hitT < 1) {
+    drawImpactBurst(ctx, impactCx, impactCy, impactFlash, input);
+    const burstCount = input.ko ? 90 : input.isCrit ? 80 : 45;
+    const burst = createBurst(impactCx, impactCy, input.accent || GOLD, burstCount, input.isCrit ? 200 : 150);
+    for (let i = 0; i < burst.length; i++) {
+      const p = burst[i]!;
+      p.x += p.vx * hitT * 10;
+      p.y += p.vy * hitT * 10;
+    }
+    drawParticles(ctx, burst);
+    await drawImpactDebris(ctx, impactCx, impactCy, {
+      color: input.accent || GOLD,
+      count: input.ko ? 30 : input.isCrit ? 26 : 14,
+      power: input.ko ? 17 : input.isCrit ? 15 : 10,
+      steps: Math.max(2, Math.round(hitT * 16)),
+      seed: `${input.moveName}-clash-shard`,
+    });
+  } else if (!input.isHit && hitT > 0 && hitT < 0.85) {
+    // Subtle whiff spark at the miss point (attack passes through empty air).
+    drawWhiffSpark(ctx, (atkX + defX) / 2, CARD.cy, hitT);
+  }
+
+  drawVsMark(ctx, impactFlash);
+  ctx.restore(); // end shaken combat group
+
+  if (input.isHit && hitT > 0 && hitT < 0.65) {
+    drawScreenFlash(ctx, FIELD.width, FIELD.height, hitT / 0.65,
+      input.ko ? RED : input.isCrit ? GOLD : (input.accent || BLUE));
+  }
+
+  // Floating damage / MISS — shared /battle treatment.
+  if (hitT > 0) {
+    const tx = actingLeft ? defX : atkX;
+    const ty = (actingLeft ? defY : atkY) - CARD.h * 0.42;
+    if (input.isHit && input.damage > 0) {
+      drawDamageNumber(ctx, input.damage, tx, ty, hitT, input.isCrit);
+    } else if (!input.isHit) {
+      drawDamageNumber(ctx, 0, tx, ty, hitT, false, true);
+    }
+  }
+
+  drawMoveBanner(ctx, input);
   drawBattleLog(ctx, input);
   drawSideInfo(ctx, input);
   drawHand(ctx, input, a, t);
   drawEnergyMeter(ctx, input);
 
-  if (input.ko && t > 0.40) drawKoStamp(ctx, struckSide === 0 ? atkX : defX, Math.max(impact, hitT));
+  if (input.ko && t > 0.42) {
+    drawKoStamp(ctx, impactCx, Math.max(impactFlash, clamp01((t - 0.42) / 0.35)));
+  }
 
   ctx.restore();
 }
 
-function drawBackdrop(ctx: Ctx, input: CardClashInput): void {
+function drawBackdrop(ctx: Ctx, input: CardClashInput, t = STILL_T): void {
   // Storm-lit ruin wash — dark enough that the two featured cards read first.
   ctx.fillStyle = vGradient(ctx, 0, 0, FIELD.height, [
     [0, "#141c2e"], [0.42, "#1b2438"], [0.72, "#141a26"], [1, "#080b12"],
@@ -247,6 +362,14 @@ function drawBackdrop(ctx: Ctx, input: CardClashInput): void {
   ctx.fillStyle = split;
   ctx.fillRect(0, 0, FIELD.width, FIELD.height);
 
+  // Shared battlefield atmosphere (embers/dust) — same stack as /battle.
+  drawAtmosphere(ctx, FIELD.width, FIELD.height, atmospherePreset("battlefield"), {
+    seed: `${input.attacker.name}-clash`,
+    t,
+    color: input.accent || GOLD,
+    density: 0.55,
+  });
+
   // Ground haze under the cards.
   ctx.save();
   ctx.globalAlpha = 0.5;
@@ -260,6 +383,116 @@ function drawBackdrop(ctx: Ctx, input: CardClashInput): void {
   vg.addColorStop(1, "rgba(0,0,0,0.55)");
   ctx.fillStyle = vg;
   ctx.fillRect(0, 0, FIELD.width, FIELD.height);
+}
+
+function drawLungeStreak(ctx: Ctx, cx: number, cy: number, dir: number, k: number, color: number): void {
+  const bandTop = cy - CARD.h * 0.32, bandBot = cy + CARD.h * 0.32;
+  const lines = 5;
+  ctx.save();
+  ctx.lineCap = "round";
+  for (let i = 0; i < lines; i++) {
+    const f = i / (lines - 1);
+    const y = lerp(bandTop, bandBot, f);
+    const centre = 1 - Math.abs(f - 0.5) * 2;
+    const len = (36 + centre * 70) * k;
+    if (len < 4) continue;
+    const x0 = cx - dir * (CARD.w * 0.18);
+    const x1 = x0 - dir * len;
+    ctx.globalAlpha = k * (0.2 + centre * 0.45);
+    ctx.strokeStyle = hex(color);
+    ctx.lineWidth = 2.2 + centre * 3.2;
+    ctx.beginPath();
+    ctx.moveTo(x0, y);
+    ctx.lineTo(x1, y);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+function drawImpactBurst(ctx: Ctx, cx: number, cy: number, impact: number, input: CardClashInput): void {
+  if (impact < 0.02) return;
+  const scale = (input.isCrit || input.ko ? 1.35 : 1) * (0.65 + impact * 0.9);
+  ctx.save();
+  ctx.globalAlpha = impact * 0.95;
+  const g = ctx.createRadialGradient(cx, cy, 6, cx, cy, 210 * scale);
+  g.addColorStop(0, "rgba(255,245,210,0.95)");
+  g.addColorStop(0.4, hexA(input.isCrit ? GOLD : input.accent || GOLD, 0.55));
+  g.addColorStop(1, "rgba(255,180,60,0)");
+  ctx.fillStyle = g;
+  ctx.beginPath();
+  ctx.arc(cx, cy, 210 * scale, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.strokeStyle = hexA(GOLD, 0.9 * impact);
+  ctx.lineWidth = 4 * scale;
+  ctx.beginPath();
+  ctx.arc(cx, cy, (28 + (1 - impact) * 70) * scale, 0, Math.PI * 2);
+  ctx.stroke();
+
+  const sparks = input.ko ? 14 : input.isCrit ? 12 : 8;
+  ctx.lineCap = "round";
+  for (let i = 0; i < sparks; i++) {
+    const ang = (i / sparks) * Math.PI * 2 + impact * 0.55;
+    const r0 = 22 * scale, r1 = r0 + (50 + impact * 80) * scale;
+    ctx.strokeStyle = hexA(GOLD, 0.9 * impact);
+    ctx.lineWidth = 2.6 * scale;
+    ctx.beginPath();
+    ctx.moveTo(cx + Math.cos(ang) * r0, cy + Math.sin(ang) * r0);
+    ctx.lineTo(cx + Math.cos(ang) * r1, cy + Math.sin(ang) * r1);
+    ctx.stroke();
+  }
+  // Slash streak through the impact.
+  ctx.globalAlpha = impact * 0.9;
+  ctx.strokeStyle = "#ffffff";
+  ctx.lineWidth = 6 * scale;
+  ctx.shadowColor = hexA(GOLD, impact);
+  ctx.shadowBlur = 16;
+  ctx.beginPath();
+  ctx.moveTo(cx - 70 * scale, cy + 38 * scale);
+  ctx.lineTo(cx + 70 * scale, cy - 38 * scale);
+  ctx.stroke();
+  ctx.restore();
+}
+
+function drawWhiffSpark(ctx: Ctx, cx: number, cy: number, hitT: number): void {
+  const k = 1 - hitT;
+  ctx.save();
+  ctx.globalAlpha = 0.55 * k;
+  ctx.strokeStyle = "rgba(200,214,238,0.85)";
+  ctx.lineWidth = 3;
+  ctx.lineCap = "round";
+  ctx.beginPath();
+  ctx.moveTo(cx - 40, cy - 8);
+  ctx.lineTo(cx + 36, cy + 10);
+  ctx.stroke();
+  ctx.globalAlpha = 0.35 * k;
+  ctx.beginPath();
+  ctx.arc(cx + 20, cy, 10 + hitT * 18, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.restore();
+}
+
+function drawVsMark(ctx: Ctx, impact: number): void {
+  const cx = FIELD.width / 2, cy = CARD.cy;
+  const pop = 1 + impact * 0.28;
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.scale(pop, pop);
+  drawText(ctx, {
+    x: -60, y: -22, w: 120, align: "center", text: "VS", size: 44, weight: 900,
+    fill: hex(GOLD), shadow: "rgba(0,0,0,0.8)", shadowBlur: 10,
+  });
+  ctx.restore();
+}
+
+function drawMoveBanner(ctx: Ctx, input: CardClashInput): void {
+  const cx = FIELD.width / 2;
+  fillRoundRect(ctx, cx - 210, 608, 420, 40, 20, "rgba(8,12,20,0.9)");
+  strokeRoundRect(ctx, cx - 210, 608, 420, 40, 20, hexA(GOLD, 0.75), 2);
+  drawText(ctx, {
+    x: cx - 200, y: 619, w: 400, align: "center",
+    text: ellipsize(ctx, input.moveName, 390, 17, 800), size: 17, weight: 800, fill: "#f2f6ff",
+  });
 }
 
 // ── Commander plates (top corners) ───────────────────────────────────────────
@@ -414,77 +647,6 @@ function drawMeter(
   if (frac > 0) fillRoundRect(ctx, x, y, Math.max(2, w * clamp01(frac)), h, h / 2, color);
 }
 
-// ── VS burst + damage numbers ────────────────────────────────────────────────
-
-function drawVsBurst(ctx: Ctx, input: CardClashInput, t: number, impact: number): void {
-  const cx = FIELD.width / 2, cy = CARD.cy;
-
-  if (impact > 0.02) {
-    ctx.save();
-    ctx.globalAlpha = impact * 0.9;
-    const g = ctx.createRadialGradient(cx, cy, 8, cx, cy, 190);
-    g.addColorStop(0, "rgba(255,240,190,0.95)");
-    g.addColorStop(0.45, hexA(GOLD, 0.5));
-    g.addColorStop(1, "rgba(255,180,60,0)");
-    ctx.fillStyle = g;
-    ctx.beginPath(); ctx.arc(cx, cy, 190, 0, Math.PI * 2); ctx.fill();
-    // Spark shards.
-    for (let i = 0; i < 12; i++) {
-      const ang = (i / 12) * Math.PI * 2 + impact * 0.6;
-      const r0 = 30 + impact * 26, r1 = r0 + 60 + impact * 70;
-      ctx.strokeStyle = hexA(GOLD, 0.85 * impact);
-      ctx.lineWidth = 3;
-      ctx.beginPath();
-      ctx.moveTo(cx + Math.cos(ang) * r0, cy + Math.sin(ang) * r0);
-      ctx.lineTo(cx + Math.cos(ang) * r1, cy + Math.sin(ang) * r1);
-      ctx.stroke();
-    }
-    ctx.restore();
-  }
-
-  // The VS mark itself.
-  const pop = 1 + impact * 0.25;
-  ctx.save();
-  ctx.translate(cx, cy);
-  ctx.scale(pop, pop);
-  drawText(ctx, { x: -60, y: -22, w: 120, align: "center", text: "VS", size: 44, weight: 900, fill: hex(GOLD), shadow: "rgba(0,0,0,0.8)", shadowBlur: 10 });
-  ctx.restore();
-
-  // Floating damage number over the struck card — or MISS / DODGED like /battle.
-  if (t > 0.42) {
-    const k = clamp01((t - 0.42) / 0.5);
-    const tx = input.actingSide === 0 ? CARD.rightCx : CARD.leftCx;
-    ctx.save();
-    ctx.globalAlpha = 1 - k * 0.85;
-    if (input.isHit && input.damage > 0) {
-      drawText(ctx, {
-        x: tx - 110, y: 168 - k * 46, w: 220, align: "center",
-        text: `-${input.damage.toLocaleString()}${input.isCrit ? "!" : ""}`,
-        size: input.isCrit ? 46 : 38, weight: 900,
-        fill: input.isCrit ? "#ffd166" : "#ff6b6b",
-        shadow: "rgba(0,0,0,0.9)", shadowBlur: 10,
-      });
-    } else if (!input.isHit) {
-      drawText(ctx, {
-        x: tx - 110, y: 168 - k * 36, w: 220, align: "center",
-        text: "MISS",
-        size: 36, weight: 900,
-        fill: "#9aa7b4",
-        shadow: "rgba(0,0,0,0.9)", shadowBlur: 10,
-      });
-    }
-    ctx.restore();
-  }
-
-  // Move banner.
-  fillRoundRect(ctx, cx - 210, 608, 420, 40, 20, "rgba(8,12,20,0.9)");
-  strokeRoundRect(ctx, cx - 210, 608, 420, 40, 20, hexA(GOLD, 0.75), 2);
-  drawText(ctx, {
-    x: cx - 200, y: 619, w: 400, align: "center",
-    text: ellipsize(ctx, input.moveName, 390, 17, 800), size: 17, weight: 800, fill: "#f2f6ff",
-  });
-}
-
 // ── Rails: battle log (left) and battle info (right) ─────────────────────────
 
 function drawBattleLog(ctx: Ctx, input: CardClashInput): void {
@@ -598,13 +760,18 @@ function drawEnergyMeter(ctx: Ctx, input: CardClashInput): void {
 }
 
 function drawKoStamp(ctx: Ctx, cx: number, k: number): void {
+  const pop = lerp(1.45, 1.0, easeOutBack(clamp01(k * 1.2)));
   ctx.save();
-  ctx.globalAlpha = Math.min(1, k * 1.6);
+  ctx.globalAlpha = Math.min(1, k * 1.7);
   ctx.translate(cx, CARD.cy);
   ctx.rotate(-0.18);
+  ctx.scale(pop, pop);
+  // Dark punch plate behind the stamp so it reads over busy impact FX.
+  fillRoundRect(ctx, -170, -42, 340, 78, 10, "rgba(8,6,10,0.72)");
+  strokeRoundRect(ctx, -170, -42, 340, 78, 10, hexA(RED, 0.95), 3);
   drawText(ctx, {
-    x: -150, y: -34, w: 300, align: "center", text: "DESTROYED",
-    size: 52, weight: 900, fill: "#ff5a5a", shadow: "rgba(0,0,0,0.9)", shadowBlur: 14,
+    x: -160, y: -28, w: 320, align: "center", text: "DESTROYED",
+    size: 48, weight: 900, fill: "#ff5a5a", shadow: "rgba(0,0,0,0.95)", shadowBlur: 16,
   });
   ctx.restore();
 }

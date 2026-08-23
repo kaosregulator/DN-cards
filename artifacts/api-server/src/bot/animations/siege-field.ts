@@ -19,10 +19,12 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { spriteForPrefix } from "../hq/assets.js";
 import { queueRender } from "./render-queue.js";
-import { getRarityEffectColor, loadArt as loadArtShared } from "./effects.js";
+import { getRarityEffectColor, loadArt as loadArtShared, createBurst, drawParticles, drawDamageNumber, drawScreenFlash } from "./effects.js";
+import { drawAtmosphere, atmospherePreset } from "./atmosphere.js";
+import { drawImpactDebris, physicsShake } from "./physics.js";
 import { FRAME_INSET } from "./card-frames.js";
 import { extractArtColor } from "../battle/image/vibrant-color.js";
-import { encodeAnimation, getCanvas, TITLE_FONT_FAMILY, type CanvasMod, type Ctx } from "./engine.js";
+import { encodeAnimation, getCanvas, TITLE_FONT_FAMILY, easeInOutCubic, easeOutBack, type CanvasMod, type Ctx } from "./engine.js";
 import type { Rarity } from "../cards-data.js";
 import type { AnimationSpeed, AnimationResult } from "./types.js";
 import { logger } from "../../lib/logger.js";
@@ -333,10 +335,10 @@ export async function renderSiegeField(
     maxFrames: speedMaxFrames(speed),
     quality: 28,
     renderScale: RENDER_SCALE,
-    render: ({ ctx, t }) => {
+    render: async ({ ctx, t }) => {
       // encodeAnimation already applied renderScale on the context; paint in
       // logical coords (paintFrame scales again — pass 1 so we don't double).
-      paintFrame(ctx, input, assets, t, 1);
+      await paintFrame(ctx, input, assets, t, 1);
     },
   });
 
@@ -362,7 +364,7 @@ export async function renderSiegeFieldStill(input: SiegeFieldInput): Promise<Buf
       const physH = Math.round(FIELD.height * STILL_SCALE);
       const canvas = cmod.createCanvas(physW, physH);
       const ctx = canvas.getContext("2d") as unknown as Ctx;
-      paintFrame(ctx, input, assets, STILL_T, STILL_SCALE);
+      await paintFrame(ctx, input, assets, STILL_T, STILL_SCALE);
       return await canvas.encode("png");
     } catch (err) {
       logger.error({ err }, "siege-field: still render failed");
@@ -402,13 +404,20 @@ function smooth01(t: number, a: number, b: number): number {
  *   BLUE [1][2][3][4]  VS  [1][2][3][4] RED
  * Flat DN card frames (no podium stands). Acting card slides horizontally
  * toward the center, impact/MISS, then returns to its exact slot.
+ * Combat FX reuse the shared /battle stack (shake, flash, particles, debris).
  */
-function paintFrame(ctx: Ctx, input: SiegeFieldInput, a: Assets, t: number, scale: number): void {
+async function paintFrame(ctx: Ctx, input: SiegeFieldInput, a: Assets, t: number, scale: number): Promise<void> {
   ctx.save();
   ctx.scale(scale, scale);
   ctx.textBaseline = "top";
 
   drawArena(ctx, a, input.accent);
+  drawAtmosphere(ctx, FIELD.width, FIELD.height, atmospherePreset("battlefield"), {
+    seed: `${input.attacker.name}-siege`,
+    t,
+    color: input.accent || GOLD,
+    density: 0.45,
+  });
 
   const acting = input.actingSide;
   const targetSide: 0 | 1 = acting === 0 ? 1 : 0;
@@ -423,14 +432,34 @@ function paintFrame(ctx: Ctx, input: SiegeFieldInput, a: Assets, t: number, scal
 
   const combatBeat = input.phase === "battle" || input.isHit || input.damage > 0 || input.ko;
   const lungeT = combatBeat ? smooth01(t, 0.18, 0.40) : 0;
+  const hitT = combatBeat ? clamp01((t - 0.40) / 0.15) : 0;
   const afterT = combatBeat ? smooth01(t, 0.55, 0.92) : 0;
   const connected = combatBeat && t >= 0.40 && input.isHit;
   const impact = combatBeat ? pulse(t, 0.40, 0.68) : 0;
+  const slidePeak = input.isCrit || input.ko ? SLIDE_PX + 16 : SLIDE_PX;
   const slideAmt = !combatBeat ? 0
     : lungeT < 1
-      ? lerp(0, SLIDE_PX, easeOut(lungeT))
-      : lerp(SLIDE_PX, 0, easeOut(afterT));
+      ? lerp(0, slidePeak, easeInOutCubic(lungeT))
+      : lerp(slidePeak, 0, easeInOutCubic(afterT));
   const toward = acting === 0 ? 1 : -1;
+
+  const hitRecoil = connected
+    ? lerp(0, input.ko ? 28 : input.isCrit ? 24 : 18, easeOutBack(Math.min(1, hitT * 1.2)))
+    : 0;
+  // MISS: defender dodges aside — attack whiffs, not a text-only label.
+  const dodgeAmt = combatBeat && !input.isHit && hitT > 0
+    ? lerp(0, 26, easeOutBack(Math.min(1, hitT * 1.15)))
+    : 0;
+  const dodgeY = combatBeat && !input.isHit && hitT > 0
+    ? lerp(0, -14, easeOutBack(Math.min(1, hitT)))
+    : 0;
+
+  const shakeIntensity = connected && hitT > 0 && hitT < 1
+    ? (input.ko ? 12 : input.isCrit ? 10 : 6)
+    : 0;
+  const shake = shakeIntensity > 0
+    ? await physicsShake(shakeIntensity, hitT, `${input.moveName}-field`)
+    : { dx: 0, dy: 0 };
 
   const actingDepth = Math.max(0, lineOf(acting).findIndex(c => c.active));
   const isActing = (s: 0 | 1, d: number) => s === acting && d === (actingDepth < 0 ? 0 : actingDepth);
@@ -439,14 +468,22 @@ function paintFrame(ctx: Ctx, input: SiegeFieldInput, a: Assets, t: number, scal
   const place = (s: 0 | 1, d: number): { x: number; y: number; w: number; h: number; flash: number } => {
     const slot = cardSlot(s, d);
     let x = slot.x;
+    let y = slot.y;
     let flash = 0;
     if (isActing(s, d) && combatBeat) x += toward * slideAmt;
     if (isTarget(s, d) && connected) {
       flash = impact;
-      x += (targetSide === 0 ? -1 : 1) * impact * 22;
+      x += (targetSide === 0 ? -1 : 1) * hitRecoil;
+    } else if (isTarget(s, d) && combatBeat && !input.isHit && hitT > 0) {
+      x += (targetSide === 0 ? -1 : 1) * dodgeAmt;
+      y += dodgeY;
     }
-    return { x, y: slot.y, w: slot.w, h: slot.h, flash };
+    return { x, y, w: slot.w, h: slot.h, flash };
   };
+
+  // Combat subjects shake; HUD stays framed.
+  ctx.save();
+  ctx.translate(shake.dx, shake.dy);
 
   const drawOne = (s: 0 | 1, d: number) => {
     const line = lineOf(s);
@@ -470,7 +507,7 @@ function paintFrame(ctx: Ctx, input: SiegeFieldInput, a: Assets, t: number, scal
 
   if (slideAmt > 6 && lungeT > 0.1 && afterT < 0.85) {
     const ap = place(acting, actingDepth);
-    drawDashStreak(ctx, ap.x + ap.w / 2, toward, clamp01(slideAmt / SLIDE_PX), acting === 0 ? BLUE : RED);
+    drawDashStreak(ctx, ap.x + ap.w / 2, toward, clamp01(slideAmt / slidePeak), acting === 0 ? BLUE : RED);
   }
 
   drawOne(targetSide, focusDepth);
@@ -478,10 +515,38 @@ function paintFrame(ctx: Ctx, input: SiegeFieldInput, a: Assets, t: number, scal
 
   const tp = place(targetSide, focusDepth);
   const targetX = tp.x + tp.w / 2, targetY = tp.y + tp.h * 0.35;
-  if (connected) {
+  if (connected && hitT > 0) {
     drawImpact(ctx, a, targetX, targetY, impact, input);
+    if (hitT < 1) {
+      const burst = createBurst(targetX, targetY, input.accent || GOLD,
+        input.ko ? 55 : input.isCrit ? 45 : 28, input.isCrit ? 140 : 100);
+      for (let i = 0; i < burst.length; i++) {
+        const p = burst[i]!;
+        p.x += p.vx * hitT * 8;
+        p.y += p.vy * hitT * 8;
+      }
+      drawParticles(ctx, burst);
+      await drawImpactDebris(ctx, targetX, targetY, {
+        color: input.accent || GOLD,
+        count: input.ko ? 22 : input.isCrit ? 18 : 10,
+        power: input.ko ? 13 : input.isCrit ? 11 : 8,
+        steps: Math.max(2, Math.round(hitT * 14)),
+        seed: `${input.moveName}-field-shard`,
+      });
+    }
   } else if (combatBeat && t >= 0.40 && !input.isHit) {
-    drawFloatingText(ctx, targetX, targetY - 40, "MISS", 0x9aa7b4, clamp01((t - 0.40) / 0.4));
+    drawWhiffSparkField(ctx, targetX - toward * 30, targetY, hitT);
+    drawDamageNumber(ctx, 0, targetX, targetY - 36, Math.max(0.05, hitT), false, true);
+  }
+
+  ctx.restore(); // end shaken combat group
+
+  if (connected && hitT > 0 && hitT < 0.6) {
+    drawScreenFlash(ctx, FIELD.width, FIELD.height, hitT / 0.6,
+      input.ko ? RED : input.isCrit ? GOLD : (input.accent || BLUE));
+  }
+  if (connected && input.damage > 0 && hitT > 0) {
+    drawDamageNumber(ctx, input.damage, targetX, targetY - 48, hitT, input.isCrit);
   }
 
   drawLifePlate(ctx, 0, input.attacker, a.atkArt, a.atkColor);
@@ -496,6 +561,20 @@ function paintFrame(ctx: Ctx, input: SiegeFieldInput, a: Assets, t: number, scal
   if (input.phase === "end") drawEndBanner(ctx, input, t);
   if (input.ko && t > 0.72) drawKoStamp(ctx, targetX, clamp01((t - 0.72) / 0.28));
 
+  ctx.restore();
+}
+
+function drawWhiffSparkField(ctx: Ctx, cx: number, cy: number, hitT: number): void {
+  const k = 1 - hitT;
+  ctx.save();
+  ctx.globalAlpha = 0.5 * k;
+  ctx.strokeStyle = "rgba(200,214,238,0.9)";
+  ctx.lineWidth = 2.4;
+  ctx.lineCap = "round";
+  ctx.beginPath();
+  ctx.moveTo(cx - 28, cy - 6);
+  ctx.lineTo(cx + 24, cy + 8);
+  ctx.stroke();
   ctx.restore();
 }
 
@@ -1076,17 +1155,7 @@ function drawImpact(ctx: Ctx, a: Assets, x: number, y: number, k: number, input:
     ctx.drawImage(a.smoke as never, x - sz / 2, y - sz / 2, sz, sz);
     ctx.restore();
   }
-  // Damage number, rising as the strike settles.
-  if (input.damage > 0) {
-    const rise = (1 - k) * 26;
-    const dmgColor = input.isCrit ? 0xffd54a : 0xff5a5a;
-    drawText(ctx, {
-      x: x - 160, y: y - 62 - rise, w: 320, align: "center",
-      text: `${input.isCrit ? "CRIT " : ""}-${input.damage}`,
-      weight: 900, size: input.isCrit ? 40 : 34, fill: hex(dmgColor),
-      shadow: "rgba(0,0,0,1)", shadowBlur: 5, alpha: clamp01(k + 0.3),
-    });
-  }
+  // Damage numbers are drawn via shared drawDamageNumber in paintFrame.
 }
 
 function drawFloatingText(ctx: Ctx, cx: number, y: number, text: string, color: number, k: number): void {
