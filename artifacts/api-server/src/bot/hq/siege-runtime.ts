@@ -192,7 +192,6 @@ interface SiegeSession extends SiegeRuntimeConfig {
   // multiple moves through the `processing` check while the first is still
   // awaiting deferUpdate. Released when the resulting turn fully resolves.
   inputPending: boolean;
-  itemUsesLeft: number;
   attackerPower: number;
   defenderPower: number;
   /** Cached castle frame; only re-rendered when the siege visibly changes. */
@@ -369,7 +368,6 @@ export async function startSiege(
     log: [],
     processing: false,
     inputPending: false,
-    itemUsesLeft: config.siege.itemUses,
     attackerPower: config.attackers.reduce((sum, c) => sum + powerRating(c.stats), 0),
     defenderPower: config.defenders.reduce((sum, c) => sum + powerRating(c.stats), 0),
     castleImage: null, castleKey: "", castleRendering: false,
@@ -536,7 +534,7 @@ async function musterPayload(s: SiegeSession) {
         inline: false,
       },
     )
-    .setFooter({ text: `${s.itemUsesLeft} field use${s.itemUsesLeft === 1 ? "" : "s"} · ${s.siege.turnSeconds}s per move once the assault starts` });
+    .setFooter({ text: `${s.battle.teams[0].itemUsesLeft} field use${s.battle.teams[0].itemUsesLeft === 1 ? "" : "s"} · ${s.siege.turnSeconds}s per move once the assault starts` });
   if (s.castleImage) embed.setImage(`attachment://${SIEGE_CASTLE_IMAGE}`);
 
   const canPick = (s.attackerPool?.length ?? 0) > s.columnSize;
@@ -866,6 +864,26 @@ async function applySiegeAction(s: SiegeSession, action: SiegeAction | null): Pr
 
     const result = resolveAction(s.battle, action);
     pushLog(s, result.events.map(e => e.text));
+
+    // Rejected (illegal) action: nothing changed, so DON'T advance the turn.
+    // Re-render so the reason shows and the controls come back live, and re-arm
+    // the turn clock for a human commander.
+    if (result.rejected) {
+      s.processing = false;
+      if (!s.headless && s.battle.activeSide === 0) {
+        clearTurnTimer(s);
+        const ms = s.siege.turnSeconds * 1000;
+        s.turnTimer = setTimeout(() => {
+          pushLog(s, ["⏱️ The commander hesitated — the line presses on regardless."]);
+          void applySiegeAction(s, autoAction(s));
+        }, ms);
+        await render(s, { turnEndsAt: Date.now() + ms });
+      } else {
+        await render(s);
+      }
+      return;
+    }
+
     s.di = destroyedCount(s, 1);
     s.ai = destroyedCount(s, 0);
 
@@ -1034,7 +1052,7 @@ async function refreshRestingFrame(s: SiegeSession): Promise<void> {
 async function handleItemOpen(interaction: ButtonInteraction, s: SiegeSession): Promise<void> {
   if (s.phase !== "assault") { await interaction.reply({ content: "The assault hasn't started.", ...EPHEMERAL }).catch(() => {}); return; }
   if (s.processing) { await interaction.reply({ content: "The exchange is resolving — hang on.", ...EPHEMERAL }).catch(() => {}); return; }
-  if (s.itemUsesLeft <= 0) { await interaction.reply({ content: "🎒 Your supplies are spent.", ...EPHEMERAL }).catch(() => {}); return; }
+  if (s.battle.teams[0].itemUsesLeft <= 0) { await interaction.reply({ content: "🎒 Your supplies are spent.", ...EPHEMERAL }).catch(() => {}); return; }
   const items = listBattleItems(s.guildId).slice(0, 25);
   if (items.length === 0) { await interaction.reply({ content: "No usable items are configured.", ...EPHEMERAL }).catch(() => {}); return; }
   const menu = new StringSelectMenuBuilder()
@@ -1554,7 +1572,7 @@ function buildTurnStripEmbed(s: SiegeSession, opts?: { currentMove?: string; tur
   return new EmbedBuilder()
     .setColor(s.accent)
     .setDescription(`📜 ${latestSiegeLines(s)}\n${WHITE_LINE}\n**Turn ${s.turnNumber}** · ${turnCall}`)
-    .setFooter({ text: `🎒 ${s.itemUsesLeft} field use${s.itemUsesLeft === 1 ? "" : "s"} left · a KO breaks a rank, not the siege` });
+    .setFooter({ text: `🎒 ${s.battle.teams[0].itemUsesLeft} field use${s.battle.teams[0].itemUsesLeft === 1 ? "" : "s"} left · a KO breaks a rank, not the siege` });
 }
 
 // BOTTOM embed: the battlefield itself — the animated Clash arena. The image is

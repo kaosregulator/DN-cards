@@ -22,7 +22,7 @@ import { getBattleItem, applyItemUse } from "../battle/items.js";
 import { getSiegeCard, type SiegeCard } from "./siege-cards.js";
 import {
   canReinforce, defaultTargetSlot, emptySlots, formationEmpty, isAlive,
-  livingSlots, livingUnits, lpExposed, otherSide, refillHand, teamOf,
+  livingSlots, livingUnits, lpExposed, otherSide, pushEvents, refillHand, teamOf,
 } from "./state.js";
 import type {
   SiegeAction, SiegeActionCheck, SiegeBattleEvent, SiegeBattleState, SiegeTeam,
@@ -98,6 +98,7 @@ export function startTurn(state: SiegeBattleState): SiegeTurnResult {
 
   refillHand(team);
   clampBoard(state);
+  pushEvents(state, events);
   return { events, destroyed, struck: [], damageDealt: 0, lpDamage: 0, battleOver: false };
 }
 
@@ -116,13 +117,14 @@ export function endTurn(state: SiegeBattleState): SiegeTurnResult {
         flash: "combo", event: "wipe", targetSide: team.side,
       });
       events.push(...autoReinforce(state, team.side));
-    } else if (team.wavesLost === 0 || !team.slots.some(s => s.unit)) {
-      // Nothing left to send: the commander is exposed from here on.
+    } else if (!team.exposed) {
+      // Nothing left on the board AND nothing left to deploy: the commander is
+      // exposed from here on. Announced exactly once (the flag guards re-firing).
+      team.exposed = true;
       events.push({
         text: `💥 **${team.name}** has no cards left to defend — their life points are exposed!`,
         flash: "shield_break", event: "wipe", targetSide: team.side,
       });
-      team.wavesLost = Math.max(team.wavesLost, 1);
     }
   }
 
@@ -134,6 +136,7 @@ export function endTurn(state: SiegeBattleState): SiegeTurnResult {
       text: `🏆 **${state.teams[winner].name}** wins the siege!`,
       flash: "ultimate", event: "victory", actorSide: winner,
     });
+    pushEvents(state, events);
     return { events, destroyed: [], struck: [], damageDealt: 0, lpDamage: 0, battleOver: true };
   }
 
@@ -146,8 +149,10 @@ export function endTurn(state: SiegeBattleState): SiegeTurnResult {
       text: `⌛ The siege stalls — it is decided on ground taken.`,
       event: "info",
     });
+    pushEvents(state, events);
     return { events, destroyed: [], struck: [], damageDealt: 0, lpDamage: 0, battleOver: true };
   }
+  pushEvents(state, events);
   return { events, destroyed: [], struck: [], damageDealt: 0, lpDamage: 0, battleOver: false };
 }
 
@@ -341,6 +346,7 @@ export function resolveAction(state: SiegeBattleState, action: SiegeAction): Sie
     return {
       events: [{ text: `⚠️ ${check.reason}`, event: "info" }],
       destroyed: [], struck: [], damageDealt: 0, lpDamage: 0, battleOver: false,
+      rejected: true,
     };
   }
   const side = state.activeSide;
@@ -392,6 +398,7 @@ export function resolveAction(state: SiegeBattleState, action: SiegeAction): Sie
     .reduce((sum, h) => sum + h.damage, 0);
   const lpDamage = (before.lp[0] - state.teams[0].lp) + (before.lp[1] - state.teams[1].lp);
   void team; void foes;
+  pushEvents(state, events);
   return { events, destroyed, struck, damageDealt, lpDamage, battleOver: false };
 }
 
@@ -521,7 +528,7 @@ function resolveDirectLp(state: SiegeBattleState, actorSlot: number): SiegeBattl
     foes.lp = Math.max(0, foes.lp - dmg);
     events.push({
       text: `🎯 **${unit.cardName}** strikes **${foes.name}** directly for **${dmg}** LP!`,
-      flash: "crit", event: "direct_lp",
+      flash: "combo", event: "direct_lp",
       actorSide: side, actorSlot: slot.index, targetSide: foeSide, lpDamage: dmg,
     });
   }

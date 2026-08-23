@@ -626,23 +626,28 @@ function drawWrapped(
 ): void {
   ctx.save();
   ctx.font = `${style.weight} ${style.size}px "${TITLE_FONT_FAMILY}"`;
+  // Greedily wrap into ALL the lines the text needs, then keep the first
+  // maxLines. Doing the wrap in full (rather than breaking early) is what lets
+  // the last shown line ellipsise honestly when the blurb overflows.
   const words = text.split(/\s+/).filter(Boolean);
-  const lines: string[] = [];
+  const all: string[] = [];
   let line = "";
   for (const word of words) {
     const next = line ? `${line} ${word}` : word;
     if (ctx.measureText(next).width <= w) { line = next; continue; }
-    if (line) lines.push(line);
+    if (line) all.push(line);
     line = word;
-    if (lines.length === maxLines) break;
   }
-  if (line && lines.length < maxLines) lines.push(line);
+  if (line) all.push(line);
   ctx.restore();
-  lines.slice(0, maxLines).forEach((l, i) => {
-    const last = i === maxLines - 1 && lines.length > maxLines;
+  const shown = all.slice(0, maxLines);
+  const truncated = all.length > maxLines;
+  shown.forEach((l, i) => {
+    const isLast = i === shown.length - 1;
     drawText(ctx, {
       x, y: y + i * lineH, w, align: "center",
-      text: last ? ellipsize(ctx, l, w) : l,
+      // The last visible line carries an ellipsis only when text was dropped.
+      text: isLast && truncated ? ellipsize(ctx, `${l}…`, w, style.size, style.weight) : l,
       size: style.size, weight: style.weight, fill: style.fill,
     });
   });

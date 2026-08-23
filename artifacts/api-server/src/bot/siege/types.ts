@@ -69,6 +69,8 @@ export interface SiegeTeam {
 
   /** How many full formations this side has already lost. */
   wavesLost: number;
+  /** Set once this side's life points have been announced as exposed (fires once). */
+  exposed: boolean;
   /** Battle Item uses left for the whole siege (shared across the team). */
   itemUsesLeft: number;
 }
@@ -176,4 +178,10 @@ export interface SiegeTurnResult {
   lpDamage: number;
   /** True when this action ended the battle. */
   battleOver: boolean;
+  /**
+   * True when the action was refused by checkAction (illegal click) and NOTHING
+   * changed. The runtime uses this to avoid burning the commander's turn on a
+   * rejected action.
+   */
+  rejected?: boolean;
 }

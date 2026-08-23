@@ -54,6 +54,7 @@ export function buildTeam(input: BuildTeamInput, rng: () => number = Math.random
     discardPile: [],
     cardCooldowns: {},
     wavesLost: 0,
+    exposed: false,
     itemUsesLeft: input.itemUses ?? 3,
   };
   for (let i = 0; i < HAND_SIZE; i++) drawCard(team);

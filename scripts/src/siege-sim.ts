@@ -81,6 +81,7 @@ interface Metrics {
   cardsPlayed: Record<string, number>;
   lpViolations: number;
   byLp: number; byCap: number; lpLeft: number[];
+  exposedEvents: number; maxLog: number;
 }
 
 function simulate(settings: Any, m: Metrics, size = 7, maxTurns?: number): { winner: number | null; turns: number } {
@@ -145,7 +146,11 @@ function simulate(settings: Any, m: Metrics, size = 7, maxTurns?: number): { win
     }
 
     const et = endTurn(state);
-    for (const e of et.events) if (e.event === "deploy") m.reinforcements++;
+    for (const e of et.events) {
+      if (e.event === "deploy") m.reinforcements++;
+      if (e.event === "wipe" && /life points are exposed/.test(e.text)) m.exposedEvents++;
+    }
+    m.maxLog = Math.max(m.maxLog, state.log.length);
     if (et.battleOver && state.teams[0].lp > 0 && state.teams[1].lp > 0) endedByCap = true;
   }
   if (endedByCap) m.byCap++; else m.byLp++;
@@ -169,7 +174,7 @@ function run(): void {
   const m: Metrics = {
     siegeCards: 0, directLp: 0, reinforcements: 0, items: 0,
     ultimates: 0, kos: 0, cardsPlayed: {}, lpViolations: 0,
-    byLp: 0, byCap: 0, lpLeft: [],
+    byLp: 0, byCap: 0, lpLeft: [], exposedEvents: 0, maxLog: 0,
   };
   let decisive = 0, totalTurns = 0, longest = 0;
   const wins = { 0: 0, 1: 0, draw: 0 } as Any;
@@ -185,6 +190,8 @@ function run(): void {
   assert.ok(m.reinforcements > 0, "reinforcements never deployed");
   assert.ok(m.directLp > 0, "LP was never attacked directly");
   assert.ok(m.kos > 0, "no card was ever destroyed");
+  assert.ok(m.maxLog > 0, "state.log was never populated — the Card Clash log rail would render blank");
+  assert.ok(m.exposedEvents > 0, "the 'life points are exposed' beat never fired, even for rosters with reserves");
   assert.ok(decisive / N > 0.8, `too many stalemates (${decisive}/${N} decisive)`);
   assert.ok(m.byLp / N > 0.85, `too many sieges ran to the turn cap instead of a real LP wipe (${m.byLp}/${N})`);
 
@@ -196,6 +203,7 @@ function run(): void {
   console.log(`   Attacker: ${((wins[0] / N) * 100).toFixed(1)}%   Defender: ${((wins[1] / N) * 100).toFixed(1)}%   Draws: ${((wins.draw / N) * 100).toFixed(1)}%`);
   console.log(`   Siege cards played: ${m.siegeCards} (${played}/${DEFAULT_SIEGE_CARDS.length} distinct)`);
   console.log(`   Reinforcement waves: ${m.reinforcements}   Direct LP hits: ${m.directLp}   Team ultimates: ${m.ultimates}   KOs: ${m.kos}`);
+  console.log(`   LP-exposed announcements: ${m.exposedEvents}   Peak clash-log length: ${m.maxLog}`);
   console.log(`✅ LP stayed protected behind the formation in every one of ${N} battles.`);
 }
 
