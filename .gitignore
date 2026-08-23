@@ -53,3 +53,7 @@ scripts/hq-preview/
 
 # Local scratch/mockup scripts (never committed)
 scripts/src/scratch-*.ts
+
+# Siege pipeline preview renders (scripts/src/siege-pipeline.ts)
+/siege-formation.png
+/siege-clash.png
