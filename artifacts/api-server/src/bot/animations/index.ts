@@ -7,6 +7,8 @@
 export { renderPackOpening } from "./pack.js";
 export { renderBattleTurn, renderBattleVictory, renderBattleIdle } from "./battle.js";
 export { renderSiegeField, renderSiegeFieldStill } from "./siege-field.js";
+export { renderCardClash, renderCardClashStill } from "./card-clash.js";
+export type { CardClashInput, ClashFighter, ClashHandCard } from "./card-clash.js";
 export type { SiegeFieldInput, SiegeFieldFighter, SiegeFieldBenchCard, SiegeFieldLineupCard } from "./siege-field.js";
 export {
   renderPackCover, renderCardReveal, renderAttackFrame,
