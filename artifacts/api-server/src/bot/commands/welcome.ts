@@ -3,6 +3,7 @@ import { EmbedBuilder, MessageFlags } from "discord.js";
 import { applyEmbedOverride } from "../embed-overrides.js";
 import { getOrCreateGuildSettings, isAdmin } from "../db.js";
 import { getShinyName } from "../cards-data.js";
+import { BRAND_NAME } from "../help-banners.js";
 
 // Thin animated divider GIF used as the separator image at the bottom of each
 // embed. The rainbow-glow line (4 KB, GitHub user-images CDN) renders as a
@@ -57,7 +58,7 @@ export async function handleWelcome(interaction: ChatInputCommandInteraction): P
   // ── 1 · Welcome ─────────────────────────────────────────────────────────────
   const welcome = new EmbedBuilder()
     .setColor(BRAND_COLOR)
-    .setTitle("🃏 Welcome to DN Cards")
+    .setTitle(`🃏 Welcome to ${BRAND_NAME}`)
     .setDescription(
       `Welcome to **${guildName}** — DarkNight's military collectible card game. Tanks, jets, warships, bosses, and the odd cursed community card drop right here in chat.\n\n` +
       "**When a card spawns, just type its name to catch it.** That's the core loop — then hoard, battle, trade, and climb the leaderboard.",
@@ -180,7 +181,7 @@ export async function handleWelcomeAdmin(interaction: ChatInputCommandInteractio
   // ── Embed 1: Setup Checklist ──────────────────────────────────────────────
   const quickstart = new EmbedBuilder()
     .setColor(ADMIN_COLOR)
-    .setTitle("🛠️ Admin Quick-Start — DN Cards")
+    .setTitle(`🛠️ Admin Quick-Start — ${BRAND_NAME}`)
     .setDescription(
       "Do these **in order** the first time:\n\n" +
 

@@ -17,6 +17,7 @@ import {
   EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, MessageFlags, AttachmentBuilder,
   type ChatInputCommandInteraction, type ButtonInteraction,
 } from "discord.js";
+import { BRAND_NAME } from "../help-banners.js";
 import { logger } from "../../lib/logger.js";
 import { getAchievement, grantAchievement } from "../achievements.js";
 import { addShards, getOrCreateCurrency } from "../db.js";
@@ -61,7 +62,7 @@ export async function handleOnboardingCommand(interaction: ChatInputCommandInter
   const demo = await renderDailyDemo(interaction.user.username).catch(() => null);
   const embed = new EmbedBuilder()
     .setColor(BRAND)
-    .setTitle("🎴 Welcome to DN Cards — Chapter 1: First Steps")
+    .setTitle(`🎴 Welcome to ${BRAND_NAME} — Chapter 1: First Steps`)
     .setDescription(
       "Every collector starts somewhere. **Watch** how earning works — then you'll do it yourself for real rewards.\n\n" +
       "Above, the bot runs `/daily` to claim shards. Commands, autocomplete, and buttons all work just like this.\n\n" +

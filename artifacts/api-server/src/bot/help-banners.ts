@@ -19,6 +19,15 @@ export const HELP_DIVIDER = HELP_BANNER;
 
 // Brand palette (dark military theme). Each help section gets an accent color so
 // pages feel distinct even though they share one animated banner.
+// ── Brand name — the single source of truth for the bot's display name. ───────
+// Rename the whole bot here: every user-visible title/footer that shows the
+// brand imports BRAND_NAME, so a rebrand is one edit. BRAND_SHORT is the casual
+// form used mid-sentence where the full name would read as heavy ("your cards",
+// "card battles"). Comments, logs and internal ids are intentionally NOT keyed
+// off these — they never reach a player.
+export const BRAND_NAME = "Dex N Cards";
+export const BRAND_SHORT = "Cards";
+
 export const BRAND_COLOR = 0xe63946; // DarkNight red
 
 export const SECTION_COLOR = {

@@ -17,6 +17,7 @@ import {
   EmbedBuilder, MessageFlags, ActionRowBuilder, ButtonBuilder, ButtonStyle,
   type ChatInputCommandInteraction,
 } from "discord.js";
+import { BRAND_NAME } from "../help-banners.js";
 import { LAUNCH_PREFIX, activityConfigured, activityUrl } from "../experience.js";
 import { db, battleSettingsTable, battleAchievementsTable } from "@workspace/db";
 import { and, eq } from "drizzle-orm";
@@ -37,7 +38,7 @@ import { buildCampaignEmbed } from "../raid/command.js";
 export async function handleBattlesWelcome(interaction: ChatInputCommandInteraction): Promise<void> {
   const embed = new EmbedBuilder()
     .setColor(0xed4245)
-    .setTitle("⚔️ Welcome to DN Cards Battles")
+    .setTitle(`⚔️ Welcome to ${BRAND_NAME} Battles`)
     .setDescription("A quick guide to fighting with your cards. Battles are turn-based and played in one message — pick a card, choose moves, and win rewards.")
     .addFields(
       { name: "🎴 How to start", value: "Use **/battle fight** to battle the AI.\nUse **/battle fight @user** to challenge a real player.\nUse **/battle raid** for co-op boss raids and **/battle siege** for turn-for-turn castle assaults.\nUse **/battle profile** to see your stats and **/battle leaderboard** to see rankings.", inline: false },

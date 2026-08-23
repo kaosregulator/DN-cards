@@ -4,6 +4,7 @@ import {
   type ChatInputCommandInteraction, type ButtonInteraction,
   type ModalSubmitInteraction,
 } from "discord.js";
+import { BRAND_NAME } from "../help-banners.js";
 import {
   isAdmin, listAdmins, addAdmin, removeAdmin,
   setUserTimeout, clearUserTimeout, listActiveTimeouts,
@@ -164,7 +165,7 @@ async function buildHubEmbed(guildId: string): Promise<EmbedBuilder> {
       }).join("\n");
 
   return new EmbedBuilder()
-    .setTitle("🛡️ DN Cards — Admin Hub")
+    .setTitle(`🛡️ ${BRAND_NAME} — Admin Hub`)
     .setColor(0xed4245)
     .setDescription(
       "Quick admin actions for this server. Buttons below open private prompts; results show only to you.\n\n" +

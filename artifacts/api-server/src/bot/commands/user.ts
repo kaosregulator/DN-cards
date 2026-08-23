@@ -1,4 +1,5 @@
 import type { ChatInputCommandInteraction } from "discord.js";
+import { BRAND_NAME } from "../help-banners.js";
 import { EmbedBuilder, MessageFlags } from "discord.js";
 
 // Visibility policy for command replies.
@@ -145,7 +146,7 @@ export async function handleUserCommand(
     if (items.length === 0) {
       await interaction.editReply(
         target.id === interaction.user.id
-          ? "You haven't caught any DN Cards yet! Watch for a card to spawn and type its name."
+          ? "You haven't caught any cards yet! Watch for a card to spawn and type its name."
           : `**${target.username}** hasn't caught any cards yet.`,
       );
       return;
@@ -516,7 +517,7 @@ export async function handleUserCommand(
       overviewLines.push(`${t.emoji} **${t.label}** — ${g.length} · 🎲 ${shareLabel}`);
     }
     const overview = new EmbedBuilder()
-      .setTitle("🃏 DN Cards — Full Roster")
+      .setTitle(`🃏 ${BRAND_NAME} — Full Roster`)
       .setColor(0x5865f2)
       .setDescription(
         `**${cards.length}** cards in the pool\n\n` +

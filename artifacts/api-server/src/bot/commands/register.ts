@@ -42,7 +42,7 @@ function buildLegacyCommands() {
   return [
     // ── User Commands ─────────────────────────────────────────────────────────
     // ── User Commands ───────────────────────���────────────────────────────────[...]
-    cmd("collection", "View your DN Cards collection", s => s
+    cmd("collection", "View your card collection", s => s
       .addUserOption(o => o.setName("user").setDescription("View another member's collection"))),
 
     cmd("rank", "Your rank and progression", s => s
@@ -168,11 +168,11 @@ function buildLegacyCommands() {
     // Admin-only: /welcome posts a public, server-wide welcome message, so it is
     // hidden from non-admins in the slash menu (the bot also enforces this server-side).
     adminCmd("welcome", "Post the server welcome message (admin)", s => s),
-    cmd("battles_welcome", "Welcome guide to DN Cards battles", s => s),
+    cmd("battles_welcome", "Welcome guide to card battles", s => s),
     cmd("funfact", "A random Military Tycoon fun fact from the wiki", s => s),
 
     // ── /begin (interactive onboarding adventure — one-time, real rewards) ─────
-    cmd("begin", "Start your DN Cards adventure — a guided intro with real starter rewards", s => s),
+    cmd("begin", "Start your Dex N Cards adventure — a guided intro with real starter rewards", s => s),
 
     adminCmd("setup", "Interactive server setup wizard — channels, spawns, rates, toggles", s => s),
 

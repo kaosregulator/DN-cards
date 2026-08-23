@@ -6,6 +6,7 @@ import {
   type StringSelectMenuInteraction, type ModalSubmitInteraction,
 } from "discord.js";
 import { getOrCreateGuildSettings, updateGuildSettings, isAdmin, getActiveSet, getActiveSetSecondary, getRarityDisplayOverrides, createCustomPack, listCustomPacks, getCustomPack, updateCustomPack, deleteCustomPack, getDistinctCardTypes } from "../db.js";
+import { BRAND_NAME } from "../help-banners.js";
 import { scheduleNextSpawn, clearSpawnTimer, scheduleNextSpawnSecondary, clearSpawnTimerSecondary, applySpawnBoostChange } from "../spawn-manager.js";
 import { RARITY_WEIGHTS, RARITY_LABELS, RARITY_EMOJI, rarityLabel, rarityEmoji, getRarityOrder, getShinyName, getShinyMultiplier, SHINY_EMOJI, type Rarity, type RarityDisplayMap } from "../cards-data.js";
 import type { CustomPack, GuildSettings } from "@workspace/db";
@@ -656,7 +657,7 @@ function buildConfigEmbed(s: GuildSettings, activeSetName: string | null, displa
     : "";
 
   return new EmbedBuilder()
-    .setTitle("⚙️ DN Cards — Config")
+    .setTitle(`⚙️ ${BRAND_NAME} — Config`)
     .setColor(spawnOn && !hasActiveSet ? 0xff6b35 : 0x5865f2)
     .setDescription(`Quick config — changes save instantly.${spawnWarning}`)
     .addFields(
