@@ -95,6 +95,10 @@ export interface FieldProjection {
   accent: number;
   backdropKey?: string | null;
   floorKey?: string | null;
+  /** Override phase chip; defaults from battle state. */
+  phase?: "draw" | "main" | "battle" | "reinforce" | "end";
+  /** Cards revealed during DRAW cinematic. */
+  drawnCards?: { name: string; emoji: string }[];
 }
 
 /**
@@ -132,6 +136,12 @@ export function toFieldInput(state: SiegeBattleState, p: FieldProjection): Siege
   const blank: SiegeFieldFighter = {
     name: "—", artUrl: null, rarity: "common", rarityColor: null, hp: 0, maxHp: 1,
   };
+  const phaseChip: SiegeFieldInput["phase"] = p.phase
+    ?? (state.phase === "draw" ? "draw"
+      : state.phase === "main" ? "main"
+      : state.phase === "reinforce" ? "reinforce"
+      : state.phase === "ended" ? "end"
+      : "battle");
   return {
     attacker: hud0 ? fieldFighter(hud0, foeSide === 0 ? p.struckBefore : undefined) : blank,
     defender: hud1 ? fieldFighter(hud1, foeSide === 1 ? p.struckBefore : undefined) : blank,
@@ -143,6 +153,8 @@ export function toFieldInput(state: SiegeBattleState, p: FieldProjection): Siege
     ko: p.ko,
     accent: p.accent,
     turnLabel: `Turn ${state.turn}`,
+    phase: phaseChip,
+    drawnCards: p.drawnCards,
     backdropKey: p.backdropKey ?? null,
     floorKey: p.floorKey ?? null,
     attackerLineup,
@@ -199,11 +211,14 @@ export interface ClashProjection extends FieldProjection {
   arenaName?: string | null;
   attackerCommanderRole?: string;
   defenderCommanderRole?: string;
+  /** Override the phase chip; defaults from battle state. */
+  phase?: "draw" | "main" | "battle" | "end";
 }
 
 /**
  * Project the battle onto the CARD CLASH screen — the close-up duel between the
- * chosen fighter and its target.
+ * chosen fighter and its target. This is a cinematic presentation of a resolved
+ * beat, not a separate battle mode.
  */
 export function toClashInput(state: SiegeBattleState, p: ClashProjection): CardClashInput | null {
   const actingTeam = teamOf(state, p.actingSide);
@@ -224,6 +239,12 @@ export function toClashInput(state: SiegeBattleState, p: ClashProjection): CardC
     name: "—", artUrl: null, rarity: "common", rarityColor: null, hp: 0, maxHp: 1,
   };
 
+  const phaseChip: CardClashInput["phase"] = p.phase
+    ?? (state.phase === "draw" ? "draw"
+      : state.phase === "main" ? "main"
+      : state.phase === "ended" ? "end"
+      : "battle");
+
   return {
     attacker: left ? clashFighter(left, struckIsLeft ? p.struckBefore : undefined) : blank,
     defender: right ? clashFighter(right, struckIsLeft ? undefined : p.struckBefore) : blank,
@@ -242,7 +263,7 @@ export function toClashInput(state: SiegeBattleState, p: ClashProjection): CardC
     ko: p.ko,
     accent: p.accent,
     turnLabel: `Turn ${state.turn}`,
-    phase: "battle",
+    phase: phaseChip,
     log: state.log.slice(-9).map(e => e.text),
     hand: toHandCards(state, p.actorSlot, p.playingCardId),
     energy: {

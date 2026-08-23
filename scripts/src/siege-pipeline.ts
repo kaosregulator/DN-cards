@@ -25,7 +25,7 @@ const { renderCardClashStill } = await import(`${base}/animations/card-clash.js`
 const { renderSiegeFieldStill } = await import(`${base}/animations/siege-field.js`) as any;
 
 const {
-  buildSiegeBattle, startTurn, endTurn, resolveAction, chooseSiegeAction,
+  buildSiegeBattle, startTurn, enterMainPhase, endTurn, resolveAction, chooseSiegeAction,
   toSiegeRoster, toFieldInput, toClashInput, toHandCards, summariseResult,
   describeAction, describeMove, otherSide,
 } = siege;
@@ -97,8 +97,12 @@ async function main(): Promise<void> {
 
   while (state.phase !== "ended" && guard++ < 400) {
     startTurn(state);
+    assert.equal(state.phase, "draw", "after startTurn the phase must be DRAW");
+    enterMainPhase(state);
+    assert.equal(state.phase, "main", "enterMainPhase must open MAIN");
     const action = chooseSiegeAction(state, "hard");
     if (action) {
+      // DRAW-phase actions must be refused; we are already in MAIN.
       const foeSide = otherSide(state.activeSide);
       const result = resolveAction(state, action);
       actions++;
@@ -131,6 +135,7 @@ async function main(): Promise<void> {
     settings: s,
   });
   startTurn(live);
+  enterMainPhase(live);
   const liveAction = chooseSiegeAction(live, "hard");
   const liveResult = resolveAction(live, liveAction);
   const liveSum = summariseResult(liveResult, otherSide(live.activeSide));
@@ -154,9 +159,10 @@ async function main(): Promise<void> {
   assert.equal(hand.length, live.teams[live.activeSide].hand.length, "hand projection must cover the whole hand");
   console.log(`✅ bridge: hand projected (${hand.filter((h: Any) => !h.disabled).length}/${hand.length} playable under the resolver's own gate)`);
 
-  const fieldInput = toFieldInput(live, proj);
+  const fieldInput = toFieldInput(live, { ...proj, phase: "battle" });
   assert.equal(fieldInput.attackerLineup?.length, 4, "field projection draws all four blue squares");
   assert.equal(fieldInput.defenderLineup?.length, 4, "field projection draws all four red squares");
+  assert.equal(fieldInput.phase, "battle", "combat beat projects the BATTLE chip");
 
   const clashInput = toClashInput(live, proj);
   assert.ok(clashInput, "clash projection must build");
@@ -168,9 +174,29 @@ async function main(): Promise<void> {
   if (fieldPng) writeFileSync(`${OUT}/siege-formation.png`, fieldPng);
   if (clashPng) writeFileSync(`${OUT}/siege-clash.png`, clashPng);
 
+  // Phase cinematic stills — DRAW / MAIN / REINFORCE / END overlays on the same field.
+  const drawnPreview = (live.teams[live.activeSide].hand.slice(0, 3) as Any[]).map((c: Any) => ({
+    name: c.name, emoji: c.emoji || "🃏",
+  }));
+  const phaseFrames: Array<{ name: string; phase: string; moveName: string; drawn?: Any[] }> = [
+    { name: "siege-phase-draw.png", phase: "draw", moveName: "Draw Phase", drawn: drawnPreview },
+    { name: "siege-phase-main.png", phase: "main", moveName: "Your move" },
+    { name: "siege-phase-reinforce.png", phase: "reinforce", moveName: "Reinforcements!" },
+    { name: "siege-phase-end.png", phase: "end", moveName: "KaosRegulator wins!" },
+  ];
+  for (const pf of phaseFrames) {
+    const still = await renderSiegeFieldStill(toFieldInput(live, {
+      ...proj, damage: 0, isHit: false, isCrit: false, ko: false,
+      phase: pf.phase, moveName: pf.moveName, drawnCards: pf.drawn,
+    }));
+    assert.ok(still, `phase still ${pf.name} failed`);
+    writeFileSync(`${OUT}/${pf.name}`, still);
+  }
+
   assert.ok(renderedField, "formation battlefield failed to render");
   assert.ok(renderedClash, "card clash screen failed to render");
   console.log(`✅ renderer: formation (${fieldPng!.length} bytes) + clash (${clashPng!.length} bytes) both drew from live state`);
+  console.log("✅ phase stills: draw / main / reinforce / end");
   console.log("\n✅ Full pipeline verified: Card Data → Adapter → State → Resolver → Events → Renderer");
 }
 
