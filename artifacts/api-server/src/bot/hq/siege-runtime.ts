@@ -49,7 +49,7 @@ import {
   resolveAction, checkAction, chooseSiegeAction, legalActions,
   toSiegeRoster, toFieldInput, toClashInput, summariseResult, describeAction,
   livingSlots, formationEmpty, lpExposed, canReinforce, otherSide as engineOtherSide,
-  getSiegeCard, HAND_SIZE, defaultMaxTurns,
+  getSiegeCard, HAND_SIZE, defaultMaxTurns, describeMove,
   type SiegeBattleState, type SiegeAction, type SiegeTurnResult,
 } from "../siege/index.js";
 import { renderCoinFlip } from "../battle/prep-canvas.js";
@@ -498,7 +498,8 @@ async function musterPayload(s: SiegeSession) {
     .setTitle(`🏰 Muster — assault on ${s.targetName}`)
     .setDescription(
       `**${s.attackerName}** forms up outside **${s.targetName}**, held by **${s.holderName}**.\n\n` +
-      `Every card you bring must break a rank of the garrison. Wreck the whole garrison to take the base — ` +
+      `Four of your cards form the front line; the rest wait in reserve and deploy when the line is broken. ` +
+      `Fight through the garrison to reach the commander's **life points** — drain them to zero to take the base. ` +
       `**★** at 50% destruction, **★★** for the capture, **★★★** if you do it without losing a card.\n\n` +
       `🪙 **Call the toss** — guess the coin right and your team strikes first. ` +
       `⚔️ **Battle** to command the fight yourself, or ⏩ **Auto Skip Mode** to let your captains ` +
@@ -506,7 +507,7 @@ async function musterPayload(s: SiegeSession) {
     )
     .addFields(
       {
-        name: `⚔️ Your column (${s.attackers.length})`,
+        name: `⚔️ Your army (${s.attackers.length})`,
         value: squadList(s.attackers),
         inline: true,
       },
@@ -530,7 +531,7 @@ async function musterPayload(s: SiegeSession) {
       {
         name: "🎒 Supplies",
         value: item
-          ? `${item.emoji} **${item.name}** — ${item.description}\n_Carried by every card in the column._`
+          ? `${item.emoji} **${item.name}** — ${item.description}\n_Available to your whole formation._`
           : "_No item equipped._",
         inline: false,
       },
@@ -954,7 +955,7 @@ function projectionFor(
     actingSide: side,
     actorSlot,
     targetSlot,
-    moveName: describeAction(s.battle, action),
+    moveName: describeMove(s.battle, action),
     damage: sum.damage || sum.lpDamage,
     isHit: sum.isHit,
     isCrit: sum.isCrit,

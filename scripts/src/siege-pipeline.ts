@@ -27,7 +27,7 @@ const { renderSiegeFieldStill } = await import(`${base}/animations/siege-field.j
 const {
   buildSiegeBattle, startTurn, endTurn, resolveAction, chooseSiegeAction,
   toSiegeRoster, toFieldInput, toClashInput, toHandCards, summariseResult,
-  describeAction, otherSide,
+  describeAction, describeMove, otherSide,
 } = siege;
 
 type Any = any;
@@ -138,7 +138,7 @@ async function main(): Promise<void> {
     actingSide: live.activeSide,
     actorSlot: (liveAction as Any).actorSlot ?? 0,
     targetSlot: liveSum.struckSlot ?? (liveAction as Any).targetSlot ?? 0,
-    moveName: describeAction(live, liveAction),
+    moveName: describeMove(live, liveAction),
     damage: liveSum.damage,
     isHit: liveSum.isHit,
     isCrit: liveSum.isCrit,

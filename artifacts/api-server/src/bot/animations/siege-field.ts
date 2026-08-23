@@ -1034,7 +1034,7 @@ function drawImpact(ctx: Ctx, a: Assets, x: number, y: number, k: number, input:
     const rise = (1 - k) * 26;
     const dmgColor = input.isCrit ? 0xffd54a : 0xff5a5a;
     drawText(ctx, {
-      x: x - 100, y: y - 62 - rise, w: 200, align: "center",
+      x: x - 160, y: y - 62 - rise, w: 320, align: "center",
       text: `${input.isCrit ? "CRIT " : ""}-${input.damage}`,
       weight: 900, size: input.isCrit ? 40 : 34, fill: hex(dmgColor),
       shadow: "rgba(0,0,0,1)", shadowBlur: 5, alpha: clamp01(k + 0.3),

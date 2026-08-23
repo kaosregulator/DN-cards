@@ -234,7 +234,8 @@ export function toClashInput(state: SiegeBattleState, p: ClashProjection): CardC
     defenderCommander: {
       name: t1.name, role: p.defenderCommanderRole ?? "Garrison", lp: t1.lp, lpMax: t1.lpMax,
     },
-    moveName: p.moveName,
+    // The field's banner prepends the actor; the clash shows the pair in full.
+    moveName: `${actor.cardName} · ${p.moveName}`,
     damage: p.damage,
     isHit: p.isHit,
     isCrit: p.isCrit,
@@ -289,33 +290,36 @@ export function summariseResult(
  * registry, so a card's Special is named by the card, not by this module.
  */
 export function describeAction(state: SiegeBattleState, action: SiegeAction): string {
-  const team = teamOf(state, state.activeSide);
   if (action.kind === "reinforce") return "Reinforcements deploy";
-  const actor = team.slots[action.actorSlot]?.unit;
-  const who = actor?.cardName ?? "Card";
+  const actor = teamOf(state, state.activeSide).slots[action.actorSlot]?.unit;
+  return `${actor?.cardName ?? "Card"} - ${describeMove(state, action)}`;
+}
 
+/**
+ * Just the move/card/item name, WITHOUT the acting card's name. The formation
+ * battlefield's banner prepends the actor itself, so it takes this; the Card
+ * Clash shows the full "Actor - Move" from describeAction.
+ */
+export function describeMove(state: SiegeBattleState, action: SiegeAction): string {
+  if (action.kind === "reinforce") return "Reinforce";
+  const actor = teamOf(state, state.activeSide).slots[action.actorSlot]?.unit;
   switch (action.kind) {
-    case "siege_card": {
-      const card = getSiegeCard(action.cardId);
-      return `${who} - ${card?.name ?? action.cardId}`;
-    }
-    case "item": {
-      const item = getBattleItem(action.itemId, state.settings.guildId);
-      return `${who} - ${item?.name ?? action.itemId}`;
-    }
+    case "siege_card":
+      return getSiegeCard(action.cardId)?.name ?? action.cardId;
+    case "item":
+      return getBattleItem(action.itemId, state.settings.guildId)?.name ?? action.itemId;
     case "direct_lp":
-      return `${who} - Direct Attack`;
+      return "Direct Attack";
     case "move": {
       if (action.move === "special" && actor) {
         const ms = actor.movesetDef ?? getMoveset(actor.moveset);
-        if (ms) return `${who} - ${ms.name}`;
+        if (ms) return ms.name;
       }
-      const label = ({
+      return ({
         attack: "Attack", special: "Special", ultimate: "Ultimate",
         defend: "Defend", charge: "Charge", special_card: "Support Card",
         item: "Battle Item", skip: "Hold",
       } as Record<string, string>)[action.move] ?? action.move;
-      return `${who} - ${label}`;
     }
   }
 }
