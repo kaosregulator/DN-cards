@@ -1,3 +1,7 @@
+import { readFileSync, existsSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { join } from "node:path";
+
 // Shared animated banner + section palette for the unified /help hub (and other
 // intro embeds). The banner is a free, direct-hotlink animated GIF — a full-
 // width glowing stripe that renders inline in Discord embeds (the same asset the
@@ -48,4 +52,25 @@ export type HelpSection = keyof typeof SECTION_COLOR;
 export function siteUrl(): string {
   const domain = process.env["REPLIT_DOMAINS"]?.split(",")[0]?.trim();
   return domain ? `https://${domain}` : "https://dncards.com";
+}
+
+// ── Bundled brand art (assets/brand/) ────────────────────────────────────────
+// The Dex N Cards banner + circle logo, attached to embeds by name. Resolved
+// with a URL-relative-then-cwd fallback (the same approach the font loader uses)
+// so it works from the bundled build and a source run alike. Best-effort — a
+// missing file returns null and the caller falls back to its default image.
+
+export const BRAND_BANNER_FILE = "brand-banner.png";
+export const BRAND_LOGO_FILE = "brand-logo.png";
+
+export function brandAsset(name: string): Buffer | null {
+  const candidates = [
+    fileURLToPath(new URL(`../../assets/brand/${name}`, import.meta.url)),
+    join(process.cwd(), `assets/brand/${name}`),
+    join(process.cwd(), `artifacts/api-server/assets/brand/${name}`),
+  ];
+  for (const p of candidates) {
+    try { if (existsSync(p)) return readFileSync(p); } catch { /* try next */ }
+  }
+  return null;
 }

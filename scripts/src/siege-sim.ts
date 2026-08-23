@@ -162,7 +162,7 @@ function run(): void {
   // Sweep roster sizes first — the mode's length is driven by how many cards
   // have to be destroyed before LP is even reachable.
   for (const size of [4, 5, 6, 7]) {
-    const sm: Metrics = { siegeCards:0, directLp:0, reinforcements:0, items:0, ultimates:0, kos:0, cardsPlayed:{}, lpViolations:0, byLp:0, byCap:0, lpLeft:[] };
+    const sm: Metrics = { siegeCards:0, directLp:0, reinforcements:0, items:0, ultimates:0, kos:0, cardsPlayed:{}, lpViolations:0, byLp:0, byCap:0, lpLeft:[], exposedEvents:0, maxLog:0 };
     let t = 0;
     const S = 400;
     for (let i = 0; i < S; i++) t += simulate(makeSettings(), sm, size, undefined as any).turns;

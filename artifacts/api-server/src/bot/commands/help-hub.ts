@@ -18,13 +18,13 @@ import type {
 } from "discord.js";
 import {
   EmbedBuilder, ActionRowBuilder, StringSelectMenuBuilder, ButtonBuilder,
-  ButtonStyle, MessageFlags, PermissionFlagsBits,
-} from "discord.js";
+  ButtonStyle, MessageFlags, PermissionFlagsBits, AttachmentBuilder } from "discord.js";
 import { applyEmbedOverride } from "../embed-overrides.js";
 import { isAdmin as isDbAdmin, getOrCreateGuildSettings } from "../db.js";
 import { getShinyName } from "../cards-data.js";
 import {
-  HELP_BANNER, SECTION_COLOR, siteUrl, type HelpSection, BRAND_NAME } from "../help-banners.js";
+  HELP_BANNER, SECTION_COLOR, siteUrl, type HelpSection, BRAND_NAME,
+  brandAsset, BRAND_LOGO_FILE } from "../help-banners.js";
 
 const EPHEMERAL = { flags: MessageFlags.Ephemeral } as const;
 
@@ -43,6 +43,14 @@ const SECTIONS: SectionMeta[] = [
   { id: "admin",    emoji: "🛠️", label: "Admin Toolbox",              blurb: "Setup, config & management (admins)", adminOnly: true },
 ];
 
+// The circle logo, attached to every help render (initial + each dropdown
+// switch) so the thumbnail persists — Discord drops attachments on update, so
+// it must be re-sent each time. 24 KB, so the re-send is cheap.
+function logoFiles(): AttachmentBuilder[] {
+  const buf = brandAsset(BRAND_LOGO_FILE);
+  return buf ? [new AttachmentBuilder(buf, { name: BRAND_LOGO_FILE })] : [];
+}
+
 // ── Entry point ──────────────────────────────────────────────────────────────
 export async function handleHelpHub(
   interaction: ChatInputCommandInteraction, opening: HelpSection = "home",
@@ -54,7 +62,7 @@ export async function handleHelpHub(
   }
   const admin = await memberIsAdmin(interaction);
   const embed = await buildPage(interaction, opening);
-  await interaction.editReply({ embeds: [embed], components: buildComponents(opening, admin) });
+  await interaction.editReply({ embeds: [embed], components: buildComponents(opening, admin), files: logoFiles() });
 }
 
 // ── Component router (help:* select + buttons) ───────────────────────────────
@@ -72,7 +80,7 @@ export async function handleHelpHubComponent(
     return;
   }
   const embed = await buildPage(interaction, section);
-  await interaction.update({ embeds: [embed], components: buildComponents(section, admin) }).catch(() => {});
+  await interaction.update({ embeds: [embed], components: buildComponents(section, admin), files: logoFiles() }).catch(() => {});
 }
 
 // ── Components (topic dropdown + nav buttons) ─────────────────────────────────
@@ -107,6 +115,7 @@ async function buildPage(
   const embed = new EmbedBuilder().setColor(SECTION_COLOR[section]);
   PAGES[section](embed, { shiny, site });
   embed.setImage(HELP_BANNER); // animated banner stripe (overridable below)
+  if (brandAsset(BRAND_LOGO_FILE)) embed.setThumbnail(`attachment://${BRAND_LOGO_FILE}`);
 
   // Let admins rebrand the help embed via `/embed set key:help …`.
   await applyEmbedOverride(embed, {

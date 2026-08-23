@@ -1,34 +1,15 @@
 import type { ChatInputCommandInteraction } from "discord.js";
 import { EmbedBuilder, MessageFlags, AttachmentBuilder } from "discord.js";
-import { readFileSync, existsSync } from "node:fs";
-import { fileURLToPath } from "node:url";
-import { join } from "node:path";
 import { applyEmbedOverride } from "../embed-overrides.js";
 import { getOrCreateGuildSettings, isAdmin } from "../db.js";
 import { getShinyName } from "../cards-data.js";
-import { BRAND_NAME } from "../help-banners.js";
+import { BRAND_NAME, brandAsset, BRAND_BANNER_FILE, BRAND_LOGO_FILE } from "../help-banners.js";
 
 // Thin animated divider GIF used as the separator image at the bottom of each
 // embed. The rainbow-glow line (4 KB, GitHub user-images CDN) renders as a
 // full-width animated stripe between embeds in Discord.
 const DIVIDER_GIF =
   "https://user-images.githubusercontent.com/73097560/115834477-dbab4500-a447-11eb-908a-139a6edaec5c.gif";
-
-// The Dex N Cards banner + circle logo (bundled under assets/brand/). Resolved
-// with the same URL-relative-then-cwd fallback the font loader uses, so it works
-// from both the bundled build and a source run. Best-effort — a missing file
-// just falls back to the divider GIF, so /welcome always posts.
-function brandAsset(name: string): Buffer | null {
-  const candidates = [
-    fileURLToPath(new URL(`../../../assets/brand/${name}`, import.meta.url)),
-    join(process.cwd(), `assets/brand/${name}`),
-    join(process.cwd(), `artifacts/api-server/assets/brand/${name}`),
-  ];
-  for (const p of candidates) {
-    try { if (existsSync(p)) return readFileSync(p); } catch { /* try next */ }
-  }
-  return null;
-}
 
 const BRAND_COLOR  = 0xe63946;   // DarkNight red
 const ADMIN_COLOR  = 0xeb459e;   // pink for admin embeds
@@ -77,11 +58,11 @@ export async function handleWelcome(interaction: ChatInputCommandInteraction): P
   // Brand art: the Dex N Cards banner as the hero image, the circle logo as the
   // thumbnail. Attached once to this message; both fall back gracefully.
   const files: AttachmentBuilder[] = [];
-  const bannerBuf = brandAsset("banner.png");
-  const logoBuf = brandAsset("logo.png");
-  if (bannerBuf) files.push(new AttachmentBuilder(bannerBuf, { name: "brand-banner.png" }));
-  if (logoBuf) files.push(new AttachmentBuilder(logoBuf, { name: "brand-logo.png" }));
-  const heroImage = bannerBuf ? "attachment://brand-banner.png" : DIVIDER_GIF;
+  const bannerBuf = brandAsset(BRAND_BANNER_FILE);
+  const logoBuf = brandAsset(BRAND_LOGO_FILE);
+  if (bannerBuf) files.push(new AttachmentBuilder(bannerBuf, { name: BRAND_BANNER_FILE }));
+  if (logoBuf) files.push(new AttachmentBuilder(logoBuf, { name: BRAND_LOGO_FILE }));
+  const heroImage = bannerBuf ? `attachment://${BRAND_BANNER_FILE}` : DIVIDER_GIF;
 
   // ── 1 · Welcome ─────────────────────────────────────────────────────────────
   const welcome = new EmbedBuilder()
@@ -92,7 +73,7 @@ export async function handleWelcome(interaction: ChatInputCommandInteraction): P
       "**When a card spawns, just type its name to catch it.** That's the core loop — then hoard, battle, trade, and climb the leaderboard.",
     )
     .setImage(heroImage);
-  if (logoBuf) welcome.setThumbnail("attachment://brand-logo.png");
+  if (logoBuf) welcome.setThumbnail(`attachment://${BRAND_LOGO_FILE}`);
 
   await applyEmbedOverride(welcome, {
     guildId, key: "welcome", defaultImageUrl: heroImage,
