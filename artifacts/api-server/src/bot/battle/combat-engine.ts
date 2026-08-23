@@ -322,6 +322,20 @@ export function resolveMove(
   return { events, koed };
 }
 
+// Public strike primitive.
+//
+// `strike` above is the single source of truth for the damage maths — variance,
+// defense curve, crit, stealth, miss/dodge, perfect block, reflect, shield soak,
+// last stand and counters. Team modes (Siege Battle) need to land a blow with a
+// custom power/label without re-deriving any of that, so this thin wrapper
+// exposes it. Callers get exactly what a normal attack would do.
+export function strikeWith(
+  settings: BattleSettings, attacker: Combatant, defender: Combatant,
+  opts: { powerPct: number; label: string; guaranteedHit?: boolean; ultimate?: boolean },
+): { events: BattleEvent[]; koed: boolean } {
+  return strike(attacker, defender, settings, opts);
+}
+
 // Team / AoE ultimate — the "full bar" pay-off in a team battle. Once an actor's
 // meter is charged it can spend it on the whole enemy line at once: the chosen
 // FOCUS card takes the full ultimate blow (enough to wipe it), every other living
