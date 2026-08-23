@@ -150,11 +150,30 @@ export interface SiegeBattleEvent extends BattleEvent {
     | "siege_card" | "direct_lp" | "ko" | "deploy" | "wipe" | "victory" | "info";
 }
 
+/** A card whose HP moved during an action, with its pre-action value. */
+export interface SiegeStruck {
+  side: SideIdx;
+  slot: number;
+  /** HP + shield before the action — drives the drain animation. */
+  before: number;
+  /** HP + shield removed (negative when the card was healed). */
+  damage: number;
+}
+
 /** The result of resolving one action. */
 export interface SiegeTurnResult {
   events: SiegeBattleEvent[];
   /** Slots destroyed this action, as {side, slot}. */
   destroyed: { side: SideIdx; slot: number }[];
+  /**
+   * Every card whose HP moved, measured from real before/after state rather
+   * than parsed out of log text — the renderer must never re-derive damage.
+   */
+  struck: SiegeStruck[];
+  /** Total HP removed from the side that was NOT acting. */
+  damageDealt: number;
+  /** Life points removed this action. */
+  lpDamage: number;
   /** True when this action ended the battle. */
   battleOver: boolean;
 }

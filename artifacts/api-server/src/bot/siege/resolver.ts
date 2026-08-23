@@ -26,7 +26,7 @@ import {
 } from "./state.js";
 import type {
   SiegeAction, SiegeActionCheck, SiegeBattleEvent, SiegeBattleState, SiegeTeam,
-  SiegeTurnResult, SideIdx,
+  SiegeTurnResult, SiegeStruck, SideIdx,
 } from "./types.js";
 
 const reject = (reason: string): SiegeActionCheck => ({ ok: false, reason });
@@ -98,7 +98,7 @@ export function startTurn(state: SiegeBattleState): SiegeTurnResult {
 
   refillHand(team);
   clampBoard(state);
-  return { events, destroyed, battleOver: false };
+  return { events, destroyed, struck: [], damageDealt: 0, lpDamage: 0, battleOver: false };
 }
 
 /**
@@ -134,7 +134,7 @@ export function endTurn(state: SiegeBattleState): SiegeTurnResult {
       text: `🏆 **${state.teams[winner].name}** wins the siege!`,
       flash: "ultimate", event: "victory", actorSide: winner,
     });
-    return { events, destroyed: [], battleOver: true };
+    return { events, destroyed: [], struck: [], damageDealt: 0, lpDamage: 0, battleOver: true };
   }
 
   state.activeSide = otherSide(state.activeSide);
@@ -146,9 +146,9 @@ export function endTurn(state: SiegeBattleState): SiegeTurnResult {
       text: `⌛ The siege stalls — it is decided on ground taken.`,
       event: "info",
     });
-    return { events, destroyed: [], battleOver: true };
+    return { events, destroyed: [], struck: [], damageDealt: 0, lpDamage: 0, battleOver: true };
   }
-  return { events, destroyed: [], battleOver: false };
+  return { events, destroyed: [], struck: [], damageDealt: 0, lpDamage: 0, battleOver: false };
 }
 
 /** A side loses when its LP hits zero. */
@@ -340,7 +340,7 @@ export function resolveAction(state: SiegeBattleState, action: SiegeAction): Sie
   if (!check.ok) {
     return {
       events: [{ text: `⚠️ ${check.reason}`, event: "info" }],
-      destroyed: [], battleOver: false,
+      destroyed: [], struck: [], damageDealt: 0, lpDamage: 0, battleOver: false,
     };
   }
   const side = state.activeSide;
@@ -348,8 +348,8 @@ export function resolveAction(state: SiegeBattleState, action: SiegeAction): Sie
   const foeSide = otherSide(side);
   const foes = teamOf(state, foeSide);
 
-  // Snapshot who was standing so we can diff for kills after the action.
-  const before = snapshotAlive(state);
+  // Snapshot the board so kills and damage are measured, not inferred.
+  const before = snapshotBoard(state);
   let events: SiegeBattleEvent[] = [];
 
   switch (action.kind) {
@@ -372,6 +372,7 @@ export function resolveAction(state: SiegeBattleState, action: SiegeAction): Sie
 
   clampBoard(state);
   const destroyed = diffDestroyed(state, before);
+  const struck = diffStruck(state, before);
   for (const d of destroyed) {
     const unit = state.teams[d.side].slots[d.slot]?.unit;
     events.push({
@@ -379,18 +380,59 @@ export function resolveAction(state: SiegeBattleState, action: SiegeAction): Sie
       flash: "ko", event: "ko", targetSide: d.side, targetSlot: d.slot, ko: true,
     });
   }
+  // Attach the measured damage to the events that caused it, so a renderer can
+  // read a per-card number straight off the log without re-deriving anything.
+  for (const hit of struck) {
+    if (hit.damage <= 0) continue;
+    const e = events.find(ev => ev.targetSide === hit.side && ev.targetSlot === hit.slot && ev.damage == null);
+    if (e) e.damage = hit.damage;
+  }
+  const damageDealt = struck
+    .filter(h => h.side === foeSide && h.damage > 0)
+    .reduce((sum, h) => sum + h.damage, 0);
+  const lpDamage = (before.lp[0] - state.teams[0].lp) + (before.lp[1] - state.teams[1].lp);
   void team; void foes;
-  return { events, destroyed, battleOver: false };
+  return { events, destroyed, struck, damageDealt, lpDamage, battleOver: false };
 }
 
-function snapshotAlive(state: SiegeBattleState): boolean[][] {
-  return state.teams.map(t => t.slots.map(s => isAlive(s.unit)));
+/**
+ * A before-picture of the board. Damage is measured by diffing this against the
+ * board after the action, so the numbers the renderer draws are the numbers the
+ * engine actually applied — never parsed back out of log text.
+ */
+interface BoardSnapshot {
+  alive: boolean[][];
+  /** HP + shield per slot (the whole damage-absorbing pool). */
+  pool: number[][];
+  lp: [number, number];
 }
-function diffDestroyed(state: SiegeBattleState, before: boolean[][]): { side: SideIdx; slot: number }[] {
+
+function snapshotBoard(state: SiegeBattleState): BoardSnapshot {
+  return {
+    alive: state.teams.map(t => t.slots.map(s => isAlive(s.unit))),
+    pool: state.teams.map(t => t.slots.map(s => (s.unit ? s.unit.hp + s.unit.shield : 0))),
+    lp: [state.teams[0].lp, state.teams[1].lp],
+  };
+}
+
+function diffDestroyed(state: SiegeBattleState, before: BoardSnapshot): { side: SideIdx; slot: number }[] {
   const out: { side: SideIdx; slot: number }[] = [];
   state.teams.forEach((t, si) => {
     t.slots.forEach((s, i) => {
-      if (before[si]![i] && !isAlive(s.unit)) out.push({ side: si as SideIdx, slot: i });
+      if (before.alive[si]![i] && !isAlive(s.unit)) out.push({ side: si as SideIdx, slot: i });
+    });
+  });
+  return out;
+}
+
+function diffStruck(state: SiegeBattleState, before: BoardSnapshot): SiegeStruck[] {
+  const out: SiegeStruck[] = [];
+  state.teams.forEach((t, si) => {
+    t.slots.forEach((s, i) => {
+      if (!s.unit) return;
+      const was = before.pool[si]![i]!;
+      const now = s.unit.hp + s.unit.shield;
+      if (was !== now) out.push({ side: si as SideIdx, slot: i, before: was, damage: was - now });
     });
   });
   return out;

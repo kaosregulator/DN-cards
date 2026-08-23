@@ -6,3 +6,4 @@ export * from "./siege-cards.js";
 export * from "./state.js";
 export * from "./resolver.js";
 export * from "./ai.js";
+export * from "./adapter.js";
