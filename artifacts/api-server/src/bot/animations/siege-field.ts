@@ -1,31 +1,26 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // HQ siege — the primary Siege Battle field.
 //
-// The LARGE battle screen for HQ / outpost assaults: a move-for-move arena where
-// formation cards stand on peg podiums with their art floating above them, and
-// the acting side DASHES forward and strikes while the target recoils. This is
-// the Siege analogue of a `/battle` turn frame — the primary combat presentation,
-// not a small inset under HQ chrome.
+// The LARGE battle screen for HQ / outpost assaults: a 1200×800 arena with ONE
+// horizontal battle line per side — flat 2-D framed cards (DN card frames),
+// blue LEFT vs red RIGHT:
 //
-// The scene is drawn straight onto a 2D context with `@napi-rs/canvas` — the
-// SAME renderer the `/battle` animation layer uses — and GIFs go through the
-// shared `encodeAnimation` helper (frame planning + coalescing) so /hq turn
-// GIFs encode like /battle. It deliberately does NOT use Konva or the cairo
-// `canvas` package. Everything is best-effort: a missing native lib, a stalled
-// card image or an oversized encode all resolve to `null`, and the caller
-// silently keeps the old static frame. A siege must never break because a
-// picture failed.
+//   [1] [2] [3] [4]   VS   [1] [2] [3] [4]
 //
-// Assets come from the SAME HQ art pack the base renderer uses (Kenney iso
-// packs, extracted under assets/hq/…): a backdrop, a floor tile and the podium
-// bases. `.riv` overlays can be layered on later via rive-overlay.ts — see that
-// module — but the shipped battle is pure sprite + 2D canvas so it runs headless.
+// No podium stands, no front/back ranks. The acting card slides horizontally
+// toward the center on a strike, then returns to its exact line slot. Card art
+// keeps its aspect ratio inside the frame window (never stretched).
+//
+// Same renderer seam as /battle: `@napi-rs/canvas` + shared `encodeAnimation`.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { readFileSync } from "node:fs";
+import { readFileSync, existsSync } from "node:fs";
+import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { spriteForPrefix } from "../hq/assets.js";
 import { queueRender } from "./render-queue.js";
 import { getRarityEffectColor, loadArt as loadArtShared } from "./effects.js";
+import { FRAME_INSET } from "./card-frames.js";
 import { extractArtColor } from "../battle/image/vibrant-color.js";
 import { encodeAnimation, getCanvas, TITLE_FONT_FAMILY, type CanvasMod, type Ctx } from "./engine.js";
 import type { Rarity } from "../cards-data.js";
@@ -57,9 +52,7 @@ export interface SiegeFieldBenchCard {
   fallen: boolean;              // already KO'd (dim + ✗) vs still to step up
 }
 
-// One card in a side's full battle line — every card is drawn on its own stand,
-// so both teams show all four plaques at once (a mini "Raids of Legends" board),
-// not just the active pair.
+// One card in a side's battle line — flat framed card on the horizontal rank.
 export interface SiegeFieldLineupCard {
   name: string;
   artUrl: string | null;
@@ -70,7 +63,7 @@ export interface SiegeFieldLineupCard {
   hpBefore?: number;            // BEFORE the move — only set on the struck FOCUS card
   energy?: number;
   fallen: boolean;              // KO'd — dim + broken
-  active: boolean;              // the front rank of this side (drives the slide)
+  active: boolean;              // acting card this beat (drives the slide)
   struck?: boolean;             // took this turn's blow (white flash + knockback)
 }
 
@@ -113,31 +106,49 @@ const MAX_BYTES = 8_000_000;
 // still encodes in Discord's size budget.
 const RENDER_SCALE = 0.55;
 
-// ── "Raids of Legends" arena config ──────────────────────────────────────────
-// The siege battlefield is themed after a mini raid arena: a stone lists with a
-// mountain skybox, two ornate card STANDS (blue = raider on the left, red =
-// garrison on the right) that hold each active card's art in their plaque, and a
-// HUD of PLAYER / OPPONENT life-plates. All three scene sprites live in the HQ
-// art pack under `siege-scene/` and are resolved through the same asset seam as
-// every other HQ visual — if the pack is missing, the renderer falls back to the
-// procedural stage below so a siege never breaks on a missing file.
+// ── Arena + flat card-frame config ───────────────────────────────────────────
+// Arena skybox from siege-scene; cards use DN Card Frame PNGs (blue / red) —
+// the same flat 2-D frame treatment as /battle, not 3-D podium stands.
 const SCENE_PREFIX = "siege-scene";
-// Plaque face of each stand as a parallelogram, in the stand sprite's own
-// normalised space (0..1). The card art is drawn BEHIND the stand and clipped to
-// this quad; the sprite's gold frame + base rail then occlude it exactly like a
-// real card seated in the stand. Corners: top-left, top-right, bottom-left
-// (bottom-right is derived — an iso rectangle projects to a parallelogram).
-// The two stands are MIRROR-facing (the red is a horizontal flip + recolour of
-// the blue): blue sits on the left facing inward-right, red sits on the right
-// facing inward-left, like two opponents across the field. Each has its own
-// plaque quad — the red's is the horizontal mirror of the blue's.
-const PLAQUE_QUAD = {
-  // Measured against stand-blue/red gold-frame interiors so card art seats cleanly.
-  blue: { tl: [0.305, 0.118], tr: [0.655, 0.078], bl: [0.378, 0.620] },
-  red:  { tl: [0.345, 0.078], tr: [0.695, 0.118], bl: [0.275, 0.580] },
-} as const;
-// Drawn stand size (matches the sprite aspect; each slot scales this down).
-const STAND_W = 228, STAND_H = 298;
+const LINE_MAX = 4;
+/** Flat portrait card size on the 1200×800 field — readable without zoom. */
+const CARD = { w: 128, h: 178 } as const;
+/** Top of the single horizontal battle line (both sides share this Y). */
+const LINE_Y = 340;
+const CARD_GAP = 14;
+/** Open center lane between the two lines (VS / clash space). */
+const CENTER_GAP = 88;
+/** How far the acting card slides horizontally toward the center. */
+const SLIDE_PX = 92;
+const GROUND_Y = 680;
+
+function framesDir(): string | null {
+  const candidates = [
+    fileURLToPath(new URL("../../../assets/frames/", import.meta.url)),
+    join(process.cwd(), "artifacts/api-server/assets/frames"),
+    join(process.cwd(), "assets/frames"),
+  ];
+  for (const dir of candidates) {
+    if (existsSync(join(dir, "DN_Card_Frame_Gold.png"))) return dir;
+  }
+  return null;
+}
+
+/** Slot rect for a flat card on the single horizontal line (no front/back ranks). */
+function cardSlot(side: 0 | 1, index: number): { x: number; y: number; w: number; h: number } {
+  const n = LINE_MAX;
+  const rowW = n * CARD.w + (n - 1) * CARD_GAP;
+  const leftOrigin = (FIELD.width / 2 - CENTER_GAP / 2) - rowW;
+  const rightOrigin = FIELD.width / 2 + CENTER_GAP / 2;
+  const origin = side === 0 ? leftOrigin : rightOrigin;
+  const i = Math.max(0, Math.min(n - 1, index));
+  return {
+    x: origin + i * (CARD.w + CARD_GAP),
+    y: LINE_Y,
+    w: CARD.w,
+    h: CARD.h,
+  };
+}
 
 // Target play-through length by guild speed — same ballpark as renderBattleTurn
 // (~1800ms) so /hq and /battle feel like one system. encodeAnimation plans fps
@@ -247,19 +258,17 @@ function sprite(prefix: string, key: string): string | null {
 // Preload every image the scene needs once, up-front, so per-frame drawing is
 // pure CPU. Shared by the animated GIF and the static still.
 async function loadFieldAssets(cmod: CanvasMod, input: SiegeFieldInput): Promise<Assets> {
-  // The raid arena + two card stands. A missing pack leaves these null and the
-  // renderer draws the procedural stage instead (see drawArena / drawStand).
   const arenaPath = sprite(SCENE_PREFIX, "arena");
-  const standBluePath = sprite(SCENE_PREFIX, "stand-blue");
-  const standRedPath = sprite(SCENE_PREFIX, "stand-red");
-  // Legacy stage fallbacks (used only when the raid-arena pack is absent).
   const backdropPath = sprite("backdrop", input.backdropKey || "castles") ?? sprite("backdrop", "grass");
   const floorPath = sprite("floor", input.floorKey || "stone") ?? sprite("floor", "blue-stone");
   const flashPath = sprite("fx", "flash01") ?? sprite("fx", "flash00");
   const smokePath = sprite("fx", "smoke00") ?? sprite("fx", "white-puff00");
+  const dir = framesDir();
+  const blueFramePath = dir ? join(dir, "DN_Card_Frame_Blue_256px.png") : null;
+  const redFramePath = dir ? join(dir, "DN_Card_Frame_Red_256px.png") : null;
+  const blueFrameFull = dir ? join(dir, "DN_Card_Frame_Blue.png") : null;
+  const redFrameFull = dir ? join(dir, "DN_Card_Frame_Red.png") : null;
 
-  // Every card art on the board: both full lineups (up to 4/side) plus the
-  // legacy bench + active fighters — de-duped so a re-render never re-fetches.
   const allCards = [
     ...(input.attackerLineup ?? []), ...(input.defenderLineup ?? []),
     ...(input.attackerBench ?? []), ...(input.defenderBench ?? []),
@@ -268,14 +277,16 @@ async function loadFieldAssets(cmod: CanvasMod, input: SiegeFieldInput): Promise
     input.attacker.artUrl, input.defender.artUrl, ...allCards.map(c => c.artUrl),
   ].filter((u): u is string => !!u))];
 
-  const [arena, standBlue, standRed, backdrop, floor, flash, smoke, ...artLoaded] = await Promise.all([
+  const [arena, backdrop, floor, flash, smoke, frameBlue, frameRed, ...artLoaded] = await Promise.all([
     arenaPath ? loadSpritePath(cmod, arenaPath) : null,
-    standBluePath ? loadSpritePath(cmod, standBluePath) : null,
-    standRedPath ? loadSpritePath(cmod, standRedPath) : null,
     backdropPath ? loadSpritePath(cmod, backdropPath) : null,
     floorPath ? loadSpritePath(cmod, floorPath) : null,
     flashPath ? loadSpritePath(cmod, flashPath) : null,
     smokePath ? loadSpritePath(cmod, smokePath) : null,
+    blueFramePath && existsSync(blueFramePath) ? loadSpritePath(cmod, blueFramePath)
+      : (blueFrameFull && existsSync(blueFrameFull) ? loadSpritePath(cmod, blueFrameFull) : null),
+    redFramePath && existsSync(redFramePath) ? loadSpritePath(cmod, redFramePath)
+      : (redFrameFull && existsSync(redFrameFull) ? loadSpritePath(cmod, redFrameFull) : null),
     ...artUrls.map(u => loadArt(cmod, u)),
   ]);
   const artByUrl = new Map<string, CanvasImage | null>();
@@ -284,12 +295,11 @@ async function loadFieldAssets(cmod: CanvasMod, input: SiegeFieldInput): Promise
   const atkArt = artFor(input.attacker.artUrl);
   const defArt = artFor(input.defender.artUrl);
 
-  // Theme each active fighter's accent to its card art (see resolveFieldColor).
   const [atkColor, defColor] = await Promise.all([
     resolveFieldColor(input.attacker),
     resolveFieldColor(input.defender),
   ]);
-  return { arena, standBlue, standRed, backdrop, floor, flash, smoke, atkArt, defArt, artByUrl, atkColor, defColor };
+  return { arena, backdrop, floor, flash, smoke, frameBlue, frameRed, atkArt, defArt, artByUrl, atkColor, defColor };
 }
 
 // The instant the still freezes on: just past the connect, so the strike flash,
@@ -364,62 +374,14 @@ export async function renderSiegeFieldStill(input: SiegeFieldInput): Promise<Buf
 // ── Scene composition ────────────────────────────────────────────────────────
 
 interface Assets {
-  arena: CanvasImage | null;             // raid-arena skybox + floor plate
-  standBlue: CanvasImage | null;         // raider (left) card stand
-  standRed: CanvasImage | null;          // garrison (right) card stand
-  backdrop: CanvasImage | null; floor: CanvasImage | null; // legacy stage fallback
+  arena: CanvasImage | null;
+  backdrop: CanvasImage | null; floor: CanvasImage | null;
   flash: CanvasImage | null; smoke: CanvasImage | null;
-  atkArt: CanvasImage | null; defArt: CanvasImage | null;   // active fighters (for HUD plates)
-  artByUrl: Map<string, CanvasImage | null>;                // every board card's art, by url
-  atkColor: number; defColor: number;   // art-themed accent per active fighter
-}
-
-// Battle-line geometry — the stone tile court is a game board and the eight
-// cards are pieces standing on it: four blue squares on the left half, four red
-// on the right, each piece on its own square with floor visible around its base.
-// The middle of the board is left open as the CLASH STAGE — on a card's turn it
-// steps into the centre and duels its target like a /battle, then returns.
-const PORTRAIT_W = 150, PORTRAIT_H = 150;
-const LINE_MAX = 4;                 // pieces per team
-// ── THE BOARD ────────────────────────────────────────────────────────────────
-// The stone tile court is the battlefield, and the eight cards are physical
-// pieces standing on it. Placement is therefore expressed in BOARD coordinates
-// and projected onto the floor — never picked as raw screen x/y.
-//
-// The court, measured off arena.png at native 1200×800 (the FIELD size):
-//   near edge  y ≈ 687, spanning +/-520 from the centre line
-//   far  edge  y ≈ 387 (the wall base), spanning +/-360
-//
-//   u = FILE  (-1 = outer edge of your half, 0 = the centre line)
-//   v = RANK  ( 0 = near edge of the court, 1 = far edge against the wall)
-//
-// boardSpot() projects a square onto the floor; the trapezoid supplies the
-// perspective, so a piece never has to be nudged in screen space to look seated.
-const BOARD = { nearY: 687, farY: 387, nearHalf: 520, farHalf: 360 };
-
-function boardSpot(u: number, v: number, scale: number): { cx: number; baseY: number; scale: number } {
-  const baseY = BOARD.nearY + (BOARD.farY - BOARD.nearY) * v;
-  const half = BOARD.nearHalf + (BOARD.farHalf - BOARD.nearHalf) * v;
-  return { cx: FIELD.width / 2 + u * half, baseY, scale };
-}
-
-// One facing BATTLE LINE per side (not a 2×2 cluster). Cards stand along a
-// shallow diagonal that hugs the centre lane — front near the camera/midfield,
-// rear set back toward the wall — so left faces right across open stone.
-// Tuned against arena.png floor seams (see scripts/src/siege-layout-calibrate.ts).
-const FILE_SLOTS: readonly { u: number; v: number; s: number }[] = [
-  { u: -0.22, v: 0.06, s: 0.62 }, // 0 — front rank (nearest the clash lane)
-  { u: -0.40, v: 0.28, s: 0.54 }, // 1
-  { u: -0.56, v: 0.50, s: 0.46 }, // 2
-  { u: -0.70, v: 0.72, s: 0.40 }, // 3 — rear rank
-];
-const GROUND_Y = 680;               // front contact line (used by ambient FX)
-/** How far (in screen px at scale 1) the acting stand slides toward the foe. */
-const SLIDE_PX = 118;
-
-function standCentre(side: 0 | 1, depth: number): { cx: number; baseY: number; scale: number } {
-  const f = FILE_SLOTS[Math.min(depth, FILE_SLOTS.length - 1)]!;
-  return boardSpot(side === 0 ? f.u : -f.u, f.v, f.s);
+  frameBlue: CanvasImage | null;
+  frameRed: CanvasImage | null;
+  atkArt: CanvasImage | null; defArt: CanvasImage | null;
+  artByUrl: Map<string, CanvasImage | null>;
+  atkColor: number; defColor: number;
 }
 
 function lineupFromFighter(f: SiegeFieldFighter): SiegeFieldLineupCard {
@@ -436,10 +398,10 @@ function smooth01(t: number, a: number, b: number): number {
 /**
  * Paint the whole scene at `t`.
  *
- * Formation: two facing battle lines (blue left, red right) on the stone court.
- * Attack motion mirrors /battle — the acting stand SLIDES toward the foe, impact
- * lands, then it slides home. Cards never leave their line slots for a midcourt
- * duel; the optional Card Clash screen handles the close-up attack beat.
+ * Formation (FINAL RULE): one horizontal battle line per side —
+ *   BLUE [1][2][3][4]  VS  [1][2][3][4] RED
+ * Flat DN card frames (no podium stands). Acting card slides horizontally
+ * toward the center, impact/MISS, then returns to its exact slot.
  */
 function paintFrame(ctx: Ctx, input: SiegeFieldInput, a: Assets, t: number, scale: number): void {
   ctx.save();
@@ -454,14 +416,11 @@ function paintFrame(ctx: Ctx, input: SiegeFieldInput, a: Assets, t: number, scal
   const defLine = (input.defenderLineup && input.defenderLineup.length ? input.defenderLineup : [lineupFromFighter(input.defender)]);
   const lineOf = (s: 0 | 1) => (s === 0 ? atkLine : defLine);
 
-  // Which enemy rank is struck (any card in the foe column).
   const foeLine = lineOf(targetSide);
   let focusDepth = foeLine.findIndex(c => c.hpBefore != null);
   if (focusDepth < 0) focusDepth = foeLine.findIndex(c => c.struck);
   if (focusDepth < 0) focusDepth = 0;
 
-  // /battle-style timing: idle → lunge → hit → return home. Cards stay seated
-  // on their stands; only the acting piece slides along X toward the foe.
   const combatBeat = input.phase === "battle" || input.isHit || input.damage > 0 || input.ko;
   const lungeT = combatBeat ? smooth01(t, 0.18, 0.40) : 0;
   const afterT = combatBeat ? smooth01(t, 0.55, 0.92) : 0;
@@ -477,59 +436,54 @@ function paintFrame(ctx: Ctx, input: SiegeFieldInput, a: Assets, t: number, scal
   const isActing = (s: 0 | 1, d: number) => s === acting && d === (actingDepth < 0 ? 0 : actingDepth);
   const isTarget = (s: 0 | 1, d: number) => s === targetSide && d === focusDepth;
 
-  const place = (s: 0 | 1, d: number): { cx: number; baseY: number; scale: number; flash: number } => {
-    const slot = standCentre(s, d);
-    let cx = slot.cx;
+  const place = (s: 0 | 1, d: number): { x: number; y: number; w: number; h: number; flash: number } => {
+    const slot = cardSlot(s, d);
+    let x = slot.x;
     let flash = 0;
-    if (isActing(s, d) && combatBeat) {
-      cx += toward * slideAmt * slot.scale;
-    }
+    if (isActing(s, d) && combatBeat) x += toward * slideAmt;
     if (isTarget(s, d) && connected) {
       flash = impact;
-      // Recoil away from the attacker — same feel as /battle defender knockback.
-      cx += (targetSide === 0 ? -1 : 1) * impact * 28 * slot.scale;
+      x += (targetSide === 0 ? -1 : 1) * impact * 22;
     }
-    return { cx, baseY: slot.baseY, scale: slot.scale, flash };
+    return { x, y: slot.y, w: slot.w, h: slot.h, flash };
   };
 
   const drawOne = (s: 0 | 1, d: number) => {
     const line = lineOf(s);
     const card = line[d]; if (!card) return;
-    const stand = s === 0 ? a.standBlue : a.standRed;
-    const color = s === 0 ? a.atkColor : a.defColor;
     const pos = place(s, d);
     const art = card.artUrl ? a.artByUrl.get(card.artUrl) ?? null : null;
-    drawStand(ctx, { cx: pos.cx, baseY: pos.baseY, scale: pos.scale, side: s, stand, art, color, card, flashWhite: pos.flash });
+    const frame = s === 0 ? a.frameBlue : a.frameRed;
+    const color = s === 0 ? BLUE : RED;
+    drawFlatCard(ctx, {
+      x: pos.x, y: pos.y, w: pos.w, h: pos.h,
+      side: s, art, frame, color, card, flashWhite: pos.flash,
+    });
   };
 
-  // Far ranks first so nearer stands overlap correctly along the line.
+  // Draw non-actors first, then target + actor on top.
   for (const s of [0, 1] as const) {
-    for (let d = Math.min(lineOf(s).length, LINE_MAX) - 1; d >= 0; d--) {
+    for (let d = 0; d < Math.min(lineOf(s).length, LINE_MAX); d++) {
       if (!isActing(s, d) && !isTarget(s, d)) drawOne(s, d);
     }
   }
 
-  // Dash streak behind the lunging fighter (while sliding, not teleporting).
-  if (slideAmt > 8 && lungeT > 0.15 && afterT < 0.85) {
+  if (slideAmt > 6 && lungeT > 0.1 && afterT < 0.85) {
     const ap = place(acting, actingDepth);
-    drawDashStreak(ctx, ap.cx, toward, clamp01(slideAmt / SLIDE_PX), acting === 0 ? a.atkColor : a.defColor);
+    drawDashStreak(ctx, ap.x + ap.w / 2, toward, clamp01(slideAmt / SLIDE_PX), acting === 0 ? BLUE : RED);
   }
 
-  // Target then actor on top so the strike reads in front of the lines.
   drawOne(targetSide, focusDepth);
   drawOne(acting, actingDepth);
 
-  // Strike FX + damage / MISS over the struck fighter — at their HOME line slot
-  // (plus recoil), never a midcourt stage.
   const tp = place(targetSide, focusDepth);
-  const targetX = tp.cx, targetY = tp.baseY - STAND_H * tp.scale * 0.52;
+  const targetX = tp.x + tp.w / 2, targetY = tp.y + tp.h * 0.35;
   if (connected) {
     drawImpact(ctx, a, targetX, targetY, impact, input);
   } else if (combatBeat && t >= 0.40 && !input.isHit) {
-    drawFloatingText(ctx, targetX, targetY - 56, "MISS", 0x9aa7b4, clamp01((t - 0.40) / 0.4));
+    drawFloatingText(ctx, targetX, targetY - 40, "MISS", 0x9aa7b4, clamp01((t - 0.40) / 0.4));
   }
 
-  // HUD: life-plates + VS crest + play-by-play + turn bar + phase chip strip.
   drawLifePlate(ctx, 0, input.attacker, a.atkArt, a.atkColor);
   drawLifePlate(ctx, 1, input.defender, a.defArt, a.defColor);
   drawVsCrest(ctx);
@@ -687,79 +641,86 @@ function drawArena(ctx: Ctx, a: Assets, accent: number): void {
   }
 }
 
-interface StandOpts {
-  cx: number; baseY: number; scale: number; side: 0 | 1;
-  stand: CanvasImage | null; art: CanvasImage | null;
+interface FlatCardOpts {
+  x: number; y: number; w: number; h: number; side: 0 | 1;
+  art: CanvasImage | null; frame: CanvasImage | null;
   color: number; card: SiegeFieldLineupCard; flashWhite: number;
 }
 
-// Draw one card stand: ornate 3D stand first, then seat the card art INTO the
-// plaque parallelogram on top so art always reads cleanly (works whether the
-// sprite's plaque is transparent or an opaque fill). Active cards get an accent
-// aura; fallen cards are dimmed and marked broken.
-function drawStand(ctx: Ctx, o: StandOpts): void {
-  const color = o.color;
-  const dw = STAND_W * o.scale, dh = STAND_H * o.scale;
-  const sx = o.cx - dw / 2;
-  const sy = o.baseY - dh;
+/**
+ * Flat 2-D DN card frame — art keeps its aspect ratio inside the frame window
+ * (object-fit: cover, never stretched). Team frame (blue/red) preserves corners.
+ */
+function drawFlatCard(ctx: Ctx, o: FlatCardOpts): void {
+  const { x, y, w, h } = o;
   const fallen = o.card.fallen;
+  const cx = x + w / 2;
 
-  // Contact shadow on the floor.
-  ellipse(ctx, o.cx, o.baseY - 6 * o.scale, dw * 0.40, 15 * o.scale, "rgba(0,0,0,0.42)");
+  // Soft contact shadow so the card feels seated on the arena floor.
+  ellipse(ctx, cx, y + h + 4, w * 0.42, 10, "rgba(0,0,0,0.45)");
 
-  if (!o.stand) { drawLegacyPortrait(ctx, o, dw, dh, sx, sy); return; }
-
-  const quad = o.side === 0 ? PLAQUE_QUAD.blue : PLAQUE_QUAD.red;
-  const TL = { x: sx + quad.tl[0] * dw, y: sy + quad.tl[1] * dh };
-  const TR = { x: sx + quad.tr[0] * dw, y: sy + quad.tr[1] * dh };
-  const BL = { x: sx + quad.bl[0] * dw, y: sy + quad.bl[1] * dh };
-  const BR = { x: TR.x + (BL.x - TL.x), y: TR.y + (BL.y - TL.y) };
-  const quadPath = () => { ctx.beginPath(); ctx.moveTo(TL.x, TL.y); ctx.lineTo(TR.x, TR.y); ctx.lineTo(BR.x, BR.y); ctx.lineTo(BL.x, BL.y); ctx.closePath(); };
-
-  // Active card: soft accent aura behind the whole stand.
   if (o.card.active) {
-    ctx.save(); ctx.globalAlpha = 0.55; ctx.shadowColor = rgba(color, 0.95); ctx.shadowBlur = 26;
-    quadPath(); ctx.strokeStyle = rgba(color, 0.35); ctx.lineWidth = 3; ctx.stroke(); ctx.restore();
+    ctx.save();
+    ctx.shadowColor = rgba(o.color, 0.9);
+    ctx.shadowBlur = 22;
+    fillRoundRect(ctx, x - 2, y - 2, w + 4, h + 4, 14, rgba(o.color, 0.2));
+    ctx.restore();
   }
 
-  // Ornate 3D stand body (desaturated a touch when fallen).
-  if (fallen) ctx.save(), ctx.globalAlpha = 0.72;
-  ctx.drawImage(o.stand as never, sx, sy, dw, dh);
-  if (fallen) ctx.restore();
-
-  // Card art seated into the gold plaque — drawn ON TOP of the stand so it
-  // always lies clean over the frame regardless of sprite transparency.
+  // Dark backing + art (aspect preserved via cover into the frame window).
+  fillRoundRect(ctx, x, y, w, h, 12, "#0b1220");
+  const inset = FRAME_INSET;
+  const ax = x + w * inset.left;
+  const ay = y + h * inset.top;
+  const aw = w * (1 - inset.left - inset.right);
+  const ah = h * (1 - inset.top - inset.bottom);
   ctx.save();
-  quadPath(); ctx.clip();
-  ctx.fillStyle = "#0b1220"; ctx.fill();
-  if (o.art) drawArtInQuad(ctx, o.art, TL, TR, BL);
-  else drawText(ctx, { x: (TL.x + BR.x) / 2 - 40, y: (TL.y + BR.y) / 2 - 24 * o.scale, w: 80, align: "center",
-    text: (o.card.name[0] || "?").toUpperCase(), weight: 900, size: 46 * o.scale, fill: rgba(color, 0.9) });
-  if (fallen) { ctx.globalAlpha = 0.55; ctx.fillStyle = "#05070c"; ctx.fill(); }
-  if (o.flashWhite > 0.01) { ctx.globalAlpha = 0.6 * o.flashWhite; ctx.fillStyle = "#ffffff"; ctx.fill(); }
+  roundRectPath(ctx, ax, ay, aw, ah, 8);
+  ctx.clip();
+  ctx.fillStyle = "#0e0e12";
+  ctx.fillRect(ax, ay, aw, ah);
+  if (o.art) {
+    const c = cover(o.art.width, o.art.height, aw, ah);
+    ctx.drawImage(o.art as never, ax + c.dx, ay + c.dy, c.dw, c.dh);
+  } else {
+    drawText(ctx, {
+      x: ax, y: ay + ah / 2 - 18, w: aw, align: "center",
+      text: (o.card.name[0] || "?").toUpperCase(),
+      weight: 900, size: 42, fill: rgba(o.color, 0.85),
+    });
+  }
+  if (fallen) { ctx.globalAlpha = 0.55; ctx.fillStyle = "#05070c"; ctx.fillRect(ax, ay, aw, ah); }
+  if (o.flashWhite > 0.01) { ctx.globalAlpha = 0.55 * o.flashWhite; ctx.fillStyle = "#ffffff"; ctx.fillRect(ax, ay, aw, ah); }
   ctx.restore();
 
-  // Thin gold rim on top of the art so the plaque edge stays crisp.
-  ctx.save();
-  quadPath();
-  ctx.strokeStyle = "rgba(232,193,90,0.85)";
-  ctx.lineWidth = Math.max(1.2, 1.6 * o.scale);
-  ctx.stroke();
-  ctx.restore();
+  // 9-slice-style frame overlay (DN Card Frame) — corners preserved by the PNG.
+  if (o.frame) {
+    if (fallen) ctx.save(), ctx.globalAlpha = 0.75;
+    ctx.drawImage(o.frame as never, x, y, w, h);
+    if (fallen) ctx.restore();
+  } else {
+    strokeRoundRect(ctx, x, y, w, h, 12, hex(o.color), 3);
+    strokeRoundRect(ctx, x + 4, y + 4, w - 8, h - 8, 9, "rgba(255,255,255,0.2)", 1.2);
+  }
 
-  // Broken-rank cross on the fallen.
   if (fallen) {
-    const mx = (TL.x + BR.x) / 2, my = (TL.y + BR.y) / 2, r = 20 * o.scale;
-    ctx.save(); ctx.globalAlpha = 0.9; ctx.strokeStyle = "#ff5a5a"; ctx.lineWidth = 4 * o.scale; ctx.lineCap = "round";
-    ctx.beginPath(); ctx.moveTo(mx - r, my - r); ctx.lineTo(mx + r, my + r); ctx.moveTo(mx + r, my - r); ctx.lineTo(mx - r, my + r); ctx.stroke(); ctx.restore();
+    const mx = cx, my = y + h * 0.45, r = 18;
+    ctx.save(); ctx.globalAlpha = 0.9; ctx.strokeStyle = "#ff5a5a"; ctx.lineWidth = 3.5; ctx.lineCap = "round";
+    ctx.beginPath(); ctx.moveTo(mx - r, my - r); ctx.lineTo(mx + r, my + r);
+    ctx.moveTo(mx + r, my - r); ctx.lineTo(mx - r, my + r); ctx.stroke(); ctx.restore();
   }
 
-  // Per-stand HP bar under the base.
-  drawStandHp(ctx, o.cx, o.baseY + 6 * o.scale, dw * 0.82, o.card, color, fallen);
+  // Name chip + HP under the card.
+  drawText(ctx, {
+    x, y: y + h + 8, w, align: "center",
+    text: o.card.name.slice(0, 14).toUpperCase(),
+    weight: 800, size: 11, fill: "#e2e8f0",
+    shadow: "rgba(0,0,0,0.9)", shadowBlur: 2, maxWidth: w,
+  });
+  drawCardHp(ctx, cx, y + h + 24, w * 0.88, o.card, o.color, fallen);
 }
 
-// A slim HP bar beneath a stand (pre-hit ghost + live fill + name-less).
-function drawStandHp(ctx: Ctx, cx: number, y: number, w: number, card: SiegeFieldLineupCard, color: number, fallen: boolean): void {
+function drawCardHp(ctx: Ctx, cx: number, y: number, w: number, card: SiegeFieldLineupCard, color: number, fallen: boolean): void {
   const x = cx - w / 2, h = 7;
   const now = clamp01(card.hp / Math.max(1, card.maxHp));
   const ghost = clamp01((card.hpBefore ?? card.hp) / Math.max(1, card.maxHp));
@@ -772,50 +733,8 @@ function drawStandHp(ctx: Ctx, cx: number, y: number, w: number, card: SiegeFiel
   strokeRoundRect(ctx, x, y, w, h, 3.5, "rgba(0,0,0,0.6)", 1);
 }
 
-// Legacy fallback used only when a stand sprite is absent: a framed floating
-// portrait, so a pack-less deploy still renders a clean face-off.
-function drawLegacyPortrait(ctx: Ctx, o: StandOpts, dw: number, dh: number, sx: number, sy: number): void {
-  const cstr = hex(o.color);
-  const pw = dw * 0.9, ph = dh * 0.62, px = o.cx - pw / 2, py = sy + dh * 0.12;
-  ctx.save(); roundRectPath(ctx, px, py, pw, ph, 12); ctx.clip();
-  if (o.art) { const c = cover(o.art.width, o.art.height, pw, ph); ctx.drawImage(o.art as never, px + c.dx, py + c.dy, c.dw, c.dh); }
-  else { ctx.globalAlpha = 0.5; ctx.fillStyle = cstr; ctx.fillRect(px, py, pw, ph); }
-  if (o.flashWhite > 0.01) { ctx.globalAlpha = 0.6 * o.flashWhite; ctx.fillStyle = "#ffffff"; ctx.fillRect(px, py, pw, ph); }
-  ctx.restore();
-  strokeRoundRect(ctx, px, py, pw, ph, 12, "#0b0e13", 4);
-  strokeRoundRect(ctx, px, py, pw, ph, 12, cstr, 2);
-  drawStandHp(ctx, o.cx, py + ph + 5, pw * 0.9, o.card, o.color, o.card.fallen);
-}
-
-// Map a card image onto the plaque parallelogram defined by TL, TR, BL (object-
-// fit: cover). An iso rectangle projects to a parallelogram, so an affine
-// transform is exact — set the basis (TR−TL, BL−TL) and blit a cover-cropped
-// source region into the unit square.
-function drawArtInQuad(
-  ctx: Ctx, art: CanvasImage,
-  TL: { x: number; y: number }, TR: { x: number; y: number }, BL: { x: number; y: number },
-): void {
-  const ex = TR.x - TL.x, ey = TR.y - TL.y;   // top edge vector (→ unit x)
-  const fx = BL.x - TL.x, fy = BL.y - TL.y;   // left edge vector (→ unit y)
-  const eLen = Math.max(1, Math.hypot(ex, ey)), fLen = Math.max(1, Math.hypot(fx, fy));
-  const iw = art.width, ih = art.height;
-  // Under the transform, a unit of x scales by eLen and a unit of y by fLen. To
-  // keep the art undistorted we draw it into a unit-space rect whose aspect
-  // compensates, then cover the unit square (overflow is clipped to the quad by
-  // the caller). This uses only the 3/5-arg drawImage the Ctx type exposes.
-  const R = (iw / ih) * (fLen / eLen);          // desired unit-space w/h ratio
-  let uw: number, uh: number, ux: number, uy: number;
-  if (R >= 1) { uh = 1; uw = R; uy = 0; ux = (1 - uw) / 2; }
-  else { uw = 1; uh = 1 / R; ux = 0; uy = (1 - uh) / 2; }
-  ctx.save();
-  ctx.transform(ex, ey, fx, fy, TL.x, TL.y);    // unit square → plaque parallelogram
-  ctx.drawImage(art as never, ux, uy, uw, uh);
-  ctx.restore();
-}
-
 // ── Raid HUD: corner life-plates, VS crest, turn bar ─────────────────────────
-// Side identity colours — the raider is always blue, the garrison red, matching
-// the two stands. The card's art accent (`color`) is used only as a soft glow.
+// Side identity colours — the raider is always blue, the garrison red.
 const BLUE = 0x2f6fd0, RED = 0xd6404a, GOLD = 0xe8c15a, INK = "#0c1220";
 
 // One corner life-plate (side 0 = top-left / blue "raider", side 1 = top-right /
@@ -1059,22 +978,20 @@ function drawStar(ctx: Ctx, x: number, y: number, points: number, inner: number,
 // moves right (attacker) / −1 when it moves left (defender); the streaks stream
 // out BEHIND it. Cheap: a handful of tapered accent lines, no image work.
 function drawDashStreak(ctx: Ctx, x: number, dir: number, k: number, color: number): void {
-  const bandTop = GROUND_Y - 165, bandBot = GROUND_Y - 55;
-  const tailX = x - dir * (PORTRAIT_W * 0.34);
+  const bandTop = LINE_Y + 20, bandBot = LINE_Y + CARD.h - 20;
+  const tailX = x - dir * (CARD.w * 0.28);
   const lines = 5;
   ctx.save();
   ctx.lineCap = "round";
   for (let i = 0; i < lines; i++) {
-    const f = i / (lines - 1);                       // 0..1 top→bottom
+    const f = i / (lines - 1);
     const y = lerp(bandTop, bandBot, f);
-    // Longer, brighter near the vertical centre of the portrait.
-    const centre = 1 - Math.abs(f - 0.5) * 2;         // 0 at edges, 1 in middle
-    const len = (36 + centre * 64) * k;
+    const centre = 1 - Math.abs(f - 0.5) * 2;
+    const len = (28 + centre * 52) * k;
     if (len < 4) continue;
-    const x0 = tailX - dir * (6 + f * 10);            // slight rake
+    const x0 = tailX - dir * (6 + f * 10);
     const x1 = x0 - dir * len;
     const alpha = k * (0.22 + centre * 0.4);
-    // Accent body.
     ctx.globalAlpha = alpha;
     ctx.strokeStyle = hex(color);
     ctx.lineWidth = 2 + centre * 3;
@@ -1082,7 +999,6 @@ function drawDashStreak(ctx: Ctx, x: number, dir: number, k: number, color: numb
     ctx.moveTo(x0, y);
     ctx.lineTo(x1, y);
     ctx.stroke();
-    // White hot core on the strongest lines.
     if (centre > 0.5) {
       ctx.globalAlpha = alpha * 0.9;
       ctx.strokeStyle = "#ffffff";
