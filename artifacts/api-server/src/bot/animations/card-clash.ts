@@ -144,8 +144,8 @@ async function loadClashAssets(cmod: CanvasMod, input: CardClashInput): Promise<
 
 // ── Public entry points ──────────────────────────────────────────────────────
 
-/** The moment the still freezes on — just past impact / dodge peak. */
-const STILL_T = 0.54;
+/** Freeze near connect so impact FX + damage numbers still read in static mode. */
+const STILL_T = 0.46;
 const STILL_SCALE = 0.85;
 
 export async function renderCardClash(

@@ -304,9 +304,8 @@ async function loadFieldAssets(cmod: CanvasMod, input: SiegeFieldInput): Promise
   return { arena, backdrop, floor, flash, smoke, frameBlue, frameRed, atkArt, defArt, artByUrl, atkColor, defColor };
 }
 
-// The instant the still freezes on: just past the connect, so the strike flash,
-// the slash and the damage number are all up — the move is unmistakable.
-const STILL_T = 0.54;
+// Freeze near connect so impact FX + shared damage numbers still read in static mode.
+const STILL_T = 0.46;
 // Stills are cheap (no encode), so render them larger/crisper than a GIF frame.
 const STILL_SCALE = 0.85;
 
