@@ -1,9 +1,8 @@
 import type { ChatInputCommandInteraction } from "discord.js";
-import { EmbedBuilder, MessageFlags, AttachmentBuilder } from "discord.js";
+import { EmbedBuilder, MessageFlags } from "discord.js";
 import { applyEmbedOverride } from "../embed-overrides.js";
 import { getOrCreateGuildSettings, isAdmin } from "../db.js";
 import { getShinyName } from "../cards-data.js";
-import { renderWelcomeBanner, WELCOME_BANNER_FILE } from "./welcome-canvas.js";
 
 // Thin animated divider GIF used as the separator image at the bottom of each
 // embed. The rainbow-glow line (4 KB, GitHub user-images CDN) renders as a
@@ -55,13 +54,6 @@ export async function handleWelcome(interaction: ChatInputCommandInteraction): P
   const guildId   = interaction.guildId;
   const guildName = interaction.guild?.name ?? "this server";
 
-  // The clean canvas hero. Best-effort — a null render falls back to the GIF, so
-  // the welcome always posts even if the native canvas is unavailable.
-  const banner = await renderWelcomeBanner({ guildName, shinyName }).catch(() => null);
-  const files: AttachmentBuilder[] = [];
-  const welcomeImage = banner ? `attachment://${WELCOME_BANNER_FILE}` : DIVIDER_GIF;
-  if (banner) files.push(new AttachmentBuilder(banner, { name: WELCOME_BANNER_FILE }));
-
   // ── 1 · Welcome ─────────────────────────────────────────────────────────────
   const welcome = new EmbedBuilder()
     .setColor(BRAND_COLOR)
@@ -70,10 +62,10 @@ export async function handleWelcome(interaction: ChatInputCommandInteraction): P
       `Welcome to **${guildName}** — DarkNight's military collectible card game. Tanks, jets, warships, bosses, and the odd cursed community card drop right here in chat.\n\n` +
       "**When a card spawns, just type its name to catch it.** That's the core loop — then hoard, battle, trade, and climb the leaderboard.",
     )
-    .setImage(welcomeImage);
+    .setImage(DIVIDER_GIF);
 
   await applyEmbedOverride(welcome, {
-    guildId, key: "welcome", defaultImageUrl: welcomeImage,
+    guildId, key: "welcome", defaultImageUrl: DIVIDER_GIF,
     ctx: { guild: guildName, username: interaction.user.username, userId: interaction.user.id },
   });
 
@@ -167,7 +159,7 @@ export async function handleWelcome(interaction: ChatInputCommandInteraction): P
     .setFooter({ text: `🌐 ${SITE_URL}  ·  Run /help for the complete guide` })
     .setImage(DIVIDER_GIF);
 
-  await interaction.editReply({ embeds: [welcome, rules, info, collecting, trades, battling, sieges], files });
+  await interaction.editReply({ embeds: [welcome, rules, info, collecting, trades, battling, sieges] });
 
 }
 
