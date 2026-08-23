@@ -2088,6 +2088,15 @@ const SIEGE_FILE = "siege.png", SIEGE_GIF = "siege.gif";
 // muster (the column itself is only as wide as the garrison). Capped so the
 // select menu stays within Discord's 25-option limit.
 const SIEGE_COLUMN_POOL = 20;
+// A Siege Battle is fought by a FORMATION of four, with reserves behind it that
+// deploy when the formation is wiped. So the commander commits a board plus up
+// to one reserve wave (eight), and never fewer than the garrison it faces — a
+// column capped at the garrison size would leave the attacker no reserves and
+// the reinforcement mechanic would never fire.
+const SIEGE_FORMATION = 4;
+const SIEGE_COMMIT_CAP = SIEGE_FORMATION * 2;
+const siegeCommit = (poolLen: number, garrisonLen: number): number =>
+  Math.min(poolLen, Math.max(SIEGE_COMMIT_CAP, garrisonLen));
 type LoadedCtx = Awaited<ReturnType<typeof loadCtx>>;
 
 // A card → siege combatant, power taken from the guild strength ladder (the same
@@ -2363,11 +2372,11 @@ async function launchPlayerSiege(
   // which cards form the column at muster; the default column is the strongest N.
   const poolCards = await buildAttackerCards(guildId, attackerId, cx.ctx, SIEGE_COLUMN_POOL);
   if (poolCards.length === 0) { await fail("You have no cards to march with. Catch some first."); return; }
-  const attackerCards = poolCards.slice(0, defenderCards.length);
+  const attackerCards = poolCards.slice(0, siegeCommit(poolCards.length, defenderCards.length));
 
   const forti = await baseFortification(guildId, defenderId);
   const attackerPool = buildSiegeSquad(poolCards, settings, guildId, cx.ctx, 0, attackerId, attackerName);
-  const attackers = attackerPool.slice(0, defenderCards.length);
+  const attackers = attackerPool.slice(0, siegeCommit(attackerPool.length, defenderCards.length));
   const defenders = buildSiegeSquad(defenderCards, settings, guildId, cx.ctx, 1, defenderId, defenderName, forti.totalPct);
   const baseView = await buildBaseRenderView(guildId, defenderId, defenderName, null, defHq).catch(() => null);
 
@@ -2429,7 +2438,7 @@ async function launchTerritorySiege(
   // at muster; the default column is only as wide as the garrison.
   const poolCards = await buildAttackerCards(guildId, attackerId, cx.ctx, SIEGE_COLUMN_POOL).catch(() => attackerCards);
   const attackerPool = buildSiegeSquad(poolCards, settings, guildId, cx.ctx, 0, attackerId, attackerName);
-  const attackers = attackerPool.slice(0, garrison.length);
+  const attackers = attackerPool.slice(0, siegeCommit(attackerPool.length, garrison.length));
   // "AI" as the garrison owner so the battle embed tags the defenders as 🤖 AI
   // (combatantField special-cases it) instead of showing a raw world node id.
   const defenders = buildSiegeSquad(garrison, settings, guildId, cx.ctx, 1, "AI", defenderName);

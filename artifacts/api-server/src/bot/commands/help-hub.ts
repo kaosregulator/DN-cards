@@ -18,14 +18,13 @@ import type {
 } from "discord.js";
 import {
   EmbedBuilder, ActionRowBuilder, StringSelectMenuBuilder, ButtonBuilder,
-  ButtonStyle, MessageFlags, PermissionFlagsBits,
-} from "discord.js";
+  ButtonStyle, MessageFlags, PermissionFlagsBits, AttachmentBuilder } from "discord.js";
 import { applyEmbedOverride } from "../embed-overrides.js";
 import { isAdmin as isDbAdmin, getOrCreateGuildSettings } from "../db.js";
 import { getShinyName } from "../cards-data.js";
 import {
-  HELP_BANNER, SECTION_COLOR, siteUrl, type HelpSection,
-} from "../help-banners.js";
+  HELP_BANNER, SECTION_COLOR, siteUrl, type HelpSection, BRAND_NAME,
+  brandAsset, BRAND_LOGO_FILE } from "../help-banners.js";
 
 const EPHEMERAL = { flags: MessageFlags.Ephemeral } as const;
 
@@ -33,7 +32,7 @@ interface SectionMeta { id: HelpSection; emoji: string; label: string; blurb: st
 
 // Order = dropdown order. "home" is the landing page.
 const SECTIONS: SectionMeta[] = [
-  { id: "home",     emoji: "🏠", label: "Overview & Getting Started", blurb: "What DN Cards is + how to start" },
+  { id: "home",     emoji: "🏠", label: "Overview & Getting Started", blurb: "What Dex N Cards is + how to start" },
   { id: "collect",  emoji: "🃏", label: "Collecting & Cards",         blurb: "Catch, browse, rank, level, cosmetics" },
   { id: "economy",  emoji: "💠", label: "Economy & Packs",            blurb: "Daily, shards, packs, burn, trade-in" },
   { id: "trade",    emoji: "🔄", label: "Trading & Marketplace",      blurb: "Trades, gifts, wishlist, auctions" },
@@ -43,6 +42,14 @@ const SECTIONS: SectionMeta[] = [
   { id: "social",   emoji: "🔊", label: "Echo Messages & AFK",        blurb: "Encrypted whispers, away status" },
   { id: "admin",    emoji: "🛠️", label: "Admin Toolbox",              blurb: "Setup, config & management (admins)", adminOnly: true },
 ];
+
+// The circle logo, attached to every help render (initial + each dropdown
+// switch) so the thumbnail persists — Discord drops attachments on update, so
+// it must be re-sent each time. 24 KB, so the re-send is cheap.
+function logoFiles(): AttachmentBuilder[] {
+  const buf = brandAsset(BRAND_LOGO_FILE);
+  return buf ? [new AttachmentBuilder(buf, { name: BRAND_LOGO_FILE })] : [];
+}
 
 // ── Entry point ──────────────────────────────────────────────────────────────
 export async function handleHelpHub(
@@ -55,7 +62,7 @@ export async function handleHelpHub(
   }
   const admin = await memberIsAdmin(interaction);
   const embed = await buildPage(interaction, opening);
-  await interaction.editReply({ embeds: [embed], components: buildComponents(opening, admin) });
+  await interaction.editReply({ embeds: [embed], components: buildComponents(opening, admin), files: logoFiles() });
 }
 
 // ── Component router (help:* select + buttons) ───────────────────────────────
@@ -73,7 +80,7 @@ export async function handleHelpHubComponent(
     return;
   }
   const embed = await buildPage(interaction, section);
-  await interaction.update({ embeds: [embed], components: buildComponents(section, admin) }).catch(() => {});
+  await interaction.update({ embeds: [embed], components: buildComponents(section, admin), files: logoFiles() }).catch(() => {});
 }
 
 // ── Components (topic dropdown + nav buttons) ─────────────────────────────────
@@ -108,6 +115,7 @@ async function buildPage(
   const embed = new EmbedBuilder().setColor(SECTION_COLOR[section]);
   PAGES[section](embed, { shiny, site });
   embed.setImage(HELP_BANNER); // animated banner stripe (overridable below)
+  if (brandAsset(BRAND_LOGO_FILE)) embed.setThumbnail(`attachment://${BRAND_LOGO_FILE}`);
 
   // Let admins rebrand the help embed via `/embed set key:help …`.
   await applyEmbedOverride(embed, {
@@ -127,7 +135,7 @@ const NAV_HINT = "\n\n*Use the 📖 dropdown below to jump to any topic.*";
 const PAGES: Record<HelpSection, PageFn> = {
   // ── Overview ───────────────────────────────────────────────────────────────
   home: (e, { site }) => {
-    e.setTitle("🃏 DN Cards — Full Guide")
+    e.setTitle(`🃏 ${BRAND_NAME} — Full Guide`)
       .setDescription(
         "**DarkNight's military collectible card game.** Tanks, jets, warships, bosses, and the odd cursed community card drop right into your server. Catch them, hoard them, battle with them, trade them, and flex your collection.\n\n" +
         "**How catching works**\n" +
@@ -144,7 +152,7 @@ const PAGES: Record<HelpSection, PageFn> = {
         "💡 New to the server? Run `/welcome` for the public intro & rules." +
         `\n\n🌐 Full roster & stats: **[${site}](${site})**`,
       )
-      .setFooter({ text: "DN Cards · pick a topic below to see every command" });
+      .setFooter({ text: `${BRAND_NAME} · pick a topic below to see every command` });
   },
 
   // ── Collecting ───────────────────────────────────────────────────────────────
@@ -264,7 +272,7 @@ const PAGES: Record<HelpSection, PageFn> = {
           "**Completion mode:** finish every requirement to qualify.\n" +
           "Open giveaways have an **Enter** button instead." },
         { name: "🎁 Claiming", value:
-          "When a giveaway ends, its message updates with the winners and a **Claim Prize** button. Winners click to receive DN Cards prizes automatically (cards/packs/shards); community prizes are handed off by an admin. Claim before the timer runs out or it rerolls!" },
+          "When a giveaway ends, its message updates with the winners and a **Claim Prize** button. Winners click to receive card prizes automatically (cards/packs/shards); community prizes are handed off by an admin. Claim before the timer runs out or it rerolls!" },
       );
   },
 

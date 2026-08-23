@@ -1,8 +1,9 @@
 import type { ChatInputCommandInteraction } from "discord.js";
-import { EmbedBuilder, MessageFlags } from "discord.js";
+import { EmbedBuilder, MessageFlags, AttachmentBuilder } from "discord.js";
 import { applyEmbedOverride } from "../embed-overrides.js";
 import { getOrCreateGuildSettings, isAdmin } from "../db.js";
 import { getShinyName } from "../cards-data.js";
+import { BRAND_NAME, brandAsset, BRAND_BANNER_FILE, BRAND_LOGO_FILE } from "../help-banners.js";
 
 // Thin animated divider GIF used as the separator image at the bottom of each
 // embed. The rainbow-glow line (4 KB, GitHub user-images CDN) renders as a
@@ -15,6 +16,23 @@ const ADMIN_COLOR  = 0xeb459e;   // pink for admin embeds
 
 const SITE_URL  = "https://dncards.com";
 const SITE_ADMIN = `${SITE_URL}/admin`;
+
+// ── Helper — is this member a guild admin? ───────────────────────────────────
+// Server owner, anyone with Discord's Administrator permission, or a bot-DB
+// admin. Used to gate BOTH /welcome (it posts a public, server-wide message, so
+// only staff should trigger it) and the /welcome_admin guide.
+export async function isGuildAdmin(interaction: ChatInputCommandInteraction): Promise<boolean> {
+  if (!interaction.guild) return false;
+  if (interaction.guild.ownerId === interaction.user.id) return true;
+  const member = interaction.member;
+  const hasAdminPerm =
+    !!member &&
+    "permissions" in member &&
+    typeof (member as { permissions?: unknown }).permissions === "object" &&
+    (member as { permissions: { has: (p: string) => boolean } }).permissions.has("Administrator");
+  if (hasAdminPerm) return true;
+  return isAdmin(interaction.guild.id, interaction.user.id);
+}
 
 // ── Helper — build the Replit-hosted admin-dashboard URL ─────────────────────
 function dashboardAdminUrl(): string {
@@ -37,18 +55,28 @@ export async function handleWelcome(interaction: ChatInputCommandInteraction): P
   const guildId   = interaction.guildId;
   const guildName = interaction.guild?.name ?? "this server";
 
+  // Brand art: the Dex N Cards banner as the hero image, the circle logo as the
+  // thumbnail. Attached once to this message; both fall back gracefully.
+  const files: AttachmentBuilder[] = [];
+  const bannerBuf = brandAsset(BRAND_BANNER_FILE);
+  const logoBuf = brandAsset(BRAND_LOGO_FILE);
+  if (bannerBuf) files.push(new AttachmentBuilder(bannerBuf, { name: BRAND_BANNER_FILE }));
+  if (logoBuf) files.push(new AttachmentBuilder(logoBuf, { name: BRAND_LOGO_FILE }));
+  const heroImage = bannerBuf ? `attachment://${BRAND_BANNER_FILE}` : DIVIDER_GIF;
+
   // ── 1 · Welcome ─────────────────────────────────────────────────────────────
   const welcome = new EmbedBuilder()
     .setColor(BRAND_COLOR)
-    .setTitle("🃏 Welcome to DN Cards")
+    .setTitle(`🃏 Welcome to ${BRAND_NAME}`)
     .setDescription(
       `Welcome to **${guildName}** — DarkNight's military collectible card game. Tanks, jets, warships, bosses, and the odd cursed community card drop right here in chat.\n\n` +
       "**When a card spawns, just type its name to catch it.** That's the core loop — then hoard, battle, trade, and climb the leaderboard.",
     )
-    .setImage(DIVIDER_GIF);
+    .setImage(heroImage);
+  if (logoBuf) welcome.setThumbnail(`attachment://${BRAND_LOGO_FILE}`);
 
   await applyEmbedOverride(welcome, {
-    guildId, key: "welcome", defaultImageUrl: DIVIDER_GIF,
+    guildId, key: "welcome", defaultImageUrl: heroImage,
     ctx: { guild: guildName, username: interaction.user.username, userId: interaction.user.id },
   });
 
@@ -68,15 +96,15 @@ export async function handleWelcome(interaction: ChatInputCommandInteraction): P
     guildId, key: "rules", defaultImageUrl: DIVIDER_GIF, ctx: { guild: guildName },
   });
 
-  // ── 3 · Good to Know ────────────────────────────────────────────────────────
+  // ── 3 · Things You Should Know ───────────────────────────────────────────────
   const info = new EmbedBuilder()
     .setColor(0x3498db)
-    .setTitle("💡 Good to Know")
+    .setTitle("💡 Things You Should Know")
     .addFields(
-      { name: "🎯 Catching", value: "Type the card name exactly (spelling matters, caps don't). A 🎯 means you're in the pool. Cards stay up 60–120s — no need to race milliseconds." },
-      { name: "💠 Shards & Packs", value: "Earn shards from `/daily`, burning duplicates, achievements & quests. Spend them on `/pack` — 🥉 Basic · 🥈 Premium · 🥇 Legendary." },
-      { name: `✨ ${shinyName} Cards`, value: `Every catch and pull has a **0.5%** chance to mint a rare ${shinyName} — worth extra and tracked separately.` },
-      { name: "🗂️ Sets", value: "Spawns pull from the server's **active set**. Browse sets and track completion with `/set_hub`." },
+      { name: "🎯 Catching", value: "Type the card's name in chat to catch it — spelling matters, caps don't. A 🎯 means you're in the pool; cards stay up 60–120s, so there's no need to race milliseconds." },
+      { name: "💠 Shards, Packs & Shiny", value: `Earn 💠 shards from \`/daily\`, burning duplicates, quests & achievements, then open \`/pack tier:<basic|premium|legendary>\`. Every catch and pull has a **0.5%** chance to mint a rare **${shinyName}** — worth more and tracked separately.` },
+      { name: "⭐ Star Rank", value: "Duplicates aren't waste — `/card_recycle name:<card>` turns spare copies into a permanent ⭐ Star Rank boost for that card. One copy is always kept and the rarity never changes." },
+      { name: "🏠 Your Hubs", value: "`/user-hub` is home base — profile, collection, daily, rank, frames & the market in one panel. `/help` is the full interactive guide to every command." },
     )
     .setImage(DIVIDER_GIF);
 
@@ -84,25 +112,66 @@ export async function handleWelcome(interaction: ChatInputCommandInteraction): P
     guildId, key: "commands", defaultImageUrl: DIVIDER_GIF, ctx: { guild: guildName },
   });
 
-  // ── 4 · Dive In ─────────────────────────────────────────────────────────────
-  const start = new EmbedBuilder()
-    .setColor(0x2ecc71)
-    .setTitle("🎮 Dive In")
+  // ── 4 · Collecting ───────────────────────────────────────────────────────────
+  const collecting = new EmbedBuilder()
+    .setColor(0x9b59b6)
+    .setTitle("🃏 Collecting")
     .setDescription(
-      "**Plenty to do here:**\n" +
-      "🃏 Collect & complete sets · 💠 Open packs · 🔄 Trade & use the `/market`\n" +
-      "⚔️ Battle players or AI · 🐉 Team up for co-op boss `/raid`s · 🤝 Join a `/squad`\n" +
-      "🎯 Daily & weekly `/quests` · 🎉 Enter `/giveaway` for real prizes\n\n" +
-      "**Start now:**\n" +
-      "① `/daily` — grab free shards\n" +
-      "② Watch chat and **type card names** to catch\n" +
-      "③ `/pack` — open your first pack\n" +
-      "④ **`/help`** — the full interactive guide to every feature",
+      "The heart of it — catch cards, complete the set, top the boards.\n\n" +
+      "🗃️ **`/collection`** — everything you own\n" +
+      "📖 **`/list`** — the full server roster, grouped by rarity\n" +
+      "🔍 **`/catalog`** — browse by category: what you own vs. what's still missing\n" +
+      "✨ **`/show-shiny`** — flaunt your rare mints\n" +
+      "🗂️ **`/set_hub`** — browse sets & track completion\n" +
+      "🏆 **`/top`** — server leaderboards (Collector, Battle & Raid)\n" +
+      "💠 **`/daily`** · **`/pack`** · **`/burn`** duplicates for shards",
+    )
+    .setImage(DIVIDER_GIF);
+
+  // ── 5 · Trades ───────────────────────────────────────────────────────────────
+  const trades = new EmbedBuilder()
+    .setColor(0x1abc9c)
+    .setTitle("🔄 Trades & Market")
+    .setDescription(
+      "Move cards between players — safely and fairly.\n\n" +
+      "🤝 **`/trade user:@player`** — direct card-for-card deals. Lopsided offers (over 3:1 in value) flash a ⚠️ so nobody gets fleeced.\n" +
+      "🎁 **`/gift user:@player`** — hand a card over, no strings.\n" +
+      "📌 **`/wishlist`** — mark the cards you're hunting so trade partners can find you.\n" +
+      "🏪 **`/market`** — the player marketplace: list what you're selling, browse & buy what you need.",
+    )
+    .setImage(DIVIDER_GIF);
+
+  // ── 6 · Battling ─────────────────────────────────────────────────────────────
+  const battling = new EmbedBuilder()
+    .setColor(0xe67e22)
+    .setTitle("⚔️ Battling")
+    .setDescription(
+      "Your cards fight — real stats, specials, ultimates and items.\n\n" +
+      "⚔️ **`/battle user:@player`** — duel a player, or leave it empty to fight the AI. Your card's rarity & power drive its stats.\n" +
+      "🎮 **`/battle phaser`** — a live **Yu-Gi-Oh-style duel** using your own cards, **plus an open world to explore** and challenge duelists. Runs on desktop & mobile.\n" +
+      "🐉 **`/raid`** — team up against a co-op boss card.\n" +
+      "🤝 **`/squad`** — form a squad and climb together.\n" +
+      "📊 **`/battle profile`** — your record, rank & battle stats.",
+    )
+    .setImage(DIVIDER_GIF);
+
+  // ── 7 · Sieges ───────────────────────────────────────────────────────────────
+  const sieges = new EmbedBuilder()
+    .setColor(BRAND_COLOR)
+    .setTitle("🏰 Sieges")
+    .setDescription(
+      "The big one — a tactical **4-card formation** battle for a base.\n\n" +
+      "🏰 **`/battle siege`** — storm a player's base or a world territory.\n" +
+      "🛡️ Four cards hold the **front line**; fight through it and, when it breaks, **reserves deploy** — punch all the way through to drain the commander's **life points**.\n" +
+      "🎴 In the close-up **Card Clash** you pick your fighter, choose your target, and play **Siege Battle Cards** — combos, finishers & formation orders drawn to your hand.\n" +
+      "⭐ Take a base without losing a card for the full **★★★**.\n" +
+      "🔧 Set up your own defenses in **`/hq`** (admins tune the rules in `/hqadmin`).",
     )
     .setFooter({ text: `🌐 ${SITE_URL}  ·  Run /help for the complete guide` })
     .setImage(DIVIDER_GIF);
 
-  await interaction.editReply({ embeds: [welcome, rules, info, start] });
+  await interaction.editReply({ embeds: [welcome, rules, info, collecting, trades, battling, sieges], files });
+
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -112,15 +181,7 @@ export async function handleWelcome(interaction: ChatInputCommandInteraction): P
 export async function handleWelcomeAdmin(interaction: ChatInputCommandInteraction): Promise<void> {
   // NOTE: admin.ts dispatcher has already called deferReply(ephemeral) — do NOT defer again here.
   if (!interaction.guild) { await interaction.editReply("❌ Must be used inside a server."); return; }
-  const isOwner   = interaction.guild.ownerId === interaction.user.id;
-  const member    = interaction.member;
-  const hasAdminPerm =
-    member &&
-    "permissions" in member &&
-    typeof (member as { permissions?: unknown }).permissions === "object" &&
-    (member as { permissions: { has: (p: string) => boolean } }).permissions.has("Administrator");
-  const dbAdmin = await isAdmin(interaction.guild.id, interaction.user.id);
-  if (!isOwner && !hasAdminPerm && !dbAdmin) {
+  if (!(await isGuildAdmin(interaction))) {
     await interaction.editReply("❌ Admins only.");
     return;
   }
@@ -130,7 +191,7 @@ export async function handleWelcomeAdmin(interaction: ChatInputCommandInteractio
   // ── Embed 1: Setup Checklist ──────────────────────────────────────────────
   const quickstart = new EmbedBuilder()
     .setColor(ADMIN_COLOR)
-    .setTitle("🛠️ Admin Quick-Start — DN Cards")
+    .setTitle(`🛠️ Admin Quick-Start — ${BRAND_NAME}`)
     .setDescription(
       "Do these **in order** the first time:\n\n" +
 
@@ -182,7 +243,7 @@ export async function handleWelcomeAdmin(interaction: ChatInputCommandInteractio
       "**🗂️ Sets (spawn rotation)**\n" +
       "`/set_hub` — clickable panel (create, activate, export, toggle showcase).\n" +
       "`/set_admin` — advanced set hub (weights, bulk operations, import/export).\n" +
-      "Export any set to JSON → re-import with `!loadset` + file attachment. Full roundtrip.",
+      "Export any set to JSON → re-import with `!import` + file attachment, or load it from the `/set_hub` panel. Full roundtrip.",
     )
     .setImage(DIVIDER_GIF);
 
@@ -226,8 +287,8 @@ export async function handleWelcomeAdmin(interaction: ChatInputCommandInteractio
         name: "🎨 Appearance",
         value:
           "`/embed set key:<embed> field:<field> value:<v>` — override spawn/claimed/daily/pack/trade embeds\n" +
-          "`/rarity profile set rarity:<tier> …` — worth/burn/weight per-rarity\n" +
-          "`/rarityname name:<…> emoji:<…>` — rename the Mythic tier",
+          "`/rarity` — tier hub: rename tiers, set colors/emoji, and worth/burn/spawn per rarity\n" +
+          "`/embed designer` — live visual editor for spawn/claimed/daily/pack/trade embeds",
         inline: false,
       },
       {

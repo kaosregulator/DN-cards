@@ -1,5 +1,6 @@
 import { Client, GatewayIntentBits, Partials, Events, REST, Routes, type Interaction } from "discord.js";
 import { logger } from "../lib/logger.js";
+import { BRAND_NAME } from "./help-banners.js";
 import {
   burnCard, getOrCreateCurrency, getAllCards, getAllCardsCached,
   getRarityContext, applyRarityContextAll, effectiveRarityKey,
@@ -139,7 +140,7 @@ export async function startBot() {
         buildId: process.env["REPLIT_DEPLOYMENT_ID"] ?? "local",
         pid: process.pid,
       },
-      "DN Cards bot ready",
+      `${BRAND_NAME} bot ready`,
     );
     // Default 27-card roster is NOT auto-seeded — admins opt-in from `!setup`
     // ("Load Defaults" button) or `/sets_admin load file:<.json>`. Keeps fresh
@@ -192,9 +193,9 @@ export async function startBot() {
       });
       const embed = new EmbedBuilder()
         .setColor(0x5865f2)
-        .setTitle("👋 Welcome to DN Cards!")
+        .setTitle(`👋 Welcome to ${BRAND_NAME}!`)
         .setDescription(
-          `Thanks for adding **DN Cards** to **${guild.name}**.\n\n` +
+          `Thanks for adding **${BRAND_NAME}** to **${guild.name}**.\n\n` +
           `Open this link to set up your **web dashboard** login (pick a username + password). ` +
           `You can manage card art, server settings, and message customization from there.\n\n` +
           `🔗 ${url}\n\n` +

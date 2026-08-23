@@ -121,7 +121,7 @@ export function toMonster(card: {
   const rank = RARITY_RANK[r] ?? 0;
   const { level, atk, def } = deriveStats(card.worthValue, r);
   const desc = (card.description || card.flavor || "").trim()
-    || "A battle-hardened DN Cards unit ready to duel.";
+    || "A battle-hardened unit ready to duel.";
   return {
     uid: `m${card.id}`,
     cardId: card.id,
@@ -243,7 +243,7 @@ export async function duelReadModel(
 function fallbackCard() {
   return {
     id: 0, name: "Rookie Recruit", rarity: "common", cardType: "vehicle",
-    description: "A fresh DN Cards recruit — every duelist starts somewhere.",
+    description: "A fresh recruit — every duelist starts somewhere.",
     flavor: null, worthValue: 40, imageUrl: null,
   };
 }

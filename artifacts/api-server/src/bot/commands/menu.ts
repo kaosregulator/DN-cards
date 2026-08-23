@@ -18,6 +18,7 @@
  */
 
 import type { ChatInputCommandInteraction, MessageComponentInteraction, ButtonInteraction, StringSelectMenuInteraction } from "discord.js";
+import { BRAND_NAME } from "../help-banners.js";
 import {
   EmbedBuilder,
   ActionRowBuilder,
@@ -98,7 +99,7 @@ function backBtn(to = "main"): ButtonBuilder {
 }
 
 function footerText(screen: string): string {
-  return `DN Cards · ${screen} · Use buttons to navigate`;
+  return `${BRAND_NAME} · ${screen} · Use buttons to navigate`;
 }
 
 // ── Main Menu ─────────────────────────────────────────────────────────────────
@@ -107,7 +108,7 @@ function buildMainMenu(username: string, shards: number, totalCards: number, pen
   components: ActionRowBuilder<MessageActionRowComponentBuilder>[];
 } {
   const embed = new EmbedBuilder()
-    .setTitle("🪖 DN Cards — Main Menu")
+    .setTitle(`🪖 ${BRAND_NAME} — Main Menu`)
     .setColor(BRAND_COLOR)
     .setDescription(
       `Welcome back, **${username}**!\n\n` +
@@ -1145,10 +1146,10 @@ export async function handleMenuCommand(interaction: ChatInputCommandInteraction
   collector.on("end", async () => {
     try {
       const timeoutEmbed = new EmbedBuilder()
-        .setTitle("🪖 DN Cards Menu")
+        .setTitle(`🪖 ${BRAND_NAME} Menu`)
         .setColor(0x36393f)
         .setDescription("*Menu closed — run `/menu` again to reopen.*")
-        .setFooter({ text: "Session ended · DN Cards" });
+        .setFooter({ text: `Session ended · ${BRAND_NAME}` });
       await interaction.editReply({ embeds: [timeoutEmbed], components: [] });
     } catch { /* ignore */ }
   });

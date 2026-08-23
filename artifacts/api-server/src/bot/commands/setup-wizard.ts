@@ -6,6 +6,7 @@ import {
   type ButtonInteraction, type StringSelectMenuInteraction,
   type ModalSubmitInteraction, type GuildMember,
 } from "discord.js";
+import { BRAND_NAME } from "../help-banners.js";
 import type { GuildSettings } from "@workspace/db";
 import {
   isAdmin, getOrCreateGuildSettings, updateGuildSettings, addCard,
@@ -155,7 +156,7 @@ export async function handleSetupButton(interaction: ButtonInteraction): Promise
     await interaction.editReply({
       embeds: [
         new EmbedBuilder()
-          .setTitle("✅ DN Cards is ready!")
+          .setTitle(`✅ ${BRAND_NAME} is ready!`)
           .setColor(0x57f287)
           .setDescription(
             `Drops are live in <#${settings.spawnChannelId}>.\n\n` +
@@ -330,7 +331,7 @@ function buildSetupEmbed(s: GuildSettings, hasDefaults: boolean): EmbedBuilder {
     : `No defaults — click **Load Defaults**, **Copy Home Set**, or add your own cards`;
 
   return new EmbedBuilder()
-    .setTitle("🃏 DN Cards — Setup")
+    .setTitle(`🃏 ${BRAND_NAME} — Setup`)
     .setColor(0x5865f2)
     .setDescription("Guided setup — choose channels, drop timing, rarity percentages, and starting cards. Changes save instantly.")
     .addFields(

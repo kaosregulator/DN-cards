@@ -1,4 +1,5 @@
 import type { ChatInputCommandInteraction } from "discord.js";
+import { BRAND_NAME } from "../help-banners.js";
 import { EmbedBuilder, MessageFlags } from "discord.js";
 
 // Visibility policy for command replies.
@@ -40,7 +41,6 @@ import { toAbsoluteImageUrl, isAnimatedCard } from "../image-url.js";
 import { handlePack, handlePackPrompt, handlePackStats, tierLabel } from "./pack.js";
 import { handleTradein } from "./tradein.js";
 import { handleWishlist } from "./wishlist.js";
-import { handleWelcome } from "./welcome.js";
 import { handleBattlesWelcome } from "./battle.js";
 import { checkAchievements, formatUnlockLine } from "../achievements.js";
 import { runPaginator, type PaginatorView } from "../components/paginator.js";
@@ -107,6 +107,23 @@ export async function handleUserCommand(
     return;
   }
 
+  // /welcome posts a public, server-wide welcome message — gate it to admins so
+  // any member can't spam it. The guard runs BEFORE the public defer so a
+  // non-admin is refused ephemerally, not with a public error.
+  if (sub === "welcome") {
+    const { isGuildAdmin, handleWelcome } = await import("./welcome.js");
+    if (!(await isGuildAdmin(interaction))) {
+      await interaction.reply({
+        content: "❌ Only server admins can post the `/welcome` message. Looking for how to play? Try **/help**.",
+        flags: MessageFlags.Ephemeral,
+      });
+      return;
+    }
+    await interaction.deferReply();
+    await handleWelcome(interaction);
+    return;
+  }
+
   await interaction.deferReply(
     EPHEMERAL_COMMANDS.has(sub) ? { flags: MessageFlags.Ephemeral } : {},
   );
@@ -129,7 +146,7 @@ export async function handleUserCommand(
     if (items.length === 0) {
       await interaction.editReply(
         target.id === interaction.user.id
-          ? "You haven't caught any DN Cards yet! Watch for a card to spawn and type its name."
+          ? "You haven't caught any cards yet! Watch for a card to spawn and type its name."
           : `**${target.username}** hasn't caught any cards yet.`,
       );
       return;
@@ -500,7 +517,7 @@ export async function handleUserCommand(
       overviewLines.push(`${t.emoji} **${t.label}** — ${g.length} · 🎲 ${shareLabel}`);
     }
     const overview = new EmbedBuilder()
-      .setTitle("🃏 DN Cards — Full Roster")
+      .setTitle(`🃏 ${BRAND_NAME} — Full Roster`)
       .setColor(0x5865f2)
       .setDescription(
         `**${cards.length}** cards in the pool\n\n` +
@@ -964,10 +981,6 @@ export async function handleUserCommand(
   if (sub === "tradein") { await handleTradein(interaction); return; }
   if (sub === "wishlist") { await handleWishlist(interaction); return; }
   if (sub === "gift") { await handleGift(interaction); return; }
-  // /welcome posts publicly (no flags) so it can be used as a server welcome
-  // message — we still deferReply'd above without ephemeral flag.
-  if (sub === "welcome") { await handleWelcome(interaction); return; }
-
   // ── /funfact — standalone wiki trivia, no calc/battle coupling ─────────────
   if (sub === "funfact") {
     const { handleFunFact } = await import("./funfacts.js");

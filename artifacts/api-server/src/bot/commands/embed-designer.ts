@@ -574,11 +574,11 @@ async function applyPreset(
 
   let cfg: EmbedOverrideConfig = {};
   if (preset === "dark") {
-    cfg = { color: 0x1a1a2e, footer: "DN Cards · {guild}", title: undefined };
+    cfg = { color: 0x1a1a2e, footer: "Dex N Cards · {guild}", title: undefined };
   } else if (preset === "military") {
-    cfg = { color: 0x4b5320, footer: "DN Cards · {guild}", title: undefined };
+    cfg = { color: 0x4b5320, footer: "Dex N Cards · {guild}", title: undefined };
   } else if (preset === "royal") {
-    cfg = { color: 0x4b0082, footer: "DN Cards · {guild}", title: undefined };
+    cfg = { color: 0x4b0082, footer: "Dex N Cards · {guild}", title: undefined };
   } else if (preset === "default") {
     await deleteEmbedOverride(guildId, key);
     await interaction.update(await buildEmbedEditor(guildId, key, userId));

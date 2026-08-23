@@ -34,17 +34,24 @@ import {
 import { randomBytes } from "crypto";
 import type { BattleSettings } from "@workspace/db";
 import type { Combatant, MoveType, AiDifficulty } from "../battle/types.js";
-import { startOfTurn, resolveMove, availableMoves } from "../battle/combat-engine.js";
-import { chooseAiMove } from "../battle/ai-engine.js";
+import { availableMoves } from "../battle/combat-engine.js";
 import { powerRating } from "../battle/stat-engine.js";
 import { bar, WHITE_LINE } from "../battle/embeds.js";
-import { computeMoveVisual } from "../battle/turn-visual.js";
 import { getMoveset } from "../battle/movesets.js";
 import {
   listBattleItems, getBattleItem, loadGuildBattleItems, applyItemUse, isOffensiveItem,
 } from "../battle/items.js";
 import { renderSiegeField, renderSiegeFieldStill, type AnimationSpeed } from "../animations/index.js";
-import type { SiegeFieldFighter, SiegeFieldInput, SiegeFieldBenchCard } from "../animations/index.js";
+import { renderCardClash, renderCardClashStill } from "../animations/index.js";
+import type { SiegeFieldInput } from "../animations/index.js";
+import {
+  buildSiegeBattle, startTurn as engineStartTurn, endTurn as engineEndTurn,
+  resolveAction, checkAction, chooseSiegeAction, legalActions,
+  toSiegeRoster, toFieldInput, toClashInput, summariseResult, describeAction,
+  livingSlots, formationEmpty, lpExposed, canReinforce, otherSide as engineOtherSide,
+  getSiegeCard, HAND_SIZE, defaultMaxTurns, describeMove,
+  type SiegeBattleState, type SiegeAction, type SiegeTurnResult,
+} from "../siege/index.js";
 import { renderCoinFlip } from "../battle/prep-canvas.js";
 import { renderSiegeFrame, type HqBaseView, type SiegeOverlay, type HqRenderDefender } from "./render.js";
 import { withGuildFrames } from "../animations/card-frames.js";
@@ -57,6 +64,11 @@ const EPHEMERAL = { flags: MessageFlags.Ephemeral } as const;
 // passives actually get used and an upset stays possible — same as the headless
 // resolver.
 const SIEGE_AI: AiDifficulty = "elite";
+// The garrison commander's skill in the Siege Battle engine. It scores the same
+// legalActions() a player's buttons are built from — never its own rules.
+const SIEGE_AI_SKILL = "hard" as const;
+/** Board squares per side, mirroring the engine's formation size. */
+const FORMATION_SIZE = 4;
 // Hard stop so a walked-away siege can never pin its target forever.
 const MAX_SIEGE_MS = 20 * 60 * 1000;
 const DEFAULT_FRAME_MS = 950;
@@ -74,15 +86,14 @@ const DEFAULT_FRAME_MS = 950;
 // undermined. A rank that trades normally dies long before pressure matters; a
 // rank that only turtles gets torn down. The defender's answer is fortification
 // (more HP to grind through), not an infinite guard.
-const PRESSURE_GRACE_TURNS = 2;   // free turns before the ram starts telling
-const PRESSURE_STEP_PCT = 5;      // added % of max HP per stalled turn
-const PRESSURE_MAX_PCT = 25;      // ceiling per turn
-
 /** Top embed: the castle scene. */
 export const SIEGE_CASTLE_IMAGE = "siege-castle.png";
 /** Bottom embed: the per-turn attack frame (`.gif` only when animated). */
 const SIEGE_TURN_PNG = "siege-turn.png";
 const SIEGE_TURN_GIF = "siege-turn.gif";
+/** Card Clash frame (stage two), swapped in for the battlefield frame. */
+const SIEGE_CLASH_PNG = "siege-clash.png";
+const SIEGE_CLASH_GIF = "siege-clash.gif";
 
 // ── Public contract ───────────────────────────────────────────────────────────
 
@@ -141,8 +152,24 @@ type Phase = "muster" | "assault" | "ended";
 interface SiegeSession extends SiegeRuntimeConfig {
   id: string;
   phase: Phase;
-  ai: number;                   // active attacker index
-  di: number;                   // active defender index
+  /**
+   * The live Siege Battle: four cards a side on the board, reserves behind
+   * them, life points behind those, and a hand of Siege Battle Cards. This is
+   * the single source of truth for the fight — the session only owns the
+   * Discord surface around it.
+   */
+  battle: SiegeBattleState;
+  /** Which of the commander's own squares is chosen to act (stage one). */
+  actorSlot: number;
+  /** Which enemy square that fighter is aimed at (stage one). */
+  targetSlot: number | null;
+  /** True while the commander is on the close-up Card Clash screen (stage two). */
+  inClash: boolean;
+  /** The Card Clash frame currently shown, kept between renders like the field. */
+  clashFrame: Buffer | null;
+  clashFrameIsGif: boolean;
+  ai: number;                   // attacker cards destroyed (result bookkeeping)
+  di: number;                   // defender cards destroyed (result bookkeeping)
   turnNumber: number;
   currentSide: 0 | 1;
   /** The commander's heads/tails call — call it right and your column strikes first. */
@@ -165,7 +192,6 @@ interface SiegeSession extends SiegeRuntimeConfig {
   // multiple moves through the `processing` check while the first is still
   // awaiting deferUpdate. Released when the resulting turn fully resolves.
   inputPending: boolean;
-  itemUsesLeft: number;
   attackerPower: number;
   defenderPower: number;
   /** Cached castle frame; only re-rendered when the siege visibly changes. */
@@ -225,18 +251,6 @@ function frameMs(s: SiegeSession): number {
 function sceneAnimated(s: SiegeSession): boolean {
   return s.siege.turnVisuals && s.settings.battleAnimationEnabled && s.settings.battleSceneAnimated;
 }
-function classicFrames(s: SiegeSession): boolean {
-  return s.siege.turnVisuals && s.settings.battleAnimationEnabled && !s.settings.battleSceneAnimated;
-}
-
-const MOVE_LABELS: Record<MoveType, string> = {
-  attack: "Attack", special: "Special", defend: "Defend", charge: "Charge",
-  skip: "Hold", ultimate: "Ultimate", item: "Item", special_card: "Special",
-};
-function moveLabel(move: MoveType, actor: Combatant): string {
-  if (move === "special") return getMoveset(actor.moveset)?.name ?? "Special";
-  return MOVE_LABELS[move] ?? move;
-}
 
 // ── Destruction & stars ───────────────────────────────────────────────────────
 // Progress is measured in wrecked garrison, not raw HP: each defender is an
@@ -244,15 +258,28 @@ function moveLabel(move: MoveType, actor: Combatant): string {
 // own missing-HP fraction. That makes the meter move on every good hit while
 // still making a broken rank feel like a milestone.
 function destructionPct(s: SiegeSession): number {
-  const total = s.defenders.length;
-  if (total === 0) return 100;
-  const cur = s.defenders[s.di];
-  const partial = cur && cur.hp > 0
-    ? 1 - Math.max(0, Math.min(1, cur.hp / Math.max(1, cur.stats.maxHealth)))
-    : 0;
-  const now = Math.max(0, Math.min(100, ((s.defendersBroken + partial) / total) * 100));
+  // Progress is how far the garrison's life points have been driven down —
+  // ground taken. It is high-water (a heal never walks the meter backwards), and
+  // the whole garrison line contributes: breaking cards is the means, LP is the
+  // score, so a fight that has cracked the wall but not yet reached LP still
+  // reads real progress from the cards destroyed.
+  const garrison = s.battle.teams[1];
+  const lpFrac = garrison.lpMax > 0 ? 1 - garrison.lp / garrison.lpMax : 1;
+  const cardsFrac = destroyedCount(s, 1) / Math.max(1, s.defenders.length);
+  const now = Math.max(0, Math.min(100, Math.max(lpFrac, cardsFrac * 0.6) * 100));
   s.peakDestruction = Math.max(s.peakDestruction, now);
   return s.peakDestruction;
+}
+
+/**
+ * A commander's life points, derived from the army standing in front of them.
+ * A bigger, tougher roster defends a proportionally bigger life pool, so LP
+ * stays meaningful across a scrappy four-card raid and a full mythic column
+ * without needing its own admin setting (or a schema migration) to tune.
+ */
+function commanderLp(roster: Combatant[]): number {
+  const pool = roster.reduce((sum, c) => sum + c.stats.maxHealth, 0);
+  return Math.max(3000, Math.min(12000, Math.round((pool * 0.4) / 100) * 100));
 }
 
 // ★ at half the base wrecked, ★★ for taking it, ★★★ for taking it clean.
@@ -311,6 +338,29 @@ export async function startSiege(
     ...config,
     id: randomBytes(4).toString("hex"),
     phase: "muster",
+    battle: buildSiegeBattle({
+      attacker: {
+        side: 0, name: config.attackerName, userId: config.starterId, isAi: false,
+        roster: toSiegeRoster(config.attackers), lp: commanderLp(config.attackers),
+        itemUses: config.siege.itemUses,
+      },
+      defender: {
+        side: 1, name: config.holderName || config.targetName, userId: "AI", isAi: true,
+        roster: toSiegeRoster(config.defenders), lp: commanderLp(config.defenders),
+        itemUses: config.siege.itemUses,
+      },
+      settings: config.settings,
+      // The guild's turn cap still applies, but never below what an army of this
+      // size actually needs to reach a decision — life points only become
+      // reachable after every card on a side is destroyed, so a big roster
+      // legitimately needs more turns than a small one.
+      maxTurns: Math.max(
+        config.siege.maxTurns,
+        defaultMaxTurns(config.attackers.length, config.defenders.length),
+      ),
+    }),
+    actorSlot: 0, targetSlot: null, inClash: false,
+    clashFrame: null, clashFrameIsGif: false,
     ai: 0, di: 0, turnNumber: 1, currentSide: 0,
     coinCall: null,
     columnSize: config.attackers.length,
@@ -318,7 +368,6 @@ export async function startSiege(
     log: [],
     processing: false,
     inputPending: false,
-    itemUsesLeft: config.siege.itemUses,
     attackerPower: config.attackers.reduce((sum, c) => sum + powerRating(c.stats), 0),
     defenderPower: config.defenders.reduce((sum, c) => sum + powerRating(c.stats), 0),
     castleImage: null, castleKey: "", castleRendering: false,
@@ -417,6 +466,14 @@ export async function handleSiegeComponent(
     case "equip": return handleEquipOpen(interaction as ButtonInteraction, session);
     case "equipsel": return handleEquipSelect(interaction as StringSelectMenuInteraction, session);
     case "move": return handleMove(interaction as ButtonInteraction, session, parts[4] as MoveType);
+    case "tgt": return handleMoveTarget(interaction as StringSelectMenuInteraction, session, parts[4] as MoveType);
+    case "fighter": return handleFighterOpen(interaction as ButtonInteraction, session);
+    case "fightersel": return handleFighterSelect(interaction as StringSelectMenuInteraction, session);
+    case "cards": return handleCardsOpen(interaction as ButtonInteraction, session);
+    case "cardsel": return handleCardSelect(interaction as StringSelectMenuInteraction, session);
+    case "cardtgt": return handleCardTarget(interaction as StringSelectMenuInteraction, session, parts[4] ?? "");
+    case "lp": return handleDirectLp(interaction as ButtonInteraction, session);
+    case "clash": return handleClashToggle(interaction as ButtonInteraction, session);
     case "item": return handleItemOpen(interaction as ButtonInteraction, session);
     case "itemsel": return handleItemSelect(interaction as StringSelectMenuInteraction, session);
     case "itemtgt": return handleItemTarget(interaction as StringSelectMenuInteraction, session, parts[4]!);
@@ -439,7 +496,8 @@ async function musterPayload(s: SiegeSession) {
     .setTitle(`🏰 Muster — assault on ${s.targetName}`)
     .setDescription(
       `**${s.attackerName}** forms up outside **${s.targetName}**, held by **${s.holderName}**.\n\n` +
-      `Every card you bring must break a rank of the garrison. Wreck the whole garrison to take the base — ` +
+      `Four of your cards form the front line; the rest wait in reserve and deploy when the line is broken. ` +
+      `Fight through the garrison to reach the commander's **life points** — drain them to zero to take the base. ` +
       `**★** at 50% destruction, **★★** for the capture, **★★★** if you do it without losing a card.\n\n` +
       `🪙 **Call the toss** — guess the coin right and your team strikes first. ` +
       `⚔️ **Battle** to command the fight yourself, or ⏩ **Auto Skip Mode** to let your captains ` +
@@ -447,7 +505,7 @@ async function musterPayload(s: SiegeSession) {
     )
     .addFields(
       {
-        name: `⚔️ Your column (${s.attackers.length})`,
+        name: `⚔️ Your army (${s.attackers.length})`,
         value: squadList(s.attackers),
         inline: true,
       },
@@ -471,12 +529,12 @@ async function musterPayload(s: SiegeSession) {
       {
         name: "🎒 Supplies",
         value: item
-          ? `${item.emoji} **${item.name}** — ${item.description}\n_Carried by every card in the column._`
+          ? `${item.emoji} **${item.name}** — ${item.description}\n_Available to your whole formation._`
           : "_No item equipped._",
         inline: false,
       },
     )
-    .setFooter({ text: `${s.itemUsesLeft} field use${s.itemUsesLeft === 1 ? "" : "s"} · ${s.siege.turnSeconds}s per move once the assault starts` });
+    .setFooter({ text: `${s.battle.teams[0].itemUsesLeft} field use${s.battle.teams[0].itemUsesLeft === 1 ? "" : "s"} · ${s.siege.turnSeconds}s per move once the assault starts` });
   if (s.castleImage) embed.setImage(`attachment://${SIEGE_CASTLE_IMAGE}`);
 
   const canPick = (s.attackerPool?.length ?? 0) > s.columnSize;
@@ -531,7 +589,7 @@ async function handleEquipSelect(interaction: StringSelectMenuInteraction, s: Si
   const choice = interaction.values[0]!;
   const item = choice === "none" ? null : getBattleItem(choice, s.guildId);
   s.equippedItemId = item?.id ?? null;
-  // Mirror /battle: the item lives ON the combatant, so `resolveMove("item")`
+  // Mirror /battle: the item lives ON the combatant, so the item move
   // and the move buttons pick it up with no siege-specific plumbing.
   for (const c of s.attackers) {
     c.itemId = item?.id ?? null;
@@ -599,11 +657,35 @@ async function handleColumnSelect(interaction: StringSelectMenuInteraction, s: S
     c.itemCooldownRemaining = 0;
   }
   s.attackerPower = s.attackers.reduce((sum, c) => sum + powerRating(c.stats), 0);
+  rebuildBattle(s);
   await interaction.update({
     content: `🎴 Team set: ${picked.map(c => `**${c.cardName}**`).join(" → ")}.`,
     components: [],
   }).catch(() => {});
   if (s.message) await s.message.edit(await musterPayload(s)).catch(() => {});
+}
+
+/**
+ * Rebuild the live battle from the session's current rosters. Called when the
+ * commander re-picks their column at muster (nothing is committed until Begin),
+ * so the board they fight on matches the team they chose.
+ */
+function rebuildBattle(s: SiegeSession): void {
+  s.battle = buildSiegeBattle({
+    attacker: {
+      side: 0, name: s.attackerName, userId: s.starterId, isAi: false,
+      roster: toSiegeRoster(s.attackers), lp: commanderLp(s.attackers),
+      itemUses: s.siege.itemUses,
+    },
+    defender: {
+      side: 1, name: s.holderName || s.targetName, userId: "AI", isAi: true,
+      roster: toSiegeRoster(s.defenders), lp: commanderLp(s.defenders),
+      itemUses: s.siege.itemUses,
+    },
+    settings: s.settings,
+    maxTurns: Math.max(s.siege.maxTurns, defaultMaxTurns(s.attackers.length, s.defenders.length)),
+  });
+  s.actorSlot = 0; s.targetSlot = null;
 }
 
 // ── Send them in (skip / auto-resolve) ────────────────────────────────────────
@@ -619,6 +701,7 @@ async function handleSkip(interaction: ButtonInteraction, s: SiegeSession): Prom
   const call = s.coinCall ?? (Math.random() < 0.5 ? "heads" : "tails");
   const flip: "heads" | "tails" = Math.random() < 0.5 ? "heads" : "tails";
   s.currentSide = call === flip ? 0 : 1;
+  s.battle.activeSide = s.currentSide;
   pushLog(s, [`📨 **${s.attackerName}** sends the column at **${s.targetName}** and awaits word from the field.`]);
   // Let the muster message acknowledge the send-off while the fight resolves.
   if (s.message) {
@@ -640,7 +723,9 @@ async function handleBegin(interaction: ButtonInteraction, s: SiegeSession): Pro
   // right earns the initiative. No call left it to chance.
   const firstSide = await playCoinToss(s);
   s.currentSide = firstSide;
-  const lead = s.attackers[0], garrison = s.defenders[0];
+  s.battle.activeSide = firstSide;   // the engine and the board share one turn owner
+  const lead = s.battle.teams[0].slots.find(sl => sl.unit)?.unit;
+  const garrison = s.battle.teams[1].slots.find(sl => sl.unit)?.unit;
   pushLog(s, [
     `⚔️ **${s.attackerName}** throws the column at the walls of **${s.targetName}**.`,
     firstSide === 0 ? "🎯 Your column seizes the initiative — you move first." : "🛡️ The garrison reacts first.",
@@ -697,112 +782,138 @@ async function playCoinToss(s: SiegeSession): Promise<0 | 1> {
 
 // ── Turn loop (mirrors battle-manager) ───────────────────────────────────────
 
+// ── The turn loop ────────────────────────────────────────────────────────────
+// One turn = one side acting. The ENGINE owns the rules (startTurn ticks status
+// and refills the hand, resolveAction applies exactly one action, endTurn
+// deploys reinforcements, exposes life points and decides a winner). This layer
+// owns only the Discord surface: whose buttons are live, the clock, and the
+// frames.
+
 async function startTurn(s: SiegeSession): Promise<void> {
   if (s.phase !== "assault") return;
-  const actor = active(s, s.currentSide);
-  if (!actor) { await finish(s); return; }
 
-  // The garrison — and, in a headless send-off, BOTH sides — answer on their own,
-  // after a beat, exactly like /battle's AI.
-  if (actor.isAi || s.headless) {
+  // Status ticks, energy regen, card cooldowns and the hand refill.
+  const opening = engineStartTurn(s.battle);
+  pushLog(s, opening.events.map(e => e.text));
+
+  const side = s.battle.activeSide;
+  const team = s.battle.teams[side];
+
+  // A side with nothing standing cannot act; hand straight over so the other
+  // side gets its swing (endTurn is what deploys reserves / exposes LP).
+  if (livingSlots(team).length === 0) {
+    await advanceTurn(s);
+    return;
+  }
+
+  // Default the commander's selection to a card that can actually act.
+  if (side === 0) {
+    const living = livingSlots(team).map(sl => sl.index);
+    if (!living.includes(s.actorSlot)) s.actorSlot = living[0] ?? 0;
+    const foes = s.battle.teams[1];
+    const foeLiving = livingSlots(foes).map(sl => sl.index);
+    if (s.targetSlot == null || !foeLiving.includes(s.targetSlot)) {
+      s.targetSlot = foeLiving[0] ?? null;
+    }
+  }
+
+  // The garrison — and, in a headless send-off, BOTH sides — answer on their own.
+  if (team.isAi || s.headless) {
+    await refreshRestingFrame(s);
     await render(s);
     await pace(s);
-    const foe = active(s, foeSide(s.currentSide));
-    if (!foe) { await finish(s); return; }
-    const move = chooseAiMove(actor, foe, s.settings, SIEGE_AI);
-    await applyMove(s, s.currentSide, move);
+    const action = chooseSiegeAction(s.battle, SIEGE_AI_SKILL);
+    await applySiegeAction(s, action);
     return;
   }
 
   clearTurnTimer(s);
   const ms = s.siege.turnSeconds * 1000;
   s.turnTimer = setTimeout(() => {
-    pushLog(s, [`⏱️ ${actor.cardName} hesitated — the column presses on regardless.`]);
-    void applyMove(s, s.currentSide, "attack");
+    pushLog(s, ["⏱️ The commander hesitated — the line presses on regardless."]);
+    void applySiegeAction(s, autoAction(s));
   }, ms);
+  await refreshRestingFrame(s);
   await render(s, { turnEndsAt: Date.now() + ms });
 }
 
-async function applyMove(s: SiegeSession, side: 0 | 1, move: MoveType): Promise<void> {
+/** What a commander who ran out the clock does: the best legal swing available. */
+function autoAction(s: SiegeSession): SiegeAction | null {
+  const basic: SiegeAction = {
+    kind: "move", actorSlot: s.actorSlot, move: "attack",
+    targetSlot: s.targetSlot ?? undefined,
+  };
+  if (checkAction(s.battle, basic).ok) return basic;
+  return chooseSiegeAction(s.battle, "normal");
+}
+
+/**
+ * Resolve exactly one action and play the beat: wind-up frame, the resolved
+ * blow, then hand over. A null action (nothing legal) simply passes the turn.
+ */
+async function applySiegeAction(s: SiegeSession, action: SiegeAction | null): Promise<void> {
   if (s.phase !== "assault" || s.processing) return;
   s.processing = true;
   clearTurnTimer(s);
   try {
-    const actor = active(s, side);
-    const foe = active(s, foeSide(side));
-    if (!actor || !foe) { await finish(s); return; }
+    if (!action) { await advanceTurn(s); return; }
+    const side = s.battle.activeSide;
 
-    // Start-of-turn ticks (DoT / regen / freeze / energy regen).
-    const start = startOfTurn(actor, s.settings);
-    pushLog(s, start.events.map(e => e.text));
-    if (start.koed || actor.hp <= 0) {
-      if (await breakRank(s, side)) { await finish(s); return; }
-      await handOver(s, side);
+    // Wind-up: the board shows what is about to happen while the frame encodes.
+    await render(s, { currentMove: `${describeAction(s.battle, action)}…` });
+
+    const result = resolveAction(s.battle, action);
+    pushLog(s, result.events.map(e => e.text));
+
+    // Rejected (illegal) action: nothing changed, so DON'T advance the turn.
+    // Re-render so the reason shows and the controls come back live, and re-arm
+    // the turn clock for a human commander.
+    if (result.rejected) {
+      s.processing = false;
+      if (!s.headless && s.battle.activeSide === 0) {
+        clearTurnTimer(s);
+        const ms = s.siege.turnSeconds * 1000;
+        s.turnTimer = setTimeout(() => {
+          pushLog(s, ["⏱️ The commander hesitated — the line presses on regardless."]);
+          void applySiegeAction(s, autoAction(s));
+        }, ms);
+        await render(s, { turnEndsAt: Date.now() + ms });
+      } else {
+        await render(s);
+      }
       return;
     }
 
-    // "Winding up" frame, then the resolved blow — the same two-beat rhythm a
-    // battle turn has. Encode runs in parallel with the wind-up sleep so the
-    // heavier siege-field canvas doesn't add a full extra beat on top of pace().
-    await render(s, { currentMove: `${actor.cardName} → ${moveLabel(move, actor)}…` });
+    s.di = destroyedCount(s, 1);
+    s.ai = destroyedCount(s, 0);
 
-    if (!start.skipped) {
-      const foePoolBefore = foe.hp + foe.shield;
-      const selfPoolBefore = actor.hp + actor.shield;
-      const result = resolveMove(s.settings, actor, foe, move);
-      pushLog(s, result.events.map(e => e.text));
+    // Await the FINAL frame before editing the board — never upgrade a still to
+    // a GIF mid-message, which restarts Discord's looping and reads as a stutter.
+    const [, holdMs] = await Promise.all([
+      pace(s),
+      buildTurnFrames(s, side, action, result),
+    ]);
+    await refreshCastle(s, result.destroyed.length > 0);
+    await render(s);
+    await (s.headless ? Promise.resolve() : sleep(Math.max(frameMs(s), holdMs)));
 
-      // Await the FINAL turn visual (PNG or GIF) before the board edit — same
-      // rhythm as /battle and /raid. Never still→GIF upgrade mid-message: Discord
-      // reloads the attachment on every edit and restarts looping GIFs, which is
-      // what made /hq sieges feel choppy. Pace overlaps the encode so the board
-      // still breathes during wind-up without serializing two full waits.
-      const [, holdMs] = await Promise.all([
-        pace(s),
-        buildTurnFrame(s, side, move, result, actor, foe, foePoolBefore, selfPoolBefore),
-      ]);
-      await render(s);
-      await (s.headless ? Promise.resolve() : sleep(Math.max(frameMs(s), holdMs)));
-
-      // The ram keeps working between blows: a rank that refuses to die gets
-      // ground down whether or not the commander's swing landed.
-      if (side === 0 && foe.hp > 0) applySiegePressure(s, foe);
-
-      // A KO breaks a RANK — it does not end the siege. Check the struck side
-      // first (a counter can drop the attacker), then the foe.
-      if (actor.hp <= 0 && (await breakRank(s, side))) { await finish(s); return; }
-      if (foe.hp <= 0 && (await breakRank(s, foeSide(side)))) { await finish(s); return; }
-    } else {
-      await pace(s);
-      await render(s);
-    }
-
-    await handOver(s, side);
+    await advanceTurn(s);
   } catch (err) {
-    logger.error({ err, siege: s.id }, "siege move failed");
+    logger.error({ err, siege: s.id }, "siege action failed");
     s.processing = false;
   }
 }
 
-// Chip the rank in front of the column, bypassing any shield. Scales with how
-// many commander turns this rank has already survived, so it only ever matters
-// against a stall.
-function applySiegePressure(s: SiegeSession, defender: Combatant): void {
-  s.rankStall++;
-  const stalled = s.rankStall - PRESSURE_GRACE_TURNS;
-  if (stalled <= 0) return;
-  const pct = Math.min(PRESSURE_MAX_PCT, stalled * PRESSURE_STEP_PCT);
-  const chip = Math.max(1, Math.round(defender.stats.maxHealth * (pct / 100)));
-  defender.hp = Math.max(0, defender.hp - chip);
-  pushLog(s, [`🪨 Siege pressure bites — **${defender.cardName}** loses **${chip}** as the wall is undermined.`]);
-}
+/** Close the turn through the engine, then either finish or start the next one. */
+async function advanceTurn(s: SiegeSession): Promise<void> {
+  const closing = engineEndTurn(s.battle);
+  pushLog(s, closing.events.map(e => e.text));
+  s.di = destroyedCount(s, 1);
+  s.ai = destroyedCount(s, 0);
+  s.turnNumber = s.battle.turn;
+  s.currentSide = s.battle.activeSide;
 
-// Pass the turn to the other side, advance the turn counter and enforce the cap.
-async function handOver(s: SiegeSession, side: 0 | 1): Promise<void> {
-  s.currentSide = foeSide(side);
-  if (s.currentSide === 0) s.turnNumber++;
-  if (s.turnNumber > s.siege.maxTurns) {
-    pushLog(s, ["⌛ The assault stalls — the siege is decided on ground taken."]);
+  if (closing.battleOver || s.battle.phase === "ended") {
     await finish(s);
     return;
   }
@@ -810,62 +921,15 @@ async function handOver(s: SiegeSession, side: 0 | 1): Promise<void> {
   await startTurn(s);
 }
 
-/**
- * A card on `side` has fallen: advance that line. Returns true when the siege is
- * decided (one side has nothing left to send).
- */
-async function breakRank(s: SiegeSession, side: 0 | 1): Promise<boolean> {
-  if (side === 1) {
-    while (s.defenders[s.di] && s.defenders[s.di]!.hp <= 0) {
-      pushLog(s, [`💥 **${s.defenders[s.di]!.cardName}** is broken — the wall gives ground.`]);
-      s.di++;
-      s.defendersBroken++;
-    }
-    s.rankStall = 0; // a fresh rank starts with an unmarked wall
-    await refreshCastle(s, true);
-    if (s.di >= s.defenders.length) return true;
-    const next = s.defenders[s.di]!;
-    pushLog(s, [`🛡️ **${next.cardName}** steps into the breach.`]);
-    return false;
-  }
-  while (s.attackers[s.ai] && s.attackers[s.ai]!.hp <= 0) {
-    pushLog(s, [`☠️ **${s.attackers[s.ai]!.cardName}** falls at the wall.`]);
-    s.ai++;
-  }
-  await refreshCastle(s, true);
-  if (s.ai >= s.attackers.length) return true;
-  const next = s.attackers[s.ai]!;
-  pushLog(s, [`⚔️ **${next.cardName}** takes up the assault.`]);
-  return false;
-}
-
-// Map a live combatant onto the battlefield renderer's fighter view. `hpBefore`
-// is only set for the STRUCK card so the field can animate its HP draining.
-function fieldFighter(c: Combatant, hpBefore?: number): SiegeFieldFighter {
-  return {
-    name: c.cardName,
-    artUrl: c.cardImageUrl,
-    rarity: c.cardRarity,
-    rarityColor: c.cardRarityDisplay?.color ?? null,
-    hp: Math.max(0, c.hp),
-    maxHp: c.stats.maxHealth,
-    hpBefore,
-    energy: c.energy,
-    ultimate: c.ultimate,
-  };
-}
-
-// Each side's roster minus the active card, ordered "next to step up" first,
-// then the fallen — so the battlefield shows the whole column stepping up rank
-// by rank even though only the front pair actually trade blows.
-function benchOf(col: Combatant[], activeIdx: number): SiegeFieldBenchCard[] {
-  const mk = (c: Combatant, fallen: boolean): SiegeFieldBenchCard => ({
-    artUrl: c.cardImageUrl, rarity: c.cardRarity,
-    rarityColor: c.cardRarityDisplay?.color ?? null, fallen,
-  });
-  const upcoming = col.filter((_, i) => i > activeIdx).map(c => mk(c, false));
-  const fallen = col.filter((_, i) => i < activeIdx).map(c => mk(c, true));
-  return [...upcoming, ...fallen];
+/** How many of a side's cards have been destroyed, board and reserves alike. */
+function destroyedCount(s: SiegeSession, side: 0 | 1): number {
+  const team = s.battle.teams[side];
+  const onBoard = team.slots.filter(sl => sl.unit && sl.unit.hp <= 0).length;
+  const inReserve = team.reserves.filter(c => c.hp <= 0).length;
+  // Cards that died in earlier waves have already left the board, so the waves
+  // that were fully replaced are counted too.
+  const replaced = Math.max(0, team.wavesLost * FORMATION_SIZE - onBoard - inReserve);
+  return onBoard + inReserve + replaced;
 }
 
 // Pick a battlefield backdrop + floor deterministically from the target, so a
@@ -879,95 +943,116 @@ function hashStr(s: string): number {
   for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 0x01000193);
   return h >>> 0;
 }
+/** A given target always storms on the same ground, across every siege mode. */
+function fieldBackdropKey(s: SiegeSession): string {
+  return FIELD_BACKDROPS[hashStr(s.targetKey ?? s.targetName) % FIELD_BACKDROPS.length]!;
+}
+function fieldFloorKey(s: SiegeSession): string {
+  return FIELD_FLOORS[hashStr(`${s.targetKey ?? s.targetName}:floor`) % FIELD_FLOORS.length]!;
+}
+/** Animation pacing follows the guild's battle settings, like /battle. */
+function animationSpeed(s: SiegeSession): AnimationSpeed {
+  return s.settings.battleAnimationSpeed as AnimationSpeed;
+}
 
-// side = the side that just moved; attacker is always side 0, defender side 1.
-function buildFieldInput(
-  s: SiegeSession, side: 0 | 1, move: MoveType,
-  visual: ReturnType<typeof computeMoveVisual>, actor: Combatant, foe: Combatant,
-  foePoolBefore: number,
-): SiegeFieldInput {
-  const attackerC = side === 0 ? actor : foe;
-  const defenderC = side === 0 ? foe : actor;
-  // The struck card is always the FOE of whoever moved.
-  const targetBefore = Math.min(foe.stats.maxHealth, Math.max(0, foePoolBefore));
-  const h = hashStr(s.targetName || "siege");
+// ── Projections ──────────────────────────────────────────────────────────────
+// The battlefield and the Card Clash screen are both drawn from BATTLE STATE via
+// the siege adapter. Nothing here recomputes an outcome: the resolver already
+// measured the damage, and these just choose which beat to show.
+
+/** Everything both screens need about the beat that just resolved. */
+function projectionFor(
+  s: SiegeSession, side: 0 | 1, action: SiegeAction, result: SiegeTurnResult,
+) {
+  const sum = summariseResult(result, engineOtherSide(side));
+  const actorSlot = action.kind === "reinforce" ? 0 : action.actorSlot;
+  const targetSlot = sum.struckSlot
+    ?? (action.kind === "move" || action.kind === "siege_card" ? action.targetSlot : undefined)
+    ?? undefined;
   return {
-    attacker: fieldFighter(attackerC, attackerC === foe ? targetBefore : undefined),
-    defender: fieldFighter(defenderC, defenderC === foe ? targetBefore : undefined),
     actingSide: side,
-    moveName: moveLabel(move, actor),
-    damage: visual.damage,
-    isHit: visual.isHit,
-    isCrit: visual.isCrit,
-    ko: foe.hp <= 0,
+    actorSlot,
+    targetSlot,
+    moveName: describeMove(s.battle, action),
+    damage: sum.damage || sum.lpDamage,
+    isHit: sum.isHit,
+    isCrit: sum.isCrit,
+    ko: sum.ko,
+    aoe: sum.aoe,
+    struckBefore: sum.struckBefore,
     accent: s.accent,
-    turnLabel: `Turn ${s.turnNumber}`,
-    backdropKey: FIELD_BACKDROPS[h % FIELD_BACKDROPS.length]!,
-    floorKey: FIELD_FLOORS[(h >>> 8) % FIELD_FLOORS.length]!,
-    attackerBench: benchOf(s.attackers, s.ai),
-    defenderBench: benchOf(s.defenders, s.di),
+    backdropKey: fieldBackdropKey(s),
+    floorKey: fieldFloorKey(s),
+    arenaName: s.targetName,
+    attackerCommanderRole: "Commander",
+    defenderCommanderRole: s.holderName || "Garrison",
+    playingCardId: action.kind === "siege_card" ? action.cardId : undefined,
   };
 }
 
-// Build the one-shot attack frame under the battle embed, in whichever style the
-// guild's battle settings use — so a siege turn looks like a battle turn.
-//
-// Mirrors /battle `applyMove`: AWAIT the final buffer, then the caller does ONE
-// `message.edit`. Classic = PNG only. Animated = GIF only (still is fallback if
-// the GIF encode fails). Returns how long Discord should be left alone so a GIF
-// can play through once before the next board edit.
-async function buildTurnFrame(
-  s: SiegeSession, side: 0 | 1, move: MoveType,
-  result: ReturnType<typeof resolveMove>, actor: Combatant, foe: Combatant,
-  foePoolBefore: number, selfPoolBefore: number,
-): Promise<number> {
-  if (s.headless || !s.siege.turnVisuals) return 0;
-  if (!(sceneAnimated(s) || classicFrames(s))) return 0; // animations off → no frame
-  const visual = computeMoveVisual(move, result, actor, foe, foePoolBefore, selfPoolBefore);
-  const fieldInput = buildFieldInput(s, side, move, visual, actor, foe, foePoolBefore);
-  const animated = sceneAnimated(s);
-  const speed = s.settings.battleAnimationSpeed as AnimationSpeed;
-
-  // Cap waits so a stalled canvas / remote art fetch can't freeze the assault
-  // forever (same idea as the coin-toss race).
-  const GIF_BUDGET_MS = 12_000;
-  const STILL_BUDGET_MS = 8_000;
-
-  if (animated) {
-    const gif = await Promise.race([
-      renderSiegeField(fieldInput, speed).catch(() => null),
-      sleep(GIF_BUDGET_MS).then(() => null),
-    ]);
-    if (gif) {
-      s.turnFrame = Buffer.from(gif.buffer);
-      s.turnFrameIsGif = true;
-      // Hold for one play-through (capped) so Discord's client can finish the
-      // strike before the garrison's answer rewrites the message.
-      return Math.min(2400, Math.max(frameMs(s), gif.durationMs));
-    }
-    // GIF failed — fall through to a peak-strike PNG rather than leaving a stale frame.
-  }
-
-  const still = await Promise.race([
-    renderSiegeFieldStill(fieldInput).catch(() => null),
-    sleep(STILL_BUDGET_MS).then(() => null),
-  ]);
-  if (still) {
-    s.turnFrame = still;
-    s.turnFrameIsGif = false;
-  }
-  return 0;
+/** A resting battlefield frame — no strike, just the board as it stands. */
+function restingFieldInput(s: SiegeSession): SiegeFieldInput {
+  return toFieldInput(s.battle, {
+    actingSide: s.battle.activeSide,
+    actorSlot: s.actorSlot,
+    targetSlot: s.targetSlot ?? undefined,
+    moveName: "", damage: 0, isHit: false, isCrit: false, ko: false,
+    accent: s.accent,
+    backdropKey: fieldBackdropKey(s),
+    floorKey: fieldFloorKey(s),
+  });
 }
 
-// ── Items ─────────────────────────────────────────────────────────────────────
-// Field items are the siege's supply line: a limited pool of uses that any card
-// in the column can spend. Spending one costs the turn, and the garrison answers
-// — exactly like using an item in a battle.
+/**
+ * Render the beat. Stage one (the formation battlefield) always refreshes; when
+ * the commander is on the close-up screen the Card Clash frame is rendered too.
+ * Both are best-effort — a null keeps whatever frame is already on the board.
+ */
+async function buildTurnFrames(
+  s: SiegeSession, side: 0 | 1, action: SiegeAction, result: SiegeTurnResult,
+): Promise<number> {
+  if (!s.siege.turnVisuals) return 0;
+  const proj = projectionFor(s, side, action, result);
+  const speed = animationSpeed(s);
+  let hold = 0;
+
+  const fieldInput = toFieldInput(s.battle, proj);
+  if (sceneAnimated(s)) {
+    const gif = await renderSiegeField(fieldInput, speed).catch(() => null);
+    if (gif) { s.turnFrame = gif.buffer; s.turnFrameIsGif = true; hold = gif.durationMs; }
+  }
+  if (!s.turnFrameIsGif || !sceneAnimated(s)) {
+    const png = await renderSiegeFieldStill(fieldInput).catch(() => null);
+    if (png) { s.turnFrame = png; s.turnFrameIsGif = false; }
+  }
+
+  if (s.inClash) {
+    const clashInput = toClashInput(s.battle, proj);
+    if (clashInput) {
+      if (sceneAnimated(s)) {
+        const gif = await renderCardClash(clashInput, speed).catch(() => null);
+        if (gif) { s.clashFrame = gif.buffer; s.clashFrameIsGif = true; hold = Math.max(hold, gif.durationMs); }
+      }
+      if (!s.clashFrameIsGif || !sceneAnimated(s)) {
+        const png = await renderCardClashStill(clashInput).catch(() => null);
+        if (png) { s.clashFrame = png; s.clashFrameIsGif = false; }
+      }
+    }
+  }
+  return hold;
+}
+
+/** A resting board render, used when a turn starts and nothing has happened yet. */
+async function refreshRestingFrame(s: SiegeSession): Promise<void> {
+  if (!s.siege.turnVisuals || s.headless) return;
+  const png = await renderSiegeFieldStill(restingFieldInput(s)).catch(() => null);
+  if (png) { s.turnFrame = png; s.turnFrameIsGif = false; }
+}
 
 async function handleItemOpen(interaction: ButtonInteraction, s: SiegeSession): Promise<void> {
   if (s.phase !== "assault") { await interaction.reply({ content: "The assault hasn't started.", ...EPHEMERAL }).catch(() => {}); return; }
   if (s.processing) { await interaction.reply({ content: "The exchange is resolving — hang on.", ...EPHEMERAL }).catch(() => {}); return; }
-  if (s.itemUsesLeft <= 0) { await interaction.reply({ content: "🎒 Your supplies are spent.", ...EPHEMERAL }).catch(() => {}); return; }
+  if (s.battle.teams[0].itemUsesLeft <= 0) { await interaction.reply({ content: "🎒 Your supplies are spent.", ...EPHEMERAL }).catch(() => {}); return; }
   const items = listBattleItems(s.guildId).slice(0, 25);
   if (items.length === 0) { await interaction.reply({ content: "No usable items are configured.", ...EPHEMERAL }).catch(() => {}); return; }
   const menu = new StringSelectMenuBuilder()
@@ -978,7 +1063,7 @@ async function handleItemOpen(interaction: ButtonInteraction, s: SiegeSession): 
       emoji: it.emoji || undefined, value: it.id,
     })));
   await interaction.reply({
-    content: `🎒 **Field supplies** — **${s.itemUsesLeft}** left. Support items reach any card in your column; offensive ones hit the rank in front of you.`,
+    content: `🎒 **Field supplies** — **${s.battle.teams[0].itemUsesLeft}** left. Support items reach any of your cards; offensive ones hit the enemy you've targeted.`,
     components: [new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(menu)], ...EPHEMERAL,
   }).catch(() => {});
 }
@@ -988,16 +1073,18 @@ async function handleItemSelect(interaction: StringSelectMenuInteraction, s: Sie
   if (!item) { await interaction.update({ content: "That item is gone.", components: [] }).catch(() => {}); return; }
   if (isOffensiveItem(item)) { await commitItem(interaction, s, item.id, "def"); return; }
 
+  // Support items reach any of the commander's own cards (heal can revive a
+  // fallen one). Each option carries the board SLOT so the engine targets it.
   const canRevive = item.effectType === "heal";
-  const opts = s.attackers
-    .map((c, i) => ({ c, i }))
-    .filter(({ c }) => canRevive || c.hp > 0)
-    .map(({ c, i }) => ({
-      label: `${i === s.ai ? "★ " : ""}${c.cardName}`.slice(0, 100),
-      description: (c.hp <= 0 ? "down — revive" : `${c.hp}/${c.stats.maxHealth} HP`).slice(0, 100),
-      value: String(i),
+  const team = s.battle.teams[0];
+  const opts = team.slots
+    .filter(sl => sl.unit && (canRevive || sl.unit.hp > 0))
+    .map(sl => ({
+      label: `${sl.index === s.actorSlot ? "★ " : ""}${sl.unit!.cardName}`.slice(0, 100),
+      description: (sl.unit!.hp <= 0 ? "down — revive" : `${sl.unit!.hp}/${sl.unit!.stats.maxHealth} HP`).slice(0, 100),
+      value: String(sl.index),
     }));
-  if (opts.length === 0) { await interaction.update({ content: "No one in the column can take that.", components: [] }).catch(() => {}); return; }
+  if (opts.length === 0) { await interaction.update({ content: "No one in your formation can take that.", components: [] }).catch(() => {}); return; }
   const menu = new StringSelectMenuBuilder()
     .setCustomId(`hq-hub:ls:itemtgt:${s.id}:${item.id}`)
     .setPlaceholder(`Who gets the ${item.name}?`.slice(0, 100))
@@ -1019,33 +1106,21 @@ async function commitItem(
   s: SiegeSession, itemId: string, targetKey: string,
 ): Promise<void> {
   const item = getBattleItem(itemId, s.guildId);
-  const actor = active(s, 0);
+  const actor = s.battle.teams[0].slots[s.actorSlot]?.unit;
   if (!item || !actor) { await interaction.update({ content: "That item can't be used now.", components: [] }).catch(() => {}); return; }
-  if (s.processing || s.inputPending || s.itemUsesLeft <= 0 || s.phase !== "assault" || s.currentSide !== 0) {
+  if (!commanderCanAct(s) || s.battle.teams[0].itemUsesLeft <= 0) {
     await interaction.update({ content: "You can't use an item right now.", components: [] }).catch(() => {});
     return;
   }
-  const target = targetKey === "def" ? active(s, 1) : s.attackers[Number(targetKey)];
-  if (!target) { await interaction.update({ content: "That target is gone.", components: [] }).catch(() => {}); return; }
 
-  // Claim the turn synchronously so a second interaction can't also spend it;
-  // handOver releases it (mirrors applyMove). On any throw we release here.
-  s.processing = true;
-  try {
-    const outcome = applyItemUse(item, actor, target);
-    s.itemUsesLeft--;
-    pushLog(s, outcome.events.map(e => e.text));
-    await interaction.update({ content: `${item.emoji} Called up **${item.name}**.`, components: [] }).catch(() => {});
-
-    // A field item spends the turn; the garrison answers.
-    if (target.hp <= 0 && targetKey === "def") {
-      if (await breakRank(s, 1)) { await finish(s); return; }
-    }
-    await handOver(s, 0);
-  } catch (err) {
-    s.processing = false;
-    logger.error({ err, siege: s.id }, "siege item use failed");
-  }
+  await interaction.update({ content: `${item.emoji} Called up **${item.name}**.`, components: [] }).catch(() => {});
+  // Items are a normal action: the engine validates the target, spends the use
+  // and hands the turn over, exactly like a move or a Siege Battle Card.
+  await applySiegeAction(s, {
+    kind: "item", actorSlot: s.actorSlot, itemId,
+    targetSide: targetKey === "def" ? 1 : 0,
+    targetSlot: targetKey === "def" ? (s.targetSlot ?? 0) : Number(targetKey),
+  });
 }
 
 // ── Read-only reference (mirrors /battle's Moves popup) ──────────────────────
@@ -1080,23 +1155,251 @@ async function handleMovesQuickView(interaction: ButtonInteraction, s: SiegeSess
   await interaction.reply({ embeds: [embed], ...EPHEMERAL }).catch(() => {});
 }
 
+// Offensive moves let the commander pick WHICH enemy card to strike ("this card
+// attacks this card"). A charged Ultimate against 2+ ranks is the team wipe —
+// the picked card is the FOCUS, the rest take splash.
+function isTargetedMove(move: MoveType): boolean {
+  return move === "attack" || move === "special" || move === "ultimate";
+}
+
+/**
+ * Stage one → stage two. The commander presses a move; if more than one enemy
+ * card is standing they pick a target first, then the action resolves and the
+ * Card Clash plays out.
+ */
 async function handleMove(interaction: ButtonInteraction, s: SiegeSession, move: MoveType): Promise<void> {
-  if (s.phase !== "assault") { await interaction.deferUpdate().catch(() => {}); return; }
-  // Reject if a turn is resolving (processing) OR another click already claimed
-  // this turn (inputPending) OR it isn't the commander's turn. inputPending is
-  // set SYNCHRONOUSLY below, before the awaited ack, so a mash of clicks can't
-  // race multiple moves through this gate.
-  if (s.processing || s.inputPending || s.currentSide !== 0) { await interaction.deferUpdate().catch(() => {}); return; }
+  if (!commanderCanAct(s)) {
+    await interaction.reply({ content: "It isn't your turn.", ...EPHEMERAL }).catch(() => {});
+    return;
+  }
+  const foes = s.battle.teams[1];
+  const living = livingSlots(foes);
+
+  if (isTargetedMove(move) && living.length > 1) {
+    const isUlt = move === "ultimate";
+    const menu = new StringSelectMenuBuilder()
+      .setCustomId(`hq-hub:ls:tgt:${s.id}:${move}`)
+      .setPlaceholder(isUlt ? "Focus the TEAM ULTIMATE on…" : "Strike which enemy card?")
+      .addOptions(living.map(sl => ({
+        label: `${sl.index === s.targetSlot ? "▶ " : ""}${sl.unit!.cardName}`.slice(0, 100),
+        description: `${Math.max(0, sl.unit!.hp)}/${sl.unit!.stats.maxHealth} HP`.slice(0, 100),
+        value: String(sl.index),
+      })));
+    await interaction.reply({
+      content: isUlt
+        ? "💀 **Team Ultimate** — your whole line blasts the enemy. Pick the card to **wipe** (the rest take splash):"
+        : "🎯 **Choose your target** — strike any enemy card:",
+      components: [new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(menu)], ...EPHEMERAL,
+    }).catch(() => {});
+    return;
+  }
+
   s.inputPending = true;
   await interaction.deferUpdate().catch(() => {});
-  // applyMove synchronously sets s.processing before its first await, so by the
-  // time this call returns its promise the turn is claimed. Drop the pre-ack
-  // latch immediately — holding it across the whole turn chain (which recurses
-  // through the garrison's answer back to the next commander turn) would leave
-  // the buttons greyed on the player's own turn. `processing` guards the rest.
-  const p = applyMove(s, 0, move);
+  const target = living[0]?.index ?? s.targetSlot ?? undefined;
+  s.targetSlot = target ?? null;
+  const p = applySiegeAction(s, { kind: "move", actorSlot: s.actorSlot, move, targetSlot: target });
   s.inputPending = false;
   await p;
+}
+
+/** The commander picked which enemy card to hit → resolve the move on it. */
+async function handleMoveTarget(interaction: StringSelectMenuInteraction, s: SiegeSession, move: MoveType): Promise<void> {
+  if (!commanderCanAct(s)) {
+    await interaction.update({ content: "That moment has passed.", components: [] }).catch(() => {});
+    return;
+  }
+  const targetSlot = Number(interaction.values[0]);
+  const target = s.battle.teams[1].slots[targetSlot]?.unit;
+  if (!target || target.hp <= 0) {
+    await interaction.update({ content: "That card is already down — pick another.", components: [] }).catch(() => {});
+    return;
+  }
+  s.targetSlot = targetSlot;
+  await interaction.update({ content: `🎯 Locked on **${target.cardName}**.`, components: [] }).catch(() => {});
+  await applySiegeAction(s, { kind: "move", actorSlot: s.actorSlot, move, targetSlot });
+}
+
+/** Choose WHICH of the commander's own four cards acts this turn. */
+async function handleFighterOpen(interaction: ButtonInteraction, s: SiegeSession): Promise<void> {
+  if (!commanderCanAct(s)) {
+    await interaction.reply({ content: "It isn't your turn.", ...EPHEMERAL }).catch(() => {});
+    return;
+  }
+  const team = s.battle.teams[0];
+  const menu = new StringSelectMenuBuilder()
+    .setCustomId(`hq-hub:ls:fightersel:${s.id}`)
+    .setPlaceholder("Which of your cards attacks?")
+    .addOptions(livingSlots(team).map(sl => ({
+      label: `${sl.index === s.actorSlot ? "▶ " : ""}${sl.unit!.cardName}`.slice(0, 100),
+      description: `${Math.max(0, sl.unit!.hp)}/${sl.unit!.stats.maxHealth} HP · ${sl.unit!.energy} energy`.slice(0, 100),
+      value: String(sl.index),
+    })));
+  await interaction.reply({
+    content: "⚔️ **Choose your fighter** — this card takes the turn:",
+    components: [new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(menu)], ...EPHEMERAL,
+  }).catch(() => {});
+}
+
+async function handleFighterSelect(interaction: StringSelectMenuInteraction, s: SiegeSession): Promise<void> {
+  const slot = Number(interaction.values[0]);
+  const unit = s.battle.teams[0].slots[slot]?.unit;
+  if (!unit || unit.hp <= 0) {
+    await interaction.update({ content: "That card can't fight.", components: [] }).catch(() => {});
+    return;
+  }
+  s.actorSlot = slot;
+  await interaction.update({ content: `⚔️ **${unit.cardName}** steps up.`, components: [] }).catch(() => {});
+  await render(s);
+}
+
+/** Open the hand of Siege Battle Cards. */
+async function handleCardsOpen(interaction: ButtonInteraction, s: SiegeSession): Promise<void> {
+  if (!commanderCanAct(s)) {
+    await interaction.reply({ content: "It isn't your turn.", ...EPHEMERAL }).catch(() => {});
+    return;
+  }
+  const team = s.battle.teams[0];
+  if (team.hand.length === 0) {
+    await interaction.reply({ content: "🃏 Your hand is empty.", ...EPHEMERAL }).catch(() => {});
+    return;
+  }
+  // Playability comes from the resolver's own gate, so a card can never look
+  // playable here and be refused on click.
+  const options = team.hand.map((card, i) => {
+    const check = checkAction(s.battle, { kind: "siege_card", actorSlot: s.actorSlot, cardId: card.id });
+    return {
+      label: `${check.ok ? "" : "🚫 "}${card.name} (${card.energyCost}⚡)`.slice(0, 100),
+      description: (check.ok ? card.description : check.reason).slice(0, 100),
+      value: `${i}:${card.id}`,
+    };
+  });
+  const menu = new StringSelectMenuBuilder()
+    .setCustomId(`hq-hub:ls:cardsel:${s.id}`)
+    .setPlaceholder("Play a Siege Battle Card…")
+    .addOptions(options);
+  await interaction.reply({
+    content: "🃏 **Your hand** — play a combat action:",
+    components: [new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(menu)], ...EPHEMERAL,
+  }).catch(() => {});
+}
+
+async function handleCardSelect(interaction: StringSelectMenuInteraction, s: SiegeSession): Promise<void> {
+  if (!commanderCanAct(s)) {
+    await interaction.update({ content: "That moment has passed.", components: [] }).catch(() => {});
+    return;
+  }
+  const cardId = (interaction.values[0] ?? "").split(":")[1] ?? "";
+  const card = getSiegeCard(cardId);
+  if (!card) {
+    await interaction.update({ content: "Unknown card.", components: [] }).catch(() => {});
+    return;
+  }
+  // A card that needs a target opens the target picker; everything else fires.
+  const foes = s.battle.teams[1];
+  const living = livingSlots(foes);
+  if (card.target === "enemy_unit" && living.length > 1) {
+    const menu = new StringSelectMenuBuilder()
+      .setCustomId(`hq-hub:ls:cardtgt:${s.id}:${cardId}`)
+      .setPlaceholder(`${card.name} — strike which card?`)
+      .addOptions(living.map(sl => ({
+        label: sl.unit!.cardName.slice(0, 100),
+        description: `${Math.max(0, sl.unit!.hp)}/${sl.unit!.stats.maxHealth} HP`.slice(0, 100),
+        value: String(sl.index),
+      })));
+    await interaction.update({
+      content: `${card.emoji} **${card.name}** — choose a target:`,
+      components: [new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(menu)],
+    }).catch(() => {});
+    return;
+  }
+  const allies = livingSlots(s.battle.teams[0]);
+  if (card.target === "ally_unit" && allies.length > 1) {
+    const menu = new StringSelectMenuBuilder()
+      .setCustomId(`hq-hub:ls:cardtgt:${s.id}:${cardId}`)
+      .setPlaceholder(`${card.name} — on which of your cards?`)
+      .addOptions(allies.map(sl => ({
+        label: sl.unit!.cardName.slice(0, 100),
+        description: `${Math.max(0, sl.unit!.hp)}/${sl.unit!.stats.maxHealth} HP`.slice(0, 100),
+        value: String(sl.index),
+      })));
+    await interaction.update({
+      content: `${card.emoji} **${card.name}** — choose an ally:`,
+      components: [new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(menu)],
+    }).catch(() => {});
+    return;
+  }
+
+  await interaction.update({ content: `${card.emoji} Playing **${card.name}**.`, components: [] }).catch(() => {});
+  await applySiegeAction(s, {
+    kind: "siege_card", actorSlot: s.actorSlot, cardId,
+    targetSlot: card.target === "ally_unit" ? allies[0]?.index : living[0]?.index,
+  });
+}
+
+async function handleCardTarget(interaction: StringSelectMenuInteraction, s: SiegeSession, cardId: string): Promise<void> {
+  if (!commanderCanAct(s)) {
+    await interaction.update({ content: "That moment has passed.", components: [] }).catch(() => {});
+    return;
+  }
+  const card = getSiegeCard(cardId);
+  const targetSlot = Number(interaction.values[0]);
+  await interaction.update({
+    content: `${card?.emoji ?? "🃏"} Playing **${card?.name ?? cardId}**.`, components: [],
+  }).catch(() => {});
+  await applySiegeAction(s, { kind: "siege_card", actorSlot: s.actorSlot, cardId, targetSlot });
+}
+
+/** Break through to the enemy commander once nothing is left defending them. */
+async function handleDirectLp(interaction: ButtonInteraction, s: SiegeSession): Promise<void> {
+  if (!commanderCanAct(s)) {
+    await interaction.reply({ content: "It isn't your turn.", ...EPHEMERAL }).catch(() => {});
+    return;
+  }
+  const action: SiegeAction = { kind: "direct_lp", actorSlot: s.actorSlot };
+  const check = checkAction(s.battle, action);
+  if (!check.ok) {
+    await interaction.reply({ content: `🛡️ ${check.reason}`, ...EPHEMERAL }).catch(() => {});
+    return;
+  }
+  s.inputPending = true;
+  await interaction.deferUpdate().catch(() => {});
+  const p = applySiegeAction(s, action);
+  s.inputPending = false;
+  await p;
+}
+
+/** Toggle between the formation battlefield and the close-up Card Clash. */
+async function handleClashToggle(interaction: ButtonInteraction, s: SiegeSession): Promise<void> {
+  s.inClash = !s.inClash;
+  await interaction.deferUpdate().catch(() => {});
+  if (s.inClash && !s.clashFrame) {
+    const input = toClashInput(s.battle, {
+      actingSide: s.battle.activeSide,
+      actorSlot: s.actorSlot,
+      targetSlot: s.targetSlot ?? undefined,
+      moveName: "Choose your action",
+      damage: 0, isHit: false, isCrit: false, ko: false,
+      accent: s.accent,
+      arenaName: s.targetName,
+      attackerCommanderRole: "Commander",
+      defenderCommanderRole: s.holderName || "Garrison",
+    });
+    if (input) {
+      const png = await renderCardClashStill(input).catch(() => null);
+      if (png) { s.clashFrame = png; s.clashFrameIsGif = false; }
+    }
+  }
+  await render(s);
+}
+
+/** Only the commander, on their own turn, with the board idle. */
+function commanderCanAct(s: SiegeSession): boolean {
+  return s.phase === "assault"
+    && s.battle.phase !== "ended"
+    && s.battle.activeSide === 0
+    && !s.processing
+    && !s.inputPending;
 }
 
 async function handleConcede(interaction: ButtonInteraction, s: SiegeSession): Promise<void> {
@@ -1114,7 +1417,9 @@ async function handleConcede(interaction: ButtonInteraction, s: SiegeSession): P
     await release(s);
     return;
   }
-  s.ai = s.attackers.length; // force a loss
+  s.battle.teams[0].lp = 0;      // a retreat concedes the commander's life points
+  s.battle.winner = 1;
+  s.battle.phase = "ended";
   pushLog(s, ["🏳️ You sound the retreat."]);
   await finish(s);
 }
@@ -1142,7 +1447,10 @@ function pushLog(s: SiegeSession, lines: (string | undefined)[]): void {
 }
 
 function active(s: SiegeSession, side: 0 | 1): Combatant | undefined {
-  return side === 0 ? s.attackers[s.ai] : s.defenders[s.di];
+  // The front living card on that side of the live board (the muster board and
+  // the castle scene ask "who is fighting now?").
+  const team = s.battle.teams[side];
+  return livingSlots(team)[0]?.unit ?? team.slots.find(sl => sl.unit)?.unit ?? undefined;
 }
 function foeSide(side: 0 | 1): 0 | 1 { return side === 0 ? 1 : 0; }
 
@@ -1264,7 +1572,7 @@ function buildTurnStripEmbed(s: SiegeSession, opts?: { currentMove?: string; tur
   return new EmbedBuilder()
     .setColor(s.accent)
     .setDescription(`📜 ${latestSiegeLines(s)}\n${WHITE_LINE}\n**Turn ${s.turnNumber}** · ${turnCall}`)
-    .setFooter({ text: `🎒 ${s.itemUsesLeft} field use${s.itemUsesLeft === 1 ? "" : "s"} left · a KO breaks a rank, not the siege` });
+    .setFooter({ text: `🎒 ${s.battle.teams[0].itemUsesLeft} field use${s.battle.teams[0].itemUsesLeft === 1 ? "" : "s"} left · a KO breaks a rank, not the siege` });
 }
 
 // BOTTOM embed: the battlefield itself — the animated Clash arena. The image is
@@ -1274,41 +1582,69 @@ function buildTurnStripEmbed(s: SiegeSession, opts?: { currentMove?: string; tur
 // froze the siege right after the coin toss. A title of the two active fighters
 // keeps it valid whether or not a frame is attached, and reads as a scoreboard.
 function buildBattleEmbed(s: SiegeSession): EmbedBuilder {
-  const atk = active(s, 0);
-  const def = active(s, 1);
+  const t0 = s.battle.teams[0], t1 = s.battle.teams[1];
+  const atk = active(s, 0), def = active(s, 1);
   const title = atk && def
     ? `⚔️ ${atk.cardName}  ⚔  ${def.cardName} 🛡️`
     : "⚔️ The clash at the gate";
-  return new EmbedBuilder().setColor(s.accent).setTitle(title);
+  const standing = (t: typeof t0) => livingSlots(t).length;
+  const line = (name: string, t: typeof t0, emoji: string) =>
+    `${emoji} **${name}** — LP **${t.lp.toLocaleString()}**/${t.lpMax.toLocaleString()} · ${standing(t)}/4 standing`;
+  return new EmbedBuilder().setColor(s.accent).setTitle(title)
+    .setDescription(`${line(t0.name, t0, "🔷")}\n${line(t1.name, t1, "🔻")}`);
 }
 
 function buildControls(s: SiegeSession): ActionRowBuilder<ButtonBuilder>[] {
-  const actor = active(s, 0);
-  if (!actor || s.currentSide !== 0) return [];
-  // While a turn is resolving (or an input is already claimed), grey out every
-  // control so the board visibly locks the instant the commander acts — no more
-  // clickable-looking buttons during the render/answer, which is what let a
-  // player mash "attack" and feel like they were getting extra hits.
+  if (s.battle.activeSide !== 0 || s.battle.phase === "ended") return [];
+  const team = s.battle.teams[0];
+  const actor = team.slots[s.actorSlot]?.unit;
+  if (!actor || actor.hp <= 0) return [];
+
+  // While a turn is resolving (or an input is already claimed) every control is
+  // greyed out, so the board visibly locks the instant the commander acts.
   const busy = s.processing || s.inputPending;
   const avail = availableMoves(actor, s.settings);
   const mk = (move: MoveType, label: string, emoji: string, style: ButtonStyle) =>
     new ButtonBuilder().setCustomId(`hq-hub:ls:move:${s.id}:${move}`).setLabel(label).setEmoji(emoji)
       .setStyle(style).setDisabled(busy || !avail[move]);
+
   const row1 = new ActionRowBuilder<ButtonBuilder>().addComponents(
     mk("attack", "Attack", "⚔️", ButtonStyle.Primary),
     mk("special", "Special", "🔥", ButtonStyle.Danger),
+    mk("ultimate", "Ultimate", "💀", ButtonStyle.Danger),
     mk("defend", "Defend", "🛡️", ButtonStyle.Secondary),
     mk("charge", "Charge", "⚡", ButtonStyle.Secondary),
-    mk("ultimate", "Ultimate", "💀", ButtonStyle.Danger),
   );
+
+  // Stage-one selection + the hand. The LP button only appears once the enemy
+  // formation genuinely cannot protect them — the engine decides that, not the UI.
+  const canBreakThrough = checkAction(s.battle, { kind: "direct_lp", actorSlot: s.actorSlot }).ok;
+  const playable = team.hand.filter(c =>
+    checkAction(s.battle, { kind: "siege_card", actorSlot: s.actorSlot, cardId: c.id }).ok).length;
+
   const row2 = new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder().setCustomId(`hq-hub:ls:fighter:${s.id}`)
+      .setLabel(actor.cardName.slice(0, 24)).setEmoji("🎖️")
+      .setStyle(ButtonStyle.Secondary).setDisabled(busy || livingSlots(team).length < 2),
+    new ButtonBuilder().setCustomId(`hq-hub:ls:cards:${s.id}`)
+      .setLabel(`Cards (${playable}/${team.hand.length})`).setEmoji("🃏")
+      .setStyle(ButtonStyle.Primary).setDisabled(busy || team.hand.length === 0),
     new ButtonBuilder().setCustomId(`hq-hub:ls:item:${s.id}`)
-      .setLabel(`Supplies (${s.itemUsesLeft})`).setEmoji("🎒")
-      .setStyle(ButtonStyle.Success).setDisabled(busy || s.itemUsesLeft <= 0),
+      .setLabel(`Supplies (${team.itemUsesLeft})`).setEmoji("🎒")
+      .setStyle(ButtonStyle.Success).setDisabled(busy || team.itemUsesLeft <= 0),
+    new ButtonBuilder().setCustomId(`hq-hub:ls:lp:${s.id}`)
+      .setLabel("Break Through").setEmoji("🎯")
+      .setStyle(ButtonStyle.Danger).setDisabled(busy || !canBreakThrough),
+    new ButtonBuilder().setCustomId(`hq-hub:ls:clash:${s.id}`)
+      .setLabel(s.inClash ? "Battlefield" : "Card Clash").setEmoji(s.inClash ? "🗺️" : "🎴")
+      .setStyle(ButtonStyle.Secondary).setDisabled(busy),
+  );
+
+  const row3 = new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder().setCustomId(`hq-hub:ls:moves:${s.id}`).setLabel("Moves").setEmoji("📖").setStyle(ButtonStyle.Secondary),
     new ButtonBuilder().setCustomId(`hq-hub:ls:concede:${s.id}`).setLabel("Retreat").setEmoji("🏳️").setStyle(ButtonStyle.Secondary),
   );
-  return [row1, row2];
+  return [row1, row2, row3];
 }
 
 async function render(s: SiegeSession, opts?: { currentMove?: string; turnEndsAt?: number }): Promise<void> {
@@ -1322,9 +1658,14 @@ async function render(s: SiegeSession, opts?: { currentMove?: string; turnEndsAt
   // boards keep the last strike visible like /battle's resting VS image.
   // Discord drops attachments on edit, so the buffer is re-sent every render —
   // the expensive canvas work is what we avoid repeating.
-  const frame = s.turnFrame;
+  // Stage two (Card Clash) shows the close-up duel; stage one shows the
+  // formation battlefield. Whichever is active is the image on the battle embed.
+  const showClash = s.inClash && !!s.clashFrame;
+  const frame = showClash ? s.clashFrame : s.turnFrame;
   if (frame) {
-    const name = s.turnFrameIsGif ? SIEGE_TURN_GIF : SIEGE_TURN_PNG;
+    const name = showClash
+      ? (s.clashFrameIsGif ? SIEGE_CLASH_GIF : SIEGE_CLASH_PNG)
+      : (s.turnFrameIsGif ? SIEGE_TURN_GIF : SIEGE_TURN_PNG);
     battleEmbed.setImage(`attachment://${name}`);
     files.push(new AttachmentBuilder(frame, { name }));
   }
@@ -1349,14 +1690,19 @@ async function finish(s: SiegeSession): Promise<void> {
   s.processing = true;
   clearTurnTimer(s);
 
-  const captured = s.di >= s.defenders.length && s.ai < s.attackers.length;
+  // The engine decides the winner by life points. A siege is "captured" when the
+  // commander broke the garrison's LP (winner === 0); the garrison holds when it
+  // broke the commander's (winner === 1) or the turn cap fell their way.
+  const captured = s.battle.winner === 0;
   const pct = captured ? 100 : destructionPct(s);
-  const stars = starsFor(pct, captured, s.ai);
+  const attackerLost = destroyedCount(s, 0);
+  const defenderLost = destroyedCount(s, 1);
+  const stars = starsFor(pct, captured, attackerLost);
   const outcome: SiegeOutcome = {
     attackerWon: captured,
     turns: s.turnNumber,
-    attackerCardsLost: Math.min(s.ai, s.attackers.length),
-    defenderCardsLost: Math.min(s.di, s.defenders.length),
+    attackerCardsLost: attackerLost,
+    defenderCardsLost: defenderLost,
     attackerPower: s.attackerPower,
     defenderPower: s.defenderPower,
     destructionPct: Math.round(pct),

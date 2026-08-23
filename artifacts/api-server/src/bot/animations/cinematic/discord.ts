@@ -109,7 +109,7 @@ export function chatMessage(opts: {
 
 // A "Bot is typing…" indicator with three bouncing dots. Shown between at..until.
 export function typingIndicator(opts: { author?: string; y: number; at: number; until: number }): CinematicLayer {
-  const author = opts.author ?? "DN Bot";
+  const author = opts.author ?? "Dex N Cards";
   return ({ ctx, t }: CinematicFrame) => {
     if (t < opts.at || t > opts.until) return;
     const y = opts.y;

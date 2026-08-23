@@ -1,5 +1,6 @@
 import type { Message, GuildMember } from "discord.js";
 import type { GuildSettings } from "@workspace/db";
+import { BRAND_NAME } from "../help-banners.js";
 import {
   isAdmin, addAdmin, removeAdmin, listAdmins,
   getOrCreateGuildSettings, updateGuildSettings,
@@ -70,7 +71,7 @@ export async function handlePrefixCommand(msg: Message, prefix: string): Promise
   // ── Public ─────────────────────────────────────────────────────────────────
   if (cmd === "help") {
     await msg.reply(
-      "🃏 **DN Cards Help**\n" +
+      `🃏 **${BRAND_NAME} Help**\n` +
       "• Everyone → run `/help` for the full **interactive guide** — pick any topic from the dropdown.\n" +
       `• Admins → the guide has an **Admin** page, or run \`${prefix}setup\` to open the visual setup panel.\n` +
       `• Prefix commands use \`${prefix}\` (change with \`${prefix}setprefix\`).`,
@@ -278,7 +279,7 @@ export async function handlePrefixCommand(msg: Message, prefix: string): Promise
     ].join(" · ");
 
     await msg.reply(
-      "**⚙️ DN Cards — Server Settings**\n" +
+      `**⚙️ ${BRAND_NAME} — Server Settings**\n` +
       `📢 Spawn Channel: ${s.spawnChannelId ? `<#${s.spawnChannelId}>` : "❌ Not set"}\n` +
       `🔄 Auto-Spawning: ${s.spawnEnabled ? "✅ Enabled" : "⏸️ Disabled"}\n` +
       `⏱️ Interval: ${s.useRandomInterval ? `Random ${formatTime(s.spawnIntervalMin ?? 0)}–${formatTime(s.spawnIntervalMax ?? 0)}` : formatTime(s.spawnIntervalSeconds)}\n` +
@@ -310,7 +311,7 @@ export async function handlePrefixCommand(msg: Message, prefix: string): Promise
     const userId = msg.mentions.users.first()?.id ?? args[0]?.replace(/[<@!>]/g, "");
     if (!userId) { await msg.reply("❌ Mention a user: `!addadmin @User`"); return; }
     await addAdmin(guildId, userId, msg.author.id);
-    await msg.reply(`✅ <@${userId}> added as a DN Cards admin.`);
+    await msg.reply(`✅ <@${userId}> added as an admin.`);
     return;
   }
 
@@ -331,7 +332,7 @@ export async function handlePrefixCommand(msg: Message, prefix: string): Promise
       return;
     }
     const lines = admins.map(a => `<@${a.userId}> — added by <@${a.addedBy}>`);
-    await msg.reply(`**DN Cards Admins:**\n${lines.join("\n")}`);
+    await msg.reply(`**${BRAND_NAME} Admins:**\n${lines.join("\n")}`);
     return;
   }
 

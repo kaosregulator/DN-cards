@@ -161,7 +161,7 @@ export async function handleEchoCommand(interaction: ChatInputCommandInteraction
         `**Servers:** ${guildCount}\n` +
         `**Uptime:** ${uptime}\n` +
         "**Commands:** /admin_secret, /whisper, /echo\n" +
-        "**Storage:** Encrypted payloads in the DN Cards database (per-guild)",
+        "**Storage:** Encrypted payloads in the Dex N Cards database (per-guild)",
       ...EPHEMERAL,
     });
     return;
