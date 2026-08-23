@@ -165,7 +165,9 @@ function buildLegacyCommands() {
     cmd("decline", "Decline or cancel a trade offer", s => s
       .addIntegerOption(o => o.setName("id").setDescription("Trade ID from /trades").setRequired(true).setMinValue(1))),
 
-    cmd("welcome", "Welcome — game intro, quick start & commands", s => s),
+    // Admin-only: /welcome posts a public, server-wide welcome message, so it is
+    // hidden from non-admins in the slash menu (the bot also enforces this server-side).
+    adminCmd("welcome", "Post the server welcome message (admin)", s => s),
     cmd("battles_welcome", "Welcome guide to DN Cards battles", s => s),
     cmd("funfact", "A random Military Tycoon fun fact from the wiki", s => s),
 
