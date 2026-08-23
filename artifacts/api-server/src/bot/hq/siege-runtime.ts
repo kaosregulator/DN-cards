@@ -1,29 +1,18 @@
 // ─────────────────────────────────────────────────────────────────────────────
-// HQ — the turn-for-turn siege.
+// HQ — the turn-for-turn Siege Battle runtime.
 //
-// A siege is now a real battle, not a summary. It runs the SAME combat engine,
-// the same move set, the same per-turn attack frames and the same timers as
-// `/battle` — so anyone who has fought a battle already knows how to storm a
-// castle — with a Clash-style siege layer on top:
+// This is the SINGLE player-facing combat experience for HQ / base / outpost
+// attacks. HQ itself stays world/base/navigation; combat maths stay in the
+// shared battle engine; this module owns the Discord surface around SiegeBattle
+// state:
 //
-//   • Both sides take real turns. You pick a move, the garrison answers, and the
-//     board re-renders between each — attack for attack.
-//   • A knockout does NOT end the fight. It breaks one rank: the next defender
-//     steps up (or your next card advances), and the castle takes visible damage.
-//   • Progress is DESTRUCTION, not hit points. Wrecking the garrison fills a
-//     destruction meter and earns stars — ★ at 50%, ★★ for taking the base,
-//     ★★★ for taking it without losing a single card.
+//   HQ target selection → muster → Siege Battle (draw → main → resolve → …)
+//                                 → result → HQ capture / reward callbacks
 //
-// The message is two embeds, matching that split:
-//   TOP    — the castle itself: the live scene, the destruction scoreboard and
-//            the running siege log. The picture IS the log.
-//   BOTTOM — the battle proper: both active cards' HP/energy/ultimate, whose
-//            turn it is, the turn clock, and the per-turn attack frame.
+// Card Clash is an INTERNAL cinematic played after certain resolved actions —
+// never a separate mode or navigation button.
 //
-// This module owns the session, the board and the turn loop. It knows nothing
-// about capture/tribute/rewards: the caller passes already-built combatants and
-// an `applyOutcome` callback that commits the result and returns the result
-// screen, so a player base and an AI territory share one engine.
+// Capture / tribute / shields live in the caller's `applyOutcome` callback.
 // ─────────────────────────────────────────────────────────────────────────────
 
 import {
@@ -36,7 +25,7 @@ import type { BattleSettings } from "@workspace/db";
 import type { Combatant, MoveType, AiDifficulty } from "../battle/types.js";
 import { availableMoves } from "../battle/combat-engine.js";
 import { powerRating } from "../battle/stat-engine.js";
-import { bar, WHITE_LINE } from "../battle/embeds.js";
+import { WHITE_LINE } from "../battle/embeds.js";
 import { getMoveset } from "../battle/movesets.js";
 import {
   listBattleItems, getBattleItem, loadGuildBattleItems, applyItemUse, isOffensiveItem,
@@ -145,6 +134,13 @@ export interface SiegeRuntimeConfig {
   champion: HqRenderDefender | null;
   /** Commit the result (capture / reward / log) and return the result screen. */
   applyOutcome: (outcome: SiegeOutcome) => Promise<SiegeResultView>;
+  /**
+   * Skip the muster board and resolve the fight with the Siege AI on both sides.
+   * Used when a guild's presentation mode is auto (cinematic / classic / …) so
+   * EVERY attack still runs the NEW Siege Battle engine — never the legacy
+   * gauntlet / power resolver as a parallel combat system.
+   */
+  autoResolve?: boolean;
 }
 
 type Phase = "muster" | "assault" | "ended";
@@ -163,7 +159,10 @@ interface SiegeSession extends SiegeRuntimeConfig {
   actorSlot: number;
   /** Which enemy square that fighter is aimed at (stage one). */
   targetSlot: number | null;
-  /** True while the commander is on the close-up Card Clash screen (stage two). */
+  /**
+   * True while the Card Clash cinematic is on screen after a resolved action.
+   * Never a player-toggled "mode" — set internally for the beat, then cleared.
+   */
   inClash: boolean;
   /** The Card Clash frame currently shown, kept between renders like the field. */
   clashFrame: Buffer | null;
@@ -364,7 +363,7 @@ export async function startSiege(
     ai: 0, di: 0, turnNumber: 1, currentSide: 0,
     coinCall: null,
     columnSize: config.attackers.length,
-    headless: false,
+    headless: !!config.autoResolve,
     log: [],
     processing: false,
     inputPending: false,
@@ -379,6 +378,45 @@ export async function startSiege(
   };
   sessions.set(session.id, session);
   session.ttlTimer = setTimeout(() => { void abandon(session); }, MAX_SIEGE_MS);
+
+  // Auto-resolve path: no muster board — run the NEW Siege Battle headlessly and
+  // surface only the result (optionally after a brief "deployed" notice).
+  if (config.autoResolve) {
+    const channel = interaction.channel;
+    if (channel?.isSendable()) {
+      session.message = await channel.send({
+        embeds: [new EmbedBuilder().setColor(session.accent)
+          .setTitle(`🏰 Siege Battle — ${session.targetName}`)
+          .setDescription(`**${session.attackerName}** storms **${session.targetName}**. Resolving the Siege Battle…`)],
+        components: [],
+      }).then((m) => m as Message).catch(() => undefined);
+      if (session.message) {
+        await interaction.editReply({
+          embeds: [new EmbedBuilder().setColor(session.accent)
+            .setTitle(`🏰 Assault on ${session.targetName}`)
+            .setDescription("Your Siege Battle is resolving in this channel. ⬇️")],
+          components: [], files: [],
+        }).catch(() => {});
+      }
+    }
+    if (!session.message) {
+      session.message = await interaction.editReply({
+        embeds: [new EmbedBuilder().setColor(session.accent)
+          .setTitle(`🏰 Siege Battle — ${session.targetName}`)
+          .setDescription("Resolving…")],
+        components: [], files: [],
+      }).then((m) => m as Message).catch(() => undefined);
+    }
+    if (!session.message) { await release(session); return; }
+    session.phase = "assault";
+    const call = session.coinCall ?? (Math.random() < 0.5 ? "heads" : "tails");
+    const flip: "heads" | "tails" = Math.random() < 0.5 ? "heads" : "tails";
+    session.currentSide = call === flip ? 0 : 1;
+    session.battle.activeSide = session.currentSide;
+    pushLog(session, [`⚔️ **${session.attackerName}** lays siege to **${session.targetName}**.`]);
+    await startTurn(session);
+    return;
+  }
 
   // The siege board MUST live on a real channel message (like /battle and
   // /raid), NOT the ephemeral /hq hub reply it was launched from.
@@ -402,12 +440,12 @@ export async function startSiege(
         return undefined;
       });
     // Retire the ephemeral hub board so the commander isn't left on a dead
-    // mode-picker; the live siege is the channel message from here on.
+    // briefing; the live Siege Battle is the channel message from here on.
     if (session.message) {
       await interaction.editReply({
         embeds: [new EmbedBuilder().setColor(session.accent)
           .setTitle(`🏰 Assault on ${session.targetName}`)
-          .setDescription("Your siege is live in this channel. ⬇️")],
+          .setDescription("Your Siege Battle is live in this channel. ⬇️")],
         components: [], files: [],
       }).catch(() => {});
     }
@@ -473,7 +511,12 @@ export async function handleSiegeComponent(
     case "cardsel": return handleCardSelect(interaction as StringSelectMenuInteraction, session);
     case "cardtgt": return handleCardTarget(interaction as StringSelectMenuInteraction, session, parts[4] ?? "");
     case "lp": return handleDirectLp(interaction as ButtonInteraction, session);
-    case "clash": return handleClashToggle(interaction as ButtonInteraction, session);
+    case "clash":
+      // Legacy button id — Card Clash is no longer a player control. Ignore and
+      // re-render the Siege Battle board so old messages don't soft-lock.
+      await interaction.deferUpdate().catch(() => {});
+      await render(session);
+      return;
     case "item": return handleItemOpen(interaction as ButtonInteraction, session);
     case "itemsel": return handleItemSelect(interaction as StringSelectMenuInteraction, session);
     case "itemtgt": return handleItemTarget(interaction as StringSelectMenuInteraction, session, parts[4]!);
@@ -493,15 +536,14 @@ async function musterPayload(s: SiegeSession) {
   const item = s.equippedItemId ? getBattleItem(s.equippedItemId, s.guildId) : null;
   const embed = new EmbedBuilder()
     .setColor(s.accent)
-    .setTitle(`🏰 Muster — assault on ${s.targetName}`)
+    .setTitle(`🏰 Muster — Siege Battle on ${s.targetName}`)
     .setDescription(
       `**${s.attackerName}** forms up outside **${s.targetName}**, held by **${s.holderName}**.\n\n` +
-      `Four of your cards form the front line; the rest wait in reserve and deploy when the line is broken. ` +
-      `Fight through the garrison to reach the commander's **life points** — drain them to zero to take the base. ` +
-      `**★** at 50% destruction, **★★** for the capture, **★★★** if you do it without losing a card.\n\n` +
-      `🪙 **Call the toss** — guess the coin right and your team strikes first. ` +
-      `⚔️ **Battle** to command the fight yourself, or ⏩ **Auto Skip Mode** to let your captains ` +
-      `auto-resolve the siege and ping you when it's done.`,
+      `This opens the **Siege Battle** — Draw Phase, Main Phase, formation combat, and Siege Battle Cards. ` +
+      `Four cards form the front line; reserves deploy when the line breaks. ` +
+      `Drain the commander's **life points** to take the base.\n\n` +
+      `🪙 **Call the toss** — guess right and you strike first. ` +
+      `⚔️ **Begin Siege** to command every turn, or ⏩ **Auto Skip** to let captains resolve it.`,
     )
     .addFields(
       {
@@ -534,7 +576,7 @@ async function musterPayload(s: SiegeSession) {
         inline: false,
       },
     )
-    .setFooter({ text: `${s.battle.teams[0].itemUsesLeft} field use${s.battle.teams[0].itemUsesLeft === 1 ? "" : "s"} · ${s.siege.turnSeconds}s per move once the assault starts` });
+    .setFooter({ text: `${s.battle.teams[0].itemUsesLeft} field use${s.battle.teams[0].itemUsesLeft === 1 ? "" : "s"} · ${s.siege.turnSeconds}s per move once the siege starts` });
   if (s.castleImage) embed.setImage(`attachment://${SIEGE_CASTLE_IMAGE}`);
 
   const canPick = (s.attackerPool?.length ?? 0) > s.columnSize;
@@ -543,8 +585,8 @@ async function musterPayload(s: SiegeSession) {
       .setStyle(s.coinCall === call ? ButtonStyle.Primary : ButtonStyle.Secondary);
   const rows: ActionRowBuilder<ButtonBuilder>[] = [
     new ActionRowBuilder<ButtonBuilder>().addComponents(
-      new ButtonBuilder().setCustomId(`hq-hub:ls:begin:${s.id}`).setLabel("Battle").setEmoji("⚔️").setStyle(ButtonStyle.Danger),
-      new ButtonBuilder().setCustomId(`hq-hub:ls:skip:${s.id}`).setLabel("Auto Skip Mode").setEmoji("⏩").setStyle(ButtonStyle.Success),
+      new ButtonBuilder().setCustomId(`hq-hub:ls:begin:${s.id}`).setLabel("Begin Siege").setEmoji("⚔️").setStyle(ButtonStyle.Danger),
+      new ButtonBuilder().setCustomId(`hq-hub:ls:skip:${s.id}`).setLabel("Auto Skip").setEmoji("⏩").setStyle(ButtonStyle.Success),
       new ButtonBuilder().setCustomId(`hq-hub:ls:concede:${s.id}`).setLabel("Stand down").setEmoji("🏳️").setStyle(ButtonStyle.Secondary),
     ),
     new ActionRowBuilder<ButtonBuilder>().addComponents(
@@ -849,7 +891,8 @@ function autoAction(s: SiegeSession): SiegeAction | null {
 
 /**
  * Resolve exactly one action and play the beat: wind-up frame, the resolved
- * blow, then hand over. A null action (nothing legal) simply passes the turn.
+ * blow (with an automatic Card Clash cinematic when appropriate), then hand
+ * over. A null action (nothing legal) simply passes the turn.
  */
 async function applySiegeAction(s: SiegeSession, action: SiegeAction | null): Promise<void> {
   if (s.phase !== "assault" || s.processing) return;
@@ -887,21 +930,51 @@ async function applySiegeAction(s: SiegeSession, action: SiegeAction | null): Pr
     s.di = destroyedCount(s, 1);
     s.ai = destroyedCount(s, 0);
 
+    const playClash = !s.headless && shouldPlayClashCinematic(action, result);
+
     // Await the FINAL frame before editing the board — never upgrade a still to
     // a GIF mid-message, which restarts Discord's looping and reads as a stutter.
     const [, holdMs] = await Promise.all([
       pace(s),
-      buildTurnFrames(s, side, action, result),
+      buildTurnFrames(s, side, action, result, playClash),
     ]);
     await refreshCastle(s, result.destroyed.length > 0);
+
+    // Card Clash is an INTERNAL cinematic: show it briefly when the beat warrants
+    // it, then return to the Siege Battle field. The player never clicks "Card Clash".
+    if (playClash && s.clashFrame) {
+      s.inClash = true;
+      await render(s);
+      await sleep(Math.max(frameMs(s), Math.min(holdMs || 1800, 2800)));
+      s.inClash = false;
+    }
+
     await render(s);
-    await (s.headless ? Promise.resolve() : sleep(Math.max(frameMs(s), holdMs)));
+    if (!playClash) {
+      await (s.headless ? Promise.resolve() : sleep(Math.max(frameMs(s), holdMs)));
+    } else if (!s.headless) {
+      // Brief settle on the field after the cinematic.
+      await sleep(Math.max(400, Math.floor(frameMs(s) * 0.6)));
+    }
 
     await advanceTurn(s);
   } catch (err) {
     logger.error({ err, siege: s.id }, "siege action failed");
     s.processing = false;
   }
+}
+
+/** Card Clash plays automatically for combat beats — never as a menu option. */
+function shouldPlayClashCinematic(action: SiegeAction, result: SiegeTurnResult): boolean {
+  if (result.destroyed.length > 0) return true;
+  if (result.events.some(e => e.ko || e.event === "ko")) return true;
+  if (result.damageDealt > 0 || result.lpDamage > 0) return true;
+  if (action.kind === "siege_card") return true;
+  if (action.kind === "direct_lp") return true;
+  if (action.kind === "move") {
+    return action.move === "attack" || action.move === "special" || action.move === "ultimate";
+  }
+  return false;
 }
 
 /** Close the turn through the engine, then either finish or start the next one. */
@@ -1004,12 +1077,13 @@ function restingFieldInput(s: SiegeSession): SiegeFieldInput {
 }
 
 /**
- * Render the beat. Stage one (the formation battlefield) always refreshes; when
- * the commander is on the close-up screen the Card Clash frame is rendered too.
- * Both are best-effort — a null keeps whatever frame is already on the board.
+ * Render the beat. The formation battlefield always refreshes. When `playClash`
+ * is set, the Card Clash cinematic is also encoded so the runtime can flash it
+ * automatically — never as a player-toggled second battle mode.
  */
 async function buildTurnFrames(
   s: SiegeSession, side: 0 | 1, action: SiegeAction, result: SiegeTurnResult,
+  playClash = false,
 ): Promise<number> {
   if (!s.siege.turnVisuals) return 0;
   const proj = projectionFor(s, side, action, result);
@@ -1026,7 +1100,7 @@ async function buildTurnFrames(
     if (png) { s.turnFrame = png; s.turnFrameIsGif = false; }
   }
 
-  if (s.inClash) {
+  if (playClash) {
     const clashInput = toClashInput(s.battle, proj);
     if (clashInput) {
       if (sceneAnimated(s)) {
@@ -1369,34 +1443,10 @@ async function handleDirectLp(interaction: ButtonInteraction, s: SiegeSession): 
   await p;
 }
 
-/** Toggle between the formation battlefield and the close-up Card Clash. */
-async function handleClashToggle(interaction: ButtonInteraction, s: SiegeSession): Promise<void> {
-  s.inClash = !s.inClash;
-  await interaction.deferUpdate().catch(() => {});
-  if (s.inClash && !s.clashFrame) {
-    const input = toClashInput(s.battle, {
-      actingSide: s.battle.activeSide,
-      actorSlot: s.actorSlot,
-      targetSlot: s.targetSlot ?? undefined,
-      moveName: "Choose your action",
-      damage: 0, isHit: false, isCrit: false, ko: false,
-      accent: s.accent,
-      arenaName: s.targetName,
-      attackerCommanderRole: "Commander",
-      defenderCommanderRole: s.holderName || "Garrison",
-    });
-    if (input) {
-      const png = await renderCardClashStill(input).catch(() => null);
-      if (png) { s.clashFrame = png; s.clashFrameIsGif = false; }
-    }
-  }
-  await render(s);
-}
-
-/** Only the commander, on their own turn, with the board idle. */
+/** Only the commander, on their Main Phase, with the board idle. */
 function commanderCanAct(s: SiegeSession): boolean {
   return s.phase === "assault"
-    && s.battle.phase !== "ended"
+    && s.battle.phase === "main"
     && s.battle.activeSide === 0
     && !s.processing
     && !s.inputPending;
@@ -1528,25 +1578,9 @@ function currentOverlay(s: SiegeSession, pct: number, banner?: { text: string; c
   };
 }
 
-// TOP embed: the castle/base itself — the live scene + the destruction
-// scoreboard. The running log now lives in its own slim strip below (see
-// buildTurnStripEmbed), so this embed is purely "here is the base you're taking
-// apart," sitting above the battlefield.
-function buildCastleEmbed(s: SiegeSession): EmbedBuilder {
-  const pct = destructionPct(s);
-  const captured = s.di >= s.defenders.length;
-  const stars = starsFor(pct, captured, s.ai);
-  const ranksLeft = Math.max(0, s.defenders.length - s.di);
-  const embed = new EmbedBuilder()
-    .setColor(s.accent)
-    .setTitle(`🏰 ${s.targetName} — ${"★".repeat(stars)}${"☆".repeat(3 - stars)} ${Math.round(pct)}%`)
-    .setDescription(
-      `${bar(Math.round(pct), 100, 14)} **destruction**\n` +
-      `🛡️ **${ranksLeft}** rank${ranksLeft === 1 ? "" : "s"} still holding · ⚔️ **${Math.max(0, s.attackers.length - s.ai)}** card${s.attackers.length - s.ai === 1 ? "" : "s"} left in your column`,
-    );
-  if (s.castleImage) embed.setImage(`attachment://${SIEGE_CASTLE_IMAGE}`);
-  return embed;
-}
+// TOP embed was previously the castle scene. Assault renders now use the LARGE
+// Siege Battle field as the primary embed (buildBattleEmbed); castle art is
+// limited to muster / result frames via refreshCastle.
 
 // The routine "X's attack hits for N" lines are already shown on the battlefield
 // frame, so the strip keeps only the notable beats and the last line.
@@ -1564,6 +1598,11 @@ function latestSiegeLines(s: SiegeSession, max = 2): string {
 // and the turn call.
 function buildTurnStripEmbed(s: SiegeSession, opts?: { currentMove?: string; turnEndsAt?: number }): EmbedBuilder {
   const timer = opts?.turnEndsAt ? ` · ends <t:${Math.floor(opts.turnEndsAt / 1000)}:R>` : "";
+  const phaseLabel = s.battle.phase === "draw" ? "🃏 DRAW"
+    : s.battle.phase === "main" ? "⚔️ MAIN"
+    : s.battle.phase === "reinforce" ? "🚩 REINFORCE"
+    : s.battle.phase === "ended" ? "🏁 END"
+    : "⚔️";
   const turnCall = opts?.currentMove
     ? `⚔️ *${opts.currentMove}*`
     : s.currentSide === 1
@@ -1571,8 +1610,11 @@ function buildTurnStripEmbed(s: SiegeSession, opts?: { currentMove?: string; tur
       : `🔹 <@${s.starterId}> — **your move!**${timer}`;
   return new EmbedBuilder()
     .setColor(s.accent)
-    .setDescription(`📜 ${latestSiegeLines(s)}\n${WHITE_LINE}\n**Turn ${s.turnNumber}** · ${turnCall}`)
-    .setFooter({ text: `🎒 ${s.battle.teams[0].itemUsesLeft} field use${s.battle.teams[0].itemUsesLeft === 1 ? "" : "s"} left · a KO breaks a rank, not the siege` });
+    .setDescription(
+      `**Turn ${s.turnNumber}** · ${phaseLabel}\n` +
+      `${turnCall}\n${WHITE_LINE}\n📜 ${latestSiegeLines(s)}`,
+    )
+    .setFooter({ text: `🎒 ${s.battle.teams[0].itemUsesLeft} field use${s.battle.teams[0].itemUsesLeft === 1 ? "" : "s"} left · hand ${s.battle.teams[0].hand.length}` });
 }
 
 // BOTTOM embed: the battlefield itself — the animated Clash arena. The image is
@@ -1584,18 +1626,31 @@ function buildTurnStripEmbed(s: SiegeSession, opts?: { currentMove?: string; tur
 function buildBattleEmbed(s: SiegeSession): EmbedBuilder {
   const t0 = s.battle.teams[0], t1 = s.battle.teams[1];
   const atk = active(s, 0), def = active(s, 1);
+  const pct = destructionPct(s);
+  const stars = starsFor(pct, s.di >= s.defenders.length, s.ai);
   const title = atk && def
-    ? `⚔️ ${atk.cardName}  ⚔  ${def.cardName} 🛡️`
-    : "⚔️ The clash at the gate";
+    ? `⚔️ Siege Battle — ${atk.cardName}  ⚔  ${def.cardName}`
+    : `⚔️ Siege Battle — ${s.targetName}`;
   const standing = (t: typeof t0) => livingSlots(t).length;
-  const line = (name: string, t: typeof t0, emoji: string) =>
-    `${emoji} **${name}** — LP **${t.lp.toLocaleString()}**/${t.lpMax.toLocaleString()} · ${standing(t)}/4 standing`;
+  const phaseLabel = s.battle.phase === "draw" ? "🃏 Draw Phase"
+    : s.battle.phase === "main" ? "⚔️ Main Phase"
+    : s.battle.phase === "reinforce" ? "🚩 Reinforce"
+    : "🏁 Ended";
+  const hand = t0.hand.length
+    ? t0.hand.slice(0, 5).map(c => `${c.emoji}${c.name}`).join(" · ")
+    : "_empty_";
   return new EmbedBuilder().setColor(s.accent).setTitle(title)
-    .setDescription(`${line(t0.name, t0, "🔷")}\n${line(t1.name, t1, "🔻")}`);
+    .setDescription(
+      `${phaseLabel} · Turn **${s.turnNumber}** · ${"★".repeat(stars)}${"☆".repeat(3 - stars)} **${Math.round(pct)}%**\n` +
+      `🔷 **${t0.name}** — LP **${t0.lp.toLocaleString()}**/${t0.lpMax.toLocaleString()} · ${standing(t0)}/4 standing · ${t0.reserves.filter(c => c.hp > 0).length} reserve\n` +
+      `🔻 **${t1.name}** — LP **${t1.lp.toLocaleString()}**/${t1.lpMax.toLocaleString()} · ${standing(t1)}/4 standing · ${t1.reserves.filter(c => c.hp > 0).length} reserve\n` +
+      `${WHITE_LINE}\n🃏 **Hand:** ${hand}`,
+    );
 }
 
 function buildControls(s: SiegeSession): ActionRowBuilder<ButtonBuilder>[] {
-  if (s.battle.activeSide !== 0 || s.battle.phase === "ended") return [];
+  // Actions only during MAIN PHASE — DRAW has no combat buttons.
+  if (s.battle.activeSide !== 0 || s.battle.phase !== "main") return [];
   const team = s.battle.teams[0];
   const actor = team.slots[s.actorSlot]?.unit;
   if (!actor || actor.hp <= 0) return [];
@@ -1616,8 +1671,7 @@ function buildControls(s: SiegeSession): ActionRowBuilder<ButtonBuilder>[] {
     mk("charge", "Charge", "⚡", ButtonStyle.Secondary),
   );
 
-  // Stage-one selection + the hand. The LP button only appears once the enemy
-  // formation genuinely cannot protect them — the engine decides that, not the UI.
+  // Siege Battle actions only — Card Clash is an automatic cinematic, not a button.
   const canBreakThrough = checkAction(s.battle, { kind: "direct_lp", actorSlot: s.actorSlot }).ok;
   const playable = team.hand.filter(c =>
     checkAction(s.battle, { kind: "siege_card", actorSlot: s.actorSlot, cardId: c.id }).ok).length;
@@ -1635,9 +1689,6 @@ function buildControls(s: SiegeSession): ActionRowBuilder<ButtonBuilder>[] {
     new ButtonBuilder().setCustomId(`hq-hub:ls:lp:${s.id}`)
       .setLabel("Break Through").setEmoji("🎯")
       .setStyle(ButtonStyle.Danger).setDisabled(busy || !canBreakThrough),
-    new ButtonBuilder().setCustomId(`hq-hub:ls:clash:${s.id}`)
-      .setLabel(s.inClash ? "Battlefield" : "Card Clash").setEmoji(s.inClash ? "🗺️" : "🎴")
-      .setStyle(ButtonStyle.Secondary).setDisabled(busy),
   );
 
   const row3 = new ActionRowBuilder<ButtonBuilder>().addComponents(
@@ -1649,17 +1700,10 @@ function buildControls(s: SiegeSession): ActionRowBuilder<ButtonBuilder>[] {
 
 async function render(s: SiegeSession, opts?: { currentMove?: string; turnEndsAt?: number }): Promise<void> {
   if (!s.message || s.phase === "ended" || s.headless) return;
-  // Castle encode is NON-BLOCKING and does not re-edit the message when done —
-  // only the buffer is refreshed. Mid-turn message.edits restart Discord GIFs.
-  scheduleCastleRefresh(s);
-  const files = castleFiles(s);
+  // During assault the LARGE Siege Battle field is the primary screen. Castle
+  // art stays on muster / result — not a second layered battle UI mid-fight.
+  const files: AttachmentBuilder[] = [];
   const battleEmbed = buildBattleEmbed(s);
-  // The battlefield frame PERSISTS (it is not consumed): wind-up / next-turn
-  // boards keep the last strike visible like /battle's resting VS image.
-  // Discord drops attachments on edit, so the buffer is re-sent every render —
-  // the expensive canvas work is what we avoid repeating.
-  // Stage two (Card Clash) shows the close-up duel; stage one shows the
-  // formation battlefield. Whichever is active is the image on the battle embed.
   const showClash = s.inClash && !!s.clashFrame;
   const frame = showClash ? s.clashFrame : s.turnFrame;
   if (frame) {
@@ -1675,7 +1719,7 @@ async function render(s: SiegeSession, opts?: { currentMove?: string; turnEndsAt
   const ping = opts?.turnEndsAt && s.currentSide === 0 && s.phase === "assault";
   await s.message.edit({
     content: ping ? `<@${s.starterId}>` : "",
-    embeds: [buildCastleEmbed(s), buildTurnStripEmbed(s, opts), battleEmbed],
+    embeds: [battleEmbed, buildTurnStripEmbed(s, opts)],
     components: buildControls(s),
     files,
     allowedMentions: { users: ping ? [s.starterId] : [] },

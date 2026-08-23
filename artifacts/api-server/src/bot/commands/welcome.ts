@@ -163,7 +163,8 @@ export async function handleWelcome(interaction: ChatInputCommandInteraction): P
       "The big one — a tactical **4-card formation** battle for a base.\n\n" +
       "🏰 **`/battle siege`** — storm a player's base or a world territory.\n" +
       "🛡️ Four cards hold the **front line**; fight through it and, when it breaks, **reserves deploy** — punch all the way through to drain the commander's **life points**.\n" +
-      "🎴 In the close-up **Card Clash** you pick your fighter, choose your target, and play **Siege Battle Cards** — combos, finishers & formation orders drawn to your hand.\n" +
+      "🃏 Each turn: **Draw Phase** → **Main Phase** — pick a fighter, choose a target, and play **Siege Battle Cards** (combos, finishers & formation orders).\n" +
+      "🎴 Close-up **Card Clash** cinematics play automatically when a blow lands — not a separate mode.\n" +
       "⭐ Take a base without losing a card for the full **★★★**.\n" +
       "🔧 Set up your own defenses in **`/hq`** (admins tune the rules in `/hqadmin`).",
     )

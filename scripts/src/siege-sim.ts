@@ -105,6 +105,10 @@ function simulate(settings: Any, m: Metrics, size = 7, maxTurns?: number): { win
     if (defended && directs.length > 0) m.lpViolations++;
 
     const st = startTurn(state);
+    assert.equal(state.phase, "main", "startTurn must leave the battle in MAIN phase");
+    assert.ok(st.events.some((e: Any) => e.event === "draw" || e.event === "phase"),
+      "startTurn must emit draw/phase events");
+    // Combat actions are illegal before MAIN (DRAW is already over after startTurn).
     m.kos += st.destroyed.length;
 
     const lpBefore = foes.lp;

@@ -1,11 +1,11 @@
 // ─────────────────────────────────────────────────────────────────────────────
-// HQ siege — the zoomed-in "Clash" battlefield.
+// HQ siege — the primary Siege Battle field.
 //
-// This is the bottom embed of a live siege: a real, move-for-move arena where
-// the two active cards stand on peg podiums with their art floating above them,
-// and the acting side DASHES forward and strikes while the target recoils. It's
-// the siege analogue of a `/battle` turn frame, but staged as a face-off on a
-// dedicated battlefield instead of over the castle.
+// The LARGE battle screen for HQ / outpost assaults: a move-for-move arena where
+// formation cards stand on peg podiums with their art floating above them, and
+// the acting side DASHES forward and strikes while the target recoils. This is
+// the Siege analogue of a `/battle` turn frame — the primary combat presentation,
+// not a small inset under HQ chrome.
 //
 // The scene is drawn straight onto a 2D context with `@napi-rs/canvas` — the
 // SAME renderer the `/battle` animation layer uses — and GIFs go through the
@@ -100,14 +100,14 @@ export interface SiegeFieldInput {
   aoe?: boolean;                 // team ultimate — the whole enemy line is struck
 }
 
-const FIELD = { width: 900, height: 600 } as const;   // 3:2 — shows the full sky
+const FIELD = { width: 1200, height: 800 } as const;   // large primary battle screen (matches arena art)
 const MAX_BYTES = 8_000_000;
 // Physical pixels per logical unit at encode time. GIF encoding (NeuQuant) costs
 // scale with pixel COUNT, and it dominates a turn's render time — drawing stays
 // at the full logical resolution (crisp art + text) while the encoded frame is
-// shrunk to keep a turn snappy. 0.6 matches /battle turn GIFs so Discord inline
-// display and encode cost stay in the same ballpark.
-const RENDER_SCALE = 0.6;
+// shrunk to keep a turn snappy. Slightly lower than /battle so the larger canvas
+// still encodes in Discord's size budget.
+const RENDER_SCALE = 0.55;
 
 // ── "Raids of Legends" arena config ──────────────────────────────────────────
 // The siege battlefield is themed after a mini raid arena: a stone lists with a
@@ -380,17 +380,18 @@ const LINE_MAX = 4;                 // pieces per team
 // pieces standing on it. Placement is therefore expressed in BOARD coordinates
 // and projected onto the floor — never picked as raw screen x/y.
 //
-// The court, measured off arena.png (1200x800 drawn into 900x600 — an exact 3:2
-// fit, so no crop and the measurements transfer 1:1), is a trapezoid:
-//   near edge  y = 515, spanning +/-390 from the centre line
-//   far  edge  y = 290 (the wall base), spanning +/-270
+// The court, measured off arena.png at native 1200×800 (the FIELD size). Earlier
+// the scene was letterboxed into 900×600; coordinates below are the 4/3 scale-up
+// of those measurements so every stand still seats on the stone.
+//   near edge  y ≈ 687, spanning +/-520 from the centre line
+//   far  edge  y ≈ 387 (the wall base), spanning +/-360
 //
 //   u = FILE  (-1 = outer edge of your half, 0 = the centre line)
 //   v = RANK  ( 0 = near edge of the court, 1 = far edge against the wall)
 //
 // boardSpot() projects a square onto the floor; the trapezoid supplies the
 // perspective, so a piece never has to be nudged in screen space to look seated.
-const BOARD = { nearY: 515, farY: 290, nearHalf: 390, farHalf: 270 };
+const BOARD = { nearY: 687, farY: 387, nearHalf: 520, farHalf: 360 };
 
 function boardSpot(u: number, v: number, scale: number): { cx: number; baseY: number; scale: number } {
   const baseY = BOARD.nearY + (BOARD.farY - BOARD.nearY) * v;
@@ -410,9 +411,9 @@ const FILE_SLOTS: readonly { u: number; v: number; s: number }[] = [
   { u: -0.320, v: FAR_V, s: FAR_S },    // 2 - far  rank, inner file
   { u: -0.799, v: FAR_V, s: FAR_S },    // 3 - far  rank, outer file
 ];
-const GROUND_Y = 510;               // front contact line (used by ambient FX)
+const GROUND_Y = 680;               // front contact line (used by ambient FX)
 // Where a card of `side` stands when it steps into the centre to fight.
-const CLASH_Y = 372, CLASH_DX = 104, CLASH_SCALE = 0.74;
+const CLASH_Y = 496, CLASH_DX = 139, CLASH_SCALE = 0.74;
 
 function standCentre(side: 0 | 1, depth: number): { cx: number; baseY: number; scale: number } {
   const f = FILE_SLOTS[Math.min(depth, FILE_SLOTS.length - 1)]!;

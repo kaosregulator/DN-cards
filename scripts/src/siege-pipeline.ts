@@ -97,8 +97,10 @@ async function main(): Promise<void> {
 
   while (state.phase !== "ended" && guard++ < 400) {
     startTurn(state);
+    assert.equal(state.phase, "main", "after startTurn the phase must be MAIN");
     const action = chooseSiegeAction(state, "hard");
     if (action) {
+      // DRAW-phase actions must be refused; we are already in MAIN.
       const foeSide = otherSide(state.activeSide);
       const result = resolveAction(state, action);
       actions++;

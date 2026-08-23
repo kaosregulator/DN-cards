@@ -22,15 +22,15 @@ export const SIEGE_MODES: {
   id: SiegeMode; label: string; emoji: string; blurb: string;
 }[] = [
   { id: "turn", label: "Turn-for-Turn", emoji: "⚔️",
-    blurb: "The full interactive assault — you command every move, the garrison answers." },
+    blurb: "Interactive Siege Battle — Draw Phase, Main Phase, you command every move." },
   { id: "cinematic", label: "Cinematic", emoji: "🎥",
-    blurb: "The opening film, then the siege resolves itself." },
+    blurb: "Opening film, then the Siege Battle auto-resolves through the same engine." },
   { id: "classic", label: "Classic", emoji: "📜",
-    blurb: "Auto-resolved, animated, with move-by-move captions." },
+    blurb: "Siege Battle auto-resolves (same engine); result recap with highlights." },
   { id: "live", label: "Animated", emoji: "🎬",
-    blurb: "Auto-resolved as a clean animation, no captions." },
+    blurb: "Siege Battle auto-resolves through the same engine — snappy result." },
   { id: "static", label: "Instant", emoji: "🖼️",
-    blurb: "Auto-resolved to a single result frame. Fastest." },
+    blurb: "Siege Battle auto-resolves instantly through the same engine." },
 ];
 
 export const DEFAULT_SIEGE_MODE: SiegeMode = "turn";

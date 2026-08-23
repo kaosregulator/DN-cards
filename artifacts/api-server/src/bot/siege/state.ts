@@ -90,7 +90,9 @@ export function buildSiegeBattle(input: BuildBattleInput, rng: () => number = Ma
     settings: input.settings,
     turn: 1,
     activeSide: input.firstSide ?? 0,
-    phase: "command",
+    // Opening draw for turn 1 happens in startTurn(); construction only deals
+    // the initial hand so the muster board can show cards before the fight.
+    phase: "draw",
     winner: null,
     maxTurns: input.maxTurns
       ?? defaultMaxTurns(input.attacker.roster.length, input.defender.roster.length),

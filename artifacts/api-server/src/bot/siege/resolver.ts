@@ -9,9 +9,9 @@
 // engine.
 //
 // Order of business for a normal turn:
-//   startTurn()   — status ticks, energy regen, card cooldowns, hand refill
-//   resolveAction() — the chosen action
-//   endTurn()     — hand over, deploy reinforcements, check for a winner
+//   startTurn()     — status ticks → DRAW PHASE (refill hand) → MAIN PHASE
+//   resolveAction() — the chosen action (legal only in MAIN / reinforce)
+//   endTurn()       — hand over, deploy reinforcements, check for a winner
 // ─────────────────────────────────────────────────────────────────────────────
 
 import type { Combatant, MoveType } from "../battle/types.js";
@@ -66,14 +66,29 @@ function clampBoard(state: SiegeBattleState): void {
 // ── Turn lifecycle ───────────────────────────────────────────────────────────
 
 /**
- * Begin the acting side's turn: tick every one of its living cards (DoT, regen,
- * energy, cooldowns), tick Siege Card cooldowns, and refill the hand. Returns
- * the events plus which of its own cards died to damage-over-time.
+ * Begin the acting side's turn:
+ *   1. Tick living cards (DoT, regen, energy) and Siege Card cooldowns
+ *   2. DRAW PHASE — move cards from drawPile → hand (reshuffle discard if dry)
+ *   3. Transition into MAIN PHASE so combat actions become legal
+ *
+ * Returns the events plus which of its own cards died to damage-over-time.
+ * Combat actions are illegal while `state.phase === "draw"`.
  */
 export function startTurn(state: SiegeBattleState): SiegeTurnResult {
+  if (state.phase === "ended") {
+    return { events: [], destroyed: [], struck: [], damageDealt: 0, lpDamage: 0, battleOver: true };
+  }
+
   const team = teamOf(state, state.activeSide);
   const events: SiegeBattleEvent[] = [];
   const destroyed: { side: SideIdx; slot: number }[] = [];
+
+  // ── DRAW PHASE ────────────────────────────────────────────────────────────
+  state.phase = "draw";
+  events.push({
+    text: `🃏 **Draw Phase** — **${team.name}** draws.`,
+    event: "phase", actorSide: team.side,
+  });
 
   for (const slot of team.slots) {
     const unit = slot.unit;
@@ -96,7 +111,28 @@ export function startTurn(state: SiegeBattleState): SiegeTurnResult {
     else delete team.cardCooldowns[id];
   }
 
-  refillHand(team);
+  const drawn = refillHand(team);
+  if (drawn.length > 0) {
+    events.push({
+      text: `🃏 Drew **${drawn.length}** Siege Battle Card${drawn.length === 1 ? "" : "s"}`
+        + (drawn.length <= 3 ? `: ${drawn.map(c => c.name).join(", ")}` : "")
+        + `. Hand **${team.hand.length}**.`,
+      event: "draw", actorSide: team.side,
+    });
+  } else {
+    events.push({
+      text: `🃏 Hand is full (**${team.hand.length}**) — no cards drawn.`,
+      event: "draw", actorSide: team.side,
+    });
+  }
+
+  // ── MAIN PHASE ────────────────────────────────────────────────────────────
+  state.phase = "main";
+  events.push({
+    text: `⚔️ **Main Phase** — **${team.name}** chooses an action.`,
+    event: "phase", actorSide: team.side,
+  });
+
   clampBoard(state);
   pushEvents(state, events);
   return { events, destroyed, struck: [], damageDealt: 0, lpDamage: 0, battleOver: false };
@@ -199,12 +235,22 @@ function actorAt(team: SiegeTeam, slot: number): Combatant | null {
 
 export function checkAction(state: SiegeBattleState, action: SiegeAction): SiegeActionCheck {
   if (state.phase === "ended") return reject("The siege is already over.");
+  if (state.phase === "draw") return reject("Still drawing — wait for the Main Phase.");
+
   const team = teamOf(state, state.activeSide);
   const foes = teamOf(state, otherSide(state.activeSide));
 
   if (action.kind === "reinforce") {
+    if (state.phase !== "reinforce" && state.phase !== "main") {
+      return reject("Reinforcements can only deploy during the reinforce window.");
+    }
     if (!canReinforce(team)) return reject("There is nothing left to deploy.");
     return OK;
+  }
+
+  // Normal combat actions require MAIN PHASE — never DRAW.
+  if (state.phase !== "main") {
+    return reject("Actions are only available during the Main Phase.");
   }
 
   const actor = actorAt(team, action.actorSlot);

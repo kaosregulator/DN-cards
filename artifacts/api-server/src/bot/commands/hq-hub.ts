@@ -47,10 +47,10 @@ import {
   buyableSurfaces, surfaceById,
 } from "../hq/shop.js";
 import {
-  resolveSiege, SIEGE_SHIELD_MS, SIEGE_COOLDOWN_MS, SIEGE_MAX_PER_WINDOW,
+  SIEGE_SHIELD_MS, SIEGE_COOLDOWN_MS, SIEGE_MAX_PER_WINDOW,
   tributeOwed, TRIBUTE_PER_HOUR, type SiegeCombatant,
 } from "../hq/siege.js";
-import { simulateSiegeBattle, buildSiegeSquad, type SiegeBattleResult } from "../hq/siege-battle.js";
+import { buildSiegeSquad } from "../hq/siege-battle.js";
 import {
   startSiege, handleSiegeComponent, isSiegeTargetActive,
   // Aliased: `SiegeOutcome` below is the AUTO-resolver's richer shape, which
@@ -120,11 +120,11 @@ import {
 import { unlockLabel, type UnlockRule } from "../hq/defs/unlock-rules.js";
 import { spriteFor, spriteForPrefix } from "../hq/assets.js";
 import {
-  renderHq, renderBase, renderSiege, floorSlot, wallSlot, slotIsWall, slotToTile,
+  renderHq, renderBase, floorSlot, wallSlot, slotIsWall, slotToTile,
   HQ_WALL_SLOT_BASE, HQ_WALL_ANCHOR_COUNT, HQ_DEFENDER_SLOTS, HQ_BASE_DECO_SLOTS,
   HQ_GRID, HQ_BASE_GRID,
   type HqRenderView, type HqRenderCard, type HqRenderDeco, type HqRenderDefender,
-  type HqBaseView, type HqBaseBuilding, type HqBuildingRole, type SiegePlan,
+  type HqBaseView, type HqBaseBuilding, type HqBuildingRole,
   type HqRenderCompanion, type HqBuildCursor,
 } from "../hq/render.js";
 import {
@@ -2075,15 +2075,10 @@ async function clearCanvasAtCursor(guildId: string, userId: string): Promise<str
   });
 }
 
-// ── Base siege (attack/capture mini-game) ─────────────────────────────────────
-// "turn" hands the assault to the player as a full turn-for-turn battle;
-// "cinematic" plays the landscape opening film and then auto-resolves; the rest
-// are the fast auto-resolve paths.
-//
-// Which one a guild uses is the SERVER OWNER's setting (bot/hq/settings.ts) —
-// never a per-attack prompt, so every siege in a server looks the same.
-type SiegeMode = HqSiegeConfig["mode"];
-const SIEGE_FILE = "siege.png", SIEGE_GIF = "siege.gif";
+// ── Base siege (attack/capture) ───────────────────────────────────────────────
+// Every attack launches the NEW Siege Battle runtime (interactive or headless).
+// Guild presentation mode only chooses interactive vs auto — never a second
+// combat engine. Capture / shield / tribute stay in finalize* callbacks.
 // How many of the attacker's strongest cards to offer as a pickable roster at
 // muster (the column itself is only as wide as the garrison). Capped so the
 // select menu stays within Discord's 25-option limit.
@@ -2204,9 +2199,6 @@ function backRow(section: Section) {
   );
 }
 
-// Flavour move names for the classic (move-by-move) siege captions.
-const SIEGE_MOVES = ["Siege Strike", "Breach", "Overrun", "Vanguard Charge", "Final Blow", "Rally", "Flank", "Storm the Gate"];
-
 // "Shards while you hold": mint tribute for every base the viewer currently
 // holds, pull-based, and restart their accrual clock. Returns a short toast
 // (or null) to surface at the top of the World map. Best-effort — a failed pay
@@ -2261,88 +2253,12 @@ function formatReign(sec: number): string {
   return "<1m";
 }
 
-// A card the attacker's champion figure is drawn from, in the render's shape.
-function championRender(card: OwnedBattleCard | undefined, cx: LoadedCtx) {
-  if (!card) return null;
-  const d = getCardDisplayRarity({ id: card.id, rarity: card.rarity }, cx.ctx, cx.settings, cx.displayMap);
-  return { slot: 0, cardId: card.id, name: card.name, artUrl: toAbsoluteImageUrl(card.imageUrl), rarityColor: d.color, rarity: card.rarity as Rarity, basePath: null };
-}
-
-// One resolved siege, normalised so runSiege renders it the same whichever engine
-// produced it: the full turn-based battle engine (preferred) or the power
-// auto-resolver (fallback when battles are disabled / a squad can't be built).
-interface SiegeOutcome {
-  attackerWon: boolean;
-  attackerPower: number;
-  defenderPower: number;
-  defenderCount: number;
-  summary: string;                                            // headline for the embed
-  logLines: string[];                                          // classic-mode recap
-  duels: { slot: number; attackerWon: boolean; move: string }[]; // render plan
-  champ: ReturnType<typeof championRender>;                    // attacker's lead card
-  real: boolean;
-}
-
-// Highlight flashes worth surfacing in the classic-mode recap of a real battle.
-const SIEGE_HIGHLIGHT = new Set(["ko", "ultimate", "crit", "laststand", "shield_break", "counter", "combo"]);
-
-function outcomeFromBattle(r: SiegeBattleResult, champ: ReturnType<typeof championRender>): SiegeOutcome {
-  const cleared = r.defenderFalls.filter(d => d.defeated).length;
-  const total = r.defenderFalls.length;
-  const highlights = r.events.filter(e => e.flash && SIEGE_HIGHLIGHT.has(e.flash)).map(e => e.text);
-  const logLines = (highlights.length >= 3 ? highlights : r.events.map(e => e.text)).slice(-8);
-  return {
-    attackerWon: r.attackerWon, attackerPower: r.attackerPower, defenderPower: r.defenderPower,
-    defenderCount: total,
-    summary: r.attackerWon
-      ? `cleared **${cleared}/${total}** defenders, losing **${r.attackerCardsLost}** card${r.attackerCardsLost === 1 ? "" : "s"}`
-      : `the walls held at **${cleared}/${total}** — your assault was broken`,
-    logLines,
-    duels: r.defenderFalls.map(d => ({ slot: d.slot, attackerWon: d.defeated, move: d.move })),
-    champ, real: true,
-  };
-}
-
-function outcomeFromPower(r: ReturnType<typeof resolveSiege>, champ: ReturnType<typeof championRender>, defenderCount: number): SiegeOutcome {
-  return {
-    attackerWon: r.attackerWon, attackerPower: r.attackerPower, defenderPower: r.defenderPower,
-    defenderCount,
-    summary: `duels **${r.attackerWins}–${r.defenderWins}**`,
-    logLines: r.duels.slice(0, 6).map((d, i) => `**${i + 1}.** ${d.attacker.name} ${d.attackerWon ? "🟢 beat" : "🔴 lost to"} ${d.defender.name}`),
-    duels: r.duels.map((d, i) => ({ slot: i, attackerWon: d.attackerWon, move: SIEGE_MOVES[Math.floor(Math.random() * SIEGE_MOVES.length)]! })),
-    champ, real: false,
-  };
-}
-
-// Resolve a siege — real battle engine first, power auto-resolve as a safety net.
-async function resolveSiegeOutcome(guildId: string, attackerId: string, attackerName: string, defenderId: string, defenderName: string, cx: LoadedCtx, defenderBonusPct = 0): Promise<SiegeOutcome> {
-  try {
-    const settings = await getBattleSettings(guildId);
-    if (settings.enabled) {
-      const defenderCards = await buildDefenderCards(guildId, defenderId, cx.ctx);
-      if (defenderCards.length > 0) {
-        const attackerCards = await buildAttackerCards(guildId, attackerId, cx.ctx, defenderCards.length);
-        if (attackerCards.length > 0) {
-          const r = simulateSiegeBattle(attackerCards, defenderCards, settings, guildId, cx.ctx, { attackerId, attackerName, defenderId, defenderName }, defenderBonusPct);
-          return outcomeFromBattle(r, championRender(attackerCards[0], cx));
-        }
-      }
-    }
-  } catch {
-    // Fall through to the power auto-resolver below.
-  }
-  const defenders = await buildDefenderSquad(guildId, defenderId, cx);
-  const squad = await buildAttackerSquad(guildId, attackerId, cx, defenders.length);
-  const champ = squad[0]
-    ? { slot: 0, cardId: squad[0].cardId, name: squad[0].name, artUrl: squad[0].artUrl, rarityColor: squad[0].rarityColor, rarity: squad[0].rarity as Rarity, basePath: null }
-    : null;
-  return outcomeFromPower(resolveSiege(squad, defenders, Math.random, defenderBonusPct), champ, defenders.length);
-}
-
-// ── Turn-for-turn siege launchers ────────────────────────────────────────────
+// ── Siege Battle launchers ───────────────────────────────────────────────────
 // Build both sides as live combatants, prepare the castle scene, and hand off to
 // the siege runtime with an applyOutcome callback that commits capture/reward and
 // returns the result screen — one shape for player bases and AI territories.
+// Legacy simulateSiegeBattle / resolveSiege are NOT used on this path; they remain
+// in hq/siege-battle.ts and hq/siege.ts as helpers / compatibility only.
 
 // The attacker's lead card as the champion figure the castle frame draws
 // storming the gate.
@@ -2359,13 +2275,14 @@ function championFor(cards: OwnedBattleCard[], cx: LoadedCtx): HqRenderDefender 
 async function launchPlayerSiege(
   interaction: ButtonInteraction, guildId: string, attackerId: string, attackerName: string,
   defenderId: string, defenderName: string, defHq: PlayerHq, cx: LoadedCtx, siegeCfg: HqSiegeConfig,
+  opts?: { autoResolve?: boolean },
 ): Promise<void> {
   const fail = (msg: string) => interaction.editReply({
     embeds: [new EmbedBuilder().setColor(0xc0392b).setDescription(`❌ ${msg}`)],
     components: [backRow("defenders")], files: [],
   }).then(() => {}).catch(() => {});
   const settings = await getBattleSettings(guildId);
-  if (!settings.enabled) { await fail("Battles are disabled here, so a turn-for-turn siege can't run. An admin can switch the siege style in `/hqadmin`."); return; }
+  if (!settings.enabled) { await fail("Battles are disabled here, so a Siege Battle can't run. An admin can enable battles in `/battle_admin`."); return; }
   const defenderCards = await buildDefenderCards(guildId, defenderId, cx.ctx);
   if (defenderCards.length === 0) { await fail("This base has no defenders to fight."); return; }
   // Build a marching ROSTER (more than the column needs) so the player can pick
@@ -2386,6 +2303,7 @@ async function launchPlayerSiege(
     holderName: forti.totalPct > 0 ? `${defenderName} · +${forti.totalPct}% fortified` : defenderName,
     accent: 0xc0392b, attackers, attackerPool, defenders, settings, siege: siegeCfg,
     baseView, champion: championFor(attackerCards, cx),
+    autoResolve: opts?.autoResolve === true,
     applyOutcome: (o) => finalizePlayerSiege(interaction, guildId, attackerId, attackerName, defenderId, o, forti.totalPct),
   });
 }
@@ -2423,12 +2341,13 @@ async function launchTerritorySiege(
   interaction: ButtonInteraction, guildId: string, attackerId: string, attackerName: string,
   nodeId: string, view: WorldTerritoryView, theme: ReturnType<typeof resolveTheme>,
   garrison: OwnedBattleCard[], attackerCards: OwnedBattleCard[], cx: LoadedCtx, siegeCfg: HqSiegeConfig,
+  opts?: { autoResolve?: boolean },
 ): Promise<void> {
   const settings = await getBattleSettings(guildId);
   if (!settings.enabled) {
     await interaction.editReply({
       embeds: [new EmbedBuilder().setColor(0xc0392b).setDescription(
-        "❌ Battles are disabled here, so a turn-for-turn siege can't run. An admin can switch the siege style in `/hqadmin`.")],
+        "❌ Battles are disabled here, so a Siege Battle can't run. An admin can enable battles in `/battle_admin`.")],
       components: [backRow("world")], files: [],
     }).catch(() => {});
     return;
@@ -2450,6 +2369,7 @@ async function launchTerritorySiege(
     accent: view.faction.color, attackers, attackerPool, defenders, settings, siege: siegeCfg,
     baseView: territoryBaseView(view, theme, garrison, cx),
     champion: championFor(attackerCards, cx),
+    autoResolve: opts?.autoResolve === true,
     applyOutcome: (o) => finalizeTerritorySiege(interaction, guildId, attackerId, attackerName, nodeId, view, o),
   });
 }
@@ -2521,7 +2441,9 @@ async function playBaseCinematic(
 
 async function runSiege(interaction: ButtonInteraction, guildId: string, attackerId: string, defenderId: string): Promise<void> {
   await interaction.deferUpdate().catch(() => {});
-  // One style for the whole server, set by an admin — never asked of the player.
+  // Presentation preference (interactive vs auto) comes from the guild setting,
+  // but combat ALWAYS runs through the NEW Siege Battle engine — never the legacy
+  // gauntlet / power resolver as a parallel player-facing fight.
   const siegeCfg = await getSiegeConfig(guildId);
   const mode = siegeCfg.mode;
   // Serialize per DEFENDER (the contested base) so every attack on one base runs
@@ -2549,83 +2471,16 @@ async function runSiege(interaction: ButtonInteraction, guildId: string, attacke
 
   const cx = await loadCtx(guildId);
 
-  // Turn-for-turn: optionally roll the opening film, then hand the assault to the
-  // player (its own live board) and bail out of the auto-resolve path.
-  if (mode === "turn") {
-    if (siegeCfg.intro) {
-      await playBaseCinematic(interaction, guildId, attackerId, attackerName, defenderId, defenderName, defHq, cx);
-    }
-    await launchPlayerSiege(interaction, guildId, attackerId, attackerName, defenderId, defenderName, defHq, cx, siegeCfg);
-    return;
-  }
-
-  // The opening film, before anything is resolved — the ride up to the base, the
-  // gates opening, the garrison mustering, and the raider's cards flying in.
-  if (mode === "cinematic") {
+  // Optional opening film, then hand off to the Siege Battle runtime.
+  // Interactive (`turn`) → muster + player commands. Other presentation modes →
+  // same engine, auto-resolved (headless), so there is only ONE combat path.
+  if (siegeCfg.intro || mode === "cinematic") {
     await playBaseCinematic(interaction, guildId, attackerId, attackerName, defenderId, defenderName, defHq, cx);
   }
-
-  // The defender's fortification (base tier + built walls/towers/moats) hardens
-  // their garrison — this is where Build mode pays off on defence.
-  const forti = await baseFortification(guildId, defenderId);
-  const result = await resolveSiegeOutcome(guildId, attackerId, attackerName, defenderId, defenderName, cx, forti.totalPct);
-
-  // Persist outcome (capture + shield on a win; log either way).
-  await applySiegeToBase(guildId, defenderId, result.attackerWon, attackerId, attackerName, SIEGE_SHIELD_MS).catch(() => {});
-  await logSiege(guildId, attackerId, defenderId, result.attackerWon, result.attackerPower, result.defenderPower, mode).catch(() => {});
-
-  // Stakes: the attacker earns a shard BOUNTY on a win (scaled by the defence it
-  // beat), or a small consolation on a loss. The bounty is minted, never drained
-  // from the defender — no griefing — and the existing shield + per-target
-  // cooldown gate how often it can be earned. Reuses the market shard economy.
-  const reward = result.attackerWon
-    ? Math.min(300, 60 + Math.round(result.defenderPower / 18))
-    : 20;
-  await addShards(guildId, attackerId, reward).catch(() => {});
-
-  const col = result.attackerWon ? 0x4fd06a : 0xc0392b;
-  const embed = new EmbedBuilder().setColor(col)
-    .setTitle(result.attackerWon ? "⚔️ Base Captured!" : "🛡️ Base Defended!")
-    .setDescription(
-      `**${attackerName}** ${result.attackerWon ? "stormed" : "failed to take"} the base — ` +
-      `${result.summary}.` +
-      (result.attackerWon ? `\n🚩 You hold it until it's reclaimed — earning **${TRIBUTE_PER_HOUR}💠/hr** while you do. Collect from the 🗺️ World map.` : "\nThe defenders held the walls."),
-    )
-    .addFields(
-      { name: "⚔️ Squad power", value: `**${result.attackerPower}**`, inline: true },
-      { name: "🛡️ Defence power", value: `**${result.defenderPower}**${forti.totalPct > 0 ? ` · 🏯 +${forti.totalPct}% fortified` : ""}`, inline: true },
-      { name: "💠 Loot", value: `**+${reward}** shards`, inline: true },
-    );
-
-  // Notify the base owner (best-effort DM) — attacking someone should let them
-  // know, win or lose, so conquest is a two-way game.
-  void notifySiege(interaction, guildId, defenderId, attackerName, result.attackerWon, reward);
-
-  // All three modes render ON the defender's base scene (castle + cards + health)
-  // — never a separate VS screen. Classic adds move captions + hit flashes; live
-  // is the clean cinematic; static is one final frame.
-  const files: AttachmentBuilder[] = [];
-  const baseView = await buildBaseRenderView(guildId, defenderId, defenderName, null, defHq);
-  const plan: SiegePlan = {
-    duels: result.duels,
-    defenderCount: result.defenderCount,
-    captured: result.attackerWon,
-    attacker: result.champ,
-    attackerName, defenderName,
-  };
-  const live = mode !== "static";
-  const siegeFrames = await getOrCreateGuildSettings(guildId).catch(() => null);
-  const buf = await withGuildFrames(siegeFrames, () => renderSiege(baseView, plan, live, mode === "classic")).catch(() => null);
-  if (buf) {
-    const name = live ? SIEGE_GIF : SIEGE_FILE;
-    files.push(new AttachmentBuilder(buf, { name }));
-    embed.setImage(`attachment://${name}`);
-  }
-  if (mode === "classic" && result.logLines.length) {
-    embed.addFields({ name: result.real ? "⚔️ Battle log" : "Duels", value: result.logLines.join("\n").slice(0, 1024) });
-  }
-
-  await interaction.editReply({ embeds: [embed], components: [backRow("defenders")], files }).catch(() => {});
+  await launchPlayerSiege(
+    interaction, guildId, attackerId, attackerName, defenderId, defenderName, defHq, cx, siegeCfg,
+    { autoResolve: mode !== "turn" },
+  );
   });
 }
 
@@ -2842,92 +2697,16 @@ async function runTerritorySiege(
     const theme = resolveTheme((await getOrCreateHq(guildId, attackerId)).themeId);
     const defenderName = holderLabel(view);
 
-    // Turn-by-turn: the player commands the assault on the territory themselves.
-    if (mode === "turn") {
-      if (siegeCfg.intro) await playCinematic(interaction, territoryCinematic(view, theme, attackerName, attackerCards, garrison, cx), view.faction.color);
-      await launchTerritorySiege(interaction, guildId, attackerId, attackerName, nodeId, view, theme, garrison, attackerCards, cx, siegeCfg);
-      return;
-    }
-
-    // The opening film, before anything is resolved.
-    if (mode === "cinematic") {
+    // Optional opening film, then the NEW Siege Battle runtime — interactive for
+    // `turn`, headless auto-resolve for other presentation modes. Legacy
+    // simulateSiegeBattle / power resolveSiege are no longer the attack path.
+    if (siegeCfg.intro || mode === "cinematic") {
       await playCinematic(interaction, territoryCinematic(view, theme, attackerName, attackerCards, garrison, cx), view.faction.color);
     }
-
-    // Resolve with the real battle engine; fall back to the power resolver only
-    // if battles are disabled or the engine throws.
-    let result: SiegeOutcome;
-    try {
-      const settings = await getBattleSettings(guildId);
-      if (!settings.enabled) throw new Error("battles disabled");
-      const r = simulateSiegeBattle(attackerCards, garrison, settings, guildId, cx.ctx, {
-        attackerId, attackerName, defenderId: `world:${nodeId}`, defenderName,
-      });
-      result = outcomeFromBattle(r, championRender(attackerCards[0], cx));
-    } catch {
-      const atk = await buildAttackerSquad(guildId, attackerId, cx, garrison.length);
-      const def = garrison.map(c => toSiegeCombatant(c, cx));
-      result = outcomeFromPower(resolveSiege(atk, def), championRender(attackerCards[0], cx), def.length);
-    }
-
-    const prof = tierProfile(view.territory.tier);
-    let previousHolder: string | null = null;
-    if (result.attackerWon) {
-      ({ previousHolder } = await captureTerritory(guildId, nodeId, attackerId, attackerName, WORLD_SHIELD_MS)
-        .catch(() => ({ previousHolder: null })));
-    } else {
-      await markTerritoryAttacked(guildId, nodeId).catch(() => {});
-    }
-    await logSiege(
-      guildId, attackerId, territoryLogKey(nodeId), result.attackerWon,
-      result.attackerPower, result.defenderPower, mode,
-    ).catch(() => {});
-
-    const reward = result.attackerWon ? prof.bounty : Math.round(prof.bounty * 0.12);
-    await addShards(guildId, attackerId, reward).catch(() => {});
-
-    const embed = new EmbedBuilder()
-      .setColor(result.attackerWon ? 0x4fd06a : view.faction.color)
-      .setTitle(result.attackerWon ? `🚩 ${view.territory.name} is yours!` : `🛡️ ${view.territory.name} holds`)
-      .setDescription(
-        result.attackerWon
-          ? `**${attackerName}** broke the ${defenderName} garrison — ${result.summary}.\n` +
-            `You hold this ${prof.label.toLowerCase()} until someone takes it off you, earning **${prof.tributePerHour}💠/hr**. ` +
-            "Collect from the 🗺️ World Map."
-          : `The ${defenderName} garrison threw you back — ${result.summary}.`,
-      )
-      .addFields(
-        { name: "⚔️ Squad power", value: `**${result.attackerPower}**`, inline: true },
-        { name: "🛡️ Garrison power", value: `**${result.defenderPower}**`, inline: true },
-        { name: "💠 Loot", value: `**+${reward}** shards`, inline: true },
-      );
-
-    // Whoever just lost the castle deserves to know.
-    if (previousHolder && previousHolder !== attackerId) {
-      void notifyTerritoryLost(interaction, previousHolder, attackerName, view.territory.name);
-    }
-
-    const files: AttachmentBuilder[] = [];
-    const baseView = territoryBaseView(view, theme, garrison, cx);
-    const plan: SiegePlan = {
-      duels: result.duels,
-      defenderCount: result.defenderCount,
-      captured: result.attackerWon,
-      attacker: result.champ,
-      attackerName, defenderName,
-    };
-    const live = mode !== "static";
-    const siegeFrames = await getOrCreateGuildSettings(guildId).catch(() => null);
-  const buf = await withGuildFrames(siegeFrames, () => renderSiege(baseView, plan, live, mode === "classic")).catch(() => null);
-    if (buf) {
-      const name = live ? SIEGE_GIF : SIEGE_FILE;
-      files.push(new AttachmentBuilder(buf, { name }));
-      embed.setImage(`attachment://${name}`);
-    }
-    if (mode === "classic" && result.logLines.length) {
-      embed.addFields({ name: result.real ? "⚔️ Battle log" : "Duels", value: result.logLines.join("\n").slice(0, 1024) });
-    }
-    await interaction.editReply({ embeds: [embed], components: [backRow("world")], files }).catch(() => {});
+    await launchTerritorySiege(
+      interaction, guildId, attackerId, attackerName, nodeId, view, theme, garrison, attackerCards, cx, siegeCfg,
+      { autoResolve: mode !== "turn" },
+    );
   });
 }
 
@@ -3449,8 +3228,8 @@ export async function buildBattleSiegePicker(
     .setTitle("🏰 Lay Siege")
     .setDescription(
       "Pick a **player base** or **world territory** to assault.\n" +
-      "Sieges are a **true turn-for-turn mini-battle** on the castle battlefield " +
-      `(same combat engine as \`/battle fight\`) — style: **${mode.emoji} ${mode.label}**.\n` +
+      "Every attack opens the **Siege Battle** (Draw → Main → resolve) on the " +
+      `formation field — same combat engine as \`/battle fight\`. Style: **${mode.emoji} ${mode.label}**.\n` +
       "_Configured for this server in `/hqadmin`._",
     );
   const now = Date.now();

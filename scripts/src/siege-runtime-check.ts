@@ -49,5 +49,51 @@ for (const c of cards) {
 // isSiegeTargetActive is a safe query on an unknown key.
 assert.equal(runtime.isSiegeTargetActive("nope"), false, "unknown target must read as inactive");
 
+// Draw / Main phase contract: startTurn leaves MAIN; combat is illegal on DRAW.
+{
+  const { deriveStats, applyStatOverrides } = await import(`${base}/battle/stat-engine.js`) as any;
+  const { inferSpecialEffect } = await import(`${base}/battle/special-cards.js`) as any;
+  const settings = {
+    id: 1, guildId: "phase", enabled: true, setupComplete: true,
+    battleChannelId: null, logChannelId: null, turnTimerSeconds: 45, aiOfferSeconds: 60,
+    hpBase: 750, hpPerRarity: 220, hpWorthDivisor: 40,
+    attackBase: 85, attackPerRarity: 28, defenseBase: 55, defensePerRarity: 18, speedBase: 50,
+    critChancePct: 12, critMultiplierPct: 180, missChancePct: 8, dodgeChancePct: 10, counterChancePct: 10,
+    energyGainPerTurn: 20, chargeEnergyGain: 45, specialCost: 40, shieldStrengthPct: 40,
+    ultimateChargePerTurn: 14, ultimateThreshold: 100, ultimateDamagePct: 260,
+    minRarity: "common", maxRarity: "mythic", allowedTypes: null,
+    specialCardsEnabled: true, stakingEnabled: true, aiEnabled: true,
+    createdAt: new Date(), updatedAt: new Date(),
+  };
+  const mk = (side: 0 | 1) => {
+    const card = { id: side + 1, name: `P${side}`, rarity: "rare", cardType: "tank", worthValue: 100 };
+    const stats = applyStatOverrides(deriveStats(card, settings), null);
+    return {
+      userId: `u${side}`, displayName: `P${side}`, isAi: true, side,
+      cardId: card.id, cardName: card.name, cardRarity: "rare", cardType: "tank",
+      cardImageUrl: null, stats, hp: stats.maxHealth, shield: 0, energy: 40, ultimate: 0, status: [],
+      specialCardId: null, specialCardName: null, specialEffect: inferSpecialEffect("tank", "rare"),
+      specialCooldownMax: 3, specialCooldownRemaining: 0,
+      itemId: null, itemChargesRemaining: 0, itemCooldownRemaining: 0,
+      defending: false, nextAttackBoostPct: 0, doubleNextAttack: false,
+      frozenTurns: 0, lastStandUsed: false,
+    };
+  };
+  const roster = (side: 0 | 1) => Array.from({ length: 4 }, () => mk(side));
+  const state = siege.buildSiegeBattle({
+    attacker: { name: "A", userId: "u0", isAi: true, roster: roster(0) },
+    defender: { name: "B", userId: "AI", isAi: true, roster: roster(1) },
+    settings,
+  });
+  assert.equal(state.phase, "draw", "fresh battle starts in DRAW");
+  const blocked = siege.checkAction(state, { kind: "move", actorSlot: 0, move: "attack", targetSlot: 0 });
+  assert.equal(blocked.ok, false, "combat actions must be illegal during DRAW");
+  siege.startTurn(state);
+  assert.equal(state.phase, "main", "startTurn must transition DRAW → MAIN");
+  const legal = siege.legalActions(state);
+  assert.ok(legal.length > 0, "MAIN phase must expose legal actions");
+  console.log("✅ draw/main phase contract held.");
+}
+
 console.log(`✅ runtime module loaded — ${cards.length} siege cards, all exports present.`);
 console.log("✅ engine, adapter, renderer and runtime surfaces intact.");

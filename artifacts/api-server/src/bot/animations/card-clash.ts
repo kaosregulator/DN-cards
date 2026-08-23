@@ -1,11 +1,11 @@
 // ─────────────────────────────────────────────────────────────────────────────
-// Siege Battle — the CARD CLASH screen.
+// Siege Battle — the CARD CLASH cinematic.
 //
-// Stage two of a siege turn. The formation battlefield (siege-field.ts) decides
-// WHO fights; this decides HOW. The two chosen fighters become large featured
-// cards either side of a VS burst, with their HP/energy/ultimate meters, the
-// commander life-point plates, a battle log rail, and the hand of Siege Battle
-// Cards along the bottom.
+// An INTERNAL presentation beat after a resolved Siege action — never a
+// separate battle mode or player navigation target. The formation field decides
+// who fights; this paints the close-up HOW. Two featured fighters either side of
+// a VS burst, with HP/energy/ultimate meters, commander life-point plates, a
+// battle log rail, and the hand of Siege Battle Cards along the bottom.
 //
 // Same renderer seam as every other animation here: `@napi-rs/canvas` drawn onto
 // a 2D context, GIFs through the shared `encodeAnimation`. Everything is

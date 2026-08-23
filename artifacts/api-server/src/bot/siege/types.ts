@@ -76,8 +76,10 @@ export interface SiegeTeam {
 }
 
 export type SiegePhase =
-  /** Waiting on the acting side to choose fighter → target → action. */
-  | "command"
+  /** Turn opening: draw pile → hand. Combat actions are illegal here. */
+  | "draw"
+  /** Acting side chooses fighter → target → action. */
+  | "main"
   /** A formation was wiped; that side is choosing replacements. */
   | "reinforce"
   | "ended";
@@ -149,7 +151,8 @@ export interface SiegeBattleEvent extends BattleEvent {
   /** Structured kind, so a renderer can switch on it without parsing text. */
   event?:
     | "attack" | "special" | "ultimate" | "defend" | "charge" | "item"
-    | "siege_card" | "direct_lp" | "ko" | "deploy" | "wipe" | "victory" | "info";
+    | "siege_card" | "direct_lp" | "ko" | "deploy" | "wipe" | "victory" | "info"
+    | "draw" | "phase";
 }
 
 /** A card whose HP moved during an action, with its pre-action value. */
