@@ -62,3 +62,8 @@ artifacts/api-server/data/world-builder/index.json
 
 # Accidental root world-builder data
 /data/
+
+# Siege pipeline preview renders (scripts/src/siege-pipeline.ts)
+/siege-formation.png
+/siege-clash.png
+/siege-phase-*.png
