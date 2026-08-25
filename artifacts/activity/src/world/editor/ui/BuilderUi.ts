@@ -10,7 +10,7 @@ import type {
   WorldObject,
   WorldNpcProps,
 } from "../types";
-import { CATEGORY_LABELS, CATEGORY_ORDER } from "../types";
+import { CATEGORY_LABELS, CATEGORY_ORDER, tilePickerCell} from "../types";
 
 export interface BuilderUiCallbacks {
   onTool: (tool: EditorTool) => void;
@@ -57,6 +57,14 @@ function ensureStyles(): void {
   .wb-card.selected{border-color:#7eb0ff;box-shadow:0 0 0 1px #7eb0ff88}
   .wb-thumb{width:100%;aspect-ratio:1;object-fit:contain;image-rendering:pixelated;background:#0a1020;border-radius:8px}
   .wb-thumb-ph{width:100%;aspect-ratio:1;border-radius:8px;display:grid;place-items:center;background:linear-gradient(145deg,#1a2444,#0d1428);font-size:22px}
+  .wb-tilepick{position:absolute;inset:0;background:#0b1122;display:flex;flex-direction:column;z-index:5}
+  .wb-tilepick-bar{display:flex;align-items:center;gap:10px;padding:8px 10px;border-bottom:1px solid #223052}
+  .wb-tilepick-bar strong{font-size:13px}
+  .wb-tilepick-bar small{color:#8fa0c8}
+  .wb-tilepick-grid{flex:1;overflow:auto;padding:10px;display:grid;gap:2px;align-content:start}
+  .wb-tilecell{width:100%;aspect-ratio:1;image-rendering:pixelated;background-repeat:no-repeat;border:1px solid transparent;border-radius:3px;cursor:pointer;padding:0}
+  .wb-tilecell:hover{border-color:#4f7fff}
+  .wb-tilecell.selected{border-color:#e8c15a;box-shadow:0 0 0 1px #e8c15a}
   .wb-card span{font:600 10px/1.2 inherit;color:#c5d0ea;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .wb-props{position:absolute;right:10px;top:64px;width:min(260px,40vw);border-radius:16px;padding:12px;display:none;max-height:calc(100vh - 80px);overflow:auto}
   .wb-props.open{display:block}
@@ -100,6 +108,7 @@ export class BuilderUi {
   private packList!: HTMLDivElement;
   private summaryEl!: HTMLDivElement;
   private assets: WorldAssetEntry[] = [];
+  private tilePicker: HTMLElement | null = null;
   private packs: WorldAssetPack[] = [];
   private category: WorldAssetCategory | "all" = "all";
   private filter = "";
@@ -377,6 +386,14 @@ export class BuilderUi {
         card.innerHTML = `<div class="wb-thumb-ph">${glyph}</div><span title="${a.name}">${a.name}</span>`;
       }
       card.addEventListener("click", () => {
+        // A multi-tile sheet (RPG Maker MV 48×48, LimeZu tilesets, …) opens a
+        // tile picker so an INDIVIDUAL cell can be painted — not the whole PNG.
+        if (a.tile?.sheet && (a.tile.count ?? 0) > 1) {
+          this.selectedAssetId = a.id;
+          this.renderGrid();
+          this.openTilePicker(a);
+          return;
+        }
         this.selectedAssetId = a.id;
         this.renderGrid();
         this.cb.onSelectAsset(a);
@@ -391,6 +408,59 @@ export class BuilderUi {
       });
       this.grid.appendChild(card);
     }
+  }
+
+  /** Open a grid picker that slices a multi-tile sheet into individual tiles. */
+  private openTilePicker(asset: WorldAssetEntry): void {
+    const t = asset.tile;
+    if (!t) return;
+    const columns = Math.max(1, t.columns);
+    const rows = Math.max(1, t.rows ?? Math.ceil((t.count ?? columns) / columns));
+    const count = t.count ?? columns * rows;
+    const cell = 34;                                  // on-screen tile size (px)
+    const sheetUrl = this.cb.resolveUrl(asset.url);
+
+    this.closeTilePicker();
+    const wrap = document.createElement("div");
+    wrap.className = "wb-tilepick";
+    wrap.innerHTML = `
+      <div class="wb-tilepick-bar">
+        <button type="button" class="wb-btn" data-back>← Back</button>
+        <strong>${asset.name}</strong>
+        <small>${columns}×${rows} · ${count} tiles · ${t.tileWidth}px</small>
+      </div>
+      <div class="wb-tilepick-grid" data-cells></div>`;
+    const gridEl = wrap.querySelector<HTMLElement>("[data-cells]")!;
+    gridEl.style.gridTemplateColumns = `repeat(${columns}, ${cell}px)`;
+    for (let id = 0; id < count; id++) {
+      const rect = tilePickerCell(t, id, cell);
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "wb-tilecell";
+      b.title = `Tile ${id}`;
+      b.style.backgroundImage = `url("${sheetUrl}")`;
+      b.style.backgroundSize = `${rect.bgW}px ${rect.bgH}px`;
+      b.style.backgroundPosition = `${rect.bgX}px ${rect.bgY}px`;
+      b.addEventListener("click", () => {
+        gridEl.querySelectorAll(".wb-tilecell.selected").forEach((n) => n.classList.remove("selected"));
+        b.classList.add("selected");
+        // Paint exactly this cell: clone with the chosen localId (the existing
+        // resolvePaintGid maps firstgid + localId to a real tile).
+        const picked: WorldAssetEntry = { ...asset, tile: { ...t, localId: id } };
+        this.cb.onSelectAsset(picked);
+        this.cb.onTool("paint");
+      });
+      gridEl.appendChild(b);
+    }
+    wrap.querySelector("[data-back]")!.addEventListener("click", () => this.closeTilePicker());
+    // Mount over the palette grid's positioned parent.
+    (this.grid.parentElement ?? this.grid).appendChild(wrap);
+    this.tilePicker = wrap;
+  }
+
+  private closeTilePicker(): void {
+    this.tilePicker?.remove();
+    this.tilePicker = null;
   }
 
   private renderPacks(): void {

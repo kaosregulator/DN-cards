@@ -162,6 +162,10 @@ export interface WorldAssetEntry {
     tileWidth: number;
     tileHeight: number;
     columns: number;
+    /** Multi-tile sheet grid (RPG Maker MV 48×48, LimeZu tilesets). */
+    rows?: number;
+    count?: number;
+    sheet?: boolean;
   };
   footprint?: { w: number; h: number };
   rotatable?: boolean;
@@ -227,3 +231,24 @@ export const CATEGORY_ORDER: WorldAssetCategory[] = [
   "furniture", "vehicles", "vegetation", "props", "signs", "interactive",
   "characters", "enemies", "spawns", "zones", "collision", "other",
 ];
+
+/** Geometry for one cell of a sliced tile sheet in the palette picker.
+ *  Pure + shared by the DOM picker so the slicing math is unit-testable. */
+export interface TileCellRect { col: number; row: number; bgX: number; bgY: number; bgW: number; bgH: number; }
+export function tilePickerCell(
+  t: { tileWidth: number; tileHeight: number; columns: number; rows?: number; count?: number },
+  id: number,
+  cell: number,
+): TileCellRect {
+  const columns = Math.max(1, t.columns);
+  const rows = Math.max(1, t.rows ?? Math.ceil((t.count ?? columns) / columns));
+  const sx = cell / t.tileWidth, sy = cell / t.tileHeight;   // sheet px → on-screen px
+  const col = id % columns, row = Math.floor(id / columns);
+  return {
+    col, row,
+    bgW: columns * t.tileWidth * sx,   // full sheet width, scaled
+    bgH: rows * t.tileHeight * sy,
+    bgX: -(col * t.tileWidth * sx),    // shift so this cell shows
+    bgY: -(row * t.tileHeight * sy),
+  };
+}

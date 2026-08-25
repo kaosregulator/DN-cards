@@ -28,6 +28,47 @@ function slugify(name: string): string {
     .slice(0, 48) || "pack";
 }
 
+// Read a PNG's pixel dimensions straight from the IHDR chunk (bytes 16–24) — no
+// image library needed, so the scan stays cheap. Returns null for non-PNG or a
+// malformed header.
+function pngSize(file: string): { w: number; h: number } | null {
+  try {
+    const fd = readFileSync(file);
+    // 8-byte signature, then IHDR: length(4)+"IHDR"(4)+width(4)+height(4).
+    if (fd.length < 24 || fd.readUInt32BE(0) !== 0x89504e47) return null;
+    if (fd.toString("ascii", 12, 16) !== "IHDR") return null;
+    return { w: fd.readUInt32BE(16), h: fd.readUInt32BE(20) };
+  } catch { return null; }
+}
+
+// RPG Maker MV ships 48×48 tiles; Modern Exteriors' MV export names its sheets
+// `Tileset_NN_MV.png`, `A2_Floors_MV_TILESET.png`, the A1–A5 autotile sheets and
+// the B–E object sheets. Recognise a sheet as a paintable TILE GRID when its
+// name looks like a tileset AND both dimensions divide evenly by a tile size we
+// support (48 first — MV — then 32/16 for other packs). Returns the grid, or
+// null for an ordinary standalone sprite/object PNG (which stays a single asset).
+const TILESET_NAME = /(^|[/_\- ])(tileset|tile[_\- ]?sheet|room.?builder|a[1-5]|[b-e])([/_\- .]|$)|_mv|_tileset|tileset_\d+|floors?|terrain|exterior|inner|outer/i;
+const TILE_SIZES = [48, 32, 16] as const;
+
+function detectTileGrid(rel: string, size: { w: number; h: number } | null):
+  { tileWidth: number; tileHeight: number; columns: number; rows: number; count: number } | null {
+  if (!size) return null;
+  if (!TILESET_NAME.test(rel)) return null;
+  // Prefer the largest supported tile size the sheet divides by cleanly. MV
+  // (48) wins for the Modern Exteriors MV pack; 32/16 keep older packs working.
+  const mvHint = /_mv|_tileset|rpg.?maker|mv/i.test(rel);
+  const sizes = mvHint ? [48] : TILE_SIZES;
+  for (const ts of sizes) {
+    if (size.w % ts === 0 && size.h % ts === 0 && size.w >= ts && size.h >= ts) {
+      const columns = size.w / ts, rows = size.h / ts;
+      // A "grid" needs more than one cell; a lone 48×48 is just a sprite.
+      if (columns * rows <= 1) return null;
+      return { tileWidth: ts, tileHeight: ts, columns, rows, count: columns * rows };
+    }
+  }
+  return null;
+}
+
 export function categorizeFromPath(relPath: string): WorldAssetCategory {
   const p = relPath.toLowerCase().replace(/\\/g, "/");
   if (/floor|ground|tile|pavement|concrete|dirt|grass|sand/.test(p)) return "floors";
@@ -153,17 +194,27 @@ function scanDirectory(
       thumb: `/activity/assets/world-packs/${packId}/files/${rel}`,
     };
 
-    // Heuristic: large sheets named tileset / floor / terrain → tile paint candidate.
-    if (/tileset|tile_sheet|room.?builder|floor|terrain|exterior/i.test(rel)) {
+    // Tile GRID detection: a sheet whose name looks like a tileset and whose real
+    // pixel size divides into a whole grid becomes a paintable multi-tile sheet
+    // (48×48 for RPG Maker MV) — the palette slices it so every cell is a
+    // placeable tile. A standalone sprite/object PNG has no grid and stays a
+    // single object asset, exactly as before.
+    const grid = detectTileGrid(rel, pngSize(join(scanRoot, rel)));
+    if (grid) {
       entry.tile = {
         tileset: basename(rel, ext),
         localId: 0,
-        tileWidth: 32,
-        tileHeight: 32,
-        columns: 16,
+        tileWidth: grid.tileWidth,
+        tileHeight: grid.tileHeight,
+        columns: grid.columns,
+        rows: grid.rows,
+        count: grid.count,
+        sheet: grid.count > 1,
       };
       entry.kind = "prop";
+      entry.rotatable = false;
       if (category === "other") entry.category = "floors";
+      entry.tags = [...(entry.tags ?? []), "tileset", `${grid.tileWidth}px`, `${grid.count}-tiles`].slice(0, 14);
     }
 
     assets.push(entry);

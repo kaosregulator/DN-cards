@@ -171,13 +171,23 @@ export interface WorldAssetEntry {
   url: string;
   packId: string;
   kind: WorldObjectKind;
-  /** When true, paint as tile gid rather than place as object. */
+  /**
+   * When present, this asset is (or belongs to) a paintable tile grid rather
+   * than a single placed object. `columns`×`rows` = `count` individual tiles of
+   * `tileWidth`×`tileHeight`; `localId` selects one cell (0-based, row-major).
+   * `sheet: true` marks a multi-tile sheet the palette slices into a tile
+   * picker so each cell can be painted individually (RPG Maker MV 48×48 sheets,
+   * LimeZu tilesets, etc.). A plain single-tile entry omits `sheet`/`rows`/`count`.
+   */
   tile?: {
     tileset: string;
     localId: number;
     tileWidth: number;
     tileHeight: number;
     columns: number;
+    rows?: number;
+    count?: number;
+    sheet?: boolean;
   };
   footprint?: { w: number; h: number };
   rotatable?: boolean;
