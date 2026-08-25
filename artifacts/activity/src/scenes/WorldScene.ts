@@ -13,6 +13,7 @@ import { RoofFade } from "../world/roofFade";
 import { HmNpcs, DialogBox, type HmNpcDef } from "../world/hmNpcs";
 import { HmItems, foragedToast, type HmItemHit } from "../world/hmItems";
 import { getAvatarId, getPetId } from "../state/profile";
+import { WorldBuilder } from "../world/editor/WorldBuilder";
 
 // Dog breeds used to populate a map with stray/companion dogs (kept small so the
 // world only streams a few extra sheets). The player's own pet is added too.
@@ -145,6 +146,10 @@ export class WorldScene extends Phaser.Scene {
   private npcNear: HmNpcDef | null = null;
   private items: HmItems | null = null;
   private itemNear: HmItemHit | null = null;
+  private worldBuilder: WorldBuilder | null = null;
+  private editing = false;
+  private tilemapRef: Phaser.Tilemaps.Tilemap | null = null;
+  private paintLayer: Phaser.Tilemaps.TilemapLayer | null = null;
 
   constructor() {
     super("World");
@@ -166,6 +171,11 @@ export class WorldScene extends Phaser.Scene {
     this.npcNear = null;
     this.items = null;
     this.itemNear = null;
+    this.worldBuilder?.destroy();
+    this.worldBuilder = null;
+    this.editing = false;
+    this.tilemapRef = null;
+    this.paintLayer = null;
     // In the Harvest Moon world the player is Jack; elsewhere it's the chosen avatar.
     this.avatar = this.isHm ? avatarById("jack") : avatarById(getAvatarId());
     this.petId = getPetId();
@@ -225,9 +235,15 @@ export class WorldScene extends Phaser.Scene {
     this.physics.world.setBounds(0, 0, map.widthInPixels, map.heightInPixels);
     this.mapPixels = { w: map.widthInPixels, h: map.heightInPixels };
     this.tileW = map.tileWidth;
+    this.tilemapRef = map;
     this.drawHmBackground(map);
 
     const { spawnX, spawnY } = this.buildMap(map);
+    // Prefer a Floor / Ground / Base visual layer for World Builder paint.
+    this.paintLayer =
+      this.visualLayers.find((l) => /^floor|ground|base|soil/i.test(l.layer.name)) ??
+      this.visualLayers[0] ??
+      null;
     if (this.roofLayers.length) {
       this.roofFade = new RoofFade(this.roofLayers, map.width, map.height, map.tileWidth, map.tileHeight);
     }
@@ -306,8 +322,37 @@ export class WorldScene extends Phaser.Scene {
     });
     this.ready = true;
 
+    // World Builder — loads overlay edits for everyone; F9 opens the editor for admins.
+    this.worldBuilder = new WorldBuilder({
+      scene: this,
+      mapKey: this.mapKey,
+      tileW: this.tileW,
+      getPlayerPos: () => ({ x: this.player.x, y: this.player.y }),
+      setPlayerPos: (x, y) => {
+        this.player.setPosition(x, y);
+        this.playerShadow?.setPosition(x, y + (this.avatar.fh / 2 - 4) * this.playerScale);
+      },
+      getCollisionLayer: () => this.collisionLayer,
+      getVisualLayers: () => this.visualLayers,
+      getTilemap: () => this.tilemapRef,
+      getPaintLayer: () => this.paintLayer,
+      setEditing: (on) => { this.editing = on; },
+      hideGameHud: (hide) => {
+        const hud = document.getElementById("world-hud");
+        if (hud) hud.style.display = hide ? "none" : "";
+        if (this.zoomEl) this.zoomEl.style.display = hide ? "none" : "";
+        // Minimap is a Phaser overlay — hide via setVisible on its camera elements if present.
+        // Avoid destroy/recreate so playtest restores cleanly.
+        const mm = document.getElementById("mini-map");
+        if (mm) mm.style.display = hide ? "none" : "";
+      },
+    });
+    void this.worldBuilder.boot();
+
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.touchDir = { x: 0, y: 0 };
+      this.worldBuilder?.destroy();
+      this.worldBuilder = null;
       this.hud?.destroy();
       this.miniMap?.destroy();
       this.miniMap = null;
@@ -913,6 +958,15 @@ export class WorldScene extends Phaser.Scene {
   // ── per-frame ─────────────────────────────────────────────────────────────
   update(): void {
     if (!this.ready || this.transitioning || !this.player?.body) return;
+
+    // World Builder freezes adventure controls while editing.
+    if (this.editing) {
+      this.player.setVelocity(0, 0);
+      const a = avatarAnim(this.avatar, this.facing, false);
+      this.player.anims.play(a.key, true);
+      this.playerShadow.setPosition(this.player.x, this.player.y + (this.avatar.fh / 2 - 4) * this.playerScale);
+      return;
+    }
 
     // Pinch-to-zoom (touch / trackpad): two active pointers → change zoom by the
     // change in finger distance, and don't also walk the player.
