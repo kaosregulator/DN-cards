@@ -11,12 +11,16 @@ import { mountMapManager, renderDoorProps, renderSpawnProps } from "./ui/MapMana
 import { EditHistory } from "./history";
 import {
   emptyWorldDoc,
+  docTilesetFromAsset,
+  nextFirstGid,
+  paintGidFromDocTilesets,
   type CreateMapRequest,
   type CustomMapMeta,
   type EditorTool,
   type WorldAssetCategory,
   type WorldAssetEntry,
   type WorldAssetPack,
+  type WorldDocTileset,
   type WorldDoor,
   type WorldEditDocument,
   type WorldObject,
@@ -97,6 +101,10 @@ export class WorldBuilder {
     // Catalog needed so saved objects resolve to real textures for all players.
     await this.loadCatalog();
     await this.refreshMapList();
+    // Register imported tile-sheets onto the live map BEFORE painting tiles, so
+    // saved paint (blank maps included) renders real artwork for everyone, not
+    // the blank stamp. Sync applyDocToWorld can then putTileAt against them.
+    await this.ensureDocTilesetsRegistered();
     this.applyDocToWorld();
     this.host.setRuntimeOverlay(this.doc.doors, this.doc.spawns);
     this.bindHotkeys();
@@ -195,7 +203,7 @@ export class WorldBuilder {
     this.ui = new BuilderUi({
       onTool: (t) => this.setTool(t),
       onCategory: (_c: WorldAssetCategory | "all") => { /* filtered in UI */ },
-      onSelectAsset: (a) => this.selectAsset(a),
+      onSelectAsset: (a) => void this.selectAsset(a),
       onSave: () => { void this.save(); },
       onExit: () => this.exitEditor(true),
       onUndo: () => this.undo(),
@@ -353,17 +361,25 @@ export class WorldBuilder {
     if (tool === "spawn") this.ui?.setHint("Spawn — click to set a player spawn point");
   }
 
-  private selectAsset(asset: WorldAssetEntry | null): void {
+  private async selectAsset(asset: WorldAssetEntry | null): Promise<void> {
     this.asset = asset;
     this.ui?.setSelectedAsset(asset?.id ?? null);
     if (asset?.tile) {
-      // Use localId as a relative stamp; when painting into an existing tileset
-      // layer we resolve firstgid from the live map if possible.
+      // Imported sheets aren't part of a blank map's tilesets, so register the
+      // sheet on the live map first; then paintGid maps to real artwork.
+      if (asset.tile.sheet || (asset.tile.count ?? 0) > 1) {
+        this.ui?.setHint("Loading tileset…");
+        await this.ensureTileset(asset);
+      }
+      // Use localId as a relative stamp; firstgid comes from the registered sheet.
       this.paintGid = this.resolvePaintGid(asset);
     }
   }
 
   private resolvePaintGid(asset: WorldAssetEntry): number {
+    // Prefer the doc's persisted tileset table (stable across reload/playtest).
+    const fromDoc = paintGidFromDocTilesets(this.doc.tilesets, asset);
+    if (fromDoc != null) return fromDoc;
     const map = this.host.getTilemap();
     const name = asset.tile?.tileset;
     if (map && name) {
@@ -377,6 +393,74 @@ export class WorldBuilder {
     const sample = layer?.getTileAt(Math.floor(pos.x / tw), Math.floor(pos.y / tw));
     if (sample && sample.index > 0) return sample.index;
     return 1;
+  }
+
+  // ── Imported tile-sheets → live Phaser tilesets ────────────────────────────
+  // A blank map ships only the 1×1 `wb-blank` stamp. To paint imported 48×48 MV
+  // (or 16/32 LimeZu) tiles as real artwork we must: (1) load the sheet image,
+  // (2) addTilesetImage it onto the map at a stable firstgid, (3) bind it to the
+  // paint layer so gids in its range render. The record is stored in the doc so
+  // the same sheet re-registers at the same firstgid after reload / playtest.
+
+  private async ensureTileset(asset: WorldAssetEntry): Promise<WorldDocTileset | null> {
+    const map = this.host.getTilemap();
+    if (!map || !asset.tile) return null;
+    if (!this.doc.tilesets) this.doc.tilesets = [];
+    let rec = this.doc.tilesets.find((x) => x.name === asset.tile!.tileset);
+    if (!rec) {
+      const mapMaxGid = map.tilesets.reduce(
+        (m, ts) => Math.max(m, ts.firstgid + ts.total - 1), 1,
+      );
+      const firstgid = nextFirstGid(this.doc.tilesets, mapMaxGid);
+      const built = docTilesetFromAsset(asset, firstgid);
+      if (!built) return null;
+      this.doc.tilesets.push(built);
+      this.dirty = true;
+      rec = built;
+    }
+    await this.registerTileset(rec);
+    return rec;
+  }
+
+  private async ensureDocTilesetsRegistered(): Promise<void> {
+    for (const rec of this.doc.tilesets ?? []) {
+      await this.registerTileset(rec);
+    }
+  }
+
+  private async registerTileset(rec: WorldDocTileset): Promise<void> {
+    const scene = this.host.scene;
+    const map = this.host.getTilemap();
+    if (!map) return;
+    const texKey = `wbts:${rec.name}`;
+    if (!scene.textures.exists(texKey)) {
+      const url = resolveAssetUrl(rec.image, this.apiBase);
+      if (!url) return;
+      await new Promise<void>((resolve) => {
+        scene.load.image(texKey, url);
+        scene.load.once(Phaser.Loader.Events.COMPLETE, () => resolve());
+        scene.load.once(Phaser.Loader.Events.FILE_LOAD_ERROR, () => resolve());
+        scene.load.start();
+      });
+    }
+    if (!scene.textures.exists(texKey)) return; // load failed — paint falls back
+    let ts = map.tilesets.find((x) => x.name === rec.name);
+    if (!ts) {
+      ts = map.addTilesetImage(
+        rec.name, texKey, rec.tileWidth, rec.tileHeight, 0, 0, rec.firstgid,
+      ) ?? undefined;
+    }
+    if (!ts) return;
+    // A layer only renders gids from tilesets bound to it; blank maps bind only
+    // `wb-blank` at creation, so add ours to every visual + collision layer.
+    const layers = [
+      this.host.getPaintLayer(),
+      ...this.host.getVisualLayers(),
+      this.host.getCollisionLayer(),
+    ];
+    for (const layer of layers) {
+      if (layer && !layer.tileset.includes(ts)) layer.tileset.push(ts);
+    }
   }
 
   private commit(next: WorldEditDocument): void {

@@ -56,6 +56,21 @@ export interface TilePatch {
   gid: number;
 }
 
+/**
+ * An imported tile-sheet registered onto a map so painted tiles resolve to real
+ * artwork (blank maps otherwise ship only the `wb-blank` stamp). Persisted with
+ * a stable `firstgid` so the same gids re-resolve after reload / playtest.
+ */
+export interface WorldDocTileset {
+  name: string;
+  image: string;
+  tileWidth: number;
+  tileHeight: number;
+  columns: number;
+  tileCount: number;
+  firstgid: number;
+}
+
 export interface WorldNpcProps {
   characterType?: string;
   name?: string;
@@ -197,6 +212,8 @@ export interface WorldEditDocument {
     spaceKind?: MapSpaceKind;
   };
   tiles: TilePatch[];
+  /** Imported tile-sheets registered on this map (see WorldDocTileset). */
+  tilesets?: WorldDocTileset[];
   objects: WorldObject[];
   zones: WorldZone[];
   spawns: WorldSpawn[];
@@ -212,6 +229,7 @@ export function emptyWorldDoc(mapKey: string): WorldEditDocument {
     updatedAt: new Date().toISOString(),
     metadata: { defaultFloor: 0 },
     tiles: [],
+    tilesets: [],
     objects: [],
     zones: [],
     spawns: [],

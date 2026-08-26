@@ -110,6 +110,7 @@ export function saveWorldDoc(
     updatedAt: new Date().toISOString(),
     updatedBy,
     tiles: doc.tiles ?? [],
+    tilesets: doc.tilesets ?? [],
     objects: doc.objects ?? [],
     zones: doc.zones ?? [],
     spawns: doc.spawns ?? [],

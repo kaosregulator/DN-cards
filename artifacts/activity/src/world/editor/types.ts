@@ -47,6 +47,26 @@ export interface TilePatch {
   gid: number;
 }
 
+/**
+ * An imported tile-sheet registered onto a map so painted tiles resolve to real
+ * artwork. Blank maps ship only the `wb-blank` stamp, so without this record a
+ * painted imported tile has no tileset to render against. Persisted in the doc
+ * with a stable `firstgid` so the same gids re-resolve after reload / playtest.
+ */
+export interface WorldDocTileset {
+  /** Source tileset name — matches WorldAssetEntry.tile.tileset. */
+  name: string;
+  /** Sheet image URL (catalog asset url); resolved against the API base at load. */
+  image: string;
+  tileWidth: number;
+  tileHeight: number;
+  columns: number;
+  /** Total tiles in the sheet (columns × rows). */
+  tileCount: number;
+  /** Stable global id of this tileset's first tile on the map. */
+  firstgid: number;
+}
+
 export interface WorldNpcProps {
   characterType?: string;
   name?: string;
@@ -183,6 +203,8 @@ export interface WorldEditDocument {
     spaceKind?: MapSpaceKind;
   };
   tiles: TilePatch[];
+  /** Imported tile-sheets registered on this map (see WorldDocTileset). */
+  tilesets?: WorldDocTileset[];
   objects: WorldObject[];
   zones: WorldZone[];
   spawns: WorldSpawn[];
@@ -198,12 +220,62 @@ export function emptyWorldDoc(mapKey: string): WorldEditDocument {
     updatedAt: new Date().toISOString(),
     metadata: { defaultFloor: 0 },
     tiles: [],
+    tilesets: [],
     objects: [],
     zones: [],
     spawns: [],
     doors: [],
     collision: [],
   };
+}
+
+/**
+ * Next free firstgid above the blank base (`mapMaxGid`, the highest gid already
+ * on the live map) and any sheets already registered in the doc. Keeping this
+ * deterministic + persisted is what makes painted imported tiles survive a
+ * reload: the same sheet always re-registers at the same firstgid.
+ */
+export function nextFirstGid(
+  existing: { firstgid: number; tileCount: number }[],
+  mapMaxGid = 1,
+): number {
+  let max = mapMaxGid;
+  for (const t of existing) max = Math.max(max, t.firstgid + t.tileCount - 1);
+  return max + 1;
+}
+
+/** Build a persistable tileset record for an imported sheet asset. */
+export function docTilesetFromAsset(
+  asset: WorldAssetEntry,
+  firstgid: number,
+): WorldDocTileset | null {
+  const t = asset.tile;
+  if (!t) return null;
+  const image = asset.url || asset.thumb || "";
+  if (!image) return null;
+  const columns = Math.max(1, t.columns || 1);
+  const rows = Math.max(1, t.rows ?? Math.ceil((t.count ?? columns) / columns));
+  const tileCount = Math.max(1, t.count ?? columns * rows);
+  return {
+    name: t.tileset,
+    image,
+    tileWidth: t.tileWidth,
+    tileHeight: t.tileHeight,
+    columns,
+    tileCount,
+    firstgid,
+  };
+}
+
+/** Absolute gid for an asset given the doc's registered tilesets, or null. */
+export function paintGidFromDocTilesets(
+  tilesets: WorldDocTileset[] | undefined,
+  asset: WorldAssetEntry,
+): number | null {
+  const t = asset.tile;
+  if (!t || !tilesets) return null;
+  const ts = tilesets.find((x) => x.name === t.tileset);
+  return ts ? ts.firstgid + (t.localId ?? 0) : null;
 }
 
 export interface WorldAssetEntry {

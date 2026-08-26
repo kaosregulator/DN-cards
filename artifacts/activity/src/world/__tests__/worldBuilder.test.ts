@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { emptyWorldDoc, CATEGORY_ORDER, tilePickerCell } from "../editor/types";
+import {
+  emptyWorldDoc,
+  CATEGORY_ORDER,
+  tilePickerCell,
+  nextFirstGid,
+  docTilesetFromAsset,
+  paintGidFromDocTilesets,
+  type WorldAssetEntry,
+} from "../editor/types";
 import { EditHistory } from "../editor/history";
 
 describe("world builder document", () => {
@@ -61,5 +69,45 @@ describe("tile sheet picker (RPG Maker MV 48×48)", () => {
   it("works for a non-square grid (A2_Floors 16×12)", () => {
     const a2 = { tileWidth: 48, tileHeight: 48, columns: 16, rows: 12, count: 192 };
     expect(tilePickerCell(a2, 191, 34)).toMatchObject({ col: 15, row: 11 });
+  });
+});
+
+describe("imported tile-sheet wiring on blank maps", () => {
+  const sheet = (tileset: string, localId: number): WorldAssetEntry => ({
+    id: `pack/${tileset}#${localId}`,
+    name: tileset,
+    category: "floors",
+    url: `/activity/assets/world-packs/p1/files/${tileset}.png`,
+    packId: "p1",
+    kind: "prop",
+    tile: { tileset, localId, tileWidth: 48, tileHeight: 48, columns: 16, rows: 8, count: 128, sheet: true },
+  });
+
+  it("allocates the first firstgid above the blank base stamp", () => {
+    // A blank map has only wb-blank (gid 1); first imported sheet starts at 2.
+    expect(nextFirstGid([], 1)).toBe(2);
+  });
+
+  it("stacks non-overlapping firstgids for multiple sheets", () => {
+    const a = docTilesetFromAsset(sheet("Tileset_82_MV", 0), nextFirstGid([], 1))!;
+    expect(a.firstgid).toBe(2);
+    expect(a.tileCount).toBe(128);
+    const b = docTilesetFromAsset(sheet("Tileset_83_MV", 0), nextFirstGid([a], 1))!;
+    // 2 + 128 = 130 → next free is 130 (129 is a's last tile).
+    expect(b.firstgid).toBe(130);
+    // Ranges must not overlap.
+    expect(b.firstgid).toBeGreaterThan(a.firstgid + a.tileCount - 1);
+  });
+
+  it("resolves a painted localId to a real gid via the persisted table", () => {
+    const rec = docTilesetFromAsset(sheet("Tileset_82_MV", 0), nextFirstGid([], 1))!;
+    // localId 17 (col 1,row 1) on a firstgid-2 sheet → gid 19.
+    expect(paintGidFromDocTilesets([rec], sheet("Tileset_82_MV", 17))).toBe(rec.firstgid + 17);
+    // Unknown sheet → null (paint falls back, never a wrong gid).
+    expect(paintGidFromDocTilesets([rec], sheet("Other_MV", 3))).toBeNull();
+  });
+
+  it("carries a tilesets table on an empty doc", () => {
+    expect(emptyWorldDoc("wb-cave").tilesets).toEqual([]);
   });
 });

@@ -69,4 +69,33 @@ describe("world-builder map registry", () => {
     const def = resolveSpawnPoint(meta.key);
     expect(def?.name).toBe("Default");
   });
+
+  it("persists imported tilesets + painted tiles on a blank map across reload", () => {
+    // Reproduces the F9 flow: create Cave → paint an imported 48×48 MV tile.
+    // The imported sheet must survive save/reload as real data (firstgid + image),
+    // not merely a metadata note, so the painted gid re-resolves to artwork.
+    const { meta, doc } = createCustomMap({ name: "Cave", tile: 48, spaceKind: "cave" });
+    doc.tilesets = [{
+      name: "Tileset_82_MV",
+      image: "/activity/assets/world-packs/p1/files/Tileset_82_MV.png",
+      tileWidth: 48, tileHeight: 48, columns: 16, tileCount: 128, firstgid: 2,
+    }];
+    // Paint localId 17 → gid = firstgid(2) + 17 = 19, plus a solid collision cell.
+    doc.tiles = [{ layer: "Floor", x: 5, y: 6, gid: 19 }];
+    doc.collision = [{ x: 5, y: 6, solid: true }];
+    saveWorldDoc(meta.key, doc);
+
+    const reopened = loadWorldDoc(meta.key);
+    expect(reopened.tilesets).toHaveLength(1);
+    const ts = reopened.tilesets![0]!;
+    expect(ts.name).toBe("Tileset_82_MV");
+    expect(ts.firstgid).toBe(2);
+    expect(ts.image).toContain("Tileset_82_MV.png"); // real sheet ref, not a note
+    // The painted gid falls inside the registered sheet's range → resolves to art.
+    const painted = reopened.tiles[0]!;
+    expect(painted.gid).toBe(19);
+    expect(painted.gid).toBeGreaterThanOrEqual(ts.firstgid);
+    expect(painted.gid).toBeLessThanOrEqual(ts.firstgid + ts.tileCount - 1);
+    expect(reopened.collision).toEqual([{ x: 5, y: 6, solid: true }]);
+  });
 });
