@@ -12,6 +12,7 @@ import {
   resolveSpawnPoint,
 } from "../map-registry.js";
 import { loadWorldDoc, saveWorldDoc } from "../store.js";
+import { tilesetForGid, type WorldDocTileset } from "../types.js";
 
 describe("world-builder map registry", () => {
   let dir: string;
@@ -98,4 +99,38 @@ describe("world-builder map registry", () => {
     expect(painted.gid).toBeLessThanOrEqual(ts.firstgid + ts.tileCount - 1);
     expect(reopened.collision).toEqual([{ x: 5, y: 6, solid: true }]);
   });
+
+  // The explicit guarantee: a blank map carrying imported sheets at each shipped
+  // tile size saves, reloads, and every painted tile resolves to the imported
+  // sheet — never the wb-blank stamp (gid ≤ 1).
+  const SIZES: Array<{ label: string; ts: Omit<WorldDocTileset, "firstgid"> }> = [
+    { label: "48", ts: { name: "MV_48", image: "packs/p/MV_48.png", tileWidth: 48, tileHeight: 48, columns: 16, tileCount: 128 } },
+    { label: "32", ts: { name: "Lime_32", image: "packs/p/Lime_32.png", tileWidth: 32, tileHeight: 32, columns: 16, tileCount: 256 } },
+    { label: "16", ts: { name: "Lime_16", image: "packs/p/Lime_16.png", tileWidth: 16, tileHeight: 16, columns: 32, tileCount: 1024 } },
+  ];
+  for (const { label, ts } of SIZES) {
+    it(`saves/reloads a blank map with a ${label}×${label} sheet and resolves paint (no wb-blank fallback)`, () => {
+      const { meta } = createCustomMap({ name: `Cave ${label}`, tile: Number(label), spaceKind: "cave" });
+      const firstgid = 2; // above the wb-blank stamp on a blank map
+      const doc = loadWorldDoc(meta.key);
+      doc.tilesets = [{ ...ts, firstgid }];
+      // Paint the first, a middle, and the last cell of the sheet.
+      const cells = [0, Math.floor(ts.tileCount / 2), ts.tileCount - 1];
+      doc.tiles = cells.map((localId, i) => ({ layer: "Floor", x: i, y: 0, gid: firstgid + localId }));
+      saveWorldDoc(meta.key, doc);
+
+      const reopened = loadWorldDoc(meta.key);
+      const table = reopened.tilesets!;
+      expect(table).toHaveLength(1);
+      expect(table[0]!.tileWidth).toBe(Number(label));
+      // Every painted tile resolves to the imported sheet + correct cell.
+      reopened.tiles.forEach((patch, i) => {
+        const hit = tilesetForGid(table, patch.gid);
+        expect(hit, `tile ${i} must resolve to imported art, not wb-blank`).not.toBeNull();
+        expect(hit!.tileset.name).toBe(ts.name);
+        expect(hit!.localId).toBe(cells[i]);
+        expect(patch.gid).toBeGreaterThan(1);
+      });
+    });
+  }
 });

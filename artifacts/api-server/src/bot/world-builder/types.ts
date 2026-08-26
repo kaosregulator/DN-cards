@@ -238,6 +238,25 @@ export function emptyWorldDoc(mapKey: string): WorldEditDocument {
   };
 }
 
+/**
+ * Which registered sheet + local cell a painted gid renders from. Returns null
+ * when the gid would fall back to the blank `wb-blank` stamp (gid ≤ 1) or lands
+ * outside every registered sheet. Mirrors the activity-side helper so the server
+ * can validate that saved paint resolves to real imported artwork.
+ */
+export function tilesetForGid(
+  tilesets: WorldDocTileset[] | undefined,
+  gid: number,
+): { tileset: WorldDocTileset; localId: number } | null {
+  if (!tilesets || gid <= 1) return null;
+  for (const ts of tilesets) {
+    if (gid >= ts.firstgid && gid <= ts.firstgid + ts.tileCount - 1) {
+      return { tileset: ts, localId: gid - ts.firstgid };
+    }
+  }
+  return null;
+}
+
 export interface WorldAssetEntry {
   id: string;
   name: string;

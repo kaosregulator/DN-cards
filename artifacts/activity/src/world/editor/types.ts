@@ -278,6 +278,26 @@ export function paintGidFromDocTilesets(
   return ts ? ts.firstgid + (t.localId ?? 0) : null;
 }
 
+/**
+ * Inverse of the paint mapping: which registered sheet + local cell a painted
+ * gid renders from. Returns null when the gid would fall back to the blank
+ * `wb-blank` stamp (gid ≤ 1) or lands outside every registered sheet — i.e. the
+ * exact failure this wiring exists to prevent. A non-null result means the tile
+ * resolves to real imported artwork.
+ */
+export function tilesetForGid(
+  tilesets: WorldDocTileset[] | undefined,
+  gid: number,
+): { tileset: WorldDocTileset; localId: number } | null {
+  if (!tilesets || gid <= 1) return null; // gid 1 == the wb-blank stamp
+  for (const ts of tilesets) {
+    if (gid >= ts.firstgid && gid <= ts.firstgid + ts.tileCount - 1) {
+      return { tileset: ts, localId: gid - ts.firstgid };
+    }
+  }
+  return null;
+}
+
 export interface WorldAssetEntry {
   id: string;
   name: string;

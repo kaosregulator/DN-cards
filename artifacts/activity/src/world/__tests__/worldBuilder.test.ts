@@ -6,6 +6,7 @@ import {
   nextFirstGid,
   docTilesetFromAsset,
   paintGidFromDocTilesets,
+  tilesetForGid,
   type WorldAssetEntry,
 } from "../editor/types";
 import { EditHistory } from "../editor/history";
@@ -73,14 +74,17 @@ describe("tile sheet picker (RPG Maker MV 48×48)", () => {
 });
 
 describe("imported tile-sheet wiring on blank maps", () => {
-  const sheet = (tileset: string, localId: number): WorldAssetEntry => ({
+  const sheet = (
+    tileset: string, localId: number,
+    dims = { tileWidth: 48, tileHeight: 48, columns: 16, rows: 8, count: 128 },
+  ): WorldAssetEntry => ({
     id: `pack/${tileset}#${localId}`,
     name: tileset,
     category: "floors",
     url: `/activity/assets/world-packs/p1/files/${tileset}.png`,
     packId: "p1",
     kind: "prop",
-    tile: { tileset, localId, tileWidth: 48, tileHeight: 48, columns: 16, rows: 8, count: 128, sheet: true },
+    tile: { tileset, localId, sheet: true, ...dims },
   });
 
   it("allocates the first firstgid above the blank base stamp", () => {
@@ -109,5 +113,40 @@ describe("imported tile-sheet wiring on blank maps", () => {
 
   it("carries a tilesets table on an empty doc", () => {
     expect(emptyWorldDoc("wb-cave").tilesets).toEqual([]);
+  });
+
+  // The core guarantee the user asked for: a painted imported tile resolves to
+  // real artwork and NEVER falls back to the wb-blank stamp (gid ≤ 1). Proven
+  // for all three shipped tile sizes (RPG Maker MV 48, LimeZu 32, LimeZu 16).
+  const SIZES = [
+    { label: "48×48 RPG Maker MV", tileWidth: 48, tileHeight: 48, columns: 16, rows: 8, count: 128 },
+    { label: "32×32 LimeZu", tileWidth: 32, tileHeight: 32, columns: 16, rows: 16, count: 256 },
+    { label: "16×16 LimeZu", tileWidth: 16, tileHeight: 16, columns: 32, rows: 32, count: 1024 },
+  ];
+  for (const dims of SIZES) {
+    it(`resolves painted tiles to imported art (not wb-blank) — ${dims.label}`, () => {
+      const name = `Sheet_${dims.tileWidth}`;
+      const rec = docTilesetFromAsset(sheet(name, 0, dims), nextFirstGid([], 1))!;
+      expect(rec.firstgid).toBe(2);                 // above the wb-blank stamp
+      expect(rec.tileCount).toBe(dims.count);
+      // Sample the first, an interior, and the last cell of the sheet.
+      for (const localId of [0, Math.floor(dims.count / 2), dims.count - 1]) {
+        const gid = paintGidFromDocTilesets([rec], sheet(name, localId, dims));
+        expect(gid).toBe(rec.firstgid + localId);
+        expect(gid!).toBeGreaterThan(1);            // not the blank stamp
+        // Inverse resolve: gid maps back to THIS sheet + the same cell.
+        const hit = tilesetForGid([rec], gid!);
+        expect(hit).not.toBeNull();
+        expect(hit!.tileset.name).toBe(name);
+        expect(hit!.localId).toBe(localId);
+      }
+    });
+  }
+
+  it("flags the wb-blank stamp gid as a fallback (never imported art)", () => {
+    const rec = docTilesetFromAsset(sheet("Sheet_48", 0), nextFirstGid([], 1))!;
+    expect(tilesetForGid([rec], 1)).toBeNull();     // gid 1 = wb-blank
+    expect(tilesetForGid([rec], 0)).toBeNull();     // cleared cell
+    expect(tilesetForGid([rec], 100000)).toBeNull(); // outside every sheet
   });
 });
