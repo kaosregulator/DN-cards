@@ -2,15 +2,17 @@
 
 import { Router, type IRouter, type Request, type Response } from "express";
 import express from "express";
-import { createReadStream, existsSync, statSync } from "node:fs";
-import { extname, normalize } from "node:path";
+import { createReadStream, createWriteStream, existsSync, statSync, mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { randomBytes } from "node:crypto";
+import { extname, normalize, join } from "node:path";
 import { HOME_GUILD_ID } from "../bot/home-guild.js";
 import { isAdmin } from "../bot/db.js";
 import { logger } from "../lib/logger.js";
 import { resolvedEnv } from "../lib/runtime-env.js";
 import { canEditWorld, isDemoBuilderRequest, worldBuilderOpenMode } from "../bot/world-builder/auth.js";
 import { builtinAssets, builtinPackMeta } from "../bot/world-builder/builtin-catalog.js";
-import { importFolderFiles, importZipBuffer } from "../bot/world-builder/packs.js";
+import { importFolderFiles, importZipBuffer, importZipFile } from "../bot/world-builder/packs.js";
 import {
   listImportedPacks,
   loadPackManifest,
@@ -149,27 +151,68 @@ router.post("/world-builder/maps/:mapKey", async (req, res) => {
 });
 
 // POST /activity/world-builder/packs/import  (raw zip)
-router.post(
-  "/world-builder/packs/import",
-  express.raw({ type: ["application/zip", "application/octet-stream", "application/x-zip-compressed"], limit: "80mb" }),
-  async (req, res) => {
-    const user = await requireEditor(req, res);
-    if (!user) return;
-    const buf = Buffer.isBuffer(req.body) ? req.body : Buffer.from(req.body ?? []);
-    if (!buf.length) {
-      res.status(400).json({ error: "Empty upload." });
-      return;
+//
+// The upload STREAMS straight to a temp file rather than buffering the whole
+// body in memory, so a large pack (e.g. the 233 MB Modern Exteriors "win" pack)
+// imports with roughly constant request memory. The cap is configurable via
+// WORLD_BUILDER_MAX_UPLOAD_MB (default 512) and enforced as bytes arrive.
+const MAX_UPLOAD_BYTES = Math.max(1, Number(process.env["WORLD_BUILDER_MAX_UPLOAD_MB"]) || 512) * 1024 * 1024;
+router.post("/world-builder/packs/import", async (req, res) => {
+  const user = await requireEditor(req, res);   // auth BEFORE consuming the body
+  if (!user) return;
+
+  const tmpDir = mkdtempSync(join(tmpdir(), "wb-upload-"));
+  const tmpZip = join(tmpDir, "upload.zip");
+  const out = createWriteStream(tmpZip);
+  const cleanup = () => { try { rmSync(tmpDir, { recursive: true, force: true }); } catch { /* ignore */ } };
+
+  let received = 0;
+  let aborted = false;
+  const fail = (status: number, error: string) => {
+    if (aborted) return;
+    aborted = true;
+    req.unpipe?.(out); out.destroy();
+    cleanup();
+    // Send the rejection BEFORE tearing down the socket, and ask for it to be
+    // closed once the response flushes — otherwise destroying the request kills
+    // the socket first and the client sees a bare ECONNRESET instead of a 413.
+    // The client's upload write side may still reset (it's mid-stream); that's
+    // expected and handled by the no-op error listener below.
+    req.on("error", () => { /* client reset after rejection — expected */ });
+    if (!res.headersSent) {
+      res.status(status).set("Connection", "close").json({ error });
+      res.once("finish", () => { try { req.destroy(); } catch { /* ignore */ } });
+    } else {
+      try { req.destroy(); } catch { /* ignore */ }
     }
+  };
+
+  req.on("data", (chunk: Buffer) => {
+    received += chunk.length;
+    if (received > MAX_UPLOAD_BYTES) {
+      fail(413, `Upload exceeds the ${Math.round(MAX_UPLOAD_BYTES / 1024 / 1024)} MB limit.`);
+    }
+  });
+  req.on("error", () => fail(400, "Upload interrupted."));
+  out.on("error", () => fail(500, "Failed to buffer upload to disk."));
+
+  out.on("finish", () => {
+    if (aborted) return;
+    if (received === 0) { cleanup(); res.status(400).json({ error: "Empty upload." }); return; }
     try {
       const name = typeof req.query.name === "string" ? req.query.name : undefined;
-      const summary = importZipBuffer(buf, { name });
+      const summary = importZipFile(tmpZip, { name });
       res.json({ ok: true, summary });
     } catch (err) {
       logger.error({ err }, "world-builder zip import failed");
       res.status(400).json({ error: "Failed to import ZIP. Ensure it is a valid archive with image assets." });
+    } finally {
+      cleanup();
     }
-  },
-);
+  });
+
+  req.pipe(out);
+});
 
 // POST /activity/world-builder/packs/import-folder  (JSON: files as base64)
 router.post("/world-builder/packs/import-folder", async (req, res) => {

@@ -248,49 +248,69 @@ function scanDirectory(
   return { assets, summary, roots: [...roots] };
 }
 
-export function importZipBuffer(
-  buf: Buffer,
-  opts: { name?: string } = {},
-): PackImportSummary {
+/**
+ * Import an ALREADY-EXTRACTED pack directory: pick the real scan root, copy the
+ * files into the pack store, scan + catalog them. Shared by the file and buffer
+ * entry points below.
+ */
+function importExtracted(extracted: string, opts: { name?: string }): PackImportSummary {
+  // If the zip has a single top-level folder, scan inside it.
+  const top = readdirSync(extracted).filter((n) => !SKIP_NAMES.has(n.toLowerCase()));
+  let scanRoot = extracted;
+  if (top.length === 1) {
+    const only = join(extracted, top[0]!);
+    if (statSync(only).isDirectory()) scanRoot = only;
+  }
+
+  const baseName = opts.name?.trim() || basename(scanRoot) || "Imported Pack";
+  const packId = `${slugify(baseName)}-${randomBytes(3).toString("hex")}`;
+  const dest = packRoot(packId);
+  const filesDest = join(dest, "files");
+  if (existsSync(filesDest)) rmSync(filesDest, { recursive: true, force: true });
+  mkdirSync(filesDest, { recursive: true });
+  cpSync(scanRoot, filesDest, { recursive: true });
+
+  const { assets, summary, roots } = scanDirectory(packId, filesDest, baseName);
+  savePackManifest(packId, assets);
+  upsertPackMeta({
+    id: packId,
+    name: summary.name,
+    source: "imported",
+    importedAt: new Date().toISOString(),
+    assetCount: assets.length,
+    categories: summary.categories,
+    roots,
+    description: `Imported package (${assets.length} assets)`,
+  });
+  return summary;
+}
+
+/**
+ * Import a zip that is ALREADY ON DISK. This is the memory-safe path for large
+ * packs: the HTTP upload streams straight to a temp file (no whole-body buffer),
+ * then hands the path here — nothing proportional to the pack size is held in
+ * RAM by the request, only the extract + copy touch disk.
+ */
+export function importZipFile(zipPath: string, opts: { name?: string } = {}): PackImportSummary {
   const tmp = join(tmpdir(), `wb-import-${randomBytes(6).toString("hex")}`);
-  const zipFile = join(tmp, "pack.zip");
   const extracted = join(tmp, "out");
   mkdirSync(tmp, { recursive: true });
   try {
+    extractZip(zipPath, extracted);
+    return importExtracted(extracted, opts);
+  } finally {
+    rmSync(tmp, { recursive: true, force: true });
+  }
+}
+
+/** Import a zip held in memory (small packs / tests). Writes it out, then imports. */
+export function importZipBuffer(buf: Buffer, opts: { name?: string } = {}): PackImportSummary {
+  const tmp = join(tmpdir(), `wb-import-${randomBytes(6).toString("hex")}`);
+  const zipFile = join(tmp, "pack.zip");
+  mkdirSync(tmp, { recursive: true });
+  try {
     writeFileSync(zipFile, buf);
-    extractZip(zipFile, extracted);
-
-    // If the zip has a single top-level folder, scan inside it.
-    const top = readdirSync(extracted).filter((n) => !SKIP_NAMES.has(n.toLowerCase()));
-    let scanRoot = extracted;
-    if (top.length === 1) {
-      const only = join(extracted, top[0]!);
-      if (statSync(only).isDirectory()) scanRoot = only;
-    }
-
-    const baseName = opts.name?.trim() || basename(scanRoot) || "Imported Pack";
-    const packId = `${slugify(baseName)}-${randomBytes(3).toString("hex")}`;
-    const dest = packRoot(packId);
-    const filesDest = join(dest, "files");
-    if (existsSync(filesDest)) rmSync(filesDest, { recursive: true, force: true });
-    mkdirSync(filesDest, { recursive: true });
-    cpSync(scanRoot, filesDest, { recursive: true });
-
-    const { assets, summary, roots } = scanDirectory(packId, filesDest, baseName);
-    savePackManifest(packId, assets);
-
-    const pack: WorldAssetPack = {
-      id: packId,
-      name: summary.name,
-      source: "imported",
-      importedAt: new Date().toISOString(),
-      assetCount: assets.length,
-      categories: summary.categories,
-      roots,
-      description: `Imported package (${assets.length} assets)`,
-    };
-    upsertPackMeta(pack);
-    return summary;
+    return importZipFile(zipFile, opts);
   } finally {
     rmSync(tmp, { recursive: true, force: true });
   }
