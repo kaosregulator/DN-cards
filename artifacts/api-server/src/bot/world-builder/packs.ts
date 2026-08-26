@@ -47,17 +47,30 @@ function pngSize(file: string): { w: number; h: number } | null {
 // name looks like a tileset AND both dimensions divide evenly by a tile size we
 // support (48 first — MV — then 32/16 for other packs). Returns the grid, or
 // null for an ordinary standalone sprite/object PNG (which stays a single asset).
-const TILESET_NAME = /(^|[/_\- ])(tileset|tile[_\- ]?sheet|room.?builder|a[1-5]|[b-e])([/_\- .]|$)|_mv|_tileset|tileset_\d+|floors?|terrain|exterior|inner|outer/i;
+const TILESET_NAME = /(^|[/_\- ])(tileset|tile[_\- ]?sheet|room.?builder|a[1-5]|[b-e])([/_\- .]|$)|_mv|_tileset|tileset_\d+|floors?|terrain|exterior|inner|outer/i;
 const TILE_SIZES = [48, 32, 16] as const;
+
+// The authoritative tile size when the pack states it. Packs advertise their
+// grid in the path — RPG Maker MV is 48px (`_MV`), and LimeZu / Modern Exteriors
+// ship `..._16x16/...` and `..._32x32/...` trees. Reading it here keeps a 16px
+// sheet from being wrongly sliced at 32 (which would merge 2×2 tiles into one).
+function tileSizeHint(rel: string): number | null {
+  const p = rel.toLowerCase();
+  if (/_mv\b|rpg[_\- ]?maker|\bmv\b/.test(p)) return 48;
+  const m = p.match(/(?:^|[/_\- ])(\d{2,3})\s*[x×]\s*\1(?:[/_\- .]|$)/); // 16x16, 32x32, 48x48
+  if (m) { const n = Number(m[1]); if (n === 16 || n === 32 || n === 48) return n; }
+  return null;
+}
 
 function detectTileGrid(rel: string, size: { w: number; h: number } | null):
   { tileWidth: number; tileHeight: number; columns: number; rows: number; count: number } | null {
   if (!size) return null;
   if (!TILESET_NAME.test(rel)) return null;
-  // Prefer the largest supported tile size the sheet divides by cleanly. MV
-  // (48) wins for the Modern Exteriors MV pack; 32/16 keep older packs working.
-  const mvHint = /_mv|_tileset|rpg.?maker|mv/i.test(rel);
-  const sizes = mvHint ? [48] : TILE_SIZES;
+  // Trust an explicit size hint from the path first (`_MV` → 48, `16x16` → 16,
+  // `32x32` → 32); otherwise fall back to the largest supported tile size the
+  // sheet divides by cleanly.
+  const hint = tileSizeHint(rel);
+  const sizes = hint ? [hint] : TILE_SIZES;
   for (const ts of sizes) {
     if (size.w % ts === 0 && size.h % ts === 0 && size.w >= ts && size.h >= ts) {
       const columns = size.w / ts, rows = size.h / ts;
@@ -80,7 +93,7 @@ export function categorizeFromPath(relPath: string): WorldAssetCategory {
   if (/window/.test(p)) return "windows";
   if (/furn|chair|table|bed|desk|sofa|cabinet/.test(p)) return "furniture";
   if (/car|truck|bike|vehicle|bus|boat/.test(p)) return "vehicles";
-  if (/tree|bush|plant|flower|veg|foliage|garden/.test(p)) return "vegetation";
+  if (/tree|bush|plant|flower|veg|foliage|garden|nature|park/.test(p)) return "vegetation";
   if (/npc|char|people|person|guard|villager|hero/.test(p)) return "characters";
   if (/enemy|monster|boss|foe/.test(p)) return "enemies";
   if (/sign|poster|billboard/.test(p)) return "signs";
