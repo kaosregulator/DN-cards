@@ -26,6 +26,13 @@ function resolveBase(): string {
 
 const API_BASE = resolveBase();
 
+function demoHeaders(): Record<string, string> {
+  // Avoid importing demo.ts (circular with context → api).
+  const demo =
+    typeof location !== "undefined" && /(?:\?|&)demo\b/.test(location.search);
+  return demo ? { "x-world-builder-demo": "1" } : {};
+}
+
 export class ApiError extends Error {
   constructor(
     public readonly status: number,
@@ -38,9 +45,14 @@ export class ApiError extends Error {
 
 async function request<T>(
   path: string,
-  opts: { method?: string; body?: unknown; token?: string | null } = {},
+  opts: {
+    method?: string;
+    body?: unknown;
+    token?: string | null;
+    headers?: Record<string, string>;
+  } = {},
 ): Promise<T> {
-  const headers: Record<string, string> = { Accept: "application/json" };
+  const headers: Record<string, string> = { Accept: "application/json", ...(opts.headers ?? {}) };
   if (opts.body !== undefined) headers["Content-Type"] = "application/json";
   if (opts.token) headers["Authorization"] = `Bearer ${opts.token}`;
 
@@ -195,6 +207,163 @@ export const api = {
   /** Card Shop interior: the server's real cards (our art) + prices. */
   shop(): Promise<ShopModel> {
     return request<ShopModel>("/activity/shop", { token: tokenRef });
+  },
+
+  // ── World Builder (admin) ───────────────────────────────────────────────────
+  worldBuilderStatus(): Promise<{ canEdit: boolean; openMode: boolean; userId: string | null }> {
+    return request("/activity/world-builder/status", {
+      token: tokenRef,
+      headers: demoHeaders(),
+    });
+  },
+  worldBuilderCatalog(): Promise<{
+    packs: import("../world/editor/types").WorldAssetPack[];
+    assets: import("../world/editor/types").WorldAssetEntry[];
+  }> {
+    return request("/activity/world-builder/catalog", {
+      token: tokenRef,
+      headers: demoHeaders(),
+    });
+  },
+  worldBuilderLoadMap(mapKey: string): Promise<{
+    doc: import("../world/editor/types").WorldEditDocument;
+    meta?: import("../world/editor/types").CustomMapMeta | null;
+  }> {
+    return request(`/activity/world-builder/maps/${encodeURIComponent(mapKey)}`, {
+      token: tokenRef,
+      headers: demoHeaders(),
+    });
+  },
+  worldBuilderSaveMap(
+    mapKey: string,
+    doc: import("../world/editor/types").WorldEditDocument,
+  ): Promise<{
+    ok: boolean;
+    doc: import("../world/editor/types").WorldEditDocument;
+    meta?: import("../world/editor/types").CustomMapMeta | null;
+  }> {
+    return request(`/activity/world-builder/maps/${encodeURIComponent(mapKey)}`, {
+      method: "POST",
+      body: { doc },
+      token: tokenRef,
+      headers: demoHeaders(),
+    });
+  },
+  worldBuilderListMaps(): Promise<{
+    maps: import("../world/editor/types").CustomMapMeta[];
+    custom: import("../world/editor/types").CustomMapMeta[];
+  }> {
+    return request("/activity/world-builder/maps", {
+      token: tokenRef,
+      headers: demoHeaders(),
+    });
+  },
+  worldBuilderCreateMap(
+    body: import("../world/editor/types").CreateMapRequest,
+  ): Promise<{
+    ok: boolean;
+    meta: import("../world/editor/types").CustomMapMeta;
+    doc: import("../world/editor/types").WorldEditDocument;
+  }> {
+    return request("/activity/world-builder/maps", {
+      method: "POST",
+      body,
+      token: tokenRef,
+      headers: demoHeaders(),
+    });
+  },
+  worldBuilderRenameMap(mapKey: string, name: string): Promise<{
+    ok: boolean;
+    meta: import("../world/editor/types").CustomMapMeta;
+  }> {
+    return request(`/activity/world-builder/maps/${encodeURIComponent(mapKey)}`, {
+      method: "PATCH",
+      body: { name },
+      token: tokenRef,
+      headers: demoHeaders(),
+    });
+  },
+  worldBuilderDuplicateMap(mapKey: string, name?: string): Promise<{
+    ok: boolean;
+    meta: import("../world/editor/types").CustomMapMeta;
+    doc: import("../world/editor/types").WorldEditDocument;
+  }> {
+    return request(`/activity/world-builder/maps/${encodeURIComponent(mapKey)}/duplicate`, {
+      method: "POST",
+      body: { name },
+      token: tokenRef,
+      headers: demoHeaders(),
+    });
+  },
+  worldBuilderDeleteMap(mapKey: string): Promise<{ ok: boolean }> {
+    return request(`/activity/world-builder/maps/${encodeURIComponent(mapKey)}`, {
+      method: "DELETE",
+      token: tokenRef,
+      headers: demoHeaders(),
+    });
+  },
+  worldBuilderListSpawns(mapKey: string): Promise<{
+    spawns: Array<{
+      uid: string; name: string; kind: string; x: number; y: number; isDefault: boolean;
+    }>;
+  }> {
+    return request(`/activity/world-builder/maps/${encodeURIComponent(mapKey)}/spawns`, {
+      token: tokenRef,
+      headers: demoHeaders(),
+    });
+  },
+  worldBuilderResolveSpawn(mapKey: string, name?: string): Promise<{
+    spawn: { tx: number; ty: number; name?: string } | null;
+  }> {
+    const q = name ? `?name=${encodeURIComponent(name)}` : "";
+    return request(`/activity/world-builder/maps/${encodeURIComponent(mapKey)}/resolve-spawn${q}`, {
+      token: tokenRef,
+      headers: demoHeaders(),
+    });
+  },
+  async worldBuilderImportZip(file: Blob, name?: string): Promise<{
+    ok: boolean;
+    summary: import("../world/editor/types").PackImportSummary;
+  }> {
+    const headers: Record<string, string> = {
+      Accept: "application/json",
+      "Content-Type": "application/zip",
+      ...demoHeaders(),
+    };
+    if (tokenRef) headers.Authorization = `Bearer ${tokenRef}`;
+    const q = name ? `?name=${encodeURIComponent(name)}` : "";
+    const res = await fetch(`${API_BASE}/activity/world-builder/packs/import${q}`, {
+      method: "POST",
+      headers,
+      body: file,
+    });
+    if (!res.ok) {
+      let msg = `Request failed (${res.status})`;
+      try {
+        const j = (await res.json()) as { error?: string };
+        if (j?.error) msg = j.error;
+      } catch { /* */ }
+      throw new ApiError(res.status, msg);
+    }
+    return (await res.json()) as { ok: boolean; summary: import("../world/editor/types").PackImportSummary };
+  },
+  worldBuilderImportFolder(
+    name: string,
+    files: { path: string; dataBase64: string }[],
+  ): Promise<{ ok: boolean; summary: import("../world/editor/types").PackImportSummary }> {
+    return request("/activity/world-builder/packs/import-folder", {
+      method: "POST",
+      body: { name, files },
+      token: tokenRef,
+      headers: demoHeaders(),
+    });
+  },
+  worldBuilderDeletePack(packId: string): Promise<{ ok: boolean }> {
+    return request(`/activity/world-builder/packs/${encodeURIComponent(packId)}`, {
+      method: "DELETE",
+      token: tokenRef,
+      headers: demoHeaders(),
+    });
   },
 };
 

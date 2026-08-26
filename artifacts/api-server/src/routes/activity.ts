@@ -16,6 +16,7 @@ import { HOME_GUILD_ID } from "../bot/home-guild.js";
 import { loginRateLimiter } from "../lib/rate-limiters.js";
 import { logger } from "../lib/logger.js";
 import { resolvedEnv } from "../lib/runtime-env.js";
+import worldBuilderRouter from "./activity-world-builder.js";
 
 /**
  * activity.ts — backend for the DN Cards **Discord Activity** (Phaser client).
@@ -422,5 +423,8 @@ router.post("/hq/layout", async (req, res) => {
     res.status(500).json({ error: "Failed to save HQ." });
   }
 });
+
+// World Builder / Asset Manager (admin) — F9 editor persistence + pack imports.
+router.use(worldBuilderRouter);
 
 export default router;

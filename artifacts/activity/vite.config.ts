@@ -57,6 +57,13 @@ export default defineConfig(({ command: _command }) => ({
     allowedHosts: true,
     // Discord's iframe requires HMR over the proxied wss connection.
     hmr: { clientPort: 443 },
+    // Local Cursor Cloud / desktop: forward /api to the DN Cards api-server.
+    proxy: {
+      "/api": {
+        target: process.env.VITE_API_PROXY ?? "http://127.0.0.1:5000",
+        changeOrigin: true,
+      },
+    },
   },
   preview: {
     port,

@@ -14,6 +14,8 @@
     "sim:siege": "tsx ./src/siege-sim.ts",
     "sim:pipeline": "tsx ./src/siege-pipeline.ts",
     "sim:runtime": "tsx ./src/siege-runtime-check.ts",
+    "test:wb-mv": "tsx ./src/wb-mv-test.ts",
+    "test:wb-upload": "tsx ./src/wb-upload-test.ts",
     "hq:suite": "tsx ./src/hq-suite-preview.ts",
     "hq:preview": "tsx ./src/hq-preview.ts",
     "hq:manifest": "tsx ./src/hq-manifest.ts",

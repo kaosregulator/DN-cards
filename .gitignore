@@ -54,6 +54,15 @@ scripts/hq-preview/
 # Local scratch/mockup scripts (never committed)
 scripts/src/scratch-*.ts
 
+# World Builder runtime data (imported packs + map overlays) — keep directory only
+artifacts/api-server/data/world-builder/packs/
+artifacts/api-server/data/world-builder/maps/
+artifacts/api-server/data/world-builder/index.json
+!artifacts/api-server/data/world-builder/.gitkeep
+
+# Accidental root world-builder data
+/data/
+
 # Siege pipeline preview renders (scripts/src/siege-pipeline.ts)
 /siege-formation.png
 /siege-clash.png
