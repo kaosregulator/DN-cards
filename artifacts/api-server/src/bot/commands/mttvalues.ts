@@ -236,7 +236,19 @@ export function matchScore(item: MTTVItem, query: string): number {
 }
 
 export async function handleInfoMTTV(interaction: ChatInputCommandInteraction): Promise<void> {
-  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+  // Discord does not expose a per-message "seen" event. Starting this timer
+  // after editReply resolves means the full result has been accepted by
+  // Discord before the 20-second cleanup window begins.
+  const deleteReplyAfterDelay = () => {
+    const timer = setTimeout(() => {
+      void interaction.deleteReply().catch(() => {
+        // The message may already be gone or the bot may have restarted.
+      });
+    }, 20_000);
+    timer.unref?.();
+  };
+
+  await interaction.deferReply();
   const name = interaction.options.getString("item", true);
   const items = await fetchMTTVItems();
   let item = items.find(
@@ -253,10 +265,12 @@ export async function handleInfoMTTV(interaction: ChatInputCommandInteraction): 
 
   if (!item) {
     await interaction.editReply(`❌ Could not find "${name}". Use /vaultvalue_list to browse items or /vaultvalue_calc to compare values.`);
+    deleteReplyAfterDelay();
     return;
   }
 
   await interaction.editReply({ embeds: [buildMTTVItemEmbed(item)] });
+  deleteReplyAfterDelay();
 }
 
 const CREATE_CARD_RARITIES = new Set<string>(["common", "uncommon", "rare", "epic", "legendary", "mythic"]);
