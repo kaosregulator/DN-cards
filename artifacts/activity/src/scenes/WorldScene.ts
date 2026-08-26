@@ -4,7 +4,7 @@ import { WorldHud } from "../hud/worldHud";
 import { MiniMap, type MiniMapPoi } from "../hud/miniMap";
 import {
   MAPS, START_MAP, type MapDef, type MapKey,
-  type WorldManifest,
+  type WorldManifest, registerCustomMaps,
 } from "../world/worldMaps";
 import { AVATARS, type AvatarDef, avatarById, buildAvatarAnims, avatarAnim } from "../world/avatars";
 import { Pet, loadPetTextures } from "../world/pets";
@@ -14,6 +14,7 @@ import { HmNpcs, DialogBox, type HmNpcDef } from "../world/hmNpcs";
 import { HmItems, foragedToast, type HmItemHit } from "../world/hmItems";
 import { getAvatarId, getPetId } from "../state/profile";
 import { WorldBuilder } from "../world/editor/WorldBuilder";
+import type { WorldDoor, WorldSpawn } from "../world/editor/types";
 
 // Dog breeds used to populate a map with stray/companion dogs (kept small so the
 // world only streams a few extra sheets). The player's own pet is added too.
@@ -150,6 +151,10 @@ export class WorldScene extends Phaser.Scene {
   private editing = false;
   private tilemapRef: Phaser.Tilemaps.Tilemap | null = null;
   private paintLayer: Phaser.Tilemaps.TilemapLayer | null = null;
+  /** World Builder overlay doors/spawns active during play (and editor). */
+  private wbDoors: WorldDoor[] = [];
+  private wbSpawns: WorldSpawn[] = [];
+  private wbDoorArmed = true;
 
   constructor() {
     super("World");
@@ -157,7 +162,20 @@ export class WorldScene extends Phaser.Scene {
 
   init(data: { mapKey?: MapKey; spawnAt?: { tx: number; ty: number } }): void {
     this.mapKey = data?.mapKey ?? START_MAP;
-    this.def = MAPS[this.mapKey];
+    // Custom maps may not be in MAPS until ensureCustomMapsRegistered() in loadMap.
+    this.def = MAPS[this.mapKey] ?? {
+      key: this.mapKey,
+      name: this.mapKey,
+      subtitle: "World Builder map",
+      spawn: "center",
+      portals: [],
+      ambient: false,
+      wbBlank: true,
+      tile: 32,
+      gridW: 40,
+      gridH: 30,
+      spawnTile: { tx: 20, ty: 15 },
+    };
     this.spawnOverride = data?.spawnAt ?? null;
     this.tileW = this.def.tile ?? 32;
     this.isHm = !!(this.def.bgImage || this.def.bgChunks);
@@ -166,6 +184,9 @@ export class WorldScene extends Phaser.Scene {
     this.zoomEl = null;
     this.bgObjects = [];
     this.exitArmed = false;
+    this.wbDoorArmed = false;
+    this.wbDoors = [];
+    this.wbSpawns = [];
     this.npcs = null;
     this.dialog = null;
     this.npcNear = null;
@@ -326,6 +347,7 @@ export class WorldScene extends Phaser.Scene {
     this.worldBuilder = new WorldBuilder({
       scene: this,
       mapKey: this.mapKey,
+      mapName: this.def.name,
       tileW: this.tileW,
       getPlayerPos: () => ({ x: this.player.x, y: this.player.y }),
       setPlayerPos: (x, y) => {
@@ -336,15 +358,18 @@ export class WorldScene extends Phaser.Scene {
       getVisualLayers: () => this.visualLayers,
       getTilemap: () => this.tilemapRef,
       getPaintLayer: () => this.paintLayer,
-      setEditing: (on) => { this.editing = on; },
+      setEditing: (on) => { this.editing = on; this.wbDoorArmed = false; },
       hideGameHud: (hide) => {
         const hud = document.getElementById("world-hud");
         if (hud) hud.style.display = hide ? "none" : "";
         if (this.zoomEl) this.zoomEl.style.display = hide ? "none" : "";
-        // Minimap is a Phaser overlay — hide via setVisible on its camera elements if present.
-        // Avoid destroy/recreate so playtest restores cleanly.
         const mm = document.getElementById("mini-map");
         if (mm) mm.style.display = hide ? "none" : "";
+      },
+      goToMap: (to, spawnAt) => this.goToMap(to, spawnAt),
+      setRuntimeOverlay: (doors, spawns) => {
+        this.wbDoors = doors;
+        this.wbSpawns = spawns;
       },
     });
     void this.worldBuilder.boot();
@@ -420,8 +445,95 @@ export class WorldScene extends Phaser.Scene {
 
   // ── map loading ─────────────────────────────────────────────────────────────
   private async loadMap(key: MapKey): Promise<Phaser.Tilemaps.Tilemap> {
+    // Ensure custom blank maps from the server are registered before we branch.
+    await this.ensureCustomMapsRegistered();
+    this.def = MAPS[this.mapKey] ?? this.def;
+    if (this.def.wbBlank) return this.loadBlankMap(key);
     if (this.def.bgImage || this.def.bgChunks) return this.loadHmMap(key);
     return this.loadTiledMap(key);
+  }
+
+  /** Pull custom map registry once so goToMap / blank loads resolve. */
+  private async ensureCustomMapsRegistered(): Promise<void> {
+    try {
+      const ctx = getContext(this);
+      const { maps } = await ctx.api.worldBuilderListMaps();
+      registerCustomMaps(maps.filter((m) => m.blank || m.source === "custom"));
+    } catch {
+      /* offline / demo without API — blank maps created this session may already be in MAPS */
+    }
+  }
+
+  /**
+   * Procedural blank map for World Builder–created worlds: Floor + Collision
+   * layers, no shipped .tmj. Overlay JSON supplies painted tiles and objects.
+   */
+  private async loadBlankMap(key: MapKey): Promise<Phaser.Tilemaps.Tilemap> {
+    const tw = this.def.tile ?? 32;
+    const w = this.def.gridW ?? 40;
+    const h = this.def.gridH ?? 30;
+
+    // 1×1 white tile used as a paintable / collision stamp (tinted in-scene).
+    if (!this.textures.exists("wb-blank-tile")) {
+      const g = this.make.graphics({ x: 0, y: 0 });
+      g.fillStyle(0xffffff, 1);
+      g.fillRect(0, 0, tw, tw);
+      g.generateTexture("wb-blank-tile", tw, tw);
+      g.destroy();
+    }
+    if (!this.textures.exists(this.avatar.texKey)) {
+      this.load.spritesheet(this.avatar.texKey, assetUrl(this.avatar.url), {
+        frameWidth: this.avatar.fw, frameHeight: this.avatar.fh,
+      });
+    }
+    if (this.petId) loadPetTextures(this, this.petId);
+    await this.runLoader();
+
+    const map = this.make.tilemap({ tileWidth: tw, tileHeight: tw, width: w, height: h });
+    const ts = map.addTilesetImage("wb-blank", "wb-blank-tile", tw, tw, 0, 0, 1);
+    if (!ts) throw new Error(`blank map "${key}": failed to add tileset`);
+
+    const floor = map.createBlankLayer("Floor", ts, 0, 0, w, h);
+    const collide = map.createBlankLayer("Collision", ts, 0, 0, w, h);
+    if (!floor || !collide) throw new Error(`blank map "${key}": failed to create layers`);
+
+    // Soft ground fill so the map isn't a void.
+    floor.fill(1);
+    floor.setTint(0x3d5a40);
+    floor.setDepth(0);
+    // Solid backdrop behind tiles (tint alone can look black on some GPUs).
+    const bg = this.add.rectangle(
+      (w * tw) / 2, (h * tw) / 2, w * tw, h * tw, 0x2a4030, 1,
+    ).setDepth(-50);
+    this.bgObjects.push(bg as unknown as Phaser.GameObjects.Image);
+    collide.setVisible(false);
+    collide.setCollisionByExclusion([-1], true);
+
+    this.paintLayer = floor as Phaser.Tilemaps.TilemapLayer;
+    this.collisionLayer = collide as Phaser.Tilemaps.TilemapLayer;
+    this.visualLayers = [this.paintLayer];
+    this.gidCats = [{ first: 1, last: 1, cat: 0 }];
+
+    // Prefetch overlay so default spawn can apply when no spawnAt was given.
+    try {
+      const { doc } = await getContext(this).api.worldBuilderLoadMap(key);
+      this.wbDoors = doc.doors ?? [];
+      this.wbSpawns = doc.spawns ?? [];
+      if (!this.spawnOverride) {
+        const defSpawn =
+          doc.spawns.find((s) => s.isDefault) ??
+          doc.spawns.find((s) => s.kind === "player" && s.name === "Default") ??
+          doc.spawns.find((s) => s.kind === "player");
+        if (defSpawn) {
+          this.spawnOverride = {
+            tx: Math.floor(defSpawn.x / tw),
+            ty: Math.floor(defSpawn.y / tw),
+          };
+        }
+      }
+    } catch { /* empty blank map is fine */ }
+
+    return map;
   }
 
   // Harvest Moon maps: a full background image (or chunks) + a light collision-only
@@ -529,58 +641,72 @@ export class WorldScene extends Phaser.Scene {
 
   // ── layer rendering ─────────────────────────────────────────────────────────
   private buildMap(map: Phaser.Tilemaps.Tilemap): { spawnX: number; spawnY: number } {
-    const tilesets = map.tilesets;
-    let spawn: { x: number; y: number } | null = null;
+    // Blank WB maps already have Floor + Collision from loadBlankMap — only resolve spawn.
+    if (!this.def.wbBlank) {
+      const tilesets = map.tilesets;
+      let spawn: { x: number; y: number } | null = null;
 
-    for (let index = 0; index < map.layers.length; index++) {
-      const ld = map.layers[index]!;
-      const name = ld.name ?? "";
-      const lower = name.toLowerCase();
+      for (let index = 0; index < map.layers.length; index++) {
+        const ld = map.layers[index]!;
+        const name = ld.name ?? "";
+        const lower = name.toLowerCase();
 
-      if (lower === "start") {
-        spawn = this.findSpawn(ld, map);
-        continue; // start markers are logic-only, never drawn
-      }
-      if (COLLISION_NAMES.includes(lower)) {
-        const layer = this.makeLayer(map, index, tilesets);
-        if (layer) {
-          layer.setVisible(false);
-          layer.setCollisionByExclusion([-1], true);
-          this.collisionLayer = layer;
+        if (lower === "start") {
+          spawn = this.findSpawn(ld, map);
+          continue; // start markers are logic-only, never drawn
         }
-        continue;
+        if (COLLISION_NAMES.includes(lower)) {
+          const layer = this.makeLayer(map, index, tilesets);
+          if (layer) {
+            layer.setVisible(false);
+            layer.setCollisionByExclusion([-1], true);
+            this.collisionLayer = layer;
+          }
+          continue;
+        }
+
+        const layer = this.makeLayer(map, index, tilesets);
+        if (!layer) continue;
+        const isAbove = ABOVE_PREFIXES.some((p) => lower.startsWith(p));
+        layer.setDepth(isAbove ? 1000 + index : index);
+        if (typeof ld.alpha === "number") layer.setAlpha(ld.alpha);
+        this.visualLayers.push(layer);
+        // Roofs / canopies fade when the player is under them (not signs/lights).
+        if (lower.startsWith("roof") || lower.startsWith("above")) this.roofLayers.push(layer);
       }
 
-      const layer = this.makeLayer(map, index, tilesets);
-      if (!layer) continue;
-      const isAbove = ABOVE_PREFIXES.some((p) => lower.startsWith(p));
-      layer.setDepth(isAbove ? 1000 + index : index);
-      if (typeof ld.alpha === "number") layer.setAlpha(ld.alpha);
-      this.visualLayers.push(layer);
-      // Roofs / canopies fade when the player is under them (not signs/lights).
-      if (lower.startsWith("roof") || lower.startsWith("above")) this.roofLayers.push(layer);
+      const tw = map.tileWidth, th = map.tileHeight;
+      const cx = (map.widthInPixels || map.width * tw) / 2;
+      const cy = (map.heightInPixels || map.height * th) / 2;
+
+      // Arrival spawn (coming through a door/exit) wins — nudged to the nearest
+      // walkable tile so we never drop the player inside a wall.
+      const override = this.spawnOverride ?? this.def.spawnTile ?? null;
+      if (override) {
+        const px = override.tx * tw + tw / 2, py = override.ty * th + th / 2;
+        const open = this.nearestWalkable(map, px, py) ?? { x: px, y: py };
+        return { spawnX: open.x, spawnY: open.y };
+      }
+
+      // The big hub map's `start` marker sits inside a cramped office; spawn in the
+      // open plaza instead (nearest walkable tile to the map centre).
+      if (this.def.spawn === "center") {
+        const open = this.nearestWalkable(map, cx, cy);
+        if (open) return { spawnX: open.x, spawnY: open.y };
+      }
+      return { spawnX: spawn ? spawn.x : cx, spawnY: spawn ? spawn.y : cy };
     }
 
     const tw = map.tileWidth, th = map.tileHeight;
     const cx = (map.widthInPixels || map.width * tw) / 2;
     const cy = (map.heightInPixels || map.height * th) / 2;
-
-    // Arrival spawn (coming through a door/exit) wins — nudged to the nearest
-    // walkable tile so we never drop the player inside a wall.
     const override = this.spawnOverride ?? this.def.spawnTile ?? null;
     if (override) {
       const px = override.tx * tw + tw / 2, py = override.ty * th + th / 2;
       const open = this.nearestWalkable(map, px, py) ?? { x: px, y: py };
       return { spawnX: open.x, spawnY: open.y };
     }
-
-    // The big hub map's `start` marker sits inside a cramped office; spawn in the
-    // open plaza instead (nearest walkable tile to the map centre).
-    if (this.def.spawn === "center") {
-      const open = this.nearestWalkable(map, cx, cy);
-      if (open) return { spawnX: open.x, spawnY: open.y };
-    }
-    return { spawnX: spawn ? spawn.x : cx, spawnY: spawn ? spawn.y : cy };
+    return { spawnX: cx, spawnY: cy };
   }
 
   // Spiral out from a pixel point to the nearest walkable tile centre.
@@ -914,6 +1040,56 @@ export class WorldScene extends Phaser.Scene {
     });
   }
 
+  /** Walk into a World Builder door/portal → real map transition (playtest + gameplay). */
+  private checkWbDoors(): void {
+    if (this.editing || this.transitioning || !this.wbDoors.length) return;
+    const reach = Math.max(28, this.tileW * 0.85);
+    let onDoor = false;
+    for (const d of this.wbDoors) {
+      if (!d.targetMap || d.locked) continue;
+      const dist = Math.hypot(d.x - this.player.x, d.y - this.player.y);
+      if (dist > reach) continue;
+      onDoor = true;
+      if (!this.wbDoorArmed) continue;
+      void this.takeWbDoor(d);
+      return;
+    }
+    if (!onDoor) this.wbDoorArmed = true;
+  }
+
+  private async takeWbDoor(d: WorldDoor): Promise<void> {
+    if (!d.targetMap) return;
+    this.wbDoorArmed = false;
+    let spawnAt: { tx: number; ty: number } | undefined;
+    if (d.targetSpawn) {
+      try {
+        const { spawn } = await getContext(this).api.worldBuilderResolveSpawn(d.targetMap, d.targetSpawn);
+        if (spawn) spawnAt = { tx: spawn.tx, ty: spawn.ty };
+      } catch { /* fall through */ }
+    }
+    if (!spawnAt && d.targetX != null && d.targetY != null) {
+      spawnAt = { tx: Math.floor(d.targetX / this.tileW), ty: Math.floor(d.targetY / this.tileW) };
+    }
+    if (!spawnAt) {
+      try {
+        const { spawn } = await getContext(this).api.worldBuilderResolveSpawn(d.targetMap);
+        if (spawn) spawnAt = { tx: spawn.tx, ty: spawn.ty };
+      } catch { /* destination default / center */ }
+    }
+    // Ensure destination custom map is registered before restart.
+    try {
+      const { maps } = await getContext(this).api.worldBuilderListMaps();
+      registerCustomMaps(maps.filter((m) => m.blank || m.source === "custom"));
+    } catch { /* */ }
+    if (!MAPS[d.targetMap]) {
+      // eslint-disable-next-line no-console
+      console.warn("[World] door target map not registered:", d.targetMap);
+      this.wbDoorArmed = true;
+      return;
+    }
+    this.goToMap(d.targetMap, spawnAt);
+  }
+
   // Harvest Moon doors/edges: walking onto an exit region moves to the linked map.
   // The exit is "armed" only after the player has stepped clear of every exit, so
   // arriving on top of a door doesn't immediately bounce you back.
@@ -1028,6 +1204,7 @@ export class WorldScene extends Phaser.Scene {
     this.pet?.update();
     this.roofFade?.update(this.player.x, this.player.y);
     this.checkExits();
+    this.checkWbDoors();
     this.updateProximity();
     this.miniMap?.update();
   }

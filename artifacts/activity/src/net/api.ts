@@ -225,7 +225,10 @@ export const api = {
       headers: demoHeaders(),
     });
   },
-  worldBuilderLoadMap(mapKey: string): Promise<{ doc: import("../world/editor/types").WorldEditDocument }> {
+  worldBuilderLoadMap(mapKey: string): Promise<{
+    doc: import("../world/editor/types").WorldEditDocument;
+    meta?: import("../world/editor/types").CustomMapMeta | null;
+  }> {
     return request(`/activity/world-builder/maps/${encodeURIComponent(mapKey)}`, {
       token: tokenRef,
       headers: demoHeaders(),
@@ -234,10 +237,86 @@ export const api = {
   worldBuilderSaveMap(
     mapKey: string,
     doc: import("../world/editor/types").WorldEditDocument,
-  ): Promise<{ ok: boolean; doc: import("../world/editor/types").WorldEditDocument }> {
+  ): Promise<{
+    ok: boolean;
+    doc: import("../world/editor/types").WorldEditDocument;
+    meta?: import("../world/editor/types").CustomMapMeta | null;
+  }> {
     return request(`/activity/world-builder/maps/${encodeURIComponent(mapKey)}`, {
       method: "POST",
       body: { doc },
+      token: tokenRef,
+      headers: demoHeaders(),
+    });
+  },
+  worldBuilderListMaps(): Promise<{
+    maps: import("../world/editor/types").CustomMapMeta[];
+    custom: import("../world/editor/types").CustomMapMeta[];
+  }> {
+    return request("/activity/world-builder/maps", {
+      token: tokenRef,
+      headers: demoHeaders(),
+    });
+  },
+  worldBuilderCreateMap(
+    body: import("../world/editor/types").CreateMapRequest,
+  ): Promise<{
+    ok: boolean;
+    meta: import("../world/editor/types").CustomMapMeta;
+    doc: import("../world/editor/types").WorldEditDocument;
+  }> {
+    return request("/activity/world-builder/maps", {
+      method: "POST",
+      body,
+      token: tokenRef,
+      headers: demoHeaders(),
+    });
+  },
+  worldBuilderRenameMap(mapKey: string, name: string): Promise<{
+    ok: boolean;
+    meta: import("../world/editor/types").CustomMapMeta;
+  }> {
+    return request(`/activity/world-builder/maps/${encodeURIComponent(mapKey)}`, {
+      method: "PATCH",
+      body: { name },
+      token: tokenRef,
+      headers: demoHeaders(),
+    });
+  },
+  worldBuilderDuplicateMap(mapKey: string, name?: string): Promise<{
+    ok: boolean;
+    meta: import("../world/editor/types").CustomMapMeta;
+    doc: import("../world/editor/types").WorldEditDocument;
+  }> {
+    return request(`/activity/world-builder/maps/${encodeURIComponent(mapKey)}/duplicate`, {
+      method: "POST",
+      body: { name },
+      token: tokenRef,
+      headers: demoHeaders(),
+    });
+  },
+  worldBuilderDeleteMap(mapKey: string): Promise<{ ok: boolean }> {
+    return request(`/activity/world-builder/maps/${encodeURIComponent(mapKey)}`, {
+      method: "DELETE",
+      token: tokenRef,
+      headers: demoHeaders(),
+    });
+  },
+  worldBuilderListSpawns(mapKey: string): Promise<{
+    spawns: Array<{
+      uid: string; name: string; kind: string; x: number; y: number; isDefault: boolean;
+    }>;
+  }> {
+    return request(`/activity/world-builder/maps/${encodeURIComponent(mapKey)}/spawns`, {
+      token: tokenRef,
+      headers: demoHeaders(),
+    });
+  },
+  worldBuilderResolveSpawn(mapKey: string, name?: string): Promise<{
+    spawn: { tx: number; ty: number; name?: string } | null;
+  }> {
+    const q = name ? `?name=${encodeURIComponent(name)}` : "";
+    return request(`/activity/world-builder/maps/${encodeURIComponent(mapKey)}/resolve-spawn${q}`, {
       token: tokenRef,
       headers: demoHeaders(),
     });

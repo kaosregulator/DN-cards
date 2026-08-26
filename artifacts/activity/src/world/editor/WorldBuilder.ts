@@ -5,21 +5,28 @@
 
 import Phaser from "phaser";
 import { getContext } from "../../core/context";
+import { registerCustomMaps } from "../worldMaps";
 import { BuilderUi } from "./ui/BuilderUi";
+import { mountMapManager, renderDoorProps, renderSpawnProps } from "./ui/MapManagerUi";
 import { EditHistory } from "./history";
 import {
   emptyWorldDoc,
+  type CreateMapRequest,
+  type CustomMapMeta,
   type EditorTool,
   type WorldAssetCategory,
   type WorldAssetEntry,
   type WorldAssetPack,
+  type WorldDoor,
   type WorldEditDocument,
   type WorldObject,
+  type WorldSpawn,
 } from "./types";
 
 export interface WorldBuilderHost {
   scene: Phaser.Scene;
   mapKey: string;
+  mapName?: string;
   tileW: number;
   getPlayerPos: () => { x: number; y: number };
   setPlayerPos: (x: number, y: number) => void;
@@ -30,6 +37,8 @@ export interface WorldBuilderHost {
   getPaintLayer: () => Phaser.Tilemaps.TilemapLayer | null;
   setEditing: (on: boolean) => void;
   hideGameHud: (hide: boolean) => void;
+  goToMap: (to: string, spawnAt?: { tx: number; ty: number }) => void;
+  setRuntimeOverlay: (doors: WorldDoor[], spawns: WorldSpawn[]) => void;
 }
 
 function uid(prefix: string): string {
@@ -65,6 +74,10 @@ export class WorldBuilder {
   private apiBase = "/api";
   private keyHandler: ((e: KeyboardEvent) => void) | null = null;
   private localKey = "";
+  private mapList: CustomMapMeta[] = [];
+  private mapManager: ReturnType<typeof mountMapManager> | null = null;
+  private selectedDoorUid: string | null = null;
+  private selectedSpawnUid: string | null = null;
 
   constructor(host: WorldBuilderHost) {
     this.host = host;
@@ -83,7 +96,9 @@ export class WorldBuilder {
     await this.loadDoc();
     // Catalog needed so saved objects resolve to real textures for all players.
     await this.loadCatalog();
+    await this.refreshMapList();
     this.applyDocToWorld();
+    this.host.setRuntimeOverlay(this.doc.doors, this.doc.spawns);
     this.bindHotkeys();
   }
 
@@ -186,6 +201,9 @@ export class WorldBuilder {
       onUndo: () => this.undo(),
       onRedo: () => this.redo(),
       onOpenAssetManager: () => { /* panel opens in UI */ },
+      onOpenMapManager: () => {
+        void this.refreshMapList().then(() => this.mapManager?.open(true));
+      },
       onPropertyChange: (uid, patch) => this.patchObject(uid, patch),
       onDeleteSelected: () => this.deleteSelected(),
       onDuplicateSelected: () => this.duplicateSelected(),
@@ -196,8 +214,21 @@ export class WorldBuilder {
       resolveUrl: (u) => resolveAssetUrl(u, this.apiBase),
     });
     await this.loadCatalog();
-    this.ui.setStatus(this.ui.describeDoc(this.doc));
-    this.ui.setHint("Build mode — paint / place · Ctrl+S save · F9 or Playtest to walk");
+    await this.refreshMapList();
+    this.mapManager = mountMapManager(this.ui.root, {
+      currentKey: this.host.mapKey,
+      maps: this.mapList,
+      cb: {
+        onRefreshMaps: () => this.refreshMapList(),
+        onOpenMap: (key) => { void this.openMap(key); },
+        onCreateMap: (req) => this.createMap(req),
+        onRenameMap: (key, name) => this.renameMap(key, name),
+        onDuplicateMap: (key) => this.duplicateMap(key),
+        onDeleteMap: (key) => this.deleteMap(key),
+      },
+    });
+    this.ui.setStatus(`Editing: ${this.host.mapName ?? this.host.mapKey} · ${this.ui.describeDoc(this.doc)}`);
+    this.ui.setHint("Build mode — Maps · paint / place · Ctrl+S save · F9 Playtest");
     this.bindPointer();
     this.ensureSelectionGfx();
   }
@@ -211,9 +242,82 @@ export class WorldBuilder {
     this.ghost?.destroy();
     this.ghost = null;
     this.selectionGfx?.setVisible(false);
+    this.mapManager = null;
     this.ui?.destroy();
     this.ui = null;
+    this.host.setRuntimeOverlay(this.doc.doors, this.doc.spawns);
     if (playtest) this.toast(this.dirty ? "Playtest — unsaved changes still in memory" : "Playtest mode");
+  }
+
+  private async refreshMapList(): Promise<void> {
+    try {
+      const ctx = getContext(this.host.scene);
+      const { maps } = await ctx.api.worldBuilderListMaps();
+      this.mapList = maps;
+      registerCustomMaps(maps.filter((m) => m.blank || m.source === "custom"));
+      this.mapManager?.setMaps(maps, this.host.mapKey);
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.warn("[WorldBuilder] map list", err);
+    }
+  }
+
+  private async openMap(key: string): Promise<void> {
+    if (key === this.host.mapKey) return;
+    if (this.dirty) {
+      try { await this.save(); } catch { /* still switch */ }
+    }
+    this.mapManager?.open(false);
+    this.exitEditor(false);
+    this.host.goToMap(key);
+  }
+
+  private async createMap(req: CreateMapRequest): Promise<void> {
+    try {
+      const ctx = getContext(this.host.scene);
+      const { meta } = await ctx.api.worldBuilderCreateMap(req);
+      registerCustomMaps([meta]);
+      this.toast(`Created ${meta.name}`);
+      if (this.dirty) await this.save().catch(() => undefined);
+      this.mapManager?.open(false);
+      this.exitEditor(false);
+      this.host.goToMap(meta.key);
+    } catch (err) {
+      this.toast("Create map failed");
+      // eslint-disable-next-line no-console
+      console.error(err);
+    }
+  }
+
+  private async renameMap(key: string, name: string): Promise<void> {
+    try {
+      await getContext(this.host.scene).api.worldBuilderRenameMap(key, name);
+      await this.refreshMapList();
+      this.toast("Renamed");
+    } catch {
+      this.toast("Rename failed");
+    }
+  }
+
+  private async duplicateMap(key: string): Promise<void> {
+    try {
+      const { meta } = await getContext(this.host.scene).api.worldBuilderDuplicateMap(key);
+      registerCustomMaps([meta]);
+      await this.refreshMapList();
+      this.toast(`Duplicated → ${meta.name}`);
+    } catch {
+      this.toast("Duplicate failed");
+    }
+  }
+
+  private async deleteMap(key: string): Promise<void> {
+    try {
+      await getContext(this.host.scene).api.worldBuilderDeleteMap(key);
+      await this.refreshMapList();
+      this.toast("Map deleted");
+    } catch {
+      this.toast("Delete failed (shipped maps cannot be deleted)");
+    }
   }
 
   private async loadCatalog(): Promise<void> {
@@ -280,7 +384,8 @@ export class WorldBuilder {
     this.dirty = true;
     this.history.push(next);
     this.applyDocToWorld();
-    this.ui?.setStatus(`${this.ui.describeDoc(next)} · unsaved`);
+    this.host.setRuntimeOverlay(this.doc.doors, this.doc.spawns);
+    this.ui?.setStatus(`Editing: ${this.host.mapName ?? this.host.mapKey} · ${this.ui.describeDoc(next)} · unsaved`);
   }
 
   private mutate(fn: (draft: WorldEditDocument) => void): void {
@@ -385,7 +490,7 @@ export class WorldBuilder {
     for (const s of this.doc.spawns) {
       const g = scene.add.circle(s.x, s.y, 10, 0x38bdf8, 0.35).setDepth(920);
       g.setStrokeStyle(2, 0x38bdf8, 0.95);
-      const label = scene.add.text(s.x, s.y - 16, "SPAWN", {
+      const label = scene.add.text(s.x, s.y - 16, s.name || "SPAWN", {
         fontSize: "10px", color: "#9cdcfe", backgroundColor: "#0b1220cc", padding: { x: 4, y: 2 },
       }).setOrigin(0.5).setDepth(921);
       this.sprites.set(s.uid, g);
@@ -399,7 +504,12 @@ export class WorldBuilder {
     for (const d of this.doc.doors) {
       const g = scene.add.rectangle(d.x, d.y, this.host.tileW, this.host.tileW, 0xa78bfa, 0.25)
         .setDepth(915).setStrokeStyle(2, 0xa78bfa, 0.9);
+      const label = scene.add.text(d.x, d.y - this.host.tileW * 0.7,
+        d.targetMap ? `→ ${d.targetMap}` : (d.label || "DOOR"), {
+          fontSize: "10px", color: "#e9d5ff", backgroundColor: "#1a1028cc", padding: { x: 4, y: 2 },
+        }).setOrigin(0.5).setDepth(916);
       this.sprites.set(d.uid, g);
+      this.sprites.set(`${d.uid}:l`, label);
     }
 
     if (this.selectedUid) this.highlight(this.selectedUid);
@@ -459,25 +569,6 @@ export class WorldBuilder {
       .setVisible(false);
   }
 
-  private highlight(uid: string | null): void {
-    this.selectedUid = uid;
-    this.ensureSelectionGfx();
-    if (!uid || !this.selectionGfx) {
-      this.selectionGfx?.setVisible(false);
-      this.ui?.showProperties(null);
-      return;
-    }
-    const obj = this.doc.objects.find((o) => o.uid === uid);
-    const go = this.sprites.get(uid) as Phaser.GameObjects.Components.Transform & Phaser.GameObjects.Components.GetBounds | undefined;
-    if (obj) this.ui?.showProperties(obj);
-    if (go && "getBounds" in go) {
-      const b = (go as Phaser.GameObjects.Image).getBounds();
-      this.selectionGfx.setPosition(b.centerX, b.centerY).setSize(b.width + 8, b.height + 8).setVisible(true);
-    } else if (obj) {
-      this.selectionGfx.setPosition(obj.x, obj.y).setSize(this.host.tileW + 8, this.host.tileW + 8).setVisible(true);
-    }
-  }
-
   // ── Pointer ────────────────────────────────────────────────────────────────
 
   private onPointerDown = (pointer: Phaser.Input.Pointer): void => {
@@ -495,7 +586,13 @@ export class WorldBuilder {
     }
     if (this.pointerDown && this.tool === "select" && this.selectedUid) {
       const wp = this.host.scene.cameras.main.getWorldPoint(pointer.x, pointer.y);
-      this.patchObject(this.selectedUid, { x: wp.x, y: wp.y }, false);
+      if (this.selectedDoorUid) {
+        this.mutateDoorPos(this.selectedDoorUid, wp.x, wp.y, false);
+      } else if (this.selectedSpawnUid) {
+        this.mutateSpawnPos(this.selectedSpawnUid, wp.x, wp.y, false);
+      } else {
+        this.patchObject(this.selectedUid, { x: wp.x, y: wp.y }, false);
+      }
     }
   };
 
@@ -572,13 +669,17 @@ export class WorldBuilder {
     }
 
     if (this.tool === "spawn" && isDown) {
+      const name = prompt("Spawn name", "Entrance") || "Entrance";
       this.mutate((d) => {
+        const isFirst = d.spawns.length === 0;
         d.spawns.push({
           uid: uid("spawn"),
+          name,
           kind: "player",
           x: tx * tw + tw / 2,
           y: ty * tw + tw / 2,
           facing: "down",
+          isDefault: isFirst,
         });
       });
       return;
@@ -614,12 +715,15 @@ export class WorldBuilder {
         return;
       }
       if (this.asset.kind === "door") {
+        const doorUid = uid("door");
         this.mutate((d) => {
           d.doors.push({
-            uid: uid("door"),
+            uid: doorUid,
             x: tx * tw + tw / 2,
             y: ty * tw + tw / 2,
             label: this.asset!.name,
+            transition: "fade",
+            locked: false,
           });
           d.objects.push({
             uid: uid("obj"),
@@ -628,9 +732,10 @@ export class WorldBuilder {
             x: tx * tw + tw / 2,
             y: ty * tw + tw / 2,
             depth: 450,
-            properties: { name: this.asset!.name },
+            properties: { name: this.asset!.name, doorUid },
           });
         });
+        this.highlightDoor(doorUid);
         return;
       }
 
@@ -675,6 +780,9 @@ export class WorldBuilder {
         return o.uid;
       }
     }
+    for (const d of this.doc.doors) {
+      if (Math.hypot(d.x - x, d.y - y) < this.host.tileW) return d.uid;
+    }
     for (const s of this.doc.spawns) {
       if (Math.hypot(s.x - x, s.y - y) < this.host.tileW) return s.uid;
     }
@@ -682,6 +790,125 @@ export class WorldBuilder {
       if (x >= z.x && x <= z.x + z.w && y >= z.y && y <= z.y + z.h) return z.uid;
     }
     return null;
+  }
+
+  private highlight(uid: string | null): void {
+    this.selectedUid = uid;
+    this.selectedDoorUid = null;
+    this.selectedSpawnUid = null;
+    this.ensureSelectionGfx();
+    if (!uid || !this.selectionGfx) {
+      this.selectionGfx?.setVisible(false);
+      this.ui?.showProperties(null);
+      return;
+    }
+    const door = this.doc.doors.find((d) => d.uid === uid);
+    if (door) {
+      this.highlightDoor(uid);
+      return;
+    }
+    const spawn = this.doc.spawns.find((s) => s.uid === uid);
+    if (spawn) {
+      this.highlightSpawn(uid);
+      return;
+    }
+    const obj = this.doc.objects.find((o) => o.uid === uid);
+    const go = this.sprites.get(uid) as Phaser.GameObjects.Components.Transform & Phaser.GameObjects.Components.GetBounds | undefined;
+    if (obj) this.ui?.showProperties(obj);
+    if (go && "getBounds" in go) {
+      const b = (go as Phaser.GameObjects.Image).getBounds();
+      this.selectionGfx.setPosition(b.centerX, b.centerY).setSize(b.width + 8, b.height + 8).setVisible(true);
+    } else if (obj) {
+      this.selectionGfx.setPosition(obj.x, obj.y).setSize(this.host.tileW + 8, this.host.tileW + 8).setVisible(true);
+    }
+  }
+
+  private highlightDoor(uid: string): void {
+    this.selectedDoorUid = uid;
+    this.selectedUid = uid;
+    this.selectedSpawnUid = null;
+    this.ensureSelectionGfx();
+    const door = this.doc.doors.find((d) => d.uid === uid);
+    if (!door || !this.selectionGfx) return;
+    this.selectionGfx.setPosition(door.x, door.y).setSize(this.host.tileW + 8, this.host.tileW + 8).setVisible(true);
+    void this.showDoorProperties(door);
+  }
+
+  private highlightSpawn(uid: string): void {
+    this.selectedSpawnUid = uid;
+    this.selectedUid = uid;
+    this.selectedDoorUid = null;
+    this.ensureSelectionGfx();
+    const spawn = this.doc.spawns.find((s) => s.uid === uid);
+    if (!spawn || !this.selectionGfx) return;
+    this.selectionGfx.setPosition(spawn.x, spawn.y).setSize(this.host.tileW + 8, this.host.tileW + 8).setVisible(true);
+    const body = this.ui?.root.querySelector("[data-props-body]") as HTMLElement | null;
+    const props = this.ui?.root.querySelector("[data-props]") as HTMLElement | null;
+    if (body && props) {
+      props.classList.add("open");
+      renderSpawnProps(body, spawn, (patch) => {
+        this.mutate((d) => {
+          const i = d.spawns.findIndex((s) => s.uid === uid);
+          if (i < 0) return;
+          if (patch.isDefault) {
+            for (const s of d.spawns) s.isDefault = false;
+          }
+          d.spawns[i] = { ...d.spawns[i]!, ...patch };
+        });
+      });
+      // Attach delete/dup buttons
+      const row = document.createElement("div");
+      row.className = "row";
+      row.innerHTML = `<button type="button" class="wb-danger" data-del>Delete</button>`;
+      body.appendChild(row);
+      row.querySelector("[data-del]")?.addEventListener("click", () => this.deleteSelected());
+    }
+  }
+
+  private async showDoorProperties(door: WorldDoor): Promise<void> {
+    const body = this.ui?.root.querySelector("[data-props-body]") as HTMLElement | null;
+    const props = this.ui?.root.querySelector("[data-props]") as HTMLElement | null;
+    if (!body || !props) return;
+    props.classList.add("open");
+    let destSpawns: Array<{ uid: string; name: string }> = [];
+    if (door.targetMap) {
+      try {
+        const { spawns } = await getContext(this.host.scene).api.worldBuilderListSpawns(door.targetMap);
+        destSpawns = spawns;
+      } catch { /* */ }
+    }
+    renderDoorProps(body, door, this.mapList, destSpawns, (patch) => {
+      this.mutate((d) => {
+        const i = d.doors.findIndex((x) => x.uid === door.uid);
+        if (i < 0) return;
+        d.doors[i] = { ...d.doors[i]!, ...patch };
+      });
+      // Refresh spawn list when destination map changes.
+      if (patch.targetMap !== undefined) void this.showDoorProperties({ ...door, ...patch });
+    });
+    const row = document.createElement("div");
+    row.className = "row";
+    row.innerHTML = `<button type="button" class="wb-danger" data-del>Delete</button>`;
+    body.appendChild(row);
+    row.querySelector("[data-del]")?.addEventListener("click", () => this.deleteSelected());
+  }
+
+  private mutateDoorPos(uid: string, x: number, y: number, recordHistory: boolean): void {
+    const apply = (d: WorldEditDocument): void => {
+      const i = d.doors.findIndex((door) => door.uid === uid);
+      if (i >= 0) d.doors[i] = { ...d.doors[i]!, x, y };
+    };
+    if (recordHistory) this.mutate(apply);
+    else { apply(this.doc); this.dirty = true; this.applyDocToWorld(); this.host.setRuntimeOverlay(this.doc.doors, this.doc.spawns); }
+  }
+
+  private mutateSpawnPos(uid: string, x: number, y: number, recordHistory: boolean): void {
+    const apply = (d: WorldEditDocument): void => {
+      const i = d.spawns.findIndex((s) => s.uid === uid);
+      if (i >= 0) d.spawns[i] = { ...d.spawns[i]!, x, y };
+    };
+    if (recordHistory) this.mutate(apply);
+    else { apply(this.doc); this.dirty = true; this.applyDocToWorld(); this.host.setRuntimeOverlay(this.doc.doors, this.doc.spawns); }
   }
 
   private patchObject(uid: string, patch: Partial<WorldObject>, recordHistory = true): void {

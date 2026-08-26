@@ -89,6 +89,58 @@ export interface MapDef {
   spawnTile?: { tx: number; ty: number };
   /** Map picture for the minimap (HM maps reuse their background). */
   mapImage?: string;
+  /**
+   * World Builder blank map — no shipped .tmj; Phaser builds Floor + Collision
+   * layers procedurally. Overlay JSON supplies tiles/objects/doors.
+   */
+  wbBlank?: boolean;
+  spaceKind?: string;
+}
+
+/** Register (or refresh) custom World Builder maps into the live MAPS registry. */
+export function registerCustomMaps(
+  metas: Array<{
+    key: string;
+    name: string;
+    subtitle?: string;
+    blank?: boolean;
+    tile?: number;
+    gridW?: number;
+    gridH?: number;
+    spawn?: "start" | "center";
+    spawnTile?: { tx: number; ty: number };
+    spaceKind?: string;
+    source?: string;
+  }>,
+): void {
+  for (const m of metas) {
+    if (!m.key) continue;
+    // Never overwrite shipped Tiled/HM map defs with blank stubs.
+    const existing = MAPS[m.key];
+    if (existing && !existing.wbBlank && m.blank) continue;
+    if (existing && !m.blank && !existing.wbBlank) {
+      // Shipped map — leave portals/exits alone; only ensure key exists.
+      continue;
+    }
+    if (!m.blank && existing) continue;
+    MAPS[m.key] = {
+      key: m.key,
+      name: m.name,
+      subtitle: m.subtitle || "World Builder map",
+      spawn: m.spawn ?? "center",
+      portals: [],
+      ambient: false,
+      tile: m.tile ?? 32,
+      gridW: m.gridW ?? 40,
+      gridH: m.gridH ?? 30,
+      spawnTile: m.spawnTile ?? {
+        tx: Math.floor((m.gridW ?? 40) / 2),
+        ty: Math.floor((m.gridH ?? 30) / 2),
+      },
+      wbBlank: true,
+      spaceKind: m.spaceKind,
+    };
+  }
 }
 
 export const MAPS: Record<MapKey, MapDef> = {

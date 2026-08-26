@@ -21,7 +21,17 @@ import {
   resolvePackFile,
   saveWorldDoc,
 } from "../bot/world-builder/store.js";
-import type { WorldEditDocument } from "../bot/world-builder/types.js";
+import {
+  createCustomMap,
+  deleteCustomMap,
+  duplicateCustomMap,
+  getCustomMap,
+  listAllMapsForManager,
+  listCustomMaps,
+  renameCustomMap,
+  resolveSpawnPoint,
+} from "../bot/world-builder/map-registry.js";
+import type { CreateMapRequest, WorldEditDocument } from "../bot/world-builder/types.js";
 
 const DISCORD_API = "https://discord.com/api";
 
@@ -115,6 +125,42 @@ router.get("/world-builder/catalog", async (req, res) => {
   }
 });
 
+// GET /activity/world-builder/maps — Map Manager list (shipped + custom)
+router.get("/world-builder/maps", async (req, res) => {
+  const open = worldBuilderOpenMode() || isDemoBuilderRequest(req);
+  if (!open) {
+    const user = await identify(req);
+    if (!user) {
+      res.status(401).json({ error: "Authentication required." });
+      return;
+    }
+  }
+  try {
+    res.json({
+      maps: listAllMapsForManager(),
+      custom: listCustomMaps(),
+    });
+  } catch (err) {
+    logger.error({ err }, "world-builder list maps failed");
+    res.status(500).json({ error: "Failed to list maps." });
+  }
+});
+
+// POST /activity/world-builder/maps — create a blank first-class map
+router.post("/world-builder/maps", async (req, res) => {
+  const user = await requireEditor(req, res);
+  if (!user) return;
+  try {
+    const body = (req.body ?? {}) as CreateMapRequest;
+    const created = createCustomMap(body, user.id);
+    res.json({ ok: true, meta: created.meta, doc: created.doc });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Failed to create map.";
+    logger.error({ err }, "world-builder create map failed");
+    res.status(400).json({ error: msg });
+  }
+});
+
 // GET /activity/world-builder/maps/:mapKey
 router.get("/world-builder/maps/:mapKey", async (req, res) => {
   // Readable by anyone authenticated OR open mode — overlays apply for all players
@@ -128,10 +174,11 @@ router.get("/world-builder/maps/:mapKey", async (req, res) => {
     }
   }
   const mapKey = String(req.params.mapKey ?? "");
-  res.json({ doc: loadWorldDoc(mapKey) });
+  const meta = getCustomMap(mapKey);
+  res.json({ doc: loadWorldDoc(mapKey), meta });
 });
 
-// POST /activity/world-builder/maps/:mapKey
+// POST /activity/world-builder/maps/:mapKey — save overlay document
 router.post("/world-builder/maps/:mapKey", async (req, res) => {
   const user = await requireEditor(req, res);
   if (!user) return;
@@ -143,11 +190,93 @@ router.post("/world-builder/maps/:mapKey", async (req, res) => {
   }
   try {
     const saved = saveWorldDoc(mapKey, { ...body, mapKey }, user.id);
-    res.json({ ok: true, doc: saved });
+    res.json({ ok: true, doc: saved, meta: getCustomMap(mapKey) });
   } catch (err) {
     logger.error({ err, mapKey }, "world-builder save failed");
     res.status(500).json({ error: "Failed to save world." });
   }
+});
+
+// PATCH /activity/world-builder/maps/:mapKey — rename custom map
+router.patch("/world-builder/maps/:mapKey", async (req, res) => {
+  const user = await requireEditor(req, res);
+  if (!user) return;
+  const mapKey = String(req.params.mapKey ?? "");
+  try {
+    const name = String(req.body?.name ?? "");
+    const meta = renameCustomMap(mapKey, name);
+    res.json({ ok: true, meta });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Failed to rename map.";
+    res.status(400).json({ error: msg });
+  }
+});
+
+// POST /activity/world-builder/maps/:mapKey/duplicate
+router.post("/world-builder/maps/:mapKey/duplicate", async (req, res) => {
+  const user = await requireEditor(req, res);
+  if (!user) return;
+  const mapKey = String(req.params.mapKey ?? "");
+  try {
+    const created = duplicateCustomMap(mapKey, req.body?.name, user.id);
+    res.json({ ok: true, meta: created.meta, doc: created.doc });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Failed to duplicate map.";
+    res.status(400).json({ error: msg });
+  }
+});
+
+// DELETE /activity/world-builder/maps/:mapKey — custom maps only
+router.delete("/world-builder/maps/:mapKey", async (req, res) => {
+  const user = await requireEditor(req, res);
+  if (!user) return;
+  const mapKey = String(req.params.mapKey ?? "");
+  const meta = getCustomMap(mapKey);
+  if (!meta) {
+    res.status(400).json({ error: "Only custom World Builder maps can be deleted." });
+    return;
+  }
+  const ok = deleteCustomMap(mapKey);
+  res.json({ ok });
+});
+
+// GET /activity/world-builder/maps/:mapKey/spawns — named spawns for door picker
+router.get("/world-builder/maps/:mapKey/spawns", async (req, res) => {
+  const open = worldBuilderOpenMode() || isDemoBuilderRequest(req);
+  if (!open) {
+    const user = await identify(req);
+    if (!user) {
+      res.status(401).json({ error: "Authentication required." });
+      return;
+    }
+  }
+  const mapKey = String(req.params.mapKey ?? "");
+  const doc = loadWorldDoc(mapKey);
+  res.json({
+    spawns: doc.spawns.map((s) => ({
+      uid: s.uid,
+      name: s.name || s.uid,
+      kind: s.kind,
+      x: s.x,
+      y: s.y,
+      isDefault: !!s.isDefault,
+    })),
+  });
+});
+
+// GET /activity/world-builder/maps/:mapKey/resolve-spawn?name=
+router.get("/world-builder/maps/:mapKey/resolve-spawn", async (req, res) => {
+  const open = worldBuilderOpenMode() || isDemoBuilderRequest(req);
+  if (!open) {
+    const user = await identify(req);
+    if (!user) {
+      res.status(401).json({ error: "Authentication required." });
+      return;
+    }
+  }
+  const mapKey = String(req.params.mapKey ?? "");
+  const name = typeof req.query.name === "string" ? req.query.name : undefined;
+  res.json({ spawn: resolveSpawnPoint(mapKey, name) });
 });
 
 // POST /activity/world-builder/packs/import  (raw zip)

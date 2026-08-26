@@ -57,21 +57,29 @@ function indexPath(): string {
 
 export interface WorldBuilderIndex {
   packs: WorldAssetPack[];
+  maps?: import("./types.js").CustomMapMeta[];
 }
 
 function readIndex(): WorldBuilderIndex {
   const p = indexPath();
-  if (!existsSync(p)) return { packs: [] };
+  if (!existsSync(p)) return { packs: [], maps: [] };
   try {
-    return JSON.parse(readFileSync(p, "utf8")) as WorldBuilderIndex;
+    const raw = JSON.parse(readFileSync(p, "utf8")) as WorldBuilderIndex;
+    return { packs: raw.packs ?? [], maps: raw.maps ?? [] };
   } catch {
-    return { packs: [] };
+    return { packs: [], maps: [] };
   }
 }
 
 function writeIndex(idx: WorldBuilderIndex): void {
   mkdirSync(worldBuilderRoot(), { recursive: true });
-  writeFileSync(indexPath(), JSON.stringify(idx, null, 2));
+  // Preserve maps array even when pack helpers omit it.
+  const prev = readIndex();
+  const next: WorldBuilderIndex = {
+    packs: idx.packs ?? prev.packs ?? [],
+    maps: idx.maps ?? prev.maps ?? [],
+  };
+  writeFileSync(indexPath(), JSON.stringify(next, null, 2));
 }
 
 export function loadWorldDoc(mapKey: string): WorldEditDocument {
@@ -111,6 +119,15 @@ export function saveWorldDoc(
   };
   writeFileSync(join(mapsDir(), `${safe}.json`), JSON.stringify(next, null, 2));
   return next;
+}
+
+export function deleteWorldDoc(mapKey: string): boolean {
+  const safe = mapKey.replace(/[^a-zA-Z0-9_-]/g, "");
+  if (!safe || safe !== mapKey) return false;
+  const file = join(mapsDir(), `${safe}.json`);
+  if (!existsSync(file)) return false;
+  rmSync(file, { force: true });
+  return true;
 }
 
 export function listMapKeysWithEdits(): string[] {

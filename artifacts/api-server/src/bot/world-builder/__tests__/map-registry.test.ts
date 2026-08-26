@@ -1,0 +1,72 @@
+import { describe, expect, it, beforeEach, afterEach } from "vitest";
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import {
+  createCustomMap,
+  deleteCustomMap,
+  duplicateCustomMap,
+  listAllMapsForManager,
+  listCustomMaps,
+  renameCustomMap,
+  resolveSpawnPoint,
+} from "../map-registry.js";
+import { loadWorldDoc, saveWorldDoc } from "../store.js";
+
+describe("world-builder map registry", () => {
+  let dir: string;
+  const prev = process.env["WORLD_BUILDER_DATA_DIR"];
+
+  beforeEach(() => {
+    dir = mkdtempSync(join(tmpdir(), "wb-maps-"));
+    process.env["WORLD_BUILDER_DATA_DIR"] = dir;
+  });
+
+  afterEach(() => {
+    if (prev === undefined) delete process.env["WORLD_BUILDER_DATA_DIR"];
+    else process.env["WORLD_BUILDER_DATA_DIR"] = prev;
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  it("creates a blank first-class map with Default spawn", () => {
+    const { meta, doc } = createCustomMap({ name: "Cave", width: 24, height: 18, tile: 32, spaceKind: "cave" });
+    expect(meta.key.startsWith("wb-")).toBe(true);
+    expect(meta.blank).toBe(true);
+    expect(meta.gridW).toBe(24);
+    expect(doc.spawns.some((s) => s.name === "Default" && s.isDefault)).toBe(true);
+    expect(listCustomMaps()).toHaveLength(1);
+    expect(loadWorldDoc(meta.key).mapKey).toBe(meta.key);
+  });
+
+  it("renames, duplicates, and deletes custom maps", () => {
+    const { meta } = createCustomMap({ name: "Graveyard" });
+    renameCustomMap(meta.key, "The Graveyard");
+    expect(listCustomMaps()[0]!.name).toBe("The Graveyard");
+    const dup = duplicateCustomMap(meta.key, "Crypt");
+    expect(dup.meta.name).toBe("Crypt");
+    expect(listCustomMaps().length).toBe(2);
+    expect(deleteCustomMap(meta.key)).toBe(true);
+    expect(listCustomMaps().some((m) => m.key === meta.key)).toBe(false);
+  });
+
+  it("lists shipped + custom maps for the Map Manager", () => {
+    createCustomMap({ name: "DN Cards HQ", spaceKind: "hq" });
+    const all = listAllMapsForManager();
+    expect(all.some((m) => m.key === "world" && m.source === "shipped")).toBe(true);
+    expect(all.some((m) => m.name === "DN Cards HQ" && m.blank)).toBe(true);
+  });
+
+  it("resolves named spawn points for door targets", () => {
+    const { meta, doc } = createCustomMap({ name: "Deep Cave" });
+    doc.spawns.push({
+      uid: "s2", name: "Boss Room", kind: "player",
+      x: 10 * meta.tile + 16, y: 10 * meta.tile + 16, facing: "down",
+    });
+    saveWorldDoc(meta.key, doc);
+    const hit = resolveSpawnPoint(meta.key, "Boss Room");
+    expect(hit?.tx).toBe(10);
+    expect(hit?.ty).toBe(10);
+    const def = resolveSpawnPoint(meta.key);
+    expect(def?.name).toBe("Default");
+  });
+});

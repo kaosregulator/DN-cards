@@ -21,6 +21,7 @@ export interface BuilderUiCallbacks {
   onUndo: () => void;
   onRedo: () => void;
   onOpenAssetManager: () => void;
+  onOpenMapManager?: () => void;
   onPropertyChange: (uid: string, props: Partial<WorldObject>) => void;
   onDeleteSelected: () => void;
   onDuplicateSelected: () => void;
@@ -133,6 +134,7 @@ export class BuilderUi {
         <button type="button" data-tool="spawn" title="Spawns">Spawn</button>
         <button type="button" data-act="undo" title="Undo (Ctrl+Z)">Undo</button>
         <button type="button" data-act="redo" title="Redo (Ctrl+Y)">Redo</button>
+        <button type="button" data-act="maps">Maps</button>
         <button type="button" data-act="assets">Asset Manager</button>
         <button type="button" data-act="save">Save</button>
         <button type="button" data-act="exit">Playtest</button>
@@ -317,6 +319,9 @@ export class BuilderUi {
     this.root.querySelector("[data-act=assets]")!.addEventListener("click", () => {
       this.openAssetManager(true);
       this.cb.onOpenAssetManager();
+    });
+    this.root.querySelector("[data-act=maps]")?.addEventListener("click", () => {
+      this.cb.onOpenMapManager?.();
     });
     this.root.querySelector("[data-am-close]")!.addEventListener("click", () => this.openAssetManager(false));
     this.root.querySelector("[data-search]")!.addEventListener("input", (e) => {

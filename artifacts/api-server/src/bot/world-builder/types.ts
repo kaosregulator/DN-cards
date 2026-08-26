@@ -107,10 +107,14 @@ export interface WorldZone {
 
 export interface WorldSpawn {
   uid: string;
+  /** Human-readable spawn id used by doors ("Cave Entrance", "Main Entrance"). */
+  name?: string;
   kind: "player" | "npc" | "enemy" | "generic";
   x: number;
   y: number;
   facing?: Facing;
+  /** When true, used as the default arrival for this map when no spawn is specified. */
+  isDefault?: boolean;
   properties?: Record<string, unknown>;
 }
 
@@ -119,12 +123,64 @@ export interface WorldDoor {
   x: number;
   y: number;
   label?: string;
+  /** Destination map key (shipped or custom). */
   targetMap?: string;
+  /** Named spawn on the destination map (preferred over raw coords). */
+  targetSpawn?: string;
   targetX?: number;
   targetY?: number;
   targetFloor?: number;
+  transition?: "fade" | "instant";
+  locked?: boolean;
   buildingId?: string;
   properties?: Record<string, unknown>;
+}
+
+/** Space / map-type hint for multi-floor and interior readiness. */
+export type MapSpaceKind =
+  | "exterior"
+  | "interior"
+  | "roof"
+  | "cave"
+  | "arena"
+  | "hq"
+  | "other";
+
+/**
+ * Registry entry for a playable map in the World Builder Map Manager.
+ * Custom blank maps are first-class; shipped Tiled/HM maps appear as overlay targets.
+ */
+export interface CustomMapMeta {
+  key: string;
+  name: string;
+  subtitle?: string;
+  /** custom = created in Map Manager; shipped = existing Tiled/HM map with optional overlay. */
+  source: "custom" | "shipped";
+  /** When true, Phaser builds a procedural blank tilemap (no .tmj required). */
+  blank: boolean;
+  tile: number;
+  gridW: number;
+  gridH: number;
+  spawn: "start" | "center";
+  spawnTile?: { tx: number; ty: number };
+  spaceKind?: MapSpaceKind;
+  defaultFloor?: number;
+  createdAt: string;
+  updatedAt: string;
+  /** True when a WorldEditDocument file exists for this key. */
+  hasEdits?: boolean;
+}
+
+export interface CreateMapRequest {
+  name: string;
+  key?: string;
+  width?: number;
+  height?: number;
+  tile?: number;
+  spaceKind?: MapSpaceKind;
+  /** Optional starting floor fill from a catalog tile asset id. */
+  baseAssetId?: string;
+  subtitle?: string;
 }
 
 export interface WorldEditDocument {
@@ -138,6 +194,7 @@ export interface WorldEditDocument {
     notes?: string;
     /** Future multi-floor support — default floor for this document slice. */
     defaultFloor?: number;
+    spaceKind?: MapSpaceKind;
   };
   tiles: TilePatch[];
   objects: WorldObject[];
