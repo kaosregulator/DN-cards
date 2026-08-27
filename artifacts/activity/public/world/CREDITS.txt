@@ -9,9 +9,11 @@ tiles-world.png, tiles-exterior.png, tiles-interior.png, tiles-dungeon.png
   finalbossblues.itch.io/openrtp-tiles
   CC0 1.0 — http://creativecommons.org/publicdomain/zero/1.0/
 
-beach-concert/*
-  "Modern Exteriors" beach / concert props & animations by Caz (LimeZu)
+beach-concert/* · modern-city/*
+  "Modern Exteriors" by LimeZu (https://limezu.itch.io/modernexteriors)
+  District showcase scenes, terrain, props, and concert animations.
   Used under the pack's commercial license terms for this project.
+  Credits required per LimeZu license.
 
 These ship as real, same-origin files (not inlined) so Discord's Activity CSP
 (img-src 'self') serves them without an external request.

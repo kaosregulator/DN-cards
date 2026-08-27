@@ -140,6 +140,7 @@ export class WorldScene extends Phaser.Scene {
   private bgObjects: Phaser.GameObjects.Image[] = [];
   private exitArmed = false; // suppress exit re-trigger until the player steps clear
   private isHm = false;
+  private hasBgArt = false;
   private playerScale = 1;
   private zoomMult = 1;      // user zoom (buttons / wheel / pinch), persisted
   private pinchDist = 0;     // last two-finger distance while pinch-zooming
@@ -180,7 +181,9 @@ export class WorldScene extends Phaser.Scene {
     };
     this.spawnOverride = data?.spawnAt ?? null;
     this.tileW = this.def.tile ?? 32;
-    this.isHm = !!(this.def.bgImage || this.def.bgChunks);
+    this.isHm = !!this.def.harvestMoon || this.mapKey.startsWith("hm-");
+    this.hasBgArt = !!(this.def.bgImage || this.def.bgChunks);
+    this.playerScale = this.def.avatarScale ?? 1;
     this.zoomMult = loadZoomMult();
     this.pinchDist = 0;
     this.zoomEl = null;
@@ -199,7 +202,7 @@ export class WorldScene extends Phaser.Scene {
     this.editing = false;
     this.tilemapRef = null;
     this.paintLayer = null;
-    // In the Harvest Moon world the player is Jack; elsewhere it's the chosen avatar.
+    // Harvest Moon forces Jack; Limezu City / WA maps use the chosen avatar.
     this.avatar = this.isHm ? avatarById("jack") : avatarById(getAvatarId());
     this.petId = getPetId();
     this.pet = null;
@@ -290,7 +293,7 @@ export class WorldScene extends Phaser.Scene {
     // Populate the map with pacing NPCs, lakeside watchers, office folk and stray
     // dogs — placed procedurally in sensible spots, kept clear of the beacons.
     const avoid = [{ x: spawnX, y: spawnY }, ...this.interactables.map((it) => ({ x: it.x, y: it.y }))];
-    // Keep ambient crowd off the beach concert patio.
+    // Keep ambient crowd off the beach concert patio (legacy world only).
     if (this.mapKey === "world") {
       const tw = map.tileWidth;
       for (let ty = 31; ty <= 39; ty++) {
@@ -314,9 +317,13 @@ export class WorldScene extends Phaser.Scene {
       seed,
     });
 
-    // Live beach concert on the world map (replaces the old music-patio instruments).
-    if (this.mapKey === "world") {
-      this.beachConcert = new BeachConcert({ scene: this, tile: map.tileWidth });
+    // Live beach concert lives on Limezu City's shoreline district (not the legacy plaza).
+    if (this.mapKey === "modern-city") {
+      this.beachConcert = new BeachConcert({
+        scene: this,
+        tile: map.tileWidth,
+        origin: { tx: 72, ty: 70 },
+      });
     }
 
     // Harvest Moon townsfolk + a dialog box for talking to them.
@@ -447,17 +454,17 @@ export class WorldScene extends Phaser.Scene {
   // Draw a Harvest Moon map's background art (single image, or chunks placed at
   // their offsets) beneath everything else.
   private drawHmBackground(map: Phaser.Tilemaps.Tilemap): void {
-    const hmKey = this.mapKey.replace(/^hm-/, "");
+    const artKey = this.mapKey.replace(/^hm-/, "");
     const add = (texKey: string, x: number, y: number): void => {
       if (!this.textures.exists(texKey)) return;
       const img = this.add.image(x, y, texKey).setOrigin(0, 0).setDepth(-100);
       this.bgObjects.push(img);
     };
-    if (this.def.bgImage) add(`hmbg-${hmKey}`, 0, 0);
-    for (const c of this.def.bgChunks ?? []) add(`hmbg-${hmKey}-${c.x}-${c.y}`, c.x, c.y);
+    if (this.def.bgImage) add(`hmbg-${artKey}`, 0, 0);
+    for (const c of this.def.bgChunks ?? []) add(`hmbg-${artKey}-${c.x}-${c.y}`, c.x, c.y);
     // Detail overlay (trees/rocks/springs) sits just above the base ground.
-    if (this.def.bgOverlay && this.textures.exists(`hmov-${hmKey}`)) {
-      this.bgObjects.push(this.add.image(0, 0, `hmov-${hmKey}`).setOrigin(0, 0).setDepth(-50));
+    if (this.def.bgOverlay && this.textures.exists(`hmov-${artKey}`)) {
+      this.bgObjects.push(this.add.image(0, 0, `hmov-${artKey}`).setOrigin(0, 0).setDepth(-50));
     }
     void map;
   }
@@ -555,15 +562,18 @@ export class WorldScene extends Phaser.Scene {
     return map;
   }
 
-  // Harvest Moon maps: a full background image (or chunks) + a light collision-only
-  // Tiled map. The player + collision run on the tmj; the art is drawn as images.
+  // Image-backed maps (Harvest Moon + Modern Exteriors city): full background
+  // art + a light collision-only Tiled map. The player runs on the tmj; art is images.
   private async loadHmMap(key: MapKey): Promise<Phaser.Tilemaps.Tilemap> {
-    const hmKey = key.replace(/^hm-/, "");
-    if (!this.textures.exists("hm-collide")) {
-      this.load.image("hm-collide", assetUrl("world/hm/collide.png"));
+    const artKey = key.replace(/^hm-/, "");
+    const collideKey = this.def.collideImage ? `collide-${key}` : "hm-collide";
+    const collideUrl = this.def.collideImage ?? "world/hm/collide.png";
+    const tmjUrl = this.def.collisionMap ?? `world/hm/maps/${artKey}.tmj`;
+    if (!this.textures.exists(collideKey)) {
+      this.load.image(collideKey, assetUrl(collideUrl));
     }
     if (!this.cache.tilemap.has(key)) {
-      this.load.tilemapTiledJSON(key, assetUrl(`world/hm/maps/${hmKey}.tmj`));
+      this.load.tilemapTiledJSON(key, assetUrl(tmjUrl));
     }
     if (!this.textures.exists(this.avatar.texKey)) {
       this.load.spritesheet(this.avatar.texKey, assetUrl(this.avatar.url), {
@@ -571,30 +581,41 @@ export class WorldScene extends Phaser.Scene {
       });
     }
     if (this.petId) loadPetTextures(this, this.petId);
-    for (const s of HmNpcs.spritesForMap(key)) {
-      if (!this.textures.exists(s.key)) this.load.image(s.key, assetUrl(s.url));
+    if (this.isHm) {
+      for (const s of HmNpcs.spritesForMap(key)) {
+        if (!this.textures.exists(s.key)) this.load.image(s.key, assetUrl(s.url));
+      }
+      for (const s of HmItems.spritesForMap(key)) {
+        if (!this.textures.exists(s.key)) this.load.image(s.key, assetUrl(s.url));
+      }
     }
-    for (const s of HmItems.spritesForMap(key)) {
-      if (!this.textures.exists(s.key)) this.load.image(s.key, assetUrl(s.url));
-    }
+    if (key === "modern-city") preloadBeachConcert(this);
     // Background art: one image, or chunks for maps beyond the GPU texture cap.
-    const bgKeys: string[] = [];
     if (this.def.bgImage) {
-      const k = `hmbg-${hmKey}`; bgKeys.push(k);
+      const k = `hmbg-${artKey}`;
       if (!this.textures.exists(k)) this.load.image(k, assetUrl(this.def.bgImage));
     }
     for (const c of this.def.bgChunks ?? []) {
-      const k = `hmbg-${hmKey}-${c.x}-${c.y}`;
+      const k = `hmbg-${artKey}-${c.x}-${c.y}`;
       if (!this.textures.exists(k)) this.load.image(k, assetUrl(c.url));
     }
     if (this.def.bgOverlay) {
-      const k = `hmov-${hmKey}`;
+      const k = `hmov-${artKey}`;
       if (!this.textures.exists(k)) this.load.image(k, assetUrl(this.def.bgOverlay));
+    }
+    // Ambient life on image worlds that opt in (Limezu City).
+    if (this.def.ambient !== false && !this.isHm) {
+      for (const def of uniqueNpcSheets()) {
+        if (!this.textures.exists(def.texKey)) {
+          this.load.spritesheet(def.texKey, assetUrl(def.url), { frameWidth: def.fw, frameHeight: def.fh });
+        }
+      }
+      for (const breed of AMBIENT_BREEDS) loadPetTextures(this, breed);
     }
     await this.runLoader();
 
     const map = this.make.tilemap({ key });
-    map.addTilesetImage("collide", "hm-collide", this.def.tile ?? 20, this.def.tile ?? 20, 0, 0, 1);
+    map.addTilesetImage("collide", collideKey, this.def.tile ?? 32, this.def.tile ?? 32, 0, 0, 1);
     this.gidCats = [];
     return map;
   }
@@ -621,7 +642,6 @@ export class WorldScene extends Phaser.Scene {
       }
     }
     for (const breed of AMBIENT_BREEDS) loadPetTextures(this, breed);
-    if (key === "world") preloadBeachConcert(this);
     await this.runLoader();
 
     const manifest = this.cache.json.get("world-manifest") as WorldManifest;
@@ -811,7 +831,8 @@ export class WorldScene extends Phaser.Scene {
   // the WA maps keep their tighter ~15-tile fit.
   private baseZoom(): number {
     const min = Math.min(this.scale.width, this.scale.height);
-    if (this.isHm) return 1;
+    // Image-backed worlds (HM + Limezu City) render at native pixel scale.
+    if (this.hasBgArt) return 1;
     return Phaser.Math.Clamp(min / (15 * this.tileW), 1.4, 3.2);
   }
 

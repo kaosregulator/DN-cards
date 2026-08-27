@@ -10,8 +10,8 @@ import type Phaser from "phaser";
 
 const ROOT = "world/beach-concert";
 
-/** Top-left tile of the former music patio on the WA `world` map. */
-export const BEACH_CONCERT_ORIGIN = { tx: 22, ty: 31 } as const;
+/** Top-left tile of the shoreline stage on Limezu City (`modern-city`). */
+export const BEACH_CONCERT_ORIGIN = { tx: 72, ty: 70 } as const;
 
 function assetUrl(rel: string): string {
   const base = (import.meta.env.BASE_URL || "/").replace(/\/?$/, "/");

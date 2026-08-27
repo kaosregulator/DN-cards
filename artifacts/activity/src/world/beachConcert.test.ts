@@ -6,8 +6,8 @@ import { join } from "node:path";
 const PUBLIC = join(import.meta.dirname, "../../public/world/beach-concert");
 
 describe("beach concert scene assets", () => {
-  it("anchors on the former music patio tiles", () => {
-    expect(BEACH_CONCERT_ORIGIN).toEqual({ tx: 22, ty: 31 });
+  it("anchors on the Limezu City shoreline stage", () => {
+    expect(BEACH_CONCERT_ORIGIN).toEqual({ tx: 72, ty: 70 });
   });
 
   it("ships static stage props and animation sheets", () => {
@@ -34,7 +34,8 @@ describe("beach concert scene assets", () => {
     }
   });
 
-  it("removed LimeZu music instrument tiles from world.tmj", () => {
+  it("keeps LimeZu music instrument tiles on the legacy world plaza", () => {
+    // Concert moved to Limezu City — legacy `world` keeps the original patio.
     const tmj = JSON.parse(
       readFileSync(join(import.meta.dirname, "../../public/world/maps/world.tmj"), "utf8"),
     );
@@ -53,6 +54,14 @@ describe("beach concert scene assets", () => {
       }
     };
     walk(tmj.layers);
-    expect(count).toBe(0);
+    expect(count).toBeGreaterThan(0);
+  });
+
+  it("ships the Limezu City background map", () => {
+    const bg = join(import.meta.dirname, "../../public/world/modern-city/bg.png");
+    const tmj = join(import.meta.dirname, "../../public/world/maps/modern-city.tmj");
+    expect(existsSync(bg)).toBe(true);
+    expect(readFileSync(bg).byteLength).toBeGreaterThan(100_000);
+    expect(existsSync(tmj)).toBe(true);
   });
 });

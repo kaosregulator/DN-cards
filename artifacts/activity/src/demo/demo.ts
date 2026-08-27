@@ -57,13 +57,16 @@ class DemoLauncher extends Phaser.Scene {
     if (/demo=pvp/.test(location.search)) this.scene.start("Duel", { setup: { ...mockSetup(), player: { name: "Player 1", deck: mockDeck() }, opponent: { name: "Player 2", deck: mockDeck() } }, returnTo: "Menu", pvp: true });
     else if (/demo=duel/.test(location.search)) this.scene.start("Duel", { setup: mockSetup(), returnTo: "Menu" });
     else if (/demo=shop/.test(location.search)) this.scene.start("Shop", { returnTo: "Menu" });
-    else if (/demo=world/.test(location.search)) {
-      const m = /demo=world:([a-z-]+)/.exec(location.search);
+    else if (/demo=world/.test(location.search) || /demo=modern/.test(location.search)) {
+      const m = /demo=world:([a-z0-9-]+)/.exec(location.search);
       const spawnM = /[?&]spawn=(\d+),(\d+)/.exec(location.search);
       const data: { mapKey?: string; spawnAt?: { tx: number; ty: number } } = {};
+      if (/demo=modern/.test(location.search)) data.mapKey = "modern-city";
       if (m) data.mapKey = m[1];
       if (spawnM) data.spawnAt = { tx: Number(spawnM[1]), ty: Number(spawnM[2]) };
-      this.scene.start("World", Object.keys(data).length ? data : undefined);
+      // Default demo adventure lands in the new Modern Exteriors city.
+      if (!data.mapKey) data.mapKey = "modern-city";
+      this.scene.start("World", data);
     }
     else this.scene.start("Menu");
   }
