@@ -49,6 +49,15 @@ function uid(prefix: string): string {
   return `${prefix}_${Math.random().toString(36).slice(2, 9)}`;
 }
 
+/** Map a map key to the built-in source pack the palette should default to. */
+function mapSourceId(mapKey: string): string {
+  if (mapKey === "world") return "world";
+  if (mapKey === "village") return "village";
+  if (mapKey === "card-shop" || mapKey === "duel-hall" || mapKey === "cave") return "other-worlds";
+  if (mapKey.startsWith("hm-")) return "jacks-world";
+  return "all"; // custom / blank maps — show every source
+}
+
 function resolveAssetUrl(rel: string, apiBase: string): string {
   if (!rel) return "";
   if (rel.startsWith("http")) return rel;
@@ -335,6 +344,8 @@ export class WorldBuilder {
       this.packs = cat.packs;
       this.assets = cat.assets;
       this.ui?.setCatalog(this.packs, this.assets);
+      // Focus the palette on the source that matches the map being edited.
+      this.ui?.setActiveSource(mapSourceId(this.host.mapKey));
     } catch (err) {
       this.ui?.setStatus("Catalog unavailable — using local tools only");
       // eslint-disable-next-line no-console

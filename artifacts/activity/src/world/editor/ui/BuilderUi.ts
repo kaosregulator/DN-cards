@@ -45,7 +45,10 @@ function ensureStyles(): void {
   .wb-top{position:absolute;left:50%;top:10px;transform:translateX(-50%);display:flex;gap:6px;align-items:center;padding:8px 10px;border-radius:14px;max-width:calc(100vw - 24px);flex-wrap:wrap;justify-content:center}
   .wb-top button,.wb-side button,.wb-props button,.wb-am button{border:1px solid #334066;background:#182038;color:#dce6ff;border-radius:10px;padding:7px 11px;font:600 12px/1.1 inherit;cursor:pointer}
   .wb-top button:hover,.wb-side button:hover{border-color:#5b6ea8;background:#1e2a4a}
-  .wb-top button.active,.wb-cat.active{border-color:#6ea8ff;background:#243968;color:#fff;box-shadow:inset 0 0 0 1px #6ea8ff55}
+  .wb-top button.active,.wb-cat.active,.wb-src.active{border-color:#6ea8ff;background:#243968;color:#fff;box-shadow:inset 0 0 0 1px #6ea8ff55}
+  .wb-sources{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:4px}
+  .wb-src{padding:5px 9px!important;font-size:11px!important;border-radius:999px!important;font-weight:600}
+  .wb-src.imported{border-style:dashed}
   .wb-badge{font:700 11px/1 inherit;letter-spacing:.04em;text-transform:uppercase;color:#8eb6ff;padding:0 6px}
   .wb-status{font:500 11px/1.2 inherit;color:#9aa8c7;min-width:80px}
   .wb-side{position:absolute;left:10px;top:64px;bottom:12px;width:min(280px,42vw);border-radius:16px;display:flex;flex-direction:column;overflow:hidden}
@@ -112,6 +115,7 @@ export class BuilderUi {
   private tilePicker: HTMLElement | null = null;
   private packs: WorldAssetPack[] = [];
   private category: WorldAssetCategory | "all" = "all";
+  private source: string | "all" = "all";
   private filter = "";
   private selectedAssetId: string | null = null;
   private tool: EditorTool = "select";
@@ -141,6 +145,7 @@ export class BuilderUi {
         <span class="wb-status" data-status>Ready</span>
       </div>
       <div class="wb-panel wb-side">
+        <div class="wb-sources" data-sources></div>
         <div class="wb-cats" data-cats></div>
         <input class="wb-search" type="search" placeholder="Search assets…" data-search />
         <div class="wb-grid" data-grid></div>
@@ -179,6 +184,7 @@ export class BuilderUi {
     this.packList = this.root.querySelector("[data-packs]")!;
     this.summaryEl = this.root.querySelector("[data-summary]")!;
     this.bind();
+    this.renderSources();
     this.renderCategories();
   }
 
@@ -204,7 +210,17 @@ export class BuilderUi {
   setCatalog(packs: WorldAssetPack[], assets: WorldAssetEntry[]): void {
     this.packs = packs;
     this.assets = assets;
+    // Drop a stale source selection if that pack is gone (e.g. deleted import).
+    if (this.source !== "all" && !packs.some((p) => p.id === this.source)) this.source = "all";
+    this.renderSources();
     this.renderPacks();
+    this.renderGrid();
+  }
+
+  /** Focus the palette on one source (a world/pack id) or "all". */
+  setActiveSource(sourceId: string): void {
+    this.source = this.packs.some((p) => p.id === sourceId) ? sourceId : "all";
+    this.renderSources();
     this.renderGrid();
   }
 
@@ -354,6 +370,28 @@ export class BuilderUi {
     });
   }
 
+  private renderSources(): void {
+    const el = this.root.querySelector("[data-sources]");
+    if (!el) return;
+    // "All" + one chip per source (built-in worlds first, then imported packs).
+    const chips = [
+      `<button type="button" class="wb-src ${this.source === "all" ? "active" : ""}" data-src="all">All Sources</button>`,
+      ...this.packs.map((p) => {
+        const imported = p.source === "imported";
+        const label = imported ? `📦 ${p.name}` : p.name;
+        return `<button type="button" class="wb-src ${imported ? "imported " : ""}${this.source === p.id ? "active" : ""}" data-src="${p.id}" title="${p.description ?? ""}">${label}</button>`;
+      }),
+    ];
+    el.innerHTML = chips.join("");
+    el.querySelectorAll("[data-src]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        this.source = (btn as HTMLElement).dataset.src as string;
+        this.renderSources();
+        this.renderGrid();
+      });
+    });
+  }
+
   private renderCategories(): void {
     const el = this.root.querySelector("[data-cats]")!;
     const cats: Array<WorldAssetCategory | "all"> = ["all", ...CATEGORY_ORDER];
@@ -373,6 +411,7 @@ export class BuilderUi {
 
   private renderGrid(): void {
     const list = this.assets.filter((a) => {
+      if (this.source !== "all" && a.packId !== this.source) return false;
       if (this.category !== "all" && a.category !== this.category) return false;
       if (!this.filter) return true;
       const hay = `${a.name} ${a.id} ${(a.tags ?? []).join(" ")}`.toLowerCase();
