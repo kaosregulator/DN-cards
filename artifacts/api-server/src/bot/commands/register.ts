@@ -48,7 +48,7 @@ function buildLegacyCommands() {
     cmd("rank", "Your rank and progression", s => s
       .addUserOption(o => o.setName("user").setDescription("View another member's rank"))),
 
-    cmd("emojimoji", "Animate any image into an emote — pick an effect, preview, and send", s => s
+    cmd("postmojidashboard", "Admin: build an animated emote (effects, Giphy search, green screen) and post it to a channel", s => s
       .addAttachmentOption(o => o.setName("image").setDescription("Upload an image to animate"))
       .addUserOption(o => o.setName("user").setDescription("Use a member's avatar instead"))
       .addStringOption(o => o.setName("url").setDescription("Or an image URL to animate"))),

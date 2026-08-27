@@ -19,12 +19,12 @@
 //     accept any PNG and decode once per render call.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import GIFEncoder from "gifencoder";
 import { existsSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { join } from "node:path";
 import type { Image } from "@napi-rs/canvas";
 import { getCanvas, type Ctx, type CanvasMod } from "../animations/engine.js";
+import { encodeTransparentGif } from "./encode.js";
 
 /** Final GIF edge length. Templates are authored at TILE (128). Matching OUT to
  *  TILE avoids a quality-destroying downscale (old path: 128→96) and avoids
@@ -70,8 +70,13 @@ const TILE = MANIFEST.tile;
 const BASE_BB = MANIFEST.base.bb;
 const PIVOT = MANIFEST.base.pivot;
 const TEMPLATES = new Map(MANIFEST.effects.map((e) => [e.id, e]));
-/** Scale from template tile space → output pixels. */
-const S = OUT / TILE;
+/** Inset the whole composition by a margin so full-tile overlays (explosions,
+ *  lasers, throws) never touch — and get clipped at — the frame edge. The GIF
+ *  stays OUT×OUT; content is drawn into the INNER box, offset by MARGIN. */
+const MARGIN = Math.round(OUT * 0.08);
+const INNER = OUT - MARGIN * 2;
+/** Scale from template tile space → inner (inset) output pixels. */
+const S = INNER / TILE;
 
 export const EMOJI_EFFECTS: EmojiEffect[] =
   MANIFEST.effects.map((e) => ({ id: e.id, name: e.name, emoji: e.emoji, desc: e.desc }));
@@ -113,13 +118,15 @@ export async function renderEmojiGif(image: Buffer, effectId: string): Promise<B
   const cell = mod.createCanvas(OUT, OUT);
   const ctx = cell.getContext("2d") as unknown as Ctx;
   const frameData: Uint8ClampedArray[] = [];
-  const content = new Set<number>();
 
   for (let f = 0; f < tpl.frames; f++) {
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.globalAlpha = 1;
     ctx.globalCompositeOperation = "source-over";
     ctx.clearRect(0, 0, OUT, OUT);
+    // Inset everything by MARGIN: subject bb, pivots, transforms and overlays are
+    // all authored in tile space (0..TILE) scaled by S into the INNER box.
+    ctx.translate(MARGIN, MARGIN);
 
     for (const L of tpl.layers) {
       if (L.kind === "base") {
@@ -152,64 +159,16 @@ export async function renderEmojiGif(image: Buffer, effectId: string): Promise<B
         ctx.restore();
       } else if (L.sheet) {
         const sheet = sheets.get(L.sheet);
-        // Sheets are TILE×(TILE·frames); scale the cell up to OUT.
-        if (sheet) ctx.drawImage(sheet, 0, f * TILE, TILE, TILE, 0, 0, OUT, OUT);
+        // Sheets are TILE×(TILE·frames); scale the cell into the INNER box (the
+        // ctx is already translated by MARGIN, so this lands inset from the edge).
+        if (sheet) ctx.drawImage(sheet, 0, f * TILE, TILE, TILE, 0, 0, INNER, INNER);
       }
     }
 
     const d = ctx.getImageData(0, 0, OUT, OUT).data;
     // Snapshot pixels (getImageData buffer is reused by Skia on the next call).
     frameData.push(d.slice());
-    for (let i = 0; i < d.length; i += 4) {
-      if (d[i + 3]! >= 128) {
-        content.add(((d[i]! >> 4) << 8) | ((d[i + 1]! >> 4) << 4) | (d[i + 2]! >> 4));
-      }
-    }
   }
 
-  const [kr, kg, kb] = pickKey(content);
-  const keyInt = (kr << 16) | (kg << 8) | kb;
-
-  const enc = new GIFEncoder(OUT, OUT);
-  enc.start();
-  enc.setRepeat(0);
-  // Sample factor: 1 = best/slow … 30 = coarse/fast. 15 keeps transparent-key
-  // ratios identical to quality=5 in smoke tests while making 128px boards
-  // faster than the old 96px / quality=5 path.
-  enc.setQuality(15);
-  enc.setDelay(tpl.delayMs);
-  enc.setTransparent(keyInt);
-
-  for (const d of frameData) {
-    // Hard 1-bit alpha: gifencoder forces every alpha==0 pixel to the transparent
-    // palette index, so keep transparent areas at alpha 0 (with the content-far
-    // key colour so they cluster into one palette entry). Opaque elsewhere.
-    for (let i = 0; i < d.length; i += 4) {
-      if (d[i + 3]! < 128) { d[i] = kr; d[i + 1] = kg; d[i + 2] = kb; d[i + 3] = 0; }
-      else d[i + 3] = 255;
-    }
-    enc.addFrame(d as unknown as never);
-  }
-  enc.finish();
-  return enc.out.getData();
-}
-
-// Candidate key colours; pick the one whose nearest content colour is farthest.
-const KEY_CANDIDATES: [number, number, number][] = [
-  [255, 0, 255], [0, 255, 0], [0, 255, 255], [255, 255, 0], [0, 0, 255],
-  [255, 128, 0], [128, 0, 255], [0, 255, 128], [255, 0, 128], [128, 255, 0],
-];
-function pickKey(content: Set<number>): [number, number, number] {
-  let best: [number, number, number] = KEY_CANDIDATES[0]!, bestDist = -1;
-  for (const cand of KEY_CANDIDATES) {
-    let near = Infinity;
-    for (const c of content) {
-      const r = ((c >> 8) & 0xf) * 17, g = ((c >> 4) & 0xf) * 17, b = (c & 0xf) * 17;
-      const dr = r - cand[0], dg = g - cand[1], db = b - cand[2];
-      const dist = dr * dr + dg * dg + db * db;
-      if (dist < near) near = dist;
-    }
-    if (near > bestDist) { bestDist = near; best = cand; }
-  }
-  return best;
+  return encodeTransparentGif(frameData, OUT, OUT, tpl.delayMs);
 }
