@@ -23,11 +23,11 @@ import {
   PermissionsBitField,
   type ChatInputCommandInteraction, type ButtonInteraction,
   type Interaction, type TextBasedChannel, type GuildTextBasedChannel,
-  type MessageComponentInteraction,
+  type MessageComponentInteraction, type Message, type Collection,
 } from "discord.js";
 import sharp from "sharp";
 import { EMOJI_EFFECTS, renderEmojiGif, SRC_MAX } from "./effects.js";
-import { renderGreenScreenGif } from "./greenscreen.js";
+import { renderGreenScreenGif, decodeGifFrames } from "./greenscreen.js";
 import { searchGifs, giphyConfigured, type GiphyGif } from "./giphy.js";
 import { isAdmin } from "../db.js";
 import { logger } from "../../lib/logger.js";
@@ -206,7 +206,7 @@ function boardComponents(s: Session, tok: string, effs: typeof EMOJI_EFFECTS) {
     new ButtonBuilder().setCustomId(`${CID}:server:${tok}`).setEmoji("🏠").setLabel("Server").setStyle(ButtonStyle.Secondary),
     new ButtonBuilder().setCustomId(`${CID}:image:${tok}`).setEmoji("🖼️").setLabel("Image").setStyle(ButtonStyle.Secondary),
     new ButtonBuilder().setCustomId(`${CID}:search:${tok}`).setEmoji("🔎").setLabel("Search").setStyle(ButtonStyle.Secondary).setDisabled(!giphyConfigured()),
-    new ButtonBuilder().setCustomId(`${CID}:green:${tok}`).setEmoji("🟩").setLabel("Green").setStyle(ButtonStyle.Secondary).setDisabled(!giphyConfigured()),
+    new ButtonBuilder().setCustomId(`${CID}:green:${tok}`).setEmoji("🟩").setLabel("Green").setStyle(ButtonStyle.Secondary),
   );
   return [numRow, pageRow, srcRow, actionRow(s, tok)];
 }
@@ -352,6 +352,26 @@ export async function handlePostmojiInteraction(interaction: Interaction): Promi
         await interaction.editReply(searchResults(s, tok, green));
         return;
       }
+      if (action === "gsurlmodal") {
+        const url = interaction.fields.getTextInputValue("url").trim();
+        await interaction.deferUpdate();
+        if (!/^https?:\/\/\S+$/i.test(url)) {
+          await interaction.editReply({ content: "❌ That doesn't look like a URL.", embeds: [], files: [], components: [backOnly(tok)] });
+          return;
+        }
+        if (isVideoLike(url)) {
+          await interaction.editReply({ content: "❌ That's a video link — GIFs only for now (MP4/WebM needs ffmpeg). Try a GIF URL.", embeds: [], files: [], components: [backOnly(tok)] });
+          return;
+        }
+        const bytes = await fetchBytes(url);
+        if (!bytes || !(await decodeGifFrames(bytes))) {
+          await interaction.editReply({ content: "❌ Couldn't read that as a green-screen GIF. Try another link.", embeds: [], files: [], components: [backOnly(tok)] });
+          return;
+        }
+        applyGreenScreen(s, bytes, "clip URL");
+        await interaction.editReply(await buildGsBoard(s, tok));
+        return;
+      }
       return;
     }
 
@@ -450,8 +470,20 @@ export async function handlePostmojiInteraction(interaction: Interaction): Promi
         return;
       }
       case "green": {
+        await interaction.update(greenSourceScreen(tok));
+        return;
+      }
+      case "gsgiphy": {
         if (!giphyConfigured()) { await interaction.reply({ content: "❌ Giphy isn't configured on this bot.", flags: MessageFlags.Ephemeral }); return; }
         await interaction.showModal(textModal(`${CID}:greenmodal:${tok}`, "Green-screen search", "q", "Search green-screen GIFs", "e.g. explosion, hearts, fire"));
+        return;
+      }
+      case "gsurl": {
+        await interaction.showModal(textModal(`${CID}:gsurlmodal:${tok}`, "Green-screen from URL", "url", "Green-screen GIF URL", "https://…/clip.gif"));
+        return;
+      }
+      case "gsupload": {
+        await collectUpload(interaction, s, tok);
         return;
       }
       case "back": {
@@ -513,6 +545,61 @@ function searchResults(s: Session, tok: string, green: boolean): Screen {
     ? "🟩 **Green-screen results** — pick one; I'll key out the green and lay it over your source."
     : "🔎 **Giphy results** — pick one to animate with an effect.";
   return pickerScreen(content, row as unknown as ActionRowBuilder<never>, tok);
+}
+
+function greenSourceScreen(tok: string): Screen {
+  const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder().setCustomId(`${CID}:gsgiphy:${tok}`).setEmoji("🔎").setLabel("Search Giphy").setStyle(ButtonStyle.Secondary).setDisabled(!giphyConfigured()),
+    new ButtonBuilder().setCustomId(`${CID}:gsupload:${tok}`).setEmoji("📁").setLabel("Upload Clip").setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder().setCustomId(`${CID}:gsurl:${tok}`).setEmoji("🔗").setLabel("Clip URL").setStyle(ButtonStyle.Secondary),
+  );
+  return pickerScreen("🟩 **Green screen** — choose a source (GIFs work today; MP4/WebM not yet). I'll key out the green and lay it over your source.", row as unknown as ActionRowBuilder<never>, tok);
+}
+
+function applyGreenScreen(s: Session, bytes: Buffer, title: string): void {
+  s.gsBuf = bytes; s.gsTitle = title; s.mode = "greenscreen"; s.gsCache.clear();
+}
+
+/** GIF-only for now — flag anything that looks like a video so we can say so clearly. */
+function isVideoLike(nameOrUrl: string, contentType?: string | null): boolean {
+  if (contentType && contentType.startsWith("video/")) return true;
+  return /\.(mp4|webm|mov|m4v|mkv|avi)(\?|#|$)/i.test(nameOrUrl);
+}
+
+/** Wait (≤60s) for the admin to drop a green-screen GIF in the channel, then use it. */
+async function collectUpload(interaction: ButtonInteraction, s: Session, tok: string): Promise<void> {
+  await interaction.deferUpdate();
+  const channel = interaction.channel;
+  if (!channel || !("awaitMessages" in channel)) {
+    await interaction.editReply({ content: "❌ Can't collect an upload here — use 🔗 Clip URL instead.", embeds: [], files: [], components: [backOnly(tok)] });
+    return;
+  }
+  await interaction.editReply({ content: "📎 **Upload now** — send your green-screen **GIF** as a message in this channel within 60s.", embeds: [], files: [], components: [backOnly(tok)] });
+  const collector = channel as unknown as {
+    awaitMessages: (o: unknown) => Promise<Collection<string, Message>>;
+  };
+  try {
+    const collected = await collector.awaitMessages({
+      filter: (m: Message) => m.author.id === s.userId && m.attachments.size > 0,
+      max: 1, time: 60_000, errors: ["time"],
+    });
+    const msg = collected.first()!;
+    const att = msg.attachments.first()!;
+    await msg.delete().catch(() => { /* missing Manage Messages — leave it */ });
+    if (isVideoLike(att.name ?? att.url, att.contentType)) {
+      await interaction.editReply({ content: "❌ That's a video — GIFs only for now (MP4/WebM needs ffmpeg). Try a GIF.", embeds: [], files: [], components: [backOnly(tok)] });
+      return;
+    }
+    const bytes = await fetchBytes(att.url);
+    if (!bytes || !(await decodeGifFrames(bytes))) {
+      await interaction.editReply({ content: "❌ Couldn't read that as a GIF. Try another clip.", embeds: [], files: [], components: [backOnly(tok)] });
+      return;
+    }
+    applyGreenScreen(s, bytes, att.name ?? "uploaded clip");
+    await interaction.editReply(await buildGsBoard(s, tok));
+  } catch {
+    await interaction.editReply({ content: "⌛ No clip received in time. Tap 🟩 Green to try again.", embeds: [], files: [], components: [backOnly(tok)] });
+  }
 }
 
 function channelPicker(tok: string): Screen {
