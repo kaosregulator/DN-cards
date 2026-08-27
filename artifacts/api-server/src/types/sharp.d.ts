@@ -1,12 +1,15 @@
 declare module "sharp" {
-  function sharp(input?: Buffer | ArrayBuffer | Uint8Array | string, options?: sharp.InputOptions): sharp.Sharp;
+  function sharp(input?: Buffer | ArrayBuffer | Uint8Array | string | sharp.InputOptions, options?: sharp.InputOptions): sharp.Sharp;
   namespace sharp {
+    interface RGBA { r: number; g: number; b: number; alpha: number }
     interface InputOptions {
       raw?: { width: number; height: number; channels: 1 | 2 | 3 | 4 };
       animated?: boolean;
       pageHeight?: number;
       page?: number;
+      create?: { width: number; height: number; channels: 1 | 2 | 3 | 4; background: RGBA };
     }
+    interface RawInfo { width: number; height: number; channels: number; size: number }
     interface GifOptions {
       delay?: number | number[];
       loop?: number;
@@ -17,6 +20,7 @@ declare module "sharp" {
       withoutEnlargement?: boolean;
       fit?: "cover" | "contain" | "fill" | "inside" | "outside";
       position?: string | number;
+      background?: RGBA;
     }
     interface WebpOptions {
       quality?: number;
@@ -32,6 +36,7 @@ declare module "sharp" {
       raw(): Sharp;
       metadata(): Promise<{ width?: number; height?: number; pages?: number; pageHeight?: number; delay?: number[] }>;
       toBuffer(): Promise<Buffer>;
+      toBuffer(options: { resolveWithObject: true }): Promise<{ data: Buffer; info: RawInfo }>;
     }
   }
   export default sharp;

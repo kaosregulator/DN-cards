@@ -229,15 +229,16 @@ export async function startBot() {
         return;
       }
 
-      // ── Emojimoji picker (emojimoji:* buttons/selects/modals) ──────────────
+      // ── Postmoji dashboard (pmd:* buttons/selects/modals) ──────────────────
       // One router owns every component + modal it namespaced (board buttons,
-      // number/page/source controls, user & server pickers, image-URL modal).
+      // number/page/source controls, user/server/channel pickers, Giphy search
+      // + green-screen pickers, and the image/search/green modals).
       if (
         (interaction.isMessageComponent() || interaction.isModalSubmit()) &&
-        interaction.customId.startsWith("emojimoji:")
+        interaction.customId.startsWith("pmd:")
       ) {
-        const { handleEmojimojiInteraction } = await import("./emojimoji/command.js");
-        await handleEmojimojiInteraction(interaction);
+        const { handlePostmojiInteraction } = await import("./emojimoji/command.js");
+        await handlePostmojiInteraction(interaction);
         return;
       }
 
@@ -888,9 +889,9 @@ export async function startBot() {
         await handleAdminSecretCommand(interaction);
       } else if (cmd === "echo") {
         await handleEchoCommand(interaction);
-      } else if (cmd === "emojimoji") {
-        const { handleEmojimoji } = await import("./emojimoji/command.js");
-        await handleEmojimoji(interaction);
+      } else if (cmd === "postmojidashboard") {
+        const { handlePostmojiDashboard } = await import("./emojimoji/command.js");
+        await handlePostmojiDashboard(interaction);
       } else if (cmd === "afk") {
         await handleAfkCommand(interaction);
       } else if (cmd === "afksetup") {
@@ -946,7 +947,7 @@ export async function startBot() {
     "whisper", "adminsecret", "echo", "afk", "afksetup", "begin", "show_shiny",
     "collection_hub", "hq", "hqadmin", "hqbuild",
     "valuehelp", "valuelist", "info_mttv", "giveall", "editpack", "postcalculator",
-    "massrole", "emojimoji",
+    "massrole", "postmojidashboard",
   ]);
   const unmapped = buildCommands()
     .map(c => internalCommandName(c.name))
