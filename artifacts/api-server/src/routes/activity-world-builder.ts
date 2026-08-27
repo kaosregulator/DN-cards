@@ -11,7 +11,7 @@ import { isAdmin } from "../bot/db.js";
 import { logger } from "../lib/logger.js";
 import { resolvedEnv } from "../lib/runtime-env.js";
 import { canEditWorld, isDemoBuilderRequest, worldBuilderOpenMode } from "../bot/world-builder/auth.js";
-import { builtinAssets, builtinPackMeta } from "../bot/world-builder/builtin-catalog.js";
+import { builtinAssets, builtinPacks } from "../bot/world-builder/builtin-catalog.js";
 import { importFolderFiles, importZipBuffer, importZipFile } from "../bot/world-builder/packs.js";
 import {
   listImportedPacks,
@@ -112,13 +112,13 @@ router.get("/world-builder/catalog", async (req, res) => {
   const user = await requireEditor(req, res);
   if (!user) return;
   try {
-    const builtin = builtinPackMeta();
+    const builtin = builtinPacks();
     const imported = listImportedPacks();
     const assets = [
       ...builtinAssets(),
       ...imported.flatMap((p) => loadPackManifest(p.id)),
     ];
-    res.json({ packs: [builtin, ...imported], assets });
+    res.json({ packs: [...builtin, ...imported], assets });
   } catch (err) {
     logger.error({ err }, "world-builder catalog failed");
     res.status(500).json({ error: "Failed to load asset catalog." });
