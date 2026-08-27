@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { BEACH_CONCERT_ORIGIN } from "../src/world/beachConcert";
+import { BEACH_CONCERT_ORIGIN } from "./beachConcert";
 import { readFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
 
-const PUBLIC = join(import.meta.dirname, "../public/world/beach-concert");
+const PUBLIC = join(import.meta.dirname, "../../public/world/beach-concert");
 
 describe("beach concert scene assets", () => {
   it("anchors on the former music patio tiles", () => {
@@ -36,7 +36,7 @@ describe("beach concert scene assets", () => {
 
   it("removed LimeZu music instrument tiles from world.tmj", () => {
     const tmj = JSON.parse(
-      readFileSync(join(import.meta.dirname, "../public/world/maps/world.tmj"), "utf8"),
+      readFileSync(join(import.meta.dirname, "../../public/world/maps/world.tmj"), "utf8"),
     );
     const MUSIC_FIRST = 3133;
     const MUSIC_LAST = 3596;
