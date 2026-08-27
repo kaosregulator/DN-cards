@@ -9,6 +9,7 @@ import {
 import { AVATARS, type AvatarDef, avatarById, buildAvatarAnims, avatarAnim } from "../world/avatars";
 import { Pet, loadPetTextures } from "../world/pets";
 import { Ambient } from "../world/ambient";
+import { BeachConcert, preloadBeachConcert } from "../world/beachConcert";
 import { RoofFade } from "../world/roofFade";
 import { HmNpcs, DialogBox, type HmNpcDef } from "../world/hmNpcs";
 import { HmItems, foragedToast, type HmItemHit } from "../world/hmItems";
@@ -108,6 +109,7 @@ export class WorldScene extends Phaser.Scene {
   private petNear = false;
   private lastPrompt: string | null = null;
   private ambient: Ambient | null = null;
+  private beachConcert: BeachConcert | null = null;
   private collisionLayer: Phaser.Tilemaps.TilemapLayer | null = null;
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
   private wasd!: Record<"up" | "down" | "left" | "right" | "interact", Phaser.Input.Keyboard.Key>;
@@ -204,6 +206,7 @@ export class WorldScene extends Phaser.Scene {
     this.petNear = false;
     this.lastPrompt = null;
     this.ambient = null;
+    this.beachConcert = null;
     this.transitioning = false;
     this.ready = false;
     this.interactables = [];
@@ -287,6 +290,15 @@ export class WorldScene extends Phaser.Scene {
     // Populate the map with pacing NPCs, lakeside watchers, office folk and stray
     // dogs — placed procedurally in sensible spots, kept clear of the beacons.
     const avoid = [{ x: spawnX, y: spawnY }, ...this.interactables.map((it) => ({ x: it.x, y: it.y }))];
+    // Keep ambient crowd off the beach concert patio.
+    if (this.mapKey === "world") {
+      const tw = map.tileWidth;
+      for (let ty = 31; ty <= 39; ty++) {
+        for (let tx = 21; tx <= 38; tx += 2) {
+          avoid.push({ x: tx * tw + tw / 2, y: ty * tw + tw / 2 });
+        }
+      }
+    }
     const seed = Array.from(this.mapKey).reduce((h, c) => ((h * 31) + c.charCodeAt(0)) | 0, 7);
     if (this.def.ambient !== false) this.ambient = new Ambient({
       scene: this,
@@ -301,6 +313,11 @@ export class WorldScene extends Phaser.Scene {
       breeds: [...AMBIENT_BREEDS, ...(this.petId ? [this.petId] : [])],
       seed,
     });
+
+    // Live beach concert on the world map (replaces the old music-patio instruments).
+    if (this.mapKey === "world") {
+      this.beachConcert = new BeachConcert({ scene: this, tile: map.tileWidth });
+    }
 
     // Harvest Moon townsfolk + a dialog box for talking to them.
     if (this.isHm) {
@@ -385,6 +402,8 @@ export class WorldScene extends Phaser.Scene {
       this.pet = null;
       this.ambient?.destroy();
       this.ambient = null;
+      this.beachConcert?.destroy();
+      this.beachConcert = null;
       this.dialog?.destroy();
       this.dialog = null;
       this.npcs = null;
@@ -602,6 +621,7 @@ export class WorldScene extends Phaser.Scene {
       }
     }
     for (const breed of AMBIENT_BREEDS) loadPetTextures(this, breed);
+    if (key === "world") preloadBeachConcert(this);
     await this.runLoader();
 
     const manifest = this.cache.json.get("world-manifest") as WorldManifest;
