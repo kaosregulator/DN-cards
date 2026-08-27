@@ -59,7 +59,11 @@ class DemoLauncher extends Phaser.Scene {
     else if (/demo=shop/.test(location.search)) this.scene.start("Shop", { returnTo: "Menu" });
     else if (/demo=world/.test(location.search)) {
       const m = /demo=world:([a-z-]+)/.exec(location.search);
-      this.scene.start("World", m ? { mapKey: m[1] } : undefined);
+      const spawnM = /[?&]spawn=(\d+),(\d+)/.exec(location.search);
+      const data: { mapKey?: string; spawnAt?: { tx: number; ty: number } } = {};
+      if (m) data.mapKey = m[1];
+      if (spawnM) data.spawnAt = { tx: Number(spawnM[1]), ty: Number(spawnM[2]) };
+      this.scene.start("World", Object.keys(data).length ? data : undefined);
     }
     else this.scene.start("Menu");
   }
