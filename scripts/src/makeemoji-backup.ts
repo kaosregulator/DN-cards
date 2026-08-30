@@ -25,7 +25,7 @@ const MAKEEMOJI_MANIFEST = join(
   REPO, "artifacts/api-server/src/bot/emoji/providers/makeemoji/manifest.json",
 );
 const ZIP_NAME = "makeemoji-offline-backup.zip";
-const VERSION = "2.0.0";
+const VERSION = "2.1.0";
 
 interface ManifestControl {
   kind: string;
@@ -123,6 +123,7 @@ function main(): void {
   });
 
   const implementedStyleCount = styles.filter(s => s.offlineImplemented).length;
+  const packageOfflineReady = implementedStyleCount >= styles.length && styles.length > 0;
 
   const controls: Record<string, unknown> = {};
   for (const [key, control] of Object.entries(src.controls)) {
@@ -141,13 +142,15 @@ function main(): void {
     styleCount: styles.length,
     implementedStyleCount,
     version: VERSION,
-    offlineReady: false,
+    offlineReady: packageOfflineReady,
     primaryProvider: "makeemoji-browser",
-    notes:
-      `Partial offline engine: ${implementedStyleCount}/${styles.length} styles independently ` +
-      "renderable via shared primitives (transform/overlay/passthrough). " +
-      "Atlas/frames families still need archived assets + placement. " +
-      "MakeEmoji remains primary. Enable with EMOJI_ALLOW_OFFLINE_FALLBACK=1.",
+    notes: packageOfflineReady
+      ? `Offline engine: ${implementedStyleCount}/${styles.length} styles independently renderable ` +
+        "(transform/overlay/atlas/frames/passthrough) after render verification. " +
+        "MakeEmoji remains primary. Enable with EMOJI_ALLOW_OFFLINE_FALLBACK=1."
+      : `Partial offline engine: ${implementedStyleCount}/${styles.length} styles independently ` +
+        "renderable after verification. Remaining styles need recipes/assets. " +
+        "MakeEmoji remains primary. Enable with EMOJI_ALLOW_OFFLINE_FALLBACK=1.",
     browser: src.browser,
     siteUrl: src.siteUrl,
     api: null,
@@ -254,7 +257,7 @@ function main(): void {
   console.log(`Discovered styles: ${styles.length}`);
   console.log(`Offline-implemented: ${implementedStyleCount}`);
   console.log(`Wrote ${zipPath}`);
-  console.log(`offlineReady: false (package-level; per-style flags in recipes/styles)`);
+  console.log(`offlineReady: ${packageOfflineReady} (package-level; per-style flags in recipes/styles)`);
 }
 
 main();

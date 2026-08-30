@@ -29,22 +29,23 @@ describe("offline recipe engine", () => {
     const recipes = loadRecipes();
     expect(recipes.length).toBeGreaterThanOrEqual(400);
     const ready = readyRecipes();
-    expect(ready.length).toBeGreaterThanOrEqual(100);
+    expect(ready.length).toBeGreaterThanOrEqual(400);
     expect(ready.every(r => r.primitive)).toBe(true);
   });
 
-  it("keeps the package offlineReady=false until full coverage", () => {
+  it("marks the package offlineReady once full catalog coverage is verified", () => {
     const m = loadOfflineManifest();
-    expect(m?.offlineReady).toBe(false);
-    expect(m?.implementedStyleCount ?? 0).toBeGreaterThanOrEqual(100);
+    expect(m?.offlineReady).toBe(true);
+    expect(m?.implementedStyleCount).toBe(m?.styleCount);
+    expect(m?.implementedStyleCount ?? 0).toBeGreaterThanOrEqual(400);
   });
 
-  it("syncs implemented styles from recipes", () => {
+  it("syncs implemented styles from recipes across families", () => {
     const impl = implementedOfflineStyles();
-    expect(impl.length).toBeGreaterThanOrEqual(100);
+    expect(impl.length).toBeGreaterThanOrEqual(400);
     expect(findOfflineStyle("shake")?.offlineImplemented).toBe(true);
     expect(findOfflineStyle("peepo")?.offlineImplemented).toBe(true);
-    expect(findOfflineStyle("party-parrot")?.offlineImplemented).toBe(false);
+    expect(findOfflineStyle("party-parrot")?.offlineImplemented).toBe(true);
   });
 
   it("builds transform primitives used by recipes", () => {
@@ -61,9 +62,9 @@ describe("offline recipe engine", () => {
     }
   });
 
-  it("renders transform, overlay, and passthrough styles to GIF", async () => {
+  it("renders transform, overlay, atlas, and passthrough styles to GIF", async () => {
     const image = await testImage(128);
-    const samples = ["none", "shake", "bounce", "spin", "peepo", "angel", "cowboy"];
+    const samples = ["none", "shake", "bounce", "spin", "peepo", "angel", "cowboy", "party-parrot"];
     for (const animation of samples) {
       const recipe = findRecipe(animation);
       expect(recipe?.offlineReady, animation).toBe(true);
@@ -76,11 +77,11 @@ describe("offline recipe engine", () => {
     }
   }, 60_000);
 
-  it("refuses atlas styles that are not offline-ready yet", async () => {
+  it("refuses styles that have no recipe primitive", async () => {
     const image = await testImage(64);
     await expect(renderOffline({
-      image, animation: "party-parrot", format: "gif", size: "64",
-    })).rejects.toThrow(/not implemented offline/i);
+      image, animation: "definitely-not-a-real-makeemoji-style-xyz", format: "gif", size: "64",
+    })).rejects.toThrow(/isn't in the offline|not implemented offline|unknown/i);
   });
 
   it("writes a small contact-sheet sample for visual review", async () => {

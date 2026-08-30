@@ -1,9 +1,9 @@
 {
   "algorithm": "sha256",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "files": {
     "README.md": "be6631cc678023cbf2b514fda13ca7baaaf00282ec0a32e285f9700bbb5223de",
-    "VERSION": "c28fcca53637bc88e124af1725df13cb98c69dedefd62fb3cdbe1cdb6b760624",
+    "VERSION": "c89b87c262e9d5ffd20e73aac74a1772adcc9f5a21682cc33adcf5086e5fef5c",
     "assets/.gitkeep": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
     "assets/asset-manifest.json": "13cc2e9fed9e96a8e1c88efb1490295c4f75a96a765505c2726f0d14034b76da",
     "assets/atlases/bananaDance/chunk-000-a7a3a42a7d068ef4.webp": "a7a3a42a7d068ef487bce2642fcd20387d8c718878d125971ba41f4475aebff4",
@@ -345,16 +345,16 @@
     "assets/overlays/wokege.png": "775e30abf1ffc7532ecf09bf63e25b96e7c99790c507149f2eb83cdb2165326c",
     "controls.json": "bcd5754b4e77ba3434286433d29ba3678c39d5b4a70541a01d82d28849837195",
     "makeemoji-source-manifest.json": "05219688744e68b8b1d6a6a20af025af4f46dcfdaf31c2c1cdbf6be1d83edf9e",
-    "manifest.json": "1ba561a9b909dd2d76aee4f17a229dec5f9343d6438cb28a2c5582284c8a9c78",
+    "manifest.json": "70a3a459ef9012828263c2079c28c34cc0d983ad5efb2c76e5e86437b9676282",
     "metadata/discovery-notes.md": "479fb4eb9abf2212fc799e9b6dbb1bc6cb27dd2c564a48364837b36594ebb1e3",
-    "metadata/source-site.json": "0e7e723ce9175e0c9fd367ce56983c0b95caab916d08b5fe83b9f231df91e9db",
-    "metadata/style-count.txt": "c74b30409aff83d2c968f6d7de0c48848545132bcc6d1b8f57edbd763fd12c49",
+    "metadata/source-site.json": "8e36f06f9fa2b68fc355a3cac8b7d4a4c6ffb98b8c5aa560e47ebf49c3cd2997",
+    "metadata/style-count.txt": "6c95d962fbc164ea19cc7f378b7e514cdd653afccd80b5c2d580da08ba75e0e1",
     "recipes/README.md": "d09c1158d0f64fca2660b582778ab9dfaeb737a0b006273ee4e2e72468a2d8ec",
     "recipes/classification-summary.json": "4fccf9ee8382fa0d95cb8aeb88b602ac78825c0814fff1f4f39ffa27338003e7",
     "recipes/classification.json": "36f1a8db5c811679ddf6e0d76928aef8d80e988b7202e7a005e9a0336cbc2c7b",
-    "recipes/recipes.json": "91a78c525216500c0a918239a684618aa0b5d7a5abc5e2f6b730692e0b10c30b",
+    "recipes/recipes.json": "77ece2ed8a2c8096477f0aa8777893f1cf2971b656fa909fd859c0b58e5bffa5",
     "renderer/README.md": "bd308905f89c8c183473b5cedb23d038163af56d90bf9888fcd0a4b219fc8d44",
-    "renderer/mappings.json": "fd010269eb930409af5ccd550f50bcde1dd7646223f9bae491a9b12d096b12f6",
-    "styles.json": "555a5df3fabbdd3231ec1818e40d7f2b4b8e9d5aea493f6dcc382e7a3f2c10af"
+    "renderer/mappings.json": "83047a9e41b6b8fa940a1a9e817531e134daa8548cef680af5381b5d89a626f0",
+    "styles.json": "a212152c58694df96b5f58770744b049c236862335af1dbc02a37ed4ccc33547"
   }
 }

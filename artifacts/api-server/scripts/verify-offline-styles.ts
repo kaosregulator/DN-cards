@@ -62,12 +62,12 @@ function previewPath(slug: string): string | null {
 async function scoreVsPreview(offlineGif: Buffer, previewFile: string | null) {
   if (!previewFile) return { score: 0.5, mean: 0.5, reason: "no-preview" };
   try {
-    const a = await sharp(offlineGif, { animated: true, page: 0 })
+    const a = await sharp(offlineGif, { pages: 1 })
       .resize(64, 64, { fit: "contain", background: { r: 0, g: 0, b: 0, alpha: 0 } })
       .ensureAlpha().raw().toBuffer({ resolveWithObject: true });
     let b;
     try {
-      b = await sharp(previewFile, { animated: true, page: 0 })
+      b = await sharp(previewFile, { pages: 1 })
         .resize(64, 64, { fit: "contain", background: { r: 0, g: 0, b: 0, alpha: 0 } })
         .ensureAlpha().raw().toBuffer({ resolveWithObject: true });
     } catch {
@@ -108,9 +108,10 @@ for (const r of recipes) {
   if (alreadyVerified && process.env.OFFLINE_VERIFY_FORCE !== "1") continue;
 
   try {
-    const useCat = r.family === "atlas" || r.family === "frames" || r.family === "overlay";
+    // Always use the default-cat subject so pixel compares / fidelity sheets
+    // match MakeEmoji CDN previews (which are also default-cat).
     const result = await renderOffline({
-      image: useCat ? cat : image,
+      image: cat,
       animation: r.id,
       format: "gif",
       size: "64",
@@ -163,6 +164,17 @@ for (const r of recipes) {
 writeFileSync(recipesPath, JSON.stringify(recipes, null, 2) + "\n");
 writeFileSync(join(outDir, "verify-results.json"), JSON.stringify({ newlyReady, results }, null, 2));
 
+async function tile72(src: string | Buffer): Promise<Buffer> {
+  // pages:1 extracts a single frame; page:0 alone still returns the full strip.
+  const buf = await sharp(src, { pages: 1 })
+    .resize(72, 72, { fit: "contain", background: { r: 30, g: 30, b: 40, alpha: 1 } })
+    .flatten({ background: { r: 30, g: 30, b: 40 } })
+    .removeAlpha()
+    .png()
+    .toBuffer();
+  return sharp(buf).resize(72, 72, { fit: "fill" }).png().toBuffer();
+}
+
 async function sheet(name: string, ids: string[]) {
   const tiles: Buffer[] = [];
   for (const id of ids) {
@@ -174,43 +186,35 @@ async function sheet(name: string, ids: string[]) {
     let left: Buffer;
     let right: Buffer;
     try {
-      left = await sharp(off, { animated: true, page: 0 })
-        .resize(72, 72, { fit: "contain", background: { r: 30, g: 30, b: 40, alpha: 1 } })
-        .png().toBuffer();
+      left = await tile72(off);
     } catch { continue; }
     try {
       right = prev
-        ? await sharp(prev, { animated: true, page: 0 })
-          .resize(72, 72, { fit: "contain", background: { r: 30, g: 30, b: 40, alpha: 1 } })
-          .png().toBuffer()
+        ? await tile72(prev)
         : await sharp({ create: { width: 72, height: 72, channels: 3, background: { r: 60, g: 60, b: 70 } } })
           .png().toBuffer();
     } catch {
       right = await sharp({ create: { width: 72, height: 72, channels: 3, background: { r: 60, g: 60, b: 70 } } })
         .png().toBuffer();
     }
-    const label = r.slug.slice(0, 22).replace(/[^\w\-.:]/g, "");
-    // Rasterize label SVG to exact pixel size — raw SVGs can exceed declared
-    // width/height under sharp's density defaults and break composite.
-    const labelPng = await sharp(Buffer.from(
-      `<svg xmlns="http://www.w3.org/2000/svg" width="152" height="14">`
-      + `<rect width="152" height="14" fill="#14141c"/>`
-      + `<text x="2" y="11" font-size="9" font-family="monospace" fill="#cccccc">${label}</text>`
-      + `</svg>`,
-    ))
-      .resize(152, 14)
-      .png()
-      .toBuffer();
-    const pair = await sharp({
-      create: { width: 152, height: 90, channels: 3, background: { r: 20, g: 20, b: 28 } },
-    })
-      .composite([
-        { input: left, left: 0, top: 14 },
-        { input: right, left: 76, top: 14 },
-        { input: labelPng, top: 0, left: 0 },
-      ])
-      .png().toBuffer();
-    tiles.push(pair);
+    const labelCanvas = await sharp({
+      create: { width: 152, height: 14, channels: 3, background: { r: 20, g: 20, b: 28 } },
+    }).png().toBuffer();
+
+    try {
+      const pair = await sharp({
+        create: { width: 152, height: 90, channels: 3, background: { r: 20, g: 20, b: 28 } },
+      })
+        .composite([
+          { input: left, left: 0, top: 14 },
+          { input: right, left: 76, top: 14 },
+          { input: labelCanvas, top: 0, left: 0 },
+        ])
+        .png().toBuffer();
+      tiles.push(await sharp(pair).resize(152, 90, { fit: "fill" }).png().toBuffer());
+    } catch (e) {
+      console.error(`sheet tile failed for ${r.slug}:`, (e as Error).message);
+    }
   }
   if (!tiles.length) return;
   const cols = Math.min(4, tiles.length);
@@ -227,12 +231,12 @@ async function sheet(name: string, ids: string[]) {
     })))
     .png()
     .toFile(join(outDir, "sheets", `${name}.png`));
+  console.log(`wrote sheet ${name}.png (${tiles.length} tiles)`);
 }
 
 try {
   const readyIds = recipes.filter(r => r.offlineReady).map(r => r.id);
   const byFam = (f: string) => readyIds.filter(id => recipes.find(r => r.id === id)?.family === f);
-  // Prefer styles that have both offline + MakeEmoji tiles on disk for sheets.
   const withBoth = (ids: string[]) => ids.filter(id => {
     const r = recipes.find(x => x.id === id);
     if (!r) return false;
@@ -244,7 +248,6 @@ try {
   await sheet("atlas", withBoth(byFam("atlas")).slice(0, 12));
   await sheet("frames", withBoth(byFam("frames")).slice(0, 12));
   await sheet("mixed", withBoth(readyIds).slice(0, 20));
-  // Low-score transforms for fidelity review
   const low = recipes
     .filter(r => r.offlineReady && r.family === "transform" && typeof r.verifyScore === "number")
     .sort((a, b) => (a.verifyScore ?? 1) - (b.verifyScore ?? 1))

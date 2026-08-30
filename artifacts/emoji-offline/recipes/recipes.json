@@ -74,7 +74,9 @@
     },
     "offlineReady": true,
     "fidelity": "approximate-procedural",
-    "notes": []
+    "notes": [],
+    "verified": true,
+    "verifyScore": 0.36127995229669385
   },
   {
     "id": "3x-wide-1",
@@ -347,7 +349,9 @@
     "fidelity": "approximate-procedural",
     "notes": [
       "Assigned via expanded name heuristic; refine against MakeEmoji preview"
-    ]
+    ],
+    "verified": true,
+    "verifyScore": 0.4387972938060626
   },
   {
     "id": "alarms",
@@ -368,7 +372,9 @@
     "fidelity": "approximate-procedural",
     "notes": [
       "Assigned via expanded name heuristic; refine against MakeEmoji preview"
-    ]
+    ],
+    "verified": true,
+    "verifyScore": 0.603728676636982
   },
   {
     "id": "alert",
@@ -389,7 +395,9 @@
     "fidelity": "approximate-procedural",
     "notes": [
       "Assigned via expanded name heuristic; refine against MakeEmoji preview"
-    ]
+    ],
+    "verified": true,
+    "verifyScore": 0.43091272315757867
   },
   {
     "id": "alien-pls",
@@ -526,7 +534,9 @@
     "fidelity": "approximate-composite",
     "notes": [
       "overlay asset archived: angel"
-    ]
+    ],
+    "verified": true,
+    "verifyScore": 0.727092352092352
   },
   {
     "id": "anime-scream",
@@ -600,7 +610,9 @@
     "fidelity": "approximate-procedural",
     "notes": [
       "Assigned via expanded name heuristic; refine against MakeEmoji preview"
-    ]
+    ],
+    "verified": true,
+    "verifyScore": 0.417609948891984
   },
   {
     "id": "banana-dance",
@@ -809,7 +821,9 @@
     "fidelity": "approximate-composite",
     "notes": [
       "overlay asset archived: blame"
-    ]
+    ],
+    "verified": true,
+    "verifyScore": 0.6237125309894073
   },
   {
     "id": "blame-animated",
@@ -908,7 +922,9 @@
     "fidelity": "approximate-procedural",
     "notes": [
       "Assigned via expanded name heuristic; refine against MakeEmoji preview"
-    ]
+    ],
+    "verified": true,
+    "verifyScore": 0.4449565628964611
   },
   {
     "id": "blaze",
@@ -952,7 +968,9 @@
     "params": {},
     "offlineReady": true,
     "fidelity": "approximate-procedural",
-    "notes": []
+    "notes": [],
+    "verified": true,
+    "verifyScore": 0.32454223952120864
   },
   {
     "id": "blob-help",
@@ -975,7 +993,9 @@
     "fidelity": "approximate-composite",
     "notes": [
       "overlay asset archived: blob-help"
-    ]
+    ],
+    "verified": true,
+    "verifyScore": 0.7740406709558824
   },
   {
     "id": "blob-no",
@@ -998,7 +1018,9 @@
     "fidelity": "approximate-composite",
     "notes": [
       "overlay asset archived: blob-no"
-    ]
+    ],
+    "verified": true,
+    "verifyScore": 0.7801201460976548
   },
   {
     "id": "blob-smiley",
@@ -1046,7 +1068,9 @@
     "fidelity": "approximate-composite",
     "notes": [
       "overlay asset archived: blob-yes"
-    ]
+    ],
+    "verified": true,
+    "verifyScore": 0.7461343667759731
   },
   {
     "id": "blush",
@@ -1090,7 +1114,9 @@
     "params": {},
     "offlineReady": true,
     "fidelity": "approximate-procedural",
-    "notes": []
+    "notes": [],
+    "verified": true,
+    "verifyScore": 0.3697649983688255
   },
   {
     "id": "boing",
@@ -1109,7 +1135,9 @@
     "params": {},
     "offlineReady": true,
     "fidelity": "approximate-procedural",
-    "notes": []
+    "notes": [],
+    "verified": true,
+    "verifyScore": 0.36037143557948015
   },
   {
     "id": "bonk",
@@ -1132,7 +1160,9 @@
     "fidelity": "approximate-procedural",
     "notes": [
       "Assigned via expanded name heuristic; refine against MakeEmoji preview"
-    ]
+    ],
+    "verified": true,
+    "verifyScore": 0.3865099875769198
   },
   {
     "id": "bonk-doge",
@@ -1155,7 +1185,9 @@
     "fidelity": "approximate-procedural",
     "notes": [
       "Assigned via expanded name heuristic; refine against MakeEmoji preview"
-    ]
+    ],
+    "verified": true,
+    "verifyScore": 0.41497986441723855
   },
   {
     "id": "booba",
@@ -1201,7 +1233,9 @@
     "fidelity": "approximate-procedural",
     "notes": [
       "Assigned via expanded name heuristic; refine against MakeEmoji preview"
-    ]
+    ],
+    "verified": true,
+    "verifyScore": 0.3440111677125801
   },
   {
     "id": "boooo",
@@ -1245,7 +1279,9 @@
     "params": {},
     "offlineReady": true,
     "fidelity": "approximate-procedural",
-    "notes": []
+    "notes": [],
+    "verified": true,
+    "verifyScore": 0.3481255551578305
   },
   {
     "id": "box",
@@ -1294,7 +1330,9 @@
     "fidelity": "approximate-procedural",
     "notes": [
       "Assigned via expanded name heuristic; refine against MakeEmoji preview"
-    ]
+    ],
+    "verified": true,
+    "verifyScore": 0.4334478222761118
   },
   {
     "id": "breathe",
@@ -1343,7 +1381,9 @@
     "fidelity": "approximate-procedural",
     "notes": [
       "Assigned via expanded name heuristic; refine against MakeEmoji preview"
-    ]
+    ],
+    "verified": true,
+    "verifyScore": 0.3551862634591699
   },
   {
     "id": "bubbles",
@@ -1479,7 +1519,9 @@
     "fidelity": "approximate-composite",
     "notes": [
       "overlay asset archived: burger"
-    ]
+    ],
+    "verified": true,
+    "verifyScore": 0.7357348473243464
   },
   {
     "id": "burn",
@@ -1500,7 +1542,9 @@
     "fidelity": "approximate-procedural",
     "notes": [
       "Assigned via expanded name heuristic; refine against MakeEmoji preview"
-    ]
+    ],
+    "verified": true,
+    "verifyScore": 0.37422256307662416
   },
   {
     "id": "bush-disappear",
@@ -1632,7 +1676,9 @@
     "fidelity": "approximate-procedural",
     "notes": [
       "Assigned via expanded name heuristic; refine against MakeEmoji preview"
-    ]
+    ],
+    "verified": true,
+    "verifyScore": 0.43248069786819243
   },
   {
     "id": "cat-jam-crying",
@@ -1653,7 +1699,9 @@
     "fidelity": "approximate-procedural",
     "notes": [
       "Assigned via expanded name heuristic; refine against MakeEmoji preview"
-    ]
+    ],
+    "verified": true,
+    "verifyScore": 0.41894732626519515
   },
   {
     "id": "cat-no",
@@ -1674,7 +1722,9 @@
     "fidelity": "approximate-procedural",
     "notes": [
       "Assigned via expanded name heuristic; refine against MakeEmoji preview"
-    ]
+    ],
+    "verified": true,
+    "verifyScore": 0.595329149840888
   },
   {
     "id": "cat-slap",
@@ -1697,7 +1747,9 @@
     "fidelity": "approximate-procedural",
     "notes": [
       "Assigned via expanded name heuristic; refine against MakeEmoji preview"
-    ]
+    ],
+    "verified": true,
+    "verifyScore": 0.4429499678836504
   },
   {
     "id": "cat-yes",
@@ -1718,7 +1770,9 @@
     "fidelity": "approximate-procedural",
     "notes": [
       "Assigned via expanded name heuristic; refine against MakeEmoji preview"
-    ]
+    ],
+    "verified": true,
+    "verifyScore": 0.5854555095039524
   },
   {
     "id": "clap",
@@ -1739,7 +1793,9 @@
     "fidelity": "approximate-procedural",
     "notes": [
       "Assigned via expanded name heuristic; refine against MakeEmoji preview"
-    ]
+    ],
+    "verified": true,
+    "verifyScore": 0.3643397653613757
   },
   {
     "id": "clap-glove",
@@ -1760,7 +1816,9 @@
     "fidelity": "approximate-procedural",
     "notes": [
       "Assigned via expanded name heuristic; refine against MakeEmoji preview"
-    ]
+    ],
+    "verified": true,
+    "verifyScore": 0.3190399773278778
   },
   {
     "id": "claude-code",
@@ -1986,7 +2044,9 @@
     "fidelity": "approximate-composite",
     "notes": [
       "overlay asset archived: coggers"
-    ]
+    ],
+    "verified": true,
+    "verifyScore": 0.780734926750107
   },
   {
     "id": "combust",
@@ -2087,7 +2147,9 @@
     "fidelity": "approximate-composite",
     "notes": [
       "overlay asset archived: confused-cat"
-    ]
+    ],
+    "verified": true,
+    "verifyScore": 0.755540233187292
   },
   {
     "id": "conga-line:➡️",
@@ -2249,7 +2311,9 @@
     "fidelity": "approximate-composite",
     "notes": [
       "overlay asset archived: cowboy"
-    ]
+    ],
+    "verified": true,
+    "verifyScore": 0.8143251506331699
   },
   {
     "id": "crab",
@@ -2328,7 +2392,9 @@
     "fidelity": "approximate-composite",
     "notes": [
       "overlay asset archived: crying-laughing"
-    ]
+    ],
+    "verified": true,
+    "verifyScore": 0.7396810720515807
   },
   {
     "id": "cube",
@@ -2400,7 +2466,9 @@
     "params": {},
     "offlineReady": true,
     "fidelity": "approximate-procedural",
-    "notes": []
+    "notes": [],
+    "verified": true,
+    "verifyScore": 0.34461794233006915
   },
   {
     "id": "dbz-aura",
@@ -2421,7 +2489,9 @@
     "fidelity": "approximate-procedural",
     "notes": [
       "Assigned via expanded name heuristic; refine against MakeEmoji preview"
-    ]
+    ],
+    "verified": true,
+    "verifyScore": 0.358106190306985
   },
   {
     "id": "ddr",
@@ -2442,7 +2512,9 @@
     "fidelity": "approximate-procedural",
     "notes": [
       "Assigned via expanded name heuristic; refine against MakeEmoji preview"
-    ]
+    ],
+    "verified": true,
+    "verifyScore": 0.39635548950432564
   },
   {
     "id": "deal-with-it",
@@ -2486,7 +2558,9 @@
     "params": {},
     "offlineReady": true,
     "fidelity": "approximate-procedural",
-    "notes": []
+    "notes": [],
+    "verified": true,
+    "verifyScore": 0.3589741653903953
   },
   {
     "id": "diamond",
@@ -2587,7 +2661,9 @@
     "fidelity": "approximate-composite",
     "notes": [
       "overlay asset archived: donk"
-    ]
+    ],
+    "verified": true,
+    "verifyScore": 0.8385445389093137
   },
   {
     "id": "drake-duh",
@@ -2663,7 +2739,9 @@
     "fidelity": "approximate-procedural",
     "notes": [
       "Assigned via expanded name heuristic; refine against MakeEmoji preview"
-    ]
+    ],
+    "verified": true,
+    "verifyScore": 0.35146910996868375
   },
   {
     "id": "drop-bounce",
@@ -2682,7 +2760,9 @@
     "params": {},
     "offlineReady": true,
     "fidelity": "approximate-procedural",
-    "notes": []
+    "notes": [],
+    "verified": true,
+    "verifyScore": 0.3519490591268989
   },
   {
     "id": "earthquake",
@@ -2731,7 +2811,9 @@
     "fidelity": "approximate-procedural",
     "notes": [
       "Assigned via expanded name heuristic; refine against MakeEmoji preview"
-    ]
+    ],
+    "verified": true,
+    "verifyScore": 0.3505474121011608
   },
   {
     "id": "electricity",
@@ -2752,7 +2834,9 @@
     "fidelity": "approximate-procedural",
     "notes": [
       "Assigned via expanded name heuristic; refine against MakeEmoji preview"
-    ]
+    ],
+    "verified": true,
+    "verifyScore": 0.37829821792899443
   },
   {
     "id": "elmo-fire",
@@ -2773,7 +2857,9 @@
     "fidelity": "approximate-procedural",
     "notes": [
       "Assigned via expanded name heuristic; refine against MakeEmoji preview"
-    ]
+    ],
+    "verified": true,
+    "verifyScore": 0.6752520388500035
   },
   {
     "id": "emoji-scream",
@@ -2822,7 +2908,9 @@
     },
     "offlineReady": true,
     "fidelity": "approximate-procedural",
-    "notes": []
+    "notes": [],
+    "verified": true,
+    "verifyScore": 0.38196437829939667
   },
   {
     "id": "excited",
@@ -2843,7 +2931,9 @@
     "fidelity": "approximate-procedural",
     "notes": [
       "Assigned via expanded name heuristic; refine against MakeEmoji preview"
-    ]
+    ],
+    "verified": true,
+    "verifyScore": 0.3452264293651275
   },
   {
     "id": "excuse-me",
@@ -2892,7 +2982,9 @@
     },
     "offlineReady": true,
     "fidelity": "approximate-procedural",
-    "notes": []
+    "notes": [],
+    "verified": true,
+    "verifyScore": 0.40625216031925593
   },
   {
     "id": "explain",
@@ -2941,7 +3033,9 @@
     "fidelity": "approximate-procedural",
     "notes": [
       "Assigned via expanded name heuristic; refine against MakeEmoji preview"
-    ]
+    ],
+    "verified": true,
+    "verifyScore": 0.32122686058265315
   },
   {
     "id": "face-cover",
@@ -3017,7 +3111,9 @@
     },
     "offlineReady": true,
     "fidelity": "approximate-procedural",
-    "notes": []
+    "notes": [],
+    "verified": true,
+    "verifyScore": 0.33561417731771936
   },
   {
     "id": "feels-rain-man",
@@ -3038,7 +3134,9 @@
     "fidelity": "approximate-procedural",
     "notes": [
       "Assigned via expanded name heuristic; refine against MakeEmoji preview"
-    ]
+    ],
+    "verified": true,
+    "verifyScore": 0.45183380888483426
   },
   {
     "id": "feels-weak-man",
@@ -3112,7 +3210,9 @@
     "fidelity": "approximate-procedural",
     "notes": [
       "Assigned via expanded name heuristic; refine against MakeEmoji preview"
-    ]
+    ],
+    "verified": true,
+    "verifyScore": 0.37559027450296023
   },
   {
     "id": "fireplace",
@@ -3133,7 +3233,9 @@
     "fidelity": "approximate-procedural",
     "notes": [
       "Assigned via expanded name heuristic; refine against MakeEmoji preview"
-    ]
+    ],
+    "verified": true,
+    "verifyScore": 0.564984170751634
   },
   {
     "id": "fivehead",
@@ -3182,7 +3284,9 @@
     "params": {},
     "offlineReady": true,
     "fidelity": "approximate-procedural",
-    "notes": []
+    "notes": [],
+    "verified": true,
+    "verifyScore": 0.33545259788517345
   },
   {
     "id": "flag",
@@ -3226,7 +3330,9 @@
     "params": {},
     "offlineReady": true,
     "fidelity": "approximate-procedural",
-    "notes": []
+    "notes": [],
+    "verified": true,
+    "verifyScore": 0.34509864698467574
   },
   {
     "id": "flame",
@@ -3247,7 +3353,9 @@
     "fidelity": "approximate-procedural",
     "notes": [
       "Assigned via expanded name heuristic; refine against MakeEmoji preview"
-    ]
+    ],
+    "verified": true,
+    "verifyScore": 0.308368830596901
   },
   {
     "id": "flare-eyes",
@@ -3268,7 +3376,9 @@
     "fidelity": "approximate-procedural",
     "notes": [
       "Assigned via expanded name heuristic; refine against MakeEmoji preview"
-    ]
+    ],
+    "verified": true,
+    "verifyScore": 0.47717906760586537
   },
   {
     "id": "flick:➡️",
@@ -3343,7 +3453,9 @@
     "params": {},
     "offlineReady": true,
     "fidelity": "approximate-procedural",
-    "notes": []
+    "notes": [],
+    "verified": true,
+    "verifyScore": 0.3148676223811304
   },
   {
     "id": "flipp",
@@ -3362,7 +3474,9 @@
     "params": {},
     "offlineReady": true,
     "fidelity": "approximate-procedural",
-    "notes": []
+    "notes": [],
+    "verified": true,
+    "verifyScore": 0.6322791046372186
   },
   {
     "id": "floating-pumpkins",
@@ -3562,7 +3676,9 @@
     "params": {},
     "offlineReady": true,
     "fidelity": "approximate-procedural",
-    "notes": []
+    "notes": [],
+    "verified": true,
+    "verifyScore": 0.34386035411545923
   },
   {
     "id": "glorming:➡️",
@@ -3610,7 +3726,9 @@
     "fidelity": "approximate-composite",
     "notes": [
       "overlay asset archived: glorp"
-    ]
+    ],
+    "verified": true,
+    "verifyScore": 0.8677204605800654
   },
   {
     "id": "glorpa",
@@ -3656,7 +3774,9 @@
     "fidelity": "approximate-procedural",
     "notes": [
       "Assigned via expanded name heuristic; refine against MakeEmoji preview"
-    ]
+    ],
+    "verified": true,
+    "verifyScore": 0.3395275439815084
   },
   {
     "id": "grayscale",
@@ -3792,7 +3912,9 @@
     "fidelity": "approximate-composite",
     "notes": [
       "overlay asset archived: hazmat"
-    ]
+    ],
+    "verified": true,
+    "verifyScore": 0.893277037377451
   },
   {
     "id": "hazmat-2",
@@ -3815,7 +3937,9 @@
     "fidelity": "approximate-composite",
     "notes": [
       "overlay asset archived: hazmat-2"
-    ]
+    ],
+    "verified": true,
+    "verifyScore": 0.8963884590043363
   },
   {
     "id": "headbop",
@@ -3864,7 +3988,9 @@
     "fidelity": "approximate-procedural",
     "notes": [
       "Assigned via expanded name heuristic; refine against MakeEmoji preview"
-    ]
+    ],
+    "verified": true,
+    "verifyScore": 0.45756931678921564
   },
   {
     "id": "heart-locket",
@@ -3885,7 +4011,9 @@
     "fidelity": "approximate-procedural",
     "notes": [
       "Assigned via expanded name heuristic; refine against MakeEmoji preview"
-    ]
+    ],
+    "verified": true,
+    "verifyScore": 0.6853555355318206
   },
   {
     "id": "heartbeat",
@@ -3904,7 +4032,9 @@
     "params": {},
     "offlineReady": true,
     "fidelity": "approximate-procedural",
-    "notes": []
+    "notes": [],
+    "verified": true,
+    "verifyScore": 0.3480794618844637
   },
   {
     "id": "heartbeat-flash",
@@ -3923,7 +4053,9 @@
     "params": {},
     "offlineReady": true,
     "fidelity": "approximate-procedural",
-    "notes": []
+    "notes": [],
+    "verified": true,
+    "verifyScore": 0.3336112411251956
   },
   {
     "id": "heat-haze",
@@ -4060,7 +4192,9 @@
     "fidelity": "approximate-composite",
     "notes": [
       "overlay asset archived: heyyeyaa"
-    ]
+    ],
+    "verified": true,
+    "verifyScore": 0.8014361213235294
   },
   {
     "id": "hoodie",
@@ -4083,7 +4217,9 @@
     "fidelity": "approximate-composite",
     "notes": [
       "overlay asset archived: hoodie"
-    ]
+    ],
+    "verified": true,
+    "verifyScore": 0.8410146675857844
   },
   {
     "id": "hop:➡️",
@@ -4104,7 +4240,9 @@
     },
     "offlineReady": true,
     "fidelity": "approximate-procedural",
-    "notes": []
+    "notes": [],
+    "verified": true,
+    "verifyScore": 0.36162110572813033
   },
   {
     "id": "hovering",
@@ -4127,7 +4265,9 @@
     "fidelity": "approximate-procedural",
     "notes": [
       "Assigned via expanded name heuristic; refine against MakeEmoji preview"
-    ]
+    ],
+    "verified": true,
+    "verifyScore": 0.3208207170418368
   },
   {
     "id": "hugg",
@@ -4148,7 +4288,9 @@
     "fidelity": "approximate-procedural",
     "notes": [
       "Assigned via expanded name heuristic; refine against MakeEmoji preview"
-    ]
+    ],
+    "verified": true,
+    "verifyScore": 0.5773969684671314
   },
   {
     "id": "huh",
@@ -4179,7 +4321,7 @@
     "id": "hype",
     "slug": "hype",
     "tag": "gen_btn_hype",
-    "family": "frames",
+    "family": "transform",
     "directionSuffix": null,
     "preview": {
       "ext": "gif",
@@ -4187,18 +4329,21 @@
       "bytes": 12273,
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/hype.gif"
     },
-    "assets": {
-      "framesHint": "hype"
+    "assets": {},
+    "primitive": "bounce",
+    "params": {
+      "_fp": {
+        "motion": 0.0238,
+        "conf": 0.85
+      }
     },
-    "primitive": "frames",
-    "params": {},
-    "offlineReady": false,
+    "offlineReady": true,
     "fidelity": "approximate-composite",
     "notes": [
-      "frames assets archived; pending render verification",
-      "Render failed: No frames in /workspace/artifacts/emoji-offline/assets/frames/hype"
+      "Assigned from CDN preview fingerprint (conf=0.85)"
     ],
-    "verified": false
+    "verified": true,
+    "verifyScore": 0.501473768418186
   },
   {
     "id": "hype-jam",
@@ -4219,7 +4364,9 @@
     "fidelity": "approximate-procedural",
     "notes": [
       "Assigned via expanded name heuristic; refine against MakeEmoji preview"
-    ]
+    ],
+    "verified": true,
+    "verifyScore": 0.5172824663494735
   },
   {
     "id": "hype-shake",
@@ -4241,7 +4388,9 @@
     },
     "offlineReady": true,
     "fidelity": "approximate-procedural",
-    "notes": []
+    "notes": [],
+    "verified": true,
+    "verifyScore": 0.5067827646001715
   },
   {
     "id": "hyperspace",
@@ -4262,7 +4411,9 @@
     "fidelity": "approximate-procedural",
     "notes": [
       "Assigned via expanded name heuristic; refine against MakeEmoji preview"
-    ]
+    ],
+    "verified": true,
+    "verifyScore": 0.3784645808277537
   },
   {
     "id": "i-have-a-question",
@@ -4313,7 +4464,9 @@
     "fidelity": "approximate-procedural",
     "notes": [
       "Assigned via expanded name heuristic; refine against MakeEmoji preview"
-    ]
+    ],
+    "verified": true,
+    "verifyScore": 0.34870102860923635
   },
   {
     "id": "ice-cube",
@@ -4412,7 +4565,9 @@
     "fidelity": "approximate-procedural",
     "notes": [
       "Assigned via expanded name heuristic; refine against MakeEmoji preview"
-    ]
+    ],
+    "verified": true,
+    "verifyScore": 0.3447983937394077
   },
   {
     "id": "jammies",
@@ -4487,7 +4642,9 @@
     },
     "offlineReady": true,
     "fidelity": "approximate-procedural",
-    "notes": []
+    "notes": [],
+    "verified": true,
+    "verifyScore": 0.356096293400575
   },
   {
     "id": "jumping-on-the-bed",
@@ -4506,7 +4663,9 @@
     "params": {},
     "offlineReady": true,
     "fidelity": "approximate-procedural",
-    "notes": []
+    "notes": [],
+    "verified": true,
+    "verifyScore": 0.4492753623188406
   },
   {
     "id": "kablooey",
@@ -4580,7 +4739,9 @@
     "fidelity": "approximate-procedural",
     "notes": [
       "Assigned via expanded name heuristic; refine against MakeEmoji preview"
-    ]
+    ],
+    "verified": true,
+    "verifyScore": 0.454869960715268
   },
   {
     "id": "kek-laugh",
@@ -4601,7 +4762,9 @@
     "fidelity": "approximate-procedural",
     "notes": [
       "Assigned via expanded name heuristic; refine against MakeEmoji preview"
-    ]
+    ],
+    "verified": true,
+    "verifyScore": 0.5550210720122887
   },
   {
     "id": "ken-burns",
@@ -4622,7 +4785,9 @@
     "fidelity": "approximate-procedural",
     "notes": [
       "Assigned via expanded name heuristic; refine against MakeEmoji preview"
-    ]
+    ],
+    "verified": true,
+    "verifyScore": 0.3304073167333226
   },
   {
     "id": "labubu",
@@ -4645,7 +4810,9 @@
     "fidelity": "approximate-composite",
     "notes": [
       "overlay asset archived: labubu"
-    ]
+    ],
+    "verified": true,
+    "verifyScore": 0.8579982383578432
   },
   {
     "id": "laser-eyes",
@@ -4748,7 +4915,9 @@
     },
     "offlineReady": true,
     "fidelity": "approximate-procedural",
-    "notes": []
+    "notes": [],
+    "verified": true,
+    "verifyScore": 0.532609914342278
   },
   {
     "id": "leave-me-alone",
@@ -4794,7 +4963,9 @@
     "fidelity": "approximate-procedural",
     "notes": [
       "Assigned via expanded name heuristic; refine against MakeEmoji preview"
-    ]
+    ],
+    "verified": true,
+    "verifyScore": 0.5869289402334961
   },
   {
     "id": "let-me-in",
@@ -4896,7 +5067,9 @@
     "fidelity": "approximate-procedural",
     "notes": [
       "Assigned via expanded name heuristic; refine against MakeEmoji preview"
-    ]
+    ],
+    "verified": true,
+    "verifyScore": 0.28497874785335864
   },
   {
     "id": "lightsaber",
@@ -4972,7 +5145,9 @@
     },
     "offlineReady": true,
     "fidelity": "approximate-procedural",
-    "notes": []
+    "notes": [],
+    "verified": true,
+    "verifyScore": 0.4079971751814093
   },
   {
     "id": "loading-eight:➡️",
@@ -4994,7 +5169,9 @@
     },
     "offlineReady": true,
     "fidelity": "approximate-procedural",
-    "notes": []
+    "notes": [],
+    "verified": true,
+    "verifyScore": 0.35563815801075993
   },
   {
     "id": "loading-five:➡️",
@@ -5016,7 +5193,9 @@
     },
     "offlineReady": true,
     "fidelity": "approximate-procedural",
-    "notes": []
+    "notes": [],
+    "verified": true,
+    "verifyScore": 0.38006774398924104
   },
   {
     "id": "loading-four:➡️",
@@ -5038,7 +5217,9 @@
     },
     "offlineReady": true,
     "fidelity": "approximate-procedural",
-    "notes": []
+    "notes": [],
+    "verified": true,
+    "verifyScore": 0.402151480761497
   },
   {
     "id": "loading-nine:➡️",
@@ -5060,7 +5241,9 @@
     },
     "offlineReady": true,
     "fidelity": "approximate-procedural",
-    "notes": []
+    "notes": [],
+    "verified": true,
+    "verifyScore": 0.3531532447118446
   },
   {
     "id": "loading-seven:➡️",
@@ -5082,7 +5265,9 @@
     },
     "offlineReady": true,
     "fidelity": "approximate-procedural",
-    "notes": []
+    "notes": [],
+    "verified": true,
+    "verifyScore": 0.357589352627778
   },
   {
     "id": "loading-six:➡️",
@@ -5104,7 +5289,9 @@
     },
     "offlineReady": true,
     "fidelity": "approximate-procedural",
-    "notes": []
+    "notes": [],
+    "verified": true,
+    "verifyScore": 0.36511157736264543
   },
   {
     "id": "loading-three:➡️",
@@ -5126,7 +5313,9 @@
     },
     "offlineReady": true,
     "fidelity": "approximate-procedural",
-    "notes": []
+    "notes": [],
+    "verified": true,
+    "verifyScore": 0.41639578709190184
   },
   {
     "id": "loading-two:➡️",
@@ -5148,7 +5337,9 @@
     },
     "offlineReady": true,
     "fidelity": "approximate-procedural",
-    "notes": []
+    "notes": [],
+    "verified": true,
+    "verifyScore": 0.4343716745343247
   },
   {
     "id": "lolface",
@@ -5363,7 +5554,9 @@
     "fidelity": "approximate-procedural",
     "notes": [
       "Assigned via expanded name heuristic; refine against MakeEmoji preview"
-    ]
+    ],
+    "verified": true,
+    "verifyScore": 0.3593993920470403
   },
   {
     "id": "mega-bounce",
@@ -5382,7 +5575,9 @@
     "params": {},
     "offlineReady": true,
     "fidelity": "approximate-procedural",
-    "notes": []
+    "notes": [],
+    "verified": true,
+    "verifyScore": 0.33890606830340964
   },
   {
     "id": "melt",
@@ -5403,7 +5598,9 @@
     "fidelity": "approximate-procedural",
     "notes": [
       "Assigned via expanded name heuristic; refine against MakeEmoji preview"
-    ]
+    ],
+    "verified": true,
+    "verifyScore": 0.38585237975384745
   },
   {
     "id": "meow-coffee-spit",
@@ -5477,7 +5674,9 @@
     "params": {},
     "offlineReady": true,
     "fidelity": "approximate-procedural",
-    "notes": []
+    "notes": [],
+    "verified": true,
+    "verifyScore": 0.32991923415040025
   },
   {
     "id": "mhm",
@@ -5708,7 +5907,9 @@
     "params": {},
     "offlineReady": true,
     "fidelity": "approximate-procedural",
-    "notes": []
+    "notes": [],
+    "verified": true,
+    "verifyScore": 0.378332612048781
   },
   {
     "id": "nesting-doll:➡️",
@@ -5787,7 +5988,9 @@
     "fidelity": "approximate-procedural",
     "notes": [
       "Assigned via expanded name heuristic; refine against MakeEmoji preview"
-    ]
+    ],
+    "verified": true,
+    "verifyScore": 0.3578511179048952
   },
   {
     "id": "nod",
@@ -5806,7 +6009,9 @@
     "params": {},
     "offlineReady": true,
     "fidelity": "approximate-procedural",
-    "notes": []
+    "notes": [],
+    "verified": true,
+    "verifyScore": 0.36757167529172086
   },
   {
     "id": "nodders",
@@ -5825,7 +6030,9 @@
     "params": {},
     "offlineReady": true,
     "fidelity": "approximate-procedural",
-    "notes": []
+    "notes": [],
+    "verified": true,
+    "verifyScore": 0.365472279942309
   },
   {
     "id": "none",
@@ -5844,7 +6051,9 @@
     "params": {},
     "offlineReady": true,
     "fidelity": "exact",
-    "notes": []
+    "notes": [],
+    "verified": true,
+    "verifyScore": 0.38320523501640835
   },
   {
     "id": "nopers",
@@ -5892,7 +6101,9 @@
     "fidelity": "approximate-composite",
     "notes": [
       "overlay asset archived: not-stonks"
-    ]
+    ],
+    "verified": true,
+    "verifyScore": 0.8262290007148693
   },
   {
     "id": "nowoted",
@@ -5913,7 +6124,9 @@
     "fidelity": "approximate-procedural",
     "notes": [
       "Assigned via expanded name heuristic; refine against MakeEmoji preview"
-    ]
+    ],
+    "verified": true,
+    "verifyScore": 0.4728326233000164
   },
   {
     "id": "nyan-cat",
@@ -6043,7 +6256,9 @@
     "params": {},
     "offlineReady": true,
     "fidelity": "approximate-procedural",
-    "notes": []
+    "notes": [],
+    "verified": true,
+    "verifyScore": 0.3298297258530548
   },
   {
     "id": "on-fire",
@@ -6064,7 +6279,9 @@
     "fidelity": "approximate-procedural",
     "notes": [
       "Assigned via expanded name heuristic; refine against MakeEmoji preview"
-    ]
+    ],
+    "verified": true,
+    "verifyScore": 0.371997081296479
   },
   {
     "id": "ono",
@@ -6085,7 +6302,9 @@
     "fidelity": "approximate-procedural",
     "notes": [
       "Assigned via expanded name heuristic; refine against MakeEmoji preview"
-    ]
+    ],
+    "verified": true,
+    "verifyScore": 0.4033099822813626
   },
   {
     "id": "orbit-drift",
@@ -6104,7 +6323,9 @@
     "params": {},
     "offlineReady": true,
     "fidelity": "approximate-procedural",
-    "notes": []
+    "notes": [],
+    "verified": true,
+    "verifyScore": 0.3201513672463454
   },
   {
     "id": "orbit-eight:➡️",
@@ -6125,7 +6346,9 @@
     },
     "offlineReady": true,
     "fidelity": "approximate-procedural",
-    "notes": []
+    "notes": [],
+    "verified": true,
+    "verifyScore": 0.36074437062005993
   },
   {
     "id": "orbit-five:➡️",
@@ -6146,7 +6369,9 @@
     },
     "offlineReady": true,
     "fidelity": "approximate-procedural",
-    "notes": []
+    "notes": [],
+    "verified": true,
+    "verifyScore": 0.38443586542867025
   },
   {
     "id": "orbit-four:➡️",
@@ -6167,7 +6392,9 @@
     },
     "offlineReady": true,
     "fidelity": "approximate-procedural",
-    "notes": []
+    "notes": [],
+    "verified": true,
+    "verifyScore": 0.3958543932752494
   },
   {
     "id": "orbit-nine:➡️",
@@ -6188,7 +6415,9 @@
     },
     "offlineReady": true,
     "fidelity": "approximate-procedural",
-    "notes": []
+    "notes": [],
+    "verified": true,
+    "verifyScore": 0.3494993058192639
   },
   {
     "id": "orbit-seven:➡️",
@@ -6209,7 +6438,9 @@
     },
     "offlineReady": true,
     "fidelity": "approximate-procedural",
-    "notes": []
+    "notes": [],
+    "verified": true,
+    "verifyScore": 0.3694966501806447
   },
   {
     "id": "orbit-six:➡️",
@@ -6230,7 +6461,9 @@
     },
     "offlineReady": true,
     "fidelity": "approximate-procedural",
-    "notes": []
+    "notes": [],
+    "verified": true,
+    "verifyScore": 0.3773084146714978
   },
   {
     "id": "orbit-three:➡️",
@@ -6251,7 +6484,9 @@
     },
     "offlineReady": true,
     "fidelity": "approximate-procedural",
-    "notes": []
+    "notes": [],
+    "verified": true,
+    "verifyScore": 0.4064490181650291
   },
   {
     "id": "orbit-two:➡️",
@@ -6272,7 +6507,9 @@
     },
     "offlineReady": true,
     "fidelity": "approximate-procedural",
-    "notes": []
+    "notes": [],
+    "verified": true,
+    "verifyScore": 0.4300231020962032
   },
   {
     "id": "orbit:➡️",
@@ -6293,7 +6530,9 @@
     },
     "offlineReady": true,
     "fidelity": "approximate-procedural",
-    "notes": []
+    "notes": [],
+    "verified": true,
+    "verifyScore": 0.3304514072896426
   },
   {
     "id": "oui-oui",
@@ -6316,7 +6555,9 @@
     "fidelity": "approximate-composite",
     "notes": [
       "overlay asset archived: oui-oui"
-    ]
+    ],
+    "verified": true,
+    "verifyScore": 0.78555930634362
   },
   {
     "id": "owl-jam",
@@ -6337,7 +6578,9 @@
     "fidelity": "approximate-procedural",
     "notes": [
       "Assigned via expanded name heuristic; refine against MakeEmoji preview"
-    ]
+    ],
+    "verified": true,
+    "verifyScore": 0.6181164934304014
   },
   {
     "id": "pace",
@@ -6384,7 +6627,9 @@
     "params": {},
     "offlineReady": true,
     "fidelity": "approximate-procedural",
-    "notes": []
+    "notes": [],
+    "verified": true,
+    "verifyScore": 0.4969723870202275
   },
   {
     "id": "pagman",
@@ -6545,7 +6790,9 @@
     "params": {},
     "offlineReady": true,
     "fidelity": "approximate-procedural",
-    "notes": []
+    "notes": [],
+    "verified": true,
+    "verifyScore": 0.5226007642252095
   },
   {
     "id": "party-blob",
@@ -6727,7 +6974,9 @@
     "fidelity": "approximate-procedural",
     "notes": [
       "Assigned via expanded name heuristic; refine against MakeEmoji preview"
-    ]
+    ],
+    "verified": true,
+    "verifyScore": 0.2516287932118755
   },
   {
     "id": "peeking",
@@ -6750,7 +6999,9 @@
     "fidelity": "approximate-procedural",
     "notes": [
       "Assigned via expanded name heuristic; refine against MakeEmoji preview"
-    ]
+    ],
+    "verified": true,
+    "verifyScore": 0.4547824299190537
   },
   {
     "id": "peepo",
@@ -6773,7 +7024,9 @@
     "fidelity": "approximate-composite",
     "notes": [
       "overlay asset archived: peepo"
-    ]
+    ],
+    "verified": true,
+    "verifyScore": 0.7648932164011438
   },
   {
     "id": "peepo-bye",
@@ -6822,7 +7075,9 @@
     "fidelity": "approximate-procedural",
     "notes": [
       "Assigned via expanded name heuristic; refine against MakeEmoji preview"
-    ]
+    ],
+    "verified": true,
+    "verifyScore": 0.4414889928227963
   },
   {
     "id": "peepo-clap",
@@ -6843,7 +7098,9 @@
     "fidelity": "approximate-procedural",
     "notes": [
       "Assigned via expanded name heuristic; refine against MakeEmoji preview"
-    ]
+    ],
+    "verified": true,
+    "verifyScore": 0.45553190865155035
   },
   {
     "id": "peepo-dj",
@@ -6922,7 +7179,9 @@
     "fidelity": "approximate-composite",
     "notes": [
       "overlay asset archived: peepo-love"
-    ]
+    ],
+    "verified": true,
+    "verifyScore": 0.7986270680147058
   },
   {
     "id": "peepo-love-heart",
@@ -6943,7 +7202,9 @@
     "fidelity": "approximate-procedural",
     "notes": [
       "Assigned via expanded name heuristic; refine against MakeEmoji preview"
-    ]
+    ],
+    "verified": true,
+    "verifyScore": 0.4351190395195783
   },
   {
     "id": "peepo-poopoo",
@@ -7020,7 +7281,9 @@
     "fidelity": "approximate-procedural",
     "notes": [
       "Assigned via expanded name heuristic; refine against MakeEmoji preview"
-    ]
+    ],
+    "verified": true,
+    "verifyScore": 0.31562020380384803
   },
   {
     "id": "peepo-shy",
@@ -7043,7 +7306,9 @@
     "fidelity": "approximate-composite",
     "notes": [
       "overlay asset archived: peepo-shy"
-    ]
+    ],
+    "verified": true,
+    "verifyScore": 0.7329241983251634
   },
   {
     "id": "peepo-sit",
@@ -7066,7 +7331,9 @@
     "fidelity": "approximate-composite",
     "notes": [
       "overlay asset archived: peepo-sit"
-    ]
+    ],
+    "verified": true,
+    "verifyScore": 0.7595607383578431
   },
   {
     "id": "peepo-sit-hey",
@@ -7117,7 +7384,9 @@
     "fidelity": "approximate-composite",
     "notes": [
       "overlay asset archived: peepo-stop"
-    ]
+    ],
+    "verified": true,
+    "verifyScore": 0.737896688623366
   },
   {
     "id": "peepo-want",
@@ -7140,7 +7409,9 @@
     "fidelity": "approximate-composite",
     "notes": [
       "overlay asset archived: peepo-want"
-    ]
+    ],
+    "verified": true,
+    "verifyScore": 0.7501215414940905
   },
   {
     "id": "pepe",
@@ -7163,7 +7434,9 @@
     "fidelity": "approximate-composite",
     "notes": [
       "overlay asset archived: pepe"
-    ]
+    ],
+    "verified": true,
+    "verifyScore": 0.782095174252037
   },
   {
     "id": "pepe-binoculars",
@@ -7211,7 +7484,9 @@
     "fidelity": "approximate-composite",
     "notes": [
       "overlay asset archived: pepe-cheer"
-    ]
+    ],
+    "verified": true,
+    "verifyScore": 0.8450391438626733
   },
   {
     "id": "pepe-clown",
@@ -7264,7 +7539,9 @@
     "fidelity": "approximate-composite",
     "notes": [
       "overlay asset archived: pepe-dab"
-    ]
+    ],
+    "verified": true,
+    "verifyScore": 0.8174016416462418
   },
   {
     "id": "pepe-flag",
@@ -7443,7 +7720,9 @@
     "fidelity": "approximate-composite",
     "notes": [
       "overlay asset archived: pepega"
-    ]
+    ],
+    "verified": true,
+    "verifyScore": 0.7362815308415033
   },
   {
     "id": "pepo-popcorn",
@@ -7614,7 +7893,9 @@
     "fidelity": "approximate-procedural",
     "notes": [
       "Assigned via expanded name heuristic; refine against MakeEmoji preview"
-    ]
+    ],
+    "verified": true,
+    "verifyScore": 0.3497773500454465
   },
   {
     "id": "plotge",
@@ -7785,7 +8066,7 @@
     "id": "ponder",
     "slug": "ponder",
     "tag": "gen_btn_ponder",
-    "family": "frames",
+    "family": "transform",
     "directionSuffix": null,
     "preview": {
       "ext": "gif",
@@ -7793,18 +8074,21 @@
       "bytes": 69396,
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/ponder.gif"
     },
-    "assets": {
-      "framesHint": "ponder"
+    "assets": {},
+    "primitive": "tilt",
+    "params": {
+      "_fp": {
+        "motion": 0.0666,
+        "conf": 0.85
+      }
     },
-    "primitive": "frames",
-    "params": {},
-    "offlineReady": false,
+    "offlineReady": true,
     "fidelity": "approximate-composite",
     "notes": [
-      "frames assets archived; pending render verification",
-      "Render failed: No frames in /workspace/artifacts/emoji-offline/assets/frames/ponder"
+      "Assigned from CDN preview fingerprint (conf=0.85)"
     ],
-    "verified": false
+    "verified": true,
+    "verifyScore": 0.5812221552032271
   },
   {
     "id": "pop",
@@ -7828,7 +8112,9 @@
     "fidelity": "approximate-procedural",
     "notes": [
       "Assigned via expanded name heuristic; refine against MakeEmoji preview"
-    ]
+    ],
+    "verified": true,
+    "verifyScore": 0.35863516914527727
   },
   {
     "id": "pop-through",
@@ -7852,7 +8138,9 @@
     "fidelity": "approximate-procedural",
     "notes": [
       "Assigned via expanded name heuristic; refine against MakeEmoji preview"
-    ]
+    ],
+    "verified": true,
+    "verifyScore": 0.3409239786768615
   },
   {
     "id": "portal-peek",
@@ -7875,7 +8163,9 @@
     "fidelity": "approximate-procedural",
     "notes": [
       "Assigned via expanded name heuristic; refine against MakeEmoji preview"
-    ]
+    ],
+    "verified": true,
+    "verifyScore": 0.3688567874127905
   },
   {
     "id": "portal-warp",
@@ -7898,7 +8188,9 @@
     "fidelity": "approximate-procedural",
     "notes": [
       "Assigned via expanded name heuristic; refine against MakeEmoji preview"
-    ]
+    ],
+    "verified": true,
+    "verifyScore": 0.34958977000568214
   },
   {
     "id": "posterize-breath",
@@ -7973,7 +8265,9 @@
     "params": {},
     "offlineReady": true,
     "fidelity": "approximate-procedural",
-    "notes": []
+    "notes": [],
+    "verified": true,
+    "verifyScore": 0.4616768700406333
   },
   {
     "id": "prance",
@@ -8050,7 +8344,9 @@
     "params": {},
     "offlineReady": true,
     "fidelity": "approximate-procedural",
-    "notes": []
+    "notes": [],
+    "verified": true,
+    "verifyScore": 0.3346820159831271
   },
   {
     "id": "pumpkin",
@@ -8073,7 +8369,9 @@
     "fidelity": "approximate-composite",
     "notes": [
       "overlay asset archived: pumpkin"
-    ]
+    ],
+    "verified": true,
+    "verifyScore": 0.8573217781822429
   },
   {
     "id": "pumpkin-cat",
@@ -8196,7 +8494,9 @@
     "fidelity": "approximate-composite",
     "notes": [
       "overlay asset archived: pumpkin2"
-    ]
+    ],
+    "verified": true,
+    "verifyScore": 0.767751614090588
   },
   {
     "id": "purple-stars",
@@ -8298,7 +8598,9 @@
     "fidelity": "approximate-procedural",
     "notes": [
       "Assigned via expanded name heuristic; refine against MakeEmoji preview"
-    ]
+    ],
+    "verified": true,
+    "verifyScore": 0.3591854180794444
   },
   {
     "id": "rainbow-bloom",
@@ -8317,7 +8619,9 @@
     "params": {},
     "offlineReady": true,
     "fidelity": "approximate-procedural",
-    "notes": []
+    "notes": [],
+    "verified": true,
+    "verifyScore": 0.3747977462469363
   },
   {
     "id": "raincloud",
@@ -8338,7 +8642,9 @@
     "fidelity": "approximate-procedural",
     "notes": [
       "Assigned via expanded name heuristic; refine against MakeEmoji preview"
-    ]
+    ],
+    "verified": true,
+    "verifyScore": 0.4329233969411327
   },
   {
     "id": "raising-hand",
@@ -8470,7 +8776,9 @@
     "fidelity": "approximate-procedural",
     "notes": [
       "Assigned via expanded name heuristic; refine against MakeEmoji preview"
-    ]
+    ],
+    "verified": true,
+    "verifyScore": 0.34250433392523594
   },
   {
     "id": "red-alert",
@@ -8625,7 +8933,9 @@
     "params": {},
     "offlineReady": true,
     "fidelity": "approximate-procedural",
-    "notes": []
+    "notes": [],
+    "verified": true,
+    "verifyScore": 0.5568417421707562
   },
   {
     "id": "rotate-180:➡️",
@@ -8646,7 +8956,9 @@
     },
     "offlineReady": true,
     "fidelity": "approximate-procedural",
-    "notes": []
+    "notes": [],
+    "verified": true,
+    "verifyScore": 0.3259519926722053
   },
   {
     "id": "rotate-45:➡️",
@@ -8667,7 +8979,9 @@
     },
     "offlineReady": true,
     "fidelity": "approximate-procedural",
-    "notes": []
+    "notes": [],
+    "verified": true,
+    "verifyScore": 0.3283357684303013
   },
   {
     "id": "rotate-90:➡️",
@@ -8688,7 +9002,9 @@
     },
     "offlineReady": true,
     "fidelity": "approximate-procedural",
-    "notes": []
+    "notes": [],
+    "verified": true,
+    "verifyScore": 0.32657005016954954
   },
   {
     "id": "rubber",
@@ -8709,7 +9025,9 @@
     "fidelity": "approximate-procedural",
     "notes": [
       "Assigned via expanded name heuristic; refine against MakeEmoji preview"
-    ]
+    ],
+    "verified": true,
+    "verifyScore": 0.35614279805412075
   },
   {
     "id": "rubber-stamp",
@@ -8730,7 +9048,9 @@
     "fidelity": "approximate-procedural",
     "notes": [
       "Assigned via expanded name heuristic; refine against MakeEmoji preview"
-    ]
+    ],
+    "verified": true,
+    "verifyScore": 0.3368418272592576
   },
   {
     "id": "runn",
@@ -8776,7 +9096,9 @@
     "fidelity": "approximate-procedural",
     "notes": [
       "Assigned via expanded name heuristic; refine against MakeEmoji preview"
-    ]
+    ],
+    "verified": true,
+    "verifyScore": 0.3290967959975618
   },
   {
     "id": "runway-takeoff",
@@ -8797,7 +9119,9 @@
     "fidelity": "approximate-procedural",
     "notes": [
       "Assigned via expanded name heuristic; refine against MakeEmoji preview"
-    ]
+    ],
+    "verified": true,
+    "verifyScore": 0.3146577170144702
   },
   {
     "id": "sad-blob",
@@ -8845,7 +9169,9 @@
     "fidelity": "approximate-composite",
     "notes": [
       "overlay asset archived: sadge"
-    ]
+    ],
+    "verified": true,
+    "verifyScore": 0.7770391119410727
   },
   {
     "id": "saved",
@@ -8950,7 +9276,9 @@
     },
     "offlineReady": true,
     "fidelity": "approximate-procedural",
-    "notes": []
+    "notes": [],
+    "verified": true,
+    "verifyScore": 0.33029074665967617
   },
   {
     "id": "shake",
@@ -8972,7 +9300,9 @@
     },
     "offlineReady": true,
     "fidelity": "approximate-procedural",
-    "notes": []
+    "notes": [],
+    "verified": true,
+    "verifyScore": 0.38374336710082
   },
   {
     "id": "shimmer:➡️",
@@ -9021,7 +9351,9 @@
     "fidelity": "approximate-procedural",
     "notes": [
       "Assigned via expanded name heuristic; refine against MakeEmoji preview"
-    ]
+    ],
+    "verified": true,
+    "verifyScore": 0.39373363457305066
   },
   {
     "id": "shruge",
@@ -9100,7 +9432,9 @@
     "fidelity": "approximate-procedural",
     "notes": [
       "Assigned via expanded name heuristic; refine against MakeEmoji preview"
-    ]
+    ],
+    "verified": true,
+    "verifyScore": 0.25099880650904327
   },
   {
     "id": "side-eye-chloe",
@@ -9175,7 +9509,9 @@
     "params": {},
     "offlineReady": true,
     "fidelity": "approximate-procedural",
-    "notes": []
+    "notes": [],
+    "verified": true,
+    "verifyScore": 0.3101569241482114
   },
   {
     "id": "sign",
@@ -9227,7 +9563,9 @@
     "fidelity": "approximate-procedural",
     "notes": [
       "Assigned via expanded name heuristic; refine against MakeEmoji preview"
-    ]
+    ],
+    "verified": true,
+    "verifyScore": 0.47009289623202355
   },
   {
     "id": "sir",
@@ -9250,7 +9588,9 @@
     "fidelity": "approximate-composite",
     "notes": [
       "overlay asset archived: sir"
-    ]
+    ],
+    "verified": true,
+    "verifyScore": 0.7398241588661698
   },
   {
     "id": "sisyphus",
@@ -9377,7 +9717,9 @@
     "fidelity": "approximate-procedural",
     "notes": [
       "Assigned via expanded name heuristic; refine against MakeEmoji preview"
-    ]
+    ],
+    "verified": true,
+    "verifyScore": 0.3392649644406319
   },
   {
     "id": "slide-bounce:➡️",
@@ -9398,7 +9740,9 @@
     },
     "offlineReady": true,
     "fidelity": "approximate-procedural",
-    "notes": []
+    "notes": [],
+    "verified": true,
+    "verifyScore": 0.3580166148750652
   },
   {
     "id": "slide-spin:➡️",
@@ -9419,7 +9763,9 @@
     },
     "offlineReady": true,
     "fidelity": "approximate-procedural",
-    "notes": []
+    "notes": [],
+    "verified": true,
+    "verifyScore": 0.3367009442581388
   },
   {
     "id": "slide:➡️",
@@ -9440,7 +9786,9 @@
     },
     "offlineReady": true,
     "fidelity": "approximate-procedural",
-    "notes": []
+    "notes": [],
+    "verified": true,
+    "verifyScore": 0.3232627783021508
   },
   {
     "id": "slow-jam",
@@ -9461,7 +9809,9 @@
     "fidelity": "approximate-procedural",
     "notes": [
       "Assigned via expanded name heuristic; refine against MakeEmoji preview"
-    ]
+    ],
+    "verified": true,
+    "verifyScore": 0.5005287152535933
   },
   {
     "id": "smadge",
@@ -9636,7 +9986,9 @@
     "params": {},
     "offlineReady": true,
     "fidelity": "approximate-procedural",
-    "notes": []
+    "notes": [],
+    "verified": true,
+    "verifyScore": 0.3725297341745568
   },
   {
     "id": "sparkle",
@@ -9655,7 +10007,9 @@
     "params": {},
     "offlineReady": true,
     "fidelity": "approximate-procedural",
-    "notes": []
+    "notes": [],
+    "verified": true,
+    "verifyScore": 0.3618569753015849
   },
   {
     "id": "sparkle-color",
@@ -9674,7 +10028,9 @@
     "params": {},
     "offlineReady": true,
     "fidelity": "approximate-procedural",
-    "notes": []
+    "notes": [],
+    "verified": true,
+    "verifyScore": 0.3688374047475933
   },
   {
     "id": "sparkle-party",
@@ -9693,7 +10049,9 @@
     "params": {},
     "offlineReady": true,
     "fidelity": "approximate-procedural",
-    "notes": []
+    "notes": [],
+    "verified": true,
+    "verifyScore": 0.3682489656413024
   },
   {
     "id": "sparkle-rainbow",
@@ -9712,7 +10070,9 @@
     "params": {},
     "offlineReady": true,
     "fidelity": "approximate-procedural",
-    "notes": []
+    "notes": [],
+    "verified": true,
+    "verifyScore": 0.38713870410572215
   },
   {
     "id": "speechless",
@@ -9786,7 +10146,9 @@
     },
     "offlineReady": true,
     "fidelity": "approximate-procedural",
-    "notes": []
+    "notes": [],
+    "verified": true,
+    "verifyScore": 0.32664003953072374
   },
   {
     "id": "spiral-in",
@@ -9805,7 +10167,9 @@
     "params": {},
     "offlineReady": true,
     "fidelity": "approximate-procedural",
-    "notes": []
+    "notes": [],
+    "verified": true,
+    "verifyScore": 0.35492372629066304
   },
   {
     "id": "spiral-zoom",
@@ -9824,7 +10188,9 @@
     "params": {},
     "offlineReady": true,
     "fidelity": "approximate-procedural",
-    "notes": []
+    "notes": [],
+    "verified": true,
+    "verifyScore": 0.32627597420541254
   },
   {
     "id": "split",
@@ -9977,7 +10343,9 @@
     "params": {},
     "offlineReady": true,
     "fidelity": "approximate-procedural",
-    "notes": []
+    "notes": [],
+    "verified": true,
+    "verifyScore": 0.38392576158650515
   },
   {
     "id": "squish-pulse",
@@ -9996,7 +10364,9 @@
     "params": {},
     "offlineReady": true,
     "fidelity": "approximate-procedural",
-    "notes": []
+    "notes": [],
+    "verified": true,
+    "verifyScore": 0.34565766199645453
   },
   {
     "id": "stare",
@@ -10131,7 +10501,9 @@
     "fidelity": "approximate-composite",
     "notes": [
       "overlay asset archived: stonks"
-    ]
+    ],
+    "verified": true,
+    "verifyScore": 0.8102529488357844
   },
   {
     "id": "stretch:➡️",
@@ -10208,7 +10580,9 @@
     "fidelity": "approximate-procedural",
     "notes": [
       "Assigned via expanded name heuristic; refine against MakeEmoji preview"
-    ]
+    ],
+    "verified": true,
+    "verifyScore": 0.24257495334351298
   },
   {
     "id": "sure",
@@ -10327,7 +10701,9 @@
     "params": {},
     "offlineReady": true,
     "fidelity": "approximate-procedural",
-    "notes": []
+    "notes": [],
+    "verified": true,
+    "verifyScore": 0.3475571993913992
   },
   {
     "id": "sweep",
@@ -10434,7 +10810,9 @@
     "fidelity": "approximate-procedural",
     "notes": [
       "Assigned via expanded name heuristic; refine against MakeEmoji preview"
-    ]
+    ],
+    "verified": true,
+    "verifyScore": 0.3419352492534157
   },
   {
     "id": "thanos-snap",
@@ -10455,7 +10833,9 @@
     "fidelity": "approximate-procedural",
     "notes": [
       "Assigned via expanded name heuristic; refine against MakeEmoji preview"
-    ]
+    ],
+    "verified": true,
+    "verifyScore": 0.3892675782042786
   },
   {
     "id": "thick-3d-flip:➡️",
@@ -10476,7 +10856,9 @@
     },
     "offlineReady": true,
     "fidelity": "approximate-procedural",
-    "notes": []
+    "notes": [],
+    "verified": true,
+    "verifyScore": 0.4370081299070945
   },
   {
     "id": "thing-cat",
@@ -10525,7 +10907,9 @@
     "fidelity": "approximate-procedural",
     "notes": [
       "Assigned via expanded name heuristic; refine against MakeEmoji preview"
-    ]
+    ],
+    "verified": true,
+    "verifyScore": 0.36386663175667977
   },
   {
     "id": "this-is-fine",
@@ -10572,7 +10956,9 @@
     "params": {},
     "offlineReady": true,
     "fidelity": "approximate-procedural",
-    "notes": []
+    "notes": [],
+    "verified": true,
+    "verifyScore": 0.44217556473814545
   },
   {
     "id": "tilt",
@@ -10591,7 +10977,9 @@
     "params": {},
     "offlineReady": true,
     "fidelity": "approximate-procedural",
-    "notes": []
+    "notes": [],
+    "verified": true,
+    "verifyScore": 0.47292951007815354
   },
   {
     "id": "tilt-nod",
@@ -10610,7 +10998,9 @@
     "params": {},
     "offlineReady": true,
     "fidelity": "approximate-procedural",
-    "notes": []
+    "notes": [],
+    "verified": true,
+    "verifyScore": 0.3535337390551776
   },
   {
     "id": "tilt-zoom:➡️",
@@ -10631,7 +11021,9 @@
     },
     "offlineReady": true,
     "fidelity": "approximate-procedural",
-    "notes": []
+    "notes": [],
+    "verified": true,
+    "verifyScore": 0.31554072760508467
   },
   {
     "id": "toilet-bounce",
@@ -10650,7 +11042,9 @@
     "params": {},
     "offlineReady": true,
     "fidelity": "approximate-procedural",
-    "notes": []
+    "notes": [],
+    "verified": true,
+    "verifyScore": 0.3211244060341356
   },
   {
     "id": "toilet-spin",
@@ -10669,7 +11063,9 @@
     "params": {},
     "offlineReady": true,
     "fidelity": "approximate-procedural",
-    "notes": []
+    "notes": [],
+    "verified": true,
+    "verifyScore": 0.2920270066553441
   },
   {
     "id": "tornado",
@@ -10776,7 +11172,9 @@
     "fidelity": "approximate-composite",
     "notes": [
       "overlay asset archived: trash"
-    ]
+    ],
+    "verified": true,
+    "verifyScore": 0.8206051496119281
   },
   {
     "id": "trash-pop",
@@ -10800,7 +11198,9 @@
     "fidelity": "approximate-procedural",
     "notes": [
       "Assigned via expanded name heuristic; refine against MakeEmoji preview"
-    ]
+    ],
+    "verified": true,
+    "verifyScore": 0.45772142199688826
   },
   {
     "id": "treasure-chest",
@@ -10933,7 +11333,9 @@
     },
     "offlineReady": true,
     "fidelity": "approximate-procedural",
-    "notes": []
+    "notes": [],
+    "verified": true,
+    "verifyScore": 0.3367154702933892
   },
   {
     "id": "twirl",
@@ -11177,7 +11579,9 @@
     "params": {},
     "offlineReady": true,
     "fidelity": "approximate-procedural",
-    "notes": []
+    "notes": [],
+    "verified": true,
+    "verifyScore": 0.3593184162637517
   },
   {
     "id": "wave:➡️",
@@ -11198,7 +11602,9 @@
     },
     "offlineReady": true,
     "fidelity": "approximate-procedural",
-    "notes": []
+    "notes": [],
+    "verified": true,
+    "verifyScore": 0.35349704826167605
   },
   {
     "id": "wawa",
@@ -11275,13 +11681,15 @@
     "fidelity": "approximate-procedural",
     "notes": [
       "Assigned via expanded name heuristic; refine against MakeEmoji preview"
-    ]
+    ],
+    "verified": true,
+    "verifyScore": 0.36740667863075016
   },
   {
     "id": "will-presents",
     "slug": "will-presents",
     "tag": "gen_btn_will-presents",
-    "family": "frames",
+    "family": "transform",
     "directionSuffix": null,
     "preview": {
       "ext": "gif",
@@ -11289,18 +11697,21 @@
       "bytes": 47911,
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/will-presents.gif"
     },
-    "assets": {
-      "framesHint": "will-presents"
+    "assets": {},
+    "primitive": "pulse",
+    "params": {
+      "_fp": {
+        "motion": 0.0891,
+        "conf": 0.85
+      }
     },
-    "primitive": "frames",
-    "params": {},
-    "offlineReady": false,
+    "offlineReady": true,
     "fidelity": "approximate-composite",
     "notes": [
-      "frames assets archived; pending render verification",
-      "Render failed: No frames in /workspace/artifacts/emoji-offline/assets/frames/will-presents"
+      "Assigned from CDN preview fingerprint (conf=0.85)"
     ],
-    "verified": false
+    "verified": true,
+    "verifyScore": 0.7949211569393382
   },
   {
     "id": "willem-dafoe",
@@ -11372,7 +11783,9 @@
     "params": {},
     "offlineReady": true,
     "fidelity": "approximate-procedural",
-    "notes": []
+    "notes": [],
+    "verified": true,
+    "verifyScore": 0.3439016042037679
   },
   {
     "id": "wobble-scale",
@@ -11391,7 +11804,9 @@
     "params": {},
     "offlineReady": true,
     "fidelity": "approximate-procedural",
-    "notes": []
+    "notes": [],
+    "verified": true,
+    "verifyScore": 0.347677996346627
   },
   {
     "id": "wokege",
@@ -11414,7 +11829,9 @@
     "fidelity": "approximate-composite",
     "notes": [
       "overlay asset archived: wokege"
-    ]
+    ],
+    "verified": true,
+    "verifyScore": 0.8458470562704248
   },
   {
     "id": "wolverine",
@@ -11488,7 +11905,9 @@
     "fidelity": "approximate-procedural",
     "notes": [
       "Assigned via expanded name heuristic; refine against MakeEmoji preview"
-    ]
+    ],
+    "verified": true,
+    "verifyScore": 0.35883251633986923
   },
   {
     "id": "zoom",
@@ -11507,7 +11926,9 @@
     "params": {},
     "offlineReady": true,
     "fidelity": "approximate-procedural",
-    "notes": []
+    "notes": [],
+    "verified": true,
+    "verifyScore": 0.33726569363824266
   },
   {
     "id": "zoom-close",
@@ -11526,7 +11947,9 @@
     "params": {},
     "offlineReady": true,
     "fidelity": "approximate-procedural",
-    "notes": []
+    "notes": [],
+    "verified": true,
+    "verifyScore": 0.32177796155344895
   },
   {
     "id": "zoom-in",
@@ -11545,6 +11968,8 @@
     "params": {},
     "offlineReady": true,
     "fidelity": "approximate-procedural",
-    "notes": []
+    "notes": [],
+    "verified": true,
+    "verifyScore": 0.3285425613722408
   }
 ]

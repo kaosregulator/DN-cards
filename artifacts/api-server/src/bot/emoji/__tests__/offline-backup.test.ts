@@ -33,20 +33,18 @@ describe("offline MakeEmoji backup package", () => {
     console.log(`Discovered styles: ${styles.length}`);
     expect(styles.length).toBeGreaterThanOrEqual(400);
     expect(manifest?.styleCount).toBe(styles.length);
-    expect(manifest?.offlineReady).toBe(false);
+    expect(manifest?.offlineReady).toBe(true);
+    expect(manifest?.implementedStyleCount).toBe(styles.length);
     expect(manifest?.source).toBe("makeemoji.com");
     expect(offlinePackageRoot()).toBeTruthy();
   });
 
-  it("marks recipe-ready styles as offlineImplemented (not the full catalog yet)", () => {
+  it("marks recipe-ready styles as offlineImplemented across the full catalog", () => {
     const implemented = implementedOfflineStyles();
-    expect(implemented.length).toBeGreaterThanOrEqual(100);
+    expect(implemented.length).toBeGreaterThanOrEqual(400);
     expect(implemented.every(s => s.offlineEffectId)).toBe(true);
     expect(findOfflineStyle("shake")?.offlineImplemented).toBe(true);
-    // Atlas-backed MakeEmoji style — archived, not offline-ready until assets land.
-    const parrot = findOfflineStyle("party-parrot");
-    expect(parrot).toBeTruthy();
-    expect(parrot!.offlineImplemented).toBe(false);
+    expect(findOfflineStyle("party-parrot")?.offlineImplemented).toBe(true);
   });
 
   it("extracts the backup ZIP and verifies checksums", () => {
@@ -83,7 +81,7 @@ describe("offline MakeEmoji backup package", () => {
         styleCount: number; offlineReady: boolean;
       };
       expect(styles.length).toBe(manifest.styleCount);
-      expect(manifest.offlineReady).toBe(false);
+      expect(manifest.offlineReady).toBe(true);
       // eslint-disable-next-line no-console
       console.log(`Discovered styles: ${styles.length}`);
     } finally {
@@ -122,12 +120,23 @@ describe("offline provider (disabled by default)", () => {
     }
   }, 60_000);
 
-  it("refuses archived-but-unimplemented styles instead of faking them", async () => {
+  it("refuses unknown styles instead of faking them", async () => {
     process.env["EMOJI_ALLOW_OFFLINE_FALLBACK"] = "1";
     await expect(offlineProvider.generate({
-      image: await testImage(64), animation: "party-parrot", format: "gif",
+      image: await testImage(64),
+      animation: "definitely-not-a-real-makeemoji-style-xyz",
+      format: "gif",
     })).rejects.toMatchObject({ code: "unknown_effect" });
   });
+
+  it("renders archived atlas styles when offline fallback is enabled", async () => {
+    process.env["EMOJI_ALLOW_OFFLINE_FALLBACK"] = "1";
+    const result = await offlineProvider.generate({
+      image: await testImage(64), animation: "party-parrot", format: "gif", size: "64",
+    });
+    expect(result.providerId).toBe("offline");
+    expect(result.buffer.subarray(0, 3).toString("ascii")).toBe("GIF");
+  }, 30_000);
 
   it("does not take over while MakeEmoji is available", async () => {
     // Inject an unavailable MakeEmoji + enable offline — then offline may serve.
