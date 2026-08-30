@@ -56,13 +56,54 @@ async function applyControl(
     case "select":
       await page.selectOption(spec.selector, value, { timeout: STEP_TIMEOUT_MS });
       return;
+    case "listbox": {
+      // Custom listboxes (MakeEmoji): open the trigger, then click the option
+      // whose visible text matches the discovered value (or its compact label).
+      await page.click(spec.selector, { timeout: STEP_TIMEOUT_MS });
+      const option = page.locator('[role="option"]').filter({ hasText: value }).first();
+      // Fall back to a looser contains match when the value is a compact label
+      // like "GIF" against option text "📁 GIF".
+      if (await option.count()) {
+        await option.click({ timeout: STEP_TIMEOUT_MS });
+      } else {
+        await page.getByRole("option", { name: new RegExp(escapeRegExp(value), "i") })
+          .first()
+          .click({ timeout: STEP_TIMEOUT_MS });
+      }
+      await page.keyboard.press("Escape").catch(() => {});
+      return;
+    }
     case "radio":
       await page.click(`${spec.selector}[value="${value}"]`, { timeout: STEP_TIMEOUT_MS });
       return;
     case "button": {
       const attribute = spec.valueAttribute ?? "data-value";
-      await page.click(`[${attribute}="${value}"]`, { timeout: STEP_TIMEOUT_MS });
-      return;
+      const locator = page.locator(`[${attribute}="${value}"]`).first();
+      try {
+        await locator.scrollIntoViewIfNeeded({ timeout: STEP_TIMEOUT_MS });
+        await locator.click({ timeout: STEP_TIMEOUT_MS });
+        return;
+      } catch {
+        // Style grids virtualise. Open the styles filter/search UI if needed,
+        // type the style name, then click the tile once it mounts.
+        const styleName = value.replace(/^gen_btn_/i, "").replace(/^:|:$/g, "");
+        await page.locator("details").filter({ has: page.locator('input[placeholder*="Search" i]') })
+          .locator("summary").click({ timeout: 3_000 }).catch(() => {});
+        const search = page.locator(
+          'input[placeholder*="Search" i], input[aria-label*="Search" i], input[type=search]',
+        ).first();
+        if (await search.count()) {
+          await search.click({ timeout: STEP_TIMEOUT_MS });
+          await search.fill("");
+          await search.fill(styleName, { timeout: STEP_TIMEOUT_MS });
+          await page.waitForTimeout(1200);
+          const found = page.locator(`[${attribute}="${value}"]`).first();
+          await found.scrollIntoViewIfNeeded({ timeout: STEP_TIMEOUT_MS }).catch(() => {});
+          await found.click({ timeout: STEP_TIMEOUT_MS });
+          return;
+        }
+        throw new Error(`button ${attribute}=${value} not found`);
+      }
     }
     case "range":
     case "text":
@@ -76,6 +117,10 @@ async function applyControl(
     default:
       logger.warn({ key, kind: spec.kind }, "unhandled MakeEmoji control kind");
   }
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 /** Set every option the manifest knows how to drive. */
@@ -138,20 +183,41 @@ async function readPreviewBytes(page: Page, src: string): Promise<Buffer> {
 }
 
 /** The newest generated-looking media source in the page, if any. */
-async function findPreviewSrc(page: Page, resultSelector: string | null): Promise<string | null> {
-  return page.evaluate((selector: string | null) => {
+async function findPreviewSrc(
+  page: Page,
+  resultSelector: string | null,
+  animation?: string,
+): Promise<string | null> {
+  return page.evaluate(({ selector, anim }) => {
     const w = globalThis as unknown as BrowserWindow;
     const nodes = Array.from(
       w.document.querySelectorAll(selector ?? "img, video, source") as ArrayLike<DomElement>,
     );
-    const sources = nodes
-      .map(el => (el as DomMedia).src || el.getAttribute("src") || "")
-      .filter(src =>
+    const styleName = (anim ?? "")
+      .replace(/^gen_btn_/i, "")
+      .replace(/^:|:$/g, "")
+      .toLowerCase();
+
+    type Scored = { src: string; score: number };
+    const scored: Scored[] = [];
+    for (const el of nodes) {
+      const src = (el as DomMedia).src || el.getAttribute("src") || "";
+      if (!(
         src.startsWith("blob:") || src.startsWith("data:") ||
-        /\.(gif|webp|png)(\?|$)/i.test(src));
-    // The result is appended after the source thumbnail, so the newest wins.
-    return sources[sources.length - 1] ?? null;
-  }, resultSelector);
+        /\.(gif|webp|png)(\?|$)/i.test(src)
+      )) continue;
+      const alt = (el.getAttribute("alt") || "").toLowerCase();
+      let score = 0;
+      if (/generated/.test(alt)) score += 2;
+      if (src.startsWith("blob:")) score += 1;
+      // Prefer the tile that matches the animation the user asked for
+      // ("The generated party-parrot animated emoji").
+      if (styleName && alt.includes(styleName)) score += 10;
+      scored.push({ src, score });
+    }
+    scored.sort((a, b) => a.score - b.score);
+    return scored[scored.length - 1]?.src ?? null;
+  }, { selector: resultSelector, anim: animation ?? null });
 }
 
 export async function generateViaBrowser(
@@ -188,8 +254,12 @@ export async function generateViaBrowser(
     }
 
     if (manifest.browser.readySelector) {
-      await page.waitForSelector(manifest.browser.readySelector, { timeout: remaining() })
-        .catch(() => { throw new EmojiError("site_changed", "The emoji service looks different than expected."); });
+      // File inputs are routinely visually hidden (MakeEmoji uses `class="hidden"`),
+      // so wait for attachment rather than visibility.
+      await page.waitForSelector(manifest.browser.readySelector, {
+        timeout: remaining(),
+        state: "attached",
+      }).catch(() => { throw new EmojiError("site_changed", "The emoji service looks different than expected."); });
     }
 
     const fileInput = manifest.browser.fileInputSelector!;
@@ -199,6 +269,10 @@ export async function generateViaBrowser(
       logger.error({ fileInput }, "MakeEmoji file input not found — manifest is stale");
       throw new EmojiError("site_changed", "The emoji service looks different than expected.");
     });
+
+    // Live editors encode asynchronously after upload; give them a moment
+    // before applying options so listboxes and style tiles are interactive.
+    await page.waitForTimeout(1500);
 
     const applied = await applyOptions(page, manifest, options);
     logger.debug({ applied }, "MakeEmoji options applied");
@@ -210,6 +284,42 @@ export async function generateViaBrowser(
         logger.warn({ selector: manifest.browser.generateSelector }, "MakeEmoji generate control not clickable");
       });
     }
+
+    // After options change, MakeEmoji re-encodes client-side. Wait for a
+    // generated preview that matches the requested animation before scraping.
+    await page.waitForFunction(
+      ({ anim, selector }: { anim: string | null; selector: string | null }) => {
+        const w = globalThis as unknown as {
+          document: {
+            querySelectorAll(sel: string): ArrayLike<{
+              getAttribute(name: string): string | null;
+              src?: string;
+            }>;
+          };
+        };
+        const styleName = (anim ?? "")
+          .replace(/^gen_btn_/i, "")
+          .replace(/^:|:$/g, "")
+          .toLowerCase();
+        const nodes = Array.from(
+          w.document.querySelectorAll(selector ?? 'img[alt*="generated" i], img, video'),
+        );
+        return nodes.some(el => {
+          const alt = (el.getAttribute("alt") || "").toLowerCase();
+          const src = el.src || el.getAttribute("src") || "";
+          if (!(src.startsWith("blob:") || src.startsWith("data:"))) return false;
+          if (!/generated/.test(alt)) return false;
+          if (styleName && !alt.includes(styleName)) return false;
+          return !/placeholder/i.test(alt);
+        });
+      },
+      {
+        anim: options.animation ?? null,
+        selector: manifest.browser.resultSelector,
+      },
+      { timeout: Math.min(RESULT_TIMEOUT_MS, remaining()) },
+    ).catch(() => {});
+    await page.waitForTimeout(750);
 
     // ── retrieve the finished file ─────────────────────────────────────────
     let buffer: Buffer | null = null;
@@ -236,11 +346,29 @@ export async function generateViaBrowser(
       // finishes asynchronously and the element may already exist but still be
       // showing the previous frame.
       const until = Math.min(Date.now() + RESULT_TIMEOUT_MS, deadline);
+      const wantGif = !options.format || options.format === "gif";
+      const wantWebp = options.format === "webp";
       while (Date.now() < until) {
-        const src = await findPreviewSrc(page, manifest.browser.resultSelector);
+        const src = await findPreviewSrc(
+          page, manifest.browser.resultSelector, options.animation,
+        );
         if (src) {
-          buffer = await readPreviewBytes(page, src).catch(() => null);
-          if (buffer?.length) {
+          const candidate = await readPreviewBytes(page, src).catch(() => null);
+          if (candidate?.length) {
+            const isGif = candidate.subarray(0, 3).toString("ascii") === "GIF";
+            const isPng = candidate[0] === 0x89 && candidate[1] === 0x50;
+            const isWebp = candidate.subarray(0, 4).toString("ascii") === "RIFF";
+            // Skip placeholders that don't match the requested format while
+            // MakeEmoji is still re-encoding after an option change.
+            if (wantGif && isPng && !isGif) {
+              await page.waitForTimeout(750);
+              continue;
+            }
+            if (wantWebp && !isWebp) {
+              await page.waitForTimeout(750);
+              continue;
+            }
+            buffer = candidate;
             sourceUrl = src.startsWith("data:") || src.startsWith("blob:") ? undefined : src;
             break;
           }

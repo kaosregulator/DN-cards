@@ -24,6 +24,23 @@ import {
 const MANIFEST_TARGET =
   "artifacts/api-server/src/bot/emoji/providers/makeemoji/manifest.json";
 
+function resolveFromRepo(relative: string): string {
+  // The CLI may be launched from the repo root or from scripts/ via pnpm filter.
+  const candidates = [
+    resolve(relative),
+    resolve("..", relative),
+    resolve(process.cwd(), relative),
+  ];
+  for (const path of candidates) {
+    if (existsSync(path) || path.endsWith("manifest.json")) {
+      // For the target path, prefer the one whose parent directory exists.
+      const parent = path.replace(/\/[^/]+$/, "");
+      if (existsSync(parent)) return path;
+    }
+  }
+  return resolve("..", relative);
+}
+
 interface Args {
   site: string;
   out: string;
@@ -141,13 +158,14 @@ async function main(): Promise<void> {
       process.exitCode = 1;
       return;
     }
-    copyFileSync(produced, MANIFEST_TARGET);
-    console.log(`\n✅ Installed → ${MANIFEST_TARGET}`);
+    const target = resolveFromRepo(MANIFEST_TARGET);
+    copyFileSync(produced, target);
+    console.log(`\n✅ Installed → ${target}`);
     console.log("   Commit it and restart the bot; /emoji will start using MakeEmoji.");
   } else if (outcome.manifest.verified) {
     console.log(
       `\n✅ Manifest looks usable. Install it with:\n` +
-      `   cp ${produced} ${MANIFEST_TARGET}\n` +
+      `   cp ${produced} ${resolveFromRepo(MANIFEST_TARGET)}\n` +
       `   (or re-run with --install)`,
     );
   } else {

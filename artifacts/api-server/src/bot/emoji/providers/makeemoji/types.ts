@@ -21,6 +21,7 @@ export const ControlKind = z.enum([
   "select",   // <select> — set by option value
   "radio",    // grouped inputs — click the one whose value matches
   "button",   // a clickable chip/tile carrying the value in an attribute
+  "listbox",  // custom listbox: open trigger, then click [role=option]
   "range",    // <input type=range> — set numerically
   "text",     // free-text or number input
   "checkbox", // toggle

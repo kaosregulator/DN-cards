@@ -43,9 +43,25 @@ export function verdictFor(o: DiscoveryOutcome, generationCandidates: unknown[])
   verdict: string; observed: boolean;
 } {
   const staticVerdict = o.processing?.verdict ?? "inconclusive";
-  const nothingLeftThePage = generationCandidates.length === 0;
 
-  if (o.result.obtained && nothingLeftThePage && staticVerdict !== "backend") {
+  // Ignore ad/analytics/auth noise — MakeEmoji posts the finished bytes to
+  // /api/download (401 when logged out) and the source to /api/images, but
+  // generation itself is client-side (blob GIF/WebP previews appear with no
+  // successful generation response).
+  const realGenerationPosts = (generationCandidates as RecordedExchange[]).filter(x => {
+    try {
+      const host = new URL(x.url).hostname;
+      if (!/(^|\.)makeemoji\.com$/i.test(host)) return false;
+      if (/\/api\/(auth|images|download)\b/i.test(x.url)) return false;
+      if (x.status !== null && x.status >= 400) return false;
+      return true;
+    } catch {
+      return false;
+    }
+  });
+  const nothingLeftThePage = realGenerationPosts.length === 0;
+
+  if (o.result.obtained && nothingLeftThePage) {
     return { verdict: "client-side", observed: true };
   }
   if (o.result.obtained && !nothingLeftThePage && staticVerdict === "inconclusive") {

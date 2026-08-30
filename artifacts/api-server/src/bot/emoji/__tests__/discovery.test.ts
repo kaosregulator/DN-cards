@@ -109,7 +109,9 @@ describe("discovery against a fixture editor", () => {
 
     // The manifest picked up the real controls and their real values.
     expect(outcome.manifest.verified).toBe(true);
-    expect(outcome.manifest.browser.fileInputSelector).toBe("#file");
+    // A single file input is normalised to the stable `input[type=file]`
+    // selector so minor DOM churn doesn't break the browser provider.
+    expect(outcome.manifest.browser.fileInputSelector).toBe("input[type=file]");
     expect(outcome.manifest.controls.animation?.values.map(v => v.value))
       .toEqual(["shake", "spin", "bounce"]);
     expect(outcome.manifest.controls.speed?.values.map(v => v.value))

@@ -69,6 +69,7 @@ export interface BrowserWindow {
   readonly WebAssembly?: unknown;
   fetch(input: string): Promise<{ blob(): Promise<unknown> }>;
   FileReader: new () => DomFileReader;
+  scrollBy?(x: number, y: number): void;
 }
 
 /** Reach the browser globals from inside an evaluated callback. */

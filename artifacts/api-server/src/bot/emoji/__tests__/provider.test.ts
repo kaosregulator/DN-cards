@@ -53,13 +53,13 @@ describe("manifest gating", () => {
       .toMatch(/neither a usable API endpoint nor a file-input/i);
   });
 
-  it("ships an unverified manifest in the repo, so nothing is invented", () => {
+  it("ships a verified live MakeEmoji manifest discovered against makeemoji.com", () => {
     setManifestForTesting(null);
     const loaded = reloadManifest();
-    expect(loaded.manifest?.verified).toBe(false);
+    expect(loaded.manifest?.verified).toBe(true);
     expect(loaded.manifest?.api).toBeNull();
-    expect(loaded.manifest?.browser.fileInputSelector).toBeNull();
-    expect(Object.keys(loaded.manifest?.controls ?? {})).toEqual([]);
+    expect(loaded.manifest?.browser.fileInputSelector).toBeTruthy();
+    expect(loaded.manifest?.controls.animation?.values.length).toBeGreaterThan(0);
   });
 });
 

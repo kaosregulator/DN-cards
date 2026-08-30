@@ -18,17 +18,24 @@ We do not know MakeEmoji's endpoints, its DOM, or the values its controls accept
 and guessing any of them would produce a provider that sends wrong requests at a
 live site and fails in ways nobody can debug.
 
-So every site-specific fact lives in `manifest.json`, which is **produced by
-running discovery against the live site**. The code reads it; it never hardcodes
-it. The manifest committed here is deliberately empty and `verified: false` —
-until you run discovery, the provider reports itself unavailable and `/emoji`
-returns a clean error saying so.
+The manifest committed here is produced by running discovery against the live
+site. `verified: true` means a real upload + client-side generation returned
+bytes from makeemoji.com in that environment.
 
-## Run discovery
+## What MakeEmoji actually does
 
-This must run somewhere with outbound access to makeemoji.com. The Claude
-development environment is behind an egress proxy that blocks it, so run this on
-your laptop, the Replit container, or the bot's server.
+Live discovery (2026-08-30) established:
+
+1. The free editor lives on `https://makeemoji.com/` (not `/studio`, which is the
+   separate credit-based AI product).
+2. Generation is **client-side**. After an image upload, the page encodes each
+   style into `blob:` GIF/WebP/PNG previews in the browser. No successful
+   generation API call is required.
+3. `POST /api/images` and `POST /api/download` exist but return **401** when
+   logged out — they are account/save helpers, not the generator. `manifest.api`
+   therefore stays `null`; the browser provider is the integration.
+4. Style tiles use `data-tag="gen_btn_<name>"`. Speed/direction/size/color/format/
+   quality are custom listboxes (`#speed-select`, etc.).
 
 ```bash
 # once, per host

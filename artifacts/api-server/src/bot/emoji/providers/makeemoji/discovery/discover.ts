@@ -23,7 +23,7 @@ import type { Browser, Download, Page } from "playwright";
 import { launchBrowser, newContext } from "../runtime.js";
 import { OPTION_KEYS, type ControlSpec, type Manifest, type OptionKey } from "../types.js";
 import { analyzeBundle, classifyProcessing, type BundleReport } from "./bundles.js";
-import { inspectPage, mapControlToOption, type PageInventory } from "./inspect.js";
+import { expandListboxes, inspectPage, mapControlToOption, type PageInventory } from "./inspect.js";
 import { isBinaryContentType, recordNetwork, type RecordedExchange } from "./recorder.js";
 import { buildReport, verdictFor } from "./report.js";
 import type { BrowserWindow, DomElement, DomMedia } from "./dom-types.js";
@@ -153,11 +153,27 @@ function buildControls(inventory: PageInventory): Partial<Record<OptionKey, Cont
 function pickActionSelectors(inventory: PageInventory): {
   generate: string | null; download: string | null;
 } {
-  const find = (pattern: RegExp) =>
-    inventory.actionButtons.find(b => pattern.test(b.text))?.selector ?? null;
+  // Prefer real <button>s over <a> marketing links, and skip ZIP bulk actions —
+  // MakeEmoji's per-emoji download lives in a card menu, not in those buttons.
+  // Never treat an <a href> as generate: "Convert Any Image…" matches convert
+  // and would navigate away from the editor.
+  const ranked = (pattern: RegExp, { buttonsOnly = false } = {}) =>
+    inventory.actionButtons
+      .filter(b => {
+        if (!pattern.test(b.text) || /zip/i.test(b.text)) return false;
+        if (buttonsOnly && b.tag && b.tag !== "button") return false;
+        return true;
+      })
+      .sort((a, b) => {
+        const score = (x: typeof a) =>
+          (x.tag === "button" ? 0 : 2) + (x.text.trim().split(/\s+/).length > 3 ? 1 : 0);
+        return score(a) - score(b);
+      });
+
   return {
-    generate: find(/(generate|create|make|render|apply|convert)/i),
-    download: find(/(download|save|export)/i),
+    generate: ranked(/^(generate|create|render|apply)\b/i, { buttonsOnly: true })[0]?.selector
+      ?? null,
+    download: ranked(/^(download|export|save)\b/i)[0]?.selector ?? null,
   };
 }
 
@@ -242,6 +258,13 @@ export async function discover(options: DiscoverOptions): Promise<DiscoveryOutco
       say("inventorying page controls…");
       outcome.inventory = await step(outcome, "inspect", () => inspectPage(page));
 
+      if (outcome.inventory) {
+        say("expanding listbox controls…");
+        outcome.inventory = await step(outcome, "expand-listboxes", () =>
+          expandListboxes(page, outcome.inventory!),
+        ) ?? outcome.inventory;
+      }
+
       say("analysing JavaScript bundles…");
       await step(outcome, "bundles", async () => {
         const fetchText = async (url: string) => {
@@ -269,7 +292,25 @@ export async function discover(options: DiscoverOptions): Promise<DiscoveryOutco
 
       if (uploaded) {
         say("re-inventorying after upload…");
-        outcome.inventoryAfterUpload = await step(outcome, "inspect-after-upload", () => inspectPage(page));
+        outcome.inventoryAfterUpload = await step(outcome, "inspect-after-upload", async () => {
+          // Style tiles virtualise — scroll the output grid so more gen_btn_*
+          // chips enter the DOM before we inventory animations.
+          await page.evaluate(async () => {
+            const w = globalThis as unknown as BrowserWindow;
+            const grid = w.document.querySelector("[data-output-grid]");
+            for (let i = 0; i < 40; i++) {
+              if (grid) {
+                (grid as DomElement & { scrollTop: number; scrollHeight: number }).scrollTop =
+                  (grid as DomElement & { scrollHeight: number }).scrollHeight;
+              }
+              w.scrollBy?.(0, 800);
+              await new Promise(r => setTimeout(r, 120));
+            }
+          }).catch(() => {});
+          await page.waitForTimeout(2000);
+          const inv = await inspectPage(page);
+          return expandListboxes(page, inv);
+        });
       }
 
       say("triggering generation…");
@@ -277,7 +318,20 @@ export async function discover(options: DiscoverOptions): Promise<DiscoveryOutco
         const source = outcome.inventoryAfterUpload ?? outcome.inventory;
         if (!source) throw new Error("no inventory to pick a generate control from");
         const { generate } = pickActionSelectors(source);
-        if (!generate) throw new Error("no generate-looking control found (the editor may render live)");
+        if (!generate) {
+          // MakeEmoji (and similar live editors) render as soon as an image is
+          // uploaded — no generate control is a normal finding, not a failure.
+          say("no generate control (editor may render live)");
+          // Wait for client-side encoding to populate generated previews.
+          await page.waitForFunction(() => {
+            const w = globalThis as unknown as BrowserWindow;
+            return Array.from(
+              w.document.querySelectorAll("img") as ArrayLike<DomElement>,
+            ).some(el => /generated/i.test(el.getAttribute("alt") || ""));
+          }, { timeout }).catch(() => {});
+          await page.waitForTimeout(1500);
+          return true;
+        }
         await page.click(generate, { timeout });
         await page.waitForTimeout(3000);
         return true;
@@ -291,41 +345,62 @@ export async function discover(options: DiscoverOptions): Promise<DiscoveryOutco
         // Preferred: a real download, which gives the exact bytes the site
         // intends the user to receive.
         if (download) {
-          const downloadPromise: Promise<Download> = page.waitForEvent("download", { timeout });
-          await page.click(download, { timeout }).catch(() => {});
-          const dl = await downloadPromise;
-          const stream = await dl.createReadStream();
-          const chunks: Buffer[] = [];
-          for await (const chunk of stream) chunks.push(chunk as Buffer);
-          resultBuffer = Buffer.concat(chunks);
-          outcome.result = {
-            obtained: true, via: "download", url: redactedDownloadUrl(dl),
-            bytes: resultBuffer.length, contentType: null,
-          };
-          return true;
+          try {
+            const downloadPromise: Promise<Download> = page.waitForEvent("download", {
+              timeout: Math.min(8_000, timeout),
+            });
+            await page.click(download, { timeout: Math.min(5_000, timeout) }).catch(() => {});
+            const dl = await downloadPromise;
+            const stream = await dl.createReadStream();
+            const chunks: Buffer[] = [];
+            for await (const chunk of stream) chunks.push(chunk as Buffer);
+            resultBuffer = Buffer.concat(chunks);
+            outcome.result = {
+              obtained: true, via: "download", url: redactedDownloadUrl(dl),
+              bytes: resultBuffer.length, contentType: sniffContentType(resultBuffer),
+            };
+            return true;
+          } catch {
+            // Fall through to preview scrape — MakeEmoji's ZIP buttons and
+            // card-menu downloads often don't fire a top-level download event
+            // from the selector discovery guessed.
+            say("download control did not yield a file; trying preview…");
+          }
         }
 
-        // Otherwise scrape whatever the preview is showing. The last matching
-        // element wins: the generated result is appended after the source
-        // thumbnail, so taking the newest avoids returning the input back.
+        // Scrape a generated preview. Require blob:/data: or an alt that says
+        // "generated" — never accept ordinary page assets (logos, thumbnails).
         const previewSrc = await page.evaluate(() => {
           const w = globalThis as unknown as BrowserWindow;
-          const found = Array.from(
+          const nodes = Array.from(
             w.document.querySelectorAll("img, video, source") as ArrayLike<DomElement>,
-          )
-            .map(el => (el as DomMedia).src || el.getAttribute("src") || "")
-            .filter(src =>
-              src.startsWith("blob:") || src.startsWith("data:") ||
-              /\.(gif|webp|png)(\?|$)/i.test(src));
-          return found[found.length - 1] ?? null;
+          );
+          const scored = nodes
+            .map(el => {
+              const media = el as DomMedia;
+              const src = media.src || el.getAttribute("src") || "";
+              const alt = (el.getAttribute("alt") || "").toLowerCase();
+              const isBlob = src.startsWith("blob:") || src.startsWith("data:");
+              const generated = /generated/.test(alt);
+              if (!isBlob && !generated) return null;
+              if (!isBlob && /^https?:/i.test(src)) return null;
+              const score = (generated ? 4 : 0) + (isBlob ? 2 : 0)
+                + (/animated emoji|static emoji/.test(alt) ? 1 : 0);
+              return { src, score };
+            })
+            .filter((x): x is { src: string; score: number } => x !== null)
+            .sort((a, b) => a.score - b.score);
+          return scored[scored.length - 1]?.src ?? null;
         });
         if (!previewSrc) throw new Error("no preview image/blob found after generating");
 
         resultBuffer = await readPreview(page, previewSrc);
         outcome.result = {
           obtained: true, via: "preview-src",
-          url: previewSrc.startsWith("data:") ? "(data: uri)" : previewSrc,
-          bytes: resultBuffer.length, contentType: null,
+          url: previewSrc.startsWith("data:") ? "(data: uri)"
+            : previewSrc.startsWith("blob:") ? "(in-page blob)"
+            : previewSrc,
+          bytes: resultBuffer.length, contentType: sniffContentType(resultBuffer),
         };
         return true;
       });
@@ -348,12 +423,20 @@ export async function discover(options: DiscoverOptions): Promise<DiscoveryOutco
   if (inventory) {
     const actions = pickActionSelectors(inventory);
     outcome.manifest.controls = buildControls(inventory);
+    // Prefer a stable file-input selector when the page has exactly one —
+    // MakeEmoji's deep nth-of-type path breaks on minor DOM churn.
+    const fileInput = inventory.fileInputs.length === 1
+      ? "input[type=file]"
+      : (inventory.fileInputs[0] ?? null);
+    const hasGeneratedPreview = outcome.result.via === "preview-src";
     outcome.manifest.browser = {
-      readySelector: inventory.fileInputs[0] ?? null,
-      fileInputSelector: inventory.fileInputs[0] ?? null,
+      readySelector: fileInput,
+      fileInputSelector: fileInput,
       generateSelector: actions.generate,
-      resultSelector: null,
-      downloadSelector: actions.download,
+      resultSelector: hasGeneratedPreview
+        ? 'img[alt*="generated" i]'
+        : null,
+      downloadSelector: outcome.result.via === "download" ? actions.download : null,
       dismissSelectors: [],
     };
   }
@@ -431,6 +514,27 @@ function extensionFor(contentType: string | null): string {
   if (/webp/i.test(contentType)) return ".webp";
   if (/png/i.test(contentType)) return ".png";
   return ".bin";
+}
+
+/** Best-effort content type from magic bytes when the site gave us a blob. */
+function sniffContentType(buffer: Buffer): string | null {
+  if (buffer.length >= 6 && buffer.subarray(0, 3).toString("ascii") === "GIF") {
+    return "image/gif";
+  }
+  if (
+    buffer.length >= 8 &&
+    buffer[0] === 0x89 && buffer[1] === 0x50 && buffer[2] === 0x4e && buffer[3] === 0x47
+  ) {
+    return "image/png";
+  }
+  if (
+    buffer.length >= 12 &&
+    buffer.subarray(0, 4).toString("ascii") === "RIFF" &&
+    buffer.subarray(8, 12).toString("ascii") === "WEBP"
+  ) {
+    return "image/webp";
+  }
+  return null;
 }
 
 /**
