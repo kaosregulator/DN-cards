@@ -28,7 +28,7 @@ import { defaultAnimation, isManifestOption, suggestFor } from "./options.js";
 import {
   buildStylesPicker, buildStyleSearchModal, ensureStyleFocus, findStyle,
 } from "./styles-picker.js";
-import { buildCachedControlsReply, buildControls, describe, parseCid } from "./ui.js";
+import { buildCachedControlsReply, buildControls, buildUploadModal, describe, parseCid } from "./ui.js";
 import { createSession, endSession, getSession, touchSession, type EmojiSession } from "./session.js";
 
 /** Avatars are fetched large so there's detail to work with before downscaling. */
@@ -102,6 +102,10 @@ async function buildReply(session: EmojiSession, token: string) {
     describe(session, result.bytes, result.providerId, result.cached),
     `-# from ${session.sourceLabel}`,
   ];
+
+  if (/avatar/i.test(session.sourceLabel)) {
+    lines.push("-# Tip: tap **Upload image** to animate a Discord attachment instead of an avatar.");
+  }
 
   if (result.bytes > DISCORD_EMOJI_LIMIT) {
     // Still send it — it's a perfectly good file, just not uploadable as a
@@ -207,6 +211,12 @@ export async function handleEmojiInteraction(interaction: Interaction): Promise<
     return;
   }
 
+  // Mid-session Discord upload — replace avatar (or any source) with an attachment.
+  if (action === "upload" || action === "upload_modal") {
+    await handleUploadAction(interaction, token, action);
+    return;
+  }
+
   if (!interaction.isMessageComponent()) return;
 
   const patch = patchFor(action, interaction);
@@ -219,6 +229,54 @@ export async function handleEmojiInteraction(interaction: Interaction): Promise<
   if (!updated) return;
 
   try {
+    await interaction.editReply(await buildReply(updated, token));
+  } catch (err) {
+    await interaction.editReply({ content: failureMessage(err), files: [], components: [], embeds: [] });
+  }
+}
+
+async function handleUploadAction(
+  interaction: MessageComponentInteraction | ModalSubmitInteraction,
+  token: string,
+  action: string,
+): Promise<void> {
+  if (action === "upload" && interaction.isButton()) {
+    await interaction.showModal(buildUploadModal(token)).catch(() => {});
+    return;
+  }
+
+  if (action !== "upload_modal" || !interaction.isModalSubmit()) return;
+
+  const files = interaction.fields.getUploadedFiles("image", false);
+  const attachment = files?.first();
+  if (!attachment) {
+    await interaction.reply({
+      content: "❌ No image was attached. Tap **Upload image** again and pick a file.",
+      flags: MessageFlags.Ephemeral,
+    }).catch(() => {});
+    return;
+  }
+
+  const type = attachment.contentType?.toLowerCase() ?? "";
+  if (type && !type.startsWith("image/")) {
+    await interaction.reply({
+      content: "❌ That attachment isn't an image. Upload a PNG, JPG, GIF, or WebP.",
+      flags: MessageFlags.Ephemeral,
+    }).catch(() => {});
+    return;
+  }
+
+  await interaction.deferUpdate();
+
+  try {
+    const image = await loadSource(attachment.url);
+    const updated = touchSession(token, {
+      image,
+      sourceLabel: attachment.name ?? "your upload",
+      view: "controls",
+      lastResult: undefined,
+    });
+    if (!updated) return;
     await interaction.editReply(await buildReply(updated, token));
   } catch (err) {
     await interaction.editReply({ content: failureMessage(err), files: [], components: [], embeds: [] });

@@ -28,13 +28,13 @@ export function buildEmojiCommandJson() {
     .setDMPermission(false)
     .addAttachmentOption(o => o
       .setName("image")
-      .setDescription("The image to animate (defaults to your avatar)"))
+      .setDescription("Upload an image from Discord to animate"))
     .addUserOption(o => o
       .setName("user")
-      .setDescription("Use a member's avatar instead"))
+      .setDescription("Or use a member's avatar (defaults to yours)"))
     .addStringOption(o => o
       .setName("url")
-      .setDescription("Or a public image URL"))
+      .setDescription("Or paste a public image URL"))
     .addStringOption(o => o
       .setName("animation")
       .setDescription("Animation to apply")

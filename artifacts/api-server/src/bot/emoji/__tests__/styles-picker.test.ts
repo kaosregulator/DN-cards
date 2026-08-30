@@ -13,7 +13,7 @@ import {
   allStyles, pageStyles, ensureStyleFocus, STYLES_PAGE_SIZE,
 } from "../commands/styles-picker.js";
 import { createSession } from "../commands/session.js";
-import { buildControls, parseCid, cid } from "../commands/ui.js";
+import { buildControls, buildUploadModal, parseCid, cid } from "../commands/ui.js";
 import { setManifestForTesting } from "../providers/makeemoji/manifest.js";
 import type { Manifest } from "../providers/makeemoji/types.js";
 
@@ -175,7 +175,7 @@ describe("control panel styles entry", () => {
 
   afterEach(() => setManifestForTesting(null));
 
-  it("exposes a Browse styles button instead of a truncated animation select", () => {
+  it("exposes Browse styles and Upload image on the control panel", () => {
     const { session, token } = createSession({
       image: Buffer.from([1]),
       ownerId: "u1",
@@ -187,7 +187,19 @@ describe("control panel styles entry", () => {
     const flat = rows.flatMap(r => r.components.map(c => (c as { data: { custom_id?: string; label?: string } }).data));
     const stylesBtn = flat.find(c => c.custom_id === cid("styles", token));
     expect(stylesBtn?.label).toMatch(/Browse styles — pet/);
+    expect(flat.some(c => c.custom_id === cid("upload", token))).toBe(true);
     expect(flat.some(c => c.custom_id === cid("set_animation", token))).toBe(false);
+  });
+
+  it("builds an upload modal with Discord file upload", () => {
+    const modal = buildUploadModal("tok123");
+    const json = modal.toJSON() as {
+      custom_id: string;
+      components: { component?: { custom_id?: string; type?: number } }[];
+    };
+    expect(json.custom_id).toBe(cid("upload_modal", "tok123"));
+    expect(json.components[0]?.component?.custom_id).toBe("image");
+    expect(json.components[0]?.component?.type).toBe(19); // FileUpload
   });
 
   it("still parses namespaced customIds", () => {

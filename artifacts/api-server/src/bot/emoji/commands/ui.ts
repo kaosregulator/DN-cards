@@ -12,6 +12,7 @@
 
 import {
   ActionRowBuilder, AttachmentBuilder, ButtonBuilder, ButtonStyle,
+  FileUploadBuilder, LabelBuilder, ModalBuilder,
   StringSelectMenuBuilder, StringSelectMenuOptionBuilder,
 } from "discord.js";
 import { getManifest } from "../providers/makeemoji/manifest.js";
@@ -110,7 +111,31 @@ function stylesRow(session: EmojiSession, token: string): ActionRowBuilder<Butto
       .setLabel(`Browse styles — ${label}`.slice(0, 80))
       .setEmoji("🎨")
       .setStyle(ButtonStyle.Primary),
+    new ButtonBuilder()
+      .setCustomId(cid("upload", token))
+      .setLabel("Upload image")
+      .setEmoji("📎")
+      .setStyle(ButtonStyle.Secondary),
   );
+}
+
+/** Modal with Discord's native file-upload control — swap the source mid-session. */
+export function buildUploadModal(token: string): ModalBuilder {
+  return new ModalBuilder()
+    .setCustomId(cid("upload_modal", token))
+    .setTitle("Upload an image")
+    .addLabelComponents(
+      new LabelBuilder()
+        .setLabel("Image to animate")
+        .setDescription("Pick a PNG, JPG, GIF, or WebP from Discord")
+        .setFileUploadComponent(
+          new FileUploadBuilder()
+            .setCustomId("image")
+            .setRequired(true)
+            .setMinValues(1)
+            .setMaxValues(1),
+        ),
+    );
 }
 
 function actionsRow(session: EmojiSession, token: string): ActionRowBuilder<ButtonBuilder> {
@@ -157,6 +182,9 @@ export function buildCachedControlsReply(session: EmojiSession, token: string) {
     describe(session, result.bytes, result.providerId, result.cached),
     `-# from ${session.sourceLabel}`,
   ];
+  if (/avatar/i.test(session.sourceLabel)) {
+    lines.push("-# Tip: tap **Upload image** to animate a Discord attachment instead of an avatar.");
+  }
   return {
     content: lines.join("\n"),
     embeds: [],
