@@ -1,0 +1,511 @@
+{
+  "atlases": {
+    "bananaDance": [
+      "atlases/bananaDance/chunk-000-a7a3a42a7d068ef4.webp"
+    ],
+    "blanket": [
+      "atlases/blanket/chunk-000-08e8eaaa9769d3e7.webp"
+    ],
+    "blankies": [
+      "atlases/blankies/chunk-000-f672e1ad099f6e08.webp"
+    ],
+    "blaze": [
+      "atlases/blaze/chunk-000-4f6c5c7cae2ad408.webp"
+    ],
+    "blush": [
+      "atlases/blush/chunk-000-dd61b0b932c63bec.webp"
+    ],
+    "booba": [
+      "atlases/booba/chunk-000-f2a1eb59d2b98073.webp",
+      "atlases/booba/chunk-001-efd1d95b00928fd6.webp",
+      "atlases/booba/chunk-002-d38745648f64cf7f.webp",
+      "atlases/booba/chunk-003-71549eec86c87aaa.webp"
+    ],
+    "boooo": [
+      "atlases/boooo/chunk-000-a3db459262ba06c8.webp",
+      "atlases/boooo/chunk-001-4aead922417a7f8f.webp",
+      "atlases/boooo/chunk-002-1459689349c2382a.webp",
+      "atlases/boooo/chunk-003-40262bc4bdd0aa81.webp",
+      "atlases/boooo/chunk-004-07109ee4a72ca4f9.webp",
+      "atlases/boooo/chunk-005-00dc2f626ddd01fb.webp",
+      "atlases/boooo/chunk-006-16c9f6adec08619d.webp",
+      "atlases/boooo/chunk-007-d328d0ae197ad357.webp"
+    ],
+    "bubbles": [
+      "atlases/bubbles/chunk-000-cd705c5e1d1f3671.webp",
+      "atlases/bubbles/chunk-001-398be8eea92a6006.webp",
+      "atlases/bubbles/chunk-002-a38fbb2adb796a67.webp"
+    ],
+    "cat-ears": [
+      "atlases/cat-ears/chunk-000-67fb2b0f5edac020.webp"
+    ],
+    "claude-code": [
+      "atlases/claude-code/chunk-000-79e2f62b88e71f36.webp",
+      "atlases/claude-code/chunk-001-83be8d6c07b1dce6.webp"
+    ],
+    "claude-dancing": [
+      "atlases/claude-dancing/chunk-000-880e7b8b2cca6cae.webp",
+      "atlases/claude-dancing/chunk-001-bb5965b397d43d10.webp"
+    ],
+    "claude-football": [
+      "atlases/claude-football/chunk-000-a9fd75c8cf7f75c8.webp",
+      "atlases/claude-football/chunk-001-f1db0b8382f52ad9.webp",
+      "atlases/claude-football/chunk-002-02227bbfc3f7bfbd.webp",
+      "atlases/claude-football/chunk-003-b7610f5ac31367b3.webp"
+    ],
+    "claude-fu": [
+      "atlases/claude-fu/chunk-000-5a5ef5da01787d2a.webp",
+      "atlases/claude-fu/chunk-001-a569aa6488f96181.webp"
+    ],
+    "claude-idea": [
+      "atlases/claude-idea/chunk-000-393a41931e5c5052.webp"
+    ],
+    "claude-jam": [
+      "atlases/claude-jam/chunk-000-a03742161775340e.webp"
+    ],
+    "cleaning": [
+      "atlases/cleaning/chunk-000-cce2481578846c01.webp"
+    ],
+    "courage-scream": [
+      "atlases/courage-scream/chunk-000-94bc88a10f3b830e.webp",
+      "atlases/courage-scream/chunk-001-1c4d9090e43a9631.webp",
+      "atlases/courage-scream/chunk-002-0c400bcd991183ab.webp",
+      "atlases/courage-scream/chunk-003-64f85f5491c5100c.webp",
+      "atlases/courage-scream/chunk-004-6d180d6a75d4f318.webp",
+      "atlases/courage-scream/chunk-005-f9f3b59567ef7f52.webp",
+      "atlases/courage-scream/chunk-006-2ade5e84de17ba1d.webp",
+      "atlases/courage-scream/chunk-007-f2122a00384d98e2.webp",
+      "atlases/courage-scream/chunk-008-ea60ab672835c227.webp",
+      "atlases/courage-scream/chunk-009-d394fedf02b84166.webp",
+      "atlases/courage-scream/chunk-010-b740f5eac7aec96a.webp",
+      "atlases/courage-scream/chunk-011-d13e528df4143080.webp",
+      "atlases/courage-scream/chunk-012-94ea4e149d6fab05.webp",
+      "atlases/courage-scream/chunk-013-eac98942a8a45085.webp",
+      "atlases/courage-scream/chunk-014-5d4e71de37e24897.webp",
+      "atlases/courage-scream/chunk-015-4af1e28f0f058401.webp"
+    ],
+    "cute-ghost": [
+      "atlases/cute-ghost/chunk-000-941e761c96bdcfdb.webp"
+    ],
+    "deal-with-it": [
+      "atlases/deal-with-it/chunk-000-65b00e2a5f1624c9.webp"
+    ],
+    "ditto": [
+      "atlases/ditto/chunk-000-554318e9c365c726.webp",
+      "atlases/ditto/chunk-001-423c0e6dfbb3d19e.webp"
+    ],
+    "doesnt-know": [
+      "atlases/doesnt-know/chunk-000-368b9182ac4d80e7.webp"
+    ],
+    "drake-duh": [
+      "atlases/drake-duh/chunk-000-07bbc687d51e6f9e.webp",
+      "atlases/drake-duh/chunk-001-b0cc6618325ac8d1.webp",
+      "atlases/drake-duh/chunk-002-3ed9382a43c6ba25.webp",
+      "atlases/drake-duh/chunk-003-ec75dbe805e83b18.webp"
+    ],
+    "feels-weak-man": [
+      "atlases/feels-weak-man/chunk-000-ce150ce37a723a3a.webp",
+      "atlases/feels-weak-man/chunk-001-ba39e6126b61a336.webp",
+      "atlases/feels-weak-man/chunk-002-3ea0068e6731edf6.webp",
+      "atlases/feels-weak-man/chunk-003-41077ae73ac6f0a2.webp"
+    ],
+    "fire": [
+      "atlases/fire/chunk-000-785d64525332b524.webp"
+    ],
+    "flag": [
+      "atlases/flag/chunk-000-1326246bfc2b5031.webp"
+    ],
+    "floating-pumpkins": [
+      "atlases/floating-pumpkins/chunk-000-f796a414f5c10e5c.webp",
+      "atlases/floating-pumpkins/chunk-001-91a70777fa495aaf.webp"
+    ],
+    "gengar": [
+      "atlases/gengar/chunk-000-f4a266ef02a2eb9a.webp",
+      "atlases/gengar/chunk-001-d9af96eb7e63c454.webp",
+      "atlases/gengar/chunk-002-0a18cb0dc093d6c5.webp",
+      "atlases/gengar/chunk-003-019afc49120f639b.webp"
+    ],
+    "gigachad": [
+      "atlases/gigachad/chunk-000-5a2cbf063e3c9302.webp"
+    ],
+    "glorming": [
+      "atlases/glorming/chunk-000-f631bf5f993104c9.webp",
+      "atlases/glorming/chunk-001-cd7fce624c5d5476.webp",
+      "atlases/glorming/chunk-002-250b25aea8e35aaf.webp",
+      "atlases/glorming/chunk-003-8f7855bbbca82d8b.webp",
+      "atlases/glorming/chunk-004-46a47a80c8e578ac.webp",
+      "atlases/glorming/chunk-005-e17ccd88a9dd4a65.webp",
+      "atlases/glorming/chunk-006-b2e36f02dbb3551b.webp",
+      "atlases/glorming/chunk-007-a6ca44606a659db4.webp",
+      "atlases/glorming/chunk-008-4e626822fb07553d.webp",
+      "atlases/glorming/chunk-009-82c61dc73bdb9ab5.webp",
+      "atlases/glorming/chunk-010-72fb8ea589e207fe.webp",
+      "atlases/glorming/chunk-011-6dc8d849874f9936.webp",
+      "atlases/glorming/chunk-012-98ba04ca7d793fe4.webp",
+      "atlases/glorming/chunk-013-4e7f745f100c554e.webp"
+    ],
+    "green-fire": [
+      "atlases/green-fire/chunk-000-6f32214612614d20.webp"
+    ],
+    "huh": [
+      "atlases/huh/chunk-000-2e76b6c1a3103d53.webp",
+      "atlases/huh/chunk-001-3614beb4f6926d7a.webp",
+      "atlases/huh/chunk-002-cb39f78b819b3d35.webp"
+    ],
+    "ice-cube": [
+      "atlases/ice-cube/chunk-000-01588e4bb9b7e956.webp"
+    ],
+    "jail-time": [
+      "atlases/jail-time/chunk-000-290dfa414bc6f7e0.webp"
+    ],
+    "jammies": [
+      "atlases/jammies/chunk-000-a29394f91ba7bcef.webp"
+    ],
+    "keanu-thanks": [
+      "atlases/keanu-thanks/chunk-000-a20aabe15fb84075.webp",
+      "atlases/keanu-thanks/chunk-001-5ae8abc833a6ee05.webp",
+      "atlases/keanu-thanks/chunk-002-77d0607a8202988c.webp"
+    ],
+    "laser-eyes": [
+      "atlases/laser-eyes/chunk-000-6c886b0122676629.webp"
+    ],
+    "leave-me-alone": [
+      "atlases/leave-me-alone/chunk-000-01cc0c7b9bda5594.webp",
+      "atlases/leave-me-alone/chunk-001-1e2d84fd230aea92.webp",
+      "atlases/leave-me-alone/chunk-002-e1d99f465d546905.webp",
+      "atlases/leave-me-alone/chunk-003-529bf92d73afc3e4.webp",
+      "atlases/leave-me-alone/chunk-004-bb66708cefcdbbb6.webp",
+      "atlases/leave-me-alone/chunk-005-c4bb29494de546cc.webp",
+      "atlases/leave-me-alone/chunk-006-947f6324b507bdb5.webp",
+      "atlases/leave-me-alone/chunk-007-2f63db42fde6482e.webp",
+      "atlases/leave-me-alone/chunk-008-80443bfe77403586.webp"
+    ],
+    "let-me-in": [
+      "atlases/let-me-in/chunk-000-a6d5d8765dbcec1a.webp",
+      "atlases/let-me-in/chunk-001-9fa9640374fc41ae.webp",
+      "atlases/let-me-in/chunk-002-f6656246326a6644.webp",
+      "atlases/let-me-in/chunk-003-f7a55a9166e6bff7.webp"
+    ],
+    "lightspeed-jump": [
+      "atlases/lightspeed-jump/chunk-000-ead9741ae3ab74a0.webp",
+      "atlases/lightspeed-jump/chunk-001-f5beb7dd10f2d264.webp"
+    ],
+    "madge-clap": [
+      "atlases/madge-clap/chunk-000-c8b83ff24d73c181.webp"
+    ],
+    "meow-coffee-spit": [
+      "atlases/meow-coffee-spit/chunk-000-84a8d1a1acfb34b0.webp",
+      "atlases/meow-coffee-spit/chunk-001-dd3219af5bfdb390.webp",
+      "atlases/meow-coffee-spit/chunk-002-ab73cf351540f2c6.webp",
+      "atlases/meow-coffee-spit/chunk-003-7598b81cc3447ba4.webp",
+      "atlases/meow-coffee-spit/chunk-004-af91abc92b21b4a6.webp",
+      "atlases/meow-coffee-spit/chunk-005-b10c332b05a3f890.webp",
+      "atlases/meow-coffee-spit/chunk-006-d127818dc36a5dde.webp",
+      "atlases/meow-coffee-spit/chunk-007-79f0e3e665560e8b.webp",
+      "atlases/meow-coffee-spit/chunk-008-d6e10b5ae4961fcd.webp",
+      "atlases/meow-coffee-spit/chunk-009-d1ea55c098174dca.webp"
+    ],
+    "mhm": [
+      "atlases/mhm/chunk-000-e3d81bae1f9030cc.webp"
+    ],
+    "middle-fingers": [
+      "atlases/middle-fingers/chunk-000-06da1eb1d1bb45f5.webp",
+      "atlases/middle-fingers/chunk-001-1f180f644051b297.webp",
+      "atlases/middle-fingers/chunk-002-aa4b98cdb8c49719.webp",
+      "atlases/middle-fingers/chunk-003-3545f2622c43b2bc.webp"
+    ],
+    "mine-block": [
+      "atlases/mine-block/chunk-000-ec7b734d422c776a.webp",
+      "atlases/mine-block/chunk-001-9ba5cad9c7b006b3.webp",
+      "atlases/mine-block/chunk-002-d5a40102f166c65e.webp",
+      "atlases/mine-block/chunk-003-4f35b8e103911cc4.webp",
+      "atlases/mine-block/chunk-004-74e966e8d93bc2bc.webp",
+      "atlases/mine-block/chunk-005-293c57f7a8fb0053.webp",
+      "atlases/mine-block/chunk-006-733726ac857ee0ae.webp",
+      "atlases/mine-block/chunk-007-4a2e2cbb1d3ca0cb.webp",
+      "atlases/mine-block/chunk-008-b2956e1950a7cae1.webp",
+      "atlases/mine-block/chunk-009-632740bec71e5b49.webp",
+      "atlases/mine-block/chunk-010-df8546ae497e6801.webp",
+      "atlases/mine-block/chunk-011-8528593c4b334b84.webp"
+    ],
+    "nopers": [
+      "atlases/nopers/chunk-000-5bc2f2e2bb4db6b8.webp",
+      "atlases/nopers/chunk-001-16885f8614fd28e1.webp"
+    ],
+    "nyan-cat": [
+      "atlases/nyan-cat/chunk-000-a7833454c0044d7f.webp"
+    ],
+    "party-blob": [
+      "atlases/party-blob/chunk-000-235e39fccbf15b03.webp"
+    ],
+    "party-parrot": [
+      "atlases/party-parrot/chunk-000-bada81274dcb14ee.webp"
+    ],
+    "party-parrot-template": [
+      "atlases/party-parrot-template/chunk-000-31ac9c0b74695155.webp"
+    ],
+    "pat": [
+      "atlases/pat/chunk-000-a0947ec35a637cd9.webp"
+    ],
+    "pepe-flag": [
+      "atlases/pepe-flag/chunk-000-753e52817ef6074c.webp"
+    ],
+    "pepe-meltdown": [
+      "atlases/pepe-meltdown/chunk-000-e2a484eaa8f147d1.webp"
+    ],
+    "pepe-nodders": [
+      "atlases/pepe-nodders/chunk-000-013e4efea7625b22.webp"
+    ],
+    "pepe-point": [
+      "atlases/pepe-point/chunk-000-233489e3050fdb3d.webp"
+    ],
+    "pepo-popcorn": [
+      "atlases/pepo-popcorn/chunk-000-0a3e65fd10c71e0d.webp"
+    ],
+    "pet": [
+      "atlases/pet/chunk-000-698fee28d56b44a3.webp"
+    ],
+    "phone-time": [
+      "atlases/phone-time/chunk-000-2f4928b48acf8417.webp",
+      "atlases/phone-time/chunk-001-aa2eeb9cd4316dc4.webp",
+      "atlases/phone-time/chunk-002-9e441028f9bb5cdf.webp",
+      "atlases/phone-time/chunk-003-778604bebabcaf4b.webp",
+      "atlases/phone-time/chunk-004-4bb70d4c8360d731.webp",
+      "atlases/phone-time/chunk-005-bdf10859f80abc6c.webp"
+    ],
+    "pika-stand": [
+      "atlases/pika-stand/chunk-000-ee87b689812882ec.webp"
+    ],
+    "pikachu": [
+      "atlases/pikachu/chunk-000-ff0f39ca6ce27cf4.webp",
+      "atlases/pikachu/chunk-001-4cd3d6077356ecd4.webp"
+    ],
+    "pixar-think": [
+      "atlases/pixar-think/chunk-000-7846adec6d68d126.webp",
+      "atlases/pixar-think/chunk-001-0316ef80818a39df.webp",
+      "atlases/pixar-think/chunk-002-b8f36f006263edd7.webp",
+      "atlases/pixar-think/chunk-003-882b7c805406d910.webp",
+      "atlases/pixar-think/chunk-004-dc5e56c2d3ab8561.webp",
+      "atlases/pixar-think/chunk-005-ee70336abc6cf048.webp",
+      "atlases/pixar-think/chunk-006-84114d6a5861220a.webp",
+      "atlases/pixar-think/chunk-007-d06df6a1936b6fbc.webp",
+      "atlases/pixar-think/chunk-008-ee70336abc6cf048.webp",
+      "atlases/pixar-think/chunk-009-f0642a4756202c1d.webp",
+      "atlases/pixar-think/chunk-010-4f1965070ccdd9c6.webp",
+      "atlases/pixar-think/chunk-011-6530ebc3ced46ec3.webp",
+      "atlases/pixar-think/chunk-012-43490fd0afcbb5bd.webp",
+      "atlases/pixar-think/chunk-013-4f1965070ccdd9c6.webp",
+      "atlases/pixar-think/chunk-014-53040767f0a7cf3d.webp",
+      "atlases/pixar-think/chunk-015-52abe9257dd3b2d7.webp",
+      "atlases/pixar-think/chunk-016-2d0f997dc320d993.webp",
+      "atlases/pixar-think/chunk-017-25f9b9d6a9e9a8ef.webp",
+      "atlases/pixar-think/chunk-018-5bd24173a74eb8ba.webp"
+    ],
+    "pokeball-emerge": [
+      "atlases/pokeball-emerge/chunk-000-1e5355fa8075970a.webp",
+      "atlases/pokeball-emerge/chunk-001-dd39582e57bd001d.webp",
+      "atlases/pokeball-emerge/chunk-002-d8024f3ab627a6d2.webp",
+      "atlases/pokeball-emerge/chunk-003-35efc825efeb8db0.webp",
+      "atlases/pokeball-emerge/chunk-004-2a65763c7e389945.webp",
+      "atlases/pokeball-emerge/chunk-005-6aca42c97ec38d7b.webp"
+    ],
+    "pumpkin-cat": [
+      "atlases/pumpkin-cat/chunk-000-79a4f90ccd95d400.webp"
+    ],
+    "pumpkin-give": [
+      "atlases/pumpkin-give/chunk-000-5380f5f6f73c8793.webp",
+      "atlases/pumpkin-give/chunk-001-e9d34b0bcf5c4a58.webp",
+      "atlases/pumpkin-give/chunk-002-a45b07f07616cf44.webp",
+      "atlases/pumpkin-give/chunk-003-ea60541fb681f777.webp"
+    ],
+    "pumpkin-take": [
+      "atlases/pumpkin-take/chunk-000-d661cdc7a5b15466.webp",
+      "atlases/pumpkin-take/chunk-001-2a32e7a2b80e7fea.webp",
+      "atlases/pumpkin-take/chunk-002-226a0f7e5402a8b1.webp",
+      "atlases/pumpkin-take/chunk-003-72c9646382093708.webp"
+    ],
+    "purple-stars": [
+      "atlases/purple-stars/chunk-000-47ce699050c16186.webp"
+    ],
+    "rare-ghost": [
+      "atlases/rare-ghost/chunk-000-0633c91b1f211d13.webp"
+    ],
+    "reading": [
+      "atlases/reading/chunk-000-18c6440c3ce37e72.webp"
+    ],
+    "red-alert": [
+      "atlases/red-alert/chunk-000-59108fe0aae1c1d6.webp",
+      "atlases/red-alert/chunk-001-439bfbd1b3d84d94.webp"
+    ],
+    "reveal": [
+      "atlases/reveal/chunk-000-84aef4e62890afd6.webp",
+      "atlases/reveal/chunk-001-d20fa81f1b2f1f73.webp",
+      "atlases/reveal/chunk-002-d255201b9adf08cb.webp",
+      "atlases/reveal/chunk-003-cc3c4b41d7acc9ac.webp"
+    ],
+    "runn": [
+      "atlases/runn/chunk-000-5d40dfb721223ff2.webp",
+      "atlases/runn/chunk-001-109447527631caa2.webp",
+      "atlases/runn/chunk-002-71b46538043d0d80.webp",
+      "atlases/runn/chunk-003-5be24cf1abbd398a.webp",
+      "atlases/runn/chunk-004-98a6dcb6194605b2.webp",
+      "atlases/runn/chunk-005-67948c5b60430ba1.webp",
+      "atlases/runn/chunk-006-8d82df3fc771a97d.webp",
+      "atlases/runn/chunk-007-16dde5cb924f6461.webp",
+      "atlases/runn/chunk-008-b3e861b5fd086995.webp",
+      "atlases/runn/chunk-009-ed73c69312a20877.webp",
+      "atlases/runn/chunk-010-72911a4081d82ece.webp"
+    ],
+    "sad-blob": [
+      "atlases/sad-blob/chunk-000-efc7c78f5cbaa679.webp",
+      "atlases/sad-blob/chunk-001-d8d8d407ca30951a.webp"
+    ],
+    "skeleton-dance": [
+      "atlases/skeleton-dance/chunk-000-7299139b7bca176b.webp"
+    ],
+    "smart": [
+      "atlases/smart/chunk-000-5d27167aad0883eb.webp"
+    ],
+    "smoge": [
+      "atlases/smoge/chunk-000-64f5fe4211b76f16.webp",
+      "atlases/smoge/chunk-001-bb35929ca7ea8584.webp",
+      "atlases/smoge/chunk-002-1cbd5c3c537c4e2e.webp"
+    ],
+    "snorlax": [
+      "atlases/snorlax/chunk-000-3fdc9847cb2a65e1.webp",
+      "atlases/snorlax/chunk-001-ac06391d6d25e9a5.webp",
+      "atlases/snorlax/chunk-002-026a20f2307c713b.webp",
+      "atlases/snorlax/chunk-003-b9bacd51cfae1e4c.webp",
+      "atlases/snorlax/chunk-004-a352a87cfb696940.webp",
+      "atlases/snorlax/chunk-005-21a28a282a17193b.webp"
+    ],
+    "speechless": [
+      "atlases/speechless/chunk-000-5e1ef3fffcbd97bd.webp",
+      "atlases/speechless/chunk-001-a04cd64058efd81f.webp",
+      "atlases/speechless/chunk-002-28b0ebe3a1c88472.webp",
+      "atlases/speechless/chunk-003-71ac79fbf9e9b012.webp",
+      "atlases/speechless/chunk-004-b663e8c875d7822d.webp"
+    ],
+    "spongebob-watching-tv": [
+      "atlases/spongebob-watching-tv/chunk-000-17dd5443b6c345a0.webp",
+      "atlases/spongebob-watching-tv/chunk-001-a2b776d6378adb21.webp",
+      "atlases/spongebob-watching-tv/chunk-002-fdbb7a19e63e7050.webp",
+      "atlases/spongebob-watching-tv/chunk-003-9d15cff4d80aab2e.webp",
+      "atlases/spongebob-watching-tv/chunk-004-227d751f0642b6f5.webp"
+    ],
+    "spongebob-worship": [
+      "atlases/spongebob-worship/chunk-000-0acf5cabc7ccffd4.webp"
+    ],
+    "sure": [
+      "atlases/sure/chunk-000-7d0777942a11478e.webp",
+      "atlases/sure/chunk-001-f4d8d772a7b03b9a.webp"
+    ],
+    "surprised-clapping": [
+      "atlases/surprised-clapping/chunk-000-78459ff793bf99ff.webp",
+      "atlases/surprised-clapping/chunk-001-daddab16733f0392.webp",
+      "atlases/surprised-clapping/chunk-002-d1e72727e39d017d.webp",
+      "atlases/surprised-clapping/chunk-003-05a3a0ee83480ef9.webp",
+      "atlases/surprised-clapping/chunk-004-0ff5c2e9ebdc11b4.webp"
+    ],
+    "venom": [
+      "atlases/venom/chunk-000-3b25bd64fa9895b0.webp",
+      "atlases/venom/chunk-001-8cdf0f668cbde086.webp",
+      "atlases/venom/chunk-002-936883a609f544ab.webp",
+      "atlases/venom/chunk-003-12f41fcb2a7f0d5f.webp",
+      "atlases/venom/chunk-004-6529e2d641ae0ff6.webp",
+      "atlases/venom/chunk-005-773bddc1d0993480.webp",
+      "atlases/venom/chunk-006-481073541240428a.webp",
+      "atlases/venom/chunk-007-1836a420c0d0cd86.webp",
+      "atlases/venom/chunk-008-5b0ede90a6e35f31.webp",
+      "atlases/venom/chunk-009-c2cc6e461fc0765f.webp",
+      "atlases/venom/chunk-010-fded230b16a9a323.webp",
+      "atlases/venom/chunk-011-204795935b29be78.webp",
+      "atlases/venom/chunk-012-14859b8f61cff2aa.webp",
+      "atlases/venom/chunk-013-fb842afb7702cc55.webp"
+    ],
+    "willem-dafoe": [
+      "atlases/willem-dafoe/chunk-000-56477df67b83f37f.webp",
+      "atlases/willem-dafoe/chunk-001-457b264bc4c8033d.webp"
+    ],
+    "wolverine": [
+      "atlases/wolverine/chunk-000-1f2057f3b7f39bbb.webp",
+      "atlases/wolverine/chunk-001-357606aaab331f30.webp",
+      "atlases/wolverine/chunk-002-edef3ab0f9212277.webp",
+      "atlases/wolverine/chunk-003-9cf884eaa1b7ea6e.webp",
+      "atlases/wolverine/chunk-004-f45379096e783964.webp",
+      "atlases/wolverine/chunk-005-878160551363c1a5.webp",
+      "atlases/wolverine/chunk-006-51b53f6a280f4dd6.webp"
+    ]
+  },
+  "frames": {
+    "anticipation": [
+      "frames/anticipation/frame_0001.png"
+    ],
+    "bat-signal": [
+      "frames/bat-signal/frame_0001.png"
+    ],
+    "bat-signal-scene": [
+      "frames/bat-signal-scene/frame_0001.png"
+    ],
+    "binoculars": [
+      "frames/binoculars/frame_0001.png"
+    ],
+    "blob-smiley": [
+      "frames/blob-smiley/frame_0001.png"
+    ],
+    "comfy": [
+      "frames/comfy/frame_0001.png"
+    ],
+    "concerned": [
+      "frames/concerned/frame_0001.png"
+    ],
+    "facepalm": [
+      "frames/facepalm/frame_0001.png"
+    ],
+    "frog-flag": [
+      "frames/frog-flag/frame_0001.png"
+    ],
+    "fry": [
+      "frames/fry/frame_0001.png"
+    ],
+    "glorpa": [
+      "frames/glorpa/frame_0001.png"
+    ],
+    "laser-eyes": [
+      "frames/laser-eyes/1.png",
+      "frames/laser-eyes/10.png",
+      "frames/laser-eyes/2.png",
+      "frames/laser-eyes/3.png",
+      "frames/laser-eyes/4.png",
+      "frames/laser-eyes/5.png",
+      "frames/laser-eyes/6.png",
+      "frames/laser-eyes/7.png",
+      "frames/laser-eyes/8.png",
+      "frames/laser-eyes/9.png"
+    ],
+    "lolface": [
+      "frames/lolface/frame_0001.png"
+    ],
+    "mustache-glasses": [
+      "frames/mustache-glasses/frame_0001.png"
+    ],
+    "pepe-binoculars": [
+      "frames/pepe-binoculars/frame_0001.png"
+    ],
+    "pumpkin-surprise": [
+      "frames/pumpkin-surprise/frame_0001.png"
+    ],
+    "sisyphus": [
+      "frames/sisyphus/frame_0001.png"
+    ],
+    "smadge": [
+      "frames/smadge/frame_0001.png"
+    ],
+    "surprised-pikachu": [
+      "frames/surprised-pikachu/frame_0001.png"
+    ],
+    "suspicion": [
+      "frames/suspicion/frame_0001.png"
+    ]
+  }
+}

@@ -1,0 +1,2845 @@
+{
+  "version": "2.1.0",
+  "description": "MakeEmoji style → offline recipe primitive. Only offlineReady styles render.",
+  "count": 473,
+  "mappings": [
+    {
+      "styleId": "none",
+      "family": "passthrough",
+      "primitive": "passthrough",
+      "fidelity": "exact"
+    },
+    {
+      "styleId": "pet",
+      "family": "atlas",
+      "primitive": "atlas",
+      "fidelity": "approximate-composite"
+    },
+    {
+      "styleId": "party-parrot",
+      "family": "atlas",
+      "primitive": "atlas",
+      "fidelity": "approximate-composite"
+    },
+    {
+      "styleId": "parrot",
+      "family": "transform",
+      "primitive": "bounce",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "parrot-hat",
+      "family": "transform",
+      "primitive": "rainbow",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "parrot-hold",
+      "family": "transform",
+      "primitive": "rainbow",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "party-blob",
+      "family": "atlas",
+      "primitive": "atlas",
+      "fidelity": "approximate-composite"
+    },
+    {
+      "styleId": "sad-blob",
+      "family": "atlas",
+      "primitive": "atlas",
+      "fidelity": "approximate-composite"
+    },
+    {
+      "styleId": "jammies",
+      "family": "atlas",
+      "primitive": "atlas",
+      "fidelity": "approximate-composite"
+    },
+    {
+      "styleId": "nyan-cat",
+      "family": "atlas",
+      "primitive": "atlas",
+      "fidelity": "approximate-composite"
+    },
+    {
+      "styleId": "thing-cat",
+      "family": "transform",
+      "primitive": "glitch",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "nyan:➡️",
+      "family": "transform",
+      "primitive": "wobble",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "lightspeed-jump",
+      "family": "atlas",
+      "primitive": "atlas",
+      "fidelity": "approximate-composite"
+    },
+    {
+      "styleId": "lightsaber",
+      "family": "transform",
+      "primitive": "wobble",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "shake",
+      "family": "transform",
+      "primitive": "shake",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "party",
+      "family": "transform",
+      "primitive": "party",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "peepo",
+      "family": "overlay",
+      "primitive": "overlay_hole",
+      "fidelity": "approximate-composite"
+    },
+    {
+      "styleId": "peepo-sit",
+      "family": "overlay",
+      "primitive": "overlay_hole",
+      "fidelity": "approximate-composite"
+    },
+    {
+      "styleId": "peepo-stop",
+      "family": "overlay",
+      "primitive": "overlay_hole",
+      "fidelity": "approximate-composite"
+    },
+    {
+      "styleId": "peepo-shy",
+      "family": "overlay",
+      "primitive": "overlay_hole",
+      "fidelity": "approximate-composite"
+    },
+    {
+      "styleId": "peepo-want",
+      "family": "overlay",
+      "primitive": "overlay_hole",
+      "fidelity": "approximate-composite"
+    },
+    {
+      "styleId": "peepo-love",
+      "family": "overlay",
+      "primitive": "overlay_hole",
+      "fidelity": "approximate-composite"
+    },
+    {
+      "styleId": "enter",
+      "family": "transform",
+      "primitive": "slide",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "exit",
+      "family": "transform",
+      "primitive": "slide",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "bufo-offers",
+      "family": "transform",
+      "primitive": "pulse",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "bufo-takes",
+      "family": "transform",
+      "primitive": "pulse",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "conga-line:➡️",
+      "family": "transform",
+      "primitive": "glitch",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "transmute-reality",
+      "family": "transform",
+      "primitive": "bounce",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "nesting-doll:➡️",
+      "family": "transform",
+      "primitive": "shake",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "amaze",
+      "family": "transform",
+      "primitive": "rainbow",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "flare-eyes",
+      "family": "transform",
+      "primitive": "nod",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "ponder",
+      "family": "transform",
+      "primitive": "tilt",
+      "fidelity": "approximate-composite"
+    },
+    {
+      "styleId": "fall-leaves",
+      "family": "transform",
+      "primitive": "slide",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "pumpkin",
+      "family": "overlay",
+      "primitive": "overlay_hole",
+      "fidelity": "approximate-composite"
+    },
+    {
+      "styleId": "pumpkin2",
+      "family": "overlay",
+      "primitive": "overlay_hole",
+      "fidelity": "approximate-composite"
+    },
+    {
+      "styleId": "cute-ghost",
+      "family": "atlas",
+      "primitive": "atlas",
+      "fidelity": "approximate-composite"
+    },
+    {
+      "styleId": "pumpkin-surprise",
+      "family": "frames",
+      "primitive": "frames",
+      "fidelity": "approximate-composite"
+    },
+    {
+      "styleId": "pumpkin-give",
+      "family": "atlas",
+      "primitive": "atlas",
+      "fidelity": "approximate-composite"
+    },
+    {
+      "styleId": "pumpkin-take",
+      "family": "atlas",
+      "primitive": "atlas",
+      "fidelity": "approximate-composite"
+    },
+    {
+      "styleId": "skeleton-dance",
+      "family": "atlas",
+      "primitive": "atlas",
+      "fidelity": "approximate-composite"
+    },
+    {
+      "styleId": "green-fire",
+      "family": "atlas",
+      "primitive": "atlas",
+      "fidelity": "approximate-composite"
+    },
+    {
+      "styleId": "floating-pumpkins",
+      "family": "atlas",
+      "primitive": "atlas",
+      "fidelity": "approximate-composite"
+    },
+    {
+      "styleId": "rare-ghost",
+      "family": "atlas",
+      "primitive": "atlas",
+      "fidelity": "approximate-composite"
+    },
+    {
+      "styleId": "pumpkin-cat",
+      "family": "atlas",
+      "primitive": "atlas",
+      "fidelity": "approximate-composite"
+    },
+    {
+      "styleId": "purple-stars",
+      "family": "atlas",
+      "primitive": "atlas",
+      "fidelity": "approximate-composite"
+    },
+    {
+      "styleId": "vampire-offers",
+      "family": "transform",
+      "primitive": "pulse",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "vampire-takes",
+      "family": "transform",
+      "primitive": "pulse",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "will-presents",
+      "family": "transform",
+      "primitive": "pulse",
+      "fidelity": "approximate-composite"
+    },
+    {
+      "styleId": "pikachu",
+      "family": "atlas",
+      "primitive": "atlas",
+      "fidelity": "approximate-composite"
+    },
+    {
+      "styleId": "pika-stand",
+      "family": "atlas",
+      "primitive": "atlas",
+      "fidelity": "approximate-composite"
+    },
+    {
+      "styleId": "surprised-pikachu",
+      "family": "frames",
+      "primitive": "frames",
+      "fidelity": "approximate-composite"
+    },
+    {
+      "styleId": "gengar",
+      "family": "atlas",
+      "primitive": "atlas",
+      "fidelity": "approximate-composite"
+    },
+    {
+      "styleId": "snorlax",
+      "family": "atlas",
+      "primitive": "atlas",
+      "fidelity": "approximate-composite"
+    },
+    {
+      "styleId": "ditto",
+      "family": "atlas",
+      "primitive": "atlas",
+      "fidelity": "approximate-composite"
+    },
+    {
+      "styleId": "jumping-on-the-bed",
+      "family": "transform",
+      "primitive": "bounce",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "long",
+      "family": "transform",
+      "primitive": "pulse",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "i-love",
+      "family": "transform",
+      "primitive": "heartbeat",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "tilt",
+      "family": "transform",
+      "primitive": "tilt",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "runn",
+      "family": "atlas",
+      "primitive": "atlas",
+      "fidelity": "approximate-composite"
+    },
+    {
+      "styleId": "pepe-meltdown",
+      "family": "atlas",
+      "primitive": "atlas",
+      "fidelity": "approximate-composite"
+    },
+    {
+      "styleId": "pp-hopper",
+      "family": "transform",
+      "primitive": "bounce",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "pokeball-emerge",
+      "family": "atlas",
+      "primitive": "atlas",
+      "fidelity": "approximate-composite"
+    },
+    {
+      "styleId": "pokeball-go",
+      "family": "transform",
+      "primitive": "rainbow",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "pokeball-capture",
+      "family": "transform",
+      "primitive": "rainbow",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "pokeball-almost",
+      "family": "transform",
+      "primitive": "rainbow",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "rainbow-bloom",
+      "family": "transform",
+      "primitive": "rainbow",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "pastel-bloom",
+      "family": "transform",
+      "primitive": "wobble",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "jam",
+      "family": "transform",
+      "primitive": "wobble",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "lolface",
+      "family": "frames",
+      "primitive": "frames",
+      "fidelity": "approximate-composite"
+    },
+    {
+      "styleId": "blob-smiley",
+      "family": "frames",
+      "primitive": "frames",
+      "fidelity": "approximate-composite"
+    },
+    {
+      "styleId": "flag",
+      "family": "atlas",
+      "primitive": "atlas",
+      "fidelity": "approximate-composite"
+    },
+    {
+      "styleId": "pepe-flag",
+      "family": "atlas",
+      "primitive": "atlas",
+      "fidelity": "approximate-composite"
+    },
+    {
+      "styleId": "frog-flag",
+      "family": "frames",
+      "primitive": "frames",
+      "fidelity": "approximate-composite"
+    },
+    {
+      "styleId": "sisyphus",
+      "family": "frames",
+      "primitive": "frames",
+      "fidelity": "approximate-composite"
+    },
+    {
+      "styleId": "hype",
+      "family": "transform",
+      "primitive": "bounce",
+      "fidelity": "approximate-composite"
+    },
+    {
+      "styleId": "hype-shake",
+      "family": "transform",
+      "primitive": "shake",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "hype-jam",
+      "family": "transform",
+      "primitive": "wobble",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "claude-fu",
+      "family": "atlas",
+      "primitive": "atlas",
+      "fidelity": "approximate-composite"
+    },
+    {
+      "styleId": "claude-jam",
+      "family": "atlas",
+      "primitive": "atlas",
+      "fidelity": "approximate-composite"
+    },
+    {
+      "styleId": "claude-dancing",
+      "family": "atlas",
+      "primitive": "atlas",
+      "fidelity": "approximate-composite"
+    },
+    {
+      "styleId": "claude-idea",
+      "family": "atlas",
+      "primitive": "atlas",
+      "fidelity": "approximate-composite"
+    },
+    {
+      "styleId": "claude-code",
+      "family": "atlas",
+      "primitive": "atlas",
+      "fidelity": "approximate-composite"
+    },
+    {
+      "styleId": "claude-football",
+      "family": "atlas",
+      "primitive": "atlas",
+      "fidelity": "approximate-composite"
+    },
+    {
+      "styleId": "angel",
+      "family": "overlay",
+      "primitive": "overlay_hole",
+      "fidelity": "approximate-composite"
+    },
+    {
+      "styleId": "blame",
+      "family": "overlay",
+      "primitive": "overlay_hole",
+      "fidelity": "approximate-composite"
+    },
+    {
+      "styleId": "blame-animated",
+      "family": "transform",
+      "primitive": "pulse",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "aha",
+      "family": "transform",
+      "primitive": "pulse",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "sir",
+      "family": "overlay",
+      "primitive": "overlay_hole",
+      "fidelity": "approximate-composite"
+    },
+    {
+      "styleId": "pepe",
+      "family": "overlay",
+      "primitive": "overlay_hole",
+      "fidelity": "approximate-composite"
+    },
+    {
+      "styleId": "prayge",
+      "family": "transform",
+      "primitive": "pulse",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "copium",
+      "family": "transform",
+      "primitive": "pulse",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "sadge",
+      "family": "overlay",
+      "primitive": "overlay_hole",
+      "fidelity": "approximate-composite"
+    },
+    {
+      "styleId": "pepe-cheer",
+      "family": "overlay",
+      "primitive": "overlay_hole",
+      "fidelity": "approximate-composite"
+    },
+    {
+      "styleId": "pepe-dab",
+      "family": "overlay",
+      "primitive": "overlay_hole",
+      "fidelity": "approximate-composite"
+    },
+    {
+      "styleId": "pepega",
+      "family": "overlay",
+      "primitive": "overlay_hole",
+      "fidelity": "approximate-composite"
+    },
+    {
+      "styleId": "laser-eyes",
+      "family": "atlas",
+      "primitive": "atlas",
+      "fidelity": "approximate-composite"
+    },
+    {
+      "styleId": "panic",
+      "family": "transform",
+      "primitive": "glitch",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "crying-laughing",
+      "family": "overlay",
+      "primitive": "overlay_hole",
+      "fidelity": "approximate-composite"
+    },
+    {
+      "styleId": "stonks",
+      "family": "overlay",
+      "primitive": "overlay_hole",
+      "fidelity": "approximate-composite"
+    },
+    {
+      "styleId": "not-stonks",
+      "family": "overlay",
+      "primitive": "overlay_hole",
+      "fidelity": "approximate-composite"
+    },
+    {
+      "styleId": "coggers",
+      "family": "overlay",
+      "primitive": "overlay_hole",
+      "fidelity": "approximate-composite"
+    },
+    {
+      "styleId": "wokege",
+      "family": "overlay",
+      "primitive": "overlay_hole",
+      "fidelity": "approximate-composite"
+    },
+    {
+      "styleId": "heyyeyaa",
+      "family": "overlay",
+      "primitive": "overlay_hole",
+      "fidelity": "approximate-composite"
+    },
+    {
+      "styleId": "spin:➡️",
+      "family": "transform",
+      "primitive": "spin",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "deal-with-it",
+      "family": "atlas",
+      "primitive": "atlas",
+      "fidelity": "approximate-composite"
+    },
+    {
+      "styleId": "glorp",
+      "family": "overlay",
+      "primitive": "overlay_hole",
+      "fidelity": "approximate-composite"
+    },
+    {
+      "styleId": "glorpa",
+      "family": "frames",
+      "primitive": "frames",
+      "fidelity": "approximate-composite"
+    },
+    {
+      "styleId": "glorming:➡️",
+      "family": "atlas",
+      "primitive": "atlas",
+      "fidelity": "approximate-composite"
+    },
+    {
+      "styleId": "labubu",
+      "family": "overlay",
+      "primitive": "overlay_hole",
+      "fidelity": "approximate-composite"
+    },
+    {
+      "styleId": "hazmat",
+      "family": "overlay",
+      "primitive": "overlay_hole",
+      "fidelity": "approximate-composite"
+    },
+    {
+      "styleId": "hazmat-2",
+      "family": "overlay",
+      "primitive": "overlay_hole",
+      "fidelity": "approximate-composite"
+    },
+    {
+      "styleId": "hoodie",
+      "family": "overlay",
+      "primitive": "overlay_hole",
+      "fidelity": "approximate-composite"
+    },
+    {
+      "styleId": "oui-oui",
+      "family": "overlay",
+      "primitive": "overlay_hole",
+      "fidelity": "approximate-composite"
+    },
+    {
+      "styleId": "cowboy",
+      "family": "overlay",
+      "primitive": "overlay_hole",
+      "fidelity": "approximate-composite"
+    },
+    {
+      "styleId": "burn",
+      "family": "transform",
+      "primitive": "pulse",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "on-fire",
+      "family": "transform",
+      "primitive": "pulse",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "blaze",
+      "family": "atlas",
+      "primitive": "atlas",
+      "fidelity": "approximate-composite"
+    },
+    {
+      "styleId": "banana-dance",
+      "family": "atlas",
+      "primitive": "atlas",
+      "fidelity": "approximate-composite"
+    },
+    {
+      "styleId": "bat-signal",
+      "family": "frames",
+      "primitive": "frames",
+      "fidelity": "approximate-composite"
+    },
+    {
+      "styleId": "bat-signal-scene",
+      "family": "frames",
+      "primitive": "frames",
+      "fidelity": "approximate-composite"
+    },
+    {
+      "styleId": "blankies",
+      "family": "atlas",
+      "primitive": "atlas",
+      "fidelity": "approximate-composite"
+    },
+    {
+      "styleId": "gigachad",
+      "family": "atlas",
+      "primitive": "atlas",
+      "fidelity": "approximate-composite"
+    },
+    {
+      "styleId": "let-me-in",
+      "family": "atlas",
+      "primitive": "atlas",
+      "fidelity": "approximate-composite"
+    },
+    {
+      "styleId": "keanu-thanks",
+      "family": "atlas",
+      "primitive": "atlas",
+      "fidelity": "approximate-composite"
+    },
+    {
+      "styleId": "red-alert",
+      "family": "atlas",
+      "primitive": "atlas",
+      "fidelity": "approximate-composite"
+    },
+    {
+      "styleId": "facepalm",
+      "family": "frames",
+      "primitive": "frames",
+      "fidelity": "approximate-composite"
+    },
+    {
+      "styleId": "smart",
+      "family": "atlas",
+      "primitive": "atlas",
+      "fidelity": "approximate-composite"
+    },
+    {
+      "styleId": "fry",
+      "family": "frames",
+      "primitive": "frames",
+      "fidelity": "approximate-composite"
+    },
+    {
+      "styleId": "blush",
+      "family": "atlas",
+      "primitive": "atlas",
+      "fidelity": "approximate-composite"
+    },
+    {
+      "styleId": "leave-me-alone",
+      "family": "atlas",
+      "primitive": "atlas",
+      "fidelity": "approximate-composite"
+    },
+    {
+      "styleId": "mine-block",
+      "family": "atlas",
+      "primitive": "atlas",
+      "fidelity": "approximate-composite"
+    },
+    {
+      "styleId": "phone-time",
+      "family": "atlas",
+      "primitive": "atlas",
+      "fidelity": "approximate-composite"
+    },
+    {
+      "styleId": "ice-cube",
+      "family": "atlas",
+      "primitive": "atlas",
+      "fidelity": "approximate-composite"
+    },
+    {
+      "styleId": "cat-ears",
+      "family": "atlas",
+      "primitive": "atlas",
+      "fidelity": "approximate-composite"
+    },
+    {
+      "styleId": "wolverine",
+      "family": "atlas",
+      "primitive": "atlas",
+      "fidelity": "approximate-composite"
+    },
+    {
+      "styleId": "courage-scream",
+      "family": "atlas",
+      "primitive": "atlas",
+      "fidelity": "approximate-composite"
+    },
+    {
+      "styleId": "spongebob-worship",
+      "family": "atlas",
+      "primitive": "atlas",
+      "fidelity": "approximate-composite"
+    },
+    {
+      "styleId": "bubbles",
+      "family": "atlas",
+      "primitive": "atlas",
+      "fidelity": "approximate-composite"
+    },
+    {
+      "styleId": "boooo",
+      "family": "atlas",
+      "primitive": "atlas",
+      "fidelity": "approximate-composite"
+    },
+    {
+      "styleId": "pat",
+      "family": "atlas",
+      "primitive": "atlas",
+      "fidelity": "approximate-composite"
+    },
+    {
+      "styleId": "cleaning",
+      "family": "atlas",
+      "primitive": "atlas",
+      "fidelity": "approximate-composite"
+    },
+    {
+      "styleId": "blanket",
+      "family": "atlas",
+      "primitive": "atlas",
+      "fidelity": "approximate-composite"
+    },
+    {
+      "styleId": "middle-fingers",
+      "family": "atlas",
+      "primitive": "atlas",
+      "fidelity": "approximate-composite"
+    },
+    {
+      "styleId": "doesnt-know",
+      "family": "atlas",
+      "primitive": "atlas",
+      "fidelity": "approximate-composite"
+    },
+    {
+      "styleId": "venom",
+      "family": "atlas",
+      "primitive": "atlas",
+      "fidelity": "approximate-composite"
+    },
+    {
+      "styleId": "mustache-glasses",
+      "family": "frames",
+      "primitive": "frames",
+      "fidelity": "approximate-composite"
+    },
+    {
+      "styleId": "comfy",
+      "family": "frames",
+      "primitive": "frames",
+      "fidelity": "approximate-composite"
+    },
+    {
+      "styleId": "jail-time",
+      "family": "atlas",
+      "primitive": "atlas",
+      "fidelity": "approximate-composite"
+    },
+    {
+      "styleId": "pixar-think",
+      "family": "atlas",
+      "primitive": "atlas",
+      "fidelity": "approximate-composite"
+    },
+    {
+      "styleId": "reading",
+      "family": "atlas",
+      "primitive": "atlas",
+      "fidelity": "approximate-composite"
+    },
+    {
+      "styleId": "binoculars",
+      "family": "frames",
+      "primitive": "frames",
+      "fidelity": "approximate-composite"
+    },
+    {
+      "styleId": "spongebob-watching-tv",
+      "family": "atlas",
+      "primitive": "atlas",
+      "fidelity": "approximate-composite"
+    },
+    {
+      "styleId": "reveal",
+      "family": "atlas",
+      "primitive": "atlas",
+      "fidelity": "approximate-composite"
+    },
+    {
+      "styleId": "concerned",
+      "family": "frames",
+      "primitive": "frames",
+      "fidelity": "approximate-composite"
+    },
+    {
+      "styleId": "huh",
+      "family": "atlas",
+      "primitive": "atlas",
+      "fidelity": "approximate-composite"
+    },
+    {
+      "styleId": "speechless",
+      "family": "atlas",
+      "primitive": "atlas",
+      "fidelity": "approximate-composite"
+    },
+    {
+      "styleId": "suspicion",
+      "family": "frames",
+      "primitive": "frames",
+      "fidelity": "approximate-composite"
+    },
+    {
+      "styleId": "anticipation",
+      "family": "frames",
+      "primitive": "frames",
+      "fidelity": "approximate-composite"
+    },
+    {
+      "styleId": "surprised-clapping",
+      "family": "atlas",
+      "primitive": "atlas",
+      "fidelity": "approximate-composite"
+    },
+    {
+      "styleId": "drake-duh",
+      "family": "atlas",
+      "primitive": "atlas",
+      "fidelity": "approximate-composite"
+    },
+    {
+      "styleId": "meow-coffee-spit",
+      "family": "atlas",
+      "primitive": "atlas",
+      "fidelity": "approximate-composite"
+    },
+    {
+      "styleId": "willem-dafoe",
+      "family": "atlas",
+      "primitive": "atlas",
+      "fidelity": "approximate-composite"
+    },
+    {
+      "styleId": "mhm",
+      "family": "atlas",
+      "primitive": "atlas",
+      "fidelity": "approximate-composite"
+    },
+    {
+      "styleId": "pepe-binoculars",
+      "family": "frames",
+      "primitive": "frames",
+      "fidelity": "approximate-composite"
+    },
+    {
+      "styleId": "pepe-point",
+      "family": "atlas",
+      "primitive": "atlas",
+      "fidelity": "approximate-composite"
+    },
+    {
+      "styleId": "smoge",
+      "family": "atlas",
+      "primitive": "atlas",
+      "fidelity": "approximate-composite"
+    },
+    {
+      "styleId": "booba",
+      "family": "atlas",
+      "primitive": "atlas",
+      "fidelity": "approximate-composite"
+    },
+    {
+      "styleId": "feels-weak-man",
+      "family": "atlas",
+      "primitive": "atlas",
+      "fidelity": "approximate-composite"
+    },
+    {
+      "styleId": "madge-clap",
+      "family": "atlas",
+      "primitive": "atlas",
+      "fidelity": "approximate-composite"
+    },
+    {
+      "styleId": "smadge",
+      "family": "frames",
+      "primitive": "frames",
+      "fidelity": "approximate-composite"
+    },
+    {
+      "styleId": "pepe-nodders",
+      "family": "atlas",
+      "primitive": "atlas",
+      "fidelity": "approximate-composite"
+    },
+    {
+      "styleId": "sure",
+      "family": "atlas",
+      "primitive": "atlas",
+      "fidelity": "approximate-composite"
+    },
+    {
+      "styleId": "nopers",
+      "family": "atlas",
+      "primitive": "atlas",
+      "fidelity": "approximate-composite"
+    },
+    {
+      "styleId": "pepo-popcorn",
+      "family": "atlas",
+      "primitive": "atlas",
+      "fidelity": "approximate-composite"
+    },
+    {
+      "styleId": "monka-hmm",
+      "family": "transform",
+      "primitive": "rainbow",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "pause-champ",
+      "family": "transform",
+      "primitive": "rainbow",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "peepo-clap",
+      "family": "transform",
+      "primitive": "pulse",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "shruge",
+      "family": "transform",
+      "primitive": "rainbow",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "peepo-giggles",
+      "family": "transform",
+      "primitive": "bounce",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "peepo-sit-hey",
+      "family": "transform",
+      "primitive": "rainbow",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "peepo-bye",
+      "family": "transform",
+      "primitive": "bounce",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "pepe-s",
+      "family": "transform",
+      "primitive": "bounce",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "saved",
+      "family": "transform",
+      "primitive": "shake",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "monka-christ",
+      "family": "transform",
+      "primitive": "bounce",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "ono",
+      "family": "transform",
+      "primitive": "shake",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "this-is-fine",
+      "family": "transform",
+      "primitive": "rainbow",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "elmo-fire",
+      "family": "transform",
+      "primitive": "pulse",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "cat-yes",
+      "family": "transform",
+      "primitive": "nod",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "unimpressed-cat",
+      "family": "transform",
+      "primitive": "rainbow",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "emoji-scream",
+      "family": "transform",
+      "primitive": "rainbow",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "side-eye-dog",
+      "family": "transform",
+      "primitive": "wobble",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "cat-no",
+      "family": "transform",
+      "primitive": "shake",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "pepe-sweat",
+      "family": "transform",
+      "primitive": "nod",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "anime-scream",
+      "family": "transform",
+      "primitive": "glitch",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "side-eye-chloe",
+      "family": "transform",
+      "primitive": "nod",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "lets-gooo",
+      "family": "transform",
+      "primitive": "rainbow",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "kek-laugh",
+      "family": "transform",
+      "primitive": "wobble",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "roll-safe",
+      "family": "transform",
+      "primitive": "spin",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "leave",
+      "family": "transform",
+      "primitive": "slide",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "startled-rat",
+      "family": "transform",
+      "primitive": "sparkle",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "shocked-man",
+      "family": "transform",
+      "primitive": "glitch",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "lebron-jam",
+      "family": "transform",
+      "primitive": "wobble",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "blah-blah-blah",
+      "family": "transform",
+      "primitive": "wobble",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "cat-jam-crying",
+      "family": "transform",
+      "primitive": "wobble",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "cat-jam",
+      "family": "transform",
+      "primitive": "wobble",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "patrick-bateman",
+      "family": "transform",
+      "primitive": "pet",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "kek-jam",
+      "family": "transform",
+      "primitive": "wobble",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "owl-jam",
+      "family": "transform",
+      "primitive": "wobble",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "bush-disappear",
+      "family": "transform",
+      "primitive": "pulse",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "bush-texture",
+      "family": "transform",
+      "primitive": "nod",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "polar-bear",
+      "family": "transform",
+      "primitive": "shake",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "sign",
+      "family": "transform",
+      "primitive": "nod",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "sign-mad",
+      "family": "transform",
+      "primitive": "shake",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "blob-help",
+      "family": "overlay",
+      "primitive": "overlay_hole",
+      "fidelity": "approximate-composite"
+    },
+    {
+      "styleId": "blob-no",
+      "family": "overlay",
+      "primitive": "overlay_hole",
+      "fidelity": "approximate-composite"
+    },
+    {
+      "styleId": "blob-yes",
+      "family": "overlay",
+      "primitive": "overlay_hole",
+      "fidelity": "approximate-composite"
+    },
+    {
+      "styleId": "burger",
+      "family": "overlay",
+      "primitive": "overlay_hole",
+      "fidelity": "approximate-composite"
+    },
+    {
+      "styleId": "nod",
+      "family": "transform",
+      "primitive": "nod",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "nodders",
+      "family": "transform",
+      "primitive": "nod",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "lurk",
+      "family": "transform",
+      "primitive": "bounce",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "boom",
+      "family": "transform",
+      "primitive": "zoom",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "kablooey",
+      "family": "transform",
+      "primitive": "rainbow",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "blast",
+      "family": "transform",
+      "primitive": "zoom",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "intensifies",
+      "family": "transform",
+      "primitive": "glitch",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "excited",
+      "family": "transform",
+      "primitive": "bounce",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "flip",
+      "family": "transform",
+      "primitive": "flip",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "sphere",
+      "family": "transform",
+      "primitive": "glitch",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "cube",
+      "family": "transform",
+      "primitive": "bounce",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "diamond",
+      "family": "transform",
+      "primitive": "glitch",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "pyramid",
+      "family": "transform",
+      "primitive": "bounce",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "slide:➡️",
+      "family": "transform",
+      "primitive": "slide",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "scroll:➡️",
+      "family": "transform",
+      "primitive": "spin",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "depth-tilt",
+      "family": "transform",
+      "primitive": "tilt",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "zoom",
+      "family": "transform",
+      "primitive": "zoom",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "zoom-close",
+      "family": "transform",
+      "primitive": "zoom",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "zoom-in",
+      "family": "transform",
+      "primitive": "zoom",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "bounce",
+      "family": "transform",
+      "primitive": "bounce",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "mega-bounce",
+      "family": "transform",
+      "primitive": "bounce",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "pulse",
+      "family": "transform",
+      "primitive": "pulse",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "wobble",
+      "family": "transform",
+      "primitive": "wobble",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "spiral-zoom",
+      "family": "transform",
+      "primitive": "zoom",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "ripple",
+      "family": "transform",
+      "primitive": "wobble",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "flag-wave",
+      "family": "transform",
+      "primitive": "wave",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "peeking",
+      "family": "transform",
+      "primitive": "slide",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "raising-hand",
+      "family": "transform",
+      "primitive": "pulse",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "face-cover",
+      "family": "transform",
+      "primitive": "pulse",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "flipp",
+      "family": "transform",
+      "primitive": "flip",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "hugg",
+      "family": "transform",
+      "primitive": "heartbeat",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "alowo",
+      "family": "transform",
+      "primitive": "pulse",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "riott",
+      "family": "transform",
+      "primitive": "pulse",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "peepo-riot",
+      "family": "transform",
+      "primitive": "glitch",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "luvv",
+      "family": "transform",
+      "primitive": "pulse",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "stripp",
+      "family": "transform",
+      "primitive": "rainbow",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "hellowo",
+      "family": "transform",
+      "primitive": "shake",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "vibee",
+      "family": "transform",
+      "primitive": "pulse",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "nowoted",
+      "family": "transform",
+      "primitive": "shake",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "slow-jam",
+      "family": "transform",
+      "primitive": "wobble",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "peepo-cheer",
+      "family": "transform",
+      "primitive": "pulse",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "so-cute",
+      "family": "transform",
+      "primitive": "rainbow",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "feels-rain-man",
+      "family": "transform",
+      "primitive": "fade",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "pepe-clown",
+      "family": "transform",
+      "primitive": "pulse",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "bedge",
+      "family": "transform",
+      "primitive": "pulse",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "plotge",
+      "family": "transform",
+      "primitive": "pulse",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "i-have-a-question",
+      "family": "transform",
+      "primitive": "pulse",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "nise",
+      "family": "transform",
+      "primitive": "pulse",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "peepo-love-heart",
+      "family": "transform",
+      "primitive": "heartbeat",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "stare",
+      "family": "transform",
+      "primitive": "sparkle",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "peepo-poopoo",
+      "family": "transform",
+      "primitive": "pulse",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "heyy",
+      "family": "transform",
+      "primitive": "pulse",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "yes-yes",
+      "family": "transform",
+      "primitive": "nod",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "no-no",
+      "family": "transform",
+      "primitive": "shake",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "peepo-dj",
+      "family": "transform",
+      "primitive": "rainbow",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "weird",
+      "family": "transform",
+      "primitive": "wobble",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "trash",
+      "family": "overlay",
+      "primitive": "overlay_hole",
+      "fidelity": "approximate-composite"
+    },
+    {
+      "styleId": "trash-pop",
+      "family": "transform",
+      "primitive": "pulse",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "donk",
+      "family": "overlay",
+      "primitive": "overlay_hole",
+      "fidelity": "approximate-composite"
+    },
+    {
+      "styleId": "confused-cat",
+      "family": "overlay",
+      "primitive": "overlay_hole",
+      "fidelity": "approximate-composite"
+    },
+    {
+      "styleId": "bulge",
+      "family": "transform",
+      "primitive": "bounce",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "fivehead",
+      "family": "transform",
+      "primitive": "pulse",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "fivehead-pulse",
+      "family": "transform",
+      "primitive": "pulse",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "omega-lul",
+      "family": "transform",
+      "primitive": "pulse",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "omega-lul-pulse",
+      "family": "transform",
+      "primitive": "pulse",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "mercator",
+      "family": "transform",
+      "primitive": "pulse",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "mercator-pulse",
+      "family": "transform",
+      "primitive": "pulse",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "squish",
+      "family": "transform",
+      "primitive": "squish",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "squish-pulse",
+      "family": "transform",
+      "primitive": "pulse",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "content-aware",
+      "family": "transform",
+      "primitive": "nod",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "pagman",
+      "family": "transform",
+      "primitive": "pulse",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "pag-bounce",
+      "family": "transform",
+      "primitive": "bounce",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "2x-wide-1",
+      "family": "transform",
+      "primitive": "slide",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "2x-wide-2",
+      "family": "transform",
+      "primitive": "slide",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "3x-wide-1",
+      "family": "transform",
+      "primitive": "slide",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "3x-wide-2",
+      "family": "transform",
+      "primitive": "slide",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "3x-wide-3",
+      "family": "transform",
+      "primitive": "slide",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "4x-wide-1",
+      "family": "transform",
+      "primitive": "slide",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "4x-wide-2",
+      "family": "transform",
+      "primitive": "slide",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "4x-wide-3",
+      "family": "transform",
+      "primitive": "slide",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "4x-wide-4",
+      "family": "transform",
+      "primitive": "slide",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "hop:➡️",
+      "family": "transform",
+      "primitive": "bounce",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "wave:➡️",
+      "family": "transform",
+      "primitive": "wave",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "flick:➡️",
+      "family": "transform",
+      "primitive": "bounce",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "blink",
+      "family": "transform",
+      "primitive": "fade",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "glitch",
+      "family": "transform",
+      "primitive": "glitch",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "snap:➡️",
+      "family": "transform",
+      "primitive": "bounce",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "orbit:➡️",
+      "family": "transform",
+      "primitive": "orbit",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "orbit-two:➡️",
+      "family": "transform",
+      "primitive": "orbit",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "orbit-three:➡️",
+      "family": "transform",
+      "primitive": "orbit",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "orbit-four:➡️",
+      "family": "transform",
+      "primitive": "orbit",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "orbit-five:➡️",
+      "family": "transform",
+      "primitive": "orbit",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "orbit-six:➡️",
+      "family": "transform",
+      "primitive": "orbit",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "orbit-seven:➡️",
+      "family": "transform",
+      "primitive": "orbit",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "orbit-eight:➡️",
+      "family": "transform",
+      "primitive": "orbit",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "orbit-nine:➡️",
+      "family": "transform",
+      "primitive": "orbit",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "loading-two:➡️",
+      "family": "transform",
+      "primitive": "spin",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "loading-three:➡️",
+      "family": "transform",
+      "primitive": "spin",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "loading-four:➡️",
+      "family": "transform",
+      "primitive": "spin",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "loading-five:➡️",
+      "family": "transform",
+      "primitive": "spin",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "loading-six:➡️",
+      "family": "transform",
+      "primitive": "spin",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "loading-seven:➡️",
+      "family": "transform",
+      "primitive": "spin",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "loading-eight:➡️",
+      "family": "transform",
+      "primitive": "spin",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "loading-nine:➡️",
+      "family": "transform",
+      "primitive": "spin",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "clone-army:➡️",
+      "family": "transform",
+      "primitive": "glitch",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "mitosis",
+      "family": "transform",
+      "primitive": "bounce",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "split",
+      "family": "transform",
+      "primitive": "wobble",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "squad",
+      "family": "transform",
+      "primitive": "glitch",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "hyperspace",
+      "family": "transform",
+      "primitive": "bounce",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "twirl",
+      "family": "transform",
+      "primitive": "bounce",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "misalign",
+      "family": "transform",
+      "primitive": "shake",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "jiggle",
+      "family": "transform",
+      "primitive": "shake",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "pixelate",
+      "family": "transform",
+      "primitive": "glitch",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "hovering",
+      "family": "transform",
+      "primitive": "orbit",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "spiral-in",
+      "family": "transform",
+      "primitive": "spiral",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "sway",
+      "family": "transform",
+      "primitive": "wave",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "tumble:➡️",
+      "family": "transform",
+      "primitive": "spin",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "fling:➡️",
+      "family": "transform",
+      "primitive": "bounce",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "sparkle",
+      "family": "transform",
+      "primitive": "sparkle",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "rain",
+      "family": "transform",
+      "primitive": "fade",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "bubble",
+      "family": "transform",
+      "primitive": "pulse",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "slide-bounce:➡️",
+      "family": "transform",
+      "primitive": "bounce",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "lightning-flash",
+      "family": "transform",
+      "primitive": "glitch",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "slide-spin:➡️",
+      "family": "transform",
+      "primitive": "spin",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "thanos-snap",
+      "family": "transform",
+      "primitive": "shake",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "explode",
+      "family": "transform",
+      "primitive": "zoom",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "rotate-180:➡️",
+      "family": "transform",
+      "primitive": "spin",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "rotate-90:➡️",
+      "family": "transform",
+      "primitive": "spin",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "rotate-45:➡️",
+      "family": "transform",
+      "primitive": "spin",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "stretch:➡️",
+      "family": "transform",
+      "primitive": "shake",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "3d-flip:➡️",
+      "family": "transform",
+      "primitive": "flip",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "thick-3d-flip:➡️",
+      "family": "transform",
+      "primitive": "flip",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "helicopter",
+      "family": "transform",
+      "primitive": "bounce",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "wawa",
+      "family": "transform",
+      "primitive": "nod",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "alien-pls",
+      "family": "transform",
+      "primitive": "pulse",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "alien-pls-3",
+      "family": "transform",
+      "primitive": "wobble",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "peepo-run",
+      "family": "transform",
+      "primitive": "slide",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "abdul-pls",
+      "family": "transform",
+      "primitive": "shake",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "toilet-spin",
+      "family": "transform",
+      "primitive": "spin",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "toilet-bounce",
+      "family": "transform",
+      "primitive": "bounce",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "skibidi",
+      "family": "transform",
+      "primitive": "nod",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "matrix-rain",
+      "family": "transform",
+      "primitive": "fade",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "heart-hypno",
+      "family": "transform",
+      "primitive": "heartbeat",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "wildfire",
+      "family": "transform",
+      "primitive": "pulse",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "combust",
+      "family": "transform",
+      "primitive": "rainbow",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "excuse-me",
+      "family": "transform",
+      "primitive": "rainbow",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "fire-pixel",
+      "family": "transform",
+      "primitive": "pulse",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "fireplace",
+      "family": "transform",
+      "primitive": "pulse",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "flame",
+      "family": "transform",
+      "primitive": "pulse",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "loading",
+      "family": "transform",
+      "primitive": "spin",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "math",
+      "family": "transform",
+      "primitive": "pulse",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "touch-grass",
+      "family": "transform",
+      "primitive": "nod",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "heart-locket",
+      "family": "transform",
+      "primitive": "heartbeat",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "old-man-yells",
+      "family": "transform",
+      "primitive": "pulse",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "raincloud",
+      "family": "transform",
+      "primitive": "fade",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "rave",
+      "family": "transform",
+      "primitive": "nod",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "tidal-wave",
+      "family": "transform",
+      "primitive": "wave",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "triggered",
+      "family": "transform",
+      "primitive": "glitch",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "sparkle-color",
+      "family": "transform",
+      "primitive": "sparkle",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "sparkle-party",
+      "family": "transform",
+      "primitive": "sparkle",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "sparkle-rainbow",
+      "family": "transform",
+      "primitive": "sparkle",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "wave-ocean",
+      "family": "transform",
+      "primitive": "wave",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "lick",
+      "family": "transform",
+      "primitive": "nod",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "beers",
+      "family": "transform",
+      "primitive": "bounce",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "treasure-chest",
+      "family": "transform",
+      "primitive": "rainbow",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "breathe",
+      "family": "transform",
+      "primitive": "wobble",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "wobble-scale",
+      "family": "transform",
+      "primitive": "wobble",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "drift",
+      "family": "transform",
+      "primitive": "wobble",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "jitter",
+      "family": "transform",
+      "primitive": "shake",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "glasses-shine",
+      "family": "transform",
+      "primitive": "pulse",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "googly-eyes",
+      "family": "transform",
+      "primitive": "nod",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "pounce",
+      "family": "transform",
+      "primitive": "bounce",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "elastic",
+      "family": "transform",
+      "primitive": "squish",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "heartbeat",
+      "family": "transform",
+      "primitive": "heartbeat",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "heartbeat-flash",
+      "family": "transform",
+      "primitive": "heartbeat",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "flutter",
+      "family": "transform",
+      "primitive": "glitch",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "quiver",
+      "family": "transform",
+      "primitive": "wobble",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "melt",
+      "family": "transform",
+      "primitive": "squish",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "teleport",
+      "family": "transform",
+      "primitive": "spin",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "rubber",
+      "family": "transform",
+      "primitive": "squish",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "think",
+      "family": "transform",
+      "primitive": "tilt",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "explain",
+      "family": "transform",
+      "primitive": "pulse",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "magnet",
+      "family": "transform",
+      "primitive": "bounce",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "tornado",
+      "family": "transform",
+      "primitive": "bounce",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "tsunami",
+      "family": "transform",
+      "primitive": "bounce",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "earthquake",
+      "family": "transform",
+      "primitive": "bounce",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "wormhole",
+      "family": "transform",
+      "primitive": "bounce",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "runway-landing",
+      "family": "transform",
+      "primitive": "slide",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "runway-takeoff",
+      "family": "transform",
+      "primitive": "slide",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "typing",
+      "family": "transform",
+      "primitive": "nod",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "shimmer:➡️",
+      "family": "transform",
+      "primitive": "pulse",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "rgb-split",
+      "family": "transform",
+      "primitive": "pulse",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "wipe:➡️",
+      "family": "transform",
+      "primitive": "bounce",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "ken-burns",
+      "family": "transform",
+      "primitive": "pulse",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "bobble",
+      "family": "transform",
+      "primitive": "wobble",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "swirl",
+      "family": "transform",
+      "primitive": "glitch",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "swirling",
+      "family": "transform",
+      "primitive": "glitch",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "underwater",
+      "family": "transform",
+      "primitive": "nod",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "spotlight:➡️",
+      "family": "transform",
+      "primitive": "pulse",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "scanline",
+      "family": "transform",
+      "primitive": "nod",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "clap",
+      "family": "transform",
+      "primitive": "pulse",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "boing",
+      "family": "transform",
+      "primitive": "bounce",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "clap-glove",
+      "family": "transform",
+      "primitive": "pulse",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "tsk",
+      "family": "transform",
+      "primitive": "pulse",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "pace",
+      "family": "transform",
+      "primitive": "glitch",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "lean",
+      "family": "transform",
+      "primitive": "bounce",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "scared",
+      "family": "transform",
+      "primitive": "glitch",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "leap",
+      "family": "transform",
+      "primitive": "glitch",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "pop",
+      "family": "transform",
+      "primitive": "pulse",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "pop-through",
+      "family": "transform",
+      "primitive": "pulse",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "shudder",
+      "family": "transform",
+      "primitive": "wobble",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "slice:➡️",
+      "family": "transform",
+      "primitive": "fade",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "grayscale",
+      "family": "transform",
+      "primitive": "pulse",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "tilt-zoom:➡️",
+      "family": "transform",
+      "primitive": "zoom",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "gulp",
+      "family": "transform",
+      "primitive": "wobble",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "shy-peek",
+      "family": "transform",
+      "primitive": "slide",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "crab",
+      "family": "transform",
+      "primitive": "pulse",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "cancel",
+      "family": "transform",
+      "primitive": "pulse",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "stomp",
+      "family": "transform",
+      "primitive": "bounce",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "strobe-soft",
+      "family": "transform",
+      "primitive": "glitch",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "solarize-wave",
+      "family": "transform",
+      "primitive": "wave",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "posterize-breath",
+      "family": "transform",
+      "primitive": "pulse",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "negative-blink",
+      "family": "transform",
+      "primitive": "fade",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "heat-haze",
+      "family": "transform",
+      "primitive": "wobble",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "portal-peek",
+      "family": "transform",
+      "primitive": "spin",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "portal-warp",
+      "family": "transform",
+      "primitive": "spin",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "approve-arms",
+      "family": "transform",
+      "primitive": "nod",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "cool-glasses",
+      "family": "transform",
+      "primitive": "nod",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "headbop",
+      "family": "transform",
+      "primitive": "shake",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "cute-hop",
+      "family": "transform",
+      "primitive": "bounce",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "drop",
+      "family": "transform",
+      "primitive": "bounce",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "drop-bounce",
+      "family": "transform",
+      "primitive": "bounce",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "rubber-stamp",
+      "family": "transform",
+      "primitive": "squish",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "credit-swipe",
+      "family": "transform",
+      "primitive": "pulse",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "dbz-aura",
+      "family": "transform",
+      "primitive": "pulse",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "orbit-drift",
+      "family": "transform",
+      "primitive": "orbit",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "tilt-nod",
+      "family": "transform",
+      "primitive": "tilt",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "prance",
+      "family": "transform",
+      "primitive": "bounce",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "peek-corner",
+      "family": "transform",
+      "primitive": "slide",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "recoil-pop",
+      "family": "transform",
+      "primitive": "pulse",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "sweep",
+      "family": "transform",
+      "primitive": "bounce",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "sideeye-slide",
+      "family": "transform",
+      "primitive": "slide",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "figure-8",
+      "family": "transform",
+      "primitive": "glitch",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "skid-stop",
+      "family": "transform",
+      "primitive": "bounce",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "alarm",
+      "family": "transform",
+      "primitive": "glitch",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "steer",
+      "family": "transform",
+      "primitive": "nod",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "alarms",
+      "family": "transform",
+      "primitive": "glitch",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "alert",
+      "family": "transform",
+      "primitive": "glitch",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "bonk",
+      "family": "transform",
+      "primitive": "bounce",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "bonk-doge",
+      "family": "transform",
+      "primitive": "bounce",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "box",
+      "family": "transform",
+      "primitive": "rainbow",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "breaking-news",
+      "family": "transform",
+      "primitive": "shake",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "gun",
+      "family": "transform",
+      "primitive": "pulse",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "cat-slap",
+      "family": "transform",
+      "primitive": "bounce",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "ddr",
+      "family": "transform",
+      "primitive": "wobble",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "electricity",
+      "family": "transform",
+      "primitive": "glitch",
+      "fidelity": "approximate-procedural"
+    }
+  ]
+}

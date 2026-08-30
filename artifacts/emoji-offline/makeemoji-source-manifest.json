@@ -1,0 +1,274 @@
+{
+  "verified": true,
+  "discoveredAt": "2026-08-30T09:23:02.909Z",
+  "siteUrl": "https://makeemoji.com/",
+  "notes": "Discovered 2026-08-30T09:23:02.909Z against live makeemoji.com. Processing is client-side (blob GIF/WebP previews after upload); POST /api/images and /api/download return 401 when logged out and are not generation endpoints, so api stays null. Browser path drives input[type=file], data-tag gen_btn_* styles, and listbox controls.",
+  "browser": {
+    "readySelector": "input[type=file]",
+    "fileInputSelector": "input[type=file]",
+    "generateSelector": null,
+    "resultSelector": "img[alt*=\"generated\" i]",
+    "downloadSelector": null,
+    "dismissSelectors": []
+  },
+  "api": null,
+  "controls": {
+    "color": {
+      "kind": "listbox",
+      "selector": "#color-select",
+      "valueCount": 20,
+      "values": [
+        {
+          "value": "Normal",
+          "label": "Normal"
+        },
+        {
+          "value": "Colors",
+          "label": "Colors"
+        },
+        {
+          "value": "Rainbow",
+          "label": "Rainbow"
+        },
+        {
+          "value": "Stripes",
+          "label": "Stripes"
+        },
+        {
+          "value": "Circles",
+          "label": "Circles"
+        },
+        {
+          "value": "Deep Fried",
+          "label": "Deep Fried"
+        },
+        {
+          "value": "X-Ray",
+          "label": "X-Ray"
+        },
+        {
+          "value": "Toxic",
+          "label": "Toxic"
+        },
+        {
+          "value": "Vaporwave",
+          "label": "Vaporwave"
+        },
+        {
+          "value": "Cherry Cola",
+          "label": "Cherry Cola"
+        },
+        {
+          "value": "Night Vision",
+          "label": "Night Vision"
+        },
+        {
+          "value": "Blue Flame",
+          "label": "Blue Flame"
+        },
+        {
+          "value": "Newsprint",
+          "label": "Newsprint"
+        },
+        {
+          "value": "Hellfire",
+          "label": "Hellfire"
+        },
+        {
+          "value": "Red",
+          "label": "Red"
+        },
+        {
+          "value": "Orange",
+          "label": "Orange"
+        },
+        {
+          "value": "Yellow",
+          "label": "Yellow"
+        },
+        {
+          "value": "Green",
+          "label": "Green"
+        },
+        {
+          "value": "Blue",
+          "label": "Blue"
+        },
+        {
+          "value": "Purple",
+          "label": "Purple"
+        }
+      ]
+    },
+    "animation": {
+      "kind": "button",
+      "selector": "[data-tag]",
+      "valueAttribute": "data-tag",
+      "valueCount": 473,
+      "values": null
+    },
+    "speed": {
+      "kind": "listbox",
+      "selector": "#speed-select",
+      "valueCount": 10,
+      "values": [
+        {
+          "value": "0.1x",
+          "label": "0.1x"
+        },
+        {
+          "value": "0.25x",
+          "label": "0.25x"
+        },
+        {
+          "value": "0.5x",
+          "label": "0.5x"
+        },
+        {
+          "value": "0.75x",
+          "label": "0.75x"
+        },
+        {
+          "value": "Normal",
+          "label": "Normal"
+        },
+        {
+          "value": "1.25x",
+          "label": "1.25x"
+        },
+        {
+          "value": "1.5x",
+          "label": "1.5x"
+        },
+        {
+          "value": "1.75x",
+          "label": "1.75x"
+        },
+        {
+          "value": "2x",
+          "label": "2x"
+        },
+        {
+          "value": "3x",
+          "label": "3x"
+        }
+      ]
+    },
+    "direction": {
+      "kind": "listbox",
+      "selector": "#direction-select",
+      "valueCount": 4,
+      "values": [
+        {
+          "value": "➡️ Right",
+          "label": "Right"
+        },
+        {
+          "value": "⬇️ Down",
+          "label": "Down"
+        },
+        {
+          "value": "⬅️ Left",
+          "label": "Left"
+        },
+        {
+          "value": "⬆️ Up",
+          "label": "Up"
+        }
+      ]
+    },
+    "size": {
+      "kind": "listbox",
+      "selector": "#size-select",
+      "valueCount": 11,
+      "values": [
+        {
+          "value": "⬜ 24px",
+          "label": "24"
+        },
+        {
+          "value": "⬜ 28px",
+          "label": "28"
+        },
+        {
+          "value": "⬜ 32px",
+          "label": "32"
+        },
+        {
+          "value": "⬜ 56px",
+          "label": "56"
+        },
+        {
+          "value": "⬜ 64px",
+          "label": "64"
+        },
+        {
+          "value": "⬜ 100px",
+          "label": "100"
+        },
+        {
+          "value": "⬜ 112px",
+          "label": "112"
+        },
+        {
+          "value": "⬜ 128px",
+          "label": "128"
+        },
+        {
+          "value": "⬜ 256px",
+          "label": "256"
+        },
+        {
+          "value": "⬜ 400px",
+          "label": "400"
+        },
+        {
+          "value": "⬜ 512px",
+          "label": "512"
+        }
+      ]
+    },
+    "format": {
+      "kind": "listbox",
+      "selector": "#format-select",
+      "valueCount": 4,
+      "values": [
+        {
+          "value": "📁 GIF",
+          "label": "GIF"
+        },
+        {
+          "value": "📁 WebP",
+          "label": "WebP"
+        },
+        {
+          "value": "📁 APNG",
+          "label": "APNG"
+        },
+        {
+          "value": "☀️ HDR APNG",
+          "label": "HDR APNG"
+        }
+      ]
+    },
+    "quality": {
+      "kind": "listbox",
+      "selector": "#quality-select",
+      "valueCount": 3,
+      "values": [
+        {
+          "value": "⚡ Standard1 credit",
+          "label": "Standard"
+        },
+        {
+          "value": "✨ High3 creditsPro",
+          "label": "HighPro"
+        },
+        {
+          "value": "💎 Ultra6 creditsPro",
+          "label": "UltraPro"
+        }
+      ]
+    }
+  }
+}

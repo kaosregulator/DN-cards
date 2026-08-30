@@ -229,16 +229,15 @@ export async function startBot() {
         return;
       }
 
-      // ── Postmoji dashboard (pmd:* buttons/selects/modals) ──────────────────
-      // One router owns every component + modal it namespaced (board buttons,
-      // number/page/source controls, user/server/channel pickers, Giphy search
-      // + green-screen pickers, and the image/search/green modals).
+      // ── /emoji controls (emoji:* selects/buttons/modals) ──────────────────
+      // One router owns the whole control panel: style browser, secondary
+      // selects, format buttons, Done, and the style-search modal.
       if (
         (interaction.isMessageComponent() || interaction.isModalSubmit()) &&
-        interaction.customId.startsWith("pmd:")
+        interaction.customId.startsWith("emoji:")
       ) {
-        const { handlePostmojiInteraction } = await import("./emojimoji/command.js");
-        await handlePostmojiInteraction(interaction);
+        const { handleEmojiInteraction } = await import("./emoji/commands/emoji.js");
+        await handleEmojiInteraction(interaction);
         return;
       }
 
@@ -889,9 +888,9 @@ export async function startBot() {
         await handleAdminSecretCommand(interaction);
       } else if (cmd === "echo") {
         await handleEchoCommand(interaction);
-      } else if (cmd === "postmojidashboard") {
-        const { handlePostmojiDashboard } = await import("./emojimoji/command.js");
-        await handlePostmojiDashboard(interaction);
+      } else if (cmd === "emoji") {
+        const { handleEmojiCommand } = await import("./emoji/commands/emoji.js");
+        await handleEmojiCommand(interaction);
       } else if (cmd === "afk") {
         await handleAfkCommand(interaction);
       } else if (cmd === "afksetup") {
@@ -947,7 +946,7 @@ export async function startBot() {
     "whisper", "adminsecret", "echo", "afk", "afksetup", "begin", "show_shiny",
     "collection_hub", "hq", "hqadmin", "hqbuild",
     "valuehelp", "valuelist", "info_mttv", "giveall", "editpack", "postcalculator",
-    "massrole", "postmojidashboard",
+    "massrole", "emoji",
   ]);
   const unmapped = buildCommands()
     .map(c => internalCommandName(c.name))

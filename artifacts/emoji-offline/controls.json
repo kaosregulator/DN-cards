@@ -1,0 +1,246 @@
+{
+  "color": {
+    "kind": "listbox",
+    "selector": "#color-select",
+    "values": [
+      {
+        "value": "Normal",
+        "label": "Normal"
+      },
+      {
+        "value": "Colors",
+        "label": "Colors"
+      },
+      {
+        "value": "Rainbow",
+        "label": "Rainbow"
+      },
+      {
+        "value": "Stripes",
+        "label": "Stripes"
+      },
+      {
+        "value": "Circles",
+        "label": "Circles"
+      },
+      {
+        "value": "Deep Fried",
+        "label": "Deep Fried"
+      },
+      {
+        "value": "X-Ray",
+        "label": "X-Ray"
+      },
+      {
+        "value": "Toxic",
+        "label": "Toxic"
+      },
+      {
+        "value": "Vaporwave",
+        "label": "Vaporwave"
+      },
+      {
+        "value": "Cherry Cola",
+        "label": "Cherry Cola"
+      },
+      {
+        "value": "Night Vision",
+        "label": "Night Vision"
+      },
+      {
+        "value": "Blue Flame",
+        "label": "Blue Flame"
+      },
+      {
+        "value": "Newsprint",
+        "label": "Newsprint"
+      },
+      {
+        "value": "Hellfire",
+        "label": "Hellfire"
+      },
+      {
+        "value": "Red",
+        "label": "Red"
+      },
+      {
+        "value": "Orange",
+        "label": "Orange"
+      },
+      {
+        "value": "Yellow",
+        "label": "Yellow"
+      },
+      {
+        "value": "Green",
+        "label": "Green"
+      },
+      {
+        "value": "Blue",
+        "label": "Blue"
+      },
+      {
+        "value": "Purple",
+        "label": "Purple"
+      }
+    ]
+  },
+  "speed": {
+    "kind": "listbox",
+    "selector": "#speed-select",
+    "values": [
+      {
+        "value": "0.1x",
+        "label": "0.1x"
+      },
+      {
+        "value": "0.25x",
+        "label": "0.25x"
+      },
+      {
+        "value": "0.5x",
+        "label": "0.5x"
+      },
+      {
+        "value": "0.75x",
+        "label": "0.75x"
+      },
+      {
+        "value": "Normal",
+        "label": "Normal"
+      },
+      {
+        "value": "1.25x",
+        "label": "1.25x"
+      },
+      {
+        "value": "1.5x",
+        "label": "1.5x"
+      },
+      {
+        "value": "1.75x",
+        "label": "1.75x"
+      },
+      {
+        "value": "2x",
+        "label": "2x"
+      },
+      {
+        "value": "3x",
+        "label": "3x"
+      }
+    ]
+  },
+  "direction": {
+    "kind": "listbox",
+    "selector": "#direction-select",
+    "values": [
+      {
+        "value": "➡️ Right",
+        "label": "Right"
+      },
+      {
+        "value": "⬇️ Down",
+        "label": "Down"
+      },
+      {
+        "value": "⬅️ Left",
+        "label": "Left"
+      },
+      {
+        "value": "⬆️ Up",
+        "label": "Up"
+      }
+    ]
+  },
+  "size": {
+    "kind": "listbox",
+    "selector": "#size-select",
+    "values": [
+      {
+        "value": "⬜ 24px",
+        "label": "24"
+      },
+      {
+        "value": "⬜ 28px",
+        "label": "28"
+      },
+      {
+        "value": "⬜ 32px",
+        "label": "32"
+      },
+      {
+        "value": "⬜ 56px",
+        "label": "56"
+      },
+      {
+        "value": "⬜ 64px",
+        "label": "64"
+      },
+      {
+        "value": "⬜ 100px",
+        "label": "100"
+      },
+      {
+        "value": "⬜ 112px",
+        "label": "112"
+      },
+      {
+        "value": "⬜ 128px",
+        "label": "128"
+      },
+      {
+        "value": "⬜ 256px",
+        "label": "256"
+      },
+      {
+        "value": "⬜ 400px",
+        "label": "400"
+      },
+      {
+        "value": "⬜ 512px",
+        "label": "512"
+      }
+    ]
+  },
+  "format": {
+    "kind": "listbox",
+    "selector": "#format-select",
+    "values": [
+      {
+        "value": "📁 GIF",
+        "label": "GIF"
+      },
+      {
+        "value": "📁 WebP",
+        "label": "WebP"
+      },
+      {
+        "value": "📁 APNG",
+        "label": "APNG"
+      },
+      {
+        "value": "☀️ HDR APNG",
+        "label": "HDR APNG"
+      }
+    ]
+  },
+  "quality": {
+    "kind": "listbox",
+    "selector": "#quality-select",
+    "values": [
+      {
+        "value": "⚡ Standard1 credit",
+        "label": "Standard"
+      },
+      {
+        "value": "✨ High3 creditsPro",
+        "label": "HighPro"
+      },
+      {
+        "value": "💎 Ultra6 creditsPro",
+        "label": "UltraPro"
+      }
+    ]
+  }
+}
