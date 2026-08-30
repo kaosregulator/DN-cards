@@ -114,7 +114,7 @@ describe("offline provider (disabled by default)", () => {
     const image = await testImage(96);
     for (const style of ["shake", "bounce", "wobble", "party", "sparkle"] as const) {
       const result = await offlineProvider.generate({
-        image, animation: style, format: "gif", size: 64, speed: "normal",
+        image, animation: style, format: "gif", size: "64", speed: "normal",
       });
       expect(result.providerId).toBe("offline");
       expect(result.bytes).toBeGreaterThan(0);
@@ -144,7 +144,7 @@ describe("offline provider (disabled by default)", () => {
 describe("offline renderOffline helper", () => {
   it("produces a GIF for shake without touching the network", async () => {
     const result = await renderOffline({
-      image: await testImage(80), animation: "shake", format: "gif", size: 48,
+      image: await testImage(80), animation: "shake", format: "gif", size: "48",
     });
     expect(result.providerId).toBe("offline");
     expect(result.buffer.subarray(0, 3).toString("ascii")).toBe("GIF");

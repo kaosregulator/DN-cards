@@ -37,7 +37,7 @@ describe("/emoji definition", () => {
   it("keeps format as a fixed choice — it is our contract, not the site's", () => {
     const format = command().options?.find(o => o.name === "format");
     expect(format?.autocomplete).toBeFalsy();
-    expect(format?.choices?.map(c => c.value)).toEqual(["gif", "png", "webp"]);
+    expect(format?.choices?.map(c => c.value)).toEqual(["gif", "webp", "apng"]);
   });
 });
 
@@ -53,7 +53,10 @@ describe("option suggestions", () => {
     const suggestions = suggestFor("animation", "");
     expect(suggestions).toHaveLength(1);
     expect(suggestions[0]!.name).toMatch(/not set up/i);
-    expect(suggestions[0]!.value).toBe("");
+    // Discord rejects a choice with an empty value, which silently discarded the
+    // whole response — so the hint carries a sentinel the command filters out.
+    expect(suggestions[0]!.value).not.toBe("");
+    expect(suggestions[0]!.value.length).toBeGreaterThan(0);
     expect(defaultAnimation()).toBeNull();
   });
 

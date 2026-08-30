@@ -12,10 +12,15 @@ import type { EmojiDirection, EmojiFormat, EmojiSize, EmojiSpeed } from "../type
 /**
  * Output containers MakeEmoji offers.
  *
- * Unlike the vocabularies below — which belong to the local fallback renderer —
- * these three are the containers the integration targets end to end.
+ * Taken from the discovered manifest, whose format control lists GIF, WebP,
+ * APNG and HDR APNG. Plain PNG is deliberately absent: MakeEmoji has no
+ * still-image output, so offering it produced an `unknown_option` failure on
+ * every use. APNG is the animated PNG container and uses the `.png` extension.
+ *
+ * HDR APNG is left out: it is a niche variant, and Discord does not render it
+ * any differently from ordinary APNG.
  */
-export const FORMATS = ["gif", "png", "webp"] as const;
+export const FORMATS = ["gif", "webp", "apng"] as const;
 
 /** Containers the LOCAL fallback renderer can emit. It cannot produce WebP. */
 export const LOCAL_FORMATS = ["gif", "png"] as const;
@@ -74,8 +79,16 @@ export function isLocalFormat(format: EmojiFormat): boolean {
 }
 
 export function parseSize(v: unknown): EmojiSize {
-  const n = typeof v === "string" ? Number(v) : v;
-  return SIZES.includes(n as EmojiSize) ? (n as EmojiSize) : DEFAULT_SIZE;
+  // Sizes arriving from MakeEmoji are decorated (`"⬜ 64px"`), so pull the first
+  // number out of a string rather than coercing the whole thing to NaN. Only
+  // strings and numbers are considered: `Number(null)` is 0, which would
+  // otherwise sail through as a plausible size.
+  const raw =
+    typeof v === "string" ? Number(/\d+/.exec(v)?.[0] ?? NaN)
+    : typeof v === "number" ? v
+    : NaN;
+
+  return SIZES.includes(raw as EmojiSize) ? (raw as EmojiSize) : DEFAULT_SIZE;
 }
 
 /** Unit vector for a direction, in canvas space (y grows downward). */
@@ -96,4 +109,14 @@ export function directionSign(dir: EmojiDirection): number {
 /** True when a direction moves along the vertical axis. */
 export function isVertical(dir: EmojiDirection): boolean {
   return dir === "up" || dir === "down";
+}
+
+/**
+ * File extension for an output container.
+ *
+ * APNG is an animated PNG and must be served as `.png`; Discord does not
+ * recognise an `.apng` attachment and shows it as an unrenderable file.
+ */
+export function extensionFor(format: EmojiFormat): string {
+  return format === "apng" ? "png" : format;
 }

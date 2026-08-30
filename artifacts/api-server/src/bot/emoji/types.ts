@@ -13,10 +13,12 @@ import type { Ctx } from "../animations/engine.js";
 /**
  * Output container.
  *
- * MakeEmoji offers GIF, PNG and WebP. The local fallback renderer only handles
- * GIF and PNG, and says so rather than silently substituting a format.
+ * MakeEmoji offers GIF, WebP and APNG (see `FORMATS`). Plain PNG is not one of
+ * its outputs — it survives here only because the local fallback renderer emits
+ * it, and that renderer refuses anything else rather than silently substituting
+ * a format.
  */
-export type EmojiFormat = "gif" | "png" | "webp";
+export type EmojiFormat = "gif" | "png" | "webp" | "apng";
 
 /** Playback speed. Scales each effect's base frame delay. */
 export type EmojiSpeed = "slow" | "normal" | "fast" | "turbo";
@@ -174,8 +176,16 @@ export interface GenerateOptions {
   speed?: string;
   /** Travel/rotation direction, for animations that use one. */
   direction?: string;
-  /** Output edge length in pixels. */
-  size?: number;
+  /**
+   * Output size, as MakeEmoji names it.
+   *
+   * A string, not a number, because the value belongs to the site: its size
+   * control offers entries like `"⬜ 64px"`. Coercing that with `Number()`
+   * yields NaN and the setting is silently dropped, so the raw value is carried
+   * through and resolved against the manifest like every other option. A plain
+   * `"64"` also resolves — see `resolveValue`.
+   */
+  size?: string;
   /** Colour modifier — a hex string or a MakeEmoji colour name. */
   color?: string;
   /** Output container. */

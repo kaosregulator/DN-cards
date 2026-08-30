@@ -21,10 +21,10 @@ import { logger } from "../../../lib/logger.js";
 import { DISCORD_EMOJI_LIMIT, generateEmoji } from "../generate.js";
 import type { GenerateOptions } from "../types.js";
 import { EmojiError, toEmojiError } from "../utils/errors.js";
-import { parseFormat } from "../utils/options.js";
+import { parseFormat, extensionFor } from "../utils/options.js";
 import { loadSource } from "../utils/source.js";
 import { toggleFavorite } from "./favorites.js";
-import { defaultAnimation, isManifestOption, suggestFor } from "./options.js";
+import { defaultAnimation, isManifestOption, isPlaceholder, suggestFor } from "./options.js";
 import {
   buildStylesPicker, buildStyleSearchModal, ensureStyleFocus, findStyle,
 } from "./styles-picker.js";
@@ -77,7 +77,7 @@ function toGenerateOptions(session: EmojiSession): GenerateOptions {
     format: session.format,
     ...(session.speed ? { speed: session.speed } : {}),
     ...(session.direction ? { direction: session.direction } : {}),
-    ...(session.size ? { size: Number(session.size) } : {}),
+    ...(session.size ? { size: session.size } : {}),
     ...(session.color ? { color: session.color } : {}),
     ...(session.quality ? { quality: session.quality } : {}),
     ...(session.platform ? { platform: session.platform } : {}),
@@ -97,7 +97,7 @@ async function buildReply(session: EmojiSession, token: string) {
   };
   session.view = "controls";
 
-  const file = new AttachmentBuilder(result.buffer, { name: `emoji.${result.format}` });
+  const file = new AttachmentBuilder(result.buffer, { name: `emoji.${extensionFor(result.format)}` });
   const lines = [
     describe(session, result.bytes, result.providerId, result.cached),
     `-# from ${session.sourceLabel}`,
@@ -122,6 +122,24 @@ async function buildReply(session: EmojiSession, token: string) {
   };
 }
 
+/**
+ * A failure reply that keeps the control panel when the session is still alive.
+ *
+ * Wiping the components on a transient error (MakeEmoji timing out, a rate
+ * limit) stranded the user: the settings they had built up were still in the
+ * session, but the only way back to them was re-running the command. Rebuilding
+ * the panel lets them simply try again, or adjust a setting and retry.
+ */
+function failureReply(err: unknown, token?: string) {
+  const session = token ? getSession(token) : undefined;
+  return {
+    content: failureMessage(err),
+    files: [],
+    embeds: [],
+    components: session && token ? buildControls(session, token) : [],
+  };
+}
+
 /** Turn any failure into a short, user-facing message. */
 function failureMessage(err: unknown): string {
   const emojiError = toEmojiError(err);
@@ -134,23 +152,34 @@ function failureMessage(err: unknown): string {
 export async function handleEmojiCommand(interaction: ChatInputCommandInteraction): Promise<void> {
   await interaction.deferReply();
 
+  // Declared out here so the catch can rebuild the panel for a session that was
+  // created before generation failed.
+  let token: string | undefined;
+
   try {
     const source = resolveSource(interaction);
     const image = await loadSource(source.url);
 
-    // With no manifest there is no animation to default to, so say what's
-    // missing rather than sending an empty request at the provider.
-    const animation = interaction.options.getString("animation")?.trim() || defaultAnimation();
+    const chosen = interaction.options.getString("animation")?.trim();
+    // The autocomplete placeholder is a prompt, not a value — a user can submit
+    // it by pressing enter on the hint, and it must not reach the provider.
+    const animation = chosen && !isPlaceholder(chosen) ? chosen : defaultAnimation();
     if (!animation) {
+      // With no manifest there is no animation to default to, so say what's
+      // missing rather than sending an empty request at the provider.
       throw new EmojiError(
         "provider_unavailable",
         "The emoji generator isn't set up on this server yet. An admin needs to run MakeEmoji discovery first.",
       );
     }
 
-    const optional = (name: string) => interaction.options.getString(name)?.trim() || undefined;
+    /** A user-supplied option, ignoring the autocomplete placeholder. */
+    const optional = (name: string) => {
+      const value = interaction.options.getString(name)?.trim();
+      return value && !isPlaceholder(value) ? value : undefined;
+    };
 
-    const { token, session } = createSession({
+    const created = createSession({
       image,
       ownerId: interaction.user.id,
       sourceLabel: source.label,
@@ -163,10 +192,11 @@ export async function handleEmojiCommand(interaction: ChatInputCommandInteractio
       ...(optional("quality") ? { quality: optional("quality")! } : {}),
       ...(optional("platform") ? { platform: optional("platform")! } : {}),
     });
+    token = created.token;
 
-    await interaction.editReply(await buildReply(session, token));
+    await interaction.editReply(await buildReply(created.session, token));
   } catch (err) {
-    await interaction.editReply({ content: failureMessage(err), files: [], components: [], embeds: [] });
+    await interaction.editReply(failureReply(err, token));
   }
 }
 
@@ -231,7 +261,7 @@ export async function handleEmojiInteraction(interaction: Interaction): Promise<
   try {
     await interaction.editReply(await buildReply(updated, token));
   } catch (err) {
-    await interaction.editReply({ content: failureMessage(err), files: [], components: [], embeds: [] });
+    await interaction.editReply(failureReply(err, token));
   }
 }
 
@@ -279,7 +309,7 @@ async function handleUploadAction(
     if (!updated) return;
     await interaction.editReply(await buildReply(updated, token));
   } catch (err) {
-    await interaction.editReply({ content: failureMessage(err), files: [], components: [], embeds: [] });
+    await interaction.editReply(failureReply(err, token));
   }
 }
 
@@ -331,7 +361,7 @@ async function handleStylesAction(
     try {
       await interaction.editReply(await buildReply(updated, token));
     } catch (err) {
-      await interaction.editReply({ content: failureMessage(err), files: [], components: [], embeds: [] });
+      await interaction.editReply(failureReply(err, token));
     }
     return;
   }
@@ -350,7 +380,7 @@ async function handleStylesAction(
     try {
       await interaction.editReply(await buildReply(updated, token));
     } catch (err) {
-      await interaction.editReply({ content: failureMessage(err), files: [], components: [], embeds: [] });
+      await interaction.editReply(failureReply(err, token));
     }
     return;
   }

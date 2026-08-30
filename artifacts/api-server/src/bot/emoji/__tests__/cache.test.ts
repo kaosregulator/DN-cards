@@ -8,7 +8,7 @@ function options(patch: Partial<GenerateOptions> = {}): GenerateOptions {
     animation: "shake",
     speed: "normal",
     direction: "right",
-    size: 128,
+    size: "128",
     color: "#ff0000",
     format: "gif",
     quality: "high",
@@ -43,7 +43,7 @@ describe("cacheKey", () => {
     // across them would serve the wrong file.
     const settings: Partial<GenerateOptions>[] = [
       { animation: "spin" }, { speed: "fast" }, { direction: "left" },
-      { size: 64 }, { color: "#00ff00" }, { format: "webp" },
+      { size: "64" }, { color: "#00ff00" }, { format: "webp" },
       { quality: "low" }, { platform: "slack" },
     ];
     const base = cacheKey(options());

@@ -15,8 +15,14 @@
 import { SlashCommandBuilder } from "discord.js";
 import { FORMATS } from "../utils/options.js";
 
+const FORMAT_LABELS: Record<string, string> = {
+  gif: "GIF (animated, widest support)",
+  webp: "WebP (animated, smaller files)",
+  apng: "APNG (animated PNG, best quality)",
+};
+
 const FORMAT_CHOICES = FORMATS.map(f => ({
-  name: f === "gif" ? "GIF (animated)" : f === "webp" ? "WebP (animated, smaller)" : "PNG (still)",
+  name: FORMAT_LABELS[f] ?? f.toUpperCase(),
   value: f,
 }));
 

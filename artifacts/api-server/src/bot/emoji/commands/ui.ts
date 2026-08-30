@@ -17,7 +17,7 @@ import {
 } from "discord.js";
 import { getManifest } from "../providers/makeemoji/manifest.js";
 import type { OptionKey } from "../providers/makeemoji/types.js";
-import { FORMATS } from "../utils/options.js";
+import { FORMATS, extensionFor } from "../utils/options.js";
 import type { EmojiSession } from "./session.js";
 
 /** customId namespace. One router owns every id starting with this. */
@@ -177,7 +177,7 @@ export function buildCachedControlsReply(session: EmojiSession, token: string) {
   const result = session.lastResult;
   if (!result) return null;
 
-  const file = new AttachmentBuilder(result.buffer, { name: `emoji.${result.format}` });
+  const file = new AttachmentBuilder(result.buffer, { name: `emoji.${extensionFor(result.format)}` });
   const lines = [
     describe(session, result.bytes, result.providerId, result.cached),
     `-# from ${session.sourceLabel}`,

@@ -10,11 +10,23 @@ import {
 describe("option parsing", () => {
   it("accepts every valid value", () => {
     expect(parseFormat("webp")).toBe("webp");
+    expect(parseFormat("apng")).toBe("apng");
     expect(parseSpeed("turbo")).toBe("turbo");
     expect(parseDirection("down")).toBe("down");
-    expect(parseFormat("png")).toBe("png");
+    
     expect(parseSize("64")).toBe(64);
     expect(parseSize(112)).toBe(112);
+  });
+
+  it("no longer accepts PNG, which MakeEmoji cannot produce", () => {
+    expect(parseFormat("png")).toBe(DEFAULT_FORMAT);
+  });
+
+  it("reads a size out of MakeEmoji's decorated values", () => {
+    // The size control offers entries like "⬜ 64px"; Number() gives NaN.
+    expect(parseSize("⬜ 64px")).toBe(64);
+    expect(parseSize("⬜ 128px")).toBe(128);
+    expect(parseSize("64")).toBe(64);
   });
 
   it("falls back to the default rather than throwing", () => {

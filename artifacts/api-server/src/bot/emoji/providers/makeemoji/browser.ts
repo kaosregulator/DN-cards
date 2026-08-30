@@ -136,7 +136,7 @@ async function applyOptions(
     ["animation", options.animation],
     ["speed", options.speed],
     ["direction", options.direction],
-    ["size", options.size === undefined ? undefined : String(options.size)],
+    ["size", options.size],
     ["color", options.color],
     ["format", options.format],
     ["quality", options.quality],
