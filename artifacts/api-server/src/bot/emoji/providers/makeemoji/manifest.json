@@ -1,0 +1,16 @@
+{
+  "verified": false,
+  "discoveredAt": null,
+  "siteUrl": "https://makeemoji.com/",
+  "notes": "UNVERIFIED PLACEHOLDER. This file intentionally contains no selectors, endpoints or option values: none have been observed against the live site, and inventing them would produce a provider that silently sends wrong requests. Populate it by running `pnpm makeemoji:discover` from a host with outbound access to makeemoji.com, then commit the regenerated file. Until then the MakeEmoji provider reports itself unavailable and /emoji returns a clean error.",
+  "controls": {},
+  "browser": {
+    "readySelector": null,
+    "fileInputSelector": null,
+    "generateSelector": null,
+    "resultSelector": null,
+    "downloadSelector": null,
+    "dismissSelectors": []
+  },
+  "api": null
+}

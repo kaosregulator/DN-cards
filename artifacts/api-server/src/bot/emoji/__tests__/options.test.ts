@@ -1,11 +1,15 @@
 import { describe, expect, it } from "vitest";
+// These vocabularies belong to the LOCAL fallback renderer, not to MakeEmoji,
+// so they are imported from the module rather than the package surface — the
+// public API exposes MakeEmoji's manifest-driven options instead.
 import {
   DEFAULT_DIRECTION, DEFAULT_FORMAT, DEFAULT_SIZE, DEFAULT_SPEED,
   delayFor, parseDirection, parseFormat, parseSize, parseSpeed,
-} from "../index.js";
+} from "../utils/options.js";
 
 describe("option parsing", () => {
   it("accepts every valid value", () => {
+    expect(parseFormat("webp")).toBe("webp");
     expect(parseSpeed("turbo")).toBe("turbo");
     expect(parseDirection("down")).toBe("down");
     expect(parseFormat("png")).toBe("png");

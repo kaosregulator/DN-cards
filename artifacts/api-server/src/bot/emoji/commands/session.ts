@@ -1,8 +1,8 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // Edit sessions.
 //
-// Re-rendering after every control change needs the source image again, and
-// re-downloading it each time would be slow and would hammer the CDN. So the
+// Re-rendering after a control change needs the source image again, and
+// re-downloading it every time would be slow and would hammer the CDN. So the
 // normalised bytes are held in memory, keyed by an opaque token carried in the
 // component customIds.
 //
@@ -12,7 +12,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { randomBytes } from "node:crypto";
-import type { EmojiDirection, EmojiFormat, EmojiSize, EmojiSpeed } from "../types.js";
+import type { EmojiFormat } from "../types.js";
 
 /** How long an untouched session stays editable. */
 const TTL_MS = 10 * 60 * 1000;
@@ -27,10 +27,14 @@ export interface EmojiSession {
   ownerId: string;
   /** Where the image came from, shown in the reply. */
   sourceLabel: string;
-  effect: string;
-  speed: EmojiSpeed;
-  direction: EmojiDirection;
-  size: EmojiSize;
+  /** MakeEmoji settings. Values are whatever the manifest offers. */
+  animation: string;
+  speed?: string;
+  direction?: string;
+  size?: string;
+  color?: string;
+  quality?: string;
+  platform?: string;
   format: EmojiFormat;
   expiresAt: number;
 }

@@ -119,6 +119,15 @@ export async function handleAutocomplete(interaction: AutocompleteInteraction): 
 
   try {
 
+    // ── /emoji settings, sourced from the MakeEmoji discovery manifest ────────
+    // Autocomplete rather than fixed choices: the vocabulary belongs to
+    // MakeEmoji and is read from the manifest, never hardcoded here.
+    if (cmd === "emoji") {
+      const { handleEmojiAutocomplete } = await import("../emoji/commands/emoji.js");
+      await handleEmojiAutocomplete(interaction);
+      return;
+    }
+
     // ── Raid boss-name autocomplete for /raid start, /battle raid, /raid_admin ─
     if (((cmd === "raid" || cmd === "battle") && focused.name === "boss") ||
         (cmd === "raidadmin" && focused.name === "name")) {

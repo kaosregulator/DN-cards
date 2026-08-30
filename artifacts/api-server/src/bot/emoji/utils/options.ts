@@ -9,9 +9,23 @@
 
 import type { EmojiDirection, EmojiFormat, EmojiSize, EmojiSpeed } from "../types.js";
 
+/**
+ * Output containers MakeEmoji offers.
+ *
+ * Unlike the vocabularies below — which belong to the local fallback renderer —
+ * these three are the containers the integration targets end to end.
+ */
+export const FORMATS = ["gif", "png", "webp"] as const;
+
+/** Containers the LOCAL fallback renderer can emit. It cannot produce WebP. */
+export const LOCAL_FORMATS = ["gif", "png"] as const;
+
+// ── local fallback renderer vocabulary ───────────────────────────────────────
+// These describe the procedural renderer's own controls, not MakeEmoji's.
+// MakeEmoji's real option values are never hardcoded: they come from the
+// discovery manifest (see providers/makeemoji/manifest.ts).
 export const SPEEDS = ["slow", "normal", "fast", "turbo"] as const;
 export const DIRECTIONS = ["right", "left", "up", "down"] as const;
-export const FORMATS = ["gif", "png"] as const;
 export const SIZES = [32, 48, 64, 96, 112, 128] as const;
 
 export const DEFAULT_SPEED: EmojiSpeed = "normal";
@@ -49,7 +63,14 @@ export function parseDirection(v: unknown): EmojiDirection {
 }
 
 export function parseFormat(v: unknown): EmojiFormat {
-  return FORMATS.includes(v as EmojiFormat) ? (v as EmojiFormat) : DEFAULT_FORMAT;
+  return (FORMATS as readonly string[]).includes(v as string)
+    ? (v as EmojiFormat)
+    : DEFAULT_FORMAT;
+}
+
+/** True when the local fallback renderer can emit this container. */
+export function isLocalFormat(format: EmojiFormat): boolean {
+  return (LOCAL_FORMATS as readonly string[]).includes(format);
 }
 
 export function parseSize(v: unknown): EmojiSize {

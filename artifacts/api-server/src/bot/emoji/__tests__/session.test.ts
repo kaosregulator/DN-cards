@@ -9,10 +9,10 @@ function make(ownerId = "u1") {
     image: Buffer.from([1, 2, 3]),
     ownerId,
     sourceLabel: "test",
-    effect: "shake",
+    animation: "shake",
     speed: "normal",
     direction: "right",
-    size: 128,
+    size: "128",
     format: "gif",
   });
 }
@@ -32,17 +32,17 @@ describe("session store", () => {
 
   it("applies patches and keeps the session alive", () => {
     const { token } = make();
-    const updated = touchSession(token, { effect: "spin", size: 64 });
-    expect(updated?.effect).toBe("spin");
-    expect(updated?.size).toBe(64);
-    expect(getSession(token)?.effect).toBe("spin");
+    const updated = touchSession(token, { animation: "spin", size: "64" });
+    expect(updated?.animation).toBe("spin");
+    expect(updated?.size).toBe("64");
+    expect(getSession(token)?.animation).toBe("spin");
   });
 
   it("returns undefined for unknown or ended sessions", () => {
     const { token } = make();
     endSession(token);
     expect(getSession(token)).toBeUndefined();
-    expect(touchSession(token, { effect: "spin" })).toBeUndefined();
+    expect(touchSession(token, { animation: "spin" })).toBeUndefined();
     expect(getSession("never-existed")).toBeUndefined();
   });
 

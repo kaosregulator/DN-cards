@@ -1,48 +1,22 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // /emoji slash-command definition.
 //
-// The effect choices are generated from the registry rather than written out, so
-// adding an effect surfaces it in the slash menu with no edit here. Discord caps
-// a choice list at 25; the registry is asserted against that so an overflow
-// fails loudly at startup instead of silently truncating the list.
+// The MakeEmoji settings are AUTOCOMPLETE options, not fixed choices. Fixed
+// choices are baked into the command when it is registered with Discord, which
+// would mean shipping a list of animation names — and we are not allowed to
+// invent those. Autocomplete resolves against the discovery manifest at the
+// moment the user types, so the menu always reflects what the site really offers
+// and updates the instant a new manifest is dropped in.
+//
+// Only `format` is a fixed choice: the three containers are the integration's
+// own contract, not a vocabulary read off the site.
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { SlashCommandBuilder } from "discord.js";
-import { EFFECT_SUMMARIES } from "../registry/index.js";
-import { DIRECTIONS, FORMATS, SIZES, SPEEDS } from "../utils/options.js";
-
-/** Discord's hard limit on choices for a single option. */
-const MAX_CHOICES = 25;
-
-if (EFFECT_SUMMARIES.length > MAX_CHOICES) {
-  throw new Error(
-    `Too many emoji effects for a slash-command choice list ` +
-    `(${EFFECT_SUMMARIES.length} > ${MAX_CHOICES}). Switch the effect option to autocomplete.`,
-  );
-}
-
-const EFFECT_CHOICES = EFFECT_SUMMARIES.map(e => ({
-  name: `${e.emoji} ${e.name} — ${e.description}`.slice(0, 100),
-  value: e.id,
-}));
-
-const SPEED_CHOICES = SPEEDS.map(s => ({
-  name: s.charAt(0).toUpperCase() + s.slice(1),
-  value: s,
-}));
-
-const DIRECTION_CHOICES = DIRECTIONS.map(d => ({
-  name: d.charAt(0).toUpperCase() + d.slice(1),
-  value: d,
-}));
-
-const SIZE_CHOICES = SIZES.map(s => ({
-  name: `${s}×${s}`,
-  value: String(s),
-}));
+import { FORMATS } from "../utils/options.js";
 
 const FORMAT_CHOICES = FORMATS.map(f => ({
-  name: f === "gif" ? "GIF (animated)" : "PNG (still)",
+  name: f === "gif" ? "GIF (animated)" : f === "webp" ? "WebP (animated, smaller)" : "PNG (still)",
   value: f,
 }));
 
@@ -62,21 +36,33 @@ export function buildEmojiCommandJson() {
       .setName("url")
       .setDescription("Or a public image URL"))
     .addStringOption(o => o
-      .setName("effect")
-      .setDescription("Animation to apply (default: shake)")
-      .addChoices(...EFFECT_CHOICES))
+      .setName("animation")
+      .setDescription("Animation to apply")
+      .setAutocomplete(true))
     .addStringOption(o => o
       .setName("speed")
-      .setDescription("Playback speed (default: normal)")
-      .addChoices(...SPEED_CHOICES))
+      .setDescription("Playback speed")
+      .setAutocomplete(true))
     .addStringOption(o => o
       .setName("direction")
-      .setDescription("Direction, for effects that travel or rotate (default: right)")
-      .addChoices(...DIRECTION_CHOICES))
+      .setDescription("Direction, for animations that travel or rotate")
+      .setAutocomplete(true))
     .addStringOption(o => o
       .setName("size")
-      .setDescription("Emoji size in pixels (default: 128)")
-      .addChoices(...SIZE_CHOICES))
+      .setDescription("Output size")
+      .setAutocomplete(true))
+    .addStringOption(o => o
+      .setName("color")
+      .setDescription("Colour modifier")
+      .setAutocomplete(true))
+    .addStringOption(o => o
+      .setName("quality")
+      .setDescription("Quality / compression")
+      .setAutocomplete(true))
+    .addStringOption(o => o
+      .setName("platform")
+      .setDescription("Platform preset")
+      .setAutocomplete(true))
     .addStringOption(o => o
       .setName("format")
       .setDescription("Output format (default: GIF)")

@@ -1,109 +1,114 @@
 # Emoji system
 
-Turns any image into an animated Discord emoji. Entirely local and
-self-contained — no third-party service, no sprite-sheet assets, no network
-dependency beyond fetching the user's own image.
+`/emoji` turns any image into an animated Discord emoji. **MakeEmoji.com performs
+the generation** — this package drives it and handles everything around it.
+
+```
+Discord /emoji
+      ↓
+  command/          resolve source · defer · reply · control panel
+      ↓
+  generate.ts       cache → provider → size guard
+      ↓
+  providers/
+    makeemoji/      ┌ api.ts      direct HTTP, if discovery confirmed an endpoint
+                    └ browser.ts  headless Chromium driving the real editor
+      ↓
+  makeemoji.com
+      ↓
+  GIF / WebP / PNG  →  Discord
+```
 
 ## Layout
 
 ```
 emoji/
   index.ts          public surface — import from here, not from subfolders
-  types.ts          shared types (EffectDef, Transform, RenderOptions, …)
-  registry/         the list of effects; asserts unique ids at load
-  effects/          effect definitions, grouped by kind (data, not drawing code)
-  renderer/         easing primitives, colourisation, the compositor, orchestration
-  encoders/         GIF (animated, transparent) and PNG (still)
-  utils/            option vocabulary, source fetching/normalising, typed errors
-  commands/         the /emoji slash command, its control panel and session store
+  generate.ts       the one entry point: cache + provider + upload limits
+  types.ts          GenerateOptions / GenerateResult and the local renderer types
+  cache/            content-hash keyed, TTL + size bounded
+  commands/         /emoji, its control panel, sessions, autocomplete
+  providers/
+    types.ts        the EmojiProvider interface
+    makeemoji/      the real integration (see its README)
+    local/          opt-in degraded fallback, OFF by default
+  utils/            source fetching + SSRF guard, options, typed errors
+  renderer/         the local fallback's procedural renderer
+  effects/          the local fallback's effect definitions
+  registry/         the local fallback's effect registry
+  encoders/         the local fallback's GIF and PNG encoders
 ```
 
-## How it works
+## Setup
 
-```
-attachment / avatar / url
-        ↓  utils/source.ts      validate → fetch (bounded) → normalise to RGBA PNG
-        ↓  renderer/render.ts   resolve options, enter the shared render queue
-        ↓  renderer/compositor  per frame: back layers → subject+transform → front layers
-        ↓  encoders/            frames → transparent GIF, or first frame → PNG
-   Discord attachment
-```
+The provider is unconfigured until discovery has run against the live site. Until
+then `/emoji` returns a clean error naming what is missing.
 
-The compositor is the only module that touches a canvas. Effects never draw the
-subject themselves — they return a `Transform` describing what should happen to
-it on a given frame, and the compositor applies it. That is what keeps effects
-pure data and means adding one never requires touching the renderer.
-
-Every value in a `Transform` is resolution-independent: offsets are fractions of
-the canvas edge, not pixels. So one definition renders correctly at 32px and at
-128px, and `size` is a real parameter rather than a post-hoc resize.
-
-## Adding an effect
-
-Add one entry to the appropriate file in `effects/`. Nothing else needs to
-change — the registry, the slash-command choices and the picker UI all derive
-from it.
-
-```ts
-{
-  id: "tilt",                 // stable; never rename in place (customIds use it)
-  name: "Tilt",
-  emoji: "🙃",
-  description: "Leans side to side",
-  frames: 12,
-  delayMs: 55,
-  directional: true,          // false hides the direction control in the UI
-  inset: 0.8,                 // resting footprint; leave room for the motion
-  transform: ({ t, direction }) => ({ rotate: directionSign(direction) * wave(t) * 0.3 }),
-}
+```bash
+npx playwright install chromium
+pnpm makeemoji:discover -- --install
 ```
 
-Build motion from `renderer/easing.ts`. Those helpers are periodic over `t`, so
-effects built from them loop seamlessly — a property the test suite enforces.
-An effect that is *meant* to jump between frames (like `glitch`) declares
-`discontinuous: true` to opt out.
-
-For decoration, add `layers` instead of, or as well as, a transform:
-
-```ts
-layers: [{ z: "front", paint: (ctx, { t, size }) => { /* plain canvas drawing */ } }]
-```
-
-Painters must be deterministic — seed any randomness from `hashRandom(i)`, never
-`Math.random`, so identical options always produce identical bytes.
-
-Two constraints the tests check for you: descriptions stay under 100 characters
-(Discord truncates select options), and the registry stays at or under 25 effects
-(Discord's cap on slash-command choices). Past 25, switch the `effect` option in
-`commands/definition.ts` to autocomplete.
+Run that from a host with outbound access to makeemoji.com, then commit the
+manifest and restart. Full detail — what the report tells you, how to enable the
+direct-HTTP path, every environment variable — is in
+[`providers/makeemoji/README.md`](./providers/makeemoji/README.md).
 
 ## Using it from code
 
 ```ts
-import { loadSource, renderEmoji } from "../emoji/index.js";
+import { generateEmoji, loadSource } from "../emoji/index.js";
 
-const image = await loadSource(attachment.url);   // fetch + normalise
-const { buffer, bytes } = await renderEmoji(image, {
-  effect: "shake", speed: "normal", direction: "right", size: 128, format: "gif",
+const image = await loadSource(attachment.url);      // fetch + SSRF check + normalise
+const { buffer, bytes, providerId, cached } = await generateEmoji({
+  image,
+  animation: "shake",     // values come from the discovery manifest
+  speed: "normal",
+  direction: "right",
+  size: 128,
+  color: "#ff0000",
+  quality: "high",
+  format: "gif",          // gif | png | webp
 });
 ```
 
-`renderEmoji` throws `EmojiError`, whose `message` is always safe to show a user
-and whose `code` identifies the failure (`not_an_image`, `too_large`, `timeout`,
-`unknown_effect`, …). Anything unexpected is normalised to `internal` by
-`toEmojiError`, so a caller never has to guess.
+`generateEmoji` throws `EmojiError`, whose `message` is always safe to show a
+user and whose `code` identifies the failure — `provider_unavailable`,
+`unknown_option`, `site_changed`, `generation_failed`, `rate_limited`,
+`browser_failed`, `timeout`, `not_an_image`, `too_large`, `too_big_to_send`.
+Anything unexpected becomes `internal` via `toEmojiError`, so a caller never has
+to interpret a provider's internals and the bot never crashes because MakeEmoji
+had a bad day.
 
-Renders go through the shared `animations/render-queue`, so a burst of `/emoji`
-calls can't starve battles or pack openings of CPU.
+## Options are never invented
 
-## Notes
+The `/emoji` settings are **autocomplete**, not fixed choices. Fixed choices are
+baked in when the command is registered with Discord, which would mean shipping a
+list of animation names we made up. Autocomplete resolves against the discovery
+manifest as the user types, so the menu shows exactly what the site offers and
+updates the moment a new manifest is installed. Only `format` is fixed — the
+three containers are this integration's own contract.
 
-- **GIF transparency** is 1-bit and has no alpha channel, so the encoder picks a
-  key colour per image — whichever candidate sits furthest from the colours
-  actually present — to stop the background leaking through the subject. PNG
-  keeps full 8-bit alpha.
-- **Discord's custom-emoji limit is 256 KB.** Output over that is still sent,
-  with a note, since it remains a perfectly good GIF for other uses.
-- **Sessions** (`commands/session.ts`) hold normalised image bytes so tweaking a
-  control re-renders without re-downloading. Bounded by both age and count,
-  because it holds image buffers.
+Values are validated against the manifest again before anything is sent upstream,
+so an unknown animation gets a message naming the valid ones rather than a
+silently-ignored setting.
+
+## Caching
+
+Identical requests skip the upstream call entirely. The key is the SHA-256 of the
+source bytes plus every setting that changes the output — hashing content rather
+than a URL means the same avatar hits the same entry whether it arrived as an
+attachment, an avatar or a link. Bounded by count (120), total bytes (64 MB) and
+age (15 min), because it holds finished image buffers.
+
+## The local fallback
+
+`providers/local/` wraps a procedural renderer that can produce GIF and PNG
+without any network. It is **off unless `EMOJI_ALLOW_LOCAL_FALLBACK=1`**, and it
+is never reached silently: results are labelled with their provider so a user can
+see when they didn't get MakeEmoji's own output, and the log records it. It
+refuses WebP and refuses animation names it doesn't have, rather than substituting
+something close and calling it the same thing.
+
+It exists so "MakeEmoji is down" and "the bot is broken" stay distinguishable, and
+so an operator can choose degraded output over no output. It is not the system.

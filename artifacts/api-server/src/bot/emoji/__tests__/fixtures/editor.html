@@ -1,0 +1,62 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Fixture Emoji Editor</title>
+<h1>Fixture Emoji Editor</h1>
+
+<label for="file">Source image</label>
+<input type="file" id="file" accept="image/*">
+
+<fieldset>
+  <legend>Animation</legend>
+  <select id="animation" name="animation">
+    <option value="shake">Shake</option>
+    <option value="spin">Spin</option>
+    <option value="bounce">Bounce</option>
+  </select>
+</fieldset>
+
+<fieldset>
+  <legend>Speed</legend>
+  <select id="speed" name="speed">
+    <option value="slow">Slow</option>
+    <option value="normal" selected>Normal</option>
+    <option value="fast">Fast</option>
+  </select>
+</fieldset>
+
+<fieldset>
+  <legend>Direction</legend>
+  <input type="radio" name="direction" value="left" id="dl"><label for="dl">Left</label>
+  <input type="radio" name="direction" value="right" id="dr" checked><label for="dr">Right</label>
+</fieldset>
+
+<fieldset>
+  <legend>Size</legend>
+  <select id="size" name="size">
+    <option value="64">64</option>
+    <option value="128" selected>128</option>
+  </select>
+</fieldset>
+
+<fieldset>
+  <legend>Format</legend>
+  <select id="format" name="format">
+    <option value="gif" selected>GIF</option>
+    <option value="png">PNG</option>
+    <option value="webp">WebP</option>
+  </select>
+</fieldset>
+
+<fieldset>
+  <legend>Quality</legend>
+  <select id="quality" name="quality">
+    <option value="high">High</option>
+    <option value="low">Low</option>
+  </select>
+</fieldset>
+
+<button id="generate" type="button">Generate</button>
+<a id="download" download="emoji.gif" style="display:none">Download</a>
+<img id="result" alt="">
+
+<script src="/editor.js"></script>

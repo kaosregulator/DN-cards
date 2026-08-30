@@ -67,3 +67,6 @@ artifacts/api-server/data/world-builder/index.json
 /siege-formation.png
 /siege-clash.png
 /siege-phase-*.png
+
+# MakeEmoji discovery output (regenerate with `pnpm makeemoji:discover`)
+makeemoji-investigation/

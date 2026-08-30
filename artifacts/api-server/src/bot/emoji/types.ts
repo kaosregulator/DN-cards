@@ -10,8 +10,13 @@
 
 import type { Ctx } from "../animations/engine.js";
 
-/** Output container. GIF is animated; PNG is a single still frame. */
-export type EmojiFormat = "gif" | "png";
+/**
+ * Output container.
+ *
+ * MakeEmoji offers GIF, PNG and WebP. The local fallback renderer only handles
+ * GIF and PNG, and says so rather than silently substituting a format.
+ */
+export type EmojiFormat = "gif" | "png" | "webp";
 
 /** Playback speed. Scales each effect's base frame delay. */
 export type EmojiSpeed = "slow" | "normal" | "fast" | "turbo";
@@ -146,4 +151,62 @@ export interface RenderResult {
   bytes: number;
   /** Wall-clock render time in ms. */
   durationMs: number;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Provider-facing request/response types.
+//
+// These describe a generation as MakeEmoji's editor frames it: an animation plus
+// a handful of modifiers. Most values are plain strings rather than closed
+// unions because the vocabulary belongs to MakeEmoji, not to us — it is read
+// from the discovery manifest and validated against it at the edge. Inventing a
+// union here would mean inventing option values, which is exactly what we must
+// not do.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** A generation request handed to a provider. */
+export interface GenerateOptions {
+  /** Normalised source image bytes (see utils/source.ts). */
+  image: Buffer;
+  /** Animation id, as named by MakeEmoji. */
+  animation: string;
+  /** Playback speed. Omitted means "leave MakeEmoji's default". */
+  speed?: string;
+  /** Travel/rotation direction, for animations that use one. */
+  direction?: string;
+  /** Output edge length in pixels. */
+  size?: number;
+  /** Colour modifier — a hex string or a MakeEmoji colour name. */
+  color?: string;
+  /** Output container. */
+  format: EmojiFormat;
+  /** Quality/compression preset. */
+  quality?: string;
+  /** Platform preset (Discord, Slack, …) — sets MakeEmoji's own size defaults. */
+  platform?: string;
+  /** Cancels an in-flight generation. */
+  signal?: AbortSignal;
+  /**
+   * Record this request's network traffic to the debug directory. Never enable
+   * by default: the recordings are large and, though redacted, still describe
+   * exactly what the bot sent.
+   */
+  debug?: boolean;
+}
+
+/** What a provider returns on success. */
+export interface GenerateResult {
+  /** The generated file. */
+  buffer: Buffer;
+  format: EmojiFormat;
+  /** Byte length of `buffer`, surfaced for logging and limit checks. */
+  bytes: number;
+  /** Which provider produced this. */
+  providerId: string;
+  /** Wall-clock time for the generation, excluding cache hits. */
+  durationMs: number;
+  /** The URL the result was downloaded from, when the provider had one. */
+  sourceUrl?: string;
+  /** True when this came from the result cache rather than a fresh generation. */
+  cached: boolean;
 }

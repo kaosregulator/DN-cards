@@ -20,12 +20,47 @@ describe("assertPublicHttpUrl", () => {
   it("rejects loopback and private-network hosts", () => {
     // Without this the bot is an SSRF proxy into its own network.
     const blocked = [
-      "http://localhost/x", "http://127.0.0.1/x", "http://[::1]/x",
-      "http://10.0.0.5/x", "http://192.168.1.1/x", "http://172.16.0.1/x",
-      "http://169.254.169.254/latest/meta-data/", "http://redis.internal/x",
+      "http://localhost/x", "http://127.0.0.1/x", "http://127.1.2.3/x", "http://[::1]/x",
+      "http://10.0.0.5/x", "http://192.168.1.1/x", "http://172.16.0.1/x", "http://172.31.255.1/x",
+      "http://100.64.0.1/x", "http://0.0.0.0/x", "http://[fc00::1]/x", "http://[fe80::1]/x",
+      "http://redis.internal/x", "http://db.local/x", "http://printer.home.arpa/x",
+      "http://intranet/x",
     ];
     for (const url of blocked) {
       expect(() => assertPublicHttpUrl(url), url).toThrow(EmojiError);
+    }
+  });
+
+  it("rejects cloud instance-metadata endpoints", () => {
+    // The highest-value SSRF target on a hosted bot: one fetch can return the
+    // instance's own credentials.
+    const blocked = [
+      "http://169.254.169.254/latest/meta-data/",
+      "http://metadata.google.internal/computeMetadata/v1/",
+      "http://metadata.goog/x",
+      "http://100.100.100.200/latest/meta-data/",
+      "http://[fd00:ec2::254]/latest/meta-data/",
+      "http://instance-data/latest/meta-data/",
+    ];
+    for (const url of blocked) {
+      expect(() => assertPublicHttpUrl(url), url).toThrow(EmojiError);
+    }
+  });
+
+  it("rejects addresses disguised as IPv4-mapped IPv6", () => {
+    // ::ffff:127.0.0.1 is loopback wearing an IPv6 costume.
+    expect(() => assertPublicHttpUrl("http://[::ffff:127.0.0.1]/x")).toThrow(EmojiError);
+    expect(() => assertPublicHttpUrl("http://[::ffff:169.254.169.254]/x")).toThrow(EmojiError);
+  });
+
+  it("still allows ordinary public hosts", () => {
+    for (const url of [
+      "https://cdn.discordapp.com/a/b.png",
+      "https://i.imgur.com/x.gif",
+      "https://8.8.8.8/x.png",
+      "https://makeemoji.com/",
+    ]) {
+      expect(() => assertPublicHttpUrl(url), url).not.toThrow();
     }
   });
 

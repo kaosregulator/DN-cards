@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { EFFECTS, EFFECT_SUMMARIES, DEFAULT_EFFECT, effectIds, getEffect, hasEffect } from "../index.js";
+import { EFFECTS, EFFECT_SUMMARIES, effectIds, getEffect, hasEffect } from "../index.js";
+import { DEFAULT_EFFECT } from "../registry/index.js";
 
 describe("effect registry", () => {
   it("exposes a non-empty, uniquely-identified set", () => {

@@ -43,24 +43,86 @@ export function assertPublicHttpUrl(raw: string): URL {
   }
 
   const host = url.hostname.toLowerCase().replace(/^\[|\]$/g, "");
-  const isPrivate =
-    host === "localhost" ||
-    host.endsWith(".localhost") ||
-    host.endsWith(".internal") ||
-    host.endsWith(".local") ||
-    host === "::1" ||
-    /^127\./.test(host) ||
-    /^10\./.test(host) ||
-    /^192\.168\./.test(host) ||
-    /^169\.254\./.test(host) ||
-    /^172\.(1[6-9]|2\d|3[01])\./.test(host) ||
-    /^f[cd][0-9a-f]{2}:/i.test(host);
 
-  if (isPrivate) {
+  if (isBlockedHost(host)) {
     throw new EmojiError("bad_url", "That URL isn't reachable. Use a public image link.");
   }
 
   return url;
+}
+
+/**
+ * Hostnames that name a cloud instance-metadata service.
+ *
+ * These are the highest-value SSRF targets on a hosted bot: a single successful
+ * fetch can return the instance's credentials. The link-local address ranges
+ * below already cover the usual IPs, but the DNS names resolve there too and
+ * would otherwise sail past an address-shaped check.
+ */
+const METADATA_HOSTS = new Set([
+  "metadata.google.internal",
+  "metadata.goog",
+  "metadata",
+  "instance-data",
+  "169.254.169.254",
+  "100.100.100.200",        // Alibaba Cloud
+  "fd00:ec2::254",          // AWS IMDSv2 over IPv6
+]);
+
+/** True when a hostname is loopback, private, link-local or cloud metadata. */
+export function isBlockedHost(rawHost: string): boolean {
+  const host = rawHost.toLowerCase().replace(/^\[|\]$/g, "").replace(/\.$/, "");
+
+  if (METADATA_HOSTS.has(host)) return true;
+
+  // Internal-only namespaces, and bare single-label names that can only resolve
+  // through a local search domain.
+  if (
+    host === "localhost" ||
+    host.endsWith(".localhost") ||
+    host.endsWith(".internal") ||
+    host.endsWith(".local") ||
+    host.endsWith(".home.arpa") ||
+    !host.includes(".") && !host.includes(":")
+  ) return true;
+
+  // IPv6 loopback, unspecified, and the unique-local / link-local ranges.
+  if (host === "::1" || host === "::" || host === "0:0:0:0:0:0:0:1") return true;
+  if (/^f[cd][0-9a-f]{2}:/i.test(host)) return true;   // fc00::/7 unique-local
+  if (/^fe[89ab][0-9a-f]:/i.test(host)) return true;   // fe80::/10 link-local
+  // IPv4-mapped IPv6 re-checked as IPv4. The WHATWG URL parser normalises
+  // `::ffff:127.0.0.1` to the hex form `::ffff:7f00:1`, so the dotted spelling
+  // never actually reaches here — both forms are decoded to be safe.
+  const mappedDotted = /^::ffff:(\d{1,3}(?:\.\d{1,3}){3})$/i.exec(host);
+  if (mappedDotted?.[1]) return isBlockedHost(mappedDotted[1]);
+
+  const mappedHex = /^::ffff:([0-9a-f]{1,4}):([0-9a-f]{1,4})$/i.exec(host);
+  if (mappedHex) {
+    const high = parseInt(mappedHex[1]!, 16);
+    const low = parseInt(mappedHex[2]!, 16);
+    return isBlockedHost(
+      `${high >> 8}.${high & 0xff}.${low >> 8}.${low & 0xff}`,
+    );
+  }
+
+  // IPv4 ranges that are not publicly routable.
+  const ipv4 = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.exec(host);
+  if (ipv4) {
+    const [a, b] = [Number(ipv4[1]), Number(ipv4[2])];
+    return (
+      a === 0 ||                              // "this network"
+      a === 127 ||                            // loopback
+      a === 10 ||                             // RFC1918
+      (a === 172 && b >= 16 && b <= 31) ||    // RFC1918
+      (a === 192 && b === 168) ||             // RFC1918
+      (a === 169 && b === 254) ||             // link-local, incl. metadata
+      (a === 100 && b >= 64 && b <= 127) ||   // RFC6598 carrier-grade NAT
+      (a === 192 && b === 0) ||               // IETF protocol assignments
+      a >= 224                                // multicast and reserved
+    );
+  }
+
+  return false;
 }
 
 /** Download image bytes, bounded by both a timeout and a byte cap. */

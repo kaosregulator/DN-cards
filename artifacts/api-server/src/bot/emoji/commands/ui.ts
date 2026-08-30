@@ -1,29 +1,43 @@
 // ─────────────────────────────────────────────────────────────────────────────
-// /emoji component UI.
+// /emoji control panel.
 //
-// Discord allows five action rows, which is exactly what this needs: one select
-// each for effect, speed and direction, and a final row of buttons for size and
-// format. Every control carries the session token in its customId, so a button
-// on an old message still resolves to the right image (or fails cleanly once the
-// session has expired).
+// Every picker is built from the discovery manifest, so the panel shows exactly
+// what MakeEmoji offers. An option the manifest doesn't describe gets no row at
+// all — better a smaller panel than a control that silently does nothing.
 //
-// Direction is rendered disabled for effects that declare `directional: false`,
-// rather than hidden — keeping the layout stable between effects means the
-// controls don't jump around under the user's cursor.
+// Discord allows five action rows, so the panel shows the manifest options that
+// matter most (animation first) and always keeps the last row for format and
+// Done.
 // ─────────────────────────────────────────────────────────────────────────────
 
 import {
   ActionRowBuilder, ButtonBuilder, ButtonStyle,
   StringSelectMenuBuilder, StringSelectMenuOptionBuilder,
 } from "discord.js";
-import { EFFECT_SUMMARIES, getEffect } from "../registry/index.js";
-import { DIRECTIONS, FORMATS, SIZES, SPEEDS } from "../utils/options.js";
+import { getManifest } from "../providers/makeemoji/manifest.js";
+import type { OptionKey } from "../providers/makeemoji/types.js";
+import { FORMATS } from "../utils/options.js";
 import type { EmojiSession } from "./session.js";
 
 /** customId namespace. One router owns every id starting with this. */
 export const CID = "emoji";
 
-/** Build a namespaced customId: `emoji:<action>:<token>`. */
+/** Discord's cap on options in one select menu. */
+const MAX_SELECT_OPTIONS = 25;
+
+/** Rows available for manifest options: five total, minus the format/Done row. */
+const MAX_OPTION_ROWS = 4;
+
+/** Panel order — animation matters most, so it never gets cut. */
+const PANEL_OPTIONS: readonly OptionKey[] = [
+  "animation", "speed", "direction", "size", "quality", "color", "platform",
+];
+
+const LABELS: Record<OptionKey, string> = {
+  animation: "Animation", speed: "Speed", direction: "Direction", size: "Size",
+  color: "Colour", format: "Format", quality: "Quality", platform: "Platform",
+};
+
 export function cid(action: string, token: string): string {
   return `${CID}:${action}:${token}`;
 }
@@ -35,82 +49,47 @@ export function parseCid(customId: string): { action: string; token: string } | 
   return { action: parts[1]!, token: parts[2]! };
 }
 
-const SPEED_LABELS: Record<string, { label: string; emoji: string }> = {
-  slow: { label: "Slow", emoji: "🐢" },
-  normal: { label: "Normal", emoji: "🚶" },
-  fast: { label: "Fast", emoji: "🏃" },
-  turbo: { label: "Turbo", emoji: "🚀" },
-};
-
-const DIRECTION_LABELS: Record<string, { label: string; emoji: string }> = {
-  right: { label: "Right", emoji: "➡️" },
-  left: { label: "Left", emoji: "⬅️" },
-  up: { label: "Up", emoji: "⬆️" },
-  down: { label: "Down", emoji: "⬇️" },
-};
-
-function effectRow(session: EmojiSession, token: string): ActionRowBuilder<StringSelectMenuBuilder> {
-  const menu = new StringSelectMenuBuilder()
-    .setCustomId(cid("effect", token))
-    .setPlaceholder("Choose an effect")
-    .addOptions(
-      EFFECT_SUMMARIES.map(e =>
-        new StringSelectMenuOptionBuilder()
-          .setLabel(e.name)
-          .setValue(e.id)
-          .setDescription(e.description.slice(0, 100))
-          .setEmoji(e.emoji)
-          .setDefault(e.id === session.effect),
-      ),
-    );
-  return new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(menu);
+/** Current value of one manifest-driven setting on a session. */
+function currentValue(session: EmojiSession, key: OptionKey): string | undefined {
+  switch (key) {
+    case "animation": return session.animation;
+    case "speed": return session.speed;
+    case "direction": return session.direction;
+    case "size": return session.size;
+    case "color": return session.color;
+    case "quality": return session.quality;
+    case "platform": return session.platform;
+    case "format": return session.format;
+  }
 }
 
-function speedRow(session: EmojiSession, token: string): ActionRowBuilder<StringSelectMenuBuilder> {
-  const menu = new StringSelectMenuBuilder()
-    .setCustomId(cid("speed", token))
-    .setPlaceholder("Speed")
-    .addOptions(
-      SPEEDS.map(s =>
-        new StringSelectMenuOptionBuilder()
-          .setLabel(`Speed — ${SPEED_LABELS[s]!.label}`)
-          .setValue(s)
-          .setEmoji(SPEED_LABELS[s]!.emoji)
-          .setDefault(s === session.speed),
-      ),
-    )
-    // Speed only affects frame delay, which a still frame doesn't have.
-    .setDisabled(session.format === "png");
-  return new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(menu);
-}
+/**
+ * A select row for one option, or null when it can't be rendered as one.
+ *
+ * Free-text and slider controls have no list to show, so they are left to the
+ * slash-command option rather than faked as a dropdown.
+ */
+function optionRow(
+  session: EmojiSession, token: string, key: OptionKey,
+): ActionRowBuilder<StringSelectMenuBuilder> | null {
+  const control = getManifest().manifest?.controls[key];
+  if (!control || control.values.length === 0) return null;
+  if (control.kind === "text" || control.kind === "range") return null;
 
-function directionRow(session: EmojiSession, token: string): ActionRowBuilder<StringSelectMenuBuilder> {
-  const directional = getEffect(session.effect)?.directional ?? false;
-  const menu = new StringSelectMenuBuilder()
-    .setCustomId(cid("direction", token))
-    .setPlaceholder(directional ? "Direction" : "Direction — not used by this effect")
-    .addOptions(
-      DIRECTIONS.map(d =>
-        new StringSelectMenuOptionBuilder()
-          .setLabel(`Direction — ${DIRECTION_LABELS[d]!.label}`)
-          .setValue(d)
-          .setEmoji(DIRECTION_LABELS[d]!.emoji)
-          .setDefault(d === session.direction),
-      ),
-    )
-    .setDisabled(!directional || session.format === "png");
-  return new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(menu);
-}
+  const selected = currentValue(session, key);
+  const values = control.values.slice(0, MAX_SELECT_OPTIONS);
 
-function sizeRow(session: EmojiSession, token: string): ActionRowBuilder<ButtonBuilder> {
-  return new ActionRowBuilder<ButtonBuilder>().addComponents(
-    SIZES.map(s =>
-      new ButtonBuilder()
-        .setCustomId(cid(`size_${s}`, token))
-        .setLabel(`${s}px`)
-        .setStyle(s === session.size ? ButtonStyle.Primary : ButtonStyle.Secondary),
-    ),
-  );
+  const menu = new StringSelectMenuBuilder()
+    .setCustomId(cid(`set_${key}`, token))
+    .setPlaceholder(LABELS[key])
+    .addOptions(values.map(v =>
+      new StringSelectMenuOptionBuilder()
+        .setLabel(`${LABELS[key]} — ${(v.label ?? v.value)}`.slice(0, 100))
+        .setValue(v.value.slice(0, 100))
+        .setDefault(v.value === selected),
+    ));
+
+  return new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(menu);
 }
 
 function actionsRow(session: EmojiSession, token: string): ActionRowBuilder<ButtonBuilder> {
@@ -118,7 +97,6 @@ function actionsRow(session: EmojiSession, token: string): ActionRowBuilder<Butt
     new ButtonBuilder()
       .setCustomId(cid(`format_${f}`, token))
       .setLabel(f.toUpperCase())
-      .setEmoji(f === "gif" ? "🎞️" : "🖼️")
       .setStyle(f === session.format ? ButtonStyle.Primary : ButtonStyle.Secondary),
   );
 
@@ -134,27 +112,36 @@ function actionsRow(session: EmojiSession, token: string): ActionRowBuilder<Butt
 
 /** The full control panel for a session. */
 export function buildControls(session: EmojiSession, token: string): ActionRowBuilder<never>[] {
-  return [
-    effectRow(session, token),
-    speedRow(session, token),
-    directionRow(session, token),
-    sizeRow(session, token),
-    actionsRow(session, token),
-  ] as unknown as ActionRowBuilder<never>[];
+  const rows: ActionRowBuilder<never>[] = [];
+
+  for (const key of PANEL_OPTIONS) {
+    if (rows.length >= MAX_OPTION_ROWS) break;
+    const row = optionRow(session, token, key);
+    if (row) rows.push(row as unknown as ActionRowBuilder<never>);
+  }
+
+  rows.push(actionsRow(session, token) as unknown as ActionRowBuilder<never>);
+  return rows;
 }
 
 /** One-line summary of the current settings, shown above the preview. */
-export function describe(session: EmojiSession, bytes: number): string {
-  const effect = getEffect(session.effect);
-  const parts = [
-    `${effect?.emoji ?? "✨"} **${effect?.name ?? session.effect}**`,
-    `\`${session.size}px\``,
-    `\`${session.format.toUpperCase()}\``,
-  ];
-  if (session.format === "gif") {
-    parts.push(`\`${session.speed}\``);
-    if (effect?.directional) parts.push(`\`${session.direction}\``);
+export function describe(
+  session: EmojiSession, bytes: number, providerId: string, cached: boolean,
+): string {
+  const parts = [`✨ **${session.animation}**`, `\`${session.format.toUpperCase()}\``];
+
+  for (const key of ["speed", "direction", "size", "quality", "color", "platform"] as const) {
+    const value = currentValue(session, key);
+    if (value) parts.push(`\`${value}\``);
   }
+
   parts.push(`\`${(bytes / 1024).toFixed(1)} KB\``);
+  // Naming the source matters when a fallback served the request: the user
+  // should know when they didn't get MakeEmoji's own output.
+  if (providerId !== "makeemoji-api" && providerId !== "makeemoji-browser") {
+    parts.push(`⚠️ via \`${providerId}\``);
+  }
+  if (cached) parts.push("♻️");
+
   return parts.join(" · ");
 }
