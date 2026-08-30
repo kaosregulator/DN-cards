@@ -12,13 +12,20 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/2x-wide-1.webp"
     },
     "assets": {},
-    "primitive": null,
-    "params": {},
-    "offlineReady": false,
-    "fidelity": null,
+    "primitive": "slide",
+    "params": {
+      "_fp": {
+        "motion": 0,
+        "conf": 0.85
+      }
+    },
+    "offlineReady": true,
+    "fidelity": "approximate-procedural",
     "notes": [
-      "Animated preview; needs primitive assignment from visual analysis"
-    ]
+      "Assigned from CDN preview fingerprint (conf=0.85)"
+    ],
+    "verified": true,
+    "verifyScore": 0.28431811739153
   },
   {
     "id": "2x-wide-2",
@@ -33,20 +40,27 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/2x-wide-2.webp"
     },
     "assets": {},
-    "primitive": null,
-    "params": {},
-    "offlineReady": false,
-    "fidelity": null,
+    "primitive": "slide",
+    "params": {
+      "_fp": {
+        "motion": 0,
+        "conf": 0.85
+      }
+    },
+    "offlineReady": true,
+    "fidelity": "approximate-procedural",
     "notes": [
-      "Animated preview; needs primitive assignment from visual analysis"
-    ]
+      "Assigned from CDN preview fingerprint (conf=0.85)"
+    ],
+    "verified": true,
+    "verifyScore": 0.26207030452880353
   },
   {
-    "id": "3d-flip:\u27a1\ufe0f",
+    "id": "3d-flip:➡️",
     "slug": "3d-flip",
     "tag": "gen_btn_3d-flip",
     "family": "transform",
-    "directionSuffix": "\u27a1\ufe0f",
+    "directionSuffix": "➡️",
     "preview": {
       "ext": "gif",
       "contentType": "image/gif",
@@ -75,13 +89,20 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/3x-wide-1.webp"
     },
     "assets": {},
-    "primitive": null,
-    "params": {},
-    "offlineReady": false,
-    "fidelity": null,
+    "primitive": "slide",
+    "params": {
+      "_fp": {
+        "motion": 0,
+        "conf": 0.85
+      }
+    },
+    "offlineReady": true,
+    "fidelity": "approximate-procedural",
     "notes": [
-      "Animated preview; needs primitive assignment from visual analysis"
-    ]
+      "Assigned from CDN preview fingerprint (conf=0.85)"
+    ],
+    "verified": true,
+    "verifyScore": 0.2688466480039483
   },
   {
     "id": "3x-wide-2",
@@ -96,13 +117,20 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/3x-wide-2.webp"
     },
     "assets": {},
-    "primitive": null,
-    "params": {},
-    "offlineReady": false,
-    "fidelity": null,
+    "primitive": "slide",
+    "params": {
+      "_fp": {
+        "motion": 0,
+        "conf": 0.85
+      }
+    },
+    "offlineReady": true,
+    "fidelity": "approximate-procedural",
     "notes": [
-      "Animated preview; needs primitive assignment from visual analysis"
-    ]
+      "Assigned from CDN preview fingerprint (conf=0.85)"
+    ],
+    "verified": true,
+    "verifyScore": 0.3024901619638747
   },
   {
     "id": "3x-wide-3",
@@ -117,13 +145,20 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/3x-wide-3.webp"
     },
     "assets": {},
-    "primitive": null,
-    "params": {},
-    "offlineReady": false,
-    "fidelity": null,
+    "primitive": "slide",
+    "params": {
+      "_fp": {
+        "motion": 0,
+        "conf": 0.85
+      }
+    },
+    "offlineReady": true,
+    "fidelity": "approximate-procedural",
     "notes": [
-      "Animated preview; needs primitive assignment from visual analysis"
-    ]
+      "Assigned from CDN preview fingerprint (conf=0.85)"
+    ],
+    "verified": true,
+    "verifyScore": 0.24772641686136498
   },
   {
     "id": "4x-wide-1",
@@ -138,13 +173,20 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/4x-wide-1.webp"
     },
     "assets": {},
-    "primitive": null,
-    "params": {},
-    "offlineReady": false,
-    "fidelity": null,
+    "primitive": "slide",
+    "params": {
+      "_fp": {
+        "motion": 0,
+        "conf": 0.85
+      }
+    },
+    "offlineReady": true,
+    "fidelity": "approximate-procedural",
     "notes": [
-      "Animated preview; needs primitive assignment from visual analysis"
-    ]
+      "Assigned from CDN preview fingerprint (conf=0.85)"
+    ],
+    "verified": true,
+    "verifyScore": 0.2520537990715134
   },
   {
     "id": "4x-wide-2",
@@ -159,13 +201,20 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/4x-wide-2.webp"
     },
     "assets": {},
-    "primitive": null,
-    "params": {},
-    "offlineReady": false,
-    "fidelity": null,
+    "primitive": "slide",
+    "params": {
+      "_fp": {
+        "motion": 0,
+        "conf": 0.85
+      }
+    },
+    "offlineReady": true,
+    "fidelity": "approximate-procedural",
     "notes": [
-      "Animated preview; needs primitive assignment from visual analysis"
-    ]
+      "Assigned from CDN preview fingerprint (conf=0.85)"
+    ],
+    "verified": true,
+    "verifyScore": 0.31300131946362264
   },
   {
     "id": "4x-wide-3",
@@ -180,13 +229,20 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/4x-wide-3.webp"
     },
     "assets": {},
-    "primitive": null,
-    "params": {},
-    "offlineReady": false,
-    "fidelity": null,
+    "primitive": "slide",
+    "params": {
+      "_fp": {
+        "motion": 0,
+        "conf": 0.85
+      }
+    },
+    "offlineReady": true,
+    "fidelity": "approximate-procedural",
     "notes": [
-      "Animated preview; needs primitive assignment from visual analysis"
-    ]
+      "Assigned from CDN preview fingerprint (conf=0.85)"
+    ],
+    "verified": true,
+    "verifyScore": 0.2761578065351411
   },
   {
     "id": "4x-wide-4",
@@ -201,13 +257,20 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/4x-wide-4.webp"
     },
     "assets": {},
-    "primitive": null,
-    "params": {},
-    "offlineReady": false,
-    "fidelity": null,
+    "primitive": "slide",
+    "params": {
+      "_fp": {
+        "motion": 0,
+        "conf": 0.85
+      }
+    },
+    "offlineReady": true,
+    "fidelity": "approximate-procedural",
     "notes": [
-      "Animated preview; needs primitive assignment from visual analysis"
-    ]
+      "Assigned from CDN preview fingerprint (conf=0.85)"
+    ],
+    "verified": true,
+    "verifyScore": 0.24791942595110694
   },
   {
     "id": "abdul-pls",
@@ -222,13 +285,20 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/abdul-pls.gif"
     },
     "assets": {},
-    "primitive": null,
-    "params": {},
-    "offlineReady": false,
-    "fidelity": null,
+    "primitive": "shake",
+    "params": {
+      "_fp": {
+        "motion": 0.1201,
+        "conf": 0.6
+      }
+    },
+    "offlineReady": true,
+    "fidelity": "approximate-procedural",
     "notes": [
-      "Animated preview; needs primitive assignment from visual analysis"
-    ]
+      "Assigned from CDN preview fingerprint (conf=0.60)"
+    ],
+    "verified": true,
+    "verifyScore": 0.4353380591254534
   },
   {
     "id": "aha",
@@ -243,13 +313,20 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/aha.gif"
     },
     "assets": {},
-    "primitive": null,
-    "params": {},
-    "offlineReady": false,
-    "fidelity": null,
+    "primitive": "pulse",
+    "params": {
+      "_fp": {
+        "motion": 0.0099,
+        "conf": 0.55
+      }
+    },
+    "offlineReady": true,
+    "fidelity": "approximate-procedural",
     "notes": [
-      "Animated preview; needs primitive assignment from visual analysis"
-    ]
+      "Assigned from CDN preview fingerprint (conf=0.55)"
+    ],
+    "verified": true,
+    "verifyScore": 0.4055700621567977
   },
   {
     "id": "alarm",
@@ -327,13 +404,20 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/alien-pls.gif"
     },
     "assets": {},
-    "primitive": null,
-    "params": {},
-    "offlineReady": false,
-    "fidelity": null,
+    "primitive": "pulse",
+    "params": {
+      "_fp": {
+        "motion": 0.0241,
+        "conf": 0.4
+      }
+    },
+    "offlineReady": true,
+    "fidelity": "approximate-procedural",
     "notes": [
-      "Animated preview; needs primitive assignment from visual analysis"
-    ]
+      "Assigned from CDN preview fingerprint (conf=0.40)"
+    ],
+    "verified": true,
+    "verifyScore": 0.4578441681614812
   },
   {
     "id": "alien-pls-3",
@@ -348,13 +432,20 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/alien-pls-3.gif"
     },
     "assets": {},
-    "primitive": null,
-    "params": {},
-    "offlineReady": false,
-    "fidelity": null,
+    "primitive": "wobble",
+    "params": {
+      "_fp": {
+        "motion": 0.0428,
+        "conf": 0.5
+      }
+    },
+    "offlineReady": true,
+    "fidelity": "approximate-procedural",
     "notes": [
-      "Animated preview; needs primitive assignment from visual analysis"
-    ]
+      "Assigned from CDN preview fingerprint (conf=0.50)"
+    ],
+    "verified": true,
+    "verifyScore": 0.422392195493034
   },
   {
     "id": "alowo",
@@ -369,13 +460,22 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/alowo.gif"
     },
     "assets": {},
-    "primitive": null,
-    "params": {},
-    "offlineReady": false,
-    "fidelity": null,
+    "primitive": "pulse",
+    "params": {
+      "minScale": 0.94,
+      "maxScale": 1.04,
+      "_fp": {
+        "motion": 0,
+        "conf": 0.4
+      }
+    },
+    "offlineReady": true,
+    "fidelity": "approximate-procedural",
     "notes": [
-      "Animated preview; needs primitive assignment from visual analysis"
-    ]
+      "Assigned from CDN preview fingerprint (conf=0.40)"
+    ],
+    "verified": true,
+    "verifyScore": 0.62469284126324
   },
   {
     "id": "amaze",
@@ -390,13 +490,20 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/amaze.gif"
     },
     "assets": {},
-    "primitive": null,
-    "params": {},
-    "offlineReady": false,
-    "fidelity": null,
+    "primitive": "rainbow",
+    "params": {
+      "_fp": {
+        "motion": 0.1653,
+        "conf": 0.55
+      }
+    },
+    "offlineReady": true,
+    "fidelity": "approximate-procedural",
     "notes": [
-      "Animated preview; needs primitive assignment from visual analysis"
-    ]
+      "Assigned from CDN preview fingerprint (conf=0.55)"
+    ],
+    "verified": true,
+    "verifyScore": 0.44582818153302983
   },
   {
     "id": "angel",
@@ -434,13 +541,20 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/anime-scream.gif"
     },
     "assets": {},
-    "primitive": null,
-    "params": {},
-    "offlineReady": false,
-    "fidelity": null,
+    "primitive": "glitch",
+    "params": {
+      "_fp": {
+        "motion": 0.139,
+        "conf": 0.5
+      }
+    },
+    "offlineReady": true,
+    "fidelity": "approximate-procedural",
     "notes": [
-      "Animated preview; needs primitive assignment from visual analysis"
-    ]
+      "Assigned from CDN preview fingerprint (conf=0.50)"
+    ],
+    "verified": true,
+    "verifyScore": 0.3466008394249046
   },
   {
     "id": "anticipation",
@@ -459,11 +573,13 @@
     },
     "primitive": "frames",
     "params": {},
-    "offlineReady": false,
+    "offlineReady": true,
     "fidelity": "approximate-composite",
     "notes": [
-      "Requires archived frame/atlas assets + placement recipe"
-    ]
+      "frames assets archived; pending render verification"
+    ],
+    "verified": true,
+    "verifyScore": 0.5754169913745246
   },
   {
     "id": "approve-arms",
@@ -503,11 +619,13 @@
     },
     "primitive": "atlas",
     "params": {},
-    "offlineReady": false,
+    "offlineReady": true,
     "fidelity": "approximate-composite",
     "notes": [
-      "Requires archived frame/atlas assets + placement recipe"
-    ]
+      "atlas assets archived; pending render verification"
+    ],
+    "verified": true,
+    "verifyScore": 0.5241780146043024
   },
   {
     "id": "bat-signal",
@@ -526,11 +644,13 @@
     },
     "primitive": "frames",
     "params": {},
-    "offlineReady": false,
+    "offlineReady": true,
     "fidelity": "approximate-composite",
     "notes": [
-      "Requires archived frame/atlas assets + placement recipe"
-    ]
+      "frames assets archived; pending render verification"
+    ],
+    "verified": true,
+    "verifyScore": 0.6653879418880897
   },
   {
     "id": "bat-signal-scene",
@@ -549,11 +669,13 @@
     },
     "primitive": "frames",
     "params": {},
-    "offlineReady": false,
+    "offlineReady": true,
     "fidelity": "approximate-composite",
     "notes": [
-      "Requires archived frame/atlas assets + placement recipe"
-    ]
+      "frames assets archived; pending render verification"
+    ],
+    "verified": true,
+    "verifyScore": 0.9492257710375817
   },
   {
     "id": "bedge",
@@ -568,13 +690,22 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/bedge.webp"
     },
     "assets": {},
-    "primitive": null,
-    "params": {},
-    "offlineReady": false,
-    "fidelity": null,
+    "primitive": "pulse",
+    "params": {
+      "minScale": 0.94,
+      "maxScale": 1.04,
+      "_fp": {
+        "motion": 0,
+        "conf": 0.4
+      }
+    },
+    "offlineReady": true,
+    "fidelity": "approximate-procedural",
     "notes": [
-      "Animated preview; needs primitive assignment from visual analysis"
-    ]
+      "Assigned from CDN preview fingerprint (conf=0.40)"
+    ],
+    "verified": true,
+    "verifyScore": 0.45424004687652597
   },
   {
     "id": "beers",
@@ -589,13 +720,20 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/beers.gif"
     },
     "assets": {},
-    "primitive": null,
-    "params": {},
-    "offlineReady": false,
-    "fidelity": null,
+    "primitive": "bounce",
+    "params": {
+      "_fp": {
+        "motion": 0.1323,
+        "conf": 0.6
+      }
+    },
+    "offlineReady": true,
+    "fidelity": "approximate-procedural",
     "notes": [
-      "Animated preview; needs primitive assignment from visual analysis"
-    ]
+      "Assigned from CDN preview fingerprint (conf=0.60)"
+    ],
+    "verified": true,
+    "verifyScore": 0.3570877851181252
   },
   {
     "id": "binoculars",
@@ -614,11 +752,13 @@
     },
     "primitive": "frames",
     "params": {},
-    "offlineReady": false,
+    "offlineReady": true,
     "fidelity": "approximate-composite",
     "notes": [
-      "Requires archived frame/atlas assets + placement recipe"
-    ]
+      "frames assets archived; pending render verification"
+    ],
+    "verified": true,
+    "verifyScore": 0.644118559391
   },
   {
     "id": "blah-blah-blah",
@@ -633,13 +773,20 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/blah-blah-blah.gif"
     },
     "assets": {},
-    "primitive": null,
-    "params": {},
-    "offlineReady": false,
-    "fidelity": null,
+    "primitive": "wobble",
+    "params": {
+      "_fp": {
+        "motion": 0.0614,
+        "conf": 0.5
+      }
+    },
+    "offlineReady": true,
+    "fidelity": "approximate-procedural",
     "notes": [
-      "Animated preview; needs primitive assignment from visual analysis"
-    ]
+      "Assigned from CDN preview fingerprint (conf=0.50)"
+    ],
+    "verified": true,
+    "verifyScore": 0.5481830008041267
   },
   {
     "id": "blame",
@@ -677,13 +824,20 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/blame-animated.gif"
     },
     "assets": {},
-    "primitive": null,
-    "params": {},
-    "offlineReady": false,
-    "fidelity": null,
+    "primitive": "pulse",
+    "params": {
+      "_fp": {
+        "motion": 0.0166,
+        "conf": 0.4
+      }
+    },
+    "offlineReady": true,
+    "fidelity": "approximate-procedural",
     "notes": [
-      "Animated preview; needs primitive assignment from visual analysis"
-    ]
+      "Assigned from CDN preview fingerprint (conf=0.40)"
+    ],
+    "verified": true,
+    "verifyScore": 0.43646725510888307
   },
   {
     "id": "blanket",
@@ -702,11 +856,13 @@
     },
     "primitive": "atlas",
     "params": {},
-    "offlineReady": false,
+    "offlineReady": true,
     "fidelity": "approximate-composite",
     "notes": [
-      "Requires archived frame/atlas assets + placement recipe"
-    ]
+      "atlas assets archived; pending render verification"
+    ],
+    "verified": true,
+    "verifyScore": 0.5847603171418134
   },
   {
     "id": "blankies",
@@ -725,11 +881,13 @@
     },
     "primitive": "atlas",
     "params": {},
-    "offlineReady": false,
+    "offlineReady": true,
     "fidelity": "approximate-composite",
     "notes": [
-      "Requires archived frame/atlas assets + placement recipe"
-    ]
+      "atlas assets archived; pending render verification"
+    ],
+    "verified": true,
+    "verifyScore": 0.6200195862859044
   },
   {
     "id": "blast",
@@ -769,11 +927,13 @@
     },
     "primitive": "atlas",
     "params": {},
-    "offlineReady": false,
+    "offlineReady": true,
     "fidelity": "approximate-composite",
     "notes": [
-      "Requires archived frame/atlas assets + placement recipe"
-    ]
+      "atlas assets archived; pending render verification"
+    ],
+    "verified": true,
+    "verifyScore": 0.6503343074815056
   },
   {
     "id": "blink",
@@ -857,11 +1017,13 @@
     },
     "primitive": "frames",
     "params": {},
-    "offlineReady": false,
+    "offlineReady": true,
     "fidelity": "approximate-composite",
     "notes": [
-      "Requires archived frame/atlas assets + placement recipe"
-    ]
+      "frames assets archived; pending render verification"
+    ],
+    "verified": true,
+    "verifyScore": 0.6071512263925678
   },
   {
     "id": "blob-yes",
@@ -903,11 +1065,13 @@
     },
     "primitive": "atlas",
     "params": {},
-    "offlineReady": false,
+    "offlineReady": true,
     "fidelity": "approximate-composite",
     "notes": [
-      "Requires archived frame/atlas assets + placement recipe"
-    ]
+      "atlas assets archived; pending render verification"
+    ],
+    "verified": true,
+    "verifyScore": 0.608518017305518
   },
   {
     "id": "bobble",
@@ -1010,11 +1174,13 @@
     },
     "primitive": "atlas",
     "params": {},
-    "offlineReady": false,
+    "offlineReady": true,
     "fidelity": "approximate-composite",
     "notes": [
-      "Requires archived frame/atlas assets + placement recipe"
-    ]
+      "atlas assets archived; pending render verification"
+    ],
+    "verified": true,
+    "verifyScore": 0.6247944198458546
   },
   {
     "id": "boom",
@@ -1054,11 +1220,13 @@
     },
     "primitive": "atlas",
     "params": {},
-    "offlineReady": false,
+    "offlineReady": true,
     "fidelity": "approximate-composite",
     "notes": [
-      "Requires archived frame/atlas assets + placement recipe"
-    ]
+      "atlas assets archived; pending render verification"
+    ],
+    "verified": true,
+    "verifyScore": 0.7253664518795064
   },
   {
     "id": "bounce",
@@ -1092,13 +1260,20 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/box.gif"
     },
     "assets": {},
-    "primitive": null,
-    "params": {},
-    "offlineReady": false,
-    "fidelity": null,
+    "primitive": "rainbow",
+    "params": {
+      "_fp": {
+        "motion": 0.138,
+        "conf": 0.55
+      }
+    },
+    "offlineReady": true,
+    "fidelity": "approximate-procedural",
     "notes": [
-      "Animated preview; needs primitive assignment from visual analysis"
-    ]
+      "Assigned from CDN preview fingerprint (conf=0.55)"
+    ],
+    "verified": true,
+    "verifyScore": 0.44937516929062016
   },
   {
     "id": "breaking-news",
@@ -1134,13 +1309,20 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/breathe.gif"
     },
     "assets": {},
-    "primitive": null,
-    "params": {},
-    "offlineReady": false,
-    "fidelity": null,
+    "primitive": "wobble",
+    "params": {
+      "_fp": {
+        "motion": 0.0433,
+        "conf": 0.5
+      }
+    },
+    "offlineReady": true,
+    "fidelity": "approximate-procedural",
     "notes": [
-      "Animated preview; needs primitive assignment from visual analysis"
-    ]
+      "Assigned from CDN preview fingerprint (conf=0.50)"
+    ],
+    "verified": true,
+    "verifyScore": 0.336062937694941
   },
   {
     "id": "bubble",
@@ -1180,11 +1362,13 @@
     },
     "primitive": "atlas",
     "params": {},
-    "offlineReady": false,
+    "offlineReady": true,
     "fidelity": "approximate-composite",
     "notes": [
-      "Requires archived frame/atlas assets + placement recipe"
-    ]
+      "atlas assets archived; pending render verification"
+    ],
+    "verified": true,
+    "verifyScore": 0.6929118686522967
   },
   {
     "id": "bufo-offers",
@@ -1199,13 +1383,22 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/bufo-offers.webp"
     },
     "assets": {},
-    "primitive": null,
-    "params": {},
-    "offlineReady": false,
-    "fidelity": null,
+    "primitive": "pulse",
+    "params": {
+      "minScale": 0.94,
+      "maxScale": 1.04,
+      "_fp": {
+        "motion": 0,
+        "conf": 0.4
+      }
+    },
+    "offlineReady": true,
+    "fidelity": "approximate-procedural",
     "notes": [
-      "Animated preview; needs primitive assignment from visual analysis"
-    ]
+      "Assigned from CDN preview fingerprint (conf=0.40)"
+    ],
+    "verified": true,
+    "verifyScore": 0.6055339698603456
   },
   {
     "id": "bufo-takes",
@@ -1220,13 +1413,22 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/bufo-takes.webp"
     },
     "assets": {},
-    "primitive": null,
-    "params": {},
-    "offlineReady": false,
-    "fidelity": null,
+    "primitive": "pulse",
+    "params": {
+      "minScale": 0.94,
+      "maxScale": 1.04,
+      "_fp": {
+        "motion": 0,
+        "conf": 0.4
+      }
+    },
+    "offlineReady": true,
+    "fidelity": "approximate-procedural",
     "notes": [
-      "Animated preview; needs primitive assignment from visual analysis"
-    ]
+      "Assigned from CDN preview fingerprint (conf=0.40)"
+    ],
+    "verified": true,
+    "verifyScore": 0.5903307125621234
   },
   {
     "id": "bulge",
@@ -1241,13 +1443,20 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/bulge.gif"
     },
     "assets": {},
-    "primitive": null,
-    "params": {},
-    "offlineReady": false,
-    "fidelity": null,
+    "primitive": "bounce",
+    "params": {
+      "_fp": {
+        "motion": 0.0706,
+        "conf": 0.6
+      }
+    },
+    "offlineReady": true,
+    "fidelity": "approximate-procedural",
     "notes": [
-      "Animated preview; needs primitive assignment from visual analysis"
-    ]
+      "Assigned from CDN preview fingerprint (conf=0.60)"
+    ],
+    "verified": true,
+    "verifyScore": 0.3448439609399636
   },
   {
     "id": "burger",
@@ -1306,13 +1515,22 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/bush-disappear.gif"
     },
     "assets": {},
-    "primitive": null,
-    "params": {},
-    "offlineReady": false,
-    "fidelity": null,
+    "primitive": "pulse",
+    "params": {
+      "minScale": 0.94,
+      "maxScale": 1.04,
+      "_fp": {
+        "motion": 0.0035,
+        "conf": 0.4
+      }
+    },
+    "offlineReady": true,
+    "fidelity": "approximate-procedural",
     "notes": [
-      "Animated preview; needs primitive assignment from visual analysis"
-    ]
+      "Assigned from CDN preview fingerprint (conf=0.40)"
+    ],
+    "verified": true,
+    "verifyScore": 0.5090958871612881
   },
   {
     "id": "bush-texture",
@@ -1327,13 +1545,20 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/bush-texture.gif"
     },
     "assets": {},
-    "primitive": null,
-    "params": {},
-    "offlineReady": false,
-    "fidelity": null,
+    "primitive": "nod",
+    "params": {
+      "_fp": {
+        "motion": 0.0221,
+        "conf": 0.55
+      }
+    },
+    "offlineReady": true,
+    "fidelity": "approximate-procedural",
     "notes": [
-      "Animated preview; needs primitive assignment from visual analysis"
-    ]
+      "Assigned from CDN preview fingerprint (conf=0.55)"
+    ],
+    "verified": true,
+    "verifyScore": 0.40051448248570265
   },
   {
     "id": "cancel",
@@ -1348,13 +1573,20 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/cancel.gif"
     },
     "assets": {},
-    "primitive": null,
-    "params": {},
-    "offlineReady": false,
-    "fidelity": null,
+    "primitive": "pulse",
+    "params": {
+      "_fp": {
+        "motion": 0.0149,
+        "conf": 0.4
+      }
+    },
+    "offlineReady": true,
+    "fidelity": "approximate-procedural",
     "notes": [
-      "Animated preview; needs primitive assignment from visual analysis"
-    ]
+      "Assigned from CDN preview fingerprint (conf=0.40)"
+    ],
+    "verified": true,
+    "verifyScore": 0.45965636662761744
   },
   {
     "id": "cat-ears",
@@ -1373,11 +1605,13 @@
     },
     "primitive": "atlas",
     "params": {},
-    "offlineReady": false,
+    "offlineReady": true,
     "fidelity": "approximate-composite",
     "notes": [
-      "Requires archived frame/atlas assets + placement recipe"
-    ]
+      "atlas assets archived; pending render verification"
+    ],
+    "verified": true,
+    "verifyScore": 0.604592729215613
   },
   {
     "id": "cat-jam",
@@ -1545,11 +1779,13 @@
     },
     "primitive": "atlas",
     "params": {},
-    "offlineReady": false,
+    "offlineReady": true,
     "fidelity": "approximate-composite",
     "notes": [
-      "Requires archived frame/atlas assets + placement recipe"
-    ]
+      "atlas assets archived; pending render verification"
+    ],
+    "verified": true,
+    "verifyScore": 0.5142403102566726
   },
   {
     "id": "claude-dancing",
@@ -1568,11 +1804,13 @@
     },
     "primitive": "atlas",
     "params": {},
-    "offlineReady": false,
+    "offlineReady": true,
     "fidelity": "approximate-composite",
     "notes": [
-      "Requires archived frame/atlas assets + placement recipe"
-    ]
+      "atlas assets archived; pending render verification"
+    ],
+    "verified": true,
+    "verifyScore": 0.6041835756008673
   },
   {
     "id": "claude-football",
@@ -1591,11 +1829,13 @@
     },
     "primitive": "atlas",
     "params": {},
-    "offlineReady": false,
+    "offlineReady": true,
     "fidelity": "approximate-composite",
     "notes": [
-      "Requires archived frame/atlas assets + placement recipe"
-    ]
+      "atlas assets archived; pending render verification"
+    ],
+    "verified": true,
+    "verifyScore": 0.4961002554927172
   },
   {
     "id": "claude-fu",
@@ -1614,11 +1854,13 @@
     },
     "primitive": "atlas",
     "params": {},
-    "offlineReady": false,
+    "offlineReady": true,
     "fidelity": "approximate-composite",
     "notes": [
-      "Requires archived frame/atlas assets + placement recipe"
-    ]
+      "atlas assets archived; pending render verification"
+    ],
+    "verified": true,
+    "verifyScore": 0.4912986280774291
   },
   {
     "id": "claude-idea",
@@ -1637,11 +1879,13 @@
     },
     "primitive": "atlas",
     "params": {},
-    "offlineReady": false,
+    "offlineReady": true,
     "fidelity": "approximate-composite",
     "notes": [
-      "Requires archived frame/atlas assets + placement recipe"
-    ]
+      "atlas assets archived; pending render verification"
+    ],
+    "verified": true,
+    "verifyScore": 0.5576498222291307
   },
   {
     "id": "claude-jam",
@@ -1660,11 +1904,13 @@
     },
     "primitive": "atlas",
     "params": {},
-    "offlineReady": false,
+    "offlineReady": true,
     "fidelity": "approximate-composite",
     "notes": [
-      "Requires archived frame/atlas assets + placement recipe"
-    ]
+      "atlas assets archived; pending render verification"
+    ],
+    "verified": true,
+    "verifyScore": 0.6015445166927096
   },
   {
     "id": "cleaning",
@@ -1683,18 +1929,20 @@
     },
     "primitive": "atlas",
     "params": {},
-    "offlineReady": false,
+    "offlineReady": true,
     "fidelity": "approximate-composite",
     "notes": [
-      "Requires archived frame/atlas assets + placement recipe"
-    ]
+      "atlas assets archived; pending render verification"
+    ],
+    "verified": true,
+    "verifyScore": 0.5939611525361318
   },
   {
-    "id": "clone-army:\u27a1\ufe0f",
+    "id": "clone-army:➡️",
     "slug": "clone-army",
     "tag": "gen_btn_clone-army",
     "family": "transform",
-    "directionSuffix": "\u27a1\ufe0f",
+    "directionSuffix": "➡️",
     "preview": {
       "ext": "gif",
       "contentType": "image/gif",
@@ -1702,13 +1950,20 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/clone-army.gif"
     },
     "assets": {},
-    "primitive": null,
-    "params": {},
-    "offlineReady": false,
-    "fidelity": null,
+    "primitive": "glitch",
+    "params": {
+      "_fp": {
+        "motion": 0.3089,
+        "conf": 0.5
+      }
+    },
+    "offlineReady": true,
+    "fidelity": "approximate-procedural",
     "notes": [
-      "Animated preview; needs primitive assignment from visual analysis"
-    ]
+      "Assigned from CDN preview fingerprint (conf=0.50)"
+    ],
+    "verified": true,
+    "verifyScore": 0.3543693583349895
   },
   {
     "id": "coggers",
@@ -1746,13 +2001,20 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/combust.gif"
     },
     "assets": {},
-    "primitive": null,
-    "params": {},
-    "offlineReady": false,
-    "fidelity": null,
+    "primitive": "rainbow",
+    "params": {
+      "_fp": {
+        "motion": 0.105,
+        "conf": 0.55
+      }
+    },
+    "offlineReady": true,
+    "fidelity": "approximate-procedural",
     "notes": [
-      "Animated preview; needs primitive assignment from visual analysis"
-    ]
+      "Assigned from CDN preview fingerprint (conf=0.55)"
+    ],
+    "verified": true,
+    "verifyScore": 0.4316364355437622
   },
   {
     "id": "comfy",
@@ -1771,11 +2033,13 @@
     },
     "primitive": "frames",
     "params": {},
-    "offlineReady": false,
+    "offlineReady": true,
     "fidelity": "approximate-composite",
     "notes": [
-      "Requires archived frame/atlas assets + placement recipe"
-    ]
+      "frames assets archived; pending render verification"
+    ],
+    "verified": true,
+    "verifyScore": 0.6844824415370911
   },
   {
     "id": "concerned",
@@ -1794,11 +2058,13 @@
     },
     "primitive": "frames",
     "params": {},
-    "offlineReady": false,
+    "offlineReady": true,
     "fidelity": "approximate-composite",
     "notes": [
-      "Requires archived frame/atlas assets + placement recipe"
-    ]
+      "frames assets archived; pending render verification"
+    ],
+    "verified": true,
+    "verifyScore": 0.6142185585171569
   },
   {
     "id": "confused-cat",
@@ -1824,11 +2090,11 @@
     ]
   },
   {
-    "id": "conga-line:\u27a1\ufe0f",
+    "id": "conga-line:➡️",
     "slug": "conga-line",
     "tag": "gen_btn_conga-line",
     "family": "transform",
-    "directionSuffix": "\u27a1\ufe0f",
+    "directionSuffix": "➡️",
     "preview": {
       "ext": "gif",
       "contentType": "image/gif",
@@ -1836,13 +2102,20 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/conga-line.gif"
     },
     "assets": {},
-    "primitive": null,
-    "params": {},
-    "offlineReady": false,
-    "fidelity": null,
+    "primitive": "glitch",
+    "params": {
+      "_fp": {
+        "motion": 0.0809,
+        "conf": 0.5
+      }
+    },
+    "offlineReady": true,
+    "fidelity": "approximate-procedural",
     "notes": [
-      "Animated preview; needs primitive assignment from visual analysis"
-    ]
+      "Assigned from CDN preview fingerprint (conf=0.50)"
+    ],
+    "verified": true,
+    "verifyScore": 0.35115945206623655
   },
   {
     "id": "content-aware",
@@ -1857,13 +2130,20 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/content-aware.gif"
     },
     "assets": {},
-    "primitive": null,
-    "params": {},
-    "offlineReady": false,
-    "fidelity": null,
+    "primitive": "nod",
+    "params": {
+      "_fp": {
+        "motion": 0.1839,
+        "conf": 0.55
+      }
+    },
+    "offlineReady": true,
+    "fidelity": "approximate-procedural",
     "notes": [
-      "Animated preview; needs primitive assignment from visual analysis"
-    ]
+      "Assigned from CDN preview fingerprint (conf=0.55)"
+    ],
+    "verified": true,
+    "verifyScore": 0.41878583587266327
   },
   {
     "id": "cool-glasses",
@@ -1878,13 +2158,20 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/cool-glasses.gif"
     },
     "assets": {},
-    "primitive": null,
-    "params": {},
-    "offlineReady": false,
-    "fidelity": null,
+    "primitive": "nod",
+    "params": {
+      "_fp": {
+        "motion": 0.0699,
+        "conf": 0.55
+      }
+    },
+    "offlineReady": true,
+    "fidelity": "approximate-procedural",
     "notes": [
-      "Animated preview; needs primitive assignment from visual analysis"
-    ]
+      "Assigned from CDN preview fingerprint (conf=0.55)"
+    ],
+    "verified": true,
+    "verifyScore": 0.4772632770279829
   },
   {
     "id": "copium",
@@ -1899,13 +2186,22 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/copium.webp"
     },
     "assets": {},
-    "primitive": null,
-    "params": {},
-    "offlineReady": false,
-    "fidelity": null,
+    "primitive": "pulse",
+    "params": {
+      "minScale": 0.94,
+      "maxScale": 1.04,
+      "_fp": {
+        "motion": 0,
+        "conf": 0.4
+      }
+    },
+    "offlineReady": true,
+    "fidelity": "approximate-procedural",
     "notes": [
-      "Animated preview; needs primitive assignment from visual analysis"
-    ]
+      "Assigned from CDN preview fingerprint (conf=0.40)"
+    ],
+    "verified": true,
+    "verifyScore": 0.5013376142717036
   },
   {
     "id": "courage-scream",
@@ -1924,11 +2220,13 @@
     },
     "primitive": "atlas",
     "params": {},
-    "offlineReady": false,
+    "offlineReady": true,
     "fidelity": "approximate-composite",
     "notes": [
-      "Requires archived frame/atlas assets + placement recipe"
-    ]
+      "atlas assets archived; pending render verification"
+    ],
+    "verified": true,
+    "verifyScore": 0.7532963335640208
   },
   {
     "id": "cowboy",
@@ -1966,13 +2264,20 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/crab.gif"
     },
     "assets": {},
-    "primitive": null,
-    "params": {},
-    "offlineReady": false,
-    "fidelity": null,
+    "primitive": "pulse",
+    "params": {
+      "_fp": {
+        "motion": 0.0189,
+        "conf": 0.4
+      }
+    },
+    "offlineReady": true,
+    "fidelity": "approximate-procedural",
     "notes": [
-      "Animated preview; needs primitive assignment from visual analysis"
-    ]
+      "Assigned from CDN preview fingerprint (conf=0.40)"
+    ],
+    "verified": true,
+    "verifyScore": 0.3933220673520056
   },
   {
     "id": "credit-swipe",
@@ -1987,13 +2292,20 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/credit-swipe.gif"
     },
     "assets": {},
-    "primitive": null,
-    "params": {},
-    "offlineReady": false,
-    "fidelity": null,
+    "primitive": "pulse",
+    "params": {
+      "_fp": {
+        "motion": 0.036,
+        "conf": 0.4
+      }
+    },
+    "offlineReady": true,
+    "fidelity": "approximate-procedural",
     "notes": [
-      "Animated preview; needs primitive assignment from visual analysis"
-    ]
+      "Assigned from CDN preview fingerprint (conf=0.40)"
+    ],
+    "verified": true,
+    "verifyScore": 0.44172949166364117
   },
   {
     "id": "crying-laughing",
@@ -2031,13 +2343,20 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/cube.gif"
     },
     "assets": {},
-    "primitive": null,
-    "params": {},
-    "offlineReady": false,
-    "fidelity": null,
+    "primitive": "bounce",
+    "params": {
+      "_fp": {
+        "motion": 0.1996,
+        "conf": 0.6
+      }
+    },
+    "offlineReady": true,
+    "fidelity": "approximate-procedural",
     "notes": [
-      "Animated preview; needs primitive assignment from visual analysis"
-    ]
+      "Assigned from CDN preview fingerprint (conf=0.60)"
+    ],
+    "verified": true,
+    "verifyScore": 0.4389639231477954
   },
   {
     "id": "cute-ghost",
@@ -2056,11 +2375,13 @@
     },
     "primitive": "atlas",
     "params": {},
-    "offlineReady": false,
+    "offlineReady": true,
     "fidelity": "approximate-composite",
     "notes": [
-      "Requires archived frame/atlas assets + placement recipe"
-    ]
+      "atlas assets archived; pending render verification"
+    ],
+    "verified": true,
+    "verifyScore": 0.47515048842214813
   },
   {
     "id": "cute-hop",
@@ -2140,11 +2461,13 @@
     },
     "primitive": "atlas",
     "params": {},
-    "offlineReady": false,
+    "offlineReady": true,
     "fidelity": "approximate-composite",
     "notes": [
-      "Requires archived frame/atlas assets + placement recipe"
-    ]
+      "atlas assets archived; pending render verification"
+    ],
+    "verified": true,
+    "verifyScore": 0.6937808235127785
   },
   {
     "id": "depth-tilt",
@@ -2178,13 +2501,20 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/diamond.gif"
     },
     "assets": {},
-    "primitive": null,
-    "params": {},
-    "offlineReady": false,
-    "fidelity": null,
+    "primitive": "glitch",
+    "params": {
+      "_fp": {
+        "motion": 0.0931,
+        "conf": 0.5
+      }
+    },
+    "offlineReady": true,
+    "fidelity": "approximate-procedural",
     "notes": [
-      "Animated preview; needs primitive assignment from visual analysis"
-    ]
+      "Assigned from CDN preview fingerprint (conf=0.50)"
+    ],
+    "verified": true,
+    "verifyScore": 0.5490941469030038
   },
   {
     "id": "ditto",
@@ -2203,11 +2533,13 @@
     },
     "primitive": "atlas",
     "params": {},
-    "offlineReady": false,
+    "offlineReady": true,
     "fidelity": "approximate-composite",
     "notes": [
-      "Requires archived frame/atlas assets + placement recipe"
-    ]
+      "atlas assets archived; pending render verification"
+    ],
+    "verified": true,
+    "verifyScore": 0.5462926166461446
   },
   {
     "id": "doesnt-know",
@@ -2226,11 +2558,13 @@
     },
     "primitive": "atlas",
     "params": {},
-    "offlineReady": false,
+    "offlineReady": true,
     "fidelity": "approximate-composite",
     "notes": [
-      "Requires archived frame/atlas assets + placement recipe"
-    ]
+      "atlas assets archived; pending render verification"
+    ],
+    "verified": true,
+    "verifyScore": 0.620226684833047
   },
   {
     "id": "donk",
@@ -2272,11 +2606,13 @@
     },
     "primitive": "atlas",
     "params": {},
-    "offlineReady": false,
+    "offlineReady": true,
     "fidelity": "approximate-composite",
     "notes": [
-      "Requires archived frame/atlas assets + placement recipe"
-    ]
+      "atlas assets archived; pending render verification"
+    ],
+    "verified": true,
+    "verifyScore": 0.6037578008185996
   },
   {
     "id": "drift",
@@ -2291,13 +2627,20 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/drift.gif"
     },
     "assets": {},
-    "primitive": null,
-    "params": {},
-    "offlineReady": false,
-    "fidelity": null,
+    "primitive": "wobble",
+    "params": {
+      "_fp": {
+        "motion": 0.071,
+        "conf": 0.5
+      }
+    },
+    "offlineReady": true,
+    "fidelity": "approximate-procedural",
     "notes": [
-      "Animated preview; needs primitive assignment from visual analysis"
-    ]
+      "Assigned from CDN preview fingerprint (conf=0.50)"
+    ],
+    "verified": true,
+    "verifyScore": 0.3398156581650875
   },
   {
     "id": "drop",
@@ -2354,13 +2697,20 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/earthquake.gif"
     },
     "assets": {},
-    "primitive": null,
-    "params": {},
-    "offlineReady": false,
-    "fidelity": null,
+    "primitive": "bounce",
+    "params": {
+      "_fp": {
+        "motion": 0.2992,
+        "conf": 0.6
+      }
+    },
+    "offlineReady": true,
+    "fidelity": "approximate-procedural",
     "notes": [
-      "Animated preview; needs primitive assignment from visual analysis"
-    ]
+      "Assigned from CDN preview fingerprint (conf=0.60)"
+    ],
+    "verified": true,
+    "verifyScore": 0.3513560832252114
   },
   {
     "id": "elastic",
@@ -2438,13 +2788,20 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/emoji-scream.gif"
     },
     "assets": {},
-    "primitive": null,
-    "params": {},
-    "offlineReady": false,
-    "fidelity": null,
+    "primitive": "rainbow",
+    "params": {
+      "_fp": {
+        "motion": 0.1378,
+        "conf": 0.55
+      }
+    },
+    "offlineReady": true,
+    "fidelity": "approximate-procedural",
     "notes": [
-      "Animated preview; needs primitive assignment from visual analysis"
-    ]
+      "Assigned from CDN preview fingerprint (conf=0.55)"
+    ],
+    "verified": true,
+    "verifyScore": 0.44949441711563987
   },
   {
     "id": "enter",
@@ -2501,13 +2858,20 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/excuse-me.gif"
     },
     "assets": {},
-    "primitive": null,
-    "params": {},
-    "offlineReady": false,
-    "fidelity": null,
+    "primitive": "rainbow",
+    "params": {
+      "_fp": {
+        "motion": 0.0776,
+        "conf": 0.55
+      }
+    },
+    "offlineReady": true,
+    "fidelity": "approximate-procedural",
     "notes": [
-      "Animated preview; needs primitive assignment from visual analysis"
-    ]
+      "Assigned from CDN preview fingerprint (conf=0.55)"
+    ],
+    "verified": true,
+    "verifyScore": 0.451297098088254
   },
   {
     "id": "exit",
@@ -2543,13 +2907,20 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/explain.gif"
     },
     "assets": {},
-    "primitive": null,
-    "params": {},
-    "offlineReady": false,
-    "fidelity": null,
+    "primitive": "pulse",
+    "params": {
+      "_fp": {
+        "motion": 0.0264,
+        "conf": 0.4
+      }
+    },
+    "offlineReady": true,
+    "fidelity": "approximate-procedural",
     "notes": [
-      "Animated preview; needs primitive assignment from visual analysis"
-    ]
+      "Assigned from CDN preview fingerprint (conf=0.40)"
+    ],
+    "verified": true,
+    "verifyScore": 0.38035560728726237
   },
   {
     "id": "explode",
@@ -2585,13 +2956,22 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/face-cover.webp"
     },
     "assets": {},
-    "primitive": null,
-    "params": {},
-    "offlineReady": false,
-    "fidelity": null,
+    "primitive": "pulse",
+    "params": {
+      "minScale": 0.94,
+      "maxScale": 1.04,
+      "_fp": {
+        "motion": 0,
+        "conf": 0.4
+      }
+    },
+    "offlineReady": true,
+    "fidelity": "approximate-procedural",
     "notes": [
-      "Animated preview; needs primitive assignment from visual analysis"
-    ]
+      "Assigned from CDN preview fingerprint (conf=0.40)"
+    ],
+    "verified": true,
+    "verifyScore": 0.6221750763601783
   },
   {
     "id": "facepalm",
@@ -2610,11 +2990,13 @@
     },
     "primitive": "frames",
     "params": {},
-    "offlineReady": false,
+    "offlineReady": true,
     "fidelity": "approximate-composite",
     "notes": [
-      "Requires archived frame/atlas assets + placement recipe"
-    ]
+      "frames assets archived; pending render verification"
+    ],
+    "verified": true,
+    "verifyScore": 0.7192313774415884
   },
   {
     "id": "fall-leaves",
@@ -2675,11 +3057,13 @@
     },
     "primitive": "atlas",
     "params": {},
-    "offlineReady": false,
+    "offlineReady": true,
     "fidelity": "approximate-composite",
     "notes": [
-      "Requires archived frame/atlas assets + placement recipe"
-    ]
+      "atlas assets archived; pending render verification"
+    ],
+    "verified": true,
+    "verifyScore": 0.6383926800903117
   },
   {
     "id": "figure-8",
@@ -2694,13 +3078,20 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/figure-8.gif"
     },
     "assets": {},
-    "primitive": null,
-    "params": {},
-    "offlineReady": false,
-    "fidelity": null,
+    "primitive": "glitch",
+    "params": {
+      "_fp": {
+        "motion": 0.1745,
+        "conf": 0.5
+      }
+    },
+    "offlineReady": true,
+    "fidelity": "approximate-procedural",
     "notes": [
-      "Animated preview; needs primitive assignment from visual analysis"
-    ]
+      "Assigned from CDN preview fingerprint (conf=0.50)"
+    ],
+    "verified": true,
+    "verifyScore": 0.3609019629094796
   },
   {
     "id": "fire-pixel",
@@ -2757,13 +3148,22 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/fivehead.webp"
     },
     "assets": {},
-    "primitive": null,
-    "params": {},
-    "offlineReady": false,
-    "fidelity": null,
+    "primitive": "pulse",
+    "params": {
+      "minScale": 0.94,
+      "maxScale": 1.04,
+      "_fp": {
+        "motion": 0,
+        "conf": 0.4
+      }
+    },
+    "offlineReady": true,
+    "fidelity": "approximate-procedural",
     "notes": [
-      "Animated preview; needs primitive assignment from visual analysis"
-    ]
+      "Assigned from CDN preview fingerprint (conf=0.40)"
+    ],
+    "verified": true,
+    "verifyScore": 0.3469984888306089
   },
   {
     "id": "fivehead-pulse",
@@ -2801,11 +3201,13 @@
     },
     "primitive": "atlas",
     "params": {},
-    "offlineReady": false,
+    "offlineReady": true,
     "fidelity": "approximate-composite",
     "notes": [
-      "Requires archived frame/atlas assets + placement recipe"
-    ]
+      "atlas assets archived; pending render verification"
+    ],
+    "verified": true,
+    "verifyScore": 0.5812561005092625
   },
   {
     "id": "flag-wave",
@@ -2869,11 +3271,11 @@
     ]
   },
   {
-    "id": "flick:\u27a1\ufe0f",
+    "id": "flick:➡️",
     "slug": "flick",
     "tag": "gen_btn_flick",
     "family": "transform",
-    "directionSuffix": "\u27a1\ufe0f",
+    "directionSuffix": "➡️",
     "preview": {
       "ext": "gif",
       "contentType": "image/gif",
@@ -2881,20 +3283,27 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/flick.gif"
     },
     "assets": {},
-    "primitive": null,
-    "params": {},
-    "offlineReady": false,
-    "fidelity": null,
+    "primitive": "bounce",
+    "params": {
+      "_fp": {
+        "motion": 0.2808,
+        "conf": 0.6
+      }
+    },
+    "offlineReady": true,
+    "fidelity": "approximate-procedural",
     "notes": [
-      "Animated preview; needs primitive assignment from visual analysis"
-    ]
+      "Assigned from CDN preview fingerprint (conf=0.60)"
+    ],
+    "verified": true,
+    "verifyScore": 0.36709323405475547
   },
   {
-    "id": "fling:\u27a1\ufe0f",
+    "id": "fling:➡️",
     "slug": "fling",
     "tag": "gen_btn_fling",
     "family": "transform",
-    "directionSuffix": "\u27a1\ufe0f",
+    "directionSuffix": "➡️",
     "preview": {
       "ext": "gif",
       "contentType": "image/gif",
@@ -2902,13 +3311,20 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/fling.gif"
     },
     "assets": {},
-    "primitive": null,
-    "params": {},
-    "offlineReady": false,
-    "fidelity": null,
+    "primitive": "bounce",
+    "params": {
+      "_fp": {
+        "motion": 0.174,
+        "conf": 0.6
+      }
+    },
+    "offlineReady": true,
+    "fidelity": "approximate-procedural",
     "notes": [
-      "Animated preview; needs primitive assignment from visual analysis"
-    ]
+      "Assigned from CDN preview fingerprint (conf=0.60)"
+    ],
+    "verified": true,
+    "verifyScore": 0.37345755117931523
   },
   {
     "id": "flip",
@@ -2965,11 +3381,13 @@
     },
     "primitive": "atlas",
     "params": {},
-    "offlineReady": false,
+    "offlineReady": true,
     "fidelity": "approximate-composite",
     "notes": [
-      "Requires archived frame/atlas assets + placement recipe"
-    ]
+      "atlas assets archived; pending render verification"
+    ],
+    "verified": true,
+    "verifyScore": 0.6065152732552404
   },
   {
     "id": "flutter",
@@ -2984,13 +3402,20 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/flutter.gif"
     },
     "assets": {},
-    "primitive": null,
-    "params": {},
-    "offlineReady": false,
-    "fidelity": null,
+    "primitive": "glitch",
+    "params": {
+      "_fp": {
+        "motion": 0.1022,
+        "conf": 0.5
+      }
+    },
+    "offlineReady": true,
+    "fidelity": "approximate-procedural",
     "notes": [
-      "Animated preview; needs primitive assignment from visual analysis"
-    ]
+      "Assigned from CDN preview fingerprint (conf=0.50)"
+    ],
+    "verified": true,
+    "verifyScore": 0.355463061919037
   },
   {
     "id": "frog-flag",
@@ -3009,11 +3434,13 @@
     },
     "primitive": "frames",
     "params": {},
-    "offlineReady": false,
+    "offlineReady": true,
     "fidelity": "approximate-composite",
     "notes": [
-      "Requires archived frame/atlas assets + placement recipe"
-    ]
+      "frames assets archived; pending render verification"
+    ],
+    "verified": true,
+    "verifyScore": 0.5911067416753145
   },
   {
     "id": "fry",
@@ -3032,11 +3459,13 @@
     },
     "primitive": "frames",
     "params": {},
-    "offlineReady": false,
+    "offlineReady": true,
     "fidelity": "approximate-composite",
     "notes": [
-      "Requires archived frame/atlas assets + placement recipe"
-    ]
+      "frames assets archived; pending render verification"
+    ],
+    "verified": true,
+    "verifyScore": 0.6340406650706409
   },
   {
     "id": "gengar",
@@ -3055,11 +3484,13 @@
     },
     "primitive": "atlas",
     "params": {},
-    "offlineReady": false,
+    "offlineReady": true,
     "fidelity": "approximate-composite",
     "notes": [
-      "Requires archived frame/atlas assets + placement recipe"
-    ]
+      "atlas assets archived; pending render verification"
+    ],
+    "verified": true,
+    "verifyScore": 0.48347700080618283
   },
   {
     "id": "gigachad",
@@ -3078,11 +3509,13 @@
     },
     "primitive": "atlas",
     "params": {},
-    "offlineReady": false,
+    "offlineReady": true,
     "fidelity": "approximate-composite",
     "notes": [
-      "Requires archived frame/atlas assets + placement recipe"
-    ]
+      "atlas assets archived; pending render verification"
+    ],
+    "verified": true,
+    "verifyScore": 0.758219975490196
   },
   {
     "id": "glasses-shine",
@@ -3097,13 +3530,20 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/glasses-shine.gif"
     },
     "assets": {},
-    "primitive": null,
-    "params": {},
-    "offlineReady": false,
-    "fidelity": null,
+    "primitive": "pulse",
+    "params": {
+      "_fp": {
+        "motion": 0.0196,
+        "conf": 0.4
+      }
+    },
+    "offlineReady": true,
+    "fidelity": "approximate-procedural",
     "notes": [
-      "Animated preview; needs primitive assignment from visual analysis"
-    ]
+      "Assigned from CDN preview fingerprint (conf=0.40)"
+    ],
+    "verified": true,
+    "verifyScore": 0.4050747480030842
   },
   {
     "id": "glitch",
@@ -3125,11 +3565,11 @@
     "notes": []
   },
   {
-    "id": "glorming:\u27a1\ufe0f",
+    "id": "glorming:➡️",
     "slug": "glorming",
     "tag": "gen_btn_glorming",
     "family": "atlas",
-    "directionSuffix": "\u27a1\ufe0f",
+    "directionSuffix": "➡️",
     "preview": {
       "ext": "gif",
       "contentType": "image/gif",
@@ -3141,11 +3581,13 @@
     },
     "primitive": "atlas",
     "params": {},
-    "offlineReady": false,
+    "offlineReady": true,
     "fidelity": "approximate-composite",
     "notes": [
-      "Requires archived frame/atlas assets + placement recipe"
-    ]
+      "atlas assets archived; pending render verification"
+    ],
+    "verified": true,
+    "verifyScore": 0.6688647371644544
   },
   {
     "id": "glorp",
@@ -3187,11 +3629,13 @@
     },
     "primitive": "frames",
     "params": {},
-    "offlineReady": false,
+    "offlineReady": true,
     "fidelity": "approximate-composite",
     "notes": [
-      "Requires archived frame/atlas assets + placement recipe"
-    ]
+      "frames assets archived; pending render verification"
+    ],
+    "verified": true,
+    "verifyScore": 0.6030158246077734
   },
   {
     "id": "googly-eyes",
@@ -3227,13 +3671,22 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/grayscale.gif"
     },
     "assets": {},
-    "primitive": null,
-    "params": {},
-    "offlineReady": false,
-    "fidelity": null,
+    "primitive": "pulse",
+    "params": {
+      "minScale": 0.94,
+      "maxScale": 1.04,
+      "_fp": {
+        "motion": 0.0058,
+        "conf": 0.4
+      }
+    },
+    "offlineReady": true,
+    "fidelity": "approximate-procedural",
     "notes": [
-      "Animated preview; needs primitive assignment from visual analysis"
-    ]
+      "Assigned from CDN preview fingerprint (conf=0.40)"
+    ],
+    "verified": true,
+    "verifyScore": 0.3484601235143271
   },
   {
     "id": "green-fire",
@@ -3252,11 +3705,13 @@
     },
     "primitive": "atlas",
     "params": {},
-    "offlineReady": false,
+    "offlineReady": true,
     "fidelity": "approximate-composite",
     "notes": [
-      "Requires archived frame/atlas assets + placement recipe"
-    ]
+      "atlas assets archived; pending render verification"
+    ],
+    "verified": true,
+    "verifyScore": 0.595231413666384
   },
   {
     "id": "gulp",
@@ -3271,13 +3726,20 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/gulp.gif"
     },
     "assets": {},
-    "primitive": null,
-    "params": {},
-    "offlineReady": false,
-    "fidelity": null,
+    "primitive": "wobble",
+    "params": {
+      "_fp": {
+        "motion": 0.0463,
+        "conf": 0.5
+      }
+    },
+    "offlineReady": true,
+    "fidelity": "approximate-procedural",
     "notes": [
-      "Animated preview; needs primitive assignment from visual analysis"
-    ]
+      "Assigned from CDN preview fingerprint (conf=0.50)"
+    ],
+    "verified": true,
+    "verifyScore": 0.3429250180225645
   },
   {
     "id": "gun",
@@ -3292,13 +3754,22 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/gun.gif"
     },
     "assets": {},
-    "primitive": null,
-    "params": {},
-    "offlineReady": false,
-    "fidelity": null,
+    "primitive": "pulse",
+    "params": {
+      "minScale": 0.94,
+      "maxScale": 1.04,
+      "_fp": {
+        "motion": 0,
+        "conf": 0.4
+      }
+    },
+    "offlineReady": true,
+    "fidelity": "approximate-procedural",
     "notes": [
-      "Animated preview; needs primitive assignment from visual analysis"
-    ]
+      "Assigned from CDN preview fingerprint (conf=0.40)"
+    ],
+    "verified": true,
+    "verifyScore": 0.4323478531536763
   },
   {
     "id": "hazmat",
@@ -3359,13 +3830,20 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/headbop.gif"
     },
     "assets": {},
-    "primitive": null,
-    "params": {},
-    "offlineReady": false,
-    "fidelity": null,
+    "primitive": "shake",
+    "params": {
+      "_fp": {
+        "motion": 0.0803,
+        "conf": 0.6
+      }
+    },
+    "offlineReady": true,
+    "fidelity": "approximate-procedural",
     "notes": [
-      "Animated preview; needs primitive assignment from visual analysis"
-    ]
+      "Assigned from CDN preview fingerprint (conf=0.60)"
+    ],
+    "verified": true,
+    "verifyScore": 0.382325818189141
   },
   {
     "id": "heart-hypno",
@@ -3460,13 +3938,20 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/heat-haze.gif"
     },
     "assets": {},
-    "primitive": null,
-    "params": {},
-    "offlineReady": false,
-    "fidelity": null,
+    "primitive": "wobble",
+    "params": {
+      "_fp": {
+        "motion": 0.042,
+        "conf": 0.5
+      }
+    },
+    "offlineReady": true,
+    "fidelity": "approximate-procedural",
     "notes": [
-      "Animated preview; needs primitive assignment from visual analysis"
-    ]
+      "Assigned from CDN preview fingerprint (conf=0.50)"
+    ],
+    "verified": true,
+    "verifyScore": 0.36360227646751353
   },
   {
     "id": "helicopter",
@@ -3481,13 +3966,20 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/helicopter.gif"
     },
     "assets": {},
-    "primitive": null,
-    "params": {},
-    "offlineReady": false,
-    "fidelity": null,
+    "primitive": "bounce",
+    "params": {
+      "_fp": {
+        "motion": 0.1556,
+        "conf": 0.6
+      }
+    },
+    "offlineReady": true,
+    "fidelity": "approximate-procedural",
     "notes": [
-      "Animated preview; needs primitive assignment from visual analysis"
-    ]
+      "Assigned from CDN preview fingerprint (conf=0.60)"
+    ],
+    "verified": true,
+    "verifyScore": 0.383069543694452
   },
   {
     "id": "hellowo",
@@ -3502,13 +3994,20 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/hellowo.gif"
     },
     "assets": {},
-    "primitive": null,
-    "params": {},
-    "offlineReady": false,
-    "fidelity": null,
+    "primitive": "shake",
+    "params": {
+      "_fp": {
+        "motion": 0.0229,
+        "conf": 0.6
+      }
+    },
+    "offlineReady": true,
+    "fidelity": "approximate-procedural",
     "notes": [
-      "Animated preview; needs primitive assignment from visual analysis"
-    ]
+      "Assigned from CDN preview fingerprint (conf=0.60)"
+    ],
+    "verified": true,
+    "verifyScore": 0.5925056075709889
   },
   {
     "id": "heyy",
@@ -3523,13 +4022,22 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/heyy.webp"
     },
     "assets": {},
-    "primitive": null,
-    "params": {},
-    "offlineReady": false,
-    "fidelity": null,
+    "primitive": "pulse",
+    "params": {
+      "minScale": 0.94,
+      "maxScale": 1.04,
+      "_fp": {
+        "motion": 0,
+        "conf": 0.4
+      }
+    },
+    "offlineReady": true,
+    "fidelity": "approximate-procedural",
     "notes": [
-      "Animated preview; needs primitive assignment from visual analysis"
-    ]
+      "Assigned from CDN preview fingerprint (conf=0.40)"
+    ],
+    "verified": true,
+    "verifyScore": 0.511471095805905
   },
   {
     "id": "heyyeyaa",
@@ -3578,11 +4086,11 @@
     ]
   },
   {
-    "id": "hop:\u27a1\ufe0f",
+    "id": "hop:➡️",
     "slug": "hop",
     "tag": "gen_btn_hop",
     "family": "transform",
-    "directionSuffix": "\u27a1\ufe0f",
+    "directionSuffix": "➡️",
     "preview": {
       "ext": "gif",
       "contentType": "image/gif",
@@ -3659,11 +4167,13 @@
     },
     "primitive": "atlas",
     "params": {},
-    "offlineReady": false,
+    "offlineReady": true,
     "fidelity": "approximate-composite",
     "notes": [
-      "Requires archived frame/atlas assets + placement recipe"
-    ]
+      "atlas assets archived; pending render verification"
+    ],
+    "verified": true,
+    "verifyScore": 0.6112697401240603
   },
   {
     "id": "hype",
@@ -3685,8 +4195,10 @@
     "offlineReady": false,
     "fidelity": "approximate-composite",
     "notes": [
-      "Requires archived frame/atlas assets + placement recipe"
-    ]
+      "frames assets archived; pending render verification",
+      "Render failed: No frames in /workspace/artifacts/emoji-offline/assets/frames/hype"
+    ],
+    "verified": false
   },
   {
     "id": "hype-jam",
@@ -3765,13 +4277,22 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/i-have-a-question.webp"
     },
     "assets": {},
-    "primitive": null,
-    "params": {},
-    "offlineReady": false,
-    "fidelity": null,
+    "primitive": "pulse",
+    "params": {
+      "minScale": 0.94,
+      "maxScale": 1.04,
+      "_fp": {
+        "motion": 0,
+        "conf": 0.4
+      }
+    },
+    "offlineReady": true,
+    "fidelity": "approximate-procedural",
     "notes": [
-      "Animated preview; needs primitive assignment from visual analysis"
-    ]
+      "Assigned from CDN preview fingerprint (conf=0.40)"
+    ],
+    "verified": true,
+    "verifyScore": 0.42890357978053606
   },
   {
     "id": "i-love",
@@ -3811,11 +4332,13 @@
     },
     "primitive": "atlas",
     "params": {},
-    "offlineReady": false,
+    "offlineReady": true,
     "fidelity": "approximate-composite",
     "notes": [
-      "Requires archived frame/atlas assets + placement recipe"
-    ]
+      "atlas assets archived; pending render verification"
+    ],
+    "verified": true,
+    "verifyScore": 0.5699061816507425
   },
   {
     "id": "intensifies",
@@ -3830,13 +4353,20 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/intensifies.gif"
     },
     "assets": {},
-    "primitive": null,
-    "params": {},
-    "offlineReady": false,
-    "fidelity": null,
+    "primitive": "glitch",
+    "params": {
+      "_fp": {
+        "motion": 0.128,
+        "conf": 0.5
+      }
+    },
+    "offlineReady": true,
+    "fidelity": "approximate-procedural",
     "notes": [
-      "Animated preview; needs primitive assignment from visual analysis"
-    ]
+      "Assigned from CDN preview fingerprint (conf=0.50)"
+    ],
+    "verified": true,
+    "verifyScore": 0.356648874819014
   },
   {
     "id": "jail-time",
@@ -3855,11 +4385,13 @@
     },
     "primitive": "atlas",
     "params": {},
-    "offlineReady": false,
+    "offlineReady": true,
     "fidelity": "approximate-composite",
     "notes": [
-      "Requires archived frame/atlas assets + placement recipe"
-    ]
+      "atlas assets archived; pending render verification"
+    ],
+    "verified": true,
+    "verifyScore": 0.6933193463308298
   },
   {
     "id": "jam",
@@ -3899,11 +4431,13 @@
     },
     "primitive": "atlas",
     "params": {},
-    "offlineReady": false,
+    "offlineReady": true,
     "fidelity": "approximate-composite",
     "notes": [
-      "Requires archived frame/atlas assets + placement recipe"
-    ]
+      "atlas assets archived; pending render verification"
+    ],
+    "verified": true,
+    "verifyScore": 0.5854090779921982
   },
   {
     "id": "jiggle",
@@ -3918,13 +4452,20 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/jiggle.gif"
     },
     "assets": {},
-    "primitive": null,
-    "params": {},
-    "offlineReady": false,
-    "fidelity": null,
+    "primitive": "shake",
+    "params": {
+      "_fp": {
+        "motion": 0.0622,
+        "conf": 0.6
+      }
+    },
+    "offlineReady": true,
+    "fidelity": "approximate-procedural",
     "notes": [
-      "Animated preview; needs primitive assignment from visual analysis"
-    ]
+      "Assigned from CDN preview fingerprint (conf=0.60)"
+    ],
+    "verified": true,
+    "verifyScore": 0.3837492693554386
   },
   {
     "id": "jitter",
@@ -3980,13 +4521,20 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/kablooey.gif"
     },
     "assets": {},
-    "primitive": null,
-    "params": {},
-    "offlineReady": false,
-    "fidelity": null,
+    "primitive": "rainbow",
+    "params": {
+      "_fp": {
+        "motion": 0.1097,
+        "conf": 0.55
+      }
+    },
+    "offlineReady": true,
+    "fidelity": "approximate-procedural",
     "notes": [
-      "Animated preview; needs primitive assignment from visual analysis"
-    ]
+      "Assigned from CDN preview fingerprint (conf=0.55)"
+    ],
+    "verified": true,
+    "verifyScore": 0.42312749545079775
   },
   {
     "id": "keanu-thanks",
@@ -4005,11 +4553,13 @@
     },
     "primitive": "atlas",
     "params": {},
-    "offlineReady": false,
+    "offlineReady": true,
     "fidelity": "approximate-composite",
     "notes": [
-      "Requires archived frame/atlas assets + placement recipe"
-    ]
+      "atlas assets archived; pending render verification"
+    ],
+    "verified": true,
+    "verifyScore": 0.6484023084292627
   },
   {
     "id": "kek-jam",
@@ -4115,11 +4665,13 @@
     },
     "primitive": "atlas",
     "params": {},
-    "offlineReady": false,
+    "offlineReady": true,
     "fidelity": "approximate-composite",
     "notes": [
-      "Requires archived frame/atlas assets + placement recipe"
-    ]
+      "atlas assets archived; pending render verification"
+    ],
+    "verified": true,
+    "verifyScore": 0.6392228783919491
   },
   {
     "id": "lean",
@@ -4134,13 +4686,20 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/lean.gif"
     },
     "assets": {},
-    "primitive": null,
-    "params": {},
-    "offlineReady": false,
-    "fidelity": null,
+    "primitive": "bounce",
+    "params": {
+      "_fp": {
+        "motion": 0.0572,
+        "conf": 0.6
+      }
+    },
+    "offlineReady": true,
+    "fidelity": "approximate-procedural",
     "notes": [
-      "Animated preview; needs primitive assignment from visual analysis"
-    ]
+      "Assigned from CDN preview fingerprint (conf=0.60)"
+    ],
+    "verified": true,
+    "verifyScore": 0.35730496928885924
   },
   {
     "id": "leap",
@@ -4155,13 +4714,20 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/leap.gif"
     },
     "assets": {},
-    "primitive": null,
-    "params": {},
-    "offlineReady": false,
-    "fidelity": null,
+    "primitive": "glitch",
+    "params": {
+      "_fp": {
+        "motion": 0.135,
+        "conf": 0.5
+      }
+    },
+    "offlineReady": true,
+    "fidelity": "approximate-procedural",
     "notes": [
-      "Animated preview; needs primitive assignment from visual analysis"
-    ]
+      "Assigned from CDN preview fingerprint (conf=0.50)"
+    ],
+    "verified": true,
+    "verifyScore": 0.38534231856994006
   },
   {
     "id": "leave",
@@ -4201,11 +4767,13 @@
     },
     "primitive": "atlas",
     "params": {},
-    "offlineReady": false,
+    "offlineReady": true,
     "fidelity": "approximate-composite",
     "notes": [
-      "Requires archived frame/atlas assets + placement recipe"
-    ]
+      "atlas assets archived; pending render verification"
+    ],
+    "verified": true,
+    "verifyScore": 0.6919429890409046
   },
   {
     "id": "lebron-jam",
@@ -4245,11 +4813,13 @@
     },
     "primitive": "atlas",
     "params": {},
-    "offlineReady": false,
+    "offlineReady": true,
     "fidelity": "approximate-composite",
     "notes": [
-      "Requires archived frame/atlas assets + placement recipe"
-    ]
+      "atlas assets archived; pending render verification"
+    ],
+    "verified": true,
+    "verifyScore": 0.6442639635238561
   },
   {
     "id": "lets-gooo",
@@ -4264,13 +4834,20 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/lets-gooo.gif"
     },
     "assets": {},
-    "primitive": null,
-    "params": {},
-    "offlineReady": false,
-    "fidelity": null,
+    "primitive": "rainbow",
+    "params": {
+      "_fp": {
+        "motion": 0.2663,
+        "conf": 0.55
+      }
+    },
+    "offlineReady": true,
+    "fidelity": "approximate-procedural",
     "notes": [
-      "Animated preview; needs primitive assignment from visual analysis"
-    ]
+      "Assigned from CDN preview fingerprint (conf=0.55)"
+    ],
+    "verified": true,
+    "verifyScore": 0.4643359326812464
   },
   {
     "id": "lick",
@@ -4285,13 +4862,20 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/lick.gif"
     },
     "assets": {},
-    "primitive": null,
-    "params": {},
-    "offlineReady": false,
-    "fidelity": null,
+    "primitive": "nod",
+    "params": {
+      "_fp": {
+        "motion": 0.0367,
+        "conf": 0.55
+      }
+    },
+    "offlineReady": true,
+    "fidelity": "approximate-procedural",
     "notes": [
-      "Animated preview; needs primitive assignment from visual analysis"
-    ]
+      "Assigned from CDN preview fingerprint (conf=0.55)"
+    ],
+    "verified": true,
+    "verifyScore": 0.45998802910952075
   },
   {
     "id": "lightning-flash",
@@ -4329,13 +4913,20 @@
     "assets": {
       "overlay": "https://assets.makeemoji.com/overlays/static-styles/lightsaber.png"
     },
-    "primitive": null,
-    "params": {},
-    "offlineReady": false,
-    "fidelity": null,
+    "primitive": "wobble",
+    "params": {
+      "_fp": {
+        "motion": 0.0489,
+        "conf": 0.5
+      }
+    },
+    "offlineReady": true,
+    "fidelity": "approximate-procedural",
     "notes": [
-      "Animated preview; needs primitive assignment from visual analysis"
-    ]
+      "Assigned from CDN preview fingerprint (conf=0.50)"
+    ],
+    "verified": true,
+    "verifyScore": 0.3719911093098135
   },
   {
     "id": "lightspeed-jump",
@@ -4354,11 +4945,13 @@
     },
     "primitive": "atlas",
     "params": {},
-    "offlineReady": false,
+    "offlineReady": true,
     "fidelity": "approximate-composite",
     "notes": [
-      "Requires archived frame/atlas assets + placement recipe"
-    ]
+      "atlas assets archived; pending render verification"
+    ],
+    "verified": true,
+    "verifyScore": 0.6659513186785131
   },
   {
     "id": "loading",
@@ -4382,11 +4975,11 @@
     "notes": []
   },
   {
-    "id": "loading-eight:\u27a1\ufe0f",
+    "id": "loading-eight:➡️",
     "slug": "loading-eight",
     "tag": "gen_btn_loading-eight",
     "family": "transform",
-    "directionSuffix": "\u27a1\ufe0f",
+    "directionSuffix": "➡️",
     "preview": {
       "ext": "gif",
       "contentType": "image/gif",
@@ -4404,11 +4997,11 @@
     "notes": []
   },
   {
-    "id": "loading-five:\u27a1\ufe0f",
+    "id": "loading-five:➡️",
     "slug": "loading-five",
     "tag": "gen_btn_loading-five",
     "family": "transform",
-    "directionSuffix": "\u27a1\ufe0f",
+    "directionSuffix": "➡️",
     "preview": {
       "ext": "gif",
       "contentType": "image/gif",
@@ -4426,11 +5019,11 @@
     "notes": []
   },
   {
-    "id": "loading-four:\u27a1\ufe0f",
+    "id": "loading-four:➡️",
     "slug": "loading-four",
     "tag": "gen_btn_loading-four",
     "family": "transform",
-    "directionSuffix": "\u27a1\ufe0f",
+    "directionSuffix": "➡️",
     "preview": {
       "ext": "gif",
       "contentType": "image/gif",
@@ -4448,11 +5041,11 @@
     "notes": []
   },
   {
-    "id": "loading-nine:\u27a1\ufe0f",
+    "id": "loading-nine:➡️",
     "slug": "loading-nine",
     "tag": "gen_btn_loading-nine",
     "family": "transform",
-    "directionSuffix": "\u27a1\ufe0f",
+    "directionSuffix": "➡️",
     "preview": {
       "ext": "gif",
       "contentType": "image/gif",
@@ -4470,11 +5063,11 @@
     "notes": []
   },
   {
-    "id": "loading-seven:\u27a1\ufe0f",
+    "id": "loading-seven:➡️",
     "slug": "loading-seven",
     "tag": "gen_btn_loading-seven",
     "family": "transform",
-    "directionSuffix": "\u27a1\ufe0f",
+    "directionSuffix": "➡️",
     "preview": {
       "ext": "gif",
       "contentType": "image/gif",
@@ -4492,11 +5085,11 @@
     "notes": []
   },
   {
-    "id": "loading-six:\u27a1\ufe0f",
+    "id": "loading-six:➡️",
     "slug": "loading-six",
     "tag": "gen_btn_loading-six",
     "family": "transform",
-    "directionSuffix": "\u27a1\ufe0f",
+    "directionSuffix": "➡️",
     "preview": {
       "ext": "gif",
       "contentType": "image/gif",
@@ -4514,11 +5107,11 @@
     "notes": []
   },
   {
-    "id": "loading-three:\u27a1\ufe0f",
+    "id": "loading-three:➡️",
     "slug": "loading-three",
     "tag": "gen_btn_loading-three",
     "family": "transform",
-    "directionSuffix": "\u27a1\ufe0f",
+    "directionSuffix": "➡️",
     "preview": {
       "ext": "gif",
       "contentType": "image/gif",
@@ -4536,11 +5129,11 @@
     "notes": []
   },
   {
-    "id": "loading-two:\u27a1\ufe0f",
+    "id": "loading-two:➡️",
     "slug": "loading-two",
     "tag": "gen_btn_loading-two",
     "family": "transform",
-    "directionSuffix": "\u27a1\ufe0f",
+    "directionSuffix": "➡️",
     "preview": {
       "ext": "gif",
       "contentType": "image/gif",
@@ -4574,11 +5167,13 @@
     },
     "primitive": "frames",
     "params": {},
-    "offlineReady": false,
+    "offlineReady": true,
     "fidelity": "approximate-composite",
     "notes": [
-      "Requires archived frame/atlas assets + placement recipe"
-    ]
+      "frames assets archived; pending render verification"
+    ],
+    "verified": true,
+    "verifyScore": 0.5710518532040003
   },
   {
     "id": "long",
@@ -4593,13 +5188,22 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/long.webp"
     },
     "assets": {},
-    "primitive": null,
-    "params": {},
-    "offlineReady": false,
-    "fidelity": null,
+    "primitive": "pulse",
+    "params": {
+      "minScale": 0.94,
+      "maxScale": 1.04,
+      "_fp": {
+        "motion": 0,
+        "conf": 0.4
+      }
+    },
+    "offlineReady": true,
+    "fidelity": "approximate-procedural",
     "notes": [
-      "Animated preview; needs primitive assignment from visual analysis"
-    ]
+      "Assigned from CDN preview fingerprint (conf=0.40)"
+    ],
+    "verified": true,
+    "verifyScore": 0.3397718961946773
   },
   {
     "id": "lurk",
@@ -4614,13 +5218,20 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/lurk.gif"
     },
     "assets": {},
-    "primitive": null,
-    "params": {},
-    "offlineReady": false,
-    "fidelity": null,
+    "primitive": "bounce",
+    "params": {
+      "_fp": {
+        "motion": 0.0938,
+        "conf": 0.6
+      }
+    },
+    "offlineReady": true,
+    "fidelity": "approximate-procedural",
     "notes": [
-      "Animated preview; needs primitive assignment from visual analysis"
-    ]
+      "Assigned from CDN preview fingerprint (conf=0.60)"
+    ],
+    "verified": true,
+    "verifyScore": 0.6457484280330137
   },
   {
     "id": "luvv",
@@ -4635,13 +5246,22 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/luvv.webp"
     },
     "assets": {},
-    "primitive": null,
-    "params": {},
-    "offlineReady": false,
-    "fidelity": null,
+    "primitive": "pulse",
+    "params": {
+      "minScale": 0.94,
+      "maxScale": 1.04,
+      "_fp": {
+        "motion": 0,
+        "conf": 0.4
+      }
+    },
+    "offlineReady": true,
+    "fidelity": "approximate-procedural",
     "notes": [
-      "Animated preview; needs primitive assignment from visual analysis"
-    ]
+      "Assigned from CDN preview fingerprint (conf=0.40)"
+    ],
+    "verified": true,
+    "verifyScore": 0.5776660199782763
   },
   {
     "id": "madge-clap",
@@ -4660,11 +5280,13 @@
     },
     "primitive": "atlas",
     "params": {},
-    "offlineReady": false,
+    "offlineReady": true,
     "fidelity": "approximate-composite",
     "notes": [
-      "Requires archived frame/atlas assets + placement recipe"
-    ]
+      "atlas assets archived; pending render verification"
+    ],
+    "verified": true,
+    "verifyScore": 0.6132180554818862
   },
   {
     "id": "magnet",
@@ -4679,13 +5301,20 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/magnet.gif"
     },
     "assets": {},
-    "primitive": null,
-    "params": {},
-    "offlineReady": false,
-    "fidelity": null,
+    "primitive": "bounce",
+    "params": {
+      "_fp": {
+        "motion": 0.2368,
+        "conf": 0.6
+      }
+    },
+    "offlineReady": true,
+    "fidelity": "approximate-procedural",
     "notes": [
-      "Animated preview; needs primitive assignment from visual analysis"
-    ]
+      "Assigned from CDN preview fingerprint (conf=0.60)"
+    ],
+    "verified": true,
+    "verifyScore": 0.3908518197766082
   },
   {
     "id": "math",
@@ -4700,13 +5329,20 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/math.gif"
     },
     "assets": {},
-    "primitive": null,
-    "params": {},
-    "offlineReady": false,
-    "fidelity": null,
+    "primitive": "pulse",
+    "params": {
+      "_fp": {
+        "motion": 0.0391,
+        "conf": 0.55
+      }
+    },
+    "offlineReady": true,
+    "fidelity": "approximate-procedural",
     "notes": [
-      "Animated preview; needs primitive assignment from visual analysis"
-    ]
+      "Assigned from CDN preview fingerprint (conf=0.55)"
+    ],
+    "verified": true,
+    "verifyScore": 0.3508004259825951
   },
   {
     "id": "matrix-rain",
@@ -4786,11 +5422,13 @@
     },
     "primitive": "atlas",
     "params": {},
-    "offlineReady": false,
+    "offlineReady": true,
     "fidelity": "approximate-composite",
     "notes": [
-      "Requires archived frame/atlas assets + placement recipe"
-    ]
+      "atlas assets archived; pending render verification"
+    ],
+    "verified": true,
+    "verifyScore": 0.7067811804526055
   },
   {
     "id": "mercator",
@@ -4805,13 +5443,22 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/mercator.webp"
     },
     "assets": {},
-    "primitive": null,
-    "params": {},
-    "offlineReady": false,
-    "fidelity": null,
+    "primitive": "pulse",
+    "params": {
+      "minScale": 0.94,
+      "maxScale": 1.04,
+      "_fp": {
+        "motion": 0,
+        "conf": 0.4
+      }
+    },
+    "offlineReady": true,
+    "fidelity": "approximate-procedural",
     "notes": [
-      "Animated preview; needs primitive assignment from visual analysis"
-    ]
+      "Assigned from CDN preview fingerprint (conf=0.40)"
+    ],
+    "verified": true,
+    "verifyScore": 0.33548696458913174
   },
   {
     "id": "mercator-pulse",
@@ -4849,11 +5496,13 @@
     },
     "primitive": "atlas",
     "params": {},
-    "offlineReady": false,
+    "offlineReady": true,
     "fidelity": "approximate-composite",
     "notes": [
-      "Requires archived frame/atlas assets + placement recipe"
-    ]
+      "atlas assets archived; pending render verification"
+    ],
+    "verified": true,
+    "verifyScore": 0.6591877685445702
   },
   {
     "id": "middle-fingers",
@@ -4872,11 +5521,13 @@
     },
     "primitive": "atlas",
     "params": {},
-    "offlineReady": false,
+    "offlineReady": true,
     "fidelity": "approximate-composite",
     "notes": [
-      "Requires archived frame/atlas assets + placement recipe"
-    ]
+      "atlas assets archived; pending render verification"
+    ],
+    "verified": true,
+    "verifyScore": 0.7103750682400471
   },
   {
     "id": "mine-block",
@@ -4895,11 +5546,13 @@
     },
     "primitive": "atlas",
     "params": {},
-    "offlineReady": false,
+    "offlineReady": true,
     "fidelity": "approximate-composite",
     "notes": [
-      "Requires archived frame/atlas assets + placement recipe"
-    ]
+      "atlas assets archived; pending render verification"
+    ],
+    "verified": true,
+    "verifyScore": 0.7948568772126906
   },
   {
     "id": "misalign",
@@ -4914,13 +5567,20 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/misalign.gif"
     },
     "assets": {},
-    "primitive": null,
-    "params": {},
-    "offlineReady": false,
-    "fidelity": null,
+    "primitive": "shake",
+    "params": {
+      "_fp": {
+        "motion": 0.0858,
+        "conf": 0.6
+      }
+    },
+    "offlineReady": true,
+    "fidelity": "approximate-procedural",
     "notes": [
-      "Animated preview; needs primitive assignment from visual analysis"
-    ]
+      "Assigned from CDN preview fingerprint (conf=0.60)"
+    ],
+    "verified": true,
+    "verifyScore": 0.33427990688429565
   },
   {
     "id": "mitosis",
@@ -4935,13 +5595,20 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/mitosis.gif"
     },
     "assets": {},
-    "primitive": null,
-    "params": {},
-    "offlineReady": false,
-    "fidelity": null,
+    "primitive": "bounce",
+    "params": {
+      "_fp": {
+        "motion": 0.3468,
+        "conf": 0.6
+      }
+    },
+    "offlineReady": true,
+    "fidelity": "approximate-procedural",
     "notes": [
-      "Animated preview; needs primitive assignment from visual analysis"
-    ]
+      "Assigned from CDN preview fingerprint (conf=0.60)"
+    ],
+    "verified": true,
+    "verifyScore": 0.33232931339305694
   },
   {
     "id": "monka-christ",
@@ -4956,13 +5623,20 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/monka-christ.gif"
     },
     "assets": {},
-    "primitive": null,
-    "params": {},
-    "offlineReady": false,
-    "fidelity": null,
+    "primitive": "bounce",
+    "params": {
+      "_fp": {
+        "motion": 0.156,
+        "conf": 0.6
+      }
+    },
+    "offlineReady": true,
+    "fidelity": "approximate-procedural",
     "notes": [
-      "Animated preview; needs primitive assignment from visual analysis"
-    ]
+      "Assigned from CDN preview fingerprint (conf=0.60)"
+    ],
+    "verified": true,
+    "verifyScore": 0.45370174986236644
   },
   {
     "id": "monka-hmm",
@@ -4977,13 +5651,20 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/monka-hmm.gif"
     },
     "assets": {},
-    "primitive": null,
-    "params": {},
-    "offlineReady": false,
-    "fidelity": null,
+    "primitive": "rainbow",
+    "params": {
+      "_fp": {
+        "motion": 0.151,
+        "conf": 0.55
+      }
+    },
+    "offlineReady": true,
+    "fidelity": "approximate-procedural",
     "notes": [
-      "Animated preview; needs primitive assignment from visual analysis"
-    ]
+      "Assigned from CDN preview fingerprint (conf=0.55)"
+    ],
+    "verified": true,
+    "verifyScore": 0.5273484677782105
   },
   {
     "id": "mustache-glasses",
@@ -5002,11 +5683,13 @@
     },
     "primitive": "frames",
     "params": {},
-    "offlineReady": false,
+    "offlineReady": true,
     "fidelity": "approximate-composite",
     "notes": [
-      "Requires archived frame/atlas assets + placement recipe"
-    ]
+      "frames assets archived; pending render verification"
+    ],
+    "verified": true,
+    "verifyScore": 0.637255243441856
   },
   {
     "id": "negative-blink",
@@ -5028,11 +5711,11 @@
     "notes": []
   },
   {
-    "id": "nesting-doll:\u27a1\ufe0f",
+    "id": "nesting-doll:➡️",
     "slug": "nesting-doll",
     "tag": "gen_btn_nesting-doll",
     "family": "transform",
-    "directionSuffix": "\u27a1\ufe0f",
+    "directionSuffix": "➡️",
     "preview": {
       "ext": "gif",
       "contentType": "image/gif",
@@ -5040,13 +5723,20 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/nesting-doll.gif"
     },
     "assets": {},
-    "primitive": null,
-    "params": {},
-    "offlineReady": false,
-    "fidelity": null,
+    "primitive": "shake",
+    "params": {
+      "_fp": {
+        "motion": 0.1031,
+        "conf": 0.6
+      }
+    },
+    "offlineReady": true,
+    "fidelity": "approximate-procedural",
     "notes": [
-      "Animated preview; needs primitive assignment from visual analysis"
-    ]
+      "Assigned from CDN preview fingerprint (conf=0.60)"
+    ],
+    "verified": true,
+    "verifyScore": 0.35129883210114643
   },
   {
     "id": "nise",
@@ -5061,13 +5751,22 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/nise.webp"
     },
     "assets": {},
-    "primitive": null,
-    "params": {},
-    "offlineReady": false,
-    "fidelity": null,
+    "primitive": "pulse",
+    "params": {
+      "minScale": 0.94,
+      "maxScale": 1.04,
+      "_fp": {
+        "motion": 0,
+        "conf": 0.4
+      }
+    },
+    "offlineReady": true,
+    "fidelity": "approximate-procedural",
     "notes": [
-      "Animated preview; needs primitive assignment from visual analysis"
-    ]
+      "Assigned from CDN preview fingerprint (conf=0.40)"
+    ],
+    "verified": true,
+    "verifyScore": 0.5248528359519213
   },
   {
     "id": "no-no",
@@ -5164,11 +5863,13 @@
     },
     "primitive": "atlas",
     "params": {},
-    "offlineReady": false,
+    "offlineReady": true,
     "fidelity": "approximate-composite",
     "notes": [
-      "Requires archived frame/atlas assets + placement recipe"
-    ]
+      "atlas assets archived; pending render verification"
+    ],
+    "verified": true,
+    "verifyScore": 0.6281740681175352
   },
   {
     "id": "not-stonks",
@@ -5231,18 +5932,20 @@
     },
     "primitive": "atlas",
     "params": {},
-    "offlineReady": false,
+    "offlineReady": true,
     "fidelity": "approximate-composite",
     "notes": [
-      "Requires archived frame/atlas assets + placement recipe"
-    ]
+      "atlas assets archived; pending render verification"
+    ],
+    "verified": true,
+    "verifyScore": 0.5774215575126069
   },
   {
-    "id": "nyan:\u27a1\ufe0f",
+    "id": "nyan:➡️",
     "slug": "nyan",
     "tag": "gen_btn_nyan",
     "family": "transform",
-    "directionSuffix": "\u27a1\ufe0f",
+    "directionSuffix": "➡️",
     "preview": {
       "ext": "gif",
       "contentType": "image/gif",
@@ -5250,13 +5953,20 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/nyan.gif"
     },
     "assets": {},
-    "primitive": null,
-    "params": {},
-    "offlineReady": false,
-    "fidelity": null,
+    "primitive": "wobble",
+    "params": {
+      "_fp": {
+        "motion": 0.0487,
+        "conf": 0.5
+      }
+    },
+    "offlineReady": true,
+    "fidelity": "approximate-procedural",
     "notes": [
-      "Animated preview; needs primitive assignment from visual analysis"
-    ]
+      "Assigned from CDN preview fingerprint (conf=0.50)"
+    ],
+    "verified": true,
+    "verifyScore": 0.4177318563460023
   },
   {
     "id": "old-man-yells",
@@ -5271,13 +5981,20 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/old-man-yells.gif"
     },
     "assets": {},
-    "primitive": null,
-    "params": {},
-    "offlineReady": false,
-    "fidelity": null,
+    "primitive": "pulse",
+    "params": {
+      "_fp": {
+        "motion": 0.0272,
+        "conf": 0.4
+      }
+    },
+    "offlineReady": true,
+    "fidelity": "approximate-procedural",
     "notes": [
-      "Animated preview; needs primitive assignment from visual analysis"
-    ]
+      "Assigned from CDN preview fingerprint (conf=0.40)"
+    ],
+    "verified": true,
+    "verifyScore": 0.4419644952036642
   },
   {
     "id": "omega-lul",
@@ -5292,13 +6009,22 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/omega-lul.webp"
     },
     "assets": {},
-    "primitive": null,
-    "params": {},
-    "offlineReady": false,
-    "fidelity": null,
+    "primitive": "pulse",
+    "params": {
+      "minScale": 0.94,
+      "maxScale": 1.04,
+      "_fp": {
+        "motion": 0,
+        "conf": 0.4
+      }
+    },
+    "offlineReady": true,
+    "fidelity": "approximate-procedural",
     "notes": [
-      "Animated preview; needs primitive assignment from visual analysis"
-    ]
+      "Assigned from CDN preview fingerprint (conf=0.40)"
+    ],
+    "verified": true,
+    "verifyScore": 0.33285673738735544
   },
   {
     "id": "omega-lul-pulse",
@@ -5381,11 +6107,11 @@
     "notes": []
   },
   {
-    "id": "orbit-eight:\u27a1\ufe0f",
+    "id": "orbit-eight:➡️",
     "slug": "orbit-eight",
     "tag": "gen_btn_orbit-eight",
     "family": "transform",
-    "directionSuffix": "\u27a1\ufe0f",
+    "directionSuffix": "➡️",
     "preview": {
       "ext": "gif",
       "contentType": "image/gif",
@@ -5402,11 +6128,11 @@
     "notes": []
   },
   {
-    "id": "orbit-five:\u27a1\ufe0f",
+    "id": "orbit-five:➡️",
     "slug": "orbit-five",
     "tag": "gen_btn_orbit-five",
     "family": "transform",
-    "directionSuffix": "\u27a1\ufe0f",
+    "directionSuffix": "➡️",
     "preview": {
       "ext": "gif",
       "contentType": "image/gif",
@@ -5423,11 +6149,11 @@
     "notes": []
   },
   {
-    "id": "orbit-four:\u27a1\ufe0f",
+    "id": "orbit-four:➡️",
     "slug": "orbit-four",
     "tag": "gen_btn_orbit-four",
     "family": "transform",
-    "directionSuffix": "\u27a1\ufe0f",
+    "directionSuffix": "➡️",
     "preview": {
       "ext": "gif",
       "contentType": "image/gif",
@@ -5444,11 +6170,11 @@
     "notes": []
   },
   {
-    "id": "orbit-nine:\u27a1\ufe0f",
+    "id": "orbit-nine:➡️",
     "slug": "orbit-nine",
     "tag": "gen_btn_orbit-nine",
     "family": "transform",
-    "directionSuffix": "\u27a1\ufe0f",
+    "directionSuffix": "➡️",
     "preview": {
       "ext": "gif",
       "contentType": "image/gif",
@@ -5465,11 +6191,11 @@
     "notes": []
   },
   {
-    "id": "orbit-seven:\u27a1\ufe0f",
+    "id": "orbit-seven:➡️",
     "slug": "orbit-seven",
     "tag": "gen_btn_orbit-seven",
     "family": "transform",
-    "directionSuffix": "\u27a1\ufe0f",
+    "directionSuffix": "➡️",
     "preview": {
       "ext": "gif",
       "contentType": "image/gif",
@@ -5486,11 +6212,11 @@
     "notes": []
   },
   {
-    "id": "orbit-six:\u27a1\ufe0f",
+    "id": "orbit-six:➡️",
     "slug": "orbit-six",
     "tag": "gen_btn_orbit-six",
     "family": "transform",
-    "directionSuffix": "\u27a1\ufe0f",
+    "directionSuffix": "➡️",
     "preview": {
       "ext": "gif",
       "contentType": "image/gif",
@@ -5507,11 +6233,11 @@
     "notes": []
   },
   {
-    "id": "orbit-three:\u27a1\ufe0f",
+    "id": "orbit-three:➡️",
     "slug": "orbit-three",
     "tag": "gen_btn_orbit-three",
     "family": "transform",
-    "directionSuffix": "\u27a1\ufe0f",
+    "directionSuffix": "➡️",
     "preview": {
       "ext": "gif",
       "contentType": "image/gif",
@@ -5528,11 +6254,11 @@
     "notes": []
   },
   {
-    "id": "orbit-two:\u27a1\ufe0f",
+    "id": "orbit-two:➡️",
     "slug": "orbit-two",
     "tag": "gen_btn_orbit-two",
     "family": "transform",
-    "directionSuffix": "\u27a1\ufe0f",
+    "directionSuffix": "➡️",
     "preview": {
       "ext": "gif",
       "contentType": "image/gif",
@@ -5549,11 +6275,11 @@
     "notes": []
   },
   {
-    "id": "orbit:\u27a1\ufe0f",
+    "id": "orbit:➡️",
     "slug": "orbit",
     "tag": "gen_btn_orbit",
     "family": "transform",
-    "directionSuffix": "\u27a1\ufe0f",
+    "directionSuffix": "➡️",
     "preview": {
       "ext": "gif",
       "contentType": "image/gif",
@@ -5626,13 +6352,20 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/pace.gif"
     },
     "assets": {},
-    "primitive": null,
-    "params": {},
-    "offlineReady": false,
-    "fidelity": null,
+    "primitive": "glitch",
+    "params": {
+      "_fp": {
+        "motion": 0.1213,
+        "conf": 0.5
+      }
+    },
+    "offlineReady": true,
+    "fidelity": "approximate-procedural",
     "notes": [
-      "Animated preview; needs primitive assignment from visual analysis"
-    ]
+      "Assigned from CDN preview fingerprint (conf=0.50)"
+    ],
+    "verified": true,
+    "verifyScore": 0.38038137080198164
   },
   {
     "id": "pag-bounce",
@@ -5666,13 +6399,22 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/pagman.gif"
     },
     "assets": {},
-    "primitive": null,
-    "params": {},
-    "offlineReady": false,
-    "fidelity": null,
+    "primitive": "pulse",
+    "params": {
+      "minScale": 0.94,
+      "maxScale": 1.04,
+      "_fp": {
+        "motion": 0.0005,
+        "conf": 0.4
+      }
+    },
+    "offlineReady": true,
+    "fidelity": "approximate-procedural",
     "notes": [
-      "Animated preview; needs primitive assignment from visual analysis"
-    ]
+      "Assigned from CDN preview fingerprint (conf=0.40)"
+    ],
+    "verified": true,
+    "verifyScore": 0.49231931463243017
   },
   {
     "id": "panic",
@@ -5687,13 +6429,20 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/panic.gif"
     },
     "assets": {},
-    "primitive": null,
-    "params": {},
-    "offlineReady": false,
-    "fidelity": null,
+    "primitive": "glitch",
+    "params": {
+      "_fp": {
+        "motion": 0.2638,
+        "conf": 0.5
+      }
+    },
+    "offlineReady": true,
+    "fidelity": "approximate-procedural",
     "notes": [
-      "Animated preview; needs primitive assignment from visual analysis"
-    ]
+      "Assigned from CDN preview fingerprint (conf=0.50)"
+    ],
+    "verified": true,
+    "verifyScore": 0.34419042711524894
   },
   {
     "id": "parrot",
@@ -5708,13 +6457,20 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/parrot.gif"
     },
     "assets": {},
-    "primitive": null,
-    "params": {},
-    "offlineReady": false,
-    "fidelity": null,
+    "primitive": "bounce",
+    "params": {
+      "_fp": {
+        "motion": 0.0978,
+        "conf": 0.6
+      }
+    },
+    "offlineReady": true,
+    "fidelity": "approximate-procedural",
     "notes": [
-      "Animated preview; needs primitive assignment from visual analysis"
-    ]
+      "Assigned from CDN preview fingerprint (conf=0.60)"
+    ],
+    "verified": true,
+    "verifyScore": 0.4889874358406263
   },
   {
     "id": "parrot-hat",
@@ -5729,13 +6485,20 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/parrot-hat.gif"
     },
     "assets": {},
-    "primitive": null,
-    "params": {},
-    "offlineReady": false,
-    "fidelity": null,
+    "primitive": "rainbow",
+    "params": {
+      "_fp": {
+        "motion": 0.1623,
+        "conf": 0.55
+      }
+    },
+    "offlineReady": true,
+    "fidelity": "approximate-procedural",
     "notes": [
-      "Animated preview; needs primitive assignment from visual analysis"
-    ]
+      "Assigned from CDN preview fingerprint (conf=0.55)"
+    ],
+    "verified": true,
+    "verifyScore": 0.48503864676530384
   },
   {
     "id": "parrot-hold",
@@ -5750,13 +6513,20 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/parrot-hold.gif"
     },
     "assets": {},
-    "primitive": null,
-    "params": {},
-    "offlineReady": false,
-    "fidelity": null,
+    "primitive": "rainbow",
+    "params": {
+      "_fp": {
+        "motion": 0.1087,
+        "conf": 0.55
+      }
+    },
+    "offlineReady": true,
+    "fidelity": "approximate-procedural",
     "notes": [
-      "Animated preview; needs primitive assignment from visual analysis"
-    ]
+      "Assigned from CDN preview fingerprint (conf=0.55)"
+    ],
+    "verified": true,
+    "verifyScore": 0.45858644907238255
   },
   {
     "id": "party",
@@ -5794,11 +6564,13 @@
     },
     "primitive": "atlas",
     "params": {},
-    "offlineReady": false,
+    "offlineReady": true,
     "fidelity": "approximate-composite",
     "notes": [
-      "Requires archived frame/atlas assets + placement recipe"
-    ]
+      "atlas assets archived; pending render verification"
+    ],
+    "verified": true,
+    "verifyScore": 0.6403459515280602
   },
   {
     "id": "party-parrot",
@@ -5817,11 +6589,13 @@
     },
     "primitive": "atlas",
     "params": {},
-    "offlineReady": false,
+    "offlineReady": true,
     "fidelity": "approximate-composite",
     "notes": [
-      "Requires archived frame/atlas assets + placement recipe"
-    ]
+      "atlas assets archived; pending render verification"
+    ],
+    "verified": true,
+    "verifyScore": 0.5550313099372346
   },
   {
     "id": "pastel-bloom",
@@ -5836,13 +6610,20 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/pastel-bloom.gif"
     },
     "assets": {},
-    "primitive": null,
-    "params": {},
-    "offlineReady": false,
-    "fidelity": null,
+    "primitive": "wobble",
+    "params": {
+      "_fp": {
+        "motion": 0.0448,
+        "conf": 0.5
+      }
+    },
+    "offlineReady": true,
+    "fidelity": "approximate-procedural",
     "notes": [
-      "Animated preview; needs primitive assignment from visual analysis"
-    ]
+      "Assigned from CDN preview fingerprint (conf=0.50)"
+    ],
+    "verified": true,
+    "verifyScore": 0.21159519037649777
   },
   {
     "id": "pat",
@@ -5861,11 +6642,13 @@
     },
     "primitive": "atlas",
     "params": {},
-    "offlineReady": false,
+    "offlineReady": true,
     "fidelity": "approximate-composite",
     "notes": [
-      "Requires archived frame/atlas assets + placement recipe"
-    ]
+      "atlas assets archived; pending render verification"
+    ],
+    "verified": true,
+    "verifyScore": 0.6199231819890181
   },
   {
     "id": "patrick-bateman",
@@ -5880,13 +6663,20 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/patrick-bateman.gif"
     },
     "assets": {},
-    "primitive": null,
-    "params": {},
-    "offlineReady": false,
-    "fidelity": null,
+    "primitive": "pet",
+    "params": {
+      "_fp": {
+        "motion": 0.0479,
+        "conf": 0.85
+      }
+    },
+    "offlineReady": true,
+    "fidelity": "approximate-procedural",
     "notes": [
-      "Animated preview; needs primitive assignment from visual analysis"
-    ]
+      "Assigned from CDN preview fingerprint (conf=0.85)"
+    ],
+    "verified": true,
+    "verifyScore": 0.7013702944218388
   },
   {
     "id": "pause-champ",
@@ -5901,13 +6691,20 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/pause-champ.gif"
     },
     "assets": {},
-    "primitive": null,
-    "params": {},
-    "offlineReady": false,
-    "fidelity": null,
+    "primitive": "rainbow",
+    "params": {
+      "_fp": {
+        "motion": 0.1585,
+        "conf": 0.55
+      }
+    },
+    "offlineReady": true,
+    "fidelity": "approximate-procedural",
     "notes": [
-      "Animated preview; needs primitive assignment from visual analysis"
-    ]
+      "Assigned from CDN preview fingerprint (conf=0.55)"
+    ],
+    "verified": true,
+    "verifyScore": 0.5285867837378363
   },
   {
     "id": "peek-corner",
@@ -5991,13 +6788,20 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/peepo-bye.gif"
     },
     "assets": {},
-    "primitive": null,
-    "params": {},
-    "offlineReady": false,
-    "fidelity": null,
+    "primitive": "bounce",
+    "params": {
+      "_fp": {
+        "motion": 0.1402,
+        "conf": 0.6
+      }
+    },
+    "offlineReady": true,
+    "fidelity": "approximate-procedural",
     "notes": [
-      "Animated preview; needs primitive assignment from visual analysis"
-    ]
+      "Assigned from CDN preview fingerprint (conf=0.60)"
+    ],
+    "verified": true,
+    "verifyScore": 0.47598658398550076
   },
   {
     "id": "peepo-cheer",
@@ -6054,13 +6858,20 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/peepo-dj.gif"
     },
     "assets": {},
-    "primitive": null,
-    "params": {},
-    "offlineReady": false,
-    "fidelity": null,
+    "primitive": "rainbow",
+    "params": {
+      "_fp": {
+        "motion": 0.0587,
+        "conf": 0.55
+      }
+    },
+    "offlineReady": true,
+    "fidelity": "approximate-procedural",
     "notes": [
-      "Animated preview; needs primitive assignment from visual analysis"
-    ]
+      "Assigned from CDN preview fingerprint (conf=0.55)"
+    ],
+    "verified": true,
+    "verifyScore": 0.5409070774854458
   },
   {
     "id": "peepo-giggles",
@@ -6075,13 +6886,20 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/peepo-giggles.gif"
     },
     "assets": {},
-    "primitive": null,
-    "params": {},
-    "offlineReady": false,
-    "fidelity": null,
+    "primitive": "bounce",
+    "params": {
+      "_fp": {
+        "motion": 0.1454,
+        "conf": 0.6
+      }
+    },
+    "offlineReady": true,
+    "fidelity": "approximate-procedural",
     "notes": [
-      "Animated preview; needs primitive assignment from visual analysis"
-    ]
+      "Assigned from CDN preview fingerprint (conf=0.60)"
+    ],
+    "verified": true,
+    "verifyScore": 0.5104771505794918
   },
   {
     "id": "peepo-love",
@@ -6140,13 +6958,20 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/peepo-poopoo.gif"
     },
     "assets": {},
-    "primitive": null,
-    "params": {},
-    "offlineReady": false,
-    "fidelity": null,
+    "primitive": "pulse",
+    "params": {
+      "_fp": {
+        "motion": 0.0384,
+        "conf": 0.4
+      }
+    },
+    "offlineReady": true,
+    "fidelity": "approximate-procedural",
     "notes": [
-      "Animated preview; needs primitive assignment from visual analysis"
-    ]
+      "Assigned from CDN preview fingerprint (conf=0.40)"
+    ],
+    "verified": true,
+    "verifyScore": 0.37477768281454504
   },
   {
     "id": "peepo-riot",
@@ -6161,13 +6986,20 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/peepo-riot.gif"
     },
     "assets": {},
-    "primitive": null,
-    "params": {},
-    "offlineReady": false,
-    "fidelity": null,
+    "primitive": "glitch",
+    "params": {
+      "_fp": {
+        "motion": 0.2876,
+        "conf": 0.5
+      }
+    },
+    "offlineReady": true,
+    "fidelity": "approximate-procedural",
     "notes": [
-      "Animated preview; needs primitive assignment from visual analysis"
-    ]
+      "Assigned from CDN preview fingerprint (conf=0.50)"
+    ],
+    "verified": true,
+    "verifyScore": 0.4114447934979969
   },
   {
     "id": "peepo-run",
@@ -6249,13 +7081,20 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/peepo-sit-hey.gif"
     },
     "assets": {},
-    "primitive": null,
-    "params": {},
-    "offlineReady": false,
-    "fidelity": null,
+    "primitive": "rainbow",
+    "params": {
+      "_fp": {
+        "motion": 0.1491,
+        "conf": 0.55
+      }
+    },
+    "offlineReady": true,
+    "fidelity": "approximate-procedural",
     "notes": [
-      "Animated preview; needs primitive assignment from visual analysis"
-    ]
+      "Assigned from CDN preview fingerprint (conf=0.55)"
+    ],
+    "verified": true,
+    "verifyScore": 0.48692598225254724
   },
   {
     "id": "peepo-stop",
@@ -6343,11 +7182,13 @@
     },
     "primitive": "frames",
     "params": {},
-    "offlineReady": false,
+    "offlineReady": true,
     "fidelity": "approximate-composite",
     "notes": [
-      "Requires archived frame/atlas assets + placement recipe"
-    ]
+      "frames assets archived; pending render verification"
+    ],
+    "verified": true,
+    "verifyScore": 0.6284859642781844
   },
   {
     "id": "pepe-cheer",
@@ -6385,13 +7226,22 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/pepe-clown.webp"
     },
     "assets": {},
-    "primitive": null,
-    "params": {},
-    "offlineReady": false,
-    "fidelity": null,
+    "primitive": "pulse",
+    "params": {
+      "minScale": 0.94,
+      "maxScale": 1.04,
+      "_fp": {
+        "motion": 0,
+        "conf": 0.4
+      }
+    },
+    "offlineReady": true,
+    "fidelity": "approximate-procedural",
     "notes": [
-      "Animated preview; needs primitive assignment from visual analysis"
-    ]
+      "Assigned from CDN preview fingerprint (conf=0.40)"
+    ],
+    "verified": true,
+    "verifyScore": 0.46014526400193934
   },
   {
     "id": "pepe-dab",
@@ -6433,11 +7283,13 @@
     },
     "primitive": "atlas",
     "params": {},
-    "offlineReady": false,
+    "offlineReady": true,
     "fidelity": "approximate-composite",
     "notes": [
-      "Requires archived frame/atlas assets + placement recipe"
-    ]
+      "atlas assets archived; pending render verification"
+    ],
+    "verified": true,
+    "verifyScore": 0.579056377072793
   },
   {
     "id": "pepe-meltdown",
@@ -6456,11 +7308,13 @@
     },
     "primitive": "atlas",
     "params": {},
-    "offlineReady": false,
+    "offlineReady": true,
     "fidelity": "approximate-composite",
     "notes": [
-      "Requires archived frame/atlas assets + placement recipe"
-    ]
+      "atlas assets archived; pending render verification"
+    ],
+    "verified": true,
+    "verifyScore": 0.6138324142455733
   },
   {
     "id": "pepe-nodders",
@@ -6479,11 +7333,13 @@
     },
     "primitive": "atlas",
     "params": {},
-    "offlineReady": false,
+    "offlineReady": true,
     "fidelity": "approximate-composite",
     "notes": [
-      "Requires archived frame/atlas assets + placement recipe"
-    ]
+      "atlas assets archived; pending render verification"
+    ],
+    "verified": true,
+    "verifyScore": 0.6472899328907991
   },
   {
     "id": "pepe-point",
@@ -6502,11 +7358,13 @@
     },
     "primitive": "atlas",
     "params": {},
-    "offlineReady": false,
+    "offlineReady": true,
     "fidelity": "approximate-composite",
     "notes": [
-      "Requires archived frame/atlas assets + placement recipe"
-    ]
+      "atlas assets archived; pending render verification"
+    ],
+    "verified": true,
+    "verifyScore": 0.675931622313715
   },
   {
     "id": "pepe-s",
@@ -6521,13 +7379,20 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/pepe-s.gif"
     },
     "assets": {},
-    "primitive": null,
-    "params": {},
-    "offlineReady": false,
-    "fidelity": null,
+    "primitive": "bounce",
+    "params": {
+      "_fp": {
+        "motion": 0.1574,
+        "conf": 0.6
+      }
+    },
+    "offlineReady": true,
+    "fidelity": "approximate-procedural",
     "notes": [
-      "Animated preview; needs primitive assignment from visual analysis"
-    ]
+      "Assigned from CDN preview fingerprint (conf=0.60)"
+    ],
+    "verified": true,
+    "verifyScore": 0.4297939577615635
   },
   {
     "id": "pepe-sweat",
@@ -6542,13 +7407,20 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/pepe-sweat.gif"
     },
     "assets": {},
-    "primitive": null,
-    "params": {},
-    "offlineReady": false,
-    "fidelity": null,
+    "primitive": "nod",
+    "params": {
+      "_fp": {
+        "motion": 0.0702,
+        "conf": 0.55
+      }
+    },
+    "offlineReady": true,
+    "fidelity": "approximate-procedural",
     "notes": [
-      "Animated preview; needs primitive assignment from visual analysis"
-    ]
+      "Assigned from CDN preview fingerprint (conf=0.55)"
+    ],
+    "verified": true,
+    "verifyScore": 0.5692314862717134
   },
   {
     "id": "pepega",
@@ -6590,11 +7462,13 @@
     },
     "primitive": "atlas",
     "params": {},
-    "offlineReady": false,
+    "offlineReady": true,
     "fidelity": "approximate-composite",
     "notes": [
-      "Requires archived frame/atlas assets + placement recipe"
-    ]
+      "atlas assets archived; pending render verification"
+    ],
+    "verified": true,
+    "verifyScore": 0.6149745125550721
   },
   {
     "id": "pet",
@@ -6613,11 +7487,13 @@
     },
     "primitive": "atlas",
     "params": {},
-    "offlineReady": false,
+    "offlineReady": true,
     "fidelity": "approximate-composite",
     "notes": [
-      "Requires archived frame/atlas assets + placement recipe"
-    ]
+      "atlas assets archived; pending render verification"
+    ],
+    "verified": true,
+    "verifyScore": 0.622420426279493
   },
   {
     "id": "phone-time",
@@ -6636,11 +7512,13 @@
     },
     "primitive": "atlas",
     "params": {},
-    "offlineReady": false,
+    "offlineReady": true,
     "fidelity": "approximate-composite",
     "notes": [
-      "Requires archived frame/atlas assets + placement recipe"
-    ]
+      "atlas assets archived; pending render verification"
+    ],
+    "verified": true,
+    "verifyScore": 0.6747933308010785
   },
   {
     "id": "pika-stand",
@@ -6659,11 +7537,13 @@
     },
     "primitive": "atlas",
     "params": {},
-    "offlineReady": false,
+    "offlineReady": true,
     "fidelity": "approximate-composite",
     "notes": [
-      "Requires archived frame/atlas assets + placement recipe"
-    ]
+      "atlas assets archived; pending render verification"
+    ],
+    "verified": true,
+    "verifyScore": 0.5927526304895666
   },
   {
     "id": "pikachu",
@@ -6682,11 +7562,13 @@
     },
     "primitive": "atlas",
     "params": {},
-    "offlineReady": false,
+    "offlineReady": true,
     "fidelity": "approximate-composite",
     "notes": [
-      "Requires archived frame/atlas assets + placement recipe"
-    ]
+      "atlas assets archived; pending render verification"
+    ],
+    "verified": true,
+    "verifyScore": 0.5877050498388912
   },
   {
     "id": "pixar-think",
@@ -6705,11 +7587,13 @@
     },
     "primitive": "atlas",
     "params": {},
-    "offlineReady": false,
+    "offlineReady": true,
     "fidelity": "approximate-composite",
     "notes": [
-      "Requires archived frame/atlas assets + placement recipe"
-    ]
+      "atlas assets archived; pending render verification"
+    ],
+    "verified": true,
+    "verifyScore": 0.6539388860670365
   },
   {
     "id": "pixelate",
@@ -6745,13 +7629,20 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/plotge.gif"
     },
     "assets": {},
-    "primitive": null,
-    "params": {},
-    "offlineReady": false,
-    "fidelity": null,
+    "primitive": "pulse",
+    "params": {
+      "_fp": {
+        "motion": 0.0103,
+        "conf": 0.4
+      }
+    },
+    "offlineReady": true,
+    "fidelity": "approximate-procedural",
     "notes": [
-      "Animated preview; needs primitive assignment from visual analysis"
-    ]
+      "Assigned from CDN preview fingerprint (conf=0.40)"
+    ],
+    "verified": true,
+    "verifyScore": 0.42593362133786483
   },
   {
     "id": "pokeball-almost",
@@ -6766,13 +7657,20 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/pokeball-almost.gif"
     },
     "assets": {},
-    "primitive": null,
-    "params": {},
-    "offlineReady": false,
-    "fidelity": null,
+    "primitive": "rainbow",
+    "params": {
+      "_fp": {
+        "motion": 0.0811,
+        "conf": 0.55
+      }
+    },
+    "offlineReady": true,
+    "fidelity": "approximate-procedural",
     "notes": [
-      "Animated preview; needs primitive assignment from visual analysis"
-    ]
+      "Assigned from CDN preview fingerprint (conf=0.55)"
+    ],
+    "verified": true,
+    "verifyScore": 0.39674724556918095
   },
   {
     "id": "pokeball-capture",
@@ -6787,13 +7685,20 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/pokeball-capture.gif"
     },
     "assets": {},
-    "primitive": null,
-    "params": {},
-    "offlineReady": false,
-    "fidelity": null,
+    "primitive": "rainbow",
+    "params": {
+      "_fp": {
+        "motion": 0.0808,
+        "conf": 0.55
+      }
+    },
+    "offlineReady": true,
+    "fidelity": "approximate-procedural",
     "notes": [
-      "Animated preview; needs primitive assignment from visual analysis"
-    ]
+      "Assigned from CDN preview fingerprint (conf=0.55)"
+    ],
+    "verified": true,
+    "verifyScore": 0.39464282229985026
   },
   {
     "id": "pokeball-emerge",
@@ -6812,11 +7717,13 @@
     },
     "primitive": "atlas",
     "params": {},
-    "offlineReady": false,
+    "offlineReady": true,
     "fidelity": "approximate-composite",
     "notes": [
-      "Requires archived frame/atlas assets + placement recipe"
-    ]
+      "atlas assets archived; pending render verification"
+    ],
+    "verified": true,
+    "verifyScore": 0.5981924157540068
   },
   {
     "id": "pokeball-go",
@@ -6831,13 +7738,20 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/pokeball-go.gif"
     },
     "assets": {},
-    "primitive": null,
-    "params": {},
-    "offlineReady": false,
-    "fidelity": null,
+    "primitive": "rainbow",
+    "params": {
+      "_fp": {
+        "motion": 0.0801,
+        "conf": 0.55
+      }
+    },
+    "offlineReady": true,
+    "fidelity": "approximate-procedural",
     "notes": [
-      "Animated preview; needs primitive assignment from visual analysis"
-    ]
+      "Assigned from CDN preview fingerprint (conf=0.55)"
+    ],
+    "verified": true,
+    "verifyScore": 0.43148242555523475
   },
   {
     "id": "polar-bear",
@@ -6852,13 +7766,20 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/polar-bear.gif"
     },
     "assets": {},
-    "primitive": null,
-    "params": {},
-    "offlineReady": false,
-    "fidelity": null,
+    "primitive": "shake",
+    "params": {
+      "_fp": {
+        "motion": 0.0967,
+        "conf": 0.6
+      }
+    },
+    "offlineReady": true,
+    "fidelity": "approximate-procedural",
     "notes": [
-      "Animated preview; needs primitive assignment from visual analysis"
-    ]
+      "Assigned from CDN preview fingerprint (conf=0.60)"
+    ],
+    "verified": true,
+    "verifyScore": 0.4345184367420245
   },
   {
     "id": "ponder",
@@ -6880,8 +7801,10 @@
     "offlineReady": false,
     "fidelity": "approximate-composite",
     "notes": [
-      "Requires archived frame/atlas assets + placement recipe"
-    ]
+      "frames assets archived; pending render verification",
+      "Render failed: No frames in /workspace/artifacts/emoji-offline/assets/frames/ponder"
+    ],
+    "verified": false
   },
   {
     "id": "pop",
@@ -6990,13 +7913,20 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/posterize-breath.gif"
     },
     "assets": {},
-    "primitive": null,
-    "params": {},
-    "offlineReady": false,
-    "fidelity": null,
+    "primitive": "pulse",
+    "params": {
+      "_fp": {
+        "motion": 0.0263,
+        "conf": 0.4
+      }
+    },
+    "offlineReady": true,
+    "fidelity": "approximate-procedural",
     "notes": [
-      "Animated preview; needs primitive assignment from visual analysis"
-    ]
+      "Assigned from CDN preview fingerprint (conf=0.40)"
+    ],
+    "verified": true,
+    "verifyScore": 0.29640003268982806
   },
   {
     "id": "pounce",
@@ -7011,13 +7941,20 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/pounce.gif"
     },
     "assets": {},
-    "primitive": null,
-    "params": {},
-    "offlineReady": false,
-    "fidelity": null,
+    "primitive": "bounce",
+    "params": {
+      "_fp": {
+        "motion": 0.4096,
+        "conf": 0.6
+      }
+    },
+    "offlineReady": true,
+    "fidelity": "approximate-procedural",
     "notes": [
-      "Animated preview; needs primitive assignment from visual analysis"
-    ]
+      "Assigned from CDN preview fingerprint (conf=0.60)"
+    ],
+    "verified": true,
+    "verifyScore": 0.3511812096112158
   },
   {
     "id": "pp-hopper",
@@ -7051,13 +7988,20 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/prance.gif"
     },
     "assets": {},
-    "primitive": null,
-    "params": {},
-    "offlineReady": false,
-    "fidelity": null,
+    "primitive": "bounce",
+    "params": {
+      "_fp": {
+        "motion": 0.2183,
+        "conf": 0.6
+      }
+    },
+    "offlineReady": true,
+    "fidelity": "approximate-procedural",
     "notes": [
-      "Animated preview; needs primitive assignment from visual analysis"
-    ]
+      "Assigned from CDN preview fingerprint (conf=0.60)"
+    ],
+    "verified": true,
+    "verifyScore": 0.35030617748866877
   },
   {
     "id": "prayge",
@@ -7072,13 +8016,22 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/prayge.webp"
     },
     "assets": {},
-    "primitive": null,
-    "params": {},
-    "offlineReady": false,
-    "fidelity": null,
+    "primitive": "pulse",
+    "params": {
+      "minScale": 0.94,
+      "maxScale": 1.04,
+      "_fp": {
+        "motion": 0,
+        "conf": 0.4
+      }
+    },
+    "offlineReady": true,
+    "fidelity": "approximate-procedural",
     "notes": [
-      "Animated preview; needs primitive assignment from visual analysis"
-    ]
+      "Assigned from CDN preview fingerprint (conf=0.40)"
+    ],
+    "verified": true,
+    "verifyScore": 0.3992338789318518
   },
   {
     "id": "pulse",
@@ -7139,11 +8092,13 @@
     },
     "primitive": "atlas",
     "params": {},
-    "offlineReady": false,
+    "offlineReady": true,
     "fidelity": "approximate-composite",
     "notes": [
-      "Requires archived frame/atlas assets + placement recipe"
-    ]
+      "atlas assets archived; pending render verification"
+    ],
+    "verified": true,
+    "verifyScore": 0.6243937311937277
   },
   {
     "id": "pumpkin-give",
@@ -7162,11 +8117,13 @@
     },
     "primitive": "atlas",
     "params": {},
-    "offlineReady": false,
+    "offlineReady": true,
     "fidelity": "approximate-composite",
     "notes": [
-      "Requires archived frame/atlas assets + placement recipe"
-    ]
+      "atlas assets archived; pending render verification"
+    ],
+    "verified": true,
+    "verifyScore": 0.6466580100172334
   },
   {
     "id": "pumpkin-surprise",
@@ -7185,11 +8142,13 @@
     },
     "primitive": "frames",
     "params": {},
-    "offlineReady": false,
+    "offlineReady": true,
     "fidelity": "approximate-composite",
     "notes": [
-      "Requires archived frame/atlas assets + placement recipe"
-    ]
+      "frames assets archived; pending render verification"
+    ],
+    "verified": true,
+    "verifyScore": 0.6259618569873646
   },
   {
     "id": "pumpkin-take",
@@ -7208,11 +8167,13 @@
     },
     "primitive": "atlas",
     "params": {},
-    "offlineReady": false,
+    "offlineReady": true,
     "fidelity": "approximate-composite",
     "notes": [
-      "Requires archived frame/atlas assets + placement recipe"
-    ]
+      "atlas assets archived; pending render verification"
+    ],
+    "verified": true,
+    "verifyScore": 0.6424353782834712
   },
   {
     "id": "pumpkin2",
@@ -7254,11 +8215,13 @@
     },
     "primitive": "atlas",
     "params": {},
-    "offlineReady": false,
+    "offlineReady": true,
     "fidelity": "approximate-composite",
     "notes": [
-      "Requires archived frame/atlas assets + placement recipe"
-    ]
+      "atlas assets archived; pending render verification"
+    ],
+    "verified": true,
+    "verifyScore": 0.6041166957130741
   },
   {
     "id": "pyramid",
@@ -7273,13 +8236,20 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/pyramid.gif"
     },
     "assets": {},
-    "primitive": null,
-    "params": {},
-    "offlineReady": false,
-    "fidelity": null,
+    "primitive": "bounce",
+    "params": {
+      "_fp": {
+        "motion": 0.0505,
+        "conf": 0.6
+      }
+    },
+    "offlineReady": true,
+    "fidelity": "approximate-procedural",
     "notes": [
-      "Animated preview; needs primitive assignment from visual analysis"
-    ]
+      "Assigned from CDN preview fingerprint (conf=0.60)"
+    ],
+    "verified": true,
+    "verifyScore": 0.4901668947392197
   },
   {
     "id": "quiver",
@@ -7294,13 +8264,20 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/quiver.gif"
     },
     "assets": {},
-    "primitive": null,
-    "params": {},
-    "offlineReady": false,
-    "fidelity": null,
+    "primitive": "wobble",
+    "params": {
+      "_fp": {
+        "motion": 0.0612,
+        "conf": 0.5
+      }
+    },
+    "offlineReady": true,
+    "fidelity": "approximate-procedural",
     "notes": [
-      "Animated preview; needs primitive assignment from visual analysis"
-    ]
+      "Assigned from CDN preview fingerprint (conf=0.50)"
+    ],
+    "verified": true,
+    "verifyScore": 0.33927906258850704
   },
   {
     "id": "rain",
@@ -7376,13 +8353,22 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/raising-hand.webp"
     },
     "assets": {},
-    "primitive": null,
-    "params": {},
-    "offlineReady": false,
-    "fidelity": null,
+    "primitive": "pulse",
+    "params": {
+      "minScale": 0.94,
+      "maxScale": 1.04,
+      "_fp": {
+        "motion": 0,
+        "conf": 0.4
+      }
+    },
+    "offlineReady": true,
+    "fidelity": "approximate-procedural",
     "notes": [
-      "Animated preview; needs primitive assignment from visual analysis"
-    ]
+      "Assigned from CDN preview fingerprint (conf=0.40)"
+    ],
+    "verified": true,
+    "verifyScore": 0.5911852586140229
   },
   {
     "id": "rare-ghost",
@@ -7401,11 +8387,13 @@
     },
     "primitive": "atlas",
     "params": {},
-    "offlineReady": false,
+    "offlineReady": true,
     "fidelity": "approximate-composite",
     "notes": [
-      "Requires archived frame/atlas assets + placement recipe"
-    ]
+      "atlas assets archived; pending render verification"
+    ],
+    "verified": true,
+    "verifyScore": 0.5465361320832988
   },
   {
     "id": "rave",
@@ -7420,13 +8408,20 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/rave.gif"
     },
     "assets": {},
-    "primitive": null,
-    "params": {},
-    "offlineReady": false,
-    "fidelity": null,
+    "primitive": "nod",
+    "params": {
+      "_fp": {
+        "motion": 0.3661,
+        "conf": 0.55
+      }
+    },
+    "offlineReady": true,
+    "fidelity": "approximate-procedural",
     "notes": [
-      "Animated preview; needs primitive assignment from visual analysis"
-    ]
+      "Assigned from CDN preview fingerprint (conf=0.55)"
+    ],
+    "verified": true,
+    "verifyScore": 0.4604991000306372
   },
   {
     "id": "reading",
@@ -7445,11 +8440,13 @@
     },
     "primitive": "atlas",
     "params": {},
-    "offlineReady": false,
+    "offlineReady": true,
     "fidelity": "approximate-composite",
     "notes": [
-      "Requires archived frame/atlas assets + placement recipe"
-    ]
+      "atlas assets archived; pending render verification"
+    ],
+    "verified": true,
+    "verifyScore": 0.6487226616712374
   },
   {
     "id": "recoil-pop",
@@ -7492,11 +8489,13 @@
     },
     "primitive": "atlas",
     "params": {},
-    "offlineReady": false,
+    "offlineReady": true,
     "fidelity": "approximate-composite",
     "notes": [
-      "Requires archived frame/atlas assets + placement recipe"
-    ]
+      "atlas assets archived; pending render verification"
+    ],
+    "verified": true,
+    "verifyScore": 0.6026687225059133
   },
   {
     "id": "reveal",
@@ -7515,11 +8514,13 @@
     },
     "primitive": "atlas",
     "params": {},
-    "offlineReady": false,
+    "offlineReady": true,
     "fidelity": "approximate-composite",
     "notes": [
-      "Requires archived frame/atlas assets + placement recipe"
-    ]
+      "atlas assets archived; pending render verification"
+    ],
+    "verified": true,
+    "verifyScore": 0.6981999087443518
   },
   {
     "id": "rgb-split",
@@ -7534,13 +8535,20 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/rgb-split.gif"
     },
     "assets": {},
-    "primitive": null,
-    "params": {},
-    "offlineReady": false,
-    "fidelity": null,
+    "primitive": "pulse",
+    "params": {
+      "_fp": {
+        "motion": 0.0141,
+        "conf": 0.4
+      }
+    },
+    "offlineReady": true,
+    "fidelity": "approximate-procedural",
     "notes": [
-      "Animated preview; needs primitive assignment from visual analysis"
-    ]
+      "Assigned from CDN preview fingerprint (conf=0.40)"
+    ],
+    "verified": true,
+    "verifyScore": 0.16183430830629997
   },
   {
     "id": "riott",
@@ -7555,13 +8563,22 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/riott.gif"
     },
     "assets": {},
-    "primitive": null,
-    "params": {},
-    "offlineReady": false,
-    "fidelity": null,
+    "primitive": "pulse",
+    "params": {
+      "minScale": 0.94,
+      "maxScale": 1.04,
+      "_fp": {
+        "motion": 0.001,
+        "conf": 0.4
+      }
+    },
+    "offlineReady": true,
+    "fidelity": "approximate-procedural",
     "notes": [
-      "Animated preview; needs primitive assignment from visual analysis"
-    ]
+      "Assigned from CDN preview fingerprint (conf=0.40)"
+    ],
+    "verified": true,
+    "verifyScore": 0.6080985195860081
   },
   {
     "id": "ripple",
@@ -7576,13 +8593,20 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/ripple.gif"
     },
     "assets": {},
-    "primitive": null,
-    "params": {},
-    "offlineReady": false,
-    "fidelity": null,
+    "primitive": "wobble",
+    "params": {
+      "_fp": {
+        "motion": 0.0576,
+        "conf": 0.5
+      }
+    },
+    "offlineReady": true,
+    "fidelity": "approximate-procedural",
     "notes": [
-      "Animated preview; needs primitive assignment from visual analysis"
-    ]
+      "Assigned from CDN preview fingerprint (conf=0.50)"
+    ],
+    "verified": true,
+    "verifyScore": 0.3405845579346649
   },
   {
     "id": "roll-safe",
@@ -7604,11 +8628,11 @@
     "notes": []
   },
   {
-    "id": "rotate-180:\u27a1\ufe0f",
+    "id": "rotate-180:➡️",
     "slug": "rotate-180",
     "tag": "gen_btn_rotate-180",
     "family": "transform",
-    "directionSuffix": "\u27a1\ufe0f",
+    "directionSuffix": "➡️",
     "preview": {
       "ext": "gif",
       "contentType": "image/gif",
@@ -7625,11 +8649,11 @@
     "notes": []
   },
   {
-    "id": "rotate-45:\u27a1\ufe0f",
+    "id": "rotate-45:➡️",
     "slug": "rotate-45",
     "tag": "gen_btn_rotate-45",
     "family": "transform",
-    "directionSuffix": "\u27a1\ufe0f",
+    "directionSuffix": "➡️",
     "preview": {
       "ext": "gif",
       "contentType": "image/gif",
@@ -7646,11 +8670,11 @@
     "notes": []
   },
   {
-    "id": "rotate-90:\u27a1\ufe0f",
+    "id": "rotate-90:➡️",
     "slug": "rotate-90",
     "tag": "gen_btn_rotate-90",
     "family": "transform",
-    "directionSuffix": "\u27a1\ufe0f",
+    "directionSuffix": "➡️",
     "preview": {
       "ext": "gif",
       "contentType": "image/gif",
@@ -7725,11 +8749,13 @@
     },
     "primitive": "atlas",
     "params": {},
-    "offlineReady": false,
+    "offlineReady": true,
     "fidelity": "approximate-composite",
     "notes": [
-      "Requires archived frame/atlas assets + placement recipe"
-    ]
+      "atlas assets archived; pending render verification"
+    ],
+    "verified": true,
+    "verifyScore": 0.5812893932174308
   },
   {
     "id": "runway-landing",
@@ -7790,11 +8816,13 @@
     },
     "primitive": "atlas",
     "params": {},
-    "offlineReady": false,
+    "offlineReady": true,
     "fidelity": "approximate-composite",
     "notes": [
-      "Requires archived frame/atlas assets + placement recipe"
-    ]
+      "atlas assets archived; pending render verification"
+    ],
+    "verified": true,
+    "verifyScore": 0.6755139042394968
   },
   {
     "id": "sadge",
@@ -7832,13 +8860,20 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/saved.gif"
     },
     "assets": {},
-    "primitive": null,
-    "params": {},
-    "offlineReady": false,
-    "fidelity": null,
+    "primitive": "shake",
+    "params": {
+      "_fp": {
+        "motion": 0.1606,
+        "conf": 0.6
+      }
+    },
+    "offlineReady": true,
+    "fidelity": "approximate-procedural",
     "notes": [
-      "Animated preview; needs primitive assignment from visual analysis"
-    ]
+      "Assigned from CDN preview fingerprint (conf=0.60)"
+    ],
+    "verified": true,
+    "verifyScore": 0.39570651839211135
   },
   {
     "id": "scanline",
@@ -7853,13 +8888,20 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/scanline.gif"
     },
     "assets": {},
-    "primitive": null,
-    "params": {},
-    "offlineReady": false,
-    "fidelity": null,
+    "primitive": "nod",
+    "params": {
+      "_fp": {
+        "motion": 0.0358,
+        "conf": 0.55
+      }
+    },
+    "offlineReady": true,
+    "fidelity": "approximate-procedural",
     "notes": [
-      "Animated preview; needs primitive assignment from visual analysis"
-    ]
+      "Assigned from CDN preview fingerprint (conf=0.55)"
+    ],
+    "verified": true,
+    "verifyScore": 0.380719076415613
   },
   {
     "id": "scared",
@@ -7874,20 +8916,27 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/scared.gif"
     },
     "assets": {},
-    "primitive": null,
-    "params": {},
-    "offlineReady": false,
-    "fidelity": null,
+    "primitive": "glitch",
+    "params": {
+      "_fp": {
+        "motion": 0.0858,
+        "conf": 0.5
+      }
+    },
+    "offlineReady": true,
+    "fidelity": "approximate-procedural",
     "notes": [
-      "Animated preview; needs primitive assignment from visual analysis"
-    ]
+      "Assigned from CDN preview fingerprint (conf=0.50)"
+    ],
+    "verified": true,
+    "verifyScore": 0.3787187707973141
   },
   {
-    "id": "scroll:\u27a1\ufe0f",
+    "id": "scroll:➡️",
     "slug": "scroll",
     "tag": "gen_btn_scroll",
     "family": "transform",
-    "directionSuffix": "\u27a1\ufe0f",
+    "directionSuffix": "➡️",
     "preview": {
       "ext": "gif",
       "contentType": "image/gif",
@@ -7926,11 +8975,11 @@
     "notes": []
   },
   {
-    "id": "shimmer:\u27a1\ufe0f",
+    "id": "shimmer:➡️",
     "slug": "shimmer",
     "tag": "gen_btn_shimmer",
     "family": "transform",
-    "directionSuffix": "\u27a1\ufe0f",
+    "directionSuffix": "➡️",
     "preview": {
       "ext": "gif",
       "contentType": "image/gif",
@@ -7938,13 +8987,20 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/shimmer.gif"
     },
     "assets": {},
-    "primitive": null,
-    "params": {},
-    "offlineReady": false,
-    "fidelity": null,
+    "primitive": "pulse",
+    "params": {
+      "_fp": {
+        "motion": 0.0104,
+        "conf": 0.4
+      }
+    },
+    "offlineReady": true,
+    "fidelity": "approximate-procedural",
     "notes": [
-      "Animated preview; needs primitive assignment from visual analysis"
-    ]
+      "Assigned from CDN preview fingerprint (conf=0.40)"
+    ],
+    "verified": true,
+    "verifyScore": 0.30986822669867864
   },
   {
     "id": "shocked-man",
@@ -7980,13 +9036,20 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/shruge.gif"
     },
     "assets": {},
-    "primitive": null,
-    "params": {},
-    "offlineReady": false,
-    "fidelity": null,
+    "primitive": "rainbow",
+    "params": {
+      "_fp": {
+        "motion": 0.1494,
+        "conf": 0.55
+      }
+    },
+    "offlineReady": true,
+    "fidelity": "approximate-procedural",
     "notes": [
-      "Animated preview; needs primitive assignment from visual analysis"
-    ]
+      "Assigned from CDN preview fingerprint (conf=0.55)"
+    ],
+    "verified": true,
+    "verifyScore": 0.46328896743298675
   },
   {
     "id": "shudder",
@@ -8001,13 +9064,20 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/shudder.gif"
     },
     "assets": {},
-    "primitive": null,
-    "params": {},
-    "offlineReady": false,
-    "fidelity": null,
+    "primitive": "wobble",
+    "params": {
+      "_fp": {
+        "motion": 0.0559,
+        "conf": 0.5
+      }
+    },
+    "offlineReady": true,
+    "fidelity": "approximate-procedural",
     "notes": [
-      "Animated preview; needs primitive assignment from visual analysis"
-    ]
+      "Assigned from CDN preview fingerprint (conf=0.50)"
+    ],
+    "verified": true,
+    "verifyScore": 0.3641372622295397
   },
   {
     "id": "shy-peek",
@@ -8045,13 +9115,20 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/side-eye-chloe.gif"
     },
     "assets": {},
-    "primitive": null,
-    "params": {},
-    "offlineReady": false,
-    "fidelity": null,
+    "primitive": "nod",
+    "params": {
+      "_fp": {
+        "motion": 0.0444,
+        "conf": 0.55
+      }
+    },
+    "offlineReady": true,
+    "fidelity": "approximate-procedural",
     "notes": [
-      "Animated preview; needs primitive assignment from visual analysis"
-    ]
+      "Assigned from CDN preview fingerprint (conf=0.55)"
+    ],
+    "verified": true,
+    "verifyScore": 0.382189724250083
   },
   {
     "id": "side-eye-dog",
@@ -8066,13 +9143,20 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/side-eye-dog.gif"
     },
     "assets": {},
-    "primitive": null,
-    "params": {},
-    "offlineReady": false,
-    "fidelity": null,
+    "primitive": "wobble",
+    "params": {
+      "_fp": {
+        "motion": 0.055,
+        "conf": 0.5
+      }
+    },
+    "offlineReady": true,
+    "fidelity": "approximate-procedural",
     "notes": [
-      "Animated preview; needs primitive assignment from visual analysis"
-    ]
+      "Assigned from CDN preview fingerprint (conf=0.50)"
+    ],
+    "verified": true,
+    "verifyScore": 0.6081884078219295
   },
   {
     "id": "sideeye-slide",
@@ -8106,13 +9190,20 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/sign.gif"
     },
     "assets": {},
-    "primitive": null,
-    "params": {},
-    "offlineReady": false,
-    "fidelity": null,
+    "primitive": "nod",
+    "params": {
+      "_fp": {
+        "motion": 0.1371,
+        "conf": 0.55
+      }
+    },
+    "offlineReady": true,
+    "fidelity": "approximate-procedural",
     "notes": [
-      "Animated preview; needs primitive assignment from visual analysis"
-    ]
+      "Assigned from CDN preview fingerprint (conf=0.55)"
+    ],
+    "verified": true,
+    "verifyScore": 0.4530918906349872
   },
   {
     "id": "sign-mad",
@@ -8178,11 +9269,13 @@
     },
     "primitive": "frames",
     "params": {},
-    "offlineReady": false,
+    "offlineReady": true,
     "fidelity": "approximate-composite",
     "notes": [
-      "Requires archived frame/atlas assets + placement recipe"
-    ]
+      "frames assets archived; pending render verification"
+    ],
+    "verified": true,
+    "verifyScore": 0.660922316664078
   },
   {
     "id": "skeleton-dance",
@@ -8201,11 +9294,13 @@
     },
     "primitive": "atlas",
     "params": {},
-    "offlineReady": false,
+    "offlineReady": true,
     "fidelity": "approximate-composite",
     "notes": [
-      "Requires archived frame/atlas assets + placement recipe"
-    ]
+      "atlas assets archived; pending render verification"
+    ],
+    "verified": true,
+    "verifyScore": 0.5019438509671048
   },
   {
     "id": "skibidi",
@@ -8220,13 +9315,20 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/skibidi.gif"
     },
     "assets": {},
-    "primitive": null,
-    "params": {},
-    "offlineReady": false,
-    "fidelity": null,
+    "primitive": "nod",
+    "params": {
+      "_fp": {
+        "motion": 0.0604,
+        "conf": 0.55
+      }
+    },
+    "offlineReady": true,
+    "fidelity": "approximate-procedural",
     "notes": [
-      "Animated preview; needs primitive assignment from visual analysis"
-    ]
+      "Assigned from CDN preview fingerprint (conf=0.55)"
+    ],
+    "verified": true,
+    "verifyScore": 0.35541996881504967
   },
   {
     "id": "skid-stop",
@@ -8241,20 +9343,27 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/skid-stop.gif"
     },
     "assets": {},
-    "primitive": null,
-    "params": {},
-    "offlineReady": false,
-    "fidelity": null,
+    "primitive": "bounce",
+    "params": {
+      "_fp": {
+        "motion": 0.1453,
+        "conf": 0.6
+      }
+    },
+    "offlineReady": true,
+    "fidelity": "approximate-procedural",
     "notes": [
-      "Animated preview; needs primitive assignment from visual analysis"
-    ]
+      "Assigned from CDN preview fingerprint (conf=0.60)"
+    ],
+    "verified": true,
+    "verifyScore": 0.3572982114258195
   },
   {
-    "id": "slice:\u27a1\ufe0f",
+    "id": "slice:➡️",
     "slug": "slice",
     "tag": "gen_btn_slice",
     "family": "transform",
-    "directionSuffix": "\u27a1\ufe0f",
+    "directionSuffix": "➡️",
     "preview": {
       "ext": "gif",
       "contentType": "image/gif",
@@ -8271,11 +9380,11 @@
     ]
   },
   {
-    "id": "slide-bounce:\u27a1\ufe0f",
+    "id": "slide-bounce:➡️",
     "slug": "slide-bounce",
     "tag": "gen_btn_slide-bounce",
     "family": "transform",
-    "directionSuffix": "\u27a1\ufe0f",
+    "directionSuffix": "➡️",
     "preview": {
       "ext": "gif",
       "contentType": "image/gif",
@@ -8292,11 +9401,11 @@
     "notes": []
   },
   {
-    "id": "slide-spin:\u27a1\ufe0f",
+    "id": "slide-spin:➡️",
     "slug": "slide-spin",
     "tag": "gen_btn_slide-spin",
     "family": "transform",
-    "directionSuffix": "\u27a1\ufe0f",
+    "directionSuffix": "➡️",
     "preview": {
       "ext": "gif",
       "contentType": "image/gif",
@@ -8313,11 +9422,11 @@
     "notes": []
   },
   {
-    "id": "slide:\u27a1\ufe0f",
+    "id": "slide:➡️",
     "slug": "slide",
     "tag": "gen_btn_slide",
     "family": "transform",
-    "directionSuffix": "\u27a1\ufe0f",
+    "directionSuffix": "➡️",
     "preview": {
       "ext": "gif",
       "contentType": "image/gif",
@@ -8371,11 +9480,13 @@
     },
     "primitive": "frames",
     "params": {},
-    "offlineReady": false,
+    "offlineReady": true,
     "fidelity": "approximate-composite",
     "notes": [
-      "Requires archived frame/atlas assets + placement recipe"
-    ]
+      "frames assets archived; pending render verification"
+    ],
+    "verified": true,
+    "verifyScore": 0.6078064401489516
   },
   {
     "id": "smart",
@@ -8394,11 +9505,13 @@
     },
     "primitive": "atlas",
     "params": {},
-    "offlineReady": false,
+    "offlineReady": true,
     "fidelity": "approximate-composite",
     "notes": [
-      "Requires archived frame/atlas assets + placement recipe"
-    ]
+      "atlas assets archived; pending render verification"
+    ],
+    "verified": true,
+    "verifyScore": 0.5877629254157072
   },
   {
     "id": "smoge",
@@ -8417,18 +9530,20 @@
     },
     "primitive": "atlas",
     "params": {},
-    "offlineReady": false,
+    "offlineReady": true,
     "fidelity": "approximate-composite",
     "notes": [
-      "Requires archived frame/atlas assets + placement recipe"
-    ]
+      "atlas assets archived; pending render verification"
+    ],
+    "verified": true,
+    "verifyScore": 0.6588786183785933
   },
   {
-    "id": "snap:\u27a1\ufe0f",
+    "id": "snap:➡️",
     "slug": "snap",
     "tag": "gen_btn_snap",
     "family": "transform",
-    "directionSuffix": "\u27a1\ufe0f",
+    "directionSuffix": "➡️",
     "preview": {
       "ext": "gif",
       "contentType": "image/gif",
@@ -8436,13 +9551,20 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/snap.gif"
     },
     "assets": {},
-    "primitive": null,
-    "params": {},
-    "offlineReady": false,
-    "fidelity": null,
+    "primitive": "bounce",
+    "params": {
+      "_fp": {
+        "motion": 0.1951,
+        "conf": 0.6
+      }
+    },
+    "offlineReady": true,
+    "fidelity": "approximate-procedural",
     "notes": [
-      "Animated preview; needs primitive assignment from visual analysis"
-    ]
+      "Assigned from CDN preview fingerprint (conf=0.60)"
+    ],
+    "verified": true,
+    "verifyScore": 0.3499852917357419
   },
   {
     "id": "snorlax",
@@ -8461,11 +9583,13 @@
     },
     "primitive": "atlas",
     "params": {},
-    "offlineReady": false,
+    "offlineReady": true,
     "fidelity": "approximate-composite",
     "notes": [
-      "Requires archived frame/atlas assets + placement recipe"
-    ]
+      "atlas assets archived; pending render verification"
+    ],
+    "verified": true,
+    "verifyScore": 0.5658801462707269
   },
   {
     "id": "so-cute",
@@ -8480,13 +9604,20 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/so-cute.gif"
     },
     "assets": {},
-    "primitive": null,
-    "params": {},
-    "offlineReady": false,
-    "fidelity": null,
+    "primitive": "rainbow",
+    "params": {
+      "_fp": {
+        "motion": 0.1067,
+        "conf": 0.55
+      }
+    },
+    "offlineReady": true,
+    "fidelity": "approximate-procedural",
     "notes": [
-      "Animated preview; needs primitive assignment from visual analysis"
-    ]
+      "Assigned from CDN preview fingerprint (conf=0.55)"
+    ],
+    "verified": true,
+    "verifyScore": 0.4194344717021634
   },
   {
     "id": "solarize-wave",
@@ -8600,11 +9731,13 @@
     },
     "primitive": "atlas",
     "params": {},
-    "offlineReady": false,
+    "offlineReady": true,
     "fidelity": "approximate-composite",
     "notes": [
-      "Requires archived frame/atlas assets + placement recipe"
-    ]
+      "atlas assets archived; pending render verification"
+    ],
+    "verified": true,
+    "verifyScore": 0.6229019888712068
   },
   {
     "id": "sphere",
@@ -8619,20 +9752,27 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/sphere.gif"
     },
     "assets": {},
-    "primitive": null,
-    "params": {},
-    "offlineReady": false,
-    "fidelity": null,
+    "primitive": "glitch",
+    "params": {
+      "_fp": {
+        "motion": 0.1621,
+        "conf": 0.5
+      }
+    },
+    "offlineReady": true,
+    "fidelity": "approximate-procedural",
     "notes": [
-      "Animated preview; needs primitive assignment from visual analysis"
-    ]
+      "Assigned from CDN preview fingerprint (conf=0.50)"
+    ],
+    "verified": true,
+    "verifyScore": 0.45202382194440127
   },
   {
-    "id": "spin:\u27a1\ufe0f",
+    "id": "spin:➡️",
     "slug": "spin",
     "tag": "gen_btn_spin",
     "family": "transform",
-    "directionSuffix": "\u27a1\ufe0f",
+    "directionSuffix": "➡️",
     "preview": {
       "ext": "gif",
       "contentType": "image/gif",
@@ -8699,13 +9839,20 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/split.gif"
     },
     "assets": {},
-    "primitive": null,
-    "params": {},
-    "offlineReady": false,
-    "fidelity": null,
+    "primitive": "wobble",
+    "params": {
+      "_fp": {
+        "motion": 0.0409,
+        "conf": 0.5
+      }
+    },
+    "offlineReady": true,
+    "fidelity": "approximate-procedural",
     "notes": [
-      "Animated preview; needs primitive assignment from visual analysis"
-    ]
+      "Assigned from CDN preview fingerprint (conf=0.50)"
+    ],
+    "verified": true,
+    "verifyScore": 0.403835955726184
   },
   {
     "id": "spongebob-watching-tv",
@@ -8724,11 +9871,13 @@
     },
     "primitive": "atlas",
     "params": {},
-    "offlineReady": false,
+    "offlineReady": true,
     "fidelity": "approximate-composite",
     "notes": [
-      "Requires archived frame/atlas assets + placement recipe"
-    ]
+      "atlas assets archived; pending render verification"
+    ],
+    "verified": true,
+    "verifyScore": 0.7478038194444445
   },
   {
     "id": "spongebob-worship",
@@ -8747,18 +9896,20 @@
     },
     "primitive": "atlas",
     "params": {},
-    "offlineReady": false,
+    "offlineReady": true,
     "fidelity": "approximate-composite",
     "notes": [
-      "Requires archived frame/atlas assets + placement recipe"
-    ]
+      "atlas assets archived; pending render verification"
+    ],
+    "verified": true,
+    "verifyScore": 0.6536502148439582
   },
   {
-    "id": "spotlight:\u27a1\ufe0f",
+    "id": "spotlight:➡️",
     "slug": "spotlight",
     "tag": "gen_btn_spotlight",
     "family": "transform",
-    "directionSuffix": "\u27a1\ufe0f",
+    "directionSuffix": "➡️",
     "preview": {
       "ext": "gif",
       "contentType": "image/gif",
@@ -8766,13 +9917,20 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/spotlight.gif"
     },
     "assets": {},
-    "primitive": null,
-    "params": {},
-    "offlineReady": false,
-    "fidelity": null,
+    "primitive": "pulse",
+    "params": {
+      "_fp": {
+        "motion": 0.0271,
+        "conf": 0.4
+      }
+    },
+    "offlineReady": true,
+    "fidelity": "approximate-procedural",
     "notes": [
-      "Animated preview; needs primitive assignment from visual analysis"
-    ]
+      "Assigned from CDN preview fingerprint (conf=0.40)"
+    ],
+    "verified": true,
+    "verifyScore": 0.5109398318670251
   },
   {
     "id": "squad",
@@ -8787,13 +9945,20 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/squad.gif"
     },
     "assets": {},
-    "primitive": null,
-    "params": {},
-    "offlineReady": false,
-    "fidelity": null,
+    "primitive": "glitch",
+    "params": {
+      "_fp": {
+        "motion": 0.3029,
+        "conf": 0.5
+      }
+    },
+    "offlineReady": true,
+    "fidelity": "approximate-procedural",
     "notes": [
-      "Animated preview; needs primitive assignment from visual analysis"
-    ]
+      "Assigned from CDN preview fingerprint (conf=0.50)"
+    ],
+    "verified": true,
+    "verifyScore": 0.3608585536762936
   },
   {
     "id": "squish",
@@ -8846,13 +10011,20 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/stare.webp"
     },
     "assets": {},
-    "primitive": null,
-    "params": {},
-    "offlineReady": false,
-    "fidelity": null,
+    "primitive": "sparkle",
+    "params": {
+      "_fp": {
+        "motion": 0,
+        "conf": 0.85
+      }
+    },
+    "offlineReady": true,
+    "fidelity": "approximate-procedural",
     "notes": [
-      "Animated preview; needs primitive assignment from visual analysis"
-    ]
+      "Assigned from CDN preview fingerprint (conf=0.85)"
+    ],
+    "verified": true,
+    "verifyScore": 0.4114141020646669
   },
   {
     "id": "startled-rat",
@@ -8867,13 +10039,20 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/startled-rat.gif"
     },
     "assets": {},
-    "primitive": null,
-    "params": {},
-    "offlineReady": false,
-    "fidelity": null,
+    "primitive": "sparkle",
+    "params": {
+      "_fp": {
+        "motion": 0.0933,
+        "conf": 0.85
+      }
+    },
+    "offlineReady": true,
+    "fidelity": "approximate-procedural",
     "notes": [
-      "Animated preview; needs primitive assignment from visual analysis"
-    ]
+      "Assigned from CDN preview fingerprint (conf=0.85)"
+    ],
+    "verified": true,
+    "verifyScore": 0.5800642313752469
   },
   {
     "id": "steer",
@@ -8888,13 +10067,20 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/steer.gif"
     },
     "assets": {},
-    "primitive": null,
-    "params": {},
-    "offlineReady": false,
-    "fidelity": null,
+    "primitive": "nod",
+    "params": {
+      "_fp": {
+        "motion": 0.1398,
+        "conf": 0.55
+      }
+    },
+    "offlineReady": true,
+    "fidelity": "approximate-procedural",
     "notes": [
-      "Animated preview; needs primitive assignment from visual analysis"
-    ]
+      "Assigned from CDN preview fingerprint (conf=0.55)"
+    ],
+    "verified": true,
+    "verifyScore": 0.47842789314187106
   },
   {
     "id": "stomp",
@@ -8909,13 +10095,20 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/stomp.gif"
     },
     "assets": {},
-    "primitive": null,
-    "params": {},
-    "offlineReady": false,
-    "fidelity": null,
+    "primitive": "bounce",
+    "params": {
+      "_fp": {
+        "motion": 0.1209,
+        "conf": 0.6
+      }
+    },
+    "offlineReady": true,
+    "fidelity": "approximate-procedural",
     "notes": [
-      "Animated preview; needs primitive assignment from visual analysis"
-    ]
+      "Assigned from CDN preview fingerprint (conf=0.60)"
+    ],
+    "verified": true,
+    "verifyScore": 0.3451220903521025
   },
   {
     "id": "stonks",
@@ -8941,11 +10134,11 @@
     ]
   },
   {
-    "id": "stretch:\u27a1\ufe0f",
+    "id": "stretch:➡️",
     "slug": "stretch",
     "tag": "gen_btn_stretch",
     "family": "transform",
-    "directionSuffix": "\u27a1\ufe0f",
+    "directionSuffix": "➡️",
     "preview": {
       "ext": "gif",
       "contentType": "image/gif",
@@ -8953,13 +10146,20 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/stretch.gif"
     },
     "assets": {},
-    "primitive": null,
-    "params": {},
-    "offlineReady": false,
-    "fidelity": null,
+    "primitive": "shake",
+    "params": {
+      "_fp": {
+        "motion": 0.0613,
+        "conf": 0.6
+      }
+    },
+    "offlineReady": true,
+    "fidelity": "approximate-procedural",
     "notes": [
-      "Animated preview; needs primitive assignment from visual analysis"
-    ]
+      "Assigned from CDN preview fingerprint (conf=0.60)"
+    ],
+    "verified": true,
+    "verifyScore": 0.3545283428654167
   },
   {
     "id": "stripp",
@@ -8974,13 +10174,20 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/stripp.gif"
     },
     "assets": {},
-    "primitive": null,
-    "params": {},
-    "offlineReady": false,
-    "fidelity": null,
+    "primitive": "rainbow",
+    "params": {
+      "_fp": {
+        "motion": 0.1339,
+        "conf": 0.55
+      }
+    },
+    "offlineReady": true,
+    "fidelity": "approximate-procedural",
     "notes": [
-      "Animated preview; needs primitive assignment from visual analysis"
-    ]
+      "Assigned from CDN preview fingerprint (conf=0.55)"
+    ],
+    "verified": true,
+    "verifyScore": 0.5960248954907772
   },
   {
     "id": "strobe-soft",
@@ -9020,11 +10227,13 @@
     },
     "primitive": "atlas",
     "params": {},
-    "offlineReady": false,
+    "offlineReady": true,
     "fidelity": "approximate-composite",
     "notes": [
-      "Requires archived frame/atlas assets + placement recipe"
-    ]
+      "atlas assets archived; pending render verification"
+    ],
+    "verified": true,
+    "verifyScore": 0.6109603632104348
   },
   {
     "id": "surprised-clapping",
@@ -9043,11 +10252,13 @@
     },
     "primitive": "atlas",
     "params": {},
-    "offlineReady": false,
+    "offlineReady": true,
     "fidelity": "approximate-composite",
     "notes": [
-      "Requires archived frame/atlas assets + placement recipe"
-    ]
+      "atlas assets archived; pending render verification"
+    ],
+    "verified": true,
+    "verifyScore": 0.6257216675785628
   },
   {
     "id": "surprised-pikachu",
@@ -9066,11 +10277,13 @@
     },
     "primitive": "frames",
     "params": {},
-    "offlineReady": false,
+    "offlineReady": true,
     "fidelity": "approximate-composite",
     "notes": [
-      "Requires archived frame/atlas assets + placement recipe"
-    ]
+      "frames assets archived; pending render verification"
+    ],
+    "verified": true,
+    "verifyScore": 0.6964988413327334
   },
   {
     "id": "suspicion",
@@ -9089,11 +10302,13 @@
     },
     "primitive": "frames",
     "params": {},
-    "offlineReady": false,
+    "offlineReady": true,
     "fidelity": "approximate-composite",
     "notes": [
-      "Requires archived frame/atlas assets + placement recipe"
-    ]
+      "frames assets archived; pending render verification"
+    ],
+    "verified": true,
+    "verifyScore": 0.5508462886864565
   },
   {
     "id": "sway",
@@ -9127,13 +10342,20 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/sweep.gif"
     },
     "assets": {},
-    "primitive": null,
-    "params": {},
-    "offlineReady": false,
-    "fidelity": null,
+    "primitive": "bounce",
+    "params": {
+      "_fp": {
+        "motion": 0.2122,
+        "conf": 0.6
+      }
+    },
+    "offlineReady": true,
+    "fidelity": "approximate-procedural",
     "notes": [
-      "Animated preview; needs primitive assignment from visual analysis"
-    ]
+      "Assigned from CDN preview fingerprint (conf=0.60)"
+    ],
+    "verified": true,
+    "verifyScore": 0.35234543348124325
   },
   {
     "id": "swirl",
@@ -9148,13 +10370,20 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/swirl.gif"
     },
     "assets": {},
-    "primitive": null,
-    "params": {},
-    "offlineReady": false,
-    "fidelity": null,
+    "primitive": "glitch",
+    "params": {
+      "_fp": {
+        "motion": 0.1167,
+        "conf": 0.5
+      }
+    },
+    "offlineReady": true,
+    "fidelity": "approximate-procedural",
     "notes": [
-      "Animated preview; needs primitive assignment from visual analysis"
-    ]
+      "Assigned from CDN preview fingerprint (conf=0.50)"
+    ],
+    "verified": true,
+    "verifyScore": 0.3591146571717304
   },
   {
     "id": "swirling",
@@ -9169,13 +10398,20 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/swirling.gif"
     },
     "assets": {},
-    "primitive": null,
-    "params": {},
-    "offlineReady": false,
-    "fidelity": null,
+    "primitive": "glitch",
+    "params": {
+      "_fp": {
+        "motion": 0.1235,
+        "conf": 0.5
+      }
+    },
+    "offlineReady": true,
+    "fidelity": "approximate-procedural",
     "notes": [
-      "Animated preview; needs primitive assignment from visual analysis"
-    ]
+      "Assigned from CDN preview fingerprint (conf=0.50)"
+    ],
+    "verified": true,
+    "verifyScore": 0.3813262516120445
   },
   {
     "id": "teleport",
@@ -9222,11 +10458,11 @@
     ]
   },
   {
-    "id": "thick-3d-flip:\u27a1\ufe0f",
+    "id": "thick-3d-flip:➡️",
     "slug": "thick-3d-flip",
     "tag": "gen_btn_thick-3d-flip",
     "family": "transform",
-    "directionSuffix": "\u27a1\ufe0f",
+    "directionSuffix": "➡️",
     "preview": {
       "ext": "gif",
       "contentType": "image/gif",
@@ -9255,13 +10491,20 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/thing-cat.gif"
     },
     "assets": {},
-    "primitive": null,
-    "params": {},
-    "offlineReady": false,
-    "fidelity": null,
+    "primitive": "glitch",
+    "params": {
+      "_fp": {
+        "motion": 0.0864,
+        "conf": 0.5
+      }
+    },
+    "offlineReady": true,
+    "fidelity": "approximate-procedural",
     "notes": [
-      "Animated preview; needs primitive assignment from visual analysis"
-    ]
+      "Assigned from CDN preview fingerprint (conf=0.50)"
+    ],
+    "verified": true,
+    "verifyScore": 0.5686067053791503
   },
   {
     "id": "think",
@@ -9297,13 +10540,20 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/this-is-fine.gif"
     },
     "assets": {},
-    "primitive": null,
-    "params": {},
-    "offlineReady": false,
-    "fidelity": null,
+    "primitive": "rainbow",
+    "params": {
+      "_fp": {
+        "motion": 0.1014,
+        "conf": 0.55
+      }
+    },
+    "offlineReady": true,
+    "fidelity": "approximate-procedural",
     "notes": [
-      "Animated preview; needs primitive assignment from visual analysis"
-    ]
+      "Assigned from CDN preview fingerprint (conf=0.55)"
+    ],
+    "verified": true,
+    "verifyScore": 0.5110240731037006
   },
   {
     "id": "tidal-wave",
@@ -9363,11 +10613,11 @@
     "notes": []
   },
   {
-    "id": "tilt-zoom:\u27a1\ufe0f",
+    "id": "tilt-zoom:➡️",
     "slug": "tilt-zoom",
     "tag": "gen_btn_tilt-zoom",
     "family": "transform",
-    "directionSuffix": "\u27a1\ufe0f",
+    "directionSuffix": "➡️",
     "preview": {
       "ext": "gif",
       "contentType": "image/gif",
@@ -9434,13 +10684,20 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/tornado.gif"
     },
     "assets": {},
-    "primitive": null,
-    "params": {},
-    "offlineReady": false,
-    "fidelity": null,
+    "primitive": "bounce",
+    "params": {
+      "_fp": {
+        "motion": 0.3272,
+        "conf": 0.6
+      }
+    },
+    "offlineReady": true,
+    "fidelity": "approximate-procedural",
     "notes": [
-      "Animated preview; needs primitive assignment from visual analysis"
-    ]
+      "Assigned from CDN preview fingerprint (conf=0.60)"
+    ],
+    "verified": true,
+    "verifyScore": 0.3642691953725947
   },
   {
     "id": "touch-grass",
@@ -9455,13 +10712,20 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/touch-grass.gif"
     },
     "assets": {},
-    "primitive": null,
-    "params": {},
-    "offlineReady": false,
-    "fidelity": null,
+    "primitive": "nod",
+    "params": {
+      "_fp": {
+        "motion": 0.0341,
+        "conf": 0.55
+      }
+    },
+    "offlineReady": true,
+    "fidelity": "approximate-procedural",
     "notes": [
-      "Animated preview; needs primitive assignment from visual analysis"
-    ]
+      "Assigned from CDN preview fingerprint (conf=0.55)"
+    ],
+    "verified": true,
+    "verifyScore": 0.4382842831836784
   },
   {
     "id": "transmute-reality",
@@ -9476,13 +10740,20 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/transmute-reality.gif"
     },
     "assets": {},
-    "primitive": null,
-    "params": {},
-    "offlineReady": false,
-    "fidelity": null,
+    "primitive": "bounce",
+    "params": {
+      "_fp": {
+        "motion": 0.2514,
+        "conf": 0.6
+      }
+    },
+    "offlineReady": true,
+    "fidelity": "approximate-procedural",
     "notes": [
-      "Animated preview; needs primitive assignment from visual analysis"
-    ]
+      "Assigned from CDN preview fingerprint (conf=0.60)"
+    ],
+    "verified": true,
+    "verifyScore": 0.40134675984519164
   },
   {
     "id": "trash",
@@ -9544,13 +10815,20 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/treasure-chest.gif"
     },
     "assets": {},
-    "primitive": null,
-    "params": {},
-    "offlineReady": false,
-    "fidelity": null,
+    "primitive": "rainbow",
+    "params": {
+      "_fp": {
+        "motion": 0.0373,
+        "conf": 0.55
+      }
+    },
+    "offlineReady": true,
+    "fidelity": "approximate-procedural",
     "notes": [
-      "Animated preview; needs primitive assignment from visual analysis"
-    ]
+      "Assigned from CDN preview fingerprint (conf=0.55)"
+    ],
+    "verified": true,
+    "verifyScore": 0.5584760272657892
   },
   {
     "id": "triggered",
@@ -9565,13 +10843,20 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/triggered.gif"
     },
     "assets": {},
-    "primitive": null,
-    "params": {},
-    "offlineReady": false,
-    "fidelity": null,
+    "primitive": "glitch",
+    "params": {
+      "_fp": {
+        "motion": 0.0867,
+        "conf": 0.5
+      }
+    },
+    "offlineReady": true,
+    "fidelity": "approximate-procedural",
     "notes": [
-      "Animated preview; needs primitive assignment from visual analysis"
-    ]
+      "Assigned from CDN preview fingerprint (conf=0.50)"
+    ],
+    "verified": true,
+    "verifyScore": 0.469326097819352
   },
   {
     "id": "tsk",
@@ -9586,13 +10871,20 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/tsk.gif"
     },
     "assets": {},
-    "primitive": null,
-    "params": {},
-    "offlineReady": false,
-    "fidelity": null,
+    "primitive": "pulse",
+    "params": {
+      "_fp": {
+        "motion": 0.0218,
+        "conf": 0.4
+      }
+    },
+    "offlineReady": true,
+    "fidelity": "approximate-procedural",
     "notes": [
-      "Animated preview; needs primitive assignment from visual analysis"
-    ]
+      "Assigned from CDN preview fingerprint (conf=0.40)"
+    ],
+    "verified": true,
+    "verifyScore": 0.3576266958501362
   },
   {
     "id": "tsunami",
@@ -9607,20 +10899,27 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/tsunami.gif"
     },
     "assets": {},
-    "primitive": null,
-    "params": {},
-    "offlineReady": false,
-    "fidelity": null,
+    "primitive": "bounce",
+    "params": {
+      "_fp": {
+        "motion": 0.1387,
+        "conf": 0.6
+      }
+    },
+    "offlineReady": true,
+    "fidelity": "approximate-procedural",
     "notes": [
-      "Animated preview; needs primitive assignment from visual analysis"
-    ]
+      "Assigned from CDN preview fingerprint (conf=0.60)"
+    ],
+    "verified": true,
+    "verifyScore": 0.372630851798714
   },
   {
-    "id": "tumble:\u27a1\ufe0f",
+    "id": "tumble:➡️",
     "slug": "tumble",
     "tag": "gen_btn_tumble",
     "family": "transform",
-    "directionSuffix": "\u27a1\ufe0f",
+    "directionSuffix": "➡️",
     "preview": {
       "ext": "gif",
       "contentType": "image/gif",
@@ -9649,13 +10948,20 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/twirl.gif"
     },
     "assets": {},
-    "primitive": null,
-    "params": {},
-    "offlineReady": false,
-    "fidelity": null,
+    "primitive": "bounce",
+    "params": {
+      "_fp": {
+        "motion": 0.1547,
+        "conf": 0.6
+      }
+    },
+    "offlineReady": true,
+    "fidelity": "approximate-procedural",
     "notes": [
-      "Animated preview; needs primitive assignment from visual analysis"
-    ]
+      "Assigned from CDN preview fingerprint (conf=0.60)"
+    ],
+    "verified": true,
+    "verifyScore": 0.3435624881312094
   },
   {
     "id": "typing",
@@ -9670,13 +10976,20 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/typing.gif"
     },
     "assets": {},
-    "primitive": null,
-    "params": {},
-    "offlineReady": false,
-    "fidelity": null,
+    "primitive": "nod",
+    "params": {
+      "_fp": {
+        "motion": 0.0337,
+        "conf": 0.55
+      }
+    },
+    "offlineReady": true,
+    "fidelity": "approximate-procedural",
     "notes": [
-      "Animated preview; needs primitive assignment from visual analysis"
-    ]
+      "Assigned from CDN preview fingerprint (conf=0.55)"
+    ],
+    "verified": true,
+    "verifyScore": 0.35741677672796235
   },
   {
     "id": "underwater",
@@ -9691,13 +11004,20 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/underwater.gif"
     },
     "assets": {},
-    "primitive": null,
-    "params": {},
-    "offlineReady": false,
-    "fidelity": null,
+    "primitive": "nod",
+    "params": {
+      "_fp": {
+        "motion": 0.0362,
+        "conf": 0.55
+      }
+    },
+    "offlineReady": true,
+    "fidelity": "approximate-procedural",
     "notes": [
-      "Animated preview; needs primitive assignment from visual analysis"
-    ]
+      "Assigned from CDN preview fingerprint (conf=0.55)"
+    ],
+    "verified": true,
+    "verifyScore": 0.3584197675624944
   },
   {
     "id": "unimpressed-cat",
@@ -9712,13 +11032,20 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/unimpressed-cat.gif"
     },
     "assets": {},
-    "primitive": null,
-    "params": {},
-    "offlineReady": false,
-    "fidelity": null,
+    "primitive": "rainbow",
+    "params": {
+      "_fp": {
+        "motion": 0.0529,
+        "conf": 0.55
+      }
+    },
+    "offlineReady": true,
+    "fidelity": "approximate-procedural",
     "notes": [
-      "Animated preview; needs primitive assignment from visual analysis"
-    ]
+      "Assigned from CDN preview fingerprint (conf=0.55)"
+    ],
+    "verified": true,
+    "verifyScore": 0.4748686614140566
   },
   {
     "id": "vampire-offers",
@@ -9733,13 +11060,22 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/vampire-offers.webp"
     },
     "assets": {},
-    "primitive": null,
-    "params": {},
-    "offlineReady": false,
-    "fidelity": null,
+    "primitive": "pulse",
+    "params": {
+      "minScale": 0.94,
+      "maxScale": 1.04,
+      "_fp": {
+        "motion": 0,
+        "conf": 0.4
+      }
+    },
+    "offlineReady": true,
+    "fidelity": "approximate-procedural",
     "notes": [
-      "Animated preview; needs primitive assignment from visual analysis"
-    ]
+      "Assigned from CDN preview fingerprint (conf=0.40)"
+    ],
+    "verified": true,
+    "verifyScore": 0.6375536264432351
   },
   {
     "id": "vampire-takes",
@@ -9754,13 +11090,22 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/vampire-takes.webp"
     },
     "assets": {},
-    "primitive": null,
-    "params": {},
-    "offlineReady": false,
-    "fidelity": null,
+    "primitive": "pulse",
+    "params": {
+      "minScale": 0.94,
+      "maxScale": 1.04,
+      "_fp": {
+        "motion": 0,
+        "conf": 0.4
+      }
+    },
+    "offlineReady": true,
+    "fidelity": "approximate-procedural",
     "notes": [
-      "Animated preview; needs primitive assignment from visual analysis"
-    ]
+      "Assigned from CDN preview fingerprint (conf=0.40)"
+    ],
+    "verified": true,
+    "verifyScore": 0.6461883774543064
   },
   {
     "id": "venom",
@@ -9779,11 +11124,13 @@
     },
     "primitive": "atlas",
     "params": {},
-    "offlineReady": false,
+    "offlineReady": true,
     "fidelity": "approximate-composite",
     "notes": [
-      "Requires archived frame/atlas assets + placement recipe"
-    ]
+      "atlas assets archived; pending render verification"
+    ],
+    "verified": true,
+    "verifyScore": 0.5517863136453701
   },
   {
     "id": "vibee",
@@ -9798,13 +11145,20 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/vibee.gif"
     },
     "assets": {},
-    "primitive": null,
-    "params": {},
-    "offlineReady": false,
-    "fidelity": null,
+    "primitive": "pulse",
+    "params": {
+      "_fp": {
+        "motion": 0.0154,
+        "conf": 0.4
+      }
+    },
+    "offlineReady": true,
+    "fidelity": "approximate-procedural",
     "notes": [
-      "Animated preview; needs primitive assignment from visual analysis"
-    ]
+      "Assigned from CDN preview fingerprint (conf=0.40)"
+    ],
+    "verified": true,
+    "verifyScore": 0.5330137824013688
   },
   {
     "id": "wave-ocean",
@@ -9826,11 +11180,11 @@
     "notes": []
   },
   {
-    "id": "wave:\u27a1\ufe0f",
+    "id": "wave:➡️",
     "slug": "wave",
     "tag": "gen_btn_wave",
     "family": "transform",
-    "directionSuffix": "\u27a1\ufe0f",
+    "directionSuffix": "➡️",
     "preview": {
       "ext": "gif",
       "contentType": "image/gif",
@@ -9859,13 +11213,20 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/wawa.gif"
     },
     "assets": {},
-    "primitive": null,
-    "params": {},
-    "offlineReady": false,
-    "fidelity": null,
+    "primitive": "nod",
+    "params": {
+      "_fp": {
+        "motion": 0.0815,
+        "conf": 0.55
+      }
+    },
+    "offlineReady": true,
+    "fidelity": "approximate-procedural",
     "notes": [
-      "Animated preview; needs primitive assignment from visual analysis"
-    ]
+      "Assigned from CDN preview fingerprint (conf=0.55)"
+    ],
+    "verified": true,
+    "verifyScore": 0.4218840900940838
   },
   {
     "id": "weird",
@@ -9880,13 +11241,20 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/weird.gif"
     },
     "assets": {},
-    "primitive": null,
-    "params": {},
-    "offlineReady": false,
-    "fidelity": null,
+    "primitive": "wobble",
+    "params": {
+      "_fp": {
+        "motion": 0.0799,
+        "conf": 0.5
+      }
+    },
+    "offlineReady": true,
+    "fidelity": "approximate-procedural",
     "notes": [
-      "Animated preview; needs primitive assignment from visual analysis"
-    ]
+      "Assigned from CDN preview fingerprint (conf=0.50)"
+    ],
+    "verified": true,
+    "verifyScore": 0.3408204769872938
   },
   {
     "id": "wildfire",
@@ -9929,8 +11297,10 @@
     "offlineReady": false,
     "fidelity": "approximate-composite",
     "notes": [
-      "Requires archived frame/atlas assets + placement recipe"
-    ]
+      "frames assets archived; pending render verification",
+      "Render failed: No frames in /workspace/artifacts/emoji-offline/assets/frames/will-presents"
+    ],
+    "verified": false
   },
   {
     "id": "willem-dafoe",
@@ -9949,18 +11319,20 @@
     },
     "primitive": "atlas",
     "params": {},
-    "offlineReady": false,
+    "offlineReady": true,
     "fidelity": "approximate-composite",
     "notes": [
-      "Requires archived frame/atlas assets + placement recipe"
-    ]
+      "atlas assets archived; pending render verification"
+    ],
+    "verified": true,
+    "verifyScore": 0.5463242654419125
   },
   {
-    "id": "wipe:\u27a1\ufe0f",
+    "id": "wipe:➡️",
     "slug": "wipe",
     "tag": "gen_btn_wipe",
     "family": "transform",
-    "directionSuffix": "\u27a1\ufe0f",
+    "directionSuffix": "➡️",
     "preview": {
       "ext": "gif",
       "contentType": "image/gif",
@@ -9968,13 +11340,20 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/wipe.gif"
     },
     "assets": {},
-    "primitive": null,
-    "params": {},
-    "offlineReady": false,
-    "fidelity": null,
+    "primitive": "bounce",
+    "params": {
+      "_fp": {
+        "motion": 0.0586,
+        "conf": 0.6
+      }
+    },
+    "offlineReady": true,
+    "fidelity": "approximate-procedural",
     "notes": [
-      "Animated preview; needs primitive assignment from visual analysis"
-    ]
+      "Assigned from CDN preview fingerprint (conf=0.60)"
+    ],
+    "verified": true,
+    "verifyScore": 0.376825599834825
   },
   {
     "id": "wobble",
@@ -10054,11 +11433,13 @@
     },
     "primitive": "atlas",
     "params": {},
-    "offlineReady": false,
+    "offlineReady": true,
     "fidelity": "approximate-composite",
     "notes": [
-      "Requires archived frame/atlas assets + placement recipe"
-    ]
+      "atlas assets archived; pending render verification"
+    ],
+    "verified": true,
+    "verifyScore": 0.7024769673494398
   },
   {
     "id": "wormhole",
@@ -10073,13 +11454,20 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/wormhole.gif"
     },
     "assets": {},
-    "primitive": null,
-    "params": {},
-    "offlineReady": false,
-    "fidelity": null,
+    "primitive": "bounce",
+    "params": {
+      "_fp": {
+        "motion": 0.1438,
+        "conf": 0.6
+      }
+    },
+    "offlineReady": true,
+    "fidelity": "approximate-procedural",
     "notes": [
-      "Animated preview; needs primitive assignment from visual analysis"
-    ]
+      "Assigned from CDN preview fingerprint (conf=0.60)"
+    ],
+    "verified": true,
+    "verifyScore": 0.4084971344584446
   },
   {
     "id": "yes-yes",

@@ -18,6 +18,7 @@ import {
 } from "../../utils/options.js";
 import type { GenerateOptions, GenerateResult } from "../../types.js";
 import { composeOverlay, resolveOverlayPath } from "./overlay.js";
+import { composeSequence, resolveAtlasDir, resolveFramesDir } from "./atlas.js";
 import { directionFromRecipe, effectFromPrimitive } from "./primitives.js";
 import { findRecipe } from "./recipes.js";
 import { findOfflineStyle } from "./registry.js";
@@ -42,11 +43,12 @@ export async function renderOffline(options: GenerateOptions): Promise<GenerateR
     );
   }
 
-  // Prefer recipe.offlineReady; fall back to legacy styles.json flag for the
-  // original 11 exact-name mappings until recipes fully own the flag.
-  const ready = recipe?.offlineReady
+  // Prefer a recipe with a primitive. offlineReady is the *claim* gate used by
+  // implementedOfflineStyles / package stats — verification must be able to
+  // render candidates before flipping that flag.
+  const canRender = Boolean(recipe?.primitive)
     || Boolean(style?.offlineImplemented && style.offlineEffectId);
-  if (!ready) {
+  if (!canRender) {
     const id = recipe?.id ?? style?.id ?? options.animation;
     throw new EmojiError(
       "unknown_effect",
@@ -82,6 +84,27 @@ export async function renderOffline(options: GenerateOptions): Promise<GenerateR
         frames: options.format === "png" ? 1 : 8,
       });
       return encodeFrames(frames, size, options.format, delayFor(55, speed));
+    }
+
+    if (family === "atlas" || family === "frames") {
+      const slug = recipe!.slug;
+      const dir = family === "atlas" ? resolveAtlasDir(slug) : resolveFramesDir(slug);
+      // Some "frames" styles only have an atlas (or vice versa) — try both.
+      const resolved = dir
+        ?? (family === "atlas" ? resolveFramesDir(slug) : resolveAtlasDir(slug));
+      if (!resolved) {
+        throw new EmojiError(
+          "unknown_effect",
+          `${family} assets for \`${slug}\` are missing from the offline package.`,
+        );
+      }
+      const frames = await composeSequence({
+        image: options.image,
+        sequenceDir: resolved,
+        size,
+        maxFrames: options.format === "png" ? 1 : 24,
+      });
+      return encodeFrames(frames, size, options.format, delayFor(50, speed));
     }
 
     if (family === "passthrough" || family === "transform") {
