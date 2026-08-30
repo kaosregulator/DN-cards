@@ -4,6 +4,7 @@ import {
   type SlashCommandSubcommandsOnlyBuilder,
 } from "discord.js";
 import { buildAfkCommandJson, buildAfkSetupCommandJson } from "../afk/commands.js";
+import { buildEmojiCommandJson } from "../emoji/commands/definition.js";
 import { getRaidFrames } from "../cards/frames.js";
 import {
   buildMaterialChoices, buildWallpaperChoices, buildCanvasChoices, BUILD_LIMITS,
@@ -48,10 +49,7 @@ function buildLegacyCommands() {
     cmd("rank", "Your rank and progression", s => s
       .addUserOption(o => o.setName("user").setDescription("View another member's rank"))),
 
-    cmd("postmojidashboard", "Admin: build an animated emote (effects, Giphy search, green screen) and post it to a channel", s => s
-      .addAttachmentOption(o => o.setName("image").setDescription("Upload an image to animate"))
-      .addUserOption(o => o.setName("user").setDescription("Use a member's avatar instead"))
-      .addStringOption(o => o.setName("url").setDescription("Or an image URL to animate"))),
+    buildEmojiCommandJson(),
 
     cmd("info", "Details, worth, and drop chance", s => s
       .addStringOption(o => o.setName("name").setDescription("Name to look up").setRequired(true).setAutocomplete(true))),
