@@ -6,16 +6,16 @@
 // its own — generation goes through `generateEmoji`, which picks a provider and
 // serves from cache when it can.
 //
-// Two entry points, matching how index.ts routes interactions:
+// Entry points, matching how index.ts routes interactions:
 //   • handleEmojiCommand     — the slash command
-//   • handleEmojiInteraction — components whose customId starts `emoji:`
+//   • handleEmojiInteraction — components / modals whose customId starts `emoji:`
 //   • handleEmojiAutocomplete — the manifest-backed option pickers
 // ─────────────────────────────────────────────────────────────────────────────
 
 import {
   AttachmentBuilder, MessageFlags,
   type AutocompleteInteraction, type ChatInputCommandInteraction, type Interaction,
-  type MessageComponentInteraction,
+  type MessageComponentInteraction, type ModalSubmitInteraction,
 } from "discord.js";
 import { logger } from "../../../lib/logger.js";
 import { DISCORD_EMOJI_LIMIT, generateEmoji } from "../generate.js";
@@ -23,8 +23,12 @@ import type { GenerateOptions } from "../types.js";
 import { EmojiError, toEmojiError } from "../utils/errors.js";
 import { parseFormat } from "../utils/options.js";
 import { loadSource } from "../utils/source.js";
+import { toggleFavorite } from "./favorites.js";
 import { defaultAnimation, isManifestOption, suggestFor } from "./options.js";
-import { buildControls, describe, parseCid } from "./ui.js";
+import {
+  buildStylesPicker, buildStyleSearchModal, ensureStyleFocus, findStyle,
+} from "./styles-picker.js";
+import { buildCachedControlsReply, buildControls, describe, parseCid } from "./ui.js";
 import { createSession, endSession, getSession, touchSession, type EmojiSession } from "./session.js";
 
 /** Avatars are fetched large so there's detail to work with before downscaling. */
@@ -84,6 +88,15 @@ function toGenerateOptions(session: EmojiSession): GenerateOptions {
 async function buildReply(session: EmojiSession, token: string) {
   const result = await generateEmoji(toGenerateOptions(session));
 
+  session.lastResult = {
+    buffer: result.buffer,
+    format: result.format,
+    bytes: result.bytes,
+    providerId: result.providerId,
+    cached: result.cached,
+  };
+  session.view = "controls";
+
   const file = new AttachmentBuilder(result.buffer, { name: `emoji.${result.format}` });
   const lines = [
     describe(session, result.bytes, result.providerId, result.cached),
@@ -97,7 +110,12 @@ async function buildReply(session: EmojiSession, token: string) {
     lines.push("-# ⚠️ Over Discord's 256 KB custom-emoji limit — try a smaller size or a different format.");
   }
 
-  return { content: lines.join("\n"), files: [file], components: buildControls(session, token) };
+  return {
+    content: lines.join("\n"),
+    embeds: [],
+    files: [file],
+    components: buildControls(session, token),
+  };
 }
 
 /** Turn any failure into a short, user-facing message. */
@@ -144,12 +162,12 @@ export async function handleEmojiCommand(interaction: ChatInputCommandInteractio
 
     await interaction.editReply(await buildReply(session, token));
   } catch (err) {
-    await interaction.editReply({ content: failureMessage(err), files: [], components: [] });
+    await interaction.editReply({ content: failureMessage(err), files: [], components: [], embeds: [] });
   }
 }
 
 export async function handleEmojiInteraction(interaction: Interaction): Promise<void> {
-  if (!interaction.isMessageComponent()) return;
+  if (!interaction.isMessageComponent() && !interaction.isModalSubmit()) return;
 
   const parsed = parseCid(interaction.customId);
   if (!parsed) return;
@@ -176,10 +194,20 @@ export async function handleEmojiInteraction(interaction: Interaction): Promise<
   }
 
   if (action === "done") {
+    if (!interaction.isMessageComponent()) return;
     endSession(token);
     await interaction.update({ components: [] });
     return;
   }
+
+  // Style browser — search opens a modal; everything else re-renders the picker
+  // (or regenerates when Apply is pressed).
+  if (action.startsWith("styles")) {
+    await handleStylesAction(interaction, session, token, action);
+    return;
+  }
+
+  if (!interaction.isMessageComponent()) return;
 
   const patch = patchFor(action, interaction);
   if (!patch) return;
@@ -193,8 +221,121 @@ export async function handleEmojiInteraction(interaction: Interaction): Promise<
   try {
     await interaction.editReply(await buildReply(updated, token));
   } catch (err) {
-    await interaction.editReply({ content: failureMessage(err), files: [], components: [] });
+    await interaction.editReply({ content: failureMessage(err), files: [], components: [], embeds: [] });
   }
+}
+
+async function handleStylesAction(
+  interaction: MessageComponentInteraction | ModalSubmitInteraction,
+  session: EmojiSession,
+  token: string,
+  action: string,
+): Promise<void> {
+  // Search button → modal (must not defer first).
+  if (action === "styles_search" && interaction.isButton()) {
+    await interaction.showModal(
+      buildStyleSearchModal(token, session.styleQuery ?? ""),
+    ).catch(() => {});
+    return;
+  }
+
+  if (action === "styles_modal" && interaction.isModalSubmit()) {
+    const query = interaction.fields.getTextInputValue("query").trim();
+    await interaction.deferUpdate().catch(() => {});
+    touchSession(token, {
+      view: "styles",
+      styleQuery: query,
+      stylePage: 0,
+      styleFocus: null,
+    });
+    const updated = getSession(token);
+    if (!updated) return;
+    await interaction.editReply(await buildStylesPicker(updated, token));
+    return;
+  }
+
+  if (!interaction.isMessageComponent()) return;
+
+  // Apply selected (or focused) style → regenerate with the user's image.
+  if (action === "styles_apply" && interaction.isButton()) {
+    await interaction.deferUpdate();
+    const focus = ensureStyleFocus(session, session.ownerId);
+    if (!findStyle(focus)) {
+      await interaction.editReply(await buildStylesPicker(session, token));
+      return;
+    }
+    const updated = touchSession(token, {
+      animation: focus,
+      styleFocus: focus,
+      view: "controls",
+    });
+    if (!updated) return;
+    try {
+      await interaction.editReply(await buildReply(updated, token));
+    } catch (err) {
+      await interaction.editReply({ content: failureMessage(err), files: [], components: [], embeds: [] });
+    }
+    return;
+  }
+
+  // Back to the control panel without regenerating when we still have a cache.
+  if (action === "styles_back" && interaction.isButton()) {
+    await interaction.deferUpdate();
+    touchSession(token, { view: "controls" });
+    const updated = getSession(token);
+    if (!updated) return;
+    const cached = buildCachedControlsReply(updated, token);
+    if (cached) {
+      await interaction.editReply(cached);
+      return;
+    }
+    try {
+      await interaction.editReply(await buildReply(updated, token));
+    } catch (err) {
+      await interaction.editReply({ content: failureMessage(err), files: [], components: [], embeds: [] });
+    }
+    return;
+  }
+
+  await interaction.deferUpdate();
+
+  if (action === "styles") {
+    touchSession(token, {
+      view: "styles",
+      stylePage: 0,
+      styleFocus: session.animation,
+    });
+  } else if (action === "styles_prev") {
+    touchSession(token, {
+      stylePage: Math.max(0, (session.stylePage ?? 0) - 1),
+      styleFocus: null,
+    });
+  } else if (action === "styles_next") {
+    touchSession(token, {
+      stylePage: (session.stylePage ?? 0) + 1,
+      styleFocus: null,
+    });
+  } else if (action === "styles_filter" && interaction.isButton()) {
+    touchSession(token, {
+      styleFilter: session.styleFilter === "favorites" ? "all" : "favorites",
+      stylePage: 0,
+      styleFocus: null,
+    });
+  } else if (action === "styles_fav" && interaction.isButton()) {
+    const focus = ensureStyleFocus(session, session.ownerId);
+    if (findStyle(focus)) toggleFavorite(session.ownerId, focus);
+  } else if (action === "styles_pick" && interaction.isStringSelectMenu()) {
+    const value = interaction.values[0];
+    if (value && findStyle(value)) {
+      touchSession(token, { styleFocus: value });
+    }
+  } else {
+    return;
+  }
+
+  const updated = getSession(token);
+  if (!updated) return;
+  await interaction.editReply(await buildStylesPicker(updated, token));
 }
 
 /** Suggestions for the manifest-driven options. */

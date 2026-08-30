@@ -2,16 +2,16 @@
 // /emoji control panel.
 //
 // Every picker is built from the discovery manifest, so the panel shows exactly
-// what MakeEmoji offers. An option the manifest doesn't describe gets no row at
-// all — better a smaller panel than a control that silently does nothing.
+// what MakeEmoji offers. Animation is *not* a truncated select of 25 — with
+// ~473 styles that would hide most of the catalog. Instead a "Browse Styles"
+// button opens the visual style browser (search, pages, favorites, CDN preview).
 //
-// Discord allows five action rows, so the panel shows the manifest options that
-// matter most (animation first) and always keeps the last row for format and
-// Done.
+// Discord allows five action rows, so the panel keeps the last row for format
+// and Done, and spends the rest on the most useful secondary controls.
 // ─────────────────────────────────────────────────────────────────────────────
 
 import {
-  ActionRowBuilder, ButtonBuilder, ButtonStyle,
+  ActionRowBuilder, AttachmentBuilder, ButtonBuilder, ButtonStyle,
   StringSelectMenuBuilder, StringSelectMenuOptionBuilder,
 } from "discord.js";
 import { getManifest } from "../providers/makeemoji/manifest.js";
@@ -25,12 +25,15 @@ export const CID = "emoji";
 /** Discord's cap on options in one select menu. */
 const MAX_SELECT_OPTIONS = 25;
 
-/** Rows available for manifest options: five total, minus the format/Done row. */
-const MAX_OPTION_ROWS = 4;
+/** Rows available for secondary options: five total, minus styles + format rows. */
+const MAX_OPTION_ROWS = 3;
 
-/** Panel order — animation matters most, so it never gets cut. */
+/**
+ * Secondary panel options — animation is handled by the style browser, so it is
+ * intentionally absent here.
+ */
 const PANEL_OPTIONS: readonly OptionKey[] = [
-  "animation", "speed", "direction", "size", "quality", "color", "platform",
+  "speed", "direction", "size", "quality", "color", "platform",
 ];
 
 const LABELS: Record<OptionKey, string> = {
@@ -92,6 +95,24 @@ function optionRow(
   return new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(menu);
 }
 
+/** Friendly label for the currently applied animation. */
+function animationLabel(session: EmojiSession): string {
+  const values = getManifest().manifest?.controls.animation?.values ?? [];
+  const hit = values.find(v => v.value === session.animation);
+  return (hit?.label && hit.label.trim()) || session.animation;
+}
+
+function stylesRow(session: EmojiSession, token: string): ActionRowBuilder<ButtonBuilder> {
+  const label = animationLabel(session);
+  return new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder()
+      .setCustomId(cid("styles", token))
+      .setLabel(`Browse styles — ${label}`.slice(0, 80))
+      .setEmoji("🎨")
+      .setStyle(ButtonStyle.Primary),
+  );
+}
+
 function actionsRow(session: EmojiSession, token: string): ActionRowBuilder<ButtonBuilder> {
   const formatButtons = FORMATS.map(f =>
     new ButtonBuilder()
@@ -114,8 +135,10 @@ function actionsRow(session: EmojiSession, token: string): ActionRowBuilder<Butt
 export function buildControls(session: EmojiSession, token: string): ActionRowBuilder<never>[] {
   const rows: ActionRowBuilder<never>[] = [];
 
+  rows.push(stylesRow(session, token) as unknown as ActionRowBuilder<never>);
+
   for (const key of PANEL_OPTIONS) {
-    if (rows.length >= MAX_OPTION_ROWS) break;
+    if (rows.length >= 1 + MAX_OPTION_ROWS) break;
     const row = optionRow(session, token, key);
     if (row) rows.push(row as unknown as ActionRowBuilder<never>);
   }
@@ -124,11 +147,29 @@ export function buildControls(session: EmojiSession, token: string): ActionRowBu
   return rows;
 }
 
+/** Rebuild the controls message from a cached generation (no provider call). */
+export function buildCachedControlsReply(session: EmojiSession, token: string) {
+  const result = session.lastResult;
+  if (!result) return null;
+
+  const file = new AttachmentBuilder(result.buffer, { name: `emoji.${result.format}` });
+  const lines = [
+    describe(session, result.bytes, result.providerId, result.cached),
+    `-# from ${session.sourceLabel}`,
+  ];
+  return {
+    content: lines.join("\n"),
+    embeds: [],
+    files: [file],
+    components: buildControls(session, token),
+  };
+}
+
 /** One-line summary of the current settings, shown above the preview. */
 export function describe(
   session: EmojiSession, bytes: number, providerId: string, cached: boolean,
 ): string {
-  const parts = [`✨ **${session.animation}**`, `\`${session.format.toUpperCase()}\``];
+  const parts = [`✨ **${animationLabel(session)}**`, `\`${session.format.toUpperCase()}\``];
 
   for (const key of ["speed", "direction", "size", "quality", "color", "platform"] as const) {
     const value = currentValue(session, key);

@@ -20,6 +20,18 @@ const TTL_MS = 10 * 60 * 1000;
 /** Hard cap on live sessions, to bound worst-case memory. */
 const MAX_SESSIONS = 200;
 
+/** Which panel the interaction message is currently showing. */
+export type EmojiView = "controls" | "styles";
+
+/** Last successful generation — lets "Back" restore the panel without re-rendering. */
+export interface EmojiLastResult {
+  buffer: Buffer;
+  format: EmojiFormat;
+  bytes: number;
+  providerId: string;
+  cached: boolean;
+}
+
 export interface EmojiSession {
   /** Normalised PNG bytes of the source image. */
   image: Buffer;
@@ -36,6 +48,18 @@ export interface EmojiSession {
   quality?: string;
   platform?: string;
   format: EmojiFormat;
+  /** Control panel vs visual style browser. */
+  view: EmojiView;
+  /** Style browser page (0-based). */
+  stylePage: number;
+  /** Style browser name search (empty = no filter). */
+  styleQuery: string;
+  /** Style browser list filter. */
+  styleFilter: "all" | "favorites";
+  /** Style value currently previewed in the browser (`gen_btn_…`). */
+  styleFocus: string | null;
+  /** Cached output of the last successful generate for this session. */
+  lastResult?: EmojiLastResult;
   expiresAt: number;
 }
 
@@ -49,9 +73,14 @@ function sweep(): void {
   }
 }
 
+type SessionInit = Omit<
+  EmojiSession,
+  "expiresAt" | "view" | "stylePage" | "styleQuery" | "styleFilter" | "styleFocus" | "lastResult"
+> & Partial<Pick<EmojiSession, "view" | "stylePage" | "styleQuery" | "styleFilter" | "styleFocus" | "lastResult">>;
+
 /** Store a session, returning its token and the stored record. */
 export function createSession(
-  init: Omit<EmojiSession, "expiresAt">,
+  init: SessionInit,
 ): { token: string; session: EmojiSession } {
   sweep();
 
@@ -63,7 +92,15 @@ export function createSession(
   }
 
   const token = randomBytes(9).toString("base64url");
-  const session: EmojiSession = { ...init, expiresAt: Date.now() + TTL_MS };
+  const session: EmojiSession = {
+    view: "controls",
+    stylePage: 0,
+    styleQuery: "",
+    styleFilter: "all",
+    styleFocus: null,
+    ...init,
+    expiresAt: Date.now() + TTL_MS,
+  };
   sessions.set(token, session);
   return { token, session };
 }

@@ -229,10 +229,13 @@ export async function startBot() {
         return;
       }
 
-      // ── /emoji controls (emoji:* selects/buttons) ──────────────────────────
-      // One router owns the whole control panel: effect / speed / direction
-      // selects, the size and format buttons, and Done.
-      if (interaction.isMessageComponent() && interaction.customId.startsWith("emoji:")) {
+      // ── /emoji controls (emoji:* selects/buttons/modals) ──────────────────
+      // One router owns the whole control panel: style browser, secondary
+      // selects, format buttons, Done, and the style-search modal.
+      if (
+        (interaction.isMessageComponent() || interaction.isModalSubmit()) &&
+        interaction.customId.startsWith("emoji:")
+      ) {
         const { handleEmojiInteraction } = await import("./emoji/commands/emoji.js");
         await handleEmojiInteraction(interaction);
         return;
