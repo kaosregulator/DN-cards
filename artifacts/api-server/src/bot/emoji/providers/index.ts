@@ -10,11 +10,21 @@
 import { logger } from "../../../lib/logger.js";
 import { EmojiError } from "../utils/errors.js";
 import { makeEmojiProvider } from "./makeemoji/client.js";
+import { offlineProvider } from "./offline/provider.js";
 import { localProvider } from "./local/provider.js";
 import type { EmojiProvider, ProviderStatus } from "./types.js";
 
-/** In priority order. The first available one serves a request. */
-export const PROVIDERS: readonly EmojiProvider[] = [makeEmojiProvider, localProvider];
+/**
+ * Priority order:
+ *   1. MakeEmoji.com (primary)
+ *   2. Offline archive (only when EMOJI_ALLOW_OFFLINE_FALLBACK=1)
+ *   3. Local procedural fallback (only when EMOJI_ALLOW_LOCAL_FALLBACK=1)
+ *
+ * Neither fallback is enabled by default.
+ */
+export const PROVIDERS: readonly EmojiProvider[] = [
+  makeEmojiProvider, offlineProvider, localProvider,
+];
 
 export interface ProviderReport {
   id: string;
@@ -56,5 +66,5 @@ export async function resolveProvider(): Promise<EmojiProvider> {
   );
 }
 
-export { makeEmojiProvider, localProvider };
+export { makeEmojiProvider, offlineProvider, localProvider };
 export type { EmojiProvider, ProviderStatus } from "./types.js";

@@ -19,7 +19,7 @@ export type {
 
 // ── providers ────────────────────────────────────────────────────────────────
 export {
-  PROVIDERS, resolveProvider, providerReport, makeEmojiProvider, localProvider,
+  PROVIDERS, resolveProvider, providerReport, makeEmojiProvider, offlineProvider, localProvider,
 } from "./providers/index.js";
 export type { EmojiProvider, ProviderStatus, ProviderReport } from "./providers/index.js";
 
@@ -30,6 +30,16 @@ export {
 export { Manifest, OPTION_KEYS } from "./providers/makeemoji/types.js";
 export type { OptionKey, ControlSpec, ApiSpec } from "./providers/makeemoji/types.js";
 export { discover, DEFAULT_SITE_URL, DEFAULT_OUTPUT_DIR } from "./providers/makeemoji/discovery/discover.js";
+
+// ── Offline MakeEmoji backup ─────────────────────────────────────────────────
+// Disabled unless EMOJI_ALLOW_OFFLINE_FALLBACK=1. Archives ~473 discovered
+// styles; only the exact-name procedural subset renders today.
+export {
+  loadOfflineManifest, loadOfflineStyles, implementedOfflineStyles,
+  findOfflineStyle, offlinePackageRoot, reloadOfflineRegistry,
+  isOfflineFallbackEnabled,
+} from "./providers/offline/index.js";
+export type { OfflineStyle, OfflinePackageManifest } from "./providers/offline/index.js";
 
 // ── cache ────────────────────────────────────────────────────────────────────
 export { cacheKey, cacheStats, clearCache, withCache } from "./cache/index.js";

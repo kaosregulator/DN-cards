@@ -23,6 +23,7 @@ import NewsAdmin from "@/pages/news-admin";
 import SiteAdmin from "@/pages/site-admin";
 import Suggestions from "@/pages/suggestions";
 import SuggestionsAdmin from "@/pages/suggestions-admin";
+import MakeEmoji from "@/pages/make-emoji";
 import NotFound from "@/pages/not-found";
 
 const queryClient = new QueryClient({
@@ -52,6 +53,7 @@ function Router() {
       <Route path="/admin/news" component={NewsAdmin} />
       <Route path="/admin/appearance" component={SiteAdmin} />
       <Route path="/admin/suggestions" component={SuggestionsAdmin} />
+      <Route path="/admin/emoji" component={MakeEmoji} />
       <Route path="/admin" component={Admin} />
       <Route component={NotFound} />
     </Switch>

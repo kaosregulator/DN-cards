@@ -7,7 +7,8 @@
     "build": "pnpm run typecheck && pnpm -r --if-present run build",
     "typecheck:libs": "tsc --build",
     "typecheck": "pnpm run typecheck:libs && pnpm -r --filter \"./artifacts/**\" --filter \"./scripts\" --if-present run typecheck",
-    "makeemoji:discover": "pnpm --filter @workspace/scripts run makeemoji:discover"
+    "makeemoji:discover": "pnpm --filter @workspace/scripts run makeemoji:discover",
+    "makeemoji:backup": "pnpm --filter @workspace/scripts run makeemoji:backup"
   },
   "private": true,
   "devDependencies": {

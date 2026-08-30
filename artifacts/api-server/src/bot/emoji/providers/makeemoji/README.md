@@ -133,6 +133,8 @@ credential.
 | `MAKEEMOJI_HEADLESS=0` | Show the browser while debugging |
 | `MAKEEMOJI_DEBUG_DIR` | Enable per-request network traces (off by default) |
 | `EMOJI_ALLOW_LOCAL_FALLBACK=1` | Permit degraded local rendering when MakeEmoji is down |
+| `EMOJI_ALLOW_OFFLINE_FALLBACK=1` | Permit the archived offline backup provider (partial style set) |
+| `EMOJI_OFFLINE_PACKAGE_PATH` | Override path to `artifacts/emoji-offline` |
 
 Playwright is an **optional** dependency: the bot starts and serves every other
 command without it. If its pinned Chromium revision is missing, the runtime

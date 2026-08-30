@@ -11,6 +11,7 @@ import siteRouter from "./site";
 import oauthRouter from "./oauth";
 import adminSiteRouter from "./admin-site";
 import activityRouter from "./activity";
+import emojiAdminRouter from "./emoji-admin";
 
 const router: IRouter = Router();
 
@@ -21,6 +22,7 @@ router.use("/oauth", oauthRouter);
 router.use("/activity", activityRouter);
 router.use("/dashboard/users", dashboardUsersRouter);
 router.use("/admin", adminSiteRouter);
+router.use("/admin", emojiAdminRouter);
 router.use("/admin", adminRouter);
 router.use(storageRouter);
 router.use(newsRouter);

@@ -1,0 +1,20 @@
+{
+  "source": "makeemoji.com",
+  "discoveredAt": "2026-08-30T09:23:02.909Z",
+  "styleCount": 473,
+  "implementedStyleCount": 11,
+  "version": "1.0.0",
+  "offlineReady": false,
+  "primaryProvider": "makeemoji-browser",
+  "notes": "Archive of MakeEmoji discovery data for a future offline engine. offlineReady is false until the offline generator covers styles independently. A partial mapping to the local procedural renderer exists for exact-name overlaps only.",
+  "browser": {
+    "readySelector": "input[type=file]",
+    "fileInputSelector": "input[type=file]",
+    "generateSelector": null,
+    "resultSelector": "img[alt*=\"generated\" i]",
+    "downloadSelector": null,
+    "dismissSelectors": []
+  },
+  "siteUrl": "https://makeemoji.com/",
+  "api": null
+}

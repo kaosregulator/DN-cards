@@ -1,0 +1,18 @@
+{
+  "algorithm": "sha256",
+  "version": "1.0.0",
+  "files": {
+    "README.md": "10c52c61648ed16de23c9947be64062d9e90b7df957e8ea5a1e80bf7d6d01707",
+    "VERSION": "59854984853104df5c353e2f681a15fc7924742f9a2e468c29af248dce45ce03",
+    "assets/.gitkeep": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "controls.json": "bcd5754b4e77ba3434286433d29ba3678c39d5b4a70541a01d82d28849837195",
+    "makeemoji-source-manifest.json": "05219688744e68b8b1d6a6a20af025af4f46dcfdaf31c2c1cdbf6be1d83edf9e",
+    "manifest.json": "638a88c3ea2d163beb431ef411a17f4b91832e1adb915c6c31ff3e95a129267c",
+    "metadata/discovery-notes.md": "479fb4eb9abf2212fc799e9b6dbb1bc6cb27dd2c564a48364837b36594ebb1e3",
+    "metadata/source-site.json": "38748f6cb49d6c04575ae964696a611c44a9f556eebfcf91f3bb13d920976c7b",
+    "metadata/style-count.txt": "40edcfcd65fe481538755577ab5dd2c3caa08496560c29db38e633c75572c0ed",
+    "renderer/README.md": "2a12b543f92572a22eaf2e793b2473676f38cab4abbdcf93e8c36605a02a2155",
+    "renderer/mappings.json": "7bb0de4d9577d6e87fd5330795e6ce3b85d5bf7279d637434bf27f803679a2dd",
+    "styles.json": "00f898e69828a41d2bdca8cea36ff81281d6f08f58eec789acc48f0389a7d976"
+  }
+}

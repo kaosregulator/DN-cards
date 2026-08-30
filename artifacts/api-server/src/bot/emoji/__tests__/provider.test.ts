@@ -144,8 +144,12 @@ describe("provider resolution", () => {
   beforeEach(() => {
     setManifestForTesting(null, "no manifest loaded");
     delete process.env["EMOJI_ALLOW_LOCAL_FALLBACK"];
+    delete process.env["EMOJI_ALLOW_OFFLINE_FALLBACK"];
   });
-  afterAll(() => { delete process.env["EMOJI_ALLOW_LOCAL_FALLBACK"]; });
+  afterAll(() => {
+    delete process.env["EMOJI_ALLOW_LOCAL_FALLBACK"];
+    delete process.env["EMOJI_ALLOW_OFFLINE_FALLBACK"];
+  });
 
   it("fails cleanly when nothing is available", async () => {
     await expect(resolveProvider()).rejects.toMatchObject({ code: "provider_unavailable" });
@@ -156,6 +160,7 @@ describe("provider resolution", () => {
     // implying it came from MakeEmoji.
     const report = await providerReport();
     expect(report.find(r => r.id === "local")?.status.available).toBe(false);
+    expect(report.find(r => r.id === "offline")?.status.available).toBe(false);
   });
 
   it("uses the local fallback only once explicitly enabled", async () => {

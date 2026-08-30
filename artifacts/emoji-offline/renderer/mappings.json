@@ -1,0 +1,61 @@
+{
+  "version": "1.0.0",
+  "description": "Exact-name MakeEmoji style → local procedural effect. Only listed styles are offline-capable today.",
+  "mappings": [
+    {
+      "styleId": "bounce",
+      "localEffectId": "bounce",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "flip",
+      "localEffectId": "flip",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "glitch",
+      "localEffectId": "glitch",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "heartbeat",
+      "localEffectId": "heartbeat",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "party",
+      "localEffectId": "party",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "pulse",
+      "localEffectId": "pulse",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "shake",
+      "localEffectId": "shake",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "sparkle",
+      "localEffectId": "sparkle",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "squish",
+      "localEffectId": "squish",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "wobble",
+      "localEffectId": "wobble",
+      "fidelity": "approximate-procedural"
+    },
+    {
+      "styleId": "zoom",
+      "localEffectId": "zoom",
+      "fidelity": "approximate-procedural"
+    }
+  ]
+}
