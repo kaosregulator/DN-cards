@@ -84,6 +84,26 @@ export function loadOfflineStyles(): OfflineStyle[] {
 }
 
 export function implementedOfflineStyles(): OfflineStyle[] {
+  const root = offlinePackageRoot();
+  if (root) {
+    const recipesFile = join(root, "recipes", "recipes.json");
+    if (existsSync(recipesFile)) {
+      try {
+        const recipes = JSON.parse(readFileSync(recipesFile, "utf8")) as {
+          id: string; offlineReady?: boolean; primitive?: string | null;
+        }[];
+        const ready = new Set(
+          recipes.filter(r => r.offlineReady && r.primitive).map(r => r.id.toLowerCase()),
+        );
+        if (ready.size > 0) {
+          return loadOfflineStyles().filter(s =>
+            ready.has(s.id.toLowerCase())
+            || (s.offlineImplemented && Boolean(s.offlineEffectId)),
+          );
+        }
+      } catch { /* fall through to legacy flags */ }
+    }
+  }
   return loadOfflineStyles().filter(s => s.offlineImplemented && s.offlineEffectId);
 }
 

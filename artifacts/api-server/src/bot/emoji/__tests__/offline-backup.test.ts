@@ -38,12 +38,12 @@ describe("offline MakeEmoji backup package", () => {
     expect(offlinePackageRoot()).toBeTruthy();
   });
 
-  it("only marks exact-name mapped styles as offlineImplemented", () => {
+  it("marks recipe-ready styles as offlineImplemented (not the full catalog yet)", () => {
     const implemented = implementedOfflineStyles();
-    expect(implemented.length).toBeGreaterThan(0);
+    expect(implemented.length).toBeGreaterThanOrEqual(100);
     expect(implemented.every(s => s.offlineEffectId)).toBe(true);
     expect(findOfflineStyle("shake")?.offlineImplemented).toBe(true);
-    // A discovered MakeEmoji style that is NOT in the local procedural set.
+    // Atlas-backed MakeEmoji style — archived, not offline-ready until assets land.
     const parrot = findOfflineStyle("party-parrot");
     expect(parrot).toBeTruthy();
     expect(parrot!.offlineImplemented).toBe(false);

@@ -1,8 +1,9 @@
 {
   "source": "https://makeemoji.com/",
   "discoveredAt": "2026-08-30T09:23:02.909Z",
-  "archivedAt": "2026-08-30T17:59:30.039Z",
+  "archivedAt": "2026-08-30T21:06:59.488Z",
   "styleCount": 473,
-  "manifestVersion": "1.0.0",
-  "processing": "client-side"
+  "manifestVersion": "2.0.0",
+  "processing": "client-side",
+  "implementedStyleCount": 208
 }

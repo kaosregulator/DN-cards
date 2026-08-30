@@ -1,11 +1,12 @@
 # Offline renderer notes
 
-This directory records how archived MakeEmoji style IDs map onto the DN Cards
-local procedural renderer for the **partial** offline proof-of-concept.
+Recipes in `../recipes/recipes.json` map each MakeEmoji style id to a **family**
+and **primitive**. Only styles with `offlineReady: true` are independently
+renderable.
 
-- Mappings are **exact name matches only** (e.g. discovered `shake` → local `shake`).
-- Fidelity is approximate: MakeEmoji's client-side encoders are not reproduced.
-- Styles without a mapping remain in `styles.json` as discovery metadata only.
+- **transform** — shared procedural primitives (`shake`, `bounce`, `spin`, …)
+- **overlay** — archived PNG/AVIF under `../assets/overlays/` + hole composite
+- **passthrough** — `none`
+- **atlas / frames** — not offline-ready until assets + placement land
 
-When a real offline encoder for a style lands, add assets here and update
-`mappings.json` + the style's `offlineImplemented` flag via `pnpm makeemoji:backup`.
+Fidelity is approximate unless noted. MakeEmoji remains the primary provider.

@@ -5,8 +5,9 @@
     "tag": "gen_btn_none",
     "dataTag": "gen_btn_none",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "passthrough",
+    "offlineFamily": "passthrough",
     "source": "makeemoji.com discovery"
   },
   {
@@ -17,6 +18,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "atlas",
     "source": "makeemoji.com discovery"
   },
   {
@@ -27,6 +29,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "atlas",
     "source": "makeemoji.com discovery"
   },
   {
@@ -37,6 +40,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -47,6 +51,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -57,6 +62,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -67,6 +73,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "atlas",
     "source": "makeemoji.com discovery"
   },
   {
@@ -77,6 +84,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "atlas",
     "source": "makeemoji.com discovery"
   },
   {
@@ -87,6 +95,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "atlas",
     "source": "makeemoji.com discovery"
   },
   {
@@ -97,6 +106,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "atlas",
     "source": "makeemoji.com discovery"
   },
   {
@@ -107,6 +117,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -117,6 +128,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -127,6 +139,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "atlas",
     "source": "makeemoji.com discovery"
   },
   {
@@ -137,6 +150,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -147,6 +161,7 @@
     "category": "classic",
     "offlineImplemented": true,
     "offlineEffectId": "shake",
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -157,6 +172,7 @@
     "category": "classic",
     "offlineImplemented": true,
     "offlineEffectId": "party",
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -165,8 +181,9 @@
     "tag": "gen_btn_peepo",
     "dataTag": "gen_btn_peepo",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "overlay_hole",
+    "offlineFamily": "overlay",
     "source": "makeemoji.com discovery"
   },
   {
@@ -175,8 +192,9 @@
     "tag": "gen_btn_peepo-sit",
     "dataTag": "gen_btn_peepo-sit",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "overlay_hole",
+    "offlineFamily": "overlay",
     "source": "makeemoji.com discovery"
   },
   {
@@ -185,8 +203,9 @@
     "tag": "gen_btn_peepo-stop",
     "dataTag": "gen_btn_peepo-stop",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "overlay_hole",
+    "offlineFamily": "overlay",
     "source": "makeemoji.com discovery"
   },
   {
@@ -195,8 +214,9 @@
     "tag": "gen_btn_peepo-shy",
     "dataTag": "gen_btn_peepo-shy",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "overlay_hole",
+    "offlineFamily": "overlay",
     "source": "makeemoji.com discovery"
   },
   {
@@ -205,8 +225,9 @@
     "tag": "gen_btn_peepo-want",
     "dataTag": "gen_btn_peepo-want",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "overlay_hole",
+    "offlineFamily": "overlay",
     "source": "makeemoji.com discovery"
   },
   {
@@ -215,8 +236,9 @@
     "tag": "gen_btn_peepo-love",
     "dataTag": "gen_btn_peepo-love",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "overlay_hole",
+    "offlineFamily": "overlay",
     "source": "makeemoji.com discovery"
   },
   {
@@ -225,8 +247,9 @@
     "tag": "gen_btn_enter",
     "dataTag": "gen_btn_enter",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "slide",
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -235,8 +258,9 @@
     "tag": "gen_btn_exit",
     "dataTag": "gen_btn_exit",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "slide",
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -247,6 +271,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -257,6 +282,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -267,6 +293,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -277,6 +304,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -287,6 +315,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -297,6 +326,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -305,8 +335,9 @@
     "tag": "gen_btn_flare-eyes",
     "dataTag": "gen_btn_flare-eyes",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "nod",
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -317,6 +348,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "frames",
     "source": "makeemoji.com discovery"
   },
   {
@@ -325,8 +357,9 @@
     "tag": "gen_btn_fall-leaves",
     "dataTag": "gen_btn_fall-leaves",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "slide",
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -335,8 +368,9 @@
     "tag": "gen_btn_pumpkin",
     "dataTag": "gen_btn_pumpkin",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "overlay_hole",
+    "offlineFamily": "overlay",
     "source": "makeemoji.com discovery"
   },
   {
@@ -345,8 +379,9 @@
     "tag": "gen_btn_pumpkin2",
     "dataTag": "gen_btn_pumpkin2",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "overlay_hole",
+    "offlineFamily": "overlay",
     "source": "makeemoji.com discovery"
   },
   {
@@ -357,6 +392,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "atlas",
     "source": "makeemoji.com discovery"
   },
   {
@@ -367,6 +403,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "frames",
     "source": "makeemoji.com discovery"
   },
   {
@@ -377,6 +414,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "atlas",
     "source": "makeemoji.com discovery"
   },
   {
@@ -387,6 +425,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "atlas",
     "source": "makeemoji.com discovery"
   },
   {
@@ -397,6 +436,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "atlas",
     "source": "makeemoji.com discovery"
   },
   {
@@ -407,6 +447,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "atlas",
     "source": "makeemoji.com discovery"
   },
   {
@@ -417,6 +458,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "atlas",
     "source": "makeemoji.com discovery"
   },
   {
@@ -427,6 +469,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "atlas",
     "source": "makeemoji.com discovery"
   },
   {
@@ -437,6 +480,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "atlas",
     "source": "makeemoji.com discovery"
   },
   {
@@ -447,6 +491,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "atlas",
     "source": "makeemoji.com discovery"
   },
   {
@@ -457,6 +502,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -467,6 +513,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -477,6 +524,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "frames",
     "source": "makeemoji.com discovery"
   },
   {
@@ -487,6 +535,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "atlas",
     "source": "makeemoji.com discovery"
   },
   {
@@ -497,6 +546,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "atlas",
     "source": "makeemoji.com discovery"
   },
   {
@@ -507,6 +557,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "frames",
     "source": "makeemoji.com discovery"
   },
   {
@@ -517,6 +568,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "atlas",
     "source": "makeemoji.com discovery"
   },
   {
@@ -527,6 +579,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "atlas",
     "source": "makeemoji.com discovery"
   },
   {
@@ -537,6 +590,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "atlas",
     "source": "makeemoji.com discovery"
   },
   {
@@ -545,8 +599,9 @@
     "tag": "gen_btn_jumping-on-the-bed",
     "dataTag": "gen_btn_jumping-on-the-bed",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "bounce",
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -557,6 +612,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -565,8 +621,9 @@
     "tag": "gen_btn_i-love",
     "dataTag": "gen_btn_i-love",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "heartbeat",
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -575,8 +632,9 @@
     "tag": "gen_btn_tilt",
     "dataTag": "gen_btn_tilt",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "tilt",
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -587,6 +645,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "atlas",
     "source": "makeemoji.com discovery"
   },
   {
@@ -597,6 +656,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "atlas",
     "source": "makeemoji.com discovery"
   },
   {
@@ -605,8 +665,9 @@
     "tag": "gen_btn_pp-hopper",
     "dataTag": "gen_btn_pp-hopper",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "bounce",
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -617,6 +678,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "atlas",
     "source": "makeemoji.com discovery"
   },
   {
@@ -627,6 +689,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -637,6 +700,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -647,6 +711,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -655,8 +720,9 @@
     "tag": "gen_btn_rainbow-bloom",
     "dataTag": "gen_btn_rainbow-bloom",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "rainbow",
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -667,6 +733,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -675,8 +742,9 @@
     "tag": "gen_btn_jam",
     "dataTag": "gen_btn_jam",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "wobble",
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -687,6 +755,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "frames",
     "source": "makeemoji.com discovery"
   },
   {
@@ -697,6 +766,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "frames",
     "source": "makeemoji.com discovery"
   },
   {
@@ -707,6 +777,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "atlas",
     "source": "makeemoji.com discovery"
   },
   {
@@ -717,6 +788,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "atlas",
     "source": "makeemoji.com discovery"
   },
   {
@@ -727,6 +799,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "frames",
     "source": "makeemoji.com discovery"
   },
   {
@@ -737,6 +810,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "frames",
     "source": "makeemoji.com discovery"
   },
   {
@@ -747,6 +821,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "frames",
     "source": "makeemoji.com discovery"
   },
   {
@@ -755,8 +830,9 @@
     "tag": "gen_btn_hype-shake",
     "dataTag": "gen_btn_hype-shake",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "shake",
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -765,8 +841,9 @@
     "tag": "gen_btn_hype-jam",
     "dataTag": "gen_btn_hype-jam",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "wobble",
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -777,6 +854,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "atlas",
     "source": "makeemoji.com discovery"
   },
   {
@@ -787,6 +865,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "atlas",
     "source": "makeemoji.com discovery"
   },
   {
@@ -797,6 +876,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "atlas",
     "source": "makeemoji.com discovery"
   },
   {
@@ -807,6 +887,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "atlas",
     "source": "makeemoji.com discovery"
   },
   {
@@ -817,6 +898,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "atlas",
     "source": "makeemoji.com discovery"
   },
   {
@@ -827,6 +909,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "atlas",
     "source": "makeemoji.com discovery"
   },
   {
@@ -835,8 +918,9 @@
     "tag": "gen_btn_angel",
     "dataTag": "gen_btn_angel",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "overlay_hole",
+    "offlineFamily": "overlay",
     "source": "makeemoji.com discovery"
   },
   {
@@ -845,8 +929,9 @@
     "tag": "gen_btn_blame",
     "dataTag": "gen_btn_blame",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "overlay_hole",
+    "offlineFamily": "overlay",
     "source": "makeemoji.com discovery"
   },
   {
@@ -857,6 +942,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -867,6 +953,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -875,8 +962,9 @@
     "tag": "gen_btn_sir",
     "dataTag": "gen_btn_sir",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "overlay_hole",
+    "offlineFamily": "overlay",
     "source": "makeemoji.com discovery"
   },
   {
@@ -885,8 +973,9 @@
     "tag": "gen_btn_pepe",
     "dataTag": "gen_btn_pepe",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "overlay_hole",
+    "offlineFamily": "overlay",
     "source": "makeemoji.com discovery"
   },
   {
@@ -897,6 +986,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -907,6 +997,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -915,8 +1006,9 @@
     "tag": "gen_btn_sadge",
     "dataTag": "gen_btn_sadge",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "overlay_hole",
+    "offlineFamily": "overlay",
     "source": "makeemoji.com discovery"
   },
   {
@@ -925,8 +1017,9 @@
     "tag": "gen_btn_pepe-cheer",
     "dataTag": "gen_btn_pepe-cheer",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "overlay_hole",
+    "offlineFamily": "overlay",
     "source": "makeemoji.com discovery"
   },
   {
@@ -935,8 +1028,9 @@
     "tag": "gen_btn_pepe-dab",
     "dataTag": "gen_btn_pepe-dab",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "overlay_hole",
+    "offlineFamily": "overlay",
     "source": "makeemoji.com discovery"
   },
   {
@@ -945,8 +1039,9 @@
     "tag": "gen_btn_pepega",
     "dataTag": "gen_btn_pepega",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "overlay_hole",
+    "offlineFamily": "overlay",
     "source": "makeemoji.com discovery"
   },
   {
@@ -957,6 +1052,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "atlas",
     "source": "makeemoji.com discovery"
   },
   {
@@ -967,6 +1063,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -975,8 +1072,9 @@
     "tag": "gen_btn_crying-laughing",
     "dataTag": "gen_btn_crying-laughing",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "overlay_hole",
+    "offlineFamily": "overlay",
     "source": "makeemoji.com discovery"
   },
   {
@@ -985,8 +1083,9 @@
     "tag": "gen_btn_stonks",
     "dataTag": "gen_btn_stonks",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "overlay_hole",
+    "offlineFamily": "overlay",
     "source": "makeemoji.com discovery"
   },
   {
@@ -995,8 +1094,9 @@
     "tag": "gen_btn_not-stonks",
     "dataTag": "gen_btn_not-stonks",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "overlay_hole",
+    "offlineFamily": "overlay",
     "source": "makeemoji.com discovery"
   },
   {
@@ -1005,8 +1105,9 @@
     "tag": "gen_btn_coggers",
     "dataTag": "gen_btn_coggers",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "overlay_hole",
+    "offlineFamily": "overlay",
     "source": "makeemoji.com discovery"
   },
   {
@@ -1015,8 +1116,9 @@
     "tag": "gen_btn_wokege",
     "dataTag": "gen_btn_wokege",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "overlay_hole",
+    "offlineFamily": "overlay",
     "source": "makeemoji.com discovery"
   },
   {
@@ -1025,8 +1127,9 @@
     "tag": "gen_btn_heyyeyaa",
     "dataTag": "gen_btn_heyyeyaa",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "overlay_hole",
+    "offlineFamily": "overlay",
     "source": "makeemoji.com discovery"
   },
   {
@@ -1035,8 +1138,9 @@
     "tag": "gen_btn_spin",
     "dataTag": "gen_btn_spin",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "spin",
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -1047,6 +1151,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "atlas",
     "source": "makeemoji.com discovery"
   },
   {
@@ -1055,8 +1160,9 @@
     "tag": "gen_btn_glorp",
     "dataTag": "gen_btn_glorp",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "overlay_hole",
+    "offlineFamily": "overlay",
     "source": "makeemoji.com discovery"
   },
   {
@@ -1067,6 +1173,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "frames",
     "source": "makeemoji.com discovery"
   },
   {
@@ -1077,6 +1184,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "atlas",
     "source": "makeemoji.com discovery"
   },
   {
@@ -1085,8 +1193,9 @@
     "tag": "gen_btn_labubu",
     "dataTag": "gen_btn_labubu",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "overlay_hole",
+    "offlineFamily": "overlay",
     "source": "makeemoji.com discovery"
   },
   {
@@ -1095,8 +1204,9 @@
     "tag": "gen_btn_hazmat",
     "dataTag": "gen_btn_hazmat",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "overlay_hole",
+    "offlineFamily": "overlay",
     "source": "makeemoji.com discovery"
   },
   {
@@ -1105,8 +1215,9 @@
     "tag": "gen_btn_hazmat-2",
     "dataTag": "gen_btn_hazmat-2",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "overlay_hole",
+    "offlineFamily": "overlay",
     "source": "makeemoji.com discovery"
   },
   {
@@ -1115,8 +1226,9 @@
     "tag": "gen_btn_hoodie",
     "dataTag": "gen_btn_hoodie",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "overlay_hole",
+    "offlineFamily": "overlay",
     "source": "makeemoji.com discovery"
   },
   {
@@ -1125,8 +1237,9 @@
     "tag": "gen_btn_oui-oui",
     "dataTag": "gen_btn_oui-oui",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "overlay_hole",
+    "offlineFamily": "overlay",
     "source": "makeemoji.com discovery"
   },
   {
@@ -1135,8 +1248,9 @@
     "tag": "gen_btn_cowboy",
     "dataTag": "gen_btn_cowboy",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "overlay_hole",
+    "offlineFamily": "overlay",
     "source": "makeemoji.com discovery"
   },
   {
@@ -1145,8 +1259,9 @@
     "tag": "gen_btn_burn",
     "dataTag": "gen_btn_burn",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "pulse",
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -1155,8 +1270,9 @@
     "tag": "gen_btn_on-fire",
     "dataTag": "gen_btn_on-fire",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "pulse",
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -1167,6 +1283,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "atlas",
     "source": "makeemoji.com discovery"
   },
   {
@@ -1177,6 +1294,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "atlas",
     "source": "makeemoji.com discovery"
   },
   {
@@ -1187,6 +1305,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "frames",
     "source": "makeemoji.com discovery"
   },
   {
@@ -1197,6 +1316,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "frames",
     "source": "makeemoji.com discovery"
   },
   {
@@ -1207,6 +1327,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "atlas",
     "source": "makeemoji.com discovery"
   },
   {
@@ -1217,6 +1338,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "atlas",
     "source": "makeemoji.com discovery"
   },
   {
@@ -1227,6 +1349,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "atlas",
     "source": "makeemoji.com discovery"
   },
   {
@@ -1237,6 +1360,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "atlas",
     "source": "makeemoji.com discovery"
   },
   {
@@ -1247,6 +1371,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "atlas",
     "source": "makeemoji.com discovery"
   },
   {
@@ -1257,6 +1382,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "frames",
     "source": "makeemoji.com discovery"
   },
   {
@@ -1267,6 +1393,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "atlas",
     "source": "makeemoji.com discovery"
   },
   {
@@ -1277,6 +1404,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "frames",
     "source": "makeemoji.com discovery"
   },
   {
@@ -1287,6 +1415,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "atlas",
     "source": "makeemoji.com discovery"
   },
   {
@@ -1297,6 +1426,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "atlas",
     "source": "makeemoji.com discovery"
   },
   {
@@ -1307,6 +1437,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "atlas",
     "source": "makeemoji.com discovery"
   },
   {
@@ -1317,6 +1448,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "atlas",
     "source": "makeemoji.com discovery"
   },
   {
@@ -1327,6 +1459,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "atlas",
     "source": "makeemoji.com discovery"
   },
   {
@@ -1337,6 +1470,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "atlas",
     "source": "makeemoji.com discovery"
   },
   {
@@ -1347,6 +1481,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "atlas",
     "source": "makeemoji.com discovery"
   },
   {
@@ -1357,6 +1492,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "atlas",
     "source": "makeemoji.com discovery"
   },
   {
@@ -1367,6 +1503,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "atlas",
     "source": "makeemoji.com discovery"
   },
   {
@@ -1377,6 +1514,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "atlas",
     "source": "makeemoji.com discovery"
   },
   {
@@ -1387,6 +1525,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "atlas",
     "source": "makeemoji.com discovery"
   },
   {
@@ -1397,6 +1536,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "atlas",
     "source": "makeemoji.com discovery"
   },
   {
@@ -1407,6 +1547,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "atlas",
     "source": "makeemoji.com discovery"
   },
   {
@@ -1417,6 +1558,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "atlas",
     "source": "makeemoji.com discovery"
   },
   {
@@ -1427,6 +1569,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "atlas",
     "source": "makeemoji.com discovery"
   },
   {
@@ -1437,6 +1580,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "atlas",
     "source": "makeemoji.com discovery"
   },
   {
@@ -1447,6 +1591,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "atlas",
     "source": "makeemoji.com discovery"
   },
   {
@@ -1457,6 +1602,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "frames",
     "source": "makeemoji.com discovery"
   },
   {
@@ -1467,6 +1613,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "frames",
     "source": "makeemoji.com discovery"
   },
   {
@@ -1477,6 +1624,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "atlas",
     "source": "makeemoji.com discovery"
   },
   {
@@ -1487,6 +1635,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "atlas",
     "source": "makeemoji.com discovery"
   },
   {
@@ -1497,6 +1646,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "atlas",
     "source": "makeemoji.com discovery"
   },
   {
@@ -1507,6 +1657,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "frames",
     "source": "makeemoji.com discovery"
   },
   {
@@ -1517,6 +1668,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "atlas",
     "source": "makeemoji.com discovery"
   },
   {
@@ -1527,6 +1679,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "atlas",
     "source": "makeemoji.com discovery"
   },
   {
@@ -1537,6 +1690,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "frames",
     "source": "makeemoji.com discovery"
   },
   {
@@ -1547,6 +1701,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "atlas",
     "source": "makeemoji.com discovery"
   },
   {
@@ -1557,6 +1712,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "atlas",
     "source": "makeemoji.com discovery"
   },
   {
@@ -1567,6 +1723,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "frames",
     "source": "makeemoji.com discovery"
   },
   {
@@ -1577,6 +1734,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "frames",
     "source": "makeemoji.com discovery"
   },
   {
@@ -1587,6 +1745,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "atlas",
     "source": "makeemoji.com discovery"
   },
   {
@@ -1597,6 +1756,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "atlas",
     "source": "makeemoji.com discovery"
   },
   {
@@ -1607,6 +1767,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "atlas",
     "source": "makeemoji.com discovery"
   },
   {
@@ -1617,6 +1778,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "atlas",
     "source": "makeemoji.com discovery"
   },
   {
@@ -1627,6 +1789,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "atlas",
     "source": "makeemoji.com discovery"
   },
   {
@@ -1637,6 +1800,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "frames",
     "source": "makeemoji.com discovery"
   },
   {
@@ -1647,6 +1811,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "atlas",
     "source": "makeemoji.com discovery"
   },
   {
@@ -1657,6 +1822,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "atlas",
     "source": "makeemoji.com discovery"
   },
   {
@@ -1667,6 +1833,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "atlas",
     "source": "makeemoji.com discovery"
   },
   {
@@ -1677,6 +1844,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "atlas",
     "source": "makeemoji.com discovery"
   },
   {
@@ -1687,6 +1855,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "atlas",
     "source": "makeemoji.com discovery"
   },
   {
@@ -1697,6 +1866,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "frames",
     "source": "makeemoji.com discovery"
   },
   {
@@ -1707,6 +1877,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "atlas",
     "source": "makeemoji.com discovery"
   },
   {
@@ -1717,6 +1888,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "atlas",
     "source": "makeemoji.com discovery"
   },
   {
@@ -1727,6 +1899,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "atlas",
     "source": "makeemoji.com discovery"
   },
   {
@@ -1737,6 +1910,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "atlas",
     "source": "makeemoji.com discovery"
   },
   {
@@ -1747,6 +1921,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -1757,6 +1932,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -1765,8 +1941,9 @@
     "tag": "gen_btn_peepo-clap",
     "dataTag": "gen_btn_peepo-clap",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "pulse",
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -1777,6 +1954,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -1787,6 +1965,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -1797,6 +1976,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -1807,6 +1987,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -1817,6 +1998,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -1827,6 +2009,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -1837,6 +2020,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -1845,8 +2029,9 @@
     "tag": "gen_btn_ono",
     "dataTag": "gen_btn_ono",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "shake",
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -1857,6 +2042,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -1865,8 +2051,9 @@
     "tag": "gen_btn_elmo-fire",
     "dataTag": "gen_btn_elmo-fire",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "pulse",
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -1875,8 +2062,9 @@
     "tag": "gen_btn_cat-yes",
     "dataTag": "gen_btn_cat-yes",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "nod",
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -1887,6 +2075,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -1897,6 +2086,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -1907,6 +2097,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -1915,8 +2106,9 @@
     "tag": "gen_btn_cat-no",
     "dataTag": "gen_btn_cat-no",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "shake",
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -1927,6 +2119,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -1937,6 +2130,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -1947,6 +2141,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -1957,6 +2152,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -1965,8 +2161,9 @@
     "tag": "gen_btn_kek-laugh",
     "dataTag": "gen_btn_kek-laugh",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "wobble",
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -1975,8 +2172,9 @@
     "tag": "gen_btn_roll-safe",
     "dataTag": "gen_btn_roll-safe",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "spin",
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -1985,8 +2183,9 @@
     "tag": "gen_btn_leave",
     "dataTag": "gen_btn_leave",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "slide",
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -1997,6 +2196,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -2005,8 +2205,9 @@
     "tag": "gen_btn_shocked-man",
     "dataTag": "gen_btn_shocked-man",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "glitch",
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -2015,8 +2216,9 @@
     "tag": "gen_btn_lebron-jam",
     "dataTag": "gen_btn_lebron-jam",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "wobble",
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -2027,6 +2229,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -2035,8 +2238,9 @@
     "tag": "gen_btn_cat-jam-crying",
     "dataTag": "gen_btn_cat-jam-crying",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "wobble",
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -2045,8 +2249,9 @@
     "tag": "gen_btn_cat-jam",
     "dataTag": "gen_btn_cat-jam",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "wobble",
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -2057,6 +2262,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -2065,8 +2271,9 @@
     "tag": "gen_btn_kek-jam",
     "dataTag": "gen_btn_kek-jam",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "wobble",
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -2075,8 +2282,9 @@
     "tag": "gen_btn_owl-jam",
     "dataTag": "gen_btn_owl-jam",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "wobble",
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -2087,6 +2295,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -2097,6 +2306,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -2107,6 +2317,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -2117,6 +2328,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -2125,8 +2337,9 @@
     "tag": "gen_btn_sign-mad",
     "dataTag": "gen_btn_sign-mad",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "shake",
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -2135,8 +2348,9 @@
     "tag": "gen_btn_blob-help",
     "dataTag": "gen_btn_blob-help",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "overlay_hole",
+    "offlineFamily": "overlay",
     "source": "makeemoji.com discovery"
   },
   {
@@ -2145,8 +2359,9 @@
     "tag": "gen_btn_blob-no",
     "dataTag": "gen_btn_blob-no",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "overlay_hole",
+    "offlineFamily": "overlay",
     "source": "makeemoji.com discovery"
   },
   {
@@ -2155,8 +2370,9 @@
     "tag": "gen_btn_blob-yes",
     "dataTag": "gen_btn_blob-yes",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "overlay_hole",
+    "offlineFamily": "overlay",
     "source": "makeemoji.com discovery"
   },
   {
@@ -2165,8 +2381,9 @@
     "tag": "gen_btn_burger",
     "dataTag": "gen_btn_burger",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "overlay_hole",
+    "offlineFamily": "overlay",
     "source": "makeemoji.com discovery"
   },
   {
@@ -2175,8 +2392,9 @@
     "tag": "gen_btn_nod",
     "dataTag": "gen_btn_nod",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "nod",
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -2185,8 +2403,9 @@
     "tag": "gen_btn_nodders",
     "dataTag": "gen_btn_nodders",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "nod",
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -2197,6 +2416,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -2205,8 +2425,9 @@
     "tag": "gen_btn_boom",
     "dataTag": "gen_btn_boom",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "zoom",
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -2217,6 +2438,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -2225,8 +2447,9 @@
     "tag": "gen_btn_blast",
     "dataTag": "gen_btn_blast",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "zoom",
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -2237,6 +2460,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -2245,8 +2469,9 @@
     "tag": "gen_btn_excited",
     "dataTag": "gen_btn_excited",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "bounce",
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -2257,6 +2482,7 @@
     "category": "classic",
     "offlineImplemented": true,
     "offlineEffectId": "flip",
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -2267,6 +2493,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -2277,6 +2504,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -2287,6 +2515,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -2297,6 +2526,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -2305,8 +2535,9 @@
     "tag": "gen_btn_slide",
     "dataTag": "gen_btn_slide",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "slide",
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -2315,8 +2546,9 @@
     "tag": "gen_btn_scroll",
     "dataTag": "gen_btn_scroll",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "spin",
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -2325,8 +2557,9 @@
     "tag": "gen_btn_depth-tilt",
     "dataTag": "gen_btn_depth-tilt",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "tilt",
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -2337,6 +2570,7 @@
     "category": "classic",
     "offlineImplemented": true,
     "offlineEffectId": "zoom",
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -2345,8 +2579,9 @@
     "tag": "gen_btn_zoom-close",
     "dataTag": "gen_btn_zoom-close",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "zoom",
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -2355,8 +2590,9 @@
     "tag": "gen_btn_zoom-in",
     "dataTag": "gen_btn_zoom-in",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "zoom",
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -2367,6 +2603,7 @@
     "category": "classic",
     "offlineImplemented": true,
     "offlineEffectId": "bounce",
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -2375,8 +2612,9 @@
     "tag": "gen_btn_mega-bounce",
     "dataTag": "gen_btn_mega-bounce",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "bounce",
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -2387,6 +2625,7 @@
     "category": "classic",
     "offlineImplemented": true,
     "offlineEffectId": "pulse",
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -2397,6 +2636,7 @@
     "category": "classic",
     "offlineImplemented": true,
     "offlineEffectId": "wobble",
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -2405,8 +2645,9 @@
     "tag": "gen_btn_spiral-zoom",
     "dataTag": "gen_btn_spiral-zoom",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "zoom",
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -2417,6 +2658,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -2425,8 +2667,9 @@
     "tag": "gen_btn_flag-wave",
     "dataTag": "gen_btn_flag-wave",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "wave",
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -2435,8 +2678,9 @@
     "tag": "gen_btn_peeking",
     "dataTag": "gen_btn_peeking",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "slide",
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -2447,6 +2691,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -2457,6 +2702,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -2465,8 +2711,9 @@
     "tag": "gen_btn_flipp",
     "dataTag": "gen_btn_flipp",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "flip",
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -2475,8 +2722,9 @@
     "tag": "gen_btn_hugg",
     "dataTag": "gen_btn_hugg",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "heartbeat",
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -2487,6 +2735,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -2497,6 +2746,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -2507,6 +2757,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -2517,6 +2768,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -2527,6 +2779,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -2537,6 +2790,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -2547,6 +2801,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -2555,8 +2810,9 @@
     "tag": "gen_btn_nowoted",
     "dataTag": "gen_btn_nowoted",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "shake",
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -2565,8 +2821,9 @@
     "tag": "gen_btn_slow-jam",
     "dataTag": "gen_btn_slow-jam",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "wobble",
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -2575,8 +2832,9 @@
     "tag": "gen_btn_peepo-cheer",
     "dataTag": "gen_btn_peepo-cheer",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "pulse",
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -2587,6 +2845,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -2595,8 +2854,9 @@
     "tag": "gen_btn_feels-rain-man",
     "dataTag": "gen_btn_feels-rain-man",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "fade",
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -2607,6 +2867,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -2617,6 +2878,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -2627,6 +2889,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -2637,6 +2900,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -2647,6 +2911,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -2655,8 +2920,9 @@
     "tag": "gen_btn_peepo-love-heart",
     "dataTag": "gen_btn_peepo-love-heart",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "heartbeat",
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -2667,6 +2933,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -2677,6 +2944,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -2687,6 +2955,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -2695,8 +2964,9 @@
     "tag": "gen_btn_yes-yes",
     "dataTag": "gen_btn_yes-yes",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "nod",
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -2705,8 +2975,9 @@
     "tag": "gen_btn_no-no",
     "dataTag": "gen_btn_no-no",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "shake",
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -2717,6 +2988,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -2727,6 +2999,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -2735,8 +3008,9 @@
     "tag": "gen_btn_trash",
     "dataTag": "gen_btn_trash",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "overlay_hole",
+    "offlineFamily": "overlay",
     "source": "makeemoji.com discovery"
   },
   {
@@ -2745,8 +3019,9 @@
     "tag": "gen_btn_trash-pop",
     "dataTag": "gen_btn_trash-pop",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "pulse",
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -2755,8 +3030,9 @@
     "tag": "gen_btn_donk",
     "dataTag": "gen_btn_donk",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "overlay_hole",
+    "offlineFamily": "overlay",
     "source": "makeemoji.com discovery"
   },
   {
@@ -2765,8 +3041,9 @@
     "tag": "gen_btn_confused-cat",
     "dataTag": "gen_btn_confused-cat",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "overlay_hole",
+    "offlineFamily": "overlay",
     "source": "makeemoji.com discovery"
   },
   {
@@ -2777,6 +3054,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -2787,6 +3065,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -2795,8 +3074,9 @@
     "tag": "gen_btn_fivehead-pulse",
     "dataTag": "gen_btn_fivehead-pulse",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "pulse",
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -2807,6 +3087,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -2815,8 +3096,9 @@
     "tag": "gen_btn_omega-lul-pulse",
     "dataTag": "gen_btn_omega-lul-pulse",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "pulse",
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -2827,6 +3109,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -2835,8 +3118,9 @@
     "tag": "gen_btn_mercator-pulse",
     "dataTag": "gen_btn_mercator-pulse",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "pulse",
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -2847,6 +3131,7 @@
     "category": "classic",
     "offlineImplemented": true,
     "offlineEffectId": "squish",
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -2855,8 +3140,9 @@
     "tag": "gen_btn_squish-pulse",
     "dataTag": "gen_btn_squish-pulse",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "pulse",
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -2867,6 +3153,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -2877,6 +3164,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -2885,8 +3173,9 @@
     "tag": "gen_btn_pag-bounce",
     "dataTag": "gen_btn_pag-bounce",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "bounce",
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -2897,6 +3186,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -2907,6 +3197,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -2917,6 +3208,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -2927,6 +3219,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -2937,6 +3230,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -2947,6 +3241,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -2957,6 +3252,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -2967,6 +3263,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -2977,6 +3274,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -2985,8 +3283,9 @@
     "tag": "gen_btn_hop",
     "dataTag": "gen_btn_hop",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "bounce",
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -2995,8 +3294,9 @@
     "tag": "gen_btn_wave",
     "dataTag": "gen_btn_wave",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "wave",
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -3007,6 +3307,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -3015,8 +3316,9 @@
     "tag": "gen_btn_blink",
     "dataTag": "gen_btn_blink",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "fade",
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -3027,6 +3329,7 @@
     "category": "classic",
     "offlineImplemented": true,
     "offlineEffectId": "glitch",
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -3037,6 +3340,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -3045,8 +3349,9 @@
     "tag": "gen_btn_orbit",
     "dataTag": "gen_btn_orbit",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "orbit",
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -3055,8 +3360,9 @@
     "tag": "gen_btn_orbit-two",
     "dataTag": "gen_btn_orbit-two",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "orbit",
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -3065,8 +3371,9 @@
     "tag": "gen_btn_orbit-three",
     "dataTag": "gen_btn_orbit-three",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "orbit",
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -3075,8 +3382,9 @@
     "tag": "gen_btn_orbit-four",
     "dataTag": "gen_btn_orbit-four",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "orbit",
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -3085,8 +3393,9 @@
     "tag": "gen_btn_orbit-five",
     "dataTag": "gen_btn_orbit-five",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "orbit",
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -3095,8 +3404,9 @@
     "tag": "gen_btn_orbit-six",
     "dataTag": "gen_btn_orbit-six",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "orbit",
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -3105,8 +3415,9 @@
     "tag": "gen_btn_orbit-seven",
     "dataTag": "gen_btn_orbit-seven",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "orbit",
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -3115,8 +3426,9 @@
     "tag": "gen_btn_orbit-eight",
     "dataTag": "gen_btn_orbit-eight",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "orbit",
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -3125,8 +3437,9 @@
     "tag": "gen_btn_orbit-nine",
     "dataTag": "gen_btn_orbit-nine",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "orbit",
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -3135,8 +3448,9 @@
     "tag": "gen_btn_loading-two",
     "dataTag": "gen_btn_loading-two",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "spin",
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -3145,8 +3459,9 @@
     "tag": "gen_btn_loading-three",
     "dataTag": "gen_btn_loading-three",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "spin",
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -3155,8 +3470,9 @@
     "tag": "gen_btn_loading-four",
     "dataTag": "gen_btn_loading-four",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "spin",
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -3165,8 +3481,9 @@
     "tag": "gen_btn_loading-five",
     "dataTag": "gen_btn_loading-five",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "spin",
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -3175,8 +3492,9 @@
     "tag": "gen_btn_loading-six",
     "dataTag": "gen_btn_loading-six",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "spin",
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -3185,8 +3503,9 @@
     "tag": "gen_btn_loading-seven",
     "dataTag": "gen_btn_loading-seven",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "spin",
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -3195,8 +3514,9 @@
     "tag": "gen_btn_loading-eight",
     "dataTag": "gen_btn_loading-eight",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "spin",
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -3205,8 +3525,9 @@
     "tag": "gen_btn_loading-nine",
     "dataTag": "gen_btn_loading-nine",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "spin",
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -3217,6 +3538,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -3227,6 +3549,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -3237,6 +3560,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -3247,6 +3571,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -3255,8 +3580,9 @@
     "tag": "gen_btn_hyperspace",
     "dataTag": "gen_btn_hyperspace",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "bounce",
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -3267,6 +3593,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -3277,6 +3604,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -3287,6 +3615,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -3295,8 +3624,9 @@
     "tag": "gen_btn_pixelate",
     "dataTag": "gen_btn_pixelate",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "glitch",
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -3305,8 +3635,9 @@
     "tag": "gen_btn_hovering",
     "dataTag": "gen_btn_hovering",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "orbit",
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -3315,8 +3646,9 @@
     "tag": "gen_btn_spiral-in",
     "dataTag": "gen_btn_spiral-in",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "spiral",
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -3325,8 +3657,9 @@
     "tag": "gen_btn_sway",
     "dataTag": "gen_btn_sway",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "wave",
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -3335,8 +3668,9 @@
     "tag": "gen_btn_tumble",
     "dataTag": "gen_btn_tumble",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "spin",
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -3347,6 +3681,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -3357,6 +3692,7 @@
     "category": "classic",
     "offlineImplemented": true,
     "offlineEffectId": "sparkle",
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -3365,8 +3701,9 @@
     "tag": "gen_btn_rain",
     "dataTag": "gen_btn_rain",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "fade",
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -3375,8 +3712,9 @@
     "tag": "gen_btn_bubble",
     "dataTag": "gen_btn_bubble",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "pulse",
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -3385,8 +3723,9 @@
     "tag": "gen_btn_slide-bounce",
     "dataTag": "gen_btn_slide-bounce",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "bounce",
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -3395,8 +3734,9 @@
     "tag": "gen_btn_lightning-flash",
     "dataTag": "gen_btn_lightning-flash",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "glitch",
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -3405,8 +3745,9 @@
     "tag": "gen_btn_slide-spin",
     "dataTag": "gen_btn_slide-spin",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "spin",
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -3415,8 +3756,9 @@
     "tag": "gen_btn_thanos-snap",
     "dataTag": "gen_btn_thanos-snap",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "shake",
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -3425,8 +3767,9 @@
     "tag": "gen_btn_explode",
     "dataTag": "gen_btn_explode",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "zoom",
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -3435,8 +3778,9 @@
     "tag": "gen_btn_rotate-180",
     "dataTag": "gen_btn_rotate-180",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "spin",
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -3445,8 +3789,9 @@
     "tag": "gen_btn_rotate-90",
     "dataTag": "gen_btn_rotate-90",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "spin",
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -3455,8 +3800,9 @@
     "tag": "gen_btn_rotate-45",
     "dataTag": "gen_btn_rotate-45",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "spin",
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -3467,6 +3813,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -3475,8 +3822,9 @@
     "tag": "gen_btn_3d-flip",
     "dataTag": "gen_btn_3d-flip",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "flip",
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -3485,8 +3833,9 @@
     "tag": "gen_btn_thick-3d-flip",
     "dataTag": "gen_btn_thick-3d-flip",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "flip",
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -3497,6 +3846,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -3507,6 +3857,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -3517,6 +3868,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -3527,6 +3879,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -3535,8 +3888,9 @@
     "tag": "gen_btn_peepo-run",
     "dataTag": "gen_btn_peepo-run",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "slide",
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -3547,6 +3901,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -3555,8 +3910,9 @@
     "tag": "gen_btn_toilet-spin",
     "dataTag": "gen_btn_toilet-spin",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "spin",
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -3565,8 +3921,9 @@
     "tag": "gen_btn_toilet-bounce",
     "dataTag": "gen_btn_toilet-bounce",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "bounce",
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -3577,6 +3934,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -3585,8 +3943,9 @@
     "tag": "gen_btn_matrix-rain",
     "dataTag": "gen_btn_matrix-rain",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "fade",
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -3595,8 +3954,9 @@
     "tag": "gen_btn_heart-hypno",
     "dataTag": "gen_btn_heart-hypno",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "heartbeat",
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -3605,8 +3965,9 @@
     "tag": "gen_btn_wildfire",
     "dataTag": "gen_btn_wildfire",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "pulse",
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -3617,6 +3978,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -3627,6 +3989,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -3635,8 +3998,9 @@
     "tag": "gen_btn_fire-pixel",
     "dataTag": "gen_btn_fire-pixel",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "pulse",
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -3645,8 +4009,9 @@
     "tag": "gen_btn_fireplace",
     "dataTag": "gen_btn_fireplace",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "pulse",
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -3655,8 +4020,9 @@
     "tag": "gen_btn_flame",
     "dataTag": "gen_btn_flame",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "pulse",
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -3665,8 +4031,9 @@
     "tag": "gen_btn_loading",
     "dataTag": "gen_btn_loading",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "spin",
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -3677,6 +4044,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -3687,6 +4055,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -3695,8 +4064,9 @@
     "tag": "gen_btn_heart-locket",
     "dataTag": "gen_btn_heart-locket",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "heartbeat",
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -3707,6 +4077,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -3715,8 +4086,9 @@
     "tag": "gen_btn_raincloud",
     "dataTag": "gen_btn_raincloud",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "fade",
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -3727,6 +4099,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -3735,8 +4108,9 @@
     "tag": "gen_btn_tidal-wave",
     "dataTag": "gen_btn_tidal-wave",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "wave",
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -3747,6 +4121,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -3755,8 +4130,9 @@
     "tag": "gen_btn_sparkle-color",
     "dataTag": "gen_btn_sparkle-color",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "sparkle",
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -3765,8 +4141,9 @@
     "tag": "gen_btn_sparkle-party",
     "dataTag": "gen_btn_sparkle-party",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "sparkle",
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -3775,8 +4152,9 @@
     "tag": "gen_btn_sparkle-rainbow",
     "dataTag": "gen_btn_sparkle-rainbow",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "sparkle",
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -3785,8 +4163,9 @@
     "tag": "gen_btn_wave-ocean",
     "dataTag": "gen_btn_wave-ocean",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "wave",
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -3797,6 +4176,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -3807,6 +4187,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -3817,6 +4198,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -3827,6 +4209,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -3835,8 +4218,9 @@
     "tag": "gen_btn_wobble-scale",
     "dataTag": "gen_btn_wobble-scale",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "wobble",
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -3847,6 +4231,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -3855,8 +4240,9 @@
     "tag": "gen_btn_jitter",
     "dataTag": "gen_btn_jitter",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "shake",
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -3867,6 +4253,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -3875,8 +4262,9 @@
     "tag": "gen_btn_googly-eyes",
     "dataTag": "gen_btn_googly-eyes",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "nod",
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -3887,6 +4275,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -3895,8 +4284,9 @@
     "tag": "gen_btn_elastic",
     "dataTag": "gen_btn_elastic",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "squish",
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -3907,6 +4297,7 @@
     "category": "classic",
     "offlineImplemented": true,
     "offlineEffectId": "heartbeat",
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -3915,8 +4306,9 @@
     "tag": "gen_btn_heartbeat-flash",
     "dataTag": "gen_btn_heartbeat-flash",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "heartbeat",
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -3927,6 +4319,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -3937,6 +4330,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -3945,8 +4339,9 @@
     "tag": "gen_btn_melt",
     "dataTag": "gen_btn_melt",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "squish",
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -3955,8 +4350,9 @@
     "tag": "gen_btn_teleport",
     "dataTag": "gen_btn_teleport",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "spin",
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -3965,8 +4361,9 @@
     "tag": "gen_btn_rubber",
     "dataTag": "gen_btn_rubber",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "squish",
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -3975,8 +4372,9 @@
     "tag": "gen_btn_think",
     "dataTag": "gen_btn_think",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "tilt",
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -3987,6 +4385,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -3997,6 +4396,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -4007,6 +4407,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -4017,6 +4418,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -4027,6 +4429,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -4037,6 +4440,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -4045,8 +4449,9 @@
     "tag": "gen_btn_runway-landing",
     "dataTag": "gen_btn_runway-landing",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "slide",
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -4055,8 +4460,9 @@
     "tag": "gen_btn_runway-takeoff",
     "dataTag": "gen_btn_runway-takeoff",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "slide",
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -4067,6 +4473,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -4077,6 +4484,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -4087,6 +4495,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -4097,6 +4506,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -4105,8 +4515,9 @@
     "tag": "gen_btn_ken-burns",
     "dataTag": "gen_btn_ken-burns",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "pulse",
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -4115,8 +4526,9 @@
     "tag": "gen_btn_bobble",
     "dataTag": "gen_btn_bobble",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "wobble",
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -4127,6 +4539,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -4137,6 +4550,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -4147,6 +4561,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -4157,6 +4572,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -4167,6 +4583,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -4175,8 +4592,9 @@
     "tag": "gen_btn_clap",
     "dataTag": "gen_btn_clap",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "pulse",
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -4185,8 +4603,9 @@
     "tag": "gen_btn_boing",
     "dataTag": "gen_btn_boing",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "bounce",
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -4195,8 +4614,9 @@
     "tag": "gen_btn_clap-glove",
     "dataTag": "gen_btn_clap-glove",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "pulse",
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -4207,6 +4627,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -4217,6 +4638,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -4227,6 +4649,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -4237,6 +4660,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -4247,6 +4671,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -4255,8 +4680,9 @@
     "tag": "gen_btn_pop",
     "dataTag": "gen_btn_pop",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "pulse",
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -4265,8 +4691,9 @@
     "tag": "gen_btn_pop-through",
     "dataTag": "gen_btn_pop-through",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "pulse",
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -4277,6 +4704,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -4285,8 +4713,9 @@
     "tag": "gen_btn_slice",
     "dataTag": "gen_btn_slice",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "fade",
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -4297,6 +4726,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -4305,8 +4735,9 @@
     "tag": "gen_btn_tilt-zoom",
     "dataTag": "gen_btn_tilt-zoom",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "zoom",
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -4317,6 +4748,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -4325,8 +4757,9 @@
     "tag": "gen_btn_shy-peek",
     "dataTag": "gen_btn_shy-peek",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "slide",
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -4337,6 +4770,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -4347,6 +4781,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -4357,6 +4792,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -4365,8 +4801,9 @@
     "tag": "gen_btn_strobe-soft",
     "dataTag": "gen_btn_strobe-soft",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "glitch",
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -4375,8 +4812,9 @@
     "tag": "gen_btn_solarize-wave",
     "dataTag": "gen_btn_solarize-wave",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "wave",
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -4387,6 +4825,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -4395,8 +4834,9 @@
     "tag": "gen_btn_negative-blink",
     "dataTag": "gen_btn_negative-blink",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "fade",
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -4407,6 +4847,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -4415,8 +4856,9 @@
     "tag": "gen_btn_portal-peek",
     "dataTag": "gen_btn_portal-peek",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "spin",
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -4425,8 +4867,9 @@
     "tag": "gen_btn_portal-warp",
     "dataTag": "gen_btn_portal-warp",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "spin",
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -4435,8 +4878,9 @@
     "tag": "gen_btn_approve-arms",
     "dataTag": "gen_btn_approve-arms",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "nod",
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -4447,6 +4891,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -4457,6 +4902,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -4465,8 +4911,9 @@
     "tag": "gen_btn_cute-hop",
     "dataTag": "gen_btn_cute-hop",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "bounce",
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -4475,8 +4922,9 @@
     "tag": "gen_btn_drop",
     "dataTag": "gen_btn_drop",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "bounce",
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -4485,8 +4933,9 @@
     "tag": "gen_btn_drop-bounce",
     "dataTag": "gen_btn_drop-bounce",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "bounce",
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -4495,8 +4944,9 @@
     "tag": "gen_btn_rubber-stamp",
     "dataTag": "gen_btn_rubber-stamp",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "squish",
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -4507,6 +4957,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -4515,8 +4966,9 @@
     "tag": "gen_btn_dbz-aura",
     "dataTag": "gen_btn_dbz-aura",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "pulse",
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -4525,8 +4977,9 @@
     "tag": "gen_btn_orbit-drift",
     "dataTag": "gen_btn_orbit-drift",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "orbit",
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -4535,8 +4988,9 @@
     "tag": "gen_btn_tilt-nod",
     "dataTag": "gen_btn_tilt-nod",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "tilt",
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -4547,6 +5001,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -4555,8 +5010,9 @@
     "tag": "gen_btn_peek-corner",
     "dataTag": "gen_btn_peek-corner",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "slide",
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -4565,8 +5021,9 @@
     "tag": "gen_btn_recoil-pop",
     "dataTag": "gen_btn_recoil-pop",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "pulse",
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -4577,6 +5034,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -4585,8 +5043,9 @@
     "tag": "gen_btn_sideeye-slide",
     "dataTag": "gen_btn_sideeye-slide",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "slide",
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -4597,6 +5056,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -4607,6 +5067,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -4615,8 +5076,9 @@
     "tag": "gen_btn_alarm",
     "dataTag": "gen_btn_alarm",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "glitch",
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -4627,6 +5089,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -4635,8 +5098,9 @@
     "tag": "gen_btn_alarms",
     "dataTag": "gen_btn_alarms",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "glitch",
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -4645,8 +5109,9 @@
     "tag": "gen_btn_alert",
     "dataTag": "gen_btn_alert",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "glitch",
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -4655,8 +5120,9 @@
     "tag": "gen_btn_bonk",
     "dataTag": "gen_btn_bonk",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "bounce",
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -4665,8 +5131,9 @@
     "tag": "gen_btn_bonk-doge",
     "dataTag": "gen_btn_bonk-doge",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "bounce",
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -4677,6 +5144,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -4685,8 +5153,9 @@
     "tag": "gen_btn_breaking-news",
     "dataTag": "gen_btn_breaking-news",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "shake",
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -4697,6 +5166,7 @@
     "category": "classic",
     "offlineImplemented": false,
     "offlineEffectId": null,
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -4705,8 +5175,9 @@
     "tag": "gen_btn_cat-slap",
     "dataTag": "gen_btn_cat-slap",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "bounce",
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -4715,8 +5186,9 @@
     "tag": "gen_btn_ddr",
     "dataTag": "gen_btn_ddr",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "wobble",
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   },
   {
@@ -4725,8 +5197,9 @@
     "tag": "gen_btn_electricity",
     "dataTag": "gen_btn_electricity",
     "category": "classic",
-    "offlineImplemented": false,
-    "offlineEffectId": null,
+    "offlineImplemented": true,
+    "offlineEffectId": "glitch",
+    "offlineFamily": "transform",
     "source": "makeemoji.com discovery"
   }
 ]
