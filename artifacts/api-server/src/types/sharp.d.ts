@@ -27,6 +27,7 @@ declare module "sharp" {
       lossless?: boolean;
     }
     interface Sharp {
+       extract(region: { left: number; top: number; width: number; height: number }): Sharp;
       resize(width: number | null, height?: number | null, options?: ResizeOptions): Sharp;
       resize(options: { width?: number; height?: number } & ResizeOptions): Sharp;
       webp(options?: WebpOptions): Sharp;

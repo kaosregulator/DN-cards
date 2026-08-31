@@ -195,7 +195,7 @@ export async function buildStylesPicker(
       new ButtonBuilder()
         .setCustomId(cid("styles_filter", token))
         .setLabel(session.styleFilter === "favorites" ? "Show all" : "Favorites")
-        .setEmoji("★")
+        .setEmoji("⭐")
         .setStyle(session.styleFilter === "favorites" ? ButtonStyle.Success : ButtonStyle.Secondary),
     ),
   );
