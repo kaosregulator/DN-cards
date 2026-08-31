@@ -1,0 +1,3887 @@
+{
+  "version": "2.1.0",
+  "offlineReady": true,
+  "styleCount": 473,
+  "implementedStyleCount": 473,
+  "source": "https://makeemoji.com/",
+  "controls": {
+    "color": [
+      "Normal",
+      "Colors",
+      "Rainbow",
+      "Stripes",
+      "Circles",
+      "Deep Fried",
+      "X-Ray",
+      "Toxic",
+      "Vaporwave",
+      "Cherry Cola",
+      "Night Vision",
+      "Blue Flame",
+      "Newsprint",
+      "Hellfire",
+      "Red",
+      "Orange",
+      "Yellow",
+      "Green",
+      "Blue",
+      "Purple"
+    ],
+    "speed": [
+      "0.1x",
+      "0.25x",
+      "0.5x",
+      "0.75x",
+      "Normal",
+      "1.25x",
+      "1.5x",
+      "1.75x",
+      "2x",
+      "3x"
+    ],
+    "direction": [
+      "\u27a1\ufe0f Right",
+      "\u2b07\ufe0f Down",
+      "\u2b05\ufe0f Left",
+      "\u2b06\ufe0f Up"
+    ],
+    "size": [
+      "\u2b1c 24px",
+      "\u2b1c 28px",
+      "\u2b1c 32px",
+      "\u2b1c 56px",
+      "\u2b1c 64px",
+      "\u2b1c 100px",
+      "\u2b1c 112px",
+      "\u2b1c 128px",
+      "\u2b1c 256px",
+      "\u2b1c 400px",
+      "\u2b1c 512px"
+    ],
+    "format": [
+      "\ud83d\udcc1 GIF",
+      "\ud83d\udcc1 WebP",
+      "\ud83d\udcc1 APNG",
+      "\u2600\ufe0f HDR APNG"
+    ]
+  },
+  "colorSideControl": {
+    "description": "MakeEmoji Colour (#color-select) recolors the upload before a style runs. Animated modes loop even with style none.",
+    "animated": [
+      "Colors",
+      "Rainbow",
+      "Stripes",
+      "Circles"
+    ],
+    "static": [
+      "Deep Fried",
+      "X-Ray",
+      "Toxic",
+      "Vaporwave",
+      "Cherry Cola",
+      "Night Vision",
+      "Blue Flame",
+      "Newsprint",
+      "Hellfire",
+      "Red",
+      "Orange",
+      "Yellow",
+      "Green",
+      "Blue",
+      "Purple"
+    ]
+  },
+  "families": {
+    "transform": 333,
+    "overlay": 36,
+    "frames": 90,
+    "atlas": 13,
+    "passthrough": 1
+  },
+  "styles": [
+    {
+      "id": "none",
+      "slug": "none",
+      "family": "passthrough",
+      "primitive": "passthrough",
+      "offlineReady": true,
+      "tag": "gen_btn_none"
+    },
+    {
+      "id": "2x-wide-1",
+      "slug": "2x-wide-1",
+      "family": "transform",
+      "primitive": "slide",
+      "offlineReady": true,
+      "tag": "gen_btn_2x-wide-1"
+    },
+    {
+      "id": "2x-wide-2",
+      "slug": "2x-wide-2",
+      "family": "transform",
+      "primitive": "slide",
+      "offlineReady": true,
+      "tag": "gen_btn_2x-wide-2"
+    },
+    {
+      "id": "3d-flip:\u27a1\ufe0f",
+      "slug": "3d-flip",
+      "family": "transform",
+      "primitive": "flip",
+      "offlineReady": true,
+      "tag": "gen_btn_3d-flip"
+    },
+    {
+      "id": "3x-wide-1",
+      "slug": "3x-wide-1",
+      "family": "transform",
+      "primitive": "slide",
+      "offlineReady": true,
+      "tag": "gen_btn_3x-wide-1"
+    },
+    {
+      "id": "3x-wide-2",
+      "slug": "3x-wide-2",
+      "family": "transform",
+      "primitive": "slide",
+      "offlineReady": true,
+      "tag": "gen_btn_3x-wide-2"
+    },
+    {
+      "id": "3x-wide-3",
+      "slug": "3x-wide-3",
+      "family": "transform",
+      "primitive": "slide",
+      "offlineReady": true,
+      "tag": "gen_btn_3x-wide-3"
+    },
+    {
+      "id": "4x-wide-1",
+      "slug": "4x-wide-1",
+      "family": "transform",
+      "primitive": "slide",
+      "offlineReady": true,
+      "tag": "gen_btn_4x-wide-1"
+    },
+    {
+      "id": "4x-wide-2",
+      "slug": "4x-wide-2",
+      "family": "transform",
+      "primitive": "slide",
+      "offlineReady": true,
+      "tag": "gen_btn_4x-wide-2"
+    },
+    {
+      "id": "4x-wide-3",
+      "slug": "4x-wide-3",
+      "family": "transform",
+      "primitive": "slide",
+      "offlineReady": true,
+      "tag": "gen_btn_4x-wide-3"
+    },
+    {
+      "id": "4x-wide-4",
+      "slug": "4x-wide-4",
+      "family": "transform",
+      "primitive": "slide",
+      "offlineReady": true,
+      "tag": "gen_btn_4x-wide-4"
+    },
+    {
+      "id": "abdul-pls",
+      "slug": "abdul-pls",
+      "family": "transform",
+      "primitive": "shake",
+      "offlineReady": true,
+      "tag": "gen_btn_abdul-pls"
+    },
+    {
+      "id": "aha",
+      "slug": "aha",
+      "family": "transform",
+      "primitive": "pulse",
+      "offlineReady": true,
+      "tag": "gen_btn_aha"
+    },
+    {
+      "id": "alarm",
+      "slug": "alarm",
+      "family": "transform",
+      "primitive": "glitch",
+      "offlineReady": true,
+      "tag": "gen_btn_alarm"
+    },
+    {
+      "id": "alarms",
+      "slug": "alarms",
+      "family": "transform",
+      "primitive": "glitch",
+      "offlineReady": true,
+      "tag": "gen_btn_alarms"
+    },
+    {
+      "id": "alert",
+      "slug": "alert",
+      "family": "transform",
+      "primitive": "glitch",
+      "offlineReady": true,
+      "tag": "gen_btn_alert"
+    },
+    {
+      "id": "alien-pls",
+      "slug": "alien-pls",
+      "family": "transform",
+      "primitive": "pulse",
+      "offlineReady": true,
+      "tag": "gen_btn_alien-pls"
+    },
+    {
+      "id": "alien-pls-3",
+      "slug": "alien-pls-3",
+      "family": "transform",
+      "primitive": "wobble",
+      "offlineReady": true,
+      "tag": "gen_btn_alien-pls-3"
+    },
+    {
+      "id": "alowo",
+      "slug": "alowo",
+      "family": "transform",
+      "primitive": "pulse",
+      "offlineReady": true,
+      "tag": "gen_btn_alowo"
+    },
+    {
+      "id": "amaze",
+      "slug": "amaze",
+      "family": "transform",
+      "primitive": "rainbow",
+      "offlineReady": true,
+      "tag": "gen_btn_amaze"
+    },
+    {
+      "id": "angel",
+      "slug": "angel",
+      "family": "overlay",
+      "primitive": "overlay_hole",
+      "offlineReady": true,
+      "tag": "gen_btn_angel"
+    },
+    {
+      "id": "anime-scream",
+      "slug": "anime-scream",
+      "family": "transform",
+      "primitive": "glitch",
+      "offlineReady": true,
+      "tag": "gen_btn_anime-scream"
+    },
+    {
+      "id": "anticipation",
+      "slug": "anticipation",
+      "family": "frames",
+      "primitive": "frames",
+      "offlineReady": true,
+      "tag": "gen_btn_anticipation"
+    },
+    {
+      "id": "approve-arms",
+      "slug": "approve-arms",
+      "family": "transform",
+      "primitive": "nod",
+      "offlineReady": true,
+      "tag": "gen_btn_approve-arms"
+    },
+    {
+      "id": "banana-dance",
+      "slug": "banana-dance",
+      "family": "atlas",
+      "primitive": "atlas",
+      "offlineReady": true,
+      "tag": "gen_btn_banana-dance"
+    },
+    {
+      "id": "bat-signal",
+      "slug": "bat-signal",
+      "family": "frames",
+      "primitive": "frames",
+      "offlineReady": true,
+      "tag": "gen_btn_bat-signal"
+    },
+    {
+      "id": "bat-signal-scene",
+      "slug": "bat-signal-scene",
+      "family": "frames",
+      "primitive": "frames",
+      "offlineReady": true,
+      "tag": "gen_btn_bat-signal-scene"
+    },
+    {
+      "id": "bedge",
+      "slug": "bedge",
+      "family": "transform",
+      "primitive": "pulse",
+      "offlineReady": true,
+      "tag": "gen_btn_bedge"
+    },
+    {
+      "id": "beers",
+      "slug": "beers",
+      "family": "transform",
+      "primitive": "bounce",
+      "offlineReady": true,
+      "tag": "gen_btn_beers"
+    },
+    {
+      "id": "binoculars",
+      "slug": "binoculars",
+      "family": "frames",
+      "primitive": "frames",
+      "offlineReady": true,
+      "tag": "gen_btn_binoculars"
+    },
+    {
+      "id": "blah-blah-blah",
+      "slug": "blah-blah-blah",
+      "family": "transform",
+      "primitive": "wobble",
+      "offlineReady": true,
+      "tag": "gen_btn_blah-blah-blah"
+    },
+    {
+      "id": "blame",
+      "slug": "blame",
+      "family": "overlay",
+      "primitive": "overlay_hole",
+      "offlineReady": true,
+      "tag": "gen_btn_blame"
+    },
+    {
+      "id": "blame-animated",
+      "slug": "blame-animated",
+      "family": "transform",
+      "primitive": "pulse",
+      "offlineReady": true,
+      "tag": "gen_btn_blame-animated"
+    },
+    {
+      "id": "blanket",
+      "slug": "blanket",
+      "family": "frames",
+      "primitive": "frames",
+      "offlineReady": true,
+      "tag": "gen_btn_blanket"
+    },
+    {
+      "id": "blankies",
+      "slug": "blankies",
+      "family": "atlas",
+      "primitive": "atlas",
+      "offlineReady": true,
+      "tag": "gen_btn_blankies"
+    },
+    {
+      "id": "blast",
+      "slug": "blast",
+      "family": "transform",
+      "primitive": "zoom",
+      "offlineReady": true,
+      "tag": "gen_btn_blast"
+    },
+    {
+      "id": "blaze",
+      "slug": "blaze",
+      "family": "atlas",
+      "primitive": "atlas",
+      "offlineReady": true,
+      "tag": "gen_btn_blaze"
+    },
+    {
+      "id": "blink",
+      "slug": "blink",
+      "family": "transform",
+      "primitive": "fade",
+      "offlineReady": true,
+      "tag": "gen_btn_blink"
+    },
+    {
+      "id": "blob-help",
+      "slug": "blob-help",
+      "family": "overlay",
+      "primitive": "overlay_hole",
+      "offlineReady": true,
+      "tag": "gen_btn_blob-help"
+    },
+    {
+      "id": "blob-no",
+      "slug": "blob-no",
+      "family": "overlay",
+      "primitive": "overlay_hole",
+      "offlineReady": true,
+      "tag": "gen_btn_blob-no"
+    },
+    {
+      "id": "blob-smiley",
+      "slug": "blob-smiley",
+      "family": "frames",
+      "primitive": "frames",
+      "offlineReady": true,
+      "tag": "gen_btn_blob-smiley"
+    },
+    {
+      "id": "blob-yes",
+      "slug": "blob-yes",
+      "family": "overlay",
+      "primitive": "overlay_hole",
+      "offlineReady": true,
+      "tag": "gen_btn_blob-yes"
+    },
+    {
+      "id": "blush",
+      "slug": "blush",
+      "family": "frames",
+      "primitive": "frames",
+      "offlineReady": true,
+      "tag": "gen_btn_blush"
+    },
+    {
+      "id": "bobble",
+      "slug": "bobble",
+      "family": "transform",
+      "primitive": "wobble",
+      "offlineReady": true,
+      "tag": "gen_btn_bobble"
+    },
+    {
+      "id": "boing",
+      "slug": "boing",
+      "family": "transform",
+      "primitive": "bounce",
+      "offlineReady": true,
+      "tag": "gen_btn_boing"
+    },
+    {
+      "id": "bonk",
+      "slug": "bonk",
+      "family": "transform",
+      "primitive": "bounce",
+      "offlineReady": true,
+      "tag": "gen_btn_bonk"
+    },
+    {
+      "id": "bonk-doge",
+      "slug": "bonk-doge",
+      "family": "transform",
+      "primitive": "bounce",
+      "offlineReady": true,
+      "tag": "gen_btn_bonk-doge"
+    },
+    {
+      "id": "booba",
+      "slug": "booba",
+      "family": "frames",
+      "primitive": "frames",
+      "offlineReady": true,
+      "tag": "gen_btn_booba"
+    },
+    {
+      "id": "boom",
+      "slug": "boom",
+      "family": "transform",
+      "primitive": "zoom",
+      "offlineReady": true,
+      "tag": "gen_btn_boom"
+    },
+    {
+      "id": "boooo",
+      "slug": "boooo",
+      "family": "frames",
+      "primitive": "frames",
+      "offlineReady": true,
+      "tag": "gen_btn_boooo"
+    },
+    {
+      "id": "bounce",
+      "slug": "bounce",
+      "family": "transform",
+      "primitive": "bounce",
+      "offlineReady": true,
+      "tag": "gen_btn_bounce"
+    },
+    {
+      "id": "box",
+      "slug": "box",
+      "family": "transform",
+      "primitive": "rainbow",
+      "offlineReady": true,
+      "tag": "gen_btn_box"
+    },
+    {
+      "id": "breaking-news",
+      "slug": "breaking-news",
+      "family": "transform",
+      "primitive": "shake",
+      "offlineReady": true,
+      "tag": "gen_btn_breaking-news"
+    },
+    {
+      "id": "breathe",
+      "slug": "breathe",
+      "family": "transform",
+      "primitive": "wobble",
+      "offlineReady": true,
+      "tag": "gen_btn_breathe"
+    },
+    {
+      "id": "bubble",
+      "slug": "bubble",
+      "family": "transform",
+      "primitive": "pulse",
+      "offlineReady": true,
+      "tag": "gen_btn_bubble"
+    },
+    {
+      "id": "bubbles",
+      "slug": "bubbles",
+      "family": "frames",
+      "primitive": "frames",
+      "offlineReady": true,
+      "tag": "gen_btn_bubbles"
+    },
+    {
+      "id": "bufo-offers",
+      "slug": "bufo-offers",
+      "family": "transform",
+      "primitive": "pulse",
+      "offlineReady": true,
+      "tag": "gen_btn_bufo-offers"
+    },
+    {
+      "id": "bufo-takes",
+      "slug": "bufo-takes",
+      "family": "transform",
+      "primitive": "pulse",
+      "offlineReady": true,
+      "tag": "gen_btn_bufo-takes"
+    },
+    {
+      "id": "bulge",
+      "slug": "bulge",
+      "family": "transform",
+      "primitive": "bounce",
+      "offlineReady": true,
+      "tag": "gen_btn_bulge"
+    },
+    {
+      "id": "burger",
+      "slug": "burger",
+      "family": "overlay",
+      "primitive": "overlay_hole",
+      "offlineReady": true,
+      "tag": "gen_btn_burger"
+    },
+    {
+      "id": "burn",
+      "slug": "burn",
+      "family": "transform",
+      "primitive": "pulse",
+      "offlineReady": true,
+      "tag": "gen_btn_burn"
+    },
+    {
+      "id": "bush-disappear",
+      "slug": "bush-disappear",
+      "family": "transform",
+      "primitive": "pulse",
+      "offlineReady": true,
+      "tag": "gen_btn_bush-disappear"
+    },
+    {
+      "id": "bush-texture",
+      "slug": "bush-texture",
+      "family": "transform",
+      "primitive": "nod",
+      "offlineReady": true,
+      "tag": "gen_btn_bush-texture"
+    },
+    {
+      "id": "cancel",
+      "slug": "cancel",
+      "family": "transform",
+      "primitive": "pulse",
+      "offlineReady": true,
+      "tag": "gen_btn_cancel"
+    },
+    {
+      "id": "cat-ears",
+      "slug": "cat-ears",
+      "family": "frames",
+      "primitive": "frames",
+      "offlineReady": true,
+      "tag": "gen_btn_cat-ears"
+    },
+    {
+      "id": "cat-jam",
+      "slug": "cat-jam",
+      "family": "transform",
+      "primitive": "wobble",
+      "offlineReady": true,
+      "tag": "gen_btn_cat-jam"
+    },
+    {
+      "id": "cat-jam-crying",
+      "slug": "cat-jam-crying",
+      "family": "transform",
+      "primitive": "wobble",
+      "offlineReady": true,
+      "tag": "gen_btn_cat-jam-crying"
+    },
+    {
+      "id": "cat-no",
+      "slug": "cat-no",
+      "family": "transform",
+      "primitive": "shake",
+      "offlineReady": true,
+      "tag": "gen_btn_cat-no"
+    },
+    {
+      "id": "cat-slap",
+      "slug": "cat-slap",
+      "family": "transform",
+      "primitive": "bounce",
+      "offlineReady": true,
+      "tag": "gen_btn_cat-slap"
+    },
+    {
+      "id": "cat-yes",
+      "slug": "cat-yes",
+      "family": "transform",
+      "primitive": "nod",
+      "offlineReady": true,
+      "tag": "gen_btn_cat-yes"
+    },
+    {
+      "id": "clap",
+      "slug": "clap",
+      "family": "transform",
+      "primitive": "pulse",
+      "offlineReady": true,
+      "tag": "gen_btn_clap"
+    },
+    {
+      "id": "clap-glove",
+      "slug": "clap-glove",
+      "family": "transform",
+      "primitive": "pulse",
+      "offlineReady": true,
+      "tag": "gen_btn_clap-glove"
+    },
+    {
+      "id": "claude-code",
+      "slug": "claude-code",
+      "family": "frames",
+      "primitive": "frames",
+      "offlineReady": true,
+      "tag": "gen_btn_claude-code"
+    },
+    {
+      "id": "claude-dancing",
+      "slug": "claude-dancing",
+      "family": "frames",
+      "primitive": "frames",
+      "offlineReady": true,
+      "tag": "gen_btn_claude-dancing"
+    },
+    {
+      "id": "claude-football",
+      "slug": "claude-football",
+      "family": "frames",
+      "primitive": "frames",
+      "offlineReady": true,
+      "tag": "gen_btn_claude-football"
+    },
+    {
+      "id": "claude-fu",
+      "slug": "claude-fu",
+      "family": "frames",
+      "primitive": "frames",
+      "offlineReady": true,
+      "tag": "gen_btn_claude-fu"
+    },
+    {
+      "id": "claude-idea",
+      "slug": "claude-idea",
+      "family": "frames",
+      "primitive": "frames",
+      "offlineReady": true,
+      "tag": "gen_btn_claude-idea"
+    },
+    {
+      "id": "claude-jam",
+      "slug": "claude-jam",
+      "family": "frames",
+      "primitive": "frames",
+      "offlineReady": true,
+      "tag": "gen_btn_claude-jam"
+    },
+    {
+      "id": "cleaning",
+      "slug": "cleaning",
+      "family": "frames",
+      "primitive": "frames",
+      "offlineReady": true,
+      "tag": "gen_btn_cleaning"
+    },
+    {
+      "id": "clone-army:\u27a1\ufe0f",
+      "slug": "clone-army",
+      "family": "transform",
+      "primitive": "glitch",
+      "offlineReady": true,
+      "tag": "gen_btn_clone-army"
+    },
+    {
+      "id": "coggers",
+      "slug": "coggers",
+      "family": "overlay",
+      "primitive": "overlay_hole",
+      "offlineReady": true,
+      "tag": "gen_btn_coggers"
+    },
+    {
+      "id": "combust",
+      "slug": "combust",
+      "family": "transform",
+      "primitive": "rainbow",
+      "offlineReady": true,
+      "tag": "gen_btn_combust"
+    },
+    {
+      "id": "comfy",
+      "slug": "comfy",
+      "family": "frames",
+      "primitive": "frames",
+      "offlineReady": true,
+      "tag": "gen_btn_comfy"
+    },
+    {
+      "id": "concerned",
+      "slug": "concerned",
+      "family": "frames",
+      "primitive": "frames",
+      "offlineReady": true,
+      "tag": "gen_btn_concerned"
+    },
+    {
+      "id": "confused-cat",
+      "slug": "confused-cat",
+      "family": "overlay",
+      "primitive": "overlay_hole",
+      "offlineReady": true,
+      "tag": "gen_btn_confused-cat"
+    },
+    {
+      "id": "conga-line:\u27a1\ufe0f",
+      "slug": "conga-line",
+      "family": "transform",
+      "primitive": "glitch",
+      "offlineReady": true,
+      "tag": "gen_btn_conga-line"
+    },
+    {
+      "id": "content-aware",
+      "slug": "content-aware",
+      "family": "transform",
+      "primitive": "nod",
+      "offlineReady": true,
+      "tag": "gen_btn_content-aware"
+    },
+    {
+      "id": "cool-glasses",
+      "slug": "cool-glasses",
+      "family": "transform",
+      "primitive": "nod",
+      "offlineReady": true,
+      "tag": "gen_btn_cool-glasses"
+    },
+    {
+      "id": "copium",
+      "slug": "copium",
+      "family": "transform",
+      "primitive": "pulse",
+      "offlineReady": true,
+      "tag": "gen_btn_copium"
+    },
+    {
+      "id": "courage-scream",
+      "slug": "courage-scream",
+      "family": "frames",
+      "primitive": "frames",
+      "offlineReady": true,
+      "tag": "gen_btn_courage-scream"
+    },
+    {
+      "id": "cowboy",
+      "slug": "cowboy",
+      "family": "overlay",
+      "primitive": "overlay_hole",
+      "offlineReady": true,
+      "tag": "gen_btn_cowboy"
+    },
+    {
+      "id": "crab",
+      "slug": "crab",
+      "family": "transform",
+      "primitive": "pulse",
+      "offlineReady": true,
+      "tag": "gen_btn_crab"
+    },
+    {
+      "id": "credit-swipe",
+      "slug": "credit-swipe",
+      "family": "transform",
+      "primitive": "pulse",
+      "offlineReady": true,
+      "tag": "gen_btn_credit-swipe"
+    },
+    {
+      "id": "crying-laughing",
+      "slug": "crying-laughing",
+      "family": "overlay",
+      "primitive": "overlay_hole",
+      "offlineReady": true,
+      "tag": "gen_btn_crying-laughing"
+    },
+    {
+      "id": "cube",
+      "slug": "cube",
+      "family": "transform",
+      "primitive": "bounce",
+      "offlineReady": true,
+      "tag": "gen_btn_cube"
+    },
+    {
+      "id": "cute-ghost",
+      "slug": "cute-ghost",
+      "family": "frames",
+      "primitive": "frames",
+      "offlineReady": true,
+      "tag": "gen_btn_cute-ghost"
+    },
+    {
+      "id": "cute-hop",
+      "slug": "cute-hop",
+      "family": "transform",
+      "primitive": "bounce",
+      "offlineReady": true,
+      "tag": "gen_btn_cute-hop"
+    },
+    {
+      "id": "dbz-aura",
+      "slug": "dbz-aura",
+      "family": "transform",
+      "primitive": "pulse",
+      "offlineReady": true,
+      "tag": "gen_btn_dbz-aura"
+    },
+    {
+      "id": "ddr",
+      "slug": "ddr",
+      "family": "transform",
+      "primitive": "wobble",
+      "offlineReady": true,
+      "tag": "gen_btn_ddr"
+    },
+    {
+      "id": "deal-with-it",
+      "slug": "deal-with-it",
+      "family": "atlas",
+      "primitive": "atlas",
+      "offlineReady": true,
+      "tag": "gen_btn_deal-with-it"
+    },
+    {
+      "id": "depth-tilt",
+      "slug": "depth-tilt",
+      "family": "transform",
+      "primitive": "tilt",
+      "offlineReady": true,
+      "tag": "gen_btn_depth-tilt"
+    },
+    {
+      "id": "diamond",
+      "slug": "diamond",
+      "family": "transform",
+      "primitive": "glitch",
+      "offlineReady": true,
+      "tag": "gen_btn_diamond"
+    },
+    {
+      "id": "ditto",
+      "slug": "ditto",
+      "family": "frames",
+      "primitive": "frames",
+      "offlineReady": true,
+      "tag": "gen_btn_ditto"
+    },
+    {
+      "id": "doesnt-know",
+      "slug": "doesnt-know",
+      "family": "frames",
+      "primitive": "frames",
+      "offlineReady": true,
+      "tag": "gen_btn_doesnt-know"
+    },
+    {
+      "id": "donk",
+      "slug": "donk",
+      "family": "overlay",
+      "primitive": "overlay_hole",
+      "offlineReady": true,
+      "tag": "gen_btn_donk"
+    },
+    {
+      "id": "drake-duh",
+      "slug": "drake-duh",
+      "family": "frames",
+      "primitive": "frames",
+      "offlineReady": true,
+      "tag": "gen_btn_drake-duh"
+    },
+    {
+      "id": "drift",
+      "slug": "drift",
+      "family": "transform",
+      "primitive": "wobble",
+      "offlineReady": true,
+      "tag": "gen_btn_drift"
+    },
+    {
+      "id": "drop",
+      "slug": "drop",
+      "family": "transform",
+      "primitive": "bounce",
+      "offlineReady": true,
+      "tag": "gen_btn_drop"
+    },
+    {
+      "id": "drop-bounce",
+      "slug": "drop-bounce",
+      "family": "transform",
+      "primitive": "bounce",
+      "offlineReady": true,
+      "tag": "gen_btn_drop-bounce"
+    },
+    {
+      "id": "earthquake",
+      "slug": "earthquake",
+      "family": "transform",
+      "primitive": "bounce",
+      "offlineReady": true,
+      "tag": "gen_btn_earthquake"
+    },
+    {
+      "id": "elastic",
+      "slug": "elastic",
+      "family": "transform",
+      "primitive": "squish",
+      "offlineReady": true,
+      "tag": "gen_btn_elastic"
+    },
+    {
+      "id": "electricity",
+      "slug": "electricity",
+      "family": "transform",
+      "primitive": "glitch",
+      "offlineReady": true,
+      "tag": "gen_btn_electricity"
+    },
+    {
+      "id": "elmo-fire",
+      "slug": "elmo-fire",
+      "family": "transform",
+      "primitive": "pulse",
+      "offlineReady": true,
+      "tag": "gen_btn_elmo-fire"
+    },
+    {
+      "id": "emoji-scream",
+      "slug": "emoji-scream",
+      "family": "transform",
+      "primitive": "rainbow",
+      "offlineReady": true,
+      "tag": "gen_btn_emoji-scream"
+    },
+    {
+      "id": "enter",
+      "slug": "enter",
+      "family": "transform",
+      "primitive": "slide",
+      "offlineReady": true,
+      "tag": "gen_btn_enter"
+    },
+    {
+      "id": "excited",
+      "slug": "excited",
+      "family": "transform",
+      "primitive": "bounce",
+      "offlineReady": true,
+      "tag": "gen_btn_excited"
+    },
+    {
+      "id": "excuse-me",
+      "slug": "excuse-me",
+      "family": "transform",
+      "primitive": "rainbow",
+      "offlineReady": true,
+      "tag": "gen_btn_excuse-me"
+    },
+    {
+      "id": "exit",
+      "slug": "exit",
+      "family": "transform",
+      "primitive": "slide",
+      "offlineReady": true,
+      "tag": "gen_btn_exit"
+    },
+    {
+      "id": "explain",
+      "slug": "explain",
+      "family": "transform",
+      "primitive": "pulse",
+      "offlineReady": true,
+      "tag": "gen_btn_explain"
+    },
+    {
+      "id": "explode",
+      "slug": "explode",
+      "family": "transform",
+      "primitive": "zoom",
+      "offlineReady": true,
+      "tag": "gen_btn_explode"
+    },
+    {
+      "id": "face-cover",
+      "slug": "face-cover",
+      "family": "transform",
+      "primitive": "pulse",
+      "offlineReady": true,
+      "tag": "gen_btn_face-cover"
+    },
+    {
+      "id": "facepalm",
+      "slug": "facepalm",
+      "family": "frames",
+      "primitive": "frames",
+      "offlineReady": true,
+      "tag": "gen_btn_facepalm"
+    },
+    {
+      "id": "fall-leaves",
+      "slug": "fall-leaves",
+      "family": "transform",
+      "primitive": "slide",
+      "offlineReady": true,
+      "tag": "gen_btn_fall-leaves"
+    },
+    {
+      "id": "feels-rain-man",
+      "slug": "feels-rain-man",
+      "family": "transform",
+      "primitive": "fade",
+      "offlineReady": true,
+      "tag": "gen_btn_feels-rain-man"
+    },
+    {
+      "id": "feels-weak-man",
+      "slug": "feels-weak-man",
+      "family": "frames",
+      "primitive": "frames",
+      "offlineReady": true,
+      "tag": "gen_btn_feels-weak-man"
+    },
+    {
+      "id": "figure-8",
+      "slug": "figure-8",
+      "family": "transform",
+      "primitive": "glitch",
+      "offlineReady": true,
+      "tag": "gen_btn_figure-8"
+    },
+    {
+      "id": "fire-pixel",
+      "slug": "fire-pixel",
+      "family": "transform",
+      "primitive": "pulse",
+      "offlineReady": true,
+      "tag": "gen_btn_fire-pixel"
+    },
+    {
+      "id": "fireplace",
+      "slug": "fireplace",
+      "family": "transform",
+      "primitive": "pulse",
+      "offlineReady": true,
+      "tag": "gen_btn_fireplace"
+    },
+    {
+      "id": "fivehead",
+      "slug": "fivehead",
+      "family": "transform",
+      "primitive": "pulse",
+      "offlineReady": true,
+      "tag": "gen_btn_fivehead"
+    },
+    {
+      "id": "fivehead-pulse",
+      "slug": "fivehead-pulse",
+      "family": "transform",
+      "primitive": "pulse",
+      "offlineReady": true,
+      "tag": "gen_btn_fivehead-pulse"
+    },
+    {
+      "id": "flag",
+      "slug": "flag",
+      "family": "frames",
+      "primitive": "frames",
+      "offlineReady": true,
+      "tag": "gen_btn_flag"
+    },
+    {
+      "id": "flag-wave",
+      "slug": "flag-wave",
+      "family": "transform",
+      "primitive": "wave",
+      "offlineReady": true,
+      "tag": "gen_btn_flag-wave"
+    },
+    {
+      "id": "flame",
+      "slug": "flame",
+      "family": "transform",
+      "primitive": "pulse",
+      "offlineReady": true,
+      "tag": "gen_btn_flame"
+    },
+    {
+      "id": "flare-eyes",
+      "slug": "flare-eyes",
+      "family": "transform",
+      "primitive": "nod",
+      "offlineReady": true,
+      "tag": "gen_btn_flare-eyes"
+    },
+    {
+      "id": "flick:\u27a1\ufe0f",
+      "slug": "flick",
+      "family": "transform",
+      "primitive": "bounce",
+      "offlineReady": true,
+      "tag": "gen_btn_flick"
+    },
+    {
+      "id": "fling:\u27a1\ufe0f",
+      "slug": "fling",
+      "family": "transform",
+      "primitive": "bounce",
+      "offlineReady": true,
+      "tag": "gen_btn_fling"
+    },
+    {
+      "id": "flip",
+      "slug": "flip",
+      "family": "transform",
+      "primitive": "flip",
+      "offlineReady": true,
+      "tag": "gen_btn_flip"
+    },
+    {
+      "id": "flipp",
+      "slug": "flipp",
+      "family": "transform",
+      "primitive": "flip",
+      "offlineReady": true,
+      "tag": "gen_btn_flipp"
+    },
+    {
+      "id": "floating-pumpkins",
+      "slug": "floating-pumpkins",
+      "family": "frames",
+      "primitive": "frames",
+      "offlineReady": true,
+      "tag": "gen_btn_floating-pumpkins"
+    },
+    {
+      "id": "flutter",
+      "slug": "flutter",
+      "family": "transform",
+      "primitive": "glitch",
+      "offlineReady": true,
+      "tag": "gen_btn_flutter"
+    },
+    {
+      "id": "frog-flag",
+      "slug": "frog-flag",
+      "family": "frames",
+      "primitive": "frames",
+      "offlineReady": true,
+      "tag": "gen_btn_frog-flag"
+    },
+    {
+      "id": "fry",
+      "slug": "fry",
+      "family": "frames",
+      "primitive": "frames",
+      "offlineReady": true,
+      "tag": "gen_btn_fry"
+    },
+    {
+      "id": "gengar",
+      "slug": "gengar",
+      "family": "frames",
+      "primitive": "frames",
+      "offlineReady": true,
+      "tag": "gen_btn_gengar"
+    },
+    {
+      "id": "gigachad",
+      "slug": "gigachad",
+      "family": "atlas",
+      "primitive": "atlas",
+      "offlineReady": true,
+      "tag": "gen_btn_gigachad"
+    },
+    {
+      "id": "glasses-shine",
+      "slug": "glasses-shine",
+      "family": "transform",
+      "primitive": "pulse",
+      "offlineReady": true,
+      "tag": "gen_btn_glasses-shine"
+    },
+    {
+      "id": "glitch",
+      "slug": "glitch",
+      "family": "transform",
+      "primitive": "glitch",
+      "offlineReady": true,
+      "tag": "gen_btn_glitch"
+    },
+    {
+      "id": "glorming:\u27a1\ufe0f",
+      "slug": "glorming",
+      "family": "frames",
+      "primitive": "frames",
+      "offlineReady": true,
+      "tag": "gen_btn_glorming"
+    },
+    {
+      "id": "glorp",
+      "slug": "glorp",
+      "family": "overlay",
+      "primitive": "overlay_hole",
+      "offlineReady": true,
+      "tag": "gen_btn_glorp"
+    },
+    {
+      "id": "glorpa",
+      "slug": "glorpa",
+      "family": "frames",
+      "primitive": "frames",
+      "offlineReady": true,
+      "tag": "gen_btn_glorpa"
+    },
+    {
+      "id": "googly-eyes",
+      "slug": "googly-eyes",
+      "family": "transform",
+      "primitive": "nod",
+      "offlineReady": true,
+      "tag": "gen_btn_googly-eyes"
+    },
+    {
+      "id": "grayscale",
+      "slug": "grayscale",
+      "family": "transform",
+      "primitive": "pulse",
+      "offlineReady": true,
+      "tag": "gen_btn_grayscale"
+    },
+    {
+      "id": "green-fire",
+      "slug": "green-fire",
+      "family": "frames",
+      "primitive": "frames",
+      "offlineReady": true,
+      "tag": "gen_btn_green-fire"
+    },
+    {
+      "id": "gulp",
+      "slug": "gulp",
+      "family": "transform",
+      "primitive": "wobble",
+      "offlineReady": true,
+      "tag": "gen_btn_gulp"
+    },
+    {
+      "id": "gun",
+      "slug": "gun",
+      "family": "transform",
+      "primitive": "pulse",
+      "offlineReady": true,
+      "tag": "gen_btn_gun"
+    },
+    {
+      "id": "hazmat",
+      "slug": "hazmat",
+      "family": "overlay",
+      "primitive": "overlay_hole",
+      "offlineReady": true,
+      "tag": "gen_btn_hazmat"
+    },
+    {
+      "id": "hazmat-2",
+      "slug": "hazmat-2",
+      "family": "overlay",
+      "primitive": "overlay_hole",
+      "offlineReady": true,
+      "tag": "gen_btn_hazmat-2"
+    },
+    {
+      "id": "headbop",
+      "slug": "headbop",
+      "family": "transform",
+      "primitive": "shake",
+      "offlineReady": true,
+      "tag": "gen_btn_headbop"
+    },
+    {
+      "id": "heart-hypno",
+      "slug": "heart-hypno",
+      "family": "transform",
+      "primitive": "heartbeat",
+      "offlineReady": true,
+      "tag": "gen_btn_heart-hypno"
+    },
+    {
+      "id": "heart-locket",
+      "slug": "heart-locket",
+      "family": "transform",
+      "primitive": "heartbeat",
+      "offlineReady": true,
+      "tag": "gen_btn_heart-locket"
+    },
+    {
+      "id": "heartbeat",
+      "slug": "heartbeat",
+      "family": "transform",
+      "primitive": "heartbeat",
+      "offlineReady": true,
+      "tag": "gen_btn_heartbeat"
+    },
+    {
+      "id": "heartbeat-flash",
+      "slug": "heartbeat-flash",
+      "family": "transform",
+      "primitive": "heartbeat",
+      "offlineReady": true,
+      "tag": "gen_btn_heartbeat-flash"
+    },
+    {
+      "id": "heat-haze",
+      "slug": "heat-haze",
+      "family": "transform",
+      "primitive": "wobble",
+      "offlineReady": true,
+      "tag": "gen_btn_heat-haze"
+    },
+    {
+      "id": "helicopter",
+      "slug": "helicopter",
+      "family": "transform",
+      "primitive": "bounce",
+      "offlineReady": true,
+      "tag": "gen_btn_helicopter"
+    },
+    {
+      "id": "hellowo",
+      "slug": "hellowo",
+      "family": "transform",
+      "primitive": "shake",
+      "offlineReady": true,
+      "tag": "gen_btn_hellowo"
+    },
+    {
+      "id": "heyy",
+      "slug": "heyy",
+      "family": "transform",
+      "primitive": "pulse",
+      "offlineReady": true,
+      "tag": "gen_btn_heyy"
+    },
+    {
+      "id": "heyyeyaa",
+      "slug": "heyyeyaa",
+      "family": "overlay",
+      "primitive": "overlay_hole",
+      "offlineReady": true,
+      "tag": "gen_btn_heyyeyaa"
+    },
+    {
+      "id": "hoodie",
+      "slug": "hoodie",
+      "family": "overlay",
+      "primitive": "overlay_hole",
+      "offlineReady": true,
+      "tag": "gen_btn_hoodie"
+    },
+    {
+      "id": "hop:\u27a1\ufe0f",
+      "slug": "hop",
+      "family": "transform",
+      "primitive": "bounce",
+      "offlineReady": true,
+      "tag": "gen_btn_hop"
+    },
+    {
+      "id": "hovering",
+      "slug": "hovering",
+      "family": "transform",
+      "primitive": "orbit",
+      "offlineReady": true,
+      "tag": "gen_btn_hovering"
+    },
+    {
+      "id": "hugg",
+      "slug": "hugg",
+      "family": "transform",
+      "primitive": "heartbeat",
+      "offlineReady": true,
+      "tag": "gen_btn_hugg"
+    },
+    {
+      "id": "huh",
+      "slug": "huh",
+      "family": "frames",
+      "primitive": "frames",
+      "offlineReady": true,
+      "tag": "gen_btn_huh"
+    },
+    {
+      "id": "hype",
+      "slug": "hype",
+      "family": "transform",
+      "primitive": "bounce",
+      "offlineReady": true,
+      "tag": "gen_btn_hype"
+    },
+    {
+      "id": "hype-jam",
+      "slug": "hype-jam",
+      "family": "transform",
+      "primitive": "wobble",
+      "offlineReady": true,
+      "tag": "gen_btn_hype-jam"
+    },
+    {
+      "id": "hype-shake",
+      "slug": "hype-shake",
+      "family": "transform",
+      "primitive": "shake",
+      "offlineReady": true,
+      "tag": "gen_btn_hype-shake"
+    },
+    {
+      "id": "hyperspace",
+      "slug": "hyperspace",
+      "family": "transform",
+      "primitive": "bounce",
+      "offlineReady": true,
+      "tag": "gen_btn_hyperspace"
+    },
+    {
+      "id": "i-have-a-question",
+      "slug": "i-have-a-question",
+      "family": "transform",
+      "primitive": "pulse",
+      "offlineReady": true,
+      "tag": "gen_btn_i-have-a-question"
+    },
+    {
+      "id": "i-love",
+      "slug": "i-love",
+      "family": "transform",
+      "primitive": "heartbeat",
+      "offlineReady": true,
+      "tag": "gen_btn_i-love"
+    },
+    {
+      "id": "ice-cube",
+      "slug": "ice-cube",
+      "family": "frames",
+      "primitive": "frames",
+      "offlineReady": true,
+      "tag": "gen_btn_ice-cube"
+    },
+    {
+      "id": "intensifies",
+      "slug": "intensifies",
+      "family": "transform",
+      "primitive": "glitch",
+      "offlineReady": true,
+      "tag": "gen_btn_intensifies"
+    },
+    {
+      "id": "jail-time",
+      "slug": "jail-time",
+      "family": "frames",
+      "primitive": "frames",
+      "offlineReady": true,
+      "tag": "gen_btn_jail-time"
+    },
+    {
+      "id": "jam",
+      "slug": "jam",
+      "family": "transform",
+      "primitive": "wobble",
+      "offlineReady": true,
+      "tag": "gen_btn_jam"
+    },
+    {
+      "id": "jammies",
+      "slug": "jammies",
+      "family": "atlas",
+      "primitive": "atlas",
+      "offlineReady": true,
+      "tag": "gen_btn_jammies"
+    },
+    {
+      "id": "jiggle",
+      "slug": "jiggle",
+      "family": "transform",
+      "primitive": "shake",
+      "offlineReady": true,
+      "tag": "gen_btn_jiggle"
+    },
+    {
+      "id": "jitter",
+      "slug": "jitter",
+      "family": "transform",
+      "primitive": "shake",
+      "offlineReady": true,
+      "tag": "gen_btn_jitter"
+    },
+    {
+      "id": "jumping-on-the-bed",
+      "slug": "jumping-on-the-bed",
+      "family": "transform",
+      "primitive": "bounce",
+      "offlineReady": true,
+      "tag": "gen_btn_jumping-on-the-bed"
+    },
+    {
+      "id": "kablooey",
+      "slug": "kablooey",
+      "family": "transform",
+      "primitive": "rainbow",
+      "offlineReady": true,
+      "tag": "gen_btn_kablooey"
+    },
+    {
+      "id": "keanu-thanks",
+      "slug": "keanu-thanks",
+      "family": "frames",
+      "primitive": "frames",
+      "offlineReady": true,
+      "tag": "gen_btn_keanu-thanks"
+    },
+    {
+      "id": "kek-jam",
+      "slug": "kek-jam",
+      "family": "transform",
+      "primitive": "wobble",
+      "offlineReady": true,
+      "tag": "gen_btn_kek-jam"
+    },
+    {
+      "id": "kek-laugh",
+      "slug": "kek-laugh",
+      "family": "transform",
+      "primitive": "wobble",
+      "offlineReady": true,
+      "tag": "gen_btn_kek-laugh"
+    },
+    {
+      "id": "ken-burns",
+      "slug": "ken-burns",
+      "family": "transform",
+      "primitive": "pulse",
+      "offlineReady": true,
+      "tag": "gen_btn_ken-burns"
+    },
+    {
+      "id": "labubu",
+      "slug": "labubu",
+      "family": "overlay",
+      "primitive": "overlay_hole",
+      "offlineReady": true,
+      "tag": "gen_btn_labubu"
+    },
+    {
+      "id": "laser-eyes",
+      "slug": "laser-eyes",
+      "family": "atlas",
+      "primitive": "atlas",
+      "offlineReady": true,
+      "tag": "gen_btn_laser-eyes"
+    },
+    {
+      "id": "lean",
+      "slug": "lean",
+      "family": "transform",
+      "primitive": "bounce",
+      "offlineReady": true,
+      "tag": "gen_btn_lean"
+    },
+    {
+      "id": "leap",
+      "slug": "leap",
+      "family": "transform",
+      "primitive": "glitch",
+      "offlineReady": true,
+      "tag": "gen_btn_leap"
+    },
+    {
+      "id": "leave",
+      "slug": "leave",
+      "family": "transform",
+      "primitive": "slide",
+      "offlineReady": true,
+      "tag": "gen_btn_leave"
+    },
+    {
+      "id": "leave-me-alone",
+      "slug": "leave-me-alone",
+      "family": "frames",
+      "primitive": "frames",
+      "offlineReady": true,
+      "tag": "gen_btn_leave-me-alone"
+    },
+    {
+      "id": "lebron-jam",
+      "slug": "lebron-jam",
+      "family": "transform",
+      "primitive": "wobble",
+      "offlineReady": true,
+      "tag": "gen_btn_lebron-jam"
+    },
+    {
+      "id": "let-me-in",
+      "slug": "let-me-in",
+      "family": "frames",
+      "primitive": "frames",
+      "offlineReady": true,
+      "tag": "gen_btn_let-me-in"
+    },
+    {
+      "id": "lets-gooo",
+      "slug": "lets-gooo",
+      "family": "transform",
+      "primitive": "rainbow",
+      "offlineReady": true,
+      "tag": "gen_btn_lets-gooo"
+    },
+    {
+      "id": "lick",
+      "slug": "lick",
+      "family": "transform",
+      "primitive": "nod",
+      "offlineReady": true,
+      "tag": "gen_btn_lick"
+    },
+    {
+      "id": "lightning-flash",
+      "slug": "lightning-flash",
+      "family": "transform",
+      "primitive": "glitch",
+      "offlineReady": true,
+      "tag": "gen_btn_lightning-flash"
+    },
+    {
+      "id": "lightsaber",
+      "slug": "lightsaber",
+      "family": "transform",
+      "primitive": "wobble",
+      "offlineReady": true,
+      "tag": "gen_btn_lightsaber"
+    },
+    {
+      "id": "lightspeed-jump",
+      "slug": "lightspeed-jump",
+      "family": "frames",
+      "primitive": "frames",
+      "offlineReady": true,
+      "tag": "gen_btn_lightspeed-jump"
+    },
+    {
+      "id": "loading",
+      "slug": "loading",
+      "family": "transform",
+      "primitive": "spin",
+      "offlineReady": true,
+      "tag": "gen_btn_loading"
+    },
+    {
+      "id": "loading-eight:\u27a1\ufe0f",
+      "slug": "loading-eight",
+      "family": "transform",
+      "primitive": "spin",
+      "offlineReady": true,
+      "tag": "gen_btn_loading-eight"
+    },
+    {
+      "id": "loading-five:\u27a1\ufe0f",
+      "slug": "loading-five",
+      "family": "transform",
+      "primitive": "spin",
+      "offlineReady": true,
+      "tag": "gen_btn_loading-five"
+    },
+    {
+      "id": "loading-four:\u27a1\ufe0f",
+      "slug": "loading-four",
+      "family": "transform",
+      "primitive": "spin",
+      "offlineReady": true,
+      "tag": "gen_btn_loading-four"
+    },
+    {
+      "id": "loading-nine:\u27a1\ufe0f",
+      "slug": "loading-nine",
+      "family": "transform",
+      "primitive": "spin",
+      "offlineReady": true,
+      "tag": "gen_btn_loading-nine"
+    },
+    {
+      "id": "loading-seven:\u27a1\ufe0f",
+      "slug": "loading-seven",
+      "family": "transform",
+      "primitive": "spin",
+      "offlineReady": true,
+      "tag": "gen_btn_loading-seven"
+    },
+    {
+      "id": "loading-six:\u27a1\ufe0f",
+      "slug": "loading-six",
+      "family": "transform",
+      "primitive": "spin",
+      "offlineReady": true,
+      "tag": "gen_btn_loading-six"
+    },
+    {
+      "id": "loading-three:\u27a1\ufe0f",
+      "slug": "loading-three",
+      "family": "transform",
+      "primitive": "spin",
+      "offlineReady": true,
+      "tag": "gen_btn_loading-three"
+    },
+    {
+      "id": "loading-two:\u27a1\ufe0f",
+      "slug": "loading-two",
+      "family": "transform",
+      "primitive": "spin",
+      "offlineReady": true,
+      "tag": "gen_btn_loading-two"
+    },
+    {
+      "id": "lolface",
+      "slug": "lolface",
+      "family": "frames",
+      "primitive": "frames",
+      "offlineReady": true,
+      "tag": "gen_btn_lolface"
+    },
+    {
+      "id": "long",
+      "slug": "long",
+      "family": "transform",
+      "primitive": "pulse",
+      "offlineReady": true,
+      "tag": "gen_btn_long"
+    },
+    {
+      "id": "lurk",
+      "slug": "lurk",
+      "family": "transform",
+      "primitive": "bounce",
+      "offlineReady": true,
+      "tag": "gen_btn_lurk"
+    },
+    {
+      "id": "luvv",
+      "slug": "luvv",
+      "family": "transform",
+      "primitive": "pulse",
+      "offlineReady": true,
+      "tag": "gen_btn_luvv"
+    },
+    {
+      "id": "madge-clap",
+      "slug": "madge-clap",
+      "family": "frames",
+      "primitive": "frames",
+      "offlineReady": true,
+      "tag": "gen_btn_madge-clap"
+    },
+    {
+      "id": "magnet",
+      "slug": "magnet",
+      "family": "transform",
+      "primitive": "bounce",
+      "offlineReady": true,
+      "tag": "gen_btn_magnet"
+    },
+    {
+      "id": "math",
+      "slug": "math",
+      "family": "transform",
+      "primitive": "pulse",
+      "offlineReady": true,
+      "tag": "gen_btn_math"
+    },
+    {
+      "id": "matrix-rain",
+      "slug": "matrix-rain",
+      "family": "transform",
+      "primitive": "fade",
+      "offlineReady": true,
+      "tag": "gen_btn_matrix-rain"
+    },
+    {
+      "id": "mega-bounce",
+      "slug": "mega-bounce",
+      "family": "transform",
+      "primitive": "bounce",
+      "offlineReady": true,
+      "tag": "gen_btn_mega-bounce"
+    },
+    {
+      "id": "melt",
+      "slug": "melt",
+      "family": "transform",
+      "primitive": "squish",
+      "offlineReady": true,
+      "tag": "gen_btn_melt"
+    },
+    {
+      "id": "meow-coffee-spit",
+      "slug": "meow-coffee-spit",
+      "family": "frames",
+      "primitive": "frames",
+      "offlineReady": true,
+      "tag": "gen_btn_meow-coffee-spit"
+    },
+    {
+      "id": "mercator",
+      "slug": "mercator",
+      "family": "transform",
+      "primitive": "pulse",
+      "offlineReady": true,
+      "tag": "gen_btn_mercator"
+    },
+    {
+      "id": "mercator-pulse",
+      "slug": "mercator-pulse",
+      "family": "transform",
+      "primitive": "pulse",
+      "offlineReady": true,
+      "tag": "gen_btn_mercator-pulse"
+    },
+    {
+      "id": "mhm",
+      "slug": "mhm",
+      "family": "frames",
+      "primitive": "frames",
+      "offlineReady": true,
+      "tag": "gen_btn_mhm"
+    },
+    {
+      "id": "middle-fingers",
+      "slug": "middle-fingers",
+      "family": "frames",
+      "primitive": "frames",
+      "offlineReady": true,
+      "tag": "gen_btn_middle-fingers"
+    },
+    {
+      "id": "mine-block",
+      "slug": "mine-block",
+      "family": "frames",
+      "primitive": "frames",
+      "offlineReady": true,
+      "tag": "gen_btn_mine-block"
+    },
+    {
+      "id": "misalign",
+      "slug": "misalign",
+      "family": "transform",
+      "primitive": "shake",
+      "offlineReady": true,
+      "tag": "gen_btn_misalign"
+    },
+    {
+      "id": "mitosis",
+      "slug": "mitosis",
+      "family": "transform",
+      "primitive": "bounce",
+      "offlineReady": true,
+      "tag": "gen_btn_mitosis"
+    },
+    {
+      "id": "monka-christ",
+      "slug": "monka-christ",
+      "family": "transform",
+      "primitive": "bounce",
+      "offlineReady": true,
+      "tag": "gen_btn_monka-christ"
+    },
+    {
+      "id": "monka-hmm",
+      "slug": "monka-hmm",
+      "family": "transform",
+      "primitive": "rainbow",
+      "offlineReady": true,
+      "tag": "gen_btn_monka-hmm"
+    },
+    {
+      "id": "mustache-glasses",
+      "slug": "mustache-glasses",
+      "family": "frames",
+      "primitive": "frames",
+      "offlineReady": true,
+      "tag": "gen_btn_mustache-glasses"
+    },
+    {
+      "id": "negative-blink",
+      "slug": "negative-blink",
+      "family": "transform",
+      "primitive": "fade",
+      "offlineReady": true,
+      "tag": "gen_btn_negative-blink"
+    },
+    {
+      "id": "nesting-doll:\u27a1\ufe0f",
+      "slug": "nesting-doll",
+      "family": "transform",
+      "primitive": "shake",
+      "offlineReady": true,
+      "tag": "gen_btn_nesting-doll"
+    },
+    {
+      "id": "nise",
+      "slug": "nise",
+      "family": "transform",
+      "primitive": "pulse",
+      "offlineReady": true,
+      "tag": "gen_btn_nise"
+    },
+    {
+      "id": "no-no",
+      "slug": "no-no",
+      "family": "transform",
+      "primitive": "shake",
+      "offlineReady": true,
+      "tag": "gen_btn_no-no"
+    },
+    {
+      "id": "nod",
+      "slug": "nod",
+      "family": "transform",
+      "primitive": "nod",
+      "offlineReady": true,
+      "tag": "gen_btn_nod"
+    },
+    {
+      "id": "nodders",
+      "slug": "nodders",
+      "family": "transform",
+      "primitive": "nod",
+      "offlineReady": true,
+      "tag": "gen_btn_nodders"
+    },
+    {
+      "id": "nopers",
+      "slug": "nopers",
+      "family": "frames",
+      "primitive": "frames",
+      "offlineReady": true,
+      "tag": "gen_btn_nopers"
+    },
+    {
+      "id": "not-stonks",
+      "slug": "not-stonks",
+      "family": "overlay",
+      "primitive": "overlay_hole",
+      "offlineReady": true,
+      "tag": "gen_btn_not-stonks"
+    },
+    {
+      "id": "nowoted",
+      "slug": "nowoted",
+      "family": "transform",
+      "primitive": "shake",
+      "offlineReady": true,
+      "tag": "gen_btn_nowoted"
+    },
+    {
+      "id": "nyan-cat",
+      "slug": "nyan-cat",
+      "family": "atlas",
+      "primitive": "atlas",
+      "offlineReady": true,
+      "tag": "gen_btn_nyan-cat"
+    },
+    {
+      "id": "nyan:\u27a1\ufe0f",
+      "slug": "nyan",
+      "family": "transform",
+      "primitive": "wobble",
+      "offlineReady": true,
+      "tag": "gen_btn_nyan"
+    },
+    {
+      "id": "old-man-yells",
+      "slug": "old-man-yells",
+      "family": "transform",
+      "primitive": "pulse",
+      "offlineReady": true,
+      "tag": "gen_btn_old-man-yells"
+    },
+    {
+      "id": "omega-lul",
+      "slug": "omega-lul",
+      "family": "transform",
+      "primitive": "pulse",
+      "offlineReady": true,
+      "tag": "gen_btn_omega-lul"
+    },
+    {
+      "id": "omega-lul-pulse",
+      "slug": "omega-lul-pulse",
+      "family": "transform",
+      "primitive": "pulse",
+      "offlineReady": true,
+      "tag": "gen_btn_omega-lul-pulse"
+    },
+    {
+      "id": "on-fire",
+      "slug": "on-fire",
+      "family": "transform",
+      "primitive": "pulse",
+      "offlineReady": true,
+      "tag": "gen_btn_on-fire"
+    },
+    {
+      "id": "ono",
+      "slug": "ono",
+      "family": "transform",
+      "primitive": "shake",
+      "offlineReady": true,
+      "tag": "gen_btn_ono"
+    },
+    {
+      "id": "orbit-drift",
+      "slug": "orbit-drift",
+      "family": "transform",
+      "primitive": "orbit",
+      "offlineReady": true,
+      "tag": "gen_btn_orbit-drift"
+    },
+    {
+      "id": "orbit-eight:\u27a1\ufe0f",
+      "slug": "orbit-eight",
+      "family": "transform",
+      "primitive": "orbit",
+      "offlineReady": true,
+      "tag": "gen_btn_orbit-eight"
+    },
+    {
+      "id": "orbit-five:\u27a1\ufe0f",
+      "slug": "orbit-five",
+      "family": "transform",
+      "primitive": "orbit",
+      "offlineReady": true,
+      "tag": "gen_btn_orbit-five"
+    },
+    {
+      "id": "orbit-four:\u27a1\ufe0f",
+      "slug": "orbit-four",
+      "family": "transform",
+      "primitive": "orbit",
+      "offlineReady": true,
+      "tag": "gen_btn_orbit-four"
+    },
+    {
+      "id": "orbit-nine:\u27a1\ufe0f",
+      "slug": "orbit-nine",
+      "family": "transform",
+      "primitive": "orbit",
+      "offlineReady": true,
+      "tag": "gen_btn_orbit-nine"
+    },
+    {
+      "id": "orbit-seven:\u27a1\ufe0f",
+      "slug": "orbit-seven",
+      "family": "transform",
+      "primitive": "orbit",
+      "offlineReady": true,
+      "tag": "gen_btn_orbit-seven"
+    },
+    {
+      "id": "orbit-six:\u27a1\ufe0f",
+      "slug": "orbit-six",
+      "family": "transform",
+      "primitive": "orbit",
+      "offlineReady": true,
+      "tag": "gen_btn_orbit-six"
+    },
+    {
+      "id": "orbit-three:\u27a1\ufe0f",
+      "slug": "orbit-three",
+      "family": "transform",
+      "primitive": "orbit",
+      "offlineReady": true,
+      "tag": "gen_btn_orbit-three"
+    },
+    {
+      "id": "orbit-two:\u27a1\ufe0f",
+      "slug": "orbit-two",
+      "family": "transform",
+      "primitive": "orbit",
+      "offlineReady": true,
+      "tag": "gen_btn_orbit-two"
+    },
+    {
+      "id": "orbit:\u27a1\ufe0f",
+      "slug": "orbit",
+      "family": "transform",
+      "primitive": "orbit",
+      "offlineReady": true,
+      "tag": "gen_btn_orbit"
+    },
+    {
+      "id": "oui-oui",
+      "slug": "oui-oui",
+      "family": "overlay",
+      "primitive": "overlay_hole",
+      "offlineReady": true,
+      "tag": "gen_btn_oui-oui"
+    },
+    {
+      "id": "owl-jam",
+      "slug": "owl-jam",
+      "family": "transform",
+      "primitive": "wobble",
+      "offlineReady": true,
+      "tag": "gen_btn_owl-jam"
+    },
+    {
+      "id": "pace",
+      "slug": "pace",
+      "family": "transform",
+      "primitive": "glitch",
+      "offlineReady": true,
+      "tag": "gen_btn_pace"
+    },
+    {
+      "id": "pag-bounce",
+      "slug": "pag-bounce",
+      "family": "transform",
+      "primitive": "bounce",
+      "offlineReady": true,
+      "tag": "gen_btn_pag-bounce"
+    },
+    {
+      "id": "pagman",
+      "slug": "pagman",
+      "family": "transform",
+      "primitive": "pulse",
+      "offlineReady": true,
+      "tag": "gen_btn_pagman"
+    },
+    {
+      "id": "panic",
+      "slug": "panic",
+      "family": "transform",
+      "primitive": "glitch",
+      "offlineReady": true,
+      "tag": "gen_btn_panic"
+    },
+    {
+      "id": "parrot",
+      "slug": "parrot",
+      "family": "transform",
+      "primitive": "bounce",
+      "offlineReady": true,
+      "tag": "gen_btn_parrot"
+    },
+    {
+      "id": "parrot-hat",
+      "slug": "parrot-hat",
+      "family": "transform",
+      "primitive": "rainbow",
+      "offlineReady": true,
+      "tag": "gen_btn_parrot-hat"
+    },
+    {
+      "id": "parrot-hold",
+      "slug": "parrot-hold",
+      "family": "transform",
+      "primitive": "rainbow",
+      "offlineReady": true,
+      "tag": "gen_btn_parrot-hold"
+    },
+    {
+      "id": "party",
+      "slug": "party",
+      "family": "transform",
+      "primitive": "party",
+      "offlineReady": true,
+      "tag": "gen_btn_party"
+    },
+    {
+      "id": "party-blob",
+      "slug": "party-blob",
+      "family": "atlas",
+      "primitive": "atlas",
+      "offlineReady": true,
+      "tag": "gen_btn_party-blob"
+    },
+    {
+      "id": "party-parrot",
+      "slug": "party-parrot",
+      "family": "atlas",
+      "primitive": "atlas",
+      "offlineReady": true,
+      "tag": "gen_btn_party-parrot"
+    },
+    {
+      "id": "pastel-bloom",
+      "slug": "pastel-bloom",
+      "family": "transform",
+      "primitive": "wobble",
+      "offlineReady": true,
+      "tag": "gen_btn_pastel-bloom"
+    },
+    {
+      "id": "pat",
+      "slug": "pat",
+      "family": "frames",
+      "primitive": "frames",
+      "offlineReady": true,
+      "tag": "gen_btn_pat"
+    },
+    {
+      "id": "patrick-bateman",
+      "slug": "patrick-bateman",
+      "family": "transform",
+      "primitive": "pet",
+      "offlineReady": true,
+      "tag": "gen_btn_patrick-bateman"
+    },
+    {
+      "id": "pause-champ",
+      "slug": "pause-champ",
+      "family": "transform",
+      "primitive": "rainbow",
+      "offlineReady": true,
+      "tag": "gen_btn_pause-champ"
+    },
+    {
+      "id": "peek-corner",
+      "slug": "peek-corner",
+      "family": "transform",
+      "primitive": "slide",
+      "offlineReady": true,
+      "tag": "gen_btn_peek-corner"
+    },
+    {
+      "id": "peeking",
+      "slug": "peeking",
+      "family": "transform",
+      "primitive": "slide",
+      "offlineReady": true,
+      "tag": "gen_btn_peeking"
+    },
+    {
+      "id": "peepo",
+      "slug": "peepo",
+      "family": "overlay",
+      "primitive": "overlay_hole",
+      "offlineReady": true,
+      "tag": "gen_btn_peepo"
+    },
+    {
+      "id": "peepo-bye",
+      "slug": "peepo-bye",
+      "family": "transform",
+      "primitive": "bounce",
+      "offlineReady": true,
+      "tag": "gen_btn_peepo-bye"
+    },
+    {
+      "id": "peepo-cheer",
+      "slug": "peepo-cheer",
+      "family": "transform",
+      "primitive": "pulse",
+      "offlineReady": true,
+      "tag": "gen_btn_peepo-cheer"
+    },
+    {
+      "id": "peepo-clap",
+      "slug": "peepo-clap",
+      "family": "transform",
+      "primitive": "pulse",
+      "offlineReady": true,
+      "tag": "gen_btn_peepo-clap"
+    },
+    {
+      "id": "peepo-dj",
+      "slug": "peepo-dj",
+      "family": "transform",
+      "primitive": "rainbow",
+      "offlineReady": true,
+      "tag": "gen_btn_peepo-dj"
+    },
+    {
+      "id": "peepo-giggles",
+      "slug": "peepo-giggles",
+      "family": "transform",
+      "primitive": "bounce",
+      "offlineReady": true,
+      "tag": "gen_btn_peepo-giggles"
+    },
+    {
+      "id": "peepo-love",
+      "slug": "peepo-love",
+      "family": "overlay",
+      "primitive": "overlay_hole",
+      "offlineReady": true,
+      "tag": "gen_btn_peepo-love"
+    },
+    {
+      "id": "peepo-love-heart",
+      "slug": "peepo-love-heart",
+      "family": "transform",
+      "primitive": "heartbeat",
+      "offlineReady": true,
+      "tag": "gen_btn_peepo-love-heart"
+    },
+    {
+      "id": "peepo-poopoo",
+      "slug": "peepo-poopoo",
+      "family": "transform",
+      "primitive": "pulse",
+      "offlineReady": true,
+      "tag": "gen_btn_peepo-poopoo"
+    },
+    {
+      "id": "peepo-riot",
+      "slug": "peepo-riot",
+      "family": "transform",
+      "primitive": "glitch",
+      "offlineReady": true,
+      "tag": "gen_btn_peepo-riot"
+    },
+    {
+      "id": "peepo-run",
+      "slug": "peepo-run",
+      "family": "transform",
+      "primitive": "slide",
+      "offlineReady": true,
+      "tag": "gen_btn_peepo-run"
+    },
+    {
+      "id": "peepo-shy",
+      "slug": "peepo-shy",
+      "family": "overlay",
+      "primitive": "overlay_hole",
+      "offlineReady": true,
+      "tag": "gen_btn_peepo-shy"
+    },
+    {
+      "id": "peepo-sit",
+      "slug": "peepo-sit",
+      "family": "overlay",
+      "primitive": "overlay_hole",
+      "offlineReady": true,
+      "tag": "gen_btn_peepo-sit"
+    },
+    {
+      "id": "peepo-sit-hey",
+      "slug": "peepo-sit-hey",
+      "family": "transform",
+      "primitive": "rainbow",
+      "offlineReady": true,
+      "tag": "gen_btn_peepo-sit-hey"
+    },
+    {
+      "id": "peepo-stop",
+      "slug": "peepo-stop",
+      "family": "overlay",
+      "primitive": "overlay_hole",
+      "offlineReady": true,
+      "tag": "gen_btn_peepo-stop"
+    },
+    {
+      "id": "peepo-want",
+      "slug": "peepo-want",
+      "family": "overlay",
+      "primitive": "overlay_hole",
+      "offlineReady": true,
+      "tag": "gen_btn_peepo-want"
+    },
+    {
+      "id": "pepe",
+      "slug": "pepe",
+      "family": "overlay",
+      "primitive": "overlay_hole",
+      "offlineReady": true,
+      "tag": "gen_btn_pepe"
+    },
+    {
+      "id": "pepe-binoculars",
+      "slug": "pepe-binoculars",
+      "family": "frames",
+      "primitive": "frames",
+      "offlineReady": true,
+      "tag": "gen_btn_pepe-binoculars"
+    },
+    {
+      "id": "pepe-cheer",
+      "slug": "pepe-cheer",
+      "family": "overlay",
+      "primitive": "overlay_hole",
+      "offlineReady": true,
+      "tag": "gen_btn_pepe-cheer"
+    },
+    {
+      "id": "pepe-clown",
+      "slug": "pepe-clown",
+      "family": "transform",
+      "primitive": "pulse",
+      "offlineReady": true,
+      "tag": "gen_btn_pepe-clown"
+    },
+    {
+      "id": "pepe-dab",
+      "slug": "pepe-dab",
+      "family": "overlay",
+      "primitive": "overlay_hole",
+      "offlineReady": true,
+      "tag": "gen_btn_pepe-dab"
+    },
+    {
+      "id": "pepe-flag",
+      "slug": "pepe-flag",
+      "family": "atlas",
+      "primitive": "atlas",
+      "offlineReady": true,
+      "tag": "gen_btn_pepe-flag"
+    },
+    {
+      "id": "pepe-meltdown",
+      "slug": "pepe-meltdown",
+      "family": "frames",
+      "primitive": "frames",
+      "offlineReady": true,
+      "tag": "gen_btn_pepe-meltdown"
+    },
+    {
+      "id": "pepe-nodders",
+      "slug": "pepe-nodders",
+      "family": "frames",
+      "primitive": "frames",
+      "offlineReady": true,
+      "tag": "gen_btn_pepe-nodders"
+    },
+    {
+      "id": "pepe-point",
+      "slug": "pepe-point",
+      "family": "frames",
+      "primitive": "frames",
+      "offlineReady": true,
+      "tag": "gen_btn_pepe-point"
+    },
+    {
+      "id": "pepe-s",
+      "slug": "pepe-s",
+      "family": "transform",
+      "primitive": "bounce",
+      "offlineReady": true,
+      "tag": "gen_btn_pepe-s"
+    },
+    {
+      "id": "pepe-sweat",
+      "slug": "pepe-sweat",
+      "family": "transform",
+      "primitive": "nod",
+      "offlineReady": true,
+      "tag": "gen_btn_pepe-sweat"
+    },
+    {
+      "id": "pepega",
+      "slug": "pepega",
+      "family": "overlay",
+      "primitive": "overlay_hole",
+      "offlineReady": true,
+      "tag": "gen_btn_pepega"
+    },
+    {
+      "id": "pepo-popcorn",
+      "slug": "pepo-popcorn",
+      "family": "frames",
+      "primitive": "frames",
+      "offlineReady": true,
+      "tag": "gen_btn_pepo-popcorn"
+    },
+    {
+      "id": "pet",
+      "slug": "pet",
+      "family": "atlas",
+      "primitive": "atlas",
+      "offlineReady": true,
+      "tag": "gen_btn_pet"
+    },
+    {
+      "id": "phone-time",
+      "slug": "phone-time",
+      "family": "frames",
+      "primitive": "frames",
+      "offlineReady": true,
+      "tag": "gen_btn_phone-time"
+    },
+    {
+      "id": "pika-stand",
+      "slug": "pika-stand",
+      "family": "frames",
+      "primitive": "frames",
+      "offlineReady": true,
+      "tag": "gen_btn_pika-stand"
+    },
+    {
+      "id": "pikachu",
+      "slug": "pikachu",
+      "family": "frames",
+      "primitive": "frames",
+      "offlineReady": true,
+      "tag": "gen_btn_pikachu"
+    },
+    {
+      "id": "pixar-think",
+      "slug": "pixar-think",
+      "family": "frames",
+      "primitive": "frames",
+      "offlineReady": true,
+      "tag": "gen_btn_pixar-think"
+    },
+    {
+      "id": "pixelate",
+      "slug": "pixelate",
+      "family": "transform",
+      "primitive": "glitch",
+      "offlineReady": true,
+      "tag": "gen_btn_pixelate"
+    },
+    {
+      "id": "plotge",
+      "slug": "plotge",
+      "family": "transform",
+      "primitive": "pulse",
+      "offlineReady": true,
+      "tag": "gen_btn_plotge"
+    },
+    {
+      "id": "pokeball-almost",
+      "slug": "pokeball-almost",
+      "family": "frames",
+      "primitive": "frames",
+      "offlineReady": true,
+      "tag": "gen_btn_pokeball-almost"
+    },
+    {
+      "id": "pokeball-capture",
+      "slug": "pokeball-capture",
+      "family": "frames",
+      "primitive": "frames",
+      "offlineReady": true,
+      "tag": "gen_btn_pokeball-capture"
+    },
+    {
+      "id": "pokeball-emerge",
+      "slug": "pokeball-emerge",
+      "family": "frames",
+      "primitive": "frames",
+      "offlineReady": true,
+      "tag": "gen_btn_pokeball-emerge"
+    },
+    {
+      "id": "pokeball-go",
+      "slug": "pokeball-go",
+      "family": "frames",
+      "primitive": "frames",
+      "offlineReady": true,
+      "tag": "gen_btn_pokeball-go"
+    },
+    {
+      "id": "polar-bear",
+      "slug": "polar-bear",
+      "family": "transform",
+      "primitive": "shake",
+      "offlineReady": true,
+      "tag": "gen_btn_polar-bear"
+    },
+    {
+      "id": "ponder",
+      "slug": "ponder",
+      "family": "transform",
+      "primitive": "tilt",
+      "offlineReady": true,
+      "tag": "gen_btn_ponder"
+    },
+    {
+      "id": "pop",
+      "slug": "pop",
+      "family": "transform",
+      "primitive": "pulse",
+      "offlineReady": true,
+      "tag": "gen_btn_pop"
+    },
+    {
+      "id": "pop-through",
+      "slug": "pop-through",
+      "family": "transform",
+      "primitive": "pulse",
+      "offlineReady": true,
+      "tag": "gen_btn_pop-through"
+    },
+    {
+      "id": "portal-peek",
+      "slug": "portal-peek",
+      "family": "transform",
+      "primitive": "spin",
+      "offlineReady": true,
+      "tag": "gen_btn_portal-peek"
+    },
+    {
+      "id": "portal-warp",
+      "slug": "portal-warp",
+      "family": "transform",
+      "primitive": "spin",
+      "offlineReady": true,
+      "tag": "gen_btn_portal-warp"
+    },
+    {
+      "id": "posterize-breath",
+      "slug": "posterize-breath",
+      "family": "transform",
+      "primitive": "pulse",
+      "offlineReady": true,
+      "tag": "gen_btn_posterize-breath"
+    },
+    {
+      "id": "pounce",
+      "slug": "pounce",
+      "family": "transform",
+      "primitive": "bounce",
+      "offlineReady": true,
+      "tag": "gen_btn_pounce"
+    },
+    {
+      "id": "pp-hopper",
+      "slug": "pp-hopper",
+      "family": "transform",
+      "primitive": "bounce",
+      "offlineReady": true,
+      "tag": "gen_btn_pp-hopper"
+    },
+    {
+      "id": "prance",
+      "slug": "prance",
+      "family": "transform",
+      "primitive": "bounce",
+      "offlineReady": true,
+      "tag": "gen_btn_prance"
+    },
+    {
+      "id": "prayge",
+      "slug": "prayge",
+      "family": "transform",
+      "primitive": "pulse",
+      "offlineReady": true,
+      "tag": "gen_btn_prayge"
+    },
+    {
+      "id": "pulse",
+      "slug": "pulse",
+      "family": "transform",
+      "primitive": "pulse",
+      "offlineReady": true,
+      "tag": "gen_btn_pulse"
+    },
+    {
+      "id": "pumpkin",
+      "slug": "pumpkin",
+      "family": "overlay",
+      "primitive": "overlay_hole",
+      "offlineReady": true,
+      "tag": "gen_btn_pumpkin"
+    },
+    {
+      "id": "pumpkin-cat",
+      "slug": "pumpkin-cat",
+      "family": "frames",
+      "primitive": "frames",
+      "offlineReady": true,
+      "tag": "gen_btn_pumpkin-cat"
+    },
+    {
+      "id": "pumpkin-give",
+      "slug": "pumpkin-give",
+      "family": "frames",
+      "primitive": "frames",
+      "offlineReady": true,
+      "tag": "gen_btn_pumpkin-give"
+    },
+    {
+      "id": "pumpkin-surprise",
+      "slug": "pumpkin-surprise",
+      "family": "frames",
+      "primitive": "frames",
+      "offlineReady": true,
+      "tag": "gen_btn_pumpkin-surprise"
+    },
+    {
+      "id": "pumpkin-take",
+      "slug": "pumpkin-take",
+      "family": "frames",
+      "primitive": "frames",
+      "offlineReady": true,
+      "tag": "gen_btn_pumpkin-take"
+    },
+    {
+      "id": "pumpkin2",
+      "slug": "pumpkin2",
+      "family": "overlay",
+      "primitive": "overlay_hole",
+      "offlineReady": true,
+      "tag": "gen_btn_pumpkin2"
+    },
+    {
+      "id": "purple-stars",
+      "slug": "purple-stars",
+      "family": "frames",
+      "primitive": "frames",
+      "offlineReady": true,
+      "tag": "gen_btn_purple-stars"
+    },
+    {
+      "id": "pyramid",
+      "slug": "pyramid",
+      "family": "transform",
+      "primitive": "bounce",
+      "offlineReady": true,
+      "tag": "gen_btn_pyramid"
+    },
+    {
+      "id": "quiver",
+      "slug": "quiver",
+      "family": "transform",
+      "primitive": "wobble",
+      "offlineReady": true,
+      "tag": "gen_btn_quiver"
+    },
+    {
+      "id": "rain",
+      "slug": "rain",
+      "family": "transform",
+      "primitive": "fade",
+      "offlineReady": true,
+      "tag": "gen_btn_rain"
+    },
+    {
+      "id": "rainbow-bloom",
+      "slug": "rainbow-bloom",
+      "family": "transform",
+      "primitive": "rainbow",
+      "offlineReady": true,
+      "tag": "gen_btn_rainbow-bloom"
+    },
+    {
+      "id": "raincloud",
+      "slug": "raincloud",
+      "family": "transform",
+      "primitive": "fade",
+      "offlineReady": true,
+      "tag": "gen_btn_raincloud"
+    },
+    {
+      "id": "raising-hand",
+      "slug": "raising-hand",
+      "family": "transform",
+      "primitive": "pulse",
+      "offlineReady": true,
+      "tag": "gen_btn_raising-hand"
+    },
+    {
+      "id": "rare-ghost",
+      "slug": "rare-ghost",
+      "family": "frames",
+      "primitive": "frames",
+      "offlineReady": true,
+      "tag": "gen_btn_rare-ghost"
+    },
+    {
+      "id": "rave",
+      "slug": "rave",
+      "family": "transform",
+      "primitive": "nod",
+      "offlineReady": true,
+      "tag": "gen_btn_rave"
+    },
+    {
+      "id": "reading",
+      "slug": "reading",
+      "family": "frames",
+      "primitive": "frames",
+      "offlineReady": true,
+      "tag": "gen_btn_reading"
+    },
+    {
+      "id": "recoil-pop",
+      "slug": "recoil-pop",
+      "family": "transform",
+      "primitive": "pulse",
+      "offlineReady": true,
+      "tag": "gen_btn_recoil-pop"
+    },
+    {
+      "id": "red-alert",
+      "slug": "red-alert",
+      "family": "frames",
+      "primitive": "frames",
+      "offlineReady": true,
+      "tag": "gen_btn_red-alert"
+    },
+    {
+      "id": "reveal",
+      "slug": "reveal",
+      "family": "frames",
+      "primitive": "frames",
+      "offlineReady": true,
+      "tag": "gen_btn_reveal"
+    },
+    {
+      "id": "rgb-split",
+      "slug": "rgb-split",
+      "family": "transform",
+      "primitive": "pulse",
+      "offlineReady": true,
+      "tag": "gen_btn_rgb-split"
+    },
+    {
+      "id": "riott",
+      "slug": "riott",
+      "family": "transform",
+      "primitive": "pulse",
+      "offlineReady": true,
+      "tag": "gen_btn_riott"
+    },
+    {
+      "id": "ripple",
+      "slug": "ripple",
+      "family": "transform",
+      "primitive": "wobble",
+      "offlineReady": true,
+      "tag": "gen_btn_ripple"
+    },
+    {
+      "id": "roll-safe",
+      "slug": "roll-safe",
+      "family": "transform",
+      "primitive": "spin",
+      "offlineReady": true,
+      "tag": "gen_btn_roll-safe"
+    },
+    {
+      "id": "rotate-180:\u27a1\ufe0f",
+      "slug": "rotate-180",
+      "family": "transform",
+      "primitive": "spin",
+      "offlineReady": true,
+      "tag": "gen_btn_rotate-180"
+    },
+    {
+      "id": "rotate-45:\u27a1\ufe0f",
+      "slug": "rotate-45",
+      "family": "transform",
+      "primitive": "spin",
+      "offlineReady": true,
+      "tag": "gen_btn_rotate-45"
+    },
+    {
+      "id": "rotate-90:\u27a1\ufe0f",
+      "slug": "rotate-90",
+      "family": "transform",
+      "primitive": "spin",
+      "offlineReady": true,
+      "tag": "gen_btn_rotate-90"
+    },
+    {
+      "id": "rubber",
+      "slug": "rubber",
+      "family": "transform",
+      "primitive": "squish",
+      "offlineReady": true,
+      "tag": "gen_btn_rubber"
+    },
+    {
+      "id": "rubber-stamp",
+      "slug": "rubber-stamp",
+      "family": "transform",
+      "primitive": "squish",
+      "offlineReady": true,
+      "tag": "gen_btn_rubber-stamp"
+    },
+    {
+      "id": "runn",
+      "slug": "runn",
+      "family": "frames",
+      "primitive": "frames",
+      "offlineReady": true,
+      "tag": "gen_btn_runn"
+    },
+    {
+      "id": "runway-landing",
+      "slug": "runway-landing",
+      "family": "transform",
+      "primitive": "slide",
+      "offlineReady": true,
+      "tag": "gen_btn_runway-landing"
+    },
+    {
+      "id": "runway-takeoff",
+      "slug": "runway-takeoff",
+      "family": "transform",
+      "primitive": "slide",
+      "offlineReady": true,
+      "tag": "gen_btn_runway-takeoff"
+    },
+    {
+      "id": "sad-blob",
+      "slug": "sad-blob",
+      "family": "atlas",
+      "primitive": "atlas",
+      "offlineReady": true,
+      "tag": "gen_btn_sad-blob"
+    },
+    {
+      "id": "sadge",
+      "slug": "sadge",
+      "family": "overlay",
+      "primitive": "overlay_hole",
+      "offlineReady": true,
+      "tag": "gen_btn_sadge"
+    },
+    {
+      "id": "saved",
+      "slug": "saved",
+      "family": "transform",
+      "primitive": "shake",
+      "offlineReady": true,
+      "tag": "gen_btn_saved"
+    },
+    {
+      "id": "scanline",
+      "slug": "scanline",
+      "family": "transform",
+      "primitive": "nod",
+      "offlineReady": true,
+      "tag": "gen_btn_scanline"
+    },
+    {
+      "id": "scared",
+      "slug": "scared",
+      "family": "transform",
+      "primitive": "glitch",
+      "offlineReady": true,
+      "tag": "gen_btn_scared"
+    },
+    {
+      "id": "scroll:\u27a1\ufe0f",
+      "slug": "scroll",
+      "family": "transform",
+      "primitive": "spin",
+      "offlineReady": true,
+      "tag": "gen_btn_scroll"
+    },
+    {
+      "id": "shake",
+      "slug": "shake",
+      "family": "transform",
+      "primitive": "shake",
+      "offlineReady": true,
+      "tag": "gen_btn_shake"
+    },
+    {
+      "id": "shimmer:\u27a1\ufe0f",
+      "slug": "shimmer",
+      "family": "transform",
+      "primitive": "pulse",
+      "offlineReady": true,
+      "tag": "gen_btn_shimmer"
+    },
+    {
+      "id": "shocked-man",
+      "slug": "shocked-man",
+      "family": "transform",
+      "primitive": "glitch",
+      "offlineReady": true,
+      "tag": "gen_btn_shocked-man"
+    },
+    {
+      "id": "shruge",
+      "slug": "shruge",
+      "family": "transform",
+      "primitive": "rainbow",
+      "offlineReady": true,
+      "tag": "gen_btn_shruge"
+    },
+    {
+      "id": "shudder",
+      "slug": "shudder",
+      "family": "transform",
+      "primitive": "wobble",
+      "offlineReady": true,
+      "tag": "gen_btn_shudder"
+    },
+    {
+      "id": "shy-peek",
+      "slug": "shy-peek",
+      "family": "transform",
+      "primitive": "slide",
+      "offlineReady": true,
+      "tag": "gen_btn_shy-peek"
+    },
+    {
+      "id": "side-eye-chloe",
+      "slug": "side-eye-chloe",
+      "family": "transform",
+      "primitive": "nod",
+      "offlineReady": true,
+      "tag": "gen_btn_side-eye-chloe"
+    },
+    {
+      "id": "side-eye-dog",
+      "slug": "side-eye-dog",
+      "family": "transform",
+      "primitive": "wobble",
+      "offlineReady": true,
+      "tag": "gen_btn_side-eye-dog"
+    },
+    {
+      "id": "sideeye-slide",
+      "slug": "sideeye-slide",
+      "family": "transform",
+      "primitive": "slide",
+      "offlineReady": true,
+      "tag": "gen_btn_sideeye-slide"
+    },
+    {
+      "id": "sign",
+      "slug": "sign",
+      "family": "transform",
+      "primitive": "nod",
+      "offlineReady": true,
+      "tag": "gen_btn_sign"
+    },
+    {
+      "id": "sign-mad",
+      "slug": "sign-mad",
+      "family": "transform",
+      "primitive": "shake",
+      "offlineReady": true,
+      "tag": "gen_btn_sign-mad"
+    },
+    {
+      "id": "sir",
+      "slug": "sir",
+      "family": "overlay",
+      "primitive": "overlay_hole",
+      "offlineReady": true,
+      "tag": "gen_btn_sir"
+    },
+    {
+      "id": "sisyphus",
+      "slug": "sisyphus",
+      "family": "frames",
+      "primitive": "frames",
+      "offlineReady": true,
+      "tag": "gen_btn_sisyphus"
+    },
+    {
+      "id": "skeleton-dance",
+      "slug": "skeleton-dance",
+      "family": "frames",
+      "primitive": "frames",
+      "offlineReady": true,
+      "tag": "gen_btn_skeleton-dance"
+    },
+    {
+      "id": "skibidi",
+      "slug": "skibidi",
+      "family": "transform",
+      "primitive": "nod",
+      "offlineReady": true,
+      "tag": "gen_btn_skibidi"
+    },
+    {
+      "id": "skid-stop",
+      "slug": "skid-stop",
+      "family": "transform",
+      "primitive": "bounce",
+      "offlineReady": true,
+      "tag": "gen_btn_skid-stop"
+    },
+    {
+      "id": "slice:\u27a1\ufe0f",
+      "slug": "slice",
+      "family": "transform",
+      "primitive": "fade",
+      "offlineReady": true,
+      "tag": "gen_btn_slice"
+    },
+    {
+      "id": "slide-bounce:\u27a1\ufe0f",
+      "slug": "slide-bounce",
+      "family": "transform",
+      "primitive": "bounce",
+      "offlineReady": true,
+      "tag": "gen_btn_slide-bounce"
+    },
+    {
+      "id": "slide-spin:\u27a1\ufe0f",
+      "slug": "slide-spin",
+      "family": "transform",
+      "primitive": "spin",
+      "offlineReady": true,
+      "tag": "gen_btn_slide-spin"
+    },
+    {
+      "id": "slide:\u27a1\ufe0f",
+      "slug": "slide",
+      "family": "transform",
+      "primitive": "slide",
+      "offlineReady": true,
+      "tag": "gen_btn_slide"
+    },
+    {
+      "id": "slow-jam",
+      "slug": "slow-jam",
+      "family": "transform",
+      "primitive": "wobble",
+      "offlineReady": true,
+      "tag": "gen_btn_slow-jam"
+    },
+    {
+      "id": "smadge",
+      "slug": "smadge",
+      "family": "frames",
+      "primitive": "frames",
+      "offlineReady": true,
+      "tag": "gen_btn_smadge"
+    },
+    {
+      "id": "smart",
+      "slug": "smart",
+      "family": "frames",
+      "primitive": "frames",
+      "offlineReady": true,
+      "tag": "gen_btn_smart"
+    },
+    {
+      "id": "smoge",
+      "slug": "smoge",
+      "family": "frames",
+      "primitive": "frames",
+      "offlineReady": true,
+      "tag": "gen_btn_smoge"
+    },
+    {
+      "id": "snap:\u27a1\ufe0f",
+      "slug": "snap",
+      "family": "transform",
+      "primitive": "bounce",
+      "offlineReady": true,
+      "tag": "gen_btn_snap"
+    },
+    {
+      "id": "snorlax",
+      "slug": "snorlax",
+      "family": "frames",
+      "primitive": "frames",
+      "offlineReady": true,
+      "tag": "gen_btn_snorlax"
+    },
+    {
+      "id": "so-cute",
+      "slug": "so-cute",
+      "family": "transform",
+      "primitive": "rainbow",
+      "offlineReady": true,
+      "tag": "gen_btn_so-cute"
+    },
+    {
+      "id": "solarize-wave",
+      "slug": "solarize-wave",
+      "family": "transform",
+      "primitive": "wave",
+      "offlineReady": true,
+      "tag": "gen_btn_solarize-wave"
+    },
+    {
+      "id": "sparkle",
+      "slug": "sparkle",
+      "family": "transform",
+      "primitive": "sparkle",
+      "offlineReady": true,
+      "tag": "gen_btn_sparkle"
+    },
+    {
+      "id": "sparkle-color",
+      "slug": "sparkle-color",
+      "family": "transform",
+      "primitive": "sparkle",
+      "offlineReady": true,
+      "tag": "gen_btn_sparkle-color"
+    },
+    {
+      "id": "sparkle-party",
+      "slug": "sparkle-party",
+      "family": "transform",
+      "primitive": "sparkle",
+      "offlineReady": true,
+      "tag": "gen_btn_sparkle-party"
+    },
+    {
+      "id": "sparkle-rainbow",
+      "slug": "sparkle-rainbow",
+      "family": "transform",
+      "primitive": "sparkle",
+      "offlineReady": true,
+      "tag": "gen_btn_sparkle-rainbow"
+    },
+    {
+      "id": "speechless",
+      "slug": "speechless",
+      "family": "frames",
+      "primitive": "frames",
+      "offlineReady": true,
+      "tag": "gen_btn_speechless"
+    },
+    {
+      "id": "sphere",
+      "slug": "sphere",
+      "family": "transform",
+      "primitive": "glitch",
+      "offlineReady": true,
+      "tag": "gen_btn_sphere"
+    },
+    {
+      "id": "spin:\u27a1\ufe0f",
+      "slug": "spin",
+      "family": "transform",
+      "primitive": "spin",
+      "offlineReady": true,
+      "tag": "gen_btn_spin"
+    },
+    {
+      "id": "spiral-in",
+      "slug": "spiral-in",
+      "family": "transform",
+      "primitive": "spiral",
+      "offlineReady": true,
+      "tag": "gen_btn_spiral-in"
+    },
+    {
+      "id": "spiral-zoom",
+      "slug": "spiral-zoom",
+      "family": "transform",
+      "primitive": "zoom",
+      "offlineReady": true,
+      "tag": "gen_btn_spiral-zoom"
+    },
+    {
+      "id": "split",
+      "slug": "split",
+      "family": "transform",
+      "primitive": "wobble",
+      "offlineReady": true,
+      "tag": "gen_btn_split"
+    },
+    {
+      "id": "spongebob-watching-tv",
+      "slug": "spongebob-watching-tv",
+      "family": "frames",
+      "primitive": "frames",
+      "offlineReady": true,
+      "tag": "gen_btn_spongebob-watching-tv"
+    },
+    {
+      "id": "spongebob-worship",
+      "slug": "spongebob-worship",
+      "family": "frames",
+      "primitive": "frames",
+      "offlineReady": true,
+      "tag": "gen_btn_spongebob-worship"
+    },
+    {
+      "id": "spotlight:\u27a1\ufe0f",
+      "slug": "spotlight",
+      "family": "transform",
+      "primitive": "pulse",
+      "offlineReady": true,
+      "tag": "gen_btn_spotlight"
+    },
+    {
+      "id": "squad",
+      "slug": "squad",
+      "family": "transform",
+      "primitive": "glitch",
+      "offlineReady": true,
+      "tag": "gen_btn_squad"
+    },
+    {
+      "id": "squish",
+      "slug": "squish",
+      "family": "transform",
+      "primitive": "squish",
+      "offlineReady": true,
+      "tag": "gen_btn_squish"
+    },
+    {
+      "id": "squish-pulse",
+      "slug": "squish-pulse",
+      "family": "transform",
+      "primitive": "pulse",
+      "offlineReady": true,
+      "tag": "gen_btn_squish-pulse"
+    },
+    {
+      "id": "stare",
+      "slug": "stare",
+      "family": "transform",
+      "primitive": "sparkle",
+      "offlineReady": true,
+      "tag": "gen_btn_stare"
+    },
+    {
+      "id": "startled-rat",
+      "slug": "startled-rat",
+      "family": "transform",
+      "primitive": "sparkle",
+      "offlineReady": true,
+      "tag": "gen_btn_startled-rat"
+    },
+    {
+      "id": "steer",
+      "slug": "steer",
+      "family": "transform",
+      "primitive": "nod",
+      "offlineReady": true,
+      "tag": "gen_btn_steer"
+    },
+    {
+      "id": "stomp",
+      "slug": "stomp",
+      "family": "transform",
+      "primitive": "bounce",
+      "offlineReady": true,
+      "tag": "gen_btn_stomp"
+    },
+    {
+      "id": "stonks",
+      "slug": "stonks",
+      "family": "overlay",
+      "primitive": "overlay_hole",
+      "offlineReady": true,
+      "tag": "gen_btn_stonks"
+    },
+    {
+      "id": "stretch:\u27a1\ufe0f",
+      "slug": "stretch",
+      "family": "transform",
+      "primitive": "shake",
+      "offlineReady": true,
+      "tag": "gen_btn_stretch"
+    },
+    {
+      "id": "stripp",
+      "slug": "stripp",
+      "family": "transform",
+      "primitive": "rainbow",
+      "offlineReady": true,
+      "tag": "gen_btn_stripp"
+    },
+    {
+      "id": "strobe-soft",
+      "slug": "strobe-soft",
+      "family": "transform",
+      "primitive": "glitch",
+      "offlineReady": true,
+      "tag": "gen_btn_strobe-soft"
+    },
+    {
+      "id": "sure",
+      "slug": "sure",
+      "family": "frames",
+      "primitive": "frames",
+      "offlineReady": true,
+      "tag": "gen_btn_sure"
+    },
+    {
+      "id": "surprised-clapping",
+      "slug": "surprised-clapping",
+      "family": "frames",
+      "primitive": "frames",
+      "offlineReady": true,
+      "tag": "gen_btn_surprised-clapping"
+    },
+    {
+      "id": "surprised-pikachu",
+      "slug": "surprised-pikachu",
+      "family": "frames",
+      "primitive": "frames",
+      "offlineReady": true,
+      "tag": "gen_btn_surprised-pikachu"
+    },
+    {
+      "id": "suspicion",
+      "slug": "suspicion",
+      "family": "frames",
+      "primitive": "frames",
+      "offlineReady": true,
+      "tag": "gen_btn_suspicion"
+    },
+    {
+      "id": "sway",
+      "slug": "sway",
+      "family": "transform",
+      "primitive": "wave",
+      "offlineReady": true,
+      "tag": "gen_btn_sway"
+    },
+    {
+      "id": "sweep",
+      "slug": "sweep",
+      "family": "transform",
+      "primitive": "bounce",
+      "offlineReady": true,
+      "tag": "gen_btn_sweep"
+    },
+    {
+      "id": "swirl",
+      "slug": "swirl",
+      "family": "transform",
+      "primitive": "glitch",
+      "offlineReady": true,
+      "tag": "gen_btn_swirl"
+    },
+    {
+      "id": "swirling",
+      "slug": "swirling",
+      "family": "transform",
+      "primitive": "glitch",
+      "offlineReady": true,
+      "tag": "gen_btn_swirling"
+    },
+    {
+      "id": "teleport",
+      "slug": "teleport",
+      "family": "transform",
+      "primitive": "spin",
+      "offlineReady": true,
+      "tag": "gen_btn_teleport"
+    },
+    {
+      "id": "thanos-snap",
+      "slug": "thanos-snap",
+      "family": "transform",
+      "primitive": "shake",
+      "offlineReady": true,
+      "tag": "gen_btn_thanos-snap"
+    },
+    {
+      "id": "thick-3d-flip:\u27a1\ufe0f",
+      "slug": "thick-3d-flip",
+      "family": "transform",
+      "primitive": "flip",
+      "offlineReady": true,
+      "tag": "gen_btn_thick-3d-flip"
+    },
+    {
+      "id": "thing-cat",
+      "slug": "thing-cat",
+      "family": "transform",
+      "primitive": "glitch",
+      "offlineReady": true,
+      "tag": "gen_btn_thing-cat"
+    },
+    {
+      "id": "think",
+      "slug": "think",
+      "family": "transform",
+      "primitive": "tilt",
+      "offlineReady": true,
+      "tag": "gen_btn_think"
+    },
+    {
+      "id": "this-is-fine",
+      "slug": "this-is-fine",
+      "family": "transform",
+      "primitive": "rainbow",
+      "offlineReady": true,
+      "tag": "gen_btn_this-is-fine"
+    },
+    {
+      "id": "tidal-wave",
+      "slug": "tidal-wave",
+      "family": "transform",
+      "primitive": "wave",
+      "offlineReady": true,
+      "tag": "gen_btn_tidal-wave"
+    },
+    {
+      "id": "tilt",
+      "slug": "tilt",
+      "family": "transform",
+      "primitive": "tilt",
+      "offlineReady": true,
+      "tag": "gen_btn_tilt"
+    },
+    {
+      "id": "tilt-nod",
+      "slug": "tilt-nod",
+      "family": "transform",
+      "primitive": "tilt",
+      "offlineReady": true,
+      "tag": "gen_btn_tilt-nod"
+    },
+    {
+      "id": "tilt-zoom:\u27a1\ufe0f",
+      "slug": "tilt-zoom",
+      "family": "transform",
+      "primitive": "zoom",
+      "offlineReady": true,
+      "tag": "gen_btn_tilt-zoom"
+    },
+    {
+      "id": "toilet-bounce",
+      "slug": "toilet-bounce",
+      "family": "transform",
+      "primitive": "bounce",
+      "offlineReady": true,
+      "tag": "gen_btn_toilet-bounce"
+    },
+    {
+      "id": "toilet-spin",
+      "slug": "toilet-spin",
+      "family": "transform",
+      "primitive": "spin",
+      "offlineReady": true,
+      "tag": "gen_btn_toilet-spin"
+    },
+    {
+      "id": "tornado",
+      "slug": "tornado",
+      "family": "transform",
+      "primitive": "bounce",
+      "offlineReady": true,
+      "tag": "gen_btn_tornado"
+    },
+    {
+      "id": "touch-grass",
+      "slug": "touch-grass",
+      "family": "transform",
+      "primitive": "nod",
+      "offlineReady": true,
+      "tag": "gen_btn_touch-grass"
+    },
+    {
+      "id": "transmute-reality",
+      "slug": "transmute-reality",
+      "family": "transform",
+      "primitive": "bounce",
+      "offlineReady": true,
+      "tag": "gen_btn_transmute-reality"
+    },
+    {
+      "id": "trash",
+      "slug": "trash",
+      "family": "overlay",
+      "primitive": "overlay_hole",
+      "offlineReady": true,
+      "tag": "gen_btn_trash"
+    },
+    {
+      "id": "trash-pop",
+      "slug": "trash-pop",
+      "family": "transform",
+      "primitive": "pulse",
+      "offlineReady": true,
+      "tag": "gen_btn_trash-pop"
+    },
+    {
+      "id": "treasure-chest",
+      "slug": "treasure-chest",
+      "family": "transform",
+      "primitive": "rainbow",
+      "offlineReady": true,
+      "tag": "gen_btn_treasure-chest"
+    },
+    {
+      "id": "triggered",
+      "slug": "triggered",
+      "family": "transform",
+      "primitive": "glitch",
+      "offlineReady": true,
+      "tag": "gen_btn_triggered"
+    },
+    {
+      "id": "tsk",
+      "slug": "tsk",
+      "family": "transform",
+      "primitive": "pulse",
+      "offlineReady": true,
+      "tag": "gen_btn_tsk"
+    },
+    {
+      "id": "tsunami",
+      "slug": "tsunami",
+      "family": "transform",
+      "primitive": "bounce",
+      "offlineReady": true,
+      "tag": "gen_btn_tsunami"
+    },
+    {
+      "id": "tumble:\u27a1\ufe0f",
+      "slug": "tumble",
+      "family": "transform",
+      "primitive": "spin",
+      "offlineReady": true,
+      "tag": "gen_btn_tumble"
+    },
+    {
+      "id": "twirl",
+      "slug": "twirl",
+      "family": "transform",
+      "primitive": "bounce",
+      "offlineReady": true,
+      "tag": "gen_btn_twirl"
+    },
+    {
+      "id": "typing",
+      "slug": "typing",
+      "family": "transform",
+      "primitive": "nod",
+      "offlineReady": true,
+      "tag": "gen_btn_typing"
+    },
+    {
+      "id": "underwater",
+      "slug": "underwater",
+      "family": "transform",
+      "primitive": "nod",
+      "offlineReady": true,
+      "tag": "gen_btn_underwater"
+    },
+    {
+      "id": "unimpressed-cat",
+      "slug": "unimpressed-cat",
+      "family": "transform",
+      "primitive": "rainbow",
+      "offlineReady": true,
+      "tag": "gen_btn_unimpressed-cat"
+    },
+    {
+      "id": "vampire-offers",
+      "slug": "vampire-offers",
+      "family": "transform",
+      "primitive": "pulse",
+      "offlineReady": true,
+      "tag": "gen_btn_vampire-offers"
+    },
+    {
+      "id": "vampire-takes",
+      "slug": "vampire-takes",
+      "family": "transform",
+      "primitive": "pulse",
+      "offlineReady": true,
+      "tag": "gen_btn_vampire-takes"
+    },
+    {
+      "id": "venom",
+      "slug": "venom",
+      "family": "frames",
+      "primitive": "frames",
+      "offlineReady": true,
+      "tag": "gen_btn_venom"
+    },
+    {
+      "id": "vibee",
+      "slug": "vibee",
+      "family": "transform",
+      "primitive": "pulse",
+      "offlineReady": true,
+      "tag": "gen_btn_vibee"
+    },
+    {
+      "id": "wave-ocean",
+      "slug": "wave-ocean",
+      "family": "transform",
+      "primitive": "wave",
+      "offlineReady": true,
+      "tag": "gen_btn_wave-ocean"
+    },
+    {
+      "id": "wave:\u27a1\ufe0f",
+      "slug": "wave",
+      "family": "transform",
+      "primitive": "wave",
+      "offlineReady": true,
+      "tag": "gen_btn_wave"
+    },
+    {
+      "id": "wawa",
+      "slug": "wawa",
+      "family": "transform",
+      "primitive": "nod",
+      "offlineReady": true,
+      "tag": "gen_btn_wawa"
+    },
+    {
+      "id": "weird",
+      "slug": "weird",
+      "family": "transform",
+      "primitive": "wobble",
+      "offlineReady": true,
+      "tag": "gen_btn_weird"
+    },
+    {
+      "id": "wildfire",
+      "slug": "wildfire",
+      "family": "transform",
+      "primitive": "pulse",
+      "offlineReady": true,
+      "tag": "gen_btn_wildfire"
+    },
+    {
+      "id": "will-presents",
+      "slug": "will-presents",
+      "family": "transform",
+      "primitive": "pulse",
+      "offlineReady": true,
+      "tag": "gen_btn_will-presents"
+    },
+    {
+      "id": "willem-dafoe",
+      "slug": "willem-dafoe",
+      "family": "frames",
+      "primitive": "frames",
+      "offlineReady": true,
+      "tag": "gen_btn_willem-dafoe"
+    },
+    {
+      "id": "wipe:\u27a1\ufe0f",
+      "slug": "wipe",
+      "family": "transform",
+      "primitive": "bounce",
+      "offlineReady": true,
+      "tag": "gen_btn_wipe"
+    },
+    {
+      "id": "wobble",
+      "slug": "wobble",
+      "family": "transform",
+      "primitive": "wobble",
+      "offlineReady": true,
+      "tag": "gen_btn_wobble"
+    },
+    {
+      "id": "wobble-scale",
+      "slug": "wobble-scale",
+      "family": "transform",
+      "primitive": "wobble",
+      "offlineReady": true,
+      "tag": "gen_btn_wobble-scale"
+    },
+    {
+      "id": "wokege",
+      "slug": "wokege",
+      "family": "overlay",
+      "primitive": "overlay_hole",
+      "offlineReady": true,
+      "tag": "gen_btn_wokege"
+    },
+    {
+      "id": "wolverine",
+      "slug": "wolverine",
+      "family": "frames",
+      "primitive": "frames",
+      "offlineReady": true,
+      "tag": "gen_btn_wolverine"
+    },
+    {
+      "id": "wormhole",
+      "slug": "wormhole",
+      "family": "transform",
+      "primitive": "bounce",
+      "offlineReady": true,
+      "tag": "gen_btn_wormhole"
+    },
+    {
+      "id": "yes-yes",
+      "slug": "yes-yes",
+      "family": "transform",
+      "primitive": "nod",
+      "offlineReady": true,
+      "tag": "gen_btn_yes-yes"
+    },
+    {
+      "id": "zoom",
+      "slug": "zoom",
+      "family": "transform",
+      "primitive": "zoom",
+      "offlineReady": true,
+      "tag": "gen_btn_zoom"
+    },
+    {
+      "id": "zoom-close",
+      "slug": "zoom-close",
+      "family": "transform",
+      "primitive": "zoom",
+      "offlineReady": true,
+      "tag": "gen_btn_zoom-close"
+    },
+    {
+      "id": "zoom-in",
+      "slug": "zoom-in",
+      "family": "transform",
+      "primitive": "zoom",
+      "offlineReady": true,
+      "tag": "gen_btn_zoom-in"
+    }
+  ]
+}

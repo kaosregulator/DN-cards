@@ -16,7 +16,7 @@ opt-out  →  EMOJI_DISABLE_OFFLINE=1  (force MakeEmoji browser path)
 
 ## Coverage
 
-**473 / 473 styles offline-ready** (`manifest.json` → `offlineReady: true`).
+**473 / 473 styles offline-ready** — see [`LIBRARY.md`](./LIBRARY.md) / [`LIBRARY.json`](./LIBRARY.json) for the full catalog + Colour side-control usage. (`manifest.json` → `offlineReady: true`).
 
 Families:
 

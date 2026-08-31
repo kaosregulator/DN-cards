@@ -278,3 +278,10 @@ export async function tintImageBuffer(
     raw: { width: info.width, height: info.height, channels: 4 },
   }).png().toBuffer();
 }
+
+/** Aliases matching offline/renderer.ts imports. */
+// normalizeColor already exported under this name
+// colorIsAnimated already exported under this name
+// colorFrameCount already exported under this name
+// applyColorFilter already exported under this name
+// tintImageBuffer already exported under this name
