@@ -8008,9 +8008,10 @@
       }
     },
     "offlineReady": true,
-    "fidelity": "extracted-from-prerender",
+    "fidelity": "procedural-aa-tracked",
     "notes": [
-      "Ball overlay extracted from MakeEmoji prerendered GIF; single circular subject hole"
+      "Crisp SVG pokéball (librsvg AA) posed from MakeEmoji HQ prerender motion",
+      "Soft face window with rim/band/button preserved — avoids GIF-extract pixelation"
     ],
     "verified": true,
     "verifyScore": 0.39674724556918095
@@ -8038,9 +8039,10 @@
       }
     },
     "offlineReady": true,
-    "fidelity": "extracted-from-prerender",
+    "fidelity": "procedural-aa-tracked",
     "notes": [
-      "Ball overlay extracted from MakeEmoji prerendered GIF; single circular subject hole"
+      "Crisp SVG pokéball (librsvg AA) posed from MakeEmoji HQ prerender motion",
+      "Soft face window with rim/band/button preserved — avoids GIF-extract pixelation"
     ],
     "verified": true,
     "verifyScore": 0.39464282229985026
@@ -8063,10 +8065,10 @@
     "primitive": "frames",
     "params": {},
     "offlineReady": true,
-    "fidelity": "makeemoji-frames",
+    "fidelity": "makeemoji-cdn-frames",
     "notes": [
-      "CDN frames harvested from https://assets.makeemoji.com/frames/pokeball-emerge/ (87 frames)",
-      "Replaces incorrect atlas sprite-sheet that tiled when drawn whole"
+      "Full CDN frame set from assets.makeemoji.com/frames/pokeball-emerge/",
+      "Near-opaque AA edges preserved for GIF encoding"
     ],
     "verified": true,
     "verifyScore": 0.5981924157540068
@@ -8094,9 +8096,10 @@
       }
     },
     "offlineReady": true,
-    "fidelity": "extracted-from-prerender",
+    "fidelity": "procedural-aa-tracked",
     "notes": [
-      "Ball overlay extracted from MakeEmoji prerendered GIF; single circular subject hole"
+      "Crisp SVG pokéball (librsvg AA) posed from MakeEmoji HQ prerender motion",
+      "Soft face window with rim/band/button preserved — avoids GIF-extract pixelation"
     ],
     "verified": true,
     "verifyScore": 0.43148242555523475

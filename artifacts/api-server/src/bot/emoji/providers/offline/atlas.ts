@@ -424,8 +424,11 @@ export async function composeSequence(input: SequenceComposeInput): Promise<Uint
     const dy = holeBox.y + (holeBox.h - fitted.h) / 2;
 
     const frameCanvas: Canvas = mod.createCanvas(size, size);
-    const ctx = frameCanvas.getContext("2d") as unknown as Ctx & PixelCtx;
+    const ctx = frameCanvas.getContext("2d") as unknown as Ctx & PixelCtx & {
+      imageSmoothingEnabled: boolean;
+    };
     ctx.clearRect(0, 0, size, size);
+    ctx.imageSmoothingEnabled = true;
     ctx.drawImage(subject as unknown as Canvas, dx, dy, fitted.w, fitted.h);
     ctx.drawImage(overlay.img as unknown as Canvas, 0, 0, size, size);
 

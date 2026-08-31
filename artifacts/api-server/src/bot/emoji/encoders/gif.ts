@@ -109,16 +109,30 @@ export function encodeGif(frames: Frames, size: number, delayMs: number): Buffer
   encoder.setTransparent((kr << 16) | (kg << 8) | kb);
 
   for (const data of frames) {
-    // Reduce alpha to GIF's single bit, dithered by pixel position. Surviving
-    // pixels are forced fully opaque so the palette keeps one clean key entry
-    // rather than a spread of near-key shades.
+    // Reduce alpha to GIF's single bit. Only mid-alpha pixels are Bayer-dithered
+    // (so fades still dissolve). Near-opaque anti-aliased edges (overlay rims,
+    // pokéball curves, etc.) snap fully opaque so the dither does not eat them
+    // into "missing pixels". Near-transparent fringe snaps fully clear.
     for (let i = 0; i < data.length; i += 4) {
-      const pixel = i >> 2;
-      const x = pixel % size;
-      const y = (pixel / size) | 0;
-      const threshold = DITHER_THRESHOLDS[(y & 3) * 4 + (x & 3)]!;
+      const a = data[i + 3]!;
+      let keep: boolean;
+      // Near-opaque AA rims (overlay/pokéball curves) snap opaque so Bayer
+      // dither does not chew them into "missing pixels". Keep the band tight
+      // enough that busy atlas GIFs still fit Discord's 256 KB limit.
+      if (a >= 200) {
+        keep = true;
+      } else if (a <= 40) {
+        keep = false;
+      } else {
+        const pixel = i >> 2;
+        const x = pixel % size;
+        const y = (pixel / size) | 0;
+        const remapped = ((a - 40) / (200 - 40)) * 255;
+        const threshold = DITHER_THRESHOLDS[(y & 3) * 4 + (x & 3)]!;
+        keep = remapped >= threshold;
+      }
 
-      if (data[i + 3]! < threshold) {
+      if (!keep) {
         data[i] = kr; data[i + 1] = kg; data[i + 2] = kb; data[i + 3] = 0;
       } else {
         data[i + 3] = 255;

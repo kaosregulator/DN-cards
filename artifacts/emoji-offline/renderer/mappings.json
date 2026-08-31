@@ -373,25 +373,25 @@
       "styleId": "pokeball-emerge",
       "family": "frames",
       "primitive": "frames",
-      "fidelity": "makeemoji-frames"
+      "fidelity": "makeemoji-cdn-frames"
     },
     {
       "styleId": "pokeball-go",
       "family": "frames",
       "primitive": "frames",
-      "fidelity": "extracted-from-prerender"
+      "fidelity": "procedural-aa-tracked"
     },
     {
       "styleId": "pokeball-capture",
       "family": "frames",
       "primitive": "frames",
-      "fidelity": "extracted-from-prerender"
+      "fidelity": "procedural-aa-tracked"
     },
     {
       "styleId": "pokeball-almost",
       "family": "frames",
       "primitive": "frames",
-      "fidelity": "extracted-from-prerender"
+      "fidelity": "procedural-aa-tracked"
     },
     {
       "styleId": "rainbow-bloom",
