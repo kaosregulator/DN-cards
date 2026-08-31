@@ -17,13 +17,14 @@ import type { EmojiProvider, ProviderStatus } from "./types.js";
 /**
  * Priority order:
  *   1. MakeEmoji.com (primary)
- *   2. Offline archive (only when EMOJI_ALLOW_OFFLINE_FALLBACK=1)
- *   3. Local procedural fallback (only when EMOJI_ALLOW_LOCAL_FALLBACK=1)
- *
- * Neither fallback is enabled by default.
+ *   1. Offline engine — the default. Renders every discovered style locally,
+ *      no browser, and is the SAME engine as the previews, so preview == final.
+ *   2. MakeEmoji.com browser — used only when the offline engine is turned off
+ *      (EMOJI_DISABLE_OFFLINE=1) and a real browser is present.
+ *   3. Local procedural renderer — a last resort, off unless explicitly enabled.
  */
 export const PROVIDERS: readonly EmojiProvider[] = [
-  makeEmojiProvider, offlineProvider, localProvider,
+  offlineProvider, makeEmojiProvider, localProvider,
 ];
 
 export interface ProviderReport {
@@ -51,19 +52,19 @@ export async function resolveProvider(): Promise<EmojiProvider> {
   for (const provider of PROVIDERS) {
     const status = await provider.status();
     if (status.available) {
-      if (provider.id !== "makeemoji") {
-        logger.warn({ provider: provider.id }, "serving emoji from a fallback provider, not MakeEmoji");
-      }
+      logger.debug({ provider: provider.id }, "serving emoji");
       return provider;
     }
     reasons.push(`${provider.id}: ${status.reason}`);
   }
 
+  // With the offline engine on by default this is nearly unreachable — it means
+  // someone disabled it AND the browser is absent. Say what actually happened.
   logger.error({ reasons }, "no emoji provider is available");
   throw new EmojiError(
     "provider_unavailable",
-    "The emoji generator isn't set up on this server yet — its browser is missing. "
-    + "An admin can fix it by redeploying, or running `pnpm emoji:install-browser` on the host.",
+    "The emoji generator is turned off on this server. An admin can re-enable it "
+    + "by unsetting `EMOJI_DISABLE_OFFLINE`.",
   );
 }
 

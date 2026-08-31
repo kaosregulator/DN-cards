@@ -1,10 +1,14 @@
 // ─────────────────────────────────────────────────────────────────────────────
-// Offline MakeEmoji backup provider — OFF unless an operator turns it on.
+// Offline engine — the default generator.
 //
-// Archives the discovered MakeEmoji style registry and can render a small
-// exact-name subset via the local procedural renderer with no network. It is
-// never the default: MakeEmoji.com remains primary. Enable with
-// EMOJI_ALLOW_OFFLINE_FALLBACK=1.
+// Renders every discovered MakeEmoji style locally: the same engine that draws
+// the browser previews, so what a user previews is exactly what they get. It
+// needs no network and no browser, which is what makes /emoji work reliably on
+// any host — the headless-Chromium path proved too fragile in deployment to be
+// the thing users depend on.
+//
+// ON by default. Set EMOJI_DISABLE_OFFLINE=1 only to force the MakeEmoji browser
+// path where a browser is reliably present.
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { EmojiError } from "../../utils/errors.js";
@@ -15,10 +19,11 @@ import {
 } from "./registry.js";
 import { renderOffline } from "./renderer.js";
 
-const ENV_ENABLE = "EMOJI_ALLOW_OFFLINE_FALLBACK";
+/** Opt OUT — the engine is on unless this is set. */
+const ENV_DISABLE = "EMOJI_DISABLE_OFFLINE";
 
 export function isOfflineFallbackEnabled(): boolean {
-  return /^(1|true|yes|on)$/i.test(process.env[ENV_ENABLE]?.trim() ?? "");
+  return !/^(1|true|yes|on)$/i.test(process.env[ENV_DISABLE]?.trim() ?? "");
 }
 
 export class OfflineProvider implements EmojiProvider {
@@ -29,7 +34,7 @@ export class OfflineProvider implements EmojiProvider {
     if (!isOfflineFallbackEnabled()) {
       return {
         available: false,
-        reason: `disabled — set ${ENV_ENABLE}=1 to allow the archived offline backup`,
+        reason: `disabled via ${ENV_DISABLE}`,
       };
     }
     if (!offlinePackageRoot()) {

@@ -144,28 +144,35 @@ describe("provider resolution", () => {
   beforeEach(() => {
     setManifestForTesting(null, "no manifest loaded");
     delete process.env["EMOJI_ALLOW_LOCAL_FALLBACK"];
-    delete process.env["EMOJI_ALLOW_OFFLINE_FALLBACK"];
+    delete process.env["EMOJI_DISABLE_OFFLINE"];
   });
   afterAll(() => {
     delete process.env["EMOJI_ALLOW_LOCAL_FALLBACK"];
-    delete process.env["EMOJI_ALLOW_OFFLINE_FALLBACK"];
+    delete process.env["EMOJI_DISABLE_OFFLINE"];
   });
 
-  it("fails cleanly when nothing is available", async () => {
+  it("resolves to the offline engine by default", async () => {
+    // Offline is primary now: it needs no browser, so /emoji works out of the box.
+    expect((await resolveProvider()).id).toBe("offline");
+  });
+
+  it("fails cleanly only when the offline engine is also turned off", async () => {
+    // The one path that still errors: offline disabled AND no browser.
+    process.env["EMOJI_DISABLE_OFFLINE"] = "1";
     await expect(resolveProvider()).rejects.toMatchObject({ code: "provider_unavailable" });
   });
 
-  it("does not fall back to local rendering unless an operator allows it", async () => {
-    // A silent substitution would hand the user different output while
-    // implying it came from MakeEmoji.
+  it("keeps the procedural local renderer off unless explicitly enabled", async () => {
+    // A silent substitution would hand the user different output; local stays
+    // opt-in even though offline is now on.
     const report = await providerReport();
     expect(report.find(r => r.id === "local")?.status.available).toBe(false);
-    expect(report.find(r => r.id === "offline")?.status.available).toBe(false);
   });
 
-  it("uses the local fallback only once explicitly enabled", async () => {
+  it("prefers offline over the local renderer even when local is enabled", async () => {
     process.env["EMOJI_ALLOW_LOCAL_FALLBACK"] = "1";
-    expect((await resolveProvider()).id).toBe("local");
+    // Offline comes first in the chain, so it still wins.
+    expect((await resolveProvider()).id).toBe("offline");
   });
 });
 

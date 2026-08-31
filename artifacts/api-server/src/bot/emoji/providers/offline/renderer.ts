@@ -10,6 +10,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { queueRender } from "../../../animations/render-queue.js";
+import { getCanvas } from "../../../animations/engine.js";
 import { encodeGif, encodePng } from "../../encoders/index.js";
 import { compose } from "../../renderer/compositor.js";
 import { EmojiError } from "../../utils/errors.js";
@@ -142,12 +143,69 @@ export async function renderOffline(options: GenerateOptions): Promise<GenerateR
   };
 }
 
+/**
+ * Fraction of the canvas the finished art is kept within.
+ *
+ * The overlay/atlas/frame composites draw their art edge-to-edge, so a hat, a
+ * pumpkin rim or a patting hand that reaches the border gets sliced by the
+ * canvas. Discord shows the emoji small, and "nothing cut off" reads far better
+ * than "maximally filled", so every finished frame is scaled to sit inside this
+ * box with a transparent margin. 0.9 keeps a ~5% border on each side — enough to
+ * rescue the clipped styles without visibly shrinking the rest.
+ */
+const SAFE_FILL = 0.9;
+
+/**
+ * Scale each frame's content into a centered inset box so no art touches the
+ * edge. Runs at the single encode funnel, so it protects every style family at
+ * once. Fully-transparent frames pass through untouched.
+ */
+async function insetFrames(frames: Uint8ClampedArray[], size: number): Promise<Uint8ClampedArray[]> {
+  const mod = await getCanvas();
+  if (!mod) return frames;
+
+  const inner = Math.max(1, Math.round(size * SAFE_FILL));
+  const offset = Math.round((size - inner) / 2);
+
+  const src = mod.createCanvas(size, size);
+  const srcCtx = src.getContext("2d") as unknown as PixelCtx;
+  const dst = mod.createCanvas(size, size);
+  const dstCtx = dst.getContext("2d") as unknown as (PixelCtx & {
+    clearRect(x: number, y: number, w: number, h: number): void;
+    drawImage(img: unknown, dx: number, dy: number, dw: number, dh: number): void;
+    imageSmoothingEnabled: boolean;
+  });
+
+  const out: Uint8ClampedArray[] = [];
+  for (const frame of frames) {
+    const image = srcCtx.createImageData(size, size);
+    image.data.set(frame);
+    srcCtx.putImageData(image, 0, 0);
+
+    dstCtx.clearRect(0, 0, size, size);
+    dstCtx.imageSmoothingEnabled = true;
+    dstCtx.drawImage(src as unknown, offset, offset, inner, inner);
+    out.push(new Uint8ClampedArray(dstCtx.getImageData(0, 0, size, size).data));
+  }
+  return out;
+}
+
+interface PixelCtx {
+  getImageData(sx: number, sy: number, sw: number, sh: number): { data: Uint8ClampedArray };
+  putImageData(image: { data: Uint8ClampedArray }, dx: number, dy: number): void;
+  createImageData(sw: number, sh: number): { data: Uint8ClampedArray };
+}
+
 async function encodeFrames(
-  frames: Uint8ClampedArray[],
+  rawFrames: Uint8ClampedArray[],
   size: number,
   format: GenerateOptions["format"],
   delayMs: number,
 ): Promise<Buffer> {
+  // Guarantee no style's art is clipped at the canvas edge, whatever family it
+  // came from, before it is encoded.
+  const frames = await insetFrames(rawFrames, size);
+
   if (format === "png") return encodePng(frames, size);
   if (format === "gif" || format === "apng") {
     // APNG: emit GIF for now (animated); Discord accepts the bytes as a file.

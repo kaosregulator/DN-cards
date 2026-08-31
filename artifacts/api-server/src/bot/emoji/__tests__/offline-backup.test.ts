@@ -90,23 +90,28 @@ describe("offline MakeEmoji backup package", () => {
   });
 });
 
-describe("offline provider (disabled by default)", () => {
+describe("offline provider (on by default)", () => {
   beforeEach(() => {
-    delete process.env["EMOJI_ALLOW_OFFLINE_FALLBACK"];
+    delete process.env["EMOJI_DISABLE_OFFLINE"];
     delete process.env["EMOJI_ALLOW_LOCAL_FALLBACK"];
     reloadOfflineRegistry();
   });
   afterAll(() => {
-    delete process.env["EMOJI_ALLOW_OFFLINE_FALLBACK"];
+    delete process.env["EMOJI_DISABLE_OFFLINE"];
   });
 
-  it("is unavailable unless explicitly enabled", async () => {
+  it("is available by default, and can be turned off", async () => {
+    // The offline engine is the default generator now.
+    expect(isOfflineFallbackEnabled()).toBe(true);
+    expect((await offlineProvider.status()).available).toBe(true);
+
+    process.env["EMOJI_DISABLE_OFFLINE"] = "1";
     expect(isOfflineFallbackEnabled()).toBe(false);
     expect((await offlineProvider.status()).available).toBe(false);
+    delete process.env["EMOJI_DISABLE_OFFLINE"];
   });
 
   it("renders mapped styles with no network when enabled", async () => {
-    process.env["EMOJI_ALLOW_OFFLINE_FALLBACK"] = "1";
     expect((await offlineProvider.status()).available).toBe(true);
 
     const image = await testImage(96);
@@ -121,7 +126,6 @@ describe("offline provider (disabled by default)", () => {
   }, 60_000);
 
   it("refuses unknown styles instead of faking them", async () => {
-    process.env["EMOJI_ALLOW_OFFLINE_FALLBACK"] = "1";
     await expect(offlineProvider.generate({
       image: await testImage(64),
       animation: "definitely-not-a-real-makeemoji-style-xyz",
@@ -130,7 +134,6 @@ describe("offline provider (disabled by default)", () => {
   });
 
   it("renders archived atlas styles when offline fallback is enabled", async () => {
-    process.env["EMOJI_ALLOW_OFFLINE_FALLBACK"] = "1";
     const result = await offlineProvider.generate({
       image: await testImage(64), animation: "party-parrot", format: "gif", size: "64",
     });
@@ -142,7 +145,6 @@ describe("offline provider (disabled by default)", () => {
     // Inject an unavailable MakeEmoji + enable offline — then offline may serve.
     // With a verified live manifest MakeEmoji stays primary; here we force it off.
     setManifestForTesting(null, "forced unavailable for offline test");
-    process.env["EMOJI_ALLOW_OFFLINE_FALLBACK"] = "1";
     const provider = await resolveProvider();
     expect(provider.id).toBe("offline");
 

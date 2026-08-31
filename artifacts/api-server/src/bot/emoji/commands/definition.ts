@@ -1,80 +1,22 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // /emoji slash-command definition.
 //
-// The MakeEmoji settings are AUTOCOMPLETE options, not fixed choices. Fixed
-// choices are baked into the command when it is registered with Discord, which
-// would mean shipping a list of animation names — and we are not allowed to
-// invent those. Autocomplete resolves against the discovery manifest at the
-// moment the user types, so the menu always reflects what the site really offers
-// and updates the instant a new manifest is dropped in.
-//
-// Only `format` is a fixed choice: the three containers are the integration's
-// own contract, not a vocabulary read off the site.
+// Intentionally option-free: `/emoji` opens an interactive dashboard where the
+// target, style and every setting are chosen with buttons and menus. Keeping the
+// slash surface bare makes the entry point obvious and moves all the controls to
+// where they belong — inside the flow.
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { SlashCommandBuilder } from "discord.js";
-import { FORMATS } from "../utils/options.js";
-
-const FORMAT_LABELS: Record<string, string> = {
-  gif: "GIF (animated, widest support)",
-  webp: "WebP (animated, smaller files)",
-  apng: "APNG (animated PNG, best quality)",
-};
-
-const FORMAT_CHOICES = FORMATS.map(f => ({
-  name: FORMAT_LABELS[f] ?? f.toUpperCase(),
-  value: f,
-}));
 
 /** `/emoji` — consumed by commands/register.ts. */
 export function buildEmojiCommandJson() {
+  // Deliberately option-free. Everything — target, style, size, speed, format —
+  // is chosen in the interactive dashboard the command opens, so the slash
+  // surface stays a single, obvious entry point.
   return new SlashCommandBuilder()
     .setName("emoji")
-    .setDescription("Turn any image into an animated emoji")
+    .setDescription("Make an animated emoji from any avatar, image, or server icon")
     .setDMPermission(false)
-    .addAttachmentOption(o => o
-      .setName("image")
-      .setDescription("Upload an image from Discord to animate"))
-    .addUserOption(o => o
-      .setName("user")
-      .setDescription("Or use a member's avatar (defaults to yours)"))
-    .addStringOption(o => o
-      .setName("url")
-      .setDescription("Or paste a public image URL"))
-    .addBooleanOption(o => o
-      .setName("server")
-      .setDescription("Use this server's icon as the image"))
-    .addStringOption(o => o
-      .setName("animation")
-      .setDescription("Animation to apply")
-      .setAutocomplete(true))
-    .addStringOption(o => o
-      .setName("speed")
-      .setDescription("Playback speed")
-      .setAutocomplete(true))
-    .addStringOption(o => o
-      .setName("direction")
-      .setDescription("Direction, for animations that travel or rotate")
-      .setAutocomplete(true))
-    .addStringOption(o => o
-      .setName("size")
-      .setDescription("Output size")
-      .setAutocomplete(true))
-    .addStringOption(o => o
-      .setName("color")
-      .setDescription("Colour modifier")
-      .setAutocomplete(true))
-    .addStringOption(o => o
-      .setName("quality")
-      .setDescription("Quality / compression")
-      .setAutocomplete(true))
-    .addStringOption(o => o
-      .setName("platform")
-      .setDescription("Platform preset")
-      .setAutocomplete(true))
-    .addStringOption(o => o
-      .setName("format")
-      .setDescription("Output format (default: GIF)")
-      .addChoices(...FORMAT_CHOICES))
     .toJSON();
 }
