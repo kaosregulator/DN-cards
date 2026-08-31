@@ -17,6 +17,7 @@ import {
   type AutocompleteInteraction, type ButtonInteraction,
   type ChatInputCommandInteraction, type Interaction,
   type MessageComponentInteraction, type ModalSubmitInteraction,
+  type UserSelectMenuInteraction,
 } from "discord.js";
 import { logger } from "../../../lib/logger.js";
 import { DISCORD_EMOJI_LIMIT, generateEmoji } from "../generate.js";
@@ -30,7 +31,8 @@ import {
   buildStylesPicker, buildStyleSearchModal, ensureStyleFocus, findStyle,
 } from "./styles-picker.js";
 import {
-  buildCachedControlsReply, buildControls, buildPostPicker, buildUploadModal, describe, parseCid,
+  buildCachedControlsReply, buildControls, buildPostPicker, buildTargetChooser,
+  buildUploadModal, describe, parseCid,
 } from "./ui.js";
 import { createSession, endSession, getSession, touchSession, type EmojiSession } from "./session.js";
 
@@ -92,6 +94,7 @@ function resolveSource(interaction: ChatInputCommandInteraction): Source {
 
 /** Session settings as a provider request. */
 function toGenerateOptions(session: EmojiSession): GenerateOptions {
+  if (!session.image) throw new EmojiError("no_source", "Pick something to animate first.");
   return {
     image: session.image,
     animation: session.animation,
@@ -107,6 +110,11 @@ function toGenerateOptions(session: EmojiSession): GenerateOptions {
 
 /** Generate and build the Discord message payload. */
 async function buildReply(session: EmojiSession, token: string) {
+  if (!session.image) {
+    // Every path that renders a result sets an image first; this guards the type
+    // and turns a logic slip into a clean message rather than a crash.
+    throw new EmojiError("no_source", "Pick something to animate first.");
+  }
   const result = await generateEmoji(toGenerateOptions(session));
 
   session.lastResult = {
@@ -119,12 +127,13 @@ async function buildReply(session: EmojiSession, token: string) {
   session.view = "controls";
 
   const file = new AttachmentBuilder(result.buffer, { name: `emoji.${extensionFor(result.format)}` });
+  const sourceLabel = session.sourceLabel ?? "your image";
   const lines = [
     describe(session, result.bytes, result.providerId, result.cached),
-    `-# from ${session.sourceLabel}`,
+    `-# from ${sourceLabel}`,
   ];
 
-  if (/avatar/i.test(session.sourceLabel)) {
+  if (/avatar/i.test(sourceLabel)) {
     lines.push("-# Tip: tap **Upload image** to animate a Discord attachment instead of an avatar.");
   }
 
@@ -190,18 +199,46 @@ function failureMessage(err: unknown): string {
 export async function handleEmojiCommand(interaction: ChatInputCommandInteraction): Promise<void> {
   await interaction.deferReply();
 
-  // Declared out here so the catch can rebuild the panel for a session that was
-  // created before generation failed.
+  /** A user-supplied option, ignoring the autocomplete placeholder. */
+  const optional = (name: string) => {
+    const value = interaction.options.getString(name)?.trim();
+    return value && !isPlaceholder(value) ? value : undefined;
+  };
+
+  // Power-user fast path: if a target or a style was named on the command, honour
+  // it and skip the chooser. Everything else opens the visual, target-first flow.
+  const namedTarget = Boolean(
+    interaction.options.getAttachment("image")
+      || interaction.options.getUser("user")
+      || interaction.options.getString("url")
+      || interaction.options.getBoolean("server")
+      || optional("animation"),
+  );
+
   let token: string | undefined;
 
   try {
+    const animation = optional("animation") ?? defaultAnimation();
+
+    if (!namedTarget) {
+      // The common case: no options. Create a session with no image yet and show
+      // the "what do you want to animate?" screen. Picking a target loads the
+      // source and drops straight into the style browser.
+      const created = createSession({
+        image: null,
+        ownerId: interaction.user.id,
+        sourceLabel: null,
+        animation: animation ?? "",
+        format: parseFormat(interaction.options.getString("format")),
+        view: "target",
+      });
+      await interaction.editReply(buildTargetChooser(created.token));
+      return;
+    }
+
     const source = resolveSource(interaction);
     const image = await loadSource(source.url);
 
-    const chosen = interaction.options.getString("animation")?.trim();
-    // The autocomplete placeholder is a prompt, not a value — a user can submit
-    // it by pressing enter on the hint, and it must not reach the provider.
-    const animation = chosen && !isPlaceholder(chosen) ? chosen : defaultAnimation();
     if (!animation) {
       // With no manifest there is no animation to default to, so say what's
       // missing rather than sending an empty request at the provider.
@@ -210,12 +247,6 @@ export async function handleEmojiCommand(interaction: ChatInputCommandInteractio
         "The emoji generator isn't set up on this server yet. An admin needs to run MakeEmoji discovery first.",
       );
     }
-
-    /** A user-supplied option, ignoring the autocomplete placeholder. */
-    const optional = (name: string) => {
-      const value = interaction.options.getString(name)?.trim();
-      return value && !isPlaceholder(value) ? value : undefined;
-    };
 
     const created = createSession({
       image,
@@ -285,6 +316,16 @@ export async function handleEmojiInteraction(interaction: Interaction): Promise<
     return;
   }
 
+  // Opening screen: a target was chosen. Load it and drop into the style browser.
+  if (action === "pick_user" && interaction.isUserSelectMenu()) {
+    await handleTargetPick(interaction, token, "member");
+    return;
+  }
+  if ((action === "pick_me" || action === "pick_server") && interaction.isButton()) {
+    await handleTargetPick(interaction, token, action === "pick_me" ? "me" : "server");
+    return;
+  }
+
   if (action.startsWith("target_") && interaction.isButton()) {
     await handleTargetAction(interaction, session, token, action);
     return;
@@ -308,6 +349,79 @@ export async function handleEmojiInteraction(interaction: Interaction): Promise<
 
   try {
     await interaction.editReply(await buildReply(updated, token));
+  } catch (err) {
+    await interaction.editReply(failureReply(err, token));
+  }
+}
+
+type PickKind = "member" | "me" | "server";
+
+/**
+ * A target was chosen on the opening screen. Resolve its image, store it, and
+ * land in the style browser so the user immediately sees their own image under
+ * each style.
+ */
+async function handleTargetPick(
+  interaction: UserSelectMenuInteraction | ButtonInteraction,
+  token: string,
+  kind: PickKind,
+): Promise<void> {
+  let source: Source | null;
+
+  if (kind === "member" && interaction.isUserSelectMenu()) {
+    const user = interaction.users.first();
+    source = user
+      ? {
+          url: user.displayAvatarURL({ extension: "png", size: AVATAR_SIZE }),
+          label: `${user.username}'s avatar`,
+        }
+      : null;
+  } else if (kind === "server") {
+    source = serverIconSource(interaction);
+  } else {
+    source = {
+      url: interaction.user.displayAvatarURL({ extension: "png", size: AVATAR_SIZE }),
+      label: "your avatar",
+    };
+  }
+
+  if (!source) {
+    await interaction.reply({
+      content: "❌ This server doesn't have an icon set. Pick a member or upload an image instead.",
+      flags: MessageFlags.Ephemeral,
+    }).catch(() => {});
+    return;
+  }
+
+  await interaction.deferUpdate();
+  await enterStyleBrowser(interaction, token, source);
+}
+
+/**
+ * Load `source` into the session and render the style browser.
+ *
+ * Shared by every way of choosing or changing a target. Any cached result from a
+ * previous image is dropped — it belongs to the old subject, and keeping it
+ * would let Apply or Post use the wrong one.
+ */
+async function enterStyleBrowser(
+  interaction: MessageComponentInteraction | ModalSubmitInteraction,
+  token: string,
+  source: Source,
+): Promise<void> {
+  try {
+    const image = await loadSource(source.url);
+    const current = getSession(token);
+    const updated = touchSession(token, {
+      image,
+      sourceLabel: source.label,
+      view: "styles",
+      stylePage: 0,
+      styleFocus: current?.animation ?? null,
+      lastResult: undefined,
+    });
+    if (!updated) return;
+    await interaction.editReply(await buildStylesPicker(updated, token));
   } catch (err) {
     await interaction.editReply(failureReply(err, token));
   }
@@ -464,15 +578,10 @@ async function handleUploadAction(
   await interaction.deferUpdate();
 
   try {
-    const image = await loadSource(attachment.url);
-    const updated = touchSession(token, {
-      image,
-      sourceLabel: attachment.name ?? "your upload",
-      view: "controls",
-      lastResult: undefined,
+    await enterStyleBrowser(interaction, token, {
+      url: attachment.url,
+      label: attachment.name ?? "your upload",
     });
-    if (!updated) return;
-    await interaction.editReply(await buildReply(updated, token));
   } catch (err) {
     await interaction.editReply(failureReply(err, token));
   }

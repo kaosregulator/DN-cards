@@ -15,11 +15,63 @@ import {
   ChannelSelectMenuBuilder, ChannelType,
   FileUploadBuilder, LabelBuilder, ModalBuilder,
   StringSelectMenuBuilder, StringSelectMenuOptionBuilder,
+  UserSelectMenuBuilder,
 } from "discord.js";
 import { getManifest } from "../providers/makeemoji/manifest.js";
 import type { OptionKey } from "../providers/makeemoji/types.js";
 import { FORMATS, extensionFor } from "../utils/options.js";
 import type { EmojiSession } from "./session.js";
+
+/**
+ * Opening screen: what do you want to animate?
+ *
+ * This is the first thing `/emoji` shows. Three targets, each one click:
+ *   • User   — a native member picker (defaults to the caller, picks anyone)
+ *   • Image  — the Discord upload modal
+ *   • Server — the guild's own icon
+ *
+ * Picking any of them loads the source and drops straight into the style
+ * browser, so the whole flow is target → styles → generate with no menus in
+ * between.
+ */
+export function buildTargetChooser(token: string) {
+  const memberRow = new ActionRowBuilder<UserSelectMenuBuilder>().addComponents(
+    new UserSelectMenuBuilder()
+      .setCustomId(cid("pick_user", token))
+      .setPlaceholder("👤 Animate a member — pick anyone (default: you)")
+      .setMinValues(1)
+      .setMaxValues(1),
+  );
+
+  const otherRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder()
+      .setCustomId(cid("pick_me", token))
+      .setLabel("My avatar")
+      .setEmoji("🙂")
+      .setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder()
+      .setCustomId(cid("upload", token))
+      .setLabel("Upload image")
+      .setEmoji("🖼️")
+      .setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder()
+      .setCustomId(cid("pick_server", token))
+      .setLabel("Server icon")
+      .setEmoji("🏠")
+      .setStyle(ButtonStyle.Secondary),
+  );
+
+  return {
+    content: [
+      "## 🎨 Make an emoji",
+      "**What do you want to animate?**",
+      "-# Pick a member below, or use your own avatar, an uploaded image, or this server's icon.",
+    ].join("\n"),
+    embeds: [],
+    files: [],
+    components: [memberRow, otherRow] as unknown as ActionRowBuilder<never>[],
+  };
+}
 
 /** customId namespace. One router owns every id starting with this. */
 export const CID = "emoji";
@@ -226,11 +278,12 @@ export function buildCachedControlsReply(session: EmojiSession, token: string) {
   if (!result) return null;
 
   const file = new AttachmentBuilder(result.buffer, { name: `emoji.${extensionFor(result.format)}` });
+  const sourceLabel = session.sourceLabel ?? "your image";
   const lines = [
     describe(session, result.bytes, result.providerId, result.cached),
-    `-# from ${session.sourceLabel}`,
+    `-# from ${sourceLabel}`,
   ];
-  if (/avatar/i.test(session.sourceLabel)) {
+  if (/avatar/i.test(sourceLabel)) {
     lines.push("-# Tip: tap **Upload** to animate your own image, or **Server icon** for this server's picture.");
   }
   return {
