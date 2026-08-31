@@ -89,9 +89,11 @@ export async function renderOffline(options: GenerateOptions): Promise<GenerateR
 
     if (family === "atlas" || family === "frames") {
       const slug = recipe!.slug;
-      const dir = family === "atlas" ? resolveAtlasDir(slug) : resolveFramesDir(slug);
-      // Some "frames" styles only have an atlas (or vice versa) — try both.
-      const resolved = dir
+      // Prefer real CDN frame PNGs over atlas sprite-sheets whenever both exist.
+      // Drawing a sheet whole is what tiled the subject across the canvas.
+      const framesDir = resolveFramesDir(slug);
+      const atlasDir = resolveAtlasDir(slug);
+      const resolved = framesDir ?? atlasDir
         ?? (family === "atlas" ? resolveFramesDir(slug) : resolveAtlasDir(slug));
       if (!resolved) {
         throw new EmojiError(
@@ -103,6 +105,7 @@ export async function renderOffline(options: GenerateOptions): Promise<GenerateR
         image: options.image,
         sequenceDir: resolved,
         size,
+        // CDN frame dirs can be long; keep GIF under Discord's size budget.
         maxFrames: options.format === "png" ? 1 : 24,
       });
       return encodeFrames(frames, size, options.format, delayFor(50, speed));
