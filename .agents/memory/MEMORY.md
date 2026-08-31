@@ -45,3 +45,4 @@
 - [HQ concurrency and derived state](hq-concurrency-and-derived-state.md) — siege/placement mutations need atomic guards, and computed HQ level must be persisted during reconciliation.
 - [Managed artifact secret wiring](artifact-secret-wiring.md) — shared Replit Secrets need explicit name-only `${SECRET_NAME}` references in managed artifact service environments.
 - [Activity root path swap](activity-root-path-swap.md) — Activity owns `/` (Discord loads it from root); Dashboard at `/dashboard`; single `/` Discord URL mapping preserves full API path.
+- [MakeEmoji browser runtime](makeemoji-browser-runtime.md) — Playwright, its Chromium binary, and Linux shared libraries are separate deployment requirements.
