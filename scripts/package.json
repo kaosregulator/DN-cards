@@ -23,7 +23,8 @@
     "migration:snapshot": "tsx ./src/migration-snapshot.ts",
     "migration:compare": "tsx ./src/migration-compare.ts",
     "makeemoji:discover": "tsx ./src/makeemoji-discover.ts",
-    "makeemoji:backup": "tsx ./src/makeemoji-backup.ts"
+    "makeemoji:backup": "tsx ./src/makeemoji-backup.ts",
+    "makeemoji:harvest-frames": "tsx ./src/makeemoji-harvest-frames.ts"
   },
   "devDependencies": {
     "@types/node": "catalog:",
