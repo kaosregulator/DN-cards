@@ -220,7 +220,7 @@ export async function launchBrowser(): Promise<Browser> {
     );
     throw new EmojiError(
       "browser_failed",
-      "The emoji generator couldn't start. An admin has been notified.",
+      "The emoji generator's browser wouldn't start. This is usually temporary — try again in a moment.",
     );
   }
 }

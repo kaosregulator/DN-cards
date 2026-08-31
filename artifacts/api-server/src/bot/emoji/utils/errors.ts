@@ -63,3 +63,22 @@ const RETRYABLE = new Set<EmojiErrorCode>([
 export function isRetryable(err: unknown): boolean {
   return err instanceof EmojiError && RETRYABLE.has(err.code);
 }
+
+/**
+ * Codes that mean "this server isn't configured", as opposed to "that attempt
+ * didn't work".
+ *
+ * The distinction is what a user should DO. A setup gap will fail identically
+ * forever, so telling someone to try again wastes their time; a transient fault
+ * usually clears on its own. Everything else is about their input.
+ */
+const SETUP = new Set<EmojiErrorCode>(["provider_unavailable", "site_changed"]);
+
+export type FailureKind = "setup" | "transient" | "input";
+
+export function failureKind(err: unknown): FailureKind {
+  const code = err instanceof EmojiError ? err.code : "internal";
+  if (SETUP.has(code)) return "setup";
+  if (RETRYABLE.has(code)) return "transient";
+  return "input";
+}

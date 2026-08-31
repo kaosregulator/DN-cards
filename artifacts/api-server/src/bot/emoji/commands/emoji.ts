@@ -21,7 +21,7 @@ import {
 import { logger } from "../../../lib/logger.js";
 import { DISCORD_EMOJI_LIMIT, generateEmoji } from "../generate.js";
 import type { GenerateOptions } from "../types.js";
-import { EmojiError, toEmojiError } from "../utils/errors.js";
+import { EmojiError, failureKind, toEmojiError } from "../utils/errors.js";
 import { parseFormat, extensionFor } from "../utils/options.js";
 import { loadSource } from "../utils/source.js";
 import { toggleFavorite } from "./favorites.js";
@@ -161,13 +161,30 @@ function failureReply(err: unknown, token?: string) {
   };
 }
 
-/** Turn any failure into a short, user-facing message. */
+/**
+ * Turn any failure into a short, user-facing message.
+ *
+ * The prefix and the follow-up line depend on what the user can actually do:
+ * retrying a missing browser will never work, and telling someone their server
+ * is misconfigured when MakeEmoji merely timed out sends them to an admin for
+ * nothing.
+ */
 function failureMessage(err: unknown): string {
   const emojiError = toEmojiError(err);
+  const kind = failureKind(err);
+
   if (emojiError.code === "internal") {
     logger.error({ err }, "emoji command failed unexpectedly");
   }
-  return `❌ ${emojiError.message}`;
+
+  switch (kind) {
+    case "setup":
+      return `🛠️ ${emojiError.message}`;
+    case "transient":
+      return `⏳ ${emojiError.message}\n-# This usually clears on its own — try again in a few seconds.`;
+    default:
+      return `❌ ${emojiError.message}`;
+  }
 }
 
 export async function handleEmojiCommand(interaction: ChatInputCommandInteraction): Promise<void> {

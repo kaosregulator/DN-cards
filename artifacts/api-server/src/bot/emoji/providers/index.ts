@@ -62,7 +62,8 @@ export async function resolveProvider(): Promise<EmojiProvider> {
   logger.error({ reasons }, "no emoji provider is available");
   throw new EmojiError(
     "provider_unavailable",
-    "The emoji generator isn't available right now. An admin has been notified.",
+    "The emoji generator isn't set up on this server yet — its browser is missing. "
+    + "An admin can fix it by redeploying, or running `pnpm emoji:install-browser` on the host.",
   );
 }
 
