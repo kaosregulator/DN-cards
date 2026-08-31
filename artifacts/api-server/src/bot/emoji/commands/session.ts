@@ -21,7 +21,7 @@ const TTL_MS = 10 * 60 * 1000;
 const MAX_SESSIONS = 200;
 
 /** Which panel the interaction message is currently showing. */
-export type EmojiView = "controls" | "styles";
+export type EmojiView = "controls" | "styles" | "post";
 
 /** Last successful generation — lets "Back" restore the panel without re-rendering. */
 export interface EmojiLastResult {

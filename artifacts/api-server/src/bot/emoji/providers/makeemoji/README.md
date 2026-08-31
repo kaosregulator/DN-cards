@@ -124,6 +124,36 @@ Set `requiresBrowserSession: true` if it needed a cookie or token the browser
 established — the provider then skips the direct path rather than fabricating a
 credential.
 
+## Deploying on Replit
+
+Two things are needed beyond `pnpm install`, and neither is automatic.
+
+**1. Install the browser.** Playwright is an optional dependency, so the package
+arrives but the browser binary does not:
+
+```bash
+pnpm emoji:install-browser
+```
+
+Replit caches it under `<workspace>/.cache/ms-playwright`, not `$HOME` — the
+runtime searches both, so no configuration is needed.
+
+**2. Chromium's system libraries.** On this image `ldd` reports two missing from
+both the full Chromium and the headless shell:
+
+| Missing | Nix package |
+|---|---|
+| `libgbm.so.1` | `libgbm` (split out of `mesa` in newer nixpkgs) |
+| `libudev.so.1` | `udev` / `systemd` |
+
+Both are in `replit.nix` with `or` fallbacks. Without them the browser aborts at
+startup and users see *"The emoji generator couldn't start"*.
+
+To check the current state after a change, hit the admin endpoint
+(`GET /api/admin/emoji/offline`) — `primary.status` names the exact problem and
+the command that fixes it. If a launch still fails, the logged Playwright error
+names the offending library; add its Nix package and rebuild.
+
 ## Configuration
 
 | Variable | Purpose |

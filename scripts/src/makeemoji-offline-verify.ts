@@ -49,7 +49,10 @@ type Fingerprint = {
 async function fingerprintPreview(path: string): Promise<Fingerprint | null> {
   const sharp = await loadSharp();
   try {
-    const meta = await sharp(path, { animated: true, pages: -1 }).metadata();
+    // `animated: true` already means "decode every page", so the explicit
+    // `pages: -1` was redundant — and it is absent from sharp's resolved
+    // types here, which broke the repo-wide typecheck.
+    const meta = await sharp(path, { animated: true }).metadata();
     const pages = meta.pages ?? 1;
     const pageHeight = meta.pageHeight ?? meta.height ?? 0;
     const n = Math.min(pages, 12);

@@ -1,7 +1,12 @@
 {pkgs}: {
   deps = [
-    pkgs.libgbm
-    pkgs.systemd
+    # ── headless Chromium (Playwright, used by /emoji) ────────────────────────
+    # `ldd` on both the full Chromium and the headless shell reports exactly two
+    # missing libraries on this image. Without them the browser aborts at start
+    # with "error while loading shared libraries", which surfaces to users as
+    # "The emoji generator couldn't start".
+    pkgs.libgbm      # libgbm.so.1  — mesa alone does not expose this SONAME here
+    pkgs.systemd     # libudev.so.1
     pkgs.libxkbcommon
     pkgs.expat
     pkgs.mesa
