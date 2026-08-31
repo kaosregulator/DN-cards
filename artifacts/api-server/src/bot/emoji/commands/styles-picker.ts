@@ -131,14 +131,18 @@ export async function buildStylesPicker(
   // Prefer a preview rendered on the user's OWN image — that is the question
   // they are actually asking. MakeEmoji's prerendered cat is the fallback for
   // styles the offline engine cannot draw, so browsing never loses its picture.
-  const livePreview = await renderStylePreview(session.image, focusValue);
+  // The browser is only ever shown after a target is chosen, so image is set;
+  // the guard keeps the type honest.
+  const livePreview = session.image
+    ? await renderStylePreview(session.image, focusValue)
+    : null;
   const previewUrl = livePreview
     ? null
     : focused ? await resolveStylePreviewUrl(focused.label) : null;
 
   // Warm the styles on this page so paging feels instant rather than rendering
   // one at a time as the user clicks.
-  prefetchStylePreviews(session.image, rows.map(r => r.value));
+  if (session.image) prefetchStylePreviews(session.image, rows.map(r => r.value));
 
   const filters: string[] = [];
   if (session.styleFilter === "favorites") filters.push("★ favorites");

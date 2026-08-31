@@ -21,7 +21,13 @@ const TTL_MS = 10 * 60 * 1000;
 const MAX_SESSIONS = 200;
 
 /** Which panel the interaction message is currently showing. */
-export type EmojiView = "controls" | "styles" | "post";
+/**
+ * Which screen the interaction message is showing.
+ *
+ * `target` is the opening screen — pick what to animate before anything else.
+ * The session exists before an image does, so `image` is null until then.
+ */
+export type EmojiView = "target" | "controls" | "styles" | "post";
 
 /** Last successful generation — lets "Back" restore the panel without re-rendering. */
 export interface EmojiLastResult {
@@ -33,12 +39,12 @@ export interface EmojiLastResult {
 }
 
 export interface EmojiSession {
-  /** Normalised PNG bytes of the source image. */
-  image: Buffer;
+  /** Normalised PNG bytes of the source image, or null before a target is chosen. */
+  image: Buffer | null;
   /** Discord user id allowed to drive these controls. */
   ownerId: string;
-  /** Where the image came from, shown in the reply. */
-  sourceLabel: string;
+  /** Where the image came from, or null before a target is chosen. */
+  sourceLabel: string | null;
   /** MakeEmoji settings. Values are whatever the manifest offers. */
   animation: string;
   speed?: string;
