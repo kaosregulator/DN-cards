@@ -1,5 +1,6 @@
 {pkgs}: {
   deps = [
+    pkgs.systemd
     pkgs.libxkbcommon
     pkgs.expat
     pkgs.mesa
