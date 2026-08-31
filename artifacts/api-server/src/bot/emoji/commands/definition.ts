@@ -41,6 +41,9 @@ export function buildEmojiCommandJson() {
     .addStringOption(o => o
       .setName("url")
       .setDescription("Or paste a public image URL"))
+    .addBooleanOption(o => o
+      .setName("server")
+      .setDescription("Use this server's icon as the image"))
     .addStringOption(o => o
       .setName("animation")
       .setDescription("Animation to apply")

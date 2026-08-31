@@ -17,10 +17,18 @@ const command = () => buildEmojiCommandJson() as unknown as {
 describe("/emoji definition", () => {
   it("exposes the MakeEmoji settings", () => {
     expect(command().options?.map(o => o.name)).toEqual([
-      "image", "user", "url",
+      "image", "user", "url", "server",
       "animation", "speed", "direction", "size", "color", "quality", "platform",
       "format",
     ]);
+  });
+
+  it("offers all four image targets", () => {
+    // Upload, a member's avatar, a URL, and the server's own icon.
+    const names = command().options?.map(o => o.name) ?? [];
+    for (const target of ["image", "user", "url", "server"]) {
+      expect(names, target).toContain(target);
+    }
   });
 
   it("makes every MakeEmoji setting autocomplete, not a fixed choice list", () => {

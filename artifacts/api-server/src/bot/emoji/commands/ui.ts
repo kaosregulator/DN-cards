@@ -12,6 +12,7 @@
 
 import {
   ActionRowBuilder, AttachmentBuilder, ButtonBuilder, ButtonStyle,
+  ChannelSelectMenuBuilder, ChannelType,
   FileUploadBuilder, LabelBuilder, ModalBuilder,
   StringSelectMenuBuilder, StringSelectMenuOptionBuilder,
 } from "discord.js";
@@ -113,8 +114,20 @@ function stylesRow(session: EmojiSession, token: string): ActionRowBuilder<Butto
       .setStyle(ButtonStyle.Primary),
     new ButtonBuilder()
       .setCustomId(cid("upload", token))
-      .setLabel("Upload image")
+      .setLabel("Upload")
       .setEmoji("📎")
+      .setStyle(ButtonStyle.Secondary),
+    // Target switches share this row rather than taking one of their own: the
+    // panel is already at Discord's five-row limit.
+    new ButtonBuilder()
+      .setCustomId(cid("target_server", token))
+      .setLabel("Server icon")
+      .setEmoji("🏠")
+      .setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder()
+      .setCustomId(cid("target_me", token))
+      .setLabel("My avatar")
+      .setEmoji("🙂")
       .setStyle(ButtonStyle.Secondary),
   );
 }
@@ -149,11 +162,46 @@ function actionsRow(session: EmojiSession, token: string): ActionRowBuilder<Butt
   return new ActionRowBuilder<ButtonBuilder>().addComponents(
     ...formatButtons,
     new ButtonBuilder()
+      .setCustomId(cid("post", token))
+      .setLabel("Post")
+      .setEmoji("📤")
+      // Nothing to post until a generation has succeeded.
+      .setDisabled(!session.lastResult)
+      .setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder()
       .setCustomId(cid("done", token))
       .setLabel("Done")
       .setEmoji("✅")
       .setStyle(ButtonStyle.Success),
   );
+}
+
+/**
+ * Channel picker for sending the finished emoji somewhere.
+ *
+ * A separate view rather than another row: the control panel already uses all
+ * five Discord allows.
+ */
+export function buildPostPicker(session: EmojiSession, token: string) {
+  const picker = new ChannelSelectMenuBuilder()
+    .setCustomId(cid("post_pick", token))
+    .setPlaceholder("Choose a channel to post it in")
+    .addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement, ChannelType.PublicThread);
+
+  const back = new ButtonBuilder()
+    .setCustomId(cid("post_back", token))
+    .setLabel("Back")
+    .setEmoji("◀️")
+    .setStyle(ButtonStyle.Secondary);
+
+  const size = session.lastResult ? `${(session.lastResult.bytes / 1024).toFixed(1)} KB` : "";
+  return {
+    content: `📤 **Post this emoji** — ${size}\n-# Or just save the image above; it's a normal attachment.`,
+    components: [
+      new ActionRowBuilder<ChannelSelectMenuBuilder>().addComponents(picker),
+      new ActionRowBuilder<ButtonBuilder>().addComponents(back),
+    ] as unknown as ActionRowBuilder<never>[],
+  };
 }
 
 /** The full control panel for a session. */
@@ -183,7 +231,7 @@ export function buildCachedControlsReply(session: EmojiSession, token: string) {
     `-# from ${session.sourceLabel}`,
   ];
   if (/avatar/i.test(session.sourceLabel)) {
-    lines.push("-# Tip: tap **Upload image** to animate a Discord attachment instead of an avatar.");
+    lines.push("-# Tip: tap **Upload** to animate your own image, or **Server icon** for this server's picture.");
   }
   return {
     content: lines.join("\n"),

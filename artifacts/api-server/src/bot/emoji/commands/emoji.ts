@@ -14,7 +14,8 @@
 
 import {
   AttachmentBuilder, MessageFlags,
-  type AutocompleteInteraction, type ChatInputCommandInteraction, type Interaction,
+  type AutocompleteInteraction, type ButtonInteraction,
+  type ChatInputCommandInteraction, type Interaction,
   type MessageComponentInteraction, type ModalSubmitInteraction,
 } from "discord.js";
 import { logger } from "../../../lib/logger.js";
@@ -28,7 +29,9 @@ import { defaultAnimation, isManifestOption, isPlaceholder, suggestFor } from ".
 import {
   buildStylesPicker, buildStyleSearchModal, ensureStyleFocus, findStyle,
 } from "./styles-picker.js";
-import { buildCachedControlsReply, buildControls, buildUploadModal, describe, parseCid } from "./ui.js";
+import {
+  buildCachedControlsReply, buildControls, buildPostPicker, buildUploadModal, describe, parseCid,
+} from "./ui.js";
 import { createSession, endSession, getSession, touchSession, type EmojiSession } from "./session.js";
 
 /** Avatars are fetched large so there's detail to work with before downscaling. */
@@ -36,6 +39,18 @@ const AVATAR_SIZE = 512;
 
 /** Where the image came from. */
 interface Source { url: string; label: string }
+
+/** Anything carrying a guild we can read an icon from. */
+interface GuildCarrier {
+  guild: { name: string; iconURL(options: { extension: "png"; size: number }): string | null } | null;
+}
+
+/** The guild's own icon, or null when the server has none set. */
+function serverIconSource(interaction: GuildCarrier): Source | null {
+  const guild = interaction.guild;
+  const url = guild?.iconURL({ extension: "png", size: AVATAR_SIZE });
+  return url ? { url, label: `${guild!.name}'s icon` } : null;
+}
 
 /**
  * Pick the image to animate, in priority order: an explicit attachment, then a
@@ -58,6 +73,12 @@ function resolveSource(interaction: ChatInputCommandInteraction): Source {
       url: user.displayAvatarURL({ extension: "png", size: AVATAR_SIZE }),
       label: `${user.username}'s avatar`,
     };
+  }
+
+  if (interaction.options.getBoolean("server")) {
+    const icon = serverIconSource(interaction);
+    if (!icon) throw new EmojiError("no_source", "This server doesn't have an icon set.");
+    return icon;
   }
 
   const url = interaction.options.getString("url");
@@ -247,6 +268,16 @@ export async function handleEmojiInteraction(interaction: Interaction): Promise<
     return;
   }
 
+  if (action.startsWith("target_") && interaction.isButton()) {
+    await handleTargetAction(interaction, session, token, action);
+    return;
+  }
+
+  if (action.startsWith("post") && interaction.isMessageComponent()) {
+    await handlePostAction(interaction, session, token, action);
+    return;
+  }
+
   if (!interaction.isMessageComponent()) return;
 
   const patch = patchFor(action, interaction);
@@ -263,6 +294,123 @@ export async function handleEmojiInteraction(interaction: Interaction): Promise<
   } catch (err) {
     await interaction.editReply(failureReply(err, token));
   }
+}
+
+/** Swap the image being animated to the server icon or the caller's avatar. */
+async function handleTargetAction(
+  interaction: ButtonInteraction,
+  session: EmojiSession,
+  token: string,
+  action: string,
+): Promise<void> {
+  const source = action === "target_server"
+    ? serverIconSource(interaction)
+    : {
+        url: interaction.user.displayAvatarURL({ extension: "png", size: AVATAR_SIZE }),
+        label: "your avatar",
+      };
+
+  if (!source) {
+    await interaction.reply({
+      content: "❌ This server doesn't have an icon set.",
+      flags: MessageFlags.Ephemeral,
+    }).catch(() => {});
+    return;
+  }
+
+  await interaction.deferUpdate();
+
+  try {
+    const image = await loadSource(source.url);
+    // The cached result belongs to the old image, so it must not survive a
+    // target switch — otherwise Post would send the previous subject.
+    const updated = touchSession(token, {
+      image, sourceLabel: source.label, view: "controls", lastResult: undefined,
+    });
+    if (!updated) return;
+    await interaction.editReply(await buildReply(updated, token));
+  } catch (err) {
+    await interaction.editReply(failureReply(err, token));
+  }
+}
+
+/** Send the finished emoji to a channel the user picks. */
+async function handlePostAction(
+  interaction: MessageComponentInteraction,
+  session: EmojiSession,
+  token: string,
+  action: string,
+): Promise<void> {
+  if (action === "post" && interaction.isButton()) {
+    if (!session.lastResult) {
+      await interaction.reply({
+        content: "❌ Nothing to post yet — generate an emoji first.",
+        flags: MessageFlags.Ephemeral,
+      }).catch(() => {});
+      return;
+    }
+    touchSession(token, { view: "post" });
+    await interaction.update(buildPostPicker(session, token));
+    return;
+  }
+
+  if (action === "post_back" && interaction.isButton()) {
+    await interaction.deferUpdate();
+    const updated = touchSession(token, { view: "controls" });
+    if (!updated) return;
+    // Reuse the stored bytes rather than regenerating just to redraw the panel.
+    const reply = buildCachedControlsReply(updated, token);
+    if (reply) await interaction.editReply(reply);
+    return;
+  }
+
+  if (action !== "post_pick" || !interaction.isChannelSelectMenu()) return;
+
+  const result = session.lastResult;
+  const channelId = interaction.values[0];
+  if (!result || !channelId) return;
+
+  await interaction.deferUpdate();
+
+  try {
+    const channel = await interaction.client.channels.fetch(channelId);
+    if (!channel?.isTextBased() || !("send" in channel)) {
+      throw new EmojiError("internal", "That channel can't receive messages.");
+    }
+
+    await channel.send({
+      content: `${describeForPost(session)} — by <@${session.ownerId}>`,
+      files: [new AttachmentBuilder(result.buffer, {
+        name: `emoji.${extensionFor(result.format)}`,
+      })],
+    });
+
+    const updated = touchSession(token, { view: "controls" }) ?? session;
+    const reply = buildCachedControlsReply(updated, token);
+    if (reply) await interaction.editReply(reply);
+    await interaction.followUp({
+      content: `✅ Posted to <#${channelId}>.`,
+      flags: MessageFlags.Ephemeral,
+    }).catch(() => {});
+  } catch (err) {
+    // A missing-permissions failure is the common case and is the user's to fix,
+    // so it is reported plainly rather than logged as a bot fault.
+    logger.warn(
+      { err: err instanceof Error ? err.message : String(err), channelId },
+      "could not post emoji to channel",
+    );
+    await interaction.followUp({
+      content: "❌ Couldn't post there — I may not have permission to send messages or attach files in that channel.",
+      flags: MessageFlags.Ephemeral,
+    }).catch(() => {});
+  }
+}
+
+/** One-line description of the current settings, for the posted message. */
+function describeForPost(session: EmojiSession): string {
+  const bits = [session.animation, session.format.toUpperCase()];
+  if (session.size) bits.push(session.size);
+  return `✨ ${bits.join(" · ")}`;
 }
 
 async function handleUploadAction(
