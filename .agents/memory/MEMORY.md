@@ -47,3 +47,4 @@
 - [Activity root path swap](activity-root-path-swap.md) — Activity owns `/` (Discord loads it from root); Dashboard at `/dashboard`; single `/` Discord URL mapping preserves full API path.
 - [MakeEmoji browser runtime](makeemoji-browser-runtime.md) — Playwright, its Chromium binary, and Linux shared libraries are separate deployment requirements.
 - [Playwright Nix libraries](playwright-nix-libraries.md) — current nixpkgs splits Chromium's GBM and udev runtime libraries into `libgbm` and `systemd`, not `mesa` alone.
+- [Playwright deployment browser cache](playwright-deployment-browser-cache.md) — Nix libraries do not install the Playwright browser into the published image; the browser must be present in the deployment layer too.
