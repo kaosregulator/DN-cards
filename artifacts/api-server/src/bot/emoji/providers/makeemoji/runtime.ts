@@ -13,6 +13,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { existsSync, readdirSync } from "node:fs";
+import { homedir } from "node:os";
 import { join } from "node:path";
 import type { Browser, BrowserContext, LaunchOptions } from "playwright";
 import { logger } from "../../../../lib/logger.js";
@@ -42,8 +43,21 @@ export async function loadPlaywright(): Promise<PlaywrightModule | null> {
 export async function browserProblem(): Promise<string | null> {
   const pw = await loadPlaywright();
   if (!pw) {
-    return "playwright is not installed — run `pnpm add playwright && npx playwright install chromium`";
+    return "playwright is not installed — run `pnpm install` (it is an optional dependency)";
   }
+
+  // The package alone is not enough. Reporting "available" on the strength of a
+  // successful import meant status() claimed the generator was healthy while
+  // every request failed at launch — and the admin endpoint agreed with it, so
+  // the real cause never surfaced anywhere an operator would look.
+  if (await resolveChromiumPath() === null) {
+    const configured = process.env[ENV_EXECUTABLE]?.trim();
+    return configured
+      ? `no Chromium binary at ${ENV_EXECUTABLE}=${configured}`
+      : "no Chromium browser is installed — run `pnpm emoji:install-browser` "
+        + `(or set ${ENV_EXECUTABLE} to an existing binary)`;
+  }
+
   return null;
 }
 
@@ -65,75 +79,145 @@ export function launchOptions(): LaunchOptions {
   };
 }
 
+/** Directories Playwright installs browsers into, most specific first. */
+function browserRoots(): string[] {
+  const configured = process.env["PLAYWRIGHT_BROWSERS_PATH"]?.trim();
+  const home = homedir();
+
+  // Some hosts put the cache under the project rather than the user's home —
+  // Replit installs to `<workspace>/.cache/ms-playwright` while `HOME` points
+  // somewhere else entirely, so a home-only search finds nothing even though
+  // the browser is right there. The bot may run from the repo root or from the
+  // package directory, so walk up as well.
+  const cwd = process.cwd();
+  const projectRoots = [cwd, join(cwd, ".."), join(cwd, "..", ".."), join(cwd, "..", "..", "..")]
+    .map(root => join(root, ".cache", "ms-playwright"));
+
+  return [
+    ...(configured ? [configured] : []),
+    ...projectRoots,
+    // Playwright's own defaults, per platform.
+    join(home, ".cache", "ms-playwright"),
+    join(home, "Library", "Caches", "ms-playwright"),
+    join(home, "AppData", "Local", "ms-playwright"),
+  ];
+}
+
+/** Executable locations inside one browser directory, per platform. */
+const EXECUTABLE_PATHS = [
+  "chrome-linux/chrome",
+  "chrome-linux64/chrome",
+  "chrome-mac/Chromium.app/Contents/MacOS/Chromium",
+  "chrome-win/chrome.exe",
+  "chrome-linux/headless_shell",
+  "chrome-headless-shell-linux64/chrome-headless-shell",
+];
+
 /**
- * Find an installed Chromium under PLAYWRIGHT_BROWSERS_PATH.
+ * Find an installed Chromium.
  *
  * Playwright pins an exact browser revision, so upgrading the package leaves it
- * looking for a build the host doesn't have — even though a perfectly usable
- * Chromium is sitting right beside it. Rather than fail with "Executable
- * doesn't exist at …/chromium-1234", find what IS installed and use that.
+ * looking for a build the host doesn't have — even though a usable Chromium is
+ * sitting right beside it. Rather than fail with "Executable doesn't exist at
+ * …/chromium-1234", find what IS installed and use that.
+ *
+ * Full `chromium-*` builds are preferred over `chromium_headless_shell-*`: the
+ * shell cannot run headed, which `MAKEEMOJI_HEADLESS=0` needs for debugging.
+ * Within each kind the highest build wins, compared NUMERICALLY — a
+ * lexicographic sort ranks `chromium-999` above `chromium-1194`.
  */
 function findInstalledChromium(): string | null {
-  const root = process.env["PLAYWRIGHT_BROWSERS_PATH"]?.trim();
-  if (!root || !existsSync(root)) return null;
+  const buildNumber = (name: string) => Number(/-(\d+)$/.exec(name)?.[1] ?? 0);
 
-  try {
-    const candidates = readdirSync(root)
+  for (const root of browserRoots()) {
+    if (!existsSync(root)) continue;
+
+    let entries: string[];
+    try {
+      entries = readdirSync(root);
+    } catch {
+      continue;
+    }
+
+    const candidates = entries
       .filter(name => name.startsWith("chromium"))
-      // Highest build number first, so the newest install wins.
-      .sort()
-      .reverse();
+      .sort((a, b) => {
+        const aShell = a.startsWith("chromium_headless_shell");
+        const bShell = b.startsWith("chromium_headless_shell");
+        if (aShell !== bShell) return aShell ? 1 : -1;
+        return buildNumber(b) - buildNumber(a);
+      });
 
     for (const dir of candidates) {
-      for (const relative of [
-        "chrome-linux/chrome",
-        "chrome-linux/headless_shell",
-        "chrome-mac/Chromium.app/Contents/MacOS/Chromium",
-        "chrome-win/chrome.exe",
-      ]) {
+      for (const relative of EXECUTABLE_PATHS) {
         const path = join(root, dir, relative);
         if (existsSync(path)) return path;
       }
     }
-  } catch { /* an unreadable browsers dir is just "not found" */ }
+  }
 
   return null;
+}
+
+/**
+ * The Chromium this host will actually launch, or null when there is none.
+ *
+ * Checked in order: an operator's explicit path, the revision Playwright itself
+ * expects, then whatever is installed. Resolving up front — rather than
+ * launching and handling the failure — is what lets `status()` tell the truth
+ * about whether generation can work.
+ */
+export async function resolveChromiumPath(): Promise<string | null> {
+  const configured = process.env[ENV_EXECUTABLE]?.trim();
+  if (configured) return existsSync(configured) ? configured : null;
+
+  const pw = await loadPlaywright();
+  if (pw) {
+    try {
+      const expected = pw.chromium.executablePath();
+      if (expected && existsSync(expected)) return expected;
+    } catch { /* no browser registered for this build; fall through */ }
+  }
+
+  return findInstalledChromium();
 }
 
 /** Launch a browser, converting startup failures into a user-safe error. */
 export async function launchBrowser(): Promise<Browser> {
   const pw = await loadPlaywright();
   if (!pw) {
+    logger.error("playwright is not installed; /emoji cannot generate");
     throw new EmojiError(
       "provider_unavailable",
       "The emoji generator isn't set up on this host right now.",
     );
   }
 
+  // Resolve first rather than launching and recovering from the failure: the
+  // same resolution backs `browserProblem()`, so what status() reports and what
+  // a generation actually does can no longer disagree.
+  const executablePath = await resolveChromiumPath();
+  if (!executablePath) {
+    logger.error(
+      { fix: "pnpm emoji:install-browser", override: ENV_EXECUTABLE },
+      "no Chromium browser is installed; /emoji cannot generate",
+    );
+    throw new EmojiError(
+      "provider_unavailable",
+      "The emoji generator isn't set up on this server yet. An admin needs to install its browser.",
+    );
+  }
+
   try {
-    return await pw.chromium.launch(launchOptions());
+    return await pw.chromium.launch({ ...launchOptions(), executablePath });
   } catch (err) {
-    const message = (err as Error).message ?? "";
-
-    // Retry once against whatever Chromium is actually installed. Only for the
-    // missing-executable case, and only when no explicit path was configured —
-    // an operator's own MAKEEMOJI_CHROMIUM_PATH is never second-guessed.
-    if (/Executable doesn't exist/i.test(message) && !process.env[ENV_EXECUTABLE]) {
-      const executablePath = findInstalledChromium();
-      if (executablePath) {
-        logger.warn(
-          { executablePath },
-          "Playwright's pinned Chromium is missing; using the installed build instead",
-        );
-        try {
-          return await pw.chromium.launch({ ...launchOptions(), executablePath });
-        } catch (retryErr) {
-          logger.error({ err: (retryErr as Error).message }, "chromium failed to launch");
-        }
-      }
-    }
-
-    logger.error({ err: message.split("\n")[0] }, "chromium failed to launch");
+    // Getting here means a browser exists but will not start — usually missing
+    // system libraries rather than a missing binary, so the full message is
+    // logged: it names the offending shared object.
+    logger.error(
+      { err: (err as Error).message, executablePath },
+      "chromium failed to launch",
+    );
     throw new EmojiError(
       "browser_failed",
       "The emoji generator couldn't start. An admin has been notified.",
