@@ -11,41 +11,19 @@ interface CommandOption {
 }
 
 const command = () => buildEmojiCommandJson() as unknown as {
-  name: string; options?: CommandOption[];
+  name: string; description: string; options?: CommandOption[];
 };
 
 describe("/emoji definition", () => {
-  it("exposes the MakeEmoji settings", () => {
-    expect(command().options?.map(o => o.name)).toEqual([
-      "image", "user", "url", "server",
-      "animation", "speed", "direction", "size", "color", "quality", "platform",
-      "format",
-    ]);
+  it("is option-free — the flow lives in the dashboard, not the slash surface", () => {
+    // Every setting moved into the interactive dashboard, so the command itself
+    // carries no options: `/emoji` just opens the flow.
+    expect(command().options ?? []).toEqual([]);
   });
 
-  it("offers all four image targets", () => {
-    // Upload, a member's avatar, a URL, and the server's own icon.
-    const names = command().options?.map(o => o.name) ?? [];
-    for (const target of ["image", "user", "url", "server"]) {
-      expect(names, target).toContain(target);
-    }
-  });
-
-  it("makes every MakeEmoji setting autocomplete, not a fixed choice list", () => {
-    // Fixed choices are baked in at registration time, which would mean shipping
-    // a vocabulary we invented. Autocomplete reads the manifest at type time.
-    const options = command().options ?? [];
-    for (const name of MANIFEST_OPTIONS) {
-      const option = options.find(o => o.name === name);
-      expect(option?.autocomplete, name).toBe(true);
-      expect(option?.choices ?? [], name).toEqual([]);
-    }
-  });
-
-  it("keeps format as a fixed choice — it is our contract, not the site's", () => {
-    const format = command().options?.find(o => o.name === "format");
-    expect(format?.autocomplete).toBeFalsy();
-    expect(format?.choices?.map(c => c.value)).toEqual(["gif", "webp", "apng"]);
+  it("is named and described for discovery", () => {
+    expect(command().name).toBe("emoji");
+    expect(command().description.length).toBeGreaterThan(0);
   });
 });
 

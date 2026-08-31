@@ -31,8 +31,8 @@ import {
   buildStylesPicker, buildStyleSearchModal, ensureStyleFocus, findStyle,
 } from "./styles-picker.js";
 import {
-  buildCachedControlsReply, buildControls, buildPostPicker, buildTargetChooser,
-  buildUploadModal, describe, parseCid,
+  buildCachedControlsReply, buildControls, buildPostPicker, buildServerModal,
+  buildTargetChooser, buildUploadModal, describe, parseCid,
 } from "./ui.js";
 import { createSession, endSession, getSession, touchSession, type EmojiSession } from "./session.js";
 
@@ -321,8 +321,18 @@ export async function handleEmojiInteraction(interaction: Interaction): Promise<
     await handleTargetPick(interaction, token, "member");
     return;
   }
-  if ((action === "pick_me" || action === "pick_server") && interaction.isButton()) {
-    await handleTargetPick(interaction, token, action === "pick_me" ? "me" : "server");
+  if (action === "pick_me" && interaction.isButton()) {
+    await handleTargetPick(interaction, token, "me");
+    return;
+  }
+  // Server target: open a modal so the user can type a server ID (or leave it
+  // blank for the current server), then resolve that guild's icon.
+  if (action === "pick_server" && interaction.isButton()) {
+    await interaction.showModal(buildServerModal(token)).catch(() => {});
+    return;
+  }
+  if (action === "server_modal" && interaction.isModalSubmit()) {
+    await handleServerModal(interaction, token);
     return;
   }
 
@@ -383,6 +393,52 @@ async function handleTargetPick(
       url: interaction.user.displayAvatarURL({ extension: "png", size: AVATAR_SIZE }),
       label: "your avatar",
     };
+  }
+
+  if (!source) {
+    await interaction.reply({
+      content: "❌ This server doesn't have an icon set. Pick a member or upload an image instead.",
+      flags: MessageFlags.Ephemeral,
+    }).catch(() => {});
+    return;
+  }
+
+  await interaction.deferUpdate();
+  await enterStyleBrowser(interaction, token, source);
+}
+
+/**
+ * Resolve a server icon — the current guild, or a pasted server ID — and enter
+ * the style browser on it.
+ */
+async function handleServerModal(
+  interaction: ModalSubmitInteraction,
+  token: string,
+): Promise<void> {
+  const raw = interaction.fields.getTextInputValue("server_id").trim();
+
+  let source: Source | null;
+  if (!raw) {
+    source = serverIconSource(interaction);
+  } else if (!/^\d{5,25}$/.test(raw)) {
+    source = null;
+    await interaction.reply({
+      content: "❌ That doesn't look like a server ID. Right-click a server → Copy Server ID (needs Developer Mode).",
+      flags: MessageFlags.Ephemeral,
+    }).catch(() => {});
+    return;
+  } else {
+    // The bot can only read icons for servers it is in.
+    const guild = await interaction.client.guilds.fetch(raw).catch(() => null);
+    const url = guild?.iconURL({ extension: "png", size: AVATAR_SIZE }) ?? null;
+    source = url && guild ? { url, label: `${guild.name}'s icon` } : null;
+    if (!source) {
+      await interaction.reply({
+        content: "❌ I couldn't get that server's icon — I need to be a member of it, and it must have an icon set.",
+        flags: MessageFlags.Ephemeral,
+      }).catch(() => {});
+      return;
+    }
   }
 
   if (!source) {
@@ -509,8 +565,9 @@ async function handlePostAction(
       throw new EmojiError("internal", "That channel can't receive messages.");
     }
 
+    // Just the file — no content, no author framing — so it lands in the
+    // channel like a plain gif someone dropped, not a bot announcement.
     await channel.send({
-      content: `${describeForPost(session)} — by <@${session.ownerId}>`,
       files: [new AttachmentBuilder(result.buffer, {
         name: `emoji.${extensionFor(result.format)}`,
       })],
@@ -537,12 +594,6 @@ async function handlePostAction(
   }
 }
 
-/** One-line description of the current settings, for the posted message. */
-function describeForPost(session: EmojiSession): string {
-  const bits = [session.animation, session.format.toUpperCase()];
-  if (session.size) bits.push(session.size);
-  return `✨ ${bits.join(" · ")}`;
-}
 
 async function handleUploadAction(
   interaction: MessageComponentInteraction | ModalSubmitInteraction,

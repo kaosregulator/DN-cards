@@ -15,7 +15,7 @@ import {
   ChannelSelectMenuBuilder, ChannelType,
   FileUploadBuilder, LabelBuilder, ModalBuilder,
   StringSelectMenuBuilder, StringSelectMenuOptionBuilder,
-  UserSelectMenuBuilder,
+  TextInputBuilder, TextInputStyle, UserSelectMenuBuilder,
 } from "discord.js";
 import { getManifest } from "../providers/makeemoji/manifest.js";
 import type { OptionKey } from "../providers/makeemoji/types.js";
@@ -306,12 +306,34 @@ export function describe(
   }
 
   parts.push(`\`${(bytes / 1024).toFixed(1)} KB\``);
-  // Naming the source matters when a fallback served the request: the user
-  // should know when they didn't get MakeEmoji's own output.
-  if (providerId !== "makeemoji-api" && providerId !== "makeemoji-browser") {
-    parts.push(`⚠️ via \`${providerId}\``);
-  }
+  // The offline engine is the normal generator now, so its output carries no
+  // warning. `providerId` stays available in logs for diagnostics.
+  void providerId;
   if (cached) parts.push("♻️");
 
   return parts.join(" · ");
+}
+
+/**
+ * Modal for the Server target.
+ *
+ * Blank uses the current server's icon; a pasted server ID fetches that guild's
+ * icon instead (the bot must be a member of it). This is what lets someone
+ * animate any server's picture, not just the one they ran the command in.
+ */
+export function buildServerModal(token: string): ModalBuilder {
+  return new ModalBuilder()
+    .setCustomId(cid("server_modal", token))
+    .setTitle("Animate a server icon")
+    .addComponents(
+      new ActionRowBuilder<TextInputBuilder>().addComponents(
+        new TextInputBuilder()
+          .setCustomId("server_id")
+          .setLabel("Server ID (leave empty for this server)")
+          .setStyle(TextInputStyle.Short)
+          .setRequired(false)
+          .setMinLength(0)
+          .setMaxLength(25),
+      ),
+    );
 }
