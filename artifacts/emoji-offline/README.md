@@ -5,30 +5,34 @@ Archive of the verified MakeEmoji.com discovery used by DN Cards `/emoji`, plus 
 
 ## Purpose
 
-MakeEmoji.com is the **primary** generator today. This package preserves the full
-discovered catalog and implements as many styles as practical offline via shared
-procedural primitives + archived overlay assets.
+The offline engine is the **default** generator (473/473 styles). MakeEmoji.com
+remains the discovery/source-of-truth for new styles; harvest with
+`pnpm makeemoji:harvest-frames` / `pnpm makeemoji:backup`.
 
 ```text
-MakeEmoji available  →  makeemoji-browser (primary)
-MakeEmoji unavailable →  offline provider (ONLY if EMOJI_ALLOW_OFFLINE_FALLBACK=1)
+default  →  offline provider (local, no browser)
+opt-out  →  EMOJI_DISABLE_OFFLINE=1  (force MakeEmoji browser path)
 ```
-
-Offline fallback is **disabled by default**. Package-level `offlineReady` stays
-`false` until 473/473 styles render independently.
 
 ## Coverage
 
-See `manifest.json` → `implementedStyleCount` and `recipes/recipes.json`.
+**473 / 473 styles offline-ready** (`manifest.json` → `offlineReady: true`).
 
 Families:
 
 | Family | Approach |
 | --- | --- |
-| `passthrough` | Identity (`none`) |
+| `passthrough` | Identity (`none`) — Colour alone can still animate the subject |
 | `transform` | Shared motion/scale/color primitives |
 | `overlay` | Subject composited into archived overlay hole |
-| `atlas` / `frames` | Pending — needs archived MakeEmoji frame assets |
+| `atlas` / `frames` | Archived MakeEmoji CDN frames / sliced atlases |
+
+### Colour side-control (MakeEmoji `#color-select`)
+
+Matches the site’s Colour dropdown: recolors the upload **before** the style
+runs. Animated modes (`Colors`, `Rainbow`, `Stripes`, `Circles`) produce a
+looping GIF even with style `none`. Static looks (`Deep Fried`, `X-Ray`, tints,
+…) apply a single filter. Speed/Direction continue to apply as before.
 
 ## Contents
 

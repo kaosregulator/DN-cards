@@ -11,7 +11,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 /** Per-frame constants derived from the target hue. */
-interface HuePlan {
+export interface HuePlan {
   /** Which 60° sector of the wheel the hue falls in, 0–5. */
   sector: number;
   /** Ramp factor for the secondary channel, 0–1. */
