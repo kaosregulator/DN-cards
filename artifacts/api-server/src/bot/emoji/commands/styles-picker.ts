@@ -9,14 +9,19 @@
 import {
   ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder,
   ModalBuilder, StringSelectMenuBuilder, StringSelectMenuOptionBuilder,
-  TextInputBuilder, TextInputStyle, type APIEmbed, type AttachmentBuilder,
+  AttachmentBuilder,
+  TextInputBuilder, TextInputStyle, type APIEmbed,
 } from "discord.js";
 import { fuzzyRank } from "../../search/fuse-service.js";
 import { getManifest } from "../providers/makeemoji/manifest.js";
 import { isFavorite, listFavorites } from "./favorites.js";
 import { resolveStylePreviewUrl } from "./previews.js";
+import { prefetchStylePreviews, renderStylePreview } from "../preview/index.js";
 import type { EmojiSession } from "./session.js";
 import { cid } from "./ui.js";
+
+/** Attachment name the embed points at with `attachment://`. */
+const PREVIEW_FILENAME = "style-preview.gif";
 
 /** Styles per select page — Discord caps at 25; leave headroom for labels. */
 export const STYLES_PAGE_SIZE = 20;
@@ -123,7 +128,17 @@ export async function buildStylesPicker(
   const label = focused?.label ?? focusValue;
   const { rows, page, pages, total } = pageStyles(session, userId);
   const favorited = isFavorite(userId, focusValue);
-  const previewUrl = focused ? await resolveStylePreviewUrl(focused.label) : null;
+  // Prefer a preview rendered on the user's OWN image — that is the question
+  // they are actually asking. MakeEmoji's prerendered cat is the fallback for
+  // styles the offline engine cannot draw, so browsing never loses its picture.
+  const livePreview = await renderStylePreview(session.image, focusValue);
+  const previewUrl = livePreview
+    ? null
+    : focused ? await resolveStylePreviewUrl(focused.label) : null;
+
+  // Warm the styles on this page so paging feels instant rather than rendering
+  // one at a time as the user clicks.
+  prefetchStylePreviews(session.image, rows.map(r => r.value));
 
   const filters: string[] = [];
   if (session.styleFilter === "favorites") filters.push("★ favorites");
@@ -137,7 +152,9 @@ export async function buildStylesPicker(
       `\`${focusValue}\``,
       favorited ? "★ Saved in your favorites" : "☆ Not in favorites yet",
       "",
-      "Pick a style to preview it. **Apply** runs it on your image.",
+      livePreview
+        ? "This is **your image** with this style. **Apply** generates it at full quality."
+        : "Preview shown on MakeEmoji's sample image. **Apply** runs it on your image.",
       "Remember the name — you can type it in `/emoji animation` later.",
     ].join("\n"))
     .setFooter({
@@ -148,12 +165,18 @@ export async function buildStylesPicker(
       ].join(" · "),
     });
 
-  if (previewUrl) {
+  const files: AttachmentBuilder[] = [];
+
+  if (livePreview) {
+    // Attached rather than linked: the bytes were rendered here and now.
+    files.push(new AttachmentBuilder(livePreview, { name: PREVIEW_FILENAME }));
+    embed.setImage(`attachment://${PREVIEW_FILENAME}`);
+  } else if (previewUrl) {
     embed.setImage(previewUrl);
   } else {
     embed.addFields({
       name: "Preview",
-      value: "_No CDN preview for this style — Apply still works._",
+      value: "_No preview for this style — Apply still works._",
     });
   }
 
@@ -225,6 +248,6 @@ export async function buildStylesPicker(
     content: "",
     embeds: [embed],
     components,
-    files: [],
+    files,
   };
 }
