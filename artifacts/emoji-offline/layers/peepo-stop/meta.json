@@ -1,0 +1,17 @@
+{
+  "id": "peepo-stop",
+  "kind": "layer",
+  "frames": 1,
+  "sourcePages": 1,
+  "delayMs": 50,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 40,
+    "w": 128,
+    "h": 87,
+    "greenPixels": 8240
+  },
+  "layerPixels": 6474,
+  "source": "greenscreen/raw/peepo-stop.png"
+}

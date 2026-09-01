@@ -1,0 +1,17 @@
+{
+  "id": "pokeball-capture",
+  "kind": "layer",
+  "frames": 27,
+  "sourcePages": 54,
+  "delayMs": 200,
+  "size": 128,
+  "slot": {
+    "x": 2,
+    "y": 0,
+    "w": 126,
+    "h": 128,
+    "greenPixels": 32258
+  },
+  "layerPixels": 253525,
+  "source": "greenscreen/raw/pokeball-capture.gif"
+}

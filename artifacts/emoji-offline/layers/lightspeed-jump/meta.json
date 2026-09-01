@@ -1,0 +1,17 @@
+{
+  "id": "lightspeed-jump",
+  "kind": "layer",
+  "frames": 18,
+  "sourcePages": 18,
+  "delayMs": 80,
+  "size": 128,
+  "slot": {
+    "x": 10,
+    "y": 0,
+    "w": 118,
+    "h": 128,
+    "greenPixels": 63737
+  },
+  "layerPixels": 231175,
+  "source": "greenscreen/raw/lightspeed-jump.gif"
+}

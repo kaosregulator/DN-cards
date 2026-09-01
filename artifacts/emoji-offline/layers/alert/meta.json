@@ -1,0 +1,17 @@
+{
+  "id": "alert",
+  "kind": "layer",
+  "frames": 10,
+  "sourcePages": 10,
+  "delayMs": 70,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 128,
+    "greenPixels": 142670
+  },
+  "layerPixels": 21170,
+  "source": "greenscreen/raw/alert.gif"
+}

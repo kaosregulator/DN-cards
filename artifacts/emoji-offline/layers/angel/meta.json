@@ -1,0 +1,17 @@
+{
+  "id": "angel",
+  "kind": "layer",
+  "frames": 1,
+  "sourcePages": 1,
+  "delayMs": 50,
+  "size": 128,
+  "slot": {
+    "x": 13,
+    "y": 23,
+    "w": 105,
+    "h": 105,
+    "greenPixels": 10700
+  },
+  "layerPixels": 1364,
+  "source": "greenscreen/raw/angel.png"
+}

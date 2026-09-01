@@ -1,0 +1,17 @@
+{
+  "id": "alowo",
+  "kind": "layer",
+  "frames": 19,
+  "sourcePages": 19,
+  "delayMs": 90,
+  "size": 128,
+  "slot": {
+    "x": 6,
+    "y": 25,
+    "w": 114,
+    "h": 88,
+    "greenPixels": 86165
+  },
+  "layerPixels": 103531,
+  "source": "greenscreen/raw/alowo.gif"
+}

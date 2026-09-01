@@ -1,0 +1,17 @@
+{
+  "id": "lightsaber",
+  "kind": "layer",
+  "frames": 40,
+  "sourcePages": 40,
+  "delayMs": 50,
+  "size": 128,
+  "slot": {
+    "x": 7,
+    "y": 0,
+    "w": 121,
+    "h": 122,
+    "greenPixels": 459519
+  },
+  "layerPixels": 29911,
+  "source": "greenscreen/raw/lightsaber.gif"
+}

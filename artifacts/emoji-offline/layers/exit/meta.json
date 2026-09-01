@@ -1,0 +1,17 @@
+{
+  "id": "exit",
+  "kind": "layer",
+  "frames": 14,
+  "sourcePages": 14,
+  "delayMs": 200,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 10,
+    "w": 126,
+    "h": 118,
+    "greenPixels": 47257
+  },
+  "layerPixels": 182119,
+  "source": "greenscreen/raw/exit.gif"
+}

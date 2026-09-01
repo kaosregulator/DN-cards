@@ -1,0 +1,17 @@
+{
+  "id": "peepo-love",
+  "kind": "layer",
+  "frames": 1,
+  "sourcePages": 1,
+  "delayMs": 50,
+  "size": 128,
+  "slot": {
+    "x": 9,
+    "y": 33,
+    "w": 112,
+    "h": 95,
+    "greenPixels": 6341
+  },
+  "layerPixels": 5471,
+  "source": "greenscreen/raw/peepo-love.png"
+}

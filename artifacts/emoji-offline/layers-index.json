@@ -1,0 +1,1116 @@
+{
+  "builtAt": "2026-09-01T16:26:24.501Z",
+  "size": 128,
+  "items": {
+    "4x-wide-1": {
+      "id": "4x-wide-1",
+      "kind": "transform-slot",
+      "frames": 1,
+      "sourcePages": 1,
+      "delayMs": 50,
+      "size": 128,
+      "slot": {
+        "x": 0,
+        "y": 0,
+        "w": 128,
+        "h": 128,
+        "greenPixels": 16384
+      },
+      "layerPixels": 0,
+      "source": "greenscreen/raw/4x-wide-1.png"
+    },
+    "4x-wide-2": {
+      "id": "4x-wide-2",
+      "kind": "transform-slot",
+      "frames": 1,
+      "sourcePages": 1,
+      "delayMs": 50,
+      "size": 128,
+      "slot": {
+        "x": 0,
+        "y": 0,
+        "w": 128,
+        "h": 128,
+        "greenPixels": 16384
+      },
+      "layerPixels": 0,
+      "source": "greenscreen/raw/4x-wide-2.png"
+    },
+    "4x-wide-3": {
+      "id": "4x-wide-3",
+      "kind": "transform-slot",
+      "frames": 1,
+      "sourcePages": 1,
+      "delayMs": 50,
+      "size": 128,
+      "slot": {
+        "x": 0,
+        "y": 0,
+        "w": 128,
+        "h": 128,
+        "greenPixels": 16384
+      },
+      "layerPixels": 0,
+      "source": "greenscreen/raw/4x-wide-3.png"
+    },
+    "4x-wide-4": {
+      "id": "4x-wide-4",
+      "kind": "transform-slot",
+      "frames": 1,
+      "sourcePages": 1,
+      "delayMs": 50,
+      "size": 128,
+      "slot": {
+        "x": 0,
+        "y": 0,
+        "w": 128,
+        "h": 128,
+        "greenPixels": 16384
+      },
+      "layerPixels": 0,
+      "source": "greenscreen/raw/4x-wide-4.png"
+    },
+    "aha": {
+      "id": "aha",
+      "kind": "layer",
+      "frames": 48,
+      "sourcePages": 48,
+      "delayMs": 50,
+      "size": 128,
+      "slot": {
+        "x": 6,
+        "y": 32,
+        "w": 85,
+        "h": 86,
+        "greenPixels": 348273
+      },
+      "layerPixels": 57693,
+      "source": "greenscreen/raw/aha.gif"
+    },
+    "alarm": {
+      "id": "alarm",
+      "kind": "layer",
+      "frames": 10,
+      "sourcePages": 10,
+      "delayMs": 70,
+      "size": 128,
+      "slot": {
+        "x": 0,
+        "y": 0,
+        "w": 128,
+        "h": 128,
+        "greenPixels": 148666
+      },
+      "layerPixels": 15174,
+      "source": "greenscreen/raw/alarm.gif"
+    },
+    "alarms": {
+      "id": "alarms",
+      "kind": "layer",
+      "frames": 10,
+      "sourcePages": 10,
+      "delayMs": 70,
+      "size": 128,
+      "slot": {
+        "x": 0,
+        "y": 0,
+        "w": 128,
+        "h": 128,
+        "greenPixels": 103287
+      },
+      "layerPixels": 60553,
+      "source": "greenscreen/raw/alarms.gif"
+    },
+    "alert": {
+      "id": "alert",
+      "kind": "layer",
+      "frames": 10,
+      "sourcePages": 10,
+      "delayMs": 70,
+      "size": 128,
+      "slot": {
+        "x": 0,
+        "y": 0,
+        "w": 128,
+        "h": 128,
+        "greenPixels": 142670
+      },
+      "layerPixels": 21170,
+      "source": "greenscreen/raw/alert.gif"
+    },
+    "alien-pls-3": {
+      "id": "alien-pls-3",
+      "kind": "layer",
+      "frames": 37,
+      "sourcePages": 73,
+      "delayMs": 80,
+      "size": 128,
+      "slot": {
+        "x": 30,
+        "y": 5,
+        "w": 68,
+        "h": 118,
+        "greenPixels": 135458
+      },
+      "layerPixels": 1823,
+      "source": "greenscreen/raw/alien-pls-3.gif"
+    },
+    "alien-pls": {
+      "id": "alien-pls",
+      "kind": "layer",
+      "frames": 43,
+      "sourcePages": 256,
+      "delayMs": 180,
+      "size": 128,
+      "slot": {
+        "x": 5,
+        "y": 2,
+        "w": 113,
+        "h": 122,
+        "greenPixels": 101911
+      },
+      "layerPixels": 24752,
+      "source": "greenscreen/raw/alien-pls.gif"
+    },
+    "alowo": {
+      "id": "alowo",
+      "kind": "layer",
+      "frames": 19,
+      "sourcePages": 19,
+      "delayMs": 90,
+      "size": 128,
+      "slot": {
+        "x": 6,
+        "y": 25,
+        "w": 114,
+        "h": 88,
+        "greenPixels": 86165
+      },
+      "layerPixels": 103531,
+      "source": "greenscreen/raw/alowo.gif"
+    },
+    "amaze": {
+      "id": "amaze",
+      "kind": "layer",
+      "frames": 7,
+      "sourcePages": 7,
+      "delayMs": 100,
+      "size": 128,
+      "slot": {
+        "x": 0,
+        "y": 0,
+        "w": 128,
+        "h": 128,
+        "greenPixels": 87508
+      },
+      "layerPixels": 27180,
+      "source": "greenscreen/raw/amaze.gif"
+    },
+    "angel": {
+      "id": "angel",
+      "kind": "layer",
+      "frames": 1,
+      "sourcePages": 1,
+      "delayMs": 50,
+      "size": 128,
+      "slot": {
+        "x": 13,
+        "y": 23,
+        "w": 105,
+        "h": 105,
+        "greenPixels": 10700
+      },
+      "layerPixels": 1364,
+      "source": "greenscreen/raw/angel.png"
+    },
+    "anime-scream": {
+      "id": "anime-scream",
+      "kind": "layer",
+      "frames": 25,
+      "sourcePages": 50,
+      "delayMs": 100,
+      "size": 128,
+      "slot": {
+        "x": 0,
+        "y": 0,
+        "w": 128,
+        "h": 128,
+        "greenPixels": 81920
+      },
+      "layerPixels": 327680,
+      "source": "greenscreen/raw/anime-scream.gif"
+    },
+    "anime-speed": {
+      "id": "anime-speed",
+      "kind": "layer",
+      "frames": 10,
+      "sourcePages": 10,
+      "delayMs": 70,
+      "size": 128,
+      "slot": {
+        "x": 0,
+        "y": 0,
+        "w": 128,
+        "h": 128,
+        "greenPixels": 154997
+      },
+      "layerPixels": 8843,
+      "source": "greenscreen/raw/anime-speed.gif"
+    },
+    "anticipation": {
+      "id": "anticipation",
+      "kind": "layer",
+      "frames": 30,
+      "sourcePages": 30,
+      "delayMs": 50,
+      "size": 128,
+      "slot": {
+        "x": 0,
+        "y": 0,
+        "w": 128,
+        "h": 128,
+        "greenPixels": 163840
+      },
+      "layerPixels": 179256,
+      "source": "greenscreen/raw/anticipation.gif"
+    },
+    "approve-arms": {
+      "id": "approve-arms",
+      "kind": "layer",
+      "frames": 10,
+      "sourcePages": 10,
+      "delayMs": 50,
+      "size": 128,
+      "slot": {
+        "x": 0,
+        "y": 0,
+        "w": 128,
+        "h": 128,
+        "greenPixels": 122899
+      },
+      "layerPixels": 40941,
+      "source": "greenscreen/raw/approve-arms.gif"
+    },
+    "banana-dance": {
+      "id": "banana-dance",
+      "kind": "layer",
+      "frames": 10,
+      "sourcePages": 10,
+      "delayMs": 60,
+      "size": 128,
+      "slot": {
+        "x": 32,
+        "y": 1,
+        "w": 65,
+        "h": 102,
+        "greenPixels": 42062
+      },
+      "layerPixels": 21917,
+      "source": "greenscreen/raw/banana-dance.gif"
+    },
+    "bat-signal-scene": {
+      "id": "bat-signal-scene",
+      "kind": "no-slot",
+      "frames": 1,
+      "sourcePages": 1,
+      "delayMs": 50,
+      "size": 128,
+      "slot": null,
+      "layerPixels": 16384,
+      "source": "greenscreen/raw/bat-signal-scene.png"
+    },
+    "bat-signal": {
+      "id": "bat-signal",
+      "kind": "no-slot",
+      "frames": 1,
+      "sourcePages": 1,
+      "delayMs": 50,
+      "size": 128,
+      "slot": null,
+      "layerPixels": 12276,
+      "source": "greenscreen/raw/bat-signal.png"
+    },
+    "bedge": {
+      "id": "bedge",
+      "kind": "layer",
+      "frames": 1,
+      "sourcePages": 1,
+      "delayMs": 50,
+      "size": 128,
+      "slot": {
+        "x": 14,
+        "y": 3,
+        "w": 114,
+        "h": 110,
+        "greenPixels": 6752
+      },
+      "layerPixels": 7276,
+      "source": "greenscreen/raw/bedge.png"
+    },
+    "beers": {
+      "id": "beers",
+      "kind": "layer",
+      "frames": 10,
+      "sourcePages": 10,
+      "delayMs": 100,
+      "size": 128,
+      "slot": {
+        "x": 0,
+        "y": 0,
+        "w": 128,
+        "h": 128,
+        "greenPixels": 140877
+      },
+      "layerPixels": 22963,
+      "source": "greenscreen/raw/beers.gif"
+    },
+    "big-brain": {
+      "id": "big-brain",
+      "kind": "layer",
+      "frames": 10,
+      "sourcePages": 10,
+      "delayMs": 80,
+      "size": 128,
+      "slot": {
+        "x": 0,
+        "y": 0,
+        "w": 128,
+        "h": 128,
+        "greenPixels": 143324
+      },
+      "layerPixels": 18724,
+      "source": "greenscreen/raw/big-brain.gif"
+    },
+    "binoculars": {
+      "id": "binoculars",
+      "kind": "layer",
+      "frames": 1,
+      "sourcePages": 1,
+      "delayMs": 50,
+      "size": 128,
+      "slot": {
+        "x": 0,
+        "y": 0,
+        "w": 128,
+        "h": 128,
+        "greenPixels": 9899
+      },
+      "layerPixels": 6485,
+      "source": "greenscreen/raw/binoculars.png"
+    },
+    "blah-blah-blah": {
+      "id": "blah-blah-blah",
+      "kind": "layer",
+      "frames": 34,
+      "sourcePages": 34,
+      "delayMs": 50,
+      "size": 128,
+      "slot": {
+        "x": 0,
+        "y": 0,
+        "w": 128,
+        "h": 128,
+        "greenPixels": 163840
+      },
+      "layerPixels": 393216,
+      "source": "greenscreen/raw/blah-blah-blah.gif"
+    },
+    "blame-animated": {
+      "id": "blame-animated",
+      "kind": "layer",
+      "frames": 40,
+      "sourcePages": 40,
+      "delayMs": 50,
+      "size": 128,
+      "slot": {
+        "x": 30,
+        "y": 32,
+        "w": 69,
+        "h": 71,
+        "greenPixels": 195960
+      },
+      "layerPixels": 1078,
+      "source": "greenscreen/raw/blame-animated.gif"
+    },
+    "blame": {
+      "id": "blame",
+      "kind": "layer",
+      "frames": 1,
+      "sourcePages": 1,
+      "delayMs": 50,
+      "size": 128,
+      "slot": {
+        "x": 30,
+        "y": 32,
+        "w": 69,
+        "h": 71,
+        "greenPixels": 4589
+      },
+      "layerPixels": 4601,
+      "source": "greenscreen/raw/blame.png"
+    },
+    "blanket": {
+      "id": "blanket",
+      "kind": "layer",
+      "frames": 1,
+      "sourcePages": 1,
+      "delayMs": 50,
+      "size": 128,
+      "slot": {
+        "x": 0,
+        "y": 0,
+        "w": 128,
+        "h": 128,
+        "greenPixels": 9274
+      },
+      "layerPixels": 7110,
+      "source": "greenscreen/raw/blanket.png"
+    },
+    "blankies": {
+      "id": "blankies",
+      "kind": "layer",
+      "frames": 10,
+      "sourcePages": 10,
+      "delayMs": 70,
+      "size": 128,
+      "slot": {
+        "x": 15,
+        "y": 23,
+        "w": 100,
+        "h": 75,
+        "greenPixels": 35924
+      },
+      "layerPixels": 47443,
+      "source": "greenscreen/raw/blankies.gif"
+    },
+    "blast": {
+      "id": "blast",
+      "kind": "layer",
+      "frames": 10,
+      "sourcePages": 10,
+      "delayMs": 70,
+      "size": 128,
+      "slot": {
+        "x": 0,
+        "y": 0,
+        "w": 128,
+        "h": 128,
+        "greenPixels": 85801
+      },
+      "layerPixels": 34349,
+      "source": "greenscreen/raw/blast.gif"
+    },
+    "blaze": {
+      "id": "blaze",
+      "kind": "layer",
+      "frames": 10,
+      "sourcePages": 10,
+      "delayMs": 20,
+      "size": 128,
+      "slot": {
+        "x": 13,
+        "y": 13,
+        "w": 103,
+        "h": 103,
+        "greenPixels": 106090
+      },
+      "layerPixels": 35481,
+      "source": "greenscreen/raw/blaze.gif"
+    },
+    "bless-up": {
+      "id": "bless-up",
+      "kind": "layer",
+      "frames": 10,
+      "sourcePages": 10,
+      "delayMs": 80,
+      "size": 128,
+      "slot": {
+        "x": 0,
+        "y": 0,
+        "w": 128,
+        "h": 128,
+        "greenPixels": 147142
+      },
+      "layerPixels": 15930,
+      "source": "greenscreen/raw/bless-up.gif"
+    },
+    "blink": {
+      "id": "blink",
+      "kind": "transform-slot",
+      "frames": 10,
+      "sourcePages": 10,
+      "delayMs": 70,
+      "size": 128,
+      "slot": {
+        "x": 0,
+        "y": 0,
+        "w": 128,
+        "h": 128,
+        "greenPixels": 98304
+      },
+      "layerPixels": 0,
+      "source": "greenscreen/raw/blink.gif"
+    },
+    "blob-help": {
+      "id": "blob-help",
+      "kind": "layer",
+      "frames": 1,
+      "sourcePages": 1,
+      "delayMs": 50,
+      "size": 128,
+      "slot": {
+        "x": 4,
+        "y": 13,
+        "w": 124,
+        "h": 103,
+        "greenPixels": 5535
+      },
+      "layerPixels": 5218,
+      "source": "greenscreen/raw/blob-help.png"
+    },
+    "blob-no": {
+      "id": "blob-no",
+      "kind": "layer",
+      "frames": 1,
+      "sourcePages": 1,
+      "delayMs": 50,
+      "size": 128,
+      "slot": {
+        "x": 17,
+        "y": 11,
+        "w": 111,
+        "h": 107,
+        "greenPixels": 5667
+      },
+      "layerPixels": 5096,
+      "source": "greenscreen/raw/blob-no.png"
+    },
+    "enter": {
+      "id": "enter",
+      "kind": "layer",
+      "frames": 14,
+      "sourcePages": 14,
+      "delayMs": 200,
+      "size": 128,
+      "slot": {
+        "x": 0,
+        "y": 10,
+        "w": 128,
+        "h": 118,
+        "greenPixels": 92331
+      },
+      "layerPixels": 137045,
+      "source": "greenscreen/raw/enter.gif"
+    },
+    "exit": {
+      "id": "exit",
+      "kind": "layer",
+      "frames": 14,
+      "sourcePages": 14,
+      "delayMs": 200,
+      "size": 128,
+      "slot": {
+        "x": 0,
+        "y": 10,
+        "w": 126,
+        "h": 118,
+        "greenPixels": 47257
+      },
+      "layerPixels": 182119,
+      "source": "greenscreen/raw/exit.gif"
+    },
+    "jam": {
+      "id": "jam",
+      "kind": "transform-slot",
+      "frames": 10,
+      "sourcePages": 10,
+      "delayMs": 60,
+      "size": 128,
+      "slot": {
+        "x": 0,
+        "y": 0,
+        "w": 128,
+        "h": 128,
+        "greenPixels": 155904
+      },
+      "layerPixels": 0,
+      "source": "greenscreen/raw/jam.gif"
+    },
+    "jammies": {
+      "id": "jammies",
+      "kind": "layer",
+      "frames": 10,
+      "sourcePages": 10,
+      "delayMs": 60,
+      "size": 128,
+      "slot": {
+        "x": 8,
+        "y": 0,
+        "w": 117,
+        "h": 128,
+        "greenPixels": 45912
+      },
+      "layerPixels": 39463,
+      "source": "greenscreen/raw/jammies.gif"
+    },
+    "lightsaber": {
+      "id": "lightsaber",
+      "kind": "layer",
+      "frames": 40,
+      "sourcePages": 40,
+      "delayMs": 50,
+      "size": 128,
+      "slot": {
+        "x": 7,
+        "y": 0,
+        "w": 121,
+        "h": 122,
+        "greenPixels": 459519
+      },
+      "layerPixels": 29911,
+      "source": "greenscreen/raw/lightsaber.gif"
+    },
+    "lightspeed-jump": {
+      "id": "lightspeed-jump",
+      "kind": "layer",
+      "frames": 18,
+      "sourcePages": 18,
+      "delayMs": 80,
+      "size": 128,
+      "slot": {
+        "x": 10,
+        "y": 0,
+        "w": 118,
+        "h": 128,
+        "greenPixels": 63737
+      },
+      "layerPixels": 231175,
+      "source": "greenscreen/raw/lightspeed-jump.gif"
+    },
+    "none": {
+      "id": "none",
+      "kind": "transform-slot",
+      "frames": 1,
+      "sourcePages": 1,
+      "delayMs": 50,
+      "size": 128,
+      "slot": {
+        "x": 0,
+        "y": 0,
+        "w": 128,
+        "h": 128,
+        "greenPixels": 16384
+      },
+      "layerPixels": 0,
+      "source": "greenscreen/raw/none.png"
+    },
+    "nyan-cat": {
+      "id": "nyan-cat",
+      "kind": "layer",
+      "frames": 10,
+      "sourcePages": 10,
+      "delayMs": 60,
+      "size": 128,
+      "slot": {
+        "x": 2,
+        "y": 23,
+        "w": 126,
+        "h": 74,
+        "greenPixels": 48815
+      },
+      "layerPixels": 53226,
+      "source": "greenscreen/raw/nyan-cat.gif"
+    },
+    "nyan": {
+      "id": "nyan",
+      "kind": "layer",
+      "frames": 10,
+      "sourcePages": 10,
+      "delayMs": 70,
+      "size": 128,
+      "slot": {
+        "x": 0,
+        "y": 9,
+        "w": 128,
+        "h": 111,
+        "greenPixels": 105079
+      },
+      "layerPixels": 15065,
+      "source": "greenscreen/raw/nyan.gif"
+    },
+    "panic": {
+      "id": "panic",
+      "kind": "transform-slot",
+      "frames": 10,
+      "sourcePages": 10,
+      "delayMs": 40,
+      "size": 128,
+      "slot": {
+        "x": 0,
+        "y": 0,
+        "w": 128,
+        "h": 128,
+        "greenPixels": 163205
+      },
+      "layerPixels": 0,
+      "source": "greenscreen/raw/panic.gif"
+    },
+    "parrot-hat": {
+      "id": "parrot-hat",
+      "kind": "layer",
+      "frames": 10,
+      "sourcePages": 10,
+      "delayMs": 50,
+      "size": 128,
+      "slot": {
+        "x": 0,
+        "y": 0,
+        "w": 123,
+        "h": 126,
+        "greenPixels": 66669
+      },
+      "layerPixels": 26722,
+      "source": "greenscreen/raw/parrot-hat.gif"
+    },
+    "parrot-hold": {
+      "id": "parrot-hold",
+      "kind": "layer",
+      "frames": 10,
+      "sourcePages": 10,
+      "delayMs": 50,
+      "size": 128,
+      "slot": {
+        "x": 20,
+        "y": 48,
+        "w": 108,
+        "h": 80,
+        "greenPixels": 37252
+      },
+      "layerPixels": 19229,
+      "source": "greenscreen/raw/parrot-hold.gif"
+    },
+    "parrot": {
+      "id": "parrot",
+      "kind": "layer",
+      "frames": 10,
+      "sourcePages": 10,
+      "delayMs": 50,
+      "size": 128,
+      "slot": {
+        "x": 7,
+        "y": 50,
+        "w": 111,
+        "h": 78,
+        "greenPixels": 27534
+      },
+      "layerPixels": 17468,
+      "source": "greenscreen/raw/parrot.gif"
+    },
+    "party-blob": {
+      "id": "party-blob",
+      "kind": "layer",
+      "frames": 10,
+      "sourcePages": 10,
+      "delayMs": 40,
+      "size": 128,
+      "slot": {
+        "x": 0,
+        "y": 7,
+        "w": 128,
+        "h": 121,
+        "greenPixels": 84239
+      },
+      "layerPixels": 26620,
+      "source": "greenscreen/raw/party-blob.gif"
+    },
+    "party-parrot": {
+      "id": "party-parrot",
+      "kind": "layer",
+      "frames": 10,
+      "sourcePages": 10,
+      "delayMs": 40,
+      "size": 128,
+      "slot": {
+        "x": 0,
+        "y": 7,
+        "w": 128,
+        "h": 121,
+        "greenPixels": 79798
+      },
+      "layerPixels": 13625,
+      "source": "greenscreen/raw/party-parrot.gif"
+    },
+    "party": {
+      "id": "party",
+      "kind": "transform-slot",
+      "frames": 10,
+      "sourcePages": 10,
+      "delayMs": 50,
+      "size": 128,
+      "slot": {
+        "x": 0,
+        "y": 0,
+        "w": 128,
+        "h": 128,
+        "greenPixels": 143857
+      },
+      "layerPixels": 0,
+      "source": "greenscreen/raw/party.gif"
+    },
+    "peepo-love": {
+      "id": "peepo-love",
+      "kind": "layer",
+      "frames": 1,
+      "sourcePages": 1,
+      "delayMs": 50,
+      "size": 128,
+      "slot": {
+        "x": 9,
+        "y": 33,
+        "w": 112,
+        "h": 95,
+        "greenPixels": 6341
+      },
+      "layerPixels": 5471,
+      "source": "greenscreen/raw/peepo-love.png"
+    },
+    "peepo-shy": {
+      "id": "peepo-shy",
+      "kind": "layer",
+      "frames": 1,
+      "sourcePages": 1,
+      "delayMs": 50,
+      "size": 128,
+      "slot": {
+        "x": 2,
+        "y": 26,
+        "w": 126,
+        "h": 102,
+        "greenPixels": 9030
+      },
+      "layerPixels": 2121,
+      "source": "greenscreen/raw/peepo-shy.png"
+    },
+    "peepo-sit": {
+      "id": "peepo-sit",
+      "kind": "layer",
+      "frames": 1,
+      "sourcePages": 1,
+      "delayMs": 50,
+      "size": 128,
+      "slot": {
+        "x": 1,
+        "y": 3,
+        "w": 105,
+        "h": 98,
+        "greenPixels": 6253
+      },
+      "layerPixels": 5633,
+      "source": "greenscreen/raw/peepo-sit.png"
+    },
+    "peepo-stop": {
+      "id": "peepo-stop",
+      "kind": "layer",
+      "frames": 1,
+      "sourcePages": 1,
+      "delayMs": 50,
+      "size": 128,
+      "slot": {
+        "x": 0,
+        "y": 40,
+        "w": 128,
+        "h": 87,
+        "greenPixels": 8240
+      },
+      "layerPixels": 6474,
+      "source": "greenscreen/raw/peepo-stop.png"
+    },
+    "peepo-want": {
+      "id": "peepo-want",
+      "kind": "layer",
+      "frames": 1,
+      "sourcePages": 1,
+      "delayMs": 50,
+      "size": 128,
+      "slot": {
+        "x": 1,
+        "y": 41,
+        "w": 123,
+        "h": 87,
+        "greenPixels": 7996
+      },
+      "layerPixels": 1213,
+      "source": "greenscreen/raw/peepo-want.png"
+    },
+    "peepo": {
+      "id": "peepo",
+      "kind": "layer",
+      "frames": 1,
+      "sourcePages": 1,
+      "delayMs": 50,
+      "size": 128,
+      "slot": {
+        "x": 2,
+        "y": 42,
+        "w": 120,
+        "h": 75,
+        "greenPixels": 7264
+      },
+      "layerPixels": 2012,
+      "source": "greenscreen/raw/peepo.png"
+    },
+    "pet": {
+      "id": "pet",
+      "kind": "layer",
+      "frames": 10,
+      "sourcePages": 10,
+      "delayMs": 50,
+      "size": 128,
+      "slot": {
+        "x": 25,
+        "y": 22,
+        "w": 103,
+        "h": 106,
+        "greenPixels": 64710
+      },
+      "layerPixels": 65150,
+      "source": "greenscreen/raw/pet.gif"
+    },
+    "pokeball-almost": {
+      "id": "pokeball-almost",
+      "kind": "layer",
+      "frames": 31,
+      "sourcePages": 61,
+      "delayMs": 200,
+      "size": 128,
+      "slot": {
+        "x": 2,
+        "y": 0,
+        "w": 126,
+        "h": 128,
+        "greenPixels": 64514
+      },
+      "layerPixels": 266764,
+      "source": "greenscreen/raw/pokeball-almost.gif"
+    },
+    "pokeball-capture": {
+      "id": "pokeball-capture",
+      "kind": "layer",
+      "frames": 27,
+      "sourcePages": 54,
+      "delayMs": 200,
+      "size": 128,
+      "slot": {
+        "x": 2,
+        "y": 0,
+        "w": 126,
+        "h": 128,
+        "greenPixels": 32258
+      },
+      "layerPixels": 253525,
+      "source": "greenscreen/raw/pokeball-capture.gif"
+    },
+    "pokeball-emerge": {
+      "id": "pokeball-emerge",
+      "kind": "layer",
+      "frames": 44,
+      "sourcePages": 87,
+      "delayMs": 200,
+      "size": 128,
+      "slot": {
+        "x": 20,
+        "y": 17,
+        "w": 90,
+        "h": 91,
+        "greenPixels": 217094
+      },
+      "layerPixels": 487296,
+      "source": "greenscreen/raw/pokeball-emerge.gif"
+    },
+    "pokeball-go": {
+      "id": "pokeball-go",
+      "kind": "layer",
+      "frames": 22,
+      "sourcePages": 22,
+      "delayMs": 60,
+      "size": 128,
+      "slot": {
+        "x": 2,
+        "y": 0,
+        "w": 126,
+        "h": 128,
+        "greenPixels": 64514
+      },
+      "layerPixels": 167913,
+      "source": "greenscreen/raw/pokeball-go.gif"
+    },
+    "sad-blob": {
+      "id": "sad-blob",
+      "kind": "transform-slot",
+      "frames": 32,
+      "sourcePages": 32,
+      "delayMs": 80,
+      "size": 128,
+      "slot": {
+        "x": 0,
+        "y": 0,
+        "w": 128,
+        "h": 128,
+        "greenPixels": 410062
+      },
+      "layerPixels": 0,
+      "source": "greenscreen/raw/sad-blob.gif"
+    },
+    "shake": {
+      "id": "shake",
+      "kind": "transform-slot",
+      "frames": 10,
+      "sourcePages": 10,
+      "delayMs": 40,
+      "size": 128,
+      "slot": {
+        "x": 0,
+        "y": 0,
+        "w": 128,
+        "h": 128,
+        "greenPixels": 152803
+      },
+      "layerPixels": 0,
+      "source": "greenscreen/raw/shake.gif"
+    },
+    "spin": {
+      "id": "spin",
+      "kind": "transform-slot",
+      "frames": 10,
+      "sourcePages": 10,
+      "delayMs": 80,
+      "size": 128,
+      "slot": {
+        "x": 0,
+        "y": 0,
+        "w": 128,
+        "h": 128,
+        "greenPixels": 146104
+      },
+      "layerPixels": 0,
+      "source": "greenscreen/raw/spin.gif"
+    },
+    "thing-cat": {
+      "id": "thing-cat",
+      "kind": "layer",
+      "frames": 10,
+      "sourcePages": 10,
+      "delayMs": 60,
+      "size": 128,
+      "slot": {
+        "x": 2,
+        "y": 30,
+        "w": 104,
+        "h": 76,
+        "greenPixels": 34070
+      },
+      "layerPixels": 58434,
+      "source": "greenscreen/raw/thing-cat.gif"
+    }
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "id": "pokeball-emerge",
+  "kind": "layer",
+  "frames": 44,
+  "sourcePages": 87,
+  "delayMs": 200,
+  "size": 128,
+  "slot": {
+    "x": 20,
+    "y": 17,
+    "w": 90,
+    "h": 91,
+    "greenPixels": 217094
+  },
+  "layerPixels": 487296,
+  "source": "greenscreen/raw/pokeball-emerge.gif"
+}

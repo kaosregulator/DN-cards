@@ -1,0 +1,17 @@
+{
+  "id": "beers",
+  "kind": "layer",
+  "frames": 10,
+  "sourcePages": 10,
+  "delayMs": 100,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 128,
+    "greenPixels": 140877
+  },
+  "layerPixels": 22963,
+  "source": "greenscreen/raw/beers.gif"
+}

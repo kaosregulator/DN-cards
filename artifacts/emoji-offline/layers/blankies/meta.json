@@ -1,0 +1,17 @@
+{
+  "id": "blankies",
+  "kind": "layer",
+  "frames": 10,
+  "sourcePages": 10,
+  "delayMs": 70,
+  "size": 128,
+  "slot": {
+    "x": 15,
+    "y": 23,
+    "w": 100,
+    "h": 75,
+    "greenPixels": 35924
+  },
+  "layerPixels": 47443,
+  "source": "greenscreen/raw/blankies.gif"
+}

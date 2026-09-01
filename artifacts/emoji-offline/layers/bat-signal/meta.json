@@ -1,0 +1,11 @@
+{
+  "id": "bat-signal",
+  "kind": "no-slot",
+  "frames": 1,
+  "sourcePages": 1,
+  "delayMs": 50,
+  "size": 128,
+  "slot": null,
+  "layerPixels": 12276,
+  "source": "greenscreen/raw/bat-signal.png"
+}

@@ -1,0 +1,17 @@
+{
+  "id": "jammies",
+  "kind": "layer",
+  "frames": 10,
+  "sourcePages": 10,
+  "delayMs": 60,
+  "size": 128,
+  "slot": {
+    "x": 8,
+    "y": 0,
+    "w": 117,
+    "h": 128,
+    "greenPixels": 45912
+  },
+  "layerPixels": 39463,
+  "source": "greenscreen/raw/jammies.gif"
+}

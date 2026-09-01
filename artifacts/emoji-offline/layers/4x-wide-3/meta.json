@@ -1,0 +1,17 @@
+{
+  "id": "4x-wide-3",
+  "kind": "transform-slot",
+  "frames": 1,
+  "sourcePages": 1,
+  "delayMs": 50,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 128,
+    "greenPixels": 16384
+  },
+  "layerPixels": 0,
+  "source": "greenscreen/raw/4x-wide-3.png"
+}

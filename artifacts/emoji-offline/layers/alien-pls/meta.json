@@ -1,0 +1,17 @@
+{
+  "id": "alien-pls",
+  "kind": "layer",
+  "frames": 43,
+  "sourcePages": 256,
+  "delayMs": 180,
+  "size": 128,
+  "slot": {
+    "x": 5,
+    "y": 2,
+    "w": 113,
+    "h": 122,
+    "greenPixels": 101911
+  },
+  "layerPixels": 24752,
+  "source": "greenscreen/raw/alien-pls.gif"
+}

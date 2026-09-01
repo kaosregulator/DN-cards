@@ -1,0 +1,17 @@
+{
+  "id": "pet",
+  "kind": "layer",
+  "frames": 10,
+  "sourcePages": 10,
+  "delayMs": 50,
+  "size": 128,
+  "slot": {
+    "x": 25,
+    "y": 22,
+    "w": 103,
+    "h": 106,
+    "greenPixels": 64710
+  },
+  "layerPixels": 65150,
+  "source": "greenscreen/raw/pet.gif"
+}

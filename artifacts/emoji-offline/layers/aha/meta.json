@@ -1,0 +1,17 @@
+{
+  "id": "aha",
+  "kind": "layer",
+  "frames": 48,
+  "sourcePages": 48,
+  "delayMs": 50,
+  "size": 128,
+  "slot": {
+    "x": 6,
+    "y": 32,
+    "w": 85,
+    "h": 86,
+    "greenPixels": 348273
+  },
+  "layerPixels": 57693,
+  "source": "greenscreen/raw/aha.gif"
+}

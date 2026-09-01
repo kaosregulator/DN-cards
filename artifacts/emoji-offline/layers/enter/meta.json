@@ -1,0 +1,17 @@
+{
+  "id": "enter",
+  "kind": "layer",
+  "frames": 14,
+  "sourcePages": 14,
+  "delayMs": 200,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 10,
+    "w": 128,
+    "h": 118,
+    "greenPixels": 92331
+  },
+  "layerPixels": 137045,
+  "source": "greenscreen/raw/enter.gif"
+}

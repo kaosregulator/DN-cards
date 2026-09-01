@@ -1,0 +1,17 @@
+{
+  "id": "blob-no",
+  "kind": "layer",
+  "frames": 1,
+  "sourcePages": 1,
+  "delayMs": 50,
+  "size": 128,
+  "slot": {
+    "x": 17,
+    "y": 11,
+    "w": 111,
+    "h": 107,
+    "greenPixels": 5667
+  },
+  "layerPixels": 5096,
+  "source": "greenscreen/raw/blob-no.png"
+}

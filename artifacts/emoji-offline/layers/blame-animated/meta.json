@@ -1,0 +1,17 @@
+{
+  "id": "blame-animated",
+  "kind": "layer",
+  "frames": 40,
+  "sourcePages": 40,
+  "delayMs": 50,
+  "size": 128,
+  "slot": {
+    "x": 30,
+    "y": 32,
+    "w": 69,
+    "h": 71,
+    "greenPixels": 195960
+  },
+  "layerPixels": 1078,
+  "source": "greenscreen/raw/blame-animated.gif"
+}

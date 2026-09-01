@@ -20,6 +20,7 @@ import {
 import type { GenerateOptions, GenerateResult } from "../../types.js";
 import { composeOverlay, resolveOverlayPath } from "./overlay.js";
 import { composeSequence, resolveAtlasDir, resolveFramesDir } from "./atlas.js";
+import { composeLayerPack, hasLayerPack } from "./layer-pack.js";
 import { directionFromRecipe, effectFromPrimitive } from "./primitives.js";
 import { findRecipe } from "./recipes.js";
 import { findOfflineStyle } from "./registry.js";
@@ -33,6 +34,11 @@ import {
 
 const RENDER_TIMEOUT_MS = 20_000;
 
+function styleSlug(animation: string, recipeId?: string, styleId?: string): string {
+  const raw = recipeId ?? styleId ?? animation;
+  return raw.replace(/^gen_btn_/, "");
+}
+
 export async function renderOffline(options: GenerateOptions): Promise<GenerateResult> {
   if (!isLocalFormat(options.format) && options.format !== "webp" && options.format !== "apng") {
     throw new EmojiError(
@@ -43,8 +49,10 @@ export async function renderOffline(options: GenerateOptions): Promise<GenerateR
 
   const recipe = findRecipe(options.animation);
   const style = findOfflineStyle(options.animation);
+  const slug = styleSlug(options.animation, recipe?.slug ?? recipe?.id, style?.id);
+  const layerReady = hasLayerPack(slug);
 
-  if (!recipe && !style) {
+  if (!recipe && !style && !layerReady) {
     throw new EmojiError(
       "unknown_effect",
       `\`${options.animation}\` isn't in the offline MakeEmoji style archive.`,
@@ -54,7 +62,9 @@ export async function renderOffline(options: GenerateOptions): Promise<GenerateR
   // Prefer a recipe with a primitive. offlineReady is the *claim* gate used by
   // implementedOfflineStyles / package stats — verification must be able to
   // render candidates before flipping that flag.
-  const canRender = Boolean(recipe?.primitive)
+  // Harvested MakeEmoji green-screen layer packs always win when present.
+  const canRender = layerReady
+    || Boolean(recipe?.primitive)
     || Boolean(style?.offlineImplemented && style.offlineEffectId);
   if (!canRender) {
     const id = recipe?.id ?? style?.id ?? options.animation;
@@ -77,7 +87,36 @@ export async function renderOffline(options: GenerateOptions): Promise<GenerateR
   // MakeEmoji Colour side-control: recolors the upload before/while the style runs.
   const color = normalizeColor(options.color);
 
-  const buffer = await withTimeout(queueRender(`emoji-offline:${recipe?.id ?? style?.id}`, async () => {
+  const buffer = await withTimeout(queueRender(`emoji-offline:${recipe?.id ?? style?.id ?? slug}`, async () => {
+    // Gold path: real MakeEmoji GIF harvested with a green subject, chroma-keyed.
+    if (layerReady) {
+      const pack = await composeLayerPack({ image: options.image, slug, size });
+      // Colour still applies to the subject before compositing when requested.
+      if (color) {
+        return composeWithColor({
+          family: "frames",
+          image: options.image,
+          color,
+          format: options.format,
+          size,
+          speed,
+          baseFrames: options.format === "png" ? 1 : pack.frames.length,
+          composeOne: async (image, _frameCount) => {
+            const again = await composeLayerPack({ image, slug, size });
+            return again.frames;
+          },
+          delayMs: pack.delayMs,
+        });
+      }
+      return encodeFrames(
+        pack.frames,
+        size,
+        options.format,
+        delayFor(pack.delayMs, speed),
+        "frames",
+      );
+    }
+
     if (family === "overlay") {
       const slug = recipe!.slug;
       const overlayPath = resolveOverlayPath(slug);

@@ -1,0 +1,17 @@
+{
+  "id": "blame",
+  "kind": "layer",
+  "frames": 1,
+  "sourcePages": 1,
+  "delayMs": 50,
+  "size": 128,
+  "slot": {
+    "x": 30,
+    "y": 32,
+    "w": 69,
+    "h": 71,
+    "greenPixels": 4589
+  },
+  "layerPixels": 4601,
+  "source": "greenscreen/raw/blame.png"
+}

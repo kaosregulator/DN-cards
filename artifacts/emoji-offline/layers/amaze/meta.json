@@ -1,0 +1,17 @@
+{
+  "id": "amaze",
+  "kind": "layer",
+  "frames": 7,
+  "sourcePages": 7,
+  "delayMs": 100,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 128,
+    "greenPixels": 87508
+  },
+  "layerPixels": 27180,
+  "source": "greenscreen/raw/amaze.gif"
+}

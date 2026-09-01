@@ -1,0 +1,17 @@
+{
+  "id": "blah-blah-blah",
+  "kind": "layer",
+  "frames": 34,
+  "sourcePages": 34,
+  "delayMs": 50,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 128,
+    "greenPixels": 163840
+  },
+  "layerPixels": 393216,
+  "source": "greenscreen/raw/blah-blah-blah.gif"
+}

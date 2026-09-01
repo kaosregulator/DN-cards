@@ -1,0 +1,17 @@
+{
+  "id": "parrot-hold",
+  "kind": "layer",
+  "frames": 10,
+  "sourcePages": 10,
+  "delayMs": 50,
+  "size": 128,
+  "slot": {
+    "x": 20,
+    "y": 48,
+    "w": 108,
+    "h": 80,
+    "greenPixels": 37252
+  },
+  "layerPixels": 19229,
+  "source": "greenscreen/raw/parrot-hold.gif"
+}

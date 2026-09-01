@@ -1,0 +1,17 @@
+{
+  "id": "bedge",
+  "kind": "layer",
+  "frames": 1,
+  "sourcePages": 1,
+  "delayMs": 50,
+  "size": 128,
+  "slot": {
+    "x": 14,
+    "y": 3,
+    "w": 114,
+    "h": 110,
+    "greenPixels": 6752
+  },
+  "layerPixels": 7276,
+  "source": "greenscreen/raw/bedge.png"
+}

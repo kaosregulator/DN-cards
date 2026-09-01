@@ -1,0 +1,17 @@
+{
+  "id": "blob-help",
+  "kind": "layer",
+  "frames": 1,
+  "sourcePages": 1,
+  "delayMs": 50,
+  "size": 128,
+  "slot": {
+    "x": 4,
+    "y": 13,
+    "w": 124,
+    "h": 103,
+    "greenPixels": 5535
+  },
+  "layerPixels": 5218,
+  "source": "greenscreen/raw/blob-help.png"
+}

@@ -1,0 +1,17 @@
+{
+  "id": "party-parrot",
+  "kind": "layer",
+  "frames": 10,
+  "sourcePages": 10,
+  "delayMs": 40,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 7,
+    "w": 128,
+    "h": 121,
+    "greenPixels": 79798
+  },
+  "layerPixels": 13625,
+  "source": "greenscreen/raw/party-parrot.gif"
+}

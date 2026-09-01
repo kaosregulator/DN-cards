@@ -1,0 +1,17 @@
+{
+  "id": "nyan",
+  "kind": "layer",
+  "frames": 10,
+  "sourcePages": 10,
+  "delayMs": 70,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 9,
+    "w": 128,
+    "h": 111,
+    "greenPixels": 105079
+  },
+  "layerPixels": 15065,
+  "source": "greenscreen/raw/nyan.gif"
+}

@@ -1,0 +1,17 @@
+{
+  "id": "peepo-shy",
+  "kind": "layer",
+  "frames": 1,
+  "sourcePages": 1,
+  "delayMs": 50,
+  "size": 128,
+  "slot": {
+    "x": 2,
+    "y": 26,
+    "w": 126,
+    "h": 102,
+    "greenPixels": 9030
+  },
+  "layerPixels": 2121,
+  "source": "greenscreen/raw/peepo-shy.png"
+}
