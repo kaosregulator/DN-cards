@@ -21,6 +21,7 @@ declare module "sharp" {
       fit?: "cover" | "contain" | "fill" | "inside" | "outside";
       position?: string | number;
       background?: RGBA;
+      kernel?: "nearest" | "cubic" | "mitchell" | "lanczos2" | "lanczos3" | string;
     }
     interface WebpOptions {
       quality?: number;
