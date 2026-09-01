@@ -12,6 +12,121 @@
     "h": 128,
     "greenPixels": 73707
   },
+  "perFrame": [
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.5,
+      "cy": 63.5,
+      "greenPixels": 16384,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 62.68576755748912,
+      "cy": 64.30490988191423,
+      "greenPixels": 16090,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 60.1694767246591,
+      "cy": 66.78773426479479,
+      "greenPixels": 14887,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 54.72308664402496,
+      "cy": 72.52002211515678,
+      "greenPixels": 12661,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 49.573765056912364,
+      "cy": 78.08962316278041,
+      "greenPixels": 9049,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 39,
+      "w": 90,
+      "h": 89,
+      "cx": 35.403791223058946,
+      "cy": 92.56089327447417,
+      "greenPixels": 3851,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 7,
+      "y": 87,
+      "w": 35,
+      "h": 35,
+      "cx": 21.728662420382165,
+      "cy": 106.27133757961784,
+      "greenPixels": 785,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 0,
+      "h": 0,
+      "cx": 64,
+      "cy": 64,
+      "greenPixels": 0,
+      "visible": false,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 0,
+      "h": 0,
+      "cx": 64,
+      "cy": 64,
+      "greenPixels": 0,
+      "visible": false,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 0,
+      "h": 0,
+      "cx": 64,
+      "cy": 64,
+      "greenPixels": 0,
+      "visible": false,
+      "delayMs": 70
+    }
+  ],
+  "motionPx": 59.8,
+  "areaRatio": 13.37,
   "layerPixels": 0,
-  "source": "greenscreen/raw/thanos-snap.gif"
+  "source": "greenscreen/raw/thanos-snap.gif",
+  "animationMode": "per-frame-slot-mask"
 }

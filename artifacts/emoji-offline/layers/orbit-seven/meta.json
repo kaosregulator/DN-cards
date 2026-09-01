@@ -12,6 +12,121 @@
     "h": 103,
     "greenPixels": 43530
   },
+  "perFrame": [
+    {
+      "x": 16,
+      "y": 13,
+      "w": 100,
+      "h": 103,
+      "cx": 63.094269005847956,
+      "cy": 64,
+      "greenPixels": 4275,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 15,
+      "y": 13,
+      "w": 101,
+      "h": 102,
+      "cx": 63.9983996342021,
+      "cy": 64.29195244627343,
+      "greenPixels": 4374,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 14,
+      "y": 13,
+      "w": 102,
+      "h": 101,
+      "cx": 64.00800732097917,
+      "cy": 64.14710592541752,
+      "greenPixels": 4371,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 13,
+      "y": 13,
+      "w": 102,
+      "h": 101,
+      "cx": 63.99199267902082,
+      "cy": 64.14710592541752,
+      "greenPixels": 4371,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 13,
+      "y": 13,
+      "w": 101,
+      "h": 102,
+      "cx": 64.0016003657979,
+      "cy": 64.29195244627343,
+      "greenPixels": 4374,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 13,
+      "y": 13,
+      "w": 100,
+      "h": 103,
+      "cx": 64.90573099415205,
+      "cy": 64,
+      "greenPixels": 4275,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 13,
+      "y": 14,
+      "w": 101,
+      "h": 102,
+      "cx": 64.0016003657979,
+      "cy": 63.708047553726566,
+      "greenPixels": 4374,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 13,
+      "y": 15,
+      "w": 102,
+      "h": 101,
+      "cx": 63.99199267902082,
+      "cy": 63.85289407458247,
+      "greenPixels": 4371,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 14,
+      "y": 15,
+      "w": 102,
+      "h": 101,
+      "cx": 64.00800732097917,
+      "cy": 63.85289407458247,
+      "greenPixels": 4371,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 15,
+      "y": 14,
+      "w": 101,
+      "h": 102,
+      "cx": 63.9983996342021,
+      "cy": 63.708047553726566,
+      "greenPixels": 4374,
+      "visible": true,
+      "delayMs": 70
+    }
+  ],
+  "motionPx": 1.9,
+  "areaRatio": 1,
   "layerPixels": 0,
-  "source": "greenscreen/raw/orbit-seven.gif"
+  "source": "greenscreen/raw/orbit-seven.gif",
+  "animationMode": "per-frame-slot-mask"
 }

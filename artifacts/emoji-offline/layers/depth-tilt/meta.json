@@ -12,6 +12,121 @@
     "h": 128,
     "greenPixels": 159228
   },
+  "perFrame": [
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.5,
+      "cy": 63.5,
+      "greenPixels": 16384,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.5,
+      "cy": 63.5,
+      "greenPixels": 16384,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.5,
+      "cy": 63.5,
+      "greenPixels": 16384,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.5,
+      "cy": 63.5,
+      "greenPixels": 16384,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.5,
+      "cy": 63.5,
+      "greenPixels": 16384,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.5,
+      "cy": 63.5,
+      "greenPixels": 16384,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 6,
+      "y": 0,
+      "w": 122,
+      "h": 128,
+      "cx": 66.7366311024895,
+      "cy": 63.50339476236663,
+      "greenPixels": 15465,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 8,
+      "y": 0,
+      "w": 120,
+      "h": 128,
+      "cx": 68.00740148029605,
+      "cy": 63.50923518036941,
+      "greenPixels": 14997,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 8,
+      "y": 0,
+      "w": 120,
+      "h": 128,
+      "cx": 68.00740148029605,
+      "cy": 63.50923518036941,
+      "greenPixels": 14997,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 6,
+      "y": 0,
+      "w": 122,
+      "h": 128,
+      "cx": 66.7366311024895,
+      "cy": 63.50339476236663,
+      "greenPixels": 15465,
+      "visible": true,
+      "delayMs": 80
+    }
+  ],
+  "motionPx": 4.5,
+  "areaRatio": 1.07,
   "layerPixels": 0,
-  "source": "greenscreen/raw/depth-tilt.gif"
+  "source": "greenscreen/raw/depth-tilt.gif",
+  "animationMode": "per-frame-slot-mask"
 }

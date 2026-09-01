@@ -3,7 +3,7 @@
   "kind": "layer",
   "frames": 10,
   "sourcePages": 10,
-  "delayMs": 90,
+  "delayMs": 79,
   "size": 128,
   "slot": {
     "x": 5,
@@ -12,6 +12,121 @@
     "h": 98,
     "greenPixels": 99644
   },
+  "perFrame": [
+    {
+      "x": 7,
+      "y": 0,
+      "w": 116,
+      "h": 98,
+      "cx": 67.3954125647011,
+      "cy": 42.3669948239115,
+      "greenPixels": 9853,
+      "visible": true,
+      "delayMs": 90
+    },
+    {
+      "x": 7,
+      "y": 0,
+      "w": 116,
+      "h": 98,
+      "cx": 67.38239172329851,
+      "cy": 42.38584034891977,
+      "greenPixels": 9859,
+      "visible": true,
+      "delayMs": 30
+    },
+    {
+      "x": 7,
+      "y": 0,
+      "w": 116,
+      "h": 98,
+      "cx": 67.69176971416988,
+      "cy": 42.46199067504561,
+      "greenPixels": 9866,
+      "visible": true,
+      "delayMs": 90
+    },
+    {
+      "x": 7,
+      "y": 0,
+      "w": 116,
+      "h": 98,
+      "cx": 67.24125839094279,
+      "cy": 42.83188057308887,
+      "greenPixels": 9981,
+      "visible": true,
+      "delayMs": 40
+    },
+    {
+      "x": 7,
+      "y": 0,
+      "w": 116,
+      "h": 98,
+      "cx": 67.2247,
+      "cy": 42.9038,
+      "greenPixels": 10000,
+      "visible": true,
+      "delayMs": 110
+    },
+    {
+      "x": 5,
+      "y": 0,
+      "w": 118,
+      "h": 98,
+      "cx": 67.19182610437744,
+      "cy": 42.82380046078333,
+      "greenPixels": 9983,
+      "visible": true,
+      "delayMs": 40
+    },
+    {
+      "x": 7,
+      "y": 0,
+      "w": 116,
+      "h": 98,
+      "cx": 66.8381652104845,
+      "cy": 43.12768069896743,
+      "greenPixels": 10072,
+      "visible": true,
+      "delayMs": 130
+    },
+    {
+      "x": 7,
+      "y": 0,
+      "w": 116,
+      "h": 98,
+      "cx": 66.8263283108644,
+      "cy": 43.19389373513085,
+      "greenPixels": 10088,
+      "visible": true,
+      "delayMs": 40
+    },
+    {
+      "x": 5,
+      "y": 0,
+      "w": 118,
+      "h": 98,
+      "cx": 66.82020021805927,
+      "cy": 43.18981068490435,
+      "greenPixels": 10089,
+      "visible": true,
+      "delayMs": 110
+    },
+    {
+      "x": 7,
+      "y": 0,
+      "w": 116,
+      "h": 98,
+      "cx": 67.3954125647011,
+      "cy": 42.3669948239115,
+      "greenPixels": 9853,
+      "visible": true,
+      "delayMs": 110
+    }
+  ],
+  "motionPx": 1.2,
+  "areaRatio": 1.02,
   "layerPixels": 64196,
-  "source": "greenscreen/raw/spongebob-worship.gif"
+  "source": "greenscreen/raw/spongebob-worship.gif",
+  "animationMode": "per-frame-slot-mask"
 }

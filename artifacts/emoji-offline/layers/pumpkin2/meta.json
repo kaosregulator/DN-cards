@@ -12,6 +12,22 @@
     "h": 21,
     "greenPixels": 155
   },
+  "perFrame": [
+    {
+      "x": 56,
+      "y": 4,
+      "w": 24,
+      "h": 21,
+      "cx": 66.52258064516128,
+      "cy": 13.290322580645162,
+      "greenPixels": 155,
+      "visible": true,
+      "delayMs": 50
+    }
+  ],
+  "motionPx": 0,
+  "areaRatio": 1,
   "layerPixels": 11918,
-  "source": "greenscreen/raw/pumpkin2.png"
+  "source": "greenscreen/raw/pumpkin2.png",
+  "animationMode": "per-frame-slot-mask"
 }

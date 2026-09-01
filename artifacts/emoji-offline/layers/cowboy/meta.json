@@ -12,6 +12,22 @@
     "h": 87,
     "greenPixels": 7252
   },
+  "perFrame": [
+    {
+      "x": 14,
+      "y": 39,
+      "w": 101,
+      "h": 87,
+      "cx": 64.15099282956426,
+      "cy": 79.69870380584666,
+      "greenPixels": 7252,
+      "visible": true,
+      "delayMs": 50
+    }
+  ],
+  "motionPx": 0,
+  "areaRatio": 1,
   "layerPixels": 3508,
-  "source": "greenscreen/raw/cowboy.png"
+  "source": "greenscreen/raw/cowboy.png",
+  "animationMode": "per-frame-slot-mask"
 }

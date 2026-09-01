@@ -12,6 +12,121 @@
     "h": 128,
     "greenPixels": 159744
   },
+  "perFrame": [
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.5,
+      "cy": 63.5,
+      "greenPixels": 16384,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 0,
+      "y": 3,
+      "w": 128,
+      "h": 125,
+      "cx": 63.5,
+      "cy": 65,
+      "greenPixels": 16000,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 0,
+      "y": 6,
+      "w": 128,
+      "h": 122,
+      "cx": 63.5,
+      "cy": 66.5,
+      "greenPixels": 15616,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 0,
+      "y": 6,
+      "w": 128,
+      "h": 122,
+      "cx": 63.5,
+      "cy": 66.5,
+      "greenPixels": 15616,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 0,
+      "y": 3,
+      "w": 128,
+      "h": 125,
+      "cx": 63.5,
+      "cy": 65,
+      "greenPixels": 16000,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.5,
+      "cy": 63.5,
+      "greenPixels": 16384,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 126,
+      "cx": 63.5,
+      "cy": 62.5,
+      "greenPixels": 16128,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 123,
+      "cx": 63.5,
+      "cy": 61,
+      "greenPixels": 15744,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 123,
+      "cx": 63.5,
+      "cy": 61,
+      "greenPixels": 15744,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 126,
+      "cx": 63.5,
+      "cy": 62.5,
+      "greenPixels": 16128,
+      "visible": true,
+      "delayMs": 60
+    }
+  ],
+  "motionPx": 5.5,
+  "areaRatio": 1.05,
   "layerPixels": 0,
-  "source": "greenscreen/raw/hovering.gif"
+  "source": "greenscreen/raw/hovering.gif",
+  "animationMode": "per-frame-slot-mask"
 }

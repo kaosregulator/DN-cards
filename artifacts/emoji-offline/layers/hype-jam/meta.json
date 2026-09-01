@@ -12,6 +12,121 @@
     "h": 122,
     "greenPixels": 74202
   },
+  "perFrame": [
+    {
+      "x": 22,
+      "y": 15,
+      "w": 85,
+      "h": 101,
+      "cx": 64.46014935505771,
+      "cy": 71.99972844534963,
+      "greenPixels": 7365,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 22,
+      "y": 18,
+      "w": 85,
+      "h": 104,
+      "cx": 64.33830978405759,
+      "cy": 77.12463343108504,
+      "greenPixels": 7502,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 7,
+      "y": 16,
+      "w": 109,
+      "h": 112,
+      "cx": 62.801490087132215,
+      "cy": 80.4413436039904,
+      "greenPixels": 7919,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 6,
+      "y": 10,
+      "w": 110,
+      "h": 118,
+      "cx": 61.605792643854926,
+      "cy": 80.26733307702166,
+      "greenPixels": 7803,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 6,
+      "y": 7,
+      "w": 111,
+      "h": 121,
+      "cx": 62.66437298132285,
+      "cy": 84.01994101951973,
+      "greenPixels": 7121,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 13,
+      "y": 6,
+      "w": 110,
+      "h": 110,
+      "cx": 64.7917054366609,
+      "cy": 70.86534627143426,
+      "greenPixels": 7523,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 14,
+      "y": 6,
+      "w": 109,
+      "h": 116,
+      "cx": 65.27224576271186,
+      "cy": 76.43286546610169,
+      "greenPixels": 7552,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 16,
+      "y": 6,
+      "w": 93,
+      "h": 122,
+      "cx": 64.50284579748511,
+      "cy": 82.30562541363335,
+      "greenPixels": 7555,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 22,
+      "y": 7,
+      "w": 85,
+      "h": 121,
+      "cx": 64.61533110740122,
+      "cy": 84.29284919309961,
+      "greenPixels": 7188,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 22,
+      "y": 14,
+      "w": 85,
+      "h": 114,
+      "cx": 64.27240035960443,
+      "cy": 87.84327240035961,
+      "greenPixels": 6674,
+      "visible": true,
+      "delayMs": 60
+    }
+  ],
+  "motionPx": 17.4,
+  "areaRatio": 1.56,
   "layerPixels": 42962,
-  "source": "greenscreen/raw/hype-jam.gif"
+  "source": "greenscreen/raw/hype-jam.gif",
+  "animationMode": "per-frame-slot-mask"
 }

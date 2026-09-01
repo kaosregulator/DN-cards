@@ -12,6 +12,110 @@
     "h": 96,
     "greenPixels": 46534
   },
+  "perFrame": [
+    {
+      "x": 10,
+      "y": 28,
+      "w": 115,
+      "h": 78,
+      "cx": 70.80900831239126,
+      "cy": 65.91320317030737,
+      "greenPixels": 5173,
+      "visible": true,
+      "delayMs": 100
+    },
+    {
+      "x": 10,
+      "y": 26,
+      "w": 115,
+      "h": 79,
+      "cx": 70.11705426356589,
+      "cy": 64.52364341085271,
+      "greenPixels": 5160,
+      "visible": true,
+      "delayMs": 100
+    },
+    {
+      "x": 10,
+      "y": 20,
+      "w": 115,
+      "h": 78,
+      "cx": 66.91808346213293,
+      "cy": 58.24806800618238,
+      "greenPixels": 5176,
+      "visible": true,
+      "delayMs": 100
+    },
+    {
+      "x": 10,
+      "y": 13,
+      "w": 115,
+      "h": 79,
+      "cx": 63.678688524590164,
+      "cy": 51.95390549662488,
+      "greenPixels": 5185,
+      "visible": true,
+      "delayMs": 100
+    },
+    {
+      "x": 10,
+      "y": 10,
+      "w": 115,
+      "h": 79,
+      "cx": 61.67074117190532,
+      "cy": 48.173069460613114,
+      "greenPixels": 5154,
+      "visible": true,
+      "delayMs": 100
+    },
+    {
+      "x": 10,
+      "y": 11,
+      "w": 115,
+      "h": 78,
+      "cx": 62.55557707203718,
+      "cy": 49.382261812548414,
+      "greenPixels": 5164,
+      "visible": true,
+      "delayMs": 100
+    },
+    {
+      "x": 10,
+      "y": 15,
+      "w": 114,
+      "h": 79,
+      "cx": 64.99825986078886,
+      "cy": 54.4561098221191,
+      "greenPixels": 5172,
+      "visible": true,
+      "delayMs": 100
+    },
+    {
+      "x": 10,
+      "y": 22,
+      "w": 114,
+      "h": 78,
+      "cx": 68.29123213595983,
+      "cy": 60.74777906527617,
+      "greenPixels": 5178,
+      "visible": true,
+      "delayMs": 100
+    },
+    {
+      "x": 10,
+      "y": 28,
+      "w": 115,
+      "h": 78,
+      "cx": 70.6492652745553,
+      "cy": 65.90738592420728,
+      "greenPixels": 5172,
+      "visible": true,
+      "delayMs": 100
+    }
+  ],
+  "motionPx": 20,
+  "areaRatio": 1.02,
   "layerPixels": 13007,
-  "source": "greenscreen/raw/flag.gif"
+  "source": "greenscreen/raw/flag.gif",
+  "animationMode": "per-frame-slot-mask"
 }

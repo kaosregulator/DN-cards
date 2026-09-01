@@ -12,6 +12,22 @@
     "h": 97,
     "greenPixels": 7446
   },
+  "perFrame": [
+    {
+      "x": 28,
+      "y": 15,
+      "w": 100,
+      "h": 97,
+      "cx": 79.54821380607038,
+      "cy": 61.830110126242275,
+      "greenPixels": 7446,
+      "visible": true,
+      "delayMs": 50
+    }
+  ],
+  "motionPx": 0,
+  "areaRatio": 1,
   "layerPixels": 7450,
-  "source": "greenscreen/raw/hoodie.png"
+  "source": "greenscreen/raw/hoodie.png",
+  "animationMode": "per-frame-slot-mask"
 }

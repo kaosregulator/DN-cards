@@ -12,6 +12,22 @@
     "h": 113,
     "greenPixels": 8108
   },
+  "perFrame": [
+    {
+      "x": 0,
+      "y": 6,
+      "w": 128,
+      "h": 113,
+      "cx": 63.85705476073014,
+      "cy": 70.36174148988653,
+      "greenPixels": 8108,
+      "visible": true,
+      "delayMs": 50
+    }
+  ],
+  "motionPx": 0,
+  "areaRatio": 1,
   "layerPixels": 5328,
-  "source": "greenscreen/raw/pepe-clown.png"
+  "source": "greenscreen/raw/pepe-clown.png",
+  "animationMode": "per-frame-slot-mask"
 }

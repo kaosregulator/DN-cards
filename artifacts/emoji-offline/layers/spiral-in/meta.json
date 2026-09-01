@@ -12,6 +12,121 @@
     "h": 122,
     "greenPixels": 71432
   },
+  "perFrame": [
+    {
+      "x": 70,
+      "y": 45,
+      "w": 41,
+      "h": 39,
+      "cx": 90,
+      "cy": 64,
+      "greenPixels": 1599,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 32,
+      "y": 62,
+      "w": 50,
+      "h": 50,
+      "cx": 56.5,
+      "cy": 86.5,
+      "greenPixels": 2500,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 18,
+      "y": 23,
+      "w": 60,
+      "h": 59,
+      "cx": 47.5,
+      "cy": 52,
+      "greenPixels": 3540,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 45,
+      "y": 19,
+      "w": 68,
+      "h": 69,
+      "cx": 78.5,
+      "cy": 53,
+      "greenPixels": 4692,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 32,
+      "y": 41,
+      "w": 75,
+      "h": 75,
+      "cx": 69,
+      "cy": 78,
+      "greenPixels": 5625,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 9,
+      "y": 23,
+      "w": 85,
+      "h": 83,
+      "cx": 51,
+      "cy": 64,
+      "greenPixels": 7055,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 21,
+      "y": 8,
+      "w": 93,
+      "h": 94,
+      "cx": 67,
+      "cy": 54.5,
+      "greenPixels": 8742,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 19,
+      "y": 17,
+      "w": 103,
+      "h": 103,
+      "cx": 70.0096162911285,
+      "cy": 68,
+      "greenPixels": 10607,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 5,
+      "y": 11,
+      "w": 111,
+      "h": 112,
+      "cx": 60,
+      "cy": 66.5,
+      "greenPixels": 12432,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 3,
+      "y": 1,
+      "w": 121,
+      "h": 121,
+      "cx": 63.00409836065574,
+      "cy": 61.00409836065574,
+      "greenPixels": 14640,
+      "visible": true,
+      "delayMs": 70
+    }
+  ],
+  "motionPx": 54.7,
+  "areaRatio": 9.16,
   "layerPixels": 0,
-  "source": "greenscreen/raw/spiral-in.gif"
+  "source": "greenscreen/raw/spiral-in.gif",
+  "animationMode": "per-frame-slot-mask"
 }

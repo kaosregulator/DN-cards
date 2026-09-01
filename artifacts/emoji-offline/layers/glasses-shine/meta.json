@@ -12,6 +12,121 @@
     "h": 128,
     "greenPixels": 134390
   },
+  "perFrame": [
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.34466850212069,
+      "cy": 63.33209316169358,
+      "greenPixels": 13439,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.34466850212069,
+      "cy": 63.33209316169358,
+      "greenPixels": 13439,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.34466850212069,
+      "cy": 63.33209316169358,
+      "greenPixels": 13439,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.34466850212069,
+      "cy": 63.33209316169358,
+      "greenPixels": 13439,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.34466850212069,
+      "cy": 63.33209316169358,
+      "greenPixels": 13439,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.34466850212069,
+      "cy": 63.33209316169358,
+      "greenPixels": 13439,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.34466850212069,
+      "cy": 63.33209316169358,
+      "greenPixels": 13439,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.34466850212069,
+      "cy": 63.33209316169358,
+      "greenPixels": 13439,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.34466850212069,
+      "cy": 63.33209316169358,
+      "greenPixels": 13439,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.34466850212069,
+      "cy": 63.33209316169358,
+      "greenPixels": 13439,
+      "visible": true,
+      "delayMs": 50
+    }
+  ],
+  "motionPx": 0,
+  "areaRatio": 1,
   "layerPixels": 29450,
-  "source": "greenscreen/raw/glasses-shine.gif"
+  "source": "greenscreen/raw/glasses-shine.gif",
+  "animationMode": "per-frame-slot-mask"
 }

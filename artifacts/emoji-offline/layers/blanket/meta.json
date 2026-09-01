@@ -12,6 +12,22 @@
     "h": 128,
     "greenPixels": 9234
   },
+  "perFrame": [
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 77.42830842538444,
+      "cy": 52.528265107212476,
+      "greenPixels": 9234,
+      "visible": true,
+      "delayMs": 50
+    }
+  ],
+  "motionPx": 0,
+  "areaRatio": 1,
   "layerPixels": 7150,
-  "source": "greenscreen/raw/blanket.png"
+  "source": "greenscreen/raw/blanket.png",
+  "animationMode": "per-frame-slot-mask"
 }

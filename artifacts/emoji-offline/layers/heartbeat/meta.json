@@ -12,6 +12,121 @@
     "h": 128,
     "greenPixels": 159654
   },
+  "perFrame": [
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.5,
+      "cy": 63.5,
+      "greenPixels": 16384,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.5,
+      "cy": 63.5,
+      "greenPixels": 16384,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 3,
+      "y": 5,
+      "w": 123,
+      "h": 123,
+      "cx": 64,
+      "cy": 65.99193495075032,
+      "greenPixels": 15127,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.5,
+      "cy": 63.5,
+      "greenPixels": 16384,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 7,
+      "y": 9,
+      "w": 115,
+      "h": 117,
+      "cx": 64,
+      "cy": 67,
+      "greenPixels": 13455,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.5,
+      "cy": 63.5,
+      "greenPixels": 16384,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.5,
+      "cy": 63.5,
+      "greenPixels": 16384,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.5,
+      "cy": 63.5,
+      "greenPixels": 16384,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.5,
+      "cy": 63.5,
+      "greenPixels": 16384,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.5,
+      "cy": 63.5,
+      "greenPixels": 16384,
+      "visible": true,
+      "delayMs": 50
+    }
+  ],
+  "motionPx": 3.5,
+  "areaRatio": 1.22,
   "layerPixels": 0,
-  "source": "greenscreen/raw/heartbeat.gif"
+  "source": "greenscreen/raw/heartbeat.gif",
+  "animationMode": "per-frame-slot-mask"
 }

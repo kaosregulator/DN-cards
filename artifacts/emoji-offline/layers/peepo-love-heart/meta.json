@@ -12,6 +12,22 @@
     "h": 97,
     "greenPixels": 6439
   },
+  "perFrame": [
+    {
+      "x": 0,
+      "y": 17,
+      "w": 128,
+      "h": 97,
+      "cx": 76.9600869700264,
+      "cy": 58.06879950302842,
+      "greenPixels": 6439,
+      "visible": true,
+      "delayMs": 50
+    }
+  ],
+  "motionPx": 0,
+  "areaRatio": 1,
   "layerPixels": 4772,
-  "source": "greenscreen/raw/peepo-love-heart.png"
+  "source": "greenscreen/raw/peepo-love-heart.png",
+  "animationMode": "per-frame-slot-mask"
 }

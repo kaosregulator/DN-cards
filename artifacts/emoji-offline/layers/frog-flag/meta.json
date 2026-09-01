@@ -12,6 +12,22 @@
     "h": 121,
     "greenPixels": 4418
   },
+  "perFrame": [
+    {
+      "x": 9,
+      "y": 7,
+      "w": 105,
+      "h": 121,
+      "cx": 67.64056133997283,
+      "cy": 42.51448619284744,
+      "greenPixels": 4418,
+      "visible": true,
+      "delayMs": 50
+    }
+  ],
+  "motionPx": 0,
+  "areaRatio": 1,
   "layerPixels": 8002,
-  "source": "greenscreen/raw/frog-flag.png"
+  "source": "greenscreen/raw/frog-flag.png",
+  "animationMode": "per-frame-slot-mask"
 }

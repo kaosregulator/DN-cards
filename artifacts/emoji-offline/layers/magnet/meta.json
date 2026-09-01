@@ -12,6 +12,121 @@
     "h": 128,
     "greenPixels": 70278
   },
+  "perFrame": [
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.5,
+      "cy": 63.5,
+      "greenPixels": 16384,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 51,
+      "y": 19,
+      "w": 77,
+      "h": 91,
+      "cx": 89.01084939329051,
+      "cy": 64,
+      "greenPixels": 7005,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 77,
+      "y": 32,
+      "w": 51,
+      "h": 65,
+      "cx": 102,
+      "cy": 64,
+      "greenPixels": 3315,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 95,
+      "y": 45,
+      "w": 33,
+      "h": 39,
+      "cx": 111,
+      "cy": 64,
+      "greenPixels": 1287,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 51,
+      "y": 19,
+      "w": 77,
+      "h": 91,
+      "cx": 89.01084939329051,
+      "cy": 64,
+      "greenPixels": 7005,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.5,
+      "cy": 63.5,
+      "greenPixels": 16384,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 19,
+      "w": 78,
+      "h": 91,
+      "cx": 38.4891488162345,
+      "cy": 64,
+      "greenPixels": 7096,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 32,
+      "w": 52,
+      "h": 65,
+      "cx": 25.5,
+      "cy": 64,
+      "greenPixels": 3380,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 45,
+      "w": 34,
+      "h": 39,
+      "cx": 16.5,
+      "cy": 64,
+      "greenPixels": 1326,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 19,
+      "w": 78,
+      "h": 91,
+      "cx": 38.4891488162345,
+      "cy": 64,
+      "greenPixels": 7096,
+      "visible": true,
+      "delayMs": 70
+    }
+  ],
+  "motionPx": 94.5,
+  "areaRatio": 12.73,
   "layerPixels": 0,
-  "source": "greenscreen/raw/magnet.gif"
+  "source": "greenscreen/raw/magnet.gif",
+  "animationMode": "per-frame-slot-mask"
 }

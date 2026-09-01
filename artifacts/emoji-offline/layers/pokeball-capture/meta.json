@@ -3,7 +3,7 @@
   "kind": "layer",
   "frames": 27,
   "sourcePages": 54,
-  "delayMs": 200,
+  "delayMs": 123,
   "size": 128,
   "slot": {
     "x": 2,
@@ -12,6 +12,308 @@
     "h": 128,
     "greenPixels": 32257
   },
+  "perFrame": [
+    {
+      "x": 2,
+      "y": 0,
+      "w": 126,
+      "h": 128,
+      "cx": 64.5,
+      "cy": 63.5,
+      "greenPixels": 16128,
+      "visible": true,
+      "delayMs": 200
+    },
+    {
+      "x": 2,
+      "y": 0,
+      "w": 126,
+      "h": 128,
+      "cx": 64.5,
+      "cy": 63.5,
+      "greenPixels": 16128,
+      "visible": true,
+      "delayMs": 120
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 0,
+      "h": 0,
+      "cx": 64,
+      "cy": 64,
+      "greenPixels": 0,
+      "visible": false,
+      "delayMs": 120
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 0,
+      "h": 0,
+      "cx": 64,
+      "cy": 64,
+      "greenPixels": 0,
+      "visible": false,
+      "delayMs": 120
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 0,
+      "h": 0,
+      "cx": 64,
+      "cy": 64,
+      "greenPixels": 0,
+      "visible": false,
+      "delayMs": 120
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 0,
+      "h": 0,
+      "cx": 64,
+      "cy": 64,
+      "greenPixels": 0,
+      "visible": false,
+      "delayMs": 120
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 0,
+      "h": 0,
+      "cx": 64,
+      "cy": 64,
+      "greenPixels": 0,
+      "visible": false,
+      "delayMs": 120
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 0,
+      "h": 0,
+      "cx": 64,
+      "cy": 64,
+      "greenPixels": 0,
+      "visible": false,
+      "delayMs": 120
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 0,
+      "h": 0,
+      "cx": 64,
+      "cy": 64,
+      "greenPixels": 0,
+      "visible": false,
+      "delayMs": 120
+    },
+    {
+      "x": 54,
+      "y": 68,
+      "w": 1,
+      "h": 1,
+      "cx": 54,
+      "cy": 68,
+      "greenPixels": 1,
+      "visible": true,
+      "delayMs": 120
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 0,
+      "h": 0,
+      "cx": 64,
+      "cy": 64,
+      "greenPixels": 0,
+      "visible": false,
+      "delayMs": 120
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 0,
+      "h": 0,
+      "cx": 64,
+      "cy": 64,
+      "greenPixels": 0,
+      "visible": false,
+      "delayMs": 120
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 0,
+      "h": 0,
+      "cx": 64,
+      "cy": 64,
+      "greenPixels": 0,
+      "visible": false,
+      "delayMs": 120
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 0,
+      "h": 0,
+      "cx": 64,
+      "cy": 64,
+      "greenPixels": 0,
+      "visible": false,
+      "delayMs": 120
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 0,
+      "h": 0,
+      "cx": 64,
+      "cy": 64,
+      "greenPixels": 0,
+      "visible": false,
+      "delayMs": 120
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 0,
+      "h": 0,
+      "cx": 64,
+      "cy": 64,
+      "greenPixels": 0,
+      "visible": false,
+      "delayMs": 120
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 0,
+      "h": 0,
+      "cx": 64,
+      "cy": 64,
+      "greenPixels": 0,
+      "visible": false,
+      "delayMs": 120
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 0,
+      "h": 0,
+      "cx": 64,
+      "cy": 64,
+      "greenPixels": 0,
+      "visible": false,
+      "delayMs": 120
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 0,
+      "h": 0,
+      "cx": 64,
+      "cy": 64,
+      "greenPixels": 0,
+      "visible": false,
+      "delayMs": 120
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 0,
+      "h": 0,
+      "cx": 64,
+      "cy": 64,
+      "greenPixels": 0,
+      "visible": false,
+      "delayMs": 120
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 0,
+      "h": 0,
+      "cx": 64,
+      "cy": 64,
+      "greenPixels": 0,
+      "visible": false,
+      "delayMs": 120
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 0,
+      "h": 0,
+      "cx": 64,
+      "cy": 64,
+      "greenPixels": 0,
+      "visible": false,
+      "delayMs": 120
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 0,
+      "h": 0,
+      "cx": 64,
+      "cy": 64,
+      "greenPixels": 0,
+      "visible": false,
+      "delayMs": 120
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 0,
+      "h": 0,
+      "cx": 64,
+      "cy": 64,
+      "greenPixels": 0,
+      "visible": false,
+      "delayMs": 120
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 0,
+      "h": 0,
+      "cx": 64,
+      "cy": 64,
+      "greenPixels": 0,
+      "visible": false,
+      "delayMs": 120
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 0,
+      "h": 0,
+      "cx": 64,
+      "cy": 64,
+      "greenPixels": 0,
+      "visible": false,
+      "delayMs": 120
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 0,
+      "h": 0,
+      "cx": 64,
+      "cy": 64,
+      "greenPixels": 0,
+      "visible": false,
+      "delayMs": 120
+    }
+  ],
+  "motionPx": 11.4,
+  "areaRatio": 16128,
   "layerPixels": 253870,
-  "source": "greenscreen/raw/pokeball-capture.gif"
+  "source": "greenscreen/raw/pokeball-capture.gif",
+  "animationMode": "per-frame-slot-mask"
 }

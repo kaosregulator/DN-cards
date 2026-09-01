@@ -12,6 +12,22 @@
     "h": 121,
     "greenPixels": 9911
   },
+  "perFrame": [
+    {
+      "x": 5,
+      "y": 7,
+      "w": 123,
+      "h": 121,
+      "cx": 63.30299667036626,
+      "cy": 83.68176773282212,
+      "greenPixels": 9911,
+      "visible": true,
+      "delayMs": 50
+    }
+  ],
+  "motionPx": 0,
+  "areaRatio": 1,
   "layerPixels": 1669,
-  "source": "greenscreen/raw/glorp.png"
+  "source": "greenscreen/raw/glorp.png",
+  "animationMode": "per-frame-slot-mask"
 }

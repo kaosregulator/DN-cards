@@ -12,6 +12,121 @@
     "h": 71,
     "greenPixels": 49818
   },
+  "perFrame": [
+    {
+      "x": 57,
+      "y": 57,
+      "w": 71,
+      "h": 71,
+      "cx": 92.15700822137558,
+      "cy": 92.10507319029476,
+      "greenPixels": 4987,
+      "visible": true,
+      "delayMs": 100
+    },
+    {
+      "x": 57,
+      "y": 57,
+      "w": 71,
+      "h": 71,
+      "cx": 92.19935755872315,
+      "cy": 92.15659506123268,
+      "greenPixels": 4981,
+      "visible": true,
+      "delayMs": 100
+    },
+    {
+      "x": 57,
+      "y": 57,
+      "w": 71,
+      "h": 71,
+      "cx": 92.19935755872315,
+      "cy": 92.15659506123268,
+      "greenPixels": 4981,
+      "visible": true,
+      "delayMs": 100
+    },
+    {
+      "x": 57,
+      "y": 57,
+      "w": 71,
+      "h": 71,
+      "cx": 92.20642570281125,
+      "cy": 92.16064257028113,
+      "greenPixels": 4980,
+      "visible": true,
+      "delayMs": 100
+    },
+    {
+      "x": 57,
+      "y": 57,
+      "w": 71,
+      "h": 71,
+      "cx": 92.20642570281125,
+      "cy": 92.16064257028113,
+      "greenPixels": 4980,
+      "visible": true,
+      "delayMs": 100
+    },
+    {
+      "x": 57,
+      "y": 57,
+      "w": 71,
+      "h": 71,
+      "cx": 92.15700822137558,
+      "cy": 92.10507319029476,
+      "greenPixels": 4987,
+      "visible": true,
+      "delayMs": 100
+    },
+    {
+      "x": 57,
+      "y": 57,
+      "w": 71,
+      "h": 71,
+      "cx": 92.19935755872315,
+      "cy": 92.15659506123268,
+      "greenPixels": 4981,
+      "visible": true,
+      "delayMs": 100
+    },
+    {
+      "x": 57,
+      "y": 57,
+      "w": 71,
+      "h": 71,
+      "cx": 92.19935755872315,
+      "cy": 92.15659506123268,
+      "greenPixels": 4981,
+      "visible": true,
+      "delayMs": 100
+    },
+    {
+      "x": 57,
+      "y": 57,
+      "w": 71,
+      "h": 71,
+      "cx": 92.20642570281125,
+      "cy": 92.16064257028113,
+      "greenPixels": 4980,
+      "visible": true,
+      "delayMs": 100
+    },
+    {
+      "x": 57,
+      "y": 57,
+      "w": 71,
+      "h": 71,
+      "cx": 92.20642570281125,
+      "cy": 92.16064257028113,
+      "greenPixels": 4980,
+      "visible": true,
+      "delayMs": 100
+    }
+  ],
+  "motionPx": 0.1,
+  "areaRatio": 1,
   "layerPixels": 114022,
-  "source": "greenscreen/raw/fireplace.gif"
+  "source": "greenscreen/raw/fireplace.gif",
+  "animationMode": "per-frame-slot-mask"
 }

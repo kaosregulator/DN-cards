@@ -12,6 +12,22 @@
     "h": 46,
     "greenPixels": 4073
   },
+  "perFrame": [
+    {
+      "x": 17,
+      "y": 53,
+      "w": 111,
+      "h": 46,
+      "cx": 72.86668303461822,
+      "cy": 76.29265897372943,
+      "greenPixels": 4073,
+      "visible": true,
+      "delayMs": 50
+    }
+  ],
+  "motionPx": 0,
+  "areaRatio": 1,
   "layerPixels": 6511,
-  "source": "greenscreen/raw/donk.png"
+  "source": "greenscreen/raw/donk.png",
+  "animationMode": "per-frame-slot-mask"
 }

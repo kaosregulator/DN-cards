@@ -12,6 +12,22 @@
     "h": 96,
     "greenPixels": 7780
   },
+  "perFrame": [
+    {
+      "x": 17,
+      "y": 23,
+      "w": 95,
+      "h": 96,
+      "cx": 64.58997429305913,
+      "cy": 70.60141388174807,
+      "greenPixels": 7780,
+      "visible": true,
+      "delayMs": 50
+    }
+  ],
+  "motionPx": 0,
+  "areaRatio": 1,
   "layerPixels": 6733,
-  "source": "greenscreen/raw/labubu.png"
+  "source": "greenscreen/raw/labubu.png",
+  "animationMode": "per-frame-slot-mask"
 }

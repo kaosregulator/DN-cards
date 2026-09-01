@@ -12,6 +12,121 @@
     "h": 128,
     "greenPixels": 144128
   },
+  "perFrame": [
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.5,
+      "cy": 63.5,
+      "greenPixels": 16384,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 9,
+      "y": 0,
+      "w": 119,
+      "h": 128,
+      "cx": 68,
+      "cy": 63.5,
+      "greenPixels": 15232,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 73.66981132075472,
+      "cy": 63.5,
+      "greenPixels": 13568,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 70.34905660377359,
+      "cy": 63.5,
+      "greenPixels": 13568,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 66.82075471698113,
+      "cy": 63.5,
+      "greenPixels": 13568,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.401869158878505,
+      "cy": 63.5,
+      "greenPixels": 13696,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 59.971698113207545,
+      "cy": 63.5,
+      "greenPixels": 13568,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 56.443396226415096,
+      "cy": 63.5,
+      "greenPixels": 13568,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.5,
+      "cy": 63.5,
+      "greenPixels": 16384,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 14,
+      "y": 0,
+      "w": 114,
+      "h": 128,
+      "cx": 70.5,
+      "cy": 63.5,
+      "greenPixels": 14592,
+      "visible": true,
+      "delayMs": 60
+    }
+  ],
+  "motionPx": 17.2,
+  "areaRatio": 1.12,
   "layerPixels": 19712,
-  "source": "greenscreen/raw/solarize-wave.gif"
+  "source": "greenscreen/raw/solarize-wave.gif",
+  "animationMode": "per-frame-slot-mask"
 }

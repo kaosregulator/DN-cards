@@ -12,6 +12,121 @@
     "h": 128,
     "greenPixels": 150656
   },
+  "perFrame": [
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.5,
+      "cy": 63.5,
+      "greenPixels": 16384,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.5,
+      "cy": 63.5,
+      "greenPixels": 16384,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 3,
+      "y": 3,
+      "w": 123,
+      "h": 123,
+      "cx": 64,
+      "cy": 64,
+      "greenPixels": 13541,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.5,
+      "cy": 63.5,
+      "greenPixels": 16384,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 5,
+      "y": 5,
+      "w": 119,
+      "h": 119,
+      "cx": 64,
+      "cy": 64,
+      "greenPixels": 12501,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.5,
+      "cy": 63.5,
+      "greenPixels": 16384,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 8,
+      "y": 8,
+      "w": 113,
+      "h": 113,
+      "cx": 64,
+      "cy": 64,
+      "greenPixels": 11041,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.5,
+      "cy": 63.5,
+      "greenPixels": 16384,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 1,
+      "y": 1,
+      "w": 127,
+      "h": 127,
+      "cx": 64,
+      "cy": 64,
+      "greenPixels": 15269,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.5,
+      "cy": 63.5,
+      "greenPixels": 16384,
+      "visible": true,
+      "delayMs": 70
+    }
+  ],
+  "motionPx": 0.7,
+  "areaRatio": 1.28,
   "layerPixels": 0,
-  "source": "greenscreen/raw/wobble-scale.gif"
+  "source": "greenscreen/raw/wobble-scale.gif",
+  "animationMode": "per-frame-slot-mask"
 }

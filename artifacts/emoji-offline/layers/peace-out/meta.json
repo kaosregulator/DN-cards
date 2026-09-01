@@ -12,6 +12,121 @@
     "h": 128,
     "greenPixels": 101332
   },
+  "perFrame": [
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.5,
+      "cy": 63.5,
+      "greenPixels": 16384,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 61.32545052589268,
+      "cy": 58.81235345347357,
+      "greenPixels": 14927,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.01627473967313,
+      "cy": 58.699193159092474,
+      "greenPixels": 14501,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.57815091210614,
+      "cy": 58.78682974018795,
+      "greenPixels": 14472,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 62.11360705802511,
+      "cy": 58.82035968781812,
+      "greenPixels": 14735,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 62.317328071329385,
+      "cy": 58.80742527223562,
+      "greenPixels": 13683,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 61.990774261357004,
+      "cy": 58.50134298727082,
+      "greenPixels": 8563,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 62.05802469135803,
+      "cy": 59.13179012345679,
+      "greenPixels": 3240,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 59.561064087061666,
+      "cy": 57.99758162031439,
+      "greenPixels": 827,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 0,
+      "h": 0,
+      "cx": 64,
+      "cy": 64,
+      "greenPixels": 0,
+      "visible": false,
+      "delayMs": 70
+    }
+  ],
+  "motionPx": 6.8,
+  "areaRatio": 1,
   "layerPixels": 62508,
-  "source": "greenscreen/raw/peace-out.gif"
+  "source": "greenscreen/raw/peace-out.gif",
+  "animationMode": "per-frame-slot-mask"
 }

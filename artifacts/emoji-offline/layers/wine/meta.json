@@ -12,6 +12,121 @@
     "h": 128,
     "greenPixels": 138852
   },
+  "perFrame": [
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 68.32567518905293,
+      "cy": 59.31580842635938,
+      "greenPixels": 13885,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 67.55667506297229,
+      "cy": 59.32011514933429,
+      "greenPixels": 13895,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 67.06419431793537,
+      "cy": 59.22323429480228,
+      "greenPixels": 13833,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 66.26337120937976,
+      "cy": 58.994210031121085,
+      "greenPixels": 13817,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 66.18846348700876,
+      "cy": 58.97792574364913,
+      "greenPixels": 13817,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 66.64242467925617,
+      "cy": 59.199726106386045,
+      "greenPixels": 13874,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 67.2131312405718,
+      "cy": 59.33309388693341,
+      "greenPixels": 13921,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 67.87765651924181,
+      "cy": 59.37973865594486,
+      "greenPixels": 13928,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 68.69959113406499,
+      "cy": 59.514238576859626,
+      "greenPixels": 13941,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 68.78997202496234,
+      "cy": 59.498099132056524,
+      "greenPixels": 13941,
+      "visible": true,
+      "delayMs": 50
+    }
+  ],
+  "motionPx": 2.7,
+  "areaRatio": 1,
   "layerPixels": 24988,
-  "source": "greenscreen/raw/wine.gif"
+  "source": "greenscreen/raw/wine.gif",
+  "animationMode": "per-frame-slot-mask"
 }

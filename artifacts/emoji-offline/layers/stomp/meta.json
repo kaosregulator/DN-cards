@@ -12,6 +12,121 @@
     "h": 128,
     "greenPixels": 153088
   },
+  "perFrame": [
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.5,
+      "cy": 63.5,
+      "greenPixels": 16384,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.5,
+      "cy": 63.5,
+      "greenPixels": 16384,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 8,
+      "w": 128,
+      "h": 120,
+      "cx": 63.5,
+      "cy": 67.5,
+      "greenPixels": 15360,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 34,
+      "w": 128,
+      "h": 94,
+      "cx": 63.5,
+      "cy": 80.5,
+      "greenPixels": 12032,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 34,
+      "w": 128,
+      "h": 94,
+      "cx": 63.5,
+      "cy": 80.5,
+      "greenPixels": 12032,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 8,
+      "w": 128,
+      "h": 120,
+      "cx": 63.5,
+      "cy": 67.5,
+      "greenPixels": 15360,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.5,
+      "cy": 63.5,
+      "greenPixels": 16384,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.5,
+      "cy": 63.5,
+      "greenPixels": 16384,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.5,
+      "cy": 63.5,
+      "greenPixels": 16384,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.5,
+      "cy": 63.5,
+      "greenPixels": 16384,
+      "visible": true,
+      "delayMs": 70
+    }
+  ],
+  "motionPx": 17,
+  "areaRatio": 1.36,
   "layerPixels": 0,
-  "source": "greenscreen/raw/stomp.gif"
+  "source": "greenscreen/raw/stomp.gif",
+  "animationMode": "per-frame-slot-mask"
 }

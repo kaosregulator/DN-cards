@@ -12,6 +12,22 @@
     "h": 105,
     "greenPixels": 10894
   },
+  "perFrame": [
+    {
+      "x": 11,
+      "y": 23,
+      "w": 107,
+      "h": 105,
+      "cx": 64,
+      "cy": 76.57095648981091,
+      "greenPixels": 10894,
+      "visible": true,
+      "delayMs": 50
+    }
+  ],
+  "motionPx": 0,
+  "areaRatio": 1,
   "layerPixels": 1352,
-  "source": "greenscreen/raw/angel.png"
+  "source": "greenscreen/raw/angel.png",
+  "animationMode": "per-frame-slot-mask"
 }

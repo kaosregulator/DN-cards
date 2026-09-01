@@ -12,6 +12,77 @@
     "h": 44,
     "greenPixels": 10505
   },
+  "perFrame": [
+    {
+      "x": 37,
+      "y": 10,
+      "w": 58,
+      "h": 41,
+      "cx": 63.00858614768174,
+      "cy": 28.067544361763023,
+      "greenPixels": 1747,
+      "visible": true,
+      "delayMs": 100
+    },
+    {
+      "x": 37,
+      "y": 10,
+      "w": 59,
+      "h": 40,
+      "cx": 63.66458214894826,
+      "cy": 27.87833996588971,
+      "greenPixels": 1759,
+      "visible": true,
+      "delayMs": 100
+    },
+    {
+      "x": 41,
+      "y": 7,
+      "w": 59,
+      "h": 35,
+      "cx": 68.7039627039627,
+      "cy": 24.48892773892774,
+      "greenPixels": 1716,
+      "visible": true,
+      "delayMs": 100
+    },
+    {
+      "x": 46,
+      "y": 8,
+      "w": 61,
+      "h": 37,
+      "cx": 74.89444132509826,
+      "cy": 25.775407074677148,
+      "greenPixels": 1781,
+      "visible": true,
+      "delayMs": 100
+    },
+    {
+      "x": 41,
+      "y": 8,
+      "w": 64,
+      "h": 37,
+      "cx": 69.78947368421052,
+      "cy": 25.487266553480474,
+      "greenPixels": 1767,
+      "visible": true,
+      "delayMs": 100
+    },
+    {
+      "x": 40,
+      "y": 8,
+      "w": 59,
+      "h": 38,
+      "cx": 66.66340057636887,
+      "cy": 26.07608069164265,
+      "greenPixels": 1735,
+      "visible": true,
+      "delayMs": 100
+    }
+  ],
+  "motionPx": 12.4,
+  "areaRatio": 1.15,
   "layerPixels": 34305,
-  "source": "greenscreen/raw/skeleton-dance.gif"
+  "source": "greenscreen/raw/skeleton-dance.gif",
+  "animationMode": "per-frame-slot-mask"
 }

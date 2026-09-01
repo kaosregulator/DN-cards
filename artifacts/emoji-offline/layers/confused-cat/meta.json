@@ -12,6 +12,22 @@
     "h": 99,
     "greenPixels": 9560
   },
+  "perFrame": [
+    {
+      "x": 0,
+      "y": 29,
+      "w": 128,
+      "h": 99,
+      "cx": 60.71234309623431,
+      "cy": 82.77991631799163,
+      "greenPixels": 9560,
+      "visible": true,
+      "delayMs": 50
+    }
+  ],
+  "motionPx": 0,
+  "areaRatio": 1,
   "layerPixels": 160,
-  "source": "greenscreen/raw/confused-cat.png"
+  "source": "greenscreen/raw/confused-cat.png",
+  "animationMode": "per-frame-slot-mask"
 }

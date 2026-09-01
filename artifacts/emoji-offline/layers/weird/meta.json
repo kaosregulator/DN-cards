@@ -12,6 +12,121 @@
     "h": 128,
     "greenPixels": 157254
   },
+  "perFrame": [
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.937424483306835,
+      "cy": 63.4964705882353,
+      "greenPixels": 15725,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.80718372536554,
+      "cy": 63.481754609027334,
+      "greenPixels": 15730,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.59177577221304,
+      "cy": 63.54220160162705,
+      "greenPixels": 15734,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.4142466797992,
+      "cy": 63.61320454978713,
+      "greenPixels": 15737,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.42411338502606,
+      "cy": 63.714249396212026,
+      "greenPixels": 15734,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.57474554707379,
+      "cy": 63.86094147582697,
+      "greenPixels": 15720,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.7391664015272,
+      "cy": 63.95781100859052,
+      "greenPixels": 15715,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.891673557661726,
+      "cy": 63.904140957954326,
+      "greenPixels": 15721,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 64.04216484355126,
+      "cy": 63.74643856525057,
+      "greenPixels": 15724,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 64.03544609901998,
+      "cy": 63.61715667557592,
+      "greenPixels": 15714,
+      "visible": true,
+      "delayMs": 70
+    }
+  ],
+  "motionPx": 0.8,
+  "areaRatio": 1,
   "layerPixels": 0,
-  "source": "greenscreen/raw/weird.gif"
+  "source": "greenscreen/raw/weird.gif",
+  "animationMode": "per-frame-slot-mask"
 }

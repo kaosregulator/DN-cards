@@ -12,6 +12,22 @@
     "h": 57,
     "greenPixels": 5751
   },
+  "perFrame": [
+    {
+      "x": 7,
+      "y": 44,
+      "w": 114,
+      "h": 57,
+      "cx": 64.49800034776561,
+      "cy": 73.26273691531908,
+      "greenPixels": 5751,
+      "visible": true,
+      "delayMs": 50
+    }
+  ],
+  "motionPx": 0,
+  "areaRatio": 1,
   "layerPixels": 6706,
-  "source": "greenscreen/raw/burger.png"
+  "source": "greenscreen/raw/burger.png",
+  "animationMode": "per-frame-slot-mask"
 }

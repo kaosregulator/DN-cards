@@ -12,6 +12,22 @@
     "h": 99,
     "greenPixels": 8999
   },
+  "perFrame": [
+    {
+      "x": 0,
+      "y": 15,
+      "w": 128,
+      "h": 99,
+      "cx": 65.67985331703522,
+      "cy": 67.79208800977887,
+      "greenPixels": 8999,
+      "visible": true,
+      "delayMs": 50
+    }
+  ],
+  "motionPx": 0,
+  "areaRatio": 1,
   "layerPixels": 0,
-  "source": "greenscreen/raw/pepega.png"
+  "source": "greenscreen/raw/pepega.png",
+  "animationMode": "per-frame-slot-mask"
 }

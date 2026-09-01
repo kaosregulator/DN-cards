@@ -12,6 +12,121 @@
     "h": 97,
     "greenPixels": 37480
   },
+  "perFrame": [
+    {
+      "x": 16,
+      "y": 43,
+      "w": 97,
+      "h": 43,
+      "cx": 64,
+      "cy": 64,
+      "greenPixels": 3612,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 17,
+      "y": 34,
+      "w": 95,
+      "h": 61,
+      "cx": 64,
+      "cy": 64,
+      "greenPixels": 3782,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 21,
+      "y": 26,
+      "w": 87,
+      "h": 77,
+      "cx": 64,
+      "cy": 64,
+      "greenPixels": 3782,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 26,
+      "y": 21,
+      "w": 77,
+      "h": 87,
+      "cx": 64,
+      "cy": 64,
+      "greenPixels": 3782,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 34,
+      "y": 17,
+      "w": 61,
+      "h": 95,
+      "cx": 64,
+      "cy": 64,
+      "greenPixels": 3782,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 43,
+      "y": 16,
+      "w": 43,
+      "h": 97,
+      "cx": 64,
+      "cy": 64,
+      "greenPixels": 3612,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 34,
+      "y": 17,
+      "w": 61,
+      "h": 95,
+      "cx": 64,
+      "cy": 64,
+      "greenPixels": 3782,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 26,
+      "y": 21,
+      "w": 77,
+      "h": 87,
+      "cx": 64,
+      "cy": 64,
+      "greenPixels": 3782,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 21,
+      "y": 26,
+      "w": 87,
+      "h": 77,
+      "cx": 64,
+      "cy": 64,
+      "greenPixels": 3782,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 17,
+      "y": 34,
+      "w": 95,
+      "h": 61,
+      "cx": 64,
+      "cy": 64,
+      "greenPixels": 3782,
+      "visible": true,
+      "delayMs": 70
+    }
+  ],
+  "motionPx": 0,
+  "areaRatio": 1.61,
   "layerPixels": 0,
-  "source": "greenscreen/raw/orbit-two.gif"
+  "source": "greenscreen/raw/orbit-two.gif",
+  "animationMode": "per-frame-slot-mask"
 }

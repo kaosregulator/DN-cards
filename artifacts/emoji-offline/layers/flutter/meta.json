@@ -12,6 +12,121 @@
     "h": 128,
     "greenPixels": 161557
   },
+  "perFrame": [
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.5,
+      "cy": 63.5,
+      "greenPixels": 16384,
+      "visible": true,
+      "delayMs": 40
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.5,
+      "cy": 63.5,
+      "greenPixels": 16384,
+      "visible": true,
+      "delayMs": 40
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 127,
+      "h": 127,
+      "cx": 63,
+      "cy": 63,
+      "greenPixels": 16129,
+      "visible": true,
+      "delayMs": 40
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.5,
+      "cy": 63.5,
+      "greenPixels": 16384,
+      "visible": true,
+      "delayMs": 40
+    },
+    {
+      "x": 0,
+      "y": 2,
+      "w": 124,
+      "h": 125,
+      "cx": 61.5,
+      "cy": 64,
+      "greenPixels": 15500,
+      "visible": true,
+      "delayMs": 40
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.5,
+      "cy": 63.5,
+      "greenPixels": 16384,
+      "visible": true,
+      "delayMs": 40
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 127,
+      "h": 127,
+      "cx": 63,
+      "cy": 63,
+      "greenPixels": 16129,
+      "visible": true,
+      "delayMs": 40
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.5,
+      "cy": 63.5,
+      "greenPixels": 16384,
+      "visible": true,
+      "delayMs": 40
+    },
+    {
+      "x": 3,
+      "y": 2,
+      "w": 125,
+      "h": 125,
+      "cx": 65.00793701593804,
+      "cy": 64,
+      "greenPixels": 15623,
+      "visible": true,
+      "delayMs": 40
+    },
+    {
+      "x": 0,
+      "y": 1,
+      "w": 128,
+      "h": 127,
+      "cx": 63.5,
+      "cy": 64,
+      "greenPixels": 16256,
+      "visible": true,
+      "delayMs": 40
+    }
+  ],
+  "motionPx": 3.6,
+  "areaRatio": 1.06,
   "layerPixels": 0,
-  "source": "greenscreen/raw/flutter.gif"
+  "source": "greenscreen/raw/flutter.gif",
+  "animationMode": "per-frame-slot-mask"
 }

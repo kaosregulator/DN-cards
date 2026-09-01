@@ -12,6 +12,22 @@
     "h": 35,
     "greenPixels": 3419
   },
+  "perFrame": [
+    {
+      "x": 6,
+      "y": 23,
+      "w": 120,
+      "h": 35,
+      "cx": 69.0669786487277,
+      "cy": 41.268207078093006,
+      "greenPixels": 3419,
+      "visible": true,
+      "delayMs": 50
+    }
+  ],
+  "motionPx": 0,
+  "areaRatio": 1,
   "layerPixels": 10506,
-  "source": "greenscreen/raw/trash.png"
+  "source": "greenscreen/raw/trash.png",
+  "animationMode": "per-frame-slot-mask"
 }

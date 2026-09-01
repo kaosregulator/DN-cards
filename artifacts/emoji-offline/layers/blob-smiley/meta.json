@@ -12,6 +12,22 @@
     "h": 111,
     "greenPixels": 9582
   },
+  "perFrame": [
+    {
+      "x": 0,
+      "y": 8,
+      "w": 128,
+      "h": 111,
+      "cx": 63.78396994364433,
+      "cy": 64.28376121895221,
+      "greenPixels": 9582,
+      "visible": true,
+      "delayMs": 50
+    }
+  ],
+  "motionPx": 0,
+  "areaRatio": 1,
   "layerPixels": 2030,
-  "source": "greenscreen/raw/blob-smiley.png"
+  "source": "greenscreen/raw/blob-smiley.png",
+  "animationMode": "per-frame-slot-mask"
 }

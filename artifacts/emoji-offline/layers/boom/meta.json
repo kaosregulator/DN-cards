@@ -12,6 +12,121 @@
     "h": 128,
     "greenPixels": 82938
   },
+  "perFrame": [
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.5,
+      "cy": 63.5,
+      "greenPixels": 16384,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.5,
+      "cy": 63.5,
+      "greenPixels": 16384,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.5,
+      "cy": 63.5,
+      "greenPixels": 16384,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.5,
+      "cy": 63.5,
+      "greenPixels": 16384,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 62.03367968470082,
+      "cy": 62.061716230741666,
+      "greenPixels": 11164,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 59.256492465533825,
+      "cy": 63.94212888746393,
+      "greenPixels": 6238,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 0,
+      "h": 0,
+      "cx": 64,
+      "cy": 64,
+      "greenPixels": 0,
+      "visible": false,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 0,
+      "h": 0,
+      "cx": 64,
+      "cy": 64,
+      "greenPixels": 0,
+      "visible": false,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 0,
+      "h": 0,
+      "cx": 64,
+      "cy": 64,
+      "greenPixels": 0,
+      "visible": false,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 0,
+      "h": 0,
+      "cx": 64,
+      "cy": 64,
+      "greenPixels": 0,
+      "visible": false,
+      "delayMs": 70
+    }
+  ],
+  "motionPx": 4.6,
+  "areaRatio": 1,
   "layerPixels": 45025,
-  "source": "greenscreen/raw/boom.gif"
+  "source": "greenscreen/raw/boom.gif",
+  "animationMode": "per-frame-slot-mask"
 }

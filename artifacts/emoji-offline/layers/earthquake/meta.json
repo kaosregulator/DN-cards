@@ -12,6 +12,121 @@
     "h": 128,
     "greenPixels": 148078
   },
+  "perFrame": [
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.5,
+      "cy": 63.5,
+      "greenPixels": 16384,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 66.54661016949153,
+      "cy": 66.10063559322033,
+      "greenPixels": 15104,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 58.486215716924825,
+      "cy": 61.83245701293165,
+      "greenPixels": 14074,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 67.51940158952782,
+      "cy": 65.70106191144059,
+      "greenPixels": 14973,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 56.607824070611116,
+      "cy": 61.09686588376094,
+      "greenPixels": 13369,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 67.56510416666667,
+      "cy": 66.27350427350427,
+      "greenPixels": 14976,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 124,
+      "h": 128,
+      "cx": 54.61480531966031,
+      "cy": 62.403300753084444,
+      "greenPixels": 12482,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 65.22248489624376,
+      "cy": 66.75334909377463,
+      "greenPixels": 15228,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.5,
+      "cy": 63.5,
+      "greenPixels": 16384,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 66.54661016949153,
+      "cy": 66.10063559322033,
+      "greenPixels": 15104,
+      "visible": true,
+      "delayMs": 50
+    }
+  ],
+  "motionPx": 14.1,
+  "areaRatio": 1.03,
   "layerPixels": 0,
-  "source": "greenscreen/raw/earthquake.gif"
+  "source": "greenscreen/raw/earthquake.gif",
+  "animationMode": "per-frame-slot-mask"
 }

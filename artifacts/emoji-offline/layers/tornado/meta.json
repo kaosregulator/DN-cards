@@ -12,6 +12,121 @@
     "h": 128,
     "greenPixels": 95732
   },
+  "perFrame": [
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.5,
+      "cy": 63.5,
+      "greenPixels": 16384,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 65.74110172550718,
+      "cy": 65.15255216229875,
+      "greenPixels": 13851,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 61.633996247654785,
+      "cy": 66.78626641651032,
+      "greenPixels": 13325,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 24,
+      "y": 0,
+      "w": 91,
+      "h": 128,
+      "cx": 69,
+      "cy": 63.5,
+      "greenPixels": 11648,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 64.18580208426116,
+      "cy": 64.98966776520888,
+      "greenPixels": 11227,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 64.63021702838063,
+      "cy": 59.73382721202003,
+      "greenPixels": 9584,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 33,
+      "y": 0,
+      "w": 53,
+      "h": 128,
+      "cx": 59,
+      "cy": 63.5,
+      "greenPixels": 6784,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 0,
+      "y": 10,
+      "w": 128,
+      "h": 118,
+      "cx": 63.605125693764286,
+      "cy": 70.42637936663402,
+      "greenPixels": 6126,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 0,
+      "y": 8,
+      "w": 128,
+      "h": 105,
+      "cx": 63.47873633049818,
+      "cy": 59.334872417982986,
+      "greenPixels": 4115,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 58,
+      "y": 0,
+      "w": 21,
+      "h": 128,
+      "cx": 68,
+      "cy": 63.5,
+      "greenPixels": 2688,
+      "visible": true,
+      "delayMs": 80
+    }
+  ],
+  "motionPx": 14.9,
+  "areaRatio": 6.1,
   "layerPixels": 0,
-  "source": "greenscreen/raw/tornado.gif"
+  "source": "greenscreen/raw/tornado.gif",
+  "animationMode": "per-frame-slot-mask"
 }

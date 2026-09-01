@@ -12,6 +12,132 @@
     "h": 98,
     "greenPixels": 68835
   },
+  "perFrame": [
+    {
+      "x": 6,
+      "y": 2,
+      "w": 122,
+      "h": 83,
+      "cx": 63.39640258135384,
+      "cy": 36.160510778525335,
+      "greenPixels": 7283,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 6,
+      "y": 6,
+      "w": 122,
+      "h": 79,
+      "cx": 64.32956076529237,
+      "cy": 39.42764753435732,
+      "greenPixels": 7422,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 6,
+      "y": 18,
+      "w": 122,
+      "h": 67,
+      "cx": 65.29618473895583,
+      "cy": 48.19377510040161,
+      "greenPixels": 6972,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 6,
+      "y": 33,
+      "w": 122,
+      "h": 58,
+      "cx": 65.55912762520194,
+      "cy": 60.47043618739903,
+      "greenPixels": 6190,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 9,
+      "y": 48,
+      "w": 119,
+      "h": 50,
+      "cx": 65.4391296192084,
+      "cy": 71.32470455824424,
+      "greenPixels": 5331,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 9,
+      "y": 55,
+      "w": 119,
+      "h": 45,
+      "cx": 65.58168724279835,
+      "cy": 76.44341563786008,
+      "greenPixels": 4860,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 9,
+      "y": 50,
+      "w": 119,
+      "h": 47,
+      "cx": 65.49190485708574,
+      "cy": 72.5592644413352,
+      "greenPixels": 5003,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 5,
+      "y": 39,
+      "w": 123,
+      "h": 48,
+      "cx": 66.50046494327692,
+      "cy": 62.36079598289009,
+      "greenPixels": 5377,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 5,
+      "y": 23,
+      "w": 123,
+      "h": 62,
+      "cx": 64.6315196394076,
+      "cy": 50.84964584674823,
+      "greenPixels": 6212,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 5,
+      "y": 9,
+      "w": 123,
+      "h": 76,
+      "cx": 63.23370037670241,
+      "cy": 41.01622718052738,
+      "greenPixels": 6902,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 6,
+      "y": 2,
+      "w": 122,
+      "h": 83,
+      "cx": 63.39640258135384,
+      "cy": 36.160510778525335,
+      "greenPixels": 7283,
+      "visible": true,
+      "delayMs": 50
+    }
+  ],
+  "motionPx": 40.4,
+  "areaRatio": 1.89,
   "layerPixels": 56373,
-  "source": "greenscreen/raw/jumping-on-the-bed.gif"
+  "source": "greenscreen/raw/jumping-on-the-bed.gif",
+  "animationMode": "per-frame-slot-mask"
 }

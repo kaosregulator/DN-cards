@@ -12,6 +12,22 @@
     "h": 108,
     "greenPixels": 5973
   },
+  "perFrame": [
+    {
+      "x": 11,
+      "y": 4,
+      "w": 74,
+      "h": 108,
+      "cx": 46.38523355097941,
+      "cy": 52.12539762263519,
+      "greenPixels": 5973,
+      "visible": true,
+      "delayMs": 50
+    }
+  ],
+  "motionPx": 0,
+  "areaRatio": 1,
   "layerPixels": 10411,
-  "source": "greenscreen/raw/stonks.png"
+  "source": "greenscreen/raw/stonks.png",
+  "animationMode": "per-frame-slot-mask"
 }

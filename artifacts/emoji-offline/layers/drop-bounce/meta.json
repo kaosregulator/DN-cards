@@ -12,6 +12,121 @@
     "h": 128,
     "greenPixels": 139975
   },
+  "perFrame": [
+    {
+      "x": 13,
+      "y": 0,
+      "w": 103,
+      "h": 72,
+      "cx": 64,
+      "cy": 35.5,
+      "greenPixels": 7416,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 10,
+      "y": 0,
+      "w": 109,
+      "h": 87,
+      "cx": 64,
+      "cy": 43,
+      "greenPixels": 9483,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 7,
+      "y": 0,
+      "w": 115,
+      "h": 99,
+      "cx": 64,
+      "cy": 49,
+      "greenPixels": 11385,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 3,
+      "y": 0,
+      "w": 123,
+      "h": 113,
+      "cx": 64,
+      "cy": 56,
+      "greenPixels": 13899,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 127,
+      "cx": 63.5,
+      "cy": 63,
+      "greenPixels": 16256,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 3,
+      "w": 128,
+      "h": 125,
+      "cx": 63.5,
+      "cy": 65,
+      "greenPixels": 16000,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.5,
+      "cy": 63.5,
+      "greenPixels": 16384,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.5,
+      "cy": 63.5,
+      "greenPixels": 16384,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.5,
+      "cy": 63.5,
+      "greenPixels": 16384,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.5,
+      "cy": 63.5,
+      "greenPixels": 16384,
+      "visible": true,
+      "delayMs": 70
+    }
+  ],
+  "motionPx": 29.5,
+  "areaRatio": 2.21,
   "layerPixels": 0,
-  "source": "greenscreen/raw/drop-bounce.gif"
+  "source": "greenscreen/raw/drop-bounce.gif",
+  "animationMode": "per-frame-slot-mask"
 }

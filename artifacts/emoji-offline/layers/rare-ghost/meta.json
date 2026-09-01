@@ -12,6 +12,121 @@
     "h": 90,
     "greenPixels": 31339
   },
+  "perFrame": [
+    {
+      "x": 46,
+      "y": 21,
+      "w": 72,
+      "h": 53,
+      "cx": 82.18434429007117,
+      "cy": 47.16164012199255,
+      "greenPixels": 2951,
+      "visible": true,
+      "delayMs": 40
+    },
+    {
+      "x": 34,
+      "y": 12,
+      "w": 71,
+      "h": 57,
+      "cx": 69.50207601405302,
+      "cy": 40.87288406259981,
+      "greenPixels": 3131,
+      "visible": true,
+      "delayMs": 40
+    },
+    {
+      "x": 19,
+      "y": 7,
+      "w": 71,
+      "h": 62,
+      "cx": 54.42244022072348,
+      "cy": 38.440833844267324,
+      "greenPixels": 3262,
+      "visible": true,
+      "delayMs": 40
+    },
+    {
+      "x": 9,
+      "y": 17,
+      "w": 71,
+      "h": 59,
+      "cx": 44.23721945137157,
+      "cy": 46.90118453865337,
+      "greenPixels": 3208,
+      "visible": true,
+      "delayMs": 40
+    },
+    {
+      "x": 8,
+      "y": 23,
+      "w": 71,
+      "h": 59,
+      "cx": 42.844290657439444,
+      "cy": 52.6278703994967,
+      "greenPixels": 3179,
+      "visible": true,
+      "delayMs": 40
+    },
+    {
+      "x": 15,
+      "y": 29,
+      "w": 69,
+      "h": 59,
+      "cx": 48.13782153064465,
+      "cy": 58.56779930136551,
+      "greenPixels": 3149,
+      "visible": true,
+      "delayMs": 40
+    },
+    {
+      "x": 26,
+      "y": 35,
+      "w": 73,
+      "h": 57,
+      "cx": 62.44230151076824,
+      "cy": 63.52619736419158,
+      "greenPixels": 3111,
+      "visible": true,
+      "delayMs": 40
+    },
+    {
+      "x": 39,
+      "y": 36,
+      "w": 71,
+      "h": 61,
+      "cx": 75.05533230293663,
+      "cy": 66.5403400309119,
+      "greenPixels": 3235,
+      "visible": true,
+      "delayMs": 40
+    },
+    {
+      "x": 48,
+      "y": 33,
+      "w": 70,
+      "h": 57,
+      "cx": 82.88181818181818,
+      "cy": 61.68484848484849,
+      "greenPixels": 2970,
+      "visible": true,
+      "delayMs": 40
+    },
+    {
+      "x": 53,
+      "y": 27,
+      "w": 73,
+      "h": 57,
+      "cx": 89.3814826598791,
+      "cy": 55.54056633789373,
+      "greenPixels": 3143,
+      "visible": true,
+      "delayMs": 40
+    }
+  ],
+  "motionPx": 54.4,
+  "areaRatio": 1.15,
   "layerPixels": 60888,
-  "source": "greenscreen/raw/rare-ghost.gif"
+  "source": "greenscreen/raw/rare-ghost.gif",
+  "animationMode": "per-frame-slot-mask"
 }

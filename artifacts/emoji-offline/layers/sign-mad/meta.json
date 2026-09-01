@@ -12,6 +12,121 @@
     "h": 123,
     "greenPixels": 127654
   },
+  "perFrame": [
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 123,
+      "cx": 62.36428163498409,
+      "cy": 49.11976829566778,
+      "greenPixels": 12257,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 119,
+      "cx": 62.5534999199103,
+      "cy": 49.81122857600513,
+      "greenPixels": 12486,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 122,
+      "cx": 62.82096392667061,
+      "cy": 53.08234772324069,
+      "greenPixels": 13528,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 120,
+      "cx": 62.76355398556289,
+      "cy": 51.517969589924746,
+      "greenPixels": 13022,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 119,
+      "cx": 62.588878251156856,
+      "cy": 50.051061113770544,
+      "greenPixels": 12534,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 123,
+      "cx": 62.36428163498409,
+      "cy": 49.11976829566778,
+      "greenPixels": 12257,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 119,
+      "cx": 62.5534999199103,
+      "cy": 49.81122857600513,
+      "greenPixels": 12486,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 122,
+      "cx": 62.82096392667061,
+      "cy": 53.08234772324069,
+      "greenPixels": 13528,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 120,
+      "cx": 62.76355398556289,
+      "cy": 51.517969589924746,
+      "greenPixels": 13022,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 119,
+      "cx": 62.588878251156856,
+      "cy": 50.051061113770544,
+      "greenPixels": 12534,
+      "visible": true,
+      "delayMs": 70
+    }
+  ],
+  "motionPx": 4,
+  "areaRatio": 1.03,
   "layerPixels": 21854,
-  "source": "greenscreen/raw/sign-mad.gif"
+  "source": "greenscreen/raw/sign-mad.gif",
+  "animationMode": "per-frame-slot-mask"
 }

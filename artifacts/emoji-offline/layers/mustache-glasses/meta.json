@@ -12,6 +12,22 @@
     "h": 128,
     "greenPixels": 11595
   },
+  "perFrame": [
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.242259594652865,
+      "cy": 69.77136696852091,
+      "greenPixels": 11595,
+      "visible": true,
+      "delayMs": 50
+    }
+  ],
+  "motionPx": 0,
+  "areaRatio": 1,
   "layerPixels": 4789,
-  "source": "greenscreen/raw/mustache-glasses.png"
+  "source": "greenscreen/raw/mustache-glasses.png",
+  "animationMode": "per-frame-slot-mask"
 }

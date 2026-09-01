@@ -12,6 +12,121 @@
     "h": 128,
     "greenPixels": 156852
   },
+  "perFrame": [
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 64.34174486431651,
+      "cy": 63.27821455744357,
+      "greenPixels": 15772,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 0,
+      "y": 1,
+      "w": 128,
+      "h": 127,
+      "cx": 64.18372955010224,
+      "cy": 64.56946574642127,
+      "greenPixels": 15648,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 0,
+      "y": 1,
+      "w": 128,
+      "h": 127,
+      "cx": 63.518461735019805,
+      "cy": 63.828542225629235,
+      "greenPixels": 15654,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.061105476673426,
+      "cy": 63.30990111561866,
+      "greenPixels": 15776,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 0,
+      "y": 1,
+      "w": 128,
+      "h": 127,
+      "cx": 63.31114659853082,
+      "cy": 64.5622484829128,
+      "greenPixels": 15655,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 0,
+      "y": 1,
+      "w": 128,
+      "h": 127,
+      "cx": 63.92191194325516,
+      "cy": 63.80535497475877,
+      "greenPixels": 15649,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 64.41680971454002,
+      "cy": 63.329391569711994,
+      "greenPixels": 15729,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 0,
+      "y": 1,
+      "w": 128,
+      "h": 127,
+      "cx": 64.17740698120446,
+      "cy": 64.57441503644036,
+      "greenPixels": 15642,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 0,
+      "y": 1,
+      "w": 128,
+      "h": 127,
+      "cx": 63.49431673052363,
+      "cy": 63.82298850574713,
+      "greenPixels": 15660,
+      "visible": true,
+      "delayMs": 60
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.076530286589644,
+      "cy": 63.7221548477692,
+      "greenPixels": 15667,
+      "visible": true,
+      "delayMs": 60
+    }
+  ],
+  "motionPx": 1.9,
+  "areaRatio": 1.01,
   "layerPixels": 0,
-  "source": "greenscreen/raw/wiggle-shear.gif"
+  "source": "greenscreen/raw/wiggle-shear.gif",
+  "animationMode": "per-frame-slot-mask"
 }

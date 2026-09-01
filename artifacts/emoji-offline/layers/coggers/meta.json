@@ -12,6 +12,22 @@
     "h": 128,
     "greenPixels": 12369
   },
+  "perFrame": [
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.87929501172285,
+      "cy": 64.04066618158299,
+      "greenPixels": 12369,
+      "visible": true,
+      "delayMs": 50
+    }
+  ],
+  "motionPx": 0,
+  "areaRatio": 1,
   "layerPixels": 638,
-  "source": "greenscreen/raw/coggers.png"
+  "source": "greenscreen/raw/coggers.png",
+  "animationMode": "per-frame-slot-mask"
 }

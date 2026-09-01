@@ -3,7 +3,7 @@
   "kind": "layer",
   "frames": 8,
   "sourcePages": 8,
-  "delayMs": 200,
+  "delayMs": 188,
   "size": 128,
   "slot": {
     "x": 3,
@@ -12,6 +12,99 @@
     "h": 103,
     "greenPixels": 45368
   },
+  "perFrame": [
+    {
+      "x": 6,
+      "y": 25,
+      "w": 117,
+      "h": 98,
+      "cx": 53.00360638845956,
+      "cy": 72.30293663060279,
+      "greenPixels": 5823,
+      "visible": true,
+      "delayMs": 200
+    },
+    {
+      "x": 3,
+      "y": 29,
+      "w": 120,
+      "h": 94,
+      "cx": 51.706790665028954,
+      "cy": 73.87155641340586,
+      "greenPixels": 5699,
+      "visible": true,
+      "delayMs": 200
+    },
+    {
+      "x": 6,
+      "y": 25,
+      "w": 117,
+      "h": 98,
+      "cx": 53.00360638845956,
+      "cy": 72.30293663060279,
+      "greenPixels": 5823,
+      "visible": true,
+      "delayMs": 200
+    },
+    {
+      "x": 9,
+      "y": 20,
+      "w": 114,
+      "h": 103,
+      "cx": 54.05612071888776,
+      "cy": 69.73652085452696,
+      "greenPixels": 5898,
+      "visible": true,
+      "delayMs": 100
+    },
+    {
+      "x": 13,
+      "y": 25,
+      "w": 110,
+      "h": 98,
+      "cx": 55.317934782608695,
+      "cy": 72.35235507246377,
+      "greenPixels": 5520,
+      "visible": true,
+      "delayMs": 200
+    },
+    {
+      "x": 13,
+      "y": 29,
+      "w": 110,
+      "h": 94,
+      "cx": 56.54058222479275,
+      "cy": 73.60709465972624,
+      "greenPixels": 5187,
+      "visible": true,
+      "delayMs": 200
+    },
+    {
+      "x": 13,
+      "y": 25,
+      "w": 110,
+      "h": 98,
+      "cx": 55.317934782608695,
+      "cy": 72.35235507246377,
+      "greenPixels": 5520,
+      "visible": true,
+      "delayMs": 200
+    },
+    {
+      "x": 9,
+      "y": 20,
+      "w": 114,
+      "h": 103,
+      "cx": 54.05612071888776,
+      "cy": 69.73652085452696,
+      "greenPixels": 5898,
+      "visible": true,
+      "delayMs": 200
+    }
+  ],
+  "motionPx": 6.4,
+  "areaRatio": 1.14,
   "layerPixels": 15187,
-  "source": "greenscreen/raw/pika-stand.gif"
+  "source": "greenscreen/raw/pika-stand.gif",
+  "animationMode": "per-frame-slot-mask"
 }

@@ -12,6 +12,22 @@
     "h": 77,
     "greenPixels": 5075
   },
+  "perFrame": [
+    {
+      "x": 13,
+      "y": 8,
+      "w": 108,
+      "h": 77,
+      "cx": 66.13753694581281,
+      "cy": 56.61536945812808,
+      "greenPixels": 5075,
+      "visible": true,
+      "delayMs": 50
+    }
+  ],
+  "motionPx": 0,
+  "areaRatio": 1,
   "layerPixels": 6093,
-  "source": "greenscreen/raw/raising-hand.png"
+  "source": "greenscreen/raw/raising-hand.png",
+  "animationMode": "per-frame-slot-mask"
 }

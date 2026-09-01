@@ -12,6 +12,121 @@
     "h": 128,
     "greenPixels": 134382
   },
+  "perFrame": [
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 68.51266523890406,
+      "cy": 56.85392511631342,
+      "greenPixels": 13541,
+      "visible": true,
+      "delayMs": 90
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 69.176935111376,
+      "cy": 56.96371898979364,
+      "greenPixels": 13423,
+      "visible": true,
+      "delayMs": 90
+    },
+    {
+      "x": 1,
+      "y": 0,
+      "w": 127,
+      "h": 128,
+      "cx": 69.80144567427152,
+      "cy": 57.08613809201115,
+      "greenPixels": 13281,
+      "visible": true,
+      "delayMs": 90
+    },
+    {
+      "x": 1,
+      "y": 0,
+      "w": 127,
+      "h": 128,
+      "cx": 69.80144567427152,
+      "cy": 57.08613809201115,
+      "greenPixels": 13281,
+      "visible": true,
+      "delayMs": 90
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 69.176935111376,
+      "cy": 56.96371898979364,
+      "greenPixels": 13423,
+      "visible": true,
+      "delayMs": 90
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 68.51266523890406,
+      "cy": 56.85392511631342,
+      "greenPixels": 13541,
+      "visible": true,
+      "delayMs": 90
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 68.2678386763185,
+      "cy": 56.94556064411287,
+      "greenPixels": 13538,
+      "visible": true,
+      "delayMs": 90
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 67.82741646778042,
+      "cy": 57.14730011933174,
+      "greenPixels": 13408,
+      "visible": true,
+      "delayMs": 90
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 67.82741646778042,
+      "cy": 57.14730011933174,
+      "greenPixels": 13408,
+      "visible": true,
+      "delayMs": 90
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 68.2678386763185,
+      "cy": 56.94556064411287,
+      "greenPixels": 13538,
+      "visible": true,
+      "delayMs": 90
+    }
+  ],
+  "motionPx": 2,
+  "areaRatio": 1.01,
   "layerPixels": 28122,
-  "source": "greenscreen/raw/popcorn-watch.gif"
+  "source": "greenscreen/raw/popcorn-watch.gif",
+  "animationMode": "per-frame-slot-mask"
 }

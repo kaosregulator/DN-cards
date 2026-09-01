@@ -12,6 +12,121 @@
     "h": 83,
     "greenPixels": 33768
   },
+  "perFrame": [
+    {
+      "x": 25,
+      "y": 16,
+      "w": 79,
+      "h": 72,
+      "cx": 64.06167747004518,
+      "cy": 48.78196817913966,
+      "greenPixels": 5091,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 33,
+      "y": 11,
+      "w": 63,
+      "h": 77,
+      "cx": 65.24128878281623,
+      "cy": 50.47756563245824,
+      "greenPixels": 4190,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 53,
+      "y": 6,
+      "w": 23,
+      "h": 82,
+      "cx": 64.66832607342874,
+      "cy": 51.125077784691975,
+      "greenPixels": 1607,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 53,
+      "y": 5,
+      "w": 23,
+      "h": 83,
+      "cx": 63.311616472034416,
+      "cy": 50.284572833435774,
+      "greenPixels": 1627,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 33,
+      "y": 8,
+      "w": 63,
+      "h": 80,
+      "cx": 62.98283360036621,
+      "cy": 49.04829480430305,
+      "greenPixels": 4369,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 25,
+      "y": 16,
+      "w": 79,
+      "h": 72,
+      "cx": 64.06167747004518,
+      "cy": 48.78196817913966,
+      "greenPixels": 5091,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 33,
+      "y": 11,
+      "w": 63,
+      "h": 77,
+      "cx": 65.24128878281623,
+      "cy": 50.47756563245824,
+      "greenPixels": 4190,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 53,
+      "y": 6,
+      "w": 23,
+      "h": 82,
+      "cx": 64.66832607342874,
+      "cy": 51.125077784691975,
+      "greenPixels": 1607,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 53,
+      "y": 5,
+      "w": 23,
+      "h": 83,
+      "cx": 63.311616472034416,
+      "cy": 50.284572833435774,
+      "greenPixels": 1627,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 33,
+      "y": 8,
+      "w": 63,
+      "h": 80,
+      "cx": 62.98283360036621,
+      "cy": 49.04829480430305,
+      "greenPixels": 4369,
+      "visible": true,
+      "delayMs": 50
+    }
+  ],
+  "motionPx": 3.3,
+  "areaRatio": 3.02,
   "layerPixels": 66910,
-  "source": "greenscreen/raw/toilet-spin.gif"
+  "source": "greenscreen/raw/toilet-spin.gif",
+  "animationMode": "per-frame-slot-mask"
 }

@@ -12,6 +12,121 @@
     "h": 128,
     "greenPixels": 81597
   },
+  "perFrame": [
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.5,
+      "cy": 63.5,
+      "greenPixels": 16384,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 15,
+      "y": 13,
+      "w": 105,
+      "h": 103,
+      "cx": 67,
+      "cy": 64,
+      "greenPixels": 10815,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 0,
+      "h": 0,
+      "cx": 64,
+      "cy": 64,
+      "greenPixels": 0,
+      "visible": false,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 0,
+      "h": 0,
+      "cx": 64,
+      "cy": 64,
+      "greenPixels": 0,
+      "visible": false,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 0,
+      "h": 0,
+      "cx": 64,
+      "cy": 64,
+      "greenPixels": 0,
+      "visible": false,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 0,
+      "h": 0,
+      "cx": 64,
+      "cy": 64,
+      "greenPixels": 0,
+      "visible": false,
+      "delayMs": 50
+    },
+    {
+      "x": 9,
+      "y": 13,
+      "w": 105,
+      "h": 103,
+      "cx": 61,
+      "cy": 64,
+      "greenPixels": 10815,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.5,
+      "cy": 63.5,
+      "greenPixels": 16384,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.5,
+      "cy": 63.5,
+      "greenPixels": 16384,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 15,
+      "y": 13,
+      "w": 105,
+      "h": 103,
+      "cx": 67,
+      "cy": 64,
+      "greenPixels": 10815,
+      "visible": true,
+      "delayMs": 50
+    }
+  ],
+  "motionPx": 6,
+  "areaRatio": 1.51,
   "layerPixels": 0,
-  "source": "greenscreen/raw/teleport.gif"
+  "source": "greenscreen/raw/teleport.gif",
+  "animationMode": "per-frame-slot-mask"
 }

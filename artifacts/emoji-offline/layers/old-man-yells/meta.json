@@ -12,6 +12,121 @@
     "h": 58,
     "greenPixels": 33640
   },
+  "perFrame": [
+    {
+      "x": 0,
+      "y": 0,
+      "w": 58,
+      "h": 58,
+      "cx": 28.5,
+      "cy": 28.5,
+      "greenPixels": 3364,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 58,
+      "h": 58,
+      "cx": 28.5,
+      "cy": 28.5,
+      "greenPixels": 3364,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 58,
+      "h": 58,
+      "cx": 28.5,
+      "cy": 28.5,
+      "greenPixels": 3364,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 58,
+      "h": 58,
+      "cx": 28.5,
+      "cy": 28.5,
+      "greenPixels": 3364,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 58,
+      "h": 58,
+      "cx": 28.5,
+      "cy": 28.5,
+      "greenPixels": 3364,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 58,
+      "h": 58,
+      "cx": 28.5,
+      "cy": 28.5,
+      "greenPixels": 3364,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 58,
+      "h": 58,
+      "cx": 28.5,
+      "cy": 28.5,
+      "greenPixels": 3364,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 58,
+      "h": 58,
+      "cx": 28.5,
+      "cy": 28.5,
+      "greenPixels": 3364,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 58,
+      "h": 58,
+      "cx": 28.5,
+      "cy": 28.5,
+      "greenPixels": 3364,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 58,
+      "h": 58,
+      "cx": 28.5,
+      "cy": 28.5,
+      "greenPixels": 3364,
+      "visible": true,
+      "delayMs": 50
+    }
+  ],
+  "motionPx": 0,
+  "areaRatio": 1,
   "layerPixels": 80736,
-  "source": "greenscreen/raw/old-man-yells.gif"
+  "source": "greenscreen/raw/old-man-yells.gif",
+  "animationMode": "per-frame-slot-mask"
 }

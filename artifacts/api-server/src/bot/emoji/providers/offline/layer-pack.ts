@@ -1,10 +1,18 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // Green-screen / layer compositor — MakeEmoji harvest path.
 //
-// Harvest uploads a solid green subject to makeemoji.com, downloads the result,
-// and chroma-keys green to transparency. What's left is the real MakeEmoji
-// layer (hands, blob chrome, pokéball shell, …). We stamp the user's image into
-// the green slot — same idea as the old /emojimoji green-screen packs.
+// Each style pack stores:
+//   front.png — MakeEmoji chrome with green keyed out
+//   slot.png  — per-frame green-subject mask (exact silhouette)
+//   meta.json — per-frame bbox/centroid/visibility + timing
+//
+// Compositing reconstructs MakeEmoji's layering:
+//   1) Place the user image for THIS frame's subject transform/mask
+//   2) Clip to that frame's green silhouette (motion, squash, explode, …)
+//   3) Draw the foreground chrome on top
+//
+ // A static union-bbox stamp is NOT used when per-frame data exists — the user
+// image must inherit the same animation MakeEmoji applied to the green subject.
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { existsSync, readFileSync } from "node:fs";
@@ -15,15 +23,48 @@ import { getCanvas, type CanvasMod, type Ctx } from "../../../animations/engine.
 import { EmojiError } from "../../utils/errors.js";
 import { offlinePackageRoot } from "./registry.js";
 
+export interface FrameSlot {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  cx: number;
+  cy: number;
+  greenPixels: number;
+  visible: boolean;
+  delayMs?: number;
+}
+
 export interface LayerMeta {
   id: string;
   kind: "layer" | "transform-slot" | "no-slot";
   frames: number;
   delayMs: number;
   size: number;
+  /** Union bbox fallback only. */
   slot: { x: number; y: number; w: number; h: number; greenPixels: number } | null;
+  /** Per-frame subject geometry — preferred. */
+  perFrame?: FrameSlot[];
+  motionPx?: number;
+  areaRatio?: number;
   layerPixels: number;
   source: string;
+  animationMode?: string;
+}
+
+interface PixelCtx {
+  getImageData(sx: number, sy: number, sw: number, sh: number): { data: Uint8ClampedArray };
+  putImageData(image: { data: Uint8ClampedArray }, dx: number, dy: number): void;
+  createImageData(sw: number, sh: number): { data: Uint8ClampedArray };
+  clearRect(x: number, y: number, w: number, h: number): void;
+  drawImage(...args: unknown[]): void;
+  save(): void;
+  restore(): void;
+  beginPath(): void;
+  rect(x: number, y: number, w: number, h: number): void;
+  clip(): void;
+  globalCompositeOperation: string;
+  imageSmoothingEnabled: boolean;
 }
 
 function layersRoot(): string | null {
@@ -54,8 +95,20 @@ export function hasLayerPack(slug: string): boolean {
   return Boolean(meta && meta.kind !== "no-slot" && meta.frames > 0);
 }
 
+function frameSlotFor(meta: LayerMeta, i: number, tile: number): FrameSlot {
+  const pf = meta.perFrame?.[i];
+  if (pf) return pf;
+  // Legacy fallback: static union bbox every frame (insufficient for motion).
+  const s = meta.slot ?? { x: 0, y: 0, w: tile, h: tile, greenPixels: 1 };
+  return {
+    x: s.x, y: s.y, w: s.w, h: s.h,
+    cx: s.x + s.w / 2, cy: s.y + s.h / 2,
+    greenPixels: s.greenPixels, visible: s.greenPixels > 0,
+  };
+}
+
 /**
- * Composite user image into the chroma slot of a harvested MakeEmoji layer pack.
+ * Composite user image so it inherits MakeEmoji's per-frame subject animation.
  * Returns one RGBA buffer per frame at `size`×`size`.
  */
 export async function composeLayerPack(input: {
@@ -78,14 +131,13 @@ export async function composeLayerPack(input: {
   }
 
   const tile = meta.size || 128;
-  const n = meta.frames;
-  const sheetPath = join(dir, "front.png");
+  const frontPath = join(dir, "front.png");
+  const slotPath = join(dir, "slot.png");
+  const hasSlotSheet = existsSync(slotPath);
 
-  // Load front sheet and slice frames with sharp (reliable for tall sprites).
-  const sheet = sharp(sheetPath).ensureAlpha();
-  const sheetMeta = await sheet.metadata();
-  const sheetH = sheetMeta.height ?? tile * n;
-  const actualFrames = Math.min(n, Math.floor(sheetH / tile));
+  const frontMeta = await sharp(frontPath).metadata();
+  const sheetH = frontMeta.height ?? tile * meta.frames;
+  const actualFrames = Math.min(meta.frames, Math.floor(sheetH / tile));
 
   let subject;
   try {
@@ -94,50 +146,76 @@ export async function composeLayerPack(input: {
     throw new EmojiError("not_an_image", "Source image could not be read.");
   }
 
-  const slot = meta.slot ?? { x: 0, y: 0, w: tile, h: tile, greenPixels: 0 };
   const out: Uint8ClampedArray[] = [];
   const size = input.size;
+  const scale = size / tile;
+  const sw = subject.width || 1;
+  const sh = subject.height || 1;
 
   for (let i = 0; i < actualFrames; i++) {
-    const framePng = await sharp(sheetPath)
+    const slot = frameSlotFor(meta, i, tile);
+    const canvas: Canvas = mod.createCanvas(size, size);
+    const ctx = canvas.getContext("2d") as unknown as Ctx & PixelCtx;
+    ctx.clearRect(0, 0, size, size);
+    ctx.imageSmoothingEnabled = true;
+
+    if (slot.visible && slot.w > 0 && slot.h > 0 && slot.greenPixels > 0) {
+      // Per-frame subject box (moves / scales / squashes with the green).
+      const dx = slot.x * scale;
+      const dy = slot.y * scale;
+      const dw = Math.max(1, slot.w * scale);
+      const dh = Math.max(1, slot.h * scale);
+
+      // Cover-fit user into this frame's subject bounds.
+      const fit = Math.max(dw / sw, dh / sh);
+      const dw2 = sw * fit;
+      const dh2 = sh * fit;
+      const ox = dx + (dw - dw2) / 2;
+      const oy = dy + (dh - dh2) / 2;
+
+      ctx.drawImage(subject as unknown as Canvas, ox, oy, dw2, dh2);
+
+      // Clip to the EXACT green silhouette for this frame (deformation / explode).
+      if (hasSlotSheet) {
+        const maskPng = await sharp(slotPath)
+          .extract({ left: 0, top: i * tile, width: tile, height: tile })
+          .resize(size, size, { kernel: "nearest" })
+          .png()
+          .toBuffer();
+        const mask = await mod.loadImage(maskPng);
+        ctx.globalCompositeOperation = "destination-in";
+        ctx.drawImage(mask as unknown as Canvas, 0, 0, size, size);
+        ctx.globalCompositeOperation = "source-over";
+      } else {
+        // No mask sheet — at least clip to the per-frame rect.
+        const clipped = mod.createCanvas(size, size);
+        const cctx = clipped.getContext("2d") as unknown as Ctx & PixelCtx;
+        cctx.clearRect(0, 0, size, size);
+        cctx.drawImage(canvas as unknown as Canvas, 0, 0);
+        ctx.clearRect(0, 0, size, size);
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(dx, dy, dw, dh);
+        ctx.clip();
+        ctx.drawImage(clipped as unknown as Canvas, 0, 0);
+        ctx.restore();
+      }
+    }
+    // else: subject invisible this frame — leave blank under the chrome
+
+    const frontPng = await sharp(frontPath)
       .extract({ left: 0, top: i * tile, width: tile, height: tile })
+      .resize(size, size, { fit: "fill" })
       .png()
       .toBuffer();
-    const overlay = await mod.loadImage(framePng);
-
-    const canvas: Canvas = mod.createCanvas(size, size);
-    const ctx = canvas.getContext("2d") as unknown as Ctx;
-    ctx.clearRect(0, 0, size, size);
-
-    // Scale slot from template tile → output size.
-    const sx = size / tile;
-    const dx = slot.x * sx;
-    const dy = slot.y * sx;
-    const dw = Math.max(1, slot.w * sx);
-    const dh = Math.max(1, slot.h * sx);
-
-    // Fit subject into slot (cover), centered.
-    const sw = subject.width || 1;
-    const sh = subject.height || 1;
-    const scale = Math.max(dw / sw, dh / sh);
-    const dw2 = sw * scale;
-    const dh2 = sh * scale;
-    const ox = dx + (dw - dw2) / 2;
-    const oy = dy + (dh - dh2) / 2;
-
-    ctx.save();
-    ctx.beginPath();
-    ctx.rect(dx, dy, dw, dh);
-    ctx.clip();
-    ctx.drawImage(subject as unknown as Canvas, ox, oy, dw2, dh2);
-    ctx.restore();
-
-    // Front layer (already chroma-keyed) on top.
+    const overlay = await mod.loadImage(frontPng);
+    ctx.globalCompositeOperation = "source-over";
     ctx.drawImage(overlay as unknown as Canvas, 0, 0, size, size);
 
     const img = ctx.getImageData(0, 0, size, size);
     out.push(new Uint8ClampedArray(img.data));
   }
 
-  return { frames: out, delayMs: meta.delayMs || 50 };
+  const delayMs = meta.perFrame?.[0]?.delayMs || meta.delayMs || 50;
+  return { frames: out, delayMs };
 }

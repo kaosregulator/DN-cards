@@ -12,6 +12,22 @@
     "h": 69,
     "greenPixels": 6831
   },
+  "perFrame": [
+    {
+      "x": 0,
+      "y": 11,
+      "w": 121,
+      "h": 69,
+      "cx": 60.41018884497145,
+      "cy": 45.91348265261309,
+      "greenPixels": 6831,
+      "visible": true,
+      "delayMs": 50
+    }
+  ],
+  "motionPx": 0,
+  "areaRatio": 1,
   "layerPixels": 6349,
-  "source": "greenscreen/raw/heyy.png"
+  "source": "greenscreen/raw/heyy.png",
+  "animationMode": "per-frame-slot-mask"
 }

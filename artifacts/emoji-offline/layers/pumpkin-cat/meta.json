@@ -12,6 +12,99 @@
     "h": 81,
     "greenPixels": 19972
   },
+  "perFrame": [
+    {
+      "x": 30,
+      "y": 38,
+      "w": 57,
+      "h": 58,
+      "cx": 58.17431546471269,
+      "cy": 66.19822599305823,
+      "greenPixels": 2593,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 30,
+      "y": 36,
+      "w": 57,
+      "h": 57,
+      "cx": 58.106276472853295,
+      "cy": 64.0331151328456,
+      "greenPixels": 2597,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 29,
+      "y": 44,
+      "w": 57,
+      "h": 55,
+      "cx": 57.03581488933602,
+      "cy": 70.95010060362173,
+      "greenPixels": 2485,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 29,
+      "y": 18,
+      "w": 57,
+      "h": 81,
+      "cx": 57.00303819444444,
+      "cy": 73.13541666666667,
+      "greenPixels": 2304,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 29,
+      "y": 40,
+      "w": 57,
+      "h": 58,
+      "cx": 57.09646425826288,
+      "cy": 68.5380476556495,
+      "greenPixels": 2602,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 29,
+      "y": 39,
+      "w": 57,
+      "h": 58,
+      "cx": 57.06725595695619,
+      "cy": 67.38201383551115,
+      "greenPixels": 2602,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 29,
+      "y": 44,
+      "w": 57,
+      "h": 55,
+      "cx": 57.03581488933602,
+      "cy": 70.95010060362173,
+      "greenPixels": 2485,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 29,
+      "y": 18,
+      "w": 57,
+      "h": 81,
+      "cx": 57.00303819444444,
+      "cy": 73.13541666666667,
+      "greenPixels": 2304,
+      "visible": true,
+      "delayMs": 50
+    }
+  ],
+  "motionPx": 9.2,
+  "areaRatio": 1.47,
   "layerPixels": 53472,
-  "source": "greenscreen/raw/pumpkin-cat.gif"
+  "source": "greenscreen/raw/pumpkin-cat.gif",
+  "animationMode": "per-frame-slot-mask"
 }

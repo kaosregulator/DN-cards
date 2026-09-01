@@ -12,6 +12,121 @@
     "h": 128,
     "greenPixels": 155260
   },
+  "perFrame": [
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.071397502019515,
+      "cy": 64.07730068974088,
+      "greenPixels": 16093,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 62.66486172887256,
+      "cy": 66.25030619480435,
+      "greenPixels": 15513,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.81066261478497,
+      "cy": 66.51555790447249,
+      "greenPixels": 15137,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 65.69688051795174,
+      "cy": 64.86220652671506,
+      "greenPixels": 15291,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 1,
+      "y": 0,
+      "w": 127,
+      "h": 128,
+      "cx": 65.49980592573425,
+      "cy": 64.30107387760383,
+      "greenPixels": 15458,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 62.849450344699086,
+      "cy": 64.3143283025899,
+      "greenPixels": 16101,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.40388075044976,
+      "cy": 66.09978154716012,
+      "greenPixels": 15564,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 62.240437158469945,
+      "cy": 65.84979182930003,
+      "greenPixels": 15372,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 60.58713450292397,
+      "cy": 64.58986354775828,
+      "greenPixels": 15390,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 60.69988918584186,
+      "cy": 64.58027507985138,
+      "greenPixels": 15341,
+      "visible": true,
+      "delayMs": 70
+    }
+  ],
+  "motionPx": 5.7,
+  "areaRatio": 1.01,
   "layerPixels": 3204,
-  "source": "greenscreen/raw/catjam-bob.gif"
+  "source": "greenscreen/raw/catjam-bob.gif",
+  "animationMode": "per-frame-slot-mask"
 }

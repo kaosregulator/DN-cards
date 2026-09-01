@@ -12,6 +12,22 @@
     "h": 75,
     "greenPixels": 7249
   },
+  "perFrame": [
+    {
+      "x": 2,
+      "y": 42,
+      "w": 120,
+      "h": 75,
+      "cx": 64.23051455373155,
+      "cy": 81.22182369982066,
+      "greenPixels": 7249,
+      "visible": true,
+      "delayMs": 50
+    }
+  ],
+  "motionPx": 0,
+  "areaRatio": 1,
   "layerPixels": 2028,
-  "source": "greenscreen/raw/peepo.png"
+  "source": "greenscreen/raw/peepo.png",
+  "animationMode": "per-frame-slot-mask"
 }

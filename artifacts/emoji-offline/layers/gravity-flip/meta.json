@@ -12,6 +12,121 @@
     "h": 128,
     "greenPixels": 133794
   },
+  "perFrame": [
+    {
+      "x": 7,
+      "y": 13,
+      "w": 115,
+      "h": 115,
+      "cx": 64,
+      "cy": 70,
+      "greenPixels": 13225,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 2,
+      "y": 18,
+      "w": 125,
+      "h": 110,
+      "cx": 64.31562849682955,
+      "cy": 73.4502797463633,
+      "greenPixels": 13405,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 7,
+      "y": 13,
+      "w": 115,
+      "h": 115,
+      "cx": 64,
+      "cy": 70,
+      "greenPixels": 13225,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.63923898209842,
+      "cy": 61.00907120494501,
+      "greenPixels": 12457,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 113,
+      "cx": 64.37404410126958,
+      "cy": 53.63894869700795,
+      "greenPixels": 13469,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 119,
+      "cx": 64.6743057629143,
+      "cy": 55.27381307853091,
+      "greenPixels": 13396,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 5,
+      "y": 0,
+      "w": 119,
+      "h": 116,
+      "cx": 64.08023828785761,
+      "cy": 57.10656762521145,
+      "greenPixels": 13597,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 5,
+      "y": 0,
+      "w": 119,
+      "h": 121,
+      "cx": 63.95891602057822,
+      "cy": 59.465545974929356,
+      "greenPixels": 13801,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 6,
+      "y": 0,
+      "w": 117,
+      "h": 119,
+      "cx": 64.1102390814621,
+      "cy": 58.80255795363709,
+      "greenPixels": 13761,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 6,
+      "y": 0,
+      "w": 117,
+      "h": 116,
+      "cx": 64,
+      "cy": 57.5,
+      "greenPixels": 13458,
+      "visible": true,
+      "delayMs": 80
+    }
+  ],
+  "motionPx": 19.8,
+  "areaRatio": 1.24,
   "layerPixels": 0,
-  "source": "greenscreen/raw/gravity-flip.gif"
+  "source": "greenscreen/raw/gravity-flip.gif",
+  "animationMode": "per-frame-slot-mask"
 }

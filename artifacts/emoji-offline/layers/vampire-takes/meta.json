@@ -12,6 +12,22 @@
     "h": 73,
     "greenPixels": 5002
   },
+  "perFrame": [
+    {
+      "x": 3,
+      "y": 43,
+      "w": 101,
+      "h": 73,
+      "cx": 37.25109956017593,
+      "cy": 79.24350259896042,
+      "greenPixels": 5002,
+      "visible": true,
+      "delayMs": 50
+    }
+  ],
+  "motionPx": 0,
+  "areaRatio": 1,
   "layerPixels": 8465,
-  "source": "greenscreen/raw/vampire-takes.png"
+  "source": "greenscreen/raw/vampire-takes.png",
+  "animationMode": "per-frame-slot-mask"
 }

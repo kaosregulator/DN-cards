@@ -12,6 +12,121 @@
     "h": 128,
     "greenPixels": 130150
   },
+  "perFrame": [
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.926238955051865,
+      "cy": 63.926238955051865,
+      "greenPixels": 13015,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.926238955051865,
+      "cy": 63.926238955051865,
+      "greenPixels": 13015,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.926238955051865,
+      "cy": 63.926238955051865,
+      "greenPixels": 13015,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.926238955051865,
+      "cy": 63.926238955051865,
+      "greenPixels": 13015,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.926238955051865,
+      "cy": 63.926238955051865,
+      "greenPixels": 13015,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.926238955051865,
+      "cy": 63.926238955051865,
+      "greenPixels": 13015,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.926238955051865,
+      "cy": 63.926238955051865,
+      "greenPixels": 13015,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.926238955051865,
+      "cy": 63.926238955051865,
+      "greenPixels": 13015,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.926238955051865,
+      "cy": 63.926238955051865,
+      "greenPixels": 13015,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.926238955051865,
+      "cy": 63.926238955051865,
+      "greenPixels": 13015,
+      "visible": true,
+      "delayMs": 50
+    }
+  ],
+  "motionPx": 0,
+  "areaRatio": 1,
   "layerPixels": 0,
-  "source": "greenscreen/raw/pagman.gif"
+  "source": "greenscreen/raw/pagman.gif",
+  "animationMode": "per-frame-slot-mask"
 }

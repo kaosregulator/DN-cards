@@ -12,6 +12,33 @@
     "h": 128,
     "greenPixels": 30462
   },
+  "perFrame": [
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 67.40306861583036,
+      "cy": 63.6283418938496,
+      "greenPixels": 15186,
+      "visible": true,
+      "delayMs": 100
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 59.88164440953129,
+      "cy": 63.63308457711443,
+      "greenPixels": 15276,
+      "visible": true,
+      "delayMs": 100
+    }
+  ],
+  "motionPx": 7.5,
+  "areaRatio": 1,
   "layerPixels": 0,
-  "source": "greenscreen/raw/no-no.gif"
+  "source": "greenscreen/raw/no-no.gif",
+  "animationMode": "per-frame-slot-mask"
 }

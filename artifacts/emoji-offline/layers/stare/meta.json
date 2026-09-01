@@ -12,6 +12,22 @@
     "h": 102,
     "greenPixels": 10565
   },
+  "perFrame": [
+    {
+      "x": 0,
+      "y": 9,
+      "w": 127,
+      "h": 102,
+      "cx": 63.41069569332702,
+      "cy": 60.25442498816848,
+      "greenPixels": 10565,
+      "visible": true,
+      "delayMs": 50
+    }
+  ],
+  "motionPx": 0,
+  "areaRatio": 1,
   "layerPixels": 2260,
-  "source": "greenscreen/raw/stare.png"
+  "source": "greenscreen/raw/stare.png",
+  "animationMode": "per-frame-slot-mask"
 }

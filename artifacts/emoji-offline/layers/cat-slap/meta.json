@@ -12,6 +12,121 @@
     "h": 128,
     "greenPixels": 116327
   },
+  "perFrame": [
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 50.01173269852066,
+      "cy": 63.56589015473559,
+      "greenPixels": 11762,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 49.10188152164982,
+      "cy": 63.17952510064909,
+      "greenPixels": 12171,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 50.43735327362838,
+      "cy": 62.53917050691244,
+      "greenPixels": 11501,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 49.98717837650524,
+      "cy": 62.889716711426836,
+      "greenPixels": 11543,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 48.16437756976642,
+      "cy": 64.18546058962471,
+      "greenPixels": 11431,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 51.05290736984449,
+      "cy": 62.80671061528059,
+      "greenPixels": 11832,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 51.956863091037405,
+      "cy": 60.5696894848271,
+      "greenPixels": 11336,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 49.70542026708562,
+      "cy": 63.700794274242824,
+      "greenPixels": 11457,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 48.55705744736158,
+      "cy": 64.02044883458973,
+      "greenPixels": 11541,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 50.918829235088914,
+      "cy": 62.9086190759806,
+      "greenPixels": 11753,
+      "visible": true,
+      "delayMs": 70
+    }
+  ],
+  "motionPx": 5.2,
+  "areaRatio": 1,
   "layerPixels": 47513,
-  "source": "greenscreen/raw/cat-slap.gif"
+  "source": "greenscreen/raw/cat-slap.gif",
+  "animationMode": "per-frame-slot-mask"
 }

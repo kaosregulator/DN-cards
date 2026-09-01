@@ -12,6 +12,121 @@
     "h": 128,
     "greenPixels": 120019
   },
+  "perFrame": [
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 66.37023155089122,
+      "cy": 47.63476595035815,
+      "greenPixels": 12006,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 66.37403181477471,
+      "cy": 47.63921046056467,
+      "greenPixels": 12007,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 66.36643065389421,
+      "cy": 47.628654727197,
+      "greenPixels": 12005,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 66.37783144570287,
+      "cy": 47.64340439706862,
+      "greenPixels": 12008,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 66.3512207316057,
+      "cy": 47.60778268477627,
+      "greenPixels": 12001,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 66.37403181477471,
+      "cy": 47.63921046056467,
+      "greenPixels": 12007,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 66.37023155089122,
+      "cy": 47.63310011660836,
+      "greenPixels": 12006,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 66.37403181477471,
+      "cy": 47.63921046056467,
+      "greenPixels": 12007,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 66.29409310862673,
+      "cy": 47.528199566160524,
+      "greenPixels": 11986,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 66.29409310862673,
+      "cy": 47.528199566160524,
+      "greenPixels": 11986,
+      "visible": true,
+      "delayMs": 70
+    }
+  ],
+  "motionPx": 0.1,
+  "areaRatio": 1,
   "layerPixels": 43821,
-  "source": "greenscreen/raw/breaking-news.gif"
+  "source": "greenscreen/raw/breaking-news.gif",
+  "animationMode": "per-frame-slot-mask"
 }

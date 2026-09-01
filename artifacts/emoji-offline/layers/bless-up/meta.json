@@ -12,6 +12,121 @@
     "h": 128,
     "greenPixels": 146838
   },
+  "perFrame": [
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.412782414003665,
+      "cy": 60.30049528461904,
+      "greenPixels": 14739,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 127,
+      "cx": 63.42392717815345,
+      "cy": 59.72157963178427,
+      "greenPixels": 14611,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 127,
+      "cx": 63.440167134735255,
+      "cy": 59.69559558873895,
+      "greenPixels": 14599,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 127,
+      "cx": 63.440167134735255,
+      "cy": 59.69559558873895,
+      "greenPixels": 14599,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 127,
+      "cx": 63.42392717815345,
+      "cy": 59.72157963178427,
+      "greenPixels": 14611,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.412782414003665,
+      "cy": 60.30049528461904,
+      "greenPixels": 14739,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.41853360488798,
+      "cy": 60.27019687712152,
+      "greenPixels": 14730,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.41051560379918,
+      "cy": 60.29287652645861,
+      "greenPixels": 14740,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.41051560379918,
+      "cy": 60.29287652645861,
+      "greenPixels": 14740,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.41853360488798,
+      "cy": 60.27019687712152,
+      "greenPixels": 14730,
+      "visible": true,
+      "delayMs": 80
+    }
+  ],
+  "motionPx": 0.6,
+  "areaRatio": 1.01,
   "layerPixels": 16490,
-  "source": "greenscreen/raw/bless-up.gif"
+  "source": "greenscreen/raw/bless-up.gif",
+  "animationMode": "per-frame-slot-mask"
 }

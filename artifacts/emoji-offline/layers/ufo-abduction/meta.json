@@ -12,6 +12,275 @@
     "h": 124,
     "greenPixels": 71797
   },
+  "perFrame": [
+    {
+      "x": 24,
+      "y": 54,
+      "w": 81,
+      "h": 74,
+      "cx": 64,
+      "cy": 90.5,
+      "greenPixels": 5994,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 24,
+      "y": 54,
+      "w": 81,
+      "h": 74,
+      "cx": 64,
+      "cy": 90.5,
+      "greenPixels": 5994,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 24,
+      "y": 54,
+      "w": 81,
+      "h": 74,
+      "cx": 64,
+      "cy": 90.5,
+      "greenPixels": 5994,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 24,
+      "y": 54,
+      "w": 81,
+      "h": 74,
+      "cx": 64,
+      "cy": 90.5,
+      "greenPixels": 5994,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 24,
+      "y": 54,
+      "w": 81,
+      "h": 74,
+      "cx": 64,
+      "cy": 90.5,
+      "greenPixels": 5994,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 24,
+      "y": 54,
+      "w": 81,
+      "h": 74,
+      "cx": 64,
+      "cy": 90.5,
+      "greenPixels": 5994,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 25,
+      "y": 53,
+      "w": 79,
+      "h": 75,
+      "cx": 64,
+      "cy": 90.22324944358843,
+      "greenPixels": 5841,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 28,
+      "y": 52,
+      "w": 73,
+      "h": 76,
+      "cx": 64,
+      "cy": 89.5,
+      "greenPixels": 5548,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 30,
+      "y": 47,
+      "w": 69,
+      "h": 79,
+      "cx": 64,
+      "cy": 86,
+      "greenPixels": 5451,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 32,
+      "y": 44,
+      "w": 65,
+      "h": 77,
+      "cx": 64,
+      "cy": 81.98480911453129,
+      "greenPixels": 5003,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 36,
+      "y": 39,
+      "w": 57,
+      "h": 75,
+      "cx": 64,
+      "cy": 76,
+      "greenPixels": 4275,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 40,
+      "y": 36,
+      "w": 49,
+      "h": 70,
+      "cx": 64,
+      "cy": 71.27251043530113,
+      "greenPixels": 3354,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 44,
+      "y": 37,
+      "w": 41,
+      "h": 60,
+      "cx": 64,
+      "cy": 66.876492383697,
+      "greenPixels": 2429,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 48,
+      "y": 38,
+      "w": 33,
+      "h": 47,
+      "cx": 64,
+      "cy": 61,
+      "greenPixels": 1551,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 52,
+      "y": 38,
+      "w": 25,
+      "h": 38,
+      "cx": 64,
+      "cy": 56.5,
+      "greenPixels": 950,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 54,
+      "y": 4,
+      "w": 21,
+      "h": 65,
+      "cx": 64,
+      "cy": 49.96220930232558,
+      "greenPixels": 688,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 55,
+      "y": 5,
+      "w": 19,
+      "h": 57,
+      "cx": 64,
+      "cy": 48.79867256637168,
+      "greenPixels": 452,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 57,
+      "y": 5,
+      "w": 15,
+      "h": 53,
+      "cx": 64,
+      "cy": 47.11340206185567,
+      "greenPixels": 291,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 0,
+      "h": 0,
+      "cx": 64,
+      "cy": 64,
+      "greenPixels": 0,
+      "visible": false,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 0,
+      "h": 0,
+      "cx": 64,
+      "cy": 64,
+      "greenPixels": 0,
+      "visible": false,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 0,
+      "h": 0,
+      "cx": 64,
+      "cy": 64,
+      "greenPixels": 0,
+      "visible": false,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 0,
+      "h": 0,
+      "cx": 64,
+      "cy": 64,
+      "greenPixels": 0,
+      "visible": false,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 0,
+      "h": 0,
+      "cx": 64,
+      "cy": 64,
+      "greenPixels": 0,
+      "visible": false,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 0,
+      "h": 0,
+      "cx": 64,
+      "cy": 64,
+      "greenPixels": 0,
+      "visible": false,
+      "delayMs": 70
+    }
+  ],
+  "motionPx": 43.4,
+  "areaRatio": 7.54,
   "layerPixels": 321419,
-  "source": "greenscreen/raw/ufo-abduction.gif"
+  "source": "greenscreen/raw/ufo-abduction.gif",
+  "animationMode": "per-frame-slot-mask"
 }

@@ -12,6 +12,22 @@
     "h": 88,
     "greenPixels": 5373
   },
+  "perFrame": [
+    {
+      "x": 37,
+      "y": 23,
+      "w": 86,
+      "h": 88,
+      "cx": 77.6858365903592,
+      "cy": 64.58607854085241,
+      "greenPixels": 5373,
+      "visible": true,
+      "delayMs": 50
+    }
+  ],
+  "motionPx": 0,
+  "areaRatio": 1,
   "layerPixels": 9776,
-  "source": "greenscreen/raw/hazmat-2.png"
+  "source": "greenscreen/raw/hazmat-2.png",
+  "animationMode": "per-frame-slot-mask"
 }

@@ -12,6 +12,22 @@
     "h": 107,
     "greenPixels": 6954
   },
+  "perFrame": [
+    {
+      "x": 5,
+      "y": 7,
+      "w": 122,
+      "h": 107,
+      "cx": 66.02588438308887,
+      "cy": 46.77710670117918,
+      "greenPixels": 6954,
+      "visible": true,
+      "delayMs": 50
+    }
+  ],
+  "motionPx": 0,
+  "areaRatio": 1,
   "layerPixels": 5448,
-  "source": "greenscreen/raw/nise.png"
+  "source": "greenscreen/raw/nise.png",
+  "animationMode": "per-frame-slot-mask"
 }

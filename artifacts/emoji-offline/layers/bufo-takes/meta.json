@@ -12,6 +12,22 @@
     "h": 108,
     "greenPixels": 5101
   },
+  "perFrame": [
+    {
+      "x": 2,
+      "y": 8,
+      "w": 113,
+      "h": 108,
+      "cx": 36.79200156831994,
+      "cy": 79.04254067829838,
+      "greenPixels": 5101,
+      "visible": true,
+      "delayMs": 50
+    }
+  ],
+  "motionPx": 0,
+  "areaRatio": 1,
   "layerPixels": 7850,
-  "source": "greenscreen/raw/bufo-takes.png"
+  "source": "greenscreen/raw/bufo-takes.png",
+  "animationMode": "per-frame-slot-mask"
 }

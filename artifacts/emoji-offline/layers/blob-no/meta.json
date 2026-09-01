@@ -12,6 +12,22 @@
     "h": 107,
     "greenPixels": 5629
   },
+  "perFrame": [
+    {
+      "x": 17,
+      "y": 11,
+      "w": 111,
+      "h": 107,
+      "cx": 83.09042458696038,
+      "cy": 57.494581630840294,
+      "greenPixels": 5629,
+      "visible": true,
+      "delayMs": 50
+    }
+  ],
+  "motionPx": 0,
+  "areaRatio": 1,
   "layerPixels": 5148,
-  "source": "greenscreen/raw/blob-no.png"
+  "source": "greenscreen/raw/blob-no.png",
+  "animationMode": "per-frame-slot-mask"
 }

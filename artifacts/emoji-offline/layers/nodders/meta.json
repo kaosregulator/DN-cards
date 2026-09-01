@@ -12,6 +12,121 @@
     "h": 128,
     "greenPixels": 139760
   },
+  "perFrame": [
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.5,
+      "cy": 63.5,
+      "greenPixels": 16384,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 0,
+      "y": 5,
+      "w": 128,
+      "h": 123,
+      "cx": 60.34781237682302,
+      "cy": 75.37761135199054,
+      "greenPixels": 12685,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 0,
+      "y": 10,
+      "w": 128,
+      "h": 118,
+      "cx": 58.56146805455851,
+      "cy": 81.13433237616654,
+      "greenPixels": 11144,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 0,
+      "y": 5,
+      "w": 128,
+      "h": 123,
+      "cx": 60.34781237682302,
+      "cy": 75.37761135199054,
+      "greenPixels": 12685,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.5,
+      "cy": 63.5,
+      "greenPixels": 16384,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 0,
+      "y": 3,
+      "w": 128,
+      "h": 125,
+      "cx": 60.72312156383629,
+      "cy": 73.8849266951741,
+      "greenPixels": 13096,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 0,
+      "y": 9,
+      "w": 128,
+      "h": 119,
+      "cx": 59.0758812293801,
+      "cy": 79.7327661052266,
+      "greenPixels": 11518,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 0,
+      "y": 3,
+      "w": 128,
+      "h": 125,
+      "cx": 60.72312156383629,
+      "cy": 73.8849266951741,
+      "greenPixels": 13096,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.5,
+      "cy": 63.5,
+      "greenPixels": 16384,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.5,
+      "cy": 63.5,
+      "greenPixels": 16384,
+      "visible": true,
+      "delayMs": 80
+    }
+  ],
+  "motionPx": 18.3,
+  "areaRatio": 1.08,
   "layerPixels": 0,
-  "source": "greenscreen/raw/nodders.gif"
+  "source": "greenscreen/raw/nodders.gif",
+  "animationMode": "per-frame-slot-mask"
 }

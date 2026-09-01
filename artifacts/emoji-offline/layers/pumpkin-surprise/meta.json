@@ -12,6 +12,22 @@
     "h": 100,
     "greenPixels": 5389
   },
+  "perFrame": [
+    {
+      "x": 18,
+      "y": 0,
+      "w": 95,
+      "h": 100,
+      "cx": 66.88161068843941,
+      "cy": 65.05158656522546,
+      "greenPixels": 5389,
+      "visible": true,
+      "delayMs": 50
+    }
+  ],
+  "motionPx": 0,
+  "areaRatio": 1,
   "layerPixels": 8767,
-  "source": "greenscreen/raw/pumpkin-surprise.png"
+  "source": "greenscreen/raw/pumpkin-surprise.png",
+  "animationMode": "per-frame-slot-mask"
 }

@@ -3,7 +3,7 @@
   "kind": "layer",
   "frames": 14,
   "sourcePages": 14,
-  "delayMs": 20,
+  "delayMs": 48,
   "size": 128,
   "slot": {
     "x": 0,
@@ -12,6 +12,165 @@
     "h": 128,
     "greenPixels": 191666
   },
+  "perFrame": [
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 62.98533939305087,
+      "cy": 72.05035918487026,
+      "greenPixels": 13642,
+      "visible": true,
+      "delayMs": 20
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.055051244509514,
+      "cy": 72.05226939970717,
+      "greenPixels": 13660,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.426408501965355,
+      "cy": 71.90478963459019,
+      "greenPixels": 13738,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.443498508331515,
+      "cy": 71.91530233573455,
+      "greenPixels": 13743,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.44652211874273,
+      "cy": 71.93029685681024,
+      "greenPixels": 13744,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.21761998685076,
+      "cy": 72.05113594857184,
+      "greenPixels": 13689,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.12009068968039,
+      "cy": 72.08988517516273,
+      "greenPixels": 13673,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.03449538596748,
+      "cy": 72.15424051559982,
+      "greenPixels": 13654,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.21930208789604,
+      "cy": 72.09804351000146,
+      "greenPixels": 13698,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.42899774364947,
+      "cy": 71.98617075478565,
+      "greenPixels": 13739,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.488947062245494,
+      "cy": 71.92641070389762,
+      "greenPixels": 13752,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.14325411334552,
+      "cy": 72.028957952468,
+      "greenPixels": 13675,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 62.93624358033749,
+      "cy": 72.10425531914893,
+      "greenPixels": 13630,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 62.90593587203757,
+      "cy": 72.09252329591313,
+      "greenPixels": 13629,
+      "visible": true,
+      "delayMs": 50
+    }
+  ],
+  "motionPx": 0.6,
+  "areaRatio": 1,
   "layerPixels": 37710,
-  "source": "greenscreen/raw/cat-ears.gif"
+  "source": "greenscreen/raw/cat-ears.gif",
+  "animationMode": "per-frame-slot-mask"
 }

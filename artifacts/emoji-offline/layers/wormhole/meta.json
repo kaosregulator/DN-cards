@@ -12,6 +12,121 @@
     "h": 128,
     "greenPixels": 58394
   },
+  "perFrame": [
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.5,
+      "cy": 63.5,
+      "greenPixels": 16384,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 65.73731481481481,
+      "cy": 66.04046296296296,
+      "greenPixels": 10800,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 16,
+      "y": 16,
+      "w": 107,
+      "h": 107,
+      "cx": 69.10854753793744,
+      "cy": 69.10452152369155,
+      "greenPixels": 6458,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 46,
+      "y": 46,
+      "w": 52,
+      "h": 52,
+      "cx": 71.5,
+      "cy": 71.5,
+      "greenPixels": 2704,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 56,
+      "y": 56,
+      "w": 36,
+      "h": 36,
+      "cx": 74.08796895213455,
+      "cy": 74.15782664941786,
+      "greenPixels": 773,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 67,
+      "y": 67,
+      "w": 21,
+      "h": 21,
+      "cx": 76.86842105263158,
+      "cy": 76.8984962406015,
+      "greenPixels": 266,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 41,
+      "y": 41,
+      "w": 27,
+      "h": 27,
+      "cx": 54,
+      "cy": 54,
+      "greenPixels": 729,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 22,
+      "y": 22,
+      "w": 70,
+      "h": 70,
+      "cx": 56.33821952091527,
+      "cy": 56.33142652842331,
+      "greenPixels": 2797,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 6,
+      "y": 6,
+      "w": 107,
+      "h": 107,
+      "cx": 58.89145246206256,
+      "cy": 58.895478476308455,
+      "greenPixels": 6458,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 9,
+      "y": 9,
+      "w": 105,
+      "h": 105,
+      "cx": 61,
+      "cy": 61,
+      "greenPixels": 11025,
+      "visible": true,
+      "delayMs": 80
+    }
+  ],
+  "motionPx": 32.4,
+  "areaRatio": 37.15,
   "layerPixels": 0,
-  "source": "greenscreen/raw/wormhole.gif"
+  "source": "greenscreen/raw/wormhole.gif",
+  "animationMode": "per-frame-slot-mask"
 }

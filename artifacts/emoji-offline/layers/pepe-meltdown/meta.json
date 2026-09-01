@@ -12,6 +12,121 @@
     "h": 110,
     "greenPixels": 68624
   },
+  "perFrame": [
+    {
+      "x": 0,
+      "y": 38,
+      "w": 127,
+      "h": 85,
+      "cx": 60.5717420661715,
+      "cy": 89.67302498311952,
+      "greenPixels": 5924,
+      "visible": true,
+      "delayMs": 30
+    },
+    {
+      "x": 2,
+      "y": 34,
+      "w": 122,
+      "h": 89,
+      "cx": 58.78502772643253,
+      "cy": 90.16580406654344,
+      "greenPixels": 5410,
+      "visible": true,
+      "delayMs": 30
+    },
+    {
+      "x": 0,
+      "y": 23,
+      "w": 124,
+      "h": 98,
+      "cx": 59.27524387028737,
+      "cy": 79.62272607434748,
+      "greenPixels": 7586,
+      "visible": true,
+      "delayMs": 30
+    },
+    {
+      "x": 2,
+      "y": 22,
+      "w": 122,
+      "h": 100,
+      "cx": 55.20121068561653,
+      "cy": 75.02579286748256,
+      "greenPixels": 7599,
+      "visible": true,
+      "delayMs": 30
+    },
+    {
+      "x": 0,
+      "y": 22,
+      "w": 127,
+      "h": 99,
+      "cx": 58.980054173848806,
+      "cy": 76.158704752524,
+      "greenPixels": 8122,
+      "visible": true,
+      "delayMs": 30
+    },
+    {
+      "x": 2,
+      "y": 18,
+      "w": 125,
+      "h": 105,
+      "cx": 59.95715713215089,
+      "cy": 79.32063452410692,
+      "greenPixels": 8006,
+      "visible": true,
+      "delayMs": 30
+    },
+    {
+      "x": 0,
+      "y": 17,
+      "w": 127,
+      "h": 106,
+      "cx": 57.12556712036296,
+      "cy": 77.00560448358686,
+      "greenPixels": 7494,
+      "visible": true,
+      "delayMs": 30
+    },
+    {
+      "x": 2,
+      "y": 17,
+      "w": 125,
+      "h": 106,
+      "cx": 63.91774957957499,
+      "cy": 82.78565968506345,
+      "greenPixels": 6541,
+      "visible": true,
+      "delayMs": 30
+    },
+    {
+      "x": 0,
+      "y": 34,
+      "w": 127,
+      "h": 89,
+      "cx": 58.410848819688596,
+      "cy": 88.51515151515152,
+      "greenPixels": 5973,
+      "visible": true,
+      "delayMs": 30
+    },
+    {
+      "x": 2,
+      "y": 33,
+      "w": 125,
+      "h": 94,
+      "cx": 60.89043390852739,
+      "cy": 88.86781705478305,
+      "greenPixels": 5969,
+      "visible": true,
+      "delayMs": 30
+    }
+  ],
+  "motionPx": 17.5,
+  "areaRatio": 1.25,
   "layerPixels": 26948,
-  "source": "greenscreen/raw/pepe-meltdown.gif"
+  "source": "greenscreen/raw/pepe-meltdown.gif",
+  "animationMode": "per-frame-slot-mask"
 }

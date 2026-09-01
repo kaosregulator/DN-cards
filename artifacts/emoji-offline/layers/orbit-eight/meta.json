@@ -12,6 +12,121 @@
     "h": 107,
     "greenPixels": 49588
   },
+  "perFrame": [
+    {
+      "x": 11,
+      "y": 11,
+      "w": 107,
+      "h": 107,
+      "cx": 64,
+      "cy": 64,
+      "greenPixels": 4708,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 11,
+      "y": 11,
+      "w": 107,
+      "h": 107,
+      "cx": 64,
+      "cy": 64,
+      "greenPixels": 4992,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 11,
+      "y": 11,
+      "w": 107,
+      "h": 107,
+      "cx": 64,
+      "cy": 64,
+      "greenPixels": 4992,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 11,
+      "y": 11,
+      "w": 107,
+      "h": 107,
+      "cx": 64,
+      "cy": 64,
+      "greenPixels": 4996,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 13,
+      "y": 13,
+      "w": 103,
+      "h": 103,
+      "cx": 64,
+      "cy": 64,
+      "greenPixels": 4972,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 14,
+      "y": 14,
+      "w": 101,
+      "h": 101,
+      "cx": 64,
+      "cy": 64,
+      "greenPixels": 4976,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 13,
+      "y": 13,
+      "w": 103,
+      "h": 103,
+      "cx": 64,
+      "cy": 64,
+      "greenPixels": 4972,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 11,
+      "y": 11,
+      "w": 107,
+      "h": 107,
+      "cx": 64,
+      "cy": 64,
+      "greenPixels": 4996,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 11,
+      "y": 11,
+      "w": 107,
+      "h": 107,
+      "cx": 64,
+      "cy": 64,
+      "greenPixels": 4992,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 11,
+      "y": 11,
+      "w": 107,
+      "h": 107,
+      "cx": 64,
+      "cy": 64,
+      "greenPixels": 4992,
+      "visible": true,
+      "delayMs": 70
+    }
+  ],
+  "motionPx": 0,
+  "areaRatio": 1.12,
   "layerPixels": 0,
-  "source": "greenscreen/raw/orbit-eight.gif"
+  "source": "greenscreen/raw/orbit-eight.gif",
+  "animationMode": "per-frame-slot-mask"
 }

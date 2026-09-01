@@ -3,7 +3,7 @@
   "kind": "layer",
   "frames": 10,
   "sourcePages": 10,
-  "delayMs": 140,
+  "delayMs": 188,
   "size": 128,
   "slot": {
     "x": 2,
@@ -12,6 +12,121 @@
     "h": 90,
     "greenPixels": 75306
   },
+  "perFrame": [
+    {
+      "x": 5,
+      "y": 39,
+      "w": 123,
+      "h": 87,
+      "cx": 63.982471299839524,
+      "cy": 86.91013455128997,
+      "greenPixels": 8101,
+      "visible": true,
+      "delayMs": 140
+    },
+    {
+      "x": 12,
+      "y": 45,
+      "w": 112,
+      "h": 82,
+      "cx": 67.47190684133916,
+      "cy": 91.35851528384279,
+      "greenPixels": 6870,
+      "visible": true,
+      "delayMs": 200
+    },
+    {
+      "x": 15,
+      "y": 38,
+      "w": 113,
+      "h": 89,
+      "cx": 72.78829840319361,
+      "cy": 86.98565369261478,
+      "greenPixels": 8016,
+      "visible": true,
+      "delayMs": 200
+    },
+    {
+      "x": 23,
+      "y": 47,
+      "w": 105,
+      "h": 80,
+      "cx": 77.31646350871779,
+      "cy": 91.54605770714396,
+      "greenPixels": 6481,
+      "visible": true,
+      "delayMs": 200
+    },
+    {
+      "x": 6,
+      "y": 37,
+      "w": 122,
+      "h": 90,
+      "cx": 67.9580552907531,
+      "cy": 86.92540514775978,
+      "greenPixels": 8392,
+      "visible": true,
+      "delayMs": 200
+    },
+    {
+      "x": 9,
+      "y": 45,
+      "w": 119,
+      "h": 81,
+      "cx": 66.87057991513437,
+      "cy": 91.52659123055163,
+      "greenPixels": 7070,
+      "visible": true,
+      "delayMs": 200
+    },
+    {
+      "x": 4,
+      "y": 37,
+      "w": 122,
+      "h": 89,
+      "cx": 66.70794621026894,
+      "cy": 86.24731051344743,
+      "greenPixels": 8180,
+      "visible": true,
+      "delayMs": 140
+    },
+    {
+      "x": 5,
+      "y": 44,
+      "w": 118,
+      "h": 82,
+      "cx": 62.01094627682558,
+      "cy": 91.58173700129628,
+      "greenPixels": 6943,
+      "visible": true,
+      "delayMs": 200
+    },
+    {
+      "x": 3,
+      "y": 38,
+      "w": 120,
+      "h": 89,
+      "cx": 63.44815256257449,
+      "cy": 87.30834326579262,
+      "greenPixels": 8390,
+      "visible": true,
+      "delayMs": 200
+    },
+    {
+      "x": 2,
+      "y": 45,
+      "w": 117,
+      "h": 82,
+      "cx": 58.187527320413814,
+      "cy": 91.72679586186798,
+      "greenPixels": 6863,
+      "visible": true,
+      "delayMs": 200
+    }
+  ],
+  "motionPx": 19.9,
+  "areaRatio": 1.31,
   "layerPixels": 6341,
-  "source": "greenscreen/raw/cute-ghost.gif"
+  "source": "greenscreen/raw/cute-ghost.gif",
+  "animationMode": "per-frame-slot-mask"
 }

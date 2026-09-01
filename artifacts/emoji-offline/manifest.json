@@ -3,10 +3,10 @@
   "discoveredAt": "2026-09-01T18:12:52.124Z",
   "styleCount": 566,
   "implementedStyleCount": 566,
-  "version": "3.1.0",
+  "version": "3.2.0",
   "offlineReady": true,
   "primaryProvider": "offline",
-  "notes": "566 MakeEmoji styles from official Download All ZIP with green subject. Discord substitutes user avatar / server icon / upload into the green slot.",
+  "notes": "566 MakeEmoji styles. User image follows per-frame green subject motion/mask; chrome layered on top.",
   "siteUrl": "https://makeemoji.com/",
   "zipSource": "greenscreen/makeemoji-all-green.zip",
   "api": null

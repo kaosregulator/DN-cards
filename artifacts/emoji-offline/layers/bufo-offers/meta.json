@@ -12,6 +12,22 @@
     "h": 110,
     "greenPixels": 5469
   },
+  "perFrame": [
+    {
+      "x": 8,
+      "y": 6,
+      "w": 78,
+      "h": 110,
+      "cx": 43.63009690985555,
+      "cy": 75.4253062717133,
+      "greenPixels": 5469,
+      "visible": true,
+      "delayMs": 50
+    }
+  ],
+  "motionPx": 0,
+  "areaRatio": 1,
   "layerPixels": 7748,
-  "source": "greenscreen/raw/bufo-offers.png"
+  "source": "greenscreen/raw/bufo-offers.png",
+  "animationMode": "per-frame-slot-mask"
 }

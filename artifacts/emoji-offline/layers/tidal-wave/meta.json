@@ -12,6 +12,121 @@
     "h": 94,
     "greenPixels": 97191
   },
+  "perFrame": [
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 94,
+      "cx": 62.77194982896237,
+      "cy": 44.068853609332514,
+      "greenPixels": 11401,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 94,
+      "cx": 62.77194982896237,
+      "cy": 44.068853609332514,
+      "greenPixels": 11401,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 94,
+      "cx": 62.77194982896237,
+      "cy": 44.068853609332514,
+      "greenPixels": 11401,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 90,
+      "cx": 64.31757982583454,
+      "cy": 42.6239114658926,
+      "greenPixels": 11024,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 90,
+      "cx": 65.7180716098111,
+      "cy": 41.28878864768349,
+      "greenPixels": 10641,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 90,
+      "cx": 68.21105375037959,
+      "cy": 38.829132503289806,
+      "greenPixels": 9879,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 88,
+      "cx": 70.78082652032703,
+      "cy": 35.87232612834584,
+      "greenPixels": 8929,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 88,
+      "cx": 72.48277571251549,
+      "cy": 33.17534076827757,
+      "greenPixels": 8070,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 88,
+      "cx": 73.16850013415616,
+      "cy": 31.09900724443252,
+      "greenPixels": 7454,
+      "visible": true,
+      "delayMs": 50
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 91,
+      "cx": 73.25289658131884,
+      "cy": 30.17822915176656,
+      "greenPixels": 6991,
+      "visible": true,
+      "delayMs": 50
+    }
+  ],
+  "motionPx": 17.4,
+  "areaRatio": 1.07,
   "layerPixels": 66649,
-  "source": "greenscreen/raw/tidal-wave.gif"
+  "source": "greenscreen/raw/tidal-wave.gif",
+  "animationMode": "per-frame-slot-mask"
 }

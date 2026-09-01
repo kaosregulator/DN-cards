@@ -12,6 +12,22 @@
     "h": 47,
     "greenPixels": 4073
   },
+  "perFrame": [
+    {
+      "x": 12,
+      "y": 81,
+      "w": 109,
+      "h": 47,
+      "cx": 68.53965136263197,
+      "cy": 107.65750061379818,
+      "greenPixels": 4073,
+      "visible": true,
+      "delayMs": 50
+    }
+  ],
+  "motionPx": 0,
+  "areaRatio": 1,
   "layerPixels": 1312,
-  "source": "greenscreen/raw/peeking.png"
+  "source": "greenscreen/raw/peeking.png",
+  "animationMode": "per-frame-slot-mask"
 }

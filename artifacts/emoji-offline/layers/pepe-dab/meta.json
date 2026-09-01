@@ -12,6 +12,22 @@
     "h": 124,
     "greenPixels": 9844
   },
+  "perFrame": [
+    {
+      "x": 0,
+      "y": 4,
+      "w": 124,
+      "h": 124,
+      "cx": 62.02732629012596,
+      "cy": 70.23354327509142,
+      "greenPixels": 9844,
+      "visible": true,
+      "delayMs": 50
+    }
+  ],
+  "motionPx": 0,
+  "areaRatio": 1,
   "layerPixels": 3035,
-  "source": "greenscreen/raw/pepe-dab.png"
+  "source": "greenscreen/raw/pepe-dab.png",
+  "animationMode": "per-frame-slot-mask"
 }

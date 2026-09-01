@@ -12,6 +12,121 @@
     "h": 128,
     "greenPixels": 143846
   },
+  "perFrame": [
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.466703094050956,
+      "cy": 63.466703094050956,
+      "greenPixels": 14641,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 62.388471520284114,
+      "cy": 63.4667395164595,
+      "greenPixels": 14642,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.28186066270178,
+      "cy": 63.46530727839139,
+      "greenPixels": 14124,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.24614400454901,
+      "cy": 63.46321700191911,
+      "greenPixels": 14069,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 64.21988699007717,
+      "cy": 63.4619625137817,
+      "greenPixels": 14512,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.48362181918488,
+      "cy": 63.461554375560304,
+      "greenPixels": 14501,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 62.7481394707828,
+      "cy": 63.4619625137817,
+      "greenPixels": 14512,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.66676140400739,
+      "cy": 63.4634077021458,
+      "greenPixels": 14074,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.63528912166466,
+      "cy": 63.46549649656735,
+      "greenPixels": 14129,
+      "visible": true,
+      "delayMs": 80
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 64.54500751263488,
+      "cy": 63.4667395164595,
+      "greenPixels": 14642,
+      "visible": true,
+      "delayMs": 80
+    }
+  ],
+  "motionPx": 2.2,
+  "areaRatio": 1,
   "layerPixels": 0,
-  "source": "greenscreen/raw/clone-army.gif"
+  "source": "greenscreen/raw/clone-army.gif",
+  "animationMode": "per-frame-slot-mask"
 }

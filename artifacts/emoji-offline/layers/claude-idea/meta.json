@@ -3,7 +3,7 @@
   "kind": "layer",
   "frames": 6,
   "sourcePages": 6,
-  "delayMs": 100,
+  "delayMs": 183,
   "size": 128,
   "slot": {
     "x": 21,
@@ -12,6 +12,77 @@
     "h": 104,
     "greenPixels": 28742
   },
+  "perFrame": [
+    {
+      "x": 21,
+      "y": 40,
+      "w": 84,
+      "h": 88,
+      "cx": 69.6152719665272,
+      "cy": 88.57803347280334,
+      "greenPixels": 4780,
+      "visible": true,
+      "delayMs": 100
+    },
+    {
+      "x": 21,
+      "y": 24,
+      "w": 84,
+      "h": 104,
+      "cx": 69.60588972431077,
+      "cy": 88.47138680033417,
+      "greenPixels": 4788,
+      "visible": true,
+      "delayMs": 200
+    },
+    {
+      "x": 21,
+      "y": 40,
+      "w": 84,
+      "h": 88,
+      "cx": 69.6152719665272,
+      "cy": 88.57803347280334,
+      "greenPixels": 4780,
+      "visible": true,
+      "delayMs": 200
+    },
+    {
+      "x": 21,
+      "y": 40,
+      "w": 84,
+      "h": 88,
+      "cx": 69.69080604534005,
+      "cy": 88.61335012594458,
+      "greenPixels": 4764,
+      "visible": true,
+      "delayMs": 200
+    },
+    {
+      "x": 21,
+      "y": 39,
+      "w": 84,
+      "h": 89,
+      "cx": 69.76801661474559,
+      "cy": 88.2539979231568,
+      "greenPixels": 4815,
+      "visible": true,
+      "delayMs": 200
+    },
+    {
+      "x": 21,
+      "y": 39,
+      "w": 84,
+      "h": 89,
+      "cx": 69.76801661474559,
+      "cy": 88.2539979231568,
+      "greenPixels": 4815,
+      "visible": true,
+      "delayMs": 200
+    }
+  ],
+  "motionPx": 0.4,
+  "areaRatio": 1.18,
   "layerPixels": 7808,
-  "source": "greenscreen/raw/claude-idea.gif"
+  "source": "greenscreen/raw/claude-idea.gif",
+  "animationMode": "per-frame-slot-mask"
 }

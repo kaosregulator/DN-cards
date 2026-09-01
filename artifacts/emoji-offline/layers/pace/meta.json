@@ -12,6 +12,121 @@
     "h": 128,
     "greenPixels": 154368
   },
+  "perFrame": [
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.5,
+      "cy": 63.5,
+      "greenPixels": 16384,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 126,
+      "h": 128,
+      "cx": 62.5,
+      "cy": 63.5,
+      "greenPixels": 16128,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 121,
+      "h": 128,
+      "cx": 60,
+      "cy": 63.5,
+      "greenPixels": 15488,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 2,
+      "y": 0,
+      "w": 126,
+      "h": 128,
+      "cx": 64.5,
+      "cy": 63.5,
+      "greenPixels": 16128,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 10,
+      "y": 0,
+      "w": 118,
+      "h": 128,
+      "cx": 68.5,
+      "cy": 63.5,
+      "greenPixels": 15104,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 15,
+      "y": 0,
+      "w": 113,
+      "h": 128,
+      "cx": 71,
+      "cy": 63.5,
+      "greenPixels": 14464,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 16,
+      "y": 0,
+      "w": 112,
+      "h": 128,
+      "cx": 71.5,
+      "cy": 63.5,
+      "greenPixels": 14336,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 14,
+      "y": 0,
+      "w": 114,
+      "h": 128,
+      "cx": 70.5,
+      "cy": 63.5,
+      "greenPixels": 14592,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 8,
+      "y": 0,
+      "w": 120,
+      "h": 128,
+      "cx": 67.5,
+      "cy": 63.5,
+      "greenPixels": 15360,
+      "visible": true,
+      "delayMs": 70
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "cx": 63.5,
+      "cy": 63.5,
+      "greenPixels": 16384,
+      "visible": true,
+      "delayMs": 70
+    }
+  ],
+  "motionPx": 11.5,
+  "areaRatio": 1.14,
   "layerPixels": 0,
-  "source": "greenscreen/raw/pace.gif"
+  "source": "greenscreen/raw/pace.gif",
+  "animationMode": "per-frame-slot-mask"
 }

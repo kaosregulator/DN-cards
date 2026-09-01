@@ -12,6 +12,121 @@
     "h": 82,
     "greenPixels": 59778
   },
+  "perFrame": [
+    {
+      "x": 3,
+      "y": 11,
+      "w": 78,
+      "h": 78,
+      "cx": 41.3983498349835,
+      "cy": 49.63976897689769,
+      "greenPixels": 6060,
+      "visible": true,
+      "delayMs": 40
+    },
+    {
+      "x": 0,
+      "y": 15,
+      "w": 77,
+      "h": 77,
+      "cx": 38,
+      "cy": 53,
+      "greenPixels": 5929,
+      "visible": true,
+      "delayMs": 40
+    },
+    {
+      "x": 2,
+      "y": 10,
+      "w": 78,
+      "h": 78,
+      "cx": 40.37803468208092,
+      "cy": 48.671676300578035,
+      "greenPixels": 6055,
+      "visible": true,
+      "delayMs": 40
+    },
+    {
+      "x": 0,
+      "y": 14,
+      "w": 76,
+      "h": 77,
+      "cx": 37.5,
+      "cy": 52,
+      "greenPixels": 5852,
+      "visible": true,
+      "delayMs": 40
+    },
+    {
+      "x": 3,
+      "y": 15,
+      "w": 78,
+      "h": 77,
+      "cx": 41.5,
+      "cy": 53,
+      "greenPixels": 6006,
+      "visible": true,
+      "delayMs": 40
+    },
+    {
+      "x": 0,
+      "y": 11,
+      "w": 77,
+      "h": 78,
+      "cx": 37.92238357536304,
+      "cy": 49.59639459188783,
+      "greenPixels": 5991,
+      "visible": true,
+      "delayMs": 40
+    },
+    {
+      "x": 2,
+      "y": 14,
+      "w": 78,
+      "h": 77,
+      "cx": 40.5,
+      "cy": 52,
+      "greenPixels": 6006,
+      "visible": true,
+      "delayMs": 40
+    },
+    {
+      "x": 0,
+      "y": 10,
+      "w": 76,
+      "h": 78,
+      "cx": 37.39430894308943,
+      "cy": 48.65650406504065,
+      "greenPixels": 5904,
+      "visible": true,
+      "delayMs": 40
+    },
+    {
+      "x": 3,
+      "y": 11,
+      "w": 78,
+      "h": 78,
+      "cx": 41.37495865034734,
+      "cy": 49.72924247436322,
+      "greenPixels": 6046,
+      "visible": true,
+      "delayMs": 40
+    },
+    {
+      "x": 0,
+      "y": 15,
+      "w": 77,
+      "h": 77,
+      "cx": 38,
+      "cy": 53,
+      "greenPixels": 5929,
+      "visible": true,
+      "delayMs": 40
+    }
+  ],
+  "motionPx": 6,
+  "areaRatio": 1.04,
   "layerPixels": 56485,
-  "source": "greenscreen/raw/polar-bear.gif"
+  "source": "greenscreen/raw/polar-bear.gif",
+  "animationMode": "per-frame-slot-mask"
 }

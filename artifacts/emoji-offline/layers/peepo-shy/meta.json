@@ -12,6 +12,22 @@
     "h": 102,
     "greenPixels": 8970
   },
+  "perFrame": [
+    {
+      "x": 2,
+      "y": 26,
+      "w": 126,
+      "h": 102,
+      "cx": 68.0241917502787,
+      "cy": 77.09141583054627,
+      "greenPixels": 8970,
+      "visible": true,
+      "delayMs": 50
+    }
+  ],
+  "motionPx": 0,
+  "areaRatio": 1,
   "layerPixels": 2182,
-  "source": "greenscreen/raw/peepo-shy.png"
+  "source": "greenscreen/raw/peepo-shy.png",
+  "animationMode": "per-frame-slot-mask"
 }
