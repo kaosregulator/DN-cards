@@ -1,0 +1,17 @@
+{
+  "id": "xray-scan",
+  "kind": "layer",
+  "frames": 24,
+  "sourcePages": 24,
+  "delayMs": 70,
+  "size": 128,
+  "slot": {
+    "x": 5,
+    "y": 5,
+    "w": 119,
+    "h": 119,
+    "greenPixels": 157940
+  },
+  "layerPixels": 24043,
+  "source": "greenscreen/raw/xray-scan.gif"
+}

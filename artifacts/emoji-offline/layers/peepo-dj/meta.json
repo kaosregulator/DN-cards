@@ -7,11 +7,11 @@
   "size": 128,
   "slot": {
     "x": 0,
-    "y": 20,
+    "y": 24,
     "w": 128,
-    "h": 108,
-    "greenPixels": 123948
+    "h": 104,
+    "greenPixels": 123475
   },
-  "layerPixels": 281281,
+  "layerPixels": 281212,
   "source": "greenscreen/raw/peepo-dj.gif"
 }

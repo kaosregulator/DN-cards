@@ -10,8 +10,8 @@
     "y": 0,
     "w": 128,
     "h": 128,
-    "greenPixels": 102248
+    "greenPixels": 101332
   },
-  "layerPixels": 61592,
+  "layerPixels": 62508,
   "source": "greenscreen/raw/peace-out.gif"
 }

@@ -7,11 +7,11 @@
   "size": 128,
   "slot": {
     "x": 11,
-    "y": 21,
+    "y": 19,
     "w": 107,
-    "h": 106,
-    "greenPixels": 238909
+    "h": 108,
+    "greenPixels": 241946
   },
-  "layerPixels": 42512,
+  "layerPixels": 42673,
   "source": "greenscreen/raw/crown-drop.gif"
 }

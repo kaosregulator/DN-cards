@@ -8,10 +8,10 @@
   "slot": {
     "x": 0,
     "y": 40,
-    "w": 128,
+    "w": 127,
     "h": 87,
-    "greenPixels": 8240
+    "greenPixels": 8218
   },
-  "layerPixels": 6474,
+  "layerPixels": 6496,
   "source": "greenscreen/raw/peepo-stop.png"
 }

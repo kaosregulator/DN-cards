@@ -10,8 +10,8 @@
     "y": 0,
     "w": 128,
     "h": 128,
-    "greenPixels": 122800
+    "greenPixels": 122659
   },
-  "layerPixels": 41040,
+  "layerPixels": 41181,
   "source": "greenscreen/raw/drums.gif"
 }

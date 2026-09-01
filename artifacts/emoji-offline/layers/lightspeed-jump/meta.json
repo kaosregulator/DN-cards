@@ -6,12 +6,12 @@
   "delayMs": 80,
   "size": 128,
   "slot": {
-    "x": 10,
+    "x": 11,
     "y": 0,
-    "w": 118,
+    "w": 117,
     "h": 128,
-    "greenPixels": 63737
+    "greenPixels": 64803
   },
-  "layerPixels": 231175,
+  "layerPixels": 230109,
   "source": "greenscreen/raw/lightspeed-jump.gif"
 }

@@ -9,9 +9,9 @@
     "x": 0,
     "y": 38,
     "w": 128,
-    "h": 59,
-    "greenPixels": 83684
+    "h": 60,
+    "greenPixels": 88731
   },
-  "layerPixels": 29682,
+  "layerPixels": 27508,
   "source": "greenscreen/raw/seesaw.gif"
 }

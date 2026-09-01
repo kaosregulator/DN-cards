@@ -6,11 +6,11 @@
   "delayMs": 80,
   "size": 128,
   "slot": {
-    "x": 5,
-    "y": 5,
-    "w": 123,
-    "h": 123,
-    "greenPixels": 82060
+    "x": 3,
+    "y": 3,
+    "w": 125,
+    "h": 125,
+    "greenPixels": 83451
   },
   "layerPixels": 0,
   "source": "greenscreen/raw/peek-corner.gif"

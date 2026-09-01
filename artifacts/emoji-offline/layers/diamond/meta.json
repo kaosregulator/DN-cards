@@ -7,10 +7,10 @@
   "size": 128,
   "slot": {
     "x": 16,
-    "y": 10,
+    "y": 9,
     "w": 97,
-    "h": 112,
-    "greenPixels": 150332
+    "h": 113,
+    "greenPixels": 150471
   },
   "layerPixels": 0,
   "source": "greenscreen/raw/diamond.gif"

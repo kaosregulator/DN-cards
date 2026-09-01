@@ -8,10 +8,10 @@
   "slot": {
     "x": 14,
     "y": 14,
-    "w": 101,
-    "h": 101,
-    "greenPixels": 106304
+    "w": 100,
+    "h": 100,
+    "greenPixels": 92359
   },
-  "layerPixels": 90304,
+  "layerPixels": 104249,
   "source": "greenscreen/raw/pastel-bloom.gif"
 }

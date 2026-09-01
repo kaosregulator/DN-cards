@@ -7,11 +7,11 @@
   "size": 128,
   "slot": {
     "x": 0,
-    "y": 2,
-    "w": 127,
-    "h": 119,
-    "greenPixels": 11897
+    "y": 1,
+    "w": 126,
+    "h": 120,
+    "greenPixels": 11825
   },
-  "layerPixels": 2001,
+  "layerPixels": 2067,
   "source": "greenscreen/raw/pepe.png"
 }

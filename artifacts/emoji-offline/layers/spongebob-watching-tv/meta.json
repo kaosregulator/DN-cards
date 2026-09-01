@@ -8,10 +8,10 @@
   "slot": {
     "x": 6,
     "y": 17,
-    "w": 117,
+    "w": 118,
     "h": 102,
-    "greenPixels": 314865
+    "greenPixels": 313590
   },
-  "layerPixels": 340495,
+  "layerPixels": 341770,
   "source": "greenscreen/raw/spongebob-watching-tv.gif"
 }

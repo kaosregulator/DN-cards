@@ -1,6 +1,6 @@
 {
   "id": "pyramid",
-  "kind": "transform-slot",
+  "kind": "layer",
   "frames": 10,
   "sourcePages": 10,
   "delayMs": 100,
@@ -10,8 +10,8 @@
     "y": 19,
     "w": 99,
     "h": 109,
-    "greenPixels": 52674
+    "greenPixels": 52616
   },
-  "layerPixels": 15,
+  "layerPixels": 52,
   "source": "greenscreen/raw/pyramid.gif"
 }

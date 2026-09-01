@@ -10,8 +10,8 @@
     "y": 0,
     "w": 128,
     "h": 128,
-    "greenPixels": 95072
+    "greenPixels": 94954
   },
-  "layerPixels": 3232,
+  "layerPixels": 3350,
   "source": "greenscreen/raw/purple-stars.gif"
 }

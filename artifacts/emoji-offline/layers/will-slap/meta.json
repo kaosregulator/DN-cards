@@ -10,8 +10,8 @@
     "y": 0,
     "w": 128,
     "h": 128,
-    "greenPixels": 108525
+    "greenPixels": 108383
   },
-  "layerPixels": 55315,
+  "layerPixels": 55457,
   "source": "greenscreen/raw/will-slap.gif"
 }

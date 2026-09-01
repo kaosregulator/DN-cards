@@ -1,12 +1,13 @@
 {
   "source": "makeemoji.com",
-  "discoveredAt": "2026-09-01T16:23:19.176Z",
-  "styleCount": 564,
-  "implementedStyleCount": 564,
-  "version": "3.0.0",
+  "discoveredAt": "2026-09-01T18:12:52.124Z",
+  "styleCount": 566,
+  "implementedStyleCount": 566,
+  "version": "3.1.0",
   "offlineReady": true,
   "primaryProvider": "offline",
-  "notes": "564 MakeEmoji styles via green-screen layer packs (site download → chroma → stamp user).",
+  "notes": "566 MakeEmoji styles from official Download All ZIP with green subject. Discord substitutes user avatar / server icon / upload into the green slot.",
   "siteUrl": "https://makeemoji.com/",
+  "zipSource": "greenscreen/makeemoji-all-green.zip",
   "api": null
 }

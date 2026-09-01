@@ -10,8 +10,8 @@
     "y": 0,
     "w": 128,
     "h": 128,
-    "greenPixels": 142974
+    "greenPixels": 142854
   },
-  "layerPixels": 20866,
+  "layerPixels": 20986,
   "source": "greenscreen/raw/laser-eyes.gif"
 }

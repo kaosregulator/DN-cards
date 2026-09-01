@@ -9,9 +9,9 @@
     "x": 20,
     "y": 50,
     "w": 81,
-    "h": 61,
-    "greenPixels": 4403
+    "h": 60,
+    "greenPixels": 4386
   },
-  "layerPixels": 8759,
+  "layerPixels": 8760,
   "source": "greenscreen/raw/hazmat.png"
 }

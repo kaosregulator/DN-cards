@@ -6,12 +6,12 @@
   "delayMs": 150,
   "size": 128,
   "slot": {
-    "x": 16,
+    "x": 15,
     "y": 0,
-    "w": 97,
-    "h": 95,
-    "greenPixels": 53366
+    "w": 99,
+    "h": 96,
+    "greenPixels": 54370
   },
-  "layerPixels": 48313,
+  "layerPixels": 47443,
   "source": "greenscreen/raw/skibidi.gif"
 }

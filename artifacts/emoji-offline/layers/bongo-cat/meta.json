@@ -9,9 +9,9 @@
     "x": 16,
     "y": 82,
     "w": 97,
-    "h": 45,
-    "greenPixels": 31636
+    "h": 46,
+    "greenPixels": 31812
   },
-  "layerPixels": 44980,
+  "layerPixels": 44904,
   "source": "greenscreen/raw/bongo-cat.gif"
 }

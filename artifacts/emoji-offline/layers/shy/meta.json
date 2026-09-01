@@ -10,8 +10,8 @@
     "y": 0,
     "w": 128,
     "h": 128,
-    "greenPixels": 132088
+    "greenPixels": 132000
   },
-  "layerPixels": 31752,
+  "layerPixels": 31840,
   "source": "greenscreen/raw/shy.gif"
 }

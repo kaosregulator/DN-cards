@@ -10,8 +10,8 @@
     "y": 0,
     "w": 128,
     "h": 128,
-    "greenPixels": 48561
+    "greenPixels": 48559
   },
-  "layerPixels": 115279,
+  "layerPixels": 115281,
   "source": "greenscreen/raw/combust.gif"
 }

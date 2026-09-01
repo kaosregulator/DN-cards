@@ -6,12 +6,12 @@
   "delayMs": 90,
   "size": 128,
   "slot": {
-    "x": 7,
+    "x": 5,
     "y": 0,
-    "w": 116,
+    "w": 118,
     "h": 98,
-    "greenPixels": 99939
+    "greenPixels": 99644
   },
-  "layerPixels": 63901,
+  "layerPixels": 64196,
   "source": "greenscreen/raw/spongebob-worship.gif"
 }

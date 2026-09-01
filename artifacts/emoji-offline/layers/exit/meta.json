@@ -7,11 +7,11 @@
   "size": 128,
   "slot": {
     "x": 0,
-    "y": 10,
+    "y": 9,
     "w": 126,
-    "h": 118,
-    "greenPixels": 47257
+    "h": 119,
+    "greenPixels": 47886
   },
-  "layerPixels": 182119,
+  "layerPixels": 181490,
   "source": "greenscreen/raw/exit.gif"
 }

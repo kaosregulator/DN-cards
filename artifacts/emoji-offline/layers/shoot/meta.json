@@ -10,8 +10,8 @@
     "y": 0,
     "w": 128,
     "h": 128,
-    "greenPixels": 135824
+    "greenPixels": 135690
   },
-  "layerPixels": 28016,
+  "layerPixels": 28150,
   "source": "greenscreen/raw/shoot.gif"
 }

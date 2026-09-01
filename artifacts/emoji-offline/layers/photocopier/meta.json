@@ -7,11 +7,11 @@
   "size": 128,
   "slot": {
     "x": 23,
-    "y": 28,
+    "y": 27,
     "w": 83,
-    "h": 100,
-    "greenPixels": 93229
+    "h": 101,
+    "greenPixels": 95211
   },
-  "layerPixels": 163964,
+  "layerPixels": 161982,
   "source": "greenscreen/raw/photocopier.gif"
 }

@@ -10,8 +10,8 @@
     "y": 0,
     "w": 128,
     "h": 128,
-    "greenPixels": 89980
+    "greenPixels": 89955
   },
-  "layerPixels": 16869,
+  "layerPixels": 16894,
   "source": "greenscreen/raw/kablooey.gif"
 }

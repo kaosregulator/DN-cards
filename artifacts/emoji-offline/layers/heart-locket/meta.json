@@ -7,11 +7,11 @@
   "size": 128,
   "slot": {
     "x": 1,
-    "y": 12,
+    "y": 13,
     "w": 127,
-    "h": 109,
-    "greenPixels": 57082
+    "h": 108,
+    "greenPixels": 56970
   },
-  "layerPixels": 106758,
+  "layerPixels": 106870,
   "source": "greenscreen/raw/heart-locket.gif"
 }

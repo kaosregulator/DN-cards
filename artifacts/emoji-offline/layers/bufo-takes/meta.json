@@ -6,12 +6,12 @@
   "delayMs": 50,
   "size": 128,
   "slot": {
-    "x": 3,
+    "x": 2,
     "y": 8,
-    "w": 112,
-    "h": 107,
-    "greenPixels": 4771
+    "w": 113,
+    "h": 108,
+    "greenPixels": 5101
   },
-  "layerPixels": 8175,
+  "layerPixels": 7850,
   "source": "greenscreen/raw/bufo-takes.png"
 }

@@ -6,11 +6,11 @@
   "delayMs": 70,
   "size": 128,
   "slot": {
-    "x": 25,
-    "y": 24,
-    "w": 79,
-    "h": 104,
-    "greenPixels": 123018
+    "x": 24,
+    "y": 23,
+    "w": 81,
+    "h": 105,
+    "greenPixels": 127892
   },
   "layerPixels": 0,
   "source": "greenscreen/raw/perspective-conveyor.gif"

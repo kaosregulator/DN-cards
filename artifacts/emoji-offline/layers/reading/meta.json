@@ -10,8 +10,8 @@
     "y": 0,
     "w": 128,
     "h": 128,
-    "greenPixels": 36656
+    "greenPixels": 36523
   },
-  "layerPixels": 12496,
+  "layerPixels": 12629,
   "source": "greenscreen/raw/reading.gif"
 }

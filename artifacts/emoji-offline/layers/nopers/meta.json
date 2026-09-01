@@ -10,8 +10,8 @@
     "y": 0,
     "w": 128,
     "h": 128,
-    "greenPixels": 185321
+    "greenPixels": 185329
   },
-  "layerPixels": 169913,
+  "layerPixels": 169856,
   "source": "greenscreen/raw/nopers.gif"
 }

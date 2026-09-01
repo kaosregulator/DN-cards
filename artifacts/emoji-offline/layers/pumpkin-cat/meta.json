@@ -8,10 +8,10 @@
   "slot": {
     "x": 29,
     "y": 18,
-    "w": 59,
+    "w": 58,
     "h": 81,
-    "greenPixels": 20021
+    "greenPixels": 19972
   },
-  "layerPixels": 53423,
+  "layerPixels": 53472,
   "source": "greenscreen/raw/pumpkin-cat.gif"
 }

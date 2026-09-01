@@ -1,41 +1,21 @@
-# MakeEmoji layer harvest — intent
+# MakeEmoji layer packs (Download All ZIP)
 
-## What you asked for
+## Source
+Official MakeEmoji **Download All as ZIP** after uploading a solid green subject and scrolling the full Editor grid.
 
-1. Use **https://makeemoji.com/** as the source of truth (Editor grid while scrolling).
-2. Do **not** redraw / procedurally fake styles when the site already produces them.
-3. Method: make a style on the site → download the result → remove the test subject → keep the **layer** → stamp the Discord user’s image into that slot.
-4. That matches the old **/emojimoji green-screen** packs (PR #116–#118, #123/#126): green marks the hole; everything else is the animation chrome.
-5. Settings (Speed / Direction / Size / Colour / Format / Quality) stay **controls**, not style tiles — even though names like `2x-wide-*` also appear as real style cards on the site.
-6. New PR (previous #133 was merged).
+- Drive original: `https://drive.google.com/file/d/1p3aDviKGx0Gux__U02n5FdgyW2yAlApe/view?usp=sharing`
+- Local: `greenscreen/makeemoji-all-green.zip` (570 files)
+- Built packs: `layers/{style}/front.png` + `meta.json`
 
-## What the live site shows
+## Discord substitution
+Green pixels in each ZIP frame are the **target slot**. `/emoji` already resolves:
 
-- Header label: **~687 styles**.
-- Scrolling the main Editor grid loads **~560–570** unique prerendered style previews (`assets.makeemoji.com/prerendered/default-cat-preview/{id}.*`).
-- Gap vs 687 is mostly: disabled/premium cards, `super_animation:*` variants from rankings, and directional variants counted separately.
-- Layout: ~48 cards between “Discover more” promo blocks (your “~44” read).
+- member avatar
+- your avatar  
+- server icon
+- uploaded image
 
-## Pipeline (this PR)
+…and stamps that image into the green slot (same compositor as old green-screen `/emojimoji`).
 
-```
-pnpm makeemoji:harvest-greenscreen   # upload solid #00FF00 → click style → save GIF/PNG
-pnpm makeemoji:build-layers          # chroma-key green → layers/{id}/front.png + meta.json
-```
-
-Discord offline renderer **prefers layer packs** when present (`providers/offline/layer-pack.ts`).
-
-## Past closed PRs (reference only — not re-landed)
-
-| PR | Lesson |
-| --- | --- |
-| #116–#118 `/emojimoji` | Pack overlays + stamp scenes; green-screen was the reliable path |
-| #123/#126 postmoji | Green-screen clip upload + chroma |
-| #128 `/emoji` via MakeEmoji | Replaced emojimoji; discovery/manifest |
-| #133 | Official CDN copy; removed SVG recreations — still not the green-slot workflow |
-
-## Status
-
-- Usable Discord styles: **564** (green-screen layer packs).
-- Dropped silently (no clean chroma slot): 6.
-- Site label ~687; harvestable main-grid cards ~570.
+## Count
+**566** usable styles in the Discord catalog (4 ZIP entries had no clean chroma slot and were omitted).

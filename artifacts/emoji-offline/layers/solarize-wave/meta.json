@@ -10,8 +10,8 @@
     "y": 0,
     "w": 128,
     "h": 128,
-    "greenPixels": 144988
+    "greenPixels": 144128
   },
-  "layerPixels": 18852,
+  "layerPixels": 19712,
   "source": "greenscreen/raw/solarize-wave.gif"
 }

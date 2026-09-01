@@ -6,12 +6,12 @@
   "delayMs": 50,
   "size": 128,
   "slot": {
-    "x": 4,
-    "y": 45,
-    "w": 100,
-    "h": 70,
-    "greenPixels": 4697
+    "x": 3,
+    "y": 43,
+    "w": 101,
+    "h": 73,
+    "greenPixels": 5002
   },
-  "layerPixels": 8770,
+  "layerPixels": 8465,
   "source": "greenscreen/raw/vampire-takes.png"
 }

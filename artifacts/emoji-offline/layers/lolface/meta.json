@@ -10,8 +10,8 @@
     "y": 5,
     "w": 119,
     "h": 119,
-    "greenPixels": 6060
+    "greenPixels": 6030
   },
-  "layerPixels": 7075,
+  "layerPixels": 7105,
   "source": "greenscreen/raw/lolface.png"
 }

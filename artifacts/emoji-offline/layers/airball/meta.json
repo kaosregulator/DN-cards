@@ -7,11 +7,11 @@
   "size": 128,
   "slot": {
     "x": 0,
-    "y": 6,
-    "w": 118,
-    "h": 117,
-    "greenPixels": 118820
+    "y": 5,
+    "w": 119,
+    "h": 119,
+    "greenPixels": 120951
   },
-  "layerPixels": 6214,
+  "layerPixels": 6187,
   "source": "greenscreen/raw/airball.gif"
 }

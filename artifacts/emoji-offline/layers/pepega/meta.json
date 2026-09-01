@@ -10,8 +10,8 @@
     "y": 15,
     "w": 128,
     "h": 99,
-    "greenPixels": 8995
+    "greenPixels": 8999
   },
-  "layerPixels": 1,
+  "layerPixels": 0,
   "source": "greenscreen/raw/pepega.png"
 }

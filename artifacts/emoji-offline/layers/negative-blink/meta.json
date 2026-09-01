@@ -1,6 +1,6 @@
 {
   "id": "negative-blink",
-  "kind": "layer",
+  "kind": "transform-slot",
   "frames": 10,
   "sourcePages": 10,
   "delayMs": 70,
@@ -10,8 +10,8 @@
     "y": 0,
     "w": 128,
     "h": 128,
-    "greenPixels": 131072
+    "greenPixels": 163840
   },
-  "layerPixels": 32768,
+  "layerPixels": 0,
   "source": "greenscreen/raw/negative-blink.gif"
 }

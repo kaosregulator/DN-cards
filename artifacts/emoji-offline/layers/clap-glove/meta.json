@@ -10,8 +10,8 @@
     "y": 0,
     "w": 128,
     "h": 128,
-    "greenPixels": 138725
+    "greenPixels": 138395
   },
-  "layerPixels": 25115,
+  "layerPixels": 25445,
   "source": "greenscreen/raw/clap-glove.gif"
 }

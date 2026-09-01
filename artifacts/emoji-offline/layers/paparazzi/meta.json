@@ -9,9 +9,9 @@
     "x": 7,
     "y": 0,
     "w": 115,
-    "h": 115,
-    "greenPixels": 280974
+    "h": 116,
+    "greenPixels": 262021
   },
-  "layerPixels": 49728,
+  "layerPixels": 70048,
   "source": "greenscreen/raw/paparazzi.gif"
 }

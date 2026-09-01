@@ -6,12 +6,12 @@
   "delayMs": 50,
   "size": 128,
   "slot": {
-    "x": 17,
+    "x": 18,
     "y": 0,
-    "w": 96,
+    "w": 95,
     "h": 100,
-    "greenPixels": 5413
+    "greenPixels": 5389
   },
-  "layerPixels": 8743,
+  "layerPixels": 8767,
   "source": "greenscreen/raw/pumpkin-surprise.png"
 }

@@ -7,11 +7,11 @@
   "size": 128,
   "slot": {
     "x": 24,
-    "y": 0,
+    "y": 4,
     "w": 81,
-    "h": 128,
-    "greenPixels": 71362
+    "h": 124,
+    "greenPixels": 71797
   },
-  "layerPixels": 321854,
+  "layerPixels": 321419,
   "source": "greenscreen/raw/ufo-abduction.gif"
 }

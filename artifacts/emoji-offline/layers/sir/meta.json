@@ -6,12 +6,12 @@
   "delayMs": 50,
   "size": 128,
   "slot": {
-    "x": 13,
+    "x": 11,
     "y": 23,
-    "w": 105,
+    "w": 107,
     "h": 105,
-    "greenPixels": 9935
+    "greenPixels": 10120
   },
-  "layerPixels": 1590,
+  "layerPixels": 1607,
   "source": "greenscreen/raw/sir.png"
 }

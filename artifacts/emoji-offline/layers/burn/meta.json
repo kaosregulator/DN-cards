@@ -10,8 +10,8 @@
     "y": 0,
     "w": 128,
     "h": 128,
-    "greenPixels": 136631
+    "greenPixels": 136530
   },
-  "layerPixels": 27209,
+  "layerPixels": 27310,
   "source": "greenscreen/raw/burn.gif"
 }

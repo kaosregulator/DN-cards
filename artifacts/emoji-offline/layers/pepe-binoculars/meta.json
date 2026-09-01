@@ -10,8 +10,8 @@
     "y": 0,
     "w": 128,
     "h": 128,
-    "greenPixels": 384875
+    "greenPixels": 384272
   },
-  "layerPixels": 90560,
+  "layerPixels": 90419,
   "source": "greenscreen/raw/pepe-binoculars.gif"
 }

@@ -7,10 +7,10 @@
   "size": 128,
   "slot": {
     "x": 9,
-    "y": 11,
+    "y": 10,
     "w": 111,
-    "h": 107,
-    "greenPixels": 36054
+    "h": 109,
+    "greenPixels": 39550
   },
   "layerPixels": 0,
   "source": "greenscreen/raw/loading-six.gif"

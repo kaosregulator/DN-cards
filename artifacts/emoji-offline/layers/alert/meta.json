@@ -10,8 +10,8 @@
     "y": 0,
     "w": 128,
     "h": 128,
-    "greenPixels": 142670
+    "greenPixels": 142585
   },
-  "layerPixels": 21170,
+  "layerPixels": 21255,
   "source": "greenscreen/raw/alert.gif"
 }

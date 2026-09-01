@@ -6,12 +6,12 @@
   "delayMs": 50,
   "size": 128,
   "slot": {
-    "x": 13,
+    "x": 11,
     "y": 23,
-    "w": 105,
+    "w": 107,
     "h": 105,
-    "greenPixels": 10700
+    "greenPixels": 10894
   },
-  "layerPixels": 1364,
+  "layerPixels": 1352,
   "source": "greenscreen/raw/angel.png"
 }

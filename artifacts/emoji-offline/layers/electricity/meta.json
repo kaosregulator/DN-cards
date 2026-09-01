@@ -10,8 +10,8 @@
     "y": 0,
     "w": 128,
     "h": 128,
-    "greenPixels": 153687
+    "greenPixels": 153563
   },
-  "layerPixels": 10153,
+  "layerPixels": 10277,
   "source": "greenscreen/raw/electricity.gif"
 }

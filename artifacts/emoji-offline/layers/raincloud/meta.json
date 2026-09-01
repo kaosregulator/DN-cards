@@ -10,8 +10,8 @@
     "y": 0,
     "w": 128,
     "h": 128,
-    "greenPixels": 131528
+    "greenPixels": 131215
   },
-  "layerPixels": 32312,
+  "layerPixels": 32625,
   "source": "greenscreen/raw/raincloud.gif"
 }

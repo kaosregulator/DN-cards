@@ -6,12 +6,12 @@
   "delayMs": 200,
   "size": 128,
   "slot": {
-    "x": 21,
+    "x": 20,
     "y": 31,
-    "w": 87,
-    "h": 87,
-    "greenPixels": 78254
+    "w": 88,
+    "h": 89,
+    "greenPixels": 78042
   },
-  "layerPixels": 446034,
+  "layerPixels": 446246,
   "source": "greenscreen/raw/ponder.gif"
 }

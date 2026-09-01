@@ -9,9 +9,9 @@
     "x": 8,
     "y": 6,
     "w": 103,
-    "h": 109,
-    "greenPixels": 5312
+    "h": 110,
+    "greenPixels": 5465
   },
-  "layerPixels": 9200,
+  "layerPixels": 9048,
   "source": "greenscreen/raw/vampire-offers.png"
 }

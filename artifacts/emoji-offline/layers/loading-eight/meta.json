@@ -7,10 +7,10 @@
   "size": 128,
   "slot": {
     "x": 8,
-    "y": 10,
+    "y": 9,
     "w": 113,
-    "h": 109,
-    "greenPixels": 31550
+    "h": 111,
+    "greenPixels": 33808
   },
   "layerPixels": 0,
   "source": "greenscreen/raw/loading-eight.gif"

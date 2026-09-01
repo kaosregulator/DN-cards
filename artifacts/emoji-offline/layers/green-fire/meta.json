@@ -10,8 +10,8 @@
     "y": 0,
     "w": 128,
     "h": 128,
-    "greenPixels": 65314
+    "greenPixels": 65305
   },
-  "layerPixels": 222,
+  "layerPixels": 231,
   "source": "greenscreen/raw/green-fire.gif"
 }

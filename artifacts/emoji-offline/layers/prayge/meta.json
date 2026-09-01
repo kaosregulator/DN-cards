@@ -7,11 +7,11 @@
   "size": 128,
   "slot": {
     "x": 0,
-    "y": 2,
-    "w": 127,
-    "h": 126,
-    "greenPixels": 12532
+    "y": 1,
+    "w": 126,
+    "h": 127,
+    "greenPixels": 12470
   },
-  "layerPixels": 1672,
+  "layerPixels": 1738,
   "source": "greenscreen/raw/prayge.png"
 }

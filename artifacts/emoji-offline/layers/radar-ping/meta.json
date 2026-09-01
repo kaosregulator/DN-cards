@@ -10,8 +10,8 @@
     "y": 0,
     "w": 128,
     "h": 128,
-    "greenPixels": 162917
+    "greenPixels": 163519
   },
-  "layerPixels": 22,
+  "layerPixels": 36,
   "source": "greenscreen/raw/radar-ping.gif"
 }

@@ -10,8 +10,8 @@
     "y": 0,
     "w": 128,
     "h": 128,
-    "greenPixels": 119999
+    "greenPixels": 119575
   },
-  "layerPixels": 43841,
+  "layerPixels": 44265,
   "source": "greenscreen/raw/fire-frame.gif"
 }

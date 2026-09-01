@@ -7,11 +7,11 @@
   "size": 128,
   "slot": {
     "x": 0,
-    "y": 49,
+    "y": 51,
     "w": 128,
-    "h": 64,
-    "greenPixels": 129730
+    "h": 62,
+    "greenPixels": 128688
   },
-  "layerPixels": 115385,
+  "layerPixels": 116298,
   "source": "greenscreen/raw/vibee.gif"
 }

@@ -7,10 +7,10 @@
   "size": 128,
   "slot": {
     "x": 10,
-    "y": 13,
+    "y": 11,
     "w": 109,
-    "h": 103,
-    "greenPixels": 41882
+    "h": 107,
+    "greenPixels": 45122
   },
   "layerPixels": 0,
   "source": "greenscreen/raw/loading-four.gif"

@@ -9,9 +9,9 @@
     "x": 0,
     "y": 9,
     "w": 127,
-    "h": 101,
-    "greenPixels": 10609
+    "h": 102,
+    "greenPixels": 10565
   },
-  "layerPixels": 2167,
+  "layerPixels": 2260,
   "source": "greenscreen/raw/stare.png"
 }

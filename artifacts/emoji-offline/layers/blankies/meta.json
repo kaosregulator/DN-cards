@@ -6,12 +6,12 @@
   "delayMs": 70,
   "size": 128,
   "slot": {
-    "x": 15,
+    "x": 14,
     "y": 23,
-    "w": 100,
+    "w": 101,
     "h": 75,
-    "greenPixels": 35924
+    "greenPixels": 36162
   },
-  "layerPixels": 47443,
+  "layerPixels": 47205,
   "source": "greenscreen/raw/blankies.gif"
 }

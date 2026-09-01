@@ -10,8 +10,8 @@
     "y": 42,
     "w": 120,
     "h": 75,
-    "greenPixels": 7264
+    "greenPixels": 7249
   },
-  "layerPixels": 2012,
+  "layerPixels": 2028,
   "source": "greenscreen/raw/peepo.png"
 }

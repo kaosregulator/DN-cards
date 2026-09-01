@@ -10,8 +10,8 @@
     "y": 0,
     "w": 128,
     "h": 128,
-    "greenPixels": 137629
+    "greenPixels": 137563
   },
-  "layerPixels": 26211,
+  "layerPixels": 26277,
   "source": "greenscreen/raw/slap.gif"
 }

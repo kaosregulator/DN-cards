@@ -6,11 +6,11 @@
   "delayMs": 20,
   "size": 128,
   "slot": {
-    "x": 5,
+    "x": 3,
     "y": 47,
-    "w": 119,
+    "w": 123,
     "h": 52,
-    "greenPixels": 42760
+    "greenPixels": 45373
   },
   "layerPixels": 0,
   "source": "greenscreen/raw/pp-hopper.gif"

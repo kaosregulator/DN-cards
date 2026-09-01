@@ -10,8 +10,8 @@
     "y": 0,
     "w": 128,
     "h": 128,
-    "greenPixels": 137823
+    "greenPixels": 139400
   },
-  "layerPixels": 7,
+  "layerPixels": 0,
   "source": "greenscreen/raw/naruto-run.gif"
 }

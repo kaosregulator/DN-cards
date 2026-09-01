@@ -10,8 +10,8 @@
     "y": 0,
     "w": 128,
     "h": 128,
-    "greenPixels": 9274
+    "greenPixels": 9234
   },
-  "layerPixels": 7110,
+  "layerPixels": 7150,
   "source": "greenscreen/raw/blanket.png"
 }

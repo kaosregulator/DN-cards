@@ -10,8 +10,8 @@
     "y": 0,
     "w": 128,
     "h": 128,
-    "greenPixels": 127943
+    "greenPixels": 127739
   },
-  "layerPixels": 35897,
+  "layerPixels": 36101,
   "source": "greenscreen/raw/mc-fire.gif"
 }

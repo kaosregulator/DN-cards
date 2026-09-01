@@ -10,8 +10,8 @@
     "y": 0,
     "w": 126,
     "h": 128,
-    "greenPixels": 32258
+    "greenPixels": 32257
   },
-  "layerPixels": 253525,
+  "layerPixels": 253870,
   "source": "greenscreen/raw/pokeball-capture.gif"
 }

@@ -6,12 +6,12 @@
   "delayMs": 50,
   "size": 128,
   "slot": {
-    "x": 1,
+    "x": 0,
     "y": 15,
-    "w": 127,
-    "h": 92,
-    "greenPixels": 7662
+    "w": 128,
+    "h": 91,
+    "greenPixels": 7569
   },
-  "layerPixels": 2393,
+  "layerPixels": 2380,
   "source": "greenscreen/raw/i-have-a-question.png"
 }

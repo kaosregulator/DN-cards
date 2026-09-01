@@ -7,10 +7,10 @@
   "size": 128,
   "slot": {
     "x": 0,
-    "y": 27,
+    "y": 26,
     "w": 128,
-    "h": 75,
-    "greenPixels": 47496
+    "h": 77,
+    "greenPixels": 49645
   },
   "layerPixels": 0,
   "source": "greenscreen/raw/tilt.gif"

@@ -9,9 +9,9 @@
     "x": 0,
     "y": 6,
     "w": 128,
-    "h": 114,
-    "greenPixels": 8184
+    "h": 113,
+    "greenPixels": 8108
   },
-  "layerPixels": 5262,
+  "layerPixels": 5328,
   "source": "greenscreen/raw/pepe-clown.png"
 }

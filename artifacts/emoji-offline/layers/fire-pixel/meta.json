@@ -10,8 +10,8 @@
     "y": 0,
     "w": 128,
     "h": 128,
-    "greenPixels": 91772
+    "greenPixels": 91564
   },
-  "layerPixels": 72068,
+  "layerPixels": 72276,
   "source": "greenscreen/raw/fire-pixel.gif"
 }

@@ -7,11 +7,11 @@
   "size": 128,
   "slot": {
     "x": 6,
-    "y": 32,
-    "w": 85,
-    "h": 86,
-    "greenPixels": 348273
+    "y": 31,
+    "w": 86,
+    "h": 88,
+    "greenPixels": 354640
   },
-  "layerPixels": 57693,
+  "layerPixels": 55047,
   "source": "greenscreen/raw/aha.gif"
 }

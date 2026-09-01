@@ -7,11 +7,11 @@
   "size": 128,
   "slot": {
     "x": 0,
-    "y": 2,
+    "y": 3,
     "w": 128,
-    "h": 126,
-    "greenPixels": 199870
+    "h": 125,
+    "greenPixels": 198670
   },
-  "layerPixels": 151318,
+  "layerPixels": 152518,
   "source": "greenscreen/raw/pumpkin-give.gif"
 }

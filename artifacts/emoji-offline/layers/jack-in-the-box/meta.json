@@ -6,12 +6,12 @@
   "delayMs": 70,
   "size": 128,
   "slot": {
-    "x": 29,
+    "x": 27,
     "y": 0,
-    "w": 71,
+    "w": 75,
     "h": 128,
-    "greenPixels": 92063
+    "greenPixels": 93724
   },
-  "layerPixels": 62653,
+  "layerPixels": 62556,
   "source": "greenscreen/raw/jack-in-the-box.gif"
 }

@@ -6,12 +6,12 @@
   "delayMs": 50,
   "size": 128,
   "slot": {
-    "x": 30,
+    "x": 29,
     "y": 32,
-    "w": 69,
+    "w": 71,
     "h": 71,
-    "greenPixels": 195960
+    "greenPixels": 201640
   },
-  "layerPixels": 1078,
+  "layerPixels": 971,
   "source": "greenscreen/raw/blame-animated.gif"
 }

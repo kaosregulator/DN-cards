@@ -7,11 +7,11 @@
   "size": 128,
   "slot": {
     "x": 6,
-    "y": 25,
-    "w": 114,
-    "h": 88,
-    "greenPixels": 86165
+    "y": 26,
+    "w": 113,
+    "h": 86,
+    "greenPixels": 85234
   },
-  "layerPixels": 103531,
+  "layerPixels": 102885,
   "source": "greenscreen/raw/alowo.gif"
 }

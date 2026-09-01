@@ -1,5 +1,5 @@
 {
-  "builtAt": "2026-09-01T17:24:23.835Z",
+  "builtAt": "2026-09-01T18:12:06.250Z",
   "size": 128,
   "items": {
     "2x-wide-1": {
@@ -48,7 +48,7 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 100860
+        "greenPixels": 100690
       },
       "layerPixels": 0,
       "source": "greenscreen/raw/3d-flip.gif"
@@ -184,9 +184,9 @@
         "y": 29,
         "w": 102,
         "h": 80,
-        "greenPixels": 39593
+        "greenPixels": 39466
       },
-      "layerPixels": 70520,
+      "layerPixels": 70647,
       "source": "greenscreen/raw/abdul-pls.gif"
     },
     "accordion": {
@@ -201,9 +201,9 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 116740
+        "greenPixels": 116538
       },
-      "layerPixels": 47100,
+      "layerPixels": 47302,
       "source": "greenscreen/raw/accordion.gif"
     },
     "aflame": {
@@ -218,9 +218,9 @@
         "y": 0,
         "w": 128,
         "h": 121,
-        "greenPixels": 79625
+        "greenPixels": 79219
       },
-      "layerPixels": 84215,
+      "layerPixels": 84621,
       "source": "greenscreen/raw/aflame.gif"
     },
     "aha": {
@@ -232,12 +232,12 @@
       "size": 128,
       "slot": {
         "x": 6,
-        "y": 32,
-        "w": 85,
-        "h": 86,
-        "greenPixels": 348273
+        "y": 31,
+        "w": 86,
+        "h": 88,
+        "greenPixels": 354640
       },
-      "layerPixels": 57693,
+      "layerPixels": 55047,
       "source": "greenscreen/raw/aha.gif"
     },
     "airball": {
@@ -249,12 +249,12 @@
       "size": 128,
       "slot": {
         "x": 0,
-        "y": 6,
-        "w": 118,
-        "h": 117,
-        "greenPixels": 118820
+        "y": 5,
+        "w": 119,
+        "h": 119,
+        "greenPixels": 120951
       },
-      "layerPixels": 6214,
+      "layerPixels": 6187,
       "source": "greenscreen/raw/airball.gif"
     },
     "alarm": {
@@ -269,9 +269,9 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 148666
+        "greenPixels": 148621
       },
-      "layerPixels": 15174,
+      "layerPixels": 15219,
       "source": "greenscreen/raw/alarm.gif"
     },
     "alarms": {
@@ -286,9 +286,9 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 103287
+        "greenPixels": 103084
       },
-      "layerPixels": 60553,
+      "layerPixels": 60756,
       "source": "greenscreen/raw/alarms.gif"
     },
     "alert": {
@@ -303,9 +303,9 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 142670
+        "greenPixels": 142585
       },
-      "layerPixels": 21170,
+      "layerPixels": 21255,
       "source": "greenscreen/raw/alert.gif"
     },
     "alien-pls": {
@@ -320,9 +320,9 @@
         "y": 2,
         "w": 113,
         "h": 122,
-        "greenPixels": 101911
+        "greenPixels": 100438
       },
-      "layerPixels": 24752,
+      "layerPixels": 26225,
       "source": "greenscreen/raw/alien-pls.gif"
     },
     "alien-pls-3": {
@@ -337,9 +337,9 @@
         "y": 5,
         "w": 68,
         "h": 118,
-        "greenPixels": 135458
+        "greenPixels": 135035
       },
-      "layerPixels": 1823,
+      "layerPixels": 2246,
       "source": "greenscreen/raw/alien-pls-3.gif"
     },
     "alowo": {
@@ -351,12 +351,12 @@
       "size": 128,
       "slot": {
         "x": 6,
-        "y": 25,
-        "w": 114,
-        "h": 88,
-        "greenPixels": 86165
+        "y": 26,
+        "w": 113,
+        "h": 86,
+        "greenPixels": 85234
       },
-      "layerPixels": 103531,
+      "layerPixels": 102885,
       "source": "greenscreen/raw/alowo.gif"
     },
     "amaze": {
@@ -371,9 +371,9 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 87508
+        "greenPixels": 88346
       },
-      "layerPixels": 27180,
+      "layerPixels": 26342,
       "source": "greenscreen/raw/amaze.gif"
     },
     "angel": {
@@ -384,13 +384,13 @@
       "delayMs": 50,
       "size": 128,
       "slot": {
-        "x": 13,
+        "x": 11,
         "y": 23,
-        "w": 105,
+        "w": 107,
         "h": 105,
-        "greenPixels": 10700
+        "greenPixels": 10894
       },
-      "layerPixels": 1364,
+      "layerPixels": 1352,
       "source": "greenscreen/raw/angel.png"
     },
     "anime-scream": {
@@ -422,9 +422,9 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 154997
+        "greenPixels": 154792
       },
-      "layerPixels": 8843,
+      "layerPixels": 9048,
       "source": "greenscreen/raw/anime-speed.gif"
     },
     "anticipation": {
@@ -441,7 +441,7 @@
         "h": 128,
         "greenPixels": 163840
       },
-      "layerPixels": 179256,
+      "layerPixels": 179530,
       "source": "greenscreen/raw/anticipation.gif"
     },
     "approve-arms": {
@@ -456,9 +456,9 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 122899
+        "greenPixels": 122810
       },
-      "layerPixels": 40941,
+      "layerPixels": 41030,
       "source": "greenscreen/raw/approve-arms.gif"
     },
     "attention-alert": {
@@ -473,9 +473,9 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 155060
+        "greenPixels": 154954
       },
-      "layerPixels": 8268,
+      "layerPixels": 8374,
       "source": "greenscreen/raw/attention-alert.gif"
     },
     "banana-dance": {
@@ -490,9 +490,9 @@
         "y": 1,
         "w": 65,
         "h": 102,
-        "greenPixels": 42062
+        "greenPixels": 42048
       },
-      "layerPixels": 21917,
+      "layerPixels": 21931,
       "source": "greenscreen/raw/banana-dance.gif"
     },
     "bedge": {
@@ -506,10 +506,10 @@
         "x": 14,
         "y": 3,
         "w": 114,
-        "h": 110,
-        "greenPixels": 6752
+        "h": 108,
+        "greenPixels": 6743
       },
-      "layerPixels": 7276,
+      "layerPixels": 7066,
       "source": "greenscreen/raw/bedge.png"
     },
     "beers": {
@@ -524,9 +524,9 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 140877
+        "greenPixels": 140792
       },
-      "layerPixels": 22963,
+      "layerPixels": 23048,
       "source": "greenscreen/raw/beers.gif"
     },
     "big-brain": {
@@ -541,9 +541,9 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 143324
+        "greenPixels": 143206
       },
-      "layerPixels": 18724,
+      "layerPixels": 18842,
       "source": "greenscreen/raw/big-brain.gif"
     },
     "binoculars": {
@@ -558,9 +558,9 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 9899
+        "greenPixels": 9873
       },
-      "layerPixels": 6485,
+      "layerPixels": 6511,
       "source": "greenscreen/raw/binoculars.png"
     },
     "blah-blah-blah": {
@@ -588,13 +588,13 @@
       "delayMs": 50,
       "size": 128,
       "slot": {
-        "x": 30,
+        "x": 29,
         "y": 32,
-        "w": 69,
+        "w": 71,
         "h": 71,
-        "greenPixels": 4589
+        "greenPixels": 4699
       },
-      "layerPixels": 4601,
+      "layerPixels": 4593,
       "source": "greenscreen/raw/blame.png"
     },
     "blame-animated": {
@@ -605,13 +605,13 @@
       "delayMs": 50,
       "size": 128,
       "slot": {
-        "x": 30,
+        "x": 29,
         "y": 32,
-        "w": 69,
+        "w": 71,
         "h": 71,
-        "greenPixels": 195960
+        "greenPixels": 201640
       },
-      "layerPixels": 1078,
+      "layerPixels": 971,
       "source": "greenscreen/raw/blame-animated.gif"
     },
     "blanket": {
@@ -626,9 +626,9 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 9274
+        "greenPixels": 9234
       },
-      "layerPixels": 7110,
+      "layerPixels": 7150,
       "source": "greenscreen/raw/blanket.png"
     },
     "blankies": {
@@ -639,13 +639,13 @@
       "delayMs": 70,
       "size": 128,
       "slot": {
-        "x": 15,
+        "x": 14,
         "y": 23,
-        "w": 100,
+        "w": 101,
         "h": 75,
-        "greenPixels": 35924
+        "greenPixels": 36162
       },
-      "layerPixels": 47443,
+      "layerPixels": 47205,
       "source": "greenscreen/raw/blankies.gif"
     },
     "blast": {
@@ -660,9 +660,9 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 85801
+        "greenPixels": 85777
       },
-      "layerPixels": 34349,
+      "layerPixels": 34373,
       "source": "greenscreen/raw/blast.gif"
     },
     "blaze": {
@@ -694,9 +694,9 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 147142
+        "greenPixels": 146838
       },
-      "layerPixels": 15930,
+      "layerPixels": 16490,
       "source": "greenscreen/raw/bless-up.gif"
     },
     "blink": {
@@ -727,10 +727,10 @@
         "x": 4,
         "y": 13,
         "w": 124,
-        "h": 103,
-        "greenPixels": 5535
+        "h": 105,
+        "greenPixels": 5523
       },
-      "layerPixels": 5218,
+      "layerPixels": 5257,
       "source": "greenscreen/raw/blob-help.png"
     },
     "blob-no": {
@@ -745,9 +745,9 @@
         "y": 11,
         "w": 111,
         "h": 107,
-        "greenPixels": 5667
+        "greenPixels": 5629
       },
-      "layerPixels": 5096,
+      "layerPixels": 5148,
       "source": "greenscreen/raw/blob-no.png"
     },
     "blob-smiley": {
@@ -762,9 +762,9 @@
         "y": 8,
         "w": 128,
         "h": 111,
-        "greenPixels": 9593
+        "greenPixels": 9582
       },
-      "layerPixels": 2019,
+      "layerPixels": 2030,
       "source": "greenscreen/raw/blob-smiley.png"
     },
     "blob-yes": {
@@ -779,9 +779,9 @@
         "y": 11,
         "w": 117,
         "h": 107,
-        "greenPixels": 7023
+        "greenPixels": 7022
       },
-      "layerPixels": 3800,
+      "layerPixels": 3804,
       "source": "greenscreen/raw/blob-yes.png"
     },
     "blush": {
@@ -796,9 +796,9 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 14657
+        "greenPixels": 14546
       },
-      "layerPixels": 1727,
+      "layerPixels": 1838,
       "source": "greenscreen/raw/blush.png"
     },
     "bobble": {
@@ -813,7 +813,7 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 158341
+        "greenPixels": 159421
       },
       "layerPixels": 0,
       "source": "greenscreen/raw/bobble.gif"
@@ -830,7 +830,7 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 145807
+        "greenPixels": 146447
       },
       "layerPixels": 0,
       "source": "greenscreen/raw/boing.gif"
@@ -846,10 +846,10 @@
         "x": 16,
         "y": 82,
         "w": 97,
-        "h": 45,
-        "greenPixels": 31636
+        "h": 46,
+        "greenPixels": 31812
       },
-      "layerPixels": 44980,
+      "layerPixels": 44904,
       "source": "greenscreen/raw/bongo-cat.gif"
     },
     "bongo-heart": {
@@ -864,9 +864,9 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 120060
+        "greenPixels": 119992
       },
-      "layerPixels": 43012,
+      "layerPixels": 43592,
       "source": "greenscreen/raw/bongo-heart.gif"
     },
     "bonk": {
@@ -881,9 +881,9 @@
         "y": 51,
         "w": 82,
         "h": 77,
-        "greenPixels": 52589
+        "greenPixels": 53211
       },
-      "layerPixels": 11988,
+      "layerPixels": 11990,
       "source": "greenscreen/raw/bonk.gif"
     },
     "bonk-doge": {
@@ -898,9 +898,9 @@
         "y": 64,
         "w": 69,
         "h": 64,
-        "greenPixels": 34204
+        "greenPixels": 34186
       },
-      "layerPixels": 38609,
+      "layerPixels": 38627,
       "source": "greenscreen/raw/bonk-doge.gif"
     },
     "booba": {
@@ -915,9 +915,9 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 340245
+        "greenPixels": 339945
       },
-      "layerPixels": 211339,
+      "layerPixels": 212015,
       "source": "greenscreen/raw/booba.gif"
     },
     "boom": {
@@ -932,9 +932,9 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 82978
+        "greenPixels": 82938
       },
-      "layerPixels": 44985,
+      "layerPixels": 45025,
       "source": "greenscreen/raw/boom.gif"
     },
     "boooo": {
@@ -949,9 +949,9 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 342248
+        "greenPixels": 341234
       },
-      "layerPixels": 280344,
+      "layerPixels": 281358,
       "source": "greenscreen/raw/boooo.gif"
     },
     "bounce": {
@@ -966,7 +966,7 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 154752
+        "greenPixels": 155136
       },
       "layerPixels": 0,
       "source": "greenscreen/raw/bounce.gif"
@@ -983,7 +983,7 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 138513
+        "greenPixels": 139696
       },
       "layerPixels": 0,
       "source": "greenscreen/raw/bounce-and-spin.gif"
@@ -1000,9 +1000,9 @@
         "y": 1,
         "w": 111,
         "h": 119,
-        "greenPixels": 25966
+        "greenPixels": 25938
       },
-      "layerPixels": 98192,
+      "layerPixels": 98220,
       "source": "greenscreen/raw/box.gif"
     },
     "breaking-news": {
@@ -1017,9 +1017,9 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 120056
+        "greenPixels": 120019
       },
-      "layerPixels": 43784,
+      "layerPixels": 43821,
       "source": "greenscreen/raw/breaking-news.gif"
     },
     "breathe": {
@@ -1051,9 +1051,9 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 161559
+        "greenPixels": 160227
       },
-      "layerPixels": 2281,
+      "layerPixels": 3613,
       "source": "greenscreen/raw/bubble.gif"
     },
     "bubbles": {
@@ -1068,9 +1068,9 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 618085
+        "greenPixels": 610355
       },
-      "layerPixels": 37275,
+      "layerPixels": 45005,
       "source": "greenscreen/raw/bubbles.gif"
     },
     "bufo-offers": {
@@ -1083,11 +1083,11 @@
       "slot": {
         "x": 8,
         "y": 6,
-        "w": 77,
-        "h": 109,
-        "greenPixels": 5313
+        "w": 78,
+        "h": 110,
+        "greenPixels": 5469
       },
-      "layerPixels": 7898,
+      "layerPixels": 7748,
       "source": "greenscreen/raw/bufo-offers.png"
     },
     "bufo-takes": {
@@ -1098,13 +1098,13 @@
       "delayMs": 50,
       "size": 128,
       "slot": {
-        "x": 3,
+        "x": 2,
         "y": 8,
-        "w": 112,
-        "h": 107,
-        "greenPixels": 4771
+        "w": 113,
+        "h": 108,
+        "greenPixels": 5101
       },
-      "layerPixels": 8175,
+      "layerPixels": 7850,
       "source": "greenscreen/raw/bufo-takes.png"
     },
     "bulge": {
@@ -1136,9 +1136,9 @@
         "y": 44,
         "w": 114,
         "h": 57,
-        "greenPixels": 5763
+        "greenPixels": 5751
       },
-      "layerPixels": 6695,
+      "layerPixels": 6706,
       "source": "greenscreen/raw/burger.png"
     },
     "burn": {
@@ -1153,9 +1153,9 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 136631
+        "greenPixels": 136530
       },
-      "layerPixels": 27209,
+      "layerPixels": 27310,
       "source": "greenscreen/raw/burn.gif"
     },
     "bush-disappear": {
@@ -1170,9 +1170,9 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 452429
+        "greenPixels": 452527
       },
-      "layerPixels": 39091,
+      "layerPixels": 38993,
       "source": "greenscreen/raw/bush-disappear.gif"
     },
     "bush-texture": {
@@ -1187,9 +1187,9 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 351838
+        "greenPixels": 351543
       },
-      "layerPixels": 139682,
+      "layerPixels": 139977,
       "source": "greenscreen/raw/bush-texture.gif"
     },
     "butterfly": {
@@ -1204,7 +1204,7 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 135118
+        "greenPixels": 135248
       },
       "layerPixels": 0,
       "source": "greenscreen/raw/butterfly.gif"
@@ -1221,9 +1221,9 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 110130
+        "greenPixels": 109760
       },
-      "layerPixels": 53710,
+      "layerPixels": 54080,
       "source": "greenscreen/raw/cancel.gif"
     },
     "cat-ears": {
@@ -1238,9 +1238,9 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 192677
+        "greenPixels": 191666
       },
-      "layerPixels": 36699,
+      "layerPixels": 37710,
       "source": "greenscreen/raw/cat-ears.gif"
     },
     "cat-jam": {
@@ -1291,7 +1291,7 @@
         "h": 128,
         "greenPixels": 163840
       },
-      "layerPixels": 168618,
+      "layerPixels": 168288,
       "source": "greenscreen/raw/cat-no.gif"
     },
     "cat-slap": {
@@ -1306,9 +1306,9 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 116479
+        "greenPixels": 116327
       },
-      "layerPixels": 47361,
+      "layerPixels": 47513,
       "source": "greenscreen/raw/cat-slap.gif"
     },
     "cat-yes": {
@@ -1325,7 +1325,7 @@
         "h": 128,
         "greenPixels": 163840
       },
-      "layerPixels": 184698,
+      "layerPixels": 184668,
       "source": "greenscreen/raw/cat-yes.gif"
     },
     "catjam-bob": {
@@ -1340,9 +1340,9 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 154920
+        "greenPixels": 155260
       },
-      "layerPixels": 2043,
+      "layerPixels": 3204,
       "source": "greenscreen/raw/catjam-bob.gif"
     },
     "caught-in-4k": {
@@ -1357,9 +1357,9 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 128951
+        "greenPixels": 127201
       },
-      "layerPixels": 34889,
+      "layerPixels": 36639,
       "source": "greenscreen/raw/caught-in-4k.gif"
     },
     "clap": {
@@ -1374,9 +1374,9 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 137553
+        "greenPixels": 136855
       },
-      "layerPixels": 26287,
+      "layerPixels": 26985,
       "source": "greenscreen/raw/clap.gif"
     },
     "clap-glove": {
@@ -1391,9 +1391,9 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 138725
+        "greenPixels": 138395
       },
-      "layerPixels": 25115,
+      "layerPixels": 25445,
       "source": "greenscreen/raw/clap-glove.gif"
     },
     "clap-loop": {
@@ -1408,9 +1408,9 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 147733
+        "greenPixels": 147428
       },
-      "layerPixels": 15595,
+      "layerPixels": 15900,
       "source": "greenscreen/raw/clap-loop.gif"
     },
     "claude-code": {
@@ -1459,9 +1459,9 @@
         "y": 46,
         "w": 92,
         "h": 62,
-        "greenPixels": 91287
+        "greenPixels": 91158
       },
-      "layerPixels": 14701,
+      "layerPixels": 14830,
       "source": "greenscreen/raw/claude-football.gif"
     },
     "claude-fu": {
@@ -1476,9 +1476,9 @@
         "y": 30,
         "w": 103,
         "h": 73,
-        "greenPixels": 86967
+        "greenPixels": 87074
       },
-      "layerPixels": 5455,
+      "layerPixels": 5348,
       "source": "greenscreen/raw/claude-fu.gif"
     },
     "claude-idea": {
@@ -1510,9 +1510,9 @@
         "y": 35,
         "w": 128,
         "h": 93,
-        "greenPixels": 59195
+        "greenPixels": 59171
       },
-      "layerPixels": 15479,
+      "layerPixels": 15503,
       "source": "greenscreen/raw/claude-jam.gif"
     },
     "cleaning": {
@@ -1527,9 +1527,9 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 67042
+        "greenPixels": 66416
       },
-      "layerPixels": 47646,
+      "layerPixels": 48272,
       "source": "greenscreen/raw/cleaning.gif"
     },
     "clone-army": {
@@ -1544,7 +1544,7 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 133009
+        "greenPixels": 143846
       },
       "layerPixels": 0,
       "source": "greenscreen/raw/clone-army.gif"
@@ -1561,9 +1561,9 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 12376
+        "greenPixels": 12369
       },
-      "layerPixels": 607,
+      "layerPixels": 638,
       "source": "greenscreen/raw/coggers.png"
     },
     "combust": {
@@ -1578,9 +1578,9 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 48561
+        "greenPixels": 48559
       },
-      "layerPixels": 115279,
+      "layerPixels": 115281,
       "source": "greenscreen/raw/combust.gif"
     },
     "comfy": {
@@ -1592,12 +1592,12 @@
       "size": 128,
       "slot": {
         "x": 28,
-        "y": 6,
+        "y": 8,
         "w": 100,
-        "h": 108,
-        "greenPixels": 7628
+        "h": 106,
+        "greenPixels": 7589
       },
-      "layerPixels": 8569,
+      "layerPixels": 8603,
       "source": "greenscreen/raw/comfy.png"
     },
     "concerned": {
@@ -1629,9 +1629,9 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 157204
+        "greenPixels": 157554
       },
-      "layerPixels": 4153,
+      "layerPixels": 4303,
       "source": "greenscreen/raw/confetti-drop.gif"
     },
     "confused-cat": {
@@ -1646,7 +1646,7 @@
         "y": 29,
         "w": 128,
         "h": 99,
-        "greenPixels": 9555
+        "greenPixels": 9560
       },
       "layerPixels": 160,
       "source": "greenscreen/raw/confused-cat.png"
@@ -1697,9 +1697,9 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 120763
+        "greenPixels": 120707
       },
-      "layerPixels": 43077,
+      "layerPixels": 43133,
       "source": "greenscreen/raw/cool-glasses.gif"
     },
     "copium": {
@@ -1711,12 +1711,12 @@
       "size": 128,
       "slot": {
         "x": 0,
-        "y": 2,
-        "w": 127,
+        "y": 1,
+        "w": 126,
         "h": 117,
-        "greenPixels": 8780
+        "greenPixels": 8637
       },
-      "layerPixels": 5601,
+      "layerPixels": 5762,
       "source": "greenscreen/raw/copium.png"
     },
     "courage-scream": {
@@ -1731,9 +1731,9 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 95632
+        "greenPixels": 94876
       },
-      "layerPixels": 641648,
+      "layerPixels": 642404,
       "source": "greenscreen/raw/courage-scream.gif"
     },
     "cowboy": {
@@ -1748,9 +1748,9 @@
         "y": 39,
         "w": 101,
         "h": 87,
-        "greenPixels": 7259
+        "greenPixels": 7252
       },
-      "layerPixels": 3501,
+      "layerPixels": 3508,
       "source": "greenscreen/raw/cowboy.png"
     },
     "crab": {
@@ -1765,9 +1765,9 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 133690
+        "greenPixels": 133170
       },
-      "layerPixels": 30150,
+      "layerPixels": 30670,
       "source": "greenscreen/raw/crab.gif"
     },
     "credit-swipe": {
@@ -1782,9 +1782,9 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 112976
+        "greenPixels": 112923
       },
-      "layerPixels": 50864,
+      "layerPixels": 50917,
       "source": "greenscreen/raw/credit-swipe.gif"
     },
     "crown-drop": {
@@ -1796,12 +1796,12 @@
       "size": 128,
       "slot": {
         "x": 11,
-        "y": 21,
+        "y": 19,
         "w": 107,
-        "h": 106,
-        "greenPixels": 238909
+        "h": 108,
+        "greenPixels": 241946
       },
-      "layerPixels": 42512,
+      "layerPixels": 42673,
       "source": "greenscreen/raw/crown-drop.gif"
     },
     "cube": {
@@ -1816,7 +1816,7 @@
         "y": 3,
         "w": 119,
         "h": 125,
-        "greenPixels": 114100
+        "greenPixels": 115314
       },
       "layerPixels": 0,
       "source": "greenscreen/raw/cube.gif"
@@ -1833,9 +1833,9 @@
         "y": 37,
         "w": 126,
         "h": 90,
-        "greenPixels": 75467
+        "greenPixels": 75306
       },
-      "layerPixels": 6180,
+      "layerPixels": 6341,
       "source": "greenscreen/raw/cute-ghost.gif"
     },
     "cute-hop": {
@@ -1850,7 +1850,7 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 151808
+        "greenPixels": 152064
       },
       "layerPixels": 0,
       "source": "greenscreen/raw/cute-hop.gif"
@@ -1867,7 +1867,7 @@
         "y": 6,
         "w": 124,
         "h": 122,
-        "greenPixels": 207348
+        "greenPixels": 209143
       },
       "layerPixels": 0,
       "source": "greenscreen/raw/dancing-squares.gif"
@@ -1884,9 +1884,9 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 110218
+        "greenPixels": 109610
       },
-      "layerPixels": 53622,
+      "layerPixels": 54230,
       "source": "greenscreen/raw/dbz-aura.gif"
     },
     "ddr": {
@@ -1901,9 +1901,9 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 142223
+        "greenPixels": 141958
       },
-      "layerPixels": 21617,
+      "layerPixels": 21882,
       "source": "greenscreen/raw/ddr.gif"
     },
     "deal-with-it": {
@@ -1918,9 +1918,9 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 152314
+        "greenPixels": 152553
       },
-      "layerPixels": 11526,
+      "layerPixels": 11287,
       "source": "greenscreen/raw/deal-with-it.gif"
     },
     "depth-tilt": {
@@ -1935,7 +1935,7 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 159050
+        "greenPixels": 159228
       },
       "layerPixels": 0,
       "source": "greenscreen/raw/depth-tilt.gif"
@@ -1949,10 +1949,10 @@
       "size": 128,
       "slot": {
         "x": 16,
-        "y": 10,
+        "y": 9,
         "w": 97,
-        "h": 112,
-        "greenPixels": 150332
+        "h": 113,
+        "greenPixels": 150471
       },
       "layerPixels": 0,
       "source": "greenscreen/raw/diamond.gif"
@@ -1965,13 +1965,13 @@
       "delayMs": 120,
       "size": 128,
       "slot": {
-        "x": 19,
+        "x": 18,
         "y": 14,
-        "w": 91,
+        "w": 93,
         "h": 106,
-        "greenPixels": 145260
+        "greenPixels": 144770
       },
-      "layerPixels": 84565,
+      "layerPixels": 84434,
       "source": "greenscreen/raw/ditto.gif"
     },
     "doesnt-know": {
@@ -1986,9 +1986,9 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 30070
+        "greenPixels": 30153
       },
-      "layerPixels": 2698,
+      "layerPixels": 2615,
       "source": "greenscreen/raw/doesnt-know.gif"
     },
     "donk": {
@@ -2003,9 +2003,9 @@
         "y": 53,
         "w": 111,
         "h": 46,
-        "greenPixels": 4084
+        "greenPixels": 4073
       },
-      "layerPixels": 6499,
+      "layerPixels": 6511,
       "source": "greenscreen/raw/donk.png"
     },
     "drained": {
@@ -2017,12 +2017,12 @@
       "size": 128,
       "slot": {
         "x": 0,
-        "y": 3,
+        "y": 2,
         "w": 128,
-        "h": 125,
-        "greenPixels": 86308
+        "h": 126,
+        "greenPixels": 145651
       },
-      "layerPixels": 60202,
+      "layerPixels": 2160,
       "source": "greenscreen/raw/drained.gif"
     },
     "drake-duh": {
@@ -2071,7 +2071,7 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 108288
+        "greenPixels": 108800
       },
       "layerPixels": 0,
       "source": "greenscreen/raw/drop.gif"
@@ -2088,7 +2088,7 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 139608
+        "greenPixels": 139975
       },
       "layerPixels": 0,
       "source": "greenscreen/raw/drop-bounce.gif"
@@ -2105,9 +2105,9 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 122800
+        "greenPixels": 122659
       },
-      "layerPixels": 41040,
+      "layerPixels": 41181,
       "source": "greenscreen/raw/drums.gif"
     },
     "earthquake": {
@@ -2122,7 +2122,7 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 146438
+        "greenPixels": 148078
       },
       "layerPixels": 0,
       "source": "greenscreen/raw/earthquake.gif"
@@ -2139,7 +2139,7 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 123518
+        "greenPixels": 124929
       },
       "layerPixels": 0,
       "source": "greenscreen/raw/elastic.gif"
@@ -2156,7 +2156,7 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 158787
+        "greenPixels": 158096
       },
       "layerPixels": 0,
       "source": "greenscreen/raw/elastic-corner-pinch.gif"
@@ -2173,9 +2173,9 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 153687
+        "greenPixels": 153563
       },
-      "layerPixels": 10153,
+      "layerPixels": 10277,
       "source": "greenscreen/raw/electricity.gif"
     },
     "elevator-reveal": {
@@ -2226,7 +2226,7 @@
         "h": 128,
         "greenPixels": 81920
       },
-      "layerPixels": 147959,
+      "layerPixels": 148806,
       "source": "greenscreen/raw/emoji-scream.gif"
     },
     "enter": {
@@ -2238,12 +2238,12 @@
       "size": 128,
       "slot": {
         "x": 0,
-        "y": 10,
+        "y": 4,
         "w": 128,
-        "h": 118,
-        "greenPixels": 92331
+        "h": 124,
+        "greenPixels": 91442
       },
-      "layerPixels": 137045,
+      "layerPixels": 137934,
       "source": "greenscreen/raw/enter.gif"
     },
     "excited": {
@@ -2258,7 +2258,7 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 158848
+        "greenPixels": 159232
       },
       "layerPixels": 0,
       "source": "greenscreen/raw/excited.gif"
@@ -2275,9 +2275,9 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 71106
+        "greenPixels": 71032
       },
-      "layerPixels": 92734,
+      "layerPixels": 92808,
       "source": "greenscreen/raw/excuse-me.gif"
     },
     "exit": {
@@ -2289,12 +2289,12 @@
       "size": 128,
       "slot": {
         "x": 0,
-        "y": 10,
+        "y": 9,
         "w": 126,
-        "h": 118,
-        "greenPixels": 47257
+        "h": 119,
+        "greenPixels": 47886
       },
-      "layerPixels": 182119,
+      "layerPixels": 181490,
       "source": "greenscreen/raw/exit.gif"
     },
     "explain": {
@@ -2309,9 +2309,9 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 144462
+        "greenPixels": 144406
       },
-      "layerPixels": 19378,
+      "layerPixels": 19434,
       "source": "greenscreen/raw/explain.gif"
     },
     "explode": {
@@ -2326,7 +2326,7 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 83069
+        "greenPixels": 83103
       },
       "layerPixels": 0,
       "source": "greenscreen/raw/explode.gif"
@@ -2343,9 +2343,9 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 157580
+        "greenPixels": 157530
       },
-      "layerPixels": 6260,
+      "layerPixels": 6310,
       "source": "greenscreen/raw/eyebrows.gif"
     },
     "face-cover": {
@@ -2356,13 +2356,13 @@
       "delayMs": 50,
       "size": 128,
       "slot": {
-        "x": 17,
+        "x": 18,
         "y": 8,
-        "w": 100,
+        "w": 99,
         "h": 67,
-        "greenPixels": 4020
+        "greenPixels": 4001
       },
-      "layerPixels": 8700,
+      "layerPixels": 8745,
       "source": "greenscreen/raw/face-cover.png"
     },
     "facepalm": {
@@ -2379,7 +2379,7 @@
         "h": 128,
         "greenPixels": 163840
       },
-      "layerPixels": 240694,
+      "layerPixels": 240621,
       "source": "greenscreen/raw/facepalm.gif"
     },
     "fall-leaves": {
@@ -2394,9 +2394,9 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 355043
+        "greenPixels": 354783
       },
-      "layerPixels": 38173,
+      "layerPixels": 38433,
       "source": "greenscreen/raw/fall-leaves.gif"
     },
     "feels-rain-man": {
@@ -2411,9 +2411,9 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 74472
+        "greenPixels": 74267
       },
-      "layerPixels": 82037,
+      "layerPixels": 82242,
       "source": "greenscreen/raw/feels-rain-man.gif"
     },
     "feels-weak-man": {
@@ -2428,9 +2428,9 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 369102
+        "greenPixels": 369457
       },
-      "layerPixels": 201911,
+      "layerPixels": 201836,
       "source": "greenscreen/raw/feels-weak-man.gif"
     },
     "figure-8": {
@@ -2445,7 +2445,7 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 147772
+        "greenPixels": 149492
       },
       "layerPixels": 0,
       "source": "greenscreen/raw/figure-8.gif"
@@ -2462,9 +2462,9 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 144447
+        "greenPixels": 146644
       },
-      "layerPixels": 4771,
+      "layerPixels": 4684,
       "source": "greenscreen/raw/fire-drill.gif"
     },
     "fire-frame": {
@@ -2479,9 +2479,9 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 119999
+        "greenPixels": 119575
       },
-      "layerPixels": 43841,
+      "layerPixels": 44265,
       "source": "greenscreen/raw/fire-frame.gif"
     },
     "fire-pixel": {
@@ -2496,9 +2496,9 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 91772
+        "greenPixels": 91564
       },
-      "layerPixels": 72068,
+      "layerPixels": 72276,
       "source": "greenscreen/raw/fire-pixel.gif"
     },
     "fireplace": {
@@ -2513,9 +2513,9 @@
         "y": 57,
         "w": 71,
         "h": 71,
-        "greenPixels": 50052
+        "greenPixels": 49818
       },
-      "layerPixels": 113788,
+      "layerPixels": 114022,
       "source": "greenscreen/raw/fireplace.gif"
     },
     "fireworks": {
@@ -2530,9 +2530,9 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 151529
+        "greenPixels": 150899
       },
-      "layerPixels": 12311,
+      "layerPixels": 12941,
       "source": "greenscreen/raw/fireworks.gif"
     },
     "fisheye-pass": {
@@ -2547,9 +2547,9 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 387870
+        "greenPixels": 386201
       },
-      "layerPixels": 5346,
+      "layerPixels": 7015,
       "source": "greenscreen/raw/fisheye-pass.gif"
     },
     "fivehead": {
@@ -2598,9 +2598,9 @@
         "y": 10,
         "w": 115,
         "h": 96,
-        "greenPixels": 46765
+        "greenPixels": 46534
       },
-      "layerPixels": 12776,
+      "layerPixels": 13007,
       "source": "greenscreen/raw/flag.gif"
     },
     "flag-wave": {
@@ -2615,7 +2615,7 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 160793
+        "greenPixels": 160536
       },
       "layerPixels": 0,
       "source": "greenscreen/raw/flag-wave.gif"
@@ -2632,9 +2632,9 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 100190
+        "greenPixels": 100097
       },
-      "layerPixels": 63650,
+      "layerPixels": 63743,
       "source": "greenscreen/raw/flame.gif"
     },
     "flare-eyes": {
@@ -2649,9 +2649,9 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 250651
+        "greenPixels": 248446
       },
-      "layerPixels": 11493,
+      "layerPixels": 13698,
       "source": "greenscreen/raw/flare-eyes.gif"
     },
     "flick": {
@@ -2666,7 +2666,7 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 150912
+        "greenPixels": 151040
       },
       "layerPixels": 0,
       "source": "greenscreen/raw/flick.gif"
@@ -2683,7 +2683,7 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 71764
+        "greenPixels": 73463
       },
       "layerPixels": 0,
       "source": "greenscreen/raw/fling.gif"
@@ -2717,9 +2717,9 @@
         "y": 0,
         "w": 128,
         "h": 118,
-        "greenPixels": 127446
+        "greenPixels": 126604
       },
-      "layerPixels": 200686,
+      "layerPixels": 201528,
       "source": "greenscreen/raw/flipp.gif"
     },
     "float-loop": {
@@ -2734,7 +2734,7 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 188717
+        "greenPixels": 190450
       },
       "layerPixels": 0,
       "source": "greenscreen/raw/float-loop.gif"
@@ -2751,9 +2751,9 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 382498
+        "greenPixels": 381846
       },
-      "layerPixels": 59870,
+      "layerPixels": 60522,
       "source": "greenscreen/raw/floating-pumpkins.gif"
     },
     "flutter": {
@@ -2768,7 +2768,7 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 161302
+        "greenPixels": 161557
       },
       "layerPixels": 0,
       "source": "greenscreen/raw/flutter.gif"
@@ -2785,9 +2785,9 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 115750
+        "greenPixels": 115482
       },
-      "layerPixels": 48090,
+      "layerPixels": 48358,
       "source": "greenscreen/raw/fps.gif"
     },
     "frog-flag": {
@@ -2802,9 +2802,9 @@
         "y": 7,
         "w": 105,
         "h": 121,
-        "greenPixels": 4426
+        "greenPixels": 4418
       },
-      "layerPixels": 7994,
+      "layerPixels": 8002,
       "source": "greenscreen/raw/frog-flag.png"
     },
     "fry": {
@@ -2819,9 +2819,9 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 163844
+        "greenPixels": 163840
       },
-      "layerPixels": 167489,
+      "layerPixels": 167472,
       "source": "greenscreen/raw/fry.gif"
     },
     "gengar": {
@@ -2836,9 +2836,9 @@
         "y": 32,
         "w": 114,
         "h": 88,
-        "greenPixels": 118175
+        "greenPixels": 116630
       },
-      "layerPixels": 7915,
+      "layerPixels": 9989,
       "source": "greenscreen/raw/gengar.gif"
     },
     "gigachad": {
@@ -2870,9 +2870,9 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 134420
+        "greenPixels": 134390
       },
-      "layerPixels": 29420,
+      "layerPixels": 29450,
       "source": "greenscreen/raw/glasses-shine.gif"
     },
     "glitch": {
@@ -2887,7 +2887,7 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 163744
+        "greenPixels": 163750
       },
       "layerPixels": 0,
       "source": "greenscreen/raw/glitch.gif"
@@ -2904,7 +2904,7 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 150460
+        "greenPixels": 148373
       },
       "layerPixels": 0,
       "source": "greenscreen/raw/glitch-out.gif"
@@ -2921,7 +2921,7 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 161295
+        "greenPixels": 160989
       },
       "layerPixels": 0,
       "source": "greenscreen/raw/glitchwave.gif"
@@ -2938,7 +2938,7 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 163763
+        "greenPixels": 163745
       },
       "layerPixels": 0,
       "source": "greenscreen/raw/glitchy.gif"
@@ -2955,9 +2955,9 @@
         "y": 6,
         "w": 128,
         "h": 122,
-        "greenPixels": 264373
+        "greenPixels": 265467
       },
-      "layerPixels": 55869,
+      "layerPixels": 54982,
       "source": "greenscreen/raw/glorming.gif"
     },
     "glorp": {
@@ -2972,9 +2972,9 @@
         "y": 7,
         "w": 123,
         "h": 121,
-        "greenPixels": 9918
+        "greenPixels": 9911
       },
-      "layerPixels": 1674,
+      "layerPixels": 1669,
       "source": "greenscreen/raw/glorp.png"
     },
     "glorpa": {
@@ -2989,9 +2989,9 @@
         "y": 19,
         "w": 91,
         "h": 104,
-        "greenPixels": 3787
+        "greenPixels": 3785
       },
-      "layerPixels": 5759,
+      "layerPixels": 5761,
       "source": "greenscreen/raw/glorpa.png"
     },
     "googly-eyes": {
@@ -3006,9 +3006,9 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 104252
+        "greenPixels": 104147
       },
-      "layerPixels": 59588,
+      "layerPixels": 59693,
       "source": "greenscreen/raw/googly-eyes.gif"
     },
     "gravity-flip": {
@@ -3023,7 +3023,7 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 131574
+        "greenPixels": 133794
       },
       "layerPixels": 0,
       "source": "greenscreen/raw/gravity-flip.gif"
@@ -3057,9 +3057,9 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 65314
+        "greenPixels": 65305
       },
-      "layerPixels": 222,
+      "layerPixels": 231,
       "source": "greenscreen/raw/green-fire.gif"
     },
     "guitar": {
@@ -3074,9 +3074,9 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 137547
+        "greenPixels": 137372
       },
-      "layerPixels": 26293,
+      "layerPixels": 26468,
       "source": "greenscreen/raw/guitar.gif"
     },
     "gulp": {
@@ -3091,7 +3091,7 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 156160
+        "greenPixels": 156672
       },
       "layerPixels": 0,
       "source": "greenscreen/raw/gulp.gif"
@@ -3108,9 +3108,9 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 129920
+        "greenPixels": 129810
       },
-      "layerPixels": 33920,
+      "layerPixels": 34030,
       "source": "greenscreen/raw/gun.gif"
     },
     "guns": {
@@ -3125,9 +3125,9 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 140462
+        "greenPixels": 140389
       },
-      "layerPixels": 23378,
+      "layerPixels": 23451,
       "source": "greenscreen/raw/guns.gif"
     },
     "hadoken": {
@@ -3142,9 +3142,9 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 149286
+        "greenPixels": 150403
       },
-      "layerPixels": 1507,
+      "layerPixels": 1506,
       "source": "greenscreen/raw/hadoken.gif"
     },
     "hat-tip": {
@@ -3159,9 +3159,9 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 116553
+        "greenPixels": 116413
       },
-      "layerPixels": 47287,
+      "layerPixels": 47427,
       "source": "greenscreen/raw/hat-tip.gif"
     },
     "hazmat": {
@@ -3175,10 +3175,10 @@
         "x": 20,
         "y": 50,
         "w": 81,
-        "h": 61,
-        "greenPixels": 4403
+        "h": 60,
+        "greenPixels": 4386
       },
-      "layerPixels": 8759,
+      "layerPixels": 8760,
       "source": "greenscreen/raw/hazmat.png"
     },
     "hazmat-2": {
@@ -3193,9 +3193,9 @@
         "y": 23,
         "w": 86,
         "h": 88,
-        "greenPixels": 5402
+        "greenPixels": 5373
       },
-      "layerPixels": 9747,
+      "layerPixels": 9776,
       "source": "greenscreen/raw/hazmat-2.png"
     },
     "headbop": {
@@ -3210,7 +3210,7 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 157448
+        "greenPixels": 158674
       },
       "layerPixels": 0,
       "source": "greenscreen/raw/headbop.gif"
@@ -3241,12 +3241,12 @@
       "size": 128,
       "slot": {
         "x": 1,
-        "y": 12,
+        "y": 13,
         "w": 127,
-        "h": 109,
-        "greenPixels": 57082
+        "h": 108,
+        "greenPixels": 56970
       },
-      "layerPixels": 106758,
+      "layerPixels": 106870,
       "source": "greenscreen/raw/heart-locket.gif"
     },
     "heart-merge": {
@@ -3261,7 +3261,7 @@
         "y": 29,
         "w": 128,
         "h": 71,
-        "greenPixels": 110445
+        "greenPixels": 112687
       },
       "layerPixels": 0,
       "source": "greenscreen/raw/heart-merge.gif"
@@ -3278,7 +3278,7 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 159531
+        "greenPixels": 159654
       },
       "layerPixels": 0,
       "source": "greenscreen/raw/heartbeat.gif"
@@ -3312,7 +3312,7 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 162581
+        "greenPixels": 162214
       },
       "layerPixels": 0,
       "source": "greenscreen/raw/heat-haze.gif"
@@ -3329,7 +3329,7 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 252263
+        "greenPixels": 251236
       },
       "layerPixels": 0,
       "source": "greenscreen/raw/helicopter.gif"
@@ -3346,9 +3346,9 @@
         "y": 35,
         "w": 120,
         "h": 62,
-        "greenPixels": 43544
+        "greenPixels": 43437
       },
-      "layerPixels": 24273,
+      "layerPixels": 24367,
       "source": "greenscreen/raw/hellowo.gif"
     },
     "heyy": {
@@ -3363,9 +3363,9 @@
         "y": 11,
         "w": 121,
         "h": 69,
-        "greenPixels": 6880
+        "greenPixels": 6831
       },
-      "layerPixels": 6300,
+      "layerPixels": 6349,
       "source": "greenscreen/raw/heyy.png"
     },
     "heyyeyaa": {
@@ -3380,9 +3380,9 @@
         "y": 13,
         "w": 83,
         "h": 115,
-        "greenPixels": 6400
+        "greenPixels": 6379
       },
-      "layerPixels": 6697,
+      "layerPixels": 6720,
       "source": "greenscreen/raw/heyyeyaa.png"
     },
     "hologram": {
@@ -3414,9 +3414,9 @@
         "y": 15,
         "w": 100,
         "h": 97,
-        "greenPixels": 7444
+        "greenPixels": 7446
       },
-      "layerPixels": 7474,
+      "layerPixels": 7450,
       "source": "greenscreen/raw/hoodie.png"
     },
     "hop": {
@@ -3431,7 +3431,7 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 136184
+        "greenPixels": 136428
       },
       "layerPixels": 0,
       "source": "greenscreen/raw/hop.gif"
@@ -3448,9 +3448,9 @@
         "y": 0,
         "w": 101,
         "h": 99,
-        "greenPixels": 138778
+        "greenPixels": 138971
       },
-      "layerPixels": 254438,
+      "layerPixels": 254245,
       "source": "greenscreen/raw/hot-air-balloon.gif"
     },
     "hovering": {
@@ -3482,9 +3482,9 @@
         "y": 17,
         "w": 113,
         "h": 108,
-        "greenPixels": 6365
+        "greenPixels": 6304
       },
-      "layerPixels": 6379,
+      "layerPixels": 6440,
       "source": "greenscreen/raw/hugg.png"
     },
     "huh": {
@@ -3515,10 +3515,10 @@
         "x": 9,
         "y": 26,
         "w": 111,
-        "h": 73,
-        "greenPixels": 63279
+        "h": 74,
+        "greenPixels": 65231
       },
-      "layerPixels": 144317,
+      "layerPixels": 144359,
       "source": "greenscreen/raw/hydraulic-press.gif"
     },
     "hype": {
@@ -3533,9 +3533,9 @@
         "y": 6,
         "w": 117,
         "h": 122,
-        "greenPixels": 75222
+        "greenPixels": 75226
       },
-      "layerPixels": 44878,
+      "layerPixels": 44874,
       "source": "greenscreen/raw/hype.gif"
     },
     "hype-jam": {
@@ -3550,9 +3550,9 @@
         "y": 6,
         "w": 117,
         "h": 122,
-        "greenPixels": 73710
+        "greenPixels": 74202
       },
-      "layerPixels": 42944,
+      "layerPixels": 42962,
       "source": "greenscreen/raw/hype-jam.gif"
     },
     "hype-shake": {
@@ -3567,9 +3567,9 @@
         "y": 6,
         "w": 117,
         "h": 122,
-        "greenPixels": 73205
+        "greenPixels": 74405
       },
-      "layerPixels": 45880,
+      "layerPixels": 45622,
       "source": "greenscreen/raw/hype-shake.gif"
     },
     "hyperspace": {
@@ -3584,7 +3584,7 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 38408
+        "greenPixels": 41332
       },
       "layerPixels": 0,
       "source": "greenscreen/raw/hyperspace.gif"
@@ -3601,9 +3601,9 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 103344
+        "greenPixels": 102213
       },
-      "layerPixels": 60496,
+      "layerPixels": 61627,
       "source": "greenscreen/raw/hypnotize.gif"
     },
     "i-have-a-question": {
@@ -3614,13 +3614,13 @@
       "delayMs": 50,
       "size": 128,
       "slot": {
-        "x": 1,
+        "x": 0,
         "y": 15,
-        "w": 127,
-        "h": 92,
-        "greenPixels": 7662
+        "w": 128,
+        "h": 91,
+        "greenPixels": 7569
       },
-      "layerPixels": 2393,
+      "layerPixels": 2380,
       "source": "greenscreen/raw/i-have-a-question.png"
     },
     "i-love": {
@@ -3635,9 +3635,9 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 260915
+        "greenPixels": 263178
       },
-      "layerPixels": 102956,
+      "layerPixels": 102914,
       "source": "greenscreen/raw/i-love.gif"
     },
     "ice-cube": {
@@ -3652,9 +3652,9 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 14466
+        "greenPixels": 14031
       },
-      "layerPixels": 1918,
+      "layerPixels": 2353,
       "source": "greenscreen/raw/ice-cube.png"
     },
     "intensifies": {
@@ -3669,7 +3669,7 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 158848
+        "greenPixels": 159232
       },
       "layerPixels": 0,
       "source": "greenscreen/raw/intensifies.gif"
@@ -3686,9 +3686,9 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 141164
+        "greenPixels": 140563
       },
-      "layerPixels": 22676,
+      "layerPixels": 23277,
       "source": "greenscreen/raw/italian-hand.gif"
     },
     "jack-in-the-box": {
@@ -3699,13 +3699,13 @@
       "delayMs": 70,
       "size": 128,
       "slot": {
-        "x": 29,
+        "x": 27,
         "y": 0,
-        "w": 71,
+        "w": 75,
         "h": 128,
-        "greenPixels": 92063
+        "greenPixels": 93724
       },
-      "layerPixels": 62653,
+      "layerPixels": 62556,
       "source": "greenscreen/raw/jack-in-the-box.gif"
     },
     "jail": {
@@ -3720,9 +3720,9 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 133569
+        "greenPixels": 133010
       },
-      "layerPixels": 30271,
+      "layerPixels": 30830,
       "source": "greenscreen/raw/jail.gif"
     },
     "jail-time": {
@@ -3737,9 +3737,9 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 142707
+        "greenPixels": 142379
       },
-      "layerPixels": 37517,
+      "layerPixels": 37845,
       "source": "greenscreen/raw/jail-time.gif"
     },
     "jam": {
@@ -3754,7 +3754,7 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 155904
+        "greenPixels": 156160
       },
       "layerPixels": 0,
       "source": "greenscreen/raw/jam.gif"
@@ -3771,9 +3771,9 @@
         "y": 0,
         "w": 117,
         "h": 128,
-        "greenPixels": 45912
+        "greenPixels": 45890
       },
-      "layerPixels": 39463,
+      "layerPixels": 39485,
       "source": "greenscreen/raw/jammies.gif"
     },
     "jiggle": {
@@ -3788,7 +3788,7 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 161820
+        "greenPixels": 161587
       },
       "layerPixels": 0,
       "source": "greenscreen/raw/jiggle.gif"
@@ -3805,7 +3805,7 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 160687
+        "greenPixels": 162038
       },
       "layerPixels": 0,
       "source": "greenscreen/raw/jitter.gif"
@@ -3822,7 +3822,7 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 158334
+        "greenPixels": 159245
       },
       "layerPixels": 0,
       "source": "greenscreen/raw/jolt.gif"
@@ -3838,10 +3838,10 @@
         "x": 5,
         "y": 2,
         "w": 123,
-        "h": 97,
-        "greenPixels": 67736
+        "h": 98,
+        "greenPixels": 68835
       },
-      "layerPixels": 56315,
+      "layerPixels": 56373,
       "source": "greenscreen/raw/jumping-on-the-bed.gif"
     },
     "kablooey": {
@@ -3856,9 +3856,9 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 89980
+        "greenPixels": 89955
       },
-      "layerPixels": 16869,
+      "layerPixels": 16894,
       "source": "greenscreen/raw/kablooey.gif"
     },
     "kaiju-city": {
@@ -3870,12 +3870,12 @@
       "size": 128,
       "slot": {
         "x": 6,
-        "y": 1,
+        "y": 0,
         "w": 122,
-        "h": 122,
-        "greenPixels": 280372
+        "h": 124,
+        "greenPixels": 282433
       },
-      "layerPixels": 112844,
+      "layerPixels": 110783,
       "source": "greenscreen/raw/kaiju-city.gif"
     },
     "keanu-thanks": {
@@ -3892,7 +3892,7 @@
         "h": 128,
         "greenPixels": 163840
       },
-      "layerPixels": 546444,
+      "layerPixels": 547668,
       "source": "greenscreen/raw/keanu-thanks.gif"
     },
     "kek-jam": {
@@ -3926,7 +3926,7 @@
         "h": 128,
         "greenPixels": 163840
       },
-      "layerPixels": 327510,
+      "layerPixels": 327580,
       "source": "greenscreen/raw/kek-laugh.gif"
     },
     "kekw-laugh": {
@@ -3941,9 +3941,9 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 145884
+        "greenPixels": 146720
       },
-      "layerPixels": 12018,
+      "layerPixels": 12054,
       "source": "greenscreen/raw/kekw-laugh.gif"
     },
     "ken-burns": {
@@ -3958,7 +3958,7 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 160668
+        "greenPixels": 160917
       },
       "layerPixels": 0,
       "source": "greenscreen/raw/ken-burns.gif"
@@ -3975,9 +3975,9 @@
         "y": 23,
         "w": 95,
         "h": 96,
-        "greenPixels": 7807
+        "greenPixels": 7780
       },
-      "layerPixels": 6708,
+      "layerPixels": 6733,
       "source": "greenscreen/raw/labubu.png"
     },
     "laser-eyes": {
@@ -3992,9 +3992,9 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 142974
+        "greenPixels": 142854
       },
-      "layerPixels": 20866,
+      "layerPixels": 20986,
       "source": "greenscreen/raw/laser-eyes.gif"
     },
     "lean": {
@@ -4009,7 +4009,7 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 153436
+        "greenPixels": 155004
       },
       "layerPixels": 0,
       "source": "greenscreen/raw/lean.gif"
@@ -4026,7 +4026,7 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 134610
+        "greenPixels": 136054
       },
       "layerPixels": 0,
       "source": "greenscreen/raw/leap.gif"
@@ -4043,9 +4043,9 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 225976
+        "greenPixels": 226148
       },
-      "layerPixels": 25021,
+      "layerPixels": 24717,
       "source": "greenscreen/raw/leave.gif"
     },
     "leave-fast": {
@@ -4060,7 +4060,7 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 59295
+        "greenPixels": 59521
       },
       "layerPixels": 0,
       "source": "greenscreen/raw/leave-fast.gif"
@@ -4130,7 +4130,7 @@
         "h": 128,
         "greenPixels": 81920
       },
-      "layerPixels": 303674,
+      "layerPixels": 304270,
       "source": "greenscreen/raw/lets-gooo.gif"
     },
     "lick": {
@@ -4145,9 +4145,9 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 141170
+        "greenPixels": 141040
       },
-      "layerPixels": 22670,
+      "layerPixels": 22800,
       "source": "greenscreen/raw/lick.gif"
     },
     "lightning": {
@@ -4162,9 +4162,9 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 155498
+        "greenPixels": 155443
       },
-      "layerPixels": 8342,
+      "layerPixels": 8397,
       "source": "greenscreen/raw/lightning.gif"
     },
     "lightning-flash": {
@@ -4192,13 +4192,13 @@
       "delayMs": 50,
       "size": 128,
       "slot": {
-        "x": 7,
+        "x": 6,
         "y": 0,
-        "w": 121,
-        "h": 122,
-        "greenPixels": 459519
+        "w": 122,
+        "h": 123,
+        "greenPixels": 464796
       },
-      "layerPixels": 29911,
+      "layerPixels": 29644,
       "source": "greenscreen/raw/lightsaber.gif"
     },
     "lightspeed-jump": {
@@ -4209,13 +4209,13 @@
       "delayMs": 80,
       "size": 128,
       "slot": {
-        "x": 10,
+        "x": 11,
         "y": 0,
-        "w": 118,
+        "w": 117,
         "h": 128,
-        "greenPixels": 63737
+        "greenPixels": 64803
       },
-      "layerPixels": 231175,
+      "layerPixels": 230109,
       "source": "greenscreen/raw/lightspeed-jump.gif"
     },
     "loading": {
@@ -4230,9 +4230,9 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 126141
+        "greenPixels": 125728
       },
-      "layerPixels": 37699,
+      "layerPixels": 38112,
       "source": "greenscreen/raw/loading.gif"
     },
     "loading-eight": {
@@ -4244,10 +4244,10 @@
       "size": 128,
       "slot": {
         "x": 8,
-        "y": 10,
+        "y": 9,
         "w": 113,
-        "h": 109,
-        "greenPixels": 31550
+        "h": 111,
+        "greenPixels": 33808
       },
       "layerPixels": 0,
       "source": "greenscreen/raw/loading-eight.gif"
@@ -4261,10 +4261,10 @@
       "size": 128,
       "slot": {
         "x": 10,
-        "y": 13,
+        "y": 11,
         "w": 109,
-        "h": 103,
-        "greenPixels": 34234
+        "h": 107,
+        "greenPixels": 36428
       },
       "layerPixels": 0,
       "source": "greenscreen/raw/loading-five.gif"
@@ -4278,10 +4278,10 @@
       "size": 128,
       "slot": {
         "x": 10,
-        "y": 13,
+        "y": 11,
         "w": 109,
-        "h": 103,
-        "greenPixels": 41882
+        "h": 107,
+        "greenPixels": 45122
       },
       "layerPixels": 0,
       "source": "greenscreen/raw/loading-four.gif"
@@ -4298,7 +4298,7 @@
         "y": 9,
         "w": 113,
         "h": 111,
-        "greenPixels": 30962
+        "greenPixels": 34484
       },
       "layerPixels": 0,
       "source": "greenscreen/raw/loading-nine.gif"
@@ -4312,10 +4312,10 @@
       "size": 128,
       "slot": {
         "x": 8,
-        "y": 10,
+        "y": 9,
         "w": 113,
-        "h": 109,
-        "greenPixels": 32124
+        "h": 111,
+        "greenPixels": 34986
       },
       "layerPixels": 0,
       "source": "greenscreen/raw/loading-seven.gif"
@@ -4329,10 +4329,10 @@
       "size": 128,
       "slot": {
         "x": 9,
-        "y": 11,
+        "y": 10,
         "w": 111,
-        "h": 107,
-        "greenPixels": 36054
+        "h": 109,
+        "greenPixels": 39550
       },
       "layerPixels": 0,
       "source": "greenscreen/raw/loading-six.gif"
@@ -4349,9 +4349,9 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 145572
+        "greenPixels": 146548
       },
-      "layerPixels": 17098,
+      "layerPixels": 16908,
       "source": "greenscreen/raw/loading-think.gif"
     },
     "loading-three": {
@@ -4366,7 +4366,7 @@
         "y": 11,
         "w": 109,
         "h": 107,
-        "greenPixels": 49276
+        "greenPixels": 50700
       },
       "layerPixels": 0,
       "source": "greenscreen/raw/loading-three.gif"
@@ -4383,7 +4383,7 @@
         "y": 13,
         "w": 107,
         "h": 103,
-        "greenPixels": 37826
+        "greenPixels": 38362
       },
       "layerPixels": 0,
       "source": "greenscreen/raw/loading-two.gif"
@@ -4400,9 +4400,9 @@
         "y": 5,
         "w": 119,
         "h": 119,
-        "greenPixels": 6060
+        "greenPixels": 6030
       },
-      "layerPixels": 7075,
+      "layerPixels": 7105,
       "source": "greenscreen/raw/lolface.png"
     },
     "long": {
@@ -4434,9 +4434,9 @@
         "y": 0,
         "w": 67,
         "h": 128,
-        "greenPixels": 52081
+        "greenPixels": 53166
       },
-      "layerPixels": 78084,
+      "layerPixels": 78082,
       "source": "greenscreen/raw/lurk.gif"
     },
     "luvv": {
@@ -4451,9 +4451,9 @@
         "y": 17,
         "w": 109,
         "h": 111,
-        "greenPixels": 5732
+        "greenPixels": 5681
       },
-      "layerPixels": 6562,
+      "layerPixels": 6613,
       "source": "greenscreen/raw/luvv.png"
     },
     "madge-clap": {
@@ -4468,9 +4468,9 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 428221
+        "greenPixels": 428328
       },
-      "layerPixels": 150797,
+      "layerPixels": 150353,
       "source": "greenscreen/raw/madge-clap.gif"
     },
     "magnet": {
@@ -4485,7 +4485,7 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 70200
+        "greenPixels": 70278
       },
       "layerPixels": 0,
       "source": "greenscreen/raw/magnet.gif"
@@ -4502,9 +4502,9 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 158537
+        "greenPixels": 158330
       },
-      "layerPixels": 5303,
+      "layerPixels": 5510,
       "source": "greenscreen/raw/math.gif"
     },
     "matrix-rain": {
@@ -4536,9 +4536,9 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 127943
+        "greenPixels": 127739
       },
-      "layerPixels": 35897,
+      "layerPixels": 36101,
       "source": "greenscreen/raw/mc-fire.gif"
     },
     "medal-drop": {
@@ -4553,9 +4553,9 @@
         "y": 0,
         "w": 65,
         "h": 117,
-        "greenPixels": 75255
+        "greenPixels": 75357
       },
-      "layerPixels": 58712,
+      "layerPixels": 58901,
       "source": "greenscreen/raw/medal-drop.gif"
     },
     "mega-bounce": {
@@ -4570,7 +4570,7 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 117376
+        "greenPixels": 117632
       },
       "layerPixels": 0,
       "source": "greenscreen/raw/mega-bounce.gif"
@@ -4587,7 +4587,7 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 66560
+        "greenPixels": 67200
       },
       "layerPixels": 0,
       "source": "greenscreen/raw/melt.gif"
@@ -4655,9 +4655,9 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 360396
+        "greenPixels": 360395
       },
-      "layerPixels": 160162,
+      "layerPixels": 160156,
       "source": "greenscreen/raw/mhm.gif"
     },
     "mic-drop": {
@@ -4672,9 +4672,9 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 156801
+        "greenPixels": 157017
       },
-      "layerPixels": 6162,
+      "layerPixels": 6275,
       "source": "greenscreen/raw/mic-drop.gif"
     },
     "microwave-ding": {
@@ -4689,9 +4689,9 @@
         "y": 35,
         "w": 93,
         "h": 61,
-        "greenPixels": 79874
+        "greenPixels": 80352
       },
-      "layerPixels": 163582,
+      "layerPixels": 163224,
       "source": "greenscreen/raw/microwave-ding.gif"
     },
     "middle-fingers": {
@@ -4706,9 +4706,9 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 351327
+        "greenPixels": 349611
       },
-      "layerPixels": 74657,
+      "layerPixels": 76373,
       "source": "greenscreen/raw/middle-fingers.gif"
     },
     "mine-block": {
@@ -4723,9 +4723,9 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 185069
+        "greenPixels": 184530
       },
-      "layerPixels": 601363,
+      "layerPixels": 601902,
       "source": "greenscreen/raw/mine-block.gif"
     },
     "mirror-flip": {
@@ -4774,7 +4774,7 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 134905
+        "greenPixels": 142127
       },
       "layerPixels": 0,
       "source": "greenscreen/raw/mitosis.gif"
@@ -4791,9 +4791,9 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 160628
+        "greenPixels": 160051
       },
-      "layerPixels": 3212,
+      "layerPixels": 3789,
       "source": "greenscreen/raw/money-rain.gif"
     },
     "monka-christ": {
@@ -4808,9 +4808,9 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 237473
+        "greenPixels": 237832
       },
-      "layerPixels": 302095,
+      "layerPixels": 301613,
       "source": "greenscreen/raw/monka-christ.gif"
     },
     "monka-hmm": {
@@ -4825,9 +4825,9 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 482593
+        "greenPixels": 481532
       },
-      "layerPixels": 53202,
+      "layerPixels": 54395,
       "source": "greenscreen/raw/monka-hmm.gif"
     },
     "music": {
@@ -4842,9 +4842,9 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 153301
+        "greenPixels": 153144
       },
-      "layerPixels": 10539,
+      "layerPixels": 10696,
       "source": "greenscreen/raw/music.gif"
     },
     "mustache-glasses": {
@@ -4859,9 +4859,9 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 11662
+        "greenPixels": 11595
       },
-      "layerPixels": 4722,
+      "layerPixels": 4789,
       "source": "greenscreen/raw/mustache-glasses.png"
     },
     "naruto-run": {
@@ -4876,14 +4876,14 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 137823
+        "greenPixels": 139400
       },
-      "layerPixels": 7,
+      "layerPixels": 0,
       "source": "greenscreen/raw/naruto-run.gif"
     },
     "negative-blink": {
       "id": "negative-blink",
-      "kind": "layer",
+      "kind": "transform-slot",
       "frames": 10,
       "sourcePages": 10,
       "delayMs": 70,
@@ -4893,9 +4893,9 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 131072
+        "greenPixels": 163840
       },
-      "layerPixels": 32768,
+      "layerPixels": 0,
       "source": "greenscreen/raw/negative-blink.gif"
     },
     "nesting-doll": {
@@ -4910,7 +4910,7 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 733317
+        "greenPixels": 736790
       },
       "layerPixels": 0,
       "source": "greenscreen/raw/nesting-doll.gif"
@@ -4923,13 +4923,13 @@
       "delayMs": 50,
       "size": 128,
       "slot": {
-        "x": 6,
-        "y": 8,
-        "w": 121,
+        "x": 5,
+        "y": 7,
+        "w": 122,
         "h": 107,
-        "greenPixels": 7001
+        "greenPixels": 6954
       },
-      "layerPixels": 5536,
+      "layerPixels": 5448,
       "source": "greenscreen/raw/nise.png"
     },
     "no-no": {
@@ -4944,7 +4944,7 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 30522
+        "greenPixels": 30462
       },
       "layerPixels": 0,
       "source": "greenscreen/raw/no-no.gif"
@@ -4961,7 +4961,7 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 131462
+        "greenPixels": 133064
       },
       "layerPixels": 0,
       "source": "greenscreen/raw/nod.gif"
@@ -4978,7 +4978,7 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 138533
+        "greenPixels": 139760
       },
       "layerPixels": 0,
       "source": "greenscreen/raw/nodders.gif"
@@ -5012,9 +5012,9 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 185321
+        "greenPixels": 185329
       },
-      "layerPixels": 169913,
+      "layerPixels": 169856,
       "source": "greenscreen/raw/nopers.gif"
     },
     "not-stonks": {
@@ -5029,9 +5029,9 @@
         "y": 4,
         "w": 74,
         "h": 108,
-        "greenPixels": 5980
+        "greenPixels": 5961
       },
-      "layerPixels": 10404,
+      "layerPixels": 10423,
       "source": "greenscreen/raw/not-stonks.png"
     },
     "nowoted": {
@@ -5046,9 +5046,9 @@
         "y": 0,
         "w": 128,
         "h": 110,
-        "greenPixels": 372546
+        "greenPixels": 371725
       },
-      "layerPixels": 213556,
+      "layerPixels": 214377,
       "source": "greenscreen/raw/nowoted.gif"
     },
     "nyan": {
@@ -5063,7 +5063,7 @@
         "y": 9,
         "w": 128,
         "h": 111,
-        "greenPixels": 105079
+        "greenPixels": 105887
       },
       "layerPixels": 15065,
       "source": "greenscreen/raw/nyan.gif"
@@ -5080,9 +5080,9 @@
         "y": 23,
         "w": 126,
         "h": 74,
-        "greenPixels": 48815
+        "greenPixels": 48798
       },
-      "layerPixels": 53226,
+      "layerPixels": 53243,
       "source": "greenscreen/raw/nyan-cat.gif"
     },
     "old-man-yells": {
@@ -5148,9 +5148,9 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 117521
+        "greenPixels": 117374
       },
-      "layerPixels": 46319,
+      "layerPixels": 46466,
       "source": "greenscreen/raw/on-fire.gif"
     },
     "ono": {
@@ -5165,9 +5165,9 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 224892
+        "greenPixels": 225291
       },
-      "layerPixels": 242180,
+      "layerPixels": 241343,
       "source": "greenscreen/raw/ono.gif"
     },
     "orbit": {
@@ -5182,7 +5182,7 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 135052
+        "greenPixels": 136722
       },
       "layerPixels": 0,
       "source": "greenscreen/raw/orbit.gif"
@@ -5199,7 +5199,7 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 151260
+        "greenPixels": 152906
       },
       "layerPixels": 0,
       "source": "greenscreen/raw/orbit-drift.gif"
@@ -5216,7 +5216,7 @@
         "y": 11,
         "w": 107,
         "h": 107,
-        "greenPixels": 43484
+        "greenPixels": 49588
       },
       "layerPixels": 0,
       "source": "greenscreen/raw/orbit-eight.gif"
@@ -5233,7 +5233,7 @@
         "y": 16,
         "w": 97,
         "h": 97,
-        "greenPixels": 42320
+        "greenPixels": 43840
       },
       "layerPixels": 0,
       "source": "greenscreen/raw/orbit-five.gif"
@@ -5250,7 +5250,7 @@
         "y": 17,
         "w": 95,
         "h": 95,
-        "greenPixels": 43528
+        "greenPixels": 46212
       },
       "layerPixels": 0,
       "source": "greenscreen/raw/orbit-four.gif"
@@ -5267,7 +5267,7 @@
         "y": 10,
         "w": 109,
         "h": 109,
-        "greenPixels": 48908
+        "greenPixels": 55664
       },
       "layerPixels": 0,
       "source": "greenscreen/raw/orbit-nine.gif"
@@ -5284,7 +5284,7 @@
         "y": 13,
         "w": 103,
         "h": 103,
-        "greenPixels": 38406
+        "greenPixels": 43530
       },
       "layerPixels": 0,
       "source": "greenscreen/raw/orbit-seven.gif"
@@ -5301,7 +5301,7 @@
         "y": 15,
         "w": 99,
         "h": 99,
-        "greenPixels": 42320
+        "greenPixels": 44248
       },
       "layerPixels": 0,
       "source": "greenscreen/raw/orbit-six.gif"
@@ -5318,7 +5318,7 @@
         "y": 16,
         "w": 97,
         "h": 97,
-        "greenPixels": 46588
+        "greenPixels": 50000
       },
       "layerPixels": 0,
       "source": "greenscreen/raw/orbit-three.gif"
@@ -5352,9 +5352,9 @@
         "y": 50,
         "w": 105,
         "h": 69,
-        "greenPixels": 6176
+        "greenPixels": 6164
       },
-      "layerPixels": 7154,
+      "layerPixels": 7157,
       "source": "greenscreen/raw/oui-oui.png"
     },
     "owl-jam": {
@@ -5386,7 +5386,7 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 153728
+        "greenPixels": 154368
       },
       "layerPixels": 0,
       "source": "greenscreen/raw/pace.gif"
@@ -5401,9 +5401,9 @@
       "slot": {
         "x": 16,
         "y": 0,
-        "w": 97,
+        "w": 98,
         "h": 128,
-        "greenPixels": 80170
+        "greenPixels": 79321
       },
       "layerPixels": 0,
       "source": "greenscreen/raw/pag-bounce.gif"
@@ -5420,7 +5420,7 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 130050
+        "greenPixels": 130150
       },
       "layerPixels": 0,
       "source": "greenscreen/raw/pagman.gif"
@@ -5453,10 +5453,10 @@
         "x": 7,
         "y": 0,
         "w": 115,
-        "h": 115,
-        "greenPixels": 280974
+        "h": 116,
+        "greenPixels": 262021
       },
-      "layerPixels": 49728,
+      "layerPixels": 70048,
       "source": "greenscreen/raw/paparazzi.gif"
     },
     "parrot": {
@@ -5471,9 +5471,9 @@
         "y": 50,
         "w": 111,
         "h": 78,
-        "greenPixels": 27534
+        "greenPixels": 27400
       },
-      "layerPixels": 17468,
+      "layerPixels": 17602,
       "source": "greenscreen/raw/parrot.gif"
     },
     "parrot-hat": {
@@ -5488,9 +5488,9 @@
         "y": 0,
         "w": 123,
         "h": 126,
-        "greenPixels": 66669
+        "greenPixels": 67303
       },
-      "layerPixels": 26722,
+      "layerPixels": 27031,
       "source": "greenscreen/raw/parrot-hat.gif"
     },
     "parrot-hold": {
@@ -5505,9 +5505,9 @@
         "y": 48,
         "w": 108,
         "h": 80,
-        "greenPixels": 37252
+        "greenPixels": 39046
       },
-      "layerPixels": 19229,
+      "layerPixels": 18317,
       "source": "greenscreen/raw/parrot-hold.gif"
     },
     "party": {
@@ -5522,7 +5522,7 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 143857
+        "greenPixels": 144714
       },
       "layerPixels": 0,
       "source": "greenscreen/raw/party.gif"
@@ -5539,9 +5539,9 @@
         "y": 7,
         "w": 128,
         "h": 121,
-        "greenPixels": 84239
+        "greenPixels": 84174
       },
-      "layerPixels": 26620,
+      "layerPixels": 26933,
       "source": "greenscreen/raw/party-blob.gif"
     },
     "party-parrot": {
@@ -5556,9 +5556,9 @@
         "y": 7,
         "w": 128,
         "h": 121,
-        "greenPixels": 79798
+        "greenPixels": 79794
       },
-      "layerPixels": 13625,
+      "layerPixels": 13629,
       "source": "greenscreen/raw/party-parrot.gif"
     },
     "pastel-bloom": {
@@ -5571,11 +5571,11 @@
       "slot": {
         "x": 14,
         "y": 14,
-        "w": 101,
-        "h": 101,
-        "greenPixels": 106304
+        "w": 100,
+        "h": 100,
+        "greenPixels": 92359
       },
-      "layerPixels": 90304,
+      "layerPixels": 104249,
       "source": "greenscreen/raw/pastel-bloom.gif"
     },
     "pat": {
@@ -5590,9 +5590,9 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 164436
+        "greenPixels": 164209
       },
-      "layerPixels": 15788,
+      "layerPixels": 16015,
       "source": "greenscreen/raw/pat.gif"
     },
     "patrick-bateman": {
@@ -5624,9 +5624,9 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 446863
+        "greenPixels": 446790
       },
-      "layerPixels": 82628,
+      "layerPixels": 82655,
       "source": "greenscreen/raw/pause-champ.gif"
     },
     "peace-out": {
@@ -5641,9 +5641,9 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 102248
+        "greenPixels": 101332
       },
-      "layerPixels": 61592,
+      "layerPixels": 62508,
       "source": "greenscreen/raw/peace-out.gif"
     },
     "peek-corner": {
@@ -5654,11 +5654,11 @@
       "delayMs": 80,
       "size": 128,
       "slot": {
-        "x": 5,
-        "y": 5,
-        "w": 123,
-        "h": 123,
-        "greenPixels": 82060
+        "x": 3,
+        "y": 3,
+        "w": 125,
+        "h": 125,
+        "greenPixels": 83451
       },
       "layerPixels": 0,
       "source": "greenscreen/raw/peek-corner.gif"
@@ -5675,9 +5675,9 @@
         "y": 81,
         "w": 109,
         "h": 47,
-        "greenPixels": 4092
+        "greenPixels": 4073
       },
-      "layerPixels": 1293,
+      "layerPixels": 1312,
       "source": "greenscreen/raw/peeking.png"
     },
     "peepo": {
@@ -5692,9 +5692,9 @@
         "y": 42,
         "w": 120,
         "h": 75,
-        "greenPixels": 7264
+        "greenPixels": 7249
       },
-      "layerPixels": 2012,
+      "layerPixels": 2028,
       "source": "greenscreen/raw/peepo.png"
     },
     "peepo-bye": {
@@ -5709,9 +5709,9 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 451908
+        "greenPixels": 451458
       },
-      "layerPixels": 148308,
+      "layerPixels": 147793,
       "source": "greenscreen/raw/peepo-bye.gif"
     },
     "peepo-cheer": {
@@ -5726,9 +5726,9 @@
         "y": 16,
         "w": 128,
         "h": 112,
-        "greenPixels": 155064
+        "greenPixels": 154490
       },
-      "layerPixels": 108049,
+      "layerPixels": 108623,
       "source": "greenscreen/raw/peepo-cheer.gif"
     },
     "peepo-clap": {
@@ -5743,9 +5743,9 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 426817
+        "greenPixels": 427055
       },
-      "layerPixels": 190550,
+      "layerPixels": 191677,
       "source": "greenscreen/raw/peepo-clap.gif"
     },
     "peepo-dj": {
@@ -5757,12 +5757,12 @@
       "size": 128,
       "slot": {
         "x": 0,
-        "y": 20,
+        "y": 24,
         "w": 128,
-        "h": 108,
-        "greenPixels": 123948
+        "h": 104,
+        "greenPixels": 123475
       },
-      "layerPixels": 281281,
+      "layerPixels": 281212,
       "source": "greenscreen/raw/peepo-dj.gif"
     },
     "peepo-giggles": {
@@ -5777,9 +5777,9 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 333079
+        "greenPixels": 332153
       },
-      "layerPixels": 114735,
+      "layerPixels": 115357,
       "source": "greenscreen/raw/peepo-giggles.gif"
     },
     "peepo-love": {
@@ -5794,9 +5794,9 @@
         "y": 33,
         "w": 112,
         "h": 95,
-        "greenPixels": 6341
+        "greenPixels": 6261
       },
-      "layerPixels": 5471,
+      "layerPixels": 5551,
       "source": "greenscreen/raw/peepo-love.png"
     },
     "peepo-love-heart": {
@@ -5810,10 +5810,10 @@
         "x": 0,
         "y": 17,
         "w": 128,
-        "h": 98,
-        "greenPixels": 6465
+        "h": 97,
+        "greenPixels": 6439
       },
-      "layerPixels": 4812,
+      "layerPixels": 4772,
       "source": "greenscreen/raw/peepo-love-heart.png"
     },
     "peepo-poopoo": {
@@ -5828,9 +5828,9 @@
         "y": 27,
         "w": 101,
         "h": 101,
-        "greenPixels": 43098
+        "greenPixels": 42898
       },
-      "layerPixels": 80824,
+      "layerPixels": 81024,
       "source": "greenscreen/raw/peepo-poopoo.gif"
     },
     "peepo-riot": {
@@ -5845,9 +5845,9 @@
         "y": 51,
         "w": 128,
         "h": 77,
-        "greenPixels": 43976
+        "greenPixels": 43914
       },
-      "layerPixels": 19872,
+      "layerPixels": 19934,
       "source": "greenscreen/raw/peepo-riot.gif"
     },
     "peepo-run": {
@@ -5862,9 +5862,9 @@
         "y": 0,
         "w": 118,
         "h": 128,
-        "greenPixels": 42494
+        "greenPixels": 42292
       },
-      "layerPixels": 3885,
+      "layerPixels": 4087,
       "source": "greenscreen/raw/peepo-run.gif"
     },
     "peepo-shy": {
@@ -5879,9 +5879,9 @@
         "y": 26,
         "w": 126,
         "h": 102,
-        "greenPixels": 9030
+        "greenPixels": 8970
       },
-      "layerPixels": 2121,
+      "layerPixels": 2182,
       "source": "greenscreen/raw/peepo-shy.png"
     },
     "peepo-sit": {
@@ -5896,9 +5896,9 @@
         "y": 3,
         "w": 105,
         "h": 98,
-        "greenPixels": 6253
+        "greenPixels": 6241
       },
-      "layerPixels": 5633,
+      "layerPixels": 5643,
       "source": "greenscreen/raw/peepo-sit.png"
     },
     "peepo-sit-hey": {
@@ -5913,9 +5913,9 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 388230
+        "greenPixels": 387892
       },
-      "layerPixels": 188735,
+      "layerPixels": 189615,
       "source": "greenscreen/raw/peepo-sit-hey.gif"
     },
     "peepo-stop": {
@@ -5928,11 +5928,11 @@
       "slot": {
         "x": 0,
         "y": 40,
-        "w": 128,
+        "w": 127,
         "h": 87,
-        "greenPixels": 8240
+        "greenPixels": 8218
       },
-      "layerPixels": 6474,
+      "layerPixels": 6496,
       "source": "greenscreen/raw/peepo-stop.png"
     },
     "peepo-want": {
@@ -5947,9 +5947,9 @@
         "y": 41,
         "w": 123,
         "h": 87,
-        "greenPixels": 7996
+        "greenPixels": 7917
       },
-      "layerPixels": 1213,
+      "layerPixels": 1295,
       "source": "greenscreen/raw/peepo-want.png"
     },
     "pepe": {
@@ -5961,12 +5961,12 @@
       "size": 128,
       "slot": {
         "x": 0,
-        "y": 2,
-        "w": 127,
-        "h": 119,
-        "greenPixels": 11897
+        "y": 1,
+        "w": 126,
+        "h": 120,
+        "greenPixels": 11825
       },
-      "layerPixels": 2001,
+      "layerPixels": 2067,
       "source": "greenscreen/raw/pepe.png"
     },
     "pepe-binoculars": {
@@ -5981,9 +5981,9 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 384875
+        "greenPixels": 384272
       },
-      "layerPixels": 90560,
+      "layerPixels": 90419,
       "source": "greenscreen/raw/pepe-binoculars.gif"
     },
     "pepe-cheer": {
@@ -5998,9 +5998,9 @@
         "y": 15,
         "w": 128,
         "h": 107,
-        "greenPixels": 8398
+        "greenPixels": 8328
       },
-      "layerPixels": 3143,
+      "layerPixels": 3213,
       "source": "greenscreen/raw/pepe-cheer.png"
     },
     "pepe-clown": {
@@ -6014,10 +6014,10 @@
         "x": 0,
         "y": 6,
         "w": 128,
-        "h": 114,
-        "greenPixels": 8184
+        "h": 113,
+        "greenPixels": 8108
       },
-      "layerPixels": 5262,
+      "layerPixels": 5328,
       "source": "greenscreen/raw/pepe-clown.png"
     },
     "pepe-dab": {
@@ -6032,9 +6032,9 @@
         "y": 4,
         "w": 124,
         "h": 124,
-        "greenPixels": 9908
+        "greenPixels": 9844
       },
-      "layerPixels": 2971,
+      "layerPixels": 3035,
       "source": "greenscreen/raw/pepe-dab.png"
     },
     "pepe-flag": {
@@ -6049,9 +6049,9 @@
         "y": 0,
         "w": 128,
         "h": 121,
-        "greenPixels": 25582
+        "greenPixels": 25550
       },
-      "layerPixels": 22319,
+      "layerPixels": 22331,
       "source": "greenscreen/raw/pepe-flag.gif"
     },
     "pepe-meltdown": {
@@ -6066,9 +6066,9 @@
         "y": 17,
         "w": 127,
         "h": 110,
-        "greenPixels": 68645
+        "greenPixels": 68624
       },
-      "layerPixels": 26927,
+      "layerPixels": 26948,
       "source": "greenscreen/raw/pepe-meltdown.gif"
     },
     "pepe-nodders": {
@@ -6083,9 +6083,9 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 184682
+        "greenPixels": 184953
       },
-      "layerPixels": 159520,
+      "layerPixels": 158979,
       "source": "greenscreen/raw/pepe-nodders.gif"
     },
     "pepe-point": {
@@ -6100,9 +6100,9 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 313760
+        "greenPixels": 313808
       },
-      "layerPixels": 165131,
+      "layerPixels": 165801,
       "source": "greenscreen/raw/pepe-point.gif"
     },
     "pepe-s": {
@@ -6117,9 +6117,9 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 289514
+        "greenPixels": 291266
       },
-      "layerPixels": 107963,
+      "layerPixels": 107412,
       "source": "greenscreen/raw/pepe-s.gif"
     },
     "pepe-sweat": {
@@ -6134,9 +6134,9 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 272686
+        "greenPixels": 273966
       },
-      "layerPixels": 133204,
+      "layerPixels": 132688,
       "source": "greenscreen/raw/pepe-sweat.gif"
     },
     "pepega": {
@@ -6151,9 +6151,9 @@
         "y": 15,
         "w": 128,
         "h": 99,
-        "greenPixels": 8995
+        "greenPixels": 8999
       },
-      "layerPixels": 1,
+      "layerPixels": 0,
       "source": "greenscreen/raw/pepega.png"
     },
     "pepo-popcorn": {
@@ -6168,9 +6168,9 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 230825
+        "greenPixels": 230739
       },
-      "layerPixels": 71518,
+      "layerPixels": 71263,
       "source": "greenscreen/raw/pepo-popcorn.gif"
     },
     "perspective-conveyor": {
@@ -6181,11 +6181,11 @@
       "delayMs": 70,
       "size": 128,
       "slot": {
-        "x": 25,
-        "y": 24,
-        "w": 79,
-        "h": 104,
-        "greenPixels": 123018
+        "x": 24,
+        "y": 23,
+        "w": 81,
+        "h": 105,
+        "greenPixels": 127892
       },
       "layerPixels": 0,
       "source": "greenscreen/raw/perspective-conveyor.gif"
@@ -6202,9 +6202,9 @@
         "y": 22,
         "w": 103,
         "h": 106,
-        "greenPixels": 64710
+        "greenPixels": 64648
       },
-      "layerPixels": 65150,
+      "layerPixels": 65212,
       "source": "greenscreen/raw/pet.gif"
     },
     "phone-time": {
@@ -6219,9 +6219,9 @@
         "y": 17,
         "w": 79,
         "h": 95,
-        "greenPixels": 249828
+        "greenPixels": 247185
       },
-      "layerPixels": 440576,
+      "layerPixels": 443739,
       "source": "greenscreen/raw/phone-time.gif"
     },
     "photocopier": {
@@ -6233,12 +6233,12 @@
       "size": 128,
       "slot": {
         "x": 23,
-        "y": 28,
+        "y": 27,
         "w": 83,
-        "h": 100,
-        "greenPixels": 93229
+        "h": 101,
+        "greenPixels": 95211
       },
-      "layerPixels": 163964,
+      "layerPixels": 161982,
       "source": "greenscreen/raw/photocopier.gif"
     },
     "pika-stand": {
@@ -6253,9 +6253,9 @@
         "y": 20,
         "w": 120,
         "h": 103,
-        "greenPixels": 45481
+        "greenPixels": 45368
       },
-      "layerPixels": 15074,
+      "layerPixels": 15187,
       "source": "greenscreen/raw/pika-stand.gif"
     },
     "pikachu": {
@@ -6270,9 +6270,9 @@
         "y": 18,
         "w": 123,
         "h": 107,
-        "greenPixels": 181168
+        "greenPixels": 180942
       },
-      "layerPixels": 39815,
+      "layerPixels": 40041,
       "source": "greenscreen/raw/pikachu.gif"
     },
     "pixar-think": {
@@ -6287,9 +6287,9 @@
         "y": 0,
         "w": 128,
         "h": 127,
-        "greenPixels": 306734
+        "greenPixels": 302951
       },
-      "layerPixels": 397778,
+      "layerPixels": 401561,
       "source": "greenscreen/raw/pixar-think.gif"
     },
     "pixelate": {
@@ -6321,9 +6321,9 @@
         "y": 37,
         "w": 127,
         "h": 91,
-        "greenPixels": 71291
+        "greenPixels": 71240
       },
-      "layerPixels": 23722,
+      "layerPixels": 23773,
       "source": "greenscreen/raw/plotge.gif"
     },
     "pog-zoom": {
@@ -6355,9 +6355,9 @@
         "y": 0,
         "w": 126,
         "h": 128,
-        "greenPixels": 64514
+        "greenPixels": 64516
       },
-      "layerPixels": 266764,
+      "layerPixels": 267006,
       "source": "greenscreen/raw/pokeball-almost.gif"
     },
     "pokeball-capture": {
@@ -6372,9 +6372,9 @@
         "y": 0,
         "w": 126,
         "h": 128,
-        "greenPixels": 32258
+        "greenPixels": 32257
       },
-      "layerPixels": 253525,
+      "layerPixels": 253870,
       "source": "greenscreen/raw/pokeball-capture.gif"
     },
     "pokeball-emerge": {
@@ -6388,10 +6388,10 @@
         "x": 20,
         "y": 17,
         "w": 90,
-        "h": 91,
-        "greenPixels": 217094
+        "h": 92,
+        "greenPixels": 219215
       },
-      "layerPixels": 487296,
+      "layerPixels": 485405,
       "source": "greenscreen/raw/pokeball-emerge.gif"
     },
     "pokeball-go": {
@@ -6408,7 +6408,7 @@
         "h": 128,
         "greenPixels": 64514
       },
-      "layerPixels": 167913,
+      "layerPixels": 168042,
       "source": "greenscreen/raw/pokeball-go.gif"
     },
     "polar-bear": {
@@ -6423,9 +6423,9 @@
         "y": 10,
         "w": 81,
         "h": 82,
-        "greenPixels": 59777
+        "greenPixels": 59778
       },
-      "layerPixels": 56769,
+      "layerPixels": 56485,
       "source": "greenscreen/raw/polar-bear.gif"
     },
     "polaroid-develop": {
@@ -6439,10 +6439,10 @@
         "x": 22,
         "y": 18,
         "w": 85,
-        "h": 80,
-        "greenPixels": 93700
+        "h": 81,
+        "greenPixels": 94084
       },
-      "layerPixels": 185681,
+      "layerPixels": 185303,
       "source": "greenscreen/raw/polaroid-develop.gif"
     },
     "polish": {
@@ -6457,9 +6457,9 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 119416
+        "greenPixels": 119332
       },
-      "layerPixels": 44424,
+      "layerPixels": 44508,
       "source": "greenscreen/raw/polish.gif"
     },
     "ponder": {
@@ -6470,13 +6470,13 @@
       "delayMs": 200,
       "size": 128,
       "slot": {
-        "x": 21,
+        "x": 20,
         "y": 31,
-        "w": 87,
-        "h": 87,
-        "greenPixels": 78254
+        "w": 88,
+        "h": 89,
+        "greenPixels": 78042
       },
-      "layerPixels": 446034,
+      "layerPixels": 446246,
       "source": "greenscreen/raw/ponder.gif"
     },
     "pop": {
@@ -6508,7 +6508,7 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 97287
+        "greenPixels": 97414
       },
       "layerPixels": 0,
       "source": "greenscreen/raw/pop-through.gif"
@@ -6525,9 +6525,9 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 133264
+        "greenPixels": 134382
       },
-      "layerPixels": 28118,
+      "layerPixels": 28122,
       "source": "greenscreen/raw/popcorn-watch.gif"
     },
     "portal-peek": {
@@ -6542,9 +6542,9 @@
         "y": 3,
         "w": 123,
         "h": 123,
-        "greenPixels": 73353
+        "greenPixels": 72910
       },
-      "layerPixels": 3181,
+      "layerPixels": 3724,
       "source": "greenscreen/raw/portal-peek.gif"
     },
     "portal-warp": {
@@ -6559,7 +6559,7 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 101255
+        "greenPixels": 102298
       },
       "layerPixels": 0,
       "source": "greenscreen/raw/portal-warp.gif"
@@ -6593,7 +6593,7 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 136720
+        "greenPixels": 137058
       },
       "layerPixels": 0,
       "source": "greenscreen/raw/pounce.gif"
@@ -6606,11 +6606,11 @@
       "delayMs": 20,
       "size": 128,
       "slot": {
-        "x": 5,
+        "x": 3,
         "y": 47,
-        "w": 119,
+        "w": 123,
         "h": 52,
-        "greenPixels": 42760
+        "greenPixels": 45373
       },
       "layerPixels": 0,
       "source": "greenscreen/raw/pp-hopper.gif"
@@ -6627,7 +6627,7 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 147600
+        "greenPixels": 149178
       },
       "layerPixels": 0,
       "source": "greenscreen/raw/prance.gif"
@@ -6641,12 +6641,12 @@
       "size": 128,
       "slot": {
         "x": 0,
-        "y": 2,
-        "w": 127,
-        "h": 126,
-        "greenPixels": 12532
+        "y": 1,
+        "w": 126,
+        "h": 127,
+        "greenPixels": 12470
       },
-      "layerPixels": 1672,
+      "layerPixels": 1738,
       "source": "greenscreen/raw/prayge.png"
     },
     "prime-sub": {
@@ -6661,9 +6661,9 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 145754
+        "greenPixels": 145626
       },
-      "layerPixels": 17062,
+      "layerPixels": 17190,
       "source": "greenscreen/raw/prime-sub.gif"
     },
     "pulse": {
@@ -6695,9 +6695,9 @@
         "y": 20,
         "w": 92,
         "h": 92,
-        "greenPixels": 6926
+        "greenPixels": 6907
       },
-      "layerPixels": 7809,
+      "layerPixels": 7828,
       "source": "greenscreen/raw/pumpkin.png"
     },
     "pumpkin-cat": {
@@ -6710,11 +6710,11 @@
       "slot": {
         "x": 29,
         "y": 18,
-        "w": 59,
+        "w": 58,
         "h": 81,
-        "greenPixels": 20021
+        "greenPixels": 19972
       },
-      "layerPixels": 53423,
+      "layerPixels": 53472,
       "source": "greenscreen/raw/pumpkin-cat.gif"
     },
     "pumpkin-give": {
@@ -6726,12 +6726,12 @@
       "size": 128,
       "slot": {
         "x": 0,
-        "y": 2,
+        "y": 3,
         "w": 128,
-        "h": 126,
-        "greenPixels": 199870
+        "h": 125,
+        "greenPixels": 198670
       },
-      "layerPixels": 151318,
+      "layerPixels": 152518,
       "source": "greenscreen/raw/pumpkin-give.gif"
     },
     "pumpkin-surprise": {
@@ -6742,13 +6742,13 @@
       "delayMs": 50,
       "size": 128,
       "slot": {
-        "x": 17,
+        "x": 18,
         "y": 0,
-        "w": 96,
+        "w": 95,
         "h": 100,
-        "greenPixels": 5413
+        "greenPixels": 5389
       },
-      "layerPixels": 8743,
+      "layerPixels": 8767,
       "source": "greenscreen/raw/pumpkin-surprise.png"
     },
     "pumpkin-take": {
@@ -6760,12 +6760,12 @@
       "size": 128,
       "slot": {
         "x": 0,
-        "y": 2,
+        "y": 3,
         "w": 128,
-        "h": 126,
-        "greenPixels": 198974
+        "h": 125,
+        "greenPixels": 197785
       },
-      "layerPixels": 151256,
+      "layerPixels": 152445,
       "source": "greenscreen/raw/pumpkin-take.gif"
     },
     "pumpkin2": {
@@ -6797,14 +6797,14 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 95072
+        "greenPixels": 94954
       },
-      "layerPixels": 3232,
+      "layerPixels": 3350,
       "source": "greenscreen/raw/purple-stars.gif"
     },
     "pyramid": {
       "id": "pyramid",
-      "kind": "transform-slot",
+      "kind": "layer",
       "frames": 10,
       "sourcePages": 10,
       "delayMs": 100,
@@ -6814,9 +6814,9 @@
         "y": 19,
         "w": 99,
         "h": 109,
-        "greenPixels": 52674
+        "greenPixels": 52616
       },
-      "layerPixels": 15,
+      "layerPixels": 52,
       "source": "greenscreen/raw/pyramid.gif"
     },
     "quiver": {
@@ -6848,9 +6848,9 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 162917
+        "greenPixels": 163519
       },
-      "layerPixels": 22,
+      "layerPixels": 36,
       "source": "greenscreen/raw/radar-ping.gif"
     },
     "rain": {
@@ -6865,9 +6865,9 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 156263
+        "greenPixels": 156068
       },
-      "layerPixels": 7577,
+      "layerPixels": 7772,
       "source": "greenscreen/raw/rain.gif"
     },
     "rainbow-bloom": {
@@ -6882,9 +6882,9 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 139742
+        "greenPixels": 137897
       },
-      "layerPixels": 56866,
+      "layerPixels": 58711,
       "source": "greenscreen/raw/rainbow-bloom.gif"
     },
     "raincloud": {
@@ -6899,9 +6899,9 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 131528
+        "greenPixels": 131215
       },
-      "layerPixels": 32312,
+      "layerPixels": 32625,
       "source": "greenscreen/raw/raincloud.gif"
     },
     "raising-hand": {
@@ -6916,9 +6916,9 @@
         "y": 8,
         "w": 108,
         "h": 77,
-        "greenPixels": 5083
+        "greenPixels": 5075
       },
-      "layerPixels": 6085,
+      "layerPixels": 6093,
       "source": "greenscreen/raw/raising-hand.png"
     },
     "rare-ghost": {
@@ -6933,9 +6933,9 @@
         "y": 7,
         "w": 118,
         "h": 90,
-        "greenPixels": 31370
+        "greenPixels": 31339
       },
-      "layerPixels": 60857,
+      "layerPixels": 60888,
       "source": "greenscreen/raw/rare-ghost.gif"
     },
     "rave": {
@@ -6967,9 +6967,9 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 112172
+        "greenPixels": 110962
       },
-      "layerPixels": 51668,
+      "layerPixels": 52878,
       "source": "greenscreen/raw/rave-lights.gif"
     },
     "reading": {
@@ -6984,9 +6984,9 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 36656
+        "greenPixels": 36523
       },
-      "layerPixels": 12496,
+      "layerPixels": 12629,
       "source": "greenscreen/raw/reading.gif"
     },
     "recoil-pop": {
@@ -7001,7 +7001,7 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 143232
+        "greenPixels": 144000
       },
       "layerPixels": 0,
       "source": "greenscreen/raw/recoil-pop.gif"
@@ -7020,7 +7020,7 @@
         "h": 128,
         "greenPixels": 81920
       },
-      "layerPixels": 324012,
+      "layerPixels": 324948,
       "source": "greenscreen/raw/red-alert.gif"
     },
     "reveal": {
@@ -7035,9 +7035,9 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 231908
+        "greenPixels": 231340
       },
-      "layerPixels": 259612,
+      "layerPixels": 260180,
       "source": "greenscreen/raw/reveal.gif"
     },
     "riott": {
@@ -7048,13 +7048,13 @@
       "delayMs": 200,
       "size": 128,
       "slot": {
-        "x": 9,
+        "x": 10,
         "y": 30,
-        "w": 119,
+        "w": 118,
         "h": 60,
-        "greenPixels": 18168
+        "greenPixels": 18112
       },
-      "layerPixels": 25110,
+      "layerPixels": 25166,
       "source": "greenscreen/raw/riott.gif"
     },
     "ripple": {
@@ -7069,7 +7069,7 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 160793
+        "greenPixels": 160536
       },
       "layerPixels": 0,
       "source": "greenscreen/raw/ripple.gif"
@@ -7086,9 +7086,9 @@
         "y": 0,
         "w": 128,
         "h": 121,
-        "greenPixels": 131407
+        "greenPixels": 131122
       },
-      "layerPixels": 32433,
+      "layerPixels": 32718,
       "source": "greenscreen/raw/roast.gif"
     },
     "roll": {
@@ -7103,7 +7103,7 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 159532
+        "greenPixels": 159340
       },
       "layerPixels": 0,
       "source": "greenscreen/raw/roll.gif"
@@ -7122,7 +7122,7 @@
         "h": 128,
         "greenPixels": 163840
       },
-      "layerPixels": 406727,
+      "layerPixels": 408201,
       "source": "greenscreen/raw/roll-safe.gif"
     },
     "rotate-180": {
@@ -7137,7 +7137,7 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 147393
+        "greenPixels": 148972
       },
       "layerPixels": 0,
       "source": "greenscreen/raw/rotate-180.gif"
@@ -7154,7 +7154,7 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 145903
+        "greenPixels": 147711
       },
       "layerPixels": 0,
       "source": "greenscreen/raw/rotate-45.gif"
@@ -7171,7 +7171,7 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 147393
+        "greenPixels": 148972
       },
       "layerPixels": 0,
       "source": "greenscreen/raw/rotate-90.gif"
@@ -7188,7 +7188,7 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 117518
+        "greenPixels": 119374
       },
       "layerPixels": 0,
       "source": "greenscreen/raw/rubber.gif"
@@ -7205,7 +7205,7 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 155395
+        "greenPixels": 155648
       },
       "layerPixels": 0,
       "source": "greenscreen/raw/rubber-stamp.gif"
@@ -7222,9 +7222,9 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 528878
+        "greenPixels": 529004
       },
-      "layerPixels": 141631,
+      "layerPixels": 142148,
       "source": "greenscreen/raw/runn.gif"
     },
     "runway-landing": {
@@ -7239,9 +7239,9 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 118541
+        "greenPixels": 119818
       },
-      "layerPixels": 1487,
+      "layerPixels": 1469,
       "source": "greenscreen/raw/runway-landing.gif"
     },
     "runway-takeoff": {
@@ -7256,9 +7256,9 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 118541
+        "greenPixels": 119818
       },
-      "layerPixels": 1487,
+      "layerPixels": 1469,
       "source": "greenscreen/raw/runway-takeoff.gif"
     },
     "sad-blob": {
@@ -7273,7 +7273,7 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 410062
+        "greenPixels": 408419
       },
       "layerPixels": 0,
       "source": "greenscreen/raw/sad-blob.gif"
@@ -7290,9 +7290,9 @@
         "y": 29,
         "w": 126,
         "h": 81,
-        "greenPixels": 7620
+        "greenPixels": 7590
       },
-      "layerPixels": 2331,
+      "layerPixels": 2365,
       "source": "greenscreen/raw/sadge.png"
     },
     "saved": {
@@ -7307,9 +7307,9 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 390798
+        "greenPixels": 392425
       },
-      "layerPixels": 193539,
+      "layerPixels": 193034,
       "source": "greenscreen/raw/saved.gif"
     },
     "scanline": {
@@ -7358,7 +7358,7 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 157843
+        "greenPixels": 158732
       },
       "layerPixels": 0,
       "source": "greenscreen/raw/scared.gif"
@@ -7391,10 +7391,10 @@
         "x": 0,
         "y": 38,
         "w": 128,
-        "h": 59,
-        "greenPixels": 83684
+        "h": 60,
+        "greenPixels": 88731
       },
-      "layerPixels": 29682,
+      "layerPixels": 27508,
       "source": "greenscreen/raw/seesaw.gif"
     },
     "shake": {
@@ -7409,7 +7409,7 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 152803
+        "greenPixels": 153541
       },
       "layerPixels": 0,
       "source": "greenscreen/raw/shake.gif"
@@ -7426,7 +7426,7 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 129299
+        "greenPixels": 130037
       },
       "layerPixels": 23504,
       "source": "greenscreen/raw/shake-grab.gif"
@@ -7460,7 +7460,7 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 159477
+        "greenPixels": 160762
       },
       "layerPixels": 0,
       "source": "greenscreen/raw/shimmy.gif"
@@ -7494,9 +7494,9 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 135824
+        "greenPixels": 135690
       },
-      "layerPixels": 28016,
+      "layerPixels": 28150,
       "source": "greenscreen/raw/shoot.gif"
     },
     "shruge": {
@@ -7511,9 +7511,9 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 384532
+        "greenPixels": 385287
       },
-      "layerPixels": 75195,
+      "layerPixels": 73732,
       "source": "greenscreen/raw/shruge.gif"
     },
     "shudder": {
@@ -7528,7 +7528,7 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 162316
+        "greenPixels": 163103
       },
       "layerPixels": 0,
       "source": "greenscreen/raw/shudder.gif"
@@ -7545,9 +7545,9 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 132088
+        "greenPixels": 132000
       },
-      "layerPixels": 31752,
+      "layerPixels": 31840,
       "source": "greenscreen/raw/shy.gif"
     },
     "shy-peek": {
@@ -7562,7 +7562,7 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 123126
+        "greenPixels": 125044
       },
       "layerPixels": 0,
       "source": "greenscreen/raw/shy-peek.gif"
@@ -7581,7 +7581,7 @@
         "h": 128,
         "greenPixels": 163840
       },
-      "layerPixels": 439141,
+      "layerPixels": 440675,
       "source": "greenscreen/raw/side-eye-chloe.gif"
     },
     "side-eye-dog": {
@@ -7613,9 +7613,9 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 141246
+        "greenPixels": 142884
       },
-      "layerPixels": 14202,
+      "layerPixels": 14008,
       "source": "greenscreen/raw/side-eye-drama.gif"
     },
     "sideeye-slide": {
@@ -7630,7 +7630,7 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 145129
+        "greenPixels": 147411
       },
       "layerPixels": 0,
       "source": "greenscreen/raw/sideeye-slide.gif"
@@ -7647,9 +7647,9 @@
         "y": 0,
         "w": 128,
         "h": 121,
-        "greenPixels": 124729
+        "greenPixels": 124893
       },
-      "layerPixels": 25223,
+      "layerPixels": 25059,
       "source": "greenscreen/raw/sign.gif"
     },
     "sign-mad": {
@@ -7664,9 +7664,9 @@
         "y": 0,
         "w": 128,
         "h": 123,
-        "greenPixels": 127638
+        "greenPixels": 127654
       },
-      "layerPixels": 21870,
+      "layerPixels": 21854,
       "source": "greenscreen/raw/sign-mad.gif"
     },
     "sip-judgement": {
@@ -7681,9 +7681,9 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 147336
+        "greenPixels": 148972
       },
-      "layerPixels": 13932,
+      "layerPixels": 13568,
       "source": "greenscreen/raw/sip-judgement.gif"
     },
     "sir": {
@@ -7694,13 +7694,13 @@
       "delayMs": 50,
       "size": 128,
       "slot": {
-        "x": 13,
+        "x": 11,
         "y": 23,
-        "w": 105,
+        "w": 107,
         "h": 105,
-        "greenPixels": 9935
+        "greenPixels": 10120
       },
-      "layerPixels": 1590,
+      "layerPixels": 1607,
       "source": "greenscreen/raw/sir.png"
     },
     "sisyphus": {
@@ -7715,9 +7715,9 @@
         "y": 7,
         "w": 73,
         "h": 78,
-        "greenPixels": 4313
+        "greenPixels": 4309
       },
-      "layerPixels": 6334,
+      "layerPixels": 6338,
       "source": "greenscreen/raw/sisyphus.png"
     },
     "skeleton-dance": {
@@ -7732,9 +7732,9 @@
         "y": 7,
         "w": 70,
         "h": 44,
-        "greenPixels": 10530
+        "greenPixels": 10505
       },
-      "layerPixels": 34280,
+      "layerPixels": 34305,
       "source": "greenscreen/raw/skeleton-dance.gif"
     },
     "skibidi": {
@@ -7745,13 +7745,13 @@
       "delayMs": 150,
       "size": 128,
       "slot": {
-        "x": 16,
+        "x": 15,
         "y": 0,
-        "w": 97,
-        "h": 95,
-        "greenPixels": 53366
+        "w": 99,
+        "h": 96,
+        "greenPixels": 54370
       },
-      "layerPixels": 48313,
+      "layerPixels": 47443,
       "source": "greenscreen/raw/skibidi.gif"
     },
     "skid-stop": {
@@ -7766,7 +7766,7 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 145643
+        "greenPixels": 146680
       },
       "layerPixels": 0,
       "source": "greenscreen/raw/skid-stop.gif"
@@ -7780,10 +7780,10 @@
       "size": 128,
       "slot": {
         "x": 0,
-        "y": 40,
+        "y": 39,
         "w": 128,
-        "h": 86,
-        "greenPixels": 37917
+        "h": 87,
+        "greenPixels": 40354
       },
       "layerPixels": 0,
       "source": "greenscreen/raw/skipping-stone.gif"
@@ -7800,9 +7800,9 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 137629
+        "greenPixels": 137563
       },
-      "layerPixels": 26211,
+      "layerPixels": 26277,
       "source": "greenscreen/raw/slap.gif"
     },
     "slice": {
@@ -7834,7 +7834,7 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 98816
+        "greenPixels": 99072
       },
       "layerPixels": 0,
       "source": "greenscreen/raw/slide.gif"
@@ -7851,7 +7851,7 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 137600
+        "greenPixels": 137984
       },
       "layerPixels": 0,
       "source": "greenscreen/raw/slide-bounce.gif"
@@ -7868,7 +7868,7 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 117192
+        "greenPixels": 118688
       },
       "layerPixels": 0,
       "source": "greenscreen/raw/slide-spin.gif"
@@ -7885,9 +7885,9 @@
         "y": 6,
         "w": 128,
         "h": 122,
-        "greenPixels": 77162
+        "greenPixels": 77008
       },
-      "layerPixels": 24617,
+      "layerPixels": 24771,
       "source": "greenscreen/raw/slow-jam.gif"
     },
     "smadge": {
@@ -7902,9 +7902,9 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 398815
+        "greenPixels": 398746
       },
-      "layerPixels": 82364,
+      "layerPixels": 82113,
       "source": "greenscreen/raw/smadge.gif"
     },
     "smart": {
@@ -7936,9 +7936,9 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 266227
+        "greenPixels": 266946
       },
-      "layerPixels": 127701,
+      "layerPixels": 127154,
       "source": "greenscreen/raw/smoge.gif"
     },
     "snap": {
@@ -7953,7 +7953,7 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 158976
+        "greenPixels": 159232
       },
       "layerPixels": 0,
       "source": "greenscreen/raw/snap.gif"
@@ -7970,9 +7970,9 @@
         "y": 10,
         "w": 95,
         "h": 104,
-        "greenPixels": 222999
+        "greenPixels": 221260
       },
-      "layerPixels": 99624,
+      "layerPixels": 101363,
       "source": "greenscreen/raw/snorlax.gif"
     },
     "so-cute": {
@@ -7987,9 +7987,9 @@
         "y": 29,
         "w": 123,
         "h": 90,
-        "greenPixels": 61684
+        "greenPixels": 61216
       },
-      "layerPixels": 48745,
+      "layerPixels": 49065,
       "source": "greenscreen/raw/so-cute.gif"
     },
     "solarize-wave": {
@@ -8004,9 +8004,9 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 144988
+        "greenPixels": 144128
       },
-      "layerPixels": 18852,
+      "layerPixels": 19712,
       "source": "greenscreen/raw/solarize-wave.gif"
     },
     "sparkle": {
@@ -8021,9 +8021,9 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 162401
+        "greenPixels": 162303
       },
-      "layerPixels": 1439,
+      "layerPixels": 1537,
       "source": "greenscreen/raw/sparkle.gif"
     },
     "sparkle-color": {
@@ -8038,9 +8038,9 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 158846
+        "greenPixels": 158558
       },
-      "layerPixels": 4994,
+      "layerPixels": 5282,
       "source": "greenscreen/raw/sparkle-color.gif"
     },
     "sparkle-party": {
@@ -8055,9 +8055,9 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 156298
+        "greenPixels": 156052
       },
-      "layerPixels": 7542,
+      "layerPixels": 7788,
       "source": "greenscreen/raw/sparkle-party.gif"
     },
     "sparkle-rainbow": {
@@ -8072,9 +8072,9 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 157384
+        "greenPixels": 156978
       },
-      "layerPixels": 6456,
+      "layerPixels": 6862,
       "source": "greenscreen/raw/sparkle-rainbow.gif"
     },
     "speechless": {
@@ -8123,7 +8123,7 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 146104
+        "greenPixels": 147688
       },
       "layerPixels": 0,
       "source": "greenscreen/raw/spin.gif"
@@ -8137,10 +8137,10 @@
       "size": 128,
       "slot": {
         "x": 3,
-        "y": 2,
-        "w": 120,
-        "h": 121,
-        "greenPixels": 70235
+        "y": 1,
+        "w": 121,
+        "h": 122,
+        "greenPixels": 71432
       },
       "layerPixels": 0,
       "source": "greenscreen/raw/spiral-in.gif"
@@ -8157,7 +8157,7 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 160869
+        "greenPixels": 161134
       },
       "layerPixels": 0,
       "source": "greenscreen/raw/spiral-zoom.gif"
@@ -8171,10 +8171,10 @@
       "size": 128,
       "slot": {
         "x": 0,
-        "y": 13,
+        "y": 11,
         "w": 128,
-        "h": 108,
-        "greenPixels": 471513
+        "h": 110,
+        "greenPixels": 477950
       },
       "layerPixels": 0,
       "source": "greenscreen/raw/split.gif"
@@ -8189,11 +8189,11 @@
       "slot": {
         "x": 6,
         "y": 17,
-        "w": 117,
+        "w": 118,
         "h": 102,
-        "greenPixels": 314865
+        "greenPixels": 313590
       },
-      "layerPixels": 340495,
+      "layerPixels": 341770,
       "source": "greenscreen/raw/spongebob-watching-tv.gif"
     },
     "spongebob-worship": {
@@ -8204,13 +8204,13 @@
       "delayMs": 90,
       "size": 128,
       "slot": {
-        "x": 7,
+        "x": 5,
         "y": 0,
-        "w": 116,
+        "w": 118,
         "h": 98,
-        "greenPixels": 99939
+        "greenPixels": 99644
       },
-      "layerPixels": 63901,
+      "layerPixels": 64196,
       "source": "greenscreen/raw/spongebob-worship.gif"
     },
     "spotlight": {
@@ -8225,9 +8225,9 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 162712
+        "greenPixels": 160744
       },
-      "layerPixels": 1128,
+      "layerPixels": 3096,
       "source": "greenscreen/raw/spotlight.gif"
     },
     "squad": {
@@ -8242,7 +8242,7 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 67768
+        "greenPixels": 71849
       },
       "layerPixels": 0,
       "source": "greenscreen/raw/squad.gif"
@@ -8292,10 +8292,10 @@
         "x": 0,
         "y": 9,
         "w": 127,
-        "h": 101,
-        "greenPixels": 10609
+        "h": 102,
+        "greenPixels": 10565
       },
-      "layerPixels": 2167,
+      "layerPixels": 2260,
       "source": "greenscreen/raw/stare.png"
     },
     "startled-rat": {
@@ -8327,9 +8327,9 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 130097
+        "greenPixels": 129931
       },
-      "layerPixels": 33743,
+      "layerPixels": 33909,
       "source": "greenscreen/raw/steer.gif"
     },
     "stomp": {
@@ -8344,7 +8344,7 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 152576
+        "greenPixels": 153088
       },
       "layerPixels": 0,
       "source": "greenscreen/raw/stomp.gif"
@@ -8361,9 +8361,9 @@
         "y": 4,
         "w": 74,
         "h": 108,
-        "greenPixels": 5988
+        "greenPixels": 5973
       },
-      "layerPixels": 10396,
+      "layerPixels": 10411,
       "source": "greenscreen/raw/stonks.png"
     },
     "stretch": {
@@ -8394,10 +8394,10 @@
         "x": 13,
         "y": 25,
         "w": 94,
-        "h": 103,
-        "greenPixels": 45960
+        "h": 102,
+        "greenPixels": 45733
       },
-      "layerPixels": 28208,
+      "layerPixels": 28435,
       "source": "greenscreen/raw/stripp.gif"
     },
     "strobe-soft": {
@@ -8429,9 +8429,9 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 389135
+        "greenPixels": 388047
       },
-      "layerPixels": 244936,
+      "layerPixels": 246463,
       "source": "greenscreen/raw/sure.gif"
     },
     "surprised-clapping": {
@@ -8465,7 +8465,7 @@
         "h": 128,
         "greenPixels": 163840
       },
-      "layerPixels": 194790,
+      "layerPixels": 194588,
       "source": "greenscreen/raw/surprised-pikachu.gif"
     },
     "suspicion": {
@@ -8497,7 +8497,7 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 154362
+        "greenPixels": 155906
       },
       "layerPixels": 0,
       "source": "greenscreen/raw/sway.gif"
@@ -8514,7 +8514,7 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 149404
+        "greenPixels": 151004
       },
       "layerPixels": 0,
       "source": "greenscreen/raw/sweep.gif"
@@ -8548,7 +8548,7 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 462372
+        "greenPixels": 472001
       },
       "layerPixels": 0,
       "source": "greenscreen/raw/swirling.gif"
@@ -8565,9 +8565,9 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 121697
+        "greenPixels": 121646
       },
-      "layerPixels": 42143,
+      "layerPixels": 42194,
       "source": "greenscreen/raw/taking-notes.gif"
     },
     "technical-difficulties": {
@@ -8578,13 +8578,13 @@
       "delayMs": 70,
       "size": 128,
       "slot": {
-        "x": 2,
+        "x": 1,
         "y": 2,
-        "w": 125,
+        "w": 127,
         "h": 125,
-        "greenPixels": 218011
+        "greenPixels": 221704
       },
-      "layerPixels": 149308,
+      "layerPixels": 149348,
       "source": "greenscreen/raw/technical-difficulties.gif"
     },
     "teleport": {
@@ -8599,7 +8599,7 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 81288
+        "greenPixels": 81597
       },
       "layerPixels": 0,
       "source": "greenscreen/raw/teleport.gif"
@@ -8616,7 +8616,7 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 73676
+        "greenPixels": 73707
       },
       "layerPixels": 0,
       "source": "greenscreen/raw/thanos-snap.gif"
@@ -8633,7 +8633,7 @@
         "y": 13,
         "w": 103,
         "h": 103,
-        "greenPixels": 97644
+        "greenPixels": 98880
       },
       "layerPixels": 0,
       "source": "greenscreen/raw/thick-3d-flip.gif"
@@ -8650,9 +8650,9 @@
         "y": 30,
         "w": 104,
         "h": 76,
-        "greenPixels": 34070
+        "greenPixels": 34023
       },
-      "layerPixels": 58434,
+      "layerPixels": 58481,
       "source": "greenscreen/raw/thing-cat.gif"
     },
     "think": {
@@ -8667,9 +8667,9 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 145793
+        "greenPixels": 145723
       },
-      "layerPixels": 18047,
+      "layerPixels": 18117,
       "source": "greenscreen/raw/think.gif"
     },
     "this-is-fine": {
@@ -8686,7 +8686,7 @@
         "h": 128,
         "greenPixels": 163840
       },
-      "layerPixels": 158082,
+      "layerPixels": 157704,
       "source": "greenscreen/raw/this-is-fine.gif"
     },
     "tidal-wave": {
@@ -8701,9 +8701,9 @@
         "y": 0,
         "w": 128,
         "h": 94,
-        "greenPixels": 97241
+        "greenPixels": 97191
       },
-      "layerPixels": 66599,
+      "layerPixels": 66649,
       "source": "greenscreen/raw/tidal-wave.gif"
     },
     "tilt": {
@@ -8715,10 +8715,10 @@
       "size": 128,
       "slot": {
         "x": 0,
-        "y": 27,
+        "y": 26,
         "w": 128,
-        "h": 75,
-        "greenPixels": 47496
+        "h": 77,
+        "greenPixels": 49645
       },
       "layerPixels": 0,
       "source": "greenscreen/raw/tilt.gif"
@@ -8735,7 +8735,7 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 157238
+        "greenPixels": 158713
       },
       "layerPixels": 0,
       "source": "greenscreen/raw/tilt-nod.gif"
@@ -8769,9 +8769,9 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 148134
+        "greenPixels": 148606
       },
-      "layerPixels": 15194,
+      "layerPixels": 14978,
       "source": "greenscreen/raw/tinfoil-hat.gif"
     },
     "toaster-pop": {
@@ -8786,9 +8786,9 @@
         "y": 0,
         "w": 77,
         "h": 75,
-        "greenPixels": 57910
+        "greenPixels": 59005
       },
-      "layerPixels": 101049,
+      "layerPixels": 101179,
       "source": "greenscreen/raw/toaster-pop.gif"
     },
     "toilet-bounce": {
@@ -8803,9 +8803,9 @@
         "y": 0,
         "w": 85,
         "h": 128,
-        "greenPixels": 51592
+        "greenPixels": 52547
       },
-      "layerPixels": 49587,
+      "layerPixels": 48837,
       "source": "greenscreen/raw/toilet-bounce.gif"
     },
     "toilet-spin": {
@@ -8817,12 +8817,12 @@
       "size": 128,
       "slot": {
         "x": 25,
-        "y": 3,
+        "y": 5,
         "w": 79,
-        "h": 85,
-        "greenPixels": 34074
+        "h": 83,
+        "greenPixels": 33768
       },
-      "layerPixels": 66618,
+      "layerPixels": 66910,
       "source": "greenscreen/raw/toilet-spin.gif"
     },
     "tornado": {
@@ -8837,7 +8837,7 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 94206
+        "greenPixels": 95732
       },
       "layerPixels": 0,
       "source": "greenscreen/raw/tornado.gif"
@@ -8854,9 +8854,9 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 130126
+        "greenPixels": 131126
       },
-      "layerPixels": 33714,
+      "layerPixels": 32714,
       "source": "greenscreen/raw/touch-grass.gif"
     },
     "train-window": {
@@ -8871,9 +8871,9 @@
         "y": 19,
         "w": 128,
         "h": 89,
-        "greenPixels": 199624
+        "greenPixels": 199462
       },
-      "layerPixels": 193592,
+      "layerPixels": 193754,
       "source": "greenscreen/raw/train-window.gif"
     },
     "transmute-reality": {
@@ -8888,9 +8888,9 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 109792
+        "greenPixels": 115403
       },
-      "layerPixels": 20786,
+      "layerPixels": 16193,
       "source": "greenscreen/raw/transmute-reality.gif"
     },
     "trash": {
@@ -8905,9 +8905,9 @@
         "y": 23,
         "w": 120,
         "h": 35,
-        "greenPixels": 3426
+        "greenPixels": 3419
       },
-      "layerPixels": 10499,
+      "layerPixels": 10506,
       "source": "greenscreen/raw/trash.png"
     },
     "trash-pop": {
@@ -8918,13 +8918,13 @@
       "delayMs": 50,
       "size": 128,
       "slot": {
-        "x": 15,
+        "x": 14,
         "y": 0,
-        "w": 99,
+        "w": 101,
         "h": 67,
-        "greenPixels": 124220
+        "greenPixels": 126985
       },
-      "layerPixels": 247215,
+      "layerPixels": 245207,
       "source": "greenscreen/raw/trash-pop.gif"
     },
     "treasure-chest": {
@@ -8939,9 +8939,9 @@
         "y": 0,
         "w": 83,
         "h": 72,
-        "greenPixels": 38791
+        "greenPixels": 38807
       },
-      "layerPixels": 66584,
+      "layerPixels": 66591,
       "source": "greenscreen/raw/treasure-chest.gif"
     },
     "triggered": {
@@ -8956,7 +8956,7 @@
         "y": 0,
         "w": 128,
         "h": 86,
-        "greenPixels": 107652
+        "greenPixels": 108207
       },
       "layerPixels": 54144,
       "source": "greenscreen/raw/triggered.gif"
@@ -8973,9 +8973,9 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 130343
+        "greenPixels": 129501
       },
-      "layerPixels": 33497,
+      "layerPixels": 34339,
       "source": "greenscreen/raw/tsk.gif"
     },
     "tsunami": {
@@ -8990,7 +8990,7 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 57618
+        "greenPixels": 59327
       },
       "layerPixels": 0,
       "source": "greenscreen/raw/tsunami.gif"
@@ -9007,7 +9007,7 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 135248
+        "greenPixels": 137108
       },
       "layerPixels": 0,
       "source": "greenscreen/raw/tumble.gif"
@@ -9024,7 +9024,7 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 64907
+        "greenPixels": 67654
       },
       "layerPixels": 0,
       "source": "greenscreen/raw/twirl.gif"
@@ -9041,9 +9041,9 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 145323
+        "greenPixels": 145258
       },
-      "layerPixels": 18517,
+      "layerPixels": 18582,
       "source": "greenscreen/raw/typing.gif"
     },
     "typing2": {
@@ -9058,9 +9058,9 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 141897
+        "greenPixels": 141676
       },
-      "layerPixels": 21943,
+      "layerPixels": 22164,
       "source": "greenscreen/raw/typing2.gif"
     },
     "ufo-abduction": {
@@ -9072,12 +9072,12 @@
       "size": 128,
       "slot": {
         "x": 24,
-        "y": 0,
+        "y": 4,
         "w": 81,
-        "h": 128,
-        "greenPixels": 71362
+        "h": 124,
+        "greenPixels": 71797
       },
-      "layerPixels": 321854,
+      "layerPixels": 321419,
       "source": "greenscreen/raw/ufo-abduction.gif"
     },
     "underwater": {
@@ -9125,10 +9125,10 @@
         "x": 8,
         "y": 6,
         "w": 103,
-        "h": 109,
-        "greenPixels": 5312
+        "h": 110,
+        "greenPixels": 5465
       },
-      "layerPixels": 9200,
+      "layerPixels": 9048,
       "source": "greenscreen/raw/vampire-offers.png"
     },
     "vampire-takes": {
@@ -9139,13 +9139,13 @@
       "delayMs": 50,
       "size": 128,
       "slot": {
-        "x": 4,
-        "y": 45,
-        "w": 100,
-        "h": 70,
-        "greenPixels": 4697
+        "x": 3,
+        "y": 43,
+        "w": 101,
+        "h": 73,
+        "greenPixels": 5002
       },
-      "layerPixels": 8770,
+      "layerPixels": 8465,
       "source": "greenscreen/raw/vampire-takes.png"
     },
     "venom": {
@@ -9160,9 +9160,9 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 259009
+        "greenPixels": 258022
       },
-      "layerPixels": 429119,
+      "layerPixels": 430106,
       "source": "greenscreen/raw/venom.gif"
     },
     "vibee": {
@@ -9174,12 +9174,12 @@
       "size": 128,
       "slot": {
         "x": 0,
-        "y": 49,
+        "y": 51,
         "w": 128,
-        "h": 64,
-        "greenPixels": 129730
+        "h": 62,
+        "greenPixels": 128688
       },
-      "layerPixels": 115385,
+      "layerPixels": 116298,
       "source": "greenscreen/raw/vibee.gif"
     },
     "walk-in": {
@@ -9194,7 +9194,7 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 139030
+        "greenPixels": 140639
       },
       "layerPixels": 0,
       "source": "greenscreen/raw/walk-in.gif"
@@ -9211,7 +9211,7 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 143578
+        "greenPixels": 145818
       },
       "layerPixels": 0,
       "source": "greenscreen/raw/washing-machine.gif"
@@ -9228,7 +9228,7 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 154798
+        "greenPixels": 155141
       },
       "layerPixels": 0,
       "source": "greenscreen/raw/wave.gif"
@@ -9245,9 +9245,9 @@
         "y": 0,
         "w": 128,
         "h": 118,
-        "greenPixels": 109428
+        "greenPixels": 109234
       },
-      "layerPixels": 54412,
+      "layerPixels": 54606,
       "source": "greenscreen/raw/wave-ocean.gif"
     },
     "waving": {
@@ -9262,9 +9262,9 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 133430
+        "greenPixels": 133335
       },
-      "layerPixels": 30410,
+      "layerPixels": 30505,
       "source": "greenscreen/raw/waving.gif"
     },
     "wawa": {
@@ -9279,7 +9279,7 @@
         "y": 0,
         "w": 112,
         "h": 128,
-        "greenPixels": 172681
+        "greenPixels": 172571
       },
       "layerPixels": 0,
       "source": "greenscreen/raw/wawa.gif"
@@ -9296,7 +9296,7 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 157784
+        "greenPixels": 157254
       },
       "layerPixels": 0,
       "source": "greenscreen/raw/weird.gif"
@@ -9313,9 +9313,9 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 154319
+        "greenPixels": 156014
       },
-      "layerPixels": 561,
+      "layerPixels": 658,
       "source": "greenscreen/raw/wide-happy.gif"
     },
     "wiggle-shear": {
@@ -9330,7 +9330,7 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 158085
+        "greenPixels": 156852
       },
       "layerPixels": 0,
       "source": "greenscreen/raw/wiggle-shear.gif"
@@ -9347,9 +9347,9 @@
         "y": 7,
         "w": 115,
         "h": 115,
-        "greenPixels": 132245
+        "greenPixels": 132242
       },
-      "layerPixels": 22246,
+      "layerPixels": 22249,
       "source": "greenscreen/raw/wildfire.gif"
     },
     "will-presents": {
@@ -9364,9 +9364,9 @@
         "y": 9,
         "w": 107,
         "h": 111,
-        "greenPixels": 162837
+        "greenPixels": 155615
       },
-      "layerPixels": 361451,
+      "layerPixels": 368673,
       "source": "greenscreen/raw/will-presents.gif"
     },
     "will-slap": {
@@ -9381,9 +9381,9 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 108525
+        "greenPixels": 108383
       },
-      "layerPixels": 55315,
+      "layerPixels": 55457,
       "source": "greenscreen/raw/will-slap.gif"
     },
     "willem-dafoe": {
@@ -9398,9 +9398,9 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 295681
+        "greenPixels": 295670
       },
-      "layerPixels": 474367,
+      "layerPixels": 474378,
       "source": "greenscreen/raw/willem-dafoe.gif"
     },
     "wine": {
@@ -9415,9 +9415,9 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 139053
+        "greenPixels": 138852
       },
-      "layerPixels": 24787,
+      "layerPixels": 24988,
       "source": "greenscreen/raw/wine.gif"
     },
     "wipe": {
@@ -9449,7 +9449,7 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 158829
+        "greenPixels": 160237
       },
       "layerPixels": 0,
       "source": "greenscreen/raw/wobble.gif"
@@ -9466,7 +9466,7 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 149128
+        "greenPixels": 150656
       },
       "layerPixels": 0,
       "source": "greenscreen/raw/wobble-scale.gif"
@@ -9483,9 +9483,9 @@
         "y": 0,
         "w": 114,
         "h": 106,
-        "greenPixels": 6938
+        "greenPixels": 6923
       },
-      "layerPixels": 8225,
+      "layerPixels": 8240,
       "source": "greenscreen/raw/wokege.png"
     },
     "wolverine": {
@@ -9500,10 +9500,27 @@
         "y": 11,
         "w": 91,
         "h": 111,
-        "greenPixels": 154748
+        "greenPixels": 153141
       },
-      "layerPixels": 451460,
+      "layerPixels": 453067,
       "source": "greenscreen/raw/wolverine.gif"
+    },
+    "woodcut-portrait": {
+      "id": "woodcut-portrait",
+      "kind": "layer",
+      "frames": 1,
+      "sourcePages": 1,
+      "delayMs": 50,
+      "size": 128,
+      "slot": {
+        "x": 11,
+        "y": 11,
+        "w": 107,
+        "h": 107,
+        "greenPixels": 8846
+      },
+      "layerPixels": 5283,
+      "source": "greenscreen/raw/woodcut-portrait.png"
     },
     "wormhole": {
       "id": "wormhole",
@@ -9517,10 +9534,27 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 56622
+        "greenPixels": 58394
       },
       "layerPixels": 0,
       "source": "greenscreen/raw/wormhole.gif"
+    },
+    "xray-scan": {
+      "id": "xray-scan",
+      "kind": "layer",
+      "frames": 24,
+      "sourcePages": 24,
+      "delayMs": 70,
+      "size": 128,
+      "slot": {
+        "x": 5,
+        "y": 5,
+        "w": 119,
+        "h": 119,
+        "greenPixels": 157940
+      },
+      "layerPixels": 24043,
+      "source": "greenscreen/raw/xray-scan.gif"
     },
     "yes-yes": {
       "id": "yes-yes",
@@ -9534,7 +9568,7 @@
         "y": 0,
         "w": 128,
         "h": 128,
-        "greenPixels": 30524
+        "greenPixels": 30463
       },
       "layerPixels": 0,
       "source": "greenscreen/raw/yes-yes.gif"
@@ -9591,5 +9625,6 @@
       "source": "greenscreen/raw/zoom-in.gif"
     }
   },
-  "usableCount": 564
+  "usableCount": 566,
+  "source": "user Download All ZIP"
 }

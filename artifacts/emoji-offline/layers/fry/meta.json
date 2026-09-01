@@ -10,8 +10,8 @@
     "y": 0,
     "w": 128,
     "h": 128,
-    "greenPixels": 163844
+    "greenPixels": 163840
   },
-  "layerPixels": 167489,
+  "layerPixels": 167472,
   "source": "greenscreen/raw/fry.gif"
 }

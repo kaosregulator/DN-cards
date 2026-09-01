@@ -10,8 +10,8 @@
     "y": 0,
     "w": 128,
     "h": 128,
-    "greenPixels": 139742
+    "greenPixels": 137897
   },
-  "layerPixels": 56866,
+  "layerPixels": 58711,
   "source": "greenscreen/raw/rainbow-bloom.gif"
 }

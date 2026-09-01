@@ -10,8 +10,8 @@
     "y": 0,
     "w": 128,
     "h": 128,
-    "greenPixels": 162401
+    "greenPixels": 162303
   },
-  "layerPixels": 1439,
+  "layerPixels": 1537,
   "source": "greenscreen/raw/sparkle.gif"
 }

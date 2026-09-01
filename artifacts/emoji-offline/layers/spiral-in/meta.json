@@ -7,10 +7,10 @@
   "size": 128,
   "slot": {
     "x": 3,
-    "y": 2,
-    "w": 120,
-    "h": 121,
-    "greenPixels": 70235
+    "y": 1,
+    "w": 121,
+    "h": 122,
+    "greenPixels": 71432
   },
   "layerPixels": 0,
   "source": "greenscreen/raw/spiral-in.gif"

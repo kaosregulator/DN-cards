@@ -6,12 +6,12 @@
   "delayMs": 70,
   "size": 128,
   "slot": {
-    "x": 2,
+    "x": 1,
     "y": 2,
-    "w": 125,
+    "w": 127,
     "h": 125,
-    "greenPixels": 218011
+    "greenPixels": 221704
   },
-  "layerPixels": 149308,
+  "layerPixels": 149348,
   "source": "greenscreen/raw/technical-difficulties.gif"
 }

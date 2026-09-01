@@ -6,12 +6,12 @@
   "delayMs": 50,
   "size": 128,
   "slot": {
-    "x": 6,
-    "y": 8,
-    "w": 121,
+    "x": 5,
+    "y": 7,
+    "w": 122,
     "h": 107,
-    "greenPixels": 7001
+    "greenPixels": 6954
   },
-  "layerPixels": 5536,
+  "layerPixels": 5448,
   "source": "greenscreen/raw/nise.png"
 }

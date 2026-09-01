@@ -9,9 +9,9 @@
     "x": 5,
     "y": 2,
     "w": 123,
-    "h": 97,
-    "greenPixels": 67736
+    "h": 98,
+    "greenPixels": 68835
   },
-  "layerPixels": 56315,
+  "layerPixels": 56373,
   "source": "greenscreen/raw/jumping-on-the-bed.gif"
 }

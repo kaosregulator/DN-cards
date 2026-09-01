@@ -6,12 +6,12 @@
   "delayMs": 200,
   "size": 128,
   "slot": {
-    "x": 9,
+    "x": 10,
     "y": 30,
-    "w": 119,
+    "w": 118,
     "h": 60,
-    "greenPixels": 18168
+    "greenPixels": 18112
   },
-  "layerPixels": 25110,
+  "layerPixels": 25166,
   "source": "greenscreen/raw/riott.gif"
 }

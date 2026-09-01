@@ -10,8 +10,8 @@
     "y": 0,
     "w": 128,
     "h": 128,
-    "greenPixels": 313760
+    "greenPixels": 313808
   },
-  "layerPixels": 165131,
+  "layerPixels": 165801,
   "source": "greenscreen/raw/pepe-point.gif"
 }

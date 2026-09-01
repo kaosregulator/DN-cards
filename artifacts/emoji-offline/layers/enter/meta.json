@@ -7,11 +7,11 @@
   "size": 128,
   "slot": {
     "x": 0,
-    "y": 10,
+    "y": 4,
     "w": 128,
-    "h": 118,
-    "greenPixels": 92331
+    "h": 124,
+    "greenPixels": 91442
   },
-  "layerPixels": 137045,
+  "layerPixels": 137934,
   "source": "greenscreen/raw/enter.gif"
 }

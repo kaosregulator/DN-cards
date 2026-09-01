@@ -10,8 +10,8 @@
     "y": 0,
     "w": 128,
     "h": 128,
-    "greenPixels": 141170
+    "greenPixels": 141040
   },
-  "layerPixels": 22670,
+  "layerPixels": 22800,
   "source": "greenscreen/raw/lick.gif"
 }

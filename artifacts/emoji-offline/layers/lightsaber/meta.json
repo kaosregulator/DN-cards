@@ -6,12 +6,12 @@
   "delayMs": 50,
   "size": 128,
   "slot": {
-    "x": 7,
+    "x": 6,
     "y": 0,
-    "w": 121,
-    "h": 122,
-    "greenPixels": 459519
+    "w": 122,
+    "h": 123,
+    "greenPixels": 464796
   },
-  "layerPixels": 29911,
+  "layerPixels": 29644,
   "source": "greenscreen/raw/lightsaber.gif"
 }

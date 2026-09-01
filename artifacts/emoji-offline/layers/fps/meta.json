@@ -10,8 +10,8 @@
     "y": 0,
     "w": 128,
     "h": 128,
-    "greenPixels": 115750
+    "greenPixels": 115482
   },
-  "layerPixels": 48090,
+  "layerPixels": 48358,
   "source": "greenscreen/raw/fps.gif"
 }

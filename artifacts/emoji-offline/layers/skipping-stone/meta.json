@@ -7,10 +7,10 @@
   "size": 128,
   "slot": {
     "x": 0,
-    "y": 40,
+    "y": 39,
     "w": 128,
-    "h": 86,
-    "greenPixels": 37917
+    "h": 87,
+    "greenPixels": 40354
   },
   "layerPixels": 0,
   "source": "greenscreen/raw/skipping-stone.gif"

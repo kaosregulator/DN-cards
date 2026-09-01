@@ -10,8 +10,8 @@
     "y": 0,
     "w": 128,
     "h": 128,
-    "greenPixels": 120060
+    "greenPixels": 119992
   },
-  "layerPixels": 43012,
+  "layerPixels": 43592,
   "source": "greenscreen/raw/bongo-heart.gif"
 }

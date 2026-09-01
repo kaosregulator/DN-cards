@@ -9,9 +9,9 @@
     "x": 4,
     "y": 13,
     "w": 124,
-    "h": 103,
-    "greenPixels": 5535
+    "h": 105,
+    "greenPixels": 5523
   },
-  "layerPixels": 5218,
+  "layerPixels": 5257,
   "source": "greenscreen/raw/blob-help.png"
 }

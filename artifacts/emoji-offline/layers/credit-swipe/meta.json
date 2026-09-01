@@ -10,8 +10,8 @@
     "y": 0,
     "w": 128,
     "h": 128,
-    "greenPixels": 112976
+    "greenPixels": 112923
   },
-  "layerPixels": 50864,
+  "layerPixels": 50917,
   "source": "greenscreen/raw/credit-swipe.gif"
 }

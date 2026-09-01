@@ -7,11 +7,11 @@
   "size": 128,
   "slot": {
     "x": 0,
-    "y": 3,
+    "y": 2,
     "w": 128,
-    "h": 125,
-    "greenPixels": 86308
+    "h": 126,
+    "greenPixels": 145651
   },
-  "layerPixels": 60202,
+  "layerPixels": 2160,
   "source": "greenscreen/raw/drained.gif"
 }

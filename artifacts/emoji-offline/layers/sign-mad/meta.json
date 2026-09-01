@@ -10,8 +10,8 @@
     "y": 0,
     "w": 128,
     "h": 123,
-    "greenPixels": 127638
+    "greenPixels": 127654
   },
-  "layerPixels": 21870,
+  "layerPixels": 21854,
   "source": "greenscreen/raw/sign-mad.gif"
 }

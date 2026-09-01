@@ -10,8 +10,8 @@
     "y": 0,
     "w": 128,
     "h": 128,
-    "greenPixels": 9899
+    "greenPixels": 9873
   },
-  "layerPixels": 6485,
+  "layerPixels": 6511,
   "source": "greenscreen/raw/binoculars.png"
 }

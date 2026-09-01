@@ -10,8 +10,8 @@
     "y": 0,
     "w": 128,
     "h": 128,
-    "greenPixels": 231908
+    "greenPixels": 231340
   },
-  "layerPixels": 259612,
+  "layerPixels": 260180,
   "source": "greenscreen/raw/reveal.gif"
 }

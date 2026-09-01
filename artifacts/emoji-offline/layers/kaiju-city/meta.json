@@ -7,11 +7,11 @@
   "size": 128,
   "slot": {
     "x": 6,
-    "y": 1,
+    "y": 0,
     "w": 122,
-    "h": 122,
-    "greenPixels": 280372
+    "h": 124,
+    "greenPixels": 282433
   },
-  "layerPixels": 112844,
+  "layerPixels": 110783,
   "source": "greenscreen/raw/kaiju-city.gif"
 }

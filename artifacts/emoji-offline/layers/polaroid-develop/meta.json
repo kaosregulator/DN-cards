@@ -9,9 +9,9 @@
     "x": 22,
     "y": 18,
     "w": 85,
-    "h": 80,
-    "greenPixels": 93700
+    "h": 81,
+    "greenPixels": 94084
   },
-  "layerPixels": 185681,
+  "layerPixels": 185303,
   "source": "greenscreen/raw/polaroid-develop.gif"
 }

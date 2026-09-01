@@ -8,9 +8,9 @@
   "slot": {
     "x": 16,
     "y": 0,
-    "w": 97,
+    "w": 98,
     "h": 128,
-    "greenPixels": 80170
+    "greenPixels": 79321
   },
   "layerPixels": 0,
   "source": "greenscreen/raw/pag-bounce.gif"

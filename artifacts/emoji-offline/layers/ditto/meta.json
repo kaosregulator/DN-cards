@@ -6,12 +6,12 @@
   "delayMs": 120,
   "size": 128,
   "slot": {
-    "x": 19,
+    "x": 18,
     "y": 14,
-    "w": 91,
+    "w": 93,
     "h": 106,
-    "greenPixels": 145260
+    "greenPixels": 144770
   },
-  "layerPixels": 84565,
+  "layerPixels": 84434,
   "source": "greenscreen/raw/ditto.gif"
 }

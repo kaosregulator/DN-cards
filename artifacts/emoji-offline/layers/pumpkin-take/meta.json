@@ -7,11 +7,11 @@
   "size": 128,
   "slot": {
     "x": 0,
-    "y": 2,
+    "y": 3,
     "w": 128,
-    "h": 126,
-    "greenPixels": 198974
+    "h": 125,
+    "greenPixels": 197785
   },
-  "layerPixels": 151256,
+  "layerPixels": 152445,
   "source": "greenscreen/raw/pumpkin-take.gif"
 }

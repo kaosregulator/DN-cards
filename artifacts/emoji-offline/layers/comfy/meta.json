@@ -7,11 +7,11 @@
   "size": 128,
   "slot": {
     "x": 28,
-    "y": 6,
+    "y": 8,
     "w": 100,
-    "h": 108,
-    "greenPixels": 7628
+    "h": 106,
+    "greenPixels": 7589
   },
-  "layerPixels": 8569,
+  "layerPixels": 8603,
   "source": "greenscreen/raw/comfy.png"
 }

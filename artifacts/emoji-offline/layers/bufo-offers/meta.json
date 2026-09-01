@@ -8,10 +8,10 @@
   "slot": {
     "x": 8,
     "y": 6,
-    "w": 77,
-    "h": 109,
-    "greenPixels": 5313
+    "w": 78,
+    "h": 110,
+    "greenPixels": 5469
   },
-  "layerPixels": 7898,
+  "layerPixels": 7748,
   "source": "greenscreen/raw/bufo-offers.png"
 }

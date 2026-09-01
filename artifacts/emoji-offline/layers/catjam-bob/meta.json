@@ -10,8 +10,8 @@
     "y": 0,
     "w": 128,
     "h": 128,
-    "greenPixels": 154920
+    "greenPixels": 155260
   },
-  "layerPixels": 2043,
+  "layerPixels": 3204,
   "source": "greenscreen/raw/catjam-bob.gif"
 }

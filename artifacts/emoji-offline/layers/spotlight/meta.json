@@ -10,8 +10,8 @@
     "y": 0,
     "w": 128,
     "h": 128,
-    "greenPixels": 162712
+    "greenPixels": 160744
   },
-  "layerPixels": 1128,
+  "layerPixels": 3096,
   "source": "greenscreen/raw/spotlight.gif"
 }

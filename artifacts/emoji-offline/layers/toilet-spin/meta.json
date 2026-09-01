@@ -7,11 +7,11 @@
   "size": 128,
   "slot": {
     "x": 25,
-    "y": 3,
+    "y": 5,
     "w": 79,
-    "h": 85,
-    "greenPixels": 34074
+    "h": 83,
+    "greenPixels": 33768
   },
-  "layerPixels": 66618,
+  "layerPixels": 66910,
   "source": "greenscreen/raw/toilet-spin.gif"
 }

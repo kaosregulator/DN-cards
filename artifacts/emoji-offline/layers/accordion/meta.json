@@ -10,8 +10,8 @@
     "y": 0,
     "w": 128,
     "h": 128,
-    "greenPixels": 116740
+    "greenPixels": 116538
   },
-  "layerPixels": 47100,
+  "layerPixels": 47302,
   "source": "greenscreen/raw/accordion.gif"
 }

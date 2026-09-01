@@ -10,8 +10,8 @@
     "y": 0,
     "w": 128,
     "h": 128,
-    "greenPixels": 360396
+    "greenPixels": 360395
   },
-  "layerPixels": 160162,
+  "layerPixels": 160156,
   "source": "greenscreen/raw/mhm.gif"
 }

@@ -7,10 +7,10 @@
   "size": 128,
   "slot": {
     "x": 0,
-    "y": 13,
+    "y": 11,
     "w": 128,
-    "h": 108,
-    "greenPixels": 471513
+    "h": 110,
+    "greenPixels": 477950
   },
   "layerPixels": 0,
   "source": "greenscreen/raw/split.gif"

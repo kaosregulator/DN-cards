@@ -10,8 +10,8 @@
     "y": 0,
     "w": 128,
     "h": 128,
-    "greenPixels": 104252
+    "greenPixels": 104147
   },
-  "layerPixels": 59588,
+  "layerPixels": 59693,
   "source": "greenscreen/raw/googly-eyes.gif"
 }

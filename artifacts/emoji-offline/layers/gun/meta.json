@@ -10,8 +10,8 @@
     "y": 0,
     "w": 128,
     "h": 128,
-    "greenPixels": 129920
+    "greenPixels": 129810
   },
-  "layerPixels": 33920,
+  "layerPixels": 34030,
   "source": "greenscreen/raw/gun.gif"
 }
