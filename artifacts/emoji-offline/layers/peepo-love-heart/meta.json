@@ -1,0 +1,17 @@
+{
+  "id": "peepo-love-heart",
+  "kind": "layer",
+  "frames": 1,
+  "sourcePages": 1,
+  "delayMs": 50,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 17,
+    "w": 128,
+    "h": 98,
+    "greenPixels": 6465
+  },
+  "layerPixels": 4812,
+  "source": "greenscreen/raw/peepo-love-heart.png"
+}

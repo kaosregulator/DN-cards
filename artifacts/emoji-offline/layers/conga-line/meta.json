@@ -1,0 +1,17 @@
+{
+  "id": "conga-line",
+  "kind": "transform-slot",
+  "frames": 29,
+  "sourcePages": 29,
+  "delayMs": 20,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 128,
+    "greenPixels": 475136
+  },
+  "layerPixels": 0,
+  "source": "greenscreen/raw/conga-line.gif"
+}

@@ -1,0 +1,17 @@
+{
+  "id": "orbit-four",
+  "kind": "transform-slot",
+  "frames": 10,
+  "sourcePages": 10,
+  "delayMs": 70,
+  "size": 128,
+  "slot": {
+    "x": 17,
+    "y": 17,
+    "w": 95,
+    "h": 95,
+    "greenPixels": 43528
+  },
+  "layerPixels": 0,
+  "source": "greenscreen/raw/orbit-four.gif"
+}

@@ -1,0 +1,17 @@
+{
+  "id": "photocopier",
+  "kind": "layer",
+  "frames": 24,
+  "sourcePages": 24,
+  "delayMs": 70,
+  "size": 128,
+  "slot": {
+    "x": 23,
+    "y": 28,
+    "w": 83,
+    "h": 100,
+    "greenPixels": 93229
+  },
+  "layerPixels": 163964,
+  "source": "greenscreen/raw/photocopier.gif"
+}

@@ -1,0 +1,17 @@
+{
+  "id": "pp-hopper",
+  "kind": "transform-slot",
+  "frames": 39,
+  "sourcePages": 39,
+  "delayMs": 20,
+  "size": 128,
+  "slot": {
+    "x": 5,
+    "y": 47,
+    "w": 119,
+    "h": 52,
+    "greenPixels": 42760
+  },
+  "layerPixels": 0,
+  "source": "greenscreen/raw/pp-hopper.gif"
+}

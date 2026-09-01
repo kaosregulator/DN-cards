@@ -1,0 +1,17 @@
+{
+  "id": "ponder",
+  "kind": "layer",
+  "frames": 32,
+  "sourcePages": 32,
+  "delayMs": 200,
+  "size": 128,
+  "slot": {
+    "x": 21,
+    "y": 31,
+    "w": 87,
+    "h": 87,
+    "greenPixels": 78254
+  },
+  "layerPixels": 446034,
+  "source": "greenscreen/raw/ponder.gif"
+}

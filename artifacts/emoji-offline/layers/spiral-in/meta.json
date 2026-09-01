@@ -1,0 +1,17 @@
+{
+  "id": "spiral-in",
+  "kind": "transform-slot",
+  "frames": 10,
+  "sourcePages": 10,
+  "delayMs": 70,
+  "size": 128,
+  "slot": {
+    "x": 3,
+    "y": 2,
+    "w": 120,
+    "h": 121,
+    "greenPixels": 70235
+  },
+  "layerPixels": 0,
+  "source": "greenscreen/raw/spiral-in.gif"
+}

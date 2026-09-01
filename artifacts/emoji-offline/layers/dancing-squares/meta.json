@@ -1,0 +1,17 @@
+{
+  "id": "dancing-squares",
+  "kind": "transform-slot",
+  "frames": 40,
+  "sourcePages": 40,
+  "delayMs": 60,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 6,
+    "w": 124,
+    "h": 122,
+    "greenPixels": 207348
+  },
+  "layerPixels": 0,
+  "source": "greenscreen/raw/dancing-squares.gif"
+}

@@ -1,0 +1,17 @@
+{
+  "id": "mustache-glasses",
+  "kind": "layer",
+  "frames": 1,
+  "sourcePages": 1,
+  "delayMs": 50,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 128,
+    "greenPixels": 11662
+  },
+  "layerPixels": 4722,
+  "source": "greenscreen/raw/mustache-glasses.png"
+}

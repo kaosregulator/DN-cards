@@ -1,0 +1,17 @@
+{
+  "id": "bufo-offers",
+  "kind": "layer",
+  "frames": 1,
+  "sourcePages": 1,
+  "delayMs": 50,
+  "size": 128,
+  "slot": {
+    "x": 8,
+    "y": 6,
+    "w": 77,
+    "h": 109,
+    "greenPixels": 5313
+  },
+  "layerPixels": 7898,
+  "source": "greenscreen/raw/bufo-offers.png"
+}

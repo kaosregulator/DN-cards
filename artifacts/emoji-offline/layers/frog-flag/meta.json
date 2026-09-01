@@ -1,0 +1,17 @@
+{
+  "id": "frog-flag",
+  "kind": "layer",
+  "frames": 1,
+  "sourcePages": 1,
+  "delayMs": 50,
+  "size": 128,
+  "slot": {
+    "x": 9,
+    "y": 7,
+    "w": 105,
+    "h": 121,
+    "greenPixels": 4426
+  },
+  "layerPixels": 7994,
+  "source": "greenscreen/raw/frog-flag.png"
+}

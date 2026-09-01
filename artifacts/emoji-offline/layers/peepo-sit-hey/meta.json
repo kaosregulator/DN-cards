@@ -1,0 +1,17 @@
+{
+  "id": "peepo-sit-hey",
+  "kind": "layer",
+  "frames": 42,
+  "sourcePages": 42,
+  "delayMs": 50,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 128,
+    "greenPixels": 388230
+  },
+  "layerPixels": 188735,
+  "source": "greenscreen/raw/peepo-sit-hey.gif"
+}

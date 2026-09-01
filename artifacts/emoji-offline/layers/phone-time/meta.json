@@ -1,0 +1,17 @@
+{
+  "id": "phone-time",
+  "kind": "layer",
+  "frames": 43,
+  "sourcePages": 85,
+  "delayMs": 80,
+  "size": 128,
+  "slot": {
+    "x": 26,
+    "y": 17,
+    "w": 79,
+    "h": 95,
+    "greenPixels": 249828
+  },
+  "layerPixels": 440576,
+  "source": "greenscreen/raw/phone-time.gif"
+}

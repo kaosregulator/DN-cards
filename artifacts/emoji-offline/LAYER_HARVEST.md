@@ -36,6 +36,6 @@ Discord offline renderer **prefers layer packs** when present (`providers/offlin
 
 ## Status
 
-- Live catalog synced into `styles.json` / MakeEmoji manifest animation list.
-- Seed layer packs harvested and building (continues with the same commands).
-- Preview = final path uses the same layer compositor.
+- Usable Discord styles: **564** (green-screen layer packs).
+- Dropped silently (no clean chroma slot): 6.
+- Site label ~687; harvestable main-grid cards ~570.

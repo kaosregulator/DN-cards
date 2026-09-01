@@ -1,0 +1,17 @@
+{
+  "id": "peepo-riot",
+  "kind": "layer",
+  "frames": 8,
+  "sourcePages": 8,
+  "delayMs": 100,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 51,
+    "w": 128,
+    "h": 77,
+    "greenPixels": 43976
+  },
+  "layerPixels": 19872,
+  "source": "greenscreen/raw/peepo-riot.gif"
+}

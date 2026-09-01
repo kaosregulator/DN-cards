@@ -1,0 +1,17 @@
+{
+  "id": "riott",
+  "kind": "layer",
+  "frames": 4,
+  "sourcePages": 4,
+  "delayMs": 200,
+  "size": 128,
+  "slot": {
+    "x": 9,
+    "y": 30,
+    "w": 119,
+    "h": 60,
+    "greenPixels": 18168
+  },
+  "layerPixels": 25110,
+  "source": "greenscreen/raw/riott.gif"
+}

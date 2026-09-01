@@ -1,0 +1,17 @@
+{
+  "id": "pepe-clown",
+  "kind": "layer",
+  "frames": 1,
+  "sourcePages": 1,
+  "delayMs": 50,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 6,
+    "w": 128,
+    "h": 114,
+    "greenPixels": 8184
+  },
+  "layerPixels": 5262,
+  "source": "greenscreen/raw/pepe-clown.png"
+}

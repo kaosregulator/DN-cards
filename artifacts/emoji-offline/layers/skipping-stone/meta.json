@@ -1,0 +1,17 @@
+{
+  "id": "skipping-stone",
+  "kind": "transform-slot",
+  "frames": 24,
+  "sourcePages": 24,
+  "delayMs": 70,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 40,
+    "w": 128,
+    "h": 86,
+    "greenPixels": 37917
+  },
+  "layerPixels": 0,
+  "source": "greenscreen/raw/skipping-stone.gif"
+}

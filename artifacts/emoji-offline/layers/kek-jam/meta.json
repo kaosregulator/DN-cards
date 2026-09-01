@@ -1,0 +1,17 @@
+{
+  "id": "kek-jam",
+  "kind": "layer",
+  "frames": 40,
+  "sourcePages": 80,
+  "delayMs": 100,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 128,
+    "greenPixels": 81920
+  },
+  "layerPixels": 429684,
+  "source": "greenscreen/raw/kek-jam.gif"
+}

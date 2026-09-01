@@ -1,0 +1,17 @@
+{
+  "id": "ditto",
+  "kind": "layer",
+  "frames": 35,
+  "sourcePages": 69,
+  "delayMs": 120,
+  "size": 128,
+  "slot": {
+    "x": 19,
+    "y": 14,
+    "w": 91,
+    "h": 106,
+    "greenPixels": 145260
+  },
+  "layerPixels": 84565,
+  "source": "greenscreen/raw/ditto.gif"
+}

@@ -1,0 +1,17 @@
+{
+  "id": "skeleton-dance",
+  "kind": "layer",
+  "frames": 6,
+  "sourcePages": 6,
+  "delayMs": 100,
+  "size": 128,
+  "slot": {
+    "x": 37,
+    "y": 7,
+    "w": 70,
+    "h": 44,
+    "greenPixels": 10530
+  },
+  "layerPixels": 34280,
+  "source": "greenscreen/raw/skeleton-dance.gif"
+}

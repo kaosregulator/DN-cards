@@ -1,0 +1,17 @@
+{
+  "id": "orbit-eight",
+  "kind": "transform-slot",
+  "frames": 10,
+  "sourcePages": 10,
+  "delayMs": 70,
+  "size": 128,
+  "slot": {
+    "x": 11,
+    "y": 11,
+    "w": 107,
+    "h": 107,
+    "greenPixels": 43484
+  },
+  "layerPixels": 0,
+  "source": "greenscreen/raw/orbit-eight.gif"
+}

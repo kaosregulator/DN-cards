@@ -1,0 +1,17 @@
+{
+  "id": "thick-3d-flip",
+  "kind": "transform-slot",
+  "frames": 12,
+  "sourcePages": 12,
+  "delayMs": 50,
+  "size": 128,
+  "slot": {
+    "x": 13,
+    "y": 13,
+    "w": 103,
+    "h": 103,
+    "greenPixels": 97644
+  },
+  "layerPixels": 0,
+  "source": "greenscreen/raw/thick-3d-flip.gif"
+}

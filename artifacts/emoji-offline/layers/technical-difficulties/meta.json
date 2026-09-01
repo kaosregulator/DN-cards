@@ -1,0 +1,17 @@
+{
+  "id": "technical-difficulties",
+  "kind": "layer",
+  "frames": 24,
+  "sourcePages": 24,
+  "delayMs": 70,
+  "size": 128,
+  "slot": {
+    "x": 2,
+    "y": 2,
+    "w": 125,
+    "h": 125,
+    "greenPixels": 218011
+  },
+  "layerPixels": 149308,
+  "source": "greenscreen/raw/technical-difficulties.gif"
+}

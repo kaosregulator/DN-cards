@@ -1,0 +1,17 @@
+{
+  "id": "bubbles",
+  "kind": "layer",
+  "frames": 40,
+  "sourcePages": 40,
+  "delayMs": 50,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 128,
+    "greenPixels": 618085
+  },
+  "layerPixels": 37275,
+  "source": "greenscreen/raw/bubbles.gif"
+}

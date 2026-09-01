@@ -1,0 +1,17 @@
+{
+  "id": "elevator-reveal",
+  "kind": "layer",
+  "frames": 24,
+  "sourcePages": 24,
+  "delayMs": 70,
+  "size": 128,
+  "slot": {
+    "x": 9,
+    "y": 14,
+    "w": 111,
+    "h": 111,
+    "greenPixels": 226965
+  },
+  "layerPixels": 166251,
+  "source": "greenscreen/raw/elevator-reveal.gif"
+}

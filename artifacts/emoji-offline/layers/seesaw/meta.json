@@ -1,0 +1,17 @@
+{
+  "id": "seesaw",
+  "kind": "layer",
+  "frames": 24,
+  "sourcePages": 24,
+  "delayMs": 70,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 38,
+    "w": 128,
+    "h": 59,
+    "greenPixels": 83684
+  },
+  "layerPixels": 29682,
+  "source": "greenscreen/raw/seesaw.gif"
+}

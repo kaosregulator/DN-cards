@@ -1,0 +1,17 @@
+{
+  "id": "emoji-scream",
+  "kind": "layer",
+  "frames": 26,
+  "sourcePages": 52,
+  "delayMs": 100,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 128,
+    "greenPixels": 81920
+  },
+  "layerPixels": 147959,
+  "source": "greenscreen/raw/emoji-scream.gif"
+}

@@ -1,0 +1,17 @@
+{
+  "id": "vampire-offers",
+  "kind": "layer",
+  "frames": 1,
+  "sourcePages": 1,
+  "delayMs": 50,
+  "size": 128,
+  "slot": {
+    "x": 8,
+    "y": 6,
+    "w": 103,
+    "h": 109,
+    "greenPixels": 5312
+  },
+  "layerPixels": 9200,
+  "source": "greenscreen/raw/vampire-offers.png"
+}

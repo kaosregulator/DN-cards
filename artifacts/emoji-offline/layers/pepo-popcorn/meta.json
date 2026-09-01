@@ -1,0 +1,17 @@
+{
+  "id": "pepo-popcorn",
+  "kind": "layer",
+  "frames": 25,
+  "sourcePages": 50,
+  "delayMs": 100,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 128,
+    "greenPixels": 230825
+  },
+  "layerPixels": 71518,
+  "source": "greenscreen/raw/pepo-popcorn.gif"
+}

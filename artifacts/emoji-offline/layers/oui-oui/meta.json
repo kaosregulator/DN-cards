@@ -1,0 +1,17 @@
+{
+  "id": "oui-oui",
+  "kind": "layer",
+  "frames": 1,
+  "sourcePages": 1,
+  "delayMs": 50,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 50,
+    "w": 105,
+    "h": 69,
+    "greenPixels": 6176
+  },
+  "layerPixels": 7154,
+  "source": "greenscreen/raw/oui-oui.png"
+}

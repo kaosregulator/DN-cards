@@ -1,0 +1,17 @@
+{
+  "id": "hellowo",
+  "kind": "layer",
+  "frames": 8,
+  "sourcePages": 8,
+  "delayMs": 50,
+  "size": 128,
+  "slot": {
+    "x": 3,
+    "y": 35,
+    "w": 120,
+    "h": 62,
+    "greenPixels": 43544
+  },
+  "layerPixels": 24273,
+  "source": "greenscreen/raw/hellowo.gif"
+}

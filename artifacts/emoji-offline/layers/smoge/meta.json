@@ -1,0 +1,17 @@
+{
+  "id": "smoge",
+  "kind": "layer",
+  "frames": 39,
+  "sourcePages": 78,
+  "delayMs": 100,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 128,
+    "greenPixels": 266227
+  },
+  "layerPixels": 127701,
+  "source": "greenscreen/raw/smoge.gif"
+}

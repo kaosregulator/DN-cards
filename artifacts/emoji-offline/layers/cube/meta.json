@@ -1,0 +1,17 @@
+{
+  "id": "cube",
+  "kind": "transform-slot",
+  "frames": 10,
+  "sourcePages": 10,
+  "delayMs": 100,
+  "size": 128,
+  "slot": {
+    "x": 5,
+    "y": 3,
+    "w": 119,
+    "h": 125,
+    "greenPixels": 114100
+  },
+  "layerPixels": 0,
+  "source": "greenscreen/raw/cube.gif"
+}

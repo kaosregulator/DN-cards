@@ -1,0 +1,17 @@
+{
+  "id": "mitosis",
+  "kind": "transform-slot",
+  "frames": 10,
+  "sourcePages": 10,
+  "delayMs": 80,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 128,
+    "greenPixels": 134905
+  },
+  "layerPixels": 0,
+  "source": "greenscreen/raw/mitosis.gif"
+}

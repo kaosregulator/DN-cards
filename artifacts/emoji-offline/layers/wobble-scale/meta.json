@@ -1,0 +1,17 @@
+{
+  "id": "wobble-scale",
+  "kind": "transform-slot",
+  "frames": 10,
+  "sourcePages": 10,
+  "delayMs": 70,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 128,
+    "greenPixels": 149128
+  },
+  "layerPixels": 0,
+  "source": "greenscreen/raw/wobble-scale.gif"
+}

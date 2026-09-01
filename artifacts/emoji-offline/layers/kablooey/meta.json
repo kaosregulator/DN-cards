@@ -1,0 +1,17 @@
+{
+  "id": "kablooey",
+  "kind": "layer",
+  "frames": 10,
+  "sourcePages": 10,
+  "delayMs": 70,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 128,
+    "greenPixels": 89980
+  },
+  "layerPixels": 16869,
+  "source": "greenscreen/raw/kablooey.gif"
+}

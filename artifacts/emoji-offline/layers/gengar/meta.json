@@ -1,0 +1,17 @@
+{
+  "id": "gengar",
+  "kind": "layer",
+  "frames": 31,
+  "sourcePages": 61,
+  "delayMs": 200,
+  "size": 128,
+  "slot": {
+    "x": 7,
+    "y": 32,
+    "w": 114,
+    "h": 88,
+    "greenPixels": 118175
+  },
+  "layerPixels": 7915,
+  "source": "greenscreen/raw/gengar.gif"
+}

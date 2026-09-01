@@ -1,0 +1,17 @@
+{
+  "id": "burger",
+  "kind": "layer",
+  "frames": 1,
+  "sourcePages": 1,
+  "delayMs": 50,
+  "size": 128,
+  "slot": {
+    "x": 7,
+    "y": 44,
+    "w": 114,
+    "h": 57,
+    "greenPixels": 5763
+  },
+  "layerPixels": 6695,
+  "source": "greenscreen/raw/burger.png"
+}

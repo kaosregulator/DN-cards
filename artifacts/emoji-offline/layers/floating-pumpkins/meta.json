@@ -1,0 +1,17 @@
+{
+  "id": "floating-pumpkins",
+  "kind": "layer",
+  "frames": 27,
+  "sourcePages": 27,
+  "delayMs": 110,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 128,
+    "greenPixels": 382498
+  },
+  "layerPixels": 59870,
+  "source": "greenscreen/raw/floating-pumpkins.gif"
+}

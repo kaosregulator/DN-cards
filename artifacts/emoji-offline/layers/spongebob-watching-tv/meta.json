@@ -1,0 +1,17 @@
+{
+  "id": "spongebob-watching-tv",
+  "kind": "layer",
+  "frames": 40,
+  "sourcePages": 80,
+  "delayMs": 200,
+  "size": 128,
+  "slot": {
+    "x": 6,
+    "y": 17,
+    "w": 117,
+    "h": 102,
+    "greenPixels": 314865
+  },
+  "layerPixels": 340495,
+  "source": "greenscreen/raw/spongebob-watching-tv.gif"
+}

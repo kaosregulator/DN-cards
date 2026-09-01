@@ -1,0 +1,17 @@
+{
+  "id": "glorp",
+  "kind": "layer",
+  "frames": 1,
+  "sourcePages": 1,
+  "delayMs": 50,
+  "size": 128,
+  "slot": {
+    "x": 5,
+    "y": 7,
+    "w": 123,
+    "h": 121,
+    "greenPixels": 9918
+  },
+  "layerPixels": 1674,
+  "source": "greenscreen/raw/glorp.png"
+}

@@ -1,0 +1,17 @@
+{
+  "id": "nowoted",
+  "kind": "layer",
+  "frames": 42,
+  "sourcePages": 84,
+  "delayMs": 40,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 110,
+    "greenPixels": 372546
+  },
+  "layerPixels": 213556,
+  "source": "greenscreen/raw/nowoted.gif"
+}

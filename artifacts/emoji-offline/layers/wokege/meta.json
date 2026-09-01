@@ -1,0 +1,17 @@
+{
+  "id": "wokege",
+  "kind": "layer",
+  "frames": 1,
+  "sourcePages": 1,
+  "delayMs": 50,
+  "size": 128,
+  "slot": {
+    "x": 7,
+    "y": 0,
+    "w": 114,
+    "h": 106,
+    "greenPixels": 6938
+  },
+  "layerPixels": 8225,
+  "source": "greenscreen/raw/wokege.png"
+}

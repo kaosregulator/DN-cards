@@ -1,0 +1,17 @@
+{
+  "id": "train-window",
+  "kind": "layer",
+  "frames": 24,
+  "sourcePages": 24,
+  "delayMs": 70,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 19,
+    "w": 128,
+    "h": 89,
+    "greenPixels": 199624
+  },
+  "layerPixels": 193592,
+  "source": "greenscreen/raw/train-window.gif"
+}

@@ -1,0 +1,17 @@
+{
+  "id": "peepo-cheer",
+  "kind": "layer",
+  "frames": 30,
+  "sourcePages": 60,
+  "delayMs": 100,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 16,
+    "w": 128,
+    "h": 112,
+    "greenPixels": 155064
+  },
+  "layerPixels": 108049,
+  "source": "greenscreen/raw/peepo-cheer.gif"
+}

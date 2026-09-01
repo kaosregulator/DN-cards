@@ -1,0 +1,17 @@
+{
+  "id": "toaster-pop",
+  "kind": "layer",
+  "frames": 24,
+  "sourcePages": 24,
+  "delayMs": 70,
+  "size": 128,
+  "slot": {
+    "x": 26,
+    "y": 0,
+    "w": 77,
+    "h": 75,
+    "greenPixels": 57910
+  },
+  "layerPixels": 101049,
+  "source": "greenscreen/raw/toaster-pop.gif"
+}

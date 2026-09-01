@@ -1,0 +1,17 @@
+{
+  "id": "pumpkin-surprise",
+  "kind": "layer",
+  "frames": 1,
+  "sourcePages": 1,
+  "delayMs": 50,
+  "size": 128,
+  "slot": {
+    "x": 17,
+    "y": 0,
+    "w": 96,
+    "h": 100,
+    "greenPixels": 5413
+  },
+  "layerPixels": 8743,
+  "source": "greenscreen/raw/pumpkin-surprise.png"
+}

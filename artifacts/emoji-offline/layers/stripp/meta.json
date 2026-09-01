@@ -1,0 +1,17 @@
+{
+  "id": "stripp",
+  "kind": "layer",
+  "frames": 10,
+  "sourcePages": 10,
+  "delayMs": 100,
+  "size": 128,
+  "slot": {
+    "x": 13,
+    "y": 25,
+    "w": 94,
+    "h": 103,
+    "greenPixels": 45960
+  },
+  "layerPixels": 28208,
+  "source": "greenscreen/raw/stripp.gif"
+}

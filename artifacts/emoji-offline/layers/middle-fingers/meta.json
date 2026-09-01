@@ -1,0 +1,17 @@
+{
+  "id": "middle-fingers",
+  "kind": "layer",
+  "frames": 26,
+  "sourcePages": 51,
+  "delayMs": 200,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 128,
+    "greenPixels": 351327
+  },
+  "layerPixels": 74657,
+  "source": "greenscreen/raw/middle-fingers.gif"
+}

@@ -1,0 +1,17 @@
+{
+  "id": "peepo-bye",
+  "kind": "layer",
+  "frames": 46,
+  "sourcePages": 46,
+  "delayMs": 50,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 128,
+    "greenPixels": 451908
+  },
+  "layerPixels": 148308,
+  "source": "greenscreen/raw/peepo-bye.gif"
+}

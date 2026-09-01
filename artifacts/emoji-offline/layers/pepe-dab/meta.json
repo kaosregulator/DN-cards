@@ -1,0 +1,17 @@
+{
+  "id": "pepe-dab",
+  "kind": "layer",
+  "frames": 1,
+  "sourcePages": 1,
+  "delayMs": 50,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 4,
+    "w": 124,
+    "h": 124,
+    "greenPixels": 9908
+  },
+  "layerPixels": 2971,
+  "source": "greenscreen/raw/pepe-dab.png"
+}

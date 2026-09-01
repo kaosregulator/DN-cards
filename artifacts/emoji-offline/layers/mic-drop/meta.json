@@ -1,0 +1,17 @@
+{
+  "id": "mic-drop",
+  "kind": "layer",
+  "frames": 10,
+  "sourcePages": 10,
+  "delayMs": 80,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 128,
+    "greenPixels": 156801
+  },
+  "layerPixels": 6162,
+  "source": "greenscreen/raw/mic-drop.gif"
+}

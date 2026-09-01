@@ -1,0 +1,17 @@
+{
+  "id": "crown-drop",
+  "kind": "layer",
+  "frames": 24,
+  "sourcePages": 24,
+  "delayMs": 70,
+  "size": 128,
+  "slot": {
+    "x": 11,
+    "y": 21,
+    "w": 107,
+    "h": 106,
+    "greenPixels": 238909
+  },
+  "layerPixels": 42512,
+  "source": "greenscreen/raw/crown-drop.gif"
+}

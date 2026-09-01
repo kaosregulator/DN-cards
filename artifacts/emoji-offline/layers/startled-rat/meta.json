@@ -1,0 +1,17 @@
+{
+  "id": "startled-rat",
+  "kind": "layer",
+  "frames": 38,
+  "sourcePages": 38,
+  "delayMs": 50,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 128,
+    "greenPixels": 163840
+  },
+  "layerPixels": 458752,
+  "source": "greenscreen/raw/startled-rat.gif"
+}

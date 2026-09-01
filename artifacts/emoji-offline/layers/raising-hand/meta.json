@@ -1,0 +1,17 @@
+{
+  "id": "raising-hand",
+  "kind": "layer",
+  "frames": 1,
+  "sourcePages": 1,
+  "delayMs": 50,
+  "size": 128,
+  "slot": {
+    "x": 13,
+    "y": 8,
+    "w": 108,
+    "h": 77,
+    "greenPixels": 5083
+  },
+  "layerPixels": 6085,
+  "source": "greenscreen/raw/raising-hand.png"
+}

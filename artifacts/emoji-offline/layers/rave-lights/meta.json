@@ -1,0 +1,17 @@
+{
+  "id": "rave-lights",
+  "kind": "layer",
+  "frames": 10,
+  "sourcePages": 10,
+  "delayMs": 70,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 128,
+    "greenPixels": 112172
+  },
+  "layerPixels": 51668,
+  "source": "greenscreen/raw/rave-lights.gif"
+}

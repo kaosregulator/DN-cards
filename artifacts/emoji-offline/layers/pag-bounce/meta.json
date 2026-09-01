@@ -1,0 +1,17 @@
+{
+  "id": "pag-bounce",
+  "kind": "transform-slot",
+  "frames": 24,
+  "sourcePages": 24,
+  "delayMs": 20,
+  "size": 128,
+  "slot": {
+    "x": 16,
+    "y": 0,
+    "w": 97,
+    "h": 128,
+    "greenPixels": 80170
+  },
+  "layerPixels": 0,
+  "source": "greenscreen/raw/pag-bounce.gif"
+}

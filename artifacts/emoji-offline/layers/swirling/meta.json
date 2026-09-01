@@ -1,0 +1,17 @@
+{
+  "id": "swirling",
+  "kind": "transform-slot",
+  "frames": 39,
+  "sourcePages": 39,
+  "delayMs": 50,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 128,
+    "greenPixels": 462372
+  },
+  "layerPixels": 0,
+  "source": "greenscreen/raw/swirling.gif"
+}

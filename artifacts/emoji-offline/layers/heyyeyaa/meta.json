@@ -1,0 +1,17 @@
+{
+  "id": "heyyeyaa",
+  "kind": "layer",
+  "frames": 1,
+  "sourcePages": 1,
+  "delayMs": 50,
+  "size": 128,
+  "slot": {
+    "x": 17,
+    "y": 13,
+    "w": 83,
+    "h": 115,
+    "greenPixels": 6400
+  },
+  "layerPixels": 6697,
+  "source": "greenscreen/raw/heyyeyaa.png"
+}

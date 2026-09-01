@@ -1,0 +1,17 @@
+{
+  "id": "so-cute",
+  "kind": "layer",
+  "frames": 12,
+  "sourcePages": 12,
+  "delayMs": 20,
+  "size": 128,
+  "slot": {
+    "x": 5,
+    "y": 29,
+    "w": 123,
+    "h": 90,
+    "greenPixels": 61684
+  },
+  "layerPixels": 48745,
+  "source": "greenscreen/raw/so-cute.gif"
+}

@@ -1,0 +1,17 @@
+{
+  "id": "sisyphus",
+  "kind": "layer",
+  "frames": 1,
+  "sourcePages": 1,
+  "delayMs": 50,
+  "size": 128,
+  "slot": {
+    "x": 29,
+    "y": 7,
+    "w": 73,
+    "h": 78,
+    "greenPixels": 4313
+  },
+  "layerPixels": 6334,
+  "source": "greenscreen/raw/sisyphus.png"
+}

@@ -1,0 +1,17 @@
+{
+  "id": "hype",
+  "kind": "layer",
+  "frames": 10,
+  "sourcePages": 10,
+  "delayMs": 80,
+  "size": 128,
+  "slot": {
+    "x": 6,
+    "y": 6,
+    "w": 117,
+    "h": 122,
+    "greenPixels": 75222
+  },
+  "layerPixels": 44878,
+  "source": "greenscreen/raw/hype.gif"
+}

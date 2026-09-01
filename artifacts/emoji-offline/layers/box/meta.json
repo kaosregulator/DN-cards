@@ -1,0 +1,17 @@
+{
+  "id": "box",
+  "kind": "layer",
+  "frames": 10,
+  "sourcePages": 10,
+  "delayMs": 70,
+  "size": 128,
+  "slot": {
+    "x": 9,
+    "y": 1,
+    "w": 111,
+    "h": 119,
+    "greenPixels": 25966
+  },
+  "layerPixels": 98192,
+  "source": "greenscreen/raw/box.gif"
+}

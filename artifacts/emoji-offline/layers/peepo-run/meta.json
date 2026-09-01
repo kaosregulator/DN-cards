@@ -1,0 +1,17 @@
+{
+  "id": "peepo-run",
+  "kind": "layer",
+  "frames": 6,
+  "sourcePages": 6,
+  "delayMs": 50,
+  "size": 128,
+  "slot": {
+    "x": 5,
+    "y": 0,
+    "w": 118,
+    "h": 128,
+    "greenPixels": 42494
+  },
+  "layerPixels": 3885,
+  "source": "greenscreen/raw/peepo-run.gif"
+}

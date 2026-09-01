@@ -1,0 +1,17 @@
+{
+  "id": "loading-six",
+  "kind": "transform-slot",
+  "frames": 10,
+  "sourcePages": 10,
+  "delayMs": 70,
+  "size": 128,
+  "slot": {
+    "x": 9,
+    "y": 11,
+    "w": 111,
+    "h": 107,
+    "greenPixels": 36054
+  },
+  "layerPixels": 0,
+  "source": "greenscreen/raw/loading-six.gif"
+}

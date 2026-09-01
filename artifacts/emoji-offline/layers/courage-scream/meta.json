@@ -1,0 +1,17 @@
+{
+  "id": "courage-scream",
+  "kind": "layer",
+  "frames": 45,
+  "sourcePages": 265,
+  "delayMs": 200,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 128,
+    "greenPixels": 95632
+  },
+  "layerPixels": 641648,
+  "source": "greenscreen/raw/courage-scream.gif"
+}

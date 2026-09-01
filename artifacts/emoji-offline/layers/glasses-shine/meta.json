@@ -1,0 +1,17 @@
+{
+  "id": "glasses-shine",
+  "kind": "layer",
+  "frames": 10,
+  "sourcePages": 10,
+  "delayMs": 50,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 128,
+    "greenPixels": 134420
+  },
+  "layerPixels": 29420,
+  "source": "greenscreen/raw/glasses-shine.gif"
+}

@@ -1,0 +1,17 @@
+{
+  "id": "hugg",
+  "kind": "layer",
+  "frames": 1,
+  "sourcePages": 1,
+  "delayMs": 50,
+  "size": 128,
+  "slot": {
+    "x": 12,
+    "y": 17,
+    "w": 113,
+    "h": 108,
+    "greenPixels": 6365
+  },
+  "layerPixels": 6379,
+  "source": "greenscreen/raw/hugg.png"
+}

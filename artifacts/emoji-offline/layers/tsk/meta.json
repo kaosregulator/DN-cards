@@ -1,0 +1,17 @@
+{
+  "id": "tsk",
+  "kind": "layer",
+  "frames": 10,
+  "sourcePages": 10,
+  "delayMs": 50,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 128,
+    "greenPixels": 130343
+  },
+  "layerPixels": 33497,
+  "source": "greenscreen/raw/tsk.gif"
+}

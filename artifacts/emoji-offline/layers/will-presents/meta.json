@@ -1,0 +1,17 @@
+{
+  "id": "will-presents",
+  "kind": "layer",
+  "frames": 32,
+  "sourcePages": 32,
+  "delayMs": 200,
+  "size": 128,
+  "slot": {
+    "x": 21,
+    "y": 9,
+    "w": 107,
+    "h": 111,
+    "greenPixels": 162837
+  },
+  "layerPixels": 361451,
+  "source": "greenscreen/raw/will-presents.gif"
+}

@@ -1,0 +1,17 @@
+{
+  "id": "sparkle-party",
+  "kind": "layer",
+  "frames": 10,
+  "sourcePages": 10,
+  "delayMs": 50,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 128,
+    "greenPixels": 156298
+  },
+  "layerPixels": 7542,
+  "source": "greenscreen/raw/sparkle-party.gif"
+}

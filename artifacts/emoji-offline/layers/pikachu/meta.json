@@ -1,0 +1,17 @@
+{
+  "id": "pikachu",
+  "kind": "layer",
+  "frames": 28,
+  "sourcePages": 28,
+  "delayMs": 200,
+  "size": 128,
+  "slot": {
+    "x": 5,
+    "y": 18,
+    "w": 123,
+    "h": 107,
+    "greenPixels": 181168
+  },
+  "layerPixels": 39815,
+  "source": "greenscreen/raw/pikachu.gif"
+}

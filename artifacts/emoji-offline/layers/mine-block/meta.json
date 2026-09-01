@@ -1,0 +1,17 @@
+{
+  "id": "mine-block",
+  "kind": "layer",
+  "frames": 48,
+  "sourcePages": 191,
+  "delayMs": 200,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 128,
+    "greenPixels": 185069
+  },
+  "layerPixels": 601363,
+  "source": "greenscreen/raw/mine-block.gif"
+}

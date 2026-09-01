@@ -1,0 +1,17 @@
+{
+  "id": "hot-air-balloon",
+  "kind": "layer",
+  "frames": 24,
+  "sourcePages": 24,
+  "delayMs": 70,
+  "size": 128,
+  "slot": {
+    "x": 14,
+    "y": 0,
+    "w": 101,
+    "h": 99,
+    "greenPixels": 138778
+  },
+  "layerPixels": 254438,
+  "source": "greenscreen/raw/hot-air-balloon.gif"
+}

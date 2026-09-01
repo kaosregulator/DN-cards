@@ -1,0 +1,17 @@
+{
+  "id": "peepo-giggles",
+  "kind": "layer",
+  "frames": 35,
+  "sourcePages": 70,
+  "delayMs": 100,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 128,
+    "greenPixels": 333079
+  },
+  "layerPixels": 114735,
+  "source": "greenscreen/raw/peepo-giggles.gif"
+}

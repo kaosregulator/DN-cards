@@ -1,0 +1,17 @@
+{
+  "id": "hoodie",
+  "kind": "layer",
+  "frames": 1,
+  "sourcePages": 1,
+  "delayMs": 50,
+  "size": 128,
+  "slot": {
+    "x": 28,
+    "y": 15,
+    "w": 100,
+    "h": 97,
+    "greenPixels": 7444
+  },
+  "layerPixels": 7474,
+  "source": "greenscreen/raw/hoodie.png"
+}

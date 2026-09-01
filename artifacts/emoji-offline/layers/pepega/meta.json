@@ -1,0 +1,17 @@
+{
+  "id": "pepega",
+  "kind": "transform-slot",
+  "frames": 1,
+  "sourcePages": 1,
+  "delayMs": 50,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 15,
+    "w": 128,
+    "h": 99,
+    "greenPixels": 8995
+  },
+  "layerPixels": 1,
+  "source": "greenscreen/raw/pepega.png"
+}

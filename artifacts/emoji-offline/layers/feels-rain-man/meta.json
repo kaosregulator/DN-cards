@@ -1,0 +1,17 @@
+{
+  "id": "feels-rain-man",
+  "kind": "layer",
+  "frames": 15,
+  "sourcePages": 15,
+  "delayMs": 30,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 128,
+    "greenPixels": 74472
+  },
+  "layerPixels": 82037,
+  "source": "greenscreen/raw/feels-rain-man.gif"
+}

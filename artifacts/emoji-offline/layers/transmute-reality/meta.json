@@ -1,0 +1,17 @@
+{
+  "id": "transmute-reality",
+  "kind": "layer",
+  "frames": 17,
+  "sourcePages": 17,
+  "delayMs": 70,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 128,
+    "greenPixels": 109792
+  },
+  "layerPixels": 20786,
+  "source": "greenscreen/raw/transmute-reality.gif"
+}

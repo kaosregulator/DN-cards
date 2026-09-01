@@ -1,0 +1,17 @@
+{
+  "id": "teleport",
+  "kind": "transform-slot",
+  "frames": 10,
+  "sourcePages": 10,
+  "delayMs": 50,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 128,
+    "greenPixels": 81288
+  },
+  "layerPixels": 0,
+  "source": "greenscreen/raw/teleport.gif"
+}

@@ -1,0 +1,17 @@
+{
+  "id": "shruge",
+  "kind": "layer",
+  "frames": 35,
+  "sourcePages": 35,
+  "delayMs": 50,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 128,
+    "greenPixels": 384532
+  },
+  "layerPixels": 75195,
+  "source": "greenscreen/raw/shruge.gif"
+}

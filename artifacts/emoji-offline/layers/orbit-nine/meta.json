@@ -1,0 +1,17 @@
+{
+  "id": "orbit-nine",
+  "kind": "transform-slot",
+  "frames": 10,
+  "sourcePages": 10,
+  "delayMs": 70,
+  "size": 128,
+  "slot": {
+    "x": 10,
+    "y": 10,
+    "w": 109,
+    "h": 109,
+    "greenPixels": 48908
+  },
+  "layerPixels": 0,
+  "source": "greenscreen/raw/orbit-nine.gif"
+}

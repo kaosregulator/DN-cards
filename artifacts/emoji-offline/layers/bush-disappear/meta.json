@@ -1,0 +1,17 @@
+{
+  "id": "bush-disappear",
+  "kind": "layer",
+  "frames": 30,
+  "sourcePages": 59,
+  "delayMs": 200,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 128,
+    "greenPixels": 452429
+  },
+  "layerPixels": 39091,
+  "source": "greenscreen/raw/bush-disappear.gif"
+}

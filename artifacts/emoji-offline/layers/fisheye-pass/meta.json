@@ -1,0 +1,17 @@
+{
+  "id": "fisheye-pass",
+  "kind": "layer",
+  "frames": 24,
+  "sourcePages": 24,
+  "delayMs": 70,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 128,
+    "greenPixels": 387870
+  },
+  "layerPixels": 5346,
+  "source": "greenscreen/raw/fisheye-pass.gif"
+}

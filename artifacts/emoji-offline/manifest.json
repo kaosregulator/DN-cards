@@ -1,20 +1,12 @@
 {
   "source": "makeemoji.com",
-  "discoveredAt": "2026-09-01T16:19:10.335Z",
-  "styleCount": 563,
-  "implementedStyleCount": 171,
-  "version": "2.1.0",
-  "offlineReady": false,
-  "primaryProvider": "makeemoji-browser",
-  "notes": "Live MakeEmoji grid 563 styles (site label ~687). Green-screen layer packs: 66. Offline-ready 171. Settings are not styles.",
-  "browser": {
-    "readySelector": "input[type=file]",
-    "fileInputSelector": "input[type=file]",
-    "generateSelector": null,
-    "resultSelector": "img[alt*=\"generated\" i]",
-    "downloadSelector": null,
-    "dismissSelectors": []
-  },
+  "discoveredAt": "2026-09-01T16:23:19.176Z",
+  "styleCount": 564,
+  "implementedStyleCount": 564,
+  "version": "3.0.0",
+  "offlineReady": true,
+  "primaryProvider": "offline",
+  "notes": "564 MakeEmoji styles via green-screen layer packs (site download → chroma → stamp user).",
   "siteUrl": "https://makeemoji.com/",
   "api": null
 }

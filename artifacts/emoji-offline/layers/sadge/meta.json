@@ -1,0 +1,17 @@
+{
+  "id": "sadge",
+  "kind": "layer",
+  "frames": 1,
+  "sourcePages": 1,
+  "delayMs": 50,
+  "size": 128,
+  "slot": {
+    "x": 2,
+    "y": 29,
+    "w": 126,
+    "h": 81,
+    "greenPixels": 7620
+  },
+  "layerPixels": 2331,
+  "source": "greenscreen/raw/sadge.png"
+}

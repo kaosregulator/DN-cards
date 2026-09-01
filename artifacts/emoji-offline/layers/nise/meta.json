@@ -1,0 +1,17 @@
+{
+  "id": "nise",
+  "kind": "layer",
+  "frames": 1,
+  "sourcePages": 1,
+  "delayMs": 50,
+  "size": 128,
+  "slot": {
+    "x": 6,
+    "y": 8,
+    "w": 121,
+    "h": 107,
+    "greenPixels": 7001
+  },
+  "layerPixels": 5536,
+  "source": "greenscreen/raw/nise.png"
+}

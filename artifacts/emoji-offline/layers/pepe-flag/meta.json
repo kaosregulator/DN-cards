@@ -1,0 +1,17 @@
+{
+  "id": "pepe-flag",
+  "kind": "layer",
+  "frames": 4,
+  "sourcePages": 4,
+  "delayMs": 170,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 121,
+    "greenPixels": 25582
+  },
+  "layerPixels": 22319,
+  "source": "greenscreen/raw/pepe-flag.gif"
+}

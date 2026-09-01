@@ -1,0 +1,17 @@
+{
+  "id": "claude-idea",
+  "kind": "layer",
+  "frames": 6,
+  "sourcePages": 6,
+  "delayMs": 100,
+  "size": 128,
+  "slot": {
+    "x": 21,
+    "y": 24,
+    "w": 84,
+    "h": 104,
+    "greenPixels": 28742
+  },
+  "layerPixels": 7808,
+  "source": "greenscreen/raw/claude-idea.gif"
+}

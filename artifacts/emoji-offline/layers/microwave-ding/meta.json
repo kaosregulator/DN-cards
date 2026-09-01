@@ -1,0 +1,17 @@
+{
+  "id": "microwave-ding",
+  "kind": "layer",
+  "frames": 24,
+  "sourcePages": 24,
+  "delayMs": 70,
+  "size": 128,
+  "slot": {
+    "x": 21,
+    "y": 35,
+    "w": 93,
+    "h": 61,
+    "greenPixels": 79874
+  },
+  "layerPixels": 163582,
+  "source": "greenscreen/raw/microwave-ding.gif"
+}

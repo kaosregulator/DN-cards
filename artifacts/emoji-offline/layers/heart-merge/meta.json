@@ -1,0 +1,17 @@
+{
+  "id": "heart-merge",
+  "kind": "transform-slot",
+  "frames": 24,
+  "sourcePages": 24,
+  "delayMs": 70,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 29,
+    "w": 128,
+    "h": 71,
+    "greenPixels": 110445
+  },
+  "layerPixels": 0,
+  "source": "greenscreen/raw/heart-merge.gif"
+}

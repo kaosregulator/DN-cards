@@ -1,0 +1,17 @@
+{
+  "id": "booba",
+  "kind": "layer",
+  "frames": 45,
+  "sourcePages": 89,
+  "delayMs": 100,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 128,
+    "greenPixels": 340245
+  },
+  "layerPixels": 211339,
+  "source": "greenscreen/raw/booba.gif"
+}

@@ -1,0 +1,17 @@
+{
+  "id": "copium",
+  "kind": "layer",
+  "frames": 1,
+  "sourcePages": 1,
+  "delayMs": 50,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 2,
+    "w": 127,
+    "h": 117,
+    "greenPixels": 8780
+  },
+  "layerPixels": 5601,
+  "source": "greenscreen/raw/copium.png"
+}

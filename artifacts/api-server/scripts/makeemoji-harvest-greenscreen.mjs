@@ -1,21 +1,14 @@
 #!/usr/bin/env node
 /**
- * Harvest MakeEmoji styles the green-screen way:
- *   1. Upload a solid green subject to makeemoji.com
- *   2. Click each style card → site auto-downloads the result GIF
- *   3. Save the GIF under artifacts/emoji-offline/greenscreen/raw/
+ * Sweep harvest: scroll the MakeEmoji style grid top→bottom, click every
+ * enabled style card we don't already have, save the auto-download.
  *
- * Later, build-emoji-layers.mjs chroma-keys the green into a transparent
- * slot + front layer — same idea as the old /emojimoji green-screen packs.
- *
- * Usage (from repo root):
- *   pnpm --filter @workspace/api-server exec node ./scripts/makeemoji-harvest-greenscreen.mjs
- *   pnpm --filter @workspace/api-server exec node ./scripts/makeemoji-harvest-greenscreen.mjs --limit=48
- *   pnpm --filter @workspace/api-server exec node ./scripts/makeemoji-harvest-greenscreen.mjs --ids=pet,party-blob,pokeball-go
+ *   node ./scripts/makeemoji-harvest-greenscreen.mjs --sweep
+ *   node ./scripts/makeemoji-harvest-greenscreen.mjs --sweep --passes=3
  */
 import { chromium } from "playwright";
 import {
-  existsSync, mkdirSync, writeFileSync, readFileSync, copyFileSync,
+  existsSync, mkdirSync, writeFileSync, readFileSync, readdirSync, renameSync,
 } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -38,213 +31,287 @@ function has(name) {
   return process.argv.includes(`--${name}`);
 }
 
-const LIMIT = Number(arg("limit", "0")) || 0;
-const ONLY = (arg("ids", "") || "").split(",").map(s => s.trim()).filter(Boolean);
+const PASSES = Math.max(1, Number(arg("passes", "4")) || 4);
 
-async function scrapeCatalog(page) {
-  const seen = new Map();
-  page.on("response", (res) => {
-    const url = res.url();
-    const m = url.match(/\/prerendered\/default-cat(?:-preview)?\/([^/?#]+)\.(webp|gif|png)/i);
-    if (m && m[1] !== "default-cat") seen.set(m[1], url);
-  });
-
-  await page.goto(SITE, { waitUntil: "domcontentloaded", timeout: 120_000 });
-  await page.waitForTimeout(2500);
-  for (const sel of ['button:has-text("Accept")', 'button:has-text("Got it")', '[aria-label="Close"]']) {
-    try { await page.locator(sel).first().click({ timeout: 800 }); } catch { /* */ }
-  }
-
-  for (let i = 0; i < 220; i++) {
-    await page.evaluate(() => {
-      window.scrollBy(0, 700);
-      for (const el of document.querySelectorAll("*")) {
-        const st = getComputedStyle(el);
-        if (/(auto|scroll)/.test(st.overflowY) && el.scrollHeight > el.clientHeight + 80) {
-          el.scrollTop = Math.min(el.scrollTop + 700, el.scrollHeight);
-        }
-      }
-    });
-    await page.waitForTimeout(160);
-    if (i % 40 === 0) console.log(`  catalog scroll ${i} → ${seen.size}`);
-  }
-
-  // Restore top for editing
-  await page.evaluate(() => window.scrollTo(0, 0));
-  await page.waitForTimeout(500);
-
-  const styles = [...seen.entries()]
-    .map(([id, url]) => ({ id, tag: `gen_btn_${id}`, previewUrl: url }))
-    .sort((a, b) => a.id.localeCompare(b.id));
-
-  writeFileSync(CATALOG, JSON.stringify({
-    harvestedAt: new Date().toISOString(),
-    site: SITE,
-    count: styles.length,
-    note: "IDs observed from prerendered preview assets while scrolling the main Editor style grid. Page label may show a higher count (e.g. 687) if directional/super-animation variants are counted separately.",
-    styles,
-  }, null, 2));
-  console.log(`catalog: ${styles.length} styles → ${CATALOG}`);
-  return styles;
+function existingIds() {
+  if (!existsSync(RAW)) return new Set();
+  return new Set(
+    readdirSync(RAW)
+      .filter(f => /\.(gif|png|webp|jpe?g)$/i.test(f))
+      .map(f => f.replace(/\.(gif|png|webp|jpe?g)$/i, "")),
+  );
 }
 
-async function uploadGreen(page) {
-  if (!existsSync(GREEN)) {
-    throw new Error(`Green subject missing: ${GREEN}`);
-  }
-  const input = page.locator('input[type="file"]').first();
-  await input.setInputFiles(GREEN);
-  await page.waitForTimeout(2500);
-  console.log("uploaded green subject");
-}
-
-async function clickStyleAndDownload(page, styleId) {
-  const tag = `gen_btn_${styleId}`;
-  // Ensure the card is in the virtualized DOM: search/filter if available
-  let clicked = false;
-
-  // Try data-tag button first
-  const byTag = page.locator(`[data-tag="${tag}"]`).first();
-  if (await byTag.count()) {
-    const [download] = await Promise.all([
-      page.waitForEvent("download", { timeout: 20_000 }).catch(() => null),
-      byTag.click({ timeout: 5000 }),
-    ]);
-    if (download) return download;
-    clicked = true;
-  }
-
-  // Fallback: text :styleId:
-  if (!clicked) {
-    const byText = page.getByText(`:${styleId}:`, { exact: true }).first();
-    if (await byText.count()) {
-      // Scroll into view via search box if present
-      try {
-        const search = page.getByPlaceholder(/search/i).first();
-        if (await search.count()) {
-          await search.fill(styleId);
-          await page.waitForTimeout(600);
-        }
-      } catch { /* */ }
-      const [download] = await Promise.all([
-        page.waitForEvent("download", { timeout: 20_000 }).catch(() => null),
-        byText.click({ timeout: 5000 }),
-      ]);
-      if (download) return download;
-    }
-  }
-
-  // Last resort: evaluate click after scrolling catalog until found
-  const found = await page.evaluate(async (want) => {
-    const sleep = (ms) => new Promise(r => setTimeout(r, ms));
-    for (let i = 0; i < 60; i++) {
-      const el = document.querySelector(`[data-tag="gen_btn_${want}"]`);
-      if (el) { el.scrollIntoView({ block: "center" }); return true; }
-      window.scrollBy(0, 800);
-      await sleep(120);
-    }
-    return false;
-  }, styleId);
-
-  if (found) {
-    const [download] = await Promise.all([
-      page.waitForEvent("download", { timeout: 20_000 }).catch(() => null),
-      page.locator(`[data-tag="${tag}"]`).first().click({ timeout: 5000 }),
-    ]);
-    if (download) return download;
-  }
+function detectExt(buf) {
+  if (buf.subarray(0, 3).toString() === "GIF") return "gif";
+  if (buf[0] === 0x89 && buf[1] === 0x50) return "png";
+  if (buf.subarray(0, 4).toString() === "RIFF" && buf.subarray(8, 12).toString() === "WEBP") return "webp";
+  if (buf[0] === 0xff && buf[1] === 0xd8) return "jpg";
   return null;
+}
+
+function loadMeta() {
+  return existsSync(META) ? JSON.parse(readFileSync(META, "utf8")) : { items: {} };
+}
+
+async function dismiss(page) {
+  for (const sel of ['button:has-text("Accept")', 'button:has-text("Got it")', '[aria-label="Close"]']) {
+    try { await page.locator(sel).first().click({ timeout: 500 }); } catch { /* */ }
+  }
+}
+
+async function clearSearch(page) {
+  try {
+    const search = page.locator('input[placeholder*="Search" i], input[type="search"]').first();
+    if (await search.count()) {
+      await search.fill("");
+      await page.keyboard.press("Escape").catch(() => {});
+      await page.waitForTimeout(300);
+    }
+  } catch { /* */ }
+}
+
+/** List currently mounted style buttons with enabled state. */
+async function visibleStyles(page) {
+  return page.evaluate(() => {
+    const out = [];
+    for (const el of document.querySelectorAll("[data-tag^=\"gen_btn_\"]")) {
+      const tag = el.getAttribute("data-tag") || "";
+      const id = tag.replace(/^gen_btn_/, "");
+      const btn = el.closest("button") || (el.tagName === "BUTTON" ? el : null) || el;
+      const disabled = Boolean(
+        (btn instanceof HTMLButtonElement && btn.disabled)
+        || btn.getAttribute?.("aria-disabled") === "true",
+      );
+      out.push({ id, tag, disabled });
+    }
+    return out;
+  });
+}
+
+async function clickDownload(page, tag) {
+  const loc = page.locator(`[data-tag="${tag}"]`).first();
+  if (!(await loc.count())) return { ok: false, error: "missing" };
+
+  const disabled = await loc.evaluate((el) => {
+    const btn = el.closest("button") || el;
+    return Boolean(
+      (btn instanceof HTMLButtonElement && btn.disabled)
+      || btn.getAttribute("aria-disabled") === "true",
+    );
+  });
+  if (disabled) return { ok: false, error: "disabled" };
+
+  await loc.evaluate((el) => el.scrollIntoView({ block: "center", inline: "nearest" }));
+  await page.waitForTimeout(80);
+
+  const downloadPromise = page.waitForEvent("download", { timeout: 20_000 }).catch(() => null);
+  try {
+    await loc.click({ timeout: 3000, force: true });
+  } catch (err) {
+    return { ok: false, error: `click:${String(err?.message || err).slice(0, 80)}` };
+  }
+  const download = await downloadPromise;
+  if (!download) return { ok: false, error: "no-download" };
+  return { ok: true, download };
+}
+
+async function saveDownload(download, styleId) {
+  const tmp = join(RAW, `._tmp_${styleId}`);
+  await download.saveAs(tmp);
+  const buf = readFileSync(tmp);
+  const ext = detectExt(buf);
+  if (!ext || buf.length < 80) {
+    try { renameSync(tmp, join(RAW, `${styleId}.bad`)); } catch { /* */ }
+    return { ok: false, error: "bad-bytes", bytes: buf.length };
+  }
+  const dest = join(RAW, `${styleId}.${ext}`);
+  renameSync(tmp, dest);
+  return {
+    ok: true,
+    bytes: buf.length,
+    ext,
+    sha256_16: createHash("sha256").update(buf).digest("hex").slice(0, 16),
+    file: `greenscreen/raw/${styleId}.${ext}`,
+  };
+}
+
+async function scrollStep(page, px = 500) {
+  await page.evaluate((dy) => {
+    window.scrollBy(0, dy);
+    for (const el of document.querySelectorAll("*")) {
+      const st = getComputedStyle(el);
+      if (/(auto|scroll)/.test(st.overflowY) && el.scrollHeight > el.clientHeight + 80) {
+        el.scrollTop = Math.min(el.scrollTop + dy, el.scrollHeight);
+      }
+    }
+  }, px);
+}
+
+async function sweepPass(page, meta, have, pass) {
+  console.log(`\n=== sweep pass ${pass} (have ${have.size}) ===`);
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await clearSearch(page);
+  await page.waitForTimeout(400);
+
+  let stableEmpty = 0;
+  let clicksThisPass = 0;
+  const attempted = new Set();
+
+  for (let step = 0; step < 400; step++) {
+    const visible = await visibleStyles(page);
+    const candidates = visible.filter(v => !v.disabled && !have.has(v.id) && !attempted.has(v.id));
+
+    if (candidates.length === 0) {
+      await scrollStep(page, 450);
+      await page.waitForTimeout(150);
+      const after = await visibleStyles(page);
+      const fresh = after.filter(v => !v.disabled && !have.has(v.id) && !attempted.has(v.id));
+      if (fresh.length === 0) {
+        stableEmpty++;
+        if (stableEmpty >= 12) break;
+        continue;
+      }
+      stableEmpty = 0;
+      candidates.push(...fresh);
+    } else {
+      stableEmpty = 0;
+    }
+
+    for (const c of candidates) {
+      attempted.add(c.id);
+      process.stdout.write(`pass${pass} ${c.id}… `);
+      const clicked = await clickDownload(page, c.tag);
+      if (!clicked.ok) {
+        console.log(`SKIP ${clicked.error}`);
+        meta.items[c.id] = { ok: false, error: clicked.error };
+        continue;
+      }
+      const saved = await saveDownload(clicked.download, c.id);
+      meta.items[c.id] = saved;
+      if (saved.ok) {
+        have.add(c.id);
+        clicksThisPass++;
+        console.log(`OK ${saved.ext} ${saved.bytes}B`);
+      } else {
+        console.log(`SKIP ${saved.error}`);
+      }
+      await page.waitForTimeout(200);
+    }
+
+    if (step % 20 === 0) {
+      writeFileSync(META, JSON.stringify(meta, null, 2));
+      console.log(`  … pass${pass} step=${step} have=${have.size} clicks=${clicksThisPass}`);
+    }
+
+    // Progress the grid after handling current viewport
+    await scrollStep(page, 350);
+    await page.waitForTimeout(120);
+  }
+
+  writeFileSync(META, JSON.stringify(meta, null, 2));
+  return clicksThisPass;
 }
 
 async function main() {
   mkdirSync(RAW, { recursive: true });
+  if (!existsSync(GREEN)) {
+    throw new Error(`Missing green subject ${GREEN}`);
+  }
 
   const browser = await chromium.launch({ headless: true });
   const context = await browser.newContext({ acceptDownloads: true });
   const page = await context.newPage();
+  await page.goto(SITE, { waitUntil: "domcontentloaded", timeout: 120_000 });
+  await page.waitForTimeout(2000);
+  await dismiss(page);
+  await page.locator('input[type="file"]').first().setInputFiles(GREEN);
+  await page.waitForTimeout(2500);
+  console.log("green uploaded");
 
-  let styles = await scrapeCatalog(page);
-  if (ONLY.length) {
-    styles = styles.filter(s => ONLY.includes(s.id));
-  }
-  // Prefer site order: none/pet first if present, else alpha. For limit batches,
-  // take from a curated first-page list when limit set and no --ids.
-  const FIRST_PAGE = [
-    "none", "pet", "party-parrot", "parrot", "parrot-hat", "parrot-hold",
-    "party-blob", "sad-blob", "jammies", "nyan-cat", "thing-cat", "nyan",
-    "lightspeed-jump", "lightsaber", "shake", "party", "peepo", "peepo-sit",
-    "peepo-stop", "peepo-shy", "peepo-want", "peepo-love", "enter", "exit",
-    "pokeball-go", "pokeball-capture", "pokeball-almost", "pokeball-emerge",
-    "deal-with-it", "bounce", "spin", "jam", "panic", "nyan",
-  ];
-  if (LIMIT > 0 && !ONLY.length) {
-    const prefer = FIRST_PAGE.map(id => styles.find(s => s.id === id)).filter(Boolean);
-    const rest = styles.filter(s => !FIRST_PAGE.includes(s.id));
-    styles = [...prefer, ...rest].slice(0, LIMIT);
-  }
-
-  await page.evaluate(() => window.scrollTo(0, 0));
-  await uploadGreen(page);
-
-  const meta = existsSync(META) ? JSON.parse(readFileSync(META, "utf8")) : { items: {} };
+  const meta = loadMeta();
   meta.startedAt = meta.startedAt || new Date().toISOString();
-  meta.greenSubject = GREEN;
+  meta.items = meta.items || {};
+  const have = existingIds();
 
-  let ok = 0, fail = 0;
-  for (const style of styles) {
-    const dest = join(RAW, `${style.id}.gif`);
-    if (existsSync(dest) && !has("force")) {
-      console.log(`skip ${style.id} (exists)`);
-      ok++;
+  let totalNew = 0;
+  for (let p = 1; p <= PASSES; p++) {
+    const n = await sweepPass(page, meta, have, p);
+    totalNew += n;
+    console.log(`pass ${p} added ${n}; total have ${have.size}`);
+    if (n === 0 && p >= 2) break;
+    // re-upload green between passes in case editor state drifted
+    try {
+      await page.locator('input[type="file"]').first().setInputFiles(GREEN);
+      await page.waitForTimeout(1000);
+    } catch { /* */ }
+  }
+
+  // Also try any catalog IDs still missing via direct scroll-hunt (no search)
+  let catalogIds = [];
+  if (existsSync(CATALOG)) {
+    catalogIds = JSON.parse(readFileSync(CATALOG, "utf8")).styles.map(s => s.id);
+  }
+  const missing = catalogIds.filter(id => !have.has(id));
+  console.log(`\nDirect hunt for ${missing.length} still missing…`);
+
+  let hunted = 0;
+  for (const id of missing) {
+    await page.evaluate(() => window.scrollTo(0, 0));
+    await clearSearch(page);
+    const found = await page.evaluate(async (want) => {
+      const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+      for (let i = 0; i < 80; i++) {
+        const el = document.querySelector(`[data-tag="gen_btn_${want}"]`);
+        if (el) {
+          const btn = el.closest("button") || el;
+          const disabled = (btn instanceof HTMLButtonElement && btn.disabled)
+            || btn.getAttribute("aria-disabled") === "true";
+          if (disabled) return "disabled";
+          el.scrollIntoView({ block: "center" });
+          return "found";
+        }
+        window.scrollBy(0, 700);
+        for (const node of document.querySelectorAll("*")) {
+          const st = getComputedStyle(node);
+          if (/(auto|scroll)/.test(st.overflowY) && node.scrollHeight > node.clientHeight + 80) {
+            node.scrollTop = Math.min(node.scrollTop + 700, node.scrollHeight);
+          }
+        }
+        await sleep(60);
+      }
+      return "missing";
+    }, id);
+
+    if (found !== "found") {
+      meta.items[id] = { ok: false, error: found === "disabled" ? "disabled" : "not-found" };
       continue;
     }
-    process.stdout.write(`harvest ${style.id}… `);
-    try {
-      const download = await clickStyleAndDownload(page, style.id);
-      if (!download) {
-        console.log("NO DOWNLOAD");
-        fail++;
-        meta.items[style.id] = { ok: false, error: "no-download" };
-        continue;
-      }
-      const tmp = await download.path();
-      if (!tmp) {
-        // saveAs required
-        await download.saveAs(dest);
-      } else {
-        copyFileSync(tmp, dest);
-      }
-      const buf = readFileSync(dest);
-      if (buf.length < 100 || buf.subarray(0, 3).toString() !== "GIF") {
-        console.log("NOT GIF", buf.length);
-        fail++;
-        meta.items[style.id] = { ok: false, error: "not-gif", bytes: buf.length };
-        continue;
-      }
-      const sha = createHash("sha256").update(buf).digest("hex").slice(0, 16);
-      meta.items[style.id] = {
-        ok: true,
-        bytes: buf.length,
-        sha256_16: sha,
-        file: `greenscreen/raw/${style.id}.gif`,
-        suggestedFilename: download.suggestedFilename(),
-      };
-      console.log(`OK ${buf.length}B`);
-      ok++;
-    } catch (err) {
-      console.log("ERR", err?.message || err);
-      fail++;
-      meta.items[style.id] = { ok: false, error: String(err?.message || err) };
+
+    process.stdout.write(`hunt ${id}… `);
+    const clicked = await clickDownload(page, `gen_btn_${id}`);
+    if (!clicked.ok) {
+      console.log(`SKIP ${clicked.error}`);
+      meta.items[id] = { ok: false, error: clicked.error };
+      continue;
     }
-    // gentle pacing
-    await page.waitForTimeout(400);
+    const saved = await saveDownload(clicked.download, id);
+    meta.items[id] = saved;
+    if (saved.ok) {
+      have.add(id);
+      hunted++;
+      console.log(`OK ${saved.ext} ${saved.bytes}B`);
+    } else {
+      console.log(`SKIP ${saved.error}`);
+    }
+    if (hunted % 10 === 0) writeFileSync(META, JSON.stringify(meta, null, 2));
+    await page.waitForTimeout(180);
   }
 
   meta.finishedAt = new Date().toISOString();
-  meta.ok = ok;
-  meta.fail = fail;
+  meta.lastRun = { mode: "sweep", passes: PASSES, newFromSweep: totalNew, hunted, have: have.size };
   writeFileSync(META, JSON.stringify(meta, null, 2));
-  console.log(`\nDone ok=${ok} fail=${fail}`);
+  console.log(`\nDONE have=${have.size} (+sweep ${totalNew}, +hunt ${hunted})`);
   await browser.close();
 }
 

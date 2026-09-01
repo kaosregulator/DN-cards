@@ -1,0 +1,17 @@
+{
+  "id": "pastel-bloom",
+  "kind": "layer",
+  "frames": 12,
+  "sourcePages": 12,
+  "delayMs": 60,
+  "size": 128,
+  "slot": {
+    "x": 14,
+    "y": 14,
+    "w": 101,
+    "h": 101,
+    "greenPixels": 106304
+  },
+  "layerPixels": 90304,
+  "source": "greenscreen/raw/pastel-bloom.gif"
+}

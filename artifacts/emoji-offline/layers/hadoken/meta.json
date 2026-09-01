@@ -1,0 +1,17 @@
+{
+  "id": "hadoken",
+  "kind": "layer",
+  "frames": 10,
+  "sourcePages": 10,
+  "delayMs": 70,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 128,
+    "greenPixels": 149286
+  },
+  "layerPixels": 1507,
+  "source": "greenscreen/raw/hadoken.gif"
+}

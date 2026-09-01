@@ -1,0 +1,17 @@
+{
+  "id": "luvv",
+  "kind": "layer",
+  "frames": 1,
+  "sourcePages": 1,
+  "delayMs": 50,
+  "size": 128,
+  "slot": {
+    "x": 12,
+    "y": 17,
+    "w": 109,
+    "h": 111,
+    "greenPixels": 5732
+  },
+  "layerPixels": 6562,
+  "source": "greenscreen/raw/luvv.png"
+}

@@ -1,0 +1,17 @@
+{
+  "id": "hype-shake",
+  "kind": "layer",
+  "frames": 10,
+  "sourcePages": 10,
+  "delayMs": 60,
+  "size": 128,
+  "slot": {
+    "x": 6,
+    "y": 6,
+    "w": 117,
+    "h": 122,
+    "greenPixels": 73205
+  },
+  "layerPixels": 45880,
+  "source": "greenscreen/raw/hype-shake.gif"
+}

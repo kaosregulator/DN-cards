@@ -1,0 +1,17 @@
+{
+  "id": "meow-coffee-spit",
+  "kind": "layer",
+  "frames": 39,
+  "sourcePages": 155,
+  "delayMs": 200,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 128,
+    "greenPixels": 49152
+  },
+  "layerPixels": 483078,
+  "source": "greenscreen/raw/meow-coffee-spit.gif"
+}

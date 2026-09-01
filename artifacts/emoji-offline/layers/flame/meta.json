@@ -1,0 +1,17 @@
+{
+  "id": "flame",
+  "kind": "layer",
+  "frames": 10,
+  "sourcePages": 10,
+  "delayMs": 50,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 128,
+    "greenPixels": 100190
+  },
+  "layerPixels": 63650,
+  "source": "greenscreen/raw/flame.gif"
+}

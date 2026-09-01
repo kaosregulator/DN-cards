@@ -1,0 +1,17 @@
+{
+  "id": "guns",
+  "kind": "layer",
+  "frames": 10,
+  "sourcePages": 10,
+  "delayMs": 50,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 128,
+    "greenPixels": 140462
+  },
+  "layerPixels": 23378,
+  "source": "greenscreen/raw/guns.gif"
+}

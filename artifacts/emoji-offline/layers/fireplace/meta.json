@@ -1,0 +1,17 @@
+{
+  "id": "fireplace",
+  "kind": "layer",
+  "frames": 10,
+  "sourcePages": 10,
+  "delayMs": 100,
+  "size": 128,
+  "slot": {
+    "x": 57,
+    "y": 57,
+    "w": 71,
+    "h": 71,
+    "greenPixels": 50052
+  },
+  "layerPixels": 113788,
+  "source": "greenscreen/raw/fireplace.gif"
+}

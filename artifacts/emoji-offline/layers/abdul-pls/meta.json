@@ -1,0 +1,17 @@
+{
+  "id": "abdul-pls",
+  "kind": "layer",
+  "frames": 10,
+  "sourcePages": 10,
+  "delayMs": 100,
+  "size": 128,
+  "slot": {
+    "x": 17,
+    "y": 29,
+    "w": 102,
+    "h": 80,
+    "greenPixels": 39593
+  },
+  "layerPixels": 70520,
+  "source": "greenscreen/raw/abdul-pls.gif"
+}

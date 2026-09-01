@@ -1,0 +1,17 @@
+{
+  "id": "fall-leaves",
+  "kind": "layer",
+  "frames": 24,
+  "sourcePages": 24,
+  "delayMs": 50,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 128,
+    "greenPixels": 355043
+  },
+  "layerPixels": 38173,
+  "source": "greenscreen/raw/fall-leaves.gif"
+}

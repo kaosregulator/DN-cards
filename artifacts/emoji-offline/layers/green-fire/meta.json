@@ -1,0 +1,17 @@
+{
+  "id": "green-fire",
+  "kind": "layer",
+  "frames": 4,
+  "sourcePages": 4,
+  "delayMs": 100,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 128,
+    "greenPixels": 65314
+  },
+  "layerPixels": 222,
+  "source": "greenscreen/raw/green-fire.gif"
+}

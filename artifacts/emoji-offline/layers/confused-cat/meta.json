@@ -1,0 +1,17 @@
+{
+  "id": "confused-cat",
+  "kind": "layer",
+  "frames": 1,
+  "sourcePages": 1,
+  "delayMs": 50,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 29,
+    "w": 128,
+    "h": 99,
+    "greenPixels": 9555
+  },
+  "layerPixels": 160,
+  "source": "greenscreen/raw/confused-cat.png"
+}

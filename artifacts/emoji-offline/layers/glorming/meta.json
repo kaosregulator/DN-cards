@@ -1,0 +1,17 @@
+{
+  "id": "glorming",
+  "kind": "layer",
+  "frames": 44,
+  "sourcePages": 216,
+  "delayMs": 100,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 6,
+    "w": 128,
+    "h": 122,
+    "greenPixels": 264373
+  },
+  "layerPixels": 55869,
+  "source": "greenscreen/raw/glorming.gif"
+}

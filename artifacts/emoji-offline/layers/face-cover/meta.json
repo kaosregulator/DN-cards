@@ -1,0 +1,17 @@
+{
+  "id": "face-cover",
+  "kind": "layer",
+  "frames": 1,
+  "sourcePages": 1,
+  "delayMs": 50,
+  "size": 128,
+  "slot": {
+    "x": 17,
+    "y": 8,
+    "w": 100,
+    "h": 67,
+    "greenPixels": 4020
+  },
+  "layerPixels": 8700,
+  "source": "greenscreen/raw/face-cover.png"
+}

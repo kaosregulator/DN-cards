@@ -1,0 +1,17 @@
+{
+  "id": "slow-jam",
+  "kind": "layer",
+  "frames": 8,
+  "sourcePages": 8,
+  "delayMs": 70,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 6,
+    "w": 128,
+    "h": 122,
+    "greenPixels": 77162
+  },
+  "layerPixels": 24617,
+  "source": "greenscreen/raw/slow-jam.gif"
+}

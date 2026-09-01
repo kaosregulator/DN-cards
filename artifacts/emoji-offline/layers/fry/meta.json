@@ -1,0 +1,17 @@
+{
+  "id": "fry",
+  "kind": "layer",
+  "frames": 30,
+  "sourcePages": 30,
+  "delayMs": 50,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 128,
+    "greenPixels": 163844
+  },
+  "layerPixels": 167489,
+  "source": "greenscreen/raw/fry.gif"
+}

@@ -1,0 +1,17 @@
+{
+  "id": "not-stonks",
+  "kind": "layer",
+  "frames": 1,
+  "sourcePages": 1,
+  "delayMs": 50,
+  "size": 128,
+  "slot": {
+    "x": 11,
+    "y": 4,
+    "w": 74,
+    "h": 108,
+    "greenPixels": 5980
+  },
+  "layerPixels": 10404,
+  "source": "greenscreen/raw/not-stonks.png"
+}

@@ -1,0 +1,17 @@
+{
+  "id": "claude-jam",
+  "kind": "layer",
+  "frames": 9,
+  "sourcePages": 9,
+  "delayMs": 100,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 35,
+    "w": 128,
+    "h": 93,
+    "greenPixels": 59195
+  },
+  "layerPixels": 15479,
+  "source": "greenscreen/raw/claude-jam.gif"
+}

@@ -1,0 +1,17 @@
+{
+  "id": "reading",
+  "kind": "layer",
+  "frames": 3,
+  "sourcePages": 3,
+  "delayMs": 60,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 128,
+    "greenPixels": 36656
+  },
+  "layerPixels": 12496,
+  "source": "greenscreen/raw/reading.gif"
+}

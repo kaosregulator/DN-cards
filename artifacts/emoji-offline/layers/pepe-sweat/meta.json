@@ -1,0 +1,17 @@
+{
+  "id": "pepe-sweat",
+  "kind": "layer",
+  "frames": 29,
+  "sourcePages": 58,
+  "delayMs": 100,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 128,
+    "greenPixels": 272686
+  },
+  "layerPixels": 133204,
+  "source": "greenscreen/raw/pepe-sweat.gif"
+}

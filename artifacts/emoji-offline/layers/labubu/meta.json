@@ -1,0 +1,17 @@
+{
+  "id": "labubu",
+  "kind": "layer",
+  "frames": 1,
+  "sourcePages": 1,
+  "delayMs": 50,
+  "size": 128,
+  "slot": {
+    "x": 17,
+    "y": 23,
+    "w": 95,
+    "h": 96,
+    "greenPixels": 7807
+  },
+  "layerPixels": 6708,
+  "source": "greenscreen/raw/labubu.png"
+}

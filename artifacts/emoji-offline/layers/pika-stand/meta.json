@@ -1,0 +1,17 @@
+{
+  "id": "pika-stand",
+  "kind": "layer",
+  "frames": 8,
+  "sourcePages": 8,
+  "delayMs": 200,
+  "size": 128,
+  "slot": {
+    "x": 3,
+    "y": 20,
+    "w": 120,
+    "h": 103,
+    "greenPixels": 45481
+  },
+  "layerPixels": 15074,
+  "source": "greenscreen/raw/pika-stand.gif"
+}

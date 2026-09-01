@@ -1,0 +1,17 @@
+{
+  "id": "tilt",
+  "kind": "transform-slot",
+  "frames": 10,
+  "sourcePages": 10,
+  "delayMs": 50,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 27,
+    "w": 128,
+    "h": 75,
+    "greenPixels": 47496
+  },
+  "layerPixels": 0,
+  "source": "greenscreen/raw/tilt.gif"
+}

@@ -1,0 +1,17 @@
+{
+  "id": "flag",
+  "kind": "layer",
+  "frames": 9,
+  "sourcePages": 9,
+  "delayMs": 100,
+  "size": 128,
+  "slot": {
+    "x": 10,
+    "y": 10,
+    "w": 115,
+    "h": 96,
+    "greenPixels": 46765
+  },
+  "layerPixels": 12776,
+  "source": "greenscreen/raw/flag.gif"
+}

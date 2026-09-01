@@ -1,0 +1,17 @@
+{
+  "id": "spongebob-worship",
+  "kind": "layer",
+  "frames": 10,
+  "sourcePages": 10,
+  "delayMs": 90,
+  "size": 128,
+  "slot": {
+    "x": 7,
+    "y": 0,
+    "w": 116,
+    "h": 98,
+    "greenPixels": 99939
+  },
+  "layerPixels": 63901,
+  "source": "greenscreen/raw/spongebob-worship.gif"
+}

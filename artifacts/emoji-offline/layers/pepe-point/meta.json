@@ -1,0 +1,17 @@
+{
+  "id": "pepe-point",
+  "kind": "layer",
+  "frames": 35,
+  "sourcePages": 69,
+  "delayMs": 100,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 128,
+    "greenPixels": 313760
+  },
+  "layerPixels": 165131,
+  "source": "greenscreen/raw/pepe-point.gif"
+}

@@ -1,0 +1,17 @@
+{
+  "id": "sir",
+  "kind": "layer",
+  "frames": 1,
+  "sourcePages": 1,
+  "delayMs": 50,
+  "size": 128,
+  "slot": {
+    "x": 13,
+    "y": 23,
+    "w": 105,
+    "h": 105,
+    "greenPixels": 9935
+  },
+  "layerPixels": 1590,
+  "source": "greenscreen/raw/sir.png"
+}

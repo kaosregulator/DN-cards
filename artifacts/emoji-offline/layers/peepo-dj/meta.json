@@ -1,0 +1,17 @@
+{
+  "id": "peepo-dj",
+  "kind": "layer",
+  "frames": 36,
+  "sourcePages": 72,
+  "delayMs": 40,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 20,
+    "w": 128,
+    "h": 108,
+    "greenPixels": 123948
+  },
+  "layerPixels": 281281,
+  "source": "greenscreen/raw/peepo-dj.gif"
+}

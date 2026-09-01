@@ -1,0 +1,17 @@
+{
+  "id": "yes-yes",
+  "kind": "transform-slot",
+  "frames": 2,
+  "sourcePages": 2,
+  "delayMs": 100,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 128,
+    "greenPixels": 30524
+  },
+  "layerPixels": 0,
+  "source": "greenscreen/raw/yes-yes.gif"
+}

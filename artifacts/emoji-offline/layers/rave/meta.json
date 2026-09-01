@@ -1,0 +1,17 @@
+{
+  "id": "rave",
+  "kind": "layer",
+  "frames": 10,
+  "sourcePages": 10,
+  "delayMs": 50,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 128,
+    "greenPixels": 133995
+  },
+  "layerPixels": 29836,
+  "source": "greenscreen/raw/rave.gif"
+}

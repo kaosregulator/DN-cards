@@ -1,0 +1,17 @@
+{
+  "id": "radar-ping",
+  "kind": "transform-slot",
+  "frames": 10,
+  "sourcePages": 10,
+  "delayMs": 60,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 128,
+    "greenPixels": 162917
+  },
+  "layerPixels": 22,
+  "source": "greenscreen/raw/radar-ping.gif"
+}

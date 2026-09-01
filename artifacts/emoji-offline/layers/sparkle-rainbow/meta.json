@@ -1,0 +1,17 @@
+{
+  "id": "sparkle-rainbow",
+  "kind": "layer",
+  "frames": 10,
+  "sourcePages": 10,
+  "delayMs": 50,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 128,
+    "greenPixels": 157384
+  },
+  "layerPixels": 6456,
+  "source": "greenscreen/raw/sparkle-rainbow.gif"
+}

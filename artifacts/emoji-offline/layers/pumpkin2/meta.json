@@ -1,0 +1,17 @@
+{
+  "id": "pumpkin2",
+  "kind": "layer",
+  "frames": 1,
+  "sourcePages": 1,
+  "delayMs": 50,
+  "size": 128,
+  "slot": {
+    "x": 56,
+    "y": 4,
+    "w": 24,
+    "h": 21,
+    "greenPixels": 155
+  },
+  "layerPixels": 11918,
+  "source": "greenscreen/raw/pumpkin2.png"
+}

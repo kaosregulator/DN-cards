@@ -1,0 +1,17 @@
+{
+  "id": "jumping-on-the-bed",
+  "kind": "layer",
+  "frames": 11,
+  "sourcePages": 11,
+  "delayMs": 50,
+  "size": 128,
+  "slot": {
+    "x": 5,
+    "y": 2,
+    "w": 123,
+    "h": 97,
+    "greenPixels": 67736
+  },
+  "layerPixels": 56315,
+  "source": "greenscreen/raw/jumping-on-the-bed.gif"
+}

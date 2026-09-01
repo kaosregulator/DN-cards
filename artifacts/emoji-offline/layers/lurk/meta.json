@@ -1,0 +1,17 @@
+{
+  "id": "lurk",
+  "kind": "layer",
+  "frames": 10,
+  "sourcePages": 10,
+  "delayMs": 100,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 0,
+    "w": 67,
+    "h": 128,
+    "greenPixels": 52081
+  },
+  "layerPixels": 78084,
+  "source": "greenscreen/raw/lurk.gif"
+}

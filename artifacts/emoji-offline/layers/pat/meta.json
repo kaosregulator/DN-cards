@@ -1,0 +1,17 @@
+{
+  "id": "pat",
+  "kind": "layer",
+  "frames": 11,
+  "sourcePages": 11,
+  "delayMs": 100,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 128,
+    "greenPixels": 164436
+  },
+  "layerPixels": 15788,
+  "source": "greenscreen/raw/pat.gif"
+}

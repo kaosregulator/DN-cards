@@ -1,0 +1,17 @@
+{
+  "id": "pixar-think",
+  "kind": "layer",
+  "frames": 43,
+  "sourcePages": 296,
+  "delayMs": 200,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 127,
+    "greenPixels": 306734
+  },
+  "layerPixels": 397778,
+  "source": "greenscreen/raw/pixar-think.gif"
+}

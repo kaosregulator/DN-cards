@@ -1,0 +1,17 @@
+{
+  "id": "bush-texture",
+  "kind": "layer",
+  "frames": 30,
+  "sourcePages": 59,
+  "delayMs": 200,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 128,
+    "greenPixels": 351838
+  },
+  "layerPixels": 139682,
+  "source": "greenscreen/raw/bush-texture.gif"
+}

@@ -1,0 +1,17 @@
+{
+  "id": "rainbow-bloom",
+  "kind": "layer",
+  "frames": 12,
+  "sourcePages": 12,
+  "delayMs": 40,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 128,
+    "greenPixels": 139742
+  },
+  "layerPixels": 56866,
+  "source": "greenscreen/raw/rainbow-bloom.gif"
+}

@@ -1,0 +1,17 @@
+{
+  "id": "paparazzi",
+  "kind": "layer",
+  "frames": 24,
+  "sourcePages": 24,
+  "delayMs": 70,
+  "size": 128,
+  "slot": {
+    "x": 7,
+    "y": 0,
+    "w": 115,
+    "h": 115,
+    "greenPixels": 280974
+  },
+  "layerPixels": 49728,
+  "source": "greenscreen/raw/paparazzi.gif"
+}

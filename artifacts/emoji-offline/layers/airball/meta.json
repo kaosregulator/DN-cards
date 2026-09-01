@@ -1,0 +1,17 @@
+{
+  "id": "airball",
+  "kind": "layer",
+  "frames": 10,
+  "sourcePages": 10,
+  "delayMs": 80,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 6,
+    "w": 118,
+    "h": 117,
+    "greenPixels": 118820
+  },
+  "layerPixels": 6214,
+  "source": "greenscreen/raw/airball.gif"
+}

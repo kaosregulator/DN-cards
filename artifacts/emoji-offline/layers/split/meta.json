@@ -1,0 +1,17 @@
+{
+  "id": "split",
+  "kind": "transform-slot",
+  "frames": 45,
+  "sourcePages": 45,
+  "delayMs": 90,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 13,
+    "w": 128,
+    "h": 108,
+    "greenPixels": 471513
+  },
+  "layerPixels": 0,
+  "source": "greenscreen/raw/split.gif"
+}

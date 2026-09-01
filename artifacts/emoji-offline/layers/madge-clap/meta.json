@@ -1,0 +1,17 @@
+{
+  "id": "madge-clap",
+  "kind": "layer",
+  "frames": 48,
+  "sourcePages": 48,
+  "delayMs": 50,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 128,
+    "greenPixels": 428221
+  },
+  "layerPixels": 150797,
+  "source": "greenscreen/raw/madge-clap.gif"
+}

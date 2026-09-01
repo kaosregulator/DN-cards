@@ -1,0 +1,17 @@
+{
+  "id": "cleaning",
+  "kind": "layer",
+  "frames": 7,
+  "sourcePages": 7,
+  "delayMs": 50,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 128,
+    "greenPixels": 67042
+  },
+  "layerPixels": 47646,
+  "source": "greenscreen/raw/cleaning.gif"
+}

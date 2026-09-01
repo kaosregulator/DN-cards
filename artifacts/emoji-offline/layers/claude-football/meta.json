@@ -1,0 +1,17 @@
+{
+  "id": "claude-football",
+  "kind": "layer",
+  "frames": 29,
+  "sourcePages": 58,
+  "delayMs": 120,
+  "size": 128,
+  "slot": {
+    "x": 21,
+    "y": 46,
+    "w": 92,
+    "h": 62,
+    "greenPixels": 91287
+  },
+  "layerPixels": 14701,
+  "source": "greenscreen/raw/claude-football.gif"
+}

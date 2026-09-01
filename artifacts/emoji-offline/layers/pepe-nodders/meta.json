@@ -1,0 +1,17 @@
+{
+  "id": "pepe-nodders",
+  "kind": "layer",
+  "frames": 33,
+  "sourcePages": 98,
+  "delayMs": 150,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 128,
+    "greenPixels": 184682
+  },
+  "layerPixels": 159520,
+  "source": "greenscreen/raw/pepe-nodders.gif"
+}

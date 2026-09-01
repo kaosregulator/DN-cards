@@ -1,0 +1,17 @@
+{
+  "id": "claude-fu",
+  "kind": "layer",
+  "frames": 26,
+  "sourcePages": 26,
+  "delayMs": 200,
+  "size": 128,
+  "slot": {
+    "x": 1,
+    "y": 30,
+    "w": 103,
+    "h": 73,
+    "greenPixels": 86967
+  },
+  "layerPixels": 5455,
+  "source": "greenscreen/raw/claude-fu.gif"
+}

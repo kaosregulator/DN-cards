@@ -1,0 +1,17 @@
+{
+  "id": "willem-dafoe",
+  "kind": "layer",
+  "frames": 47,
+  "sourcePages": 47,
+  "delayMs": 70,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 128,
+    "greenPixels": 295681
+  },
+  "layerPixels": 474367,
+  "source": "greenscreen/raw/willem-dafoe.gif"
+}

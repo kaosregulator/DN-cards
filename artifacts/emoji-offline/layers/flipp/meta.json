@@ -1,0 +1,17 @@
+{
+  "id": "flipp",
+  "kind": "layer",
+  "frames": 43,
+  "sourcePages": 128,
+  "delayMs": 60,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 118,
+    "greenPixels": 127446
+  },
+  "layerPixels": 200686,
+  "source": "greenscreen/raw/flipp.gif"
+}

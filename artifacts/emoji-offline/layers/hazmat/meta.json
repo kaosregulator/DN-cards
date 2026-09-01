@@ -1,0 +1,17 @@
+{
+  "id": "hazmat",
+  "kind": "layer",
+  "frames": 1,
+  "sourcePages": 1,
+  "delayMs": 50,
+  "size": 128,
+  "slot": {
+    "x": 20,
+    "y": 50,
+    "w": 81,
+    "h": 61,
+    "greenPixels": 4403
+  },
+  "layerPixels": 8759,
+  "source": "greenscreen/raw/hazmat.png"
+}

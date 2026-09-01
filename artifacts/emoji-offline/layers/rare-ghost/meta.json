@@ -1,0 +1,17 @@
+{
+  "id": "rare-ghost",
+  "kind": "layer",
+  "frames": 10,
+  "sourcePages": 10,
+  "delayMs": 40,
+  "size": 128,
+  "slot": {
+    "x": 8,
+    "y": 7,
+    "w": 118,
+    "h": 90,
+    "greenPixels": 31370
+  },
+  "layerPixels": 60857,
+  "source": "greenscreen/raw/rare-ghost.gif"
+}

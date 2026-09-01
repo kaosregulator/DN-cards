@@ -1,0 +1,17 @@
+{
+  "id": "trash",
+  "kind": "layer",
+  "frames": 1,
+  "sourcePages": 1,
+  "delayMs": 50,
+  "size": 128,
+  "slot": {
+    "x": 6,
+    "y": 23,
+    "w": 120,
+    "h": 35,
+    "greenPixels": 3426
+  },
+  "layerPixels": 10499,
+  "source": "greenscreen/raw/trash.png"
+}

@@ -1,0 +1,17 @@
+{
+  "id": "medal-drop",
+  "kind": "layer",
+  "frames": 24,
+  "sourcePages": 24,
+  "delayMs": 70,
+  "size": 128,
+  "slot": {
+    "x": 32,
+    "y": 0,
+    "w": 65,
+    "h": 117,
+    "greenPixels": 75255
+  },
+  "layerPixels": 58712,
+  "source": "greenscreen/raw/medal-drop.gif"
+}

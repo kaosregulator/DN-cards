@@ -1,0 +1,17 @@
+{
+  "id": "pumpkin-give",
+  "kind": "layer",
+  "frames": 30,
+  "sourcePages": 59,
+  "delayMs": 100,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 2,
+    "w": 128,
+    "h": 126,
+    "greenPixels": 199870
+  },
+  "layerPixels": 151318,
+  "source": "greenscreen/raw/pumpkin-give.gif"
+}

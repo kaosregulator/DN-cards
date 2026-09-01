@@ -1,0 +1,17 @@
+{
+  "id": "snorlax",
+  "kind": "layer",
+  "frames": 44,
+  "sourcePages": 87,
+  "delayMs": 200,
+  "size": 128,
+  "slot": {
+    "x": 22,
+    "y": 10,
+    "w": 95,
+    "h": 104,
+    "greenPixels": 222999
+  },
+  "layerPixels": 99624,
+  "source": "greenscreen/raw/snorlax.gif"
+}

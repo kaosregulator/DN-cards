@@ -1,0 +1,17 @@
+{
+  "id": "nopers",
+  "kind": "layer",
+  "frames": 33,
+  "sourcePages": 98,
+  "delayMs": 150,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 128,
+    "greenPixels": 185321
+  },
+  "layerPixels": 169913,
+  "source": "greenscreen/raw/nopers.gif"
+}

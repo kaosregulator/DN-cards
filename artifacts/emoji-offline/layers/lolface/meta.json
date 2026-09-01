@@ -1,0 +1,17 @@
+{
+  "id": "lolface",
+  "kind": "layer",
+  "frames": 1,
+  "sourcePages": 1,
+  "delayMs": 50,
+  "size": 128,
+  "slot": {
+    "x": 5,
+    "y": 5,
+    "w": 119,
+    "h": 119,
+    "greenPixels": 6060
+  },
+  "layerPixels": 7075,
+  "source": "greenscreen/raw/lolface.png"
+}

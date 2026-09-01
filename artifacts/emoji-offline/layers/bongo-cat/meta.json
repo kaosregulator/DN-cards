@@ -1,0 +1,17 @@
+{
+  "id": "bongo-cat",
+  "kind": "layer",
+  "frames": 8,
+  "sourcePages": 8,
+  "delayMs": 60,
+  "size": 128,
+  "slot": {
+    "x": 16,
+    "y": 82,
+    "w": 97,
+    "h": 45,
+    "greenPixels": 31636
+  },
+  "layerPixels": 44980,
+  "source": "greenscreen/raw/bongo-cat.gif"
+}

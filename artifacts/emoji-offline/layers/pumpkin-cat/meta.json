@@ -1,0 +1,17 @@
+{
+  "id": "pumpkin-cat",
+  "kind": "layer",
+  "frames": 8,
+  "sourcePages": 8,
+  "delayMs": 50,
+  "size": 128,
+  "slot": {
+    "x": 29,
+    "y": 18,
+    "w": 59,
+    "h": 81,
+    "greenPixels": 20021
+  },
+  "layerPixels": 53423,
+  "source": "greenscreen/raw/pumpkin-cat.gif"
+}

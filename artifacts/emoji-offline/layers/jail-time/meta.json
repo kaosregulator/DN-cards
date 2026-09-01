@@ -1,0 +1,17 @@
+{
+  "id": "jail-time",
+  "kind": "layer",
+  "frames": 11,
+  "sourcePages": 11,
+  "delayMs": 200,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 128,
+    "greenPixels": 142707
+  },
+  "layerPixels": 37517,
+  "source": "greenscreen/raw/jail-time.gif"
+}

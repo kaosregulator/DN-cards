@@ -1,0 +1,17 @@
+{
+  "id": "claude-code",
+  "kind": "layer",
+  "frames": 17,
+  "sourcePages": 17,
+  "delayMs": 40,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 49,
+    "w": 90,
+    "h": 79,
+    "greenPixels": 97834
+  },
+  "layerPixels": 9578,
+  "source": "greenscreen/raw/claude-code.gif"
+}

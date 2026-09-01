@@ -1,0 +1,17 @@
+{
+  "id": "prayge",
+  "kind": "layer",
+  "frames": 1,
+  "sourcePages": 1,
+  "delayMs": 50,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 2,
+    "w": 127,
+    "h": 126,
+    "greenPixels": 12532
+  },
+  "layerPixels": 1672,
+  "source": "greenscreen/raw/prayge.png"
+}

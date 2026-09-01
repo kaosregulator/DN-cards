@@ -1,0 +1,17 @@
+{
+  "id": "toilet-bounce",
+  "kind": "layer",
+  "frames": 10,
+  "sourcePages": 10,
+  "delayMs": 50,
+  "size": 128,
+  "slot": {
+    "x": 22,
+    "y": 0,
+    "w": 85,
+    "h": 128,
+    "greenPixels": 51592
+  },
+  "layerPixels": 49587,
+  "source": "greenscreen/raw/toilet-bounce.gif"
+}

@@ -1,0 +1,17 @@
+{
+  "id": "drained",
+  "kind": "layer",
+  "frames": 10,
+  "sourcePages": 10,
+  "delayMs": 100,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 3,
+    "w": 128,
+    "h": 125,
+    "greenPixels": 86308
+  },
+  "layerPixels": 60202,
+  "source": "greenscreen/raw/drained.gif"
+}

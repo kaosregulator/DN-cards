@@ -1,0 +1,17 @@
+{
+  "id": "heart-hypno",
+  "kind": "layer",
+  "frames": 10,
+  "sourcePages": 10,
+  "delayMs": 80,
+  "size": 128,
+  "slot": {
+    "x": 13,
+    "y": 13,
+    "w": 103,
+    "h": 103,
+    "greenPixels": 106090
+  },
+  "layerPixels": 57750,
+  "source": "greenscreen/raw/heart-hypno.gif"
+}

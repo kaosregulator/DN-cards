@@ -1,0 +1,17 @@
+{
+  "id": "doesnt-know",
+  "kind": "layer",
+  "frames": 2,
+  "sourcePages": 2,
+  "delayMs": 60,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 128,
+    "greenPixels": 30070
+  },
+  "layerPixels": 2698,
+  "source": "greenscreen/raw/doesnt-know.gif"
+}

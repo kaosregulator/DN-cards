@@ -1,0 +1,17 @@
+{
+  "id": "nesting-doll",
+  "kind": "transform-slot",
+  "frames": 47,
+  "sourcePages": 47,
+  "delayMs": 30,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 128,
+    "greenPixels": 733317
+  },
+  "layerPixels": 0,
+  "source": "greenscreen/raw/nesting-doll.gif"
+}

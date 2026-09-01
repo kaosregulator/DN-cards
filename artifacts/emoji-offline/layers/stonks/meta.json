@@ -1,0 +1,17 @@
+{
+  "id": "stonks",
+  "kind": "layer",
+  "frames": 1,
+  "sourcePages": 1,
+  "delayMs": 50,
+  "size": 128,
+  "slot": {
+    "x": 11,
+    "y": 4,
+    "w": 74,
+    "h": 108,
+    "greenPixels": 5988
+  },
+  "layerPixels": 10396,
+  "source": "greenscreen/raw/stonks.png"
+}

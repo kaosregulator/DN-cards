@@ -1,0 +1,17 @@
+{
+  "id": "blob-yes",
+  "kind": "layer",
+  "frames": 1,
+  "sourcePages": 1,
+  "delayMs": 50,
+  "size": 128,
+  "slot": {
+    "x": 11,
+    "y": 11,
+    "w": 117,
+    "h": 107,
+    "greenPixels": 7023
+  },
+  "layerPixels": 3800,
+  "source": "greenscreen/raw/blob-yes.png"
+}

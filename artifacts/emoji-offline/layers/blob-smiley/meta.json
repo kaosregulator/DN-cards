@@ -1,0 +1,17 @@
+{
+  "id": "blob-smiley",
+  "kind": "layer",
+  "frames": 1,
+  "sourcePages": 1,
+  "delayMs": 50,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 8,
+    "w": 128,
+    "h": 111,
+    "greenPixels": 9593
+  },
+  "layerPixels": 2019,
+  "source": "greenscreen/raw/blob-smiley.png"
+}

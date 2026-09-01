@@ -1,0 +1,17 @@
+{
+  "id": "float-loop",
+  "kind": "transform-slot",
+  "frames": 12,
+  "sourcePages": 12,
+  "delayMs": 110,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 128,
+    "greenPixels": 188717
+  },
+  "layerPixels": 0,
+  "source": "greenscreen/raw/float-loop.gif"
+}

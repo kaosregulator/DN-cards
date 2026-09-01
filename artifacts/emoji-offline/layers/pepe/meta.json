@@ -1,0 +1,17 @@
+{
+  "id": "pepe",
+  "kind": "layer",
+  "frames": 1,
+  "sourcePages": 1,
+  "delayMs": 50,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 2,
+    "w": 127,
+    "h": 119,
+    "greenPixels": 11897
+  },
+  "layerPixels": 2001,
+  "source": "greenscreen/raw/pepe.png"
+}

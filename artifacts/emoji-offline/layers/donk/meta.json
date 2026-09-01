@@ -1,0 +1,17 @@
+{
+  "id": "donk",
+  "kind": "layer",
+  "frames": 1,
+  "sourcePages": 1,
+  "delayMs": 50,
+  "size": 128,
+  "slot": {
+    "x": 17,
+    "y": 53,
+    "w": 111,
+    "h": 46,
+    "greenPixels": 4084
+  },
+  "layerPixels": 6499,
+  "source": "greenscreen/raw/donk.png"
+}

@@ -1,0 +1,17 @@
+{
+  "id": "mhm",
+  "kind": "layer",
+  "frames": 43,
+  "sourcePages": 43,
+  "delayMs": 50,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 128,
+    "greenPixels": 360396
+  },
+  "layerPixels": 160162,
+  "source": "greenscreen/raw/mhm.gif"
+}

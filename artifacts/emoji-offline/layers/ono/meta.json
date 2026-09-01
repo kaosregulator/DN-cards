@@ -1,0 +1,17 @@
+{
+  "id": "ono",
+  "kind": "layer",
+  "frames": 41,
+  "sourcePages": 82,
+  "delayMs": 100,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 128,
+    "greenPixels": 224892
+  },
+  "layerPixels": 242180,
+  "source": "greenscreen/raw/ono.gif"
+}

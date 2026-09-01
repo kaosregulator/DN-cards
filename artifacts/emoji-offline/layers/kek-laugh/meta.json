@@ -1,0 +1,17 @@
+{
+  "id": "kek-laugh",
+  "kind": "layer",
+  "frames": 30,
+  "sourcePages": 30,
+  "delayMs": 50,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 128,
+    "greenPixels": 163840
+  },
+  "layerPixels": 327510,
+  "source": "greenscreen/raw/kek-laugh.gif"
+}

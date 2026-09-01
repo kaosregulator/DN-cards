@@ -1,0 +1,17 @@
+{
+  "id": "venom",
+  "kind": "layer",
+  "frames": 42,
+  "sourcePages": 210,
+  "delayMs": 200,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 128,
+    "greenPixels": 259009
+  },
+  "layerPixels": 429119,
+  "source": "greenscreen/raw/venom.gif"
+}

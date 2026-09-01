@@ -1,0 +1,17 @@
+{
+  "id": "bonk",
+  "kind": "layer",
+  "frames": 10,
+  "sourcePages": 10,
+  "delayMs": 50,
+  "size": 128,
+  "slot": {
+    "x": 46,
+    "y": 51,
+    "w": 82,
+    "h": 77,
+    "greenPixels": 52589
+  },
+  "layerPixels": 11988,
+  "source": "greenscreen/raw/bonk.gif"
+}

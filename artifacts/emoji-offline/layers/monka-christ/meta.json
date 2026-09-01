@@ -1,0 +1,17 @@
+{
+  "id": "monka-christ",
+  "kind": "layer",
+  "frames": 40,
+  "sourcePages": 198,
+  "delayMs": 200,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 128,
+    "greenPixels": 237473
+  },
+  "layerPixels": 302095,
+  "source": "greenscreen/raw/monka-christ.gif"
+}

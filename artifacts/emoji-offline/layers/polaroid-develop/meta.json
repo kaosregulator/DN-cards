@@ -1,0 +1,17 @@
+{
+  "id": "polaroid-develop",
+  "kind": "layer",
+  "frames": 24,
+  "sourcePages": 24,
+  "delayMs": 70,
+  "size": 128,
+  "slot": {
+    "x": 22,
+    "y": 18,
+    "w": 85,
+    "h": 80,
+    "greenPixels": 93700
+  },
+  "layerPixels": 185681,
+  "source": "greenscreen/raw/polaroid-develop.gif"
+}

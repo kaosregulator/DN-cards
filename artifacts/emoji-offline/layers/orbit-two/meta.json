@@ -1,0 +1,17 @@
+{
+  "id": "orbit-two",
+  "kind": "transform-slot",
+  "frames": 10,
+  "sourcePages": 10,
+  "delayMs": 70,
+  "size": 128,
+  "slot": {
+    "x": 16,
+    "y": 16,
+    "w": 97,
+    "h": 97,
+    "greenPixels": 37480
+  },
+  "layerPixels": 0,
+  "source": "greenscreen/raw/orbit-two.gif"
+}

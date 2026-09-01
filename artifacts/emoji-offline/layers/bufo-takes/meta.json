@@ -1,0 +1,17 @@
+{
+  "id": "bufo-takes",
+  "kind": "layer",
+  "frames": 1,
+  "sourcePages": 1,
+  "delayMs": 50,
+  "size": 128,
+  "slot": {
+    "x": 3,
+    "y": 8,
+    "w": 112,
+    "h": 107,
+    "greenPixels": 4771
+  },
+  "layerPixels": 8175,
+  "source": "greenscreen/raw/bufo-takes.png"
+}

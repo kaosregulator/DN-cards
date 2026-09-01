@@ -1,0 +1,17 @@
+{
+  "id": "boooo",
+  "kind": "layer",
+  "frames": 38,
+  "sourcePages": 113,
+  "delayMs": 150,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 128,
+    "greenPixels": 342248
+  },
+  "layerPixels": 280344,
+  "source": "greenscreen/raw/boooo.gif"
+}

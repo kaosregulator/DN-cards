@@ -33,19 +33,15 @@ describe("offline recipe engine", () => {
     expect(ready.every(r => r.primitive)).toBe(true);
   });
 
-  it("marks nearly-full catalog coverage; blocks styles missing CDN frames", () => {
+  it("marks full catalog coverage from green-screen layer packs", () => {
     const m = loadOfflineManifest();
-    // 473 catalog styles; 3 closed pokéballs lack MakeEmoji CDN frame overlays
-    // (prerendered GIFs exist, but we do not invent replacements).
-    expect(m?.styleCount).toBe(473);
-    expect(m?.implementedStyleCount).toBe(470);
-    expect(m?.implementedStyleCount ?? 0).toBeGreaterThanOrEqual(400);
-    const blocked = ["pokeball-go", "pokeball-capture", "pokeball-almost"];
-    for (const id of blocked) {
-      expect(findRecipe(id)?.offlineReady, id).toBe(false);
-      expect(findRecipe(id)?.assets?.prerendered, id).toBeTruthy();
+    expect(m?.styleCount).toBeGreaterThanOrEqual(500);
+    expect(m?.implementedStyleCount).toBe(m?.styleCount);
+    expect(m?.offlineReady).toBe(true);
+    // Layer packs exist for the closed pokéballs now (harvested from the site).
+    for (const id of ["pokeball-go", "pokeball-capture", "pokeball-almost", "pokeball-emerge", "pet"]) {
+      expect(findOfflineStyle(id)?.offlineImplemented, id).toBe(true);
     }
-    expect(findRecipe("pokeball-emerge")?.offlineReady).toBe(true);
   });
 
   it("syncs implemented styles from recipes across families", () => {
@@ -74,8 +70,12 @@ describe("offline recipe engine", () => {
     const image = await testImage(128);
     const samples = ["none", "shake", "bounce", "spin", "peepo", "angel", "cowboy", "party-parrot"];
     for (const animation of samples) {
+      const style = findOfflineStyle(animation);
       const recipe = findRecipe(animation);
-      expect(recipe?.offlineReady, animation).toBe(true);
+      expect(
+        style?.offlineImplemented || recipe?.offlineReady,
+        animation,
+      ).toBe(true);
       const result = await renderOffline({
         image, animation, format: "gif", size: "64", speed: "normal",
       });

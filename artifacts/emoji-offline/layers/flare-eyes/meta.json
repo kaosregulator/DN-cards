@@ -1,0 +1,17 @@
+{
+  "id": "flare-eyes",
+  "kind": "layer",
+  "frames": 16,
+  "sourcePages": 16,
+  "delayMs": 70,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 128,
+    "greenPixels": 250651
+  },
+  "layerPixels": 11493,
+  "source": "greenscreen/raw/flare-eyes.gif"
+}

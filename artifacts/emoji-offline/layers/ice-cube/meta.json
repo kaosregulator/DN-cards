@@ -1,0 +1,17 @@
+{
+  "id": "ice-cube",
+  "kind": "layer",
+  "frames": 1,
+  "sourcePages": 1,
+  "delayMs": 50,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 128,
+    "greenPixels": 14466
+  },
+  "layerPixels": 1918,
+  "source": "greenscreen/raw/ice-cube.png"
+}

@@ -1,0 +1,17 @@
+{
+  "id": "glorpa",
+  "kind": "layer",
+  "frames": 1,
+  "sourcePages": 1,
+  "delayMs": 50,
+  "size": 128,
+  "slot": {
+    "x": 17,
+    "y": 19,
+    "w": 91,
+    "h": 104,
+    "greenPixels": 3787
+  },
+  "layerPixels": 5759,
+  "source": "greenscreen/raw/glorpa.png"
+}

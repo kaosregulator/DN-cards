@@ -1,0 +1,17 @@
+{
+  "id": "leave",
+  "kind": "layer",
+  "frames": 39,
+  "sourcePages": 39,
+  "delayMs": 50,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 128,
+    "greenPixels": 225976
+  },
+  "layerPixels": 25021,
+  "source": "greenscreen/raw/leave.gif"
+}

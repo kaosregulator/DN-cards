@@ -1,0 +1,17 @@
+{
+  "id": "kaiju-city",
+  "kind": "layer",
+  "frames": 24,
+  "sourcePages": 24,
+  "delayMs": 70,
+  "size": 128,
+  "slot": {
+    "x": 6,
+    "y": 1,
+    "w": 122,
+    "h": 122,
+    "greenPixels": 280372
+  },
+  "layerPixels": 112844,
+  "source": "greenscreen/raw/kaiju-city.gif"
+}

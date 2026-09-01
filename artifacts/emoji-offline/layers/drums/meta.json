@@ -1,0 +1,17 @@
+{
+  "id": "drums",
+  "kind": "layer",
+  "frames": 10,
+  "sourcePages": 10,
+  "delayMs": 50,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 128,
+    "greenPixels": 122800
+  },
+  "layerPixels": 41040,
+  "source": "greenscreen/raw/drums.gif"
+}

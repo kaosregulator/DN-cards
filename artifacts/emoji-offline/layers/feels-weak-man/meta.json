@@ -1,0 +1,17 @@
+{
+  "id": "feels-weak-man",
+  "kind": "layer",
+  "frames": 42,
+  "sourcePages": 83,
+  "delayMs": 100,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 128,
+    "greenPixels": 369102
+  },
+  "layerPixels": 201911,
+  "source": "greenscreen/raw/feels-weak-man.gif"
+}

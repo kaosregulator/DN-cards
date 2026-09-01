@@ -1,0 +1,17 @@
+{
+  "id": "reveal",
+  "kind": "layer",
+  "frames": 30,
+  "sourcePages": 59,
+  "delayMs": 40,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 128,
+    "greenPixels": 231908
+  },
+  "layerPixels": 259612,
+  "source": "greenscreen/raw/reveal.gif"
+}

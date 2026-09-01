@@ -1,0 +1,17 @@
+{
+  "id": "diamond",
+  "kind": "transform-slot",
+  "frames": 24,
+  "sourcePages": 24,
+  "delayMs": 140,
+  "size": 128,
+  "slot": {
+    "x": 16,
+    "y": 10,
+    "w": 97,
+    "h": 112,
+    "greenPixels": 150332
+  },
+  "layerPixels": 0,
+  "source": "greenscreen/raw/diamond.gif"
+}

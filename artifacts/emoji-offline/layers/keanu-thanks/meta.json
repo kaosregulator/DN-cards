@@ -1,0 +1,17 @@
+{
+  "id": "keanu-thanks",
+  "kind": "layer",
+  "frames": 46,
+  "sourcePages": 46,
+  "delayMs": 50,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 128,
+    "greenPixels": 163840
+  },
+  "layerPixels": 546444,
+  "source": "greenscreen/raw/keanu-thanks.gif"
+}

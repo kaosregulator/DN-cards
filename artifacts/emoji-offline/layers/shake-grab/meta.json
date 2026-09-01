@@ -1,0 +1,17 @@
+{
+  "id": "shake-grab",
+  "kind": "layer",
+  "frames": 10,
+  "sourcePages": 10,
+  "delayMs": 60,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 128,
+    "greenPixels": 129299
+  },
+  "layerPixels": 23504,
+  "source": "greenscreen/raw/shake-grab.gif"
+}

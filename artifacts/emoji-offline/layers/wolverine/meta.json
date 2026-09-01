@@ -1,0 +1,17 @@
+{
+  "id": "wolverine",
+  "kind": "layer",
+  "frames": 37,
+  "sourcePages": 110,
+  "delayMs": 120,
+  "size": 128,
+  "slot": {
+    "x": 19,
+    "y": 11,
+    "w": 91,
+    "h": 111,
+    "greenPixels": 154748
+  },
+  "layerPixels": 451460,
+  "source": "greenscreen/raw/wolverine.gif"
+}

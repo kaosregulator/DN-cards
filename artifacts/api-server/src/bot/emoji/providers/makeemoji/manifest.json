@@ -1,8 +1,8 @@
 {
   "verified": true,
-  "discoveredAt": "2026-09-01T16:19:10.335Z",
+  "discoveredAt": "2026-09-01T17:24:23.833Z",
   "siteUrl": "https://makeemoji.com/",
-  "notes": "Live catalog synced from makeemoji.com editor grid (570 styles). Settings (Speed/Direction/Size/Color/Format/Quality) stay as controls — not styles.",
+  "notes": "Usable MakeEmoji green-screen layer packs: 564.",
   "controls": {
     "color": {
       "selector": "#color-select",
@@ -210,14 +210,6 @@
         {
           "value": "gen_btn_banana-dance",
           "label": "banana-dance"
-        },
-        {
-          "value": "gen_btn_bat-signal",
-          "label": "bat-signal"
-        },
-        {
-          "value": "gen_btn_bat-signal-scene",
-          "label": "bat-signal-scene"
         },
         {
           "value": "gen_btn_bedge",
@@ -526,10 +518,6 @@
         {
           "value": "gen_btn_crown-drop",
           "label": "crown-drop"
-        },
-        {
-          "value": "gen_btn_crying-laughing",
-          "label": "crying-laughing"
         },
         {
           "value": "gen_btn_cube",
@@ -1764,10 +1752,6 @@
           "label": "reveal"
         },
         {
-          "value": "gen_btn_rgb-split",
-          "label": "rgb-split"
-        },
-        {
           "value": "gen_btn_riott",
           "label": "riott"
         },
@@ -2348,16 +2332,8 @@
           "label": "wolverine"
         },
         {
-          "value": "gen_btn_woodcut-portrait",
-          "label": "woodcut-portrait"
-        },
-        {
           "value": "gen_btn_wormhole",
           "label": "wormhole"
-        },
-        {
-          "value": "gen_btn_xray-scan",
-          "label": "xray-scan"
         },
         {
           "value": "gen_btn_yes-yes",

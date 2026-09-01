@@ -1,0 +1,17 @@
+{
+  "id": "bonk-doge",
+  "kind": "layer",
+  "frames": 10,
+  "sourcePages": 10,
+  "delayMs": 50,
+  "size": 128,
+  "slot": {
+    "x": 59,
+    "y": 64,
+    "w": 69,
+    "h": 64,
+    "greenPixels": 34204
+  },
+  "layerPixels": 38609,
+  "source": "greenscreen/raw/bonk-doge.gif"
+}

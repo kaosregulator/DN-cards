@@ -1,0 +1,17 @@
+{
+  "id": "stare",
+  "kind": "layer",
+  "frames": 1,
+  "sourcePages": 1,
+  "delayMs": 50,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 9,
+    "w": 127,
+    "h": 101,
+    "greenPixels": 10609
+  },
+  "layerPixels": 2167,
+  "source": "greenscreen/raw/stare.png"
+}

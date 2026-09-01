@@ -1,0 +1,17 @@
+{
+  "id": "leave-me-alone",
+  "kind": "layer",
+  "frames": 47,
+  "sourcePages": 140,
+  "delayMs": 150,
+  "size": 128,
+  "slot": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 128,
+    "greenPixels": 81920
+  },
+  "layerPixels": 688128,
+  "source": "greenscreen/raw/leave-me-alone.gif"
+}

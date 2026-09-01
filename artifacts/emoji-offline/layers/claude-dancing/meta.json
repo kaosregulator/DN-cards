@@ -1,0 +1,17 @@
+{
+  "id": "claude-dancing",
+  "kind": "transform-slot",
+  "frames": 18,
+  "sourcePages": 18,
+  "delayMs": 80,
+  "size": 128,
+  "slot": {
+    "x": 5,
+    "y": 43,
+    "w": 121,
+    "h": 85,
+    "greenPixels": 119350
+  },
+  "layerPixels": 0,
+  "source": "greenscreen/raw/claude-dancing.gif"
+}

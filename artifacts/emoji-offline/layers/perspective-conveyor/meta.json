@@ -1,0 +1,17 @@
+{
+  "id": "perspective-conveyor",
+  "kind": "transform-slot",
+  "frames": 24,
+  "sourcePages": 24,
+  "delayMs": 70,
+  "size": 128,
+  "slot": {
+    "x": 25,
+    "y": 24,
+    "w": 79,
+    "h": 104,
+    "greenPixels": 123018
+  },
+  "layerPixels": 0,
+  "source": "greenscreen/raw/perspective-conveyor.gif"
+}
