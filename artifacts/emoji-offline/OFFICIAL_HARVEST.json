@@ -1,0 +1,2523 @@
+{
+  "harvestedAt": "2026-09-01T02:26:44.651Z",
+  "prerendered": {
+    "2x-wide-1": {
+      "path": "prerendered/2x-wide-1/default-cat-preview.webp",
+      "bytes": 1760,
+      "kind": "preview-webp"
+    },
+    "2x-wide-2": {
+      "path": "prerendered/2x-wide-2/default-cat-preview.webp",
+      "bytes": 1678,
+      "kind": "preview-webp"
+    },
+    "3d-flip": {
+      "path": "prerendered/3d-flip/default-cat.gif",
+      "bytes": 50953,
+      "kind": "hq-gif"
+    },
+    "3x-wide-1": {
+      "path": "prerendered/3x-wide-1/default-cat-preview.webp",
+      "bytes": 1874,
+      "kind": "preview-webp"
+    },
+    "3x-wide-2": {
+      "path": "prerendered/3x-wide-2/default-cat-preview.webp",
+      "bytes": 1278,
+      "kind": "preview-webp"
+    },
+    "3x-wide-3": {
+      "path": "prerendered/3x-wide-3/default-cat-preview.webp",
+      "bytes": 1768,
+      "kind": "preview-webp"
+    },
+    "4x-wide-1": {
+      "path": "prerendered/4x-wide-1/default-cat-preview.webp",
+      "bytes": 1584,
+      "kind": "preview-webp"
+    },
+    "4x-wide-2": {
+      "path": "prerendered/4x-wide-2/default-cat-preview.webp",
+      "bytes": 1298,
+      "kind": "preview-webp"
+    },
+    "4x-wide-3": {
+      "path": "prerendered/4x-wide-3/default-cat-preview.webp",
+      "bytes": 1110,
+      "kind": "preview-webp"
+    },
+    "4x-wide-4": {
+      "path": "prerendered/4x-wide-4/default-cat-preview.webp",
+      "bytes": 1680,
+      "kind": "preview-webp"
+    },
+    "abdul-pls": {
+      "path": "prerendered/abdul-pls/default-cat.gif",
+      "bytes": 55389,
+      "kind": "hq-gif"
+    },
+    "aha": {
+      "path": "prerendered/aha/default-cat.gif",
+      "bytes": 184959,
+      "kind": "hq-gif"
+    },
+    "alarm": {
+      "path": "prerendered/alarm/default-cat.gif",
+      "bytes": 70647,
+      "kind": "hq-gif"
+    },
+    "alarms": {
+      "path": "prerendered/alarms/default-cat.gif",
+      "bytes": 72147,
+      "kind": "hq-gif"
+    },
+    "alert": {
+      "path": "prerendered/alert/default-cat.gif",
+      "bytes": 69141,
+      "kind": "hq-gif"
+    },
+    "alien-pls": {
+      "path": "prerendered/alien-pls/default-cat.gif",
+      "bytes": 449229,
+      "kind": "hq-gif"
+    },
+    "alien-pls-3": {
+      "path": "prerendered/alien-pls-3/default-cat.gif",
+      "bytes": 133491,
+      "kind": "hq-gif"
+    },
+    "alowo": {
+      "path": "prerendered/alowo/default-cat.gif",
+      "bytes": 73089,
+      "kind": "hq-gif"
+    },
+    "amaze": {
+      "path": "prerendered/amaze/default-cat.gif",
+      "bytes": 35046,
+      "kind": "hq-gif"
+    },
+    "angel": {
+      "path": "prerendered/angel/default-cat-preview.webp",
+      "bytes": 2536,
+      "kind": "preview-webp"
+    },
+    "anime-scream": {
+      "path": "prerendered/anime-scream/default-cat.gif",
+      "bytes": 242741,
+      "kind": "hq-gif"
+    },
+    "anticipation": {
+      "path": "prerendered/anticipation/default-cat.gif",
+      "bytes": 100481,
+      "kind": "hq-gif"
+    },
+    "approve-arms": {
+      "path": "prerendered/approve-arms/default-cat.gif",
+      "bytes": 68142,
+      "kind": "hq-gif"
+    },
+    "banana-dance": {
+      "path": "prerendered/banana-dance/default-cat.gif",
+      "bytes": 43802,
+      "kind": "hq-gif"
+    },
+    "bat-signal": {
+      "path": "prerendered/bat-signal/default-cat-preview.webp",
+      "bytes": 1512,
+      "kind": "preview-webp"
+    },
+    "bat-signal-scene": {
+      "path": "prerendered/bat-signal-scene/default-cat-preview.webp",
+      "bytes": 934,
+      "kind": "preview-webp"
+    },
+    "bedge": {
+      "path": "prerendered/bedge/default-cat-preview.webp",
+      "bytes": 2110,
+      "kind": "preview-webp"
+    },
+    "beers": {
+      "path": "prerendered/beers/default-cat.gif",
+      "bytes": 70486,
+      "kind": "hq-gif"
+    },
+    "binoculars": {
+      "path": "prerendered/binoculars/default-cat-preview.webp",
+      "bytes": 2276,
+      "kind": "preview-webp"
+    },
+    "blah-blah-blah": {
+      "path": "prerendered/blah-blah-blah/default-cat.gif",
+      "bytes": 201969,
+      "kind": "hq-gif"
+    },
+    "blame": {
+      "path": "prerendered/blame/default-cat-preview.webp",
+      "bytes": 3374,
+      "kind": "preview-webp"
+    },
+    "blame-animated": {
+      "path": "prerendered/blame-animated/default-cat.gif",
+      "bytes": 160300,
+      "kind": "hq-gif"
+    },
+    "blanket": {
+      "path": "prerendered/blanket/default-cat-preview.webp",
+      "bytes": 2230,
+      "kind": "preview-webp"
+    },
+    "blankies": {
+      "path": "prerendered/blankies/default-cat.gif",
+      "bytes": 48530,
+      "kind": "hq-gif"
+    },
+    "blast": {
+      "path": "prerendered/blast/default-cat.gif",
+      "bytes": 51941,
+      "kind": "hq-gif"
+    },
+    "blaze": {
+      "path": "prerendered/blaze/default-cat.gif",
+      "bytes": 81609,
+      "kind": "hq-gif"
+    },
+    "blink": {
+      "path": "prerendered/blink/default-cat.gif",
+      "bytes": 48117,
+      "kind": "hq-gif"
+    },
+    "blob-help": {
+      "path": "prerendered/blob-help/default-cat-preview.webp",
+      "bytes": 2466,
+      "kind": "preview-webp"
+    },
+    "blob-no": {
+      "path": "prerendered/blob-no/default-cat-preview.webp",
+      "bytes": 2880,
+      "kind": "preview-webp"
+    },
+    "blob-smiley": {
+      "path": "prerendered/blob-smiley/default-cat-preview.webp",
+      "bytes": 2274,
+      "kind": "preview-webp"
+    },
+    "blob-yes": {
+      "path": "prerendered/blob-yes/default-cat-preview.webp",
+      "bytes": 2434,
+      "kind": "preview-webp"
+    },
+    "blush": {
+      "path": "prerendered/blush/default-cat-preview.webp",
+      "bytes": 2174,
+      "kind": "preview-webp"
+    },
+    "bobble": {
+      "path": "prerendered/bobble/default-cat.gif",
+      "bytes": 74255,
+      "kind": "hq-gif"
+    },
+    "boing": {
+      "path": "prerendered/boing/default-cat.gif",
+      "bytes": 52807,
+      "kind": "hq-gif"
+    },
+    "bonk": {
+      "path": "prerendered/bonk/default-cat.gif",
+      "bytes": 39195,
+      "kind": "hq-gif"
+    },
+    "bonk-doge": {
+      "path": "prerendered/bonk-doge/default-cat.gif",
+      "bytes": 53891,
+      "kind": "hq-gif"
+    },
+    "booba": {
+      "path": "prerendered/booba/default-cat.gif",
+      "bytes": 281366,
+      "kind": "hq-gif"
+    },
+    "boom": {
+      "path": "prerendered/boom/default-cat.gif",
+      "bytes": 46360,
+      "kind": "hq-gif"
+    },
+    "boooo": {
+      "path": "prerendered/boooo/default-cat.gif",
+      "bytes": 641797,
+      "kind": "hq-gif"
+    },
+    "bounce": {
+      "path": "prerendered/bounce/default-cat.gif",
+      "bytes": 74234,
+      "kind": "hq-gif"
+    },
+    "box": {
+      "path": "prerendered/box/default-cat.gif",
+      "bytes": 52459,
+      "kind": "hq-gif"
+    },
+    "breaking-news": {
+      "path": "prerendered/breaking-news/default-cat.gif",
+      "bytes": 66901,
+      "kind": "hq-gif"
+    },
+    "breathe": {
+      "path": "prerendered/breathe/default-cat.gif",
+      "bytes": 57051,
+      "kind": "hq-gif"
+    },
+    "bubble": {
+      "path": "prerendered/bubble/default-cat.gif",
+      "bytes": 56993,
+      "kind": "hq-gif"
+    },
+    "bubbles": {
+      "path": "prerendered/bubbles/default-cat.gif",
+      "bytes": 338040,
+      "kind": "hq-gif"
+    },
+    "bufo-offers": {
+      "path": "prerendered/bufo-offers/default-cat-preview.webp",
+      "bytes": 1716,
+      "kind": "preview-webp"
+    },
+    "bufo-takes": {
+      "path": "prerendered/bufo-takes/default-cat-preview.webp",
+      "bytes": 1928,
+      "kind": "preview-webp"
+    },
+    "bulge": {
+      "path": "prerendered/bulge/default-cat.gif",
+      "bytes": 65593,
+      "kind": "hq-gif"
+    },
+    "burger": {
+      "path": "prerendered/burger/default-cat-preview.webp",
+      "bytes": 2546,
+      "kind": "preview-webp"
+    },
+    "burn": {
+      "path": "prerendered/burn/default-cat.gif",
+      "bytes": 65767,
+      "kind": "hq-gif"
+    },
+    "bush-disappear": {
+      "path": "prerendered/bush-disappear/default-cat.gif",
+      "bytes": 199170,
+      "kind": "hq-gif"
+    },
+    "bush-texture": {
+      "path": "prerendered/bush-texture/default-cat.gif",
+      "bytes": 297178,
+      "kind": "hq-gif"
+    },
+    "cancel": {
+      "path": "prerendered/cancel/default-cat.gif",
+      "bytes": 63521,
+      "kind": "hq-gif"
+    },
+    "cat-ears": {
+      "path": "prerendered/cat-ears/default-cat.gif",
+      "bytes": 103333,
+      "kind": "hq-gif"
+    },
+    "cat-jam": {
+      "path": "prerendered/cat-jam/default-cat.gif",
+      "bytes": 933367,
+      "kind": "hq-gif"
+    },
+    "cat-jam-crying": {
+      "path": "prerendered/cat-jam-crying/default-cat.gif",
+      "bytes": 942009,
+      "kind": "hq-gif"
+    },
+    "cat-no": {
+      "path": "prerendered/cat-no/default-cat.gif",
+      "bytes": 108137,
+      "kind": "hq-gif"
+    },
+    "cat-slap": {
+      "path": "prerendered/cat-slap/default-cat.gif",
+      "bytes": 78842,
+      "kind": "hq-gif"
+    },
+    "cat-yes": {
+      "path": "prerendered/cat-yes/default-cat.gif",
+      "bytes": 106351,
+      "kind": "hq-gif"
+    },
+    "clap": {
+      "path": "prerendered/clap/default-cat.gif",
+      "bytes": 76111,
+      "kind": "hq-gif"
+    },
+    "clap-glove": {
+      "path": "prerendered/clap-glove/default-cat.gif",
+      "bytes": 80111,
+      "kind": "hq-gif"
+    },
+    "claude-code": {
+      "path": "prerendered/claude-code/default-cat.gif",
+      "bytes": 48518,
+      "kind": "hq-gif"
+    },
+    "claude-dancing": {
+      "path": "prerendered/claude-dancing/default-cat.gif",
+      "bytes": 49705,
+      "kind": "hq-gif"
+    },
+    "claude-football": {
+      "path": "prerendered/claude-football/default-cat.gif",
+      "bytes": 109667,
+      "kind": "hq-gif"
+    },
+    "claude-fu": {
+      "path": "prerendered/claude-fu/default-cat.gif",
+      "bytes": 53162,
+      "kind": "hq-gif"
+    },
+    "claude-idea": {
+      "path": "prerendered/claude-idea/default-cat.gif",
+      "bytes": 19907,
+      "kind": "hq-gif"
+    },
+    "claude-jam": {
+      "path": "prerendered/claude-jam/default-cat.gif",
+      "bytes": 24260,
+      "kind": "hq-gif"
+    },
+    "cleaning": {
+      "path": "prerendered/cleaning/default-cat.gif",
+      "bytes": 40534,
+      "kind": "hq-gif"
+    },
+    "clone-army": {
+      "path": "prerendered/clone-army/default-cat.gif",
+      "bytes": 64972,
+      "kind": "hq-gif"
+    },
+    "coggers": {
+      "path": "prerendered/coggers/default-cat-preview.webp",
+      "bytes": 2408,
+      "kind": "preview-webp"
+    },
+    "combust": {
+      "path": "prerendered/combust/default-cat.gif",
+      "bytes": 54700,
+      "kind": "hq-gif"
+    },
+    "comfy": {
+      "path": "prerendered/comfy/default-cat-preview.webp",
+      "bytes": 2132,
+      "kind": "preview-webp"
+    },
+    "concerned": {
+      "path": "prerendered/concerned/default-cat.gif",
+      "bytes": 169971,
+      "kind": "hq-gif"
+    },
+    "confused-cat": {
+      "path": "prerendered/confused-cat/default-cat-preview.webp",
+      "bytes": 1894,
+      "kind": "preview-webp"
+    },
+    "conga-line": {
+      "path": "prerendered/conga-line/default-cat.gif",
+      "bytes": 171839,
+      "kind": "hq-gif"
+    },
+    "content-aware": {
+      "path": "prerendered/content-aware/default-cat.gif",
+      "bytes": 83865,
+      "kind": "hq-gif"
+    },
+    "cool-glasses": {
+      "path": "prerendered/cool-glasses/default-cat.gif",
+      "bytes": 71707,
+      "kind": "hq-gif"
+    },
+    "copium": {
+      "path": "prerendered/copium/default-cat-preview.webp",
+      "bytes": 2528,
+      "kind": "preview-webp"
+    },
+    "courage-scream": {
+      "path": "prerendered/courage-scream/default-cat.gif",
+      "bytes": 1160777,
+      "kind": "hq-gif"
+    },
+    "cowboy": {
+      "path": "prerendered/cowboy/default-cat-preview.webp",
+      "bytes": 2328,
+      "kind": "preview-webp"
+    },
+    "crab": {
+      "path": "prerendered/crab/default-cat.gif",
+      "bytes": 79331,
+      "kind": "hq-gif"
+    },
+    "credit-swipe": {
+      "path": "prerendered/credit-swipe/default-cat.gif",
+      "bytes": 63322,
+      "kind": "hq-gif"
+    },
+    "crying-laughing": {
+      "path": "prerendered/crying-laughing/default-cat-preview.webp",
+      "bytes": 2742,
+      "kind": "preview-webp"
+    },
+    "cube": {
+      "path": "prerendered/cube/default-cat.gif",
+      "bytes": 70074,
+      "kind": "hq-gif"
+    },
+    "cute-ghost": {
+      "path": "prerendered/cute-ghost/default-cat.gif",
+      "bytes": 40907,
+      "kind": "hq-gif"
+    },
+    "cute-hop": {
+      "path": "prerendered/cute-hop/default-cat.gif",
+      "bytes": 57191,
+      "kind": "hq-gif"
+    },
+    "dbz-aura": {
+      "path": "prerendered/dbz-aura/default-cat.gif",
+      "bytes": 72818,
+      "kind": "hq-gif"
+    },
+    "ddr": {
+      "path": "prerendered/ddr/default-cat.gif",
+      "bytes": 71842,
+      "kind": "hq-gif"
+    },
+    "deal-with-it": {
+      "path": "prerendered/deal-with-it/default-cat.gif",
+      "bytes": 65864,
+      "kind": "hq-gif"
+    },
+    "depth-tilt": {
+      "path": "prerendered/depth-tilt/default-cat.gif",
+      "bytes": 50327,
+      "kind": "hq-gif"
+    },
+    "diamond": {
+      "path": "prerendered/diamond/default-cat.gif",
+      "bytes": 74016,
+      "kind": "hq-gif"
+    },
+    "ditto": {
+      "path": "prerendered/ditto/default-cat.gif",
+      "bytes": 125351,
+      "kind": "hq-gif"
+    },
+    "doesnt-know": {
+      "path": "prerendered/doesnt-know/default-cat.gif",
+      "bytes": 13003,
+      "kind": "hq-gif"
+    },
+    "donk": {
+      "path": "prerendered/donk/default-cat-preview.webp",
+      "bytes": 2024,
+      "kind": "preview-webp"
+    },
+    "drake-duh": {
+      "path": "prerendered/drake-duh/default-cat.gif",
+      "bytes": 346860,
+      "kind": "hq-gif"
+    },
+    "drift": {
+      "path": "prerendered/drift/default-cat.gif",
+      "bytes": 57173,
+      "kind": "hq-gif"
+    },
+    "drop": {
+      "path": "prerendered/drop/default-cat.gif",
+      "bytes": 52585,
+      "kind": "hq-gif"
+    },
+    "drop-bounce": {
+      "path": "prerendered/drop-bounce/default-cat.gif",
+      "bytes": 53323,
+      "kind": "hq-gif"
+    },
+    "earthquake": {
+      "path": "prerendered/earthquake/default-cat.gif",
+      "bytes": 54307,
+      "kind": "hq-gif"
+    },
+    "elastic": {
+      "path": "prerendered/elastic/default-cat.gif",
+      "bytes": 44991,
+      "kind": "hq-gif"
+    },
+    "electricity": {
+      "path": "prerendered/electricity/default-cat.gif",
+      "bytes": 65444,
+      "kind": "hq-gif"
+    },
+    "elmo-fire": {
+      "path": "prerendered/elmo-fire/default-cat.gif",
+      "bytes": 374851,
+      "kind": "hq-gif"
+    },
+    "emoji-scream": {
+      "path": "prerendered/emoji-scream/default-cat.gif",
+      "bytes": 215142,
+      "kind": "hq-gif"
+    },
+    "enter": {
+      "path": "prerendered/enter/default-cat.gif",
+      "bytes": 54436,
+      "kind": "hq-gif"
+    },
+    "excited": {
+      "path": "prerendered/excited/default-cat.gif",
+      "bytes": 75211,
+      "kind": "hq-gif"
+    },
+    "excuse-me": {
+      "path": "prerendered/excuse-me/default-cat.gif",
+      "bytes": 56115,
+      "kind": "hq-gif"
+    },
+    "exit": {
+      "path": "prerendered/exit/default-cat.gif",
+      "bytes": 42772,
+      "kind": "hq-gif"
+    },
+    "explain": {
+      "path": "prerendered/explain/default-cat.gif",
+      "bytes": 72144,
+      "kind": "hq-gif"
+    },
+    "explode": {
+      "path": "prerendered/explode/default-cat.gif",
+      "bytes": 31438,
+      "kind": "hq-gif"
+    },
+    "face-cover": {
+      "path": "prerendered/face-cover/default-cat-preview.webp",
+      "bytes": 1664,
+      "kind": "preview-webp"
+    },
+    "facepalm": {
+      "path": "prerendered/facepalm/default-cat.gif",
+      "bytes": 136482,
+      "kind": "hq-gif"
+    },
+    "fall-leaves": {
+      "path": "prerendered/fall-leaves/default-cat.gif",
+      "bytes": 152719,
+      "kind": "hq-gif"
+    },
+    "feels-rain-man": {
+      "path": "prerendered/feels-rain-man/default-cat.gif",
+      "bytes": 82364,
+      "kind": "hq-gif"
+    },
+    "feels-weak-man": {
+      "path": "prerendered/feels-weak-man/default-cat.gif",
+      "bytes": 314773,
+      "kind": "hq-gif"
+    },
+    "figure-8": {
+      "path": "prerendered/figure-8/default-cat.gif",
+      "bytes": 52348,
+      "kind": "hq-gif"
+    },
+    "fire-pixel": {
+      "path": "prerendered/fire-pixel/default-cat.gif",
+      "bytes": 61693,
+      "kind": "hq-gif"
+    },
+    "fireplace": {
+      "path": "prerendered/fireplace/default-cat.gif",
+      "bytes": 65373,
+      "kind": "hq-gif"
+    },
+    "fivehead": {
+      "path": "prerendered/fivehead/default-cat-preview.webp",
+      "bytes": 2194,
+      "kind": "preview-webp"
+    },
+    "fivehead-pulse": {
+      "path": "prerendered/fivehead-pulse/default-cat.gif",
+      "bytes": 65487,
+      "kind": "hq-gif"
+    },
+    "flag": {
+      "path": "prerendered/flag/default-cat.gif",
+      "bytes": 31665,
+      "kind": "hq-gif"
+    },
+    "flag-wave": {
+      "path": "prerendered/flag-wave/default-cat.gif",
+      "bytes": 80014,
+      "kind": "hq-gif"
+    },
+    "flame": {
+      "path": "prerendered/flame/default-cat.gif",
+      "bytes": 54771,
+      "kind": "hq-gif"
+    },
+    "flare-eyes": {
+      "path": "prerendered/flare-eyes/default-cat.gif",
+      "bytes": 67139,
+      "kind": "hq-gif"
+    },
+    "flick": {
+      "path": "prerendered/flick/default-cat.gif",
+      "bytes": 70520,
+      "kind": "hq-gif"
+    },
+    "fling": {
+      "path": "prerendered/fling/default-cat.gif",
+      "bytes": 32099,
+      "kind": "hq-gif"
+    },
+    "flip": {
+      "path": "prerendered/flip/default-cat.gif",
+      "bytes": 78361,
+      "kind": "hq-gif"
+    },
+    "flipp": {
+      "path": "prerendered/flipp/default-cat.gif",
+      "bytes": 427794,
+      "kind": "hq-gif"
+    },
+    "floating-pumpkins": {
+      "path": "prerendered/floating-pumpkins/default-cat.gif",
+      "bytes": 178097,
+      "kind": "hq-gif"
+    },
+    "flutter": {
+      "path": "prerendered/flutter/default-cat.gif",
+      "bytes": 54448,
+      "kind": "hq-gif"
+    },
+    "frog-flag": {
+      "path": "prerendered/frog-flag/default-cat-preview.webp",
+      "bytes": 2552,
+      "kind": "preview-webp"
+    },
+    "fry": {
+      "path": "prerendered/fry/default-cat.gif",
+      "bytes": 107126,
+      "kind": "hq-gif"
+    },
+    "gengar": {
+      "path": "prerendered/gengar/default-cat.gif",
+      "bytes": 133404,
+      "kind": "hq-gif"
+    },
+    "gigachad": {
+      "path": "prerendered/gigachad/default-cat.gif",
+      "bytes": 56641,
+      "kind": "hq-gif"
+    },
+    "glasses-shine": {
+      "path": "prerendered/glasses-shine/default-cat.gif",
+      "bytes": 76461,
+      "kind": "hq-gif"
+    },
+    "glitch": {
+      "path": "prerendered/glitch/default-cat.gif",
+      "bytes": 59197,
+      "kind": "hq-gif"
+    },
+    "glorming": {
+      "path": "prerendered/glorming/default-cat.gif",
+      "bytes": 563048,
+      "kind": "hq-gif"
+    },
+    "glorp": {
+      "path": "prerendered/glorp/default-cat-preview.webp",
+      "bytes": 2550,
+      "kind": "preview-webp"
+    },
+    "glorpa": {
+      "path": "prerendered/glorpa/default-cat-preview.webp",
+      "bytes": 1910,
+      "kind": "preview-webp"
+    },
+    "googly-eyes": {
+      "path": "prerendered/googly-eyes/default-cat.gif",
+      "bytes": 62897,
+      "kind": "hq-gif"
+    },
+    "grayscale": {
+      "path": "prerendered/grayscale/default-cat.gif",
+      "bytes": 68119,
+      "kind": "hq-gif"
+    },
+    "green-fire": {
+      "path": "prerendered/green-fire/default-cat.gif",
+      "bytes": 29316,
+      "kind": "hq-gif"
+    },
+    "gulp": {
+      "path": "prerendered/gulp/default-cat.gif",
+      "bytes": 55153,
+      "kind": "hq-gif"
+    },
+    "gun": {
+      "path": "prerendered/gun/default-cat.gif",
+      "bytes": 87651,
+      "kind": "hq-gif"
+    },
+    "hazmat": {
+      "path": "prerendered/hazmat/default-cat-preview.webp",
+      "bytes": 2468,
+      "kind": "preview-webp"
+    },
+    "hazmat-2": {
+      "path": "prerendered/hazmat-2/default-cat-preview.webp",
+      "bytes": 2570,
+      "kind": "preview-webp"
+    },
+    "headbop": {
+      "path": "prerendered/headbop/default-cat.gif",
+      "bytes": 72771,
+      "kind": "hq-gif"
+    },
+    "heart-hypno": {
+      "path": "prerendered/heart-hypno/default-cat.gif",
+      "bytes": 79814,
+      "kind": "hq-gif"
+    },
+    "heart-locket": {
+      "path": "prerendered/heart-locket/default-cat.gif",
+      "bytes": 54485,
+      "kind": "hq-gif"
+    },
+    "heartbeat": {
+      "path": "prerendered/heartbeat/default-cat.gif",
+      "bytes": 56239,
+      "kind": "hq-gif"
+    },
+    "heartbeat-flash": {
+      "path": "prerendered/heartbeat-flash/default-cat.gif",
+      "bytes": 50194,
+      "kind": "hq-gif"
+    },
+    "heat-haze": {
+      "path": "prerendered/heat-haze/default-cat.gif",
+      "bytes": 73287,
+      "kind": "hq-gif"
+    },
+    "helicopter": {
+      "path": "prerendered/helicopter/default-cat.gif",
+      "bytes": 90220,
+      "kind": "hq-gif"
+    },
+    "hellowo": {
+      "path": "prerendered/hellowo/default-cat.gif",
+      "bytes": 35512,
+      "kind": "hq-gif"
+    },
+    "heyy": {
+      "path": "prerendered/heyy/default-cat-preview.webp",
+      "bytes": 1824,
+      "kind": "preview-webp"
+    },
+    "heyyeyaa": {
+      "path": "prerendered/heyyeyaa/default-cat-preview.webp",
+      "bytes": 2670,
+      "kind": "preview-webp"
+    },
+    "hoodie": {
+      "path": "prerendered/hoodie/default-cat-preview.webp",
+      "bytes": 2300,
+      "kind": "preview-webp"
+    },
+    "hop": {
+      "path": "prerendered/hop/default-cat.gif",
+      "bytes": 49972,
+      "kind": "hq-gif"
+    },
+    "hovering": {
+      "path": "prerendered/hovering/default-cat.gif",
+      "bytes": 75853,
+      "kind": "hq-gif"
+    },
+    "hugg": {
+      "path": "prerendered/hugg/default-cat-preview.webp",
+      "bytes": 1900,
+      "kind": "preview-webp"
+    },
+    "huh": {
+      "path": "prerendered/huh/default-cat.gif",
+      "bytes": 253766,
+      "kind": "hq-gif"
+    },
+    "hype": {
+      "path": "prerendered/hype/default-cat.gif",
+      "bytes": 50967,
+      "kind": "hq-gif"
+    },
+    "hype-jam": {
+      "path": "prerendered/hype-jam/default-cat.gif",
+      "bytes": 52188,
+      "kind": "hq-gif"
+    },
+    "hype-shake": {
+      "path": "prerendered/hype-shake/default-cat.gif",
+      "bytes": 63667,
+      "kind": "hq-gif"
+    },
+    "hyperspace": {
+      "path": "prerendered/hyperspace/default-cat.gif",
+      "bytes": 21603,
+      "kind": "hq-gif"
+    },
+    "i-have-a-question": {
+      "path": "prerendered/i-have-a-question/default-cat-preview.webp",
+      "bytes": 1900,
+      "kind": "preview-webp"
+    },
+    "i-love": {
+      "path": "prerendered/i-love/default-cat.gif",
+      "bytes": 428701,
+      "kind": "hq-gif"
+    },
+    "ice-cube": {
+      "path": "prerendered/ice-cube/default-cat-preview.webp",
+      "bytes": 2126,
+      "kind": "preview-webp"
+    },
+    "intensifies": {
+      "path": "prerendered/intensifies/default-cat.gif",
+      "bytes": 57703,
+      "kind": "hq-gif"
+    },
+    "jail-time": {
+      "path": "prerendered/jail-time/default-cat.gif",
+      "bytes": 93193,
+      "kind": "hq-gif"
+    },
+    "jam": {
+      "path": "prerendered/jam/default-cat.gif",
+      "bytes": 76476,
+      "kind": "hq-gif"
+    },
+    "jammies": {
+      "path": "prerendered/jammies/default-cat.gif",
+      "bytes": 45942,
+      "kind": "hq-gif"
+    },
+    "jiggle": {
+      "path": "prerendered/jiggle/default-cat.gif",
+      "bytes": 48706,
+      "kind": "hq-gif"
+    },
+    "jitter": {
+      "path": "prerendered/jitter/default-cat.gif",
+      "bytes": 56212,
+      "kind": "hq-gif"
+    },
+    "jumping-on-the-bed": {
+      "path": "prerendered/jumping-on-the-bed/default-cat.gif",
+      "bytes": 55026,
+      "kind": "hq-gif"
+    },
+    "kablooey": {
+      "path": "prerendered/kablooey/default-cat.gif",
+      "bytes": 47527,
+      "kind": "hq-gif"
+    },
+    "keanu-thanks": {
+      "path": "prerendered/keanu-thanks/default-cat.gif",
+      "bytes": 279401,
+      "kind": "hq-gif"
+    },
+    "kek-jam": {
+      "path": "prerendered/kek-jam/default-cat.gif",
+      "bytes": 369656,
+      "kind": "hq-gif"
+    },
+    "kek-laugh": {
+      "path": "prerendered/kek-laugh/default-cat.gif",
+      "bytes": 133341,
+      "kind": "hq-gif"
+    },
+    "ken-burns": {
+      "path": "prerendered/ken-burns/default-cat.gif",
+      "bytes": 55102,
+      "kind": "hq-gif"
+    },
+    "labubu": {
+      "path": "prerendered/labubu/default-cat-preview.webp",
+      "bytes": 2460,
+      "kind": "preview-webp"
+    },
+    "laser-eyes": {
+      "path": "prerendered/laser-eyes/default-cat.gif",
+      "bytes": 60034,
+      "kind": "hq-gif"
+    },
+    "lean": {
+      "path": "prerendered/lean/default-cat.gif",
+      "bytes": 58261,
+      "kind": "hq-gif"
+    },
+    "leap": {
+      "path": "prerendered/leap/default-cat.gif",
+      "bytes": 68210,
+      "kind": "hq-gif"
+    },
+    "leave": {
+      "path": "prerendered/leave/default-cat.gif",
+      "bytes": 76644,
+      "kind": "hq-gif"
+    },
+    "leave-me-alone": {
+      "path": "prerendered/leave-me-alone/default-cat.gif",
+      "bytes": 784095,
+      "kind": "hq-gif"
+    },
+    "lebron-jam": {
+      "path": "prerendered/lebron-jam/default-cat.gif",
+      "bytes": 789050,
+      "kind": "hq-gif"
+    },
+    "let-me-in": {
+      "path": "prerendered/let-me-in/default-cat.gif",
+      "bytes": 313452,
+      "kind": "hq-gif"
+    },
+    "lets-gooo": {
+      "path": "prerendered/lets-gooo/default-cat.gif",
+      "bytes": 345427,
+      "kind": "hq-gif"
+    },
+    "lick": {
+      "path": "prerendered/lick/default-cat.gif",
+      "bytes": 70621,
+      "kind": "hq-gif"
+    },
+    "lightning-flash": {
+      "path": "prerendered/lightning-flash/default-cat.gif",
+      "bytes": 60351,
+      "kind": "hq-gif"
+    },
+    "lightsaber": {
+      "path": "prerendered/lightsaber/default-cat.gif",
+      "bytes": 182090,
+      "kind": "hq-gif"
+    },
+    "lightspeed-jump": {
+      "path": "prerendered/lightspeed-jump/default-cat.gif",
+      "bytes": 123008,
+      "kind": "hq-gif"
+    },
+    "loading": {
+      "path": "prerendered/loading/default-cat.gif",
+      "bytes": 62263,
+      "kind": "hq-gif"
+    },
+    "loading-eight": {
+      "path": "prerendered/loading-eight/default-cat.gif",
+      "bytes": 19123,
+      "kind": "hq-gif"
+    },
+    "loading-five": {
+      "path": "prerendered/loading-five/default-cat.gif",
+      "bytes": 20747,
+      "kind": "hq-gif"
+    },
+    "loading-four": {
+      "path": "prerendered/loading-four/default-cat.gif",
+      "bytes": 24172,
+      "kind": "hq-gif"
+    },
+    "loading-nine": {
+      "path": "prerendered/loading-nine/default-cat.gif",
+      "bytes": 19212,
+      "kind": "hq-gif"
+    },
+    "loading-seven": {
+      "path": "prerendered/loading-seven/default-cat.gif",
+      "bytes": 19647,
+      "kind": "hq-gif"
+    },
+    "loading-six": {
+      "path": "prerendered/loading-six/default-cat.gif",
+      "bytes": 21524,
+      "kind": "hq-gif"
+    },
+    "loading-three": {
+      "path": "prerendered/loading-three/default-cat.gif",
+      "bytes": 27931,
+      "kind": "hq-gif"
+    },
+    "loading-two": {
+      "path": "prerendered/loading-two/default-cat.gif",
+      "bytes": 22280,
+      "kind": "hq-gif"
+    },
+    "lolface": {
+      "path": "prerendered/lolface/default-cat-preview.webp",
+      "bytes": 2194,
+      "kind": "preview-webp"
+    },
+    "long": {
+      "path": "prerendered/long/default-cat-preview.webp",
+      "bytes": 2344,
+      "kind": "preview-webp"
+    },
+    "lurk": {
+      "path": "prerendered/lurk/default-cat.gif",
+      "bytes": 38401,
+      "kind": "hq-gif"
+    },
+    "luvv": {
+      "path": "prerendered/luvv/default-cat-preview.webp",
+      "bytes": 2008,
+      "kind": "preview-webp"
+    },
+    "madge-clap": {
+      "path": "prerendered/madge-clap/default-cat.gif",
+      "bytes": 205567,
+      "kind": "hq-gif"
+    },
+    "magnet": {
+      "path": "prerendered/magnet/default-cat.gif",
+      "bytes": 38740,
+      "kind": "hq-gif"
+    },
+    "math": {
+      "path": "prerendered/math/default-cat.gif",
+      "bytes": 68615,
+      "kind": "hq-gif"
+    },
+    "matrix-rain": {
+      "path": "prerendered/matrix-rain/default-cat.gif",
+      "bytes": 76166,
+      "kind": "hq-gif"
+    },
+    "mega-bounce": {
+      "path": "prerendered/mega-bounce/default-cat.gif",
+      "bytes": 57354,
+      "kind": "hq-gif"
+    },
+    "melt": {
+      "path": "prerendered/melt/default-cat.gif",
+      "bytes": 22868,
+      "kind": "hq-gif"
+    },
+    "meow-coffee-spit": {
+      "path": "prerendered/meow-coffee-spit/default-cat.gif",
+      "bytes": 467437,
+      "kind": "hq-gif"
+    },
+    "mercator": {
+      "path": "prerendered/mercator/default-cat-preview.webp",
+      "bytes": 1502,
+      "kind": "preview-webp"
+    },
+    "mercator-pulse": {
+      "path": "prerendered/mercator-pulse/default-cat.gif",
+      "bytes": 67905,
+      "kind": "hq-gif"
+    },
+    "mhm": {
+      "path": "prerendered/mhm/default-cat.gif",
+      "bytes": 150962,
+      "kind": "hq-gif"
+    },
+    "middle-fingers": {
+      "path": "prerendered/middle-fingers/default-cat.gif",
+      "bytes": 312335,
+      "kind": "hq-gif"
+    },
+    "mine-block": {
+      "path": "prerendered/mine-block/default-cat.gif",
+      "bytes": 830121,
+      "kind": "hq-gif"
+    },
+    "misalign": {
+      "path": "prerendered/misalign/default-cat.gif",
+      "bytes": 48641,
+      "kind": "hq-gif"
+    },
+    "mitosis": {
+      "path": "prerendered/mitosis/default-cat.gif",
+      "bytes": 36032,
+      "kind": "hq-gif"
+    },
+    "monka-christ": {
+      "path": "prerendered/monka-christ/default-cat.gif",
+      "bytes": 847545,
+      "kind": "hq-gif"
+    },
+    "monka-hmm": {
+      "path": "prerendered/monka-hmm/default-cat.gif",
+      "bytes": 173286,
+      "kind": "hq-gif"
+    },
+    "mustache-glasses": {
+      "path": "prerendered/mustache-glasses/default-cat-preview.webp",
+      "bytes": 2318,
+      "kind": "preview-webp"
+    },
+    "negative-blink": {
+      "path": "prerendered/negative-blink/default-cat.gif",
+      "bytes": 51147,
+      "kind": "hq-gif"
+    },
+    "nesting-doll": {
+      "path": "prerendered/nesting-doll/default-cat.gif",
+      "bytes": 251563,
+      "kind": "hq-gif"
+    },
+    "nise": {
+      "path": "prerendered/nise/default-cat-preview.webp",
+      "bytes": 2154,
+      "kind": "preview-webp"
+    },
+    "no-no": {
+      "path": "prerendered/no-no/default-cat.gif",
+      "bytes": 13202,
+      "kind": "hq-gif"
+    },
+    "nod": {
+      "path": "prerendered/nod/default-cat.gif",
+      "bytes": 50937,
+      "kind": "hq-gif"
+    },
+    "nodders": {
+      "path": "prerendered/nodders/default-cat.gif",
+      "bytes": 51374,
+      "kind": "hq-gif"
+    },
+    "none": {
+      "path": "prerendered/none/default-cat-preview.webp",
+      "bytes": 2172,
+      "kind": "preview-webp"
+    },
+    "nopers": {
+      "path": "prerendered/nopers/default-cat.gif",
+      "bytes": 374725,
+      "kind": "hq-gif"
+    },
+    "not-stonks": {
+      "path": "prerendered/not-stonks/default-cat-preview.webp",
+      "bytes": 1738,
+      "kind": "preview-webp"
+    },
+    "nowoted": {
+      "path": "prerendered/nowoted/default-cat.gif",
+      "bytes": 408202,
+      "kind": "hq-gif"
+    },
+    "nyan-cat": {
+      "path": "prerendered/nyan-cat/default-cat.gif",
+      "bytes": 48600,
+      "kind": "hq-gif"
+    },
+    "nyan": {
+      "path": "prerendered/nyan/default-cat.gif",
+      "bytes": 63598,
+      "kind": "hq-gif"
+    },
+    "old-man-yells": {
+      "path": "prerendered/old-man-yells/default-cat.gif",
+      "bytes": 58048,
+      "kind": "hq-gif"
+    },
+    "omega-lul": {
+      "path": "prerendered/omega-lul/default-cat-preview.webp",
+      "bytes": 2142,
+      "kind": "preview-webp"
+    },
+    "omega-lul-pulse": {
+      "path": "prerendered/omega-lul-pulse/default-cat.gif",
+      "bytes": 62145,
+      "kind": "hq-gif"
+    },
+    "on-fire": {
+      "path": "prerendered/on-fire/default-cat.gif",
+      "bytes": 59508,
+      "kind": "hq-gif"
+    },
+    "ono": {
+      "path": "prerendered/ono/default-cat.gif",
+      "bytes": 282097,
+      "kind": "hq-gif"
+    },
+    "orbit-drift": {
+      "path": "prerendered/orbit-drift/default-cat.gif",
+      "bytes": 52331,
+      "kind": "hq-gif"
+    },
+    "orbit-eight": {
+      "path": "prerendered/orbit-eight/default-cat.gif",
+      "bytes": 24847,
+      "kind": "hq-gif"
+    },
+    "orbit-five": {
+      "path": "prerendered/orbit-five/default-cat.gif",
+      "bytes": 23805,
+      "kind": "hq-gif"
+    },
+    "orbit-four": {
+      "path": "prerendered/orbit-four/default-cat.gif",
+      "bytes": 24364,
+      "kind": "hq-gif"
+    },
+    "orbit-nine": {
+      "path": "prerendered/orbit-nine/default-cat.gif",
+      "bytes": 28371,
+      "kind": "hq-gif"
+    },
+    "orbit-seven": {
+      "path": "prerendered/orbit-seven/default-cat.gif",
+      "bytes": 22149,
+      "kind": "hq-gif"
+    },
+    "orbit-six": {
+      "path": "prerendered/orbit-six/default-cat.gif",
+      "bytes": 23308,
+      "kind": "hq-gif"
+    },
+    "orbit-three": {
+      "path": "prerendered/orbit-three/default-cat.gif",
+      "bytes": 26423,
+      "kind": "hq-gif"
+    },
+    "orbit-two": {
+      "path": "prerendered/orbit-two/default-cat.gif",
+      "bytes": 20864,
+      "kind": "hq-gif"
+    },
+    "orbit": {
+      "path": "prerendered/orbit/default-cat.gif",
+      "bytes": 53429,
+      "kind": "hq-gif"
+    },
+    "oui-oui": {
+      "path": "prerendered/oui-oui/default-cat-preview.webp",
+      "bytes": 2098,
+      "kind": "preview-webp"
+    },
+    "owl-jam": {
+      "path": "prerendered/owl-jam/default-cat.gif",
+      "bytes": 143900,
+      "kind": "hq-gif"
+    },
+    "pace": {
+      "path": "prerendered/pace/default-cat.gif",
+      "bytes": 72811,
+      "kind": "hq-gif"
+    },
+    "pag-bounce": {
+      "path": "prerendered/pag-bounce/default-cat.gif",
+      "bytes": 54752,
+      "kind": "hq-gif"
+    },
+    "pagman": {
+      "path": "prerendered/pagman/default-cat.gif",
+      "bytes": 69401,
+      "kind": "hq-gif"
+    },
+    "panic": {
+      "path": "prerendered/panic/default-cat.gif",
+      "bytes": 47944,
+      "kind": "hq-gif"
+    },
+    "parrot": {
+      "path": "prerendered/parrot/default-cat.gif",
+      "bytes": 20955,
+      "kind": "hq-gif"
+    },
+    "parrot-hat": {
+      "path": "prerendered/parrot-hat/default-cat.gif",
+      "bytes": 43823,
+      "kind": "hq-gif"
+    },
+    "parrot-hold": {
+      "path": "prerendered/parrot-hold/default-cat.gif",
+      "bytes": 26865,
+      "kind": "hq-gif"
+    },
+    "party": {
+      "path": "prerendered/party/default-cat.gif",
+      "bytes": 51108,
+      "kind": "hq-gif"
+    },
+    "party-blob": {
+      "path": "prerendered/party-blob/default-cat.gif",
+      "bytes": 53134,
+      "kind": "hq-gif"
+    },
+    "party-parrot": {
+      "path": "prerendered/party-parrot/default-cat.gif",
+      "bytes": 48515,
+      "kind": "hq-gif"
+    },
+    "pastel-bloom": {
+      "path": "prerendered/pastel-bloom/default-cat.gif",
+      "bytes": 56284,
+      "kind": "hq-gif"
+    },
+    "pat": {
+      "path": "prerendered/pat/default-cat.gif",
+      "bytes": 74595,
+      "kind": "hq-gif"
+    },
+    "patrick-bateman": {
+      "path": "prerendered/patrick-bateman/default-cat.gif",
+      "bytes": 265391,
+      "kind": "hq-gif"
+    },
+    "pause-champ": {
+      "path": "prerendered/pause-champ/default-cat.gif",
+      "bytes": 158052,
+      "kind": "hq-gif"
+    },
+    "peek-corner": {
+      "path": "prerendered/peek-corner/default-cat.gif",
+      "bytes": 34451,
+      "kind": "hq-gif"
+    },
+    "peeking": {
+      "path": "prerendered/peeking/default-cat-preview.webp",
+      "bytes": 1044,
+      "kind": "preview-webp"
+    },
+    "peepo": {
+      "path": "prerendered/peepo/default-cat-preview.webp",
+      "bytes": 1806,
+      "kind": "preview-webp"
+    },
+    "peepo-bye": {
+      "path": "prerendered/peepo-bye/default-cat.gif",
+      "bytes": 196321,
+      "kind": "hq-gif"
+    },
+    "peepo-cheer": {
+      "path": "prerendered/peepo-cheer/default-cat.gif",
+      "bytes": 200535,
+      "kind": "hq-gif"
+    },
+    "peepo-clap": {
+      "path": "prerendered/peepo-clap/default-cat.gif",
+      "bytes": 215382,
+      "kind": "hq-gif"
+    },
+    "peepo-dj": {
+      "path": "prerendered/peepo-dj/default-cat.gif",
+      "bytes": 233083,
+      "kind": "hq-gif"
+    },
+    "peepo-giggles": {
+      "path": "prerendered/peepo-giggles/default-cat.gif",
+      "bytes": 283179,
+      "kind": "hq-gif"
+    },
+    "peepo-love": {
+      "path": "prerendered/peepo-love/default-cat-preview.webp",
+      "bytes": 2728,
+      "kind": "preview-webp"
+    },
+    "peepo-love-heart": {
+      "path": "prerendered/peepo-love-heart/default-cat-preview.webp",
+      "bytes": 2124,
+      "kind": "preview-webp"
+    },
+    "peepo-poopoo": {
+      "path": "prerendered/peepo-poopoo/default-cat.gif",
+      "bytes": 61610,
+      "kind": "hq-gif"
+    },
+    "peepo-riot": {
+      "path": "prerendered/peepo-riot/default-cat.gif",
+      "bytes": 33801,
+      "kind": "hq-gif"
+    },
+    "peepo-run": {
+      "path": "prerendered/peepo-run/default-cat.gif",
+      "bytes": 21678,
+      "kind": "hq-gif"
+    },
+    "peepo-shy": {
+      "path": "prerendered/peepo-shy/default-cat-preview.webp",
+      "bytes": 2172,
+      "kind": "preview-webp"
+    },
+    "peepo-sit": {
+      "path": "prerendered/peepo-sit/default-cat-preview.webp",
+      "bytes": 2154,
+      "kind": "preview-webp"
+    },
+    "peepo-sit-hey": {
+      "path": "prerendered/peepo-sit-hey/default-cat.gif",
+      "bytes": 178103,
+      "kind": "hq-gif"
+    },
+    "peepo-stop": {
+      "path": "prerendered/peepo-stop/default-cat-preview.webp",
+      "bytes": 2004,
+      "kind": "preview-webp"
+    },
+    "peepo-want": {
+      "path": "prerendered/peepo-want/default-cat-preview.webp",
+      "bytes": 2114,
+      "kind": "preview-webp"
+    },
+    "pepe": {
+      "path": "prerendered/pepe/default-cat-preview.webp",
+      "bytes": 2090,
+      "kind": "preview-webp"
+    },
+    "pepe-binoculars": {
+      "path": "prerendered/pepe-binoculars/default-cat.gif",
+      "bytes": 138942,
+      "kind": "hq-gif"
+    },
+    "pepe-cheer": {
+      "path": "prerendered/pepe-cheer/default-cat-preview.webp",
+      "bytes": 2702,
+      "kind": "preview-webp"
+    },
+    "pepe-clown": {
+      "path": "prerendered/pepe-clown/default-cat-preview.webp",
+      "bytes": 2394,
+      "kind": "preview-webp"
+    },
+    "pepe-dab": {
+      "path": "prerendered/pepe-dab/default-cat-preview.webp",
+      "bytes": 2778,
+      "kind": "preview-webp"
+    },
+    "pepe-flag": {
+      "path": "prerendered/pepe-flag/default-cat.gif",
+      "bytes": 23737,
+      "kind": "hq-gif"
+    },
+    "pepe-meltdown": {
+      "path": "prerendered/pepe-meltdown/default-cat.gif",
+      "bytes": 41029,
+      "kind": "hq-gif"
+    },
+    "pepe-nodders": {
+      "path": "prerendered/pepe-nodders/default-cat.gif",
+      "bytes": 398826,
+      "kind": "hq-gif"
+    },
+    "pepe-point": {
+      "path": "prerendered/pepe-point/default-cat.gif",
+      "bytes": 309025,
+      "kind": "hq-gif"
+    },
+    "pepe-s": {
+      "path": "prerendered/pepe-s/default-cat.gif",
+      "bytes": 207557,
+      "kind": "hq-gif"
+    },
+    "pepe-sweat": {
+      "path": "prerendered/pepe-sweat/default-cat.gif",
+      "bytes": 231691,
+      "kind": "hq-gif"
+    },
+    "pepega": {
+      "path": "prerendered/pepega/default-cat-preview.webp",
+      "bytes": 1998,
+      "kind": "preview-webp"
+    },
+    "pepo-popcorn": {
+      "path": "prerendered/pepo-popcorn/default-cat.gif",
+      "bytes": 214386,
+      "kind": "hq-gif"
+    },
+    "pet": {
+      "path": "prerendered/pet/default-cat.gif",
+      "bytes": 68423,
+      "kind": "hq-gif"
+    },
+    "phone-time": {
+      "path": "prerendered/phone-time/default-cat.gif",
+      "bytes": 565811,
+      "kind": "hq-gif"
+    },
+    "pika-stand": {
+      "path": "prerendered/pika-stand/default-cat.gif",
+      "bytes": 23151,
+      "kind": "hq-gif"
+    },
+    "pikachu": {
+      "path": "prerendered/pikachu/default-cat.gif",
+      "bytes": 76494,
+      "kind": "hq-gif"
+    },
+    "pixar-think": {
+      "path": "prerendered/pixar-think/default-cat.gif",
+      "bytes": 1611081,
+      "kind": "hq-gif"
+    },
+    "pixelate": {
+      "path": "prerendered/pixelate/default-cat.gif",
+      "bytes": 39665,
+      "kind": "hq-gif"
+    },
+    "plotge": {
+      "path": "prerendered/plotge/default-cat.gif",
+      "bytes": 56887,
+      "kind": "hq-gif"
+    },
+    "pokeball-almost": {
+      "path": "prerendered/pokeball-almost/default-cat.gif",
+      "bytes": 185438,
+      "kind": "hq-gif"
+    },
+    "pokeball-capture": {
+      "path": "prerendered/pokeball-capture/default-cat.gif",
+      "bytes": 215278,
+      "kind": "hq-gif"
+    },
+    "pokeball-emerge": {
+      "path": "prerendered/pokeball-emerge/default-cat.gif",
+      "bytes": 326648,
+      "kind": "hq-gif"
+    },
+    "pokeball-go": {
+      "path": "prerendered/pokeball-go/default-cat.gif",
+      "bytes": 67581,
+      "kind": "hq-gif"
+    },
+    "polar-bear": {
+      "path": "prerendered/polar-bear/default-cat.gif",
+      "bytes": 73925,
+      "kind": "hq-gif"
+    },
+    "ponder": {
+      "path": "prerendered/ponder/default-cat.gif",
+      "bytes": 302157,
+      "kind": "hq-gif"
+    },
+    "pop": {
+      "path": "prerendered/pop/default-cat.gif",
+      "bytes": 58466,
+      "kind": "hq-gif"
+    },
+    "pop-through": {
+      "path": "prerendered/pop-through/default-cat.gif",
+      "bytes": 32652,
+      "kind": "hq-gif"
+    },
+    "portal-peek": {
+      "path": "prerendered/portal-peek/default-cat.gif",
+      "bytes": 31395,
+      "kind": "hq-gif"
+    },
+    "portal-warp": {
+      "path": "prerendered/portal-warp/default-cat.gif",
+      "bytes": 40000,
+      "kind": "hq-gif"
+    },
+    "posterize-breath": {
+      "path": "prerendered/posterize-breath/default-cat.gif",
+      "bytes": 52033,
+      "kind": "hq-gif"
+    },
+    "pounce": {
+      "path": "prerendered/pounce/default-cat.gif",
+      "bytes": 48474,
+      "kind": "hq-gif"
+    },
+    "pp-hopper": {
+      "path": "prerendered/pp-hopper/default-cat.gif",
+      "bytes": 36673,
+      "kind": "hq-gif"
+    },
+    "prance": {
+      "path": "prerendered/prance/default-cat.gif",
+      "bytes": 57155,
+      "kind": "hq-gif"
+    },
+    "prayge": {
+      "path": "prerendered/prayge/default-cat-preview.webp",
+      "bytes": 2108,
+      "kind": "preview-webp"
+    },
+    "pulse": {
+      "path": "prerendered/pulse/default-cat.gif",
+      "bytes": 55073,
+      "kind": "hq-gif"
+    },
+    "pumpkin": {
+      "path": "prerendered/pumpkin/default-cat-preview.webp",
+      "bytes": 2342,
+      "kind": "preview-webp"
+    },
+    "pumpkin-cat": {
+      "path": "prerendered/pumpkin-cat/default-cat.gif",
+      "bytes": 46633,
+      "kind": "hq-gif"
+    },
+    "pumpkin-give": {
+      "path": "prerendered/pumpkin-give/default-cat.gif",
+      "bytes": 226077,
+      "kind": "hq-gif"
+    },
+    "pumpkin-surprise": {
+      "path": "prerendered/pumpkin-surprise/default-cat-preview.webp",
+      "bytes": 2306,
+      "kind": "preview-webp"
+    },
+    "pumpkin-take": {
+      "path": "prerendered/pumpkin-take/default-cat.gif",
+      "bytes": 216594,
+      "kind": "hq-gif"
+    },
+    "pumpkin2": {
+      "path": "prerendered/pumpkin2/default-cat-preview.webp",
+      "bytes": 2466,
+      "kind": "preview-webp"
+    },
+    "purple-stars": {
+      "path": "prerendered/purple-stars/default-cat.gif",
+      "bytes": 45379,
+      "kind": "hq-gif"
+    },
+    "pyramid": {
+      "path": "prerendered/pyramid/default-cat.gif",
+      "bytes": 32416,
+      "kind": "hq-gif"
+    },
+    "quiver": {
+      "path": "prerendered/quiver/default-cat.gif",
+      "bytes": 57387,
+      "kind": "hq-gif"
+    },
+    "rain": {
+      "path": "prerendered/rain/default-cat.gif",
+      "bytes": 63371,
+      "kind": "hq-gif"
+    },
+    "rainbow-bloom": {
+      "path": "prerendered/rainbow-bloom/default-cat.gif",
+      "bytes": 81773,
+      "kind": "hq-gif"
+    },
+    "raincloud": {
+      "path": "prerendered/raincloud/default-cat.gif",
+      "bytes": 78437,
+      "kind": "hq-gif"
+    },
+    "raising-hand": {
+      "path": "prerendered/raising-hand/default-cat-preview.webp",
+      "bytes": 1870,
+      "kind": "preview-webp"
+    },
+    "rare-ghost": {
+      "path": "prerendered/rare-ghost/default-cat.gif",
+      "bytes": 36197,
+      "kind": "hq-gif"
+    },
+    "rave": {
+      "path": "prerendered/rave/default-cat.gif",
+      "bytes": 66148,
+      "kind": "hq-gif"
+    },
+    "reading": {
+      "path": "prerendered/reading/default-cat.gif",
+      "bytes": 20777,
+      "kind": "hq-gif"
+    },
+    "recoil-pop": {
+      "path": "prerendered/recoil-pop/default-cat.gif",
+      "bytes": 46538,
+      "kind": "hq-gif"
+    },
+    "red-alert": {
+      "path": "prerendered/red-alert/default-cat.gif",
+      "bytes": 220768,
+      "kind": "hq-gif"
+    },
+    "reveal": {
+      "path": "prerendered/reveal/default-cat.gif",
+      "bytes": 322638,
+      "kind": "hq-gif"
+    },
+    "rgb-split": {
+      "path": "prerendered/rgb-split/default-cat.gif",
+      "bytes": 13237,
+      "kind": "hq-gif"
+    },
+    "riott": {
+      "path": "prerendered/riott/default-cat.gif",
+      "bytes": 17054,
+      "kind": "hq-gif"
+    },
+    "ripple": {
+      "path": "prerendered/ripple/default-cat.gif",
+      "bytes": 77604,
+      "kind": "hq-gif"
+    },
+    "roll-safe": {
+      "path": "prerendered/roll-safe/default-cat.gif",
+      "bytes": 239651,
+      "kind": "hq-gif"
+    },
+    "rotate-180": {
+      "path": "prerendered/rotate-180/default-cat.gif",
+      "bytes": 56045,
+      "kind": "hq-gif"
+    },
+    "rotate-45": {
+      "path": "prerendered/rotate-45/default-cat.gif",
+      "bytes": 54696,
+      "kind": "hq-gif"
+    },
+    "rotate-90": {
+      "path": "prerendered/rotate-90/default-cat.gif",
+      "bytes": 53790,
+      "kind": "hq-gif"
+    },
+    "rubber": {
+      "path": "prerendered/rubber/default-cat.gif",
+      "bytes": 42198,
+      "kind": "hq-gif"
+    },
+    "rubber-stamp": {
+      "path": "prerendered/rubber-stamp/default-cat.gif",
+      "bytes": 54177,
+      "kind": "hq-gif"
+    },
+    "runn": {
+      "path": "prerendered/runn/default-cat.gif",
+      "bytes": 963890,
+      "kind": "hq-gif"
+    },
+    "runway-landing": {
+      "path": "prerendered/runway-landing/default-cat.gif",
+      "bytes": 55601,
+      "kind": "hq-gif"
+    },
+    "runway-takeoff": {
+      "path": "prerendered/runway-takeoff/default-cat.gif",
+      "bytes": 55227,
+      "kind": "hq-gif"
+    },
+    "sad-blob": {
+      "path": "prerendered/sad-blob/default-cat.gif",
+      "bytes": 169833,
+      "kind": "hq-gif"
+    },
+    "sadge": {
+      "path": "prerendered/sadge/default-cat-preview.webp",
+      "bytes": 1896,
+      "kind": "preview-webp"
+    },
+    "saved": {
+      "path": "prerendered/saved/default-cat.gif",
+      "bytes": 330597,
+      "kind": "hq-gif"
+    },
+    "scanline": {
+      "path": "prerendered/scanline/default-cat.gif",
+      "bytes": 66193,
+      "kind": "hq-gif"
+    },
+    "scared": {
+      "path": "prerendered/scared/default-cat.gif",
+      "bytes": 73024,
+      "kind": "hq-gif"
+    },
+    "scroll": {
+      "path": "prerendered/scroll/default-cat.gif",
+      "bytes": 56564,
+      "kind": "hq-gif"
+    },
+    "shake": {
+      "path": "prerendered/shake/default-cat.gif",
+      "bytes": 72985,
+      "kind": "hq-gif"
+    },
+    "shimmer": {
+      "path": "prerendered/shimmer/default-cat.gif",
+      "bytes": 51334,
+      "kind": "hq-gif"
+    },
+    "shocked-man": {
+      "path": "prerendered/shocked-man/default-cat.gif",
+      "bytes": 557811,
+      "kind": "hq-gif"
+    },
+    "shruge": {
+      "path": "prerendered/shruge/default-cat.gif",
+      "bytes": 153490,
+      "kind": "hq-gif"
+    },
+    "shudder": {
+      "path": "prerendered/shudder/default-cat.gif",
+      "bytes": 75103,
+      "kind": "hq-gif"
+    },
+    "shy-peek": {
+      "path": "prerendered/shy-peek/default-cat.gif",
+      "bytes": 45108,
+      "kind": "hq-gif"
+    },
+    "side-eye-chloe": {
+      "path": "prerendered/side-eye-chloe/default-cat.gif",
+      "bytes": 208917,
+      "kind": "hq-gif"
+    },
+    "side-eye-dog": {
+      "path": "prerendered/side-eye-dog/default-cat.gif",
+      "bytes": 401760,
+      "kind": "hq-gif"
+    },
+    "sideeye-slide": {
+      "path": "prerendered/sideeye-slide/default-cat.gif",
+      "bytes": 54641,
+      "kind": "hq-gif"
+    },
+    "sign": {
+      "path": "prerendered/sign/default-cat.gif",
+      "bytes": 68718,
+      "kind": "hq-gif"
+    },
+    "sign-mad": {
+      "path": "prerendered/sign-mad/default-cat.gif",
+      "bytes": 71495,
+      "kind": "hq-gif"
+    },
+    "sir": {
+      "path": "prerendered/sir/default-cat-preview.webp",
+      "bytes": 2262,
+      "kind": "preview-webp"
+    },
+    "sisyphus": {
+      "path": "prerendered/sisyphus/default-cat-preview.webp",
+      "bytes": 2354,
+      "kind": "preview-webp"
+    },
+    "skeleton-dance": {
+      "path": "prerendered/skeleton-dance/default-cat.gif",
+      "bytes": 15017,
+      "kind": "hq-gif"
+    },
+    "skibidi": {
+      "path": "prerendered/skibidi/default-cat.gif",
+      "bytes": 69198,
+      "kind": "hq-gif"
+    },
+    "skid-stop": {
+      "path": "prerendered/skid-stop/default-cat.gif",
+      "bytes": 55477,
+      "kind": "hq-gif"
+    },
+    "slice": {
+      "path": "prerendered/slice/default-cat.gif",
+      "bytes": 74431,
+      "kind": "hq-gif"
+    },
+    "slide-bounce": {
+      "path": "prerendered/slide-bounce/default-cat.gif",
+      "bytes": 51226,
+      "kind": "hq-gif"
+    },
+    "slide-spin": {
+      "path": "prerendered/slide-spin/default-cat.gif",
+      "bytes": 41704,
+      "kind": "hq-gif"
+    },
+    "slide": {
+      "path": "prerendered/slide/default-cat.gif",
+      "bytes": 45899,
+      "kind": "hq-gif"
+    },
+    "slow-jam": {
+      "path": "prerendered/slow-jam/default-cat.gif",
+      "bytes": 49249,
+      "kind": "hq-gif"
+    },
+    "smadge": {
+      "path": "prerendered/smadge/default-cat.gif",
+      "bytes": 157129,
+      "kind": "hq-gif"
+    },
+    "smart": {
+      "path": "prerendered/smart/default-cat.gif",
+      "bytes": 74893,
+      "kind": "hq-gif"
+    },
+    "smoge": {
+      "path": "prerendered/smoge/default-cat.gif",
+      "bytes": 264663,
+      "kind": "hq-gif"
+    },
+    "snap": {
+      "path": "prerendered/snap/default-cat.gif",
+      "bytes": 62640,
+      "kind": "hq-gif"
+    },
+    "snorlax": {
+      "path": "prerendered/snorlax/default-cat.gif",
+      "bytes": 191707,
+      "kind": "hq-gif"
+    },
+    "so-cute": {
+      "path": "prerendered/so-cute/default-cat.gif",
+      "bytes": 43309,
+      "kind": "hq-gif"
+    },
+    "solarize-wave": {
+      "path": "prerendered/solarize-wave/default-cat.gif",
+      "bytes": 68055,
+      "kind": "hq-gif"
+    },
+    "sparkle": {
+      "path": "prerendered/sparkle/default-cat.gif",
+      "bytes": 71303,
+      "kind": "hq-gif"
+    },
+    "sparkle-color": {
+      "path": "prerendered/sparkle-color/default-cat.gif",
+      "bytes": 53531,
+      "kind": "hq-gif"
+    },
+    "sparkle-party": {
+      "path": "prerendered/sparkle-party/default-cat.gif",
+      "bytes": 74274,
+      "kind": "hq-gif"
+    },
+    "sparkle-rainbow": {
+      "path": "prerendered/sparkle-rainbow/default-cat.gif",
+      "bytes": 68899,
+      "kind": "hq-gif"
+    },
+    "speechless": {
+      "path": "prerendered/speechless/default-cat.gif",
+      "bytes": 350071,
+      "kind": "hq-gif"
+    },
+    "sphere": {
+      "path": "prerendered/sphere/default-cat.gif",
+      "bytes": 35991,
+      "kind": "hq-gif"
+    },
+    "spin": {
+      "path": "prerendered/spin/default-cat.gif",
+      "bytes": 56798,
+      "kind": "hq-gif"
+    },
+    "spiral-in": {
+      "path": "prerendered/spiral-in/default-cat.gif",
+      "bytes": 41665,
+      "kind": "hq-gif"
+    },
+    "spiral-zoom": {
+      "path": "prerendered/spiral-zoom/default-cat.gif",
+      "bytes": 52968,
+      "kind": "hq-gif"
+    },
+    "split": {
+      "path": "prerendered/split/default-cat.gif",
+      "bytes": 183903,
+      "kind": "hq-gif"
+    },
+    "spongebob-watching-tv": {
+      "path": "prerendered/spongebob-watching-tv/default-cat.gif",
+      "bytes": 474974,
+      "kind": "hq-gif"
+    },
+    "spongebob-worship": {
+      "path": "prerendered/spongebob-worship/default-cat.gif",
+      "bytes": 73545,
+      "kind": "hq-gif"
+    },
+    "spotlight": {
+      "path": "prerendered/spotlight/default-cat.gif",
+      "bytes": 51330,
+      "kind": "hq-gif"
+    },
+    "squad": {
+      "path": "prerendered/squad/default-cat.gif",
+      "bytes": 39978,
+      "kind": "hq-gif"
+    },
+    "squish": {
+      "path": "prerendered/squish/default-cat-preview.webp",
+      "bytes": 2316,
+      "kind": "preview-webp"
+    },
+    "squish-pulse": {
+      "path": "prerendered/squish-pulse/default-cat.gif",
+      "bytes": 57965,
+      "kind": "hq-gif"
+    },
+    "stare": {
+      "path": "prerendered/stare/default-cat-preview.webp",
+      "bytes": 2052,
+      "kind": "preview-webp"
+    },
+    "startled-rat": {
+      "path": "prerendered/startled-rat/default-cat.gif",
+      "bytes": 233505,
+      "kind": "hq-gif"
+    },
+    "steer": {
+      "path": "prerendered/steer/default-cat.gif",
+      "bytes": 65563,
+      "kind": "hq-gif"
+    },
+    "stomp": {
+      "path": "prerendered/stomp/default-cat.gif",
+      "bytes": 57563,
+      "kind": "hq-gif"
+    },
+    "stonks": {
+      "path": "prerendered/stonks/default-cat-preview.webp",
+      "bytes": 2054,
+      "kind": "preview-webp"
+    },
+    "stretch": {
+      "path": "prerendered/stretch/default-cat.gif",
+      "bytes": 56881,
+      "kind": "hq-gif"
+    },
+    "stripp": {
+      "path": "prerendered/stripp/default-cat.gif",
+      "bytes": 32431,
+      "kind": "hq-gif"
+    },
+    "strobe-soft": {
+      "path": "prerendered/strobe-soft/default-cat.gif",
+      "bytes": 42589,
+      "kind": "hq-gif"
+    },
+    "sure": {
+      "path": "prerendered/sure/default-cat.gif",
+      "bytes": 323983,
+      "kind": "hq-gif"
+    },
+    "surprised-clapping": {
+      "path": "prerendered/surprised-clapping/default-cat.gif",
+      "bytes": 602721,
+      "kind": "hq-gif"
+    },
+    "surprised-pikachu": {
+      "path": "prerendered/surprised-pikachu/default-cat.gif",
+      "bytes": 75230,
+      "kind": "hq-gif"
+    },
+    "suspicion": {
+      "path": "prerendered/suspicion/default-cat.gif",
+      "bytes": 255676,
+      "kind": "hq-gif"
+    },
+    "sway": {
+      "path": "prerendered/sway/default-cat.gif",
+      "bytes": 59759,
+      "kind": "hq-gif"
+    },
+    "sweep": {
+      "path": "prerendered/sweep/default-cat.gif",
+      "bytes": 58105,
+      "kind": "hq-gif"
+    },
+    "swirl": {
+      "path": "prerendered/swirl/default-cat.gif",
+      "bytes": 69683,
+      "kind": "hq-gif"
+    },
+    "swirling": {
+      "path": "prerendered/swirling/default-cat.gif",
+      "bytes": 196781,
+      "kind": "hq-gif"
+    },
+    "teleport": {
+      "path": "prerendered/teleport/default-cat.gif",
+      "bytes": 40572,
+      "kind": "hq-gif"
+    },
+    "thanos-snap": {
+      "path": "prerendered/thanos-snap/default-cat.gif",
+      "bytes": 35015,
+      "kind": "hq-gif"
+    },
+    "thick-3d-flip": {
+      "path": "prerendered/thick-3d-flip/default-cat.gif",
+      "bytes": 51350,
+      "kind": "hq-gif"
+    },
+    "thing-cat": {
+      "path": "prerendered/thing-cat/default-cat.gif",
+      "bytes": 44208,
+      "kind": "hq-gif"
+    },
+    "think": {
+      "path": "prerendered/think/default-cat.gif",
+      "bytes": 67120,
+      "kind": "hq-gif"
+    },
+    "this-is-fine": {
+      "path": "prerendered/this-is-fine/default-cat.gif",
+      "bytes": 114446,
+      "kind": "hq-gif"
+    },
+    "tidal-wave": {
+      "path": "prerendered/tidal-wave/default-cat.gif",
+      "bytes": 64129,
+      "kind": "hq-gif"
+    },
+    "tilt": {
+      "path": "prerendered/tilt/default-cat.gif",
+      "bytes": 30411,
+      "kind": "hq-gif"
+    },
+    "tilt-nod": {
+      "path": "prerendered/tilt-nod/default-cat.gif",
+      "bytes": 58262,
+      "kind": "hq-gif"
+    },
+    "tilt-zoom": {
+      "path": "prerendered/tilt-zoom/default-cat.gif",
+      "bytes": 56378,
+      "kind": "hq-gif"
+    },
+    "toilet-bounce": {
+      "path": "prerendered/toilet-bounce/default-cat.gif",
+      "bytes": 64432,
+      "kind": "hq-gif"
+    },
+    "toilet-spin": {
+      "path": "prerendered/toilet-spin/default-cat.gif",
+      "bytes": 59654,
+      "kind": "hq-gif"
+    },
+    "tornado": {
+      "path": "prerendered/tornado/default-cat.gif",
+      "bytes": 38139,
+      "kind": "hq-gif"
+    },
+    "touch-grass": {
+      "path": "prerendered/touch-grass/default-cat.gif",
+      "bytes": 80804,
+      "kind": "hq-gif"
+    },
+    "transmute-reality": {
+      "path": "prerendered/transmute-reality/default-cat.gif",
+      "bytes": 44919,
+      "kind": "hq-gif"
+    },
+    "trash": {
+      "path": "prerendered/trash/default-cat-preview.webp",
+      "bytes": 1962,
+      "kind": "preview-webp"
+    },
+    "trash-pop": {
+      "path": "prerendered/trash-pop/default-cat.gif",
+      "bytes": 157264,
+      "kind": "hq-gif"
+    },
+    "treasure-chest": {
+      "path": "prerendered/treasure-chest/default-cat.gif",
+      "bytes": 34461,
+      "kind": "hq-gif"
+    },
+    "triggered": {
+      "path": "prerendered/triggered/default-cat.gif",
+      "bytes": 76147,
+      "kind": "hq-gif"
+    },
+    "tsk": {
+      "path": "prerendered/tsk/default-cat.gif",
+      "bytes": 72344,
+      "kind": "hq-gif"
+    },
+    "tsunami": {
+      "path": "prerendered/tsunami/default-cat.gif",
+      "bytes": 26191,
+      "kind": "hq-gif"
+    },
+    "tumble": {
+      "path": "prerendered/tumble/default-cat.gif",
+      "bytes": 50157,
+      "kind": "hq-gif"
+    },
+    "twirl": {
+      "path": "prerendered/twirl/default-cat.gif",
+      "bytes": 32861,
+      "kind": "hq-gif"
+    },
+    "typing": {
+      "path": "prerendered/typing/default-cat.gif",
+      "bytes": 72270,
+      "kind": "hq-gif"
+    },
+    "underwater": {
+      "path": "prerendered/underwater/default-cat.gif",
+      "bytes": 53966,
+      "kind": "hq-gif"
+    },
+    "unimpressed-cat": {
+      "path": "prerendered/unimpressed-cat/default-cat.gif",
+      "bytes": 320760,
+      "kind": "hq-gif"
+    },
+    "vampire-offers": {
+      "path": "prerendered/vampire-offers/default-cat-preview.webp",
+      "bytes": 1898,
+      "kind": "preview-webp"
+    },
+    "vampire-takes": {
+      "path": "prerendered/vampire-takes/default-cat-preview.webp",
+      "bytes": 1858,
+      "kind": "preview-webp"
+    },
+    "venom": {
+      "path": "prerendered/venom/default-cat.gif",
+      "bytes": 1039322,
+      "kind": "hq-gif"
+    },
+    "vibee": {
+      "path": "prerendered/vibee/default-cat.gif",
+      "bytes": 184492,
+      "kind": "hq-gif"
+    },
+    "wave-ocean": {
+      "path": "prerendered/wave-ocean/default-cat.gif",
+      "bytes": 61946,
+      "kind": "hq-gif"
+    },
+    "wave": {
+      "path": "prerendered/wave/default-cat.gif",
+      "bytes": 53905,
+      "kind": "hq-gif"
+    },
+    "wawa": {
+      "path": "prerendered/wawa/default-cat.gif",
+      "bytes": 69020,
+      "kind": "hq-gif"
+    },
+    "weird": {
+      "path": "prerendered/weird/default-cat.gif",
+      "bytes": 76574,
+      "kind": "hq-gif"
+    },
+    "wildfire": {
+      "path": "prerendered/wildfire/default-cat.gif",
+      "bytes": 89208,
+      "kind": "hq-gif"
+    },
+    "will-presents": {
+      "path": "prerendered/will-presents/default-cat.gif",
+      "bytes": 192870,
+      "kind": "hq-gif"
+    },
+    "willem-dafoe": {
+      "path": "prerendered/willem-dafoe/default-cat.gif",
+      "bytes": 212915,
+      "kind": "hq-gif"
+    },
+    "wipe": {
+      "path": "prerendered/wipe/default-cat.gif",
+      "bytes": 43358,
+      "kind": "hq-gif"
+    },
+    "wobble": {
+      "path": "prerendered/wobble/default-cat.gif",
+      "bytes": 55054,
+      "kind": "hq-gif"
+    },
+    "wobble-scale": {
+      "path": "prerendered/wobble-scale/default-cat.gif",
+      "bytes": 52556,
+      "kind": "hq-gif"
+    },
+    "wokege": {
+      "path": "prerendered/wokege/default-cat-preview.webp",
+      "bytes": 1930,
+      "kind": "preview-webp"
+    },
+    "wolverine": {
+      "path": "prerendered/wolverine/default-cat.gif",
+      "bytes": 763602,
+      "kind": "hq-gif"
+    },
+    "wormhole": {
+      "path": "prerendered/wormhole/default-cat.gif",
+      "bytes": 30611,
+      "kind": "hq-gif"
+    },
+    "yes-yes": {
+      "path": "prerendered/yes-yes/default-cat.gif",
+      "bytes": 12123,
+      "kind": "hq-gif"
+    },
+    "zoom": {
+      "path": "prerendered/zoom/default-cat.gif",
+      "bytes": 50173,
+      "kind": "hq-gif"
+    },
+    "zoom-close": {
+      "path": "prerendered/zoom-close/default-cat.gif",
+      "bytes": 51925,
+      "kind": "hq-gif"
+    },
+    "zoom-in": {
+      "path": "prerendered/zoom-in/default-cat.gif",
+      "bytes": 45860,
+      "kind": "hq-gif"
+    }
+  },
+  "prerenderedMissing": [],
+  "overlays": {
+    "angel": "angel.png",
+    "blame": "blame.png",
+    "blob-help": "blob-help.png",
+    "blob-no": "blob-no.png",
+    "blob-yes": "blob-yes.png",
+    "burger": "burger.png",
+    "coggers": "coggers.png",
+    "confused-cat": "confused-cat.png",
+    "cowboy": "cowboy.png",
+    "crying-laughing": "crying-laughing.png",
+    "donk": "donk.png",
+    "glorp": "glorp.avif",
+    "hazmat": "hazmat.avif",
+    "hazmat-2": "hazmat-2.png",
+    "heyyeyaa": "heyyeyaa.png",
+    "hoodie": "hoodie.avif",
+    "labubu": "labubu.avif",
+    "lightsaber": "lightsaber.png",
+    "not-stonks": "not-stonks.png",
+    "oui-oui": "oui-oui.avif",
+    "peepo": "peepo.avif",
+    "peepo-love": "peepo-love.png",
+    "peepo-shy": "peepo-shy.png",
+    "peepo-sit": "peepo-sit.avif",
+    "peepo-stop": "peepo-stop.png",
+    "peepo-want": "peepo-want.png",
+    "pepe": "pepe.avif",
+    "pepe-cheer": "pepe-cheer.png",
+    "pepe-dab": "pepe-dab.png",
+    "pepega": "pepega.png",
+    "pumpkin": "pumpkin.avif",
+    "pumpkin2": "pumpkin2.png",
+    "sadge": "sadge.png",
+    "sir": "sir.png",
+    "stonks": "stonks.png",
+    "trash": "trash.png",
+    "wokege": "wokege.png"
+  },
+  "overlaysMissing": [],
+  "frames": {
+    "anticipation": 1,
+    "bat-signal": 1,
+    "bat-signal-scene": 1,
+    "binoculars": 1,
+    "blanket": 2,
+    "blob-smiley": 1,
+    "blush": 2,
+    "booba": 55,
+    "boooo": 113,
+    "bubbles": 40,
+    "cat-ears": 14,
+    "claude-code": 17,
+    "claude-dancing": 18,
+    "claude-football": 58,
+    "claude-fu": 26,
+    "claude-idea": 6,
+    "claude-jam": 9,
+    "cleaning": 7,
+    "comfy": 1,
+    "concerned": 1,
+    "courage-scream": 128,
+    "cute-ghost": 10,
+    "ditto": 24,
+    "doesnt-know": 2,
+    "drake-duh": 61,
+    "facepalm": 1,
+    "feels-weak-man": 49,
+    "flag": 9,
+    "floating-pumpkins": 27,
+    "frog-flag": 1,
+    "fry": 1,
+    "gengar": 61,
+    "glorming": 128,
+    "glorpa": 1,
+    "green-fire": 4,
+    "huh": 40,
+    "ice-cube": 2,
+    "jail-time": 11,
+    "keanu-thanks": 36,
+    "leave-me-alone": 128,
+    "let-me-in": 64,
+    "lightspeed-jump": 17,
+    "lolface": 1,
+    "madge-clap": 2,
+    "meow-coffee-spit": 128,
+    "mhm": 9,
+    "middle-fingers": 51,
+    "mine-block": 128,
+    "mustache-glasses": 1,
+    "nopers": 32,
+    "pat": 11,
+    "pepe-binoculars": 1,
+    "pepe-meltdown": 10,
+    "pepe-nodders": 16,
+    "pepe-point": 7,
+    "pepo-popcorn": 2,
+    "phone-time": 85,
+    "pika-stand": 8,
+    "pikachu": 28,
+    "pixar-think": 128,
+    "pokeball-emerge": 87,
+    "pumpkin-cat": 8,
+    "pumpkin-give": 59,
+    "pumpkin-surprise": 1,
+    "pumpkin-take": 59,
+    "purple-stars": 6,
+    "rare-ghost": 10,
+    "reading": 3,
+    "red-alert": 17,
+    "reveal": 59,
+    "runn": 128,
+    "sisyphus": 1,
+    "skeleton-dance": 6,
+    "smadge": 1,
+    "smart": 13,
+    "smoge": 44,
+    "snorlax": 87,
+    "speechless": 73,
+    "spongebob-watching-tv": 80,
+    "spongebob-worship": 10,
+    "sure": 18,
+    "surprised-clapping": 71,
+    "surprised-pikachu": 1,
+    "suspicion": 1,
+    "venom": 128,
+    "willem-dafoe": 23,
+    "wolverine": 110
+  },
+  "framesMissing": [
+    "banana-dance",
+    "blankies",
+    "blaze",
+    "deal-with-it",
+    "gigachad",
+    "jammies",
+    "laser-eyes",
+    "nyan-cat",
+    "party-blob",
+    "party-parrot",
+    "pepe-flag",
+    "pet",
+    "pokeball-almost",
+    "pokeball-capture",
+    "pokeball-go",
+    "sad-blob"
+  ],
+  "proceduralRemoved": [
+    "frames/pokeball-go/ (procedural SVG recreation deleted)",
+    "frames/pokeball-capture/ (procedural SVG recreation deleted)",
+    "frames/pokeball-almost/ (procedural SVG recreation deleted)"
+  ]
+}

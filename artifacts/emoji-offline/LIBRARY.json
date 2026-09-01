@@ -1,3887 +1,3378 @@
 {
-  "version": "2.1.0",
-  "offlineReady": true,
+  "source": "makeemoji.com official CDN assets (assets.makeemoji.com)",
+  "harvestedAt": "2026-09-01T02:26:44.651Z",
   "styleCount": 473,
-  "implementedStyleCount": 473,
-  "source": "https://makeemoji.com/",
-  "controls": {
-    "color": [
-      "Normal",
-      "Colors",
-      "Rainbow",
-      "Stripes",
-      "Circles",
-      "Deep Fried",
-      "X-Ray",
-      "Toxic",
-      "Vaporwave",
-      "Cherry Cola",
-      "Night Vision",
-      "Blue Flame",
-      "Newsprint",
-      "Hellfire",
-      "Red",
-      "Orange",
-      "Yellow",
-      "Green",
-      "Blue",
-      "Purple"
-    ],
-    "speed": [
-      "0.1x",
-      "0.25x",
-      "0.5x",
-      "0.75x",
-      "Normal",
-      "1.25x",
-      "1.5x",
-      "1.75x",
-      "2x",
-      "3x"
-    ],
-    "direction": [
-      "\u27a1\ufe0f Right",
-      "\u2b07\ufe0f Down",
-      "\u2b05\ufe0f Left",
-      "\u2b06\ufe0f Up"
-    ],
-    "size": [
-      "\u2b1c 24px",
-      "\u2b1c 28px",
-      "\u2b1c 32px",
-      "\u2b1c 56px",
-      "\u2b1c 64px",
-      "\u2b1c 100px",
-      "\u2b1c 112px",
-      "\u2b1c 128px",
-      "\u2b1c 256px",
-      "\u2b1c 400px",
-      "\u2b1c 512px"
-    ],
-    "format": [
-      "\ud83d\udcc1 GIF",
-      "\ud83d\udcc1 WebP",
-      "\ud83d\udcc1 APNG",
-      "\u2600\ufe0f HDR APNG"
-    ]
-  },
-  "colorSideControl": {
-    "description": "MakeEmoji Colour (#color-select) recolors the upload before a style runs. Animated modes loop even with style none.",
-    "animated": [
-      "Colors",
-      "Rainbow",
-      "Stripes",
-      "Circles"
-    ],
-    "static": [
-      "Deep Fried",
-      "X-Ray",
-      "Toxic",
-      "Vaporwave",
-      "Cherry Cola",
-      "Night Vision",
-      "Blue Flame",
-      "Newsprint",
-      "Hellfire",
-      "Red",
-      "Orange",
-      "Yellow",
-      "Green",
-      "Blue",
-      "Purple"
-    ]
-  },
-  "families": {
-    "transform": 333,
-    "overlay": 36,
-    "frames": 90,
-    "atlas": 13,
-    "passthrough": 1
+  "offlineReadyCount": 470,
+  "note": "Offline copy of MakeEmoji free assets only. No procedural/SVG recreations. Styles without compositable CDN frames that also lack archived atlases/overlays are blocked rather than faked.",
+  "prerenderedCount": 473,
+  "overlayCount": 37,
+  "cdnFrameStyleCount": 87,
+  "cdnFramesMissing": [
+    "banana-dance",
+    "blankies",
+    "blaze",
+    "deal-with-it",
+    "gigachad",
+    "jammies",
+    "laser-eyes",
+    "nyan-cat",
+    "party-blob",
+    "party-parrot",
+    "pepe-flag",
+    "pet",
+    "pokeball-almost",
+    "pokeball-capture",
+    "pokeball-go",
+    "sad-blob"
+  ],
+  "blockedOfflineComposite": [
+    {
+      "id": "pokeball-almost",
+      "fidelity": "makeemoji-prerendered-gif-only",
+      "prerendered": "prerendered/pokeball-almost/default-cat.gif",
+      "notes": [
+        "Official MakeEmoji GIF available: https://assets.makeemoji.com/prerendered/default-cat/pokeball-almost.gif",
+        "Compositable CDN frames MISSING (404). Procedural SVG recreation removed. Offline user-image composite blocked until MakeEmoji publishes frames."
+      ]
+    },
+    {
+      "id": "pokeball-capture",
+      "fidelity": "makeemoji-prerendered-gif-only",
+      "prerendered": "prerendered/pokeball-capture/default-cat.gif",
+      "notes": [
+        "Official MakeEmoji GIF available: https://assets.makeemoji.com/prerendered/default-cat/pokeball-capture.gif",
+        "Compositable CDN frames MISSING (404). Procedural SVG recreation removed. Offline user-image composite blocked until MakeEmoji publishes frames."
+      ]
+    },
+    {
+      "id": "pokeball-go",
+      "fidelity": "makeemoji-prerendered-gif-only",
+      "prerendered": "prerendered/pokeball-go/default-cat.gif",
+      "notes": [
+        "Official MakeEmoji GIF available: https://assets.makeemoji.com/prerendered/default-cat/pokeball-go.gif",
+        "Compositable CDN frames MISSING (404). Procedural SVG recreation removed. Offline user-image composite blocked until MakeEmoji publishes frames."
+      ]
+    }
+  ],
+  "fidelityCounts": {
+    "approximate-procedural": 329,
+    "makeemoji-overlay": 37,
+    "makeemoji-cdn-frames": 87,
+    "approximate-composite": 16,
+    "exact": 1,
+    "makeemoji-prerendered-gif-only": 3
   },
   "styles": [
-    {
-      "id": "none",
-      "slug": "none",
-      "family": "passthrough",
-      "primitive": "passthrough",
-      "offlineReady": true,
-      "tag": "gen_btn_none"
-    },
     {
       "id": "2x-wide-1",
       "slug": "2x-wide-1",
       "family": "transform",
-      "primitive": "slide",
-      "offlineReady": true,
-      "tag": "gen_btn_2x-wide-1"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "2x-wide-2",
       "slug": "2x-wide-2",
       "family": "transform",
-      "primitive": "slide",
-      "offlineReady": true,
-      "tag": "gen_btn_2x-wide-2"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
-      "id": "3d-flip:\u27a1\ufe0f",
+      "id": "3d-flip:➡️",
       "slug": "3d-flip",
       "family": "transform",
-      "primitive": "flip",
-      "offlineReady": true,
-      "tag": "gen_btn_3d-flip"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "3x-wide-1",
       "slug": "3x-wide-1",
       "family": "transform",
-      "primitive": "slide",
-      "offlineReady": true,
-      "tag": "gen_btn_3x-wide-1"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "3x-wide-2",
       "slug": "3x-wide-2",
       "family": "transform",
-      "primitive": "slide",
-      "offlineReady": true,
-      "tag": "gen_btn_3x-wide-2"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "3x-wide-3",
       "slug": "3x-wide-3",
       "family": "transform",
-      "primitive": "slide",
-      "offlineReady": true,
-      "tag": "gen_btn_3x-wide-3"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "4x-wide-1",
       "slug": "4x-wide-1",
       "family": "transform",
-      "primitive": "slide",
-      "offlineReady": true,
-      "tag": "gen_btn_4x-wide-1"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "4x-wide-2",
       "slug": "4x-wide-2",
       "family": "transform",
-      "primitive": "slide",
-      "offlineReady": true,
-      "tag": "gen_btn_4x-wide-2"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "4x-wide-3",
       "slug": "4x-wide-3",
       "family": "transform",
-      "primitive": "slide",
-      "offlineReady": true,
-      "tag": "gen_btn_4x-wide-3"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "4x-wide-4",
       "slug": "4x-wide-4",
       "family": "transform",
-      "primitive": "slide",
-      "offlineReady": true,
-      "tag": "gen_btn_4x-wide-4"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "abdul-pls",
       "slug": "abdul-pls",
       "family": "transform",
-      "primitive": "shake",
-      "offlineReady": true,
-      "tag": "gen_btn_abdul-pls"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "aha",
       "slug": "aha",
       "family": "transform",
-      "primitive": "pulse",
-      "offlineReady": true,
-      "tag": "gen_btn_aha"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "alarm",
       "slug": "alarm",
       "family": "transform",
-      "primitive": "glitch",
-      "offlineReady": true,
-      "tag": "gen_btn_alarm"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "alarms",
       "slug": "alarms",
       "family": "transform",
-      "primitive": "glitch",
-      "offlineReady": true,
-      "tag": "gen_btn_alarms"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "alert",
       "slug": "alert",
       "family": "transform",
-      "primitive": "glitch",
-      "offlineReady": true,
-      "tag": "gen_btn_alert"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "alien-pls",
       "slug": "alien-pls",
       "family": "transform",
-      "primitive": "pulse",
-      "offlineReady": true,
-      "tag": "gen_btn_alien-pls"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "alien-pls-3",
       "slug": "alien-pls-3",
       "family": "transform",
-      "primitive": "wobble",
-      "offlineReady": true,
-      "tag": "gen_btn_alien-pls-3"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "alowo",
       "slug": "alowo",
       "family": "transform",
-      "primitive": "pulse",
-      "offlineReady": true,
-      "tag": "gen_btn_alowo"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "amaze",
       "slug": "amaze",
       "family": "transform",
-      "primitive": "rainbow",
-      "offlineReady": true,
-      "tag": "gen_btn_amaze"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "angel",
       "slug": "angel",
       "family": "overlay",
-      "primitive": "overlay_hole",
-      "offlineReady": true,
-      "tag": "gen_btn_angel"
+      "fidelity": "makeemoji-overlay",
+      "offlineReady": true
     },
     {
       "id": "anime-scream",
       "slug": "anime-scream",
       "family": "transform",
-      "primitive": "glitch",
-      "offlineReady": true,
-      "tag": "gen_btn_anime-scream"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "anticipation",
       "slug": "anticipation",
       "family": "frames",
-      "primitive": "frames",
-      "offlineReady": true,
-      "tag": "gen_btn_anticipation"
+      "fidelity": "makeemoji-cdn-frames",
+      "offlineReady": true
     },
     {
       "id": "approve-arms",
       "slug": "approve-arms",
       "family": "transform",
-      "primitive": "nod",
-      "offlineReady": true,
-      "tag": "gen_btn_approve-arms"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "banana-dance",
       "slug": "banana-dance",
       "family": "atlas",
-      "primitive": "atlas",
-      "offlineReady": true,
-      "tag": "gen_btn_banana-dance"
+      "fidelity": "approximate-composite",
+      "offlineReady": true
     },
     {
       "id": "bat-signal",
       "slug": "bat-signal",
       "family": "frames",
-      "primitive": "frames",
-      "offlineReady": true,
-      "tag": "gen_btn_bat-signal"
+      "fidelity": "makeemoji-cdn-frames",
+      "offlineReady": true
     },
     {
       "id": "bat-signal-scene",
       "slug": "bat-signal-scene",
       "family": "frames",
-      "primitive": "frames",
-      "offlineReady": true,
-      "tag": "gen_btn_bat-signal-scene"
+      "fidelity": "makeemoji-cdn-frames",
+      "offlineReady": true
     },
     {
       "id": "bedge",
       "slug": "bedge",
       "family": "transform",
-      "primitive": "pulse",
-      "offlineReady": true,
-      "tag": "gen_btn_bedge"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "beers",
       "slug": "beers",
       "family": "transform",
-      "primitive": "bounce",
-      "offlineReady": true,
-      "tag": "gen_btn_beers"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "binoculars",
       "slug": "binoculars",
       "family": "frames",
-      "primitive": "frames",
-      "offlineReady": true,
-      "tag": "gen_btn_binoculars"
+      "fidelity": "makeemoji-cdn-frames",
+      "offlineReady": true
     },
     {
       "id": "blah-blah-blah",
       "slug": "blah-blah-blah",
       "family": "transform",
-      "primitive": "wobble",
-      "offlineReady": true,
-      "tag": "gen_btn_blah-blah-blah"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "blame",
       "slug": "blame",
       "family": "overlay",
-      "primitive": "overlay_hole",
-      "offlineReady": true,
-      "tag": "gen_btn_blame"
+      "fidelity": "makeemoji-overlay",
+      "offlineReady": true
     },
     {
       "id": "blame-animated",
       "slug": "blame-animated",
       "family": "transform",
-      "primitive": "pulse",
-      "offlineReady": true,
-      "tag": "gen_btn_blame-animated"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "blanket",
       "slug": "blanket",
       "family": "frames",
-      "primitive": "frames",
-      "offlineReady": true,
-      "tag": "gen_btn_blanket"
+      "fidelity": "makeemoji-cdn-frames",
+      "offlineReady": true
     },
     {
       "id": "blankies",
       "slug": "blankies",
       "family": "atlas",
-      "primitive": "atlas",
-      "offlineReady": true,
-      "tag": "gen_btn_blankies"
+      "fidelity": "approximate-composite",
+      "offlineReady": true
     },
     {
       "id": "blast",
       "slug": "blast",
       "family": "transform",
-      "primitive": "zoom",
-      "offlineReady": true,
-      "tag": "gen_btn_blast"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "blaze",
       "slug": "blaze",
       "family": "atlas",
-      "primitive": "atlas",
-      "offlineReady": true,
-      "tag": "gen_btn_blaze"
+      "fidelity": "approximate-composite",
+      "offlineReady": true
     },
     {
       "id": "blink",
       "slug": "blink",
       "family": "transform",
-      "primitive": "fade",
-      "offlineReady": true,
-      "tag": "gen_btn_blink"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "blob-help",
       "slug": "blob-help",
       "family": "overlay",
-      "primitive": "overlay_hole",
-      "offlineReady": true,
-      "tag": "gen_btn_blob-help"
+      "fidelity": "makeemoji-overlay",
+      "offlineReady": true
     },
     {
       "id": "blob-no",
       "slug": "blob-no",
       "family": "overlay",
-      "primitive": "overlay_hole",
-      "offlineReady": true,
-      "tag": "gen_btn_blob-no"
+      "fidelity": "makeemoji-overlay",
+      "offlineReady": true
     },
     {
       "id": "blob-smiley",
       "slug": "blob-smiley",
       "family": "frames",
-      "primitive": "frames",
-      "offlineReady": true,
-      "tag": "gen_btn_blob-smiley"
+      "fidelity": "makeemoji-cdn-frames",
+      "offlineReady": true
     },
     {
       "id": "blob-yes",
       "slug": "blob-yes",
       "family": "overlay",
-      "primitive": "overlay_hole",
-      "offlineReady": true,
-      "tag": "gen_btn_blob-yes"
+      "fidelity": "makeemoji-overlay",
+      "offlineReady": true
     },
     {
       "id": "blush",
       "slug": "blush",
       "family": "frames",
-      "primitive": "frames",
-      "offlineReady": true,
-      "tag": "gen_btn_blush"
+      "fidelity": "makeemoji-cdn-frames",
+      "offlineReady": true
     },
     {
       "id": "bobble",
       "slug": "bobble",
       "family": "transform",
-      "primitive": "wobble",
-      "offlineReady": true,
-      "tag": "gen_btn_bobble"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "boing",
       "slug": "boing",
       "family": "transform",
-      "primitive": "bounce",
-      "offlineReady": true,
-      "tag": "gen_btn_boing"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "bonk",
       "slug": "bonk",
       "family": "transform",
-      "primitive": "bounce",
-      "offlineReady": true,
-      "tag": "gen_btn_bonk"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "bonk-doge",
       "slug": "bonk-doge",
       "family": "transform",
-      "primitive": "bounce",
-      "offlineReady": true,
-      "tag": "gen_btn_bonk-doge"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "booba",
       "slug": "booba",
       "family": "frames",
-      "primitive": "frames",
-      "offlineReady": true,
-      "tag": "gen_btn_booba"
+      "fidelity": "makeemoji-cdn-frames",
+      "offlineReady": true
     },
     {
       "id": "boom",
       "slug": "boom",
       "family": "transform",
-      "primitive": "zoom",
-      "offlineReady": true,
-      "tag": "gen_btn_boom"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "boooo",
       "slug": "boooo",
       "family": "frames",
-      "primitive": "frames",
-      "offlineReady": true,
-      "tag": "gen_btn_boooo"
+      "fidelity": "makeemoji-cdn-frames",
+      "offlineReady": true
     },
     {
       "id": "bounce",
       "slug": "bounce",
       "family": "transform",
-      "primitive": "bounce",
-      "offlineReady": true,
-      "tag": "gen_btn_bounce"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "box",
       "slug": "box",
       "family": "transform",
-      "primitive": "rainbow",
-      "offlineReady": true,
-      "tag": "gen_btn_box"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "breaking-news",
       "slug": "breaking-news",
       "family": "transform",
-      "primitive": "shake",
-      "offlineReady": true,
-      "tag": "gen_btn_breaking-news"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "breathe",
       "slug": "breathe",
       "family": "transform",
-      "primitive": "wobble",
-      "offlineReady": true,
-      "tag": "gen_btn_breathe"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "bubble",
       "slug": "bubble",
       "family": "transform",
-      "primitive": "pulse",
-      "offlineReady": true,
-      "tag": "gen_btn_bubble"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "bubbles",
       "slug": "bubbles",
       "family": "frames",
-      "primitive": "frames",
-      "offlineReady": true,
-      "tag": "gen_btn_bubbles"
+      "fidelity": "makeemoji-cdn-frames",
+      "offlineReady": true
     },
     {
       "id": "bufo-offers",
       "slug": "bufo-offers",
       "family": "transform",
-      "primitive": "pulse",
-      "offlineReady": true,
-      "tag": "gen_btn_bufo-offers"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "bufo-takes",
       "slug": "bufo-takes",
       "family": "transform",
-      "primitive": "pulse",
-      "offlineReady": true,
-      "tag": "gen_btn_bufo-takes"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "bulge",
       "slug": "bulge",
       "family": "transform",
-      "primitive": "bounce",
-      "offlineReady": true,
-      "tag": "gen_btn_bulge"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "burger",
       "slug": "burger",
       "family": "overlay",
-      "primitive": "overlay_hole",
-      "offlineReady": true,
-      "tag": "gen_btn_burger"
+      "fidelity": "makeemoji-overlay",
+      "offlineReady": true
     },
     {
       "id": "burn",
       "slug": "burn",
       "family": "transform",
-      "primitive": "pulse",
-      "offlineReady": true,
-      "tag": "gen_btn_burn"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "bush-disappear",
       "slug": "bush-disappear",
       "family": "transform",
-      "primitive": "pulse",
-      "offlineReady": true,
-      "tag": "gen_btn_bush-disappear"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "bush-texture",
       "slug": "bush-texture",
       "family": "transform",
-      "primitive": "nod",
-      "offlineReady": true,
-      "tag": "gen_btn_bush-texture"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "cancel",
       "slug": "cancel",
       "family": "transform",
-      "primitive": "pulse",
-      "offlineReady": true,
-      "tag": "gen_btn_cancel"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "cat-ears",
       "slug": "cat-ears",
       "family": "frames",
-      "primitive": "frames",
-      "offlineReady": true,
-      "tag": "gen_btn_cat-ears"
+      "fidelity": "makeemoji-cdn-frames",
+      "offlineReady": true
     },
     {
       "id": "cat-jam",
       "slug": "cat-jam",
       "family": "transform",
-      "primitive": "wobble",
-      "offlineReady": true,
-      "tag": "gen_btn_cat-jam"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "cat-jam-crying",
       "slug": "cat-jam-crying",
       "family": "transform",
-      "primitive": "wobble",
-      "offlineReady": true,
-      "tag": "gen_btn_cat-jam-crying"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "cat-no",
       "slug": "cat-no",
       "family": "transform",
-      "primitive": "shake",
-      "offlineReady": true,
-      "tag": "gen_btn_cat-no"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "cat-slap",
       "slug": "cat-slap",
       "family": "transform",
-      "primitive": "bounce",
-      "offlineReady": true,
-      "tag": "gen_btn_cat-slap"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "cat-yes",
       "slug": "cat-yes",
       "family": "transform",
-      "primitive": "nod",
-      "offlineReady": true,
-      "tag": "gen_btn_cat-yes"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "clap",
       "slug": "clap",
       "family": "transform",
-      "primitive": "pulse",
-      "offlineReady": true,
-      "tag": "gen_btn_clap"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "clap-glove",
       "slug": "clap-glove",
       "family": "transform",
-      "primitive": "pulse",
-      "offlineReady": true,
-      "tag": "gen_btn_clap-glove"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "claude-code",
       "slug": "claude-code",
       "family": "frames",
-      "primitive": "frames",
-      "offlineReady": true,
-      "tag": "gen_btn_claude-code"
+      "fidelity": "makeemoji-cdn-frames",
+      "offlineReady": true
     },
     {
       "id": "claude-dancing",
       "slug": "claude-dancing",
       "family": "frames",
-      "primitive": "frames",
-      "offlineReady": true,
-      "tag": "gen_btn_claude-dancing"
+      "fidelity": "makeemoji-cdn-frames",
+      "offlineReady": true
     },
     {
       "id": "claude-football",
       "slug": "claude-football",
       "family": "frames",
-      "primitive": "frames",
-      "offlineReady": true,
-      "tag": "gen_btn_claude-football"
+      "fidelity": "makeemoji-cdn-frames",
+      "offlineReady": true
     },
     {
       "id": "claude-fu",
       "slug": "claude-fu",
       "family": "frames",
-      "primitive": "frames",
-      "offlineReady": true,
-      "tag": "gen_btn_claude-fu"
+      "fidelity": "makeemoji-cdn-frames",
+      "offlineReady": true
     },
     {
       "id": "claude-idea",
       "slug": "claude-idea",
       "family": "frames",
-      "primitive": "frames",
-      "offlineReady": true,
-      "tag": "gen_btn_claude-idea"
+      "fidelity": "makeemoji-cdn-frames",
+      "offlineReady": true
     },
     {
       "id": "claude-jam",
       "slug": "claude-jam",
       "family": "frames",
-      "primitive": "frames",
-      "offlineReady": true,
-      "tag": "gen_btn_claude-jam"
+      "fidelity": "makeemoji-cdn-frames",
+      "offlineReady": true
     },
     {
       "id": "cleaning",
       "slug": "cleaning",
       "family": "frames",
-      "primitive": "frames",
-      "offlineReady": true,
-      "tag": "gen_btn_cleaning"
+      "fidelity": "makeemoji-cdn-frames",
+      "offlineReady": true
     },
     {
-      "id": "clone-army:\u27a1\ufe0f",
+      "id": "clone-army:➡️",
       "slug": "clone-army",
       "family": "transform",
-      "primitive": "glitch",
-      "offlineReady": true,
-      "tag": "gen_btn_clone-army"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "coggers",
       "slug": "coggers",
       "family": "overlay",
-      "primitive": "overlay_hole",
-      "offlineReady": true,
-      "tag": "gen_btn_coggers"
+      "fidelity": "makeemoji-overlay",
+      "offlineReady": true
     },
     {
       "id": "combust",
       "slug": "combust",
       "family": "transform",
-      "primitive": "rainbow",
-      "offlineReady": true,
-      "tag": "gen_btn_combust"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "comfy",
       "slug": "comfy",
       "family": "frames",
-      "primitive": "frames",
-      "offlineReady": true,
-      "tag": "gen_btn_comfy"
+      "fidelity": "makeemoji-cdn-frames",
+      "offlineReady": true
     },
     {
       "id": "concerned",
       "slug": "concerned",
       "family": "frames",
-      "primitive": "frames",
-      "offlineReady": true,
-      "tag": "gen_btn_concerned"
+      "fidelity": "makeemoji-cdn-frames",
+      "offlineReady": true
     },
     {
       "id": "confused-cat",
       "slug": "confused-cat",
       "family": "overlay",
-      "primitive": "overlay_hole",
-      "offlineReady": true,
-      "tag": "gen_btn_confused-cat"
+      "fidelity": "makeemoji-overlay",
+      "offlineReady": true
     },
     {
-      "id": "conga-line:\u27a1\ufe0f",
+      "id": "conga-line:➡️",
       "slug": "conga-line",
       "family": "transform",
-      "primitive": "glitch",
-      "offlineReady": true,
-      "tag": "gen_btn_conga-line"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "content-aware",
       "slug": "content-aware",
       "family": "transform",
-      "primitive": "nod",
-      "offlineReady": true,
-      "tag": "gen_btn_content-aware"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "cool-glasses",
       "slug": "cool-glasses",
       "family": "transform",
-      "primitive": "nod",
-      "offlineReady": true,
-      "tag": "gen_btn_cool-glasses"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "copium",
       "slug": "copium",
       "family": "transform",
-      "primitive": "pulse",
-      "offlineReady": true,
-      "tag": "gen_btn_copium"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "courage-scream",
       "slug": "courage-scream",
       "family": "frames",
-      "primitive": "frames",
-      "offlineReady": true,
-      "tag": "gen_btn_courage-scream"
+      "fidelity": "makeemoji-cdn-frames",
+      "offlineReady": true
     },
     {
       "id": "cowboy",
       "slug": "cowboy",
       "family": "overlay",
-      "primitive": "overlay_hole",
-      "offlineReady": true,
-      "tag": "gen_btn_cowboy"
+      "fidelity": "makeemoji-overlay",
+      "offlineReady": true
     },
     {
       "id": "crab",
       "slug": "crab",
       "family": "transform",
-      "primitive": "pulse",
-      "offlineReady": true,
-      "tag": "gen_btn_crab"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "credit-swipe",
       "slug": "credit-swipe",
       "family": "transform",
-      "primitive": "pulse",
-      "offlineReady": true,
-      "tag": "gen_btn_credit-swipe"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "crying-laughing",
       "slug": "crying-laughing",
       "family": "overlay",
-      "primitive": "overlay_hole",
-      "offlineReady": true,
-      "tag": "gen_btn_crying-laughing"
+      "fidelity": "makeemoji-overlay",
+      "offlineReady": true
     },
     {
       "id": "cube",
       "slug": "cube",
       "family": "transform",
-      "primitive": "bounce",
-      "offlineReady": true,
-      "tag": "gen_btn_cube"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "cute-ghost",
       "slug": "cute-ghost",
       "family": "frames",
-      "primitive": "frames",
-      "offlineReady": true,
-      "tag": "gen_btn_cute-ghost"
+      "fidelity": "makeemoji-cdn-frames",
+      "offlineReady": true
     },
     {
       "id": "cute-hop",
       "slug": "cute-hop",
       "family": "transform",
-      "primitive": "bounce",
-      "offlineReady": true,
-      "tag": "gen_btn_cute-hop"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "dbz-aura",
       "slug": "dbz-aura",
       "family": "transform",
-      "primitive": "pulse",
-      "offlineReady": true,
-      "tag": "gen_btn_dbz-aura"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "ddr",
       "slug": "ddr",
       "family": "transform",
-      "primitive": "wobble",
-      "offlineReady": true,
-      "tag": "gen_btn_ddr"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "deal-with-it",
       "slug": "deal-with-it",
       "family": "atlas",
-      "primitive": "atlas",
-      "offlineReady": true,
-      "tag": "gen_btn_deal-with-it"
+      "fidelity": "approximate-composite",
+      "offlineReady": true
     },
     {
       "id": "depth-tilt",
       "slug": "depth-tilt",
       "family": "transform",
-      "primitive": "tilt",
-      "offlineReady": true,
-      "tag": "gen_btn_depth-tilt"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "diamond",
       "slug": "diamond",
       "family": "transform",
-      "primitive": "glitch",
-      "offlineReady": true,
-      "tag": "gen_btn_diamond"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "ditto",
       "slug": "ditto",
       "family": "frames",
-      "primitive": "frames",
-      "offlineReady": true,
-      "tag": "gen_btn_ditto"
+      "fidelity": "makeemoji-cdn-frames",
+      "offlineReady": true
     },
     {
       "id": "doesnt-know",
       "slug": "doesnt-know",
       "family": "frames",
-      "primitive": "frames",
-      "offlineReady": true,
-      "tag": "gen_btn_doesnt-know"
+      "fidelity": "makeemoji-cdn-frames",
+      "offlineReady": true
     },
     {
       "id": "donk",
       "slug": "donk",
       "family": "overlay",
-      "primitive": "overlay_hole",
-      "offlineReady": true,
-      "tag": "gen_btn_donk"
+      "fidelity": "makeemoji-overlay",
+      "offlineReady": true
     },
     {
       "id": "drake-duh",
       "slug": "drake-duh",
       "family": "frames",
-      "primitive": "frames",
-      "offlineReady": true,
-      "tag": "gen_btn_drake-duh"
+      "fidelity": "makeemoji-cdn-frames",
+      "offlineReady": true
     },
     {
       "id": "drift",
       "slug": "drift",
       "family": "transform",
-      "primitive": "wobble",
-      "offlineReady": true,
-      "tag": "gen_btn_drift"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "drop",
       "slug": "drop",
       "family": "transform",
-      "primitive": "bounce",
-      "offlineReady": true,
-      "tag": "gen_btn_drop"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "drop-bounce",
       "slug": "drop-bounce",
       "family": "transform",
-      "primitive": "bounce",
-      "offlineReady": true,
-      "tag": "gen_btn_drop-bounce"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "earthquake",
       "slug": "earthquake",
       "family": "transform",
-      "primitive": "bounce",
-      "offlineReady": true,
-      "tag": "gen_btn_earthquake"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "elastic",
       "slug": "elastic",
       "family": "transform",
-      "primitive": "squish",
-      "offlineReady": true,
-      "tag": "gen_btn_elastic"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "electricity",
       "slug": "electricity",
       "family": "transform",
-      "primitive": "glitch",
-      "offlineReady": true,
-      "tag": "gen_btn_electricity"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "elmo-fire",
       "slug": "elmo-fire",
       "family": "transform",
-      "primitive": "pulse",
-      "offlineReady": true,
-      "tag": "gen_btn_elmo-fire"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "emoji-scream",
       "slug": "emoji-scream",
       "family": "transform",
-      "primitive": "rainbow",
-      "offlineReady": true,
-      "tag": "gen_btn_emoji-scream"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "enter",
       "slug": "enter",
       "family": "transform",
-      "primitive": "slide",
-      "offlineReady": true,
-      "tag": "gen_btn_enter"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "excited",
       "slug": "excited",
       "family": "transform",
-      "primitive": "bounce",
-      "offlineReady": true,
-      "tag": "gen_btn_excited"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "excuse-me",
       "slug": "excuse-me",
       "family": "transform",
-      "primitive": "rainbow",
-      "offlineReady": true,
-      "tag": "gen_btn_excuse-me"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "exit",
       "slug": "exit",
       "family": "transform",
-      "primitive": "slide",
-      "offlineReady": true,
-      "tag": "gen_btn_exit"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "explain",
       "slug": "explain",
       "family": "transform",
-      "primitive": "pulse",
-      "offlineReady": true,
-      "tag": "gen_btn_explain"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "explode",
       "slug": "explode",
       "family": "transform",
-      "primitive": "zoom",
-      "offlineReady": true,
-      "tag": "gen_btn_explode"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "face-cover",
       "slug": "face-cover",
       "family": "transform",
-      "primitive": "pulse",
-      "offlineReady": true,
-      "tag": "gen_btn_face-cover"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "facepalm",
       "slug": "facepalm",
       "family": "frames",
-      "primitive": "frames",
-      "offlineReady": true,
-      "tag": "gen_btn_facepalm"
+      "fidelity": "makeemoji-cdn-frames",
+      "offlineReady": true
     },
     {
       "id": "fall-leaves",
       "slug": "fall-leaves",
       "family": "transform",
-      "primitive": "slide",
-      "offlineReady": true,
-      "tag": "gen_btn_fall-leaves"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "feels-rain-man",
       "slug": "feels-rain-man",
       "family": "transform",
-      "primitive": "fade",
-      "offlineReady": true,
-      "tag": "gen_btn_feels-rain-man"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "feels-weak-man",
       "slug": "feels-weak-man",
       "family": "frames",
-      "primitive": "frames",
-      "offlineReady": true,
-      "tag": "gen_btn_feels-weak-man"
+      "fidelity": "makeemoji-cdn-frames",
+      "offlineReady": true
     },
     {
       "id": "figure-8",
       "slug": "figure-8",
       "family": "transform",
-      "primitive": "glitch",
-      "offlineReady": true,
-      "tag": "gen_btn_figure-8"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "fire-pixel",
       "slug": "fire-pixel",
       "family": "transform",
-      "primitive": "pulse",
-      "offlineReady": true,
-      "tag": "gen_btn_fire-pixel"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "fireplace",
       "slug": "fireplace",
       "family": "transform",
-      "primitive": "pulse",
-      "offlineReady": true,
-      "tag": "gen_btn_fireplace"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "fivehead",
       "slug": "fivehead",
       "family": "transform",
-      "primitive": "pulse",
-      "offlineReady": true,
-      "tag": "gen_btn_fivehead"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "fivehead-pulse",
       "slug": "fivehead-pulse",
       "family": "transform",
-      "primitive": "pulse",
-      "offlineReady": true,
-      "tag": "gen_btn_fivehead-pulse"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "flag",
       "slug": "flag",
       "family": "frames",
-      "primitive": "frames",
-      "offlineReady": true,
-      "tag": "gen_btn_flag"
+      "fidelity": "makeemoji-cdn-frames",
+      "offlineReady": true
     },
     {
       "id": "flag-wave",
       "slug": "flag-wave",
       "family": "transform",
-      "primitive": "wave",
-      "offlineReady": true,
-      "tag": "gen_btn_flag-wave"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "flame",
       "slug": "flame",
       "family": "transform",
-      "primitive": "pulse",
-      "offlineReady": true,
-      "tag": "gen_btn_flame"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "flare-eyes",
       "slug": "flare-eyes",
       "family": "transform",
-      "primitive": "nod",
-      "offlineReady": true,
-      "tag": "gen_btn_flare-eyes"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
-      "id": "flick:\u27a1\ufe0f",
+      "id": "flick:➡️",
       "slug": "flick",
       "family": "transform",
-      "primitive": "bounce",
-      "offlineReady": true,
-      "tag": "gen_btn_flick"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
-      "id": "fling:\u27a1\ufe0f",
+      "id": "fling:➡️",
       "slug": "fling",
       "family": "transform",
-      "primitive": "bounce",
-      "offlineReady": true,
-      "tag": "gen_btn_fling"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "flip",
       "slug": "flip",
       "family": "transform",
-      "primitive": "flip",
-      "offlineReady": true,
-      "tag": "gen_btn_flip"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "flipp",
       "slug": "flipp",
       "family": "transform",
-      "primitive": "flip",
-      "offlineReady": true,
-      "tag": "gen_btn_flipp"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "floating-pumpkins",
       "slug": "floating-pumpkins",
       "family": "frames",
-      "primitive": "frames",
-      "offlineReady": true,
-      "tag": "gen_btn_floating-pumpkins"
+      "fidelity": "makeemoji-cdn-frames",
+      "offlineReady": true
     },
     {
       "id": "flutter",
       "slug": "flutter",
       "family": "transform",
-      "primitive": "glitch",
-      "offlineReady": true,
-      "tag": "gen_btn_flutter"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "frog-flag",
       "slug": "frog-flag",
       "family": "frames",
-      "primitive": "frames",
-      "offlineReady": true,
-      "tag": "gen_btn_frog-flag"
+      "fidelity": "makeemoji-cdn-frames",
+      "offlineReady": true
     },
     {
       "id": "fry",
       "slug": "fry",
       "family": "frames",
-      "primitive": "frames",
-      "offlineReady": true,
-      "tag": "gen_btn_fry"
+      "fidelity": "makeemoji-cdn-frames",
+      "offlineReady": true
     },
     {
       "id": "gengar",
       "slug": "gengar",
       "family": "frames",
-      "primitive": "frames",
-      "offlineReady": true,
-      "tag": "gen_btn_gengar"
+      "fidelity": "makeemoji-cdn-frames",
+      "offlineReady": true
     },
     {
       "id": "gigachad",
       "slug": "gigachad",
       "family": "atlas",
-      "primitive": "atlas",
-      "offlineReady": true,
-      "tag": "gen_btn_gigachad"
+      "fidelity": "approximate-composite",
+      "offlineReady": true
     },
     {
       "id": "glasses-shine",
       "slug": "glasses-shine",
       "family": "transform",
-      "primitive": "pulse",
-      "offlineReady": true,
-      "tag": "gen_btn_glasses-shine"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "glitch",
       "slug": "glitch",
       "family": "transform",
-      "primitive": "glitch",
-      "offlineReady": true,
-      "tag": "gen_btn_glitch"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
-      "id": "glorming:\u27a1\ufe0f",
+      "id": "glorming:➡️",
       "slug": "glorming",
       "family": "frames",
-      "primitive": "frames",
-      "offlineReady": true,
-      "tag": "gen_btn_glorming"
+      "fidelity": "makeemoji-cdn-frames",
+      "offlineReady": true
     },
     {
       "id": "glorp",
       "slug": "glorp",
       "family": "overlay",
-      "primitive": "overlay_hole",
-      "offlineReady": true,
-      "tag": "gen_btn_glorp"
+      "fidelity": "makeemoji-overlay",
+      "offlineReady": true
     },
     {
       "id": "glorpa",
       "slug": "glorpa",
       "family": "frames",
-      "primitive": "frames",
-      "offlineReady": true,
-      "tag": "gen_btn_glorpa"
+      "fidelity": "makeemoji-cdn-frames",
+      "offlineReady": true
     },
     {
       "id": "googly-eyes",
       "slug": "googly-eyes",
       "family": "transform",
-      "primitive": "nod",
-      "offlineReady": true,
-      "tag": "gen_btn_googly-eyes"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "grayscale",
       "slug": "grayscale",
       "family": "transform",
-      "primitive": "pulse",
-      "offlineReady": true,
-      "tag": "gen_btn_grayscale"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "green-fire",
       "slug": "green-fire",
       "family": "frames",
-      "primitive": "frames",
-      "offlineReady": true,
-      "tag": "gen_btn_green-fire"
+      "fidelity": "makeemoji-cdn-frames",
+      "offlineReady": true
     },
     {
       "id": "gulp",
       "slug": "gulp",
       "family": "transform",
-      "primitive": "wobble",
-      "offlineReady": true,
-      "tag": "gen_btn_gulp"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "gun",
       "slug": "gun",
       "family": "transform",
-      "primitive": "pulse",
-      "offlineReady": true,
-      "tag": "gen_btn_gun"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "hazmat",
       "slug": "hazmat",
       "family": "overlay",
-      "primitive": "overlay_hole",
-      "offlineReady": true,
-      "tag": "gen_btn_hazmat"
+      "fidelity": "makeemoji-overlay",
+      "offlineReady": true
     },
     {
       "id": "hazmat-2",
       "slug": "hazmat-2",
       "family": "overlay",
-      "primitive": "overlay_hole",
-      "offlineReady": true,
-      "tag": "gen_btn_hazmat-2"
+      "fidelity": "makeemoji-overlay",
+      "offlineReady": true
     },
     {
       "id": "headbop",
       "slug": "headbop",
       "family": "transform",
-      "primitive": "shake",
-      "offlineReady": true,
-      "tag": "gen_btn_headbop"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "heart-hypno",
       "slug": "heart-hypno",
       "family": "transform",
-      "primitive": "heartbeat",
-      "offlineReady": true,
-      "tag": "gen_btn_heart-hypno"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "heart-locket",
       "slug": "heart-locket",
       "family": "transform",
-      "primitive": "heartbeat",
-      "offlineReady": true,
-      "tag": "gen_btn_heart-locket"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "heartbeat",
       "slug": "heartbeat",
       "family": "transform",
-      "primitive": "heartbeat",
-      "offlineReady": true,
-      "tag": "gen_btn_heartbeat"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "heartbeat-flash",
       "slug": "heartbeat-flash",
       "family": "transform",
-      "primitive": "heartbeat",
-      "offlineReady": true,
-      "tag": "gen_btn_heartbeat-flash"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "heat-haze",
       "slug": "heat-haze",
       "family": "transform",
-      "primitive": "wobble",
-      "offlineReady": true,
-      "tag": "gen_btn_heat-haze"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "helicopter",
       "slug": "helicopter",
       "family": "transform",
-      "primitive": "bounce",
-      "offlineReady": true,
-      "tag": "gen_btn_helicopter"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "hellowo",
       "slug": "hellowo",
       "family": "transform",
-      "primitive": "shake",
-      "offlineReady": true,
-      "tag": "gen_btn_hellowo"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "heyy",
       "slug": "heyy",
       "family": "transform",
-      "primitive": "pulse",
-      "offlineReady": true,
-      "tag": "gen_btn_heyy"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "heyyeyaa",
       "slug": "heyyeyaa",
       "family": "overlay",
-      "primitive": "overlay_hole",
-      "offlineReady": true,
-      "tag": "gen_btn_heyyeyaa"
+      "fidelity": "makeemoji-overlay",
+      "offlineReady": true
     },
     {
       "id": "hoodie",
       "slug": "hoodie",
       "family": "overlay",
-      "primitive": "overlay_hole",
-      "offlineReady": true,
-      "tag": "gen_btn_hoodie"
+      "fidelity": "makeemoji-overlay",
+      "offlineReady": true
     },
     {
-      "id": "hop:\u27a1\ufe0f",
+      "id": "hop:➡️",
       "slug": "hop",
       "family": "transform",
-      "primitive": "bounce",
-      "offlineReady": true,
-      "tag": "gen_btn_hop"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "hovering",
       "slug": "hovering",
       "family": "transform",
-      "primitive": "orbit",
-      "offlineReady": true,
-      "tag": "gen_btn_hovering"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "hugg",
       "slug": "hugg",
       "family": "transform",
-      "primitive": "heartbeat",
-      "offlineReady": true,
-      "tag": "gen_btn_hugg"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "huh",
       "slug": "huh",
       "family": "frames",
-      "primitive": "frames",
-      "offlineReady": true,
-      "tag": "gen_btn_huh"
+      "fidelity": "makeemoji-cdn-frames",
+      "offlineReady": true
     },
     {
       "id": "hype",
       "slug": "hype",
       "family": "transform",
-      "primitive": "bounce",
-      "offlineReady": true,
-      "tag": "gen_btn_hype"
+      "fidelity": "approximate-composite",
+      "offlineReady": true
     },
     {
       "id": "hype-jam",
       "slug": "hype-jam",
       "family": "transform",
-      "primitive": "wobble",
-      "offlineReady": true,
-      "tag": "gen_btn_hype-jam"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "hype-shake",
       "slug": "hype-shake",
       "family": "transform",
-      "primitive": "shake",
-      "offlineReady": true,
-      "tag": "gen_btn_hype-shake"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "hyperspace",
       "slug": "hyperspace",
       "family": "transform",
-      "primitive": "bounce",
-      "offlineReady": true,
-      "tag": "gen_btn_hyperspace"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "i-have-a-question",
       "slug": "i-have-a-question",
       "family": "transform",
-      "primitive": "pulse",
-      "offlineReady": true,
-      "tag": "gen_btn_i-have-a-question"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "i-love",
       "slug": "i-love",
       "family": "transform",
-      "primitive": "heartbeat",
-      "offlineReady": true,
-      "tag": "gen_btn_i-love"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "ice-cube",
       "slug": "ice-cube",
       "family": "frames",
-      "primitive": "frames",
-      "offlineReady": true,
-      "tag": "gen_btn_ice-cube"
+      "fidelity": "makeemoji-cdn-frames",
+      "offlineReady": true
     },
     {
       "id": "intensifies",
       "slug": "intensifies",
       "family": "transform",
-      "primitive": "glitch",
-      "offlineReady": true,
-      "tag": "gen_btn_intensifies"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "jail-time",
       "slug": "jail-time",
       "family": "frames",
-      "primitive": "frames",
-      "offlineReady": true,
-      "tag": "gen_btn_jail-time"
+      "fidelity": "makeemoji-cdn-frames",
+      "offlineReady": true
     },
     {
       "id": "jam",
       "slug": "jam",
       "family": "transform",
-      "primitive": "wobble",
-      "offlineReady": true,
-      "tag": "gen_btn_jam"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "jammies",
       "slug": "jammies",
       "family": "atlas",
-      "primitive": "atlas",
-      "offlineReady": true,
-      "tag": "gen_btn_jammies"
+      "fidelity": "approximate-composite",
+      "offlineReady": true
     },
     {
       "id": "jiggle",
       "slug": "jiggle",
       "family": "transform",
-      "primitive": "shake",
-      "offlineReady": true,
-      "tag": "gen_btn_jiggle"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "jitter",
       "slug": "jitter",
       "family": "transform",
-      "primitive": "shake",
-      "offlineReady": true,
-      "tag": "gen_btn_jitter"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "jumping-on-the-bed",
       "slug": "jumping-on-the-bed",
       "family": "transform",
-      "primitive": "bounce",
-      "offlineReady": true,
-      "tag": "gen_btn_jumping-on-the-bed"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "kablooey",
       "slug": "kablooey",
       "family": "transform",
-      "primitive": "rainbow",
-      "offlineReady": true,
-      "tag": "gen_btn_kablooey"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "keanu-thanks",
       "slug": "keanu-thanks",
       "family": "frames",
-      "primitive": "frames",
-      "offlineReady": true,
-      "tag": "gen_btn_keanu-thanks"
+      "fidelity": "makeemoji-cdn-frames",
+      "offlineReady": true
     },
     {
       "id": "kek-jam",
       "slug": "kek-jam",
       "family": "transform",
-      "primitive": "wobble",
-      "offlineReady": true,
-      "tag": "gen_btn_kek-jam"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "kek-laugh",
       "slug": "kek-laugh",
       "family": "transform",
-      "primitive": "wobble",
-      "offlineReady": true,
-      "tag": "gen_btn_kek-laugh"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "ken-burns",
       "slug": "ken-burns",
       "family": "transform",
-      "primitive": "pulse",
-      "offlineReady": true,
-      "tag": "gen_btn_ken-burns"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "labubu",
       "slug": "labubu",
       "family": "overlay",
-      "primitive": "overlay_hole",
-      "offlineReady": true,
-      "tag": "gen_btn_labubu"
+      "fidelity": "makeemoji-overlay",
+      "offlineReady": true
     },
     {
       "id": "laser-eyes",
       "slug": "laser-eyes",
       "family": "atlas",
-      "primitive": "atlas",
-      "offlineReady": true,
-      "tag": "gen_btn_laser-eyes"
+      "fidelity": "approximate-composite",
+      "offlineReady": true
     },
     {
       "id": "lean",
       "slug": "lean",
       "family": "transform",
-      "primitive": "bounce",
-      "offlineReady": true,
-      "tag": "gen_btn_lean"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "leap",
       "slug": "leap",
       "family": "transform",
-      "primitive": "glitch",
-      "offlineReady": true,
-      "tag": "gen_btn_leap"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "leave",
       "slug": "leave",
       "family": "transform",
-      "primitive": "slide",
-      "offlineReady": true,
-      "tag": "gen_btn_leave"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "leave-me-alone",
       "slug": "leave-me-alone",
       "family": "frames",
-      "primitive": "frames",
-      "offlineReady": true,
-      "tag": "gen_btn_leave-me-alone"
+      "fidelity": "makeemoji-cdn-frames",
+      "offlineReady": true
     },
     {
       "id": "lebron-jam",
       "slug": "lebron-jam",
       "family": "transform",
-      "primitive": "wobble",
-      "offlineReady": true,
-      "tag": "gen_btn_lebron-jam"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "let-me-in",
       "slug": "let-me-in",
       "family": "frames",
-      "primitive": "frames",
-      "offlineReady": true,
-      "tag": "gen_btn_let-me-in"
+      "fidelity": "makeemoji-cdn-frames",
+      "offlineReady": true
     },
     {
       "id": "lets-gooo",
       "slug": "lets-gooo",
       "family": "transform",
-      "primitive": "rainbow",
-      "offlineReady": true,
-      "tag": "gen_btn_lets-gooo"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "lick",
       "slug": "lick",
       "family": "transform",
-      "primitive": "nod",
-      "offlineReady": true,
-      "tag": "gen_btn_lick"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "lightning-flash",
       "slug": "lightning-flash",
       "family": "transform",
-      "primitive": "glitch",
-      "offlineReady": true,
-      "tag": "gen_btn_lightning-flash"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "lightsaber",
       "slug": "lightsaber",
       "family": "transform",
-      "primitive": "wobble",
-      "offlineReady": true,
-      "tag": "gen_btn_lightsaber"
+      "fidelity": "makeemoji-overlay",
+      "offlineReady": true
     },
     {
       "id": "lightspeed-jump",
       "slug": "lightspeed-jump",
       "family": "frames",
-      "primitive": "frames",
-      "offlineReady": true,
-      "tag": "gen_btn_lightspeed-jump"
+      "fidelity": "makeemoji-cdn-frames",
+      "offlineReady": true
     },
     {
       "id": "loading",
       "slug": "loading",
       "family": "transform",
-      "primitive": "spin",
-      "offlineReady": true,
-      "tag": "gen_btn_loading"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
-      "id": "loading-eight:\u27a1\ufe0f",
+      "id": "loading-eight:➡️",
       "slug": "loading-eight",
       "family": "transform",
-      "primitive": "spin",
-      "offlineReady": true,
-      "tag": "gen_btn_loading-eight"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
-      "id": "loading-five:\u27a1\ufe0f",
+      "id": "loading-five:➡️",
       "slug": "loading-five",
       "family": "transform",
-      "primitive": "spin",
-      "offlineReady": true,
-      "tag": "gen_btn_loading-five"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
-      "id": "loading-four:\u27a1\ufe0f",
+      "id": "loading-four:➡️",
       "slug": "loading-four",
       "family": "transform",
-      "primitive": "spin",
-      "offlineReady": true,
-      "tag": "gen_btn_loading-four"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
-      "id": "loading-nine:\u27a1\ufe0f",
+      "id": "loading-nine:➡️",
       "slug": "loading-nine",
       "family": "transform",
-      "primitive": "spin",
-      "offlineReady": true,
-      "tag": "gen_btn_loading-nine"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
-      "id": "loading-seven:\u27a1\ufe0f",
+      "id": "loading-seven:➡️",
       "slug": "loading-seven",
       "family": "transform",
-      "primitive": "spin",
-      "offlineReady": true,
-      "tag": "gen_btn_loading-seven"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
-      "id": "loading-six:\u27a1\ufe0f",
+      "id": "loading-six:➡️",
       "slug": "loading-six",
       "family": "transform",
-      "primitive": "spin",
-      "offlineReady": true,
-      "tag": "gen_btn_loading-six"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
-      "id": "loading-three:\u27a1\ufe0f",
+      "id": "loading-three:➡️",
       "slug": "loading-three",
       "family": "transform",
-      "primitive": "spin",
-      "offlineReady": true,
-      "tag": "gen_btn_loading-three"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
-      "id": "loading-two:\u27a1\ufe0f",
+      "id": "loading-two:➡️",
       "slug": "loading-two",
       "family": "transform",
-      "primitive": "spin",
-      "offlineReady": true,
-      "tag": "gen_btn_loading-two"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "lolface",
       "slug": "lolface",
       "family": "frames",
-      "primitive": "frames",
-      "offlineReady": true,
-      "tag": "gen_btn_lolface"
+      "fidelity": "makeemoji-cdn-frames",
+      "offlineReady": true
     },
     {
       "id": "long",
       "slug": "long",
       "family": "transform",
-      "primitive": "pulse",
-      "offlineReady": true,
-      "tag": "gen_btn_long"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "lurk",
       "slug": "lurk",
       "family": "transform",
-      "primitive": "bounce",
-      "offlineReady": true,
-      "tag": "gen_btn_lurk"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "luvv",
       "slug": "luvv",
       "family": "transform",
-      "primitive": "pulse",
-      "offlineReady": true,
-      "tag": "gen_btn_luvv"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "madge-clap",
       "slug": "madge-clap",
       "family": "frames",
-      "primitive": "frames",
-      "offlineReady": true,
-      "tag": "gen_btn_madge-clap"
+      "fidelity": "makeemoji-cdn-frames",
+      "offlineReady": true
     },
     {
       "id": "magnet",
       "slug": "magnet",
       "family": "transform",
-      "primitive": "bounce",
-      "offlineReady": true,
-      "tag": "gen_btn_magnet"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "math",
       "slug": "math",
       "family": "transform",
-      "primitive": "pulse",
-      "offlineReady": true,
-      "tag": "gen_btn_math"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "matrix-rain",
       "slug": "matrix-rain",
       "family": "transform",
-      "primitive": "fade",
-      "offlineReady": true,
-      "tag": "gen_btn_matrix-rain"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "mega-bounce",
       "slug": "mega-bounce",
       "family": "transform",
-      "primitive": "bounce",
-      "offlineReady": true,
-      "tag": "gen_btn_mega-bounce"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "melt",
       "slug": "melt",
       "family": "transform",
-      "primitive": "squish",
-      "offlineReady": true,
-      "tag": "gen_btn_melt"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "meow-coffee-spit",
       "slug": "meow-coffee-spit",
       "family": "frames",
-      "primitive": "frames",
-      "offlineReady": true,
-      "tag": "gen_btn_meow-coffee-spit"
+      "fidelity": "makeemoji-cdn-frames",
+      "offlineReady": true
     },
     {
       "id": "mercator",
       "slug": "mercator",
       "family": "transform",
-      "primitive": "pulse",
-      "offlineReady": true,
-      "tag": "gen_btn_mercator"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "mercator-pulse",
       "slug": "mercator-pulse",
       "family": "transform",
-      "primitive": "pulse",
-      "offlineReady": true,
-      "tag": "gen_btn_mercator-pulse"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "mhm",
       "slug": "mhm",
       "family": "frames",
-      "primitive": "frames",
-      "offlineReady": true,
-      "tag": "gen_btn_mhm"
+      "fidelity": "makeemoji-cdn-frames",
+      "offlineReady": true
     },
     {
       "id": "middle-fingers",
       "slug": "middle-fingers",
       "family": "frames",
-      "primitive": "frames",
-      "offlineReady": true,
-      "tag": "gen_btn_middle-fingers"
+      "fidelity": "makeemoji-cdn-frames",
+      "offlineReady": true
     },
     {
       "id": "mine-block",
       "slug": "mine-block",
       "family": "frames",
-      "primitive": "frames",
-      "offlineReady": true,
-      "tag": "gen_btn_mine-block"
+      "fidelity": "makeemoji-cdn-frames",
+      "offlineReady": true
     },
     {
       "id": "misalign",
       "slug": "misalign",
       "family": "transform",
-      "primitive": "shake",
-      "offlineReady": true,
-      "tag": "gen_btn_misalign"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "mitosis",
       "slug": "mitosis",
       "family": "transform",
-      "primitive": "bounce",
-      "offlineReady": true,
-      "tag": "gen_btn_mitosis"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "monka-christ",
       "slug": "monka-christ",
       "family": "transform",
-      "primitive": "bounce",
-      "offlineReady": true,
-      "tag": "gen_btn_monka-christ"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "monka-hmm",
       "slug": "monka-hmm",
       "family": "transform",
-      "primitive": "rainbow",
-      "offlineReady": true,
-      "tag": "gen_btn_monka-hmm"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "mustache-glasses",
       "slug": "mustache-glasses",
       "family": "frames",
-      "primitive": "frames",
-      "offlineReady": true,
-      "tag": "gen_btn_mustache-glasses"
+      "fidelity": "makeemoji-cdn-frames",
+      "offlineReady": true
     },
     {
       "id": "negative-blink",
       "slug": "negative-blink",
       "family": "transform",
-      "primitive": "fade",
-      "offlineReady": true,
-      "tag": "gen_btn_negative-blink"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
-      "id": "nesting-doll:\u27a1\ufe0f",
+      "id": "nesting-doll:➡️",
       "slug": "nesting-doll",
       "family": "transform",
-      "primitive": "shake",
-      "offlineReady": true,
-      "tag": "gen_btn_nesting-doll"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "nise",
       "slug": "nise",
       "family": "transform",
-      "primitive": "pulse",
-      "offlineReady": true,
-      "tag": "gen_btn_nise"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "no-no",
       "slug": "no-no",
       "family": "transform",
-      "primitive": "shake",
-      "offlineReady": true,
-      "tag": "gen_btn_no-no"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "nod",
       "slug": "nod",
       "family": "transform",
-      "primitive": "nod",
-      "offlineReady": true,
-      "tag": "gen_btn_nod"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "nodders",
       "slug": "nodders",
       "family": "transform",
-      "primitive": "nod",
-      "offlineReady": true,
-      "tag": "gen_btn_nodders"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "none",
+      "slug": "none",
+      "family": "passthrough",
+      "fidelity": "exact",
+      "offlineReady": true
     },
     {
       "id": "nopers",
       "slug": "nopers",
       "family": "frames",
-      "primitive": "frames",
-      "offlineReady": true,
-      "tag": "gen_btn_nopers"
+      "fidelity": "makeemoji-cdn-frames",
+      "offlineReady": true
     },
     {
       "id": "not-stonks",
       "slug": "not-stonks",
       "family": "overlay",
-      "primitive": "overlay_hole",
-      "offlineReady": true,
-      "tag": "gen_btn_not-stonks"
+      "fidelity": "makeemoji-overlay",
+      "offlineReady": true
     },
     {
       "id": "nowoted",
       "slug": "nowoted",
       "family": "transform",
-      "primitive": "shake",
-      "offlineReady": true,
-      "tag": "gen_btn_nowoted"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "nyan-cat",
       "slug": "nyan-cat",
       "family": "atlas",
-      "primitive": "atlas",
-      "offlineReady": true,
-      "tag": "gen_btn_nyan-cat"
+      "fidelity": "approximate-composite",
+      "offlineReady": true
     },
     {
-      "id": "nyan:\u27a1\ufe0f",
+      "id": "nyan:➡️",
       "slug": "nyan",
       "family": "transform",
-      "primitive": "wobble",
-      "offlineReady": true,
-      "tag": "gen_btn_nyan"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "old-man-yells",
       "slug": "old-man-yells",
       "family": "transform",
-      "primitive": "pulse",
-      "offlineReady": true,
-      "tag": "gen_btn_old-man-yells"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "omega-lul",
       "slug": "omega-lul",
       "family": "transform",
-      "primitive": "pulse",
-      "offlineReady": true,
-      "tag": "gen_btn_omega-lul"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "omega-lul-pulse",
       "slug": "omega-lul-pulse",
       "family": "transform",
-      "primitive": "pulse",
-      "offlineReady": true,
-      "tag": "gen_btn_omega-lul-pulse"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "on-fire",
       "slug": "on-fire",
       "family": "transform",
-      "primitive": "pulse",
-      "offlineReady": true,
-      "tag": "gen_btn_on-fire"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "ono",
       "slug": "ono",
       "family": "transform",
-      "primitive": "shake",
-      "offlineReady": true,
-      "tag": "gen_btn_ono"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "orbit-drift",
       "slug": "orbit-drift",
       "family": "transform",
-      "primitive": "orbit",
-      "offlineReady": true,
-      "tag": "gen_btn_orbit-drift"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
-      "id": "orbit-eight:\u27a1\ufe0f",
+      "id": "orbit-eight:➡️",
       "slug": "orbit-eight",
       "family": "transform",
-      "primitive": "orbit",
-      "offlineReady": true,
-      "tag": "gen_btn_orbit-eight"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
-      "id": "orbit-five:\u27a1\ufe0f",
+      "id": "orbit-five:➡️",
       "slug": "orbit-five",
       "family": "transform",
-      "primitive": "orbit",
-      "offlineReady": true,
-      "tag": "gen_btn_orbit-five"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
-      "id": "orbit-four:\u27a1\ufe0f",
+      "id": "orbit-four:➡️",
       "slug": "orbit-four",
       "family": "transform",
-      "primitive": "orbit",
-      "offlineReady": true,
-      "tag": "gen_btn_orbit-four"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
-      "id": "orbit-nine:\u27a1\ufe0f",
+      "id": "orbit-nine:➡️",
       "slug": "orbit-nine",
       "family": "transform",
-      "primitive": "orbit",
-      "offlineReady": true,
-      "tag": "gen_btn_orbit-nine"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
-      "id": "orbit-seven:\u27a1\ufe0f",
+      "id": "orbit-seven:➡️",
       "slug": "orbit-seven",
       "family": "transform",
-      "primitive": "orbit",
-      "offlineReady": true,
-      "tag": "gen_btn_orbit-seven"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
-      "id": "orbit-six:\u27a1\ufe0f",
+      "id": "orbit-six:➡️",
       "slug": "orbit-six",
       "family": "transform",
-      "primitive": "orbit",
-      "offlineReady": true,
-      "tag": "gen_btn_orbit-six"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
-      "id": "orbit-three:\u27a1\ufe0f",
+      "id": "orbit-three:➡️",
       "slug": "orbit-three",
       "family": "transform",
-      "primitive": "orbit",
-      "offlineReady": true,
-      "tag": "gen_btn_orbit-three"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
-      "id": "orbit-two:\u27a1\ufe0f",
+      "id": "orbit-two:➡️",
       "slug": "orbit-two",
       "family": "transform",
-      "primitive": "orbit",
-      "offlineReady": true,
-      "tag": "gen_btn_orbit-two"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
-      "id": "orbit:\u27a1\ufe0f",
+      "id": "orbit:➡️",
       "slug": "orbit",
       "family": "transform",
-      "primitive": "orbit",
-      "offlineReady": true,
-      "tag": "gen_btn_orbit"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "oui-oui",
       "slug": "oui-oui",
       "family": "overlay",
-      "primitive": "overlay_hole",
-      "offlineReady": true,
-      "tag": "gen_btn_oui-oui"
+      "fidelity": "makeemoji-overlay",
+      "offlineReady": true
     },
     {
       "id": "owl-jam",
       "slug": "owl-jam",
       "family": "transform",
-      "primitive": "wobble",
-      "offlineReady": true,
-      "tag": "gen_btn_owl-jam"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "pace",
       "slug": "pace",
       "family": "transform",
-      "primitive": "glitch",
-      "offlineReady": true,
-      "tag": "gen_btn_pace"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "pag-bounce",
       "slug": "pag-bounce",
       "family": "transform",
-      "primitive": "bounce",
-      "offlineReady": true,
-      "tag": "gen_btn_pag-bounce"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "pagman",
       "slug": "pagman",
       "family": "transform",
-      "primitive": "pulse",
-      "offlineReady": true,
-      "tag": "gen_btn_pagman"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "panic",
       "slug": "panic",
       "family": "transform",
-      "primitive": "glitch",
-      "offlineReady": true,
-      "tag": "gen_btn_panic"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "parrot",
       "slug": "parrot",
       "family": "transform",
-      "primitive": "bounce",
-      "offlineReady": true,
-      "tag": "gen_btn_parrot"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "parrot-hat",
       "slug": "parrot-hat",
       "family": "transform",
-      "primitive": "rainbow",
-      "offlineReady": true,
-      "tag": "gen_btn_parrot-hat"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "parrot-hold",
       "slug": "parrot-hold",
       "family": "transform",
-      "primitive": "rainbow",
-      "offlineReady": true,
-      "tag": "gen_btn_parrot-hold"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "party",
       "slug": "party",
       "family": "transform",
-      "primitive": "party",
-      "offlineReady": true,
-      "tag": "gen_btn_party"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "party-blob",
       "slug": "party-blob",
       "family": "atlas",
-      "primitive": "atlas",
-      "offlineReady": true,
-      "tag": "gen_btn_party-blob"
+      "fidelity": "approximate-composite",
+      "offlineReady": true
     },
     {
       "id": "party-parrot",
       "slug": "party-parrot",
       "family": "atlas",
-      "primitive": "atlas",
-      "offlineReady": true,
-      "tag": "gen_btn_party-parrot"
+      "fidelity": "approximate-composite",
+      "offlineReady": true
     },
     {
       "id": "pastel-bloom",
       "slug": "pastel-bloom",
       "family": "transform",
-      "primitive": "wobble",
-      "offlineReady": true,
-      "tag": "gen_btn_pastel-bloom"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "pat",
       "slug": "pat",
       "family": "frames",
-      "primitive": "frames",
-      "offlineReady": true,
-      "tag": "gen_btn_pat"
+      "fidelity": "makeemoji-cdn-frames",
+      "offlineReady": true
     },
     {
       "id": "patrick-bateman",
       "slug": "patrick-bateman",
       "family": "transform",
-      "primitive": "pet",
-      "offlineReady": true,
-      "tag": "gen_btn_patrick-bateman"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "pause-champ",
       "slug": "pause-champ",
       "family": "transform",
-      "primitive": "rainbow",
-      "offlineReady": true,
-      "tag": "gen_btn_pause-champ"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "peek-corner",
       "slug": "peek-corner",
       "family": "transform",
-      "primitive": "slide",
-      "offlineReady": true,
-      "tag": "gen_btn_peek-corner"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "peeking",
       "slug": "peeking",
       "family": "transform",
-      "primitive": "slide",
-      "offlineReady": true,
-      "tag": "gen_btn_peeking"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "peepo",
       "slug": "peepo",
       "family": "overlay",
-      "primitive": "overlay_hole",
-      "offlineReady": true,
-      "tag": "gen_btn_peepo"
+      "fidelity": "makeemoji-overlay",
+      "offlineReady": true
     },
     {
       "id": "peepo-bye",
       "slug": "peepo-bye",
       "family": "transform",
-      "primitive": "bounce",
-      "offlineReady": true,
-      "tag": "gen_btn_peepo-bye"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "peepo-cheer",
       "slug": "peepo-cheer",
       "family": "transform",
-      "primitive": "pulse",
-      "offlineReady": true,
-      "tag": "gen_btn_peepo-cheer"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "peepo-clap",
       "slug": "peepo-clap",
       "family": "transform",
-      "primitive": "pulse",
-      "offlineReady": true,
-      "tag": "gen_btn_peepo-clap"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "peepo-dj",
       "slug": "peepo-dj",
       "family": "transform",
-      "primitive": "rainbow",
-      "offlineReady": true,
-      "tag": "gen_btn_peepo-dj"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "peepo-giggles",
       "slug": "peepo-giggles",
       "family": "transform",
-      "primitive": "bounce",
-      "offlineReady": true,
-      "tag": "gen_btn_peepo-giggles"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "peepo-love",
       "slug": "peepo-love",
       "family": "overlay",
-      "primitive": "overlay_hole",
-      "offlineReady": true,
-      "tag": "gen_btn_peepo-love"
+      "fidelity": "makeemoji-overlay",
+      "offlineReady": true
     },
     {
       "id": "peepo-love-heart",
       "slug": "peepo-love-heart",
       "family": "transform",
-      "primitive": "heartbeat",
-      "offlineReady": true,
-      "tag": "gen_btn_peepo-love-heart"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "peepo-poopoo",
       "slug": "peepo-poopoo",
       "family": "transform",
-      "primitive": "pulse",
-      "offlineReady": true,
-      "tag": "gen_btn_peepo-poopoo"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "peepo-riot",
       "slug": "peepo-riot",
       "family": "transform",
-      "primitive": "glitch",
-      "offlineReady": true,
-      "tag": "gen_btn_peepo-riot"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "peepo-run",
       "slug": "peepo-run",
       "family": "transform",
-      "primitive": "slide",
-      "offlineReady": true,
-      "tag": "gen_btn_peepo-run"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "peepo-shy",
       "slug": "peepo-shy",
       "family": "overlay",
-      "primitive": "overlay_hole",
-      "offlineReady": true,
-      "tag": "gen_btn_peepo-shy"
+      "fidelity": "makeemoji-overlay",
+      "offlineReady": true
     },
     {
       "id": "peepo-sit",
       "slug": "peepo-sit",
       "family": "overlay",
-      "primitive": "overlay_hole",
-      "offlineReady": true,
-      "tag": "gen_btn_peepo-sit"
+      "fidelity": "makeemoji-overlay",
+      "offlineReady": true
     },
     {
       "id": "peepo-sit-hey",
       "slug": "peepo-sit-hey",
       "family": "transform",
-      "primitive": "rainbow",
-      "offlineReady": true,
-      "tag": "gen_btn_peepo-sit-hey"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "peepo-stop",
       "slug": "peepo-stop",
       "family": "overlay",
-      "primitive": "overlay_hole",
-      "offlineReady": true,
-      "tag": "gen_btn_peepo-stop"
+      "fidelity": "makeemoji-overlay",
+      "offlineReady": true
     },
     {
       "id": "peepo-want",
       "slug": "peepo-want",
       "family": "overlay",
-      "primitive": "overlay_hole",
-      "offlineReady": true,
-      "tag": "gen_btn_peepo-want"
+      "fidelity": "makeemoji-overlay",
+      "offlineReady": true
     },
     {
       "id": "pepe",
       "slug": "pepe",
       "family": "overlay",
-      "primitive": "overlay_hole",
-      "offlineReady": true,
-      "tag": "gen_btn_pepe"
+      "fidelity": "makeemoji-overlay",
+      "offlineReady": true
     },
     {
       "id": "pepe-binoculars",
       "slug": "pepe-binoculars",
       "family": "frames",
-      "primitive": "frames",
-      "offlineReady": true,
-      "tag": "gen_btn_pepe-binoculars"
+      "fidelity": "makeemoji-cdn-frames",
+      "offlineReady": true
     },
     {
       "id": "pepe-cheer",
       "slug": "pepe-cheer",
       "family": "overlay",
-      "primitive": "overlay_hole",
-      "offlineReady": true,
-      "tag": "gen_btn_pepe-cheer"
+      "fidelity": "makeemoji-overlay",
+      "offlineReady": true
     },
     {
       "id": "pepe-clown",
       "slug": "pepe-clown",
       "family": "transform",
-      "primitive": "pulse",
-      "offlineReady": true,
-      "tag": "gen_btn_pepe-clown"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "pepe-dab",
       "slug": "pepe-dab",
       "family": "overlay",
-      "primitive": "overlay_hole",
-      "offlineReady": true,
-      "tag": "gen_btn_pepe-dab"
+      "fidelity": "makeemoji-overlay",
+      "offlineReady": true
     },
     {
       "id": "pepe-flag",
       "slug": "pepe-flag",
       "family": "atlas",
-      "primitive": "atlas",
-      "offlineReady": true,
-      "tag": "gen_btn_pepe-flag"
+      "fidelity": "approximate-composite",
+      "offlineReady": true
     },
     {
       "id": "pepe-meltdown",
       "slug": "pepe-meltdown",
       "family": "frames",
-      "primitive": "frames",
-      "offlineReady": true,
-      "tag": "gen_btn_pepe-meltdown"
+      "fidelity": "makeemoji-cdn-frames",
+      "offlineReady": true
     },
     {
       "id": "pepe-nodders",
       "slug": "pepe-nodders",
       "family": "frames",
-      "primitive": "frames",
-      "offlineReady": true,
-      "tag": "gen_btn_pepe-nodders"
+      "fidelity": "makeemoji-cdn-frames",
+      "offlineReady": true
     },
     {
       "id": "pepe-point",
       "slug": "pepe-point",
       "family": "frames",
-      "primitive": "frames",
-      "offlineReady": true,
-      "tag": "gen_btn_pepe-point"
+      "fidelity": "makeemoji-cdn-frames",
+      "offlineReady": true
     },
     {
       "id": "pepe-s",
       "slug": "pepe-s",
       "family": "transform",
-      "primitive": "bounce",
-      "offlineReady": true,
-      "tag": "gen_btn_pepe-s"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "pepe-sweat",
       "slug": "pepe-sweat",
       "family": "transform",
-      "primitive": "nod",
-      "offlineReady": true,
-      "tag": "gen_btn_pepe-sweat"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "pepega",
       "slug": "pepega",
       "family": "overlay",
-      "primitive": "overlay_hole",
-      "offlineReady": true,
-      "tag": "gen_btn_pepega"
+      "fidelity": "makeemoji-overlay",
+      "offlineReady": true
     },
     {
       "id": "pepo-popcorn",
       "slug": "pepo-popcorn",
       "family": "frames",
-      "primitive": "frames",
-      "offlineReady": true,
-      "tag": "gen_btn_pepo-popcorn"
+      "fidelity": "makeemoji-cdn-frames",
+      "offlineReady": true
     },
     {
       "id": "pet",
       "slug": "pet",
       "family": "atlas",
-      "primitive": "atlas",
-      "offlineReady": true,
-      "tag": "gen_btn_pet"
+      "fidelity": "approximate-composite",
+      "offlineReady": true
     },
     {
       "id": "phone-time",
       "slug": "phone-time",
       "family": "frames",
-      "primitive": "frames",
-      "offlineReady": true,
-      "tag": "gen_btn_phone-time"
+      "fidelity": "makeemoji-cdn-frames",
+      "offlineReady": true
     },
     {
       "id": "pika-stand",
       "slug": "pika-stand",
       "family": "frames",
-      "primitive": "frames",
-      "offlineReady": true,
-      "tag": "gen_btn_pika-stand"
+      "fidelity": "makeemoji-cdn-frames",
+      "offlineReady": true
     },
     {
       "id": "pikachu",
       "slug": "pikachu",
       "family": "frames",
-      "primitive": "frames",
-      "offlineReady": true,
-      "tag": "gen_btn_pikachu"
+      "fidelity": "makeemoji-cdn-frames",
+      "offlineReady": true
     },
     {
       "id": "pixar-think",
       "slug": "pixar-think",
       "family": "frames",
-      "primitive": "frames",
-      "offlineReady": true,
-      "tag": "gen_btn_pixar-think"
+      "fidelity": "makeemoji-cdn-frames",
+      "offlineReady": true
     },
     {
       "id": "pixelate",
       "slug": "pixelate",
       "family": "transform",
-      "primitive": "glitch",
-      "offlineReady": true,
-      "tag": "gen_btn_pixelate"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "plotge",
       "slug": "plotge",
       "family": "transform",
-      "primitive": "pulse",
-      "offlineReady": true,
-      "tag": "gen_btn_plotge"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "pokeball-almost",
       "slug": "pokeball-almost",
       "family": "frames",
-      "primitive": "frames",
-      "offlineReady": true,
-      "tag": "gen_btn_pokeball-almost"
+      "fidelity": "makeemoji-prerendered-gif-only",
+      "offlineReady": false
     },
     {
       "id": "pokeball-capture",
       "slug": "pokeball-capture",
       "family": "frames",
-      "primitive": "frames",
-      "offlineReady": true,
-      "tag": "gen_btn_pokeball-capture"
+      "fidelity": "makeemoji-prerendered-gif-only",
+      "offlineReady": false
     },
     {
       "id": "pokeball-emerge",
       "slug": "pokeball-emerge",
       "family": "frames",
-      "primitive": "frames",
-      "offlineReady": true,
-      "tag": "gen_btn_pokeball-emerge"
+      "fidelity": "makeemoji-cdn-frames",
+      "offlineReady": true
     },
     {
       "id": "pokeball-go",
       "slug": "pokeball-go",
       "family": "frames",
-      "primitive": "frames",
-      "offlineReady": true,
-      "tag": "gen_btn_pokeball-go"
+      "fidelity": "makeemoji-prerendered-gif-only",
+      "offlineReady": false
     },
     {
       "id": "polar-bear",
       "slug": "polar-bear",
       "family": "transform",
-      "primitive": "shake",
-      "offlineReady": true,
-      "tag": "gen_btn_polar-bear"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "ponder",
       "slug": "ponder",
       "family": "transform",
-      "primitive": "tilt",
-      "offlineReady": true,
-      "tag": "gen_btn_ponder"
+      "fidelity": "approximate-composite",
+      "offlineReady": true
     },
     {
       "id": "pop",
       "slug": "pop",
       "family": "transform",
-      "primitive": "pulse",
-      "offlineReady": true,
-      "tag": "gen_btn_pop"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "pop-through",
       "slug": "pop-through",
       "family": "transform",
-      "primitive": "pulse",
-      "offlineReady": true,
-      "tag": "gen_btn_pop-through"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "portal-peek",
       "slug": "portal-peek",
       "family": "transform",
-      "primitive": "spin",
-      "offlineReady": true,
-      "tag": "gen_btn_portal-peek"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "portal-warp",
       "slug": "portal-warp",
       "family": "transform",
-      "primitive": "spin",
-      "offlineReady": true,
-      "tag": "gen_btn_portal-warp"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "posterize-breath",
       "slug": "posterize-breath",
       "family": "transform",
-      "primitive": "pulse",
-      "offlineReady": true,
-      "tag": "gen_btn_posterize-breath"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "pounce",
       "slug": "pounce",
       "family": "transform",
-      "primitive": "bounce",
-      "offlineReady": true,
-      "tag": "gen_btn_pounce"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "pp-hopper",
       "slug": "pp-hopper",
       "family": "transform",
-      "primitive": "bounce",
-      "offlineReady": true,
-      "tag": "gen_btn_pp-hopper"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "prance",
       "slug": "prance",
       "family": "transform",
-      "primitive": "bounce",
-      "offlineReady": true,
-      "tag": "gen_btn_prance"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "prayge",
       "slug": "prayge",
       "family": "transform",
-      "primitive": "pulse",
-      "offlineReady": true,
-      "tag": "gen_btn_prayge"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "pulse",
       "slug": "pulse",
       "family": "transform",
-      "primitive": "pulse",
-      "offlineReady": true,
-      "tag": "gen_btn_pulse"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "pumpkin",
       "slug": "pumpkin",
       "family": "overlay",
-      "primitive": "overlay_hole",
-      "offlineReady": true,
-      "tag": "gen_btn_pumpkin"
+      "fidelity": "makeemoji-overlay",
+      "offlineReady": true
     },
     {
       "id": "pumpkin-cat",
       "slug": "pumpkin-cat",
       "family": "frames",
-      "primitive": "frames",
-      "offlineReady": true,
-      "tag": "gen_btn_pumpkin-cat"
+      "fidelity": "makeemoji-cdn-frames",
+      "offlineReady": true
     },
     {
       "id": "pumpkin-give",
       "slug": "pumpkin-give",
       "family": "frames",
-      "primitive": "frames",
-      "offlineReady": true,
-      "tag": "gen_btn_pumpkin-give"
+      "fidelity": "makeemoji-cdn-frames",
+      "offlineReady": true
     },
     {
       "id": "pumpkin-surprise",
       "slug": "pumpkin-surprise",
       "family": "frames",
-      "primitive": "frames",
-      "offlineReady": true,
-      "tag": "gen_btn_pumpkin-surprise"
+      "fidelity": "makeemoji-cdn-frames",
+      "offlineReady": true
     },
     {
       "id": "pumpkin-take",
       "slug": "pumpkin-take",
       "family": "frames",
-      "primitive": "frames",
-      "offlineReady": true,
-      "tag": "gen_btn_pumpkin-take"
+      "fidelity": "makeemoji-cdn-frames",
+      "offlineReady": true
     },
     {
       "id": "pumpkin2",
       "slug": "pumpkin2",
       "family": "overlay",
-      "primitive": "overlay_hole",
-      "offlineReady": true,
-      "tag": "gen_btn_pumpkin2"
+      "fidelity": "makeemoji-overlay",
+      "offlineReady": true
     },
     {
       "id": "purple-stars",
       "slug": "purple-stars",
       "family": "frames",
-      "primitive": "frames",
-      "offlineReady": true,
-      "tag": "gen_btn_purple-stars"
+      "fidelity": "makeemoji-cdn-frames",
+      "offlineReady": true
     },
     {
       "id": "pyramid",
       "slug": "pyramid",
       "family": "transform",
-      "primitive": "bounce",
-      "offlineReady": true,
-      "tag": "gen_btn_pyramid"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "quiver",
       "slug": "quiver",
       "family": "transform",
-      "primitive": "wobble",
-      "offlineReady": true,
-      "tag": "gen_btn_quiver"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "rain",
       "slug": "rain",
       "family": "transform",
-      "primitive": "fade",
-      "offlineReady": true,
-      "tag": "gen_btn_rain"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "rainbow-bloom",
       "slug": "rainbow-bloom",
       "family": "transform",
-      "primitive": "rainbow",
-      "offlineReady": true,
-      "tag": "gen_btn_rainbow-bloom"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "raincloud",
       "slug": "raincloud",
       "family": "transform",
-      "primitive": "fade",
-      "offlineReady": true,
-      "tag": "gen_btn_raincloud"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "raising-hand",
       "slug": "raising-hand",
       "family": "transform",
-      "primitive": "pulse",
-      "offlineReady": true,
-      "tag": "gen_btn_raising-hand"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "rare-ghost",
       "slug": "rare-ghost",
       "family": "frames",
-      "primitive": "frames",
-      "offlineReady": true,
-      "tag": "gen_btn_rare-ghost"
+      "fidelity": "makeemoji-cdn-frames",
+      "offlineReady": true
     },
     {
       "id": "rave",
       "slug": "rave",
       "family": "transform",
-      "primitive": "nod",
-      "offlineReady": true,
-      "tag": "gen_btn_rave"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "reading",
       "slug": "reading",
       "family": "frames",
-      "primitive": "frames",
-      "offlineReady": true,
-      "tag": "gen_btn_reading"
+      "fidelity": "makeemoji-cdn-frames",
+      "offlineReady": true
     },
     {
       "id": "recoil-pop",
       "slug": "recoil-pop",
       "family": "transform",
-      "primitive": "pulse",
-      "offlineReady": true,
-      "tag": "gen_btn_recoil-pop"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "red-alert",
       "slug": "red-alert",
       "family": "frames",
-      "primitive": "frames",
-      "offlineReady": true,
-      "tag": "gen_btn_red-alert"
+      "fidelity": "makeemoji-cdn-frames",
+      "offlineReady": true
     },
     {
       "id": "reveal",
       "slug": "reveal",
       "family": "frames",
-      "primitive": "frames",
-      "offlineReady": true,
-      "tag": "gen_btn_reveal"
+      "fidelity": "makeemoji-cdn-frames",
+      "offlineReady": true
     },
     {
       "id": "rgb-split",
       "slug": "rgb-split",
       "family": "transform",
-      "primitive": "pulse",
-      "offlineReady": true,
-      "tag": "gen_btn_rgb-split"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "riott",
       "slug": "riott",
       "family": "transform",
-      "primitive": "pulse",
-      "offlineReady": true,
-      "tag": "gen_btn_riott"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "ripple",
       "slug": "ripple",
       "family": "transform",
-      "primitive": "wobble",
-      "offlineReady": true,
-      "tag": "gen_btn_ripple"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "roll-safe",
       "slug": "roll-safe",
       "family": "transform",
-      "primitive": "spin",
-      "offlineReady": true,
-      "tag": "gen_btn_roll-safe"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
-      "id": "rotate-180:\u27a1\ufe0f",
+      "id": "rotate-180:➡️",
       "slug": "rotate-180",
       "family": "transform",
-      "primitive": "spin",
-      "offlineReady": true,
-      "tag": "gen_btn_rotate-180"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
-      "id": "rotate-45:\u27a1\ufe0f",
+      "id": "rotate-45:➡️",
       "slug": "rotate-45",
       "family": "transform",
-      "primitive": "spin",
-      "offlineReady": true,
-      "tag": "gen_btn_rotate-45"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
-      "id": "rotate-90:\u27a1\ufe0f",
+      "id": "rotate-90:➡️",
       "slug": "rotate-90",
       "family": "transform",
-      "primitive": "spin",
-      "offlineReady": true,
-      "tag": "gen_btn_rotate-90"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "rubber",
       "slug": "rubber",
       "family": "transform",
-      "primitive": "squish",
-      "offlineReady": true,
-      "tag": "gen_btn_rubber"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "rubber-stamp",
       "slug": "rubber-stamp",
       "family": "transform",
-      "primitive": "squish",
-      "offlineReady": true,
-      "tag": "gen_btn_rubber-stamp"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "runn",
       "slug": "runn",
       "family": "frames",
-      "primitive": "frames",
-      "offlineReady": true,
-      "tag": "gen_btn_runn"
+      "fidelity": "makeemoji-cdn-frames",
+      "offlineReady": true
     },
     {
       "id": "runway-landing",
       "slug": "runway-landing",
       "family": "transform",
-      "primitive": "slide",
-      "offlineReady": true,
-      "tag": "gen_btn_runway-landing"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "runway-takeoff",
       "slug": "runway-takeoff",
       "family": "transform",
-      "primitive": "slide",
-      "offlineReady": true,
-      "tag": "gen_btn_runway-takeoff"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "sad-blob",
       "slug": "sad-blob",
       "family": "atlas",
-      "primitive": "atlas",
-      "offlineReady": true,
-      "tag": "gen_btn_sad-blob"
+      "fidelity": "approximate-composite",
+      "offlineReady": true
     },
     {
       "id": "sadge",
       "slug": "sadge",
       "family": "overlay",
-      "primitive": "overlay_hole",
-      "offlineReady": true,
-      "tag": "gen_btn_sadge"
+      "fidelity": "makeemoji-overlay",
+      "offlineReady": true
     },
     {
       "id": "saved",
       "slug": "saved",
       "family": "transform",
-      "primitive": "shake",
-      "offlineReady": true,
-      "tag": "gen_btn_saved"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "scanline",
       "slug": "scanline",
       "family": "transform",
-      "primitive": "nod",
-      "offlineReady": true,
-      "tag": "gen_btn_scanline"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "scared",
       "slug": "scared",
       "family": "transform",
-      "primitive": "glitch",
-      "offlineReady": true,
-      "tag": "gen_btn_scared"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
-      "id": "scroll:\u27a1\ufe0f",
+      "id": "scroll:➡️",
       "slug": "scroll",
       "family": "transform",
-      "primitive": "spin",
-      "offlineReady": true,
-      "tag": "gen_btn_scroll"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "shake",
       "slug": "shake",
       "family": "transform",
-      "primitive": "shake",
-      "offlineReady": true,
-      "tag": "gen_btn_shake"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
-      "id": "shimmer:\u27a1\ufe0f",
+      "id": "shimmer:➡️",
       "slug": "shimmer",
       "family": "transform",
-      "primitive": "pulse",
-      "offlineReady": true,
-      "tag": "gen_btn_shimmer"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "shocked-man",
       "slug": "shocked-man",
       "family": "transform",
-      "primitive": "glitch",
-      "offlineReady": true,
-      "tag": "gen_btn_shocked-man"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "shruge",
       "slug": "shruge",
       "family": "transform",
-      "primitive": "rainbow",
-      "offlineReady": true,
-      "tag": "gen_btn_shruge"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "shudder",
       "slug": "shudder",
       "family": "transform",
-      "primitive": "wobble",
-      "offlineReady": true,
-      "tag": "gen_btn_shudder"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "shy-peek",
       "slug": "shy-peek",
       "family": "transform",
-      "primitive": "slide",
-      "offlineReady": true,
-      "tag": "gen_btn_shy-peek"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "side-eye-chloe",
       "slug": "side-eye-chloe",
       "family": "transform",
-      "primitive": "nod",
-      "offlineReady": true,
-      "tag": "gen_btn_side-eye-chloe"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "side-eye-dog",
       "slug": "side-eye-dog",
       "family": "transform",
-      "primitive": "wobble",
-      "offlineReady": true,
-      "tag": "gen_btn_side-eye-dog"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "sideeye-slide",
       "slug": "sideeye-slide",
       "family": "transform",
-      "primitive": "slide",
-      "offlineReady": true,
-      "tag": "gen_btn_sideeye-slide"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "sign",
       "slug": "sign",
       "family": "transform",
-      "primitive": "nod",
-      "offlineReady": true,
-      "tag": "gen_btn_sign"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "sign-mad",
       "slug": "sign-mad",
       "family": "transform",
-      "primitive": "shake",
-      "offlineReady": true,
-      "tag": "gen_btn_sign-mad"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "sir",
       "slug": "sir",
       "family": "overlay",
-      "primitive": "overlay_hole",
-      "offlineReady": true,
-      "tag": "gen_btn_sir"
+      "fidelity": "makeemoji-overlay",
+      "offlineReady": true
     },
     {
       "id": "sisyphus",
       "slug": "sisyphus",
       "family": "frames",
-      "primitive": "frames",
-      "offlineReady": true,
-      "tag": "gen_btn_sisyphus"
+      "fidelity": "makeemoji-cdn-frames",
+      "offlineReady": true
     },
     {
       "id": "skeleton-dance",
       "slug": "skeleton-dance",
       "family": "frames",
-      "primitive": "frames",
-      "offlineReady": true,
-      "tag": "gen_btn_skeleton-dance"
+      "fidelity": "makeemoji-cdn-frames",
+      "offlineReady": true
     },
     {
       "id": "skibidi",
       "slug": "skibidi",
       "family": "transform",
-      "primitive": "nod",
-      "offlineReady": true,
-      "tag": "gen_btn_skibidi"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "skid-stop",
       "slug": "skid-stop",
       "family": "transform",
-      "primitive": "bounce",
-      "offlineReady": true,
-      "tag": "gen_btn_skid-stop"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
-      "id": "slice:\u27a1\ufe0f",
+      "id": "slice:➡️",
       "slug": "slice",
       "family": "transform",
-      "primitive": "fade",
-      "offlineReady": true,
-      "tag": "gen_btn_slice"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
-      "id": "slide-bounce:\u27a1\ufe0f",
+      "id": "slide-bounce:➡️",
       "slug": "slide-bounce",
       "family": "transform",
-      "primitive": "bounce",
-      "offlineReady": true,
-      "tag": "gen_btn_slide-bounce"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
-      "id": "slide-spin:\u27a1\ufe0f",
+      "id": "slide-spin:➡️",
       "slug": "slide-spin",
       "family": "transform",
-      "primitive": "spin",
-      "offlineReady": true,
-      "tag": "gen_btn_slide-spin"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
-      "id": "slide:\u27a1\ufe0f",
+      "id": "slide:➡️",
       "slug": "slide",
       "family": "transform",
-      "primitive": "slide",
-      "offlineReady": true,
-      "tag": "gen_btn_slide"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "slow-jam",
       "slug": "slow-jam",
       "family": "transform",
-      "primitive": "wobble",
-      "offlineReady": true,
-      "tag": "gen_btn_slow-jam"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "smadge",
       "slug": "smadge",
       "family": "frames",
-      "primitive": "frames",
-      "offlineReady": true,
-      "tag": "gen_btn_smadge"
+      "fidelity": "makeemoji-cdn-frames",
+      "offlineReady": true
     },
     {
       "id": "smart",
       "slug": "smart",
       "family": "frames",
-      "primitive": "frames",
-      "offlineReady": true,
-      "tag": "gen_btn_smart"
+      "fidelity": "makeemoji-cdn-frames",
+      "offlineReady": true
     },
     {
       "id": "smoge",
       "slug": "smoge",
       "family": "frames",
-      "primitive": "frames",
-      "offlineReady": true,
-      "tag": "gen_btn_smoge"
+      "fidelity": "makeemoji-cdn-frames",
+      "offlineReady": true
     },
     {
-      "id": "snap:\u27a1\ufe0f",
+      "id": "snap:➡️",
       "slug": "snap",
       "family": "transform",
-      "primitive": "bounce",
-      "offlineReady": true,
-      "tag": "gen_btn_snap"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "snorlax",
       "slug": "snorlax",
       "family": "frames",
-      "primitive": "frames",
-      "offlineReady": true,
-      "tag": "gen_btn_snorlax"
+      "fidelity": "makeemoji-cdn-frames",
+      "offlineReady": true
     },
     {
       "id": "so-cute",
       "slug": "so-cute",
       "family": "transform",
-      "primitive": "rainbow",
-      "offlineReady": true,
-      "tag": "gen_btn_so-cute"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "solarize-wave",
       "slug": "solarize-wave",
       "family": "transform",
-      "primitive": "wave",
-      "offlineReady": true,
-      "tag": "gen_btn_solarize-wave"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "sparkle",
       "slug": "sparkle",
       "family": "transform",
-      "primitive": "sparkle",
-      "offlineReady": true,
-      "tag": "gen_btn_sparkle"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "sparkle-color",
       "slug": "sparkle-color",
       "family": "transform",
-      "primitive": "sparkle",
-      "offlineReady": true,
-      "tag": "gen_btn_sparkle-color"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "sparkle-party",
       "slug": "sparkle-party",
       "family": "transform",
-      "primitive": "sparkle",
-      "offlineReady": true,
-      "tag": "gen_btn_sparkle-party"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "sparkle-rainbow",
       "slug": "sparkle-rainbow",
       "family": "transform",
-      "primitive": "sparkle",
-      "offlineReady": true,
-      "tag": "gen_btn_sparkle-rainbow"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "speechless",
       "slug": "speechless",
       "family": "frames",
-      "primitive": "frames",
-      "offlineReady": true,
-      "tag": "gen_btn_speechless"
+      "fidelity": "makeemoji-cdn-frames",
+      "offlineReady": true
     },
     {
       "id": "sphere",
       "slug": "sphere",
       "family": "transform",
-      "primitive": "glitch",
-      "offlineReady": true,
-      "tag": "gen_btn_sphere"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
-      "id": "spin:\u27a1\ufe0f",
+      "id": "spin:➡️",
       "slug": "spin",
       "family": "transform",
-      "primitive": "spin",
-      "offlineReady": true,
-      "tag": "gen_btn_spin"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "spiral-in",
       "slug": "spiral-in",
       "family": "transform",
-      "primitive": "spiral",
-      "offlineReady": true,
-      "tag": "gen_btn_spiral-in"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "spiral-zoom",
       "slug": "spiral-zoom",
       "family": "transform",
-      "primitive": "zoom",
-      "offlineReady": true,
-      "tag": "gen_btn_spiral-zoom"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "split",
       "slug": "split",
       "family": "transform",
-      "primitive": "wobble",
-      "offlineReady": true,
-      "tag": "gen_btn_split"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "spongebob-watching-tv",
       "slug": "spongebob-watching-tv",
       "family": "frames",
-      "primitive": "frames",
-      "offlineReady": true,
-      "tag": "gen_btn_spongebob-watching-tv"
+      "fidelity": "makeemoji-cdn-frames",
+      "offlineReady": true
     },
     {
       "id": "spongebob-worship",
       "slug": "spongebob-worship",
       "family": "frames",
-      "primitive": "frames",
-      "offlineReady": true,
-      "tag": "gen_btn_spongebob-worship"
+      "fidelity": "makeemoji-cdn-frames",
+      "offlineReady": true
     },
     {
-      "id": "spotlight:\u27a1\ufe0f",
+      "id": "spotlight:➡️",
       "slug": "spotlight",
       "family": "transform",
-      "primitive": "pulse",
-      "offlineReady": true,
-      "tag": "gen_btn_spotlight"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "squad",
       "slug": "squad",
       "family": "transform",
-      "primitive": "glitch",
-      "offlineReady": true,
-      "tag": "gen_btn_squad"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "squish",
       "slug": "squish",
       "family": "transform",
-      "primitive": "squish",
-      "offlineReady": true,
-      "tag": "gen_btn_squish"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "squish-pulse",
       "slug": "squish-pulse",
       "family": "transform",
-      "primitive": "pulse",
-      "offlineReady": true,
-      "tag": "gen_btn_squish-pulse"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "stare",
       "slug": "stare",
       "family": "transform",
-      "primitive": "sparkle",
-      "offlineReady": true,
-      "tag": "gen_btn_stare"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "startled-rat",
       "slug": "startled-rat",
       "family": "transform",
-      "primitive": "sparkle",
-      "offlineReady": true,
-      "tag": "gen_btn_startled-rat"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "steer",
       "slug": "steer",
       "family": "transform",
-      "primitive": "nod",
-      "offlineReady": true,
-      "tag": "gen_btn_steer"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "stomp",
       "slug": "stomp",
       "family": "transform",
-      "primitive": "bounce",
-      "offlineReady": true,
-      "tag": "gen_btn_stomp"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "stonks",
       "slug": "stonks",
       "family": "overlay",
-      "primitive": "overlay_hole",
-      "offlineReady": true,
-      "tag": "gen_btn_stonks"
+      "fidelity": "makeemoji-overlay",
+      "offlineReady": true
     },
     {
-      "id": "stretch:\u27a1\ufe0f",
+      "id": "stretch:➡️",
       "slug": "stretch",
       "family": "transform",
-      "primitive": "shake",
-      "offlineReady": true,
-      "tag": "gen_btn_stretch"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "stripp",
       "slug": "stripp",
       "family": "transform",
-      "primitive": "rainbow",
-      "offlineReady": true,
-      "tag": "gen_btn_stripp"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "strobe-soft",
       "slug": "strobe-soft",
       "family": "transform",
-      "primitive": "glitch",
-      "offlineReady": true,
-      "tag": "gen_btn_strobe-soft"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "sure",
       "slug": "sure",
       "family": "frames",
-      "primitive": "frames",
-      "offlineReady": true,
-      "tag": "gen_btn_sure"
+      "fidelity": "makeemoji-cdn-frames",
+      "offlineReady": true
     },
     {
       "id": "surprised-clapping",
       "slug": "surprised-clapping",
       "family": "frames",
-      "primitive": "frames",
-      "offlineReady": true,
-      "tag": "gen_btn_surprised-clapping"
+      "fidelity": "makeemoji-cdn-frames",
+      "offlineReady": true
     },
     {
       "id": "surprised-pikachu",
       "slug": "surprised-pikachu",
       "family": "frames",
-      "primitive": "frames",
-      "offlineReady": true,
-      "tag": "gen_btn_surprised-pikachu"
+      "fidelity": "makeemoji-cdn-frames",
+      "offlineReady": true
     },
     {
       "id": "suspicion",
       "slug": "suspicion",
       "family": "frames",
-      "primitive": "frames",
-      "offlineReady": true,
-      "tag": "gen_btn_suspicion"
+      "fidelity": "makeemoji-cdn-frames",
+      "offlineReady": true
     },
     {
       "id": "sway",
       "slug": "sway",
       "family": "transform",
-      "primitive": "wave",
-      "offlineReady": true,
-      "tag": "gen_btn_sway"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "sweep",
       "slug": "sweep",
       "family": "transform",
-      "primitive": "bounce",
-      "offlineReady": true,
-      "tag": "gen_btn_sweep"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "swirl",
       "slug": "swirl",
       "family": "transform",
-      "primitive": "glitch",
-      "offlineReady": true,
-      "tag": "gen_btn_swirl"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "swirling",
       "slug": "swirling",
       "family": "transform",
-      "primitive": "glitch",
-      "offlineReady": true,
-      "tag": "gen_btn_swirling"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "teleport",
       "slug": "teleport",
       "family": "transform",
-      "primitive": "spin",
-      "offlineReady": true,
-      "tag": "gen_btn_teleport"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "thanos-snap",
       "slug": "thanos-snap",
       "family": "transform",
-      "primitive": "shake",
-      "offlineReady": true,
-      "tag": "gen_btn_thanos-snap"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
-      "id": "thick-3d-flip:\u27a1\ufe0f",
+      "id": "thick-3d-flip:➡️",
       "slug": "thick-3d-flip",
       "family": "transform",
-      "primitive": "flip",
-      "offlineReady": true,
-      "tag": "gen_btn_thick-3d-flip"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "thing-cat",
       "slug": "thing-cat",
       "family": "transform",
-      "primitive": "glitch",
-      "offlineReady": true,
-      "tag": "gen_btn_thing-cat"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "think",
       "slug": "think",
       "family": "transform",
-      "primitive": "tilt",
-      "offlineReady": true,
-      "tag": "gen_btn_think"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "this-is-fine",
       "slug": "this-is-fine",
       "family": "transform",
-      "primitive": "rainbow",
-      "offlineReady": true,
-      "tag": "gen_btn_this-is-fine"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "tidal-wave",
       "slug": "tidal-wave",
       "family": "transform",
-      "primitive": "wave",
-      "offlineReady": true,
-      "tag": "gen_btn_tidal-wave"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "tilt",
       "slug": "tilt",
       "family": "transform",
-      "primitive": "tilt",
-      "offlineReady": true,
-      "tag": "gen_btn_tilt"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "tilt-nod",
       "slug": "tilt-nod",
       "family": "transform",
-      "primitive": "tilt",
-      "offlineReady": true,
-      "tag": "gen_btn_tilt-nod"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
-      "id": "tilt-zoom:\u27a1\ufe0f",
+      "id": "tilt-zoom:➡️",
       "slug": "tilt-zoom",
       "family": "transform",
-      "primitive": "zoom",
-      "offlineReady": true,
-      "tag": "gen_btn_tilt-zoom"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "toilet-bounce",
       "slug": "toilet-bounce",
       "family": "transform",
-      "primitive": "bounce",
-      "offlineReady": true,
-      "tag": "gen_btn_toilet-bounce"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "toilet-spin",
       "slug": "toilet-spin",
       "family": "transform",
-      "primitive": "spin",
-      "offlineReady": true,
-      "tag": "gen_btn_toilet-spin"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "tornado",
       "slug": "tornado",
       "family": "transform",
-      "primitive": "bounce",
-      "offlineReady": true,
-      "tag": "gen_btn_tornado"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "touch-grass",
       "slug": "touch-grass",
       "family": "transform",
-      "primitive": "nod",
-      "offlineReady": true,
-      "tag": "gen_btn_touch-grass"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "transmute-reality",
       "slug": "transmute-reality",
       "family": "transform",
-      "primitive": "bounce",
-      "offlineReady": true,
-      "tag": "gen_btn_transmute-reality"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "trash",
       "slug": "trash",
       "family": "overlay",
-      "primitive": "overlay_hole",
-      "offlineReady": true,
-      "tag": "gen_btn_trash"
+      "fidelity": "makeemoji-overlay",
+      "offlineReady": true
     },
     {
       "id": "trash-pop",
       "slug": "trash-pop",
       "family": "transform",
-      "primitive": "pulse",
-      "offlineReady": true,
-      "tag": "gen_btn_trash-pop"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "treasure-chest",
       "slug": "treasure-chest",
       "family": "transform",
-      "primitive": "rainbow",
-      "offlineReady": true,
-      "tag": "gen_btn_treasure-chest"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "triggered",
       "slug": "triggered",
       "family": "transform",
-      "primitive": "glitch",
-      "offlineReady": true,
-      "tag": "gen_btn_triggered"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "tsk",
       "slug": "tsk",
       "family": "transform",
-      "primitive": "pulse",
-      "offlineReady": true,
-      "tag": "gen_btn_tsk"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "tsunami",
       "slug": "tsunami",
       "family": "transform",
-      "primitive": "bounce",
-      "offlineReady": true,
-      "tag": "gen_btn_tsunami"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
-      "id": "tumble:\u27a1\ufe0f",
+      "id": "tumble:➡️",
       "slug": "tumble",
       "family": "transform",
-      "primitive": "spin",
-      "offlineReady": true,
-      "tag": "gen_btn_tumble"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "twirl",
       "slug": "twirl",
       "family": "transform",
-      "primitive": "bounce",
-      "offlineReady": true,
-      "tag": "gen_btn_twirl"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "typing",
       "slug": "typing",
       "family": "transform",
-      "primitive": "nod",
-      "offlineReady": true,
-      "tag": "gen_btn_typing"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "underwater",
       "slug": "underwater",
       "family": "transform",
-      "primitive": "nod",
-      "offlineReady": true,
-      "tag": "gen_btn_underwater"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "unimpressed-cat",
       "slug": "unimpressed-cat",
       "family": "transform",
-      "primitive": "rainbow",
-      "offlineReady": true,
-      "tag": "gen_btn_unimpressed-cat"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "vampire-offers",
       "slug": "vampire-offers",
       "family": "transform",
-      "primitive": "pulse",
-      "offlineReady": true,
-      "tag": "gen_btn_vampire-offers"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "vampire-takes",
       "slug": "vampire-takes",
       "family": "transform",
-      "primitive": "pulse",
-      "offlineReady": true,
-      "tag": "gen_btn_vampire-takes"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "venom",
       "slug": "venom",
       "family": "frames",
-      "primitive": "frames",
-      "offlineReady": true,
-      "tag": "gen_btn_venom"
+      "fidelity": "makeemoji-cdn-frames",
+      "offlineReady": true
     },
     {
       "id": "vibee",
       "slug": "vibee",
       "family": "transform",
-      "primitive": "pulse",
-      "offlineReady": true,
-      "tag": "gen_btn_vibee"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "wave-ocean",
       "slug": "wave-ocean",
       "family": "transform",
-      "primitive": "wave",
-      "offlineReady": true,
-      "tag": "gen_btn_wave-ocean"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
-      "id": "wave:\u27a1\ufe0f",
+      "id": "wave:➡️",
       "slug": "wave",
       "family": "transform",
-      "primitive": "wave",
-      "offlineReady": true,
-      "tag": "gen_btn_wave"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "wawa",
       "slug": "wawa",
       "family": "transform",
-      "primitive": "nod",
-      "offlineReady": true,
-      "tag": "gen_btn_wawa"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "weird",
       "slug": "weird",
       "family": "transform",
-      "primitive": "wobble",
-      "offlineReady": true,
-      "tag": "gen_btn_weird"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "wildfire",
       "slug": "wildfire",
       "family": "transform",
-      "primitive": "pulse",
-      "offlineReady": true,
-      "tag": "gen_btn_wildfire"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "will-presents",
       "slug": "will-presents",
       "family": "transform",
-      "primitive": "pulse",
-      "offlineReady": true,
-      "tag": "gen_btn_will-presents"
+      "fidelity": "approximate-composite",
+      "offlineReady": true
     },
     {
       "id": "willem-dafoe",
       "slug": "willem-dafoe",
       "family": "frames",
-      "primitive": "frames",
-      "offlineReady": true,
-      "tag": "gen_btn_willem-dafoe"
+      "fidelity": "makeemoji-cdn-frames",
+      "offlineReady": true
     },
     {
-      "id": "wipe:\u27a1\ufe0f",
+      "id": "wipe:➡️",
       "slug": "wipe",
       "family": "transform",
-      "primitive": "bounce",
-      "offlineReady": true,
-      "tag": "gen_btn_wipe"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "wobble",
       "slug": "wobble",
       "family": "transform",
-      "primitive": "wobble",
-      "offlineReady": true,
-      "tag": "gen_btn_wobble"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "wobble-scale",
       "slug": "wobble-scale",
       "family": "transform",
-      "primitive": "wobble",
-      "offlineReady": true,
-      "tag": "gen_btn_wobble-scale"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "wokege",
       "slug": "wokege",
       "family": "overlay",
-      "primitive": "overlay_hole",
-      "offlineReady": true,
-      "tag": "gen_btn_wokege"
+      "fidelity": "makeemoji-overlay",
+      "offlineReady": true
     },
     {
       "id": "wolverine",
       "slug": "wolverine",
       "family": "frames",
-      "primitive": "frames",
-      "offlineReady": true,
-      "tag": "gen_btn_wolverine"
+      "fidelity": "makeemoji-cdn-frames",
+      "offlineReady": true
     },
     {
       "id": "wormhole",
       "slug": "wormhole",
       "family": "transform",
-      "primitive": "bounce",
-      "offlineReady": true,
-      "tag": "gen_btn_wormhole"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "yes-yes",
       "slug": "yes-yes",
       "family": "transform",
-      "primitive": "nod",
-      "offlineReady": true,
-      "tag": "gen_btn_yes-yes"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "zoom",
       "slug": "zoom",
       "family": "transform",
-      "primitive": "zoom",
-      "offlineReady": true,
-      "tag": "gen_btn_zoom"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "zoom-close",
       "slug": "zoom-close",
       "family": "transform",
-      "primitive": "zoom",
-      "offlineReady": true,
-      "tag": "gen_btn_zoom-close"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     },
     {
       "id": "zoom-in",
       "slug": "zoom-in",
       "family": "transform",
-      "primitive": "zoom",
-      "offlineReady": true,
-      "tag": "gen_btn_zoom-in"
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
     }
   ]
 }

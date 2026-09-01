@@ -9,7 +9,8 @@
     "typecheck": "pnpm run typecheck:libs && pnpm -r --filter \"./artifacts/**\" --filter \"./scripts\" --if-present run typecheck",
     "makeemoji:discover": "pnpm --filter @workspace/scripts run makeemoji:discover",
     "makeemoji:backup": "pnpm --filter @workspace/scripts run makeemoji:backup",
-    "emoji:install-browser": "pnpm --filter @workspace/api-server run emoji:install-browser"
+    "emoji:install-browser": "pnpm --filter @workspace/api-server run emoji:install-browser",
+    "makeemoji:harvest-official": "pnpm --filter @workspace/scripts run makeemoji:harvest-official"
   },
   "private": true,
   "devDependencies": {

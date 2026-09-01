@@ -687,8 +687,8 @@
     "tag": "gen_btn_pokeball-go",
     "dataTag": "gen_btn_pokeball-go",
     "category": "classic",
-    "offlineImplemented": true,
-    "offlineEffectId": "frames",
+    "offlineImplemented": false,
+    "offlineEffectId": null,
     "offlineFamily": "frames",
     "source": "makeemoji.com discovery"
   },
@@ -698,8 +698,8 @@
     "tag": "gen_btn_pokeball-capture",
     "dataTag": "gen_btn_pokeball-capture",
     "category": "classic",
-    "offlineImplemented": true,
-    "offlineEffectId": "frames",
+    "offlineImplemented": false,
+    "offlineEffectId": null,
     "offlineFamily": "frames",
     "source": "makeemoji.com discovery"
   },
@@ -709,8 +709,8 @@
     "tag": "gen_btn_pokeball-almost",
     "dataTag": "gen_btn_pokeball-almost",
     "category": "classic",
-    "offlineImplemented": true,
-    "offlineEffectId": "frames",
+    "offlineImplemented": false,
+    "offlineEffectId": null,
     "offlineFamily": "frames",
     "source": "makeemoji.com discovery"
   },
