@@ -1,7 +1,7 @@
 import { afterAll, describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { buildControls, buildPostPicker, parseCid } from "../commands/ui.js";
+import { buildControls, buildFinishScreen, buildPostPicker, parseCid } from "../commands/ui.js";
 import { setManifestForTesting } from "../providers/makeemoji/manifest.js";
 import { Manifest } from "../providers/makeemoji/types.js";
 import type { EmojiSession } from "../commands/session.js";
@@ -110,5 +110,30 @@ describe("post picker", () => {
     expect(ids.some(id => parseCid(id)?.action === "post_pick")).toBe(true);
     expect(ids.some(id => parseCid(id)?.action === "post_back")).toBe(true);
     expect(picker.content).toContain("2.0 KB");
+  });
+});
+
+describe("finish screen", () => {
+  const lastResult = {
+    buffer: Buffer.from([1, 2, 3]), format: "gif" as const, bytes: 4096,
+    providerId: "offline", cached: false,
+  };
+
+  it("shows the emoji with Post / Keep editing / Dismiss — not the settings panel", () => {
+    const finish = buildFinishScreen(session({ view: "finish", lastResult }), "tok");
+    expect(finish.files.length).toBe(1);
+    const ids = (finish.components as unknown as {
+      components: { data: { custom_id?: string } }[];
+    }[]).flatMap(r => r.components.map(c => c.data.custom_id ?? ""));
+    for (const action of ["post", "keep_editing", "dismiss"]) {
+      expect(ids.some(id => parseCid(id)?.action === action), action).toBe(true);
+    }
+    expect(finish.content).toContain("ready");
+  });
+
+  it("degrades to a plain confirmation when there is nothing generated yet", () => {
+    const finish = buildFinishScreen(session({ view: "finish", lastResult: undefined }), "tok");
+    expect(finish.files.length).toBe(0);
+    expect(finish.components.length).toBe(0);
   });
 });

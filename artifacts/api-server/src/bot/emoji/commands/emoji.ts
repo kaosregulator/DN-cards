@@ -28,11 +28,11 @@ import { loadSource } from "../utils/source.js";
 import { toggleFavorite } from "./favorites.js";
 import { defaultAnimation, isManifestOption, isPlaceholder, suggestFor } from "./options.js";
 import {
-  buildStylesPicker, buildStyleSearchModal, ensureStyleFocus, findStyle,
+  buildStylesPicker, buildStyleSearchModal, ensureStyleFocus, findStyle, pageStyles,
 } from "./styles-picker.js";
 import {
-  buildCachedControlsReply, buildControls, buildPostPicker, buildServerModal,
-  buildTargetChooser, buildUploadModal, describe, parseCid,
+  buildCachedControlsReply, buildControls, buildFinishScreen, buildPostPicker,
+  buildServerModal, buildTargetChooser, buildUploadModal, describe, parseCid,
 } from "./ui.js";
 import { createSession, endSession, getSession, touchSession, type EmojiSession } from "./session.js";
 
@@ -197,7 +197,10 @@ function failureMessage(err: unknown): string {
 }
 
 export async function handleEmojiCommand(interaction: ChatInputCommandInteraction): Promise<void> {
-  await interaction.deferReply();
+  // The dashboard is a private workspace: only the caller acts on it, and the
+  // clutter of browsing shouldn't sit in the channel. Sharing happens explicitly
+  // through Post, which sends a real public message.
+  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
   /** A user-supplied option, ignoring the autocomplete placeholder. */
   const optional = (name: string) => {
@@ -296,10 +299,38 @@ export async function handleEmojiInteraction(interaction: Interaction): Promise<
     return;
   }
 
+  // Done → the clean finish screen (bare emoji + Save/Post/Dismiss), not the
+  // old settings-panel dump. The session stays alive so Post and Keep editing
+  // still work; Dismiss is what actually ends it.
   if (action === "done") {
     if (!interaction.isMessageComponent()) return;
+    if (!session.lastResult) {
+      endSession(token);
+      await interaction.update({ content: "✅ **Done!**", embeds: [], files: [], components: [] });
+      return;
+    }
+    touchSession(token, { view: "finish" });
+    await interaction.update(buildFinishScreen(session, token));
+    return;
+  }
+
+  // Dismiss the whole dashboard — remove the ephemeral message entirely.
+  if (action === "dismiss") {
+    if (!interaction.isMessageComponent()) return;
     endSession(token);
-    await interaction.update({ components: [] });
+    await interaction.deferUpdate().catch(() => {});
+    await interaction.deleteReply().catch(() => {});
+    return;
+  }
+
+  // From the finish screen, slip back into the editing panel without a re-render.
+  if (action === "keep_editing") {
+    if (!interaction.isMessageComponent()) return;
+    await interaction.deferUpdate();
+    const updated = touchSession(token, { view: "controls" });
+    if (!updated) return;
+    const reply = buildCachedControlsReply(updated, token) ?? await buildReply(updated, token);
+    await interaction.editReply(reply);
     return;
   }
 
@@ -691,6 +722,15 @@ async function handleStylesAction(
     return;
   }
 
+  // Change target from inside the board — return to the opening chooser, keeping
+  // the session so the picked style survives the round-trip.
+  if (action === "styles_target" && interaction.isButton()) {
+    await interaction.deferUpdate();
+    touchSession(token, { view: "target" });
+    await interaction.editReply(buildTargetChooser(token));
+    return;
+  }
+
   // Back to the control panel without regenerating when we still have a cache.
   if (action === "styles_back" && interaction.isButton()) {
     await interaction.deferUpdate();
@@ -737,6 +777,13 @@ async function handleStylesAction(
   } else if (action === "styles_fav" && interaction.isButton()) {
     const focus = ensureStyleFocus(session, session.ownerId);
     if (findStyle(focus)) toggleFavorite(session.ownerId, focus);
+  } else if (action.startsWith("styles_n") && interaction.isButton()) {
+    // Number picker: the label is the 1-based cell, the action carries the
+    // 0-based index into this page's styles.
+    const index = Number.parseInt(action.slice("styles_n".length), 10);
+    const { rows } = pageStyles(session, session.ownerId);
+    const pick = Number.isInteger(index) ? rows[index] : undefined;
+    if (pick) touchSession(token, { styleFocus: pick.value });
   } else if (action === "styles_pick" && interaction.isStringSelectMenu()) {
     const value = interaction.values[0];
     if (value && findStyle(value)) {

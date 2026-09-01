@@ -256,6 +256,65 @@ export function buildPostPicker(session: EmojiSession, token: string) {
   };
 }
 
+/**
+ * The finish screen shown after **Done**.
+ *
+ * The old Done dumped the whole settings panel — every option line plus the gif —
+ * and left it sitting there, which read as noise the moment the user was
+ * finished. This is the clean hand-off instead: just the emoji and the two
+ * things left to do with it — save it (tap the image) or post it — plus a way to
+ * dismiss the dashboard or slip back into editing.
+ */
+export function buildFinishScreen(session: EmojiSession, token: string) {
+  const result = session.lastResult;
+  if (!result) {
+    return {
+      content: "✅ **Done!** Run `/emoji` any time to make another.",
+      embeds: [] as never[],
+      files: [] as AttachmentBuilder[],
+      components: [] as ActionRowBuilder<never>[],
+    };
+  }
+
+  const file = new AttachmentBuilder(result.buffer, { name: `emoji.${extensionFor(result.format)}` });
+  const size = `${(result.bytes / 1024).toFixed(1)} KB`;
+  const over = result.bytes > 262_144;
+
+  const lines = [
+    "## ✅ Your emoji is ready",
+    `**${animationLabel(session)}** · \`${session.format.toUpperCase()}\` · ${size}`,
+    "-# **Save it:** tap the image, then Save. · **Share it:** Post it to a channel below.",
+  ];
+  if (over) {
+    lines.push("-# ⚠️ Over Discord's 256 KB custom-emoji limit — reopen editing and try a smaller size.");
+  }
+
+  const actions = new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder()
+      .setCustomId(cid("post", token))
+      .setLabel("Post to channel")
+      .setEmoji("📤")
+      .setStyle(ButtonStyle.Primary),
+    new ButtonBuilder()
+      .setCustomId(cid("keep_editing", token))
+      .setLabel("Keep editing")
+      .setEmoji("🎛️")
+      .setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder()
+      .setCustomId(cid("dismiss", token))
+      .setLabel("Dismiss")
+      .setEmoji("🗑️")
+      .setStyle(ButtonStyle.Secondary),
+  );
+
+  return {
+    content: lines.join("\n"),
+    embeds: [] as never[],
+    files: [file],
+    components: [actions] as unknown as ActionRowBuilder<never>[],
+  };
+}
+
 /** The full control panel for a session. */
 export function buildControls(session: EmojiSession, token: string): ActionRowBuilder<never>[] {
   const rows: ActionRowBuilder<never>[] = [];
