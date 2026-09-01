@@ -33,11 +33,19 @@ describe("offline recipe engine", () => {
     expect(ready.every(r => r.primitive)).toBe(true);
   });
 
-  it("marks the package offlineReady once full catalog coverage is verified", () => {
+  it("marks nearly-full catalog coverage; blocks styles missing CDN frames", () => {
     const m = loadOfflineManifest();
-    expect(m?.offlineReady).toBe(true);
-    expect(m?.implementedStyleCount).toBe(m?.styleCount);
+    // 473 catalog styles; 3 closed pokéballs lack MakeEmoji CDN frame overlays
+    // (prerendered GIFs exist, but we do not invent replacements).
+    expect(m?.styleCount).toBe(473);
+    expect(m?.implementedStyleCount).toBe(470);
     expect(m?.implementedStyleCount ?? 0).toBeGreaterThanOrEqual(400);
+    const blocked = ["pokeball-go", "pokeball-capture", "pokeball-almost"];
+    for (const id of blocked) {
+      expect(findRecipe(id)?.offlineReady, id).toBe(false);
+      expect(findRecipe(id)?.assets?.prerendered, id).toBeTruthy();
+    }
+    expect(findRecipe("pokeball-emerge")?.offlineReady).toBe(true);
   });
 
   it("syncs implemented styles from recipes across families", () => {

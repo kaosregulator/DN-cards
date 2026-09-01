@@ -1,0 +1,3378 @@
+{
+  "source": "makeemoji.com official CDN assets (assets.makeemoji.com)",
+  "harvestedAt": "2026-09-01T02:26:44.651Z",
+  "styleCount": 473,
+  "offlineReadyCount": 470,
+  "note": "Offline copy of MakeEmoji free assets only. No procedural/SVG recreations. Styles without compositable CDN frames that also lack archived atlases/overlays are blocked rather than faked.",
+  "prerenderedCount": 473,
+  "overlayCount": 37,
+  "cdnFrameStyleCount": 87,
+  "cdnFramesMissing": [
+    "banana-dance",
+    "blankies",
+    "blaze",
+    "deal-with-it",
+    "gigachad",
+    "jammies",
+    "laser-eyes",
+    "nyan-cat",
+    "party-blob",
+    "party-parrot",
+    "pepe-flag",
+    "pet",
+    "pokeball-almost",
+    "pokeball-capture",
+    "pokeball-go",
+    "sad-blob"
+  ],
+  "blockedOfflineComposite": [
+    {
+      "id": "pokeball-almost",
+      "fidelity": "makeemoji-prerendered-gif-only",
+      "prerendered": "prerendered/pokeball-almost/default-cat.gif",
+      "notes": [
+        "Official MakeEmoji GIF available: https://assets.makeemoji.com/prerendered/default-cat/pokeball-almost.gif",
+        "Compositable CDN frames MISSING (404). Procedural SVG recreation removed. Offline user-image composite blocked until MakeEmoji publishes frames."
+      ]
+    },
+    {
+      "id": "pokeball-capture",
+      "fidelity": "makeemoji-prerendered-gif-only",
+      "prerendered": "prerendered/pokeball-capture/default-cat.gif",
+      "notes": [
+        "Official MakeEmoji GIF available: https://assets.makeemoji.com/prerendered/default-cat/pokeball-capture.gif",
+        "Compositable CDN frames MISSING (404). Procedural SVG recreation removed. Offline user-image composite blocked until MakeEmoji publishes frames."
+      ]
+    },
+    {
+      "id": "pokeball-go",
+      "fidelity": "makeemoji-prerendered-gif-only",
+      "prerendered": "prerendered/pokeball-go/default-cat.gif",
+      "notes": [
+        "Official MakeEmoji GIF available: https://assets.makeemoji.com/prerendered/default-cat/pokeball-go.gif",
+        "Compositable CDN frames MISSING (404). Procedural SVG recreation removed. Offline user-image composite blocked until MakeEmoji publishes frames."
+      ]
+    }
+  ],
+  "fidelityCounts": {
+    "approximate-procedural": 329,
+    "makeemoji-overlay": 37,
+    "makeemoji-cdn-frames": 87,
+    "approximate-composite": 16,
+    "exact": 1,
+    "makeemoji-prerendered-gif-only": 3
+  },
+  "styles": [
+    {
+      "id": "2x-wide-1",
+      "slug": "2x-wide-1",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "2x-wide-2",
+      "slug": "2x-wide-2",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "3d-flip:➡️",
+      "slug": "3d-flip",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "3x-wide-1",
+      "slug": "3x-wide-1",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "3x-wide-2",
+      "slug": "3x-wide-2",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "3x-wide-3",
+      "slug": "3x-wide-3",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "4x-wide-1",
+      "slug": "4x-wide-1",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "4x-wide-2",
+      "slug": "4x-wide-2",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "4x-wide-3",
+      "slug": "4x-wide-3",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "4x-wide-4",
+      "slug": "4x-wide-4",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "abdul-pls",
+      "slug": "abdul-pls",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "aha",
+      "slug": "aha",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "alarm",
+      "slug": "alarm",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "alarms",
+      "slug": "alarms",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "alert",
+      "slug": "alert",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "alien-pls",
+      "slug": "alien-pls",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "alien-pls-3",
+      "slug": "alien-pls-3",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "alowo",
+      "slug": "alowo",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "amaze",
+      "slug": "amaze",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "angel",
+      "slug": "angel",
+      "family": "overlay",
+      "fidelity": "makeemoji-overlay",
+      "offlineReady": true
+    },
+    {
+      "id": "anime-scream",
+      "slug": "anime-scream",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "anticipation",
+      "slug": "anticipation",
+      "family": "frames",
+      "fidelity": "makeemoji-cdn-frames",
+      "offlineReady": true
+    },
+    {
+      "id": "approve-arms",
+      "slug": "approve-arms",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "banana-dance",
+      "slug": "banana-dance",
+      "family": "atlas",
+      "fidelity": "approximate-composite",
+      "offlineReady": true
+    },
+    {
+      "id": "bat-signal",
+      "slug": "bat-signal",
+      "family": "frames",
+      "fidelity": "makeemoji-cdn-frames",
+      "offlineReady": true
+    },
+    {
+      "id": "bat-signal-scene",
+      "slug": "bat-signal-scene",
+      "family": "frames",
+      "fidelity": "makeemoji-cdn-frames",
+      "offlineReady": true
+    },
+    {
+      "id": "bedge",
+      "slug": "bedge",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "beers",
+      "slug": "beers",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "binoculars",
+      "slug": "binoculars",
+      "family": "frames",
+      "fidelity": "makeemoji-cdn-frames",
+      "offlineReady": true
+    },
+    {
+      "id": "blah-blah-blah",
+      "slug": "blah-blah-blah",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "blame",
+      "slug": "blame",
+      "family": "overlay",
+      "fidelity": "makeemoji-overlay",
+      "offlineReady": true
+    },
+    {
+      "id": "blame-animated",
+      "slug": "blame-animated",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "blanket",
+      "slug": "blanket",
+      "family": "frames",
+      "fidelity": "makeemoji-cdn-frames",
+      "offlineReady": true
+    },
+    {
+      "id": "blankies",
+      "slug": "blankies",
+      "family": "atlas",
+      "fidelity": "approximate-composite",
+      "offlineReady": true
+    },
+    {
+      "id": "blast",
+      "slug": "blast",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "blaze",
+      "slug": "blaze",
+      "family": "atlas",
+      "fidelity": "approximate-composite",
+      "offlineReady": true
+    },
+    {
+      "id": "blink",
+      "slug": "blink",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "blob-help",
+      "slug": "blob-help",
+      "family": "overlay",
+      "fidelity": "makeemoji-overlay",
+      "offlineReady": true
+    },
+    {
+      "id": "blob-no",
+      "slug": "blob-no",
+      "family": "overlay",
+      "fidelity": "makeemoji-overlay",
+      "offlineReady": true
+    },
+    {
+      "id": "blob-smiley",
+      "slug": "blob-smiley",
+      "family": "frames",
+      "fidelity": "makeemoji-cdn-frames",
+      "offlineReady": true
+    },
+    {
+      "id": "blob-yes",
+      "slug": "blob-yes",
+      "family": "overlay",
+      "fidelity": "makeemoji-overlay",
+      "offlineReady": true
+    },
+    {
+      "id": "blush",
+      "slug": "blush",
+      "family": "frames",
+      "fidelity": "makeemoji-cdn-frames",
+      "offlineReady": true
+    },
+    {
+      "id": "bobble",
+      "slug": "bobble",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "boing",
+      "slug": "boing",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "bonk",
+      "slug": "bonk",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "bonk-doge",
+      "slug": "bonk-doge",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "booba",
+      "slug": "booba",
+      "family": "frames",
+      "fidelity": "makeemoji-cdn-frames",
+      "offlineReady": true
+    },
+    {
+      "id": "boom",
+      "slug": "boom",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "boooo",
+      "slug": "boooo",
+      "family": "frames",
+      "fidelity": "makeemoji-cdn-frames",
+      "offlineReady": true
+    },
+    {
+      "id": "bounce",
+      "slug": "bounce",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "box",
+      "slug": "box",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "breaking-news",
+      "slug": "breaking-news",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "breathe",
+      "slug": "breathe",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "bubble",
+      "slug": "bubble",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "bubbles",
+      "slug": "bubbles",
+      "family": "frames",
+      "fidelity": "makeemoji-cdn-frames",
+      "offlineReady": true
+    },
+    {
+      "id": "bufo-offers",
+      "slug": "bufo-offers",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "bufo-takes",
+      "slug": "bufo-takes",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "bulge",
+      "slug": "bulge",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "burger",
+      "slug": "burger",
+      "family": "overlay",
+      "fidelity": "makeemoji-overlay",
+      "offlineReady": true
+    },
+    {
+      "id": "burn",
+      "slug": "burn",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "bush-disappear",
+      "slug": "bush-disappear",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "bush-texture",
+      "slug": "bush-texture",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "cancel",
+      "slug": "cancel",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "cat-ears",
+      "slug": "cat-ears",
+      "family": "frames",
+      "fidelity": "makeemoji-cdn-frames",
+      "offlineReady": true
+    },
+    {
+      "id": "cat-jam",
+      "slug": "cat-jam",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "cat-jam-crying",
+      "slug": "cat-jam-crying",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "cat-no",
+      "slug": "cat-no",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "cat-slap",
+      "slug": "cat-slap",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "cat-yes",
+      "slug": "cat-yes",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "clap",
+      "slug": "clap",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "clap-glove",
+      "slug": "clap-glove",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "claude-code",
+      "slug": "claude-code",
+      "family": "frames",
+      "fidelity": "makeemoji-cdn-frames",
+      "offlineReady": true
+    },
+    {
+      "id": "claude-dancing",
+      "slug": "claude-dancing",
+      "family": "frames",
+      "fidelity": "makeemoji-cdn-frames",
+      "offlineReady": true
+    },
+    {
+      "id": "claude-football",
+      "slug": "claude-football",
+      "family": "frames",
+      "fidelity": "makeemoji-cdn-frames",
+      "offlineReady": true
+    },
+    {
+      "id": "claude-fu",
+      "slug": "claude-fu",
+      "family": "frames",
+      "fidelity": "makeemoji-cdn-frames",
+      "offlineReady": true
+    },
+    {
+      "id": "claude-idea",
+      "slug": "claude-idea",
+      "family": "frames",
+      "fidelity": "makeemoji-cdn-frames",
+      "offlineReady": true
+    },
+    {
+      "id": "claude-jam",
+      "slug": "claude-jam",
+      "family": "frames",
+      "fidelity": "makeemoji-cdn-frames",
+      "offlineReady": true
+    },
+    {
+      "id": "cleaning",
+      "slug": "cleaning",
+      "family": "frames",
+      "fidelity": "makeemoji-cdn-frames",
+      "offlineReady": true
+    },
+    {
+      "id": "clone-army:➡️",
+      "slug": "clone-army",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "coggers",
+      "slug": "coggers",
+      "family": "overlay",
+      "fidelity": "makeemoji-overlay",
+      "offlineReady": true
+    },
+    {
+      "id": "combust",
+      "slug": "combust",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "comfy",
+      "slug": "comfy",
+      "family": "frames",
+      "fidelity": "makeemoji-cdn-frames",
+      "offlineReady": true
+    },
+    {
+      "id": "concerned",
+      "slug": "concerned",
+      "family": "frames",
+      "fidelity": "makeemoji-cdn-frames",
+      "offlineReady": true
+    },
+    {
+      "id": "confused-cat",
+      "slug": "confused-cat",
+      "family": "overlay",
+      "fidelity": "makeemoji-overlay",
+      "offlineReady": true
+    },
+    {
+      "id": "conga-line:➡️",
+      "slug": "conga-line",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "content-aware",
+      "slug": "content-aware",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "cool-glasses",
+      "slug": "cool-glasses",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "copium",
+      "slug": "copium",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "courage-scream",
+      "slug": "courage-scream",
+      "family": "frames",
+      "fidelity": "makeemoji-cdn-frames",
+      "offlineReady": true
+    },
+    {
+      "id": "cowboy",
+      "slug": "cowboy",
+      "family": "overlay",
+      "fidelity": "makeemoji-overlay",
+      "offlineReady": true
+    },
+    {
+      "id": "crab",
+      "slug": "crab",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "credit-swipe",
+      "slug": "credit-swipe",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "crying-laughing",
+      "slug": "crying-laughing",
+      "family": "overlay",
+      "fidelity": "makeemoji-overlay",
+      "offlineReady": true
+    },
+    {
+      "id": "cube",
+      "slug": "cube",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "cute-ghost",
+      "slug": "cute-ghost",
+      "family": "frames",
+      "fidelity": "makeemoji-cdn-frames",
+      "offlineReady": true
+    },
+    {
+      "id": "cute-hop",
+      "slug": "cute-hop",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "dbz-aura",
+      "slug": "dbz-aura",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "ddr",
+      "slug": "ddr",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "deal-with-it",
+      "slug": "deal-with-it",
+      "family": "atlas",
+      "fidelity": "approximate-composite",
+      "offlineReady": true
+    },
+    {
+      "id": "depth-tilt",
+      "slug": "depth-tilt",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "diamond",
+      "slug": "diamond",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "ditto",
+      "slug": "ditto",
+      "family": "frames",
+      "fidelity": "makeemoji-cdn-frames",
+      "offlineReady": true
+    },
+    {
+      "id": "doesnt-know",
+      "slug": "doesnt-know",
+      "family": "frames",
+      "fidelity": "makeemoji-cdn-frames",
+      "offlineReady": true
+    },
+    {
+      "id": "donk",
+      "slug": "donk",
+      "family": "overlay",
+      "fidelity": "makeemoji-overlay",
+      "offlineReady": true
+    },
+    {
+      "id": "drake-duh",
+      "slug": "drake-duh",
+      "family": "frames",
+      "fidelity": "makeemoji-cdn-frames",
+      "offlineReady": true
+    },
+    {
+      "id": "drift",
+      "slug": "drift",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "drop",
+      "slug": "drop",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "drop-bounce",
+      "slug": "drop-bounce",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "earthquake",
+      "slug": "earthquake",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "elastic",
+      "slug": "elastic",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "electricity",
+      "slug": "electricity",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "elmo-fire",
+      "slug": "elmo-fire",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "emoji-scream",
+      "slug": "emoji-scream",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "enter",
+      "slug": "enter",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "excited",
+      "slug": "excited",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "excuse-me",
+      "slug": "excuse-me",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "exit",
+      "slug": "exit",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "explain",
+      "slug": "explain",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "explode",
+      "slug": "explode",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "face-cover",
+      "slug": "face-cover",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "facepalm",
+      "slug": "facepalm",
+      "family": "frames",
+      "fidelity": "makeemoji-cdn-frames",
+      "offlineReady": true
+    },
+    {
+      "id": "fall-leaves",
+      "slug": "fall-leaves",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "feels-rain-man",
+      "slug": "feels-rain-man",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "feels-weak-man",
+      "slug": "feels-weak-man",
+      "family": "frames",
+      "fidelity": "makeemoji-cdn-frames",
+      "offlineReady": true
+    },
+    {
+      "id": "figure-8",
+      "slug": "figure-8",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "fire-pixel",
+      "slug": "fire-pixel",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "fireplace",
+      "slug": "fireplace",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "fivehead",
+      "slug": "fivehead",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "fivehead-pulse",
+      "slug": "fivehead-pulse",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "flag",
+      "slug": "flag",
+      "family": "frames",
+      "fidelity": "makeemoji-cdn-frames",
+      "offlineReady": true
+    },
+    {
+      "id": "flag-wave",
+      "slug": "flag-wave",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "flame",
+      "slug": "flame",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "flare-eyes",
+      "slug": "flare-eyes",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "flick:➡️",
+      "slug": "flick",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "fling:➡️",
+      "slug": "fling",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "flip",
+      "slug": "flip",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "flipp",
+      "slug": "flipp",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "floating-pumpkins",
+      "slug": "floating-pumpkins",
+      "family": "frames",
+      "fidelity": "makeemoji-cdn-frames",
+      "offlineReady": true
+    },
+    {
+      "id": "flutter",
+      "slug": "flutter",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "frog-flag",
+      "slug": "frog-flag",
+      "family": "frames",
+      "fidelity": "makeemoji-cdn-frames",
+      "offlineReady": true
+    },
+    {
+      "id": "fry",
+      "slug": "fry",
+      "family": "frames",
+      "fidelity": "makeemoji-cdn-frames",
+      "offlineReady": true
+    },
+    {
+      "id": "gengar",
+      "slug": "gengar",
+      "family": "frames",
+      "fidelity": "makeemoji-cdn-frames",
+      "offlineReady": true
+    },
+    {
+      "id": "gigachad",
+      "slug": "gigachad",
+      "family": "atlas",
+      "fidelity": "approximate-composite",
+      "offlineReady": true
+    },
+    {
+      "id": "glasses-shine",
+      "slug": "glasses-shine",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "glitch",
+      "slug": "glitch",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "glorming:➡️",
+      "slug": "glorming",
+      "family": "frames",
+      "fidelity": "makeemoji-cdn-frames",
+      "offlineReady": true
+    },
+    {
+      "id": "glorp",
+      "slug": "glorp",
+      "family": "overlay",
+      "fidelity": "makeemoji-overlay",
+      "offlineReady": true
+    },
+    {
+      "id": "glorpa",
+      "slug": "glorpa",
+      "family": "frames",
+      "fidelity": "makeemoji-cdn-frames",
+      "offlineReady": true
+    },
+    {
+      "id": "googly-eyes",
+      "slug": "googly-eyes",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "grayscale",
+      "slug": "grayscale",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "green-fire",
+      "slug": "green-fire",
+      "family": "frames",
+      "fidelity": "makeemoji-cdn-frames",
+      "offlineReady": true
+    },
+    {
+      "id": "gulp",
+      "slug": "gulp",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "gun",
+      "slug": "gun",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "hazmat",
+      "slug": "hazmat",
+      "family": "overlay",
+      "fidelity": "makeemoji-overlay",
+      "offlineReady": true
+    },
+    {
+      "id": "hazmat-2",
+      "slug": "hazmat-2",
+      "family": "overlay",
+      "fidelity": "makeemoji-overlay",
+      "offlineReady": true
+    },
+    {
+      "id": "headbop",
+      "slug": "headbop",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "heart-hypno",
+      "slug": "heart-hypno",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "heart-locket",
+      "slug": "heart-locket",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "heartbeat",
+      "slug": "heartbeat",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "heartbeat-flash",
+      "slug": "heartbeat-flash",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "heat-haze",
+      "slug": "heat-haze",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "helicopter",
+      "slug": "helicopter",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "hellowo",
+      "slug": "hellowo",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "heyy",
+      "slug": "heyy",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "heyyeyaa",
+      "slug": "heyyeyaa",
+      "family": "overlay",
+      "fidelity": "makeemoji-overlay",
+      "offlineReady": true
+    },
+    {
+      "id": "hoodie",
+      "slug": "hoodie",
+      "family": "overlay",
+      "fidelity": "makeemoji-overlay",
+      "offlineReady": true
+    },
+    {
+      "id": "hop:➡️",
+      "slug": "hop",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "hovering",
+      "slug": "hovering",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "hugg",
+      "slug": "hugg",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "huh",
+      "slug": "huh",
+      "family": "frames",
+      "fidelity": "makeemoji-cdn-frames",
+      "offlineReady": true
+    },
+    {
+      "id": "hype",
+      "slug": "hype",
+      "family": "transform",
+      "fidelity": "approximate-composite",
+      "offlineReady": true
+    },
+    {
+      "id": "hype-jam",
+      "slug": "hype-jam",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "hype-shake",
+      "slug": "hype-shake",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "hyperspace",
+      "slug": "hyperspace",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "i-have-a-question",
+      "slug": "i-have-a-question",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "i-love",
+      "slug": "i-love",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "ice-cube",
+      "slug": "ice-cube",
+      "family": "frames",
+      "fidelity": "makeemoji-cdn-frames",
+      "offlineReady": true
+    },
+    {
+      "id": "intensifies",
+      "slug": "intensifies",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "jail-time",
+      "slug": "jail-time",
+      "family": "frames",
+      "fidelity": "makeemoji-cdn-frames",
+      "offlineReady": true
+    },
+    {
+      "id": "jam",
+      "slug": "jam",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "jammies",
+      "slug": "jammies",
+      "family": "atlas",
+      "fidelity": "approximate-composite",
+      "offlineReady": true
+    },
+    {
+      "id": "jiggle",
+      "slug": "jiggle",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "jitter",
+      "slug": "jitter",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "jumping-on-the-bed",
+      "slug": "jumping-on-the-bed",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "kablooey",
+      "slug": "kablooey",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "keanu-thanks",
+      "slug": "keanu-thanks",
+      "family": "frames",
+      "fidelity": "makeemoji-cdn-frames",
+      "offlineReady": true
+    },
+    {
+      "id": "kek-jam",
+      "slug": "kek-jam",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "kek-laugh",
+      "slug": "kek-laugh",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "ken-burns",
+      "slug": "ken-burns",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "labubu",
+      "slug": "labubu",
+      "family": "overlay",
+      "fidelity": "makeemoji-overlay",
+      "offlineReady": true
+    },
+    {
+      "id": "laser-eyes",
+      "slug": "laser-eyes",
+      "family": "atlas",
+      "fidelity": "approximate-composite",
+      "offlineReady": true
+    },
+    {
+      "id": "lean",
+      "slug": "lean",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "leap",
+      "slug": "leap",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "leave",
+      "slug": "leave",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "leave-me-alone",
+      "slug": "leave-me-alone",
+      "family": "frames",
+      "fidelity": "makeemoji-cdn-frames",
+      "offlineReady": true
+    },
+    {
+      "id": "lebron-jam",
+      "slug": "lebron-jam",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "let-me-in",
+      "slug": "let-me-in",
+      "family": "frames",
+      "fidelity": "makeemoji-cdn-frames",
+      "offlineReady": true
+    },
+    {
+      "id": "lets-gooo",
+      "slug": "lets-gooo",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "lick",
+      "slug": "lick",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "lightning-flash",
+      "slug": "lightning-flash",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "lightsaber",
+      "slug": "lightsaber",
+      "family": "transform",
+      "fidelity": "makeemoji-overlay",
+      "offlineReady": true
+    },
+    {
+      "id": "lightspeed-jump",
+      "slug": "lightspeed-jump",
+      "family": "frames",
+      "fidelity": "makeemoji-cdn-frames",
+      "offlineReady": true
+    },
+    {
+      "id": "loading",
+      "slug": "loading",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "loading-eight:➡️",
+      "slug": "loading-eight",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "loading-five:➡️",
+      "slug": "loading-five",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "loading-four:➡️",
+      "slug": "loading-four",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "loading-nine:➡️",
+      "slug": "loading-nine",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "loading-seven:➡️",
+      "slug": "loading-seven",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "loading-six:➡️",
+      "slug": "loading-six",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "loading-three:➡️",
+      "slug": "loading-three",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "loading-two:➡️",
+      "slug": "loading-two",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "lolface",
+      "slug": "lolface",
+      "family": "frames",
+      "fidelity": "makeemoji-cdn-frames",
+      "offlineReady": true
+    },
+    {
+      "id": "long",
+      "slug": "long",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "lurk",
+      "slug": "lurk",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "luvv",
+      "slug": "luvv",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "madge-clap",
+      "slug": "madge-clap",
+      "family": "frames",
+      "fidelity": "makeemoji-cdn-frames",
+      "offlineReady": true
+    },
+    {
+      "id": "magnet",
+      "slug": "magnet",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "math",
+      "slug": "math",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "matrix-rain",
+      "slug": "matrix-rain",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "mega-bounce",
+      "slug": "mega-bounce",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "melt",
+      "slug": "melt",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "meow-coffee-spit",
+      "slug": "meow-coffee-spit",
+      "family": "frames",
+      "fidelity": "makeemoji-cdn-frames",
+      "offlineReady": true
+    },
+    {
+      "id": "mercator",
+      "slug": "mercator",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "mercator-pulse",
+      "slug": "mercator-pulse",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "mhm",
+      "slug": "mhm",
+      "family": "frames",
+      "fidelity": "makeemoji-cdn-frames",
+      "offlineReady": true
+    },
+    {
+      "id": "middle-fingers",
+      "slug": "middle-fingers",
+      "family": "frames",
+      "fidelity": "makeemoji-cdn-frames",
+      "offlineReady": true
+    },
+    {
+      "id": "mine-block",
+      "slug": "mine-block",
+      "family": "frames",
+      "fidelity": "makeemoji-cdn-frames",
+      "offlineReady": true
+    },
+    {
+      "id": "misalign",
+      "slug": "misalign",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "mitosis",
+      "slug": "mitosis",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "monka-christ",
+      "slug": "monka-christ",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "monka-hmm",
+      "slug": "monka-hmm",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "mustache-glasses",
+      "slug": "mustache-glasses",
+      "family": "frames",
+      "fidelity": "makeemoji-cdn-frames",
+      "offlineReady": true
+    },
+    {
+      "id": "negative-blink",
+      "slug": "negative-blink",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "nesting-doll:➡️",
+      "slug": "nesting-doll",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "nise",
+      "slug": "nise",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "no-no",
+      "slug": "no-no",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "nod",
+      "slug": "nod",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "nodders",
+      "slug": "nodders",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "none",
+      "slug": "none",
+      "family": "passthrough",
+      "fidelity": "exact",
+      "offlineReady": true
+    },
+    {
+      "id": "nopers",
+      "slug": "nopers",
+      "family": "frames",
+      "fidelity": "makeemoji-cdn-frames",
+      "offlineReady": true
+    },
+    {
+      "id": "not-stonks",
+      "slug": "not-stonks",
+      "family": "overlay",
+      "fidelity": "makeemoji-overlay",
+      "offlineReady": true
+    },
+    {
+      "id": "nowoted",
+      "slug": "nowoted",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "nyan-cat",
+      "slug": "nyan-cat",
+      "family": "atlas",
+      "fidelity": "approximate-composite",
+      "offlineReady": true
+    },
+    {
+      "id": "nyan:➡️",
+      "slug": "nyan",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "old-man-yells",
+      "slug": "old-man-yells",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "omega-lul",
+      "slug": "omega-lul",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "omega-lul-pulse",
+      "slug": "omega-lul-pulse",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "on-fire",
+      "slug": "on-fire",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "ono",
+      "slug": "ono",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "orbit-drift",
+      "slug": "orbit-drift",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "orbit-eight:➡️",
+      "slug": "orbit-eight",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "orbit-five:➡️",
+      "slug": "orbit-five",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "orbit-four:➡️",
+      "slug": "orbit-four",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "orbit-nine:➡️",
+      "slug": "orbit-nine",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "orbit-seven:➡️",
+      "slug": "orbit-seven",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "orbit-six:➡️",
+      "slug": "orbit-six",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "orbit-three:➡️",
+      "slug": "orbit-three",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "orbit-two:➡️",
+      "slug": "orbit-two",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "orbit:➡️",
+      "slug": "orbit",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "oui-oui",
+      "slug": "oui-oui",
+      "family": "overlay",
+      "fidelity": "makeemoji-overlay",
+      "offlineReady": true
+    },
+    {
+      "id": "owl-jam",
+      "slug": "owl-jam",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "pace",
+      "slug": "pace",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "pag-bounce",
+      "slug": "pag-bounce",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "pagman",
+      "slug": "pagman",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "panic",
+      "slug": "panic",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "parrot",
+      "slug": "parrot",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "parrot-hat",
+      "slug": "parrot-hat",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "parrot-hold",
+      "slug": "parrot-hold",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "party",
+      "slug": "party",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "party-blob",
+      "slug": "party-blob",
+      "family": "atlas",
+      "fidelity": "approximate-composite",
+      "offlineReady": true
+    },
+    {
+      "id": "party-parrot",
+      "slug": "party-parrot",
+      "family": "atlas",
+      "fidelity": "approximate-composite",
+      "offlineReady": true
+    },
+    {
+      "id": "pastel-bloom",
+      "slug": "pastel-bloom",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "pat",
+      "slug": "pat",
+      "family": "frames",
+      "fidelity": "makeemoji-cdn-frames",
+      "offlineReady": true
+    },
+    {
+      "id": "patrick-bateman",
+      "slug": "patrick-bateman",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "pause-champ",
+      "slug": "pause-champ",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "peek-corner",
+      "slug": "peek-corner",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "peeking",
+      "slug": "peeking",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "peepo",
+      "slug": "peepo",
+      "family": "overlay",
+      "fidelity": "makeemoji-overlay",
+      "offlineReady": true
+    },
+    {
+      "id": "peepo-bye",
+      "slug": "peepo-bye",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "peepo-cheer",
+      "slug": "peepo-cheer",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "peepo-clap",
+      "slug": "peepo-clap",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "peepo-dj",
+      "slug": "peepo-dj",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "peepo-giggles",
+      "slug": "peepo-giggles",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "peepo-love",
+      "slug": "peepo-love",
+      "family": "overlay",
+      "fidelity": "makeemoji-overlay",
+      "offlineReady": true
+    },
+    {
+      "id": "peepo-love-heart",
+      "slug": "peepo-love-heart",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "peepo-poopoo",
+      "slug": "peepo-poopoo",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "peepo-riot",
+      "slug": "peepo-riot",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "peepo-run",
+      "slug": "peepo-run",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "peepo-shy",
+      "slug": "peepo-shy",
+      "family": "overlay",
+      "fidelity": "makeemoji-overlay",
+      "offlineReady": true
+    },
+    {
+      "id": "peepo-sit",
+      "slug": "peepo-sit",
+      "family": "overlay",
+      "fidelity": "makeemoji-overlay",
+      "offlineReady": true
+    },
+    {
+      "id": "peepo-sit-hey",
+      "slug": "peepo-sit-hey",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "peepo-stop",
+      "slug": "peepo-stop",
+      "family": "overlay",
+      "fidelity": "makeemoji-overlay",
+      "offlineReady": true
+    },
+    {
+      "id": "peepo-want",
+      "slug": "peepo-want",
+      "family": "overlay",
+      "fidelity": "makeemoji-overlay",
+      "offlineReady": true
+    },
+    {
+      "id": "pepe",
+      "slug": "pepe",
+      "family": "overlay",
+      "fidelity": "makeemoji-overlay",
+      "offlineReady": true
+    },
+    {
+      "id": "pepe-binoculars",
+      "slug": "pepe-binoculars",
+      "family": "frames",
+      "fidelity": "makeemoji-cdn-frames",
+      "offlineReady": true
+    },
+    {
+      "id": "pepe-cheer",
+      "slug": "pepe-cheer",
+      "family": "overlay",
+      "fidelity": "makeemoji-overlay",
+      "offlineReady": true
+    },
+    {
+      "id": "pepe-clown",
+      "slug": "pepe-clown",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "pepe-dab",
+      "slug": "pepe-dab",
+      "family": "overlay",
+      "fidelity": "makeemoji-overlay",
+      "offlineReady": true
+    },
+    {
+      "id": "pepe-flag",
+      "slug": "pepe-flag",
+      "family": "atlas",
+      "fidelity": "approximate-composite",
+      "offlineReady": true
+    },
+    {
+      "id": "pepe-meltdown",
+      "slug": "pepe-meltdown",
+      "family": "frames",
+      "fidelity": "makeemoji-cdn-frames",
+      "offlineReady": true
+    },
+    {
+      "id": "pepe-nodders",
+      "slug": "pepe-nodders",
+      "family": "frames",
+      "fidelity": "makeemoji-cdn-frames",
+      "offlineReady": true
+    },
+    {
+      "id": "pepe-point",
+      "slug": "pepe-point",
+      "family": "frames",
+      "fidelity": "makeemoji-cdn-frames",
+      "offlineReady": true
+    },
+    {
+      "id": "pepe-s",
+      "slug": "pepe-s",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "pepe-sweat",
+      "slug": "pepe-sweat",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "pepega",
+      "slug": "pepega",
+      "family": "overlay",
+      "fidelity": "makeemoji-overlay",
+      "offlineReady": true
+    },
+    {
+      "id": "pepo-popcorn",
+      "slug": "pepo-popcorn",
+      "family": "frames",
+      "fidelity": "makeemoji-cdn-frames",
+      "offlineReady": true
+    },
+    {
+      "id": "pet",
+      "slug": "pet",
+      "family": "atlas",
+      "fidelity": "approximate-composite",
+      "offlineReady": true
+    },
+    {
+      "id": "phone-time",
+      "slug": "phone-time",
+      "family": "frames",
+      "fidelity": "makeemoji-cdn-frames",
+      "offlineReady": true
+    },
+    {
+      "id": "pika-stand",
+      "slug": "pika-stand",
+      "family": "frames",
+      "fidelity": "makeemoji-cdn-frames",
+      "offlineReady": true
+    },
+    {
+      "id": "pikachu",
+      "slug": "pikachu",
+      "family": "frames",
+      "fidelity": "makeemoji-cdn-frames",
+      "offlineReady": true
+    },
+    {
+      "id": "pixar-think",
+      "slug": "pixar-think",
+      "family": "frames",
+      "fidelity": "makeemoji-cdn-frames",
+      "offlineReady": true
+    },
+    {
+      "id": "pixelate",
+      "slug": "pixelate",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "plotge",
+      "slug": "plotge",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "pokeball-almost",
+      "slug": "pokeball-almost",
+      "family": "frames",
+      "fidelity": "makeemoji-prerendered-gif-only",
+      "offlineReady": false
+    },
+    {
+      "id": "pokeball-capture",
+      "slug": "pokeball-capture",
+      "family": "frames",
+      "fidelity": "makeemoji-prerendered-gif-only",
+      "offlineReady": false
+    },
+    {
+      "id": "pokeball-emerge",
+      "slug": "pokeball-emerge",
+      "family": "frames",
+      "fidelity": "makeemoji-cdn-frames",
+      "offlineReady": true
+    },
+    {
+      "id": "pokeball-go",
+      "slug": "pokeball-go",
+      "family": "frames",
+      "fidelity": "makeemoji-prerendered-gif-only",
+      "offlineReady": false
+    },
+    {
+      "id": "polar-bear",
+      "slug": "polar-bear",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "ponder",
+      "slug": "ponder",
+      "family": "transform",
+      "fidelity": "approximate-composite",
+      "offlineReady": true
+    },
+    {
+      "id": "pop",
+      "slug": "pop",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "pop-through",
+      "slug": "pop-through",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "portal-peek",
+      "slug": "portal-peek",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "portal-warp",
+      "slug": "portal-warp",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "posterize-breath",
+      "slug": "posterize-breath",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "pounce",
+      "slug": "pounce",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "pp-hopper",
+      "slug": "pp-hopper",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "prance",
+      "slug": "prance",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "prayge",
+      "slug": "prayge",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "pulse",
+      "slug": "pulse",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "pumpkin",
+      "slug": "pumpkin",
+      "family": "overlay",
+      "fidelity": "makeemoji-overlay",
+      "offlineReady": true
+    },
+    {
+      "id": "pumpkin-cat",
+      "slug": "pumpkin-cat",
+      "family": "frames",
+      "fidelity": "makeemoji-cdn-frames",
+      "offlineReady": true
+    },
+    {
+      "id": "pumpkin-give",
+      "slug": "pumpkin-give",
+      "family": "frames",
+      "fidelity": "makeemoji-cdn-frames",
+      "offlineReady": true
+    },
+    {
+      "id": "pumpkin-surprise",
+      "slug": "pumpkin-surprise",
+      "family": "frames",
+      "fidelity": "makeemoji-cdn-frames",
+      "offlineReady": true
+    },
+    {
+      "id": "pumpkin-take",
+      "slug": "pumpkin-take",
+      "family": "frames",
+      "fidelity": "makeemoji-cdn-frames",
+      "offlineReady": true
+    },
+    {
+      "id": "pumpkin2",
+      "slug": "pumpkin2",
+      "family": "overlay",
+      "fidelity": "makeemoji-overlay",
+      "offlineReady": true
+    },
+    {
+      "id": "purple-stars",
+      "slug": "purple-stars",
+      "family": "frames",
+      "fidelity": "makeemoji-cdn-frames",
+      "offlineReady": true
+    },
+    {
+      "id": "pyramid",
+      "slug": "pyramid",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "quiver",
+      "slug": "quiver",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "rain",
+      "slug": "rain",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "rainbow-bloom",
+      "slug": "rainbow-bloom",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "raincloud",
+      "slug": "raincloud",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "raising-hand",
+      "slug": "raising-hand",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "rare-ghost",
+      "slug": "rare-ghost",
+      "family": "frames",
+      "fidelity": "makeemoji-cdn-frames",
+      "offlineReady": true
+    },
+    {
+      "id": "rave",
+      "slug": "rave",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "reading",
+      "slug": "reading",
+      "family": "frames",
+      "fidelity": "makeemoji-cdn-frames",
+      "offlineReady": true
+    },
+    {
+      "id": "recoil-pop",
+      "slug": "recoil-pop",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "red-alert",
+      "slug": "red-alert",
+      "family": "frames",
+      "fidelity": "makeemoji-cdn-frames",
+      "offlineReady": true
+    },
+    {
+      "id": "reveal",
+      "slug": "reveal",
+      "family": "frames",
+      "fidelity": "makeemoji-cdn-frames",
+      "offlineReady": true
+    },
+    {
+      "id": "rgb-split",
+      "slug": "rgb-split",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "riott",
+      "slug": "riott",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "ripple",
+      "slug": "ripple",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "roll-safe",
+      "slug": "roll-safe",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "rotate-180:➡️",
+      "slug": "rotate-180",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "rotate-45:➡️",
+      "slug": "rotate-45",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "rotate-90:➡️",
+      "slug": "rotate-90",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "rubber",
+      "slug": "rubber",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "rubber-stamp",
+      "slug": "rubber-stamp",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "runn",
+      "slug": "runn",
+      "family": "frames",
+      "fidelity": "makeemoji-cdn-frames",
+      "offlineReady": true
+    },
+    {
+      "id": "runway-landing",
+      "slug": "runway-landing",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "runway-takeoff",
+      "slug": "runway-takeoff",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "sad-blob",
+      "slug": "sad-blob",
+      "family": "atlas",
+      "fidelity": "approximate-composite",
+      "offlineReady": true
+    },
+    {
+      "id": "sadge",
+      "slug": "sadge",
+      "family": "overlay",
+      "fidelity": "makeemoji-overlay",
+      "offlineReady": true
+    },
+    {
+      "id": "saved",
+      "slug": "saved",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "scanline",
+      "slug": "scanline",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "scared",
+      "slug": "scared",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "scroll:➡️",
+      "slug": "scroll",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "shake",
+      "slug": "shake",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "shimmer:➡️",
+      "slug": "shimmer",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "shocked-man",
+      "slug": "shocked-man",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "shruge",
+      "slug": "shruge",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "shudder",
+      "slug": "shudder",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "shy-peek",
+      "slug": "shy-peek",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "side-eye-chloe",
+      "slug": "side-eye-chloe",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "side-eye-dog",
+      "slug": "side-eye-dog",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "sideeye-slide",
+      "slug": "sideeye-slide",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "sign",
+      "slug": "sign",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "sign-mad",
+      "slug": "sign-mad",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "sir",
+      "slug": "sir",
+      "family": "overlay",
+      "fidelity": "makeemoji-overlay",
+      "offlineReady": true
+    },
+    {
+      "id": "sisyphus",
+      "slug": "sisyphus",
+      "family": "frames",
+      "fidelity": "makeemoji-cdn-frames",
+      "offlineReady": true
+    },
+    {
+      "id": "skeleton-dance",
+      "slug": "skeleton-dance",
+      "family": "frames",
+      "fidelity": "makeemoji-cdn-frames",
+      "offlineReady": true
+    },
+    {
+      "id": "skibidi",
+      "slug": "skibidi",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "skid-stop",
+      "slug": "skid-stop",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "slice:➡️",
+      "slug": "slice",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "slide-bounce:➡️",
+      "slug": "slide-bounce",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "slide-spin:➡️",
+      "slug": "slide-spin",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "slide:➡️",
+      "slug": "slide",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "slow-jam",
+      "slug": "slow-jam",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "smadge",
+      "slug": "smadge",
+      "family": "frames",
+      "fidelity": "makeemoji-cdn-frames",
+      "offlineReady": true
+    },
+    {
+      "id": "smart",
+      "slug": "smart",
+      "family": "frames",
+      "fidelity": "makeemoji-cdn-frames",
+      "offlineReady": true
+    },
+    {
+      "id": "smoge",
+      "slug": "smoge",
+      "family": "frames",
+      "fidelity": "makeemoji-cdn-frames",
+      "offlineReady": true
+    },
+    {
+      "id": "snap:➡️",
+      "slug": "snap",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "snorlax",
+      "slug": "snorlax",
+      "family": "frames",
+      "fidelity": "makeemoji-cdn-frames",
+      "offlineReady": true
+    },
+    {
+      "id": "so-cute",
+      "slug": "so-cute",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "solarize-wave",
+      "slug": "solarize-wave",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "sparkle",
+      "slug": "sparkle",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "sparkle-color",
+      "slug": "sparkle-color",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "sparkle-party",
+      "slug": "sparkle-party",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "sparkle-rainbow",
+      "slug": "sparkle-rainbow",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "speechless",
+      "slug": "speechless",
+      "family": "frames",
+      "fidelity": "makeemoji-cdn-frames",
+      "offlineReady": true
+    },
+    {
+      "id": "sphere",
+      "slug": "sphere",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "spin:➡️",
+      "slug": "spin",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "spiral-in",
+      "slug": "spiral-in",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "spiral-zoom",
+      "slug": "spiral-zoom",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "split",
+      "slug": "split",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "spongebob-watching-tv",
+      "slug": "spongebob-watching-tv",
+      "family": "frames",
+      "fidelity": "makeemoji-cdn-frames",
+      "offlineReady": true
+    },
+    {
+      "id": "spongebob-worship",
+      "slug": "spongebob-worship",
+      "family": "frames",
+      "fidelity": "makeemoji-cdn-frames",
+      "offlineReady": true
+    },
+    {
+      "id": "spotlight:➡️",
+      "slug": "spotlight",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "squad",
+      "slug": "squad",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "squish",
+      "slug": "squish",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "squish-pulse",
+      "slug": "squish-pulse",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "stare",
+      "slug": "stare",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "startled-rat",
+      "slug": "startled-rat",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "steer",
+      "slug": "steer",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "stomp",
+      "slug": "stomp",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "stonks",
+      "slug": "stonks",
+      "family": "overlay",
+      "fidelity": "makeemoji-overlay",
+      "offlineReady": true
+    },
+    {
+      "id": "stretch:➡️",
+      "slug": "stretch",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "stripp",
+      "slug": "stripp",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "strobe-soft",
+      "slug": "strobe-soft",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "sure",
+      "slug": "sure",
+      "family": "frames",
+      "fidelity": "makeemoji-cdn-frames",
+      "offlineReady": true
+    },
+    {
+      "id": "surprised-clapping",
+      "slug": "surprised-clapping",
+      "family": "frames",
+      "fidelity": "makeemoji-cdn-frames",
+      "offlineReady": true
+    },
+    {
+      "id": "surprised-pikachu",
+      "slug": "surprised-pikachu",
+      "family": "frames",
+      "fidelity": "makeemoji-cdn-frames",
+      "offlineReady": true
+    },
+    {
+      "id": "suspicion",
+      "slug": "suspicion",
+      "family": "frames",
+      "fidelity": "makeemoji-cdn-frames",
+      "offlineReady": true
+    },
+    {
+      "id": "sway",
+      "slug": "sway",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "sweep",
+      "slug": "sweep",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "swirl",
+      "slug": "swirl",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "swirling",
+      "slug": "swirling",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "teleport",
+      "slug": "teleport",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "thanos-snap",
+      "slug": "thanos-snap",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "thick-3d-flip:➡️",
+      "slug": "thick-3d-flip",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "thing-cat",
+      "slug": "thing-cat",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "think",
+      "slug": "think",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "this-is-fine",
+      "slug": "this-is-fine",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "tidal-wave",
+      "slug": "tidal-wave",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "tilt",
+      "slug": "tilt",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "tilt-nod",
+      "slug": "tilt-nod",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "tilt-zoom:➡️",
+      "slug": "tilt-zoom",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "toilet-bounce",
+      "slug": "toilet-bounce",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "toilet-spin",
+      "slug": "toilet-spin",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "tornado",
+      "slug": "tornado",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "touch-grass",
+      "slug": "touch-grass",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "transmute-reality",
+      "slug": "transmute-reality",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "trash",
+      "slug": "trash",
+      "family": "overlay",
+      "fidelity": "makeemoji-overlay",
+      "offlineReady": true
+    },
+    {
+      "id": "trash-pop",
+      "slug": "trash-pop",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "treasure-chest",
+      "slug": "treasure-chest",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "triggered",
+      "slug": "triggered",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "tsk",
+      "slug": "tsk",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "tsunami",
+      "slug": "tsunami",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "tumble:➡️",
+      "slug": "tumble",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "twirl",
+      "slug": "twirl",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "typing",
+      "slug": "typing",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "underwater",
+      "slug": "underwater",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "unimpressed-cat",
+      "slug": "unimpressed-cat",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "vampire-offers",
+      "slug": "vampire-offers",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "vampire-takes",
+      "slug": "vampire-takes",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "venom",
+      "slug": "venom",
+      "family": "frames",
+      "fidelity": "makeemoji-cdn-frames",
+      "offlineReady": true
+    },
+    {
+      "id": "vibee",
+      "slug": "vibee",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "wave-ocean",
+      "slug": "wave-ocean",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "wave:➡️",
+      "slug": "wave",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "wawa",
+      "slug": "wawa",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "weird",
+      "slug": "weird",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "wildfire",
+      "slug": "wildfire",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "will-presents",
+      "slug": "will-presents",
+      "family": "transform",
+      "fidelity": "approximate-composite",
+      "offlineReady": true
+    },
+    {
+      "id": "willem-dafoe",
+      "slug": "willem-dafoe",
+      "family": "frames",
+      "fidelity": "makeemoji-cdn-frames",
+      "offlineReady": true
+    },
+    {
+      "id": "wipe:➡️",
+      "slug": "wipe",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "wobble",
+      "slug": "wobble",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "wobble-scale",
+      "slug": "wobble-scale",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "wokege",
+      "slug": "wokege",
+      "family": "overlay",
+      "fidelity": "makeemoji-overlay",
+      "offlineReady": true
+    },
+    {
+      "id": "wolverine",
+      "slug": "wolverine",
+      "family": "frames",
+      "fidelity": "makeemoji-cdn-frames",
+      "offlineReady": true
+    },
+    {
+      "id": "wormhole",
+      "slug": "wormhole",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "yes-yes",
+      "slug": "yes-yes",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "zoom",
+      "slug": "zoom",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "zoom-close",
+      "slug": "zoom-close",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    },
+    {
+      "id": "zoom-in",
+      "slug": "zoom-in",
+      "family": "transform",
+      "fidelity": "approximate-procedural",
+      "offlineReady": true
+    }
+  ]
+}

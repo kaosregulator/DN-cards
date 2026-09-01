@@ -75,21 +75,89 @@ function listFrameFiles(dir: string): string[] {
   }).map(f => join(dir, f));
 }
 
+/**
+ * Find the subject hole: the largest transparent region that does NOT touch
+ * the image border (so exterior canvas transparency isn't treated as the hole).
+ * Falls back to transparent pixels inside the opaque artwork's bounding box.
+ */
 function findHole(data: Uint8ClampedArray, w: number, h: number, threshold = 40) {
-  let minX = w, minY = h, maxX = 0, maxY = 0, count = 0, sx = 0, sy = 0;
+  const isClear = (x: number, y: number) => data[(y * w + x) * 4 + 3]! < threshold;
+
+  // Opaque artwork bbox — anchors the search so full-frame clear canvases still work.
+  let oMinX = w, oMinY = h, oMaxX = 0, oMaxY = 0, opaque = 0;
   for (let y = 0; y < h; y++) {
     for (let x = 0; x < w; x++) {
-      const a = data[(y * w + x) * 4 + 3]!;
-      if (a < threshold) {
-        count++; sx += x; sy += y;
-        if (x < minX) minX = x;
-        if (y < minY) minY = y;
-        if (x > maxX) maxX = x;
-        if (y > maxY) maxY = y;
+      if (isClear(x, y)) continue;
+      opaque++;
+      if (x < oMinX) oMinX = x;
+      if (y < oMinY) oMinY = y;
+      if (x > oMaxX) oMaxX = x;
+      if (y > oMaxY) oMaxY = y;
+    }
+  }
+  if (opaque < 16) {
+    return { x: 0, y: 0, w, h, frac: 1 };
+  }
+
+  // Flood-fill clear components; prefer interior ones (not touching the border).
+  const seen = new Uint8Array(w * h);
+  type Region = { minX: number; minY: number; maxX: number; maxY: number; count: number; border: boolean };
+  const regions: Region[] = [];
+
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const idx = y * w + x;
+      if (seen[idx] || !isClear(x, y)) continue;
+      const stack: number[] = [idx];
+      seen[idx] = 1;
+      let minX = x, minY = y, maxX = x, maxY = y, count = 0, border = false;
+      while (stack.length) {
+        const i = stack.pop()!;
+        const cx = i % w, cy = (i / w) | 0;
+        count++;
+        if (cx === 0 || cy === 0 || cx === w - 1 || cy === h - 1) border = true;
+        if (cx < minX) minX = cx;
+        if (cy < minY) minY = cy;
+        if (cx > maxX) maxX = cx;
+        if (cy > maxY) maxY = cy;
+        for (const [nx, ny] of [[cx + 1, cy], [cx - 1, cy], [cx, cy + 1], [cx, cy - 1]] as [number, number][]) {
+          if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
+          const ni = ny * w + nx;
+          if (seen[ni] || !isClear(nx, ny)) continue;
+          seen[ni] = 1;
+          stack.push(ni);
+        }
       }
+      if (count >= 16) regions.push({ minX, minY, maxX, maxY, count, border });
+    }
+  }
+
+  // Prefer the largest interior clear region (the face hole). If none, use clear
+  // pixels strictly inside the opaque artwork bbox.
+  const interior = regions.filter(r => !r.border).sort((a, b) => b.count - a.count);
+  if (interior[0]) {
+    const r = interior[0];
+    return {
+      x: r.minX, y: r.minY,
+      w: r.maxX - r.minX + 1, h: r.maxY - r.minY + 1,
+      frac: r.count / (w * h),
+    };
+  }
+
+  // Fallback: transparent pixels inside the opaque bbox (inset 1px).
+  let minX = w, minY = h, maxX = 0, maxY = 0, count = 0;
+  for (let y = oMinY + 1; y < oMaxY; y++) {
+    for (let x = oMinX + 1; x < oMaxX; x++) {
+      if (!isClear(x, y)) continue;
+      count++;
+      if (x < minX) minX = x;
+      if (y < minY) minY = y;
+      if (x > maxX) maxX = x;
+      if (y > maxY) maxY = y;
     }
   }
   if (count < 16) {
+    // No real hole — place subject centred under the whole overlay.
     return { x: 0, y: 0, w, h, frac: 1 };
   }
   return {
@@ -112,15 +180,45 @@ export interface SequenceComposeInput {
   maxFrames?: number;
 }
 
-/** Detect an N×N (or N×M) sprite grid and return tile size, or null. */
-function detectTileSize(w: number, h: number, data: Uint8ClampedArray): number | null {
-  type Cand = { tw: number; cols: number; rows: number; vari: number; nonempty: number };
+/**
+ * Detect a regular sprite-sheet grid and return tile width/height.
+ *
+ * MakeEmoji packs many animated styles as one WebP with N×M cells. Drawing
+ * that sheet whole is what produced the "subject tiled across the canvas"
+ * bug — every cell's hole showed the same stretched subject. We must slice
+ * first. Returns null when the image is a single full-frame overlay.
+ */
+function detectTileSize(
+  w: number,
+  h: number,
+  data: Uint8ClampedArray,
+): { tw: number; th: number } | null {
+  type Cand = {
+    tw: number; th: number; cols: number; rows: number;
+    vari: number; nonempty: number; cells: number; bleed: number;
+  };
   const cands: Cand[] = [];
-  for (const tw of [56, 64, 68, 72, 80, 96, 112, 128, 136, 152, 170, 208]) {
+
+  // Prefer common MakeEmoji cell sizes, then any divisor that yields 4–64 cells.
+  const preferred = [56, 64, 68, 72, 80, 96, 102, 104, 112, 128, 130, 136, 152, 170, 208];
+  const twSet = new Set<number>(preferred);
+  for (let d = 48; d <= Math.min(w, h); d++) {
+    if (w % d === 0 && h % d === 0) twSet.add(d);
+  }
+
+  // Individual CDN frames are already 128×128 (or similar). Never treat a
+  // near-emoji-sized image as a sheet — that reintroduces the grid bug by
+  // carving one overlay into a 2×2 of garbage tiles.
+  if (w <= 160 && h <= 160) return null;
+
+  for (const tw of twSet) {
     if (w % tw !== 0 || h % tw !== 0) continue;
     const cols = w / tw, rows = h / tw;
     const cells = cols * rows;
-    if (cells < 4 || cells > 36) continue;
+    // Need a real grid (at least 3×2 / 2×3), not a 2×2 crop of a single frame.
+    if (cells < 6 || cells > 64) continue;
+    if (cols < 2 || rows < 2) continue;
+
     const opaque: number[] = [];
     for (let r = 0; r < rows; r++) {
       for (let c = 0; c < cols; c++) {
@@ -137,71 +235,96 @@ function detectTileSize(w: number, h: number, data: Uint8ClampedArray): number |
     const mean = opaque.reduce((a, b) => a + b, 0) / opaque.length;
     const vari = opaque.reduce((a, b) => a + (b - mean) ** 2, 0) / opaque.length;
     const nonempty = opaque.filter(t => t > tw * tw * 0.01).length;
-    cands.push({ tw, cols, rows, vari, nonempty });
+    // Real sheets have several populated cells with uneven fill (idle vs active).
+    // Reject near-uniform grids (a full-bleed overlay wrongly divisible into tiles).
+    if (nonempty < 4) continue;
+    if (vari < 100) continue;
+
+    // Edge bleed: wrong tile sizes cut through sprites so opaque pixels hug
+    // the cell border. Prefer grids where content sits inside the cell.
+    let edgeBleed = 0, edgeSamples = 0;
+    const band = Math.max(1, Math.floor(tw * 0.08));
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        // Skip empty cells
+        const cellOp = opaque[r * cols + c]!;
+        if (cellOp <= tw * tw * 0.01) continue;
+        for (let y = 0; y < tw; y += 2) {
+          for (let x = 0; x < tw; x += 2) {
+            const onEdge = x < band || y < band || x >= tw - band || y >= tw - band;
+            if (!onEdge) continue;
+            edgeSamples++;
+            const gx = c * tw + x, gy = r * tw + y;
+            if (data[(gy * w + gx) * 4 + 3]! > 40) edgeBleed++;
+          }
+        }
+      }
+    }
+    const bleed = edgeSamples ? edgeBleed / edgeSamples : 1;
+    cands.push({ tw, th: tw, cols, rows, vari, nonempty, cells, bleed });
   }
-  cands.sort((a, b) => b.vari - a.vari);
-  const best = cands.find(c => c.nonempty >= 4 && c.vari > 100);
-  return best?.tw ?? null;
+
+  // Prefer:
+  //  1. Low edge bleed (tiles don't cut through neighbouring sprites)
+  //  2. Nonempty count in a typical animation range (6–24)
+  //  3. Higher variance as a weak tie-break
+  cands.sort((a, b) => {
+    const bleedDelta = a.bleed - b.bleed;
+    if (Math.abs(bleedDelta) > 0.04) return bleedDelta;
+    const ideal = (n: number) => (n >= 6 && n <= 24 ? 1000 + n : n);
+    const idealDelta = ideal(b.nonempty) - ideal(a.nonempty);
+    if (idealDelta !== 0) return idealDelta;
+    return b.vari - a.vari;
+  });
+  const best = cands[0];
+  return best ? { tw: best.tw, th: best.th } : null;
 }
 
-/**
- * Expand atlas files into per-frame overlay images.
- * Multi-chunk atlases → one frame per chunk.
- * Single-chunk sprite sheets → sliced tiles.
- */
-async function expandToOverlayFrames(
+type OverlayFrame = {
+  img: Awaited<ReturnType<CanvasMod["loadImage"]>>;
+  w: number;
+  h: number;
+};
+
+/** Slice one image file into overlay frames (sprite sheet → tiles, else whole). */
+async function expandOneFile(
   mod: CanvasMod,
-  files: string[],
+  file: string,
   maxFrames: number,
-): Promise<Array<{ img: Awaited<ReturnType<CanvasMod["loadImage"]>>; w: number; h: number }>> {
-  const out: Array<{ img: Awaited<ReturnType<CanvasMod["loadImage"]>>; w: number; h: number }> = [];
-
-  // Multi-chunk: treat each file as a frame (sample if huge).
-  if (files.length > 1) {
-    const used = files.length > maxFrames
-      ? files.filter((_, i) => i % Math.ceil(files.length / maxFrames) === 0).slice(0, maxFrames)
-      : files;
-    for (const file of used) {
-      try {
-        const img = await mod.loadImage(readFileSync(file));
-        out.push({ img, w: img.width, h: img.height });
-      } catch { /* skip */ }
-    }
-    return out;
-  }
-
-  // Single file: maybe a sprite sheet.
-  const file = files[0]!;
+): Promise<OverlayFrame[]> {
+  const out: OverlayFrame[] = [];
   const buf = readFileSync(file);
   const probeImg = await mod.loadImage(buf);
   const probe: Canvas = mod.createCanvas(probeImg.width, probeImg.height);
   const probeCtx = probe.getContext("2d") as unknown as Ctx & PixelCtx;
+  probeCtx.clearRect(0, 0, probeImg.width, probeImg.height);
   probeCtx.drawImage(probeImg as unknown as Canvas, 0, 0, probeImg.width, probeImg.height);
   const raw = probeCtx.getImageData(0, 0, probeImg.width, probeImg.height);
-  const tw = detectTileSize(probeImg.width, probeImg.height, raw.data);
+  const tile = detectTileSize(probeImg.width, probeImg.height, raw.data);
 
-  if (tw) {
+  if (tile) {
+    const { tw, th } = tile;
     const cols = probeImg.width / tw;
-    const rows = probeImg.height / tw;
-    // Use sharp for clean tile crops when available.
+    const rows = probeImg.height / th;
     try {
       const sharp = (await import("sharp")).default;
       for (let r = 0; r < rows; r++) {
         for (let c = 0; c < cols; c++) {
           if (out.length >= maxFrames) break;
-          const tile = await sharp(buf)
-            .extract({ left: c * tw, top: r * tw, width: tw, height: tw })
+          const cropped = await sharp(buf)
+            .extract({ left: c * tw, top: r * th, width: tw, height: th })
             .ensureAlpha()
             .raw()
             .toBuffer({ resolveWithObject: true });
           let op = 0;
-          for (let i = 3; i < tile.data.length; i += 4) if (tile.data[i]! > 40) op++;
-          if (op < tw * tw * 0.02) continue;
-          const png = await sharp(tile.data, {
-            raw: { width: tw, height: tw, channels: 4 },
+          for (let i = 3; i < cropped.data.length; i += 4) if (cropped.data[i]! > 40) op++;
+          // Skip empty / nearly-empty cells in a sparse atlas.
+          if (op < tw * th * 0.02) continue;
+          const png = await sharp(cropped.data, {
+            raw: { width: tw, height: th, channels: 4 },
           }).png().toBuffer();
           const img = await mod.loadImage(png);
-          out.push({ img, w: tw, h: tw });
+          out.push({ img, w: tw, h: th });
         }
       }
     } catch {
@@ -212,6 +335,39 @@ async function expandToOverlayFrames(
   if (out.length === 0) {
     out.push({ img: probeImg, w: probeImg.width, h: probeImg.height });
   }
+  return out;
+}
+
+/**
+ * Expand atlas/frame files into per-frame overlay images.
+ *
+ * - Numbered PNG frame dirs → one overlay per file (already individual frames).
+ * - Sprite-sheet WebPs (one or many chunks) → sliced into cells; NEVER drawn whole.
+ * - Multi-chunk atlases whose chunks are already full frames → one overlay per chunk.
+ */
+async function expandToOverlayFrames(
+  mod: CanvasMod,
+  files: string[],
+  maxFrames: number,
+): Promise<OverlayFrame[]> {
+  const out: OverlayFrame[] = [];
+
+  // Sample files when there are far more than we will encode.
+  const used = files.length > maxFrames
+    ? files.filter((_, i) => i % Math.ceil(files.length / maxFrames) === 0).slice(0, maxFrames)
+    : files;
+
+  for (const file of used) {
+    if (out.length >= maxFrames) break;
+    try {
+      const frames = await expandOneFile(mod, file, maxFrames - out.length);
+      // If a "chunk" expands into many tiles, those ARE the animation frames —
+      // take them all (up to the cap). If it stays one frame, append and continue
+      // to the next chunk.
+      out.push(...frames);
+    } catch { /* skip unreadable */ }
+  }
+
   return out;
 }
 
@@ -268,8 +424,11 @@ export async function composeSequence(input: SequenceComposeInput): Promise<Uint
     const dy = holeBox.y + (holeBox.h - fitted.h) / 2;
 
     const frameCanvas: Canvas = mod.createCanvas(size, size);
-    const ctx = frameCanvas.getContext("2d") as unknown as Ctx & PixelCtx;
+    const ctx = frameCanvas.getContext("2d") as unknown as Ctx & PixelCtx & {
+      imageSmoothingEnabled: boolean;
+    };
     ctx.clearRect(0, 0, size, size);
+    ctx.imageSmoothingEnabled = true;
     ctx.drawImage(subject as unknown as Canvas, dx, dy, fitted.w, fitted.h);
     ctx.drawImage(overlay.img as unknown as Canvas, 0, 0, size, size);
 

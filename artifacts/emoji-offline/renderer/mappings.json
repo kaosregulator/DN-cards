@@ -1,7 +1,7 @@
 {
   "version": "2.1.0",
   "description": "MakeEmoji style → offline recipe primitive. Only offlineReady styles render.",
-  "count": 473,
+  "count": 470,
   "mappings": [
     {
       "styleId": "none",
@@ -77,15 +77,15 @@
     },
     {
       "styleId": "lightspeed-jump",
-      "family": "atlas",
-      "primitive": "atlas",
-      "fidelity": "approximate-composite"
+      "family": "frames",
+      "primitive": "frames",
+      "fidelity": "makeemoji-cdn-frames"
     },
     {
       "styleId": "lightsaber",
       "family": "transform",
       "primitive": "wobble",
-      "fidelity": "approximate-procedural"
+      "fidelity": "makeemoji-overlay"
     },
     {
       "styleId": "shake",
@@ -103,37 +103,37 @@
       "styleId": "peepo",
       "family": "overlay",
       "primitive": "overlay_hole",
-      "fidelity": "approximate-composite"
+      "fidelity": "makeemoji-overlay"
     },
     {
       "styleId": "peepo-sit",
       "family": "overlay",
       "primitive": "overlay_hole",
-      "fidelity": "approximate-composite"
+      "fidelity": "makeemoji-overlay"
     },
     {
       "styleId": "peepo-stop",
       "family": "overlay",
       "primitive": "overlay_hole",
-      "fidelity": "approximate-composite"
+      "fidelity": "makeemoji-overlay"
     },
     {
       "styleId": "peepo-shy",
       "family": "overlay",
       "primitive": "overlay_hole",
-      "fidelity": "approximate-composite"
+      "fidelity": "makeemoji-overlay"
     },
     {
       "styleId": "peepo-want",
       "family": "overlay",
       "primitive": "overlay_hole",
-      "fidelity": "approximate-composite"
+      "fidelity": "makeemoji-overlay"
     },
     {
       "styleId": "peepo-love",
       "family": "overlay",
       "primitive": "overlay_hole",
-      "fidelity": "approximate-composite"
+      "fidelity": "makeemoji-overlay"
     },
     {
       "styleId": "enter",
@@ -205,73 +205,73 @@
       "styleId": "pumpkin",
       "family": "overlay",
       "primitive": "overlay_hole",
-      "fidelity": "approximate-composite"
+      "fidelity": "makeemoji-overlay"
     },
     {
       "styleId": "pumpkin2",
       "family": "overlay",
       "primitive": "overlay_hole",
-      "fidelity": "approximate-composite"
+      "fidelity": "makeemoji-overlay"
     },
     {
       "styleId": "cute-ghost",
-      "family": "atlas",
-      "primitive": "atlas",
-      "fidelity": "approximate-composite"
+      "family": "frames",
+      "primitive": "frames",
+      "fidelity": "makeemoji-cdn-frames"
     },
     {
       "styleId": "pumpkin-surprise",
       "family": "frames",
       "primitive": "frames",
-      "fidelity": "approximate-composite"
+      "fidelity": "makeemoji-cdn-frames"
     },
     {
       "styleId": "pumpkin-give",
-      "family": "atlas",
-      "primitive": "atlas",
-      "fidelity": "approximate-composite"
+      "family": "frames",
+      "primitive": "frames",
+      "fidelity": "makeemoji-cdn-frames"
     },
     {
       "styleId": "pumpkin-take",
-      "family": "atlas",
-      "primitive": "atlas",
-      "fidelity": "approximate-composite"
+      "family": "frames",
+      "primitive": "frames",
+      "fidelity": "makeemoji-cdn-frames"
     },
     {
       "styleId": "skeleton-dance",
-      "family": "atlas",
-      "primitive": "atlas",
-      "fidelity": "approximate-composite"
+      "family": "frames",
+      "primitive": "frames",
+      "fidelity": "makeemoji-cdn-frames"
     },
     {
       "styleId": "green-fire",
-      "family": "atlas",
-      "primitive": "atlas",
-      "fidelity": "approximate-composite"
+      "family": "frames",
+      "primitive": "frames",
+      "fidelity": "makeemoji-cdn-frames"
     },
     {
       "styleId": "floating-pumpkins",
-      "family": "atlas",
-      "primitive": "atlas",
-      "fidelity": "approximate-composite"
+      "family": "frames",
+      "primitive": "frames",
+      "fidelity": "makeemoji-cdn-frames"
     },
     {
       "styleId": "rare-ghost",
-      "family": "atlas",
-      "primitive": "atlas",
-      "fidelity": "approximate-composite"
+      "family": "frames",
+      "primitive": "frames",
+      "fidelity": "makeemoji-cdn-frames"
     },
     {
       "styleId": "pumpkin-cat",
-      "family": "atlas",
-      "primitive": "atlas",
-      "fidelity": "approximate-composite"
+      "family": "frames",
+      "primitive": "frames",
+      "fidelity": "makeemoji-cdn-frames"
     },
     {
       "styleId": "purple-stars",
-      "family": "atlas",
-      "primitive": "atlas",
-      "fidelity": "approximate-composite"
+      "family": "frames",
+      "primitive": "frames",
+      "fidelity": "makeemoji-cdn-frames"
     },
     {
       "styleId": "vampire-offers",
@@ -293,39 +293,39 @@
     },
     {
       "styleId": "pikachu",
-      "family": "atlas",
-      "primitive": "atlas",
-      "fidelity": "approximate-composite"
+      "family": "frames",
+      "primitive": "frames",
+      "fidelity": "makeemoji-cdn-frames"
     },
     {
       "styleId": "pika-stand",
-      "family": "atlas",
-      "primitive": "atlas",
-      "fidelity": "approximate-composite"
+      "family": "frames",
+      "primitive": "frames",
+      "fidelity": "makeemoji-cdn-frames"
     },
     {
       "styleId": "surprised-pikachu",
       "family": "frames",
       "primitive": "frames",
-      "fidelity": "approximate-composite"
+      "fidelity": "makeemoji-cdn-frames"
     },
     {
       "styleId": "gengar",
-      "family": "atlas",
-      "primitive": "atlas",
-      "fidelity": "approximate-composite"
+      "family": "frames",
+      "primitive": "frames",
+      "fidelity": "makeemoji-cdn-frames"
     },
     {
       "styleId": "snorlax",
-      "family": "atlas",
-      "primitive": "atlas",
-      "fidelity": "approximate-composite"
+      "family": "frames",
+      "primitive": "frames",
+      "fidelity": "makeemoji-cdn-frames"
     },
     {
       "styleId": "ditto",
-      "family": "atlas",
-      "primitive": "atlas",
-      "fidelity": "approximate-composite"
+      "family": "frames",
+      "primitive": "frames",
+      "fidelity": "makeemoji-cdn-frames"
     },
     {
       "styleId": "jumping-on-the-bed",
@@ -353,15 +353,15 @@
     },
     {
       "styleId": "runn",
-      "family": "atlas",
-      "primitive": "atlas",
-      "fidelity": "approximate-composite"
+      "family": "frames",
+      "primitive": "frames",
+      "fidelity": "makeemoji-cdn-frames"
     },
     {
       "styleId": "pepe-meltdown",
-      "family": "atlas",
-      "primitive": "atlas",
-      "fidelity": "approximate-composite"
+      "family": "frames",
+      "primitive": "frames",
+      "fidelity": "makeemoji-cdn-frames"
     },
     {
       "styleId": "pp-hopper",
@@ -371,27 +371,9 @@
     },
     {
       "styleId": "pokeball-emerge",
-      "family": "atlas",
-      "primitive": "atlas",
-      "fidelity": "approximate-composite"
-    },
-    {
-      "styleId": "pokeball-go",
-      "family": "transform",
-      "primitive": "rainbow",
-      "fidelity": "approximate-procedural"
-    },
-    {
-      "styleId": "pokeball-capture",
-      "family": "transform",
-      "primitive": "rainbow",
-      "fidelity": "approximate-procedural"
-    },
-    {
-      "styleId": "pokeball-almost",
-      "family": "transform",
-      "primitive": "rainbow",
-      "fidelity": "approximate-procedural"
+      "family": "frames",
+      "primitive": "frames",
+      "fidelity": "makeemoji-cdn-frames"
     },
     {
       "styleId": "rainbow-bloom",
@@ -415,19 +397,19 @@
       "styleId": "lolface",
       "family": "frames",
       "primitive": "frames",
-      "fidelity": "approximate-composite"
+      "fidelity": "makeemoji-cdn-frames"
     },
     {
       "styleId": "blob-smiley",
       "family": "frames",
       "primitive": "frames",
-      "fidelity": "approximate-composite"
+      "fidelity": "makeemoji-cdn-frames"
     },
     {
       "styleId": "flag",
-      "family": "atlas",
-      "primitive": "atlas",
-      "fidelity": "approximate-composite"
+      "family": "frames",
+      "primitive": "frames",
+      "fidelity": "makeemoji-cdn-frames"
     },
     {
       "styleId": "pepe-flag",
@@ -439,13 +421,13 @@
       "styleId": "frog-flag",
       "family": "frames",
       "primitive": "frames",
-      "fidelity": "approximate-composite"
+      "fidelity": "makeemoji-cdn-frames"
     },
     {
       "styleId": "sisyphus",
       "family": "frames",
       "primitive": "frames",
-      "fidelity": "approximate-composite"
+      "fidelity": "makeemoji-cdn-frames"
     },
     {
       "styleId": "hype",
@@ -467,51 +449,51 @@
     },
     {
       "styleId": "claude-fu",
-      "family": "atlas",
-      "primitive": "atlas",
-      "fidelity": "approximate-composite"
+      "family": "frames",
+      "primitive": "frames",
+      "fidelity": "makeemoji-cdn-frames"
     },
     {
       "styleId": "claude-jam",
-      "family": "atlas",
-      "primitive": "atlas",
-      "fidelity": "approximate-composite"
+      "family": "frames",
+      "primitive": "frames",
+      "fidelity": "makeemoji-cdn-frames"
     },
     {
       "styleId": "claude-dancing",
-      "family": "atlas",
-      "primitive": "atlas",
-      "fidelity": "approximate-composite"
+      "family": "frames",
+      "primitive": "frames",
+      "fidelity": "makeemoji-cdn-frames"
     },
     {
       "styleId": "claude-idea",
-      "family": "atlas",
-      "primitive": "atlas",
-      "fidelity": "approximate-composite"
+      "family": "frames",
+      "primitive": "frames",
+      "fidelity": "makeemoji-cdn-frames"
     },
     {
       "styleId": "claude-code",
-      "family": "atlas",
-      "primitive": "atlas",
-      "fidelity": "approximate-composite"
+      "family": "frames",
+      "primitive": "frames",
+      "fidelity": "makeemoji-cdn-frames"
     },
     {
       "styleId": "claude-football",
-      "family": "atlas",
-      "primitive": "atlas",
-      "fidelity": "approximate-composite"
+      "family": "frames",
+      "primitive": "frames",
+      "fidelity": "makeemoji-cdn-frames"
     },
     {
       "styleId": "angel",
       "family": "overlay",
       "primitive": "overlay_hole",
-      "fidelity": "approximate-composite"
+      "fidelity": "makeemoji-overlay"
     },
     {
       "styleId": "blame",
       "family": "overlay",
       "primitive": "overlay_hole",
-      "fidelity": "approximate-composite"
+      "fidelity": "makeemoji-overlay"
     },
     {
       "styleId": "blame-animated",
@@ -529,13 +511,13 @@
       "styleId": "sir",
       "family": "overlay",
       "primitive": "overlay_hole",
-      "fidelity": "approximate-composite"
+      "fidelity": "makeemoji-overlay"
     },
     {
       "styleId": "pepe",
       "family": "overlay",
       "primitive": "overlay_hole",
-      "fidelity": "approximate-composite"
+      "fidelity": "makeemoji-overlay"
     },
     {
       "styleId": "prayge",
@@ -553,25 +535,25 @@
       "styleId": "sadge",
       "family": "overlay",
       "primitive": "overlay_hole",
-      "fidelity": "approximate-composite"
+      "fidelity": "makeemoji-overlay"
     },
     {
       "styleId": "pepe-cheer",
       "family": "overlay",
       "primitive": "overlay_hole",
-      "fidelity": "approximate-composite"
+      "fidelity": "makeemoji-overlay"
     },
     {
       "styleId": "pepe-dab",
       "family": "overlay",
       "primitive": "overlay_hole",
-      "fidelity": "approximate-composite"
+      "fidelity": "makeemoji-overlay"
     },
     {
       "styleId": "pepega",
       "family": "overlay",
       "primitive": "overlay_hole",
-      "fidelity": "approximate-composite"
+      "fidelity": "makeemoji-overlay"
     },
     {
       "styleId": "laser-eyes",
@@ -589,37 +571,37 @@
       "styleId": "crying-laughing",
       "family": "overlay",
       "primitive": "overlay_hole",
-      "fidelity": "approximate-composite"
+      "fidelity": "makeemoji-overlay"
     },
     {
       "styleId": "stonks",
       "family": "overlay",
       "primitive": "overlay_hole",
-      "fidelity": "approximate-composite"
+      "fidelity": "makeemoji-overlay"
     },
     {
       "styleId": "not-stonks",
       "family": "overlay",
       "primitive": "overlay_hole",
-      "fidelity": "approximate-composite"
+      "fidelity": "makeemoji-overlay"
     },
     {
       "styleId": "coggers",
       "family": "overlay",
       "primitive": "overlay_hole",
-      "fidelity": "approximate-composite"
+      "fidelity": "makeemoji-overlay"
     },
     {
       "styleId": "wokege",
       "family": "overlay",
       "primitive": "overlay_hole",
-      "fidelity": "approximate-composite"
+      "fidelity": "makeemoji-overlay"
     },
     {
       "styleId": "heyyeyaa",
       "family": "overlay",
       "primitive": "overlay_hole",
-      "fidelity": "approximate-composite"
+      "fidelity": "makeemoji-overlay"
     },
     {
       "styleId": "spin:➡️",
@@ -637,55 +619,55 @@
       "styleId": "glorp",
       "family": "overlay",
       "primitive": "overlay_hole",
-      "fidelity": "approximate-composite"
+      "fidelity": "makeemoji-overlay"
     },
     {
       "styleId": "glorpa",
       "family": "frames",
       "primitive": "frames",
-      "fidelity": "approximate-composite"
+      "fidelity": "makeemoji-cdn-frames"
     },
     {
       "styleId": "glorming:➡️",
-      "family": "atlas",
-      "primitive": "atlas",
-      "fidelity": "approximate-composite"
+      "family": "frames",
+      "primitive": "frames",
+      "fidelity": "makeemoji-cdn-frames"
     },
     {
       "styleId": "labubu",
       "family": "overlay",
       "primitive": "overlay_hole",
-      "fidelity": "approximate-composite"
+      "fidelity": "makeemoji-overlay"
     },
     {
       "styleId": "hazmat",
       "family": "overlay",
       "primitive": "overlay_hole",
-      "fidelity": "approximate-composite"
+      "fidelity": "makeemoji-overlay"
     },
     {
       "styleId": "hazmat-2",
       "family": "overlay",
       "primitive": "overlay_hole",
-      "fidelity": "approximate-composite"
+      "fidelity": "makeemoji-overlay"
     },
     {
       "styleId": "hoodie",
       "family": "overlay",
       "primitive": "overlay_hole",
-      "fidelity": "approximate-composite"
+      "fidelity": "makeemoji-overlay"
     },
     {
       "styleId": "oui-oui",
       "family": "overlay",
       "primitive": "overlay_hole",
-      "fidelity": "approximate-composite"
+      "fidelity": "makeemoji-overlay"
     },
     {
       "styleId": "cowboy",
       "family": "overlay",
       "primitive": "overlay_hole",
-      "fidelity": "approximate-composite"
+      "fidelity": "makeemoji-overlay"
     },
     {
       "styleId": "burn",
@@ -715,13 +697,13 @@
       "styleId": "bat-signal",
       "family": "frames",
       "primitive": "frames",
-      "fidelity": "approximate-composite"
+      "fidelity": "makeemoji-cdn-frames"
     },
     {
       "styleId": "bat-signal-scene",
       "family": "frames",
       "primitive": "frames",
-      "fidelity": "approximate-composite"
+      "fidelity": "makeemoji-cdn-frames"
     },
     {
       "styleId": "blankies",
@@ -737,315 +719,315 @@
     },
     {
       "styleId": "let-me-in",
-      "family": "atlas",
-      "primitive": "atlas",
-      "fidelity": "approximate-composite"
+      "family": "frames",
+      "primitive": "frames",
+      "fidelity": "makeemoji-cdn-frames"
     },
     {
       "styleId": "keanu-thanks",
-      "family": "atlas",
-      "primitive": "atlas",
-      "fidelity": "approximate-composite"
+      "family": "frames",
+      "primitive": "frames",
+      "fidelity": "makeemoji-cdn-frames"
     },
     {
       "styleId": "red-alert",
-      "family": "atlas",
-      "primitive": "atlas",
-      "fidelity": "approximate-composite"
+      "family": "frames",
+      "primitive": "frames",
+      "fidelity": "makeemoji-cdn-frames"
     },
     {
       "styleId": "facepalm",
       "family": "frames",
       "primitive": "frames",
-      "fidelity": "approximate-composite"
+      "fidelity": "makeemoji-cdn-frames"
     },
     {
       "styleId": "smart",
-      "family": "atlas",
-      "primitive": "atlas",
-      "fidelity": "approximate-composite"
+      "family": "frames",
+      "primitive": "frames",
+      "fidelity": "makeemoji-cdn-frames"
     },
     {
       "styleId": "fry",
       "family": "frames",
       "primitive": "frames",
-      "fidelity": "approximate-composite"
+      "fidelity": "makeemoji-cdn-frames"
     },
     {
       "styleId": "blush",
-      "family": "atlas",
-      "primitive": "atlas",
-      "fidelity": "approximate-composite"
+      "family": "frames",
+      "primitive": "frames",
+      "fidelity": "makeemoji-cdn-frames"
     },
     {
       "styleId": "leave-me-alone",
-      "family": "atlas",
-      "primitive": "atlas",
-      "fidelity": "approximate-composite"
+      "family": "frames",
+      "primitive": "frames",
+      "fidelity": "makeemoji-cdn-frames"
     },
     {
       "styleId": "mine-block",
-      "family": "atlas",
-      "primitive": "atlas",
-      "fidelity": "approximate-composite"
+      "family": "frames",
+      "primitive": "frames",
+      "fidelity": "makeemoji-cdn-frames"
     },
     {
       "styleId": "phone-time",
-      "family": "atlas",
-      "primitive": "atlas",
-      "fidelity": "approximate-composite"
+      "family": "frames",
+      "primitive": "frames",
+      "fidelity": "makeemoji-cdn-frames"
     },
     {
       "styleId": "ice-cube",
-      "family": "atlas",
-      "primitive": "atlas",
-      "fidelity": "approximate-composite"
+      "family": "frames",
+      "primitive": "frames",
+      "fidelity": "makeemoji-cdn-frames"
     },
     {
       "styleId": "cat-ears",
-      "family": "atlas",
-      "primitive": "atlas",
-      "fidelity": "approximate-composite"
+      "family": "frames",
+      "primitive": "frames",
+      "fidelity": "makeemoji-cdn-frames"
     },
     {
       "styleId": "wolverine",
-      "family": "atlas",
-      "primitive": "atlas",
-      "fidelity": "approximate-composite"
+      "family": "frames",
+      "primitive": "frames",
+      "fidelity": "makeemoji-cdn-frames"
     },
     {
       "styleId": "courage-scream",
-      "family": "atlas",
-      "primitive": "atlas",
-      "fidelity": "approximate-composite"
+      "family": "frames",
+      "primitive": "frames",
+      "fidelity": "makeemoji-cdn-frames"
     },
     {
       "styleId": "spongebob-worship",
-      "family": "atlas",
-      "primitive": "atlas",
-      "fidelity": "approximate-composite"
+      "family": "frames",
+      "primitive": "frames",
+      "fidelity": "makeemoji-cdn-frames"
     },
     {
       "styleId": "bubbles",
-      "family": "atlas",
-      "primitive": "atlas",
-      "fidelity": "approximate-composite"
+      "family": "frames",
+      "primitive": "frames",
+      "fidelity": "makeemoji-cdn-frames"
     },
     {
       "styleId": "boooo",
-      "family": "atlas",
-      "primitive": "atlas",
-      "fidelity": "approximate-composite"
+      "family": "frames",
+      "primitive": "frames",
+      "fidelity": "makeemoji-cdn-frames"
     },
     {
       "styleId": "pat",
-      "family": "atlas",
-      "primitive": "atlas",
-      "fidelity": "approximate-composite"
+      "family": "frames",
+      "primitive": "frames",
+      "fidelity": "makeemoji-cdn-frames"
     },
     {
       "styleId": "cleaning",
-      "family": "atlas",
-      "primitive": "atlas",
-      "fidelity": "approximate-composite"
+      "family": "frames",
+      "primitive": "frames",
+      "fidelity": "makeemoji-cdn-frames"
     },
     {
       "styleId": "blanket",
-      "family": "atlas",
-      "primitive": "atlas",
-      "fidelity": "approximate-composite"
+      "family": "frames",
+      "primitive": "frames",
+      "fidelity": "makeemoji-cdn-frames"
     },
     {
       "styleId": "middle-fingers",
-      "family": "atlas",
-      "primitive": "atlas",
-      "fidelity": "approximate-composite"
+      "family": "frames",
+      "primitive": "frames",
+      "fidelity": "makeemoji-cdn-frames"
     },
     {
       "styleId": "doesnt-know",
-      "family": "atlas",
-      "primitive": "atlas",
-      "fidelity": "approximate-composite"
+      "family": "frames",
+      "primitive": "frames",
+      "fidelity": "makeemoji-cdn-frames"
     },
     {
       "styleId": "venom",
-      "family": "atlas",
-      "primitive": "atlas",
-      "fidelity": "approximate-composite"
+      "family": "frames",
+      "primitive": "frames",
+      "fidelity": "makeemoji-cdn-frames"
     },
     {
       "styleId": "mustache-glasses",
       "family": "frames",
       "primitive": "frames",
-      "fidelity": "approximate-composite"
+      "fidelity": "makeemoji-cdn-frames"
     },
     {
       "styleId": "comfy",
       "family": "frames",
       "primitive": "frames",
-      "fidelity": "approximate-composite"
+      "fidelity": "makeemoji-cdn-frames"
     },
     {
       "styleId": "jail-time",
-      "family": "atlas",
-      "primitive": "atlas",
-      "fidelity": "approximate-composite"
+      "family": "frames",
+      "primitive": "frames",
+      "fidelity": "makeemoji-cdn-frames"
     },
     {
       "styleId": "pixar-think",
-      "family": "atlas",
-      "primitive": "atlas",
-      "fidelity": "approximate-composite"
+      "family": "frames",
+      "primitive": "frames",
+      "fidelity": "makeemoji-cdn-frames"
     },
     {
       "styleId": "reading",
-      "family": "atlas",
-      "primitive": "atlas",
-      "fidelity": "approximate-composite"
+      "family": "frames",
+      "primitive": "frames",
+      "fidelity": "makeemoji-cdn-frames"
     },
     {
       "styleId": "binoculars",
       "family": "frames",
       "primitive": "frames",
-      "fidelity": "approximate-composite"
+      "fidelity": "makeemoji-cdn-frames"
     },
     {
       "styleId": "spongebob-watching-tv",
-      "family": "atlas",
-      "primitive": "atlas",
-      "fidelity": "approximate-composite"
+      "family": "frames",
+      "primitive": "frames",
+      "fidelity": "makeemoji-cdn-frames"
     },
     {
       "styleId": "reveal",
-      "family": "atlas",
-      "primitive": "atlas",
-      "fidelity": "approximate-composite"
+      "family": "frames",
+      "primitive": "frames",
+      "fidelity": "makeemoji-cdn-frames"
     },
     {
       "styleId": "concerned",
       "family": "frames",
       "primitive": "frames",
-      "fidelity": "approximate-composite"
+      "fidelity": "makeemoji-cdn-frames"
     },
     {
       "styleId": "huh",
-      "family": "atlas",
-      "primitive": "atlas",
-      "fidelity": "approximate-composite"
+      "family": "frames",
+      "primitive": "frames",
+      "fidelity": "makeemoji-cdn-frames"
     },
     {
       "styleId": "speechless",
-      "family": "atlas",
-      "primitive": "atlas",
-      "fidelity": "approximate-composite"
+      "family": "frames",
+      "primitive": "frames",
+      "fidelity": "makeemoji-cdn-frames"
     },
     {
       "styleId": "suspicion",
       "family": "frames",
       "primitive": "frames",
-      "fidelity": "approximate-composite"
+      "fidelity": "makeemoji-cdn-frames"
     },
     {
       "styleId": "anticipation",
       "family": "frames",
       "primitive": "frames",
-      "fidelity": "approximate-composite"
+      "fidelity": "makeemoji-cdn-frames"
     },
     {
       "styleId": "surprised-clapping",
-      "family": "atlas",
-      "primitive": "atlas",
-      "fidelity": "approximate-composite"
+      "family": "frames",
+      "primitive": "frames",
+      "fidelity": "makeemoji-cdn-frames"
     },
     {
       "styleId": "drake-duh",
-      "family": "atlas",
-      "primitive": "atlas",
-      "fidelity": "approximate-composite"
+      "family": "frames",
+      "primitive": "frames",
+      "fidelity": "makeemoji-cdn-frames"
     },
     {
       "styleId": "meow-coffee-spit",
-      "family": "atlas",
-      "primitive": "atlas",
-      "fidelity": "approximate-composite"
+      "family": "frames",
+      "primitive": "frames",
+      "fidelity": "makeemoji-cdn-frames"
     },
     {
       "styleId": "willem-dafoe",
-      "family": "atlas",
-      "primitive": "atlas",
-      "fidelity": "approximate-composite"
+      "family": "frames",
+      "primitive": "frames",
+      "fidelity": "makeemoji-cdn-frames"
     },
     {
       "styleId": "mhm",
-      "family": "atlas",
-      "primitive": "atlas",
-      "fidelity": "approximate-composite"
+      "family": "frames",
+      "primitive": "frames",
+      "fidelity": "makeemoji-cdn-frames"
     },
     {
       "styleId": "pepe-binoculars",
       "family": "frames",
       "primitive": "frames",
-      "fidelity": "approximate-composite"
+      "fidelity": "makeemoji-cdn-frames"
     },
     {
       "styleId": "pepe-point",
-      "family": "atlas",
-      "primitive": "atlas",
-      "fidelity": "approximate-composite"
+      "family": "frames",
+      "primitive": "frames",
+      "fidelity": "makeemoji-cdn-frames"
     },
     {
       "styleId": "smoge",
-      "family": "atlas",
-      "primitive": "atlas",
-      "fidelity": "approximate-composite"
+      "family": "frames",
+      "primitive": "frames",
+      "fidelity": "makeemoji-cdn-frames"
     },
     {
       "styleId": "booba",
-      "family": "atlas",
-      "primitive": "atlas",
-      "fidelity": "approximate-composite"
+      "family": "frames",
+      "primitive": "frames",
+      "fidelity": "makeemoji-cdn-frames"
     },
     {
       "styleId": "feels-weak-man",
-      "family": "atlas",
-      "primitive": "atlas",
-      "fidelity": "approximate-composite"
+      "family": "frames",
+      "primitive": "frames",
+      "fidelity": "makeemoji-cdn-frames"
     },
     {
       "styleId": "madge-clap",
-      "family": "atlas",
-      "primitive": "atlas",
-      "fidelity": "approximate-composite"
+      "family": "frames",
+      "primitive": "frames",
+      "fidelity": "makeemoji-cdn-frames"
     },
     {
       "styleId": "smadge",
       "family": "frames",
       "primitive": "frames",
-      "fidelity": "approximate-composite"
+      "fidelity": "makeemoji-cdn-frames"
     },
     {
       "styleId": "pepe-nodders",
-      "family": "atlas",
-      "primitive": "atlas",
-      "fidelity": "approximate-composite"
+      "family": "frames",
+      "primitive": "frames",
+      "fidelity": "makeemoji-cdn-frames"
     },
     {
       "styleId": "sure",
-      "family": "atlas",
-      "primitive": "atlas",
-      "fidelity": "approximate-composite"
+      "family": "frames",
+      "primitive": "frames",
+      "fidelity": "makeemoji-cdn-frames"
     },
     {
       "styleId": "nopers",
-      "family": "atlas",
-      "primitive": "atlas",
-      "fidelity": "approximate-composite"
+      "family": "frames",
+      "primitive": "frames",
+      "fidelity": "makeemoji-cdn-frames"
     },
     {
       "styleId": "pepo-popcorn",
-      "family": "atlas",
-      "primitive": "atlas",
-      "fidelity": "approximate-composite"
+      "family": "frames",
+      "primitive": "frames",
+      "fidelity": "makeemoji-cdn-frames"
     },
     {
       "styleId": "monka-hmm",
@@ -1285,25 +1267,25 @@
       "styleId": "blob-help",
       "family": "overlay",
       "primitive": "overlay_hole",
-      "fidelity": "approximate-composite"
+      "fidelity": "makeemoji-overlay"
     },
     {
       "styleId": "blob-no",
       "family": "overlay",
       "primitive": "overlay_hole",
-      "fidelity": "approximate-composite"
+      "fidelity": "makeemoji-overlay"
     },
     {
       "styleId": "blob-yes",
       "family": "overlay",
       "primitive": "overlay_hole",
-      "fidelity": "approximate-composite"
+      "fidelity": "makeemoji-overlay"
     },
     {
       "styleId": "burger",
       "family": "overlay",
       "primitive": "overlay_hole",
-      "fidelity": "approximate-composite"
+      "fidelity": "makeemoji-overlay"
     },
     {
       "styleId": "nod",
@@ -1645,7 +1627,7 @@
       "styleId": "trash",
       "family": "overlay",
       "primitive": "overlay_hole",
-      "fidelity": "approximate-composite"
+      "fidelity": "makeemoji-overlay"
     },
     {
       "styleId": "trash-pop",
@@ -1657,13 +1639,13 @@
       "styleId": "donk",
       "family": "overlay",
       "primitive": "overlay_hole",
-      "fidelity": "approximate-composite"
+      "fidelity": "makeemoji-overlay"
     },
     {
       "styleId": "confused-cat",
       "family": "overlay",
       "primitive": "overlay_hole",
-      "fidelity": "approximate-composite"
+      "fidelity": "makeemoji-overlay"
     },
     {
       "styleId": "bulge",

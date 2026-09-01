@@ -45,10 +45,18 @@ export interface StylesPickerReply {
 /** Every animation the live manifest currently offers. */
 export function allStyles(): StyleEntry[] {
   const values = getManifest().manifest?.controls.animation?.values ?? [];
-  return values.map(v => ({
+  const rows = values.map(v => ({
     value: v.value,
     label: (v.label && v.label.trim()) || v.value,
   }));
+  // MakeEmoji opens on `none` so Colour can animate the image alone — keep it first.
+  rows.sort((a, b) => {
+    const aNone = /^(gen_btn_)?none$/i.test(a.value) || /^none$/i.test(a.label) ? 0 : 1;
+    const bNone = /^(gen_btn_)?none$/i.test(b.value) || /^none$/i.test(b.label) ? 0 : 1;
+    if (aNone !== bNone) return aNone - bNone;
+    return a.label.localeCompare(b.label);
+  });
+  return rows;
 }
 
 export function findStyle(value: string): StyleEntry | undefined {

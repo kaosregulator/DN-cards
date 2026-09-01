@@ -13,3 +13,6 @@ export { loadRecipes, findRecipe, readyRecipes, reloadRecipes } from "./recipes.
 export type { StyleRecipe, RecipeFamily } from "./recipes.js";
 export { effectFromPrimitive } from "./primitives.js";
 export { offlineAssetsDir, offlineAssetPath } from "./assets.js";
+export {
+  normalizeColor, colorIsAnimated, colorFrameCount, applyColorFilter, tintImageBuffer, ANIMATED_COLORS,
+} from "./color-filter.js";

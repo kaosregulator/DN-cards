@@ -286,6 +286,14 @@ export function buildCachedControlsReply(session: EmojiSession, token: string) {
   if (/avatar/i.test(sourceLabel)) {
     lines.push("-# Tip: tap **Upload** to animate your own image, or **Server icon** for this server's picture.");
   }
+  // Point users at MakeEmoji's Colour side-control (image-only animation).
+  const anim = session.animation ?? "";
+  const isNone = /^(gen_btn_)?none$/i.test(anim);
+  if (!session.color || session.color === "Normal") {
+    lines.push("-# Tip: set **Colour** (e.g. Colors / Rainbow / Stripes) to animate the image itself — works with style **none** or any style.");
+  } else if (isNone) {
+    lines.push("-# Colour-only mode (style none) — pick a style anytime to layer motion on top.");
+  }
   return {
     content: lines.join("\n"),
     embeds: [],

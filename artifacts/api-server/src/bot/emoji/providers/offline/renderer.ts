@@ -23,6 +23,13 @@ import { composeSequence, resolveAtlasDir, resolveFramesDir } from "./atlas.js";
 import { directionFromRecipe, effectFromPrimitive } from "./primitives.js";
 import { findRecipe } from "./recipes.js";
 import { findOfflineStyle } from "./registry.js";
+import {
+  applyColorFilter,
+  colorFrameCount,
+  colorIsAnimated,
+  normalizeColor,
+  tintImageBuffer,
+} from "./color-filter.js";
 
 const RENDER_TIMEOUT_MS = 20_000;
 
@@ -67,6 +74,8 @@ export async function renderOffline(options: GenerateOptions): Promise<GenerateR
   const started = Date.now();
   const family = recipe?.family ?? "transform";
   const primitive = recipe?.primitive ?? style?.offlineEffectId ?? null;
+  // MakeEmoji Colour side-control: recolors the upload before/while the style runs.
+  const color = normalizeColor(options.color);
 
   const buffer = await withTimeout(queueRender(`emoji-offline:${recipe?.id ?? style?.id}`, async () => {
     if (family === "overlay") {
@@ -78,20 +87,29 @@ export async function renderOffline(options: GenerateOptions): Promise<GenerateR
           `Overlay asset for \`${slug}\` is missing from the offline package.`,
         );
       }
-      const frames = await composeOverlay({
+      const frames = await composeWithColor({
+        family: "overlay",
         image: options.image,
-        overlayPath,
+        color,
+        format: options.format,
         size,
-        frames: options.format === "png" ? 1 : 8,
+        speed,
+        baseFrames: options.format === "png" ? 1 : 8,
+        composeOne: async (image, frameCount) => composeOverlay({
+          image, overlayPath, size, frames: frameCount,
+        }),
+        delayMs: 55,
       });
-      return encodeFrames(frames, size, options.format, delayFor(55, speed));
+      return frames;
     }
 
     if (family === "atlas" || family === "frames") {
       const slug = recipe!.slug;
-      const dir = family === "atlas" ? resolveAtlasDir(slug) : resolveFramesDir(slug);
-      // Some "frames" styles only have an atlas (or vice versa) — try both.
-      const resolved = dir
+      // Prefer real CDN frame PNGs over atlas sprite-sheets whenever both exist.
+      // Drawing a sheet whole is what tiled the subject across the canvas.
+      const framesDir = resolveFramesDir(slug);
+      const atlasDir = resolveAtlasDir(slug);
+      const resolved = framesDir ?? atlasDir
         ?? (family === "atlas" ? resolveFramesDir(slug) : resolveAtlasDir(slug));
       if (!resolved) {
         throw new EmojiError(
@@ -99,13 +117,19 @@ export async function renderOffline(options: GenerateOptions): Promise<GenerateR
           `${family} assets for \`${slug}\` are missing from the offline package.`,
         );
       }
-      const frames = await composeSequence({
+      return composeWithColor({
+        family,
         image: options.image,
-        sequenceDir: resolved,
+        color,
+        format: options.format,
         size,
-        maxFrames: options.format === "png" ? 1 : 24,
+        speed,
+        baseFrames: options.format === "png" ? 1 : 24,
+        composeOne: async (image, frameCount) => composeSequence({
+          image, sequenceDir: resolved, size, maxFrames: frameCount,
+        }),
+        delayMs: 50,
       });
-      return encodeFrames(frames, size, options.format, delayFor(50, speed));
     }
 
     if (family === "passthrough" || family === "transform") {
@@ -117,14 +141,25 @@ export async function renderOffline(options: GenerateOptions): Promise<GenerateR
         throw new EmojiError("unknown_effect", `Unknown offline primitive \`${primitive}\`.`);
       }
       const animated = options.format !== "png";
-      const frames = await compose({
+      const styleFrames = animated ? effect.frames : 1;
+      // Colour alone (style `none`) must still produce a looping GIF when the
+      // Colour mode is animated — matching MakeEmoji's Colors/Rainbow/etc.
+      const wantFrames = animated
+        ? Math.max(styleFrames, colorFrameCount(color, 12))
+        : 1;
+      return composeWithColor({
+        family,
         image: options.image,
-        effect,
-        direction,
+        color,
+        format: options.format,
         size,
-        frames: animated ? effect.frames : 1,
+        speed,
+        baseFrames: wantFrames,
+        composeOne: async (image, frameCount) => compose({
+          image, effect, direction, size, frames: frameCount,
+        }),
+        delayMs: effect.delayMs,
       });
-      return encodeFrames(frames, size, options.format, delayFor(effect.delayMs, speed));
     }
 
     throw new EmojiError(
@@ -144,27 +179,75 @@ export async function renderOffline(options: GenerateOptions): Promise<GenerateR
 }
 
 /**
+ * Compose with optional MakeEmoji Colour pre-filter on the subject.
+ *
+ * Static Colour: tint the upload once, then run the style as usual.
+ * Animated Colour: tint the upload per frame phase and composite one frame
+ * at a time so Colour cycles while the style plays (or alone under `none`).
+ */
+async function composeWithColor(opts: {
+  family: string;
+  image: Buffer;
+  color: string | null;
+  format: GenerateOptions["format"];
+  size: number;
+  speed: ReturnType<typeof parseSpeed>;
+  baseFrames: number;
+  composeOne: (image: Buffer, frameCount: number) => Promise<Uint8ClampedArray[]>;
+  delayMs: number;
+}): Promise<Buffer> {
+  const { family, image, color, format, size, speed, baseFrames, composeOne, delayMs } = opts;
+
+  if (!color) {
+    const frames = await composeOne(image, baseFrames);
+    return encodeFrames(frames, size, format, delayFor(delayMs, speed), family);
+  }
+
+  if (!colorIsAnimated(color) || format === "png") {
+    const tinted = await tintImageBuffer(image, color, 0);
+    const frames = await composeOne(tinted, format === "png" ? 1 : baseFrames);
+    return encodeFrames(frames, size, format, delayFor(delayMs, speed), family);
+  }
+
+  // Animated colour: one composited frame per phase so hue/stripes cycle.
+  const n = Math.max(baseFrames, colorFrameCount(color, 12));
+  const frames: Uint8ClampedArray[] = [];
+  for (let i = 0; i < n; i++) {
+    const tinted = await tintImageBuffer(image, color, i / n);
+    const one = await composeOne(tinted, 1);
+    if (one[0]) frames.push(one[0]);
+  }
+  void applyColorFilter; // reserved for raw-buffer path
+  return encodeFrames(frames, size, format, delayFor(delayMs, speed), family);
+}
+
+/**
  * Fraction of the canvas the finished art is kept within.
  *
- * The overlay/atlas/frame composites draw their art edge-to-edge, so a hat, a
- * pumpkin rim or a patting hand that reaches the border gets sliced by the
- * canvas. Discord shows the emoji small, and "nothing cut off" reads far better
- * than "maximally filled", so every finished frame is scaled to sit inside this
- * box with a transparent margin. 0.9 keeps a ~5% border on each side — enough to
- * rescue the clipped styles without visibly shrinking the rest.
+ * - frames: already authored with transparent margins — do not resample
+ *   (bilinear inset destroys AA rims → "missing pixels" after GIF dither).
+ * - atlas/overlay: light inset so chrome never kisses the Discord crop edge.
+ * - transform: deeper safe box so spin/slide never clips.
  */
-const SAFE_FILL = 0.9;
+const SAFE_FILL_FRAMES = 0.98;
+const SAFE_FILL_OVERLAY = 0.96;
+const SAFE_FILL_TRANSFORM = 0.9;
 
 /**
  * Scale each frame's content into a centered inset box so no art touches the
- * edge. Runs at the single encode funnel, so it protects every style family at
- * once. Fully-transparent frames pass through untouched.
+ * edge. Runs at the single encode funnel. Fully-transparent frames pass through
+ * untouched.
  */
-async function insetFrames(frames: Uint8ClampedArray[], size: number): Promise<Uint8ClampedArray[]> {
+async function insetFrames(
+  frames: Uint8ClampedArray[],
+  size: number,
+  fill = SAFE_FILL_OVERLAY,
+): Promise<Uint8ClampedArray[]> {
   const mod = await getCanvas();
   if (!mod) return frames;
 
-  const inner = Math.max(1, Math.round(size * SAFE_FILL));
+  const inner = Math.max(1, Math.round(size * fill));
+  if (inner >= size) return frames;
   const offset = Math.round((size - inner) / 2);
 
   const src = mod.createCanvas(size, size);
@@ -201,10 +284,16 @@ async function encodeFrames(
   size: number,
   format: GenerateOptions["format"],
   delayMs: number,
+  family: string = "transform",
 ): Promise<Buffer> {
-  // Guarantee no style's art is clipped at the canvas edge, whatever family it
-  // came from, before it is encoded.
-  const frames = await insetFrames(rawFrames, size);
+  // frames: no resample (authored margins). atlas/overlay: light inset.
+  // transform: deep safe box.
+  const fill = family === "transform" || family === "passthrough"
+    ? SAFE_FILL_TRANSFORM
+    : family === "frames"
+      ? SAFE_FILL_FRAMES
+      : SAFE_FILL_OVERLAY;
+  const frames = await insetFrames(rawFrames, size, fill);
 
   if (format === "png") return encodePng(frames, size);
   if (format === "gif" || format === "apng") {

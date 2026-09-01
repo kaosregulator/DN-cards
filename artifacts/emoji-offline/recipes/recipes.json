@@ -526,13 +526,15 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/angel.webp"
     },
     "assets": {
-      "overlay": "https://assets.makeemoji.com/overlays/static-styles/angel.png"
+      "overlay": "https://assets.makeemoji.com/overlays/static-styles/angel.png",
+      "overlayLocal": "overlays/angel.png"
     },
     "primitive": "overlay_hole",
     "params": {},
     "offlineReady": true,
-    "fidelity": "approximate-composite",
+    "fidelity": "makeemoji-overlay",
     "notes": [
+      "Official overlay from https://assets.makeemoji.com/overlays/static-styles/angel.png",
       "overlay asset archived: angel"
     ],
     "verified": true,
@@ -584,9 +586,11 @@
     "primitive": "frames",
     "params": {},
     "offlineReady": true,
-    "fidelity": "approximate-composite",
+    "fidelity": "makeemoji-cdn-frames",
     "notes": [
-      "frames assets archived; pending render verification"
+      "CDN frames harvested from https://assets.makeemoji.com/frames/anticipation/ (1 frames)",
+      "CDN frames harvested from https://assets.makeemoji.com/frames/anticipation/ (1 frames)",
+      "Replaces incorrect atlas sprite-sheet that tiled when drawn whole"
     ],
     "verified": true,
     "verifyScore": 0.5754169913745246
@@ -627,13 +631,16 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/banana-dance.gif"
     },
     "assets": {
-      "atlasHint": "banana-dance"
+      "atlasHint": "banana-dance",
+      "prerendered": "prerendered/banana-dance/default-cat.gif"
     },
     "primitive": "atlas",
     "params": {},
     "offlineReady": true,
     "fidelity": "approximate-composite",
     "notes": [
+      "Official MakeEmoji prerendered asset: https://assets.makeemoji.com/… → prerendered/banana-dance/default-cat.gif (hq-gif)",
+      "CDN frame sequence NOT available (404 at https://assets.makeemoji.com/frames/banana-dance/) — no procedural replacement",
       "atlas assets archived; pending render verification"
     ],
     "verified": true,
@@ -657,9 +664,11 @@
     "primitive": "frames",
     "params": {},
     "offlineReady": true,
-    "fidelity": "approximate-composite",
+    "fidelity": "makeemoji-cdn-frames",
     "notes": [
-      "frames assets archived; pending render verification"
+      "CDN frames harvested from https://assets.makeemoji.com/frames/bat-signal/ (1 frames)",
+      "CDN frames harvested from https://assets.makeemoji.com/frames/bat-signal/ (1 frames)",
+      "Replaces incorrect atlas sprite-sheet that tiled when drawn whole"
     ],
     "verified": true,
     "verifyScore": 0.6653879418880897
@@ -682,9 +691,11 @@
     "primitive": "frames",
     "params": {},
     "offlineReady": true,
-    "fidelity": "approximate-composite",
+    "fidelity": "makeemoji-cdn-frames",
     "notes": [
-      "frames assets archived; pending render verification"
+      "CDN frames harvested from https://assets.makeemoji.com/frames/bat-signal-scene/ (1 frames)",
+      "CDN frames harvested from https://assets.makeemoji.com/frames/bat-signal-scene/ (1 frames)",
+      "Replaces incorrect atlas sprite-sheet that tiled when drawn whole"
     ],
     "verified": true,
     "verifyScore": 0.9492257710375817
@@ -765,9 +776,11 @@
     "primitive": "frames",
     "params": {},
     "offlineReady": true,
-    "fidelity": "approximate-composite",
+    "fidelity": "makeemoji-cdn-frames",
     "notes": [
-      "frames assets archived; pending render verification"
+      "CDN frames harvested from https://assets.makeemoji.com/frames/binoculars/ (1 frames)",
+      "CDN frames harvested from https://assets.makeemoji.com/frames/binoculars/ (1 frames)",
+      "Replaces incorrect atlas sprite-sheet that tiled when drawn whole"
     ],
     "verified": true,
     "verifyScore": 0.644118559391
@@ -813,13 +826,15 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/blame.webp"
     },
     "assets": {
-      "overlay": "https://assets.makeemoji.com/overlays/static-styles/blame.png"
+      "overlay": "https://assets.makeemoji.com/overlays/static-styles/blame.png",
+      "overlayLocal": "overlays/blame.png"
     },
     "primitive": "overlay_hole",
     "params": {},
     "offlineReady": true,
-    "fidelity": "approximate-composite",
+    "fidelity": "makeemoji-overlay",
     "notes": [
+      "Official overlay from https://assets.makeemoji.com/overlays/static-styles/blame.png",
       "overlay asset archived: blame"
     ],
     "verified": true,
@@ -857,7 +872,7 @@
     "id": "blanket",
     "slug": "blanket",
     "tag": "gen_btn_blanket",
-    "family": "atlas",
+    "family": "frames",
     "directionSuffix": null,
     "preview": {
       "ext": "webp",
@@ -866,14 +881,16 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/blanket.webp"
     },
     "assets": {
-      "atlasHint": "blanket"
+      "framesHint": "blanket"
     },
-    "primitive": "atlas",
+    "primitive": "frames",
     "params": {},
     "offlineReady": true,
-    "fidelity": "approximate-composite",
+    "fidelity": "makeemoji-cdn-frames",
     "notes": [
-      "atlas assets archived; pending render verification"
+      "CDN frames harvested from https://assets.makeemoji.com/frames/blanket/ (2 frames)",
+      "CDN frames harvested from https://assets.makeemoji.com/frames/blanket/ (2 frames)",
+      "Replaces incorrect atlas sprite-sheet that tiled when drawn whole"
     ],
     "verified": true,
     "verifyScore": 0.5847603171418134
@@ -891,13 +908,16 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/blankies.gif"
     },
     "assets": {
-      "atlasHint": "blankies"
+      "atlasHint": "blankies",
+      "prerendered": "prerendered/blankies/default-cat.gif"
     },
     "primitive": "atlas",
     "params": {},
     "offlineReady": true,
     "fidelity": "approximate-composite",
     "notes": [
+      "Official MakeEmoji prerendered asset: https://assets.makeemoji.com/… → prerendered/blankies/default-cat.gif (hq-gif)",
+      "CDN frame sequence NOT available (404 at https://assets.makeemoji.com/frames/blankies/) — no procedural replacement",
       "atlas assets archived; pending render verification"
     ],
     "verified": true,
@@ -939,13 +959,16 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/blaze.gif"
     },
     "assets": {
-      "atlasHint": "blaze"
+      "atlasHint": "blaze",
+      "prerendered": "prerendered/blaze/default-cat.gif"
     },
     "primitive": "atlas",
     "params": {},
     "offlineReady": true,
     "fidelity": "approximate-composite",
     "notes": [
+      "Official MakeEmoji prerendered asset: https://assets.makeemoji.com/… → prerendered/blaze/default-cat.gif (hq-gif)",
+      "CDN frame sequence NOT available (404 at https://assets.makeemoji.com/frames/blaze/) — no procedural replacement",
       "atlas assets archived; pending render verification"
     ],
     "verified": true,
@@ -985,13 +1008,15 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/blob-help.webp"
     },
     "assets": {
-      "overlay": "https://assets.makeemoji.com/overlays/static-styles/blob-help.png"
+      "overlay": "https://assets.makeemoji.com/overlays/static-styles/blob-help.png",
+      "overlayLocal": "overlays/blob-help.png"
     },
     "primitive": "overlay_hole",
     "params": {},
     "offlineReady": true,
-    "fidelity": "approximate-composite",
+    "fidelity": "makeemoji-overlay",
     "notes": [
+      "Official overlay from https://assets.makeemoji.com/overlays/static-styles/blob-help.png",
       "overlay asset archived: blob-help"
     ],
     "verified": true,
@@ -1010,13 +1035,15 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/blob-no.webp"
     },
     "assets": {
-      "overlay": "https://assets.makeemoji.com/overlays/static-styles/blob-no.png"
+      "overlay": "https://assets.makeemoji.com/overlays/static-styles/blob-no.png",
+      "overlayLocal": "overlays/blob-no.png"
     },
     "primitive": "overlay_hole",
     "params": {},
     "offlineReady": true,
-    "fidelity": "approximate-composite",
+    "fidelity": "makeemoji-overlay",
     "notes": [
+      "Official overlay from https://assets.makeemoji.com/overlays/static-styles/blob-no.png",
       "overlay asset archived: blob-no"
     ],
     "verified": true,
@@ -1040,9 +1067,11 @@
     "primitive": "frames",
     "params": {},
     "offlineReady": true,
-    "fidelity": "approximate-composite",
+    "fidelity": "makeemoji-cdn-frames",
     "notes": [
-      "frames assets archived; pending render verification"
+      "CDN frames harvested from https://assets.makeemoji.com/frames/blob-smiley/ (1 frames)",
+      "CDN frames harvested from https://assets.makeemoji.com/frames/blob-smiley/ (1 frames)",
+      "Replaces incorrect atlas sprite-sheet that tiled when drawn whole"
     ],
     "verified": true,
     "verifyScore": 0.6071512263925678
@@ -1060,13 +1089,15 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/blob-yes.webp"
     },
     "assets": {
-      "overlay": "https://assets.makeemoji.com/overlays/static-styles/blob-yes.png"
+      "overlay": "https://assets.makeemoji.com/overlays/static-styles/blob-yes.png",
+      "overlayLocal": "overlays/blob-yes.png"
     },
     "primitive": "overlay_hole",
     "params": {},
     "offlineReady": true,
-    "fidelity": "approximate-composite",
+    "fidelity": "makeemoji-overlay",
     "notes": [
+      "Official overlay from https://assets.makeemoji.com/overlays/static-styles/blob-yes.png",
       "overlay asset archived: blob-yes"
     ],
     "verified": true,
@@ -1076,7 +1107,7 @@
     "id": "blush",
     "slug": "blush",
     "tag": "gen_btn_blush",
-    "family": "atlas",
+    "family": "frames",
     "directionSuffix": null,
     "preview": {
       "ext": "webp",
@@ -1085,14 +1116,16 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/blush.webp"
     },
     "assets": {
-      "atlasHint": "blush"
+      "framesHint": "blush"
     },
-    "primitive": "atlas",
+    "primitive": "frames",
     "params": {},
     "offlineReady": true,
-    "fidelity": "approximate-composite",
+    "fidelity": "makeemoji-cdn-frames",
     "notes": [
-      "atlas assets archived; pending render verification"
+      "CDN frames harvested from https://assets.makeemoji.com/frames/blush/ (2 frames)",
+      "CDN frames harvested from https://assets.makeemoji.com/frames/blush/ (2 frames)",
+      "Replaces incorrect atlas sprite-sheet that tiled when drawn whole"
     ],
     "verified": true,
     "verifyScore": 0.608518017305518
@@ -1193,7 +1226,7 @@
     "id": "booba",
     "slug": "booba",
     "tag": "gen_btn_booba",
-    "family": "atlas",
+    "family": "frames",
     "directionSuffix": null,
     "preview": {
       "ext": "gif",
@@ -1202,14 +1235,16 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/booba.gif"
     },
     "assets": {
-      "atlasHint": "booba"
+      "framesHint": "booba"
     },
-    "primitive": "atlas",
+    "primitive": "frames",
     "params": {},
     "offlineReady": true,
-    "fidelity": "approximate-composite",
+    "fidelity": "makeemoji-cdn-frames",
     "notes": [
-      "atlas assets archived; pending render verification"
+      "CDN frames harvested from https://assets.makeemoji.com/frames/booba/ (55 frames)",
+      "CDN frames harvested from https://assets.makeemoji.com/frames/booba/ (55 frames)",
+      "Replaces incorrect atlas sprite-sheet that tiled when drawn whole"
     ],
     "verified": true,
     "verifyScore": 0.6247944198458546
@@ -1241,7 +1276,7 @@
     "id": "boooo",
     "slug": "boooo",
     "tag": "gen_btn_boooo",
-    "family": "atlas",
+    "family": "frames",
     "directionSuffix": null,
     "preview": {
       "ext": "gif",
@@ -1250,14 +1285,16 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/boooo.gif"
     },
     "assets": {
-      "atlasHint": "boooo"
+      "framesHint": "boooo"
     },
-    "primitive": "atlas",
+    "primitive": "frames",
     "params": {},
     "offlineReady": true,
-    "fidelity": "approximate-composite",
+    "fidelity": "makeemoji-cdn-frames",
     "notes": [
-      "atlas assets archived; pending render verification"
+      "CDN frames harvested from https://assets.makeemoji.com/frames/boooo/ (113 frames)",
+      "CDN frames harvested from https://assets.makeemoji.com/frames/boooo/ (113 frames)",
+      "Replaces incorrect atlas sprite-sheet that tiled when drawn whole"
     ],
     "verified": true,
     "verifyScore": 0.7253664518795064
@@ -1389,7 +1426,7 @@
     "id": "bubbles",
     "slug": "bubbles",
     "tag": "gen_btn_bubbles",
-    "family": "atlas",
+    "family": "frames",
     "directionSuffix": null,
     "preview": {
       "ext": "gif",
@@ -1398,14 +1435,16 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/bubbles.gif"
     },
     "assets": {
-      "atlasHint": "bubbles"
+      "framesHint": "bubbles"
     },
-    "primitive": "atlas",
+    "primitive": "frames",
     "params": {},
     "offlineReady": true,
-    "fidelity": "approximate-composite",
+    "fidelity": "makeemoji-cdn-frames",
     "notes": [
-      "atlas assets archived; pending render verification"
+      "CDN frames harvested from https://assets.makeemoji.com/frames/bubbles/ (40 frames)",
+      "CDN frames harvested from https://assets.makeemoji.com/frames/bubbles/ (40 frames)",
+      "Replaces incorrect atlas sprite-sheet that tiled when drawn whole"
     ],
     "verified": true,
     "verifyScore": 0.6929118686522967
@@ -1511,13 +1550,15 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/burger.webp"
     },
     "assets": {
-      "overlay": "https://assets.makeemoji.com/overlays/static-styles/burger.png"
+      "overlay": "https://assets.makeemoji.com/overlays/static-styles/burger.png",
+      "overlayLocal": "overlays/burger.png"
     },
     "primitive": "overlay_hole",
     "params": {},
     "offlineReady": true,
-    "fidelity": "approximate-composite",
+    "fidelity": "makeemoji-overlay",
     "notes": [
+      "Official overlay from https://assets.makeemoji.com/overlays/static-styles/burger.png",
       "overlay asset archived: burger"
     ],
     "verified": true,
@@ -1636,7 +1677,7 @@
     "id": "cat-ears",
     "slug": "cat-ears",
     "tag": "gen_btn_cat-ears",
-    "family": "atlas",
+    "family": "frames",
     "directionSuffix": null,
     "preview": {
       "ext": "gif",
@@ -1645,14 +1686,16 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/cat-ears.gif"
     },
     "assets": {
-      "atlasHint": "cat-ears"
+      "framesHint": "cat-ears"
     },
-    "primitive": "atlas",
+    "primitive": "frames",
     "params": {},
     "offlineReady": true,
-    "fidelity": "approximate-composite",
+    "fidelity": "makeemoji-cdn-frames",
     "notes": [
-      "atlas assets archived; pending render verification"
+      "CDN frames harvested from https://assets.makeemoji.com/frames/cat-ears/ (14 frames)",
+      "CDN frames harvested from https://assets.makeemoji.com/frames/cat-ears/ (14 frames)",
+      "Replaces incorrect atlas sprite-sheet that tiled when drawn whole"
     ],
     "verified": true,
     "verifyScore": 0.604592729215613
@@ -1824,7 +1867,7 @@
     "id": "claude-code",
     "slug": "claude-code",
     "tag": "gen_btn_claude-code",
-    "family": "atlas",
+    "family": "frames",
     "directionSuffix": null,
     "preview": {
       "ext": "gif",
@@ -1833,14 +1876,16 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/claude-code.gif"
     },
     "assets": {
-      "atlasHint": "claude-code"
+      "framesHint": "claude-code"
     },
-    "primitive": "atlas",
+    "primitive": "frames",
     "params": {},
     "offlineReady": true,
-    "fidelity": "approximate-composite",
+    "fidelity": "makeemoji-cdn-frames",
     "notes": [
-      "atlas assets archived; pending render verification"
+      "CDN frames harvested from https://assets.makeemoji.com/frames/claude-code/ (17 frames)",
+      "CDN frames harvested from https://assets.makeemoji.com/frames/claude-code/ (17 frames)",
+      "Replaces incorrect atlas sprite-sheet that tiled when drawn whole"
     ],
     "verified": true,
     "verifyScore": 0.5142403102566726
@@ -1849,7 +1894,7 @@
     "id": "claude-dancing",
     "slug": "claude-dancing",
     "tag": "gen_btn_claude-dancing",
-    "family": "atlas",
+    "family": "frames",
     "directionSuffix": null,
     "preview": {
       "ext": "gif",
@@ -1858,14 +1903,16 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/claude-dancing.gif"
     },
     "assets": {
-      "atlasHint": "claude-dancing"
+      "framesHint": "claude-dancing"
     },
-    "primitive": "atlas",
+    "primitive": "frames",
     "params": {},
     "offlineReady": true,
-    "fidelity": "approximate-composite",
+    "fidelity": "makeemoji-cdn-frames",
     "notes": [
-      "atlas assets archived; pending render verification"
+      "CDN frames harvested from https://assets.makeemoji.com/frames/claude-dancing/ (18 frames)",
+      "CDN frames harvested from https://assets.makeemoji.com/frames/claude-dancing/ (18 frames)",
+      "Replaces incorrect atlas sprite-sheet that tiled when drawn whole"
     ],
     "verified": true,
     "verifyScore": 0.6041835756008673
@@ -1874,7 +1921,7 @@
     "id": "claude-football",
     "slug": "claude-football",
     "tag": "gen_btn_claude-football",
-    "family": "atlas",
+    "family": "frames",
     "directionSuffix": null,
     "preview": {
       "ext": "gif",
@@ -1883,14 +1930,16 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/claude-football.gif"
     },
     "assets": {
-      "atlasHint": "claude-football"
+      "framesHint": "claude-football"
     },
-    "primitive": "atlas",
+    "primitive": "frames",
     "params": {},
     "offlineReady": true,
-    "fidelity": "approximate-composite",
+    "fidelity": "makeemoji-cdn-frames",
     "notes": [
-      "atlas assets archived; pending render verification"
+      "CDN frames harvested from https://assets.makeemoji.com/frames/claude-football/ (58 frames)",
+      "CDN frames harvested from https://assets.makeemoji.com/frames/claude-football/ (58 frames)",
+      "Replaces incorrect atlas sprite-sheet that tiled when drawn whole"
     ],
     "verified": true,
     "verifyScore": 0.4961002554927172
@@ -1899,7 +1948,7 @@
     "id": "claude-fu",
     "slug": "claude-fu",
     "tag": "gen_btn_claude-fu",
-    "family": "atlas",
+    "family": "frames",
     "directionSuffix": null,
     "preview": {
       "ext": "gif",
@@ -1908,14 +1957,16 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/claude-fu.gif"
     },
     "assets": {
-      "atlasHint": "claude-fu"
+      "framesHint": "claude-fu"
     },
-    "primitive": "atlas",
+    "primitive": "frames",
     "params": {},
     "offlineReady": true,
-    "fidelity": "approximate-composite",
+    "fidelity": "makeemoji-cdn-frames",
     "notes": [
-      "atlas assets archived; pending render verification"
+      "CDN frames harvested from https://assets.makeemoji.com/frames/claude-fu/ (26 frames)",
+      "CDN frames harvested from https://assets.makeemoji.com/frames/claude-fu/ (26 frames)",
+      "Replaces incorrect atlas sprite-sheet that tiled when drawn whole"
     ],
     "verified": true,
     "verifyScore": 0.4912986280774291
@@ -1924,7 +1975,7 @@
     "id": "claude-idea",
     "slug": "claude-idea",
     "tag": "gen_btn_claude-idea",
-    "family": "atlas",
+    "family": "frames",
     "directionSuffix": null,
     "preview": {
       "ext": "gif",
@@ -1933,14 +1984,16 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/claude-idea.gif"
     },
     "assets": {
-      "atlasHint": "claude-idea"
+      "framesHint": "claude-idea"
     },
-    "primitive": "atlas",
+    "primitive": "frames",
     "params": {},
     "offlineReady": true,
-    "fidelity": "approximate-composite",
+    "fidelity": "makeemoji-cdn-frames",
     "notes": [
-      "atlas assets archived; pending render verification"
+      "CDN frames harvested from https://assets.makeemoji.com/frames/claude-idea/ (6 frames)",
+      "CDN frames harvested from https://assets.makeemoji.com/frames/claude-idea/ (6 frames)",
+      "Replaces incorrect atlas sprite-sheet that tiled when drawn whole"
     ],
     "verified": true,
     "verifyScore": 0.5576498222291307
@@ -1949,7 +2002,7 @@
     "id": "claude-jam",
     "slug": "claude-jam",
     "tag": "gen_btn_claude-jam",
-    "family": "atlas",
+    "family": "frames",
     "directionSuffix": null,
     "preview": {
       "ext": "gif",
@@ -1958,14 +2011,16 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/claude-jam.gif"
     },
     "assets": {
-      "atlasHint": "claude-jam"
+      "framesHint": "claude-jam"
     },
-    "primitive": "atlas",
+    "primitive": "frames",
     "params": {},
     "offlineReady": true,
-    "fidelity": "approximate-composite",
+    "fidelity": "makeemoji-cdn-frames",
     "notes": [
-      "atlas assets archived; pending render verification"
+      "CDN frames harvested from https://assets.makeemoji.com/frames/claude-jam/ (9 frames)",
+      "CDN frames harvested from https://assets.makeemoji.com/frames/claude-jam/ (9 frames)",
+      "Replaces incorrect atlas sprite-sheet that tiled when drawn whole"
     ],
     "verified": true,
     "verifyScore": 0.6015445166927096
@@ -1974,7 +2029,7 @@
     "id": "cleaning",
     "slug": "cleaning",
     "tag": "gen_btn_cleaning",
-    "family": "atlas",
+    "family": "frames",
     "directionSuffix": null,
     "preview": {
       "ext": "gif",
@@ -1983,14 +2038,16 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/cleaning.gif"
     },
     "assets": {
-      "atlasHint": "cleaning"
+      "framesHint": "cleaning"
     },
-    "primitive": "atlas",
+    "primitive": "frames",
     "params": {},
     "offlineReady": true,
-    "fidelity": "approximate-composite",
+    "fidelity": "makeemoji-cdn-frames",
     "notes": [
-      "atlas assets archived; pending render verification"
+      "CDN frames harvested from https://assets.makeemoji.com/frames/cleaning/ (7 frames)",
+      "CDN frames harvested from https://assets.makeemoji.com/frames/cleaning/ (7 frames)",
+      "Replaces incorrect atlas sprite-sheet that tiled when drawn whole"
     ],
     "verified": true,
     "verifyScore": 0.5939611525361318
@@ -2036,13 +2093,15 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/coggers.webp"
     },
     "assets": {
-      "overlay": "https://assets.makeemoji.com/overlays/static-styles/coggers.png"
+      "overlay": "https://assets.makeemoji.com/overlays/static-styles/coggers.png",
+      "overlayLocal": "overlays/coggers.png"
     },
     "primitive": "overlay_hole",
     "params": {},
     "offlineReady": true,
-    "fidelity": "approximate-composite",
+    "fidelity": "makeemoji-overlay",
     "notes": [
+      "Official overlay from https://assets.makeemoji.com/overlays/static-styles/coggers.png",
       "overlay asset archived: coggers"
     ],
     "verified": true,
@@ -2094,9 +2153,11 @@
     "primitive": "frames",
     "params": {},
     "offlineReady": true,
-    "fidelity": "approximate-composite",
+    "fidelity": "makeemoji-cdn-frames",
     "notes": [
-      "frames assets archived; pending render verification"
+      "CDN frames harvested from https://assets.makeemoji.com/frames/comfy/ (1 frames)",
+      "CDN frames harvested from https://assets.makeemoji.com/frames/comfy/ (1 frames)",
+      "Replaces incorrect atlas sprite-sheet that tiled when drawn whole"
     ],
     "verified": true,
     "verifyScore": 0.6844824415370911
@@ -2119,9 +2180,11 @@
     "primitive": "frames",
     "params": {},
     "offlineReady": true,
-    "fidelity": "approximate-composite",
+    "fidelity": "makeemoji-cdn-frames",
     "notes": [
-      "frames assets archived; pending render verification"
+      "CDN frames harvested from https://assets.makeemoji.com/frames/concerned/ (1 frames)",
+      "CDN frames harvested from https://assets.makeemoji.com/frames/concerned/ (1 frames)",
+      "Replaces incorrect atlas sprite-sheet that tiled when drawn whole"
     ],
     "verified": true,
     "verifyScore": 0.6142185585171569
@@ -2139,13 +2202,15 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/confused-cat.webp"
     },
     "assets": {
-      "overlay": "https://assets.makeemoji.com/overlays/static-styles/confused-cat.png"
+      "overlay": "https://assets.makeemoji.com/overlays/static-styles/confused-cat.png",
+      "overlayLocal": "overlays/confused-cat.png"
     },
     "primitive": "overlay_hole",
     "params": {},
     "offlineReady": true,
-    "fidelity": "approximate-composite",
+    "fidelity": "makeemoji-overlay",
     "notes": [
+      "Official overlay from https://assets.makeemoji.com/overlays/static-styles/confused-cat.png",
       "overlay asset archived: confused-cat"
     ],
     "verified": true,
@@ -2269,7 +2334,7 @@
     "id": "courage-scream",
     "slug": "courage-scream",
     "tag": "gen_btn_courage-scream",
-    "family": "atlas",
+    "family": "frames",
     "directionSuffix": null,
     "preview": {
       "ext": "gif",
@@ -2278,14 +2343,16 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/courage-scream.gif"
     },
     "assets": {
-      "atlasHint": "courage-scream"
+      "framesHint": "courage-scream"
     },
-    "primitive": "atlas",
+    "primitive": "frames",
     "params": {},
     "offlineReady": true,
-    "fidelity": "approximate-composite",
+    "fidelity": "makeemoji-cdn-frames",
     "notes": [
-      "atlas assets archived; pending render verification"
+      "CDN frames harvested from https://assets.makeemoji.com/frames/courage-scream/ (128 frames)",
+      "CDN frames harvested from https://assets.makeemoji.com/frames/courage-scream/ (200 frames)",
+      "Replaces incorrect atlas sprite-sheet that tiled when drawn whole"
     ],
     "verified": true,
     "verifyScore": 0.7532963335640208
@@ -2303,13 +2370,15 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/cowboy.webp"
     },
     "assets": {
-      "overlay": "https://assets.makeemoji.com/overlays/static-styles/cowboy.png"
+      "overlay": "https://assets.makeemoji.com/overlays/static-styles/cowboy.png",
+      "overlayLocal": "overlays/cowboy.png"
     },
     "primitive": "overlay_hole",
     "params": {},
     "offlineReady": true,
-    "fidelity": "approximate-composite",
+    "fidelity": "makeemoji-overlay",
     "notes": [
+      "Official overlay from https://assets.makeemoji.com/overlays/static-styles/cowboy.png",
       "overlay asset archived: cowboy"
     ],
     "verified": true,
@@ -2384,13 +2453,15 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/crying-laughing.webp"
     },
     "assets": {
-      "overlay": "https://assets.makeemoji.com/overlays/static-styles/crying-laughing.png"
+      "overlay": "https://assets.makeemoji.com/overlays/static-styles/crying-laughing.png",
+      "overlayLocal": "overlays/crying-laughing.png"
     },
     "primitive": "overlay_hole",
     "params": {},
     "offlineReady": true,
-    "fidelity": "approximate-composite",
+    "fidelity": "makeemoji-overlay",
     "notes": [
+      "Official overlay from https://assets.makeemoji.com/overlays/static-styles/crying-laughing.png",
       "overlay asset archived: crying-laughing"
     ],
     "verified": true,
@@ -2428,7 +2499,7 @@
     "id": "cute-ghost",
     "slug": "cute-ghost",
     "tag": "gen_btn_cute-ghost",
-    "family": "atlas",
+    "family": "frames",
     "directionSuffix": null,
     "preview": {
       "ext": "gif",
@@ -2437,14 +2508,16 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/cute-ghost.gif"
     },
     "assets": {
-      "atlasHint": "cute-ghost"
+      "framesHint": "cute-ghost"
     },
-    "primitive": "atlas",
+    "primitive": "frames",
     "params": {},
     "offlineReady": true,
-    "fidelity": "approximate-composite",
+    "fidelity": "makeemoji-cdn-frames",
     "notes": [
-      "atlas assets archived; pending render verification"
+      "CDN frames harvested from https://assets.makeemoji.com/frames/cute-ghost/ (10 frames)",
+      "CDN frames harvested from https://assets.makeemoji.com/frames/cute-ghost/ (10 frames)",
+      "Replaces incorrect atlas sprite-sheet that tiled when drawn whole"
     ],
     "verified": true,
     "verifyScore": 0.47515048842214813
@@ -2529,13 +2602,16 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/deal-with-it.gif"
     },
     "assets": {
-      "atlasHint": "deal-with-it"
+      "atlasHint": "deal-with-it",
+      "prerendered": "prerendered/deal-with-it/default-cat.gif"
     },
     "primitive": "atlas",
     "params": {},
     "offlineReady": true,
     "fidelity": "approximate-composite",
     "notes": [
+      "Official MakeEmoji prerendered asset: https://assets.makeemoji.com/… → prerendered/deal-with-it/default-cat.gif (hq-gif)",
+      "CDN frame sequence NOT available (404 at https://assets.makeemoji.com/frames/deal-with-it/) — no procedural replacement",
       "atlas assets archived; pending render verification"
     ],
     "verified": true,
@@ -2594,7 +2670,7 @@
     "id": "ditto",
     "slug": "ditto",
     "tag": "gen_btn_ditto",
-    "family": "atlas",
+    "family": "frames",
     "directionSuffix": null,
     "preview": {
       "ext": "gif",
@@ -2603,14 +2679,16 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/ditto.gif"
     },
     "assets": {
-      "atlasHint": "ditto"
+      "framesHint": "ditto"
     },
-    "primitive": "atlas",
+    "primitive": "frames",
     "params": {},
     "offlineReady": true,
-    "fidelity": "approximate-composite",
+    "fidelity": "makeemoji-cdn-frames",
     "notes": [
-      "atlas assets archived; pending render verification"
+      "CDN frames harvested from https://assets.makeemoji.com/frames/ditto/ (24 frames)",
+      "CDN frames harvested from https://assets.makeemoji.com/frames/ditto/ (24 frames)",
+      "Replaces incorrect atlas sprite-sheet that tiled when drawn whole"
     ],
     "verified": true,
     "verifyScore": 0.5462926166461446
@@ -2619,7 +2697,7 @@
     "id": "doesnt-know",
     "slug": "doesnt-know",
     "tag": "gen_btn_doesnt-know",
-    "family": "atlas",
+    "family": "frames",
     "directionSuffix": null,
     "preview": {
       "ext": "gif",
@@ -2628,14 +2706,16 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/doesnt-know.gif"
     },
     "assets": {
-      "atlasHint": "doesnt-know"
+      "framesHint": "doesnt-know"
     },
-    "primitive": "atlas",
+    "primitive": "frames",
     "params": {},
     "offlineReady": true,
-    "fidelity": "approximate-composite",
+    "fidelity": "makeemoji-cdn-frames",
     "notes": [
-      "atlas assets archived; pending render verification"
+      "CDN frames harvested from https://assets.makeemoji.com/frames/doesnt-know/ (2 frames)",
+      "CDN frames harvested from https://assets.makeemoji.com/frames/doesnt-know/ (2 frames)",
+      "Replaces incorrect atlas sprite-sheet that tiled when drawn whole"
     ],
     "verified": true,
     "verifyScore": 0.620226684833047
@@ -2653,13 +2733,15 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/donk.webp"
     },
     "assets": {
-      "overlay": "https://assets.makeemoji.com/overlays/static-styles/donk.png"
+      "overlay": "https://assets.makeemoji.com/overlays/static-styles/donk.png",
+      "overlayLocal": "overlays/donk.png"
     },
     "primitive": "overlay_hole",
     "params": {},
     "offlineReady": true,
-    "fidelity": "approximate-composite",
+    "fidelity": "makeemoji-overlay",
     "notes": [
+      "Official overlay from https://assets.makeemoji.com/overlays/static-styles/donk.png",
       "overlay asset archived: donk"
     ],
     "verified": true,
@@ -2669,7 +2751,7 @@
     "id": "drake-duh",
     "slug": "drake-duh",
     "tag": "gen_btn_drake-duh",
-    "family": "atlas",
+    "family": "frames",
     "directionSuffix": null,
     "preview": {
       "ext": "gif",
@@ -2678,14 +2760,16 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/drake-duh.gif"
     },
     "assets": {
-      "atlasHint": "drake-duh"
+      "framesHint": "drake-duh"
     },
-    "primitive": "atlas",
+    "primitive": "frames",
     "params": {},
     "offlineReady": true,
-    "fidelity": "approximate-composite",
+    "fidelity": "makeemoji-cdn-frames",
     "notes": [
-      "atlas assets archived; pending render verification"
+      "CDN frames harvested from https://assets.makeemoji.com/frames/drake-duh/ (61 frames)",
+      "CDN frames harvested from https://assets.makeemoji.com/frames/drake-duh/ (61 frames)",
+      "Replaces incorrect atlas sprite-sheet that tiled when drawn whole"
     ],
     "verified": true,
     "verifyScore": 0.6037578008185996
@@ -3085,9 +3169,11 @@
     "primitive": "frames",
     "params": {},
     "offlineReady": true,
-    "fidelity": "approximate-composite",
+    "fidelity": "makeemoji-cdn-frames",
     "notes": [
-      "frames assets archived; pending render verification"
+      "CDN frames harvested from https://assets.makeemoji.com/frames/facepalm/ (1 frames)",
+      "CDN frames harvested from https://assets.makeemoji.com/frames/facepalm/ (1 frames)",
+      "Replaces incorrect atlas sprite-sheet that tiled when drawn whole"
     ],
     "verified": true,
     "verifyScore": 0.7192313774415884
@@ -3142,7 +3228,7 @@
     "id": "feels-weak-man",
     "slug": "feels-weak-man",
     "tag": "gen_btn_feels-weak-man",
-    "family": "atlas",
+    "family": "frames",
     "directionSuffix": null,
     "preview": {
       "ext": "gif",
@@ -3151,14 +3237,16 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/feels-weak-man.gif"
     },
     "assets": {
-      "atlasHint": "feels-weak-man"
+      "framesHint": "feels-weak-man"
     },
-    "primitive": "atlas",
+    "primitive": "frames",
     "params": {},
     "offlineReady": true,
-    "fidelity": "approximate-composite",
+    "fidelity": "makeemoji-cdn-frames",
     "notes": [
-      "atlas assets archived; pending render verification"
+      "CDN frames harvested from https://assets.makeemoji.com/frames/feels-weak-man/ (49 frames)",
+      "CDN frames harvested from https://assets.makeemoji.com/frames/feels-weak-man/ (49 frames)",
+      "Replaces incorrect atlas sprite-sheet that tiled when drawn whole"
     ],
     "verified": true,
     "verifyScore": 0.6383926800903117
@@ -3292,7 +3380,7 @@
     "id": "flag",
     "slug": "flag",
     "tag": "gen_btn_flag",
-    "family": "atlas",
+    "family": "frames",
     "directionSuffix": null,
     "preview": {
       "ext": "gif",
@@ -3301,14 +3389,16 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/flag.gif"
     },
     "assets": {
-      "atlasHint": "flag"
+      "framesHint": "flag"
     },
-    "primitive": "atlas",
+    "primitive": "frames",
     "params": {},
     "offlineReady": true,
-    "fidelity": "approximate-composite",
+    "fidelity": "makeemoji-cdn-frames",
     "notes": [
-      "atlas assets archived; pending render verification"
+      "CDN frames harvested from https://assets.makeemoji.com/frames/flag/ (9 frames)",
+      "CDN frames harvested from https://assets.makeemoji.com/frames/flag/ (9 frames)",
+      "Replaces incorrect atlas sprite-sheet that tiled when drawn whole"
     ],
     "verified": true,
     "verifyScore": 0.5812561005092625
@@ -3482,7 +3572,7 @@
     "id": "floating-pumpkins",
     "slug": "floating-pumpkins",
     "tag": "gen_btn_floating-pumpkins",
-    "family": "atlas",
+    "family": "frames",
     "directionSuffix": null,
     "preview": {
       "ext": "gif",
@@ -3491,14 +3581,16 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/floating-pumpkins.gif"
     },
     "assets": {
-      "atlasHint": "floating-pumpkins"
+      "framesHint": "floating-pumpkins"
     },
-    "primitive": "atlas",
+    "primitive": "frames",
     "params": {},
     "offlineReady": true,
-    "fidelity": "approximate-composite",
+    "fidelity": "makeemoji-cdn-frames",
     "notes": [
-      "atlas assets archived; pending render verification"
+      "CDN frames harvested from https://assets.makeemoji.com/frames/floating-pumpkins/ (27 frames)",
+      "CDN frames harvested from https://assets.makeemoji.com/frames/floating-pumpkins/ (27 frames)",
+      "Replaces incorrect atlas sprite-sheet that tiled when drawn whole"
     ],
     "verified": true,
     "verifyScore": 0.6065152732552404
@@ -3549,9 +3641,11 @@
     "primitive": "frames",
     "params": {},
     "offlineReady": true,
-    "fidelity": "approximate-composite",
+    "fidelity": "makeemoji-cdn-frames",
     "notes": [
-      "frames assets archived; pending render verification"
+      "CDN frames harvested from https://assets.makeemoji.com/frames/frog-flag/ (1 frames)",
+      "CDN frames harvested from https://assets.makeemoji.com/frames/frog-flag/ (1 frames)",
+      "Replaces incorrect atlas sprite-sheet that tiled when drawn whole"
     ],
     "verified": true,
     "verifyScore": 0.5911067416753145
@@ -3574,9 +3668,11 @@
     "primitive": "frames",
     "params": {},
     "offlineReady": true,
-    "fidelity": "approximate-composite",
+    "fidelity": "makeemoji-cdn-frames",
     "notes": [
-      "frames assets archived; pending render verification"
+      "CDN frames harvested from https://assets.makeemoji.com/frames/fry/ (1 frames)",
+      "CDN frames harvested from https://assets.makeemoji.com/frames/fry/ (1 frames)",
+      "Replaces incorrect atlas sprite-sheet that tiled when drawn whole"
     ],
     "verified": true,
     "verifyScore": 0.6340406650706409
@@ -3585,7 +3681,7 @@
     "id": "gengar",
     "slug": "gengar",
     "tag": "gen_btn_gengar",
-    "family": "atlas",
+    "family": "frames",
     "directionSuffix": null,
     "preview": {
       "ext": "gif",
@@ -3594,14 +3690,16 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/gengar.gif"
     },
     "assets": {
-      "atlasHint": "gengar"
+      "framesHint": "gengar"
     },
-    "primitive": "atlas",
+    "primitive": "frames",
     "params": {},
     "offlineReady": true,
-    "fidelity": "approximate-composite",
+    "fidelity": "makeemoji-cdn-frames",
     "notes": [
-      "atlas assets archived; pending render verification"
+      "CDN frames harvested from https://assets.makeemoji.com/frames/gengar/ (61 frames)",
+      "CDN frames harvested from https://assets.makeemoji.com/frames/gengar/ (61 frames)",
+      "Replaces incorrect atlas sprite-sheet that tiled when drawn whole"
     ],
     "verified": true,
     "verifyScore": 0.48347700080618283
@@ -3619,13 +3717,16 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/gigachad.gif"
     },
     "assets": {
-      "atlasHint": "gigachad"
+      "atlasHint": "gigachad",
+      "prerendered": "prerendered/gigachad/default-cat.gif"
     },
     "primitive": "atlas",
     "params": {},
     "offlineReady": true,
     "fidelity": "approximate-composite",
     "notes": [
+      "Official MakeEmoji prerendered asset: https://assets.makeemoji.com/… → prerendered/gigachad/default-cat.gif (hq-gif)",
+      "CDN frame sequence NOT available (404 at https://assets.makeemoji.com/frames/gigachad/) — no procedural replacement",
       "atlas assets archived; pending render verification"
     ],
     "verified": true,
@@ -3684,7 +3785,7 @@
     "id": "glorming:➡️",
     "slug": "glorming",
     "tag": "gen_btn_glorming",
-    "family": "atlas",
+    "family": "frames",
     "directionSuffix": "➡️",
     "preview": {
       "ext": "gif",
@@ -3693,14 +3794,16 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/glorming.gif"
     },
     "assets": {
-      "atlasHint": "glorming"
+      "framesHint": "glorming"
     },
-    "primitive": "atlas",
+    "primitive": "frames",
     "params": {},
     "offlineReady": true,
-    "fidelity": "approximate-composite",
+    "fidelity": "makeemoji-cdn-frames",
     "notes": [
-      "atlas assets archived; pending render verification"
+      "CDN frames harvested from https://assets.makeemoji.com/frames/glorming/ (128 frames)",
+      "CDN frames harvested from https://assets.makeemoji.com/frames/glorming/ (200 frames)",
+      "Replaces incorrect atlas sprite-sheet that tiled when drawn whole"
     ],
     "verified": true,
     "verifyScore": 0.6688647371644544
@@ -3718,13 +3821,15 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/glorp.webp"
     },
     "assets": {
-      "overlay": "https://assets.makeemoji.com/overlays/static-styles/glorp.avif"
+      "overlay": "https://assets.makeemoji.com/overlays/static-styles/glorp.avif",
+      "overlayLocal": "overlays/glorp.avif"
     },
     "primitive": "overlay_hole",
     "params": {},
     "offlineReady": true,
-    "fidelity": "approximate-composite",
+    "fidelity": "makeemoji-overlay",
     "notes": [
+      "Official overlay from https://assets.makeemoji.com/overlays/static-styles/glorp.avif",
       "overlay asset archived: glorp"
     ],
     "verified": true,
@@ -3748,9 +3853,11 @@
     "primitive": "frames",
     "params": {},
     "offlineReady": true,
-    "fidelity": "approximate-composite",
+    "fidelity": "makeemoji-cdn-frames",
     "notes": [
-      "frames assets archived; pending render verification"
+      "CDN frames harvested from https://assets.makeemoji.com/frames/glorpa/ (1 frames)",
+      "CDN frames harvested from https://assets.makeemoji.com/frames/glorpa/ (1 frames)",
+      "Replaces incorrect atlas sprite-sheet that tiled when drawn whole"
     ],
     "verified": true,
     "verifyScore": 0.6030158246077734
@@ -3812,7 +3919,7 @@
     "id": "green-fire",
     "slug": "green-fire",
     "tag": "gen_btn_green-fire",
-    "family": "atlas",
+    "family": "frames",
     "directionSuffix": null,
     "preview": {
       "ext": "gif",
@@ -3821,14 +3928,16 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/green-fire.gif"
     },
     "assets": {
-      "atlasHint": "green-fire"
+      "framesHint": "green-fire"
     },
-    "primitive": "atlas",
+    "primitive": "frames",
     "params": {},
     "offlineReady": true,
-    "fidelity": "approximate-composite",
+    "fidelity": "makeemoji-cdn-frames",
     "notes": [
-      "atlas assets archived; pending render verification"
+      "CDN frames harvested from https://assets.makeemoji.com/frames/green-fire/ (4 frames)",
+      "CDN frames harvested from https://assets.makeemoji.com/frames/green-fire/ (4 frames)",
+      "Replaces incorrect atlas sprite-sheet that tiled when drawn whole"
     ],
     "verified": true,
     "verifyScore": 0.595231413666384
@@ -3904,13 +4013,15 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/hazmat.webp"
     },
     "assets": {
-      "overlay": "https://assets.makeemoji.com/overlays/static-styles/hazmat.avif"
+      "overlay": "https://assets.makeemoji.com/overlays/static-styles/hazmat.avif",
+      "overlayLocal": "overlays/hazmat.avif"
     },
     "primitive": "overlay_hole",
     "params": {},
     "offlineReady": true,
-    "fidelity": "approximate-composite",
+    "fidelity": "makeemoji-overlay",
     "notes": [
+      "Official overlay from https://assets.makeemoji.com/overlays/static-styles/hazmat.avif",
       "overlay asset archived: hazmat"
     ],
     "verified": true,
@@ -3929,13 +4040,15 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/hazmat-2.webp"
     },
     "assets": {
-      "overlay": "https://assets.makeemoji.com/overlays/static-styles/hazmat-2.png"
+      "overlay": "https://assets.makeemoji.com/overlays/static-styles/hazmat-2.png",
+      "overlayLocal": "overlays/hazmat-2.png"
     },
     "primitive": "overlay_hole",
     "params": {},
     "offlineReady": true,
-    "fidelity": "approximate-composite",
+    "fidelity": "makeemoji-overlay",
     "notes": [
+      "Official overlay from https://assets.makeemoji.com/overlays/static-styles/hazmat-2.png",
       "overlay asset archived: hazmat-2"
     ],
     "verified": true,
@@ -4184,13 +4297,15 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/heyyeyaa.webp"
     },
     "assets": {
-      "overlay": "https://assets.makeemoji.com/overlays/static-styles/heyyeyaa.png"
+      "overlay": "https://assets.makeemoji.com/overlays/static-styles/heyyeyaa.png",
+      "overlayLocal": "overlays/heyyeyaa.png"
     },
     "primitive": "overlay_hole",
     "params": {},
     "offlineReady": true,
-    "fidelity": "approximate-composite",
+    "fidelity": "makeemoji-overlay",
     "notes": [
+      "Official overlay from https://assets.makeemoji.com/overlays/static-styles/heyyeyaa.png",
       "overlay asset archived: heyyeyaa"
     ],
     "verified": true,
@@ -4209,13 +4324,15 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/hoodie.webp"
     },
     "assets": {
-      "overlay": "https://assets.makeemoji.com/overlays/static-styles/hoodie.avif"
+      "overlay": "https://assets.makeemoji.com/overlays/static-styles/hoodie.avif",
+      "overlayLocal": "overlays/hoodie.avif"
     },
     "primitive": "overlay_hole",
     "params": {},
     "offlineReady": true,
-    "fidelity": "approximate-composite",
+    "fidelity": "makeemoji-overlay",
     "notes": [
+      "Official overlay from https://assets.makeemoji.com/overlays/static-styles/hoodie.avif",
       "overlay asset archived: hoodie"
     ],
     "verified": true,
@@ -4296,7 +4413,7 @@
     "id": "huh",
     "slug": "huh",
     "tag": "gen_btn_huh",
-    "family": "atlas",
+    "family": "frames",
     "directionSuffix": null,
     "preview": {
       "ext": "gif",
@@ -4305,14 +4422,16 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/huh.gif"
     },
     "assets": {
-      "atlasHint": "huh"
+      "framesHint": "huh"
     },
-    "primitive": "atlas",
+    "primitive": "frames",
     "params": {},
     "offlineReady": true,
-    "fidelity": "approximate-composite",
+    "fidelity": "makeemoji-cdn-frames",
     "notes": [
-      "atlas assets archived; pending render verification"
+      "CDN frames harvested from https://assets.makeemoji.com/frames/huh/ (40 frames)",
+      "CDN frames harvested from https://assets.makeemoji.com/frames/huh/ (40 frames)",
+      "Replaces incorrect atlas sprite-sheet that tiled when drawn whole"
     ],
     "verified": true,
     "verifyScore": 0.6112697401240603
@@ -4472,7 +4591,7 @@
     "id": "ice-cube",
     "slug": "ice-cube",
     "tag": "gen_btn_ice-cube",
-    "family": "atlas",
+    "family": "frames",
     "directionSuffix": null,
     "preview": {
       "ext": "webp",
@@ -4481,14 +4600,16 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/ice-cube.webp"
     },
     "assets": {
-      "atlasHint": "ice-cube"
+      "framesHint": "ice-cube"
     },
-    "primitive": "atlas",
+    "primitive": "frames",
     "params": {},
     "offlineReady": true,
-    "fidelity": "approximate-composite",
+    "fidelity": "makeemoji-cdn-frames",
     "notes": [
-      "atlas assets archived; pending render verification"
+      "CDN frames harvested from https://assets.makeemoji.com/frames/ice-cube/ (2 frames)",
+      "CDN frames harvested from https://assets.makeemoji.com/frames/ice-cube/ (2 frames)",
+      "Replaces incorrect atlas sprite-sheet that tiled when drawn whole"
     ],
     "verified": true,
     "verifyScore": 0.5699061816507425
@@ -4525,7 +4646,7 @@
     "id": "jail-time",
     "slug": "jail-time",
     "tag": "gen_btn_jail-time",
-    "family": "atlas",
+    "family": "frames",
     "directionSuffix": null,
     "preview": {
       "ext": "gif",
@@ -4534,14 +4655,16 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/jail-time.gif"
     },
     "assets": {
-      "atlasHint": "jail-time"
+      "framesHint": "jail-time"
     },
-    "primitive": "atlas",
+    "primitive": "frames",
     "params": {},
     "offlineReady": true,
-    "fidelity": "approximate-composite",
+    "fidelity": "makeemoji-cdn-frames",
     "notes": [
-      "atlas assets archived; pending render verification"
+      "CDN frames harvested from https://assets.makeemoji.com/frames/jail-time/ (11 frames)",
+      "CDN frames harvested from https://assets.makeemoji.com/frames/jail-time/ (11 frames)",
+      "Replaces incorrect atlas sprite-sheet that tiled when drawn whole"
     ],
     "verified": true,
     "verifyScore": 0.6933193463308298
@@ -4582,13 +4705,16 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/jammies.gif"
     },
     "assets": {
-      "atlasHint": "jammies"
+      "atlasHint": "jammies",
+      "prerendered": "prerendered/jammies/default-cat.gif"
     },
     "primitive": "atlas",
     "params": {},
     "offlineReady": true,
     "fidelity": "approximate-composite",
     "notes": [
+      "Official MakeEmoji prerendered asset: https://assets.makeemoji.com/… → prerendered/jammies/default-cat.gif (hq-gif)",
+      "CDN frame sequence NOT available (404 at https://assets.makeemoji.com/frames/jammies/) — no procedural replacement",
       "atlas assets archived; pending render verification"
     ],
     "verified": true,
@@ -4699,7 +4825,7 @@
     "id": "keanu-thanks",
     "slug": "keanu-thanks",
     "tag": "gen_btn_keanu-thanks",
-    "family": "atlas",
+    "family": "frames",
     "directionSuffix": null,
     "preview": {
       "ext": "gif",
@@ -4708,14 +4834,16 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/keanu-thanks.gif"
     },
     "assets": {
-      "atlasHint": "keanu-thanks"
+      "framesHint": "keanu-thanks"
     },
-    "primitive": "atlas",
+    "primitive": "frames",
     "params": {},
     "offlineReady": true,
-    "fidelity": "approximate-composite",
+    "fidelity": "makeemoji-cdn-frames",
     "notes": [
-      "atlas assets archived; pending render verification"
+      "CDN frames harvested from https://assets.makeemoji.com/frames/keanu-thanks/ (36 frames)",
+      "CDN frames harvested from https://assets.makeemoji.com/frames/keanu-thanks/ (36 frames)",
+      "Replaces incorrect atlas sprite-sheet that tiled when drawn whole"
     ],
     "verified": true,
     "verifyScore": 0.6484023084292627
@@ -4802,13 +4930,15 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/labubu.webp"
     },
     "assets": {
-      "overlay": "https://assets.makeemoji.com/overlays/static-styles/labubu.avif"
+      "overlay": "https://assets.makeemoji.com/overlays/static-styles/labubu.avif",
+      "overlayLocal": "overlays/labubu.avif"
     },
     "primitive": "overlay_hole",
     "params": {},
     "offlineReady": true,
-    "fidelity": "approximate-composite",
+    "fidelity": "makeemoji-overlay",
     "notes": [
+      "Official overlay from https://assets.makeemoji.com/overlays/static-styles/labubu.avif",
       "overlay asset archived: labubu"
     ],
     "verified": true,
@@ -4828,13 +4958,16 @@
     },
     "assets": {
       "atlasHint": "laser-eyes",
-      "framesHint": "laser-eyes"
+      "framesHint": "laser-eyes",
+      "prerendered": "prerendered/laser-eyes/default-cat.gif"
     },
     "primitive": "atlas",
     "params": {},
     "offlineReady": true,
     "fidelity": "approximate-composite",
     "notes": [
+      "Official MakeEmoji prerendered asset: https://assets.makeemoji.com/… → prerendered/laser-eyes/default-cat.gif (hq-gif)",
+      "CDN frame sequence NOT available (404 at https://assets.makeemoji.com/frames/laser-eyes/) — no procedural replacement",
       "atlas assets archived; pending render verification"
     ],
     "verified": true,
@@ -4923,7 +5056,7 @@
     "id": "leave-me-alone",
     "slug": "leave-me-alone",
     "tag": "gen_btn_leave-me-alone",
-    "family": "atlas",
+    "family": "frames",
     "directionSuffix": null,
     "preview": {
       "ext": "gif",
@@ -4932,14 +5065,16 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/leave-me-alone.gif"
     },
     "assets": {
-      "atlasHint": "leave-me-alone"
+      "framesHint": "leave-me-alone"
     },
-    "primitive": "atlas",
+    "primitive": "frames",
     "params": {},
     "offlineReady": true,
-    "fidelity": "approximate-composite",
+    "fidelity": "makeemoji-cdn-frames",
     "notes": [
-      "atlas assets archived; pending render verification"
+      "CDN frames harvested from https://assets.makeemoji.com/frames/leave-me-alone/ (128 frames)",
+      "CDN frames harvested from https://assets.makeemoji.com/frames/leave-me-alone/ (130 frames)",
+      "Replaces incorrect atlas sprite-sheet that tiled when drawn whole"
     ],
     "verified": true,
     "verifyScore": 0.6919429890409046
@@ -4971,7 +5106,7 @@
     "id": "let-me-in",
     "slug": "let-me-in",
     "tag": "gen_btn_let-me-in",
-    "family": "atlas",
+    "family": "frames",
     "directionSuffix": null,
     "preview": {
       "ext": "gif",
@@ -4980,14 +5115,16 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/let-me-in.gif"
     },
     "assets": {
-      "atlasHint": "let-me-in"
+      "framesHint": "let-me-in"
     },
-    "primitive": "atlas",
+    "primitive": "frames",
     "params": {},
     "offlineReady": true,
-    "fidelity": "approximate-composite",
+    "fidelity": "makeemoji-cdn-frames",
     "notes": [
-      "atlas assets archived; pending render verification"
+      "CDN frames harvested from https://assets.makeemoji.com/frames/let-me-in/ (64 frames)",
+      "CDN frames harvested from https://assets.makeemoji.com/frames/let-me-in/ (64 frames)",
+      "Replaces incorrect atlas sprite-sheet that tiled when drawn whole"
     ],
     "verified": true,
     "verifyScore": 0.6442639635238561
@@ -5084,7 +5221,8 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/lightsaber.gif"
     },
     "assets": {
-      "overlay": "https://assets.makeemoji.com/overlays/static-styles/lightsaber.png"
+      "overlay": "https://assets.makeemoji.com/overlays/static-styles/lightsaber.png",
+      "overlayLocal": "overlays/lightsaber.png"
     },
     "primitive": "wobble",
     "params": {
@@ -5094,8 +5232,9 @@
       }
     },
     "offlineReady": true,
-    "fidelity": "approximate-procedural",
+    "fidelity": "makeemoji-overlay",
     "notes": [
+      "Official overlay from https://assets.makeemoji.com/overlays/static-styles/lightsaber.png",
       "Assigned from CDN preview fingerprint (conf=0.50)"
     ],
     "verified": true,
@@ -5105,7 +5244,7 @@
     "id": "lightspeed-jump",
     "slug": "lightspeed-jump",
     "tag": "gen_btn_lightspeed-jump",
-    "family": "atlas",
+    "family": "frames",
     "directionSuffix": null,
     "preview": {
       "ext": "gif",
@@ -5114,14 +5253,16 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/lightspeed-jump.gif"
     },
     "assets": {
-      "atlasHint": "lightspeed-jump"
+      "framesHint": "lightspeed-jump"
     },
-    "primitive": "atlas",
+    "primitive": "frames",
     "params": {},
     "offlineReady": true,
-    "fidelity": "approximate-composite",
+    "fidelity": "makeemoji-cdn-frames",
     "notes": [
-      "atlas assets archived; pending render verification"
+      "CDN frames harvested from https://assets.makeemoji.com/frames/lightspeed-jump/ (17 frames)",
+      "CDN frames harvested from https://assets.makeemoji.com/frames/lightspeed-jump/ (17 frames)",
+      "Replaces incorrect atlas sprite-sheet that tiled when drawn whole"
     ],
     "verified": true,
     "verifyScore": 0.6659513186785131
@@ -5359,9 +5500,11 @@
     "primitive": "frames",
     "params": {},
     "offlineReady": true,
-    "fidelity": "approximate-composite",
+    "fidelity": "makeemoji-cdn-frames",
     "notes": [
-      "frames assets archived; pending render verification"
+      "CDN frames harvested from https://assets.makeemoji.com/frames/lolface/ (1 frames)",
+      "CDN frames harvested from https://assets.makeemoji.com/frames/lolface/ (1 frames)",
+      "Replaces incorrect atlas sprite-sheet that tiled when drawn whole"
     ],
     "verified": true,
     "verifyScore": 0.5710518532040003
@@ -5458,7 +5601,7 @@
     "id": "madge-clap",
     "slug": "madge-clap",
     "tag": "gen_btn_madge-clap",
-    "family": "atlas",
+    "family": "frames",
     "directionSuffix": null,
     "preview": {
       "ext": "gif",
@@ -5467,14 +5610,16 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/madge-clap.gif"
     },
     "assets": {
-      "atlasHint": "madge-clap"
+      "framesHint": "madge-clap"
     },
-    "primitive": "atlas",
+    "primitive": "frames",
     "params": {},
     "offlineReady": true,
-    "fidelity": "approximate-composite",
+    "fidelity": "makeemoji-cdn-frames",
     "notes": [
-      "atlas assets archived; pending render verification"
+      "CDN frames harvested from https://assets.makeemoji.com/frames/madge-clap/ (2 frames)",
+      "CDN frames harvested from https://assets.makeemoji.com/frames/madge-clap/ (2 frames)",
+      "Replaces incorrect atlas sprite-sheet that tiled when drawn whole"
     ],
     "verified": true,
     "verifyScore": 0.6132180554818862
@@ -5606,7 +5751,7 @@
     "id": "meow-coffee-spit",
     "slug": "meow-coffee-spit",
     "tag": "gen_btn_meow-coffee-spit",
-    "family": "atlas",
+    "family": "frames",
     "directionSuffix": null,
     "preview": {
       "ext": "gif",
@@ -5615,14 +5760,16 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/meow-coffee-spit.gif"
     },
     "assets": {
-      "atlasHint": "meow-coffee-spit"
+      "framesHint": "meow-coffee-spit"
     },
-    "primitive": "atlas",
+    "primitive": "frames",
     "params": {},
     "offlineReady": true,
-    "fidelity": "approximate-composite",
+    "fidelity": "makeemoji-cdn-frames",
     "notes": [
-      "atlas assets archived; pending render verification"
+      "CDN frames harvested from https://assets.makeemoji.com/frames/meow-coffee-spit/ (128 frames)",
+      "CDN frames harvested from https://assets.makeemoji.com/frames/meow-coffee-spit/ (145 frames)",
+      "Replaces incorrect atlas sprite-sheet that tiled when drawn whole"
     ],
     "verified": true,
     "verifyScore": 0.7067811804526055
@@ -5682,7 +5829,7 @@
     "id": "mhm",
     "slug": "mhm",
     "tag": "gen_btn_mhm",
-    "family": "atlas",
+    "family": "frames",
     "directionSuffix": null,
     "preview": {
       "ext": "gif",
@@ -5691,14 +5838,16 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/mhm.gif"
     },
     "assets": {
-      "atlasHint": "mhm"
+      "framesHint": "mhm"
     },
-    "primitive": "atlas",
+    "primitive": "frames",
     "params": {},
     "offlineReady": true,
-    "fidelity": "approximate-composite",
+    "fidelity": "makeemoji-cdn-frames",
     "notes": [
-      "atlas assets archived; pending render verification"
+      "CDN frames harvested from https://assets.makeemoji.com/frames/mhm/ (9 frames)",
+      "CDN frames harvested from https://assets.makeemoji.com/frames/mhm/ (9 frames)",
+      "Replaces incorrect atlas sprite-sheet that tiled when drawn whole"
     ],
     "verified": true,
     "verifyScore": 0.6591877685445702
@@ -5707,7 +5856,7 @@
     "id": "middle-fingers",
     "slug": "middle-fingers",
     "tag": "gen_btn_middle-fingers",
-    "family": "atlas",
+    "family": "frames",
     "directionSuffix": null,
     "preview": {
       "ext": "gif",
@@ -5716,14 +5865,16 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/middle-fingers.gif"
     },
     "assets": {
-      "atlasHint": "middle-fingers"
+      "framesHint": "middle-fingers"
     },
-    "primitive": "atlas",
+    "primitive": "frames",
     "params": {},
     "offlineReady": true,
-    "fidelity": "approximate-composite",
+    "fidelity": "makeemoji-cdn-frames",
     "notes": [
-      "atlas assets archived; pending render verification"
+      "CDN frames harvested from https://assets.makeemoji.com/frames/middle-fingers/ (51 frames)",
+      "CDN frames harvested from https://assets.makeemoji.com/frames/middle-fingers/ (51 frames)",
+      "Replaces incorrect atlas sprite-sheet that tiled when drawn whole"
     ],
     "verified": true,
     "verifyScore": 0.7103750682400471
@@ -5732,7 +5883,7 @@
     "id": "mine-block",
     "slug": "mine-block",
     "tag": "gen_btn_mine-block",
-    "family": "atlas",
+    "family": "frames",
     "directionSuffix": null,
     "preview": {
       "ext": "gif",
@@ -5741,14 +5892,16 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/mine-block.gif"
     },
     "assets": {
-      "atlasHint": "mine-block"
+      "framesHint": "mine-block"
     },
-    "primitive": "atlas",
+    "primitive": "frames",
     "params": {},
     "offlineReady": true,
-    "fidelity": "approximate-composite",
+    "fidelity": "makeemoji-cdn-frames",
     "notes": [
-      "atlas assets archived; pending render verification"
+      "CDN frames harvested from https://assets.makeemoji.com/frames/mine-block/ (128 frames)",
+      "CDN frames harvested from https://assets.makeemoji.com/frames/mine-block/ (191 frames)",
+      "Replaces incorrect atlas sprite-sheet that tiled when drawn whole"
     ],
     "verified": true,
     "verifyScore": 0.7948568772126906
@@ -5883,9 +6036,11 @@
     "primitive": "frames",
     "params": {},
     "offlineReady": true,
-    "fidelity": "approximate-composite",
+    "fidelity": "makeemoji-cdn-frames",
     "notes": [
-      "frames assets archived; pending render verification"
+      "CDN frames harvested from https://assets.makeemoji.com/frames/mustache-glasses/ (1 frames)",
+      "CDN frames harvested from https://assets.makeemoji.com/frames/mustache-glasses/ (1 frames)",
+      "Replaces incorrect atlas sprite-sheet that tiled when drawn whole"
     ],
     "verified": true,
     "verifyScore": 0.637255243441856
@@ -6059,7 +6214,7 @@
     "id": "nopers",
     "slug": "nopers",
     "tag": "gen_btn_nopers",
-    "family": "atlas",
+    "family": "frames",
     "directionSuffix": null,
     "preview": {
       "ext": "gif",
@@ -6068,14 +6223,16 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/nopers.gif"
     },
     "assets": {
-      "atlasHint": "nopers"
+      "framesHint": "nopers"
     },
-    "primitive": "atlas",
+    "primitive": "frames",
     "params": {},
     "offlineReady": true,
-    "fidelity": "approximate-composite",
+    "fidelity": "makeemoji-cdn-frames",
     "notes": [
-      "atlas assets archived; pending render verification"
+      "CDN frames harvested from https://assets.makeemoji.com/frames/nopers/ (32 frames)",
+      "CDN frames harvested from https://assets.makeemoji.com/frames/nopers/ (32 frames)",
+      "Replaces incorrect atlas sprite-sheet that tiled when drawn whole"
     ],
     "verified": true,
     "verifyScore": 0.6281740681175352
@@ -6093,13 +6250,15 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/not-stonks.webp"
     },
     "assets": {
-      "overlay": "https://assets.makeemoji.com/overlays/static-styles/not-stonks.png"
+      "overlay": "https://assets.makeemoji.com/overlays/static-styles/not-stonks.png",
+      "overlayLocal": "overlays/not-stonks.png"
     },
     "primitive": "overlay_hole",
     "params": {},
     "offlineReady": true,
-    "fidelity": "approximate-composite",
+    "fidelity": "makeemoji-overlay",
     "notes": [
+      "Official overlay from https://assets.makeemoji.com/overlays/static-styles/not-stonks.png",
       "overlay asset archived: not-stonks"
     ],
     "verified": true,
@@ -6141,13 +6300,16 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/nyan-cat.gif"
     },
     "assets": {
-      "atlasHint": "nyan-cat"
+      "atlasHint": "nyan-cat",
+      "prerendered": "prerendered/nyan-cat/default-cat.gif"
     },
     "primitive": "atlas",
     "params": {},
     "offlineReady": true,
     "fidelity": "approximate-composite",
     "notes": [
+      "Official MakeEmoji prerendered asset: https://assets.makeemoji.com/… → prerendered/nyan-cat/default-cat.gif (hq-gif)",
+      "CDN frame sequence NOT available (404 at https://assets.makeemoji.com/frames/nyan-cat/) — no procedural replacement",
       "atlas assets archived; pending render verification"
     ],
     "verified": true,
@@ -6547,13 +6709,15 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/oui-oui.webp"
     },
     "assets": {
-      "overlay": "https://assets.makeemoji.com/overlays/static-styles/oui-oui.avif"
+      "overlay": "https://assets.makeemoji.com/overlays/static-styles/oui-oui.avif",
+      "overlayLocal": "overlays/oui-oui.avif"
     },
     "primitive": "overlay_hole",
     "params": {},
     "offlineReady": true,
-    "fidelity": "approximate-composite",
+    "fidelity": "makeemoji-overlay",
     "notes": [
+      "Official overlay from https://assets.makeemoji.com/overlays/static-styles/oui-oui.avif",
       "overlay asset archived: oui-oui"
     ],
     "verified": true,
@@ -6807,13 +6971,16 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/party-blob.gif"
     },
     "assets": {
-      "atlasHint": "party-blob"
+      "atlasHint": "party-blob",
+      "prerendered": "prerendered/party-blob/default-cat.gif"
     },
     "primitive": "atlas",
     "params": {},
     "offlineReady": true,
     "fidelity": "approximate-composite",
     "notes": [
+      "Official MakeEmoji prerendered asset: https://assets.makeemoji.com/… → prerendered/party-blob/default-cat.gif (hq-gif)",
+      "CDN frame sequence NOT available (404 at https://assets.makeemoji.com/frames/party-blob/) — no procedural replacement",
       "atlas assets archived; pending render verification"
     ],
     "verified": true,
@@ -6832,13 +6999,16 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/party-parrot.gif"
     },
     "assets": {
-      "atlasHint": "party-parrot"
+      "atlasHint": "party-parrot",
+      "prerendered": "prerendered/party-parrot/default-cat.gif"
     },
     "primitive": "atlas",
     "params": {},
     "offlineReady": true,
     "fidelity": "approximate-composite",
     "notes": [
+      "Official MakeEmoji prerendered asset: https://assets.makeemoji.com/… → prerendered/party-parrot/default-cat.gif (hq-gif)",
+      "CDN frame sequence NOT available (404 at https://assets.makeemoji.com/frames/party-parrot/) — no procedural replacement",
       "atlas assets archived; pending render verification"
     ],
     "verified": true,
@@ -6876,7 +7046,7 @@
     "id": "pat",
     "slug": "pat",
     "tag": "gen_btn_pat",
-    "family": "atlas",
+    "family": "frames",
     "directionSuffix": null,
     "preview": {
       "ext": "gif",
@@ -6885,14 +7055,16 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/pat.gif"
     },
     "assets": {
-      "atlasHint": "pat"
+      "framesHint": "pat"
     },
-    "primitive": "atlas",
+    "primitive": "frames",
     "params": {},
     "offlineReady": true,
-    "fidelity": "approximate-composite",
+    "fidelity": "makeemoji-cdn-frames",
     "notes": [
-      "atlas assets archived; pending render verification"
+      "CDN frames harvested from https://assets.makeemoji.com/frames/pat/ (11 frames)",
+      "CDN frames harvested from https://assets.makeemoji.com/frames/pat/ (11 frames)",
+      "Replaces incorrect atlas sprite-sheet that tiled when drawn whole"
     ],
     "verified": true,
     "verifyScore": 0.6199231819890181
@@ -7016,13 +7188,15 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/peepo.webp"
     },
     "assets": {
-      "overlay": "https://assets.makeemoji.com/overlays/static-styles/peepo.avif"
+      "overlay": "https://assets.makeemoji.com/overlays/static-styles/peepo.avif",
+      "overlayLocal": "overlays/peepo.avif"
     },
     "primitive": "overlay_hole",
     "params": {},
     "offlineReady": true,
-    "fidelity": "approximate-composite",
+    "fidelity": "makeemoji-overlay",
     "notes": [
+      "Official overlay from https://assets.makeemoji.com/overlays/static-styles/peepo.avif",
       "overlay asset archived: peepo"
     ],
     "verified": true,
@@ -7171,13 +7345,15 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/peepo-love.webp"
     },
     "assets": {
-      "overlay": "https://assets.makeemoji.com/overlays/static-styles/peepo-love.png"
+      "overlay": "https://assets.makeemoji.com/overlays/static-styles/peepo-love.png",
+      "overlayLocal": "overlays/peepo-love.png"
     },
     "primitive": "overlay_hole",
     "params": {},
     "offlineReady": true,
-    "fidelity": "approximate-composite",
+    "fidelity": "makeemoji-overlay",
     "notes": [
+      "Official overlay from https://assets.makeemoji.com/overlays/static-styles/peepo-love.png",
       "overlay asset archived: peepo-love"
     ],
     "verified": true,
@@ -7298,13 +7474,15 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/peepo-shy.webp"
     },
     "assets": {
-      "overlay": "https://assets.makeemoji.com/overlays/static-styles/peepo-shy.png"
+      "overlay": "https://assets.makeemoji.com/overlays/static-styles/peepo-shy.png",
+      "overlayLocal": "overlays/peepo-shy.png"
     },
     "primitive": "overlay_hole",
     "params": {},
     "offlineReady": true,
-    "fidelity": "approximate-composite",
+    "fidelity": "makeemoji-overlay",
     "notes": [
+      "Official overlay from https://assets.makeemoji.com/overlays/static-styles/peepo-shy.png",
       "overlay asset archived: peepo-shy"
     ],
     "verified": true,
@@ -7323,13 +7501,15 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/peepo-sit.webp"
     },
     "assets": {
-      "overlay": "https://assets.makeemoji.com/overlays/static-styles/peepo-sit.avif"
+      "overlay": "https://assets.makeemoji.com/overlays/static-styles/peepo-sit.avif",
+      "overlayLocal": "overlays/peepo-sit.avif"
     },
     "primitive": "overlay_hole",
     "params": {},
     "offlineReady": true,
-    "fidelity": "approximate-composite",
+    "fidelity": "makeemoji-overlay",
     "notes": [
+      "Official overlay from https://assets.makeemoji.com/overlays/static-styles/peepo-sit.avif",
       "overlay asset archived: peepo-sit"
     ],
     "verified": true,
@@ -7376,13 +7556,15 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/peepo-stop.webp"
     },
     "assets": {
-      "overlay": "https://assets.makeemoji.com/overlays/static-styles/peepo-stop.png"
+      "overlay": "https://assets.makeemoji.com/overlays/static-styles/peepo-stop.png",
+      "overlayLocal": "overlays/peepo-stop.png"
     },
     "primitive": "overlay_hole",
     "params": {},
     "offlineReady": true,
-    "fidelity": "approximate-composite",
+    "fidelity": "makeemoji-overlay",
     "notes": [
+      "Official overlay from https://assets.makeemoji.com/overlays/static-styles/peepo-stop.png",
       "overlay asset archived: peepo-stop"
     ],
     "verified": true,
@@ -7401,13 +7583,15 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/peepo-want.webp"
     },
     "assets": {
-      "overlay": "https://assets.makeemoji.com/overlays/static-styles/peepo-want.png"
+      "overlay": "https://assets.makeemoji.com/overlays/static-styles/peepo-want.png",
+      "overlayLocal": "overlays/peepo-want.png"
     },
     "primitive": "overlay_hole",
     "params": {},
     "offlineReady": true,
-    "fidelity": "approximate-composite",
+    "fidelity": "makeemoji-overlay",
     "notes": [
+      "Official overlay from https://assets.makeemoji.com/overlays/static-styles/peepo-want.png",
       "overlay asset archived: peepo-want"
     ],
     "verified": true,
@@ -7426,13 +7610,15 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/pepe.webp"
     },
     "assets": {
-      "overlay": "https://assets.makeemoji.com/overlays/static-styles/pepe.avif"
+      "overlay": "https://assets.makeemoji.com/overlays/static-styles/pepe.avif",
+      "overlayLocal": "overlays/pepe.avif"
     },
     "primitive": "overlay_hole",
     "params": {},
     "offlineReady": true,
-    "fidelity": "approximate-composite",
+    "fidelity": "makeemoji-overlay",
     "notes": [
+      "Official overlay from https://assets.makeemoji.com/overlays/static-styles/pepe.avif",
       "overlay asset archived: pepe"
     ],
     "verified": true,
@@ -7456,9 +7642,11 @@
     "primitive": "frames",
     "params": {},
     "offlineReady": true,
-    "fidelity": "approximate-composite",
+    "fidelity": "makeemoji-cdn-frames",
     "notes": [
-      "frames assets archived; pending render verification"
+      "CDN frames harvested from https://assets.makeemoji.com/frames/pepe-binoculars/ (1 frames)",
+      "CDN frames harvested from https://assets.makeemoji.com/frames/pepe-binoculars/ (1 frames)",
+      "Replaces incorrect atlas sprite-sheet that tiled when drawn whole"
     ],
     "verified": true,
     "verifyScore": 0.6284859642781844
@@ -7476,13 +7664,15 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/pepe-cheer.webp"
     },
     "assets": {
-      "overlay": "https://assets.makeemoji.com/overlays/static-styles/pepe-cheer.png"
+      "overlay": "https://assets.makeemoji.com/overlays/static-styles/pepe-cheer.png",
+      "overlayLocal": "overlays/pepe-cheer.png"
     },
     "primitive": "overlay_hole",
     "params": {},
     "offlineReady": true,
-    "fidelity": "approximate-composite",
+    "fidelity": "makeemoji-overlay",
     "notes": [
+      "Official overlay from https://assets.makeemoji.com/overlays/static-styles/pepe-cheer.png",
       "overlay asset archived: pepe-cheer"
     ],
     "verified": true,
@@ -7531,13 +7721,15 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/pepe-dab.webp"
     },
     "assets": {
-      "overlay": "https://assets.makeemoji.com/overlays/static-styles/pepe-dab.png"
+      "overlay": "https://assets.makeemoji.com/overlays/static-styles/pepe-dab.png",
+      "overlayLocal": "overlays/pepe-dab.png"
     },
     "primitive": "overlay_hole",
     "params": {},
     "offlineReady": true,
-    "fidelity": "approximate-composite",
+    "fidelity": "makeemoji-overlay",
     "notes": [
+      "Official overlay from https://assets.makeemoji.com/overlays/static-styles/pepe-dab.png",
       "overlay asset archived: pepe-dab"
     ],
     "verified": true,
@@ -7556,13 +7748,16 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/pepe-flag.gif"
     },
     "assets": {
-      "atlasHint": "pepe-flag"
+      "atlasHint": "pepe-flag",
+      "prerendered": "prerendered/pepe-flag/default-cat.gif"
     },
     "primitive": "atlas",
     "params": {},
     "offlineReady": true,
     "fidelity": "approximate-composite",
     "notes": [
+      "Official MakeEmoji prerendered asset: https://assets.makeemoji.com/… → prerendered/pepe-flag/default-cat.gif (hq-gif)",
+      "CDN frame sequence NOT available (404 at https://assets.makeemoji.com/frames/pepe-flag/) — no procedural replacement",
       "atlas assets archived; pending render verification"
     ],
     "verified": true,
@@ -7572,7 +7767,7 @@
     "id": "pepe-meltdown",
     "slug": "pepe-meltdown",
     "tag": "gen_btn_pepe-meltdown",
-    "family": "atlas",
+    "family": "frames",
     "directionSuffix": null,
     "preview": {
       "ext": "gif",
@@ -7581,14 +7776,16 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/pepe-meltdown.gif"
     },
     "assets": {
-      "atlasHint": "pepe-meltdown"
+      "framesHint": "pepe-meltdown"
     },
-    "primitive": "atlas",
+    "primitive": "frames",
     "params": {},
     "offlineReady": true,
-    "fidelity": "approximate-composite",
+    "fidelity": "makeemoji-cdn-frames",
     "notes": [
-      "atlas assets archived; pending render verification"
+      "CDN frames harvested from https://assets.makeemoji.com/frames/pepe-meltdown/ (10 frames)",
+      "CDN frames harvested from https://assets.makeemoji.com/frames/pepe-meltdown/ (10 frames)",
+      "Replaces incorrect atlas sprite-sheet that tiled when drawn whole"
     ],
     "verified": true,
     "verifyScore": 0.6138324142455733
@@ -7597,7 +7794,7 @@
     "id": "pepe-nodders",
     "slug": "pepe-nodders",
     "tag": "gen_btn_pepe-nodders",
-    "family": "atlas",
+    "family": "frames",
     "directionSuffix": null,
     "preview": {
       "ext": "gif",
@@ -7606,14 +7803,16 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/pepe-nodders.gif"
     },
     "assets": {
-      "atlasHint": "pepe-nodders"
+      "framesHint": "pepe-nodders"
     },
-    "primitive": "atlas",
+    "primitive": "frames",
     "params": {},
     "offlineReady": true,
-    "fidelity": "approximate-composite",
+    "fidelity": "makeemoji-cdn-frames",
     "notes": [
-      "atlas assets archived; pending render verification"
+      "CDN frames harvested from https://assets.makeemoji.com/frames/pepe-nodders/ (16 frames)",
+      "CDN frames harvested from https://assets.makeemoji.com/frames/pepe-nodders/ (16 frames)",
+      "Replaces incorrect atlas sprite-sheet that tiled when drawn whole"
     ],
     "verified": true,
     "verifyScore": 0.6472899328907991
@@ -7622,7 +7821,7 @@
     "id": "pepe-point",
     "slug": "pepe-point",
     "tag": "gen_btn_pepe-point",
-    "family": "atlas",
+    "family": "frames",
     "directionSuffix": null,
     "preview": {
       "ext": "gif",
@@ -7631,14 +7830,16 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/pepe-point.gif"
     },
     "assets": {
-      "atlasHint": "pepe-point"
+      "framesHint": "pepe-point"
     },
-    "primitive": "atlas",
+    "primitive": "frames",
     "params": {},
     "offlineReady": true,
-    "fidelity": "approximate-composite",
+    "fidelity": "makeemoji-cdn-frames",
     "notes": [
-      "atlas assets archived; pending render verification"
+      "CDN frames harvested from https://assets.makeemoji.com/frames/pepe-point/ (7 frames)",
+      "CDN frames harvested from https://assets.makeemoji.com/frames/pepe-point/ (7 frames)",
+      "Replaces incorrect atlas sprite-sheet that tiled when drawn whole"
     ],
     "verified": true,
     "verifyScore": 0.675931622313715
@@ -7712,13 +7913,15 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/pepega.webp"
     },
     "assets": {
-      "overlay": "https://assets.makeemoji.com/overlays/static-styles/pepega.png"
+      "overlay": "https://assets.makeemoji.com/overlays/static-styles/pepega.png",
+      "overlayLocal": "overlays/pepega.png"
     },
     "primitive": "overlay_hole",
     "params": {},
     "offlineReady": true,
-    "fidelity": "approximate-composite",
+    "fidelity": "makeemoji-overlay",
     "notes": [
+      "Official overlay from https://assets.makeemoji.com/overlays/static-styles/pepega.png",
       "overlay asset archived: pepega"
     ],
     "verified": true,
@@ -7728,7 +7931,7 @@
     "id": "pepo-popcorn",
     "slug": "pepo-popcorn",
     "tag": "gen_btn_pepo-popcorn",
-    "family": "atlas",
+    "family": "frames",
     "directionSuffix": null,
     "preview": {
       "ext": "gif",
@@ -7737,14 +7940,16 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/pepo-popcorn.gif"
     },
     "assets": {
-      "atlasHint": "pepo-popcorn"
+      "framesHint": "pepo-popcorn"
     },
-    "primitive": "atlas",
+    "primitive": "frames",
     "params": {},
     "offlineReady": true,
-    "fidelity": "approximate-composite",
+    "fidelity": "makeemoji-cdn-frames",
     "notes": [
-      "atlas assets archived; pending render verification"
+      "CDN frames harvested from https://assets.makeemoji.com/frames/pepo-popcorn/ (2 frames)",
+      "CDN frames harvested from https://assets.makeemoji.com/frames/pepo-popcorn/ (2 frames)",
+      "Replaces incorrect atlas sprite-sheet that tiled when drawn whole"
     ],
     "verified": true,
     "verifyScore": 0.6149745125550721
@@ -7762,13 +7967,16 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/pet.gif"
     },
     "assets": {
-      "atlasHint": "pet"
+      "atlasHint": "pet",
+      "prerendered": "prerendered/pet/default-cat.gif"
     },
     "primitive": "atlas",
     "params": {},
     "offlineReady": true,
     "fidelity": "approximate-composite",
     "notes": [
+      "Official MakeEmoji prerendered asset: https://assets.makeemoji.com/… → prerendered/pet/default-cat.gif (hq-gif)",
+      "CDN frame sequence NOT available (404 at https://assets.makeemoji.com/frames/pet/) — no procedural replacement",
       "atlas assets archived; pending render verification"
     ],
     "verified": true,
@@ -7778,7 +7986,7 @@
     "id": "phone-time",
     "slug": "phone-time",
     "tag": "gen_btn_phone-time",
-    "family": "atlas",
+    "family": "frames",
     "directionSuffix": null,
     "preview": {
       "ext": "gif",
@@ -7787,14 +7995,16 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/phone-time.gif"
     },
     "assets": {
-      "atlasHint": "phone-time"
+      "framesHint": "phone-time"
     },
-    "primitive": "atlas",
+    "primitive": "frames",
     "params": {},
     "offlineReady": true,
-    "fidelity": "approximate-composite",
+    "fidelity": "makeemoji-cdn-frames",
     "notes": [
-      "atlas assets archived; pending render verification"
+      "CDN frames harvested from https://assets.makeemoji.com/frames/phone-time/ (85 frames)",
+      "CDN frames harvested from https://assets.makeemoji.com/frames/phone-time/ (85 frames)",
+      "Replaces incorrect atlas sprite-sheet that tiled when drawn whole"
     ],
     "verified": true,
     "verifyScore": 0.6747933308010785
@@ -7803,7 +8013,7 @@
     "id": "pika-stand",
     "slug": "pika-stand",
     "tag": "gen_btn_pika-stand",
-    "family": "atlas",
+    "family": "frames",
     "directionSuffix": null,
     "preview": {
       "ext": "gif",
@@ -7812,14 +8022,16 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/pika-stand.gif"
     },
     "assets": {
-      "atlasHint": "pika-stand"
+      "framesHint": "pika-stand"
     },
-    "primitive": "atlas",
+    "primitive": "frames",
     "params": {},
     "offlineReady": true,
-    "fidelity": "approximate-composite",
+    "fidelity": "makeemoji-cdn-frames",
     "notes": [
-      "atlas assets archived; pending render verification"
+      "CDN frames harvested from https://assets.makeemoji.com/frames/pika-stand/ (8 frames)",
+      "CDN frames harvested from https://assets.makeemoji.com/frames/pika-stand/ (8 frames)",
+      "Replaces incorrect atlas sprite-sheet that tiled when drawn whole"
     ],
     "verified": true,
     "verifyScore": 0.5927526304895666
@@ -7828,7 +8040,7 @@
     "id": "pikachu",
     "slug": "pikachu",
     "tag": "gen_btn_pikachu",
-    "family": "atlas",
+    "family": "frames",
     "directionSuffix": null,
     "preview": {
       "ext": "gif",
@@ -7837,14 +8049,16 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/pikachu.gif"
     },
     "assets": {
-      "atlasHint": "pikachu"
+      "framesHint": "pikachu"
     },
-    "primitive": "atlas",
+    "primitive": "frames",
     "params": {},
     "offlineReady": true,
-    "fidelity": "approximate-composite",
+    "fidelity": "makeemoji-cdn-frames",
     "notes": [
-      "atlas assets archived; pending render verification"
+      "CDN frames harvested from https://assets.makeemoji.com/frames/pikachu/ (28 frames)",
+      "CDN frames harvested from https://assets.makeemoji.com/frames/pikachu/ (28 frames)",
+      "Replaces incorrect atlas sprite-sheet that tiled when drawn whole"
     ],
     "verified": true,
     "verifyScore": 0.5877050498388912
@@ -7853,7 +8067,7 @@
     "id": "pixar-think",
     "slug": "pixar-think",
     "tag": "gen_btn_pixar-think",
-    "family": "atlas",
+    "family": "frames",
     "directionSuffix": null,
     "preview": {
       "ext": "gif",
@@ -7862,14 +8076,16 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/pixar-think.gif"
     },
     "assets": {
-      "atlasHint": "pixar-think"
+      "framesHint": "pixar-think"
     },
-    "primitive": "atlas",
+    "primitive": "frames",
     "params": {},
     "offlineReady": true,
-    "fidelity": "approximate-composite",
+    "fidelity": "makeemoji-cdn-frames",
     "notes": [
-      "atlas assets archived; pending render verification"
+      "CDN frames harvested from https://assets.makeemoji.com/frames/pixar-think/ (128 frames)",
+      "CDN frames harvested from https://assets.makeemoji.com/frames/pixar-think/ (200 frames)",
+      "Replaces incorrect atlas sprite-sheet that tiled when drawn whole"
     ],
     "verified": true,
     "verifyScore": 0.6539388860670365
@@ -7929,7 +8145,7 @@
     "id": "pokeball-almost",
     "slug": "pokeball-almost",
     "tag": "gen_btn_pokeball-almost",
-    "family": "transform",
+    "family": "frames",
     "directionSuffix": null,
     "preview": {
       "ext": "gif",
@@ -7937,18 +8153,21 @@
       "bytes": 60998,
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/pokeball-almost.gif"
     },
-    "assets": {},
-    "primitive": "rainbow",
+    "assets": {
+      "prerendered": "prerendered/pokeball-almost/default-cat.gif"
+    },
+    "primitive": "frames",
     "params": {
       "_fp": {
         "motion": 0.0811,
         "conf": 0.55
       }
     },
-    "offlineReady": true,
-    "fidelity": "approximate-procedural",
+    "offlineReady": false,
+    "fidelity": "makeemoji-prerendered-gif-only",
     "notes": [
-      "Assigned from CDN preview fingerprint (conf=0.55)"
+      "Official MakeEmoji GIF available: https://assets.makeemoji.com/prerendered/default-cat/pokeball-almost.gif",
+      "Compositable CDN frames MISSING (404). Procedural SVG recreation removed. Offline user-image composite blocked until MakeEmoji publishes frames."
     ],
     "verified": true,
     "verifyScore": 0.39674724556918095
@@ -7957,7 +8176,7 @@
     "id": "pokeball-capture",
     "slug": "pokeball-capture",
     "tag": "gen_btn_pokeball-capture",
-    "family": "transform",
+    "family": "frames",
     "directionSuffix": null,
     "preview": {
       "ext": "gif",
@@ -7965,18 +8184,21 @@
       "bytes": 61846,
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/pokeball-capture.gif"
     },
-    "assets": {},
-    "primitive": "rainbow",
+    "assets": {
+      "prerendered": "prerendered/pokeball-capture/default-cat.gif"
+    },
+    "primitive": "frames",
     "params": {
       "_fp": {
         "motion": 0.0808,
         "conf": 0.55
       }
     },
-    "offlineReady": true,
-    "fidelity": "approximate-procedural",
+    "offlineReady": false,
+    "fidelity": "makeemoji-prerendered-gif-only",
     "notes": [
-      "Assigned from CDN preview fingerprint (conf=0.55)"
+      "Official MakeEmoji GIF available: https://assets.makeemoji.com/prerendered/default-cat/pokeball-capture.gif",
+      "Compositable CDN frames MISSING (404). Procedural SVG recreation removed. Offline user-image composite blocked until MakeEmoji publishes frames."
     ],
     "verified": true,
     "verifyScore": 0.39464282229985026
@@ -7985,7 +8207,7 @@
     "id": "pokeball-emerge",
     "slug": "pokeball-emerge",
     "tag": "gen_btn_pokeball-emerge",
-    "family": "atlas",
+    "family": "frames",
     "directionSuffix": null,
     "preview": {
       "ext": "gif",
@@ -7994,14 +8216,16 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/pokeball-emerge.gif"
     },
     "assets": {
-      "atlasHint": "pokeball-emerge"
+      "framesHint": "pokeball-emerge"
     },
-    "primitive": "atlas",
+    "primitive": "frames",
     "params": {},
     "offlineReady": true,
-    "fidelity": "approximate-composite",
+    "fidelity": "makeemoji-cdn-frames",
     "notes": [
-      "atlas assets archived; pending render verification"
+      "CDN frames harvested from https://assets.makeemoji.com/frames/pokeball-emerge/ (87 frames)",
+      "Full CDN frame set from assets.makeemoji.com/frames/pokeball-emerge/",
+      "Near-opaque AA edges preserved for GIF encoding"
     ],
     "verified": true,
     "verifyScore": 0.5981924157540068
@@ -8010,7 +8234,7 @@
     "id": "pokeball-go",
     "slug": "pokeball-go",
     "tag": "gen_btn_pokeball-go",
-    "family": "transform",
+    "family": "frames",
     "directionSuffix": null,
     "preview": {
       "ext": "gif",
@@ -8018,18 +8242,21 @@
       "bytes": 25400,
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/pokeball-go.gif"
     },
-    "assets": {},
-    "primitive": "rainbow",
+    "assets": {
+      "prerendered": "prerendered/pokeball-go/default-cat.gif"
+    },
+    "primitive": "frames",
     "params": {
       "_fp": {
         "motion": 0.0801,
         "conf": 0.55
       }
     },
-    "offlineReady": true,
-    "fidelity": "approximate-procedural",
+    "offlineReady": false,
+    "fidelity": "makeemoji-prerendered-gif-only",
     "notes": [
-      "Assigned from CDN preview fingerprint (conf=0.55)"
+      "Official MakeEmoji GIF available: https://assets.makeemoji.com/prerendered/default-cat/pokeball-go.gif",
+      "Compositable CDN frames MISSING (404). Procedural SVG recreation removed. Offline user-image composite blocked until MakeEmoji publishes frames."
     ],
     "verified": true,
     "verifyScore": 0.43148242555523475
@@ -8361,13 +8588,15 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/pumpkin.webp"
     },
     "assets": {
-      "overlay": "https://assets.makeemoji.com/overlays/static-styles/pumpkin.avif"
+      "overlay": "https://assets.makeemoji.com/overlays/static-styles/pumpkin.avif",
+      "overlayLocal": "overlays/pumpkin.avif"
     },
     "primitive": "overlay_hole",
     "params": {},
     "offlineReady": true,
-    "fidelity": "approximate-composite",
+    "fidelity": "makeemoji-overlay",
     "notes": [
+      "Official overlay from https://assets.makeemoji.com/overlays/static-styles/pumpkin.avif",
       "overlay asset archived: pumpkin"
     ],
     "verified": true,
@@ -8377,7 +8606,7 @@
     "id": "pumpkin-cat",
     "slug": "pumpkin-cat",
     "tag": "gen_btn_pumpkin-cat",
-    "family": "atlas",
+    "family": "frames",
     "directionSuffix": null,
     "preview": {
       "ext": "gif",
@@ -8386,14 +8615,16 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/pumpkin-cat.gif"
     },
     "assets": {
-      "atlasHint": "pumpkin-cat"
+      "framesHint": "pumpkin-cat"
     },
-    "primitive": "atlas",
+    "primitive": "frames",
     "params": {},
     "offlineReady": true,
-    "fidelity": "approximate-composite",
+    "fidelity": "makeemoji-cdn-frames",
     "notes": [
-      "atlas assets archived; pending render verification"
+      "CDN frames harvested from https://assets.makeemoji.com/frames/pumpkin-cat/ (8 frames)",
+      "CDN frames harvested from https://assets.makeemoji.com/frames/pumpkin-cat/ (8 frames)",
+      "Replaces incorrect atlas sprite-sheet that tiled when drawn whole"
     ],
     "verified": true,
     "verifyScore": 0.6243937311937277
@@ -8402,7 +8633,7 @@
     "id": "pumpkin-give",
     "slug": "pumpkin-give",
     "tag": "gen_btn_pumpkin-give",
-    "family": "atlas",
+    "family": "frames",
     "directionSuffix": null,
     "preview": {
       "ext": "gif",
@@ -8411,14 +8642,16 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/pumpkin-give.gif"
     },
     "assets": {
-      "atlasHint": "pumpkin-give"
+      "framesHint": "pumpkin-give"
     },
-    "primitive": "atlas",
+    "primitive": "frames",
     "params": {},
     "offlineReady": true,
-    "fidelity": "approximate-composite",
+    "fidelity": "makeemoji-cdn-frames",
     "notes": [
-      "atlas assets archived; pending render verification"
+      "CDN frames harvested from https://assets.makeemoji.com/frames/pumpkin-give/ (59 frames)",
+      "CDN frames harvested from https://assets.makeemoji.com/frames/pumpkin-give/ (59 frames)",
+      "Replaces incorrect atlas sprite-sheet that tiled when drawn whole"
     ],
     "verified": true,
     "verifyScore": 0.6466580100172334
@@ -8441,9 +8674,11 @@
     "primitive": "frames",
     "params": {},
     "offlineReady": true,
-    "fidelity": "approximate-composite",
+    "fidelity": "makeemoji-cdn-frames",
     "notes": [
-      "frames assets archived; pending render verification"
+      "CDN frames harvested from https://assets.makeemoji.com/frames/pumpkin-surprise/ (1 frames)",
+      "CDN frames harvested from https://assets.makeemoji.com/frames/pumpkin-surprise/ (1 frames)",
+      "Replaces incorrect atlas sprite-sheet that tiled when drawn whole"
     ],
     "verified": true,
     "verifyScore": 0.6259618569873646
@@ -8452,7 +8687,7 @@
     "id": "pumpkin-take",
     "slug": "pumpkin-take",
     "tag": "gen_btn_pumpkin-take",
-    "family": "atlas",
+    "family": "frames",
     "directionSuffix": null,
     "preview": {
       "ext": "gif",
@@ -8461,14 +8696,16 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/pumpkin-take.gif"
     },
     "assets": {
-      "atlasHint": "pumpkin-take"
+      "framesHint": "pumpkin-take"
     },
-    "primitive": "atlas",
+    "primitive": "frames",
     "params": {},
     "offlineReady": true,
-    "fidelity": "approximate-composite",
+    "fidelity": "makeemoji-cdn-frames",
     "notes": [
-      "atlas assets archived; pending render verification"
+      "CDN frames harvested from https://assets.makeemoji.com/frames/pumpkin-take/ (59 frames)",
+      "CDN frames harvested from https://assets.makeemoji.com/frames/pumpkin-take/ (59 frames)",
+      "Replaces incorrect atlas sprite-sheet that tiled when drawn whole"
     ],
     "verified": true,
     "verifyScore": 0.6424353782834712
@@ -8486,13 +8723,15 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/pumpkin2.webp"
     },
     "assets": {
-      "overlay": "https://assets.makeemoji.com/overlays/static-styles/pumpkin2.png"
+      "overlay": "https://assets.makeemoji.com/overlays/static-styles/pumpkin2.png",
+      "overlayLocal": "overlays/pumpkin2.png"
     },
     "primitive": "overlay_hole",
     "params": {},
     "offlineReady": true,
-    "fidelity": "approximate-composite",
+    "fidelity": "makeemoji-overlay",
     "notes": [
+      "Official overlay from https://assets.makeemoji.com/overlays/static-styles/pumpkin2.png",
       "overlay asset archived: pumpkin2"
     ],
     "verified": true,
@@ -8502,7 +8741,7 @@
     "id": "purple-stars",
     "slug": "purple-stars",
     "tag": "gen_btn_purple-stars",
-    "family": "atlas",
+    "family": "frames",
     "directionSuffix": null,
     "preview": {
       "ext": "gif",
@@ -8511,14 +8750,16 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/purple-stars.gif"
     },
     "assets": {
-      "atlasHint": "purple-stars"
+      "framesHint": "purple-stars"
     },
-    "primitive": "atlas",
+    "primitive": "frames",
     "params": {},
     "offlineReady": true,
-    "fidelity": "approximate-composite",
+    "fidelity": "makeemoji-cdn-frames",
     "notes": [
-      "atlas assets archived; pending render verification"
+      "CDN frames harvested from https://assets.makeemoji.com/frames/purple-stars/ (6 frames)",
+      "CDN frames harvested from https://assets.makeemoji.com/frames/purple-stars/ (6 frames)",
+      "Replaces incorrect atlas sprite-sheet that tiled when drawn whole"
     ],
     "verified": true,
     "verifyScore": 0.6041166957130741
@@ -8680,7 +8921,7 @@
     "id": "rare-ghost",
     "slug": "rare-ghost",
     "tag": "gen_btn_rare-ghost",
-    "family": "atlas",
+    "family": "frames",
     "directionSuffix": null,
     "preview": {
       "ext": "gif",
@@ -8689,14 +8930,16 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/rare-ghost.gif"
     },
     "assets": {
-      "atlasHint": "rare-ghost"
+      "framesHint": "rare-ghost"
     },
-    "primitive": "atlas",
+    "primitive": "frames",
     "params": {},
     "offlineReady": true,
-    "fidelity": "approximate-composite",
+    "fidelity": "makeemoji-cdn-frames",
     "notes": [
-      "atlas assets archived; pending render verification"
+      "CDN frames harvested from https://assets.makeemoji.com/frames/rare-ghost/ (10 frames)",
+      "CDN frames harvested from https://assets.makeemoji.com/frames/rare-ghost/ (10 frames)",
+      "Replaces incorrect atlas sprite-sheet that tiled when drawn whole"
     ],
     "verified": true,
     "verifyScore": 0.5465361320832988
@@ -8733,7 +8976,7 @@
     "id": "reading",
     "slug": "reading",
     "tag": "gen_btn_reading",
-    "family": "atlas",
+    "family": "frames",
     "directionSuffix": null,
     "preview": {
       "ext": "gif",
@@ -8742,14 +8985,16 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/reading.gif"
     },
     "assets": {
-      "atlasHint": "reading"
+      "framesHint": "reading"
     },
-    "primitive": "atlas",
+    "primitive": "frames",
     "params": {},
     "offlineReady": true,
-    "fidelity": "approximate-composite",
+    "fidelity": "makeemoji-cdn-frames",
     "notes": [
-      "atlas assets archived; pending render verification"
+      "CDN frames harvested from https://assets.makeemoji.com/frames/reading/ (3 frames)",
+      "CDN frames harvested from https://assets.makeemoji.com/frames/reading/ (3 frames)",
+      "Replaces incorrect atlas sprite-sheet that tiled when drawn whole"
     ],
     "verified": true,
     "verifyScore": 0.6487226616712374
@@ -8784,7 +9029,7 @@
     "id": "red-alert",
     "slug": "red-alert",
     "tag": "gen_btn_red-alert",
-    "family": "atlas",
+    "family": "frames",
     "directionSuffix": null,
     "preview": {
       "ext": "gif",
@@ -8793,14 +9038,16 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/red-alert.gif"
     },
     "assets": {
-      "atlasHint": "red-alert"
+      "framesHint": "red-alert"
     },
-    "primitive": "atlas",
+    "primitive": "frames",
     "params": {},
     "offlineReady": true,
-    "fidelity": "approximate-composite",
+    "fidelity": "makeemoji-cdn-frames",
     "notes": [
-      "atlas assets archived; pending render verification"
+      "CDN frames harvested from https://assets.makeemoji.com/frames/red-alert/ (17 frames)",
+      "CDN frames harvested from https://assets.makeemoji.com/frames/red-alert/ (17 frames)",
+      "Replaces incorrect atlas sprite-sheet that tiled when drawn whole"
     ],
     "verified": true,
     "verifyScore": 0.6026687225059133
@@ -8809,7 +9056,7 @@
     "id": "reveal",
     "slug": "reveal",
     "tag": "gen_btn_reveal",
-    "family": "atlas",
+    "family": "frames",
     "directionSuffix": null,
     "preview": {
       "ext": "gif",
@@ -8818,14 +9065,16 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/reveal.gif"
     },
     "assets": {
-      "atlasHint": "reveal"
+      "framesHint": "reveal"
     },
-    "primitive": "atlas",
+    "primitive": "frames",
     "params": {},
     "offlineReady": true,
-    "fidelity": "approximate-composite",
+    "fidelity": "makeemoji-cdn-frames",
     "notes": [
-      "atlas assets archived; pending render verification"
+      "CDN frames harvested from https://assets.makeemoji.com/frames/reveal/ (59 frames)",
+      "CDN frames harvested from https://assets.makeemoji.com/frames/reveal/ (59 frames)",
+      "Replaces incorrect atlas sprite-sheet that tiled when drawn whole"
     ],
     "verified": true,
     "verifyScore": 0.6981999087443518
@@ -9056,7 +9305,7 @@
     "id": "runn",
     "slug": "runn",
     "tag": "gen_btn_runn",
-    "family": "atlas",
+    "family": "frames",
     "directionSuffix": null,
     "preview": {
       "ext": "gif",
@@ -9065,14 +9314,16 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/runn.gif"
     },
     "assets": {
-      "atlasHint": "runn"
+      "framesHint": "runn"
     },
-    "primitive": "atlas",
+    "primitive": "frames",
     "params": {},
     "offlineReady": true,
-    "fidelity": "approximate-composite",
+    "fidelity": "makeemoji-cdn-frames",
     "notes": [
-      "atlas assets archived; pending render verification"
+      "CDN frames harvested from https://assets.makeemoji.com/frames/runn/ (128 frames)",
+      "CDN frames harvested from https://assets.makeemoji.com/frames/runn/ (164 frames)",
+      "Replaces incorrect atlas sprite-sheet that tiled when drawn whole"
     ],
     "verified": true,
     "verifyScore": 0.5812893932174308
@@ -9136,13 +9387,16 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/sad-blob.gif"
     },
     "assets": {
-      "atlasHint": "sad-blob"
+      "atlasHint": "sad-blob",
+      "prerendered": "prerendered/sad-blob/default-cat.gif"
     },
     "primitive": "atlas",
     "params": {},
     "offlineReady": true,
     "fidelity": "approximate-composite",
     "notes": [
+      "Official MakeEmoji prerendered asset: https://assets.makeemoji.com/… → prerendered/sad-blob/default-cat.gif (hq-gif)",
+      "CDN frame sequence NOT available (404 at https://assets.makeemoji.com/frames/sad-blob/) — no procedural replacement",
       "atlas assets archived; pending render verification"
     ],
     "verified": true,
@@ -9161,13 +9415,15 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/sadge.webp"
     },
     "assets": {
-      "overlay": "https://assets.makeemoji.com/overlays/static-styles/sadge.png"
+      "overlay": "https://assets.makeemoji.com/overlays/static-styles/sadge.png",
+      "overlayLocal": "overlays/sadge.png"
     },
     "primitive": "overlay_hole",
     "params": {},
     "offlineReady": true,
-    "fidelity": "approximate-composite",
+    "fidelity": "makeemoji-overlay",
     "notes": [
+      "Official overlay from https://assets.makeemoji.com/overlays/static-styles/sadge.png",
       "overlay asset archived: sadge"
     ],
     "verified": true,
@@ -9580,13 +9836,15 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/sir.webp"
     },
     "assets": {
-      "overlay": "https://assets.makeemoji.com/overlays/static-styles/sir.png"
+      "overlay": "https://assets.makeemoji.com/overlays/static-styles/sir.png",
+      "overlayLocal": "overlays/sir.png"
     },
     "primitive": "overlay_hole",
     "params": {},
     "offlineReady": true,
-    "fidelity": "approximate-composite",
+    "fidelity": "makeemoji-overlay",
     "notes": [
+      "Official overlay from https://assets.makeemoji.com/overlays/static-styles/sir.png",
       "overlay asset archived: sir"
     ],
     "verified": true,
@@ -9610,9 +9868,11 @@
     "primitive": "frames",
     "params": {},
     "offlineReady": true,
-    "fidelity": "approximate-composite",
+    "fidelity": "makeemoji-cdn-frames",
     "notes": [
-      "frames assets archived; pending render verification"
+      "CDN frames harvested from https://assets.makeemoji.com/frames/sisyphus/ (1 frames)",
+      "CDN frames harvested from https://assets.makeemoji.com/frames/sisyphus/ (1 frames)",
+      "Replaces incorrect atlas sprite-sheet that tiled when drawn whole"
     ],
     "verified": true,
     "verifyScore": 0.660922316664078
@@ -9621,7 +9881,7 @@
     "id": "skeleton-dance",
     "slug": "skeleton-dance",
     "tag": "gen_btn_skeleton-dance",
-    "family": "atlas",
+    "family": "frames",
     "directionSuffix": null,
     "preview": {
       "ext": "gif",
@@ -9630,14 +9890,16 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/skeleton-dance.gif"
     },
     "assets": {
-      "atlasHint": "skeleton-dance"
+      "framesHint": "skeleton-dance"
     },
-    "primitive": "atlas",
+    "primitive": "frames",
     "params": {},
     "offlineReady": true,
-    "fidelity": "approximate-composite",
+    "fidelity": "makeemoji-cdn-frames",
     "notes": [
-      "atlas assets archived; pending render verification"
+      "CDN frames harvested from https://assets.makeemoji.com/frames/skeleton-dance/ (6 frames)",
+      "CDN frames harvested from https://assets.makeemoji.com/frames/skeleton-dance/ (6 frames)",
+      "Replaces incorrect atlas sprite-sheet that tiled when drawn whole"
     ],
     "verified": true,
     "verifyScore": 0.5019438509671048
@@ -9831,9 +10093,11 @@
     "primitive": "frames",
     "params": {},
     "offlineReady": true,
-    "fidelity": "approximate-composite",
+    "fidelity": "makeemoji-cdn-frames",
     "notes": [
-      "frames assets archived; pending render verification"
+      "CDN frames harvested from https://assets.makeemoji.com/frames/smadge/ (1 frames)",
+      "CDN frames harvested from https://assets.makeemoji.com/frames/smadge/ (1 frames)",
+      "Replaces incorrect atlas sprite-sheet that tiled when drawn whole"
     ],
     "verified": true,
     "verifyScore": 0.6078064401489516
@@ -9842,7 +10106,7 @@
     "id": "smart",
     "slug": "smart",
     "tag": "gen_btn_smart",
-    "family": "atlas",
+    "family": "frames",
     "directionSuffix": null,
     "preview": {
       "ext": "gif",
@@ -9851,14 +10115,16 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/smart.gif"
     },
     "assets": {
-      "atlasHint": "smart"
+      "framesHint": "smart"
     },
-    "primitive": "atlas",
+    "primitive": "frames",
     "params": {},
     "offlineReady": true,
-    "fidelity": "approximate-composite",
+    "fidelity": "makeemoji-cdn-frames",
     "notes": [
-      "atlas assets archived; pending render verification"
+      "CDN frames harvested from https://assets.makeemoji.com/frames/smart/ (13 frames)",
+      "CDN frames harvested from https://assets.makeemoji.com/frames/smart/ (13 frames)",
+      "Replaces incorrect atlas sprite-sheet that tiled when drawn whole"
     ],
     "verified": true,
     "verifyScore": 0.5877629254157072
@@ -9867,7 +10133,7 @@
     "id": "smoge",
     "slug": "smoge",
     "tag": "gen_btn_smoge",
-    "family": "atlas",
+    "family": "frames",
     "directionSuffix": null,
     "preview": {
       "ext": "gif",
@@ -9876,14 +10142,16 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/smoge.gif"
     },
     "assets": {
-      "atlasHint": "smoge"
+      "framesHint": "smoge"
     },
-    "primitive": "atlas",
+    "primitive": "frames",
     "params": {},
     "offlineReady": true,
-    "fidelity": "approximate-composite",
+    "fidelity": "makeemoji-cdn-frames",
     "notes": [
-      "atlas assets archived; pending render verification"
+      "CDN frames harvested from https://assets.makeemoji.com/frames/smoge/ (44 frames)",
+      "CDN frames harvested from https://assets.makeemoji.com/frames/smoge/ (44 frames)",
+      "Replaces incorrect atlas sprite-sheet that tiled when drawn whole"
     ],
     "verified": true,
     "verifyScore": 0.6588786183785933
@@ -9920,7 +10188,7 @@
     "id": "snorlax",
     "slug": "snorlax",
     "tag": "gen_btn_snorlax",
-    "family": "atlas",
+    "family": "frames",
     "directionSuffix": null,
     "preview": {
       "ext": "gif",
@@ -9929,14 +10197,16 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/snorlax.gif"
     },
     "assets": {
-      "atlasHint": "snorlax"
+      "framesHint": "snorlax"
     },
-    "primitive": "atlas",
+    "primitive": "frames",
     "params": {},
     "offlineReady": true,
-    "fidelity": "approximate-composite",
+    "fidelity": "makeemoji-cdn-frames",
     "notes": [
-      "atlas assets archived; pending render verification"
+      "CDN frames harvested from https://assets.makeemoji.com/frames/snorlax/ (87 frames)",
+      "CDN frames harvested from https://assets.makeemoji.com/frames/snorlax/ (87 frames)",
+      "Replaces incorrect atlas sprite-sheet that tiled when drawn whole"
     ],
     "verified": true,
     "verifyScore": 0.5658801462707269
@@ -10078,7 +10348,7 @@
     "id": "speechless",
     "slug": "speechless",
     "tag": "gen_btn_speechless",
-    "family": "atlas",
+    "family": "frames",
     "directionSuffix": null,
     "preview": {
       "ext": "gif",
@@ -10087,14 +10357,16 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/speechless.gif"
     },
     "assets": {
-      "atlasHint": "speechless"
+      "framesHint": "speechless"
     },
-    "primitive": "atlas",
+    "primitive": "frames",
     "params": {},
     "offlineReady": true,
-    "fidelity": "approximate-composite",
+    "fidelity": "makeemoji-cdn-frames",
     "notes": [
-      "atlas assets archived; pending render verification"
+      "CDN frames harvested from https://assets.makeemoji.com/frames/speechless/ (73 frames)",
+      "CDN frames harvested from https://assets.makeemoji.com/frames/speechless/ (73 frames)",
+      "Replaces incorrect atlas sprite-sheet that tiled when drawn whole"
     ],
     "verified": true,
     "verifyScore": 0.6229019888712068
@@ -10224,7 +10496,7 @@
     "id": "spongebob-watching-tv",
     "slug": "spongebob-watching-tv",
     "tag": "gen_btn_spongebob-watching-tv",
-    "family": "atlas",
+    "family": "frames",
     "directionSuffix": null,
     "preview": {
       "ext": "gif",
@@ -10233,14 +10505,16 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/spongebob-watching-tv.gif"
     },
     "assets": {
-      "atlasHint": "spongebob-watching-tv"
+      "framesHint": "spongebob-watching-tv"
     },
-    "primitive": "atlas",
+    "primitive": "frames",
     "params": {},
     "offlineReady": true,
-    "fidelity": "approximate-composite",
+    "fidelity": "makeemoji-cdn-frames",
     "notes": [
-      "atlas assets archived; pending render verification"
+      "CDN frames harvested from https://assets.makeemoji.com/frames/spongebob-watching-tv/ (80 frames)",
+      "CDN frames harvested from https://assets.makeemoji.com/frames/spongebob-watching-tv/ (80 frames)",
+      "Replaces incorrect atlas sprite-sheet that tiled when drawn whole"
     ],
     "verified": true,
     "verifyScore": 0.7478038194444445
@@ -10249,7 +10523,7 @@
     "id": "spongebob-worship",
     "slug": "spongebob-worship",
     "tag": "gen_btn_spongebob-worship",
-    "family": "atlas",
+    "family": "frames",
     "directionSuffix": null,
     "preview": {
       "ext": "gif",
@@ -10258,14 +10532,16 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/spongebob-worship.gif"
     },
     "assets": {
-      "atlasHint": "spongebob-worship"
+      "framesHint": "spongebob-worship"
     },
-    "primitive": "atlas",
+    "primitive": "frames",
     "params": {},
     "offlineReady": true,
-    "fidelity": "approximate-composite",
+    "fidelity": "makeemoji-cdn-frames",
     "notes": [
-      "atlas assets archived; pending render verification"
+      "CDN frames harvested from https://assets.makeemoji.com/frames/spongebob-worship/ (10 frames)",
+      "CDN frames harvested from https://assets.makeemoji.com/frames/spongebob-worship/ (10 frames)",
+      "Replaces incorrect atlas sprite-sheet that tiled when drawn whole"
     ],
     "verified": true,
     "verifyScore": 0.6536502148439582
@@ -10493,13 +10769,15 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/stonks.webp"
     },
     "assets": {
-      "overlay": "https://assets.makeemoji.com/overlays/static-styles/stonks.png"
+      "overlay": "https://assets.makeemoji.com/overlays/static-styles/stonks.png",
+      "overlayLocal": "overlays/stonks.png"
     },
     "primitive": "overlay_hole",
     "params": {},
     "offlineReady": true,
-    "fidelity": "approximate-composite",
+    "fidelity": "makeemoji-overlay",
     "notes": [
+      "Official overlay from https://assets.makeemoji.com/overlays/static-styles/stonks.png",
       "overlay asset archived: stonks"
     ],
     "verified": true,
@@ -10588,7 +10866,7 @@
     "id": "sure",
     "slug": "sure",
     "tag": "gen_btn_sure",
-    "family": "atlas",
+    "family": "frames",
     "directionSuffix": null,
     "preview": {
       "ext": "gif",
@@ -10597,14 +10875,16 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/sure.gif"
     },
     "assets": {
-      "atlasHint": "sure"
+      "framesHint": "sure"
     },
-    "primitive": "atlas",
+    "primitive": "frames",
     "params": {},
     "offlineReady": true,
-    "fidelity": "approximate-composite",
+    "fidelity": "makeemoji-cdn-frames",
     "notes": [
-      "atlas assets archived; pending render verification"
+      "CDN frames harvested from https://assets.makeemoji.com/frames/sure/ (18 frames)",
+      "CDN frames harvested from https://assets.makeemoji.com/frames/sure/ (18 frames)",
+      "Replaces incorrect atlas sprite-sheet that tiled when drawn whole"
     ],
     "verified": true,
     "verifyScore": 0.6109603632104348
@@ -10613,7 +10893,7 @@
     "id": "surprised-clapping",
     "slug": "surprised-clapping",
     "tag": "gen_btn_surprised-clapping",
-    "family": "atlas",
+    "family": "frames",
     "directionSuffix": null,
     "preview": {
       "ext": "gif",
@@ -10622,14 +10902,16 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/surprised-clapping.gif"
     },
     "assets": {
-      "atlasHint": "surprised-clapping"
+      "framesHint": "surprised-clapping"
     },
-    "primitive": "atlas",
+    "primitive": "frames",
     "params": {},
     "offlineReady": true,
-    "fidelity": "approximate-composite",
+    "fidelity": "makeemoji-cdn-frames",
     "notes": [
-      "atlas assets archived; pending render verification"
+      "CDN frames harvested from https://assets.makeemoji.com/frames/surprised-clapping/ (71 frames)",
+      "CDN frames harvested from https://assets.makeemoji.com/frames/surprised-clapping/ (71 frames)",
+      "Replaces incorrect atlas sprite-sheet that tiled when drawn whole"
     ],
     "verified": true,
     "verifyScore": 0.6257216675785628
@@ -10652,9 +10934,11 @@
     "primitive": "frames",
     "params": {},
     "offlineReady": true,
-    "fidelity": "approximate-composite",
+    "fidelity": "makeemoji-cdn-frames",
     "notes": [
-      "frames assets archived; pending render verification"
+      "CDN frames harvested from https://assets.makeemoji.com/frames/surprised-pikachu/ (1 frames)",
+      "CDN frames harvested from https://assets.makeemoji.com/frames/surprised-pikachu/ (1 frames)",
+      "Replaces incorrect atlas sprite-sheet that tiled when drawn whole"
     ],
     "verified": true,
     "verifyScore": 0.6964988413327334
@@ -10677,9 +10961,11 @@
     "primitive": "frames",
     "params": {},
     "offlineReady": true,
-    "fidelity": "approximate-composite",
+    "fidelity": "makeemoji-cdn-frames",
     "notes": [
-      "frames assets archived; pending render verification"
+      "CDN frames harvested from https://assets.makeemoji.com/frames/suspicion/ (1 frames)",
+      "CDN frames harvested from https://assets.makeemoji.com/frames/suspicion/ (1 frames)",
+      "Replaces incorrect atlas sprite-sheet that tiled when drawn whole"
     ],
     "verified": true,
     "verifyScore": 0.5508462886864565
@@ -11164,13 +11450,15 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/trash.webp"
     },
     "assets": {
-      "overlay": "https://assets.makeemoji.com/overlays/static-styles/trash.png"
+      "overlay": "https://assets.makeemoji.com/overlays/static-styles/trash.png",
+      "overlayLocal": "overlays/trash.png"
     },
     "primitive": "overlay_hole",
     "params": {},
     "offlineReady": true,
-    "fidelity": "approximate-composite",
+    "fidelity": "makeemoji-overlay",
     "notes": [
+      "Official overlay from https://assets.makeemoji.com/overlays/static-styles/trash.png",
       "overlay asset archived: trash"
     ],
     "verified": true,
@@ -11513,7 +11801,7 @@
     "id": "venom",
     "slug": "venom",
     "tag": "gen_btn_venom",
-    "family": "atlas",
+    "family": "frames",
     "directionSuffix": null,
     "preview": {
       "ext": "gif",
@@ -11522,14 +11810,16 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/venom.gif"
     },
     "assets": {
-      "atlasHint": "venom"
+      "framesHint": "venom"
     },
-    "primitive": "atlas",
+    "primitive": "frames",
     "params": {},
     "offlineReady": true,
-    "fidelity": "approximate-composite",
+    "fidelity": "makeemoji-cdn-frames",
     "notes": [
-      "atlas assets archived; pending render verification"
+      "CDN frames harvested from https://assets.makeemoji.com/frames/venom/ (128 frames)",
+      "CDN frames harvested from https://assets.makeemoji.com/frames/venom/ (200 frames)",
+      "Replaces incorrect atlas sprite-sheet that tiled when drawn whole"
     ],
     "verified": true,
     "verifyScore": 0.5517863136453701
@@ -11717,7 +12007,7 @@
     "id": "willem-dafoe",
     "slug": "willem-dafoe",
     "tag": "gen_btn_willem-dafoe",
-    "family": "atlas",
+    "family": "frames",
     "directionSuffix": null,
     "preview": {
       "ext": "gif",
@@ -11726,14 +12016,16 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/willem-dafoe.gif"
     },
     "assets": {
-      "atlasHint": "willem-dafoe"
+      "framesHint": "willem-dafoe"
     },
-    "primitive": "atlas",
+    "primitive": "frames",
     "params": {},
     "offlineReady": true,
-    "fidelity": "approximate-composite",
+    "fidelity": "makeemoji-cdn-frames",
     "notes": [
-      "atlas assets archived; pending render verification"
+      "CDN frames harvested from https://assets.makeemoji.com/frames/willem-dafoe/ (23 frames)",
+      "CDN frames harvested from https://assets.makeemoji.com/frames/willem-dafoe/ (23 frames)",
+      "Replaces incorrect atlas sprite-sheet that tiled when drawn whole"
     ],
     "verified": true,
     "verifyScore": 0.5463242654419125
@@ -11821,13 +12113,15 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/wokege.webp"
     },
     "assets": {
-      "overlay": "https://assets.makeemoji.com/overlays/static-styles/wokege.png"
+      "overlay": "https://assets.makeemoji.com/overlays/static-styles/wokege.png",
+      "overlayLocal": "overlays/wokege.png"
     },
     "primitive": "overlay_hole",
     "params": {},
     "offlineReady": true,
-    "fidelity": "approximate-composite",
+    "fidelity": "makeemoji-overlay",
     "notes": [
+      "Official overlay from https://assets.makeemoji.com/overlays/static-styles/wokege.png",
       "overlay asset archived: wokege"
     ],
     "verified": true,
@@ -11837,7 +12131,7 @@
     "id": "wolverine",
     "slug": "wolverine",
     "tag": "gen_btn_wolverine",
-    "family": "atlas",
+    "family": "frames",
     "directionSuffix": null,
     "preview": {
       "ext": "gif",
@@ -11846,14 +12140,16 @@
       "url": "https://assets.makeemoji.com/prerendered/default-cat-preview/wolverine.gif"
     },
     "assets": {
-      "atlasHint": "wolverine"
+      "framesHint": "wolverine"
     },
-    "primitive": "atlas",
+    "primitive": "frames",
     "params": {},
     "offlineReady": true,
-    "fidelity": "approximate-composite",
+    "fidelity": "makeemoji-cdn-frames",
     "notes": [
-      "atlas assets archived; pending render verification"
+      "CDN frames harvested from https://assets.makeemoji.com/frames/wolverine/ (110 frames)",
+      "CDN frames harvested from https://assets.makeemoji.com/frames/wolverine/ (110 frames)",
+      "Replaces incorrect atlas sprite-sheet that tiled when drawn whole"
     ],
     "verified": true,
     "verifyScore": 0.7024769673494398
