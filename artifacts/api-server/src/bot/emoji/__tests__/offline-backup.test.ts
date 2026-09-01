@@ -99,7 +99,10 @@ describe("offline MakeEmoji backup package", () => {
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
-  });
+    // Synchronous unzip + sha256 over the whole archive is heavy, and runs
+    // alongside the emoji suite's canvas/GIF encoding; give it real headroom so
+    // it is not failed by CPU contention rather than by a checksum mismatch.
+  }, 30_000);
 });
 
 describe("offline provider (on by default)", () => {

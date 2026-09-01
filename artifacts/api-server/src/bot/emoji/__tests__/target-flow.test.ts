@@ -70,8 +70,10 @@ describe("target → style browser", () => {
     // animated preview rides alongside it. Both are real files rendered here —
     // not MakeEmoji's CDN cat.
     expect(picker.files.length).toBeGreaterThan(0);
-    expect(picker.files.some(f => /style-board\.png$/.test(f.name ?? ""))).toBe(true);
-    expect(picker.files.some(f => /\.gif$/.test(f.name ?? ""))).toBe(true);
+    // The board is a GIF when the page animates, a PNG otherwise; either way it
+    // is attached, plus the focused style's animated preview.
+    expect(picker.files.some(f => /style-board\.(gif|png)$/.test(f.name ?? ""))).toBe(true);
+    expect(picker.files.some(f => /style-preview\.gif$/.test(f.name ?? ""))).toBe(true);
 
     // The board dashboard sits exactly on Discord's five-row limit (jump select
     // + two number rows + nav + actions); one over is rejected at send time.
