@@ -66,8 +66,15 @@ let misses = 0;
  * preview being served for someone else's, and makes a re-uploaded but
  * different image miss instead of colliding.
  */
+/** Same Buffer instance is hashed many times per board page — cache it. */
+const hashByBuffer = new WeakMap<Buffer, string>();
+
 export function targetHash(image: Buffer): string {
-  return createHash("sha256").update(image).digest("hex").slice(0, 32);
+  const cached = hashByBuffer.get(image);
+  if (cached) return cached;
+  const hash = createHash("sha256").update(image).digest("hex").slice(0, 32);
+  hashByBuffer.set(image, hash);
+  return hash;
 }
 
 export function previewKey(hash: string, style: string): string {

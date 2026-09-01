@@ -46,7 +46,8 @@
     "sharp": "^0.35.3",
     "simplex-noise": "^4.0.3",
     "zod": "catalog:",
-    "ws": "^8.21.0"
+    "ws": "^8.21.0",
+    "gifuct-js": "^2.1.2"
   },
   "devDependencies": {
     "@types/bcryptjs": "^3.0.0",
